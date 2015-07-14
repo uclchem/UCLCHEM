@@ -18,7 +18,7 @@ open(3,file='final_species.csv',status='unknown')
 open(71,file='species_read_test.dat',status='unknown')
 open(72,file='reac_read_test.dat',status='unknown')
 open(7,file='end_step.d',status='unknown')
-open(8,file='log1',status='unknown')
+open(78,file='log1',status='unknown')
 !open(87,file='ener',status='unknown')
 !open(88,file='analysis',status='unknown')
 open(79,file='jondebug',status='unknown')
@@ -30,7 +30,7 @@ open(79,file='jondebug',status='unknown')
 
 !fosc = oscillator strength of a typical transition
 !ch2 = h2 column density
-    
+
 ebmaxh2=1.21d3;epsilon=0.01;ebmaxcrf=1.21d3
 ebmaxcr=1.21d3;phi=1.0d5;ebmaxuvcr=1.0d4; uvy=0.1
 omega=0.5;grain=1.1d-17;radg=1.d-5

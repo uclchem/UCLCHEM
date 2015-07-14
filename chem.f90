@@ -5,7 +5,7 @@ USE physics
 IMPLICIT NONE
 EXTERNAL dlsode
     !makerates gives these numbers, nspec includes electrons
-    integer,parameter :: nreac=2252,nspec=215,ngas=160
+    integer,parameter :: nreac=2469,nspec=214,ngas=156
 
     !These integers store the species index of important species, x is for ions    
     integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nh2o,nsi,nsix,ncl,nclx,nch3oh
@@ -133,6 +133,7 @@ CONTAINS
             !Finds all the mantle species and adds their index to a list called mantleindx
             IF (specname(i)(:1).eq.'#')  THEN
                 mantleindx(j)=specindx(i)
+                write(78,*) mantleindx(j)
                 j=j+1
             END IF
         END DO
