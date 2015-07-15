@@ -161,8 +161,8 @@ CONTAINS
         write(1,8010) (specname(i),abund(i,dstep),i=1,nspec) 
         write(1,8000)
         IF (first .eq. 1) THEN
-           IF (switch .eq. 0 .and. dens .ge. dfin& 
-               &.or. switch .eq. 1 .and. tage .ge. tfin) THEN
+           IF (switch .eq. 0 .and. tage .ge. tfin& 
+               &.or. switch .eq. 1 .and.dens .ge. dfin) THEN
                write(7,8020) tage,dens,temp,av(dstep),radfield,zeta,h2form,fc,fo,&
                        &fmg,fhe,dstep
                write(7,8000)

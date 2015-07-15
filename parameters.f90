@@ -1,11 +1,11 @@
 !Initial physics variables
 temp=10.0;d0=1.00d4;dfin=1.00d4;t0=0.0;tfin=1.00d6
-dens=1.001*d0;fr=0.0;radfield=1.0;zeta=1.00;avic=2.0
+dens=1.001*d0;fr=1.0;radfield=1.0;zeta=1.00;avic=2.0
 size=5*pc;oldtemp=temp
 
 !Behavioural switches
-switch=0;collapse=0;first=1;desorb=0;startr=.true.
-h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1
+switch=0;collapse=0;first=1;desorb=1;startr=.true.
+h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=2;ion=2
         
 !initial fractional abundances (from Asplund et al. 2009 ARAA table 1 -SOLAR)
 fh=0.0;fhe = 0.085;fc  = 2.692d-04;fo  = 4.898d-04;fn  = 6.761d-05
