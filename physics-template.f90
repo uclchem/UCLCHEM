@@ -14,7 +14,7 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change    
     double precision :: d0,dens,temp,tage,tout,t0,dfin,tfin,av(points)
-    double precision :: size,oldtemp,avic
+    double precision :: size,oldtemp,avic,bc
 
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
@@ -53,6 +53,7 @@ CONTAINS
             densdot=(dens**4)/d0
             densdot=densdot**0.3333
             densdot=densdot*((8.4d-30*d0*(((dens/d0)**0.333)-1.0))**0.5)
+            densdot=densdot*bc
         ELSE
             densdot=0.0        
         ENDIF    
