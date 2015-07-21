@@ -49,6 +49,7 @@ CONTAINS
 !Currently set to Rawlings 1992 freefall.
     pure FUNCTION densdot()
         double precision :: densdot
+
         IF (dens .lt. dfin) THEN
             densdot=(dens**4)/d0
             densdot=densdot**0.3333

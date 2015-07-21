@@ -1,6 +1,6 @@
 !Initial physics variables
 temp=10.0;d0=1.00d5;dfin=1.00d5;t0=0.0;tfin=5.00d6
-dens=d0;fr=1.0;radfield=1.0;zeta=1.00;avic=2.0
+dens=1.001*d0;fr=1.0;radfield=1.0;zeta=1.00;avic=2.0
 size=0.05*pc;oldtemp=temp;bc=1.0
 
 !Behavioural switches
