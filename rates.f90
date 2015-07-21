@@ -11,6 +11,7 @@ SUBROUTINE reacrates
             !I think reaction is a cosmic ray thing?            
             CASE ('CRP')
                 rate(j) = alpha(j)*zeta
+
             !UV photons, hence k including radfield(factor of 1.7 conversion from habing to Draine)
             CASE ('PHOTON')
                 rate(j) = alpha(j)*dexp(-gama(j)*av(dstep))*radfield/1.7
@@ -27,6 +28,7 @@ SUBROUTINE reacrates
                 IF (evap .ne. 2 .or. fr .eq. 0.0) then
                     rate(j)=1.0d-30
                 ELSE
+                    
                     DO i=1,nspec-1
                         IF (specname(i).eq.re1(j)) THEN
                             IF (beta(j).eq.0.0 ) THEN
@@ -600,8 +602,6 @@ SAVE
     !find interval xa(jlo) <= x <= xa(jlo+1) = xa(jhi)
     !ascnd is true if ascending order of table, false otherwise
     ascnd = xa(n).gt.xa(1)
-    write(79,*) ascnd, x, n, jlo ,jhi
-    write(79,*) xa  
     if (jlo.le.0 .or. jlo.gt.n) then
     !input guess not useful. go immediately to bisection.
         jlo = 0
@@ -622,7 +622,6 @@ SAVE
                 !but the do while loop will break so jhi equals n temporarily and nstore holds
                 !real value until we exit loop.
                 nstore=1
-                write(79,*) jhi
                 DO WHILE (((x.ge.xa(jhi)) .eqv. ascnd) .and. (jhi .lt. n))
                     !not done hunting
                     jlo=jhi

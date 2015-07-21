@@ -4,14 +4,14 @@ MODULE chem
 USE physics
 IMPLICIT NONE
 EXTERNAL dlsode
-    !makerates gives these numbers, nspec includes electrons
-    integer,parameter :: nreac=2469,nspec=214,ngas=156
+    !makerates gives these numbers, nspec includes electrons, ngrain is number of mantle species
+    integer,parameter :: nreac=2462,nspec=209,ngrain=52,nout=6
 
     !These integers store the species index of important species, x is for ions    
     integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nh2o,nsi,nsix,ncl,nclx,nch3oh
 
     !These integer arrays store numbers labelling reactions, species and specific reactions of interest
-    integer ::reacindx(nreac),specindx(nspec), nrco,mantleindx(nspec-ngas-1)
+    integer ::reacindx(nreac),specindx(nspec), nrco,mantleindx(ngrain),outindx(nout),writestep
 
     !loop counters    
     integer :: i,j,l
@@ -185,6 +185,11 @@ CONTAINS
         &'mg / htot = ',1pe7.1,&
         &'he / htot = ',1pe7.1,&
         &'depth     = ',i3)
+
+        IF ( mod(tstep,writestep) .eq. 0) THEN
+          write(4,8030) tage,dens,Y(outindx)
+          8030  format(1pd11.3,1x,0pf15.4,6(1x,1pd10.3))
+        END IF
     END SUBROUTINE output
 
     SUBROUTINE evaporate
@@ -243,7 +248,7 @@ CONTAINS
             &             RWORK,LRW,IWORK,LIW,JAC,MF)
 
             IF(ISTATE.EQ.2) THEN
-                write(*,*)'Call to LSODE successful at time: ',TOUT
+                write(*,*)'Call to LSODE successful at time: ',(TOUT*year),' years'
                 write(*,*)'        Steps: ',IWORK(6)
                 IOPT=0
             ELSEIF(ISTATE.EQ.-1) THEN
@@ -256,6 +261,8 @@ CONTAINS
                 stop
             ENDIF
             ISTATE=2
+            write(79,*) Y(nspec)
+
         END DO
         !DLSODE USES THIS COUNTER TO CHECK IF IT HAS INTEGRATED ODES BEFORE, NEEDS TO FORGET THAT BETWEEN TIME STEPS
         !ISTATE=1                    
@@ -275,8 +282,7 @@ CONTAINS
         D=dens
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
-        INCLUDE 'odes90.f90'
-
+        INCLUDE 'odes.f90'
         !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
         !JH: I should test the value of mantle against Serenas code to check F95 intrinsic functions do what I think they do
         mantle=sum(y(mantleindx))
@@ -298,6 +304,10 @@ CONTAINS
         IF (collapse .eq. 1) THEN
             ydot(nspec+1)=densdot()
         ENDIF
+        write(79,*) Y(nspec)
+        ydot(nspec)=0.0
+
+
     END SUBROUTINE F
 
 !integrate calls reacrates to get the reaction rates at every iteration. reacrates calls further functions.
