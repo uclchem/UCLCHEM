@@ -1,5 +1,6 @@
-compile=/opt/intel/Compiler/11.1/046/bin/intel64/ifort -fp-stack-check -check all -g -traceback -O2
-#compile= /usr/bin/gfortran -ffree-line-length-0
+#compile=/opt/intel/Compiler/11.1/046/bin/intel64/ifort -fp-stack-check -check all -g -traceback -O2
+#compile= /usr/bin/gfortran -ffree-line-length-0 -fbacktrace
+compile=/opt/intel/Compiler/11.1/046/bin/intel64/ifort
 main: chem.o physics.mod main.f90 parameters.f90
 	${compile} -o main physics.o DLSODE/opkdmain.o DLSODE/opkda1.o DLSODE/opkda2.o chem.o main.f90
 

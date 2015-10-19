@@ -11,7 +11,6 @@ SUBROUTINE reacrates
             !I think reaction is a cosmic ray thing?            
             CASE ('CRP')
                 rate(j) = alpha(j)*zeta
-
             !UV photons, hence k including radfield(factor of 1.7 conversion from habing to Draine)
             CASE ('PHOTON')
                 rate(j) = alpha(j)*dexp(-gama(j)*av(dstep))*radfield/1.7
@@ -76,6 +75,9 @@ SUBROUTINE reacrates
             !used to be earg() not exp()
             CASE DEFAULT
                 rate(j) = alpha(j)*((temp/300.)**beta(j))*dexp(-gama(j)/temp)
+                IF (re1(j)(:1) .eq. '#' .and. re2(j)(:1) .eq. '#') THEN
+                        rate(j)=1d-9
+                ENDIF
             END SELECT
         END DO
     !Photon reactions get updated every step (dens changes so av changes)

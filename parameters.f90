@@ -1,12 +1,16 @@
 !Initial physics variables
-temp=10.0;d0=1.00d5;dfin=1.00d5;t0=0.0;tfin=5.00d6
-dens=1.001*d0;fr=1.0;radfield=1.0;zeta=1.00;avic=2.0
-size=0.05*pc;oldtemp=temp;bc=1.0
+temp=100.0;d0=1.00d5;dfin=1.00d5;t0=0.0;tfin=1.00d7
+dens=d0;fr=0.;radfield=0.0;zeta=1.00;avic=0.0
+size=5.3*pc;oldtemp=temp;bc=1.0
+tempa=0.1927;tempb=0.5339
 
 !Behavioural switches
-switch=0;collapse=0;first=1;desorb=1;startr=.true.
+!switch (0/1) -> (tfin/dfin)
+!other switches are on/off (1/0)
+switch=0;collapse=0;first=1;desorb=0;startr=.true.
 h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=2;ion=2
-        
+phase=1
+
 !initial fractional abundances (from Asplund et al. 2009 ARAA table 1 -SOLAR)
 fh=0.0;fhe = 0.085;fc  = 2.692d-04;fo  = 4.898d-04;fn  = 6.761d-05
 fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07
@@ -15,10 +19,11 @@ fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07
 outindx=(/1,2,3,4,5,6/);writestep=10
 
 !open files for reading=writing
-open(1,file='output',status='unknown')
-open(2,file='final_rates.csv',status='unknown')
-open(3,file='final_species.csv',status='unknown')
+open(1,file='105_newnew',status='unknown')
+open(2,file='final_rates.csv',status='old')
+open(3,file='final_species.csv',status='old')
 open(4,file='outspecies',status='unknown')
+open(8,file='evaplists.csv',status='old')
 open(71,file='species_read_test.dat',status='unknown')
 open(72,file='reac_read_test.dat',status='unknown')
 open(7,file='end_step.d',status='unknown')
@@ -31,10 +36,8 @@ open(79,file='jondebug',status='unknown')
 !dopw = doppler width (in s-1) of a typical transition
 !(assuming turbulent broadening with beta=3e5cms-1)
 !radw = radiative line width of typ. transition (in s-1)
-
 !fosc = oscillator strength of a typical transition
 !ch2 = h2 column density
-
 ebmaxh2=1.21d3;epsilon=0.01;ebmaxcrf=1.21d3
 ebmaxcr=1.21d3;phi=1.0d5;ebmaxuvcr=1.0d4; uvy=0.1
 omega=0.5;grain=1.1d-17;radg=1.d-5

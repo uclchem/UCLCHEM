@@ -33,10 +33,9 @@ DO tstep=0,10000
         !update physics
         CALL phys_update
         !update chemistry
-        
-        !This is the DLSODE section, the integrator for all the ODES
         CALL chem_update
-             
+        
+        !set time to the final time of integrator rather than target     
         tout=t0
         tage=tout*year
         CALL output      
