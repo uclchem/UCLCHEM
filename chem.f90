@@ -9,7 +9,7 @@ EXTERNAL dlsode
 
     !These integers store the array index of important species and reactions, x is for ions    
     integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nh2o,nsi,nsix,ncl,nclx,nch3oh
-    integer ::nrco,outindx(nout),nspec,nreac
+    integer ::nrco,outindx(nout),nspec,nreac,njunk
     
     !loop counters    
     integer :: i,j,l,writestep
@@ -26,11 +26,11 @@ EXTERNAL dlsode
 
     !initial fractional elemental abudances and arrays to store abundances
     double precision :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,h2col,cocol,mantle,junk1,junk2
-    double precision,allocatable :: y(:),abund(:,:),ax(:)
+    double precision,allocatable :: y(:),abund(:,:)
     
     !Variables controlling chemistry
     double precision :: radfield,zeta,fr,omega,grain,radg,cion,h2form,h2dis
-    double precision :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uvy
+    double precision :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uvy,uvcreff
     double precision :: taud,dopw,radw,xl,fosc
 
     !evaporation lists
@@ -79,9 +79,8 @@ CONTAINS
             abund(nspec,:)=abund(ncx,:)
 
        ENDIF
-       write(*,*) abund(nspec+1,:),dens,d0
-        !h2 formation rate initially set
-        h2form = 1.0d-17*dsqrt(temp)
+       !h2 formation rate initially set
+       h2form = 1.0d-17*dsqrt(temp)
         
     END SUBROUTINE initialise
 
@@ -90,41 +89,12 @@ CONTAINS
         IMPLICIT NONE
         integer i,j,l,m
 
-        !read start file IF not first phase to get all the abundances from the last step of previous phase as well as density and temp
-        IF (first .eq. 0) THEN
-            DO l=1,points
-                read(7,7000) tage,dens,temp,av(l),radfield,zeta,h2form,fc,fo,&
-                        &fmg,fhe,dstep
-                read(7,7010)        
-                read(7,7020) (specname(i),abund(i,l),i=1,nspec)
-                abund(nspec+1,l)=dens
-                tstart=tage/year
-            END DO
-            7000 format(&
-            &'age of cloud             time  = ',1pd11.3,' years',/,&
-            &'total hydrogen density   dens  = ',0pf15.4,' cm-3',/,&
-            &'cloud temperature        temp  = ',0pf8.2,' k',/,&
-            &'visual extinction        av    = ',0pf12.4,' mags',/,&
-            &'radiation field          rad   = ',0pf10.2,' (habing = 1)',/,&
-            &'cosmic ray ioniz. rate   zeta  = ',0pf10.2,' (unit = 1.3e-17s-1)',/,&
-            &'h2 formation rate coef.        = ',1pe8.2,' cm3 s-1',/,&
-            &'c / htot = ',1pe7.1,4x,' o / htot = ',1pe7.1,/&
-            &'mg / htot = ',1pe7.1,&
-            &' he / htot = ',1pe7.1,&
-            &' depth     = ',i3)
-            7010  format(//)
-            7020  format(4(1x,a8,'=',1x,1pd10.3,:))     
-        END IF
-
-        !read species file and assign specindx for important species to the integers used to store them.
-        !format was 8010, mantle is dummy for the abundances
+        !read species file and allocate sufficient space to relevant arrays
         read(3,*)nspec
-        allocate(y(nspec+1),abund(nspec+1,points),ax(nspec),specname(nspec),mass(nspec))
+        allocate(y(nspec+1),abund(nspec+1,points),specname(nspec),mass(nspec))
         read(3,*)(specname(j),junk1,mass(j),j=1,nspec-1)
-        write(71,8010)(specname(j),mass(j),j=1,nspec-1)
-        8010  format(a8,1x,f5.1)
+        !assign array indices for important species to the integers used to store them.
         specname(nspec)='electr'
-        j=1
         DO i=1,nspec-1
             IF (specname(i).eq.'H')   nh  = i
             IF (specname(i).eq.'H2')  nh2 = i
@@ -144,51 +114,78 @@ CONTAINS
             IF (specname(i).eq.'CH3OH') nch3oh= i           
         END DO
 
-        !read reac file, alpha, beta and gama are used for working out reaction rate each time step
+        !read reac file, assign array space
+        !alpha, beta and gama are used for working out reaction rate each time step
         read(2,*) nreac
         allocate(re1(nreac),re2(nreac),re3(nreac),p1(nreac),p2(nreac),p3(nreac),&
             &p4(nreac),alpha(nreac),beta(nreac),gama(nreac),rate(nreac))
         DO j=1,nreac
             read(2,*) re1(j),re2(j),re3(j),p1(j),p2(j),p3(j),&
             &p4(j),alpha(j),beta(j),gama(j),junk1,junk2
-            write(72,8020) re1(j),re2(j),re3(j),p1(j),p2(j),p3(j),&
-            &p4(j),alpha(j),beta(j),gama(j)
         END DO    
-        8020  format(5(1x,a8),2(1x,a4),1x,1pe8.2,3x,1pe8.2,2x,1pe8.2)
 
         !finally, read in evaporation lists
         !what we do is read in length of each list, then the numbers in the list
         !these are used for evaporation sums.
-            read(8,*) l
-            allocate(colist(l))
-            allocate(mcolist(l))
-            read(8,*)colist
-            read(8,*)mcolist
-            read(8,*) l
-            allocate(intlist(l))
-            allocate(mintlist(l))
-            read(8,*) intlist
-            read(8,*) mintlist
-            read(8,*)l
-            allocate(grainlist(l))
-            allocate(mgrainlist(l))
-            read(8,*) grainlist
-            read(8,*) mgrainlist
+        read(8,*) l
+        allocate(colist(l))
+        allocate(mcolist(l))
+        read(8,*)colist
+        read(8,*)mcolist
+        read(8,*) l
+        allocate(intlist(l))
+        allocate(mintlist(l))
+        read(8,*) intlist
+        read(8,*) mintlist
+        read(8,*)l
+        allocate(grainlist(l))
+        allocate(mgrainlist(l))
+        read(8,*) grainlist
+        read(8,*) mgrainlist
 
-            END SUBROUTINE reader
+        !read start file IF not first phase to get all the abundances from the last step of previous phase as well as density and temp
+        IF (first .eq. 0) THEN
+            DO l=1,points
+                read(7,7000) tage,dens,temp,av(l),radfield,zeta,h2form,fc,fo,&
+                        &fmg,fhe,dstep
+                read(7,7010)
+                read(7,7020) (specname(i),abund(i,l),i=1,nspec)
+                tage=0.
+            END DO
+            7000 format(&
+            &'age of cloud             time  = ',1pd11.3,' years',/,&
+            &'total hydrogen density   dens  = ',0pf15.4,' cm-3',/,&
+            &'cloud temperature        temp  = ',0pf8.2,' k',/,&
+            &'visual extinction        av    = ',0pf12.4,' mags',/,&
+            &'radiation field          rad   = ',0pf10.2,' (habing = 1)',/,&
+            &'cosmic ray ioniz. rate   zeta  = ',0pf10.2,' (unit = 1.3e-17s-1)',/,&
+            &'h2 formation rate coef.        = ',1pe8.2,' cm3 s-1',/,&
+            &'c / htot = ',1pe7.1,4x,' o / htot = ',1pe7.1,/&
+            &'mg / htot = ',1pe7.1,&
+            &' he / htot = ',1pe7.1,&
+            &' depth     = ',i3)
+            7010  format(/)
+            7020  format(4(1x,a8,'=',1x,1pd10.3,:))     
+        END IF
+    END SUBROUTINE reader
 
 !Writes physical variables and fractional abundances to output file, called every time step.
     SUBROUTINE output
+        !1.d-30 stops numbers getting too small for fortran.
         DO l=1,nspec
             IF(abund(l,dstep) .le. 1.d-30) THEN
-                abund(l,dstep)= 1.d-30
+               abund(l,dstep)= 1.d-30
             ENDIF
         END DO
+        !write out cloud properties
         write(1,8020) tage,dens,temp,av(dstep),radfield,zeta,h2form,fc,fo,&
                         &fmg,fhe,dstep
+        !and a blank line
         write(1,8000)
+        !and then all the abundances for this step
         write(1,8010) (specname(i),abund(i,dstep),i=1,nspec) 
         write(1,8000)
+        !If this is the last time step of phase I, write a start file for phase II
         IF (first .eq. 1) THEN
            IF (switch .eq. 0 .and. tage .ge. tfin& 
                &.or. switch .eq. 1 .and.dens .ge. dfin) THEN
@@ -214,6 +211,8 @@ CONTAINS
         &' he / htot = ',1pe7.1,&
         &' depth     = ',i3)
 
+        !Every 'writestep' timesteps, write the chosen species out to separate file
+        !choose species you're interested in by looking at parameters.f90
         IF ( mod(tstep,writestep) .eq. 0) THEN
           write(4,8030) tage,dens,Y(outindx)
           8030  format(1pd11.3,1x,0pf15.4,6(1x,1pd10.3))
@@ -228,24 +227,25 @@ CONTAINS
         !reset other variables for good measure        
         y=abund(:,dstep)
         dens=abund(nspec+1,dstep)
-        ax=y*dens
         h2form = 1.0d-17*dsqrt(temp)
-
     
         !evaluate co and h2 column densities for use in rate calculations
-        !sum column densities of each point up to dstep. boxsep and dens are pulled out of the sum as common factors  
-        IF (dstep.gt.1 .or. points .eq. 1) THEN
-            h2col=sum(abund(nh2,:dstep))*dens*size*(real(dstep)/real(points))
-            cocol=sum(abund(nco,:dstep))*dens*size*(real(dstep)/real(points))
+        !sum column densities of each point up to dstep. boxlength and dens are pulled out of the sum as common factors  
+        IF (dstep.gt.1) THEN
+            h2col=(sum(abund(nh2,:dstep-1))+0.5*abund(nh2,dstep))*dens*(size/real(points))
+            cocol=(sum(abund(nco,:dstep-1))+0.5*abund(nco,dstep))*dens*(size/real(points))
         ELSE
-            h2col=0.
-            cocol=0.
+            h2col=0.5*abund(nh2,dstep)*dens*(size/real(points))
+            cocol=0.5*abund(nco,dstep)*dens*(size/real(points))
+
         ENDIF
+
         !call the actual ODE integrator
         call integrate
 
         !call evaporation to remove species from grains at certain temperatures
         call evaporate
+
         !Set abundances to output of DLSODE
         abund(:,dstep)=y
     END SUBROUTINE chem_update
@@ -272,7 +272,9 @@ CONTAINS
             write(*,*) IWORK(6),' ',MXSTEP,' ',IOPT,' ',ISTATE
            
             !get reaction rates for this iteration
+            write(79,*) tout,tstep
             CALL reacrates
+            olddens=dens
             !Call the integrator.
             CALL DLSODE(F,NEQ,Y,T0,TOUT,ITOL,RTOL,ATOL,ITASK,ISTATE,IOPT,&
             &             RWORK,LRW,IWORK,LIW,JAC,MF)
@@ -297,6 +299,7 @@ CONTAINS
         ISTATE=1                    
     END SUBROUTINE integrate
 
+    !This is where reacrates subroutine is hidden
     include 'rates.f90'
 
     !DLSODE calls this subroutine to ask it what the RHS of the equations dy/dt=... are    
@@ -306,17 +309,24 @@ CONTAINS
         DOUBLE PRECISION :: D,loss,prod
         
         !Dens is updated by DLSODE just like abundances so this ensures dens is at correct value for this timestep
-        !dens=y(nspec+1)
+        dens=y(nspec+1)
         !Set D to the gas density for use in the ODEs
         D=dens
+        !IF (dens .ne. olddens) THEN
+        !    av(dstep)= avic +((size*(real(dstep)/real(points)))*dens)/1.6d21
+        !!    call reacrates
+        !    olddens=dens
+        !END IF
+
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         INCLUDE 'odes.f90'
+
         !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
-        !JH: I should test the value of mantle against Serenas code to check F95 intrinsic functions do what I think they do
         mantle=sum(y(mgrainlist))
-        h2form=1.0d-17*dsqrt(temp)        
-        
+        !updated just in case temp changed
+        h2form=1.0d-17*dsqrt(temp) 
+
         !H2 formation should occur at both steps - however note that here there is no 
         !temperature dependence. y(nh) is hydrogen fractional abundance.      
         ydot(nh)  = ydot(nh) - 2.0*( h2form*dens*y(nh) - h2dis*y(nh2) )
@@ -324,16 +334,10 @@ CONTAINS
         ydot(nh2) = ydot(nh2) + h2form*dens*y(nh) - h2dis*y(nh2)
         !                       h2 formation  - h2-photodissociation
 
-        !IF (evap .ne. 2)  THEN
-        !   radc=newradc
-        !   rad=newrad
-        !ENDIF
-
         ! get density change from physics module to send to DLSODE
         IF (collapse .eq. 1) THEN
             ydot(nspec+1)=densdot()
         ENDIF
-        ydot(nspec)=0.0
     END SUBROUTINE F
 
 !integrate calls reacrates to get the reaction rates at every iteration. reacrates calls further functions.
@@ -343,29 +347,31 @@ CONTAINS
     IF (tstep .gt. 0) THEN
         IF (evap .eq. 1) THEN
             ! this code only works if you use the 288,000 temp increase from old uclchem
+            !if you do y(a)=y(a)+y(b) with a and b as integer arrays. uses corresponding elements
+            !eg. y(a[1])=y(a[1])+y(b[1]). So make sure they match by comparing evaplist to species.csv
+
+            !Solid Evap
             IF (temp .ge. 19.45 .and. temp .le. 21.00) THEN
               y(colist)=y(colist)+0.35*y(mcolist)
               y(mcolist)=0.65*y(mcolist)
             ENDIF
+
+            !Missing routine for mono evap
             !CALL temper
 
+            !Volcanic, int should really be separated out.
             IF (temp .ge. 87.9 .and. temp .le. 88.8) THEN
               y(colist)=y(colist)+0.667*y(mcolist)
               y(mcolist)=0.333*y(mcolist)
-              y(intlist)=y(colist)+0.5*y(mcolist)
-              y(intlist)=0.5*y(mcolist)
+              y(intlist)=y(intlist)+0.5*y(mintlist)
+              y(intlist)=0.5*y(mintlist)
             ENDIF
 
+            !Co-desorption
             IF (temp .ge. 99.0  .and. temp .le. 99.70) THEN
               y(grainlist)=y(grainlist)+y(mgrainlist)
               y(mgrainlist)=1d-30
             ENDIF
-      !ELSE
-      !  IF (vap .eq. 0 .and. tt .gt. 1) THEN
-      !    IF (realsh .eq. 0) THEN
-      !      INCLUDE 'evapor_latest.f'
-      !    ENDIF
-      ! ENDIF
       ENDIF
     ENDIF
 

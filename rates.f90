@@ -27,7 +27,6 @@ SUBROUTINE reacrates
                 IF (evap .ne. 2 .or. fr .eq. 0.0) then
                     rate(j)=1.0d-30
                 ELSE
-                    
                     DO i=1,nspec-1
                         IF (specname(i).eq.re1(j)) THEN
                             IF (beta(j).eq.0.0 ) THEN
@@ -37,9 +36,8 @@ SUBROUTINE reacrates
                                 rate(j)=alpha(j)*dsqrt(temp/mass(i))*grain*fr*cion
                             ENDIF
                         ENDIF
-               
                     END DO
-                 ENDIF
+                ENDIF
             CASE ('DESOH2')
                 IF (desorb .eq. 1 .and. h2desorb .eq. 1&
                 & .and. tstep .ge. 1 .and. gama(j) .le. ebmaxh2 .and.&
@@ -67,17 +65,19 @@ SUBROUTINE reacrates
                 ENDIF
             CASE ('DEUVCR')
                 IF (desorb .eq. 1 .and. uvcr .eq. 1 .and. tstep .ge. 1&
-                 &.and. gama(j) .le. ebmaxuvcr) THEN
-                    rate(j) = (grain/4.57d4)*uvy*4.875d3*zeta*(1.0/mantle)
+                 &.and. gama(j) .le. ebmaxuvcr .and. mantle .ge. 1.0d-15) THEN
+                    !was 4.875d3 not 1.0d5
+                    rate(j) = (grain/4.57d4)*uvy*1.0d5*zeta*(1.0/mantle)
+                    rate(j) = rate(j) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
                 ELSE
                     rate(j) = 1.0d-30
                 ENDIF
             !used to be earg() not exp()
             CASE DEFAULT
                 rate(j) = alpha(j)*((temp/300.)**beta(j))*dexp(-gama(j)/temp)
-                IF (re1(j)(:1) .eq. '#' .and. re2(j)(:1) .eq. '#') THEN
-                        rate(j)=1d-9
-                ENDIF
+                !IF (re1(j)(:1) .eq. '#' .and. re2(j)(:1) .eq. '#') THEN
+                !        rate(j)=1d-9
+                !ENDIF
             END SELECT
         END DO
     !Photon reactions get updated every step (dens changes so av changes)
@@ -102,25 +102,18 @@ END SUBROUTINE reacrates
 
 !Functions below are required by reacrates to calculate more complicated reactions.
 double precision FUNCTION h2d()
-    double precision ::xl,chtot,ch2
+    double precision ::ch2
 
-    !h2dis = h2 dissociation rate taking into account h2 self-shielding
-    !and grain extinction
-    
-    !chtot = total h nuclei column density
-    chtot = av(dstep) * 1.6e21
+    !h2col is h2 column density. Half total column density for uniform sphere.
+    !Sum of shells for multidepth point (worked out in chem.f90.chem_update)
 
-    IF (dstep .eq. 1) THEN
-        ch2   = chtot/2
-    ELSE
-        ch2   =  h2col
-    ENDIF
     !taud = opt. depth at line centre (assum. ortho:parah2=1)
     !pi**0.5 * e2 / (m(electr) * c) = 1.5e-2 cm2/s
-    taud  = 0.5 * ch2 * 1.5e-2 * fosc / dopw
+    taud  = 0.5 * h2col * 1.5e-2 * fosc / dopw
 
     !c Here, the constant 5.1e-11 is by assuming rad is in Habing [double check]
-    h2d = 5.1d-11 * radfield * scat(xl,chtot) * fgk(taud)
+    h2d = 5.1d-11 * radfield * scat(xl) * fgk(taud)
+
 END FUNCTION h2d 
 
 double precision FUNCTION knrco()
@@ -129,20 +122,12 @@ double precision FUNCTION knrco()
     
     !calculate photodissociation rates for co (species # nco; reaction
     !# nrco) according to van dishoeck and black (apj 334, p771 (1988))
-    !cco is the co column density (in cm-2); the scaling of the pdrate
+    !cocol is the co column density (in cm-2); the scaling of the pdrate
     !by a factor of 1.8 is due to the change from draine's is uv field
     !to the habing field
-    chtot = av(dstep) * 1.6e21
-
-    IF (dstep .eq. 1) THEN
-        ch2 = chtot/2
-    ELSE
-        ch2   = h2col
-    ENDIF
-
-    ssf = ssfco(ch2)
-    lba = lbar(cocol,ch2)
-    sca = scat(lba,chtot)
+    ssf = ssfco(h2col)
+    lba = lbar(cocol,h2col)
+    sca = scat(lba)
 
     !The reason why rad is divided by 1.7 is that the alphas are for Draine and the rad is in 
     !Habing units
@@ -206,7 +191,7 @@ double precision function fgk(taud)
     fgk = sj + sr
 END FUNCTION fgk
      
-double precision FUNCTION scat(x1,cdntot)
+double precision FUNCTION scat(x1)
 !calculate the influence of dust extinction (g=0.8, omega=0.3)
 !wagenblast&hartquist, mnras237, 1019 (1989)
 
@@ -251,9 +236,7 @@ double precision FUNCTION scat(x1,cdntot)
     !total column density of hydrogen nuclei / e(b-v) = 5.8e+21
     !atoms cm-2 mag-1 (bohlin, savage, and drake 1978; apj 224,132)
     !for lambda**-1 scattering : r = av / e(b-v) = 3.6 .
-
-    av(dstep) = cdntot / 1.6d+21
-      
+    
     !optical depth in the visual
     tv = av(dstep)/ 1.086d0
       

@@ -1,3 +1,4 @@
+!Izaskun Cshock in progress
 MODULE physics
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
@@ -14,7 +15,7 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change    
     double precision :: d0,dens,temp,tage,tout,t0,dfin,tfin,av(points)
-    double precision :: size,oldtemp,avic,bc,tempa,tempb,tstart,olddens,maxt
+    double precision :: size,oldtemp,avic,bc,tempa,tempb,tstart
 
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
@@ -38,22 +39,8 @@ CONTAINS
                 tout=3.16d7*10.0**(tstep+2)
             ENDIF
         ELSE
-            if (tstep .gt. 160) then
-                tout=(tage+500)/3.16d-08
-            else if (tstep .gt. 120) then
-                tout=(tage+100.)/3.16d-08
-            else if (tstep .gt. 80) then
-                tout=(tage+50.)/3.16d-08
-            else if (tstep .gt. 40) then
-                tout=(tage+10.)/3.16d-08
-            else if  (tstep .gt.1) then
-                tout=(tage+1.)/3.16d-08
-            else
-                tout=3.16d5*10.**(tstep+1)
-            endif
+            tout=(tage+10000.0)/year
         END IF
-
-        !IF (tstep .eq. 0) tout=3.16d7*10.d-8
         !This is to match Serena's timesteps for testing code.
     END SUBROUTINE timestep
 
@@ -63,21 +50,23 @@ CONTAINS
         !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
         av(dstep)= avic +((size*(real(dstep)/real(points)))*dens)/1.6d21
 
-        IF (phase .eq. 2 .and. temp .lt. maxt) THEN
+        IF (phase .eq. 2) THEN
             !temperature increase borrowed from sv for comparison 288.000
             !will add general profile later
             temp=10. + (7.8470d-3*tage**0.8395)
-            !write(*,*) temp
+            write(*,*) temp
         END IF
 
     END SUBROUTINE phys_update
 
 !This FUNCTION works out the time derivative of the density, allowing DLSODE to update density with the rest of our ODEs
 !It get's called by F, the SUBROUTINE in chem.f90 that sets up the ODEs for DLSODE
+!Currently set to Rawlings 1992 freefall.
     pure FUNCTION densdot()
         double precision :: densdot
 
-        !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
+        IF (dens .lt. dfin) THEN
+ !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
         IF (dens .lt. dfin) THEN
              densdot=bc*(dens**4./d0)**0.33*&
              &(8.4d-30*d0*((dens/d0)**0.33-1.))**0.5

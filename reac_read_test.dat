@@ -2015,19 +2015,19 @@
  H2       HOC+     NAN      HCO+     H2       NAN  NAN  3.80E-10   0.00E+00  0.00E+00
  H2       O2       NAN      O        O        H2   NAN  6.00E-09   0.00E+00  5.23E+04
  CH       O        NAN      HCO+     E-       NAN  NAN  2.00E-11   4.40E-01  0.00E+00
- C        FREEZE   NAN      #CH4     NAN      NAN  NAN  8.70E-01   0.00E+00  0.00E+00
- CO       FREEZE   NAN      #CO      NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
+ C        FREEZE   NAN      #CH4     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
+ CO       FREEZE   NAN      #CO      NAN      NAN  NAN  9.50E-01   0.00E+00  0.00E+00
  H2CO     FREEZE   NAN      #H2CO    NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  C2       FREEZE   NAN      #C2      NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  CH       FREEZE   NAN      #CH4     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- OH       FREEZE   NAN      #H2O     NAN      NAN  NAN  8.50E-01   0.00E+00  0.00E+00
+ OH       FREEZE   NAN      #H2O     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  NO       FREEZE   NAN      #NO      NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  CH2      FREEZE   NAN      #CH4     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  H2O      FREEZE   NAN      #H2O     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  CO2      FREEZE   NAN      #CO2     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- CH3      FREEZE   NAN      #CH4     NAN      NAN  NAN  9.00E-01   0.00E+00  0.00E+00
+ CH3      FREEZE   NAN      #CH4     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  CH4      FREEZE   NAN      #CH4     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- HCO      FREEZE   NAN      #H2CO    NAN      NAN  NAN  2.20E-01   0.00E+00  0.00E+00
+ HCO      FREEZE   NAN      #H2CO    NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  N2       FREEZE   NAN      #N2      NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  CN       FREEZE   NAN      #HCN     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  C+       FREEZE   NAN      #CH4     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
@@ -2042,29 +2042,29 @@
  N2+      FREEZE   NAN      #N2      NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  CH+      FREEZE   NAN      #CH4     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  NH+      FREEZE   NAN      #NH3     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
- OH+      FREEZE   NAN      #H2O     NAN      NAN  NAN  9.50E-01   1.00E+00  0.00E+00
+ OH+      FREEZE   NAN      #H2O     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  CO+      FREEZE   NAN      #CO      NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  CN+      FREEZE   NAN      #HCN     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  NO+      FREEZE   NAN      #NO      NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  CH2+     FREEZE   NAN      #CH4     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  NH2+     FREEZE   NAN      #NH3     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  H2O+     FREEZE   NAN      #H2O     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
- HCO+     FREEZE   NAN      #H2CO    NAN      NAN  NAN  2.20E-01   1.00E+00  0.00E+00
+ HCO+     FREEZE   NAN      #H2CO    NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  HCN+     FREEZE   NAN      #HCN     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  C2H+     FREEZE   NAN      #C2H     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  NH3+     FREEZE   NAN      #NH3     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  H2CO+    FREEZE   NAN      #H2CO    NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
- CH3+     FREEZE   NAN      #CH4     NAN      NAN  NAN  9.00E-01   1.00E+00  0.00E+00
+ CH3+     FREEZE   NAN      #CH4     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  H3O+     FREEZE   NAN      #H2O     H        NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  HCO2+    FREEZE   NAN      #CO2     H        NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  CH5+     FREEZE   NAN      #CH4     H        NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  CH4+     FREEZE   NAN      #CH4     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  NH2      FREEZE   NAN      #NH3     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  N        FREEZE   NAN      #NH3     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- O        FREEZE   NAN      #H2O     NAN      NAN  NAN  9.00E-01   0.00E+00  0.00E+00
+ O        FREEZE   NAN      #H2O     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  O2       FREEZE   NAN      #O2      NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  HS       FREEZE   NAN      #H2S     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- CS       FREEZE   NAN      #H2CS    NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
+ CS       FREEZE   NAN      #H2CS    NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  SO       FREEZE   NAN      #SO      NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  H2S      FREEZE   NAN      #H2S     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  HCS      FREEZE   NAN      #H2CS    NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
@@ -2093,7 +2093,7 @@
  H2CS+    FREEZE   NAN      #HCS     H        NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  H2S2+    FREEZE   NAN      #HS2     H        NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  HS2      FREEZE   NAN      #HS2     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- S2       FREEZE   NAN      #S2      NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
+ S2       FREEZE   NAN      #S2      NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  S2+      FREEZE   NAN      #S2      NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  H3CS+    FREEZE   NAN      #H2CS    NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  HSO+     FREEZE   NAN      #SO      H        NAN  NAN  1.00E+00   1.00E+00  0.00E+00
@@ -2109,7 +2109,7 @@
  H2S+     FREEZE   NAN      #H2S     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  O2H      FREEZE   NAN      #O2H     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  HSO2+    FREEZE   NAN      #SO2     H        NAN  NAN  1.00E+00   1.00E+00  0.00E+00
- CO       FREEZE   NAN      #CH3OH   NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
+ CO       FREEZE   NAN      #CH3OH   NAN      NAN  NAN  5.00E-02   0.00E+00  0.00E+00
  HNC      FREEZE   NAN      #HNC     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  C2H2     FREEZE   NAN      #C2H2    NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  CH3CN    FREEZE   NAN      #CH3CN   NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
@@ -2124,11 +2124,11 @@
  CH3OH2+  FREEZE   NAN      #CH3OH   H        NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  HCOOCH3  FREEZE   NAN      #HCOOCH3 NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  CH3OH    FREEZE   NAN      #CH3OH   NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- CH3CNH   FREEZE   NAN      #CH3CNH  NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
+ CH3CNH   FREEZE   NAN      #CH3CNH  NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  CH3CNH+  FREEZE   NAN      #CH3CNH  NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
- CO       FREEZE   NAN      #CH4     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- S        FREEZE   NAN      #OCS     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- S        FREEZE   NAN      #S       NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
+ CO       FREEZE   NAN      #CH4     NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
+ S        FREEZE   NAN      #OCS     NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
+ S        FREEZE   NAN      #S       NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
  HNCO     FREEZE   NAN      #HNCO    NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  OCN      FREEZE   NAN      #HNCO    NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  C2N      FREEZE   NAN      #CH3CNH  NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
@@ -2139,15 +2139,15 @@
  C4N+     FREEZE   NAN      C4N+     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  H5C2O2+  FREEZE   NAN      C2H5OH   O        NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  HOC+     FREEZE   NAN      #H2CO    NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
- CO       FREEZE   NAN      #H2CO    NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- #CH3OH   #CO      NAN      #HCOOCH3 NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- SI       FREEZE   NAN      #SI      NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
+ CO       FREEZE   NAN      #H2CO    NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
+ #CH3OH   #CO      NAN      #HCOOCH3 NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
+ SI       FREEZE   NAN      #SI      NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
  SI       FREEZE   NAN      #SIH4    NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- SIO      FREEZE   NAN      #SIO     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
+ SIO      FREEZE   NAN      #SIO     NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
  SIO      FREEZE   NAN      #H2SIO   NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  SIH      FREEZE   NAN      #SIH4    NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  SI+      FREEZE   NAN      #SIH4    NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
- SI+      FREEZE   NAN      #SI      NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
+ SI+      FREEZE   NAN      #SI      NAN      NAN  NAN  0.00E+00   1.00E+00  0.00E+00
  SIH+     FREEZE   NAN      #SIH4    NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  SIH2     FREEZE   NAN      #SIH4    NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  SIH2+    FREEZE   NAN      #SIH4    NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
@@ -2161,7 +2161,7 @@
  SIC2+    FREEZE   NAN      #SIC2    NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  SIC3     FREEZE   NAN      #SIC3    NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  SIC3+    FREEZE   NAN      #SIC3    NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
- SIO+     FREEZE   NAN      #SIO     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
+ SIO+     FREEZE   NAN      #SIO     NAN      NAN  NAN  0.00E+00   1.00E+00  0.00E+00
  SIO+     FREEZE   NAN      #H2SIO   NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  SIOH+    FREEZE   NAN      #H2SIO   NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  SIS      FREEZE   NAN      #SIS     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
@@ -2169,7 +2169,7 @@
  HSIS+    FREEZE   NAN      #SIS     H        NAN  NAN  1.00E+00   1.00E+00  0.00E+00
  H2SIO    FREEZE   NAN      #H2SIO   NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
  SIH5+    FREEZE   NAN      #SIH4    H        NAN  NAN  1.00E+00   1.00E+00  0.00E+00
- #SI      #S       NAN      #SIS     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
+ #SI      #S       NAN      #SIS     NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
  #CO      DESOH2   NAN      CO       NAN      NAN  NAN  1.00E+00   0.00E+00  9.60E+02
  #H2O     DESOH2   NAN      H2O      NAN      NAN  NAN  1.00E+00   0.00E+00  5.77E+03
  #CO2     DESOH2   NAN      CO2      NAN      NAN  NAN  1.00E+00   0.00E+00  2.69E+03
@@ -2210,7 +2210,6 @@
  #CH3CCH  DESOH2   NAN      CH3CCH   NAN      NAN  NAN  1.00E+00   0.00E+00  2.47E+03
  #C2H5OH  DESOH2   NAN      C2H5OH   NAN      NAN  NAN  1.00E+00   0.00E+00  3.47E+03
  #CH3CNH  DESCR1   NAN      CH3CNH   NAN      NAN  NAN  1.00E+00   0.00E+00  3.74E+03
- #HCOOCH3 DESCR1   NAN      HCOOCH3  NAN      NAN  NAN  1.00E+00   0.00E+00  2.82E+03
  #CO      DESCR1   NAN      CO       NAN      NAN  NAN  1.00E+00   0.00E+00  9.60E+02
  #H2O     DESCR1   NAN      H2O      NAN      NAN  NAN  1.00E+00   0.00E+00  5.77E+03
  #CO2     DESCR1   NAN      CO2      NAN      NAN  NAN  1.00E+00   0.00E+00  2.69E+03
@@ -2251,7 +2250,6 @@
  #CH3CCH  DESCR1   NAN      CH3CCH   NAN      NAN  NAN  1.00E+00   0.00E+00  2.47E+03
  #C2H5OH  DESCR1   NAN      C2H5OH   NAN      NAN  NAN  1.00E+00   0.00E+00  3.47E+03
  #CH3CNH  DESCR2   NAN      CH3CNH   NAN      NAN  NAN  1.00E+00   0.00E+00  3.74E+03
- #HCOOCH3 DESCR2   NAN      HCOOCH3  NAN      NAN  NAN  1.00E+00   0.00E+00  2.82E+03
  #CO      DESCR2   NAN      CO       NAN      NAN  NAN  1.00E+00   0.00E+00  9.60E+02
  #H2O     DESCR2   NAN      H2O      NAN      NAN  NAN  1.00E+00   0.00E+00  5.77E+03
  #CO2     DESCR2   NAN      CO2      NAN      NAN  NAN  1.00E+00   0.00E+00  2.69E+03
@@ -2292,7 +2290,6 @@
  #CH3CCH  DESCR2   NAN      CH3CCH   NAN      NAN  NAN  1.00E+00   0.00E+00  2.47E+03
  #C2H5OH  DESCR2   NAN      C2H5OH   NAN      NAN  NAN  1.00E+00   0.00E+00  3.47E+03
  #CH3CNH  DEUVCR   NAN      CH3CNH   NAN      NAN  NAN  1.00E+00   0.00E+00  3.74E+03
- #HCOOCH3 DEUVCR   NAN      HCOOCH3  NAN      NAN  NAN  1.00E+00   0.00E+00  2.82E+03
  #CO      DEUVCR   NAN      CO       NAN      NAN  NAN  1.00E+00   0.00E+00  9.60E+02
  #H2O     DEUVCR   NAN      H2O      NAN      NAN  NAN  1.00E+00   0.00E+00  5.77E+03
  #CO2     DEUVCR   NAN      CO2      NAN      NAN  NAN  1.00E+00   0.00E+00  2.69E+03
@@ -2392,14 +2389,4 @@
  #C4H     DESCR2   NAN      C4H      NAN      NAN  NAN  1.00E+00   0.00E+00  4.20E+03
  #C3H2    DEUVCR   NAN      C3H2     NAN      NAN  NAN  1.00E+00   0.00E+00  4.20E+03
  #C4H     DEUVCR   NAN      C4H      NAN      NAN  NAN  1.00E+00   0.00E+00  4.20E+03
- S+       FREEZE   NAN      #OCS     NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
- HCOOCH3  CRPHOT   NAN      H2CO     H2CO     NAN  NAN  1.30E-17   0.00E+00  6.00E+00
- HCS      FREEZE   NAN      #HCS     NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
- H3CO+    FREEZE   NAN      #CH3OH   NAN      NAN  NAN  1.00E+00   1.00E+00  0.00E+00
- HCO      FREEZE   NAN      #CH3OH   NAN      NAN  NAN  8.00E-02   0.00E+00  0.00E+00
- HCO+     FREEZE   NAN      #CH3OH   NAN      NAN  NAN  8.00E-02   0.00E+00  0.00E+00
- H2S      S+       NAN      S        H2S+     NAN  NAN  4.40E-11   ********  0.00E+00
- H2S      NH2+     NAN      HS       NH3+     NAN  NAN  4.50E-10   0.00E+00  0.00E+00
- #CO      #S       NAN      #OCS     NAN      NAN  NAN  1.66E-11   0.00E+00  1.89E+03
- CS       FREEZE   NAN      #HCS     NAN      NAN  NAN  1.00E+00   0.00E+00  0.00E+00
- CS       FREEZE   NAN      #CS      NAN      NAN  NAN  0.00E+00   0.00E+00  0.00E+00
+ S+       FREEZE   NAN      #OCS     NAN      NAN  NAN  0.00E+00   1.00E+00  0.00E+00

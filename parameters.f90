@@ -1,13 +1,13 @@
 !Initial physics variables
-temp=100.0;d0=1.00d5;dfin=1.00d5;t0=0.0;tfin=1.00d7
-dens=d0;fr=0.;radfield=0.0;zeta=1.00;avic=0.0
-size=5.3*pc;oldtemp=temp;bc=1.0
+temp=30.0;d0=1.00d8;dfin=1.00d8;t0=0.0;tfin=1.00d6
+dens=d0;fr=1.0;radfield=0.0;zeta=2.000;avic=0.0
+rout=5.3;rin=0;oldtemp=temp;bc=1.0
 tempa=0.1927;tempb=0.5339
 
 !Behavioural switches
 !switch (0/1) -> (tfin/dfin)
 !other switches are on/off (1/0)
-switch=0;collapse=0;first=1;desorb=0;startr=.true.
+switch=0;collapse=0;first=1;desorb=1;startr=.true.
 h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=2;ion=2
 phase=1
 
@@ -19,8 +19,8 @@ fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07
 outindx=(/1,2,3,4,5,6/);writestep=10
 
 !open files for reading=writing
-open(1,file='105_newnew',status='unknown')
-open(2,file='final_rates.csv',status='old')
+open(1,file='../benchmarking/newnewnew13',status='unknown')
+open(2,file='testrates.csv',status='old')
 open(3,file='final_species.csv',status='old')
 open(4,file='outspecies',status='unknown')
 open(8,file='evaplists.csv',status='old')
@@ -37,8 +37,7 @@ open(79,file='jondebug',status='unknown')
 !(assuming turbulent broadening with beta=3e5cms-1)
 !radw = radiative line width of typ. transition (in s-1)
 !fosc = oscillator strength of a typical transition
-!ch2 = h2 column density
-ebmaxh2=1.21d3;epsilon=0.01;ebmaxcrf=1.21d3
+ebmaxh2=1.21d3;epsilon=0.01;ebmaxcrf=1.21d3;uvcreff=1.0d-3
 ebmaxcr=1.21d3;phi=1.0d5;ebmaxuvcr=1.0d4; uvy=0.1
 omega=0.5;grain=1.1d-17;radg=1.d-5
 dopw=3.0e10;radw=8.0e07;xl=1000.0;fosc  = 1.0d-2
@@ -62,6 +61,7 @@ corates =reshape((/0.000d+00, -1.408d-02, -1.099d-01, -4.400d-01,&
      &  -2.305d+00, -3.034d+00, -3.758d+00,&
      &  -3.883d+00, -3.888d+00, -3.936d+00, -4.197d+00,&
      &  -4.739d+00, -5.165d+00, -5.441d+00 /),shape(corates))
+
 ncogr =(/12.0d+00, 13.0d+00, 14.0d+00, 15.0d+00,&
       &16.0d+00, 17.0d+00, 18.0d+00 /)
 nh2gr=(/18.0d+00, 19.0d+00, 20.0d+00, 21.0d+00,&
