@@ -9,7 +9,7 @@ EXTERNAL dlsode
 
     !These integers store the array index of important species and reactions, x is for ions    
     integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nh2o,nsi,nsix,ncl,nclx,nch3oh
-    integer ::nrco,outindx(nout),nspec,nreac,njunk
+    integer ::nrco,outindx(nout),nspec,nreac,njunk,evapevents
     
     !loop counters    
     integer :: i,j,l,writestep
@@ -33,9 +33,13 @@ EXTERNAL dlsode
     double precision :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uvy,uvcreff
     double precision :: taud,dopw,radw,xl,fosc
 
-    !evaporation lists
+    !evaporation lists, these are used to evaporation species in specific events
+    !See viti 2004 for more information.
     integer, allocatable :: colist(:),mcolist(:),intlist(:),mintlist(:),grainlist(:),mgrainlist(:)
+    integer, allocatable :: co2list(:),mco2list(:),int2list(:),mint2list(:)
+    double precision, allocatable :: cobindener(:),co2bindener(:),intbindener(:)
 
+    !Variables for selfshielding rates for CO and H2
     logical :: startr
     integer :: dimco, dimh2
     double precision :: corates(7,6), y2r(7,6), ncogr(7), nh2gr(6)    
@@ -351,31 +355,93 @@ CONTAINS
             !eg. y(a[1])=y(a[1])+y(b[1]). So make sure they match by comparing evaplist to species.csv
 
             !Solid Evap
-            IF (temp .ge. 19.45 .and. temp .le. 21.00) THEN
+            IF (temp .ge. 19.45 .and. evapevents .le. 1) THEN
               y(colist)=y(colist)+0.35*y(mcolist)
               y(mcolist)=0.65*y(mcolist)
+              evapevents=1
             ENDIF
 
             !Missing routine for mono evap
-            !CALL temper
+            CALL temper
 
             !Volcanic, int should really be separated out.
-            IF (temp .ge. 87.9 .and. temp .le. 88.8) THEN
+            IF (temp .ge. 87.9 .and. evapevents .le. 2) THEN
               y(colist)=y(colist)+0.667*y(mcolist)
               y(mcolist)=0.333*y(mcolist)
+              y(co2list)=y(co2list)+0.667*y(mco2list)
+              y(mco2list)=0.333*y(mco2list)
               y(intlist)=y(intlist)+0.5*y(mintlist)
-              y(intlist)=0.5*y(mintlist)
+              y(mintlist)=0.5*y(mintlist)
+              y(int2list)=y(int2list)+0.5*y(mint2list)
+              y(mint2list)=0.5*y(mint2list)
+              evapevents=2
             ENDIF
 
             !Co-desorption
-            IF (temp .ge. 99.0  .and. temp .le. 99.70) THEN
+            IF (temp .ge. 99.0  .and. evapevents .le. 3) THEN
               y(grainlist)=y(grainlist)+y(mgrainlist)
               y(mgrainlist)=1d-30
+              evapevents=3
             ENDIF
-      ENDIF
+        ELSE IF (evap .eq. 0 .and. tstep .gt. 1) THEN
+            y(grainlist)=y(grainlist)+y(mgrainlist)
+            y(mgrainlist)=1d-30
+        ENDIF
     ENDIF
 
     END SUBROUTINE evaporate
+
+  !Subroutine to handle mono-evaporation. See viti 2004
+    SUBROUTINE temper
+        double precision en,newm,surden,expdust,freq,kevap
+        integer speci
+        parameter(surden=1.5e15)
+
+        !co monoevap
+        DO i=lbound(colist,1),ubound(colist,1)
+            speci=colist(i)
+            en=cobindener(i)*kbolt
+            expdust=cobindener(i)/temp
+            newm = mass(speci)*1.66053e-27
+            freq = dsqrt((2*(surden)*en)/((pi**2)*newm))
+            kevap=freq*exp(-expdust)
+            IF (kevap .ge. 0.99) THEN
+                write(*,*)i
+                y(speci)=y(speci)+(0.7*y(mcolist(i)))
+                y(mcolist(i))=0.3*y(mcolist(i))
+            END IF 
+        END DO
+
+        !co2 monoevap
+        DO i=lbound(co2list,1),ubound(co2list,1)
+            speci=co2list(i)
+            en=co2bindener(i)*kbolt
+            expdust=co2bindener(i)/temp
+            newm = mass(speci)*1.66053e-27
+            freq = dsqrt((2*(surden)*en)/((pi**2)*newm))
+            kevap=freq*exp(-expdust)
+            IF (kevap .ge. 0.99) THEN
+                write(*,*)i
+                y(speci)=y(speci)+(0.7*y(mco2list(i)))
+                y(mco2list(i))=0.3*y(mco2list(i))
+            END IF 
+        END DO
+
+        !int mono evap
+        DO i=lbound(intlist,1),ubound(intlist,1)
+            speci=intlist(i)
+            en=intbindener(i)*kbolt
+            expdust=intbindener(i)/temp
+            newm = mass(speci)*1.66053e-27
+            freq = dsqrt((2*(surden)*en)/((pi**2)*newm))
+            kevap=freq*exp(-expdust)
+            IF (kevap .ge. 0.99) THEN
+                write(*,*)i
+                y(speci)=y(speci)+(0.1*y(mintlist(i)))
+                y(mintlist(i))=0.9*y(mintlist(i))
+            END IF 
+        END DO
+    END SUBROUTINE temper
 !This is a dummy for DLSODE, it has to call it but we do not use it.
     subroutine JAC (NEQ,T,Y,ML,MU,PD,NROWPD)
          INTEGER  NEQ, ML, MU, NROWPD
