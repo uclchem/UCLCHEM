@@ -147,29 +147,29 @@ CONTAINS
         read(8,*) grainlist
         read(8,*) mgrainlist
 
-        !read start file IF not first phase to get all the abundances from the last step of previous phase as well as density and temp
+        !read start file IF not first phase to get finale abundances from previous phase 
+        !density, temp and av read but NOT zeta or radfield
         IF (first .eq. 0) THEN
             DO l=1,points
-                read(7,7000) tage,dens,temp,av(l),radfield,zeta,h2form,fc,fo,&
-                        &fmg,fhe,dstep
-                read(7,7010)
-                read(7,7020) (specname(i),abund(i,l),i=1,nspec)
-                tage=0.
+                read(7,*)
+                read(7,7000) dens,temp,av(l)
+                read(7,*)
+                read(7,7010) h2form,fc,fo,&
+                            &fmg,fhe,dstep
+                read(7,*)
+                read(7,7030) (specname(i),abund(i,l),i=1,nspec)
             END DO
             7000 format(&
-            &'age of cloud             time  = ',1pd11.3,' years',/,&
             &'total hydrogen density   dens  = ',0pf15.4,' cm-3',/,&
             &'cloud temperature        temp  = ',0pf8.2,' k',/,&
-            &'visual extinction        av    = ',0pf12.4,' mags',/,&
-            &'radiation field          rad   = ',0pf10.2,' (habing = 1)',/,&
-            &'cosmic ray ioniz. rate   zeta  = ',0pf10.2,' (unit = 1.3e-17s-1)',/,&
+            &'visual extinction        av    = ',0pf12.4,' mags',/)
+            7010 format(&
             &'h2 formation rate coef.        = ',1pe8.2,' cm3 s-1',/,&
             &'c / htot = ',1pe7.1,4x,' o / htot = ',1pe7.1,/&
-            &'mg / htot = ',1pe7.1,&
-            &' he / htot = ',1pe7.1,&
-            &' depth     = ',i3)
-            7010  format(/)
-            7020  format(4(1x,a8,'=',1x,1pd10.3,:))     
+            &'mg / htot = ',1pe7.1,' he / htot = ',1pe7.1,&
+            &' depth     = ',i3,/)
+            7020  format(//)
+            7030  format(4(1x,a8,'=',1x,1pd10.3,:))     
         END IF
     END SUBROUTINE reader
 
@@ -242,10 +242,10 @@ CONTAINS
         ENDIF
 
         !call the actual ODE integrator
-        call integrate
+        CALL integrate
 
         !call evaporation to remove species from grains at certain temperatures
-        call evaporate
+        CALL evaporate
 
         !Set abundances to output of DLSODE
         abund(:,dstep)=y
