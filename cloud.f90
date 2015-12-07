@@ -16,7 +16,7 @@ MODULE physics
     integer, parameter :: points=1 
 
     !variables either controlled by physics or that user may wish to change    
-    double precision :: d0,dens,temp,tage,tout,t0,dfin,tfin,av(points),coldens(points)
+    double precision :: d0,dens,temp,tage,tout,t0,t0old,dfin,tfin,av(points),coldens(points)
     double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens
 
     !Everything should be in cgs units. Helpful constants and conversions below
@@ -32,6 +32,11 @@ CONTAINS
     
     SUBROUTINE phys_initialise
         size=(rout-rin)*pc
+        if (collapse .eq. 1) THEN
+            dens=1.001*d0
+        ELSE
+            dens=d0
+        ENDIF 
     END SUBROUTINE
 
     SUBROUTINE timestep
@@ -42,8 +47,10 @@ CONTAINS
                 tout=(tage+10000.0)/year
             ELSE IF (tstep .gt. 1) THEN
                 tout=1.58e11*(tstep-0)
+            ELSE  IF (tstep .eq. 1) THEN  
+                tout=3.16d7*10.0**3
             ELSE
-                tout=3.16d7*10.0**(tstep+2)
+                tout=3.16d7*10.d-8
             ENDIF
         ELSE
             tout=(tage+10000.0)/year

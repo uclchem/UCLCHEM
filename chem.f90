@@ -223,14 +223,12 @@ CONTAINS
         END IF
     END SUBROUTINE output
 
-
-
-!Called every time/depth step and updates the abundances of all the species
     SUBROUTINE chem_update
+    !Called every time/depth step and updates the abundances of all the species
+
         !y is at final value of previous depth iteration so set to initial values of this depth with abund
         !reset other variables for good measure        
         y=abund(:,dstep)
-        dens=abund(nspec+1,dstep)
         h2form = 1.0d-17*dsqrt(temp)
     
         !evaluate co and h2 column densities for use in rate calculations
@@ -241,7 +239,6 @@ CONTAINS
         ELSE
             h2col=0.5*abund(nh2,dstep)*dens*(size/real(points))
             cocol=0.5*abund(nco,dstep)*dens*(size/real(points))
-
         ENDIF
 
         !call the actual ODE integrator
@@ -254,8 +251,9 @@ CONTAINS
         abund(:,dstep)=y
     END SUBROUTINE chem_update
 
-!This subroutine calls DLSODE (3rd party ODE solver) until it can reach tout with acceptable errors (RTOL/ATOL)
     SUBROUTINE integrate
+    !This subroutine calls DLSODE (3rd party ODE solver) until it can reach tout with acceptable errors (RTOL/ATOL)
+
         DO WHILE(t0 .lt. tout)            
             !reset parameters for DLSODE
             ITOL=1
@@ -306,16 +304,24 @@ CONTAINS
     !This is where reacrates subroutine is hidden
     include 'rates.f90'
 
-    !DLSODE calls this subroutine to ask it what the RHS of the equations dy/dt=... are    
     SUBROUTINE  F (NEQ, T, Y, YDOT)
+        !DLSODE calls this subroutine to ask it what the RHS of the equations dy/dt=... are    
+
         INTEGER :: NEQ
         DOUBLE PRECISION :: T,Y(nspec+1),YDOT(nspec+1)
         DOUBLE PRECISION :: D,loss,prod
         
-        !Dens is updated by DLSODE just like abundances so this ensures dens is at correct value for this timestep
-        dens=y(nspec+1)
+        !For collapse =1 Dens is updated by DLSODE just like abundances so this ensures dens is at correct value
+        !For collapse =0 allow option for dens to have been changed elsewhere.
+        IF (collapse .eq. 0) THEN
+            y(nspec+1)=dens
+        ELSE
+            dens=y(nspec+1)
+        END IF
+
         !Set D to the gas density for use in the ODEs
         D=dens
+
         !IF (dens .ne. olddens) THEN
         !    av(dstep)= avic +((size*(real(dstep)/real(points)))*dens)/1.6d21
         !!    call reacrates
@@ -339,9 +345,8 @@ CONTAINS
         !                       h2 formation  - h2-photodissociation
 
         ! get density change from physics module to send to DLSODE
-        IF (collapse .eq. 1) THEN
-            ydot(nspec+1)=densdot()
-        ENDIF
+        IF (collapse .eq. 1) ydot(nspec+1)=densdot()
+
     END SUBROUTINE F
 
 !integrate calls reacrates to get the reaction rates at every iteration. reacrates calls further functions.
@@ -409,6 +414,7 @@ CONTAINS
                 write(*,*)i
                 y(speci)=y(speci)+(0.7*y(mcolist(i)))
                 y(mcolist(i))=0.3*y(mcolist(i))
+                cobindener(i)=1d50
             END IF 
         END DO
 
@@ -424,6 +430,7 @@ CONTAINS
                 write(*,*)i
                 y(speci)=y(speci)+(0.7*y(mco2list(i)))
                 y(mco2list(i))=0.3*y(mco2list(i))
+                co2bindener(i)=1d50
             END IF 
         END DO
 
@@ -439,6 +446,7 @@ CONTAINS
                 write(*,*)i
                 y(speci)=y(speci)+(0.1*y(mintlist(i)))
                 y(mintlist(i))=0.9*y(mintlist(i))
+                intbindener(i)=1d50
             END IF 
         END DO
     END SUBROUTINE temper

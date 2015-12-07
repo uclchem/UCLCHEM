@@ -1,7 +1,7 @@
 !Initial physics variables
-temp=30.0;d0=1.00d8;dfin=1.00d8;t0=0.0;tfin=1.00d6
-dens=d0;fr=1.0;radfield=0.0;zeta=2.000;avic=0.0
-rout=5.3;rin=0;oldtemp=temp;bc=1.0
+temp=30.0;d0=1.00d6;dfin=1.00d4;t0=0.0;tfin=1.00d6
+fr=1.0;radfield=1.0;zeta=1.000;avic=2.0
+rout=0.3;rin=0;oldtemp=temp;bc=1.0
 tempa=0.1927;tempb=0.5339
 
 !Behavioural switches
@@ -19,7 +19,7 @@ fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07
 outindx=(/1,2,3,4,5,6/);writestep=10
 
 !open files for reading=writing
-open(1,file='../benchmarking/newnewnew13',status='unknown')
+open(1,file='output',status='unknown')
 open(2,file='testrates.csv',status='old')
 open(3,file='final_species.csv',status='old')
 open(4,file='outspecies',status='unknown')
