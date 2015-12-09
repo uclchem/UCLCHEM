@@ -8,9 +8,10 @@ MODULE physics
     !Switches for processes are also here, 1 is on/0 is off.
     integer :: collapse,switch,first,phase
     integer :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
-    !More complicated controls have multiple options
-    !vap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see chem_initialise)
-    integer :: evap,ion
+
+    !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see chem_initialise)
+    !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
+    integer :: evap,ion,solidflag,volcflag,coflag
     
     !Number of depth points included in model
     integer, parameter :: points=1 
@@ -72,7 +73,10 @@ CONTAINS
             !temperature increase borrowed from sv for comparison 288.000
             !will add general profile later
             temp=10. + (7.8470d-3*tage**0.8395)
-            write(*,*) temp
+            if (temp .gt. 19.45 .and. solidflag .ne. 2) solidflag=1
+            if (temp .gt. 87.9 .and. volcflag .ne. 2) volcflag=1
+            if (temp .gt. 99 .and. coflag .ne. 2) coflag=1
+
         END IF
 
     END SUBROUTINE phys_update

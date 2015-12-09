@@ -153,6 +153,7 @@ CONTAINS
             DO l=1,points
                 read(7,*)
                 read(7,7000) dens,temp,av(l)
+                write(*,*)dens,temp,av(l)
                 read(7,*)
                 read(7,7010) h2form,fc,fo,&
                             &fmg,fhe,dstep
@@ -160,16 +161,16 @@ CONTAINS
                 read(7,7030) (specname(i),abund(i,l),i=1,nspec)
             END DO
             7000 format(&
-            &'total hydrogen density   dens  = ',0pf15.4,' cm-3',/,&
-            &'cloud temperature        temp  = ',0pf8.2,' k',/,&
-            &'visual extinction        av    = ',0pf12.4,' mags',/)
+            &33x,0pf15.4,5x,/,&
+            &33x,0pf8.2,2x,/,&
+            &33x,0pf12.4,4x,/)
             7010 format(&
-            &'h2 formation rate coef.        = ',1pe8.2,' cm3 s-1',/,&
-            &'c / htot = ',1pe7.1,4x,' o / htot = ',1pe7.1,/&
-            &'mg / htot = ',1pe7.1,' he / htot = ',1pe7.1,&
-            &' depth     = ',i3,/)
+            &33x,1pe8.2,8x,/,&
+            &11x,1pe7.1,4x,12x,1pe7.1,/&
+            &12x,1pe7.1,13x,1pe7.1,&
+            &13x,i3,/)
             7020  format(//)
-            7030  format(4(1x,a8,'=',1x,1pd10.3,:))     
+            7030  format(4(1x,a8,2x,1pd10.3,:))     
         END IF
     END SUBROUTINE reader
 
@@ -360,17 +361,17 @@ CONTAINS
             !eg. y(a[1])=y(a[1])+y(b[1]). So make sure they match by comparing evaplist to species.csv
 
             !Solid Evap
-            IF (temp .ge. 19.45 .and. evapevents .le. 1) THEN
+            IF (solidflag .eq. 1) THEN
               y(colist)=y(colist)+0.35*y(mcolist)
               y(mcolist)=0.65*y(mcolist)
-              evapevents=1
+              solidflag=2
             ENDIF
 
             !Missing routine for mono evap
             CALL temper
 
             !Volcanic, int should really be separated out.
-            IF (temp .ge. 87.9 .and. evapevents .le. 2) THEN
+            IF (volcflag .eq. 1) THEN
               y(colist)=y(colist)+0.667*y(mcolist)
               y(mcolist)=0.333*y(mcolist)
               y(co2list)=y(co2list)+0.667*y(mco2list)
@@ -379,18 +380,19 @@ CONTAINS
               y(mintlist)=0.5*y(mintlist)
               y(int2list)=y(int2list)+0.5*y(mint2list)
               y(mint2list)=0.5*y(mint2list)
-              evapevents=2
+              volcflag=2
             ENDIF
 
             !Co-desorption
-            IF (temp .ge. 99.0  .and. evapevents .le. 3) THEN
+            IF (coflag .eq. 1) THEN
               y(grainlist)=y(grainlist)+y(mgrainlist)
               y(mgrainlist)=1d-30
-              evapevents=3
+              coflag=2
             ENDIF
-        ELSE IF (evap .eq. 0 .and. tstep .gt. 1) THEN
+        ELSE IF (evap .eq. 0 .and. coflag .ne. 2) THEN
             y(grainlist)=y(grainlist)+y(mgrainlist)
             y(mgrainlist)=1d-30
+            coflag = 2
         ENDIF
     ENDIF
 

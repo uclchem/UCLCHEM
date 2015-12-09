@@ -6,13 +6,15 @@
 MODULE physics
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
-    integer :: tstep,dstep
+    integer :: tstep,dstep,ishock
+    
     !Switches for processes are also here, 1 is on/0 is off.
     integer :: collapse,switch,first,phase
     integer :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
-    !More complicated controls have multiple options
-    !vap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see chem_initialise)
-    integer :: evap,ion,ishock
+
+    !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see chem_initialise)
+    !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
+    integer :: evap,ion,solidflag,monoflag,volcflag,coflag
     
     !Number of depth points included in model
     integer, parameter :: points=10
