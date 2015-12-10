@@ -24,7 +24,7 @@ SUBROUTINE reacrates
                 rate(j)=alpha(j)*gama(j)*1.0/(1.0-omega)*zeta*(temp/300)**beta(j)
             !freeze out only happens if fr>0 and depending on evap choice 
             CASE ('FREEZE')             
-                IF (evap .ne. 2 .or. fr .eq. 0.0) then
+                IF (evap .ne. 0 .or. fr .eq. 0.0) then
                     rate(j)=1.0d-30
                 ELSE
                     DO i=1,nspec-1

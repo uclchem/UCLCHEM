@@ -8,7 +8,7 @@ tempa=0.1927;tempb=0.5339
 !switch (0/1) -> (tfin/dfin)
 !other switches are on/off (1/0)
 switch=0;collapse=0;first=1;desorb=1;startr=.true.
-h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=2;ion=2
+h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=0;ion=2
 phase=1
 
 !initial fractional abundances (from Asplund et al. 2009 ARAA table 1 -SOLAR)

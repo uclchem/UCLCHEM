@@ -387,7 +387,7 @@ CONTAINS
                 y(mgrainlist)=1d-30
                 coflag=2
             ENDIF
-        ELSE IF (evap .eq. 0 .and. coflag .ne. 2) THEN
+        ELSE IF (evap .eq. 2 .and. coflag .ne. 2) THEN
             !Alternative evap. Instaneous evaporation of all grain species
             y(grainlist)=y(grainlist)+y(mgrainlist)
             y(mgrainlist)=1d-30
