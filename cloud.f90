@@ -27,10 +27,6 @@ MODULE physics
 CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN. YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
 
-!This is the time step for outputs from UCL_CHEM NOT the timestep for the integrater. DLSODE sorts that out based on chosen error
-!tolerances (RTOL/ATOL) and is simply called repeatedly until it outputs a time >= tout. tout in seconds for DLSODE, tage in
-!years for output.
-    
     SUBROUTINE phys_initialise
         size=(rout-rin)*pc
         if (collapse .eq. 1) THEN
@@ -41,6 +37,9 @@ CONTAINS
     END SUBROUTINE
 
     SUBROUTINE timestep
+    !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrater.
+    !tout in seconds for DLSODE, tage in years for output.
+    
         IF (phase .eq. 1) THEN
             IF (tstep .gt. 2000) THEN
                 tout=(tage+20000.0)/year
@@ -61,12 +60,11 @@ CONTAINS
         !This is to match Serena's timesteps for testing code.
     END SUBROUTINE timestep
 
-!This is called by main so it should either do any physics the user wants or call the subroutines that do.
-!The exception is densdot() as density is integrated with chemistry ODEs.    
+  
     SUBROUTINE phys_update
-        !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
+        !calculate column density. Remember dstep counts from edge of core in to centre
         coldens(dstep)= size*((real(dstep))/real(points))*dens
-        write(79,*) coldens
+        !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
         av(dstep)= avic +coldens(dstep)/1.6d21
 
         IF (phase .eq. 2) THEN
@@ -76,7 +74,6 @@ CONTAINS
             if (temp .gt. 19.45 .and. solidflag .ne. 2) solidflag=1
             if (temp .gt. 87.9 .and. volcflag .ne. 2) volcflag=1
             if (temp .gt. 99 .and. coflag .ne. 2) coflag=1
-
         END IF
 
     END SUBROUTINE phys_update

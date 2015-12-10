@@ -27,9 +27,6 @@ MODULE physics
 CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN. YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
 
-!This is the time step for outputs from UCL_CHEM NOT the timestep for the integrater. DLSODE sorts that out based on chosen error
-!tolerances (RTOL/ATOL) and is simply called repeatedly until it outputs a time >= tout. tout in seconds for DLSODE, tage in
-!years for output.
     
     SUBROUTINE phys_initialise
     !Any initialisation logic steps go here
@@ -38,10 +35,13 @@ CONTAINS
     SUBROUTINE timestep
     !At each timestep, the time at the end of the step is calculated by calling this function
     !You need to set tout in seconds, its initial value will be the time at start of current step
+
+
+    !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrater.
+    ! DLSODE sorts that out based on chosen error tolerances (RTOL/ATOL) and is simply called repeatedly
+    !until it outputs a time >= tout.
     END SUBROUTINE timestep
 
-!This is called by main so it should either do any physics the user wants or call the subroutines that do.
-!The exception is densdot() as density is integrated with chemistry ODEs.    
     SUBROUTINE phys_update
         !Called once for each time and depth step.
         !increase temperature, recalulcate column density (colddens) and AV

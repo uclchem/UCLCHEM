@@ -354,7 +354,11 @@ CONTAINS
 !This file is already long so I've hidden those subroutines in rates.f90
  
     SUBROUTINE evaporate
+    !Evaporation is based on Viti et al. 2004. A proportion of the frozen species is released into the gas phase
+    !in specific events. These events are activated by flags (eg solidflag) which can be set in physics module.
+    !The species evaporated are in lists, created by Makerates and based on groupings. see the viti 2004 paper.
     IF (tstep .gt. 0) THEN
+        !Viti 04 evap
         IF (evap .eq. 1) THEN
             ! this code only works if you use the 288,000 temp increase from old uclchem
             !if you do y(a)=y(a)+y(b) with a and b as integer arrays. uses corresponding elements
@@ -362,34 +366,37 @@ CONTAINS
 
             !Solid Evap
             IF (solidflag .eq. 1) THEN
-              y(colist)=y(colist)+0.35*y(mcolist)
-              y(mcolist)=0.65*y(mcolist)
-              solidflag=2
+                y(colist)=y(colist)+0.35*y(mcolist)
+                y(mcolist)=0.65*y(mcolist)
+                !Set flag to 2 to stop it being recalled
+                solidflag=2
             ENDIF
 
-            !Missing routine for mono evap
+            !mono evap
             CALL temper
 
             !Volcanic, int should really be separated out.
             IF (volcflag .eq. 1) THEN
-              y(colist)=y(colist)+0.667*y(mcolist)
-              y(mcolist)=0.333*y(mcolist)
-              y(co2list)=y(co2list)+0.667*y(mco2list)
-              y(mco2list)=0.333*y(mco2list)
-              y(intlist)=y(intlist)+0.5*y(mintlist)
-              y(mintlist)=0.5*y(mintlist)
-              y(int2list)=y(int2list)+0.5*y(mint2list)
-              y(mint2list)=0.5*y(mint2list)
-              volcflag=2
+                y(colist)=y(colist)+0.667*y(mcolist)
+                y(mcolist)=0.333*y(mcolist)
+                y(co2list)=y(co2list)+0.667*y(mco2list)
+                y(mco2list)=0.333*y(mco2list)
+                y(intlist)=y(intlist)+0.5*y(mintlist)
+                y(mintlist)=0.5*y(mintlist)
+                y(int2list)=y(int2list)+0.5*y(mint2list)
+                y(mint2list)=0.5*y(mint2list)
+                !Set flag to 2 to stop it being recalled
+                volcflag=2
             ENDIF
 
             !Co-desorption
             IF (coflag .eq. 1) THEN
-              y(grainlist)=y(grainlist)+y(mgrainlist)
-              y(mgrainlist)=1d-30
-              coflag=2
+                y(grainlist)=y(grainlist)+y(mgrainlist)
+                y(mgrainlist)=1d-30
+                coflag=2
             ENDIF
         ELSE IF (evap .eq. 0 .and. coflag .ne. 2) THEN
+            !Alternative evap. Instaneous evaporation of all grain species
             y(grainlist)=y(grainlist)+y(mgrainlist)
             y(mgrainlist)=1d-30
             coflag = 2
@@ -398,8 +405,8 @@ CONTAINS
 
     END SUBROUTINE evaporate
 
-  !Subroutine to handle mono-evaporation. See viti 2004
     SUBROUTINE temper
+        !Subroutine to handle mono-evaporation. See viti 2004
         double precision en,newm,surden,expdust,freq,kevap
         integer speci
         parameter(surden=1.5e15)
@@ -416,6 +423,7 @@ CONTAINS
                 write(*,*)i
                 y(speci)=y(speci)+(0.7*y(mcolist(i)))
                 y(mcolist(i))=0.3*y(mcolist(i))
+                !set to 1d50 so it can't happen again
                 cobindener(i)=1d50
             END IF 
         END DO

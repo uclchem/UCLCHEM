@@ -77,12 +77,7 @@ write_reactions(filename, reactants, products, alpha, beta, gamma, templow,temph
 print 'Final Reaction File:',filename
 
 # Write the ODEs in the appropriate language format
-print 'Writing system of ODEs in F77 format...'
-filename = 'outputFiles/odes.f'
-write_odes_f77(filename, speciesList, constituentList, reactants, products)
-
-# Write the ODEs in the appropriate language format
-print 'Writing system of ODEs in F90 format...'
+print 'Writing system of ODEs in F95 format...'
 filename = 'outputFiles/odes.f90'
 write_odes_f90(filename, speciesList, constituentList, reactants, products)
 
