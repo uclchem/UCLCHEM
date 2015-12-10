@@ -64,7 +64,7 @@ massList, constituentList, elementList = find_constituents(speciesList)
 
 #Create the species file
 print '\nWriting final species file '
-filename = 'outputFiles/final_species.csv'
+filename = 'outputFiles/species.csv'
 write_species(filename, speciesList, massList)
 print 'Final Species File:',filename
 
@@ -72,7 +72,7 @@ print 'Final Species File:',filename
 
 # Create the reaction file
 print 'Writing final reaction file '
-filename = 'outputFiles/final_rates.csv'
+filename = 'outputFiles/reactions.csv'
 write_reactions(filename, reactants, products, alpha, beta, gamma, templow,temphigh)
 print 'Final Reaction File:',filename
 
