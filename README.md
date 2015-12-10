@@ -28,5 +28,12 @@ Freeze out
 Zeros
 	rate(j)=1.0d-30 when it is really zero. This was to avoid computing issues. However, in many cases a fortran 95 code on a modern pc will run without errors. Investigate this.
 
+Analys
+	I'm completely unaware of what this subroutine does but it's missing
 
+Cshock
+	Physics module in progress!
+
+Cloud
+	Temperature profile still needs to be hard coded. Can find in main.f and sub.f_cpout of newold. Temperature increase and temperature limits of evaporation are found there and different for different mass cores.
 

@@ -7,7 +7,7 @@ tempa=0.1927;tempb=0.5339
 !Behavioural switches
 !switch (0/1) -> (tfin/dfin)
 !other switches are on/off (1/0)
-switch=0;collapse=0;first=0;desorb=1;startr=.true.
+switch=0;collapse=0;first=1;desorb=1;startr=.true.
 h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=2;ion=2
 phase=1
 
@@ -20,15 +20,12 @@ outindx=(/1,2,3,4,5,6/);writestep=10
 
 !open files for reading=writing
 open(1,file='output',status='unknown')
-open(2,file='testrates.csv',status='old')
-open(3,file='final_species.csv',status='old')
+open(2,file='reactions.csv',status='old')
+open(3,file='species.csv',status='old')
 open(4,file='outspecies',status='unknown')
-open(8,file='evaplists.csv',status='old')
-open(71,file='species_read_test.dat',status='unknown')
-open(72,file='reac_read_test.dat',status='unknown')
 open(7,file='end_step.d',status='unknown')
-open(78,file='log1',status='unknown')
-!open(87,file='ener',status='unknown')
+open(8,file='evaplists.csv',status='old')
+open(78,file='debuglog',status='unknown')
 !open(88,file='analysis',status='unknown')
 open(79,file='jondebug',status='unknown')
 
