@@ -47,9 +47,10 @@ CONTAINS
         !increase temperature, recalulcate column density (colddens) and AV
         !Can change density if not using a differential equation. ie collapse=0 and set dens another way
 
-        !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
+        !calculate column density by dens x depth of point 
         coldens(dstep)= size*((real(dstep))/real(points))*dens
-        write(79,*) coldens
+        !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
+
         av(dstep)= avic +coldens(dstep)/1.6d21
 
         IF (phase .eq. 2) THEN

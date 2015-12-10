@@ -275,9 +275,7 @@ CONTAINS
             write(*,*) IWORK(6),' ',MXSTEP,' ',IOPT,' ',ISTATE
            
             !get reaction rates for this iteration
-            write(79,*) tout,tstep
             CALL reacrates
-            olddens=dens
             !Call the integrator.
             CALL DLSODE(F,NEQ,Y,T0,TOUT,ITOL,RTOL,ATOL,ITASK,ISTATE,IOPT,&
             &             RWORK,LRW,IWORK,LIW,JAC,MF)
@@ -322,12 +320,6 @@ CONTAINS
 
         !Set D to the gas density for use in the ODEs
         D=dens
-
-        !IF (dens .ne. olddens) THEN
-        !    av(dstep)= avic +((size*(real(dstep)/real(points)))*dens)/1.6d21
-        !!    call reacrates
-        !    olddens=dens
-        !END IF
 
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
