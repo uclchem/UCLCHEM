@@ -18,7 +18,7 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change    
     double precision :: d0,dens,temp,tage,tout,t0,t0old,dfin,tfin,av(points),coldens(points)
-    double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens
+    double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens,maxt
 
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
@@ -37,7 +37,7 @@ CONTAINS
     !You need to set tout in seconds, its initial value will be the time at start of current step
 
 
-    !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrater.
+    !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrator.
     ! DLSODE sorts that out based on chosen error tolerances (RTOL/ATOL) and is simply called repeatedly
     !until it outputs a time >= tout.
     END SUBROUTINE timestep

@@ -16,7 +16,7 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change    
     double precision :: d0,dens,temp,tage,tout,t0,dfin,tfin,av(points)
-    double precision :: size,oldtemp,avic,bc,tempa,tempb,tstart
+    double precision :: size,oldtemp,avic,bc,tempa,tempb,tstart,maxt
 
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23

@@ -15,7 +15,7 @@ include 'parameters.f90'
 
 !Set up with initial values etc, lives in chem.f90
  CALL phys_initialise
- CALL initialise
+ CALL chem_initialise
 
 !loop over time, tstep limit is arbitrary so that tfin can be reached.
 DO tstep=0,10000

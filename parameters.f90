@@ -1,7 +1,7 @@
 !Initial physics variables
 temp=30.0;d0=1.00d6;dfin=1.00d4;t0=0.0;tfin=1.00d6
 fr=1.0;radfield=1.0;zeta=1.000;avic=2.0
-rout=0.3;rin=0;oldtemp=temp;bc=1.0
+rout=0.3;rin=0;oldtemp=temp;bc=1.0;maxt=300
 tempa=0.1927;tempb=0.5339
 
 !Behavioural switches

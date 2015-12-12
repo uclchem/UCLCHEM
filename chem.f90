@@ -46,7 +46,7 @@ EXTERNAL dlsode
 
 CONTAINS
 !This gets called immediately by main so put anything here that you want to happen before the time loop begins, reader is necessary.
-    SUBROUTINE initialise
+    SUBROUTINE chem_initialise
         CALL reader
         !if this is the first step of the first phase, set initial abundances
         !otherwise reader will fix it
@@ -86,7 +86,7 @@ CONTAINS
        !h2 formation rate initially set
        h2form = 1.0d-17*dsqrt(temp)
         
-    END SUBROUTINE initialise
+    END SUBROUTINE chem_initialise
 
 !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     SUBROUTINE reader

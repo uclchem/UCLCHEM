@@ -18,14 +18,15 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change    
     double precision :: d0,dens,temp,tage,tout,t0,t0old,dfin,tfin,av(points),coldens(points)
-    double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens
+    double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens,maxt
 
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
     double precision, parameter :: year=3.16455d-08,pc=3.086d18
 
 CONTAINS
-!THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN. YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
+!THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN.
+!YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
 
     SUBROUTINE phys_initialise
         size=(rout-rin)*pc
@@ -37,7 +38,7 @@ CONTAINS
     END SUBROUTINE
 
     SUBROUTINE timestep
-    !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrater.
+    !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrator.
     !tout in seconds for DLSODE, tage in years for output.
     
         IF (phase .eq. 1) THEN
@@ -67,7 +68,7 @@ CONTAINS
         !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
         av(dstep)= avic +coldens(dstep)/1.6d21
 
-        IF (phase .eq. 2) THEN
+        IF (phase .eq. 2 .and. temp .lt. maxt) THEN
             !temperature increase borrowed from sv for comparison 288.000
             !will add general profile later
             temp=10. + (7.8470d-3*tage**0.8395)

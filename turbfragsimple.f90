@@ -21,7 +21,7 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change    
     double precision :: d0,dens,temp,tage,tout,t0,t0old,dfin,tfin,av(points),coldens(points)
-    double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens,oldt0
+    double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens,oldt0,maxt
 
     !old bd model variables
     double precision ::  dshock,tshock(points),rshock, tageold,ffc,mbd,mach
