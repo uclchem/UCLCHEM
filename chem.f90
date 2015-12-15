@@ -96,7 +96,7 @@ CONTAINS
         !read species file and allocate sufficient space to relevant arrays
         read(3,*)nspec
         allocate(y(nspec+1),abund(nspec+1,points),specname(nspec),mass(nspec))
-        read(3,*)(specname(j),junk1,mass(j),j=1,nspec-1)
+        read(3,*)(specname(j),mass(j),j=1,nspec-1)
         !assign array indices for important species to the integers used to store them.
         specname(nspec)='electr'
         DO i=1,nspec-1
