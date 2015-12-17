@@ -94,7 +94,6 @@ DO i=1,1000
         read(1,8000) tstore,denstore,tdum,av,rad,zeta,gr,fc,fo,fmg,fhe
         !skip lines
         read(1,8010) 
-        !read(1,'(a92)') test
         !read species in
         read(1,8020) (speci,abund(j),j=1,nspec)
         !skip lines

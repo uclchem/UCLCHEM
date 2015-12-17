@@ -2,6 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 
+def main():
+    fig=plt.figure()
+    ax=fig.add_subplot(111)
+    ax=add_line(ax,"../output","CO")
+    outfile=input("choose output filename")
+    outfile=str(outfile)+".png"
+    plt.savefig(outfile)
+
 #function to read the output of UCL_CHEM, give it the output file
 #and 5 species names as strings.
 def read_uclchem(filename,s1,s2,s3,s4,s5):
@@ -58,6 +66,51 @@ def read_uclchem(filename,s1,s2,s3,s4,s5):
     spec4=np.log10(spec1)
     spec5=np.log10(spec1)
     return time,dens,spec1,spec2,spec3,spec4,spec5
+
+def add_line(ax,file,spec): 
+    a=open(file).read()
+    a=a.split('\n')
+    #there are 68 lines per time step in the UCL_CHEM output file.
+    i=0;j=0
+    while (j != 2):
+        if a[i][0:3]=='age':
+            j+=1
+            lines=i
+        i+=1
+        
+    timesteps=len(a)/lines
+
+    time=[];dens=[];
+
+    #so now do the following until end of file
+    for i in np.arange(0,timesteps):
+        j=i*lines
+        b=a[j].split()
+        b=float(b[-2].replace("D", "E"))
+        time.append(b)
+        b=a[j+1].split()
+        b=float(b[-2].replace("D", "E"))
+        dens.append(b)
+        time=np.log10(time)
+        dens=np.log10(dens)
+        end=0
+        while (end == 0):
+            y=[]
+            for k in np.arange(j+11,j+1+lines):
+                b=a[k].split()
+                for element in b:
+                    if element==spec:
+                        pos=b.index(element)
+                        b=float(b[pos+2].replace("D", "E"))
+                        y.append(b)
+
+            y=np.log10(y)
+            ax.plot(time,y)
+            spec=str(input("Pick another species or type 'end'"))
+            print spec
+            if (spec == 'end'):
+                return ax
+    return ax
 
 def read_olduclchem(filename,s1,s2,s3,s4,s5):
     a=open(filename).read()
