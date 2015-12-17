@@ -59,8 +59,8 @@ print '\nCalculating molecular masses and elemental constituents...'
 massList, constituentList, elementList = find_constituents(speciesList)
 
 #sort the species file according to mass
-#print '\nSorting Species ...'
-#speciesList, massList = sortSpecies(speciesList, massList)
+print '\nSorting Species ...'
+speciesList, massList = sortSpecies(speciesList, massList)
 
 #Create the species file
 print '\nWriting final species file '
