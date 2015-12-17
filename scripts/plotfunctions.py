@@ -122,15 +122,6 @@ def write_plot(filename,time,dens,s1,s2,s3,s4,s5):
         writer.writerow([time[i],dens[i],s1[i],s2[i],s3[i],s4[i],s5[i]])
 
 
-
-
-
-
-
-
-
-
-
 def gen_plot(x,y1,y2,y3,y4,y5,outfile):
     fig=plt.figure()
     ax=fig.add_subplot(111)

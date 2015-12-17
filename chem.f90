@@ -132,18 +132,26 @@ CONTAINS
         !what we do is read in length of each list, then the numbers in the list
         !these are used for evaporation sums.
         read(8,*) l
-        allocate(colist(l))
-        allocate(mcolist(l))
+        allocate(colist(l),mcolist(l), cobindener(l))
         read(8,*)colist
         read(8,*)mcolist
+        read(8,*)cobindener
         read(8,*) l
-        allocate(intlist(l))
-        allocate(mintlist(l))
+        allocate(co2list(l),mco2list(l), co2bindener(l))
+        read(8,*)co2list
+        read(8,*)mco2list
+        read(8,*)co2bindener
+        read(8,*) l
+        allocate(intlist(l),mintlist(l),intbindener(l))
         read(8,*) intlist
         read(8,*) mintlist
+        read(8,*) intbindener
+        read(8,*) l
+        allocate(int2list(l),mint2list(l))
+        read(8,*) int2list
+        read(8,*) mint2list
         read(8,*)l
-        allocate(grainlist(l))
-        allocate(mgrainlist(l))
+        allocate(grainlist(l),mgrainlist(l))
         read(8,*) grainlist
         read(8,*) mgrainlist
 
@@ -202,7 +210,7 @@ CONTAINS
            ENDIF
         ENDIF
         8000  format(/)
-        8010  format(4(1x,a8,'=',1x,1pd10.3,:))
+        8010  format(4(1x,a10,'=',1x,1pd10.3,:))
         8020 format(&
         &'age of cloud             time  = ',1pd11.3,' years',/,&
         &'total hydrogen density   dens  = ',0pf15.4,' cm-3',/,&

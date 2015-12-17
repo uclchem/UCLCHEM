@@ -4,7 +4,7 @@
 MODULE physics
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
-    integer :: tstep,dstep
+    integer :: tstep,dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     integer :: collapse,switch,first,phase
     integer :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
@@ -13,13 +13,10 @@ MODULE physics
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
     integer :: evap,ion,solidflag,volcflag,coflag
     
-    !Number of depth points included in model
-    integer, parameter :: points=1 
-
     !variables either controlled by physics or that user may wish to change    
-    double precision :: d0,dens,temp,tage,tout,t0,t0old,dfin,tfin,av(points),coldens(points)
+    double precision :: d0,dens,temp,tage,tout,t0,t0old,dfin,tfin
     double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens,maxt
-
+    double precision, allocatable :: av(:),coldens(:)
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
     double precision, parameter :: year=3.16455d-08,pc=3.086d18
@@ -29,6 +26,7 @@ CONTAINS
 !YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
 
     SUBROUTINE phys_initialise
+        allocate(av(points),coldens(points))
         size=(rout-rin)*pc
         if (collapse .eq. 1) THEN
             dens=1.001*d0
