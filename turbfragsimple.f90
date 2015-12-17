@@ -6,7 +6,7 @@
 MODULE physics
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
-    integer :: tstep,dstep,ishock
+    integer :: tstep,dstep,ishock,points
     
     !Switches for processes are also here, 1 is on/0 is off.
     integer :: collapse,switch,first,phase
@@ -15,9 +15,6 @@ MODULE physics
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see chem_initialise)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
     integer :: evap,ion,solidflag,monoflag,volcflag,coflag
-    
-    !Number of depth points included in model
-    integer, parameter :: points=10
 
     !variables either controlled by physics or that user may wish to change    
     double precision :: d0,dens,temp,tage,tout,t0,t0old,dfin,tfin,av(points),coldens(points)
@@ -38,7 +35,9 @@ CONTAINS
 !years for output.
     
     SUBROUTINE phys_initialise
+        allocate(av(points),coldens(points))
         size=(rout-rin)*pc
+        dens=d0
         mbd=0.40
         call bdboundaries
     END SUBROUTINE
