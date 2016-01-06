@@ -60,7 +60,7 @@ massList, constituentList, elementList = find_constituents(speciesList)
 
 #sort the species file according to mass
 print '\nSorting Species ...'
-speciesList, massList = sortSpecies(speciesList, massList)
+speciesList, massList, evaptypes, bindener = sortSpecies(speciesList, massList, evaptypes, bindener)
 
 #Create the species file
 print '\nWriting final species file '

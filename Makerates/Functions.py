@@ -198,14 +198,16 @@ def find_constituents(speciesList):
     sortedMasses, sortedElements = zip(*zippedList)
     return speciesMass, speciesConstituents, sortedElements
 
-def sortSpecies(species, mass):
-	sortedList = sorted(zip(mass,species))
+def sortSpecies(species, mass,evaptype,ener):
+	sortedList = sorted(zip(mass,species,evaptype,ener))
 	A= numpy.array(sortedList)
 	species = list(A[:,1])
 	mass = list(A[:,0])
+	evaptype =list(A[:,2])
+	ener = list(A[:,3])
 	for i in range(len(species)):
 		mass[i] = int(eval(mass[i]))
-	return species, mass
+	return species, mass,evaptype,ener
 
 
 

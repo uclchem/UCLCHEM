@@ -166,6 +166,7 @@ CONTAINS
                 read(7,7010) h2form,fc,fo,&
                             &fmg,fhe,dstep
                 read(7,*)
+                write(*,*) dstep
                 read(7,7030) (specname(i),abund(i,l),i=1,nspec)
             END DO
             7000 format(&
@@ -178,7 +179,7 @@ CONTAINS
             &12x,1pe7.1,13x,1pe7.1,&
             &13x,i3,/)
             7020  format(//)
-            7030  format(4(1x,a8,2x,1pd10.3,:))     
+            7030  format(4(1x,a10,2x,1pd10.3,:))     
         END IF
     END SUBROUTINE reader
 

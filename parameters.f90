@@ -6,6 +6,7 @@ tempa=0.1927;tempb=0.5339;points=3
 
 !Behavioural switches
 !switch (0/1) -> (tfin/dfin)
+!evap (0/1/2) -> (none/temp dependent/ instantaneous)
 !other switches are on/off (1/0)
 switch=0;collapse=0;first=1;desorb=1;startr=.true.
 h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=0;ion=2
