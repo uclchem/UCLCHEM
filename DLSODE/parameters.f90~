@@ -1,0 +1,15 @@
+!Initial physics variables
+temp=10.0;d0=1.00d4;dfin=1.00d6;t0=0;tfin=6.00d6
+        
+!Behavioural switches
+switch=1;collapse=1
+!a slight cheat to get Rawlings 1992 collapse to work.
+        dens=1.0000001*d0        
+!initial fractional abundances (from Asplund et al. 2009 ARAA table 1 -SOLAR)
+fhe = 0.085;fc  = 2.692d-04;fo  = 4.898d-04;fn  = 6.761d-05
+fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07
+
+!DLSODE SETTINGS        
+RWORK=100000*0.0;IWORK=500*0.0
+ITOL=1;ITASK=1;ISTATE=1;IOPT=1;MESFLG=1
+LUNIT=6;LRW=100000;LIW=500;MXSTEP=10000

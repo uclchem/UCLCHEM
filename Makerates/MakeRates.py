@@ -11,9 +11,9 @@ import fileinput
 import itertools
 from Functions import *
 
-reactionFile = 'inputFiles/umist06.csv'
-reactionFile_grain = 'inputFiles/uclgrainrates2.csv'
-speciesFile = 'inputFiles/newspecies.csv'
+reactionFile = 'inputFiles/umist12.csv'
+reactionFile_grain = 'inputFiles/fullrates.csv'
+speciesFile = 'inputFiles/fullspecies.csv'
 
 
 make_capitals(reactionFile)
@@ -61,6 +61,12 @@ massList, constituentList, elementList = find_constituents(speciesList)
 #sort the species file according to mass
 print '\nSorting Species ...'
 speciesList, massList, evaptypes, bindener = sortSpecies(speciesList, massList, evaptypes, bindener)
+
+#check reactions to see if there are potential problems
+print '\n########################\n########################\n'
+print "\nChecking reactions"
+reaction_check(speciesList,reactants,products)
+print '\n########################\n########################\n'
 
 #Create the species file
 print '\nWriting final species file '

@@ -218,6 +218,9 @@ def write_reactions(fileName, reactants, products, alpha, beta, gamma, templow, 
 	nReactions = len(reactants)
 	f.write(str(nReactions)+'\n')
 	for n in range(nReactions):
+		#if statement changes beta for ion freeze out to 1. This is how ucl_chem recognises ions when calculating freeze out rate
+		if (reactants[n][1]=='FREEZE' and reactants[n][0][-1]=='+'):
+			beta[n]=1
 		writer.writerow([reactants[n][0],reactants[n][1],reactants[n][2],products[n][0],products[n][1],products[n][2],products[n][3],alpha[n],beta[n],gamma[n],templow[n],temphigh[n]])
 
     
@@ -440,6 +443,40 @@ def conserve_species(species, speciesConstituents, codeFormat='C'):
 def multiple(number):
     if number == 1: return ''
     else: return str(number)+'*'
+
+#check reactions to alert user of potential issues
+def reaction_check(speciesList,reactants,products):
+	#first check for multiple freeze outs so user knows to do alphas
+	print "\nSpecies with multiple freeze outs, check alphas:"
+	for spec in speciesList:
+		freezes=0
+		for i in range(0,len(reactants)):
+			if (reactants[i][0]==spec and reactants[i][1]=='FREEZE'):
+				freezes+=1
+		if (freezes>1):
+			print spec+" freezes out through "+str(freezes)+" routes"
+	#now check for duplicate reactions
+	print "\nPossible duplicate reactions:"
+	duplicates=0
+	for i in range(0,len(reactants)):
+		for j in range(0,len(reactants)):
+			if (j != i):
+				if (reactants[i][0]==reactants[j][0] and reactants[i][1]==reactants[j][1]):
+					if (products[i][0]==products[j][0] and products[i][1]==products[j][1]): 
+						print str(i+1), str(j+1), " reactants are ", reactants[i]
+						duplicates+=1
+					elif (products[i][1]==products[j][0] and products[i][0]==products[j][1]):
+						print str(i+1), str(j+1), " reactants are ", reactants[i]
+						duplicates+=1
+				if (reactants[i][1]==reactants[j][0] and reactants[i][0]==reactants[j][1]):
+					if (products[i][0]==products[j][0] and products[i][1]==products[j][1]): 
+						print str(i+1), str(j+1), " reactants are ", reactants[i]
+						duplicates+=1
+					elif (products[i][1]==products[j][0] and products[i][0]==products[j][1]):
+						print str(i+1), str(j+1), " reactants are ", reactants[i]
+						duplicates+=1
+	if (duplicates==0):
+		print "None"
 
 
 # Truncate long lines for use in fixed-format Fortran code
