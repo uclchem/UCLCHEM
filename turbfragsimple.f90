@@ -1,4 +1,4 @@
-!Physics module based on Holdship 2015. Models points along a 1d line from the centre
+!Physics module based on Holdship & Viti 2015. Models points along a 1d line from the centre
 !to edge of a core of gas. models core as it is created by isothermal shock.
 !Assuming the cloud is spherical you can average over the points to get a 1d average 
 ! and then assume the rest of sphere is the same.
@@ -17,11 +17,12 @@ MODULE physics
     integer :: evap,ion,solidflag,monoflag,volcflag,coflag
 
     !variables either controlled by physics or that user may wish to change    
-    double precision :: d0,dens,temp,tage,tout,t0,t0old,dfin,tfin,av(points),coldens(points)
+    double precision :: d0,dens,temp,tage,tout,t0,t0old,dfin,tfin
     double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens,oldt0,maxt
 
     !old bd model variables
-    double precision ::  dshock,tshock(points),rshock, tageold,ffc,mbd,mach
+    double precision ::  dshock,rshock, tageold,ffc,mbd,mach
+    double precision, allocatable :: tshock(:),av(:),coldens(:)
 
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
@@ -35,7 +36,7 @@ CONTAINS
 !years for output.
     
     SUBROUTINE phys_initialise
-        allocate(av(points),coldens(points))
+        allocate(av(points),coldens(points),tshock(points))
         size=(rout-rin)*pc
         dens=d0
         mbd=0.40

@@ -6,6 +6,7 @@ PROGRAM uclchem
 !everything to do with physics should be stored in a physics module based on physics-template.f90
 !UCL_CHEM uses density and temperature in chemical calculations so these MUST be provided, everything else is
 !user dependent
+
 USE physics
 USE chem
 IMPLICIT NONE
@@ -18,7 +19,7 @@ include 'parameters.f90'
  CALL chem_initialise
 
 !loop over time, tstep limit is arbitrary so that tfin can be reached.
-DO tstep=0,10000
+DO tstep=1,20000
     !End if we hit final density or time
     IF (switch .eq. 1 .and. dens >= dfin) THEN
         exit
@@ -27,7 +28,7 @@ DO tstep=0,10000
     ENDIF
 
     !store current time as starting point for each depth step
-    t0old=tout
+    if (points .gt. 1) t0old=tout
     !update tout
     CALL timestep
 
@@ -40,7 +41,7 @@ DO tstep=0,10000
         !set time to the final time of integrator rather than target     
         tout=t0
         !reset target for next depth point
-        t0=t0old
+        if (points .gt. 1)t0=t0old
         !get time in years for output
         tage=tout*year
         !write this depth step

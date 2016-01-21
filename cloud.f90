@@ -65,7 +65,7 @@ CONTAINS
         coldens(dstep)= size*((real(dstep))/real(points))*dens
         !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
         av(dstep)= avic +coldens(dstep)/1.6d21
-
+        oldtemp=temp
         IF (phase .eq. 2 .and. temp .lt. maxt) THEN
             !temperature increase borrowed from sv for comparison 288.000
             !will add general profile later

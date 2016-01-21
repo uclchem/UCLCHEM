@@ -74,8 +74,8 @@ CONTAINS
                     abund(nc,:)=fc
                     abund(ncx,:)=1.d-10
                 CASE(1)
-                    abund(nc,:)=fc/2.0
-                    abund(ncx,:)=fc/2.0
+                    abund(nc,:)=fc*0.5
+                    abund(ncx,:)=fc*0.5
                 CASE(2)
                     abund(nc,:)=1.d-10
                     abund(ncx,:)=fc
@@ -170,7 +170,7 @@ CONTAINS
                 read(7,7030) (specname(i),abund(i,l),i=1,nspec)
             END DO
             7000 format(&
-            &33x,0pf15.4,5x,/,&
+            &33x,1pd11.4,5x,/,&
             &33x,0pf8.2,2x,/,&
             &33x,0pf12.4,4x,/)
             7010 format(&
@@ -214,7 +214,7 @@ CONTAINS
         8010  format(4(1x,a10,'=',1x,1pd10.3,:))
         8020 format(&
         &'age of cloud             time  = ',1pd11.3,' years',/,&
-        &'total hydrogen density   dens  = ',0pf15.4,' cm-3',/,&
+        &'total hydrogen density   dens  = ',1pd11.4,' cm-3',/,&
         &'cloud temperature        temp  = ',0pf8.2,' k',/,&
         &'visual extinction        av    = ',0pf12.4,' mags',/,&
         &'radiation field          rad   = ',0pf10.2,' (habing = 1)',/,&
@@ -229,7 +229,7 @@ CONTAINS
         !choose species you're interested in by looking at parameters.f90
         IF ( mod(tstep,writestep) .eq. 0) THEN
           write(4,8030) tage,dens,Y(outindx)
-          8030  format(1pd11.3,1x,0pf15.4,6(1x,1pd10.3))
+          8030  format(1pd11.3,1x,1pd11.4,6(1x,1pd10.3))
         END IF
     END SUBROUTINE output
 
@@ -299,7 +299,7 @@ CONTAINS
                 write(*,*)'Doubling MXSTEP (thanks Tom :) ) from:',MXSTEP,' to:',MXSTEP*2
                 MXSTEP=MXSTEP*2
             ELSE
-                write(*,*)'ISTATE value: ', ISTATE,'...no trap written just yet!'
+                CALL debugout
                 stop
             ENDIF
             ISTATE=2
@@ -376,7 +376,7 @@ CONTAINS
             !mono evap
             CALL temper
 
-            !Volcanic, int should really be separated out.
+            !Volcanic evap
             IF (volcflag .eq. 1) THEN
                 y(colist)=y(colist)+0.667*y(mcolist)
                 y(mcolist)=0.333*y(mcolist)
@@ -466,4 +466,16 @@ CONTAINS
          INTEGER  NEQ, ML, MU, NROWPD
          DOUBLE PRECISION  T, Y(*), PD(NROWPD,*)
     END SUBROUTINE JAC        
+
+    SUBROUTINE debugout
+    write(*,*) "Integrator failed, printing relevant debugging information"
+    write(*,*) "dens",dens
+    write(*,*) "y(nspec+1)",y(nspec+1)
+    write(*,*) "Av", av(dstep)
+    write(*,*) "Mantle", mantle
+    DO i=1,nreac
+        if (rate(i) .ge. huge(i)) write(*,*) "Rate(",i,") is potentially infinite"
+    END DO
+    END SUBROUTINE debugout
+
 END MODULE chem
