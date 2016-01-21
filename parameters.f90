@@ -1,5 +1,5 @@
 !Initial physics variables
-temp=10.0;d0=1.00d4;dfin=1.00d4;t0=0.0;tfin=1.00d24
+temp=10.0;d0=1.00d4;dfin=1.00d4;t0=0.0;tfin=6.00d36
 fr=1.0;radfield=1.0;zeta=1.00;avic=20.0
 rout=0.3;rin=0;oldtemp=temp;bc=1.0;maxt=300
 tempa=0.1927;tempb=0.5339;points=1
@@ -8,8 +8,8 @@ tempa=0.1927;tempb=0.5339;points=1
 !switch (0/1) -> (tfin/dfin)
 !evap (0/1/2) -> (none/temp dependent/ instantaneous)
 !other switches are on/off (1/0)
-switch=0;collapse=0;first=0;desorb=1;startr=.true.
-h2desorb=1;crdesorb=0;crdesorb2=0;uvcr=1;evap=0;ion=2
+switch=0;collapse=1;first=0;desorb=1;startr=.true.
+h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=0;ion=2
 phase=2
 
 !initial fractional abundances (from Asplund et al. 2009 ARAA table 1 -SOLAR)
@@ -17,7 +17,7 @@ fh=0.0;fhe = 0.085;fc  = 2.692d-04;fo  = 4.898d-04;fn  = 6.761d-05
 fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07
 
 !output species
-outindx=(/36,35,3,4,5,6/);writestep=10
+outindx=(/35,34,22,148,5,6/);writestep=10
 
 !open files for reading=writing
 open(1,file='output',status='unknown')
@@ -27,7 +27,7 @@ open(4,file='watertest',status='unknown')
 open(7,file='startabund',status='unknown')
 open(8,file='evaplists.csv',status='old')
 open(78,file='debuglog',status='unknown')
-!open(88,file='analysis',status='unknown')
+open(88,file='analysis',status='unknown')
 open(79,file='jondebug',status='unknown')
 
 !Chemistry variables

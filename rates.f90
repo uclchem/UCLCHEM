@@ -48,15 +48,16 @@ SUBROUTINE reacrates
                 ENDIF
             CASE ('DESCR1')
                 IF (desorb .eq. 1 .and. crdesorb .eq. 1&
-                & .and. tstep .ge. 1 .and. gama(j) .le. ebmaxcrf) THEN
-                    rate(j) = alpha(j)*(1.0/mantle)*2.2d-22*70.0*&
-                          &dexp(-(gama(j)-960.0)/70.0)
+                & .and. mantle .ge. 1d-30 .and. gama(j) .le. ebmaxcrf) THEN
+                  !mantle .ge. 1d-30 used to be tstep .ge. 1 (same for descr2)
+                  rate(j) = alpha(j)*(1.0/mantle)*2.2d-22*70.0*&
+                            &dexp(-(gama(j)-960.0)/70.0)
                 ELSE
                     rate(j) = 1.0d-30
                 ENDIF
             CASE ('DESCR2')
                 IF (desorb .eq. 1 .and. crdesorb2 .eq. 1&
-                &.and. tstep .ge. 1&
+                &.and.mantle.ge. 1d030&
                 &.and. gama(j) .le. ebmaxcr) THEN
                     rate(j) = 4*3.1416*zeta*1.64d-4*(grain/4.57d4)*&
                           &(1.0/mantle)*phi

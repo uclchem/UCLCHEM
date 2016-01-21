@@ -82,10 +82,12 @@ CONTAINS
             END SELECT
             abund(nspec,:)=abund(ncx,:)
 
-       ENDIF
-       !h2 formation rate initially set
-       h2form = 1.0d-17*dsqrt(temp)
-        
+        ENDIF
+        !h2 formation rate initially set
+        h2form = 1.0d-17*dsqrt(temp)
+        mantle=sum(y(mgrainlist))
+
+
     END SUBROUTINE chem_initialise
 
 !Reads input reaction and species files as well as the final step of previous run if this is phase 2
@@ -468,14 +470,109 @@ CONTAINS
     END SUBROUTINE JAC        
 
     SUBROUTINE debugout
-    write(*,*) "Integrator failed, printing relevant debugging information"
-    write(*,*) "dens",dens
-    write(*,*) "y(nspec+1)",y(nspec+1)
-    write(*,*) "Av", av(dstep)
-    write(*,*) "Mantle", mantle
-    DO i=1,nreac
-        if (rate(i) .ge. huge(i)) write(*,*) "Rate(",i,") is potentially infinite"
-    END DO
+        write(*,*) "Integrator failed, printing relevant debugging information"
+        write(*,*) "dens",dens
+        write(*,*) "y(nspec+1)",y(nspec+1)
+        write(*,*) "Av", av(dstep)
+        write(*,*) "Mantle", mantle
+        DO i=1,nreac
+            if (rate(i) .ge. huge(i)) write(*,*) "Rate(",i,") is potentially infinite"
+        END DO
     END SUBROUTINE debugout
 
+    SUBROUTINE analysis
+        integer, parameter :: nreacs=100
+        double precision ::z(nreacs),p(nreacs),y1,y2,ptot,dtot
+        integer :: id,ip,rmult,lossindx(nreacs),prodindx(nreacs),m,lmax
+        ! start the analysis for specific species (i)
+        !loop over species that are important (outindx list) 
+        DO l=1,6
+            !species index stored in i
+            i=outindx(l)
+            !total destruction and production
+            dtot=0.0
+            ptot=0.0
+            write(88,100)i,specname(i)
+        100 format('Species index',i3,' = ',a10)
+            id=0
+            ip=0
+            !Loop over all reactions
+            DO j=1,nreac
+                y1=0.0
+                y2=0.0
+                rmult=0.0
+                !If reactants contains the species being analysed, calculate contribution to loss
+                IF (re1(j) .eq. specname(i) .or. re2(j).eq.specname(i)) then
+
+                    !assign abundance values of reactants to y1 and y2
+                    DO m=1,nspec
+                        if(re1(j).eq.specname(m)) y1 = abund(m,dstep)
+                        if(re2(j).eq.specname(m)) y2 = abund(m,dstep)
+                    END DO
+
+                    !Count how many times species appears, so rate can be multiplied to get actual loss
+                    if(re1(j).eq. specname(i)) rmult=1
+                    if(re2(j).eq. specname(i)) rmult=rmult+1
+                    id=id+1
+
+                    !check type of reaction and calculate rate according
+                    IF(re2(j).eq.'CRP'.or.re2(j).eq.'CRPHOT' .or. re2(j).eq.'PHOTON'&
+                    & .or. re2(j).eq.'DESCR1' .or. re2(j).eq.'DESCR2'.or. re2(j).eq.'DEUVCR') THEN
+                        z(id)=rate(j)*y1
+                    ELSE IF (re2(j).eq.'FREEZE' .or. re2(j).eq.'DESOH2') THEN
+                        z(id)=rate(j)*y1*dens
+                    ELSE
+                        z(id)=rate(j)*y1*y2*dens*rmult
+                    END IF
+                    dtot=dtot+z(id)
+                    lossindx(id)=j
+                    rmult=0.0
+                END IF
+
+
+                !If products contain species being analysed, calculate contribution to production
+                IF (p1(j).eq.specname(i).or. p2(j).eq.specname(i).or. p3(j).eq.specname(i)) then
+                    if(p1(j).eq.specname(i)) rmult=rmult+1.0
+                    if(p2(j).eq.specname(i)) rmult=rmult+1.0
+                    if(p3(j).eq.specname(i)) rmult=rmult+1.0
+                    ip=ip+1
+                    if(re2(j).eq.'CRP'.or.re2(j).eq.'CRPHOT' .or. re2(j).eq.'PHOTON'&
+                    & .or. re2(j).eq.'DESCR1' .or. re2(j).eq.'DESCR2'.or. re2(j).eq.'DEUVCR') THEN
+                        p(ip)=rate(j)*y1*rmult
+                    ELSE IF (re2(j).eq.'FREEZE' .or. re2(j).eq.'DESOH2') THEN
+                        p(ip)=rate(j)*y1*dens*rmult
+                    ELSE IF (re2(j).eq.'INJ') THEN
+                        p(ip)=rate(j)*rmult
+                    ELSE
+                        p(ip)=rate(j)*y1*y2*dens*rmult
+                    END IF
+                    ptot=ptot+p(ip)
+                    prodindx(id)=j
+                END  IF
+
+            END DO
+            ! calculation of the F and D %
+            if (dtot.lt.1.0e-30) dtot=1.0e-30
+            if (ptot.lt.1.0e-30) ptot=1.0e-30
+            z=100*(z/dtot)
+            DO j=1,id
+                i=lossindx(j)
+                if(z(j).gt.0.5) then
+                    write(88,300)re1(i),re2(i),p1(i),p2(i),-nint(z(j))
+                END IF
+            END DO
+            p=100*(p/ptot)
+            DO j=1,ip
+                i=prodindx(j)
+                if(p(j).gt.0.5) then
+                    write(88,300)re1(i),re2(i),p1(i),p2(i),nint(p(j))
+                end if
+            END DO
+            write(88,400)dtot,ptot    
+        END DO
+
+        400 format(10x,'LOSSrate= ',e9.3,5x,'FORMrate= ',e9.3)
+        300 format(5x,4(2x,a10),3x,i3,'%')
+            return
+    END SUBROUTINE analysis
 END MODULE chem
