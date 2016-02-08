@@ -1,7 +1,7 @@
 SUBROUTINE reacrates
 !most rate calculations only need to happen once or if temp changes
 !I need to check with Serena what these all are
-    IF ((tstep .eq. 0 .and. dstep .eq. 1)&
+    IF ((tstep .eq. 1 .and. dstep .eq. 1)&
         &.or. (temp .ne. oldtemp) &
         &.or.  (desorb .eq. 1)) THEN
         DO j=1,nreac
@@ -40,7 +40,7 @@ SUBROUTINE reacrates
                 ENDIF
             CASE ('DESOH2')
                 IF (desorb .eq. 1 .and. h2desorb .eq. 1&
-                & .and. tstep .ge. 1 .and. gama(j) .le. ebmaxh2 .and.&
+                & .and. tstep .ge. 2 .and. gama(j) .le. ebmaxh2 .and.&
                 &  mantle .ge. 1.0d-30) THEN
                     rate(j) = epsilon*h2form*y(nh)*1.0/mantle
                 ELSE
@@ -57,7 +57,7 @@ SUBROUTINE reacrates
                 ENDIF
             CASE ('DESCR2')
                 IF (desorb .eq. 1 .and. crdesorb2 .eq. 1&
-                &.and.mantle.ge. 1d030&
+                &.and.mantle.ge. 1d-30&
                 &.and. gama(j) .le. ebmaxcr) THEN
                     rate(j) = 4*3.1416*zeta*1.64d-4*(grain/4.57d4)*&
                           &(1.0/mantle)*phi
@@ -65,7 +65,7 @@ SUBROUTINE reacrates
                     rate(j) = 1.0d-30
                 ENDIF
             CASE ('DEUVCR')
-                IF (desorb .eq. 1 .and. uvcr .eq. 1 .and. tstep .ge. 1&
+                IF (desorb .eq. 1 .and. uvcr .eq. 1 .and. tstep .ge. 2&
                  &.and. gama(j) .le. ebmaxuvcr .and. mantle .ge. 1.0d-15) THEN
                     !was 4.875d3 not 1.0d5
                     rate(j) = (grain/4.57d4)*uvy*1.0d5*zeta*(1.0/mantle)

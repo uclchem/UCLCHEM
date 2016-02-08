@@ -446,6 +446,17 @@ def multiple(number):
 
 #check reactions to alert user of potential issues
 def reaction_check(speciesList,reactants,products):
+	print "\nDuplicate Species...."
+	duplicates=0
+	for i in range(0,len(speciesList)):
+		for j in range(0,len(speciesList)):
+			if speciesList[i]==speciesList[j]:
+				if (j!=i):
+					print str(spec)+" appears twice in input species list\n"
+					duplicates+=1
+	if duplicates==0:
+		print"\nNo duplicate species"
+
 	#first check for multiple freeze outs so user knows to do alphas
 	print "\nSpecies with multiple freeze outs, check alphas:"
 	for spec in speciesList:
@@ -466,7 +477,7 @@ def reaction_check(speciesList,reactants,products):
 						print str(i+1), str(j+1), " reactants are ", reactants[i]
 						duplicates+=1
 					elif (products[i][1]==products[j][0] and products[i][0]==products[j][1]):
-						print str(i+1), str(j+1), " reactants are ", reactants[i]
+						print str(i+1), str(j+1), " reactants are ", reactants[i],products[i]
 						duplicates+=1
 				if (reactants[i][1]==reactants[j][0] and reactants[i][0]==reactants[j][1]):
 					if (products[i][0]==products[j][0] and products[i][1]==products[j][1]): 

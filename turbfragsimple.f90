@@ -17,7 +17,7 @@ MODULE physics
     integer :: evap,ion,solidflag,monoflag,volcflag,coflag
 
     !variables either controlled by physics or that user may wish to change    
-    double precision :: d0,dens,temp,tage,tout,t0,t0old,dfin,tfin
+    double precision :: initdens,dens,temp,tage,tout,t0,t0old,dfin,tfin,radg
     double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens,oldt0,maxt
 
     !old bd model variables
@@ -38,7 +38,7 @@ CONTAINS
     SUBROUTINE phys_initialise
         allocate(av(points),coldens(points),tshock(points))
         size=(rout-rin)*pc
-        dens=d0
+        dens=initdens
         mbd=0.40
         call bdboundaries
     END SUBROUTINE
@@ -82,8 +82,8 @@ CONTAINS
     !Currently set to Rawlings 1992 freefall.
         double precision :: densdot
         IF (dens .lt. dfin .and. phase .eq. 1) THEN
-             densdot=bc*(dens**4./d0)**0.33*&
-            &(8.4d-30*d0*((dens/d0)**0.33-1.))**0.5
+             densdot=bc*(dens**4./initdens)**0.33*&
+            &(8.4d-30*initdens*((dens/initdens)**0.33-1.))**0.5
         ELSE
             densdot=0.00    
         ENDIF    
@@ -101,14 +101,14 @@ CONTAINS
         rshock=rshock**(1.0/3.0)
 
         ! mach calculated by assuming M ~p/p0
-        mach=dsqrt(dshock/d0) 
+        mach=dsqrt(dshock/initdens) 
         !time for each point then based on radial position and mach number.
         !tshock in seconds STILL NEEDS N/Ntot
         DO ishock=1,points
             tshock(ishock)=((ishock-1)*rshock)/((points-1.0)*mach*cs)   
         END DO
         !below added for a modified freefall equation in poly, big number is G in cm3/g.year2
-        ffc=24.0*pi*mh*d0*(6.64d+7)
+        ffc=24.0*pi*mh*initdens*(6.64d+7)
     END SUBROUTINE bdboundaries
 
 
@@ -118,7 +118,7 @@ CONTAINS
         double precision store
         !instantly increases density to final post-shock density at tshock
         IF (tout .lt. tshock(dstep)) THEN
-            dens=d0
+            dens=initdens
         ENDIF
 
         IF (tout .gt. tshock(dstep) .AND. dens .lt. dshock) THEN

@@ -78,7 +78,7 @@ CONTAINS
         !splint gives temp/dens at time t0 given outputs from spline
         CALL splinthydro(time,temps,temp2,nf,t0,temp)
         CALL splinthydro(time,density,dens2,nf,t0,dens)
-
+        write(*,*) dens
         !calculate column density by dens x depth of point 
         coldens(dstep)= size*((real(dstep))/real(points))*dens
         !calculate the Av using an assumed extinction outside of core (avic), depth of point and density

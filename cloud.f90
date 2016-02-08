@@ -14,8 +14,8 @@ MODULE physics
     integer :: evap,ion,solidflag,volcflag,coflag
     
     !variables either controlled by physics or that user may wish to change    
-    double precision :: d0,dens,temp,tage,tout,t0,t0old,dfin,tfin
-    double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens,maxt
+    double precision :: initdens,dens,temp,tage,tout,t0,t0old,dfin,tfin,radg
+    double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens,maxtemp
     double precision, allocatable :: av(:),coldens(:)
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
@@ -29,9 +29,9 @@ CONTAINS
         allocate(av(points),coldens(points))
         size=(rout-rin)*pc
         if (collapse .eq. 1) THEN
-            dens=1.001*d0
+            dens=1.001*initdens
         ELSE
-            dens=d0
+            dens=initdens
         ENDIF 
     END SUBROUTINE
 
@@ -66,7 +66,7 @@ CONTAINS
         !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
         av(dstep)= avic +coldens(dstep)/1.6d21
         oldtemp=temp
-        IF (phase .eq. 2 .and. temp .lt. maxt) THEN
+        IF (phase .eq. 2 .and. temp .lt. maxtemp) THEN
             !temperature increase borrowed from sv for comparison 288.000
             !will add general profile later
             temp=10. + (7.8470d-3*tage**0.8395)
@@ -84,8 +84,8 @@ CONTAINS
         double precision :: densdot
         !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
         IF (dens .lt. dfin) THEN
-             densdot=bc*(dens**4./d0)**0.33*&
-             &(8.4d-30*d0*((dens/d0)**0.33-1.))**0.5
+             densdot=bc*(dens**4./initdens)**0.33*&
+             &(8.4d-30*initdens*((dens/initdens)**0.33-1.))**0.5
         ELSE
             densdot=1.0d-30       
         ENDIF    

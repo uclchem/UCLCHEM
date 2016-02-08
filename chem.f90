@@ -29,7 +29,7 @@ EXTERNAL dlsode
     double precision,allocatable :: y(:),abund(:,:)
     
     !Variables controlling chemistry
-    double precision :: radfield,zeta,fr,omega,grain,radg,cion,h2form,h2dis
+    double precision :: radfield,zeta,fr,omega,grain,cion,h2form,h2dis
     double precision :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uvy,uvcreff
     double precision :: taud,dopw,radw,xl,fosc
 
@@ -331,7 +331,6 @@ CONTAINS
 
         !Set D to the gas density for use in the ODEs
         D=dens
-
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         INCLUDE 'odes.f90'
@@ -360,7 +359,7 @@ CONTAINS
     !Evaporation is based on Viti et al. 2004. A proportion of the frozen species is released into the gas phase
     !in specific events. These events are activated by flags (eg solidflag) which can be set in physics module.
     !The species evaporated are in lists, created by Makerates and based on groupings. see the viti 2004 paper.
-    IF (tstep .gt. 0) THEN
+    IF (tstep .gt. 1) THEN
         !Viti 04 evap
         IF (evap .eq. 1) THEN
             ! this code only works if you use the 288,000 temp increase from old uclchem

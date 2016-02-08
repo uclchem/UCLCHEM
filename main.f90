@@ -11,8 +11,9 @@ USE physics
 USE chem
 IMPLICIT NONE
 
-!This should be replaced with Antonios style parameter file and reader
-include 'parameters.f90'
+!Default parameters.f90 works for MOST physics modules.
+!CSHOCK has cshock_parameters.f90
+include 'cshock_parameters.f90'
 
 !Set up with initial values etc, lives in chem.f90
  CALL phys_initialise
