@@ -23,7 +23,7 @@ MODULE physics
     !Cshock specific parameters
     !*******************************************************************
     double precision :: inittemp, z2,vs,v0,zn,vn,at,np,z3,tout0,tsat
-    double precision :: ucm,z1,dv,vi,tempi,vn0,zn0,vcl,vA,B0,dlength
+    double precision :: ucm,z1,dv,vi,tempi,vn0,zn0,vA,B0,dlength
     double precision :: radg5,radg,dens6
     double precision, allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
     !variables for the collisional and radiative heating of grains

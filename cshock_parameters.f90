@@ -1,7 +1,7 @@
 !Initial physics variables
 temp=10.0;initdens=1.00d2;dfin=1.00d5;t0=0.0;tfin=5.00d6
 fr=1.0;radfield=1.0;zeta=1.00;avic=2.0
-rout=0.05;rin=0;oldtemp=temp;bc=1.0;maxtemp=300
+rout=0.05;rin=0;oldtemp=temp;bc=1.0
 tempa=0.1927;tempb=0.5339;points=1
 
 !Behavioural switches
@@ -13,7 +13,7 @@ h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=0;ion=2
 phase=2
 
 !cshock specific variables
-vs=40.0;maxtemp=4000;vcl=2.6;np=6.;tsat=4.6
+vs=40.0;maxtemp=4000;np=6.;tsat=4.6
 
 
 !initial fractional abundances (from Asplund et al. 2009 ARAA table 1 -SOLAR)
