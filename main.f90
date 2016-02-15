@@ -13,7 +13,7 @@ IMPLICIT NONE
 
 !Default parameters.f90 works for MOST physics modules.
 !CSHOCK has cshock_parameters.f90
-include 'cshock_parameters.f90'
+include 'parameters.f90'
 
 !Set up with initial values etc, lives in chem.f90
  CALL phys_initialise

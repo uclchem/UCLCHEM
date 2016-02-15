@@ -14,7 +14,7 @@ MODULE physics
     integer :: evap,ion,solidflag,volcflag,coflag
     
     !variables either controlled by physics or that user may wish to change    
-    double precision :: initdens,dens,temp,tage,tout,t0,t0old,dfin,tfin,radg
+    double precision :: initdens,dens,temp,tage,tout,t0,t0old,dfin,tfin,radg,inittemp
     double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens,maxtemp
     double precision, allocatable :: av(:),coldens(:)
     !Everything should be in cgs units. Helpful constants and conversions below
@@ -33,6 +33,7 @@ CONTAINS
         ELSE
             dens=initdens
         ENDIF 
+        temp=inittemp
     END SUBROUTINE
 
     SUBROUTINE timestep
@@ -68,8 +69,8 @@ CONTAINS
         oldtemp=temp
         IF (phase .eq. 2 .and. temp .lt. maxtemp) THEN
             !temperature increase borrowed from sv for comparison 288.000
-            !will add general profile later
-            temp=10. + (7.8470d-3*tage**0.8395)
+            !will add general profile later, this works well for inittemp=10 K
+            temp=inittemp + (7.8470d-3*tage**0.8395)
             if (temp .gt. 19.45 .and. solidflag .ne. 2) solidflag=1
             if (temp .gt. 87.9 .and. volcflag .ne. 2) volcflag=1
             if (temp .gt. 99 .and. coflag .ne. 2) coflag=1

@@ -259,6 +259,8 @@ CONTAINS
         !call evaporation to remove species from grains at certain temperatures
         CALL evaporate
 
+        CALL analysis
+
         !Set abundances to output of DLSODE
         abund(:,dstep)=y
     END SUBROUTINE chem_update
@@ -480,12 +482,12 @@ CONTAINS
     END SUBROUTINE debugout
 
     SUBROUTINE analysis
-        integer, parameter :: nreacs=100
+        integer, parameter :: nreacs=1000
         double precision ::z(nreacs),p(nreacs),y1,y2,ptot,dtot
         integer :: id,ip,rmult,lossindx(nreacs),prodindx(nreacs),m,lmax
         ! start the analysis for specific species (i)
         !loop over species that are important (outindx list) 
-        DO l=1,6
+        DO l=lbound(outindx,1),ubound(outindx,1)
             !species index stored in i
             i=outindx(l)
             !total destruction and production
@@ -527,13 +529,17 @@ CONTAINS
                     lossindx(id)=j
                     rmult=0.0
                 END IF
-
-
                 !If products contain species being analysed, calculate contribution to production
                 IF (p1(j).eq.specname(i).or. p2(j).eq.specname(i).or. p3(j).eq.specname(i)) then
-                    if(p1(j).eq.specname(i)) rmult=rmult+1.0
-                    if(p2(j).eq.specname(i)) rmult=rmult+1.0
-                    if(p3(j).eq.specname(i)) rmult=rmult+1.0
+                    !assign abundance values of reactants to y1 and y2
+                    DO m=1,nspec
+                        if(re1(j).eq.specname(m)) y1 = abund(m,dstep)
+                        if(re2(j).eq.specname(m)) y2 = abund(m,dstep)
+                    END DO
+                    rmult=0.0
+                    if(p1(j).eq.specname(i)) rmult=rmult+1
+                    if(p2(j).eq.specname(i)) rmult=rmult+1
+                    if(p3(j).eq.specname(i)) rmult=rmult+1
                     ip=ip+1
                     if(re2(j).eq.'CRP'.or.re2(j).eq.'CRPHOT' .or. re2(j).eq.'PHOTON'&
                     & .or. re2(j).eq.'DESCR1' .or. re2(j).eq.'DESCR2'.or. re2(j).eq.'DEUVCR') THEN
@@ -546,13 +552,12 @@ CONTAINS
                         p(ip)=rate(j)*y1*y2*dens*rmult
                     END IF
                     ptot=ptot+p(ip)
-                    prodindx(id)=j
+                    prodindx(ip)=j
                 END  IF
 
             END DO
+
             ! calculation of the F and D %
-            if (dtot.lt.1.0e-30) dtot=1.0e-30
-            if (ptot.lt.1.0e-30) ptot=1.0e-30
             z=100*(z/dtot)
             DO j=1,id
                 i=lossindx(j)
@@ -571,7 +576,7 @@ CONTAINS
         END DO
 
         400 format(10x,'LOSSrate= ',e9.3,5x,'FORMrate= ',e9.3)
-        300 format(5x,4(2x,a10),3x,i3,'%')
-            return
+        300 format(5x,4(2x,a10),3x,i5,'%')
+        return
     END SUBROUTINE analysis
 END MODULE chem
