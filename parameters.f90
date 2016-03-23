@@ -1,14 +1,14 @@
 !Initial physics variables
-inittemp=10.0;initdens=1.00d4;dfin=1.00d4;t0=0.0;tfin=6.00d36
-fr=1.0;radfield=1.0;zeta=1.00;avic=20.0
-rout=0.3;rin=0;oldtemp=temp;bc=1.0;maxtemp=300
+inittemp=10.0;initdens=1.00d2;dfin=1.00d6;t0=0.0;tfin=1.00d7
+fr=1.0;radfield=1.0;zeta=1.00;avic=2.0
+rout=0.05;rin=0;oldtemp=temp;bc=1.0;maxtemp=300
 tempa=0.1927;tempb=0.5339;points=1
 
 !Behavioural switches
 !switch (0/1) -> (tfin/dfin)
 !evap (0/1/2) -> (none/temp dependent/ instantaneous)
 !other switches are on/off (1/0)
-switch=0;collapse=0;first=1;desorb=1;startr=.true.
+switch=0;collapse=1;first=1;desorb=1;startr=.true.
 h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=0;ion=2
 phase=1
 
@@ -17,18 +17,21 @@ fh=0.0;fhe = 0.085;fc  = 2.692d-04;fo  = 4.898d-04;fn  = 6.761d-05
 fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07
 
 !output species
-outindx=(/35,34,22,148,5,6/);writestep=10
+outindx=(/66,35,61,30/);writestep=10
+
+!DVODE SETTINGS        
+ISTATE=1;MF=22;ITOL=1;ITASK=1;IOPT=1;MESFLG=1
+abstol=1e-25;reltol=1e-7;MXSTEP=10000
 
 !open files for reading=writing
-open(1,file='output',status='unknown')
+open(1,file='odeoutput',status='unknown')
 open(2,file='reactions.csv',status='old')
 open(3,file='species.csv',status='old')
-open(4,file='watertest',status='unknown')
+open(4,file='testoutput',status='unknown')
 open(7,file='startabund',status='unknown')
 open(8,file='evaplists.csv',status='old')
-open(78,file='debuglog',status='unknown')
+open(79,file='debuglog',status='unknown')
 open(88,file='analysis',status='unknown')
-open(79,file='jondebug',status='unknown')
 
 !Chemistry variables
 !dopw = doppler width (in s-1) of a typical transition
@@ -39,12 +42,6 @@ ebmaxh2=1.21d3;epsilon=0.01;ebmaxcrf=1.21d3;uvcreff=1.0d-3
 ebmaxcr=1.21d3;phi=1.0d5;ebmaxuvcr=1.0d4; uvy=0.1
 omega=0.5;grain=1.1d-17;radg=1.d-5
 dopw=3.0e10;radw=8.0e07;xl=1000.0;fosc  = 1.0d-2
-
-
-!DLSODE SETTINGS        
-RWORK=0.0;IWORK=0.0
-ITOL=1;ITASK=1;ISTATE=1;IOPT=1;MESFLG=1
-LUNIT=6;LRW=100000;LIW=500;MXSTEP=10000
 
 !CO self-shielding
 corates =reshape((/0.000d+00, -1.408d-02, -1.099d-01, -4.400d-01,&

@@ -3,9 +3,9 @@
 MODULE chem
 USE physics
 IMPLICIT NONE
-EXTERNAL dlsode
+EXTERNAL dvode
     !makerates gives these numbers, nspec includes electrons
-    integer,parameter :: nout=6
+    integer,parameter :: nout=4
 
     !These integers store the array index of important species and reactions, x is for ions    
     integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nh2o,nsi,nsix,ncl,nclx,nch3oh
@@ -20,9 +20,11 @@ EXTERNAL dlsode
     character(LEN=10),allocatable :: specname(:)  
     
     !DLSODE variables    
-    integer :: ITOL,ITASK,ISTATE,IOPT,MESFLG,LUNIT,NEQ,mf
-    integer :: LRW,LIW,MXSTEP,IWORK(500)
-    double precision :: RTOL,ATOL,RWORK(100000)
+    integer :: ITOL,ITASK,ISTATE,IOPT,MESFLG,NEQ,lrw,liw
+    integer :: MXSTEP,MF
+    integer,allocatable :: IWORK(:)
+    double precision :: reltol,abstol,rpar,ipar
+    double precision, allocatable :: RWORK(:)
 
     !initial fractional elemental abudances and arrays to store abundances
     double precision :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,h2col,cocol,mantle,junk1,junk2
@@ -87,7 +89,10 @@ CONTAINS
         h2form = 1.0d-17*dsqrt(temp)
         mantle=sum(y(mgrainlist))
 
-
+        NEQ=nspec+1
+        LIW=30+NEQ
+        LRW=22+(9*NEQ)+(2*NEQ*NEQ)
+        allocate(IWORK(LIW),RWORK(LRW))
     END SUBROUTINE chem_initialise
 
 !Reads input reaction and species files as well as the final step of previous run if this is phase 2
@@ -230,8 +235,10 @@ CONTAINS
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90
         IF ( mod(tstep,writestep) .eq. 0) THEN
-          write(4,8030) tage,dens,Y(outindx)
-          8030  format(1pd11.3,1x,1pd11.4,6(1x,1pd10.3))
+            write(4,8030) tage,dens,Y(outindx)
+            8030  format(1pd11.3,1x,1pd11.4,6(1x,1pd10.3))
+            write(*,*)'Call to LSODE successful at time: ',(TOUT*year),' years'
+            write(*,*)'        Steps: ',IWORK(6)
         END IF
     END SUBROUTINE output
 
@@ -266,16 +273,12 @@ CONTAINS
     END SUBROUTINE chem_update
 
     SUBROUTINE integrate
-    !This subroutine calls DLSODE (3rd party ODE solver) until it can reach tout with acceptable errors (RTOL/ATOL)
+    !This subroutine calls DVODE (3rd party ODE solver) until it can reach tout with acceptable errors (reltol/abstol)
 
         DO WHILE(t0 .lt. tout)            
-            !reset parameters for DLSODE
+            !reset parameters for DVODE
             ITOL=1
-            RTOL=1e-15
-            ATOL=1e-20
-            MF=22
             ITASK=1
-            NEQ=nspec+1
             IF(ISTATE .EQ. 1) THEN
                 IOPT=1
                 IWORK(6)=MXSTEP
@@ -285,17 +288,14 @@ CONTAINS
                 IOPT=1
                 IWORK(6)=MXSTEP
             ENDIF
-            write(*,*) IWORK(6),' ',MXSTEP,' ',IOPT,' ',ISTATE
-           
+          
             !get reaction rates for this iteration
             CALL reacrates
             !Call the integrator.
-            CALL DLSODE(F,NEQ,Y,T0,TOUT,ITOL,RTOL,ATOL,ITASK,ISTATE,IOPT,&
-            &             RWORK,LRW,IWORK,LIW,JAC,MF)
+            CALL DVODE(F,NEQ,Y,T0,TOUT,ITOL,reltol,abstol,ITASK,ISTATE,IOPT,&
+            &             RWORK,LRW,IWORK,LIW,JAC,MF,RPAR,IPAR)
 
             IF(ISTATE.EQ.2) THEN
-                write(*,*)'Call to LSODE successful at time: ',(TOUT*year),' years'
-                write(*,*)'        Steps: ',IWORK(6)
                 IOPT=0
             ELSEIF(ISTATE.EQ.-1) THEN
                 write(*,*)'Call to LSODE returned -1 meaning that MXSTEP exceeded'
