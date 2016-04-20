@@ -35,6 +35,7 @@ DO tstep=1,20000
 
     !loop over depth points, counting from edge in to centre
     DO dstep=1,points
+        dens=abund(nspec+1,dstep)
         !update physics
         CALL phys_update
         !update chemistry

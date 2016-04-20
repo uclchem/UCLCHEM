@@ -27,8 +27,8 @@ EXTERNAL dvode
     double precision, allocatable :: RWORK(:)
 
     !initial fractional elemental abudances and arrays to store abundances
-    double precision :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,h2col,cocol,mantle,junk1,junk2
-    double precision,allocatable :: y(:),abund(:,:)
+    double precision :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,h2col,cocol,junk1,junk2
+    double precision,allocatable :: abund(:,:),mantle(:)
     
     !Variables controlling chemistry
     double precision :: radfield,zeta,fr,omega,grain,cion,h2form,h2dis
@@ -86,9 +86,11 @@ CONTAINS
 
         ENDIF
         !h2 formation rate initially set
-        h2form = 1.0d-17*dsqrt(temp)
-        mantle=sum(y(mgrainlist))
-
+        h2form = 1.0d-17*dsqrt(temp(dstep))
+        allocate(mantle(points))
+        DO l=1,points
+            mantle(l)=sum(abund(mgrainlist,l))
+        END DO
         NEQ=nspec+1
         LIW=30+NEQ
         LRW=22+(9*NEQ)+(2*NEQ*NEQ)
@@ -102,7 +104,7 @@ CONTAINS
 
         !read species file and allocate sufficient space to relevant arrays
         read(3,*)nspec
-        allocate(y(nspec+1),abund(nspec+1,points),specname(nspec),mass(nspec))
+        allocate(abund(nspec+1,points),specname(nspec),mass(nspec))
         read(3,*)(specname(j),mass(j),j=1,nspec-1)
         !assign array indices for important species to the integers used to store them.
         specname(nspec)='electr'
@@ -167,8 +169,8 @@ CONTAINS
         IF (first .eq. 0) THEN
             DO l=1,points
                 read(7,*)
-                read(7,7000) dens,temp,av(l)
-                write(*,*)dens,temp,av(l)
+                read(7,7000) dens,temp(dstep),av(l)
+                write(*,*)dens,temp(dstep),av(l)
                 read(7,*)
                 read(7,7010) h2form,fc,fo,&
                             &fmg,fhe,dstep
@@ -199,7 +201,7 @@ CONTAINS
             ENDIF
         END DO
         !write out cloud properties
-        write(1,8020) tage,dens,temp,av(dstep),radfield,zeta,h2form,fc,fo,&
+        write(1,8020) tage,dens,temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
                         &fmg,fhe,dstep
         !and a blank line
         write(1,8000)
@@ -210,7 +212,7 @@ CONTAINS
         IF (first .eq. 1) THEN
            IF (switch .eq. 0 .and. tage .ge. tfin& 
                &.or. switch .eq. 1 .and.dens .ge. dfin) THEN
-               write(7,8020) tage,dens,temp,av(dstep),radfield,zeta,h2form,fc,fo,&
+               write(7,8020) tage,dens,temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
                        &fmg,fhe,dstep
                write(7,8000)
                write(7,8010) (specname(i),abund(i,dstep),i=1,nspec)
@@ -235,8 +237,8 @@ CONTAINS
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90
         IF ( mod(tstep,writestep) .eq. 0) THEN
-            write(4,8030) tage,dens,Y(outindx)
-            8030  format(1pd11.3,1x,1pd11.4,6(1x,1pd10.3))
+            write(4,8030) tage,dens,temp(dstep),abund(outindx,dstep)
+            8030  format(1pd11.3,1x,1pd11.4,1x,0pf8.2,6(1x,1pd10.3))
             write(*,*)'Call to LSODE successful at time: ',(TOUT*year),' years'
             write(*,*)'        Steps: ',IWORK(6)
         END IF
@@ -247,8 +249,7 @@ CONTAINS
 
         !y is at final value of previous depth iteration so set to initial values of this depth with abund
         !reset other variables for good measure        
-        y=abund(:,dstep)
-        h2form = 1.0d-17*dsqrt(temp)
+        h2form = 1.0d-17*dsqrt(temp(dstep))
     
         !evaluate co and h2 column densities for use in rate calculations
         !sum column densities of each point up to dstep. boxlength and dens are pulled out of the sum as common factors  
@@ -267,9 +268,6 @@ CONTAINS
         CALL evaporate
 
         CALL analysis
-
-        !Set abundances to output of DLSODE
-        abund(:,dstep)=y
     END SUBROUTINE chem_update
 
     SUBROUTINE integrate
@@ -292,7 +290,7 @@ CONTAINS
             !get reaction rates for this iteration
             CALL reacrates
             !Call the integrator.
-            CALL DVODE(F,NEQ,Y,T0,TOUT,ITOL,reltol,abstol,ITASK,ISTATE,IOPT,&
+            CALL DVODE(F,NEQ,abund(:,dstep),T0,TOUT,ITOL,reltol,abstol,ITASK,ISTATE,IOPT,&
             &             RWORK,LRW,IWORK,LIW,JAC,MF,RPAR,IPAR)
 
             IF(ISTATE.EQ.2) THEN
@@ -338,12 +336,12 @@ CONTAINS
         INCLUDE 'odes.f90'
 
         !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
-        mantle=sum(y(mgrainlist))
+        mantle(dstep)=sum(abund(mgrainlist,dstep))
         !updated just in case temp changed
-        h2form=1.0d-17*dsqrt(temp) 
+        h2form=1.0d-17*dsqrt(temp(dstep)) 
 
         !H2 formation should occur at both steps - however note that here there is no 
-        !temperature dependence. y(nh) is hydrogen fractional abundance.      
+        !temperature dependence. y(nh) is hydrogen fractional abundance.
         ydot(nh)  = ydot(nh) - 2.0*( h2form*dens*y(nh) - h2dis*y(nh2) )
         !                             h2 formation - h2-photodissociation
         ydot(nh2) = ydot(nh2) + h2form*dens*y(nh) - h2dis*y(nh2)
@@ -370,8 +368,8 @@ CONTAINS
 
             !Solid Evap
             IF (solidflag .eq. 1) THEN
-                y(colist)=y(colist)+0.35*y(mcolist)
-                y(mcolist)=0.65*y(mcolist)
+                abund(colist,dstep)=abund(colist,dstep)+0.35*abund(mcolist,dstep)
+                abund(mcolist,dstep)=0.65*abund(mcolist,dstep)
                 !Set flag to 2 to stop it being recalled
                 solidflag=2
             ENDIF
@@ -381,28 +379,28 @@ CONTAINS
 
             !Volcanic evap
             IF (volcflag .eq. 1) THEN
-                y(colist)=y(colist)+0.667*y(mcolist)
-                y(mcolist)=0.333*y(mcolist)
-                y(co2list)=y(co2list)+0.667*y(mco2list)
-                y(mco2list)=0.333*y(mco2list)
-                y(intlist)=y(intlist)+0.5*y(mintlist)
-                y(mintlist)=0.5*y(mintlist)
-                y(int2list)=y(int2list)+0.5*y(mint2list)
-                y(mint2list)=0.5*y(mint2list)
+                abund(colist,dstep)=abund(colist,dstep)+0.667*abund(mcolist,dstep)
+                abund(mcolist,dstep)=0.333*abund(mcolist,dstep)
+                abund(co2list,dstep)=abund(co2list,dstep)+0.667*abund(mco2list,dstep)
+                abund(mco2list,dstep)=0.333*abund(mco2list,dstep)
+                abund(intlist,dstep)=abund(intlist,dstep)+0.5*abund(mintlist,dstep)
+                abund(mintlist,dstep)=0.5*abund(mintlist,dstep)
+                abund(int2list,dstep)=abund(int2list,dstep)+0.5*abund(mint2list,dstep)
+                abund(mint2list,dstep)=0.5*abund(mint2list,dstep)
                 !Set flag to 2 to stop it being recalled
                 volcflag=2
             ENDIF
 
             !Co-desorption
             IF (coflag .eq. 1) THEN
-                y(grainlist)=y(grainlist)+y(mgrainlist)
-                y(mgrainlist)=1d-30
+                abund(grainlist,dstep)=abund(grainlist,dstep)+abund(mgrainlist,dstep)
+                abund(mgrainlist,dstep)=1d-30
                 coflag=2
             ENDIF
         ELSE IF (evap .eq. 2 .and. coflag .ne. 2) THEN
             !Alternative evap. Instaneous evaporation of all grain species
-            y(grainlist)=y(grainlist)+y(mgrainlist)
-            y(mgrainlist)=1d-30
+            abund(grainlist,dstep)=abund(grainlist,dstep)+abund(mgrainlist,dstep)
+            abund(mgrainlist,dstep)=1d-30
             coflag = 2
         ENDIF
     ENDIF
@@ -419,14 +417,14 @@ CONTAINS
         DO i=lbound(colist,1),ubound(colist,1)
             speci=colist(i)
             en=cobindener(i)*kbolt
-            expdust=cobindener(i)/temp
+            expdust=cobindener(i)/temp(dstep)
             newm = mass(speci)*1.66053e-27
             freq = dsqrt((2*(surden)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)
             IF (kevap .ge. 0.99) THEN
                 write(*,*)i
-                y(speci)=y(speci)+(0.7*y(mcolist(i)))
-                y(mcolist(i))=0.3*y(mcolist(i))
+                abund(speci,dstep)=abund(speci,dstep)+(0.7*abund(mcolist(i),dstep))
+                abund(mcolist(i),dstep)=0.3*abund(mcolist(i),dstep)
                 !set to 1d50 so it can't happen again
                 cobindener(i)=1d50
             END IF 
@@ -436,14 +434,14 @@ CONTAINS
         DO i=lbound(co2list,1),ubound(co2list,1)
             speci=co2list(i)
             en=co2bindener(i)*kbolt
-            expdust=co2bindener(i)/temp
+            expdust=co2bindener(i)/temp(dstep)
             newm = mass(speci)*1.66053e-27
             freq = dsqrt((2*(surden)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)
             IF (kevap .ge. 0.99) THEN
                 write(*,*)i
-                y(speci)=y(speci)+(0.7*y(mco2list(i)))
-                y(mco2list(i))=0.3*y(mco2list(i))
+                abund(speci,dstep)=abund(speci,dstep)+(0.7*abund(mco2list(i),dstep))
+                abund(mco2list(i),dstep)=0.3*abund(mco2list(i),dstep)
                 co2bindener(i)=1d50
             END IF 
         END DO
@@ -452,14 +450,14 @@ CONTAINS
         DO i=lbound(intlist,1),ubound(intlist,1)
             speci=intlist(i)
             en=intbindener(i)*kbolt
-            expdust=intbindener(i)/temp
+            expdust=intbindener(i)/temp(dstep)
             newm = mass(speci)*1.66053e-27
             freq = dsqrt((2*(surden)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)
             IF (kevap .ge. 0.99) THEN
                 write(*,*)i
-                y(speci)=y(speci)+(0.1*y(mintlist(i)))
-                y(mintlist(i))=0.9*y(mintlist(i))
+                abund(speci,dstep)=abund(speci,dstep)+(0.1*abund(mintlist(i),dstep))
+                abund(mintlist(i),dstep)=0.9*abund(mintlist(i),dstep)
                 intbindener(i)=1d50
             END IF 
         END DO
@@ -473,7 +471,7 @@ CONTAINS
     SUBROUTINE debugout
         write(*,*) "Integrator failed, printing relevant debugging information"
         write(*,*) "dens",dens
-        write(*,*) "y(nspec+1)",y(nspec+1)
+        write(*,*) "density in integration array",abund(nspec+1,dstep)
         write(*,*) "Av", av(dstep)
         write(*,*) "Mantle", mantle
         DO i=1,nreac
@@ -487,7 +485,7 @@ CONTAINS
         integer :: id,ip,rmult,lossindx(nreacs),prodindx(nreacs),m,lmax
         ! start the analysis for specific species (i)
         !loop over species that are important (outindx list) 
-        DO l=lbound(outindx,1),ubound(outindx,1)
+        DO l=1,nout
             !species index stored in i
             i=outindx(l)
             !total destruction and production

@@ -2,7 +2,7 @@ SUBROUTINE reacrates
 !most rate calculations only need to happen once or if temp changes
 !I need to check with Serena what these all are
     IF ((tstep .eq. 1 .and. dstep .eq. 1)&
-        &.or. (temp .ne. oldtemp) &
+        &.or. phase .eq. 2 &
         &.or.  (desorb .eq. 1)) THEN
         DO j=1,nreac
             !This case structure looks at the reaction type. species-species happens in default.
@@ -21,7 +21,7 @@ SUBROUTINE reacrates
                 ENDIF
             !cosmic ray photon??
             CASE ('CRPHOT')
-                rate(j)=alpha(j)*gama(j)*1.0/(1.0-omega)*zeta*(temp/300)**beta(j)
+                rate(j)=alpha(j)*gama(j)*1.0/(1.0-omega)*zeta*(temp(dstep)/300)**beta(j)
             !freeze out only happens if fr>0 and depending on evap choice 
             CASE ('FREEZE')             
                 IF (evap .ne. 0 .or. fr .eq. 0.0) then
@@ -30,10 +30,10 @@ SUBROUTINE reacrates
                     DO i=1,nspec-1
                         IF (specname(i).eq.re1(j)) THEN
                             IF (beta(j).eq.0.0 ) THEN
-                                rate(j)=alpha(j)*dsqrt(temp/mass(i))*grain*fr
+                                rate(j)=alpha(j)*dsqrt(temp(dstep)/mass(i))*grain*fr
                             ELSE
-                                cion=1.0+16.71d-4/(radg*temp)
-                                rate(j)=alpha(j)*dsqrt(temp/mass(i))*grain*fr*cion
+                                cion=1.0+16.71d-4/(radg*temp(dstep))
+                                rate(j)=alpha(j)*dsqrt(temp(dstep)/mass(i))*grain*fr*cion
                             ENDIF
                         ENDIF
                     END DO
@@ -41,41 +41,41 @@ SUBROUTINE reacrates
             CASE ('DESOH2')
                 IF (desorb .eq. 1 .and. h2desorb .eq. 1&
                 & .and. tstep .ge. 2 .and. gama(j) .le. ebmaxh2 .and.&
-                &  mantle .ge. 1.0d-30) THEN
-                    rate(j) = epsilon*h2form*y(nh)*1.0/mantle
+                &  mantle(dstep) .ge. 1.0d-30) THEN
+                    rate(j) = epsilon*h2form*abund(nh,dstep)*1.0/mantle(dstep)
                 ELSE
                     rate(j) = 1.0d-30
                 ENDIF
             CASE ('DESCR1')
                 IF (desorb .eq. 1 .and. crdesorb .eq. 1&
-                & .and. mantle .ge. 1d-30 .and. gama(j) .le. ebmaxcrf) THEN
-                  !mantle .ge. 1d-30 used to be tstep .ge. 1 (same for descr2)
-                  rate(j) = alpha(j)*(1.0/mantle)*2.2d-22*70.0*&
+                & .and. mantle(dstep) .ge. 1d-30 .and. gama(j) .le. ebmaxcrf) THEN
+                  !mantle(dstep) .ge. 1d-30 used to be tstep .ge. 1 (same for descr2)
+                  rate(j) = alpha(j)*(1.0/mantle(dstep))*2.2d-22*70.0*&
                             &dexp(-(gama(j)-960.0)/70.0)
                 ELSE
                     rate(j) = 1.0d-30
                 ENDIF
             CASE ('DESCR2')
                 IF (desorb .eq. 1 .and. crdesorb2 .eq. 1&
-                &.and.mantle.ge. 1d-30&
+                &.and.mantle(dstep).ge. 1d-30&
                 &.and. gama(j) .le. ebmaxcr) THEN
                     rate(j) = 4*3.1416*zeta*1.64d-4*(grain/4.57d4)*&
-                          &(1.0/mantle)*phi
+                          &(1.0/mantle(dstep))*phi
                 ELSE
                     rate(j) = 1.0d-30
                 ENDIF
             CASE ('DEUVCR')
                 IF (desorb .eq. 1 .and. uvcr .eq. 1 .and. tstep .ge. 2&
-                 &.and. gama(j) .le. ebmaxuvcr .and. mantle .ge. 1.0d-15) THEN
+                 &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-15) THEN
                     !was 4.875d3 not 1.0d5
-                    rate(j) = (grain/4.57d4)*uvy*1.0d5*zeta*(1.0/mantle)
+                    rate(j) = (grain/4.57d4)*uvy*1.0d5*zeta*(1.0/mantle(dstep))
                     rate(j) = rate(j) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
                 ELSE
                     rate(j) = 1.0d-30
                 ENDIF
             !used to be earg() not exp()
             CASE DEFAULT
-                rate(j) = alpha(j)*((temp/300.)**beta(j))*dexp(-gama(j)/temp)
+                rate(j) = alpha(j)*((temp(dstep)/300.)**beta(j))*dexp(-gama(j)/temp(dstep))
                 !IF (re1(j)(:1) .eq. '#' .and. re2(j)(:1) .eq. '#') THEN
                 !        rate(j)=1d-9
                 !ENDIF
@@ -114,7 +114,6 @@ double precision FUNCTION h2d()
 
     !c Here, the constant 5.1e-11 is by assuming rad is in Habing [double check]
     h2d = 5.1d-11 * radfield * scat(xl) * fgk(taud)
-
 END FUNCTION h2d 
 
 double precision FUNCTION knrco()

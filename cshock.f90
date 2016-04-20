@@ -12,9 +12,10 @@ MODULE physics
     integer :: evap,ion,solidflag,monoflag,volcflag,coflag
 
     !variables either controlled by physics or that user may wish to change    
-    double precision :: initdens,dens,temp,tage,tout,t0,t0old,dfin,tfin
-    double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,tstart,maxtemp
-    double precision, allocatable :: av(:),coldens(:)
+    double precision :: initdens,dens,tage,tout,t0,t0old,dfin,tfin
+    double precision :: size,rout,rin,avic,bc,tstart,maxtemp
+    double precision :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
+    double precision, allocatable :: av(:),coldens(:),temp(:)
 
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
@@ -37,7 +38,7 @@ CONTAINS
 
     !Set up, calculate size, give dens a kickstart if collapsing 
     SUBROUTINE phys_initialise
-        allocate(av(points),coldens(points))
+        allocate(av(points),coldens(points),temp(points))
         size=(rout-rin)*pc
         if (collapse .eq. 1) THEN
             if (phase .eq. 2) THEN
@@ -54,17 +55,18 @@ CONTAINS
 
         IF (phase .eq. 2) THEN
             allocate(tn(points),ti(points),tgc(points),tgr(points),tg(points))
-            inittemp=temp
             mun=2*mh
             radg5=radg/4.e-5
             dens6=dens/1.e6
         END IF
+        temp=inittemp
     END SUBROUTINE
 
 
 !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrater. DLSODE sorts that out based on chosen error
 !tolerances (RTOL/ATOL) and is simply called repeatedly until it outputs a time >= tout. tout in seconds for DLSODE, tage in
 !years for output.
+
     SUBROUTINE timestep
         IF (phase .eq. 1) THEN
             IF (tstep .gt. 2000) THEN
@@ -77,13 +79,25 @@ CONTAINS
                 tout=3.16d7*10.0**(tstep+2)
             ENDIF
         ELSE
-            tout=(tage+10000.0)/year
+            IF (tstep .gt. 160) THEN
+                tout=(tage+500)/3.16d-08
+            ELSE IF (tstep .gt. 120) THEN
+                tout=(tage+100.)/3.16d-08
+            ELSE IF (tstep .gt. 80) THEN
+                tout=(tage+50.)/3.16d-08
+            ELSE IF (tstep .gt. 40) THEN
+                tout=(tage+10.)/3.16d-08
+            ELSE IF  (tstep.gt.1) THEN
+                tout=(tage+1.)/3.16d-08
+            ELSE
+                tout=3.16d5*10.**(tstep+1)
+            ENDIF
         END IF
-        !This is to match Serena's timesteps for testing code.
     END SUBROUTINE timestep
 
 !This is called by main so it should either do any physics the user wants or call the subroutines that do.
 !The exception is densdot() as density is integrated with chemistry ODEs.    
+
     SUBROUTINE phys_update
         !calculate column density. Remember dstep counts from edge of core in to centre
         coldens(dstep)= size*((real(dstep))/real(points))*dens
@@ -121,19 +135,22 @@ CONTAINS
 
             write(91,*) av(dstep),vn,tn(dstep),tg(dstep)
 
+
             !We introduce the variation of the density (nn) as the C-shock evolves
             IF (tstep .gt. 1) THEN
                 dens=initdens*vs/(vs-vn)
                 !dens = 1.d5/((1+5.0d-6*tage)**2)
                 !write(6,*)dens
             END IF
-            IF (evap.eq.0.and.tstep.gt.1.) THEN
+            IF (tstep.gt.1.) THEN
                 tn(dstep)=inittemp+((at*zn)**np)/(dexp(zn/z3)-1)
                 temp=tn(dstep)
                 ti(dstep)=tn(dstep)+(mun*(dv*km)**2/(3*kb2))
                 tempi=ti(dstep)
 
-                write(93,*) tage,zn/pc,dens,temp,tempi
+                write(93,1234) zn,vn,vi,(vn-vi),tage
+                write(92,1234) zn/pc,tn(dstep),ti(dstep),dens,tage
+                1234 format(5(1x,ES12.4e2))
             ENDIF
 
             !At tsat, all mantle species evaporated. These flags make chem module aware of it.
@@ -195,7 +212,7 @@ CONTAINS
         a1=6.0
         at=(1/zmax)*((maxtemp-inittemp)*(dexp(a1)-1.))**(1./6.)
 
-        write(92,*) 'L=',dlength,'; zn=',z2,'; zi=',z1,'; zT=',z3,'; at=',at
+        !write(92,*) 'L=',dlength,'; zn=',z2,'; zi=',z1,'; zT=',z3,'; at=',at
 
         !Second, we calculate v0 that depends on the alfven and the shock velocities
         !Magnetic field in microGauss. We assume strong magnetic field, i.e., bm0=1.microgauss.
@@ -218,14 +235,12 @@ CONTAINS
 
             v0=sqrt(g1/g2)
         END DO
-
-        !write(92,*) 'v0=',v0
+        write(*,*) "."
         !We calculate the physical structure of the shock
         !set vn1 arbitrarily high to ensure while loop is done at least once
-        vn=vn0
         vn1=1d30
         DO WHILE (abs(vn-vn1).ge.1.e-14)
-            vn1=vn
+            vn1=vn0
             f1=vs-vn1
             f0=vs-vn0
             zn=zn0+(tout-tout0)*km*(f1+f0)/2

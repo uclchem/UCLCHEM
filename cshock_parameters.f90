@@ -1,14 +1,14 @@
 !Initial physics variables
-temp=10.0;initdens=1.00d2;dfin=1.00d5;t0=0.0;tfin=5.00d6
-fr=1.0;radfield=1.0;zeta=1.00;avic=2.0
-rout=0.05;rin=0;oldtemp=temp;bc=1.0
+inittemp=10.0;initdens=1.00d5;dfin=1.00d6;t0=0.0;tfin=2.00d5
+fr=0.0;radfield=1.0;zeta=1.0;avic=1.5
+rout=0.05;rin=0;bc=1.0
 tempa=0.1927;tempb=0.5339;points=1
 
 !Behavioural switches
 !switch (0/1) -> (tfin/dfin)
 !evap (0/1/2) -> (none/temp dependent/ instantaneous)
 !other switches are on/off (1/0)
-switch=0;collapse=1;first=1;desorb=1;startr=.true.
+switch=0;collapse=0;first=0;desorb=1;startr=.true.
 h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=0;ion=2
 phase=2
 
@@ -21,10 +21,10 @@ fh=0.0;fhe = 0.085;fc  = 2.692d-04;fo  = 4.898d-04;fn  = 6.761d-05
 fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07
 
 !output species
-outindx=(/35,34,22,148,5,6/);writestep=10
+outindx=(/39,34,140,197/);writestep=1
 
 !open files for reading=writing
-open(1,file='output',status='unknown')
+open(1,file='shockoutput',status='unknown')
 open(2,file='reactions.csv',status='old')
 open(3,file='species.csv',status='old')
 open(4,file='outcolumn',status='unknown')
@@ -44,11 +44,10 @@ ebmaxcr=1.21d3;phi=1.0d5;ebmaxuvcr=1.0d4; uvy=0.1
 omega=0.5;grain=1.1d-17;radg=1.d-5
 dopw=3.0e10;radw=8.0e07;xl=1000.0;fosc  = 1.0d-2
 
+!DVODE SETTINGS        
+ISTATE=1;MF=22;ITOL=1;ITASK=1;IOPT=1;MESFLG=1
+abstol=1e-25;reltol=1e-7;MXSTEP=10000
 
-!DLSODE SETTINGS        
-RWORK=0.0;IWORK=0.0
-ITOL=1;ITASK=1;ISTATE=1;IOPT=1;MESFLG=1
-LUNIT=6;LRW=100000;LIW=500;MXSTEP=10000
 
 !CO self-shielding
 corates =reshape((/0.000d+00, -1.408d-02, -1.099d-01, -4.400d-01,&
@@ -68,6 +67,15 @@ ncogr =(/12.0d+00, 13.0d+00, 14.0d+00, 15.0d+00,&
       &16.0d+00, 17.0d+00, 18.0d+00 /)
 nh2gr=(/18.0d+00, 19.0d+00, 20.0d+00, 21.0d+00,&
        &22.0d+00, 23.0d+00 /)
+
+!Arrays for phase 2 temp profiles. Parameters for equation chosen by index
+!arrays go [5 Msun, 10, 15, 25,60]
+tempa=(/4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
+tempb=(/0.6255,0.8395,1.085,1.289,1.98/)
+solidtemp=(/19.6,19.45,19.3,19.5,20.35/)
+volctemp=(/86.3,88.2,89.5,90.4,92.2/)
+codestemp=(/97.5,99.4,100.8,101.6,103.4/)
+
 dimco=7; dimh2=6
 startr=.true.
          

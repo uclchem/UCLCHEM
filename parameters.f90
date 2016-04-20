@@ -1,16 +1,18 @@
 !Initial physics variables
 inittemp=10.0;initdens=1.00d2;dfin=1.00d6;t0=0.0;tfin=1.00d7
 fr=1.0;radfield=1.0;zeta=1.00;avic=2.0
-rout=0.05;rin=0;oldtemp=temp;bc=1.0;maxtemp=300
-tempa=0.1927;tempb=0.5339;points=1
+rout=0.05;rin=0;bc=1.0;maxtemp=300
+points=1
 
 !Behavioural switches
 !switch (0/1) -> (tfin/dfin)
 !evap (0/1/2) -> (none/temp dependent/ instantaneous)
+!In phase 2, temp profile depends on mass of star
+!Tempindx selects mass: 1=5Msol,2=10M,3=15M,4=25M,5=60M
 !other switches are on/off (1/0)
 switch=0;collapse=1;first=1;desorb=1;startr=.true.
 h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=0;ion=2
-phase=1
+phase=1;tempindx=1
 
 !initial fractional abundances (from Asplund et al. 2009 ARAA table 1 -SOLAR)
 fh=0.0;fhe = 0.085;fc  = 2.692d-04;fo  = 4.898d-04;fn  = 6.761d-05
@@ -61,6 +63,15 @@ ncogr =(/12.0d+00, 13.0d+00, 14.0d+00, 15.0d+00,&
       &16.0d+00, 17.0d+00, 18.0d+00 /)
 nh2gr=(/18.0d+00, 19.0d+00, 20.0d+00, 21.0d+00,&
        &22.0d+00, 23.0d+00 /)
+
+!Arrays for phase 2 temp profiles. Parameters for equation chosen by index
+!arrays go [5 Msun, 10, 15, 25,60]
+tempa=(/4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
+tempb=(/0.6255,0.8395,1.085,1.289,1.98/)
+solidtemp=(/19.6,19.45,19.3,19.5,20.35/)
+volctemp=(/86.3,88.2,89.5,90.4,92.2/)
+codestemp=(/97.5,99.4,100.8,101.6,103.4/)
+
 dimco=7; dimh2=6
 startr=.true.
          
