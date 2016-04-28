@@ -64,7 +64,7 @@ CONTAINS
   
     SUBROUTINE phys_update
         !calculate column density. Remember dstep counts from core to edge
-        coldens(dstep)= size*(1.0-((real(dstep))/real(points)))*dens
+        coldens(dstep)= size*((real(dstep))/real(points))*dens
         !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
         av(dstep)= avic +coldens(dstep)/1.6d21
 
