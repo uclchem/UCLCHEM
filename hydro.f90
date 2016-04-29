@@ -11,19 +11,22 @@ MODULE physics
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see chem_initialise)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
-    integer :: evap,ion,solidflag,volcflag,coflag
+    integer :: evap,ion,solidflag,volcflag,coflag,tempindx
    
     !variables either controlled by physics or that user may wish to change    
-    double precision :: d0,dens,temp,tage,tout,t0,t0old,dfin,tfin,junkdist,junkvel,tinc,tincmax
-    double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens,maxt
-    double precision, allocatable :: av(:),coldens(:)
-
+    double precision :: initdens,dens,tage,tout,t0,t0old,dfin,tfin,radg,inittemp
+    double precision :: size,rout,rin,oldtemp,avic,bc,olddens,maxtemp
+    double precision :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
+    double precision, allocatable :: av(:),coldens(:),temp(:)
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
     double precision, parameter :: year=3.16455d-08,pc=3.086d18
 
+    !Hydro specific stuff
+    double precision :: tinc,tincmax,junkdist,junkvel
     !Interpolation variables
     double precision :: temp2(17784),dens2(17784),density(17784),time(17784),temps(17784)
+
 
 CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN. YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
@@ -32,28 +35,33 @@ CONTAINS
     SUBROUTINE phys_initialise
     !Any initialisation logic steps go here
     !size is important as is allocating space for depth arrays
-        allocate(av(points),coldens(points))
+        allocate(av(points),coldens(points),temp(points))
         size=(rout-rin)*pc
 
         if (collapse .eq. 1) THEN
-            dens=1.001*d0
+            dens=1.001*initdens
         ELSE
-            dens=d0
+            dens=initdens
         ENDIF 
 
         NF=0
-        open(21,file='fp_traj.000225',status='old')
+        open(21,file='fp_traj.000263',status='old')
         DO ifile=1,17784
             read(21,*)junkdist,junkdist,junkdist,density(ifile),temps(ifile),junkdist,junkvel,junkvel,junkvel,time(ifile)
             NF=NF+1
             time(ifile)=time(ifile)/year
-            density(ifile) = 1.1*0.7057*6.02e23 * density(ifile)
+!            temps(ifile) = temps(ifile)
         END  DO
+
+        !convert density from gcm^-3 to H nuclei cm^-3
+        density = 1.1*0.7057*6.02e23 * density
+
+!	write(*,*) time(1), density(1), temps(1)
         t0=time(1)
         tfin=time(NF)*year
-        CALL splinehydro(time, density,NF, 1d30,1d30,dens2)
-        CALL splinehydro(time, temps,NF, 1d30, 1d30, temp2)
-        tinc=0.0001
+        CALL splinehydro(time, density, NF, 1d30, 1d30, dens2)
+        CALL splinehydro(time, temps, NF, 1d30, 1d30, temp2)
+        tinc=0.1
         tincmax=(0.1/year)/tinc
         write(*,*) tincmax*year
     END SUBROUTINE
@@ -61,14 +69,12 @@ CONTAINS
     SUBROUTINE timestep
     !At each timestep, the time at the end of the step is calculated by calling this function
     !You need to set tout in seconds, its initial value will be the time at start of current step
-    write(79,*) tstep
-    write(79,*) t0,tout
     IF (tout .lt. tincmax) THEN
-        tout=(1.0+tinc)*t0
+       !tout=(1.0+tinc)*t0
+       tout=t0+(tincmax*tinc)*10
     ELSE
-        tout=t0+(tincmax*tinc)
+        tout=t0+(tincmax*tinc)*10
     END IF
-    write(79,*) t0,tout
     !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrator.
     ! DLSODE sorts that out based on chosen error tolerances (RTOL/ATOL) and is simply called repeatedly
     !until it outputs a time >= tout.
@@ -76,9 +82,11 @@ CONTAINS
 
     SUBROUTINE phys_update
         !splint gives temp/dens at time t0 given outputs from spline
-        CALL splinthydro(time,temps,temp2,nf,t0,temp)
+        CALL splinthydro(time,temps,temp2,nf,t0,temp(dstep))
         CALL splinthydro(time,density,dens2,nf,t0,dens)
-        write(*,*) dens
+
+!	write(*,*) 'A', t0, temp, dens
+        
         !calculate column density by dens x depth of point 
         coldens(dstep)= size*((real(dstep))/real(points))*dens
         !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
@@ -92,12 +100,14 @@ CONTAINS
         double precision :: densdot
         !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
         IF (dens .lt. dfin) THEN
-             densdot=bc*(dens**4./d0)**0.33*&
-             &(8.4d-30*d0*((dens/d0)**0.33-1.))**0.5
+             densdot=bc*(dens**4./initdens)**0.33*&
+             &(8.4d-30*initdens*((dens/initdens)**0.33-1.))**0.5
         ELSE
-            densdot=1.0d-30
-        ENDIF    
+            densdot=1.0d-30       
+        ENDIF       
     END FUNCTION densdot
+
+!REQUIRED PHYSICS ENDS HERE, ANY ADDITIONAL PHYSICS CAN BE ADDED BELOW.
 
    SUBROUTINE splinehydro(x, y, n, yp1, ypn, y2)
 !   use nrtype
@@ -194,4 +204,3 @@ CONTAINS
 
 END MODULE physics
 
-!REQUIRED PHYSICS ENDS HERE, ANY ADDITIONAL PHYSICS CAN BE ADDED BELOW.
