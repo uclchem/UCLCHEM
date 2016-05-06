@@ -8,7 +8,7 @@ EXTERNAL dvode
     integer,parameter :: nout=4
 
     !These integers store the array index of important species and reactions, x is for ions    
-    integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nh2o,nsi,nsix,ncl,nclx,nch3oh
+    integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nh2o,nsi,nsix,ncl,nclx,nch3oh,np
     integer ::nrco,outindx(nout),nspec,nreac,njunk,evapevents
     
     !loop counters    
@@ -27,7 +27,7 @@ EXTERNAL dvode
     double precision, allocatable :: RWORK(:)
 
     !initial fractional elemental abudances and arrays to store abundances
-    double precision :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,h2col,cocol,junk1,junk2
+    double precision :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,h2col,cocol,junk1,junk2
     double precision,allocatable :: abund(:,:),mantle(:)
     
     !Variables controlling chemistry
@@ -39,7 +39,7 @@ EXTERNAL dvode
     !See viti 2004 for more information.
     integer, allocatable :: colist(:),mcolist(:),intlist(:),mintlist(:),grainlist(:),mgrainlist(:)
     integer, allocatable :: co2list(:),mco2list(:),int2list(:),mint2list(:)
-    double precision, allocatable :: cobindener(:),co2bindener(:),intbindener(:)
+    double precision, allocatable :: bindener(:),vdiff(:)
 
     !Variables for selfshielding rates for CO and H2
     logical :: startr
@@ -66,6 +66,7 @@ CONTAINS
             abund(nmg,:) = fmg
             abund(nsix,:) = fsi                
             abund(nclx,:) = fcl 
+            abund(np,:) = fp
             abund(nspec+1,:)=dens      
             !abund(nfe,:) = ffe
             !abund(nna,:) = fna
@@ -104,8 +105,8 @@ CONTAINS
 
         !read species file and allocate sufficient space to relevant arrays
         read(3,*)nspec
-        allocate(abund(nspec+1,points),specname(nspec),mass(nspec))
-        read(3,*)(specname(j),mass(j),j=1,nspec-1)
+        allocate(abund(nspec+1,points),specname(nspec),mass(nspec),bindener(nspec),vdiff(nspec))
+        read(3,*)(specname(j),mass(j),bindener(j),j=1,nspec-1)
         !assign array indices for important species to the integers used to store them.
         specname(nspec)='electr'
         DO i=1,nspec-1
@@ -124,7 +125,14 @@ CONTAINS
             IF (specname(i).eq.'SI+') nsix= i
             IF (specname(i).eq.'CL')  ncl = i
             IF (specname(i).eq.'CL+') nclx= i
-            IF (specname(i).eq.'CH3OH') nch3oh= i           
+            IF (specname(i).eq.'CH3OH') nch3oh= i   
+            IF (specname(i).eq. 'P') np=i
+
+            IF (specname(i)(:1) .eq. '#') THEN
+                vdiff(i)=2.5e14*bindener(i)/mass(i)
+                vdiff(i)=dsqrt(vdiff(i))
+            END IF
+
         END DO
 
         !read reac file, assign array space
@@ -141,20 +149,17 @@ CONTAINS
         !what we do is read in length of each list, then the numbers in the list
         !these are used for evaporation sums.
         read(8,*) l
-        allocate(colist(l),mcolist(l), cobindener(l))
+        allocate(colist(l),mcolist(l))
         read(8,*)colist
         read(8,*)mcolist
-        read(8,*)cobindener
         read(8,*) l
-        allocate(co2list(l),mco2list(l), co2bindener(l))
+        allocate(co2list(l),mco2list(l))
         read(8,*)co2list
         read(8,*)mco2list
-        read(8,*)co2bindener
         read(8,*) l
-        allocate(intlist(l),mintlist(l),intbindener(l))
+        allocate(intlist(l),mintlist(l))
         read(8,*) intlist
         read(8,*) mintlist
-        read(8,*) intbindener
         read(8,*) l
         allocate(int2list(l),mint2list(l))
         read(8,*) int2list
@@ -169,13 +174,13 @@ CONTAINS
         IF (first .eq. 0) THEN
             DO l=1,points
                 read(7,*)
-                read(7,7000) dens,temp(dstep),av(l)
-                write(*,*)dens,temp(dstep),av(l)
+                read(7,7000) dens,temp(l),av(l)
+                write(*,*)dens,temp(l),av(l)
                 read(7,*)
                 read(7,7010) h2form,fc,fo,&
                             &fmg,fhe,dstep
                 read(7,*)
-                write(*,*) dstep
+                write(*,*) dstep,l
                 read(7,7030) (specname(i),abund(i,l),i=1,nspec)
             END DO
             7000 format(&
@@ -416,8 +421,8 @@ CONTAINS
         !co monoevap
         DO i=lbound(colist,1),ubound(colist,1)
             speci=colist(i)
-            en=cobindener(i)*kbolt
-            expdust=cobindener(i)/temp(dstep)
+            en=bindener(speci)*kbolt
+            expdust=bindener(speci)/temp(dstep)
             newm = mass(speci)*1.66053e-27
             freq = dsqrt((2*(surden)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)
@@ -426,15 +431,15 @@ CONTAINS
                 abund(speci,dstep)=abund(speci,dstep)+(0.7*abund(mcolist(i),dstep))
                 abund(mcolist(i),dstep)=0.3*abund(mcolist(i),dstep)
                 !set to 1d50 so it can't happen again
-                cobindener(i)=1d50
+                bindener(speci)=1d50
             END IF 
         END DO
 
         !co2 monoevap
         DO i=lbound(co2list,1),ubound(co2list,1)
             speci=co2list(i)
-            en=co2bindener(i)*kbolt
-            expdust=co2bindener(i)/temp(dstep)
+            en=bindener(speci)*kbolt
+            expdust=bindener(speci)/temp(dstep)
             newm = mass(speci)*1.66053e-27
             freq = dsqrt((2*(surden)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)
@@ -442,15 +447,15 @@ CONTAINS
                 write(*,*)i
                 abund(speci,dstep)=abund(speci,dstep)+(0.7*abund(mco2list(i),dstep))
                 abund(mco2list(i),dstep)=0.3*abund(mco2list(i),dstep)
-                co2bindener(i)=1d50
+                bindener(speci)=1d50
             END IF 
         END DO
 
         !int mono evap
         DO i=lbound(intlist,1),ubound(intlist,1)
             speci=intlist(i)
-            en=intbindener(i)*kbolt
-            expdust=intbindener(i)/temp(dstep)
+            en=bindener(speci)*kbolt
+            expdust=bindener(speci)/temp(dstep)
             newm = mass(speci)*1.66053e-27
             freq = dsqrt((2*(surden)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)
@@ -458,7 +463,7 @@ CONTAINS
                 write(*,*)i
                 abund(speci,dstep)=abund(speci,dstep)+(0.1*abund(mintlist(i),dstep))
                 abund(mintlist(i),dstep)=0.9*abund(mintlist(i),dstep)
-                intbindener(i)=1d50
+                bindener(speci)=1d50
             END IF 
         END DO
     END SUBROUTINE temper

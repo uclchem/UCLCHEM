@@ -1,4 +1,8 @@
-!Izaskun Cshock in progress
+!Izaskun Cshock
+!Requires slightly different parameters to regular models so include cshock_parameters.f90 instead of parameters.f90 in  main.f90
+
+!Is the same as cloud.f90 if you set phase=1, use this to produce self-consistent starting grain abundances for the cshock
+!Set phase=2 to run c-shock
 MODULE physics
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
@@ -58,6 +62,7 @@ CONTAINS
             mun=2*mh
             radg5=radg/4.e-5
             dens6=dens/1.e6
+            tout0=0
         END IF
         temp=inittemp
     END SUBROUTINE
@@ -195,7 +200,6 @@ CONTAINS
         ! Jimenez-Serra et al. (2008).
         coshinv1=log((1/0.01)+sqrt((1/0.01)**2-1))
         z2=dlength/coshinv1
-
         !We assume that z2/z1=4.5 (Jimenez-Serra et al. 2008).
         z1=z2/4.5
 
@@ -235,12 +239,12 @@ CONTAINS
 
             v0=sqrt(g1/g2)
         END DO
-        write(*,*) "."
         !We calculate the physical structure of the shock
         !set vn1 arbitrarily high to ensure while loop is done at least once
         vn1=1d30
+        vn=vn0
         DO WHILE (abs(vn-vn1).ge.1.e-14)
-            vn1=vn0
+            vn1=vn
             f1=vs-vn1
             f0=vs-vn0
             zn=zn0+(tout-tout0)*km*(f1+f0)/2
