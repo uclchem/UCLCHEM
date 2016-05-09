@@ -11,9 +11,9 @@ import csv
 import numpy
 
 #create a file containing length of each list of moleculetypes and then the two lists (gas and grain) of species in each type
-def evap_lists(filename,species,evaptype,bindener):
+def evap_lists(filename,species,evaptype):
 	colist=[];mcolist=[];intlist=[];mintlist=[];grainlist=[];mgrainlist=[]
-	co2list=[];mco2list=[];int2list=[];mint2list=[];coener=[];co2ener=[];intener=[]
+	co2list=[];mco2list=[];int2list=[];mint2list=[]
 	for i in range(len(species)):
 		if species[i][0]=='#':
 			j=species.index(species[i][1:])
@@ -25,15 +25,12 @@ def evap_lists(filename,species,evaptype,bindener):
 			if (evaptype[i] == 'CO1'):
 				colist.append(j+1)
 				mcolist.append(i+1)
-				coener.append(bindener[i])
 			if (evaptype[i] == 'INT1'):
 				intlist.append(j+1)
 				mintlist.append(i+1)
-				intener.append(bindener[i])
 			if (evaptype[i] == 'CO2'):
 				co2list.append(j+1)
 				mco2list.append(i+1)
-				co2ener.append(bindener[i])
 			if (evaptype[i] == 'INT2'):
 				int2list.append(j+1)
 				mint2list.append(i+1)
@@ -42,15 +39,12 @@ def evap_lists(filename,species,evaptype,bindener):
 	f.write(str(len(colist))+'\n')
 	writer.writerow(colist)
 	writer.writerow(mcolist)
-	writer.writerow(coener)
 	f.write(str(len(co2list))+'\n')
 	writer.writerow(co2list)
 	writer.writerow(mco2list)
-	writer.writerow(co2ener)
 	f.write(str(len(intlist))+'\n')
 	writer.writerow(intlist)
 	writer.writerow(mintlist)
-	writer.writerow(intener)
 	f.write(str(len(int2list))+'\n')
 	writer.writerow(int2list)
 	writer.writerow(mint2list)
@@ -225,13 +219,13 @@ def write_reactions(fileName, reactants, products, alpha, beta, gamma, templow, 
 
     
 # Write the species file in the desired format
-def write_species(fileName, speciesList, massList):
+def write_species(fileName, speciesList, massList,bindener):
 	f= open(fileName,'wb')
 	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')		
 	nSpecies = len(speciesList)
 	f.write(str(nSpecies+1)+'\n')
 	for n in range(nSpecies):
-		writer.writerow([speciesList[n],massList[n]])
+		writer.writerow([speciesList[n],massList[n],bindener[n]])
 
 ##############################################################################################################################
 ##############################################################################################################################################################

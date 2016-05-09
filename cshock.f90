@@ -1,4 +1,8 @@
-!Izaskun Cshock in progress
+!Izaskun Cshock
+!Requires slightly different parameters to regular models so include cshock_parameters.f90 instead of parameters.f90 in  main.f90
+
+!Is the same as cloud.f90 if you set phase=1, use this to produce self-consistent starting grain abundances for the cshock
+!Set phase=2 to run c-shock
 MODULE physics
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
@@ -21,14 +25,18 @@ MODULE physics
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
     double precision, parameter :: year=3.16455d-08,pc=3.086d18,km=1.d5
 
+    character(11) ::filename
+
     !Cshock specific parameters
     !*******************************************************************
-    double precision :: inittemp, z2,vs,v0,zn,vn,at,np,z3,tout0,tsat
+    double precision :: inittemp, z2,vs,v0,zn,vn,at,bt,z3,tout0,tsat
     double precision :: ucm,z1,dv,vi,tempi,vn0,zn0,vA,B0,dlength
     double precision :: radg5,radg,dens6
     double precision, allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
     !variables for the collisional and radiative heating of grains
     double precision :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
+    double precision :: coshinv1,coshinv2,zmax,a1,bm0
+
     integer :: inrad
     double precision, parameter::nu0=3.0d15,kb2=1.38d-16
     !*******************************************************************
@@ -38,7 +46,13 @@ CONTAINS
 
     !Set up, calculate size, give dens a kickstart if collapsing 
     SUBROUTINE phys_initialise
-        allocate(av(points),coldens(points),temp(points))
+        allocate(av(points),coldens(points),temp(points))   
+
+        !put in to do grids
+        !read(*,*) initdens,vs,tsat,maxtemp,filename
+        !close(1)
+        !open(1,file="results/"//filename,status='unknown')
+
         size=(rout-rin)*pc
         if (collapse .eq. 1) THEN
             if (phase .eq. 2) THEN
@@ -58,9 +72,48 @@ CONTAINS
             mun=2*mh
             radg5=radg/4.e-5
             dens6=dens/1.e6
+            tout0=0
         END IF
         temp=inittemp
-    END SUBROUTINE
+
+        ! The initial parameters that define the C-shock structure
+        ! Length of the dissipation region, dlength:
+        dlength=12.0*pc*vs/initdens
+        ! Parameters that describe the decoupling between the ion and the neutral
+        ! fluids. z2 is obtained by assuming that at z=dlength, the velocity of
+        ! the neutrals is 99% (vs-v0). See v0 below and more details in
+        ! Jimenez-Serra et al. (2008).
+        coshinv1=log((1/0.01)+sqrt((1/0.01)**2-1))
+        z2=dlength/coshinv1
+        !We assume that z2/z1=4.5 (Jimenez-Serra et al. 2008).
+        z1=z2/4.5
+
+        ! zmax is the distance at which Tn reaches its maximum. This happens when
+        ! the neutral fluid reaches velocities that are almost 0.85% (vs-v0)
+        coshinv2=log((1/0.15)+sqrt((1/0.15)**2-1))
+        zmax=dlength/coshinv2
+
+        ! z3 has to be 1/6 zmax
+        z3=zmax/6
+
+        ! maxtemp is taken from Fig.9b in Draine et al. (1983) and the at constant is
+        ! derived as:
+        a1=6.0
+        at=(1/zmax)*((maxtemp-inittemp)*(dexp(a1)-1.))**(1./6.)
+
+        !write(92,*) 'L=',dlength,'; zn=',z2,'; zi=',z1,'; zT=',z3,'; at=',at
+
+        !Second, we calculate v0 that depends on the alfven and the shock velocities
+        !Magnetic field in microGauss. We assume strong magnetic field, i.e., bm0=1.microgauss.
+        !(Draine, Roberge & Dalgarno 1983).
+        bm0=1.
+        B0=bm0*sqrt(2*initdens)
+
+        !For the general case, the Alfven velocity is calculated as vA=B0/sqrt(4*pi*2*no). If we
+        !substitute the expression of B0 on this equation, we obtain that vA=bm0/sqrt(4*pi*mH).
+        vA=(bm0*1.e-6)/sqrt(4*pi*mh)
+        vA=vA/km
+    END SUBROUTINE phys_initialise
 
 
 !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrater. DLSODE sorts that out based on chosen error
@@ -75,8 +128,10 @@ CONTAINS
                 tout=(tage+10000.0)/year
             ELSE IF (tstep .gt. 1) THEN
                 tout=1.58e11*(tstep-0)
+            ELSE  IF (tstep .eq. 1) THEN  
+                tout=3.16d7*10.0**3
             ELSE
-                tout=3.16d7*10.0**(tstep+2)
+                tout=3.16d7*10.d-8
             ENDIF
         ELSE
             IF (tstep .gt. 160) THEN
@@ -113,7 +168,7 @@ CONTAINS
             !C-shock. We also take into account that the gas and dust are decoupled. We
             !use the equations for the collisional and radiative heating of grains of
             !Draine, Roberge & Dalgarno (1983) and Hollenbach, Takahashi & Tielens (1991).
-            tn(dstep)=inittemp+((at*zn)**np)/(dexp(zn/z3)-1)
+            tn(dstep)=inittemp+((at*zn)**bt)/(dexp(zn/z3)-1)
             ti(dstep)=tn(dstep)+(mun*(dv*km)**2/(3*kb2))
             write(91,*)tn(dstep), ti(dstep)
 
@@ -143,12 +198,12 @@ CONTAINS
                 !write(6,*)dens
             END IF
             IF (tstep.gt.1.) THEN
-                tn(dstep)=inittemp+((at*zn)**np)/(dexp(zn/z3)-1)
+                tn(dstep)=inittemp+((at*zn)**bt)/(dexp(zn/z3)-1)
                 temp=tn(dstep)
                 ti(dstep)=tn(dstep)+(mun*(dv*km)**2/(3*kb2))
                 tempi=ti(dstep)
 
-                write(93,1234) zn,vn,vi,(vn-vi),tage
+                write(93,1234) zn/pc,vn,vi,(vn-vi),tage
                 write(92,1234) zn/pc,tn(dstep),ti(dstep),dens,tage
                 1234 format(5(1x,ES12.4e2))
             ENDIF
@@ -180,54 +235,12 @@ CONTAINS
 ! subroutine that calculates the distance along the dissipation region
 !(zn) and the velocity of the gas as the shock evolves with time.
     SUBROUTINE shst
-        double precision :: vn1,f1,f0,xcos,acosh,bm0,v01,g1,g2
-        double precision :: coshinv1,coshinv2,zmax,a1
-        ! First, we estimate the initial parameters that define the C-shock
-        ! structure:
-
-        ! Length of the dissipation region, dlength:
-        !SV: doesn't this depend on size of clump??
-        dlength=12.0*pc*vs/initdens
-
-        ! Parameters that describe the decoupling between the ion and the neutral
-        ! fluids. z2 is obtained by assuming that at z=dlength, the velocity of
-        ! the neutrals is 99% (vs-v0). See v0 below and more details in
-        ! Jimenez-Serra et al. (2008).
-        coshinv1=log((1/0.01)+sqrt((1/0.01)**2-1))
-        z2=dlength/coshinv1
-
-        !We assume that z2/z1=4.5 (Jimenez-Serra et al. 2008).
-        z1=z2/4.5
-
-        ! zmax is the distance at which Tn reaches its maximum. This happens when
-        ! the neutral fluid reaches velocities that are almost 0.85% (vs-v0)
-        coshinv2=log((1/0.15)+sqrt((1/0.15)**2-1))
-        zmax=dlength/coshinv2
-
-        ! z3 has to be 1/6 zmax
-        z3=zmax/6
-
-        ! maxtemp is taken from Fig.9b in Draine et al. (1983) and the at constant is
-        ! derived as:
-        a1=6.0
-        at=(1/zmax)*((maxtemp-inittemp)*(dexp(a1)-1.))**(1./6.)
-
-        !write(92,*) 'L=',dlength,'; zn=',z2,'; zi=',z1,'; zT=',z3,'; at=',at
-
-        !Second, we calculate v0 that depends on the alfven and the shock velocities
-        !Magnetic field in microGauss. We assume strong magnetic field, i.e., bm0=1.microgauss.
-        !(Draine, Roberge & Dalgarno 1983).
-        bm0=1.
-        B0=bm0*sqrt(2*initdens)
-
-        !For the general case, the Alfven velocity is calculated as vA=B0/sqrt(4*pi*2*no). If we
-        !substitute the expression of B0 on this equation, we obtain that vA=bm0/sqrt(4*pi*mH).
-        vA=(bm0*1.e-6)/sqrt(4*pi*mh)
-        vA=vA/km
-
+        double precision :: vn1,f1,f0,xcos,acosh,v01,g1,g2
         !Calculation of v0. We initially assume that this velocity is of 2kms-1. v0 is
         !numerically derived as follows:
         v0=2.
+        v01=0
+
         DO WHILE (abs(v0-v01) .ge. 1e-6)
             v01=v0
             g1=-(vA**2*vs**2)/2
@@ -235,12 +248,12 @@ CONTAINS
 
             v0=sqrt(g1/g2)
         END DO
-        write(*,*) "."
         !We calculate the physical structure of the shock
         !set vn1 arbitrarily high to ensure while loop is done at least once
         vn1=1d30
+        vn=vn0
         DO WHILE (abs(vn-vn1).ge.1.e-14)
-            vn1=vn0
+            vn1=vn
             f1=vs-vn1
             f0=vs-vn0
             zn=zn0+(tout-tout0)*km*(f1+f0)/2

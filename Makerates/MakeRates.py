@@ -71,7 +71,7 @@ print '\n########################\n########################\n'
 #Create the species file
 print '\nWriting final species file '
 filename = 'outputFiles/species.csv'
-write_species(filename, speciesList, massList)
+write_species(filename, speciesList, massList,bindener)
 print 'Final Species File:',filename
 
 
@@ -89,7 +89,7 @@ write_odes_f90(filename, speciesList, constituentList, reactants, products)
 
 print 'Writing Evaporation lists...'
 filename= 'outputFiles/evaplists.csv'
-evap_lists(filename,speciesList,evaptypes,bindener)
+evap_lists(filename,speciesList,evaptypes)
 
 ngrain=0
 for spec in speciesList:

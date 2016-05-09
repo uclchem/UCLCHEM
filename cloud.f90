@@ -56,15 +56,12 @@ CONTAINS
         ELSE
             tout=(tage+10000.0)/year
         END IF
-
-        IF (tstep .eq. 0) tout=3.16d7*10.d-8
-        !This is to match Serena's timesteps for testing code.
     END SUBROUTINE timestep
 
   
     SUBROUTINE phys_update
         !calculate column density. Remember dstep counts from core to edge
-        coldens(dstep)= size*(1.0-((real(dstep))/real(points)))*dens
+        coldens(dstep)= size*((real(dstep))/real(points))*dens
         !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
         av(dstep)= avic +coldens(dstep)/1.6d21
 
@@ -88,7 +85,7 @@ CONTAINS
             !temperature increase borrowed from sv for comparison 288.000
             !will add general profile later, this works well for inittemp=10 K
             temp(dstep)=(size/rout)*(real(dstep)/real(points))
-            temp(dstep)=temp(dstep)**-0.5
+            temp(dstep)=temp(dstep)**(-0.5)
             temp(dstep)=inittemp + (tempa(tempindx)*tage**tempb(tempindx))*temp(dstep)
             if (temp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
             if (temp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
