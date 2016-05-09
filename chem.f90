@@ -86,6 +86,13 @@ CONTAINS
             abund(nspec,:)=abund(ncx,:)
 
         ENDIF
+
+        DO  i=lbound(mgrainlist,1),ubound(mgrainlist,1)
+            j=mgrainlist(i)
+            vdiff(j)=2.5e14*bindener(j)/mass(j)
+            vdiff(j)=dsqrt(vdiff(j))
+        END DO
+
         !h2 formation rate initially set
         h2form = 1.0d-17*dsqrt(temp(dstep))
         allocate(mantle(points))
@@ -127,12 +134,6 @@ CONTAINS
             IF (specname(i).eq.'CL+') nclx= i
             IF (specname(i).eq.'CH3OH') nch3oh= i   
             IF (specname(i).eq. 'P') np=i
-
-            IF (specname(i)(:1) .eq. '#') THEN
-                vdiff(i)=2.5e14*bindener(i)/mass(i)
-                vdiff(i)=dsqrt(vdiff(i))
-            END IF
-
         END DO
 
         !read reac file, assign array space
