@@ -1,5 +1,5 @@
 !Initial physics variables
-inittemp=10.0;initdens=1.00d2;dfin=1.00d6;t0=0.0;tfin=1.00d7
+inittemp=10.0;initdens=1.00d7;dfin=1.00d7;t0=0.0;tfin=1.00d6
 fr=1.0;radfield=1.0;zeta=1.00;avic=2.0
 rout=0.05;rin=0;bc=1.0;maxtemp=300
 points=1
@@ -10,7 +10,7 @@ points=1
 !In phase 2, temp profile depends on mass of star
 !Tempindx selects mass: 1=5Msol,2=10M,3=15M,4=25M,5=60M
 !other switches are on/off (1/0)
-switch=0;collapse=1;first=1;desorb=1;startr=.true.
+switch=0;collapse=0;first=1;desorb=1;startr=.true.
 h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=0;ion=2
 phase=1;tempindx=1
 
@@ -19,7 +19,7 @@ fh=0.0;fhe = 0.085;fc  = 2.692d-04;fo  = 4.898d-04;fn  = 6.761d-05
 fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07
 
 !output species
-outindx=(/66,35,61,30/);writestep=10
+outindx=(/72,131,61,30/);writestep=10
 
 !DVODE SETTINGS        
 ISTATE=1;MF=22;ITOL=1;ITASK=1;IOPT=1;MESFLG=1
