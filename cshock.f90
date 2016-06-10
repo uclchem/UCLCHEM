@@ -13,7 +13,7 @@ MODULE physics
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see chem_initialise)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
-    integer :: evap,ion,solidflag,monoflag,volcflag,coflag
+    integer :: evap,ion,solidflag,monoflag,volcflag,coflag,tempindx
 
     !variables either controlled by physics or that user may wish to change    
     double precision :: initdens,dens,tage,tout,t0,t0old,dfin,tfin
@@ -30,15 +30,15 @@ MODULE physics
     !Cshock specific parameters
     !*******************************************************************
     double precision :: inittemp, z2,vs,v0,zn,vn,at,bt,z3,tout0,tsat
-    double precision :: ucm,z1,dv,vi,tempi,vn0,zn0,vA,B0,dlength
+    double precision :: ucm,z1,dv,vi,tempi,vn0,zn0,vA,dlength
     double precision :: radg5,radg,dens6
     double precision, allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
     !variables for the collisional and radiative heating of grains
     double precision :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
-    double precision :: coshinv1,coshinv2,zmax,a1,bm0
+    double precision :: coshinv1,coshinv2,zmax,a1
 
     integer :: inrad
-    double precision, parameter::nu0=3.0d15,kb2=1.38d-16
+    double precision, parameter::nu0=3.0d15,kb2=1.38d-16,bm0=1.e-6
     !*******************************************************************
 
 CONTAINS
@@ -49,9 +49,13 @@ CONTAINS
         allocate(av(points),coldens(points),temp(points))   
 
         !put in to do grids
-        !read(*,*) initdens,vs,tsat,maxtemp,filename
-        !close(1)
-        !open(1,file="results/"//filename,status='unknown')
+        read(*,*) initdens,vs,tsat,maxtemp,filename
+        close(1)
+        open(1,file="results/output"//filename,status='unknown')
+        close(88)
+        open(88,file="results/analysis"//filename,status='unknown')
+        open(92,file="results/temp"//filename,status='unknown')
+        open(93,file="results/vel"//filename,status='unknown')
 
         size=(rout-rin)*pc
         if (collapse .eq. 1) THEN
@@ -105,13 +109,11 @@ CONTAINS
 
         !Second, we calculate v0 that depends on the alfven and the shock velocities
         !Magnetic field in microGauss. We assume strong magnetic field, i.e., bm0=1.microgauss.
-        !(Draine, Roberge & Dalgarno 1983).
-        bm0=1.
-        B0=bm0*sqrt(2*initdens)
-
-        !For the general case, the Alfven velocity is calculated as vA=B0/sqrt(4*pi*2*no). If we
+        !(Draine, Roberge & Dalgarno 1983)
+        !For the general case, the Alfven velocity is calculated as vA=B0/sqrt(4*pi*2*initdens). If we
         !substitute the expression of B0 on this equation, we obtain that vA=bm0/sqrt(4*pi*mH).
-        vA=(bm0*1.e-6)/sqrt(4*pi*mh)
+        !B0=bm0*sqrt(2*initdens)
+        vA=bm0/sqrt(4*pi*mh)
         vA=vA/km
     END SUBROUTINE phys_initialise
 

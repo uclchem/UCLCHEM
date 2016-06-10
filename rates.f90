@@ -77,7 +77,7 @@ integer :: ns,index1,index2
                 ENDIF
             CASE DEFAULT
                 !Evaluate the diffusion coefficient for the two reactants on the grain surface. Assuming Eb = 0.3 Ed. Units of s-1. By Angela Occhiogrosso.
-                IF (re1(j)(1:1) .eq.'#' .and. re2(j)(1:1) .eq. '#') THEN
+                IF (re3(j).eq.'DIFF') THEN
                     !loop through mantle species and match reactants to species
                     DO i=lbound(mgrainlist,1),ubound(mgrainlist,1)
                         IF (specname(mgrainlist(i)) .eq. re1(j)) index1 = mgrainlist(i)
@@ -85,7 +85,7 @@ integer :: ns,index1,index2
                     END DO            
                     Rdif = vdiff(index1)*dexp(-0.3*bindener(index1)/temp(dstep))
                     Rdif = Rdif+vdiff(index2)*dexp(-0.3*bindener(index2)/temp(dstep))
-                    Rdif = Rdif*10**-6.0
+                    Rdif = Rdif*10**(-6.0)
                     !Evaluate the rate coefficient for the diffusion. Units of cm-3s-1. By Angela Occhiogrosso.
                     rate(j) = alpha(j)*10d24*Rdif*dexp(-gama(j)/temp(dstep))
                     write(79,*) j,re1(j),re2(j)
@@ -94,6 +94,18 @@ integer :: ns,index1,index2
                     write(79,*) "********************************"
                 ELSE
                     rate(j) = alpha(j)*((temp(dstep)/300.)**beta(j))*dexp(-gama(j)/temp(dstep))
+
+                    !Audrey correction for co and ch3oh
+                    IF (re1(j)(:) .eq. '#CH3OH' .and. re2(j)(:) .eq. '#CO') THEN
+                        rate(j)=alpha(j)/dens/abund(ngrainco,dstep) ! *y(ngrainco)
+                        IF (rate(j) .gt. 1.0) THEN
+                            rate(j) = 1.0
+                        ENDIF
+                        IF (rate(j) .lt. 1.0d-30) THEN
+                            rate(j) = 1.0d-30
+                        ENDIF
+                        !write(6,*) rate(j)
+                    ENDIF
                 ENDIF
 
             END SELECT

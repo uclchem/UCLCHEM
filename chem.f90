@@ -5,11 +5,11 @@ USE physics
 IMPLICIT NONE
 EXTERNAL dvode
     !makerates gives these numbers, nspec includes electrons
-    integer,parameter :: nout=4
+    integer,parameter :: nout=6
 
     !These integers store the array index of important species and reactions, x is for ions    
-    integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nh2o,nsi,nsix,ncl,nclx,nch3oh,np
-    integer ::nrco,outindx(nout),nspec,nreac,njunk,evapevents
+    integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nf,nh2o,nsi,nsix,ncl,nclx,nch3oh,np
+    integer ::nrco,outindx(nout),nspec,nreac,njunk,evapevents,ngrainco
     
     !loop counters    
     integer :: i,j,l,writestep
@@ -27,7 +27,7 @@ EXTERNAL dvode
     double precision, allocatable :: RWORK(:)
 
     !initial fractional elemental abudances and arrays to store abundances
-    double precision :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,h2col,cocol,junk1,junk2
+    double precision :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,h2col,cocol,junk1,junk2
     double precision,allocatable :: abund(:,:),mantle(:)
     
     !Variables controlling chemistry
@@ -39,6 +39,8 @@ EXTERNAL dvode
     !See viti 2004 for more information.
     integer, allocatable :: colist(:),mcolist(:),intlist(:),mintlist(:),grainlist(:),mgrainlist(:)
     integer, allocatable :: co2list(:),mco2list(:),int2list(:),mint2list(:)
+    double precision, allocatable :: cobindener(:),co2bindener(:),intbindener(:)
+    double precision, allocatable :: comono(:),covolc(:),co2mono(:),co2volc(:),intmono(:),intvolc(:)
     double precision, allocatable :: bindener(:),vdiff(:)
 
     !Variables for selfshielding rates for CO and H2
@@ -67,6 +69,8 @@ CONTAINS
             abund(nsix,:) = fsi                
             abund(nclx,:) = fcl 
             abund(np,:) = fp
+            abund(nf,:) = ff
+
             abund(nspec+1,:)=dens      
             !abund(nfe,:) = ffe
             !abund(nna,:) = fna
@@ -132,8 +136,10 @@ CONTAINS
             IF (specname(i).eq.'SI+') nsix= i
             IF (specname(i).eq.'CL')  ncl = i
             IF (specname(i).eq.'CL+') nclx= i
-            IF (specname(i).eq.'CH3OH') nch3oh= i   
+            IF (specname(i).eq.'CH3OH') nch3oh= i
+            IF (specname(i).eq.'#CO') ngrainco = i
             IF (specname(i).eq. 'P') np=i
+            IF (specname(i).eq.'F') nf=i
         END DO
 
         !read reac file, assign array space
@@ -150,21 +156,23 @@ CONTAINS
         !what we do is read in length of each list, then the numbers in the list
         !these are used for evaporation sums.
         read(8,*) l
-        allocate(colist(l),mcolist(l))
+        allocate(colist(l),mcolist(l), cobindener(l),comono(l),covolc(l))
         read(8,*)colist
         read(8,*)mcolist
+        read(8,*) comono
+        read(8,*) covolc
         read(8,*) l
-        allocate(co2list(l),mco2list(l))
+        allocate(co2list(l),mco2list(l), co2bindener(l),co2mono(l),co2volc(l))
         read(8,*)co2list
         read(8,*)mco2list
+        read(8,*) co2mono
+        read(8,*) co2volc
         read(8,*) l
-        allocate(intlist(l),mintlist(l))
+        allocate(intlist(l),mintlist(l),intbindener(l),intmono(l),intvolc(l))
         read(8,*) intlist
         read(8,*) mintlist
-        read(8,*) l
-        allocate(int2list(l),mint2list(l))
-        read(8,*) int2list
-        read(8,*) mint2list
+        read(8,*) intmono
+        read(8,*) intvolc
         read(8,*)l
         allocate(grainlist(l),mgrainlist(l))
         read(8,*) grainlist
@@ -385,14 +393,20 @@ CONTAINS
 
             !Volcanic evap
             IF (volcflag .eq. 1) THEN
-                abund(colist,dstep)=abund(colist,dstep)+0.667*abund(mcolist,dstep)
-                abund(mcolist,dstep)=0.333*abund(mcolist,dstep)
-                abund(co2list,dstep)=abund(co2list,dstep)+0.667*abund(mco2list,dstep)
-                abund(mco2list,dstep)=0.333*abund(mco2list,dstep)
-                abund(intlist,dstep)=abund(intlist,dstep)+0.5*abund(mintlist,dstep)
-                abund(mintlist,dstep)=0.5*abund(mintlist,dstep)
-                abund(int2list,dstep)=abund(int2list,dstep)+0.5*abund(mint2list,dstep)
-                abund(mint2list,dstep)=0.5*abund(mint2list,dstep)
+                DO i=lbound(colist,1),ubound(colist,1)
+                    abund(colist,dstep)=abund(colist,dstep)+covolc(i)*abund(mcolist,dstep)
+                    abund(mcolist,dstep)=(1.0-covolc(i))*abund(mcolist,dstep)
+                END DO
+                DO i=lbound(co2list,1),ubound(co2list,1)
+                    abund(co2list,dstep)=abund(co2list,dstep)+co2volc(i)*abund(mco2list,dstep)
+                    abund(mco2list,dstep)=(1.0-co2volc(i))*abund(mco2list,dstep)
+                END DO
+                DO i=lbound(co2list,1),ubound(co2list,1)
+                    abund(intlist,dstep)=abund(intlist,dstep)+intvolc(i)*abund(mintlist,dstep)
+                    abund(mintlist,dstep)=(1.0-intvolc(i))*abund(mintlist,dstep)
+                END DO
+                !abund(int2list,dstep)=abund(int2list,dstep)+0.5*abund(mint2list,dstep)
+                !abund(mint2list,dstep)=0.5*abund(mint2list,dstep)
                 !Set flag to 2 to stop it being recalled
                 volcflag=2
             ENDIF
@@ -429,8 +443,8 @@ CONTAINS
             kevap=freq*exp(-expdust)
             IF (kevap .ge. 0.99) THEN
                 write(*,*)i
-                abund(speci,dstep)=abund(speci,dstep)+(0.7*abund(mcolist(i),dstep))
-                abund(mcolist(i),dstep)=0.3*abund(mcolist(i),dstep)
+                abund(speci,dstep)=abund(speci,dstep)+(comono(i)*abund(mcolist(i),dstep))
+                abund(mcolist(i),dstep)=(1.0-comono(i))*abund(mcolist(i),dstep)
                 !set to 1d50 so it can't happen again
                 bindener(speci)=1d50
             END IF 
@@ -446,8 +460,8 @@ CONTAINS
             kevap=freq*exp(-expdust)
             IF (kevap .ge. 0.99) THEN
                 write(*,*)i
-                abund(speci,dstep)=abund(speci,dstep)+(0.7*abund(mco2list(i),dstep))
-                abund(mco2list(i),dstep)=0.3*abund(mco2list(i),dstep)
+                abund(speci,dstep)=abund(speci,dstep)+(co2mono(i)*abund(mco2list(i),dstep))
+                abund(mco2list(i),dstep)=(1.0-co2mono(i))*abund(mco2list(i),dstep)
                 bindener(speci)=1d50
             END IF 
         END DO
@@ -462,8 +476,8 @@ CONTAINS
             kevap=freq*exp(-expdust)
             IF (kevap .ge. 0.99) THEN
                 write(*,*)i
-                abund(speci,dstep)=abund(speci,dstep)+(0.1*abund(mintlist(i),dstep))
-                abund(mintlist(i),dstep)=0.9*abund(mintlist(i),dstep)
+                abund(speci,dstep)=abund(speci,dstep)+(intmono(i)*abund(mintlist(i),dstep))
+                abund(mintlist(i),dstep)=(1.0-intmono(i))*abund(mintlist(i),dstep)
                 bindener(speci)=1d50
             END IF 
         END DO

@@ -11,9 +11,10 @@ import csv
 import numpy
 
 #create a file containing length of each list of moleculetypes and then the two lists (gas and grain) of species in each type
-def evap_lists(filename,species,evaptype):
+def evap_lists(filename,species,evaptype,monoevap,volcevap):
 	colist=[];mcolist=[];intlist=[];mintlist=[];grainlist=[];mgrainlist=[]
-	co2list=[];mco2list=[];int2list=[];mint2list=[]
+	co2list=[];mco2list=[];comono=[];co2mono=[];intmono=[];covolc=[]
+	co2volc=[];intvolc=[]
 	for i in range(len(species)):
 		if species[i][0]=='#':
 			j=species.index(species[i][1:])
@@ -25,29 +26,41 @@ def evap_lists(filename,species,evaptype):
 			if (evaptype[i] == 'CO1'):
 				colist.append(j+1)
 				mcolist.append(i+1)
-			if (evaptype[i] == 'INT1'):
+				comono.append(monoevap[i])
+				covolc.append(volcevap[i])
+			if (evaptype[i] == 'INT'):
 				intlist.append(j+1)
 				mintlist.append(i+1)
+				intmono.append(monoevap[i])
+				intvolc.append(volcevap[i])
 			if (evaptype[i] == 'CO2'):
 				co2list.append(j+1)
 				mco2list.append(i+1)
-			if (evaptype[i] == 'INT2'):
-				int2list.append(j+1)
-				mint2list.append(i+1)
+				co2mono.append(monoevap[i])
+				co2volc.append(volcevap[i])
+			#if (evaptype[i] == 'INT2'):
+			#	int2list.append(j+1)
+			#	mint2list.append(i+1)
 	f = open(filename, 'wb')
 	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
 	f.write(str(len(colist))+'\n')
 	writer.writerow(colist)
 	writer.writerow(mcolist)
+	writer.writerow(comono)
+	writer.writerow(covolc)
 	f.write(str(len(co2list))+'\n')
 	writer.writerow(co2list)
 	writer.writerow(mco2list)
+	writer.writerow(co2mono)
+	writer.writerow(co2volc)
 	f.write(str(len(intlist))+'\n')
 	writer.writerow(intlist)
 	writer.writerow(mintlist)
-	f.write(str(len(int2list))+'\n')
-	writer.writerow(int2list)
-	writer.writerow(mint2list)
+	writer.writerow(intmono)
+	writer.writerow(intvolc)
+	#f.write(str(len(int2list))+'\n')
+	#writer.writerow(int2list)
+	#writer.writerow(mint2list)
 	f.write(str(len(grainlist))+'\n')
 	writer.writerow(grainlist)
 	writer.writerow(mgrainlist)
@@ -65,14 +78,16 @@ def read_species_file(fileName):
 	f = open(fileName, 'rb')
 	reader = csv.reader(f, delimiter=',', quotechar='|')
 
-	species = [] ; mass = []; evaptype=[];bindener=[];c=0
+	species = [] ; mass = []; evaptype=[];bindener=[];monoevap=[];volcevap=[]
 	for row in reader:
 		species.append(row[0])
 		mass.append(row[1])
 		evaptype.append(row[2])
 		bindener.append(row[3])
+		monoevap.append(row[4])
+		volcevap.append(row[5])
 	nSpecies = len(species)
-	return nSpecies,species, mass,evaptype,bindener
+	return nSpecies,species, mass,evaptype,bindener,monoevap,volcevap
 
 def NANCheck(a):
 	aa  = a if a else 'NAN'
@@ -114,7 +129,7 @@ def read_reaction_file(fileName, species, ftype):
 
 #Get rid of species that are not involved in reactions
 #we want to get rid of species that are not present in any reaction
-def find_species(reactants,products,species, mass,evaptype,bindener):
+def find_species(reactants,products,species, mass,evaptype,bindener,monoevap,volcevap):
 	speciesList = [] ; keepList = []; extraSpecies = []
 	keepList.extend(['','#','NAN','ELECTR','PHOTON','CRP','CRPHOT','FREEZE','CRH','PHOTD','THERM','XRAY','XRSEC','XRLYA','XRPHOT','DESOH2','DESCR1','DESCR2','DEUVCR'])
 	speciesList.extend(reactants)
@@ -139,6 +154,8 @@ def find_species(reactants,products,species, mass,evaptype,bindener):
 		del bindener[ind]
 		del evaptype[ind]
 		del mass[ind]
+		del monoevap[ind]
+		del volcevap[ind]
 
 
 
@@ -147,7 +164,7 @@ def find_species(reactants,products,species, mass,evaptype,bindener):
 	print 'Differences between initial and final speciesList:' 
 	print extraSpecies
 	print '###################################################'
-	return species, mass, evaptype, bindener
+	return species, mass, evaptype, bindener,monoevap,volcevap
 
 
 
@@ -192,16 +209,18 @@ def find_constituents(speciesList):
     sortedMasses, sortedElements = zip(*zippedList)
     return speciesMass, speciesConstituents, sortedElements
 
-def sortSpecies(species, mass,evaptype,ener):
-	sortedList = sorted(zip(mass,species,evaptype,ener))
+def sortSpecies(species, mass,evaptype,ener,monoevap,volcevap):
+	sortedList = sorted(zip(mass,species,evaptype,ener,monoevap,volcevap))
 	A= numpy.array(sortedList)
 	species = list(A[:,1])
 	mass = list(A[:,0])
 	evaptype =list(A[:,2])
 	ener = list(A[:,3])
+	monoevap=list(A[:,4])
+	volcevap=list(A[:,5])
 	for i in range(len(species)):
 		mass[i] = int(eval(mass[i]))
-	return species, mass,evaptype,ener
+	return species, mass,evaptype,ener,monoevap,volcevap
 
 
 

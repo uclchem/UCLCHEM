@@ -12,8 +12,8 @@ import itertools
 from Functions import *
 
 reactionFile = 'inputFiles/umist12.csv'
-reactionFile_grain = 'inputFiles/uclgrainbasic.csv'
-speciesFile = 'inputFiles/basicspecies.csv'
+reactionFile_grain = 'inputFiles/grain_latest_audrey.csv'
+speciesFile = 'inputFiles/species_latest_audrey.csv'
 
 
 make_capitals(reactionFile)
@@ -23,8 +23,7 @@ make_capitals(speciesFile)
 print '\n########################\n########################\n'
 # Read the species, abundances and masses in the specified species file
 print '\nReading species file...'
-nSpecies, speciesList, massList,evaptypes,bindener = read_species_file(speciesFile)
-
+nSpecies, speciesList, massList,evaptypes,bindener,monoevap,volcevap = read_species_file(speciesFile)
 
 print '\n########################\n########################\n'
 ################################# GAS ##################################################################
@@ -52,7 +51,7 @@ temphigh = temphigh1; temphigh.extend(temphigh2)
 
 #Keep only the species that are involved in the final reaction list
 print '\nGetting rid of unused species'
-speciesList, massList,evaptypes,bindener = find_species(reactants,products,speciesList, massList,evaptypes,bindener)
+speciesList, massList,evaptypes,bindener,monoevap,volcevap = find_species(reactants,products,speciesList, massList,evaptypes,bindener,monoevap,volcevap)
 
 # Calculate the molecular mass and elemental constituents of each species
 print '\nCalculating molecular masses and elemental constituents...'
@@ -60,7 +59,7 @@ massList, constituentList, elementList = find_constituents(speciesList)
 
 #sort the species file according to mass
 print '\nSorting Species ...'
-speciesList, massList, evaptypes, bindener = sortSpecies(speciesList, massList, evaptypes, bindener)
+speciesList, massList, evaptypes, bindener,monoevap,volcevap = sortSpecies(speciesList, massList, evaptypes, bindener,monoevap,volcevap)
 
 #check reactions to see if there are potential problems
 print '\n########################\n########################\n'
@@ -89,7 +88,7 @@ write_odes_f90(filename, speciesList, constituentList, reactants, products)
 
 print 'Writing Evaporation lists...'
 filename= 'outputFiles/evaplists.csv'
-evap_lists(filename,speciesList,evaptypes)
+evap_lists(filename,speciesList,evaptypes,monoevap,volcevap)
 
 ngrain=0
 for spec in speciesList:
