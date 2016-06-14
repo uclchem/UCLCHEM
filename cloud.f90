@@ -84,9 +84,10 @@ CONTAINS
 
             !temperature increase borrowed from sv for comparison 288.000
             !will add general profile later, this works well for inittemp=10 K
-            temp(dstep)=(size/rout)*(real(dstep)/real(points))
+            temp(dstep)=(size/(rout*pc))*(real(dstep)/real(points))
             temp(dstep)=temp(dstep)**(-0.5)
-            temp(dstep)=inittemp + (tempa(tempindx)*tage**tempb(tempindx))*temp(dstep)
+            temp(dstep)=(inittemp + (tempa(tempindx)*tage**tempb(tempindx)))*temp(dstep)
+            
             if (temp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
             if (temp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
             if (temp(dstep) .gt. codestemp(tempindx) .and. coflag .ne. 2) coflag=1

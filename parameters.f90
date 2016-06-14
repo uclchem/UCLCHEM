@@ -1,6 +1,6 @@
 !Initial physics variables
 !radfield in habing
-inittemp=10.0;initdens=3.00d2;dfin=1.00d7;t0=0.0;tfin=6.00d6
+inittemp=10.0;initdens=1.00d7;dfin=1.00d7;t0=0.0;tfin=6.00d6
 fr=1.0;radfield=1.0;zeta=1.0;avic=2.0
 rout=0.03;rin=0;bc=1.0;maxtemp=300
 points=1
@@ -11,9 +11,9 @@ points=1
 !In phase 2, temp profile depends on mass of star
 !Tempindx selects mass: 1=5Msol,2=10M,3=15M,4=25M,5=60M
 !other switches are on/off (1/0)
-switch=1;collapse=1;first=1;desorb=1;startr=.true.
+switch=0;collapse=0;first=0;desorb=1;startr=.true.
 h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=0;ion=2
-phase=1;tempindx=1
+phase=2;tempindx=4
 
 !cshock specific variables, uncomment or comment as  needed
 !vs=40.0;maxtemp=4000;bt=6.;tsat=4.6
@@ -27,14 +27,14 @@ fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 outindx=(/73,260,262,220,219,274/);writestep=10
 
 !open files for reading=writing
-open(1,file='results/shockoutput',status='unknown')
-open(2,file='reactions.csv',status='old')
+open(1,file='results/audreytest',status='unknown')
+open(2,file='reactions_model_1e.csv',status='old')
 open(3,file='species.csv',status='old')
-open(4,file='results/outcolumn',status='unknown')
+open(4,file='results/audreytestcol',status='unknown')
 open(7,file='startabund',status='unknown')
 open(8,file='evaplists.csv',status='old')
 open(79,file='debuglog',status='unknown')
-open(88,file='results/analysis1',status='unknown')
+open(88,file='results/analysistest',status='unknown')
 
 !Chemistry variables
 !dopw = doppler width (in s-1) of a typical transition

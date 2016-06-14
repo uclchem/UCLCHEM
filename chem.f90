@@ -71,9 +71,9 @@ CONTAINS
             abund(np,:) = fp
             abund(nf,:) = ff
 
-            abund(nspec+1,:)=dens      
             !abund(nfe,:) = ffe
             !abund(nna,:) = fna
+            abund(nspec+1,:)=dens      
 
             !Decide how much iron is initiall ionized using parameters.f90
             SELECT CASE (ion)
@@ -183,8 +183,7 @@ CONTAINS
         IF (first .eq. 0) THEN
             DO l=1,points
                 read(7,*)
-                read(7,7000) dens,temp(l),av(l)
-                write(*,*)dens,temp(l),av(l)
+                read(7,7000) abund(nspec+1,l),temp(l),av(l)
                 read(7,*)
                 read(7,7010) h2form,fc,fo,&
                             &fmg,fhe,dstep

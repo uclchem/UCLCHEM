@@ -11,6 +11,7 @@ import csv
 import numpy
 
 #create a file containing length of each list of moleculetypes and then the two lists (gas and grain) of species in each type
+#as  well as fraction that evaporated in each type of event
 def evap_lists(filename,species,evaptype,monoevap,volcevap):
 	colist=[];mcolist=[];intlist=[];mintlist=[];grainlist=[];mgrainlist=[]
 	co2list=[];mco2list=[];comono=[];co2mono=[];intmono=[];covolc=[]
