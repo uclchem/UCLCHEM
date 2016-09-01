@@ -8,12 +8,12 @@ integer :: ns,index1,index2
         &.or.  (desorb .eq. 1)) THEN
         DO j=1,nreac
             !This case structure looks at the reaction type. species-species happens in default.
-            !Other cases are special reactions (photons, CRs etc)
+            !Other cases are special reactions, particularly desorption events (photons, CRs etc)
             SELECT CASE (re2(j))
-            !I think reaction is a cosmic ray thing?            
+            !Cosmic ray reactions            
             CASE ('CRP')
                 rate(j) = alpha(j)*zeta
-            !UV photons, hence k including radfield(factor of 1.7 conversion from habing to Draine)
+            !UV photons, radfield has (factor of 1.7 conversion from habing to Draine)
             CASE ('PHOTON')
                 rate(j) = alpha(j)*dexp(-gama(j)*av(dstep))*radfield/1.7
                 !co photodissoction number is stored as nrco
@@ -21,7 +21,7 @@ integer :: ns,index1,index2
                     IF(p1(j).eq.'O' .and. p2(j).eq.'C') nrco=j
                     IF(p1(j).eq.'C' .and. p2(j).eq.'O') nrco=j
                 ENDIF
-            !cosmic ray photon??
+            !cosmic ray induced photon
             CASE ('CRPHOT')
                 rate(j)=alpha(j)*gama(j)*1.0/(1.0-omega)*zeta*(temp(dstep)/300)**beta(j)
             !freeze out only happens if fr>0 and depending on evap choice 
@@ -34,6 +34,8 @@ integer :: ns,index1,index2
                             IF (beta(j).eq.0.0 ) THEN
                                 rate(j)=alpha(j)*dsqrt(temp(dstep)/mass(i))*grain*fr
                             ELSE
+                                !Make rates sets beta=1 for ion freeze out. this catches that and
+                                !freezes differently
                                 cion=1.0+16.71d-4/(radg*temp(dstep))
                                 rate(j)=alpha(j)*dsqrt(temp(dstep)/mass(i))*grain*fr*cion
                             ENDIF
