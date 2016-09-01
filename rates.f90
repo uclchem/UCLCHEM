@@ -40,6 +40,8 @@ integer :: ns,index1,index2
                         ENDIF
                     END DO
                 ENDIF
+            !The below desorption mechanisms are from Roberts et al. 2007 MNRAS with
+            !the addition of direct UV photodesorption. DESOH2,DESCR1,DEUVCR
             CASE ('DESOH2')
                 IF (desorb .eq. 1 .and. h2desorb .eq. 1&
                 & .and. tstep .ge. 2 .and. gama(j) .le. ebmaxh2 .and.&
@@ -61,7 +63,9 @@ integer :: ns,index1,index2
                 IF (desorb .eq. 1 .and. crdesorb2 .eq. 1&
                 &.and.mantle(dstep).ge. 1d-30&
                 &.and. gama(j) .le. ebmaxcr) THEN
-                    rate(j) = 4*3.1416*zeta*1.64d-4*(grain/4.57d4)*&
+                    !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
+                    !as iron nuclei are main cause of CR heating.
+                    rate(j) = 4.0*pi*zeta*1.64d-4*(grain/4.57d4)*&
                           &(1.0/mantle(dstep))*phi
                 ELSE
                     rate(j) = 1.0d-30
@@ -69,8 +73,11 @@ integer :: ns,index1,index2
             CASE ('DEUVCR')
                 IF (desorb .eq. 1 .and. uvcr .eq. 1 .and. tstep .ge. 2&
                  &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-15) THEN
-                    !was 4.875d3 not 1.0d5
-                    rate(j) = (grain/4.57d4)*uvy*1.0d5*zeta*(1.0/mantle(dstep))
+                    !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
+                    !UVY is yield per photon.
+                    rate(j) = (grain/4.57d4)*uvy*4.875d3*zeta*(1.0/mantle(dstep))
+                    !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
+                    !CR induced UV to ISRF UV.
                     rate(j) = rate(j) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
                 ELSE
                     rate(j) = 1.0d-30
@@ -85,7 +92,7 @@ integer :: ns,index1,index2
                     END DO            
                     Rdif = vdiff(index1)*dexp(-0.3*bindener(index1)/temp(dstep))
                     Rdif = Rdif+vdiff(index2)*dexp(-0.3*bindener(index2)/temp(dstep))
-                    Rdif = Rdif*10**(-6.0)
+                    Rdif = Rdif*10.0**(-6.0)
                     !Evaluate the rate coefficient for the diffusion. Units of cm-3s-1. By Angela Occhiogrosso.
                     rate(j) = alpha(j)*10d24*Rdif*dexp(-gama(j)/temp(dstep))
                     write(79,*) j,re1(j),re2(j)
