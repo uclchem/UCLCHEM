@@ -22,6 +22,12 @@ MODULE physics
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
     double precision, parameter :: year=3.16455d-08,pc=3.086d18
 
+    !variables for collapse modes
+    double precision :: unitrho,unitr,unitt,c_s
+    double precision :: dimrho,dimr,dimt,maxdimt
+    double precision :: rho0,r0
+    double precision,parameter :: G_N = 6.674d-8
+
 CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN.
 !YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
@@ -29,12 +35,52 @@ CONTAINS
     SUBROUTINE phys_initialise
         allocate(av(points),coldens(points),temp(points))
         size=(rout-rin)*pc
-        if (collapse .eq. 1) THEN
-            dens=1.001*initdens
-        ELSE
-            dens=initdens
-        ENDIF 
+        dens=initdens
         temp=inittemp
+
+        !collapse stuff
+        !calculate sound speed from temperature and mean molecular mass
+        !cs=(1d7*kbolt*inittemp)/(2*mh) assuming molecular mass from H2
+        c_s = sqrt(5d6*kbolt*inittemp/mh)
+        
+        !Set up collapse modes.
+        !work in dimensionless units so find conversions for density, time and radius.
+        !Also find maximum time value at which model must stop.
+
+        
+        SELECT CASE(collapse)
+            !freefall Rawlings 1992
+            CASE(1)
+                dens=1.001*initdens
+            !foster & chevalier 1993
+            CASE(2)
+                unitrho = initdens*mh
+                unitt = 1./sqrt(4*pi*G_N*unitrho)
+                unitr = c_s*unitt
+                maxdimt = 5.75 - (15.1/(14 + log10(dfin/initdens)))**(1/0.04)
+            !ogino, tomisaka & nakamura 1999
+            CASE(3)
+                unitrho = initdens*mh
+                unitt = 1./sqrt(G_N*unitrho)
+                unitr = c_s*unitt
+                maxdimt = 0.33 - (2.5/(2.5 + log10(dfin/initdens)))**(1/0.18)
+            CASE(4)
+            
+                unitrho = initdens*mh
+                unitt = 1./sqrt(2*pi*G_N*unitrho)
+                unitr = c_s*unitt
+                maxdimt = 5.5 - (2.1/(1.35 + log10(dfin/initdens)))**(1/0.28)
+        END SELECT
+
+        !Enforce maximum time value for collapse modes
+        tfin=maxdimt*year*unitt
+        IF (switch .eq. 1 .and. collapse .gt. 1) THEN
+            write(*,*) "Switch must be 0 for BE collapse, changing to stop at tfin"
+            write(*,*) "Tfin = ",tfin/year, " years"
+            switch=0
+        END IF
+
+
     END SUBROUTINE
 
     SUBROUTINE timestep
@@ -57,11 +103,11 @@ CONTAINS
             tout=(tage+10000.0)/year
         END IF
     END SUBROUTINE timestep
-
   
     SUBROUTINE phys_update
         !calculate column density. Remember dstep counts from core to edge
-        coldens(dstep)= size*((real(dstep))/real(points))*dens
+        !and coldens should be amount of gas from edge to parcel.
+        coldens(dstep)= size*((real(points-dstep))/real(points))*dens
         !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
         av(dstep)= avic +coldens(dstep)/1.6d21
 
@@ -86,12 +132,43 @@ CONTAINS
             !will add general profile later, this works well for inittemp=10 K
             temp(dstep)=(size/(rout*pc))*(real(dstep)/real(points))
             temp(dstep)=temp(dstep)**(-0.5)
-            temp(dstep)=(inittemp + (tempa(tempindx)*tage**tempb(tempindx)))*temp(dstep)
+            temp(dstep)=inittemp + ((tempa(tempindx)*(t0/year)**tempb(tempindx))*temp(dstep))
             
             if (temp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
             if (temp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
             if (temp(dstep) .gt. codestemp(tempindx) .and. coflag .ne. 2) coflag=1
         END IF
+
+        !Density update for BE collapse modes
+        !first calculate current radius and time in dimensionless units
+        dimr = (real(dstep)/real(points))*size/unitr
+        dimt = t0/unitt
+        if (dimt .gt. maxdimt) dimt = maxdimt
+        
+        !Then calculate central density and radius of central region
+        !use this to find density at larger radii. Three different cases possible.
+
+        !foster & chevalier 1993
+        if (collapse .eq. 2) then
+            rho0 = 10**(15*(5.75-dimt)**(-0.04) - 14)
+            r0 = 10**(-6.7*(5.75-dimt)**(-0.04) + 6.6)
+            dimrho = rho0/(1 + (dimr/r0)**2.5)
+            if (dimt .lt. 5.75) dens = dimrho*initdens
+        
+        !ogino, tomisaka & nakamura 1999
+        else if (collapse .eq. 3) then
+            rho0 = 10**(2.5*(0.33-dimt)**(-0.18) - 2.5)
+            r0 = 10**(-1.2*(0.33-dimt)**(-0.18) + 1.3)
+            dimrho = rho0/(1 + (dimr/r0)**2.5)
+            if (dimt .lt. 0.33) dens = dimrho*initdens
+        
+        !nakamura, hanawa & takano 1995
+        else if (collapse .eq. 4) then
+            rho0 = 10**(2.1*(5.5-dimt)**(-0.28) - 1.35)
+            r0 = 10**(-0.7*(5.5-dimt)**(-0.28) + 0.75)
+            dimrho = rho0/(1 + (dimr/r0)**2)**1.5
+            if (dimt .lt. 5.5) dens = dimrho*initdens
+        endif
 
     END SUBROUTINE phys_update
 

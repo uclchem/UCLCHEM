@@ -31,7 +31,7 @@ EXTERNAL dvode
     double precision,allocatable :: abund(:,:),mantle(:)
     
     !Variables controlling chemistry
-    double precision :: radfield,zeta,fr,omega,grain,cion,h2form,h2dis
+    double precision :: radfield,zeta,fr,omega,grainarea,cion,h2form,h2dis
     double precision :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uvy,uvcreff
     double precision :: taud,dopw,radw,xl,fosc
 
@@ -336,7 +336,7 @@ CONTAINS
         
         !For collapse =1 Dens is updated by DLSODE just like abundances so this ensures dens is at correct value
         !For collapse =0 allow option for dens to have been changed elsewhere.
-        IF (collapse .eq. 0) THEN
+        IF (collapse .ne. 1) THEN
             y(nspec+1)=dens
         ELSE
             dens=y(nspec+1)

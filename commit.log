@@ -1,0 +1,18 @@
+#####Chemistry#####
+#Rates#
+Descr1 and Descr2 replaced by Descr, a slightly modified Descr2. Both processes were simply different formulations of the same physics. Descr simply makes Descr2 easier to read. Descr2 was chosen to fit with the other non-thermal desorption mechanisms, all taken from Roberts 2007.
+
+#Other#
+Minor analysis updates
+
+
+
+#####Physics######
+
+#Cloud#
+dstep/points treatment updated. Av calculated from edge in, dstep counted from core out.
+Alterations to Felix collapse and Zainab temperature to account for multipoint codes updating tage after first point.
+
+#Cshock#
+Users now only input Vs and initial density. Tsat and Tn,max calculated from polynomial fits to Jimenez-Serra 2008 (Table 5) and Drain 1983 (Figs 8 & 9), checked against grid of models run for Viti 2011.
+

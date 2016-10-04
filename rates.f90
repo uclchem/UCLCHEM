@@ -1,139 +1,117 @@
 SUBROUTINE reacrates
 double precision :: Rdif
 integer :: ns,index1,index2
-!most rate calculations only need to happen once or if temp changes
-!I need to check with Serena what these all are
-    IF ((tstep .eq. 1 .and. dstep .eq. 1)&
-        &.or. phase .eq. 2 &
-        &.or.  (desorb .eq. 1)) THEN
-        DO j=1,nreac
-            !This case structure looks at the reaction type. species-species happens in default.
-            !Other cases are special reactions, particularly desorption events (photons, CRs etc)
-            SELECT CASE (re2(j))
-            !Cosmic ray reactions            
-            CASE ('CRP')
-                rate(j) = alpha(j)*zeta
-            !UV photons, radfield has (factor of 1.7 conversion from habing to Draine)
-            CASE ('PHOTON')
-                rate(j) = alpha(j)*dexp(-gama(j)*av(dstep))*radfield/1.7
-                !co photodissoction number is stored as nrco
-                IF (re1(j).eq.'CO') THEN
-                    IF(p1(j).eq.'O' .and. p2(j).eq.'C') nrco=j
-                    IF(p1(j).eq.'C' .and. p2(j).eq.'O') nrco=j
-                ENDIF
-            !cosmic ray induced photon
-            CASE ('CRPHOT')
-                rate(j)=alpha(j)*gama(j)*1.0/(1.0-omega)*zeta*(temp(dstep)/300)**beta(j)
-            !freeze out only happens if fr>0 and depending on evap choice 
-            CASE ('FREEZE')             
-                IF (evap .ne. 0 .or. fr .eq. 0.0) then
-                    rate(j)=1.0d-30
-                ELSE
-                    DO i=1,nspec-1
-                        IF (specname(i).eq.re1(j)) THEN
-                            IF (beta(j).eq.0.0 ) THEN
-                                rate(j)=alpha(j)*dsqrt(temp(dstep)/mass(i))*grain*fr
-                            ELSE
-                                !Make rates sets beta=1 for ion freeze out. this catches that and
-                                !freezes differently
-                                cion=1.0+16.71d-4/(radg*temp(dstep))
-                                rate(j)=alpha(j)*dsqrt(temp(dstep)/mass(i))*grain*fr*cion
-                            ENDIF
-                        ENDIF
-                    END DO
-                ENDIF
-            !The below desorption mechanisms are from Roberts et al. 2007 MNRAS with
-            !the addition of direct UV photodesorption. DESOH2,DESCR1,DEUVCR
-            CASE ('DESOH2')
-                IF (desorb .eq. 1 .and. h2desorb .eq. 1&
-                & .and. tstep .ge. 2 .and. gama(j) .le. ebmaxh2 .and.&
-                &  mantle(dstep) .ge. 1.0d-30) THEN
-                    rate(j) = epsilon*h2form*abund(nh,dstep)*1.0/mantle(dstep)
-                ELSE
-                    rate(j) = 1.0d-30
-                ENDIF
-            CASE ('DESCR1')
-                IF (desorb .eq. 1 .and. crdesorb .eq. 1&
-                & .and. mantle(dstep) .ge. 1d-30 .and. gama(j) .le. ebmaxcrf) THEN
-                  !mantle(dstep) .ge. 1d-30 used to be tstep .ge. 1 (same for descr2)
-                  rate(j) = alpha(j)*(1.0/mantle(dstep))*2.2d-22*70.0*&
-                            &dexp(-(gama(j)-960.0)/70.0)
-                ELSE
-                    rate(j) = 1.0d-30
-                ENDIF
-            CASE ('DESCR2')
-                IF (desorb .eq. 1 .and. crdesorb2 .eq. 1&
-                &.and.mantle(dstep).ge. 1d-30&
-                &.and. gama(j) .le. ebmaxcr) THEN
-                    !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
-                    !as iron nuclei are main cause of CR heating.
-                    rate(j) = 4.0*pi*zeta*1.64d-4*(grain/4.57d4)*&
-                          &(1.0/mantle(dstep))*phi
-                ELSE
-                    rate(j) = 1.0d-30
-                ENDIF
-            CASE ('DEUVCR')
-                IF (desorb .eq. 1 .and. uvcr .eq. 1 .and. tstep .ge. 2&
-                 &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-15) THEN
-                    !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
-                    !UVY is yield per photon.
-                    rate(j) = (grain/4.57d4)*uvy*4.875d3*zeta*(1.0/mantle(dstep))
-                    !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
-                    !CR induced UV to ISRF UV.
-                    rate(j) = rate(j) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
-                ELSE
-                    rate(j) = 1.0d-30
-                ENDIF
-            CASE DEFAULT
-                !Evaluate the diffusion coefficient for the two reactants on the grain surface. Assuming Eb = 0.3 Ed. Units of s-1. By Angela Occhiogrosso.
-                IF (re3(j).eq.'DIFF') THEN
-                    !loop through mantle species and match reactants to species
-                    DO i=lbound(mgrainlist,1),ubound(mgrainlist,1)
-                        IF (specname(mgrainlist(i)) .eq. re1(j)) index1 = mgrainlist(i)
-                        IF (specname(mgrainlist(i)) .eq. re2(j)) index2 = mgrainlist(i)  
-                    END DO            
-                    Rdif = vdiff(index1)*dexp(-0.3*bindener(index1)/temp(dstep))
-                    Rdif = Rdif+vdiff(index2)*dexp(-0.3*bindener(index2)/temp(dstep))
-                    Rdif = Rdif*10.0**(-6.0)
-                    !Evaluate the rate coefficient for the diffusion. Units of cm-3s-1. By Angela Occhiogrosso.
-                    rate(j) = alpha(j)*10d24*Rdif*dexp(-gama(j)/temp(dstep))
-                    write(79,*) j,re1(j),re2(j)
-                    write(79,*) Rdif,vdiff(index1),vdiff(index2)
-                    write(79,*) bindener(index1),bindener(index2),rate(j)
-                    write(79,*) "********************************"
-                ELSE
-                    rate(j) = alpha(j)*((temp(dstep)/300.)**beta(j))*dexp(-gama(j)/temp(dstep))
 
-                    !Audrey correction for co and ch3oh
-                    IF (re1(j)(:) .eq. '#CH3OH' .and. re2(j)(:) .eq. '#CO') THEN
-                        rate(j)=alpha(j)/dens/abund(ngrainco,dstep) ! *y(ngrainco)
-                        IF (rate(j) .gt. 1.0) THEN
-                            rate(j) = 1.0
-                        ENDIF
-                        IF (rate(j) .lt. 1.0d-30) THEN
-                            rate(j) = 1.0d-30
-                        ENDIF
-                        !write(6,*) rate(j)
-                    ENDIF
-                ENDIF
-
-            END SELECT
-        END DO
-    !Photon reactions get updated every step (dens changes so av changes)
-    ELSE
-        DO j=1,nreac
-            IF(re2(j).eq.'PHOTON')&
-            ! The reason why radfield is divided by 1.7 is that the alphas are for Draine and the radfield is in
-            ! Habing units                    
-            &rate(j) = alpha(j)*exp(-gama(j)*av(dstep))*radfield/1.7
-
-! I think this may be redundant as NRCO should be set in the first run of reacrates
+!Assuming the user has temperature changes or uses the desorption features of phase 1, these need working out on a timestep by time step basis
+    DO j=1,nreac
+        !This case structure looks at the reaction type. species-species happens in default.
+        !Other cases are special reactions, particularly desorption events (photons, CRs etc)
+        SELECT CASE (re2(j))
+        !Cosmic ray reactions            
+        CASE ('CRP')
+            rate(j) = alpha(j)*zeta
+        !UV photons, radfield has (factor of 1.7 conversion from habing to Draine)
+        CASE ('PHOTON')
+            rate(j) = alpha(j)*dexp(-gama(j)*av(dstep))*radfield/1.7
+            !co photodissoction number is stored as nrco
             IF (re1(j).eq.'CO') THEN
                 IF(p1(j).eq.'O' .and. p2(j).eq.'C') nrco=j
                 IF(p1(j).eq.'C' .and. p2(j).eq.'O') nrco=j
             ENDIF
-        END DO
-    ENDIF
+        !cosmic ray induced photon
+        CASE ('CRPHOT')
+            rate(j)=alpha(j)*gama(j)*1.0/(1.0-omega)*zeta*(temp(dstep)/300)**beta(j)
+        !freeze out only happens if fr>0 and depending on evap choice 
+        CASE ('FREEZE')             
+            IF (evap .ne. 0 .or. fr .eq. 0.0) then
+                rate(j)=0.0
+            ELSE
+                DO i=1,nspec-1
+                    IF (specname(i).eq.re1(j)) THEN
+                        IF (beta(j).eq.0.0 ) THEN
+                            !taken from Rawlings et al. 1992
+                            rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*grainarea*fr
+                        ELSE
+                            !Make rates sets beta=1 for ion freeze out. this catches that and
+                            !freezes differently
+                            cion=1.0+16.71d-4/(radg*temp(dstep))
+                            rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*grainarea*fr*cion
+                        ENDIF
+                    ENDIF
+                END DO
+            ENDIF
+        !The below desorption mechanisms are from Roberts et al. 2007 MNRAS with
+        !the addition of direct UV photodesorption. DESOH2,DESCR1,DEUVCR
+        CASE ('DESOH2')
+            IF (desorb .eq. 1 .and. h2desorb .eq. 1&
+            & .and. tstep .ge. 2 .and. gama(j) .le. ebmaxh2 .and.&
+            &  mantle(dstep) .ge. 1.0d-30) THEN
+                !Epsilon is efficieny of this process, number of molecules removed per event
+                !h2form is formation rate of h2, dependent on hydrogen abundance. 
+                rate(j) = epsilon*h2form*abund(nh,dstep)*1.0/mantle(dstep)
+            ELSE
+                rate(j) = 0.0
+            ENDIF
+        CASE ('DESCR')
+            IF (desorb .eq. 1 .and. crdesorb .eq. 1&
+            &.and.mantle(dstep).ge. 1d-30&
+            &.and. gama(j) .le. ebmaxcr) THEN
+                !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
+                !as iron nuclei are main cause of CR heating.
+                !grainarea is the total area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
+                !phi is efficieny of this reaction, number of molecules removed per event.
+                rate(j) = 4.0*pi*zeta*1.64d-4*(grainarea)*&
+                      &(1.0/mantle(dstep))*phi
+            ELSE
+                rate(j) = 0.0
+            ENDIF
+        CASE ('DEUVCR')
+            IF (desorb .eq. 1 .and. uvcr .eq. 1 .and. tstep .ge. 2&
+             &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-15) THEN
+                !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
+                !UVY is yield per photon.
+                rate(j) = grainarea*uvy*4.875d3*zeta*(1.0/mantle(dstep))
+                !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
+                !CR induced UV to ISRF UV.
+                rate(j) = rate(j) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
+            ELSE
+                rate(j) = 0.0
+            ENDIF
+        CASE DEFAULT
+            !Evaluate the diffusion coefficient for the two reactants on the grain surface. Assuming Eb = 0.3 Ed. Units of s-1. By Angela Occhiogrosso.
+            IF (re3(j).eq.'DIFF') THEN
+                !loop through mantle species and match reactants to species
+                DO i=lbound(mgrainlist,1),ubound(mgrainlist,1)
+                    IF (specname(mgrainlist(i)) .eq. re1(j)) index1 = mgrainlist(i)
+                    IF (specname(mgrainlist(i)) .eq. re2(j)) index2 = mgrainlist(i)  
+                END DO            
+                Rdif = vdiff(index1)*dexp(-0.3*bindener(index1)/temp(dstep))
+                Rdif = Rdif+vdiff(index2)*dexp(-0.3*bindener(index2)/temp(dstep))
+                Rdif = Rdif*10.0**(-6.0)
+                !Evaluate the rate coefficient for the diffusion. Units of cm-3s-1. By Angela Occhiogrosso.
+                rate(j) = alpha(j)*10d24*Rdif*dexp(-gama(j)/temp(dstep))
+                write(79,*) j,re1(j),re2(j)
+                write(79,*) Rdif,vdiff(index1),vdiff(index2)
+                write(79,*) bindener(index1),bindener(index2),rate(j)
+                write(79,*) "********************************"
+            ELSE
+                rate(j) = alpha(j)*((temp(dstep)/300.)**beta(j))*dexp(-gama(j)/temp(dstep))
+
+                !Audrey correction for co and ch3oh
+               ! IF (re1(j)(:) .eq. '#CH3OH' .and. re2(j)(:) .eq. '#CO') THEN
+                !    rate(j)=alpha(j)/dens/abund(ngrainco,dstep) ! *y(ngrainco)
+                 !   IF (rate(j) .gt. 1.0) THEN
+                  !      rate(j) = 1.0
+                   ! ENDIF
+                    !IF (rate(j) .lt. 1.0d-30) THEN
+                     !   rate(j) = 1.0d-30
+                   ! ENDIF
+                    !write(6,*) rate(j)
+                !ENDIF
+            ENDIF
+
+        END SELECT
+    END DO
 
     h2dis=h2d()
     rate(nrco)=knrco()

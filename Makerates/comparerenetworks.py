@@ -11,11 +11,11 @@ import itertools
 from Functions import *
 
 
-reactions1='inputFiles/uclgrainrates.csv'
-reactions2='inputFiles/uclgrainrates2.csv'
-speciesFile = 'inputFiles/fullspecies.csv'
+reactions1='inputFiles/umist12.csv'
+reactions2='inputFiles/rate13.rates'
+speciesFile = 'inputFiles/species_latest_audrey.csv'
 
-nSpecies, speciesList, massList,evaptypes,bindener = read_species_file(speciesFile)
+nSpecies, speciesList, massList,evaptypes,bindener,monoevap,volcevap = read_species_file(speciesFile)
 
 make_capitals(reactions1)
 make_capitals(reactions2)
@@ -23,8 +23,8 @@ make_capitals(speciesFile)
 
 
 print '\nReading reactions'
-nReactions2, reactants2, products2, alpha2, beta2, gamma2, templow2, temphigh2 = read_reaction_file(reactions2,speciesList,'UCL')
-nReactions1, reactants1, products1, alpha1, beta1, gamma1, templow1, temphigh1 = read_reaction_file(reactions1, speciesList,'UCL')
+nReactions2, reactants2, products2, alpha2, beta2, gamma2, templow2, temphigh2 = read_reaction_file(reactions2,speciesList,'UMIST')
+nReactions1, reactants1, products1, alpha1, beta1, gamma1, templow1, temphigh1 = read_reaction_file(reactions1, speciesList,'UMIST')
 
 print "Reactions from file 1 not in file 2"
 for i in range(0,len(reactants1)):

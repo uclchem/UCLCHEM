@@ -29,12 +29,16 @@ DO tstep=1,20000
     ENDIF
 
     !store current time as starting point for each depth step
-    if (points .gt. 1) t0old=tout
+    IF (points .gt. 1) THEN
+        t0old=tout
+        t0=t0old
+    END IF
     !update tout
     CALL timestep
 
     !loop over depth points, counting from edge in to centre
     DO dstep=1,points
+
         dens=abund(nspec+1,dstep)
         !update physics
         CALL phys_update

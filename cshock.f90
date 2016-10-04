@@ -25,11 +25,11 @@ MODULE physics
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
     double precision, parameter :: year=3.16455d-08,pc=3.086d18,km=1.d5
 
-    character(11) ::filename
-
+    character(2) ::filename
+    character(1)  ::densint
     !Cshock specific parameters
     !*******************************************************************
-    double precision :: inittemp, z2,vs,v0,zn,vn,at,bt,z3,tout0,tsat
+    double precision :: inittemp, z2,vs,v0,zn,vn,at,z3,tout0,tsat
     double precision :: ucm,z1,dv,vi,tempi,vn0,zn0,vA,dlength
     double precision :: radg5,radg,dens6
     double precision, allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
@@ -38,7 +38,7 @@ MODULE physics
     double precision :: coshinv1,coshinv2,zmax,a1
 
     integer :: inrad
-    double precision, parameter::nu0=3.0d15,kb2=1.38d-16,bm0=1.e-6
+    double precision, parameter::nu0=3.0d15,kb2=1.38d-16,bm0=1.e-6,bt=6.
     !*******************************************************************
 
 CONTAINS
@@ -46,16 +46,7 @@ CONTAINS
 
     !Set up, calculate size, give dens a kickstart if collapsing 
     SUBROUTINE phys_initialise
-        allocate(av(points),coldens(points),temp(points))   
-
-        !put in to do grids
-        read(*,*) initdens,vs,tsat,maxtemp,filename
-        close(1)
-        open(1,file="results/output"//filename,status='unknown')
-        close(88)
-        open(88,file="results/analysis"//filename,status='unknown')
-        open(92,file="results/temp"//filename,status='unknown')
-        open(93,file="results/vel"//filename,status='unknown')
+        allocate(av(points),coldens(points),temp(points))  
 
         size=(rout-rin)*pc
         if (collapse .eq. 1) THEN
@@ -78,7 +69,21 @@ CONTAINS
             dens6=dens/1.e6
             tout0=0
         END IF
+
+        !maxxtemp set by vs and pre-shock density, polynomial fits to values taken from Draine et al. 1983
+        !have been made and coefficients placed here. Tested with log(dens)>3 <6
+        IF (initdens .gt. 10**4.5) THEN
+            maxtemp=(2.91731*vs*vs)-(23.78974*vs)+225.204167337
+        ELSE
+            maxtemp=(0.47258*vs*vs)+(40.44161*vs)-128.635455216
+        END IF    
         temp=inittemp
+
+        !tsat proportional to 1/pre-shock density. Fit to tsats from Jimenez-Serra 2008.
+        tsat=(-15.38729*vs*vs*vs)+(2069.56962*vs*vs)-(90272.826991*vs)+1686858.54278
+        tsat=tsat/initdens
+
+        write(*,*)tsat,maxtemp
 
         ! The initial parameters that define the C-shock structure
         ! Length of the dissipation region, dlength:
@@ -242,7 +247,7 @@ CONTAINS
         !numerically derived as follows:
         v0=2.
         v01=0
-
+        write(*,*)"in loop1"
         DO WHILE (abs(v0-v01) .ge. 1e-6)
             v01=v0
             g1=-(vA**2*vs**2)/2
@@ -250,10 +255,14 @@ CONTAINS
 
             v0=sqrt(g1/g2)
         END DO
+        write(*,*)"out loop1"
+
         !We calculate the physical structure of the shock
         !set vn1 arbitrarily high to ensure while loop is done at least once
         vn1=1d30
         vn=vn0
+        write(*,*)"in loop2"
+
         DO WHILE (abs(vn-vn1).ge.1.e-14)
             vn1=vn
             f1=vs-vn1
@@ -262,7 +271,10 @@ CONTAINS
             xcos=zn/z2
             acosh=0.5*(dexp(xcos)+dexp(-xcos))
             vn=(vs-v0)-((vs-v0)/acosh)
+            write(*,*) "looping"
         END  DO
+        write(*,*)"out loop2"
+
 
         xcos=zn/z1
         acosh=0.5*(dexp(xcos)+dexp(-xcos))

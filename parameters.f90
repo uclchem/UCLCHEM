@@ -1,49 +1,57 @@
 !Initial physics variables
 !radfield in habing
-inittemp=10.0;initdens=1.00d7;dfin=1.00d7;t0=0.0;tfin=6.00d6
+inittemp=10.0;initdens=1.00d4;dfin=1.00d7;t0=0.0;tfin=6.00d6
 fr=1.0;radfield=1.0;zeta=1.0;avic=2.0
 rout=0.03;rin=0;bc=1.0;maxtemp=300
-points=1
+points=10
 
 !Behavioural switches
 !switch (0/1) -> (tfin/dfin)
+
+!collapse (0/1/2/3/4) 1/0 are on/off for standard free-fall. 2/3/4 are different collapse modes noted in cloud.f90
+!collape=0/1 ONLY if not using cloud.f90
+
 !evap (0/1/2) -> (none/temp dependent/ instantaneous)
+
 !In phase 2, temp profile depends on mass of star
 !Tempindx selects mass: 1=5Msol,2=10M,3=15M,4=25M,5=60M
+
 !other switches are on/off (1/0)
-switch=0;collapse=0;first=0;desorb=1;startr=.true.
-h2desorb=1;crdesorb=1;crdesorb2=1;uvcr=1;evap=0;ion=2
-phase=2;tempindx=4
+switch=0;collapse=0;first=1;desorb=1;startr=.true.
+h2desorb=1;crdesorb=1;uvcr=1;evap=0;ion=2
+phase=1;tempindx=5
 
 !cshock specific variables, uncomment or comment as  needed
 !vs=40.0;maxtemp=4000;bt=6.;tsat=4.6
 
 !initial fractional abundances (from Asplund et al. 2009 ARAA table 1 -SOLAR)
 fh=0.0;fhe = 0.085;fc  = 2.692d-04;fo  = 4.898d-04;fn  = 6.761d-05
-fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07; ff = 3.6d-08
+fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07;
 fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 
 !output species
-outindx=(/73,260,262,220,219,274/);writestep=10
+outindx=(/73,260,262,220,219,274/);writestep=1
 
 !open files for reading=writing
-open(1,file='results/audreytest',status='unknown')
+open(1,file='results/felixtest',status='unknown')
 open(2,file='reactions_model_1e.csv',status='old')
 open(3,file='species.csv',status='old')
-open(4,file='results/audreytestcol',status='unknown')
+open(4,file='results/felixtestcol',status='unknown')
 open(7,file='startabund',status='unknown')
 open(8,file='evaplists.csv',status='old')
 open(79,file='debuglog',status='unknown')
 open(88,file='results/analysistest',status='unknown')
 
 !Chemistry variables
+!Description and use found in rate.f90
+ebmaxh2=1.21d3;epsilon=0.01;ebmaxcrf=1.21d3;uvcreff=1.0d-3
+ebmaxcr=1.21d3;phi=1.0d5;ebmaxuvcr=1.0d4; uvy=0.1
+omega=0.5;grainarea=2.4d-22;radg=1.d-5
+
 !dopw = doppler width (in s-1) of a typical transition
 !(assuming turbulent broadening with beta=3e5cms-1)
 !radw = radiative line width of typ. transition (in s-1)
 !fosc = oscillator strength of a typical transition
-ebmaxh2=1.21d3;epsilon=0.01;ebmaxcrf=1.21d3;uvcreff=1.0d-3
-ebmaxcr=1.21d3;phi=1.0d5;ebmaxuvcr=1.0d4; uvy=0.1
-omega=0.5;grain=1.1d-17;radg=1.d-5
 dopw=3.0e10;radw=8.0e07;xl=1000.0;fosc  = 1.0d-2
 
 !DVODE SETTINGS        

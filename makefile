@@ -1,7 +1,7 @@
 #compile=/opt/intel/Compiler/11.1/046/bin/intel64/ifort -fp-stack-check -check all -g -traceback -O2
 compile= /usr/bin/gfortran -ffree-line-length-0 -fbacktrace
 #compile=/opt/intel/Compiler/11.1/046/bin/intel64/ifort
-physics=cloud.f90
+physics=fcloud.f90
 
 
 main: chem.o physics.o main.f90 dvode.o parameters.f90
