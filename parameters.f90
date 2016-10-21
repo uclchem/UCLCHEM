@@ -1,9 +1,13 @@
-!Initial physics variables
-!radfield in habing
-inittemp=10.0;initdens=1.00d4;dfin=1.00d7;t0=0.0;tfin=6.00d6
-fr=1.0;radfield=1.0;zeta=1.0;avic=2.0
-rout=0.03;rin=0;bc=1.0;maxtemp=300
-points=10
+!Initial physics variables and final  values. for temp, density and time
+inittemp=10.0;;maxtemp=300;initdens=1.00d4;dfin=1.00d7;t0=0.0;tfin=6.00d6
+!radfield in habing, cosmic ray ionisation rates as multiple of standard
+radfield=1.0;zeta=1.0
+fr=1.0;
+!size of cloud set by inner and outer radii (rin and rout). used to calculate extinction.
+!avic is extinction at cloud edge
+!points is number of parcels to run model for. spaced  evenly between rin and rout
+rout=0.03;rin=0;avic=2.0;points=10
+
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -15,6 +19,8 @@ switch=0
 !collapse (0/1/2/3/4) 1/0 are on/off for standard free-fall. 2/3/4 are different collapse modes noted in cloud.f90
 !collape=0/1 ONLY if not using cloud.f90
 collapse=0
+!for collapse=1 can introduce factor bc to slow freefall
+bc=1.0
 
 !first chooses whether first run (So write final abudances) or second phase run (So read abudances from previous phase)
 !so file 7 will be written to at end (first=0) or read from to initialise abundances (first=1) 
