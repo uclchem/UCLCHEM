@@ -50,6 +50,8 @@ CONTAINS
         
         SELECT CASE(collapse)
             !freefall Rawlings 1992
+            CASE(0)
+                dens=initdens
             CASE(1)
                 dens=1.001*initdens
             !foster & chevalier 1993
@@ -72,8 +74,11 @@ CONTAINS
                 maxdimt = 5.5 - (2.1/(1.35 + log10(dfin/initdens)))**(1/0.28)
         END SELECT
 
-        !Enforce maximum time value for collapse modes
-        tfin=maxdimt*year*unitt
+        IF (collapse .gt. 1) THEN
+             !Enforce maximum time value for collapse modes
+             tfin=maxdimt*year*unitt
+        END  IF
+       
         IF (switch .eq. 1 .and. collapse .gt. 1) THEN
             write(*,*) "Switch must be 0 for BE collapse, changing to stop at tfin"
             write(*,*) "Tfin = ",tfin/year, " years"

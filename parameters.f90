@@ -5,42 +5,67 @@ fr=1.0;radfield=1.0;zeta=1.0;avic=2.0
 rout=0.03;rin=0;bc=1.0;maxtemp=300
 points=10
 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Behavioural switches
-!switch (0/1) -> (tfin/dfin)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!switch (0/1) -> finish model run at (tfin/dfin)
+switch=0
 
 !collapse (0/1/2/3/4) 1/0 are on/off for standard free-fall. 2/3/4 are different collapse modes noted in cloud.f90
 !collape=0/1 ONLY if not using cloud.f90
+collapse=0
 
-!evap (0/1/2) -> (none/temp dependent/ instantaneous)
+!first chooses whether first run (So write final abudances) or second phase run (So read abudances from previous phase)
+!so file 7 will be written to at end (first=0) or read from to initialise abundances (first=1) 
+!phase chooses behaviour. ie. heating in phase2 for cloud model.
+!you may choose to run phase1 physics twice with the second run building from the first so first and phase are separated
+first=1;phase=1;
+
+!non-thermal Desorption. Turn it all on/off. Turn off h2, cosmic ray induced and uv induced off separately too
+desorb=1;
+h2desorb=1;crdesorb=1;uvcr=1;
+!evap sets thermal desorption  (0/1/2) -> (none/temp dependent/ instantaneous)
+evap=0;
+
 
 !In phase 2, temp profile depends on mass of star
 !Tempindx selects mass: 1=5Msol,2=10M,3=15M,4=25M,5=60M
+tempindx=5
 
-!other switches are on/off (1/0)
-switch=0;collapse=0;first=1;desorb=1;startr=.true.
-h2desorb=1;crdesorb=1;uvcr=1;evap=0;ion=2
-phase=1;tempindx=5
+!ion sets ionisatoin fraction of carbon. See chem.f90:initialise
+ion=2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!cshock specific variables, uncomment or comment as  needed
-!vs=40.0;maxtemp=4000;bt=6.;tsat=4.6
 
-!initial fractional abundances (from Asplund et al. 2009 ARAA table 1 -SOLAR)
+!cshock specific variable, uncomment or comment as  needed
+!vs=40.0
+
+!initial fractional abundances of elements(from Asplund et al. 2009 ARAA table 1 -SOLAR)
 fh=0.0;fhe = 0.085;fc  = 2.692d-04;fo  = 4.898d-04;fn  = 6.761d-05
 fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07;
 fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 
-!output species
+!output species. Numbers are position of species in species.csv starting from 1. 
+!file 4 will print columnated time,dens,temp,abudances for all species listed in outindx every writestep timesteps. 
 outindx=(/73,260,262,220,219,274/);writestep=1
 
 !open files for reading=writing
-open(1,file='results/felixtest',status='unknown')
-open(2,file='reactions_model_1e.csv',status='old')
-open(3,file='species.csv',status='old')
-open(4,file='results/felixtestcol',status='unknown')
-open(7,file='startabund',status='unknown')
-open(8,file='evaplists.csv',status='old')
-open(79,file='debuglog',status='unknown')
-open(88,file='results/analysistest',status='unknown')
+open(1,file='output-full.dat',status='unknown') !full output
+open(2,file='reactions.csv',status='old')       !reaction file
+open(3,file='species.csv',status='old')         !species file
+open(4,file='output-column.dat',status='unknown')!columnated output based  on outindx
+open(7,file='startabund',status='unknown')      !initialise abundance file. saved to at end or loaded from at start depending on first=(0/1)
+open(8,file='evaplists.csv',status='old')       !lists of species to evaporate in different thermal desorption events
+open(79,file='debuglog',status='unknown')       !debug file.
+open(88,file='results/analysistest',status='unknown') !analysis file showing main reacction and formation routes of outindx species.
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!More complicated parameters that affect core code below. Do not alter without reading articles associated  !
+!with each process. eg chemistry variables below are reference in rates.f90                                 !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Chemistry variables
 !Description and use found in rate.f90
@@ -59,6 +84,8 @@ ISTATE=1;MF=22;ITOL=1;ITASK=1;IOPT=1;MESFLG=1
 abstol=1e-25;reltol=1e-7;MXSTEP=10000
 
 !CO self-shielding
+
+startr=.true.
 corates =reshape((/0.000d+00, -1.408d-02, -1.099d-01, -4.400d-01,&
      &  -1.154d+00, -1.888d+00, -2.760d+00,&
      &  -8.539d-02, -1.015d-01, -2.104d-01, -5.608d-01,&
