@@ -85,12 +85,22 @@ omega=0.5;grainarea=2.4d-22;radg=1.d-5
 !fosc = oscillator strength of a typical transition
 dopw=3.0e10;radw=8.0e07;xl=1000.0;fosc  = 1.0d-2
 
-!DVODE SETTINGS        
+!DVODE SETTINGS   
+!You may wish to change abstol and reltol     
 ISTATE=1;MF=22;ITOL=1;ITASK=1;IOPT=1;MESFLG=1
 abstol=1e-25;reltol=1e-7;MXSTEP=10000
 
-!CO self-shielding
+!Arrays for phase 2 temp profiles. Parameters for equation chosen by index
+!arrays go [5 Msun, 10, 15, 25,60]
+tempa=(/4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
+tempb=(/0.6255,0.8395,1.085,1.289,1.98/)
+solidtemp=(/19.6,19.45,19.3,19.5,20.35/)
+volctemp=(/86.3,88.2,89.5,90.4,92.2/)
+codestemp=(/97.5,99.4,100.8,101.6,103.4/)
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!CO and H2 self-shielding
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 startr=.true.
 corates =reshape((/0.000d+00, -1.408d-02, -1.099d-01, -4.400d-01,&
      &  -1.154d+00, -1.888d+00, -2.760d+00,&
@@ -109,14 +119,6 @@ ncogr =(/12.0d+00, 13.0d+00, 14.0d+00, 15.0d+00,&
       &16.0d+00, 17.0d+00, 18.0d+00 /)
 nh2gr=(/18.0d+00, 19.0d+00, 20.0d+00, 21.0d+00,&
        &22.0d+00, 23.0d+00 /)
-
-!Arrays for phase 2 temp profiles. Parameters for equation chosen by index
-!arrays go [5 Msun, 10, 15, 25,60]
-tempa=(/4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
-tempb=(/0.6255,0.8395,1.085,1.289,1.98/)
-solidtemp=(/19.6,19.45,19.3,19.5,20.35/)
-volctemp=(/86.3,88.2,89.5,90.4,92.2/)
-codestemp=(/97.5,99.4,100.8,101.6,103.4/)
 
 dimco=7; dimh2=6
 startr=.true.

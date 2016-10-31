@@ -1,11 +1,9 @@
 # UCL_CHEM
-Fortran 95 version of uclchem for eventual public release
-
+UCLCHEM is a gas-grain chemical code written in Fortran 95. It propagates the abundances of chemical species through a network of user-defined reactions according to the physical conditions of the gas. Included in the repository is MakeRates, a python script to combine a species list, UMIST reaction file and user-define reaction file into a consistent network with all files required by UCLCHEM.
 
 **************************************************************
 Usage Instructions
 **************************************************************
-Eventually there will be a proper readme but for now here's the need to know stuff.
 
 UCL_CHEM only works with my version of makerates. This writes nspec and nreac into the output files for array allocation as well as generating list of evaporation types.
 	-Open Makerates folder and check Makerates.py to see if input files are correct
@@ -13,21 +11,10 @@ UCL_CHEM only works with my version of makerates. This writes nspec and nreac in
 	-check freeze out alphas in reactions.csv, they default to 1
 	-Nothing else needs to be changed, everything is updated automatically.
 
-Whenever you change anything, including parameters type "make" into terminal. Currently, there is a parameter file called parameters.f90. As there is a makefile, recompiling after changing parameters takes a negligible amount of time.For that reason, having a parameter file that is just read in is fairly low priority.
-
 
 *************************************************************
 General issues/ to do list
 *************************************************************
 Zeros
 	rate(j)=1.0d-30 when it is really zero. This was to avoid computing issues. However, in many cases a fortran 95 code on a modern pc will run without errors. Investigate this.
-
-Analys
-	I'm completely unaware of what this subroutine does but it's missing
-
-Cshock
-	Physics module in progress!
-
-Cloud
-	Temperature profile still needs to be hard coded. Can find in main.f and sub.f_cpout of newold. Temperature increase and temperature limits of evaporation are found there and different for different mass cores.
 
