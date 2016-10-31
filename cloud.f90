@@ -14,8 +14,8 @@ MODULE physics
     integer :: evap,ion,solidflag,volcflag,coflag,tempindx
     
     !variables either controlled by physics or that user may wish to change    
-    double precision :: initdens,dens,tage,tout,t0,t0old,dfin,tfin,radg,inittemp
-    double precision :: size,rout,rin,avic,bc,olddens,maxtemp
+    double precision :: initialDens,dens,tage,tout,t0,t0old,finalDens,finalTime,radg,initialTemp
+    double precision :: size,rout,rin,avic,bc,olddens,maxTemp
     double precision :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
     double precision, allocatable :: av(:),coldens(:),temp(:)
     !Everything should be in cgs units. Helpful constants and conversions below
@@ -35,13 +35,13 @@ CONTAINS
     SUBROUTINE phys_initialise
         allocate(av(points),coldens(points),temp(points))
         size=(rout-rin)*pc
-        dens=initdens
-        temp=inittemp
+        dens=initialDens
+        temp=initialTemp
 
         !collapse stuff
         !calculate sound speed from temperature and mean molecular mass
-        !cs=(1d7*kbolt*inittemp)/(2*mh) assuming molecular mass from H2
-        c_s = sqrt(5d6*kbolt*inittemp/mh)
+        !cs=(1d7*kbolt*initialTemp)/(2*mh) assuming molecular mass from H2
+        c_s = sqrt(5d6*kbolt*initialTemp/mh)
         
         !Set up collapse modes.
         !work in dimensionless units so find conversions for density, time and radius.
@@ -51,37 +51,37 @@ CONTAINS
         SELECT CASE(collapse)
             !freefall Rawlings 1992
             CASE(0)
-                dens=initdens
+                dens=initialDens
             CASE(1)
-                dens=1.001*initdens
+                dens=1.001*initialDens
             !foster & chevalier 1993
             CASE(2)
-                unitrho = initdens*mh
+                unitrho = initialDens*mh
                 unitt = 1./sqrt(4*pi*G_N*unitrho)
                 unitr = c_s*unitt
-                maxdimt = 5.75 - (15.1/(14 + log10(dfin/initdens)))**(1/0.04)
+                maxdimt = 5.75 - (15.1/(14 + log10(finalDens/initialDens)))**(1/0.04)
             !ogino, tomisaka & nakamura 1999
             CASE(3)
-                unitrho = initdens*mh
+                unitrho = initialDens*mh
                 unitt = 1./sqrt(G_N*unitrho)
                 unitr = c_s*unitt
-                maxdimt = 0.33 - (2.5/(2.5 + log10(dfin/initdens)))**(1/0.18)
+                maxdimt = 0.33 - (2.5/(2.5 + log10(finalDens/initialDens)))**(1/0.18)
             CASE(4)
             
-                unitrho = initdens*mh
+                unitrho = initialDens*mh
                 unitt = 1./sqrt(2*pi*G_N*unitrho)
                 unitr = c_s*unitt
-                maxdimt = 5.5 - (2.1/(1.35 + log10(dfin/initdens)))**(1/0.28)
+                maxdimt = 5.5 - (2.1/(1.35 + log10(finalDens/initialDens)))**(1/0.28)
         END SELECT
 
         IF (collapse .gt. 1) THEN
              !Enforce maximum time value for collapse modes
-             tfin=maxdimt*year*unitt
+             finalTime=maxdimt*year*unitt
         END  IF
        
         IF (switch .eq. 1 .and. collapse .gt. 1) THEN
-            write(*,*) "Switch must be 0 for BE collapse, changing to stop at tfin"
-            write(*,*) "Tfin = ",tfin/year, " years"
+            write(*,*) "Switch must be 0 for BE collapse, changing to stop at finalTime"
+            write(*,*) "Tfin = ",finalTime/year, " years"
             switch=0
         END IF
 
@@ -116,7 +116,7 @@ CONTAINS
         !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
         av(dstep)= avic +coldens(dstep)/1.6d21
 
-        IF (phase .eq. 2 .and. temp(dstep) .lt. maxtemp) THEN
+        IF (phase .eq. 2 .and. temp(dstep) .lt. maxTemp) THEN
 
         !Below we include a temperature profile for hot cores
         !This is a profile taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
@@ -134,10 +134,10 @@ CONTAINS
                 !td(depth)=10. + (4.8560d-2*tage**0.6255)
 
             !temperature increase borrowed from sv for comparison 288.000
-            !will add general profile later, this works well for inittemp=10 K
+            !will add general profile later, this works well for initialTemp=10 K
             temp(dstep)=(size/(rout*pc))*(real(dstep)/real(points))
             temp(dstep)=temp(dstep)**(-0.5)
-            temp(dstep)=inittemp + ((tempa(tempindx)*(t0/year)**tempb(tempindx))*temp(dstep))
+            temp(dstep)=initialTemp + ((tempa(tempindx)*(t0/year)**tempb(tempindx))*temp(dstep))
             
             if (temp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
             if (temp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
@@ -158,21 +158,21 @@ CONTAINS
             rho0 = 10**(15*(5.75-dimt)**(-0.04) - 14)
             r0 = 10**(-6.7*(5.75-dimt)**(-0.04) + 6.6)
             dimrho = rho0/(1 + (dimr/r0)**2.5)
-            if (dimt .lt. 5.75) dens = dimrho*initdens
+            if (dimt .lt. 5.75) dens = dimrho*initialDens
         
         !ogino, tomisaka & nakamura 1999
         else if (collapse .eq. 3) then
             rho0 = 10**(2.5*(0.33-dimt)**(-0.18) - 2.5)
             r0 = 10**(-1.2*(0.33-dimt)**(-0.18) + 1.3)
             dimrho = rho0/(1 + (dimr/r0)**2.5)
-            if (dimt .lt. 0.33) dens = dimrho*initdens
+            if (dimt .lt. 0.33) dens = dimrho*initialDens
         
         !nakamura, hanawa & takano 1995
         else if (collapse .eq. 4) then
             rho0 = 10**(2.1*(5.5-dimt)**(-0.28) - 1.35)
             r0 = 10**(-0.7*(5.5-dimt)**(-0.28) + 0.75)
             dimrho = rho0/(1 + (dimr/r0)**2)**1.5
-            if (dimt .lt. 5.5) dens = dimrho*initdens
+            if (dimt .lt. 5.5) dens = dimrho*initialDens
         endif
 
     END SUBROUTINE phys_update
@@ -183,9 +183,9 @@ CONTAINS
     pure FUNCTION densdot()
         double precision :: densdot
         !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
-        IF (dens .lt. dfin) THEN
-             densdot=bc*(dens**4./initdens)**0.33*&
-             &(8.4d-30*initdens*((dens/initdens)**0.33-1.))**0.5
+        IF (dens .lt. finalDens) THEN
+             densdot=bc*(dens**4./initialDens)**0.33*&
+             &(8.4d-30*initialDens*((dens/initialDens)**0.33-1.))**0.5
         ELSE
             densdot=1.0d-30       
         ENDIF    

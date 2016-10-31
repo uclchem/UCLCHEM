@@ -19,12 +19,12 @@ include 'parameters.f90'
  CALL phys_initialise
  CALL chem_initialise
 
-!loop over time, tstep limit is arbitrary so that tfin can be reached.
+!loop over time, tstep limit is arbitrary so that finalTime can be reached.
 DO tstep=1,20000
     !End if we hit final density or time
-    IF (switch .eq. 1 .and. dens >= dfin) THEN
+    IF (switch .eq. 1 .and. dens >= finalDens) THEN
         exit
-    ELSEIF (switch .eq. 0 .and. tage >= tfin) THEN
+    ELSEIF (switch .eq. 0 .and. tage >= finalTime) THEN
         exit
     ENDIF
 

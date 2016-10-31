@@ -16,5 +16,5 @@ UCL_CHEM only works with my version of makerates. This writes nspec and nreac in
 General issues/ to do list
 *************************************************************
 Zeros
-	rate(j)=1.0d-30 when it is really zero. This was to avoid computing issues. However, in many cases a fortran 95 code on a modern pc will run without errors. Investigate this.
+	-rate(j)=1.0d-30 when it is really zero. This was to avoid computing issues. However, in many cases a fortran 95 code on a modern pc will run without errors. Investigate this.
 

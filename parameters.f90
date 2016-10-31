@@ -1,5 +1,5 @@
 !Initial physics variables and final  values. for temp, density and time
-inittemp=10.0;;maxtemp=300;initdens=1.00d4;dfin=1.00d7;t0=0.0;tfin=6.00d6
+initialTemp=10.0;;maxTemp=300;initialDens=1.00d4;finalDens=1.00d7;t0=0.0;finalTime=6.00d6
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
 radfield=1.0;zeta=1.0
 fr=1.0;
@@ -13,7 +13,7 @@ rout=0.03;rin=0;avic=2.0;points=10
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Behavioural switches
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!switch (0/1) -> finish model run at (tfin/dfin)
+!switch (0/1) -> finish model run at (finalTime/finalDens)
 switch=0
 
 !collapse (0/1/2/3/4) 1/0 are on/off for standard free-fall. 2/3/4 are different collapse modes noted in cloud.f90
@@ -64,7 +64,7 @@ open(4,file='output-column.dat',status='unknown')!columnated output based  on ou
 open(7,file='startabund',status='unknown')      !initialise abundance file. saved to at end or loaded from at start depending on first=(0/1)
 open(8,file='evaplists.csv',status='old')       !lists of species to evaporate in different thermal desorption events
 open(79,file='debuglog',status='unknown')       !debug file.
-open(88,file='results/analysistest',status='unknown') !analysis file showing main reacction and formation routes of outindx species.
+open(88,file='analysis',status='unknown') !analysis file showing main reacction and formation routes of outindx species.
 
 
 

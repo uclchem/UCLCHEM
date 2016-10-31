@@ -16,8 +16,8 @@ MODULE physics
     integer :: evap,ion,solidflag,monoflag,volcflag,coflag,tempindx
 
     !variables either controlled by physics or that user may wish to change    
-    double precision :: initdens,dens,tage,tout,t0,t0old,dfin,tfin
-    double precision :: size,rout,rin,avic,bc,tstart,maxtemp
+    double precision :: initialDens,dens,tage,tout,t0,t0old,finalDens,finalTime
+    double precision :: size,rout,rin,avic,bc,tstart,maxTemp
     double precision :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
     double precision, allocatable :: av(:),coldens(:),temp(:)
 
@@ -29,7 +29,7 @@ MODULE physics
     character(1)  ::densint
     !Cshock specific parameters
     !*******************************************************************
-    double precision :: inittemp, z2,vs,v0,zn,vn,at,z3,tout0,tsat
+    double precision :: initialTemp, z2,vs,v0,zn,vn,at,z3,tout0,tsat
     double precision :: ucm,z1,dv,vi,tempi,vn0,zn0,vA,dlength
     double precision :: radg5,radg,dens6
     double precision, allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
@@ -54,12 +54,12 @@ CONTAINS
                 write(*,*) "Cannot have collapse on during cshock (phase=2)"
                 Write(*,*) "setting collapse=0 and continuing"
                 collapse=0
-                dens=initdens
+                dens=initialDens
             ELSE
-                dens=1.001*initdens
+                dens=1.001*initialDens
             END IF
         ELSE
-            dens=initdens
+            dens=initialDens
         ENDIF 
 
         IF (phase .eq. 2) THEN
@@ -72,22 +72,22 @@ CONTAINS
 
         !maxxtemp set by vs and pre-shock density, polynomial fits to values taken from Draine et al. 1983
         !have been made and coefficients placed here. Tested with log(dens)>3 <6
-        IF (initdens .gt. 10**4.5) THEN
-            maxtemp=(2.91731*vs*vs)-(23.78974*vs)+225.204167337
+        IF (initialDens .gt. 10**4.5) THEN
+            maxTemp=(2.91731*vs*vs)-(23.78974*vs)+225.204167337
         ELSE
-            maxtemp=(0.47258*vs*vs)+(40.44161*vs)-128.635455216
+            maxTemp=(0.47258*vs*vs)+(40.44161*vs)-128.635455216
         END IF    
-        temp=inittemp
+        temp=initialTemp
 
         !tsat proportional to 1/pre-shock density. Fit to tsats from Jimenez-Serra 2008.
         tsat=(-15.38729*vs*vs*vs)+(2069.56962*vs*vs)-(90272.826991*vs)+1686858.54278
-        tsat=tsat/initdens
+        tsat=tsat/initialDens
 
-        write(*,*)tsat,maxtemp
+        write(*,*)tsat,maxTemp
 
         ! The initial parameters that define the C-shock structure
         ! Length of the dissipation region, dlength:
-        dlength=12.0*pc*vs/initdens
+        dlength=12.0*pc*vs/initialDens
         ! Parameters that describe the decoupling between the ion and the neutral
         ! fluids. z2 is obtained by assuming that at z=dlength, the velocity of
         ! the neutrals is 99% (vs-v0). See v0 below and more details in
@@ -105,19 +105,19 @@ CONTAINS
         ! z3 has to be 1/6 zmax
         z3=zmax/6
 
-        ! maxtemp is taken from Fig.9b in Draine et al. (1983) and the at constant is
+        ! maxTemp is taken from Fig.9b in Draine et al. (1983) and the at constant is
         ! derived as:
         a1=6.0
-        at=(1/zmax)*((maxtemp-inittemp)*(dexp(a1)-1.))**(1./6.)
+        at=(1/zmax)*((maxTemp-initialTemp)*(dexp(a1)-1.))**(1./6.)
 
         !write(92,*) 'L=',dlength,'; zn=',z2,'; zi=',z1,'; zT=',z3,'; at=',at
 
         !Second, we calculate v0 that depends on the alfven and the shock velocities
         !Magnetic field in microGauss. We assume strong magnetic field, i.e., bm0=1.microgauss.
         !(Draine, Roberge & Dalgarno 1983)
-        !For the general case, the Alfven velocity is calculated as vA=B0/sqrt(4*pi*2*initdens). If we
+        !For the general case, the Alfven velocity is calculated as vA=B0/sqrt(4*pi*2*initialDens). If we
         !substitute the expression of B0 on this equation, we obtain that vA=bm0/sqrt(4*pi*mH).
-        !B0=bm0*sqrt(2*initdens)
+        !B0=bm0*sqrt(2*initialDens)
         vA=bm0/sqrt(4*pi*mh)
         vA=vA/km
     END SUBROUTINE phys_initialise
@@ -175,7 +175,7 @@ CONTAINS
             !C-shock. We also take into account that the gas and dust are decoupled. We
             !use the equations for the collisional and radiative heating of grains of
             !Draine, Roberge & Dalgarno (1983) and Hollenbach, Takahashi & Tielens (1991).
-            tn(dstep)=inittemp+((at*zn)**bt)/(dexp(zn/z3)-1)
+            tn(dstep)=initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
             ti(dstep)=tn(dstep)+(mun*(dv*km)**2/(3*kb2))
             write(91,*)tn(dstep), ti(dstep)
 
@@ -200,12 +200,12 @@ CONTAINS
 
             !We introduce the variation of the density (nn) as the C-shock evolves
             IF (tstep .gt. 1) THEN
-                dens=initdens*vs/(vs-vn)
+                dens=initialDens*vs/(vs-vn)
                 !dens = 1.d5/((1+5.0d-6*tage)**2)
                 !write(6,*)dens
             END IF
             IF (tstep.gt.1.) THEN
-                tn(dstep)=inittemp+((at*zn)**bt)/(dexp(zn/z3)-1)
+                tn(dstep)=initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
                 temp=tn(dstep)
                 ti(dstep)=tn(dstep)+(mun*(dv*km)**2/(3*kb2))
                 tempi=ti(dstep)
@@ -230,9 +230,9 @@ CONTAINS
         double precision :: densdot
 
  !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
-        IF (dens .lt. dfin) THEN
-             densdot=bc*(dens**4./initdens)**0.33*&
-             &(8.4d-30*initdens*((dens/initdens)**0.33-1.))**0.5
+        IF (dens .lt. finalDens) THEN
+             densdot=bc*(dens**4./initialDens)**0.33*&
+             &(8.4d-30*initialDens*((dens/initialDens)**0.33-1.))**0.5
         ELSE
             densdot=1.0d-30       
         ENDIF

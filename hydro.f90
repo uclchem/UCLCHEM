@@ -14,8 +14,8 @@ MODULE physics
     integer :: evap,ion,solidflag,volcflag,coflag,tempindx
    
     !variables either controlled by physics or that user may wish to change    
-    double precision :: initdens,dens,tage,tout,t0,t0old,dfin,tfin,radg,inittemp
-    double precision :: size,rout,rin,oldtemp,avic,bc,olddens,maxtemp
+    double precision :: initialDens,dens,tage,tout,t0,t0old,finalDens,finalTime,radg,initialTemp
+    double precision :: size,rout,rin,oldtemp,avic,bc,olddens,maxTemp
     double precision :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
     double precision, allocatable :: av(:),coldens(:),temp(:)
     !Everything should be in cgs units. Helpful constants and conversions below
@@ -39,9 +39,9 @@ CONTAINS
         size=(rout-rin)*pc
 
         if (collapse .eq. 1) THEN
-            dens=1.001*initdens
+            dens=1.001*initialDens
         ELSE
-            dens=initdens
+            dens=initialDens
         ENDIF 
 
         NF=0
@@ -58,7 +58,7 @@ CONTAINS
 
 !	write(*,*) time(1), density(1), temps(1)
         t0=time(1)
-        tfin=time(NF)*year
+        finalTime=time(NF)*year
         CALL splinehydro(time, density, NF, 1d30, 1d30, dens2)
         CALL splinehydro(time, temps, NF, 1d30, 1d30, temp2)
         tinc=0.1
@@ -99,9 +99,9 @@ CONTAINS
     !It get's called by F, the SUBROUTINE in chem.f90 that sets up the ODEs for DLSODE
         double precision :: densdot
         !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
-        IF (dens .lt. dfin) THEN
-             densdot=bc*(dens**4./initdens)**0.33*&
-             &(8.4d-30*initdens*((dens/initdens)**0.33-1.))**0.5
+        IF (dens .lt. finalDens) THEN
+             densdot=bc*(dens**4./initialDens)**0.33*&
+             &(8.4d-30*initialDens*((dens/initialDens)**0.33-1.))**0.5
         ELSE
             densdot=1.0d-30       
         ENDIF       

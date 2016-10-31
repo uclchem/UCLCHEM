@@ -223,8 +223,8 @@ CONTAINS
         write(1,8000)
         !If this is the last time step of phase I, write a start file for phase II
         IF (first .eq. 1) THEN
-           IF (switch .eq. 0 .and. tage .ge. tfin& 
-               &.or. switch .eq. 1 .and.dens .ge. dfin) THEN
+           IF (switch .eq. 0 .and. tage .ge. finalTime& 
+               &.or. switch .eq. 1 .and.dens .ge. finalDens) THEN
                write(7,8020) tage,dens,temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
                        &fmg,fhe,dstep
                write(7,8000)
