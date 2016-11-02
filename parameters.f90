@@ -1,3 +1,7 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Physical Conditions and Initial Abundances
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 !Initial physics variables and final  values. for temp, density and time
 initialTemp=10.0;;maxTemp=300;initialDens=1.00d4;finalDens=1.00d7;t0=0.0;finalTime=1.00d6
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
@@ -43,8 +47,6 @@ tempindx=5
 
 !ion sets ionisatoin fraction of carbon. See chem.f90:initialise
 ion=2
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 
 !cshock specific variable, uncomment or comment as  needed
 !vs=40.0
@@ -53,6 +55,10 @@ ion=2
 fh=0.0;fhe = 0.085;fc  = 2.692d-04;fo  = 4.898d-04;fn  = 6.761d-05
 fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07;
 fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Input and output Files
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !output species. Numbers are position of species in species.csv starting from 1.
 !Due to line 1 being the number of species, the line number of a  species is 1 higher than it's index for this list. ie. H is the first species and is on line 2
@@ -84,7 +90,7 @@ open(79,file='debuglog',status='unknown')       !debug file.
 !Description and use found in rate.f90
 ebmaxh2=1.21d3;epsilon=0.01;ebmaxcrf=1.21d3;uvcreff=1.0d-3
 ebmaxcr=1.21d3;phi=1.0d5;ebmaxuvcr=1.0d4; uvy=0.1
-omega=0.5;grainarea=2.4d-22;radg=1.d-5
+omega=0.5;grainArea=2.4d-22;radg=1.d-5
 
 !dopw = doppler width (in s-1) of a typical transition
 !(assuming turbulent broadening with beta=3e5cms-1)

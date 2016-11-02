@@ -31,7 +31,7 @@ EXTERNAL dvode
     double precision,allocatable :: abund(:,:),mantle(:)
     
     !Variables controlling chemistry
-    double precision :: radfield,zeta,fr,omega,grainarea,cion,h2form,h2dis
+    double precision :: radfield,zeta,fr,omega,grainArea,cion,h2form,h2dis
     double precision :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uvy,uvcreff
     double precision :: taud,dopw,radw,xl,fosc
 

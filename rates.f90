@@ -30,12 +30,12 @@ integer :: ns,index1,index2
                     IF (specname(i).eq.re1(j)) THEN
                         IF (beta(j).eq.0.0 ) THEN
                             !taken from Rawlings et al. 1992
-                            rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*grainarea*fr
+                            rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*grainArea*fr
                         ELSE
                             !Make rates sets beta=1 for ion freeze out. this catches that and
                             !freezes differently
                             cion=1.0+16.71d-4/(radg*temp(dstep))
-                            rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*grainarea*fr*cion
+                            rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*grainArea*fr*cion
                         ENDIF
                     ENDIF
                 END DO
@@ -58,9 +58,9 @@ integer :: ns,index1,index2
             &.and. gama(j) .le. ebmaxcr) THEN
                 !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
                 !as iron nuclei are main cause of CR heating.
-                !grainarea is the total area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
+                !grainArea is the total area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
                 !phi is efficieny of this reaction, number of molecules removed per event.
-                rate(j) = 4.0*pi*zeta*1.64d-4*(grainarea)*&
+                rate(j) = 4.0*pi*zeta*1.64d-4*(grainArea)*&
                       &(1.0/mantle(dstep))*phi
             ELSE
                 rate(j) = 0.0
@@ -70,7 +70,7 @@ integer :: ns,index1,index2
              &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-15) THEN
                 !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
                 !UVY is yield per photon.
-                rate(j) = grainarea*uvy*4.875d3*zeta*(1.0/mantle(dstep))
+                rate(j) = grainArea*uvy*4.875d3*zeta*(1.0/mantle(dstep))
                 !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
                 !CR induced UV to ISRF UV.
                 rate(j) = rate(j) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
