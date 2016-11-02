@@ -18,7 +18,7 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change    
     double precision :: initialDens,dens,temp,tage,tout,t0,t0old,finalDens,finalTime,radg
-    double precision :: size,rout,rin,oldtemp,avic,bc,tempa,tempb,olddens,oldt0,maxt
+    double precision :: size,rout,rin,oldtemp,baseAv,bc,tempa,tempb,olddens,oldt0,maxt
 
     !old bd model variables
     double precision ::  dshock,rshock, tageold,ffc,mbd,mach
@@ -64,14 +64,14 @@ CONTAINS
         IF (dens .lt. finalDens .and. phase .eq. 2) THEN
             CALL simpleshock
         END IF
-        !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
+        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         !for bd, need to have dstep=1 as core.
         IF (dstep .lt. points) THEN
             coldens(dstep)= size*((real(points+0.5-dstep))/real(points))*dens
         ELSE
             coldens(dstep)= 0.5*(size/real(points))*dens
         END IF
-        av(dstep)= avic +coldens(dstep)/1.6d21
+        av(dstep)= baseAv +coldens(dstep)/1.6d21
     END SUBROUTINE phys_update
 
 

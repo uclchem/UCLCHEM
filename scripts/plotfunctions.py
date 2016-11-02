@@ -1,195 +1,84 @@
+#A set of functions for working with UCLCHEM outputs
+# adding "from plotfunctions import * to any python script in scripts/ will allow their use"
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import csv
 
-def main():
-    fig=plt.figure()
-    ax=fig.add_subplot(111)
-    ax=add_line(ax,"../output","CO")
-    outfile=input("choose output filename")
-    outfile=str(outfile)+".png"
-    plt.savefig(outfile)
-
-#function to read the output of UCL_CHEM, give it the output file
-#and 5 species names as strings.
-def read_uclchem(filename,s1,s2,s3,s4,s5):
+#to read from uclchem's full output send the filename of the output and a list of species names to read_uclchem()
+#the list for example would be ["H","C","CO","#CO"]
+#the return is a list of times and list of lists of abundances
+#call time,abundances=read_uclchem("output-full",["H","C","CO","#CO"])
+# abudnance[0] would be a list of "H" abundances
+def read_uclchem(filename,species):
     a=open(filename).read()
     a=a.split('\n')
     #there are 68 lines per time step in the UCL_CHEM output file.
     lines=68
     timesteps=len(a)/lines
 
+    abunds=[]
+    for spec in species:
+        abunds.append([])
     time=[]
     dens=[]
-    spec1=[]
-    spec2=[]
-    spec3=[]
-    spec4=[]
-    spec5=[]
     #so now do the following until end of file
-    for i in np.arange(0,timesteps):
-        j=i*lines
-        b=a[j].split()
-        b=float(b[-2].replace("D", "E"))
-        time.append(b)
-        b=a[j+1].split()
-        b=float(b[-2].replace("D", "E"))
-        dens.append(b)
-        for k in np.arange(j+11,j+1+lines):
-            b=a[k].split()
-            for element in b:
-                if element==s1:
-                    pos=b.index(element)
-                    b=float(b[pos+2].replace("D", "E"))
-                    spec1.append(b)
-                elif element==s2:
-                    pos=b.index(element)
-                    b=float(b[pos+2].replace("D", "E"))
-                    spec2.append(b)
-                elif element==s3:
-                    pos=b.index(element)
-                    b=float(b[pos+2].replace("D", "E"))
-                    spec3.append(b)
-                elif element==s4:
-                    pos=b.index(element)
-                    b=float(b[pos+2].replace("D", "E"))
-                    spec4.append(b)      
-                elif element==s5:
-                    pos=b.index(element)
-                    b=float(b[pos+2].replace("D", "E"))
-                    spec5.append(b)
-    time=np.log10(time)
-    dens=np.log10(dens)
-    spec1=np.log10(spec1)
-    spec2=np.log10(spec1)
-    spec3=np.log10(spec1)
-    spec4=np.log10(spec1)
-    spec5=np.log10(spec1)
-    return time,dens,spec1,spec2,spec3,spec4,spec5
+    with open(filename) as file:
+        for line in file:
+            bits=line.split()        
+            #find time line
+            if  'age' in bits:
+                time.append(float(bits[-2].replace('D','E')))
+            #read another line for dens
+            if 'density' in bits:
+                densi=float(bits[-2].replace('D','E'))
+                if densi==0.0:
+                    densi=1e-10
+                dens.append(densi)
+            #then read until we hit abundances
+            if bits .count('=')>2:
+                for specIndx,specName in enumerate(species):
+                    if specName in bits:
+                        abunds[specIndx].append(float(bits[2+bits.index(specName)].replace('D','E')))
 
-def add_line(ax,file,spec): 
-    a=open(file).read()
-    a=a.split('\n')
-    #there are 68 lines per time step in the UCL_CHEM output file.
-    i=0;j=0
-    while (j != 2):
-        if a[i][0:3]=='age':
-            j+=1
-            lines=i
-        i+=1
-        
-    timesteps=len(a)/lines
+    return time,dens,abunds
 
-    time=[];dens=[];
+def write_cols(filename,times,dens,abundances):
+    f=open(filename,"wb")
+    for timeIndx,time in enumerate(times):
+        outString="{0:.3e} {1:.3e}".format(time,dens[timeIndx])
+        for i in range(0,len(abundances)):
+            outString+=" {0:.3e}".format(abundances[i][timeIndx])
+        outString+="\n"
+        f.write(outString)
+    f.close()
 
-    #so now do the following until end of file
-    for i in np.arange(0,timesteps):
-        j=i*lines
-        b=a[j].split()
-        b=float(b[-2].replace("D", "E"))
-        time.append(b)
-        b=a[j+1].split()
-        b=float(b[-2].replace("D", "E"))
-        dens.append(b)
-        time=np.log10(time)
-        dens=np.log10(dens)
-        end=0
-        while (end == 0):
-            y=[]
-            for k in np.arange(j+11,j+1+lines):
-                b=a[k].split()
-                for element in b:
-                    if element==spec:
-                        pos=b.index(element)
-                        b=float(b[pos+2].replace("D", "E"))
-                        y.append(b)
-
-            y=np.log10(y)
-            ax.plot(time,y)
-            spec=str(input("Pick another species or type 'end'"))
-            print spec
-            if (spec == 'end'):
-                return ax
-    return ax
-
-def read_olduclchem(filename,s1,s2,s3,s4,s5):
-    a=open(filename).read()
-    a=a.split('\n')
-    #there are 68 lines per time step in the UCL_CHEM output file.
-    lines=72
-    timesteps=(len(a)-1)/lines
-    time=[]
-    dens=[]
-    spec1=[]
-    spec2=[]
-    spec3=[]
-    spec4=[]
-    spec5=[]
-    #so now do the following until end of file
-    for i in np.arange(0,timesteps):
-        j=(i*lines)+1
-        b=a[j].split()
-        b=float(b[-2].replace("D", "E"))
-        dens.append(b)
-        b=a[j+11].split()
-        b=float(b[-4].replace("D", "E"))
-        time.append(b)
-        for k in np.arange(j+14,j+lines+1):
-            b=a[k].split()
-            for element in b:
-                if element==s1:
-                    pos=b.index(element)
-                    b=float(b[pos+2].replace("D", "E"))
-                    spec1.append(b)
-                elif element==s2:
-                    pos=b.index(element)
-                    b=float(b[pos+2].replace("D", "E"))
-                    spec2.append(b)
-                elif element==s3:
-                    pos=b.index(element)
-                    b=float(b[pos+2].replace("D", "E"))
-                    spec3.append(b)
-                elif element==s4:
-                    pos=b.index(element)
-                    b=float(b[pos+2].replace("D", "E"))
-                    spec4.append(b)      
-                elif element==s5:
-                    pos=b.index(element)
-                    b=float(b[pos+2].replace("D", "E"))
-                    spec5.append(b)
-    time=np.log10(time)
-    dens=np.log10(dens)
-    spec1=np.log10(spec1)
-    spec2=np.log10(spec1)
-    spec3=np.log10(spec1)
-    spec4=np.log10(spec1)
-    spec5=np.log10(spec1)
-    return time,dens,spec1,spec2,spec3,spec4,spec5
-
-
-def write_plot(filename,time,dens,s1,s2,s3,s4,s5):
-    outfile=open(filename,'wb')
-    writer = csv.writer(outfile,delimiter=' ')
-    n=len(time)
-    for i in range(n):
-        writer.writerow([time[i],dens[i],s1[i],s2[i],s3[i],s4[i],s5[i]])
-
-
-def gen_plot(x,y1,y2,y3,y4,y5,outfile):
+#send a  list of species names and their abundances in  a list of lists
+#with a list of times for each abundance point
+#same as the species input and time/abundance output from read_uclchem
+#optionally send an output filename to save the plot
+#return ax,figure for further manipulation
+def plot_species(species,times,abundances,plotFile=None):
     fig=plt.figure()
     ax=fig.add_subplot(111)
-    ax.plot(x,y1,ls='-',color='black')
-    # ax.text(0.9,0.9,'CO',transform=ax.transAxes)
-    ax.plot(x,y2,ls='-',color='purple')
-    # ax.text(0.9,0.85,'HCO+',color='purple',transform=ax.transAxes)
-    ax.plot(x,y3,ls='-',color='red')
-    # ax.text(0.9,0.8,'CS',color='red',transform=ax.transAxes)
-    ax.plot(x,y4,ls='-',color='green')
-    # ax.text(0.9,0.75,'NH$_3$',color='green',transform=ax.transAxes)
-    ax.plot(x,y5,ls='-',color='brown')
-    # ax.text(0.9,0.7,'N$_2$H+',color='brown',transform=ax.transAxes)
-    ax.set_xlabel("log(time / yr)")
-    ax.set_ylabel("log(X$_{species}$)")
-    ax.minorticks_on()
-    plt.savefig(outfile,bbox_inches='tight',pad_inches=0.1,dpi=300)
-    plt.close()
+    colours=make_colours(len(species))
+
+    for specIndx,specName in enumerate(species):
+        ax.plot(times,abundances[specIndx],color=colours.next(),label=specName)
+
+    ax.legend(loc=4,fontsize='small')
+
+    ax.set_xlabel('Time / years')
+    ax.set_ylabel("X$_{Species}$")
+
+    ax.set_yscale('log')
+
+    if plotFile is not None:
+        fig.savefig("plotFile")
+    return ax,fig
+    
+
+
+def make_colours(n):
+    return iter(cm.rainbow(np.linspace(0, 1, n)))
+

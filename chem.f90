@@ -115,9 +115,9 @@ CONTAINS
         integer i,j,l,m
 
         !read species file and allocate sufficient space to relevant arrays
-        read(3,*)nspec
+        read(21,*)nspec
         allocate(abund(nspec+1,points),specname(nspec),mass(nspec),bindener(nspec),vdiff(nspec))
-        read(3,*)(specname(j),mass(j),bindener(j),j=1,nspec-1)
+        read(21,*)(specname(j),mass(j),bindener(j),j=1,nspec-1)
         !assign array indices for important species to the integers used to store them.
         specname(nspec)='electr'
         DO i=1,nspec-1
@@ -144,39 +144,39 @@ CONTAINS
 
         !read reac file, assign array space
         !alpha, beta and gama are used for working out reaction rate each time step
-        read(2,*) nreac
+        read(22,*) nreac
         allocate(re1(nreac),re2(nreac),re3(nreac),p1(nreac),p2(nreac),p3(nreac),&
             &p4(nreac),alpha(nreac),beta(nreac),gama(nreac),rate(nreac))
         DO j=1,nreac
-            read(2,*) re1(j),re2(j),re3(j),p1(j),p2(j),p3(j),&
+            read(22,*) re1(j),re2(j),re3(j),p1(j),p2(j),p3(j),&
             &p4(j),alpha(j),beta(j),gama(j),junk1,junk2
         END DO    
 
         !finally, read in evaporation lists
         !what we do is read in length of each list, then the numbers in the list
         !these are used for evaporation sums.
-        read(8,*) l
+        read(23,*) l
         allocate(colist(l),mcolist(l), cobindener(l),comono(l),covolc(l))
-        read(8,*)colist
-        read(8,*)mcolist
-        read(8,*) comono
-        read(8,*) covolc
-        read(8,*) l
+        read(23,*)colist
+        read(23,*)mcolist
+        read(23,*) comono
+        read(23,*) covolc
+        read(23,*) l
         allocate(co2list(l),mco2list(l), co2bindener(l),co2mono(l),co2volc(l))
-        read(8,*)co2list
-        read(8,*)mco2list
-        read(8,*) co2mono
-        read(8,*) co2volc
-        read(8,*) l
+        read(23,*)co2list
+        read(23,*)mco2list
+        read(23,*) co2mono
+        read(23,*) co2volc
+        read(23,*) l
         allocate(intlist(l),mintlist(l),intbindener(l),intmono(l),intvolc(l))
-        read(8,*) intlist
-        read(8,*) mintlist
-        read(8,*) intmono
-        read(8,*) intvolc
-        read(8,*)l
+        read(23,*) intlist
+        read(23,*) mintlist
+        read(23,*) intmono
+        read(23,*) intvolc
+        read(23,*)l
         allocate(grainlist(l),mgrainlist(l))
-        read(8,*) grainlist
-        read(8,*) mgrainlist
+        read(23,*) grainlist
+        read(23,*) mgrainlist
 
         !read start file IF not first phase to get finale abundances from previous phase 
         !density, temp and av read but NOT zeta or radfield
@@ -214,13 +214,13 @@ CONTAINS
             ENDIF
         END DO
         !write out cloud properties
-        write(1,8020) tage,dens,temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
+        write(10,8020) tage,dens,temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
                         &fmg,fhe,dstep
         !and a blank line
-        write(1,8000)
+        write(10,8000)
         !and then all the abundances for this step
-        write(1,8010) (specname(i),abund(i,dstep),i=1,nspec) 
-        write(1,8000)
+        write(10,8010) (specname(i),abund(i,dstep),i=1,nspec) 
+        write(10,8000)
         !If this is the last time step of phase I, write a start file for phase II
         IF (first .eq. 1) THEN
            IF (switch .eq. 0 .and. tage .ge. finalTime& 
@@ -250,7 +250,7 @@ CONTAINS
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90
         IF ( mod(tstep,writestep) .eq. 0) THEN
-            write(4,8030) tage,dens,temp(dstep),abund(outindx,dstep)
+            write(11,8030) tage,dens,temp(dstep),abund(outindx,dstep)
             8030  format(1pd11.3,1x,1pd11.4,1x,0pf8.2,6(1x,1pd10.3))
             write(*,*)'Call to LSODE successful at time: ',(TOUT*year),' years'
             write(*,*)'        Steps: ',IWORK(6)
@@ -510,7 +510,7 @@ CONTAINS
             !total destruction and production
             dtot=0.0
             ptot=0.0
-            write(88,100)i,specname(i)
+            write(12,100)i,specname(i)
         100 format('Species index',i3,' = ',a10)
             id=0
             ip=0
@@ -579,17 +579,17 @@ CONTAINS
             DO j=1,id
                 i=lossindx(j)
                 if(z(j).gt.0.5) then
-                    write(88,300)re1(i),re2(i),p1(i),p2(i),-nint(z(j))
+                    write(12,300)re1(i),re2(i),p1(i),p2(i),-nint(z(j))
                 END IF
             END DO
             p=100*(p/ptot)
             DO j=1,ip
                 i=prodindx(j)
                 if(p(j).gt.0.5) then
-                    write(88,300)re1(i),re2(i),p1(i),p2(i),nint(p(j))
+                    write(12,300)re1(i),re2(i),p1(i),p2(i),nint(p(j))
                 end if
             END DO
-            write(88,400)dtot,ptot    
+            write(12,400)dtot,ptot    
         END DO
 
         400 format(10x,'LOSSrate= ',e9.3,5x,'FORMrate= ',e9.3)

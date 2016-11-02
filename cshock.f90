@@ -17,7 +17,7 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change    
     double precision :: initialDens,dens,tage,tout,t0,t0old,finalDens,finalTime
-    double precision :: size,rout,rin,avic,bc,tstart,maxTemp
+    double precision :: size,rout,rin,baseAv,bc,tstart,maxTemp
     double precision :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
     double precision, allocatable :: av(:),coldens(:),temp(:)
 
@@ -163,8 +163,8 @@ CONTAINS
     SUBROUTINE phys_update
         !calculate column density. Remember dstep counts from edge of core in to centre
         coldens(dstep)= size*((real(dstep))/real(points))*dens
-        !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
-        av(dstep)= avic +coldens(dstep)/1.6d21
+        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
+        av(dstep)= baseAv +coldens(dstep)/1.6d21
 
         !emulate cloud.f90 for phase=1, do cshock for phase=2
         IF (phase .eq. 2) THEN

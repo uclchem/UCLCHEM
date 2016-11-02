@@ -11,11 +11,14 @@ USE physics
 USE chem
 IMPLICIT NONE
 
-!Default parameters.f90 works for MOST physics modules.
-!CSHOCK has cshock_parameters.f90
+!Default parameters.f90 works for MOST physics modules. 
 include 'parameters.f90'
 
-!Set up with initial values etc, lives in chem.f90
+!This commented out line is a simple read in. This is useful when running large numbers of models, varying only a few paramters
+!use it by replacing the variables as needed and running code as "./main < value1 value2 value3"
+!read(*,*) variable1,variable2,variable3
+
+!Set up with initial values. For chemistry this is setting initial abundances and assigning memory for ODE solver
  CALL phys_initialise
  CALL chem_initialise
 
@@ -36,7 +39,7 @@ DO tstep=1,20000
     !update tout
     CALL timestep
 
-    !loop over depth points, counting from edge in to centre
+    !loop over parcels, counting from centre out to edge of cloud
     DO dstep=1,points
 
         dens=abund(nspec+1,dstep)

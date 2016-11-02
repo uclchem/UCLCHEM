@@ -1,2 +1,3 @@
 ### Small Release Updates ###
-Improved variable names and layout for parameters.f90
+Python scripts improved for general usability
+Parameters.f90 changed so filenames are easier to follow.

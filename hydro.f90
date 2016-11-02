@@ -15,7 +15,7 @@ MODULE physics
    
     !variables either controlled by physics or that user may wish to change    
     double precision :: initialDens,dens,tage,tout,t0,t0old,finalDens,finalTime,radg,initialTemp
-    double precision :: size,rout,rin,oldtemp,avic,bc,olddens,maxTemp
+    double precision :: size,rout,rin,oldtemp,baseAv,bc,olddens,maxTemp
     double precision :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
     double precision, allocatable :: av(:),coldens(:),temp(:)
     !Everything should be in cgs units. Helpful constants and conversions below
@@ -89,8 +89,8 @@ CONTAINS
         
         !calculate column density by dens x depth of point 
         coldens(dstep)= size*((real(dstep))/real(points))*dens
-        !calculate the Av using an assumed extinction outside of core (avic), depth of point and density
-        av(dstep)= avic !+coldens(dstep)/1.6d21
+        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
+        av(dstep)= baseAv !+coldens(dstep)/1.6d21
     END SUBROUTINE phys_update
 
     pure FUNCTION densdot()
