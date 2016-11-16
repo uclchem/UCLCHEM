@@ -17,7 +17,7 @@ EXTERNAL dvode
     !These are variables for reaction rates, alpha/beta/gamas are combined each time step to make rate,the total reaction rate
     double precision,allocatable :: rate(:),alpha(:),beta(:),gama(:),mass(:)
     character(LEN=10),allocatable :: re1(:),re2(:),re3(:),p1(:),p2(:),p3(:),p4(:)
-    character(LEN=10),allocatable :: specname(:)  
+    character(LEN=15),allocatable :: specname(:)  
     
     !DLSODE variables    
     integer :: ITOL,ITASK,ISTATE,IOPT,MESFLG,NEQ,lrw,liw
@@ -201,7 +201,7 @@ CONTAINS
             &12x,1pe7.1,13x,1pe7.1,&
             &13x,i3,/)
             7020  format(//)
-            7030  format(4(1x,a10,2x,1pd10.3,:))     
+            7030  format(4(1x,a15,2x,1pd10.3,:))     
         END IF
     END SUBROUTINE reader
 
@@ -233,7 +233,7 @@ CONTAINS
            ENDIF
         ENDIF
         8000  format(/)
-        8010  format(4(1x,a10,'=',1x,1pd10.3,:))
+        8010  format(4(1x,a15,'=',1x,1pd10.3,:))
         8020 format(&
         &'age of cloud             time  = ',1pd11.3,' years',/,&
         &'total hydrogen density   dens  = ',1pd11.4,' cm-3',/,&
@@ -511,7 +511,7 @@ CONTAINS
             dtot=0.0
             ptot=0.0
             write(12,100)i,specname(i)
-        100 format('Species index',i3,' = ',a10)
+        100 format('Species index',i3,' = ',a15)
             id=0
             ip=0
             !Loop over all reactions
@@ -593,7 +593,7 @@ CONTAINS
         END DO
 
         400 format(10x,'LOSSrate= ',e9.3,5x,'FORMrate= ',e9.3)
-        300 format(5x,4(2x,a10),3x,i5,'%')
+        300 format(5x,4(2x,a15),3x,i5,'%')
         return
     END SUBROUTINE analysis
 END MODULE chem

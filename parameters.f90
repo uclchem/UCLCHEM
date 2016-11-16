@@ -3,7 +3,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Initial physics variables and final  values. for temp, density and time
-initialTemp=10.0;;maxTemp=300;initialDens=1.00d4;finalDens=1.00d7;t0=0.0;finalTime=1.00d6
+initialTemp=20.0;;maxTemp=300;initialDens=1.00d2;finalDens=2.00d5;t0=0.0;finalTime=1.00d6
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
 radfield=1.0;zeta=1.0
 fr=1.0;
@@ -24,7 +24,7 @@ switch=0
 !collape=0/1 ONLY if not using cloud.f90
 !In all cases collapse=1 lets chem.f90 know it should call  densdot in the physics module to get time derivative of density and include it in ODES
 !Any other values tells it to use density value as set by physics module
-collapse=0
+collapse=1
 !for collapse=1 can introduce factor bc to slow freefall
 bc=1.0
 
@@ -88,6 +88,7 @@ open(79,file='debuglog',status='unknown')       !debug file.
 
 !Chemistry variables
 !Description and use found in rate.f90
+!Desorption treatment is described in Roberts et al. 2007, these are rates and efficiencies of processes that cause desorption
 ebmaxh2=1.21d3;epsilon=0.01;ebmaxcrf=1.21d3;uvcreff=1.0d-3
 ebmaxcr=1.21d3;phi=1.0d5;ebmaxuvcr=1.0d4; uvy=0.1
 omega=0.5;grainArea=2.4d-22;radg=1.d-5

@@ -1,3 +1,2 @@
 ### Small Release Updates ###
-Python scripts improved for general usability
-Parameters.f90 changed so filenames are easier to follow.
+Character length of species names updated for COMs
