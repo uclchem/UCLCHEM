@@ -12,8 +12,8 @@ import itertools
 from Functions import *
 
 reactionFile = 'inputFiles/umist12.csv'
-reactionFile_grain = 'inputFiles/grain_latest_audrey.csv'
-speciesFile = 'inputFiles/species_latest_audrey.csv'
+reactionFile_grain = 'inputFiles/uclgrainbasic.csv'
+speciesFile = 'inputFiles/basicspecies.csv'
 
 
 make_capitals(reactionFile)

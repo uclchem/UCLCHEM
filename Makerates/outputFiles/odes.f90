@@ -41,7 +41,7 @@
      &       -RATE(2707)*Y(245)*D-RATE(2708)*Y(248)*D-RATE(2714)*Y(160) &
      &       *D-RATE(2715)*Y(165)*D-RATE(2717)*Y(247)*D-RATE(2718) &
      &       *Y(249)*D-RATE(2720)*Y(176)*D-RATE(2816)*Y(250)*D
-      LOSS =      LOSS -RATE(2817)*Y(261)*D
+      LOSS =      LOSS -RATE(2817)*Y(261)*D-RATE(2891)*Y(73)*D
       PROD = +RATE(3)*Y(3)*Y(11)*D+RATE(4)*Y(3)*Y(3)*D+RATE(4)*Y(3) &
      &       *Y(3)*D+RATE(5)*Y(3)*Y(40)*D+RATE(8)*Y(3)*Y(37)*D+RATE(9) &
      &       *Y(3)*Y(289)*D+RATE(9)*Y(3)*Y(289)*D+RATE(10)*Y(1)*Y(11)*D &
@@ -2317,7 +2317,7 @@
       PROD = +RATE(2341)*Y(77)*D
       YDOT(72) = PROD+Y(72)*LOSS
       LOSS = -RATE(2400)*D-RATE(2441)-RATE(2482)-RATE(2523)-RATE(2704) &
-     &       *Y(116)*D-RATE(2843)*Y(128)*D
+     &       *Y(116)*D-RATE(2843)*Y(128)*D-RATE(2891)*Y(1)*D
       PROD = +RATE(2245)*Y(78)*D+RATE(2272)*Y(79)*D
       YDOT(73) = PROD+Y(73)*LOSS
       LOSS = -RATE(2419)*D-RATE(2460)-RATE(2501)-RATE(2542)
@@ -2641,7 +2641,8 @@
       LOSS = -RATE(2703)*Y(17)*D-RATE(2705)*Y(116)*D-2*RATE(2706)*Y(87) &
      &       *D-RATE(2735)-RATE(2736)-RATE(2737)-RATE(2738)*D &
      &       -RATE(2818)*Y(104)*D-RATE(2886)*Y(105)*D
-      PROD = +RATE(2366)*Y(78)*D+RATE(2734)*Y(89)*D
+      PROD = +RATE(2366)*Y(78)*D+RATE(2734)*Y(89)*D+RATE(2891)*Y(1) &
+     &       *Y(73)*D
       YDOT(87) = PROD+Y(87)*LOSS
       LOSS = -RATE(378)-RATE(1655)*Y(9)*D-RATE(1875)*Y(15)*D-RATE(1876) &
      &       *Y(15)*D-RATE(1956)*Y(30)*D-RATE(1957)*Y(30)*D-RATE(2017) &
