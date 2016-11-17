@@ -38,7 +38,7 @@ Species File:
 
 		#CO,28,CO1,1150,0.7,0.667
 
-	Where we give NAME, MASS, TYPE, BINDING ENERGY, MONO FRACTION, VOLCANIC FRACTION. The first two are self-explantory. The latter four are desorption properties and only need to be set for grain species. NA,0,0,0 is acceptable for all gas species. The type sets the evaporation events the species evaporates in. CO1 experience "solid" desorption at 20 K as well as Mono, volcanic and co-desorption with water. CO2 and INT do not undergo solid desorption but do undergo the others, in different amounts. The binding energy is used to free molecules when the temperature is high enough to unbind them from the grains and finally the mono and volcanic fractions dictate the portion of the mantle abundance of a species is removed in the mono and volcanic evaporation events.
+	Where we give NAME, MASS, TYPE, BINDING ENERGY, MONO FRACTION, VOLCANIC FRACTION. The first two are self-explantory. The latter four are desorption properties and only need to be set for grain species. NA,0,0,0 is acceptable for all gas species. The type sets the evaporation events the species evaporates in. CO1 experience "solid" desorption at 20 K as well as Mono, volcanic and co-desorption with water. CO2 and INT do not undergo solid desorption but do undergo the others, in different amounts. The binding energy is used to determine the temperature of monolayer evaporation. Finally, the mono and volcanic fractions dictate the portion of the mantle abundance of a species is removed in the mono and volcanic evaporation events.
 
 
 ###OUTPUT FILES###
