@@ -1,4 +1,4 @@
-#enter two grain files to see all reactions that are one file but not the other
+#enter two reaction files to see all reactions that are one file but not the other
 
 import math
 import os

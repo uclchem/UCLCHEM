@@ -400,7 +400,7 @@ CONTAINS
                     abund(co2list,dstep)=abund(co2list,dstep)+co2volc(i)*abund(mco2list,dstep)
                     abund(mco2list,dstep)=(1.0-co2volc(i))*abund(mco2list,dstep)
                 END DO
-                DO i=lbound(co2list,1),ubound(co2list,1)
+                DO i=lbound(intlist,1),ubound(intlist,1)
                     abund(intlist,dstep)=abund(intlist,dstep)+intvolc(i)*abund(mintlist,dstep)
                     abund(mintlist,dstep)=(1.0-intvolc(i))*abund(mintlist,dstep)
                 END DO

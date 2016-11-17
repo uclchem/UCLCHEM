@@ -1,3 +1,5 @@
+#simple python script that reads teh reaction file and prints every reaction that forms or destroys a chosen species.
+
 import csv
 
 species='H2CS'

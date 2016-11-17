@@ -41,8 +41,23 @@ Species File:
 	Where we give NAME, MASS, TYPE, BINDING ENERGY, MONO FRACTION, VOLCANIC FRACTION. The first two are self-explantory. The latter four are desorption properties and only need to be set for grain species. NA,0,0,0 is acceptable for all gas species. The type sets the evaporation events the species evaporates in. CO1 experience "solid" desorption at 20 K as well as Mono, volcanic and co-desorption with water. CO2 and INT do not undergo solid desorption but do undergo the others, in different amounts. The binding energy is used to free molecules when the temperature is high enough to unbind them from the grains and finally the mono and volcanic fractions dictate the portion of the mantle abundance of a species is removed in the mono and volcanic evaporation events.
 
 
+###OUTPUT FILES###
+	evaplists:
+		list of the species array indices of every species that evaporates in each thermal desorption event. Read by UCLCHEM to automate evaporation
+
+	Reactions:
+		every reaction with its rate coefficients.
+
+	Species:
+		every species in the network. When referencing a species in the code (for output array for example) use the line number from this file -1 (the first line is the number of species).
+
+	odes:
+		coded up full set of ODEs for the network. Every species has it's own differential equation made up of reaction rate*abundances for every reaction the species is involved in.
 
 
+#############################################################
+
+There are a small number of useful scripts included in the directory. Comparenetworks, comparespecies and speciesnetwork print helpful information about input and output files to help manage networks. For example, comparenetworks prints the differences between two sets of reaction files and speciesnetwork prints every reaction that a species is involved in as two lists: formation and destruction.
 
 
  
