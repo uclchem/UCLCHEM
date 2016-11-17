@@ -13,7 +13,7 @@ from Functions import *
 
 reactionFile = 'inputFiles/umist12.csv'
 reactionFile_grain = 'inputFiles/uclgrainbasic.csv'
-speciesFile = 'inputFiles/basicspecies.csv'
+speciesFile = 'inputFiles/uclspeciesbasic.csv'
 
 
 make_capitals(reactionFile)

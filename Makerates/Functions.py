@@ -99,7 +99,7 @@ def NANCheck(a):
 def read_reaction_file(fileName, species, ftype):
 	reactants = [] ; products = [] ; alpha = [] ; beta = [] ; gamma = [] ; templow = [] ;temphigh = []; keepList = []
 	# keeplist includes the elements that ALL the reactions should be formed from 
-	keepList.extend(['','NAN','#','E-','e-','ELECTR','PHOTON','CRP','CRPHOT','FREEZE','CRH','PHOTD','THERM','XRAY','XRSEC','XRLYA','XRPHOT','DESOH2','DESCR1','DESCR2','DEUVCR'])
+	keepList.extend(['','NAN','#','E-','e-','ELECTR','PHOTON','CRP','CRPHOT','FREEZE','CRH','PHOTD','THERM','XRAY','XRSEC','XRLYA','XRPHOT','DESOH2','DESCR','DEUVCR'])
 	keepList.extend(species)			                                  
 	if ftype == 'UMIST': # if it is a umist database file
 		f = open(fileName, 'rb')
@@ -132,7 +132,7 @@ def read_reaction_file(fileName, species, ftype):
 #we want to get rid of species that are not present in any reaction
 def find_species(reactants,products,species, mass,evaptype,bindener,monoevap,volcevap):
 	speciesList = [] ; keepList = []; extraSpecies = []
-	keepList.extend(['','#','NAN','ELECTR','PHOTON','CRP','CRPHOT','FREEZE','CRH','PHOTD','THERM','XRAY','XRSEC','XRLYA','XRPHOT','DESOH2','DESCR1','DESCR2','DEUVCR'])
+	keepList.extend(['','#','NAN','ELECTR','PHOTON','CRP','CRPHOT','FREEZE','CRH','PHOTD','THERM','XRAY','XRSEC','XRLYA','XRPHOT','DESOH2','DESCR','DEUVCR'])
 	speciesList.extend(reactants)
 	speciesList.extend(products)
 	speciesList = sum(speciesList,[])
