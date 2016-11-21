@@ -96,7 +96,6 @@ integer :: ns,index1,index2
                 write(79,*) "********************************"
             ELSE
                 rate(j) = alpha(j)*((temp(dstep)/300.)**beta(j))*dexp(-gama(j)/temp(dstep))
-
                 !Audrey correction for co and ch3oh
                ! IF (re1(j)(:) .eq. '#CH3OH' .and. re2(j)(:) .eq. '#CO') THEN
                 !    rate(j)=alpha(j)/dens/abund(ngrainco,dstep) ! *y(ngrainco)

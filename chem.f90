@@ -188,7 +188,6 @@ CONTAINS
                 read(7,7010) h2form,fc,fo,&
                             &fmg,fhe,dstep
                 read(7,*)
-                write(*,*) dstep,l
                 read(7,7030) (specname(i),abund(i,l),i=1,nspec)
             END DO
             7000 format(&
@@ -311,7 +310,7 @@ CONTAINS
             ELSEIF(ISTATE.EQ.-1) THEN
                 write(*,*)'Call to LSODE returned -1 meaning that MXSTEP exceeded'
                 write(*,*)'but the integration was successful'
-                write(*,*)'Doubling MXSTEP (thanks Tom :) ) from:',MXSTEP,' to:',MXSTEP*2
+                write(*,*)'Doubling MXSTEP from:',MXSTEP,' to:',MXSTEP*2
                 MXSTEP=MXSTEP*2
             ELSE
                 CALL debugout
@@ -492,7 +491,8 @@ CONTAINS
         write(*,*) "dens",dens
         write(*,*) "density in integration array",abund(nspec+1,dstep)
         write(*,*) "Av", av(dstep)
-        write(*,*) "Mantle", mantle
+        write(*,*) "Mantle", mantle(dstep)
+        write(*,*) "Temp", temp(dstep)
         DO i=1,nreac
             if (rate(i) .ge. huge(i)) write(*,*) "Rate(",i,") is potentially infinite"
         END DO

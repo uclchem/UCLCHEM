@@ -74,6 +74,8 @@ CONTAINS
                 maxdimt = 5.5 - (2.1/(1.35 + log10(finalDens/initialDens)))**(1/0.28)
         END SELECT
 
+        write(*,*) dens, initialDens
+
         IF (collapse .gt. 1) THEN
              !Enforce maximum time value for collapse modes
              finalTime=maxdimt*year*unitt
@@ -105,14 +107,14 @@ CONTAINS
                 tout=3.16d7*10.d-8
             ENDIF
         ELSE
-            tout=(tage+10000.0)/year
+            tout=(tage+1000.0)/year
         END IF
     END SUBROUTINE timestep
   
     SUBROUTINE phys_update
         !calculate column density. Remember dstep counts from core to edge
         !and coldens should be amount of gas from edge to parcel.
-        coldens(dstep)= size*((real(points-dstep))/real(points))*dens
+        coldens(dstep)= size*((real(points-dstep+0.5))/real(points))*dens
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= baseAv +coldens(dstep)/1.6d21
 
@@ -137,7 +139,7 @@ CONTAINS
             !will add general profile later, this works well for initialTemp=10 K
             temp(dstep)=(size/(rout*pc))*(real(dstep)/real(points))
             temp(dstep)=temp(dstep)**(-0.5)
-            temp(dstep)=initialTemp + ((tempa(tempindx)*(t0/year)**tempb(tempindx))*temp(dstep))
+            temp(dstep)=initialTemp + ((tempa(tempindx)*(t0*year)**tempb(tempindx))*temp(dstep))
             
             if (temp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
             if (temp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
