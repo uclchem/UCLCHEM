@@ -74,7 +74,7 @@ def plot_species(species,times,abundances,plotFile=None):
     ax.set_yscale('log')
 
     if plotFile is not None:
-        fig.savefig("plotFile")
+        fig.savefig(plotFile)
     return ax,fig
     
 

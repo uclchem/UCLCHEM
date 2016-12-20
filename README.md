@@ -5,16 +5,11 @@ UCLCHEM is a gas-grain chemical code written in Fortran 95. It propagates the ab
 Usage Instructions
 **************************************************************
 
-UCL_CHEM only works with my version of makerates. This writes nspec and nreac into the output files for array allocation as well as generating list of evaporation types.
-	-Open Makerates folder and check Makerates.py to see if input files are correct
-	-Run "python Makerates.py" and copy odes.f90,evaplists.csv,reactions.csv and species.csv into main folder
-	-check freeze out alphas in reactions.csv, they default to 1
-	-Nothing else needs to be changed, everything is updated automatically.
+A manual is available from the website: uclchem.github.io
 
 
 *************************************************************
 General issues/ to do list
 *************************************************************
 Zeros
-	-rate(j)=1.0d-30 when it is really zero. This was to avoid computing issues. However, in many cases a fortran 95 code on a modern pc will run without errors. Investigate this.
-
+	-rate(j)=1.0d-30 when it is really zero. This was to avoid computing issues. However, in many cases a fortran 95 code on a modern pc will run without errors. This could be changed.

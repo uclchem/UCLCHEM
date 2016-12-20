@@ -3,7 +3,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Initial physics variables and final  values. for temp, density and time
-initialTemp=10.0;;maxTemp=300;initialDens=1.00d7;finalDens=1.00d7;t0=0.0;finalTime=5.00d6
+initialTemp=10.0;;maxTemp=300;initialDens=1.00d3;finalDens=1.00d7;t0=0.0;finalTime=1.00d6
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
 radfield=1.0;zeta=1.0
 fr=1.0;
@@ -24,7 +24,7 @@ switch=0
 !collape=0/1 ONLY if not using cloud.f90
 !In all cases collapse=1 lets chem.f90 know it should call  densdot in the physics module to get time derivative of density and include it in ODES
 !Any other values tells it to use density value as set by physics module
-collapse=0
+collapse=1
 !for collapse=1 can introduce factor bc to slow freefall
 bc=1.0
 
@@ -32,13 +32,13 @@ bc=1.0
 !so file 7 will be written to at end (first=0) or read from to initialise abundances (first=1) 
 !phase chooses behaviour. ie. heating in phase2 for cloud model.
 !you may choose to run phase1 physics twice with the second run building from the first so first and phase are separated
-first=0;phase=2;
+first=1;phase=1;
 
 !non-thermal Desorption. Turn it all on/off. Turn off h2, cosmic ray induced and uv induced off separately too
 desorb=1;
 h2desorb=1;crdesorb=1;uvcr=1;
 !evap sets thermal desorption  (0/1/2) -> (none/temp dependent/ instantaneous)
-evap=1;
+evap=0;
 
 
 !In phase 2, temp profile depends on mass of star
@@ -102,7 +102,7 @@ dopw=3.0e10;radw=8.0e07;xl=1000.0;fosc  = 1.0d-2
 !DVODE SETTINGS   
 !You may wish to change abstol and reltol     
 ISTATE=1;MF=22;ITOL=1;ITASK=1;IOPT=1;MESFLG=1
-abstol=1e-25;reltol=1e-7;MXSTEP=10000
+abstol=1e-20;reltol=1e-15;MXSTEP=10000
 
 !Arrays for phase 2 temp profiles. Parameters for equation chosen by index
 !arrays go [5 Msun, 10, 15, 25,60]

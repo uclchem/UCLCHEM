@@ -52,7 +52,7 @@ Species File:
 		every species in the network. When referencing a species in the code (for output array for example) use the line number from this file -1 (the first line is the number of species).
 
 	odes:
-		coded up full set of ODEs for the network. Every species has it's own differential equation made up of reaction rate*abundances for every reaction the species is involved in.
+		A fortran file with full set of ODEs for the network. Every species has it's own differential equation made up of reaction rate*abundances for every reaction the species is involved in. ODES.F90 IS COMPILED, NOT READ. You must make after changing odes.f90 and if you alter the filename, you must redirect chem.f90.f to the correct file.
 
 
 #############################################################
