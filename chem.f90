@@ -4,7 +4,7 @@ MODULE chem
 USE physics
 IMPLICIT NONE
 EXTERNAL dvode
-    !makerates gives these numbers, nspec includes electrons
+    !sets length of columnated output array. abundance of nout species can be written in columns with time and density
     integer,parameter :: nout=6
 
     !These integers store the array index of important species and reactions, x is for ions    
