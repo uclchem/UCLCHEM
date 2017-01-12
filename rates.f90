@@ -67,7 +67,7 @@ integer :: ns,index1,index2
             ENDIF
         CASE ('DEUVCR')
             IF (desorb .eq. 1 .and. uvcr .eq. 1 .and. tstep .ge. 2&
-             &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-15) THEN
+             &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-30) THEN
                 !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
                 !UVY is yield per photon.
                 rate(j) = grainArea*uvy*4.875d3*zeta*(1.0/mantle(dstep))
