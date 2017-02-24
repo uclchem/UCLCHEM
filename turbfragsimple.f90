@@ -17,7 +17,7 @@ MODULE physics
     integer :: evap,ion,solidflag,monoflag,volcflag,coflag
 
     !variables either controlled by physics or that user may wish to change    
-    double precision :: initialDens,dens,temp,tage,tout,t0,t0old,finalDens,finalTime,radg
+    double precision :: initialDens,dens,temp,tage,tout,t0,t0old,finalDens,finalTime,grainRadius
     double precision :: size,rout,rin,oldtemp,baseAv,bc,tempa,tempb,olddens,oldt0,maxt
 
     !old bd model variables

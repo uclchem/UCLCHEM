@@ -90,10 +90,10 @@ open(79,file='debuglog',status='unknown')       !debug file.
 !Chemistry variables
 !Description and use found in rate.f90
 !Desorption treatment is described in Roberts et al. 2007, these are rates and efficiencies of processes that cause desorption
+!Careful, grainArea is actually grain surface area per hydrogen atom. grainRadius is actual radius of grains in cm.
 ebmaxh2=1.21d3;epsilon=0.01;ebmaxcrf=1.21d3;uvcreff=1.0d-3
 ebmaxcr=1.21d3;phi=1.0d5;ebmaxuvcr=1.0d4; uvy=0.1
-omega=0.5;grainArea=2.4d-22;radg=1.d-5
-
+omega=0.5;grainArea=2.4d-22;grainRadius=1.d-5 
 !dopw = doppler width (in s-1) of a typical transition
 !(assuming turbulent broadening with beta=3e5cms-1)
 !radw = radiative line width of typ. transition (in s-1)

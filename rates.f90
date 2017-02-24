@@ -34,7 +34,7 @@ integer :: ns,index1,index2
                         ELSE
                             !Make rates sets beta=1 for ion freeze out. this catches that and
                             !freezes differently
-                            cion=1.0+16.71d-4/(radg*temp(dstep))
+                            cion=1.0+16.71d-4/(grainRadius*temp(dstep))
                             rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*grainArea*fr*cion
                         ENDIF
                     ENDIF

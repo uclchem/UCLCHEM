@@ -1,2 +1,3 @@
 ### Small Release Updates ###
-Makefile improvements.
+Chemistry bug fix, minimum total mantle abundance for UV desorption decreased
+Needs to be non-zero before desorption for numerical reasons but too high and desorption can turn off

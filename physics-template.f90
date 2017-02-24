@@ -13,7 +13,7 @@ MODULE physics
     integer :: evap,ion,solidflag,volcflag,coflag,tempindx
     
     !variables either controlled by physics or that user may wish to change    
-    double precision :: initialDens,dens,tage,tout,t0,t0old,finalDens,finalTime,radg,initialTemp
+    double precision :: initialDens,dens,tage,tout,t0,t0old,finalDens,finalTime,grainRadius,initialTemp
     double precision :: size,rout,rin,baseAv,bc,olddens,maxTemp
     double precision :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
     double precision, allocatable :: av(:),coldens(:),temp(:)

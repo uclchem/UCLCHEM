@@ -31,7 +31,7 @@ MODULE physics
     !*******************************************************************
     double precision :: initialTemp, z2,vs,v0,zn,vn,at,z3,tout0,tsat
     double precision :: ucm,z1,dv,vi,tempi,vn0,zn0,vA,dlength
-    double precision :: radg5,radg,dens6
+    double precision :: grainRadius5,grainRadius,dens6
     double precision, allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
     !variables for the collisional and radiative heating of grains
     double precision :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
@@ -65,7 +65,7 @@ CONTAINS
         IF (phase .eq. 2) THEN
             allocate(tn(points),ti(points),tgc(points),tgr(points),tg(points))
             mun=2*mh
-            radg5=radg/4.e-5
+            grainRadius5=grainRadius/4.e-5
             dens6=dens/1.e6
             tout0=0
         END IF
@@ -180,7 +180,7 @@ CONTAINS
             write(91,*)tn(dstep), ti(dstep)
 
             !grain collisional heating
-            tgc(dstep)=15*(dens6/radg5)**(0.1818)*(tn(dstep)/1000.0)**(0.2727)
+            tgc(dstep)=15*(dens6/grainRadius5)**(0.1818)*(tn(dstep)/1000.0)**(0.2727)
             !grain radiative heating
             !        Frs=0.25*dens*mun*(vn*km)**3
             !        G0=Frs/Hab
