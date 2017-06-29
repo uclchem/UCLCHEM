@@ -213,7 +213,7 @@ CONTAINS
             ENDIF
         END DO
         !write out cloud properties
-        write(10,8020) tage,dens,temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
+        write(10,8020) tage,dens(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
                         &fmg,fhe,dstep
         !and a blank line
         write(10,8000)
@@ -223,8 +223,8 @@ CONTAINS
         !If this is the last time step of phase I, write a start file for phase II
         IF (first .eq. 1) THEN
            IF (switch .eq. 0 .and. tage .ge. finalTime& 
-               &.or. switch .eq. 1 .and.dens .ge. finalDens) THEN
-               write(7,8020) tage,dens,temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
+               &.or. switch .eq. 1 .and.dens(dstep) .ge. finalDens) THEN
+               write(7,8020) tage,dens(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
                        &fmg,fhe,dstep
                write(7,8000)
                write(7,8010) (specname(i),abund(i,dstep),i=1,nspec)
@@ -249,7 +249,7 @@ CONTAINS
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90
         IF ( mod(tstep,writestep) .eq. 0) THEN
-            write(11,8030) tage,dens,temp(dstep),abund(outindx,dstep)
+            write(11,8030) tage,dens(dstep),temp(dstep),abund(outindx,dstep)
             8030  format(1pd11.3,1x,1pd11.4,1x,0pf8.2,6(1x,1pd10.3))
             write(*,*)'Call to LSODE successful at time: ',(TOUT*year),' years'
             write(*,*)'        Steps: ',IWORK(6)
@@ -266,11 +266,11 @@ CONTAINS
         !evaluate co and h2 column densities for use in rate calculations
         !sum column densities of each point up to dstep. boxlength and dens are pulled out of the sum as common factors  
         IF (dstep.gt.1) THEN
-            h2col=(sum(abund(nh2,:dstep-1))+0.5*abund(nh2,dstep))*dens*(size/real(points))
-            cocol=(sum(abund(nco,:dstep-1))+0.5*abund(nco,dstep))*dens*(size/real(points))
+            h2col=(sum(abund(nh2,:dstep-1))+0.5*abund(nh2,dstep))*dens(dstep)*(size/real(points))
+            cocol=(sum(abund(nco,:dstep-1))+0.5*abund(nco,dstep))*dens(dstep)*(size/real(points))
         ELSE
-            h2col=0.5*abund(nh2,dstep)*dens*(size/real(points))
-            cocol=0.5*abund(nco,dstep)*dens*(size/real(points))
+            h2col=0.5*abund(nh2,dstep)*dens(dstep)*(size/real(points))
+            cocol=0.5*abund(nco,dstep)*dens(dstep)*(size/real(points))
         ENDIF
 
         !call the actual ODE integrator
@@ -278,8 +278,6 @@ CONTAINS
 
         !call evaporation to remove species from grains at certain temperatures
         CALL evaporate
-
-        CALL analysis
     END SUBROUTINE chem_update
 
     SUBROUTINE integrate
@@ -336,13 +334,13 @@ CONTAINS
         !For collapse =1 Dens is updated by DLSODE just like abundances so this ensures dens is at correct value
         !For collapse =0 allow option for dens to have been changed elsewhere.
         IF (collapse .ne. 1) THEN
-            y(nspec+1)=dens
+            y(nspec+1)=dens(dstep)
         ELSE
-            dens=y(nspec+1)
+            dens(dstep)=y(nspec+1)
         END IF
 
         !Set D to the gas density for use in the ODEs
-        D=dens
+        D=dens(dstep)
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         INCLUDE 'odes.f90'
@@ -354,9 +352,9 @@ CONTAINS
 
         !H2 formation should occur at both steps - however note that here there is no 
         !temperature dependence. y(nh) is hydrogen fractional abundance.
-        ydot(nh)  = ydot(nh) - 2.0*( h2form*dens*y(nh) - h2dis*y(nh2) )
+        ydot(nh)  = ydot(nh) - 2.0*( h2form*dens(dstep)*y(nh) - h2dis*y(nh2) )
         !                             h2 formation - h2-photodissociation
-        ydot(nh2) = ydot(nh2) + h2form*dens*y(nh) - h2dis*y(nh2)
+        ydot(nh2) = ydot(nh2) + h2form*dens(dstep)*y(nh) - h2dis*y(nh2)
         !                       h2 formation  - h2-photodissociation
 
         ! get density change from physics module to send to DLSODE
@@ -488,7 +486,7 @@ CONTAINS
 
     SUBROUTINE debugout
         write(*,*) "Integrator failed, printing relevant debugging information"
-        write(*,*) "dens",dens
+        write(*,*) "dens",dens(dstep)
         write(*,*) "density in integration array",abund(nspec+1,dstep)
         write(*,*) "Av", av(dstep)
         write(*,*) "Mantle", mantle(dstep)
@@ -497,103 +495,4 @@ CONTAINS
             if (rate(i) .ge. huge(i)) write(*,*) "Rate(",i,") is potentially infinite"
         END DO
     END SUBROUTINE debugout
-
-    SUBROUTINE analysis
-        integer, parameter :: nreacs=1000
-        double precision ::z(nreacs),p(nreacs),y1,y2,ptot,dtot
-        integer :: id,ip,rmult,lossindx(nreacs),prodindx(nreacs),m,lmax
-        ! start the analysis for specific species (i)
-        !loop over species that are important (outindx list) 
-        DO l=1,nout
-            !species index stored in i
-            i=outindx(l)
-            !total destruction and production
-            dtot=0.0
-            ptot=0.0
-            write(12,100)i,specname(i)
-        100 format('Species index',i3,' = ',a15)
-            id=0
-            ip=0
-            !Loop over all reactions
-            DO j=1,nreac
-                y1=0.0
-                y2=0.0
-                rmult=0.0
-                !If reactants contains the species being analysed, calculate contribution to loss
-                IF (re1(j) .eq. specname(i) .or. re2(j).eq.specname(i)) then
-
-                    !assign abundance values of reactants to y1 and y2
-                    DO m=1,nspec
-                        if(re1(j).eq.specname(m)) y1 = abund(m,dstep)
-                        if(re2(j).eq.specname(m)) y2 = abund(m,dstep)
-                    END DO
-
-                    !Count how many times species appears, so rate can be multiplied to get actual loss
-                    if(re1(j).eq. specname(i)) rmult=1
-                    if(re2(j).eq. specname(i)) rmult=rmult+1
-                    id=id+1
-
-                    !check type of reaction and calculate rate according
-                    IF(re2(j).eq.'CRP'.or.re2(j).eq.'CRPHOT' .or. re2(j).eq.'PHOTON'&
-                    & .or. re2(j).eq.'DESCR1' .or. re2(j).eq.'DESCR2'.or. re2(j).eq.'DEUVCR') THEN
-                        z(id)=rate(j)*y1
-                    ELSE IF (re2(j).eq.'FREEZE' .or. re2(j).eq.'DESOH2') THEN
-                        z(id)=rate(j)*y1*dens
-                    ELSE
-                        z(id)=rate(j)*y1*y2*dens*rmult
-                    END IF
-                    dtot=dtot+z(id)
-                    lossindx(id)=j
-                    rmult=0.0
-                END IF
-                !If products contain species being analysed, calculate contribution to production
-                IF (p1(j).eq.specname(i).or. p2(j).eq.specname(i).or. p3(j).eq.specname(i)) then
-                    !assign abundance values of reactants to y1 and y2
-                    DO m=1,nspec
-                        if(re1(j).eq.specname(m)) y1 = abund(m,dstep)
-                        if(re2(j).eq.specname(m)) y2 = abund(m,dstep)
-                    END DO
-                    rmult=0.0
-                    if(p1(j).eq.specname(i)) rmult=rmult+1
-                    if(p2(j).eq.specname(i)) rmult=rmult+1
-                    if(p3(j).eq.specname(i)) rmult=rmult+1
-                    ip=ip+1
-                    if(re2(j).eq.'CRP'.or.re2(j).eq.'CRPHOT' .or. re2(j).eq.'PHOTON'&
-                    & .or. re2(j).eq.'DESCR1' .or. re2(j).eq.'DESCR2'.or. re2(j).eq.'DEUVCR') THEN
-                        p(ip)=rate(j)*y1*rmult
-                    ELSE IF (re2(j).eq.'FREEZE' .or. re2(j).eq.'DESOH2') THEN
-                        p(ip)=rate(j)*y1*dens*rmult
-                    ELSE IF (re2(j).eq.'INJ') THEN
-                        p(ip)=rate(j)*rmult
-                    ELSE
-                        p(ip)=rate(j)*y1*y2*dens*rmult
-                    END IF
-                    ptot=ptot+p(ip)
-                    prodindx(ip)=j
-                END  IF
-
-            END DO
-
-            ! calculation of the F and D %
-            z=100*(z/dtot)
-            DO j=1,id
-                i=lossindx(j)
-                if(z(j).gt.0.5) then
-                    write(12,300)re1(i),re2(i),p1(i),p2(i),-nint(z(j))
-                END IF
-            END DO
-            p=100*(p/ptot)
-            DO j=1,ip
-                i=prodindx(j)
-                if(p(j).gt.0.5) then
-                    write(12,300)re1(i),re2(i),p1(i),p2(i),nint(p(j))
-                end if
-            END DO
-            write(12,400)dtot,ptot    
-        END DO
-
-        400 format(10x,'LOSSrate= ',e9.3,5x,'FORMrate= ',e9.3)
-        300 format(5x,4(2x,a15),3x,i5,'%')
-        return
-    END SUBROUTINE analysis
 END MODULE chem

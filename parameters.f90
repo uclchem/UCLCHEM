@@ -70,7 +70,6 @@ outindx=(/73,260,262,220,219,274/);writestep=1
 !output files
 open(10,file='output-full.dat',status='unknown') !full output
 open(11,file='output-column.dat',status='unknown')!columnated output based  on outindx
-open(12,file='analysis.dat',status='unknown') !analysis file showing main reacction and formation routes of outindx species.
 
 !input files
 open(21,file='species.csv',status='old')         !species file
@@ -106,12 +105,12 @@ ISTATE=1;MF=22;ITOL=1;ITASK=1;IOPT=1;MESFLG=1
 abstol=1e-20;reltol=1e-15;MXSTEP=10000
 
 !Arrays for phase 2 temp profiles. Parameters for equation chosen by index
-!arrays go [5 Msun, 10, 15, 25,60]
-tempa=(/4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
-tempb=(/0.6255,0.8395,1.085,1.289,1.98/)
-solidtemp=(/19.6,19.45,19.3,19.5,20.35/)
-volctemp=(/86.3,88.2,89.5,90.4,92.2/)
-codestemp=(/97.5,99.4,100.8,101.6,103.4/)
+!arrays go [1Msun,5, 10, 15, 25,60]
+tempa=(/1.927d-1,4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
+tempb=(/0.5339,0.6255,0.8395,1.085,1.289,1.98/)
+solidtemp=(/20.0,19.6,19.45,19.3,19.5,20.35/)
+volctemp=(/84.0,86.3,88.2,89.5,90.4,92.2/)
+codestemp=(/95.0,97.5,99.4,100.8,101.6,103.4/)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !CO and H2 self-shielding
