@@ -16,10 +16,10 @@ MODULE physics
     integer :: evap,ion,solidflag,monoflag,volcflag,coflag,tempindx
 
     !variables either controlled by physics or that user may wish to change    
-    double precision :: initialDens,dens,tage,tout,t0,t0old,finalDens,finalTime
+    double precision :: initialDens,tage,tout,t0,t0old,finalDens,finalTime
     double precision :: size,rout,rin,baseAv,bc,tstart,maxTemp
-    double precision :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
-    double precision, allocatable :: av(:),coldens(:),temp(:)
+    double precision :: tempa(6),tempb(6),codestemp(6),volctemp(6),solidtemp(6)
+    double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
 
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
@@ -46,7 +46,7 @@ CONTAINS
 
     !Set up, calculate size, give dens a kickstart if collapsing 
     SUBROUTINE phys_initialise
-        allocate(av(points),coldens(points),temp(points))  
+        allocate(av(points),coldens(points),temp(points),dens(points))  
 
         size=(rout-rin)*pc
         if (collapse .eq. 1) THEN
@@ -62,11 +62,17 @@ CONTAINS
             dens=initialDens
         ENDIF 
 
+        !calculate initial column density as distance from core edge to current point * density
+        DO dstep=1,points
+            coldens(dstep)=real(points-dstep+1)*size/real(points)*initialDens
+        END DO
+
+
         IF (phase .eq. 2) THEN
             allocate(tn(points),ti(points),tgc(points),tgr(points),tg(points))
             mun=2*mh
             grainRadius5=grainRadius/4.e-5
-            dens6=dens/1.e6
+            dens6=dens(dstep)/1.e6
             tout0=0
         END IF
 
@@ -162,8 +168,14 @@ CONTAINS
 
     SUBROUTINE phys_update
         !calculate column density. Remember dstep counts from edge of core in to centre
-        coldens(dstep)= size*((real(dstep))/real(points))*dens
-        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
+        IF (dstep .lt. points) THEN
+            !column density of current point + column density of all points further out
+            coldens(dstep)=(size/real(points))*dens(dstep)
+            coldens(dstep)=coldens(dstep)+sum(coldens(dstep:points))
+        ELSE
+            coldens(dstep)=size/real(points)*dens(dstep)
+        END IF
+                !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= baseAv +coldens(dstep)/1.6d21
 
         !emulate cloud.f90 for phase=1, do cshock for phase=2
@@ -230,9 +242,9 @@ CONTAINS
         double precision :: densdot
 
  !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
-        IF (dens .lt. finalDens) THEN
-             densdot=bc*(dens**4./initialDens)**0.33*&
-             &(8.4d-30*initialDens*((dens/initialDens)**0.33-1.))**0.5
+        IF (dens(dstep) .lt. finalDens) THEN
+             densdot=bc*(dens(dstep)**4./initialDens)**0.33*&
+             &(8.4d-30*initialDens*((dens(dstep)/initialDens)**0.33-1.))**0.5
         ELSE
             densdot=1.0d-30       
         ENDIF

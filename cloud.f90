@@ -14,10 +14,10 @@ MODULE physics
     integer :: evap,ion,solidflag,volcflag,coflag,tempindx
 
     !variables either controlled by physics or that user may wish to change
-    double precision :: initialDens,dens,tage,tout,t0,t0old,finalDens,finalTime,grainRadius,initialTemp
+    double precision :: initialDens,tage,tout,t0,t0old,finalDens,finalTime,grainRadius,initialTemp
     double precision :: size,rout,rin,baseAv,bc,olddens,maxTemp
-    double precision :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
-    double precision, allocatable :: av(:),coldens(:),temp(:)
+    double precision :: tempa(6),tempb(6),codestemp(6),volctemp(6),solidtemp(6)
+    double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
     double precision, parameter :: year=3.16455d-08,pc=3.086d18
@@ -33,7 +33,7 @@ CONTAINS
 !YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
 
     SUBROUTINE phys_initialise
-        allocate(av(points),coldens(points),temp(points))
+        allocate(av(points),coldens(points),temp(points),dens(points))
         size=(rout-rin)*pc
         dens=initialDens
         temp=initialTemp
@@ -86,6 +86,10 @@ CONTAINS
             switch=0
         END IF
 
+        !calculate initial column density as distance from core edge to current point * density
+        DO dstep=1,points
+            coldens(dstep)=real(points-dstep+1)*size/real(points)*initialDens
+        END DO
 
     END SUBROUTINE
 
@@ -113,7 +117,14 @@ CONTAINS
     SUBROUTINE phys_update
         !calculate column density. Remember dstep counts from core to edge
         !and coldens should be amount of gas from edge to parcel.
-        coldens(dstep)= size*((real(points-dstep+0.5))/real(points))*dens
+        IF (dstep .lt. points) THEN
+            !column density of current point + column density of all points further out
+            coldens(dstep)=(size/real(points))*dens(dstep)
+            coldens(dstep)=coldens(dstep)+sum(coldens(dstep:points))
+        ELSE
+            coldens(dstep)=size/real(points)*dens(dstep)
+        END IF
+
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= baseAv +coldens(dstep)/1.6d21
 
@@ -159,21 +170,21 @@ CONTAINS
             rho0 = 10**(15*(5.75-dimt)**(-0.04) - 14)
             r0 = 10**(-6.7*(5.75-dimt)**(-0.04) + 6.6)
             dimrho = rho0/(1 + (dimr/r0)**2.5)
-            if (dimt .lt. 5.75) dens = dimrho*initialDens
+            if (dimt .lt. 5.75) dens(dstep) = dimrho*initialDens
 
         !ogino, tomisaka & nakamura 1999
         else if (collapse .eq. 3) then
             rho0 = 10**(2.5*(0.33-dimt)**(-0.18) - 2.5)
             r0 = 10**(-1.2*(0.33-dimt)**(-0.18) + 1.3)
             dimrho = rho0/(1 + (dimr/r0)**2.5)
-            if (dimt .lt. 0.33) dens = dimrho*initialDens
+            if (dimt .lt. 0.33) dens(dstep) = dimrho*initialDens
 
         !nakamura, hanawa & takano 1995
         else if (collapse .eq. 4) then
             rho0 = 10**(2.1*(5.5-dimt)**(-0.28) - 1.35)
             r0 = 10**(-0.7*(5.5-dimt)**(-0.28) + 0.75)
             dimrho = rho0/(1 + (dimr/r0)**2)**1.5
-            if (dimt .lt. 5.5) dens = dimrho*initialDens
+            if (dimt .lt. 5.5) dens(dstep) = dimrho*initialDens
         endif
 
     END SUBROUTINE phys_update
@@ -184,9 +195,9 @@ CONTAINS
     pure FUNCTION densdot()
         double precision :: densdot
         !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
-        IF (dens .lt. finalDens) THEN
-             densdot=bc*(dens**4./initialDens)**0.33*&
-             &(8.4d-30*initialDens*((dens/initialDens)**0.33-1.))**0.5
+        IF (dens(dstep) .lt. finalDens) THEN
+             densdot=bc*(dens(dstep)**4./initialDens)**0.33*&
+             &(8.4d-30*initialDens*((dens(dstep)/initialDens)**0.33-1.))**0.5
         ELSE
             densdot=1.0d-30
         ENDIF
