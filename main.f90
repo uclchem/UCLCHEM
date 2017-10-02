@@ -25,7 +25,7 @@ include 'parameters.f90'
 !loop over time, tstep limit is arbitrary so that finalTime can be reached.
 DO tstep=1,20000
     !End if we hit final density or time
-    IF (switch .eq. 1 .and. dens(dstep) >= finalDens) THEN
+    IF (switch .eq. 1 .and. dens(1) >= finalDens) THEN
         exit
     ELSEIF (switch .eq. 0 .and. tage >= finalTime) THEN
         exit

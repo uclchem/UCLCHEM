@@ -64,7 +64,7 @@ fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 !Due to line 1 being the number of species, the line number of a  species is 1 higher than it's index for this list. ie. H is the first species and is on line 2
 !file 4 will print columnated time,dens,temp,abudances for all species listed in outindx every writestep timesteps.
 !length of this array set by nout in chem.f90
-outindx=(/73,260,262,220,219,274/);writestep=1
+outindx=(/73,1,2,3,4,5/);writestep=1
 
 !open files for reading=writing
 !output files

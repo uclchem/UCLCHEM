@@ -68,8 +68,8 @@ CONTAINS
             abund(nmg,:) = fmg
             abund(nsix,:) = fsi                
             abund(nclx,:) = fcl 
-            abund(np,:) = fp
-            abund(nf,:) = ff
+            !abund(np,:) = fp
+            !abund(nf,:) = ff
 
             !abund(nfe,:) = ffe
             !abund(nna,:) = fna
@@ -98,7 +98,7 @@ CONTAINS
         END DO
 
         !h2 formation rate initially set
-        h2form = 1.0d-17*dsqrt(temp(dstep))
+        h2form = 1.0d-17*dsqrt(initialTemp)
         allocate(mantle(points))
         DO l=1,points
             mantle(l)=sum(abund(mgrainlist,l))
