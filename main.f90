@@ -21,7 +21,7 @@ include 'parameters.f90'
 !Set up with initial values. For chemistry this is setting initial abundances and assigning memory for ODE solver
  CALL phys_initialise
  CALL chem_initialise
-
+dstep=1
 !loop over time, tstep limit is arbitrary so that finalTime can be reached.
 DO tstep=1,20000
     !End if we hit final density or time

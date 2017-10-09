@@ -5,8 +5,8 @@
 ##physics module selected by changing physics variable to chosen fortran file.
 
 #compile=/opt/intel/Compiler/11.1/046/bin/intel64/ifort -fp-stack-check -check all -g -traceback -O2
-compile= /usr/bin/gfortran -ffree-line-length-0 -fbacktrace
-#compile=/opt/intel/Compiler/11.1/046/bin/intel64/ifort -O2
+#compile= /usr/bin/gfortran -ffree-line-length-0 -fbacktrace
+compile=/opt/intel/Compiler/11.1/046/bin/intel64/ifort -O2
 physics=cloud.f90
 
 
