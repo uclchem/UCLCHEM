@@ -32,7 +32,7 @@ bc=1.0
 !so file 7 will be written to at end (first=0) or read from to initialise abundances (first=1)
 !phase chooses behaviour. ie. heating in phase2 for cloud model.
 !you may choose to run phase1 physics twice with the second run building from the first so first and phase are separated
-first=1;phase=1;
+first=1;phase=2;
 
 !non-thermal Desorption. Turn it all on/off. Turn off h2, cosmic ray induced and uv induced off separately too
 desorb=1;

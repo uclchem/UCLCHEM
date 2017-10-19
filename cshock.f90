@@ -218,7 +218,7 @@ CONTAINS
             END IF
             IF (tstep.gt.1.) THEN
                 tn(dstep)=initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
-                temp=tn(dstep)
+                temp(dstep)=tn(dstep)
                 ti(dstep)=tn(dstep)+(mun*(dv*km)**2/(3*kb2))
                 tempi=ti(dstep)
 
