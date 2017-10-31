@@ -29,8 +29,8 @@ collapse=1
 bc=1.0
 
 !first chooses whether first run (So write final abudances) or second phase run (So read abudances from previous phase)
-!so file 7 will be written to at end (first=0) or read from to initialise abundances (first=1)
-!phase chooses behaviour. ie. heating in phase2 for cloud model.
+!So first=1 starts from elemental abundances and writes a file (file 7) at the end, first=0 reads a file (file 7) to get initial abundances
+!phase chooses behaviour. ie. heating in phase2 for cloud models
 !you may choose to run phase1 physics twice with the second run building from the first so first and phase are separated
 first=1;phase=2;
 
