@@ -189,6 +189,7 @@ CONTAINS
                             &fmg,fhe,dstep
                 read(7,*)
                 read(7,7030) (specname(i),abund(i,l),i=1,nspec)
+                rewind(7)
             END DO
             7000 format(&
             &33x,1pd11.4,5x,/,&
