@@ -15,8 +15,17 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change
     double precision :: initialDens,tage,tout,t0,t0old,finalDens,finalTime,grainRadius,initialTemp
-    double precision :: size,rout,rin,baseAv,bc,olddens,maxTemp
-    double precision :: tempa(6),tempb(6),codestemp(6),volctemp(6),solidtemp(6)
+    double precision :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp
+    
+    !Arrays for phase 2 temp profiles. Parameters for equation chosen by index
+    !arrays go [1Msun,5, 10, 15, 25,60]
+   
+    double precision,parameter :: tempa(6)=(/1.927d-1,4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
+    double precision,parameter :: tempb(6)=(/0.5339,0.6255,0.8395,1.085,1.289,1.98/)
+    double precision,parameter :: solidtemp(6)=(/20.0,19.6,19.45,19.3,19.5,20.35/)
+    double precision,parameter :: volctemp(6)=(/84.0,86.3,88.2,89.5,90.4,92.2/)
+    double precision,parameter :: codestemp(6)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
+
     double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
@@ -34,7 +43,7 @@ CONTAINS
 
     SUBROUTINE phys_initialise
         allocate(av(points),coldens(points),temp(points),dens(points))
-        size=(rout-rin)*pc
+        cloudSize=(rout-rin)*pc
         dens=initialDens
         temp=initialTemp
 
@@ -88,7 +97,7 @@ CONTAINS
 
         !calculate initial column density as distance from core edge to current point * density
         DO dstep=1,points
-            coldens(dstep)=real(points-dstep+1)*size/real(points)*initialDens
+            coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
         END DO
 
     END SUBROUTINE
@@ -119,10 +128,10 @@ CONTAINS
         !and coldens should be amount of gas from edge to parcel.
         IF (dstep .lt. points) THEN
             !column density of current point + column density of all points further out
-            coldens(dstep)=(size/real(points))*dens(dstep)
+            coldens(dstep)=(cloudSize/real(points))*dens(dstep)
             coldens(dstep)=coldens(dstep)+sum(coldens(dstep:points))
         ELSE
-            coldens(dstep)=size/real(points)*dens(dstep)
+            coldens(dstep)=cloudSize/real(points)*dens(dstep)
         END IF
 
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
@@ -147,7 +156,7 @@ CONTAINS
 
             !temperature increase borrowed from sv for comparison 288.000
             !will add general profile later, this works well for initialTemp=10 K
-            temp(dstep)=(size/(rout*pc))*(real(dstep)/real(points))
+            temp(dstep)=(cloudSize/(rout*pc))*(real(dstep)/real(points))
             temp(dstep)=temp(dstep)**(-0.5)
             temp(dstep)=initialTemp + ((tempa(tempindx)*(t0*year)**tempb(tempindx))*temp(dstep))
 
@@ -158,7 +167,7 @@ CONTAINS
 
         !Density update for BE collapse modes
         !first calculate current radius and time in dimensionless units
-        dimr = (real(dstep)/real(points))*size/unitr
+        dimr = (real(dstep)/real(points))*cloudSize/unitr
         dimt = t0/unitt
         if (dimt .gt. maxdimt) dimt = maxdimt
 

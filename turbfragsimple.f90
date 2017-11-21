@@ -18,7 +18,7 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change
     double precision :: initialDens,tage,tout,t0,t0old,finalDens,finalTime,grainRadius,initialTemp
-    double precision :: size,rout,rin,baseAv,bc,olddens,maxTemp
+    double precision :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp
     double precision :: tempa(6),tempb(6),codestemp(6),volctemp(6),solidtemp(6)
     double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
     
@@ -44,7 +44,7 @@ CONTAINS
     
     SUBROUTINE phys_initialise
         allocate(av(points),coldens(points),tshock(points),temp(points),dens(points))
-        size=(rout-rin)*pc
+        cloudSize=(rout-rin)*pc
         dens=1.01*initialDens
         temp=initialTemp
         mbd=0.2
@@ -94,9 +94,9 @@ CONTAINS
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         !for bd, need to have dstep=1 as core.
         IF (dstep .lt. points) THEN
-            coldens(dstep)= size*((real(points+0.5-dstep))/real(points))*dens(dstep)
+            coldens(dstep)= cloudSize*((real(points+0.5-dstep))/real(points))*dens(dstep)
         ELSE
-            coldens(dstep)= 0.5*(size/real(points))*dens(dstep)
+            coldens(dstep)= 0.5*(cloudSize/real(points))*dens(dstep)
         END IF
         av(dstep)= baseAv +coldens(dstep)/1.6d21
     END SUBROUTINE phys_update
@@ -135,7 +135,7 @@ CONTAINS
         ! total cloud rshock in cm
         rshock=((3.0/(4.0*pi))*((2.0d33*mbd)/(mh*dshock)))
         rshock=rshock**(1.0/3.0)
-        size=rshock
+        cloudSize=rshock
 
         ! mach calculated by assuming M ~p/p0
         mach=dsqrt(dshock/initialDens) 

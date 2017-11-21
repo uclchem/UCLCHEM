@@ -14,7 +14,7 @@ MODULE physics
     
     !variables either controlled by physics or that user may wish to change    
     double precision :: initialDens,dens,tage,tout,t0,t0old,finalDens,finalTime,grainRadius,initialTemp
-    double precision :: size,rout,rin,baseAv,bc,olddens,maxTemp
+    double precision :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp
     double precision :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
     double precision, allocatable :: av(:),coldens(:),temp(:)
     !Everything should be in cgs units. Helpful constants and conversions below
@@ -28,9 +28,9 @@ CONTAINS
     
     SUBROUTINE phys_initialise
     !Any initialisation logic steps go here
-    !size is important as is allocating space for depth arrays
+    !cloudSize is important as is allocating space for depth arrays
         allocate(av(points),coldens(points))
-        size=(rout-rin)*pc
+        cloudSize=(rout-rin)*pc
         if (collapse .eq. 1) THEN
             dens=1.001*initialDens
         ELSE
@@ -53,7 +53,7 @@ CONTAINS
     SUBROUTINE phys_update
         !calculate column density. Remember dstep counts from core to edge
         !and coldens should be amount of gas from edge to parcel.
-        coldens(dstep)= size*((real(points-dstep))/real(points))*dens
+        coldens(dstep)= cloudSize*((real(points-dstep))/real(points))*dens
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= baseAv +coldens(dstep)/1.6d21
     END SUBROUTINE phys_update

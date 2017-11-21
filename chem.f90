@@ -4,27 +4,24 @@ MODULE chem
 USE physics
 IMPLICIT NONE
 EXTERNAL dvode
-    !sets length of columnated output array. abundance of nout species can be written in columns with time and density
-    integer,parameter :: nout=6
-
-    !These integers store the array index of important species and reactions, x is for ions    
+   !These integers store the array index of important species and reactions, x is for ions    
     integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nf,nh2o,nsi,nsix,ncl,nclx,nch3oh,np
-    integer ::nrco,outindx(nout),nspec,nreac,njunk,evapevents,ngrainco
-    
+    integer :: nrco,nout,nspec,nreac,njunk,evapevents,ngrainco
+    integer, allocatable :: outIndx(:)
     !loop counters    
     integer :: i,j,l,writestep
 
     !These are variables for reaction rates, alpha/beta/gamas are combined each time step to make rate,the total reaction rate
     double precision,allocatable :: rate(:),alpha(:),beta(:),gama(:),mass(:)
     character(LEN=10),allocatable :: re1(:),re2(:),re3(:),p1(:),p2(:),p3(:),p4(:)
-    character(LEN=15),allocatable :: specname(:)  
+    character(LEN=15),allocatable :: outSpecies(:),specname(:)
     
     !DLSODE variables    
     integer :: ITOL,ITASK,ISTATE,IOPT,MESFLG,NEQ,lrw,liw
     integer :: MXSTEP,MF
     integer,allocatable :: IWORK(:)
-    double precision :: reltol,abstol,rpar,ipar
-    double precision, allocatable :: RWORK(:)
+    double precision :: reltol,rpar,ipar
+    double precision, allocatable :: RWORK(:),abstol(:)
 
     !initial fractional elemental abudances and arrays to store abundances
     double precision :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,h2col,cocol,junk1,junk2
@@ -103,10 +100,17 @@ CONTAINS
         DO l=1,points
             mantle(l)=sum(abund(mgrainlist,l))
         END DO
+        
+        !DVODE SETTINGS
+        ISTATE=1;MF=22;ITOL=1;ITASK=1;IOPT=1;MESFLG=1
+        reltol=1e-4;MXSTEP=10000
+
         NEQ=nspec+1
         LIW=30+NEQ
         LRW=22+(9*NEQ)+(2*NEQ*NEQ)
-        allocate(IWORK(LIW),RWORK(LRW))
+        allocate(IWORK(LIW),RWORK(LRW),abstol(NEQ))
+
+
     END SUBROUTINE chem_initialise
 
 !Reads input reaction and species files as well as the final step of previous run if this is phase 2
@@ -118,6 +122,10 @@ CONTAINS
         read(21,*)nspec
         allocate(abund(nspec+1,points),specname(nspec),mass(nspec),bindener(nspec),vdiff(nspec))
         read(21,*)(specname(j),mass(j),bindener(j),j=1,nspec-1)
+        
+        nout = SIZE(outSpecies)
+        allocate(outIndx(nout))
+
         !assign array indices for important species to the integers used to store them.
         specname(nspec)='electr'
         DO i=1,nspec-1
@@ -140,6 +148,9 @@ CONTAINS
             IF (specname(i).eq.'#CO') ngrainco = i
             IF (specname(i).eq. 'P') np=i
             IF (specname(i).eq.'F') nf=i
+            DO j=1,nout
+                IF (specname(i).eq.outSpecies(j)) outIndx(j)=i
+            END DO
         END DO
 
         !read reac file, assign array space
@@ -192,7 +203,7 @@ CONTAINS
                 rewind(7)
             END DO
             7000 format(&
-            &33x,1pd11.4,5x,/,&
+            &33x,1pe11.4,5x,/,&
             &33x,0pf8.2,2x,/,&
             &33x,0pf12.4,4x,/)
             7010 format(&
@@ -201,18 +212,12 @@ CONTAINS
             &12x,1pe7.1,13x,1pe7.1,&
             &13x,i3,/)
             7020  format(//)
-            7030  format(4(1x,a15,2x,1pd10.3,:))     
+            7030  format(4(1x,a15,2x,1pe10.3,:))     
         END IF
     END SUBROUTINE reader
 
 !Writes physical variables and fractional abundances to output file, called every time step.
     SUBROUTINE output
-        !1.d-30 stops numbers getting too small for fortran.
-        DO l=1,nspec
-            IF(abund(l,dstep) .le. 1.d-30) THEN
-               abund(l,dstep)= 1.d-30
-            ENDIF
-        END DO
         !write out cloud properties
         write(10,8020) tage,dens(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
                         &fmg,fhe,dstep
@@ -233,10 +238,10 @@ CONTAINS
            ENDIF
         ENDIF
         8000  format(/)
-        8010  format(4(1x,a15,'=',1x,1pd10.3,:))
+        8010  format(4(1x,a15,'=',1x,1pe10.3,:))
         8020 format(&
-        &'age of cloud             time  = ',1pd11.3,' years',/,&
-        &'total hydrogen density   dens  = ',1pd11.4,' cm-3',/,&
+        &'age of cloud             time  = ',1pe11.3,' years',/,&
+        &'total hydrogen density   dens  = ',1pe11.4,' cm-3',/,&
         &'cloud temperature        temp  = ',0pf8.2,' k',/,&
         &'visual extinction        av    = ',0pf12.4,' mags',/,&
         &'radiation field          rad   = ',0pf10.2,' (habing = 1)',/,&
@@ -250,8 +255,8 @@ CONTAINS
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90
         IF ( mod(tstep,writestep) .eq. 0) THEN
-            write(11,8030) tage,dens(dstep),temp(dstep),abund(outindx,dstep)
-            8030  format(1pd11.3,1x,1pd11.4,1x,0pf8.2,6(1x,1pd10.3))
+            write(11,8030) tage,dens(dstep),temp(dstep),abund(outIndx,dstep)
+            8030  format(1pe11.3,1x,1pe11.4,1x,0pf8.2,6(1x,1pe10.3))
             write(*,*)'Call to LSODE successful at time: ',(TOUT*year),' years'
             write(*,*)'        Steps: ',IWORK(6)
         END IF
@@ -264,14 +269,17 @@ CONTAINS
         !reset other variables for good measure        
         h2form = 1.0d-17*dsqrt(temp(dstep))
     
+        !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
+        mantle(dstep)=sum(abund(mgrainlist,dstep))
+
         !evaluate co and h2 column densities for use in rate calculations
         !sum column densities of each point up to dstep. boxlength and dens are pulled out of the sum as common factors  
         IF (dstep.gt.1) THEN
-            h2col=(sum(abund(nh2,:dstep-1))+0.5*abund(nh2,dstep))*dens(dstep)*(size/real(points))
-            cocol=(sum(abund(nco,:dstep-1))+0.5*abund(nco,dstep))*dens(dstep)*(size/real(points))
+            h2col=(sum(abund(nh2,:dstep-1))+0.5*abund(nh2,dstep))*dens(dstep)*(cloudSize/real(points))
+            cocol=(sum(abund(nco,:dstep-1))+0.5*abund(nco,dstep))*dens(dstep)*(cloudSize/real(points))
         ELSE
-            h2col=0.5*abund(nh2,dstep)*dens(dstep)*(size/real(points))
-            cocol=0.5*abund(nco,dstep)*dens(dstep)*(size/real(points))
+            h2col=0.5*abund(nh2,dstep)*dens(dstep)*(cloudSize/real(points))
+            cocol=0.5*abund(nco,dstep)*dens(dstep)*(cloudSize/real(points))
         ENDIF
 
         !call the actual ODE integrator
@@ -279,6 +287,9 @@ CONTAINS
 
         !call evaporation to remove species from grains at certain temperatures
         CALL evaporate
+
+        !1.d-30 stops numbers getting too small for fortran.
+        WHERE(abund<1.0d-30) abund=1.0d-30
     END SUBROUTINE chem_update
 
     SUBROUTINE integrate
@@ -286,40 +297,52 @@ CONTAINS
 
         DO WHILE(t0 .lt. tout)            
             !reset parameters for DVODE
-            ITOL=1
-            ITASK=1
+            ITOL=2 !abstol is an array
+            ITASK=1 !try to integrate to tout
+
+            !first step only, set some stuff up
             IF(ISTATE .EQ. 1) THEN
                 IOPT=1
                 IWORK(6)=MXSTEP
             ENDIF
-            IF(MXSTEP .GT. IWORK(6)) THEN
-                ISTATE=3
-                IOPT=1
-                IWORK(6)=MXSTEP
-            ENDIF
-          
+
+            abstol=1.0d-16*abund(:,dstep)
+            WHERE(abstol<1d-30) abstol=1d-30
             !get reaction rates for this iteration
             CALL reacrates
             !Call the integrator.
             CALL DVODE(F,NEQ,abund(:,dstep),T0,TOUT,ITOL,reltol,abstol,ITASK,ISTATE,IOPT,&
             &             RWORK,LRW,IWORK,LIW,JAC,MF,RPAR,IPAR)
 
-            IF(ISTATE.EQ.2) THEN
-                IOPT=0
-            ELSEIF(ISTATE.EQ.-1) THEN
-                write(*,*)'Call to LSODE returned -1 meaning that MXSTEP exceeded'
-                write(*,*)'but the integration was successful'
-                write(*,*)'Doubling MXSTEP from:',MXSTEP,' to:',MXSTEP*2
-                MXSTEP=MXSTEP*2
-            ELSE
-                CALL debugout
-                stop
-            ENDIF
-            ISTATE=2
-
-        END DO
-        !DLSODE USES THIS COUNTER TO CHECK IF IT HAS INTEGRATED ODES BEFORE, NEEDS TO FORGET THAT BETWEEN TIME STEPS
-        ISTATE=1                    
+            SELECT CASE(ISTATE)
+                CASE(-1)
+                    !More steps required for this problem
+                    MXSTEP=MXSTEP*2    
+                    write(79,*)'Call to LSODE returned -1 meaning that MXSTEP exceeded'
+                    write(79,*)'but the integration was successful'
+                    write(79,*)'Doubling MXSTEP from:',MXSTEP,' to:',MXSTEP*2
+                    ISTATE=3
+                    IOPT=1
+                    IWORK(6)=MXSTEP
+                CASE(-2)
+                    !Tolerances are too small for machine but succesful to current t0
+                    abstol=abstol*10.0
+                    ISTATE=3
+                CASE(-3)
+                    write(79,*) "DVODE found invalid inputs"
+                    write(79,*) "abstol"
+                    write(79,*) abstol
+                    STOP
+                CASE(-4)
+                    !Successful as far as t0 but many errors.
+                    !Make tout smaller and just go again
+                    tout=(t0+tout)/2.0
+                    ISTATE=2
+                CASE DEFAULT
+                    IOPT=0
+                    ISTATE=3
+            END SELECT
+        END DO                   
     END SUBROUTINE integrate
 
     !This is where reacrates subroutine is hidden
@@ -346,8 +369,6 @@ CONTAINS
         !of the reactions between it and every other species it reacts with.
         INCLUDE 'odes.f90'
 
-        !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
-        mantle(dstep)=sum(abund(mgrainlist,dstep))
         !updated just in case temp changed
         h2form=1.0d-17*dsqrt(temp(dstep)) 
 
@@ -373,10 +394,6 @@ CONTAINS
     IF (tstep .gt. 1) THEN
         !Viti 04 evap
         IF (evap .eq. 1) THEN
-            ! this code only works if you use the 288,000 temp increase from old uclchem
-            !if you do y(a)=y(a)+y(b) with a and b as integer arrays. uses corresponding elements
-            !eg. y(a[1])=y(a[1])+y(b[1]). So make sure they match by comparing evaplist to species.csv
-
             !Solid Evap
             IF (solidflag .eq. 1) THEN
                 abund(colist,dstep)=abund(colist,dstep)+0.35*abund(mcolist,dstep)
@@ -486,14 +503,14 @@ CONTAINS
     END SUBROUTINE JAC        
 
     SUBROUTINE debugout
-        write(*,*) "Integrator failed, printing relevant debugging information"
-        write(*,*) "dens",dens(dstep)
-        write(*,*) "density in integration array",abund(nspec+1,dstep)
-        write(*,*) "Av", av(dstep)
-        write(*,*) "Mantle", mantle(dstep)
-        write(*,*) "Temp", temp(dstep)
+        write(79,*) "Integrator failed, printing relevant debugging information"
+        write(79,*) "dens",dens(dstep)
+        write(79,*) "density in integration array",abund(nspec+1,dstep)
+        write(79,*) "Av", av(dstep)
+        write(79,*) "Mantle", mantle(dstep)
+        write(79,*) "Temp", temp(dstep)
         DO i=1,nreac
-            if (rate(i) .ge. huge(i)) write(*,*) "Rate(",i,") is potentially infinite"
+            if (rate(i) .ge. huge(i)) write(79,*) "Rate(",i,") is potentially infinite"
         END DO
     END SUBROUTINE debugout
 END MODULE chem

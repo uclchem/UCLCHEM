@@ -1,7 +1,5 @@
 ! 2015 UCL_CHEM by Serena Viti update by Jon Holdship
 ! Rewritten for FORTRAN 95 and modulised
-
-
 PROGRAM uclchem
 !everything to do with physics should be stored in a physics module based on physics-template.f90
 !UCL_CHEM uses density and temperature in chemical calculations so these MUST be provided, everything else is
@@ -11,6 +9,7 @@ USE physics
 USE chem
 IMPLICIT NONE
 
+write(*,*) "parameters"
 !Default parameters.f90 works for MOST physics modules. 
 include 'parameters.f90'
 
@@ -19,8 +18,12 @@ include 'parameters.f90'
 !read(*,*) variable1,variable2,variable3
 
 !Set up with initial values. For chemistry this is setting initial abundances and assigning memory for ODE solver
+ write(*,*) "initializing"
  CALL phys_initialise
+ write(*,*) "phys initialized"
+
  CALL chem_initialise
+ write(*,*) "initialized"
 dstep=1
 !loop over time, tstep limit is arbitrary so that finalTime can be reached.
 DO tstep=1,20000

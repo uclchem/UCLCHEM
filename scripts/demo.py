@@ -4,10 +4,10 @@
 from plotfunctions import *
 
 #pick species, any number is fine
-speciesNames=["H2CS","OCS","SO","SO2","S","CS"]
+speciesNames=["H2S","CO","CS","N2H+","HCO+"]
 
 #call read_uclchem. 
-time,dens,abundances=read_uclchem("../initial",speciesNames)
+time,dens,abundances=read_uclchem("output/full.dat",speciesNames)
 
 #write out to columnated output,
 write_cols("testcols.dat",time,dens,abundances)

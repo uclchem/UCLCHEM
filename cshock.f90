@@ -17,8 +17,7 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change    
     double precision :: initialDens,tage,tout,t0,t0old,finalDens,finalTime
-    double precision :: size,rout,rin,baseAv,bc,tstart,maxTemp
-    double precision :: tempa(6),tempb(6),codestemp(6),volctemp(6),solidtemp(6)
+    double precision :: cloudSize,rout,rin,baseAv,bc,tstart,maxTemp
     double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
 
     !Everything should be in cgs units. Helpful constants and conversions below
@@ -44,11 +43,11 @@ MODULE physics
 CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN. YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
 
-    !Set up, calculate size, give dens a kickstart if collapsing 
+    !Set up, calculate cloudSize, give dens a kickstart if collapsing 
     SUBROUTINE phys_initialise
         allocate(av(points),coldens(points),temp(points),dens(points))  
 
-        size=(rout-rin)*pc
+        cloudSize=(rout-rin)*pc
         if (collapse .eq. 1) THEN
             if (phase .eq. 2) THEN
                 write(*,*) "Cannot have collapse on during cshock (phase=2)"
@@ -64,7 +63,7 @@ CONTAINS
 
         !calculate initial column density as distance from core edge to current point * density
         DO dstep=1,points
-            coldens(dstep)=real(points-dstep+1)*size/real(points)*initialDens
+            coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
         END DO
 
 
@@ -170,10 +169,10 @@ CONTAINS
         !calculate column density. Remember dstep counts from edge of core in to centre
         IF (dstep .lt. points) THEN
             !column density of current point + column density of all points further out
-            coldens(dstep)=(size/real(points))*dens(dstep)
+            coldens(dstep)=(cloudSize/real(points))*dens(dstep)
             coldens(dstep)=coldens(dstep)+sum(coldens(dstep:points))
         ELSE
-            coldens(dstep)=size/real(points)*dens(dstep)
+            coldens(dstep)=cloudSize/real(points)*dens(dstep)
         END IF
                 !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= baseAv +coldens(dstep)/1.6d21

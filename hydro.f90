@@ -17,7 +17,7 @@ MODULE physics
    
     !variables either controlled by physics or that user may wish to change    
     double precision :: initialDens,tage,tout,t0,t0old,finalDens,finalTime,grainRadius,initialTemp
-    double precision :: size,rout,rin,oldtemp,baseAv,bc,olddens,maxTemp
+    double precision :: cloudSize,rout,rin,oldtemp,baseAv,bc,olddens,maxTemp
     double precision :: tempa(6),tempb(6),codestemp(6),volctemp(6),solidtemp(6)
     double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
     !Everything should be in cgs units. Helpful constants and conversions below
@@ -31,9 +31,9 @@ CONTAINS
     
     SUBROUTINE phys_initialise
     !Any initialisation logic steps go here
-    !size is important as is allocating space for depth arrays
+    !cloudSize is important as is allocating space for depth arrays
         allocate(av(points),coldens(points),temp(points),dens(points))
-        size=(rout-rin)*pc
+        cloudSize=(rout-rin)*pc
 
         if (collapse .eq. 1) THEN
             dens=1.001*initialDens
@@ -76,9 +76,9 @@ CONTAINS
             coldens(dstep)=1.6d21*av(dstep)
         ELSE
             IF (dstep .lt. points) THEN
-                coldens(dstep)= size*((real(points+0.5-dstep))/real(points))*dens(dstep)
+                coldens(dstep)= cloudSize*((real(points+0.5-dstep))/real(points))*dens(dstep)
             ELSE
-                coldens(dstep)= 0.5*(size/real(points))*dens(dstep)
+                coldens(dstep)= 0.5*(cloudSize/real(points))*dens(dstep)
             END IF
             av(dstep)= baseAv +coldens(dstep)/1.6d21
         END IF
