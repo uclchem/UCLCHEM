@@ -7,7 +7,7 @@ initialTemp=10.0;maxTemp=300;initialDens=1.00d3;finalDens=1.00d7;t0=0.0;finalTim
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
 radfield=1.0;zeta=1.0
 fr=1.0;
-!cloudSize of cloud set by inner and outer radii (rin and rout). used to calculate extinction.
+!Size of cloud set by inner and outer radii (rin and rout). used to calculate extinction.
 !baseAv is extinction at cloud edge
 !points is number of parcels to run model for. spaced  evenly between rin and rout
 rout=0.05;rin=0;baseAv=2.0;points=1
@@ -24,15 +24,15 @@ switch=0
 !collape=0/1 ONLY if not using cloud.f90
 !In all cases collapse=1 lets chem.f90 know it should call  densdot in the physics module to get time derivative of density and include it in ODES
 !Any other values tells it to use density value as set by physics module
-collapse=1
+collapse=0
 !for collapse=1 can introduce factor bc to slow freefall
 bc=1.0
 
-!first chooses whether first run (So write final abudances) or second phase run (So read abudances from previous phase)
-!So first=1 starts from elemental abundances and writes a file (file 7) at the end, first=0 reads a file (file 7) to get initial abundances
+!First chooses whether first run (So write final abudances) or second phase run (So read abudances from previous phase)
+!First=1 starts from elemental abundances and writes a file (file 7) at the end, first=0 reads a file (file 7) to get initial abundances
 !phase chooses behaviour. ie. heating in phase2 for cloud models
 !you may choose to run phase1 physics twice with the second run building from the first so first and phase are separated
-first=1;phase=1;
+first=1;phase=2;
 
 !non-thermal Desorption. Turn it all on/off. Turn off h2, cosmic ray induced and uv induced off separately too
 desorb=1;
@@ -40,13 +40,14 @@ h2desorb=1;crdesorb=1;uvcr=1;
 !evap sets thermal desorption  (0/1/2) -> (none/temp dependent/ instantaneous)
 evap=0;
 
+!ion sets ionisatoin fraction of carbon. See chem.f90:initialise
+ion=2
 
-!In phase 2, temp profile depends on mass of star
+
+!cloud specific variable for phase 2, temp profile depends on mass of star
 !Tempindx selects mass: 1=5Msol,2=10M,3=15M,4=25M,5=60M
 tempindx=5
 
-!ion sets ionisatoin fraction of carbon. See chem.f90:initialise
-ion=2
 
 !cshock specific variable, uncomment or comment as  needed
 !vs=40.0
@@ -67,8 +68,8 @@ outSpecies=(/'H2S','OCS'/);writeStep=1
 
 !open files for reading=writing
 !output files
-open(10,file='output/full.dat',status='unknown') !full output
-open(11,file='output/column.dat',status='unknown')!columnated output based  on outindx
+open(10,file='output/fullhydro.dat',status='unknown') !full output
+open(11,file='output/columnhydro.dat',status='unknown')!columnated output based  on outindx
 
 !input files
 open(21,file='species.csv',status='old')         !species file

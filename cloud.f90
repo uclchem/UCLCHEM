@@ -110,7 +110,7 @@ CONTAINS
             IF (tstep .gt. 2000) THEN
                 tout=(tage+20000.0)/year
             ELSE IF (tstep .gt. 1000) THEN
-                tout=(tage+10000.0)/year
+                tout=(tage+1000.0)/year
             ELSE IF (tstep .gt. 1) THEN
                 tout=1.58e11*(tstep-0)
             ELSE  IF (tstep .eq. 1) THEN
@@ -142,20 +142,6 @@ CONTAINS
         !Below we include temperature profiles for hot cores, selected using tempindx in parameters.f90
         !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
         !It takes the form T=A(t^B)*[(d/R)^-0.5], where A and B are given below for various stellar masses
-
-        ! 28,000    60 Msol
-                !temp(depth)=10. + (4.74d-7*tage**1.98)
-        ! 70,000    25 Msol
-                !td(depth)=10. + (1.706d-4*tage**1.289)
-        ! 115,000   15 Msol
-                !td(depth)=10. + (9.6966d-4*tage**1.085)
-        ! 288,000   10 Msol
-                !td(depth)=10. + (7.8470d-3*tage**0.8395)
-        !1.15e6     5 Msol
-                !td(depth)=10. + (4.8560d-2*tage**0.6255)
-
-            !temperature increase borrowed from sv for comparison 288.000
-            !will add general profile later, this works well for initialTemp=10 K
             temp(dstep)=(cloudSize/(rout*pc))*(real(dstep)/real(points))
             temp(dstep)=temp(dstep)**(-0.5)
             temp(dstep)=initialTemp + ((tempa(tempindx)*(t0*year)**tempb(tempindx))*temp(dstep))

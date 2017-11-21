@@ -18,11 +18,18 @@ MODULE physics
     !variables either controlled by physics or that user may wish to change    
     double precision :: initialDens,tage,tout,t0,t0old,finalDens,finalTime,grainRadius,initialTemp
     double precision :: cloudSize,rout,rin,oldtemp,baseAv,bc,olddens,maxTemp
-    double precision :: tempa(6),tempb(6),codestemp(6),volctemp(6),solidtemp(6)
     double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
     double precision, parameter :: year=3.16455d-08,pc=3.086d18
+
+    !Interpolation variables
+    integer, parameter :: nInterpPoints=201
+    double precision :: times(nInterpPoints),temperatures(nInterpPoints),densities(nInterpPoints)
+    double precision :: tempA(nInterpPoints),tempB(nInterpPoints),tempC(nInterpPoints)
+    double precision :: densA(nInterpPoints),densB(nInterpPoints),densC(nInterpPoints)
+    double precision :: junk ! put this in read loop for rows you don't need
+    integer :: iRead
 
 
 CONTAINS
@@ -41,18 +48,52 @@ CONTAINS
             dens=initialDens
         ENDIF 
 
-        !Open a file with time,dens,temp,Av in columns
-        !Multiple rows with same time value if multipoint model
-        open(64,file='physics_inputs.dat',status='old')
+        !It's not possible to prepare for every use case but the comments in this if statement
+        !give the general procedure for using this module
+        IF (phase .eq. 2) THEN
+            !Possbile to set up code so it reads from command line . 
+            !in this way run "uclchem filename.dat" to run with that file
+            !CALL getarg(1, name_user_file)
+            !open(64,file=name_user_file,status='old')
+            
+            !Open a file with time,dens,temp in columns
+            open(64,file='output/column.dat',status='old')
 
+            !read in those values, use the junk variable defined above to store unused columns
+            DO iRead=1,nInterpPoints
+                read(64,*) times(iRead),densities(iRead),temperatures(iRead),junk,junk
+            END DO
+
+            !Temperatures in Kelvin, densities in hydrogen nuclei / cm^3. Convert if necessary
+            !Time in seconds
+            times=times/year
+
+            !This sets up the interpolator for temperature and density
+            CALL splineSetup(times,densities,densA,densB,densC,nInterpPoints)
+            CALL splineSetup(times,temperatures,tempA,tempB,tempC,nInterpPoints)
+            initialDens=densities(1)
+            dens=initialDens
+            initialTemp=temperatures(1)
+            temp=initialTemp
+        END IF
     END SUBROUTINE
 
     SUBROUTINE timestep
         IF (phase .eq. 1) THEN
-            IF (tstep .gt. 2000) THEN
+            IF (tstep .gt. 20000) THEN
                 tout=(tage+20000.0)/year
-            ELSE IF (tstep .gt. 1000) THEN
+            ELSE IF (tstep .gt. 10000) THEN
                 tout=(tage+10000.0)/year
+            ELSE IF (tstep .gt. 1) THEN
+                tout=1.58e11*(tstep-0)
+            ELSE  IF (tstep .eq. 1) THEN  
+                tout=3.16d7*1.0d3
+            ELSE
+                tout=3.16d7*10.d-8
+            ENDIF
+        ELSE
+            IF (tstep .gt. 1000) THEN
+                tout=(tage+1000.0)/year
             ELSE IF (tstep .gt. 1) THEN
                 tout=1.58e11*(tstep-0)
             ELSE  IF (tstep .eq. 1) THEN  
@@ -64,24 +105,19 @@ CONTAINS
    END SUBROUTINE timestep
 
     SUBROUTINE phys_update
-
         !Only do post-processing on phase 2, so phase 1can be cloud model for initial conditions
         IF (phase .eq. 2) THEN
-            !read in physical inputs from file
-            !Tage in years, dens in hydrogen nuclei per cubic cm, temp in kelvin and Av in magnitudes
-            !just multiply density by 2.0 if you have density in H2 molecules /cm^3
-            read(64,*)tage,dens(dstep),temp(dstep),av(dstep)
-            tout=(tage)/year
-
-            coldens(dstep)=1.6d21*av(dstep)
-        ELSE
-            IF (dstep .lt. points) THEN
-                coldens(dstep)= cloudSize*((real(points+0.5-dstep))/real(points))*dens(dstep)
-            ELSE
-                coldens(dstep)= 0.5*(cloudSize/real(points))*dens(dstep)
-            END IF
-            av(dstep)= baseAv +coldens(dstep)/1.6d21
+            dens(dstep)=getInterp(tout,times,densities,densA,densB,densC,nInterpPoints)
+            temp(dstep)=getInterp(tout,times,temperatures,tempA,tempB,tempC,nInterpPoints)
         END IF
+
+
+        IF (dstep .lt. points) THEN
+            coldens(dstep)= cloudSize*((real(points+0.5-dstep))/real(points))*dens(dstep)
+        ELSE
+            coldens(dstep)= 0.5*(cloudSize/real(points))*dens(dstep)
+        END IF
+        av(dstep)= baseAv +coldens(dstep)/1.6d21
 
     
     END SUBROUTINE phys_update
@@ -99,5 +135,146 @@ CONTAINS
             densdot=0.00    
         ENDIF    
     END FUNCTION densdot
+
+
+   SUBROUTINE splineSetup (x, y, b, c, d, n)
+    !======================================================================
+    !  Calculate the coefficients b(i), c(i), and d(i), i=1,2,...,n
+    !  for cubic spline interpolation
+    !  s(x) = y(i) + b(i)*(x-x(i)) + c(i)*(x-x(i))**2 + d(i)*(x-x(i))**3
+    !  for  x(i) <= x <= x(i+1)
+    !  Alex G: January 2010
+    !----------------------------------------------------------------------
+    !  input..
+    !  x = the arrays of data abscissas (in strictly increasing order)
+    !  y = the arrays of data ordinates
+    !  n = size of the arrays xi() and yi() (n>=2)
+    !  output..
+    !  b, c, d  = arrays of spline coefficients
+    !  comments ...
+    !  spline.f90 program is based on fortran version of program spline.f
+    !  the accompanying function fspline can be used for interpolation
+    !======================================================================
+    integer n
+    double precision x(n), y(n), b(n), c(n), d(n)
+    integer i, j, gap
+    double precision h
+
+    gap = n-1
+    ! check input
+    if ( n < 2 ) return
+    if ( n < 3 ) then
+      b(1) = (y(2)-y(1))/(x(2)-x(1))   ! linear interpolation
+      c(1) = 0.
+      d(1) = 0.
+      b(2) = b(1)
+      c(2) = 0.
+      d(2) = 0.
+      return
+    end if
+    !
+    ! step 1: preparation
+    !
+    d(1) = x(2) - x(1)
+    c(2) = (y(2) - y(1))/d(1)
+    do i = 2, gap
+      d(i) = x(i+1) - x(i)
+      b(i) = 2.0*(d(i-1) + d(i))
+      c(i+1) = (y(i+1) - y(i))/d(i)
+      c(i) = c(i+1) - c(i)
+    end do
+    !
+    ! step 2: end conditions 
+    !
+    b(1) = -d(1)
+    b(n) = -d(n-1)
+    c(1) = 0.0
+    c(n) = 0.0
+    if(n /= 3) then
+      c(1) = c(3)/(x(4)-x(2)) - c(2)/(x(3)-x(1))
+      c(n) = c(n-1)/(x(n)-x(n-2)) - c(n-2)/(x(n-1)-x(n-3))
+      c(1) = c(1)*d(1)**2/(x(4)-x(1))
+      c(n) = -c(n)*d(n-1)**2/(x(n)-x(n-3))
+    end if
+    !
+    ! step 3: forward elimination 
+    !
+    do i = 2, n
+      h = d(i-1)/b(i-1)
+      b(i) = b(i) - h*d(i-1)
+      c(i) = c(i) - h*c(i-1)
+    end do
+    !
+    ! step 4: back substitution
+    !
+    c(n) = c(n)/b(n)
+    do j = 1, gap
+      i = n-j
+      c(i) = (c(i) - d(i)*c(i+1))/b(i)
+    end do
+    !
+    ! step 5: compute spline coefficients
+    !
+    b(n) = (y(n) - y(gap))/d(gap) + d(gap)*(c(gap) + 2.0*c(n))
+    do i = 1, gap
+      b(i) = (y(i+1) - y(i))/d(i) - d(i)*(c(i+1) + 2.0*c(i))
+      d(i) = (c(i+1) - c(i))/d(i)
+      c(i) = 3.*c(i)
+    end do
+    c(n) = 3.0*c(n)
+    d(n) = d(n-1)
+    END SUBROUTINE splineSetup
+
+    function getInterp(u, x, y, b, c, d, n)
+    !======================================================================
+    ! function ispline evaluates the cubic spline interpolation at point z
+    ! ispline = y(i)+b(i)*(u-x(i))+c(i)*(u-x(i))**2+d(i)*(u-x(i))**3
+    ! where  x(i) <= u <= x(i+1)
+    !----------------------------------------------------------------------
+    ! input..
+    ! u       = the abscissa at which the spline is to be evaluated
+    ! x, y    = the arrays of given data points
+    ! b, c, d = arrays of spline coefficients computed by spline
+    ! n       = the number of data points
+    ! output:
+    ! ispline = interpolated value at point u
+    !=======================================================================
+    implicit none
+    double precision getInterp
+    integer n
+    double precision  u, x(n), y(n), b(n), c(n), d(n)
+    integer i, j, k
+    double precision dx
+
+    ! if u is ouside the x() interval take a boundary value (left or right)
+    if(u <= x(1)) then
+      getInterp = y(1)
+      return
+    end if
+    if(u >= x(n)) then
+      getInterp = y(n)
+      return
+    end if
+
+    !*
+    !  binary search for for i, such that x(i) <= u <= x(i+1)
+    !*
+    i = 1
+    j = n+1
+    do while (j > i+1)
+      k = (i+j)/2
+      if(u < x(k)) then
+        j=k
+        else
+        i=k
+       end if
+    end do
+    !*
+    !  evaluate spline interpolation
+    !*
+    dx = u - x(i)
+    getInterp = y(i) + dx*(b(i) + dx*(c(i) + dx*d(i)))
+    end function getInterp
+
 END MODULE physics
 

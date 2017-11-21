@@ -257,8 +257,8 @@ CONTAINS
         IF ( mod(tstep,writestep) .eq. 0) THEN
             write(11,8030) tage,dens(dstep),temp(dstep),abund(outIndx,dstep)
             8030  format(1pe11.3,1x,1pe11.4,1x,0pf8.2,6(1x,1pe10.3))
-            write(*,*)'Call to LSODE successful at time: ',(TOUT*year),' years'
-            write(*,*)'        Steps: ',IWORK(6)
+            write(79,*)'Call to LSODE successful at time: ',(TOUT*year),' years'
+            write(79,*)'        Steps: ',IWORK(6)
         END IF
     END SUBROUTINE output
 
@@ -294,7 +294,6 @@ CONTAINS
 
     SUBROUTINE integrate
     !This subroutine calls DVODE (3rd party ODE solver) until it can reach tout with acceptable errors (reltol/abstol)
-
         DO WHILE(t0 .lt. tout)            
             !reset parameters for DVODE
             ITOL=2 !abstol is an array

@@ -9,7 +9,6 @@ USE physics
 USE chem
 IMPLICIT NONE
 
-write(*,*) "parameters"
 !Default parameters.f90 works for MOST physics modules. 
 include 'parameters.f90'
 
@@ -18,20 +17,18 @@ include 'parameters.f90'
 !read(*,*) variable1,variable2,variable3
 
 !Set up with initial values. For chemistry this is setting initial abundances and assigning memory for ODE solver
- write(*,*) "initializing"
  CALL phys_initialise
- write(*,*) "phys initialized"
-
+ write(*,*) "after initialise",temp(dstep)
  CALL chem_initialise
- write(*,*) "initialized"
+
 dstep=1
 !loop over time, tstep limit is arbitrary so that finalTime can be reached.
 DO tstep=1,20000
     !End if we hit final density or time
     IF (switch .eq. 1 .and. dens(1) >= finalDens) THEN
-        exit
+        EXIT
     ELSEIF (switch .eq. 0 .and. tage >= finalTime) THEN
-        exit
+        EXIT
     ENDIF
 
     !store current time as starting point for each depth step
