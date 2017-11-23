@@ -32,13 +32,25 @@ EXTERNAL dvode
     double precision :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uvy,uvcreff
     double precision :: taud,dopw,radw,xl,fosc
 
+    !variables for diffusion reactions on the grains, CGS unless otherwise stated.
+    LOGICAL, parameter :: DIFFUSE_REACT_COMPETITION=.True., GRAINS_HAVE_ICE=.True.
+    double precision, parameter :: GAS_DUST_MASS_RATIO=100.0,REDUCED_PLANCK=1.054571628d-27,AMU=1.66053892d-24
+    double precision, parameter :: K_BOLTZ=1.3806588d-16,GRAIN_AREA=2.4d-22,GRAIN_RADIUS=1.d-5 
+    double precision, parameter :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8  !gre Parameter used to compute the probability for a surface reaction with 
+    !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
+    double precision, parameter :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
+    double precision, parameter :: GRAIN_DENSITY = 3.0 ! Mass density of a dust grain
+    double precision, parameter :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
+    double precision, parameter :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
+    double precision, allocatable :: atomCounts(:)
+
     !evaporation lists, these are used to evaporation species in specific events
     !See viti 2004 for more information.
-    integer, allocatable :: colist(:),mcolist(:),intlist(:),mintlist(:),grainlist(:),mgrainlist(:)
+    integer, allocatable :: gasGrainList(:),grainList(:) !indices of species with grain version and those grain versions
     integer, allocatable :: co2list(:),mco2list(:),int2list(:),mint2list(:)
-    double precision, allocatable :: cobindener(:),co2bindener(:),intbindener(:)
-    double precision, allocatable :: comono(:),covolc(:),co2mono(:),co2volc(:),intmono(:),intvolc(:)
-    double precision, allocatable :: bindener(:),vdiff(:)
+    double precision, allocatable :: bindingEnergy(:),vdiff(:),solidFractions(:),monoFractions(:)
+    double precision, allocatable :: formationEnthalpy(:),volcanicFractions(:)
+ 
 
     !Variables for selfshielding rates for CO and H2
     logical :: startr
@@ -54,7 +66,6 @@ CONTAINS
         IF (first.eq.1) THEN
             !ensure abund is initially zero
             abund= 0.
-      
             !As default, have half in molecular hydrogen and half in atomic hydrogen
             abund(nh2,:) = 0.5*(0.5*(1.0e0-fh))
             abund(nh,:) = (0.5*(1.0e0-fh))     
@@ -87,18 +98,19 @@ CONTAINS
             abund(nspec,:)=abund(ncx,:)
 
         ENDIF
-
-        DO  i=lbound(mgrainlist,1),ubound(mgrainlist,1)
-            j=mgrainlist(i)
-            vdiff(j)=2.5e14*bindener(j)/mass(j)
-            vdiff(j)=dsqrt(vdiff(j))
+        !Initial calculations of diffusion frequency for each species bound to grain
+        !and other parameters required for diffusion reactions
+        DO  i=lbound(grainList,1),ubound(grainList,1)
+            j=grainList(i)
+            vdiff(i)=2.5e14*bindingEnergy(i)/mass(j)
+            vdiff(i)=dsqrt(vdiff(i))
         END DO
 
         !h2 formation rate initially set
         h2form = 1.0d-17*dsqrt(initialTemp)
         allocate(mantle(points))
         DO l=1,points
-            mantle(l)=sum(abund(mgrainlist,l))
+            mantle(l)=sum(abund(grainList,l))
         END DO
         
         !DVODE SETTINGS
@@ -110,7 +122,6 @@ CONTAINS
         LRW=22+(9*NEQ)+(2*NEQ*NEQ)
         allocate(IWORK(LIW),RWORK(LRW),abstol(NEQ))
 
-
     END SUBROUTINE chem_initialise
 
 !Reads input reaction and species files as well as the final step of previous run if this is phase 2
@@ -120,8 +131,8 @@ CONTAINS
 
         !read species file and allocate sufficient space to relevant arrays
         read(21,*)nspec
-        allocate(abund(nspec+1,points),specname(nspec),mass(nspec),bindener(nspec),vdiff(nspec))
-        read(21,*)(specname(j),mass(j),bindener(j),j=1,nspec-1)
+        allocate(abund(nspec+1,points),specname(nspec),mass(nspec),atomCounts(nspec))
+        read(21,*)(specname(j),mass(j),atomCounts(j),j=1,nspec-1)
         
         nout = SIZE(outSpecies)
         allocate(outIndx(nout))
@@ -152,7 +163,6 @@ CONTAINS
                 IF (specname(i).eq.outSpecies(j)) outIndx(j)=i
             END DO
         END DO
-
         !read reac file, assign array space
         !alpha, beta and gama are used for working out reaction rate each time step
         read(22,*) nreac
@@ -163,31 +173,21 @@ CONTAINS
             &p4(j),alpha(j),beta(j),gama(j),junk1,junk2
         END DO    
 
-        !finally, read in evaporation lists
-        !what we do is read in length of each list, then the numbers in the list
-        !these are used for evaporation sums.
+        !Read in arrays related to grain surface processes.
+        !Lists of gas phase species with grain surface equivalents, the indices of the grain species
+        !Also lists of proportion of each species that evaporates in different events (viti 2004)
+        !finally, binding energy to grain surface and enthalpy of formation for surface reactions
         read(23,*) l
-        allocate(colist(l),mcolist(l), cobindener(l),comono(l),covolc(l))
-        read(23,*)colist
-        read(23,*)mcolist
-        read(23,*) comono
-        read(23,*) covolc
-        read(23,*) l
-        allocate(co2list(l),mco2list(l), co2bindener(l),co2mono(l),co2volc(l))
-        read(23,*)co2list
-        read(23,*)mco2list
-        read(23,*) co2mono
-        read(23,*) co2volc
-        read(23,*) l
-        allocate(intlist(l),mintlist(l),intbindener(l),intmono(l),intvolc(l))
-        read(23,*) intlist
-        read(23,*) mintlist
-        read(23,*) intmono
-        read(23,*) intvolc
-        read(23,*)l
-        allocate(grainlist(l),mgrainlist(l))
-        read(23,*) grainlist
-        read(23,*) mgrainlist
+        allocate(gasGrainList(l),grainList(l),solidFractions(l))
+        allocate(monoFractions(l),volcanicFractions(l))
+        allocate(formationEnthalpy(l),bindingEnergy(l),vdiff(l))
+        read(23,*) gasGrainList
+        read(23,*) grainList
+        read(23,*) solidFractions
+        read(23,*) monoFractions
+        read(23,*) volcanicFractions
+        read(23,*) bindingEnergy
+        read(23,*) formationEnthalpy
 
         !read start file IF not first phase to get finale abundances from previous phase 
         !density, temp and av read but NOT zeta or radfield
@@ -201,9 +201,10 @@ CONTAINS
                 read(7,*)
                 read(7,7030) (specname(i),abund(i,l),i=1,nspec)
                 rewind(7)
+                dens(l)=abund(nspec+1,l)
             END DO
             7000 format(&
-            &33x,1pe11.4,5x,/,&
+            &33x,1pe10.4,5x,/,&
             &33x,0pf8.2,2x,/,&
             &33x,0pf12.4,4x,/)
             7010 format(&
@@ -240,8 +241,8 @@ CONTAINS
         8000  format(/)
         8010  format(4(1x,a15,'=',1x,1pe10.3,:))
         8020 format(&
-        &'age of cloud             time  = ',1pe11.3,' years',/,&
-        &'total hydrogen density   dens  = ',1pe11.4,' cm-3',/,&
+        &'age of cloud             time  = ',1pe10.3,' years',/,&
+        &'total hydrogen density   dens  = ',1pe10.4,' cm-3',/,&
         &'cloud temperature        temp  = ',0pf8.2,' k',/,&
         &'visual extinction        av    = ',0pf12.4,' mags',/,&
         &'radiation field          rad   = ',0pf10.2,' (habing = 1)',/,&
@@ -270,7 +271,7 @@ CONTAINS
         h2form = 1.0d-17*dsqrt(temp(dstep))
     
         !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
-        mantle(dstep)=sum(abund(mgrainlist,dstep))
+        mantle(dstep)=sum(abund(grainList,dstep))
 
         !evaluate co and h2 column densities for use in rate calculations
         !sum column densities of each point up to dstep. boxlength and dens are pulled out of the sum as common factors  
@@ -395,8 +396,8 @@ CONTAINS
         IF (evap .eq. 1) THEN
             !Solid Evap
             IF (solidflag .eq. 1) THEN
-                abund(colist,dstep)=abund(colist,dstep)+0.35*abund(mcolist,dstep)
-                abund(mcolist,dstep)=0.65*abund(mcolist,dstep)
+                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+solidFractions*abund(grainList,dstep)
+                abund(grainList,dstep)=(1.0-solidFractions)*abund(grainList,dstep)
                 !Set flag to 2 to stop it being recalled
                 solidflag=2
             ENDIF
@@ -406,18 +407,8 @@ CONTAINS
 
             !Volcanic evap
             IF (volcflag .eq. 1) THEN
-                DO i=lbound(colist,1),ubound(colist,1)
-                    abund(colist,dstep)=abund(colist,dstep)+covolc(i)*abund(mcolist,dstep)
-                    abund(mcolist,dstep)=(1.0-covolc(i))*abund(mcolist,dstep)
-                END DO
-                DO i=lbound(co2list,1),ubound(co2list,1)
-                    abund(co2list,dstep)=abund(co2list,dstep)+co2volc(i)*abund(mco2list,dstep)
-                    abund(mco2list,dstep)=(1.0-co2volc(i))*abund(mco2list,dstep)
-                END DO
-                DO i=lbound(intlist,1),ubound(intlist,1)
-                    abund(intlist,dstep)=abund(intlist,dstep)+intvolc(i)*abund(mintlist,dstep)
-                    abund(mintlist,dstep)=(1.0-intvolc(i))*abund(mintlist,dstep)
-                END DO
+                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+volcanicFractions(i)*abund(grainList,dstep)
+                abund(grainList,dstep)=(1.0-volcanicFractions)*abund(grainList,dstep)
                 !abund(int2list,dstep)=abund(int2list,dstep)+0.5*abund(mint2list,dstep)
                 !abund(mint2list,dstep)=0.5*abund(mint2list,dstep)
                 !Set flag to 2 to stop it being recalled
@@ -426,14 +417,14 @@ CONTAINS
 
             !Co-desorption
             IF (coflag .eq. 1) THEN
-                abund(grainlist,dstep)=abund(grainlist,dstep)+abund(mgrainlist,dstep)
-                abund(mgrainlist,dstep)=1d-30
+                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
+                abund(grainList,dstep)=1d-30
                 coflag=2
             ENDIF
         ELSE IF (evap .eq. 2 .and. coflag .ne. 2) THEN
             !Alternative evap. Instaneous evaporation of all grain species
-            abund(grainlist,dstep)=abund(grainlist,dstep)+abund(mgrainlist,dstep)
-            abund(mgrainlist,dstep)=1d-30
+            abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
+            abund(grainList,dstep)=1d-30
             coflag = 2
         ENDIF
     ENDIF
@@ -442,56 +433,22 @@ CONTAINS
 
     SUBROUTINE temper
         !Subroutine to handle mono-evaporation. See viti 2004
-        double precision en,newm,surden,expdust,freq,kevap
+        double precision en,newm,expdust,freq,kevap
         integer speci
-        parameter(surden=1.5e15)
 
-        !co monoevap
-        DO i=lbound(colist,1),ubound(colist,1)
-            speci=colist(i)
-            en=bindener(speci)*kbolt
-            expdust=bindener(speci)/temp(dstep)
+        !mono evaporation at the binding energy of each species
+        DO i=lbound(grainList,1),ubound(grainList,1)
+            speci=grainList(i)
+            en=bindingEnergy(speci)*kbolt
+            expdust=bindingEnergy(speci)/temp(dstep)
             newm = mass(speci)*1.66053e-27
-            freq = dsqrt((2*(surden)*en)/((pi**2)*newm))
+            freq = dsqrt((2*(SURFACE_SITE_DENSITY)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)
             IF (kevap .ge. 0.99) THEN
-                write(*,*)i
-                abund(speci,dstep)=abund(speci,dstep)+(comono(i)*abund(mcolist(i),dstep))
-                abund(mcolist(i),dstep)=(1.0-comono(i))*abund(mcolist(i),dstep)
+                abund(gasGrainList(i),dstep)=abund(gasGrainList(i),dstep)+(monoFractions(i)*abund(speci,dstep))
+                abund(speci,dstep)=(1.0-monoFractions(i))*abund(speci,dstep)
                 !set to 1d50 so it can't happen again
-                bindener(speci)=1d50
-            END IF 
-        END DO
-
-        !co2 monoevap
-        DO i=lbound(co2list,1),ubound(co2list,1)
-            speci=co2list(i)
-            en=bindener(speci)*kbolt
-            expdust=bindener(speci)/temp(dstep)
-            newm = mass(speci)*1.66053e-27
-            freq = dsqrt((2*(surden)*en)/((pi**2)*newm))
-            kevap=freq*exp(-expdust)
-            IF (kevap .ge. 0.99) THEN
-                write(*,*)i
-                abund(speci,dstep)=abund(speci,dstep)+(co2mono(i)*abund(mco2list(i),dstep))
-                abund(mco2list(i),dstep)=(1.0-co2mono(i))*abund(mco2list(i),dstep)
-                bindener(speci)=1d50
-            END IF 
-        END DO
-
-        !int mono evap
-        DO i=lbound(intlist,1),ubound(intlist,1)
-            speci=intlist(i)
-            en=bindener(speci)*kbolt
-            expdust=bindener(speci)/temp(dstep)
-            newm = mass(speci)*1.66053e-27
-            freq = dsqrt((2*(surden)*en)/((pi**2)*newm))
-            kevap=freq*exp(-expdust)
-            IF (kevap .ge. 0.99) THEN
-                write(*,*)i
-                abund(speci,dstep)=abund(speci,dstep)+(intmono(i)*abund(mintlist(i),dstep))
-                abund(mintlist(i),dstep)=(1.0-intmono(i))*abund(mintlist(i),dstep)
-                bindener(speci)=1d50
+                bindingEnergy(speci)=1d50
             END IF 
         END DO
     END SUBROUTINE temper

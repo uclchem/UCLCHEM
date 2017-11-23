@@ -1,7 +1,4 @@
 SUBROUTINE reacrates
-double precision :: Rdif
-integer :: ns,index1,index2
-
 !Assuming the user has temperature changes or uses the desorption features of phase 1, these need working out on a timestep by time step basis
     DO j=1,nreac
         !This case structure looks at the reaction type. species-species happens in default.
@@ -30,12 +27,12 @@ integer :: ns,index1,index2
                     IF (specname(i).eq.re1(j)) THEN
                         IF (beta(j).eq.0.0 ) THEN
                             !taken from Rawlings et al. 1992
-                            rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*grainArea*fr
+                            rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*GRAIN_AREA*fr
                         ELSE
                             !Make rates sets beta=1 for ion freeze out. this catches that and
                             !freezes differently
-                            cion=1.0+16.71d-4/(grainRadius*temp(dstep))
-                            rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*grainArea*fr*cion
+                            cion=1.0+16.71d-4/(GRAIN_RADIUS*temp(dstep))
+                            rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*GRAIN_AREA*fr*cion
                         ENDIF
                     ENDIF
                 END DO
@@ -58,9 +55,9 @@ integer :: ns,index1,index2
             &.and. gama(j) .le. ebmaxcr) THEN
                 !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
                 !as iron nuclei are main cause of CR heating.
-                !grainArea is the total area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
+                !GRAIN_AREA is the total area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
                 !phi is efficieny of this reaction, number of molecules removed per event.
-                rate(j) = 4.0*pi*zeta*1.64d-4*(grainArea)*&
+                rate(j) = 4.0*pi*zeta*1.64d-4*(GRAIN_AREA)*&
                       &(1.0/mantle(dstep))*phi
             ELSE
                 rate(j) = 0.0
@@ -70,7 +67,7 @@ integer :: ns,index1,index2
              &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-30) THEN
                 !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
                 !UVY is yield per photon.
-                rate(j) = grainArea*uvy*4.875d3*zeta*(1.0/mantle(dstep))
+                rate(j) = GRAIN_AREA*uvy*4.875d3*zeta*(1.0/mantle(dstep))
                 !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
                 !CR induced UV to ISRF UV.
                 rate(j) = rate(j) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
@@ -78,35 +75,15 @@ integer :: ns,index1,index2
                 rate(j) = 0.0
             ENDIF
         CASE DEFAULT
-            !Evaluate the diffusion coefficient for the two reactants on the grain surface. Assuming Eb = 0.3 Ed. Units of s-1. By Angela Occhiogrosso.
-            IF (re3(j).eq.'DIFF') THEN
-                !loop through mantle species and match reactants to species
-                DO i=lbound(mgrainlist,1),ubound(mgrainlist,1)
-                    IF (specname(mgrainlist(i)) .eq. re1(j)) index1 = mgrainlist(i)
-                    IF (specname(mgrainlist(i)) .eq. re2(j)) index2 = mgrainlist(i)  
-                END DO            
-                Rdif = vdiff(index1)*dexp(-0.3*bindener(index1)/temp(dstep))
-                Rdif = Rdif+vdiff(index2)*dexp(-0.3*bindener(index2)/temp(dstep))
-                Rdif = Rdif*10.0**(-6.0)
-                !Evaluate the rate coefficient for the diffusion. Units of cm-3s-1. By Angela Occhiogrosso.
-                rate(j) = alpha(j)*10d24*Rdif*dexp(-gama(j)/temp(dstep))
-                write(79,*) j,re1(j),re2(j)
-                write(79,*) Rdif,vdiff(index1),vdiff(index2)
-                write(79,*) bindener(index1),bindener(index2),rate(j)
-                write(79,*) "********************************"
+            !Reactions on surface can be treated considering diffusion of reactants
+            !See work of David Quenard 2017 Arxiv:1711.05184
+            !abstracted to functions below for ease of reading
+            IF (re3(j).eq.'DIFF' .or. re3(j) .eq. 'CHEMDES') THEN
+                rate(j) = diffusionReactionRate()
             ELSE
+            !--------------------------------------------------------------------------------------------------------
+            !Basic gas phase reactions 
                 rate(j) = alpha(j)*((temp(dstep)/300.)**beta(j))*dexp(-gama(j)/temp(dstep))
-                !Audrey correction for co and ch3oh
-               ! IF (re1(j)(:) .eq. '#CH3OH' .and. re2(j)(:) .eq. '#CO') THEN
-                !    rate(j)=alpha(j)/dens/abund(ngrainco,dstep) ! *y(ngrainco)
-                 !   IF (rate(j) .gt. 1.0) THEN
-                  !      rate(j) = 1.0
-                   ! ENDIF
-                    !IF (rate(j) .lt. 1.0d-30) THEN
-                     !   rate(j) = 1.0d-30
-                   ! ENDIF
-                    !write(6,*) rate(j)
-                !ENDIF
             ENDIF
 
         END SELECT
@@ -116,7 +93,200 @@ integer :: ns,index1,index2
     rate(nrco)=knrco()
 END SUBROUTINE reacrates
 
-!Functions below are required by reacrates to calculate more complicated reactions.
+
+!----------------------------------------------------------------------------------------------------
+!Reactions on the surface treated by evaluating diffusion rates across grains and accounting
+!For competition with chemical desorption. Products remain bound ('DIFF') or are desorbed ('CHEMDES')
+!Assuming Eb = 0.5 Ed. Units of s-1. 
+!David Quenard 2017 Arxiv:1711.05184
+!----------------------------------------------------------------------------------------------------
+double precision FUNCTION diffusionReactionRate()
+    double precision :: diffuseRate,activationBarrier,reducedMass,tunnelProb
+    double precision :: diffuseProb,desorbProb
+    integer :: ns,index1,index2
+
+
+    ! Loop through mantle species and match reactants to species
+    DO i=lbound(grainList,1),ubound(grainList,1)
+        IF (specname(grainList(i)) .eq. re1(j)) index1 = i
+        IF (specname(grainList(i)) .eq. re2(j)) index2 = i
+    END DO
+    !H and H2 can also be reactants but are not in grain list
+    SELECT CASE (re1(j))
+        CASE ('H')
+            index1 = 1
+        CASE ('H2')
+            index1 = 3
+    END SELECT
+    SELECT CASE (re2(j))
+        CASE ('H')
+            index2 = 1
+        CASE ('H2')
+            index2 = 3
+    END SELECT
+
+    diffuseRate = vdiff(index1)*dexp(-0.5*bindingEnergy(index1)/temp(dstep))/NUM_SITES_PER_GRAIN
+    diffuseRate = diffuseRate+ vdiff(index2)*dexp(-0.5*bindingEnergy(index2)/temp(dstep))/NUM_SITES_PER_GRAIN
+
+    activationBarrier=1.0d0
+
+    !Calculate classical activation energy barrier exponent
+    activationBarrier = gama(j)/temp(dstep)
+
+    !Calculate quantum activation energy
+    reducedMass = mass(index1) * mass(index2) / (mass(index1) + mass(index2))
+    tunnelProb = 2.0d0 *CHEMICAL_BARRIER_THICKNESS/REDUCED_PLANCK * dsqrt(2.0d0*AMU*reducedMass*K_BOLTZ*gama(j))
+
+    !Choose fastest between classical and tunnelling
+    IF (activationBarrier.GT.tunnelProb) activationBarrier=tunnelProb
+    activationBarrier=dexp(-activationBarrier)
+
+    ! Keff from Garrod & Pauly 2011 and Ruaud+2016
+    ! activationBarrier = Kappa_ij^star from Ruaud+2016
+    IF(DIFFUSE_REACT_COMPETITION) THEN
+       activationBarrier = max(vdiff(index1),vdiff(index2)) * activationBarrier        !< nu_ij*Kappa_ij^star
+       desorbProb = vdiff(index1)*dexp(-bindingEnergy(index1)/temp(dstep))
+       desorbProb = desorbProb + vdiff(index2)*dexp(-bindingEnergy(index2)/temp(dstep))    !< k_evap(i,j)
+       diffuseProb = (diffuseRate) * NUM_SITES_PER_GRAIN    !< k_hop(i,j)
+
+       activationBarrier = (activationBarrier + desorbProb + diffuseProb)/activationBarrier
+    END IF
+    
+    diffusionReactionRate=alpha(j) * diffuseRate * activationBarrier* GAS_DUST_DENSITY_RATIO / dens(dstep)
+
+    !Now adjust for fraction of this reaction's products that will desorb due to energy released
+    IF (re3(j).eq.'DIFF') THEN
+        rate(j) = rate(j) * (1-desorptionFraction(j,index1,index2))
+    ELSE IF(re3(j).eq.'CHEMDES') THEN
+        rate(j) = rate(j) * desorptionFraction(j,index1,index2)
+    ENDIF
+END FUNCTION diffusionReactionRate
+
+! ---------------------------------------------------------------------
+!  Chemical Reactive Desorption (CRD)
+! David Quenard 2017 Arxiv:1711.05184
+! From Minissalle+ 2016 and Vasyunin+ 2016
+! ---------------------------------------------------------------------
+double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
+    integer :: j,reactIndex1,reactIndex2
+    integer :: productIndex(4)
+
+    double precision :: deltaEnthalpy,maxBindingEnergy,epsilonCd
+    double precision, parameter :: EFFECTIVE_SURFACE_MASS = 120.0
+
+    
+    !Get indices of products 
+    productIndex = 0
+    IF (re3(j).eq.'DIFF') THEN
+        DO i=lbound(grainList,1),ubound(grainList,1)
+            IF (specname(grainList(i)) .eq. p1(j)) productIndex(1) = grainList(i)
+            IF (specname(grainList(i)) .eq. p2(j)) productIndex(2) = grainList(i)
+            IF (specname(grainList(i)) .eq. p3(j)) productIndex(3) = grainList(i)
+            IF (specname(grainList(i)) .eq. p4(j)) productIndex(4) = grainList(i)
+        END DO
+    ELSE IF (re3(j).eq.'CHEMDES') THEN
+        DO i=lbound(gasGrainList,1),ubound(gasGrainList,1)
+            IF (specname(gasGrainList(i)) .eq. p1(j)) productIndex(1) = grainList(i)
+            IF (specname(gasGrainList(i)) .eq. p2(j)) productIndex(2) = grainList(i)
+            IF (specname(gasGrainList(i)) .eq. p3(j)) productIndex(3) = grainList(i)
+            IF (specname(gasGrainList(i)) .eq. p4(j)) productIndex(4) = grainList(i)
+        END DO
+    ENDIF
+    
+    SELECT CASE (p1(j))
+        CASE ('H')
+            productIndex(1) = 1
+        CASE ('H2')
+            productIndex(1) = 3
+    END SELECT
+    SELECT CASE (p2(j))
+        CASE ('H')
+            productIndex(2) = 1
+        CASE ('H2')
+            productIndex(2) = 3
+    END SELECT
+    SELECT CASE (p3(j))
+        CASE ('H')
+            productIndex(3) = 1
+        CASE ('H2')
+            productIndex(3) = 3
+    END SELECT
+    SELECT CASE (p4(j))
+        CASE ('H')
+            productIndex(4) = 1
+        CASE ('H2')
+            productIndex(4) = 3
+    END SELECT
+    
+    !epsilonCd is the fraction of kinetic energy kept my the product when it collides with grain surface
+    epsilonCd = mass(productIndex(1)) + mass(productIndex(2)) + mass(productIndex(3)) + mass(productIndex(4))
+    EpsilonCd = ((epsilonCd - EFFECTIVE_SURFACE_MASS) / (epsilonCd + EFFECTIVE_SURFACE_MASS))**2
+    
+    !Now calculate the change in enthalpy of the reaction.
+    !deltaEnthalpy= FORMATION_ENTHALPY(index1)+FORMATION_ENTHALPY(index2)-FORMATION_ENTHALPY(productIndex(1))
+    !if (productIndex(2).NE.0) deltaEnthalpy = deltaEnthalpy - FORMATION_ENTHALPY(productIndex(2))
+    !if (productIndex(3).NE.0) deltaEnthalpy = deltaEnthalpy - FORMATION_ENTHALPY(productIndex(3))
+    !if (productIndex(4).NE.0) deltaEnthalpy = deltaEnthalpy - FORMATION_ENTHALPY(productIndex(4))
+    
+    !Convert from kcal to J, from J to K
+    deltaEnthalpy = deltaEnthalpy*4.184d03/1.38054D-23
+    !Convert from #moles-1 to #reactions-1 using Avogadro's constant
+    deltaEnthalpy = deltaEnthalpy/6.02214129d23
+    ! Total energy change includes activation energy of the reaction !
+    deltaEnthalpy = deltaEnthalpy + gama(j)
+
+    IF (deltaEnthalpy.eq.0.00) deltaEnthalpy = 1e-30 
+
+    
+    IF (productIndex(4).NE.0) THEN
+        maxBindingEnergy = max(bindingEnergy(productIndex(1)),bindingEnergy(productIndex(2)),bindingEnergy(productIndex(3)),bindingEnergy(productIndex(4)))
+    ELSE IF (productIndex(3).NE.0) THEN
+        maxBindingEnergy = max(bindingEnergy(productIndex(1)),bindingEnergy(productIndex(2)),bindingEnergy(productIndex(3)))
+    ELSE IF (productIndex(2).NE.0) THEN
+        maxBindingEnergy = max(bindingEnergy(productIndex(1)),bindingEnergy(productIndex(2)))
+    ELSE 
+        maxBindingEnergy = bindingEnergy(productIndex(1))
+    END IF
+
+    !write(79,*) "Max Ebinding products (K):", bindingEnergy_CRD
+
+    !N_ATOMS = NUM_ATOM(productIndex(1))
+    !if (productIndex(2).NE.0) N_ATOMS = max(NUM_ATOM(productIndex(1)),NUM_ATOM(productIndex(2)))
+    !if (productIndex(3).NE.0) N_ATOMS = max(NUM_ATOM(productIndex(1)),NUM_ATOM(productIndex(2)),NUM_ATOM(productIndex(3)))
+    !if (productIndex(4).NE.0) N_ATOMS = max(NUM_ATOM(productIndex(1)),NUM_ATOM(productIndex(2)),NUM_ATOM(productIndex(3)),NUM_ATOM(productIndex(4)))                    
+    !DOF_MOL = 3 * N_ATOMS
+    
+    !write(79,*) "Dof_mol:", DOF_MOL
+    
+    !desorptionFraction = dexp((-maxBindingEnergy*DOF_MOL) / (epsilonCd * deltaEnthalpy))
+    
+    !IF (FORMATION_ENTHALPY(reactIndex1).le.-999.0 .or. FORMATION_ENTHALPY(reactIndex2).le.-999.0 .or. FORMATION_ENTHALPY(productIndex(1)).le.-999.0) THEN
+    !    desorptionFraction = 0.d0
+    !ELSE IF (deltaEnthalpy.lt.0.d0) THEN        !< If reaction is endothermic, no CRD
+    !    desorptionFraction = 0.d0
+    !END IF
+    
+    IF (GRAINS_HAVE_ICE) THEN
+        desorptionFraction = desorptionFraction/10    !< See Minisalle et al. 2016 for icy grain surface.
+        ! Special case of OH+H, O+H, N+N on ices, see same paper
+        if (re1(j).eq.'#N'.and.re2(j).eq.'#N') desorptionFraction = 0.5
+        if ((re1(j).eq.'#O'.and.re2(j).eq.'H') .or. (re1(j).eq.'H'.and.re2(j).eq.'#O')) desorptionFraction = 0.3
+        if ((re1(j).eq.'#OH'.and.re2(j).eq.'H') .or. (re1(j).eq.'H'.and.re2(j).eq.'#OH')) desorptionFraction = 0.25
+    ENDIF
+    
+    !write(79,*) "Reaction rate (cm3.s-1):", rate(j)
+    ! Modify diffusion rate according to the type of reaction
+
+END FUNCTION desorptionFraction
+
+
+!-----------------------------------------------------------------------------------------
+!h2d() and knrco() recalculate h2 and CO photodissociation using a self-shielding 
+!treatment from van dishoeck and black (apj 334, p771 (1988))
+!All other functions are helpers for this purpose
+!Code by Serena Viti
+!-----------------------------------------------------------------------------------------
+
 double precision FUNCTION h2d()
     double precision ::ch2
 
@@ -689,11 +859,3 @@ SAVE
     y = a*ya(jlo) + b*ya(jhi) +&
     &  ((a**3-a)*y2a(jlo) + (b**3-b)*y2a(jhi)) * (h**2)/6.0d0
 END SUBROUTINE splint
-
-FUNCTION earg(tzz)  
-    !to avoid exp argument error   
-    double precision tzz,earg
-    IF(tzz.gt.-30.0) earg=dexp(tzz)
-    IF(tzz.lt.-30.0) earg=0.0d0
-END FUNCTION earg
-

@@ -3,7 +3,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Initial physics variables and final  values. for temp, density and time
-initialTemp=10.0;maxTemp=300;initialDens=1.00d3;finalDens=1.00d7;t0=0.0;finalTime=1.00d6
+initialTemp=10.0;maxTemp=300;initialDens=1.00d2;finalDens=1.00d5;t0=0.0;finalTime=6.00d6
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
 radfield=1.0;zeta=1.0
 fr=1.0;
@@ -32,24 +32,24 @@ bc=1.0
 !First=1 starts from elemental abundances and writes a file (file 7) at the end, first=0 reads a file (file 7) to get initial abundances
 !phase chooses behaviour. ie. heating in phase2 for cloud models
 !you may choose to run phase1 physics twice with the second run building from the first so first and phase are separated
-first=1;phase=2;
+first=1;phase=1;
 
 !non-thermal Desorption. Turn it all on/off. Turn off h2, cosmic ray induced and uv induced off separately too
 desorb=1;
 h2desorb=1;crdesorb=1;uvcr=1;
 !evap sets thermal desorption  (0/1/2) -> (none/temp dependent/ instantaneous)
-evap=0;
+evap=1;
 
 !ion sets ionisatoin fraction of carbon. See chem.f90:initialise
 ion=2
 
 
-!cloud specific variable for phase 2, temp profile depends on mass of star
-!Tempindx selects mass: 1=5Msol,2=10M,3=15M,4=25M,5=60M
+!cloud module specific variable for phase 2, temp profile depends on mass of star
+!Tempindx selects mass: 1=1Msol,2=5,3=10M,4=15M,5=25M,6=60M
 tempindx=5
 
 
-!cshock specific variable, uncomment or comment as  needed
+!cshock module specific variable, uncomment or comment as  needed
 !vs=40.0
 
 !initial fractional abundances of elements(from Asplund et al. 2009 ARAA table 1 -SOLAR)
@@ -64,12 +64,12 @@ fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 !A full output of abundances is written by default. Additionally, name species here for 
 !a columnated output of time,density,temperature and abundances of those species
 !writeStep sets how often this is written out. Columns written every n steps for writeStep=n.
-outSpecies=(/'H2S','OCS'/);writeStep=1
+outSpecies=(/'CO ','H2S','OCS'/);writeStep=1
 
 !open files for reading=writing
 !output files
-open(10,file='output/fullhydro.dat',status='unknown') !full output
-open(11,file='output/columnhydro.dat',status='unknown')!columnated output based  on outindx
+open(10,file='output/full.dat',status='unknown') !full output
+open(11,file='output/column.dat',status='unknown')!columnated output based  on outindx
 
 !input files
 open(21,file='species.csv',status='old')         !species file
@@ -92,7 +92,7 @@ open(79,file='output/debuglog',status='unknown')       !debug file.
 !Careful, grainArea is actually grain surface area per hydrogen atom. grainRadius is actual radius of grains in cm.
 ebmaxh2=1.21d3;epsilon=0.01;ebmaxcrf=1.21d3;uvcreff=1.0d-3
 ebmaxcr=1.21d3;phi=1.0d5;ebmaxuvcr=1.0d4; uvy=0.1
-omega=0.5;grainArea=2.4d-22;grainRadius=1.d-5 
+omega=0.5;
 !dopw = doppler width (in s-1) of a typical transition
 !(assuming turbulent broadening with beta=3e5cms-1)
 !radw = radiative line width of typ. transition (in s-1)

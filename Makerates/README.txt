@@ -36,9 +36,10 @@ Species File:
 	
 	The species list is a list of every species used in the network. Any reactions with species not in this list are ignored. This list also gives the thermal desorption properties of each molecule. A sample entry looks like:
 
-		#CO,28,CO1,1150,0.7,0.667
+		#CO,28,1300,0.35,0.7,0.667,-27.2
 
-	Where we give NAME, MASS, TYPE, BINDING ENERGY, MONO FRACTION, VOLCANIC FRACTION. The first two are self-explantory. The latter four are desorption properties and only need to be set for grain species. NA,0,0,0 is acceptable for all gas species. The type sets the evaporation events the species evaporates in. CO1 experience "solid" desorption at 20 K as well as Mono, volcanic and co-desorption with water. CO2 and INT do not undergo solid desorption but do undergo the others, in different amounts. The binding energy is used to determine the temperature of monolayer evaporation. Finally, the mono and volcanic fractions dictate the portion of the mantle abundance of a species is removed in the mono and volcanic evaporation events.
+	Where we give NAME,MASS,BINDING ENERGY,SOLID FRACTION,MONO FRACTION,VOLCANO FRACTION,ENTHALPY
+. The first two are self-explantory. The latter five are desorption properties and only need to be set for grain species. 0,0,0,0,0 is acceptable for all gas species. The fractions are based on the work of Collings et al. 2004 and Viti et al. 2004. 
 
 
 ###OUTPUT FILES###
@@ -51,7 +52,7 @@ Species File:
 	Species:
 		every species in the network. When referencing a species in the code (for output array for example) use the line number from this file -1 (the first line is the number of species).
 
-	odes:
+	ODES:
 		A fortran file with full set of ODEs for the network. Every species has it's own differential equation made up of reaction rate*abundances for every reaction the species is involved in. ODES.F90 IS COMPILED, NOT READ. You must make after changing odes.f90 and if you alter the filename, you must redirect chem.f90.f to the correct file.
 
 

@@ -18,7 +18,6 @@ include 'parameters.f90'
 
 !Set up with initial values. For chemistry this is setting initial abundances and assigning memory for ODE solver
  CALL phys_initialise
- write(*,*) "after initialise",temp(dstep)
  CALL chem_initialise
 
 dstep=1

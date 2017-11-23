@@ -1,6 +1,4 @@
 #! /usr/bin/python
-#! /usr/fink/bin/python
-
 import math
 import os
 import string
@@ -10,62 +8,152 @@ import time
 import csv
 import numpy
 
-#create a file containing length of each list of moleculetypes and then the two lists (gas and grain) of species in each type
-#as  well as fraction that evaporated in each type of event
-def evap_lists(filename,species,evaptype,monoevap,volcevap):
-	colist=[];mcolist=[];intlist=[];mintlist=[];grainlist=[];mgrainlist=[]
-	co2list=[];mco2list=[];comono=[];co2mono=[];intmono=[];covolc=[]
-	co2volc=[];intvolc=[]
-	for i in range(len(species)):
-		if species[i][0]=='#':
-			j=species.index(species[i][1:])
-			#plus ones as fortran and python label arrays differently
-			mgrainlist.append(i+1)
-			grainlist.append(j+1)
+#functions including
+#1. simple classes to store all the information about each species and reaction.
+#2. Functions to read in the species and reaction file and check for sanity
+#3. Functions to write out files necessary for UCLCHEM
 
-			#a bunch of if statements better represented by a switch. put each grain species into the right TYPE of evap list
-			if (evaptype[i] == 'CO1'):
-				colist.append(j+1)
-				mcolist.append(i+1)
-				comono.append(monoevap[i])
-				covolc.append(volcevap[i])
-			if (evaptype[i] == 'INT'):
-				intlist.append(j+1)
-				mintlist.append(i+1)
-				intmono.append(monoevap[i])
-				intvolc.append(volcevap[i])
-			if (evaptype[i] == 'CO2'):
-				co2list.append(j+1)
-				mco2list.append(i+1)
-				co2mono.append(monoevap[i])
-				co2volc.append(volcevap[i])
-			#if (evaptype[i] == 'INT2'):
-			#	int2list.append(j+1)
-			#	mint2list.append(i+1)
-	f = open(filename, 'wb')
-	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
-	f.write(str(len(colist))+'\n')
-	writer.writerow(colist)
-	writer.writerow(mcolist)
-	writer.writerow(comono)
-	writer.writerow(covolc)
-	f.write(str(len(co2list))+'\n')
-	writer.writerow(co2list)
-	writer.writerow(mco2list)
-	writer.writerow(co2mono)
-	writer.writerow(co2volc)
-	f.write(str(len(intlist))+'\n')
-	writer.writerow(intlist)
-	writer.writerow(mintlist)
-	writer.writerow(intmono)
-	writer.writerow(intvolc)
-	#f.write(str(len(int2list))+'\n')
-	#writer.writerow(int2list)
-	#writer.writerow(mint2list)
-	f.write(str(len(grainlist))+'\n')
-	writer.writerow(grainlist)
-	writer.writerow(mgrainlist)
 
+##########################################################################################
+#1. simple classes to store all the information about each species and reaction.
+#largely just to make the other functions more readable.
+##########################################################################################
+class Species:
+	def __init__(self,inputRow):
+		self.name=inputRow[0]
+		self.mass=inputRow[1]
+		self.bindener=inputRow[2]
+		self.solidFraction=inputRow[3]
+		self.monoFraction=inputRow[4]
+		self.volcFraction=inputRow[5]
+		self.enthalpy=inputRow[6]
+
+class Reaction:
+	def __init__(self,inputRow):
+		self.reactants=[inputRow[0],inputRow[1],self.NANCheck(inputRow[2])]
+		self.products=[inputRow[3],self.NANCheck(inputRow[4]),self.NANCheck(inputRow[5]),self.NANCheck(inputRow[6])]
+		self.alpha=inputRow[7]
+		self.beta=inputRow[8]
+		self.gamma=inputRow[9]
+		self.templow=inputRow[10]
+		self.temphigh=inputRow[11]
+
+	def NANCheck(self,a):
+		aa  = a if a else 'NAN'
+		return aa
+
+
+
+
+##########################################################################################
+#2. Functions to read in the species and reaction file and check for sanity
+##########################################################################################
+
+# Read the entries in the specified species file
+def read_species_file(fileName):
+	speciesList=[]
+	f = open(fileName, 'rb')
+	reader = csv.reader(f, delimiter=',', quotechar='|')
+	for row in reader:
+		if row[0]!="NAME":
+			speciesList.append(Species(row))
+	nSpecies = len(speciesList)
+	return nSpecies,speciesList
+
+# Read the entries in the specified reaction file and keep the reactions that involve the species in our species list
+def read_reaction_file(fileName, speciesList, ftype):
+	reactions=[]
+	keepList=[]
+	# keeplist includes the elements that ALL the reactions should be formed from 
+	keepList.extend(['','NAN','#','E-','e-','ELECTR','PHOTON','CRP','CRPHOT','FREEZE','CRH','PHOTD','THERM','XRAY','XRSEC','XRLYA','XRPHOT','DESOH2','DESCR','DEUVCR'])
+	for species in speciesList:
+		keepList.append(species.name)			                                  
+	if ftype == 'UMIST': # if it is a umist database file
+		f = open(fileName, 'rb')
+		reader = csv.reader(f, delimiter=':', quotechar='|')
+		for row in reader:
+			if all(x in keepList for x in [row[2],row[3],row[4],row[5],row[6],row[7]]): #if all the reaction elements belong to the keeplist
+				#umist file doesn't have third reactant so add space and has a note for how reactions there are so remove that
+				reactions.append(Reaction(row[2:4]+['']+row[4:8]+row[9:]))
+	if ftype == 'UCL':	# if it is a ucl made (grain?) reaction file
+		f = open(fileName, 'rb')
+		reader = csv.reader(f, delimiter=',', quotechar='|')
+		for row in reader:
+			if all(x in keepList for x in row[0:7]):	#if all the reaction elements belong to the keeplist
+				row[10]=0.0
+				row[11]=10000.0
+				reactions.append(Reaction(row))	
+
+	nReactions = len(reactions)
+	return nReactions, reactions
+
+#Look for possibly incorrect parts of species list
+def filter_species(speciesList,reactionList):
+	#check for species not involved in any reactions
+	lostSpecies=[]
+	for species in speciesList:
+		keepFlag=False
+		for reaction in reactionList:
+			if species.name in reaction.reactants or species.name in reaction.products:
+				keepFlag=True
+		if not keepFlag:
+			lostSpecies.append(species.name)
+			speciesList.remove(species)
+
+	#check for duplicate species
+	duplicates=0
+	duplicate_list=[]
+	for i in range(0,len(speciesList)):
+		for j in range(0,len(speciesList)):
+			if speciesList[i].name==speciesList[j].name:
+				if (j!=i):
+					print "\t {0} appears twice in input species list".format(speciesList[i].name)
+					duplicates+=1
+					if j not in duplicate_list:
+						duplicate_list.append(i)
+	for duplicate in duplicate_list:
+		speciesName=speciesList[duplicate].name
+		del speciesList[duplicate]
+		print "\tOne entry of {0} removed from list".format(speciesName)
+
+	print '\tSpecies in input list that do not appear in final list:' 
+	print '\t',lostSpecies
+	print 
+	return speciesList
+
+#check reactions to alert user of potential issues including repeat reactions
+#and multiple freeze out routes
+def reaction_check(speciesList,reactionList):
+
+
+	#first check for multiple freeze outs so user knows to do alphas
+	print "\tSpecies with multiple freeze outs, check alphas:"
+	for spec in speciesList:
+		freezes=0
+		for reaction in reactionList:
+			if (spec.name in reaction.reactants and 'FREEZE' in reaction.reactants):
+				freezes+=1
+		if (freezes>1):
+			print "\t{0} freezes out through {1} routes".format(spec.name,freezes)
+	#now check for duplicate reactions
+	duplicate_list=[]
+	print "\n\tPossible duplicate reactions for manual removal:"
+	duplicates=0
+	for i, reaction1 in enumerate(reactionList):
+		if i not in duplicate_list:
+			for j, reaction2 in enumerate(reactionList):
+				if i!=j:
+					if set(reaction1.reactants)==set(reaction2.reactants):
+						if set(reaction1.products)==set(reaction2.products):
+							print "\tReactions {0} and {1} are possible duplicates".format(i+1,j+1)
+							print "\t",str(i+1), reaction1.reactants, "-->", reaction1.products 
+							print "\t",str(j+1), reaction1.reactants, "-->", reaction2.products 
+							duplicates+=1
+							duplicate_list.append(i)
+							duplicate_list.append(j)
+	
+	if (duplicates==0):
+		print "\tNone"
 
 #capitalize files
 def make_capitals(fileName):
@@ -74,233 +162,173 @@ def make_capitals(fileName):
 	output.write(a.upper())
 	output.close()
 
-# Read the entries in the specified species file
-def read_species_file(fileName):
-	f = open(fileName, 'rb')
-	reader = csv.reader(f, delimiter=',', quotechar='|')
-
-	species = [] ; mass = []; evaptype=[];bindener=[];monoevap=[];volcevap=[]
-	for row in reader:
-		species.append(row[0])
-		mass.append(row[1])
-		evaptype.append(row[2])
-		bindener.append(row[3])
-		monoevap.append(row[4])
-		volcevap.append(row[5])
-	nSpecies = len(species)
-	return nSpecies,species, mass,evaptype,bindener,monoevap,volcevap
-
-def NANCheck(a):
-	aa  = a if a else 'NAN'
-	return aa
-
-
-# Read the entries in the specified reaction file and keep the reactions that involve the species in our species list
-def read_reaction_file(fileName, species, ftype):
-	reactants = [] ; products = [] ; alpha = [] ; beta = [] ; gamma = [] ; templow = [] ;temphigh = []; keepList = []
-	# keeplist includes the elements that ALL the reactions should be formed from 
-	keepList.extend(['','NAN','#','E-','e-','ELECTR','PHOTON','CRP','CRPHOT','FREEZE','CRH','PHOTD','THERM','XRAY','XRSEC','XRLYA','XRPHOT','DESOH2','DESCR','DEUVCR'])
-	keepList.extend(species)			                                  
-	if ftype == 'UMIST': # if it is a umist database file
-		f = open(fileName, 'rb')
-		reader = csv.reader(f, delimiter=':', quotechar='|')
-		for row in reader:
-			if all(x in keepList for x in [row[2],row[3],row[4],row[5],row[6],row[7]]): #if all the reaction elements belong to the keeplist
-				reactants.append([row[2],row[3],'NAN'])
-				products.append([row[4],NANCheck(row[5]),NANCheck(row[6]),NANCheck(row[7])])
-				alpha.append(row[9])
-				beta.append(row[10])
-				gamma.append(row[11])
-				templow.append(row[12])
-				temphigh.append(row[13])
-	if ftype == 'UCL':	# if it is a ucl made (grain?) reaction file
-		f = open(fileName, 'rb')
-		reader = csv.reader(f, delimiter=',', quotechar='|')
-		for row in reader:
-			if all(x in keepList for x in [row[1],row[2],row[3],row[4],row[5],row[6],row[7]]):	#if all the reaction elements belong to the keeplist
-				reactants.append([row[1],row[2],NANCheck(row[3])])
-				products.append([row[4],NANCheck(row[5]),NANCheck(row[6]),NANCheck(row[7])])
-				alpha.append(float(eval(row[8])))
-				beta.append(row[9])
-				gamma.append(row[10])
-				templow.append('NAN')
-				temphigh.append('NAN')					
-	nReactions = len(reactants)
-	return nReactions, reactants, products, alpha, beta, gamma, templow, temphigh
-
-#Get rid of species that are not involved in reactions
-#we want to get rid of species that are not present in any reaction
-def find_species(reactants,products,species, mass,evaptype,bindener,monoevap,volcevap):
-	speciesList = [] ; keepList = []; extraSpecies = []
-	keepList.extend(['','#','NAN','ELECTR','PHOTON','CRP','CRPHOT','FREEZE','CRH','PHOTD','THERM','XRAY','XRSEC','XRLYA','XRPHOT','DESOH2','DESCR','DEUVCR'])
-	speciesList.extend(reactants)
-	speciesList.extend(products)
-	speciesList = sum(speciesList,[])
-	unique = set(speciesList)
-	speciesList=list(unique)
-	for n in keepList:
-		try:
-			speciesList.remove(n)
-		except ValueError:
-			pass 
-		except AttributeError:
-			pass	 
-	extraSpecies.extend(list(set(species)-set(speciesList)))
-	#extraSpecies.extend(list(set(speciesList)-set(species)))
-	
-	#Remove extra species
-	for n in extraSpecies:
-		ind = species.index(n)
-		del species[ind]
-		del bindener[ind]
-		del evaptype[ind]
-		del mass[ind]
-		del monoevap[ind]
-		del volcevap[ind]
-
-
-
-	
-	print '###################################################'
-	print 'Differences between initial and final speciesList:' 
-	print extraSpecies
-	print '###################################################'
-	return species, mass, evaptype, bindener,monoevap,volcevap
-
-
-
-
-
 # Find the elemental constituents and molecular mass of each species in the supplied list
 def find_constituents(speciesList):
-    elementList = ['PAH','HE','LI','NA','MG','SI','CL','CA','FE','H','D','C','N','O','F','P','S','#','+','-']
-    elementMass = [420.0,4.0,7.0,23.0,24.0,28.0,35.0,40.0,56.0,1.0,2.0,12.0,14.0,16.0,19.0,31.0,32.0,0,0,0]
-    nElements = len(elementList)
-    speciesConstituents = []
-    speciesMass = []
-
-    for species in speciesList:
-        constituents = []
-        for element in elementList:
-            constituents.append(0)
-            for n in range(species.count(element)):
-                index = species.index(element)+len(element)
-                if species[index:index+2].isdigit():
-                    constituents[-1] += int(species[index:index+2])
-                    species = species[:index-len(element)]+species[index+2:]
-                elif species[index:index+1].isdigit():
-                    constituents[-1] += int(species[index:index+1])
-                    species = species[:index-len(element)]+species[index+1:]
-                else:
-                    constituents[-1] += 1
-                    species = species[:index-len(element)]+species[index:]
-
-        # Calculate the total molecular mass as the sum of the elemental masses of each constituent
-        speciesMass.append(int(sum([float(constituents[i])*float(elementMass[i]) for i in range(nElements)])))
-
-        # Sort the elements in the constituent list by their atomic mass
-        zippedList = zip(elementMass, elementList, constituents)
-        zippedList.sort()
-        sortedMasses, sortedElements, constituents = zip(*zippedList)
-        speciesConstituents.append(constituents)
-
-    # Sort the list of elements by their atomic mass
-    zippedList = zip(elementMass, elementList)
-    zippedList.sort()
-    sortedMasses, sortedElements = zip(*zippedList)
-    return speciesMass, speciesConstituents, sortedElements
-
-def sortSpecies(species, mass,evaptype,ener,monoevap,volcevap):
-	sortedList = sorted(zip(mass,species,evaptype,ener,monoevap,volcevap))
-	A= numpy.array(sortedList)
-	species = list(A[:,1])
-	mass = list(A[:,0])
-	evaptype =list(A[:,2])
-	ener = list(A[:,3])
-	monoevap=list(A[:,4])
-	volcevap=list(A[:,5])
-	for i in range(len(species)):
-		mass[i] = int(eval(mass[i]))
-	return species, mass,evaptype,ener,monoevap,volcevap
-
-
-
-# Write the reaction file in the desired format
-def write_reactions(fileName, reactants, products, alpha, beta, gamma, templow, temphigh):
-	f = open(fileName, 'wb')
-	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
-	nReactions = len(reactants)
-	f.write(str(nReactions)+'\n')
-	for n in range(nReactions):
-		#if statement changes beta for ion freeze out to 1. This is how ucl_chem recognises ions when calculating freeze out rate
-		if (reactants[n][1]=='FREEZE' and reactants[n][0][-1]=='+'):
-			beta[n]=1
-		writer.writerow([reactants[n][0],reactants[n][1],reactants[n][2],products[n][0],products[n][1],products[n][2],products[n][3],alpha[n],beta[n],gamma[n],templow[n],temphigh[n]])
-
+	elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH']
+	elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420]
+	symbols=['#','+','-']
     
+	for species in speciesList:
+		speciesName=species.name
+		i=0
+		atoms=[]
+		#loop over characters in species name to work out what it is made of
+		while i<len(speciesName):
+			#if character isn't a #,+ or - then check it otherwise move on
+			if speciesName[i] not in symbols:
+				if i+1<len(speciesName):
+					#if next two characters are (eg) 'MG' then atom is Mg not M and G
+					if speciesName[i:i+2] in elementList:
+						j=i+2
+					#otherwise work out which element it is
+					elif speciesName[i] in elementList:
+						j=i+1
+				#if there aren't two characters left just try next one
+				elif speciesName[i] in elementList:
+					j=i+1
+				#if we've found a new element check for numbers otherwise print error
+				if j>i:
+					atoms.append(speciesName[i:j])#add element to list
+					if j<len(speciesName):
+						if is_number(speciesName[j]):
+							for k in range(1,int(speciesName[j])):
+								atoms.append(speciesName[i:j])
+							i=j+1
+						else:
+							i=j
+					else:
+						i=j
+				else:
+					print"\t{0} contains elements not in element list:".format(speciesName)
+					print elementList
+			else:
+				i+=1
+		species.n_atoms=len(atoms)
+		mass=0
+		for atom in atoms:
+			mass+=elementMass[elementList.index(atom)]
+		if mass!=float(species.mass):
+			print "\tcalculated mass of {0} does not match input mass".format(speciesName)
+			print "\tcalculated mass: {0} \t input mass: {1}\n".format(mass,species.mass)
+	return speciesList
+
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+##########################################################################################
+#3. Functions to write out files necessary for UCLCHEM
+##########################################################################################
+
 # Write the species file in the desired format
-def write_species(fileName, speciesList, massList,bindener):
+def write_species(fileName, speciesList):
 	f= open(fileName,'wb')
 	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')		
 	nSpecies = len(speciesList)
 	f.write(str(nSpecies+1)+'\n')
-	for n in range(nSpecies):
-		writer.writerow([speciesList[n],massList[n],bindener[n]])
+	for species in speciesList:
+		writer.writerow([species.name,species.mass,species.n_atoms])
 
-##############################################################################################################################
-##############################################################################################################################################################
+# Write the reaction file in the desired format
+def write_reactions(fileName, reactionList):
+	f = open(fileName, 'wb')
+	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+	nReactions = len(reactionList)
+	f.write(str(nReactions)+'\n')
+	for reaction in reactionList:
+		#if statement changes beta for ion freeze out to 1. This is how ucl_chem recognises ions when calculating freeze out rate
+		if ('FREEZE' in reaction.reactants and reaction.reactants[0][-1]=='+'):
+			reaction.beta=1
+		writer.writerow(reaction.reactants+reaction.products+[reaction.alpha,reaction.beta,reaction.gamma,reaction.templow,reaction.temphigh])
 
-def write_odes_f90(fileName, speciesList, constituentList, reactants, products):
+def write_odes_f90(fileName, speciesList, reactionList):
 	nSpecies = len(speciesList)
-	nReactions = len(reactants)
+	nReactions = len(reactionList)
 	output = open(fileName, mode='w')
 
-    # Determine if X-ray reactions are present in the chemical network
-	if sum([reactantList.count('XRAY')+reactantList.count('XRSEC') for reactantList in reactants]) > 0:
-		xrayReactions = True
-	else:
-		xrayReactions = False
-
-    # Prepare and write the electron conservation equation
+	# Prepare and write the electron conservation equation
     #output.write(conserve_species('e-', constituentList, codeFormat='F90'))
-	output.write(electron_eq(speciesList,codeFormat='F90'))
+	output.write(electron_eq(speciesList))
     # Prepare and write the loss and formation terms for each ODE
 	output.write('\n')
-	for n in range(nSpecies):
-		species = speciesList[n]
+	#go through every species and build two strings, one with eq for all destruction routes and one for all formation
+	for n,species in enumerate(speciesList):
 		lossString = '' ; formString = ''
-		for i in range(nReactions):
-#########################################################################################################       	
-			if reactants[i].count(species) > 0:
-				if is_H2_formation(reactants[i], products[i]):
+		#go through entire reaction list
+		for i,reaction in enumerate(reactionList):
+			
+			twoBody=0 #two or more bodies in a reaction mean we multiply rate by density so need to keep track
+			
+			#if species appear in reactants, reaction is a destruction route      	
+			if species.name in reaction.reactants:
+				#easy for h2 formation
+				if is_H2_formation(reaction.reactants, reaction.products):
 					lossString += '-2*RATE('+str(i+1)+')*D'
 					continue
-				lossString += '-'+multiple(reactants[i].count(species))+'RATE('+str(i+1)+')'
-				for reactant in speciesList:
-					if reactant == species:
-						for j in range(reactants[i].count(reactant)-1):
-							lossString += '*Y('+str(speciesList.index(reactant)+1)+')'
-						continue
-					for j in range(reactants[i].count(reactant)):
-						lossString += '*Y('+str(speciesList.index(reactant)+1)+')'
-				for j in range(reactants[i].count('E-')):
-					lossString += '*Y('+str(nSpecies+1)+')'
-				if sum([speciesList.count(reactant) for reactant in reactants[i]]) > 1 or reactants[i].count('E-') > 0 or reactants[i].count('FREEZE') > 0 or reactants[i].count('DESOH2') > 0:
+				#multiply string by number of time species appears in reaction. multiple() defined below
+				#so far reaction string is rate(reaction_index) indexs are all +1 for fortran array indexing
+				lossString += '-'+multiple(reaction.reactants.count(species.name))+'RATE('+str(i+1)+')'
+				
+				#now add *Y(species_index) to string for every reactant
+				for reactant in set(reaction.reactants):
+					n_appearances=reaction.reactants.count(reactant)
+					#every species appears at least once in its loss reaction
+					#so we multiply entire loss string by Y(species_index) at end
+					#thus need one less Y(species_index) per reaction
+					if reactant==species.name:
+						n_appearances-=1
+						twoBody+=1
+					if reactant =="E-":
+						for appearance in range(n_appearances):
+							lossString += '*Y('+str(nSpecies+1)+')'
+							twoBody+=1
+					else:
+						#look through species list and find reactant
+						for j,possibleReactants in enumerate(speciesList):
+							if reactant == possibleReactants.name:
+								for appearance in range(n_appearances):
+									lossString += '*Y('+str(j+1)+')'
+									twoBody+=1
+								continue
+				#now string is rate(reac_index)*Y(species_index1)*Y(species_index2) may need *D if total rate is 
+				#proportional to density
+				if twoBody>1 or reaction.reactants.count('FREEZE') > 0 or reaction.reactants.count('DESOH2') > 0:
 						lossString += '*D'	
-##########################################################################################################
-			if products[i].count(species) > 0:
-				if is_H2_formation(reactants[i], products[i]):
-					formString += '+RATE('+str(i+1)+')*Y('+str(speciesList.index('H')+1)+')*D'
+
+			#same process as above but rate is positive for reactions where species is positive
+			if species.name in reaction.products:
+				if is_H2_formation(reaction.reactants,reaction.products):
+					#honestly H should be index 1 but lets check
+					H_index=speciesList.index(next((x for x in speciesList if x.name=='H')))
+					formString += '+RATE('+str(i+1)+')*Y('+str(H_index+1)+')*D'
 					continue
-				for k in range(products[i].count(species)):
-					formString += '+RATE('+str(i+1)+')'
-					for reactant in speciesList:
-						for j in range(reactants[i].count(reactant)):
-							formString += '*Y('+str(speciesList.index(reactant)+1)+')'
-					for j in range(reactants[i].count('E-')):
-						formString += '*Y('+str(nSpecies+1)+')'
-					if sum([speciesList.count(reactant) for reactant in reactants[i]]) > 1 or reactants[i].count('E-') > 0 or reactants[i].count('FREEZE') > 0 or reactants[i].count('DESOH2') > 0:
-						formString += '*D'
+
+				#multiply string by number of time species appears in reaction. multiple() defined below
+				#so far reaction string is rate(reaction_index) indexs are all +1 for fortran array indexing
+				formString += '+'+multiple(reaction.products.count(species.name))+'RATE('+str(i+1)+')'
+				
+				#now add *Y(species_index) to string for every reactant						
+				for reactant in set(reaction.reactants):
+					n_appearances=reaction.reactants.count(reactant)
+					if reactant =="E-":
+						for appearance in range(n_appearances):
+							formString += '*Y('+str(nSpecies+1)+')'
+							twoBody+=1
+					else:
+						#look through species list and find reactant
+						for j,possibleReactants in enumerate(speciesList):
+							if reactant == possibleReactants.name:
+								for appearance in range(n_appearances):
+									formString += '*Y('+str(j+1)+')'
+									twoBody+=1
+								continue
+
+				#now string is rate(reac_index)*Y(species_index1)*Y(species_index2) may need *D if total rate is 
+				#proportional to density
+				if twoBody > 1 or reaction.reactants.count('FREEZE') > 0 or reaction.reactants.count('DESOH2') > 0:
+					formString += '*D'
 		if lossString != '':
 			lossString = '      LOSS = '+lossString+'\n'
 			lossString = truncate_line(lossString)
@@ -318,89 +346,63 @@ def write_odes_f90(fileName, speciesList, constituentList, reactants, products):
 		ydotString += '\n'
 		ydotString = truncate_line(ydotString)
 		output.write(ydotString)
-	output.close()
+	output.close()    
 
-# Write the ODEs file in F77 language format
-def write_odes_f77(fileName, speciesList, constituentList, reactants, products):
-    nSpecies = len(speciesList)
-    nReactions = len(reactants)
-    output = open(fileName, mode='w')
+#create a file containing length of each list of moleculetypes and then the two lists (gas and grain) of species in each type
+#as  well as fraction that evaporated in each type of event
+def evap_lists(filename,speciesList):
+	grainlist=[];mgrainlist=[];solidList=[];monoList=[];volcList=[]
+	bindEnergyList=[];enthalpyList=[]
 
-    # Determine if X-ray reactions are present in the chemical network
-    if sum([reactantList.count('XRAY')+reactantList.count('XRSEC') for reactantList in reactants]) > 0:
-        xrayReactions = True
-    else:
-        xrayReactions = False
+	for i,species in enumerate(speciesList):
+		if species.name[0]=='#':
+			#find gas phase version of grain species. For #CO it looks for first species in list with just CO and then finds the index of that
+			try:
+				j=speciesList.index(next((x for x in speciesList if x.name==species.name[1:]))) 
+			except:
+				print "\n**************************************\nWARNING\n**************************************"
+				print "{0} has no gas phase equivalent in network. Every species should at least freeze out and desorb.".format(species.name)
+				print "ensure {0} is in the species list, and at least one reaction involving it exists and try again".format(species.name[1:])
+				print "Alternatively, provide the name of the gas phase species you would like {0} to evaporate as".format(species.name)
+				input=raw_input("type x to quit Makerates or any species name to continue\n")
+				if input.lower()=="x":
+					exit()
+				else:
+					j=speciesList.index(next((x for x in speciesList if x.name==input.upper())))					
+
+			#plus ones as fortran and python label arrays differently
+			mgrainlist.append(i+1)
+			grainlist.append(j+1)
+			solidList.append(species.solidFraction)
+			monoList.append(species.monoFraction)
+			volcList.append(species.volcFraction)
+			bindEnergyList.append(species.bindener)
+			enthalpyList.append(species.enthalpy)
+
+	f = open(filename, 'wb')
+	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+	f.write(str(len(grainlist))+'\n')
+	writer.writerow(grainlist)
+	writer.writerow(mgrainlist)
+	writer.writerow(solidList)
+	writer.writerow(monoList)
+	writer.writerow(volcList)
+	writer.writerow(bindEnergyList)
+	writer.writerow(enthalpyList)
 
 
-    # Prepare and write the electron conservation equation
-    output.write(electron_eq(speciesList, codeFormat='F77'))
-
-    # Prepare and write the loss and formation terms for each ODE
-    output.write('\n')
-    for n in range(nSpecies):
-        species = speciesList[n]
-        lossString = '' ; formString = ''
-        for i in range(nReactions):
-            if reactants[i].count(species) > 0:
-				if is_H2_formation(reactants[i], products[i]):
-					lossString += '-2*K('+str(i+1)+')*D'
-					continue
-				lossString += '-'+multiple(reactants[i].count(species))+'K('+str(i+1)+')'
-				for reactant in speciesList:
-					if reactant == species:
-						for j in range(reactants[i].count(reactant)-1):
-							lossString += '*Y('+str(speciesList.index(reactant)+1)+')'
-						continue
-					for j in range(reactants[i].count(reactant)):
-						lossString += '*Y('+str(speciesList.index(reactant)+1)+')'
-				for j in range(reactants[i].count('E-')):
-					#lossString += '*Y('+str(nSpecies+1)+')'
-					lossString += '*X(1)'
-				if sum([speciesList.count(reactant) for reactant in reactants[i]]) > 1 or reactants[i].count('E-') > 0 or reactants[i].count('FREEZE') > 0 or reactants[i].count('DESOH2') > 0:
-						lossString += '*D'	
-            if products[i].count(species) > 0:
-                if is_H2_formation(reactants[i], products[i]):
-                    formString += '+K('+str(i+1)+')*Y('+str(speciesList.index('H')+1)+')*D'
-                    continue
-                for k in range(products[i].count(species)):
-                    formString += '+K('+str(i+1)+')'
-                    for reactant in speciesList:
-                        for j in range(reactants[i].count(reactant)):
-                            formString += '*Y('+str(speciesList.index(reactant)+1)+')'
-                    for j in range(reactants[i].count('E-')):
-                        formString += '*X(1)'
-                    if sum([speciesList.count(reactant) for reactant in reactants[i]]) > 1 or reactants[i].count('E-') > 0 or reactants[i].count('FREEZE') > 0 or reactants[i].count('DESOH2') > 0:
-                        formString += '*D'
-        if lossString != '':
-            lossString = '      LOSS = '+lossString+'\n'
-            lossString = truncate_line(lossString,codeFormat='F77')
-            output.write(lossString)
-        if formString != '':
-            formString = '      PROD = '+formString+'\n'
-            formString = truncate_line(formString,codeFormat='F77')
-            output.write(formString)
-        ydotString = '      YDOT('+str(n+1)+') = '
-        if formString != '':
-            ydotString += 'PROD'
-            if lossString != '': ydotString += '+'
-        if lossString != '':
-            ydotString += 'Y('+str(n+1)+')*LOSS'
-        ydotString += '\n'
-        ydotString = truncate_line(ydotString,codeFormat='F77')
-        output.write(ydotString)
-    output.close()
-    
 def electron_eq(speciesList,codeFormat='F90'):
     elec_eq=''
     nSpecies=len(speciesList)
-    for n in range(len(speciesList)):
-        if speciesList[n][-1]=='+':
+
+    for n,species in enumerate(speciesList):
+        if species.name[-1]=='+':
             if len(elec_eq)>0: elec_eq +='+'
             elec_eq+='Y('+str(n+1)+')'
-        if speciesList[n][-1]=='-':
+        if species.name[-1]=='-':
             if len(elec_eq)>0: elec_eq +='-'
-            elec_eq+='+Y('+str(n+1)+')'        
+            elec_eq+='+Y('+str(n+1)+')'   
+                 
     if len(elec_eq) > 0:
         if codeFormat == 'C':   elec_eq = '  x_e = '+elec_eq+';\n'
         if codeFormat == 'F90': elec_eq = '      Y('+str(nSpecies+1)+') = '+elec_eq+'\n'
@@ -413,96 +415,11 @@ def electron_eq(speciesList,codeFormat='F90'):
     if codeFormat == 'F90': elec_eq = truncate_line(elec_eq)
     return elec_eq
 
-# Create the conservation term for the desired species (an element, electron or dust grain)
-def conserve_species(species, speciesConstituents, codeFormat='C'):
-    elementList = ['#','+','-','H','D','HE','LI','C','N','O','F','NA','MG','SI','P','S','CL','CA','FE','PAH']
-    nSpecies = len(speciesConstituents)
-    conservationEquation = ''
-    # Handle the special case of electrons (i.e., charge conservation with both anions and cations)
-    if species == 'e-':
-        indexPos = elementList.index('+')
-        indexNeg = elementList.index('-')
-        for n in range(nSpecies):
-            if speciesConstituents[n][indexPos] > 0:
-                if len(conservationEquation) > 0: conservationEquation += '+'
-                if codeFormat == 'C':   conservationEquation += multiple(speciesConstituents[n][indexPos])+'x['+str(n)+']'
-                if codeFormat == 'F90': conservationEquation += multiple(speciesConstituents[n][indexPos])+'Y('+str(n+1)+')'
-                if codeFormat == 'F77': conservationEquation += multiple(speciesConstituents[n][indexPos])+'Y('+str(n+1)+')'
-            if speciesConstituents[n][indexNeg] > 0:
-                conservationEquation += '-'
-                if codeFormat == 'C':   conservationEquation += multiple(speciesConstituents[n][indexNeg])+'x['+str(n)+']'
-                if codeFormat == 'F90': conservationEquation += multiple(speciesConstituents[n][indexNeg])+'Y('+str(n+1)+')'
-                if codeFormat == 'F77': conservationEquation += multiple(speciesConstituents[n][indexNeg])+'Y('+str(n+1)+')'
-    else:
-        index = elementList.index(species)
-        for n in range(nSpecies):
-            if speciesConstituents[n][index] > 0:
-                if len(conservationEquation) > 0: conservationEquation += '+'
-                if codeFormat == 'C':   conservationEquation += multiple(speciesConstituents[n][index])+'x['+str(n)+']'
-                if codeFormat == 'F90': conservationEquation += multiple(speciesConstituents[n][index])+'Y('+str(n+1)+')'
-                if codeFormat == 'F77': conservationEquation += multiple(speciesConstituents[n][index])+'Y('+str(n+1)+')'
-    if len(conservationEquation) > 0:
-        if codeFormat == 'C':   conservationEquation = '  x_e = '+conservationEquation+';\n'
-        if codeFormat == 'F90': conservationEquation = '      Y('+str(nSpecies+1)+') = '+conservationEquation+'\n'
-        if codeFormat == 'F77': conservationEquation = '      X(1)  = '+conservationEquation+'\n'
-    else:
-        if codeFormat == 'C':   conservationEquation = '  x_e = 0;\n'
-        if codeFormat == 'F90': conservationEquation = '      Y('+str(nSpecies+1)+') = 0\n'
-        if codeFormat == 'F77': conservationEquation = '      X(1)  = 0\n'
-    if codeFormat == 'F77': conservationEquation = truncate_line(conservationEquation,codeFormat='F77')
-    if codeFormat == 'F90': conservationEquation = truncate_line(conservationEquation)
-    return conservationEquation
 
 # Create the appropriate multiplication string for a given number
 def multiple(number):
     if number == 1: return ''
     else: return str(number)+'*'
-
-#check reactions to alert user of potential issues
-def reaction_check(speciesList,reactants,products):
-	print "\nDuplicate Species...."
-	duplicates=0
-	for i in range(0,len(speciesList)):
-		for j in range(0,len(speciesList)):
-			if speciesList[i]==speciesList[j]:
-				if (j!=i):
-					print str(spec)+" appears twice in input species list\n"
-					duplicates+=1
-	if duplicates==0:
-		print"\nNo duplicate species"
-
-	#first check for multiple freeze outs so user knows to do alphas
-	print "\nSpecies with multiple freeze outs, check alphas:"
-	for spec in speciesList:
-		freezes=0
-		for i in range(0,len(reactants)):
-			if (reactants[i][0]==spec and reactants[i][1]=='FREEZE'):
-				freezes+=1
-		if (freezes>1):
-			print spec+" freezes out through "+str(freezes)+" routes"
-	#now check for duplicate reactions
-	print "\nPossible duplicate reactions:"
-	duplicates=0
-	for i in range(0,len(reactants)):
-		for j in range(0,len(reactants)):
-			if (j != i):
-				if (reactants[i][0]==reactants[j][0] and reactants[i][1]==reactants[j][1]):
-					if (products[i][0]==products[j][0] and products[i][1]==products[j][1]): 
-						print str(i+1), str(j+1), " reactants are ", reactants[i]
-						duplicates+=1
-					elif (products[i][1]==products[j][0] and products[i][0]==products[j][1]):
-						print str(i+1), str(j+1), " reactants are ", reactants[i],products[i]
-						duplicates+=1
-				if (reactants[i][1]==reactants[j][0] and reactants[i][0]==reactants[j][1]):
-					if (products[i][0]==products[j][0] and products[i][1]==products[j][1]): 
-						print str(i+1), str(j+1), " reactants are ", reactants[i]
-						duplicates+=1
-					elif (products[i][1]==products[j][0] and products[i][0]==products[j][1]):
-						print str(i+1), str(j+1), " reactants are ", reactants[i]
-						duplicates+=1
-	if (duplicates==0):
-		print "None"
-
 
 # Truncate long lines for use in fixed-format Fortran code
 def truncate_line(input, codeFormat='F90', continuationCode=None):

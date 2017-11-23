@@ -22,6 +22,7 @@ def read_uclchem(filename,species):
         abunds.append([])
     time=[]
     dens=[]
+    temp=[]
     #so now do the following until end of file
     with open(filename) as file:
         for line in file:
@@ -35,13 +36,16 @@ def read_uclchem(filename,species):
                 if densi==0.0:
                     densi=1e-10
                 dens.append(densi)
+            if "temp" in bits:
+                tempi=float(bits[-2].replace('D','E'))
+                temp.append(tempi)
             #then read until we hit abundances
             if bits .count('=')>2:
                 for specIndx,specName in enumerate(species):
                     if specName in bits:
                         abunds[specIndx].append(float(bits[2+bits.index(specName)].replace('D','E')))
 
-    return time,dens,abunds
+    return time,dens,temp,abunds
 
 def write_cols(filename,times,dens,abundances):
     f=open(filename,"wb")

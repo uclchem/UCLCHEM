@@ -1,7 +1,7 @@
 SHELL = /bin/sh
-FC =gfortran -fbacktrace
+FC =gfortran -fbacktrace -ffree-line-length-0
 #FC=ifort
-FFLAGS = -O2 -fPIC
+FFLAGS = -O2 -fPIC 
 PHYSICS=cloud.f90
 
 ##simple makefile for uclchem
@@ -11,7 +11,7 @@ PHYSICS=cloud.f90
 ##physics module selected by changing physics variable to chosen fortran file.
 
 #compile=/opt/intel/Compiler/11.1/046/bin/intel64/ifort -fp-stack-check -check all -g -traceback -O2
-compile= /usr/bin/gfortran -ffree-line-length-0 -fbacktrace
+compile= /usr/bin/gfortran  -fbacktrace
 physics=cshock.f90
 
 

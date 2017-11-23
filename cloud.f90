@@ -28,7 +28,7 @@ MODULE physics
 
     double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
     !Everything should be in cgs units. Helpful constants and conversions below
-    double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
+    double precision,parameter ::PI=3.141592654,mh=1.67e-24,kbolt=1.38d-23
     double precision, parameter :: year=3.16455d-08,pc=3.086d18
 
     !variables for collapse modes
@@ -119,7 +119,11 @@ CONTAINS
                 tout=3.16d7*10.d-8
             ENDIF
         ELSE
-            tout=(tage+1000.0)/year
+            IF (tage<1000.0) THEN
+                tout=(tage+10.0)/year
+            ELSE
+                tout=(tage+1000.0)/year
+            END IF
         END IF
     END SUBROUTINE timestep
 
