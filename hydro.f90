@@ -6,17 +6,17 @@
 MODULE physics
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
-    integer :: tstep,dstep,points
+    integer :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     integer :: collapse,switch,first,phase
     integer :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
 
-    !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see chem_initialise)
+    !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
     integer :: evap,ion,solidflag,volcflag,coflag,tempindx,io
    
     !variables either controlled by physics or that user may wish to change    
-    double precision :: initialDens,tage,tout,t0,t0old,finalDens,finalTime,grainRadius,initialTemp
+    double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
     double precision :: cloudSize,rout,rin,oldtemp,baseAv,bc,olddens,maxTemp
     double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
     !Everything should be in cgs units. Helpful constants and conversions below
@@ -36,7 +36,7 @@ CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN. YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
 
     
-    SUBROUTINE phys_initialise
+    SUBROUTINE initializePhysics
     !Any initialisation logic steps go here
     !cloudSize is important as is allocating space for depth arrays
         allocate(av(points),coldens(points),temp(points),dens(points))
@@ -75,40 +75,36 @@ CONTAINS
             dens=initialDens
             initialTemp=temperatures(1)
             temp=initialTemp
+            
+            !Set model to finish once time exceeds a value
+            !Set that maximum time to slightly less than last element of time array
+            switch=0
+            finalTime=times(UBOUND(times))-1.0
+
         END IF
     END SUBROUTINE
 
-    SUBROUTINE timestep
-        IF (phase .eq. 1) THEN
-            IF (tstep .gt. 20000) THEN
-                tout=(tage+20000.0)/year
-            ELSE IF (tstep .gt. 10000) THEN
-                tout=(tage+10000.0)/year
-            ELSE IF (tstep .gt. 1) THEN
-                tout=1.58e11*(tstep-0)
-            ELSE  IF (tstep .eq. 1) THEN  
-                tout=3.16d7*1.0d3
+    !This works fine for phase 1 where user will set initial conditions of cloud.
+    !For phase 2, the actual post-processing, the best time step is problem dependent
+    SUBROUTINE updateTargetTime
+            IF (timeInYears .gt. 1.0d6) THEN
+                targetTime=(timeInYears+1.0d5)/year
+            ELSE IF (timeInYears .gt. 10000) THEN
+                targetTime=(timeInYears+1000.0)/year
+            ELSE IF (timeInYears .gt. 1000) THEN
+                targetTime=(timeInYears+100.0)/year
+            ELSE IF (timeInYears .gt. 0.0) THEN
+                targetTime=(timeInYears*10)/year
             ELSE
-                tout=3.16d7*10.d-8
+                targetTime=3.16d7*10.d-8
             ENDIF
-        ELSE
-            IF (tstep .gt. 1000) THEN
-                tout=(tage+1000.0)/year
-            ELSE IF (tstep .gt. 1) THEN
-                tout=1.58e11*(tstep-0)
-            ELSE  IF (tstep .eq. 1) THEN  
-                tout=3.16d7*1.0d3
-            ELSE
-                tout=3.16d7*10.d-8
-            ENDIF
-        END IF 
-   END SUBROUTINE timestep
+   END SUBROUTINE updateTargetTime
 
-    SUBROUTINE phys_update
+    SUBROUTINE updatePhysics
         !Only do post-processing on phase 2, so phase 1can be cloud model for initial conditions
         IF (phase .eq. 2) THEN
-            dens(dstep)=getInterp(tout,times,densities,densA,densB,densC,nInterpPoints)
-            temp(dstep)=getInterp(tout,times,temperatures,tempA,tempB,tempC,nInterpPoints)
+            dens(dstep)=getInterp(targetTime,times,densities,densA,densB,densC,nInterpPoints)
+            temp(dstep)=getInterp(targetTime,times,temperatures,tempA,tempB,tempC,nInterpPoints)
         END IF
 
 
@@ -120,7 +116,7 @@ CONTAINS
         av(dstep)= baseAv +coldens(dstep)/1.6d21
 
     
-    END SUBROUTINE phys_update
+    END SUBROUTINE updatePhysics
 
     pure FUNCTION densdot()
     !Required for collapse=1, works out the time derivative of the density, allowing DLSODE

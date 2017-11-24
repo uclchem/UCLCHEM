@@ -1,4 +1,4 @@
-SUBROUTINE reacrates
+SUBROUTINE calculateReactionRates
 !Assuming the user has temperature changes or uses the desorption features of phase 1, these need working out on a timestep by time step basis
     DO j=1,nreac
         !This case structure looks at the reaction type. species-species happens in default.
@@ -41,7 +41,7 @@ SUBROUTINE reacrates
         !the addition of direct UV photodesorption. DESOH2,DESCR1,DEUVCR
         CASE ('DESOH2')
             IF (desorb .eq. 1 .and. h2desorb .eq. 1&
-            & .and. tstep .ge. 2 .and. gama(j) .le. ebmaxh2 .and.&
+            & .and. gama(j) .le. ebmaxh2 .and.&
             &  mantle(dstep) .ge. 1.0d-30) THEN
                 !Epsilon is efficieny of this process, number of molecules removed per event
                 !h2form is formation rate of h2, dependent on hydrogen abundance. 
@@ -63,7 +63,7 @@ SUBROUTINE reacrates
                 rate(j) = 0.0
             ENDIF
         CASE ('DEUVCR')
-            IF (desorb .eq. 1 .and. uvcr .eq. 1 .and. tstep .ge. 2&
+            IF (desorb .eq. 1 .and. uvcr .eq. 1 &
              &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-30) THEN
                 !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
                 !UVY is yield per photon.
@@ -91,7 +91,7 @@ SUBROUTINE reacrates
 
     h2dis=h2d()
     rate(nrco)=knrco()
-END SUBROUTINE reacrates
+END SUBROUTINE calculateReactionRates
 
 
 !----------------------------------------------------------------------------------------------------
@@ -291,7 +291,7 @@ double precision FUNCTION h2d()
     double precision ::ch2
 
     !h2col is h2 column density. Half total column density for uniform sphere.
-    !Sum of shells for multidepth point (worked out in chem.f90.chem_update)
+    !Sum of shells for multidepth point (worked out in chem.f90.updateChemistry)
 
     !taud = opt. depth at line centre (assum. ortho:parah2=1)
     !pi**0.5 * e2 / (m(electr) * c) = 1.5e-2 cm2/s

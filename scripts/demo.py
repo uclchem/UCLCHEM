@@ -4,7 +4,7 @@
 from plotfunctions import *
 
 #pick species, any number is fine
-speciesNames=["CO","#CO"]
+speciesNames=["CO","#CO","CS","NH3"]
 
 #call read_uclchem. 
 time,dens,temp,abundances=read_uclchem("output/full.dat",speciesNames)

@@ -1,15 +1,15 @@
-! 2015 UCL_CHEM by Serena Viti update by Jon Holdship
+! 2015 UCLCHEM by Serena Viti update by Jon Holdship
 ! Rewritten for FORTRAN 95 and modulised
 PROGRAM uclchem
-!everything to do with physics should be stored in a physics module based on physics-template.f90
-!UCL_CHEM uses density and temperature in chemical calculations so these MUST be provided, everything else is
+!Everything to do with physics should be stored in a physics module based on physics-template.f90
+!UCLCHEM uses density and temperature in chemical calculations so these MUST be provided, everything else is
 !user dependent
 
 USE physics
-USE chem
+USE chemistry
 IMPLICIT NONE
 
-!Default parameters.f90 works for MOST physics modules. 
+!All variables the user is likely to want to change are in parameters.f90 
 include 'parameters.f90'
 
 !This commented out line is a simple read in. This is useful when running large numbers of models, varying only a few paramters
@@ -17,41 +17,38 @@ include 'parameters.f90'
 !read(*,*) variable1,variable2,variable3
 
 !Set up with initial values. For chemistry this is setting initial abundances and assigning memory for ODE solver
- CALL phys_initialise
- CALL chem_initialise
+ CALL initializePhysics
+ CALL initializeChemistry
 
 dstep=1
-!loop over time, tstep limit is arbitrary so that finalTime can be reached.
-DO tstep=1,20000
-    !End if we hit final density or time
-    IF (switch .eq. 1 .and. dens(1) >= finalDens) THEN
-        EXIT
-    ELSEIF (switch .eq. 0 .and. tage >= finalTime) THEN
-        EXIT
-    ENDIF
+currentTime=0.0
+timeInYears=0.0
+
+!loop until the end condition of the model is reached 
+DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
 
     !store current time as starting point for each depth step
     IF (points .gt. 1) THEN
-        t0old=tout
-        t0=t0old
+        currentTimeold=targetTime
+        currentTime=currentTimeold
     END IF
-    !update tout
-    CALL timestep
+    !Each physics module has a subroutine to set the target time from the current time
+    CALL updateTargetTime
 
     !loop over parcels, counting from centre out to edge of cloud
     DO dstep=1,points
 
         dens=abund(nspec+1,dstep)
         !update physics
-        CALL phys_update
+        CALL updatePhysics
         !update chemistry
-        CALL chem_update        
+        CALL updateChemistry        
         !set time to the final time of integrator rather than target     
-        tout=t0
+        targetTime=currentTime
         !reset target for next depth point
-        if (points .gt. 1)t0=t0old
+        if (points .gt. 1)currentTime=currentTimeold
         !get time in years for output
-        tage=tout*year
+        timeInYears= currentTime*year
         !write this depth step
         CALL output      
     END DO

@@ -6,17 +6,17 @@
 MODULE physics
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
-    integer :: tstep,dstep,points
+    integer :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     integer :: collapse,switch,first,phase
     integer :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
 
-    !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see chem_initialise)
+    !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
     integer :: evap,ion,solidflag,monoflag,volcflag,coflag,tempindx
 
     !variables either controlled by physics or that user may wish to change    
-    double precision :: initialDens,tage,tout,t0,t0old,finalDens,finalTime
+    double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime
     double precision :: cloudSize,rout,rin,baseAv,bc,tstart,maxTemp
     double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
 
@@ -28,7 +28,7 @@ MODULE physics
     character(1)  ::densint
     !Cshock specific parameters
     !*******************************************************************
-    double precision :: initialTemp, z2,vs,v0,zn,vn,at,z3,tout0,tsat
+    double precision :: initialTemp, z2,vs,v0,zn,vn,at,z3,targetTime0,tsat
     double precision :: ucm,z1,dv,vi,tempi,vn0,zn0,vA,dlength
     double precision :: grainRadius5,grainRadius,dens6
     double precision, allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
@@ -44,7 +44,7 @@ CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN. YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
 
     !Set up, calculate cloudSize, give dens a kickstart if collapsing 
-    SUBROUTINE phys_initialise
+    SUBROUTINE initializePhysics
         allocate(av(points),coldens(points),temp(points),dens(points))  
 
         cloudSize=(rout-rin)*pc
@@ -72,7 +72,7 @@ CONTAINS
             mun=2*mh
             grainRadius5=grainRadius/4.e-5
             dens6=dens(dstep)/1.e6
-            tout0=0
+            targetTime0=0
         END IF
 
         !maxxtemp set by vs and pre-shock density, polynomial fits to values taken from Draine et al. 1983
@@ -125,47 +125,47 @@ CONTAINS
         !B0=bm0*sqrt(2*initialDens)
         vA=bm0/sqrt(4*pi*mh)
         vA=vA/km
-    END SUBROUTINE phys_initialise
+    END SUBROUTINE initializePhysics
 
 
 !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrater. DLSODE sorts that out based on chosen error
-!tolerances (RTOL/ATOL) and is simply called repeatedly until it outputs a time >= tout. tout in seconds for DLSODE, tage in
+!tolerances (RTOL/ATOL) and is simply called repeatedly until it outputs a time >= targetTime. targetTime in seconds for DLSODE, timeInYears in
 !years for output.
 
-    SUBROUTINE timestep
+    SUBROUTINE updateTargetTime
         IF (phase .eq. 1) THEN
-            IF (tstep .gt. 2000) THEN
-                tout=(tage+20000.0)/year
-            ELSE IF (tstep .gt. 1000) THEN
-                tout=(tage+10000.0)/year
-            ELSE IF (tstep .gt. 1) THEN
-                tout=1.58e11*(tstep-0)
-            ELSE  IF (tstep .eq. 1) THEN  
-                tout=3.16d7*10.0**3
+            IF (timeInYears .gt. 1.0d6) THEN
+                targetTime=(timeInYears+1.0d5)/year
+            ELSE IF (timeInYears .gt. 10000) THEN
+                targetTime=(timeInYears+1000.0)/year
+            ELSE IF (timeInYears .gt. 1000) THEN
+                targetTime=(timeInYears+100.0)/year
+            ELSE IF (timeInYears .gt. 0.0) THEN
+                targetTime=(timeInYears*10)/year
             ELSE
-                tout=3.16d7*10.d-8
+                targetTime=3.16d7*10.d-8
             ENDIF
         ELSE
-            IF (tstep .gt. 160) THEN
-                tout=(tage+500)/3.16d-08
-            ELSE IF (tstep .gt. 120) THEN
-                tout=(tage+100.)/3.16d-08
-            ELSE IF (tstep .gt. 80) THEN
-                tout=(tage+50.)/3.16d-08
-            ELSE IF (tstep .gt. 40) THEN
-                tout=(tage+10.)/3.16d-08
-            ELSE IF  (tstep.gt.1) THEN
-                tout=(tage+1.)/3.16d-08
+            IF (timeInYears .gt. 1.0d5) THEN
+                targetTime=(timeInYears+500)/year
+            ELSE IF (timeInYears.gt. 5.0d4) THEN
+                targetTime=(timeInYears+100.)/year
+            ELSE IF (timeInYears .gt. 1000) THEN
+                targetTime=(timeInYears+50.)/year
+            ELSE IF (timeInYears .gt. 10) THEN
+                targetTime=(timeInYears+10.)/year
+            ELSE IF  (timeInYears.gt.0.0) THEN
+                targetTime=(timeInYears+1.)/year
             ELSE
-                tout=3.16d5*10.**(tstep+1)
+                targetTime=3.16d6
             ENDIF
         END IF
-    END SUBROUTINE timestep
+    END SUBROUTINE updateTargetTime
 
 !This is called by main so it should either do any physics the user wants or call the subroutines that do.
 !The exception is densdot() as density is integrated with chemistry ODEs.    
 
-    SUBROUTINE phys_update
+    SUBROUTINE updatePhysics
         !calculate column density. Remember dstep counts from edge of core in to centre
         IF (dstep .lt. points) THEN
             !column density of current point + column density of all points further out
@@ -210,29 +210,29 @@ CONTAINS
 
 
             !We introduce the variation of the density (nn) as the C-shock evolves
-            IF (tstep .gt. 1) THEN
+            IF (timeInYears .gt. 0.0) THEN
                 dens=initialDens*vs/(vs-vn)
-                !dens = 1.d5/((1+5.0d-6*tage)**2)
+                !dens = 1.d5/((1+5.0d-6*timeInYears)**2)
                 !write(6,*)dens
             END IF
-            IF (tstep.gt.1.) THEN
+            IF (timeInYears .gt. 0.0) THEN
                 tn(dstep)=initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
                 temp(dstep)=tn(dstep)
                 ti(dstep)=tn(dstep)+(mun*(dv*km)**2/(3*kb2))
                 tempi=ti(dstep)
 
-                write(93,1234) zn/pc,vn,vi,(vn-vi),tage
-                write(92,1234) zn/pc,tn(dstep),ti(dstep),dens,tage
+                write(93,1234) zn/pc,vn,vi,(vn-vi),timeInYears
+                write(92,1234) zn/pc,tn(dstep),ti(dstep),dens,timeInYears
                 1234 format(5(1x,ES12.4e2))
             ENDIF
 
             !At tsat, all mantle species evaporated. These flags make chem module aware of it.
-            IF (tage .gt. tsat .and. coflag .eq. 0) THEN
+            IF (timeInYears .gt. tsat .and. coflag .eq. 0) THEN
                 evap=2
                 coflag=1
             ENDIF
         ENDIF
-    END SUBROUTINE phys_update
+    END SUBROUTINE updatePhysics
 
 !This FUNCTION works out the time derivative of the density, allowing DLSODE to update density with the rest of our ODEs
 !It get's called by F, the SUBROUTINE in chem.f90 that sets up the ODEs for DLSODE
@@ -278,7 +278,7 @@ CONTAINS
             vn1=vn
             f1=vs-vn1
             f0=vs-vn0
-            zn=zn0+(tout-tout0)*km*(f1+f0)/2
+            zn=zn0+(targetTime-targetTime0)*km*(f1+f0)/2
             xcos=zn/z2
             acosh=0.5*(dexp(xcos)+dexp(-xcos))
             vn=(vs-v0)-((vs-v0)/acosh)
@@ -295,6 +295,6 @@ CONTAINS
         dv=vi-vn
         zn0=zn
         vn0=vn
-        tout0=tout
+        targetTime0=targetTime
     END SUBROUTINE SHST
 END MODULE physics

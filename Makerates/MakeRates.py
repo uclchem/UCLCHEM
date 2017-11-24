@@ -1,6 +1,14 @@
 #! /usr/bin/python
 #! /usr/fink/bin/python
 #
+####################################################################################################
+#				MakeRates
+#		Current version by Jonathan Holdship & Antonios Makrymallis. Original by Tom Bell.
+#		MakeRates reads in lists of species and reactions and produces the network files needed
+#		by UCLCHEM to run. It also performs basic cleaning and sanity checks on the network.		
+#		
+####################################################################################################
+
 import math
 import os
 import string

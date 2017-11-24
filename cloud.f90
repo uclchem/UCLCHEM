@@ -4,17 +4,17 @@
 MODULE physics
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
-    integer :: tstep,dstep,points
+    integer :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     integer :: collapse,switch,first,phase
     integer :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
 
-    !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see chem_initialise)
+    !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
     integer :: evap,ion,solidflag,volcflag,coflag,tempindx
 
     !variables either controlled by physics or that user may wish to change
-    double precision :: initialDens,tage,tout,t0,t0old,finalDens,finalTime,grainRadius,initialTemp
+    double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
     double precision :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp
     
     !Arrays for phase 2 temp profiles. Parameters for equation chosen by index
@@ -41,7 +41,7 @@ CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN.
 !YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
 
-    SUBROUTINE phys_initialise
+    SUBROUTINE initializePhysics
         allocate(av(points),coldens(points),temp(points),dens(points))
         cloudSize=(rout-rin)*pc
         dens=initialDens
@@ -102,32 +102,32 @@ CONTAINS
 
     END SUBROUTINE
 
-    SUBROUTINE timestep
+    SUBROUTINE updateTargetTime
     !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrator.
-    !tout in seconds for DLSODE, tage in years for output.
+    !targetTime in seconds for DLSODE, timeInYears in years for output.
 
         IF (phase .eq. 1) THEN
-            IF (tstep .gt. 2000) THEN
-                tout=(tage+20000.0)/year
-            ELSE IF (tstep .gt. 1000) THEN
-                tout=(tage+1000.0)/year
-            ELSE IF (tstep .gt. 1) THEN
-                tout=1.58e11*(tstep-0)
-            ELSE  IF (tstep .eq. 1) THEN
-                tout=3.16d7*10.0**3
+            IF (timeInYears .gt. 1.0d6) THEN
+                targetTime=(timeInYears+1.0d5)/year
+            ELSE IF (timeInYears .gt. 10000) THEN
+                targetTime=(timeInYears+1000.0)/year
+            ELSE IF (timeInYears .gt. 1000) THEN
+                targetTime=(timeInYears+100.0)/year
+            ELSE IF (timeInYears .gt. 0.0) THEN
+                targetTime=(timeInYears*10)/year
             ELSE
-                tout=3.16d7*10.d-8
+                targetTime=3.16d7*10.d-8
             ENDIF
         ELSE
-            IF (tage<1000.0) THEN
-                tout=(tage+10.0)/year
+            IF (timeInYears<1000.0) THEN
+                targetTime=(timeInYears+10.0)/year
             ELSE
-                tout=(tage+1000.0)/year
+                targetTime=(timeInYears+1000.0)/year
             END IF
         END IF
-    END SUBROUTINE timestep
+    END SUBROUTINE updateTargetTime
 
-    SUBROUTINE phys_update
+    SUBROUTINE updatePhysics
         !calculate column density. Remember dstep counts from core to edge
         !and coldens should be amount of gas from edge to parcel.
         IF (dstep .lt. points) THEN
@@ -148,7 +148,7 @@ CONTAINS
         !It takes the form T=A(t^B)*[(d/R)^-0.5], where A and B are given below for various stellar masses
             temp(dstep)=(cloudSize/(rout*pc))*(real(dstep)/real(points))
             temp(dstep)=temp(dstep)**(-0.5)
-            temp(dstep)=initialTemp + ((tempa(tempindx)*(t0*year)**tempb(tempindx))*temp(dstep))
+            temp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime*year)**tempb(tempindx))*temp(dstep))
 
             if (temp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
             if (temp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
@@ -158,7 +158,7 @@ CONTAINS
         !Density update for BE collapse modes
         !first calculate current radius and time in dimensionless units
         dimr = (real(dstep)/real(points))*cloudSize/unitr
-        dimt = t0/unitt
+        dimt = currentTime/unitt
         if (dimt .gt. maxdimt) dimt = maxdimt
 
         !Then calculate central density and radius of central region
@@ -186,7 +186,7 @@ CONTAINS
             if (dimt .lt. 5.5) dens(dstep) = dimrho*initialDens
         endif
 
-    END SUBROUTINE phys_update
+    END SUBROUTINE updatePhysics
 
 !This FUNCTION works out the time derivative of the density, allowing DVODE to update density with the rest of our ODEs
 !It get's called by F, the SUBROUTINE in chem.f90 that sets up the ODEs for DVODE

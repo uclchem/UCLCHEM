@@ -3,7 +3,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Initial physics variables and final  values. for temp, density and time
-initialTemp=10.0;maxTemp=300;initialDens=1.00d2;finalDens=1.00d5;t0=0.0;finalTime=6.00d6
+initialTemp=10.0;maxTemp=300;initialDens=1.00d2;finalDens=1.00d5;currentTime=0.0;finalTime=6.00d6
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
 radfield=1.0;zeta=1.0
 fr=1.0;
@@ -24,7 +24,7 @@ switch=0
 !collape=0/1 ONLY if not using cloud.f90
 !In all cases collapse=1 lets chem.f90 know it should call  densdot in the physics module to get time derivative of density and include it in ODES
 !Any other values tells it to use density value as set by physics module
-collapse=0
+collapse=1
 !for collapse=1 can introduce factor bc to slow freefall
 bc=1.0
 
@@ -38,7 +38,7 @@ first=1;phase=1;
 desorb=1;
 h2desorb=1;crdesorb=1;uvcr=1;
 !evap sets thermal desorption  (0/1/2) -> (none/temp dependent/ instantaneous)
-evap=1;
+evap=0;
 
 !ion sets ionisatoin fraction of carbon. See chem.f90:initialise
 ion=2
@@ -64,6 +64,7 @@ fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 !A full output of abundances is written by default. Additionally, name species here for 
 !a columnated output of time,density,temperature and abundances of those species
 !writeStep sets how often this is written out. Columns written every n steps for writeStep=n.
+!Fortran will reject this array if species with shorter names are not padded with spaaces at the end.
 outSpecies=(/'CO ','H2S','OCS'/);writeStep=1
 
 !open files for reading=writing
@@ -98,28 +99,3 @@ omega=0.5;
 !radw = radiative line width of typ. transition (in s-1)
 !fosc = oscillator strength of a typical transition
 dopw=3.0e10;radw=8.0e07;xl=1000.0;fosc  = 1.0d-2
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!CO and H2 self-shielding
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-startr=.true.
-corates =reshape((/0.000d+00, -1.408d-02, -1.099d-01, -4.400d-01,&
-     &  -1.154d+00, -1.888d+00, -2.760d+00,&
-     &  -8.539d-02, -1.015d-01, -2.104d-01, -5.608d-01,&
-     &  -1.272d+00, -1.973d+00, -2.818d+00,&
-     &  -1.451d-01, -1.612d-01, -2.708d-01, -6.273d-01,&
-     &  -1.355d+00, -2.057d+00, -2.902d+00,&
-     &  -4.559d-01, -4.666d-01, -5.432d-01, -8.665d-01,&
-     &  -1.602d+00, -2.303d+00, -3.146d+00,&
-     &  -1.303d+00, -1.312d+00, -1.367d+00, -1.676d+00,&
-     &  -2.305d+00, -3.034d+00, -3.758d+00,&
-     &  -3.883d+00, -3.888d+00, -3.936d+00, -4.197d+00,&
-     &  -4.739d+00, -5.165d+00, -5.441d+00 /),shape(corates))
-
-ncogr =(/12.0d+00, 13.0d+00, 14.0d+00, 15.0d+00,&
-      &16.0d+00, 17.0d+00, 18.0d+00 /)
-nh2gr=(/18.0d+00, 19.0d+00, 20.0d+00, 21.0d+00,&
-       &22.0d+00, 23.0d+00 /)
-
-dimco=7; dimh2=6
-startr=.true.

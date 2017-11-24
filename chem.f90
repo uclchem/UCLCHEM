@@ -1,6 +1,6 @@
 ! Chemistry module of UCL_CHEM. Contains all the core machinery of the code, not really intended to be altered.
 ! Use physics module to alter temp/density behaviour etc. This module should solve chemistry for a cloud of gas
-MODULE chem
+MODULE chemistry
 USE physics
 IMPLICIT NONE
 EXTERNAL dvode
@@ -9,7 +9,7 @@ EXTERNAL dvode
     integer :: nrco,nout,nspec,nreac,njunk,evapevents,ngrainco
     integer, allocatable :: outIndx(:)
     !loop counters    
-    integer :: i,j,l,writestep
+    integer :: i,j,l,writeStep,writeCounter=0
 
     !These are variables for reaction rates, alpha/beta/gamas are combined each time step to make rate,the total reaction rate
     double precision,allocatable :: rate(:),alpha(:),beta(:),gama(:),mass(:)
@@ -32,7 +32,18 @@ EXTERNAL dvode
     double precision :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uvy,uvcreff
     double precision :: taud,dopw,radw,xl,fosc
 
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Evaporation lists, these are used to evaporation species in specific events
+    !See viti 2004 for more information.
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    integer, allocatable :: gasGrainList(:),grainList(:) !indices of species with grain version and those grain versions
+    integer, allocatable :: co2list(:),mco2list(:),int2list(:),mint2list(:)
+    double precision, allocatable :: bindingEnergy(:),vdiff(:),solidFractions(:),monoFractions(:)
+    double precision, allocatable :: formationEnthalpy(:),volcanicFractions(:)
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !variables for diffusion reactions on the grains, CGS unless otherwise stated.
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     LOGICAL, parameter :: DIFFUSE_REACT_COMPETITION=.True., GRAINS_HAVE_ICE=.True.
     double precision, parameter :: GAS_DUST_MASS_RATIO=100.0,REDUCED_PLANCK=1.054571628d-27,AMU=1.66053892d-24
     double precision, parameter :: K_BOLTZ=1.3806588d-16,GRAIN_AREA=2.4d-22,GRAIN_RADIUS=1.d-5 
@@ -43,23 +54,33 @@ EXTERNAL dvode
     double precision, parameter :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
     double precision, parameter :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
     double precision, allocatable :: atomCounts(:)
-
-    !evaporation lists, these are used to evaporation species in specific events
-    !See viti 2004 for more information.
-    integer, allocatable :: gasGrainList(:),grainList(:) !indices of species with grain version and those grain versions
-    integer, allocatable :: co2list(:),mco2list(:),int2list(:),mint2list(:)
-    double precision, allocatable :: bindingEnergy(:),vdiff(:),solidFractions(:),monoFractions(:)
-    double precision, allocatable :: formationEnthalpy(:),volcanicFractions(:)
  
-
-    !Variables for selfshielding rates for CO and H2
-    logical :: startr
-    integer :: dimco, dimh2
-    double precision :: corates(7,6), y2r(7,6), ncogr(7), nh2gr(6)    
-
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !CO and H2 self-shielding
+    !Used by functions in rates.f90
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    logical :: startr=.True.
+    integer,parameter :: dimco=7, dimh2=6
+    double precision :: corates(7,6)=reshape((/0.000d+00, -1.408d-02, -1.099d-01, -4.400d-01,&
+     &  -1.154d+00, -1.888d+00, -2.760d+00,&
+     &  -8.539d-02, -1.015d-01, -2.104d-01, -5.608d-01,&
+     &  -1.272d+00, -1.973d+00, -2.818d+00,&
+     &  -1.451d-01, -1.612d-01, -2.708d-01, -6.273d-01,&
+     &  -1.355d+00, -2.057d+00, -2.902d+00,&
+     &  -4.559d-01, -4.666d-01, -5.432d-01, -8.665d-01,&
+     &  -1.602d+00, -2.303d+00, -3.146d+00,&
+     &  -1.303d+00, -1.312d+00, -1.367d+00, -1.676d+00,&
+     &  -2.305d+00, -3.034d+00, -3.758d+00,&
+     &  -3.883d+00, -3.888d+00, -3.936d+00, -4.197d+00,&
+     &  -4.739d+00, -5.165d+00, -5.441d+00 /),shape(corates))
+    double precision :: y2r(7,6)
+    double precision :: ncogr(dimco) =(/12.0d+00, 13.0d+00, 14.0d+00, 15.0d+00,&
+      &16.0d+00, 17.0d+00, 18.0d+00 /)
+    double precision :: nh2gr(dimh2)=(/18.0d+00, 19.0d+00, 20.0d+00, 21.0d+00,&
+       &22.0d+00, 23.0d+00 /)
 CONTAINS
 !This gets called immediately by main so put anything here that you want to happen before the time loop begins, reader is necessary.
-    SUBROUTINE chem_initialise
+    SUBROUTINE initializeChemistry
         CALL reader
         !if this is the first step of the first phase, set initial abundances
         !otherwise reader will fix it
@@ -108,7 +129,7 @@ CONTAINS
 
         !h2 formation rate initially set
         h2form = 1.0d-17*dsqrt(initialTemp)
-        allocate(mantle(points))
+        ALLOCATE(mantle(points))
         DO l=1,points
             mantle(l)=sum(abund(grainList,l))
         END DO
@@ -120,22 +141,22 @@ CONTAINS
         NEQ=nspec+1
         LIW=30+NEQ
         LRW=22+(9*NEQ)+(2*NEQ*NEQ)
-        allocate(IWORK(LIW),RWORK(LRW),abstol(NEQ))
+        ALLOCATE(IWORK(LIW),RWORK(LRW),abstol(NEQ))
 
-    END SUBROUTINE chem_initialise
+    END SUBROUTINE initializeChemistry
 
 !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     SUBROUTINE reader
         IMPLICIT NONE
         integer i,j,l,m
 
-        !read species file and allocate sufficient space to relevant arrays
-        read(21,*)nspec
-        allocate(abund(nspec+1,points),specname(nspec),mass(nspec),atomCounts(nspec))
-        read(21,*)(specname(j),mass(j),atomCounts(j),j=1,nspec-1)
+        !read species file and ALLOCATE sufficient space to relevant arrays
+        READ(21,*)nspec
+        ALLOCATE(abund(nspec+1,points),specname(nspec),mass(nspec),atomCounts(nspec))
+        READ(21,*)(specname(j),mass(j),atomCounts(j),j=1,nspec-1)
         
         nout = SIZE(outSpecies)
-        allocate(outIndx(nout))
+        ALLOCATE(outIndx(nout))
 
         !assign array indices for important species to the integers used to store them.
         specname(nspec)='electr'
@@ -165,11 +186,11 @@ CONTAINS
         END DO
         !read reac file, assign array space
         !alpha, beta and gama are used for working out reaction rate each time step
-        read(22,*) nreac
-        allocate(re1(nreac),re2(nreac),re3(nreac),p1(nreac),p2(nreac),p3(nreac),&
+        READ(22,*) nreac
+        ALLOCATE(re1(nreac),re2(nreac),re3(nreac),p1(nreac),p2(nreac),p3(nreac),&
             &p4(nreac),alpha(nreac),beta(nreac),gama(nreac),rate(nreac))
         DO j=1,nreac
-            read(22,*) re1(j),re2(j),re3(j),p1(j),p2(j),p3(j),&
+            READ(22,*) re1(j),re2(j),re3(j),p1(j),p2(j),p3(j),&
             &p4(j),alpha(j),beta(j),gama(j),junk1,junk2
         END DO    
 
@@ -177,30 +198,30 @@ CONTAINS
         !Lists of gas phase species with grain surface equivalents, the indices of the grain species
         !Also lists of proportion of each species that evaporates in different events (viti 2004)
         !finally, binding energy to grain surface and enthalpy of formation for surface reactions
-        read(23,*) l
-        allocate(gasGrainList(l),grainList(l),solidFractions(l))
-        allocate(monoFractions(l),volcanicFractions(l))
-        allocate(formationEnthalpy(l),bindingEnergy(l),vdiff(l))
-        read(23,*) gasGrainList
-        read(23,*) grainList
-        read(23,*) solidFractions
-        read(23,*) monoFractions
-        read(23,*) volcanicFractions
-        read(23,*) bindingEnergy
-        read(23,*) formationEnthalpy
+        READ(23,*) l
+        ALLOCATE(gasGrainList(l),grainList(l),solidFractions(l))
+        ALLOCATE(monoFractions(l),volcanicFractions(l))
+        ALLOCATE(formationEnthalpy(l),bindingEnergy(l),vdiff(l))
+        READ(23,*) gasGrainList
+        READ(23,*) grainList
+        READ(23,*) solidFractions
+        READ(23,*) monoFractions
+        READ(23,*) volcanicFractions
+        READ(23,*) bindingEnergy
+        READ(23,*) formationEnthalpy
 
         !read start file IF not first phase to get finale abundances from previous phase 
         !density, temp and av read but NOT zeta or radfield
         IF (first .eq. 0) THEN
             DO l=1,points
-                read(7,*)
-                read(7,7000) abund(nspec+1,l),temp(l),av(l)
-                read(7,*)
-                read(7,7010) h2form,fc,fo,&
+                READ(7,*)
+                READ(7,7000) abund(nspec+1,l),temp(l),av(l)
+                READ(7,*)
+                READ(7,7010) h2form,fc,fo,&
                             &fmg,fhe,dstep
-                read(7,*)
-                read(7,7030) (specname(i),abund(i,l),i=1,nspec)
-                rewind(7)
+                READ(7,*)
+                READ(7,7030) (specname(i),abund(i,l),i=1,nspec)
+                REWIND(7)
                 dens(l)=abund(nspec+1,l)
             END DO
             7000 format(&
@@ -220,7 +241,7 @@ CONTAINS
 !Writes physical variables and fractional abundances to output file, called every time step.
     SUBROUTINE output
         !write out cloud properties
-        write(10,8020) tage,dens(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
+        write(10,8020) timeInYears,dens(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
                         &fmg,fhe,dstep
         !and a blank line
         write(10,8000)
@@ -229,9 +250,9 @@ CONTAINS
         write(10,8000)
         !If this is the last time step of phase I, write a start file for phase II
         IF (first .eq. 1) THEN
-           IF (switch .eq. 0 .and. tage .ge. finalTime& 
+           IF (switch .eq. 0 .and. timeInYears .ge. finalTime& 
                &.or. switch .eq. 1 .and.dens(dstep) .ge. finalDens) THEN
-               write(7,8020) tage,dens(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
+               write(7,8020) timeInYears,dens(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
                        &fmg,fhe,dstep
                write(7,8000)
                write(7,8010) (specname(i),abund(i,dstep),i=1,nspec)
@@ -255,15 +276,18 @@ CONTAINS
 
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90
-        IF ( mod(tstep,writestep) .eq. 0) THEN
-            write(11,8030) tage,dens(dstep),temp(dstep),abund(outIndx,dstep)
+        IF (writeCounter==writeStep) THEN
+            writeCounter=0
+            write(11,8030) timeInYears,dens(dstep),temp(dstep),abund(outIndx,dstep)
             8030  format(1pe11.3,1x,1pe11.4,1x,0pf8.2,6(1x,1pe10.3))
-            write(79,*)'Call to LSODE successful at time: ',(TOUT*year),' years'
+            write(79,*)'Call to LSODE successful at time: ',(timeInYears),' years'
             write(79,*)'        Steps: ',IWORK(6)
+        ELSE
+            writeCounter=writeCounter+1
         END IF
     END SUBROUTINE output
 
-    SUBROUTINE chem_update
+    SUBROUTINE updateChemistry
     !Called every time/depth step and updates the abundances of all the species
 
         !y is at final value of previous depth iteration so set to initial values of this depth with abund
@@ -287,18 +311,18 @@ CONTAINS
         CALL integrate
 
         !call evaporation to remove species from grains at certain temperatures
-        CALL evaporate
+        CALL thermalEvaporation
 
         !1.d-30 stops numbers getting too small for fortran.
         WHERE(abund<1.0d-30) abund=1.0d-30
-    END SUBROUTINE chem_update
+    END SUBROUTINE updateChemistry
 
     SUBROUTINE integrate
-    !This subroutine calls DVODE (3rd party ODE solver) until it can reach tout with acceptable errors (reltol/abstol)
-        DO WHILE(t0 .lt. tout)            
+    !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
+        DO WHILE(currentTime .lt. targetTime)         
             !reset parameters for DVODE
             ITOL=2 !abstol is an array
-            ITASK=1 !try to integrate to tout
+            ITASK=1 !try to integrate to targetTime
 
             !first step only, set some stuff up
             IF(ISTATE .EQ. 1) THEN
@@ -309,9 +333,9 @@ CONTAINS
             abstol=1.0d-16*abund(:,dstep)
             WHERE(abstol<1d-30) abstol=1d-30
             !get reaction rates for this iteration
-            CALL reacrates
+            CALL calculateReactionRates
             !Call the integrator.
-            CALL DVODE(F,NEQ,abund(:,dstep),T0,TOUT,ITOL,reltol,abstol,ITASK,ISTATE,IOPT,&
+            CALL DVODE(F,NEQ,abund(:,dstep),currentTime,targetTime,ITOL,reltol,abstol,ITASK,ISTATE,IOPT,&
             &             RWORK,LRW,IWORK,LIW,JAC,MF,RPAR,IPAR)
 
             SELECT CASE(ISTATE)
@@ -325,7 +349,7 @@ CONTAINS
                     IOPT=1
                     IWORK(6)=MXSTEP
                 CASE(-2)
-                    !Tolerances are too small for machine but succesful to current t0
+                    !Tolerances are too small for machine but succesful to current currentTime
                     abstol=abstol*10.0
                     ISTATE=3
                 CASE(-3)
@@ -334,9 +358,9 @@ CONTAINS
                     write(79,*) abstol
                     STOP
                 CASE(-4)
-                    !Successful as far as t0 but many errors.
-                    !Make tout smaller and just go again
-                    tout=(t0+tout)/2.0
+                    !Successful as far as currentTime but many errors.
+                    !Make targetTime smaller and just go again
+                    targetTime=(currentTime+targetTime)/2.0
                     ISTATE=2
                 CASE DEFAULT
                     IOPT=0
@@ -387,11 +411,11 @@ CONTAINS
 !integrate calls reacrates to get the reaction rates at every iteration. reacrates calls further functions.
 !This file is already long so I've hidden those subroutines in rates.f90
  
-    SUBROUTINE evaporate
+    SUBROUTINE thermalEvaporation
     !Evaporation is based on Viti et al. 2004. A proportion of the frozen species is released into the gas phase
     !in specific events. These events are activated by flags (eg solidflag) which can be set in physics module.
     !The species evaporated are in lists, created by Makerates and based on groupings. see the viti 2004 paper.
-    IF (tstep .gt. 1) THEN
+    IF (mantle(dstep) .gt. 1d-30) THEN
         !Viti 04 evap
         IF (evap .eq. 1) THEN
             !Solid Evap
@@ -402,8 +426,8 @@ CONTAINS
                 solidflag=2
             ENDIF
 
-            !mono evap
-            CALL temper
+            !monotonic evaporation at binding energy of species
+            CALL bindingEnergyEvap
 
             !Volcanic evap
             IF (volcflag .eq. 1) THEN
@@ -429,9 +453,9 @@ CONTAINS
         ENDIF
     ENDIF
 
-    END SUBROUTINE evaporate
+    END SUBROUTINE thermalEvaporation
 
-    SUBROUTINE temper
+    SUBROUTINE bindingEnergyEvap
         !Subroutine to handle mono-evaporation. See viti 2004
         double precision en,newm,expdust,freq,kevap
         integer speci
@@ -451,7 +475,7 @@ CONTAINS
                 bindingEnergy(speci)=1d50
             END IF 
         END DO
-    END SUBROUTINE temper
+    END SUBROUTINE bindingEnergyEvap
 !This is a dummy for DLSODE, it has to call it but we do not use it.
     subroutine JAC (NEQ,T,Y,ML,MU,PD,NROWPD)
          INTEGER  NEQ, ML, MU, NROWPD
@@ -469,4 +493,4 @@ CONTAINS
             if (rate(i) .ge. huge(i)) write(79,*) "Rate(",i,") is potentially infinite"
         END DO
     END SUBROUTINE debugout
-END MODULE chem
+END MODULE chemistry
