@@ -53,7 +53,7 @@ EXTERNAL dvode
     double precision, parameter :: GRAIN_DENSITY = 3.0 ! Mass density of a dust grain
     double precision, parameter :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
     double precision, parameter :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
-    double precision, allocatable :: atomCounts(:)
+    integer, allocatable :: atomCounts(:)
  
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !CO and H2 self-shielding

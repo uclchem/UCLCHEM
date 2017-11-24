@@ -168,7 +168,7 @@ END FUNCTION diffusionReactionRate
 ! From Minissalle+ 2016 and Vasyunin+ 2016
 ! ---------------------------------------------------------------------
 double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
-    integer :: j,reactIndex1,reactIndex2
+    integer :: j,reactIndex1,reactIndex2,degreesOfFreedom
     integer :: productIndex(4)
 
     double precision :: deltaEnthalpy,maxBindingEnergy,epsilonCd
@@ -223,10 +223,10 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
     EpsilonCd = ((epsilonCd - EFFECTIVE_SURFACE_MASS) / (epsilonCd + EFFECTIVE_SURFACE_MASS))**2
     
     !Now calculate the change in enthalpy of the reaction.
-    !deltaEnthalpy= FORMATION_ENTHALPY(index1)+FORMATION_ENTHALPY(index2)-FORMATION_ENTHALPY(productIndex(1))
-    !if (productIndex(2).NE.0) deltaEnthalpy = deltaEnthalpy - FORMATION_ENTHALPY(productIndex(2))
-    !if (productIndex(3).NE.0) deltaEnthalpy = deltaEnthalpy - FORMATION_ENTHALPY(productIndex(3))
-    !if (productIndex(4).NE.0) deltaEnthalpy = deltaEnthalpy - FORMATION_ENTHALPY(productIndex(4))
+    deltaEnthalpy= formationEnthalpy(reactIndex1)+formationEnthalpy(reactIndex2)-formationEnthalpy(productIndex(1))
+    if (productIndex(2).NE.0) deltaEnthalpy = deltaEnthalpy - formationEnthalpy(productIndex(2))
+    if (productIndex(3).NE.0) deltaEnthalpy = deltaEnthalpy - formationEnthalpy(productIndex(3))
+    if (productIndex(4).NE.0) deltaEnthalpy = deltaEnthalpy - formationEnthalpy(productIndex(4))
     
     !Convert from kcal to J, from J to K
     deltaEnthalpy = deltaEnthalpy*4.184d03/1.38054D-23
@@ -237,7 +237,7 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
 
     IF (deltaEnthalpy.eq.0.00) deltaEnthalpy = 1e-30 
 
-    
+    !find the largest binding energy of the products to the grain surface
     IF (productIndex(4).NE.0) THEN
         maxBindingEnergy = max(bindingEnergy(productIndex(1)),bindingEnergy(productIndex(2)),bindingEnergy(productIndex(3)),bindingEnergy(productIndex(4)))
     ELSE IF (productIndex(3).NE.0) THEN
@@ -248,23 +248,20 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
         maxBindingEnergy = bindingEnergy(productIndex(1))
     END IF
 
-    !write(79,*) "Max Ebinding products (K):", bindingEnergy_CRD
-
-    !N_ATOMS = NUM_ATOM(productIndex(1))
-    !if (productIndex(2).NE.0) N_ATOMS = max(NUM_ATOM(productIndex(1)),NUM_ATOM(productIndex(2)))
-    !if (productIndex(3).NE.0) N_ATOMS = max(NUM_ATOM(productIndex(1)),NUM_ATOM(productIndex(2)),NUM_ATOM(productIndex(3)))
-    !if (productIndex(4).NE.0) N_ATOMS = max(NUM_ATOM(productIndex(1)),NUM_ATOM(productIndex(2)),NUM_ATOM(productIndex(3)),NUM_ATOM(productIndex(4)))                    
-    !DOF_MOL = 3 * N_ATOMS
+    !Degrees of freedom = 3 * number of atoms in the molecule
+    degreesOfFreedom = atomCounts(productIndex(1))
+    if (productIndex(2).NE.0) degreesOfFreedom = max(degreesOfFreedom,atomCounts(productIndex(2)))
+    if (productIndex(3).NE.0) degreesOfFreedom = max(degreesOfFreedom,atomCounts(productIndex(3)))
+    if (productIndex(4).NE.0) degreesOfFreedom = max(degreesOfFreedom,atomCounts(productIndex(4)))                    
+    degreesOfFreedom = 3 * degreesOfFreedom
+        
+    desorptionFraction = dexp((-maxBindingEnergy*degreesOfFreedom) / (epsilonCd * deltaEnthalpy))
     
-    !write(79,*) "Dof_mol:", DOF_MOL
-    
-    !desorptionFraction = dexp((-maxBindingEnergy*DOF_MOL) / (epsilonCd * deltaEnthalpy))
-    
-    !IF (FORMATION_ENTHALPY(reactIndex1).le.-999.0 .or. FORMATION_ENTHALPY(reactIndex2).le.-999.0 .or. FORMATION_ENTHALPY(productIndex(1)).le.-999.0) THEN
-    !    desorptionFraction = 0.d0
-    !ELSE IF (deltaEnthalpy.lt.0.d0) THEN        !< If reaction is endothermic, no CRD
-    !    desorptionFraction = 0.d0
-    !END IF
+    IF (formationEnthalpy(reactIndex1).le.-999.0 .or. formationEnthalpy(reactIndex2).le.-999.0 .or. formationEnthalpy(productIndex(1)).le.-999.0) THEN
+        desorptionFraction = 0.d0
+    ELSE IF (deltaEnthalpy.lt.0.d0) THEN        !< If reaction is endothermic, no CRD
+        desorptionFraction = 0.d0
+    END IF
     
     IF (GRAINS_HAVE_ICE) THEN
         desorptionFraction = desorptionFraction/10    !< See Minisalle et al. 2016 for icy grain surface.
@@ -273,10 +270,6 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
         if ((re1(j).eq.'#O'.and.re2(j).eq.'H') .or. (re1(j).eq.'H'.and.re2(j).eq.'#O')) desorptionFraction = 0.3
         if ((re1(j).eq.'#OH'.and.re2(j).eq.'H') .or. (re1(j).eq.'H'.and.re2(j).eq.'#OH')) desorptionFraction = 0.25
     ENDIF
-    
-    !write(79,*) "Reaction rate (cm3.s-1):", rate(j)
-    ! Modify diffusion rate according to the type of reaction
-
 END FUNCTION desorptionFraction
 
 
