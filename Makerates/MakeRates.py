@@ -23,6 +23,8 @@ reactionFile = 'inputFiles/umist12.csv'
 reactionFile_grain = 'inputFiles/uclgrainbasic.csv'
 speciesFile = 'inputFiles/uclspeciesbasic.csv'
 
+if not os.path.exists('outputFiles'):
+    os.makedirs('outputFiles')
 
 make_capitals(reactionFile)
 make_capitals(reactionFile_grain)
