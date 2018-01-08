@@ -114,15 +114,15 @@ double precision FUNCTION diffusionReactionRate()
     !H and H2 can also be reactants but are not in grain list
     SELECT CASE (re1(j))
         CASE ('H')
-            index1 = 1
+            index1 = nh
         CASE ('H2')
-            index1 = 3
+            index1 = nh2
     END SELECT
     SELECT CASE (re2(j))
         CASE ('H')
-            index2 = 1
+            index2 = nh
         CASE ('H2')
-            index2 = 3
+            index2 = nh2
     END SELECT
 
     diffuseRate = vdiff(index1)*dexp(-0.5*bindingEnergy(index1)/temp(dstep))/NUM_SITES_PER_GRAIN

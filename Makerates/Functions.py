@@ -106,19 +106,24 @@ def filter_species(speciesList,reactionList):
 	for i in range(0,len(speciesList)):
 		for j in range(0,len(speciesList)):
 			if speciesList[i].name==speciesList[j].name:
-				if (j!=i):
+				if (j!=i) and speciesList[i].name not in duplicate_list:
 					print "\t {0} appears twice in input species list".format(speciesList[i].name)
-					duplicates+=1
-					if j not in duplicate_list:
-						duplicate_list.append(i)
+					duplicate_list.append(speciesList[i].name)
+
 	for duplicate in duplicate_list:
-		speciesName=speciesList[duplicate].name
-		del speciesList[duplicate]
-		print "\tOne entry of {0} removed from list".format(speciesName)
+		removed=False
+		i=0
+		while not removed:
+			if speciesList[i].name==duplicate:
+				del speciesList[i]
+				print "\tOne entry of {0} removed from list".format(duplicate)
+				removed=True
+			else:
+				i+=1
 
 	print '\tSpecies in input list that do not appear in final list:' 
 	print '\t',lostSpecies
-	print 
+	print '\n'
 	return speciesList
 
 #check reactions to alert user of potential issues including repeat reactions
