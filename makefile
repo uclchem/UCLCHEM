@@ -12,17 +12,19 @@ PHYSICS=cloud.f90
 
 #compile=/opt/intel/Compiler/11.1/046/bin/intel64/ifort -fp-stack-check -check all -g -traceback -O2
 compile= /usr/bin/gfortran  -fbacktrace
-physics=cshock.f90
 
 
-main: chem.o physics.o main.f90 dvode.o parameters.f90
-	${FC} ${FFLAGS} -o uclchem physics.o dvode.o chem.o main.f90
+main: chem.o physics.o main.f90 dvode.o explosions.o parameters.f90
+	${FC} ${FFLAGS} -o uclchem physics.o dvode.o chem.o explosions.o main.f90
 
 chem.o: odes.f90 chem.f90 physics.o dvode.o rates.f90
 	${FC} ${FFLAGS} -c chem.f90
  
 physics.o: ${PHYSICS}
 	${FC} ${FFLAGS} -c ${PHYSICS} -o physics.o
+
+explosions.o: dvode.o explosions.f90
+	${FC} ${FFLAGS} -c explosions.f90
 
 dvode.o: dvode.f
 	${FC} ${FFLAGS} -c dvode.f

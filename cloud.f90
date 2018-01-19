@@ -108,11 +108,11 @@ CONTAINS
 
         IF (phase .eq. 1) THEN
             IF (timeInYears .gt. 1.0d6) THEN
-                targetTime=(timeInYears+1.0d5)/year
+                targetTime=(timeInYears+1.0d3)/year
             ELSE IF (timeInYears .gt. 10000) THEN
-                targetTime=(timeInYears+1000.0)/year
-            ELSE IF (timeInYears .gt. 1000) THEN
                 targetTime=(timeInYears+100.0)/year
+            ELSE IF (timeInYears .gt. 1000) THEN
+                targetTime=(timeInYears+10.0)/year
             ELSE IF (timeInYears .gt. 0.0) THEN
                 targetTime=(timeInYears*10)/year
             ELSE

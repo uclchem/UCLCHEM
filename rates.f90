@@ -42,7 +42,7 @@ SUBROUTINE calculateReactionRates
         CASE ('DESOH2')
             IF (desorb .eq. 1 .and. h2desorb .eq. 1&
             & .and. gama(j) .le. ebmaxh2 .and.&
-            &  mantle(dstep) .ge. 1.0d-30) THEN
+            &  mantle(dstep) .ge. 1.0d-20) THEN
                 !Epsilon is efficieny of this process, number of molecules removed per event
                 !h2form is formation rate of h2, dependent on hydrogen abundance. 
                 rate(j) = epsilon*h2form*abund(nh,dstep)*1.0/mantle(dstep)
@@ -51,7 +51,7 @@ SUBROUTINE calculateReactionRates
             ENDIF
         CASE ('DESCR')
             IF (desorb .eq. 1 .and. crdesorb .eq. 1&
-            &.and.mantle(dstep).ge. 1d-30&
+            &.and.mantle(dstep).ge. 1d-20&
             &.and. gama(j) .le. ebmaxcr) THEN
                 !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
                 !as iron nuclei are main cause of CR heating.
@@ -64,7 +64,7 @@ SUBROUTINE calculateReactionRates
             ENDIF
         CASE ('DEUVCR')
             IF (desorb .eq. 1 .and. uvcr .eq. 1 &
-             &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-30) THEN
+             &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-20) THEN
                 !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
                 !UVY is yield per photon.
                 rate(j) = GRAIN_AREA*uvy*4.875d3*zeta*(1.0/mantle(dstep))

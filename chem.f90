@@ -5,7 +5,7 @@ USE physics
 IMPLICIT NONE
 EXTERNAL dvode
    !These integers store the array index of important species and reactions, x is for ions    
-    integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nf,nh2o,nsi,nsix,ncl,nclx,nch3oh,np
+    integer :: nh,nmh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nf,nh2o,nsi,nsix,ncl,nclx,nch3oh,np
     integer :: nrco,nout,nspec,nreac,njunk,evapevents,ngrainco
     integer, allocatable :: outIndx(:)
     !loop counters    
@@ -50,10 +50,14 @@ EXTERNAL dvode
     double precision, parameter :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8  !gre Parameter used to compute the probability for a surface reaction with 
     !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
     double precision, parameter :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
-    double precision, parameter :: GRAIN_DENSITY = 3.0 ! Mass density of a dust grain
+    double precision, parameter :: GRAIN_DENSITY = 3.0 ! Mass density of a dust grain, in g
     double precision, parameter :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
     double precision, parameter :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
     integer, allocatable :: atomCounts(:)
+
+    !JCR stuff
+    double precision, parameter :: SAPH=1.6D-20,HFRZ=0.1 !SAPH = grain surface area per H-nucleon (in cm2)
+    double precision :: GRATH, PREFAC,STICKH
  
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !CO and H2 self-shielding
@@ -162,6 +166,7 @@ CONTAINS
         specname(nspec)='electr'
         DO i=1,nspec-1
             IF (specname(i).eq.'H')   nh  = i
+            IF (specname(i).eq. '#H') nmh = i
             IF (specname(i).eq.'H2')  nh2 = i
             IF (specname(i).eq.'C')   nc  = i
             IF (specname(i).eq.'C+')  ncx = i
@@ -330,14 +335,13 @@ CONTAINS
                 IWORK(6)=MXSTEP
             ENDIF
 
-            abstol=1.0d-16*abund(:,dstep)
-            WHERE(abstol<1d-30) abstol=1d-30
+            abstol=1.0d-14*abund(:,dstep)
+            WHERE(abstol<1d-30) abstol=1d-28
             !get reaction rates for this iteration
             CALL calculateReactionRates
             !Call the integrator.
             CALL DVODE(F,NEQ,abund(:,dstep),currentTime,targetTime,ITOL,reltol,abstol,ITASK,ISTATE,IOPT,&
             &             RWORK,LRW,IWORK,LIW,JAC,MF,RPAR,IPAR)
-
             SELECT CASE(ISTATE)
                 CASE(-1)
                     !More steps required for this problem
@@ -360,8 +364,8 @@ CONTAINS
                 CASE(-4)
                     !Successful as far as currentTime but many errors.
                     !Make targetTime smaller and just go again
-                    targetTime=(currentTime+targetTime)/2.0
-                    ISTATE=2
+                    targetTime=currentTime+1000.0/year
+                    ISTATE=3
                 CASE DEFAULT
                     IOPT=0
                     ISTATE=3
@@ -396,12 +400,26 @@ CONTAINS
         !updated just in case temp changed
         h2form=1.0d-17*dsqrt(temp(dstep)) 
 
+
+        PREFAC=3.637E3*SAPH*DSQRT(temp(dstep)) 
+        IF(temp(dstep).LE.300.D0) THEN 
+            STICKH=((temp(dstep)/102.D0)+1.0)**(-2.0) 
+            GRATH=PREFAC*STICKH 
+        ELSE 
+            GRATH=0.0 
+        END IF 
+
         !H2 formation should occur at both steps - however note that here there is no 
         !temperature dependence. y(nh) is hydrogen fractional abundance.
-        ydot(nh)  = ydot(nh) - 2.0*( h2form*dens(dstep)*y(nh) - h2dis*y(nh2) )
+        !ydot(nh)  = ydot(nh) - 2.0*( h2form*dens(dstep)*y(nh) - h2dis*y(nh2) )
         !                             h2 formation - h2-photodissociation
-        ydot(nh2) = ydot(nh2) + h2form*dens(dstep)*y(nh) - h2dis*y(nh2)
+        !ydot(nmh) = ydot(nmh) + h2form*dens(dstep)*y(nh)*0. !rate is doubled because 2 hydrogens
+        !ydot(nh2) = ydot(nh2) + h2form*dens(dstep)*y(nh)*1.0 - h2dis*y(nh2)
         !                       h2 formation  - h2-photodissociation
+
+        ydot(nh) = ydot(nh) - GRATH*dens(dstep)*y(nh)
+        ydot(nmh) = ydot(nmh) + HFRZ*GRATH*dens(dstep)*y(nh)
+        ydot(nh2) = ydot(nh2) + (1.0-HFRZ)*GRATH*dens(dstep)*y(nh)
 
         ! get density change from physics module to send to DLSODE
         IF (collapse .eq. 1) ydot(nspec+1)=densdot()

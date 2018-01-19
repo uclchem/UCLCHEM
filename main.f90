@@ -7,6 +7,7 @@ PROGRAM uclchem
 
 USE physics
 USE chemistry
+USE explosions
 IMPLICIT NONE
 
 !All variables the user is likely to want to change are in parameters.f90 
@@ -49,8 +50,28 @@ DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. ti
         if (points .gt. 1)currentTime=currentTimeold
         !get time in years for output
         timeInYears= currentTime*year
+      
+        !if the fractional abundance of H on grains is > limit then do an explosion
+        IF (EXPLOSION_RUN) THEN
+            IF (explosionLimit(abund(nmh,dstep),mantle(dstep),1.0/GAS_DUST_DENSITY_RATIO)) THEN
+                CALL explodeCycle(abund(:,dstep))  
+
+                !Everything comes off in explosion, not just explosion species
+                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
+                abund(grainList,dstep)=1d-30
+                !RESET DVODE
+                ISTATE=1;MF=22;ITOL=1;ITASK=1;IOPT=1;MESFLG=1
+                reltol=1e-6;MXSTEP=1000
+
+                NEQ=nspec+1
+                LIW=30+NEQ
+                LRW=22+(9*NEQ)+(2*NEQ*NEQ)
+                DEALLOCATE(IWORK,RWORK,abstol)
+                ALLOCATE(IWORK(LIW),RWORK(LRW),abstol(NEQ))
+            END IF
+        END IF
         !write this depth step
-        CALL output      
+        CALL output
     END DO
 END DO 
 END PROGRAM uclchem

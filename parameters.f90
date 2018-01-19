@@ -3,7 +3,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Initial physics variables and final  values. for temp, density and time
-initialTemp=10.0;maxTemp=300;initialDens=1.00d2;finalDens=1.00d5;currentTime=0.0;finalTime=6.00d6
+initialTemp=10.0;maxTemp=300;initialDens=1.00d4;finalDens=1.00d4;currentTime=0.0;finalTime=6.00d6
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
 radfield=1.0;zeta=1.0
 fr=1.0;
@@ -24,7 +24,7 @@ switch=0
 !collape=0/1 ONLY if not using cloud.f90
 !In all cases collapse=1 lets chem.f90 know it should call  densdot in the physics module to get time derivative of density and include it in ODES
 !Any other values tells it to use density value as set by physics module
-collapse=1
+collapse=0
 !for collapse=1 can introduce factor bc to slow freefall
 bc=1.0
 
@@ -53,8 +53,8 @@ tempindx=5
 !vs=40.0
 
 !initial fractional abundances of elements(from Asplund et al. 2009 ARAA table 1 -SOLAR)
-fh=0.0;fhe = 0.085;fc  = 2.692d-04;fo  = 4.898d-04;fn  = 6.761d-05
-fs  = 1.318d-05;fmg = 3.981d-05;fsi = 3.236d-05;fcl = 3.162d-07;
+fh=0.0;fhe = 0.1;fc  = 2.6d-04;fo  = 4.6d-04;fn  = 6.1d-05
+fs  = 1.0d-07;fmg = 3.981d-05;fsi = 1.0d-07;fcl = 3.162d-07;
 fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -69,8 +69,8 @@ outSpecies=(/'CO ','H2S','OCS'/);writeStep=1
 
 !open files for reading=writing
 !output files
-open(10,file='output/full.dat',status='unknown') !full output
-open(11,file='output/column.dat',status='unknown')!columnated output based  on outindx
+open(10,file='output/fullexplode.dat',status='unknown') !full output
+open(11,file='output/columnexplode.dat',status='unknown')!columnated output based  on outindx
 
 !input files
 open(21,file='species.csv',status='old')         !species file

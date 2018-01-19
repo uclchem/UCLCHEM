@@ -7,6 +7,8 @@
 #		MakeRates reads in lists of species and reactions and produces the network files needed
 #		by UCLCHEM to run. It also performs basic cleaning and sanity checks on the network.		
 #		
+#		Added read in for separate reactions and species for explosions. Creates separate network
+#
 ####################################################################################################
 
 import math
@@ -18,10 +20,15 @@ import time
 import fileinput
 import itertools
 from Functions import *
-
+from numpy import where
+from numpy import in1d
 reactionFile = 'inputFiles/umist12.csv'
-reactionFile_grain = 'inputFiles/uclgrainbasic.csv'
+reactionFile_grain = 'inputFiles/uclgrainexplosion.csv'
 speciesFile = 'inputFiles/uclspeciesbasic.csv'
+
+#explosion additions
+explosionSpeciesFile='inputFiles/cmzexplosionspecies.csv'
+explosionReactionFile='inputFiles/cmzexplosionreacs.csv'
 
 if not os.path.exists('outputFiles'):
     os.makedirs('outputFiles')
@@ -36,6 +43,12 @@ print '################################################\n'
 
 #read species names,masses and evaporation details from input speciesFile
 nSpecies, speciesList = read_species_file(speciesFile)
+nExplosion, explosionSpeciesList=read_species_file(explosionSpeciesFile)
+speciesList.extend(explosionSpeciesList) #all additional species from explosions need to be in species list
+
+
+nExpReactions, expReactions = read_reaction_file(explosionReactionFile, explosionSpeciesList,'UCL')
+
 # Read the reactants, products, Arrhenius equation parameters and measurement labels for each reaction
 # IF the reaction involves species in our Species List
 nReactions1, reactions1 = read_reaction_file(reactionFile, speciesList,'UMIST')
@@ -44,7 +57,10 @@ reactionList=reactions1+reactions2
 
 #Keep only the species that are involved in the final reaction list
 print '\nRemoving unused species...'
-speciesList = filter_species(speciesList,reactionList)
+filterReactionList=reactionList+expReactions #want a temporary list of explosion reactions so explosion species are not filtered
+speciesList = filter_species(speciesList,filterReactionList)
+#we don't want to filter out explosion species so add them after filtering
+
 
 #TODO replace this with a atom counter
 # Calculate the molecular mass and elemental constituents of each species
@@ -54,6 +70,9 @@ speciesList = find_constituents(speciesList)
 #sort the species file according to mass
 print 'Sorting species by mass...'
 speciesList.sort(key=lambda x: int(x.mass))
+
+#get list of indices of explosion
+explosionIndices=where(in1d(speciesList,explosionSpeciesList))[0]
 
 #check reactions to see if there are potential problems
 print "Checking reactions..."
@@ -95,3 +114,10 @@ for species in speciesList:
 print '\nnspec= '+str(len(speciesList)+1)
 print 'nreac= '+str(len(reactionList))
 print 'ngrain='+str(ngrain)
+
+###############################################################
+#explosion addition
+###############################################################
+reaction_check(explosionSpeciesList,expReactions)
+filename="outputFiles/explosionsubroutine.f90"
+write_explosion_subroutine(filename,explosionIndices,explosionSpeciesList,expReactions)
