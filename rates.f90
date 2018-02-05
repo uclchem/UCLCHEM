@@ -195,27 +195,27 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
     
     SELECT CASE (p1(j))
         CASE ('H')
-            productIndex(1) = 1
+            productIndex(1) = nh
         CASE ('H2')
-            productIndex(1) = 3
+            productIndex(1) = nh2
     END SELECT
     SELECT CASE (p2(j))
         CASE ('H')
-            productIndex(2) = 1
+            productIndex(2) = nh
         CASE ('H2')
-            productIndex(2) = 3
+            productIndex(2) = nh2
     END SELECT
     SELECT CASE (p3(j))
         CASE ('H')
-            productIndex(3) = 1
+            productIndex(3) = nh
         CASE ('H2')
-            productIndex(3) = 3
+            productIndex(3) = nh2
     END SELECT
     SELECT CASE (p4(j))
         CASE ('H')
-            productIndex(4) = 1
+            productIndex(4) = nh
         CASE ('H2')
-            productIndex(4) = 3
+            productIndex(4) = nh2
     END SELECT
     
     !epsilonCd is the fraction of kinetic energy kept my the product when it collides with grain surface
