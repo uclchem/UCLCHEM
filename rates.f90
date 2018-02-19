@@ -149,7 +149,7 @@ double precision FUNCTION diffusionReactionRate()
        desorbProb = desorbProb + vdiff(index2)*dexp(-bindingEnergy(index2)/temp(dstep))    !< k_evap(i,j)
        diffuseProb = (diffuseRate) * NUM_SITES_PER_GRAIN    !< k_hop(i,j)
 
-       activationBarrier = (activationBarrier + desorbProb + diffuseProb)/activationBarrier
+       activationBarrier = activationBarrier/(activationBarrier + desorbProb + diffuseProb)
     END IF
     
     diffusionReactionRate=alpha(j) * diffuseRate * activationBarrier* GAS_DUST_DENSITY_RATIO / dens(dstep)
@@ -171,82 +171,79 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
     integer :: j,reactIndex1,reactIndex2,degreesOfFreedom
     integer :: productIndex(4)
 
-    double precision :: deltaEnthalpy,maxBindingEnergy,epsilonCd
+    double precision :: deltaEnthalpy,maxBindingEnergy,epsilonCd,productEnthalpy
     double precision, parameter :: EFFECTIVE_SURFACE_MASS = 120.0
 
     
-    !Get indices of products 
+    !Get indices of grain surface version of products products 
     productIndex = 0
+    maxBindingEnergy=0
+
     IF (re3(j).eq.'DIFF') THEN
         DO i=lbound(grainList,1),ubound(grainList,1)
-            IF (specname(grainList(i)) .eq. p1(j)) productIndex(1) = grainList(i)
-            IF (specname(grainList(i)) .eq. p2(j)) productIndex(2) = grainList(i)
-            IF (specname(grainList(i)) .eq. p3(j)) productIndex(3) = grainList(i)
-            IF (specname(grainList(i)) .eq. p4(j)) productIndex(4) = grainList(i)
+            !Go through grain list and try to find species in product list
+            !If it has a binding energy larger than largest energy found so far, update maxBindingEnergy
+            IF (specname(grainList(i)) .eq. p1(j)) THEN
+                productIndex(1) = grainList(i)
+                productEnthalpy=formationEnthalpy(i)
+                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
+            END IF
+
+            IF (specname(grainList(i)) .eq. p2(j)) THEN
+                productIndex(2) = grainList(i)
+                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
+            END IF
+
+            IF (specname(grainList(i)) .eq. p3(j)) THEN
+                productIndex(3) = grainList(i)
+                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
+            END IF
+
+            IF (specname(grainList(i)) .eq. p4(j)) THEN
+                productIndex(4) = grainList(i)
+                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
+            END IF
+
         END DO
     ELSE IF (re3(j).eq.'CHEMDES') THEN
         DO i=lbound(gasGrainList,1),ubound(gasGrainList,1)
-            IF (specname(gasGrainList(i)) .eq. p1(j)) productIndex(1) = grainList(i)
-            IF (specname(gasGrainList(i)) .eq. p2(j)) productIndex(2) = grainList(i)
-            IF (specname(gasGrainList(i)) .eq. p3(j)) productIndex(3) = grainList(i)
-            IF (specname(gasGrainList(i)) .eq. p4(j)) productIndex(4) = grainList(i)
+            IF (specname(gasGrainList(i)) .eq. p1(j)) THEN
+                productIndex(1) = grainList(i)
+                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
+            END IF
+            IF (specname(gasGrainList(i)) .eq. p2(j)) THEN
+                productIndex(2) = grainList(i)
+                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
+            END IF
+            IF (specname(gasGrainList(i)) .eq. p3(j)) THEN
+                productIndex(3) = grainList(i)
+                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
+            END IF
+            IF (specname(gasGrainList(i)) .eq. p4(j)) THEN
+                productIndex(4) = grainList(i)
+                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
+            END IF
         END DO
     ENDIF
     
-    SELECT CASE (p1(j))
-        CASE ('H')
-            productIndex(1) = nh
-        CASE ('H2')
-            productIndex(1) = nh2
-    END SELECT
-    SELECT CASE (p2(j))
-        CASE ('H')
-            productIndex(2) = nh
-        CASE ('H2')
-            productIndex(2) = nh2
-    END SELECT
-    SELECT CASE (p3(j))
-        CASE ('H')
-            productIndex(3) = nh
-        CASE ('H2')
-            productIndex(3) = nh2
-    END SELECT
-    SELECT CASE (p4(j))
-        CASE ('H')
-            productIndex(4) = nh
-        CASE ('H2')
-            productIndex(4) = nh2
-    END SELECT
-    
+    !
     !epsilonCd is the fraction of kinetic energy kept my the product when it collides with grain surface
     epsilonCd = mass(productIndex(1)) + mass(productIndex(2)) + mass(productIndex(3)) + mass(productIndex(4))
     EpsilonCd = ((epsilonCd - EFFECTIVE_SURFACE_MASS) / (epsilonCd + EFFECTIVE_SURFACE_MASS))**2
     
     !Now calculate the change in enthalpy of the reaction.
-    deltaEnthalpy= formationEnthalpy(reactIndex1)+formationEnthalpy(reactIndex2)-formationEnthalpy(productIndex(1))
+    deltaEnthalpy= formationEnthalpy(reactIndex1)+formationEnthalpy(reactIndex2)-productEnthalpy
     if (productIndex(2).NE.0) deltaEnthalpy = deltaEnthalpy - formationEnthalpy(productIndex(2))
     if (productIndex(3).NE.0) deltaEnthalpy = deltaEnthalpy - formationEnthalpy(productIndex(3))
     if (productIndex(4).NE.0) deltaEnthalpy = deltaEnthalpy - formationEnthalpy(productIndex(4))
     
-    !Convert from kcal to J, from J to K
-    deltaEnthalpy = deltaEnthalpy*4.184d03/1.38054D-23
-    !Convert from #moles-1 to #reactions-1 using Avogadro's constant
-    deltaEnthalpy = deltaEnthalpy/6.02214129d23
+    !Convert from kcal to J, from J to K and from moles-1 to reactions-1
+    deltaEnthalpy = deltaEnthalpy*4.184d03/(1.38054D-23*6.02214129d23)
     ! Total energy change includes activation energy of the reaction !
     deltaEnthalpy = deltaEnthalpy + gama(j)
 
-    IF (deltaEnthalpy.eq.0.00) deltaEnthalpy = 1e-30 
 
-    !find the largest binding energy of the products to the grain surface
-    IF (productIndex(4).NE.0) THEN
-        maxBindingEnergy = max(bindingEnergy(productIndex(1)),bindingEnergy(productIndex(2)),bindingEnergy(productIndex(3)),bindingEnergy(productIndex(4)))
-    ELSE IF (productIndex(3).NE.0) THEN
-        maxBindingEnergy = max(bindingEnergy(productIndex(1)),bindingEnergy(productIndex(2)),bindingEnergy(productIndex(3)))
-    ELSE IF (productIndex(2).NE.0) THEN
-        maxBindingEnergy = max(bindingEnergy(productIndex(1)),bindingEnergy(productIndex(2)))
-    ELSE 
-        maxBindingEnergy = bindingEnergy(productIndex(1))
-    END IF
+    IF (deltaEnthalpy.eq.0.00) deltaEnthalpy = 1e-30 
 
     !Degrees of freedom = 3 * number of atoms in the molecule
     degreesOfFreedom = atomCounts(productIndex(1))
@@ -257,9 +254,10 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
         
     desorptionFraction = dexp((-maxBindingEnergy*degreesOfFreedom) / (epsilonCd * deltaEnthalpy))
     
-    IF (formationEnthalpy(reactIndex1).le.-999.0 .or. formationEnthalpy(reactIndex2).le.-999.0 .or. formationEnthalpy(productIndex(1)).le.-999.0) THEN
-        desorptionFraction = 0.d0
-    ELSE IF (deltaEnthalpy.lt.0.d0) THEN        !< If reaction is endothermic, no CRD
+    write(*,*) productIndex(1)
+    write(*,*) maxBindingEnergy,degreesOfFreedom,epsilonCd,deltaEnthalpy
+
+    IF (deltaEnthalpy.lt.0.d0) THEN        !< If reaction is endothermic, no CRD
         desorptionFraction = 0.d0
     END IF
     
