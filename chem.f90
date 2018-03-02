@@ -50,6 +50,7 @@ EXTERNAL dvode
     double precision, parameter :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8  !gre Parameter used to compute the probability for a surface reaction with 
     !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
     double precision, parameter :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
+    double precision, parameter :: VDIFF_PREFACTOR=2.0*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
     double precision, parameter :: GRAIN_DENSITY = 3.0 ! Mass density of a dust grain
     double precision, parameter :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
     double precision, parameter :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
@@ -123,7 +124,7 @@ CONTAINS
         !and other parameters required for diffusion reactions
         DO  i=lbound(grainList,1),ubound(grainList,1)
             j=grainList(i)
-            vdiff(i)=2.5e14*bindingEnergy(i)/mass(j)
+            vdiff(i)=VDIFF_PREFACTOR*bindingEnergy(i)/mass(j)
             vdiff(i)=dsqrt(vdiff(i))
         END DO
 
@@ -360,8 +361,8 @@ CONTAINS
                 CASE(-4)
                     !Successful as far as currentTime but many errors.
                     !Make targetTime smaller and just go again
-                    targetTime=(currentTime+targetTime)/2.0
-                    ISTATE=2
+                    targetTime=currentTime+1000.0/year
+                    ISTATE=3
                 CASE DEFAULT
                     IOPT=0
                     ISTATE=3
