@@ -104,51 +104,61 @@ double precision FUNCTION diffusionReactionRate()
     double precision :: diffuseRate,activationBarrier,reducedMass,tunnelProb
     double precision :: diffuseProb,desorbProb
     integer :: ns,index1,index2
+    character(len=10) :: reactant1,reactant2
 
 
-    ! Loop through mantle species and match reactants to species
-    DO i=lbound(grainList,1),ubound(grainList,1)
-        IF (specname(grainList(i)) .eq. re1(j)) index1 = i
-        IF (specname(grainList(i)) .eq. re2(j)) index2 = i
-    END DO
     !H and H2 can also be reactants but are not in grain list
     SELECT CASE (re1(j))
         CASE ('H')
-            index1 = nh
+            reactant1="#H"
         CASE ('H2')
-            index1 = nh2
+            reactant1="#H2"
+        CASE DEFAULT
+            reactant1=re1(j)
     END SELECT
+
     SELECT CASE (re2(j))
         CASE ('H')
-            index2 = nh
+            reactant2="#H"
         CASE ('H2')
-            index2 = nh2
+            reactant2="#H2"
+        CASE DEFAULT
+            reactant2=re2(j)
     END SELECT
 
-    diffuseRate = vdiff(index1)*dexp(-0.5*bindingEnergy(index1)/temp(dstep))/NUM_SITES_PER_GRAIN
-    diffuseRate = diffuseRate+ vdiff(index2)*dexp(-0.5*bindingEnergy(index2)/temp(dstep))/NUM_SITES_PER_GRAIN
+    ! now loop through mantle species and match reactants to species
+    !index is the index of the species in the grain array. NOT in the full species array.
+    DO i=lbound(grainList,1),ubound(grainList,1)
+        IF (specname(grainList(i)) .eq. reactant1) index1 = i
+        IF (specname(grainList(i)) .eq. reactant2) index2 = i
+    END DO
 
-    activationBarrier=1.0d0
+    !Hasegawa 1992 diffusion rate. Rate that two species diffuse and meet on grain surface
+    diffuseRate = vdiff(index1)*dexp(-0.5*bindingEnergy(index1)/temp(dstep))
+    diffuseRate = (diffuseRate+ (vdiff(index2)*dexp(-0.5*bindingEnergy(index2)/temp(dstep))))/NUM_SITES_PER_GRAIN
 
     !Calculate classical activation energy barrier exponent
     activationBarrier = gama(j)/temp(dstep)
 
-    !Calculate quantum activation energy
-    reducedMass = mass(index1) * mass(index2) / (mass(index1) + mass(index2))
+    !Calculate quantum activation energy barrier exponent
+    reducedMass = mass(grainList(index1)) * mass(grainList(index2)) / (mass(grainList(index1)) + mass(grainList(index2)))
     tunnelProb = 2.0d0 *CHEMICAL_BARRIER_THICKNESS/REDUCED_PLANCK * dsqrt(2.0d0*AMU*reducedMass*K_BOLTZ*gama(j))
 
     !Choose fastest between classical and tunnelling
     IF (activationBarrier.GT.tunnelProb) activationBarrier=tunnelProb
+    !set activationBarrier to probability of reaction Ruaud+2016
     activationBarrier=dexp(-activationBarrier)
 
     ! Keff from Garrod & Pauly 2011 and Ruaud+2016
-    ! activationBarrier = Kappa_ij^star from Ruaud+2016
+    ! Actual reaction probability is Preac/(Preac+Pevap+Pdiffuse), accounting for the other possible processes
     IF(DIFFUSE_REACT_COMPETITION) THEN
-       activationBarrier = max(vdiff(index1),vdiff(index2)) * activationBarrier        !< nu_ij*Kappa_ij^star
+       activationBarrier = max(vdiff(index1),vdiff(index2)) * activationBarrier       
+       !probability a reactant will just desorb
        desorbProb = vdiff(index1)*dexp(-bindingEnergy(index1)/temp(dstep))
-       desorbProb = desorbProb + vdiff(index2)*dexp(-bindingEnergy(index2)/temp(dstep))    !< k_evap(i,j)
-       diffuseProb = (diffuseRate) * NUM_SITES_PER_GRAIN    !< k_hop(i,j)
-
+       desorbProb = desorbProb + vdiff(index2)*dexp(-bindingEnergy(index2)/temp(dstep)) 
+       !Probability reactants wills diffuse onwards when they meet
+       diffuseProb = (diffuseRate) * NUM_SITES_PER_GRAIN
+       !Therefore, total probability the reactants that meet will react
        activationBarrier = activationBarrier/(activationBarrier + desorbProb + diffuseProb)
     END IF
     
@@ -156,9 +166,9 @@ double precision FUNCTION diffusionReactionRate()
 
     !Now adjust for fraction of this reaction's products that will desorb due to energy released
     IF (re3(j).eq.'DIFF') THEN
-        rate(j) = rate(j) * (1-desorptionFraction(j,index1,index2))
+        rate(j) = diffusionReactionRate * (1-desorptionFraction(j,index1,index2))
     ELSE IF(re3(j).eq.'CHEMDES') THEN
-        rate(j) = rate(j) * desorptionFraction(j,index1,index2)
+        rate(j) = diffusionReactionRate * desorptionFraction(j,index1,index2)
     ENDIF
 END FUNCTION diffusionReactionRate
 
@@ -176,31 +186,37 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
 
     
     !Get indices of grain surface version of products products 
-    productIndex = 0
-    maxBindingEnergy=0
+    productIndex=0
+    productIndex = 0.0
+    maxBindingEnergy=0.0
+    productEnthalpy=0.0
 
     IF (re3(j).eq.'DIFF') THEN
         DO i=lbound(grainList,1),ubound(grainList,1)
+            IF (specname(grainList(i)) .eq. p1(j)) productIndex(1)=grainList(i)
             !Go through grain list and try to find species in product list
             !If it has a binding energy larger than largest energy found so far, update maxBindingEnergy
             IF (specname(grainList(i)) .eq. p1(j)) THEN
                 productIndex(1) = grainList(i)
-                productEnthalpy=formationEnthalpy(i)
+                productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
 
             IF (specname(grainList(i)) .eq. p2(j)) THEN
                 productIndex(2) = grainList(i)
+                productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
 
             IF (specname(grainList(i)) .eq. p3(j)) THEN
                 productIndex(3) = grainList(i)
+                productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
 
             IF (specname(grainList(i)) .eq. p4(j)) THEN
                 productIndex(4) = grainList(i)
+                productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
 
@@ -209,18 +225,22 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
         DO i=lbound(gasGrainList,1),ubound(gasGrainList,1)
             IF (specname(gasGrainList(i)) .eq. p1(j)) THEN
                 productIndex(1) = grainList(i)
+                productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
             IF (specname(gasGrainList(i)) .eq. p2(j)) THEN
                 productIndex(2) = grainList(i)
+                productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
             IF (specname(gasGrainList(i)) .eq. p3(j)) THEN
                 productIndex(3) = grainList(i)
+                productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
             IF (specname(gasGrainList(i)) .eq. p4(j)) THEN
                 productIndex(4) = grainList(i)
+                productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
         END DO
@@ -229,13 +249,10 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
     !
     !epsilonCd is the fraction of kinetic energy kept my the product when it collides with grain surface
     epsilonCd = mass(productIndex(1)) + mass(productIndex(2)) + mass(productIndex(3)) + mass(productIndex(4))
-    EpsilonCd = ((epsilonCd - EFFECTIVE_SURFACE_MASS) / (epsilonCd + EFFECTIVE_SURFACE_MASS))**2
+    epsilonCd = ((epsilonCd - EFFECTIVE_SURFACE_MASS) / (epsilonCd + EFFECTIVE_SURFACE_MASS))**2
     
     !Now calculate the change in enthalpy of the reaction.
     deltaEnthalpy= formationEnthalpy(reactIndex1)+formationEnthalpy(reactIndex2)-productEnthalpy
-    if (productIndex(2).NE.0) deltaEnthalpy = deltaEnthalpy - formationEnthalpy(productIndex(2))
-    if (productIndex(3).NE.0) deltaEnthalpy = deltaEnthalpy - formationEnthalpy(productIndex(3))
-    if (productIndex(4).NE.0) deltaEnthalpy = deltaEnthalpy - formationEnthalpy(productIndex(4))
     
     !Convert from kcal to J, from J to K and from moles-1 to reactions-1
     deltaEnthalpy = deltaEnthalpy*4.184d03/(1.38054D-23*6.02214129d23)
@@ -254,10 +271,7 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
         
     desorptionFraction = dexp((-maxBindingEnergy*degreesOfFreedom) / (epsilonCd * deltaEnthalpy))
     
-    write(*,*) productIndex(1)
-    write(*,*) maxBindingEnergy,degreesOfFreedom,epsilonCd,deltaEnthalpy
-
-    IF (deltaEnthalpy.lt.0.d0) THEN        !< If reaction is endothermic, no CRD
+   IF (deltaEnthalpy.lt.0.d0) THEN        !< If reaction is endothermic, no CRD
         desorptionFraction = 0.d0
     END IF
     
