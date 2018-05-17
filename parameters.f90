@@ -5,7 +5,7 @@
 !Initial physics variables and final  values. for temp, density and time
 initialTemp=10.0;maxTemp=300;initialDens=1.00d4;finalDens=1.00d4;currentTime=0.0;finalTime=6.00d6
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
-radfield=1.0;zeta=1.0
+radfield=1.0;zeta=10.0
 fr=1.0;
 !Size of cloud set by inner and outer radii (rin and rout). used to calculate extinction.
 !baseAv is extinction at cloud edge
