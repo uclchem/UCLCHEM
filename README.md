@@ -25,11 +25,11 @@ Contributing
 *************************************************************
 This is an open source science code for the community and we are happy to accept pull requests. We are also happy to work with you to produce a physics module if none of the ones available in the repository suit the modelling work you wish to do. If you are contributing ,please try to work with our current code style. We have the following general guidelines:
 
--camelCase variable and subroutines names that are self-explanatory where possible 
+- camelCase variable and subroutines names that are self-explanatory where possible 
 
--CAPITALIZED fortran built in functions to make code structure apparent.
+- CAPITALIZED fortran built in functions to make code structure apparent.
 
 *************************************************************
 General issues/ to do list
 *************************************************************
--f2py wrapper
+- f2py wrapper
