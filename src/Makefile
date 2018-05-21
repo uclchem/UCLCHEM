@@ -1,7 +1,7 @@
 SHELL = /bin/sh
-FC =gfortran -fbacktrace -ffree-line-length-0
+FC =gfortran
 #FC=ifort
-FFLAGS = -O2 -fPIC 
+FFLAGS = -O2 -fPIC
 PHYSICS=cloud.f90
 
 ##simple makefile for uclchem
@@ -10,16 +10,16 @@ PHYSICS=cloud.f90
 
 ##physics module selected by changing physics variable to chosen fortran file.
 main: chem.o physics.o main.f90 dvode.o parameters.f90
-	${FC} ${FFLAGS} -o uclchem physics.o dvode.o chem.o main.f90
+	${FC} ${FFLAGS} -o ../uclchem physics.o dvode.o chem.o main.f90
 
 chem.o: odes.f90 chem.f90 physics.o dvode.o rates.f90
 	${FC} ${FFLAGS} -c chem.f90
  
-physics.o: ${PHYSICS}
+physics.o: ${PHYSICS} Makefile
 	${FC} ${FFLAGS} -c ${PHYSICS} -o physics.o
 
-dvode.o: dvode.f
-	${FC} ${FFLAGS} -c dvode.f
+dvode.o: dvode.f90
+	${FC} ${FFLAGS} -c dvode.f90
 
 clean: 
-	rm *.o *.mod uclchem
+	rm *.o *.mod ../uclchem

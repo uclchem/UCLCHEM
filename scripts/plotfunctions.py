@@ -40,10 +40,9 @@ def read_uclchem(filename,species):
                 tempi=float(bits[-2].replace('D','E'))
                 temp.append(tempi)
             #then read until we hit abundances
-            if bits .count('=')>2:
-                for specIndx,specName in enumerate(species):
-                    if specName in bits:
-                        abunds[specIndx].append(float(bits[2+bits.index(specName)].replace('D','E')))
+            for specIndx,specName in enumerate(species):
+                if specName in bits:
+                    abunds[specIndx].append(float(bits[2+bits.index(specName)].replace('D','E')))
 
     return time,dens,temp,abunds
 

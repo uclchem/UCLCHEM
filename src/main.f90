@@ -42,7 +42,8 @@ DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. ti
         !update physics
         CALL updatePhysics
         !update chemistry
-        CALL updateChemistry        
+        CALL updateChemistry
+        
         !set time to the final time of integrator rather than target     
         targetTime=currentTime
         !reset target for next depth point
@@ -50,7 +51,7 @@ DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. ti
         !get time in years for output
         timeInYears= currentTime*year
         !write this depth step
-        CALL output      
+        CALL output
     END DO
 END DO 
 END PROGRAM uclchem

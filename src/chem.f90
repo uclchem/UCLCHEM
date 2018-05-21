@@ -2,26 +2,27 @@
 ! Use physics module to alter temp/density behaviour etc. This module should solve chemistry for a cloud of gas
 MODULE chemistry
 USE physics
+USE dvode_f90_m
+
 IMPLICIT NONE
-EXTERNAL dvode
+    !one of three incuded files. Odes.f90 and network.f90 come from makerates. rates.f90 hides a large subroutine
+    include "network.f90"
    !These integers store the array index of important species and reactions, x is for ions    
     integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nf,nh2o,nsi,nsix,ncl,nclx,nch3oh,np
-    integer :: nrco,nout,nspec,nreac,njunk,evapevents,ngrainco
+    integer :: nrco,nout,njunk,evapevents,ngrainco,readAbunds
     integer, allocatable :: outIndx(:)
     !loop counters    
     integer :: i,j,l,writeStep,writeCounter=0
 
     !These are variables for reaction rates, alpha/beta/gamas are combined each time step to make rate,the total reaction rate
-    double precision,allocatable :: rate(:),alpha(:),beta(:),gama(:),mass(:)
-    character(LEN=10),allocatable :: re1(:),re2(:),re3(:),p1(:),p2(:),p3(:),p4(:)
-    character(LEN=15),allocatable :: outSpecies(:),specname(:)
+    double precision :: rate(nreac)
+    character(LEN=15),allocatable :: outSpecies(:)
     
     !DLSODE variables    
-    integer :: ITOL,ITASK,ISTATE,IOPT,MESFLG,NEQ,lrw,liw
-    integer :: MXSTEP,MF
-    integer,allocatable :: IWORK(:)
-    double precision :: reltol,rpar,ipar
-    double precision, allocatable :: RWORK(:),abstol(:)
+    integer :: ITASK,ISTATE,NEQ,MXSTEP
+    double precision :: reltol
+    double precision, allocatable :: abstol(:)
+    TYPE(VODE_OPTS) :: OPTIONS
 
     !initial fractional elemental abudances and arrays to store abundances
     double precision :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,h2col,cocol,junk1,junk2
@@ -30,16 +31,14 @@ EXTERNAL dvode
     !Variables controlling chemistry
     double precision :: radfield,zeta,fr,omega,grainArea,cion,h2form,h2dis
     double precision :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uvy,uvcreff
-    double precision :: taud,dopw,radw,xl,fosc
+    double precision, allocatable ::vdiff(:)
 
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! Evaporation lists, these are used to evaporation species in specific events
-    !See viti 2004 for more information.
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    integer, allocatable :: gasGrainList(:),grainList(:) !indices of species with grain version and those grain versions
-    integer, allocatable :: co2list(:),mco2list(:),int2list(:),mint2list(:)
-    double precision, allocatable :: bindingEnergy(:),vdiff(:),solidFractions(:),monoFractions(:)
-    double precision, allocatable :: formationEnthalpy(:),volcanicFractions(:)
+    !Variables for self-shielding of CO and H2
+    !dopw = doppler width (in s-1) of a typical transition
+    !(assuming turbulent broadening with beta=3e5cms-1)
+    !radw = radiative line width of typ. transition (in s-1)
+    !fosc = oscillator strength of a typical transition
+    double precision  :: dopw=3.0e10,radw=8.0e07,xl=1000.0,fosc  = 1.0d-2,taud
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !variables for diffusion reactions on the grains, CGS unless otherwise stated.
@@ -54,7 +53,6 @@ EXTERNAL dvode
     double precision, parameter :: GRAIN_DENSITY = 3.0 ! Mass density of a dust grain
     double precision, parameter :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
     double precision, parameter :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
-    integer, allocatable :: atomCounts(:)
  
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !CO and H2 self-shielding
@@ -82,10 +80,12 @@ EXTERNAL dvode
 CONTAINS
 !This gets called immediately by main so put anything here that you want to happen before the time loop begins, reader is necessary.
     SUBROUTINE initializeChemistry
+        NEQ=nspec+1
+        ALLOCATE(abund(NEQ,points),vdiff(nspec))
         CALL reader
         !if this is the first step of the first phase, set initial abundances
         !otherwise reader will fix it
-        IF (first.eq.1) THEN
+        IF (readAbunds.eq.0) THEN
             !ensure abund is initially zero
             abund= 0.
             !As default, have half in molecular hydrogen and half in atomic hydrogen
@@ -136,13 +136,14 @@ CONTAINS
         END DO
         
         !DVODE SETTINGS
-        ISTATE=1;MF=22;ITOL=1;ITASK=1;IOPT=1;MESFLG=1
+        ISTATE=1;;ITASK=1
         reltol=1e-4;MXSTEP=10000
 
-        NEQ=nspec+1
-        LIW=30+NEQ
-        LRW=22+(9*NEQ)+(2*NEQ*NEQ)
-        ALLOCATE(IWORK(LIW),RWORK(LRW),abstol(NEQ))
+        IF (.NOT. ALLOCATED(abstol)) THEN
+            ALLOCATE(abstol(NEQ))
+        END IF
+        !OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.FALSE.)
+        
 
     END SUBROUTINE initializeChemistry
 
@@ -151,17 +152,11 @@ CONTAINS
         IMPLICIT NONE
         integer i,j,l,m
 
-        !read species file and ALLOCATE sufficient space to relevant arrays
-        READ(21,*)nspec
-        ALLOCATE(abund(nspec+1,points),specname(nspec),mass(nspec),atomCounts(nspec))
-        READ(21,*)(specname(j),mass(j),atomCounts(j),j=1,nspec-1)
-        
         nout = SIZE(outSpecies)
         ALLOCATE(outIndx(nout))
 
         !assign array indices for important species to the integers used to store them.
-        specname(nspec)='electr'
-        DO i=1,nspec-1
+        DO i=1,nspec
             IF (specname(i).eq.'H')   nh  = i
             IF (specname(i).eq.'H2')  nh2 = i
             IF (specname(i).eq.'C')   nc  = i
@@ -185,35 +180,10 @@ CONTAINS
                 IF (specname(i).eq.outSpecies(j)) outIndx(j)=i
             END DO
         END DO
-        !read reac file, assign array space
-        !alpha, beta and gama are used for working out reaction rate each time step
-        READ(22,*) nreac
-        ALLOCATE(re1(nreac),re2(nreac),re3(nreac),p1(nreac),p2(nreac),p3(nreac),&
-            &p4(nreac),alpha(nreac),beta(nreac),gama(nreac),rate(nreac))
-        DO j=1,nreac
-            READ(22,*) re1(j),re2(j),re3(j),p1(j),p2(j),p3(j),&
-            &p4(j),alpha(j),beta(j),gama(j),junk1,junk2
-        END DO    
 
-        !Read in arrays related to grain surface processes.
-        !Lists of gas phase species with grain surface equivalents, the indices of the grain species
-        !Also lists of proportion of each species that evaporates in different events (viti 2004)
-        !finally, binding energy to grain surface and enthalpy of formation for surface reactions
-        READ(23,*) l
-        ALLOCATE(gasGrainList(l),grainList(l),solidFractions(l))
-        ALLOCATE(monoFractions(l),volcanicFractions(l))
-        ALLOCATE(formationEnthalpy(l),bindingEnergy(l),vdiff(l))
-        READ(23,*) gasGrainList
-        READ(23,*) grainList
-        READ(23,*) solidFractions
-        READ(23,*) monoFractions
-        READ(23,*) volcanicFractions
-        READ(23,*) bindingEnergy
-        READ(23,*) formationEnthalpy
-
-        !read start file IF not first phase to get finale abundances from previous phase 
+        !read start file if choosing to use abundances from previous run 
         !density, temp and av read but NOT zeta or radfield
-        IF (first .eq. 0) THEN
+        IF (readAbunds .eq. 1) THEN
             DO l=1,points
                 READ(7,*)
                 READ(7,7000) abund(nspec+1,l),temp(l),av(l)
@@ -221,7 +191,7 @@ CONTAINS
                 READ(7,7010) h2form,fc,fo,&
                             &fmg,fhe,dstep
                 READ(7,*)
-                READ(7,7030) (specname(i),abund(i,l),i=1,nspec)
+                READ(7,7030) (abund(i,l),i=1,nspec)
                 REWIND(7)
                 dens(l)=abund(nspec+1,l)
             END DO
@@ -235,7 +205,7 @@ CONTAINS
             &12x,1pe7.1,13x,1pe7.1,&
             &13x,i3,/)
             7020  format(//)
-            7030  format(4(1x,a15,2x,1pe10.3,:))     
+            7030  format(4(18x,1pe10.3,:))     
         END IF
     END SUBROUTINE reader
 
@@ -250,7 +220,7 @@ CONTAINS
         write(10,8010) (specname(i),abund(i,dstep),i=1,nspec) 
         write(10,8000)
         !If this is the last time step of phase I, write a start file for phase II
-        IF (first .eq. 1) THEN
+        IF (readAbunds .eq. 0) THEN
            IF (switch .eq. 0 .and. timeInYears .ge. finalTime& 
                &.or. switch .eq. 1 .and.dens(dstep) .ge. finalDens) THEN
                write(7,8020) timeInYears,dens(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
@@ -281,8 +251,6 @@ CONTAINS
             writeCounter=0
             write(11,8030) timeInYears,dens(dstep),temp(dstep),abund(outIndx,dstep)
             8030  format(1pe11.3,1x,1pe11.4,1x,0pf8.2,6(1x,1pe10.3))
-            write(79,*)'Call to LSODE successful at time: ',(timeInYears),' years'
-            write(79,*)'        Steps: ',IWORK(6)
         ELSE
             writeCounter=writeCounter+1
         END IF
@@ -290,14 +258,14 @@ CONTAINS
 
     SUBROUTINE updateChemistry
     !Called every time/depth step and updates the abundances of all the species
-
+        !allow option for dens to have been changed elsewhere.
+        IF (collapse .ne. 1) abund(nspec+1,dstep)=dens(dstep)
         !y is at final value of previous depth iteration so set to initial values of this depth with abund
         !reset other variables for good measure        
         h2form = 1.0d-17*dsqrt(temp(dstep))
     
         !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
         mantle(dstep)=sum(abund(grainList,dstep))
-
         !evaluate co and h2 column densities for use in rate calculations
         !sum column densities of each point up to dstep. boxlength and dens are pulled out of the sum as common factors  
         IF (dstep.gt.1) THEN
@@ -307,65 +275,49 @@ CONTAINS
             h2col=0.5*abund(nh2,dstep)*dens(dstep)*(cloudSize/real(points))
             cocol=0.5*abund(nco,dstep)*dens(dstep)*(cloudSize/real(points))
         ENDIF
-
         !call the actual ODE integrator
         CALL integrate
-
         !call evaporation to remove species from grains at certain temperatures
-        CALL thermalEvaporation
 
+        CALL thermalEvaporation
         !1.d-30 stops numbers getting too small for fortran.
         WHERE(abund<1.0d-30) abund=1.0d-30
+        dens(dstep)=abund(nspec+1,dstep)
     END SUBROUTINE updateChemistry
 
     SUBROUTINE integrate
     !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
         DO WHILE(currentTime .lt. targetTime)         
             !reset parameters for DVODE
-            ITOL=2 !abstol is an array
             ITASK=1 !try to integrate to targetTime
+            ISTATE=1 !pretend every step is the first
+            reltol=1e-4 !relative tolerance effectively sets decimal place accuracy
+            abstol=1.0d-14*abund(:,dstep) !absolute tolerances depend on value of abundance
+            WHERE(abstol<1d-30) abstol=1d-30 ! to a minimum degree
 
-            !first step only, set some stuff up
-            IF(ISTATE .EQ. 1) THEN
-                IOPT=1
-                IWORK(6)=MXSTEP
-            ENDIF
-
-            abstol=1.0d-16*abund(:,dstep)
-            WHERE(abstol<1d-30) abstol=1d-30
             !get reaction rates for this iteration
             CALL calculateReactionRates
             !Call the integrator.
-            CALL DVODE(F,NEQ,abund(:,dstep),currentTime,targetTime,ITOL,reltol,abstol,ITASK,ISTATE,IOPT,&
-            &             RWORK,LRW,IWORK,LIW,JAC,MF,RPAR,IPAR)
-
+            OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.FALSE.,MXSTEP=MXSTEP)
+            CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
             SELECT CASE(ISTATE)
                 CASE(-1)
                     !More steps required for this problem
                     MXSTEP=MXSTEP*2    
-                    write(79,*)'Call to LSODE returned -1 meaning that MXSTEP exceeded'
-                    write(79,*)'but the integration was successful'
-                    write(79,*)'Doubling MXSTEP from:',MXSTEP,' to:',MXSTEP*2
-                    ISTATE=3
-                    IOPT=1
-                    IWORK(6)=MXSTEP
                 CASE(-2)
                     !Tolerances are too small for machine but succesful to current currentTime
                     abstol=abstol*10.0
-                    ISTATE=3
                 CASE(-3)
-                    write(79,*) "DVODE found invalid inputs"
-                    write(79,*) "abstol"
-                    write(79,*) abstol
+                    write(*,*) "DVODE found invalid inputs"
+                    write(*,*) "abstol:"
+                    write(*,*) abstol
                     STOP
                 CASE(-4)
                     !Successful as far as currentTime but many errors.
                     !Make targetTime smaller and just go again
-                    targetTime=currentTime+1000.0/year
-                    ISTATE=3
-                CASE DEFAULT
-                    IOPT=0
-                    ISTATE=3
+                    targetTime=currentTime+10.0/year
+                CASE(-5)
+                    targetTime=currentTime*1.01
             END SELECT
         END DO                   
     END SUBROUTINE integrate
@@ -374,39 +326,32 @@ CONTAINS
     include 'rates.f90'
 
     SUBROUTINE  F (NEQ, T, Y, YDOT)
-        !DLSODE calls this subroutine to ask it what the RHS of the equations dy/dt=... are    
-
-        INTEGER :: NEQ
-        DOUBLE PRECISION :: T,Y(nspec+1),YDOT(nspec+1)
+        INTEGER, PARAMETER :: WP = KIND(1.0D0)
+        INTEGER NEQ
+        REAL(WP) T
+        REAL(WP), DIMENSION(NEQ) :: Y, YDOT
+        INTENT(IN)  :: NEQ, T, Y
+        INTENT(OUT) :: YDOT
         DOUBLE PRECISION :: D,loss,prod
-        
-        !For collapse =1 Dens is updated by DLSODE just like abundances so this ensures dens is at correct value
-        !For collapse =0 allow option for dens to have been changed elsewhere.
-        IF (collapse .ne. 1) THEN
-            y(nspec+1)=dens(dstep)
-        ELSE
-            dens(dstep)=y(nspec+1)
-        END IF
-
         !Set D to the gas density for use in the ODEs
-        D=dens(dstep)
+        D=y(NEQ)
+        ydot=0.0
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         INCLUDE 'odes.f90'
 
         !updated just in case temp changed
-        h2form=1.0d-17*dsqrt(temp(dstep)) 
+        h2form=1.0d-17*dsqrt(temp(dstep))
 
         !H2 formation should occur at both steps - however note that here there is no 
         !temperature dependence. y(nh) is hydrogen fractional abundance.
-        ydot(nh)  = ydot(nh) - 2.0*( h2form*dens(dstep)*y(nh) - h2dis*y(nh2) )
+        ydot(nh)  = ydot(nh) - 2.0*( h2form*y(nh)*D - h2dis*y(nh2) )
         !                             h2 formation - h2-photodissociation
-        ydot(nh2) = ydot(nh2) + h2form*dens(dstep)*y(nh) - h2dis*y(nh2)
+        ydot(nh2) = ydot(nh2) + h2form*y(nh)*D - h2dis*y(nh2)
         !                       h2 formation  - h2-photodissociation
 
         ! get density change from physics module to send to DLSODE
-        IF (collapse .eq. 1) ydot(nspec+1)=densdot()
-
+        IF (collapse .eq. 1) ydot(NEQ)=densdot(y(NEQ))
     END SUBROUTINE F
 
 !integrate calls reacrates to get the reaction rates at every iteration. reacrates calls further functions.
@@ -418,6 +363,7 @@ CONTAINS
     !The species evaporated are in lists, created by Makerates and based on groupings. see the viti 2004 paper.
     IF (mantle(dstep) .gt. 1d-30) THEN
         !Viti 04 evap
+
         IF (evap .eq. 1) THEN
             !Solid Evap
             IF (solidflag .eq. 1) THEN
@@ -426,18 +372,13 @@ CONTAINS
                 !Set flag to 2 to stop it being recalled
                 solidflag=2
             ENDIF
-
             !monotonic evaporation at binding energy of species
             CALL bindingEnergyEvap
-
             !Volcanic evap
             IF (volcflag .eq. 1) THEN
-                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+volcanicFractions(i)*abund(grainList,dstep)
+                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+volcanicFractions*abund(grainList,dstep)
                 abund(grainList,dstep)=(1.0-volcanicFractions)*abund(grainList,dstep)
-                !abund(int2list,dstep)=abund(int2list,dstep)+0.5*abund(mint2list,dstep)
-                !abund(mint2list,dstep)=0.5*abund(mint2list,dstep)
-                !Set flag to 2 to stop it being recalled
-                volcflag=2
+                volcflag=2 !Set flag to 2 to stop it being recalled
             ENDIF
 
             !Co-desorption
@@ -446,6 +387,7 @@ CONTAINS
                 abund(grainList,dstep)=1d-30
                 coflag=2
             ENDIF
+
         ELSE IF (evap .eq. 2 .and. coflag .ne. 2) THEN
             !Alternative evap. Instaneous evaporation of all grain species
             abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
@@ -460,12 +402,11 @@ CONTAINS
         !Subroutine to handle mono-evaporation. See viti 2004
         double precision en,newm,expdust,freq,kevap
         integer speci
-
         !mono evaporation at the binding energy of each species
         DO i=lbound(grainList,1),ubound(grainList,1)
             speci=grainList(i)
-            en=bindingEnergy(speci)*kbolt
-            expdust=bindingEnergy(speci)/temp(dstep)
+            en=bindingEnergy(i)*kbolt
+            expdust=bindingEnergy(i)/temp(dstep)
             newm = mass(speci)*1.66053e-27
             freq = dsqrt((2*(SURFACE_SITE_DENSITY)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)
@@ -473,17 +414,13 @@ CONTAINS
                 abund(gasGrainList(i),dstep)=abund(gasGrainList(i),dstep)+(monoFractions(i)*abund(speci,dstep))
                 abund(speci,dstep)=(1.0-monoFractions(i))*abund(speci,dstep)
                 !set to 1d50 so it can't happen again
-                bindingEnergy(speci)=1d50
+                bindingEnergy(i)=1d50
             END IF 
         END DO
     END SUBROUTINE bindingEnergyEvap
-!This is a dummy for DLSODE, it has to call it but we do not use it.
-    subroutine JAC (NEQ,T,Y,ML,MU,PD,NROWPD)
-         INTEGER  NEQ, ML, MU, NROWPD
-         DOUBLE PRECISION  T, Y(*), PD(NROWPD,*)
-    END SUBROUTINE JAC        
 
     SUBROUTINE debugout
+        open(79,file='output/debuglog',status='unknown')       !debug file.
         write(79,*) "Integrator failed, printing relevant debugging information"
         write(79,*) "dens",dens(dstep)
         write(79,*) "density in integration array",abund(nspec+1,dstep)

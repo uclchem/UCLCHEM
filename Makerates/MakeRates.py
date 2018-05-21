@@ -36,11 +36,14 @@ print '################################################\n'
 
 #read species names,masses and evaporation details from input speciesFile
 nSpecies, speciesList = read_species_file(speciesFile)
+speciesList=remove_duplicate_species(speciesList)
+
 # Read the reactants, products, Arrhenius equation parameters and measurement labels for each reaction
 # IF the reaction involves species in our Species List
 nReactions1, reactions1 = read_reaction_file(reactionFile, speciesList,'UMIST')
 nReactions2, reactions2 = read_reaction_file(reactionFile_grain,speciesList,'UCL')
 reactionList=reactions1+reactions2
+reactionList=add_desorb_reactions(speciesList,reactionList)
 
 #Keep only the species that are involved in the final reaction list
 print '\nRemoving unused species...'
@@ -55,6 +58,8 @@ speciesList = find_constituents(speciesList)
 print 'Sorting species by mass...'
 speciesList.sort(key=lambda x: int(x.mass))
 
+speciesList.append(Species(["E-",0,0,0,0,0,0]))
+speciesList[-1].n_atoms=1
 #check reactions to see if there are potential problems
 print "Checking reactions..."
 reaction_check(speciesList,reactionList)
@@ -82,16 +87,16 @@ filename = 'outputFiles/odes.f90'
 write_odes_f90(filename, speciesList, reactionList)
 print '\tFinal ODE file:',filename
 
-print 'Writing Evaporation lists...'
-filename= 'outputFiles/evaplists.csv'
-evap_lists(filename,speciesList)
-print '\tFinal Evaporation file:',filename
+print 'Writing Network File...'
+filename= 'outputFiles/network.f90'
+write_network_file(filename,speciesList,reactionList)
+print '\tFinal Network file:',filename
 
 ngrain=0
 for species in speciesList:
 	if species.name[0]=='#':
 		ngrain+=1
 
-print '\nnspec= '+str(len(speciesList)+1)
+print '\nnspec= '+str(len(speciesList))
 print 'nreac= '+str(len(reactionList))
 print 'ngrain='+str(ngrain)

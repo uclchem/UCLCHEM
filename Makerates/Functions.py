@@ -22,19 +22,25 @@ class Species:
 	def __init__(self,inputRow):
 		self.name=inputRow[0]
 		self.mass=inputRow[1]
-		self.bindener=inputRow[2]
-		self.solidFraction=inputRow[3]
-		self.monoFraction=inputRow[4]
-		self.volcFraction=inputRow[5]
-		self.enthalpy=inputRow[6]
+		self.bindener=float(inputRow[2])
+		self.solidFraction=float(inputRow[3])
+		self.monoFraction=float(inputRow[4])
+		self.volcFraction=float(inputRow[5])
+		self.enthalpy=float(inputRow[6])
+
+	def is_grain_species(self):
+		return self.name[0]=='#'
+
+	def is_ion(self):
+		return (self.name[-1]=="+" or self.name[-1]=="-")
 
 class Reaction:
 	def __init__(self,inputRow):
 		self.reactants=[inputRow[0],inputRow[1],self.NANCheck(inputRow[2])]
 		self.products=[inputRow[3],self.NANCheck(inputRow[4]),self.NANCheck(inputRow[5]),self.NANCheck(inputRow[6])]
-		self.alpha=inputRow[7]
-		self.beta=inputRow[8]
-		self.gamma=inputRow[9]
+		self.alpha=float(inputRow[7])
+		self.beta=float(inputRow[8])
+		self.gamma=float(inputRow[9])
 		self.templow=inputRow[10]
 		self.temphigh=inputRow[11]
 
@@ -55,7 +61,7 @@ def read_species_file(fileName):
 	f = open(fileName, 'rb')
 	reader = csv.reader(f, delimiter=',', quotechar='|')
 	for row in reader:
-		if row[0]!="NAME":
+		if row[0]!="NAME" and "!" not in row[0] :
 			speciesList.append(Species(row))
 	nSpecies = len(speciesList)
 	return nSpecies,speciesList
@@ -65,7 +71,7 @@ def read_reaction_file(fileName, speciesList, ftype):
 	reactions=[]
 	keepList=[]
 	# keeplist includes the elements that ALL the reactions should be formed from 
-	keepList.extend(['','NAN','#','E-','e-','ELECTR','PHOTON','CRP','CRPHOT','FREEZE','CRH','PHOTD','THERM','XRAY','XRSEC','XRLYA','XRPHOT','DESOH2','DESCR','DEUVCR'])
+	keepList.extend(['','NAN','#','E-','e-','ELECTR','PHOTON','CRP','CRPHOT','FREEZE','CRH','PHOTD','THERM','XRAY','XRSEC','XRLYA','XRPHOT','DESOH2','DESCR','DEUVCR',"CHEMDES","DIFF"])
 	for species in speciesList:
 		keepList.append(species.name)			                                  
 	if ftype == 'UMIST': # if it is a umist database file
@@ -87,20 +93,8 @@ def read_reaction_file(fileName, speciesList, ftype):
 	nReactions = len(reactions)
 	return nReactions, reactions
 
-#Look for possibly incorrect parts of species list
-def filter_species(speciesList,reactionList):
-	#check for species not involved in any reactions
-	lostSpecies=[]
-	for species in speciesList:
-		keepFlag=False
-		for reaction in reactionList:
-			if species.name in reaction.reactants or species.name in reaction.products:
-				keepFlag=True
-		if not keepFlag:
-			lostSpecies.append(species.name)
-			speciesList.remove(species)
-
-	#check for duplicate species
+def remove_duplicate_species(speciesList):
+		#check for duplicate species
 	duplicates=0
 	duplicate_list=[]
 	for i in range(0,len(speciesList)):
@@ -120,15 +114,39 @@ def filter_species(speciesList,reactionList):
 				removed=True
 			else:
 				i+=1
+	return speciesList
+
+#Look for possibly incorrect parts of species list
+def filter_species(speciesList,reactionList):
+	#check for species not involved in any reactions
+	lostSpecies=[]
+	for species in speciesList:
+		keepFlag=False
+		for reaction in reactionList:
+			if species.name in reaction.reactants or species.name in reaction.products:
+				keepFlag=True
+		if not keepFlag:
+			lostSpecies.append(species.name)
+			speciesList.remove(species)
 
 	print '\tSpecies in input list that do not appear in final list:' 
 	print '\t',lostSpecies
 	print '\n'
 	return speciesList
 
+#All species should freeze out at least as themselves and all grain species should desorb according to their binding energy
+#This function adds those reactions automatically to slim down the grain file
+def add_desorb_reactions(speciesList,reactionList):
+	for species in speciesList:
+		if species.is_grain_species():
+			for reacType in ['DESOH2',"DESCR","DEUVCR"]:
+				newReaction=Reaction([species.name,reacType,'NAN',species.name[1:],'NAN','NAN','NAN',1,0,species.bindener,0.0,10000.0])
+				reactionList.append(newReaction)
+	return reactionList
+
 #check reactions to alert user of potential issues including repeat reactions
 #and multiple freeze out routes
-def reaction_check(speciesList,reactionList):
+def reaction_check(speciesList,reactionList,freeze_check=True):
 
 
 	#first check for multiple freeze outs so user knows to do alphas
@@ -140,6 +158,8 @@ def reaction_check(speciesList,reactionList):
 				freezes+=1
 		if (freezes>1):
 			print "\t{0} freezes out through {1} routes".format(spec.name,freezes)
+		if freezes<1 and not spec.is_grain_species() and freeze_check:
+			print "\t{0} does not freeze out".format(spec.name,freezes)
 	#now check for duplicate reactions
 	duplicate_list=[]
 	print "\n\tPossible duplicate reactions for manual removal:"
@@ -167,16 +187,17 @@ def make_capitals(fileName):
 	output.write(a.upper())
 	output.close()
 
-# Find the elemental constituents and molecular mass of each species in the supplied list
 def find_constituents(speciesList):
 	elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH']
 	elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420]
-	symbols=['#','+','-']
+	symbols=['#','+','-','(',')']
     
 	for species in speciesList:
 		speciesName=species.name
 		i=0
 		atoms=[]
+		bracket=False
+		bracketContent=[]
 		#loop over characters in species name to work out what it is made of
 		while i<len(speciesName):
 			#if character isn't a #,+ or - then check it otherwise move on
@@ -193,28 +214,54 @@ def find_constituents(speciesList):
 					j=i+1
 				#if we've found a new element check for numbers otherwise print error
 				if j>i:
-					atoms.append(speciesName[i:j])#add element to list
+					if bracket:
+						bracketContent.append(speciesName[i:j])
+					else:
+						atoms.append(speciesName[i:j])#add element to list
 					if j<len(speciesName):
 						if is_number(speciesName[j]):
 							for k in range(1,int(speciesName[j])):
-								atoms.append(speciesName[i:j])
+								if bracket:
+									bracketContent.append(speciesName[i:j])
+								else:
+									atoms.append(speciesName[i:j])
 							i=j+1
 						else:
 							i=j
 					else:
 						i=j
 				else:
+					print speciesName[i]
 					print"\t{0} contains elements not in element list:".format(speciesName)
 					print elementList
 			else:
-				i+=1
+				#if symbol is start of a bracketed part of molecule, keep track
+				if (speciesName[i]=="("):
+					bracket=True
+					bracketContent=[]
+					i+=1
+				#if it's the end then add bracket contents to list
+				elif speciesName[i]==")":
+					if is_number(speciesName[i+1]):
+						for k in range(0,int(speciesName[i+1])):
+							atoms.extend(bracketContent)
+						i+=2
+					else:
+						atoms.extend(bracketContent)
+						i+=1
+				#otherwise move on
+				else:
+					i+=1
+
 		species.n_atoms=len(atoms)
 		mass=0
 		for atom in atoms:
 			mass+=elementMass[elementList.index(atom)]
 		if mass!=float(species.mass):
-			print "\tcalculated mass of {0} does not match input mass".format(speciesName)
-			print "\tcalculated mass: {0} \t input mass: {1}\n".format(mass,species.mass)
+			#print "\tcalculated mass of {0} does not match input mass".format(speciesName)
+			#print "\tcalculated mass: {0} \t input mass: {1}\n".format(mass,species.mass)
+			#print "\tkeeping calculated mass\n"
+			species.mass=str(mass)
 	return speciesList
 
 def is_number(s):
@@ -253,11 +300,6 @@ def write_odes_f90(fileName, speciesList, reactionList):
 	nReactions = len(reactionList)
 	output = open(fileName, mode='w')
 
-	# Prepare and write the electron conservation equation
-    #output.write(conserve_species('e-', constituentList, codeFormat='F90'))
-	output.write(electron_eq(speciesList))
-    # Prepare and write the loss and formation terms for each ODE
-	output.write('\n')
 	#go through every species and build two strings, one with eq for all destruction routes and one for all formation
 	for n,species in enumerate(speciesList):
 		lossString = '' ; formString = ''
@@ -285,10 +327,6 @@ def write_odes_f90(fileName, speciesList, reactionList):
 					if reactant==species.name:
 						n_appearances-=1
 						twoBody+=1
-					if reactant =="E-":
-						for appearance in range(n_appearances):
-							lossString += '*Y('+str(nSpecies+1)+')'
-							twoBody+=1
 					else:
 						#look through species list and find reactant
 						for j,possibleReactants in enumerate(speciesList):
@@ -317,18 +355,12 @@ def write_odes_f90(fileName, speciesList, reactionList):
 				#now add *Y(species_index) to string for every reactant						
 				for reactant in set(reaction.reactants):
 					n_appearances=reaction.reactants.count(reactant)
-					if reactant =="E-":
-						for appearance in range(n_appearances):
-							formString += '*Y('+str(nSpecies+1)+')'
-							twoBody+=1
-					else:
-						#look through species list and find reactant
-						for j,possibleReactants in enumerate(speciesList):
-							if reactant == possibleReactants.name:
-								for appearance in range(n_appearances):
-									formString += '*Y('+str(j+1)+')'
-									twoBody+=1
-								continue
+					for j,possibleReactants in enumerate(speciesList):
+						if reactant == possibleReactants.name:
+							for appearance in range(n_appearances):
+								formString += '*Y('+str(j+1)+')'
+								twoBody+=1
+							continue
 
 				#now string is rate(reac_index)*Y(species_index1)*Y(species_index2) may need *D if total rate is 
 				#proportional to density
@@ -355,7 +387,7 @@ def write_odes_f90(fileName, speciesList, reactionList):
 
 #create a file containing length of each list of moleculetypes and then the two lists (gas and grain) of species in each type
 #as  well as fraction that evaporated in each type of event
-def evap_lists(filename,speciesList):
+def write_evap_lists(openFile,speciesList):
 	grainlist=[];mgrainlist=[];solidList=[];monoList=[];volcList=[]
 	bindEnergyList=[];enthalpyList=[]
 
@@ -384,79 +416,45 @@ def evap_lists(filename,speciesList):
 			bindEnergyList.append(species.bindener)
 			enthalpyList.append(species.enthalpy)
 
-	f = open(filename, 'wb')
-	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
-	f.write(str(len(grainlist))+'\n')
-	writer.writerow(grainlist)
-	writer.writerow(mgrainlist)
-	writer.writerow(solidList)
-	writer.writerow(monoList)
-	writer.writerow(volcList)
-	writer.writerow(bindEnergyList)
-	writer.writerow(enthalpyList)
+	openFile.write(array_to_string("gasGrainList",grainlist,type="int"))
+	openFile.write(array_to_string("grainList",mgrainlist,type="int"))
+	openFile.write(array_to_string("solidFractions",solidList,type="float"))
+	openFile.write(array_to_string("monoFractions",monoList,type="float"))
+	openFile.write(array_to_string("volcanicFractions",volcList,type="float"))
+	openFile.write(array_to_string("bindingEnergy",bindEnergyList,type="float",parameter=False))
+	openFile.write(array_to_string("formationEnthalpy",enthalpyList,type="float"))
 
-
-def electron_eq(speciesList,codeFormat='F90'):
-    elec_eq=''
-    nSpecies=len(speciesList)
-
-    for n,species in enumerate(speciesList):
-        if species.name[-1]=='+':
-            if len(elec_eq)>0: elec_eq +='+'
-            elec_eq+='Y('+str(n+1)+')'
-        if species.name[-1]=='-':
-            if len(elec_eq)>0: elec_eq +='-'
-            elec_eq+='+Y('+str(n+1)+')'   
-                 
-    if len(elec_eq) > 0:
-        if codeFormat == 'C':   elec_eq = '  x_e = '+elec_eq+';\n'
-        if codeFormat == 'F90': elec_eq = '      Y('+str(nSpecies+1)+') = '+elec_eq+'\n'
-        if codeFormat == 'F77': elec_eq = '      X(1)  = '+elec_eq+'\n'
-    else:
-        if codeFormat == 'C':   elec_eq = '  x_e = 0;\n'
-        if codeFormat == 'F90': elec_eq = '      Y('+str(nSpecies+1)+') = 0\n'
-        if codeFormat == 'F77': elec_eq = '      X(1)  = 0\n'
-    if codeFormat == 'F77': elec_eq = truncate_line(elec_eq,codeFormat='F77')
-    if codeFormat == 'F90': elec_eq = truncate_line(elec_eq)
-    return elec_eq
-
+	return len(grainlist)
 
 # Create the appropriate multiplication string for a given number
 def multiple(number):
     if number == 1: return ''
     else: return str(number)+'*'
 
-# Truncate long lines for use in fixed-format Fortran code
 def truncate_line(input, codeFormat='F90', continuationCode=None):
-    lineLength = 72
-    maxlines=30
-    lines=0
-    result = ''
-    index=input.index('=')
-    lhs=input[:index]
-    while len(input) > lineLength:
-        #introduced a counter up to max continuation lines allow, if reached a new equation is started
-        lines+=1
-        if lines ==maxlines:
-            index = max([input.rfind('+',0,lineLength),input.rfind('-',0,lineLength)])
-            result += input[:index]+'\n'
-            input=lhs+'='+lhs+input[index:]
-            lines=0
-        else:
-            index = max([input.rfind('+',0,lineLength),input.rfind('-',0,lineLength),input.rfind('*',0,lineLength),input.rfind('/',0,lineLength)])
-            if codeFormat == 'F90':
-                if continuationCode != None: result += input[:index]+' '+continuationCode.strip()+'\n'
-                else: result += input[:index]+' &\n'
-            else:
-                result += input[:index]+'\n'
-            if continuationCode != None:
-                input = continuationCode+input[index:]
-            else:
-                input = '     &       '+input[index:]
-            
-
-    result += input
-    return result    
+	lineLength = 72
+	maxlines=300
+	lines=0
+	result = ''
+	i=0
+	j=0
+	while i+j<len(input):
+		j+=1
+		if j>lineLength:
+			#important not to break entries so split lines at ,s
+			try:
+				k=input[i+j-12:i+j].index(",")
+			except:
+				try:
+					k=input[i+j-12:i+j].index("*")
+				except:
+					k=input[i+j-12:i+j].index(")")
+			j=j-12+k
+			result+=input[i:i+j]+"&\n    &"
+			i=i+j
+			j=0
+	result+=input[i:i+j]
+	return result    
 
 
 def is_H2_formation(reactants, products):
@@ -467,3 +465,79 @@ def is_H2_formation(reactants, products):
     if nReactants == 3 and nProducts == 2:
         if reactants[0] == 'H' and reactants[1] == 'H' and reactants[2] == '#' and products[0] == 'H2' and products[1] == '#': return True
     return False
+
+def write_network_file(fileName,speciesList,reactionList):
+	openFile=open(fileName,"wb")
+	openFile.write("integer, parameter :: nSpec={0}, nReac={1}\n".format(len(speciesList),len(reactionList)))
+
+	#write arrays of all species stuff
+	names=[]
+	atoms=[]
+	masses=[]
+	for species in speciesList:
+		names.append(species.name)
+		masses.append(species.mass)
+		atoms.append(species.n_atoms)
+	openFile.write(array_to_string("specname",names,type="string"))
+	openFile.write(array_to_string("mass",masses,type="int"))
+	openFile.write(array_to_string("atomCounts",atoms,type="int"))
+
+
+	#then write evaporation stuff
+	nGrain=write_evap_lists(openFile,speciesList)
+
+	#finally all reactions
+	reactant1=[]
+	reactant2=[]
+	reactant3=[]
+	prod1=[]
+	prod2=[]
+	prod3=[]
+	prod4=[]
+	alpha=[]
+	beta=[]
+	gama=[]
+	for reaction in reactionList:
+		reactant1.append(reaction.reactants[0])
+		reactant2.append(reaction.reactants[1])
+		reactant3.append(reaction.reactants[2])
+		prod1.append(reaction.products[0])
+		prod2.append(reaction.products[1])
+		prod3.append(reaction.products[2])
+		prod4.append(reaction.products[3])
+		alpha.append(reaction.alpha)
+		beta.append(reaction.beta)
+		gama.append(reaction.gamma)
+	openFile.write(array_to_string("re1",reactant1,type="string"))
+	openFile.write(array_to_string("re2",reactant2,type="string"))
+	openFile.write(array_to_string("re3",reactant3,type="string"))
+	openFile.write(array_to_string("p1",prod1,type="string"))
+	openFile.write(array_to_string("p2",prod2,type="string"))
+	openFile.write(array_to_string("p3",prod3,type="string"))
+	openFile.write(array_to_string("p4",prod4,type="string"))
+	openFile.write(array_to_string("alpha",alpha,type="float",parameter=False))
+	openFile.write(array_to_string("beta",beta,type="float",parameter=False))
+	openFile.write(array_to_string("gama",gama,type="float",parameter=False))
+
+def array_to_string(name,array,type="int",parameter=True):
+	if parameter:
+		outString=", parameter :: "+name+" ({0})=(/".format(len(array))
+	else:
+		outString=" :: "+name+" ({0})=(/".format(len(array))
+	if type=="int":
+		outString="integer"+outString
+		for value in array:
+			outString+="{0},".format(value)
+	elif type=="float":
+		outString="double precision"+outString
+		for value in array:
+			outString+="{0:.2e},".format(value)
+	elif type=="string":
+		outString="character(Len=10)"+outString
+		for value in array:
+			outString+="\""+value.ljust(10)+"\","
+	else:
+		print "Not a valid type for array to string"
+	outString=outString[:-1]+"/)\n"
+	outString=truncate_line(outString)
+	return outString

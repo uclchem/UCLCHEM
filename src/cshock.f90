@@ -8,7 +8,7 @@ MODULE physics
     !Use main loop counters in calculations so they're kept here
     integer :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
-    integer :: collapse,switch,first,phase
+    integer :: collapse,switch,phase
     integer :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
@@ -88,8 +88,6 @@ CONTAINS
         tsat=(-15.38729*vs*vs*vs)+(2069.56962*vs*vs)-(90272.826991*vs)+1686858.54278
         tsat=tsat/initialDens
 
-        write(*,*)tsat,maxTemp
-
         ! The initial parameters that define the C-shock structure
         ! Length of the dissipation region, dlength:
         dlength=12.0*pc*vs/initialDens
@@ -114,8 +112,6 @@ CONTAINS
         ! derived as:
         a1=6.0
         at=(1/zmax)*((maxTemp-initialTemp)*(dexp(a1)-1.))**(1./6.)
-
-        !write(92,*) 'L=',dlength,'; zn=',z2,'; zi=',z1,'; zT=',z3,'; at=',at
 
         !Second, we calculate v0 that depends on the alfven and the shock velocities
         !Magnetic field in microGauss. We assume strong magnetic field, i.e., bm0=1.microgauss.
@@ -147,8 +143,10 @@ CONTAINS
             ENDIF
         ELSE
             IF (timeInYears .gt. 1.0d5) THEN
-                targetTime=(timeInYears+500)/year
-            ELSE IF (timeInYears.gt. 5.0d4) THEN
+                targetTime=(timeInYears+1.0d4)/year
+            ELSE IF (timeInYears.gt. 1.0d4) THEN
+                targetTime=(timeInYears+1000.)/year                
+            ELSE IF (timeInYears.gt. 1.0d3) THEN
                 targetTime=(timeInYears+100.)/year
             ELSE IF (timeInYears .gt. 1000) THEN
                 targetTime=(timeInYears+50.)/year
@@ -188,7 +186,6 @@ CONTAINS
             !Draine, Roberge & Dalgarno (1983) and Hollenbach, Takahashi & Tielens (1991).
             tn(dstep)=initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
             ti(dstep)=tn(dstep)+(mun*(dv*km)**2/(3*kb2))
-            write(91,*)tn(dstep), ti(dstep)
 
             !grain collisional heating
             tgc(dstep)=15*(dens6/grainRadius5)**(0.1818)*(tn(dstep)/1000.0)**(0.2727)
@@ -206,9 +203,6 @@ CONTAINS
             !total grain heating
             tg(dstep)=tgc(dstep)+tgr(dstep)
 
-            write(91,*) av(dstep),vn,tn(dstep),tg(dstep)
-
-
             !We introduce the variation of the density (nn) as the C-shock evolves
             IF (timeInYears .gt. 0.0) THEN
                 dens=initialDens*vs/(vs-vn)
@@ -220,10 +214,6 @@ CONTAINS
                 temp(dstep)=tn(dstep)
                 ti(dstep)=tn(dstep)+(mun*(dv*km)**2/(3*kb2))
                 tempi=ti(dstep)
-
-                write(93,1234) zn/pc,vn,vi,(vn-vi),timeInYears
-                write(92,1234) zn/pc,tn(dstep),ti(dstep),dens,timeInYears
-                1234 format(5(1x,ES12.4e2))
             ENDIF
 
             !At tsat, all mantle species evaporated. These flags make chem module aware of it.
@@ -234,18 +224,19 @@ CONTAINS
         ENDIF
     END SUBROUTINE updatePhysics
 
-!This FUNCTION works out the time derivative of the density, allowing DLSODE to update density with the rest of our ODEs
-!It get's called by F, the SUBROUTINE in chem.f90 that sets up the ODEs for DLSODE
-!Currently set to Rawlings 1992 freefall.
-    pure FUNCTION densdot()
-        double precision :: densdot
 
- !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
-        IF (dens(dstep) .lt. finalDens) THEN
-             densdot=bc*(dens(dstep)**4./initialDens)**0.33*&
-             &(8.4d-30*initialDens*((dens(dstep)/initialDens)**0.33-1.))**0.5
+!This function works out the time derivative of the density, allowing DVODE to update density with the rest of our ODEs
+!It get's called by F, the SUBROUTINE in chem.f90 that sets up the ODEs for DVODE
+!Currently set to Rawlings 1992 freefall.
+    pure FUNCTION densdot(density)
+        double precision, INTENT(IN) :: density
+        double precision :: densdot
+        !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
+        IF (density .lt. finalDens) THEN
+             densdot=bc*(density**4./initialDens)**0.33*&
+             &(8.4d-30*initialDens*((density/initialDens)**0.33-1.))**0.5
         ELSE
-            densdot=1.0d-30       
+            densdot=0.0
         ENDIF
     END FUNCTION densdot
 
@@ -258,7 +249,6 @@ CONTAINS
         !numerically derived as follows:
         v0=2.
         v01=0
-        write(*,*)"in loop1"
         DO WHILE (abs(v0-v01) .ge. 1e-6)
             v01=v0
             g1=-(vA**2*vs**2)/2
@@ -266,13 +256,11 @@ CONTAINS
 
             v0=sqrt(g1/g2)
         END DO
-        write(*,*)"out loop1"
 
         !We calculate the physical structure of the shock
         !set vn1 arbitrarily high to ensure while loop is done at least once
         vn1=1d30
         vn=vn0
-        write(*,*)"in loop2"
 
         DO WHILE (abs(vn-vn1).ge.1.e-14)
             vn1=vn
@@ -282,10 +270,7 @@ CONTAINS
             xcos=zn/z2
             acosh=0.5*(dexp(xcos)+dexp(-xcos))
             vn=(vs-v0)-((vs-v0)/acosh)
-            write(*,*) "looping"
         END  DO
-        write(*,*)"out loop2"
-
 
         xcos=zn/z1
         acosh=0.5*(dexp(xcos)+dexp(-xcos))

@@ -6,7 +6,7 @@ MODULE physics
     !Use main loop counters in calculations so they're kept here
     integer :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
-    integer :: collapse,switch,first,phase
+    integer :: collapse,switch,phase
     integer :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
@@ -106,25 +106,19 @@ CONTAINS
     !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrator.
     !targetTime in seconds for DLSODE, timeInYears in years for output.
 
-        IF (phase .eq. 1) THEN
-            IF (timeInYears .gt. 1.0d6) THEN
-                targetTime=(timeInYears+1.0d5)/year
-            ELSE IF (timeInYears .gt. 10000) THEN
-                targetTime=(timeInYears+1000.0)/year
-            ELSE IF (timeInYears .gt. 1000) THEN
-                targetTime=(timeInYears+100.0)/year
-            ELSE IF (timeInYears .gt. 0.0) THEN
-                targetTime=(timeInYears*10)/year
-            ELSE
-                targetTime=3.16d7*10.d-8
-            ENDIF
+        IF (timeInYears .gt. 1.0d6) THEN
+            targetTime=(timeInYears+1.0d5)/year
+        ELSE IF (timeInYears .gt. 1.0d5) THEN
+            targetTime=(timeInYears+1.0d4)/year
+        ELSE IF (timeInYears .gt. 1.0d4) THEN
+            targetTime=(timeInYears+1000.0)/year
+        ELSE IF (timeInYears .gt. 1000) THEN
+            targetTime=(timeInYears+100.0)/year
+        ELSE IF (timeInYears .gt. 0.0) THEN
+            targetTime=(timeInYears*10.0)/year
         ELSE
-            IF (timeInYears<1000.0) THEN
-                targetTime=(timeInYears+10.0)/year
-            ELSE
-                targetTime=(timeInYears+1000.0)/year
-            END IF
-        END IF
+            targetTime=3.16d7*10.d-8
+        ENDIF
     END SUBROUTINE updateTargetTime
 
     SUBROUTINE updatePhysics
@@ -188,17 +182,18 @@ CONTAINS
 
     END SUBROUTINE updatePhysics
 
-!This FUNCTION works out the time derivative of the density, allowing DVODE to update density with the rest of our ODEs
+!This function works out the time derivative of the density, allowing DVODE to update density with the rest of our ODEs
 !It get's called by F, the SUBROUTINE in chem.f90 that sets up the ODEs for DVODE
 !Currently set to Rawlings 1992 freefall.
-    pure FUNCTION densdot()
+    pure FUNCTION densdot(density)
+        double precision, INTENT(IN) :: density
         double precision :: densdot
         !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
-        IF (dens(dstep) .lt. finalDens) THEN
-             densdot=bc*(dens(dstep)**4./initialDens)**0.33*&
-             &(8.4d-30*initialDens*((dens(dstep)/initialDens)**0.33-1.))**0.5
+        IF (density .lt. finalDens) THEN
+             densdot=bc*(density**4./initialDens)**0.33*&
+             &(8.4d-30*initialDens*((density/initialDens)**0.33-1.))**0.5
         ELSE
-            densdot=1.0d-30
+            densdot=0.0
         ENDIF
     END FUNCTION densdot
 END MODULE physics

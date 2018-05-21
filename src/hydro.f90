@@ -8,7 +8,7 @@ MODULE physics
     !Use main loop counters in calculations so they're kept here
     integer :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
-    integer :: collapse,switch,first,phase
+    integer :: collapse,switch,phase
     integer :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
