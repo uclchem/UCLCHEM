@@ -8,9 +8,9 @@ Usage Instructions
 A full manual is available from the website: uclchem.github.io
 
 To build UCLCHEM, edit the Makefile in uclchem/src to use a compiler available on your machine. Then use "make" to create the executable.
-	-The Makefile also contains the choice of physics module.
-	-building requires odes.f90 and network.f90 which are outputs of Makerates.
-	-uclchem/Makerates/ contains the Makerates python script to produce a network from the files in uclchem/Makerates/inputFiles
+- The Makefile also contains the choice of physics module.
+- Building requires odes.f90 and network.f90 which are outputs of Makerates.
+- uclchem/Makerates/ contains the Makerates python script to produce a network from the files in uclchem/Makerates/inputFiles
 
 **************************************************************
 Change Log
