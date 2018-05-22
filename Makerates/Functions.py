@@ -296,20 +296,26 @@ def write_reactions(fileName, reactionList):
 		writer.writerow(reaction.reactants+reaction.products+[reaction.alpha,reaction.beta,reaction.gamma,reaction.templow,reaction.temphigh])
 
 def write_odes_f90(fileName, speciesList, reactionList):
+	output = open(fileName, mode='w')
+	#go through every species and build two strings, one with eq for all destruction routes and one for all formation
+	ydotString=build_ode_string(speciesList,reactionList)
+	output.write(ydotString)
+	output.close()    
+
+def build_ode_string(speciesList, reactionList):
+	odeString=""
 	nSpecies = len(speciesList)
 	nReactions = len(reactionList)
-	output = open(fileName, mode='w')
 
-	#go through every species and build two strings, one with eq for all destruction routes and one for all formation
 	for n,species in enumerate(speciesList):
 		lossString = '' ; formString = ''
 		#go through entire reaction list
 		for i,reaction in enumerate(reactionList):
 			
-			twoBody=0 #two or more bodies in a reaction mean we multiply rate by density so need to keep track
 			
 			#if species appear in reactants, reaction is a destruction route      	
 			if species.name in reaction.reactants:
+				bodyCount=0 #two or more bodies in a reaction mean we multiply rate by density so need to keep track
 				#easy for h2 formation
 				if is_H2_formation(reaction.reactants, reaction.products):
 					lossString += '-2*RATE('+str(i+1)+')*D'
@@ -325,23 +331,33 @@ def write_odes_f90(fileName, speciesList, reactionList):
 					#so we multiply entire loss string by Y(species_index) at end
 					#thus need one less Y(species_index) per reaction
 					if reactant==species.name:
-						n_appearances-=1
-						twoBody+=1
+						bodyCount+=n_appearances
+						if n_appearances > 1:
+							for j,possibleReactants in enumerate(speciesList):
+								if reactant == possibleReactants.name:
+									for appearance in range(1,n_appearances):
+										lossString += '*Y('+str(j+1)+')'
+									continue
 					else:
 						#look through species list and find reactant
 						for j,possibleReactants in enumerate(speciesList):
 							if reactant == possibleReactants.name:
 								for appearance in range(n_appearances):
 									lossString += '*Y('+str(j+1)+')'
-									twoBody+=1
+									bodyCount+=1
 								continue
 				#now string is rate(reac_index)*Y(species_index1)*Y(species_index2) may need *D if total rate is 
 				#proportional to density
-				if twoBody>1 or reaction.reactants.count('FREEZE') > 0 or reaction.reactants.count('DESOH2') > 0:
-						lossString += '*D'	
+				if reaction.reactants.count('FREEZE') > 0 or reaction.reactants.count('DESOH2') > 0:
+					lossString += '*D'
+				for body in range(1,bodyCount):
+					lossString+="*D"				
+
 
 			#same process as above but rate is positive for reactions where species is positive
 			if species.name in reaction.products:
+				bodyCount=0 #two or more bodies in a reaction mean we multiply rate by density so need to keep track
+
 				if is_H2_formation(reaction.reactants,reaction.products):
 					#honestly H should be index 1 but lets check
 					H_index=speciesList.index(next((x for x in speciesList if x.name=='H')))
@@ -359,31 +375,44 @@ def write_odes_f90(fileName, speciesList, reactionList):
 						if reactant == possibleReactants.name:
 							for appearance in range(n_appearances):
 								formString += '*Y('+str(j+1)+')'
-								twoBody+=1
+								bodyCount+=1
 							continue
 
 				#now string is rate(reac_index)*Y(species_index1)*Y(species_index2) may need *D if total rate is 
 				#proportional to density
-				if twoBody > 1 or reaction.reactants.count('FREEZE') > 0 or reaction.reactants.count('DESOH2') > 0:
+				if reaction.reactants.count('FREEZE') > 0 or reaction.reactants.count('DESOH2') > 0:
 					formString += '*D'
+				for body in range(1,bodyCount):
+					formString+="*D"
+
 		if lossString != '':
 			lossString = '      LOSS = '+lossString+'\n'
 			lossString = truncate_line(lossString)
-			output.write(lossString)
+			odeString+=lossString
 		if formString != '':
 			formString = '      PROD = '+formString+'\n'
 			formString = truncate_line(formString)
-			output.write(formString)
-		ydotString = '      YDOT('+str(n+1)+') = '
+			odeString+=formString
+		
+		#start with empty string and add production and loss terms if they exists
+		ydotString=''
 		if formString != '':
 			ydotString += 'PROD'
-			if lossString != '': ydotString += '+'
+			if lossString != '':
+				ydotString += '+'
 		if lossString != '':
 			ydotString += 'Y('+str(n+1)+')*LOSS'
-		ydotString += '\n'
-		ydotString = truncate_line(ydotString)
-		output.write(ydotString)
-	output.close()    
+
+		#if we have prod and/or loss add ydotstring to odes
+		if ydotString!='':
+			ydotString = '      YDOT('+str(n+1)+') = '+ydotString+"\n"
+			ydotString = truncate_line(ydotString)
+			odeString+=ydotString
+		else:
+			ydotString = '      YDOT('+str(n+1)+') = 0.0\n'
+			ydotString = truncate_line(ydotString)
+			odeString+=ydotString
+	return odeString
 
 #create a file containing length of each list of moleculetypes and then the two lists (gas and grain) of species in each type
 #as  well as fraction that evaporated in each type of event
