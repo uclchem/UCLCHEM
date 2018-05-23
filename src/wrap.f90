@@ -1,32 +1,31 @@
-! 2015 UCLCHEM by Serena Viti update by Jon Holdship
-! Rewritten for FORTRAN 95 and modulised
-PROGRAM uclchem
-!Everything to do with physics should be stored in a physics module based on physics-template.f90
-!UCLCHEM uses density and temperature in chemical calculations so these MUST be provided, everything else is
-!user dependent
-USE physics
-USE chemistry
-IMPLICIT NONE
-    integer :: ios=0,line=0,fileNum=12,pos
-    CHARACTER (LEN=100):: paramFile, buffer,label
-    CHARACTER (LEN=100):: abundFile,outputFile,columnFile
-    
-    !All model parameters are given a default value in paramters.f90
-    !Full explanations of those parameters in the comments of that file
-    INCLUDE 'defaultparameters.f90'
-    !Any subset of the parameters can be passed in a file on program start
-    !see example.inp
-    INCLUDE 'readparameters.f90'
+!WORK IN PROGRESS
+!THIS IS A SERIES OF SUBROUTINES THAT CAN BE COMPILED WITH F2PY TO PRODUCE A PYTHON MODULE
+!EACH SUBROUTINE BECOMES A PYTHON FUNCTION
 
-
-    dstep=1
-    currentTime=0.0
-    timeInYears=0.0
-
-    !Set up with initial values. For chemistry this is setting initial abundances and assigning memory for ODE solver
-    CALL initializePhysics
-    CALL initializeChemistry
-    write(*,*) outSpecies
+SUBROUTINE CLOUD(initDens,finDens,finTime,temp,outFile)
+    USE physics
+    USE chemistry
+    IMPLICIT NONE
+    double precision, INTENT(IN) :: initDens,finDens,finTime,temp
+    character, INTENT(IN) :: outFile
+    !f2py intent(in) initDens,finDens,finTime,temp,outFile
+    include 'parameters.f90'
+    close(10)
+    close(11)
+    close(7)
+    open(10,file='output/full'//outFile//'.dat',status='unknown') 
+    open(11,file='output/column'//outFile//'.dat',status='unknown')
+    open(7,file='output/start'//outFile//'.dat',status='unknown') 
+    initialDens=initDens
+    IF (ABS(initDens-finDens) .GT. 0.01) THEN
+        collapse=1
+        finalDens=finDens
+    ELSE
+        collapse=0
+    END IF
+    initialTemp=temp
+    finalTime=finTime
+    switch=0
     !loop until the end condition of the model is reached 
     DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
 
@@ -57,4 +56,4 @@ IMPLICIT NONE
             CALL output
         END DO
     END DO 
-END PROGRAM uclchem
+END SUBROUTINE CLOUD

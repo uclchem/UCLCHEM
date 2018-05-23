@@ -4,7 +4,7 @@
 
 !Initial physics variables and final  values. for temp, density and time
 initialTemp=10.0;maxTemp=300
-initialDens=2.00d2;finalDens=2.00d4
+initialDens=2.00d4;finalDens=2.00d4
 currentTime=0.0;finalTime=1.00d7
 
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
@@ -29,11 +29,12 @@ switch=0
 !collape=0/1 ONLY if not using cloud.f90
 !In all cases collapse=1 lets chem.f90 know it should call  densdot in the physics module to get time derivative of density and include it in ODES
 !Any other values tells it to use density value as set by physics module
-collapse=1
+collapse=0
 !for collapse=1 can introduce factor bc to slow freefall
 bc=1.0
 
-!If we want to read abundances from start.dat (file 7) set this value to 1
+!If you want to read abundances from a file (abundFile) set to 1
+!If you set to zero, final abundances are written to abundFile
 readAbunds=0
 !phase chooses behaviour. Basic clouds in phase 1. Hot core /cshock in phase 2 (depending on physics module)
 phase=1;
@@ -72,11 +73,13 @@ fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 !Fortran will reject this array if species with shorter names are not padded with spaaces at the end.
 outSpecies=(/'CO ','H2S','OCS'/);writeStep=1
 
-!open files for reading=writing
-!output files
-open(10,file='output/full.dat',status='unknown') !full output
-open(11,file='output/column.dat',status='unknown')!columnated output based  on outindx
-open(7,file='output/start.dat',status='unknown')      !initialise abundance file. saved to at end or loaded from at start depending on first=(0/1)
+!If readAbund=1, starting abundances are read from abundFile
+!If readAbund=0, final abundances are written to abundFile
+abundFile="output/startcloud.dat"
+!Full output written to outputFlie
+outputFile="output/fullcloud.dat"
+!columnated output of time,dens,temp and outSpecies written to column file
+columnFile='output/columncloud.dat'
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !More complicated parameters that affect core code below. Do not alter without reading articles associated  !

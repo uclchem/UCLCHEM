@@ -1,0 +1,12 @@
+initialTemp 20.0
+initialDens 2.00d2
+finalDens 1.00d5
+switch 1
+collapse 1
+readAbunds 0
+phase 1
+outSpecies 'CO   ','CS   ','CH3OH'
+writeStep 1
+abundFile "output/startcollapse.dat"
+outputFile "output/fullcollapse.dat"
+columnFile "output/columncollapse.dat"

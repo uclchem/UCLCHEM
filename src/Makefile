@@ -9,12 +9,15 @@ PHYSICS=cloud.f90
 ##builds ode solver, physics module and chemistry module before linking together for main
 
 ##physics module selected by changing physics variable to chosen fortran file.
-main: chem.o physics.o main.f90 dvode.o parameters.f90
+main: chem.o physics.o main.f90 dvode.o defaultparameters.f90 readparameters.f90
 	${FC} ${FFLAGS} -o ../uclchem physics.o dvode.o chem.o main.f90
+
+python: chem.o physics.o main.f90 dvode.o parameters.f90
+	f2py -c --fcompiler=gnu95 -m wrap.f90 ../uclchem physics.o dvode.o chem.o
 
 chem.o: odes.f90 chem.f90 physics.o dvode.o rates.f90
 	${FC} ${FFLAGS} -c chem.f90
- 
+
 physics.o: ${PHYSICS} Makefile
 	${FC} ${FFLAGS} -c ${PHYSICS} -o physics.o
 

@@ -1,4 +1,4 @@
-# UCLCHEM v1.1
+# UCLCHEM v1.2
 UCLCHEM is a gas-grain chemical code written in Fortran 95. It propagates the abundances of chemical species through a network of user-defined reactions according to the physical conditions of the gas. Included in the repository is MakeRates, a python script to combine a species list, UMIST reaction file and user-define reaction file into a consistent network with all files required by UCLCHEM.
 
 **************************************************************
@@ -11,6 +11,10 @@ To build UCLCHEM, edit the Makefile in uclchem/src to use a compiler available o
 - The Makefile also contains the choice of physics module.
 - Building requires odes.f90 and network.f90 which are outputs of Makerates.
 - uclchem/Makerates/ contains the Makerates python script to produce a network from the files in uclchem/Makerates/inputFiles
+
+To run UCLCHEM, create an input file with the desired parameters. Any variable in default parameters.f90 can be set, any that are not will take the value given in default parameters.f90.
+A full explanation of each parameter is given in defaultparameters.f90 and an example input file is given in example.inp
+Call uclchem with the filename as an argument: "./uclchem example.inp"
 
 **************************************************************
 Change Log

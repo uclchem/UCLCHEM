@@ -15,7 +15,7 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change
     double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
-    double precision :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp
+    double precision :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp,vs
     
     !Arrays for phase 2 temp profiles. Parameters for equation chosen by index
     !arrays go [1Msun,5, 10, 15, 25,60]
