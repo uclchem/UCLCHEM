@@ -119,5 +119,6 @@ IF (paramFile .ne. "") THEN
     END DO
 END IF
 open(10,file=outputFile,status='unknown')
-open(11,file=columnFile,status='unknown')
+columnFlag=ALLOCATED(outSpecies) 
+if (columnFlag) open(11,file=columnFile,status='unknown')
 open(7,file=abundFile,status='unknown')

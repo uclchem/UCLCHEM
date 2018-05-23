@@ -69,9 +69,13 @@ fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 
 !A full output of abundances is written by default. Additionally, name species here for 
 !a columnated output of time,density,temperature and abundances of those species
-!writeStep sets how often this is written out. Columns written every n steps for writeStep=n.
-!Fortran will reject this array if species with shorter names are not padded with spaaces at the end.
-outSpecies=(/'CO ','H2S','OCS'/);writeStep=1
+!Fortran will reject this array if species with shorter names are not padded with spaces at the end.
+!array commented so it does not override array in input file. 
+!If no array is passed in input, no column file is written
+!outSpecies=(/'CO ','H2S','OCS'/)
+
+!writeStep sets how often columns written out. Columns written every n steps for writeStep=n.
+writeStep=1
 
 !If readAbund=1, starting abundances are read from abundFile
 !If readAbund=0, final abundances are written to abundFile

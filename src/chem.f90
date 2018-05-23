@@ -9,15 +9,20 @@ IMPLICIT NONE
     include "network.f90"
    !These integers store the array index of important species and reactions, x is for ions    
     integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nf,nh2o,nsi,nsix,ncl,nclx,nch3oh,np
-    integer :: nrco,nout,njunk,evapevents,ngrainco,readAbunds
-    integer, allocatable :: outIndx(:)
+    integer :: nrco,njunk,evapevents,ngrainco,readAbunds
     !loop counters    
     integer :: i,j,l,writeStep,writeCounter=0
 
-    !These are variables for reaction rates, alpha/beta/gamas are combined each time step to make rate,the total reaction rate
+    !Array to store reaction rates
     double precision :: rate(nreac)
-    character(LEN=15),allocatable :: outSpecies(:)
     
+    !Option column output
+    character(LEN=15),allocatable :: outSpecies(:)
+    logical :: columnFlag
+    integer :: nout
+    integer, allocatable :: outIndx(:)
+
+
     !DLSODE variables    
     integer :: ITASK,ISTATE,NEQ,MXSTEP
     double precision :: reltol
@@ -152,9 +157,10 @@ CONTAINS
         IMPLICIT NONE
         integer i,j,l,m
 
-        nout = SIZE(outSpecies)
-        ALLOCATE(outIndx(nout))
-
+        IF (columnFlag) THEN
+            nout = SIZE(outSpecies)
+            ALLOCATE(outIndx(nout))
+        END IF
         !assign array indices for important species to the integers used to store them.
         DO i=1,nspec
             IF (specname(i).eq.'H')   nh  = i
@@ -176,9 +182,11 @@ CONTAINS
             IF (specname(i).eq.'#CO') ngrainco = i
             IF (specname(i).eq. 'P') np=i
             IF (specname(i).eq.'F') nf=i
-            DO j=1,nout
-                IF (specname(i).eq.outSpecies(j)) outIndx(j)=i
-            END DO
+            IF (columnFlag) THEN
+                DO j=1,nout
+                    IF (specname(i).eq.outSpecies(j)) outIndx(j)=i
+                END DO
+            END IF
         END DO
 
         !read start file if choosing to use abundances from previous run 
@@ -247,7 +255,7 @@ CONTAINS
 
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90
-        IF (writeCounter==writeStep) THEN
+        IF (writeCounter==writeStep .and. columnFlag) THEN
             writeCounter=0
             write(11,8030) timeInYears,dens(dstep),temp(dstep),abund(outIndx,dstep)
             8030  format(1pe11.3,1x,1pe11.4,1x,0pf8.2,6(1x,1pe10.3))
