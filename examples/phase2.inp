@@ -1,0 +1,10 @@
+initialTemp 10.0
+initialDens 1.00d5
+finalTime 1.00d6
+tempindx 2
+switch 0
+collapse 0
+readAbunds 1
+phase 2
+abundFile "examples/startcollapse.dat"
+outputFile "examples/phase2-full.dat"

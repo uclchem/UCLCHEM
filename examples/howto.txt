@@ -1,0 +1,3 @@
+Run UCLCHEM with these input files to produce files that should match the ones in the examples/example-outputs directory. "./uclchem examples/phase1.inp" will run the first example from the main directory after you have compiled uclchem.
+
+In the scripts/ directory, there is a python script called plotexamples.py that will also make the plots in the example-outputs folder once uclchem has been run.

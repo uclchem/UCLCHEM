@@ -72,7 +72,7 @@ fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 !Fortran will reject this array if species with shorter names are not padded with spaces at the end.
 !array commented so it does not override array in input file. 
 !If no array is passed in input, no column file is written
-!outSpecies=(/'CO ','H2S','OCS'/)
+!outSpecies=(/'CO ','H2S','OCS','CS '/)
 
 !writeStep sets how often columns written out. Columns written every n steps for writeStep=n.
 writeStep=1

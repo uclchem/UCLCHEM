@@ -83,7 +83,10 @@ IF (paramFile .ne. "") THEN
             CASE('ff')
                 READ(buffer,*,iostat=ios) ff
             CASE('outSpecies')
-                READ(buffer,*,iostat=ios) outSpecies
+                pos = scan(buffer, ' ')
+                READ(buffer(1:pos),*,iostat=ios) readIndx
+                ALLOCATE(outSpecies(readIndx))
+                READ(buffer(pos:),*,iostat=ios) outSpecies
             CASE('writeStep')
                 READ(buffer,*,iostat=ios) writeStep 
             CASE('abundFile')

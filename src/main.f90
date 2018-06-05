@@ -7,7 +7,7 @@ PROGRAM uclchem
 USE physics
 USE chemistry
 IMPLICIT NONE
-    integer :: ios=0,line=0,fileNum=12,pos
+    integer :: ios=0,line=0,fileNum=12,pos,readIndx
     CHARACTER (LEN=100):: paramFile, buffer,label
     CHARACTER (LEN=100):: abundFile,outputFile,columnFile
     
@@ -26,7 +26,7 @@ IMPLICIT NONE
     !Set up with initial values. For chemistry this is setting initial abundances and assigning memory for ODE solver
     CALL initializePhysics
     CALL initializeChemistry
-    write(*,*) outSpecies
+
     !loop until the end condition of the model is reached 
     DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
 

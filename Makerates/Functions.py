@@ -279,7 +279,6 @@ def write_species(fileName, speciesList):
 	f= open(fileName,'wb')
 	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')		
 	nSpecies = len(speciesList)
-	f.write(str(nSpecies+1)+'\n')
 	for species in speciesList:
 		writer.writerow([species.name,species.mass,species.n_atoms])
 
@@ -288,7 +287,6 @@ def write_reactions(fileName, reactionList):
 	f = open(fileName, 'wb')
 	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
 	nReactions = len(reactionList)
-	f.write(str(nReactions)+'\n')
 	for reaction in reactionList:
 		#if statement changes beta for ion freeze out to 1. This is how ucl_chem recognises ions when calculating freeze out rate
 		if ('FREEZE' in reaction.reactants and reaction.reactants[0][-1]=='+'):

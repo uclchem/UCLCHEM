@@ -1,0 +1,12 @@
+initialTemp 10.0
+initialDens 1.00d2
+finalDens 1.00d5
+switch 1
+collapse 1
+readAbunds 0
+phase 1
+outSpecies 4 OCS CO CS CH3OH
+writeStep 1
+abundFile "examples/startcollapse.dat"
+outputFile "examples/phase1-full.dat"
+columnFile "examples/phase1-column.dat"
