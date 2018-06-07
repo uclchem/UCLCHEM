@@ -8,7 +8,7 @@ initialDens=2.00d4;finalDens=2.00d4
 currentTime=0.0;finalTime=1.00d7
 
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
-radfield=1.0;zeta=10.0
+radfield=1.0;zeta=1.0
 
 !Scale freeze out efficiency by an aribtrary value. 
 fr=1.0;
@@ -60,7 +60,7 @@ tempindx=3
 
 !initial fractional abundances of elements(from Asplund et al. 2009 ARAA table 1 -SOLAR)
 fh=0.0;fhe = 0.1;fc  = 2.6d-04;fo  = 4.6d-04;fn  = 6.1d-05
-fs  = 1.0d-07;fmg = 3.981d-05;fsi = 1.0d-07;fcl = 3.162d-07;
+fs  = 1.318d-05;fmg = 3.981d-05;fsi = 1.0d-07;fcl = 3.162d-07;
 fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
