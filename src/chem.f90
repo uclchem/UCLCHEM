@@ -190,7 +190,7 @@ CONTAINS
         END DO
 
         !read start file if choosing to use abundances from previous run 
-        !density, temp and av read but NOT zeta or radfield
+        !
         IF (readAbunds .eq. 1) THEN
             DO l=1,points
                 READ(7,*)
@@ -201,7 +201,7 @@ CONTAINS
                 READ(7,*)
                 READ(7,7030) (abund(i,l),i=1,nspec)
                 REWIND(7)
-                dens(l)=abund(nspec+1,l)
+                if (collapse .eq. 1) abund(nspec+1,l)=dens(l)
             END DO
             7000 format(&
             &33x,1pe10.4,5x,/,&
@@ -359,7 +359,10 @@ CONTAINS
         !                       h2 formation  - h2-photodissociation
 
         ! get density change from physics module to send to DLSODE
-        IF (collapse .eq. 1) ydot(NEQ)=densdot(y(NEQ))
+        IF (collapse .eq. 1) THEN
+            write(*,*) y(NEQ),densdot(y(NEQ))
+            ydot(NEQ)=densdot(y(NEQ))
+        END IF
     END SUBROUTINE F
 
 !integrate calls reacrates to get the reaction rates at every iteration. reacrates calls further functions.
