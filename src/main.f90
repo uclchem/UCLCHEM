@@ -27,7 +27,6 @@ IMPLICIT NONE
     CALL initializePhysics
     CALL initializeChemistry
 
-    write(*,*) collapse
     !loop until the end condition of the model is reached 
     DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
 

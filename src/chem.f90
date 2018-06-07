@@ -359,10 +359,7 @@ CONTAINS
         !                       h2 formation  - h2-photodissociation
 
         ! get density change from physics module to send to DLSODE
-        IF (collapse .eq. 1) THEN
-            write(*,*) y(NEQ),densdot(y(NEQ))
-            ydot(NEQ)=densdot(y(NEQ))
-        END IF
+        IF (collapse .eq. 1) ydot(NEQ)=densdot(y(NEQ))
     END SUBROUTINE F
 
 !integrate calls reacrates to get the reaction rates at every iteration. reacrates calls further functions.

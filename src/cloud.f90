@@ -82,8 +82,6 @@ CONTAINS
                 maxdimt = 5.5 - (2.1/(1.35 + log10(finalDens/initialDens)))**(1.0/0.28)
         END SELECT
 
-        write(*,*) dens, initialDens
-
         IF (collapse .gt. 1) THEN
              !Enforce maximum time value for collapse modes
              finalTime=maxdimt*year*unitt

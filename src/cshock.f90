@@ -77,8 +77,12 @@ CONTAINS
 
         !maxxtemp set by vs and pre-shock density, polynomial fits to values taken from Draine et al. 1983
         !have been made and coefficients placed here. Tested with log(dens)>3 <6
-        IF (initialDens .gt. 10**4.5) THEN
+        !Fits only available for density of 1e4 and 1e6 so in between we average
+        IF (initialDens .gt. 10**5.5) THEN
             maxTemp=(2.91731*vs*vs)-(23.78974*vs)+225.204167337
+        ELSE IF (initialDens .gt. 10.0**4.5) THEN
+            maxTemp=(3.38989*vs*vs)+(16.6519*vs)+96.569
+            maxTemp=0.5*maxTemp
         ELSE
             maxTemp=(0.47258*vs*vs)+(40.44161*vs)-128.635455216
         END IF    
@@ -146,12 +150,12 @@ CONTAINS
                 targetTime=(timeInYears+1.0d4)/year
             ELSE IF (timeInYears.gt. 1.0d4) THEN
                 targetTime=(timeInYears+1000.)/year                
-            ELSE IF (timeInYears.gt. 1.0d3) THEN
-                targetTime=(timeInYears+100.)/year
             ELSE IF (timeInYears .gt. 1000) THEN
                 targetTime=(timeInYears+50.)/year
-            ELSE IF (timeInYears .gt. 10) THEN
+            ELSE IF (timeInYears .gt. 100) THEN
                 targetTime=(timeInYears+10.)/year
+            ELSE IF (timeInYears .gt. 10) THEN
+                targetTime=(timeInYears+1.)/year
             ELSE IF  (timeInYears.gt.0.0) THEN
                 targetTime=(timeInYears+1.)/year
             ELSE
@@ -221,6 +225,8 @@ CONTAINS
                 evap=2
                 coflag=1
             ENDIF
+            write(68,*) zn
+
         ENDIF
     END SUBROUTINE updatePhysics
 

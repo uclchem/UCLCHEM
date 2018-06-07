@@ -124,4 +124,5 @@ END IF
 open(10,file=outputFile,status='unknown')
 columnFlag=ALLOCATED(outSpecies) 
 if (columnFlag) open(11,file=columnFile,status='unknown')
+write(*,*) outSpecies
 open(7,file=abundFile,status='unknown')
