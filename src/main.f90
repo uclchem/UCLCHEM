@@ -26,6 +26,9 @@ IMPLICIT NONE
     !Set up with initial values. For chemistry this is setting initial abundances and assigning memory for ODE solver
     CALL initializePhysics
     CALL initializeChemistry
+    
+    !update physics
+    CALL updatePhysics
 
     !loop until the end condition of the model is reached 
     DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
@@ -40,10 +43,6 @@ IMPLICIT NONE
 
         !loop over parcels, counting from centre out to edge of cloud
         DO dstep=1,points
-
-            dens=abund(nspec+1,dstep)
-            !update physics
-            CALL updatePhysics
             !update chemistry
             CALL updateChemistry
             
@@ -54,6 +53,7 @@ IMPLICIT NONE
             !get time in years for output
             timeInYears= currentTime*year
             !write this depth step
+            CALL updatePhysics
             CALL output
         END DO
     END DO 
