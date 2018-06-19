@@ -1,10 +1,10 @@
 from plotfunctions import *
 
 
-cloud=getParameters("src/parameters.f90")
-time,cloud,species,abunds=readTimestep("output/start.dat",1.00e7,cloud)
+cloud=getParameters("src/defaultparameters.f90")
+time,cloud,species,abunds=readTimestep("output/phase2-full.dat",67.1,cloud)
 
-for element in ["O","C","H"]:
+for element in ["S","C","H"]:
 	print "\n**********\n"
 	totalabund=0.0
 	oxyAbunds=[]

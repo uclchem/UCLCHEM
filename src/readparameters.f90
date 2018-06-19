@@ -115,6 +115,10 @@ IF (paramFile .ne. "") THEN
                 READ(buffer,*,iostat=ios) omega
             CASE('vs')
                 READ(buffer,*,iostat=ios) vs
+            CASE('alpha')
+                pos = scan(buffer, ' ')
+                READ(buffer(1:pos),*,iostat=ios) readIndx
+                READ(buffer(pos+1:),*,iostat=ios) alpha(readIndx)
             CASE DEFAULT
                 WRITE(*,*) 'Skipping invalid label at line', line
             END SELECT
