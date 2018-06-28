@@ -10,7 +10,6 @@ IF (paramFile .ne. "") THEN
             pos = scan(buffer, ' ')
             label = buffer(1:pos)
             buffer = buffer(pos+1:)
-
             SELECT CASE (label)
             CASE('initialTemp')
                 READ(buffer,*,iostat=ios) initialTemp
@@ -122,11 +121,11 @@ IF (paramFile .ne. "") THEN
             CASE DEFAULT
                 WRITE(*,*) 'Skipping invalid label at line', line
             END SELECT
+            IF (ios.ne.0) WRITE(*,*) "Problem with line ", label(1:pos),buffer
         END IF
     END DO
 END IF
 open(10,file=outputFile,status='unknown')
 columnFlag=ALLOCATED(outSpecies) 
 if (columnFlag) open(11,file=columnFile,status='unknown')
-write(*,*) outSpecies
 open(7,file=abundFile,status='unknown')

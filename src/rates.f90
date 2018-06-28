@@ -23,19 +23,23 @@ SUBROUTINE calculateReactionRates
             IF (evap .ne. 0 .or. fr .eq. 0.0) then
                 rate(j)=0.0
             ELSE
-                DO i=1,nspec-1
-                    IF (specname(i).eq.re1(j)) THEN
-                        IF (beta(j).eq.0.0 ) THEN
-                            !taken from Rawlings et al. 1992
-                            rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*GRAIN_AREA*fr
-                        ELSE
-                            !Make rates sets beta=1 for ion freeze out. this catches that and
-                            !freezes differently
-                            cion=1.0+16.71d-4/(GRAIN_RADIUS*temp(dstep))
-                            rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*GRAIN_AREA*fr*cion
+                IF (re1(j).eq."E-") THEN
+                    rate(j)=4.57d4*alpha(j)*GRAIN_AREA*fr
+                ELSE
+                    DO i=1,nspec-1
+                        IF (specname(i).eq.re1(j)) THEN
+                            IF (beta(j).eq.0.0 ) THEN
+                                !taken from Rawlings et al. 1992
+                                rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*GRAIN_AREA*fr
+                            ELSE
+                                !Make rates sets beta=1 for ion freeze out. this catches that and
+                                !freezes differently
+                                cion=1.0+16.71d-4/(GRAIN_RADIUS*temp(dstep))
+                                rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*GRAIN_AREA*fr*cion
+                            ENDIF
                         ENDIF
-                    ENDIF
-                END DO
+                    END DO
+                END IF
             ENDIF
         !The below desorption mechanisms are from Roberts et al. 2007 MNRAS with
         !the addition of direct UV photodesorption. DESOH2,DESCR1,DEUVCR
