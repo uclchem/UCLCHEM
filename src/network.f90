@@ -1,4 +1,4 @@
-integer, parameter :: nSpec=213, nReac=2441
+integer, parameter :: nSpec=213, nReac=2442
 character(Len=10), parameter :: specname (213)=(/"H         "&
     &,"H+        ","H2        ","H2+       ","H3+       ","HE        "&
     &,"HE+       ","HEH+      ","C         ","C+        ","CH        "&
@@ -110,7 +110,7 @@ double precision, parameter :: formationEnthalpy (50)=(/-1.59e+01&
     &,1.95e+02,-2.84e+01,-2.43e+01,6.53e+01,-9.40e+01,-5.19e+01,2.83e+01&
     &,8.80e+00,6.38e+01,-9.99e+02,1.20e+00,1.91e+02,8.40e+01,7.35e+01&
     &,1.49e+02,-7.00e+01,0.00e+00,-3.40e+01,1.89e+02,-9.99e+02,-7.03e+01/)
-character(Len=10), parameter :: re1 (2441)=(/"CH        ","H+        "&
+character(Len=10), parameter :: re1 (2442)=(/"CH        ","H+        "&
     &,"H2        ","H2        ","H2        ","H2        ","H2        "&
     &,"H2        ","H2        ","H         ","H         ","H         "&
     &,"H         ","H         ","C+        ","C+        ","C+        "&
@@ -568,38 +568,38 @@ character(Len=10), parameter :: re1 (2441)=(/"CH        ","H+        "&
     &,"HSO+      ","SO2+      ","HOCS+     ","MG+       ","MG        "&
     &,"NH4+      ","HCNH+     ","N2H+      ","HNS+      ","C3+       "&
     &,"H2S+      ","O2H       ","HSO2+     ","CO        ","HNC       "&
-    &,"C2H2      ","CH3CN     ","C2H4      ","C2H5      ","#CH4      "&
-    &,"#CH4      ","#CH4      ","#NH3      ","#NH3      ","#NH3      "&
-    &,"#H2O      ","#H2O      ","#H2O      ","#C2       ","#C2       "&
-    &,"#C2       ","#MG       ","#MG       ","#MG       ","#C2H      "&
-    &,"#C2H      ","#C2H      ","#C2H2     ","#C2H2     ","#C2H2     "&
-    &,"#HCN      ","#HCN      ","#HCN      ","#HNC      ","#HNC      "&
-    &,"#HNC      ","#C2H3     ","#C2H3     ","#C2H3     ","#CO       "&
-    &,"#CO       ","#CO       ","#N2       ","#N2       ","#N2       "&
-    &,"#C2H4     ","#C2H4     ","#C2H4     ","#H2CN     ","#H2CN     "&
-    &,"#H2CN     ","#C2H5     ","#C2H5     ","#C2H5     ","#NO       "&
-    &,"#NO       ","#NO       ","#H2CO     ","#H2CO     ","#H2CO     "&
-    &,"#HNO      ","#HNO      ","#HNO      ","#O2       ","#O2       "&
-    &,"#O2       ","#CH3OH    ","#CH3OH    ","#CH3OH    ","#SIH4     "&
-    &,"#SIH4     ","#SIH4     ","#O2H      ","#O2H      ","#O2H      "&
-    &,"#H2S      ","#H2S      ","#H2S      ","#HCL      ","#HCL      "&
-    &,"#HCL      ","#C3H2     ","#C3H2     ","#C3H2     ","#CH3CCH   "&
-    &,"#CH3CCH   ","#CH3CCH   ","#SIC      ","#SIC      ","#SIC      "&
-    &,"#CH3CN    ","#CH3CN    ","#CH3CN    ","#CH2CO    ","#CH2CO    "&
-    &,"#CH2CO    ","#CH3CNH   ","#CH3CNH   ","#CH3CNH   ","#HNCO     "&
-    &,"#HNCO     ","#HNCO     ","#SIO      ","#SIO      ","#SIO      "&
-    &,"#CS       ","#CS       ","#CS       ","#CO2      ","#CO2      "&
-    &,"#CO2      ","#C2H5OH   ","#C2H5OH   ","#C2H5OH   ","#H2CS     "&
-    &,"#H2CS     ","#H2CS     ","#NO2      ","#NO2      ","#NO2      "&
-    &,"#NS       ","#NS       ","#NS       ","#H2SIO    ","#H2SIO    "&
-    &,"#H2SIO    ","#SO       ","#SO       ","#SO       ","#C4H      "&
-    &,"#C4H      ","#C4H      ","#HC3N     ","#HC3N     ","#HC3N     "&
-    &,"#NCCN     ","#NCCN     ","#NCCN     ","#SIC2     ","#SIC2     "&
-    &,"#SIC2     ","#HCOOCH3  ","#HCOOCH3  ","#HCOOCH3  ","#SIS      "&
-    &,"#SIS      ","#SIS      ","#OCS      ","#OCS      ","#OCS      "&
-    &,"#C4N      ","#C4N      ","#C4N      ","#SIC3     ","#SIC3     "&
-    &,"#SIC3     ","#SO2      ","#SO2      ","#SO2      "/)
-character(Len=10), parameter :: re2 (2441)=(/"O         ","HNC       "&
+    &,"C2H2      ","CH3CN     ","C2H4      ","C2H5      ","E-        "&
+    &,"#CH4      ","#CH4      ","#CH4      ","#NH3      ","#NH3      "&
+    &,"#NH3      ","#H2O      ","#H2O      ","#H2O      ","#C2       "&
+    &,"#C2       ","#C2       ","#MG       ","#MG       ","#MG       "&
+    &,"#C2H      ","#C2H      ","#C2H      ","#C2H2     ","#C2H2     "&
+    &,"#C2H2     ","#HCN      ","#HCN      ","#HCN      ","#HNC      "&
+    &,"#HNC      ","#HNC      ","#C2H3     ","#C2H3     ","#C2H3     "&
+    &,"#CO       ","#CO       ","#CO       ","#N2       ","#N2       "&
+    &,"#N2       ","#C2H4     ","#C2H4     ","#C2H4     ","#H2CN     "&
+    &,"#H2CN     ","#H2CN     ","#C2H5     ","#C2H5     ","#C2H5     "&
+    &,"#NO       ","#NO       ","#NO       ","#H2CO     ","#H2CO     "&
+    &,"#H2CO     ","#HNO      ","#HNO      ","#HNO      ","#O2       "&
+    &,"#O2       ","#O2       ","#CH3OH    ","#CH3OH    ","#CH3OH    "&
+    &,"#SIH4     ","#SIH4     ","#SIH4     ","#O2H      ","#O2H      "&
+    &,"#O2H      ","#H2S      ","#H2S      ","#H2S      ","#HCL      "&
+    &,"#HCL      ","#HCL      ","#C3H2     ","#C3H2     ","#C3H2     "&
+    &,"#CH3CCH   ","#CH3CCH   ","#CH3CCH   ","#SIC      ","#SIC      "&
+    &,"#SIC      ","#CH3CN    ","#CH3CN    ","#CH3CN    ","#CH2CO    "&
+    &,"#CH2CO    ","#CH2CO    ","#CH3CNH   ","#CH3CNH   ","#CH3CNH   "&
+    &,"#HNCO     ","#HNCO     ","#HNCO     ","#SIO      ","#SIO      "&
+    &,"#SIO      ","#CS       ","#CS       ","#CS       ","#CO2      "&
+    &,"#CO2      ","#CO2      ","#C2H5OH   ","#C2H5OH   ","#C2H5OH   "&
+    &,"#H2CS     ","#H2CS     ","#H2CS     ","#NO2      ","#NO2      "&
+    &,"#NO2      ","#NS       ","#NS       ","#NS       ","#H2SIO    "&
+    &,"#H2SIO    ","#H2SIO    ","#SO       ","#SO       ","#SO       "&
+    &,"#C4H      ","#C4H      ","#C4H      ","#HC3N     ","#HC3N     "&
+    &,"#HC3N     ","#NCCN     ","#NCCN     ","#NCCN     ","#SIC2     "&
+    &,"#SIC2     ","#SIC2     ","#HCOOCH3  ","#HCOOCH3  ","#HCOOCH3  "&
+    &,"#SIS      ","#SIS      ","#SIS      ","#OCS      ","#OCS      "&
+    &,"#OCS      ","#C4N      ","#C4N      ","#C4N      ","#SIC3     "&
+    &,"#SIC3     ","#SIC3     ","#SO2      ","#SO2      ","#SO2      "/)
+character(Len=10), parameter :: re2 (2442)=(/"O         ","HNC       "&
     &,"CH        ","H2        ","H2O       ","HOC+      ","O2        "&
     &,"OH        ","E-        ","CH        ","H2        ","H2O       "&
     &,"O2        ","OH        ","CH2       ","CH        ","H2CO      "&
@@ -1057,8 +1057,7 @@ character(Len=10), parameter :: re2 (2441)=(/"O         ","HNC       "&
     &,"FREEZE    ","FREEZE    ","FREEZE    ","FREEZE    ","FREEZE    "&
     &,"FREEZE    ","FREEZE    ","FREEZE    ","FREEZE    ","FREEZE    "&
     &,"FREEZE    ","FREEZE    ","FREEZE    ","FREEZE    ","FREEZE    "&
-    &,"FREEZE    ","FREEZE    ","FREEZE    ","FREEZE    ","DESOH2    "&
-    &,"DESCR     ","DEUVCR    ","DESOH2    ","DESCR     ","DEUVCR    "&
+    &,"FREEZE    ","FREEZE    ","FREEZE    ","FREEZE    ","FREEZE    "&
     &,"DESOH2    ","DESCR     ","DEUVCR    ","DESOH2    ","DESCR     "&
     &,"DEUVCR    ","DESOH2    ","DESCR     ","DEUVCR    ","DESOH2    "&
     &,"DESCR     ","DEUVCR    ","DESOH2    ","DESCR     ","DEUVCR    "&
@@ -1087,8 +1086,9 @@ character(Len=10), parameter :: re2 (2441)=(/"O         ","HNC       "&
     &,"DEUVCR    ","DESOH2    ","DESCR     ","DEUVCR    ","DESOH2    "&
     &,"DESCR     ","DEUVCR    ","DESOH2    ","DESCR     ","DEUVCR    "&
     &,"DESOH2    ","DESCR     ","DEUVCR    ","DESOH2    ","DESCR     "&
-    &,"DEUVCR    ","DESOH2    ","DESCR     ","DEUVCR    "/)
-character(Len=10), parameter :: re3 (2441)=(/"NAN       ","NAN       "&
+    &,"DEUVCR    ","DESOH2    ","DESCR     ","DEUVCR    ","DESOH2    "&
+    &,"DESCR     ","DEUVCR    ","DESOH2    ","DESCR     ","DEUVCR    "/)
+character(Len=10), parameter :: re3 (2442)=(/"NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
@@ -1576,8 +1576,8 @@ character(Len=10), parameter :: re3 (2441)=(/"NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
-    &,"NAN       ","NAN       ","NAN       ","NAN       "/)
-character(Len=10), parameter :: p1 (2441)=(/"HCO+      ","HCN       "&
+    &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "/)
+character(Len=10), parameter :: p1 (2442)=(/"HCO+      ","HCN       "&
     &,"C         ","H2        ","OH        ","HCO+      ","O         "&
     &,"O         ","H         ","C         ","H         ","OH        "&
     &,"O         ","O         ","CH2+      ","CH+       ","H2CO+     "&
@@ -2035,38 +2035,38 @@ character(Len=10), parameter :: p1 (2441)=(/"HCO+      ","HCN       "&
     &,"#SO       ","#SO2      ","#OCS      ","#MG       ","#MG       "&
     &,"#NH3      ","#HCN      ","#N2       ","#NS       ","#C2       "&
     &,"#H2S      ","#O2H      ","#SO2      ","#CH3OH    ","#HNC      "&
-    &,"#C2H2     ","#CH3CN    ","#C2H4     ","#C2H5     ","CH4       "&
-    &,"CH4       ","CH4       ","NH3       ","NH3       ","NH3       "&
-    &,"H2O       ","H2O       ","H2O       ","C2        ","C2        "&
-    &,"C2        ","MG        ","MG        ","MG        ","C2H       "&
-    &,"C2H       ","C2H       ","C2H2      ","C2H2      ","C2H2      "&
-    &,"HCN       ","HCN       ","HCN       ","HNC       ","HNC       "&
-    &,"HNC       ","C2H3      ","C2H3      ","C2H3      ","CO        "&
-    &,"CO        ","CO        ","N2        ","N2        ","N2        "&
-    &,"C2H4      ","C2H4      ","C2H4      ","H2CN      ","H2CN      "&
-    &,"H2CN      ","C2H5      ","C2H5      ","C2H5      ","NO        "&
-    &,"NO        ","NO        ","H2CO      ","H2CO      ","H2CO      "&
-    &,"HNO       ","HNO       ","HNO       ","O2        ","O2        "&
-    &,"O2        ","CH3OH     ","CH3OH     ","CH3OH     ","SIH4      "&
-    &,"SIH4      ","SIH4      ","O2H       ","O2H       ","O2H       "&
-    &,"H2S       ","H2S       ","H2S       ","HCL       ","HCL       "&
-    &,"HCL       ","C3H2      ","C3H2      ","C3H2      ","CH3CCH    "&
-    &,"CH3CCH    ","CH3CCH    ","SIC       ","SIC       ","SIC       "&
-    &,"CH3CN     ","CH3CN     ","CH3CN     ","CH2CO     ","CH2CO     "&
-    &,"CH2CO     ","CH3CNH    ","CH3CNH    ","CH3CNH    ","HNCO      "&
-    &,"HNCO      ","HNCO      ","SIO       ","SIO       ","SIO       "&
-    &,"CS        ","CS        ","CS        ","CO2       ","CO2       "&
-    &,"CO2       ","C2H5OH    ","C2H5OH    ","C2H5OH    ","H2CS      "&
-    &,"H2CS      ","H2CS      ","NO2       ","NO2       ","NO2       "&
-    &,"NS        ","NS        ","NS        ","H2SIO     ","H2SIO     "&
-    &,"H2SIO     ","SO        ","SO        ","SO        ","C4H       "&
-    &,"C4H       ","C4H       ","HC3N      ","HC3N      ","HC3N      "&
-    &,"NCCN      ","NCCN      ","NCCN      ","SIC2      ","SIC2      "&
-    &,"SIC2      ","HCOOCH3   ","HCOOCH3   ","HCOOCH3   ","SIS       "&
-    &,"SIS       ","SIS       ","OCS       ","OCS       ","OCS       "&
-    &,"C4N       ","C4N       ","C4N       ","SIC3      ","SIC3      "&
-    &,"SIC3      ","SO2       ","SO2       ","SO2       "/)
-character(Len=10), parameter :: p2 (2441)=(/"E-        ","H+        "&
+    &,"#C2H2     ","#CH3CN    ","#C2H4     ","#C2H5     ","          "&
+    &,"CH4       ","CH4       ","CH4       ","NH3       ","NH3       "&
+    &,"NH3       ","H2O       ","H2O       ","H2O       ","C2        "&
+    &,"C2        ","C2        ","MG        ","MG        ","MG        "&
+    &,"C2H       ","C2H       ","C2H       ","C2H2      ","C2H2      "&
+    &,"C2H2      ","HCN       ","HCN       ","HCN       ","HNC       "&
+    &,"HNC       ","HNC       ","C2H3      ","C2H3      ","C2H3      "&
+    &,"CO        ","CO        ","CO        ","N2        ","N2        "&
+    &,"N2        ","C2H4      ","C2H4      ","C2H4      ","H2CN      "&
+    &,"H2CN      ","H2CN      ","C2H5      ","C2H5      ","C2H5      "&
+    &,"NO        ","NO        ","NO        ","H2CO      ","H2CO      "&
+    &,"H2CO      ","HNO       ","HNO       ","HNO       ","O2        "&
+    &,"O2        ","O2        ","CH3OH     ","CH3OH     ","CH3OH     "&
+    &,"SIH4      ","SIH4      ","SIH4      ","O2H       ","O2H       "&
+    &,"O2H       ","H2S       ","H2S       ","H2S       ","HCL       "&
+    &,"HCL       ","HCL       ","C3H2      ","C3H2      ","C3H2      "&
+    &,"CH3CCH    ","CH3CCH    ","CH3CCH    ","SIC       ","SIC       "&
+    &,"SIC       ","CH3CN     ","CH3CN     ","CH3CN     ","CH2CO     "&
+    &,"CH2CO     ","CH2CO     ","CH3CNH    ","CH3CNH    ","CH3CNH    "&
+    &,"HNCO      ","HNCO      ","HNCO      ","SIO       ","SIO       "&
+    &,"SIO       ","CS        ","CS        ","CS        ","CO2       "&
+    &,"CO2       ","CO2       ","C2H5OH    ","C2H5OH    ","C2H5OH    "&
+    &,"H2CS      ","H2CS      ","H2CS      ","NO2       ","NO2       "&
+    &,"NO2       ","NS        ","NS        ","NS        ","H2SIO     "&
+    &,"H2SIO     ","H2SIO     ","SO        ","SO        ","SO        "&
+    &,"C4H       ","C4H       ","C4H       ","HC3N      ","HC3N      "&
+    &,"HC3N      ","NCCN      ","NCCN      ","NCCN      ","SIC2      "&
+    &,"SIC2      ","SIC2      ","HCOOCH3   ","HCOOCH3   ","HCOOCH3   "&
+    &,"SIS       ","SIS       ","SIS       ","OCS       ","OCS       "&
+    &,"OCS       ","C4N       ","C4N       ","C4N       ","SIC3      "&
+    &,"SIC3      ","SIC3      ","SO2       ","SO2       ","SO2       "/)
+character(Len=10), parameter :: p2 (2442)=(/"E-        ","H+        "&
     &,"H2        ","H         ","H2        ","H2        ","O         "&
     &,"H2        ","H         ","H         ","H         ","H         "&
     &,"O         ","H         ","C         ","C         ","C         "&
@@ -2554,8 +2554,8 @@ character(Len=10), parameter :: p2 (2441)=(/"E-        ","H+        "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
-    &,"NAN       ","NAN       ","NAN       ","NAN       "/)
-character(Len=10), parameter :: p3 (2441)=(/"NAN       ","NAN       "&
+    &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "/)
+character(Len=10), parameter :: p3 (2442)=(/"NAN       ","NAN       "&
     &,"H         ","H         ","H         ","NAN       ","H2        "&
     &,"H         ","E-        ","H         ","H         ","H         "&
     &,"H         ","H         ","NAN       ","NAN       ","NAN       "&
@@ -3043,8 +3043,8 @@ character(Len=10), parameter :: p3 (2441)=(/"NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
-    &,"NAN       ","NAN       ","NAN       ","NAN       "/)
-character(Len=10), parameter :: p4 (2441)=(/"NAN       ","NAN       "&
+    &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "/)
+character(Len=10), parameter :: p4 (2442)=(/"NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
@@ -3532,8 +3532,8 @@ character(Len=10), parameter :: p4 (2441)=(/"NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
     &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "&
-    &,"NAN       ","NAN       ","NAN       ","NAN       "/)
-double precision :: alpha (2441)=(/1.09e-11,1.00e-09,6.00e-09&
+    &,"NAN       ","NAN       ","NAN       ","NAN       ","NAN       "/)
+double precision :: alpha (2442)=(/1.09e-11,1.00e-09,6.00e-09&
     &,1.00e-08,5.80e-09,3.80e-10,6.00e-09,6.00e-09,3.22e-09,6.00e-09&
     &,4.67e-07,5.80e-09,6.00e-09,6.00e-09,5.20e-10,3.80e-10,7.80e-10&
     &,6.00e-10,4.80e-10,1.10e-09,2.00e-10,6.72e-10,7.05e-10,7.60e-10&
@@ -3882,8 +3882,8 @@ double precision :: alpha (2441)=(/1.09e-11,1.00e-09,6.00e-09&
     &,1.00e+00,1.00e+00,1.00e+00,1.00e+00,1.00e+00,1.00e+00,1.00e+00&
     &,1.00e+00,1.00e+00,1.00e+00,1.00e+00,1.00e+00,1.00e+00,1.00e+00&
     &,1.00e+00,1.00e+00,1.00e+00,1.00e+00,1.00e+00,1.00e+00,1.00e+00&
-    &,1.00e+00,1.00e+00/)
-double precision :: beta (2441)=(/-2.19e+00,0.00e+00,0.00e+00&
+    &,1.00e+00,1.00e+00,1.00e+00/)
+double precision :: beta (2442)=(/-2.19e+00,0.00e+00,0.00e+00&
     &,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,3.50e-01,0.00e+00&
     &,-1.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,-5.00e-01,-5.00e-01&
     &,-5.00e-01,-5.00e-01,0.00e+00,0.00e+00,0.00e+00,-3.00e-02,-5.00e-01&
@@ -4232,8 +4232,8 @@ double precision :: beta (2441)=(/-2.19e+00,0.00e+00,0.00e+00&
     &,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00&
     &,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00&
     &,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00&
-    &,0.00e+00,0.00e+00/)
-double precision :: gama (2441)=(/1.65e+02,0.00e+00,4.02e+04,8.41e+04&
+    &,0.00e+00,0.00e+00,0.00e+00/)
+double precision :: gama (2442)=(/1.65e+02,0.00e+00,4.02e+04,8.41e+04&
     &,5.29e+04,0.00e+00,5.23e+04,5.09e+04,1.02e+05,4.02e+04,5.50e+04&
     &,5.29e+04,5.23e+04,5.09e+04,0.00e+00,0.00e+00,0.00e+00,0.00e+00&
     &,0.00e+00,0.00e+00,0.00e+00,-5.00e-01,-1.67e+01,0.00e+00,0.00e+00&
@@ -4560,26 +4560,26 @@ double precision :: gama (2441)=(/1.65e+02,0.00e+00,4.02e+04,8.41e+04&
     &,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00&
     &,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00&
     &,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00&
-    &,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,9.60e+02,9.60e+02&
-    &,9.60e+02,5.50e+03,5.50e+03,5.50e+03,5.60e+03,5.60e+03,5.60e+03&
-    &,1.00e+04,1.00e+04,1.00e+04,5.30e+03,5.30e+03,5.30e+03,3.00e+03&
-    &,3.00e+03,3.00e+03,2.59e+03,2.59e+03,2.59e+03,3.70e+03,3.70e+03&
-    &,3.70e+03,3.80e+03,3.80e+03,3.80e+03,2.80e+03,2.80e+03,2.80e+03&
-    &,1.30e+03,1.30e+03,1.30e+03,1.10e+03,1.10e+03,1.10e+03,2.50e+03&
-    &,2.50e+03,2.50e+03,2.40e+03,2.40e+03,2.40e+03,3.10e+03,3.10e+03&
-    &,3.10e+03,1.60e+03,1.60e+03,1.60e+03,4.50e+03,4.50e+03,4.50e+03&
-    &,3.00e+03,3.00e+03,3.00e+03,1.20e+03,1.20e+03,1.20e+03,5.00e+03&
-    &,5.00e+03,5.00e+03,1.30e+04,1.30e+04,1.30e+04,5.00e+03,5.00e+03&
-    &,5.00e+03,2.70e+03,2.70e+03,2.70e+03,5.17e+03,5.17e+03,5.17e+03&
-    &,5.90e+03,5.90e+03,5.90e+03,3.00e+03,3.00e+03,3.00e+03,3.50e+03&
-    &,3.50e+03,3.50e+03,4.68e+03,4.68e+03,4.68e+03,2.80e+03,2.80e+03&
-    &,2.80e+03,3.74e+03,3.74e+03,3.74e+03,4.40e+03,4.40e+03,4.40e+03&
-    &,3.50e+03,3.50e+03,3.50e+03,3.20e+03,3.20e+03,3.20e+03,2.60e+03&
-    &,2.60e+03,2.60e+03,5.40e+03,5.40e+03,5.40e+03,4.40e+03,4.40e+03&
-    &,4.40e+03,2.40e+03,2.40e+03,2.40e+03,1.90e+03,1.90e+03,1.90e+03&
-    &,4.40e+03,4.40e+03,4.40e+03,2.80e+03,2.80e+03,2.80e+03,3.74e+03&
-    &,3.74e+03,3.74e+03,4.58e+03,4.58e+03,4.58e+03,3.00e+03,3.00e+03&
-    &,3.00e+03,4.30e+03,4.30e+03,4.30e+03,4.21e+03,4.21e+03,4.21e+03&
-    &,3.80e+03,3.80e+03,3.80e+03,2.40e+03,2.40e+03,2.40e+03,4.00e+03&
-    &,4.00e+03,4.00e+03,5.10e+03,5.10e+03,5.10e+03,3.40e+03,3.40e+03&
-    &,3.40e+03/)
+    &,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,0.00e+00,9.60e+02&
+    &,9.60e+02,9.60e+02,5.50e+03,5.50e+03,5.50e+03,5.60e+03,5.60e+03&
+    &,5.60e+03,1.00e+04,1.00e+04,1.00e+04,5.30e+03,5.30e+03,5.30e+03&
+    &,3.00e+03,3.00e+03,3.00e+03,2.59e+03,2.59e+03,2.59e+03,3.70e+03&
+    &,3.70e+03,3.70e+03,3.80e+03,3.80e+03,3.80e+03,2.80e+03,2.80e+03&
+    &,2.80e+03,1.30e+03,1.30e+03,1.30e+03,1.10e+03,1.10e+03,1.10e+03&
+    &,2.50e+03,2.50e+03,2.50e+03,2.40e+03,2.40e+03,2.40e+03,3.10e+03&
+    &,3.10e+03,3.10e+03,1.60e+03,1.60e+03,1.60e+03,4.50e+03,4.50e+03&
+    &,4.50e+03,3.00e+03,3.00e+03,3.00e+03,1.20e+03,1.20e+03,1.20e+03&
+    &,5.00e+03,5.00e+03,5.00e+03,1.30e+04,1.30e+04,1.30e+04,5.00e+03&
+    &,5.00e+03,5.00e+03,2.70e+03,2.70e+03,2.70e+03,5.17e+03,5.17e+03&
+    &,5.17e+03,5.90e+03,5.90e+03,5.90e+03,3.00e+03,3.00e+03,3.00e+03&
+    &,3.50e+03,3.50e+03,3.50e+03,4.68e+03,4.68e+03,4.68e+03,2.80e+03&
+    &,2.80e+03,2.80e+03,3.74e+03,3.74e+03,3.74e+03,4.40e+03,4.40e+03&
+    &,4.40e+03,3.50e+03,3.50e+03,3.50e+03,3.20e+03,3.20e+03,3.20e+03&
+    &,2.60e+03,2.60e+03,2.60e+03,5.40e+03,5.40e+03,5.40e+03,4.40e+03&
+    &,4.40e+03,4.40e+03,2.40e+03,2.40e+03,2.40e+03,1.90e+03,1.90e+03&
+    &,1.90e+03,4.40e+03,4.40e+03,4.40e+03,2.80e+03,2.80e+03,2.80e+03&
+    &,3.74e+03,3.74e+03,3.74e+03,4.58e+03,4.58e+03,4.58e+03,3.00e+03&
+    &,3.00e+03,3.00e+03,4.30e+03,4.30e+03,4.30e+03,4.21e+03,4.21e+03&
+    &,4.21e+03,3.80e+03,3.80e+03,3.80e+03,2.40e+03,2.40e+03,2.40e+03&
+    &,4.00e+03,4.00e+03,4.00e+03,5.10e+03,5.10e+03,5.10e+03,3.40e+03&
+    &,3.40e+03,3.40e+03/)

@@ -94,6 +94,7 @@ IF (paramFile .ne. "") THEN
                 READ(buffer,*,iostat=ios) outputFile
             CASE('columnFile')
                 READ(buffer,*,iostat=ios) columnFile 
+                columnFileRead=.True.
             CASE('ebmaxh2')
                 READ(buffer,*,iostat=ios) ebmaxh2
             CASE('epsilon')
@@ -126,6 +127,15 @@ IF (paramFile .ne. "") THEN
     END DO
 END IF
 open(10,file=outputFile,status='unknown')
+
+!Optionally, user can set species and have their abundances written out in columns with temp,dens and time.
+!This checks whether those species were chosen and creates the output. Also warns users if set up isn't complete.
 columnFlag=ALLOCATED(outSpecies) 
-if (columnFlag) open(11,file=columnFile,status='unknown')
+IF (columnFlag) THEN
+    open(11,file=columnFile,status='unknown')
+ELSE IF (columnFileRead) THEN
+    write(*,*) "columnFile read but no species chosen, see example inputs for how to set outSpecies array."
+    write(*,*) "Continuing without columnated output."
+END IF
+
 open(7,file=abundFile,status='unknown')

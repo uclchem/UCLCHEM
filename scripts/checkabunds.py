@@ -1,11 +1,12 @@
+from __future__ import print_function
 from plotfunctions import *
 
 
 cloud=getParameters("src/defaultparameters.f90")
-time,cloud,species,abunds=readTimestep("output/phase2-full.dat",67.1,cloud)
+time,cloud,species,abunds=readTimestep("output/fullcloud2.dat",1.0e7,cloud)
 
-for element in ["S","C","H"]:
-	print "\n**********\n"
+for element in ["+","-"]:
+	print("\n**********\n")
 	totalabund=0.0
 	oxyAbunds=[]
 	oxySpecs=[]
@@ -18,9 +19,9 @@ for element in ["S","C","H"]:
 			oxyAbunds.append(nAtom*abunds[i])
 			oxySpecs.append(species[i])
 
-	print "{:.2e}".format(totalabund)
+	print("{:.2e}".format(totalabund))
 	A=zip(oxyAbunds,oxySpecs)
 	A.sort(reverse=True)
 	oxyAbunds,oxySpecs=zip(*A)
 	for i in range(0,10):
-		print "{0} {1:.3e}".format(oxySpecs[i],oxyAbunds[i])
+		print("{0} {1:.3e}".format(oxySpecs[i],oxyAbunds[i]))

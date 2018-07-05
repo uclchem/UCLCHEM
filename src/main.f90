@@ -7,9 +7,10 @@ PROGRAM uclchem
 USE physics
 USE chemistry
 IMPLICIT NONE
-    integer :: ios=0,line=0,fileNum=12,pos,readIndx
+    INTEGER :: ios=0,line=0,fileNum=12,pos,readIndx
     CHARACTER (LEN=100):: paramFile, buffer,label
     CHARACTER (LEN=100):: abundFile,outputFile,columnFile
+    LOGICAL :: columnFileRead=.False.
     
     !All model parameters are given a default value in paramters.f90
     !Full explanations of those parameters in the comments of that file

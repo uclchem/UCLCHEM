@@ -92,7 +92,7 @@ def readTimestep(filename,chosenTime,cloud):
     return time,cloud,species,abunds 
 
 def write_cols(filename,times,dens,abundances):
-    f=open(filename,"wb")
+    f=open(filename,"w")
     for timeIndx,time in enumerate(times):
         outString="{0:.3e} {1:.3e}".format(time,dens[timeIndx])
         for i in range(0,len(abundances)):
