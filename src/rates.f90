@@ -170,9 +170,9 @@ double precision FUNCTION diffusionReactionRate()
 
     !Now adjust for fraction of this reaction's products that will desorb due to energy released
     IF (re3(j).eq.'DIFF') THEN
-        rate(j) = diffusionReactionRate * (1-desorptionFraction(j,index1,index2))
+        diffusionReactionRate = diffusionReactionRate * (1-desorptionFraction(j,index1,index2))
     ELSE IF(re3(j).eq.'CHEMDES') THEN
-        rate(j) = diffusionReactionRate * desorptionFraction(j,index1,index2)
+        diffusionReactionRate = diffusionReactionRate * desorptionFraction(j,index1,index2)
     ENDIF
 END FUNCTION diffusionReactionRate
 
@@ -273,7 +273,7 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
     if (productIndex(4).NE.0) degreesOfFreedom = max(degreesOfFreedom,atomCounts(productIndex(4)))                    
     degreesOfFreedom = 3 * degreesOfFreedom
         
-    desorptionFraction = dexp((-maxBindingEnergy*degreesOfFreedom) / (epsilonCd * deltaEnthalpy))
+    desorptionFraction = dexp((-maxBindingEnergy*real(degreesOfFreedom)) / (epsilonCd * deltaEnthalpy))
     
    IF (deltaEnthalpy.lt.0.d0) THEN        !< If reaction is endothermic, no CRD
         desorptionFraction = 0.d0

@@ -503,10 +503,10 @@ def write_network_file(fileName,speciesList,reactionList):
 	masses=[]
 	for species in speciesList:
 		names.append(species.name)
-		masses.append(species.mass)
+		masses.append(float(species.mass))
 		atoms.append(species.n_atoms)
 	openFile.write(array_to_string("specname",names,type="string"))
-	openFile.write(array_to_string("mass",masses,type="int"))
+	openFile.write(array_to_string("mass",masses,type="float"))
 	openFile.write(array_to_string("atomCounts",atoms,type="int"))
 
 
@@ -558,7 +558,7 @@ def array_to_string(name,array,type="int",parameter=True):
 	elif type=="float":
 		outString="double precision"+outString
 		for value in array:
-			outString+="{0:.2e},".format(value)
+			outString+="{0:.4e},".format(value)
 	elif type=="string":
 		outString="character(Len=10)"+outString
 		for value in array:
