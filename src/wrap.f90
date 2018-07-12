@@ -7,15 +7,16 @@ SUBROUTINE CLOUD(initDens,finDens,finTime,temp,outFile)
     USE chemistry
     IMPLICIT NONE
     double precision, INTENT(IN) :: initDens,finDens,finTime,temp
-    character, INTENT(IN) :: outFile
+    character(LEN=*), INTENT(IN) :: outFile
     !f2py intent(in) initDens,finDens,finTime,temp,outFile
-    include 'parameters.f90'
+    include 'defaultparameters.f90'
     close(10)
     close(11)
     close(7)
-    open(10,file='output/full'//outFile//'.dat',status='unknown') 
-    open(11,file='output/column'//outFile//'.dat',status='unknown')
-    open(7,file='output/start'//outFile//'.dat',status='unknown') 
+
+    open(10,file=outFile,status='unknown') 
+    columnFlag=.False.
+    open(7,file=outFile//"-start.dat",status='unknown') 
     initialDens=initDens
     IF (ABS(initDens-finDens) .GT. 0.01) THEN
         collapse=1
@@ -26,6 +27,13 @@ SUBROUTINE CLOUD(initDens,finDens,finTime,temp,outFile)
     initialTemp=temp
     finalTime=finTime
     switch=0
+
+    CALL initializePhysics
+    CALL initializeChemistry
+
+    dstep=1
+    currentTime=0.0
+    timeInYears=0.0
     !loop until the end condition of the model is reached 
     DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
 
