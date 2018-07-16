@@ -3,9 +3,9 @@ from plotfunctions import *
 
 
 cloud=getParameters("src/defaultparameters.f90")
-time,cloud,species,abunds=readTimestep("output/fullcloud2.dat",1.0e7,cloud)
+time,cloud,species,abunds=readTimestep("output/fullcloud1.dat",1.64e07,cloud)
 
-for element in ["+","-"]:
+for element in ["+","C"]:
 	print("\n**********\n")
 	totalabund=0.0
 	oxyAbunds=[]
@@ -21,7 +21,7 @@ for element in ["+","-"]:
 
 	print("{:.2e}".format(totalabund))
 	A=zip(oxyAbunds,oxySpecs)
-	A.sort(reverse=True)
+	A=sorted(A,reverse=True)
 	oxyAbunds,oxySpecs=zip(*A)
 	for i in range(0,10):
 		print("{0} {1:.3e}".format(oxySpecs[i],oxyAbunds[i]))

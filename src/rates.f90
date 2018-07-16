@@ -24,7 +24,8 @@ SUBROUTINE calculateReactionRates
                 rate(j)=0.0
             ELSE
                 IF (re1(j).eq."E-") THEN
-                    rate(j)=4.57d4*alpha(j)*GRAIN_AREA*fr
+                    cion=1.0+16.71d-4/(GRAIN_RADIUS*temp(dstep))
+                    rate(j)=4.57d4*alpha(j)*GRAIN_AREA*fr*cion
                 ELSE
                     DO i=1,nspec-1
                         IF (specname(i).eq.re1(j)) THEN
