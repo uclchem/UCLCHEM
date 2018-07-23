@@ -6,8 +6,10 @@ SUBROUTINE CLOUD(initDens,finDens,finTime,temp,outFile)
     USE physics
     USE chemistry
     IMPLICIT NONE
-    double precision, INTENT(IN) :: initDens,finDens,finTime,temp
-    character(LEN=*), INTENT(IN) :: outFile
+    DOUBLE PRECISION, INTENT(IN) :: initDens,finDens,finTime,temp
+    CHARACTER(LEN=*), INTENT(IN) :: outFile
+    CHARACTER (LEN=100):: abundFile,outputFile,columnFile
+
     !f2py intent(in) initDens,finDens,finTime,temp,outFile
     include 'defaultparameters.f90'
     close(10)
