@@ -42,6 +42,7 @@ CONTAINS
 !YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
 
     SUBROUTINE initializePhysics
+        IF (ALLOCATED(av)) deallocate(av,coldens,temp,dens)
         allocate(av(points),coldens(points),temp(points),dens(points))
         cloudSize=(rout-rin)*pc
         dens=initialDens

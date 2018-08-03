@@ -86,6 +86,7 @@ CONTAINS
 !This gets called immediately by main so put anything here that you want to happen before the time loop begins, reader is necessary.
     SUBROUTINE initializeChemistry
         NEQ=nspec+1
+        IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff,mantle)
         ALLOCATE(abund(NEQ,points),vdiff(nspec))
         CALL reader
         !if this is the first step of the first phase, set initial abundances
@@ -157,6 +158,7 @@ CONTAINS
         IMPLICIT NONE
         integer i,j,l,m
 
+        IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
         IF (columnFlag) THEN
             nout = SIZE(outSpecies)
             ALLOCATE(outIndx(nout))

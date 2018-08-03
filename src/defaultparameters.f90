@@ -5,7 +5,7 @@
 !Initial physics variables and final  values. for temp, density and time
 initialTemp=10.0;maxTemp=300
 initialDens=2.00d4;finalDens=2.00d4
-currentTime=0.0;finalTime=1.00d7
+currentTime=0.0;finalTime=1.00d6
 
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
 radfield=1.0;zeta=1.0
@@ -29,7 +29,7 @@ switch=0
 !collape=0/1 ONLY if not using cloud.f90
 !In all cases collapse=1 lets chem.f90 know it should call  densdot in the physics module to get time derivative of density and include it in ODES
 !Any other values tells it to use density value as set by physics module
-collapse=0
+collapse=1
 !for collapse=1 can introduce factor bc to slow freefall
 bc=1.0
 
@@ -56,7 +56,7 @@ tempindx=3
 
 
 !cshock module specific variable, uncomment or comment as  needed
-!vs=20.0
+vs=20.0
 
 !initial fractional abundances of elements(from Asplund et al. 2009 ARAA table 1 -SOLAR)
 fh=0.0;fhe = 0.1;fc  = 2.6d-04;fo  = 4.6d-04;fn  = 6.1d-05

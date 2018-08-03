@@ -17,6 +17,14 @@ A full explanation of each parameter is given in defaultparameters.f90 and an ex
 Call uclchem with the filename as an argument: "./uclchem example.inp"
 
 **************************************************************
+Python
+**************************************************************
+Support for python wrapping is limited. "Make python" builds a python library from the source code and wrap.f90. grid.py in the scripts folder runs a grid of models by repeatedly calling that python library. It is difficult to write a python wrapper for all possible use cases so wrap.f90 and grid.py are examples only.
+
+ By changing the inputs and outputs of the subroutine in wrap.f90 or writing new subroutines, the user should be able to run anything they need. Set all parameters that are the same in every model in defaultparameters.f90 and then make variables into inputs to the subroutine.
+
+
+**************************************************************
 Change Log
 **************************************************************
 Various changes have been made with the goal of making UCLCHEM more efficient and starting development of a python module. These changes include:
@@ -33,7 +41,8 @@ This is an open source science code for the community and we are happy to accept
 
 - CAPITALIZED fortran built in functions to make code structure apparent.
 
-*************************************************************
-General issues/ to do list
-*************************************************************
-- f2py wrapper
+
+**************************************************************
+To Do / General Inprovements
+**************************************************************
+Create a keyword based python wrap in a similar to readparameters.f90 so that is more or less general purpose and usable by all.

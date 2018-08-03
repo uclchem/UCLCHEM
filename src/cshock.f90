@@ -45,6 +45,7 @@ CONTAINS
 
     !Set up, calculate cloudSize, give dens a kickstart if collapsing 
     SUBROUTINE initializePhysics
+        IF (ALLOCATED(av)) deallocate(av,coldens,temp,dens)
         allocate(av(points),coldens(points),temp(points),dens(points))  
 
         cloudSize=(rout-rin)*pc
@@ -68,11 +69,15 @@ CONTAINS
 
 
         IF (phase .eq. 2) THEN
+            IF (ALLOCATED(tn)) deallocate(tn,ti,tgc,tgr,tg)
             allocate(tn(points),ti(points),tgc(points),tgr(points),tg(points))
             mun=2*mh
             grainRadius5=grainRadius/4.e-5
             dens6=dens(dstep)/1.e6
-            targetTime0=0
+            targetTime0=0.0
+            dv=0.0
+            zn0=0.0
+            vn0=0.0
         END IF
 
         !maxxtemp set by vs and pre-shock density, polynomial fits to values taken from Draine et al. 1983

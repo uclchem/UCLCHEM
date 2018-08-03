@@ -2,15 +2,15 @@
 !THIS IS A SERIES OF SUBROUTINES THAT CAN BE COMPILED WITH F2PY TO PRODUCE A PYTHON MODULE
 !EACH SUBROUTINE BECOMES A PYTHON FUNCTION
 
-SUBROUTINE CLOUD(initDens,finDens,finTime,temp,outFile)
+SUBROUTINE CLOUD(initDens,finDens,finTime,temp,outFile,startFile)
     USE physics
     USE chemistry
     IMPLICIT NONE
     DOUBLE PRECISION, INTENT(IN) :: initDens,finDens,finTime,temp
-    CHARACTER(LEN=*), INTENT(IN) :: outFile
+    CHARACTER(LEN=*), INTENT(IN) :: outFile,startFile
     CHARACTER (LEN=100):: abundFile,outputFile,columnFile
-
     !f2py intent(in) initDens,finDens,finTime,temp,outFile
+
     include 'defaultparameters.f90'
     close(10)
     close(11)
@@ -30,12 +30,14 @@ SUBROUTINE CLOUD(initDens,finDens,finTime,temp,outFile)
     finalTime=finTime
     switch=0
 
+    abundFile=startFile
     CALL initializePhysics
     CALL initializeChemistry
 
     dstep=1
     currentTime=0.0
     timeInYears=0.0
+    
     !loop until the end condition of the model is reached 
     DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
 
