@@ -4,46 +4,46 @@
 MODULE physics
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
-    integer :: dstep,points
+    INTEGER :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
-    integer :: collapse,switch,phase
-    integer :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
+    INTEGER :: collapse,switch,phase
+    INTEGER :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
-    integer :: evap,ion,solidflag,volcflag,coflag,tempindx
+    INTEGER :: evap,ion,solidflag,volcflag,coflag,tempindx
 
     !variables either controlled by physics or that user may wish to change
-    double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
-    double precision :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp,vs
+    DOUBLE PRECISION :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
+    DOUBLE PRECISION :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp,vs
     
-    !Arrays for phase 2 temp profiles. Parameters for equation chosen by index
+    !Arrays for phase 2 temp profiles. parameters for equation chosen by index
     !arrays go [1Msun,5, 10, 15, 25,60]
    
-    double precision,parameter :: tempa(6)=(/1.927d-1,4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
-    double precision,parameter :: tempb(6)=(/0.5339,0.6255,0.8395,1.085,1.289,1.98/)
-    double precision,parameter :: solidtemp(6)=(/20.0,19.6,19.45,19.3,19.5,20.35/)
-    double precision,parameter :: volctemp(6)=(/84.0,86.3,88.2,89.5,90.4,92.2/)
-    double precision,parameter :: codestemp(6)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
+    DOUBLE PRECISION,PARAMETER :: tempa(6)=(/1.927d-1,4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
+    DOUBLE PRECISION,PARAMETER :: tempb(6)=(/0.5339,0.6255,0.8395,1.085,1.289,1.98/)
+    DOUBLE PRECISION,PARAMETER :: solidtemp(6)=(/20.0,19.6,19.45,19.3,19.5,20.35/)
+    DOUBLE PRECISION,PARAMETER :: volctemp(6)=(/84.0,86.3,88.2,89.5,90.4,92.2/)
+    DOUBLE PRECISION,PARAMETER :: codestemp(6)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
 
-    double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
+    DOUBLE PRECISION, allocatable :: av(:),coldens(:),temp(:),dens(:)
     !Everything should be in cgs units. Helpful constants and conversions below
-    double precision,parameter ::PI=3.141592654,mh=1.67e-24,kbolt=1.38d-23
-    double precision, parameter :: year=3.16455d-08,pc=3.086d18
+    DOUBLE PRECISION,PARAMETER ::PI=3.141592654,mh=1.67e-24,kbolt=1.38d-23
+    DOUBLE PRECISION, PARAMETER :: year=3.16455d-08,pc=3.086d18
 
     !variables for collapse modes
-    double precision :: unitrho,unitr,unitt,c_s
-    double precision :: dimrho,dimr,dimt,maxdimt
-    double precision :: rho0,r0
-    double precision,parameter :: G_N = 6.674d-8
+    DOUBLE PRECISION :: unitrho,unitr,unitt,c_s
+    DOUBLE PRECISION :: dimrho,dimr,dimt,maxdimt
+    DOUBLE PRECISION :: rho0,r0
+    DOUBLE PRECISION,PARAMETER :: G_N = 6.674d-8
 
 CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN.
 !YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
 
     SUBROUTINE initializePhysics
-        IF (ALLOCATED(av)) deallocate(av,coldens,temp,dens)
-        allocate(av(points),coldens(points),temp(points),dens(points))
+        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,temp,dens)
+        ALLOCATE(av(points),coldens(points),temp(points),dens(points))
         cloudSize=(rout-rin)*pc
         dens=initialDens
         temp=initialTemp
@@ -135,7 +135,7 @@ CONTAINS
 
         IF (phase .eq. 2 .and. temp(dstep) .lt. maxTemp) THEN
 
-        !Below we include temperature profiles for hot cores, selected using tempindx in parameters.f90
+        !Below we include temperature profiles for hot cores, selected using tempindx in PARAMETERs.f90
         !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
         !It takes the form T=A(t^B)*[(d/R)^-0.5], where A and B are given below for various stellar masses
             temp(dstep)=(cloudSize/(rout*pc))*(real(dstep)/real(points))
@@ -184,8 +184,8 @@ CONTAINS
 !It get's called by F, the SUBROUTINE in chem.f90 that sets up the ODEs for DVODE
 !Currently set to Rawlings 1992 freefall.
     pure FUNCTION densdot(density)
-        double precision, INTENT(IN) :: density
-        double precision :: densdot
+        DOUBLE PRECISION, INTENT(IN) :: density
+        DOUBLE PRECISION :: densdot
         !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
         IF (density .lt. finalDens) THEN
              densdot=bc*(density**4./initialDens)**0.33*&

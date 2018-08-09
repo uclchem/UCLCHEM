@@ -29,11 +29,12 @@ IMPLICIT NONE
     CALL initializeChemistry
     
     !update physics
-    CALL updatePhysics
+    DO dstep=1,points
+        CALL updatePhysics
+    END DO
 
     !loop until the end condition of the model is reached 
     DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
-
         !store current time as starting point for each depth step
         IF (points .gt. 1) THEN
             currentTimeold=targetTime

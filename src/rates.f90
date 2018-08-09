@@ -171,7 +171,7 @@ double precision FUNCTION diffusionReactionRate()
 
     !Now adjust for fraction of this reaction's products that will desorb due to energy released
     IF (re3(j).eq.'DIFF') THEN
-        diffusionReactionRate = diffusionReactionRate * (1-desorptionFraction(j,index1,index2))
+        diffusionReactionRate = diffusionReactionRate * (1.0-desorptionFraction(j,index1,index2))
     ELSE IF(re3(j).eq.'CHEMDES') THEN
         diffusionReactionRate = diffusionReactionRate * desorptionFraction(j,index1,index2)
     ENDIF
