@@ -4,8 +4,8 @@
 
 !Initial physics variables and final  values. for temp, density and time
 initialTemp=10.0;maxTemp=300
-initialDens=2.00d4;finalDens=2.00d4
-currentTime=0.0;finalTime=5.00d6
+initialDens=2.00d2;finalDens=2.00d4
+currentTime=0.0;finalTime=1.00d7
 
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
 radfield=1.0;zeta=1.0
@@ -16,7 +16,7 @@ fr=1.0;
 !Size of cloud set by inner and outer radii (rin and rout). used to calculate extinction.
 !baseAv is extinction at cloud edge
 !points is number of parcels to run model for. spaced  evenly between rin and rout
-rout=0.05;rin=0;baseAv=2.0;points=1
+rout=0.05;rin=0;baseAv=0.0;points=1
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -29,7 +29,7 @@ switch=0
 !collape=0/1 ONLY if not using cloud.f90
 !In all cases collapse=1 lets chem.f90 know it should call  densdot in the physics module to get time derivative of density and include it in ODES
 !Any other values tells it to use density value as set by physics module
-collapse=0
+collapse=1
 !for collapse=1 can introduce factor bc to slow freefall
 bc=1.0
 

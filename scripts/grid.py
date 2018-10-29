@@ -1,4 +1,4 @@
-from __future__ import print
+from __future__ import print_function
 import uclchem
 import numpy as np
 from multiprocessing import Pool
@@ -24,8 +24,9 @@ if __name__ == '__main__':
 
     models=[]
     for fin_dens in densities:
-        outFile=outputFolder+"data/phase1-n{1}.dat".format(int(fin_dens))
-        startFile=outputFolder+"start/{0}.dat".format(n)     
+        n=int(np.log(fin_dens))
+        outFile=outputFolder+"data/phase1-n{0}.dat".format(n)
+        startFile=outputFolder+"start/{0}.dat".format((n))     
         models.append([modelNo,init_dens,fin_dens,6e6,10.0,outFile,startFile])
         f.write("{0} {1} {2} {3} {4} {5} {6}\n".format(modelNo,init_dens,fin_dens,6e6,10.0,outFile,startFile))
         modelNo+=1

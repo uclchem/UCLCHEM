@@ -19,9 +19,9 @@ import fileinput
 import itertools
 from Functions import *
 
-reactionFile = 'inputFiles/umist12.csv'
-reactionFile_grain = 'inputFiles/uclgrainbasic.csv'
-speciesFile = 'inputFiles/uclspeciesbasic.csv'
+reactionFile = 'inputFiles/umist12-ucledit.csv'
+reactionFile_grain = 'inputFiles/uclgrain10.csv'
+speciesFile = 'inputFiles/uclspecies-LATEST.csv'
 
 if not os.path.exists('outputFiles'):
     os.makedirs('outputFiles')

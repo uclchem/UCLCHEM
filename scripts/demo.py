@@ -4,19 +4,19 @@
 from plotfunctions import *
 
 #pick species, any number is fine
-speciesNames=["CO","CS","H2O","#CO","#CH3OH","NH3"]
+#speciesNames=["CO","CS","H2O","#CO","#CH3OH","NH3"]
+speciesNames=["N2H+","NH3","CO"]
 
 #call read_uclchem. 
-time,dens,temp,abundances=read_uclchem("output/full.dat",speciesNames)
+time,dens,temp,abundances=read_uclchem("output/test.dat",speciesNames)
 
 #write out to columnated output,
 write_cols("output/democolumns.dat",time,dens,abundances)
 
 #plot species and save to test.png, alternatively send dens instead of time.
-axis,fig=plot_species(speciesNames,time,abundances,plotFile="output/cloud.png")
+axis,fig=plot_species(speciesNames,time,abundances,plotFile="output/test.png")
 
 #plot species returns the axis so we can further edit
-axis.set_xscale('log')
-axis.set_xlim(0.1,1e7)
+axis.set(xlim=(0.1,1e7),ylim=(1e-20,1e-3),xscale='log')
 axis.set_title('This is a Test Plot')
-fig.savefig("output/cloud2.png")
+fig.savefig("output/test2.png")

@@ -112,7 +112,7 @@ def plot_species(species,times,abundances,plotFile=None):
     colours=make_colours(len(species))
 
     for specIndx,specName in enumerate(species):
-        ax.plot(times,abundances[specIndx],color=colours.next(),label=specName)
+        ax.plot(times,abundances[specIndx],color=next(colours),label=specName)
 
     ax.legend(loc=4,fontsize='small')
 
