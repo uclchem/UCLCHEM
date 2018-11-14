@@ -1,15 +1,15 @@
+from __future__ import print_function
 from plotfunctions import *
-
 
 ################################################
 #User Inputs Go Here
 ################################################
 
-speciesName="C"
-resultFile="output/full.dat"
-reactionFile="reactions.csv"
-speciesFile="species.csv"
-parameterFile="parameters.f90"
+speciesName="N2H+"
+resultFile="output/test.dat"
+reactionFile="src/reactions.csv"
+speciesFile="src/species.csv"
+parameterFile="src/defaultparameters.f90"
 
 
 ################################################################################################
@@ -39,7 +39,7 @@ for time in times:
 	changes,reacIndxs=getChanges(speciesName,species,masses,abundances,network,cloud)#speciesName,species,abundances,network,temp,dens
 
 	A=zip(changes,reacIndxs)
-	A.sort()
+	A=sorted(A)
 	changes,reacIndxs=zip(*A)
 	changes=np.asarray(changes)
 
@@ -68,18 +68,18 @@ for time in times:
 	if set(oldMostDestructs)!=set(mostDestructs) or set(oldMostForms) !=set(mostForms):
 		oldMostDestructs=mostDestructs[:]
 		oldMostForms=mostForms[:]
-		print "\n***************************\nNew Important Reactions At: {0:.2e}\n".format(time)
-		print "Formation = {0:.2e} from:".format(totalProd)
+		print("\n***************************\nNew Important Reactions At: {0:.2e}\n".format(time))
+		print("Formation = {0:.2e} from:".format(totalProd))
 		for k in range(-1,i,-1):
 			outString="{x[0]} + {x[1]} -> {x[3]} + {x[4]}".format(x=network[reacIndxs[k]])
 			outString+=": {0:.2f}%".format(float(changes[k]/totalProd)*100)
-			print outString
+			print(outString)
 
-		print "\nDestruction = {0:.2e} from:".format(totalDestruct)
+		print("\nDestruction = {0:.2e} from:".format(totalDestruct))
 		for k in range(0,j):
 			outString="{x[0]} + {x[1]} -> {x[3]} + {x[4]}".format(x=network[reacIndxs[k]])
 			outString+=": {0:.2f}%".format(float(changes[k]/totalDestruct)*100)
-			print outString
+			print(outString)
 		plotTimes.append(time)
 		oldTotalChange=totalChange
 

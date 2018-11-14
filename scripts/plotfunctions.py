@@ -230,8 +230,8 @@ def getChanges(speciesName,species,masses,abundances,network,cloud):
     return changes,reacIndxs
 
 def getNetwork(file,speciesName):
-    reactions=np.loadtxt("src/reactions.csv",dtype=str,skiprows=1,delimiter=',',usecols=[0,1,2,3,4,5,6],comments="%")
-    alpha,beta,gamma=np.loadtxt("src/reactions.csv",usecols=[7,8,9],unpack=True,skiprows=1,delimiter=',',comments="%")
+    reactions=np.loadtxt(file,dtype=str,skiprows=1,delimiter=',',usecols=[0,1,2,3,4,5,6],comments="%")
+    alpha,beta,gamma=np.loadtxt(file,usecols=[7,8,9],unpack=True,skiprows=1,delimiter=',',comments="%")
     network=[]
     for i,reaction in enumerate(reactions):
         if speciesName in reaction:

@@ -157,6 +157,7 @@ CONTAINS
     SUBROUTINE reader
         IMPLICIT NONE
         integer i,j,l,m
+        double precision junktemp
 
         IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
         IF (columnFlag) THEN
@@ -196,14 +197,14 @@ CONTAINS
         IF (readAbunds .eq. 1) THEN
             DO l=1,points
                 READ(7,*)
-                READ(7,7000) abund(nspec+1,l),temp(l),av(l)
+                READ(7,7000) abund(nspec+1,l),junktemp,av(l)
                 READ(7,*)
                 READ(7,7010) h2form,fc,fo,&
                             &fmg,fhe,dstep
                 READ(7,*)
                 READ(7,7030) (abund(i,l),i=1,nspec)
                 REWIND(7)
-                if (collapse .eq. 1) abund(nspec+1,l)=dens(l)
+                (nspec+1,l)=dens(l)
             END DO
             7000 format(&
             &33x,1pe10.4,5x,/,&

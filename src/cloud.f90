@@ -105,7 +105,7 @@ CONTAINS
     !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrator.
     !targetTime in seconds for DLSODE, timeInYears in years for output.
         IF (timeInYears .gt. 1.0d6) THEN 
-            targetTime=(timeInYears+1.0d5)/year
+            targetTime=(timeInYears+1.0d4)/year
         ELSE  IF (timeInYears .gt. 1.0d5) THEN
             targetTime=(timeInYears+1.0d4)/year
         ELSE IF (timeInYears .gt. 1.0d4) THEN
