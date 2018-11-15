@@ -204,7 +204,7 @@ CONTAINS
                 READ(7,*)
                 READ(7,7030) (abund(i,l),i=1,nspec)
                 REWIND(7)
-                (nspec+1,l)=dens(l)
+                abund(nspec+1,l)=dens(l)
             END DO
             7000 format(&
             &33x,1pe10.4,5x,/,&
