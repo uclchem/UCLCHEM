@@ -2,7 +2,7 @@ SHELL = /bin/sh
 FC =gfortran
 #FC=ifort
 FFLAGS = -O2 -fPIC
-PHYSICS=cloud.f90
+PHYSICS=cshock.f90
 EXT_SUFFIX = $(shell python3-config --extension-suffix)
 
 ##simple makefile for uclchem

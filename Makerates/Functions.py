@@ -203,20 +203,14 @@ def find_constituents(speciesList):
 			#if character isn't a #,+ or - then check it otherwise move on
 			if speciesName[i] not in symbols:
 				if i+1<len(speciesName):
-					print(speciesName[i:i+3],"start")
 					#if next two characters are (eg) 'MG' then atom is Mg not M and G
 					if speciesName[i:i+3] in elementList:
-						print(speciesName[i:i+3],"3")
 						j=i+3
 					elif speciesName[i:i+2] in elementList:
-						print(speciesName[i:i+3],"2")
 						j=i+2
 					#otherwise work out which element it is
 					elif speciesName[i] in elementList:
-						print(speciesName[i],"1")
 						j=i+1
-					else:
-						print(speciesName[i],"0")
 
 				#if there aren't two characters left just try next one
 				elif speciesName[i] in elementList:
@@ -229,7 +223,6 @@ def find_constituents(speciesList):
 						atoms.append(speciesName[i:j])#add element to list
 					if j<len(speciesName):
 						if is_number(speciesName[j]):
-							print(speciesName[j],"multi")
 							if int(speciesName[j])>1:
 								for k in range(1,int(speciesName[j])):
 									if bracket:

@@ -20,8 +20,8 @@ import itertools
 from Functions import *
 
 reactionFile = 'inputFiles/umist12-ucledit.csv'
-reactionFile_grain = 'inputFiles/uclgrain10.csv'
-speciesFile = 'inputFiles/uclspecies-LATEST.csv'
+reactionFile_grain = 'inputFiles/uclgrainbasic.csv'
+speciesFile = 'inputFiles/uclspeciesbasic.csv'
 
 if not os.path.exists('outputFiles'):
     os.makedirs('outputFiles')
