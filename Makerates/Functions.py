@@ -566,9 +566,10 @@ def array_to_string(name,array,type="int",parameter=True):
 		for value in array:
 			outString+="{0:.4e},".format(value)
 	elif type=="string":
-		outString="character(Len=10)"+outString
+		strLength=len(max(array, key=len))
+		outString="character(Len={0:.0f})".format(strLength)+outString
 		for value in array:
-			outString+="\""+value.ljust(10)+"\","
+			outString+="\""+value.ljust(strLength)+"\","
 	else:
 		print "Not a valid type for array to string"
 	outString=outString[:-1]+"/)\n"
