@@ -8,6 +8,6 @@ readAbunds 0
 phase 1
 outSpecies 4 OCS CO CS CH3OH
 writeStep 1
-abundFile "examples/startstatic.dat"
-outputFile "examples/static-full.dat"
-columnFile "examples/static-column.dat"
+abundFile "examples/test-output/startstatic.dat"
+outputFile "examples/test-output/static-full.dat"
+columnFile "examples/test-output/static-column.dat"

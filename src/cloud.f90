@@ -1,7 +1,21 @@
-!Simple physics module. Models points along a 1d line from the centre to edge of a cloud. Assuming the cloud is spherical you can average
-!over the points to get a 1d average and then assume the rest of sphere is the same.
-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Cloud.f90 is a physics module for clouds and hot cores/corinos.                             !  
+! If points=1 it models the centre of a spherical cloud with radius rout. For points>1, it    !         
+! models a set of evenly distributed positions from rin to rout in a spherical cloud.         !  
+!                                                                                             !   
+! In order to simulate a molecular cloud, set (phase=1, evap=0)                               !
+! Typically, all published uclchem work has a phase1 where we collapse from density of 100 to !
+! the inital density of our science model. This gives us initial conditions where the         !
+! abundance  of each species is consistent with the network. Set collapse=1 for freefall.     !
+!                                                                                             !
+! In order to simulate a hot core set (phase=2,evap=1) and the temperature will increase up to!
+! maxTemp and will have radial dependence if points>1. Sublimation events take place at certain!
+! temperatures following Viti et al. 2004.                                                    !
+!                                                                                             !
+! Alternatively, set evap=2 to immediately sublimate the ices in the first time step.         !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 MODULE physics
+    USE network
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
     INTEGER :: dstep,points
@@ -31,32 +45,24 @@ MODULE physics
     DOUBLE PRECISION,PARAMETER ::PI=3.141592654,mh=1.67e-24,kbolt=1.38d-23
     DOUBLE PRECISION, PARAMETER :: year=3.16455d-08,pc=3.086d18
 
-    !variables for collapse modes
-    DOUBLE PRECISION :: unitrho,unitr,unitt,c_s
-    DOUBLE PRECISION :: dimrho,dimr,dimt,maxdimt
-    DOUBLE PRECISION :: rho0,r0
-    DOUBLE PRECISION,PARAMETER :: G_N = 6.674d-8
-
 CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN.
 !YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
 
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Called at start of UCLCHEM run
+    ! Uses values in defaultparamters.f90 and any inputs to set initial values        !
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics
+        ! Modules not restarted in python wraps so best to reset everything manually.
         IF (ALLOCATED(av)) DEALLOCATE(av,coldens,temp,dens)
         ALLOCATE(av(points),coldens(points),temp(points),dens(points))
+
+        !Set up basic physics variables
         cloudSize=(rout-rin)*pc
-        dens=initialDens
         temp=initialTemp
 
-        !collapse stuff
-        !calculate sound speed from temperature and mean molecular mass
-        !cs=(1d7*kbolt*initialTemp)/(2*mh) assuming molecular mass from H2
-        c_s = sqrt(5d6*kbolt*initialTemp/mh)
-
         !Set up collapse modes.
-        !work in dimensionless units so find conversions for density, time and radius.
-        !Also find maximum time value at which model must stop.
-
         SELECT CASE(collapse)
             !freefall Rawlings 1992
             CASE(0)
@@ -64,30 +70,11 @@ CONTAINS
             CASE(1)
                 dens=1.001*initialDens
             !foster & chevalier 1993
-            CASE(2)
-                unitrho = initialDens*mh
-                unitt = 1.0/sqrt(4.0*pi*G_N*unitrho)
-                unitr = c_s*unitt
-                maxdimt = 5.75 - (15.1/(14.0 + log10(finalDens/initialDens)))**(1.0/0.04)
-            !ogino, tomisaka & nakamura 1999
-            CASE(3)
-                unitrho = initialDens*mh
-                unitt = 1.0/sqrt(G_N*unitrho)
-                unitr = c_s*unitt
-                maxdimt = 0.33 - (2.5/(2.5 + log10(finalDens/initialDens)))**(1.0/0.18)
-            CASE(4)
-
-                unitrho = initialDens*mh
-                unitt = 1.0/sqrt(2.0*pi*G_N*unitrho)
-                unitr = c_s*unitt
-                maxdimt = 5.5 - (2.1/(1.35 + log10(finalDens/initialDens)))**(1.0/0.28)
+            CASE DEFAULT
+                write(*,*) "Collapse must be 0 or 1 for cloud.f90"
         END SELECT
 
-        IF (collapse .gt. 1) THEN
-             !Enforce maximum time value for collapse modes
-             finalTime=maxdimt*year*unitt
-        END  IF
-
+        !Catch bad choices of switch and collapse to stop infinite runs.
         IF (switch .eq. 1 .and. collapse .gt. 1) THEN
             write(*,*) "Switch must be 0 for BE collapse, changing to stop at finalTime"
             write(*,*) "Tfin = ",finalTime/year, " years"
@@ -98,13 +85,15 @@ CONTAINS
         DO dstep=1,points
             coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
         END DO
-
     END SUBROUTINE
 
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !Called every time loop in main.f90. Sets the timestep for the next output from   !
+    !UCLCHEM. This is also given to the integrator as the targetTime in chemistry.f90 !
+    !but the integrator itself chooses an integration timestep.                       !
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updateTargetTime
-    !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrator.
-    !targetTime in seconds for DLSODE, timeInYears in years for output.
-        IF (timeInYears .gt. 1.0d6) THEN 
+        IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
             targetTime=(timeInYears+1.0d4)/year
         ELSE  IF (timeInYears .gt. 1.0d5) THEN
             targetTime=(timeInYears+1.0d4)/year
@@ -119,8 +108,12 @@ CONTAINS
         ENDIF
     END SUBROUTINE updateTargetTime
 
-    SUBROUTINE updatePhysics
-        !calculate column density. Remember dstep counts from core to edge
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !This is called every time/depth step from main.f90                               !
+    !Update the density, temperature and av to their values at currentTime            !
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        SUBROUTINE updatePhysics
+        !calculate column density. Remember dstep counts from core centre to edge
         !and coldens should be amount of gas from edge to parcel.
         IF (dstep .lt. points) THEN
             !column density of current point + column density of all points further out
@@ -134,55 +127,39 @@ CONTAINS
         av(dstep)= baseAv +coldens(dstep)/1.6d21
 
         IF (phase .eq. 2 .and. temp(dstep) .lt. maxTemp) THEN
-
-        !Below we include temperature profiles for hot cores, selected using tempindx in PARAMETERs.f90
+        !Below we include temperature profiles for hot cores, selected using tempindx
         !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
         !It takes the form T=A(t^B)*[(d/R)^-0.5], where A and B are given below for various stellar masses
             temp(dstep)=(cloudSize/(rout*pc))*(real(dstep)/real(points))
             temp(dstep)=temp(dstep)**(-0.5)
             temp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime*year)**tempb(tempindx))*temp(dstep))
+        END IF
+    END SUBROUTINE updatePhysics
 
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! This subroutine must be in every physics module.                                !
+    ! It receives the abundance array and performs any sublimation related activity   !
+    ! In hot core that means following thermalEvaporation subroutine.                 !
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    SUBROUTINE sublimation(abund)
+        DOUBLE PRECISION :: abund(nspec+1,points)
+        INTENT(INOUT) :: abund
+
+        IF (evap .eq. 1) THEN
             if (temp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
             if (temp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
             if (temp(dstep) .gt. codestemp(tempindx) .and. coflag .ne. 2) coflag=1
+            CALL thermalEvaporation(abund)
+        ELSE IF (evap .eq. 2) THEN
+            CALL thermalEvaporation(abund)
         END IF
+    END SUBROUTINE sublimation
 
-        !Density update for BE collapse modes
-        !first calculate current radius and time in dimensionless units
-        dimr = (real(dstep)/real(points))*cloudSize/unitr
-        dimt = currentTime/unitt
-        if (dimt .gt. maxdimt) dimt = maxdimt
-
-        !Then calculate central density and radius of central region
-        !use this to find density at larger radii. Three different cases possible.
-
-        !foster & chevalier 1993
-        if (collapse .eq. 2) then
-            rho0 = 10**(15*(5.75-dimt)**(-0.04) - 14)
-            r0 = 10**(-6.7*(5.75-dimt)**(-0.04) + 6.6)
-            dimrho = rho0/(1 + (dimr/r0)**2.5)
-            if (dimt .lt. 5.75) dens(dstep) = dimrho*initialDens
-
-        !ogino, tomisaka & nakamura 1999
-        else if (collapse .eq. 3) then
-            rho0 = 10**(2.5*(0.33-dimt)**(-0.18) - 2.5)
-            r0 = 10**(-1.2*(0.33-dimt)**(-0.18) + 1.3)
-            dimrho = rho0/(1 + (dimr/r0)**2.5)
-            if (dimt .lt. 0.33) dens(dstep) = dimrho*initialDens
-
-        !nakamura, hanawa & takano 1995
-        else if (collapse .eq. 4) then
-            rho0 = 10**(2.1*(5.5-dimt)**(-0.28) - 1.35)
-            r0 = 10**(-0.7*(5.5-dimt)**(-0.28) + 0.75)
-            dimrho = rho0/(1 + (dimr/r0)**2)**1.5
-            if (dimt .lt. 5.5) dens(dstep) = dimrho*initialDens
-        endif
-
-    END SUBROUTINE updatePhysics
-
-!This function works out the time derivative of the density, allowing DVODE to update density with the rest of our ODEs
-!It get's called by F, the SUBROUTINE in chem.f90 that sets up the ODEs for DVODE
-!Currently set to Rawlings 1992 freefall.
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Returns the time derivative of the density.                                     !
+    ! Analytical function taken from Rawlings et al. 1992                             !
+    ! Called from chemistry.f90, density integrated with abundances so this gives ydot!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     pure FUNCTION densdot(density)
         DOUBLE PRECISION, INTENT(IN) :: density
         DOUBLE PRECISION :: densdot
@@ -194,6 +171,80 @@ CONTAINS
             densdot=0.0
         ENDIF
     END FUNCTION densdot
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !REQUIRED PHYSICS ENDS HERE, ANY ADDITIONAL PHYSICS CAN BE ADDED BELOW.
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+    SUBROUTINE thermalEvaporation(abund)
+    DOUBLE PRECISION :: abund(nspec+1,points)
+    INTEGER :: i
+    INTENT(INOUT) :: abund
+    !Evaporation is based on Viti et al. 2004. A proportion of the frozen species is released into the gas phase
+    !in specific events. These events are activated by flags (eg solidflag) which can be set in physics module.
+    !The species evaporated are in lists, created by Makerates and based on groupings. see the viti 2004 paper.
+    IF (sum(abund(grainList,dstep)) .gt. 1d-30) THEN
+        !Viti 04 evap
+
+        IF (evap .eq. 1) THEN
+            !Solid Evap
+            IF (solidflag .eq. 1) THEN
+                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+solidFractions*abund(grainList,dstep)
+                abund(grainList,dstep)=(1.0-solidFractions)*abund(grainList,dstep)
+                !Set flag to 2 to stop it being recalled
+                solidflag=2
+            ENDIF
+            !monotonic evaporation at binding energy of species
+            CALL bindingEnergyEvap(abund)
+            !Volcanic evap
+            IF (volcflag .eq. 1) THEN
+                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+volcanicFractions*abund(grainList,dstep)
+                abund(grainList,dstep)=(1.0-volcanicFractions)*abund(grainList,dstep)
+                volcflag=2 !Set flag to 2 to stop it being recalled
+            ENDIF
+
+            !Co-desorption
+            IF (coflag .eq. 1) THEN
+                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
+                abund(grainList,dstep)=1d-30
+                coflag=2
+            ENDIF
+
+        ELSE IF (evap .eq. 2 .and. coflag .ne. 2) THEN
+            !Alternative evap. Instaneous evaporation of all grain species
+            abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
+            abund(grainList,dstep)=1d-30
+            coflag = 2
+        ENDIF
+    ENDIF
+
+    END SUBROUTINE thermalEvaporation
+
+    SUBROUTINE bindingEnergyEvap(abund)
+        DOUBLE PRECISION :: abund(nspec+1,points)
+        double precision, parameter :: SURFACE_SITE_DENSITY = 1.5d15
+        INTENT(INOUT) :: abund
+        INTEGER :: i
+        !Subroutine to handle mono-evaporation. See viti 2004
+        double precision en,newm,expdust,freq,kevap
+        integer speci
+        !mono evaporation at the binding energy of each species
+        DO i=lbound(grainList,1),ubound(grainList,1)
+            speci=grainList(i)
+            en=bindingEnergy(i)*kbolt
+            expdust=bindingEnergy(i)/temp(dstep)
+            newm = mass(speci)*1.66053e-27
+            freq = dsqrt((2*(SURFACE_SITE_DENSITY)*en)/((pi**2)*newm))
+            kevap=freq*exp(-expdust)
+            IF (kevap .ge. 0.99) THEN
+                abund(gasGrainList(i),dstep)=abund(gasGrainList(i),dstep)+(monoFractions(i)*abund(speci,dstep))
+                abund(speci,dstep)=(1.0-monoFractions(i))*abund(speci,dstep)
+                !set to 1d50 so it can't happen again
+                bindingEnergy(i)=1d50
+            END IF 
+        END DO
+    END SUBROUTINE bindingEnergyEvap
 END MODULE physics
 
-!REQUIRED PHYSICS ENDS HERE, ANY ADDITIONAL PHYSICS CAN BE ADDED BELOW.
+

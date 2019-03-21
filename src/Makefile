@@ -1,30 +1,35 @@
 SHELL = /bin/sh
 FC =gfortran
+f2pyFC=gnu95 #this must match FC (ifort=intelem, gfortran=gnu95)
 #FC=ifort
-FFLAGS = -O2 -fPIC
-PHYSICS=cloud.f90
+FFLAGS = -g -fPIC
+PHYSICS=cshock.f90
 EXT_SUFFIX = $(shell python3-config --extension-suffix)
 
 ##simple makefile for uclchem
-##user must point the compile variable to their preferred fortran compiler
+##user must point the FC variable to their preferred fortran compiler
 ##builds ode solver, physics module and chemistry module before linking together for main
 
+##User can also compile a python module which contains the subroutines in wrap.f90 as functions
+##to do this run "python -m numpy.f2py -c --help-fcompiler" to find your fortran compiler
+##and edit the python makef
+
 ##physics module selected by changing physics variable to chosen fortran file.
-main: chem.o physics.o main.f90 dvode.o defaultparameters.f90 readparameters.f90
-	${FC} ${FFLAGS} -o ../uclchem physics.o dvode.o chem.o main.f90
+main: chemistry.o physics.o main.f90 dvode.o defaultparameters.f90 readparameters.f90
+	${FC} ${FFLAGS} -o ../uclchem physics.o dvode.o chemistry.o network.o main.f90
 
-python: chem.o physics.o wrap.f90 dvode.o defaultparameters.f90
-	f2py -c --fcompiler=gnu95 physics.o dvode.o chem.o -m uclchem wrap.f90
-	mv *${EXT_SUFFIX} ../uclchem.so
+python: chemistry.o physics.o wrap.f90 dvode.o defaultparameters.f90
+	python -m numpy.f2py -c --fcompiler=${f2pyFC} physics.o dvode.o chemistry.o -m uclchem wrap.f90
+	mv *uclchem.so ../uclchem.so
 
-chem.o: odes.f90 rates.f90 network.f90 chem.f90 physics.o dvode.o 
-	${FC} ${FFLAGS} -c chem.f90
+chemistry.o: odes.f90 rates.f90  chemistry.f90 network.o physics.o dvode.o 
+	${FC} ${FFLAGS} -c chemistry.f90
 
 physics.o: ${PHYSICS} Makefile
 	${FC} ${FFLAGS} -c ${PHYSICS} -o physics.o
 
-dvode.o: dvode.f90
-	${FC} ${FFLAGS} -c dvode.f90
+%.o: %.f90 
+	${FC} ${FFLAGS} -c $<
 
 clean: 
 	rm *.o *.mod ../uclchem ../uclchem.so

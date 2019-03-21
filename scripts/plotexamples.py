@@ -3,22 +3,19 @@
 
 from plotfunctions import *
 
+for folder in ["example-output/","test-output/"]:
+	for model in ["phase1","phase2","static"]:
+		#pick species, any number is fine
+		speciesNames=["CO","CS","H2O","#CO","#CH3OH","NH3"]
 
-for model in ["phase1","phase2","static"]:
-	#pick species, any number is fine
-	speciesNames=["CO","CS","H2O","#CO","#CH3OH","NH3"]
+		#call read_uclchem. 
+		time,dens,temp,abundances=read_uclchem("examples/"+folder+model+"-full.dat",speciesNames)
 
-	#call read_uclchem. 
-	time,dens,temp,abundances=read_uclchem("examples/example-output/"+model+"-full.dat",speciesNames)
+		#plot species and save to test.png, alternatively send dens instead of time.
+		axis,fig=plot_species(speciesNames,time,abundances,plotFile="examples/"+folder+model+".png")
 
-	#write out to columnated output,
-	write_cols("examples/testcolumns.dat",time,dens,abundances)
-
-	#plot species and save to test.png, alternatively send dens instead of time.
-	axis,fig=plot_species(speciesNames,time,abundances,plotFile="examples/example-output/"+model+".png")
-
-	#plot species returns the axis so we can further edit
-	axis.set_xscale('log')
-	axis.set_title(model)
-	fig.savefig("examples/example-output/"+model+".png")
+		#plot species returns the axis so we can further edit
+		axis.set(xscale='log',ylim=(1e-15,1e-3))
+		axis.set_title(model)
+		fig.savefig("examples/"+folder+model+".png")
 

@@ -95,7 +95,14 @@ CONTAINS
         END IF
         av(dstep)= baseAv +coldens(dstep)/1.6d21
     END SUBROUTINE updatePhysics
+    
+    !This module is isothermal and as such, no sublimation occurs.
+    !This is a dummy subroutine.
+    SUBROUTINE sublimation(abund)
+        DOUBLE PRECISION :: abund(nspec+1,points)
+        INTENT(IN) :: abund
 
+    END SUBROUTINE sublimation
 
     pure FUNCTION densdot()
     !This FUNCTION works out the time derivative of the density, allowing DLSODE to update

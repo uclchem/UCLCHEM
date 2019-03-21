@@ -8,5 +8,5 @@ fr 0.0
 readAbunds 1
 phase 2
 evap 1
-abundFile "examples/startcollapse.dat"
-outputFile "examples/phase2-full.dat"
+abundFile "examples/test-output/startcollapse.dat"
+outputFile "examples/test-output/phase2-full.dat"

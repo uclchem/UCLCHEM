@@ -1,5 +1,13 @@
-!Simple physics module. Models points along a 1d line from the centre to edge of a cloud. Assuming the cloud is spherical you can average
-!over the points to get a 1d average and then assume the rest of sphere is the same.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!This is not a real module. It contains all the necessary variables and subroutines that  !
+!are referenced or called by the rest of UCLCHEM. Any user wishing to create their own    !
+!physics module should start from this template and ensure all the subroutines are present!
+!                                                                                         !
+!Our convention is that phase=1 should give the same results for all physics modules and  !
+!the actual physics the module is trying to capture is performed when phase=2             !
+!this allows the standard 2 phase run present in most UCLCHEM publications to be run from !
+!one module.                                                                              !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 MODULE physics
     IMPLICIT NONE
@@ -23,9 +31,12 @@ MODULE physics
 
 
 CONTAINS
-!THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN. YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
-
-    
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !This is called once at the start of each UCLCHEM run. Allocate any arrays and set !
+    !initial values for variables.                                                     !
+    !If using python wrap, variables are not reset after the first run and therefore   !
+    !must be reset here.                                                               !
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics
     !Any initialisation logic steps go here
     !cloudSize is important as is allocating space for depth arrays
@@ -38,9 +49,12 @@ CONTAINS
         ENDIF 
     END SUBROUTINE
 
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !Called every time loop in main.f90. Sets the timestep for the next output from   !
+    !UCLCHEM. This is also given to the integrator as the targetTime in chemistry.f90 !
+    !but the integrator itself chooses an integration timestep.                       !
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updateTargetTime
-    !At each timestep, the time at the end of the step is calculated by calling this function
-    !You need to set targetTime in seconds, its initial value will be the time at start of current step
     IF (timeInYears .gt. 1.0d6) THEN
         targetTime=(timeInYears+1.0d5)/year
     ELSE IF (timeInYears .gt. 10000) THEN
@@ -52,22 +66,51 @@ CONTAINS
     ELSE
         targetTime=3.16d7*10.d-8
     ENDIF
-
-    !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrator.
-    ! DLSODE sorts that out based on chosen error tolerances (RTOL/ATOL) and is simply called repeatedly
-    !until it outputs a time >= targetTime.
     END SUBROUTINE updateTargetTime
 
-    !This routine is formed for every parcel at every time step.
-    !update any physics here. For example, set density
+
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !This routine is called for every depth and time points and is the core of the module         !
+    !                                                                                             !
+    !Here, we should update the density (unless it is integrated, see densdot), temperature and   !
+    !visual extinction at a minimum.                                                              !
+    !Any other things that should be done each time step can be called from here                  !
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updatePhysics
         !calculate column density. Remember dstep counts from core to edge
         !and coldens should be amount of gas from edge to parcel.
         coldens(dstep)= cloudSize*((real(points-dstep))/real(points))*dens
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= baseAv +coldens(dstep)/1.6d21
+
+        !May wish to set density and temperature according to analytic functions or input from other model
     END SUBROUTINE updatePhysics
 
+
+
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !This routine should check some logic for whether sublimation should occur                    !
+    !                                                                                             !
+    !For example, sputtering or thermal evaporation due to temperature increase                   !
+    !It should then use grainList and gasGrainList from network module and the input abund array  !
+    !to move material from the grain to gas phase.                                                !
+    !                                                                                             !
+    !See cloud.f90 for thermal example and cshock.f90 for sputtering                              !
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    SUBROUTINE sublimation(abund)
+        DOUBLE PRECISION :: abund(nspec+1,points)
+        INTENT(INOUT) :: abund
+
+    END SUBROUTINE sublimation
+
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !UCLCHEM/DVODE can integrate the density with the chemical abundances if ydot is  !
+    !provided. If collapse=1, chemistry.f90 will call densdot to get the rate of      !
+    !change of the density. Below is freefall example from Rawlings et al. 1992       !
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     pure FUNCTION densdot()
     !Required for collapse=1, works out the time derivative of the density, allowing DVODE
     !to update density with the rest of our ODEs
@@ -81,6 +124,10 @@ CONTAINS
             densdot=1.0d-30       
         ENDIF    
     END FUNCTION densdot
-END MODULE physics
 
-!REQUIRED PHYSICS ENDS HERE, ANY ADDITIONAL PHYSICS CAN BE ADDED BELOW.
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !As long as the above subroutines and variables are provided, anything else can be !
+    !added to this module.
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+END MODULE physics

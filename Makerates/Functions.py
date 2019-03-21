@@ -1,10 +1,4 @@
-#! /usr/bin/python
-import math
-import os
-import string
-import struct
-import sys
-import time
+from __future__ import print_function
 import csv
 import numpy
 
@@ -101,7 +95,7 @@ def remove_duplicate_species(speciesList):
 		for j in range(0,len(speciesList)):
 			if speciesList[i].name==speciesList[j].name:
 				if (j!=i) and speciesList[i].name not in duplicate_list:
-					print "\t {0} appears twice in input species list".format(speciesList[i].name)
+					print("\t {0} appears twice in input species list".format(speciesList[i].name))
 					duplicate_list.append(speciesList[i].name)
 
 	for duplicate in duplicate_list:
@@ -110,7 +104,7 @@ def remove_duplicate_species(speciesList):
 		while not removed:
 			if speciesList[i].name==duplicate:
 				del speciesList[i]
-				print "\tOne entry of {0} removed from list".format(duplicate)
+				print("\tOne entry of {0} removed from list".format(duplicate))
 				removed=True
 			else:
 				i+=1
@@ -129,9 +123,9 @@ def filter_species(speciesList,reactionList):
 			lostSpecies.append(species.name)
 			speciesList.remove(species)
 
-	print '\tSpecies in input list that do not appear in final list:' 
-	print '\t',lostSpecies
-	print '\n'
+	print('\tSpecies in input list that do not appear in final list:')
+	print('\t',lostSpecies)
+	print('\n')
 	return speciesList
 
 #All species should freeze out at least as themselves and all grain species should desorb according to their binding energy
@@ -150,19 +144,19 @@ def reaction_check(speciesList,reactionList,freeze_check=True):
 
 
 	#first check for multiple freeze outs so user knows to do alphas
-	print "\tSpecies with multiple freeze outs, check alphas:"
+	print("\tSpecies with multiple freeze outs, check alphas:")
 	for spec in speciesList:
 		freezes=0
 		for reaction in reactionList:
 			if (spec.name in reaction.reactants and 'FREEZE' in reaction.reactants):
 				freezes+=1
 		if (freezes>1):
-			print "\t{0} freezes out through {1} routes".format(spec.name,freezes)
+			print("\t{0} freezes out through {1} routes".format(spec.name,freezes))
 		if freezes<1 and not spec.is_grain_species() and freeze_check:
-			print "\t{0} does not freeze out".format(spec.name,freezes)
+			print("\t{0} does not freeze out".format(spec.name,freezes))
 	#now check for duplicate reactions
 	duplicate_list=[]
-	print "\n\tPossible duplicate reactions for manual removal:"
+	print("\n\tPossible duplicate reactions for manual removal:")
 	duplicates=0
 	for i, reaction1 in enumerate(reactionList):
 		if i not in duplicate_list:
@@ -170,15 +164,15 @@ def reaction_check(speciesList,reactionList,freeze_check=True):
 				if i!=j:
 					if set(reaction1.reactants)==set(reaction2.reactants):
 						if set(reaction1.products)==set(reaction2.products):
-							print "\tReactions {0} and {1} are possible duplicates".format(i+1,j+1)
-							print "\t",str(i+1), reaction1.reactants, "-->", reaction1.products 
-							print "\t",str(j+1), reaction1.reactants, "-->", reaction2.products 
+							print("\tReactions {0} and {1} are possible duplicates".format(i+1,j+1))
+							print("\t",str(i+1), reaction1.reactants, "-->", reaction1.products)
+							print("\t",str(j+1), reaction1.reactants, "-->", reaction2.products)
 							duplicates+=1
 							duplicate_list.append(i)
 							duplicate_list.append(j)
 	
 	if (duplicates==0):
-		print "\tNone"
+		print("\tNone")
 
 #capitalize files
 def make_capitals(fileName):
@@ -237,9 +231,9 @@ def find_constituents(speciesList):
 					else:
 						i=j
 				else:
-					print speciesName[i]
-					print"\t{0} contains elements not in element list:".format(speciesName)
-					print elementList
+					print(speciesName[i])
+					print("\t{0} contains elements not in element list:".format(speciesName))
+					print(elementList)
 			else:
 				#if symbol is start of a bracketed part of molecule, keep track
 				if (speciesName[i]=="("):
@@ -264,9 +258,6 @@ def find_constituents(speciesList):
 		for atom in atoms:
 			mass+=elementMass[elementList.index(atom)]
 		if mass!=float(species.mass):
-			#print "\tcalculated mass of {0} does not match input mass".format(speciesName)
-			#print "\tcalculated mass: {0} \t input mass: {1}\n".format(mass,species.mass)
-			#print "\tkeeping calculated mass\n"
 			species.mass=str(mass)
 	return speciesList
 
@@ -430,10 +421,10 @@ def write_evap_lists(openFile,speciesList):
 			try:
 				j=speciesList.index(next((x for x in speciesList if x.name==species.name[1:]))) 
 			except:
-				print "\n**************************************\nWARNING\n**************************************"
-				print "{0} has no gas phase equivalent in network. Every species should at least freeze out and desorb.".format(species.name)
-				print "ensure {0} is in the species list, and at least one reaction involving it exists and try again".format(species.name[1:])
-				print "Alternatively, provide the name of the gas phase species you would like {0} to evaporate as".format(species.name)
+				print("\n**************************************\nWARNING\n**************************************")
+				print("{0} has no gas phase equivalent in network. Every species should at least freeze out and desorb.".format(species.name))
+				print("ensure {0} is in the species list, and at least one reaction involving it exists and try again".format(species.name[1:]))
+				print("Alternatively, provide the name of the gas phase species you would like {0} to evaporate as".format(species.name))
 				input=raw_input("type x to quit Makerates or any species name to continue\n")
 				if input.lower()=="x":
 					exit()
@@ -501,7 +492,8 @@ def is_H2_formation(reactants, products):
 
 def write_network_file(fileName,speciesList,reactionList):
 	openFile=open(fileName,"wb")
-	openFile.write("integer, parameter :: nSpec={0}, nReac={1}\n".format(len(speciesList),len(reactionList)))
+	openFile.write("MODULE network\n    IMPLICIT NONE\n")
+	openFile.write("    integer, parameter :: nSpec={0}, nReac={1}\n".format(len(speciesList),len(reactionList)))
 
 	#write arrays of all species stuff
 	names=[]
@@ -511,9 +503,9 @@ def write_network_file(fileName,speciesList,reactionList):
 		names.append(species.name)
 		masses.append(float(species.mass))
 		atoms.append(species.n_atoms)
-	openFile.write(array_to_string("specname",names,type="string"))
-	openFile.write(array_to_string("mass",masses,type="float"))
-	openFile.write(array_to_string("atomCounts",atoms,type="int"))
+	openFile.write(array_to_string("    specname",names,type="string"))
+	openFile.write(array_to_string("    mass",masses,type="float"))
+	openFile.write(array_to_string("    atomCounts",atoms,type="int"))
 
 
 	#then write evaporation stuff
@@ -541,16 +533,18 @@ def write_network_file(fileName,speciesList,reactionList):
 		alpha.append(reaction.alpha)
 		beta.append(reaction.beta)
 		gama.append(reaction.gamma)
-	openFile.write(array_to_string("re1",reactant1,type="string"))
-	openFile.write(array_to_string("re2",reactant2,type="string"))
-	openFile.write(array_to_string("re3",reactant3,type="string"))
-	openFile.write(array_to_string("p1",prod1,type="string"))
-	openFile.write(array_to_string("p2",prod2,type="string"))
-	openFile.write(array_to_string("p3",prod3,type="string"))
-	openFile.write(array_to_string("p4",prod4,type="string"))
-	openFile.write(array_to_string("alpha",alpha,type="float",parameter=False))
-	openFile.write(array_to_string("beta",beta,type="float",parameter=False))
-	openFile.write(array_to_string("gama",gama,type="float",parameter=False))
+	openFile.write(array_to_string("\tre1",reactant1,type="string"))
+	openFile.write(array_to_string("\tre2",reactant2,type="string"))
+	openFile.write(array_to_string("\tre3",reactant3,type="string"))
+	openFile.write(array_to_string("\tp1",prod1,type="string"))
+	openFile.write(array_to_string("\tp2",prod2,type="string"))
+	openFile.write(array_to_string("\tp3",prod3,type="string"))
+	openFile.write(array_to_string("\tp4",prod4,type="string"))
+	openFile.write(array_to_string("\talpha",alpha,type="float",parameter=False))
+	openFile.write(array_to_string("\tbeta",beta,type="float",parameter=False))
+	openFile.write(array_to_string("\tgama",gama,type="float",parameter=False))
+	openFile.write("END MODULE network")
+	openFile.close()
 
 def array_to_string(name,array,type="int",parameter=True):
 	if parameter:
@@ -571,7 +565,7 @@ def array_to_string(name,array,type="int",parameter=True):
 		for value in array:
 			outString+="\""+value.ljust(strLength)+"\","
 	else:
-		print "Not a valid type for array to string"
+		print("Not a valid type for array to string")
 	outString=outString[:-1]+"/)\n"
 	outString=truncate_line(outString)
 	return outString

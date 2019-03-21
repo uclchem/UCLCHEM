@@ -127,6 +127,15 @@ CONTAINS
         
     END SUBROUTINE updatePhysics
 
+    !This module is isothermal and as such, no sublimation occurs.
+    !This is a dummy subroutine.
+    SUBROUTINE sublimation(abund)
+        DOUBLE PRECISION :: abund(nspec+1,points)
+        INTENT(IN) :: abund
+
+    END SUBROUTINE sublimation
+
+
     !This function works out the time derivative of the density, allowing DVODE to update density with the rest of our ODEs
     !It get's called by F, the SUBROUTINE in chem.f90 that sets up the ODEs for DVODE
     !Currently set to Rawlings 1992 freefall.

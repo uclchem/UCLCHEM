@@ -4,8 +4,8 @@
 
 !Initial physics variables and final  values. for temp, density and time
 initialTemp=10.0;maxTemp=300
-initialDens=1.00d2;finalDens=1.00d6
-currentTime=0.0;finalTime=1.00d7
+initialDens=1.00d5;finalDens=1.00d6
+currentTime=0.0;finalTime=0.50d3
 
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
 radfield=1.0;zeta=1.0
@@ -16,7 +16,7 @@ fr=1.0;
 !Size of cloud set by inner and outer radii (rin and rout). used to calculate extinction.
 !baseAv is extinction at cloud edge
 !points is number of parcels to run model for. spaced  evenly between rin and rout
-rout=0.051847;rin=0;baseAv=0.0;points=1
+rout=0.05;rin=0;baseAv=2.0;points=1
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -29,15 +29,15 @@ switch=0
 !collape=0/1 ONLY if not using cloud.f90
 !In all cases collapse=1 lets chem.f90 know it should call  densdot in the physics module to get time derivative of density and include it in ODES
 !Any other values tells it to use density value as set by physics module
-collapse=1
+collapse=0
 !for collapse=1 can introduce factor bc to slow freefall
 bc=1.0
 
 !If you want to read abundances from a file (abundFile) set to 1
 !If you set to zero, final abundances are written to abundFile
-readAbunds=0
+readAbunds=1
 !phase chooses behaviour. Basic clouds in phase 1. Hot core /cshock in phase 2 (depending on physics module)
-phase=1;
+phase=2;
 
 !non-thermal Desorption. Turn it all on/off. Turn off h2, cosmic ray induced and uv induced off separately too
 desorb=1;
@@ -56,7 +56,7 @@ tempindx=3
 
 
 !cshock module specific variable, uncomment or comment as  needed
-vs=20.0
+vs=40.0
 
 !initial fractional abundances of elements(from Asplund et al. 2009 ARAA table 1 -SOLAR)
 fh=0.0;fhe = 0.1;fc  = 2.6d-04;fo  = 4.6d-04;fn  = 6.1d-05
@@ -81,9 +81,9 @@ writeStep=1
 !If readAbund=0, final abundances are written to abundFile
 abundFile="output/startcloud.dat"
 !Full output written to outputFlie
-outputFile="output/fullcloud.dat"
+outputFile="output/fullsputter.dat"
 !columnated output of time,dens,temp and outSpecies written to column file
-columnFile='output/columncloud.dat'
+columnFile='output/columnsputter.dat'
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !More complicated parameters that affect core code below. Do not alter without reading articles associated  !
