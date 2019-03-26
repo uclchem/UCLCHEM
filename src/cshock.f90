@@ -54,9 +54,14 @@ CONTAINS
     SUBROUTINE initializePhysics
         INTEGER :: iLoop
         DOUBLE PRECISION :: v01,g1,g2
+
         !Reset variables for python wrap.
         IF (ALLOCATED(av)) deallocate(av,coldens,temp,density)
         allocate(av(points),coldens(points),temp(points),density(points))  
+        coflag=0 !should reset sputtering
+        driftVel=0.0
+        zn0=0.0
+        vn0=0.0
 
         !check input sanity and set inital values
         cloudSize=(rout-rin)*pc
@@ -82,9 +87,6 @@ CONTAINS
 
         !cshock initialization
         IF (phase .eq. 2) THEN
-            !No freeze out during shock.
-            evap=1
-
             IF (ALLOCATED(tn)) deallocate(tn,ti,tgc,tgr,tg)
             allocate(tn(points),ti(points),tgc(points),tgr(points),tg(points))
             mun=2*mh

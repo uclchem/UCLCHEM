@@ -1,5 +1,5 @@
-# UCLCHEM v1.2
-UCLCHEM is a gas-grain chemical code written in Fortran 95. It propagates the abundances of chemical species through a network of user-defined reactions according to the physical conditions of the gas. Included in the repository is MakeRates, a python script to combine a species list, UMIST reaction file and user-define reaction file into a consistent network with all files required by UCLCHEM.
+# UCLCHEM v1.3
+UCLCHEM is a gas-grain chemical code written in Fortran 95. It propagates the abundances of chemical species through a network of user-defined reactions according to the physical conditions of the gas. Included in the repository is MakeRates, a python script to combine a species list, UMIST reaction file and user-defined reaction file into a consistent network with all files required by UCLCHEM.
 
 **************************************************************
 Usage Instructions
@@ -12,7 +12,7 @@ To build UCLCHEM, edit the Makefile in uclchem/src to use a compiler available o
 - Building requires odes.f90 and network.f90 which are outputs of Makerates.
 - uclchem/Makerates/ contains the Makerates python script to produce a network from the files in uclchem/Makerates/inputFiles
 
-To run UCLCHEM, create an input file with the desired parameters. Any variable in default parameters.f90 can be set, any that are not will take the value given in default parameters.f90.
+To run UCLCHEM, create an input file with the desired parameters. Any variable in defaultparameters.f90 can be set, any that are not will take the value given in defaultparameters.f90.
 A full explanation of each parameter is given in defaultparameters.f90 and an example input file is given in example.inp
 Call uclchem with the filename as an argument: "./uclchem example.inp"
 
@@ -27,10 +27,13 @@ Support for python wrapping is limited. "Make python" builds a python library fr
 **************************************************************
 Change Log
 **************************************************************
-Various changes have been made with the goal of making UCLCHEM more efficient and starting development of a python module. These changes include:
-- Moving to F95 version of DVODE
-- Removing all file inputs, the code needed to be compiled with odes.f90 anyway so reactions.csv and species.csv offered no benefits
-- On going code clean up and bug fixes
+Various changes have been made with a view to improving readability of the code and improving sputtering in cshock.f90:
+- Network moved to module allowing physics module to access the properties but NOT the abundances of species/reactions in the network.
+- Sublimation subroutine added to all physics modules with a call in main.f90. 
+- Thermal evaporation treatment moved to cloud.f90 sublimation subroutine
+- cshock.f90 now has sputtering treatment from Jimenez-Serra et al. 2008
+- Variable names changed to fit standard
+- initializePhysics: sublimation flags etc reset so wrap.f90 can run in grids
 
 *************************************************************
 Contributing
@@ -45,4 +48,5 @@ This is an open source science code for the community and we are happy to accept
 **************************************************************
 To Do / General Inprovements
 **************************************************************
-Create a keyword based python wrap in a similar to readparameters.f90 so that is more or less general purpose and usable by all.
+- Create a keyword based python wrap in a similar to readparameters.f90 so that is more or less general purpose and usable by all.
+- Trial 3 phase chemistry (gas, grain surface, bulk ice)

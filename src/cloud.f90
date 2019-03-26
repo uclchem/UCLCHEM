@@ -40,7 +40,7 @@ MODULE physics
     DOUBLE PRECISION,PARAMETER :: volctemp(6)=(/84.0,86.3,88.2,89.5,90.4,92.2/)
     DOUBLE PRECISION,PARAMETER :: codestemp(6)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
 
-    DOUBLE PRECISION, allocatable :: av(:),coldens(:),temp(:),density(:)
+    DOUBLE PRECISION, allocatable :: av(:),coldens(:),temp(:),density(:),monoFracCopy(:)
     !Everything should be in cgs units. Helpful constants and conversions below
     DOUBLE PRECISION,PARAMETER ::PI=3.141592654,mh=1.67e-24,K_BOLTZ_SI=1.38d-23
     DOUBLE PRECISION, PARAMETER :: pc=3.086d18,SECONDS_PER_YEAR=3.16d7
@@ -55,8 +55,10 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics
         ! Modules not restarted in python wraps so best to reset everything manually.
-        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,temp,density)
-        ALLOCATE(av(points),coldens(points),temp(points),density(points))
+        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,temp,density,monoFracCopy)
+        ALLOCATE(av(points),coldens(points),temp(points),density(points),monoFracCopy(size(monoFractions)))
+        coflag=0 !reset sublimation
+        monoFracCopy=monoFractions !reset monofractions
 
         !Set up basic physics variables
         cloudSize=(rout-rin)*pc
@@ -69,7 +71,6 @@ CONTAINS
                 density=initialDens
             CASE(1)
                 density=1.001*initialDens
-            !foster & chevalier 1993
             CASE DEFAULT
                 write(*,*) "Collapse must be 0 or 1 for cloud.f90"
         END SELECT
@@ -177,23 +178,6 @@ CONTAINS
     !REQUIRED PHYSICS ENDS HERE, ANY ADDITIONAL PHYSICS CAN BE ADDED BELOW.
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-    SUBROUTINE partialSublimation(fractions, abund)
-        DOUBLE PRECISION :: abund(nspec+1,points)
-        DOUBLE PRECISION :: fractions(:)
-
-        abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+fractions*abund(grainList,dstep)
-        abund(grainList,dstep)=(1.0-fractions)*abund(grainList,dstep)
-
-    END SUBROUTINE partialSublimation
-
-    SUBROUTINE totalSublimation(abund)
-        DOUBLE PRECISION :: abund(nspec+1,points)
-        abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
-        abund(grainList,dstep)=1d-30
-    END SUBROUTINE totalSublimation
-
-
     SUBROUTINE thermalEvaporation(abund)
     DOUBLE PRECISION :: abund(nspec+1,points)
     INTEGER :: i
@@ -225,6 +209,21 @@ CONTAINS
         ENDIF
     END SUBROUTINE thermalEvaporation
 
+    SUBROUTINE partialSublimation(fractions, abund)
+        DOUBLE PRECISION :: abund(nspec+1,points)
+        DOUBLE PRECISION :: fractions(:)
+
+        abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+fractions*abund(grainList,dstep)
+        abund(grainList,dstep)=(1.0-fractions)*abund(grainList,dstep)
+
+    END SUBROUTINE partialSublimation
+
+    SUBROUTINE totalSublimation(abund)
+        DOUBLE PRECISION :: abund(nspec+1,points)
+        abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
+        abund(grainList,dstep)=1d-30
+    END SUBROUTINE totalSublimation
+
     SUBROUTINE bindingEnergyEvap(abund)
         DOUBLE PRECISION :: abund(nspec+1,points)
         double precision, parameter :: SURFACE_SITE_DENSITY = 1.5d15
@@ -242,10 +241,9 @@ CONTAINS
             freq = dsqrt((2*(SURFACE_SITE_DENSITY)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)
             IF (kevap .ge. 0.99) THEN
-                abund(gasGrainList(i),dstep)=abund(gasGrainList(i),dstep)+(monoFractions(i)*abund(speci,dstep))
-                abund(speci,dstep)=(1.0-monoFractions(i))*abund(speci,dstep)
-                !set to 1d50 so it can't happen again
-                bindingEnergy(i)=1d50
+                abund(gasGrainList(i),dstep)=abund(gasGrainList(i),dstep)+(monoFracCopy(i)*abund(speci,dstep))
+                abund(speci,dstep)=(1.0-monoFracCopy(i))*abund(speci,dstep)
+                monoFracCopy(i)=0.0
             END IF 
         END DO
     END SUBROUTINE bindingEnergyEvap
