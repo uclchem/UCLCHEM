@@ -9,19 +9,19 @@ MODULE physics
     integer :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     integer :: collapse,switch,phase
-    integer :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
+    integer :: h2desorb,crdesorb,uvcr,desorb
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
-    integer :: evap,ion,solidflag,volcflag,coflag,tempindx,io
+    integer :: instantSublimation,ion,coflag,tempindx,io
    
     !variables either controlled by physics or that user may wish to change    
     double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
     double precision :: cloudSize,rout,rin,oldtemp,baseAv,bc,olddens,maxTemp
-    double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
+    double precision, allocatable :: av(:),coldens(:),temp(:),density(:)
     !Everything should be in cgs units. Helpful constants and conversions below
-    double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
-    double precision, parameter :: year=3.16455d-08,pc=3.086d18
+    double precision,parameter ::pi=3.141592654,mh=1.67e-24
+    double precision, parameter :: year=3.16455d-08,pc=3.086d18,SECONDS_PER_YEAR=3.16d7
 
     !Interpolation variables
     integer, parameter :: nInterpPoints=201
@@ -39,13 +39,13 @@ CONTAINS
     SUBROUTINE initializePhysics
     !Any initialisation logic steps go here
     !cloudSize is important as is allocating space for depth arrays
-        allocate(av(points),coldens(points),temp(points),dens(points))
+        allocate(av(points),coldens(points),temp(points),density(points))
         cloudSize=(rout-rin)*pc
 
         if (collapse .eq. 1) THEN
-            dens=1.001*initialDens
+            density=1.001*initialDens
         ELSE
-            dens=initialDens
+            density=initialDens
         ENDIF 
 
         !It's not possible to prepare for every use case but the comments in this if statement
@@ -66,13 +66,13 @@ CONTAINS
 
             !Temperatures in Kelvin, densities in hydrogen nuclei / cm^3. Convert if necessary
             !Time in seconds
-            times=times/year
+            times=times*SECONDS_PER_YEAR
 
             !This sets up the interpolator for temperature and density
             CALL splineSetup(times,densities,densA,densB,densC,nInterpPoints)
             CALL splineSetup(times,temperatures,tempA,tempB,tempC,nInterpPoints)
             initialDens=densities(1)
-            dens=initialDens
+            density=initialDens
             initialTemp=temperatures(1)
             temp=initialTemp
             
@@ -88,13 +88,13 @@ CONTAINS
     !For phase 2, the actual post-processing, the best time step is problem dependent
     SUBROUTINE updateTargetTime
             IF (timeInYears .gt. 1.0d6) THEN
-                targetTime=(timeInYears+1.0d5)/year
+                targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 10000) THEN
-                targetTime=(timeInYears+1000.0)/year
+                targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 1000) THEN
-                targetTime=(timeInYears+100.0)/year
+                targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 0.0) THEN
-                targetTime=(timeInYears*10)/year
+                targetTime=(timeInYears*10)*SECONDS_PER_YEAR
             ELSE
                 targetTime=3.16d7*10.d-8
             ENDIF
@@ -103,20 +103,42 @@ CONTAINS
     SUBROUTINE updatePhysics
         !Only do post-processing on phase 2, so phase 1can be cloud model for initial conditions
         IF (phase .eq. 2) THEN
-            dens(dstep)=getInterp(targetTime,times,densities,densA,densB,densC,nInterpPoints)
+            density(dstep)=getInterp(targetTime,times,densities,densA,densB,densC,nInterpPoints)
             temp(dstep)=getInterp(targetTime,times,temperatures,tempA,tempB,tempC,nInterpPoints)
         END IF
 
 
         IF (dstep .lt. points) THEN
-            coldens(dstep)= cloudSize*((real(points+0.5-dstep))/real(points))*dens(dstep)
+            coldens(dstep)= cloudSize*((real(points+0.5-dstep))/real(points))*density(dstep)
         ELSE
-            coldens(dstep)= 0.5*(cloudSize/real(points))*dens(dstep)
+            coldens(dstep)= 0.5*(cloudSize/real(points))*density(dstep)
         END IF
         av(dstep)= baseAv +coldens(dstep)/1.6d21
 
     
     END SUBROUTINE updatePhysics
+
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! This subroutine must be in every physics module.                                !
+    ! It receives the abundance array and performs any sublimation related activity   !
+    ! In hot core that means following thermalEvaporation subroutine.                 !
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    SUBROUTINE sublimation(abund)
+        DOUBLE PRECISION :: abund(nspec+1,points)
+        INTENT(INOUT) :: abund
+
+        IF (instantSublimation .eq. 1) THEN
+            instantSublimation=0
+            CALL totalSublimation(abund)
+        ELSE IF (coflag .ne. 2) THEN
+            IF (temp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
+            IF (temp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
+            IF (temp(dstep) .gt. codestemp(tempindx)) coflag=1
+            CALL thermalEvaporation(abund)
+        END IF
+    END SUBROUTINE sublimation
+    
 
     pure FUNCTION densdot()
     !Required for collapse=1, works out the time derivative of the density, allowing DLSODE
@@ -124,9 +146,9 @@ CONTAINS
     !It get's called by F, the SUBROUTINE in chem.f90 that sets up the ODEs for DLSODE
         double precision :: densdot
         !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
-        IF (dens(dstep) .lt. finalDens .and. phase .eq. 1) THEN
-             densdot=bc*(dens(dstep)**4./initialDens)**0.33*&
-             &(8.4d-30*initialDens*((dens(dstep)/initialDens)**0.33-1.))**0.5
+        IF (density(dstep) .lt. finalDens .and. phase .eq. 1) THEN
+             densdot=bc*(density(dstep)**4./initialDens)**0.33*&
+             &(8.4d-30*initialDens*((density(dstep)/initialDens)**0.33-1.))**0.5
         ELSE
             densdot=0.00    
         ENDIF    

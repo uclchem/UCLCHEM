@@ -13,20 +13,20 @@ MODULE physics
     integer :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     integer :: collapse,switch,phase
-    integer :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
+    integer :: h2desorb,crdesorb,uvcr,desorb
 
     !evap is dummy for defaultparameters.f90, ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when sublimation takes place.
-    integer :: evap,ion,coflag,tempindx
+    integer :: instantSublimation,ion,coflag,tempindx
 
     !variables either controlled by physics or that user may wish to change    
     double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime
     double precision :: cloudSize,rout,rin,baseAv,bc,tstart,maxTemp
-    double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
+    double precision, allocatable :: av(:),coldens(:),temp(:),density(:)
 
     !Everything should be in cgs units. Helpful constants and conversions below
     double precision,parameter ::PI=3.141592654,MH=1.674d-24
-    double precision, parameter :: YEAR=3.16455d-08,PC=3.086d18,KM=1.d5
+    double precision, parameter :: YEAR=3.16455d-08,PC=3.086d18,KM=1.d5,SECONDS_PER_YEAR=3.16d7
 
     character(2) ::filename
     character(1)  ::densint
@@ -55,8 +55,8 @@ CONTAINS
         INTEGER :: iLoop
         DOUBLE PRECISION :: v01,g1,g2
         !Reset variables for python wrap.
-        IF (ALLOCATED(av)) deallocate(av,coldens,temp,dens)
-        allocate(av(points),coldens(points),temp(points),dens(points))  
+        IF (ALLOCATED(av)) deallocate(av,coldens,temp,density)
+        allocate(av(points),coldens(points),temp(points),density(points))  
 
         !check input sanity and set inital values
         cloudSize=(rout-rin)*pc
@@ -65,12 +65,12 @@ CONTAINS
                 write(*,*) "Cannot have collapse on during cshock (phase=2)"
                 Write(*,*) "setting collapse=0 and continuing"
                 collapse=0
-                dens=initialDens
+                density=initialDens
             ELSE
-                dens=1.001*initialDens
+                density=1.001*initialDens
             END IF
         ELSE
-            dens=initialDens
+            density=initialDens
         ENDIF 
         temp=initialTemp
 
@@ -89,7 +89,7 @@ CONTAINS
             allocate(tn(points),ti(points),tgc(points),tgr(points),tg(points))
             mun=2*mh
             grainRadius5=grainRadius/4.e-5
-            dens6=dens(dstep)/1.e6
+            dens6=density(dstep)/1.e6
             currentTimeOld=0.0
             driftVel=0.0
             zn0=0.0
@@ -176,31 +176,31 @@ CONTAINS
     SUBROUTINE updateTargetTime
         IF (phase .eq. 1) THEN
             IF (timeInYears .gt. 1.0d6) THEN
-                targetTime=(timeInYears+1.0d5)/year
+                targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 10000) THEN
-                targetTime=(timeInYears+1000.0)/year
+                targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 1000) THEN
-                targetTime=(timeInYears+100.0)/year
+                targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 0.0) THEN
-                targetTime=(timeInYears*10)/year
+                targetTime=(timeInYears*10)*SECONDS_PER_YEAR
             ELSE
                 targetTime=3.16d7*10.d-8
             ENDIF
         ELSE
             IF (timeInYears .gt. 1.0d5) THEN
-                targetTime=(timeInYears+1.0d4)/year
+                targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
             ELSE IF (timeInYears.gt. 1.0d4) THEN
-                targetTime=(timeInYears+1000.)/year                
+                targetTime=(timeInYears+1000.)*SECONDS_PER_YEAR                
             ELSE IF (timeInYears .gt. 1000) THEN
-                targetTime=(timeInYears+50.)/year
+                targetTime=(timeInYears+50.)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 100) THEN
-                targetTime=(timeInYears+1.)/year
+                targetTime=(timeInYears+1.)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 10) THEN
-                targetTime=(timeInYears+.1)/year
+                targetTime=(timeInYears+.1)*SECONDS_PER_YEAR
             ELSE IF  (timeInYears.lt.tsat) THEN
-                targetTime=(timeInYears+0.5)/year
+                targetTime=(timeInYears+0.5)*SECONDS_PER_YEAR
             ELSE
-                targetTime=(timeInYears+.1)/year
+                targetTime=(timeInYears+.1)*SECONDS_PER_YEAR
             ENDIF
         END IF
     END SUBROUTINE updateTargetTime
@@ -212,10 +212,10 @@ CONTAINS
         !calculate column density. Remember dstep counts from edge of core in to centre
         IF (dstep .lt. points) THEN
             !column density of current point + column density of all points further out
-            coldens(dstep)=(cloudSize/real(points))*dens(dstep)
+            coldens(dstep)=(cloudSize/real(points))*density(dstep)
             coldens(dstep)=coldens(dstep)+sum(coldens(dstep:points))
         ELSE
-            coldens(dstep)=cloudSize/real(points)*dens(dstep)
+            coldens(dstep)=cloudSize/real(points)*density(dstep)
         END IF
       
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
@@ -232,7 +232,7 @@ CONTAINS
 
             !number density of dust grains, rearrange following:
             !100.0*dust grain mass*dustgrainnumberdensity=hydrogen mass * h nuclei number density
-            grainNumberDensity=dens(dstep)*GAS_DUST_NUMBER_RATIO
+            grainNumberDensity=density(dstep)*GAS_DUST_NUMBER_RATIO
             !We introduce the gas temperature curve along the dissipation region of the
             !C-shock. We also take into account that the gas and dust are decoupled. We
             !use the equations for the collisional and radiative heating of grains of
@@ -258,7 +258,7 @@ CONTAINS
 
             !Density change as shock evolves
             IF (timeInYears .gt. 0.0) THEN
-                dens=initialDens*vs/(vs-vn)
+                density=initialDens*vs/(vs-vn)
             END IF
 
             !temperature change as shock evolves
@@ -362,15 +362,18 @@ CONTAINS
         !loop over projectile species and get rates of change of mantle for each, summing them
         sputterRate=0.0
         DO iSpec=1,SIZE(projectiles) !!!! Make projectiles array in initialize
-            sputterRate=sputterRate+iceYieldRate(mass(projectiles(iSpec))*MH,dens(dstep)*abund(projectiles(iSpec),dstep))
+            sputterRate=sputterRate+iceYieldRate(mass(projectiles(iSpec))*MH,density(dstep)*abund(projectiles(iSpec),dstep))
         END DO
 
-        grainNumberDensity=dens(dstep)*GAS_DUST_NUMBER_RATIO
+        grainNumberDensity=density(dstep)*GAS_DUST_NUMBER_RATIO
         !Total rate/cm3 (ie released particles /cm3/s) is sputterRate (per grain) multiplied by grain number density
         sputterRate=sputterRate*grainNumberDensity
 
         !integrate that forward from currentTimeOld to currentTime. to get total number of particles released
-        abundChangeFrac=sputterRate*(currentTime-currentTimeOld)!/dens(dstep)
+        abundChangeFrac=sputterRate*(currentTime-currentTimeOld)!/density(dstep)
+        !I think that commented out dens is required for units. However, sputtering doesn't happen if it is uncommented
+        !and sputtering matches Jimenez-Serra et al. 2008 curves when it's commented out.
+
 
         !if M particles are released and there are N particles on the grain total
         !then a species with X particles on the grain will release M*(X/N)

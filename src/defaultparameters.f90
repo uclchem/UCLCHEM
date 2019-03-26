@@ -36,15 +36,15 @@ bc=1.0
 !If you want to read abundances from a file (abundFile) set to 1
 !If you set to zero, final abundances are written to abundFile
 readAbunds=1
-!phase chooses behaviour. Basic clouds in phase 1. Hot core /cshock in phase 2 (depending on physics module)
+!phase chooses behaviour. Phase=1 runs a simple cloud and Phase=2 runs the physics of the chosen module (eg.hot core or c-shock)
 phase=2;
 
-!non-thermal Desorption. Turn it all on/off. Turn off h2, cosmic ray induced and uv induced off separately too
+!non-thermal Desorption. Turn it all on/offwith desorb. Can also turn off h2, cosmic ray induced and uv induced individually.
 desorb=1;
 h2desorb=1;crdesorb=1;uvcr=1;
 
-!evap sets thermal desorption  (0/1/2) -> (none/temp dependent/ instantaneous)
-evap=0
+!Set to 1 to immediately add all grain surface material to gas phase.
+instantSublimation=0
 
 !ion sets ionization fraction of carbon. See chem.f90:initialise
 ion=2

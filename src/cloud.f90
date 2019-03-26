@@ -21,11 +21,11 @@ MODULE physics
     INTEGER :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     INTEGER :: collapse,switch,phase
-    INTEGER :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
+    INTEGER :: h2desorb,crdesorb,uvcr,desorb
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
-    INTEGER :: evap,ion,solidflag,volcflag,coflag,tempindx
+    INTEGER :: ion,solidflag,volcflag,coflag,tempindx,instantSublimation
 
     !variables either controlled by physics or that user may wish to change
     DOUBLE PRECISION :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
@@ -40,10 +40,10 @@ MODULE physics
     DOUBLE PRECISION,PARAMETER :: volctemp(6)=(/84.0,86.3,88.2,89.5,90.4,92.2/)
     DOUBLE PRECISION,PARAMETER :: codestemp(6)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
 
-    DOUBLE PRECISION, allocatable :: av(:),coldens(:),temp(:),dens(:)
+    DOUBLE PRECISION, allocatable :: av(:),coldens(:),temp(:),density(:)
     !Everything should be in cgs units. Helpful constants and conversions below
-    DOUBLE PRECISION,PARAMETER ::PI=3.141592654,mh=1.67e-24,kbolt=1.38d-23
-    DOUBLE PRECISION, PARAMETER :: year=3.16455d-08,pc=3.086d18
+    DOUBLE PRECISION,PARAMETER ::PI=3.141592654,mh=1.67e-24,K_BOLTZ_SI=1.38d-23
+    DOUBLE PRECISION, PARAMETER :: pc=3.086d18,SECONDS_PER_YEAR=3.16d7
 
 CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN.
@@ -55,8 +55,8 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics
         ! Modules not restarted in python wraps so best to reset everything manually.
-        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,temp,dens)
-        ALLOCATE(av(points),coldens(points),temp(points),dens(points))
+        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,temp,density)
+        ALLOCATE(av(points),coldens(points),temp(points),density(points))
 
         !Set up basic physics variables
         cloudSize=(rout-rin)*pc
@@ -66,9 +66,9 @@ CONTAINS
         SELECT CASE(collapse)
             !freefall Rawlings 1992
             CASE(0)
-                dens=initialDens
+                density=initialDens
             CASE(1)
-                dens=1.001*initialDens
+                density=1.001*initialDens
             !foster & chevalier 1993
             CASE DEFAULT
                 write(*,*) "Collapse must be 0 or 1 for cloud.f90"
@@ -77,7 +77,7 @@ CONTAINS
         !Catch bad choices of switch and collapse to stop infinite runs.
         IF (switch .eq. 1 .and. collapse .gt. 1) THEN
             write(*,*) "Switch must be 0 for BE collapse, changing to stop at finalTime"
-            write(*,*) "Tfin = ",finalTime/year, " years"
+            write(*,*) "Tfin = ",finalTime*SECONDS_PER_YEAR, " years"
             switch=0
         END IF
 
@@ -94,15 +94,15 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updateTargetTime
         IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
-            targetTime=(timeInYears+1.0d4)/year
+            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
         ELSE  IF (timeInYears .gt. 1.0d5) THEN
-            targetTime=(timeInYears+1.0d4)/year
+            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 1.0d4) THEN
-            targetTime=(timeInYears+1000.0)/year
+            targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 1000) THEN
-            targetTime=(timeInYears+100.0)/year
+            targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 0.0) THEN
-            targetTime=(timeInYears*10.0)/year
+            targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR
         ELSE
             targetTime=3.16d7*10.d-8
         ENDIF
@@ -117,10 +117,10 @@ CONTAINS
         !and coldens should be amount of gas from edge to parcel.
         IF (dstep .lt. points) THEN
             !column density of current point + column density of all points further out
-            coldens(dstep)=(cloudSize/real(points))*dens(dstep)
+            coldens(dstep)=(cloudSize/real(points))*density(dstep)
             coldens(dstep)=coldens(dstep)+sum(coldens(dstep:points))
         ELSE
-            coldens(dstep)=cloudSize/real(points)*dens(dstep)
+            coldens(dstep)=cloudSize/real(points)*density(dstep)
         END IF
 
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
@@ -132,7 +132,7 @@ CONTAINS
         !It takes the form T=A(t^B)*[(d/R)^-0.5], where A and B are given below for various stellar masses
             temp(dstep)=(cloudSize/(rout*pc))*(real(dstep)/real(points))
             temp(dstep)=temp(dstep)**(-0.5)
-            temp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime*year)**tempb(tempindx))*temp(dstep))
+            temp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime/SECONDS_PER_YEAR)**tempb(tempindx))*temp(dstep))
         END IF
     END SUBROUTINE updatePhysics
 
@@ -145,12 +145,13 @@ CONTAINS
         DOUBLE PRECISION :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
 
-        IF (evap .eq. 1) THEN
-            if (temp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
-            if (temp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
-            if (temp(dstep) .gt. codestemp(tempindx) .and. coflag .ne. 2) coflag=1
-            CALL thermalEvaporation(abund)
-        ELSE IF (evap .eq. 2) THEN
+        IF (instantSublimation .eq. 1) THEN
+            instantSublimation=0
+            CALL totalSublimation(abund)
+        ELSE IF (coflag .ne. 2) THEN
+            IF (temp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
+            IF (temp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
+            IF (temp(dstep) .gt. codestemp(tempindx)) coflag=1
             CALL thermalEvaporation(abund)
         END IF
     END SUBROUTINE sublimation
@@ -177,6 +178,22 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
+    SUBROUTINE partialSublimation(fractions, abund)
+        DOUBLE PRECISION :: abund(nspec+1,points)
+        DOUBLE PRECISION :: fractions(:)
+
+        abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+fractions*abund(grainList,dstep)
+        abund(grainList,dstep)=(1.0-fractions)*abund(grainList,dstep)
+
+    END SUBROUTINE partialSublimation
+
+    SUBROUTINE totalSublimation(abund)
+        DOUBLE PRECISION :: abund(nspec+1,points)
+        abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
+        abund(grainList,dstep)=1d-30
+    END SUBROUTINE totalSublimation
+
+
     SUBROUTINE thermalEvaporation(abund)
     DOUBLE PRECISION :: abund(nspec+1,points)
     INTEGER :: i
@@ -184,41 +201,28 @@ CONTAINS
     !Evaporation is based on Viti et al. 2004. A proportion of the frozen species is released into the gas phase
     !in specific events. These events are activated by flags (eg solidflag) which can be set in physics module.
     !The species evaporated are in lists, created by Makerates and based on groupings. see the viti 2004 paper.
-    IF (sum(abund(grainList,dstep)) .gt. 1d-30) THEN
-        !Viti 04 evap
-
-        IF (evap .eq. 1) THEN
+        IF (sum(abund(grainList,dstep)) .gt. 1d-30) THEN
             !Solid Evap
             IF (solidflag .eq. 1) THEN
-                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+solidFractions*abund(grainList,dstep)
-                abund(grainList,dstep)=(1.0-solidFractions)*abund(grainList,dstep)
-                !Set flag to 2 to stop it being recalled
+                CALL partialSublimation(solidFractions,abund)
                 solidflag=2
             ENDIF
+
             !monotonic evaporation at binding energy of species
             CALL bindingEnergyEvap(abund)
+
             !Volcanic evap
             IF (volcflag .eq. 1) THEN
-                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+volcanicFractions*abund(grainList,dstep)
-                abund(grainList,dstep)=(1.0-volcanicFractions)*abund(grainList,dstep)
+                CALL partialSublimation(volcanicFractions,abund)
                 volcflag=2 !Set flag to 2 to stop it being recalled
             ENDIF
 
             !Co-desorption
             IF (coflag .eq. 1) THEN
-                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
-                abund(grainList,dstep)=1d-30
+                CALL totalSublimation(abund)
                 coflag=2
             ENDIF
-
-        ELSE IF (evap .eq. 2 .and. coflag .ne. 2) THEN
-            !Alternative evap. Instaneous evaporation of all grain species
-            abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
-            abund(grainList,dstep)=1d-30
-            coflag = 2
         ENDIF
-    ENDIF
-
     END SUBROUTINE thermalEvaporation
 
     SUBROUTINE bindingEnergyEvap(abund)
@@ -232,7 +236,7 @@ CONTAINS
         !mono evaporation at the binding energy of each species
         DO i=lbound(grainList,1),ubound(grainList,1)
             speci=grainList(i)
-            en=bindingEnergy(i)*kbolt
+            en=bindingEnergy(i)*K_BOLTZ_SI
             expdust=bindingEnergy(i)/temp(dstep)
             newm = mass(speci)*1.66053e-27
             freq = dsqrt((2*(SURFACE_SITE_DENSITY)*en)/((pi**2)*newm))

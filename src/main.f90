@@ -29,7 +29,7 @@ IMPLICIT NONE
     CALL initializeChemistry
     
     !loop until the end condition of the model is reached 
-    DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
+    DO WHILE ((switch .eq. 1 .and. density(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
         !store current time as starting point for each depth step
         currentTimeold=currentTime
 
@@ -42,7 +42,7 @@ IMPLICIT NONE
             CALL updateChemistry
             currentTime=targetTime
             !get time in years for output, currentTime is now equal to targetTime
-            timeInYears= currentTime*year
+            timeInYears= currentTime/SECONDS_PER_YEAR
 
             !Update physics so it's correct for new currentTime and start of next time step
             CALL updatePhysics

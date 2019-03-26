@@ -1,2 +1,2 @@
-vs 10
-outputFile "output/fullsputter10.dat"
+vs 40
+outputFile "output/fullsputter.dat"

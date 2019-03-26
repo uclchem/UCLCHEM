@@ -39,7 +39,7 @@ SUBROUTINE CLOUD(initDens,finDens,finTime,intemp,outFile,startFile)
     timeInYears=0.0
     
     !loop until the end condition of the model is reached 
-    DO WHILE ((switch .eq. 1 .and. dens(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
+    DO WHILE ((switch .eq. 1 .and. density(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
 
         !store current time as starting point for each depth step
         IF (points .gt. 1) THEN
@@ -52,7 +52,7 @@ SUBROUTINE CLOUD(initDens,finDens,finTime,intemp,outFile,startFile)
         !loop over parcels, counting from centre out to edge of cloud
         DO dstep=1,points
 
-            dens=abund(nspec+1,dstep)
+            density=abund(nspec+1,dstep)
             !update physics
             CALL updatePhysics
             !update chemistry

@@ -2,8 +2,8 @@ SHELL = /bin/sh
 FC =gfortran
 f2pyFC=gnu95 #this must match FC (ifort=intelem, gfortran=gnu95)
 #FC=ifort
-FFLAGS = -g -fPIC
-PHYSICS=cshock.f90
+FFLAGS = -O2 -fPIC
+PHYSICS=cloud.f90
 EXT_SUFFIX = $(shell python3-config --extension-suffix)
 
 ##simple makefile for uclchem

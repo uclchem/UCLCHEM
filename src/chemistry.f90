@@ -115,7 +115,7 @@ CONTAINS
 
             !abund(nfe,:) = ffe
             !abund(nna,:) = fna
-            abund(nspec+1,:)=dens      
+            abund(nspec+1,:)=density      
 
             !Decide how much iron is initiall ionized using parameters.f90
             SELECT CASE (ion)
@@ -210,7 +210,7 @@ CONTAINS
                 READ(7,*)
                 READ(7,7030) (abund(i,l),i=1,nspec)
                 REWIND(7)
-                abund(nspec+1,l)=dens(l)
+                abund(nspec+1,l)=density(l)
             END DO
             7000 format(&
             &33x,1pe10.4,5x,/,&
@@ -229,7 +229,7 @@ CONTAINS
 !Writes physical variables and fractional abundances to output file, called every time step.
     SUBROUTINE output
         !write out cloud properties
-        write(10,8020) timeInYears,dens(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
+        write(10,8020) timeInYears,density(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
                         &fmg,fhe,dstep
         !and a blank line
         write(10,8000)
@@ -239,8 +239,8 @@ CONTAINS
         !If this is the last time step of phase I, write a start file for phase II
         IF (readAbunds .eq. 0) THEN
            IF (switch .eq. 0 .and. timeInYears .ge. finalTime& 
-               &.or. switch .eq. 1 .and.dens(dstep) .ge. finalDens) THEN
-               write(7,8020) timeInYears,dens(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
+               &.or. switch .eq. 1 .and.density(dstep) .ge. finalDens) THEN
+               write(7,8020) timeInYears,density(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
                        &fmg,fhe,dstep
                write(7,8000)
                write(7,8010) (specname(i),abund(i,dstep),i=1,nspec)
@@ -266,7 +266,7 @@ CONTAINS
         !choose species you're interested in by looking at parameters.f90
         IF (writeCounter==writeStep .and. columnFlag) THEN
             writeCounter=0
-            write(11,8030) timeInYears,dens(dstep),temp(dstep),abund(outIndx,dstep)
+            write(11,8030) timeInYears,density(dstep),temp(dstep),abund(outIndx,dstep)
             8030  format(1pe11.3,1x,1pe11.4,1x,0pf8.2,6(1x,1pe10.3))
         ELSE
             writeCounter=writeCounter+1
@@ -276,7 +276,7 @@ CONTAINS
     SUBROUTINE updateChemistry
     !Called every time/depth step and updates the abundances of all the species
         !allow option for dens to have been changed elsewhere.
-        IF (collapse .ne. 1) abund(nspec+1,dstep)=dens(dstep)
+        IF (collapse .ne. 1) abund(nspec+1,dstep)=density(dstep)
         !y is at final value of previous depth iteration so set to initial values of this depth with abund
         !reset other variables for good measure        
         h2form = 1.0d-17*dsqrt(temp(dstep))
@@ -286,11 +286,11 @@ CONTAINS
         !evaluate co and h2 column densities for use in rate calculations
         !sum column densities of each point up to dstep. boxlength and dens are pulled out of the sum as common factors  
         IF (dstep.gt.1) THEN
-            h2col=(sum(abund(nh2,:dstep-1)*dens(:dstep-1))+0.5*abund(nh2,dstep)*dens(dstep))*(cloudSize/real(points))
-            cocol=(sum(abund(nco,:dstep-1)*dens(:dstep-1))+0.5*abund(nco,dstep)*dens(dstep))*(cloudSize/real(points))
+            h2col=(sum(abund(nh2,:dstep-1)*density(:dstep-1))+0.5*abund(nh2,dstep)*density(dstep))*(cloudSize/real(points))
+            cocol=(sum(abund(nco,:dstep-1)*density(:dstep-1))+0.5*abund(nco,dstep)*density(dstep))*(cloudSize/real(points))
         ELSE
-            h2col=0.5*abund(nh2,dstep)*dens(dstep)*(cloudSize/real(points))
-            cocol=0.5*abund(nco,dstep)*dens(dstep)*(cloudSize/real(points))
+            h2col=0.5*abund(nh2,dstep)*density(dstep)*(cloudSize/real(points))
+            cocol=0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
         ENDIF
 
         !call the actual ODE integrator
@@ -299,7 +299,7 @@ CONTAINS
 
         !1.d-30 stops numbers getting too small for fortran.
         WHERE(abund<1.0d-30) abund=1.0d-30
-        dens(dstep)=abund(nspec+1,dstep)
+        density(dstep)=abund(nspec+1,dstep)
     END SUBROUTINE updateChemistry
 
     SUBROUTINE integrate
@@ -332,7 +332,7 @@ CONTAINS
                 CASE(-4)
                     !Successful as far as currentTime but many errors.
                     !Make targetTime smaller and just go again
-                    targetTime=currentTime+10.0/year
+                    targetTime=currentTime+10.0*SECONDS_PER_YEAR
                 CASE(-5)
                     targetTime=currentTime*1.01
             END SELECT
@@ -375,7 +375,7 @@ CONTAINS
     SUBROUTINE debugout
         open(79,file='output/debuglog',status='unknown')       !debug file.
         write(79,*) "Integrator failed, printing relevant debugging information"
-        write(79,*) "dens",dens(dstep)
+        write(79,*) "dens",density(dstep)
         write(79,*) "density in integration array",abund(nspec+1,dstep)
         write(79,*) "Av", av(dstep)
         write(79,*) "Mantle", mantle(dstep)

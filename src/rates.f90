@@ -20,7 +20,7 @@ SUBROUTINE calculateReactionRates
             rate(j)=alpha(j)*gama(j)*1.0/(1.0-omega)*zeta*(temp(dstep)/300)**beta(j)
         !freeze out only happens if fr>0 and depending on evap choice 
         CASE ('FREEZE')             
-            IF (evap .ne. 0 .or. fr .eq. 0.0) then
+            IF (fr .eq. 0.0 .or. temp(dstep) .gt. 30.0) then
                 rate(j)=0.0
             ELSE
                 IF (re1(j).eq."E-") THEN
@@ -167,7 +167,7 @@ double precision FUNCTION diffusionReactionRate()
        activationBarrier = activationBarrier/(activationBarrier + desorbProb + diffuseProb)
     END IF
     
-    diffusionReactionRate=alpha(j) * diffuseRate * activationBarrier* GAS_DUST_DENSITY_RATIO / dens(dstep)
+    diffusionReactionRate=alpha(j) * diffuseRate * activationBarrier* GAS_DUST_DENSITY_RATIO / density(dstep)
 
     !Now adjust for fraction of this reaction's products that will desorb due to energy released
     IF (re3(j).eq.'DIFF') THEN

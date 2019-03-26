@@ -18,16 +18,15 @@ MODULE physics
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
-    integer :: evap,ion,solidflag,volcflag,coflag,tempindx
+    integer :: instantSublimation,ion,solidflag,volcflag,coflag,tempindx
     
     !variables either controlled by physics or that user may wish to change    
     double precision :: initialDens,dens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
-    double precision :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp
-    double precision :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
+    double precision :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp,vs
     double precision, allocatable :: av(:),coldens(:),temp(:)
     !Everything should be in cgs units. Helpful constants and conversions below
-    double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
-    double precision, parameter :: year=3.16455d-08,pc=3.086d18
+    double precision,parameter ::pi=3.141592654,mh=1.67e-24
+    double precision, parameter :: year=3.16455d-08,pc=3.086d18,SECONDS_PER_YEAR=3.16d7
 
 
 CONTAINS
@@ -43,9 +42,9 @@ CONTAINS
         allocate(av(points),coldens(points))
         cloudSize=(rout-rin)*pc
         if (collapse .eq. 1) THEN
-            dens=1.001*initialDens
+            density=1.001*initialDens
         ELSE
-            dens=initialDens
+            density=initialDens
         ENDIF 
     END SUBROUTINE
 
@@ -56,13 +55,13 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updateTargetTime
     IF (timeInYears .gt. 1.0d6) THEN
-        targetTime=(timeInYears+1.0d5)/year
+        targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
     ELSE IF (timeInYears .gt. 10000) THEN
-        targetTime=(timeInYears+1000.0)/year
+        targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
     ELSE IF (timeInYears .gt. 1000) THEN
-        targetTime=(timeInYears+100.0)/year
+        targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
     ELSE IF (timeInYears .gt. 0.0) THEN
-        targetTime=(timeInYears*10)/year
+        targetTime=(timeInYears*10)*SECONDS_PER_YEAR
     ELSE
         targetTime=3.16d7*10.d-8
     ENDIF

@@ -20,7 +20,7 @@ MODULE physics
     double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
     double precision :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp
     double precision :: tempa(6),tempb(6),codestemp(6),volctemp(6),solidtemp(6)
-    double precision, allocatable :: av(:),coldens(:),temp(:),dens(:)
+    double precision, allocatable :: av(:),coldens(:),temp(:),density(:)
     
     !variables either controlled by physics or that user may wish to change    
     !BD model specific variables
@@ -29,8 +29,8 @@ MODULE physics
 
 
     !Everything should be in cgs units. Helpful constants and conversions below
-    double precision,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
-    double precision, parameter :: year=3.16455d-08,pc=3.086d18,cs=2.00d4
+    double precision,parameter ::pi=3.141592654,mh=1.67e-24,
+    double precision, parameter :: pc=3.086d18,cs=2.00d4,SECONDS_PER_YEAR=3.16d7
 
     character(1) :: modeln
     character(4) :: bdstring
@@ -43,9 +43,9 @@ CONTAINS
 !years for output.
     
     SUBROUTINE initializePhysics
-        allocate(av(points),coldens(points),tshock(points),temp(points),dens(points))
+        allocate(av(points),coldens(points),tshock(points),temp(points),density(points))
         cloudSize=(rout-rin)*pc
-        dens=1.01*initialDens
+        density=1.01*initialDens
         temp=initialTemp
         mbd=0.2
         if (phase .eq. 2) THEN
@@ -59,21 +59,21 @@ CONTAINS
     SUBROUTINE updateTargetTime
         IF (phase .eq. 1) THEN
             IF (timeInYears .gt. 1.0d6) THEN
-                targetTime=(timeInYears+1.0d5)/year
+                targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 10000) THEN
-                targetTime=(timeInYears+1000.0)/year
+                targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 1000) THEN
-                targetTime=(timeInYears+100.0)/year
+                targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 0.0) THEN
-                targetTime=(timeInYears*10)/year
+                targetTime=(timeInYears*10)*SECONDS_PER_YEAR
             ELSE
                 targetTime=3.16d7*10.d-8
             ENDIF
         ELSE
             IF (timeInYears .gt. 1.0d6) THEN
-                targetTime=(timeInYears+20000.0)/year
-            ELSE IF (timeInYears/year .gt. tshock(points)) THEN
-                targetTime=(timeInYears+2500.0)/year
+                targetTime=(timeInYears+20000.0)*SECONDS_PER_YEAR
+            ELSE IF (timeInYears*SECONDS_PER_YEAR .gt. tshock(points)) THEN
+                targetTime=(timeInYears+2500.0)*SECONDS_PER_YEAR
             ELSE
                 targetTime=(targetTime+(tshock(points)/50))
             END IF
@@ -89,9 +89,9 @@ CONTAINS
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         !for bd, need to have dstep=1 as core.
         IF (dstep .lt. points) THEN
-            coldens(dstep)= cloudSize*((real(points+0.5-dstep))/real(points))*dens(dstep)
+            coldens(dstep)= cloudSize*((real(points+0.5-dstep))/real(points))*density(dstep)
         ELSE
-            coldens(dstep)= 0.5*(cloudSize/real(points))*dens(dstep)
+            coldens(dstep)= 0.5*(cloudSize/real(points))*density(dstep)
         END IF
         av(dstep)= baseAv +coldens(dstep)/1.6d21
     END SUBROUTINE updatePhysics
@@ -111,16 +111,16 @@ CONTAINS
     !Currently set to Rawlings 1992 freefall.
         double precision :: densdot
         IF (phase .eq. 1) THEN
-            IF (dens(dstep) .lt. finalDens) THEN
-                densdot=bc*(dens(dstep)**4./initialDens)**0.33*&
-                &(8.4d-30*initialDens*((dens(dstep)/initialDens)**0.33-1.))**0.5
+            IF (density(dstep) .lt. finalDens) THEN
+                densdot=bc*(density(dstep)**4./initialDens)**0.33*&
+                &(8.4d-30*initialDens*((density(dstep)/initialDens)**0.33-1.))**0.5
             ELSE
                densdot=0.00    
             ENDIF 
         ELSE
-            IF (dens(dstep)*1.001 .gt. dshock .and.  dens(dstep) .lt. finalDens) THEN
-                densdot=bc*(dens(dstep)**4./dshock)**0.33*&
-                &(8.4d-30*dshock*((dens(dstep)/dshock)**0.33-1.))**0.5
+            IF (density(dstep)*1.001 .gt. dshock .and.  density(dstep) .lt. finalDens) THEN
+                densdot=bc*(density(dstep)**4./dshock)**0.33*&
+                &(8.4d-30*dshock*((density(dstep)/dshock)**0.33-1.))**0.5
             ELSE
                 densdot=0.00    
             END IF
@@ -157,11 +157,11 @@ CONTAINS
         double precision store
         !instantly increases density to final post-shock density at tshock
         IF (targetTime .lt. tshock(dstep)) THEN
-            dens(dstep)=initialDens
+            density(dstep)=initialDens
         ENDIF
 
-        IF (targetTime .gt. tshock(dstep) .and. dens(dstep) .lt. dshock) THEN
-            dens(dstep)=dshock*1.01
+        IF (targetTime .gt. tshock(dstep) .and. density(dstep) .lt. dshock) THEN
+            density(dstep)=dshock*1.01
         END IF
 
     END SUBROUTINE simpleshock

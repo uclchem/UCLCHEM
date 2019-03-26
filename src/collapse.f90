@@ -27,10 +27,10 @@ MODULE physics
     DOUBLE PRECISION :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
     DOUBLE PRECISION :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp,vs,maxTime
     DOUBLE PRECISION :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
-    DOUBLE PRECISION, allocatable :: av(:),coldens(:),temp(:),dens(:),massInRadius(:),parcelRadius(:)
+    DOUBLE PRECISION, allocatable :: av(:),coldens(:),temp(:),density(:),massInRadius(:),parcelRadius(:)
     !Everything should be in cgs units. Helpful constants and conversions below
-    DOUBLE PRECISION,parameter ::pi=3.141592654,mh=1.67e-24,kbolt=1.38d-23
-    DOUBLE PRECISION, parameter :: year=3.16455d-08,pc=3.086d18,au=2.063d5
+    DOUBLE PRECISION,parameter ::pi=3.141592654,mh=1.67e-24
+    DOUBLE PRECISION, parameter :: year=3.16455d-08,pc=3.086d18,au=2.063d5,SECONDS_PER_YEAR=3.16d7
 
     DOUBLE PRECISION :: dt,drad
 
@@ -43,16 +43,16 @@ CONTAINS
     !Any initialisation logic steps go here
     !cloudSize is important as is allocating space for depth arrays
       IF (ALLOCATED(av)) DEALLOCATE(av,coldens,temp,dens)
-      ALLOCATE(av(points),coldens(points),dens(points),temp(points),parcelRadius(points),massInRadius(points))
+      ALLOCATE(av(points),coldens(points),density(points),temp(points),parcelRadius(points),massInRadius(points))
       cloudSize=(rout-rin)*pc
 
       temp = initialTemp
 
       SELECT CASE(collapse)
         CASE(0) !no collapse
-          dens=initialDens
+          density=initialDens
         CASE(1) !standard freefall collapse
-          dens=1.001*initialDens
+          density=1.001*initialDens
         CASE DEFAULT !collapse modes detailed at top of module
           phase=2
           SELECT CASE(collapse)
@@ -73,7 +73,7 @@ CONTAINS
           END DO
                
           open(unit=66,file='output/radius.dat',status='unknown')
-          dens=rhofit(rin,rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
+          density=rhofit(rin,rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
           IF ((collapse .eq. 2) .or. (collapse .eq. 3)) then
             CALL findmassInRadius
           END IF
@@ -84,16 +84,16 @@ CONTAINS
     !At each timestep, the time at the END of the step is calculated by calling this function
     !You need to set targetTime in seconds, its initial value will be the time at start of current step
     IF (timeInYears .gt. 10000) THEN
-        targetTime=(timeInYears+1000.0)/year
+        targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
     ELSE IF (timeInYears .gt. 1000) THEN
-        targetTime=(timeInYears+100.0)/year
+        targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
     ELSE IF (timeInYears .gt. 0.0) THEN
-        targetTime=(timeInYears*10)/year
+        targetTime=(timeInYears*10)*SECONDS_PER_YEAR
     ELSE
         targetTime=3.16d7*10.d-8
     ENDIF
 
-    IF (targetTime .gt. finalTime/year)targetTime=finalTime/year
+    IF (targetTime .gt. finalTime*SECONDS_PER_YEAR)targetTime=finalTime*SECONDS_PER_YEAR
 
     !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrator.
     ! DLSODE sorts that out based on chosen error tolerances (RTOL/ATOL) and is simply called repeatedly
@@ -122,7 +122,7 @@ CONTAINS
                 &rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears)),&
               &vrfit(parcelRadius(dstep),rminfit(timeInYears),vminfit(timeInYears),avfit(timeInYears))
            END IF
-           dens(dstep)=rhofit(parcelRadius(dstep),rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
+           density(dstep)=rhofit(parcelRadius(dstep),rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
         END IF
         
     END SUBROUTINE updatePhysics
