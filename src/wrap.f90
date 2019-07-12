@@ -63,7 +63,7 @@ SUBROUTINE CLOUD(initDens,finDens,finTime,intemp,outFile,startFile)
             !reset target for next depth point
             if (points .gt. 1)currentTime=currentTimeold
             !get time in years for output
-            timeInYears= currentTime*year
+            timeInYears= currentTime/SECONDS_PER_YEAR
             !write this depth step
             CALL output
         END DO
