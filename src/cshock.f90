@@ -245,13 +245,13 @@ CONTAINS
             !grain collisional heating
             tgc(dstep)=15*(dens6/grainRadius5)**(0.1818)*(tn(dstep)/1000.0)**(0.2727)
             !grain radiative heating
-            !        Frs=0.25*dens*mun*(vn*km)**3
-            !        G0=Frs/Hab
-            !        trs0=12.2*G0**0.2
-            !        tau100=2.7d2*G0/trs0**5
-            !        tgr1=8.9d-11*nu0*G0*dexp(1.8*av(dstep))+2.7**5
-            !        tgr2=3.4d-2*(0.42-log(3.5d-2*tau100*trs0))*tau100*trs0**6
-            !        tgr(dstep)=(tgr1+tgr2)**0.2
+            ! Frs=0.25*density(1)*mun*(vn*km)**3
+            ! G0=Frs
+            ! trs0=12.2*G0**0.2
+            ! tau100=2.7d2*G0/trs0**5
+            ! tgr1=8.9d-11*nu0*G0*dexp(1.8*av(dstep))+2.7**5
+            ! tgr2=3.4d-2*(0.42-log(3.5d-2*tau100*trs0))*tau100*trs0**6
+            ! tgr(dstep)=(tgr1+tgr2)**0.2
             !If we don't include the radiative heating that is characteristic
             !of J-type shocks
             tgr(dstep)=0.0
@@ -288,7 +288,7 @@ CONTAINS
                 abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
                 abund(grainList,dstep)=1d-30
             ELSE
-                IF (sum(abund(grainList,dstep)) .gt. 1d-25) CALL sputtering(abund)
+                IF ((sum(abund(grainList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0)) CALL sputtering(abund)
             END IF
         END IF
         WHERE(abund<1.0d-30) abund=1.0d-30
