@@ -4,8 +4,8 @@
 
 !Initial physics variables and final  values. for temp, density and time
 initialTemp=10.0;maxTemp=300
-initialDens=1.00d5;finalDens=1.00d6
-currentTime=0.0;finalTime=0.50d3
+initialDens=1.00d2;finalDens=1.00d5
+currentTime=0.0;finalTime=1.0d7
 
 !radfield in habing, cosmic ray ionisation rates as multiple of standard
 radfield=1.0;zeta=1.0
@@ -29,7 +29,7 @@ switch=0
 !collape=0/1 ONLY if not using cloud.f90
 !In all cases collapse=1 lets chem.f90 know it should call  densdot in the physics module to get time derivative of density and include it in ODES
 !Any other values tells it to use density value as set by physics module
-collapse=0
+collapse=1
 !for collapse=1 can introduce factor bc to slow freefall
 bc=1.0
 
@@ -79,11 +79,11 @@ writeStep=1
 
 !If readAbund=1, starting abundances are read from abundFile
 !If readAbund=0, final abundances are written to abundFile
-abundFile="output/startcloud.dat"
+abundFile="output/start.dat"
 !Full output written to outputFlie
-outputFile="output/fullsputter.dat"
+outputFile="output/full.dat"
 !columnated output of time,dens,temp and outSpecies written to column file
-columnFile='output/columnsputter.dat'
+columnFile='output/column.dat'
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !More complicated parameters that affect core code below. Do not alter without reading articles associated  !

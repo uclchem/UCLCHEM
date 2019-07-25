@@ -14,7 +14,7 @@ USE dvode_f90_m
 USE network
 IMPLICIT NONE
    !These integers store the array index of important species and reactions, x is for ions    
-    integer :: nh,nh2,nc,ncx,no,nn,ns,nhe,nco,nmg,nf,nh2o,nsi,nsix,ncl,nclx,nch3oh,np
+    integer :: nh,nh2,nc,ncx,no,nn,ns,nsx,nhe,nco,nmg,nf,nh2o,nsi,nsix,ncl,nclx,nch3oh,np
     integer :: nrco,njunk,evapevents,ngrainco,readAbunds
     !loop counters    
     integer :: i,j,l,writeStep,writeCounter=0
@@ -106,7 +106,7 @@ CONTAINS
             abund(nhe,:) = fhe                       
             abund(no,:) = fo  
             abund(nn,:) = fn               
-            abund(ns,:) = fs
+            abund(nsx,:) = fs
             abund(nmg,:) = fmg
             abund(nsix,:) = fsi                
             abund(nclx,:) = fcl 
@@ -129,7 +129,7 @@ CONTAINS
                     abund(nc,:)=1.d-10
                     abund(ncx,:)=fc
             END SELECT
-            abund(nspec,:)=abund(ncx,:)
+            abund(nspec,:)=abund(ncx,:)+abund(nsix,:)+abund(nsx,:)+abund(nclx,:)
 
         ENDIF
         !Initial calculations of diffusion frequency for each species bound to grain
@@ -178,7 +178,7 @@ CONTAINS
             IF (specname(i).eq.'C+')  ncx = i
             IF (specname(i).eq.'O')   no  = i
             IF (specname(i).eq.'N')   nn  = i
-            IF (specname(i).eq.'S+')  ns  = i
+            IF (specname(i).eq.'S+')  nsx  = i
             IF (specname(i).eq.'HE')  nhe = i
             IF (specname(i).eq.'CO')  nco = i
             IF (specname(i).eq.'MG')  nmg = i
