@@ -13,6 +13,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 MODULE physics
+    USE network
     IMPLICIT NONE
     INTEGER :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
@@ -21,7 +22,7 @@ MODULE physics
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/DOne
-    INTEGER :: evap,ion,solidflag,volcflag,coflag,tempindx
+    INTEGER :: evap,ion,solidflag,volcflag,coflag,tempindx,instantSublimation
     
     !variables either controlled by physics or that user may wish to change    
     DOUBLE PRECISION :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
@@ -42,7 +43,7 @@ CONTAINS
     SUBROUTINE initializePhysics
     !Any initialisation logic steps go here
     !cloudSize is important as is allocating space for depth arrays
-      IF (ALLOCATED(av)) DEALLOCATE(av,coldens,temp,dens)
+      IF (ALLOCATED(av)) DEALLOCATE(av,coldens,temp,density)
       ALLOCATE(av(points),coldens(points),density(points),temp(points),parcelRadius(points),massInRadius(points))
       cloudSize=(rout-rin)*pc
 
@@ -72,7 +73,7 @@ CONTAINS
             parcelRadius(dstep)=dstep*rout/float(points)
           END DO
                
-          open(unit=66,file='output/radius.dat',status='unknown')
+          open(unit=66,file='src/output/radius.dat',status='unknown')
           density=rhofit(rin,rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
           IF ((collapse .eq. 2) .or. (collapse .eq. 3)) then
             CALL findmassInRadius
