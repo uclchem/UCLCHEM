@@ -73,7 +73,7 @@ CONTAINS
             parcelRadius(dstep)=dstep*rout/float(points)
           END DO
                
-          open(unit=66,file='src/output/radius.dat',status='unknown')
+          open(unit=66,file='output/radius.dat',status='unknown')
           density=rhofit(rin,rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
           IF ((collapse .eq. 2) .or. (collapse .eq. 3)) then
             CALL findmassInRadius
