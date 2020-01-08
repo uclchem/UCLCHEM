@@ -32,8 +32,9 @@ speciesList=remove_duplicate_species(speciesList)
 
 # Read the reactants, products, Arrhenius equation parameters and measurement labels for each reaction
 # IF the reaction involves species in our Species List
-nReactions1, reactions1 = read_reaction_file(reactionFile, speciesList,'UMIST')
-nReactions2, reactions2 = read_reaction_file(reactionFile_grain,speciesList,'UCL')
+# Store user reactions (grain file) that are filtered out in list to write out
+nReactions1, reactions1, dropped_reactions = read_reaction_file(reactionFile, speciesList,'UMIST')
+nReactions2, reactions2, dropped_reactions = read_reaction_file(reactionFile_grain,speciesList,'UCL')
 reactionList=reactions1+reactions2
 reactionList=add_desorb_reactions(speciesList,reactionList)
 
@@ -41,7 +42,20 @@ reactionList=add_desorb_reactions(speciesList,reactionList)
 print('\nRemoving unused species...')
 speciesList = filter_species(speciesList,reactionList)
 
-#TODO replace this with a atom counter
+#Print dropped reactions from grain file or write if many
+if len(dropped_reactions)<6:
+	print("Reactions dropped from grain file:\n")
+	for reaction in dropped_reactions:
+		print(reaction)
+else:
+	print("\nReactions dropped from grain file written to outputFiles/dropped_reactions.csv\n")
+	f= open('outputFiles/dropped_reactions.csv','w')
+	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')		
+	for reaction in dropped_reactions:
+		writer.writerow(reaction)
+	f.close()
+
+#TODO replace this with an atom counter
 # Calculate the molecular mass and elemental constituents of each species
 print('Calculating molecular masses and elemental constituents...')
 speciesList = find_constituents(speciesList)

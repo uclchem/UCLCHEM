@@ -52,7 +52,7 @@ class Reaction:
 # Read the entries in the specified species file
 def read_species_file(fileName):
 	speciesList=[]
-	f = open(fileName, 'rb')
+	f = open(fileName, 'r')
 	reader = csv.reader(f, delimiter=',', quotechar='|')
 	for row in reader:
 		if row[0]!="NAME" and "!" not in row[0] :
@@ -63,29 +63,32 @@ def read_species_file(fileName):
 # Read the entries in the specified reaction file and keep the reactions that involve the species in our species list
 def read_reaction_file(fileName, speciesList, ftype):
 	reactions=[]
+	dropped_reactions=[]
 	keepList=[]
 	# keeplist includes the elements that ALL the reactions should be formed from 
 	keepList.extend(['','NAN','#','E-','e-','ELECTR','PHOTON','CRP','CRPHOT','FREEZE','CRH','PHOTD','THERM','XRAY','XRSEC','XRLYA','XRPHOT','DESOH2','DESCR','DEUVCR',"CHEMDES","DIFF"])
 	for species in speciesList:
 		keepList.append(species.name)			                                  
 	if ftype == 'UMIST': # if it is a umist database file
-		f = open(fileName, 'rb')
+		f = open(fileName, 'r')
 		reader = csv.reader(f, delimiter=':', quotechar='|')
 		for row in reader:
 			if all(x in keepList for x in [row[2],row[3],row[4],row[5],row[6],row[7]]): #if all the reaction elements belong to the keeplist
 				#umist file doesn't have third reactant so add space and has a note for how reactions there are so remove that
 				reactions.append(Reaction(row[2:4]+['']+row[4:8]+row[9:]))
 	if ftype == 'UCL':	# if it is a ucl made (grain?) reaction file
-		f = open(fileName, 'rb')
+		f = open(fileName, 'r')
 		reader = csv.reader(f, delimiter=',', quotechar='|')
 		for row in reader:
 			if all(x in keepList for x in row[0:7]):	#if all the reaction elements belong to the keeplist
 				row[10]=0.0
 				row[11]=10000.0
 				reactions.append(Reaction(row))	
+			else:
+				dropped_reactions.append(row)
 
 	nReactions = len(reactions)
-	return nReactions, reactions
+	return nReactions, reactions, dropped_reactions
 
 def remove_duplicate_species(speciesList):
 		#check for duplicate species
@@ -273,7 +276,7 @@ def is_number(s):
 
 # Write the species file in the desired format
 def write_species(fileName, speciesList):
-	f= open(fileName,'wb')
+	f= open(fileName,'w')
 	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')		
 	nSpecies = len(speciesList)
 	for species in speciesList:
@@ -281,7 +284,7 @@ def write_species(fileName, speciesList):
 
 # Write the reaction file in the desired format
 def write_reactions(fileName, reactionList):
-	f = open(fileName, 'wb')
+	f = open(fileName, 'w')
 	writer = csv.writer(f,delimiter=',',quotechar='|',quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
 	nReactions = len(reactionList)
 	for reaction in reactionList:
