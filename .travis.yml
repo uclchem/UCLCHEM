@@ -12,4 +12,5 @@ before_install:
 - sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-6 50
 
 script:
+  - cd src/
   - make
