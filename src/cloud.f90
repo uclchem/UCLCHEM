@@ -21,7 +21,7 @@ MODULE physics
     INTEGER :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     INTEGER :: collapse,switch,phase
-    INTEGER :: h2desorb,crdesorb,uvcr,desorb
+    INTEGER :: h2desorb,crdesorb,uvcr,desorb,thermdesorb
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done

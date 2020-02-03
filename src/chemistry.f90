@@ -14,7 +14,6 @@ USE dvode_f90_m
 USE network
 IMPLICIT NONE
    !These integers store the array index of important species and reactions, x is for ions    
-    integer :: nh,nh2,nc,ncx,no,nn,ns,nsx,nhe,nco,nmg,nf,nh2o,nsi,nsix,ncl,nclx,nch3oh,np
     integer :: nrco,njunk,evapevents,ngrainco,readAbunds
     !loop counters    
     integer :: i,j,l,writeStep,writeCounter=0
@@ -172,25 +171,6 @@ CONTAINS
         END IF
         !assign array indices for important species to the integers used to store them.
         DO i=1,nspec
-            IF (specname(i).eq.'H')   nh  = i
-            IF (specname(i).eq.'H2')  nh2 = i
-            IF (specname(i).eq.'C')   nc  = i
-            IF (specname(i).eq.'C+')  ncx = i
-            IF (specname(i).eq.'O')   no  = i
-            IF (specname(i).eq.'N')   nn  = i
-            IF (specname(i).eq.'S+')  nsx  = i
-            IF (specname(i).eq.'HE')  nhe = i
-            IF (specname(i).eq.'CO')  nco = i
-            IF (specname(i).eq.'MG')  nmg = i
-            IF (specname(i).eq.'H2O') nh2o = i
-            IF (specname(i).eq.'SI')  nsi = i
-            IF (specname(i).eq.'SI+') nsix= i
-            IF (specname(i).eq.'CL')  ncl = i
-            IF (specname(i).eq.'CL+') nclx= i
-            IF (specname(i).eq.'CH3OH') nch3oh= i
-            IF (specname(i).eq.'#CO') ngrainco = i
-            IF (specname(i).eq. 'P') np=i
-            IF (specname(i).eq.'F') nf=i
             IF (columnFlag) THEN
                 DO j=1,nout
                     IF (specname(i).eq.outSpecies(j)) outIndx(j)=i
@@ -296,10 +276,9 @@ CONTAINS
         !call the actual ODE integrator
         CALL integrate
 
-
         !1.d-30 stops numbers getting too small for fortran.
         WHERE(abund<1.0d-30) abund=1.0d-30
-        density(dstep)=abund(nspec+1,dstep)
+        density(dstep)=abund(NEQ,dstep)
     END SUBROUTINE updateChemistry
 
     SUBROUTINE integrate
@@ -366,7 +345,6 @@ CONTAINS
         !                             h2 formation - h2-photodissociation
         ydot(nh2) = ydot(nh2) + h2form*y(nh)*D - h2dis*y(nh2)
         !                       h2 formation  - h2-photodissociation
-
         ! get density change from physics module to send to DLSODE
         IF (collapse .eq. 1) ydot(NEQ)=densdot(y(NEQ))
     END SUBROUTINE F

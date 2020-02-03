@@ -53,6 +53,8 @@ IF (paramFile .ne. "") THEN
                 READ(buffer,*,iostat=ios) h2desorb
             CASE('crdesorb')
                 READ(buffer,*,iostat=ios) crdesorb
+            CASE('thermdesorb')
+                READ(buffer,*,iostat=ios) thermdesorb
             CASE('uvcr')
                 READ(buffer,*,iostat=ios) uvcr
             CASE('instantSublimation')

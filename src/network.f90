@@ -1,6 +1,10 @@
 MODULE network
     IMPLICIT NONE
-    integer, parameter :: nSpec=215, nReac=2456
+    INTEGER, PARAMETER :: nSpec=215, nReac=2507
+    INTEGER, PARAMETER ::nelec=215,ncx=10,nhx=2,nh2=3,nsix=71,nsx=103,nclx=117,nco=64&
+    &,nhex=7,ngh=9999,ngh2=9999,ngn=9999,ngo=9999,ngoh=9999,nh=1&
+    &,nd=9999,nhe=6,nc=9,nn=15,no=26,nf=9999,np=9999,ns=102,ncl=116&
+    &,nli=9999,nna=9999,nmg=41,nsi=70,npah=9999,n15n=9999
 character(Len=8), parameter ::     specname (215)=(/"H       "&
     &,"H+      ","H2      ","H2+     ","H3+     ","HE      ","HE+     "&
     &,"HEH+    ","C       ","C+      ","CH      ","CH+     ","CH2     "&
@@ -142,2388 +146,1198 @@ double precision, parameter :: formationEnthalpy (51)=(/-1.5900e+01&
     &,-5.1900e+01,2.8300e+01,8.8000e+00,6.3800e+01,-9.9900e+02&
     &,1.2000e+00,1.9111e+02,8.4000e+01,7.3460e+01,1.4938e+02,-7.0000e+01&
     &,0.0000e+00,-3.4000e+01,1.8900e+02,-9.9900e+02,-7.0300e+01,4.0000e+00/)
-character(Len=8), parameter :: 	re1 (2456)=(/"CH      ","H+      "&
-    &,"H2      ","H2      ","H2      ","H2      ","H2      ","H2      "&
-    &,"H2      ","H       ","H       ","H       ","H       ","H       "&
-    &,"C+      ","C+      ","C+      ","C+      ","C+      ","C+      "&
-    &,"C+      ","C+      ","C+      ","C+      ","C+      ","C+      "&
-    &,"C+      ","C+      ","C+      ","C+      ","C+      ","C+      "&
-    &,"C+      ","C2+     ","C2+     ","C2+     ","C2      ","C2      "&
-    &,"C2      ","C2      ","C2H+    ","C2H+    ","C2H2+   ","C2H2+   "&
-    &,"C2H2+   ","C2H2+   ","C2H2    ","C2H     ","C2H     ","C2H     "&
-    &,"C       ","C       ","C       ","C       ","C       ","CH+     "&
-    &,"CH+     ","CH+     ","CH+     ","CH+     ","CH+     ","CH2+    "&
-    &,"CH2     ","CH2     ","CH2     ","CH2     ","CH2     ","CH2     "&
-    &,"CH2     ","CH2     ","CH2     ","CH2     ","CH3+    ","CH3+    "&
-    &,"CH3+    ","CH4+    ","CH4+    ","CH4+    ","CH4+    ","CH4+    "&
-    &,"CH4+    ","CH4     ","CH      ","CH      ","CH      ","CH      "&
-    &,"CH      ","CH      ","CH      ","CH      ","CH      ","CH      "&
-    &,"CH      ","CN+     ","CN+     ","CN+     ","CN+     ","CN+     "&
-    &,"CN+     ","CN+     ","CN      ","CO+     ","CO+     ","CO+     "&
-    &,"CO+     ","CO+     ","CO+     ","CO      ","CL+     ","CL      "&
-    &,"H+      ","H+      ","H+      ","H+      ","H+      ","H+      "&
-    &,"H+      ","H+      ","H+      ","H+      ","H+      ","H+      "&
-    &,"H+      ","H+      ","H+      ","H+      ","H+      ","H+      "&
-    &,"H+      ","H+      ","H+      ","H+      ","H+      ","H+      "&
-    &,"H+      ","H+      ","H+      ","H+      ","H+      ","H+      "&
-    &,"H+      ","H+      ","H+      ","H+      ","H+      ","H+      "&
-    &,"H+      ","H+      ","H+      ","H+      ","H+      ","H+      "&
-    &,"H+      ","H2+     ","H2+     ","H2+     ","H2+     ","H2+     "&
-    &,"H2+     ","H2+     ","H2+     ","H2+     ","H2+     ","H2+     "&
-    &,"H2+     ","H2+     ","H2+     ","H2+     ","H2+     ","H2+     "&
-    &,"H2+     ","H2+     ","H2      ","H2CO+   ","H2CO    ","H2O+    "&
-    &,"H2O+    ","H2O+    ","H2O+    ","H2O+    ","H2O+    ","H2O+    "&
-    &,"H2O+    ","H2O+    ","H2O+    ","H2O+    ","H2O+    ","H2O     "&
-    &,"H2O     ","H2O     ","H2S     ","H       ","H       ","H       "&
-    &,"H       ","H       ","H       ","HCN+    ","HCN+    ","HCN+    "&
-    &,"HCN     ","HCN     ","HCO     ","HCO     ","HCO     ","HCO     "&
-    &,"HCO     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","MG      ","MG      ","MG      ","MG      "&
-    &,"MG      ","MG      ","MG      ","MG      ","MG      ","MG      "&
-    &,"MG      ","MG      ","MG      ","N+      ","N+      ","N+      "&
-    &,"N+      ","N+      ","N+      ","N+      ","N+      ","N+      "&
-    &,"N+      ","N+      ","N+      ","N+      ","N+      ","N+      "&
-    &,"N+      ","N+      ","N+      ","N+      ","N2+     ","N2+     "&
-    &,"N2+     ","N2+     ","N2+     ","N2+     ","N2+     ","N       "&
-    &,"NH+     ","NH+     ","NH+     ","NH+     ","NH+     ","NH+     "&
-    &,"NH2+    ","NH2+    ","NH2+    ","NH2+    ","NH2+    ","NH2     "&
-    &,"NH2     ","NH2     ","NH2     ","NH2     ","NH2     ","NH2     "&
-    &,"NH3+    ","NH3+    ","NH3+    ","NH3+    ","NH3     ","NH3     "&
-    &,"NH3     ","NH3     ","NH3     ","NH3     ","NH3     ","NH3     "&
-    &,"NH3     ","NH3     ","NH3     ","NH3     ","NH      ","NH      "&
-    &,"NH      ","NH      ","NO      ","NO      ","NO      ","NO      "&
-    &,"NO      ","NO      ","NO      ","NO      ","O+      ","O+      "&
-    &,"O+      ","O+      ","O+      ","O+      ","O+      ","O+      "&
-    &,"O+      ","O+      ","O+      ","O+      ","O+      ","O+      "&
-    &,"O+      ","O2+     ","O2+     ","O2+     ","O2      ","O2      "&
-    &,"O       ","O       ","O       ","OH+     ","OH+     ","OH+     "&
-    &,"OH+     ","OH+     ","OH+     ","OH+     ","OH+     ","OH+     "&
-    &,"OH+     ","OH      ","OH      ","OH      ","OH      ","S+      "&
-    &,"S+      ","S       ","S       ","S       ","SI      ","SI      "&
-    &,"SI      ","SI      ","SI      ","SI      ","SI      ","SIH     "&
-    &,"C       ","CO      ","CL      ","H2      ","H2      ","H2      "&
-    &,"H       ","HE      ","N       ","O       ","C2      ","C2H2    "&
-    &,"C2H2    ","C2H3    ","C2H4    ","C2H5    ","C2H5OH  ","C2H     "&
-    &,"C2H     ","C2N     ","C2N     ","C3N     ","C4H     ","C       "&
-    &,"CH+     ","CH2     ","CH2     ","CH2CO   ","CH3     ","CH3     "&
-    &,"CH3     ","CH3CN   ","CH3OH   ","CH3OH   ","CH4     ","CH      "&
-    &,"CN      ","CO2     ","CO      ","CS      ","CS      ","CL      "&
-    &,"H2CN    ","H2CO    ","H2CS    ","H2O     ","H2S2    ","H2S     "&
-    &,"H2S     ","H2SIO   ","H       ","HC3N    ","HCN     ","HCO     "&
-    &,"HCO     ","HCOOCH3 ","HCS     ","HCL     ","HNC     ","HNCO    "&
-    &,"HNO     ","HS2     ","HS      ","HE      ","MG      ","N2      "&
-    &,"N       ","NCCN    ","NH2     ","NH2     ","NH3     ","NH3     "&
-    &,"NH3     ","NH      ","NH      ","NO2     ","NO      ","NO      "&
-    &,"NS      ","O2      ","O2      ","O2H     ","O       ","OCN     "&
-    &,"OCS     ","OCS     ","OH      ","S2      ","S       ","SO2     "&
-    &,"SO      ","SO      ","SI      ","SIC2    ","SIC3    ","SIC     "&
-    &,"SIH2    ","SIH3    ","SIH4    ","SIH     ","SIO     ","SIS     "&
-    &,"C2+     ","C2H+    ","C2H+    ","C2H2+   ","C2H2+   ","C2H2+   "&
-    &,"C2H5OH2+","C2H5OH2+","C2H5OH2+","C2H5OH2+","C2N+    ","C2N+    "&
-    &,"C2N2+   ","C2N2+   ","C2NH+   ","C3+     ","C3H5+   ","C4N+    "&
-    &,"C4N+    ","CH+     ","CH2+    ","CH2+    ","CH2+    ","CH3+    "&
-    &,"CH3+    ","CH3+    ","CH3CNH+ ","CH3CNH+ ","CH3OH2+ ","CH3OH2+ "&
-    &,"CH3OH2+ ","CH3OH2+ ","CH3OH2+ ","CH4+    ","CH4+    ","CH5+    "&
-    &,"CH5+    ","CH5+    ","CH5+    ","CH5+    ","CN+     ","CO+     "&
-    &,"CS+     ","H2+     ","H2CO+   ","H2CO+   ","H2CO+   ","H2CO+   "&
-    &,"H2CS+   ","H2CS+   ","H2CL+   ","H2CL+   ","H2NO+   ","H2NO+   "&
-    &,"H2O+    ","H2O+    ","H2O+    ","H2S+    ","H2S+    ","H2S2+   "&
-    &,"H2S2+   ","H3+     ","H3+     ","H3CO+   ","H3CO+   ","H3CO+   "&
-    &,"H3CO+   ","H3CO+   ","H3CS+   ","H3CS+   ","H3O+    ","H3O+    "&
-    &,"H3O+    ","H3O+    ","H3S+    ","H3S+    ","H3S+    ","H3S+    "&
-    &,"H5C2O2+ ","H5C2O2+ ","HCN+    ","HCNH+   ","HCNH+   ","HCNH+   "&
-    &,"HCO+    ","HCO2+   ","HCO2+   ","HCO2+   ","HCS+    ","HCS+    "&
-    &,"HCL+    ","HNO+    ","HNS+    ","HOC+    ","HOCS+   ","HOCS+   "&
-    &,"HS+     ","HS2+    ","HS2+    ","HSO+    ","HSO2+   ","HSO2+   "&
-    &,"HSO2+   ","HSIS+   ","HSIS+   ","HEH+    ","N2+     ","N2H+    "&
-    &,"N2H+    ","NH+     ","NH2+    ","NH2+    ","NH3+    ","NH3+    "&
-    &,"NH4+    ","NH4+    ","NH4+    ","NO+     ","NS+     ","O2+     "&
-    &,"O2H+    ","OCS+    ","OCS+    ","OCS+    ","OH+     ","S2+     "&
-    &,"SO+     ","SO2+    ","SO2+    ","SIC+    ","SIC2+   ","SIC2+   "&
-    &,"SIC3+   ","SIC3+   ","SIH+    ","SIH2+   ","SIH2+   ","SIH2+   "&
-    &,"SIH3+   ","SIH3+   ","SIH4+   ","SIH4+   ","SIH5+   ","SIH5+   "&
-    &,"SIO+    ","SIOH+   ","SIOH+   ","SIS+    ","C+      ","C+      "&
-    &,"C+      ","C+      ","C+      ","C+      ","C+      ","C+      "&
-    &,"C+      ","C+      ","C+      ","C+      ","C+      ","C+      "&
-    &,"C+      ","C+      ","C+      ","C+      ","C+      ","C+      "&
-    &,"C+      ","C+      ","C+      ","C+      ","C+      ","C+      "&
-    &,"C+      ","C+      ","C+      ","C+      ","C+      ","C+      "&
-    &,"C+      ","C+      ","C+      ","C+      ","C+      ","C+      "&
-    &,"C+      ","C+      ","C+      ","C2+     ","C2+     ","C2+     "&
-    &,"C2+     ","C2      ","C2      ","C2      ","C2      ","C2      "&
-    &,"C2      ","C2      ","C2      ","C2      ","C2H+    ","C2H+    "&
-    &,"C2H+    ","C2H+    ","C2H+    ","C2H2+   ","C2H2+   ","C2H2+   "&
-    &,"C2H2+   ","C2H2+   ","C2H2+   ","C2H2+   ","C2H2+   ","C2H2+   "&
-    &,"C2H2+   ","C2H2    ","C2H4    ","C2H     ","C2H     ","C2H     "&
-    &,"C2H     ","C2H     ","C2H     ","C2H     ","C2H     ","C       "&
-    &,"C       ","C       ","C       ","C       ","C       ","C       "&
-    &,"C       ","C       ","C       ","C       ","C       ","C       "&
-    &,"C       ","C       ","C       ","C       ","C       ","C       "&
-    &,"C       ","CH+     ","CH+     ","CH+     ","CH+     ","CH+     "&
-    &,"CH+     ","CH+     ","CH+     ","CH+     ","CH+     ","CH+     "&
-    &,"CH+     ","CH+     ","CH+     ","CH+     ","CH+     ","CH+     "&
-    &,"CH+     ","CH+     ","CH+     ","CH+     ","CH+     ","CH+     "&
-    &,"CH+     ","CH+     ","CH+     ","CH+     ","CH+     ","CH+     "&
-    &,"CH+     ","CH+     ","CH+     ","CH+     ","CH+     ","CH+     "&
-    &,"CH+     ","CH2+    ","CH2+    ","CH2+    ","CH2+    ","CH2+    "&
-    &,"CH2+    ","CH2+    ","CH2+    ","CH2+    ","CH2+    ","CH2+    "&
-    &,"CH2+    ","CH2+    ","CH2     ","CH2     ","CH2     ","CH2     "&
-    &,"CH2     ","CH2     ","CH2     ","CH2     ","CH2     ","CH2     "&
-    &,"CH2     ","CH2     ","CH2     ","CH2     ","CH2     ","CH2     "&
-    &,"CH2     ","CH2     ","CH2     ","CH2     ","CH3+    ","CH3+    "&
-    &,"CH3+    ","CH3+    ","CH3+    ","CH3+    ","CH3+    ","CH3+    "&
-    &,"CH3+    ","CH3+    ","CH3+    ","CH3+    ","CH3+    ","CH3+    "&
-    &,"CH3+    ","CH3+    ","CH3     ","CH3CN   ","CH3OH2+ ","CH3OH   "&
-    &,"CH4+    ","CH4+    ","CH4+    ","CH4+    ","CH4+    ","CH4+    "&
-    &,"CH4+    ","CH4+    ","CH4+    ","CH4     ","CH4     ","CH4     "&
-    &,"CH4     ","CH4     ","CH4     ","CH4     ","CH4     ","CH4     "&
-    &,"CH4     ","CH4     ","CH4     ","CH4     ","CH4     ","CH4     "&
-    &,"CH4     ","CH4     ","CH4     ","CH4     ","CH4     ","CH5+    "&
-    &,"CH5+    ","CH5+    ","CH5+    ","CH5+    ","CH5+    ","CH5+    "&
-    &,"CH5+    ","CH5+    ","CH5+    ","CH5+    ","CH5+    ","CH5+    "&
-    &,"CH5+    ","CH      ","CH      ","CH      ","CH      ","CH      "&
-    &,"CH      ","CH      ","CH      ","CH      ","CH      ","CH      "&
-    &,"CH      ","CH      ","CH      ","CH      ","CH      ","CH      "&
-    &,"CH      ","CH      ","CH      ","CH      ","CH      ","CH      "&
-    &,"CH      ","CH      ","CH      ","CH      ","CH      ","CN+     "&
-    &,"CN+     ","CN+     ","CN+     ","CN      ","CN      ","CO+     "&
-    &,"CO+     ","CO+     ","CO      ","CO      ","CO      ","CO      "&
-    &,"CO      ","CO      ","CO      ","CO      ","H+      ","H+      "&
-    &,"H+      ","H+      ","H+      ","H+      ","H+      ","H+      "&
-    &,"H+      ","H+      ","H+      ","H+      ","H+      ","H+      "&
-    &,"H+      ","H+      ","H+      ","H+      ","H+      ","H+      "&
-    &,"H+      ","H+      ","H+      ","H+      ","H+      ","H+      "&
-    &,"H+      ","H2+     ","H2+     ","H2+     ","H2+     ","H2+     "&
-    &,"H2+     ","H2+     ","H2+     ","H2+     ","H2+     ","H2+     "&
-    &,"H2+     ","H2+     ","H2+     ","H2+     ","H2+     ","H2+     "&
-    &,"H2+     ","H2+     ","H2+     ","H2+     ","H2+     ","H2+     "&
-    &,"H2+     ","H2+     ","H2      ","H2      ","H2      ","H2      "&
-    &,"H2      ","H2      ","H2      ","H2      ","H2      ","H2      "&
-    &,"H2      ","H2      ","H2      ","H2      ","H2      ","H2      "&
-    &,"H2      ","H2      ","H2      ","H2      ","H2      ","H2      "&
-    &,"H2      ","H2      ","H2      ","H2      ","H2      ","H2      "&
-    &,"H2      ","H2      ","H2      ","H2CO+   ","H2CO+   ","H2CO+   "&
-    &,"H2CO+   ","H2CO    ","H2CO    ","H2CO    ","H2CO    ","H2CO    "&
-    &,"H2CO    ","H2CO    ","H2O+    ","H2O+    ","H2O+    ","H2O+    "&
-    &,"H2O+    ","H2O+    ","H2O+    ","H2O+    ","H2O+    ","H2O+    "&
-    &,"H2O+    ","H2O+    ","H2O+    ","H2O+    ","H2O     ","H2O     "&
-    &,"H2O     ","H2O     ","H2O     ","H2O     ","H2O     ","H2O     "&
-    &,"H2O     ","H2O     ","H2O     ","H2O     ","H2O     ","H2O     "&
-    &,"H2O     ","H2O     ","H2O     ","H2O     ","H2O     ","H2O     "&
-    &,"H2O     ","H2O     ","H2O     ","H2O     ","H2O     ","H2O     "&
-    &,"H2O     ","H2S+    ","H2S     ","H2S     ","H2S     ","H2S     "&
-    &,"H3+     ","H3+     ","H3+     ","H3+     ","H3+     ","H3+     "&
-    &,"H3+     ","H3+     ","H3+     ","H3+     ","H3+     ","H3+     "&
-    &,"H3+     ","H3+     ","H3+     ","H3+     ","H3+     ","H3+     "&
-    &,"H3+     ","H3+     ","H3+     ","H3+     ","H3+     ","H3+     "&
-    &,"H3+     ","H3+     ","H3+     ","H3+     ","H3+     ","H3+     "&
-    &,"H3+     ","H3+     ","H3+     ","H3+     ","H3+     ","H3+     "&
-    &,"H3+     ","H3+     ","H3+     ","H3+     ","H3+     ","H3+     "&
-    &,"H3+     ","H3+     ","H3+     ","H3+     ","H3+     ","H3+     "&
-    &,"H3+     ","H3+     ","H3+     ","H3+     ","H3+     ","H3+     "&
-    &,"H3+     ","H3+     ","H3CO+   ","H3CO+   ","H3O+    ","H3O+    "&
-    &,"H3O+    ","H3O+    ","H3O+    ","H3O+    ","H3O+    ","H3O+    "&
-    &,"H3O+    ","H3O+    ","H3O+    ","H3O+    ","H3O+    ","H3O+    "&
-    &,"H3O+    ","H3O+    ","H3O+    ","H       ","H       ","H       "&
-    &,"H       ","H       ","H       ","H       ","H       ","H       "&
-    &,"H       ","H       ","H       ","H       ","HCN+    ","HCN+    "&
-    &,"HCN+    ","HCN+    ","HCN+    ","HCN+    ","HCN+    ","HCN+    "&
-    &,"HCN     ","HCN     ","HCN     ","HCN     ","HCN     ","HCN     "&
-    &,"HCN     ","HCN     ","HCN     ","HCN     ","HCN     ","HCN     "&
-    &,"HCNH+   ","HCNH+   ","HCNH+   ","HCNH+   ","HCNH+   ","HCNH+   "&
-    &,"HCO+    ","HCO+    ","HCO+    ","HCO+    ","HCO+    ","HCO+    "&
-    &,"HCO+    ","HCO+    ","HCO+    ","HCO+    ","HCO+    ","HCO+    "&
-    &,"HCO+    ","HCO+    ","HCO+    ","HCO+    ","HCO+    ","HCO+    "&
-    &,"HCO+    ","HCO+    ","HCO+    ","HCO+    ","HCO     ","HCO     "&
-    &,"HCO     ","HCO     ","HCO     ","HCO     ","HCS+    ","HNC     "&
-    &,"HNC     ","HNC     ","HNC     ","HNC     ","HNC     ","HNC     "&
-    &,"HNC     ","HNO+    ","HNO+    ","HS+     ","HS+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","HE+     ","HE+     ","HE+     "&
-    &,"HE+     ","HE+     ","HE+     ","N+      ","N+      ","N+      "&
-    &,"N+      ","N+      ","N+      ","N+      ","N+      ","N+      "&
-    &,"N+      ","N+      ","N+      ","N+      ","N+      ","N+      "&
-    &,"N+      ","N+      ","N+      ","N+      ","N+      ","N+      "&
-    &,"N+      ","N+      ","N+      ","N+      ","N2+     ","N2+     "&
-    &,"N2+     ","N2+     ","N2+     ","N2      ","N2      ","N2H+    "&
-    &,"N2H+    ","N2H+    ","N2H+    ","N       ","N       ","N       "&
-    &,"N       ","N       ","N       ","N       ","N       ","N       "&
-    &,"N       ","N       ","N       ","N       ","N       ","N       "&
-    &,"N       ","N       ","N       ","N       ","N       ","NH+     "&
-    &,"NH+     ","NH+     ","NH+     ","NH+     ","NH+     ","NH+     "&
-    &,"NH+     ","NH+     ","NH+     ","NH+     ","NH+     ","NH+     "&
-    &,"NH+     ","NH+     ","NH+     ","NH+     ","NH+     ","NH+     "&
-    &,"NH+     ","NH+     ","NH+     ","NH+     ","NH+     ","NH+     "&
-    &,"NH+     ","NH+     ","NH+     ","NH+     ","NH2+    ","NH2+    "&
-    &,"NH2+    ","NH2+    ","NH2+    ","NH2+    ","NH2+    ","NH2+    "&
-    &,"NH2+    ","NH2+    ","NH2+    ","NH2+    ","NH2+    ","NH2+    "&
-    &,"NH2+    ","NH2+    ","NH2+    ","NH2+    ","NH2+    ","NH2+    "&
-    &,"NH2     ","NH2     ","NH2     ","NH2     ","NH2     ","NH2     "&
-    &,"NH2     ","NH2     ","NH2     ","NH2     ","NH2     ","NH2     "&
-    &,"NH2     ","NH2     ","NH2     ","NH2     ","NH2     ","NH2     "&
-    &,"NH3+    ","NH3+    ","NH3+    ","NH3+    ","NH3+    ","NH3+    "&
-    &,"NH3     ","NH3     ","NH3     ","NH3     ","NH3     ","NH3     "&
-    &,"NH3     ","NH3     ","NH3     ","NH3     ","NH3     ","NH3     "&
-    &,"NH3     ","NH3     ","NH3     ","NH3     ","NH3     ","NH3     "&
-    &,"NH3     ","NH3     ","NH3     ","NH3     ","NH3     ","NH3     "&
-    &,"NH3     ","NH3     ","NH      ","NH      ","NH      ","NH      "&
-    &,"NH      ","NH      ","NH      ","NH      ","NH      ","NH      "&
-    &,"NH      ","NH      ","NH      ","NH      ","NH      ","NH      "&
-    &,"NH      ","NH      ","NO      ","O+      ","O+      ","O+      "&
-    &,"O+      ","O+      ","O+      ","O+      ","O+      ","O+      "&
-    &,"O+      ","O+      ","O+      ","O+      ","O+      ","O+      "&
-    &,"O+      ","O+      ","O+      ","O+      ","O2+     ","O2+     "&
-    &,"O2+     ","O2      ","O2      ","O2      ","O2      ","O2H+    "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","OH+     ","OH+     ","OH+     "&
-    &,"OH+     ","OH+     ","OH+     ","OH+     ","OH+     ","OH+     "&
-    &,"OH+     ","OH+     ","OH+     ","OH+     ","OH+     ","OH+     "&
-    &,"OH+     ","OH+     ","OH+     ","OH+     ","OH+     ","OH+     "&
-    &,"OH      ","OH      ","OH      ","OH      ","OH      ","OH      "&
-    &,"OH      ","OH      ","OH      ","OH      ","OH      ","OH      "&
-    &,"S+      ","S+      ","S+      ","S       ","S       ","S       "&
-    &,"SO+     ","SO+     ","SO+     ","SO+     ","SO+     ","SO+     "&
-    &,"SO+     ","SI+     ","SI+     ","SI+     ","SI      ","SIH2+   "&
-    &,"SIH2+   ","SIH     ","C2      ","C2      ","C2      ","C2      "&
-    &,"C2H2    ","C2H2    ","C2H3    ","C2H3    ","C2H     ","C2H     "&
-    &,"C2H     ","C2H     ","C       ","C       ","C       ","C       "&
-    &,"C       ","C       ","C       ","C       ","C       ","C       "&
-    &,"C       ","C       ","C       ","C       ","C       ","C       "&
-    &,"C       ","C       ","C       ","C       ","C       ","C       "&
-    &,"C       ","C       ","C       ","C       ","C       ","C       "&
-    &,"C       ","C       ","C       ","C       ","C       ","C       "&
-    &,"C       ","C       ","CH2     ","CH2     ","CH2     ","CH2     "&
-    &,"CH2     ","CH2     ","CH2     ","CH2     ","CH2     ","CH2     "&
-    &,"CH2     ","CH2     ","CH2     ","CH2     ","CH2     ","CH2     "&
-    &,"CH2     ","CH2     ","CH2     ","CH2     ","CH2     ","CH2     "&
-    &,"CH2     ","CH2     ","CH2     ","CH2     ","CH2     ","CH2     "&
-    &,"CH3     ","CH3     ","CH3     ","CH3     ","CH3     ","CH3     "&
-    &,"CH3     ","CH3     ","CH3     ","CH3     ","CH3     ","CH3     "&
-    &,"CH3     ","CH3     ","CH3     ","CH3     ","CH3     ","CH3     "&
-    &,"CH3     ","CH3     ","CH3     ","CH3     ","CH3     ","CH3     "&
-    &,"CH4     ","CH4     ","CH4     ","CH4     ","CH      ","CH      "&
-    &,"CH      ","CH      ","CH      ","CH      ","CH      ","CH      "&
-    &,"CH      ","CH      ","CH      ","CH      ","CH      ","CH      "&
-    &,"CH      ","CH      ","CH      ","CH      ","CH      ","CH      "&
-    &,"CH      ","CH      ","CH      ","CH      ","CH      ","CH      "&
-    &,"CH      ","CN      ","CN      ","CN      ","CN      ","CN      "&
-    &,"CN      ","CN      ","CN      ","CN      ","CN      ","CN      "&
-    &,"CN      ","CN      ","CN      ","CN      ","CO      ","CO      "&
-    &,"CO      ","CO      ","CL      ","H2      ","H2      ","H2      "&
-    &,"H2      ","H2      ","H2      ","H2      ","H2      ","H2      "&
-    &,"H2      ","H2      ","H2      ","H2      ","H2      ","H2      "&
-    &,"H       ","H       ","H       ","H       ","H       ","H       "&
-    &,"H       ","H       ","H       ","H       ","H       ","H       "&
-    &,"H       ","H       ","H       ","H       ","H       ","H       "&
-    &,"H       ","H       ","H       ","H       ","H       ","H       "&
-    &,"H       ","H       ","H       ","H       ","H       ","H       "&
-    &,"H       ","H       ","H       ","H       ","H       ","H       "&
-    &,"H       ","H       ","H       ","H       ","H       ","H       "&
-    &,"H       ","H       ","HCO     ","HCO     ","HCO     ","HCO     "&
-    &,"HCO     ","HCO     ","HCO     ","HCL     ","HNCO    ","HS      "&
-    &,"N       ","N       ","N       ","N       ","N       ","N       "&
-    &,"N       ","N       ","N       ","N       ","N       ","N       "&
-    &,"N       ","N       ","N       ","N       ","N       ","N       "&
-    &,"N       ","N       ","N       ","N       ","N       ","N       "&
-    &,"N       ","N       ","N       ","N       ","N       ","N       "&
-    &,"N       ","N       ","N       ","N       ","N       ","N       "&
-    &,"N       ","N       ","N       ","N       ","N       ","N       "&
-    &,"N       ","NH2     ","NH2     ","NH2     ","NH2     ","NH2     "&
-    &,"NH3     ","NH      ","NH      ","NH      ","NH      ","NH      "&
-    &,"NH      ","NH      ","NH      ","NH      ","NH      ","NH      "&
-    &,"NH      ","NH      ","NH      ","NH      ","NH      ","NH      "&
-    &,"NH      ","NH      ","NO      ","NO      ","NO      ","NO      "&
-    &,"NO      ","O2      ","O2      ","O2      ","O2      ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","O       "&
-    &,"O       ","O       ","O       ","O       ","O       ","OH      "&
-    &,"OH      ","OH      ","OH      ","OH      ","OH      ","OH      "&
-    &,"OH      ","OH      ","OH      ","OH      ","OH      ","OH      "&
-    &,"OH      ","OH      ","OH      ","OH      ","OH      ","OH      "&
-    &,"OH      ","OH      ","OH      ","OH      ","OH      ","S       "&
-    &,"S       ","S       ","S       ","S       ","SI      ","SI      "&
-    &,"SI      ","SI      ","C2+     ","C2      ","C2      ","C2H+    "&
-    &,"C2H2    ","C2H2    ","C2H3    ","C2H4    ","C2H5    ","C2H5OH  "&
-    &,"C2H     ","C2H     ","C2N     ","C2N     ","C3N     ","C4H     "&
-    &,"C       ","CH+     ","CH2+    ","CH2+    ","CH2+    ","CH2     "&
-    &,"CH2     ","CH2CO   ","CH3+    ","CH3+    ","CH3     ","CH3     "&
-    &,"CH3     ","CH3CN   ","CH3OH   ","CH3OH   ","CH3OH   ","CH4+    "&
-    &,"CH4+    ","CH4     ","CH4     ","CH4     ","CH4     ","CH      "&
-    &,"CH      ","CN      ","CO+     ","CO2     ","CO      ","CS+     "&
-    &,"CS      ","CS      ","CL      ","H2+     ","H2CN    ","H2CO    "&
-    &,"H2CO    ","H2CO    ","H2CO    ","H2CS    ","H2O+    ","H2O     "&
-    &,"H2O     ","H2S2    ","H2S     ","H2S     ","H2S     ","H2SIO   "&
-    &,"H2SIO   ","H3+     ","H3+     ","HC3N    ","HCN     ","HCO+    "&
-    &,"HCO     ","HCO     ","HCOOCH3 ","HCS     ","HCL     ","HCL     "&
-    &,"HNC     ","HNCO    ","HNO     ","HS+     ","HS+     ","HS2     "&
-    &,"HS2     ","HS      ","MG      ","N2      ","NCCN    ","NCCN    "&
-    &,"NH+     ","NH2     ","NH2     ","NH3     ","NH3     ","NH3     "&
-    &,"NH      ","NH      ","NO2     ","NO      ","NO      ","NS      "&
-    &,"O2+     ","O2      ","O2      ","O2H     ","O2H     ","OCN     "&
-    &,"OCS     ","OCS     ","OH+     ","OH      ","OH      ","S2      "&
-    &,"S2      ","S       ","SO2     ","SO      ","SO      ","SI      "&
-    &,"SIC2    ","SIC3    ","SIC3    ","SIC     ","SIH+    ","SIH2    "&
-    &,"SIH2    ","SIH3    ","SIH3    ","SIH3    ","SIH4    ","SIH4    "&
-    &,"SIH4    ","SIH     ","SIO+    ","SIO     ","SIO     ","SIS     "&
-    &,"C+      ","C+      ","C+      ","C+      ","C2H     ","C       "&
-    &,"C       ","C       ","C       ","C       ","C       ","CH3+    "&
-    &,"CH3+    ","CH3     ","H+      ","H+      ","H2      ","H2      "&
-    &,"H2      ","H2      ","H2      ","H2      ","H2      ","H2      "&
-    &,"H2      ","H3O+    ","H       ","H       ","H       ","H       "&
-    &,"H       ","N+      ","O       ","O       ","O       ","O       "&
-    &,"C+      ","CH3+    ","CL+     ","H+      ","H2CO+   ","H2CS+   "&
-    &,"H2S+    ","HE+     ","MG+     ","N+      ","O+      ","S+      "&
-    &,"SI+     ","HC3N    ","C2H3    ","CH2CO   ","C3H5+   ","CH3CCH  "&
-    &,"C2H5OH  ","C2H5OH2+","CH3OH2+ ","HCOOCH3 ","CH3OH   ","CH3CNH  "&
-    &,"CH3CNH+ ","HNCO    ","OCN     ","C2N     ","C2N+    ","C3N     "&
-    &,"C2NH+   ","C2N2+   ","NCCN    ","C4N+    ","C4N     ","H5C2O2+ "&
-    &,"HOC+    ","CO      ","SI      ","SIO     ","SIH     ","SI+     "&
-    &,"SIH+    ","SIH2    ","SIH2+   ","SIH3    ","SIH3+   ","SIH4    "&
-    &,"SIH4+   ","SIC     ","SIC2    ","SIC+    ","SIC2+   ","SIC3    "&
-    &,"SIC3+   ","SIO+    ","SIOH+   ","SIS     ","SIS+    ","HSIS+   "&
-    &,"H2SIO   ","SIH5+   ","CL      ","HCL     ","CL+     ","HCL+    "&
-    &,"H2CL+   ","C3H2    ","C4H     ","S2      ","H3CO+   ","H2S2    "&
-    &,"HS2     ","HS2+    ","C       ","CO      ","H2CO    ","C2      "&
-    &,"CH      ","OH      ","NO      ","CH2     ","H2O     ","CO2     "&
-    &,"CH3     ","CH4     ","HCO     ","N2      ","CN      ","C+      "&
-    &,"NH      ","HCN     ","C2H     ","NH3     ","N+      ","O+      "&
-    &,"C2+     ","O2+     ","N2+     ","CH+     ","NH+     ","OH+     "&
-    &,"CO+     ","CN+     ","NO+     ","CH2+    ","NH2+    ","H2O+    "&
-    &,"HCO+    ","HCN+    ","C2H+    ","NH3+    ","H2CO+   ","CH3+    "&
-    &,"H3O+    ","HCO2+   ","CH5+    ","CH4+    ","NH2     ","N       "&
-    &,"O       ","O2      ","HS      ","CS      ","SO      ","H2S     "&
-    &,"HCS     ","OCS     ","SO2     ","S       ","NS      ","H2CS    "&
-    &,"S+      ","HS+     ","CS+     ","SO+     ","HCS+    ","OCS+    "&
-    &,"NO2     ","HNO     ","HNO+    ","H2NO+   ","O2H+    ","H2CN    "&
-    &,"NS+     ","C2H2+   ","H3S+    ","H2CS+   ","H2S2+   ","S2+     "&
-    &,"H3CS+   ","HSO+    ","SO2+    ","HOCS+   ","MG+     ","MG      "&
-    &,"NH4+    ","HCNH+   ","N2H+    ","HNS+    ","C3+     ","H2S+    "&
-    &,"O2H     ","HSO2+   ","CO      ","HNC     ","C2H2    ","CH3CN   "&
-    &,"C2H4    ","C2H5    ","E-      ","#CH4    ","#CH4    ","#CH4    "&
-    &,"#NH3    ","#NH3    ","#NH3    ","#H2O    ","#H2O    ","#H2O    "&
-    &,"#C2     ","#C2     ","#C2     ","#MG     ","#MG     ","#MG     "&
-    &,"#C2H    ","#C2H    ","#C2H    ","#C2H2   ","#C2H2   ","#C2H2   "&
-    &,"#HCN    ","#HCN    ","#HCN    ","#HNC    ","#HNC    ","#HNC    "&
-    &,"#C2H3   ","#C2H3   ","#C2H3   ","#CO     ","#CO     ","#CO     "&
-    &,"#N2     ","#N2     ","#N2     ","#C2H4   ","#C2H4   ","#C2H4   "&
-    &,"#H2CN   ","#H2CN   ","#H2CN   ","#C2H5   ","#C2H5   ","#C2H5   "&
-    &,"#NO     ","#NO     ","#NO     ","#H2CO   ","#H2CO   ","#H2CO   "&
-    &,"#HNO    ","#HNO    ","#HNO    ","#O2     ","#O2     ","#O2     "&
-    &,"#CH3OH  ","#CH3OH  ","#CH3OH  ","#SIH4   ","#SIH4   ","#SIH4   "&
-    &,"#O2H    ","#O2H    ","#O2H    ","#H2S    ","#H2S    ","#H2S    "&
-    &,"#HCL    ","#HCL    ","#HCL    ","#C3H2   ","#C3H2   ","#C3H2   "&
-    &,"#CH3CCH ","#CH3CCH ","#CH3CCH ","#SIC    ","#SIC    ","#SIC    "&
-    &,"#CH3CN  ","#CH3CN  ","#CH3CN  ","#CH2CO  ","#CH2CO  ","#CH2CO  "&
-    &,"#CH3CNH ","#CH3CNH ","#CH3CNH ","#HNCO   ","#HNCO   ","#HNCO   "&
-    &,"#SIO    ","#SIO    ","#SIO    ","#CS     ","#CS     ","#CS     "&
-    &,"#CO2    ","#CO2    ","#CO2    ","#C2H5OH ","#C2H5OH ","#C2H5OH "&
-    &,"#H2CS   ","#H2CS   ","#H2CS   ","#NO2    ","#NO2    ","#NO2    "&
-    &,"#NS     ","#NS     ","#NS     ","#H2SIO  ","#H2SIO  ","#H2SIO  "&
-    &,"#SO     ","#SO     ","#SO     ","#C4H    ","#C4H    ","#C4H    "&
-    &,"#HC3N   ","#HC3N   ","#HC3N   ","#NCCN   ","#NCCN   ","#NCCN   "&
-    &,"#SIC2   ","#SIC2   ","#SIC2   ","#HCOOCH3","#HCOOCH3","#HCOOCH3"&
-    &,"#SIS    ","#SIS    ","#SIS    ","#OCS    ","#OCS    ","#OCS    "&
-    &,"#C4N    ","#C4N    ","#C4N    ","#SIC3   ","#SIC3   ","#SIC3   "&
-    &,"#SO2    ","#SO2    ","#SO2    ","#H2S2   ","#H2S2   ","#H2S2   "/)
-character(Len=8), parameter :: 	re2 (2456)=(/"O       ","HNC     "&
-    &,"CH      ","H2      ","H2O     ","HOC+    ","O2      ","OH      "&
-    &,"E-      ","CH      ","H2      ","H2O     ","O2      ","OH      "&
-    &,"CH2     ","CH      ","H2CO    ","H2S     ","HCO     ","MG      "&
-    &,"NCCN    ","NH3     ","NO      ","NS      ","OCS     ","SO      "&
-    &,"SI      ","SIC2    ","SIC3    ","SIC     ","SIH2    ","SIH3    "&
-    &,"SIS     ","HCO     ","NO      ","S       ","CN+     ","CO+     "&
-    &,"N2+     ","O2+     ","NO      ","S       ","H2CO    ","H2S     "&
-    &,"HCO     ","NO      ","HCN+    ","CN+     ","CO+     ","N2+     "&
-    &,"C2+     ","CN+     ","CO+     ","N2+     ","O2+     ","HCO     "&
-    &,"MG      ","NH3     ","NO      ","S       ","SI      ","NO      "&
-    &,"C2+     ","CN+     ","CO+     ","H2CO+   ","H2O+    ","N2+     "&
-    &,"NH2+    ","O+      ","O2+     ","OH+     ","HCO     ","MG      "&
-    &,"NO      ","C2H2    ","H2CO    ","H2S     ","NH3     ","O2      "&
-    &,"OCS     ","CO+     ","C2+     ","CN+     ","CO+     ","H2CO+   "&
-    &,"H2O+    ","N+      ","N2+     ","NH2+    ","O+      ","O2+     "&
-    &,"OH+     ","CO      ","H2CO    ","HCN     ","HCO     ","NO      "&
-    &,"O2      ","S       ","N2+     ","H2CO    ","H2S     ","HCO     "&
-    &,"NO      ","O2      ","S       ","N2+     ","H       ","H+      "&
-    &,"C2      ","C2H2    ","C2H     ","C2N     ","CH2     ","CH3     "&
-    &,"CH4     ","CH      ","CS      ","H2CO    ","H2CS    ","H2O     "&
-    &,"H2S2    ","H2S     ","HCN     ","HCO     ","HCL     ","HS2     "&
-    &,"HS      ","MG      ","NH2     ","NH3     ","NH      ","NO      "&
-    &,"NS      ","O2      ","O       ","OCS     ","OH      ","S2      "&
-    &,"S       ","SO2     ","SO      ","SI      ","SIC2    ","SIC3    "&
-    &,"SIC     ","SIH2    ","SIH3    ","SIH4    ","SIH     ","SIO     "&
-    &,"SIS     ","C2      ","C2H2    ","C2H     ","CH2     ","CH4     "&
-    &,"CH      ","CN      ","CO      ","H2CO    ","H2O     ","H2S     "&
-    &,"HCN     ","HCO     ","NH2     ","NH3     ","NH      ","NO      "&
-    &,"O2      ","OH      ","HE+     ","S       ","O2+     ","C2      "&
-    &,"C2H2    ","C2H     ","H2CO    ","H2S     ","HCO     ","MG      "&
-    &,"NO      ","O2      ","OCS     ","S       ","SI      ","CO+     "&
-    &,"HCN+    ","N2+     ","OCS+    ","CN+     ","CO+     ","H2+     "&
-    &,"HCN+    ","HE+     ","O+      ","NO      ","O2      ","S       "&
-    &,"CO+     ","N2+     ","H2CO+   ","H2S+    ","O2+     ","S+      "&
-    &,"SIO+    ","C2      ","C2H2    ","C       ","CH4     ","CH      "&
-    &,"H2CO    ","H2O     ","H2S     ","N2      ","NH3     ","O2      "&
-    &,"SO2     ","SI      ","C2H2+   ","CS+     ","H2CO+   ","H2S+    "&
-    &,"HCO+    ","HS+     ","N2+     ","NO+     ","O2+     ","S+      "&
-    &,"SO+     ","SI+     ","SIO+    ","C2      ","C2H     ","CH2     "&
-    &,"CH4     ","CN      ","CO      ","H2CO    ","H2O     ","H2S     "&
-    &,"HCN     ","HCO     ","MG      ","NH2     ","NH3     ","NH      "&
-    &,"NO      ","O2      ","OCS     ","OH      ","H2CO    ","H2S     "&
-    &,"HCO     ","NO      ","O2      ","OCS     ","S       ","N2+     "&
-    &,"H2CO    ","H2O     ","NH3     ","NO      ","O2      ","S       "&
-    &,"H2S     ","HCO     ","NH3     ","NO      ","S       ","C2+     "&
-    &,"CN+     ","CO+     ","H2O+    ","N2+     ","O2+     ","OH+     "&
-    &,"HCO     ","MG      ","NO      ","SI      ","C2H2+   ","CO+     "&
-    &,"H2CO+   ","H2O+    ","H2S+    ","HCN+    ","HS+     ","N2+     "&
-    &,"O2+     ","OCS+    ","S+      ","SO+     ","CN+     ","CO+     "&
-    &,"N2+     ","O+      ","H2CO+   ","H2S+    ","HNO+    ","HS+     "&
-    &,"O2+     ","S+      ","S2+     ","SIO+    ","C2      ","C2H2    "&
-    &,"C2H     ","CH4     ","CO      ","H2CO    ","H2O     ","H2S     "&
-    &,"HCO     ","NH2     ","NH3     ","O2      ","OCS     ","OH      "&
-    &,"SO2     ","C2H2    ","H2S     ","S       ","CL+     ","SO2+    "&
-    &,"CN+     ","CO+     ","N2+     ","C2      ","C2H     ","H2CO    "&
-    &,"H2O     ","H2S     ","HCO     ","NH3     ","NO      ","O2      "&
-    &,"S       ","C2+     ","CN+     ","CO+     ","N2+     ","SIC     "&
-    &,"SIS     ","C+      ","H2S+    ","HS+     ","CS+     ","H2CO+   "&
-    &,"H2S+    ","HS+     ","NO+     ","O2+     ","S+      ","S+      "&
-    &,"CRP     ","CRP     ","CRP     ","CRP     ","CRP     ","CRP     "&
-    &,"CRP     ","CRP     ","CRP     ","CRP     ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","C2H5OH  ","C2H     "&
-    &,"CH2     ","CH3     ","CH3     ","CH3CCH  ","CH3OH   ","CH3OH   "&
-    &,"CH4     ","CH      ","CO2     ","H2CO    ","H2CO    ","H2CS    "&
-    &,"H2O     ","H2O     ","H2S     ","HC3N    ","HC3N    ","HC3N    "&
-    &,"HCO     ","HNC     ","HS      ","NH2     ","NH3     ","NH      "&
-    &,"NS      ","O2      ","O2      ","OCN     ","OCS     ","OH      "&
-    &,"SO2     ","SO      ","SO      ","SO      ","SIC     ","SIH2    "&
-    &,"SIH     ","SIO     ","SIS     ","C2      ","HCO     ","O2      "&
-    &,"S       ","H2CO+   ","HCN+    ","HCO+    ","HNO+    ","N2H+    "&
-    &,"O2+     ","O2H+    ","S+      ","SIO+    ","H2CO    ","HCN     "&
-    &,"HCN     ","HCO     ","HNC     ","CH3CN   ","CH3CN   ","H2S     "&
-    &,"HCN     ","HNC     ","SI      ","SIH4    ","SIH4    ","SIH4    "&
-    &,"SIH4    ","C2N2+   ","S+      ","CO+     ","H2CO+   ","HCN+    "&
-    &,"HCO+    ","HNO+    ","N2H+    ","O2H+    ","SI+     ","C2H+    "&
-    &,"CH+     ","CH2+    ","CH3+    ","CH5+    ","H2O+    ","H2S+    "&
-    &,"H3O+    ","HCN+    ","HCO+    ","HCO2+   ","HNO+    ","HS+     "&
-    &,"N2H+    ","NH+     ","O2+     ","O2H+    ","OH+     ","SIH+    "&
-    &,"SIO+    ","C2      ","C2H     ","CH2     ","CH3OH   ","CH3OH   "&
-    &,"CH3OH   ","CH4     ","CH      ","CN      ","CO2     ","H2CO    "&
-    &,"H2CO    ","H2CO    ","H2O     ","H2O     ","H2O     ","H2S     "&
-    &,"H2S     ","HCN     ","HCN     ","HCN     ","HCO     ","HNC     "&
-    &,"N       ","NH2     ","NH3     ","NH      ","O2      ","O2      "&
-    &,"O2      ","O       ","OCS     ","OCS     ","OH      ","S       "&
-    &,"S       ","CO2     ","H2CO    ","H2O     ","H2S     ","H2S     "&
-    &,"H2S     ","HCO     ","NH3     ","O2      ","O       ","OCS     "&
-    &,"OCS     ","S       ","C2H+    ","CH5+    ","CO+     ","H2CO+   "&
-    &,"H2O+    ","H3O+    ","HCN+    ","HCNH+   ","HCNH+   ","HCO+    "&
-    &,"HNO+    ","N2H+    ","NH+     ","NH2+    ","NH3+    ","O2+     "&
-    &,"O2H+    ","OH+     ","S+      ","SIO+    ","C2H4    ","CH3CN   "&
-    &,"CH3OH   ","H2CO    ","H2S     ","HCO     ","HS      ","NH3     "&
-    &,"O2      ","O       ","O       ","OCS     ","OH      ","S       "&
-    &,"SO      ","SIH4    ","S+      ","HCO2+   ","NH3     ","S2+     "&
-    &,"CH3OH   ","CH4     ","CO2     ","CO      ","H2CO    ","H2O     "&
-    &,"H2S     ","NH3     ","OCS     ","C2+     ","C2+     ","C2H+    "&
-    &,"C2H2+   ","CO+     ","CS+     ","H2CO+   ","H2O+    ","HCN+    "&
-    &,"HCO2+   ","HNO+    ","HS+     ","N2+     ","N2+     ","N2H+    "&
-    &,"NH3+    ","OH+     ","OH+     ","S+      ","S+      ","C2      "&
-    &,"C2H     ","CO2     ","CO      ","H2CO    ","H2O     ","H2S     "&
-    &,"HCN     ","HCO     ","HCL     ","HNC     ","MG      ","S       "&
-    &,"SIH4    ","C2+     ","C2H+    ","CH3+    ","CH5+    ","CO+     "&
-    &,"H2CO+   ","H2O+    ","H3CO+   ","H3O+    ","HCN+    ","HCNH+   "&
-    &,"HCNH+   ","HCO+    ","HNO+    ","HS+     ","N+      ","N2H+    "&
-    &,"NH+     ","NH2+    ","NH3+    ","O+      ","O2+     ","O2H+    "&
-    &,"OH+     ","S+      ","SI+     ","SIH+    ","SIO+    ","H2CO    "&
-    &,"HCN     ","HCO     ","O2      ","HNO+    ","O2H+    ","H2CO    "&
-    &,"H2S     ","SO2     ","H2CL+   ","HCO2+   ","HNO+    ","N2H+    "&
-    &,"O2H+    ","SO2+    ","SIH4+   ","SIO+    ","C2H3    ","C2H4    "&
-    &,"C2H     ","CH2     ","CH3CN   ","CH3OH   ","CH3OH   ","CH3OH   "&
-    &,"CH4     ","CO2     ","H2CO    ","H2CO    ","H2S     ","H2S     "&
-    &,"H2SIO   ","HCO     ","HCO     ","HCS     ","HNCO    ","HNO     "&
-    &,"HS      ","NO2     ","OCS     ","SIH2    ","SIH3    ","SIH4    "&
-    &,"SIH     ","C2      ","C2H4    ","C2H     ","C       ","CH2     "&
-    &,"CH4     ","CH4     ","CH      ","CN      ","CO2     ","CO      "&
-    &,"H2      ","H2CO    ","H2O     ","H2S     ","H2S     ","HCO     "&
-    &,"HE      ","N2      ","N       ","NH      ","NO      ","O2      "&
-    &,"O       ","OH      ","C+      ","C2+     ","C2H+    ","CH+     "&
-    &,"CH2+    ","CH4+    ","CN+     ","CO+     ","CO+     ","CS+     "&
-    &,"CL+     ","H2O+    ","H2S+    ","HCN+    ","HCL+    ","HS+     "&
-    &,"HE+     ","HEH+    ","N+      ","N2+     ","NH+     ","NH+     "&
-    &,"NH2+    ","NH3+    ","O+      ","O2H+    ","OH+     ","S+      "&
-    &,"SO2+    ","SIH4+   ","SIO+    ","CH3OH   ","H2CO    ","O2      "&
-    &,"S       ","CH3OH2+ ","H3S+    ","HNO+    ","O2+     ","O2H+    "&
-    &,"S+      ","S+      ","C2      ","C2H     ","CO      ","H2CO    "&
-    &,"H2O     ","H2S     ","H2S     ","HCN     ","HCO     ","HCO     "&
-    &,"HNC     ","S       ","S       ","SO2     ","C2+     ","C2H2+   "&
-    &,"C2N+    ","C2N+    ","C4N+    ","CN+     ","CN+     ","CO+     "&
-    &,"H2CO+   ","H2CL+   ","H2S+    ","H3CO+   ","HCN+    ","HCO+    "&
-    &,"HCO2+   ","HNO+    ","HOCS+   ","HS+     ","HSO2+   ","HSIS+   "&
-    &,"N2+     ","N2H+    ","O2H+    ","SI+     ","SIH+    ","SIH4+   "&
-    &,"SIH5+   ","H2S     ","C2N+    ","HS2+    ","HSIS+   ","SO+     "&
-    &,"C2      ","C2H5OH  ","C2H5OH  ","C2H     ","C2N     ","C       "&
-    &,"CH2     ","CH3     ","CH3CN   ","CH3OH   ","CH3OH   ","CH4     "&
-    &,"CH      ","CN      ","CO2     ","CO      ","CO      ","CS      "&
-    &,"CL      ","H2CO    ","H2CS    ","H2O     ","H2S     ","HCN     "&
-    &,"HCO     ","HCOOCH3 ","HCS     ","HCL     ","HNC     ","HNO     "&
-    &,"HS2     ","HS      ","MG      ","N2      ","NH2     ","NH3     "&
-    &,"NH      ","NO2     ","NO      ","NS      ","O2      ","O       "&
-    &,"O       ","OCS     ","OH      ","S2      ","S       ","SO2     "&
-    &,"SO      ","SI      ","SIH2    ","SIH3    ","SIH4    ","SIH     "&
-    &,"SIO     ","SIS     ","CH3OH   ","H2S     ","C2      ","C2H5OH  "&
-    &,"CH3CCH  ","CH3CN   ","CH3OH   ","CS      ","H2CO    ","H2S     "&
-    &,"HCN     ","HCOOCH3 ","HNC     ","HS2     ","S2      ","SI      "&
-    &,"SIH2    ","SIH     ","SIO     ","C2N2+   ","CH+     ","CH2+    "&
-    &,"CH3+    ","CH4+    ","CH5+    ","H2S+    ","H3S+    ","HS+     "&
-    &,"HEH+    ","SO2+    ","SIH+    ","SIS+    ","CO2     ","CO      "&
-    &,"H2CO    ","HCN     ","HCO     ","HCO     ","HNC     ","S       "&
-    &,"C2N2+   ","C3+     ","CH3OH2+ ","H2CO+   ","H3CO+   ","H3S+    "&
-    &,"HCO+    ","HNO+    ","HS+     ","HSIS+   ","N2H+    ","O2H+    "&
-    &,"CH3CN   ","CH3CN   ","H2CO    ","H2CO    ","H2S     ","H2S     "&
-    &,"C2H5OH  ","CH3CCH  ","CH3CN   ","CH3OH   ","CS      ","H2CO    "&
-    &,"H2CS    ","H2S     ","HCO     ","HCOOCH3 ","HS2     ","HS      "&
-    &,"NS      ","OCS     ","S2      ","S       ","SO      ","SIH2    "&
-    &,"SIH4    ","SIH     ","SIO     ","SIS     ","H2CO+   ","HNO+    "&
-    &,"N2H+    ","O2+     ","O2H+    ","S+      ","C2H5OH  ","H2CO+   "&
-    &,"H3CO+   ","H3S+    ","HCO+    ","HNO+    ","HS+     ","N2H+    "&
-    &,"O2H+    ","CO2     ","S       ","H2S     ","H2S     ","C2      "&
-    &,"C2H2    ","C2H2    ","C2H2    ","C2H3    ","C2H3    ","C2H4    "&
-    &,"C2H4    ","C2H4    ","C2H     ","C2H     ","C2H     ","C2N     "&
-    &,"C3N     ","C4H     ","CH2     ","CH2     ","CH2CO   ","CH2CO   "&
-    &,"CH3     ","CH3CCH  ","CH3CN   ","CH3CN   ","CH3OH   ","CH3OH   "&
-    &,"CH4     ","CH4     ","CH4     ","CH4     ","CH      ","CN      "&
-    &,"CN      ","CO2     ","CO2     ","CO2     ","CO2     ","CO      "&
-    &,"CS      ","CS      ","H2CO    ","H2CO    ","H2CO    ","H2CS    "&
-    &,"H2CS    ","H2CS    ","H2O     ","H2O     ","H2S2    ","H2S2    "&
-    &,"H2S     ","H2S     ","H2SIO   ","HC3N    ","HC3N    ","HCN     "&
-    &,"HCN     ","HCN     ","HCN     ","HCO     ","HCO     ","HCO     "&
-    &,"HCOOCH3 ","HCS     ","HCS     ","HCL     ","HNC     ","HNC     "&
-    &,"HNC     ","HNO     ","HNO     ","HS2     ","HS2     ","HS      "&
-    &,"N2      ","NCCN    ","NH2     ","NH2     ","NH3     ","NH3     "&
-    &,"NH      ","NO      ","NO      ","NS      ","NS      ","O2      "&
-    &,"OCN     ","OCN     ","OCS     ","OCS     ","OCS     ","OCS     "&
-    &,"OH      ","S2      ","SO2     ","SO2     ","SO      ","SO      "&
-    &,"SIC2    ","SIC3    ","SIC     ","SIC     ","SIH2    ","SIH2    "&
-    &,"SIH3    ","SIH3    ","SIH4    ","SIH4    ","SIH     ","SIO     "&
-    &,"SIO     ","SIS     ","SIS     ","CH3OH   ","CH3OH   ","CH3OH   "&
-    &,"CH3OH   ","CH4     ","CH4     ","CH4     ","CO2     ","CO      "&
-    &,"H2CO    ","H2CO    ","H2S     ","H2S     ","H2S     ","HCO     "&
-    &,"NCCN    ","NCCN    ","NH3     ","NH3     ","NH      ","NO      "&
-    &,"O2      ","O2      ","OCS     ","OCS     ","H2CO    ","H2S     "&
-    &,"H2S     ","HCO     ","OCS     ","HNO+    ","O2H+    ","CH3CN   "&
-    &,"CO2     ","H2CO    ","S       ","C2+     ","C2H+    ","C2H+    "&
-    &,"C2H2+   ","C2H2+   ","C2H2+   ","CH2+    ","CN+     ","H2O+    "&
-    &,"H2O+    ","H2S+    ","HS+     ","NH+     ","NH2+    ","O2+     "&
-    &,"OH+     ","SO+     ","SIC+    ","SIO+    ","SIO+    ","C2      "&
-    &,"C2      ","C2      ","C2H     ","CN      ","CO2     ","CO2     "&
-    &,"CO2     ","CO      ","H2CO    ","H2CO    ","H2O     ","H2O     "&
-    &,"H2O     ","H2O     ","HCN     ","HCO     ","HNC     ","N2      "&
-    &,"NH2     ","NH3     ","NH      ","NO      ","O2      ","O2      "&
-    &,"O       ","OH      ","S       ","S       ","C2      ","C2H     "&
-    &,"H2CO    ","H2CO    ","H2O     ","H2O     ","H2O     ","H2S     "&
-    &,"H2S     ","H2S     ","H2S     ","HCN     ","HCO     ","HNC     "&
-    &,"NH2     ","NH3     ","O2      ","O2      ","S       ","S       "&
-    &,"C2+     ","C2H+    ","C2H2+   ","CH5+    ","CO+     ","H2CO+   "&
-    &,"H2O+    ","H3CO+   ","H3O+    ","HCN+    ","HCNH+   ","HCNH+   "&
-    &,"HCO+    ","HNO+    ","N2H+    ","NH3+    ","O2H+    ","OH+     "&
-    &,"C2      ","H2CO    ","H2O     ","H2S     ","HCO     ","NH3     "&
-    &,"C2H+    ","C2H2+   ","C2H5OH2+","C2N+    ","CH5+    ","CO+     "&
-    &,"H2CO+   ","H2O+    ","H2S+    ","H3CO+   ","H3O+    ","H3S+    "&
-    &,"HCN+    ","HCNH+   ","HCNH+   ","HCO+    ","HCO2+   ","HCS+    "&
-    &,"HNO+    ","HS+     ","HSO2+   ","HSIS+   ","N2H+    ","O2H+    "&
-    &,"SIH+    ","SIOH+   ","C2+     ","C2+     ","CH3+    ","CH5+    "&
-    &,"CO+     ","H2CO+   ","H2O+    ","HCN+    ","HCO+    ","HNO+    "&
-    &,"N2H+    ","NH2+    ","NH3+    ","O+      ","O2+     ","O2H+    "&
-    &,"OH+     ","S+      ","O2H+    ","C2      ","C2H4    ","C2H     "&
-    &,"CH3OH   ","CH3OH   ","CH4     ","CN      ","CO2     ","H2CO    "&
-    &,"H2S     ","H2S     ","HCN     ","HCN     ","HCO     ","N2      "&
-    &,"NO2     ","OCS     ","OH      ","SO2     ","C2H2    ","CH3OH   "&
-    &,"S       ","CS+     ","S+      ","SIS+    ","SIS+    ","CO2     "&
-    &,"C2+     ","C2H+    ","C2H2+   ","CH4+    ","CH5+    ","CH5+    "&
-    &,"CS+     ","H2O+    ","H2S+    ","H2S+    ","HCO2+   ","HCS+    "&
-    &,"HCS+    ","HS+     ","HS+     ","N2+     ","N2H+    ","NH2+    "&
-    &,"NH3+    ","NS+     ","O2H+    ","OH+     ","SIC+    ","SIH+    "&
-    &,"SIH2+   ","SIH3+   ","SIO+    ","C2      ","C2H     ","CN      "&
-    &,"CO2     ","CO      ","H2CO    ","H2O     ","H2S     ","HCN     "&
-    &,"HCO     ","HCO     ","HNC     ","N2      ","NH3     ","NO      "&
-    &,"OH      ","S       ","S       ","SI      ","SIH     ","SIO     "&
-    &,"CH5+    ","CO+     ","H2O+    ","HCN+    ","HCO+    ","HCO+    "&
-    &,"HNO+    ","N2H+    ","NH3+    ","O2H+    ","S+      ","SI+     "&
-    &,"H2S     ","H2S     ","OCS     ","H3S+    ","O2H+    ","SIO+    "&
-    &,"C2H2    ","C2H2    ","C2H2    ","C2H4    ","C2H4    ","C2H4    "&
-    &,"OCS     ","C2H5OH  ","CH3OH   ","OCS     ","HCO+    ","O2      "&
-    &,"S       ","S+      ","C2H2    ","HCN     ","O2      ","S       "&
-    &,"NO      ","SI      ","O2      ","O2      ","HCN     ","HNC     "&
-    &,"NCCN    ","O2      ","C2H3    ","C2H5    ","C2N     ","C3H2    "&
-    &,"CH2     ","CH2     ","CH3     ","CH      ","CN      ","CO      "&
-    &,"CS      ","H2CN    ","HCO     ","HS      ","HS      ","N2      "&
-    &,"NCCN    ","NH2     ","NH2     ","NH2     ","NH      ","NH      "&
-    &,"NO      ","NO      ","NS      ","NS      ","O2      ","OCN     "&
-    &,"OCS     ","OH      ","OH      ","S2      ","SO2     ","SO      "&
-    &,"SO      ","SIH     ","CH2     ","CH2     ","CH2     ","CH2     "&
-    &,"CH4     ","CN      ","H2CO    ","HCO     ","HNO     ","N2      "&
-    &,"NO2     ","NO      ","NO      ","NO      ","O2      ","O2      "&
-    &,"O2      ","O2      ","O2      ","O       ","O       ","O       "&
-    &,"O       ","OH      ","OH      ","OH      ","S       ","S       "&
-    &,"C2H3    ","CH3     ","CH3     ","CH3     ","CN      ","H2CO    "&
-    &,"H2O     ","H2S     ","HCO     ","HNO     ","NH2     ","NH3     "&
-    &,"NO2     ","NO      ","O2      ","O2      ","O2      ","O2H     "&
-    &,"O       ","O       ","OH      ","OH      ","OH      ","S       "&
-    &,"CN      ","O2      ","OH      ","S       ","C2H2    ","C2H4    "&
-    &,"CH4     ","CO2     ","H2CO    ","HCO     ","HNO     ","N2      "&
-    &,"N       ","N       ","NO      ","NO      ","NO      ","O2      "&
-    &,"O2      ","O2      ","O2      ","O2H     ","O2H     ","O       "&
-    &,"O       ","OCS     ","OH      ","S       ","S       ","SO      "&
-    &,"SO      ","C2H2    ","C2H4    ","CN      ","H2CO    ","HCN     "&
-    &,"HCO     ","HNC     ","HNO     ","NO2     ","NO      ","NO      "&
-    &,"O2      ","O2      ","S       ","SIH4    ","HNO     ","NO2     "&
-    &,"O2      ","O2H     ","H2      ","C2H     ","C       ","CH2     "&
-    &,"CH3     ","CH      ","CN      ","HS      ","N       ","NH2     "&
-    &,"NH      ","O2      ","O2      ","O       ","OH      ","S       "&
-    &,"C2      ","C2H2    ","C2H3    ","CH2     ","CH2CO   ","CH3     "&
-    &,"CH4     ","CH      ","CO2     ","CO      ","H2CN    ","H2CO    "&
-    &,"H2O     ","H2S     ","HCN     ","HCO     ","HCO     ","HCS     "&
-    &,"HNC     ","HNO     ","HNO     ","HNO     ","HS      ","NCCN    "&
-    &,"NH2     ","NH3     ","NH      ","NO2     ","NO      ","NO      "&
-    &,"NS      ","NS      ","O2      ","O2H     ","O2H     ","O2H     "&
-    &,"OCN     ","OCN     ","OCN     ","OCS     ","OH      ","S2      "&
-    &,"SO      ","SO      ","HCO     ","HCO     ","HNO     ","NO      "&
-    &,"O2      ","O2      ","O2H     ","H       ","C       ","HS      "&
-    &,"C2      ","C2H3    ","C2H4    ","C2H5    ","C2H5    ","C2H     "&
-    &,"C2N     ","C3H2    ","C3N     ","C4H     ","C4N     ","CH2     "&
-    &,"CH2     ","CH2     ","CH3     ","CH3     ","CH3     ","CN      "&
-    &,"CO2     ","CS      ","H2CN    ","HCO     ","HCO     ","HCO     "&
-    &,"HCS     ","HNO     ","HS      ","HS      ","NCCN    ","NH      "&
-    &,"NO2     ","NO2     ","NO2     ","NO      ","NS      ","O2      "&
-    &,"O2H     ","OH      ","OH      ","S2      ","SO      ","SO      "&
-    &,"SIC     ","CH4     ","NO      ","NO      ","OH      ","OH      "&
-    &,"CN      ","CH4     ","CN      ","H2O     ","NH3     ","NH      "&
-    &,"NH      ","NH      ","NO2     ","NO      ","NO      ","O2      "&
-    &,"O2      ","O       ","O       ","OH      ","OH      ","OH      "&
-    &,"S       ","S       ","NO      ","O2      ","OCN     ","S       "&
-    &,"S       ","OCN     ","OCN     ","S       ","SO      ","C2      "&
-    &,"C2H2    ","C2H3    ","C2H4    ","C2H4    ","C2H4    ","C2H4    "&
-    &,"C2H5    ","C2H     ","C2N     ","C3N     ","C4N     ","CH4     "&
-    &,"CN      ","CN      ","CO2     ","CS      ","CS      ","H2CN    "&
-    &,"H2CO    ","H2O     ","H2S     ","HCN     ","HCN     ","HCN     "&
-    &,"HCO     ","HCO     ","HCS     ","HCS     ","HNO     ","HNO     "&
-    &,"HNO     ","HS      ","HS      ","N2      ","NH2     ","NH2     "&
-    &,"NH3     ","NO2     ","NO      ","NS      ","NS      ","O2H     "&
-    &,"OCN     ","OCN     ","OCS     ","OCS     ","OH      ","S2      "&
-    &,"SO2     ","SO      ","SIC2    ","SIC3    ","SIC     ","SIC     "&
-    &,"SIH2    ","SIH2    ","SIH3    ","SIH4    ","SIH     ","C2H2    "&
-    &,"C2H2    ","C2H2    ","C2H3    ","C2H5    ","CN      ","CN      "&
-    &,"CO      ","CS      ","CS      ","H2CO    ","H2S     ","HCN     "&
-    &,"HCN     ","HCO     ","HNO     ","NCCN    ","NH3     ","NO      "&
-    &,"O2H     ","OH      ","S       ","SO      ","SI      ","HCO     "&
-    &,"HCO     ","HS      ","SO2     ","SO      ","CO2     ","CO      "&
-    &,"NO      ","O2      ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
-    &,"C       ","N       ","O       ","S       ","CN      ","C       "&
-    &,"N       ","O+      ","O       ","S+      ","S       ","H2O     "&
-    &,"HCN     ","CN      ","H       ","HE      ","C+      ","C       "&
-    &,"CH3+    ","CH      ","HS+     ","S+      ","SI+     ","SIH+    "&
-    &,"SIH3+   ","C2H4    ","C+      ","C       ","O       ","OH      "&
-    &,"SI+     ","N       ","O       ","SO      ","SI+     ","SI      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
-    &,"E-      ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
-    &,"FREEZE  ","FREEZE  ","FREEZE  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "&
-    &,"DESOH2  ","DESCR   ","DEUVCR  ","DESOH2  ","DESCR   ","DEUVCR  "/)
-character(Len=3), parameter :: 	re3 (2456)=(/"NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN"/)
-character(Len=8), parameter :: 	p1 (2456)=(/"HCO+    ","HCN     "&
-    &,"C       ","H2      ","OH      ","HCO+    ","O       ","O       "&
-    &,"H       ","C       ","H       ","OH      ","O       ","O       "&
-    &,"CH2+    ","CH+     ","H2CO+   ","H2S+    ","HCO+    ","MG+     "&
-    &,"C2N+    ","NH3+    ","NO+     ","NS+     ","OCS+    ","SO+     "&
-    &,"SI+     ","SIC2+   ","SIC3+   ","SIC+    ","SIH2+   ","SIH3+   "&
-    &,"SIS+    ","HCO+    ","NO+     ","S+      ","CN      ","CO      "&
-    &,"N2      ","O2      ","NO+     ","S+      ","H2CO+   ","H2S+    "&
-    &,"HCO+    ","NO+     ","C2H2+   ","CN      ","CO      ","N2      "&
-    &,"C2      ","CN      ","CO      ","N2      ","O2      ","HCO+    "&
-    &,"MG+     ","NH3+    ","NO+     ","S+      ","SI+     ","NO+     "&
-    &,"C2      ","CN      ","CO      ","H2CO    ","H2O     ","N2      "&
-    &,"NH2     ","O       ","O2      ","OH      ","HCO+    ","MG+     "&
-    &,"NO+     ","C2H2+   ","H2CO+   ","H2S+    ","NH3+    ","O2+     "&
-    &,"OCS+    ","CO      ","C2      ","CN      ","CO      ","H2CO    "&
-    &,"H2O     ","N       ","N2      ","NH2     ","O       ","O2      "&
-    &,"OH      ","CO+     ","H2CO+   ","HCN+    ","HCO+    ","NO+     "&
-    &,"O2+     ","S+      ","N2      ","H2CO+   ","H2S+    ","HCO+    "&
-    &,"NO+     ","O2+     ","S+      ","N2      ","CL      ","CL+     "&
-    &,"C2+     ","C2H2+   ","C2H+    ","C2N+    ","CH2+    ","CH3+    "&
-    &,"CH4+    ","CH+     ","CS+     ","H2CO+   ","H2CS+   ","H2O+    "&
-    &,"H2S2+   ","H2S+    ","HCN+    ","HCO+    ","HCL+    ","HS2+    "&
-    &,"HS+     ","MG+     ","NH2+    ","NH3+    ","NH+     ","NO+     "&
-    &,"NS+     ","O2+     ","O+      ","OCS+    ","OH+     ","S2+     "&
-    &,"S+      ","SO2+    ","SO+     ","SI+     ","SIC2+   ","SIC3+   "&
-    &,"SIC+    ","SIH2+   ","SIH3+   ","SIH4+   ","SIH+    ","SIO+    "&
-    &,"SIS+    ","C2+     ","C2H2+   ","C2H+    ","CH2+    ","CH4+    "&
-    &,"CH+     ","CN+     ","CO+     ","H2CO+   ","H2O+    ","H2S+    "&
-    &,"HCN+    ","HCO+    ","NH2+    ","NH3+    ","NH+     ","NO+     "&
-    &,"O2+     ","OH+     ","HE      ","S+      ","O2      ","C2+     "&
-    &,"C2H2+   ","C2H+    ","H2CO+   ","H2S+    ","HCO+    ","MG+     "&
-    &,"NO+     ","O2+     ","OCS+    ","S+      ","SI+     ","CO      "&
-    &,"HCN     ","N2      ","H2S+    ","CN      ","CO      ","H2      "&
-    &,"HCN     ","HE      ","O       ","NO+     ","O2+     ","S+      "&
-    &,"CO      ","N2      ","H2CO    ","H2S     ","O2      ","S       "&
-    &,"SIO     ","C2+     ","C2H2+   ","C+      ","CH4+    ","CH+     "&
-    &,"H2CO+   ","H2O+    ","H2S+    ","N2+     ","NH3+    ","O2+     "&
-    &,"SO2+    ","SI+     ","C2H2    ","CS      ","H2CO    ","H2S     "&
-    &,"HCO     ","HS      ","N2      ","NO      ","O2      ","S       "&
-    &,"SO      ","SI      ","SIO     ","C2+     ","C2H+    ","CH2+    "&
-    &,"CH4+    ","CN+     ","CO+     ","H2CO+   ","H2O+    ","H2S+    "&
-    &,"HCN+    ","HCO+    ","MG+     ","NH2+    ","NH3+    ","NH+     "&
-    &,"NO+     ","O2+     ","OCS+    ","OH+     ","H2CO+   ","H2S+    "&
-    &,"HCO+    ","NO+     ","O2+     ","OCS+    ","S+      ","N2      "&
-    &,"H2CO+   ","H2O+    ","NH3+    ","NO+     ","O2+     ","S+      "&
-    &,"H2S+    ","HCO+    ","NH3+    ","NO+     ","S+      ","C2      "&
-    &,"CN      ","CO      ","H2O     ","N2      ","O2      ","OH      "&
-    &,"HCO+    ","MG+     ","NO+     ","SI+     ","C2H2    ","CO      "&
-    &,"H2CO    ","H2O     ","H2S     ","HCN     ","HS      ","N2      "&
-    &,"O2      ","NH3+    ","S       ","SO      ","CN      ","CO      "&
-    &,"N2      ","O       ","H2CO    ","H2S     ","HNO     ","HS      "&
-    &,"O2      ","S       ","S2      ","SIO     ","C2+     ","C2H2+   "&
-    &,"C2H+    ","CH4+    ","CO+     ","H2CO+   ","H2O+    ","H2S+    "&
-    &,"HCO+    ","NH2+    ","NH3+    ","O2+     ","OCS+    ","OH+     "&
-    &,"SO2+    ","C2H2+   ","H2S+    ","S+      ","CL      ","SO2     "&
-    &,"CN      ","CO      ","N2      ","C2+     ","C2H+    ","H2CO+   "&
-    &,"H2O+    ","H2S+    ","HCO+    ","NH3+    ","NO+     ","O2+     "&
-    &,"S+      ","C2      ","CN      ","CO      ","N2      ","SIC+    "&
-    &,"SIS+    ","C       ","H2S     ","HS      ","CS      ","H2CO    "&
-    &,"H2S     ","HS      ","NO      ","O2      ","S       ","S       "&
-    &,"C+      ","CO+     ","CL+     ","H+      ","H2+     ","H       "&
-    &,"H+      ","HE+     ","N+      ","O+      ","C       ","C2H2+   "&
-    &,"C2H     ","C2H2    ","C2H2    ","C2H3    ","C2H5    ","C2      "&
-    &,"C2H+    ","C2      ","CN      ","CN      ","C2H     ","C+      "&
-    &,"C+      ","CH2+    ","CH      ","CO      ","CH2     ","CH3+    "&
-    &,"CH      ","CN      ","H2CO    ","OH      ","CH2     ","C       "&
-    &,"N       ","CO      ","O       ","CS+     ","S       ","CL+     "&
-    &,"HCN     ","CO      ","CS      ","OH      ","HS      ","H2S+    "&
-    &,"S       ","SIO     ","H+      ","CN      ","CN      ","CO      "&
-    &,"HCO+    ","CO2     ","HCS+    ","CL      ","CN      ","NH      "&
-    &,"NO      ","HS      ","S       ","HE+     ","MG+     ","N       "&
-    &,"N+      ","CN      ","NH2+    ","NH      ","NH2     ","NH3+    "&
-    &,"NH      ","N       ","NH+     ","NO      ","NO+     ","O       "&
-    &,"S       ","O2+     ","O       ","O2      ","O+      ","CN      "&
-    &,"OCS+    ","S       ","O       ","S       ","S+      ","SO      "&
-    &,"S       ","SO+     ","SI+     ","SIC     ","SIC2    ","SI      "&
-    &,"SIH     ","SIH2    ","SIH2    ","SI      ","SI      ","S       "&
-    &,"C       ","C2      ","CH      ","C2      ","C2H     ","CH      "&
-    &,"C2H4    ","C2H5    ","C2H5    ","C2H5OH  ","C2      ","CN      "&
-    &,"C2N     ","CN      ","C2N     ","C2      ","CH3CCH  ","C2N     "&
-    &,"C3N     ","C       ","C       ","C       ","CH      ","CH2     "&
-    &,"CH      ","CH      ","CH3CN   ","HNC     ","CH2     ","CH3     "&
-    &,"CH3     ","CH3OH   ","H2CO    ","CH2     ","CH3     ","CH2     "&
-    &,"CH3     ","CH3     ","CH4     ","CH      ","N       ","O       "&
-    &,"S       ","H       ","CH2     ","CO      ","CO      ","HCO     "&
-    &,"CS      ","HCS     ","CL      ","HCL     ","HNO     ","NO      "&
-    &,"O       ","O       ","OH      ","HS      ","S       ","HS2     "&
-    &,"HS      ","H2      ","H       ","CH2     ","CH      ","CO      "&
-    &,"H2CO    ","HCO     ","CS      ","H2CS    ","H2O     ","O       "&
-    &,"OH      ","OH      ","H2S     ","HS      ","HS      ","S       "&
-    &,"CH3OH   ","HCOOCH3 ","CN      ","CN      ","HCN     ","HNC     "&
-    &,"CO      ","CO2     ","CO      ","CO      ","CH      ","CS      "&
-    &,"CL      ","NO      ","NS      ","CO      ","CS      ","OCS     "&
-    &,"S       ","HS      ","S2      ","SO      ","SO2     ","SO      "&
-    &,"SO      ","HS      ","SIS     ","HE      ","N       ","N2      "&
-    &,"N       ","N       ","N       ","NH      ","NH2     ","NH      "&
-    &,"NH2     ","NH2     ","NH3     ","O       ","S       ","O       "&
-    &,"O2      ","C       ","CS      ","S       ","O       ","S       "&
-    &,"S       ","S       ","SO      ","SI      ","SI      ","SIC     "&
-    &,"SIC2    ","SIC     ","SI      ","SI      ","SI      ","SIH     "&
-    &,"SIH2    ","SIH     ","SIH2    ","SIH3    ","SIH3    ","SIH4    "&
-    &,"SI      ","SI      ","SIO     ","S       ","H3CO+   ","C3+     "&
-    &,"C2H+    ","C2H+    ","C2H2+   ","C2H2+   ","H3CO+   ","HCO     "&
-    &,"C2H2+   ","C2+     ","CO+     ","CO      ","HCO+    ","CS      "&
-    &,"HCO+    ","HOC+    ","HCS+    ","C2N+    ","C3+     ","C4N+    "&
-    &,"CO      ","C2N+    ","CS+     ","HCN+    ","HCN+    ","CN+     "&
-    &,"CS+     ","CO+     ","CO      ","CO+     ","CS+     ","CO+     "&
-    &,"SO+     ","CS+     ","S+      ","S       ","SI+     ","SIC+    "&
-    &,"SIC+    ","SI+     ","SIC+    ","C3+     ","CO      ","CO+     "&
-    &,"CS+     ","HCO     ","CN      ","CO      ","NO      ","N2      "&
-    &,"CO+     ","O2      ","CS+     ","SIC+    ","H3CO+   ","C2H2+   "&
-    &,"HCNH+   ","CO      ","HCNH+   ","C3H5+   ","CH3CNH+ ","H3S+    "&
-    &,"HCNH+   ","HCNH+   ","SIC2+   ","SI+     ","SIH+    ","SIH2+   "&
-    &,"SIH3+   ","C2H2+   ","HCS+    ","HCO+    ","HCO     ","C2H2+   "&
-    &,"CO      ","NO      ","N2      ","O2      ","SIC2+   ","C3+     "&
-    &,"C2+     ","C2H+    ","C2H+    ","CH4     ","OH      ","HCS+    "&
-    &,"HCO+    ","CN      ","CO      ","CO2     ","NO      ","CS+     "&
-    &,"N2      ","N       ","CO+     ","O2      ","O       ","SIC+    "&
-    &,"SI+     ","C3+     ","C3+     ","C2H+    ","CH3OH2+ ","H2CO    "&
-    &,"H3CO+   ","C2H2+   ","C2+     ","C2N+    ","HCO+    ","CO      "&
-    &,"H3CO+   ","HCO+    ","H2CO+   ","H3O+    ","HCO+    ","H3S+    "&
-    &,"HCS+    ","C2N+    ","C2NH+   ","HCNH+   ","CO      ","HCNH+   "&
-    &,"CN+     ","HCN+    ","NH4+    ","CN+     ","CO+     ","HCO+    "&
-    &,"HCO     ","CO+     ","HCS+    ","HOCS+   ","CO+     ","CS+     "&
-    &,"HS+     ","H2CO+   ","HCO+    ","H3CO+   ","H3CS+   ","H3S+    "&
-    &,"HCS+    ","CO      ","NH4+    ","HCO+    ","HCO+    ","H2CS+   "&
-    &,"HCS+    ","HCS+    ","C2      ","CH4     ","HCO+    ","HCO     "&
-    &,"OH      ","H2O     ","CN      ","HCN     ","HNC     ","CO      "&
-    &,"NO      ","N2      ","CH3+    ","CH3+    ","NH2     ","H2CO+   "&
-    &,"O2      ","O       ","HCS+    ","H2CO    ","C3H5+   ","HCNH+   "&
-    &,"H3CO+   ","HCO+    ","H3CS+   ","CO      ","H2CS+   ","NH4+    "&
-    &,"H3CO+   ","H2CO+   ","HCO+    ","H3CS+   ","H2CO+   ","HCS+    "&
-    &,"HOCS+   ","SIH3+   ","H2CS+   ","CO2     ","CH3OH   ","H2S2+   "&
-    &,"CH3OH2+ ","CH5+    ","HCO2+   ","HCO+    ","H3CO+   ","H3O+    "&
-    &,"H3S+    ","NH4+    ","HOCS+   ","C2H+    ","C2H2+   ","C2H2+   "&
-    &,"C3H5+   ","HCO+    ","HCS+    ","H3CO+   ","H3O+    ","HCNH+   "&
-    &,"CO2     ","NO      ","H3CS+   ","N2      ","N2      ","N2      "&
-    &,"NH4+    ","CH5+    ","H3O+    ","H3CS+   ","HCS+    ","C2H+    "&
-    &,"C2H2+   ","HCO2+   ","HCO+    ","H3CO+   ","H3O+    ","H3S+    "&
-    &,"HCNH+   ","H2CO+   ","H2CL+   ","HCNH+   ","MG+     ","HS+     "&
-    &,"SIH3+   ","C3+     ","C2      ","C2H2+   ","CH4     ","HCO+    "&
-    &,"HCO     ","OH      ","H2CO    ","H2O     ","CN      ","HCN     "&
-    &,"HNC     ","CO      ","NO      ","S       ","CN+     ","N2      "&
-    &,"CH2+    ","NH      ","NH4+    ","CO+     ","HCO+    ","O2      "&
-    &,"O       ","CS+     ","SIC+    ","SI      ","HCO+    ","HCO+    "&
-    &,"C2N2+   ","CO      ","NO+     ","NO      ","O2      ","HCO+    "&
-    &,"HS      ","SO+     ","HCL     ","CO2     ","NO      ","HCO+    "&
-    &,"O2      ","SO+     ","SIH3    ","CO2     ","C2H2+   ","C2H2+   "&
-    &,"C2+     ","CH+     ","CH3+    ","CH3+    ","H3CO+   ","HCO+    "&
-    &,"CH3+    ","HCO+    ","CO+     ","HCO+    ","HS+     ","S+      "&
-    &,"SIOH+   ","CO+     ","CO      ","CS+     ","NH2+    ","NO+     "&
-    &,"S+      ","NO+     ","HS+     ","SIH+    ","SIH2+   ","SIH3+   "&
-    &,"SI+     ","C2H+    ","C2H2+   ","C2H2+   ","CH+     ","CH3+    "&
-    &,"CH3+    ","CH5+    ","CH2+    ","HCN+    ","HCO2+   ","HCO+    "&
-    &,"H3+     ","HCO+    ","H3O+    ","HS+     ","S+      ","CO      "&
-    &,"HEH+    ","N2H+    ","NH+     ","NH2+    ","HNO+    ","O2H+    "&
-    &,"OH+     ","H2O+    ","CH+     ","C2H+    ","C2H2+   ","CH2+    "&
-    &,"CH3+    ","CH5+    ","HCN+    ","HCO+    ","HOC+    ","HCS+    "&
-    &,"HCL+    ","H3O+    ","H3S+    ","HCNH+   ","H2CL+   ","H2S+    "&
-    &,"HE      ","HE      ","NH+     ","N2H+    ","N       ","NH2+    "&
-    &,"NH3+    ","NH4+    ","OH+     ","O2      ","H2O+    ","HS+     "&
-    &,"HSO2+   ","SIH5+   ","SIOH+   ","CH3OH2+ ","H3CO+   ","O2H     "&
-    &,"HS+     ","H5C2O2+ ","H2S     ","H3CO+   ","O2      ","O2      "&
-    &,"H2S+    ","HS      ","C2H+    ","C2H2+   ","HCO+    ","H3CO+   "&
-    &,"H3O+    ","H3S+    ","HS      ","HCNH+   ","CO      ","H2CO+   "&
-    &,"HCNH+   ","HS+     ","HSO+    ","HSO2+   ","C2H+    ","C2H     "&
-    &,"C2NH+   ","HCO+    ","HC3N    ","HCN+    ","HCO+    ","HCO+    "&
-    &,"HCO     ","HCL     ","HS      ","H2CO    ","CN      ","CO      "&
-    &,"CO2     ","NO      ","H3O+    ","S       ","SO2     ","SIOH+   "&
-    &,"N2H+    ","N2      ","O2      ","SIOH+   ","SI      ","SIH3    "&
-    &,"SIH4    ","H3S+    ","HCS+    ","S2      ","H3S+    ","S2+     "&
-    &,"C2H+    ","CH3+    ","H3CO+   ","C2H2+   ","C2NH+   ","CH+     "&
-    &,"CH3+    ","CH4+    ","CH3CNH+ ","CH3+    ","CH3OH2+ ","CH5+    "&
-    &,"CH2+    ","HCN+    ","HCO2+   ","HCO+    ","HOC+    ","HCS+    "&
-    &,"HCL+    ","H3CO+   ","H3CS+   ","H3O+    ","H3S+    ","HCNH+   "&
-    &,"H2CO+   ","H5C2O2+ ","H2CS+   ","H2CL+   ","HCNH+   ","H2NO+   "&
-    &,"H2S2+   ","H2S+    ","MG+     ","N2H+    ","NH3+    ","NH4+    "&
-    &,"NH2+    ","NO+     ","HNO+    ","HNS+    ","O2H+    ","H2O+    "&
-    &,"OH+     ","HOCS+   ","H2O+    ","HS2+    ","HS+     ","HSO2+   "&
-    &,"HSO+    ","SIH+    ","SIH3+   ","SIH4+   ","SIH5+   ","SIH2+   "&
-    &,"SIOH+   ","HSIS+   ","CH3OH2+ ","H3S+    ","C2H+    ","C2H5OH2+"&
-    &,"C3H5+   ","CH3CNH+ ","CH3OH2+ ","HCS+    ","H3CO+   ","H3S+    "&
-    &,"HCNH+   ","H5C2O2+ ","HCNH+   ","H2S2+   ","HS2+    ","SIH+    "&
-    &,"SIH3+   ","SIH2+   ","SIOH+   ","HCN+    ","C+      ","CH+     "&
-    &,"CH2+    ","CH3+    ","CH4+    ","HS+     ","H2S+    ","S+      "&
-    &,"HE      ","SO+     ","SI+     ","HS      ","HCO2+   ","HCO+    "&
-    &,"H3CO+   ","HCNH+   ","H2CO+   ","HCNH+   ","HCNH+   ","HS+     "&
-    &,"HCN+    ","C4N+    ","CH3CNH+ ","HCO     ","H2CO    ","H2S     "&
-    &,"HCNH+   ","NO      ","S       ","HCNH+   ","HCNH+   ","O2      "&
-    &,"CH3CNH+ ","CH3CNH+ ","H3CO+   ","H3CO+   ","H3S+    ","H3S+    "&
-    &,"C2H5OH2+","C3H5+   ","CH3CNH+ ","CH3OH2+ ","HCS+    ","H3CO+   "&
-    &,"H3CS+   ","H3S+    ","H2CO+   ","H5C2O2+ ","H2S2+   ","H2S+    "&
-    &,"HNS+    ","HOCS+   ","HS2+    ","HS+     ","HSO+    ","SIH3+   "&
-    &,"SIH5+   ","SIH2+   ","SIOH+   ","HSIS+   ","H3CO+   ","H2CO+   "&
-    &,"H2CO+   ","O2H+    ","O2      ","HS+     ","C2H5OH2+","HCO     "&
-    &,"H2CO    ","H2S     ","HCNH+   ","NO      ","S       ","HCNH+   "&
-    &,"O2      ","HCO2+   ","HS+     ","H3S+    ","HS2+    ","C+      "&
-    &,"C2+     ","C2H+    ","CH+     ","C2H+    ","C2H2+   ","C2H+    "&
-    &,"C2H2+   ","CH2+    ","C2+     ","CH+     ","CH      ","CN      "&
-    &,"CN      ","C2H+    ","C+      ","CH+     ","CO+     ","CO      "&
-    &,"CH+     ","C3+     ","CN+     ","CN      ","OH+     ","OH      "&
-    &,"CH+     ","CH2+    ","CH3+    ","CH3     ","C+      ","N+      "&
-    &,"N       ","CO+     ","CO      ","O2+     ","O2      ","O       "&
-    &,"S+      ","S       ","CO+     ","HCO+    ","O       ","CS+     "&
-    &,"S+      ","S       ","OH+     ","OH      ","HS+     ","HS2+    "&
-    &,"HS+     ","S+      ","SIOH+   ","C2N+    ","CN      ","CN+     "&
-    &,"N+      ","N       ","N       ","CO+     ","CO      ","O       "&
-    &,"HCO2+   ","CS+     ","CS      ","CL+     ","CN+     ","N       "&
-    &,"NH+     ","NO+     ","NO      ","HS      ","S2+     ","S+      "&
-    &,"N+      ","CN+     ","N+      ","NH+     ","NH+     ","NH2+    "&
-    &,"N+      ","O+      ","O       ","S+      ","S       ","O+      "&
-    &,"CN+     ","CN      ","CS+     ","CS      ","S+      ","S       "&
-    &,"O+      ","S+      ","S+      ","SO+     ","S+      ","S       "&
-    &,"SI+     ","SIC2+   ","SI+     ","SI      ","SI+     ","SIH+    "&
-    &,"SIH+    ","SIH2+   ","SI+     ","SIH+    ","SI+     ","SI+     "&
-    &,"SI      ","S+      ","S       ","H2CO+   ","H3CO+   ","NO+     "&
-    &,"NO      ","CH3+    ","HCN+    ","HCNH+   ","NO      ","NO+     "&
-    &,"HCO+    ","NO+     ","HS+     ","HS      ","S+      ","CO      "&
-    &,"C2N+    ","C2N2+   ","N2H+    ","NH2+    ","N2+     ","N2+     "&
-    &,"NO+     ","NO      ","CS+     ","S+      ","HCO+    ","HS+     "&
-    &,"S+      ","N2H+    ","S+      ","NO      ","O2      ","CH3CNH+ "&
-    &,"HCO2+   ","H3CO+   ","HS+     ","CN      ","C2N+    ","CN      "&
-    &,"C2N+    ","C2NH+   ","HCN     ","HCN+    ","N2+     ","HNO+    "&
-    &,"NO+     ","NS+     ","NS+     ","N2+     ","N2H+    ","NO+     "&
-    &,"NO+     ","NS+     ","SI+     ","NO+     ","NO      ","C2H+    "&
-    &,"C2N+    ","HCN+    ","C2H2+   ","HCN+    ","HCO2+   ","HNO+    "&
-    &,"NO+     ","HCO+    ","H3CO+   ","HCO+    ","H3O+    ","HNO+    "&
-    &,"NH3+    ","OH      ","HCNH+   ","H2CO+   ","HCNH+   ","N2H+    "&
-    &,"NH3+    ","NH4+    ","NH2+    ","N2H+    ","NO+     ","O2H+    "&
-    &,"OH+     ","H2O+    ","HS+     ","NS+     ","C2H+    ","C2H2+   "&
-    &,"H3CO+   ","HCO     ","H3O+    ","NH3+    ","NH4+    ","H3S+    "&
-    &,"HS+     ","HS      ","S       ","HCNH+   ","H2CO+   ","HCNH+   "&
-    &,"NH3+    ","NH4+    ","H2NO+   ","HNO+    ","HNS+    ","HS+     "&
-    &,"C2NH+   ","C2      ","C2H     ","NH3+    ","HCO+    ","HCO     "&
-    &,"NH3+    ","H2CO    ","H2O     ","CN      ","HCN     ","HNC     "&
-    &,"CO      ","NO      ","N2      ","NH4+    ","O2      ","NH3+    "&
-    &,"C2H2+   ","HCO     ","NH4+    ","HS      ","CO      ","NH4+    "&
-    &,"C2      ","C2H     ","NH4+    ","HCNH+   ","NH4+    ","HCO+    "&
-    &,"HCO     ","NH4+    ","HS      ","H2CO    ","NH4+    ","H2S     "&
-    &,"HCNH+   ","HCN     ","HNC     ","CO      ","CO2     ","CS      "&
-    &,"NO      ","S       ","SO2     ","NH4+    ","N2      ","O2      "&
-    &,"SI      ","NH4+    ","C2H+    ","C2N+    ","HCNH+   ","CH4     "&
-    &,"HCO+    ","H3CO+   ","H3O+    ","CN      ","CO      ","NO      "&
-    &,"N2      ","NH3+    ","NH4+    ","NO+     ","HNO+    ","O2      "&
-    &,"NH2+    ","NS+     ","O2      ","CO+     ","C2H2+   ","CO+     "&
-    &,"H2CO+   ","H3CO+   ","OH      ","NO+     ","O2+     ","HCO+    "&
-    &,"HS+     ","S+      ","HCO+    ","NO+     ","CO      ","NO+     "&
-    &,"O2      ","CO2     ","O2+     ","SO+     ","HCO+    ","O2      "&
-    &,"SO+     ","OCS+    ","SO+     ","SO+     ","SIO+    ","HCO2+   "&
-    &,"CO+     ","HCO+    ","HCO+    ","OH      ","H3CO+   ","H3O+    "&
-    &,"S       ","O2+     ","HS+     ","SO+     ","O2      ","OCS+    "&
-    &,"S       ","S+      ","SO+     ","NO+     ","N2      ","HNO+    "&
-    &,"HNO+    ","S       ","O2      ","O2+     ","SIO+    ","SIO+    "&
-    &,"SIOH+   ","SIOH+   ","O2      ","C2H+    ","C2H2+   ","HCN+    "&
-    &,"HCO2+   ","HCO+    ","H3CO+   ","H3O+    ","H3S+    ","HCNH+   "&
-    &,"CO      ","H2CO+   ","HCNH+   ","N2H+    ","NH4+    ","HNO+    "&
-    &,"H2O+    ","HS+     ","SO+     ","SIH+    ","SIH2+   ","SIOH+   "&
-    &,"H2O+    ","HCO+    ","H3O+    ","CN      ","CO      ","HCO2+   "&
-    &,"NO      ","N2      ","NH4+    ","O2      ","SO+     ","SIO+    "&
-    &,"HS2+    ","S2+     ","S2+     ","H2S2+   ","HS+     ","SO      "&
-    &,"H2CS+   ","HCO+    ","HCS+    ","H2CS+   ","H3CO+   ","H3CS+   "&
-    &,"S2+     ","SIOH+   ","SIOH+   ","SIS+    ","SIH+    ","SIOH+   "&
-    &,"HSIS+   ","SIS+    ","C4H     ","C3N     ","CO      ","CS      "&
-    &,"HCN     ","SIC2    ","H2CO    ","O2H     ","HC3N    ","HC3N    "&
-    &,"HC3N    ","HCO     ","C3H2    ","CH3CCH  ","C2      ","C4H     "&
-    &,"C2H     ","CH      ","C2H2    ","C2      ","C2      ","C2      "&
-    &,"S       ","C2N     ","CO      ","CS      ","S       ","CN      "&
-    &,"CN      ","HCN     ","HNC     ","NH      ","CN      ","N       "&
-    &,"CN      ","CO      ","CS      ","S       ","CO      ","CO      "&
-    &,"CO      ","CO      ","O       ","CS      ","CO      ","CS      "&
-    &,"S       ","SIC     ","C2H2    ","C2H2    ","C2H3    ","CH3     "&
-    &,"CH3     ","HCN     ","HCO     ","CO      ","NO      ","HCN     "&
-    &,"H2CO    ","H2CO    ","HCN     ","HNCO    ","CO2     ","CO2     "&
-    &,"CO      ","H2CO    ","HCO     ","CO      ","CO      ","HCO     "&
-    &,"OH      ","H2CO    ","H2O     ","O       ","CS      ","HCS     "&
-    &,"C2H2    ","C2H4    ","C2H5    ","CH4     ","HCN     ","HCO     "&
-    &,"OH      ","HS      ","CO      ","NO      ","CH4     ","CH4     "&
-    &,"H2CO    ","HCN     ","H2CO    ","HCO     ","O2H     ","O2      "&
-    &,"CO      ","H2CO    ","CH4     ","H2CO    ","H2O     ","H2CS    "&
-    &,"HCN     ","O2H     ","H2O     ","HS      ","C3H2    ","CH3CCH  "&
-    &,"C2H4    ","HCO     ","HCO     ","CO      ","NO      ","HCN     "&
-    &,"CN      ","NH      ","HCN     ","HCO     ","OCN     ","CO2     "&
-    &,"CO      ","CO      ","HCO     ","HCO     ","O2      ","CO      "&
-    &,"OH      ","CO      ","HCO     ","CS      ","HS      ","CO      "&
-    &,"OCS     ","HC3N    ","C2H3    ","N2      ","HCO     ","NCCN    "&
-    &,"CO      ","NCCN    ","NO      ","NO      ","N2      ","OCN     "&
-    &,"NO      ","OCN     ","NS      ","HCN     ","CO2     ","CO2     "&
-    &,"CO2     ","CO2     ","HCL     ","C2H2    ","CH      ","CH3     "&
-    &,"CH4     ","CH2     ","HCN     ","H2S     ","NH      ","NH3     "&
-    &,"NH2     ","O2H     ","OH      ","OH      ","H2O     ","HS      "&
-    &,"CH      ","C2H     ","C2H2    ","CH      ","CH3     ","CH2     "&
-    &,"CH3     ","C       ","CO      ","OH      ","HCN     ","HCO     "&
-    &,"OH      ","HS      ","CN      ","CO      ","O       ","H2      "&
-    &,"HCN     ","NH2     ","NO      ","OH      ","S       ","HCN     "&
-    &,"NH      ","NH2     ","N       ","NO      ","O       ","OH      "&
-    &,"HS      ","S       ","OH      ","H2O     ","O2      ","OH      "&
-    &,"HCN     ","NH      ","OH      ","HS      ","O       ","HS      "&
-    &,"HS      ","S       ","CO      ","H2CO    ","H2CO    ","HNO     "&
-    &,"CO2     ","O2H     ","O2      ","CL      ","CO      ","H2S     "&
-    &,"CN      ","C2H2    ","HCN     ","C2H4    ","H2CN    ","C2N     "&
-    &,"CN      ","HC3N    ","CN      ","C4N     ","CN      ","HCN     "&
-    &,"HNC     ","NH      ","H2CN    ","HCN     ","HCN     ","N2      "&
-    &,"NO      ","S       ","HCN     ","CO      ","HCN     ","OCN     "&
-    &,"S       ","NO      ","NS      ","S       ","N2      ","N2      "&
-    &,"N2      ","NO      ","O2      ","N2      ","S       ","NO      "&
-    &,"O2      ","NO      ","O       ","NS      ","NS      ","S       "&
-    &,"SI      ","CH3     ","N2      ","N2      ","H2O     ","NH3     "&
-    &,"HCN     ","CH3     ","HCN     ","OH      ","NH2     ","N2      "&
-    &,"N2      ","NH2     ","HNO     ","N2      ","N2      ","HNO     "&
-    &,"NO      ","NO      ","OH      ","H2O     ","HNO     ","NH2     "&
-    &,"HS      ","NS      ","O2      ","NO2     ","N2      ","NS      "&
-    &,"SO      ","CO2     ","NO2     ","SO      ","SO2     ","CO      "&
-    &,"CO      ","CH2CO   ","C2H3    ","CH2CO   ","H2CO    ","HCO     "&
-    &,"H2CO    ","CO      ","CO      ","C2N     ","C3N     ","OH      "&
-    &,"CO      ","NO      ","O2      ","S       ","SO      ","OCN     "&
-    &,"HCO     ","OH      ","HS      ","CN      ","CO      ","OCN     "&
-    &,"CO2     ","CO      ","HS      ","OCS     ","NO2     ","NO      "&
-    &,"O2      ","S       ","SO      ","NO      ","HNO     ","OH      "&
-    &,"OH      ","O2      ","O2      ","S       ","SO      ","O2      "&
-    &,"CO      ","O2      ","CO2     ","SO      ","O2      ","SO      "&
-    &,"SO      ","S       ","SIC     ","SIC2    ","SI      ","SIO     "&
-    &,"SIO     ","SIO     ","H2SIO   ","SIH3    ","SIO     ","C2H     "&
-    &,"CH2CO   ","CO      ","C2H2    ","C2H4    ","HCN     ","OCN     "&
-    &,"CO2     ","CO      ","H       ","HCO     ","HS      ","CN      "&
-    &,"CO      ","CO      ","NO      ","HCN     ","H2O     ","NO2     "&
-    &,"O2      ","H2O     ","SO      ","SO2     ","SIO     ","H       "&
-    &,"HS      ","S2      ","SO      ","S2      ","SIO     ","SIO     "&
-    &,"SIO     ","SIO     ","C+      ","C2+     ","C       ","C2+     "&
-    &,"C2H2+   ","C2H     ","C2H2    ","C2H2    ","C2H3    ","C2H5    "&
-    &,"C2      ","C2H+    ","C2      ","CN      ","CN      ","C2H     "&
-    &,"C+      ","C       ","C+      ","CH+     ","CH      ","CH2+    "&
-    &,"CH      ","CO      ","CH+     ","CH2+    ","CH2     ","CH3+    "&
-    &,"CH      ","CN      ","H2CO    ","H3CO+   ","OH      ","CH2+    "&
-    &,"CH3+    ","CH2     ","CH3     ","CH4+    ","CH      ","C       "&
-    &,"CH+     ","N       ","C+      ","CO      ","O       ","S+      "&
-    &,"CS+     ","S       ","CL+     ","H+      ","HCN     ","CO      "&
-    &,"CO      ","H2CO+   ","HCO+    ","CS      ","OH+     ","H2O+    "&
-    &,"OH      ","HS      ","H2S+    ","HS      ","S       ","SIO     "&
-    &,"SIO     ","H2+     ","H2      ","CN      ","CN      ","CO+     "&
-    &,"CO      ","HCO+    ","H2CO    ","HCS+    ","CL      ","HCL+    "&
-    &,"CN      ","NH      ","NO      ","S+      ","S       ","HS2+    "&
-    &,"S       ","H       ","MG+     ","N       ","C2N2+   ","CN      "&
-    &,"N       ","NH2+    ","NH      ","NH2     ","NH3+    ","NH      "&
-    &,"N       ","NH+     ","NO      ","NO+     ","O       ","S       "&
-    &,"O+      ","O2+     ","O       ","O2      ","OH      ","CN      "&
-    &,"OCS+    ","S       ","O+      ","O       ","OH+     ","S2+     "&
-    &,"S       ","S+      ","SO      ","S       ","SO+     ","SI+     "&
-    &,"C2      ","C2      ","SIC2    ","SI      ","SI+     ","SIH2+   "&
-    &,"SIH     ","SIH2    ","SIH3+   ","SIH     ","SIH2    ","SIH3    "&
-    &,"SIH     ","SI      ","SI+     ","SI      ","SIO+    ","S       "&
-    &,"C2+     ","CN+     ","CO+     ","CS+     ","HC3N    ","C2      "&
-    &,"CN      ","CO+     ","CO      ","CS+     ","CS      ","CH3OH2+ "&
-    &,"CH3CNH+ ","CH3CN   ","H2+     ","HEH+    ","CH2+    ","CH2     "&
-    &,"CH5+    ","CH3     ","H3S+    ","H2S+    ","SIH2+   ","SIH3+   "&
-    &,"SIH5+   ","C2H5OH2+","CH+     ","CH      ","OH      ","H2O     "&
-    &,"SIH+    ","N2+     ","O2      ","SO2     ","SIO+    ","SIO     "&
-    &,"C       ","CH3     ","CL      ","H       ","H2CO    ","H2CS    "&
-    &,"H2S     ","HE      ","MG      ","N       ","O       ","S       "&
-    &,"SI      ","#HC3N   ","#C2H3   ","#CH2CO  ","#CH3CCH ","#CH3CCH "&
-    &,"#C2H5OH ","#C2H5OH ","#CH3OH  ","#HCOOCH3","#CH3OH  ","#CH3CNH "&
-    &,"#CH3CNH ","#HNCO   ","#HNCO   ","#CH3CNH ","#CH3CNH ","#HC3N   "&
-    &,"#CH3CNH ","#NCCN   ","#NCCN   ","#C4N    ","#C4N    ","#HCOOCH3"&
-    &,"#H2CO   ","#H2CO   ","#SIH4   ","#H2SIO  ","#SIH4   ","#SIH4   "&
-    &,"#SIH4   ","#SIH4   ","#SIH4   ","#SIH4   ","#SIH4   ","#SIH4   "&
-    &,"#SIH4   ","#SIC    ","#SIC2   ","#SIC    ","#SIC2   ","#SIC3   "&
-    &,"#SIC3   ","#H2SIO  ","#H2SIO  ","#SIS    ","#SIS    ","#SIS    "&
-    &,"#H2SIO  ","#SIH4   ","#HCL    ","#HCL    ","#HCL    ","#HCL    "&
-    &,"#HCL    ","#C3H2   ","#C4H    ","#H2S2   ","#CH3OH  ","#H2S2   "&
-    &,"#H2S2   ","#H2S2   ","#CH4    ","#CO     ","#H2CO   ","#C2     "&
-    &,"#CH4    ","#H2O    ","#NO     ","#CH4    ","#H2O    ","#CO2    "&
-    &,"#CH4    ","#CH4    ","#H2CO   ","#N2     ","#HCN    ","#CH4    "&
-    &,"#NH3    ","#HCN    ","#C2H    ","#NH3    ","#NH3    ","#H2O    "&
-    &,"#C2     ","#O2     ","#N2     ","#CH4    ","#NH3    ","#H2O    "&
-    &,"#CO     ","#HCN    ","#NO     ","#CH4    ","#NH3    ","#H2O    "&
-    &,"#H2CO   ","#HCN    ","#C2H    ","#NH3    ","#H2CO   ","#CH4    "&
-    &,"#H2O    ","#CO2    ","#CH4    ","#CH4    ","#NH3    ","#NH3    "&
-    &,"#H2O    ","#O2     ","#H2S    ","#H2CS   ","#SO     ","#H2S    "&
-    &,"#H2CS   ","#OCS    ","#SO2    ","#H2S    ","#NS     ","#H2CS   "&
-    &,"#H2S    ","#H2S    ","#H2CS   ","#SO     ","#H2CS   ","#OCS    "&
-    &,"#NO2    ","#HNO    ","#HNO    ","#HNO    ","#O2H    ","#H2CN   "&
-    &,"#NS     ","#C2H2   ","#H2S    ","#H2CS   ","#H2S2   ","#H2S2   "&
-    &,"#H2CS   ","#SO     ","#SO2    ","#OCS    ","#MG     ","#MG     "&
-    &,"#NH3    ","#HCN    ","#N2     ","#NS     ","#C2     ","#H2S    "&
-    &,"#O2H    ","#SO2    ","#CH3OH  ","#HNC    ","#C2H2   ","#CH3CN  "&
-    &,"#C2H4   ","#C2H5   ","        ","CH4     ","CH4     ","CH4     "&
-    &,"NH3     ","NH3     ","NH3     ","H2O     ","H2O     ","H2O     "&
-    &,"C2      ","C2      ","C2      ","MG      ","MG      ","MG      "&
-    &,"C2H     ","C2H     ","C2H     ","C2H2    ","C2H2    ","C2H2    "&
-    &,"HCN     ","HCN     ","HCN     ","HNC     ","HNC     ","HNC     "&
-    &,"C2H3    ","C2H3    ","C2H3    ","CO      ","CO      ","CO      "&
-    &,"N2      ","N2      ","N2      ","C2H4    ","C2H4    ","C2H4    "&
-    &,"H2CN    ","H2CN    ","H2CN    ","C2H5    ","C2H5    ","C2H5    "&
-    &,"NO      ","NO      ","NO      ","H2CO    ","H2CO    ","H2CO    "&
-    &,"HNO     ","HNO     ","HNO     ","O2      ","O2      ","O2      "&
-    &,"CH3OH   ","CH3OH   ","CH3OH   ","SIH4    ","SIH4    ","SIH4    "&
-    &,"O2H     ","O2H     ","O2H     ","H2S     ","H2S     ","H2S     "&
-    &,"HCL     ","HCL     ","HCL     ","C3H2    ","C3H2    ","C3H2    "&
-    &,"CH3CCH  ","CH3CCH  ","CH3CCH  ","SIC     ","SIC     ","SIC     "&
-    &,"CH3CN   ","CH3CN   ","CH3CN   ","CH2CO   ","CH2CO   ","CH2CO   "&
-    &,"CH3CNH  ","CH3CNH  ","CH3CNH  ","HNCO    ","HNCO    ","HNCO    "&
-    &,"SIO     ","SIO     ","SIO     ","CS      ","CS      ","CS      "&
-    &,"CO2     ","CO2     ","CO2     ","C2H5OH  ","C2H5OH  ","C2H5OH  "&
-    &,"H2CS    ","H2CS    ","H2CS    ","NO2     ","NO2     ","NO2     "&
-    &,"NS      ","NS      ","NS      ","H2SIO   ","H2SIO   ","H2SIO   "&
-    &,"SO      ","SO      ","SO      ","C4H     ","C4H     ","C4H     "&
-    &,"HC3N    ","HC3N    ","HC3N    ","NCCN    ","NCCN    ","NCCN    "&
-    &,"SIC2    ","SIC2    ","SIC2    ","HCOOCH3 ","HCOOCH3 ","HCOOCH3 "&
-    &,"SIS     ","SIS     ","SIS     ","OCS     ","OCS     ","OCS     "&
-    &,"C4N     ","C4N     ","C4N     ","SIC3    ","SIC3    ","SIC3    "&
-    &,"SO2     ","SO2     ","SO2     ","H2S2    ","H2S2    ","H2S2    "/)
-character(Len=7), parameter :: 	p2 (2456)=(/"E-     ","H+     "&
-    &,"H2     ","H      ","H2     ","H2     ","O      ","H2     "&
-    &,"H      ","H      ","H      ","H      ","O      ","H      "&
-    &,"C      ","C      ","C      ","C      ","C      ","C      "&
-    &,"CN     ","C      ","C      ","C      ","C      ","C      "&
-    &,"C      ","C      ","C      ","C      ","C      ","C      "&
-    &,"C      ","C2     ","C2     ","C2     ","C2+    ","C2+    "&
-    &,"C2+    ","C2+    ","C2H    ","C2H    ","C2H2   ","C2H2   "&
-    &,"C2H2   ","C2H2   ","HCN    ","C2H+   ","C2H+   ","C2H+   "&
-    &,"C+     ","C+     ","C+     ","C+     ","C+     ","CH     "&
-    &,"CH     ","CH     ","CH     ","CH     ","CH     ","CH2    "&
-    &,"CH2+   ","CH2+   ","CH2+   ","CH2+   ","CH2+   ","CH2+   "&
-    &,"CH2+   ","CH2+   ","CH2+   ","CH2+   ","CH3    ","CH3    "&
-    &,"CH3    ","CH4    ","CH4    ","CH4    ","CH4    ","CH4    "&
-    &,"CH4    ","CH4+   ","CH+    ","CH+    ","CH+    ","CH+    "&
-    &,"CH+    ","CH+    ","CH+    ","CH+    ","CH+    ","CH+    "&
-    &,"CH+    ","CN     ","CN     ","CN     ","CN     ","CN     "&
-    &,"CN     ","CN     ","CN+    ","CO     ","CO     ","CO     "&
-    &,"CO     ","CO     ","CO     ","CO+    ","H+     ","H      "&
-    &,"H      ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H2     ","H2     ","H2     ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2     ","H2     ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2     ","H2     ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2+    ","H2CO   ","H2CO+  ","H2O    "&
-    &,"H2O    ","H2O    ","H2O    ","H2O    ","H2O    ","H2O    "&
-    &,"H2O    ","H2O    ","H2O    ","H2O    ","H2O    ","H2O+   "&
-    &,"H2O+   ","H2O+   ","OCS    ","H+     ","H+     ","H+     "&
-    &,"H+     ","H+     ","H+     ","HCN    ","HCN    ","HCN    "&
-    &,"HCN+   ","HCN+   ","HCO+   ","HCO+   ","HCO+   ","HCO+   "&
-    &,"HCO+   ","HE     ","HE     ","HE     ","HE     ","HE     "&
-    &,"HE     ","HE     ","HE     ","HE     ","HE     ","HE     "&
-    &,"HE     ","HE     ","MG+    ","MG+    ","MG+    ","MG+    "&
-    &,"MG+    ","MG+    ","MG+    ","MG+    ","MG+    ","MG+    "&
-    &,"MG+    ","MG+    ","MG+    ","N      ","N      ","N      "&
-    &,"N      ","N      ","N      ","N      ","N      ","N      "&
-    &,"N      ","N      ","N      ","N      ","N      ","N      "&
-    &,"N      ","N      ","N      ","N      ","N2     ","N2     "&
-    &,"N2     ","N2     ","N2     ","N2     ","N2     ","N+     "&
-    &,"NH     ","NH     ","NH     ","NH     ","NH     ","NH     "&
-    &,"NH2    ","NH2    ","NH2    ","NH2    ","NH2    ","NH2+   "&
-    &,"NH2+   ","NH2+   ","NH2+   ","NH2+   ","NH2+   ","NH2+   "&
-    &,"NH3    ","NH3    ","NH3    ","NH3    ","NH3+   ","NH3+   "&
-    &,"NH3+   ","NH3+   ","NH3+   ","NH3+   ","NH3+   ","NH3+   "&
-    &,"NH3+   ","OCS    ","NH3+   ","NH3+   ","NH+    ","NH+    "&
-    &,"NH+    ","NH+    ","NO+    ","NO+    ","NO+    ","NO+    "&
-    &,"NO+    ","NO+    ","NO+    ","NO+    ","O      ","O      "&
-    &,"O      ","O      ","O      ","O      ","O      ","O      "&
-    &,"O      ","O      ","O      ","O      ","O      ","O      "&
-    &,"O      ","O2     ","O2     ","O2     ","O2+    ","O2+    "&
-    &,"O+     ","O+     ","O+     ","OH     ","OH     ","OH     "&
-    &,"OH     ","OH     ","OH     ","OH     ","OH     ","OH     "&
-    &,"OH     ","OH+    ","OH+    ","OH+    ","OH+    ","S      "&
-    &,"S      ","S+     ","S+     ","S+     ","SI+    ","SI+    "&
-    &,"SI+    ","SI+    ","SI+    ","SI+    ","SI+    ","SIH+   "&
-    &,"E-     ","E-     ","E-     ","H      ","E-     ","H      "&
-    &,"E-     ","E-     ","E-     ","E-     ","C      ","E-     "&
-    &,"H      ","H      ","H2     ","H2     ","OH     ","H      "&
-    &,"E-     ","N      ","C      ","C2     ","C2     ","E-     "&
-    &,"H      ","E-     ","H      ","CH2    ","H      ","E-     "&
-    &,"H2     ","CH3    ","H2     ","CH3    ","H2     ","H      "&
-    &,"C      ","O      ","C      ","E-     ","C      ","E-     "&
-    &,"H      ","H2     ","H2     ","H      ","HS     ","E-     "&
-    &,"H2     ","H2     ","E-     ","C2H    ","H      ","H      "&
-    &,"E-     ","CH4    ","E-     ","H      ","H      ","CO     "&
-    &,"H      ","S      ","H      ","E-     ","E-     ","N      "&
-    &,"E-     ","CN     ","E-     ","H      ","H      ","E-     "&
-    &,"H2     ","H      ","E-     ","O      ","E-     ","N      "&
-    &,"N      ","E-     ","O      ","H      ","E-     ","O      "&
-    &,"E-     ","CO     ","H      ","S      ","E-     ","O      "&
-    &,"O      ","E-     ","E-     ","C      ","C      ","C      "&
-    &,"H      ","H      ","H2     ","H      ","O      ","SI     "&
-    &,"C      ","H      ","C      ","H      ","H      ","CH     "&
-    &,"H2O    ","H2O    ","OH     ","H      ","N      ","C      "&
-    &,"N      ","CN     ","H      ","C      ","H      ","C2     "&
-    &,"C      ","H      ","H2     ","H      ","H      ","H      "&
-    &,"H2     ","H      ","H      ","CH3    ","H2O    ","H2O    "&
-    &,"OH     ","H      ","H2     ","H      ","H      ","H2     "&
-    &,"H2     ","H      ","H      ","H2     ","C      ","C      "&
-    &,"C      ","H      ","O      ","H2     ","H      ","H      "&
-    &,"H      ","H      ","H      ","H      ","H      ","H2     "&
-    &,"H2     ","H      ","H      ","H      ","H      ","H      "&
-    &,"HS     ","H      ","H      ","OH     ","H2O    ","H2     "&
-    &,"H      ","H      ","H2     ","H      ","H      ","H2     "&
-    &,"H2     ","H      ","H      ","H2     ","H      ","H2     "&
-    &,"HCO    ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H      ","O      ","OH     ","S      ","H      "&
-    &,"H      ","H      ","H      ","H      ","OH     ","H      "&
-    &,"H      ","S      ","H      ","H      ","H      ","O      "&
-    &,"OH     ","SI     ","H      ","H      ","N      ","H      "&
-    &,"NH     ","H      ","H      ","H      ","H      ","H      "&
-    &,"H2     ","H      ","H      ","N      ","N      ","O      "&
-    &,"H      ","SO     ","O      ","CO     ","H      ","S      "&
-    &,"O      ","O      ","O      ","C      ","C2     ","C      "&
-    &,"C      ","C2     ","H      ","H2     ","H      ","H      "&
-    &,"H      ","H2     ","H2     ","H      ","H2     ","H      "&
-    &,"O      ","OH     ","H      ","SI     ","C2H3   ","H      "&
-    &,"H      ","H2     ","H      ","C2H2   ","CH     ","CH3+   "&
-    &,"H2     ","H      ","CO     ","CH2+   ","CH     ","CH2+   "&
-    &,"H      ","H      ","H      ","C2H    ","HCN    ","H      "&
-    &,"CH+    ","H      ","H      ","H      ","H2     ","H      "&
-    &,"N      ","O      ","O+     ","CN     ","CO     ","H      "&
-    &,"CO     ","O      ","CO     ","CO+    ","C2     ","H2     "&
-    &,"H      ","CO     ","S      ","C      ","C2H+   ","CO     "&
-    &,"C      ","C2H+   ","C2H+   ","C2H+   ","C2H+   ","C2H+   "&
-    &,"CO     ","C2H+   ","C      ","CO     ","C2     ","CN     "&
-    &,"C2     ","C2H2+  ","C2     ","CN     ","C2H    ","C2H    "&
-    &,"C2H    ","C2H    ","H2     ","C2H4   ","C2H5   ","C2H4   "&
-    &,"C2H3   ","NCCN   ","CH3    ","C2     ","C2H2+  ","CN     "&
-    &,"C2H2+  ","C2H2+  ","C2H2+  ","C2H2+  ","H      ","H      "&
-    &,"H      ","H      ","H2     ","CH+    ","CH+    ","H      "&
-    &,"H2     ","CH+    ","CH+    ","CH+    ","CH+    ","H      "&
-    &,"CH+    ","CH+    ","O      ","CH+    ","CH+    ","H      "&
-    &,"CO     ","H      ","H2     ","H2     ","C      ","CH3+   "&
-    &,"CH2    ","H2     ","H2     ","H      ","CO     ","CH3+   "&
-    &,"C      ","CH2    ","H      ","C      ","H2     ","C      "&
-    &,"H2     ","H2     ","H      ","C      ","CH2+   ","C      "&
-    &,"H      ","H2     ","C      ","H2     ","OH     ","O      "&
-    &,"O+     ","H      ","CO     ","C      ","H2     ","H      "&
-    &,"C      ","CO     ","CH3    ","H      ","H      ","CH     "&
-    &,"H2     ","CH3+   ","CH     ","OH     ","H      ","CO     "&
-    &,"HCO    ","H      ","CH3+   ","CH3+   ","CH     ","CH3+   "&
-    &,"CH3+   ","CH3+   ","CH3+   ","CH3+   ","CH3+   ","CH3+   "&
-    &,"CH3+   ","CH3+   ","N      ","NH     ","CH3+   ","O      "&
-    &,"CH3+   ","CH3+   ","H      ","SI+    ","H2     ","C2H4   "&
-    &,"CH4    ","CH4    ","H2     ","CH4+   ","H2     ","CH2    "&
-    &,"O      ","H      ","H2     ","CO     ","H2     ","H2     "&
-    &,"H2     ","CH4    ","H      ","CH3CNH+","NH4+   ","H2CO   "&
-    &,"CH3    ","CH3    ","CH3    ","CH3    ","CH3    ","CH3    "&
-    &,"CH3    ","CH3    ","CH3    ","CH3    ","CH2    ","CH3    "&
-    &,"H      ","CH3    ","CH3    ","CH3    ","CH3    ","CH3    "&
-    &,"CH5+   ","CH5+   ","H2     ","CH2+   ","CH3+   ","CH5+   "&
-    &,"CH3    ","O      ","CH2    ","H      ","H2     ","CH4    "&
-    &,"CH4    ","CH4    ","CH4    ","CH4    ","CH4    ","CH4    "&
-    &,"CH4    ","CH4    ","CH4    ","CH4    ","CH4    ","CH4    "&
-    &,"CH4    ","H      ","CH2+   ","H2     ","CH2+   ","C      "&
-    &,"CH2+   ","CH2+   ","CH2+   ","CH2+   ","CH2+   ","CH2+   "&
-    &,"CH2+   ","CH2+   ","CH2+   ","CH2+   ","H      ","CH2+   "&
-    &,"N      ","CH2+   ","C      ","H      ","O      ","CH2+   "&
-    &,"CH2+   ","H      ","H      ","CH2+   ","SI     ","HCN    "&
-    &,"H      ","HCN+   ","CO     ","HCN+   ","HCN+   ","HCO    "&
-    &,"HCO+   ","CO2    ","HCO+   ","HCO+   ","HCO+   ","N2     "&
-    &,"HCO+   ","CO2    ","HCO+   ","SI+    ","H2     ","H2     "&
-    &,"H2     ","H2     ","HCN    ","H2O    ","H2     ","H2     "&
-    &,"H2     ","O      ","H2     ","H2     ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2+    ","H2     ","CO     ","H2     "&
-    &,"H2     ","OH     ","CO     ","H2     ","H2     ","H2     "&
-    &,"H2     ","H      ","H2     ","H      ","H      ","H      "&
-    &,"H2     ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H2     ","H      ","H2     ","H2     ","H3+    "&
-    &,"H      ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H      ","H      ","H      ","H      ","H      "&
-    &,"H+     ","H3+    ","H      ","H      ","H3+    ","H      "&
-    &,"H      ","H      ","H      ","H3+    ","H      ","H      "&
-    &,"H      ","H      ","H      ","HCO    ","HCO    ","HCO+   "&
-    &,"HCO    ","H2     ","H3CO+  ","NO     ","HCO+   ","H3CO+  "&
-    &,"CO     ","HCO+   ","OH     ","OH     ","OH     ","OH     "&
-    &,"OH     ","OH     ","H3O+   ","OH     ","H3O+   ","OH     "&
-    &,"OH     ","OH     ","H      ","OH     ","OH     ","H3O+   "&
-    &,"OH     ","HCN    ","HCO+   ","OH     ","NH     ","OH     "&
-    &,"H3O+   ","H3O+   ","H3O+   ","H3O+   ","H3O+   ","H3O+   "&
-    &,"H3O+   ","H3O+   ","OCS    ","H3O+   ","H3O+   ","H2S    "&
-    &,"OH     ","H3O+   ","H3O+   ","H      ","H3O+   ","H3O+   "&
-    &,"H3O+   ","HS     ","HCN    ","H3S+   ","SIS    ","H2O    "&
-    &,"H2     ","CH4    ","CH4    ","H2     ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2     ","H2O    ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2     ","H2     ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2     ","H2     ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2     ","H2     ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2     ","H2     ","H2     ","H2     "&
-    &,"H2     ","OH     ","H2     ","H2     ","H2     ","H      "&
-    &,"H2     ","H2     ","H2     ","H2     ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2     ","H2     ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2CO   ","H2CO   ","H2O    ","H2O    "&
-    &,"H2O    ","H2O    ","H2O    ","H2O    ","H2O    ","H2O    "&
-    &,"H2O    ","H2O    ","H2O    ","H2O    ","H2O    ","H2O    "&
-    &,"H2O    ","H2O    ","H2O    ","CN     ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2     ","H2     ","H2     ","H2     "&
-    &,"H2+    ","OH     ","H2     ","SI+    ","CN     ","CN     "&
-    &,"CN     ","CN     ","CN     ","CO     ","CN     ","CN     "&
-    &,"NCCN   ","H      ","H2O    ","HCNH+  ","HCNH+  ","HCNH+  "&
-    &,"CO     ","HCNH+  ","HCNH+  ","SIS    ","N2     ","HCNH+  "&
-    &,"HCN    ","HNC    ","HCN    ","HNC    ","HCN    ","HNC    "&
-    &,"CO     ","CO     ","CO     ","CO     ","CO     ","CO     "&
-    &,"CO     ","CO     ","CO     ","CO     ","CO     ","CO     "&
-    &,"CO     ","CO     ","CO     ","CO     ","CO     ","CO     "&
-    &,"CO     ","CO     ","CO     ","CO     ","CO     ","NO     "&
-    &,"N2     ","CO     ","H2CO+  ","CO     ","CS     ","HCNH+  "&
-    &,"HCNH+  ","HCNH+  ","CO     ","HCNH+  ","HCNH+  ","N2     "&
-    &,"HCNH+  ","NO     ","NO     ","S      ","H2     ","C      "&
-    &,"HE     ","HE     ","CH     ","HE     ","HE     ","HE     "&
-    &,"HE     ","CH2    ","HE     ","C      ","C+     ","C+     "&
-    &,"C2+    ","C2     ","HE     ","HE     ","CH2    ","CH2+   "&
-    &,"HE     ","HE     ","CH3    ","CH3+   ","CH3    ","CH3+   "&
-    &,"HE     ","HE     ","HE     ","HE     ","HE     ","C      "&
-    &,"C+     ","O      ","O+     ","C      ","C+     ","C+     "&
-    &,"C      ","C+     ","HE     ","HE     ","CH2+   ","HE     "&
-    &,"CH2    ","CH2+   ","HE     ","HE     ","HS     ","HE     "&
-    &,"HE     ","HE     ","HE     ","CH     ","C2H+   ","HE     "&
-    &,"CH     ","C+     ","CH+    ","HE     ","HEH+   ","CH+    "&
-    &,"CH3    ","HE     ","HE     ","HE     ","HE     ","C+     "&
-    &,"C      ","HE     ","HE     ","S+     ","HE     ","HE     "&
-    &,"N      ","CN     ","HE     ","HE     ","HE     ","HE     "&
-    &,"HE     ","N      ","N+     ","N      ","N+     ","O      "&
-    &,"O      ","O+     ","O      ","O+     ","CO     ","CO+    "&
-    &,"HE     ","S      ","O2     ","O      ","O      ","O+     "&
-    &,"C2     ","C      ","C      ","C+     ","HE     ","HE     "&
-    &,"HE     ","HE     ","HE     ","HE     ","HE     ","O      "&
-    &,"O+     ","SI     ","SI+    ","NH     ","NH     ","CH3    "&
-    &,"CH3+   ","N      ","H2     ","H      ","CO+    ","C      "&
-    &,"NH     ","CH2    ","NH     ","NH+    ","NH     ","NH+    "&
-    &,"N2     ","N      ","H2     ","NH     ","H      ","O      "&
-    &,"O      ","O+     ","NO     ","CO     ","N2     ","N2     "&
-    &,"N2     ","CO     ","N2     ","N2H+   ","N2H+   ","N2     "&
-    &,"N2     ","N2     ","N2     ","C+     ","H      ","CH+    "&
-    &,"H2     ","H      ","CH+    ","H      ","C      ","H      "&
-    &,"H2     ","H2     ","H      ","H      ","H      ","O      "&
-    &,"H      ","O      ","CN     ","SI     ","SI+    ","N      "&
-    &,"H      ","C      ","N      ","N      ","N      ","CO     "&
-    &,"HCO    ","N      ","N      ","NH2    ","N      ","H2     "&
-    &,"O      ","NH2+   ","N      ","N      ","N      ","N      "&
-    &,"N      ","N      ","N      ","O      ","OH     ","N      "&
-    &,"N      ","N      ","N      ","H      ","NH     ","NH     "&
-    &,"NH     ","NH3+   ","NH     ","OH     ","O      ","NH     "&
-    &,"NH3    ","NH3+   ","NH4+   ","NH     ","NH     ","NH     "&
-    &,"NH     ","NH     ","O      ","OH     ","H      ","NH     "&
-    &,"H      ","NH3+   ","NH3+   ","CH4    ","NH     ","NH3+   "&
-    &,"OH     ","NH3+   ","NH3+   ","NH3+   ","NH3+   ","NH3+   "&
-    &,"NH3+   ","NH3+   ","NH3+   ","NH     ","NH3+   ","O      "&
-    &,"NH     ","NH4+   ","OH     ","NH4+   ","NH4+   ","NH2    "&
-    &,"NH4+   ","NH4+   ","C2H5OH ","HCN    ","CH4    ","NH2    "&
-    &,"NH4+   ","OH     ","NH4+   ","NH4+   ","H2O    ","NH4+   "&
-    &,"NH2    ","NH4+   ","NH4+   ","NH4+   ","NH4+   ","NH4+   "&
-    &,"NH4+   ","NH4+   ","NH4+   ","SIS    ","NH4+   ","NH4+   "&
-    &,"NH4+   ","SIO    ","N      ","H      ","H2     ","NH2+   "&
-    &,"N      ","N      ","N      ","NH2+   ","NH2+   ","NH2+   "&
-    &,"NH2+   ","N      ","N      ","H      ","O      ","NH2+   "&
-    &,"O      ","H      ","HNO+   ","C      ","H2O    ","CH     "&
-    &,"H2O    ","OH     ","CH3+   ","C      ","CO     ","OH     "&
-    &,"OH     ","H2O    ","N      ","CH     ","OH+    ","N      "&
-    &,"NO+    ","S+     ","H      ","O2     ","H      ","H3CO+  "&
-    &,"O      ","O      ","O      ","SIO    ","SO     ","O2     "&
-    &,"C      ","C      ","CH     ","CH3+   ","H2     ","CH2    "&
-    &,"CO+    ","H2     ","OH     ","H2     ","HCO+   ","H      "&
-    &,"HCO+   ","OH     ","H      ","N      ","OH+    ","H      "&
-    &,"H2     ","NO+    ","OH+    ","H      ","C      ","H      "&
-    &,"H      ","H2     ","SI+    ","O      ","O      ","O      "&
-    &,"O      ","O      ","O      ","O      ","O      ","O      "&
-    &,"H2O+   ","O      ","O      ","O      ","O      ","O      "&
-    &,"O      ","O      ","H      ","O      ","O      ","O      "&
-    &,"CH4    ","O      ","O      ","H2O+   ","H2O+   ","H      "&
-    &,"H2O+   ","H2O+   ","O      ","H2O+   ","H      ","H      "&
-    &,"H      ","H2     ","CO     ","H      ","O2     ","SI+    "&
-    &,"CO     ","HCS    ","HCO    ","H2CO   ","HCS    ","HCO    "&
-    &,"CO2    ","C2H5   ","CH3    ","CO     ","CO     ","OH     "&
-    &,"H      ","H      ","H      ","H      ","CO     ","C      "&
-    &,"CO     ","H2     ","HCO    ","C2H2   ","H      ","H      "&
-    &,"CN     ","CO     ","H      ","H      ","CN     ","H      "&
-    &,"H      ","CH     ","H      ","H      ","N      ","O      "&
-    &,"C2     ","H2     ","CH     ","H      ","CH     ","N      "&
-    &,"C2N    ","H      ","H      ","CH     ","H      ","CH     "&
-    &,"O      ","N      ","N      ","CN     ","O      ","CN     "&
-    &,"CS     ","H      ","CH     ","S      ","SO     ","O      "&
-    &,"CO     ","H      ","H2     ","H      ","H      ","CH     "&
-    &,"CH3    ","CH     ","CH3    ","CH3    ","CH3    ","NH     "&
-    &,"NO     ","N      ","OH     ","H      ","H2     ","H      "&
-    &,"H2O    ","O      ","OH     ","H2     ","H      ","H      "&
-    &,"CH     ","H      ","CH     ","CH3    ","H2     ","H      "&
-    &,"CH4    ","H2     ","H      ","CH2    ","CH2    ","CH4    "&
-    &,"CH4    ","CH4    ","CH4    ","CH4    ","NH     ","NH2    "&
-    &,"HNO    ","H2O    ","OH     ","H2O    ","CH2    ","CH4    "&
-    &,"H2     ","H      ","O      ","H2     ","CH2    ","H      "&
-    &,"CH3    ","CH3    ","CH3    ","CH3    ","H      ","H      "&
-    &,"H      ","CO     ","CH2    ","CH2    ","CH2    ","N      "&
-    &,"H      ","C      ","O      ","N      ","H      ","H      "&
-    &,"O      ","OH     ","O      ","OH     ","CH2    ","H      "&
-    &,"C      ","CS     ","H      ","H      ","C      ","HS     "&
-    &,"H      ","H      ","HCN    ","C2     ","HCN    ","H      "&
-    &,"HCN    ","H      ","HCN    ","OCN    ","CO     ","N      "&
-    &,"CO     ","O      ","C      ","SIH3   ","NH     ","NO     "&
-    &,"O      ","OH     ","H      ","H      ","H      ","H      "&
-    &,"H      ","H      ","H      ","H      ","H      ","H      "&
-    &,"H      ","H      ","OH     ","H      ","H      ","H      "&
-    &,"C      ","H2     ","H2     ","H2     ","CO     ","H2     "&
-    &,"H2     ","H2     ","OH     ","C      ","H2     ","H2     "&
-    &,"H2     ","H2     ","H2     ","H2     ","CH2    ","CS     "&
-    &,"H      ","O      ","H2     ","NH     ","H2     ","CN     "&
-    &,"H2     ","H2     ","H2     ","OH     ","NH     ","N      "&
-    &,"N      ","NH     ","O      ","O      ","H2     ","OH     "&
-    &,"O      ","CO     ","CN     ","CO     ","H2     ","S      "&
-    &,"O      ","OH     ","CO     ","CO     ","NO     ","CO     "&
-    &,"OH     ","CO     ","H2CO   ","H2     ","HNC    ","S      "&
-    &,"C      ","NH     ","CH3    ","NH     ","CH3    ","H      "&
-    &,"CN     ","H      ","C2N    ","H      ","C3N    ","H      "&
-    &,"H      ","CH     ","H      ","H2     ","H      ","C      "&
-    &,"CO     ","CN     ","NH     ","NH     ","O      ","H      "&
-    &,"HCN    ","NH     ","H      ","NH     ","C2N    ","H      "&
-    &,"O      ","NO     ","N2     ","O      ","N2     ","O      "&
-    &,"NH     ","H      ","NH     ","S      ","O      ","NO     "&
-    &,"CN     ","NH3    ","H2O    ","OH     ","NH     ","O      "&
-    &,"NH2    ","NH2    ","N      ","NH2    ","NH2    ","H2     "&
-    &,"H      ","N      ","NO     ","O      ","OH     ","O      "&
-    &,"OH     ","H      ","N      ","N      ","H      ","O      "&
-    &,"N      ","H      ","N2     ","O      ","CO2    ","O      "&
-    &,"N      ","NO     ","CO     ","O      ","O      ","C      "&
-    &,"CH2    ","H      ","OH     ","H2     ","CH2    ","CH3    "&
-    &,"CH3    ","CH     ","CN     ","CO     ","CO     ","CH3    "&
-    &,"N      ","C      ","CO     ","CO     ","C      ","H2     "&
-    &,"OH     ","OH     ","OH     ","OH     ","NH     ","H      "&
-    &,"H      ","OH     ","CO     ","H      ","H      ","OH     "&
-    &,"NH     ","OH     ","H      ","N      ","H      ","NH     "&
-    &,"NH2    ","NO     ","N      ","NO     ","N      ","OH     "&
-    &,"NO     ","CN     ","S      ","CO     ","H      ","S      "&
-    &,"O2     ","O2     ","CO     ","CO     ","CO     ","C      "&
-    &,"H2     ","H      ","H      ","OH     ","H      ","H2O    "&
-    &,"H      ","CH3    ","H2O    ","H2O    ","O      ","H      "&
-    &,"H      ","HS     ","OCS    ","H2O    ","H2O    ","H2O    "&
-    &,"NH2    ","H2O    ","H2O    ","OCN    ","NH2    ","H      "&
-    &,"H2O    ","O      ","H      ","H      ","H      ","OCS    "&
-    &,"CO     ","H      ","SO     ","O      ","CO     ","C      "&
-    &,"N      ","O      ","C      ","E-     ","C      ","H      "&
-    &,"E-     ","H      ","H      ","H2     ","H2     ","OH     "&
-    &,"H      ","E-     ","N      ","C      ","C2     ","C2     "&
-    &,"E-     ","H+     ","H2     ","H      ","H+     ","E-     "&
-    &,"H      ","CH2    ","H2     ","H      ","H      ","E-     "&
-    &,"H2     ","CH3    ","H2     ","H      ","CH3    ","H2     "&
-    &,"H      ","H2     ","H      ","E-     ","H2     ","H      "&
-    &,"E-     ","C      ","O      ","O      ","C      ","C      "&
-    &,"E-     ","C      ","E-     ","H      ","H      ","H2     "&
-    &,"H      ","E-     ","H      ","H2     ","H      ","E-     "&
-    &,"H      ","HS     ","E-     ","H      ","H2     ","H2     "&
-    &,"H      ","H      ","H+     ","C2H    ","H      ","H      "&
-    &,"H      ","E-     ","H2CO   ","E-     ","H      ","E-     "&
-    &,"H      ","CO     ","H      ","H      ","H+     ","E-     "&
-    &,"HS     ","S      ","E-     ","N      ","E-     ","CN     "&
-    &,"H+     ","E-     ","H      ","H      ","E-     ","H2     "&
-    &,"H      ","E-     ","O      ","E-     ","N      ","N      "&
-    &,"O      ","E-     ","O      ","H      ","O      ","O      "&
-    &,"E-     ","CO     ","H      ","H      ","E-     ","E-     "&
-    &,"S      ","E-     ","O      ","O      ","E-     ","E-     "&
-    &,"SI     ","SIC    ","C      ","C      ","H      ","E-     "&
-    &,"H      ","H      ","E-     ","H2     ","H2     ","H      "&
-    &,"H      ","H      ","O      ","O      ","E-     ","SI     "&
-    &,"PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON "&
-    &,"PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON "&
-    &,"PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON "&
-    &,"PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON "&
-    &,"PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON "&
-    &,"PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON "&
-    &,"PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON "&
-    &,"PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON ","PHOTON "&
-    &,"PHOTON ","NAN    ","NAN    ","NAN    ","H      ","NAN    "&
-    &,"NAN    ","H      ","H      ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","H      "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","H      "&
-    &,"NAN    ","H      ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"H      ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"H      ","H      ","H      ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","H      ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","H      ","NAN    ","NAN    ","NAN    "&
-    &,"H      ","H      ","NAN    ","H      ","NAN    ","NAN    "&
-    &,"H      ","H      ","H      ","H      ","C      ","NAN    "&
-    &,"NAN    ","H      ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "&
-    &,"NAN    ","NAN    ","NAN    ","NAN    ","NAN    ","NAN    "/)
-character(Len=3), parameter :: 	p3 (2456)=(/"NAN","NAN","H  "&
-    &,"H  ","H  ","NAN","H2 ","H  ","E- ","H  ","H  ","H  ","H  "&
-    &,"H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","E- ","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","H  ","NAN"&
-    &,"NAN","H  ","NAN","H  ","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","H  ","NAN","NAN","NAN"&
-    &,"H  ","NAN","NAN","H  ","NAN","H  ","NAN","H  ","H  ","NAN"&
-    &,"H  ","NAN","H  ","NAN","H2 ","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","H  ","NAN","H  ","NAN","H  ","NAN","NAN","NAN","NAN"&
-    &,"H  ","NAN","NAN","H  ","NAN","NAN","NAN","H  ","NAN","NAN"&
-    &,"H  ","NAN","H  ","H  ","NAN","NAN","H  ","NAN","H  ","NAN"&
-    &,"NAN","H  ","H  ","NAN","NAN","NAN","H  ","NAN","NAN","NAN"&
-    &,"NAN","H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","H  ","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","H  ","NAN","NAN","H  ","NAN"&
-    &,"H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","O  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","H2 ","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","H  ","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","H  ","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","H2 ","H  ","NAN","NAN","NAN","NAN","NAN","H  "&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","H  ","NAN","H2 ","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"H  ","NAN","NAN","NAN","NAN","NAN","H2 ","NAN","NAN","H  "&
-    &,"NAN","NAN","H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","H2 ","NAN","NAN"&
-    &,"NAN","H  ","NAN","NAN","NAN","NAN","NAN","NAN","H  ","NAN"&
-    &,"H  ","H2 ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","H  ","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","H  "&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"H2O","H2 ","NAN","NAN","NAN","NAN","NAN","NAN","H2 ","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","H  ","NAN","NAN","NAN","NAN","H2 ","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","HE ","H2 ","H  ","HE ","H2 ","H  "&
-    &,"H2 ","H2 ","HE ","H  ","HE ","HE ","HE ","HE ","HE ","H2 "&
-    &,"H  ","HE ","HE ","H2 ","H2 ","HE ","HE ","HE ","HE ","H2 "&
-    &,"H2 ","H  ","H+ ","H  ","HE ","HE ","HE ","HE ","HE ","HE "&
-    &,"HE ","HE ","HE ","H2 ","H  ","HE ","H2 ","HE ","HE ","H  "&
-    &,"H+ ","HE ","H  ","H  ","H2 ","H  ","HE ","HE ","H  ","HE "&
-    &,"HE ","HE ","H  ","NAN","HE ","HE ","H  ","H+ ","H  ","H  "&
-    &,"HE ","HE ","H  ","H+ ","HE ","H  ","H  ","HE ","HE ","H2 "&
-    &,"H  ","H2 ","H  ","H  ","HE ","HE ","HE ","HE ","HE ","HE "&
-    &,"HE ","HE ","HE ","HE ","HE ","H  ","HE ","HE ","HE ","HE "&
-    &,"HE ","HE ","HE ","HE ","HE ","H2 ","H  ","H2 ","H  ","H2 "&
-    &,"H2 ","H  ","HE ","HE ","HE ","HE ","H  ","NAN","H  ","H  "&
-    &,"H  ","H  ","H  ","NAN","NAN","NAN","NAN","NAN","NAN","H  "&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"N  ","H  ","H  ","H2 ","NAN","CO ","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","CO "&
-    &,"H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","H  ","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"H  ","NAN","NAN","NAN","NAN","H  ","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","H  ","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","H2 ","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","H  ","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","O  ","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","H  ","NAN","NAN","H  ","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","E- ","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","H  ","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","H  "&
-    &,"NAN","E- ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","H2 ","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN"/)
-character(Len=3), parameter :: 	p4 (2456)=(/"NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","H2 ","NAN","NAN","NAN","NAN","H  "&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","H2 "&
-    &,"H  ","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN","NAN"&
-    &,"NAN","NAN","NAN"/)
-double precision :: 	alpha (2456)=(/1.0900e-11,1.0000e-09&
+integer, parameter :: 	re1 (2507)=(/11,2,3,3,3,3,3,3,3,1,1&
+    &,1,1,1,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10&
+    &,10,10,40,40,40,39,39,39,39,46,46,50,50,50,50,49,45,45,45&
+    &,9,9,9,9,9,12,12,12,12,12,12,14,13,13,13,13,13,13,13,13,13&
+    &,13,18,18,18,23,23,23,23,23,23,22,11,11,11,11,11,11,11,11&
+    &,11,11,11,52,52,52,52,52,52,52,51,65,65,65,65,65,65,64,117&
+    &,116,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2&
+    &,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4,4,4,4,4,4,4&
+    &,4,4,4,4,4,4,3,84,83,36,36,36,36,36,36,36,36,36,36,36,36,35&
+    &,35,35,114,1,1,1,1,1,1,57,57,57,56,56,74,74,74,74,74,7,7,7&
+    &,7,7,7,7,7,7,7,7,7,7,41,41,41,41,41,41,41,41,41,41,41,41,41&
+    &,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16&
+    &,69,69,69,69,69,69,69,15,20,20,20,20,20,20,25,25,25,25,25&
+    &,24,24,24,24,24,24,24,31,31,31,31,30,30,30,30,30,30,30,30&
+    &,30,30,30,30,19,19,19,19,85,85,85,85,85,85,85,85,27,27,27&
+    &,27,27,27,27,27,27,27,27,27,27,27,27,101,101,101,100,100,26&
+    &,26,26,33,33,33,33,33,33,33,33,33,33,32,32,32,32,103,103,102&
+    &,102,102,70,70,70,70,70,70,70,78,9,64,116,3,3,3,1,6,15,26&
+    &,39,49,49,55,63,73,162,45,45,124,124,178,175,9,12,13,13,139&
+    &,17,17,17,136,98,98,22,11,51,148,64,149,149,116,66,83,163&
+    &,35,214,114,114,165,1,180,56,74,74,190,154,121,58,144,90,209&
+    &,107,6,41,68,15,182,24,24,30,30,30,19,19,166,85,85,167,100&
+    &,100,109,26,142,191,191,32,205,102,208,173,173,70,183,203&
+    &,131,87,92,104,78,151,193,40,46,46,50,50,50,169,169,169,169&
+    &,125,125,181,181,128,120,135,199,199,12,14,14,14,18,18,18&
+    &,141,141,106,106,106,106,106,23,23,29,29,29,29,29,52,65,150&
+    &,4,84,84,84,84,164,164,123,123,99,99,36,36,36,115,115,212&
+    &,212,5,5,89,89,89,89,89,170,170,38,38,38,38,118,118,118,118&
+    &,195,195,57,67,67,67,75,153,153,153,155,155,122,91,171,76&
+    &,196,196,108,210,210,176,211,211,211,197,197,8,69,77,77,20&
+    &,25,25,31,31,37,37,37,86,168,101,110,192,192,192,33,206,174&
+    &,207,207,132,184,184,202,202,79,88,88,88,93,93,105,105,111&
+    &,111,152,156,156,194,10,10,10,10,10,10,10,10,10,10,10,10,10&
+    &,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10&
+    &,10,10,10,10,10,10,10,10,10,40,40,40,40,39,39,39,39,39,39&
+    &,39,39,39,46,46,46,46,46,50,50,50,50,50,50,50,50,50,50,49&
+    &,63,45,45,45,45,45,45,45,45,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9&
+    &,9,9,9,9,9,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12&
+    &,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12&
+    &,12,14,14,14,14,14,14,14,14,14,14,14,14,14,13,13,13,13,13&
+    &,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,18,18,18,18&
+    &,18,18,18,18,18,18,18,18,18,18,18,18,17,136,106,98,23,23,23&
+    &,23,23,23,23,23,23,22,22,22,22,22,22,22,22,22,22,22,22,22&
+    &,22,22,22,22,22,22,22,29,29,29,29,29,29,29,29,29,29,29,29&
+    &,29,29,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11&
+    &,11,11,11,11,11,11,11,11,11,11,11,52,52,52,52,51,51,65,65&
+    &,65,64,64,64,64,64,64,64,64,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2&
+    &,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4&
+    &,4,4,4,4,4,4,4,4,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3&
+    &,3,3,3,3,3,3,3,3,3,3,84,84,84,84,83,83,83,83,83,83,83,36,36&
+    &,36,36,36,36,36,36,36,36,36,36,36,36,35,35,35,35,35,35,35&
+    &,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35&
+    &,35,115,114,114,114,114,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5&
+    &,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5&
+    &,5,5,5,5,5,5,5,5,5,5,89,89,38,38,38,38,38,38,38,38,38,38,38&
+    &,38,38,38,38,38,38,1,1,1,1,1,1,1,1,1,1,1,1,1,57,57,57,57,57&
+    &,57,57,57,56,56,56,56,56,56,56,56,56,56,56,56,67,67,67,67&
+    &,67,67,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75&
+    &,75,75,75,75,75,74,74,74,74,74,74,155,58,58,58,58,58,58,58&
+    &,58,91,91,108,108,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7&
+    &,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7&
+    &,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7&
+    &,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7&
+    &,7,7,7,7,7,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16&
+    &,16,16,16,16,16,16,16,16,16,69,69,69,69,69,68,68,77,77,77&
+    &,77,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15&
+    &,15,15,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20&
+    &,20,20,20,20,20,20,20,20,20,20,20,20,25,25,25,25,25,25,25&
+    &,25,25,25,25,25,25,25,25,25,25,25,25,25,24,24,24,24,24,24&
+    &,24,24,24,24,24,24,24,24,24,24,24,24,31,31,31,31,31,31,30&
+    &,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30&
+    &,30,30,30,30,30,30,19,19,19,19,19,19,19,19,19,19,19,19,19&
+    &,19,19,19,19,19,85,27,27,27,27,27,27,27,27,27,27,27,27,27&
+    &,27,27,27,27,27,27,101,101,101,100,100,100,100,110,26,26,26&
+    &,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26&
+    &,26,26,26,26,26,33,33,33,33,33,33,33,33,33,33,33,33,33,33&
+    &,33,33,33,33,33,33,33,32,32,32,32,32,32,32,32,32,32,32,32&
+    &,103,103,103,102,102,102,174,174,174,174,174,174,174,71,71&
+    &,71,70,88,88,78,39,39,39,39,49,49,55,55,45,45,45,45,9,9,9&
+    &,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9&
+    &,9,9,9,9,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13&
+    &,13,13,13,13,13,13,13,13,13,13,13,17,17,17,17,17,17,17,17&
+    &,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,22,22,22&
+    &,22,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11&
+    &,11,11,11,11,11,11,11,11,11,51,51,51,51,51,51,51,51,51,51&
+    &,51,51,51,51,51,64,64,64,64,116,3,3,3,3,3,3,3,3,3,3,3,3,3&
+    &,3,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1&
+    &,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,74,74,74,74,74,74,74,121&
+    &,144,107,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15&
+    &,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15&
+    &,15,15,15,15,15,15,15,24,24,24,24,24,30,19,19,19,19,19,19&
+    &,19,19,19,19,19,19,19,19,19,19,19,19,19,85,85,85,85,85,100&
+    &,100,100,100,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26&
+    &,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26&
+    &,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26,26&
+    &,26,26,26,26,26,26,26,32,32,32,32,32,32,32,32,32,32,32,32&
+    &,32,32,32,32,32,32,32,32,32,32,32,32,102,102,102,102,102,70&
+    &,70,70,70,40,39,39,46,49,49,55,63,73,162,45,45,124,124,178&
+    &,175,9,12,14,14,14,13,13,139,18,18,17,17,17,136,98,98,98,23&
+    &,23,22,22,22,22,11,11,51,65,148,64,150,149,149,116,4,66,83&
+    &,83,83,83,163,36,35,35,214,114,114,114,165,165,5,5,180,56&
+    &,75,74,74,190,154,121,121,58,144,90,108,108,209,209,107,41&
+    &,68,182,182,20,24,24,30,30,30,19,19,166,85,85,167,101,100&
+    &,100,109,109,142,191,191,33,32,32,205,205,102,208,173,173&
+    &,70,183,203,203,131,79,87,87,92,92,92,104,104,104,78,152,151&
+    &,151,193,10,10,10,10,45,9,9,9,9,9,9,18,18,17,2,2,3,3,3,3,3&
+    &,3,3,3,3,38,1,1,1,1,1,16,26,26,26,26,10,18,117,2,84,164,115&
+    &,7,42,16,27,103,71,180,55,139,135,130,162,169,106,190,98,140&
+    &,141,144,142,124,125,178,128,181,182,199,198,195,76,64,70&
+    &,151,78,71,79,87,88,92,93,104,105,131,183,132,184,203,202&
+    &,152,156,193,194,197,165,111,116,121,117,122,123,126,175,205&
+    &,89,214,209,210,9,64,83,39,11,32,85,13,35,148,17,22,74,68&
+    &,51,10,19,56,45,30,16,27,40,101,69,12,20,33,65,52,86,14,25&
+    &,36,75,57,46,31,84,18,38,153,29,23,24,15,26,100,107,149,173&
+    &,114,154,191,208,102,167,163,103,108,150,174,155,192,166,90&
+    &,91,99,110,66,168,50,118,164,212,206,170,176,207,196,42,41&
+    &,37,67,77,171,120,115,109,211,64,58,49,136,63,73,215,21,21&
+    &,21,21,28,28,28,28,34,34,34,34,43,43,43,43,44,44,44,44,47&
+    &,47,47,47,48,48,48,48,53,53,53,53,54,54,54,54,59,59,59,59&
+    &,60,60,60,60,61,61,61,61,62,62,62,62,72,72,72,72,80,80,80&
+    &,80,81,81,81,81,82,82,82,82,94,94,94,94,95,95,95,95,96,96&
+    &,96,96,97,97,97,97,112,112,112,112,113,113,113,113,119,119&
+    &,119,119,127,127,127,127,129,129,129,129,133,133,133,133,134&
+    &,134,134,134,137,137,137,137,138,138,138,138,143,143,143,143&
+    &,145,145,145,145,146,146,146,146,147,147,147,147,157,157,157&
+    &,157,158,158,158,158,159,159,159,159,160,160,160,160,161,161&
+    &,161,161,172,172,172,172,177,177,177,177,179,179,179,179,185&
+    &,185,185,185,186,186,186,186,187,187,187,187,188,188,188,188&
+    &,189,189,189,189,200,200,200,200,201,201,201,201,204,204,204&
+    &,204,213,213,213,213/)
+integer, parameter :: 	re2 (2507)=(/26,58,11,3,35,76,100,32&
+    &,215,11,3,35,100,32,13,11,83,114,74,41,182,30,85,167,191,173&
+    &,70,183,203,131,87,92,193,74,85,102,52,65,69,101,85,102,83&
+    &,114,74,85,57,52,65,69,40,52,65,69,101,74,41,30,85,102,70&
+    &,85,40,52,65,84,36,69,25,27,101,33,74,41,85,49,83,114,30,100&
+    &,191,65,40,52,65,84,36,16,69,25,27,101,33,64,83,56,74,85,100&
+    &,102,69,83,114,74,85,100,102,69,1,2,39,49,45,124,13,17,22&
+    &,11,149,83,163,35,214,114,56,74,121,209,107,41,24,30,19,85&
+    &,167,100,26,191,32,205,102,208,173,70,183,203,131,87,92,104&
+    &,78,151,193,39,49,45,13,22,11,51,64,83,35,114,56,74,24,30&
+    &,19,85,100,32,7,102,101,39,49,45,83,114,74,41,85,100,191,102&
+    &,70,65,57,69,192,52,65,4,57,7,27,85,100,102,65,69,84,115,101&
+    &,103,152,39,49,9,22,11,83,35,114,68,30,100,208,70,50,150,84&
+    &,115,75,108,69,86,101,103,174,71,152,39,45,13,22,51,64,83&
+    &,35,114,56,74,41,24,30,19,85,100,191,32,83,114,74,85,100,191&
+    &,102,69,83,35,30,85,100,102,114,74,30,85,102,40,52,65,36,69&
+    &,101,33,74,41,85,70,50,65,84,36,115,57,108,69,101,192,103&
+    &,174,52,65,69,27,84,115,91,108,101,103,206,152,39,49,45,22&
+    &,64,83,35,114,74,24,30,100,191,32,208,49,114,102,117,207,52&
+    &,65,69,39,45,83,35,114,74,30,85,100,102,40,52,65,69,131,193&
+    &,10,115,108,150,84,115,108,86,101,103,103,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,215,215,215,215,215,215,215,215,215,215,215,215&
+    &,215,215,215,215,215,215,215,215,215,215,215,215,215,215,215&
+    &,215,215,215,215,215,215,215,215,215,215,215,215,215,215,215&
+    &,215,215,215,215,215,215,215,215,215,215,215,215,215,215,215&
+    &,215,215,215,215,215,215,215,215,215,215,215,215,215,215,215&
+    &,215,215,215,215,215,215,215,215,215,215,215,215,215,215,215&
+    &,215,215,215,215,215,215,215,215,215,215,215,215,215,215,215&
+    &,215,215,215,215,215,215,215,215,215,215,215,215,215,215,215&
+    &,215,215,215,215,215,215,215,215,215,215,215,215,215,215,215&
+    &,215,215,215,215,215,215,215,215,215,215,215,215,215,215,215&
+    &,215,162,45,13,17,17,130,98,98,22,11,148,83,83,163,35,35,114&
+    &,180,180,180,74,58,107,24,30,19,167,100,100,142,191,32,208&
+    &,173,173,173,131,87,78,151,193,39,74,100,102,84,57,75,91,77&
+    &,101,110,103,152,83,56,56,74,58,136,136,114,56,58,70,104,104&
+    &,104,104,181,103,65,84,57,75,91,77,110,71,46,12,14,18,29,36&
+    &,115,38,57,75,153,91,108,77,20,101,110,33,79,152,39,45,13&
+    &,98,98,98,22,11,51,148,83,83,83,35,35,35,114,114,56,56,56&
+    &,74,58,15,24,30,19,100,100,100,26,191,191,32,102,102,148,83&
+    &,35,114,114,114,74,30,100,26,191,191,102,46,29,65,84,36,38&
+    &,57,67,67,75,91,77,20,25,31,101,110,33,103,152,63,136,98,83&
+    &,114,74,107,30,100,26,26,191,32,102,173,104,103,153,30,206&
+    &,98,22,148,64,83,35,114,30,191,40,40,46,50,65,150,84,36,57&
+    &,153,91,108,69,69,77,31,33,33,103,103,39,45,148,64,83,35,114&
+    &,56,74,121,58,41,102,104,40,46,18,29,65,84,36,89,38,57,67&
+    &,67,75,91,108,16,77,20,25,31,27,101,110,33,103,71,79,152,83&
+    &,56,74,100,91,110,83,114,208,123,153,91,77,110,207,105,152&
+    &,55,63,45,13,136,98,98,98,22,148,83,83,114,114,165,74,74,154&
+    &,144,90,107,166,191,87,92,104,78,39,63,45,9,13,22,22,11,51&
+    &,148,64,3,83,35,114,114,74,6,68,15,19,85,100,26,32,10,40,46&
+    &,12,14,23,52,65,65,150,117,36,115,57,122,108,7,8,16,69,20&
+    &,20,25,31,27,110,33,103,207,105,152,98,83,100,102,106,118&
+    &,91,101,110,103,103,39,45,64,83,35,114,114,56,74,74,58,102&
+    &,102,208,40,50,125,125,199,52,52,65,84,123,115,89,57,75,153&
+    &,91,196,108,211,197,69,77,110,71,79,105,111,114,125,210,197&
+    &,174,39,162,162,45,124,9,13,17,136,98,98,22,11,51,148,64,64&
+    &,149,116,83,163,35,114,56,74,190,154,121,58,90,209,107,41&
+    &,68,24,30,19,166,85,167,100,26,26,191,32,205,102,208,173,70&
+    &,87,92,104,78,151,193,98,114,39,162,130,136,98,149,83,114&
+    &,56,190,58,209,205,70,87,78,151,181,12,14,18,23,29,115,118&
+    &,108,8,207,79,194,148,64,83,56,74,74,58,102,181,120,106,84&
+    &,89,118,75,91,108,197,77,110,136,136,83,83,114,114,162,130&
+    &,136,98,149,83,163,114,74,190,209,107,167,191,205,102,173&
+    &,87,104,78,151,193,84,91,77,101,110,103,162,84,89,118,75,91&
+    &,108,77,110,148,102,114,114,39,49,49,49,55,55,63,63,63,45&
+    &,45,45,124,178,175,13,13,139,139,17,130,136,136,98,98,22,22&
+    &,22,22,11,51,51,148,148,148,148,64,149,149,83,83,83,163,163&
+    &,163,35,35,214,214,114,114,165,180,180,56,56,56,56,74,74,74&
+    &,190,154,154,121,58,58,58,90,90,209,209,107,68,182,24,24,30&
+    &,30,19,85,85,167,167,100,142,142,191,191,191,191,32,205,208&
+    &,208,173,173,183,203,131,131,87,87,92,92,104,104,78,151,151&
+    &,193,193,98,98,98,98,22,22,22,148,64,83,83,114,114,114,74&
+    &,182,182,30,30,19,85,100,100,191,191,83,114,114,74,191,91&
+    &,110,136,148,83,102,40,46,46,50,50,50,14,52,36,36,115,108&
+    &,20,25,101,33,174,132,152,152,39,39,39,45,51,148,148,148,64&
+    &,83,83,35,35,35,35,56,74,58,68,24,30,19,85,100,100,26,32,102&
+    &,102,39,45,83,83,35,35,35,114,114,114,114,56,74,58,24,30,100&
+    &,100,102,102,40,46,50,29,65,84,36,89,38,57,67,67,75,91,77&
+    &,31,110,33,39,83,35,114,74,30,46,50,169,125,29,65,84,36,115&
+    &,89,38,118,57,67,67,75,153,155,91,108,211,197,77,110,79,156&
+    &,40,40,18,29,65,84,36,57,75,91,77,25,31,27,101,110,33,103&
+    &,110,39,63,45,98,98,22,51,148,83,114,114,56,56,74,68,166,191&
+    &,32,208,49,98,102,150,103,194,194,148,40,46,50,23,29,29,150&
+    &,36,115,115,153,155,155,108,108,69,77,25,31,168,110,33,132&
+    &,79,88,93,152,39,45,51,148,64,83,35,114,56,74,74,58,68,30&
+    &,85,32,102,102,70,78,151,29,65,36,57,75,75,91,77,31,110,103&
+    &,71,114,114,191,118,110,152,49,49,49,63,63,63,191,162,98,191&
+    &,75,100,102,103,49,56,100,102,85,70,100,100,56,58,182,100&
+    &,55,73,124,126,13,13,17,11,51,64,149,66,74,107,107,68,182&
+    &,24,24,24,19,19,85,85,167,167,100,142,191,32,32,205,208,173&
+    &,173,78,13,13,13,13,22,51,83,74,90,68,166,85,85,85,100,100&
+    &,100,100,100,26,26,26,26,32,32,32,102,102,55,17,17,17,51,83&
+    &,35,114,74,90,24,30,166,85,100,100,100,109,26,26,32,32,32&
+    &,102,51,100,32,102,49,63,22,148,83,74,90,68,15,15,85,85,85&
+    &,100,100,100,100,109,109,26,26,191,32,102,102,173,173,49,63&
+    &,51,83,56,74,58,90,166,85,85,100,100,102,104,90,166,100,109&
+    &,3,45,9,13,17,11,51,107,15,24,19,100,100,26,32,102,39,49,55&
+    &,13,139,17,22,11,148,64,66,83,35,114,56,74,74,154,58,90,90&
+    &,90,107,182,24,30,19,166,85,85,167,167,100,109,109,109,142&
+    &,142,142,191,32,205,173,173,74,74,90,85,100,100,109,1,9,107&
+    &,39,55,63,73,73,45,124,126,178,175,198,13,13,13,17,17,17,51&
+    &,148,149,66,74,74,74,154,90,107,107,182,19,166,166,166,85&
+    &,167,100,109,32,32,205,173,173,131,22,85,85,32,32,51,22,51&
+    &,35,30,19,19,19,166,85,85,100,100,26,26,32,32,32,102,102,85&
+    &,100,142,102,102,142,142,102,173,39,49,55,63,63,63,63,73,45&
+    &,124,178,198,22,51,51,148,149,149,66,83,35,114,56,56,56,74&
+    &,74,154,154,90,90,90,107,107,68,24,24,30,166,85,167,167,109&
+    &,142,142,191,191,32,205,208,173,183,203,131,131,87,87,92,104&
+    &,78,49,49,49,55,73,51,51,64,149,149,83,114,56,56,74,90,182&
+    &,30,85,109,32,102,173,70,74,74,107,208,173,148,64,85,100,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9,15,26,102,51,9,15,27,26,103,102,35,56,51&
+    &,1,6,10,9,18,11,108,103,71,79,93,63,10,9,26,32,71,15,26,173&
+    &,71,70,215,215,215,215,215,215,215,215,215,215,215,215,215&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999/)
+integer, parameter :: 	re3 (2507)=(/9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999/)
+integer, parameter :: 	p1 (2507)=(/75,56,9,3,32,75,26,26,1&
+    &,9,1,32,26,26,14,12,84,115,75,42,125,31,86,168,192,174,71&
+    &,184,202,132,88,93,194,75,86,103,51,64,68,100,86,103,84,115&
+    &,75,86,50,51,64,68,39,51,64,68,100,75,42,31,86,103,71,86,39&
+    &,51,64,83,35,68,24,26,100,32,75,42,86,50,84,115,31,101,192&
+    &,64,39,51,64,83,35,15,68,24,26,100,32,65,84,57,75,86,101,103&
+    &,68,84,115,75,86,101,103,68,116,117,40,50,46,125,14,18,23&
+    &,12,150,84,164,36,212,115,57,75,122,210,108,42,25,31,20,86&
+    &,168,101,27,192,33,206,103,207,174,71,184,202,132,88,93,105&
+    &,79,152,194,40,50,46,14,23,12,52,65,84,36,115,57,75,25,31&
+    &,20,86,101,33,6,103,100,40,50,46,84,115,75,42,86,101,192,103&
+    &,71,64,56,68,115,51,64,3,56,6,26,86,101,103,64,68,83,114,100&
+    &,102,151,40,50,10,23,12,84,36,115,69,31,101,207,71,49,149&
+    &,83,114,74,107,68,85,100,102,173,70,151,40,46,14,23,52,65&
+    &,84,36,115,57,75,42,25,31,20,86,101,192,33,84,115,75,86,101&
+    &,192,103,68,84,36,31,86,101,103,115,75,31,86,103,39,51,64&
+    &,35,68,100,32,75,42,86,71,49,64,83,35,114,56,107,68,100,31&
+    &,102,173,51,64,68,26,83,114,90,107,100,102,205,151,40,50,46&
+    &,23,65,84,36,115,75,25,31,101,192,33,207,50,115,103,116,208&
+    &,51,64,68,40,46,84,36,115,75,31,86,101,103,39,51,64,68,132&
+    &,194,9,114,107,149,83,114,107,85,100,102,102,10,65,117,2,4&
+    &,1,2,7,16,27,9,50,45,49,49,55,73,39,46,39,51,51,45,10,10,14&
+    &,11,64,13,18,11,51,83,32,13,9,15,64,26,150,102,117,56,64,149&
+    &,32,107,115,102,151,2,51,51,64,75,148,155,116,51,19,85,107&
+    &,102,7,42,15,16,51,25,19,24,31,19,15,20,85,86,26,102,101,26&
+    &,100,27,51,192,102,26,102,103,173,102,174,71,131,183,70,78&
+    &,87,87,70,70,102,9,39,11,39,45,11,63,73,73,162,39,51,124,51&
+    &,124,39,130,124,178,9,9,9,11,13,11,11,136,58,13,17,17,98,83&
+    &,13,17,13,17,17,22,11,15,26,102,1,13,64,64,74,149,154,116&
+    &,121,90,85,26,26,32,107,102,209,107,3,1,13,11,64,83,74,149&
+    &,163,35,26,32,32,114,107,107,102,98,190,51,51,56,58,64,148&
+    &,64,64,11,149,116,85,167,64,149,191,102,107,205,173,208,173&
+    &,173,107,193,6,15,68,15,15,15,19,24,19,24,24,30,26,102,26&
+    &,100,9,149,102,26,102,102,102,173,70,70,131,183,131,70,70&
+    &,70,78,87,78,87,92,92,104,70,70,151,102,89,120,46,46,50,50&
+    &,89,74,50,40,65,64,75,149,75,76,155,125,120,199,64,125,150&
+    &,57,57,52,150,65,64,65,150,65,174,150,103,102,71,132,132,71&
+    &,132,120,64,65,150,74,51,64,85,68,65,100,150,132,89,50,67&
+    &,64,67,135,141,118,67,67,184,71,79,88,93,50,155,75,74,50,64&
+    &,85,68,100,184,120,40,46,46,22,32,155,75,51,64,148,85,150&
+    &,68,15,65,100,26,132,71,120,120,46,106,83,89,50,40,125,75&
+    &,64,89,75,84,38,75,118,155,125,128,67,64,67,52,57,37,52,65&
+    &,75,74,65,155,196,65,150,108,84,75,89,170,118,155,64,37,75&
+    &,75,164,155,155,39,22,75,74,32,35,51,56,58,64,85,68,18,18&
+    &,24,84,100,26,155,83,135,67,89,75,170,64,164,37,89,84,75,170&
+    &,84,155,196,93,164,148,98,212,106,29,153,75,89,38,118,37,196&
+    &,46,50,50,135,75,155,89,38,67,148,85,170,68,68,68,37,29,38&
+    &,170,155,46,50,153,75,89,38,118,67,84,123,67,42,108,93,120&
+    &,39,50,22,75,74,32,83,35,51,56,58,64,85,102,52,68,14,19,37&
+    &,65,75,100,26,150,132,70,75,75,181,64,86,85,100,75,107,174&
+    &,121,148,85,75,100,174,92,148,50,50,40,12,18,18,89,75,18,75&
+    &,65,75,108,103,156,65,64,150,25,86,103,86,108,79,88,93,71&
+    &,46,50,50,12,18,18,29,14,57,153,75,5,75,38,108,103,64,8,77&
+    &,20,25,91,110,33,36,12,46,50,14,18,29,57,75,76,155,122,38&
+    &,118,67,123,115,6,6,20,77,15,25,31,37,33,100,36,108,211,111&
+    &,156,106,89,109,108,195,114,89,100,100,115,107,46,50,75,89&
+    &,38,118,107,67,64,84,67,108,176,211,46,45,128,75,180,57,75&
+    &,75,74,121,107,83,51,64,148,85,38,102,208,156,77,68,100,156&
+    &,70,92,104,118,155,205,118,206,46,18,89,50,128,12,18,23,141&
+    &,18,106,29,14,57,153,75,76,155,122,89,170,38,118,67,84,195&
+    &,164,123,67,99,212,115,42,77,31,37,25,86,91,171,110,36,33&
+    &,196,36,210,108,211,176,79,93,105,111,88,156,197,106,118,46&
+    &,169,135,141,106,155,89,118,67,195,67,212,210,79,93,88,156&
+    &,57,10,12,14,18,23,108,115,103,6,174,71,107,153,75,89,67,84&
+    &,67,67,108,57,199,141,74,83,114,67,85,102,67,67,100,141,141&
+    &,89,89,118,118,169,135,141,106,155,89,170,118,84,195,212,115&
+    &,171,196,210,108,176,93,111,88,156,197,89,84,84,110,100,108&
+    &,169,74,83,114,67,85,102,67,100,153,108,118,210,10,40,46,12&
+    &,46,50,46,50,14,40,12,11,51,51,46,10,12,65,64,12,120,52,51&
+    &,33,32,12,14,18,17,10,16,15,65,64,101,100,26,103,102,65,75&
+    &,26,150,103,102,33,32,108,210,108,103,156,125,51,52,16,15&
+    &,15,65,64,26,153,150,149,117,52,15,20,86,85,107,206,103,16&
+    &,52,16,20,20,25,16,27,26,103,102,27,52,51,150,149,103,102&
+    &,27,103,103,174,103,102,71,184,71,70,71,79,79,88,71,79,71&
+    &,71,70,103,102,84,89,86,85,18,57,67,85,86,75,86,108,107,103&
+    &,64,125,181,77,25,69,69,86,85,150,103,75,108,103,77,103,85&
+    &,100,141,153,89,108,51,125,51,125,128,56,57,69,91,86,168,168&
+    &,69,77,86,86,168,71,86,85,46,125,57,50,57,153,91,86,75,89&
+    &,75,38,91,31,32,67,84,67,77,31,37,25,77,86,110,33,36,108,168&
+    &,46,50,89,74,38,31,37,118,108,107,102,67,84,67,31,37,99,91&
+    &,171,108,128,39,45,31,75,74,31,83,35,51,56,58,64,85,68,37&
+    &,100,31,50,74,37,107,64,37,39,45,37,67,37,75,74,37,107,83&
+    &,37,114,67,56,58,64,148,149,85,102,208,37,68,100,70,37,46&
+    &,125,67,22,75,89,38,51,64,85,68,31,37,86,91,100,25,168,100&
+    &,65,50,65,84,89,32,86,101,75,108,103,75,86,64,86,100,148,101&
+    &,174,75,100,174,192,174,174,152,153,65,75,75,32,89,38,102&
+    &,101,108,174,100,192,102,103,174,86,68,91,91,102,100,101,152&
+    &,152,156,156,100,46,50,57,153,75,89,38,118,67,64,84,67,77&
+    &,37,91,36,108,174,79,88,156,36,75,38,51,64,153,85,68,37,100&
+    &,174,152,210,206,206,212,108,173,164,75,155,164,89,170,206&
+    &,156,156,194,79,156,197,194,175,178,64,149,56,183,83,109,180&
+    &,180,180,74,126,130,39,175,45,11,49,39,39,39,102,124,64,149&
+    &,102,51,51,56,58,19,51,15,51,64,149,102,64,64,64,64,26,149&
+    &,64,149,102,131,49,49,55,17,17,56,74,64,85,56,83,83,56,144&
+    &,148,148,64,83,74,64,64,74,32,83,35,26,149,154,49,63,73,22&
+    &,56,74,32,107,64,85,22,22,83,56,83,74,109,100,64,83,22,83&
+    &,35,163,56,109,35,107,126,130,63,74,74,64,85,56,51,19,56,74&
+    &,142,148,64,64,74,74,100,64,32,64,74,149,107,64,191,180,55&
+    &,68,74,182,64,182,85,85,68,142,85,142,167,56,148,148,148,148&
+    &,121,49,11,17,22,13,56,114,19,30,24,109,32,32,35,107,11,45&
+    &,49,11,17,13,17,9,64,32,56,74,32,107,51,64,26,3,56,24,85,32&
+    &,102,56,19,24,15,85,26,32,107,102,32,35,100,32,56,19,32,107&
+    &,26,107,107,102,64,83,83,90,148,109,100,116,64,114,51,49,56&
+    &,63,66,124,51,180,51,198,51,56,58,19,66,56,56,68,85,102,56&
+    &,64,56,142,102,85,167,102,68,68,68,85,100,68,102,85,100,85&
+    &,26,167,167,102,70,17,68,68,35,30,56,17,56,32,24,68,68,24&
+    &,90,68,68,90,85,85,32,35,90,24,107,167,100,166,68,167,173&
+    &,148,166,173,208,64,64,139,55,139,83,74,83,64,64,124,178,32&
+    &,64,85,100,102,173,142,74,32,107,51,64,142,148,64,107,191&
+    &,166,85,100,102,173,85,90,32,32,100,100,102,173,100,64,100&
+    &,148,173,100,173,173,102,131,183,70,151,151,151,165,92,151&
+    &,45,139,64,49,63,56,142,148,64,1,74,107,51,64,64,85,56,35&
+    &,166,100,35,173,208,151,1,107,205,173,205,151,151,151,151&
+    &,10,40,9,40,50,45,49,49,55,73,39,46,39,51,51,45,10,9,10,12&
+    &,11,14,11,64,12,14,13,18,11,51,83,89,32,14,18,13,17,23,11&
+    &,9,12,15,10,64,26,103,150,102,117,2,56,64,64,84,75,149,33&
+    &,36,32,107,115,107,102,151,151,4,3,51,51,65,64,75,83,155,116&
+    &,122,51,19,85,103,102,210,102,1,42,15,181,51,15,25,19,24,31&
+    &,19,15,20,85,86,26,102,27,101,26,100,32,51,192,102,27,26,33&
+    &,206,102,103,173,102,174,71,39,39,183,70,71,88,78,87,93,78&
+    &,87,92,78,70,71,70,152,102,40,52,65,150,180,39,51,65,64,150&
+    &,149,106,141,136,4,8,14,13,29,17,118,115,88,93,111,169,12&
+    &,11,32,35,79,69,100,208,152,151,9,17,116,1,83,163,114,6,41&
+    &,15,26,102,70,179,59,137,129,129,157,157,96,187,96,138,138&
+    &,143,143,138,138,179,138,185,185,200,200,187,82,82,97,161&
+    &,97,97,97,97,97,97,97,97,97,133,186,133,186,201,201,161,161&
+    &,188,188,188,161,97,119,119,119,119,119,127,177,213,96,213&
+    &,213,213,21,60,82,43,21,34,81,21,34,147,21,21,82,61,53,21&
+    &,28,53,47,28,28,34,43,95,61,21,28,34,60,53,81,21,28,34,82&
+    &,53,47,28,82,21,34,147,21,21,28,28,34,95,113,158,172,113,158&
+    &,189,204,113,160,158,113,113,158,172,158,189,159,94,94,94&
+    &,112,72,160,48,113,158,213,213,158,172,204,189,44,44,28,53&
+    &,61,160,43,113,112,204,96,54,48,134,62,80,9999,22,22,22,22&
+    &,30,30,30,30,35,35,35,35,39,39,39,39,41,41,41,41,45,45,45&
+    &,45,49,49,49,49,56,56,56,56,58,58,58,58,55,55,55,55,64,64&
+    &,64,64,68,68,68,68,63,63,63,63,66,66,66,66,73,73,73,73,85&
+    &,85,85,85,83,83,83,83,90,90,90,90,100,100,100,100,98,98,98&
+    &,98,104,104,104,104,109,109,109,109,114,114,114,114,121,121&
+    &,121,121,126,126,126,126,130,130,130,130,131,131,131,131,136&
+    &,136,136,136,139,139,139,139,140,140,140,140,144,144,144,144&
+    &,151,151,151,151,149,149,149,149,148,148,148,148,162,162,162&
+    &,162,163,163,163,163,166,166,166,166,167,167,167,167,165,165&
+    &,165,165,173,173,173,173,175,175,175,175,180,180,180,180,182&
+    &,182,182,182,183,183,183,183,190,190,190,190,193,193,193,193&
+    &,191,191,191,191,198,198,198,198,203,203,203,203,208,208,208&
+    &,208,214,214,214,214/)
+integer, parameter :: 	p2 (2507)=(/215,2,3,1,3,3,26,3,1,1&
+    &,1,1,26,1,9,9,9,9,9,9,51,9,9,9,9,9,9,9,9,9,9,9,9,39,39,39&
+    &,40,40,40,40,45,45,49,49,49,49,56,46,46,46,10,10,10,10,10&
+    &,11,11,11,11,11,11,13,14,14,14,14,14,14,14,14,14,14,17,17&
+    &,17,22,22,22,22,22,22,23,12,12,12,12,12,12,12,12,12,12,12&
+    &,51,51,51,51,51,51,51,52,64,64,64,64,64,64,65,2,1,1,1,1,1&
+    &,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1&
+    &,1,1,1,1,1,1,1,1,1,1,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3&
+    &,4,83,84,35,35,35,35,35,35,35,35,35,35,35,35,36,36,36,191&
+    &,2,2,2,2,2,2,56,56,56,57,57,75,75,75,75,75,6,6,6,6,6,6,6,6&
+    &,6,6,6,6,6,42,42,42,42,42,42,42,42,42,42,42,42,42,15,15,15&
+    &,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,68,68,68&
+    &,68,68,68,68,16,19,19,19,19,19,19,24,24,24,24,24,25,25,25&
+    &,25,25,25,25,30,30,30,30,31,31,31,31,31,31,31,31,31,191,31&
+    &,31,20,20,20,20,86,86,86,86,86,86,86,86,26,26,26,26,26,26&
+    &,26,26,26,26,26,26,26,26,26,100,100,100,101,101,27,27,27,32&
+    &,32,32,32,32,32,32,32,32,32,33,33,33,33,102,102,103,103,103&
+    &,71,71,71,71,71,71,71,79,215,215,215,1,215,1,215,215,215,215&
+    &,9,215,1,1,3,3,32,1,215,15,9,39,39,215,1,215,1,13,1,215,3&
+    &,17,3,17,3,1,9,26,9,215,9,215,1,3,3,1,107,215,3,3,215,45,1&
+    &,1,215,22,215,1,1,64,1,102,1,215,215,15,215,51,215,1,1,215&
+    &,3,1,215,26,215,15,15,215,26,1,215,26,215,64,1,102,215,26&
+    &,26,215,215,9,9,9,1,1,3,1,26,70,9,1,9,1,1,11,35,35,32,1,15&
+    &,9,15,51,1,9,1,39,9,1,3,1,1,1,3,1,1,17,35,35,32,1,3,1,1,3&
+    &,3,1,1,3,9,9,9,1,26,3,1,1,1,1,1,1,1,3,3,1,1,1,1,1,107,1,1&
+    &,32,35,3,1,1,3,1,1,3,3,1,1,3,1,3,74,1,1,1,1,1,1,1,26,32,102&
+    &,1,1,1,1,1,32,1,1,102,1,1,1,26,32,70,1,1,15,1,19,1,1,1,1,1&
+    &,3,1,1,15,15,26,1,173,26,64,1,102,26,26,26,9,39,9,9,39,1,3&
+    &,1,1,1,3,3,1,3,1,26,32,1,70,55,1,1,3,1,49,11,18,3,1,64,14&
+    &,11,14,1,1,1,45,56,1,12,1,1,1,3,1,15,26,27,51,64,1,64,26,64&
+    &,65,39,3,1,64,102,9,46,64,9,46,46,46,46,46,64,46,9,64,39,51&
+    &,39,50,39,51,45,45,45,45,3,63,73,63,55,182,17,39,50,51,50&
+    &,50,50,50,1,1,1,1,3,12,12,1,3,12,12,12,12,1,12,12,26,12,12&
+    &,1,64,1,3,3,9,18,13,3,3,1,64,18,9,13,1,9,3,9,3,3,1,9,14,9&
+    &,1,3,9,3,32,26,27,1,64,9,3,1,9,64,17,1,1,11,3,18,11,32,1,64&
+    &,74,1,18,18,11,18,18,18,18,18,18,18,18,18,15,19,18,26,18,18&
+    &,1,71,3,63,22,22,3,23,3,13,26,1,3,64,3,3,3,22,1,141,37,83&
+    &,17,17,17,17,17,17,17,17,17,17,13,17,1,17,17,17,17,17,29,29&
+    &,3,14,18,29,17,26,13,1,3,22,22,22,22,22,22,22,22,22,22,22&
+    &,22,22,22,1,14,3,14,9,14,14,14,14,14,14,14,14,14,14,1,14,15&
+    &,14,9,1,26,14,14,1,1,14,70,56,1,57,64,57,57,74,75,148,75,75&
+    &,75,68,75,148,75,71,3,3,3,3,56,35,3,3,3,26,3,3,3,3,3,3,4,3&
+    &,64,3,3,32,64,3,3,3,3,1,3,1,1,1,3,1,1,1,1,1,1,3,1,3,3,5,1&
+    &,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,5,1,1,5,1&
+    &,1,1,1,5,1,1,1,1,1,74,74,75,74,3,89,85,75,89,64,75,32,32,32&
+    &,32,32,32,38,32,38,32,32,32,1,32,32,38,32,56,75,32,19,32,38&
+    &,38,38,38,38,38,38,38,191,38,38,114,32,38,38,1,38,38,38,107&
+    &,56,118,193,35,3,22,22,3,3,3,3,3,3,35,3,3,3,3,3,3,3,3,3,3&
+    &,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,32,3,3,3,1,3,3,3,3,3,3&
+    &,3,3,3,3,3,3,3,3,83,83,35,35,35,35,35,35,35,35,35,35,35,35&
+    &,35,35,35,35,35,51,3,3,3,3,3,3,3,3,4,32,3,71,51,51,51,51,51&
+    &,64,51,51,182,1,35,67,67,67,64,67,67,193,68,67,56,58,56,58&
+    &,56,58,64,64,64,64,64,64,64,64,64,64,64,64,64,64,64,64,64&
+    &,64,64,64,64,64,64,85,68,64,84,64,149,67,67,67,64,67,67,68&
+    &,67,85,85,102,3,9,6,6,11,6,6,6,6,13,6,9,10,10,40,39,6,6,13&
+    &,14,6,6,17,18,17,18,6,6,6,6,6,9,10,26,27,9,10,10,9,10,6,6&
+    &,14,6,13,14,6,6,107,6,6,6,6,11,46,6,11,10,12,6,8,12,17,6,6&
+    &,6,6,10,9,6,6,103,6,6,15,51,6,6,6,6,6,15,16,15,16,26,26,27&
+    &,26,27,64,65,6,102,100,26,26,27,39,9,9,10,6,6,6,6,6,6,6,26&
+    &,27,70,71,19,19,17,18,15,3,1,65,9,19,13,19,20,19,20,68,15&
+    &,3,19,1,26,26,27,85,64,68,68,68,64,68,77,77,68,68,68,68,10&
+    &,1,12,3,1,12,1,9,1,3,3,1,1,1,26,1,26,51,70,71,15,1,9,15,15&
+    &,15,64,74,15,15,24,15,3,26,25,15,15,15,15,15,15,15,26,32,15&
+    &,15,15,15,1,19,19,19,31,19,32,26,19,30,31,37,19,19,19,19,19&
+    &,26,32,1,19,1,31,31,22,19,31,32,31,31,31,31,31,31,31,31,19&
+    &,31,26,19,37,32,37,37,24,37,37,162,56,22,24,37,32,37,37,35&
+    &,37,24,37,37,37,37,37,37,37,37,193,37,37,37,151,15,1,3,25&
+    &,15,15,15,25,25,25,25,15,15,1,26,25,26,1,91,9,35,11,35,32&
+    &,18,9,64,32,32,35,15,11,33,15,86,103,1,100,1,89,26,26,26,151&
+    &,173,100,9,9,11,18,3,13,65,3,32,3,75,1,75,32,1,15,33,1,3,86&
+    &,33,1,9,1,1,3,71,26,26,26,26,26,26,26,26,26,36,26,26,26,26&
+    &,26,26,26,1,26,26,26,22,26,26,36,36,1,36,36,26,36,1,1,1,3&
+    &,64,1,100,71,64,154,74,83,154,74,148,73,17,64,64,32,1,1,1&
+    &,1,64,9,64,3,74,49,1,1,51,64,1,1,51,1,1,11,1,1,15,26,39,3&
+    &,11,1,11,15,124,1,1,11,1,11,26,15,15,51,26,51,149,1,11,102&
+    &,173,26,64,1,3,1,1,11,17,11,17,17,17,19,85,15,32,1,3,1,35&
+    &,26,32,3,1,1,11,1,11,17,3,1,22,3,1,13,13,22,22,22,22,22,19&
+    &,24,90,35,32,35,13,22,3,1,26,3,13,1,17,17,17,17,1,1,1,64,13&
+    &,13,13,15,1,9,26,15,1,1,26,32,26,32,13,1,9,149,1,1,9,107,1&
+    &,1,56,39,56,1,56,1,56,142,64,15,64,26,9,92,19,85,26,32,1,1&
+    &,1,1,1,1,1,1,1,1,1,1,32,1,1,1,9,3,3,3,64,3,3,3,32,9,3,3,3&
+    &,3,3,3,13,149,1,26,3,19,3,51,3,3,3,32,19,15,15,19,26,26,3&
+    &,32,26,64,51,64,3,102,26,32,64,64,85,64,32,64,83,3,58,102&
+    &,9,19,17,19,17,1,51,1,124,1,178,1,1,11,1,3,1,9,64,51,19,19&
+    &,26,1,56,19,1,19,124,1,26,85,68,26,68,26,19,1,19,102,26,85&
+    &,51,30,35,32,19,26,24,24,15,24,24,3,1,15,85,26,32,26,32,1&
+    &,15,15,1,26,15,1,68,26,148,26,15,85,64,26,26,9,13,1,32,3,13&
+    &,17,17,11,51,64,64,17,15,9,64,64,9,3,32,32,32,32,19,1,1,32&
+    &,64,1,1,32,19,32,1,15,1,19,24,85,15,85,15,32,85,51,102,64&
+    &,1,102,100,100,64,64,64,9,3,1,1,32,1,35,1,17,35,35,26,1,1&
+    &,107,191,35,35,35,24,35,35,142,24,1,35,26,1,1,1,191,64,1,173&
+    &,26,64,9,15,26,9,215,9,1,215,1,1,3,3,32,1,215,15,9,39,39,215&
+    &,2,3,1,2,215,1,13,3,1,1,215,3,17,3,1,17,3,1,3,1,215,3,1,215&
+    &,9,26,26,9,9,215,9,215,1,1,3,1,215,1,3,1,215,1,107,215,1,3&
+    &,3,1,1,2,45,1,1,1,215,83,215,1,215,1,64,1,1,2,215,107,102&
+    &,215,15,215,51,2,215,1,1,215,3,1,215,26,215,15,15,26,215,26&
+    &,1,26,26,215,64,1,1,215,215,102,215,26,26,215,215,70,131,9&
+    &,9,1,215,1,1,215,3,3,1,1,1,26,26,215,70,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,1,9999,9999,1,1,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,1,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,1,9999,1,9999,9999,9999,9999,1,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,1,1,1,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,1&
+    &,9999,9999,9999,9999,1,9999,9999,9999,1,1,9999,1,9999,9999&
+    &,1,1,1,1,9,9999,9999,1,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999/)
+integer, parameter :: 	p3 (2507)=(/9999,9999,1,1,1,9999,3&
+    &,1,215,1,1,1,1,1,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,215,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,1,9999,9999,1,9999,1,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,1,9999&
+    &,9999,9999,1,9999,9999,1,9999,1,9999,1,1,9999,1,9999,1,9999&
+    &,3,9999,9999,9999,9999,9999,9999,1,9999,1,9999,1,9999,9999&
+    &,9999,9999,1,9999,9999,1,9999,9999,9999,1,9999,9999,1,9999&
+    &,1,1,9999,9999,1,9999,1,9999,9999,1,1,9999,9999,9999,1,9999&
+    &,9999,9999,9999,1,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,1,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,1,9999,9999,1,9999,1,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,26,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,1,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,3,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,1,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,1&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,3,1,9999,9999,9999&
+    &,9999,9999,1,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,1,9999,3,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,1,9999,9999,9999,9999,9999,3,9999,9999,1,9999,9999&
+    &,1,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,3,9999,9999,9999,1,9999,9999,9999,9999,9999&
+    &,9999,1,9999,1,3,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,1,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,1,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,35,3,9999,9999,9999,9999,9999,9999&
+    &,3,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,1&
+    &,9999,9999,9999,9999,3,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,6,3,1,6,3,1,3,3,6,1,6,6,6,6,6,3,1,6,6,3,3,6,6,6&
+    &,6,3,3,1,2,1,6,6,6,6,6,6,6,6,6,3,1,6,3,6,6,1,2,6,1,1,3,1,6&
+    &,6,1,6,6,6,1,9999,6,6,1,2,1,1,6,6,1,2,6,1,1,6,6,3,1,3,1,1&
+    &,6,6,6,6,6,6,6,6,6,6,6,1,6,6,6,6,6,6,6,6,6,3,1,3,1,3,3,1,6&
+    &,6,6,6,1,9999,1,1,1,1,1,9999,9999,9999,9999,9999,9999,1,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,15,1,1,3,9999&
+    &,64,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,64,1,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,1,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,1,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,1,9999,9999,9999,9999,1,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,1,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,1,9999,9999,9999&
+    &,9999,9999,9999,1,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,3,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,1,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,26,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,1&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,1,9999,9999,1,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,1,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,215,9999&
+    &,9999,9999,9999,9999,9999,1,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,1,9999,215,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,1,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,3,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999/)
+integer, parameter :: 	p4 (2507)=(/9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,1,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,3,9999,9999,9999,9999,1,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,1,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,1,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,3,1,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999,9999&
+    &,9999,9999,9999,9999/)
+double precision :: 	alpha (2507)=(/1.0900e-11,1.0000e-09&
     &,6.0000e-09,1.0000e-08,5.8000e-09,3.8000e-10,6.0000e-09,6.0000e-09&
     &,3.2200e-09,6.0000e-09,4.6700e-07,5.8000e-09,6.0000e-09,6.0000e-09&
     &,5.2000e-10,3.8000e-10,7.8000e-10,6.0000e-10,4.8000e-10,1.1000e-09&
@@ -2932,8 +1746,17 @@ double precision :: 	alpha (2456)=(/1.0900e-11,1.0000e-09&
     &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
     &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
     &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
-    &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00/)
-double precision :: 	beta (2456)=(/-2.1900e+00,0.0000e+00&
+    &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
+    &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
+    &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
+    &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
+    &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
+    &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
+    &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
+    &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
+    &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
+    &,1.0000e+00,1.0000e+00,1.0000e+00/)
+double precision :: 	beta (2507)=(/-2.1900e+00,0.0000e+00&
     &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
     &,3.5000e-01,0.0000e+00,-1.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
     &,0.0000e+00,-5.0000e-01,-5.0000e-01,-5.0000e-01,-5.0000e-01&
@@ -3378,8 +2201,17 @@ double precision :: 	beta (2456)=(/-2.1900e+00,0.0000e+00&
     &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
     &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
     &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
-    &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00/)
-double precision :: 	gama (2456)=(/1.6510e+02,0.0000e+00,4.0200e+04&
+    &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
+    &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
+    &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
+    &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
+    &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
+    &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
+    &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
+    &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
+    &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
+    &,0.0000e+00,0.0000e+00/)
+double precision :: 	gama (2507)=(/1.6510e+02,0.0000e+00,4.0200e+04&
     &,8.4100e+04,5.2900e+04,0.0000e+00,5.2300e+04,5.0900e+04,1.0200e+05&
     &,4.0200e+04,5.5000e+04,5.2900e+04,5.2300e+04,5.0900e+04,0.0000e+00&
     &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
@@ -3764,30 +2596,457 @@ double precision :: 	gama (2456)=(/1.6510e+02,0.0000e+00,4.0200e+04&
     &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
     &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
     &,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
-    &,9.6000e+02,9.6000e+02,9.6000e+02,5.5000e+03,5.5000e+03,5.5000e+03&
-    &,5.6000e+03,5.6000e+03,5.6000e+03,1.0000e+04,1.0000e+04,1.0000e+04&
-    &,5.3000e+03,5.3000e+03,5.3000e+03,3.0000e+03,3.0000e+03,3.0000e+03&
-    &,2.5870e+03,2.5870e+03,2.5870e+03,3.7000e+03,3.7000e+03,3.7000e+03&
-    &,3.8000e+03,3.8000e+03,3.8000e+03,2.8000e+03,2.8000e+03,2.8000e+03&
-    &,1.3000e+03,1.3000e+03,1.3000e+03,1.1000e+03,1.1000e+03,1.1000e+03&
-    &,2.5000e+03,2.5000e+03,2.5000e+03,2.4000e+03,2.4000e+03,2.4000e+03&
-    &,3.1000e+03,3.1000e+03,3.1000e+03,1.6000e+03,1.6000e+03,1.6000e+03&
-    &,4.5000e+03,4.5000e+03,4.5000e+03,3.0000e+03,3.0000e+03,3.0000e+03&
-    &,1.2000e+03,1.2000e+03,1.2000e+03,5.0000e+03,5.0000e+03,5.0000e+03&
-    &,1.3000e+04,1.3000e+04,1.3000e+04,5.0000e+03,5.0000e+03,5.0000e+03&
-    &,2.7000e+03,2.7000e+03,2.7000e+03,5.1720e+03,5.1720e+03,5.1720e+03&
-    &,5.9000e+03,5.9000e+03,5.9000e+03,3.0000e+03,3.0000e+03,3.0000e+03&
-    &,3.5000e+03,3.5000e+03,3.5000e+03,4.6800e+03,4.6800e+03,4.6800e+03&
-    &,2.8000e+03,2.8000e+03,2.8000e+03,3.7400e+03,3.7400e+03,3.7400e+03&
-    &,4.4000e+03,4.4000e+03,4.4000e+03,3.5000e+03,3.5000e+03,3.5000e+03&
-    &,3.2000e+03,3.2000e+03,3.2000e+03,2.6000e+03,2.6000e+03,2.6000e+03&
-    &,5.4000e+03,5.4000e+03,5.4000e+03,4.4000e+03,4.4000e+03,4.4000e+03&
-    &,2.4000e+03,2.4000e+03,2.4000e+03,1.9000e+03,1.9000e+03,1.9000e+03&
-    &,4.4000e+03,4.4000e+03,4.4000e+03,2.8000e+03,2.8000e+03,2.8000e+03&
-    &,3.7370e+03,3.7370e+03,3.7370e+03,4.5800e+03,4.5800e+03,4.5800e+03&
-    &,3.0000e+03,3.0000e+03,3.0000e+03,4.3000e+03,4.3000e+03,4.3000e+03&
-    &,4.2100e+03,4.2100e+03,4.2100e+03,3.8000e+03,3.8000e+03,3.8000e+03&
-    &,2.4000e+03,2.4000e+03,2.4000e+03,4.0000e+03,4.0000e+03,4.0000e+03&
-    &,5.1000e+03,5.1000e+03,5.1000e+03,3.4000e+03,3.4000e+03,3.4000e+03&
-    &,3.1000e+03,3.1000e+03,3.1000e+03/)
+    &,9.6000e+02,9.6000e+02,9.6000e+02,9.6000e+02,5.5000e+03,5.5000e+03&
+    &,5.5000e+03,5.5000e+03,5.6000e+03,5.6000e+03,5.6000e+03,5.6000e+03&
+    &,1.0000e+04,1.0000e+04,1.0000e+04,1.0000e+04,5.3000e+03,5.3000e+03&
+    &,5.3000e+03,5.3000e+03,3.0000e+03,3.0000e+03,3.0000e+03,3.0000e+03&
+    &,2.5870e+03,2.5870e+03,2.5870e+03,2.5870e+03,3.7000e+03,3.7000e+03&
+    &,3.7000e+03,3.7000e+03,3.8000e+03,3.8000e+03,3.8000e+03,3.8000e+03&
+    &,2.8000e+03,2.8000e+03,2.8000e+03,2.8000e+03,1.3000e+03,1.3000e+03&
+    &,1.3000e+03,1.3000e+03,1.1000e+03,1.1000e+03,1.1000e+03,1.1000e+03&
+    &,2.5000e+03,2.5000e+03,2.5000e+03,2.5000e+03,2.4000e+03,2.4000e+03&
+    &,2.4000e+03,2.4000e+03,3.1000e+03,3.1000e+03,3.1000e+03,3.1000e+03&
+    &,1.6000e+03,1.6000e+03,1.6000e+03,1.6000e+03,4.5000e+03,4.5000e+03&
+    &,4.5000e+03,4.5000e+03,3.0000e+03,3.0000e+03,3.0000e+03,3.0000e+03&
+    &,1.2000e+03,1.2000e+03,1.2000e+03,1.2000e+03,5.0000e+03,5.0000e+03&
+    &,5.0000e+03,5.0000e+03,1.3000e+04,1.3000e+04,1.3000e+04,1.3000e+04&
+    &,5.0000e+03,5.0000e+03,5.0000e+03,5.0000e+03,2.7000e+03,2.7000e+03&
+    &,2.7000e+03,2.7000e+03,5.1720e+03,5.1720e+03,5.1720e+03,5.1720e+03&
+    &,5.9000e+03,5.9000e+03,5.9000e+03,5.9000e+03,3.0000e+03,3.0000e+03&
+    &,3.0000e+03,3.0000e+03,3.5000e+03,3.5000e+03,3.5000e+03,3.5000e+03&
+    &,4.6800e+03,4.6800e+03,4.6800e+03,4.6800e+03,2.8000e+03,2.8000e+03&
+    &,2.8000e+03,2.8000e+03,3.7400e+03,3.7400e+03,3.7400e+03,3.7400e+03&
+    &,4.4000e+03,4.4000e+03,4.4000e+03,4.4000e+03,3.5000e+03,3.5000e+03&
+    &,3.5000e+03,3.5000e+03,3.2000e+03,3.2000e+03,3.2000e+03,3.2000e+03&
+    &,2.6000e+03,2.6000e+03,2.6000e+03,2.6000e+03,5.4000e+03,5.4000e+03&
+    &,5.4000e+03,5.4000e+03,4.4000e+03,4.4000e+03,4.4000e+03,4.4000e+03&
+    &,2.4000e+03,2.4000e+03,2.4000e+03,2.4000e+03,1.9000e+03,1.9000e+03&
+    &,1.9000e+03,1.9000e+03,4.4000e+03,4.4000e+03,4.4000e+03,4.4000e+03&
+    &,2.8000e+03,2.8000e+03,2.8000e+03,2.8000e+03,3.7370e+03,3.7370e+03&
+    &,3.7370e+03,3.7370e+03,4.5800e+03,4.5800e+03,4.5800e+03,4.5800e+03&
+    &,3.0000e+03,3.0000e+03,3.0000e+03,3.0000e+03,4.3000e+03,4.3000e+03&
+    &,4.3000e+03,4.3000e+03,4.2100e+03,4.2100e+03,4.2100e+03,4.2100e+03&
+    &,3.8000e+03,3.8000e+03,3.8000e+03,3.8000e+03,2.4000e+03,2.4000e+03&
+    &,2.4000e+03,2.4000e+03,4.0000e+03,4.0000e+03,4.0000e+03,4.0000e+03&
+    &,5.1000e+03,5.1000e+03,5.1000e+03,5.1000e+03,3.4000e+03,3.4000e+03&
+    &,3.4000e+03,3.4000e+03,3.1000e+03,3.1000e+03,3.1000e+03,3.1000e+03/)
+character(Len=8), parameter :: 	reacType (2507)=(/"O       "&
+    &,"HNC     ","CH      ","H2      ","H2O     ","HOC+    ","O2      "&
+    &,"OH      ","E-      ","CH      ","H2      ","H2O     ","O2      "&
+    &,"OH      ","CH2     ","CH      ","H2CO    ","H2S     ","HCO     "&
+    &,"MG      ","NCCN    ","NH3     ","NO      ","NS      ","OCS     "&
+    &,"SO      ","SI      ","SIC2    ","SIC3    ","SIC     ","SIH2    "&
+    &,"SIH3    ","SIS     ","HCO     ","NO      ","S       ","CN+     "&
+    &,"CO+     ","N2+     ","O2+     ","NO      ","S       ","H2CO    "&
+    &,"H2S     ","HCO     ","NO      ","HCN+    ","CN+     ","CO+     "&
+    &,"N2+     ","C2+     ","CN+     ","CO+     ","N2+     ","O2+     "&
+    &,"HCO     ","MG      ","NH3     ","NO      ","S       ","SI      "&
+    &,"NO      ","C2+     ","CN+     ","CO+     ","H2CO+   ","H2O+    "&
+    &,"N2+     ","NH2+    ","O+      ","O2+     ","OH+     ","HCO     "&
+    &,"MG      ","NO      ","C2H2    ","H2CO    ","H2S     ","NH3     "&
+    &,"O2      ","OCS     ","CO+     ","C2+     ","CN+     ","CO+     "&
+    &,"H2CO+   ","H2O+    ","N+      ","N2+     ","NH2+    ","O+      "&
+    &,"O2+     ","OH+     ","CO      ","H2CO    ","HCN     ","HCO     "&
+    &,"NO      ","O2      ","S       ","N2+     ","H2CO    ","H2S     "&
+    &,"HCO     ","NO      ","O2      ","S       ","N2+     ","H       "&
+    &,"H+      ","C2      ","C2H2    ","C2H     ","C2N     ","CH2     "&
+    &,"CH3     ","CH4     ","CH      ","CS      ","H2CO    ","H2CS    "&
+    &,"H2O     ","H2S2    ","H2S     ","HCN     ","HCO     ","HCL     "&
+    &,"HS2     ","HS      ","MG      ","NH2     ","NH3     ","NH      "&
+    &,"NO      ","NS      ","O2      ","O       ","OCS     ","OH      "&
+    &,"S2      ","S       ","SO2     ","SO      ","SI      ","SIC2    "&
+    &,"SIC3    ","SIC     ","SIH2    ","SIH3    ","SIH4    ","SIH     "&
+    &,"SIO     ","SIS     ","C2      ","C2H2    ","C2H     ","CH2     "&
+    &,"CH4     ","CH      ","CN      ","CO      ","H2CO    ","H2O     "&
+    &,"H2S     ","HCN     ","HCO     ","NH2     ","NH3     ","NH      "&
+    &,"NO      ","O2      ","OH      ","HE+     ","S       ","O2+     "&
+    &,"C2      ","C2H2    ","C2H     ","H2CO    ","H2S     ","HCO     "&
+    &,"MG      ","NO      ","O2      ","OCS     ","S       ","SI      "&
+    &,"CO+     ","HCN+    ","N2+     ","OCS+    ","CN+     ","CO+     "&
+    &,"H2+     ","HCN+    ","HE+     ","O+      ","NO      ","O2      "&
+    &,"S       ","CO+     ","N2+     ","H2CO+   ","H2S+    ","O2+     "&
+    &,"S+      ","SIO+    ","C2      ","C2H2    ","C       ","CH4     "&
+    &,"CH      ","H2CO    ","H2O     ","H2S     ","N2      ","NH3     "&
+    &,"O2      ","SO2     ","SI      ","C2H2+   ","CS+     ","H2CO+   "&
+    &,"H2S+    ","HCO+    ","HS+     ","N2+     ","NO+     ","O2+     "&
+    &,"S+      ","SO+     ","SI+     ","SIO+    ","C2      ","C2H     "&
+    &,"CH2     ","CH4     ","CN      ","CO      ","H2CO    ","H2O     "&
+    &,"H2S     ","HCN     ","HCO     ","MG      ","NH2     ","NH3     "&
+    &,"NH      ","NO      ","O2      ","OCS     ","OH      ","H2CO    "&
+    &,"H2S     ","HCO     ","NO      ","O2      ","OCS     ","S       "&
+    &,"N2+     ","H2CO    ","H2O     ","NH3     ","NO      ","O2      "&
+    &,"S       ","H2S     ","HCO     ","NH3     ","NO      ","S       "&
+    &,"C2+     ","CN+     ","CO+     ","H2O+    ","N2+     ","O2+     "&
+    &,"OH+     ","HCO     ","MG      ","NO      ","SI      ","C2H2+   "&
+    &,"CO+     ","H2CO+   ","H2O+    ","H2S+    ","HCN+    ","HS+     "&
+    &,"N2+     ","O2+     ","OCS+    ","S+      ","SO+     ","CN+     "&
+    &,"CO+     ","N2+     ","O+      ","H2CO+   ","H2S+    ","HNO+    "&
+    &,"HS+     ","O2+     ","S+      ","S2+     ","SIO+    ","C2      "&
+    &,"C2H2    ","C2H     ","CH4     ","CO      ","H2CO    ","H2O     "&
+    &,"H2S     ","HCO     ","NH2     ","NH3     ","O2      ","OCS     "&
+    &,"OH      ","SO2     ","C2H2    ","H2S     ","S       ","CL+     "&
+    &,"SO2+    ","CN+     ","CO+     ","N2+     ","C2      ","C2H     "&
+    &,"H2CO    ","H2O     ","H2S     ","HCO     ","NH3     ","NO      "&
+    &,"O2      ","S       ","C2+     ","CN+     ","CO+     ","N2+     "&
+    &,"SIC     ","SIS     ","C+      ","H2S+    ","HS+     ","CS+     "&
+    &,"H2CO+   ","H2S+    ","HS+     ","NO+     ","O2+     ","S+      "&
+    &,"S+      ","CRP     ","CRP     ","CRP     ","CRP     ","CRP     "&
+    &,"CRP     ","CRP     ","CRP     ","CRP     ","CRP     ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  ","CRPHOT  "&
+    &,"CRPHOT  ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","C2H5OH  "&
+    &,"C2H     ","CH2     ","CH3     ","CH3     ","CH3CCH  ","CH3OH   "&
+    &,"CH3OH   ","CH4     ","CH      ","CO2     ","H2CO    ","H2CO    "&
+    &,"H2CS    ","H2O     ","H2O     ","H2S     ","HC3N    ","HC3N    "&
+    &,"HC3N    ","HCO     ","HNC     ","HS      ","NH2     ","NH3     "&
+    &,"NH      ","NS      ","O2      ","O2      ","OCN     ","OCS     "&
+    &,"OH      ","SO2     ","SO      ","SO      ","SO      ","SIC     "&
+    &,"SIH2    ","SIH     ","SIO     ","SIS     ","C2      ","HCO     "&
+    &,"O2      ","S       ","H2CO+   ","HCN+    ","HCO+    ","HNO+    "&
+    &,"N2H+    ","O2+     ","O2H+    ","S+      ","SIO+    ","H2CO    "&
+    &,"HCN     ","HCN     ","HCO     ","HNC     ","CH3CN   ","CH3CN   "&
+    &,"H2S     ","HCN     ","HNC     ","SI      ","SIH4    ","SIH4    "&
+    &,"SIH4    ","SIH4    ","C2N2+   ","S+      ","CO+     ","H2CO+   "&
+    &,"HCN+    ","HCO+    ","HNO+    ","N2H+    ","O2H+    ","SI+     "&
+    &,"C2H+    ","CH+     ","CH2+    ","CH3+    ","CH5+    ","H2O+    "&
+    &,"H2S+    ","H3O+    ","HCN+    ","HCO+    ","HCO2+   ","HNO+    "&
+    &,"HS+     ","N2H+    ","NH+     ","O2+     ","O2H+    ","OH+     "&
+    &,"SIH+    ","SIO+    ","C2      ","C2H     ","CH2     ","CH3OH   "&
+    &,"CH3OH   ","CH3OH   ","CH4     ","CH      ","CN      ","CO2     "&
+    &,"H2CO    ","H2CO    ","H2CO    ","H2O     ","H2O     ","H2O     "&
+    &,"H2S     ","H2S     ","HCN     ","HCN     ","HCN     ","HCO     "&
+    &,"HNC     ","N       ","NH2     ","NH3     ","NH      ","O2      "&
+    &,"O2      ","O2      ","O       ","OCS     ","OCS     ","OH      "&
+    &,"S       ","S       ","CO2     ","H2CO    ","H2O     ","H2S     "&
+    &,"H2S     ","H2S     ","HCO     ","NH3     ","O2      ","O       "&
+    &,"OCS     ","OCS     ","S       ","C2H+    ","CH5+    ","CO+     "&
+    &,"H2CO+   ","H2O+    ","H3O+    ","HCN+    ","HCNH+   ","HCNH+   "&
+    &,"HCO+    ","HNO+    ","N2H+    ","NH+     ","NH2+    ","NH3+    "&
+    &,"O2+     ","O2H+    ","OH+     ","S+      ","SIO+    ","C2H4    "&
+    &,"CH3CN   ","CH3OH   ","H2CO    ","H2S     ","HCO     ","HS      "&
+    &,"NH3     ","O2      ","O       ","O       ","OCS     ","OH      "&
+    &,"S       ","SO      ","SIH4    ","S+      ","HCO2+   ","NH3     "&
+    &,"S2+     ","CH3OH   ","CH4     ","CO2     ","CO      ","H2CO    "&
+    &,"H2O     ","H2S     ","NH3     ","OCS     ","C2+     ","C2+     "&
+    &,"C2H+    ","C2H2+   ","CO+     ","CS+     ","H2CO+   ","H2O+    "&
+    &,"HCN+    ","HCO2+   ","HNO+    ","HS+     ","N2+     ","N2+     "&
+    &,"N2H+    ","NH3+    ","OH+     ","OH+     ","S+      ","S+      "&
+    &,"C2      ","C2H     ","CO2     ","CO      ","H2CO    ","H2O     "&
+    &,"H2S     ","HCN     ","HCO     ","HCL     ","HNC     ","MG      "&
+    &,"S       ","SIH4    ","C2+     ","C2H+    ","CH3+    ","CH5+    "&
+    &,"CO+     ","H2CO+   ","H2O+    ","H3CO+   ","H3O+    ","HCN+    "&
+    &,"HCNH+   ","HCNH+   ","HCO+    ","HNO+    ","HS+     ","N+      "&
+    &,"N2H+    ","NH+     ","NH2+    ","NH3+    ","O+      ","O2+     "&
+    &,"O2H+    ","OH+     ","S+      ","SI+     ","SIH+    ","SIO+    "&
+    &,"H2CO    ","HCN     ","HCO     ","O2      ","HNO+    ","O2H+    "&
+    &,"H2CO    ","H2S     ","SO2     ","H2CL+   ","HCO2+   ","HNO+    "&
+    &,"N2H+    ","O2H+    ","SO2+    ","SIH4+   ","SIO+    ","C2H3    "&
+    &,"C2H4    ","C2H     ","CH2     ","CH3CN   ","CH3OH   ","CH3OH   "&
+    &,"CH3OH   ","CH4     ","CO2     ","H2CO    ","H2CO    ","H2S     "&
+    &,"H2S     ","H2SIO   ","HCO     ","HCO     ","HCS     ","HNCO    "&
+    &,"HNO     ","HS      ","NO2     ","OCS     ","SIH2    ","SIH3    "&
+    &,"SIH4    ","SIH     ","C2      ","C2H4    ","C2H     ","C       "&
+    &,"CH2     ","CH4     ","CH4     ","CH      ","CN      ","CO2     "&
+    &,"CO      ","H2      ","H2CO    ","H2O     ","H2S     ","H2S     "&
+    &,"HCO     ","HE      ","N2      ","N       ","NH      ","NO      "&
+    &,"O2      ","O       ","OH      ","C+      ","C2+     ","C2H+    "&
+    &,"CH+     ","CH2+    ","CH4+    ","CN+     ","CO+     ","CO+     "&
+    &,"CS+     ","CL+     ","H2O+    ","H2S+    ","HCN+    ","HCL+    "&
+    &,"HS+     ","HE+     ","HEH+    ","N+      ","N2+     ","NH+     "&
+    &,"NH+     ","NH2+    ","NH3+    ","O+      ","O2H+    ","OH+     "&
+    &,"S+      ","SO2+    ","SIH4+   ","SIO+    ","CH3OH   ","H2CO    "&
+    &,"O2      ","S       ","CH3OH2+ ","H3S+    ","HNO+    ","O2+     "&
+    &,"O2H+    ","S+      ","S+      ","C2      ","C2H     ","CO      "&
+    &,"H2CO    ","H2O     ","H2S     ","H2S     ","HCN     ","HCO     "&
+    &,"HCO     ","HNC     ","S       ","S       ","SO2     ","C2+     "&
+    &,"C2H2+   ","C2N+    ","C2N+    ","C4N+    ","CN+     ","CN+     "&
+    &,"CO+     ","H2CO+   ","H2CL+   ","H2S+    ","H3CO+   ","HCN+    "&
+    &,"HCO+    ","HCO2+   ","HNO+    ","HOCS+   ","HS+     ","HSO2+   "&
+    &,"HSIS+   ","N2+     ","N2H+    ","O2H+    ","SI+     ","SIH+    "&
+    &,"SIH4+   ","SIH5+   ","H2S     ","C2N+    ","HS2+    ","HSIS+   "&
+    &,"SO+     ","C2      ","C2H5OH  ","C2H5OH  ","C2H     ","C2N     "&
+    &,"C       ","CH2     ","CH3     ","CH3CN   ","CH3OH   ","CH3OH   "&
+    &,"CH4     ","CH      ","CN      ","CO2     ","CO      ","CO      "&
+    &,"CS      ","CL      ","H2CO    ","H2CS    ","H2O     ","H2S     "&
+    &,"HCN     ","HCO     ","HCOOCH3 ","HCS     ","HCL     ","HNC     "&
+    &,"HNO     ","HS2     ","HS      ","MG      ","N2      ","NH2     "&
+    &,"NH3     ","NH      ","NO2     ","NO      ","NS      ","O2      "&
+    &,"O       ","O       ","OCS     ","OH      ","S2      ","S       "&
+    &,"SO2     ","SO      ","SI      ","SIH2    ","SIH3    ","SIH4    "&
+    &,"SIH     ","SIO     ","SIS     ","CH3OH   ","H2S     ","C2      "&
+    &,"C2H5OH  ","CH3CCH  ","CH3CN   ","CH3OH   ","CS      ","H2CO    "&
+    &,"H2S     ","HCN     ","HCOOCH3 ","HNC     ","HS2     ","S2      "&
+    &,"SI      ","SIH2    ","SIH     ","SIO     ","C2N2+   ","CH+     "&
+    &,"CH2+    ","CH3+    ","CH4+    ","CH5+    ","H2S+    ","H3S+    "&
+    &,"HS+     ","HEH+    ","SO2+    ","SIH+    ","SIS+    ","CO2     "&
+    &,"CO      ","H2CO    ","HCN     ","HCO     ","HCO     ","HNC     "&
+    &,"S       ","C2N2+   ","C3+     ","CH3OH2+ ","H2CO+   ","H3CO+   "&
+    &,"H3S+    ","HCO+    ","HNO+    ","HS+     ","HSIS+   ","N2H+    "&
+    &,"O2H+    ","CH3CN   ","CH3CN   ","H2CO    ","H2CO    ","H2S     "&
+    &,"H2S     ","C2H5OH  ","CH3CCH  ","CH3CN   ","CH3OH   ","CS      "&
+    &,"H2CO    ","H2CS    ","H2S     ","HCO     ","HCOOCH3 ","HS2     "&
+    &,"HS      ","NS      ","OCS     ","S2      ","S       ","SO      "&
+    &,"SIH2    ","SIH4    ","SIH     ","SIO     ","SIS     ","H2CO+   "&
+    &,"HNO+    ","N2H+    ","O2+     ","O2H+    ","S+      ","C2H5OH  "&
+    &,"H2CO+   ","H3CO+   ","H3S+    ","HCO+    ","HNO+    ","HS+     "&
+    &,"N2H+    ","O2H+    ","CO2     ","S       ","H2S     ","H2S     "&
+    &,"C2      ","C2H2    ","C2H2    ","C2H2    ","C2H3    ","C2H3    "&
+    &,"C2H4    ","C2H4    ","C2H4    ","C2H     ","C2H     ","C2H     "&
+    &,"C2N     ","C3N     ","C4H     ","CH2     ","CH2     ","CH2CO   "&
+    &,"CH2CO   ","CH3     ","CH3CCH  ","CH3CN   ","CH3CN   ","CH3OH   "&
+    &,"CH3OH   ","CH4     ","CH4     ","CH4     ","CH4     ","CH      "&
+    &,"CN      ","CN      ","CO2     ","CO2     ","CO2     ","CO2     "&
+    &,"CO      ","CS      ","CS      ","H2CO    ","H2CO    ","H2CO    "&
+    &,"H2CS    ","H2CS    ","H2CS    ","H2O     ","H2O     ","H2S2    "&
+    &,"H2S2    ","H2S     ","H2S     ","H2SIO   ","HC3N    ","HC3N    "&
+    &,"HCN     ","HCN     ","HCN     ","HCN     ","HCO     ","HCO     "&
+    &,"HCO     ","HCOOCH3 ","HCS     ","HCS     ","HCL     ","HNC     "&
+    &,"HNC     ","HNC     ","HNO     ","HNO     ","HS2     ","HS2     "&
+    &,"HS      ","N2      ","NCCN    ","NH2     ","NH2     ","NH3     "&
+    &,"NH3     ","NH      ","NO      ","NO      ","NS      ","NS      "&
+    &,"O2      ","OCN     ","OCN     ","OCS     ","OCS     ","OCS     "&
+    &,"OCS     ","OH      ","S2      ","SO2     ","SO2     ","SO      "&
+    &,"SO      ","SIC2    ","SIC3    ","SIC     ","SIC     ","SIH2    "&
+    &,"SIH2    ","SIH3    ","SIH3    ","SIH4    ","SIH4    ","SIH     "&
+    &,"SIO     ","SIO     ","SIS     ","SIS     ","CH3OH   ","CH3OH   "&
+    &,"CH3OH   ","CH3OH   ","CH4     ","CH4     ","CH4     ","CO2     "&
+    &,"CO      ","H2CO    ","H2CO    ","H2S     ","H2S     ","H2S     "&
+    &,"HCO     ","NCCN    ","NCCN    ","NH3     ","NH3     ","NH      "&
+    &,"NO      ","O2      ","O2      ","OCS     ","OCS     ","H2CO    "&
+    &,"H2S     ","H2S     ","HCO     ","OCS     ","HNO+    ","O2H+    "&
+    &,"CH3CN   ","CO2     ","H2CO    ","S       ","C2+     ","C2H+    "&
+    &,"C2H+    ","C2H2+   ","C2H2+   ","C2H2+   ","CH2+    ","CN+     "&
+    &,"H2O+    ","H2O+    ","H2S+    ","HS+     ","NH+     ","NH2+    "&
+    &,"O2+     ","OH+     ","SO+     ","SIC+    ","SIO+    ","SIO+    "&
+    &,"C2      ","C2      ","C2      ","C2H     ","CN      ","CO2     "&
+    &,"CO2     ","CO2     ","CO      ","H2CO    ","H2CO    ","H2O     "&
+    &,"H2O     ","H2O     ","H2O     ","HCN     ","HCO     ","HNC     "&
+    &,"N2      ","NH2     ","NH3     ","NH      ","NO      ","O2      "&
+    &,"O2      ","O       ","OH      ","S       ","S       ","C2      "&
+    &,"C2H     ","H2CO    ","H2CO    ","H2O     ","H2O     ","H2O     "&
+    &,"H2S     ","H2S     ","H2S     ","H2S     ","HCN     ","HCO     "&
+    &,"HNC     ","NH2     ","NH3     ","O2      ","O2      ","S       "&
+    &,"S       ","C2+     ","C2H+    ","C2H2+   ","CH5+    ","CO+     "&
+    &,"H2CO+   ","H2O+    ","H3CO+   ","H3O+    ","HCN+    ","HCNH+   "&
+    &,"HCNH+   ","HCO+    ","HNO+    ","N2H+    ","NH3+    ","O2H+    "&
+    &,"OH+     ","C2      ","H2CO    ","H2O     ","H2S     ","HCO     "&
+    &,"NH3     ","C2H+    ","C2H2+   ","C2H5OH2+","C2N+    ","CH5+    "&
+    &,"CO+     ","H2CO+   ","H2O+    ","H2S+    ","H3CO+   ","H3O+    "&
+    &,"H3S+    ","HCN+    ","HCNH+   ","HCNH+   ","HCO+    ","HCO2+   "&
+    &,"HCS+    ","HNO+    ","HS+     ","HSO2+   ","HSIS+   ","N2H+    "&
+    &,"O2H+    ","SIH+    ","SIOH+   ","C2+     ","C2+     ","CH3+    "&
+    &,"CH5+    ","CO+     ","H2CO+   ","H2O+    ","HCN+    ","HCO+    "&
+    &,"HNO+    ","N2H+    ","NH2+    ","NH3+    ","O+      ","O2+     "&
+    &,"O2H+    ","OH+     ","S+      ","O2H+    ","C2      ","C2H4    "&
+    &,"C2H     ","CH3OH   ","CH3OH   ","CH4     ","CN      ","CO2     "&
+    &,"H2CO    ","H2S     ","H2S     ","HCN     ","HCN     ","HCO     "&
+    &,"N2      ","NO2     ","OCS     ","OH      ","SO2     ","C2H2    "&
+    &,"CH3OH   ","S       ","CS+     ","S+      ","SIS+    ","SIS+    "&
+    &,"CO2     ","C2+     ","C2H+    ","C2H2+   ","CH4+    ","CH5+    "&
+    &,"CH5+    ","CS+     ","H2O+    ","H2S+    ","H2S+    ","HCO2+   "&
+    &,"HCS+    ","HCS+    ","HS+     ","HS+     ","N2+     ","N2H+    "&
+    &,"NH2+    ","NH3+    ","NS+     ","O2H+    ","OH+     ","SIC+    "&
+    &,"SIH+    ","SIH2+   ","SIH3+   ","SIO+    ","C2      ","C2H     "&
+    &,"CN      ","CO2     ","CO      ","H2CO    ","H2O     ","H2S     "&
+    &,"HCN     ","HCO     ","HCO     ","HNC     ","N2      ","NH3     "&
+    &,"NO      ","OH      ","S       ","S       ","SI      ","SIH     "&
+    &,"SIO     ","CH5+    ","CO+     ","H2O+    ","HCN+    ","HCO+    "&
+    &,"HCO+    ","HNO+    ","N2H+    ","NH3+    ","O2H+    ","S+      "&
+    &,"SI+     ","H2S     ","H2S     ","OCS     ","H3S+    ","O2H+    "&
+    &,"SIO+    ","C2H2    ","C2H2    ","C2H2    ","C2H4    ","C2H4    "&
+    &,"C2H4    ","OCS     ","C2H5OH  ","CH3OH   ","OCS     ","HCO+    "&
+    &,"O2      ","S       ","S+      ","C2H2    ","HCN     ","O2      "&
+    &,"S       ","NO      ","SI      ","O2      ","O2      ","HCN     "&
+    &,"HNC     ","NCCN    ","O2      ","C2H3    ","C2H5    ","C2N     "&
+    &,"C3H2    ","CH2     ","CH2     ","CH3     ","CH      ","CN      "&
+    &,"CO      ","CS      ","H2CN    ","HCO     ","HS      ","HS      "&
+    &,"N2      ","NCCN    ","NH2     ","NH2     ","NH2     ","NH      "&
+    &,"NH      ","NO      ","NO      ","NS      ","NS      ","O2      "&
+    &,"OCN     ","OCS     ","OH      ","OH      ","S2      ","SO2     "&
+    &,"SO      ","SO      ","SIH     ","CH2     ","CH2     ","CH2     "&
+    &,"CH2     ","CH4     ","CN      ","H2CO    ","HCO     ","HNO     "&
+    &,"N2      ","NO2     ","NO      ","NO      ","NO      ","O2      "&
+    &,"O2      ","O2      ","O2      ","O2      ","O       ","O       "&
+    &,"O       ","O       ","OH      ","OH      ","OH      ","S       "&
+    &,"S       ","C2H3    ","CH3     ","CH3     ","CH3     ","CN      "&
+    &,"H2CO    ","H2O     ","H2S     ","HCO     ","HNO     ","NH2     "&
+    &,"NH3     ","NO2     ","NO      ","O2      ","O2      ","O2      "&
+    &,"O2H     ","O       ","O       ","OH      ","OH      ","OH      "&
+    &,"S       ","CN      ","O2      ","OH      ","S       ","C2H2    "&
+    &,"C2H4    ","CH4     ","CO2     ","H2CO    ","HCO     ","HNO     "&
+    &,"N2      ","N       ","N       ","NO      ","NO      ","NO      "&
+    &,"O2      ","O2      ","O2      ","O2      ","O2H     ","O2H     "&
+    &,"O       ","O       ","OCS     ","OH      ","S       ","S       "&
+    &,"SO      ","SO      ","C2H2    ","C2H4    ","CN      ","H2CO    "&
+    &,"HCN     ","HCO     ","HNC     ","HNO     ","NO2     ","NO      "&
+    &,"NO      ","O2      ","O2      ","S       ","SIH4    ","HNO     "&
+    &,"NO2     ","O2      ","O2H     ","H2      ","C2H     ","C       "&
+    &,"CH2     ","CH3     ","CH      ","CN      ","HS      ","N       "&
+    &,"NH2     ","NH      ","O2      ","O2      ","O       ","OH      "&
+    &,"S       ","C2      ","C2H2    ","C2H3    ","CH2     ","CH2CO   "&
+    &,"CH3     ","CH4     ","CH      ","CO2     ","CO      ","H2CN    "&
+    &,"H2CO    ","H2O     ","H2S     ","HCN     ","HCO     ","HCO     "&
+    &,"HCS     ","HNC     ","HNO     ","HNO     ","HNO     ","HS      "&
+    &,"NCCN    ","NH2     ","NH3     ","NH      ","NO2     ","NO      "&
+    &,"NO      ","NS      ","NS      ","O2      ","O2H     ","O2H     "&
+    &,"O2H     ","OCN     ","OCN     ","OCN     ","OCS     ","OH      "&
+    &,"S2      ","SO      ","SO      ","HCO     ","HCO     ","HNO     "&
+    &,"NO      ","O2      ","O2      ","O2H     ","H       ","C       "&
+    &,"HS      ","C2      ","C2H3    ","C2H4    ","C2H5    ","C2H5    "&
+    &,"C2H     ","C2N     ","C3H2    ","C3N     ","C4H     ","C4N     "&
+    &,"CH2     ","CH2     ","CH2     ","CH3     ","CH3     ","CH3     "&
+    &,"CN      ","CO2     ","CS      ","H2CN    ","HCO     ","HCO     "&
+    &,"HCO     ","HCS     ","HNO     ","HS      ","HS      ","NCCN    "&
+    &,"NH      ","NO2     ","NO2     ","NO2     ","NO      ","NS      "&
+    &,"O2      ","O2H     ","OH      ","OH      ","S2      ","SO      "&
+    &,"SO      ","SIC     ","CH4     ","NO      ","NO      ","OH      "&
+    &,"OH      ","CN      ","CH4     ","CN      ","H2O     ","NH3     "&
+    &,"NH      ","NH      ","NH      ","NO2     ","NO      ","NO      "&
+    &,"O2      ","O2      ","O       ","O       ","OH      ","OH      "&
+    &,"OH      ","S       ","S       ","NO      ","O2      ","OCN     "&
+    &,"S       ","S       ","OCN     ","OCN     ","S       ","SO      "&
+    &,"C2      ","C2H2    ","C2H3    ","C2H4    ","C2H4    ","C2H4    "&
+    &,"C2H4    ","C2H5    ","C2H     ","C2N     ","C3N     ","C4N     "&
+    &,"CH4     ","CN      ","CN      ","CO2     ","CS      ","CS      "&
+    &,"H2CN    ","H2CO    ","H2O     ","H2S     ","HCN     ","HCN     "&
+    &,"HCN     ","HCO     ","HCO     ","HCS     ","HCS     ","HNO     "&
+    &,"HNO     ","HNO     ","HS      ","HS      ","N2      ","NH2     "&
+    &,"NH2     ","NH3     ","NO2     ","NO      ","NS      ","NS      "&
+    &,"O2H     ","OCN     ","OCN     ","OCS     ","OCS     ","OH      "&
+    &,"S2      ","SO2     ","SO      ","SIC2    ","SIC3    ","SIC     "&
+    &,"SIC     ","SIH2    ","SIH2    ","SIH3    ","SIH4    ","SIH     "&
+    &,"C2H2    ","C2H2    ","C2H2    ","C2H3    ","C2H5    ","CN      "&
+    &,"CN      ","CO      ","CS      ","CS      ","H2CO    ","H2S     "&
+    &,"HCN     ","HCN     ","HCO     ","HNO     ","NCCN    ","NH3     "&
+    &,"NO      ","O2H     ","OH      ","S       ","SO      ","SI      "&
+    &,"HCO     ","HCO     ","HS      ","SO2     ","SO      ","CO2     "&
+    &,"CO      ","NO      ","O2      ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  ","PHOTON  "&
+    &,"PHOTON  ","C       ","N       ","O       ","S       ","CN      "&
+    &,"C       ","N       ","O+      ","O       ","S+      ","S       "&
+    &,"H2O     ","HCN     ","CN      ","H       ","HE      ","C+      "&
+    &,"C       ","CH3+    ","CH      ","HS+     ","S+      ","SI+     "&
+    &,"SIH+    ","SIH3+   ","C2H4    ","C+      ","C       ","O       "&
+    &,"OH      ","SI+     ","N       ","O       ","SO      ","SI+     "&
+    &,"SI      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","E-      ","E-      ","E-      ","E-      "&
+    &,"E-      ","E-      ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  "&
+    &,"FREEZE  ","FREEZE  ","FREEZE  ","FREEZE  ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   ","DESOH2  ","DESCR   "&
+    &,"DEUVCR  ","THERM   ","DESOH2  ","DESCR   ","DEUVCR  ","THERM   "&
+    &,"DESOH2  ","DESCR   ","DEUVCR  ","THERM   "/)
 END MODULE network
