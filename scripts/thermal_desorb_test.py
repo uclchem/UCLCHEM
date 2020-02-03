@@ -6,9 +6,11 @@ from plotfunctions import *
 #pick species, any number is fine
 speciesNames=["CO","#CO","H2O","#H2O","H2"]
 plot_file="output/therm_desorb_tests.png"
-titles=["No thermal desorption","thermal desorption","thermal @ 20K"]
-fig,axes=plt.subplots(3,figsize=(11,8))
-for i,input_file in enumerate(["output/therm_desorb_on.dat","output/therm_desorb_off.dat","output/therm_desorb_high.dat"]):
+titles=["No thermal desorption","thermal desorption","No thermal @ 20K","thermal @ 20K"]
+fig,axes=plt.subplots(2,2,figsize=(16,9))
+axes=axes.flatten()
+for i,input_file in enumerate(["output/therm_desorb_on.dat","output/therm_desorb_off.dat","output/therm_desorb_high_off.dat"
+	,"output/therm_desorb_high.dat"]):
 	#call read_uclchem. 
 	time,dens,temp,abundances=read_uclchem(input_file,speciesNames)
 	#write out to columnated output,
