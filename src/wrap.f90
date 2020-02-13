@@ -213,7 +213,7 @@ SUBROUTINE GENERAL(dictionary, outSpeciesIn)
                 fileFormat = scan(outFile, '.')
                 outputFile = trim(outFile)
                 open(10,file=outputFile,status='unknown')
-                open(7,file=outputFile(1:fileFormat-2)//"-start.dat",status='unknown')
+                open(7,file=outputFile(1:fileFormat-1)//"-start.dat",status='unknown')
             CASE('columnFile')
                 READ(inputValue,*) columnFile
             CASE DEFAULT
