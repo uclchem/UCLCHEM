@@ -208,14 +208,22 @@ SUBROUTINE GENERAL(dictionary, outSpeciesIn)
                 READ(inputValue,*) vs
             CASE('abundFile')
                 READ(inputValue,*) abundFile
+                abundFile = trim(abundFile)
+                open(7,file=abundFile,status='unknown')
             CASE('outputFile')
                 READ(inputValue,*) outFile
-                fileFormat = scan(outFile, '.')
                 outputFile = trim(outFile)
                 open(10,file=outputFile,status='unknown')
-                open(7,file=outputFile(1:fileFormat-2)//"-start.dat",status='unknown')
             CASE('columnFile')
-                READ(inputValue,*) columnFile
+                IF (trim(outSpeciesIn) .NE. '' ) THEN
+                    READ(inputValue,*) colFile
+                    columnFile = trim(colFile)
+                    open(11,file=columnFile,status='unknown')
+                ELSEIF (trim(outSpeciesIn) .NE. '' ) THEN
+                    PRINT*, "Error in output species. No species were given but a column file was given. column file requires output species to be chosen."
+                    STOP
+                END IF
+
             CASE DEFAULT
                 WRITE(*,*) "Problem with given parameter: '", trim(inputParameter),"'. This is either not supported yet, or invalid"
         END SELECT
