@@ -216,11 +216,12 @@ SUBROUTINE GENERAL(dictionary, outSpeciesIn)
                 open(10,file=outputFile,status='unknown')
             CASE('columnFile')
                 IF (trim(outSpeciesIn) .NE. '' ) THEN
-                    READ(inputValue,*) colFile
-                    columnFile = trim(colFile)
+                    READ(inputValue,*) columnFile
+                    columnFile = trim(columnFile)
                     open(11,file=columnFile,status='unknown')
                 ELSEIF (trim(outSpeciesIn) .NE. '' ) THEN
-                    PRINT*, "Error in output species. No species were given but a column file was given. column file requires output species to be chosen."
+                    WRITE(*,*) "Error in output species. No species were given but a column file was given."
+                    WRITE(*,*) "columnated output requires output species to be chosen."
                     STOP
                 END IF
 
