@@ -207,7 +207,7 @@ SUBROUTINE GENERAL(dictionary, outSpeciesIn)
             CASE('vs')
                 READ(inputValue,*) vs
             CASE('abundFile')
-                READ(inputValue,*) abFile
+                READ(inputValue,*) abundFile
                 abundFile = trim(abundFile)
                 open(7,file=abundFile,status='unknown')
             CASE('outputFile')
