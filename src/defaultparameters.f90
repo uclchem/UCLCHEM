@@ -37,7 +37,7 @@ bc=1.0
 !If you set to zero, final abundances are written to abundFile
 readAbunds=1
 !phase chooses behaviour. Phase=1 runs a simple cloud and Phase=2 runs the physics of the chosen module (eg.hot core or c-shock)
-phase=2;
+phase=1;
 
 !non-thermal Desorption. Turn it all on/offwith desorb. Can also turn off h2, cosmic ray induced and uv induced individually.
 desorb=1;
