@@ -90,8 +90,10 @@ SUBROUTINE calculateReactionRates
         !Default is not to use this feature.
         CASE('THERM')
             IF (thermdesorb .eq.1) THEN
-                rate(j)=vdiff(re1(j))*exp(-gama(j)/temp(dstep))
-
+                !then try to overwrite with position in grain array
+                DO i=lbound(grainList,1),ubound(grainList,1)
+                    IF (grainList(i) .eq. re1(j)) rate(j)=vdiff(i)*exp(-gama(j)/temp(dstep))
+                END DO
             ELSE
                 rate(j)=0.0
             END IF

@@ -92,7 +92,7 @@ CONTAINS
     SUBROUTINE initializeChemistry
         NEQ=nspec+1
         IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff,mantle)
-        ALLOCATE(abund(NEQ,points),vdiff(nspec))
+        ALLOCATE(abund(NEQ,points),vdiff(SIZE(grainList)))
         CALL reader
         !if this is the first step of the first phase, set initial abundances
         !otherwise reader will fix it
