@@ -92,7 +92,15 @@ SUBROUTINE calculateReactionRates
             IF (thermdesorb .eq.1) THEN
                 !then try to overwrite with position in grain array
                 DO i=lbound(grainList,1),ubound(grainList,1)
-                    IF (grainList(i) .eq. re1(j)) rate(j)=vdiff(i)*exp(-gama(j)/temp(dstep))
+                    !See Cuppen, Walsh et al. 2017 review (section 4.1)
+                    IF (grainList(i) .eq. re1(j)) THEN
+                        !Basic rate at which thermal desorption occurs
+                        rate(j)=vdiff(i)*exp(-gama(j)/temp(dstep))
+                        !Adjust for fact only top two monolayers (Eq 8)
+                        !becayse GRAIN_AREA is per H nuclei, multiplying it by densiyy gives area/cm-3
+                        !that is roughly sigma_g.n_g from cuppen et al. but must check the area!
+                        rate(j)=rate(j)*2.0/mantle(dstep)*SURFACE_SITE_DENSITY*GRAIN_AREA*density(dstep)
+                    END IF
                 END DO
             ELSE
                 rate(j)=0.0
