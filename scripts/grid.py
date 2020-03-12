@@ -36,3 +36,31 @@ if __name__ == '__main__':
     pool.map(runuclchem,models)
     pool.close()
     pool.join()
+
+# ==========================
+
+def RunUCLChemWrapper(UCLParamDictionary):
+    UCLChemDict = UCLParamDictionary.copy()
+    outSpecies = (UCLParamDictionary['outSpecies'].split())
+    UCLChemDict['outSpecies'] = len(outSpecies)
+    uclchem.general(dictionary=UCLChemDict, outspeciesin=outSpecies)
+    return None
+
+
+# Example code for a grid that goes through different initial and final densities
+ParameterDictionary = {"phase": 1, "switch": 1, "collapse": 1, "readAbunds": 0, "writeStep": 1,
+                       "outSpecies": 'OCS CO CS CH3OH', "initialTemp": 10.0}
+
+# This part can be substituted with any choice of grid, it is only here as an example
+initialDensGrid = np.linspace(100, 1000, 10)
+finalDensGrid = np.linspace(10000, 100000, 10)
+parameterSpace = np.asarray(np.meshgrid(initialDensGrid, finalDensGrid)).reshape(2, -1)
+
+for k in range(np.shape(parameterSpace)[1]):
+    ParameterDictionary["initialDens"] = parameterSpace[0,k]
+    ParameterDictionary["finalDens"] = parameterSpace[1,k]
+    ParameterDictionary["abundFile"]= "examples/test-output/startcollapseModel_"+str(k)+".dat"
+    ParameterDictionary["outputFile"]= "examples/test-output/phase1-fullModel_"+str(k)+".dat"
+    ParameterDictionary["columnFile"]= "examples/test-output/phase1-columnModel_"+str(k)+".dat"
+    RunUCLChemWrapper(ParameterDictionary)
+
