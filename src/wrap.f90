@@ -179,11 +179,29 @@ SUBROUTINE GENERAL(dictionary, outSpeciesIn)
             CASE('ff')
                 READ(inputValue,*) ff
             CASE('outSpecies')
-                IF(.not.ALLOCATED(outSpecies)) THEN
-                    READ(inputValue,*) numberSpecies
-                    ALLOCATE(outSpecies(numberSpecies))
-                    outSpecies = outSpeciesIn
-                END IF
+                IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
+                READ(inputValue,*) nout
+                ALLOCATE(outIndx(nout))
+                ALLOCATE(locations(nout*2), chemicals(nout))
+                DO j=1, nout*2
+                    DO i=1, LEN(outSpeciesIn)
+                        IF((outSpeciesIn(i:i).EQ."'").AND. .NOT.(ANY(locations==i))) THEN
+                            locations(j) = i
+                            EXIT
+                        END IF
+                        CYCLE
+                    END DO
+                END DO
+                DO j=1, nout
+                    DO i=1, (nout*2)
+                        IF(MODULO(i,2).EQ.1 .AND. .NOT. (ANY(chemicals==outSpeciesIn(locations(i)+1:locations(i+1)-1)))) THEN
+                            chemicals(j) = outSpeciesIn(locations(i)+1:locations(i+1)-1)
+                            EXIT
+                        END IF
+                    END DO
+                    CYCLE
+                END DO
+                outSpecies = chemicals
             CASE('writeStep')
                 READ(inputValue,*) writeStep
             CASE('ebmaxh2')
