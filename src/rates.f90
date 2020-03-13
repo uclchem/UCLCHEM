@@ -1,49 +1,50 @@
 SUBROUTINE calculateReactionRates
 !Assuming the user has temperature changes or uses the desorption features of phase 1, these need working out on a timestep by time step basis
+    cion=1.0+16.71d-4/(GRAIN_RADIUS*temp(dstep))
     DO j=1,nreac
         !This case structure looks at the reaction type. species-species happens in default.
         !Other cases are special reactions, particularly desorption events (photons, CRs etc)
-        SELECT CASE (re2(j))
+        SELECT CASE (reacType(j))
+
         !Cosmic ray reactions            
         CASE ('CRP')
             rate(j) = alpha(j)*zeta
+
+
         !UV photons, radfield has (factor of 1.7 conversion from habing to Draine)
         CASE ('PHOTON')
             rate(j) = alpha(j)*dexp(-gama(j)*av(dstep))*radfield/1.7
             !co photodissoction number is stored as nrco
-            IF (re1(j).eq.'CO') THEN
-                IF(p1(j).eq.'O' .and. p2(j).eq.'C') nrco=j
-                IF(p1(j).eq.'C' .and. p2(j).eq.'O') nrco=j
+            IF (re1(j).eq.nco) THEN
+                IF(p1(j).eq.no .and. p2(j).eq.nc) nrco=j
+                IF(p1(j).eq.nc .and. p2(j).eq.no) nrco=j
             ENDIF
+
         !cosmic ray induced photon
         CASE ('CRPHOT')
             rate(j)=alpha(j)*gama(j)*1.0/(1.0-omega)*zeta*(temp(dstep)/300)**beta(j)
+
+
         !freeze out only happens if fr>0 and depending on evap choice 
         CASE ('FREEZE')             
             IF (fr .eq. 0.0 .or. temp(dstep) .gt. 30.0) then
                 rate(j)=0.0
             ELSE
-                IF (re1(j).eq."E-") THEN
-                    cion=1.0+16.71d-4/(GRAIN_RADIUS*temp(dstep))
-                    rate(j)=4.57d4*alpha(j)*GRAIN_AREA*fr*cion
+                IF (re1(j).eq.nelec) THEN
+                    rate(j)=THERMAL_VEL*alpha(j)*GRAIN_AREA_PER_H*fr*cion
                 ELSE
-                    DO i=1,nspec-1
-                        IF (specname(i).eq.re1(j)) THEN
-                            IF (beta(j).eq.0.0 ) THEN
-                                !taken from Rawlings et al. 1992
-                                rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*GRAIN_AREA*fr
-                            ELSE
-                                !Make rates sets beta=1 for ion freeze out. this catches that and
-                                !freezes differently
-                                cion=1.0+16.71d-4/(GRAIN_RADIUS*temp(dstep))
-                                rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(i))*GRAIN_AREA*fr*cion
-                            ENDIF
-                        ENDIF
-                    END DO
+                    !taken from Rawlings et al. 1992
+                    !0.25 factor converts surface area of a spherical grain to cross-sectional area
+                    !Saves recalculating pi.r^2/n_H when we have 4pi.r^2/n_H for other parts of the code
+                    rate(j)=alpha(j)*THERMAL_VEL*dsqrt(temp(dstep)/mass(re1(j)))*0.25*GRAIN_AREA_PER_H*fr
+                    IF (beta(j).ne.0.0 ) rate(j)=rate(j)*cion
                 END IF
             ENDIF
+
+        ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !The below desorption mechanisms are from Roberts et al. 2007 MNRAS with
         !the addition of direct UV photodesorption. DESOH2,DESCR1,DEUVCR
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         CASE ('DESOH2')
             IF (desorb .eq. 1 .and. h2desorb .eq. 1&
             & .and. gama(j) .le. ebmaxh2 .and.&
@@ -60,36 +61,61 @@ SUBROUTINE calculateReactionRates
             &.and. gama(j) .le. ebmaxcr) THEN
                 !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
                 !as iron nuclei are main cause of CR heating.
-                !GRAIN_AREA is the total area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
+                !GRAIN_AREA_PER_H is the total area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
                 !phi is efficieny of this reaction, number of molecules removed per event.
-                rate(j) = 4.0*pi*zeta*1.64d-4*(GRAIN_AREA)*&
+                rate(j) = 4.0*pi*zeta*1.64d-4*(GRAIN_AREA_PER_H)*&
                       &(1.0/mantle(dstep))*phi
             ELSE
                 rate(j) = 0.0
             ENDIF
         CASE ('DEUVCR')
-            IF (desorb .eq. 1 .and. uvcr .eq. 1 &
+            IF (desorb .eq. 1 .and. uvdesorb .eq. 1 &
              &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-30) THEN
                 !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
                 !UVY is yield per photon.
-                rate(j) = GRAIN_AREA*uvy*4.875d3*zeta*(1.0/mantle(dstep))
+                !0.25 to change surface area of grain to cross-sectional area of grain (see freezeout)
+                rate(j) = 0.25*GRAIN_AREA_PER_H*uv_yield*4.875d3*zeta*(1.0/mantle(dstep))
                 !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
                 !CR induced UV to ISRF UV.
                 rate(j) = rate(j) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
             ELSE
                 rate(j) = 0.0
             ENDIF
-        CASE DEFAULT
-            !Reactions on surface can be treated considering diffusion of reactants
-            !See work of David Quenard 2017 Arxiv:1711.05184
-            !abstracted to functions below for ease of reading
-            IF (re3(j).eq.'DIFF' .or. re3(j) .eq. 'CHEMDES') THEN
-                rate(j) = diffusionReactionRate()
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        !Continuous Thermal Desorption. Reactions can be generated through a flag in Makerates
+        !Default is not to use this feature.
+        CASE('THERM')
+            IF (thermdesorb .eq.1) THEN
+                !then try to overwrite with position in grain array
+                DO i=lbound(grainList,1),ubound(grainList,1)
+                    !See Cuppen, Walsh et al. 2017 review (section 4.1)
+                    IF (grainList(i) .eq. re1(j)) THEN
+                        !Basic rate at which thermal desorption occurs
+                        rate(j)=vdiff(i)*exp(-gama(j)/temp(dstep))
+                        !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
+                        !becayse GRAIN_AREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
+                        !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
+                        !area seems more correct for this process.
+                        rate(j)=rate(j)*(2.0/mantle(dstep))*SURFACE_SITE_DENSITY*GRAIN_AREA_PER_H*density(dstep)
+                    END IF
+                END DO
             ELSE
-            !--------------------------------------------------------------------------------------------------------
-            !Basic gas phase reactions 
-                rate(j) = alpha(j)*((temp(dstep)/300.)**beta(j))*dexp(-gama(j)/temp(dstep))
-            ENDIF
+                rate(j)=0.0
+            END IF
+
+
+        !Reactions on surface can be treated considering diffusion of reactants
+        !See work of David Quenard 2017 Arxiv:1711.05184
+        !abstracted to functions below for ease of reading
+        CASE ('DIFF')
+            rate(j)=diffusionReactionRate()
+        case ('CHEMDES')
+            rate(j) = diffusionReactionRate()
+    
+        !Basic gas phase reactions 
+        CASE DEFAULT
+            rate(j) = alpha(j)*((temp(dstep)/300.)**beta(j))*dexp(-gama(j)/temp(dstep)) 
 
         END SELECT
     END DO
@@ -112,30 +138,15 @@ double precision FUNCTION diffusionReactionRate()
     character(len=10) :: reactant1,reactant2
 
 
-    !H and H2 can also be reactants but are not in grain list
-    SELECT CASE (re1(j))
-        CASE ('H')
-            reactant1="#H"
-        CASE ('H2')
-            reactant1="#H2"
-        CASE DEFAULT
-            reactant1=re1(j)
-    END SELECT
+    !want position of species in the grain array but gas phase species aren't in there
+    !so store species index
+    index1=re1(j)
+    index2=re2(j)
 
-    SELECT CASE (re2(j))
-        CASE ('H')
-            reactant2="#H"
-        CASE ('H2')
-            reactant2="#H2"
-        CASE DEFAULT
-            reactant2=re2(j)
-    END SELECT
-
-    ! now loop through mantle species and match reactants to species
-    !index is the index of the species in the grain array. NOT in the full species array.
+    !then try to overwrite with position in grain array
     DO i=lbound(grainList,1),ubound(grainList,1)
-        IF (specname(grainList(i)) .eq. reactant1) index1 = i
-        IF (specname(grainList(i)) .eq. reactant2) index2 = i
+        IF (grainList(i) .eq. index1) index1 = i
+        IF (grainList(i) .eq. index2) index2 = i
     END DO
 
     !Hasegawa 1992 diffusion rate. Rate that two species diffuse and meet on grain surface
@@ -170,9 +181,9 @@ double precision FUNCTION diffusionReactionRate()
     diffusionReactionRate=alpha(j) * diffuseRate * activationBarrier* GAS_DUST_DENSITY_RATIO / density(dstep)
 
     !Now adjust for fraction of this reaction's products that will desorb due to energy released
-    IF (re3(j).eq.'DIFF') THEN
+    IF (reacType(j).eq.'DIFF') THEN
         diffusionReactionRate = diffusionReactionRate * (1.0-desorptionFraction(j,index1,index2))
-    ELSE IF(re3(j).eq.'CHEMDES') THEN
+    ELSE IF(reacType(j).eq.'CHEMDES') THEN
         diffusionReactionRate = diffusionReactionRate * desorptionFraction(j,index1,index2)
     ENDIF
 END FUNCTION diffusionReactionRate
@@ -196,54 +207,54 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
     maxBindingEnergy=0.0
     productEnthalpy=0.0
 
-    IF (re3(j).eq.'DIFF') THEN
+    IF (reacType(j).eq.'DIFF') THEN
         DO i=lbound(grainList,1),ubound(grainList,1)
-            IF (specname(grainList(i)) .eq. p1(j)) productIndex(1)=grainList(i)
+            IF (grainList(i) .eq. p1(j)) productIndex(1)=grainList(i)
             !Go through grain list and try to find species in product list
             !If it has a binding energy larger than largest energy found so far, update maxBindingEnergy
-            IF (specname(grainList(i)) .eq. p1(j)) THEN
+            IF (grainList(i) .eq. p1(j)) THEN
                 productIndex(1) = grainList(i)
                 productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
 
-            IF (specname(grainList(i)) .eq. p2(j)) THEN
+            IF (grainList(i) .eq. p2(j)) THEN
                 productIndex(2) = grainList(i)
                 productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
 
-            IF (specname(grainList(i)) .eq. p3(j)) THEN
+            IF (grainList(i) .eq. p3(j)) THEN
                 productIndex(3) = grainList(i)
                 productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
 
-            IF (specname(grainList(i)) .eq. p4(j)) THEN
+            IF (grainList(i) .eq. p4(j)) THEN
                 productIndex(4) = grainList(i)
                 productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
 
         END DO
-    ELSE IF (re3(j).eq.'CHEMDES') THEN
+    ELSE IF (reacType(j).eq.'CHEMDES') THEN
         DO i=lbound(gasGrainList,1),ubound(gasGrainList,1)
-            IF (specname(gasGrainList(i)) .eq. p1(j)) THEN
+            IF (gasGrainList(i) .eq. p1(j)) THEN
                 productIndex(1) = grainList(i)
                 productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
-            IF (specname(gasGrainList(i)) .eq. p2(j)) THEN
+            IF (gasGrainList(i) .eq. p2(j)) THEN
                 productIndex(2) = grainList(i)
                 productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
-            IF (specname(gasGrainList(i)) .eq. p3(j)) THEN
+            IF (gasGrainList(i) .eq. p3(j)) THEN
                 productIndex(3) = grainList(i)
                 productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
             END IF
-            IF (specname(gasGrainList(i)) .eq. p4(j)) THEN
+            IF (gasGrainList(i) .eq. p4(j)) THEN
                 productIndex(4) = grainList(i)
                 productEnthalpy=productEnthalpy+formationEnthalpy(i)
                 if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
@@ -283,9 +294,9 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
     IF (GRAINS_HAVE_ICE) THEN
         desorptionFraction = desorptionFraction/10    !< See Minisalle et al. 2016 for icy grain surface.
         ! Special case of OH+H, O+H, N+N on ices, see same paper
-        if (re1(j).eq.'#N'.and.re2(j).eq.'#N') desorptionFraction = 0.5
-        if ((re1(j).eq.'#O'.and.re2(j).eq.'H') .or. (re1(j).eq.'H'.and.re2(j).eq.'#O')) desorptionFraction = 0.3
-        if ((re1(j).eq.'#OH'.and.re2(j).eq.'H') .or. (re1(j).eq.'H'.and.re2(j).eq.'#OH')) desorptionFraction = 0.25
+        if (re1(j).eq.ngn.and.re2(j).eq.ngn) desorptionFraction = 0.5
+        if ((re1(j).eq.ngo.and.re2(j).eq.nh) .or. (re1(j).eq. nh.and.re2(j).eq.ngo)) desorptionFraction = 0.3
+        if ((re1(j).eq.ngoh.and.re2(j).eq.nh) .or. (re1(j).eq.nh.and.re2(j).eq.ngoh)) desorptionFraction = 0.25
     ENDIF
 END FUNCTION desorptionFraction
 

@@ -16,12 +16,12 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 MODULE physics
     USE network
+    USE constants
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
     INTEGER :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     INTEGER :: collapse,switch,phase
-    INTEGER :: h2desorb,crdesorb,uvcr,desorb
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
@@ -41,10 +41,6 @@ MODULE physics
     DOUBLE PRECISION,PARAMETER :: codestemp(6)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
 
     DOUBLE PRECISION, allocatable :: av(:),coldens(:),temp(:),density(:),monoFracCopy(:)
-    !Everything should be in cgs units. Helpful constants and conversions below
-    DOUBLE PRECISION,PARAMETER ::PI=3.141592654,mh=1.67e-24,K_BOLTZ_SI=1.38d-23
-    DOUBLE PRECISION, PARAMETER :: pc=3.086d18,SECONDS_PER_YEAR=3.16d7
-
 CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN.
 !YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.

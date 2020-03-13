@@ -15,7 +15,7 @@ for folder in ["example-output/","test-output/"]:
 		axis,fig=plot_species(speciesNames,time,abundances,plotFile="examples/"+folder+model+".png")
 
 		#plot species returns the axis so we can further edit
-		axis.set(xscale='log',ylim=(1e-15,1e-3))
+		axis.set(xscale='log',ylim=(1e-15,1e-3),xlim=(1e0,6e6))
 		axis.set_title(model)
 		fig.savefig("examples/"+folder+model+".png")
 

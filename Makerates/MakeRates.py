@@ -15,6 +15,8 @@ reactionFile = 'inputFiles/umist12-ucledit.csv'
 reactionFile_grain = 'inputFiles/uclgrainbasic.csv'
 speciesFile = 'inputFiles/uclspeciesbasic.csv'
 
+therm_flag=False
+
 if not os.path.exists('outputFiles'):
     os.makedirs('outputFiles')
 
@@ -36,7 +38,7 @@ speciesList=remove_duplicate_species(speciesList)
 nReactions1, reactions1, dropped_reactions = read_reaction_file(reactionFile, speciesList,'UMIST')
 nReactions2, reactions2, dropped_reactions = read_reaction_file(reactionFile_grain,speciesList,'UCL')
 reactionList=reactions1+reactions2
-reactionList=add_desorb_reactions(speciesList,reactionList)
+reactionList=add_desorb_reactions(speciesList,reactionList,therm_flag=therm_flag)
 
 #Keep only the species that are involved in the final reaction list
 print('\nRemoving unused species...')

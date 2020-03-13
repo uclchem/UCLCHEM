@@ -4,13 +4,13 @@
 ! and then assume the rest of sphere is the same.
 
 MODULE physics
+    USE constants
     IMPLICIT NONE
 
     !Use main loop counters in calculations so they're kept here
     integer :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     integer :: collapse,switch,first,phase
-    integer :: h2desorb,crdesorb,uvcr,desorb
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
@@ -29,8 +29,7 @@ MODULE physics
 
 
     !Everything should be in cgs units. Helpful constants and conversions below
-    double precision,parameter ::pi=3.141592654,mh=1.67e-24,
-    double precision, parameter :: pc=3.086d18,cs=2.00d4,SECONDS_PER_YEAR=3.16d7
+    double precision,parameter :: cs=2.00d4
 
     character(1) :: modeln
     character(4) :: bdstring

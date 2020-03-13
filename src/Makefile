@@ -22,10 +22,10 @@ python: chemistry.o physics.o wrap.f90 dvode.o defaultparameters.f90
 	python3 -m numpy.f2py -c --fcompiler=${f2pyFC} physics.o dvode.o chemistry.o network.o -m uclchem wrap.f90
 	mv *${EXT_SUFFIX} ../uclchem.so
 
-chemistry.o: odes.f90 rates.f90  chemistry.f90 network.o physics.o dvode.o 
+chemistry.o: odes.f90 constants.o rates.f90  chemistry.f90 network.o physics.o dvode.o 
 	${FC} ${FFLAGS} -c chemistry.f90
 
-physics.o: ${PHYSICS} Makefile
+physics.o: ${PHYSICS} constants.o Makefile
 	${FC} ${FFLAGS} -c ${PHYSICS} -o physics.o
 
 %.o: %.f90 

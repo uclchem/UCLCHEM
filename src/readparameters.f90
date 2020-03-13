@@ -53,8 +53,10 @@ IF (paramFile .ne. "") THEN
                 READ(buffer,*,iostat=ios) h2desorb
             CASE('crdesorb')
                 READ(buffer,*,iostat=ios) crdesorb
-            CASE('uvcr')
-                READ(buffer,*,iostat=ios) uvcr
+            CASE('thermdesorb')
+                READ(buffer,*,iostat=ios) thermdesorb
+            CASE('uvdesorb')
+                READ(buffer,*,iostat=ios) uvdesorb
             CASE('instantSublimation')
                 READ(buffer,*,iostat=ios) instantSublimation
             CASE('ion')
@@ -109,8 +111,8 @@ IF (paramFile .ne. "") THEN
                 READ(buffer,*,iostat=ios) phi
             CASE('ebmaxuvcr')
                 READ(buffer,*,iostat=ios) ebmaxuvcr
-            CASE('uvy')
-                READ(buffer,*,iostat=ios) uvy
+            CASE('uv_yield')
+                READ(buffer,*,iostat=ios) uv_yield
             CASE('omega')
                 READ(buffer,*,iostat=ios) omega
             CASE('vs')
@@ -126,11 +128,17 @@ IF (paramFile .ne. "") THEN
         END IF
     END DO
 END IF
+
 open(10,file=outputFile,status='unknown',err=13)
 
+!this if statement just makes it so line 13 is only ever executed when open statement above fails.
+ios=1
+IF (ios.ne.1) THEN
 13 write(*,*) "This error occured because the output file directory does not exist"// NEW_LINE('A')//&
             &" the failed file was ",outputFile&
             &, NEW_LINE('A')//" please create necessary directories and rerun"//NEW_LINE('A')//"************************"
+    STOP
+END IF
 !Optionally, user can set species and have their abundances written out in columns with temp,dens and time.
 !This checks whether those species were chosen and creates the output. Also warns users if set up isn't complete.
 columnFlag=ALLOCATED(outSpecies) 

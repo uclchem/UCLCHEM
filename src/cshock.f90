@@ -8,12 +8,12 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 MODULE physics
     USE network
+    USE constants
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
     integer :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     integer :: collapse,switch,phase
-    integer :: h2desorb,crdesorb,uvcr,desorb
 
     !evap is dummy for defaultparameters.f90, ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when sublimation takes place.
@@ -23,10 +23,6 @@ MODULE physics
     double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime
     double precision :: cloudSize,rout,rin,baseAv,bc,tstart,maxTemp
     double precision, allocatable :: av(:),coldens(:),temp(:),density(:)
-
-    !Everything should be in cgs units. Helpful constants and conversions below
-    double precision,parameter ::PI=3.141592654,MH=1.674d-24
-    double precision, parameter :: YEAR=3.16455d-08,PC=3.086d18,KM=1.d5,SECONDS_PER_YEAR=3.16d7
 
     character(2) ::filename
     character(1)  ::densint

@@ -19,7 +19,6 @@ IMPLICIT NONE
     !see example.inp
     INCLUDE 'readparameters.f90'
 
-
     dstep=1
     currentTime=0.0
     timeInYears=0.0
@@ -27,7 +26,6 @@ IMPLICIT NONE
     !Set up with initial values. For chemistry this is setting initial abundances and assigning memory for ODE solver
     CALL initializePhysics
     CALL initializeChemistry
-    
     !loop until the end condition of the model is reached 
     DO WHILE ((switch .eq. 1 .and. density(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
         !store current time as starting point for each depth step
@@ -40,6 +38,7 @@ IMPLICIT NONE
         DO dstep=1,points
             !update chemistry from currentTime to targetTime
             CALL updateChemistry
+
             currentTime=targetTime
             !get time in years for output, currentTime is now equal to targetTime
             timeInYears= currentTime/SECONDS_PER_YEAR

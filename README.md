@@ -5,7 +5,7 @@ UCLCHEM is a gas-grain chemical code written in Fortran 95. It propagates the ab
 Usage Instructions
 **************************************************************
 
-A full manual is available from the website: uclchem.github.io
+Full documentation is available from the website: uclchem.github.io
 
 To build UCLCHEM, edit the Makefile in uclchem/src to use a compiler available on your machine. Then use "make" to create the executable.
 - The Makefile also contains the choice of physics module.
@@ -19,21 +19,24 @@ Call uclchem with the filename as an argument: "./uclchem example.inp"
 **************************************************************
 Python
 **************************************************************
-Support for python wrapping is limited. "Make python" builds a python library from the source code and wrap.f90. grid.py in the scripts folder runs a grid of models by repeatedly calling that python library. It is difficult to write a python wrapper for all possible use cases so wrap.f90 and grid.py are examples only.
+"Make python" builds a python module from the source code and wrap.f90. This can be imported into a python script and any subroutine in wrap.f90 is a function in the module. Currently, this is just uclchem.general() which takes a dictionary of any parameters in defaultparameters.f90 and runs the code.
+An example script, grid.py in the scripts folder runs a grid of models by repeatedly calling that function. This demonstrates the basic use of the wrapper and how to use python Pool objects to parallize runing a grid.
 
- By changing the inputs and outputs of the subroutine in wrap.f90 or writing new subroutines, the user should be able to run anything they need. Set all parameters that are the same in every model in defaultparameters.f90 and then make variables into inputs to the subroutine.
-
+Currently, the wrapper must be recompiled for different physics modules.
 
 **************************************************************
 Change Log
 **************************************************************
-Various changes have been made with a view to improving readability of the code and improving sputtering in cshock.f90:
-- Network moved to module allowing physics module to access the properties but NOT the abundances of species/reactions in the network.
-- Sublimation subroutine added to all physics modules with a call in main.f90. 
-- Thermal evaporation treatment moved to cloud.f90 sublimation subroutine
-- cshock.f90 now has sputtering treatment from Jimenez-Serra et al. 2008
-- Variable names changed to fit standard
-- initializePhysics: sublimation flags etc reset so wrap.f90 can run in grids
+**New python wrapper**
+
+**Updated grain treatment to make all grain parameters self-consistent**
+
+**Continuous thermal desorption added.** Makerates has a new parameter therm_flag which defaults to False. If set to True, thermal desorption reactions are added to the network and material will continually desorb from the grains. UCLCHEM's physics modules are the preferred method for controlling thermal desorption but the functionality is available nonetheless.
+
+**General Code Improvements**
+- Small changes to the code have been made to improve readability. uvy is now uv_yield, grain_area is grain_area_per_H to better represent its physical meaning and constants have been moved to constants.f90
+- An error message now informs users that the common error of writing a file to a folder that doesn't exist has occurred. Improving on the basic fortran error message which says the *file* doesn't exist.
+- Double precision variables declared in correct fashion for modern fortran
 
 *************************************************************
 Contributing
@@ -43,10 +46,3 @@ This is an open source science code for the community and we are happy to accept
 - camelCase variable and subroutines names that are self-explanatory where possible 
 
 - CAPITALIZED fortran built in functions to make code structure apparent.
-
-
-**************************************************************
-To Do / General Inprovements
-**************************************************************
-- Create a keyword based python wrap in a similar to readparameters.f90 so that is more or less general purpose and usable by all.
-- Trial 3 phase chemistry (gas, grain surface, bulk ice)
