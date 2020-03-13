@@ -12,11 +12,16 @@ MODULE chemistry
 USE physics
 USE dvode_f90_m
 USE network
+USE constants
 IMPLICIT NONE
    !These integers store the array index of important species and reactions, x is for ions    
     integer :: nrco,njunk,evapevents,ngrainco,readAbunds
     !loop counters    
     integer :: i,j,l,writeStep,writeCounter=0
+
+    !Flags to control desorption processes
+    INTEGER :: h2desorb,crdesorb,uvdesorb,desorb,thermdesorb
+
 
     !Array to store reaction rates
     double precision :: rate(nreac)
@@ -51,19 +56,24 @@ IMPLICIT NONE
     double precision  :: dopw=3.0e10,radw=8.0e07,xl=1000.0,fosc  = 1.0d-2,taud
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !variables for diffusion reactions on the grains, CGS unless otherwise stated.
+    !Grain surface parameters
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    double precision, parameter :: GAS_DUST_MASS_RATIO=100.0,GRAIN_RADIUS=1.d-5, GRAIN_DENSITY = 3.0 ! Mass density of a dust grain
+    DOUBLE PRECISION, PARAMETER :: THERMAL_VEL= SQRT(8.0d0*K_BOLTZ/(PI*AMU)) !Thermal velocity without the factor of SQRT(T/m) where m is moelcular mass in amu
+
+    !reciprocal of fractional abundance of dust grains (we only divide by number density so better to store reciprocal)
+    double precision, parameter :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
+    !Grain area per h nuclei, calculated from average radius.
+    DOUBLE PRECISION, PARAMETER :: GRAIN_AREA_PER_H=4.0*PI*GRAIN_RADIUS*GRAIN_RADIUS/GAS_DUST_DENSITY_RATIO
+
+    !Below are values for grain surface reactions
     LOGICAL, parameter :: DIFFUSE_REACT_COMPETITION=.True., GRAINS_HAVE_ICE=.True.
-    double precision, parameter :: GAS_DUST_MASS_RATIO=100.0,REDUCED_PLANCK=1.054571628d-27,AMU=1.66053892d-24
-    double precision, parameter :: K_BOLTZ=1.3806588d-16,GRAIN_AREA=2.4d-22,GRAIN_RADIUS=1.d-5 
     double precision, parameter :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8  !gre Parameter used to compute the probability for a surface reaction with 
     !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
-    double precision, parameter :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
+    DOUBLE PRECISION, PARAMETER :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
     double precision, parameter :: VDIFF_PREFACTOR=2.0*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
-    double precision, parameter :: GRAIN_DENSITY = 3.0 ! Mass density of a dust grain
     double precision, parameter :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
-    double precision, parameter :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
- 
+
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !CO and H2 self-shielding
     !Used by functions in rates.f90

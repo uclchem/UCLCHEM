@@ -1,5 +1,6 @@
 SUBROUTINE calculateReactionRates
 !Assuming the user has temperature changes or uses the desorption features of phase 1, these need working out on a timestep by time step basis
+    cion=1.0+16.71d-4/(GRAIN_RADIUS*temp(dstep))
     DO j=1,nreac
         !This case structure looks at the reaction type. species-species happens in default.
         !Other cases are special reactions, particularly desorption events (photons, CRs etc)
@@ -30,18 +31,12 @@ SUBROUTINE calculateReactionRates
                 rate(j)=0.0
             ELSE
                 IF (re1(j).eq.nelec) THEN
-                    cion=1.0+16.71d-4/(GRAIN_RADIUS*temp(dstep))
-                    rate(j)=4.57d4*alpha(j)*GRAIN_AREA*fr*cion
+                    rate(j)=THERMAL_VEL*alpha(j)*GRAIN_AREA_PER_H*fr*cion
                 ELSE
-                    IF (beta(j).eq.0.0 ) THEN
-                        !taken from Rawlings et al. 1992
-                        rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(re1(j)))*GRAIN_AREA*fr
-                    ELSE
-                        !Make rates sets beta=1 for ion freeze out. this catches that and
-                        !freezes differently
-                        cion=1.0+16.71d-4/(GRAIN_RADIUS*temp(dstep))
-                        rate(j)=4.57d4*alpha(j)*dsqrt(temp(dstep)/mass(re1(j)))*GRAIN_AREA*fr*cion
-                    ENDIF
+                    !taken from Rawlings et al. 1992
+                    rate(j)=THERMAL_VEL*alpha(j)*dsqrt(temp(dstep)/mass(re1(j)))*GRAIN_AREA_PER_H*fr
+                    if (re1(j).eq.64) write(*,*) rate(j),GRAIN_AREA_PER_H,THERMAL_VEL
+                    IF (beta(j).ne.0.0 ) rate(j)=rate(j)*cion
                 END IF
             ENDIF
 
@@ -65,19 +60,19 @@ SUBROUTINE calculateReactionRates
             &.and. gama(j) .le. ebmaxcr) THEN
                 !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
                 !as iron nuclei are main cause of CR heating.
-                !GRAIN_AREA is the total area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
+                !GRAIN_AREA_PER_H is the total area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
                 !phi is efficieny of this reaction, number of molecules removed per event.
-                rate(j) = 4.0*pi*zeta*1.64d-4*(GRAIN_AREA)*&
+                rate(j) = 4.0*pi*zeta*1.64d-4*(GRAIN_AREA_PER_H)*&
                       &(1.0/mantle(dstep))*phi
             ELSE
                 rate(j) = 0.0
             ENDIF
         CASE ('DEUVCR')
-            IF (desorb .eq. 1 .and. uvcr .eq. 1 &
+            IF (desorb .eq. 1 .and. uvdesorb .eq. 1 &
              &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-30) THEN
                 !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
                 !UVY is yield per photon.
-                rate(j) = GRAIN_AREA*uvy*4.875d3*zeta*(1.0/mantle(dstep))
+                rate(j) = GRAIN_AREA_PER_H*uvy*4.875d3*zeta*(1.0/mantle(dstep))
                 !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
                 !CR induced UV to ISRF UV.
                 rate(j) = rate(j) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
@@ -97,9 +92,9 @@ SUBROUTINE calculateReactionRates
                         !Basic rate at which thermal desorption occurs
                         rate(j)=vdiff(i)*exp(-gama(j)/temp(dstep))
                         !Adjust for fact only top two monolayers (Eq 8)
-                        !becayse GRAIN_AREA is per H nuclei, multiplying it by densiyy gives area/cm-3
+                        !becayse GRAIN_AREA_PER_H is per H nuclei, multiplying it by densiyy gives area/cm-3
                         !that is roughly sigma_g.n_g from cuppen et al. but must check the area!
-                        rate(j)=rate(j)*2.0/mantle(dstep)*SURFACE_SITE_DENSITY*GRAIN_AREA*density(dstep)
+                        rate(j)=rate(j)*2.0/mantle(dstep)*SURFACE_SITE_DENSITY*GRAIN_AREA_PER_H*density(dstep)
                     END IF
                 END DO
             ELSE
