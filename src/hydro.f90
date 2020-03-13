@@ -4,12 +4,12 @@
 
 !Set phase=2 to use module to post-process. Set phase=1 to run a cloud model for intiial conditions
 MODULE physics
+    USE constants
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
     integer :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     integer :: collapse,switch,phase
-    integer :: h2desorb,crdesorb,uvcr,desorb
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
@@ -19,9 +19,6 @@ MODULE physics
     double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
     double precision :: cloudSize,rout,rin,oldtemp,baseAv,bc,olddens,maxTemp
     double precision, allocatable :: av(:),coldens(:),temp(:),density(:)
-    !Everything should be in cgs units. Helpful constants and conversions below
-    double precision,parameter ::pi=3.141592654,mh=1.67e-24
-    double precision, parameter :: year=3.16455d-08,pc=3.086d18,SECONDS_PER_YEAR=3.16d7
 
     !Interpolation variables
     integer, parameter :: nInterpPoints=201

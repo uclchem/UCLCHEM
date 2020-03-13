@@ -14,11 +14,11 @@
 
 MODULE physics
     USE network
+    USE constants
     IMPLICIT NONE
     INTEGER :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
     INTEGER :: collapse,switch,first,phase
-    INTEGER :: h2desorb,crdesorb,crdesorb2,uvcr,desorb
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/DOne
@@ -29,9 +29,7 @@ MODULE physics
     DOUBLE PRECISION :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp,vs,maxTime
     DOUBLE PRECISION :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
     DOUBLE PRECISION, allocatable :: av(:),coldens(:),temp(:),density(:),massInRadius(:),parcelRadius(:)
-    !Everything should be in cgs units. Helpful constants and conversions below
-    DOUBLE PRECISION,parameter ::pi=3.141592654,mh=1.67e-24
-    DOUBLE PRECISION, parameter :: year=3.16455d-08,pc=3.086d18,au=2.063d5,SECONDS_PER_YEAR=3.16d7
+
 
     DOUBLE PRECISION :: dt,drad
 

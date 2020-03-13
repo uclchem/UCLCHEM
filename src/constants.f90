@@ -10,6 +10,8 @@ MODULE CONSTANTS
    REAL(dp), PARAMETER :: PI = 3.141592654
    REAL(dp), PARAMETER :: K_BOLTZ_SI=1.38d-23 !Boltzmann constant SI
    REAL(dp), PARAMETER :: PC=3.086d18 !parsec in cgs
+   REAL(dp), PARAMETER :: au=2.063d5 !1 AU in cgs
+   REAL(dp), PARAMETER :: KM=1.d5 !kilometre in cgs
    REAL(dp), PARAMETER :: SECONDS_PER_YEAR=3.16d7
    REAL(dp), PARAMETER :: T_CMB=2.73
    REAL(dp), PARAMETER :: EV = 1.60217646D-12 ! electron volt in erg

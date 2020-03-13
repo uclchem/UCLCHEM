@@ -15,72 +15,72 @@ USE network
 USE constants
 IMPLICIT NONE
    !These integers store the array index of important species and reactions, x is for ions    
-    integer :: nrco,njunk,evapevents,ngrainco,readAbunds
+    INTEGER :: nrco,njunk,evapevents,ngrainco,readAbunds
     !loop counters    
-    integer :: i,j,l,writeStep,writeCounter=0
+    INTEGER :: i,j,l,writeStep,writeCounter=0
 
     !Flags to control desorption processes
     INTEGER :: h2desorb,crdesorb,uvdesorb,desorb,thermdesorb
 
 
     !Array to store reaction rates
-    double precision :: rate(nreac)
+    REAL(dp) :: rate(nreac)
     
     !Option column output
-    character(LEN=15),allocatable :: outSpecies(:)
+    character(LEN=15),ALLOCATABLE :: outSpecies(:)
     logical :: columnFlag
-    integer :: nout
-    integer, allocatable :: outIndx(:)
+    INTEGER :: nout
+    INTEGER, ALLOCATABLE :: outIndx(:)
 
 
     !DLSODE variables    
-    integer :: ITASK,ISTATE,NEQ,MXSTEP
-    double precision :: reltol
-    double precision, allocatable :: abstol(:)
+    INTEGER :: ITASK,ISTATE,NEQ,MXSTEP
+    REAL(dp) :: reltol
+    REAL(dp), ALLOCATABLE :: abstol(:)
     TYPE(VODE_OPTS) :: OPTIONS
 
     !initial fractional elemental abudances and arrays to store abundances
-    double precision :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,h2col,cocol,junk1,junk2
-    double precision,allocatable :: abund(:,:),mantle(:)
+    REAL(dp) :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,h2col,cocol,junk1,junk2
+    REAL(dp),ALLOCATABLE :: abund(:,:),mantle(:)
     
     !Variables controlling chemistry
-    double precision :: radfield,zeta,fr,omega,grainArea,cion,h2form,h2dis
-    double precision :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
-    double precision, allocatable ::vdiff(:)
+    REAL(dp) :: radfield,zeta,fr,omega,grainArea,cion,h2form,h2dis
+    REAL(dp) :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
+    REAL(dp), ALLOCATABLE ::vdiff(:)
 
     !Variables for self-shielding of CO and H2
     !dopw = doppler width (in s-1) of a typical transition
     !(assuming turbulent broadening with beta=3e5cms-1)
     !radw = radiative line width of typ. transition (in s-1)
     !fosc = oscillator strength of a typical transition
-    double precision  :: dopw=3.0e10,radw=8.0e07,xl=1000.0,fosc  = 1.0d-2,taud
+    REAL(dp)  :: dopw=3.0e10,radw=8.0e07,xl=1000.0,fosc  = 1.0d-2,taud
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !Grain surface parameters
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    double precision, parameter :: GAS_DUST_MASS_RATIO=100.0,GRAIN_RADIUS=1.d-5, GRAIN_DENSITY = 3.0 ! Mass density of a dust grain
-    DOUBLE PRECISION, PARAMETER :: THERMAL_VEL= SQRT(8.0d0*K_BOLTZ/(PI*AMU)) !Thermal velocity without the factor of SQRT(T/m) where m is moelcular mass in amu
+    REAL(dp), PARAMETER :: GAS_DUST_MASS_RATIO=100.0,GRAIN_RADIUS=1.d-5, GRAIN_DENSITY = 3.0 ! Mass density of a dust grain
+    REAL(dp), PARAMETER :: THERMAL_VEL= SQRT(8.0d0*K_BOLTZ/(PI*AMU)) !Thermal velocity without the factor of SQRT(T/m) where m is moelcular mass in amu
 
     !reciprocal of fractional abundance of dust grains (we only divide by number density so better to store reciprocal)
-    double precision, parameter :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
+    REAL(dp), PARAMETER :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
     !Grain area per h nuclei, calculated from average radius.
-    DOUBLE PRECISION, PARAMETER :: GRAIN_AREA_PER_H=4.0*PI*GRAIN_RADIUS*GRAIN_RADIUS/GAS_DUST_DENSITY_RATIO
+    REAL(dp), PARAMETER :: GRAIN_AREA_PER_H=4.0*PI*GRAIN_RADIUS*GRAIN_RADIUS/GAS_DUST_DENSITY_RATIO
 
     !Below are values for grain surface reactions
-    LOGICAL, parameter :: DIFFUSE_REACT_COMPETITION=.True., GRAINS_HAVE_ICE=.True.
-    double precision, parameter :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8  !gre Parameter used to compute the probability for a surface reaction with 
+    LOGICAL, PARAMETER :: DIFFUSE_REACT_COMPETITION=.True., GRAINS_HAVE_ICE=.True.
+    REAL(dp), PARAMETER :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8  !gre Parameter used to compute the probability for a surface reaction with 
     !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
-    DOUBLE PRECISION, PARAMETER :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
-    double precision, parameter :: VDIFF_PREFACTOR=2.0*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
-    double precision, parameter :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
+    REAL(dp), PARAMETER :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
+    REAL(dp), PARAMETER :: VDIFF_PREFACTOR=2.0*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
+    REAL(dp), PARAMETER :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !CO and H2 self-shielding
     !Used by functions in rates.f90
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     logical :: startr=.True.
-    integer,parameter :: dimco=7, dimh2=6
-    double precision :: corates(7,6)=reshape((/0.000d+00, -1.408d-02, -1.099d-01, -4.400d-01,&
+    INTEGER,PARAMETER :: dimco=7, dimh2=6
+    REAL(dp) :: corates(7,6)=reshape((/0.000d+00, -1.408d-02, -1.099d-01, -4.400d-01,&
      &  -1.154d+00, -1.888d+00, -2.760d+00,&
      &  -8.539d-02, -1.015d-01, -2.104d-01, -5.608d-01,&
      &  -1.272d+00, -1.973d+00, -2.818d+00,&
@@ -92,10 +92,10 @@ IMPLICIT NONE
      &  -2.305d+00, -3.034d+00, -3.758d+00,&
      &  -3.883d+00, -3.888d+00, -3.936d+00, -4.197d+00,&
      &  -4.739d+00, -5.165d+00, -5.441d+00 /),shape(corates))
-    double precision :: y2r(7,6)
-    double precision :: ncogr(dimco) =(/12.0d+00, 13.0d+00, 14.0d+00, 15.0d+00,&
+    REAL(dp) :: y2r(7,6)
+    REAL(dp) :: ncogr(dimco) =(/12.0d+00, 13.0d+00, 14.0d+00, 15.0d+00,&
       &16.0d+00, 17.0d+00, 18.0d+00 /)
-    double precision :: nh2gr(dimh2)=(/18.0d+00, 19.0d+00, 20.0d+00, 21.0d+00,&
+    REAL(dp) :: nh2gr(dimh2)=(/18.0d+00, 19.0d+00, 20.0d+00, 21.0d+00,&
        &22.0d+00, 23.0d+00 /)
 CONTAINS
 !This gets called immediately by main so put anything here that you want to happen before the time loop begins, reader is necessary.
@@ -172,7 +172,7 @@ CONTAINS
     SUBROUTINE reader
         IMPLICIT NONE
         integer i,j,l,m
-        double precision junktemp
+        REAL(dp) junktemp
 
         IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
         IF (columnFlag) THEN
@@ -338,7 +338,7 @@ CONTAINS
         REAL(WP), DIMENSION(NEQ) :: Y, YDOT
         INTENT(IN)  :: NEQ, T, Y
         INTENT(OUT) :: YDOT
-        DOUBLE PRECISION :: D,loss,prod
+        REAL(dp) :: D,loss,prod
         !Set D to the gas density for use in the ODEs
         D=y(NEQ)
         ydot=0.0
