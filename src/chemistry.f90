@@ -45,7 +45,7 @@ IMPLICIT NONE
     
     !Variables controlling chemistry
     double precision :: radfield,zeta,fr,omega,grainArea,cion,h2form,h2dis
-    double precision :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uvy,uvcreff
+    double precision :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
     double precision, allocatable ::vdiff(:)
 
     !Variables for self-shielding of CO and H2

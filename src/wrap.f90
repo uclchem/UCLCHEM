@@ -150,8 +150,8 @@ SUBROUTINE GENERAL(dictionary, outSpeciesIn)
                 READ(inputValue,*) h2desorb
             CASE('crdesorb')
                 READ(inputValue,*) crdesorb
-            CASE('uvcr')
-                READ(inputValue,*) uvcr
+            CASE('uvdesorb')
+                READ(inputValue,*) uvdesorb
             CASE('instantSublimation')
                 READ(inputValue,*) instantSublimation
             CASE('ion')
@@ -200,8 +200,8 @@ SUBROUTINE GENERAL(dictionary, outSpeciesIn)
                 READ(inputValue,*) phi
             CASE('ebmaxuvcr')
                 READ(inputValue,*) ebmaxuvcr
-            CASE('uvy')
-                READ(inputValue,*) uvy
+            CASE('uv_yield')
+                READ(inputValue,*) uv_yield
             CASE('omega')
                 READ(inputValue,*) omega
             CASE('vs')

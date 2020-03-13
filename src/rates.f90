@@ -34,8 +34,9 @@ SUBROUTINE calculateReactionRates
                     rate(j)=THERMAL_VEL*alpha(j)*GRAIN_AREA_PER_H*fr*cion
                 ELSE
                     !taken from Rawlings et al. 1992
-                    rate(j)=THERMAL_VEL*alpha(j)*dsqrt(temp(dstep)/mass(re1(j)))*GRAIN_AREA_PER_H*fr
-                    if (re1(j).eq.64) write(*,*) rate(j),GRAIN_AREA_PER_H,THERMAL_VEL
+                    !0.25 factor converts surface area of a spherical grain to cross-sectional area
+                    !Saves recalculating pi.r^2/n_H when we have 4pi.r^2/n_H for other parts of the code
+                    rate(j)=alpha(j)*THERMAL_VEL*dsqrt(temp(dstep)/mass(re1(j)))*0.25*GRAIN_AREA_PER_H*fr
                     IF (beta(j).ne.0.0 ) rate(j)=rate(j)*cion
                 END IF
             ENDIF
@@ -72,7 +73,8 @@ SUBROUTINE calculateReactionRates
              &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-30) THEN
                 !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
                 !UVY is yield per photon.
-                rate(j) = GRAIN_AREA_PER_H*uvy*4.875d3*zeta*(1.0/mantle(dstep))
+                !0.25 to change surface area of grain to cross-sectional area of grain (see freezeout)
+                rate(j) = 0.25*GRAIN_AREA_PER_H*uv_yield*4.875d3*zeta*(1.0/mantle(dstep))
                 !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
                 !CR induced UV to ISRF UV.
                 rate(j) = rate(j) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
@@ -91,10 +93,11 @@ SUBROUTINE calculateReactionRates
                     IF (grainList(i) .eq. re1(j)) THEN
                         !Basic rate at which thermal desorption occurs
                         rate(j)=vdiff(i)*exp(-gama(j)/temp(dstep))
-                        !Adjust for fact only top two monolayers (Eq 8)
-                        !becayse GRAIN_AREA_PER_H is per H nuclei, multiplying it by densiyy gives area/cm-3
-                        !that is roughly sigma_g.n_g from cuppen et al. but must check the area!
-                        rate(j)=rate(j)*2.0/mantle(dstep)*SURFACE_SITE_DENSITY*GRAIN_AREA_PER_H*density(dstep)
+                        !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
+                        !becayse GRAIN_AREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
+                        !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
+                        !area seems more correct for this process.
+                        rate(j)=rate(j)*(2.0/mantle(dstep))*SURFACE_SITE_DENSITY*GRAIN_AREA_PER_H*density(dstep)
                     END IF
                 END DO
             ELSE
