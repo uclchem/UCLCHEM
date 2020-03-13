@@ -1,9 +1,0 @@
-switch 0
-collapse 0
-fr 1.0
-thermdesorb 0
-initialDens 1.0d5
-initialTemp 19.0
-finalTime 1.0d7
-rout 0.1
-outputFile "output/therm_desorb_high_off.dat"

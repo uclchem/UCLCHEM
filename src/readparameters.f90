@@ -128,8 +128,11 @@ IF (paramFile .ne. "") THEN
         END IF
     END DO
 END IF
-open(10,file=outputFile,status='unknown')
+open(10,file=outputFile,status='unknown',err=13)
 
+13 write(*,*) "This error occured because the output file directory does not exist"// NEW_LINE('A')//&
+            &" the failed file was ",outputFile&
+            &, NEW_LINE('A')//" please create necessary directories and rerun"//NEW_LINE('A')//"************************"
 !Optionally, user can set species and have their abundances written out in columns with temp,dens and time.
 !This checks whether those species were chosen and creates the output. Also warns users if set up isn't complete.
 columnFlag=ALLOCATED(outSpecies) 
