@@ -106,9 +106,9 @@ def write_cols(filename,times,dens,abundances):
 #same as the species input and time/abundance output from read_uclchem
 #optionally send an output filename to save the plot
 #return ax,figure for further manipulation
-def plot_species(species,times,abundances,plotFile=None):
-    fig=plt.figure()
-    ax=fig.add_subplot(111)
+def plot_species(species,times,abundances,ax=None,plotFile=None):
+    if ax is None:
+        fig,ax=plt.subplots()
     colours=make_colours(len(species))
 
     for specIndx,specName in enumerate(species):
@@ -123,7 +123,7 @@ def plot_species(species,times,abundances,plotFile=None):
 
     if plotFile is not None:
         fig.savefig(plotFile)
-    return ax,fig
+    return fig,ax
     
 
 
