@@ -9,7 +9,7 @@ SUBROUTINE General(dictionary, outSpeciesIn)
     CHARACTER (LEN=100) :: abundFile, outputFile, columnFile, outFile
     CHARACTER(LEN=*) :: dictionary, outSpeciesIn
     !f2py intent(in) dictionary,outSpeciesIn
-    INTEGER :: posStart, posEnd, whileInteger, numberSpecies, fileFormat
+    INTEGER :: posStart, posEnd, whileInteger
     CHARACTER(LEN=100) :: inputParameter, inputValue
 
     INCLUDE 'defaultparameters.f90'
@@ -111,7 +111,8 @@ SUBROUTINE General(dictionary, outSpeciesIn)
             CASE('ff')
                 READ(inputValue,*) ff
             CASE('outSpecies')
-                IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx,outSpecies)
+                IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
+                IF (ALLOCATED(outSpecies)) DEALLOCATE(outSpecies)
                 READ(inputValue,*) nout
                 ALLOCATE(outIndx(nout))
                 ALLOCATE(outSpecies(nout))
