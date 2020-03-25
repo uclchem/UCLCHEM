@@ -213,4 +213,7 @@ SUBROUTINE General(dictionary, outSpeciesIn)
             CALL output
         END DO
     END DO
+    close(10)
+    close(11)
+    close(7)
 END SUBROUTINE GENERAL

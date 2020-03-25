@@ -54,4 +54,7 @@ IMPLICIT NONE
             if (points .gt. 1)currentTime=currentTimeold
         END DO
     END DO 
+    close(10)
+    close(11)
+    close(7)
 END PROGRAM uclchem
