@@ -1,8 +1,8 @@
 # Set the base image (in this case debian)
-FROM alpine:3.4
+FROM debian:stable-slim
 
 # Set the working directory
-WORKDIR /usr/src/UCLCHEM
+WORKDIR /usr/src/UCLCHEM/
 
 # Copy the current directory to the working directory in the volume
 ADD . .
@@ -12,19 +12,20 @@ ADD . .
 ENV PYTHONUNBUFFERED=1
 
 # Install apk dependencies and packages
-RUN apk update && apk add --no-cache --update-cache openssl python3-dev build-base gcc gfortran freetype-dev libpng-dev \
-    && rm -rf /var/lib/apt/lists/* \ 
-    && ln -s /usr/include/locale.h /usr/include/xlocale.h
+RUN apt-get update && apt-get install -y python3 python3-pip gcc gfortran
 
 # Alias python3 to python (and pip3 to pip)
 RUN ln -s /usr/bin/python3 /usr/bin/python \
     && ln -s /usr/bin/pip3 /usr/bin/pip
 
-# Install packages using pip
-RUN pip install --upgrade pip \
-    # && pip install -r requirements.txt
+# Install pip (python -m is a workaround to avoid invoking using old wrapper)
+# and install packages
+RUN python -m pip install --upgrade --force-reinstall pip \
     && pip install numpy \
     && python -mpip install matplotlib
 
 # Set the default shell
 SHELL [ "bash" ]
+
+# Change the PS1 format
+# RUN echo 'export PS1="[\u@docker] \W # "' >> /root/.bashrc
