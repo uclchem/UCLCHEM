@@ -1,0 +1,13 @@
+version: "3.7"
+
+services:
+    env:
+        build: ./
+        environment:
+            - DEBUG=true
+        volumes: 
+            - type: bind
+              source: ./
+              target: /usr/src/UCLCHEM/
+        stdin_open: true
+        tty: true

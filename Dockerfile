@@ -12,7 +12,7 @@ ADD . .
 ENV PYTHONUNBUFFERED=1
 
 # Install apk dependencies and packages
-RUN apt-get update && apt-get install -y python3 python3-pip gcc gfortran
+RUN apt-get update && apt-get install -y apt-utils python3 python3-pip gcc gfortran
 
 # Alias python3 to python (and pip3 to pip)
 RUN ln -s /usr/bin/python3 /usr/bin/python \
@@ -23,9 +23,3 @@ RUN ln -s /usr/bin/python3 /usr/bin/python \
 RUN python -m pip install --upgrade --force-reinstall pip \
     && pip install numpy \
     && python -mpip install matplotlib
-
-# Set the default shell
-SHELL [ "bash" ]
-
-# Change the PS1 format
-# RUN echo 'export PS1="[\u@docker] \W # "' >> /root/.bashrc
