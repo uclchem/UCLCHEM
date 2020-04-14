@@ -129,12 +129,15 @@ IF (paramFile .ne. "") THEN
     END DO
 END IF
 
+ios=0
 open(10,file=outputFile,status='unknown',err=13)
+
+open(7,file=abundFile,status='unknown',err=13)
 
 !this if statement just makes it so line 13 is only ever executed when open statement above fails.
 ios=1
-IF (ios.ne.1) THEN
-13 write(*,*) "This error occured because the output file directory does not exist"// NEW_LINE('A')//&
+13 IF (ios.ne.1) THEN
+write(*,*) "This error occured because the output file directory does not exist"// NEW_LINE('A')//&
             &" the failed file was ",outputFile&
             &, NEW_LINE('A')//" please create necessary directories and rerun"//NEW_LINE('A')//"************************"
     STOP
@@ -149,4 +152,3 @@ ELSE IF (columnFileRead) THEN
     write(*,*) "Continuing without columnated output."
 END IF
 
-open(7,file=abundFile,status='unknown')
