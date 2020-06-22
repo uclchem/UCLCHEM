@@ -28,7 +28,7 @@ IMPLICIT NONE
     
     !Option column output
     character(LEN=15),ALLOCATABLE :: outSpecies(:)
-    logical :: columnFlag
+    logical :: columnOutput=.False.,fullOutput=.False.
     INTEGER :: nout
     INTEGER, ALLOCATABLE :: outIndx(:)
 
@@ -103,7 +103,7 @@ CONTAINS
         NEQ=nspec+1
         IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff,mantle)
         ALLOCATE(abund(NEQ,points),vdiff(SIZE(grainList)))
-        CALL reader
+        CALL fileSetup
         !if this is the first step of the first phase, set initial abundances
         !otherwise reader will fix it
         IF (readAbunds.eq.0) THEN
@@ -169,24 +169,17 @@ CONTAINS
     END SUBROUTINE initializeChemistry
 
 !Reads input reaction and species files as well as the final step of previous run if this is phase 2
-    SUBROUTINE reader
+    SUBROUTINE fileSetup
         IMPLICIT NONE
         integer i,j,l,m
         REAL(dp) junktemp
 
-        IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
-        IF (columnFlag) THEN
-            nout = SIZE(outSpecies)
-            ALLOCATE(outIndx(nout))
-        END IF
-        !assign array indices for important species to the integers used to store them.
-        DO i=1,nspec
-            IF (columnFlag) THEN
-                DO j=1,nout
-                    IF (specname(i).eq.outSpecies(j)) outIndx(j)=i
-                END DO
-            END IF
-        END DO
+        INQUIRE(UNIT=11, OPENED=columnOutput)
+        IF (columnOutput) write(11,333) specName(outIndx)
+        333 format("Time,Density,gasTemp,dustTemp,av,",(999(A,:,',')))
+        
+
+         INQUIRE(UNIT=10, OPENED=fullOutput )
 
         !read start file if choosing to use abundances from previous run 
         !
@@ -214,18 +207,22 @@ CONTAINS
             7020  format(//)
             7030  format(4(18x,1pe10.3,:))     
         END IF
-    END SUBROUTINE reader
+    END SUBROUTINE fileSetup
 
 !Writes physical variables and fractional abundances to output file, called every time step.
     SUBROUTINE output
-        !write out cloud properties
-        write(10,8020) timeInYears,density(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
-                        &fmg,fhe,dstep
-        !and a blank line
-        write(10,8000)
-        !and then all the abundances for this step
-        write(10,8010) (specname(i),abund(i,dstep),i=1,nspec) 
-        write(10,8000)
+
+        IF (fullOutput) THEN
+            !write out cloud properties
+            write(10,8020) timeInYears,density(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
+                            &fmg,fhe,dstep
+            !and a blank line
+            write(10,8000)
+            !and then all the abundances for this step
+            write(10,8010) (specname(i),abund(i,dstep),i=1,nspec) 
+            write(10,8000)
+        END IF
+
         !If this is the last time step of phase I, write a start file for phase II
         IF (readAbunds .eq. 0) THEN
            IF (switch .eq. 0 .and. timeInYears .ge. finalTime& 
@@ -237,6 +234,8 @@ CONTAINS
                write(7,8000)
            ENDIF
         ENDIF
+
+        !format for the above two blocks
         8000  format(/)
         8010  format(4(1x,a15,'=',1x,1pe10.3,:))
         8020 format(&
@@ -254,7 +253,7 @@ CONTAINS
 
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90
-        IF (writeCounter==writeStep .and. columnFlag) THEN
+        IF (writeCounter==writeStep .and. columnOutput) THEN
             writeCounter=0
             write(11,8030) timeInYears,density(dstep),temp(dstep),abund(outIndx,dstep)
             8030  format(1pe11.3,1x,1pe11.4,1x,0pf8.2,6(1x,1pe10.3))

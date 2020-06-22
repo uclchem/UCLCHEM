@@ -1,0 +1,3 @@
+Input/output and particularly wrap.f90 improvements
+wrap.f90 now only opens the files it needs. For example, it won't open a full output unless you specify an output file.
+wrap.f90 is now a module with different interfaces. You can call a function that writes tofiles like a normal uclchem run or one that returns and abundance array.

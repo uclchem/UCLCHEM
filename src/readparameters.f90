@@ -95,7 +95,7 @@ IF (paramFile .ne. "") THEN
             CASE('outputFile')
                 READ(buffer,*,iostat=ios) outputFile
             CASE('columnFile')
-                READ(buffer,*,iostat=ios) columnFile 
+                READ(buffer,*,iostat=ios) columnFile
                 columnFileRead=.True.
             CASE('ebmaxh2')
                 READ(buffer,*,iostat=ios) ebmaxh2
@@ -142,13 +142,21 @@ write(*,*) "This error occured because the output file directory does not exist"
             &, NEW_LINE('A')//" please create necessary directories and rerun"//NEW_LINE('A')//"************************"
     STOP
 END IF
+
 !Optionally, user can set species and have their abundances written out in columns with temp,dens and time.
 !This checks whether those species were chosen and creates the output. Also warns users if set up isn't complete.
-columnFlag=ALLOCATED(outSpecies) 
-IF (columnFlag) THEN
+IF (ALLOCATED(outSpecies))  THEN
     open(11,file=columnFile,status='unknown')
+        nout=SIZE(outSpecies)
+        ALLOCATE(outIndx(nout))
+        !assign array indices for important species to the integers used to store them.
+        DO i=1,nspec
+            DO j=1,nout
+                IF (specname(i).eq.outSpecies(j)) outIndx(j)=i
+            END DO
+        END DO
 ELSE IF (columnFileRead) THEN
     write(*,*) "columnFile read but no species chosen, see example inputs for how to set outSpecies array."
-    write(*,*) "Continuing without columnated output."
+    STOP
 END IF
 
