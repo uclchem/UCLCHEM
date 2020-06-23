@@ -12,10 +12,10 @@ import os
 
 
 reactionFile = 'inputFiles/umist12-ucledit.csv'
-reactionFile_grain = 'inputFiles/uclgrainbasic.csv'
-speciesFile = 'inputFiles/uclspeciesbasic.csv'
+reactionFile_grain = 'inputFiles/default_grain_network.csv'
+speciesFile = 'inputFiles/default_species.csv'
 
-therm_flag=False
+therm_flag=True
 
 if not os.path.exists('outputFiles'):
     os.makedirs('outputFiles')

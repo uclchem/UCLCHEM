@@ -42,7 +42,7 @@ phase=1;
 !non-thermal Desorption. Turn it all on/offwith desorb. Can also turn off h2, cosmic ray induced and uv induced individually.
 desorb=1;
 h2desorb=1;crdesorb=1;uvdesorb=1 !Non-thermal desorption methods (roberts et al. 2007)
-thermdesorb=0 !continuous thermal desorption -not currently recommended so turned off by default.
+thermdesorb=1 !continuous thermal desorption -not currently recommended so turned off by default.
 
 !Set to 1 to immediately add all grain surface material to gas phase.
 instantSublimation=0

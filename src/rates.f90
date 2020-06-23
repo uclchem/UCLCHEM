@@ -70,7 +70,7 @@ SUBROUTINE calculateReactionRates
             ENDIF
         CASE ('DEUVCR')
             IF (desorb .eq. 1 .and. uvdesorb .eq. 1 &
-             &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-30) THEN
+             &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-20) THEN
                 !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
                 !UVY is yield per photon.
                 !0.25 to change surface area of grain to cross-sectional area of grain (see freezeout)
@@ -86,7 +86,7 @@ SUBROUTINE calculateReactionRates
         !Continuous Thermal Desorption. Reactions can be generated through a flag in Makerates
         !Default is not to use this feature.
         CASE('THERM')
-            IF (thermdesorb .eq.1) THEN
+            IF (thermdesorb .eq.1 .and. mantle(dstep) .ge. 1.0d-20) THEN
                 !then try to overwrite with position in grain array
                 DO i=lbound(grainList,1),ubound(grainList,1)
                     !See Cuppen, Walsh et al. 2017 review (section 4.1)
