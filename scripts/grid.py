@@ -51,7 +51,7 @@ for k in range(np.shape(parameterSpace)[1]):
 
 #use pool.map to run each dictionary throuh our helper function
 start=time.time()
-pool=Pool(10)
+pool=Pool(6)
 result=pool.map(run_uclchem,models)
 result=np.asarray(result)
 pool.close()

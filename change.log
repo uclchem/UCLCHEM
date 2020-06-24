@@ -1,3 +1,7 @@
-New Network
-We've updated our default network to use the diffusion treatment of grain surface chemistry.
-The old default grain network is renamed pseudo_hydrogenation.csv
+Rate Efficiency Upgrade
+Makerates now outputs one array for each type of reaction UCLCHEM can work with.
+All reactions are sorted by reaction type so each array contains first and last index corresponding to a reaction type.
+
+rates.f90 updated to drop massive reaction list loop and just use indices to calculate whole rates array sections at once.
+
+No decrease in run time but the code is more readable.

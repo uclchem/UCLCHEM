@@ -44,7 +44,7 @@ IMPLICIT NONE
     REAL(dp),ALLOCATABLE :: abund(:,:),mantle(:)
     
     !Variables controlling chemistry
-    REAL(dp) :: radfield,zeta,fr,omega,grainArea,cion,h2form,h2dis
+    REAL(dp) :: radfield,zeta,fr,omega,grainArea,cion,h2form,h2dis,lastTemp=0.0
     REAL(dp) :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
     REAL(dp), ALLOCATABLE ::vdiff(:)
 
