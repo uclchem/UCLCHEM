@@ -20,7 +20,7 @@ fig,ax=plt.subplots(figsize(16,9))
 
 #plot_species will make an axis if you don't provide one
 #it will save if plotFile is given otherwise just returns figure and axis
-fig,ax=plot_species(speciesNames,time,abundances,ax=ax,plotFile=plot_file)
+ax=plot_species(speciesNames,time,abundances,ax=ax,plotFile=plot_file)
 
 
 ax2=ax.twinx()

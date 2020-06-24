@@ -15,7 +15,7 @@ USE network
 USE constants
 IMPLICIT NONE
    !These integers store the array index of important species and reactions, x is for ions    
-    INTEGER :: nrco,njunk,evapevents,ngrainco,readAbunds
+    INTEGER :: njunk,evapevents,ngrainco,readAbunds
     !loop counters    
     INTEGER :: i,j,l,writeStep,writeCounter=0
 

@@ -1,124 +1,140 @@
 SUBROUTINE calculateReactionRates
-!Assuming the user has temperature changes or uses the desorption features of phase 1, these need working out on a timestep by time step basis
+    INTEGER:: idx1,idx2
+    !Calculate all reaction rates
+    !Assuming the user has temperature changes or uses the desorption features of phase 1,
+    !these need to be recalculated every time step.
+
+
+    idx1=crpReacs(1)
+    idx2=crpReacs(2)
+    rate(idx1:idx2)=alpha(idx1:idx2)*zeta
+
+    !UV photons, radfield has (factor of 1.7 conversion from habing to Draine)
+    idx1=photonReacs(1)
+    idx2=photonReacs(2)
+    rate(idx1:idx2) = alpha(idx1:idx2)*dexp(-gama(idx1:idx2)*av(dstep))*radfield/1.7
+
+    !Reactions involving cosmic ray induced photon
+    idx1=crphotReacs(1)
+    idx2=crphotReacs(2)
+    rate(idx1:idx2)=alpha(idx1:idx2)*gama(idx1:idx2)*1.0/(1.0-omega)*zeta*(temp(dstep)/300)**beta(idx1:idx2)
+
+
+    !freeze out only happens if fr>0 and depending on evap choice 
+    idx1=freezeReacs(1)
+    idx2=freezeReacs(2)
     cion=1.0+16.71d-4/(GRAIN_RADIUS*temp(dstep))
-    DO j=1,nreac
-        !This case structure looks at the reaction type. species-species happens in default.
-        !Other cases are special reactions, particularly desorption events (photons, CRs etc)
-        SELECT CASE (reacType(j))
+    IF (fr .eq. 0.0 .or. temp(dstep) .gt. 30.0) then
+        rate(idx1:idx2)=0.0
+    ELSE
+        DO j=idx1,idx2
 
-        !Cosmic ray reactions            
-        CASE ('CRP')
-            rate(j) = alpha(j)*zeta
-
-
-        !UV photons, radfield has (factor of 1.7 conversion from habing to Draine)
-        CASE ('PHOTON')
-            rate(j) = alpha(j)*dexp(-gama(j)*av(dstep))*radfield/1.7
-            !co photodissoction number is stored as nrco
-            IF (re1(j).eq.nco) THEN
-                IF(p1(j).eq.no .and. p2(j).eq.nc) nrco=j
-                IF(p1(j).eq.nc .and. p2(j).eq.no) nrco=j
-            ENDIF
-
-        !cosmic ray induced photon
-        CASE ('CRPHOT')
-            rate(j)=alpha(j)*gama(j)*1.0/(1.0-omega)*zeta*(temp(dstep)/300)**beta(j)
-
-
-        !freeze out only happens if fr>0 and depending on evap choice 
-        CASE ('FREEZE')             
-            IF (fr .eq. 0.0 .or. temp(dstep) .gt. 30.0) then
-                rate(j)=0.0
+            IF (re1(j).eq.nelec) THEN
+                rate(j)=THERMAL_VEL*alpha(j)*GRAIN_AREA_PER_H*fr*cion
             ELSE
-                IF (re1(j).eq.nelec) THEN
-                    rate(j)=THERMAL_VEL*alpha(j)*GRAIN_AREA_PER_H*fr*cion
-                ELSE
-                    !taken from Rawlings et al. 1992
-                    !0.25 factor converts surface area of a spherical grain to cross-sectional area
-                    !Saves recalculating pi.r^2/n_H when we have 4pi.r^2/n_H for other parts of the code
-                    rate(j)=alpha(j)*THERMAL_VEL*dsqrt(temp(dstep)/mass(re1(j)))*0.25*GRAIN_AREA_PER_H*fr
-                    IF (beta(j).ne.0.0 ) rate(j)=rate(j)*cion
-                END IF
-            ENDIF
-
-        ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !The below desorption mechanisms are from Roberts et al. 2007 MNRAS with
-        !the addition of direct UV photodesorption. DESOH2,DESCR1,DEUVCR
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        CASE ('DESOH2')
-            IF (desorb .eq. 1 .and. h2desorb .eq. 1&
-            & .and. gama(j) .le. ebmaxh2 .and.&
-            &  mantle(dstep) .ge. 1.0d-30) THEN
-                !Epsilon is efficieny of this process, number of molecules removed per event
-                !h2form is formation rate of h2, dependent on hydrogen abundance. 
-                rate(j) = epsilon*h2form*abund(nh,dstep)*1.0/mantle(dstep)
-            ELSE
-                rate(j) = 0.0
-            ENDIF
-        CASE ('DESCR')
-            IF (desorb .eq. 1 .and. crdesorb .eq. 1&
-            &.and.mantle(dstep).ge. 1d-30&
-            &.and. gama(j) .le. ebmaxcr) THEN
-                !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
-                !as iron nuclei are main cause of CR heating.
-                !GRAIN_AREA_PER_H is the total area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
-                !phi is efficieny of this reaction, number of molecules removed per event.
-                rate(j) = 4.0*pi*zeta*1.64d-4*(GRAIN_AREA_PER_H)*&
-                      &(1.0/mantle(dstep))*phi
-            ELSE
-                rate(j) = 0.0
-            ENDIF
-        CASE ('DEUVCR')
-            IF (desorb .eq. 1 .and. uvdesorb .eq. 1 &
-             &.and. gama(j) .le. ebmaxuvcr .and. mantle(dstep) .ge. 1.0d-20) THEN
-                !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
-                !UVY is yield per photon.
-                !0.25 to change surface area of grain to cross-sectional area of grain (see freezeout)
-                rate(j) = 0.25*GRAIN_AREA_PER_H*uv_yield*4.875d3*zeta*(1.0/mantle(dstep))
-                !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
-                !CR induced UV to ISRF UV.
-                rate(j) = rate(j) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
-            ELSE
-                rate(j) = 0.0
-            ENDIF
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        !Continuous Thermal Desorption. Reactions can be generated through a flag in Makerates
-        !Default is not to use this feature.
-        CASE('THERM')
-            IF (thermdesorb .eq.1 .and. mantle(dstep) .ge. 1.0d-20) THEN
-                !then try to overwrite with position in grain array
-                DO i=lbound(grainList,1),ubound(grainList,1)
-                    !See Cuppen, Walsh et al. 2017 review (section 4.1)
-                    IF (grainList(i) .eq. re1(j)) THEN
-                        !Basic rate at which thermal desorption occurs
-                        rate(j)=vdiff(i)*exp(-gama(j)/temp(dstep))
-                        !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
-                        !becayse GRAIN_AREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
-                        !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
-                        !area seems more correct for this process.
-                        rate(j)=rate(j)*(2.0/mantle(dstep))*SURFACE_SITE_DENSITY*GRAIN_AREA_PER_H*density(dstep)
-                    END IF
-                END DO
-            ELSE
-                rate(j)=0.0
+                !taken from Rawlings et al. 1992
+                !0.25 factor converts surface area of a spherical grain to cross-sectional area
+                !Saves recalculating pi.r^2/n_H when we have 4pi.r^2/n_H for other parts of the code
+                rate(j)=alpha(j)*THERMAL_VEL*dsqrt(temp(dstep)/mass(re1(j)))*0.25*GRAIN_AREA_PER_H*fr
+                IF (beta(j).ne.0.0 ) rate(j)=rate(j)*cion
             END IF
+        END DO
+    END IF
 
 
-        !Reactions on surface can be treated considering diffusion of reactants
-        !See work of David Quenard 2017 Arxiv:1711.05184
-        !abstracted to functions below for ease of reading
-        CASE ('DIFF')
-            rate(j)=diffusionReactionRate()
-        case ('CHEMDES')
-            rate(j) = diffusionReactionRate()
+
+    ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !The below desorption mechanisms are from Roberts et al. 2007 MNRAS with
+    !the addition of direct UV photodesorption. DESOH2,DESCR1,DEUVCR
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     
-        !Basic gas phase reactions 
-        CASE DEFAULT
-            rate(j) = alpha(j)*((temp(dstep)/300.)**beta(j))*dexp(-gama(j)/temp(dstep)) 
+    !Desorption due to energy released by H2 Formations
+    idx1=desoh2Reacs(1)
+    idx2=desoh2Reacs(2)
+    IF (desorb .eq. 1 .and. h2desorb .eq. 1 .and. gama(j) .le. ebmaxh2 .and.&
+    &  mantle(dstep) .ge. 1.0d-30) THEN
+        !Epsilon is efficieny of this process, number of molecules removed per event
+        !h2form is formation rate of h2, dependent on hydrogen abundance. 
+        rate(idx1:idx2) = epsilon*h2form*abund(nh,dstep)*1.0/mantle(dstep)
+    ELSE
+        rate(idx1:idx2) = 0.0
+    ENDIF
+   
+    !Desorption due to energy from cosmic rays
+    idx1=descrReacs(1)
+    idx2=descrReacs(2)
+    IF (desorb .eq. 1 .and. crdesorb .eq. 1 .and.mantle(dstep).ge. 1d-30&
+        &.and. gama(j) .le. ebmaxcr) THEN
+        !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
+        !as iron nuclei are main cause of CR heating.
+        !GRAIN_AREA_PER_H is the total area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
+        !phi is efficieny of this reaction, number of molecules removed per event.
+        rate(idx1:idx2) = 4.0*pi*zeta*1.64d-4*(GRAIN_AREA_PER_H)*&
+              &(1.0/mantle(dstep))*phi
+    ELSE
+        rate(idx1:idx2) = 0.0
+    ENDIF
 
-        END SELECT
+    !Desorption due to UV, partially from ISRF and partially from CR creating photons
+    idx1=deuvcrReacs(1)
+    idx2=deuvcrReacs(2)
+    IF (desorb .eq. 1 .and. uvdesorb .eq. 1 .and. gama(j) .le. ebmaxuvcr &
+        &.and. mantle(dstep) .ge. 1.0d-20) THEN
+        !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
+        !UVY is yield per photon.
+        !0.25 to change surface area of grain to cross-sectional area of grain (see freezeout)
+        rate(idx1:idx2) = 0.25*GRAIN_AREA_PER_H*uv_yield*4.875d3*zeta*(1.0/mantle(dstep))
+        !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
+        !CR induced UV to ISRF UV.
+        rate(idx1:idx2) = rate(idx1:idx2) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
+    ELSE
+        rate(idx1:idx2) = 0.0
+    ENDIF
+
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !Continuous Thermal Desorption. Reactions can be generated through a flag in Makerates
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    idx1=thermReacs(1)
+    idx2=thermReacs(2)
+    IF (thermdesorb .eq.1 .and. mantle(dstep) .ge. 1.0d-20) THEN
+        DO j=idx1,idx2
+            !then try to overwrite with position in grain array
+            DO i=lbound(grainList,1),ubound(grainList,1)
+                !See Cuppen, Walsh et al. 2017 review (section 4.1)
+                IF (grainList(i) .eq. re1(j)) THEN
+                    !Basic rate at which thermal desorption occurs
+                    rate(j)=vdiff(i)*exp(-gama(j)/temp(dstep))
+                    !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
+                    !becayse GRAIN_AREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
+                    !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
+                    !area seems more correct for this process.
+                    rate(j)=rate(j)*(2.0/mantle(dstep))*SURFACE_SITE_DENSITY*GRAIN_AREA_PER_H*density(dstep)
+                END IF
+            END DO
+        END DO
+    ELSE
+        rate(idx1:idx2)=0.0
+    END IF
+
+
+    !Reactions on surface can be treated considering diffusion of reactants
+    !See work of David Quenard 2017 Arxiv:1711.05184
+    !abstracted to functions below for ease of reading
+    idx1=diffReacs(1)
+    idx2=diffReacs(2)
+    DO j=idx1,idx2
+        rate(j)=diffusionReactionRate(j)
     END DO
+    idx1=chemdesReacs(1)
+    idx2=chemdesReacs(2)
+    DO j=idx1,idx2
+        rate(j)=diffusionReactionRate(j)
+    END DO
+    !Basic gas phase reactions 
+    idx1=twobodyReacs(1)
+    idx2=twobodyReacs(2)
+    rate(idx1:idx2) = alpha(idx1:idx2)*((temp(dstep)/300.)**beta(idx1:idx2))*dexp(-gama(idx1:idx2)/temp(dstep)) 
 
     h2dis=h2d()
     rate(nrco)=knrco()
@@ -131,17 +147,17 @@ END SUBROUTINE calculateReactionRates
 !Assuming Eb = 0.5 Ed. Units of s-1. 
 !David Quenard 2017 Arxiv:1711.05184
 !----------------------------------------------------------------------------------------------------
-double precision FUNCTION diffusionReactionRate()
+double precision FUNCTION diffusionReactionRate(reacIndx)
     double precision :: diffuseRate,activationBarrier,reducedMass,tunnelProb
     double precision :: diffuseProb,desorbProb
-    integer :: ns,index1,index2
+    integer :: ns,index1,index2,reacIndx
     character(len=10) :: reactant1,reactant2
 
 
     !want position of species in the grain array but gas phase species aren't in there
     !so store species index
-    index1=re1(j)
-    index2=re2(j)
+    index1=re1(reacIndx)
+    index2=re2(reacIndx)
 
     !then try to overwrite with position in grain array
     DO i=lbound(grainList,1),ubound(grainList,1)
@@ -181,10 +197,10 @@ double precision FUNCTION diffusionReactionRate()
     diffusionReactionRate=alpha(j) * diffuseRate * activationBarrier* GAS_DUST_DENSITY_RATIO / density(dstep)
 
     !Now adjust for fraction of this reaction's products that will desorb due to energy released
-    IF (reacType(j).eq.'DIFF') THEN
-        diffusionReactionRate = diffusionReactionRate * (1.0-desorptionFraction(j,index1,index2))
-    ELSE IF(reacType(j).eq.'CHEMDES') THEN
-        diffusionReactionRate = diffusionReactionRate * desorptionFraction(j,index1,index2)
+    IF (reacIndx .ge. diffReacs(1) .and. reacIndx .le. diffReacs(2)) THEN
+        diffusionReactionRate = diffusionReactionRate * (1.0-desorptionFraction(reacIndx,index1,index2,.True.))
+    ELSE 
+        diffusionReactionRate = diffusionReactionRate * desorptionFraction(reacIndx,index1,index2,.False.)
     ENDIF
 END FUNCTION diffusionReactionRate
 
@@ -193,9 +209,10 @@ END FUNCTION diffusionReactionRate
 ! David Quenard 2017 Arxiv:1711.05184
 ! From Minissalle+ 2016 and Vasyunin+ 2016
 ! ---------------------------------------------------------------------
-double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
+double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2,isDiff)
     integer :: j,reactIndex1,reactIndex2,degreesOfFreedom
     integer :: productIndex(4)
+    LOGICAL :: isDiff
 
     double precision :: deltaEnthalpy,maxBindingEnergy,epsilonCd,productEnthalpy
     double precision, parameter :: EFFECTIVE_SURFACE_MASS = 120.0
@@ -207,7 +224,7 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
     maxBindingEnergy=0.0
     productEnthalpy=0.0
 
-    IF (reacType(j).eq.'DIFF') THEN
+    IF (isDiff) THEN
         DO i=lbound(grainList,1),ubound(grainList,1)
             IF (grainList(i) .eq. p1(j)) productIndex(1)=grainList(i)
             !Go through grain list and try to find species in product list
@@ -237,7 +254,7 @@ double precision FUNCTION desorptionFraction(j,reactIndex1,reactIndex2)
             END IF
 
         END DO
-    ELSE IF (reacType(j).eq.'CHEMDES') THEN
+    ELSE
         DO i=lbound(gasGrainList,1),ubound(gasGrainList,1)
             IF (gasGrainList(i) .eq. p1(j)) THEN
                 productIndex(1) = grainList(i)

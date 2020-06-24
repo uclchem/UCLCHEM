@@ -72,6 +72,9 @@ speciesList[-1].n_atoms=1
 print("Checking reactions...")
 reaction_check(speciesList,reactionList)
 
+
+reactionList=sorted(reactionList,key=lambda x: x.reac_type)
+
 print('\n################################################')
 print('Checks complete, writing output files')
 print('################################################\n')

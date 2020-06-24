@@ -123,7 +123,7 @@ def plot_species(species,times,abundances,ax=None,plotFile=None):
 
     if plotFile is not None:
         fig.savefig(plotFile)
-    return fig,ax
+    return ax
     
 
 
