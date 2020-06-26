@@ -176,7 +176,7 @@ CONTAINS
 
         INQUIRE(UNIT=11, OPENED=columnOutput)
         IF (columnOutput) write(11,333) specName(outIndx)
-        333 format("Time,Density,gasTemp,dustTemp,av,",(999(A,:,',')))
+        333 format("Time,Density,gasTemp,av,",(999(A,:,',')))
         
 
          INQUIRE(UNIT=10, OPENED=fullOutput )
@@ -254,9 +254,9 @@ CONTAINS
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90
         IF (writeCounter==writeStep .and. columnOutput) THEN
-            writeCounter=0
-            write(11,8030) timeInYears,density(dstep),temp(dstep),abund(outIndx,dstep)
-            8030  format(1pe11.3,1x,1pe11.4,1x,0pf8.2,6(1x,1pe10.3))
+            writeCounter=1
+            write(11,8030) timeInYears,density(dstep),temp(dstep),av(dstep),abund(outIndx,dstep)
+            8030  format(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',(999(1pe15.5,:,',')))
         ELSE
             writeCounter=writeCounter+1
         END IF

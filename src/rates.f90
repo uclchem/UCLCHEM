@@ -154,7 +154,7 @@ END SUBROUTINE calculateReactionRates
 !----------------------------------------------------------------------------------------------------
 double precision FUNCTION diffusionReactionRate(reacIndx)
     double precision :: diffuseRate,activationBarrier,reducedMass,tunnelProb
-    double precision :: diffuseProb,desorbProb
+    double precision :: diffuseProb,desorbProb,reacProb,n_dust
     integer :: ns,index1,index2,reacIndx
     character(len=10) :: reactant1,reactant2
 
@@ -170,36 +170,41 @@ double precision FUNCTION diffusionReactionRate(reacIndx)
         IF (grainList(i) .eq. index2) index2 = i
     END DO
 
+
+
     !Hasegawa 1992 diffusion rate. Rate that two species diffuse and meet on grain surface
-    diffuseRate = vdiff(index1)*dexp(-0.5*bindingEnergy(index1)/temp(dstep))
-    diffuseRate = (diffuseRate+ (vdiff(index2)*dexp(-0.5*bindingEnergy(index2)/temp(dstep))))/NUM_SITES_PER_GRAIN
+    diffuseProb = vdiff(index1)*dexp(-0.5*bindingEnergy(index1)/temp(dstep))
+    diffuseProb = diffuseProb+ (vdiff(index2)*dexp(-0.5*bindingEnergy(index2)/temp(dstep)))
+
+    !probability a reactant will just desorb
+    desorbProb = vdiff(index1)*dexp(-bindingEnergy(index1)/temp(dstep))
+    desorbProb = desorbProb + vdiff(index2)*dexp(-bindingEnergy(index2)/temp(dstep)) 
 
     !Calculate classical activation energy barrier exponent
-    activationBarrier = gama(reacIndx)/temp(dstep)
-
+    reacProb = gama(reacIndx)/temp(dstep)
     !Calculate quantum activation energy barrier exponent
     reducedMass = mass(grainList(index1)) * mass(grainList(index2)) / (mass(grainList(index1)) + mass(grainList(index2)))
     tunnelProb = 2.0d0 *CHEMICAL_BARRIER_THICKNESS/REDUCED_PLANCK * dsqrt(2.0d0*AMU*reducedMass*K_BOLTZ*gama(reacIndx))
 
     !Choose fastest between classical and tunnelling
-    IF (activationBarrier.GT.tunnelProb) activationBarrier=tunnelProb
+    IF (reacProb.GT.tunnelProb) reacProb=tunnelProb
     !set activationBarrier to probability of reaction Ruaud+2016
-    activationBarrier=dexp(-activationBarrier)
+    reacProb=dexp(-reacProb)
+
+    !Overall reaction probability is chance of reaction occuring on meeting * diffusion rate
+    reacProb = max(vdiff(index1),vdiff(index2)) * reacProb       
+
 
     ! Keff from Garrod & Pauly 2011 and Ruaud+2016
     ! Actual reaction probability is Preac/(Preac+Pevap+Pdiffuse), accounting for the other possible processes
     IF(DIFFUSE_REACT_COMPETITION) THEN
-       activationBarrier = max(vdiff(index1),vdiff(index2)) * activationBarrier       
-       !probability a reactant will just desorb
-       desorbProb = vdiff(index1)*dexp(-bindingEnergy(index1)/temp(dstep))
-       desorbProb = desorbProb + vdiff(index2)*dexp(-bindingEnergy(index2)/temp(dstep)) 
-       !Probability reactants wills diffuse onwards when they meet
-       diffuseProb = (diffuseRate) * NUM_SITES_PER_GRAIN
-       !Therefore, total probability the reactants that meet will react
-       activationBarrier = activationBarrier/(activationBarrier + desorbProb + diffuseProb)
+       reacProb = reacProb/(reacProb + desorbProb + diffuseProb)
     END IF
     
-    diffusionReactionRate=alpha(reacIndx) * diffuseRate * activationBarrier* GAS_DUST_DENSITY_RATIO / density(dstep)
+    !see Eq A1 of Quenard et al. 2018
+    !GAS_DUST_DENSITY_RATIO = 1/ frac abundance of dust so ratio/density is 1/number density of dust
+    n_dust=density(dstep)/GAS_DUST_DENSITY_RATIO
+    diffusionReactionRate=alpha(reacIndx) *reacProb* diffuseProb/(NUM_SITES_PER_GRAIN*n_dust)
 
     !Now adjust for fraction of this reaction's products that will desorb due to energy released
     IF (reacIndx .ge. diffReacs(1) .and. reacIndx .le. diffReacs(2)) THEN
