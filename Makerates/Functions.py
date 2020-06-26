@@ -1,6 +1,6 @@
 from __future__ import print_function
 import csv
-import numpy
+import numpy as np
 
 #functions including
 #1. simple classes to store all the information about each species and reaction.
@@ -12,6 +12,12 @@ import numpy
 #1. simple classes to store all the information about each species and reaction.
 #largely just to make the other functions more readable.
 ##########################################################################################
+reaction_types=['PHOTON','CRP','CRPHOT','FREEZE','THERM','DESOH2','DESCR','DEUVCR',"CHEMDES","DIFF"]
+#these reaction types removed as UCLCHEM does not handle them. 'CRH','PHOTD','XRAY','XRSEC','XRLYA','XRPHOT'
+elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N']
+elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420,15]
+symbols=['#','+','-','(',')']
+
 class Species:
 	def __init__(self,inputRow):
 		self.name=inputRow[0]
@@ -37,15 +43,21 @@ class Reaction:
 		self.gamma=float(inputRow[9])
 		self.templow=inputRow[10]
 		self.temphigh=inputRow[11]
+		self.reac_type=self.get_reaction_type()
 
 	def NANCheck(self,a):
 		aa  = a if a else 'NAN'
 		return aa
 
-reaction_types=['PHOTON','CRP','CRPHOT','FREEZE','CRH','PHOTD','THERM','XRAY','XRSEC','XRLYA','XRPHOT','DESOH2','DESCR','DEUVCR',"CHEMDES","DIFF"]
-elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N']
-elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420,15]
-symbols=['#','+','-','(',')']
+	def get_reaction_type(self):
+		if (self.reactants[2].strip()=="CHEMDES") or (self.reactants[2].strip()=="DIFF"):
+			return self.reactants[2]
+		else:
+			if self.reactants[1] in reaction_types:
+				return self.reactants[1]
+			else:
+				return "TWOBODY"
+
 
 ##########################################################################################
 #2. Functions to read in the species and reaction file and check for sanity
@@ -68,7 +80,7 @@ def read_reaction_file(fileName, speciesList, ftype):
 	dropped_reactions=[]
 	keepList=['','NAN','#','E-','e-','ELECTR']
 	keepList.extend(reaction_types)
-	print(keepList)
+
 	for species in speciesList:
 		keepList.append(species.name)			                                  
 	if ftype == 'UMIST': # if it is a umist database file
@@ -498,7 +510,7 @@ def is_H2_formation(reactants, products):
 
 def write_network_file(fileName,speciesList,reactionList):
 	openFile=open(fileName,"w")
-	openFile.write("MODULE network\n    IMPLICIT NONE\n")
+	openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
 	openFile.write("    INTEGER, PARAMETER :: nSpec={0}, nReac={1}\n".format(len(speciesList),len(reactionList)))
 
 	#write arrays of all species stuff
@@ -544,8 +556,11 @@ def write_network_file(fileName,speciesList,reactionList):
 	beta=[]
 	gama=[]
 	reacTypes=[]
-	for reaction in reactionList:
 
+	for i,reaction in enumerate(reactionList):
+		if "CO" in reaction.reactants and "PHOTON" in reaction.reactants:
+			if "O" in reaction.products and "C" in reaction.products:
+				openFile.write(f"INTEGER, PARAMETER :: nrco={i+1}\n")
 		reactant1.append(find_reactant(names,reaction.reactants[0]))
 		reactant2.append(find_reactant(names,reaction.reactants[1]))
 		reactant3.append(find_reactant(names,reaction.reactants[2]))
@@ -556,7 +571,8 @@ def write_network_file(fileName,speciesList,reactionList):
 		alpha.append(reaction.alpha)
 		beta.append(reaction.beta)
 		gama.append(reaction.gamma)
-		reacTypes.append(get_reaction_type(reaction.reactants[1],reaction.reactants[2]))
+		reacTypes.append(reaction.reac_type)
+
 	openFile.write(array_to_string("\tre1",reactant1,type="int"))
 	openFile.write(array_to_string("\tre2",reactant2,type="int"))
 	openFile.write(array_to_string("\tre3",reactant3,type="int"))
@@ -567,7 +583,15 @@ def write_network_file(fileName,speciesList,reactionList):
 	openFile.write(array_to_string("\talpha",alpha,type="float",parameter=False))
 	openFile.write(array_to_string("\tbeta",beta,type="float",parameter=False))
 	openFile.write(array_to_string("\tgama",gama,type="float",parameter=False))
-	openFile.write(array_to_string("\treacType",reacTypes,type="string",parameter=True))
+
+	reacTypes=np.asarray(reacTypes)
+	for reaction_type in reaction_types+["TWOBODY"]:
+		list_name=reaction_type.lower()+"Reacs"
+		print(reaction_type)
+		indices=np.where(reacTypes==reaction_type)[0]
+		print(indices)
+		indices=[indices[0]+1,indices[-1]+1]
+		openFile.write(array_to_string("\t"+list_name,indices,type="int",parameter=True))
 	openFile.write("END MODULE network")
 	openFile.close()
 
@@ -577,28 +601,24 @@ def find_reactant(species_list,reactant):
 	except:
 		return 9999
 
-def get_reaction_type(reac2,reac3):
-	if (reac3=="CHEMDES") or (reac3=="DIFF"):
-		return reac3
-	else:
-		return reac2
+
 
 def array_to_string(name,array,type="int",parameter=True):
 	if parameter:
-		outString=", parameter :: "+name+" ({0})=(/".format(len(array))
+		outString=", PARAMETER :: "+name+" ({0})=(/".format(len(array))
 	else:
 		outString=" :: "+name+" ({0})=(/".format(len(array))
 	if type=="int":
-		outString="integer"+outString
+		outString="INTEGER"+outString
 		for value in array:
 			outString+="{0},".format(value)
 	elif type=="float":
-		outString="double precision"+outString
+		outString="REAL(dp)"+outString
 		for value in array:
 			outString+="{0:.4e},".format(value)
 	elif type=="string":
 		strLength=len(max(array, key=len))
-		outString="character(Len={0:.0f})".format(strLength)+outString
+		outString="CHARACTER(Len={0:.0f})".format(strLength)+outString
 		for value in array:
 			outString+="\""+value.ljust(strLength)+"\","
 	else:
