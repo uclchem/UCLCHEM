@@ -32,6 +32,8 @@ MODULE physics
     double precision :: ucm,z1,driftVel,vi,tempi,vn0,zn0,vA,dlength
     double precision :: grainRadius5,dens6,grainNumberDensity,dzv,start_vel
     double precision, allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
+    integer :: manCoolTemp, postShock
+    double precision :: coolTemp
     !variables for the collisional and radiative heating of grains
     double precision :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
     double precision :: coshinv1,coshinv2,zmax,a1,eta,eps,epso,sConst
@@ -265,7 +267,16 @@ CONTAINS
                 temp(dstep)=tn(dstep)
                 ti(dstep)=tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ_CGS))
                 tempi=ti(dstep)
+
+                IF ((temp(dstep) .gt. coolTemp) .AND. (manCoolTemp .eq. 1)) THEN
+                    postShock = 1
+                END IF
             ENDIF
+
+            IF ((temp(dstep) .lt. coolTemp) .AND. (phase .eq. 2) .AND. (postShock .eq. 1)) THEN
+                temp(dstep) = coolTemp
+            END IF
+            
         ENDIF
     END SUBROUTINE updatePhysics
 
