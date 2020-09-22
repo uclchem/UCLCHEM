@@ -33,7 +33,7 @@ MODULE physics
     double precision :: grainRadius5,dens6,grainNumberDensity,dzv,start_vel
     double precision, allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
     integer :: manCoolTemp, postShock
-    double precision :: coolTemp
+    double precision, parameter :: coolTemp=100.0
     !variables for the collisional and radiative heating of grains
     double precision :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
     double precision :: coshinv1,coshinv2,zmax,a1,eta,eps,epso,sConst
@@ -60,6 +60,9 @@ CONTAINS
         driftVel=0.0
         zn0=0.0
         vn0=0.0
+
+        ! Set cooling variables to off by default (change if reqd)
+        manCoolTemp = 0
 
         !check input sanity and set inital values
         cloudSize=(rout-rin)*pc

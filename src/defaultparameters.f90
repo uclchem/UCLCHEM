@@ -58,8 +58,6 @@ tempindx=3
 
 !cshock module specific variable, uncomment or comment as  needed
 vs=40.0
-manCoolTemp=0 ! Binary switch to enable manual cooling to desired temp
-coolTemp=100.0 ! Desired cooling temp - will not be active unless manCoolTemp=1
 
 !initial fractional abundances of elements(from Asplund et al. 2009 ARAA table 1 -SOLAR)
 fh=0.0;fhe = 0.1;fc  = 2.6d-04;fo  = 4.6d-04;fn  = 6.1d-05
