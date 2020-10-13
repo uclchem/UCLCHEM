@@ -34,8 +34,8 @@ class Species:
 	def is_ion(self):
 		return (self.name[-1]=="+" or self.name[-1]=="-")
 
-	def find_constituents(speciesList):
-		speciesName=self.name.copy()
+	def find_constituents(self):
+		speciesName=self.name[:]
 		i=0
 		atoms=[]
 		bracket=False
@@ -105,7 +105,7 @@ class Species:
 		mass=0
 		for atom in atoms:
 			mass+=elementMass[elementList.index(atom)]
-		if mass!=float(self..mass):
+		if mass!=float(self.mass):
 			print(f"Input mass of {self.name} does not match calculated mass of constituents")
 			print("using calculated mass")
 			self.mass=str(mass)
