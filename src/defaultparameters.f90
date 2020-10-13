@@ -35,7 +35,7 @@ bc=1.0
 
 !If you want to read abundances from a file (abundFile) set to 1
 !If you set to zero, final abundances are written to abundFile
-readAbunds=0
+readAbunds=1
 !phase chooses behaviour. Phase=1 runs a simple cloud and Phase=2 runs the physics of the chosen module (eg.hot core or c-shock)
 phase=1;
 
@@ -82,7 +82,7 @@ writeStep=1
 !If readAbund=0, final abundances are written to abundFile
 abundFile="output/start.dat"
 !Full output written to outputFlie
-outputFile="output/full.dat"
+outputFile="output/full2.dat"
 !columnated output of time,dens,temp and outSpecies written to column file
 columnFile='output/column.dat'
 

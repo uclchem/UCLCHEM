@@ -1,7 +1,5 @@
-Rate Efficiency Upgrade
-Makerates now outputs one array for each type of reaction UCLCHEM can work with.
-All reactions are sorted by reaction type so each array contains first and last index corresponding to a reaction type.
+# UCLCHEM output
+We've made a large change to the UCLCHEM outputs. The full output file is now columnated after a 2 line header that describes model features which do not change. Python scripts that are packaged with UCLCHEM have been updated to account for this.
 
-rates.f90 updated to drop massive reaction list loop and just use indices to calculate whole rates array sections at once.
-
-No decrease in run time but the code is more readable.
+# MakeRates bug fixes
+The new rate calculation code introduced a few bugs to the MakeRates script. These have been fixed so that lists of reactions intended for debugging will no longer print when MakeRates runs and the script will not throw an error when there are no reactions of a certain type.

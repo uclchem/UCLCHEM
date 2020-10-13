@@ -1,118 +1,35 @@
 #A set of functions for working with UCLCHEM outputs
 # adding "from plotfunctions import * to any python script in scripts/ will allow their use"
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import csv
 
-#to read from uclchem's full output send the filename of the output and a list of species names to read_uclchem()
-#the list for example would be ["H","C","CO","#CO"]
-#the return is a list of times and list of lists of abundances
-#call time,abundances=read_uclchem("output-full",["H","C","CO","#CO"])
-# abudnance[0] would be a list of "H" abundances
-def read_uclchem(filename,species):
-    a=open(filename).read()
-    a=a.split('\n')
-    #there are 68 lines per time step in the UCL_CHEM output file.
-    lines=68
-    timesteps=len(a)/lines
-
-    abunds=[]
-    for spec in species:
-        abunds.append([])
-    time=[]
-    dens=[]
-    temp=[]
-    #so now do the following until end of file
-    with open(filename) as file:
-        for line in file:
-            bits=line.split()        
-            #find time line
-            if  'age' in bits:
-                time.append(float(bits[-2].replace('D','E')))
-            #read another line for dens
-            if 'density' in bits:
-                densi=float(bits[-2].replace('D','E'))
-                if densi==0.0:
-                    densi=1e-10
-                dens.append(densi)
-            if "temp" in bits:
-                tempi=float(bits[-2].replace('D','E'))
-                temp.append(tempi)
-            #then read until we hit abundances
-            for specIndx,specName in enumerate(species):
-                if specName in bits:
-                    abunds[specIndx].append(float(bits[2+bits.index(specName)].replace('D','E')))
-
-    return time,dens,temp,abunds
-
-def readTimestep(filename,chosenTime,cloud):
-    a=open(filename).read()
-    a=a.split('\n')
-    #there are 68 lines per time step in the UCL_CHEM output file.
-    lines=68
-    timesteps=len(a)/lines
-
-    abunds=[]
-    species=[]
-    specPosArray=[0,3,6,9]
-    #so now do the following until end of file
-    readFlag=False
-    with open(filename) as file:
-        for line in file:
-            bits=line.split()        
-            #find time line
-            if  'age' in bits:
-                if chosenTime==float(bits[-2].replace('D','E')):
-                    time=chosenTime
-                    readFlag=True
-                else:
-                    if readFlag:
-                        break
-                #read another line for dens
-            if readFlag:
-                if 'density' in bits:
-                    densi=float(bits[-2].replace('D','E'))
-                    if densi==0.0:
-                        densi=1e-10
-                    cloud['density']=densi
-                elif 'temperature' in bits:
-                   cloud['temp']=float(bits[-2].replace('D','E'))
-                elif 'extinction' in bits:
-                   cloud['av']=float(bits[-2].replace('D','E')) 
-                elif 'cosmic' in bits:
-                   cloud['zeta']=float(bits[-4].replace('D','E'))
-                #then read until we hit abundances
-                if bits .count('=')>3:
-                    for specPos in specPosArray:
-                        species.append(bits[specPos])
-                        abunds.append(float(bits[2+specPos].replace('D','E')))
-                        if bits[specPos]=="H":
-                            cloud['h']=float(bits[2+specPos].replace('D','E'))
-    return time,cloud,species,abunds 
-
-def write_cols(filename,times,dens,abundances):
-    f=open(filename,"w")
-    for timeIndx,time in enumerate(times):
-        outString="{0:.3e} {1:.3e}".format(time,dens[timeIndx])
-        for i in range(0,len(abundances)):
-            outString+=" {0:.3e}".format(abundances[i][timeIndx])
-        outString+="\n"
-        f.write(outString)
-    f.close()
+def read_uclchem(filename):
+    f=open(filename)
+    f.readline()
+    bits=f.readline().split()
+    radfield=bits[1]
+    zeta=bits[3]
+    data=pd.read_csv(f)
+    data["zeta"]=zeta
+    data["radfield"]=radfield
+    data.columns=data.columns.str.strip()
+    return data
 
 #send a  list of species names and their abundances in  a list of lists
 #with a list of times for each abundance point
 #same as the species input and time/abundance output from read_uclchem
 #optionally send an output filename to save the plot
 #return ax,figure for further manipulation
-def plot_species(species,times,abundances,ax=None,plotFile=None):
+def plot_species(species,df,ax=None,plot_file=None):
     if ax is None:
         fig,ax=plt.subplots()
     colours=make_colours(len(species))
 
     for specIndx,specName in enumerate(species):
-        ax.plot(times,abundances[specIndx],color=next(colours),label=specName)
+        ax.plot(df["Time"],df[specName],color=next(colours),label=specName)
 
     ax.legend(loc=4,fontsize='small')
 
@@ -121,14 +38,11 @@ def plot_species(species,times,abundances,ax=None,plotFile=None):
 
     ax.set_yscale('log')
 
-    if plotFile is not None:
-        fig.savefig(plotFile)
+    if plot_file is not None:
+        fig.savefig(plot_file)
     return ax
     
 
-
-def make_colours(n):
-    return iter(cm.rainbow(np.linspace(0, 1, n)))
 
 def make_colours(n):
     return iter(cm.rainbow(np.linspace(0, 1, n)))
@@ -143,7 +57,7 @@ def formatSpecies(speciesName):
 
 
 #########################################################################################################
-#Analsis Functions
+#Analysis Functions
 #########################################################################################################
 
 def getRate(reactype,mass,alpha,beta,gamma,cloud):

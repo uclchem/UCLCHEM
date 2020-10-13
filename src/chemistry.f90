@@ -179,33 +179,27 @@ CONTAINS
         333 format("Time,Density,gasTemp,av,",(999(A,:,',')))
         
 
-         INQUIRE(UNIT=10, OPENED=fullOutput )
+        INQUIRE(UNIT=10, OPENED=fullOutput )
+        IF (fullOutput) THEN
+            write(10,334) fc,fo,fn,fs
+            write(10,*) "Radfield ", radfield, " Zeta ",zeta
+            write(10,335) specName
+        END IF
+        335 format("Time,Density,gasTemp,av,point,",(999(A,:,',')))
+        334 format("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
+
 
         !read start file if choosing to use abundances from previous run 
         !
         IF (readAbunds .eq. 1) THEN
             DO l=1,points
-                READ(7,*)
-                READ(7,7000) abund(nspec+1,l),junktemp,av(l)
-                READ(7,*)
-                READ(7,7010) h2form,fc,fo,&
-                            &fmg,fhe,dstep
-                READ(7,*)
-                READ(7,7030) (abund(i,l),i=1,nspec)
+                READ(7,*) fhe,fc,fo,fn,fs,fmg
+                READ(7,*) abund(:nspec,l)
                 REWIND(7)
                 abund(nspec+1,l)=density(l)
             END DO
-            7000 format(&
-            &33x,1pe10.4,5x,/,&
-            &33x,0pf8.2,2x,/,&
-            &33x,0pf12.4,4x,/)
-            7010 format(&
-            &33x,1pe8.2,8x,/,&
-            &11x,1pe7.1,4x,12x,1pe7.1,/&
-            &12x,1pe7.1,13x,1pe7.1,&
-            &13x,i3,/)
-            7020  format(//)
-            7030  format(4(18x,1pe10.3,:))     
+
+            7010 format((999(1pe15.5,:,',')))    
         END IF
     END SUBROUTINE fileSetup
 
@@ -213,43 +207,20 @@ CONTAINS
     SUBROUTINE output
 
         IF (fullOutput) THEN
-            !write out cloud properties
-            write(10,8020) timeInYears,density(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
-                            &fmg,fhe,dstep
-            !and a blank line
-            write(10,8000)
-            !and then all the abundances for this step
-            write(10,8010) (specname(i),abund(i,dstep),i=1,nspec) 
-            write(10,8000)
+            write(10,8020) timeInYears,density(dstep),temp(dstep),av(dstep),dstep,abund(:neq-1,dstep)
+            8020 format(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
         END IF
 
         !If this is the last time step of phase I, write a start file for phase II
         IF (readAbunds .eq. 0) THEN
            IF (switch .eq. 0 .and. timeInYears .ge. finalTime& 
                &.or. switch .eq. 1 .and.density(dstep) .ge. finalDens) THEN
-               write(7,8020) timeInYears,density(dstep),temp(dstep),av(dstep),radfield,zeta,h2form,fc,fo,&
-                       &fmg,fhe,dstep
-               write(7,8000)
-               write(7,8010) (specname(i),abund(i,dstep),i=1,nspec)
-               write(7,8000)
+               write(7,*) fhe,fc,fo,fn,fs,fmg
+               write(7,8010) abund(:neq-1,dstep)
            ENDIF
         ENDIF
-
-        !format for the above two blocks
-        8000  format(/)
-        8010  format(4(1x,a15,'=',1x,1pe10.3,:))
-        8020 format(&
-        &'age of cloud             time  = ',1pe10.3,' years',/,&
-        &'total hydrogen density   dens  = ',1pe10.4,' cm-3',/,&
-        &'cloud temperature        temp  = ',0pf8.2,' k',/,&
-        &'visual extinction        av    = ',0pf12.4,' mags',/,&
-        &'radiation field          rad   = ',0pf10.2,' (habing = 1)',/,&
-        &'cosmic ray ioniz. rate   zeta  = ',0pf10.2,' (unit = 1.3e-17s-1)',/,&
-        &'h2 formation rate coef.        = ',1pe8.2,' cm3 s-1',/,&
-        &'c / htot = ',1pe7.1,4x,' o / htot = ',1pe7.1,/&
-        &'mg / htot = ',1pe7.1,&
-        &' he / htot = ',1pe7.1,&
-        &' depth     = ',i3)
+        8010  format((999(1pe15.5,:,',')))
+        
 
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90

@@ -6,17 +6,17 @@ from plotfunctions import *
 fig,axes=plt.subplots(2,3,figsize=(16,9))
 axes=axes.flatten()
 i=0
-for folder in ["example-output/","test-output/"]:
+for folder in ["examples-output/","test-output/"]:
 	for model in ["phase1","phase2","static"]:
 		#pick species, any number is fine
 		speciesNames=["CO","CS","H2O","#CO","#CH3OH","NH3"]
 
 		#call read_uclchem. 
-		time,dens,temp,abundances=read_uclchem("examples/"+folder+model+"-full.dat",speciesNames)
+		model_data=read_uclchem("examples/"+folder+model+"-full.dat")
 
 
 		#plot species and save to test.png, alternatively send dens instead of time.
-		axis=plot_species(speciesNames,time,abundances,ax=axes[i])
+		axis=plot_species(speciesNames,model_data,ax=axes[i])
 
 		#plot species returns the axis so we can further edit
 		axis.set(xscale='log',ylim=(1e-15,1e-3),xlim=(1e0,6e6))

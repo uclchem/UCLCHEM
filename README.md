@@ -1,4 +1,4 @@
-# UCLCHEM v1.4
+# UCLCHEM v1.5
 UCLCHEM is a gas-grain chemical code written in Fortran 95. It propagates the abundances of chemical species through a network of user-defined reactions according to the physical conditions of the gas. Included in the repository is MakeRates, a python script to combine a species list, UMIST reaction file and user-defined reaction file into a consistent network with all files required by UCLCHEM.
 
 **************************************************************
@@ -27,16 +27,17 @@ Currently, the wrapper must be recompiled for different physics modules.
 **************************************************************
 Change Log
 **************************************************************
-**New python wrapper**
+**UCLCHEM output**
+We've made a large change to the UCLCHEM outputs. The full output file is now columnated after a 2 line header that describes model features which do not change. Python scripts that are packaged with UCLCHEM have been updated to account for this.
 
-**Updated grain treatment to make all grain parameters self-consistent**
+**New Network**
+Our default network now uses the diffusion and desorption mechanisms introduced by Quenard et al. 2018 for the grain network. A pseudo-grain network that simply hydrogenates species is still included for those who wish to use it.
 
-**Continuous thermal desorption added.** Makerates has a new parameter therm_flag which defaults to False. If set to True, thermal desorption reactions are added to the network and material will continually desorb from the grains. UCLCHEM's physics modules are the preferred method for controlling thermal desorption but the functionality is available nonetheless.
+**Rate Calculation**
+Vectorized rate calculations to simplify code.
 
-**General Code Improvements**
-- Small changes to the code have been made to improve readability. uvy is now uv_yield, grain_area is grain_area_per_H to better represent its physical meaning and constants have been moved to constants.f90
-- An error message now informs users that the common error of writing a file to a folder that doesn't exist has occurred. Improving on the basic fortran error message which says the *file* doesn't exist.
-- Double precision variables declared in correct fashion for modern fortran
+**Shock update**
+C and J type shocks now allow the user to set a minimum temperature at which point the post shock gas stops cooling.
 
 *************************************************************
 Contributing
