@@ -6,7 +6,7 @@ from plotfunctions import *
 ################################################
 
 speciesName="N2H+"
-resultFile="output/test.dat"
+resultFile="examples/example-output/phase1-full.dat"
 reactionFile="src/reactions.csv"
 speciesFile="src/species.csv"
 parameterFile="src/defaultparameters.f90"

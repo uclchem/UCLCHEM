@@ -587,11 +587,10 @@ def write_network_file(fileName,speciesList,reactionList):
 	reacTypes=np.asarray(reacTypes)
 	for reaction_type in reaction_types+["TWOBODY"]:
 		list_name=reaction_type.lower()+"Reacs"
-		print(reaction_type)
 		indices=np.where(reacTypes==reaction_type)[0]
-		print(indices)
-		indices=[indices[0]+1,indices[-1]+1]
-		openFile.write(array_to_string("\t"+list_name,indices,type="int",parameter=True))
+		if len(indices>1):
+			indices=[indices[0]+1,indices[-1]+1]
+			openFile.write(array_to_string("\t"+list_name,indices,type="int",parameter=True))
 	openFile.write("END MODULE network")
 	openFile.close()
 
