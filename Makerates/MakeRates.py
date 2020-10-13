@@ -42,7 +42,7 @@ reactionList=add_desorb_reactions(speciesList,reactionList,therm_flag=therm_flag
 
 #Keep only the species that are involved in the final reaction list
 print('\nRemoving unused species...')
-speciesList = filter_species(speciesList,reactionList)
+speciesList = check_and_filter_species(speciesList,reactionList)
 
 #Print dropped reactions from grain file or write if many
 if len(dropped_reactions)<6:
@@ -56,11 +56,6 @@ else:
 	for reaction in dropped_reactions:
 		writer.writerow(reaction)
 	f.close()
-
-#TODO replace this with an atom counter
-# Calculate the molecular mass and elemental constituents of each species
-print('Calculating molecular masses and elemental constituents...')
-speciesList = find_constituents(speciesList)
 
 #sort the species file according to mass
 print('Sorting species by mass...')

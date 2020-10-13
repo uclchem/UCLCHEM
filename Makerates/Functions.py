@@ -14,8 +14,8 @@ import numpy as np
 ##########################################################################################
 reaction_types=['PHOTON','CRP','CRPHOT','FREEZE','THERM','DESOH2','DESCR','DEUVCR',"CHEMDES","DIFF"]
 #these reaction types removed as UCLCHEM does not handle them. 'CRH','PHOTD','XRAY','XRSEC','XRLYA','XRPHOT'
-elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N']
-elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420,15]
+elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N','13C']
+elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420,15,13]
 symbols=['#','+','-','(',')']
 
 class Species:
@@ -33,6 +33,83 @@ class Species:
 
 	def is_ion(self):
 		return (self.name[-1]=="+" or self.name[-1]=="-")
+
+	def find_constituents(speciesList):
+		speciesName=self.name.copy()
+		i=0
+		atoms=[]
+		bracket=False
+		bracketContent=[]
+		#loop over characters in species name to work out what it is made of
+		while i<len(speciesName):
+			#if character isn't a #,+ or - then check it otherwise move on
+			if speciesName[i] not in symbols:
+				if i+1<len(speciesName):
+					#if next two characters are (eg) 'MG' then atom is Mg not M and G
+					if speciesName[i:i+3] in elementList:
+						j=i+3
+					elif speciesName[i:i+2] in elementList:
+						j=i+2
+					#otherwise work out which element it is
+					elif speciesName[i] in elementList:
+						j=i+1
+
+				#if there aren't two characters left just try next one
+				elif speciesName[i] in elementList:
+					j=i+1
+				#if we've found a new element check for numbers otherwise print error
+				if j>i:
+					if bracket:
+						bracketContent.append(speciesName[i:j])
+					else:
+						atoms.append(speciesName[i:j])#add element to list
+					if j<len(speciesName):
+						if is_number(speciesName[j]):
+							if int(speciesName[j])>1:
+								for k in range(1,int(speciesName[j])):
+									if bracket:
+										bracketContent.append(speciesName[i:j])
+									else:
+										atoms.append(speciesName[i:j])
+								i=j+1
+							else:
+								i=j
+						else:
+							i=j
+					else:
+						i=j
+				else:
+					print(speciesName[i])
+					print("\t{0} contains elements not in element list:".format(speciesName))
+					print(elementList)
+			else:
+				#if symbol is start of a bracketed part of molecule, keep track
+				if (speciesName[i]=="("):
+					bracket=True
+					bracketContent=[]
+					i+=1
+				#if it's the end then add bracket contents to list
+				elif speciesName[i]==")":
+					if is_number(speciesName[i+1]):
+						for k in range(0,int(speciesName[i+1])):
+							atoms.extend(bracketContent)
+						i+=2
+					else:
+						atoms.extend(bracketContent)
+						i+=1
+				#otherwise move on
+				else:
+					i+=1
+
+		self.n_atoms=len(atoms)
+		mass=0
+		for atom in atoms:
+			mass+=elementMass[elementList.index(atom)]
+		if mass!=float(self..mass):
+			print(f"Input mass of {self.name} does not match calculated mass of constituents")
+			print("using calculated mass")
+			self.mass=str(mass)
+
 
 class Reaction:
 	def __init__(self,inputRow):
@@ -128,7 +205,7 @@ def remove_duplicate_species(speciesList):
 	return speciesList
 
 #Look for possibly incorrect parts of species list
-def filter_species(speciesList,reactionList):
+def check_and_filter_species(speciesList,reactionList):
 	#check for species not involved in any reactions
 	lostSpecies=[]
 	for species in speciesList:
@@ -143,6 +220,8 @@ def filter_species(speciesList,reactionList):
 	print('\tSpecies in input list that do not appear in final list:')
 	print('\t',lostSpecies)
 	print('\n')
+	for species in speciesList:
+		species.find_constituents()
 	return speciesList
 
 #All species should freeze out at least as themselves and all grain species should desorb according to their binding energy
@@ -203,81 +282,6 @@ def make_capitals(fileName):
 	output.write(a.upper())
 	output.close()
 
-def find_constituents(speciesList):
-	for species in speciesList:
-		speciesName=species.name
-		i=0
-		atoms=[]
-		bracket=False
-		bracketContent=[]
-		#loop over characters in species name to work out what it is made of
-		while i<len(speciesName):
-			#if character isn't a #,+ or - then check it otherwise move on
-			if speciesName[i] not in symbols:
-				if i+1<len(speciesName):
-					#if next two characters are (eg) 'MG' then atom is Mg not M and G
-					if speciesName[i:i+3] in elementList:
-						j=i+3
-					elif speciesName[i:i+2] in elementList:
-						j=i+2
-					#otherwise work out which element it is
-					elif speciesName[i] in elementList:
-						j=i+1
-
-				#if there aren't two characters left just try next one
-				elif speciesName[i] in elementList:
-					j=i+1
-				#if we've found a new element check for numbers otherwise print error
-				if j>i:
-					if bracket:
-						bracketContent.append(speciesName[i:j])
-					else:
-						atoms.append(speciesName[i:j])#add element to list
-					if j<len(speciesName):
-						if is_number(speciesName[j]):
-							if int(speciesName[j])>1:
-								for k in range(1,int(speciesName[j])):
-									if bracket:
-										bracketContent.append(speciesName[i:j])
-									else:
-										atoms.append(speciesName[i:j])
-								i=j+1
-							else:
-								i=j
-						else:
-							i=j
-					else:
-						i=j
-				else:
-					print(speciesName[i])
-					print("\t{0} contains elements not in element list:".format(speciesName))
-					print(elementList)
-			else:
-				#if symbol is start of a bracketed part of molecule, keep track
-				if (speciesName[i]=="("):
-					bracket=True
-					bracketContent=[]
-					i+=1
-				#if it's the end then add bracket contents to list
-				elif speciesName[i]==")":
-					if is_number(speciesName[i+1]):
-						for k in range(0,int(speciesName[i+1])):
-							atoms.extend(bracketContent)
-						i+=2
-					else:
-						atoms.extend(bracketContent)
-						i+=1
-				#otherwise move on
-				else:
-					i+=1
-
-		species.n_atoms=len(atoms)
-		mass=0
-		for atom in atoms:
-			mass+=elementMass[elementList.index(atom)]
-		if mass!=float(species.mass):
-			species.mass=str(mass)
-	return speciesList
 
 def is_number(s):
     try:
