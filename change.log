@@ -1,5 +1,2 @@
-# UCLCHEM output
-We've made a large change to the UCLCHEM outputs. The full output file is now columnated after a 2 line header that describes model features which do not change. Python scripts that are packaged with UCLCHEM have been updated to account for this.
-
-# MakeRates bug fixes
-The new rate calculation code introduced a few bugs to the MakeRates script. These have been fixed so that lists of reactions intended for debugging will no longer print when MakeRates runs and the script will not throw an error when there are no reactions of a certain type.
+# Elements
+Minor tweaks to MakeRates and chemistry.f90 so no changes to the code need to be made when the elements in the network are changed.

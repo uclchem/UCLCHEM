@@ -38,9 +38,9 @@ IMPLICIT NONE
     REAL(dp) :: reltol
     REAL(dp), ALLOCATABLE :: abstol(:)
     TYPE(VODE_OPTS) :: OPTIONS
-
     !initial fractional elemental abudances and arrays to store abundances
-    REAL(dp) :: fh,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,h2col,cocol,junk1,junk2
+    REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,fli,fna,fpah,f15n,f13c,f18O
+    REAL(dp) :: h2col,cocol,junk1,junk2
     REAL(dp),ALLOCATABLE :: abund(:,:),mantle(:)
     
     !Variables controlling chemistry
@@ -111,22 +111,33 @@ CONTAINS
             abund= 0.
             !As default, have half in molecular hydrogen and half in atomic hydrogen
             abund(nh2,:) = 0.5*(0.5*(1.0e0-fh))
-            abund(nh,:) = (0.5*(1.0e0-fh))     
+            abund(nh,:) = (0.5*(1.0e0-fh))
+
+            !some elements default to atoms     
+            abund(nd,:)=fd
             abund(nhe,:) = fhe                       
             abund(no,:) = fo  
             abund(nn,:) = fn               
-            abund(nsx,:) = fs
             abund(nmg,:) = fmg
+            abund(np,:) = fp
+            abund(nf,:) = ff
+            abund(nna,:) = fna
+            abund(nli,:) = fli
+            abund(npah,:) = fpah
+
+            !others to ions
+            abund(nsx,:) = fs
             abund(nsix,:) = fsi                
             abund(nclx,:) = fcl 
-            !abund(np,:) = fp
-            !abund(nf,:) = ff
-
-            !abund(nfe,:) = ffe
-            !abund(nna,:) = fna
+            
+            !isotopes
+            abund(n18o,:) = f18o  
+            abund(n15n,:) = f15n           
+            abund(n13c,:) = f13c    
+            
             abund(nspec+1,:)=density      
 
-            !Decide how much iron is initiall ionized using parameters.f90
+            !Decide how much carbon is initiall ionized using parameters.f90
             SELECT CASE (ion)
                 CASE(0)
                     abund(nc,:)=fc

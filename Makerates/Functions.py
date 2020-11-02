@@ -14,8 +14,8 @@ import numpy as np
 ##########################################################################################
 reaction_types=['PHOTON','CRP','CRPHOT','FREEZE','THERM','DESOH2','DESCR','DEUVCR',"CHEMDES","DIFF"]
 #these reaction types removed as UCLCHEM does not handle them. 'CRH','PHOTD','XRAY','XRSEC','XRLYA','XRPHOT'
-elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N','13C']
-elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420,15,13]
+elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N','13C','18O']
+elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420,15,13,18]
 symbols=['#','+','-','(',')']
 
 class Species:
@@ -533,7 +533,7 @@ def write_network_file(fileName,speciesList,reactionList):
 	
 		except:
 			print(element," not in network, adding dummy index")
-			species_index=9999
+			species_index=len(speciesList)
 		name=element.lower().replace("+","x").replace("e-","elec").replace("#","g")
 		speciesIndices+="n{0}={1},".format(name,species_index)
 	if len(speciesIndices)>72:
