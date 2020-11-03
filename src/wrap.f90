@@ -1,4 +1,4 @@
-!Marcus Keil 13/03/2020
+!Marcus Keil Original 13/03/2020 Last Update 3/11/2020
 !Python wrapper for uclchem, compiled with "make python"
 !general becomes a python function which takes a dictionary of parameters
 !and a string of delimited species names
@@ -19,7 +19,8 @@ CONTAINS
         CALL dictionary_parser(dictionary, outSpeciesIn)
 
         CALL solveAbundances
-
+        
+        !close outputs to attempt to force flush
         close(10)
         close(11)
         close(7)
@@ -34,7 +35,11 @@ CONTAINS
         ! Set the boolean to True if you want to be able to return a python array
         ! call the dictionary_parser function in order to read the dictionary of parameters
         INCLUDE 'defaultparameters.f90'
+
+        !Read input parameters from the dictionary
         CALL dictionary_parser(dictionary, outSpeciesIn)
+
+        !close outputs to attempt to force flush
         close(10)
         close(11)
         close(7)
@@ -85,7 +90,7 @@ CONTAINS
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         INTEGER, ALLOCATABLE, DIMENSION(:) :: locations
         LOGICAL :: ChemicalDuplicateCheck
-        INTEGER :: posStart, posEnd, whileInteger
+        INTEGER :: posStart, posEnd, whileInteger,inputindx
         CHARACTER(LEN=100) :: inputParameter, inputValue
 
         close(10)
@@ -108,9 +113,15 @@ CONTAINS
                 posEnd = scan(dictionary, ',')
             END IF
             inputValue = dictionary(posStart+1:posEnd-1)
-            dictionary = dictionary(posEnd:)
+            
 
             SELECT CASE (inputParameter)
+                CASE('alpha')
+                    !To provide alphas, set keyword alpha in inputdictionary with a dictionary value
+                    !that dictionary should be index:value pairs for the alpha array    
+                    posStart=scan(dictionary,'{')
+                    posEnd=scan(dictionary,'}')
+                    CALL alpha_parser(dictionary(posStart+1:posEnd))
                 CASE('initialTemp')
                     READ(inputValue,*) initialTemp
                 CASE('maxTemp')
@@ -185,7 +196,6 @@ CONTAINS
                     IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
                     IF (ALLOCATED(outSpecies)) DEALLOCATE(outSpecies)
                     READ(inputValue,*) nout
-                    write(*,*) nout
                     ALLOCATE(outIndx(nout))
                     ALLOCATE(outSpecies(nout))
                     IF (outSpeciesIn .eq. "") THEN
@@ -253,7 +263,40 @@ CONTAINS
                     WRITE(*,*) "Problem with given parameter: '", trim(inputParameter), "'."
                     WRITE(*,*) "This is either not supported yet, or invalid."
             END SELECT
+            dictionary = dictionary(posEnd:)
+            IF (SCAN(dictionary,',') .eq. 0) whileInteger=1
         END DO
     END SUBROUTINE dictionary_parser
+
+    SUBROUTINE alpha_parser(alpha_string)
+        INTEGER :: inputIndx,posStart,posEnd
+        CHARACTER(LEN=100) :: inputValue
+        CHARACTER(LEN=*) :: alpha_string
+        LOGICAL :: continue_flag
+        
+        continue_flag=.True.
+        DO WHILE (continue_flag)
+            !substring containing integer key
+            posStart=1
+            posEnd=SCAN(alpha_string,':')
+            !read it into index integer
+            READ(alpha_string(posStart:posEnd-1),*) inputindx
+
+            !substring including alpha value for the index.
+            posStart=posEnd+1
+            posEnd=SCAN(alpha_string,',')
+            !last value will have a } instead of , so grab index and tell loop to finish
+            IF (posEnd .eq. 0) THEN
+                posEnd=SCAN(alpha_string,"}")
+                continue_flag=.False.
+            END IF
+
+            !read that substring
+            inputValue=alpha_string(posStart:posEnd-1)
+            READ(inputValue,*) alpha(inputIndx)
+            !update string to remove this entry
+            alpha_string=alpha_string(posEnd+1:)
+        END DO
+    END SUBROUTINE alpha_parser
 
 END MODULE wrap

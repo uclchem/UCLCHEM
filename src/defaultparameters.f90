@@ -35,7 +35,7 @@ bc=1.0
 
 !If you want to read abundances from a file (abundFile) set to 1
 !If you set to zero, final abundances are written to abundFile
-readAbunds=1
+readAbunds=0
 !phase chooses behaviour. Phase=1 runs a simple cloud and Phase=2 runs the physics of the chosen module (eg.hot core or c-shock)
 phase=1;
 

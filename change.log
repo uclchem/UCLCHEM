@@ -1,2 +1,2 @@
-# Elements
-Minor tweaks to MakeRates and chemistry.f90 so no changes to the code need to be made when the elements in the network are changed.
+# Python Wrap
+Updated parse_dictionary to be able to read a dictionary of alpha values.
