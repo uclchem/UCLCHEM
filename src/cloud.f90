@@ -40,7 +40,7 @@ MODULE physics
     DOUBLE PRECISION,PARAMETER :: volctemp(6)=(/84.0,86.3,88.2,89.5,90.4,92.2/)
     DOUBLE PRECISION,PARAMETER :: codestemp(6)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
 
-    DOUBLE PRECISION, allocatable :: av(:),coldens(:),temp(:),density(:),monoFracCopy(:)
+    DOUBLE PRECISION, allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:),monoFracCopy(:)
 CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN.
 !YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
@@ -51,15 +51,15 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics
         ! Modules not restarted in python wraps so best to reset everything manually.
-        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,temp,density,monoFracCopy)
-        ALLOCATE(av(points),coldens(points),temp(points),density(points),monoFracCopy(size(monoFractions)))
+        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,dustTemp,density,monoFracCopy)
+        ALLOCATE(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points),monoFracCopy(size(monoFractions)))
         coflag=0 !reset sublimation
         monoFracCopy=monoFractions !reset monofractions
 
         !Set up basic physics variables
         cloudSize=(rout-rin)*pc
-        temp=initialTemp
-
+        gasTemp=initialTemp
+        dustTemp=gasTemp
         !Set up collapse modes.
         SELECT CASE(collapse)
             !freefall Rawlings 1992
@@ -123,13 +123,13 @@ CONTAINS
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= baseAv +coldens(dstep)/1.6d21
 
-        IF (phase .eq. 2 .and. temp(dstep) .lt. maxTemp) THEN
+        IF (phase .eq. 2 .and. gasTemp(dstep) .lt. maxTemp) THEN
         !Below we include temperature profiles for hot cores, selected using tempindx
         !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
         !It takes the form T=A(t^B)*[(d/R)^-0.5], where A and B are given below for various stellar masses
-            temp(dstep)=(cloudSize/(rout*pc))*(real(dstep)/real(points))
-            temp(dstep)=temp(dstep)**(-0.5)
-            temp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime/SECONDS_PER_YEAR)**tempb(tempindx))*temp(dstep))
+            gasTemp(dstep)=(cloudSize/(rout*pc))*(real(dstep)/real(points))
+            gasTemp(dstep)=gasTemp(dstep)**(-0.5)
+            gasTemp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime/SECONDS_PER_YEAR)**tempb(tempindx))*gasTemp(dstep))
         END IF
     END SUBROUTINE updatePhysics
 
@@ -146,9 +146,9 @@ CONTAINS
             instantSublimation=0
             CALL totalSublimation(abund)
         ELSE IF (coflag .ne. 2) THEN
-            IF (temp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
-            IF (temp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
-            IF (temp(dstep) .gt. codestemp(tempindx)) coflag=1
+            IF (gasTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
+            IF (gasTemp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
+            IF (gasTemp(dstep) .gt. codestemp(tempindx)) coflag=1
             CALL thermalEvaporation(abund)
         END IF
     END SUBROUTINE sublimation
@@ -232,7 +232,7 @@ CONTAINS
         DO i=lbound(grainList,1),ubound(grainList,1)
             speci=grainList(i)
             en=bindingEnergy(i)*K_BOLTZ_SI
-            expdust=bindingEnergy(i)/temp(dstep)
+            expdust=bindingEnergy(i)/gasTemp(dstep)
             newm = mass(speci)*1.66053e-27
             freq = dsqrt((2*(SURFACE_SITE_DENSITY)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)

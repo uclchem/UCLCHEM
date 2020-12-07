@@ -60,7 +60,8 @@ tempindx=3
 vs=40.0
 
 !initial fractional abundances of elements(from Asplund et al. 2009 ARAA table 1 -SOLAR)
-fh=0.0;fhe = 0.1;fc  = 2.6d-04;fo  = 4.6d-04;fn  = 6.1d-05
+!note fh is fraction of H initially in H atoms. Total H is always 1.
+fh=0.5;fhe = 0.1;fc  = 2.6d-04;fo  = 4.6d-04;fn  = 6.1d-05
 fs  = 1.318d-05;fmg = 3.981d-05;fsi = 1.0d-07;fcl = 3.162d-07;
 fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 

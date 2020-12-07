@@ -9,7 +9,7 @@ i=0
 for folder in ["example-output/","test-output/"]:
 	for model in ["phase1","phase2","static"]:
 		#pick species, any number is fine
-		speciesNames=["CO","CS","H2O","#CO","#CH3OH","NH3"]
+		speciesNames=["H","H2","CO","CS","H2O","#CO","#CH3OH","NH3"]
 
 		#call read_uclchem. 
 		model_data=read_uclchem("examples/"+folder+model+"-full.dat")
@@ -19,7 +19,7 @@ for folder in ["example-output/","test-output/"]:
 		axis=plot_species(speciesNames,model_data,ax=axes[i])
 
 		#plot species returns the axis so we can further edit
-		axis.set(xscale='log',ylim=(1e-15,1e-3),xlim=(1e0,6e6))
+		axis.set(xscale='log',ylim=(1e-15,1),xlim=(1e0,6e6))
 		axis.set_title(model.capitalize())
 		i=i+1
 axes[0].text(.02,0.98,"Example Row",horizontalalignment="left",verticalalignment="top",transform=axes[0].transAxes)

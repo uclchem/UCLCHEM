@@ -6383,16 +6383,16 @@
         NHNIL = NHNIL + 1
         IF (NHNIL>MXHNIL) GOTO 230
         MSG = 'Warning: internal T(=R1) and H(=R2) are such that'
-        CALL XERRDV(MSG,950,1,0,0,0,0,ZERO,ZERO)
+        !CALL XERRDV(MSG,950,1,0,0,0,0,ZERO,ZERO)
         MSG = 'in the machine, T + H = T on the next step.'
-        CALL XERRDV(MSG,950,1,0,0,0,0,ZERO,ZERO)
+        !CALL XERRDV(MSG,950,1,0,0,0,0,ZERO,ZERO)
         MSG = '(H = step size). The solver will continue anyway.'
-        CALL XERRDV(MSG,950,1,0,0,0,2,TN,H)
+        !CALL XERRDV(MSG,950,1,0,0,0,2,TN,H)
         IF (NHNIL<MXHNIL) GOTO 230
         MSG = 'The above warning has been issued I1 times.'
-        CALL XERRDV(MSG,950,1,0,0,0,0,ZERO,ZERO)
+        !CALL XERRDV(MSG,950,1,0,0,0,0,ZERO,ZERO)
         MSG = 'It will not be issued again for this problem.'
-        CALL XERRDV(MSG,950,1,1,MXHNIL,0,0,ZERO,ZERO)
+        !CALL XERRDV(MSG,950,1,1,MXHNIL,0,0,ZERO,ZERO)
 230     CONTINUE
         IF (BOUNDS) THEN
 !         Check positive components for infeasible prediction; reduce 

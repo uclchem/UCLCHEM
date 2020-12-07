@@ -118,9 +118,10 @@ class Reaction:
 		self.alpha=float(inputRow[7])
 		self.beta=float(inputRow[8])
 		self.gamma=float(inputRow[9])
-		self.templow=inputRow[10]
-		self.temphigh=inputRow[11]
+		self.templow=float(inputRow[10])
+		self.temphigh=float(inputRow[11])
 		self.reac_type=self.get_reaction_type()
+		self.duplicate=False
 
 	def NANCheck(self,a):
 		aa  = a if a else 'NAN'
@@ -134,6 +135,12 @@ class Reaction:
 				return self.reactants[1]
 			else:
 				return "TWOBODY"
+
+	def same_reaction(self,other):
+		if set(self.reactants)==set(other.reactants):
+			if set(self.products)==set(other.products):
+				return True
+		return False
 
 
 ##########################################################################################
@@ -172,8 +179,9 @@ def read_reaction_file(fileName, speciesList, ftype):
 		reader = csv.reader(f, delimiter=',', quotechar='|')
 		for row in reader:
 			if all(x in keepList for x in row[0:7]):	#if all the reaction elements belong to the keeplist
-				row[10]=0.0
-				row[11]=10000.0
+				if row[10]=="":
+					row[10]=0.0
+					row[11]=10000.0
 				reactions.append(Reaction(row))	
 			else:
 				dropped_reactions.append(row)
@@ -255,24 +263,28 @@ def reaction_check(speciesList,reactionList,freeze_check=True):
 			print("\t{0} freezes out through {1} routes".format(spec.name,freezes))
 		if freezes<1 and not spec.is_grain_species() and freeze_check:
 			print("\t{0} does not freeze out".format(spec.name,freezes))
+
 	#now check for duplicate reactions
 	duplicate_list=[]
 	print("\n\tPossible duplicate reactions for manual removal:")
-	duplicates=0
+	duplicates=False
 	for i, reaction1 in enumerate(reactionList):
-		if i not in duplicate_list:
+		#if i not in duplicate_list:
 			for j, reaction2 in enumerate(reactionList):
 				if i!=j:
-					if set(reaction1.reactants)==set(reaction2.reactants):
-						if set(reaction1.products)==set(reaction2.products):
-							print("\tReactions {0} and {1} are possible duplicates".format(i+1,j+1))
-							print("\t",str(i+1), reaction1.reactants, "-->", reaction1.products)
-							print("\t",str(j+1), reaction1.reactants, "-->", reaction2.products)
-							duplicates+=1
-							duplicate_list.append(i)
-							duplicate_list.append(j)
+					if reaction1.same_reaction(reaction2):
+						print("\tReactions {0} and {1} are possible duplicates".format(i+1,j+1))
+						print("\t",str(i+1), reaction1.reactants, "-->", reaction1.products)
+						print("\t",str(j+1), reaction2.reactants, "-->", reaction2.products)
+						duplicates=True
+						#adjust temperatures so temperature ranges are adjacent
+						if reaction1.temphigh > reaction2.temphigh:
+							if reaction1.templow<reaction2.temphigh:
+								print(f"\tReactions {i+1} and {j+1} have non-adjacent temperature ranges")
+						reaction1.duplicate=True
+						reaction2.duplicate=True
 	
-	if (duplicates==0):
+	if (not duplicates):
 		print("\tNone")
 
 #capitalize files
@@ -560,6 +572,22 @@ def write_network_file(fileName,speciesList,reactionList):
 	beta=[]
 	gama=[]
 	reacTypes=[]
+	duplicates=[]
+	tmins=[]
+	tmaxs=[]
+	#store important reactions
+	reactionIndices=""
+	for i,reaction in enumerate(reactionList):
+		if ("CO" in reaction.reactants) and ("PHOTON" in reaction.reactants):
+			if "O" in reaction.products and "C" in reaction.products:
+				reactionIndices+="nR_CO_hv={0},".format(i+1)
+		if ("C" in reaction.reactants) and ("PHOTON" in reaction.reactants):
+			reactionIndices+="nR_C_hv={0},".format(i+1)
+
+	if len(reactionIndices)>50:
+		reactionIndices=reactionIndices[:60]+"&\n&"+reactionIndices[60:]
+	reactionIndices=reactionIndices[:-1]+"\n"
+	openFile.write("    INTEGER, PARAMETER ::"+reactionIndices)
 
 	for i,reaction in enumerate(reactionList):
 		if "CO" in reaction.reactants and "PHOTON" in reaction.reactants:
@@ -575,7 +603,15 @@ def write_network_file(fileName,speciesList,reactionList):
 		alpha.append(reaction.alpha)
 		beta.append(reaction.beta)
 		gama.append(reaction.gamma)
+		if reaction.duplicate:
+			duplicates.append(i+1)
+			tmaxs.append(reaction.temphigh)
+			tmins.append(reaction.templow)
 		reacTypes.append(reaction.reac_type)
+	if len(duplicates)==0:
+		duplicates=[9999]
+		tmaxs=[0]
+		tmins=[0]
 
 	openFile.write(array_to_string("\tre1",reactant1,type="int"))
 	openFile.write(array_to_string("\tre2",reactant2,type="int"))
@@ -587,7 +623,10 @@ def write_network_file(fileName,speciesList,reactionList):
 	openFile.write(array_to_string("\talpha",alpha,type="float",parameter=False))
 	openFile.write(array_to_string("\tbeta",beta,type="float",parameter=False))
 	openFile.write(array_to_string("\tgama",gama,type="float",parameter=False))
-
+	openFile.write(array_to_string("\tduplicates",duplicates,type="int",parameter=True))
+	openFile.write(array_to_string("\tminTemps",tmins,type="float",parameter=True))
+	openFile.write(array_to_string("\tmaxTemps",tmaxs,type="float",parameter=True))
+	
 	reacTypes=np.asarray(reacTypes)
 	for reaction_type in reaction_types+["TWOBODY"]:
 		list_name=reaction_type.lower()+"Reacs"
