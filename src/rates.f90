@@ -1,5 +1,6 @@
 SUBROUTINE calculateReactionRates
     INTEGER:: idx1,idx2
+    REAL(dp) ::h2Efficiency
     !Calculate all reaction rates
     !Assuming the user has temperature changes or uses the desorption features of phase 1,
     !these need to be recalculated every time step.
@@ -30,12 +31,10 @@ SUBROUTINE calculateReactionRates
         DO j=idx1,idx2
 
             IF (re1(j).eq.nelec) THEN
-                rate(j)=THERMAL_VEL*alpha(j)*GRAIN_AREA_PER_H*fr*cion
+                rate(j)=THERMAL_VEL*alpha(j)*GRAIN_CROSSSECTION_PER_H*fr*cion
             ELSE
                 !taken from Rawlings et al. 1992
-                !0.25 factor converts surface area of a spherical grain to cross-sectional area
-                !Saves recalculating pi.r^2/n_H when we have 4pi.r^2/n_H for other parts of the code
-                rate(j)=alpha(j)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(j)))*0.25*GRAIN_AREA_PER_H*fr
+                rate(j)=alpha(j)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(j)))*GRAIN_CROSSSECTION_PER_H*fr
                 IF (beta(j).ne.0.0 ) rate(j)=rate(j)*cion
             END IF
         END DO
@@ -55,11 +54,10 @@ SUBROUTINE calculateReactionRates
     &  mantle(dstep) .ge. 1.0d-30) THEN
         !Epsilon is efficieny of this process, number of molecules removed per event
         !h2form is formation rate of h2, dependent on hydrogen abundance. 
-        rate(idx1:idx2) = epsilon*h2form*abund(nh,dstep)*1.0/mantle(dstep)
+        rate(idx1:idx2) = epsilon*h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))*abund(nh,dstep)/mantle(dstep)
     ELSE
         rate(idx1:idx2) = 0.0
     ENDIF
-   
     !Desorption due to energy from cosmic rays
     idx1=descrReacs(1)
     idx2=descrReacs(2)
@@ -67,9 +65,9 @@ SUBROUTINE calculateReactionRates
         &.and. gama(j) .le. ebmaxcr) THEN
         !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
         !as iron nuclei are main cause of CR heating.
-        !GRAIN_AREA_PER_H is the total area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
+        !GRAIN_SURFACEAREA_PER_H is the total surfaace area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
         !phi is efficieny of this reaction, number of molecules removed per event.
-        rate(idx1:idx2) = 4.0*pi*zeta*1.64d-4*(GRAIN_AREA_PER_H)*&
+        rate(idx1:idx2) = 4.0*pi*zeta*1.64d-4*(GRAIN_SURFACEAREA_PER_H)*&
               &(1.0/mantle(dstep))*phi
     ELSE
         rate(idx1:idx2) = 0.0
@@ -82,8 +80,7 @@ SUBROUTINE calculateReactionRates
         &.and. mantle(dstep) .ge. 1.0d-20) THEN
         !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
         !UVY is yield per photon.
-        !0.25 to change surface area of grain to cross-sectional area of grain (see freezeout)
-        rate(idx1:idx2) = 0.25*GRAIN_AREA_PER_H*uv_yield*4.875d3*zeta*(1.0/mantle(dstep))
+        rate(idx1:idx2) = GRAIN_CROSSSECTION_PER_H*uv_yield*4.875d3*zeta*(1.0/mantle(dstep))
         !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
         !CR induced UV to ISRF UV.
         rate(idx1:idx2) = rate(idx1:idx2) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
@@ -106,10 +103,10 @@ SUBROUTINE calculateReactionRates
                     !Basic rate at which thermal desorption occurs
                     rate(j)=vdiff(i)*exp(-gama(j)/gasTemp(dstep))
                     !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
-                    !becayse GRAIN_AREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
+                    !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                     !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
                     !area seems more correct for this process.
-                    rate(j)=rate(j)*(2.0/mantle(dstep))*SURFACE_SITE_DENSITY*GRAIN_AREA_PER_H*density(dstep)
+                    rate(j)=rate(j)*(2.0/mantle(dstep))*SURFACE_SITE_DENSITY*GRAIN_SURFACEAREA_PER_H*density(dstep)
                 END IF
             END DO
         END DO
@@ -119,18 +116,56 @@ SUBROUTINE calculateReactionRates
 
 
     !Reactions on surface can be treated considering diffusion of reactants
+    !as in Langmuir-Hinshelwood mechanism
     !See work of David Quenard 2017 Arxiv:1711.05184
-    !abstracted to functions below for ease of reading
-    idx1=diffReacs(1)
-    idx2=diffReacs(2)
+    !First calculate rate of the diffusion reaction
+    idx1=lhReacs(1)
+    idx2=lhReacs(2)
     DO j=idx1,idx2
         rate(j)=diffusionReactionRate(j)
     END DO
-    idx1=chemdesReacs(1)
-    idx2=chemdesReacs(2)
+    !two routes for every diffusion reaction: products to gas or products remain on surface
+    rate(lhdesReacs(1):lhdesReacs(2))=rate(idx1:idx2)
+
+    !calculate fraction of reaction that goes down desorption route
+    idx1=lhdesReacs(1)
+    idx2=lhdesReacs(2)
     DO j=idx1,idx2
-        rate(j)=diffusionReactionRate(j)
+        rate(j)=desorptionFraction(j)*rate(j)
     END DO
+    !remove that fraction from total rate of the diffusion route
+    rate(lhReacs(1):lhReacs(2))=rate(lhReacs(1):lhReacs(2))-rate(idx1:idx2)
+
+
+    !Account for Eley-Rideal reactions in a similar way.
+    !First calculate overall rate and then split between desorption and sticking
+    idx1=erReacs(1)
+    idx2=erReacs(2)
+    IF (mantle(dstep) .gt. 1e-20) THEN
+        rate(idx1:idx2)=alpha(idx1:idx2)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H*fr
+        rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/gasTemp(dstep))/mantle(dstep)
+    END IF
+    rate(erdesReacs(1):erdesReacs(2))=rate(idx1:idx2)
+    !calculate fraction of reaction that goes down desorption route
+    idx1=erdesReacs(1)
+    idx2=erdesReacs(2)
+    DO j=idx1,idx2
+        rate(j)=desorptionFraction(j)*rate(j)
+    END DO
+    !remove that fraction from total rate of the diffusion route
+    rate(erReacs(1):erReacs(2))=rate(erReacs(1):erReacs(2))-rate(idx1:idx2)
+
+
+    IF (PARAMETERIZE_H2FORM) THEN
+        rate(nR_H2Form_CT)=h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
+        ! rate(nR_H2Form_LH)=0.0
+         rate(nR_H2Form_ER)=0.0
+        ! rate(nR_H2Form_LHDes)=0.0
+         rate(nR_H2Form_ERDes)=0.0
+    ELSE
+        rate(nR_H2Form_CT)= 0.0
+    END IF
+
 
     !Basic gas phase reactions 
     !They only change if temperature has so we can save time with an if statement
@@ -140,15 +175,17 @@ SUBROUTINE calculateReactionRates
         rate(idx1:idx2) = alpha(idx1:idx2)*((gasTemp(dstep)/300.)**beta(idx1:idx2))*dexp(-gama(idx1:idx2)/gasTemp(dstep)) 
     END IF
 
+
     lastTemp=gasTemp(dstep)
     IF (duplicates(1) .ne. 9999) THEN
         !this multiplies rate by 0 or 1 depending on whether gastemp>mintemp of a reaction
         rate(duplicates)=rate(duplicates)*min(real(floor(gasTemp(dstep)/minTemps)),1.0)
         !and this multiplies by 0,1 if gastemp>max temp
         rate(duplicates)=rate(duplicates)*min(real(floor(maxTemps/gasTemp(dstep))),1.0)
-    END IF
+    END IF  
 
-    !Photoreactions for which we have a more detailed treatment
+    !Reactions for which we have a more detailed photorecation treatment
+
     h2dis=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel) !H2 photodissociation
     rate(nrco)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
     rate(nR_C_hv)=cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),radfield) !C photoionization
@@ -214,13 +251,6 @@ double precision FUNCTION diffusionReactionRate(reacIndx)
     !GAS_DUST_DENSITY_RATIO = 1/ frac abundance of dust so ratio/density is 1/number density of dust
     n_dust=density(dstep)/GAS_DUST_DENSITY_RATIO
     diffusionReactionRate=alpha(reacIndx) *reacProb* diffuseProb/(NUM_SITES_PER_GRAIN*n_dust)
-
-    !Now adjust for fraction of this reaction's products that will desorb due to energy released
-    IF (reacIndx .ge. diffReacs(1) .and. reacIndx .le. diffReacs(2)) THEN
-        diffusionReactionRate = diffusionReactionRate * (1.0-desorptionFraction(reacIndx,index1,index2,.True.))
-    ELSE 
-        diffusionReactionRate = diffusionReactionRate * desorptionFraction(reacIndx,index1,index2,.False.)
-    ENDIF
 END FUNCTION diffusionReactionRate
 
 ! ---------------------------------------------------------------------
@@ -228,7 +258,7 @@ END FUNCTION diffusionReactionRate
 ! David Quenard 2017 Arxiv:1711.05184
 ! From Minissalle+ 2016 and Vasyunin+ 2016
 ! ---------------------------------------------------------------------
-double precision FUNCTION desorptionFraction(reacIndx,reactIndex1,reactIndex2,isDiff)
+double precision FUNCTION desorptionFraction(reacIndx)
     integer :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom
     integer :: productIndex(4)
     LOGICAL :: isDiff
@@ -239,66 +269,35 @@ double precision FUNCTION desorptionFraction(reacIndx,reactIndex1,reactIndex2,is
     
     !Get indices of grain surface version of products products 
     productIndex=0
-    productIndex = 0.0
+    !Arrays like binding energy and formation enthalpy are indexed by position in grainList
+    !rather than species list. Need to find position in grain list where every reactant and product appears
+    !bearing in mind that Eley-Rideal reactions can have reactants in gas phase and CHEMDES has products in gas
+    DO i=lbound(grainList,1),ubound(grainList,1)
+        !check grain lists for reactants
+        IF (grainList(i) .eq. re1(reacIndx)) reactIndex1 = i
+        IF (gasGrainList(i) .eq. re1(reacIndx)) reactIndex1 = i
+        !check equivalent gas list in case of ER reaction.
+        IF (grainList(i) .eq. re2(reacIndx)) reactIndex2 = i
+        IF (gasGrainList(i) .eq. re2(reacIndx)) reactIndex2 = i
+
+        IF (grainList(i) .eq. p1(reacIndx)) productIndex(1) = i
+        IF (grainList(i) .eq. p2(reacIndx)) productIndex(2) = i
+        IF (grainList(i) .eq. p3(reacIndx)) productIndex(3) = i
+        IF (grainList(i) .eq. p4(reacIndx)) productIndex(4) = i
+
+        IF (gasGrainList(i) .eq. p1(reacIndx)) productIndex(1) = i
+        IF (gasGrainList(i) .eq. p2(reacIndx)) productIndex(2) = i
+        IF (gasGrainList(i) .eq. p3(reacIndx)) productIndex(3) = i
+        IF (gasGrainList(i) .eq. p4(reacIndx)) productIndex(4) = i
+    END DO
+
     maxBindingEnergy=0.0
     productEnthalpy=0.0
+    DO i=1,4
+        maxBindingEnergy=MAX(maxBindingEnergy,bindingEnergy(productIndex(i)))
+        productEnthalpy=productEnthalpy+formationEnthalpy(productIndex(i))
+    END DO
 
-    IF (isDiff) THEN
-        DO i=lbound(grainList,1),ubound(grainList,1)
-            IF (grainList(i) .eq. p1(reacIndx)) productIndex(1)=grainList(i)
-            !Go through grain list and try to find species in product list
-            !If it has a binding energy larger than largest energy found so far, update maxBindingEnergy
-            IF (grainList(i) .eq. p1(reacIndx)) THEN
-                productIndex(1) = grainList(i)
-                productEnthalpy=productEnthalpy+formationEnthalpy(i)
-                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
-            END IF
-
-            IF (grainList(i) .eq. p2(reacIndx)) THEN
-                productIndex(2) = grainList(i)
-                productEnthalpy=productEnthalpy+formationEnthalpy(i)
-                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
-            END IF
-
-            IF (grainList(i) .eq. p3(reacIndx)) THEN
-                productIndex(3) = grainList(i)
-                productEnthalpy=productEnthalpy+formationEnthalpy(i)
-                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
-            END IF
-
-            IF (grainList(i) .eq. p4(reacIndx)) THEN
-                productIndex(4) = grainList(i)
-                productEnthalpy=productEnthalpy+formationEnthalpy(i)
-                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
-            END IF
-
-        END DO
-    ELSE
-        DO i=lbound(gasGrainList,1),ubound(gasGrainList,1)
-            IF (gasGrainList(i) .eq. p1(reacIndx)) THEN
-                productIndex(1) = grainList(i)
-                productEnthalpy=productEnthalpy+formationEnthalpy(i)
-                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
-            END IF
-            IF (gasGrainList(i) .eq. p2(reacIndx)) THEN
-                productIndex(2) = grainList(i)
-                productEnthalpy=productEnthalpy+formationEnthalpy(i)
-                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
-            END IF
-            IF (gasGrainList(i) .eq. p3(reacIndx)) THEN
-                productIndex(3) = grainList(i)
-                productEnthalpy=productEnthalpy+formationEnthalpy(i)
-                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
-            END IF
-            IF (gasGrainList(i) .eq. p4(reacIndx)) THEN
-                productIndex(4) = grainList(i)
-                productEnthalpy=productEnthalpy+formationEnthalpy(i)
-                if (bindingEnergy(i) .ge. maxBindingEnergy) maxBindingEnergy=bindingEnergy(i)
-            END IF
-        END DO
-    ENDIF
-    
-    !
     !epsilonCd is the fraction of kinetic energy kept my the product when it collides with grain surface
     epsilonCd = mass(productIndex(1)) + mass(productIndex(2)) + mass(productIndex(3)) + mass(productIndex(4))
     epsilonCd = ((epsilonCd - EFFECTIVE_SURFACE_MASS) / (epsilonCd + EFFECTIVE_SURFACE_MASS))**2

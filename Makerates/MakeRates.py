@@ -15,7 +15,7 @@ reactionFile = 'inputFiles/umist12-ucledit.csv'
 reactionFile_grain = 'inputFiles/default_grain_network.csv'
 speciesFile = 'inputFiles/default_species.csv'
 
-therm_flag=True
+three_phase=True
 
 if not os.path.exists('outputFiles'):
     os.makedirs('outputFiles')
@@ -38,7 +38,10 @@ speciesList=remove_duplicate_species(speciesList)
 nReactions1, reactions1, dropped_reactions = read_reaction_file(reactionFile, speciesList,'UMIST')
 nReactions2, reactions2, dropped_reactions = read_reaction_file(reactionFile_grain,speciesList,'UCL')
 reactionList=reactions1+reactions2
-reactionList=add_desorb_reactions(speciesList,reactionList,therm_flag=therm_flag)
+
+#Need additional grain reactions including non-thermal desorption and chemically induced desorption
+reactionList=add_desorb_reactions(speciesList,reactionList)
+reactionList=add_chemdes_reactions(speciesList,reactionList)
 
 #Keep only the species that are involved in the final reaction list
 print('\nRemoving unused species...')
@@ -63,6 +66,7 @@ speciesList.sort(key=lambda x: int(x.mass))
 
 speciesList.append(Species(["E-",0,0,0,0,0,0]))
 speciesList[-1].n_atoms=1
+
 #check reactions to see if there are potential problems
 print("Checking reactions...")
 reaction_check(speciesList,reactionList)

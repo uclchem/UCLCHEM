@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import csv
+import seaborn as sns
 
 def read_uclchem(filename):
     f=open(filename)
@@ -26,10 +27,10 @@ def read_uclchem(filename):
 def plot_species(species,df,ax=None,plot_file=None):
     if ax is None:
         fig,ax=plt.subplots()
-    colours=make_colours(len(species))
+    sns.color_palette(n_colors=len(species))
 
     for specIndx,specName in enumerate(species):
-        ax.plot(df["Time"],df[specName],color=next(colours),label=specName)
+        ax.plot(df["Time"],df[specName],label=specName,lw=2)
 
     ax.legend(loc=4,fontsize='small')
 

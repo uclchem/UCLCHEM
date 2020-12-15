@@ -25,6 +25,8 @@ IMPLICIT NONE
     !Set up with initial values. For chemistry this is setting initial abundances and assigning memory for ODE solver
     CALL initializePhysics
     CALL initializeChemistry
+    dstep=1
+    call output
     !loop until the end condition of the model is reached 
     DO WHILE ((switch .eq. 1 .and. density(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
         !store current time as starting point for each depth step

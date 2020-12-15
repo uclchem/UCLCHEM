@@ -46,7 +46,8 @@ IMPLICIT NONE
     REAL(dp),ALLOCATABLE :: abund(:,:),mantle(:)
     
     !Variables controlling chemistry
-    REAL(dp) :: radfield,zeta,fr,omega,grainArea,cion,h2form,h2dis,lastTemp=0.0
+    LOGICAL :: PARAMETERIZE_H2FORM=.True.
+    REAL(dp) :: radfield,zeta,fr,omega,grainArea,cion,h2dis,lastTemp=0.0
     REAL(dp) :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
     REAL(dp), ALLOCATABLE ::vdiff(:)
 
@@ -117,7 +118,6 @@ CONTAINS
         END DO
 
         !h2 formation rate initially set
-        h2form = h2FormRate(gasTemp(dstep),dustTemp(dstep))
         ALLOCATE(mantle(points))
         DO l=1,points
             mantle(l)=sum(abund(grainList,l))
@@ -202,14 +202,13 @@ CONTAINS
 
     SUBROUTINE updateChemistry
     !Called every time/depth step and updates the abundances of all the species
+
         !allow option for dens to have been changed elsewhere.
         IF (collapse .ne. 1) abund(nspec+1,dstep)=density(dstep)
-        !y is at final value of previous depth iteration so set to initial values of this depth with abund
-        !reset other variables for good measure        
-        h2form = h2FormRate(gasTemp(dstep),dustTemp(dstep))
-    
+
         !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
         mantle(dstep)=sum(abund(grainList,dstep))
+
         !evaluate co and h2 column densities for use in rate calculations
         !sum column densities of each point up to dstep. boxlength and dens are pulled out of the sum as common factors  
         IF (dstep.gt.1) THEN
@@ -243,6 +242,7 @@ CONTAINS
 
             !get reaction rates for this iteration
             CALL calculateReactionRates
+
             !Call the integrator.
             OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.FALSE.,MXSTEP=MXSTEP)
             CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
@@ -271,7 +271,7 @@ CONTAINS
     !This is where reacrates subroutine is hidden
     include 'rates.f90'
 
-    SUBROUTINE  F (NEQ, T, Y, YDOT)
+    SUBROUTINE F (NEQ, T, Y, YDOT)
         INTEGER, PARAMETER :: WP = KIND(1.0D0)
         INTEGER NEQ
         REAL(WP) T
@@ -288,9 +288,9 @@ CONTAINS
 
         !H2 formation should occur at both steps - however note that here there is no 
         !temperature dependence. y(nh) is hydrogen fractional abundance.
-        ydot(nh)  = ydot(nh) - 2.0*( h2form*y(nh)*D - h2dis*y(nh2) )
+        ydot(nh)  = ydot(nh) + 2.0*(h2dis*y(nh2) ) !- 2.0*h2form*y(nh)*D
         !                             h2 formation - h2-photodissociation
-        ydot(nh2) = ydot(nh2) + h2form*y(nh)*D - h2dis*y(nh2)
+        ydot(nh2) = ydot(nh2) - h2dis*y(nh2) !+ h2form*y(nh)*D 
         !                       h2 formation  - h2-photodissociation
         ! get density change from physics module to send to DLSODE
         IF (collapse .eq. 1) ydot(NEQ)=densdot(y(NEQ))

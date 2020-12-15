@@ -3,13 +3,14 @@
 
 from plotfunctions import *
 
-fig,axes=plt.subplots(2,3,figsize=(16,9))
+
+fig,axes=plt.subplots(2,3,figsize=(16,9),tight_layout=True)
 axes=axes.flatten()
 i=0
 for folder in ["example-output/","test-output/"]:
 	for model in ["phase1","phase2","static"]:
 		#pick species, any number is fine
-		speciesNames=["H","H2","CO","CS","H2O","#CO","#CH3OH","NH3"]
+		speciesNames=["H","H2","#H","H2O","#H2O","CO","#CO","#CH3OH","CH3OH"]
 
 		#call read_uclchem. 
 		model_data=read_uclchem("examples/"+folder+model+"-full.dat")
@@ -20,6 +21,8 @@ for folder in ["example-output/","test-output/"]:
 
 		#plot species returns the axis so we can further edit
 		axis.set(xscale='log',ylim=(1e-15,1),xlim=(1e0,6e6))
+		if model=="phase1":
+			axis.set(xlim=(1e3,6e6))
 		axis.set_title(model.capitalize())
 		i=i+1
 axes[0].text(.02,0.98,"Example Row",horizontalalignment="left",verticalalignment="top",transform=axes[0].transAxes)

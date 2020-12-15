@@ -1,6 +1,17 @@
-# Photoreactions & H2 Formation
-Updated H2 Formation to Cazaux & Tielens 2004 formulism ahead of major grain update
-C photoionization, H2 self-shielding and CO self-shielding treatments brought over from UCLPDR
+# Eley Rideal
+Eley-Rideal reactions between a grain surface and gas phase species are now handled by UCLCHEM and makerates. They must be listed with three reactants: [gasphase species, grain species, "ER"]
 
-#Reaction Temperature Bounds
-Reactions can now be duplicated (same reactants and products) with different rates and temperature bounds. UCLCHEM will then use the correct rate for the current temperature.
+# Chemical Desorption
+All Langmuir-Hinshelwood (formerly DIFF and CHEMDES) reactions and all Eley-Rideal reactions are now duplicated by MakeRates to account for the chemical desorption fraction. Each reaction should now only be listed once in the input eg:
+```
+H,#H,ER,#H2,,,,1,0,0,,,
+#H,#H,LH,#H2,,,,1,0,0,,,
+```
+
+#H2 Formation
+H2 formation via the ER and LH mechanisms have been added and together, approximate the observed H2 formation rate of sqrt(T)*1e-17. However, the Cazaux and Tielens 2004 rate has also been included. This is controlled by a switch in chemistry.f90
+```    LOGICAL :: PARAMETERIZE_H2FORM=.True.```
+
+
+#MakeRates improvements
+Ongoing work to improve MakeRates and make it a python 3.8 script with slimmed down code.

@@ -131,6 +131,7 @@ CONTAINS
             gasTemp(dstep)=gasTemp(dstep)**(-0.5)
             gasTemp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime/SECONDS_PER_YEAR)**tempb(tempindx))*gasTemp(dstep))
         END IF
+        dustTemp=gasTemp
     END SUBROUTINE updatePhysics
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

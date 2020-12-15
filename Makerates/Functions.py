@@ -1,7 +1,7 @@
 from __future__ import print_function
 import csv
 import numpy as np
-
+from copy import deepcopy as copy
 #functions including
 #1. simple classes to store all the information about each species and reaction.
 #2. Functions to read in the species and reaction file and check for sanity
@@ -12,7 +12,7 @@ import numpy as np
 #1. simple classes to store all the information about each species and reaction.
 #largely just to make the other functions more readable.
 ##########################################################################################
-reaction_types=['PHOTON','CRP','CRPHOT','FREEZE','THERM','DESOH2','DESCR','DEUVCR',"CHEMDES","DIFF"]
+reaction_types=['PHOTON','CRP','CRPHOT','FREEZE','THERM','DESOH2','DESCR','DEUVCR',"H2FORM","ER","ERDES","LH","LHDES"]
 #these reaction types removed as UCLCHEM does not handle them. 'CRH','PHOTD','XRAY','XRSEC','XRLYA','XRPHOT'
 elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N','13C','18O']
 elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420,15,13,18]
@@ -123,12 +123,22 @@ class Reaction:
 		self.reac_type=self.get_reaction_type()
 		self.duplicate=False
 
+		#body_count is the number of factors of density to include in ODE
+		#we drop a factor of density from both the LHS and RHS of ODES
+		#So reactions with 1 body have no factors of density which we manage by counting from -1
+		self.body_count=-1
+		for reactant in self.reactants:
+			if (reactant not in reaction_types) and reactant!="NAN":
+				self.body_count+=1
+			if reactant in ["DESOH2","FREEZE"]:
+				self.body_count+=1
+
 	def NANCheck(self,a):
 		aa  = a if a else 'NAN'
 		return aa
 
 	def get_reaction_type(self):
-		if (self.reactants[2].strip()=="CHEMDES") or (self.reactants[2].strip()=="DIFF"):
+		if (self.reactants[2] in reaction_types):
 			return self.reactants[2]
 		else:
 			if self.reactants[1] in reaction_types:
@@ -141,6 +151,9 @@ class Reaction:
 			if set(self.products)==set(other.products):
 				return True
 		return False
+
+	def print(self):
+		print(" + ".join(self.reactants), "->","+".join(self.products))
 
 
 ##########################################################################################
@@ -190,7 +203,7 @@ def read_reaction_file(fileName, speciesList, ftype):
 	return nReactions, reactions, dropped_reactions
 
 def remove_duplicate_species(speciesList):
-		#check for duplicate species
+	#check for duplicate species
 	duplicates=0
 	duplicate_list=[]
 	for i in range(0,len(speciesList)):
@@ -234,17 +247,36 @@ def check_and_filter_species(speciesList,reactionList):
 
 #All species should freeze out at least as themselves and all grain species should desorb according to their binding energy
 #This function adds those reactions automatically to slim down the grain file
-def add_desorb_reactions(speciesList,reactionList,therm_flag=False):
-	if therm_flag:
-		desorb_reacs=['DESOH2',"DESCR","DEUVCR","THERM"]
-	else:
-		desorb_reacs=['DESOH2',"DESCR","DEUVCR"]
+def add_desorb_reactions(speciesList,reactionList):
+	desorb_reacs=['DESOH2',"DESCR","DEUVCR","THERM"]
 
 	for species in speciesList:
 		if species.is_grain_species():
 			for reacType in desorb_reacs:
 				newReaction=Reaction([species.name,reacType,'NAN',species.name[1:],'NAN','NAN','NAN',1,0,species.bindener,0.0,10000.0])
 				reactionList.append(newReaction)
+	return reactionList
+
+
+def add_chemdes_reactions(speciesList,reactionList):
+	new_reacs=[]
+	for reaction in reactionList:
+		if reaction.reac_type in ["LH","ER"]:
+			new_reac=copy(reaction)
+			new_reac.reac_type=new_reac.reac_type+"DES"
+			new_reac.reactants[2]=new_reac.reactants[2]+"DES"
+			for i,product in enumerate(new_reac.products):
+				if ("#" in product):
+					new_reac.products[i]=new_reac.products[i][1:]
+				else:
+					if product!="NAN":
+						print("All Langmuir-Hinshelwood and Eley-Rideal reactions should be input with products on grains only.")
+						print("The fraction of products that enter the gas is dealt with by Makerates and UCLCHEM.")
+						print("the following reaction caused this warning")
+						reaction.print()
+			new_reacs.append(new_reac)
+
+	reactionList=reactionList+new_reacs
 	return reactionList
 
 #check reactions to alert user of potential issues including repeat reactions
@@ -274,8 +306,8 @@ def reaction_check(speciesList,reactionList,freeze_check=True):
 				if i!=j:
 					if reaction1.same_reaction(reaction2):
 						print("\tReactions {0} and {1} are possible duplicates".format(i+1,j+1))
-						print("\t",str(i+1), reaction1.reactants, "-->", reaction1.products)
-						print("\t",str(j+1), reaction2.reactants, "-->", reaction2.products)
+						reaction1.print()
+						reaction2.print()
 						duplicates=True
 						#adjust temperatures so temperature ranges are adjacent
 						if reaction1.temphigh > reaction2.temphigh:
@@ -332,116 +364,66 @@ def write_odes_f90(fileName, speciesList, reactionList):
 	output.close()    
 
 def build_ode_string(speciesList, reactionList):
-	odeString=""
-	nSpecies = len(speciesList)
-	nReactions = len(reactionList)
+	species_names=[]
+	for i, species in enumerate(speciesList):
+		species_names.append(species.name)
+		species.losses=""
+		species.gains=""
+	for i,reaction in enumerate(reactionList):
+		ODE_BIT=f"+RATE({i+1})"
+		
+		#every body after the first requires a factor of density
+		for body in range(reaction.body_count):
+			ODE_BIT=ODE_BIT+"*D"
+		
+		#then bring in factors of abundances
+		for species in reaction.reactants:
+			if species in species_names:
+				ODE_BIT=ODE_BIT+f"*Y({species_names.index(species)+1})"
+			if "H2FORM" in reaction.reactants:
+				#only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
+				break
 
+		#now add to strings
+		for species in reaction.reactants:
+			if species in species_names:
+				#Eley-Rideal reactions take a share of total freeze out rate which is already accounted for
+				#so we add as a loss term to the frozen version of the species rather than the gas version
+				if ("ELEYRIDEAL" in reaction.reactants) and (not speciesList[species_names.index(species)].is_grain_species()):
+					speciesList[species_names.index("#"+species)].losses+=ODE_BIT
+				else:
+					speciesList[species_names.index(species)].losses+=ODE_BIT
+		for species in reaction.products:
+			if species in species_names:
+				speciesList[species_names.index(species)].gains+=ODE_BIT
+
+	ode_string=""
 	for n,species in enumerate(speciesList):
-		lossString = '' ; formString = ''
-		#go through entire reaction list
-		for i,reaction in enumerate(reactionList):
-			
-			
-			#if species appear in reactants, reaction is a destruction route      	
-			if species.name in reaction.reactants:
-				bodyCount=0 #two or more bodies in a reaction mean we multiply rate by density so need to keep track
-				#easy for h2 formation
-				if is_H2_formation(reaction.reactants, reaction.products):
-					lossString += '-2*RATE('+str(i+1)+')*D'
-					continue
-				#multiply string by number of time species appears in reaction. multiple() defined below
-				#so far reaction string is rate(reaction_index) indexs are all +1 for fortran array indexing
-				lossString += '-'+multiple(reaction.reactants.count(species.name))+'RATE('+str(i+1)+')'
-				
-				#now add *Y(species_index) to string for every reactant
-				for reactant in set(reaction.reactants):
-					n_appearances=reaction.reactants.count(reactant)
-					#every species appears at least once in its loss reaction
-					#so we multiply entire loss string by Y(species_index) at end
-					#thus need one less Y(species_index) per reaction
-					if reactant==species.name:
-						bodyCount+=n_appearances
-						if n_appearances > 1:
-							for j,possibleReactants in enumerate(speciesList):
-								if reactant == possibleReactants.name:
-									for appearance in range(1,n_appearances):
-										lossString += '*Y('+str(j+1)+')'
-									continue
-					else:
-						#look through species list and find reactant
-						for j,possibleReactants in enumerate(speciesList):
-							if reactant == possibleReactants.name:
-								for appearance in range(n_appearances):
-									lossString += '*Y('+str(j+1)+')'
-									bodyCount+=1
-								continue
-				#now string is rate(reac_index)*Y(species_index1)*Y(species_index2) may need *D if total rate is 
-				#proportional to density
-				if reaction.reactants.count('FREEZE') > 0 or reaction.reactants.count('DESOH2') > 0:
-					lossString += '*D'
-				for body in range(1,bodyCount):
-					lossString+="*D"				
 
 
-			#same process as above but rate is positive for reactions where species is positive
-			if species.name in reaction.products:
-				bodyCount=0 #two or more bodies in a reaction mean we multiply rate by density so need to keep track
-
-				if is_H2_formation(reaction.reactants,reaction.products):
-					#honestly H should be index 1 but lets check
-					H_index=speciesList.index(next((x for x in speciesList if x.name=='H')))
-					formString += '+RATE('+str(i+1)+')*Y('+str(H_index+1)+')*D'
-					continue
-
-				#multiply string by number of time species appears in reaction. multiple() defined below
-				#so far reaction string is rate(reaction_index) indexs are all +1 for fortran array indexing
-				formString += '+'+multiple(reaction.products.count(species.name))+'RATE('+str(i+1)+')'
-				
-				#now add *Y(species_index) to string for every reactant						
-				for reactant in set(reaction.reactants):
-					n_appearances=reaction.reactants.count(reactant)
-					for j,possibleReactants in enumerate(speciesList):
-						if reactant == possibleReactants.name:
-							for appearance in range(n_appearances):
-								formString += '*Y('+str(j+1)+')'
-								bodyCount+=1
-							continue
-
-				#now string is rate(reac_index)*Y(species_index1)*Y(species_index2) may need *D if total rate is 
-				#proportional to density
-				if reaction.reactants.count('FREEZE') > 0 or reaction.reactants.count('DESOH2') > 0:
-					formString += '*D'
-				for body in range(1,bodyCount):
-					formString+="*D"
-
-		if lossString != '':
-			lossString = '      LOSS = '+lossString+'\n'
-			lossString = truncate_line(lossString)
-			odeString+=lossString
-		if formString != '':
-			formString = '      PROD = '+formString+'\n'
-			formString = truncate_line(formString)
-			odeString+=formString
+		if species.losses != '':
+			loss_string = '    LOSS = '+species.losses[1:]+'\n'
+			loss_string = truncate_line(loss_string)
+			ode_string+=loss_string
+		if species.gains != '':
+			prod_string = '    PROD = '+species.gains[1:]+'\n'
+			prod_string = truncate_line(prod_string)
+			ode_string+=prod_string
 		
 		#start with empty string and add production and loss terms if they exists
-		ydotString=''
-		if formString != '':
-			ydotString += 'PROD'
-			if lossString != '':
-				ydotString += '+'
-		if lossString != '':
-			ydotString += 'Y('+str(n+1)+')*LOSS'
+		ydot_string=''
+		if prod_string != '':
+			ydot_string += 'PROD'
+			if loss_string != '':
+				ydot_string += '-LOSS'
 
 		#if we have prod and/or loss add ydotstring to odes
-		if ydotString!='':
-			ydotString = '      YDOT('+str(n+1)+') = '+ydotString+"\n"
-			ydotString = truncate_line(ydotString)
-			odeString+=ydotString
-		else:
-			ydotString = '      YDOT('+str(n+1)+') = 0.0\n'
-			ydotString = truncate_line(ydotString)
-			odeString+=ydotString
-	return odeString
+		if ydot_string=='':
+			ydot_string="0.0"
+		ydot_string=f"    YDOT({n+1}) = {ydot_string}\n"
+		ydot_string = truncate_line(ydot_string)
+		ode_string+=ydot_string
+	return ode_string
 
 #create a file containing length of each list of moleculetypes and then the two lists (gas and grain) of species in each type
 #as  well as fraction that evaporated in each type of event
@@ -515,15 +497,6 @@ def truncate_line(input, codeFormat='F90', continuationCode=None):
 	return result    
 
 
-def is_H2_formation(reactants, products):
-    nReactants = len([species for species in reactants if species != ''])
-    nProducts  = len([species for species in products  if species != ''])
-    if nReactants == 2 and nProducts == 1:
-        if reactants[0] == 'H' and reactants[1] == 'H' and products[0] == 'H2': return True
-    if nReactants == 3 and nProducts == 2:
-        if reactants[0] == 'H' and reactants[1] == 'H' and reactants[2] == '#' and products[0] == 'H2' and products[1] == '#': return True
-    return False
-
 def write_network_file(fileName,speciesList,reactionList):
 	openFile=open(fileName,"w")
 	openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
@@ -577,14 +550,30 @@ def write_network_file(fileName,speciesList,reactionList):
 	tmaxs=[]
 	#store important reactions
 	reactionIndices=""
+
 	for i,reaction in enumerate(reactionList):
 		if ("CO" in reaction.reactants) and ("PHOTON" in reaction.reactants):
 			if "O" in reaction.products and "C" in reaction.products:
 				reactionIndices+="nR_CO_hv={0},".format(i+1)
 		if ("C" in reaction.reactants) and ("PHOTON" in reaction.reactants):
 			reactionIndices+="nR_C_hv={0},".format(i+1)
+		if ("H2FORM" in reaction.reactants):
+			reactionIndices+=f"nR_H2Form_CT={i+1},"
+		if (("H" in reaction.reactants) and ("#H" in reaction.reactants)):
+			if "H2" in reaction.products:
+				reactionIndices+=f"nR_H2Form_ERDes={i+1},"
+			elif "#H2" in reaction.products:
+				reactionIndices+=f"nR_H2Form_ER={i+1},"
+		if ((reaction.reactants.count("#H")==2) and ("LH" in reaction.reactants)):
+			reactionIndices+=f"nR_H2Form_LH={i+1},"
+		if ((reaction.reactants.count("#H")==2) and ("LHDES" in reaction.reactants)):
+			reactionIndices+=f"nR_H2Form_LHDes={i+1},"
+		if (("H" in reaction.reactants) and ("FREEZE" in reaction.reactants)):
+			reactionIndices+=f"nR_HFreeze={i+1},"
+	reactionIndices=reactionIndices[:-1]
 
-	if len(reactionIndices)>50:
+
+	if len(reactionIndices)>60:
 		reactionIndices=reactionIndices[:60]+"&\n&"+reactionIndices[60:]
 	reactionIndices=reactionIndices[:-1]+"\n"
 	openFile.write("    INTEGER, PARAMETER ::"+reactionIndices)
