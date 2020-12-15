@@ -24,21 +24,25 @@ SUBROUTINE calculateReactionRates
     !freeze out only happens if fr>0 and depending on evap choice 
     idx1=freezeReacs(1)
     idx2=freezeReacs(2)
-    cion=1.0+16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
-    IF (fr .eq. 0.0 .or. gasTemp(dstep) .gt. 30.0) then
-        rate(idx1:idx2)=0.0
-    ELSE
-        DO j=idx1,idx2
+    rate(idx1:idx2)=freezeOutRate(idx1,idx2)
+    !freeze out rate uses thermal velocity but mass of E is 0 giving us infinite rates
+    !just assume it's same as H
+    rate(nR_EFreeze)=rate(nR_HFreeze)
+    ! cion=1.0+16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
+    ! IF (fr .eq. 0.0 .or. gasTemp(dstep) .gt. 30.0) then
+    !     rate(idx1:idx2)=0.0
+    ! ELSE
+    !     DO j=idx1,idx2
 
-            IF (re1(j).eq.nelec) THEN
-                rate(j)=THERMAL_VEL*alpha(j)*GRAIN_CROSSSECTION_PER_H*fr*cion
-            ELSE
-                !taken from Rawlings et al. 1992
-                rate(j)=alpha(j)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(j)))*GRAIN_CROSSSECTION_PER_H*fr
-                IF (beta(j).ne.0.0 ) rate(j)=rate(j)*cion
-            END IF
-        END DO
-    END IF
+    !         IF (re1(j).eq.nelec) THEN
+    !             rate(j)=THERMAL_VEL*alpha(j)*GRAIN_CROSSSECTION_PER_H*fr*cion
+    !         ELSE
+    !             !taken from Rawlings et al. 1992
+    !             rate(j)=alpha(j)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(j)))*GRAIN_CROSSSECTION_PER_H*fr
+    !             IF (beta(j).ne.0.0 ) rate(j)=rate(j)*cion
+    !         END IF
+    !     END DO
+    ! END IF
 
 
 
@@ -142,7 +146,7 @@ SUBROUTINE calculateReactionRates
     idx1=erReacs(1)
     idx2=erReacs(2)
     IF (mantle(dstep) .gt. 1e-20) THEN
-        rate(idx1:idx2)=alpha(idx1:idx2)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H*fr
+        rate(idx1:idx2)=freezeOutRate(idx1,idx2)
         rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/gasTemp(dstep))/mantle(dstep)
     END IF
     rate(erdesReacs(1):erdesReacs(2))=rate(idx1:idx2)
@@ -191,6 +195,29 @@ SUBROUTINE calculateReactionRates
     rate(nR_C_hv)=cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),radfield) !C photoionization
 END SUBROUTINE calculateReactionRates
 
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!Freeze out determined by rate of collisions with grain
+!No sticking coefficient is used because typical values are >0.95 below 150 K
+! eg Le Bourlot et al. 2013, Molpeceres et al. 2020
+!Above 150 K, thermal desorption will completely remove grain species
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
+    REAL(dp) :: freezeRates(idx2-idx1)
+    INTEGER :: idx1,idx2
+    
+    !additional factor for ions (beta=0 for neutrals)
+    freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
+
+    IF (fr .eq. 0.0 .or. gasTemp(dstep) .gt. 300.0) then
+        freezeRates=0.0
+    ELSE
+        freezeRates=freezeRates*alpha(idx1:idx2)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
+    END IF
+
+END FUNCTION freezeOutRate
 
 !----------------------------------------------------------------------------------------------------
 !Reactions on the surface treated by evaluating diffusion rates across grains and accounting
