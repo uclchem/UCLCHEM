@@ -43,7 +43,7 @@ IMPLICIT NONE
     !initial fractional elemental abudances and arrays to store abundances
     REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,fli,fna,fpah,f15n,f13c,f18O
     REAL(dp) :: h2col,cocol,ccol
-    REAL(dp),ALLOCATABLE :: abund(:,:),mantle(:)
+    REAL(dp),ALLOCATABLE :: abund(:,:),mantle(:),bulk(:)
     
     !Variables controlling chemistry
     LOGICAL :: PARAMETERIZE_H2FORM=.True.
@@ -111,16 +111,17 @@ CONTAINS
         ENDIF
         !Initial calculations of diffusion frequency for each species bound to grain
         !and other parameters required for diffusion reactions
-        DO  i=lbound(grainList,1),ubound(grainList,1)
-            j=grainList(i)
+        DO  i=lbound(iceList,1),ubound(iceList,1)
+            j=iceList(i)
             vdiff(i)=VDIFF_PREFACTOR*bindingEnergy(i)/mass(j)
             vdiff(i)=dsqrt(vdiff(i))
         END DO
 
         !h2 formation rate initially set
-        ALLOCATE(mantle(points))
+        ALLOCATE(mantle(points),bulk(points))
         DO l=1,points
             mantle(l)=sum(abund(grainList,l))
+            bulk(l)=sum(abund(bulkList,l))
         END DO
         
         !DVODE SETTINGS
@@ -138,8 +139,7 @@ CONTAINS
 !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     SUBROUTINE fileSetup
         IMPLICIT NONE
-        integer i,j,l,m
-        REAL(dp) junktemp
+        integer l
 
         INQUIRE(UNIT=11, OPENED=columnOutput)
         IF (columnOutput) write(11,333) specName(outIndx)
@@ -165,8 +165,6 @@ CONTAINS
                 REWIND(7)
                 abund(nspec+1,l)=density(l)
             END DO
-
-            7010 format((999(1pe15.5,:,',')))    
         END IF
     END SUBROUTINE fileSetup
 
@@ -202,12 +200,14 @@ CONTAINS
 
     SUBROUTINE updateChemistry
     !Called every time/depth step and updates the abundances of all the species
+        WHERE(abund<1.0d-30) abund=1.0d-30
 
         !allow option for dens to have been changed elsewhere.
         IF (collapse .ne. 1) abund(nspec+1,dstep)=density(dstep)
 
         !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
         mantle(dstep)=sum(abund(grainList,dstep))
+        bulk(dstep)=sum(abund(bulkList,dstep))
 
         !evaluate co and h2 column densities for use in rate calculations
         !sum column densities of each point up to dstep. boxlength and dens are pulled out of the sum as common factors  
@@ -236,21 +236,22 @@ CONTAINS
             !reset parameters for DVODE
             ITASK=1 !try to integrate to targetTime
             ISTATE=1 !pretend every step is the first
-            reltol=1e-4 !relative tolerance effectively sets decimal place accuracy
-            abstol=1.0d-14*abund(:,dstep) !absolute tolerances depend on value of abundance
+            reltol=1e-5 !relative tolerance effectively sets decimal place accuracy
+            abstol=1.0d-15*abund(:,dstep) !absolute tolerances depend on value of abundance
             WHERE(abstol<1d-30) abstol=1d-30 ! to a minimum degree
 
             !get reaction rates for this iteration
             CALL calculateReactionRates
-
             !Call the integrator.
             OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.FALSE.,MXSTEP=MXSTEP)
             CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
             SELECT CASE(ISTATE)
                 CASE(-1)
+                    write(*,*) "ISTATE -1"
                     !More steps required for this problem
                     MXSTEP=MXSTEP*2    
                 CASE(-2)
+                    write(*,*) "ISTATE -2"
                     !Tolerances are too small for machine but succesful to current currentTime
                     abstol=abstol*10.0
                 CASE(-3)
@@ -261,9 +262,12 @@ CONTAINS
                 CASE(-4)
                     !Successful as far as currentTime but many errors.
                     !Make targetTime smaller and just go again
+                    write(*,*) "ISTATE -4 - shortening step"
                     targetTime=currentTime+10.0*SECONDS_PER_YEAR
                 CASE(-5)
-                    targetTime=currentTime*1.01
+                    write(*,*) "ISTATE -5 - shortening step"
+                    CALL OUTPUT
+                    targetTime=currentTime+10.0*SECONDS_PER_YEAR
             END SELECT
         END DO                   
     END SUBROUTINE integrate
@@ -282,9 +286,17 @@ CONTAINS
         !Set D to the gas density for use in the ODEs
         D=y(NEQ)
         ydot=0.0
+        
+
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         INCLUDE 'odes.f90'
+
+        ! open(44,file="testing/rates.dat")
+        ! DO i=1,nspec
+        !     write(44,*) i,ydot(i)
+        ! END DO
+        ! close(44)
 
         !H2 formation should occur at both steps - however note that here there is no 
         !temperature dependence. y(nh) is hydrogen fractional abundance.

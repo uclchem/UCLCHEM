@@ -27,6 +27,7 @@ IMPLICIT NONE
     CALL initializeChemistry
     dstep=1
     call output
+
     !loop until the end condition of the model is reached 
     DO WHILE ((switch .eq. 1 .and. density(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
         !store current time as starting point for each depth step
@@ -50,7 +51,6 @@ IMPLICIT NONE
             CALL sublimation(abund)
             !write this depth step now time, chemistry and physics are consistent
             CALL output
-
             !reset time for next depth point
             if (points .gt. 1)currentTime=currentTimeold
         END DO

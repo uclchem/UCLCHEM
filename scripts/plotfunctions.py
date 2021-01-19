@@ -29,8 +29,16 @@ def plot_species(species,df,ax=None,plot_file=None):
         fig,ax=plt.subplots()
     sns.color_palette(n_colors=len(species))
 
+
+
     for specIndx,specName in enumerate(species):
-        ax.plot(df["Time"],df[specName],label=specName,lw=2)
+        if specName[0]=="$":
+            abundances=df[specName.replace("$","#")]
+            if specName.replace("$","@") in df.columns:
+                abundances=abundances+df[specName.replace("$","@")]
+        else:
+            abundances=df[specName]
+        ax.plot(df["Time"],abundances,label=specName,lw=2)
 
     ax.legend(loc=4,fontsize='small')
 

@@ -12,24 +12,32 @@ from copy import deepcopy as copy
 #1. simple classes to store all the information about each species and reaction.
 #largely just to make the other functions more readable.
 ##########################################################################################
-reaction_types=['PHOTON','CRP','CRPHOT','FREEZE','THERM','DESOH2','DESCR','DEUVCR',"H2FORM","ER","ERDES","LH","LHDES"]
+reaction_types=['PHOTON','CRP','CRPHOT','FREEZE','THERM','DESOH2','DESCR','DEUVCR',
+			"H2FORM","ER","ERDES","LH","LHDES","BULKLOSS","BULKGAIN"]
 #these reaction types removed as UCLCHEM does not handle them. 'CRH','PHOTD','XRAY','XRSEC','XRLYA','XRPHOT'
 elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N','13C','18O']
 elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420,15,13,18]
-symbols=['#','+','-','(',')']
+symbols=['#','@','+','-','(',')']
 
 class Species:
 	def __init__(self,inputRow):
 		self.name=inputRow[0]
 		self.mass=inputRow[1]
-		self.bindener=float(inputRow[2])
+		self.binding_energy=float(inputRow[2])
 		self.solidFraction=float(inputRow[3])
 		self.monoFraction=float(inputRow[4])
 		self.volcFraction=float(inputRow[5])
 		self.enthalpy=float(inputRow[6])
+		self.n_atoms=0
 
 	def is_grain_species(self):
-		return self.name[0]=='#'
+		return (self.name[0] in ['#','@'])
+
+	def is_surface_species(self):
+		return self.name[0]=="#"
+
+	def is_bulk_species(self):
+		return self.name[0]=="@"
 
 	def is_ion(self):
 		return (self.name[-1]=="+" or self.name[-1]=="-")
@@ -130,7 +138,7 @@ class Reaction:
 		for reactant in self.reactants:
 			if (reactant not in reaction_types) and reactant!="NAN":
 				self.body_count+=1
-			if reactant in ["DESOH2","FREEZE"]:
+			if reactant in ["DESOH2","FREEZE","LH","LHDES"]:
 				self.body_count+=1
 
 	def NANCheck(self,a):
@@ -145,6 +153,12 @@ class Reaction:
 				return self.reactants[1]
 			else:
 				return "TWOBODY"
+
+	def convert_to_bulk(self):
+		for i in range(len(self.reactants)):
+			self.reactants[i]=self.reactants[i].replace("#","@")
+		for i in range(len(self.products)):
+			self.products[i]=self.products[i].replace("#","@")
 
 	def same_reaction(self,other):
 		if set(self.reactants)==set(other.reactants):
@@ -243,7 +257,37 @@ def check_and_filter_species(speciesList,reactionList):
 	print('\n')
 	for species in speciesList:
 		species.find_constituents()
+
+	#add in pseudo-species to track mantle
+	mantle_specs=[]
+	new_spec=[999]*7
+	new_spec[0]="BULK"
+	mantle_specs.append(Species(new_spec))
+	new_spec[0]="SURFACE"
+	mantle_specs.append(Species(new_spec))
+	speciesList=speciesList+mantle_specs
 	return speciesList
+
+def create_bulk_species(speciesList):
+	speciesNames=[species.name for species in speciesList]
+	new_species=[]
+	try:
+		h2o_binding_energy=speciesNames.index("#H2O")
+		h2o_binding_energy=speciesList[h2o_binding_energy].binding_energy
+	except:
+		print("You are trying to create a three phase model but #H2O is not in your network")
+		print("This is likely an error so Makerates will not complete")
+		print("Try adding #H2O or switching to three_phase=False in Makerates.py")
+		quit()
+	for species in speciesList:
+		if species.is_surface_species:
+			if not species.name.replace("#","@") in speciesNames:
+				new_spec=copy(species)
+				new_spec.name=new_spec.name.replace("#","@")
+				new_spec.binding_energy=h2o_binding_energy
+				new_species.append(new_spec)
+	return speciesList+new_species
+
 
 #All species should freeze out at least as themselves and all grain species should desorb according to their binding energy
 #This function adds those reactions automatically to slim down the grain file
@@ -251,10 +295,13 @@ def add_desorb_reactions(speciesList,reactionList):
 	desorb_reacs=['DESOH2',"DESCR","DEUVCR","THERM"]
 
 	for species in speciesList:
-		if species.is_grain_species():
+		if species.is_surface_species():
 			for reacType in desorb_reacs:
-				newReaction=Reaction([species.name,reacType,'NAN',species.name[1:],'NAN','NAN','NAN',1,0,species.bindener,0.0,10000.0])
+				newReaction=Reaction([species.name,reacType,'NAN',species.name[1:],'NAN','NAN','NAN',1,0,species.binding_energy,0.0,10000.0])
 				reactionList.append(newReaction)
+		if species.is_bulk_species():
+			newReaction=Reaction([species.name,"THERM",'NAN',species.name[1:],'NAN','NAN','NAN',1,0,species.binding_energy,0.0,10000.0])
+			reactionList.append(newReaction)
 	return reactionList
 
 
@@ -278,6 +325,28 @@ def add_chemdes_reactions(speciesList,reactionList):
 
 	reactionList=reactionList+new_reacs
 	return reactionList
+
+def add_bulk_reactions(speciesList,reactionList):
+	lh_reactions=[x for x in reactionList if "LH" in x.reactants]
+	lh_reactions=lh_reactions+[x for x in reactionList if "LHDES" in x.reactants]
+	new_reactions=[]
+	for reaction in lh_reactions:
+		new_reac=copy(reaction)
+		new_reac.convert_to_bulk()
+		new_reactions.append(new_reac)
+
+	bulk_species=[x for x in speciesList if "@" in x.name]
+	for species in bulk_species:
+		new_reac_list=[species.name,"BULKLOSS","NAN",species.name.replace("@","#")]
+		new_reac_list=new_reac_list+["NAN","NAN","NAN",1,0,0,0,10000]
+		new_reac=Reaction(new_reac_list)
+		new_reactions.append(new_reac)
+		new_reac_list[0]=species.name.replace("@","#")
+		new_reac_list[1]="BULKGAIN"
+		new_reac_list[3]=species.name
+		new_reac=Reaction(new_reac_list)
+		new_reactions.append(new_reac)
+	return reactionList+new_reactions
 
 #check reactions to alert user of potential issues including repeat reactions
 #and multiple freeze out routes
@@ -369,37 +438,78 @@ def build_ode_string(speciesList, reactionList):
 		species_names.append(species.name)
 		species.losses=""
 		species.gains=""
+	surface_gain=""
+	surface_loss=""
+	bulk_gain=""
+	bulk_loss=""
+
+	bulk_index=species_names.index("BULK")
+	surface_index=species_names.index("SURFACE")
+
 	for i,reaction in enumerate(reactionList):
 		ODE_BIT=f"+RATE({i+1})"
 		
 		#every body after the first requires a factor of density
 		for body in range(reaction.body_count):
-			ODE_BIT=ODE_BIT+"*D"
+			ODE_BIT=ODE_BIT+f"*Y({len(speciesList)+1})"
 		
 		#then bring in factors of abundances
 		for species in reaction.reactants:
 			if species in species_names:
-				ODE_BIT=ODE_BIT+f"*Y({species_names.index(species)+1})"
+				if "BULKLOSS" in reaction.reactants:
+					ODE_BIT+=f"*MAX(1.0,Y({bulk_index+1})/Y({surface_index+1}))*surfaceLoss*(Y({species_names.index(species)+1})/MAX(1e-20,Y({bulk_index+1})))"
+				elif "BULKGAIN" in reaction.reactants:
+					ODE_BIT+=f"*surfaceGain*Y({species_names.index(species)+1})"
+				else:
+					ODE_BIT=ODE_BIT+f"*Y({species_names.index(species)+1})"
+			elif species in ["DEUVCR","DESCR","DESOH2"]:
+				ODE_BIT=ODE_BIT+f"/Y({surface_index+1})"
+				if species=="DESOH2":
+					ODE_BIT=ODE_BIT+f"*Y({species_names.index('H')+1})"
 			if "H2FORM" in reaction.reactants:
 				#only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
 				break
+
+
 
 		#now add to strings
 		for species in reaction.reactants:
 			if species in species_names:
 				#Eley-Rideal reactions take a share of total freeze out rate which is already accounted for
 				#so we add as a loss term to the frozen version of the species rather than the gas version
-				if ("ELEYRIDEAL" in reaction.reactants) and (not speciesList[species_names.index(species)].is_grain_species()):
+				if ("ELEYRIDEAL" in reaction.reactants) and (not speciesList[species_names.index(species)].is_surface_species()):
 					speciesList[species_names.index("#"+species)].losses+=ODE_BIT
 				else:
 					speciesList[species_names.index(species)].losses+=ODE_BIT
+				if "BULK" not in reaction.reactants[1]:
+					if "#" in species:
+						surface_loss+=ODE_BIT
+					if "@" in species:
+						bulk_loss+=ODE_BIT
 		for species in reaction.products:
 			if species in species_names:
 				speciesList[species_names.index(species)].gains+=ODE_BIT
+				if "BULK" not in reaction.reactants[1]:
+					if "#" in species:
+						surface_gain+=ODE_BIT
+					if "@" in species:
+						bulk_gain+=ODE_BIT
 
-	ode_string=""
+	ode_string=truncate_line(f"surfaceLoss={surface_loss[1:]}\n\n")
+	ode_string+=truncate_line(f"surfaceGain={surface_gain[1:]}\n\n")
+	ode_string+=truncate_line(f"bulkLoss={bulk_loss[1:]}\n\n")
+	ode_string+=truncate_line(f"bulkGain={bulk_gain[1:]}\n\n")
+
 	for n,species in enumerate(speciesList):
+		if species.name[0]=="@":
+			speciesList[bulk_index].gains+=f"+YDOT({n+1})"
+		elif species.name[0]=="#":
+			speciesList[surface_index].gains+=f"+YDOT({n+1})"
 
+	for n,species in enumerate(speciesList):
+		if species.name=="SURFACE":
+			print(species.losses)
+			print(n)
 
 		if species.losses != '':
 			loss_string = '    LOSS = '+species.losses[1:]+'\n'
@@ -412,9 +522,9 @@ def build_ode_string(speciesList, reactionList):
 		
 		#start with empty string and add production and loss terms if they exists
 		ydot_string=''
-		if prod_string != '':
+		if species.gains != '':
 			ydot_string += 'PROD'
-			if loss_string != '':
+			if species.losses != '':
 				ydot_string += '-LOSS'
 
 		#if we have prod and/or loss add ydotstring to odes
@@ -428,8 +538,8 @@ def build_ode_string(speciesList, reactionList):
 #create a file containing length of each list of moleculetypes and then the two lists (gas and grain) of species in each type
 #as  well as fraction that evaporated in each type of event
 def write_evap_lists(openFile,speciesList):
-	grainlist=[];mgrainlist=[];solidList=[];monoList=[];volcList=[]
-	bindEnergyList=[];enthalpyList=[]
+	gasIceList=[];grainlist=[];solidList=[];monoList=[];volcList=[]
+	binding_energygyList=[];enthalpyList=[];bulkList=[];iceList=[]
 
 	for i,species in enumerate(speciesList):
 		if species.name[0]=='#':
@@ -448,20 +558,31 @@ def write_evap_lists(openFile,speciesList):
 					j=speciesList.index(next((x for x in speciesList if x.name==input.upper())))					
 
 			#plus ones as fortran and python label arrays differently
-			mgrainlist.append(i+1)
-			grainlist.append(j+1)
+			grainlist.append(i+1)
+			gasIceList.append(j+1)
 			solidList.append(species.solidFraction)
 			monoList.append(species.monoFraction)
 			volcList.append(species.volcFraction)
-			bindEnergyList.append(species.bindener)
+			iceList.append(i+1)
+			binding_energygyList.append(species.binding_energy)
+			enthalpyList.append(species.enthalpy)
+		elif species.name[0]=="@":
+			j=speciesList.index(next((x for x in speciesList if x.name==species.name[1:]))) 
+			gasIceList.append(j+1)
+			bulkList.append(i+1)
+			iceList.append(i+1)
+			binding_energygyList.append(species.binding_energy)
 			enthalpyList.append(species.enthalpy)
 
-	openFile.write(array_to_string("gasGrainList",grainlist,type="int"))
-	openFile.write(array_to_string("grainList",mgrainlist,type="int"))
+	openFile.write(array_to_string("gasIceList",gasIceList,type="int"))
+	openFile.write(array_to_string("grainList",grainlist,type="int"))
+	openFile.write(array_to_string("bulkList",bulkList,type="int"))
+	openFile.write(array_to_string("iceList",iceList,type="int"))
+
 	openFile.write(array_to_string("solidFractions",solidList,type="float"))
 	openFile.write(array_to_string("monoFractions",monoList,type="float"))
 	openFile.write(array_to_string("volcanicFractions",volcList,type="float"))
-	openFile.write(array_to_string("bindingEnergy",bindEnergyList,type="float",parameter=False))
+	openFile.write(array_to_string("bindingEnergy",binding_energygyList,type="float",parameter=False))
 	openFile.write(array_to_string("formationEnthalpy",enthalpyList,type="float"))
 
 	return len(grainlist)
@@ -512,7 +633,8 @@ def write_network_file(fileName,speciesList,reactionList):
 		atoms.append(species.n_atoms)
 
 	speciesIndices=""
-	for element in ["E-","C+","H+","H2","SI+","S+","CL+","CO","HE+","#H","#H2","#N","#O",'#OH']+elementList:
+	for element in ["E-","C+","H+","H2","SI+","S+","CL+","CO","HE+","#H","#H2","#N","#O",'#OH',
+					"SURFACE","BULK"]+elementList:
 		try:
 			species_index=names.index(element)+1
 	

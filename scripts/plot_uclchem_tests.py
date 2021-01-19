@@ -10,7 +10,7 @@ i=0
 for folder in ["example-output/","test-output/"]:
 	for model in ["phase1","phase2","static"]:
 		#pick species, any number is fine
-		speciesNames=["H","H2","#H","H2O","#H2O","CO","#CO","#CH3OH","CH3OH"]
+		speciesNames=["H","H2","$H","H2O","$H2O","CO","$CO","$CH3OH","CH3OH"]
 
 		#call read_uclchem. 
 		model_data=read_uclchem("examples/"+folder+model+"-full.dat")

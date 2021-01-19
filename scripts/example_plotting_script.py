@@ -7,8 +7,8 @@
 from plotfunctions import *
 
 #pick species, any number is fine
-speciesNames=["H2","CO","H2O","CH3OH","#H2O","#CO","#CH3OH"]
-input_file="output/full.dat"
+speciesNames=["#H2O","#CO","#CH3OH","@CO","@CH3OH","@H2O"]
+input_file="output/full2.dat"
 
 
 #call read_uclchem. 
@@ -25,7 +25,7 @@ ax2=ax.twinx()
 ax2.plot(model_data["Time"],model_data["gasTemp"],color="black")
 ax2.set(ylabel="Temperature / K")
 #and make some slight adjustments to the plot before saving again
-ax.set(xscale='log',xlim=(1,1e7),ylim=(5e-16,3e-3))
+ax.set(xscale='log',xlim=(1,1e7),ylim=(9e-31,5e-4))
 ax.set_title('This is a Test Plot')
 
 #overwrite our previous plot

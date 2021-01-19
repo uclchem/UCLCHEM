@@ -12,7 +12,7 @@ import os
 
 
 reactionFile = 'inputFiles/umist12-ucledit.csv'
-reactionFile_grain = 'inputFiles/default_grain_network.csv'
+reactionFile_grain = 'inputFiles/freeze_only_grain_network.csv'
 speciesFile = 'inputFiles/default_species.csv'
 
 three_phase=True
@@ -39,9 +39,15 @@ nReactions1, reactions1, dropped_reactions = read_reaction_file(reactionFile, sp
 nReactions2, reactions2, dropped_reactions = read_reaction_file(reactionFile_grain,speciesList,'UCL')
 reactionList=reactions1+reactions2
 
+if three_phase:
+	speciesList=create_bulk_species(speciesList)
+
+
 #Need additional grain reactions including non-thermal desorption and chemically induced desorption
 reactionList=add_desorb_reactions(speciesList,reactionList)
 reactionList=add_chemdes_reactions(speciesList,reactionList)
+if three_phase:
+	reactionList=add_bulk_reactions(speciesList,reactionList)
 
 #Keep only the species that are involved in the final reaction list
 print('\nRemoving unused species...')

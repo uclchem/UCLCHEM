@@ -63,6 +63,8 @@ IF (paramFile .ne. "") THEN
                 READ(buffer,*,iostat=ios) ion
             CASE('tempindx')
                 READ(buffer,*,iostat=ios) tempindx
+            CASE('fh')
+                READ(buffer,*,iostat=ios) fh
             CASE('fhe')
                 READ(buffer,*,iostat=ios) fhe
             CASE('fc')
