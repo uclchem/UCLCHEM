@@ -108,7 +108,6 @@ SUBROUTINE calculateReactionRates
     idx2=lhReacs(2)
 
     if (gasTemp(dstep) .lt. 200) THEN
-        write(*,*) "LHs"
         DO j=idx1,idx2
             rate(j)=diffusionReactionRate(j)
         END DO
@@ -124,7 +123,6 @@ SUBROUTINE calculateReactionRates
         !remove that fraction from total rate of the diffusion route
         rate(lhReacs(1):lhReacs(2))=rate(lhReacs(1):lhReacs(2))-rate(idx1:idx2)
     ELSE
-        write(*,*) "skipped"
         rate(idx1:idx2)=0.0
         rate(lhdesReacs(1):lhdesReacs(2))=0.0
     END IF
@@ -196,13 +194,6 @@ SUBROUTINE calculateReactionRates
         !and this multiplies by 0,1 if gastemp>max temp
         rate(duplicates)=rate(duplicates)*min(real(floor(maxTemps/gasTemp(dstep))),1.0)
     END IF  
-    ! write(*,*) "Surface Loss",surfaceLoss
-    ! write(*,*) "Surface Gain ",surfaceGain
-    ! write(*,*) "BULKGAIN H2O",RATE(14)*abund(58,dstep)*surfaceGain
-    ! wriTE(*,*) RATE(14),mantle(dstep),abund(303,dstep),abund(58,dstep)
-    ! write(*,*) "BULKLOSS H2O",RATE(82)*abund(62,dstep)*surfaceLoss
-    ! write(*,*)  RATE(82),bulk(dstep),abund(302,dstep),abund(62,dstep)
-    ! write(*,*)  "---------------------------------------------------------"
 
     !Reactions for which we have a more detailed photorecation treatment
 
@@ -377,5 +368,4 @@ double precision FUNCTION desorptionFraction(reacIndx)
         if ((re1(reacIndx).eq.ngoh.and.re2(reacIndx).eq.nh) &
             &.or. (re1(reacIndx).eq.nh.and.re2(reacIndx).eq.ngoh)) desorptionFraction = 0.25
     ENDIF
-    if (desorptionFraction .gt. 1) write(*,*) "desorb frac",desorptionFraction,reacIndx
 END FUNCTION desorptionFraction
