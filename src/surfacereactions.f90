@@ -1,6 +1,7 @@
 MODULE SurfaceReactions
   USE constants
-  REAL(dp) :: bulkGain,bulkLoss,surfaceGain,surfaceLoss
+  REAL(dp) :: bulkGain,bulkLoss,surfaceGain,surfaceLoss,totalSwap
+  REAL(dp) :: safeMantle,safeBulk
 
   !Silicate grain properties for H2 Formation
   REAL(dp),PARAMETER :: SILICATE_MU=0.005D0 ! Fraction of newly formed H2 that stays on the grain surface

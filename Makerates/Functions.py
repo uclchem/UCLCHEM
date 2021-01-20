@@ -13,7 +13,7 @@ from copy import deepcopy as copy
 #largely just to make the other functions more readable.
 ##########################################################################################
 reaction_types=['PHOTON','CRP','CRPHOT','FREEZE','THERM','DESOH2','DESCR','DEUVCR',
-			"H2FORM","ER","ERDES","LH","LHDES","BULKLOSS","BULKGAIN"]
+			"H2FORM","ER","ERDES","LH","LHDES","BULKLOSS","BULKGAIN","BULKSWAP","SURFSWAP"]
 #these reaction types removed as UCLCHEM does not handle them. 'CRH','PHOTD','XRAY','XRSEC','XRLYA','XRPHOT'
 elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N','13C','18O']
 elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420,15,13,18]
@@ -165,6 +165,12 @@ class Reaction:
 			if set(self.products)==set(other.products):
 				return True
 		return False
+
+	def changes_total_mantle(self):
+		if ("BULK" not in self.reactants[1]) and ("SWAP" not in self.reactants[1]):
+			return True
+		else:
+			return False
 
 	def print(self):
 		print(" + ".join(self.reactants), "->","+".join(self.products))
@@ -337,15 +343,31 @@ def add_bulk_reactions(speciesList,reactionList):
 
 	bulk_species=[x for x in speciesList if "@" in x.name]
 	for species in bulk_species:
+		#add the bulkloss reaction
 		new_reac_list=[species.name,"BULKLOSS","NAN",species.name.replace("@","#")]
 		new_reac_list=new_reac_list+["NAN","NAN","NAN",1,0,0,0,10000]
 		new_reac=Reaction(new_reac_list)
 		new_reactions.append(new_reac)
+		#then the equivalent reaction for bulk gain
 		new_reac_list[0]=species.name.replace("@","#")
 		new_reac_list[1]="BULKGAIN"
 		new_reac_list[3]=species.name
 		new_reac=Reaction(new_reac_list)
 		new_reactions.append(new_reac)
+
+		#then individual swapping
+		new_reac_list=[species.name,"BULKSWAP","NAN",species.name.replace("@","#")]
+		new_reac_list=new_reac_list+["NAN","NAN","NAN",1,0,0,0,10000]
+		new_reac=Reaction(new_reac_list)
+		new_reactions.append(new_reac)
+
+		#and the reverse
+		new_reac_list[0]=species.name.replace("@","#")
+		new_reac_list[1]="SURFSWAP"
+		new_reac_list[3]=species.name
+		new_reac=Reaction(new_reac_list)
+		new_reactions.append(new_reac)
+
 	return reactionList+new_reactions
 
 #check reactions to alert user of potential issues including repeat reactions
@@ -442,6 +464,7 @@ def build_ode_string(speciesList, reactionList):
 	surface_loss=""
 	bulk_gain=""
 	bulk_loss=""
+	total_swap=""
 
 	bulk_index=species_names.index("BULK")
 	surface_index=species_names.index("SURFACE")
@@ -457,13 +480,17 @@ def build_ode_string(speciesList, reactionList):
 		for species in reaction.reactants:
 			if species in species_names:
 				if "BULKLOSS" in reaction.reactants:
-					ODE_BIT+=f"*MAX(1.0,Y({bulk_index+1})/Y({surface_index+1}))*surfaceLoss*(Y({species_names.index(species)+1})/MAX(1e-20,Y({bulk_index+1})))"
+					ODE_BIT+=f"*MAX(1.0,safeBulk/safeMantle)*surfaceLoss*(Y({species_names.index(species)+1})/safeBulk)"
 				elif "BULKGAIN" in reaction.reactants:
 					ODE_BIT+=f"*surfaceGain*Y({species_names.index(species)+1})"
+				elif "BULKSWAP" in reaction.reactants:
+					ODE_BIT+=f"*MIN(1.0,NUM_SITES_PER_GRAIN/safeBulk)*Y({species_names.index(species)+1})"
+				elif "SURFSWAP" in reaction.reactants:
+					ODE_BIT+=f"*totalSwap*(Y({species_names.index(species)+1})/safeMantle)"
 				else:
 					ODE_BIT=ODE_BIT+f"*Y({species_names.index(species)+1})"
 			elif species in ["DEUVCR","DESCR","DESOH2"]:
-				ODE_BIT=ODE_BIT+f"/Y({surface_index+1})"
+				ODE_BIT=ODE_BIT+f"/safeMantle"
 				if species=="DESOH2":
 					ODE_BIT=ODE_BIT+f"*Y({species_names.index('H')+1})"
 			if "H2FORM" in reaction.reactants:
@@ -481,24 +508,30 @@ def build_ode_string(speciesList, reactionList):
 					speciesList[species_names.index("#"+species)].losses+=ODE_BIT
 				else:
 					speciesList[species_names.index(species)].losses+=ODE_BIT
-				if "BULK" not in reaction.reactants[1]:
+				if reaction.changes_total_mantle():
 					if "#" in species:
 						surface_loss+=ODE_BIT
 					if "@" in species:
 						bulk_loss+=ODE_BIT
+				if reaction.reactants[1]=="BULKSWAP":
+					total_swap+=ODE_BIT
 		for species in reaction.products:
 			if species in species_names:
 				speciesList[species_names.index(species)].gains+=ODE_BIT
-				if "BULK" not in reaction.reactants[1]:
+				if reaction.changes_total_mantle():
 					if "#" in species:
 						surface_gain+=ODE_BIT
 					if "@" in species:
 						bulk_gain+=ODE_BIT
+	
+	ode_string=f"safeMantle=MAX(1d-30,Y({surface_index+1}))\n"
+	ode_string+=f"safeBulk=MAX(1d-30,Y({bulk_index+1}))\n"
 
-	ode_string=truncate_line(f"surfaceLoss={surface_loss[1:]}\n\n")
+	ode_string+=truncate_line(f"surfaceLoss={surface_loss[1:]}\n\n")
 	ode_string+=truncate_line(f"surfaceGain={surface_gain[1:]}\n\n")
 	ode_string+=truncate_line(f"bulkLoss={bulk_loss[1:]}\n\n")
 	ode_string+=truncate_line(f"bulkGain={bulk_gain[1:]}\n\n")
+	ode_string+=truncate_line(f"totalSwap={total_swap[1:]}\n\n")
 
 	for n,species in enumerate(speciesList):
 		if species.name[0]=="@":
@@ -592,29 +625,18 @@ def multiple(number):
     if number == 1: return ''
     else: return str(number)+'*'
 
-def truncate_line(input, codeFormat='F90', continuationCode=None):
-	lineLength = 72
-	maxlines=300
-	lines=0
+def truncate_line(input_string, codeFormat='F90', continuationCode=None,lineLength = 72):
 	result = ''
 	i=0
 	j=0
-	while i+j<len(input):
-		j+=1
-		if j>lineLength:
-			#important not to break entries so split lines at ,s
-			try:
-				k=input[i+j-16:i+j].index(",")
-			except:
-				try:
-					k=input[i+j-16:i+j].index("*")
-				except:
-					k=input[i+j-16:i+j].index(")")
-			j=j-16+k
-			result+=input[i:i+j]+"&\n    &"
-			i=i+j
-			j=0
-	result+=input[i:i+j]
+	splits=["*",")","+",","]
+	while len(input_string[i:])>lineLength:
+		j=i+lineLength
+		while input_string[j] not in splits:
+			j=j-1
+		result+=input_string[i:j]+"&\n    &"
+		i=j
+	result+=input_string[i:]
 	return result    
 
 

@@ -1,9 +1,22 @@
 SHELL = /bin/sh
+################################################################################
+#
+# User Options
+################################################################################
 FC =gfortran
-f2pyFC=gnu95 #this must match FC (ifort=intelem, gfortran=gnu95)
 #FC=ifort
-FFLAGS =-g #-O2 -fPIC
+
+f2pyFC=gnu95 #this must match FC (ifort=intelem, gfortran=gnu95)
+
+#Unforgiving debugging flags
+#FFLAGS =-g -fbacktrace -Wall -fcheck=all
+#Fast optimizing flags
+FFLAGS =-O2 -fPIC
+
+#Pick a physics module!
 PHYSICS=cloud.f90
+
+###############################################################################
 EXT_SUFFIX = $(shell python3-config --extension-suffix)
 
 ##simple makefile for uclchem

@@ -30,7 +30,7 @@ IMPLICIT NONE
     
     !Option column output
     character(LEN=15),ALLOCATABLE :: outSpecies(:)
-    logical :: columnOutput=.False.,fullOutput=.False.
+    LOGICAL :: columnOutput=.False.,fullOutput=.False.
     INTEGER :: nout
     INTEGER, ALLOCATABLE :: outIndx(:)
 
@@ -59,7 +59,7 @@ CONTAINS
     SUBROUTINE initializeChemistry
         NEQ=nspec+1
         IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff,mantle)
-        ALLOCATE(abund(NEQ,points),vdiff(SIZE(grainList)))
+        ALLOCATE(abund(NEQ,points),vdiff(SIZE(iceList)))
         CALL fileSetup
         !if this is the first step of the first phase, set initial abundances
         !otherwise reader will fix it
@@ -237,8 +237,8 @@ CONTAINS
             ITASK=1 !try to integrate to targetTime
             ISTATE=1 !pretend every step is the first
             reltol=1e-5 !relative tolerance effectively sets decimal place accuracy
-            abstol=1.0d-15*abund(:,dstep) !absolute tolerances depend on value of abundance
-            WHERE(abstol<1d-30) abstol=1d-30 ! to a minimum degree
+            abstol=1.0d-30!*abund(:,dstep) !absolute tolerances depend on value of abundance
+            !WHERE(abstol<1d-30) abstol=1d-30 ! to a minimum degree
 
             !get reaction rates for this iteration
             CALL calculateReactionRates

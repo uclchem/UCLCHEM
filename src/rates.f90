@@ -178,6 +178,30 @@ SUBROUTINE calculateReactionRates
         rate(idx1:idx2)=0.5*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
     END IF
 
+
+    idx1=bulkswapReacs(1)
+    idx2=bulkswapReacs(2)
+
+    IF (mantle(dstep) .lt. 1e-20) THEN
+        rate(idx1:idx2) = 0.0
+    ELSE
+        DO i=idx1,idx2
+            DO j=lbound(iceList,1),ubound(iceList,1)
+                !See Cuppen, Walsh et al. 2017 review (section 4.1)
+                IF (iceList(j) .eq. re1(i)) rate(i)=vdiff(j)*DEXP(-bindingEnergy(j)/gasTemp(dstep))
+            END DO
+        END DO
+    END IF
+    rate(idx1:idx2)=0.0
+
+    idx1=surfSwapReacs(1)
+    idx2=surfSwapReacs(2)
+    IF (mantle(dstep) .lt. 1e-20) THEN
+        rate(idx1:idx2) = 0.0
+    ELSE
+        rate(idx1:idx2) = 1.0
+    END IF
+    rate(idx1:idx2) =0.0
     !Basic gas phase reactions 
     !They only change if temperature has so we can save time with an if statement
     idx1=twobodyReacs(1)
@@ -212,7 +236,7 @@ END SUBROUTINE calculateReactionRates
 !Above 150 K, thermal desorption will completely remove grain species
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
-    REAL(dp) :: freezeRates(idx2-idx1)
+    REAL(dp) :: freezeRates(idx2-idx1+1)
     INTEGER :: idx1,idx2
     
     !additional factor for ions (beta=0 for neutrals)
@@ -326,13 +350,16 @@ double precision FUNCTION desorptionFraction(reacIndx)
 
     maxBindingEnergy=0.0
     productEnthalpy=0.0
+    epsilonCd=0.0
     DO i=1,4
-        maxBindingEnergy=MAX(maxBindingEnergy,bindingEnergy(productIndex(i)))
-        productEnthalpy=productEnthalpy+formationEnthalpy(productIndex(i))
+        IF (productIndex(i) .ne. 0) THEN
+            maxBindingEnergy=MAX(maxBindingEnergy,bindingEnergy(productIndex(i)))
+            productEnthalpy=productEnthalpy+formationEnthalpy(productIndex(i))
+            epsilonCd=epsilonCd + mass(productIndex(i))
+        END IF
     END DO
 
     !epsilonCd is the fraction of kinetic energy kept my the product when it collides with grain surface
-    epsilonCd = mass(productIndex(1)) + mass(productIndex(2)) + mass(productIndex(3)) + mass(productIndex(4))
     epsilonCd = ((epsilonCd - EFFECTIVE_SURFACE_MASS) / (epsilonCd + EFFECTIVE_SURFACE_MASS))**2
     
     !Now calculate the change in enthalpy of the reaction.

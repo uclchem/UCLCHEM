@@ -52,10 +52,13 @@ IMPLICIT NONE
             !write this depth step now time, chemistry and physics are consistent
             CALL output
             !reset time for next depth point
-            if (points .gt. 1)currentTime=currentTimeold
+            if (points .gt. 1) currentTime=currentTimeold
         END DO
     END DO 
-    close(10)
-    close(11)
-    close(7)
+    ! INQUIRE(UNIT=10, OPENED=fullOutput)
+    ! IF (fullOutput) close(10)
+    ! INQUIRE(UNIT=11, OPENED=columnOutput)
+    ! !IF (columnOutput) close(11)
+    ! INQUIRE(UNIT=7, OPENED=fullOutput )
+    ! if (fullOutput) close(7)
 END PROGRAM uclchem
