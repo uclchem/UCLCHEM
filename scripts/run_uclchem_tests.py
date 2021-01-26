@@ -1,6 +1,8 @@
 #Jon Holdship 23/11/2020
 #Run the 3 test models and store their outputs for the plotting script
-from __future__ import print_function
+from sys import path
+path.insert(0,'./')
+path.insert(0,'../')
 import uclchem
 import numpy as np
 import pandas as pd

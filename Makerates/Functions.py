@@ -31,7 +31,10 @@ class Species:
 		self.n_atoms=0
 
 	def is_grain_species(self):
-		return (self.name[0] in ['#','@'])
+		if self.name in ["BULK","SURFACE"]:
+			return True
+		else:
+			return (self.name[0] in ['#','@'])
 
 	def is_surface_species(self):
 		return self.name[0]=="#"
@@ -573,11 +576,12 @@ def build_ode_string(speciesList, reactionList):
 	ode_string=f"safeMantle=MAX(1d-30,Y({surface_index+1}))\n"
 	ode_string+=f"safeBulk=MAX(1d-30,Y({bulk_index+1}))\n"
 
-	ode_string+=truncate_line(f"surfaceLoss={surface_loss[1:]}\n\n")
-	ode_string+=truncate_line(f"surfaceGain={surface_gain[1:]}\n\n")
-	ode_string+=truncate_line(f"bulkLoss={bulk_loss[1:]}\n\n")
-	ode_string+=truncate_line(f"bulkGain={bulk_gain[1:]}\n\n")
-	ode_string+=truncate_line(f"totalSwap={total_swap[1:]}\n\n")
+	if total_swap!="":
+		ode_string+=truncate_line(f"surfaceLoss={surface_loss[1:]}\n\n")
+		ode_string+=truncate_line(f"surfaceGain={surface_gain[1:]}\n\n")
+		ode_string+=truncate_line(f"bulkLoss={bulk_loss[1:]}\n\n")
+		ode_string+=truncate_line(f"bulkGain={bulk_gain[1:]}\n\n")
+		ode_string+=truncate_line(f"totalSwap={total_swap[1:]}\n\n")
 
 	for n,species in enumerate(speciesList):
 		if species.name[0]=="@":
@@ -655,7 +659,7 @@ def write_evap_lists(openFile,speciesList):
 
 	openFile.write(array_to_string("gasIceList",gasIceList,type="int"))
 	openFile.write(array_to_string("grainList",grainlist,type="int"))
-	openFile.write(array_to_string("bulkList",bulkList,type="int"))
+	#openFile.write(array_to_string("bulkList",bulkList,type="int"))
 	openFile.write(array_to_string("iceList",iceList,type="int"))
 
 	openFile.write(array_to_string("solidFractions",solidList,type="float"))

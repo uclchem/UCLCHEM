@@ -99,6 +99,18 @@ CONTAINS
      RETURN
   END FUNCTION h2FormEfficiency
 
+  SUBROUTINE bulkSurfaceExchangeReactions(rate,gasTemperature)
+    REAL(dp), INTENT(INOUT) :: rate(*)
+    REAL(dp) :: gasTemperature
+#ifdef TP
+    rate(bulkGainReacs(1):bulkGainReacs(2))=bulkGainFromMantleBuildUp()
+    rate(bulkLossReacs(1):bulkLossReacs(2))=bulkLossFromMantleLoss()
+
+    CALL bulkToSurfaceSwappingRates(rate,bulkswapReacs(1),bulkswapReacs(2),gasTemperature)
+    rate(surfSwapReacs(1):surfSwapReacs(2))=surfaceToBulkSwappingRates(gasTemperature)
+#endif
+  END SUBROUTINE bulkSurfaceExchangeReactions
+
 
   FUNCTION bulkGainFromMantleBuildUp() RESULT(rate)
     REAL(dp) :: rate

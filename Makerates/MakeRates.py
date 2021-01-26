@@ -127,3 +127,10 @@ for species in speciesList:
 print('\nnspec= '+str(len(speciesList)))
 print('nreac= '+str(len(reactionList)))
 print('ngrain='+str(ngrain))
+
+if three_phase:
+	print("This network has three phase chemistry. Ensure that the CPPFLAGS entry in ../src/Makefile")
+	print("reads \"-cpp -DTP\" so that the bulk/surface swapping is activated.")
+else:
+	print("This network has three phase chemistry. Ensure that the CPPFLAGS entry in ../src/Makefile")
+	print("reads \"-cpp\" with no \"-DTP\" flag.")

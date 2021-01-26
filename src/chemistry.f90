@@ -43,7 +43,7 @@ IMPLICIT NONE
     !initial fractional elemental abudances and arrays to store abundances
     REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,fli,fna,fpah,f15n,f13c,f18O
     REAL(dp) :: h2col,cocol,ccol
-    REAL(dp),ALLOCATABLE :: abund(:,:),mantle(:),bulk(:)
+    REAL(dp),ALLOCATABLE :: abund(:,:),mantle(:)
     
     !Variables controlling chemistry
     LOGICAL :: PARAMETERIZE_H2FORM=.True.
@@ -58,7 +58,7 @@ CONTAINS
 !This gets called immediately by main so put anything here that you want to happen before the time loop begins, reader is necessary.
     SUBROUTINE initializeChemistry
         NEQ=nspec+1
-        IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff,mantle,bulk)
+        IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff,mantle)
         ALLOCATE(abund(NEQ,points),vdiff(SIZE(iceList)))
         CALL fileSetup
         !if this is the first step of the first phase, set initial abundances
@@ -118,10 +118,9 @@ CONTAINS
         END DO
 
         !h2 formation rate initially set
-        ALLOCATE(mantle(points),bulk(points))
+        ALLOCATE(mantle(points))
         DO l=1,points
             mantle(l)=sum(abund(grainList,l))
-            bulk(l)=sum(abund(bulkList,l))
         END DO
         
         !DVODE SETTINGS
@@ -207,7 +206,6 @@ CONTAINS
 
         !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
         mantle(dstep)=sum(abund(grainList,dstep))
-        bulk(dstep)=sum(abund(bulkList,dstep))
 
         !evaluate co and h2 column densities for use in rate calculations
         !sum column densities of each point up to dstep. boxlength and dens are pulled out of the sum as common factors  
@@ -291,13 +289,7 @@ CONTAINS
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         INCLUDE 'odes.f90'
-
-        ! open(44,file="testing/rates.dat")
-        ! DO i=1,nspec
-        !     write(44,*) i,ydot(i)
-        ! END DO
-        ! close(44)
-
+      
         !H2 formation should occur at both steps - however note that here there is no 
         !temperature dependence. y(nh) is hydrogen fractional abundance.
         ydot(nh)  = ydot(nh) + 2.0*(h2dis*y(nh2) ) !- 2.0*h2form*y(nh)*D

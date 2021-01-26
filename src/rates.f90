@@ -157,12 +157,7 @@ SUBROUTINE calculateReactionRates
         rate(nR_H2Form_CT)= 0.0
     END IF
 
-
-    rate(bulkGainReacs(1):bulkGainReacs(2))=bulkGainFromMantleBuildUp()
-    rate(bulkLossReacs(1):bulkLossReacs(2))=bulkLossFromMantleLoss()
-
-    CALL bulkToSurfaceSwappingRates(rate,bulkswapReacs(1),bulkswapReacs(2),gasTemp(dstep))
-    rate(surfSwapReacs(1):surfSwapReacs(2))=surfaceToBulkSwappingRates(gasTemp(dstep))
+    CALL bulkSurfaceExchangeReactions(rate,gasTemp(dstep))
 
 
     !Basic gas phase reactions 
