@@ -11,17 +11,28 @@ from Functions import *
 import os
 
 
-reactionFile = 'inputFiles/umist12-ucledit.csv'
-reactionFile_grain = 'inputFiles/freeze_only_grain_network.csv'
+###################################################################################################
+# USER OPTIONS
+###################################################################################################
+
+database_reaction_file = "inputFiles/umist12-ucledit.csv"
+database_reaction_type="UMIST"
+
+custom_reaction_file = 'inputFiles/default_grain_network.csv'
+
+
 speciesFile = 'inputFiles/default_species.csv'
 
 three_phase=True
 
+
+
+#################################################################################################
 if not os.path.exists('outputFiles'):
     os.makedirs('outputFiles')
 
-make_capitals(reactionFile)
-make_capitals(reactionFile_grain)
+make_capitals(database_reaction_file)
+make_capitals(custom_reaction_file)
 make_capitals(speciesFile)
 
 print('\n################################################')
@@ -35,8 +46,8 @@ speciesList=remove_duplicate_species(speciesList)
 # Read the reactants, products, Arrhenius equation parameters and measurement labels for each reaction
 # IF the reaction involves species in our Species List
 # Store user reactions (grain file) that are filtered out in list to write out
-nReactions1, reactions1, dropped_reactions = read_reaction_file(reactionFile, speciesList,'UMIST')
-nReactions2, reactions2, dropped_reactions = read_reaction_file(reactionFile_grain,speciesList,'UCL')
+nReactions1, reactions1, dropped_reactions = read_reaction_file(database_reaction_file, speciesList,database_reaction_type)
+nReactions2, reactions2, dropped_reactions = read_reaction_file(custom_reaction_file,speciesList,'UCL')
 reactionList=reactions1+reactions2
 
 if three_phase:

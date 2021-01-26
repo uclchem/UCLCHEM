@@ -1,5 +1,6 @@
 MODULE SurfaceReactions
   USE constants
+  USE network
   REAL(dp) :: bulkGain,bulkLoss,surfaceGain,surfaceLoss,totalSwap
   REAL(dp) :: safeMantle,safeBulk
 
@@ -42,6 +43,8 @@ MODULE SurfaceReactions
   REAL(dp), PARAMETER :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
   REAL(dp), PARAMETER :: VDIFF_PREFACTOR=2.0*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
   REAL(dp), PARAMETER :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
+
+  REAL(dp), ALLOCATABLE ::vdiff(:)
 CONTAINS
   !=======================================================================
   !
@@ -95,4 +98,50 @@ CONTAINS
 
      RETURN
   END FUNCTION h2FormEfficiency
+
+
+  FUNCTION bulkGainFromMantleBuildUp() RESULT(rate)
+    REAL(dp) :: rate
+    IF (safeMantle .lt. 1e-20) THEN
+        rate = 0.0
+    ELSE
+        rate=0.5*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
+    END IF
+  END FUNCTION bulkGainFromMantleBuildUp
+
+
+  FUNCTION bulkLossFromMantleLoss() RESULT(rate)
+    REAL(dp) :: rate
+    IF (safeBulk .lt. 1e-20) THEN
+        rate = 0.0
+    ELSE
+        rate=1.0
+    END IF
+  END FUNCTION bulkLossFromMantleLoss
+
+
+  FUNCTION surfaceToBulkSwappingRates(gasTemperature) RESULT(rate)
+    REAL(dp) ::rate,gasTemperature
+    IF ((safeMantle .lt. 1e-20) .or. (gasTemperature .gt. 100)) THEN
+        rate = 0.0
+    ELSE
+        rate = 1.0
+    END IF
+  END FUNCTION surfaceToBulkSwappingRates
+
+
+  SUBROUTINE bulkToSurfaceSwappingRates(rate,idx1,idx2,gasTemperature)
+    REAL(dp), INTENT(INOUT) :: rate(*)
+    REAL(dp) :: gasTemperature
+    INTEGER :: idx1,idx2
+    IF ((safeMantle .lt. 1e-20) .or. (gasTemperature .gt. 100)) THEN
+        rate(idx1:idx2) = 0.0
+    ELSE
+        DO i=idx1,idx2
+            DO j=lbound(iceList,1),ubound(iceList,1)
+                IF (iceList(j) .eq. re1(i)) rate(i)=vdiff(j)*DEXP(-bindingEnergy(j)/gasTemperature)
+            END DO
+        END DO
+    END IF
+  END SUBROUTINE bulkToSurfaceSwappingRates
 END MODULE SurfaceReactions

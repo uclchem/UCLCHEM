@@ -49,7 +49,7 @@ IMPLICIT NONE
     LOGICAL :: PARAMETERIZE_H2FORM=.True.
     REAL(dp) :: radfield,zeta,fr,omega,grainArea,cion,h2dis,lastTemp=0.0
     REAL(dp) :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
-    REAL(dp), ALLOCATABLE ::vdiff(:)
+    
 
     REAL(dp) :: turbVel=1.0
 
@@ -58,7 +58,7 @@ CONTAINS
 !This gets called immediately by main so put anything here that you want to happen before the time loop begins, reader is necessary.
     SUBROUTINE initializeChemistry
         NEQ=nspec+1
-        IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff,mantle)
+        IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff,mantle,bulk)
         ALLOCATE(abund(NEQ,points),vdiff(SIZE(iceList)))
         CALL fileSetup
         !if this is the first step of the first phase, set initial abundances
@@ -237,8 +237,8 @@ CONTAINS
             ITASK=1 !try to integrate to targetTime
             ISTATE=1 !pretend every step is the first
             reltol=1e-5 !relative tolerance effectively sets decimal place accuracy
-            abstol=1.0d-30!*abund(:,dstep) !absolute tolerances depend on value of abundance
-            !WHERE(abstol<1d-30) abstol=1d-30 ! to a minimum degree
+            abstol=1.0d-25*abund(:,dstep) !absolute tolerances depend on value of abundance
+            WHERE(abstol<1d-30) abstol=1d-30 ! to a minimum degree
 
             !get reaction rates for this iteration
             CALL calculateReactionRates

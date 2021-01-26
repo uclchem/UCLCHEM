@@ -107,7 +107,7 @@ SUBROUTINE calculateReactionRates
     idx1=lhReacs(1)
     idx2=lhReacs(2)
 
-    if (gasTemp(dstep) .lt. 200) THEN
+    if (gasTemp(dstep) .lt. 150) THEN
         DO j=idx1,idx2
             rate(j)=diffusionReactionRate(j)
         END DO
@@ -158,50 +158,13 @@ SUBROUTINE calculateReactionRates
     END IF
 
 
-    idx1=bulklossReacs(1)
-    idx2=bulklossReacs(2)
+    rate(bulkGainReacs(1):bulkGainReacs(2))=bulkGainFromMantleBuildUp()
+    rate(bulkLossReacs(1):bulkLossReacs(2))=bulkLossFromMantleLoss()
 
-    IF (bulk(dstep) .lt. 1e-20) THEN
-        rate(idx1:idx2) = 0.0
-    ELSE
-        rate(idx1:idx2)=1.0!MAX(bulk(dstep)/mantle(dstep),1.0)!/bulk(dstep)
-    END IF
-
-   
-
-    idx1=bulkgainReacs(1)
-    idx2=bulkgainReacs(2)
-
-    IF (mantle(dstep) .lt. 1e-20) THEN
-        rate(idx1:idx2) = 0.0
-    ELSE
-        rate(idx1:idx2)=0.5*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
-    END IF
+    CALL bulkToSurfaceSwappingRates(rate,bulkswapReacs(1),bulkswapReacs(2),gasTemp(dstep))
+    rate(surfSwapReacs(1):surfSwapReacs(2))=surfaceToBulkSwappingRates(gasTemp(dstep))
 
 
-    idx1=bulkswapReacs(1)
-    idx2=bulkswapReacs(2)
-
-    IF (mantle(dstep) .lt. 1e-20) THEN
-        rate(idx1:idx2) = 0.0
-    ELSE
-        DO i=idx1,idx2
-            DO j=lbound(iceList,1),ubound(iceList,1)
-                !See Cuppen, Walsh et al. 2017 review (section 4.1)
-                IF (iceList(j) .eq. re1(i)) rate(i)=vdiff(j)*DEXP(-bindingEnergy(j)/gasTemp(dstep))
-            END DO
-        END DO
-    END IF
-    rate(idx1:idx2)=0.0
-
-    idx1=surfSwapReacs(1)
-    idx2=surfSwapReacs(2)
-    IF (mantle(dstep) .lt. 1e-20) THEN
-        rate(idx1:idx2) = 0.0
-    ELSE
-        rate(idx1:idx2) = 1.0
-    END IF
-    rate(idx1:idx2) =0.0
     !Basic gas phase reactions 
     !They only change if temperature has so we can save time with an if statement
     idx1=twobodyReacs(1)
@@ -242,7 +205,7 @@ FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
     !additional factor for ions (beta=0 for neutrals)
     freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
 
-    IF (fr .eq. 0.0 .or. gasTemp(dstep) .gt. 200.0) then
+    IF (fr .eq. 0.0 .or. gasTemp(dstep) .gt. 100.0) then
         freezeRates=0.0
     ELSE
         freezeRates=freezeRates*alpha(idx1:idx2)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H

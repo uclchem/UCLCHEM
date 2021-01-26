@@ -200,14 +200,17 @@ def read_reaction_file(fileName, speciesList, ftype):
 
 	for species in speciesList:
 		keepList.append(species.name)			                                  
-	if ftype == 'UMIST': # if it is a umist database file
+	
+
+	if ftype == 'UMIST': 
 		f = open(fileName, 'r')
 		reader = csv.reader(f, delimiter=':', quotechar='|')
 		for row in reader:
 			if all(x in keepList for x in [row[2],row[3],row[4],row[5],row[6],row[7]]): #if all the reaction elements belong to the keeplist
 				#umist file doesn't have third reactant so add space and has a note for how reactions there are so remove that
 				reactions.append(Reaction(row[2:4]+['']+row[4:8]+row[9:]))
-	if ftype == 'UCL':	# if it is a ucl made (grain?) reaction file
+	
+	if ftype == 'UCL':
 		f = open(fileName, 'r')
 		reader = csv.reader(f, delimiter=',', quotechar='|')
 		for row in reader:
@@ -219,8 +222,51 @@ def read_reaction_file(fileName, speciesList, ftype):
 			else:
 				dropped_reactions.append(row)
 
+	if ftype == "KIDA":
+		for row in kida_parser(fileName):
+			if all(x in keepList for x in row[0:7]):
+				reactions.append(Reaction(row))
+
 	nReactions = len(reactions)
 	return nReactions, reactions, dropped_reactions
+
+def kida_parser(kida_file):
+	"""
+	KIDA used a fixed format file so we read each line in the chunks they specify
+	and use python built in classes to convert to the necessary types.
+	"""
+	str_parse=lambda x: str(x).strip().upper()
+
+	kida_contents=[
+	    [3,{str_parse:11}],
+	    [1,{"skip":1}],
+	    [5,{str_parse:11}],
+	    [1,{"skip":1}],
+	    [3,{float:10,"skip":1}],
+	    [1,{"skip":27}],
+	    [2,{int:6,"skip":1}],
+	    [1,{int:2}],
+	    [1,{"skip":11}]
+	]
+	rows=[]
+	with open(kida_file,"r") as f:
+		f.readline()
+		for line in f:
+			row=[]
+			for item in kida_contents:
+				for i in range(item[0]):
+					for func,count in item[1].items():
+						if func!="skip":
+							a=line[:count]
+							print(func,a)
+							row.append(func(a))
+						else:
+							print("skip",count)
+						line=line[count:]
+			#ignore the ionpol and 3 body reacs in KIDA
+			if row[-1]<4:
+				rows.append(row[:7]+row[8:-1])
+	return rows
 
 def remove_duplicate_species(speciesList):
 	#check for duplicate species
@@ -419,11 +465,11 @@ def make_capitals(fileName):
 
 
 def is_number(s):
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
+	try:
+		float(s)
+		return True
+	except ValueError:
+		return False
 ##########################################################################################
 #3. Functions to write out files necessary for UCLCHEM
 ##########################################################################################
@@ -622,8 +668,8 @@ def write_evap_lists(openFile,speciesList):
 
 # Create the appropriate multiplication string for a given number
 def multiple(number):
-    if number == 1: return ''
-    else: return str(number)+'*'
+	if number == 1: return ''
+	else: return str(number)+'*'
 
 def truncate_line(input_string, codeFormat='F90', continuationCode=None,lineLength = 72):
 	result = ''
