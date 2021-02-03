@@ -82,6 +82,8 @@ CONTAINS
         DO dstep=1,points
             coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
         END DO
+          !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
+        av= baseAv +coldens/1.6d21
     END SUBROUTINE
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -143,15 +145,17 @@ CONTAINS
         DOUBLE PRECISION :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
 
-        ! IF (instantSublimation .eq. 1) THEN
-        !     instantSublimation=0
-        !     CALL totalSublimation(abund)
-        ! ELSE IF (coflag .ne. 2) THEN
-        !     IF (gasTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
-        !     IF (gasTemp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
-        !     IF (gasTemp(dstep) .gt. codestemp(tempindx)) coflag=1
-        !     CALL thermalEvaporation(abund)
-        ! END IF
+        IF (instantSublimation .eq. 1) THEN
+            instantSublimation=0
+            CALL totalSublimation(abund)
+        ELSE IF (coflag .ne. 2) THEN
+#ifndef THREEPHASE
+            IF (gasTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
+            IF (gasTemp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
+            IF (gasTemp(dstep) .gt. codestemp(tempindx)) coflag=1
+            CALL thermalEvaporation(abund)
+#endif
+        END IF
     END SUBROUTINE sublimation
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

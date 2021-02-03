@@ -15,7 +15,7 @@ FFLAGS = -O2 -fPIC -ffree-line-length-0
 
 
 #CPPFLAGS = -cpp #appropriate for two phase networks
-CPPFLAGS = -cpp -DTP #appropriate for three phase networks
+CPPFLAGS = -cpp -DTHREEPHASE #appropriate for three phase networks
 
 
 #Pick a physics module!
@@ -38,13 +38,13 @@ main: chemistry.o physics.o main.f90 dvode.o defaultparameters.f90 readparameter
 
 python: chemistry.o physics.o wrap.f90 dvode.o defaultparameters.f90
 	python3 -m numpy.f2py -c --fcompiler=${f2pyFC} physics.o dvode.o photoreactions.o surfacereactions.o chemistry.o network.o -m uclchem wrap.f90
-	mv *${EXT_SUFFIX} ../uclchem.so
+	mv *${EXT_SUFFIX} ../Python/uclchem/uclchem.so
 
 chemistry.o: odes.f90 constants.o network.o photoreactions.o surfacereactions.o rates.f90 chemistry.f90  physics.o dvode.o 
 	${FC} ${FFLAGS} -c chemistry.f90
 
 physics.o: ${PHYSICS} constants.o Makefile
-	${FC} ${FFLAGS} -c ${PHYSICS} -o physics.o
+	${FC} ${CPPFLAGS} ${FFLAGS} -c ${PHYSICS} -o physics.o
 
 %.o: %.f90 
 	${FC} ${CPPFLAGS} ${FFLAGS} -c $<

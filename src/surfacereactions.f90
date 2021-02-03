@@ -44,6 +44,9 @@ MODULE SurfaceReactions
   REAL(dp), PARAMETER :: VDIFF_PREFACTOR=2.0*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
   REAL(dp), PARAMETER :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
 
+
+  REAL(dp), PARAMETER :: MAX_GRAIN_TEMP=300.0
+
   REAL(dp), ALLOCATABLE ::vdiff(:)
 CONTAINS
   !=======================================================================
@@ -102,7 +105,7 @@ CONTAINS
   SUBROUTINE bulkSurfaceExchangeReactions(rate,gasTemperature)
     REAL(dp), INTENT(INOUT) :: rate(*)
     REAL(dp) :: gasTemperature
-#ifdef TP
+#ifdef THREEPHASE
     rate(bulkGainReacs(1):bulkGainReacs(2))=bulkGainFromMantleBuildUp()
     rate(bulkLossReacs(1):bulkLossReacs(2))=bulkLossFromMantleLoss()
 
@@ -134,7 +137,7 @@ CONTAINS
 
   FUNCTION surfaceToBulkSwappingRates(gasTemperature) RESULT(rate)
     REAL(dp) ::rate,gasTemperature
-    IF ((safeMantle .lt. 1e-20) .or. (gasTemperature .gt. 100)) THEN
+    IF ((safeMantle .lt. 1e-20) .or. (gasTemperature .gt. MAX_GRAIN_TEMP)) THEN
         rate = 0.0
     ELSE
         rate = 1.0
@@ -146,7 +149,7 @@ CONTAINS
     REAL(dp), INTENT(INOUT) :: rate(*)
     REAL(dp) :: gasTemperature
     INTEGER :: idx1,idx2
-    IF ((safeMantle .lt. 1e-20) .or. (gasTemperature .gt. 100)) THEN
+    IF ((safeMantle .lt. 1e-20) .or. (gasTemperature .gt. MAX_GRAIN_TEMP)) THEN
         rate(idx1:idx2) = 0.0
     ELSE
         DO i=idx1,idx2

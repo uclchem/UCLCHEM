@@ -1,7 +1,6 @@
 #Marcus Keil and Jon Holdship 13/03/2020
 #Examples of a simple grid of models run in parallel
-from __future__ import print_function
-import uclchem
+import uclchemwrap
 import numpy as np
 import pandas as pd
 from multiprocessing import Pool

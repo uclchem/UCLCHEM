@@ -85,7 +85,7 @@ writeStep=1
 !If readAbund=0, final abundances are written to abundFile
 abundFile="output/start.dat"
 !Full output written to outputFlie
-outputFile="output/full2.dat"
+outputFile="output/full.dat"
 !columnated output of time,dens,temp and outSpecies written to column file
 columnFile='output/column.dat'
 

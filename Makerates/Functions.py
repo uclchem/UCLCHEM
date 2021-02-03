@@ -141,8 +141,10 @@ class Reaction:
 		for reactant in self.reactants:
 			if (reactant not in reaction_types) and reactant!="NAN":
 				self.body_count+=1
-			if reactant in ["DESOH2","FREEZE","LH","LHDES"]:
+			if reactant in ["DESOH2","FREEZE"]:
 				self.body_count+=1
+			if reactant in ["LH","LHDES"]:
+				self.body_count-=1
 
 	def NANCheck(self,a):
 		aa  = a if a else 'NAN'
@@ -496,14 +498,14 @@ def write_reactions(fileName, reactionList):
 			reaction.beta=1
 		writer.writerow(reaction.reactants+reaction.products+[reaction.alpha,reaction.beta,reaction.gamma,reaction.templow,reaction.temphigh])
 
-def write_odes_f90(fileName, speciesList, reactionList):
+def write_odes_f90(fileName, speciesList, reactionList,three_phase):
 	output = open(fileName, mode='w')
 	#go through every species and build two strings, one with eq for all destruction routes and one for all formation
-	ydotString=build_ode_string(speciesList,reactionList)
+	ydotString=build_ode_string(speciesList,reactionList,three_phase)
 	output.write(ydotString)
 	output.close()    
 
-def build_ode_string(speciesList, reactionList):
+def build_ode_string(speciesList, reactionList,three_phase):
 	species_names=[]
 	for i, species in enumerate(speciesList):
 		species_names.append(species.name)
@@ -542,6 +544,8 @@ def build_ode_string(speciesList, reactionList):
 				ODE_BIT=ODE_BIT+f"/safeMantle"
 				if species=="DESOH2":
 					ODE_BIT=ODE_BIT+f"*Y({species_names.index('H')+1})"
+			elif ((species in ["THERM"]) and not (three_phase)):
+				ODE_BIT+=f"*Y({len(speciesList)+1})/safeMantle"
 			if "H2FORM" in reaction.reactants:
 				#only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
 				break

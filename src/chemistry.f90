@@ -234,8 +234,8 @@ CONTAINS
             !reset parameters for DVODE
             ITASK=1 !try to integrate to targetTime
             ISTATE=1 !pretend every step is the first
-            reltol=1e-5 !relative tolerance effectively sets decimal place accuracy
-            abstol=1.0d-25*abund(:,dstep) !absolute tolerances depend on value of abundance
+            reltol=1e-10 !relative tolerance effectively sets decimal place accuracy
+            abstol=1.0d-20*abund(:,dstep) !absolute tolerances depend on value of abundance
             WHERE(abstol<1d-30) abstol=1d-30 ! to a minimum degree
 
             !get reaction rates for this iteration
@@ -245,11 +245,11 @@ CONTAINS
             CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
             SELECT CASE(ISTATE)
                 CASE(-1)
-                    write(*,*) "ISTATE -1"
+                    write(*,*) "ISTATE -1: MAXSTEPS will be increased"
                     !More steps required for this problem
                     MXSTEP=MXSTEP*2    
                 CASE(-2)
-                    write(*,*) "ISTATE -2"
+                    write(*,*) "ISTATE -2: Tolerances too small"
                     !Tolerances are too small for machine but succesful to current currentTime
                     abstol=abstol*10.0
                 CASE(-3)

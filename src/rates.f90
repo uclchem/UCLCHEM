@@ -79,7 +79,7 @@ SUBROUTINE calculateReactionRates
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     idx1=thermReacs(1)
     idx2=thermReacs(2)
-    IF (thermdesorb .eq.1 .and. mantle(dstep) .ge. 1.0d-20) THEN
+    IF (thermdesorb .eq.1 .and. safeMantle .ge. 1.0d-20 .and. safeBulk .ge. 1.0d-20) THEN
         DO j=idx1,idx2
             !then try to overwrite with position in grain array
             DO i=lbound(iceList,1),ubound(iceList,1)
@@ -87,11 +87,13 @@ SUBROUTINE calculateReactionRates
                 IF (iceList(i) .eq. re1(j)) THEN
                     !Basic rate at which thermal desorption occurs
                     rate(j)=vdiff(i)*exp(-gama(j)/gasTemp(dstep))
+                    rate(j)=rate(j)
                     !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
                     !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                     !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
                     !area seems more correct for this process.
-                    !rate(j)=rate(j)*(2.0/mantle(dstep))*SURFACE_SITE_DENSITY*GRAIN_SURFACEAREA_PER_H*density(dstep)
+                    rate(j)=rate(j)*2.0*SURFACE_SITE_DENSITY*GRAIN_SURFACEAREA_PER_H
+                    
                 END IF
             END DO
         END DO
@@ -107,7 +109,7 @@ SUBROUTINE calculateReactionRates
     idx1=lhReacs(1)
     idx2=lhReacs(2)
 
-    if (gasTemp(dstep) .lt. 150) THEN
+    if (gasTemp(dstep) .lt. MAX_GRAIN_TEMP) THEN
         DO j=idx1,idx2
             rate(j)=diffusionReactionRate(j)
         END DO
@@ -199,8 +201,7 @@ FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
     
     !additional factor for ions (beta=0 for neutrals)
     freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
-
-    IF (fr .eq. 0.0 .or. gasTemp(dstep) .gt. 100.0) then
+    IF (fr .eq. 0.0 .or. gasTemp(dstep) .gt. 50) then
         freezeRates=0.0
     ELSE
         freezeRates=freezeRates*alpha(idx1:idx2)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
@@ -264,7 +265,7 @@ double precision FUNCTION diffusionReactionRate(reacIndx)
     
     !see Eq A1 of Quenard et al. 2018
     !NUM_SITES_PER_GRAIN should be multiplied by n_dust as in A1
-    !n_dust=density/GAS_DUST_DENSITY_RATIO so we move the density factor to odes.f90 and only use GAS_DUST_DENSITY_RATIO here
+    !n_dust=density/GAS_DUST_DENSITY_RATIO so we use the 1/density to cancel the density in odes.f90 and drop it here
     n_dust=density(dstep)/GAS_DUST_DENSITY_RATIO
     diffusionReactionRate=alpha(reacIndx) *reacProb* diffuseProb/(NUM_SITES_PER_GRAIN/GAS_DUST_DENSITY_RATIO)
 END FUNCTION diffusionReactionRate

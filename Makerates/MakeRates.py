@@ -111,7 +111,7 @@ print('\tFinal Reaction File:',filename)
 # Write the ODEs in the appropriate language format
 print('Writing system of ODEs in F95 format...')
 filename = 'outputFiles/odes.f90'
-write_odes_f90(filename, speciesList, reactionList)
+write_odes_f90(filename, speciesList, reactionList,three_phase)
 print('\tFinal ODE file:',filename)
 
 print('Writing Network File...')
@@ -130,7 +130,7 @@ print('ngrain='+str(ngrain))
 
 if three_phase:
 	print("This network has three phase chemistry. Ensure that the CPPFLAGS entry in ../src/Makefile")
-	print("reads \"-cpp -DTP\" so that the bulk/surface swapping is activated.")
+	print("reads \"-cpp -DTHREEPHASE\" so that the bulk/surface swapping is activated.")
 else:
 	print("This network has three phase chemistry. Ensure that the CPPFLAGS entry in ../src/Makefile")
-	print("reads \"-cpp\" with no \"-DTP\" flag.")
+	print("reads \"-cpp\" with no \"-DTHREEPHASE\" flag.")
