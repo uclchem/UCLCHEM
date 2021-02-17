@@ -1,0 +1,8 @@
+PROGRAM test_exp
+IMPLICIT NONE
+DOUBLE PRECISION :: A,B
+A=130000.0
+A=exp(-A/20.0)
+B=100.0*A
+write(*,*)A,B
+END PROGRAM test_exp

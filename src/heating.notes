@@ -1,0 +1,27 @@
+# atomiccooling
+- Orders of magnitude faster than other cooling methods and causing us to cool to negative T.
+-I renamed variables nh, nelec etc to hDens, elecDens because I was worried by the fact they were labelled teh same as the species index variables (nh, nhe etc) and could be overwriting. 
+-Need to make sure they are correct against the equations in paper.
+
+- we go way above the cooling rates given by Krome paper
+
+
+#Emissivity sum
+summing over emissivity array and masking NAN works except for h2. Maybe the arrays are too long)
+
+#How is code dealing with h2 and h2o having ortho and para rates
+- It calculates ortho and para ratio of h2 for collisional partner purposes but still don't know how it accounts for "double" H2/H2O cooling
+
+#WHICH coolant is failing?
+
+
+# check coolant%density is correct
+- it is! Coolant density is updated at start of linecooling loop
+
+# check construct transition matrix only expects collisional partner abundances and knwos order
+- It did not!! It was expecting the whole array and was using indices of collisional partners from whole array to index molecules from just the collisional partners array
+- Worth checking if we can cut back down to just sending collisional partners once we know it works
+
+# what abundances does calculate_collisional_Rates get
+- Tied to question above, through a chain of subroutine calls from calculate_level_populations onwards only this subroutine uses the abundance array
+- This is the one that uses whole array index of collisional partners and was previously getting just the collisional partners

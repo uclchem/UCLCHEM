@@ -1,0 +1,16 @@
+#no outputs
+output/
+Benchmarking/uclpdr/
+Benchmarking/uclchem/
+Benchmarking/uclchem-reduced/
+*.dat
+*.png
+*.out
+*.csv
+*.cloud
+Benchmarking/uclpdr/
+#no compiled files
+*.pyc
+*.so
+*.o
+*.mod
