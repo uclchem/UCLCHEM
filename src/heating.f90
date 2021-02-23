@@ -39,10 +39,10 @@ IMPLICIT NONE
     END SUBROUTINE initializeHeating
 
 
-    REAL(dp) FUNCTION getTempDot(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance,dustRadius&
+    REAL(dp) FUNCTION getTempDot(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance,dustRadius,metallicity&
                                 &,exoReactants1,exoReactants2,exoRates,exothermicities,writeFlag,dustTemp,turbVel)
         !Habing field is radfield diminished by Av
-        REAL(dp), INTENT(in) :: gasTemperature,gasDensity,habingField,h2dis,h2form
+        REAL(dp), INTENT(in) :: gasTemperature,gasDensity,habingField,h2dis,h2form,metallicity
         REAL(dp), INTENT(in) :: zeta,cIonRate,dustAbundance,dustRadius,dustTemp,turbVel
         REAL(dp), INTENT(in) :: abundances(:),exoReactants1(:),exoReactants2(:),exoRates(:),exothermicities(:)
         LOGICAL, INTENT(IN) :: writeFlag
@@ -54,7 +54,7 @@ IMPLICIT NONE
         adiabaticIdx=adiabaticIdx/(3.0*(abundances(nh)+abundances(nhe)+abundances(nelec)+abundances(nh2))+2.0*abundances(nh2))
 
         !then calculate overall heating/cooling rate
-        heating=getHeatingRate(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance,dustRadius&
+        heating=getHeatingRate(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance,dustRadius,metallicity&
             &,exoReactants1,exoReactants2,exoRates,exothermicities,dustTemp,turbVel,writeFlag)
         !write(*,*) "Total Heating", heating
 
@@ -71,9 +71,9 @@ IMPLICIT NONE
     END FUNCTION getTempDot
 
 
-    REAL(dp) FUNCTION getHeatingRate(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance,dustRadius&
+    REAL(dp) FUNCTION getHeatingRate(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance,dustRadius,metallicity&
                                     &,exoReactants1,exoReactants2,exoRates,exothermicities,dustTemp,turbVel,writeFlag)
-        REAL(dp), INTENT(in) :: gasTemperature,gasDensity,habingField,h2dis
+        REAL(dp), INTENT(in) :: gasTemperature,gasDensity,habingField,h2dis,metallicity
         REAL(dp), INTENT(in) :: h2form,zeta,cIonRate,dustAbundance,dustRadius,dustTemp,turbVel
         REAL(dp), INTENT(IN):: abundances(:),exoReactants1(:),exoReactants2(:),exoRates(:),exothermicities(:)
         LOGICAL, INTENT(IN) :: writeFlag
@@ -81,7 +81,7 @@ IMPLICIT NONE
         REAL(dp) :: photoelec,h2forming,fuvpumping,photodis,cionizing,crheating,chemheating,gasgraincolls
 
         !Photoelectric heating due to PAHs and large dust grains
-        photoelec=photoelectricHeating(gasTemperature,gasDensity,habingField,abundances(nelec))
+        photoelec=photoelectricHeating(gasTemperature,gasDensity,habingField,abundances(nelec),metallicity)
         !heating due to H2 formation
         h2forming=H2FormationHeating(gasTemperature,gasDensity,abundances(nh),h2form)
         !heating due to photodissociation of H2
@@ -126,8 +126,10 @@ IMPLICIT NONE
         coolingMode=continuumEmission(gasTemperature,gasDensity)
         getCoolingRate=getCoolingRate+coolingMode
 
-        coolingMode=H2VibrationalCooling(gasTemperature,gasDensity,abundances(nh2),h2dis)
-        getCoolingRate=getCoolingRate+coolingMode
+        !This is already handed by heating FUV pumping function
+        !coolingMode=H2VibrationalCooling(gasTemperature,gasDensity,abundances(nh2),h2dis)
+        !getCoolingRate=getCoolingRate+coolingMode
+        
         !We do the line cooling 5 times and take median value since solver will occasionally do something wild
         DO ti=1,5
             coolings(ti)=lineCooling(gasTemperature,gasDensity,dustTemp,abundances,turbVel,writeFlag)
@@ -160,7 +162,7 @@ IMPLICIT NONE
 
         !!write(*,*)  "lte done"
         !I should then do LVG interactions
-         DO I=1,100!while not converged and less than 100 tries:
+         DO I=1,500!while not converged and less than 100 tries:
             DO N=1,NCOOL
                 CALL CALCULATE_LEVEL_POPULATIONS(coolants(N),gasTemperature,gasDensity,&
                     &abundances,dustTemp)
@@ -333,8 +335,8 @@ IMPLICIT NONE
     !  account for the revised PAH abundance estimate from Spitzer data.
     ! 
     ! !-----------------------------------------------------------------------
-    REAL(dp) FUNCTION photoelectricHeating(gasTemperature,gasDensity,habingField,electronAbund)
-        REAL(dp), INTENT(IN) :: gasTemperature,gasDensity,habingField,electronAbund
+    REAL(dp) FUNCTION photoelectricHeating(gasTemperature,gasDensity,habingField,electronAbund,metallicity)
+        REAL(dp), INTENT(IN) :: gasTemperature,gasDensity,habingField,electronAbund,metallicity
         REAL(dp), PARAMETER :: PHI_PAH=0.4d0,ALPHA=0.944D0
         REAL(dp) :: beta,delta,epsilon,nElec,PAH_HEATING_RATE,PAH_COOLING_RATE
         REAL(dp), PARAMETER ::C0=5.72D+0,C1=3.45D-2,C2=7.08D-3
@@ -363,7 +365,7 @@ IMPLICIT NONE
             photoelectricHeating=PAH_HEATING_RATE-PAH_COOLING_RATE
 
             !Assume the PE heating rate scales linearly with PAH abundance
-            photoelectricHeating=photoelectricHeating!*(pahAbund/6.0d-7)
+            photoelectricHeating=photoelectricHeating*metallicity!*(pahAbund/6.0d-7)
         ELSE
             photoelectricHeating=0.0
         END IF
@@ -476,8 +478,6 @@ IMPLICIT NONE
                                       & + 1.4D0*h2Abund*EXP(-(18100.0D0/(gasTemperature+1200.0D0))))
 
         h2FUVPumpHeating=(2.2*eV)*9.0D0*h2dis*gasDensity*h2Abund/(1.0D0+NCRIT_H2/gasDensity)
-        write(44,678) h2FUVPumpHeating,h2dis,h2Abund,NCRIT_H2,gasTemperature
-        678 format(1pe11.3e3,',',1pe11.3e3,',',1pe11.3e3,',',1pe11.3e3,',',1pe11.3e3)
         ! !  If vibrationally excited H2 (H2*) is included in the chemical network,
         ! !  then use the treatment of Tielens & Hollenbach (1985, ApJ, 291, 722)
         !    IF(nH2v.NE.0) THEN

@@ -25,13 +25,16 @@ CONTAINS
         colDens=colDensIn
         av= coldens*avFactor
         CALL initializeChemistry
+        REGULAR_STEPS=.False.
         CALL output
+        REGULAR_STEPS=.True.
+
         CALL integrateToTarget 
         dstep=1
         IF (heatWriteFlag) THEN
             tempDot=getTempDot(abund(NEQ-1,dstep),abund(NEQ,dstep),radfield*EXP(-UV_FAC*av(dstep))&
                    &,abund(:,dstep),h2dis,h2form,zeta,rate(nR_C_hv),&
-                    &1.0/GAS_DUST_DENSITY_RATIO,grainRadius,abund(exoReactants1,dstep),&
+                    &1.0/GAS_DUST_DENSITY_RATIO,grainRadius,metallicity,abund(exoReactants1,dstep),&
                     &abund(exoReactants2,dstep),RATE(exoReacIdxs),exothermicities,heatWriteFlag,&
                     &dustTemp(dstep),turbVel)
             CLOSE(15)
@@ -120,7 +123,6 @@ CONTAINS
 
             !loop over parcels, counting from centre out to edge of cloud
             DO dstep=1,points
-                !if (timeInYears .gt. 1000) heatingFlag=.True.
                 !update chemistry
                 CALL updateChemistry
 
@@ -130,7 +132,6 @@ CONTAINS
                 if (points .gt. 1)currentTime=currentTimeold
                 !get time in years for output
                 timeInYears= currentTime/SECONDS_PER_YEAR
-                write(*,*) timeInYears
                 !update physics
                 CALL updatePhysics
                 
@@ -138,7 +139,7 @@ CONTAINS
                 !CALL sublimation(abund)
                 !write this depth step
                 CALL output
-                ! write(*,*) timeInYears
+                !write(*,*) timeInYears
             END DO
         END DO  
     END SUBROUTINE integrateToTarget

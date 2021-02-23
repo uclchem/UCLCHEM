@@ -30,7 +30,9 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change
     DOUBLE PRECISION :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,initialTemp
-    DOUBLE PRECISION :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp,vs
+    DOUBLE PRECISION :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp,vs,timeStep
+
+    LOGICAL :: REGULAR_STEPS=.False.
     
     !Arrays for phase 2 temp profiles. parameters for equation chosen by index
     !arrays go [1Msun,5, 10, 15, 25,60]
@@ -92,41 +94,49 @@ CONTAINS
     !but the integrator itself chooses an integration timestep.                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updateTargetTime
-        ! IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
-        !      targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
-        ! ELSE  IF (timeInYears .gt. 1.0d5) THEN
-        !      targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
-        ! ELSE IF (timeInYears .gt. 1.0d4) THEN
-        !      targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
-        ! ELSE IF (timeInYears .gt. 1000) THEN
-        !     targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
-        ! ELSE IF (timeInYears .gt. 0.0) THEN
-        !     targetTime=(timeInYears*10)*SECONDS_PER_YEAR
-        ! ELSE
-        !     targetTime=3.16d7*10.d-8
-        ! ENDIF
-        ! IF (timeInYears .lt. 100) THEN
-        !     targetTime=(timeInYears+1.0)*SECONDS_PER_YEAR
-        ! ELSE IF (timeInYears .lt. 1e3) THEN
-        !     targetTime=(timeInYears+10.0)*SECONDS_PER_YEAR
-        ! ELSE IF (timeInYears .lt. 1e5) THEN
-        !     targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
-        ! ELSE
-        !     targetTime=(timeInYears+1.0d3)*SECONDS_PER_YEAR
-        ! ENDIF
-        
-        IF (timeInYears .lt. 100) THEN
-            targetTime=(timeInYears+1.0)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .lt. 1e3) THEN
-            targetTime=(timeInYears+10.0)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .lt. 1e5) THEN
-            targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
-        ELSE
-            targetTime=(timeInYears+1.0d3)*SECONDS_PER_YEAR
-        ENDIF
+       ! Write out every 1000 years for sampler
+        IF (REGULAR_STEPS) THEN
 
- 
-        
+            ! IF (timeInYears .lt. 100) THEN
+            !     timeStep=1.0
+            ! ELSE IF (timeInYears .lt. 1e3) THEN
+            !     timeStep=10.0
+            ! ELSE
+            !     timeStep=1.0d3
+            ! ENDIF
+            timeStep=1000.0
+
+            !The integrator can take us off our neat time steps so we can correct here
+            IF (MOD(timeInYears,timeStep) .lt. 0.001) THEN
+                targetTime=(timeInYears+timeStep)*SECONDS_PER_YEAR
+            ELSE
+                targetTime=(timeInYears+(1000.0D0-MOD(timeInYears,timeStep)))*SECONDS_PER_YEAR
+            END IF
+
+            IF (timeInYears .lt. 900) THEN
+               targetTime=(timeInYears+10.0)*SECONDS_PER_YEAR
+            ELSE IF (timeInYears .lt. 10.0) THEN
+               targetTime=(timeInYears*10)*SECONDS_PER_YEAR
+            ELSE IF (timeInYears  .lt. 1.d-8) THEN
+                targetTime=SECONDS_PER_YEAR*1.d-7
+            ENDIF
+
+        ELSE
+            !Benchmarking use a sparse set of time steps to get to equilibrium
+            IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
+               targetTime=(timeInYears+5.0d4)*SECONDS_PER_YEAR
+            ELSE  IF (timeInYears .gt. 1.0d5) THEN
+               targetTime=(timeInYears+5.0d3)*SECONDS_PER_YEAR
+            ELSE IF (timeInYears .gt. 1.0d4) THEN
+               targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
+            ELSE IF (timeInYears .gt. 1000) THEN
+               targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
+            ELSE IF (timeInYears .gt. 0.0) THEN
+               targetTime=(timeInYears*10)*SECONDS_PER_YEAR
+            ELSE
+                targetTime=3.16d7*10.d-8
+            ENDIF
+        END IF        
     END SUBROUTINE updateTargetTime
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

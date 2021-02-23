@@ -190,7 +190,11 @@ CONTAINS
     SUBROUTINE output
 
          INQUIRE( UNIT=10, OPENED=fullOutput )
-         IF (fullOutput .and. MOD(timeInYears,1000.0) .lt. 0.0001) write(10,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta, abund(:neq-2,dstep)
+         IF (fullOutput) THEN
+            IF ((.not. REGULAR_STEPS) .or. (MOD(timeInYears,1000.0).lt.0.001)) THEN
+                write(10,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta, abund(:neq-2,dstep)
+            END IF
+        END IF
         8020 format(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',0pf8.2,',',(999(1pe15.5,:,',')))
 
         !Every 'writestep' timesteps, write the chosen species out to separate file
@@ -241,7 +245,7 @@ CONTAINS
             !reset parameters for DVODE
             ITASK=1 !try to integrate to targetTime
             ISTATE=1 !pretend every step is the first
-            reltol=1e-6 !relative tolerance effectively sets decimal place accuracy
+            reltol=1e-5 !relative tolerance effectively sets decimal place accuracy
             abstol=1.0d-14*abund(:,dstep) !absolute tolerances depend on value of abundance
             abstol(neq-1)=1.0d-6
             WHERE(abstol<1d-20) abstol=1d-20 ! to a minimum degree
@@ -258,7 +262,7 @@ CONTAINS
             CALL calculateReactionRates
             !Tempdot is only recalculated after change in temperature of 1 degree so we force a calculation here
             IF (heatingFlag) tempDot=getTempDot(abund(NEQ-1,dstep),abund(NEQ,dstep),radfield*EXP(-UV_FAC*av(dstep)),abund(:,dstep),h2dis,h2form,zeta,rate(nR_C_hv),&
-                &1.0/GAS_DUST_DENSITY_RATIO,grainRadius,abund(exoReactants1,dstep),abund(exoReactants2,dstep),RATE(exoReacIdxs),exothermicities,heatWriteFlag,&
+                &1.0/GAS_DUST_DENSITY_RATIO,grainRadius,metallicity,abund(exoReactants1,dstep),abund(exoReactants2,dstep),RATE(exoReacIdxs),exothermicities,heatWriteFlag,&
                 &dustTemp(dstep),turbVel)
 
             !Call the integrator.
@@ -326,14 +330,14 @@ CONTAINS
 
 
         IF (heatingFlag) THEN
-            IF (ABS(y(NEQ-1)-oldTemp).gt.0.01) THEN
+            IF (ABS(y(NEQ-1)-oldTemp).gt.0.1) THEN
                 gasTemp(dstep)=y(NEQ-1)
                 IF (gasTemp(dstep) .lt. 10) gasTemp(dstep)=10.0
-                IF (gasTemp(dstep) .gt. 1.0d4) gasTemp(dstep)=1.0d4
-                CALL calculateReactionRates
+                IF (gasTemp(dstep) .gt. 1.0d4) gasTemp(dstep)=1.0d6
+                !CALL calculateReactionRates
                 h2form= h2FormRate(gasTemp(dstep),dustTemp(dstep))
                 tempDot=getTempDot(Y(NEQ-1),Y(NEQ),radfield*EXP(-UV_FAC*av(dstep)),Y,h2dis,h2form,zeta,rate(nR_C_hv),1.0/GAS_DUST_DENSITY_RATIO&
-                    &,grainRadius,y(exoReactants1),y(exoReactants2),RATE(exoReacIdxs),exothermicities,heatWriteFlag,dustTemp(dstep),turbVel)
+                    &,grainRadius,metallicity,y(exoReactants1),y(exoReactants2),RATE(exoReacIdxs),exothermicities,heatWriteFlag,dustTemp(dstep),turbVel)
                 oldTemp=y(NEQ-1)
             END IF
             ydot(NEQ-1)=tempDot
