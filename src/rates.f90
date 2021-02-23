@@ -260,7 +260,7 @@ double precision FUNCTION diffusionReactionRate(reacIndx)
     ! Keff from Garrod & Pauly 2011 and Ruaud+2016
     ! Actual reaction probability is Preac/(Preac+Pevap+Pdiffuse), accounting for the other possible processes
     IF(DIFFUSE_REACT_COMPETITION) THEN
-       reacProb = reacProb/(reacProb + desorbProb + diffuseProb)
+       desorbProb = reacProb/(reacProb + desorbProb + diffuseProb)
     END IF
     
     !see Eq A1 of Quenard et al. 2018
