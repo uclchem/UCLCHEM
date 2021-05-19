@@ -134,11 +134,13 @@ def get_rates_of_change(rates,reactions,speciesList,species,row):
 	"""
 	changes=[]
 	reactionList=[]
+	three_phase= "@" in "".join(speciesList)
 	for i, reaction in enumerate(reactions):
 		change=rates[i]
 		reactants=reaction[0:3]
 		products=reaction[3:]
 		reactant_count=-1
+
 
 		for reactant in reactants:
 			if reactant in speciesList:
@@ -149,6 +151,8 @@ def get_rates_of_change(rates,reactions,speciesList,species,row):
 
 			if reactant in ["DEUVCR","DESCR","DESOH2"]:
 				change=change/row["SURFACE"]
+			if (not three_phase) and (reactant in ["THERM"]):
+				change=change*row[reaction[0]]/row["SURFACE"]
 
 		for body in range(reactant_count):
 			change=change*row["Density"]
