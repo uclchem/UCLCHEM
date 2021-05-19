@@ -171,9 +171,26 @@ class Reaction:
 				return True
 		return False
 
-	def changes_total_mantle(self):
-		if ("BULK" not in self.reactants[1]) and ("SWAP" not in self.reactants[1]):
+	def changes_surface_count(self):
+		"""
+		This checks whether a grain reaction changes number of particles on the surface
+		2 reactants to 2 products won't but two reactants combining to one will.
+		"""
+		if len([x for x in self.reactants if "#" in x]) != len([x for x in self.products if "#" in x]):
 			return True
+		if len([x for x in self.reactants if "@" in x]) != len([x for x in self.products if "@" in x]):
+			return True
+		return False
+
+
+	def changes_total_mantle(self):
+		#If it's not just a movement between ice phases
+		if ("BULK" not in self.reactants[1]) and ("SWAP" not in self.reactants[1]):
+			# if the number of ice species changes
+			if self.changes_surface_count():
+				return True
+			else:
+				return False
 		else:
 			return False
 
@@ -394,19 +411,7 @@ def add_bulk_reactions(speciesList,reactionList):
 
 	bulk_species=[x for x in speciesList if "@" in x.name]
 	for species in bulk_species:
-		#add the bulkloss reaction
-		new_reac_list=[species.name,"BULKLOSS","NAN",species.name.replace("@","#")]
-		new_reac_list=new_reac_list+["NAN","NAN","NAN",1,0,0,0,10000]
-		new_reac=Reaction(new_reac_list)
-		new_reactions.append(new_reac)
-		#then the equivalent reaction for bulk gain
-		new_reac_list[0]=species.name.replace("@","#")
-		new_reac_list[1]="BULKGAIN"
-		new_reac_list[3]=species.name
-		new_reac=Reaction(new_reac_list)
-		new_reactions.append(new_reac)
-
-		#then individual swapping
+		#add individual swapping
 		new_reac_list=[species.name,"BULKSWAP","NAN",species.name.replace("@","#")]
 		new_reac_list=new_reac_list+["NAN","NAN","NAN",1,0,0,0,10000]
 		new_reac=Reaction(new_reac_list)
@@ -511,14 +516,10 @@ def build_ode_string(speciesList, reactionList,three_phase):
 		species_names.append(species.name)
 		species.losses=""
 		species.gains=""
-	surface_gain=""
-	surface_loss=""
-	bulk_gain=""
-	bulk_loss=""
-	total_swap=""
 
 	bulk_index=species_names.index("BULK")
 	surface_index=species_names.index("SURFACE")
+	total_swap=""
 
 	for i,reaction in enumerate(reactionList):
 		ODE_BIT=f"+RATE({i+1})"
@@ -530,12 +531,8 @@ def build_ode_string(speciesList, reactionList,three_phase):
 		#then bring in factors of abundances
 		for species in reaction.reactants:
 			if species in species_names:
-				if "BULKLOSS" in reaction.reactants:
-					ODE_BIT+=f"*MAX(1.0,safeBulk/safeMantle)*surfaceLoss*(Y({species_names.index(species)+1})/safeBulk)"
-				elif "BULKGAIN" in reaction.reactants:
-					ODE_BIT+=f"*surfaceGain*Y({species_names.index(species)+1})"
-				elif "BULKSWAP" in reaction.reactants:
-					ODE_BIT+=f"*MIN(1.0,NUM_SITES_PER_GRAIN/safeBulk)*Y({species_names.index(species)+1})"
+				if "BULKSWAP" in reaction.reactants:
+					ODE_BIT+=f"*bulkLayersReciprocal*Y({species_names.index(species)+1})"
 				elif "SURFSWAP" in reaction.reactants:
 					ODE_BIT+=f"*totalSwap*(Y({species_names.index(species)+1})/safeMantle)"
 				else:
@@ -550,6 +547,10 @@ def build_ode_string(speciesList, reactionList,three_phase):
 				#only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
 				break
 
+		if "LH" in reaction.reactants[2]:
+			if "@" in reaction.reactants[0]:
+				ODE_BIT+="*bulkLayersReciprocal"
+
 
 
 		#now add to strings
@@ -561,32 +562,18 @@ def build_ode_string(speciesList, reactionList,three_phase):
 					speciesList[species_names.index("#"+species)].losses+=ODE_BIT
 				else:
 					speciesList[species_names.index(species)].losses+=ODE_BIT
-				if reaction.changes_total_mantle():
-					if "#" in species:
-						surface_loss+=ODE_BIT
-					if "@" in species:
-						bulk_loss+=ODE_BIT
 				if reaction.reactants[1]=="BULKSWAP":
 					total_swap+=ODE_BIT
 		for species in reaction.products:
 			if species in species_names:
 				speciesList[species_names.index(species)].gains+=ODE_BIT
-				if reaction.changes_total_mantle():
-					if "#" in species:
-						surface_gain+=ODE_BIT
-					if "@" in species:
-						bulk_gain+=ODE_BIT
 	
 	ode_string=f"safeMantle=MAX(1d-30,Y({surface_index+1}))\n"
 	ode_string+=f"safeBulk=MAX(1d-30,Y({bulk_index+1}))\n"
-
-	if total_swap!="":
-		ode_string+=truncate_line(f"surfaceLoss={surface_loss[1:]}\n\n")
-		ode_string+=truncate_line(f"surfaceGain={surface_gain[1:]}\n\n")
-		ode_string+=truncate_line(f"bulkLoss={bulk_loss[1:]}\n\n")
-		ode_string+=truncate_line(f"bulkGain={bulk_gain[1:]}\n\n")
+	ode_string+="bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))\n"
+	if three_phase:
 		ode_string+=truncate_line(f"totalSwap={total_swap[1:]}\n\n")
-
+	#First get total rate of change of bulk and surface by adding ydots
 	for n,species in enumerate(speciesList):
 		if species.name[0]=="@":
 			speciesList[bulk_index].gains+=f"+YDOT({n+1})"
@@ -594,33 +581,53 @@ def build_ode_string(speciesList, reactionList,three_phase):
 			speciesList[surface_index].gains+=f"+YDOT({n+1})"
 
 	for n,species in enumerate(speciesList):
-		if species.name=="SURFACE":
-			print(species.losses)
-			print(n)
+		ydot_string=species_ode_string(n,species)
+		ode_string+=ydot_string
 
-		if species.losses != '':
-			loss_string = '    LOSS = '+species.losses[1:]+'\n'
-			loss_string = truncate_line(loss_string)
-			ode_string+=loss_string
-		if species.gains != '':
-			prod_string = '    PROD = '+species.gains[1:]+'\n'
-			prod_string = truncate_line(prod_string)
-			ode_string+=prod_string
-		
+	#now add bulk transfer to rate of change of surface species after they've already been calculated
+	if three_phase:
+		ode_string+="!Update surface species for bulk growth\n"
+		for n,species in enumerate(speciesList):
+			if species.name[0]=="@":
+				surface_version=species_names.index(species.name.replace("@","#"))
+				ode_string+=f"YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({surface_version+1})\n"
+			if species.name[0]=="#":
+				ode_string+=f"YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({n+1})\n"
+
+		#once bulk transfer has been added, odes for bulk and surface must be updated to account for it
+		ode_string+="!Update total rate of change of bulk and surface for bulk growth\n"
+		ode_string+=species_ode_string(bulk_index,speciesList[bulk_index])
+		ode_string+=species_ode_string(surface_index,speciesList[surface_index])
+
+	return ode_string
+
+def species_ode_string(n,species):
+	if species.name=="SURFACE":
+		print(species.losses)
+		print(n)
+	ydot_string=""
+	if species.losses != '':
+		loss_string = '    LOSS = '+species.losses[1:]+'\n'
+		ydot_string+=loss_string
+	if species.gains != '':
+		prod_string = '    PROD = '+species.gains[1:]+'\n'
+		ydot_string+=prod_string
+	
+	if ydot_string!="":
+		ydot_string+=f"    YDOT({n+1}) = "
 		#start with empty string and add production and loss terms if they exists
-		ydot_string=''
 		if species.gains != '':
 			ydot_string += 'PROD'
-			if species.losses != '':
-				ydot_string += '-LOSS'
+		if species.losses != '':
+			ydot_string += '-LOSS'
+		ydot_string+="\n"
+	else:
+		ydot_string=f"    YDOT({n+1}) = {0.0}\n"
 
-		#if we have prod and/or loss add ydotstring to odes
-		if ydot_string=='':
-			ydot_string="0.0"
-		ydot_string=f"    YDOT({n+1}) = {ydot_string}\n"
-		ydot_string = truncate_line(ydot_string)
-		ode_string+=ydot_string
-	return ode_string
+	ydot_string = truncate_line(ydot_string)
+	return ydot_string
+
+
 
 #create a file containing length of each list of moleculetypes and then the two lists (gas and grain) of species in each type
 #as  well as fraction that evaporated in each type of event
@@ -694,7 +701,7 @@ def truncate_line(input_string, codeFormat='F90', continuationCode=None,lineLeng
 	return result    
 
 
-def write_network_file(fileName,speciesList,reactionList):
+def write_network_file(fileName,speciesList,reactionList,three_phase):
 	openFile=open(fileName,"w")
 	openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
 	openFile.write("    INTEGER, PARAMETER :: nSpec={0}, nReac={1}\n".format(len(speciesList),len(reactionList)))
@@ -723,6 +730,10 @@ def write_network_file(fileName,speciesList,reactionList):
 		speciesIndices=truncate_line(speciesIndices)
 	speciesIndices=speciesIndices[:-1]+"\n"
 	openFile.write("    INTEGER, PARAMETER ::"+speciesIndices)
+	if three_phase:
+		openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
+	else:
+		openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .FALSE.\n")
 	openFile.write(array_to_string("    specname",names,type="string"))
 	openFile.write(array_to_string("    mass",masses,type="float"))
 	openFile.write(array_to_string("    atomCounts",atoms,type="int"))

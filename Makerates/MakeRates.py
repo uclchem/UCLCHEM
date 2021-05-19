@@ -91,6 +91,10 @@ reaction_check(speciesList,reactionList)
 
 reactionList=sorted(reactionList,key=lambda x: x.reac_type)
 
+with open("reac_check","w") as f:
+	for i,reaction in enumerate(reactionList):
+		f.write(f"{i+1} {reaction.changes_total_mantle()} {reaction.changes_surface_count()}\n")
+
 print('\n################################################')
 print('Checks complete, writing output files')
 print('################################################\n')
@@ -116,7 +120,7 @@ print('\tFinal ODE file:',filename)
 
 print('Writing Network File...')
 filename= 'outputFiles/network.f90'
-write_network_file(filename,speciesList,reactionList)
+write_network_file(filename,speciesList,reactionList,three_phase)
 print('\tFinal Network file:',filename)
 
 ngrain=0
@@ -127,10 +131,3 @@ for species in speciesList:
 print('\nnspec= '+str(len(speciesList)))
 print('nreac= '+str(len(reactionList)))
 print('ngrain='+str(ngrain))
-
-if three_phase:
-	print("This network has three phase chemistry. Ensure that the CPPFLAGS entry in ../src/Makefile")
-	print("reads \"-cpp -DTHREEPHASE\" so that the bulk/surface swapping is activated.")
-else:
-	print("This network has three phase chemistry. Ensure that the CPPFLAGS entry in ../src/Makefile")
-	print("reads \"-cpp\" with no \"-DTHREEPHASE\" flag.")

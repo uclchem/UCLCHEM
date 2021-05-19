@@ -47,7 +47,7 @@ SUBROUTINE calculateReactionRates
     !Desorption due to energy from cosmic rays
     idx1=descrReacs(1)
     idx2=descrReacs(2)
-    IF (desorb .eq. 1 .and. crdesorb .eq. 1 .and.mantle(dstep).ge. 1d-25&
+    IF (desorb .eq. 1 .and. crdesorb .eq. 1 .and. (mantle(dstep).ge. MIN_SURFACE_ABUND) &
         &.and. gama(j) .le. ebmaxcr) THEN
         !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
         !as iron nuclei are main cause of CR heating.
@@ -62,7 +62,7 @@ SUBROUTINE calculateReactionRates
     idx1=deuvcrReacs(1)
     idx2=deuvcrReacs(2)
     IF (desorb .eq. 1 .and. uvdesorb .eq. 1 .and. gama(j) .le. ebmaxuvcr &
-        &.and. mantle(dstep) .ge. 1.0d-25) THEN
+        &.and. mantle(dstep) .ge. MIN_SURFACE_ABUND) THEN
         !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
         !UVY is yield per photon.
         rate(idx1:idx2) = GRAIN_CROSSSECTION_PER_H*uv_yield*4.875d3*zeta
@@ -79,7 +79,7 @@ SUBROUTINE calculateReactionRates
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     idx1=thermReacs(1)
     idx2=thermReacs(2)
-    IF (thermdesorb .eq.1 .and. safeMantle .ge. 1.0d-20 .and. safeBulk .ge. 1.0d-20) THEN
+    IF (thermdesorb .eq.1 .and. (mantle(dstep) .ge. MIN_SURFACE_ABUND)) THEN
         DO j=idx1,idx2
             !then try to overwrite with position in grain array
             DO i=lbound(iceList,1),ubound(iceList,1)
@@ -92,15 +92,13 @@ SUBROUTINE calculateReactionRates
                     !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                     !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
                     !area seems more correct for this process.
-                    rate(j)=rate(j)*2.0*SURFACE_SITE_DENSITY*GRAIN_SURFACEAREA_PER_H
-                    
+                    IF (.NOT. THREE_PHASE) rate(j)=rate(j)*2.0*SURFACE_SITE_DENSITY*GRAIN_SURFACEAREA_PER_H
                 END IF
             END DO
         END DO
     ELSE
         rate(idx1:idx2)=0.0
     END IF
-
 
     !Reactions on surface can be treated considering diffusion of reactants
     !as in Langmuir-Hinshelwood mechanism
@@ -109,7 +107,7 @@ SUBROUTINE calculateReactionRates
     idx1=lhReacs(1)
     idx2=lhReacs(2)
 
-    if (gasTemp(dstep) .lt. MAX_GRAIN_TEMP) THEN
+    if ((gasTemp(dstep) .lt. MAX_GRAIN_TEMP) .and. (mantle(dstep) .gt. MIN_SURFACE_ABUND)) THEN
         DO j=idx1,idx2
             rate(j)=diffusionReactionRate(j)
         END DO
@@ -121,6 +119,7 @@ SUBROUTINE calculateReactionRates
         idx2=lhdesReacs(2)
         DO j=idx1,idx2
             rate(j)=desorptionFraction(j)*rate(j)
+
         END DO
         !remove that fraction from total rate of the diffusion route
         rate(lhReacs(1):lhReacs(2))=rate(lhReacs(1):lhReacs(2))-rate(idx1:idx2)
@@ -134,7 +133,7 @@ SUBROUTINE calculateReactionRates
     !First calculate overall rate and then split between desorption and sticking
     idx1=erReacs(1)
     idx2=erReacs(2)
-    IF (mantle(dstep) .gt. 1e-25) THEN
+    IF (mantle(dstep) .gt. MIN_SURFACE_ABUND) THEN
         rate(idx1:idx2)=freezeOutRate(idx1,idx2)
         rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/gasTemp(dstep))/mantle(dstep)
     END IF
@@ -161,7 +160,6 @@ SUBROUTINE calculateReactionRates
 
     CALL bulkSurfaceExchangeReactions(rate,gasTemp(dstep))
 
-
     !Basic gas phase reactions 
     !They only change if temperature has so we can save time with an if statement
     idx1=twobodyReacs(1)
@@ -184,6 +182,7 @@ SUBROUTINE calculateReactionRates
     h2dis=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel) !H2 photodissociation
     rate(nrco)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
     rate(nR_C_hv)=cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),radfield) !C photoionization
+    rate(887)=0.0
 END SUBROUTINE calculateReactionRates
 
 
@@ -250,24 +249,24 @@ double precision FUNCTION diffusionReactionRate(reacIndx)
 
     !Choose fastest between classical and tunnelling
     IF (reacProb.GT.tunnelProb) reacProb=tunnelProb
-    !set activationBarrier to probability of reaction Ruaud+2016
-    reacProb=dexp(-reacProb)
 
     !Overall reaction probability is chance of reaction occuring on meeting * diffusion rate
-    reacProb = max(vdiff(index1),vdiff(index2)) * reacProb       
+    reacProb = max(vdiff(index1),vdiff(index2)) * dexp(-reacProb)       
 
 
     ! Keff from Garrod & Pauly 2011 and Ruaud+2016
     ! Actual reaction probability is Preac/(Preac+Pevap+Pdiffuse), accounting for the other possible processes
     IF(DIFFUSE_REACT_COMPETITION) THEN
-       desorbProb = reacProb/(reacProb + desorbProb + diffuseProb)
+        if (reacIndx .eq. 497) write(69,*) gastemp(dstep),reacProb,desorbProb,diffuseProb
+       reacProb = reacProb/(reacProb + desorbProb + diffuseProb)
     END IF
     
     !see Eq A1 of Quenard et al. 2018
     !NUM_SITES_PER_GRAIN should be multiplied by n_dust as in A1
     !n_dust=density/GAS_DUST_DENSITY_RATIO so we use the 1/density to cancel the density in odes.f90 and drop it here
-    n_dust=density(dstep)/GAS_DUST_DENSITY_RATIO
-    diffusionReactionRate=alpha(reacIndx) *reacProb* diffuseProb/(NUM_SITES_PER_GRAIN/GAS_DUST_DENSITY_RATIO)
+    diffusionReactionRate=alpha(reacIndx) *reacProb* diffuseProb*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
+    if (reacIndx .eq. 497) write(69,*) gastemp(dstep),reacProb,diffuseProb,NUM_SITES_PER_GRAIN,GAS_DUST_DENSITY_RATIO,diffusionReactionRate
+
 END FUNCTION diffusionReactionRate
 
 ! ---------------------------------------------------------------------

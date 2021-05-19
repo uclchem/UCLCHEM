@@ -59,11 +59,21 @@ tempindx=3
 !cshock module specific variable, uncomment or comment as  needed
 vs=40.0
 
-!initial fractional abundances of elements(from Asplund et al. 2009 ARAA table 1 -SOLAR)
-!note fh is fraction of H initially in H atoms. Total H is always 1.
-fh=0.5;fhe = 0.1;fc  = 2.6d-04;fo  = 4.6d-04;fn  = 6.1d-05
-fs  = 1.318d-05;fmg = 3.981d-05;fsi = 1.0d-07;fcl = 3.162d-07;
-fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
+! !initial fractional abundances of elements(from Jenkins et al. 2009 Table 4)
+! We use the heavily depleted case as we expect most UCLCHEM models to treat gas where
+! dust formation has occured and elemets are depleted.
+! ote fh is fraction of H initially in H atoms. Total H is always 1.
+fh=0.5;fhe = 0.1;fc  = 1.77d-04;fo  = 3.34d-04;fn  = 6.18d-05
+fs  = 3.51d-6;fmg = 2.256d-07;fsi = 1.78d-06;fcl = 3.39d-08;
+fp=7.78d-08 !ffe=2.01d-7; 
+ff = 3.6d-08 !fp depleted 1/100 of solar from Asplund 2009
+
+
+! !initial fractional abundances of elements(from Asplund et al. 2009 ARAA table 1 -SOLAR)
+! !note fh is fraction of H initially in H atoms. Total H is always 1.
+! fh=0.5;fhe = 0.1;fc  = 2.6d-04;fo  = 4.6d-04;fn  = 6.1d-05
+! fs  = 1.318d-05;fmg = 3.981d-05;fsi = 1.0d-07;fcl = 3.162d-07;
+! fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 
 ! These elements are not typically used. We do not recommend any particular value
 fd=0.0;fli=0.0;fna=0.0;fpah=0.0;f15n=0.0;f13c=0.0;f18O=0.0

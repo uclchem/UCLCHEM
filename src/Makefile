@@ -13,11 +13,6 @@ f2pyFC=gnu95 #this must match FC (ifort=intelem, gfortran=gnu95)
 #Fast optimizing flags
 FFLAGS = -O2 -fPIC -ffree-line-length-0
 
-
-#CPPFLAGS = -cpp #appropriate for two phase networks
-CPPFLAGS = -cpp -DTHREEPHASE #appropriate for three phase networks
-
-
 #Pick a physics module!
 PHYSICS=cloud.f90
 
@@ -44,10 +39,10 @@ chemistry.o: odes.f90 constants.o network.o photoreactions.o surfacereactions.o 
 	${FC} ${FFLAGS} -c chemistry.f90
 
 physics.o: ${PHYSICS} constants.o Makefile
-	${FC} ${CPPFLAGS} ${FFLAGS} -c ${PHYSICS} -o physics.o
+	${FC} ${FFLAGS} -c ${PHYSICS} -o physics.o
 
 %.o: %.f90 
-	${FC} ${CPPFLAGS} ${FFLAGS} -c $<
+	${FC} ${FFLAGS} -c $<
 
 clean: 
 	rm *.o *.mod ../uclchem ../uclchem.so

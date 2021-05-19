@@ -237,6 +237,7 @@ CONTAINS
             reltol=1e-10 !relative tolerance effectively sets decimal place accuracy
             abstol=1.0d-20*abund(:,dstep) !absolute tolerances depend on value of abundance
             WHERE(abstol<1d-30) abstol=1d-30 ! to a minimum degree
+            mantle(dstep)=sum(abund(grainList,dstep))
 
             !get reaction rates for this iteration
             CALL calculateReactionRates
@@ -261,11 +262,13 @@ CONTAINS
                     !Successful as far as currentTime but many errors.
                     !Make targetTime smaller and just go again
                     write(*,*) "ISTATE -4 - shortening step"
-                    targetTime=currentTime+10.0*SECONDS_PER_YEAR
+                    targetTime=currentTime*1.01
                 CASE(-5)
                     write(*,*) "ISTATE -5 - shortening step"
-                    CALL OUTPUT
-                    targetTime=currentTime+10.0*SECONDS_PER_YEAR
+                    ! WHERE(abund<1.0d-30) abund=1.0d-30
+                    ! CALL OUTPUT
+                    targetTime=currentTime*1.01
+                    
             END SELECT
         END DO                   
     END SUBROUTINE integrate
@@ -284,12 +287,11 @@ CONTAINS
         !Set D to the gas density for use in the ODEs
         D=y(NEQ)
         ydot=0.0
-        
 
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         INCLUDE 'odes.f90'
-      
+
         !H2 formation should occur at both steps - however note that here there is no 
         !temperature dependence. y(nh) is hydrogen fractional abundance.
         ydot(nh)  = ydot(nh) + 2.0*(h2dis*y(nh2) ) !- 2.0*h2form*y(nh)*D

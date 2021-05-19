@@ -149,12 +149,13 @@ CONTAINS
             instantSublimation=0
             CALL totalSublimation(abund)
         ELSE IF (coflag .ne. 2) THEN
-#ifndef THREEPHASE
-            IF (gasTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
-            IF (gasTemp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
-            IF (gasTemp(dstep) .gt. codestemp(tempindx)) coflag=1
-            CALL thermalEvaporation(abund)
-#endif
+
+            IF (.NOT. THREE_PHASE) THEN
+                IF (gasTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
+                IF (gasTemp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
+                IF (gasTemp(dstep) .gt. codestemp(tempindx)) coflag=1
+                CALL thermalEvaporation(abund)
+            END IF
         END IF
     END SUBROUTINE sublimation
 

@@ -7,6 +7,5 @@ collapse 0
 fr 0.0
 readAbunds 1
 phase 2
-fr 0
 abundFile "examples/test-output/startcollapse.dat"
 outputFile "examples/test-output/phase2-full.dat"

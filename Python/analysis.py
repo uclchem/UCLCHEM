@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 #User Inputs Go Here
 ################################################
 
-speciesName="CO"
-result_file="output/full.dat"
+speciesName="H2"
+result_file="examples/test-output/phase2-full.dat"
 reaction_file="src/reactions.csv"
 species_file="src/species.csv"
 
@@ -48,7 +48,7 @@ for i,row in result_df.iterrows():
     mostForms=[]
     form=0.0
     i=-1
-    while form < 0.99*totalProd:
+    while form < 0.999*totalProd:
         mostForms.append(reacIndxs[i])
         form+=changes[i]
         i-=1
@@ -56,7 +56,7 @@ for i,row in result_df.iterrows():
     mostDestructs=[]	
     j=0
     destruct=0.0
-    while abs(destruct) < 0.99*abs(totalDestruct):
+    while abs(destruct) < 0.999*abs(totalDestruct):
         mostDestructs.append(reacIndxs[j])
         destruct+=changes[j]
         j+=1
@@ -80,12 +80,11 @@ for i,row in result_df.iterrows():
         oldTotalChange=totalChange
 
 
-fig,ax=plt.subplots()
+fig,ax=plt.subplots(figsize=(16,9))
 ax.plot(result_df["Time"],result_df[speciesName],color="black")
 ax.plot(result_df["Time"],destructions,color="red")
 ax.plot(result_df["Time"],formations,color="green")
 #for time in plotTimes:
 	#ax.axvline(time)
-ax.set_yscale('log')
-ax.set_ylim(1e-35,)
+ax.set(yscale='log',xscale="log",ylim=(1e-30,1),xlim=(1e4,1e6))
 plt.show()

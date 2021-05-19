@@ -17,7 +17,6 @@ CONTAINS
         ! call the dictionary_parser function in order to read the dictionary of parameters
         INCLUDE 'defaultparameters.f90'
         CALL dictionary_parser(dictionary, outSpeciesIn)
-
         CALL solveAbundances
         
         !close outputs to attempt to force flush
