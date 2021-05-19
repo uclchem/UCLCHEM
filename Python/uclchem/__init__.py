@@ -133,9 +133,11 @@ def get_rates_of_change(rates,reactions,speciesList,species,row):
 	get_species_rates() and a row from the full output of UCLCHEM.
 	"""
 	changes=[]
+	reactionList=[]
 	for i, reaction in enumerate(reactions):
 		change=rates[i]
 		reactants=reaction[0:3]
+		products=reaction[3:]
 		reactant_count=-1
 
 		for reactant in reactants:
@@ -153,7 +155,9 @@ def get_rates_of_change(rates,reactions,speciesList,species,row):
 
 		if species in reactants:
 			changes.append(-change)
-		else:
+			reactionList.append(i)
+		if species in products:
 			changes.append(change)
-	return changes
+			reactionList.append(i)
+	return reactionList,changes
 

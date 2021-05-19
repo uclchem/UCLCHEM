@@ -61,8 +61,10 @@ CONTAINS
         CALL initializeChemistry
         dstep=1
         abund(:nspec,1)=abundancesIn(:nspec)
-        safeMantle=MAX(1.0d-30,abund(nsurface,1))
-        safeBulk=MAX(1.0d-30,abund(nbulk,1))
+        call updatePhysics
+        currentTime=0.0
+        targetTime=0.0
+        call updateChemistry
 
         CALL calculateReactionRates
         speciesRates=rate(rateIndxs)

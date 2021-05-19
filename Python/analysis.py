@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 ################################################
 
 speciesName="H2"
-result_file="examples/test-output/phase2-full.dat"
+result_file="examples/example-output/phase2-full.dat"
 reaction_file="src/reactions.csv"
 species_file="src/species.csv"
 
@@ -32,11 +32,11 @@ for i,row in result_df.iterrows():
 
     param_dict=uclchem.param_dict_from_output(row)
     rates=uclchem.get_species_rates(param_dict,row[species],fortran_reac_indxs)
-    changes=uclchem.get_rates_of_change(rates,reactions[reac_indxs],species,speciesName,row)
+    change_reacs,changes=uclchem.get_rates_of_change(rates,reactions[reac_indxs],species,speciesName,row)
 
-    A=zip(changes,reac_indxs)
+    A=zip(changes,change_reacs)
     A=sorted(A)
-    changes,reacIndxs=zip(*A)
+    changes,change_reacs=zip(*A)
     changes=np.asarray(changes)
 
     totalDestruct=sum(changes[np.where(changes<0)])
@@ -49,7 +49,7 @@ for i,row in result_df.iterrows():
     form=0.0
     i=-1
     while form < 0.999*totalProd:
-        mostForms.append(reacIndxs[i])
+        mostForms.append(reac_indxs[change_reacs[i]])
         form+=changes[i]
         i-=1
 
@@ -57,7 +57,7 @@ for i,row in result_df.iterrows():
     j=0
     destruct=0.0
     while abs(destruct) < 0.999*abs(totalDestruct):
-        mostDestructs.append(reacIndxs[j])
+        mostDestructs.append(reac_indxs[change_reacs[i]])
         destruct+=changes[j]
         j+=1
 
@@ -67,13 +67,15 @@ for i,row in result_df.iterrows():
         print("\n***************************\nNew Important Reactions At: {0:.2e} years\n".format(row["Time"]))
         print("Formation = {0:.2e} from:".format(totalProd))
         for k in range(-1,i,-1):
-            outString="{x[0]} + {x[1]} -> {x[3]} + {x[4]}".format(x=reactions[reacIndxs[k]])
+            outString="{x[0]} + {x[1]} + {x[2]}-> {x[3]} + {x[4]} + {x[5]}".format(x=reactions[reac_indxs[change_reacs[k]]])
+            outString=outString.replace(" + NAN","")
             outString+=": {0:.2f}%".format(float(changes[k]/totalProd)*100)
             print(outString)
 
         print("\nDestruction = {0:.2e} from:".format(totalDestruct))
         for k in range(0,j):
-            outString="{x[0]} + {x[1]} -> {x[3]} + {x[4]}".format(x=reactions[reacIndxs[k]])
+            outString="{x[0]} + {x[1]} + {x[2]}-> {x[3]} + {x[4]} + {x[5]}".format(x=reactions[reac_indxs[change_reacs[k]]])
+            outString=outString.replace(" + NAN","")
             outString+=": {0:.2f}%".format(float(changes[k]/totalDestruct)*100)
             print(outString)
         plotTimes.append(row["Time"])
