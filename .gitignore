@@ -1,4 +1,6 @@
 .so
 .o
 .mod
+src/*.o
+src/*.mod
 examples/test-output/*
