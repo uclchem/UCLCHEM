@@ -53,7 +53,7 @@ ion=2
 
 !cloud module specific variable for phase 2, temp profile depends on mass of star
 !Tempindx selects mass: 1=1Msol,2=5,3=10M,4=15M,5=25M,6=60M
-tempindx=3
+tempIndx=3
 
 
 !cshock module specific variable, uncomment or comment as  needed

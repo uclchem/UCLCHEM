@@ -33,7 +33,7 @@ main: chemistry.o physics.o main.f90 dvode.o defaultparameters.f90 readparameter
 
 python: chemistry.o physics.o wrap.f90 dvode.o defaultparameters.f90
 	python3 -m numpy.f2py -c --fcompiler=${f2pyFC} physics.o dvode.o photoreactions.o surfacereactions.o chemistry.o network.o -m uclchem wrap.f90
-	mv *${EXT_SUFFIX} ../Python/uclchem/uclchem.so
+	mv *${EXT_SUFFIX} ../Python/uclchem/
 
 chemistry.o: odes.f90 constants.o network.o photoreactions.o surfacereactions.o rates.f90 chemistry.f90  physics.o dvode.o 
 	${FC} ${FFLAGS} -c chemistry.f90
