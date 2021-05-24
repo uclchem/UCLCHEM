@@ -1,3 +1,4 @@
 .so
 .o
 .mod
+examples/test-output/*
