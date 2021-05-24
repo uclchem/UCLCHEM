@@ -71,12 +71,6 @@ CONTAINS
                 write(*,*) "Collapse must be 0 or 1 for cloud.f90"
         END SELECT
 
-        !Catch bad choices of switch and collapse to stop infinite runs.
-        IF (switch .eq. 1 .and. collapse .gt. 1) THEN
-            write(*,*) "Switch must be 0 for BE collapse, changing to stop at finalTime"
-            write(*,*) "Tfin = ",finalTime*SECONDS_PER_YEAR, " years"
-            switch=0
-        END IF
 
         !calculate initial column density as distance from core edge to current point * density
         DO dstep=1,points
@@ -149,9 +143,7 @@ CONTAINS
             instantSublimation=0
             CALL totalSublimation(abund)
         ELSE IF (coflag .ne. 2) THEN
-
             IF (.NOT. THREE_PHASE) THEN
-                write(*,*) "hi"
                 IF (gasTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
                 IF (gasTemp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
                 IF (gasTemp(dstep) .gt. codestemp(tempindx)) coflag=1

@@ -531,13 +531,12 @@ def build_ode_string(speciesList, reactionList,three_phase):
 		#then bring in factors of abundances
 		for species in reaction.reactants:
 			if species in species_names:
-				if "BULKSWAP" in reaction.reactants:
-					ODE_BIT+=f"*bulkLayersReciprocal*Y({species_names.index(species)+1})"
-				elif "SURFSWAP" in reaction.reactants:
-					ODE_BIT+=f"*totalSwap*(Y({species_names.index(species)+1})/safeMantle)"
-				else:
-					ODE_BIT=ODE_BIT+f"*Y({species_names.index(species)+1})"
-			elif species in ["DEUVCR","DESCR","DESOH2"]:
+				ODE_BIT+=f"*Y({species_names.index(species)+1})"
+			elif species=="BULKSWAP":
+				ODE_BIT+="*bulkLayersReciprocal"
+			elif species=="SURFSWAP":
+				ODE_BIT+="*totalSwap/safeMantle"
+			elif species in ["DEUVCR","DESCR","DESOH2","ER","ERDES"]:
 				ODE_BIT=ODE_BIT+f"/safeMantle"
 				if species=="DESOH2":
 					ODE_BIT=ODE_BIT+f"*Y({species_names.index('H')+1})"
@@ -552,13 +551,12 @@ def build_ode_string(speciesList, reactionList,three_phase):
 				ODE_BIT+="*bulkLayersReciprocal"
 
 
-
-		#now add to strings
+		#now add to ydot strings for each species
 		for species in reaction.reactants:
 			if species in species_names:
 				#Eley-Rideal reactions take a share of total freeze out rate which is already accounted for
 				#so we add as a loss term to the frozen version of the species rather than the gas version
-				if ("ELEYRIDEAL" in reaction.reactants) and (not speciesList[species_names.index(species)].is_surface_species()):
+				if ("ER" in reaction.reactants) and (not speciesList[species_names.index(species)].is_surface_species()):
 					speciesList[species_names.index("#"+species)].losses+=ODE_BIT
 				else:
 					speciesList[species_names.index(species)].losses+=ODE_BIT
