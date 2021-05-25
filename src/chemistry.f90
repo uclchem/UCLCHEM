@@ -234,7 +234,7 @@ CONTAINS
             !reset parameters for DVODE
             ITASK=1 !try to integrate to targetTime
             ISTATE=1 !pretend every step is the first
-            reltol=1e-10 !relative tolerance effectively sets decimal place accuracy
+            reltol=1e-4 !relative tolerance effectively sets decimal place accuracy
             abstol=1.0d-20*abund(:,dstep) !absolute tolerances depend on value of abundance
             WHERE(abstol<1d-30) abstol=1d-30 ! to a minimum degree
             mantle(dstep)=sum(abund(grainList,dstep))

@@ -165,3 +165,14 @@ def get_rates_of_change(rates,reactions,speciesList,species,row):
 			reactionList.append(i)
 	return reactionList,changes
 
+def check_abunds(element,df):
+	"""
+	Calculates that the total elemental abundance of a species as a function of time. Allows you to check conservation.
+	"""
+	sums=np.where(df.columns.str.contains(element),1,0)
+	for i in range(2,10):
+		sums+=np.where(df.columns.str.contains(element+f"{i:.0f}"),i-1,0)
+	for variable in ['Time', 'Density', 'gasTemp', 'av', 'point',"SURFACE","BULK"]
+	sums=np.where(df.columns==variable,0,sums)
+	return df.mul(sums,axis=1).sum(axis=1)
+

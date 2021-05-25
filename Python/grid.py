@@ -1,27 +1,10 @@
 #Marcus Keil and Jon Holdship 13/03/2020
 #Examples of a simple grid of models run in parallel
-import uclchemwrap
+import uclchem
 import numpy as np
 import pandas as pd
 from multiprocessing import Pool
 import time
-
-#uclchem general takes a dictionary of parameters where outSpecies=number of outspecies
-#and a string outspeciesin which is a delimited list of species
-#this wrapper helps Pool to work and also converts a delimited list in the dictionary into a number
-#and send list separately as required.
-def run_uclchem(param_dict):
-    outSpecies = (param_dict['outSpecies'])
-    param_dict['outSpecies'] = len(outSpecies.split())
-    
-    #this will run uclchem to final time step and return an array of abundances
-    #arrays cannot be variably sized with f2py so you need to set length of output array in src/wrap.f90
-    abunds=uclchem.wrap.run_model_for_abundances(dictionary=param_dict, outspeciesin=outSpecies)
-    
-    #altenatively, you can run uclchem to file as you normally would
-    #just put columnfile and/or output file in the dictionary
-    #uclchem.wrap.run_model_to_file(dictionary, outSpeciesIn)
-    return abunds
 
 
 #basic set of parameters we'll use for this grid. 
@@ -51,7 +34,7 @@ for k in range(np.shape(parameterSpace)[1]):
 #use pool.map to run each dictionary throuh our helper function
 start=time.time()
 pool=Pool(6)
-result=pool.map(run_uclchem,models)
+result=pool.map(uclchem.run_model_for_abundances,models)
 result=np.asarray(result)
 pool.close()
 pool.join()
