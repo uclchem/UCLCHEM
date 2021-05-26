@@ -45,7 +45,7 @@ MODULE SurfaceReactions
   REAL(dp), PARAMETER :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
 
 
-  REAL(dp), PARAMETER :: MAX_GRAIN_TEMP=100.0, MIN_SURFACE_ABUNd=1.0d-25
+  REAL(dp), PARAMETER :: MAX_GRAIN_TEMP=150.0, MIN_SURFACE_ABUNd=1.0d-25
 
   REAL(dp), ALLOCATABLE ::vdiff(:)
 CONTAINS
@@ -107,8 +107,6 @@ CONTAINS
     REAL(dp) :: gasTemperature
     IF (THREE_PHASE) THEN
       surfaceCoverage=bulkGainFromMantleBuildUp()
-      !rate(bulkLossReacs(1):bulkLossReacs(2))=bulkLossFromMantleLoss()
-
       CALL bulkToSurfaceSwappingRates(rate,bulkswapReacs(1),bulkswapReacs(2),gasTemperature)
       rate(surfSwapReacs(1):surfSwapReacs(2))=surfaceToBulkSwappingRates(gasTemperature)
     END IF
@@ -117,27 +115,12 @@ CONTAINS
 
   FUNCTION bulkGainFromMantleBuildUp() RESULT(rate)
     REAL(dp) :: rate
-    IF (safeMantle .lt.MIN_SURFACE_ABUND) THEN
-        rate = 0.0
-    ELSE
-        rate=0.5*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
-    END IF
+    rate=0.5*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
   END FUNCTION bulkGainFromMantleBuildUp
-
-
-  FUNCTION bulkLossFromMantleLoss() RESULT(rate)
-    REAL(dp) :: rate
-    IF (safeBulk .lt. 1e-20) THEN
-        rate = 0.0
-    ELSE
-        rate=1.0
-    END IF
-  END FUNCTION bulkLossFromMantleLoss
-
 
   FUNCTION surfaceToBulkSwappingRates(gasTemperature) RESULT(rate)
     REAL(dp) ::rate,gasTemperature
-    IF ((safeMantle .lt. MIN_SURFACE_ABUND) .or. (gasTemperature .gt. MAX_GRAIN_TEMP)) THEN
+    IF (gasTemperature .gt. MAX_GRAIN_TEMP) THEN
         rate = 0.0
     ELSE
         rate = 1.0
@@ -149,7 +132,7 @@ CONTAINS
     REAL(dp), INTENT(INOUT) :: rate(*)
     REAL(dp) :: gasTemperature
     INTEGER :: idx1,idx2
-    IF ((safeMantle .lt. MIN_SURFACE_ABUND) .or. (gasTemperature .gt. MAX_GRAIN_TEMP)) THEN
+    IF (gasTemperature .gt. MAX_GRAIN_TEMP) THEN
         rate(idx1:idx2) = 0.0
     ELSE
         DO i=idx1,idx2

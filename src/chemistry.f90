@@ -42,7 +42,7 @@ IMPLICIT NONE
     TYPE(VODE_OPTS) :: OPTIONS
     !initial fractional elemental abudances and arrays to store abundances
     REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,fli,fna,fpah,f15n,f13c,f18O
-    REAL(dp) :: h2col,cocol,ccol
+    REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
     REAL(dp),ALLOCATABLE :: abund(:,:),mantle(:)
     
     !Variables controlling chemistry
@@ -207,19 +207,21 @@ CONTAINS
         !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
         mantle(dstep)=sum(abund(grainList,dstep))
 
-        !evaluate co and h2 column densities for use in rate calculations
-        !sum column densities of each point up to dstep. boxlength and dens are pulled out of the sum as common factors  
+        !First sum the total column density over all points further towards edge of cloud
         IF (dstep.gt.1) THEN
-            h2col=(sum(abund(nh2,:dstep-1)*density(:dstep-1))+0.5*abund(nh2,dstep)*density(dstep))*(cloudSize/real(points))
-            cocol=(sum(abund(nco,:dstep-1)*density(:dstep-1))+0.5*abund(nco,dstep)*density(dstep))*(cloudSize/real(points))
-            ccol=(sum(abund(nc,:dstep-1)*density(:dstep-1))+0.5*abund(nc,dstep)*density(dstep))*(cloudSize/real(points))
+            h2ColToCell=(sum(abund(nh2,:dstep-1)*density(:dstep-1))+0.5*abund(nh2,dstep)*density(dstep))*(cloudSize/real(points))
+            coColToCell=(sum(abund(nco,:dstep-1)*density(:dstep-1))+0.5*abund(nco,dstep)*density(dstep))*(cloudSize/real(points))
+            cColToCell=(sum(abund(nc,:dstep-1)*density(:dstep-1))+0.5*abund(nc,dstep)*density(dstep))*(cloudSize/real(points))
 
         ELSE
-            h2col=0.5*abund(nh2,dstep)*density(dstep)*(cloudSize/real(points))
-            cocol=0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
-            ccol=0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
+            h2ColToCell=0.0
+            coColToCell=0.0
+            cColToCell=0.0
         ENDIF
-
+        !then add half the column density of the current point to get average in this "cell"
+        h2Col=h2ColToCell+0.5*abund(nh2,dstep)*density(dstep)*(cloudSize/real(points))
+        coCol=coColToCell+0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
+        cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
         !call the actual ODE integrator
         CALL integrate
 
@@ -264,7 +266,7 @@ CONTAINS
                     write(*,*) "ISTATE -4 - shortening step"
                     targetTime=currentTime*1.01
                 CASE(-5)
-                    write(*,*) "ISTATE -5 - shortening step"
+                    write(*,*) "ISTATE -5 - shortening step at time", currentTime/SECONDS_PER_YEAR,"years"
                     ! WHERE(abund<1.0d-30) abund=1.0d-30
                     ! CALL OUTPUT
                     targetTime=currentTime*1.01
@@ -287,6 +289,20 @@ CONTAINS
         !Set D to the gas density for use in the ODEs
         D=y(NEQ)
         ydot=0.0
+    
+        !changing abundances of H2 and CO can causes oscillation since their rates depend on their abundances
+        !recalculating rates as abundances are updated prevents that.
+        !thus these are the only rates calculated each time the ODE system is called.
+        cocol=coColToCell+0.5*Y(nco)*D*(cloudSize/real(points))
+        h2col=h2ColToCell+0.5*Y(nh2)*D*(cloudSize/real(points))
+        h2dis=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel) !H2 photodissociation
+        rate(nrco)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
+
+        !recalculate coefficients for ice processes
+        safeMantle=MAX(1d-30,Y(303))
+        safeBulk=MAX(1d-30,Y(302))
+        bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
+        surfaceCoverage=bulkGainFromMantleBuildUp()
 
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.

@@ -36,8 +36,7 @@ SUBROUTINE calculateReactionRates
     !Desorption due to energy released by H2 Formations
     idx1=desoh2Reacs(1)
     idx2=desoh2Reacs(2)
-    IF (desorb .eq. 1 .and. h2desorb .eq. 1 .and. gama(j) .le. ebmaxh2 .and.&
-    &  mantle(dstep) .ge. 1.0d-25) THEN
+    IF (desorb .eq. 1 .and. h2desorb .eq. 1 .and. gama(j) .le. ebmaxh2) THEN
         !Epsilon is efficieny of this process, number of molecules removed per event
         !h2form is formation rate of h2, dependent on hydrogen abundance. 
         rate(idx1:idx2) = epsilon*h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
@@ -47,8 +46,8 @@ SUBROUTINE calculateReactionRates
     !Desorption due to energy from cosmic rays
     idx1=descrReacs(1)
     idx2=descrReacs(2)
-    IF (desorb .eq. 1 .and. crdesorb .eq. 1 .and. (mantle(dstep).ge. MIN_SURFACE_ABUND) &
-        &.and. gama(j) .le. ebmaxcr) THEN
+    IF ((desorb .eq. 1) .and. (crdesorb .eq. 1) &
+        &.and. (gama(j) .le. ebmaxcr)) THEN
         !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
         !as iron nuclei are main cause of CR heating.
         !GRAIN_SURFACEAREA_PER_H is the total surfaace area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
@@ -61,8 +60,7 @@ SUBROUTINE calculateReactionRates
     !Desorption due to UV, partially from ISRF and partially from CR creating photons
     idx1=deuvcrReacs(1)
     idx2=deuvcrReacs(2)
-    IF (desorb .eq. 1 .and. uvdesorb .eq. 1 .and. gama(j) .le. ebmaxuvcr &
-        &.and. mantle(dstep) .ge. MIN_SURFACE_ABUND) THEN
+    IF ((desorb .eq. 1) .and. (uvdesorb .eq. 1) .and. (gama(j) .le. ebmaxuvcr)) THEN
         !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
         !UVY is yield per photon.
         rate(idx1:idx2) = GRAIN_CROSSSECTION_PER_H*uv_yield*4.875d3*zeta
@@ -79,7 +77,7 @@ SUBROUTINE calculateReactionRates
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     idx1=thermReacs(1)
     idx2=thermReacs(2)
-    IF (thermdesorb .eq.1 .and. (mantle(dstep) .ge. MIN_SURFACE_ABUND)) THEN
+    IF (thermdesorb .eq.1) THEN
         DO j=idx1,idx2
             !then try to overwrite with position in grain array
             DO i=lbound(iceList,1),ubound(iceList,1)
@@ -87,7 +85,6 @@ SUBROUTINE calculateReactionRates
                 IF (iceList(i) .eq. re1(j)) THEN
                     !Basic rate at which thermal desorption occurs
                     rate(j)=vdiff(i)*exp(-gama(j)/gasTemp(dstep))
-                    rate(j)=rate(j)
                     !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
                     !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                     !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
@@ -107,7 +104,7 @@ SUBROUTINE calculateReactionRates
     idx1=lhReacs(1)
     idx2=lhReacs(2)
 
-    if ((gasTemp(dstep) .lt. MAX_GRAIN_TEMP) .and. (mantle(dstep) .gt. MIN_SURFACE_ABUND)) THEN
+    if ((gasTemp(dstep) .lt. MAX_GRAIN_TEMP)) THEN
         DO j=idx1,idx2
             rate(j)=diffusionReactionRate(j,gasTemp(dstep))
         END DO
@@ -133,10 +130,8 @@ SUBROUTINE calculateReactionRates
     !First calculate overall rate and then split between desorption and sticking
     idx1=erReacs(1)
     idx2=erReacs(2)
-    IF (mantle(dstep) .gt. MIN_SURFACE_ABUND) THEN
-        rate(idx1:idx2)=freezeOutRate(idx1,idx2)
-        rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/gasTemp(dstep))
-    END IF
+    rate(idx1:idx2)=freezeOutRate(idx1,idx2)
+    rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/gasTemp(dstep))
     rate(erdesReacs(1):erdesReacs(2))=rate(idx1:idx2)
     !calculate fraction of reaction that goes down desorption route
     idx1=erdesReacs(1)
@@ -150,10 +145,10 @@ SUBROUTINE calculateReactionRates
 
     IF (PARAMETERIZE_H2FORM) THEN
         rate(nR_H2Form_CT)=h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
-        ! rate(nR_H2Form_LH)=0.0
-         rate(nR_H2Form_ER)=0.0
-        ! rate(nR_H2Form_LHDes)=0.0
-         rate(nR_H2Form_ERDes)=0.0
+        !rate(nR_H2Form_LH)=0.0
+        rate(nR_H2Form_ER)=0.0
+        !rate(nR_H2Form_LHDes)=0.0
+        rate(nR_H2Form_ERDes)=0.0
     ELSE
         rate(nR_H2Form_CT)= 0.0
     END IF

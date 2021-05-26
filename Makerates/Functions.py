@@ -566,9 +566,7 @@ def build_ode_string(speciesList, reactionList,three_phase):
 			if species in species_names:
 				speciesList[species_names.index(species)].gains+=ODE_BIT
 	
-	ode_string=f"safeMantle=MAX(1d-30,Y({surface_index+1}))\n"
-	ode_string+=f"safeBulk=MAX(1d-30,Y({bulk_index+1}))\n"
-	ode_string+="bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))\n"
+	ode_string=""
 	if three_phase:
 		ode_string+=truncate_line(f"totalSwap={total_swap[1:]}\n\n")
 	#First get total rate of change of bulk and surface by adding ydots
@@ -585,12 +583,21 @@ def build_ode_string(speciesList, reactionList,three_phase):
 	#now add bulk transfer to rate of change of surface species after they've already been calculated
 	if three_phase:
 		ode_string+="!Update surface species for bulk growth\n"
+		ode_string+="IF (YDOT(303) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
+		for n,species in enumerate(speciesList):
+			if species.name[0]=="#":
+				bulk_version=species_names.index(species.name.replace("#","@"))
+				ode_string+=f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({bulk_version+1})/safeBulk\n"
+			if species.name[0]=="@":
+				ode_string+=f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({n+1})/safeBulk\n"
+		ode_string+="ELSE\n"
 		for n,species in enumerate(speciesList):
 			if species.name[0]=="@":
 				surface_version=species_names.index(species.name.replace("@","#"))
-				ode_string+=f"YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({surface_version+1})\n"
+				ode_string+=f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({surface_version+1})\n"
 			if species.name[0]=="#":
-				ode_string+=f"YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({n+1})\n"
+				ode_string+=f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({n+1})\n"
+		ode_string+="ENDIF\n"
 
 		#once bulk transfer has been added, odes for bulk and surface must be updated to account for it
 		ode_string+="!Update total rate of change of bulk and surface for bulk growth\n"

@@ -99,7 +99,6 @@ def plot_species(ax,df,species):
 	"""
 	color_palette(n_colors=len(species))
 	for specIndx,specName in enumerate(species):
-		print(specName)
 		if specName[0]=="$":
 			abundances=df[specName.replace("$","#")]
 			if specName.replace("$","@") in df.columns:
@@ -172,7 +171,7 @@ def check_abunds(element,df):
 	sums=np.where(df.columns.str.contains(element),1,0)
 	for i in range(2,10):
 		sums+=np.where(df.columns.str.contains(element+f"{i:.0f}"),i-1,0)
-	for variable in ['Time', 'Density', 'gasTemp', 'av', 'point',"SURFACE","BULK"]
-	sums=np.where(df.columns==variable,0,sums)
+	for variable in ['Time', 'Density', 'gasTemp', 'av', 'point',"SURFACE","BULK"]:
+		sums=np.where(df.columns==variable,0,sums)
 	return df.mul(sums,axis=1).sum(axis=1)
 
