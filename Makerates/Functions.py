@@ -583,7 +583,7 @@ def build_ode_string(speciesList, reactionList,three_phase):
 	#now add bulk transfer to rate of change of surface species after they've already been calculated
 	if three_phase:
 		ode_string+="!Update surface species for bulk growth\n"
-		ode_string+="IF (YDOT(303) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
+		ode_string+=f"IF (YDOT({surface_index+1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
 		for n,species in enumerate(speciesList):
 			if species.name[0]=="#":
 				bulk_version=species_names.index(species.name.replace("#","@"))

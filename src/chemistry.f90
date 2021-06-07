@@ -299,8 +299,8 @@ CONTAINS
         rate(nrco)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
 
         !recalculate coefficients for ice processes
-        safeMantle=MAX(1d-30,Y(303))
-        safeBulk=MAX(1d-30,Y(302))
+        safeMantle=MAX(1d-30,Y(nSurface))
+        safeBulk=MAX(1d-30,Y(nBulk))
         bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
         surfaceCoverage=bulkGainFromMantleBuildUp()
 
