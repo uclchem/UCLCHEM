@@ -38,6 +38,8 @@ CONTAINS
         !Read input parameters from the dictionary
         CALL dictionary_parser(dictionary, outSpeciesIn)
 
+        CALL solveAbundances
+
         !close outputs to attempt to force flush
         close(10)
         close(11)
@@ -45,6 +47,7 @@ CONTAINS
 
         CALL solveAbundances
         abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
+
     END SUBROUTINE run_model_for_abundances
 
 
