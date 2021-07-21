@@ -37,13 +37,13 @@ IMPLICIT NONE
 
     !DLSODE variables    
     INTEGER :: ITASK,ISTATE,NEQ,MXSTEP
-    REAL(dp) :: reltol
+    REAL(dp) :: reltol,abstol_factor
     REAL(dp), ALLOCATABLE :: abstol(:)
     TYPE(VODE_OPTS) :: OPTIONS
     !initial fractional elemental abudances and arrays to store abundances
-    REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,fli,fna,fpah,f15n,f13c,f18O
+    REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,fli,fna,fpah,f15n,f13c,f18O,metallicity
     REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
-    REAL(dp),ALLOCATABLE :: abund(:,:),mantle(:)
+    REAL(dp),ALLOCATABLE :: abund(:,:)
     
     !Variables controlling chemistry
     LOGICAL :: PARAMETERIZE_H2FORM=.True.
@@ -58,7 +58,7 @@ CONTAINS
 !This gets called immediately by main so put anything here that you want to happen before the time loop begins, reader is necessary.
     SUBROUTINE initializeChemistry
         NEQ=nspec+1
-        IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff,mantle)
+        IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff)
         ALLOCATE(abund(NEQ,points),vdiff(SIZE(iceList)))
         CALL fileSetup
         !if this is the first step of the first phase, set initial abundances
@@ -66,13 +66,9 @@ CONTAINS
         IF (readAbunds.eq.0) THEN
             !ensure abund is initially zero
             abund= 0.
-            !As default, have half in molecular hydrogen and half in atomic hydrogen
-            abund(nh2,:) = 0.5*(1.0e0-fh)
-            abund(nh,:) = fh
 
-            !some elements default to atoms     
-            abund(nd,:)=fd
-            abund(nhe,:) = fhe                       
+            !Start by filling all metallicity scaling elements
+            !neutral atoms  
             abund(no,:) = fo  
             abund(nn,:) = fn               
             abund(nmg,:) = fmg
@@ -82,18 +78,10 @@ CONTAINS
             abund(nli,:) = fli
             abund(npah,:) = fpah
 
-            !others to ions
+            !default to ions
             abund(nsx,:) = fs
             abund(nsix,:) = fsi                
             abund(nclx,:) = fcl 
-            
-            !isotopes
-            abund(n18o,:) = f18o  
-            abund(n15n,:) = f15n           
-            abund(n13c,:) = f13c    
-            
-            abund(nspec+1,:)=density      
-
             !Decide how much carbon is initiall ionized using parameters.f90
             SELECT CASE (ion)
                 CASE(0)
@@ -106,7 +94,22 @@ CONTAINS
                     abund(nc,:)=1.d-10
                     abund(ncx,:)=fc
             END SELECT
+
+            !isotopes
+            abund(n18o,:) = f18o  
+            abund(n15n,:) = f15n           
+            abund(n13c,:) = f13c    
+
             abund(nspec,:)=abund(ncx,:)+abund(nsix,:)+abund(nsx,:)+abund(nclx,:)
+
+            abund=abund*metallicity
+
+            !As default, have half in molecular hydrogen and half in atomic hydrogen
+            abund(nh2,:) = 0.5*(1.0e0-fh)
+            abund(nh,:) = fh
+            abund(nd,:)=fd
+            abund(nhe,:) = fhe  
+            abund(nspec+1,:)=density   
 
         ENDIF
         !Initial calculations of diffusion frequency for each species bound to grain
@@ -116,16 +119,18 @@ CONTAINS
             vdiff(i)=VDIFF_PREFACTOR*bindingEnergy(i)/mass(j)
             vdiff(i)=dsqrt(vdiff(i))
         END DO
-
-        !h2 formation rate initially set
-        ALLOCATE(mantle(points))
-        DO l=1,points
-            mantle(l)=sum(abund(grainList,l))
-        END DO
         
         !DVODE SETTINGS
         ISTATE=1;;ITASK=1
-        reltol=1e-4;MXSTEP=10000
+        IF (THREE_PHASE) THEN
+            reltol=1d-12
+            abstol_factor=1.0d-20
+            MXSTEP=10000
+        else
+            reltol=1d-4
+            abstol_factor=1.0d-14
+            MXSTEP=10000
+        END IF
 
         IF (.NOT. ALLOCATED(abstol)) THEN
             ALLOCATE(abstol(NEQ))
@@ -199,13 +204,8 @@ CONTAINS
 
     SUBROUTINE updateChemistry
     !Called every time/depth step and updates the abundances of all the species
-        WHERE(abund<1.0d-30) abund=1.0d-30
-
         !allow option for dens to have been changed elsewhere.
         IF (collapse .ne. 1) abund(nspec+1,dstep)=density(dstep)
-
-        !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
-        mantle(dstep)=sum(abund(grainList,dstep))
 
         !First sum the total column density over all points further towards edge of cloud
         IF (dstep.gt.1) THEN
@@ -236,10 +236,8 @@ CONTAINS
             !reset parameters for DVODE
             ITASK=1 !try to integrate to targetTime
             ISTATE=1 !pretend every step is the first
-            reltol=1e-4 !relative tolerance effectively sets decimal place accuracy
-            abstol=1.0d-20*abund(:,dstep) !absolute tolerances depend on value of abundance
+            abstol=abstol_factor*abund(:,dstep) !absolute tolerances depend on value of abundance
             WHERE(abstol<1d-30) abstol=1d-30 ! to a minimum degree
-            mantle(dstep)=sum(abund(grainList,dstep))
 
             !get reaction rates for this iteration
             CALL calculateReactionRates
@@ -250,7 +248,8 @@ CONTAINS
                 CASE(-1)
                     write(*,*) "ISTATE -1: MAXSTEPS will be increased"
                     !More steps required for this problem
-                    MXSTEP=MXSTEP*2    
+                    MXSTEP=MXSTEP*2   
+                    targetTime=currentTime*1.01 
                 CASE(-2)
                     write(*,*) "ISTATE -2: Tolerances too small"
                     !Tolerances are too small for machine but succesful to current currentTime
@@ -266,9 +265,9 @@ CONTAINS
                     write(*,*) "ISTATE -4 - shortening step"
                     targetTime=currentTime*1.01
                 CASE(-5)
-                    write(*,*) "ISTATE -5 - shortening step at time", currentTime/SECONDS_PER_YEAR,"years"
-                    ! WHERE(abund<1.0d-30) abund=1.0d-30
-                    ! CALL OUTPUT
+                    timeInYears=currentTime/SECONDS_PER_YEAR
+                    write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
+                    WHERE(abund<1.0d-30) abund=1.0d-30
                     targetTime=currentTime*1.01
                     
             END SELECT
@@ -325,7 +324,6 @@ CONTAINS
         write(79,*) "dens",density(dstep)
         write(79,*) "density in integration array",abund(nspec+1,dstep)
         write(79,*) "Av", av(dstep)
-        write(79,*) "Mantle", mantle(dstep)
         write(79,*) "Temp", gasTemp(dstep)
         DO i=1,nreac
             if (rate(i) .ge. huge(i)) write(79,*) "Rate(",i,") is potentially infinite"

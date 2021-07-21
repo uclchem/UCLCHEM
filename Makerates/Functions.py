@@ -13,7 +13,7 @@ from copy import deepcopy as copy
 #largely just to make the other functions more readable.
 ##########################################################################################
 reaction_types=['PHOTON','CRP','CRPHOT','FREEZE','THERM','DESOH2','DESCR','DEUVCR',
-			"H2FORM","ER","ERDES","LH","LHDES","BULKLOSS","BULKGAIN","BULKSWAP","SURFSWAP"]
+			"H2FORM","ER","ERDES","LH","LHDES","BULKSWAP","SURFSWAP"]
 #these reaction types removed as UCLCHEM does not handle them. 'CRH','PHOTD','XRAY','XRSEC','XRLYA','XRPHOT'
 elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N','13C','18O']
 elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420,15,13,18]
@@ -582,7 +582,9 @@ def build_ode_string(speciesList, reactionList,three_phase):
 
 	#now add bulk transfer to rate of change of surface species after they've already been calculated
 	if three_phase:
-		ode_string+="!Update surface species for bulk growth\n"
+		ode_string+="!Update surface species for bulk growth, replace surfaceCoverage with alpha_des\n"
+		ode_string+="!Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
+
 		ode_string+=f"IF (YDOT({surface_index+1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
 		for n,species in enumerate(speciesList):
 			if species.name[0]=="#":
@@ -838,7 +840,10 @@ def write_network_file(fileName,speciesList,reactionList,three_phase):
 		indices=np.where(reacTypes==reaction_type)[0]
 		if len(indices>1):
 			indices=[indices[0]+1,indices[-1]+1]
-			openFile.write(array_to_string("\t"+list_name,indices,type="int",parameter=True))
+		else:
+			#We still want a dummy array if the reaction type isn't in network
+			indices=[99999,99999]
+		openFile.write(array_to_string("\t"+list_name,indices,type="int",parameter=True))
 	openFile.write("END MODULE network")
 	openFile.close()
 

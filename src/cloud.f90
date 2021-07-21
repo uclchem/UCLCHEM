@@ -86,13 +86,13 @@ CONTAINS
     !but the integrator itself chooses an integration timestep.                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updateTargetTime
-        IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
+        IF (timeInYears .gt. 0.99d6) THEN !code in years for readability, targetTime in s
             targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
-        ELSE  IF (timeInYears .gt. 1.0d5) THEN
+        ELSE  IF (timeInYears .gt. 0.99d5) THEN
             targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1.0d4) THEN
+        ELSE IF (timeInYears .gt. 0.99d4) THEN
             targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1000) THEN
+        ELSE IF (timeInYears .gt. 999) THEN
             targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 0.0) THEN
             targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR
@@ -138,12 +138,11 @@ CONTAINS
     SUBROUTINE sublimation(abund)
         DOUBLE PRECISION :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
-
-        IF (instantSublimation .eq. 1) THEN
-            instantSublimation=0
-            CALL totalSublimation(abund)
-        ELSE IF (coflag .ne. 2) THEN
-            IF (.NOT. THREE_PHASE) THEN
+        IF (.not. THREE_PHASE) THEN
+            IF (instantSublimation .eq. 1) THEN
+                instantSublimation=0
+                CALL totalSublimation(abund)
+            ELSE IF (coflag .ne. 2) THEN
                 IF (gasTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
                 IF (gasTemp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
                 IF (gasTemp(dstep) .gt. codestemp(tempindx)) coflag=1
@@ -175,7 +174,6 @@ CONTAINS
 
     SUBROUTINE thermalEvaporation(abund)
     DOUBLE PRECISION :: abund(nspec+1,points)
-    INTEGER :: i
     INTENT(INOUT) :: abund
     !Evaporation is based on Viti et al. 2004. A proportion of the frozen species is released into the gas phase
     !in specific events. These events are activated by flags (eg solidflag) which can be set in physics module.

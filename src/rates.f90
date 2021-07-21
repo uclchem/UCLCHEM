@@ -1,5 +1,5 @@
 SUBROUTINE calculateReactionRates
-    INTEGER:: idx1,idx2
+    INTEGER:: idx1,idx2,k
     !Calculate all reaction rates
     !Assuming the user has temperature changes or uses the desorption features of phase 1,
     !these need to be recalculated every time step.
@@ -85,6 +85,13 @@ SUBROUTINE calculateReactionRates
                 IF (iceList(i) .eq. re1(j)) THEN
                     !Basic rate at which thermal desorption occurs
                     rate(j)=vdiff(i)*exp(-gama(j)/gasTemp(dstep))
+                    !At some point, rate is so fast that there's no point freezing out any more
+                    !Save some numerical trouble by setting freeze out to zero.
+                    IF (rate(j) .ge. 1.0) THEN
+                        do k=freezeReacs(1),freezeReacs(2)
+                            IF (p1(j)==re1(k)) rate(k)=0.0
+                        END DO
+                    END IF
                     !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
                     !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                     !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional

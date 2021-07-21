@@ -1,6 +1,7 @@
 MODULE SurfaceReactions
   USE constants
   USE network
+  IMPLICIT NONE
   REAL(dp) :: surfaceCoverage,totalSwap,bulkLayersReciprocal
   REAL(dp) :: safeMantle,safeBulk
 
@@ -45,7 +46,7 @@ MODULE SurfaceReactions
   REAL(dp), PARAMETER :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
 
 
-  REAL(dp), PARAMETER :: MAX_GRAIN_TEMP=150.0, MIN_SURFACE_ABUNd=1.0d-25
+  REAL(dp), PARAMETER :: MAX_GRAIN_TEMP=150.0, MIN_SURFACE_ABUND=1.0d-25
 
   REAL(dp), ALLOCATABLE ::vdiff(:)
 CONTAINS
@@ -112,7 +113,7 @@ CONTAINS
     END IF
   END SUBROUTINE bulkSurfaceExchangeReactions
 
-
+  !surface abundance multiplied by this value gives fraction of surface covered by material
   FUNCTION bulkGainFromMantleBuildUp() RESULT(rate)
     REAL(dp) :: rate
     rate=0.5*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
@@ -120,8 +121,8 @@ CONTAINS
 
   FUNCTION surfaceToBulkSwappingRates(gasTemperature) RESULT(rate)
     REAL(dp) ::rate,gasTemperature
-    IF (gasTemperature .gt. MAX_GRAIN_TEMP) THEN
-        rate = 0.0
+    IF ((gasTemperature .gt. MAX_GRAIN_TEMP) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
+              rate = 0.0
     ELSE
         rate = 1.0
     END IF
@@ -131,8 +132,8 @@ CONTAINS
   SUBROUTINE bulkToSurfaceSwappingRates(rate,idx1,idx2,gasTemperature)
     REAL(dp), INTENT(INOUT) :: rate(*)
     REAL(dp) :: gasTemperature
-    INTEGER :: idx1,idx2
-    IF (gasTemperature .gt. MAX_GRAIN_TEMP) THEN
+    INTEGER :: idx1,idx2,i,j
+    IF ((gasTemperature .gt. MAX_GRAIN_TEMP) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
         rate(idx1:idx2) = 0.0
     ELSE
         DO i=idx1,idx2
@@ -152,7 +153,7 @@ CONTAINS
 double precision FUNCTION diffusionReactionRate(reacIndx,gasTemperature)
     double precision :: reducedMass,tunnelProb,gasTemperature
     double precision :: diffuseProb,desorbProb,reacProb,n_dust
-    integer :: index1,index2,reacIndx
+    integer :: index1,index2,reacIndx,i
 
 
     !want position of species in the grain array but gas phase species aren't in there
@@ -208,7 +209,7 @@ END FUNCTION diffusionReactionRate
 ! From Minissalle+ 2016 and Vasyunin+ 2016
 ! ---------------------------------------------------------------------
 double precision FUNCTION desorptionFraction(reacIndx)
-    integer :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom
+    integer :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom,i
     integer :: productIndex(4)
 
     double precision :: deltaEnthalpy,maxBindingEnergy,epsilonCd,productEnthalpy

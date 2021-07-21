@@ -45,4 +45,4 @@ physics.o: ${PHYSICS} constants.o Makefile
 	${FC} ${FFLAGS} -c $<
 
 clean: 
-	rm *.o *.mod ../uclchem ../uclchem.so
+	rm *.o *.mod ../uclchem ../Python/uclchem/*.so

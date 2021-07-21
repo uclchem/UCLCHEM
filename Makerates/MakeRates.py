@@ -23,7 +23,7 @@ custom_reaction_file = 'inputFiles/default_grain_network.csv'
 
 speciesFile = 'inputFiles/default_species.csv'
 
-three_phase=True
+three_phase=False
 
 
 
