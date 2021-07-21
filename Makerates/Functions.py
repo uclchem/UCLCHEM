@@ -1,7 +1,7 @@
 from __future__ import print_function
 import csv
 import numpy as np
-
+from copy import deepcopy as copy
 #functions including
 #1. simple classes to store all the information about each species and reaction.
 #2. Functions to read in the species and reaction file and check for sanity
@@ -12,24 +12,35 @@ import numpy as np
 #1. simple classes to store all the information about each species and reaction.
 #largely just to make the other functions more readable.
 ##########################################################################################
-reaction_types=['PHOTON','CRP','CRPHOT','FREEZE','THERM','DESOH2','DESCR','DEUVCR',"CHEMDES","DIFF"]
+reaction_types=['PHOTON','CRP','CRPHOT','FREEZE','THERM','DESOH2','DESCR','DEUVCR',
+			"H2FORM","ER","ERDES","LH","LHDES","BULKSWAP","SURFSWAP"]
 #these reaction types removed as UCLCHEM does not handle them. 'CRH','PHOTD','XRAY','XRSEC','XRLYA','XRPHOT'
 elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N','13C','18O']
 elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420,15,13,18]
-symbols=['#','+','-','(',')']
+symbols=['#','@','+','-','(',')']
 
 class Species:
 	def __init__(self,inputRow):
 		self.name=inputRow[0]
 		self.mass=inputRow[1]
-		self.bindener=float(inputRow[2])
+		self.binding_energy=float(inputRow[2])
 		self.solidFraction=float(inputRow[3])
 		self.monoFraction=float(inputRow[4])
 		self.volcFraction=float(inputRow[5])
 		self.enthalpy=float(inputRow[6])
+		self.n_atoms=0
 
 	def is_grain_species(self):
-		return self.name[0]=='#'
+		if self.name in ["BULK","SURFACE"]:
+			return True
+		else:
+			return (self.name[0] in ['#','@'])
+
+	def is_surface_species(self):
+		return self.name[0]=="#"
+
+	def is_bulk_species(self):
+		return self.name[0]=="@"
 
 	def is_ion(self):
 		return (self.name[-1]=="+" or self.name[-1]=="-")
@@ -123,12 +134,24 @@ class Reaction:
 		self.reac_type=self.get_reaction_type()
 		self.duplicate=False
 
+		#body_count is the number of factors of density to include in ODE
+		#we drop a factor of density from both the LHS and RHS of ODES
+		#So reactions with 1 body have no factors of density which we manage by counting from -1
+		self.body_count=-1
+		for reactant in self.reactants:
+			if (reactant not in reaction_types) and reactant!="NAN":
+				self.body_count+=1
+			if reactant in ["DESOH2","FREEZE"]:
+				self.body_count+=1
+			if reactant in ["LH","LHDES"]:
+				self.body_count-=1
+
 	def NANCheck(self,a):
 		aa  = a if a else 'NAN'
 		return aa
 
 	def get_reaction_type(self):
-		if (self.reactants[2].strip()=="CHEMDES") or (self.reactants[2].strip()=="DIFF"):
+		if (self.reactants[2] in reaction_types):
 			return self.reactants[2]
 		else:
 			if self.reactants[1] in reaction_types:
@@ -136,11 +159,43 @@ class Reaction:
 			else:
 				return "TWOBODY"
 
+	def convert_to_bulk(self):
+		for i in range(len(self.reactants)):
+			self.reactants[i]=self.reactants[i].replace("#","@")
+		for i in range(len(self.products)):
+			self.products[i]=self.products[i].replace("#","@")
+
 	def same_reaction(self,other):
 		if set(self.reactants)==set(other.reactants):
 			if set(self.products)==set(other.products):
 				return True
 		return False
+
+	def changes_surface_count(self):
+		"""
+		This checks whether a grain reaction changes number of particles on the surface
+		2 reactants to 2 products won't but two reactants combining to one will.
+		"""
+		if len([x for x in self.reactants if "#" in x]) != len([x for x in self.products if "#" in x]):
+			return True
+		if len([x for x in self.reactants if "@" in x]) != len([x for x in self.products if "@" in x]):
+			return True
+		return False
+
+
+	def changes_total_mantle(self):
+		#If it's not just a movement between ice phases
+		if ("BULK" not in self.reactants[1]) and ("SWAP" not in self.reactants[1]):
+			# if the number of ice species changes
+			if self.changes_surface_count():
+				return True
+			else:
+				return False
+		else:
+			return False
+
+	def print(self):
+		print(" + ".join(self.reactants), "->","+".join(self.products))
 
 
 ##########################################################################################
@@ -167,14 +222,17 @@ def read_reaction_file(fileName, speciesList, ftype):
 
 	for species in speciesList:
 		keepList.append(species.name)			                                  
-	if ftype == 'UMIST': # if it is a umist database file
+	
+
+	if ftype == 'UMIST': 
 		f = open(fileName, 'r')
 		reader = csv.reader(f, delimiter=':', quotechar='|')
 		for row in reader:
 			if all(x in keepList for x in [row[2],row[3],row[4],row[5],row[6],row[7]]): #if all the reaction elements belong to the keeplist
 				#umist file doesn't have third reactant so add space and has a note for how reactions there are so remove that
 				reactions.append(Reaction(row[2:4]+['']+row[4:8]+row[9:]))
-	if ftype == 'UCL':	# if it is a ucl made (grain?) reaction file
+	
+	if ftype == 'UCL':
 		f = open(fileName, 'r')
 		reader = csv.reader(f, delimiter=',', quotechar='|')
 		for row in reader:
@@ -186,11 +244,54 @@ def read_reaction_file(fileName, speciesList, ftype):
 			else:
 				dropped_reactions.append(row)
 
+	if ftype == "KIDA":
+		for row in kida_parser(fileName):
+			if all(x in keepList for x in row[0:7]):
+				reactions.append(Reaction(row))
+
 	nReactions = len(reactions)
 	return nReactions, reactions, dropped_reactions
 
+def kida_parser(kida_file):
+	"""
+	KIDA used a fixed format file so we read each line in the chunks they specify
+	and use python built in classes to convert to the necessary types.
+	"""
+	str_parse=lambda x: str(x).strip().upper()
+
+	kida_contents=[
+	    [3,{str_parse:11}],
+	    [1,{"skip":1}],
+	    [5,{str_parse:11}],
+	    [1,{"skip":1}],
+	    [3,{float:10,"skip":1}],
+	    [1,{"skip":27}],
+	    [2,{int:6,"skip":1}],
+	    [1,{int:2}],
+	    [1,{"skip":11}]
+	]
+	rows=[]
+	with open(kida_file,"r") as f:
+		f.readline()
+		for line in f:
+			row=[]
+			for item in kida_contents:
+				for i in range(item[0]):
+					for func,count in item[1].items():
+						if func!="skip":
+							a=line[:count]
+							print(func,a)
+							row.append(func(a))
+						else:
+							print("skip",count)
+						line=line[count:]
+			#ignore the ionpol and 3 body reacs in KIDA
+			if row[-1]<4:
+				rows.append(row[:7]+row[8:-1])
+	return rows
+
 def remove_duplicate_species(speciesList):
-		#check for duplicate species
+	#check for duplicate species
 	duplicates=0
 	duplicate_list=[]
 	for i in range(0,len(speciesList)):
@@ -230,22 +331,100 @@ def check_and_filter_species(speciesList,reactionList):
 	print('\n')
 	for species in speciesList:
 		species.find_constituents()
+
+	#add in pseudo-species to track mantle
+	mantle_specs=[]
+	new_spec=[999]*7
+	new_spec[0]="BULK"
+	mantle_specs.append(Species(new_spec))
+	new_spec[0]="SURFACE"
+	mantle_specs.append(Species(new_spec))
+	speciesList=speciesList+mantle_specs
 	return speciesList
+
+def create_bulk_species(speciesList):
+	speciesNames=[species.name for species in speciesList]
+	new_species=[]
+	try:
+		h2o_binding_energy=speciesNames.index("#H2O")
+		h2o_binding_energy=speciesList[h2o_binding_energy].binding_energy
+	except:
+		print("You are trying to create a three phase model but #H2O is not in your network")
+		print("This is likely an error so Makerates will not complete")
+		print("Try adding #H2O or switching to three_phase=False in Makerates.py")
+		quit()
+	for species in speciesList:
+		if species.is_surface_species:
+			if not species.name.replace("#","@") in speciesNames:
+				new_spec=copy(species)
+				new_spec.name=new_spec.name.replace("#","@")
+				new_spec.binding_energy=h2o_binding_energy
+				new_species.append(new_spec)
+	return speciesList+new_species
+
 
 #All species should freeze out at least as themselves and all grain species should desorb according to their binding energy
 #This function adds those reactions automatically to slim down the grain file
-def add_desorb_reactions(speciesList,reactionList,therm_flag=False):
-	if therm_flag:
-		desorb_reacs=['DESOH2',"DESCR","DEUVCR","THERM"]
-	else:
-		desorb_reacs=['DESOH2',"DESCR","DEUVCR"]
+def add_desorb_reactions(speciesList,reactionList):
+	desorb_reacs=['DESOH2',"DESCR","DEUVCR","THERM"]
 
 	for species in speciesList:
-		if species.is_grain_species():
+		if species.is_surface_species():
 			for reacType in desorb_reacs:
-				newReaction=Reaction([species.name,reacType,'NAN',species.name[1:],'NAN','NAN','NAN',1,0,species.bindener,0.0,10000.0])
+				newReaction=Reaction([species.name,reacType,'NAN',species.name[1:],'NAN','NAN','NAN',1,0,species.binding_energy,0.0,10000.0])
 				reactionList.append(newReaction)
+		if species.is_bulk_species():
+			newReaction=Reaction([species.name,"THERM",'NAN',species.name[1:],'NAN','NAN','NAN',1,0,species.binding_energy,0.0,10000.0])
+			reactionList.append(newReaction)
 	return reactionList
+
+
+def add_chemdes_reactions(speciesList,reactionList):
+	new_reacs=[]
+	for reaction in reactionList:
+		if reaction.reac_type in ["LH","ER"]:
+			new_reac=copy(reaction)
+			new_reac.reac_type=new_reac.reac_type+"DES"
+			new_reac.reactants[2]=new_reac.reactants[2]+"DES"
+			for i,product in enumerate(new_reac.products):
+				if ("#" in product):
+					new_reac.products[i]=new_reac.products[i][1:]
+				else:
+					if product!="NAN":
+						print("All Langmuir-Hinshelwood and Eley-Rideal reactions should be input with products on grains only.")
+						print("The fraction of products that enter the gas is dealt with by Makerates and UCLCHEM.")
+						print("the following reaction caused this warning")
+						reaction.print()
+			new_reacs.append(new_reac)
+
+	reactionList=reactionList+new_reacs
+	return reactionList
+
+def add_bulk_reactions(speciesList,reactionList):
+	lh_reactions=[x for x in reactionList if "LH" in x.reactants]
+	lh_reactions=lh_reactions+[x for x in reactionList if "LHDES" in x.reactants]
+	new_reactions=[]
+	for reaction in lh_reactions:
+		new_reac=copy(reaction)
+		new_reac.convert_to_bulk()
+		new_reactions.append(new_reac)
+
+	bulk_species=[x for x in speciesList if "@" in x.name]
+	for species in bulk_species:
+		#add individual swapping
+		new_reac_list=[species.name,"BULKSWAP","NAN",species.name.replace("@","#")]
+		new_reac_list=new_reac_list+["NAN","NAN","NAN",1,0,0,0,10000]
+		new_reac=Reaction(new_reac_list)
+		new_reactions.append(new_reac)
+
+		#and the reverse
+		new_reac_list[0]=species.name.replace("@","#")
+		new_reac_list[1]="SURFSWAP"
+		new_reac_list[3]=species.name
+		new_reac=Reaction(new_reac_list)
+		new_reactions.append(new_reac)
+
+	return reactionList+new_reactions
 
 #check reactions to alert user of potential issues including repeat reactions
 #and multiple freeze out routes
@@ -274,8 +453,8 @@ def reaction_check(speciesList,reactionList,freeze_check=True):
 				if i!=j:
 					if reaction1.same_reaction(reaction2):
 						print("\tReactions {0} and {1} are possible duplicates".format(i+1,j+1))
-						print("\t",str(i+1), reaction1.reactants, "-->", reaction1.products)
-						print("\t",str(j+1), reaction2.reactants, "-->", reaction2.products)
+						reaction1.print()
+						reaction2.print()
 						duplicates=True
 						#adjust temperatures so temperature ranges are adjacent
 						if reaction1.temphigh > reaction2.temphigh:
@@ -296,11 +475,11 @@ def make_capitals(fileName):
 
 
 def is_number(s):
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
+	try:
+		float(s)
+		return True
+	except ValueError:
+		return False
 ##########################################################################################
 #3. Functions to write out files necessary for UCLCHEM
 ##########################################################################################
@@ -324,130 +503,144 @@ def write_reactions(fileName, reactionList):
 			reaction.beta=1
 		writer.writerow(reaction.reactants+reaction.products+[reaction.alpha,reaction.beta,reaction.gamma,reaction.templow,reaction.temphigh])
 
-def write_odes_f90(fileName, speciesList, reactionList):
+def write_odes_f90(fileName, speciesList, reactionList,three_phase):
 	output = open(fileName, mode='w')
 	#go through every species and build two strings, one with eq for all destruction routes and one for all formation
-	ydotString=build_ode_string(speciesList,reactionList)
+	ydotString=build_ode_string(speciesList,reactionList,three_phase)
 	output.write(ydotString)
 	output.close()    
 
-def build_ode_string(speciesList, reactionList):
-	odeString=""
-	nSpecies = len(speciesList)
-	nReactions = len(reactionList)
+def build_ode_string(speciesList, reactionList,three_phase):
+	species_names=[]
+	for i, species in enumerate(speciesList):
+		species_names.append(species.name)
+		species.losses=""
+		species.gains=""
+
+	bulk_index=species_names.index("BULK")
+	surface_index=species_names.index("SURFACE")
+	total_swap=""
+
+	for i,reaction in enumerate(reactionList):
+		ODE_BIT=f"+RATE({i+1})"
+		
+		#every body after the first requires a factor of density
+		for body in range(reaction.body_count):
+			ODE_BIT=ODE_BIT+f"*Y({len(speciesList)+1})"
+		
+		#then bring in factors of abundances
+		for species in reaction.reactants:
+			if species in species_names:
+				ODE_BIT+=f"*Y({species_names.index(species)+1})"
+			elif species=="BULKSWAP":
+				ODE_BIT+="*bulkLayersReciprocal"
+			elif species=="SURFSWAP":
+				ODE_BIT+="*totalSwap/safeMantle"
+			elif species in ["DEUVCR","DESCR","DESOH2","ER","ERDES"]:
+				ODE_BIT=ODE_BIT+f"/safeMantle"
+				if species=="DESOH2":
+					ODE_BIT=ODE_BIT+f"*Y({species_names.index('H')+1})"
+			elif ((species in ["THERM"]) and not (three_phase)):
+				ODE_BIT+=f"*Y({len(speciesList)+1})/safeMantle"
+			if "H2FORM" in reaction.reactants:
+				#only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
+				break
+
+		if "LH" in reaction.reactants[2]:
+			if "@" in reaction.reactants[0]:
+				ODE_BIT+="*bulkLayersReciprocal"
+
+
+		#now add to ydot strings for each species
+		for species in reaction.reactants:
+			if species in species_names:
+				#Eley-Rideal reactions take a share of total freeze out rate which is already accounted for
+				#so we add as a loss term to the frozen version of the species rather than the gas version
+				if ("ER" in reaction.reactants) and (not speciesList[species_names.index(species)].is_surface_species()):
+					speciesList[species_names.index("#"+species)].losses+=ODE_BIT
+				else:
+					speciesList[species_names.index(species)].losses+=ODE_BIT
+				if reaction.reactants[1]=="BULKSWAP":
+					total_swap+=ODE_BIT
+		for species in reaction.products:
+			if species in species_names:
+				speciesList[species_names.index(species)].gains+=ODE_BIT
+	
+	ode_string=""
+	if three_phase:
+		ode_string+=truncate_line(f"totalSwap={total_swap[1:]}\n\n")
+	#First get total rate of change of bulk and surface by adding ydots
+	for n,species in enumerate(speciesList):
+		if species.name[0]=="@":
+			speciesList[bulk_index].gains+=f"+YDOT({n+1})"
+		elif species.name[0]=="#":
+			speciesList[surface_index].gains+=f"+YDOT({n+1})"
 
 	for n,species in enumerate(speciesList):
-		lossString = '' ; formString = ''
-		#go through entire reaction list
-		for i,reaction in enumerate(reactionList):
-			
-			
-			#if species appear in reactants, reaction is a destruction route      	
-			if species.name in reaction.reactants:
-				bodyCount=0 #two or more bodies in a reaction mean we multiply rate by density so need to keep track
-				#easy for h2 formation
-				if is_H2_formation(reaction.reactants, reaction.products):
-					lossString += '-2*RATE('+str(i+1)+')*D'
-					continue
-				#multiply string by number of time species appears in reaction. multiple() defined below
-				#so far reaction string is rate(reaction_index) indexs are all +1 for fortran array indexing
-				lossString += '-'+multiple(reaction.reactants.count(species.name))+'RATE('+str(i+1)+')'
-				
-				#now add *Y(species_index) to string for every reactant
-				for reactant in set(reaction.reactants):
-					n_appearances=reaction.reactants.count(reactant)
-					#every species appears at least once in its loss reaction
-					#so we multiply entire loss string by Y(species_index) at end
-					#thus need one less Y(species_index) per reaction
-					if reactant==species.name:
-						bodyCount+=n_appearances
-						if n_appearances > 1:
-							for j,possibleReactants in enumerate(speciesList):
-								if reactant == possibleReactants.name:
-									for appearance in range(1,n_appearances):
-										lossString += '*Y('+str(j+1)+')'
-									continue
-					else:
-						#look through species list and find reactant
-						for j,possibleReactants in enumerate(speciesList):
-							if reactant == possibleReactants.name:
-								for appearance in range(n_appearances):
-									lossString += '*Y('+str(j+1)+')'
-									bodyCount+=1
-								continue
-				#now string is rate(reac_index)*Y(species_index1)*Y(species_index2) may need *D if total rate is 
-				#proportional to density
-				if reaction.reactants.count('FREEZE') > 0 or reaction.reactants.count('DESOH2') > 0:
-					lossString += '*D'
-				for body in range(1,bodyCount):
-					lossString+="*D"				
+		ydot_string=species_ode_string(n,species)
+		ode_string+=ydot_string
 
+	#now add bulk transfer to rate of change of surface species after they've already been calculated
+	if three_phase:
+		ode_string+="!Update surface species for bulk growth, replace surfaceCoverage with alpha_des\n"
+		ode_string+="!Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
 
-			#same process as above but rate is positive for reactions where species is positive
-			if species.name in reaction.products:
-				bodyCount=0 #two or more bodies in a reaction mean we multiply rate by density so need to keep track
+		ode_string+=f"IF (YDOT({surface_index+1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
+		for n,species in enumerate(speciesList):
+			if species.name[0]=="#":
+				bulk_version=species_names.index(species.name.replace("#","@"))
+				ode_string+=f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({bulk_version+1})/safeBulk\n"
+			if species.name[0]=="@":
+				ode_string+=f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({n+1})/safeBulk\n"
+		ode_string+="ELSE\n"
+		for n,species in enumerate(speciesList):
+			if species.name[0]=="@":
+				surface_version=species_names.index(species.name.replace("@","#"))
+				ode_string+=f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({surface_version+1})\n"
+			if species.name[0]=="#":
+				ode_string+=f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({n+1})\n"
+		ode_string+="ENDIF\n"
 
-				if is_H2_formation(reaction.reactants,reaction.products):
-					#honestly H should be index 1 but lets check
-					H_index=speciesList.index(next((x for x in speciesList if x.name=='H')))
-					formString += '+RATE('+str(i+1)+')*Y('+str(H_index+1)+')*D'
-					continue
+		#once bulk transfer has been added, odes for bulk and surface must be updated to account for it
+		ode_string+="!Update total rate of change of bulk and surface for bulk growth\n"
+		ode_string+=species_ode_string(bulk_index,speciesList[bulk_index])
+		ode_string+=species_ode_string(surface_index,speciesList[surface_index])
 
-				#multiply string by number of time species appears in reaction. multiple() defined below
-				#so far reaction string is rate(reaction_index) indexs are all +1 for fortran array indexing
-				formString += '+'+multiple(reaction.products.count(species.name))+'RATE('+str(i+1)+')'
-				
-				#now add *Y(species_index) to string for every reactant						
-				for reactant in set(reaction.reactants):
-					n_appearances=reaction.reactants.count(reactant)
-					for j,possibleReactants in enumerate(speciesList):
-						if reactant == possibleReactants.name:
-							for appearance in range(n_appearances):
-								formString += '*Y('+str(j+1)+')'
-								bodyCount+=1
-							continue
+	return ode_string
 
-				#now string is rate(reac_index)*Y(species_index1)*Y(species_index2) may need *D if total rate is 
-				#proportional to density
-				if reaction.reactants.count('FREEZE') > 0 or reaction.reactants.count('DESOH2') > 0:
-					formString += '*D'
-				for body in range(1,bodyCount):
-					formString+="*D"
-
-		if lossString != '':
-			lossString = '      LOSS = '+lossString+'\n'
-			lossString = truncate_line(lossString)
-			odeString+=lossString
-		if formString != '':
-			formString = '      PROD = '+formString+'\n'
-			formString = truncate_line(formString)
-			odeString+=formString
-		
+def species_ode_string(n,species):
+	if species.name=="SURFACE":
+		print(species.losses)
+		print(n)
+	ydot_string=""
+	if species.losses != '':
+		loss_string = '    LOSS = '+species.losses[1:]+'\n'
+		ydot_string+=loss_string
+	if species.gains != '':
+		prod_string = '    PROD = '+species.gains[1:]+'\n'
+		ydot_string+=prod_string
+	
+	if ydot_string!="":
+		ydot_string+=f"    YDOT({n+1}) = "
 		#start with empty string and add production and loss terms if they exists
-		ydotString=''
-		if formString != '':
-			ydotString += 'PROD'
-			if lossString != '':
-				ydotString += '+'
-		if lossString != '':
-			ydotString += 'Y('+str(n+1)+')*LOSS'
+		if species.gains != '':
+			ydot_string += 'PROD'
+		if species.losses != '':
+			ydot_string += '-LOSS'
+		ydot_string+="\n"
+	else:
+		ydot_string=f"    YDOT({n+1}) = {0.0}\n"
 
-		#if we have prod and/or loss add ydotstring to odes
-		if ydotString!='':
-			ydotString = '      YDOT('+str(n+1)+') = '+ydotString+"\n"
-			ydotString = truncate_line(ydotString)
-			odeString+=ydotString
-		else:
-			ydotString = '      YDOT('+str(n+1)+') = 0.0\n'
-			ydotString = truncate_line(ydotString)
-			odeString+=ydotString
-	return odeString
+	ydot_string = truncate_line(ydot_string)
+	return ydot_string
+
+
 
 #create a file containing length of each list of moleculetypes and then the two lists (gas and grain) of species in each type
 #as  well as fraction that evaporated in each type of event
 def write_evap_lists(openFile,speciesList):
-	grainlist=[];mgrainlist=[];solidList=[];monoList=[];volcList=[]
-	bindEnergyList=[];enthalpyList=[]
+	gasIceList=[];grainlist=[];solidList=[];monoList=[];volcList=[]
+	binding_energygyList=[];enthalpyList=[];bulkList=[];iceList=[]
 
 	for i,species in enumerate(speciesList):
 		if species.name[0]=='#':
@@ -466,65 +659,56 @@ def write_evap_lists(openFile,speciesList):
 					j=speciesList.index(next((x for x in speciesList if x.name==input.upper())))					
 
 			#plus ones as fortran and python label arrays differently
-			mgrainlist.append(i+1)
-			grainlist.append(j+1)
+			grainlist.append(i+1)
+			gasIceList.append(j+1)
 			solidList.append(species.solidFraction)
 			monoList.append(species.monoFraction)
 			volcList.append(species.volcFraction)
-			bindEnergyList.append(species.bindener)
+			iceList.append(i+1)
+			binding_energygyList.append(species.binding_energy)
+			enthalpyList.append(species.enthalpy)
+		elif species.name[0]=="@":
+			j=speciesList.index(next((x for x in speciesList if x.name==species.name[1:]))) 
+			gasIceList.append(j+1)
+			bulkList.append(i+1)
+			iceList.append(i+1)
+			binding_energygyList.append(species.binding_energy)
 			enthalpyList.append(species.enthalpy)
 
-	openFile.write(array_to_string("gasGrainList",grainlist,type="int"))
-	openFile.write(array_to_string("grainList",mgrainlist,type="int"))
+	openFile.write(array_to_string("gasIceList",gasIceList,type="int"))
+	openFile.write(array_to_string("grainList",grainlist,type="int"))
+	#openFile.write(array_to_string("bulkList",bulkList,type="int"))
+	openFile.write(array_to_string("iceList",iceList,type="int"))
+
 	openFile.write(array_to_string("solidFractions",solidList,type="float"))
 	openFile.write(array_to_string("monoFractions",monoList,type="float"))
 	openFile.write(array_to_string("volcanicFractions",volcList,type="float"))
-	openFile.write(array_to_string("bindingEnergy",bindEnergyList,type="float",parameter=False))
+	openFile.write(array_to_string("bindingEnergy",binding_energygyList,type="float",parameter=False))
 	openFile.write(array_to_string("formationEnthalpy",enthalpyList,type="float"))
 
 	return len(grainlist)
 
 # Create the appropriate multiplication string for a given number
 def multiple(number):
-    if number == 1: return ''
-    else: return str(number)+'*'
+	if number == 1: return ''
+	else: return str(number)+'*'
 
-def truncate_line(input, codeFormat='F90', continuationCode=None):
-	lineLength = 72
-	maxlines=300
-	lines=0
+def truncate_line(input_string, codeFormat='F90', continuationCode=None,lineLength = 72):
 	result = ''
 	i=0
 	j=0
-	while i+j<len(input):
-		j+=1
-		if j>lineLength:
-			#important not to break entries so split lines at ,s
-			try:
-				k=input[i+j-16:i+j].index(",")
-			except:
-				try:
-					k=input[i+j-16:i+j].index("*")
-				except:
-					k=input[i+j-16:i+j].index(")")
-			j=j-16+k
-			result+=input[i:i+j]+"&\n    &"
-			i=i+j
-			j=0
-	result+=input[i:i+j]
+	splits=["*",")","+",","]
+	while len(input_string[i:])>lineLength:
+		j=i+lineLength
+		while input_string[j] not in splits:
+			j=j-1
+		result+=input_string[i:j]+"&\n    &"
+		i=j
+	result+=input_string[i:]
 	return result    
 
 
-def is_H2_formation(reactants, products):
-    nReactants = len([species for species in reactants if species != ''])
-    nProducts  = len([species for species in products  if species != ''])
-    if nReactants == 2 and nProducts == 1:
-        if reactants[0] == 'H' and reactants[1] == 'H' and products[0] == 'H2': return True
-    if nReactants == 3 and nProducts == 2:
-        if reactants[0] == 'H' and reactants[1] == 'H' and reactants[2] == '#' and products[0] == 'H2' and products[1] == '#': return True
-    return False
-
-def write_network_file(fileName,speciesList,reactionList):
+def write_network_file(fileName,speciesList,reactionList,three_phase):
 	openFile=open(fileName,"w")
 	openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
 	openFile.write("    INTEGER, PARAMETER :: nSpec={0}, nReac={1}\n".format(len(speciesList),len(reactionList)))
@@ -539,7 +723,8 @@ def write_network_file(fileName,speciesList,reactionList):
 		atoms.append(species.n_atoms)
 
 	speciesIndices=""
-	for element in ["E-","C+","H+","H2","SI+","S+","CL+","CO","HE+","#H","#H2","#N","#O",'#OH']+elementList:
+	for element in ["E-","C+","H+","H2","SI+","S+","CL+","CO","HE+","#H","#H2","#N","#O",'#OH',
+					"SURFACE","BULK"]+elementList:
 		try:
 			species_index=names.index(element)+1
 	
@@ -552,6 +737,10 @@ def write_network_file(fileName,speciesList,reactionList):
 		speciesIndices=truncate_line(speciesIndices)
 	speciesIndices=speciesIndices[:-1]+"\n"
 	openFile.write("    INTEGER, PARAMETER ::"+speciesIndices)
+	if three_phase:
+		openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
+	else:
+		openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .FALSE.\n")
 	openFile.write(array_to_string("    specname",names,type="string"))
 	openFile.write(array_to_string("    mass",masses,type="float"))
 	openFile.write(array_to_string("    atomCounts",atoms,type="int"))
@@ -577,14 +766,32 @@ def write_network_file(fileName,speciesList,reactionList):
 	tmaxs=[]
 	#store important reactions
 	reactionIndices=""
+
 	for i,reaction in enumerate(reactionList):
 		if ("CO" in reaction.reactants) and ("PHOTON" in reaction.reactants):
 			if "O" in reaction.products and "C" in reaction.products:
 				reactionIndices+="nR_CO_hv={0},".format(i+1)
 		if ("C" in reaction.reactants) and ("PHOTON" in reaction.reactants):
 			reactionIndices+="nR_C_hv={0},".format(i+1)
+		if ("H2FORM" in reaction.reactants):
+			reactionIndices+=f"nR_H2Form_CT={i+1},"
+		if (("H" in reaction.reactants) and ("#H" in reaction.reactants)):
+			if "H2" in reaction.products:
+				reactionIndices+=f"nR_H2Form_ERDes={i+1},"
+			elif "#H2" in reaction.products:
+				reactionIndices+=f"nR_H2Form_ER={i+1},"
+		if ((reaction.reactants.count("#H")==2) and ("LH" in reaction.reactants)):
+			reactionIndices+=f"nR_H2Form_LH={i+1},"
+		if ((reaction.reactants.count("#H")==2) and ("LHDES" in reaction.reactants)):
+			reactionIndices+=f"nR_H2Form_LHDes={i+1},"
+		if (("H" in reaction.reactants) and ("FREEZE" in reaction.reactants)):
+			reactionIndices+=f"nR_HFreeze={i+1},"
+		if (("E-" in reaction.reactants) and ("FREEZE" in reaction.reactants)):
+			reactionIndices+=f"nR_EFreeze={i+1},"
+	reactionIndices=reactionIndices[:-1]
 
-	if len(reactionIndices)>50:
+
+	if len(reactionIndices)>60:
 		reactionIndices=reactionIndices[:60]+"&\n&"+reactionIndices[60:]
 	reactionIndices=reactionIndices[:-1]+"\n"
 	openFile.write("    INTEGER, PARAMETER ::"+reactionIndices)
@@ -633,7 +840,10 @@ def write_network_file(fileName,speciesList,reactionList):
 		indices=np.where(reacTypes==reaction_type)[0]
 		if len(indices>1):
 			indices=[indices[0]+1,indices[-1]+1]
-			openFile.write(array_to_string("\t"+list_name,indices,type="int",parameter=True))
+		else:
+			#We still want a dummy array if the reaction type isn't in network
+			indices=[99999,99999]
+		openFile.write(array_to_string("\t"+list_name,indices,type="int",parameter=True))
 	openFile.write("END MODULE network")
 	openFile.close()
 

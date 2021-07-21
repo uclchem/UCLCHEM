@@ -1,9 +1,22 @@
 SHELL = /bin/sh
+################################################################################
+#
+# User Options
+################################################################################
 FC =gfortran
-f2pyFC=gnu95 #this must match FC (ifort=intelem, gfortran=gnu95)
 #FC=ifort
-FFLAGS = -O2 -fPIC
+
+f2pyFC=gnu95 #this must match FC (ifort=intelem, gfortran=gnu95)
+
+#Unforgiving debugging flags
+#FFLAGS =-g -fbacktrace -Wall -fcheck=all
+#Fast optimizing flags
+FFLAGS = -O2 -fPIC -ffree-line-length-0
+
+#Pick a physics module!
 PHYSICS=cloud.f90
+
+###############################################################################
 EXT_SUFFIX = $(shell python3-config --extension-suffix)
 
 ##simple makefile for uclchem
@@ -20,9 +33,9 @@ main: chemistry.o physics.o main.f90 dvode.o defaultparameters.f90 readparameter
 
 python: chemistry.o physics.o wrap.f90 dvode.o defaultparameters.f90
 	python3 -m numpy.f2py -c --fcompiler=${f2pyFC} physics.o dvode.o photoreactions.o surfacereactions.o chemistry.o network.o -m uclchem wrap.f90
-	mv *${EXT_SUFFIX} ../uclchem.so
+	mv *${EXT_SUFFIX} ../Python/uclchem/
 
-chemistry.o: odes.f90 constants.o photoreactions.o surfacereactions.o rates.f90  chemistry.f90 network.o physics.o dvode.o 
+chemistry.o: odes.f90 constants.o network.o photoreactions.o surfacereactions.o rates.f90 chemistry.f90  physics.o dvode.o 
 	${FC} ${FFLAGS} -c chemistry.f90
 
 physics.o: ${PHYSICS} constants.o Makefile
@@ -32,4 +45,4 @@ physics.o: ${PHYSICS} constants.o Makefile
 	${FC} ${FFLAGS} -c $<
 
 clean: 
-	rm *.o *.mod ../uclchem ../uclchem.so
+	rm *.o *.mod ../uclchem ../Python/uclchem/*.so

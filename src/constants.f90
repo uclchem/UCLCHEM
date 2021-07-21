@@ -1,6 +1,5 @@
 MODULE CONSTANTS
    use, intrinsic :: iso_fortran_env, dp=>real64
-
    REAL(dp), parameter :: C  = 2.99792458D+10 !Speed of light in cgs
    REAL(dp), PARAMETER :: K_BOLTZ = 1.38065040D-16 ! Boltzmann constant cgs
    REAL(dp), PARAMETER :: HP = 6.62606896D-27 !Planck constant in cgs

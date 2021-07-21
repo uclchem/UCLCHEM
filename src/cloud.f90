@@ -71,17 +71,13 @@ CONTAINS
                 write(*,*) "Collapse must be 0 or 1 for cloud.f90"
         END SELECT
 
-        !Catch bad choices of switch and collapse to stop infinite runs.
-        IF (switch .eq. 1 .and. collapse .gt. 1) THEN
-            write(*,*) "Switch must be 0 for BE collapse, changing to stop at finalTime"
-            write(*,*) "Tfin = ",finalTime*SECONDS_PER_YEAR, " years"
-            switch=0
-        END IF
 
         !calculate initial column density as distance from core edge to current point * density
         DO dstep=1,points
             coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
         END DO
+          !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
+        av= baseAv +coldens/1.6d21
     END SUBROUTINE
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -90,13 +86,13 @@ CONTAINS
     !but the integrator itself chooses an integration timestep.                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updateTargetTime
-        IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
+        IF (timeInYears .gt. 0.99d6) THEN !code in years for readability, targetTime in s
+            targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
+        ELSE  IF (timeInYears .gt. 0.99d5) THEN
             targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
-        ELSE  IF (timeInYears .gt. 1.0d5) THEN
-            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1.0d4) THEN
+        ELSE IF (timeInYears .gt. 0.99d4) THEN
             targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1000) THEN
+        ELSE IF (timeInYears .gt. 999) THEN
             targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 0.0) THEN
             targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR
@@ -131,6 +127,7 @@ CONTAINS
             gasTemp(dstep)=gasTemp(dstep)**(-0.5)
             gasTemp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime/SECONDS_PER_YEAR)**tempb(tempindx))*gasTemp(dstep))
         END IF
+        dustTemp=gasTemp
     END SUBROUTINE updatePhysics
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -141,15 +138,16 @@ CONTAINS
     SUBROUTINE sublimation(abund)
         DOUBLE PRECISION :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
-
-        IF (instantSublimation .eq. 1) THEN
-            instantSublimation=0
-            CALL totalSublimation(abund)
-        ELSE IF (coflag .ne. 2) THEN
-            IF (gasTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
-            IF (gasTemp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
-            IF (gasTemp(dstep) .gt. codestemp(tempindx)) coflag=1
-            CALL thermalEvaporation(abund)
+        IF (.not. THREE_PHASE) THEN
+            IF (instantSublimation .eq. 1) THEN
+                instantSublimation=0
+                CALL totalSublimation(abund)
+            ELSE IF (coflag .ne. 2) THEN
+                IF (gasTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
+                IF (gasTemp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
+                IF (gasTemp(dstep) .gt. codestemp(tempindx)) coflag=1
+                CALL thermalEvaporation(abund)
+            END IF
         END IF
     END SUBROUTINE sublimation
 
@@ -176,12 +174,11 @@ CONTAINS
 
     SUBROUTINE thermalEvaporation(abund)
     DOUBLE PRECISION :: abund(nspec+1,points)
-    INTEGER :: i
     INTENT(INOUT) :: abund
     !Evaporation is based on Viti et al. 2004. A proportion of the frozen species is released into the gas phase
     !in specific events. These events are activated by flags (eg solidflag) which can be set in physics module.
     !The species evaporated are in lists, created by Makerates and based on groupings. see the viti 2004 paper.
-        IF (sum(abund(grainList,dstep)) .gt. 1d-30) THEN
+        IF (sum(abund(iceList,dstep)) .gt. 1d-30) THEN
             !Solid Evap
             IF (solidflag .eq. 1) THEN
                 CALL partialSublimation(solidFractions,abund)
@@ -209,15 +206,15 @@ CONTAINS
         DOUBLE PRECISION :: abund(nspec+1,points)
         DOUBLE PRECISION :: fractions(:)
 
-        abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+fractions*abund(grainList,dstep)
-        abund(grainList,dstep)=(1.0-fractions)*abund(grainList,dstep)
+        abund(gasiceList,dstep)=abund(gasiceList,dstep)+fractions*abund(iceList,dstep)
+        abund(iceList,dstep)=(1.0-fractions)*abund(iceList,dstep)
 
     END SUBROUTINE partialSublimation
 
     SUBROUTINE totalSublimation(abund)
         DOUBLE PRECISION :: abund(nspec+1,points)
-        abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
-        abund(grainList,dstep)=1d-30
+        abund(gasiceList,dstep)=abund(gasiceList,dstep)+abund(iceList,dstep)
+        abund(iceList,dstep)=1d-30
     END SUBROUTINE totalSublimation
 
     SUBROUTINE bindingEnergyEvap(abund)
@@ -229,15 +226,15 @@ CONTAINS
         double precision en,newm,expdust,freq,kevap
         integer speci
         !mono evaporation at the binding energy of each species
-        DO i=lbound(grainList,1),ubound(grainList,1)
-            speci=grainList(i)
+        DO i=lbound(iceList,1),ubound(iceList,1)
+            speci=iceList(i)
             en=bindingEnergy(i)*K_BOLTZ_SI
             expdust=bindingEnergy(i)/gasTemp(dstep)
             newm = mass(speci)*1.66053e-27
             freq = dsqrt((2*(SURFACE_SITE_DENSITY)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)
             IF (kevap .ge. 0.99) THEN
-                abund(gasGrainList(i),dstep)=abund(gasGrainList(i),dstep)+(monoFracCopy(i)*abund(speci,dstep))
+                abund(gasiceList(i),dstep)=abund(gasiceList(i),dstep)+(monoFracCopy(i)*abund(speci,dstep))
                 abund(speci,dstep)=(1.0-monoFracCopy(i))*abund(speci,dstep)
                 monoFracCopy(i)=0.0
             END IF 

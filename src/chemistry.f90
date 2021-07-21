@@ -30,25 +30,26 @@ IMPLICIT NONE
     
     !Option column output
     character(LEN=15),ALLOCATABLE :: outSpecies(:)
-    logical :: columnOutput=.False.,fullOutput=.False.
+    LOGICAL :: columnOutput=.False.,fullOutput=.False.
     INTEGER :: nout
     INTEGER, ALLOCATABLE :: outIndx(:)
 
 
     !DLSODE variables    
     INTEGER :: ITASK,ISTATE,NEQ,MXSTEP
-    REAL(dp) :: reltol
+    REAL(dp) :: reltol,abstol_factor
     REAL(dp), ALLOCATABLE :: abstol(:)
     TYPE(VODE_OPTS) :: OPTIONS
     !initial fractional elemental abudances and arrays to store abundances
-    REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,fli,fna,fpah,f15n,f13c,f18O
-    REAL(dp) :: h2col,cocol,ccol
-    REAL(dp),ALLOCATABLE :: abund(:,:),mantle(:)
+    REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,fli,fna,fpah,f15n,f13c,f18O,metallicity
+    REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
+    REAL(dp),ALLOCATABLE :: abund(:,:)
     
     !Variables controlling chemistry
-    REAL(dp) :: radfield,zeta,fr,omega,grainArea,cion,h2form,h2dis,lastTemp=0.0
+    LOGICAL :: PARAMETERIZE_H2FORM=.True.
+    REAL(dp) :: radfield,zeta,fr,omega,grainArea,cion,h2dis,lastTemp=0.0
     REAL(dp) :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
-    REAL(dp), ALLOCATABLE ::vdiff(:)
+    
 
     REAL(dp) :: turbVel=1.0
 
@@ -57,21 +58,17 @@ CONTAINS
 !This gets called immediately by main so put anything here that you want to happen before the time loop begins, reader is necessary.
     SUBROUTINE initializeChemistry
         NEQ=nspec+1
-        IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff,mantle)
-        ALLOCATE(abund(NEQ,points),vdiff(SIZE(grainList)))
+        IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff)
+        ALLOCATE(abund(NEQ,points),vdiff(SIZE(iceList)))
         CALL fileSetup
         !if this is the first step of the first phase, set initial abundances
         !otherwise reader will fix it
         IF (readAbunds.eq.0) THEN
             !ensure abund is initially zero
             abund= 0.
-            !As default, have half in molecular hydrogen and half in atomic hydrogen
-            abund(nh2,:) = 0.5*(1.0e0-fh)
-            abund(nh,:) = fh
 
-            !some elements default to atoms     
-            abund(nd,:)=fd
-            abund(nhe,:) = fhe                       
+            !Start by filling all metallicity scaling elements
+            !neutral atoms  
             abund(no,:) = fo  
             abund(nn,:) = fn               
             abund(nmg,:) = fmg
@@ -81,18 +78,10 @@ CONTAINS
             abund(nli,:) = fli
             abund(npah,:) = fpah
 
-            !others to ions
+            !default to ions
             abund(nsx,:) = fs
             abund(nsix,:) = fsi                
             abund(nclx,:) = fcl 
-            
-            !isotopes
-            abund(n18o,:) = f18o  
-            abund(n15n,:) = f15n           
-            abund(n13c,:) = f13c    
-            
-            abund(nspec+1,:)=density      
-
             !Decide how much carbon is initiall ionized using parameters.f90
             SELECT CASE (ion)
                 CASE(0)
@@ -105,27 +94,43 @@ CONTAINS
                     abund(nc,:)=1.d-10
                     abund(ncx,:)=fc
             END SELECT
+
+            !isotopes
+            abund(n18o,:) = f18o  
+            abund(n15n,:) = f15n           
+            abund(n13c,:) = f13c    
+
             abund(nspec,:)=abund(ncx,:)+abund(nsix,:)+abund(nsx,:)+abund(nclx,:)
+
+            abund=abund*metallicity
+
+            !As default, have half in molecular hydrogen and half in atomic hydrogen
+            abund(nh2,:) = 0.5*(1.0e0-fh)
+            abund(nh,:) = fh
+            abund(nd,:)=fd
+            abund(nhe,:) = fhe  
+            abund(nspec+1,:)=density   
 
         ENDIF
         !Initial calculations of diffusion frequency for each species bound to grain
         !and other parameters required for diffusion reactions
-        DO  i=lbound(grainList,1),ubound(grainList,1)
-            j=grainList(i)
+        DO  i=lbound(iceList,1),ubound(iceList,1)
+            j=iceList(i)
             vdiff(i)=VDIFF_PREFACTOR*bindingEnergy(i)/mass(j)
             vdiff(i)=dsqrt(vdiff(i))
-        END DO
-
-        !h2 formation rate initially set
-        h2form = h2FormRate(gasTemp(dstep),dustTemp(dstep))
-        ALLOCATE(mantle(points))
-        DO l=1,points
-            mantle(l)=sum(abund(grainList,l))
         END DO
         
         !DVODE SETTINGS
         ISTATE=1;;ITASK=1
-        reltol=1e-4;MXSTEP=10000
+        IF (THREE_PHASE) THEN
+            reltol=1d-12
+            abstol_factor=1.0d-20
+            MXSTEP=10000
+        else
+            reltol=1d-4
+            abstol_factor=1.0d-14
+            MXSTEP=10000
+        END IF
 
         IF (.NOT. ALLOCATED(abstol)) THEN
             ALLOCATE(abstol(NEQ))
@@ -138,8 +143,7 @@ CONTAINS
 !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     SUBROUTINE fileSetup
         IMPLICIT NONE
-        integer i,j,l,m
-        REAL(dp) junktemp
+        integer l
 
         INQUIRE(UNIT=11, OPENED=columnOutput)
         IF (columnOutput) write(11,333) specName(outIndx)
@@ -165,8 +169,6 @@ CONTAINS
                 REWIND(7)
                 abund(nspec+1,l)=density(l)
             END DO
-
-            7010 format((999(1pe15.5,:,',')))    
         END IF
     END SUBROUTINE fileSetup
 
@@ -204,25 +206,22 @@ CONTAINS
     !Called every time/depth step and updates the abundances of all the species
         !allow option for dens to have been changed elsewhere.
         IF (collapse .ne. 1) abund(nspec+1,dstep)=density(dstep)
-        !y is at final value of previous depth iteration so set to initial values of this depth with abund
-        !reset other variables for good measure        
-        h2form = h2FormRate(gasTemp(dstep),dustTemp(dstep))
-    
-        !Sum of abundaces of all mantle species. mantleindx stores the indices of mantle species.
-        mantle(dstep)=sum(abund(grainList,dstep))
-        !evaluate co and h2 column densities for use in rate calculations
-        !sum column densities of each point up to dstep. boxlength and dens are pulled out of the sum as common factors  
+
+        !First sum the total column density over all points further towards edge of cloud
         IF (dstep.gt.1) THEN
-            h2col=(sum(abund(nh2,:dstep-1)*density(:dstep-1))+0.5*abund(nh2,dstep)*density(dstep))*(cloudSize/real(points))
-            cocol=(sum(abund(nco,:dstep-1)*density(:dstep-1))+0.5*abund(nco,dstep)*density(dstep))*(cloudSize/real(points))
-            ccol=(sum(abund(nc,:dstep-1)*density(:dstep-1))+0.5*abund(nc,dstep)*density(dstep))*(cloudSize/real(points))
+            h2ColToCell=(sum(abund(nh2,:dstep-1)*density(:dstep-1))+0.5*abund(nh2,dstep)*density(dstep))*(cloudSize/real(points))
+            coColToCell=(sum(abund(nco,:dstep-1)*density(:dstep-1))+0.5*abund(nco,dstep)*density(dstep))*(cloudSize/real(points))
+            cColToCell=(sum(abund(nc,:dstep-1)*density(:dstep-1))+0.5*abund(nc,dstep)*density(dstep))*(cloudSize/real(points))
 
         ELSE
-            h2col=0.5*abund(nh2,dstep)*density(dstep)*(cloudSize/real(points))
-            cocol=0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
-            ccol=0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
+            h2ColToCell=0.0
+            coColToCell=0.0
+            cColToCell=0.0
         ENDIF
-
+        !then add half the column density of the current point to get average in this "cell"
+        h2Col=h2ColToCell+0.5*abund(nh2,dstep)*density(dstep)*(cloudSize/real(points))
+        coCol=coColToCell+0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
+        cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
         !call the actual ODE integrator
         CALL integrate
 
@@ -237,8 +236,7 @@ CONTAINS
             !reset parameters for DVODE
             ITASK=1 !try to integrate to targetTime
             ISTATE=1 !pretend every step is the first
-            reltol=1e-4 !relative tolerance effectively sets decimal place accuracy
-            abstol=1.0d-14*abund(:,dstep) !absolute tolerances depend on value of abundance
+            abstol=abstol_factor*abund(:,dstep) !absolute tolerances depend on value of abundance
             WHERE(abstol<1d-30) abstol=1d-30 ! to a minimum degree
 
             !get reaction rates for this iteration
@@ -248,9 +246,12 @@ CONTAINS
             CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
             SELECT CASE(ISTATE)
                 CASE(-1)
+                    write(*,*) "ISTATE -1: MAXSTEPS will be increased"
                     !More steps required for this problem
-                    MXSTEP=MXSTEP*2    
+                    MXSTEP=MXSTEP*2   
+                    targetTime=currentTime*1.01 
                 CASE(-2)
+                    write(*,*) "ISTATE -2: Tolerances too small"
                     !Tolerances are too small for machine but succesful to current currentTime
                     abstol=abstol*10.0
                 CASE(-3)
@@ -261,9 +262,14 @@ CONTAINS
                 CASE(-4)
                     !Successful as far as currentTime but many errors.
                     !Make targetTime smaller and just go again
-                    targetTime=currentTime+10.0*SECONDS_PER_YEAR
-                CASE(-5)
+                    write(*,*) "ISTATE -4 - shortening step"
                     targetTime=currentTime*1.01
+                CASE(-5)
+                    timeInYears=currentTime/SECONDS_PER_YEAR
+                    write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
+                    WHERE(abund<1.0d-30) abund=1.0d-30
+                    targetTime=currentTime*1.01
+                    
             END SELECT
         END DO                   
     END SUBROUTINE integrate
@@ -271,7 +277,7 @@ CONTAINS
     !This is where reacrates subroutine is hidden
     include 'rates.f90'
 
-    SUBROUTINE  F (NEQ, T, Y, YDOT)
+    SUBROUTINE F (NEQ, T, Y, YDOT)
         INTEGER, PARAMETER :: WP = KIND(1.0D0)
         INTEGER NEQ
         REAL(WP) T
@@ -282,15 +288,30 @@ CONTAINS
         !Set D to the gas density for use in the ODEs
         D=y(NEQ)
         ydot=0.0
+    
+        !changing abundances of H2 and CO can causes oscillation since their rates depend on their abundances
+        !recalculating rates as abundances are updated prevents that.
+        !thus these are the only rates calculated each time the ODE system is called.
+        cocol=coColToCell+0.5*Y(nco)*D*(cloudSize/real(points))
+        h2col=h2ColToCell+0.5*Y(nh2)*D*(cloudSize/real(points))
+        h2dis=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel) !H2 photodissociation
+        rate(nrco)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
+
+        !recalculate coefficients for ice processes
+        safeMantle=MAX(1d-30,Y(nSurface))
+        safeBulk=MAX(1d-30,Y(nBulk))
+        bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
+        surfaceCoverage=bulkGainFromMantleBuildUp()
+
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         INCLUDE 'odes.f90'
 
         !H2 formation should occur at both steps - however note that here there is no 
         !temperature dependence. y(nh) is hydrogen fractional abundance.
-        ydot(nh)  = ydot(nh) - 2.0*( h2form*y(nh)*D - h2dis*y(nh2) )
+        ydot(nh)  = ydot(nh) + 2.0*(h2dis*y(nh2) ) !- 2.0*h2form*y(nh)*D
         !                             h2 formation - h2-photodissociation
-        ydot(nh2) = ydot(nh2) + h2form*y(nh)*D - h2dis*y(nh2)
+        ydot(nh2) = ydot(nh2) - h2dis*y(nh2) !+ h2form*y(nh)*D 
         !                       h2 formation  - h2-photodissociation
         ! get density change from physics module to send to DLSODE
         IF (collapse .eq. 1) ydot(NEQ)=densdot(y(NEQ))
@@ -303,7 +324,6 @@ CONTAINS
         write(79,*) "dens",density(dstep)
         write(79,*) "density in integration array",abund(nspec+1,dstep)
         write(79,*) "Av", av(dstep)
-        write(79,*) "Mantle", mantle(dstep)
         write(79,*) "Temp", gasTemp(dstep)
         DO i=1,nreac
             if (rate(i) .ge. huge(i)) write(79,*) "Rate(",i,") is potentially infinite"

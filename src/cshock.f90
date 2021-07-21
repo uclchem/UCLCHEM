@@ -22,7 +22,7 @@ MODULE physics
     !variables either controlled by physics or that user may wish to change    
     double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime
     double precision :: cloudSize,rout,rin,baseAv,bc,tstart,maxTemp
-    double precision, allocatable :: av(:),coldens(:),temp(:),density(:)
+    double precision, allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:)
 
     character(2) ::filename
     character(1)  ::densint
@@ -54,8 +54,8 @@ CONTAINS
         DOUBLE PRECISION :: v01,g1,g2
 
         !Reset variables for python wrap.
-        IF (ALLOCATED(av)) deallocate(av,coldens,temp,density)
-        allocate(av(points),coldens(points),temp(points),density(points))  
+        IF (ALLOCATED(av)) deallocate(av,coldens,gasTemp,density,dustTemp)
+        allocate(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points))  
         coflag=0 !should reset sputtering
         driftVel=0.0
         zn0=0.0
@@ -78,8 +78,8 @@ CONTAINS
         ELSE
             density=initialDens
         ENDIF 
-        temp=initialTemp
-
+        gasTemp=initialTemp
+        dustTemp=gasTemp
 
         !calculate initial column density as distance from core edge to current point * density
         DO dstep=1,points
@@ -267,20 +267,21 @@ CONTAINS
             !temperature change as shock evolves
             IF (timeInYears .gt. 0.0) THEN
                 tn(dstep)=initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
-                temp(dstep)=tn(dstep)
+                gasTemp(dstep)=tn(dstep)
                 ti(dstep)=tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ_CGS))
                 tempi=ti(dstep)
 
-                IF ((temp(dstep) .gt. coolTemp) .AND. (manCoolTemp .eq. 1)) THEN
+                IF ((gasTemp(dstep) .gt. coolTemp) .AND. (manCoolTemp .eq. 1)) THEN
                     postShock = 1
                 END IF
             ENDIF
 
-            IF ((temp(dstep) .lt. coolTemp) .AND. (phase .eq. 2) .AND. (postShock .eq. 1)) THEN
-                temp(dstep) = coolTemp
+            IF ((gasTemp(dstep) .lt. coolTemp) .AND. (phase .eq. 2) .AND. (postShock .eq. 1)) THEN
+                gasTemp(dstep) = coolTemp
             END IF
             
         ENDIF
+        dustTemp=gasTemp
     END SUBROUTINE updatePhysics
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -293,7 +294,7 @@ CONTAINS
         INTENT(INOUT) :: abund
 
         IF (coflag .ne. 1 .and. phase .eq. 2) THEN
-            IF (temp(dstep) .gt. CODES_TEMP) THEN
+            IF (gasTemp(dstep) .gt. CODES_TEMP) THEN
                 coflag=1
                 abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
                 abund(grainList,dstep)=1d-30
@@ -368,7 +369,7 @@ CONTAINS
         DOUBLE PRECISION :: sputterRate,abundChangeFrac,totalMantle
         INTEGER :: iSpec
         !Constant relating mass and speed of projectile to energy
-        sConst=(driftVel*driftVel*km*km)/(2.0*temp(dstep)*K_BOLTZ_CGS)
+        sConst=(driftVel*driftVel*km*km)/(2.0*gasTemp(dstep)*K_BOLTZ_CGS)
         sConst=sqrt(sConst)
 
         !loop over projectile species and get rates of change of mantle for each, summing them
@@ -418,7 +419,7 @@ CONTAINS
 
 
         !Lower limit is xth in Jimenez-Serra et al. 2008
-        lowerLimit=sqrt(epso*iceBindingEnergy/(eta*K_BOLTZ_CGS*temp(dstep)))
+        lowerLimit=sqrt(epso*iceBindingEnergy/(eta*K_BOLTZ_CGS*gasTemp(dstep)))
 
         !Upper limit is just where the integrand goes to zero
         upperLimit=iceYieldIntegralLimit(lowerLimit,projectileMass)
@@ -428,7 +429,7 @@ CONTAINS
             !first get integral from Eq B.1 including 1/s factor
             iceYieldRate=trapezoidIntegrate(iceYieldIntegrand,lowerLimit,upperLimit,projectileMass)/s
             !multiply through by constants
-            iceYieldRate=iceYieldRate*grainRadius*grainRadius*sqrt(8.0*K_BOLTZ_CGS*temp(dstep)*pi/projectileMass)
+            iceYieldRate=iceYieldRate*grainRadius*grainRadius*sqrt(8.0*K_BOLTZ_CGS*gasTemp(dstep)*pi/projectileMass)
             !need projectile number density
             iceYieldRate=iceYieldRate*projectileDensity
         ELSE
@@ -454,7 +455,7 @@ FUNCTION iceYieldIntegrand(x,projectileMass)
       s=sConst*sqrt(projectileMass)
 
       !epsilon is calculated from inmpact energy (Ep)
-      eps=(x**2)*K_BOLTZ_CGS*temp(dstep)
+      eps=(x**2)*K_BOLTZ_CGS*gasTemp(dstep)
       !and some other factors
       eps=eta*eps/iceBindingEnergy
       !this yield is for ice averaged over all angles. There's a different one for cores (Appendix B Jimenez-Serra 2008)

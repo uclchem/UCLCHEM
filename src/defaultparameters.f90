@@ -1,6 +1,6 @@
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!Physical Conditions and Initial Abundances
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Physical Conditions
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Initial physics variables and final  values. for temp, density and time
 initialTemp=10.0;maxTemp=300
@@ -19,9 +19,9 @@ fr=1.0;
 rout=0.05;rin=0;baseAv=2.0;points=1
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Behavioural switches
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !switch (0/1) -> finish model run at (finalTime/finalDens)
 switch=0
 
@@ -53,23 +53,45 @@ ion=2
 
 !cloud module specific variable for phase 2, temp profile depends on mass of star
 !Tempindx selects mass: 1=1Msol,2=5,3=10M,4=15M,5=25M,6=60M
-tempindx=3
+tempIndx=3
 
 
 !cshock module specific variable, uncomment or comment as  needed
 vs=40.0
 
-!initial fractional abundances of elements(from Asplund et al. 2009 ARAA table 1 -SOLAR)
-!note fh is fraction of H initially in H atoms. Total H is always 1.
-fh=0.5;fhe = 0.1;fc  = 2.6d-04;fo  = 4.6d-04;fn  = 6.1d-05
-fs  = 1.318d-05;fmg = 3.981d-05;fsi = 1.0d-07;fcl = 3.162d-07;
-fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Initial Abundances
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!You can scale the abundances of all elements heavier than He by this factor
+metallicity=1.0
+
+!Below we have some initial elemental abundances which are then scaled by the metallicty above
+! fh is fraction of H initially in H atoms. Total H is always 1.
+
+
+! initial fractional abundances of elements(from Jenkins et al. 2009 Table 4)
+! We use the heavily depleted case as we expect most UCLCHEM models to treat gas where
+! dust formation has occured and elemets are depleted.
+fh=0.5;fhe = 0.1;fc  = 1.77d-04;fo  = 3.34d-04;fn  = 6.18d-05
+fs  = 3.51d-6;fmg = 2.256d-07;fsi = 1.78d-06;fcl = 3.39d-08;
+fp=7.78d-08 !ffe=2.01d-7; 
+ff = 3.6d-08 !fp depleted 1/100 of solar from Asplund 2009
+
+
+! !initial fractional abundances of elements(from Asplund et al. 2009 ARAA table 1 -SOLAR)
+! !note fh is fraction of H initially in H atoms. Total H is always 1.
+! fh=0.5;fhe = 0.1;fc  = 2.6d-04;fo  = 4.6d-04;fn  = 6.1d-05
+! fs  = 1.318d-05;fmg = 3.981d-05;fsi = 1.0d-07;fcl = 3.162d-07;
+! fp=2.57d-09 ; ff = 3.6d-08 !fp depleted 1/100 of solar
 
 ! These elements are not typically used. We do not recommend any particular value
 fd=0.0;fli=0.0;fna=0.0;fpah=0.0;f15n=0.0;f13c=0.0;f18O=0.0
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !Input and output Files
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !A full output of abundances is written by default. Additionally, name species here for 
 !a columnated output of time,density,temperature and abundances of those species
@@ -85,7 +107,7 @@ writeStep=1
 !If readAbund=0, final abundances are written to abundFile
 abundFile="output/start.dat"
 !Full output written to outputFlie
-outputFile="output/full2.dat"
+outputFile="output/full.dat"
 !columnated output of time,dens,temp and outSpecies written to column file
 columnFile='output/column.dat'
 

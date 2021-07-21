@@ -1,0 +1,8 @@
+.so
+.o
+.mod
+src/*.o
+src/*.mod
+examples/test-output/*
+examples/*.png
+Python/uclchem/*.so

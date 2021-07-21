@@ -1,6 +1,8 @@
-# Photoreactions & H2 Formation
-Updated H2 Formation to Cazaux & Tielens 2004 formulism ahead of major grain update
-C photoionization, H2 self-shielding and CO self-shielding treatments brought over from UCLPDR
+# ODE fixes
+Improved ODEs and fixes to old bugs.
+ - ER reactions are a loss term in the ODE of surface version of the gas phase reactant rather than the gas. This naturally branches the freeze out rate across the ER reactions and standard freeze out.
+ - LH reactions are fixed
+ - mantle no longer appears in any rate, if a species abundance appears in an ODE it is now only in odes.f90
 
-#Reaction Temperature Bounds
-Reactions can now be duplicated (same reactants and products) with different rates and temperature bounds. UCLCHEM will then use the correct rate for the current temperature.
+# Bulk
+Swapping and transfer are improved by changes to ODE. Full ydot of all surface species is first calculated and then used to get a total rate of change of surface. This is then used to calculate transfer.

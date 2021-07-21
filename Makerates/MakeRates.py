@@ -11,17 +11,28 @@ from Functions import *
 import os
 
 
-reactionFile = 'inputFiles/umist12-ucledit.csv'
-reactionFile_grain = 'inputFiles/default_grain_network.csv'
+###################################################################################################
+# USER OPTIONS
+###################################################################################################
+
+database_reaction_file = "inputFiles/umist12-ucledit.csv"
+database_reaction_type="UMIST"
+
+custom_reaction_file = 'inputFiles/default_grain_network.csv'
+
+
 speciesFile = 'inputFiles/default_species.csv'
 
-therm_flag=True
+three_phase=False
 
+
+
+#################################################################################################
 if not os.path.exists('outputFiles'):
     os.makedirs('outputFiles')
 
-make_capitals(reactionFile)
-make_capitals(reactionFile_grain)
+make_capitals(database_reaction_file)
+make_capitals(custom_reaction_file)
 make_capitals(speciesFile)
 
 print('\n################################################')
@@ -35,10 +46,19 @@ speciesList=remove_duplicate_species(speciesList)
 # Read the reactants, products, Arrhenius equation parameters and measurement labels for each reaction
 # IF the reaction involves species in our Species List
 # Store user reactions (grain file) that are filtered out in list to write out
-nReactions1, reactions1, dropped_reactions = read_reaction_file(reactionFile, speciesList,'UMIST')
-nReactions2, reactions2, dropped_reactions = read_reaction_file(reactionFile_grain,speciesList,'UCL')
+nReactions1, reactions1, dropped_reactions = read_reaction_file(database_reaction_file, speciesList,database_reaction_type)
+nReactions2, reactions2, dropped_reactions = read_reaction_file(custom_reaction_file,speciesList,'UCL')
 reactionList=reactions1+reactions2
-reactionList=add_desorb_reactions(speciesList,reactionList,therm_flag=therm_flag)
+
+if three_phase:
+	speciesList=create_bulk_species(speciesList)
+
+
+#Need additional grain reactions including non-thermal desorption and chemically induced desorption
+reactionList=add_desorb_reactions(speciesList,reactionList)
+reactionList=add_chemdes_reactions(speciesList,reactionList)
+if three_phase:
+	reactionList=add_bulk_reactions(speciesList,reactionList)
 
 #Keep only the species that are involved in the final reaction list
 print('\nRemoving unused species...')
@@ -63,12 +83,17 @@ speciesList.sort(key=lambda x: int(x.mass))
 
 speciesList.append(Species(["E-",0,0,0,0,0,0]))
 speciesList[-1].n_atoms=1
+
 #check reactions to see if there are potential problems
 print("Checking reactions...")
 reaction_check(speciesList,reactionList)
 
 
 reactionList=sorted(reactionList,key=lambda x: x.reac_type)
+
+with open("reac_check","w") as f:
+	for i,reaction in enumerate(reactionList):
+		f.write(f"{i+1} {reaction.changes_total_mantle()} {reaction.changes_surface_count()}\n")
 
 print('\n################################################')
 print('Checks complete, writing output files')
@@ -90,12 +115,12 @@ print('\tFinal Reaction File:',filename)
 # Write the ODEs in the appropriate language format
 print('Writing system of ODEs in F95 format...')
 filename = 'outputFiles/odes.f90'
-write_odes_f90(filename, speciesList, reactionList)
+write_odes_f90(filename, speciesList, reactionList,three_phase)
 print('\tFinal ODE file:',filename)
 
 print('Writing Network File...')
 filename= 'outputFiles/network.f90'
-write_network_file(filename,speciesList,reactionList)
+write_network_file(filename,speciesList,reactionList,three_phase)
 print('\tFinal Network file:',filename)
 
 ngrain=0

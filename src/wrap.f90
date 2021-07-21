@@ -17,7 +17,6 @@ CONTAINS
         ! call the dictionary_parser function in order to read the dictionary of parameters
         INCLUDE 'defaultparameters.f90'
         CALL dictionary_parser(dictionary, outSpeciesIn)
-
         CALL solveAbundances
         
         !close outputs to attempt to force flush
@@ -28,7 +27,7 @@ CONTAINS
 
     SUBROUTINE run_model_for_abundances(dictionary, outSpeciesIn,abundance_out)
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
-        DOUBLE PRECISION :: abundance_out(2)
+        DOUBLE PRECISION :: abundance_out(50)
         !f2py intent(in) dictionary,outSpeciesIn
         !f2py intent(out) abundance_out
 
@@ -46,8 +45,34 @@ CONTAINS
         close(11)
         close(7)
 
-        abundance_out=abund(outIndx,1)
+        CALL solveAbundances
+        abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
+
     END SUBROUTINE run_model_for_abundances
+
+
+    SUBROUTINE get_rates(dictionary,abundancesIn,rateIndxs,speciesRates)
+        CHARACTER(LEN=*) :: dictionary
+        DOUBLE PRECISION :: abundancesIn(500),speciesRates(500)
+        INTEGER :: speciesIndx,rateIndxs(500)
+        !f2py intent(in) dictionary,abundancesIn
+        !f2py intent(out) :: speciesRates
+
+        INCLUDE 'defaultparameters.f90'
+        CALL dictionary_parser(dictionary, "")
+        CALL initializePhysics
+        CALL initializeChemistry
+        dstep=1
+        abund(:nspec,1)=abundancesIn(:nspec)
+        call updatePhysics
+        currentTime=0.0
+        targetTime=0.0
+        call updateChemistry
+
+        CALL calculateReactionRates
+        speciesRates=rate(rateIndxs)
+
+    END SUBROUTINE get_rates
 
     SUBROUTINE solveAbundances()
         CALL initializePhysics
@@ -166,6 +191,8 @@ CONTAINS
                 CASE('crdesorb')
                     READ(inputValue,*) crdesorb
                 CASE('uvdesorb')
+                    READ(inputValue,*) uvdesorb
+                CASE('thermdesorb')
                     READ(inputValue,*) uvdesorb
                 CASE('instantSublimation')
                     READ(inputValue,*) instantSublimation
