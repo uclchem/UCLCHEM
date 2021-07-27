@@ -36,7 +36,8 @@ SUBROUTINE calculateReactionRates
     !Desorption due to energy released by H2 Formations
     idx1=desoh2Reacs(1)
     idx2=desoh2Reacs(2)
-    IF (desorb .eq. 1 .and. h2desorb .eq. 1 .and. gama(j) .le. ebmaxh2) THEN
+    IF ((desorb .eq. 1) .and. (h2desorb .eq. 1) .and. (gama(j) .le. ebmaxh2) &
+    & .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
         !Epsilon is efficieny of this process, number of molecules removed per event
         !h2form is formation rate of h2, dependent on hydrogen abundance. 
         rate(idx1:idx2) = epsilon*h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
@@ -47,7 +48,7 @@ SUBROUTINE calculateReactionRates
     idx1=descrReacs(1)
     idx2=descrReacs(2)
     IF ((desorb .eq. 1) .and. (crdesorb .eq. 1) &
-        &.and. (gama(j) .le. ebmaxcr)) THEN
+    &.and. (gama(j) .le. ebmaxcr) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
         !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
         !as iron nuclei are main cause of CR heating.
         !GRAIN_SURFACEAREA_PER_H is the total surfaace area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
@@ -60,7 +61,8 @@ SUBROUTINE calculateReactionRates
     !Desorption due to UV, partially from ISRF and partially from CR creating photons
     idx1=deuvcrReacs(1)
     idx2=deuvcrReacs(2)
-    IF ((desorb .eq. 1) .and. (uvdesorb .eq. 1) .and. (gama(j) .le. ebmaxuvcr)) THEN
+    IF ((desorb .eq. 1) .and. (uvdesorb .eq. 1) .and. (gama(j) .le. ebmaxuvcr)&
+    &.and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
         !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
         !UVY is yield per photon.
         rate(idx1:idx2) = GRAIN_CROSSSECTION_PER_H*uv_yield*4.875d3*zeta
@@ -100,6 +102,7 @@ SUBROUTINE calculateReactionRates
                 END IF
             END DO
         END DO
+        IF (safeMantle .lt. MIN_SURFACE_ABUND) rate(idx1:idx2)=0.0
     ELSE
         rate(idx1:idx2)=0.0
     END IF
