@@ -213,9 +213,9 @@ CONTAINS
 
             !First sum the total column density over all points further towards edge of cloud
             IF (dstep.gt.1) THEN
-                h2ColToCell=(sum(abund(nh2,:dstep-1)*density(:dstep-1))+0.5*abund(nh2,dstep)*density(dstep))*(cloudSize/real(points))
-                coColToCell=(sum(abund(nco,:dstep-1)*density(:dstep-1))+0.5*abund(nco,dstep)*density(dstep))*(cloudSize/real(points))
-                cColToCell=(sum(abund(nc,:dstep-1)*density(:dstep-1))+0.5*abund(nc,dstep)*density(dstep))*(cloudSize/real(points))
+                h2ColToCell=(sum(abund(nh2,:dstep-1)*density(:dstep-1)))*(cloudSize/real(points))
+                coColToCell=(sum(abund(nco,:dstep-1)*density(:dstep-1)))*(cloudSize/real(points))
+                cColToCell=(sum(abund(nc,:dstep-1)*density(:dstep-1)))*(cloudSize/real(points))
             ELSE
                 h2ColToCell=0.0
                 coColToCell=0.0
@@ -226,10 +226,8 @@ CONTAINS
             coCol=coColToCell+0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
             cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
             
-            !get reaction rates for this iteration
             CALL calculateReactionRates
 
-            !call the actual ODE integrator
             CALL integrateODESystem
 
             !1.d-30 stops numbers getting too small for fortran.
