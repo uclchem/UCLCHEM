@@ -37,7 +37,7 @@ IMPLICIT NONE
 
     !DLSODE variables    
     INTEGER :: ITASK,ISTATE,NEQ,MXSTEP
-    REAL(dp) :: reltol,abstol_factor
+    REAL(dp) :: reltol,abstol_factor,abstol_min
     REAL(dp), ALLOCATABLE :: abstol(:)
     TYPE(VODE_OPTS) :: OPTIONS
     !initial fractional elemental abudances and arrays to store abundances
@@ -125,10 +125,12 @@ CONTAINS
         IF (THREE_PHASE) THEN
             reltol=1d-12
             abstol_factor=1.0d-20
+            abstol_min=1.0d-30
             MXSTEP=10000
         else
             reltol=1d-4
             abstol_factor=1.0d-14
+            abstol_min=1.0d-25
             MXSTEP=10000
         END IF
 
@@ -204,75 +206,76 @@ CONTAINS
 
     SUBROUTINE updateChemistry
     !Called every time/depth step and updates the abundances of all the species
-        !allow option for dens to have been changed elsewhere.
-        IF (collapse .ne. 1) abund(nspec+1,dstep)=density(dstep)
-
-        !First sum the total column density over all points further towards edge of cloud
-        IF (dstep.gt.1) THEN
-            h2ColToCell=(sum(abund(nh2,:dstep-1)*density(:dstep-1))+0.5*abund(nh2,dstep)*density(dstep))*(cloudSize/real(points))
-            coColToCell=(sum(abund(nco,:dstep-1)*density(:dstep-1))+0.5*abund(nco,dstep)*density(dstep))*(cloudSize/real(points))
-            cColToCell=(sum(abund(nc,:dstep-1)*density(:dstep-1))+0.5*abund(nc,dstep)*density(dstep))*(cloudSize/real(points))
-
-        ELSE
-            h2ColToCell=0.0
-            coColToCell=0.0
-            cColToCell=0.0
-        ENDIF
-        !then add half the column density of the current point to get average in this "cell"
-        h2Col=h2ColToCell+0.5*abund(nh2,dstep)*density(dstep)*(cloudSize/real(points))
-        coCol=coColToCell+0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
-        cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
-        !call the actual ODE integrator
-        CALL integrate
-
-        !1.d-30 stops numbers getting too small for fortran.
-        WHERE(abund<1.0d-30) abund=1.0d-30
-        density(dstep)=abund(NEQ,dstep)
-    END SUBROUTINE updateChemistry
-
-    SUBROUTINE integrate
-    !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
         DO WHILE(currentTime .lt. targetTime)         
-            !reset parameters for DVODE
-            ITASK=1 !try to integrate to targetTime
-            ISTATE=1 !pretend every step is the first
-            abstol=abstol_factor*abund(:,dstep) !absolute tolerances depend on value of abundance
-            WHERE(abstol<1d-30) abstol=1d-30 ! to a minimum degree
 
+            !allow option for dens to have been changed elsewhere.
+            IF (collapse .ne. 1) abund(nspec+1,dstep)=density(dstep)
+
+            !First sum the total column density over all points further towards edge of cloud
+            IF (dstep.gt.1) THEN
+                h2ColToCell=(sum(abund(nh2,:dstep-1)*density(:dstep-1))+0.5*abund(nh2,dstep)*density(dstep))*(cloudSize/real(points))
+                coColToCell=(sum(abund(nco,:dstep-1)*density(:dstep-1))+0.5*abund(nco,dstep)*density(dstep))*(cloudSize/real(points))
+                cColToCell=(sum(abund(nc,:dstep-1)*density(:dstep-1))+0.5*abund(nc,dstep)*density(dstep))*(cloudSize/real(points))
+            ELSE
+                h2ColToCell=0.0
+                coColToCell=0.0
+                cColToCell=0.0
+            ENDIF
+            !then add half the column density of the current point to get average in this "cell"
+            h2Col=h2ColToCell+0.5*abund(nh2,dstep)*density(dstep)*(cloudSize/real(points))
+            coCol=coColToCell+0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
+            cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
+            
             !get reaction rates for this iteration
             CALL calculateReactionRates
-            !Call the integrator.
-            OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.FALSE.,MXSTEP=MXSTEP)
-            CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
-            SELECT CASE(ISTATE)
-                CASE(-1)
-                    write(*,*) "ISTATE -1: MAXSTEPS will be increased"
-                    !More steps required for this problem
-                    MXSTEP=MXSTEP*2   
-                    targetTime=currentTime*1.01 
-                CASE(-2)
-                    write(*,*) "ISTATE -2: Tolerances too small"
-                    !Tolerances are too small for machine but succesful to current currentTime
-                    abstol=abstol*10.0
-                CASE(-3)
-                    write(*,*) "DVODE found invalid inputs"
-                    write(*,*) "abstol:"
-                    write(*,*) abstol
-                    STOP
-                CASE(-4)
-                    !Successful as far as currentTime but many errors.
-                    !Make targetTime smaller and just go again
-                    write(*,*) "ISTATE -4 - shortening step"
-                    targetTime=currentTime*1.01
-                CASE(-5)
-                    timeInYears=currentTime/SECONDS_PER_YEAR
-                    write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
-                    WHERE(abund<1.0d-30) abund=1.0d-30
-                    targetTime=currentTime*1.01
-                    
-            END SELECT
-        END DO                   
-    END SUBROUTINE integrate
+
+            !call the actual ODE integrator
+            CALL integrateODESystem
+
+            !1.d-30 stops numbers getting too small for fortran.
+            WHERE(abund<1.0d-30) abund=1.0d-30
+            density(dstep)=abund(NEQ,dstep)
+        END DO
+    END SUBROUTINE updateChemistry
+
+    SUBROUTINE integrateODESystem
+    !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
+        !reset parameters for DVODE
+        ITASK=1 !try to integrate to targetTime
+        ISTATE=1 !pretend every step is the first
+        abstol=abstol_factor*abund(:,dstep) !absolute tolerances depend on value of abundance
+        WHERE(abstol<abstol_min) abstol=abstol_min ! to a minimum degree
+
+        !Call the integrator.
+        OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.FALSE.,MXSTEP=MXSTEP)
+        CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
+        SELECT CASE(ISTATE)
+            CASE(-1)
+                write(*,*) "ISTATE -1: MAXSTEPS will be increased"
+                !More steps required for this problem
+                MXSTEP=MXSTEP*2   
+                targetTime=currentTime*1.01 
+            CASE(-2)
+                write(*,*) "ISTATE -2: Tolerances too small"
+                !Tolerances are too small for machine but succesful to current currentTime
+                abstol=abstol*10.0
+            CASE(-3)
+                write(*,*) "DVODE found invalid inputs"
+                write(*,*) "abstol:"
+                write(*,*) abstol
+                STOP
+            CASE(-4)
+                !Successful as far as currentTime but many errors.
+                !Make targetTime smaller and just go again
+                write(*,*) "ISTATE -4 - shortening step"
+                targetTime=currentTime*1.01
+            CASE(-5)
+                timeInYears=currentTime/SECONDS_PER_YEAR
+                write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
+                WHERE(abund<1.0d-30) abund=1.0d-30
+                targetTime=currentTime*1.01    
+        END SELECT
+    END SUBROUTINE integrateODESystem
 
     !This is where reacrates subroutine is hidden
     include 'rates.f90'
