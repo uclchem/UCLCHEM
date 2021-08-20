@@ -1,4 +1,3 @@
-from __future__ import print_function
 import csv
 import numpy as np
 from copy import deepcopy as copy
@@ -526,7 +525,7 @@ def build_ode_string(speciesList, reactionList,three_phase):
 		
 		#every body after the first requires a factor of density
 		for body in range(reaction.body_count):
-			ODE_BIT=ODE_BIT+f"*Y({len(speciesList)+1})"
+			ODE_BIT=ODE_BIT+f"*D"
 		
 		#then bring in factors of abundances
 		for species in reaction.reactants:
@@ -541,7 +540,7 @@ def build_ode_string(speciesList, reactionList,three_phase):
 				if species=="DESOH2":
 					ODE_BIT=ODE_BIT+f"*Y({species_names.index('H')+1})"
 			elif ((species in ["THERM"]) and not (three_phase)):
-				ODE_BIT+=f"*Y({len(speciesList)+1})/safeMantle"
+				ODE_BIT+=f"*D/safeMantle"
 			if "H2FORM" in reaction.reactants:
 				#only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
 				break
@@ -652,7 +651,7 @@ def write_evap_lists(openFile,speciesList):
 				print("{0} has no gas phase equivalent in network. Every species should at least freeze out and desorb.".format(species.name))
 				print("ensure {0} is in the species list, and at least one reaction involving it exists and try again".format(species.name[1:]))
 				print("Alternatively, provide the name of the gas phase species you would like {0} to evaporate as".format(species.name))
-				input=raw_input("type x to quit Makerates or any species name to continue\n")
+				input=input("type x to quit Makerates or any species name to continue\n")
 				if input.lower()=="x":
 					exit()
 				else:
@@ -730,7 +729,7 @@ def write_network_file(fileName,speciesList,reactionList,three_phase):
 	
 		except:
 			print(element," not in network, adding dummy index")
-			species_index=len(speciesList)
+			species_index=len(speciesList)+1
 		name=element.lower().replace("+","x").replace("e-","elec").replace("#","g")
 		speciesIndices+="n{0}={1},".format(name,species_index)
 	if len(speciesIndices)>72:
@@ -833,8 +832,13 @@ def write_network_file(fileName,speciesList,reactionList,three_phase):
 	openFile.write(array_to_string("\tduplicates",duplicates,type="int",parameter=True))
 	openFile.write(array_to_string("\tminTemps",tmins,type="float",parameter=True))
 	openFile.write(array_to_string("\tmaxTemps",tmaxs,type="float",parameter=True))
-	
+
 	reacTypes=np.asarray(reacTypes)
+
+	partners=get_desorption_freeze_partners(reactionList)
+	openFile.write(array_to_string("\tfreezePartners",partners,type="int",parameter=True))
+
+	
 	for reaction_type in reaction_types+["TWOBODY"]:
 		list_name=reaction_type.lower()+"Reacs"
 		indices=np.where(reacTypes==reaction_type)[0]
@@ -853,6 +857,16 @@ def find_reactant(species_list,reactant):
 	except:
 		return 9999
 
+def get_desorption_freeze_partners(reactionList):
+	freeze_species=[x.products[0] for x in reactionList if x.reactants[1]=="DESCR"]
+	partners=[]
+	for spec in freeze_species:
+		for i,reaction in enumerate(reactionList):
+			if reaction.reac_type=="FREEZE":
+				if reaction.reactants[0]==spec:
+					partners.append(i+1)
+					break
+	return partners
 
 
 def array_to_string(name,array,type="int",parameter=True):

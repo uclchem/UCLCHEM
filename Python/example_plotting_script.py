@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 #pick species, any number is fine
 species_list=["#H2O","#CO","#CH3OH","CO","CH3OH","H2O"]
 input_file="examples/example-output/phase1-full.dat"
-input_file="output/full.dat"
+input_file="output/test.csv"
 
 
 #call read_uclchem. 

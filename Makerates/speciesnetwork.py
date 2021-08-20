@@ -2,7 +2,7 @@
 from __future__ import print_function
 import csv
 
-species='CH3OH'
+species='HCN'
 
 f=open('outputFiles/reactions.csv')
 reader=csv.reader(f, delimiter=',', quotechar='|')

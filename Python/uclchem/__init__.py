@@ -1,4 +1,8 @@
-from .uclchem import wrap
+try:
+	from .uclchem import wrap
+except:
+	print("No UCLCHEM module, run ``make python'' in src/")
+	print("Utility and plotting functions available but UCLCHEM based functions will fail\n\n")
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -171,6 +175,8 @@ def check_abunds(element,df):
 	sums=np.where(df.columns.str.contains(element),1,0)
 	for i in range(2,10):
 		sums+=np.where(df.columns.str.contains(element+f"{i:.0f}"),i-1,0)
+	if element=="H":
+		sums-=np.where(df.columns.str.contains("HE"),1,0)
 	for variable in ['Time', 'Density', 'gasTemp', 'av', 'point',"SURFACE","BULK"]:
 		sums=np.where(df.columns==variable,0,sums)
 	return df.mul(sums,axis=1).sum(axis=1)

@@ -89,11 +89,7 @@ print("Checking reactions...")
 reaction_check(speciesList,reactionList)
 
 
-reactionList=sorted(reactionList,key=lambda x: x.reac_type)
-
-with open("reac_check","w") as f:
-	for i,reaction in enumerate(reactionList):
-		f.write(f"{i+1} {reaction.changes_total_mantle()} {reaction.changes_surface_count()}\n")
+reactionList=sorted(reactionList,key=lambda x: (x.reac_type,x.reactants[0]))
 
 print('\n################################################')
 print('Checks complete, writing output files')

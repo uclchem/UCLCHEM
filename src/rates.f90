@@ -19,7 +19,6 @@ SUBROUTINE calculateReactionRates
     idx2=crphotReacs(2)
     rate(idx1:idx2)=alpha(idx1:idx2)*gama(idx1:idx2)*1.0/(1.0-omega)*zeta*(gasTemp(dstep)/300)**beta(idx1:idx2)
 
-
     !freeze out only happens if fr>0 and depending on evap choice 
     idx1=freezeReacs(1)
     idx2=freezeReacs(2)
@@ -44,6 +43,8 @@ SUBROUTINE calculateReactionRates
     ELSE
         rate(idx1:idx2) = 0.0
     ENDIF
+    WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep))<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
+
     !Desorption due to energy from cosmic rays
     idx1=descrReacs(1)
     idx2=descrReacs(2)
@@ -57,7 +58,9 @@ SUBROUTINE calculateReactionRates
     ELSE
         rate(idx1:idx2) = 0.0
     ENDIF
+    WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep))<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
 
+    
     !Desorption due to UV, partially from ISRF and partially from CR creating photons
     idx1=deuvcrReacs(1)
     idx2=deuvcrReacs(2)
@@ -72,6 +75,7 @@ SUBROUTINE calculateReactionRates
     ELSE
         rate(idx1:idx2) = 0.0
     ENDIF
+    WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep))<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
 
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -89,11 +93,11 @@ SUBROUTINE calculateReactionRates
                     rate(j)=vdiff(i)*exp(-gama(j)/gasTemp(dstep))
                     !At some point, rate is so fast that there's no point freezing out any more
                     !Save some numerical trouble by setting freeze out to zero.
-                    IF (rate(j) .ge. 1.0) THEN
-                        do k=freezeReacs(1),freezeReacs(2)
-                            IF (p1(j)==re1(k)) rate(k)=0.0
-                        END DO
-                    END IF
+                    ! do k=freezeReacs(1),freezeReacs(2)
+                    !     IF (p1(j)==re1(k)) THEN
+                    !         if (rate(k)*abund(p1(j),dstep)<MIN_SURFACE_ABUND*rate(j)) rate(k)=0.0
+                    !     END IF
+                    ! END DO
                     !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
                     !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                     !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
@@ -102,6 +106,7 @@ SUBROUTINE calculateReactionRates
                 END IF
             END DO
         END DO
+        WHERE(rate(freezePartners)*abund(re1(freezePartners),dstep)<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
         IF (safeMantle .lt. MIN_SURFACE_ABUND) rate(idx1:idx2)=0.0
     ELSE
         rate(idx1:idx2)=0.0
@@ -135,7 +140,6 @@ SUBROUTINE calculateReactionRates
         rate(lhdesReacs(1):lhdesReacs(2))=0.0
     END IF
 
-
     !Account for Eley-Rideal reactions in a similar way.
     !First calculate overall rate and then split between desorption and sticking
     idx1=erReacs(1)
@@ -151,7 +155,6 @@ SUBROUTINE calculateReactionRates
     END DO
     !remove that fraction from total rate of the diffusion route
     rate(erReacs(1):erReacs(2))=rate(erReacs(1):erReacs(2))-rate(idx1:idx2)
-
 
     IF (PARAMETERIZE_H2FORM) THEN
         rate(nR_H2Form_CT)=h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
@@ -183,11 +186,9 @@ SUBROUTINE calculateReactionRates
     END IF  
 
     !Reactions for which we have a more detailed photorecation treatment
-
     h2dis=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel) !H2 photodissociation
     rate(nrco)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
     rate(nR_C_hv)=cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),radfield) !C photoionization
-    rate(887)=0.0
 END SUBROUTINE calculateReactionRates
 
 

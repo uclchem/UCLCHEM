@@ -29,7 +29,7 @@ MODULE physics
 
     !variables either controlled by physics or that user may wish to change
     DOUBLE PRECISION :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
-    DOUBLE PRECISION :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp,vs
+    DOUBLE PRECISION :: cloudSize,rout,rin,baseAv,bc,maxTemp,vs
     
     !Arrays for phase 2 temp profiles. parameters for equation chosen by index
     !arrays go [1Msun,5, 10, 15, 25,60]
@@ -53,8 +53,13 @@ CONTAINS
         ! Modules not restarted in python wraps so best to reset everything manually.
         IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,dustTemp,density,monoFracCopy)
         ALLOCATE(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points),monoFracCopy(size(monoFractions)))
-        coflag=0 !reset sublimation
+        coFlag=0 !reset sublimation
+        solidFlag=0
+        volcFlag=0
         monoFracCopy=monoFractions !reset monofractions
+
+        currentTime=0.0
+        targetTime=0.0
 
         !Set up basic physics variables
         cloudSize=(rout-rin)*pc
@@ -86,13 +91,13 @@ CONTAINS
     !but the integrator itself chooses an integration timestep.                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updateTargetTime
-        IF (timeInYears .gt. 0.99d6) THEN !code in years for readability, targetTime in s
-            targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
-        ELSE  IF (timeInYears .gt. 0.99d5) THEN
+        IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
             targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 0.99d4) THEN
+        ELSE  IF (timeInYears .gt. 1.0d5) THEN
+            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
+        ELSE IF (timeInYears .gt. 1.0d4) THEN
             targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 999) THEN
+        ELSE IF (timeInYears .gt. 1000) THEN
             targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 0.0) THEN
             targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR

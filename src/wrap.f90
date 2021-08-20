@@ -13,10 +13,14 @@ CONTAINS
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         !f2py intent(in) dictionary,outSpeciesIn
 
-        ! Set the boolean to True if you want to be able to return a python array
         ! call the dictionary_parser function in order to read the dictionary of parameters
         INCLUDE 'defaultparameters.f90'
         CALL dictionary_parser(dictionary, outSpeciesIn)
+
+        dstep=1
+        currentTime=0.0
+        timeInYears=0.0
+
         CALL solveAbundances
         
         !close outputs to attempt to force flush
@@ -34,9 +38,11 @@ CONTAINS
         ! Set the boolean to True if you want to be able to return a python array
         ! call the dictionary_parser function in order to read the dictionary of parameters
         INCLUDE 'defaultparameters.f90'
-
-        !Read input parameters from the dictionary
         CALL dictionary_parser(dictionary, outSpeciesIn)
+        
+        dstep=1
+        currentTime=0.0
+        timeInYears=0.0
 
         CALL solveAbundances
 
@@ -45,7 +51,6 @@ CONTAINS
         close(11)
         close(7)
 
-        CALL solveAbundances
         abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
 
     END SUBROUTINE run_model_for_abundances
@@ -65,8 +70,6 @@ CONTAINS
         dstep=1
         abund(:nspec,1)=abundancesIn(:nspec)
         call updatePhysics
-        currentTime=0.0
-        targetTime=0.0
         call updateChemistry
 
         CALL calculateReactionRates
@@ -79,8 +82,8 @@ CONTAINS
         CALL initializeChemistry
 
         dstep=1
-        currentTime=0.0
-        timeInYears=0.0
+
+        call output
 
         !loop until the end condition of the model is reached
         DO WHILE ((switch .eq. 1 .and. density(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))

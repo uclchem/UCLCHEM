@@ -1,8 +1,5 @@
-# ODE fixes
-Improved ODEs and fixes to old bugs.
- - ER reactions are a loss term in the ODE of surface version of the gas phase reactant rather than the gas. This naturally branches the freeze out rate across the ER reactions and standard freeze out.
- - LH reactions are fixed
- - mantle no longer appears in any rate, if a species abundance appears in an ODE it is now only in odes.f90
+# Electron Abundance
+v2 introduced a bug where electron abundance would be set to zero at start of every run. We've fixed that.
 
-# Bulk
-Swapping and transfer are improved by changes to ODE. Full ydot of all surface species is first calculated and then used to get a total rate of change of surface. This is then used to calculate transfer.
+#Stability improvements
+Running UCLCHEM with nothing initially on the grains using physical parameters that give very high desorption rates w

@@ -17,7 +17,7 @@ USE surfacereactions
 USE constants
 IMPLICIT NONE
    !These integers store the array index of important species and reactions, x is for ions    
-    INTEGER :: njunk,evapevents,ngrainco,readAbunds
+    INTEGER :: njunk,readAbunds
     !loop counters    
     INTEGER :: i,j,l,writeStep,writeCounter=0
 
@@ -104,12 +104,13 @@ CONTAINS
 
             abund=abund*metallicity
 
-            !As default, have half in molecular hydrogen and half in atomic hydrogen
-            abund(nh2,:) = 0.5*(1.0e0-fh)
+            !Total H nuclei is always 1 so put fh into H and whatever is left over in H2
             abund(nh,:) = fh
+            abund(nh2,:) = 0.5*(1.0e0-fh) 
             abund(nd,:)=fd
+
             abund(nhe,:) = fhe  
-            abund(nspec+1,:)=density   
+            abund(nspec+1,:)=density  
 
         ENDIF
         !Initial calculations of diffusion frequency for each species bound to grain
@@ -121,7 +122,8 @@ CONTAINS
         END DO
         
         !DVODE SETTINGS
-        ISTATE=1;;ITASK=1
+        ISTATE=1
+        ITASK=1
         IF (THREE_PHASE) THEN
             reltol=1d-12
             abstol_factor=1.0d-20
@@ -129,8 +131,8 @@ CONTAINS
             MXSTEP=10000
         else
             reltol=1d-4
-            abstol_factor=1.0d-14
-            abstol_min=1.0d-25
+            abstol_factor=1.0d-12
+            abstol_min=1.0d-30
             MXSTEP=10000
         END IF
 
@@ -139,7 +141,9 @@ CONTAINS
         END IF
         !OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.FALSE.)
         
-
+        !Set rates to zero to ensure they don't hold previous values or random ones if we don't set them in calculateReactionRates
+        rate=0.0
+        lastTemp=99.0d99!to save time, we always store last time step's temperature here and don't recalcuate some rates unless there's a change
     END SUBROUTINE initializeChemistry
 
 !Reads input reaction and species files as well as the final step of previous run if this is phase 2
@@ -256,7 +260,7 @@ CONTAINS
             CASE(-2)
                 write(*,*) "ISTATE -2: Tolerances too small"
                 !Tolerances are too small for machine but succesful to current currentTime
-                abstol=abstol*10.0
+                abstol_factor=abstol_factor*10.0
             CASE(-3)
                 write(*,*) "DVODE found invalid inputs"
                 write(*,*) "abstol:"
@@ -270,7 +274,7 @@ CONTAINS
             CASE(-5)
                 timeInYears=currentTime/SECONDS_PER_YEAR
                 write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
-                WHERE(abund<1.0d-30) abund=1.0d-30
+                !WHERE(abund<1.0d-30) abund=1.0d-30
                 targetTime=currentTime*1.01    
         END SELECT
     END SUBROUTINE integrateODESystem
@@ -280,7 +284,7 @@ CONTAINS
 
     SUBROUTINE F (NEQ, T, Y, YDOT)
         INTEGER, PARAMETER :: WP = KIND(1.0D0)
-        INTEGER NEQ
+        INTEGER NEQ,looper
         REAL(WP) T
         REAL(WP), DIMENSION(NEQ) :: Y, YDOT
         INTENT(IN)  :: NEQ, T, Y
@@ -308,13 +312,13 @@ CONTAINS
         !of the reactions between it and every other species it reacts with.
         INCLUDE 'odes.f90'
 
-        !H2 formation should occur at both steps - however note that here there is no 
-        !temperature dependence. y(nh) is hydrogen fractional abundance.
-        ydot(nh)  = ydot(nh) + 2.0*(h2dis*y(nh2) ) !- 2.0*h2form*y(nh)*D
+        !We treat H2 photodissociation specially using the h2dis variable to store rate. See end of calculateReactionRates
+        ydot(nh)  = ydot(nh) + 2.0*(h2dis*y(nh2) )
         !                             h2 formation - h2-photodissociation
-        ydot(nh2) = ydot(nh2) - h2dis*y(nh2) !+ h2form*y(nh)*D 
+        ydot(nh2) = ydot(nh2) - h2dis*y(nh2)
         !                       h2 formation  - h2-photodissociation
         ! get density change from physics module to send to DLSODE
+
         IF (collapse .eq. 1) ydot(NEQ)=densdot(y(NEQ))
     END SUBROUTINE F
 

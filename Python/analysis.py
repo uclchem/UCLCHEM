@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 #User Inputs Go Here
 ################################################
 
-speciesName="H2"
-result_file="examples/example-output/phase2-full.dat"
+speciesName="#CO"
+result_file="examples/test-output/phase1-full.dat"
 reaction_file="src/reactions.csv"
 species_file="src/species.csv"
 
