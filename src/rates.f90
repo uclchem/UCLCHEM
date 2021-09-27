@@ -119,7 +119,7 @@ SUBROUTINE calculateReactionRates
     idx1=lhReacs(1)
     idx2=lhReacs(2)
 
-    if ((gasTemp(dstep) .lt. MAX_GRAIN_TEMP)) THEN
+    if ((gasTemp(dstep) .lt. MAX_GRAIN_TEMP) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
         DO j=idx1,idx2
             rate(j)=diffusionReactionRate(j,gasTemp(dstep))
         END DO
@@ -131,7 +131,6 @@ SUBROUTINE calculateReactionRates
         idx2=lhdesReacs(2)
         DO j=idx1,idx2
             rate(j)=desorptionFraction(j)*rate(j)
-
         END DO
         !remove that fraction from total rate of the diffusion route
         rate(lhReacs(1):lhReacs(2))=rate(lhReacs(1):lhReacs(2))-rate(idx1:idx2)

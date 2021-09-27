@@ -16,6 +16,14 @@ for folder in ["example-output/","test-output/"]:
 		#call read_uclchem. 
 		model_data=uclchem.read_output_file("examples/"+folder+model+"-full.dat")
 
+		#demonstrate checking element conservation
+		if folder=="test-output/":
+			print(f"Testing element conservation for {model}")
+			print("Printing fractional change in total abundance")
+			conservation=uclchem.check_element_conservation(model_data)
+			print(conservation)
+
+
 		#plot species and save to test.png, alternatively send dens instead of time.
 		axis=uclchem.plot_species(axis,model_data,speciesNames)
 

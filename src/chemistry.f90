@@ -125,14 +125,14 @@ CONTAINS
         ISTATE=1
         ITASK=1
         IF (THREE_PHASE) THEN
-            reltol=1d-12
-            abstol_factor=1.0d-20
-            abstol_min=1.0d-30
+            reltol=1d-8
+            abstol_factor=1.0d-14
+            abstol_min=1.0d-25
             MXSTEP=10000
         else
-            reltol=1d-4
-            abstol_factor=1.0d-12
-            abstol_min=1.0d-30
+            reltol=1d-6
+            abstol_factor=1.0d-18
+            abstol_min=1.0d-25
             MXSTEP=10000
         END IF
 
@@ -249,8 +249,9 @@ CONTAINS
         WHERE(abstol<abstol_min) abstol=abstol_min ! to a minimum degree
 
         !Call the integrator.
-        OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.FALSE.,MXSTEP=MXSTEP)
+        OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
         CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
+
         SELECT CASE(ISTATE)
             CASE(-1)
                 write(*,*) "ISTATE -1: MAXSTEPS will be increased"
@@ -275,7 +276,9 @@ CONTAINS
                 timeInYears=currentTime/SECONDS_PER_YEAR
                 write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
                 !WHERE(abund<1.0d-30) abund=1.0d-30
-                targetTime=currentTime*1.01    
+                targetTime=currentTime*1.01
+            CASE default
+                MXSTEP=10000    
         END SELECT
     END SUBROUTINE integrateODESystem
 
@@ -321,6 +324,21 @@ CONTAINS
 
         IF (collapse .eq. 1) ydot(NEQ)=densdot(y(NEQ))
     END SUBROUTINE F
+
+    ! SUBROUTINE JAC(NEQ, T, Y, ML, MU, J, NROWPD)
+    !     INTEGER NEQ,ML,MU,NROWPD
+    !     DOUBLE PRECISION T, Y(NEQ), J(NROWPD,NEQ)
+    !     REAL(DP) :: D
+    !     INTENT(IN)  :: NEQ, T, Y,ML,MU,NROWPD
+    !     INTENT(INOUT) :: J
+    !     D=y(NEQ)
+
+    !     J=0.0d0
+    !     INCLUDE 'jacobian.f90'
+    !     J(nh,nh2)=J(nh,nh2)+2.0*h2dis
+    !     J(nh2,nh2)=J(nh,nh2)-h2dis
+    ! END SUBROUTINE JAC
+
 
 
     SUBROUTINE debugout

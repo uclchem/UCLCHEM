@@ -8,6 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from seaborn import color_palette
 
+elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N','13C','18O','SURFACE','BULK']
+
 def run_model(param_dict):
 	"""
 	Run UCLCHEM using variables taking from a dictionary of parameter values. Any parameter 
@@ -168,16 +170,43 @@ def get_rates_of_change(rates,reactions,speciesList,species,row):
 			reactionList.append(i)
 	return reactionList,changes
 
-def check_abunds(element,df):
+def count_element(species_list,element):
+	"""
+	Count the number of atoms of an element that appear in each of a list of species,
+	return the array of counts
+
+	:param  species_list: (iterable, str), list of species names
+	:param element: (str), element
+
+	Returns:
+		sums [ndarray]: array where each element represents the number of atoms of the chemical element in the corresponding element of species_list
+	"""
+	species_list=pd.Series(species_list)
+	#confuse list contains elements whose symbols contain the target eg CL for C
+	#We count both sets of species and remove the confuse list counts.
+	confuse_list=[x for x in elementList if element in x]
+	confuse_list=sorted(confuse_list,key=lambda x: len(x),reverse=True)
+	confuse_list.remove(element)
+	sums=species_list.str.count(element)
+	for i in range(2,10):
+		sums+=np.where(species_list.str.contains(element+f"{i:.0f}"),i-1,0)
+	for spec in confuse_list:
+		sums+=np.where(species_list.str.contains(spec),-1,0)
+	return sums
+
+def total_element_abundance(element,df):
 	"""
 	Calculates that the total elemental abundance of a species as a function of time. Allows you to check conservation.
 	"""
-	sums=np.where(df.columns.str.contains(element),1,0)
-	for i in range(2,10):
-		sums+=np.where(df.columns.str.contains(element+f"{i:.0f}"),i-1,0)
-	if element=="H":
-		sums-=np.where(df.columns.str.contains("HE"),1,0)
+	sums=count_element(df.columns,element)
 	for variable in ['Time', 'Density', 'gasTemp', 'av', 'point',"SURFACE","BULK"]:
 		sums=np.where(df.columns==variable,0,sums)
 	return df.mul(sums,axis=1).sum(axis=1)
 
+def check_element_conservation(df):
+	result={}
+	for element in ["H","N","C","O"]:
+		discrep=total_element_abundance(element,df).values
+		discrep=np.abs(discrep[0]-discrep[-1])/discrep[0]
+		result[element]=discrep
+	return result

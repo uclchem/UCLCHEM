@@ -38,6 +38,7 @@ CONTAINS
         ! Set the boolean to True if you want to be able to return a python array
         ! call the dictionary_parser function in order to read the dictionary of parameters
         INCLUDE 'defaultparameters.f90'
+        !Read input parameters from the dictionary
         CALL dictionary_parser(dictionary, outSpeciesIn)
         
         dstep=1
@@ -267,8 +268,18 @@ CONTAINS
                     READ(inputValue,*) ebmaxuvcr
                 CASE('uv_yield')
                     READ(inputValue,*) uv_yield
+                CASE('metallicity')
+                    READ(inputValue,*) metallicity
                 CASE('omega')
                     READ(inputValue,*) omega
+                CASE('reltol')
+                    READ(inputValue,*) reltol
+                CASE('abstol')
+                    READ(inputValue,*) abstol_factor
+                CASE('abstol_min')
+                    READ(inputValue,*) abstol_min
+                ! CASE('jacobian')
+                !     READ(inputValue,*) jacobian
                 CASE('vs')
                     READ(inputValue,*) vs
                 CASE('abundFile')

@@ -39,7 +39,6 @@ MODULE physics
     DOUBLE PRECISION,PARAMETER :: solidtemp(6)=(/20.0,19.6,19.45,19.3,19.5,20.35/)
     DOUBLE PRECISION,PARAMETER :: volctemp(6)=(/84.0,86.3,88.2,89.5,90.4,92.2/)
     DOUBLE PRECISION,PARAMETER :: codestemp(6)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
-
     DOUBLE PRECISION, allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:),monoFracCopy(:)
 CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN.
@@ -60,6 +59,7 @@ CONTAINS
 
         currentTime=0.0
         targetTime=0.0
+        timeInYears=0.0
 
         !Set up basic physics variables
         cloudSize=(rout-rin)*pc
@@ -102,7 +102,7 @@ CONTAINS
         ELSE IF (timeInYears .gt. 0.0) THEN
             targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR
         ELSE
-            targetTime=3.16d7*10.d-8
+            targetTime=SECONDS_PER_YEAR*1.0d-7
         ENDIF
     END SUBROUTINE updateTargetTime
 
@@ -172,6 +172,19 @@ CONTAINS
             densdot=0.0
         ENDIF
     END FUNCTION densdot
+
+    pure FUNCTION dByDnDensdot(density)
+    DOUBLE PRECISION, INTENT(IN) :: density
+    DOUBLE PRECISION :: dByDnDensdot
+    !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
+    IF (density .lt. finalDens) THEN
+        dByDndensdot=bc*8.4d-30*(density**3)*((9.0d0*((density/initialDens)**0.33))-8.0d0)
+        dByDnDensdot=dByDnDensdot/(6.0d0*(((density**4.0)/initialDens)**0.66))
+        dByDnDensdot=dByDnDensdot/dsqrt(initialDens*8.4d-30*(((density/initialDens)**0.33))-1.0d0)
+    ELSE
+        dByDnDensdot=0.0
+    ENDIF
+    END FUNCTION dByDnDensdot
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !REQUIRED PHYSICS ENDS HERE, ANY ADDITIONAL PHYSICS CAN BE ADDED BELOW.

@@ -43,7 +43,6 @@
 !
 ! FROM QUAN+ 2010
 !
-#H,#OCN,LH,#HNCO,,,,0.5,0,0,,,
 #H,#OCN,LH,#HOCN,,,,0.5,0,0,,,
 #C,#HOCN,LH,#CO,#HCN,,,1,0,0,,,
 #H,#CNO,LH,#HCNO,,,,0.5,0,0,,,
@@ -51,7 +50,6 @@
 #H,#CNO,LH,#HONC,,,,0.5,0,0,,,
 #O,#HONC,LH,#O2H,#CN,,,1,0,0,,,
 #C,#OCN,LH,#CN,#CO,,,1,0,0,,,
-#O,#OCN,LH,#CO,#NO,,,1,0,0,,,
 #C,#CNO,LH,#CN,#CO,,,1,0,0,,,
 #C,#NO,LH,#CNO,,,,1,0,0,,,
 !
@@ -62,11 +60,6 @@
 HOCN,H,,HNCO,H,,,1.0E-10,0,2000,,,
 HONC,H,,HCNO,H,,,1.0E-10,0,2000,,,
 !
-#H3CO,#HNCO,LH,#CH3OH,#OCN,,,0,0,1200,,,
-#CH3,#HNCO,LH,#CH,#OCN,,,0,0,1200,,,
-#NH,#HNCO,LH,#NH2,#OCN,,,0,0,1200,,,
-#NH2,#HNCO,LH,#NH3,#OCN,,,0,0,1200,,,
-#OH,#HNCO,LH,#H2O,#OCN,,,0,0,1290,,,
 !
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !% KIDA NETWORK
@@ -97,7 +90,6 @@ H,#H2NCO,LH,#HNCO,H2,,,1.0,0,0,,,! NOBLE ET AL. 2015
 C2H5OH,FREEZE,,#C2H5OH,,,,1,0,0,,,
 C2H5OH2+,FREEZE,,#C2H5OH,H,,,1,1,0,,,
 HNCO+,FREEZE,,#HNCO,,,,1,1,0,,,
-OCN,FREEZE,,#OCN,,,,1,0,0,,,
 COOCH4+,FREEZE,,#HCOOCH3,,,,1,1,0,,,
 !
 ! INSTANT HYDROGENATION

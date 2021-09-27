@@ -112,6 +112,8 @@ print('\tFinal Reaction File:',filename)
 print('Writing system of ODEs in F95 format...')
 filename = 'outputFiles/odes.f90'
 write_odes_f90(filename, speciesList, reactionList,three_phase)
+# filename = 'outputFiles/jacobian.f90'
+# write_jacobian(filename,speciesList)
 print('\tFinal ODE file:',filename)
 
 print('Writing Network File...')
