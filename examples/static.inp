@@ -4,10 +4,9 @@ finalDens 1.00d4
 finalTime 5.00d6
 switch 0
 collapse 0
-readAbunds 0
 phase 1
 outSpecies 4 OCS CO CS CH3OH
 writeStep 1
-abundFile "examples/test-output/startstatic.dat"
+abundSaveFile "examples/test-output/startstatic.dat"
 outputFile "examples/test-output/static-full.dat"
 columnFile "examples/test-output/static-column.dat"

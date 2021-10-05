@@ -92,7 +92,7 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updateTargetTime
         IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
-            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
+            targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
         ELSE  IF (timeInYears .gt. 1.0d5) THEN
             targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 1.0d4) THEN

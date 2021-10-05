@@ -92,13 +92,18 @@ IF (paramFile .ne. "") THEN
                 READ(buffer(pos:),*,iostat=ios) outSpecies
             CASE('writeStep')
                 READ(buffer,*,iostat=ios) writeStep 
-            CASE('abundFile')
-                READ(buffer,*,iostat=ios) abundFile
+            CASE('abundLoadFile')
+                readAbunds=.True.
+                READ(buffer,*,iostat=ios) abundLoadFile
+                open(71,file=abundLoadFile,status='unknown',err=13)
+            CASE('abundSaveFile')
+                writeAbunds=.True.
+                READ(buffer,*,iostat=ios) abundSaveFile
             CASE('outputFile')
                 READ(buffer,*,iostat=ios) outputFile
             CASE('columnFile')
+                columnOutput=.True.
                 READ(buffer,*,iostat=ios) columnFile
-                columnFileRead=.True.
             CASE('ebmaxh2')
                 READ(buffer,*,iostat=ios) ebmaxh2
             CASE('epsilon')
@@ -133,8 +138,7 @@ END IF
 
 ios=0
 open(10,file=outputFile,status='unknown',err=13)
-
-open(7,file=abundFile,status='unknown',err=13)
+open(72,file=abundSaveFile,status='unknown',err=13)
 
 !this if statement just makes it so line 13 is only ever executed when open statement above fails.
 ios=1
@@ -157,7 +161,7 @@ IF (ALLOCATED(outSpecies))  THEN
                 IF (specname(i).eq.outSpecies(j)) outIndx(j)=i
             END DO
         END DO
-ELSE IF (columnFileRead) THEN
+ELSE IF (columnOutput) THEN
     write(*,*) "columnFile read but no species chosen, see example inputs for how to set outSpecies array."
     STOP
 END IF

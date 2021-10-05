@@ -24,7 +24,7 @@ MODULE physics
     double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime
     double precision :: cloudSize,rout,rin,baseAv,bc,tstart,maxTemp,vMin,mfp,tCool,tShock,d,dMax,maxDens
     double precision :: t_lambda, n_lambda
-    double precision, allocatable :: av(:),coldens(:),temp(:),density(:)
+    double precision, allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:)
 
     character(2) ::filename
     character(1)  ::densint
@@ -53,8 +53,8 @@ CONTAINS
         INTEGER :: iLoop
 
         !Reset variables for python wrap.
-        IF (ALLOCATED(av)) deallocate(av,coldens,temp,density)
-        allocate(av(points),coldens(points),temp(points),density(points))  
+        IF (ALLOCATED(av)) deallocate(av,coldens,gasTemp,dustTemp,density)
+        allocate(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points))  
         coflag=0 !should reset sputtering
         
         cloudSize=(rout-rin)*pc
@@ -76,7 +76,7 @@ CONTAINS
         ENDIF
 
         write(*,*) "Setting temperature and cooling time."
-        temp = initialTemp
+        gasTemp = initialTemp
 
         ! Determine the maximum temperature
         maxTemp = (5e3)*(vs/10)**2
@@ -121,8 +121,8 @@ CONTAINS
         ! ELSE
         !     maxTemp=(0.47258*vs*vs)+(40.44161*vs)-128.635455216
         ! END IF
-        temp=initialTemp
-
+        gasTemp=initialTemp
+        dustTemp=gasTemp
         !tsat proportional to 1/pre-shock density. Fit to tsats from Jimenez-Serra 2008.
         tsat=(-15.38729*vs*vs*vs)+(2069.56962*vs*vs)-(90272.826991*vs)+1686858.54278
         tsat=tsat/initialDens        
@@ -148,21 +148,21 @@ CONTAINS
             ENDIF
         ELSE
             IF (timeInYears .gt. 1e6) THEN
-                targetTime=(timeInYears+1e5)/year
+                targetTime=(timeInYears+1e5)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 1.0d4) THEN
-                targetTime=(timeInYears+1000)/year
+                targetTime=(timeInYears+1000)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 1.0d3) THEN
-                targetTime=(timeInYears+100.)/year
+                targetTime=(timeInYears+100.)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 1.) THEN
-                targetTime=(timeInYears+1.)/year
+                targetTime=(timeInYears+1.)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 0.001) THEN
-                targetTime=(timeInYears+0.1)/year
+                targetTime=(timeInYears+0.1)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 0.00001) THEN
-                targetTime=(timeInYears+0.0001)/year
+                targetTime=(timeInYears+0.0001)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 0.000001) THEN
-               targetTime=(timeInYears+0.0000001)/year
+               targetTime=(timeInYears+0.0000001)*SECONDS_PER_YEAR
             ELSE IF  (timeInYears.gt.0.0) THEN
-                targetTime=(timeInYears+0.0000000001)/year
+                targetTime=(timeInYears+0.0000000001)*SECONDS_PER_YEAR
             ELSE
                 targetTime=3.16d-03
             ENDIF
@@ -185,12 +185,6 @@ CONTAINS
       
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= baseAv +coldens(dstep)/1.6d21
-
-        write(*,*) "cloudSize=",cloudSize
-        write(*,*) "coldens=",coldens
-        write(*,*) "density(dstep)=",density(dstep)
-        write(*,*) "av=",av
-        write(*,*) "====================="
 
         ! phase=2 for the J-shock specific calculations
         IF (phase .eq. 2) THEN
@@ -239,8 +233,8 @@ CONTAINS
                 tn(dstep) = 10
                 density = maxDens
             END IF
-            temp(dstep)=tn(dstep)
-
+            gasTemp(dstep)=tn(dstep)
+            dustTemp(dstep)=gasTemp(dstep)
             IF (timeInYears .gt. 0) THEN
                 write(92,1234) tn(dstep),density(dstep),timeInYears
                 1234 format(3(e16.9))
@@ -259,10 +253,12 @@ CONTAINS
         INTENT(INOUT) :: abund
 
         IF (coflag .ne. 1 .and. phase .eq. 2) THEN
-            IF (temp(dstep) .gt. CODES_TEMP) THEN
+            IF (gasTemp(dstep) .gt. CODES_TEMP) THEN
                 coflag=1
-                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
-                abund(grainList,dstep)=1d-30
+                abund(gasIceList,dstep)=abund(gasIceList,dstep)+abund(iceList,dstep)
+                abund(iceList,dstep)=1d-30
+            ELSE
+                IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0)) CALL sputtering(abund)
             END IF
         END IF
         WHERE(abund<1.0d-30) abund=1.0d-30
@@ -275,8 +271,8 @@ CONTAINS
     SUBROUTINE sputtering(abund)
         DOUBLE PRECISION :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
-        abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
-        abund(grainList,dstep)=abund(grainList,dstep)-abund(grainList,dstep)
+        abund(gasIcelist,dstep)=abund(gasIcelist,dstep)+abund(iceList,dstep)
+        abund(iceList,dstep)=abund(iceList,dstep)-abund(iceList,dstep)
     END SUBROUTINE
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

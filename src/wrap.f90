@@ -6,7 +6,7 @@ MODULE wrap
     USE physics
     USE chemistry
     IMPLICIT NONE
-    CHARACTER (LEN=100) :: abundFile, outputFile, columnFile, outFile
+    CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile, outFile
 
 CONTAINS
     SUBROUTINE run_model_to_file(dictionary, outSpeciesIn)
@@ -22,11 +22,11 @@ CONTAINS
         timeInYears=0.0
 
         CALL solveAbundances
-        
         !close outputs to attempt to force flush
         close(10)
         close(11)
-        close(7)
+        close(71)
+        close(72)
     END SUBROUTINE run_model_to_file
 
     SUBROUTINE run_model_for_abundances(dictionary, outSpeciesIn,abundance_out)
@@ -50,7 +50,8 @@ CONTAINS
         !close outputs to attempt to force flush
         close(10)
         close(11)
-        close(7)
+        close(71)
+        close(72)
 
         abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
 
@@ -184,8 +185,6 @@ CONTAINS
                     READ(inputValue,*) collapse
                 CASE('bc')
                     READ(inputValue,*) bc
-                CASE('readAbunds')
-                    READ(inputValue,*) readAbunds
                 CASE('phase')
                     READ(inputValue,*) phase
                 CASE('desorb')
@@ -282,16 +281,25 @@ CONTAINS
                 !     READ(inputValue,*) jacobian
                 CASE('vs')
                     READ(inputValue,*) vs
-                CASE('abundFile')
-                    READ(inputValue,*) abundFile
-                    abundFile = trim(abundFile)
-                    open(7,file=abundFile,status='unknown')
+                CASE('abundSaveFile')
+                    writeAbunds=.True.
+                    READ(inputValue,*) abundSaveFile
+                    abundSaveFile = TRIM(abundSaveFile)
+                    write(*,*) abundSaveFile
+                    open(72,file=abundSaveFile,status="unknown")
+                CASE('abundLoadFile')
+                    READ(inputValue,*) abundLoadFile
+                    abundLoadFile = TRIM(abundLoadFile)
+                    readAbunds=.True.
+                    open(71,file=abundLoadFile,status='old')
                 CASE('outputFile')
                     READ(inputValue,*) outFile
                     outputFile = trim(outFile)
+                    fullOutput=.True.
                     open(10,file=outputFile,status='unknown')
                 CASE('columnFile')
                     IF (trim(outSpeciesIn) .NE. '' ) THEN
+                        columnOutput=.True.
                         READ(inputValue,*) columnFile
                         columnFile = trim(columnFile)
                         open(11,file=columnFile,status='unknown')

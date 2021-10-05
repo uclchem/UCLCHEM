@@ -17,7 +17,7 @@ USE surfacereactions
 USE constants
 IMPLICIT NONE
    !These integers store the array index of important species and reactions, x is for ions    
-    INTEGER :: njunk,readAbunds
+    INTEGER :: njunk
     !loop counters    
     INTEGER :: i,j,l,writeStep,writeCounter=0
 
@@ -28,9 +28,9 @@ IMPLICIT NONE
     !Array to store reaction rates
     REAL(dp) :: rate(nreac)
     
-    !Option column output
+    !IO Options
     character(LEN=15),ALLOCATABLE :: outSpecies(:)
-    LOGICAL :: columnOutput=.False.,fullOutput=.False.
+    LOGICAL :: columnOutput=.False.,fullOutput=.False.,readAbunds=.False.,writeAbunds=.False.
     INTEGER :: nout
     INTEGER, ALLOCATABLE :: outIndx(:)
 
@@ -63,7 +63,7 @@ CONTAINS
         CALL fileSetup
         !if this is the first step of the first phase, set initial abundances
         !otherwise reader will fix it
-        IF (readAbunds.eq.0) THEN
+        IF (.NOT. readAbunds) THEN
             !ensure abund is initially zero
             abund= 0.
 
@@ -154,9 +154,8 @@ CONTAINS
         INQUIRE(UNIT=11, OPENED=columnOutput)
         IF (columnOutput) write(11,333) specName(outIndx)
         333 format("Time,Density,gasTemp,av,",(999(A,:,',')))
-        
 
-        INQUIRE(UNIT=10, OPENED=fullOutput )
+        INQUIRE(UNIT=10, OPENED=fullOutput)
         IF (fullOutput) THEN
             write(10,334) fc,fo,fn,fs
             write(10,*) "Radfield ", radfield, " Zeta ",zeta
@@ -165,14 +164,16 @@ CONTAINS
         335 format("Time,Density,gasTemp,av,point,",(999(A,:,',')))
         334 format("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
 
+        INQUIRE(UNIT=71, OPENED=readAbunds)
+        INQUIRE(UNIT=72, OPENED=writeAbunds)
 
         !read start file if choosing to use abundances from previous run 
         !
-        IF (readAbunds .eq. 1) THEN
+        IF (readAbunds) THEN
             DO l=1,points
-                READ(7,*) fhe,fc,fo,fn,fs,fmg
-                READ(7,*) abund(:nspec,l)
-                REWIND(7)
+                READ(71,*) fhe,fc,fo,fn,fs,fmg
+                READ(71,*) abund(:nspec,l)
+                REWIND(71)
                 abund(nspec+1,l)=density(l)
             END DO
         END IF
@@ -187,11 +188,11 @@ CONTAINS
         END IF
 
         !If this is the last time step of phase I, write a start file for phase II
-        IF (readAbunds .eq. 0) THEN
+        IF (writeAbunds) THEN
            IF (switch .eq. 0 .and. timeInYears .ge. finalTime& 
                &.or. switch .eq. 1 .and.density(dstep) .ge. finalDens) THEN
-               write(7,*) fhe,fc,fo,fn,fs,fmg
-               write(7,8010) abund(:neq-1,dstep)
+               write(72,*) fhe,fc,fo,fn,fs,fmg
+               write(72,8010) abund(:neq-1,dstep)
            ENDIF
         ENDIF
         8010  format((999(1pe15.5,:,',')))

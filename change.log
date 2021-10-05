@@ -1,6 +1,5 @@
-# Electron Abundance
-- v2 introduced a bug where electron abundance would be set to zero at start of every run. We've fixed that.
-- Best abstol/reltol values for stability have been selected from a grid search
+#readAbunds
+Removed readAbunds flag and replaced abundFile with two variables: abundSaveFile and abundLoadFile. You can know read and/or write abundances to a file at the start and end of a model rather than one or the other.
 
-#Stability improvements
-Running UCLCHEM with nothing initially on the grains using physical parameters that give very high desorption rates used to cause integration failures, code is now much more robust to this.
+#shocks
+shock modules updated to use new variable names.

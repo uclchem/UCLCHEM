@@ -357,6 +357,8 @@ def create_bulk_species(species_list):
 			if not species.name.replace("#","@") in speciesNames:
 				new_spec=copy(species)
 				new_spec.name=new_spec.name.replace("#","@")
+				if "SIO" in species.name:
+					print(new_spec.name)
 				new_spec.binding_energy=h2o_binding_energy
 				new_species.append(new_spec)
 	return species_list+new_species

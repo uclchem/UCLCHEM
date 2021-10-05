@@ -33,9 +33,7 @@ collapse=1
 !for collapse=1 can introduce factor bc to slow freefall
 bc=1.0
 
-!If you want to read abundances from a file (abundFile) set to 1
-!If you set to zero, final abundances are written to abundFile
-readAbunds=0
+
 !phase chooses behaviour. Phase=1 runs a simple cloud and Phase=2 runs the physics of the chosen module (eg.hot core or c-shock)
 phase=1;
 
@@ -103,12 +101,13 @@ fd=0.0;fli=0.0;fna=0.0;fpah=0.0;f15n=0.0;f13c=0.0;f18O=0.0
 !writeStep sets how often columns written out. Columns written every n steps for writeStep=n.
 writeStep=1
 
-!If readAbund=1, starting abundances are read from abundFile
-!If readAbund=0, final abundances are written to abundFile
-abundFile="output/start.dat"
+!Final abundances are written to abundSaveFile if one is provided
+!if abundLoadFile is provided, the initial abundances are read from that file.
+abundSaveFile="output/start.dat"
 !Full output written to outputFlie
 outputFile="output/full.dat"
 !columnated output of time,dens,temp and outSpecies written to column file
+!only works if outSpecies list is supplied via python wrap or input parameter file
 columnFile='output/column.dat'
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -5,7 +5,6 @@ tempindx 3
 switch 0
 collapse 0
 fr 0.0
-readAbunds 1
 phase 2
-abundFile "examples/test-output/startcollapse.dat"
+abundLoadFile "examples/test-output/startcollapse.dat"
 outputFile "examples/test-output/phase2-full.dat"

@@ -29,7 +29,7 @@ MODULE physics
     !Cshock specific parameters
     !*******************************************************************
     double precision :: initialTemp, z2,vs,v0,zn,vn,at,z3,tsat
-    double precision :: ucm,z1,driftVel,vi,tempi,vn0,zn0,vA,dlength
+    double precision :: ucm,z1,driftVel,vi,tempi,vn0,zn0,vA,dlength,dissipationTime
     double precision :: grainRadius5,dens6,grainNumberDensity,dzv,start_vel
     double precision, allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
     integer :: manCoolTemp, postShock
@@ -117,6 +117,7 @@ CONTAINS
             ! The initial parameters that define the C-shock structure
             ! Length of the dissipation region, dlength:
             dlength=12.0*pc*vs/initialDens
+            dissipationTime=(dlength*1.0d-5/vs)/SECONDS_PER_YEAR
             ! Parameters that describe the decoupling between the ion and the neutral
             ! fluids. z2 is obtained by assuming that at z=dlength, the velocity of
             ! the neutrals is 99% (vs-v0). See v0 below and more details in
@@ -177,33 +178,22 @@ CONTAINS
     !but the integrator itself chooses an integration timestep.                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updateTargetTime
-        IF (phase .eq. 1) THEN
-            IF (timeInYears .gt. 1.0d6) THEN
+        IF ((phase .eq. 2) .and. (timeInYears .lt. dissipationTime)) THEN
+            !get a nice sampling along the shock
+            targetTime=(timeInYears+0.05*dissipationTime)*SECONDS_PER_YEAR
+        ELSE
+            IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
                 targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
-            ELSE IF (timeInYears .gt. 10000) THEN
+            ELSE  IF (timeInYears .gt. 1.0d5) THEN
+                targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
+            ELSE IF (timeInYears .gt. 1.0d4) THEN
                 targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 1000) THEN
                 targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 0.0) THEN
-                targetTime=(timeInYears*10)*SECONDS_PER_YEAR
+                targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR
             ELSE
-                targetTime=3.16d7*10.d-8
-            ENDIF
-        ELSE
-            IF (timeInYears .gt. 1.0d5) THEN
-                targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
-            ELSE IF (timeInYears.gt. 1.0d4) THEN
-                targetTime=(timeInYears+1000.)*SECONDS_PER_YEAR                
-            ELSE IF (timeInYears .gt. 1000) THEN
-                targetTime=(timeInYears+50.)*SECONDS_PER_YEAR
-            ELSE IF (timeInYears .gt. 100) THEN
-                targetTime=(timeInYears+1.)*SECONDS_PER_YEAR
-            ELSE IF (timeInYears .gt. 10) THEN
-                targetTime=(timeInYears+.1)*SECONDS_PER_YEAR
-            ELSE IF  (timeInYears.lt.tsat) THEN
-                targetTime=(timeInYears+0.5)*SECONDS_PER_YEAR
-            ELSE
-                targetTime=(timeInYears+.1)*SECONDS_PER_YEAR
+                targetTime=SECONDS_PER_YEAR*1.0d-7
             ENDIF
         END IF
     END SUBROUTINE updateTargetTime
@@ -296,10 +286,10 @@ CONTAINS
         IF (coflag .ne. 1 .and. phase .eq. 2) THEN
             IF (gasTemp(dstep) .gt. CODES_TEMP) THEN
                 coflag=1
-                abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abund(grainList,dstep)
-                abund(grainList,dstep)=1d-30
+                abund(gasIceList,dstep)=abund(gasIceList,dstep)+abund(iceList,dstep)
+                abund(iceList,dstep)=1d-30
             ELSE
-                IF ((sum(abund(grainList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0)) CALL sputtering(abund)
+                IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0)) CALL sputtering(abund)
             END IF
         END IF
         WHERE(abund<1.0d-30) abund=1.0d-30
@@ -391,12 +381,12 @@ CONTAINS
         !if M particles are released and there are N particles on the grain total
         !then a species with X particles on the grain will release M*(X/N)
         !this is M/N and we'll multiply by X below
-        totalMantle=sum(abund(grainList,dstep))
+        totalMantle=sum(abund(iceList,dstep))
         abundChangeFrac=abundChangeFrac/totalMantle
         if (abundChangeFrac .gt. 1) abundChangeFrac=1.0
         !multiply M/N by x and add to gas phase
-        abund(gasGrainList,dstep)=abund(gasGrainList,dstep)+abundChangeFrac*abund(grainList,dstep)
-        abund(grainList,dstep)=abund(grainList,dstep)-abundChangeFrac*abund(grainList,dstep)
+        abund(gasIceList,dstep)=abund(gasIceList,dstep)+abundChangeFrac*abund(iceList,dstep)
+        abund(iceList,dstep)=abund(iceList,dstep)-abundChangeFrac*abund(iceList,dstep)
     END SUBROUTINE
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

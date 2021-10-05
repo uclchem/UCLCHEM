@@ -9,8 +9,7 @@ USE chemistry
 IMPLICIT NONE
     INTEGER :: ios=0,line=0,fileNum=12,pos,readIndx
     CHARACTER (LEN=100):: paramFile, buffer,label
-    CHARACTER (LEN=100):: abundFile,outputFile,columnFile
-    LOGICAL :: columnFileRead=.False.
+    CHARACTER (LEN=100):: abundSaveFile,abundLoadFile,outputFile,columnFile
     !All model parameters are given a default value in paramters.f90
     !Full explanations of those parameters in the comments of that file
     INCLUDE 'defaultparameters.f90'
@@ -55,10 +54,4 @@ IMPLICIT NONE
             if (points .gt. 1) currentTime=currentTimeold
         END DO
     END DO 
-    ! INQUIRE(UNIT=10, OPENED=fullOutput)
-    ! IF (fullOutput) close(10)
-    ! INQUIRE(UNIT=11, OPENED=columnOutput)
-    ! !IF (columnOutput) close(11)
-    ! INQUIRE(UNIT=7, OPENED=fullOutput )
-    ! if (fullOutput) close(7)
 END PROGRAM uclchem

@@ -3,10 +3,9 @@ initialDens 1.00d2
 finalDens 1.00d5
 switch 1
 collapse 1
-readAbunds 0
 phase 1
 outSpecies 4 OCS CO CS CH3OH
 writeStep 1
-abundFile "examples/test-output/startcollapse.dat"
+abundSaveFile "examples/test-output/startcollapse.dat"
 outputFile "examples/test-output/phase1-full.dat"
 columnFile "examples/test-output/phase1-column.dat"
