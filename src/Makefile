@@ -39,7 +39,7 @@ chemistry.o: odes.f90 constants.o network.o photoreactions.o surfacereactions.o 
 	${FC} ${FFLAGS} -c chemistry.f90
 
 physics.o: ${PHYSICS} constants.o Makefile
-	${FC} ${FFLAGS} -c ${PHYSICS}
+	${FC} ${FFLAGS} -c ${PHYSICS} -o physics.o
 
 %.o: %.f90 
 	${FC} ${FFLAGS} -c $<
