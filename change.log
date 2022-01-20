@@ -1,5 +1,3 @@
-#readAbunds
-Removed readAbunds flag and replaced abundFile with two variables: abundSaveFile and abundLoadFile. You can know read and/or write abundances to a file at the start and end of a model rather than one or the other.
+# Analysis
 
-#shocks
-shock modules updated to use new variable names.
+Updated wrap.f90 to fix bug which prevented grain surface reactions being included in analysis.py

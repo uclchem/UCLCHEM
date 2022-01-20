@@ -167,8 +167,6 @@ double precision FUNCTION diffusionReactionRate(reacIndx,gasTemperature)
         IF (iceList(i) .eq. index2) index2 = i
     END DO
 
-
-
     !Hasegawa 1992 diffusion rate. Rate that two species diffuse and meet on grain surface
     diffuseProb = vdiff(index1)*dexp(-0.5*bindingEnergy(index1)/gasTemperature)
     diffuseProb = diffuseProb+ (vdiff(index2)*dexp(-0.5*bindingEnergy(index2)/gasTemperature))

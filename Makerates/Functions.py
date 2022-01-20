@@ -164,7 +164,7 @@ class Reaction:
 		for i in range(len(self.products)):
 			self.products[i]=self.products[i].replace("#","@")
 
-	def same_reaction(self,other):
+	def __eq__(self,other):
 		if set(self.reactants)==set(other.reactants):
 			if set(self.products)==set(other.products):
 				return True
@@ -216,7 +216,7 @@ def read_species_file(fileName):
 def read_reaction_file(fileName, species_list, ftype):
 	reactions=[]
 	dropped_reactions=[]
-	keepList=['','NAN','#','E-','e-','ELECTR']
+	keepList=['','NAN','#','E-','e-','ELECTR','@']
 	keepList.extend(reaction_types)
 
 	for species in species_list:
@@ -388,7 +388,7 @@ def add_chemdes_reactions(species_list,reaction_list):
 			new_reac.reac_type=new_reac.reac_type+"DES"
 			new_reac.reactants[2]=new_reac.reactants[2]+"DES"
 			for i,product in enumerate(new_reac.products):
-				if ("#" in product):
+				if ("#" in product) or ("@" in product):
 					new_reac.products[i]=new_reac.products[i][1:]
 				else:
 					if product!="NAN":
@@ -409,6 +409,7 @@ def add_bulk_reactions(species_list,reaction_list):
 		new_reac=copy(reaction)
 		new_reac.convert_to_bulk()
 		new_reactions.append(new_reac)
+	new_reactions=[reac for reac in new_reactions if reac not in reaction_list]
 
 	bulk_species=[x for x in species_list if "@" in x.name]
 	for species in bulk_species:
@@ -452,7 +453,7 @@ def reaction_check(species_list,reaction_list,freeze_check=True):
 		#if i not in duplicate_list:
 			for j, reaction2 in enumerate(reaction_list):
 				if i!=j:
-					if reaction1.same_reaction(reaction2):
+					if reaction1==reaction2:
 						print("\tReactions {0} and {1} are possible duplicates".format(i+1,j+1))
 						reaction1.print()
 						reaction2.print()

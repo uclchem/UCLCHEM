@@ -131,6 +131,7 @@ CONTAINS
             gasTemp(dstep)=(cloudSize/(rout*pc))*(real(dstep)/real(points))
             gasTemp(dstep)=gasTemp(dstep)**(-0.5)
             gasTemp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime/SECONDS_PER_YEAR)**tempb(tempindx))*gasTemp(dstep))
+            if (gasTemp(dstep) .gt. maxTemp) gasTemp(dstep)=maxTemp
         END IF
         dustTemp=gasTemp
     END SUBROUTINE updatePhysics

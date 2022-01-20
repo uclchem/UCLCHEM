@@ -71,8 +71,31 @@ CONTAINS
         CALL initializeChemistry
         dstep=1
         abund(:nspec,1)=abundancesIn(:nspec)
-        call updatePhysics
-        call updateChemistry
+
+                    !allow option for dens to have been changed elsewhere.
+        IF (collapse .ne. 1) abund(nspec+1,dstep)=density(dstep)
+
+        !First sum the total column density over all points further towards edge of cloud
+        IF (dstep.gt.1) THEN
+            h2ColToCell=(sum(abund(nh2,:dstep-1)*density(:dstep-1)))*(cloudSize/real(points))
+            coColToCell=(sum(abund(nco,:dstep-1)*density(:dstep-1)))*(cloudSize/real(points))
+            cColToCell=(sum(abund(nc,:dstep-1)*density(:dstep-1)))*(cloudSize/real(points))
+        ELSE
+            h2ColToCell=0.0
+            coColToCell=0.0
+            cColToCell=0.0
+        ENDIF
+        !then add half the column density of the current point to get average in this "cell"
+        h2Col=h2ColToCell+0.5*abund(nh2,dstep)*density(dstep)*(cloudSize/real(points))
+        coCol=coColToCell+0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
+        cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
+
+        !recalculate coefficients for ice processes
+        safeMantle=MAX(1d-30,abund(nSurface,dstep))
+        safeBulk=MAX(1d-30,abund(nBulk,dstep))
+        bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
+        surfaceCoverage=bulkGainFromMantleBuildUp()
+
 
         CALL calculateReactionRates
         speciesRates=rate(rateIndxs)

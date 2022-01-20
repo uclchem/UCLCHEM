@@ -3,7 +3,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Initial physics variables and final  values. for temp, density and time
-initialTemp=10.0;maxTemp=300
+initialTemp=10.0;maxTemp=300.0
 initialDens=1.00d2;finalDens=1.00d5
 currentTime=0.0;finalTime=5.0d6
 
@@ -121,3 +121,15 @@ columnFile='output/column.dat'
 ebmaxh2=1.21d3;epsilon=0.01;ebmaxcrf=1.21d3;uvcreff=1.0d-3
 ebmaxcr=1.21d3;phi=1.0d5;ebmaxuvcr=1.0d4; uv_yield=0.1
 omega=0.5;
+
+IF (THREE_PHASE) THEN
+    reltol=1d-8
+    abstol_factor=1.0d-14
+    abstol_min=1.0d-25
+    MXSTEP=10000
+else
+    reltol=1d-6
+    abstol_factor=1.0d-18
+    abstol_min=1.0d-25
+    MXSTEP=10000
+END IF

@@ -124,17 +124,6 @@ CONTAINS
         !DVODE SETTINGS
         ISTATE=1
         ITASK=1
-        IF (THREE_PHASE) THEN
-            reltol=1d-8
-            abstol_factor=1.0d-14
-            abstol_min=1.0d-25
-            MXSTEP=10000
-        else
-            reltol=1d-6
-            abstol_factor=1.0d-18
-            abstol_min=1.0d-25
-            MXSTEP=10000
-        END IF
 
         IF (.NOT. ALLOCATED(abstol)) THEN
             ALLOCATE(abstol(NEQ))
@@ -230,6 +219,13 @@ CONTAINS
             h2Col=h2ColToCell+0.5*abund(nh2,dstep)*density(dstep)*(cloudSize/real(points))
             coCol=coColToCell+0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
             cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
+
+            !recalculate coefficients for ice processes
+            safeMantle=MAX(1d-30,abund(nSurface,dstep))
+            safeBulk=MAX(1d-30,abund(nBulk,dstep))
+            bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
+            surfaceCoverage=bulkGainFromMantleBuildUp()
+
             
             CALL calculateReactionRates
 

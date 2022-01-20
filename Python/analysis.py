@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 #User Inputs Go Here
 ################################################
 
-speciesName="#CO"
+speciesName="#CH4"
 result_file="examples/test-output/phase1-full.dat"
 reaction_file="src/reactions.csv"
 species_file="src/species.csv"
@@ -20,7 +20,8 @@ reactions=np.loadtxt(reaction_file,dtype=str,skiprows=1,delimiter=',',usecols=[0
 fortran_reac_indxs=[i+1 for i,reaction in enumerate(reactions) if speciesName in reaction]
 reac_indxs=[i for i,reaction in enumerate(reactions) if speciesName in reaction]
 
-
+for reaction in reactions[reac_indxs]:
+    print(reaction)
 oldMostForms=[]
 oldMostDestructs=[]
 oldTotalChange=0.0
@@ -33,7 +34,7 @@ for i,row in result_df.iterrows():
     param_dict=uclchem.param_dict_from_output(row)
     rates=uclchem.get_species_rates(param_dict,row[species],fortran_reac_indxs)
     change_reacs,changes=uclchem.get_rates_of_change(rates,reactions[reac_indxs],species,speciesName,row)
-
+    
     A=zip(changes,change_reacs)
     A=sorted(A)
     changes,change_reacs=zip(*A)

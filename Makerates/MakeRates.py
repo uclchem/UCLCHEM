@@ -23,7 +23,7 @@ custom_reaction_file = 'inputFiles/default_grain_network.csv'
 
 speciesFile = 'inputFiles/default_species.csv'
 
-three_phase=False
+three_phase=True
 
 
 
@@ -42,7 +42,9 @@ print('################################################\n')
 #read species names,masses and evaporation details from input speciesFile
 nSpecies, speciesList = read_species_file(speciesFile)
 speciesList=remove_duplicate_species(speciesList)
-
+if three_phase:
+	speciesList=create_bulk_species(speciesList)
+	
 # Read the reactants, products, Arrhenius equation parameters and measurement labels for each reaction
 # IF the reaction involves species in our Species List
 # Store user reactions (grain file) that are filtered out in list to write out
@@ -50,8 +52,7 @@ nReactions1, reactions1, dropped_reactions = read_reaction_file(database_reactio
 nReactions2, reactions2, dropped_reactions = read_reaction_file(custom_reaction_file,speciesList,'UCL')
 reactionList=reactions1+reactions2
 
-if three_phase:
-	speciesList=create_bulk_species(speciesList)
+
 
 
 #Need additional grain reactions including non-thermal desorption and chemically induced desorption
@@ -107,7 +108,6 @@ filename = 'outputFiles/reactions.csv'
 write_reactions(filename, reactionList)
 print('\tFinal Reaction File:',filename)
 
-#TODO this doesn't work now I use species objects
 # Write the ODEs in the appropriate language format
 print('Writing system of ODEs in F95 format...')
 filename = 'outputFiles/odes.f90'

@@ -23,9 +23,9 @@ print("Reactions from file 1 not in file 2")
 for reaction1 in reactions1:
 	match=False
 	for reaction2 in reactions2:
-		if set(reaction2.reactants)==set(reaction1.reactants):
-			if set(reaction2.products)==set(reaction2.products):
-				match=True
+		if reaction2==reaction1:
+			match=True
+			break
 	if not match:
 		print(reaction1.reactants,"-->",reaction1.products)
 
@@ -33,23 +33,22 @@ print("Reactions from file 2 not in file 1")
 for reaction1 in reactions2:
 	match=False
 	for reaction2 in reactions1:
-		if set(reaction2.reactants)==set(reaction1.reactants):
-			if set(reaction2.products)==set(reaction2.products):
-				match=True
+		if reaction2==reaction1:
+			match=True
+			break
 	if not match:
 		print(reaction1.reactants,"-->",reaction1.products)
 
 print("Reactions with different coefficients")
 for reaction1 in reactions1:
 	for reation2 in reactions2:
-		if set(reaction2.reactants)==set(reaction1.reactants):
-			if set(reaction2.products)==set(reaction2.products):
-				if reaction1.alpha!=reaction2.alpha:
-					print(reaction1.reactants,"-->",reaction1.products)
-					print(f"alpha 1 = {reaction1.alpha}, alpha 2 = {reaction2.alpha}")
-				if reaction1.beta!=reaction2.beta:
-					print(reaction1.reactants,"-->",reaction1.products)
-					print(f"beta 1 = {reaction1.beta}, beta 2 = {reaction2.beta}")
-				if reaction1.gamma!=reaction2.gamma:
-					print(reaction1.reactants,"-->",reaction1.products)
-					print(f"gamma 1 = {reaction1.gamma}, gamma 2 = {reaction2.gamma}")
+		if reaction1==reaction2:
+			if reaction1.alpha!=reaction2.alpha:
+				print(reaction1.reactants,"-->",reaction1.products)
+				print(f"alpha 1 = {reaction1.alpha}, alpha 2 = {reaction2.alpha}")
+			if reaction1.beta!=reaction2.beta:
+				print(reaction1.reactants,"-->",reaction1.products)
+				print(f"beta 1 = {reaction1.beta}, beta 2 = {reaction2.beta}")
+			if reaction1.gamma!=reaction2.gamma:
+				print(reaction1.reactants,"-->",reaction1.products)
+				print(f"gamma 1 = {reaction1.gamma}, gamma 2 = {reaction2.gamma}")
