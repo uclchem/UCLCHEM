@@ -1,4 +1,4 @@
-# UCLCHEM v2.0.3
+# UCLCHEM v2.1.0
 UCLCHEM is a gas-grain chemical code written in Fortran 95. It propagates the abundances of chemical species through a network of user-defined reactions according to the physical conditions of the gas. Included in the repository is MakeRates, a python script to combine a species list, UMIST reaction file and user-defined reaction file into a consistent network with all files required by UCLCHEM.
 
 **************************************************************
@@ -26,15 +26,7 @@ Currently, the wrapper must be recompiled for different physics modules.
 **************************************************************
 Change Log
 **************************************************************
-**Three phases**
-Following Garrod & Pauly 2011 and Ruaud et al. 2016, we've added three phase chemistry to UCLCHEM. By default, it's turned off but a flag in Makerates/MakeRates.py will switch it on.
-
-**Improved Python**
-Our Python module is much improved, we still compile the fortran source code for an efficient chemical model but we've written easy to use Python functions for the user to call it through. We've also increased the documentation on this feature.
-
-**New Analysis**
-The analysis script in Python/ is now more accurate, calling UCLCHEM to calculate the rates as needed.
-
+See change.log! We've made a large number of improvements ahead of v3.0 which will be a python centric update that removes the need to recompile the code to run different physical models. We'll also be restructuring the code to focus on producing a user friendly python library.
 
 *************************************************************
 Contributing

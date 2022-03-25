@@ -1,3 +1,3 @@
-Run UCLCHEM with these input files to produce files that should match the ones in the examples/example-outputs directory. "./uclchem examples/phase1.inp" will run the first example from the main directory after you have compiled uclchem.
+Run UCLCHEM with these input files to produce files that should match the ones in the examples/example-outputs directory. "./uclchem examples/phase1.inp" will run the first example from the main directory after you have compiled uclchem. Alternatively, to test a python build, you can just do "python Python/run_uclchem_tests.py" to run all three tests.
 
-In the scripts/ directory, there is a python script called plot_uclchem_tests.py that will make a plot with each of the example model runs on the top row and each of your test runs on the bottom row. The two rows should be identical.
+In the Python/ directory, there is a python script called plot_uclchem_tests.py that will make a plot with each of the example model runs on the top row and each of your test runs on the bottom row. The two rows should be identical.

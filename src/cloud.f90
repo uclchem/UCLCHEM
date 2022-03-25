@@ -33,12 +33,12 @@ MODULE physics
     
     !Arrays for phase 2 temp profiles. parameters for equation chosen by index
     !arrays go [1Msun,5, 10, 15, 25,60]
-   
-    DOUBLE PRECISION,PARAMETER :: tempa(6)=(/1.927d-1,4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
-    DOUBLE PRECISION,PARAMETER :: tempb(6)=(/0.5339,0.6255,0.8395,1.085,1.289,1.98/)
-    DOUBLE PRECISION,PARAMETER :: solidtemp(6)=(/20.0,19.6,19.45,19.3,19.5,20.35/)
-    DOUBLE PRECISION,PARAMETER :: volctemp(6)=(/84.0,86.3,88.2,89.5,90.4,92.2/)
-    DOUBLE PRECISION,PARAMETER :: codestemp(6)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
+    INTEGER, PARAMETER :: nMasses= 6 
+    DOUBLE PRECISION,PARAMETER :: tempa(nMasses)=(/1.927d-1,4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
+    DOUBLE PRECISION,PARAMETER :: tempb(nMasses)=(/0.5339,0.6255,0.8395,1.085,1.289,1.98/)
+    DOUBLE PRECISION,PARAMETER :: solidtemp(nMasses)=(/20.0,19.6,19.45,19.3,19.5,20.35/)
+    DOUBLE PRECISION,PARAMETER :: volctemp(nMasses)=(/84.0,86.3,88.2,89.5,90.4,92.2/)
+    DOUBLE PRECISION,PARAMETER :: codestemp(nMasses)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
     DOUBLE PRECISION, allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:),monoFracCopy(:)
 CONTAINS
 !THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN.
@@ -48,7 +48,9 @@ CONTAINS
     ! Called at start of UCLCHEM run
     ! Uses values in defaultparamters.f90 and any inputs to set initial values        !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE initializePhysics
+    SUBROUTINE initializePhysics(successFlag)
+        INTEGER, INTENT(OUT) :: successFlag
+        successFlag=0
         ! Modules not restarted in python wraps so best to reset everything manually.
         IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,dustTemp,density,monoFracCopy)
         ALLOCATE(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points),monoFracCopy(size(monoFractions)))
@@ -76,6 +78,13 @@ CONTAINS
                 write(*,*) "Collapse must be 0 or 1 for cloud.f90"
         END SELECT
 
+        IF (tempindx .gt. nMasses) THEN
+            write(*,*) "tempindx was ",tempindx
+            write(*,*) "tempindx must be less than",nMasses
+            write(*,*) "1=1Msol, 2=5M, 3=10M, 4=15M, 5=25M, 6=60M"
+            successFlag=-1
+            RETURN
+        END IF 
 
         !calculate initial column density as distance from core edge to current point * density
         DO dstep=1,points
@@ -90,6 +99,7 @@ CONTAINS
     !UCLCHEM. This is also given to the integrator as the targetTime in chemistry.f90 !
     !but the integrator itself chooses an integration timestep.                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
     SUBROUTINE updateTargetTime
         IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
             targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR

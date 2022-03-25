@@ -1,6 +1,23 @@
 import uclchem
-from multiprocessing import Pool
+import numpy as np
+import matplotlib.pyplot as plt
+from time import perf_counter
 
+print("ODE element conservation")
+print("------------------------")
+
+species=np.loadtxt("src/species.csv",usecols=[0],delimiter=",",
+                   dtype=str,comments=None)
+result=uclchem.test_ode_conservation(species)
+print("Total rates of change:")
+for key,value in result.items():
+    print(f"{key} {value:.2e}")
+assert result["H"]<1e-15, f"H not conserved with total rate of change {result['H']:.2e}"
+print("Elements are conserved.")
+print("------------------------")
+
+
+print("Running test models...")
 #set a parameter dictionary for static model
 params = {"phase": 1, "switch": 0, "collapse": 0, "writeStep": 1,
 			"outSpecies": 'OCS CO CS CH3OH', "initialDens": 1e4, "initialTemp":10.0,

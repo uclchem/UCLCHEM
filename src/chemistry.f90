@@ -19,7 +19,8 @@ IMPLICIT NONE
    !These integers store the array index of important species and reactions, x is for ions    
     INTEGER :: njunk
     !loop counters    
-    INTEGER :: i,j,l,writeStep,writeCounter=0
+    INTEGER :: i,j,l,writeStep,writeCounter=0,loopCounter
+    INTEGER, PARAMETER :: maxLoops=10
 
     !Flags to control desorption processes
     INTEGER :: h2desorb,crdesorb,uvdesorb,desorb,thermdesorb
@@ -55,14 +56,15 @@ IMPLICIT NONE
 
 
 CONTAINS
-!This gets called immediately by main so put anything here that you want to happen before the time loop begins, reader is necessary.
     SUBROUTINE initializeChemistry
+    ! Sets variables at the start of every run.
+    ! Since python module persists, it's not enough to set initial
+    ! values in module definitions above. Reset here.
         NEQ=nspec+1
         IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff)
         ALLOCATE(abund(NEQ,points),vdiff(SIZE(iceList)))
         CALL fileSetup
-        !if this is the first step of the first phase, set initial abundances
-        !otherwise reader will fix it
+        !Set abundances to initial elemental if not reading them in.
         IF (.NOT. readAbunds) THEN
             !ensure abund is initially zero
             abund= 0.
@@ -77,7 +79,6 @@ CONTAINS
             abund(nna,:) = fna
             abund(nli,:) = fli
             abund(npah,:) = fpah
-
             !default to ions
             abund(nsx,:) = fs
             abund(nsix,:) = fsi                
@@ -100,7 +101,7 @@ CONTAINS
             abund(n15n,:) = f15n           
             abund(n13c,:) = f13c    
 
-            abund(nspec,:)=abund(ncx,:)+abund(nsix,:)+abund(nsx,:)+abund(nclx,:)
+            abund(nelec,:)=abund(ncx,:)+abund(nsix,:)+abund(nsx,:)+abund(nclx,:)
 
             abund=abund*metallicity
 
@@ -138,8 +139,6 @@ CONTAINS
 !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     SUBROUTINE fileSetup
         IMPLICIT NONE
-        integer l
-
         INQUIRE(UNIT=11, OPENED=columnOutput)
         IF (columnOutput) write(11,333) specName(outIndx)
         333 format("Time,Density,gasTemp,av,",(999(A,:,',')))
@@ -198,11 +197,13 @@ CONTAINS
         END IF
     END SUBROUTINE output
 
-    SUBROUTINE updateChemistry
+    SUBROUTINE updateChemistry(successFlag)
     !Called every time/depth step and updates the abundances of all the species
-        DO WHILE(currentTime .lt. targetTime)         
-
-            !allow option for dens to have been changed elsewhere.
+        INTEGER, INTENT(OUT) :: successFlag
+        loopCounter=0
+        successFlag=1
+        DO WHILE((currentTime .lt. targetTime) .and. (loopCounter .lt. maxLoops))   
+            !allow option for dens to have been ch anged elsewhere.
             IF (collapse .ne. 1) abund(nspec+1,dstep)=density(dstep)
 
             !First sum the total column density over all points further towards edge of cloud
@@ -229,15 +230,23 @@ CONTAINS
             
             CALL calculateReactionRates
 
-            CALL integrateODESystem
+            CALL integrateODESystem(successFlag)
+            IF (successFlag .lt. 0) THEN
+                write(*,*) "Integration failed, exiting"
+                RETURN
+            END IF
 
             !1.d-30 stops numbers getting too small for fortran.
             WHERE(abund<1.0d-30) abund=1.0d-30
             density(dstep)=abund(NEQ,dstep)
+            loopCounter=loopCounter+1
         END DO
+        IF (loopCounter .eq. maxLoops) successFlag=-1
     END SUBROUTINE updateChemistry
 
-    SUBROUTINE integrateODESystem
+    SUBROUTINE integrateODESystem(successFlag)
+        INTEGER, INTENT(OUT) :: successFlag
+        successFlag=0
     !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
         !reset parameters for DVODE
         ITASK=1 !try to integrate to targetTime
@@ -263,7 +272,8 @@ CONTAINS
                 write(*,*) "DVODE found invalid inputs"
                 write(*,*) "abstol:"
                 write(*,*) abstol
-                STOP
+                successFlag=-1
+                RETURN
             CASE(-4)
                 !Successful as far as currentTime but many errors.
                 !Make targetTime smaller and just go again
@@ -282,12 +292,12 @@ CONTAINS
     !This is where reacrates subroutine is hidden
     include 'rates.f90'
 
-    SUBROUTINE F (NEQ, T, Y, YDOT)
+    SUBROUTINE F (NEQUATIONS, T, Y, YDOT)
         INTEGER, PARAMETER :: WP = KIND(1.0D0)
-        INTEGER NEQ,looper
+        INTEGER NEQUATIONS,looper
         REAL(WP) T
-        REAL(WP), DIMENSION(NEQ) :: Y, YDOT
-        INTENT(IN)  :: NEQ, T, Y
+        REAL(WP), DIMENSION(NEQUATIONS) :: Y, YDOT
+        INTENT(IN)  :: NEQUATIONS, T, Y
         INTENT(OUT) :: YDOT
         REAL(dp) :: D,loss,prod
         !Set D to the gas density for use in the ODEs
@@ -299,8 +309,8 @@ CONTAINS
         !thus these are the only rates calculated each time the ODE system is called.
         cocol=coColToCell+0.5*Y(nco)*D*(cloudSize/real(points))
         h2col=h2ColToCell+0.5*Y(nh2)*D*(cloudSize/real(points))
-        h2dis=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel) !H2 photodissociation
-        rate(nrco)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
+        rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel) !H2 photodissociation
+        rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
 
         !recalculate coefficients for ice processes
         safeMantle=MAX(1d-30,Y(nSurface))
@@ -311,15 +321,9 @@ CONTAINS
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         INCLUDE 'odes.f90'
-
-        !We treat H2 photodissociation specially using the h2dis variable to store rate. See end of calculateReactionRates
-        ydot(nh)  = ydot(nh) + 2.0*(h2dis*y(nh2) )
-        !                             h2 formation - h2-photodissociation
-        ydot(nh2) = ydot(nh2) - h2dis*y(nh2)
-        !                       h2 formation  - h2-photodissociation
         ! get density change from physics module to send to DLSODE
 
-        IF (collapse .eq. 1) ydot(NEQ)=densdot(y(NEQ))
+        IF (collapse .eq. 1) ydot(NEQUATIONS)=densdot(y(NEQUATIONS))
     END SUBROUTINE F
 
     ! SUBROUTINE JAC(NEQ, T, Y, ML, MU, J, NROWPD)

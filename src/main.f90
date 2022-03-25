@@ -7,7 +7,7 @@ PROGRAM uclchem
 USE physics
 USE chemistry
 IMPLICIT NONE
-    INTEGER :: ios=0,line=0,fileNum=12,pos,readIndx
+    INTEGER :: ios=0,line=0,fileNum=12,pos,readIndx,successFlag
     CHARACTER (LEN=100):: paramFile, buffer,label
     CHARACTER (LEN=100):: abundSaveFile,abundLoadFile,outputFile,columnFile
     !All model parameters are given a default value in paramters.f90
@@ -16,7 +16,7 @@ IMPLICIT NONE
     !Any subset of the parameters can be passed in a file on program start
     !see example.inp
     INCLUDE 'readparameters.f90'
-
+    successFlag=1
     dstep=1
     currentTime=0.0
     timeInYears=0.0
@@ -38,8 +38,11 @@ IMPLICIT NONE
         !loop over parcels, counting from centre out to edge of cloud
         DO dstep=1,points
             !update chemistry from currentTime to targetTime
-            CALL updateChemistry
-
+            CALL updateChemistry(successFlag)
+            IF (successFlag .eq. 0) THEN
+                CALL debugout
+                STOP
+            END IF
             currentTime=targetTime
             !get time in years for output, currentTime is now equal to targetTime
             timeInYears= currentTime/SECONDS_PER_YEAR

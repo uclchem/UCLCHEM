@@ -20,28 +20,28 @@ MODULE physics
     integer :: instantSublimation,ion,coflag,tempindx
 
     !variables either controlled by physics or that user may wish to change    
-    double precision :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime
-    double precision :: cloudSize,rout,rin,baseAv,bc,tstart,maxTemp
-    double precision, allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:)
+    REAL(dp) :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime
+    REAL(dp) :: cloudSize,rout,rin,baseAv,bc,tstart,maxTemp
+    REAL(dp), allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:)
 
     character(2) ::filename
     character(1)  ::densint
     !Cshock specific parameters
     !*******************************************************************
-    double precision :: initialTemp, z2,vs,v0,zn,vn,at,z3,tsat
-    double precision :: ucm,z1,driftVel,vi,tempi,vn0,zn0,vA,dlength,dissipationTime
-    double precision :: grainRadius5,dens6,grainNumberDensity,dzv,start_vel
-    double precision, allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
+    REAL(dp) :: initialTemp, z2,vs,v0,zn,vn,at,z3,tsat
+    REAL(dp) :: ucm,z1,driftVel,vi,tempi,vn0,zn0,vA,dlength,dissipationTime
+    REAL(dp) :: grainRadius5,dens6,grainNumberDensity,dzv
+    REAL(dp), allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
     integer :: manCoolTemp, postShock
-    double precision, parameter :: coolTemp=100.0
+    REAL(dp), parameter :: coolTemp=100.0
     !variables for the collisional and radiative heating of grains
-    double precision :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
-    double precision :: coshinv1,coshinv2,zmax,a1,eta,eps,epso,sConst
+    REAL(dp) :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
+    REAL(dp) :: coshinv1,coshinv2,zmax,a1,eta,eps,epso,sConst
 
     integer :: inrad,projectiles(6)
-    DOUBLE PRECISION, PARAMETER ::nu0=3.0d15,K_BOLTZ_CGS=1.38d-16,bm0=1.e-6,bt=6.
-    DOUBLE PRECISION, PARAMETER :: GAS_DUST_NUMBER_RATIO=1.14d-12,CODES_TEMP=130.0
-    DOUBLE PRECISION, PARAMETER :: grainRadius=1.0d-5
+    REAL(dp), PARAMETER ::nu0=3.0d15,K_BOLTZ_CGS=1.38d-16,bm0=1.e-6,bt=6.
+    REAL(dp), PARAMETER :: GAS_DUST_NUMBER_RATIO=1.14d-12,CODES_TEMP=130.0
+    REAL(dp), PARAMETER :: grainRadius=1.0d-5
     !*******************************************************************
 
 CONTAINS
@@ -51,7 +51,7 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics
         INTEGER :: iLoop
-        DOUBLE PRECISION :: v01,g1,g2
+        REAL(dp) :: v01,g1,g2
 
         !Reset variables for python wrap.
         IF (ALLOCATED(av)) deallocate(av,coldens,gasTemp,density,dustTemp)
@@ -118,6 +118,7 @@ CONTAINS
             ! Length of the dissipation region, dlength:
             dlength=12.0*pc*vs/initialDens
             dissipationTime=(dlength*1.0d-5/vs)/SECONDS_PER_YEAR
+
             ! Parameters that describe the decoupling between the ion and the neutral
             ! fluids. z2 is obtained by assuming that at z=dlength, the velocity of
             ! the neutrals is 99% (vs-v0). See v0 below and more details in
@@ -178,9 +179,17 @@ CONTAINS
     !but the integrator itself chooses an integration timestep.                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updateTargetTime
-        IF ((phase .eq. 2) .and. (timeInYears .lt. dissipationTime)) THEN
-            !get a nice sampling along the shock
-            targetTime=(timeInYears+0.05*dissipationTime)*SECONDS_PER_YEAR
+        IF (phase .eq. 2) THEN
+            IF (timeInYears .lt. 1d-7) THEN
+                targetTime=SECONDS_PER_YEAR*1.0d-7
+            ELSE IF (timeInYears .lt. 1) THEN
+                targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR
+            ELSE IF (timeInYears .lt. 2.0*dissipationTime) THEN
+                !get a nice sampling along the shock
+                targetTime=(timeInYears+0.05*dissipationTime)*SECONDS_PER_YEAR
+            ELSE
+                targetTime=(1.1*timeInYears)*SECONDS_PER_YEAR
+            END IF
         ELSE
             IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
                 targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
@@ -190,6 +199,8 @@ CONTAINS
                 targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 1000) THEN
                 targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
+            ELSE IF (timeInYears .gt. 100) THEN
+                targetTime=(timeInYears+25.0)*SECONDS_PER_YEAR
             ELSE IF (timeInYears .gt. 0.0) THEN
                 targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR
             ELSE
@@ -216,7 +227,7 @@ CONTAINS
 
         !All cshock logic only happens if user sets phase=2 otherwise: basic cloud
         IF (phase .eq. 2) THEN
-            !First calculate shock velocity and position of shock front at currentTime
+            !First calculate velocity of neutrals and position of shock front at currentTime
             call shst
 
             dzv=sqrt(2*vn*(vs-v0)-vn**2)
@@ -280,7 +291,7 @@ CONTAINS
     ! In hot core that means following thermalEvaporation subroutine.                 !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE sublimation(abund)
-        DOUBLE PRECISION :: abund(nspec+1,points)
+        REAL(dp) :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
 
         IF (coflag .ne. 1 .and. phase .eq. 2) THEN
@@ -302,8 +313,8 @@ CONTAINS
     ! Called from chemistry.f90, density integrated with abundances so this gives ydot!
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     pure FUNCTION densdot(density)
-        DOUBLE PRECISION, INTENT(IN) :: density
-        DOUBLE PRECISION :: densdot
+        REAL(dp), INTENT(IN) :: density
+        REAL(dp) :: densdot
         !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
         IF (density .lt. finalDens) THEN
              densdot=bc*(density**4./initialDens)**0.33*&
@@ -318,13 +329,14 @@ CONTAINS
 ! subroutine that calculates the distance along the dissipation region
 !(zn) and the velocity of the gas as the shock evolves with time.
     SUBROUTINE shst
-        double precision :: vn1,f1,f0,xcos,acosh
+        REAL(dp) :: vn1,f1,f0,xcos,acosh
+        INTEGER :: loopCount
         !We calculate the physical structure of the shock
         !set vn1 arbitrarily high to ensure while loop is done at least once
         vn1=1d30
         vn=vn0
-        start_vel=vn0
-        DO WHILE (abs(vn-vn1).ge.1.e-14)
+        loopCount=0
+        DO WHILE ((abs(vn-vn1).ge.1.e-10) .and. (loopCount .lt. 100))
             vn1=vn
             f1=vs-vn1
             f0=vs-vn0
@@ -332,6 +344,7 @@ CONTAINS
             xcos=zn/z2
             acosh=0.5*(dexp(xcos)+dexp(-xcos))
             vn=(vs-v0)-((vs-v0)/acosh)
+            loopCount=loopCount+1
         END  DO
 
         xcos=zn/z1
@@ -342,7 +355,7 @@ CONTAINS
         driftVel=vi-vn
         zn0=zn
         vn0=vn
-    END SUBROUTINE SHST
+    END SUBROUTINE shst
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Mock subroutine for cshock that will sputter the ices based on Jimenez-Serra!
@@ -354,9 +367,9 @@ CONTAINS
     !  - Tests against the izaskun paper    
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE sputtering(abund)
-        DOUBLE PRECISION :: abund(nspec+1,points)
+        REAL(dp) :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
-        DOUBLE PRECISION :: sputterRate,abundChangeFrac,totalMantle
+        REAL(dp) :: sputterRate,abundChangeFrac,totalMantle
         INTEGER :: iSpec
         !Constant relating mass and speed of projectile to energy
         sConst=(driftVel*driftVel*km*km)/(2.0*gasTemp(dstep)*K_BOLTZ_CGS)
@@ -395,12 +408,12 @@ CONTAINS
 !proportional to projectile abundance                                   !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     FUNCTION iceYieldRate(projectileMass,projectileDensity)
-        DOUBLE PRECISION :: iceYieldRate
-        DOUBLE PRECISION projectileMass,projectileDensity
-        DOUBLE PRECISION :: lowerLimit,upperLimit,s
+        REAL(dp) :: iceYieldRate
+        REAL(dp) projectileMass,projectileDensity
+        REAL(dp) :: lowerLimit,upperLimit,s
 
-        DOUBLE PRECISION, PARAMETER :: iceBindingEnergy=0.53*1.6d-12,targetMass=18.0*MH   
-        DOUBLE PRECISION, PARAMETER :: iceYieldEfficiency=0.8 !
+        REAL(dp), PARAMETER :: iceBindingEnergy=0.53*1.6d-12,targetMass=18.0*MH   
+        REAL(dp), PARAMETER :: iceYieldEfficiency=0.8 !
 
         !eta is effectively reduced mass of the collision
         eta=4.*iceYieldEfficiency*projectileMass*targetMass*((projectileMass+targetMass)**(-2.0))
@@ -435,11 +448,11 @@ END FUNCTION
 !allowing trapezium rule to integrate from xth to infinity              !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
 FUNCTION iceYieldIntegrand(x,projectileMass)
-      DOUBLE PRECISION :: iceYieldIntegrand,x,projectileMass
-      DOUBLE PRECISION :: yield,s
+      REAL(dp) :: iceYieldIntegrand,x,projectileMass
+      REAL(dp) :: yield,s
 
-      DOUBLE PRECISION, PARAMETER :: yieldConst=8.3d-4
-      DOUBLE PRECISION, PARAMETER :: iceBindingEnergy=0.53*1.6d-12
+      REAL(dp), PARAMETER :: yieldConst=8.3d-4
+      REAL(dp), PARAMETER :: iceBindingEnergy=0.53*1.6d-12
 
       !this is s from exp(x+s) in eq B.1, varies only with mass so constant precalculated in initialize
       s=sConst*sqrt(projectileMass)
@@ -460,7 +473,7 @@ END FUNCTION iceYieldIntegrand
 !upperlimit+dx will have an area~0                                     !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 FUNCTION iceYieldIntegralLimit(xth,projectileMass)
-      DOUBLE PRECISION iceYieldIntegralLimit,xth,projectileMass
+      REAL(dp) iceYieldIntegralLimit,xth,projectileMass
       INTEGER :: i
       i=1
       !Take upperlimit to be half way between lowerLimit and 1000.
@@ -477,12 +490,12 @@ END FUNCTION iceYieldIntegralLimit
 
    !Subroutine that calculates an integral using the trapezoidal method.
     Function trapezoidIntegrate(func,lowerLimit,upperlimit,projectileMass)
-        DOUBLE PRECISION :: trapezoidIntegrate
+        REAL(dp) :: trapezoidIntegrate
         INTEGER JMAX
-        DOUBLE PRECISION lowerLimit,upperlimit,func,tolerance,projectileMass
+        REAL(dp) lowerLimit,upperlimit,func,tolerance,projectileMass
         PARAMETER (tolerance=1.e-3, JMAX=25)
         INTEGER j
-        DOUBLE PRECISION olds
+        REAL(dp) olds
         external func
         olds=-1.e30
         DO j=1,JMAX
@@ -494,9 +507,9 @@ END FUNCTION iceYieldIntegralLimit
 
     SUBROUTINE trapzd(func,a,b,s,n,func_arg)
         INTEGER n
-        DOUBLE PRECISION a,b,s,func,func_arg
+        REAL(dp) a,b,s,func,func_arg
         INTEGER it,j
-        DOUBLE PRECISION del,sum,tnm,x
+        REAL(dp) del,sum,tnm,x
         external func
         IF(n.eq.1) THEN
             s=0.5*(b-a)*(func(a,func_arg)+func(b,func_arg))

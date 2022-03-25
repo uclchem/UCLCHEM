@@ -6,22 +6,29 @@ MODULE wrap
     USE physics
     USE chemistry
     IMPLICIT NONE
+    
     CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile, outFile
 
 CONTAINS
-    SUBROUTINE run_model_to_file(dictionary, outSpeciesIn)
+    SUBROUTINE run_model_to_file(dictionary, outSpeciesIn,successFlag)
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
+        INTEGER :: successFlag
         !f2py intent(in) dictionary,outSpeciesIn
+        !f2py intent(out) successFlag
 
         ! call the dictionary_parser function in order to read the dictionary of parameters
         INCLUDE 'defaultparameters.f90'
-        CALL dictionary_parser(dictionary, outSpeciesIn)
+        CALL dictionary_parser(dictionary, outSpeciesIn,successFlag)
+        IF (successFlag .le. 0) THEN
+            WRITE(*,*) 'Error reading parameter dictionary'
+            RETURN
+        END IF
 
         dstep=1
         currentTime=0.0
         timeInYears=0.0
-
-        CALL solveAbundances
+        successFlag=1
+        CALL solveAbundances(successFlag)
         !close outputs to attempt to force flush
         close(10)
         close(11)
@@ -29,23 +36,28 @@ CONTAINS
         close(72)
     END SUBROUTINE run_model_to_file
 
-    SUBROUTINE run_model_for_abundances(dictionary, outSpeciesIn,abundance_out)
+    SUBROUTINE run_model_for_abundances(dictionary, outSpeciesIn,abundance_out,successFlag)
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
-        DOUBLE PRECISION :: abundance_out(50)
+        DOUBLE PRECISION :: abundance_out(500)
+        INTEGER :: successFlag
         !f2py intent(in) dictionary,outSpeciesIn
-        !f2py intent(out) abundance_out
+        !f2py intent(out) abundance_out,successFlag
 
         ! Set the boolean to True if you want to be able to return a python array
         ! call the dictionary_parser function in order to read the dictionary of parameters
         INCLUDE 'defaultparameters.f90'
         !Read input parameters from the dictionary
-        CALL dictionary_parser(dictionary, outSpeciesIn)
+        CALL dictionary_parser(dictionary, outSpeciesIn,successFlag)
+        IF (successFlag .le. 0) THEN
+            WRITE(*,*) 'Error reading parameter dictionary'
+            RETURN
+        END IF
         
         dstep=1
         currentTime=0.0
         timeInYears=0.0
-
-        CALL solveAbundances
+        successFlag=1
+        CALL solveAbundances(successFlag)
 
         !close outputs to attempt to force flush
         close(10)
@@ -58,16 +70,27 @@ CONTAINS
     END SUBROUTINE run_model_for_abundances
 
 
-    SUBROUTINE get_rates(dictionary,abundancesIn,rateIndxs,speciesRates)
+    SUBROUTINE get_rates(dictionary,abundancesIn,rateIndxs,speciesRates,successFlag)
         CHARACTER(LEN=*) :: dictionary
         DOUBLE PRECISION :: abundancesIn(500),speciesRates(500)
-        INTEGER :: speciesIndx,rateIndxs(500)
+        INTEGER :: speciesIndx,rateIndxs(500),successFlag
         !f2py intent(in) dictionary,abundancesIn
         !f2py intent(out) :: speciesRates
 
         INCLUDE 'defaultparameters.f90'
-        CALL dictionary_parser(dictionary, "")
-        CALL initializePhysics
+        
+        CALL dictionary_parser(dictionary, "",successFlag)
+        IF (successFlag .le. 0) THEN
+            WRITE(*,*) 'Error reading parameter dictionary'
+            RETURN
+        END IF
+
+        CALL initializePhysics(successFlag)
+        IF (successFlag .lt. 0) then
+            WRITE(*,*) 'Error initializing physics'
+            RETURN
+        END IF
+
         CALL initializeChemistry
         dstep=1
         abund(:nspec,1)=abundancesIn(:nspec)
@@ -102,8 +125,44 @@ CONTAINS
 
     END SUBROUTINE get_rates
 
-    SUBROUTINE solveAbundances()
-        CALL initializePhysics
+    SUBROUTINE get_odes(dictionary,abundancesIn,ratesOut)
+        CHARACTER(LEN=*) :: dictionary
+        DOUBLE PRECISION :: abundancesIn(500),ratesOut(500)
+        INTEGER :: successFlag
+        !f2py intent(in) dictionary,abundancesIn
+        !f2py intent(out) :: ratesOut
+        INCLUDE 'defaultparameters.f90'
+        CALL dictionary_parser(dictionary, "",successFlag)
+
+        CALL initializePhysics(successFlag)
+        IF (successFlag .lt. 0) then
+            WRITE(*,*) 'Error initializing physics'
+            RETURN
+        END IF
+
+        CALL initializeChemistry
+        
+        dstep=1
+        successFlag=1
+        abund(:nspec,dstep)=abundancesIn(:nspec)
+        abund(neq,dstep)=initialDens
+        currentTime=0.0
+        timeInYears=0.0
+
+        CALL updateTargetTime
+        CALL updateChemistry(successFlag)
+        CALL F(NEQ,currentTime,abund(:,dstep),ratesOut(:NEQ))
+    END SUBROUTINE get_odes
+
+    SUBROUTINE solveAbundances(successFlag)
+        INTEGER, INTENT(OUT) :: successFlag
+        successFlag=1
+
+        CALL initializePhysics(successFlag)
+        IF (successFlag .lt. 0) then
+            WRITE(*,*) 'Error initializing physics'
+            RETURN
+        END IF
         CALL initializeChemistry
 
         dstep=1
@@ -117,13 +176,14 @@ CONTAINS
 
             !Each physics module has a subroutine to set the target time from the current time
             CALL updateTargetTime
-
             !loop over parcels, counting from centre out to edge of cloud
             DO dstep=1,points
                 !update chemistry from currentTime to targetTime
-                CALL updateChemistry
-
-                currentTime=targetTime
+                CALL updateChemistry(successFlag)
+                IF (successFlag .lt. 0) THEN
+                    RETURN
+                END IF
+                !currentTime=targetTime
                 !get time in years for output, currentTime is now equal to targetTime
                 timeInYears= currentTime/SECONDS_PER_YEAR
 
@@ -140,8 +200,9 @@ CONTAINS
         END DO
     END SUBROUTINE solveAbundances
 
-    SUBROUTINE dictionary_parser(dictionary, outSpeciesIn)
+    SUBROUTINE dictionary_parser(dictionary, outSpeciesIn,successFlag)
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
+        INTEGER, INTENT(OUT) :: successFlag
         INTEGER, ALLOCATABLE, DIMENSION(:) :: locations
         LOGICAL :: ChemicalDuplicateCheck
         INTEGER :: posStart, posEnd, whileInteger,inputindx
@@ -150,6 +211,7 @@ CONTAINS
         close(10)
         close(11)
         close(7)
+        successFlag=1
 
         whileInteger = 0
 
@@ -256,14 +318,16 @@ CONTAINS
                         write(*,*) "Outspecies parameter set but no outspecies string given"
                         write(*,*) "general(parameter_dict,outSpeciesIn) requires a delimited string of species names"
                         write(*,*) "if outSpecies or columnFlag is set in the parameter dictionary"
-                        STOP
+                        successFlag=-1
+                        RETURN
                     ELSE
                         READ(outSpeciesIn,*, END=22) outSpecies
                         IF (outSpeciesIn .eq. "") THEN
 22                              write(*,*) "mismatch between outSpeciesIn and number given in dictionary"
                             write(*,*) "Number:",nout
                             write(*,*) "Species list:",outSpeciesIn
-                            STOP
+                            successFlag=-1
+                            RETURN
                         END IF
                     END IF
                     !assign array indices for important species to the integers used to store them.
@@ -329,7 +393,8 @@ CONTAINS
                     ELSE
                         WRITE(*,*) "Error in output species. No species were given but a column file was given."
                         WRITE(*,*) "columnated output requires output species to be chosen."
-                        STOP
+                        successFlag=-1
+                        RETURN
                     END IF
 
                 CASE DEFAULT

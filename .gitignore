@@ -9,3 +9,4 @@ examples/*.png
 Python/uclchem/*.so
 test/*
 test
+.vscode

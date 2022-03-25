@@ -11,7 +11,7 @@ f2pyFC=gnu95 #this must match FC (ifort=intelem, gfortran=gnu95)
 #Unforgiving debugging flags
 #FFLAGS =-g -fbacktrace -Wall -fcheck=all
 #Fast optimizing flags
-FFLAGS = -O2 -fPIC -ffree-line-length-0
+FFLAGS = -O3 -fPIC -ffree-line-length-0
 
 #Pick a physics module!
 PHYSICS=cloud.f90
