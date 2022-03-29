@@ -116,30 +116,30 @@ def kida_parser(kida_file):
                             a = line[:count]
                             row.append(func(a))
                         line = line[count:]
-                        
-            #Some reformatting required
-            #KIDA gives CRP reactions in different units to UMIST
+
+            # Some reformatting required
+            # KIDA gives CRP reactions in different units to UMIST
             if row[-1] == 1:
-                #Amazingly both UMIST and KIDA use CRP but differently.
-                #Translate KIDA names to UMIST
-                if row[1]=="CRP":
-                    row[1]="CRPHOT"
-                    #with beta=0 and gamma=1, the KIDA formulation of 
-                    #CRPHOT reactions becomes the UMIST one
-                    row[10]=1.0
-                elif row[1]=="CR":
-                    row[1]="CRP"
-                #UMIST alpha includes zeta_0 but KIDA doesn't. Since UCLCHEM
-                #rate calculation follows UMIST, we convert.
-                row[8]=row[8]*1.36e-17
+                # Amazingly both UMIST and KIDA use CRP but differently.
+                # Translate KIDA names to UMIST
+                if row[1] == "CRP":
+                    row[1] = "CRPHOT"
+                    # with beta=0 and gamma=1, the KIDA formulation of
+                    # CRPHOT reactions becomes the UMIST one
+                    row[10] = 1.0
+                elif row[1] == "CR":
+                    row[1] = "CRP"
+                # UMIST alpha includes zeta_0 but KIDA doesn't. Since UCLCHEM
+                # rate calculation follows UMIST, we convert.
+                row[8] = row[8] * 1.36e-17
                 rows.append(row[:7] + row[8:-1])
-            elif row[-1] in [2,3]:
+            elif row[-1] in [2, 3]:
                 rows.append(row[:7] + row[8:-1])
-            elif row[-1]==4:
-                row[2]="IONOPOL1"
+            elif row[-1] == 4:
+                row[2] = "IONOPOL1"
                 rows.append(row[:7] + row[8:-1])
-            elif row[-1]==5:
-                row[2]="IONOPOL2"
+            elif row[-1] == 5:
+                row[2] = "IONOPOL2"
                 rows.append(row[:7] + row[8:-1])
     return rows
 
@@ -327,32 +327,52 @@ def build_ode_string(species_list, reaction_list, three_phase):
 
     # now add bulk transfer to rate of change of surface species after they've already been calculated
     if three_phase:
-        ode_string += (
-            "!Update surface species for bulk growth, replace surfaceCoverage with alpha_des\n"
-        )
-        ode_string += "!Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
+        ode_string += add_bulk_transfer_odes(species_list, species_names, surface_index, bulk_index)
 
-        ode_string += f"IF (YDOT({surface_index+1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
-        for n, species in enumerate(species_list):
-            if species.name[0] == "#":
-                bulk_version = species_names.index(species.name.replace("#", "@"))
-                ode_string += f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({bulk_version+1})/safeBulk\n"
-            if species.name[0] == "@":
+    return ode_string
+
+
+def add_bulk_transfer_odes(species_list, species_names, surface_index, bulk_index):
+    """As material is added to the surface, what was formerly on the surface layers becomes part of the bulk.
+    A similar transfer happens when surface is removed. So we emulate that with thse ODE additions.
+    Args:
+        species_list (list): List of species objects of network
+        species_names (list): List of corresponding species names
+        surface_index (int): Index of surface in species list
+        bulk_index (int): Index of bulk in species list
+
+    Returns:
+        str: Additions to the ODE for bulk transfer
+    """
+    ode_string = "!Update surface species for bulk growth, replace surfaceCoverage with alpha_des\n"
+    ode_string += "!Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
+
+    ode_string += f"IF (YDOT({surface_index+1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
+    for n, species in enumerate(species_list):
+        if species.name[0] == "#":
+            bulk_partner=species_names.index(species.name.replace("#", "@"))
+            if not species_list[bulk_partner].is_refractory:
+                ode_string += f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({bulk_partner+1})/safeBulk\n"
+        if species.name[0] == "@":
+            if not species.is_refractory:
                 ode_string += f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({n+1})/safeBulk\n"
-        ode_string += "ELSE\n"
-        for n, species in enumerate(species_list):
-            if species.name[0] == "@":
-                surface_version = species_names.index(species.name.replace("@", "#"))
-                ode_string += f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({surface_version+1})\n"
-            if species.name[0] == "#":
-                ode_string += f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({n+1})\n"
-        ode_string += "ENDIF\n"
+    ode_string += "ELSE\n"
+    for n, species in enumerate(species_list):
+        if species.name[0] == "@":
+            surface_version = get_species_fortran_index(
+                species_names, species.name.replace("@", "#")
+            )
+            ode_string += f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({surface_version})\n"
+        if species.name[0] == "#":
+            ode_string += (
+                f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({n+1})\n"
+            )
+    ode_string += "ENDIF\n"
 
-        # once bulk transfer has been added, odes for bulk and surface must be updated to account for it
-        ode_string += "!Update total rate of change of bulk and surface for bulk growth\n"
-        ode_string += species_ode_string(bulk_index, species_list[bulk_index])
-        ode_string += species_ode_string(surface_index, species_list[surface_index])
-
+    # once bulk transfer has been added, odes for bulk and surface must be updated to account for it
+    ode_string += "!Update total rate of change of bulk and surface for bulk growth\n"
+    ode_string += species_ode_string(bulk_index, species_list[bulk_index])
+    ode_string += species_ode_string(surface_index, species_list[surface_index])
     return ode_string
 
 
@@ -408,6 +428,7 @@ def write_evap_lists(network_file, species_list):
     enthalpyList = []
     bulkList = []
     iceList = []
+    refractoryList = []
     species_names = [spec.name for spec in species_list]
     for i, species in enumerate(species_list):
         if species.name[0] == "#":
@@ -438,6 +459,8 @@ def write_evap_lists(network_file, species_list):
             iceList.append(i + 1)
             binding_energygyList.append(species.binding_energy)
             enthalpyList.append(species.enthalpy)
+            if species.is_refractory:
+                refractoryList.append(i+1)
 
     network_file.write(array_to_string("surfaceList", surfacelist, type="int"))
     if len(bulkList) > 0:
@@ -451,6 +474,7 @@ def write_evap_lists(network_file, species_list):
         array_to_string("bindingEnergy", binding_energygyList, type="float", parameter=False)
     )
     network_file.write(array_to_string("formationEnthalpy", enthalpyList, type="float"))
+    network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
 
 
 def truncate_line(input_string, lineLength=72):
@@ -484,7 +508,7 @@ def truncate_line(input_string, lineLength=72):
     return result
 
 
-def write_network_file(network,fileName="outputFiles/network.f90"):
+def write_network_file(network, fileName="outputFiles/network.f90"):
     """Write the Fortran code file that contains all network information for UCLCHEM.
     This includes lists of reactants, products, binding energies, formationEnthalpies
     and so on.
@@ -512,9 +536,8 @@ def write_network_file(network,fileName="outputFiles/network.f90"):
         masses.append(float(species.mass))
         atoms.append(species.n_atoms)
 
-
     speciesIndices = ""
-    for name,species_index in network.species_indices.items():
+    for name, species_index in network.species_indices.items():
         speciesIndices += "{0}={1},".format(name, species_index)
     if len(speciesIndices) > 72:
         speciesIndices = truncate_line(speciesIndices)
@@ -543,7 +566,6 @@ def write_network_file(network,fileName="outputFiles/network.f90"):
     beta = []
     gama = []
     reacTypes = []
-    duplicates = []
     tmins = []
     tmaxs = []
     # store important reactions
@@ -554,13 +576,13 @@ def write_network_file(network,fileName="outputFiles/network.f90"):
     openFile.write("    INTEGER, PARAMETER ::" + reaction_indices)
 
     for i, reaction in enumerate(reaction_list):
-        reactant1.append(find_reactant(names, reaction.reactants[0]))
-        reactant2.append(find_reactant(names, reaction.reactants[1]))
-        reactant3.append(find_reactant(names, reaction.reactants[2]))
-        prod1.append(find_reactant(names, reaction.products[0]))
-        prod2.append(find_reactant(names, reaction.products[1]))
-        prod3.append(find_reactant(names, reaction.products[2]))
-        prod4.append(find_reactant(names, reaction.products[3]))
+        reactant1.append(get_species_fortran_index(names, reaction.reactants[0]))
+        reactant2.append(get_species_fortran_index(names, reaction.reactants[1]))
+        reactant3.append(get_species_fortran_index(names, reaction.reactants[2]))
+        prod1.append(get_species_fortran_index(names, reaction.products[0]))
+        prod2.append(get_species_fortran_index(names, reaction.products[1]))
+        prod3.append(get_species_fortran_index(names, reaction.products[2]))
+        prod4.append(get_species_fortran_index(names, reaction.products[3]))
         alpha.append(reaction.alpha)
         beta.append(reaction.beta)
         gama.append(reaction.gamma)
@@ -584,7 +606,7 @@ def write_network_file(network,fileName="outputFiles/network.f90"):
     openFile.write(array_to_string("\talpha", alpha, type="float", parameter=False))
     openFile.write(array_to_string("\tbeta", beta, type="float", parameter=False))
     openFile.write(array_to_string("\tgama", gama, type="float", parameter=False))
-    #openFile.write(array_to_string("\tduplicates", duplicates, type="int", parameter=True))
+    # openFile.write(array_to_string("\tduplicates", duplicates, type="int", parameter=True))
     openFile.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
     openFile.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
 
@@ -606,7 +628,7 @@ def write_network_file(network,fileName="outputFiles/network.f90"):
     openFile.close()
 
 
-def find_reactant(species_list, reactant):
+def get_species_fortran_index(species_list, reactant):
     try:
         return species_list.index(reactant) + 1
     except:

@@ -49,9 +49,12 @@ CONTAINS
     ! Checks inputs make sense and then calculates a few constants and!
     ! sets up variables for the shock paramterization that follows    !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE initializePhysics
+    SUBROUTINE initializePhysics(successFlag)
+        INTEGER, INTENT(OUT) :: successFlag
         INTEGER :: iLoop
         REAL(dp) :: v01,g1,g2
+
+        successFlag=1
 
         !Reset variables for python wrap.
         IF (ALLOCATED(av)) deallocate(av,coldens,gasTemp,density,dustTemp)

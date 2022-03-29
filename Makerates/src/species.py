@@ -17,7 +17,12 @@ class Species:
     def __init__(self,inputRow):
         self.name=inputRow[0].upper()
         self.mass=int(inputRow[1])
-        self.binding_energy=float(inputRow[2])
+        self.is_refractory = (str(inputRow[2]).lower()=="inf")
+        if self.is_refractory:
+            self.binding_energy=99.9e9
+        else:
+            self.binding_energy=float(inputRow[2])
+        
         self.solidFraction=float(inputRow[3])
         self.monoFraction=float(inputRow[4])
         self.volcFraction=float(inputRow[5])

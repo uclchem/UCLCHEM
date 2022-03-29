@@ -1,6 +1,5 @@
 import uclchem
-from multiprocessing import Pool
-
+from time import perf_counter
 #set a parameter dictionary for static model
 params = {"phase": 1, "switch": 0, "collapse": 0, "writeStep": 1,
 			"outSpecies": 'OCS CO CS CH3OH', "initialDens": 1e4, "initialTemp":10.0,

@@ -22,7 +22,7 @@ IMPLICIT NONE
     timeInYears=0.0
 
     !Set up with initial values. For chemistry this is setting initial abundances and assigning memory for ODE solver
-    CALL initializePhysics
+    CALL initializePhysics(successFlag)
     CALL initializeChemistry
     dstep=1
     call output

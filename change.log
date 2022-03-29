@@ -1,22 +1,2 @@
-Bug fixes and MakeRates upgrades ahead of v3.0
-
-# MakeRates Upgrades
-
-- No longer need to specify desorption or freeze out reactions. Only add them to grain file if the products are not just the gas/grain version of the species in question.
-- Better comments and docstrings, better code organization.
-- Small performance improvements
-- Better support for KIDA including IONOPOL1 and IONOPOL2 reactions
-- Refactored to be more pythonic and consistent
-
-# Testing
-We're developing a set of tests to run to check your code. 
-- The test script checks the ODEs conserve elements.
-- It then runs the three example models and checks for element conservation in outputs
-
-# Small fixes and changes
-- Cloud.f90 complains if you use a tempindx that won't work.
-- cshock.f90 could infinitely loop under very specific inputs but no longer does
-- rates.f90 handles missing reaction types better
-- Makefile defaults to -O3 optimization, code tested to ensure outputs haven't changed
-- analyis.py a Fortran/python indexing mismatch meant analysis would occasionally use the wrong reaction rates. This has been fixed but impact was minimal, the reaction ordering meant that a similar reaction rate was always used and then combined with the correct abundancesto get rate of change that was only slightly off and didn't change the analysis in any test case.
-- Removed most STOP statements from fortran code, replaced with success flags. This should mean failed runs return to python so the user can continue running code when one model fails. It will also prevent iPython kernels being killed.
+# Refractory species
+Added possibility of making a bulk species refractory in three phase models. Setting binding energy to "inf" will remove it from bulk transfer and individual swapping reactions so that the bulk species does not return to surface as thermal desorption destroys ices.

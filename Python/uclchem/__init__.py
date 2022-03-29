@@ -148,7 +148,11 @@ def plot_species(ax, df, species):
             if specName.replace("$", "@") in df.columns:
                 abundances = abundances + df[specName.replace("$", "@")]
         else:
-            abundances = df[specName]
+            if specName in df.columns:
+                abundances = df[specName]
+            else:
+                print(f"{specName} not found in dataframe")
+                return None
         ax.plot(df["Time"], abundances, label=specName, lw=2)
         ax.set(yscale="log")
         ax.legend()

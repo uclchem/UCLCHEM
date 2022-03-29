@@ -179,7 +179,7 @@ class Network:
                         + [1, 0, species.binding_energy, 0.0, 10000.0]
                     )
                     self.reaction_list.append(newReaction)
-            if species.is_bulk_species():
+            if species.is_bulk_species() and not species.is_refractory:
                 newReaction = Reaction(
                     [species.name, "THERM", "NAN"]
                     + species.desorb_products
@@ -232,10 +232,11 @@ class Network:
         bulk_species = [x for x in self.species_list if "@" in x.name]
         for species in bulk_species:
             # add individual swapping
-            new_reac_list = [species.name, "BULKSWAP", "NAN", species.name.replace("@", "#")]
-            new_reac_list = new_reac_list + ["NAN", "NAN", "NAN", 1, 0, 0, 0, 10000]
-            new_reac = Reaction(new_reac_list)
-            new_reactions.append(new_reac)
+            if not species.is_refractory:
+                new_reac_list = [species.name, "BULKSWAP", "NAN", species.name.replace("@", "#")]
+                new_reac_list = new_reac_list + ["NAN", "NAN", "NAN", 1, 0, 0, 0, 10000]
+                new_reac = Reaction(new_reac_list)
+                new_reactions.append(new_reac)
 
             # and the reverse
             new_reac_list[0] = species.name.replace("@", "#")
