@@ -335,6 +335,8 @@ class Network:
                 self.important_reactions["nR_H2Form_LHDes"] = i + 1
             if ("H" in reaction.reactants) and ("FREEZE" in reaction.reactants):
                 self.important_reactions["nR_HFreeze"] = i + 1
+            if ("H2" in reaction.reactants) and ("FREEZE" in reaction.reactants):
+                self.important_reactions["nR_H2Freeze"] = i + 1
             if ("E-" in reaction.reactants) and ("FREEZE" in reaction.reactants):
                 self.important_reactions["nR_EFreeze"] = i + 1
             if ("H2" in reaction.reactants) and ("PHOTON" in reaction.reactants):

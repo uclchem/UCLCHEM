@@ -1,7 +1,7 @@
-.so
-.o
-.mod
-.pyc
+*.so
+*.o
+*.mod
+*.pyc
 src/*.o
 src/*.mod
 examples/test-output/*

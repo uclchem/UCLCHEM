@@ -1,71 +1,141 @@
 try:
     from .uclchem import wrap
-except:
+except ImportError as error:
     print("No UCLCHEM module, run ``make python'' in src/")
-    print("Utility and plotting functions available but UCLCHEM based functions will fail\n\n")
-from .analysis import *
+    print("Utility and plotting functions available but UCLCHEM based functions will fail")
+    print("Import error was:")
+    print(error)
+    print("\n\n")
+from . import analysis
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from seaborn import color_palette
 
-elementList = [
-    "H",
-    "D",
-    "HE",
-    "C",
-    "N",
-    "O",
-    "F",
-    "P",
-    "S",
-    "CL",
-    "LI",
-    "NA",
-    "MG",
-    "SI",
-    "PAH",
-    "15N",
-    "13C",
-    "18O",
-    "SURFACE",
-    "BULK",
-]
 
+def cloud(param_dict, out_species=None):
+    """Run cloud model from UCLCHEM
 
-def run_model(param_dict):
-    """
-    Run UCLCHEM using variables taking from a dictionary of parameter values. Any parameter
-    not included in the dictionary will be taken from defaultparameters.f90.
+    Args:
+        param_dict (dict): A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
+        out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
 
-    :param param_dict: A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
+    Returns:
+        int,list: A integer which is negative if the model failed to run, or a list of abundances of all species in `outSpecies`
     """
     param_dict = param_dict.copy()
-    outSpecies = param_dict["outSpecies"]
-    param_dict["outSpecies"] = len(outSpecies.split())
-
-    success_flag = wrap.run_model_to_file(dictionary=param_dict, outspeciesin=outSpecies)
-    return success_flag
-
-
-def run_model_for_abundances(param_dict):
-    """
-    Run UCLCHEM, returning the abundances of up to 50 species at the end of the run. The species that will be returned are those from the `outSpecies` parameter.
-
-    :param param_dict: A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
-
-    :returns: (ndarray) Array of abundances of all species in `outSpecies`
-    """
-    param_dict = param_dict.copy()
-    outSpecies = param_dict["outSpecies"]
-    param_dict["outSpecies"] = len(outSpecies.split())
-
-    abunds,success_flag = wrap.run_model_for_abundances(dictionary=param_dict, outspeciesin=outSpecies)
-    if success_flag==1:
-        return abunds[: param_dict["outSpecies"]]
+    if out_species is not None:
+        n_out = len(out_species)
+        param_dict["outSpecies"] = n_out
+        out_species = " ".join(out_species)
     else:
-        return np.nan
+        out_species = ""
+        n_out = 0
+
+    abunds, success_flag = wrap.cloud(dictionary=param_dict, outspeciesin=out_species)
+    if success_flag < 0 or n_out == 0:
+        return success_flag
+    else:
+        return abunds[: n_out]
+
+
+def hot_core(temp_indx, max_temperature, param_dict, out_species):
+    """Run hot core model from UCLCHEM, following Viti et al. 2004.
+
+    Args:
+        temp_indx (int): Used to select the mass of hot core. 1=1Msun,2=5, 3=10, 4=15, 5=25,6=60]
+        max_temperature (float): Value at which gas temperature will stop increasing.
+        param_dict (dict): A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
+        out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
+
+    Returns:
+        int,list: A integer which is negative if the model failed to run, or a list of abundances of all species in `outSpecies`
+    """
+    param_dict = param_dict.copy()
+    if out_species is not None:
+        n_out = len(out_species)
+        param_dict["outSpecies"] = n_out
+        out_species = " ".join(out_species)
+    else:
+        out_species = ""
+        n_out = 0
+
+    abunds, success_flag = wrap.hot_core(
+        temp_indx=temp_indx,
+        max_temp=max_temperature,
+        dictionary=param_dict,
+        outspeciesin=out_species,
+    )
+    if success_flag < 0 or n_out == 0:
+        return success_flag
+    else:
+        return abunds[: n_out]
+
+
+def cshock(shock_vel, param_dict, out_species=None):
+    """Run C-type shock model from UCLCHEM
+
+    Args:
+        shock_vel (float): Velocity of the shock
+        param_dict (dict): A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
+        out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
+    Returns:
+        int,list: A integer which is negative if the model failed to run, or a list of abundances of all species in `outSpecies`
+        float: The dissipation time of the shock
+    """
+    param_dict = param_dict.copy()
+    if out_species is not None:
+        n_out = len(out_species)
+        param_dict["outSpecies"] = n_out
+        out_species = " ".join(out_species)
+    else:
+        out_species = ""
+        n_out = 0
+
+    abunds, disspation_time, success_flag = wrap.cshock(
+        shock_vel,
+        dictionary=param_dict,
+        outspeciesin=out_species,
+    )
+    if success_flag < 0 or n_out == 0:
+        disspation_time=None
+        return success_flag, disspation_time
+    else:
+        return  abunds[: n_out], disspation_time
+    
+
+def jshock(shock_vel, param_dict, out_species=None):
+    """Run J-type shock model from UCLCHEM
+
+    Args:
+        shock_vel (float): Velocity of the shock
+        param_dict (dict): A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
+        out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
+    Returns:
+        int,list: A integer which is negative if the model failed to run, or a list of abundances of all species in `outSpecies`
+    """
+    param_dict = param_dict.copy()
+    if out_species is not None:
+        n_out = len(out_species)
+        param_dict["outSpecies"] = n_out
+        out_species = " ".join(out_species)
+    else:
+        out_species = ""
+        n_out = 0
+        
+    print(out_species)
+
+    print(param_dict)
+    abunds, success_flag = wrap.jshock(
+        shock_vel,
+        dictionary=param_dict,
+        outspeciesin=out_species,
+    )
+    if success_flag < 0 or n_out == 0:
+        return success_flag
+    else:
+        return  abunds[: n_out]
 
 
 def get_species_rates(param_dict, input_abundances, reac_indxs):
@@ -82,7 +152,9 @@ def get_species_rates(param_dict, input_abundances, reac_indxs):
     input_abund[: len(input_abundances)] = input_abundances
     rate_indxs = np.zeros(500)
     rate_indxs[: len(reac_indxs)] = reac_indxs
-    rates = wrap.get_rates(param_dict, input_abund, rate_indxs)
+    rates, success_flag = wrap.get_rates(param_dict, input_abund, rate_indxs)
+    if success_flag<0:
+        raise RuntimeError("UCLCHEM failed to return rates for these parameters")
     return rates[: len(reac_indxs)]
 
 
@@ -106,7 +178,7 @@ def read_output_file(output_file):
     return data
 
 
-def create_abundance_plot(df, species, plot_file=None):
+def create_abundance_plot(df, species, figsize=(16, 9), plot_file=None):
     """
     Produce a plot of the abundances of chosen species through time, returning the pyplot
     figure and axis objects
@@ -117,7 +189,7 @@ def create_abundance_plot(df, species, plot_file=None):
 
     :return: fig (matplotlib figure) A figure object and ax (matplotlib axis) An axis object which contains the plot
     """
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
 
     ax = plot_species(ax, df, species)
     ax.legend(loc=4, fontsize="small")
@@ -171,90 +243,3 @@ def param_dict_from_output(output_line):
         "rout": output_line["av"] * (1.6e21) / output_line["Density"],
     }
     return param_dict
-
-
-def count_element(species_list, element):
-    """
-    Count the number of atoms of an element that appear in each of a list of species,
-    return the array of counts
-
-    :param  species_list: (iterable, str), list of species names
-    :param element: (str), element
-
-    :return: sums (ndarray) array where each element represents the number of atoms of the chemical element in the corresponding element of species_list
-    """
-    species_list = pd.Series(species_list)
-    # confuse list contains elements whose symbols contain the target eg CL for C
-    # We count both sets of species and remove the confuse list counts.
-    confuse_list = [x for x in elementList if element in x]
-    confuse_list = sorted(confuse_list, key=lambda x: len(x), reverse=True)
-    confuse_list.remove(element)
-    sums = species_list.str.count(element)
-    for i in range(2, 10):
-        sums += np.where(species_list.str.contains(element + f"{i:.0f}"), i - 1, 0)
-    for spec in confuse_list:
-        sums += np.where(species_list.str.contains(spec), -1, 0)
-    return sums
-
-
-def total_element_abundance(element, df):
-    """
-    Calculates that the total elemental abundance of a species as a function of time. Allows you to check conservation.
-
-    :param element: (str) Element symbol. eg "C"
-    :param df: (pandas dataframe) UCLCHEM output in format from `read_output_file`
-
-    :return: Series containing the total abundance of an element at every time step of your output
-    """
-    sums = count_element(df.columns, element)
-    for variable in ["Time", "Density", "gasTemp", "av", "point", "SURFACE", "BULK"]:
-        sums = np.where(df.columns == variable, 0, sums)
-    return df.mul(sums, axis=1).sum(axis=1)
-
-
-def check_element_conservation(df, element_list=["H", "N", "C", "O"]):
-    """
-    Check the conservation of major element by comparing total abundance at start and end of model
-
-    :param	df: (pandas dataframe): UCLCHEM output in format from `read_output_file`
-
-    :return: (dict) Dictionary containing the change in the total abundance of each element as a fraction of initial value
-    """
-    result = {}
-    for element in element_list:
-        discrep = total_element_abundance(element, df).values
-        discrep = np.abs(discrep[0] - discrep[-1]) / discrep[0]
-        result[element] = discrep
-    return result
-
-
-def test_ode_conservation(species_list, element_list=["H", "N", "C", "O"]):
-    """Test function which checks whether the ODEs conserve elementsry_
-
-    :param species_list (list): list of each species in the network
-
-    :return: (dict) Dictionary containing total rate of change of important elements
-    """
-    param_dict = {
-        "phase": 1,
-        "switch": 0,
-        "collapse": 1,
-        "writeStep": 1,
-        "initialDens": 1e4,
-        "initialTemp": 10.0,
-        "finalDens": 1e5,
-        "finalTime": 1.0e3,
-        "outSpecies": " ".join(species_list),
-    }
-    abundances = run_model_for_abundances(param_dict)
-    param_dict.pop("outSpecies")
-    input_abund = np.zeros(500)
-    input_abund[: len(abundances)] = abundances
-    rates = wrap.get_odes(param_dict, input_abund)
-    df = pd.DataFrame(columns=species_list)
-    df.loc[len(df)] = rates[: len(species_list)]
-    result = {}
-    for element in element_list:
-        discrep = total_element_abundance(element, df).values
-        result[element] = discrep[0]
-    return result

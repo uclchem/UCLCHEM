@@ -268,7 +268,7 @@ END FUNCTION COSelfShielding
    
    
    
-double precision FUNCTION lbar(u,w)
+REAL(dp) FUNCTION lbar(u,w)
 !calculate lambda bar (in a) according to equ. 4 of van dishoeck
 !and black, apj 334, p771 (1988)
 ! --------------------------------------------------------------
@@ -282,7 +282,7 @@ double precision FUNCTION lbar(u,w)
    
 !--------------------------------------------------------------
     !i/o parameter type declaration
-    double precision  u, w, lu, lw
+    REAL(dp)  u, w, lu, lw
 
     lu = dlog10(dabs(u)+1.0d0)
     lw = dlog10(dabs(w)+1.0d0)
@@ -311,7 +311,7 @@ SUBROUTINE splie2(x1a,x2a,ya,m,n,y2a)
           integer           nn
           parameter         (nn=100)
           integer           m, n, j, k
-          double precision  x1a(m), x2a(n), ya(m,n), y2a(m,n), ytmp(nn),&
+          REAL(dp)  x1a(m), x2a(n), ya(m,n), y2a(m,n), ytmp(nn),&
      &                      y2tmp(nn)
 !--------------------------------------------------------------
     DO j=1,m
@@ -356,11 +356,11 @@ SUBROUTINE spline(x,y,n,yp1,ypn,y2)
    
 !i/o parameter type declaration
     integer           n
-    double precision  x(n), y(n), yp1, ypn, y2(n)
+    REAL(dp)  x(n), y(n), yp1, ypn, y2(n)
    
 !program variables type declaration
     integer           i, k
-    double precision  p, qn, sig, u(100), un
+    REAL(dp)  p, qn, sig, u(100), un
 !--------------------------------------------------------------
 
     IF (yp1 .ge. 1.0d30) THEN
@@ -415,7 +415,7 @@ SUBROUTINE splin2(x1a,x2a,ya,y2a,m,n,x1,x2,y)
 integer           nn
 parameter         (nn=100)
 integer           m, n, j, k
-double precision  x1a(m), x2a(n), ya(m,n), y2a(m,n), ytmp(nn),&
+REAL(dp)  x1a(m), x2a(n), ya(m,n), y2a(m,n), ytmp(nn),&
 &                      y2tmp(nn), yytmp(nn), x1, x2, y
 !--------------------------------------------------------------
 
@@ -457,11 +457,11 @@ SAVE
 !--------------------------------------------------------------
     !i/o parameter type declaration
     integer           n,nstore
-    double precision  x, xa(n), y, ya(n), y2a(n)
+    REAL(dp)  x, xa(n), y, ya(n), y2a(n)
        
     !program variables type declaration
     integer           inc, jhi, jlo, jm
-    double precision  h, a, b
+    REAL(dp)  h, a, b
     logical           ascnd
    
     !find interval xa(jlo) <= x <= xa(jlo+1) = xa(jhi)

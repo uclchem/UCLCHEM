@@ -6,11 +6,11 @@ import matplotlib.pyplot as plt
 # User Inputs Go Here
 ################################################
 
-speciesName = "H2O+"
-result_file = "examples/test-output/phase1-full.dat"
+speciesName = "CH3OH"
+result_file = "examples/test-output/phase2-full.dat"
 reaction_file = "src/reactions.csv"
 species_file = "src/species.csv"
-
+output="analysis.dat"
 
 ################################################
 
@@ -26,23 +26,24 @@ fortran_reac_indxs = [i + 1 for i, reaction in enumerate(reactions) if speciesNa
 reac_indxs = [i for i, reaction in enumerate(reactions) if speciesName in reaction]
 
 old_key_reactions = []
-for i, row in result_df.iterrows():
+with open(output, "w") as f:
+    for i, row in result_df.iterrows():
 
-    param_dict = uclchem.param_dict_from_output(row)
-    rates = uclchem.get_species_rates(param_dict, row[species], fortran_reac_indxs)
-    change_reacs, changes = uclchem.get_rates_of_change(
-        rates, reactions[reac_indxs], species, speciesName, row
-    )
-
-
-    change_reacs = uclchem.format_reactions(change_reacs)
-
-    total_formation, total_destruct, key_reactions, key_changes = uclchem.remove_slow_reactions(
-        changes, change_reacs
-    )
-
-    if old_key_reactions != key_reactions:
-        old_key_reactions = key_reactions[:]
-        uclchem.print_analysis(
-            row["Time"], total_formation, total_destruct, key_reactions, key_changes
+        param_dict = uclchem.param_dict_from_output(row)
+        rates = uclchem.get_species_rates(param_dict, row[species], fortran_reac_indxs)
+        change_reacs, changes = uclchem.get_rates_of_change(
+            rates, reactions[reac_indxs], species, speciesName, row
         )
+
+
+        change_reacs = uclchem.format_reactions(change_reacs)
+
+        total_formation, total_destruct, key_reactions, key_changes = uclchem.remove_slow_reactions(
+            changes, change_reacs
+        )
+
+        if old_key_reactions != key_reactions:
+            old_key_reactions = key_reactions[:]
+            uclchem.write_analysis(
+                f,row["Time"], total_formation, total_destruct, key_reactions, key_changes
+            )

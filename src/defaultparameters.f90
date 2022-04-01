@@ -3,7 +3,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Initial physics variables and final  values. for temp, density and time
-initialTemp=10.0;maxTemp=300.0
+initialTemp=10.0!maxTemp=300.0
 initialDens=1.00d2;finalDens=1.00d5
 currentTime=0.0;finalTime=5.0d6
 
@@ -34,9 +34,6 @@ collapse=1
 bc=1.0
 
 
-!phase chooses behaviour. Phase=1 runs a simple cloud and Phase=2 runs the physics of the chosen module (eg.hot core or c-shock)
-phase=1;
-
 !non-thermal Desorption. Turn it all on/offwith desorb. Can also turn off h2, cosmic ray induced and uv induced individually.
 desorb=1;
 h2desorb=1;crdesorb=1;uvdesorb=1 !Non-thermal desorption methods (roberts et al. 2007)
@@ -51,11 +48,11 @@ ion=2
 
 !cloud module specific variable for phase 2, temp profile depends on mass of star
 !Tempindx selects mass: 1=1Msol,2=5,3=10M,4=15M,5=25M,6=60M
-tempIndx=3
+!tempIndx=3
 
 
 !cshock module specific variable, uncomment or comment as  needed
-vs=40.0
+!vs=40.0
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Initial Abundances

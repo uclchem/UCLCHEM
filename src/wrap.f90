@@ -1,81 +1,94 @@
-!Marcus Keil Original 13/03/2020 Last Update 3/11/2020
 !Python wrapper for uclchem, compiled with "make python"
-!general becomes a python function which takes a dictionary of parameters
-!and a string of delimited species names
+!Subroutines become functions in the Python module
 MODULE wrap
-    USE physics
+    USE physicscore
     USE chemistry
+    USE io
     IMPLICIT NONE
     
-    CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile, outFile
 
 CONTAINS
-    SUBROUTINE run_model_to_file(dictionary, outSpeciesIn,successFlag)
-        CHARACTER(LEN=*) :: dictionary, outSpeciesIn
-        INTEGER :: successFlag
-        !f2py intent(in) dictionary,outSpeciesIn
-        !f2py intent(out) successFlag
+    SUBROUTINE cloud(dictionary, outSpeciesIn,abundance_out,successFlag)
+        USE cloud_mod
 
-        ! call the dictionary_parser function in order to read the dictionary of parameters
-        INCLUDE 'defaultparameters.f90'
-        CALL dictionary_parser(dictionary, outSpeciesIn,successFlag)
-        IF (successFlag .le. 0) THEN
-            WRITE(*,*) 'Error reading parameter dictionary'
-            RETURN
-        END IF
-
-        dstep=1
-        currentTime=0.0
-        timeInYears=0.0
-        successFlag=1
-        CALL solveAbundances(successFlag)
-        !close outputs to attempt to force flush
-        close(10)
-        close(11)
-        close(71)
-        close(72)
-    END SUBROUTINE run_model_to_file
-
-    SUBROUTINE run_model_for_abundances(dictionary, outSpeciesIn,abundance_out,successFlag)
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         DOUBLE PRECISION :: abundance_out(500)
         INTEGER :: successFlag
         !f2py intent(in) dictionary,outSpeciesIn
         !f2py intent(out) abundance_out,successFlag
-
-        ! Set the boolean to True if you want to be able to return a python array
-        ! call the dictionary_parser function in order to read the dictionary of parameters
-        INCLUDE 'defaultparameters.f90'
-        !Read input parameters from the dictionary
-        CALL dictionary_parser(dictionary, outSpeciesIn,successFlag)
-        IF (successFlag .le. 0) THEN
-            WRITE(*,*) 'Error reading parameter dictionary'
-            RETURN
-        END IF
-        
-        dstep=1
-        currentTime=0.0
-        timeInYears=0.0
         successFlag=1
-        CALL solveAbundances(successFlag)
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
 
         !close outputs to attempt to force flush
         close(10)
         close(11)
         close(71)
         close(72)
+        
+        IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN 
+            abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
+        END IF 
+    END SUBROUTINE cloud
 
-        abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
+    SUBROUTINE hot_core(temp_indx,max_temp,dictionary, outSpeciesIn,abundance_out,successFlag)
+        USE hotcore
 
-    END SUBROUTINE run_model_for_abundances
+        CHARACTER(LEN=*) :: dictionary, outSpeciesIn
+        DOUBLE PRECISION :: abundance_out(500),max_temp
+        INTEGER :: temp_indx,successFlag
+        !f2py intent(in) temp_indx,max_temp,dictionary,outSpeciesIn
+        !f2py intent(out) abundance_out,successFlag
+        maxTemp=max_temp
+        tempIndx=temp_indx
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
+        IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN 
+            abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
+        END IF 
+    END SUBROUTINE hot_core
+
+    SUBROUTINE cshock(shock_vel,dictionary, outSpeciesIn,abundance_out,dissipation_time,successFlag)
+        USE cshock_mod
+
+        CHARACTER(LEN=*) :: dictionary, outSpeciesIn
+        DOUBLE PRECISION :: abundance_out(500),shock_vel,dissipation_time
+        INTEGER :: successFlag
+        !f2py intent(in) shock_vel,dictionary,outSpeciesIn
+        !f2py intent(out) abundance_out,dissipation_time,successFlag
+        vs=shock_vel
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
+
+        IF (successFlag .ge. 0) THEN 
+            IF (ALLOCATED(outIndx)) abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
+            dissipation_time=dissipationTime
+        END IF
+    END SUBROUTINE cshock
+
+    SUBROUTINE jshock(shock_vel,dictionary, outSpeciesIn,abundance_out,successFlag)
+        USE jshock_mod
+
+        CHARACTER(LEN=*) :: dictionary, outSpeciesIn
+        DOUBLE PRECISION :: abundance_out(500),shock_vel
+        INTEGER :: successFlag
+        !f2py intent(in) shock_vel,dictionary,outSpeciesIn
+        !f2py intent(out) abundance_out,successFlag
+        vs=shock_vel
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
+
+        IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN 
+            abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
+        END IF 
+    END SUBROUTINE jshock
+
+
 
 
     SUBROUTINE get_rates(dictionary,abundancesIn,rateIndxs,speciesRates,successFlag)
+        USE cloud_mod
         CHARACTER(LEN=*) :: dictionary
         DOUBLE PRECISION :: abundancesIn(500),speciesRates(500)
-        INTEGER :: speciesIndx,rateIndxs(500),successFlag
+        INTEGER :: rateIndxs(500),successFlag
         !f2py intent(in) dictionary,abundancesIn
-        !f2py intent(out) :: speciesRates
+        !f2py intent(out) :: speciesRates,successFlag
 
         INCLUDE 'defaultparameters.f90'
         
@@ -91,7 +104,7 @@ CONTAINS
             RETURN
         END IF
 
-        CALL initializeChemistry
+        CALL initializeChemistry(readAbunds)
         dstep=1
         abund(:nspec,1)=abundancesIn(:nspec)
 
@@ -126,6 +139,7 @@ CONTAINS
     END SUBROUTINE get_rates
 
     SUBROUTINE get_odes(dictionary,abundancesIn,ratesOut)
+        USE cloud_mod
         CHARACTER(LEN=*) :: dictionary
         DOUBLE PRECISION :: abundancesIn(500),ratesOut(500)
         INTEGER :: successFlag
@@ -140,7 +154,8 @@ CONTAINS
             RETURN
         END IF
 
-        CALL initializeChemistry
+        CALL initializeChemistry(readAbunds)
+
         
         dstep=1
         successFlag=1
@@ -154,16 +169,35 @@ CONTAINS
         CALL F(NEQ,currentTime,abund(:,dstep),ratesOut(:NEQ))
     END SUBROUTINE get_odes
 
-    SUBROUTINE solveAbundances(successFlag)
+    SUBROUTINE solveAbundances(dictionary,outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
+        CHARACTER(LEN=*) :: dictionary, outSpeciesIn
+        EXTERNAL initializePhysics,updateTargetTime,updatePhysics,sublimation
+
         INTEGER, INTENT(OUT) :: successFlag
         successFlag=1
+
+        ! Set the boolean to True if you want to be able to return a python array
+        ! call the dictionary_parser function in order to read the dictionary of parameters
+        INCLUDE 'defaultparameters.f90'
+        !Read input parameters from the dictionary
+        CALL dictionary_parser(dictionary, outSpeciesIn,successFlag)
+        IF (successFlag .le. 0) THEN
+            WRITE(*,*) 'Error reading parameter dictionary'
+            RETURN
+        END IF
+        
+        dstep=1
+        currentTime=0.0
+        timeInYears=0.0
 
         CALL initializePhysics(successFlag)
         IF (successFlag .lt. 0) then
             WRITE(*,*) 'Error initializing physics'
             RETURN
         END IF
-        CALL initializeChemistry
+        CALL initializeChemistry(readAbunds)
+        CALL fileSetup
+
 
         dstep=1
 
@@ -198,6 +232,11 @@ CONTAINS
                 if (points .gt. 1)currentTime=currentTimeold
             END DO
         END DO
+        !close outputs to attempt to force flush
+        close(10)
+        close(11)
+        close(71)
+        close(72)
     END SUBROUTINE solveAbundances
 
     SUBROUTINE dictionary_parser(dictionary, outSpeciesIn,successFlag)
@@ -239,79 +278,73 @@ CONTAINS
                     posEnd=scan(dictionary,'}')
                     CALL alpha_parser(dictionary(posStart+1:posEnd))
                 CASE('initialTemp')
-                    READ(inputValue,*) initialTemp
-                CASE('maxTemp')
-                    READ(inputValue,*) maxTemp
+                    READ(inputValue,*,err=666) initialTemp
                 CASE('initialDens')
-                    READ(inputValue,*) initialDens
+                    READ(inputValue,*,err=666) initialDens
                 CASE('finalDens')
-                    READ(inputValue,*) finalDens
+                    READ(inputValue,*,err=666) finalDens
                 CASE('currentTime')
-                    READ(inputValue,*) currentTime
+                    READ(inputValue,*,err=666) currentTime
                 CASE('finalTime')
-                    READ(inputValue,*) finalTime
+                    READ(inputValue,*,err=666) finalTime
                 CASE('radfield')
-                    READ(inputValue,*) radfield
+                    READ(inputValue,*,err=666) radfield
                 CASE('zeta')
-                    READ(inputValue,*) zeta
+                    READ(inputValue,*,err=666) zeta
                 CASE('fr')
-                    READ(inputValue,*) fr
+                    READ(inputValue,*,err=666) fr
                 CASE('rout')
-                    READ(inputValue,*) rout
+                    READ(inputValue,*,err=666) rout
                 CASE('rin')
-                    READ(inputValue,*) rin
+                    READ(inputValue,*,err=666) rin
                 CASE('baseAv')
-                    READ(inputValue,*) baseAv
+                    READ(inputValue,*,err=666) baseAv
                 CASE('points')
-                    READ(inputValue,*) points
+                    READ(inputValue,*,err=666) points
                 CASE('switch')
-                    Read(inputValue,*) switch
+                    Read(inputValue,*,err=666) switch
                 CASE('collapse')
-                    READ(inputValue,*) collapse
+                    READ(inputValue,*,err=666) collapse
                 CASE('bc')
-                    READ(inputValue,*) bc
-                CASE('phase')
-                    READ(inputValue,*) phase
+                    READ(inputValue,*,err=666) bc
                 CASE('desorb')
-                    READ(inputValue,*) desorb
+                    READ(inputValue,*,err=666) desorb
                 CASE('h2desorb')
-                    READ(inputValue,*) h2desorb
+                    READ(inputValue,*,err=666) h2desorb
                 CASE('crdesorb')
-                    READ(inputValue,*) crdesorb
+                    READ(inputValue,*,ERR=666) crdesorb
                 CASE('uvdesorb')
-                    READ(inputValue,*) uvdesorb
+                    READ(inputValue,*,ERR=666) uvdesorb
                 CASE('thermdesorb')
-                    READ(inputValue,*) uvdesorb
+                    READ(inputValue,*,ERR=666) uvdesorb
                 CASE('instantSublimation')
-                    READ(inputValue,*) instantSublimation
+                    READ(inputValue,*,ERR=666) instantSublimation
                 CASE('ion')
-                    READ(inputValue,*) ion
-                CASE('tempindx')
-                    READ(inputValue,*) tempindx
+                    READ(inputValue,*,ERR=666) ion
                 CASE('fhe')
-                    READ(inputValue,*) fhe
+                    READ(inputValue,*,ERR=666) fhe
                 CASE('fc')
-                    READ(inputValue,*) fc
+                    READ(inputValue,*,ERR=666) fc
                 CASE('fo')
-                    READ(inputValue,*) fo
+                    READ(inputValue,*,ERR=666) fo
                 CASE('fn')
-                    READ(inputValue,*) fn
+                    READ(inputValue,*,ERR=666) fn
                 CASE('fs')
-                    READ(inputValue,*) fs
+                    READ(inputValue,*,ERR=666) fs
                 CASE('fmg')
-                    READ(inputValue,*) fmg
+                    READ(inputValue,*,ERR=666) fmg
                 CASE('fsi')
-                    READ(inputValue,*) fsi
+                    READ(inputValue,*,ERR=666) fsi
                 CASE('fcl')
-                    READ(inputValue,*) fcl
+                    READ(inputValue,*,ERR=666) fcl
                 CASE('fp')
-                    READ(inputValue,*) fp
+                    READ(inputValue,*,ERR=666) fp
                 CASE('ff')
-                    READ(inputValue,*) ff
+                    READ(inputValue,*,ERR=666) ff
                 CASE('outSpecies')
                     IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
                     IF (ALLOCATED(outSpecies)) DEALLOCATE(outSpecies)
-                    READ(inputValue,*) nout
+                    READ(inputValue,*,ERR=666) nout
                     ALLOCATE(outIndx(nout))
                     ALLOCATE(outSpecies(nout))
                     IF (outSpeciesIn .eq. "") THEN
@@ -337,57 +370,54 @@ CONTAINS
                         END DO
                     END DO
                 CASE('writeStep')
-                    READ(inputValue,*) writeStep
+                    READ(inputValue,*,ERR=666) writeStep
                 CASE('ebmaxh2')
-                    READ(inputValue,*) ebmaxh2
+                    READ(inputValue,*,ERR=666) ebmaxh2
                 CASE('epsilon')
-                    READ(inputValue,*) epsilon
+                    READ(inputValue,*,ERR=666) epsilon
                 CASE('ebmaxcrf')
-                    READ(inputValue,*) ebmaxcrf
+                    READ(inputValue,*,ERR=666) ebmaxcrf
                 CASE('uvcreff')
-                    READ(inputValue,*) uvcreff
+                    READ(inputValue,*,ERR=666) uvcreff
                 CASE('ebmaxcr')
-                    READ(inputValue,*) ebmaxcr
+                    READ(inputValue,*,ERR=666) ebmaxcr
                 CASE('phi')
-                    READ(inputValue,*) phi
+                    READ(inputValue,*,ERR=666) phi
                 CASE('ebmaxuvcr')
-                    READ(inputValue,*) ebmaxuvcr
+                    READ(inputValue,*,ERR=666) ebmaxuvcr
                 CASE('uv_yield')
-                    READ(inputValue,*) uv_yield
+                    READ(inputValue,*,ERR=666) uv_yield
                 CASE('metallicity')
-                    READ(inputValue,*) metallicity
+                    READ(inputValue,*,ERR=666) metallicity
                 CASE('omega')
-                    READ(inputValue,*) omega
+                    READ(inputValue,*,ERR=666) omega
                 CASE('reltol')
-                    READ(inputValue,*) reltol
+                    READ(inputValue,*,ERR=666) reltol
                 CASE('abstol')
-                    READ(inputValue,*) abstol_factor
+                    READ(inputValue,*,ERR=666) abstol_factor
                 CASE('abstol_min')
-                    READ(inputValue,*) abstol_min
+                    READ(inputValue,*,ERR=666) abstol_min
                 ! CASE('jacobian')
                 !     READ(inputValue,*) jacobian
-                CASE('vs')
-                    READ(inputValue,*) vs
                 CASE('abundSaveFile')
                     writeAbunds=.True.
-                    READ(inputValue,*) abundSaveFile
+                    READ(inputValue,*,ERR=666) abundSaveFile
                     abundSaveFile = TRIM(abundSaveFile)
-                    write(*,*) abundSaveFile
                     open(72,file=abundSaveFile,status="unknown")
                 CASE('abundLoadFile')
-                    READ(inputValue,*) abundLoadFile
+                    READ(inputValue,*,ERR=666) abundLoadFile
                     abundLoadFile = TRIM(abundLoadFile)
                     readAbunds=.True.
                     open(71,file=abundLoadFile,status='old')
                 CASE('outputFile')
-                    READ(inputValue,*) outFile
+                    READ(inputValue,*,ERR=666) outFile
                     outputFile = trim(outFile)
                     fullOutput=.True.
                     open(10,file=outputFile,status='unknown')
                 CASE('columnFile')
                     IF (trim(outSpeciesIn) .NE. '' ) THEN
                         columnOutput=.True.
-                        READ(inputValue,*) columnFile
+                        READ(inputValue,*,ERR=666) columnFile
                         columnFile = trim(columnFile)
                         open(11,file=columnFile,status='unknown')
                     ELSE
@@ -404,6 +434,10 @@ CONTAINS
             dictionary = dictionary(posEnd:)
             IF (SCAN(dictionary,',') .eq. 0) whileInteger=1
         END DO
+    IF (successFlag .lt. 0) THEN
+        666 successFlag=-1
+        write(*,*) "Error reading",inputParameter
+    END IF 
     END SUBROUTINE dictionary_parser
 
     SUBROUTINE alpha_parser(alpha_string)

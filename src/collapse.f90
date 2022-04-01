@@ -1,102 +1,80 @@
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! Physics module from Priestley et al. 2018, models the chemistry in a collapsing prestellar core using parameterizations
-! of MHD models. To run, use collapse=1 to go from a density of 1e2/cm3 to your initial core density and create an abundance file
-! (readabunds=0). This is the phase 1 described in most UCLCHEM publications and the manual.
-! Then run the code again with (readabunds=1), setting rout to the radius of the core and points to the number of points from the core
-! centre to rout that you want to model. Then set collapse to a value from 2-5 depending on the model you wish to use.
-!
-! collapse modes > 1 are parameterizations:
+! Models the chemistry in a collapsing prestellar core
+! F. D. Priestley et al 2018 AJ 156 51 (https://ui.adsabs.harvard.edu/abs/2018AJ....156...51P/abstract)
+! Uses the following parameterizations of MHD models.
 ! collapse = 2: Bonnor-Ebert sphere, overdensity factor 1.1 (Aikawa+2005)
 ! collapse = 3: Bonnor-Ebert sphere, overdensity factor 4 (Aikawa+2005)
 ! collapse = 4: magnetised filament, initially unstable to collapse (Nakamura+1995)
 ! collapse = 5: magnetised cloud, initially stable, collapse due to ambipolar diffusion (Fiedler+1993)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-MODULE physics
+MODULE collapse_mod
+    USE physicscore
     USE network
     USE constants
     IMPLICIT NONE
-    INTEGER :: dstep,points
-    !Switches for processes are also here, 1 is on/0 is off.
-    INTEGER :: collapse,switch,first,phase
 
-    !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
-    !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/DOne
-    INTEGER :: evap,ion,solidflag,volcflag,coflag,tempindx,instantSublimation
-    
-    !variables either controlled by physics or that user may wish to change    
-    DOUBLE PRECISION :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
-    DOUBLE PRECISION :: cloudSize,rout,rin,baseAv,bc,olddens,maxTemp,vs,maxTime
-    DOUBLE PRECISION :: tempa(5),tempb(5),codestemp(5),volctemp(5),solidtemp(5)
-    DOUBLE PRECISION, allocatable :: av(:),coldens(:),temp(:),density(:),massInRadius(:),parcelRadius(:)
-
-
+    DOUBLE PRECISION :: maxTime
+    DOUBLE PRECISION, allocatable :: massInRadius(:),parcelRadius(:)
     DOUBLE PRECISION :: dt,drad
 
 
 CONTAINS
-!THIS IS WHERE THE REQUIRED PHYSICS ELEMENTS BEGIN. YOU CAN CHANGE THEM TO REFLECT YOUR PHYSICS BUT THEY MUST BE NAMED ACCORDINGLY.
+   
+    SUBROUTINE initializePhysics(successFlag)
+        INTEGER, INTENT(OUT) :: successFlag
 
-    
-    SUBROUTINE initializePhysics
-    !Any initialisation logic steps go here
-    !cloudSize is important as is allocating space for depth arrays
-      IF (ALLOCATED(av)) DEALLOCATE(av,coldens,temp,density)
-      ALLOCATE(av(points),coldens(points),density(points),temp(points),parcelRadius(points),massInRadius(points))
-      cloudSize=(rout-rin)*pc
+        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,density)
+        ALLOCATE(av(points),coldens(points),density(points),gasTemp(points))
+        IF (ALLOCATED(parcelRadius)) DEALLOCATE(parcelRadius,massInRadius)
+        ALLOCATE(parcelRadius(points),massInRadius(points))
 
-      temp = initialTemp
+        cloudSize = (rout-rin)*pc
+        gasTemp = initialTemp
+        dustTemp = gasTemp
 
-      SELECT CASE(collapse)
+        SELECT CASE(collapse)
         CASE(0) !no collapse
-          density=initialDens
+            density=initialDens
         CASE(1) !standard freefall collapse
-          density=1.001*initialDens
+            density=1.001*initialDens
         CASE DEFAULT !collapse modes detailed at top of module
-          phase=2
-          SELECT CASE(collapse)
+            SELECT CASE(collapse)
             CASE(2)
-              maxTime=1.175d6
-              finalTime=0.97*maxTime
+                maxTime=1.175d6
+                finalTime=0.97*maxTime
             CASE(3) 
-              maxTime=1.855d5
-              finalTime=0.97*maxTime
+                maxTime=1.855d5
+                finalTime=0.97*maxTime
+            CASE(4)
+            CASE(5)
             CASE DEFAULT
-              write(*,*) "unacceptable collapse mode"
-              switch=0
-              finalTime=0.0
-          END SELECT
+                write(*,*) "unacceptable collapse mode"
+                successFlag=-1
+                RETURN
+            END SELECT
 
-          DO dstep=1,points
-            parcelRadius(dstep)=dstep*rout/float(points)
-          END DO
-               
-          open(unit=66,file='output/radius.dat',status='unknown')
-          density=rhofit(rin,rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
-          IF ((collapse .eq. 2) .or. (collapse .eq. 3)) then
-            CALL findmassInRadius
-          END IF
-      END SELECT
+            DO dstep=1,points
+                parcelRadius(dstep)=dstep*rout/float(points)
+            END DO
+                
+            open(unit=66,file='output/radius.dat',status='unknown')
+            density=rhofit(rin,rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
+            IF ((collapse .eq. 2) .or. (collapse .eq. 3)) then
+                CALL findmassInRadius
+            END IF
+        END SELECT
     END SUBROUTINE initializePhysics
 
     SUBROUTINE updateTargetTime
-    !At each timestep, the time at the END of the step is calculated by calling this function
-    !You need to set targetTime in seconds, its initial value will be the time at start of current step
-    IF (timeInYears .gt. 10000) THEN
-        targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
-    ELSE IF (timeInYears .gt. 1000) THEN
-        targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
-    ELSE IF (timeInYears .gt. 0.0) THEN
-        targetTime=(timeInYears*10)*SECONDS_PER_YEAR
-    ELSE
-        targetTime=3.16d7*10.d-8
-    ENDIF
+        IF (timeInYears .gt. 10000) THEN
+            targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
+        ELSE IF (timeInYears .gt. 1000) THEN
+            targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
+        ELSE IF (timeInYears .gt. 0.0) THEN
+            targetTime=(timeInYears*10)*SECONDS_PER_YEAR
+        ELSE
+            targetTime=3.16d7*10.d-8
+        ENDIF
 
-    IF (targetTime .gt. finalTime*SECONDS_PER_YEAR)targetTime=finalTime*SECONDS_PER_YEAR
-
-    !This is the time step for outputs from UCL_CHEM NOT the timestep for the integrator.
-    ! DLSODE sorts that out based on chosen error tolerances (RTOL/ATOL) and is simply called repeatedly
-    !until it outputs a time >= targetTime.
+        IF (targetTime .gt. finalTime*SECONDS_PER_YEAR)targetTime=finalTime*SECONDS_PER_YEAR
     END SUBROUTINE updateTargetTime
 
     !This routine is formed for every parcel at every time step.
@@ -109,21 +87,20 @@ CONTAINS
         av(dstep)= baseAv +coldens(dstep)/1.6d21
 
         !If collapse is one of the parameterized modes, find new density and radius
-        IF ((collapse .gt. 1).and.(phase .eq.2)) THEN
-           IF ((collapse .eq. 2) .or. (collapse .eq. 3)) THEN
-              CALL findNewRadius(massInRadius(dstep),rin,rho0fit(timeInYears),&
-                &r0fit(timeInYears),afit(timeInYears),parcelRadius(dstep))
-           ELSE IF ((collapse .eq. 4) .or. (collapse .eq. 5)) THEN
-              dt = targetTime - currentTime
-              drad = vrfit(parcelRadius(dstep),rminfit(timeInYears),vminfit(timeInYears),avfit(timeInYears))*dt/pc
-              parcelRadius(dstep) = parcelRadius(dstep) + drad
-              write(66,*) timeInYears,parcelRadius(dstep),rhofit(parcelRadius(dstep),&
-                &rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears)),&
-              &vrfit(parcelRadius(dstep),rminfit(timeInYears),vminfit(timeInYears),avfit(timeInYears))
-           END IF
-           density(dstep)=rhofit(parcelRadius(dstep),rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
-        END IF
         
+        IF ((collapse .eq. 2) .or. (collapse .eq. 3)) THEN
+            CALL findNewRadius(massInRadius(dstep),rin,rho0fit(timeInYears),&
+                &r0fit(timeInYears),afit(timeInYears),parcelRadius(dstep))
+        ELSE IF ((collapse .eq. 4) .or. (collapse .eq. 5)) THEN
+            dt = targetTime - currentTime
+            drad = vrfit(parcelRadius(dstep),rminfit(timeInYears),vminfit(timeInYears),avfit(timeInYears))*dt/pc
+            parcelRadius(dstep) = parcelRadius(dstep) + drad
+            write(66,*) timeInYears,parcelRadius(dstep),rhofit(parcelRadius(dstep),&
+                        &rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears)),&
+                        &vrfit(parcelRadius(dstep),rminfit(timeInYears),&
+                        &vminfit(timeInYears),avfit(timeInYears))
+        END IF
+        density(dstep)=rhofit(parcelRadius(dstep),rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))        
     END SUBROUTINE updatePhysics
 
     !This module is isothermal and as such, no sublimation occurs.
@@ -134,21 +111,6 @@ CONTAINS
 
     END SUBROUTINE sublimation
 
-
-    !This function works out the time derivative of the density, allowing DVODE to update density with the rest of our ODEs
-    !It get's called by F, the SUBROUTINE in chem.f90 that sets up the ODEs for DVODE
-    !Currently set to Rawlings 1992 freefall.
-    pure FUNCTION densdot(density)
-        DOUBLE PRECISION, INTENT(IN) :: density
-        DOUBLE PRECISION :: densdot
-        !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
-        IF (density .lt. finalDens) THEN
-             densdot=bc*(density**4./initialDens)**0.33*&
-             &(8.4d-30*initialDens*((density/initialDens)**0.33-1.))**0.5
-        ELSE
-            densdot=0.0
-        ENDIF
-    END FUNCTION densdot
 
     ! finds initial mass within starting radius, assuming spherical symmetry
     SUBROUTINE findMassInRadius
@@ -247,7 +209,7 @@ CONTAINS
          rho0fit = 10**logrho0
       ELSE IF (collapse .eq. 4) then
          unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5) ! time unit equal to (2 pi G rho0)**-1/2
-         unitt = unitt*year
+         unitt = unitt/SECONDS_PER_YEAR
          logrho0 = 3.54*(5.47-t/unitt)**(-0.15) - 2.73
          rho0fit = 10**logrho0
       ELSE IF (collapse .eq. 5) then
@@ -273,7 +235,7 @@ CONTAINS
          r0fit = 10**logr0
       ELSE IF (collapse .eq. 4) then
          unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5) ! time unit equal to (2 pi G rho0)**-1/2
-         unitt = unitt*year
+         unitt = unitt/SECONDS_PER_YEAR
          logr0 = -1.34*(5.47-t/unitt)**(-0.15) + 1.47
          r0fit = 10**logr0
       ELSE IF (collapse .eq. 5) then
@@ -293,7 +255,7 @@ CONTAINS
          afit = 1.9 + 0.5*exp(-t/1e5)
       ELSE IF (collapse .eq. 4) then
          unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5) ! time unit equal to (2 pi G rho0)**-1/2
-         unitt = unitt*year
+         unitt = unitt/SECONDS_PER_YEAR
          afit = 2.0 - 0.5*(t/unitt/5.47)**9
       ELSE IF (collapse .eq. 5) then
          afit = 2.4 - 0.2*(1d-6*t/16.138)**40
@@ -339,7 +301,7 @@ CONTAINS
 
       IF (collapse .eq. 4) then
          unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5) ! time unit equal to (2 pi G rho0)**-1/2
-         unitt = unitt*year
+         unitt = unitt/SECONDS_PER_YEAR
          tnew = t/unitt
          IF (tnew .eq. 0.0d0) then
             rminfit = 7.2d0
@@ -370,7 +332,7 @@ CONTAINS
 
       IF (collapse .eq. 4) then
          unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5) ! time unit equal to (2 pi G rho0)**-1/2
-         unitt = unitt*year
+         unitt = unitt/SECONDS_PER_YEAR
          tnew = t/unitt
          IF (tnew .eq. 0.0d0) then
             vminfit = 0.0d0
@@ -395,7 +357,7 @@ CONTAINS
 
       IF (collapse .eq. 4) then
          unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5) ! time unit equal to (2 pi G rho0)**-1/2
-         unitt = unitt*year
+         unitt = unitt/SECONDS_PER_YEAR
          tnew = t/unitt
          IF (tnew .eq. 0.0d0) then
             avfit = 0.4d0
@@ -416,6 +378,6 @@ CONTAINS
       END IF
 
     END function avfit
-END MODULE physics
+END MODULE collapse_mod
 
 !REQUIRED PHYSICS ENDS HERE, ANY ADDITIONAL PHYSICS CAN BE ADDED BELOW.

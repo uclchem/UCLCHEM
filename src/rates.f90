@@ -31,6 +31,8 @@ SUBROUTINE calculateReactionRates
         !freeze out rate uses thermal velocity but mass of E is 0 giving us infinite rates
         !just assume it's same as H
         rate(nR_EFreeze)=rate(nR_HFreeze)
+        rate(nR_H2Freeze)=stickingCoefficient(h2StickingZero,h2StickingTemp,gasTemp(dstep))*rate(nR_H2Freeze)
+        rate(nR_HFreeze)=stickingCoefficient(hStickingZero,hStickingTemp,gasTemp(dstep))*rate(nR_HFreeze)
     END IF
     ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !The below desorption mechanisms are from Roberts et al. 2007 MNRAS with
@@ -234,4 +236,15 @@ FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
     END IF
 
 END FUNCTION freezeOutRate
+
+
+FUNCTION stickingCoefficient(stickingZero,criticalTemp,gasTemp) RESULT(stickingCoeff)
+    !Sticking coefficient for freeze out taken from Chaabouni et al. 2012 A&A 538 Equation 1
+    REAL(dp) :: stickingCoeff
+    REAL(dp) :: stickingZero,criticalTemp,gasTemp,tempRatio
+    REAL(dp) :: beta=2.5d0
+    tempRatio=gasTemp/criticalTemp
+    
+    stickingCoeff=stickingZero*(1.0d0+beta*tempRatio)/((1.0d0+tempRatio)**beta)
+END FUNCTION stickingCoefficient
 

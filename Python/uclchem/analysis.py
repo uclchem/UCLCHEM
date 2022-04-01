@@ -1,5 +1,26 @@
 import numpy as np
-
+elementList = [
+    "H",
+    "D",
+    "HE",
+    "C",
+    "N",
+    "O",
+    "F",
+    "P",
+    "S",
+    "CL",
+    "LI",
+    "NA",
+    "MG",
+    "SI",
+    "PAH",
+    "15N",
+    "13C",
+    "18O",
+    "SURFACE",
+    "BULK",
+]
 
 def get_rates_of_change(rates, reactions, speciesList, species, row):
     """
@@ -48,7 +69,7 @@ def get_rates_of_change(rates, reactions, speciesList, species, row):
     return reactionList, changes
 
 
-def remove_slow_reactions(changes, change_reacs,rate_threshold=0.999):
+def remove_slow_reactions(changes, change_reacs,rate_threshold=0.99):
     """Iterates through a list of reactions adding the fastest reactions to a list until some threshold fraction of the total
     rate of change is reached. This list is returned so that you have the list of reactions that cause rate_threshold of the
     total destruction and formation of a species.
@@ -82,7 +103,7 @@ def remove_slow_reactions(changes, change_reacs,rate_threshold=0.999):
     return totalProd, totalDestruct, key_reactions, key_changes
 
 
-def print_analysis(time, total_production, total_destruction, key_reactions, key_changes):
+def write_analysis(output_file,time, total_production, total_destruction, key_reactions, key_changes):
     """Prints key reactions
 
     Args:
@@ -92,18 +113,18 @@ def print_analysis(time, total_production, total_destruction, key_reactions, key
         key_reactions (list): A list of all reactions that contribute to the total rate of change
         key_changes (list): A list of rates of change contributing to total
     """
-    print("\n***************************\nNew Important Reactions At: {0:.2e} years\n".format(time))
-    print("Formation = {0:.2e} from:".format(total_production))
+    output_file.write("\n\n***************************\nNew Important Reactions At: {0:.2e} years\n".format(time))
+    output_file.write("Formation = {0:.2e} from:".format(total_production))
     for k, reaction in enumerate(key_reactions):
         if key_changes[k] > 0:
-            outString = f"{reaction} : {float(key_changes[k] / total_production):.2%}"
-            print(outString)
+            outString = f"\n{reaction} : {float(key_changes[k] / total_production):.2%}"
+            output_file.write(outString)
 
-    print("\nDestruction = {0:.2e} from:".format(total_destruction))
+    output_file.write("\n\nDestruction = {0:.2e} from:".format(total_destruction))
     for k, reaction in enumerate(key_reactions):
         if key_changes[k] < 0:
-            outString = f"{reaction} : {float(key_changes[k] / total_destruction):.2%}"
-            print(outString)
+            outString = f"\n{reaction} : {float(key_changes[k] / total_destruction):.2%}"
+            output_file.write(outString)
 
 
 def format_reactions(reactions):
@@ -121,3 +142,57 @@ def format_reactions(reactions):
         outString = outString.replace(" + NAN", "")
         formatted_reactions.append(outString)
     return formatted_reactions
+
+def count_element(species_list, element):
+    """
+    Count the number of atoms of an element that appear in each of a list of species,
+    return the array of counts
+
+    :param  species_list: (iterable, str), list of species names
+    :param element: (str), element
+
+    :return: sums (ndarray) array where each element represents the number of atoms of the chemical element in the corresponding element of species_list
+    """
+    species_list = pd.Series(species_list)
+    # confuse list contains elements whose symbols contain the target eg CL for C
+    # We count both sets of species and remove the confuse list counts.
+    confuse_list = [x for x in elementList if element in x]
+    confuse_list = sorted(confuse_list, key=lambda x: len(x), reverse=True)
+    confuse_list.remove(element)
+    sums = species_list.str.count(element)
+    for i in range(2, 10):
+        sums += np.where(species_list.str.contains(element + f"{i:.0f}"), i - 1, 0)
+    for spec in confuse_list:
+        sums += np.where(species_list.str.contains(spec), -1, 0)
+    return sums
+
+
+def total_element_abundance(element, df):
+    """
+    Calculates that the total elemental abundance of a species as a function of time. Allows you to check conservation.
+
+    :param element: (str) Element symbol. eg "C"
+    :param df: (pandas dataframe) UCLCHEM output in format from `read_output_file`
+
+    :return: Series containing the total abundance of an element at every time step of your output
+    """
+    sums = count_element(df.columns, element)
+    for variable in ["Time", "Density", "gasTemp", "av", "point", "SURFACE", "BULK"]:
+        sums = np.where(df.columns == variable, 0, sums)
+    return df.mul(sums, axis=1).sum(axis=1)
+
+
+def check_element_conservation(df, element_list=["H", "N", "C", "O"]):
+    """
+    Check the conservation of major element by comparing total abundance at start and end of model
+
+    :param	df: (pandas dataframe): UCLCHEM output in format from `read_output_file`
+
+    :return: (dict) Dictionary containing the change in the total abundance of each element as a fraction of initial value
+    """
+    result = {}
+    for element in element_list:
+        discrep = total_element_abundance(element, df).values
+        discrep = np.abs(discrep[0] - discrep[-1]) / discrep[0]
+        result[element] = f"{discrep:.3%}"
+    return result
