@@ -1,7 +1,0 @@
-chemistry.f90:USE network
-cloud.f90:    USE network
-collapse.f90:    USE network
-cshock.f90:    USE network
-hotcore.f90:    USE network
-jshock.f90:    USE network
-surfacereactions.f90:  USE network

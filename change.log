@@ -2,3 +2,6 @@ Unversioned 3.0 prerelease
 
 # Physics Modules
 We've update the code so that physics modules are all compiled together and are accessed through different functions. As a result, users no longer need to recompile to move from modelling hot cores to cshocks.
+
+#Pip!
+You can now use pip to install UCLCHEM. You need to `pip install .` from the top directory of the UCLCHEM repository each time you run MakeRates in order to update your network but after that, you can `import uclchem` from anywhere.

@@ -10,3 +10,6 @@ Python/uclchem/*.so
 test/*
 test
 .vscode
+build/*
+dist/*
+*/__pycache__
