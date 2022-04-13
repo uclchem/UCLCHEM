@@ -48,7 +48,7 @@ IMPLICIT NONE
     
     !Variables controlling chemistry
     LOGICAL :: PARAMETERIZE_H2FORM=.True.
-    REAL(dp) :: radfield,zeta,fr,omega,grainArea,cion,h2dis,lastTemp=0.0
+    REAL(dp) :: radfield,fr,omega,grainArea,cion,h2dis,lastTemp=0.0
     REAL(dp) :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
     
 
@@ -141,7 +141,7 @@ CONTAINS
         IMPLICIT NONE
         INQUIRE(UNIT=11, OPENED=columnOutput)
         IF (columnOutput) write(11,333) specName(outIndx)
-        333 format("Time,Density,gasTemp,av,",(999(A,:,',')))
+        333 format("Time,Density,gasTemp,av,zeta,",(999(A,:,',')))
 
         INQUIRE(UNIT=10, OPENED=fullOutput)
         IF (fullOutput) THEN
@@ -149,7 +149,7 @@ CONTAINS
             write(10,*) "Radfield ", radfield, " Zeta ",zeta
             write(10,335) specName
         END IF
-        335 format("Time,Density,gasTemp,av,point,",(999(A,:,',')))
+        335 format("Time,Density,gasTemp,av,point,zeta,",(999(A,:,',')))
         334 format("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
 
         INQUIRE(UNIT=71, OPENED=readAbunds)
@@ -171,7 +171,7 @@ CONTAINS
     SUBROUTINE output
 
         IF (fullOutput) THEN
-            write(10,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),dstep,abund(:neq-1,dstep)
+            write(10,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),dstep,zeta,abund(:neq-1,dstep)
             8020 format(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
         END IF
 
@@ -190,7 +190,7 @@ CONTAINS
         !choose species you're interested in by looking at parameters.f90
         IF (writeCounter==writeStep .and. columnOutput) THEN
             writeCounter=1
-            write(11,8030) timeInYears,density(dstep),gasTemp(dstep),av(dstep),abund(outIndx,dstep)
+            write(11,8030) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,abund(outIndx,dstep)
             8030  format(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',(999(1pe15.5,:,',')))
         ELSE
             writeCounter=writeCounter+1

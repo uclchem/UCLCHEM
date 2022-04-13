@@ -21,7 +21,7 @@ MODULE physics
     !Use main loop counters in calculations so they're kept here
     INTEGER :: dstep,points
     !Switches for processes are also here, 1 is on/0 is off.
-    INTEGER :: collapse,switch,phase
+    INTEGER :: collapse,switch,phase,crDependency
 
     !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
@@ -30,6 +30,10 @@ MODULE physics
     !variables either controlled by physics or that user may wish to change
     DOUBLE PRECISION :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,grainRadius,initialTemp
     DOUBLE PRECISION :: cloudSize,rout,rin,baseAv,bc,maxTemp,vs
+    
+    !variables for the cr ionization dependency
+    INTEGER :: ionModel,hDiss, k
+    DOUBLE PRECISION :: zSum, ionRate,zeta, zetaScale, dissSum,dissRate,dRate
     
     !Arrays for phase 2 temp profiles. parameters for equation chosen by index
     !arrays go [1Msun,5, 10, 15, 25,60]
@@ -269,6 +273,59 @@ CONTAINS
             END IF 
         END DO
     END SUBROUTINE bindingEnergyEvap
+
+    SUBROUTINE ionizationDependency
+        !Arrays fopr calculating rates
+        !ckLIon and ckHIon are the coefficients for the cosmic ray ionization rate
+        !ckLDiss and ckHDiss are the coefficients for the H2 dissociation rate
+        !if ionModel = 0 use the L model coefficients, if = 1 use the H model
+        DOUBLE PRECISION,PARAMETER :: ckLIon(10)=(/1.545456645800d7, -6.307708626617d6, 1.142680666041d6, -1.205932302621d5,&
+                                                8.170913352693d3, -3.686121296079d2,1.107203722057d1, -2.135293914267d-1,&
+                                                2.399219033781d-3, -1.196664901916d-5/)
+        DOUBLE PRECISION, PARAMETER :: ckLDiss(10)=(/1.582911005330d7,-6.465722684896d6, 1.172189025424d6, -1.237950798073d5, &
+                                                8.393404654312d3, -3.788811358130d2, 1.138688455029d1, -2.197136304567d-1, &
+                                                2.469841278950d-3, -1.232393620924d-5/)
+        DOUBLE PRECISION,PARAMETER :: ckHIon(10)=(/1.223529865309d7, -5.013766644305d6, 9.120125566763d5, -9.665446168847d4,&
+                                                6.576930812109d3, -2.979875686226d2,8.989721355058d0, -1.741300519598d-1,&
+                                                1.965098116126d-3, -9.844203439473d-6/)
+        DOUBLE PRECISION, PARAMETER :: ckHDiss(10)=(/1.217227462831d7,-4.989649250304d6, 9.079152156645d5, -9.624890825395d4, &
+                                                6.551161486120d3, -2.968976216187d2, 8.959037875226d0, -1.735757324445d-1, &
+                                                1.959267277734d-3, -9.816996707980d-6/)
+        
+        zeta= 1.0
+        zSum = 0
+        DO k=0,9,1
+            IF (ionModel .eq. 0) THEN
+                ionRate=ckLIon(k+1)*log10(coldens(dstep))**k
+            ELSEIF (ionModel .eq. 1) THEN
+                ionRate=ckHIon(k+1)*log10(coldens(dstep))**k
+            ELSE 
+                write(*,*) "WARNING: ionModel switch must be 0 or 1"
+            ENDIF
+            zSum=zSum+ionRate
+        END DO
+
+        zeta=((10**zSum)/1.3d-17)* zetaScale
+
+        !rate calculation for H2 dissociation
+        IF (hDiss .eq. 1) THEN
+            dissSum = 0
+            DO k=0,9,1
+                IF (ionModel .eq. 0) THEN
+                    dRate=ckLDiss(k+1)*log10(coldens(dstep))**k
+                ELSEIF (ionModel .eq. 1) THEN
+                    dRate=ckHDiss(k+1)*log10(coldens(dstep))**k
+                ELSE 
+                    write(*,*) "WARNING: ionModel switch must be 0 or 1"
+                ENDIF
+                dissSum=dissSum+dRate
+            END DO
+            dissRate=(10**dissSum)*zetaScale
+        END IF
+    
+    END SUBROUTINE ionizationDependency
+
+    
 END MODULE physics
 
 

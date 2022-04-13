@@ -48,6 +48,13 @@ instantSublimation=0
 !ion sets ionization fraction of carbon. See chem.f90:initialise
 ion=2
 
+!switches for the cosmic ray ionization dependency on column density
+!all switches below must have dependency activates to work
+crDependency=0 
+hDiss=0 !toggles the CR H2 dission rate dependency on/off (1/0)
+ionModel=0 !toggles between the L model (0) and the H model (1) dependency
+zetaScale=1.0 !a factor to simply scale the ionization dependency if desired.
+
 
 !cloud module specific variable for phase 2, temp profile depends on mass of star
 !Tempindx selects mass: 1=1Msol,2=5,3=10M,4=15M,5=25M,6=60M

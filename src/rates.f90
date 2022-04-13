@@ -7,7 +7,13 @@ SUBROUTINE calculateReactionRates
 
     idx1=crpReacs(1)
     idx2=crpReacs(2)
-    IF (idx1 .ne. idx2) rate(idx1:idx2)=alpha(idx1:idx2)*zeta
+
+    IF (idx1 .ne. idx2) THEN
+        rate(idx1:idx2)=alpha(idx1:idx2)*zeta
+        IF (hDiss .eq. 1.0) THEN
+            rate(nR_H2_diss) = dissRate
+        END IF
+    END IF
 
     !UV photons, radfield has (factor of 1.7 conversion from habing to Draine)
     idx1=photonReacs(1)

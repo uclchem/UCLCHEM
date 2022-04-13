@@ -61,6 +61,14 @@ IF (paramFile .ne. "") THEN
                 READ(buffer,*,iostat=ios) instantSublimation
             CASE('ion')
                 READ(buffer,*,iostat=ios) ion
+            CASE('crDependency')
+                READ(buffer,*,iostat=ion) crDependency
+            CASE('hDiss')
+                READ(buffer,*,iostat=ion) hDiss
+            CASE('ionModel')
+                READ(buffer,*,iostat=ion) ionModel
+            CASE('zetaScale')
+                READ(buffer,*,iostat=ion) zetaScale
             CASE('tempindx')
                 READ(buffer,*,iostat=ios) tempindx
             CASE('fh')

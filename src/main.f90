@@ -25,6 +25,12 @@ IMPLICIT NONE
     CALL initializePhysics(successFlag)
     CALL initializeChemistry
     dstep=1
+    
+    !set up initial cosmic ray ionization rate
+    IF (crDependency .eq. 1) THEN
+        CALL ionizationDependency
+    END IF 
+
     call output
 
     !loop until the end condition of the model is reached 
@@ -37,9 +43,14 @@ IMPLICIT NONE
 
         !loop over parcels, counting from centre out to edge of cloud
         DO dstep=1,points
+            ! update the CR ionization rate
+            IF (crDependency .eq. 1) THEN
+                CALL ionizationDependency
+            END IF 
+            
             !update chemistry from currentTime to targetTime
             CALL updateChemistry(successFlag)
-            IF (successFlag .eq. 0) THEN
+            IF (successFlag .eq. 1) THEN
                 CALL debugout
                 STOP
             END IF

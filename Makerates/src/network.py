@@ -340,6 +340,8 @@ class Network:
                 self.important_reactions["nR_EFreeze"] = i + 1
             if ("H2" in reaction.reactants) and ("PHOTON" in reaction.reactants):
                 self.important_reactions["nR_H2_hv"] = i + 1
+            if ("H2" in reaction.reactants) and ("CRP" in reaction.reactants) and (reaction.products.count("H") == 2):
+                self.important_reactions["nR_H2_diss"] = i + 1
         print([value is None for value in self.important_reactions.values()])
         if np_any([value is None for value in self.important_reactions.values()]):
             missing_reac_error = "Input reaction file is missing mandatory reactions"

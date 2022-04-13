@@ -1,2 +1,3 @@
-# Refractory species
-Added possibility of making a bulk species refractory in three phase models. Setting binding energy to "inf" will remove it from bulk transfer and individual swapping reactions so that the bulk species does not return to surface as thermal desorption destroys ices.
+# Cosmic ray attenuation
+
+Update to the handling of the cosmic ray ionization rate and H2 dissociation rate to be dependent on the column density of a cloud. Includes switches for activation and upper/lower limits. Switches are defaulted to off (i.e. standard UCLCHEM handling) so must be actived to use.
