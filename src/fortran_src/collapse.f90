@@ -21,16 +21,9 @@ CONTAINS
    
     SUBROUTINE initializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
-
-        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,density)
-        ALLOCATE(av(points),coldens(points),density(points),gasTemp(points))
+       
         IF (ALLOCATED(parcelRadius)) DEALLOCATE(parcelRadius,massInRadius)
         ALLOCATE(parcelRadius(points),massInRadius(points))
-
-        cloudSize = (rout-rin)*pc
-        gasTemp = initialTemp
-        dustTemp = gasTemp
-
       
          SELECT CASE(collapse_mode)
             CASE(1)

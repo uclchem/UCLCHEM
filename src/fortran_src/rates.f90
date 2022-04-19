@@ -4,10 +4,10 @@ SUBROUTINE calculateReactionRates
     !Assuming the user has temperature changes or uses the desorption features of phase 1,
     !these need to be recalculated every time step.
 
-
     idx1=crpReacs(1)
     idx2=crpReacs(2)
     IF (idx1 .ne. idx2) rate(idx1:idx2)=alpha(idx1:idx2)*zeta
+    IF (improvedH2CRPDissociation) rate(nR_H2_CRP)=h2CRPRate
 
     !UV photons, radfield has (factor of 1.7 conversion from habing to Draine)
     idx1=photonReacs(1)
@@ -43,7 +43,7 @@ SUBROUTINE calculateReactionRates
     idx1=desoh2Reacs(1)
     idx2=desoh2Reacs(2)
     IF (idx1 .ne. idx2) THEN
-        IF ((desorb .eq. 1) .and. (h2desorb .eq. 1) .and. (gama(j) .le. ebmaxh2) &
+        IF ((desorb) .and. (h2desorb) .and. (gama(j) .le. ebmaxh2) &
         & .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
             !Epsilon is efficieny of this process, number of molecules removed per event
             !h2form is formation rate of h2, dependent on hydrogen abundance. 
@@ -51,6 +51,8 @@ SUBROUTINE calculateReactionRates
         ELSE
             rate(idx1:idx2) = 0.0
         ENDIF
+        !turn off freeze out if desorption due to H2 formation is much faster
+        !both rates combine with density to get rate of change so drop that factor
         WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep))<&
         &MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
     END IF
@@ -58,7 +60,7 @@ SUBROUTINE calculateReactionRates
     idx1=descrReacs(1)
     idx2=descrReacs(2)
     IF (idx1 .ne. idx2) THEN
-        IF ((desorb .eq. 1) .and. (crdesorb .eq. 1) &
+        IF ((desorb) .and. (crdesorb) &
         &.and. (gama(j) .le. ebmaxcr) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
             !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
             !as iron nuclei are main cause of CR heating.
@@ -68,6 +70,7 @@ SUBROUTINE calculateReactionRates
         ELSE
             rate(idx1:idx2) = 0.0
         ENDIF
+        !turn off freeze out if desorption due to CR formation is much faster
         WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep))&
         <MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
     END IF
@@ -76,8 +79,8 @@ SUBROUTINE calculateReactionRates
     idx1=deuvcrReacs(1)
     idx2=deuvcrReacs(2)
     IF (idx1 .ne. idx2) THEN
-        IF ((desorb .eq. 1) .and. (uvdesorb .eq. 1) .and. (gama(j) .le. ebmaxuvcr)&
-        &.and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
+        IF ((desorb) .and. (uvdesorb) .and. (gama(j) .le. ebmaxuvcr)&
+        &.and. (safeMantle .gt. MIN_SURFACE_ABUND).and.(zeta .gt. 0)) THEN
             !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
             !UVY is yield per photon.
             rate(idx1:idx2) = GRAIN_CROSSSECTION_PER_H*uv_yield*4.875d3*zeta
@@ -87,6 +90,7 @@ SUBROUTINE calculateReactionRates
         ELSE
             rate(idx1:idx2) = 0.0
         ENDIF
+        !turn off freeze out if desorption due to UV is much faster
         WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep))&
         &<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
     END IF
@@ -97,7 +101,7 @@ SUBROUTINE calculateReactionRates
     idx1=thermReacs(1)
     idx2=thermReacs(2)
     IF (idx1 .ne. idx2) THEN
-        IF (thermdesorb .eq.1) THEN
+        IF (thermdesorb) THEN
             DO j=idx1,idx2
                 !then try to overwrite with position in grain array
                 DO i=lbound(iceList,1),ubound(iceList,1)
@@ -115,7 +119,7 @@ SUBROUTINE calculateReactionRates
             END DO
             !At some point, rate is so fast that there's no point freezing out any more
             !Save the integrator some trouble and turn freeze out off
-            WHERE(rate(freezePartners)*abund(re1(freezePartners),dstep)&
+            WHERE(rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep)&
             &<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
             IF (safeMantle .lt. MIN_SURFACE_ABUND) rate(idx1:idx2)=0.0
         ELSE
@@ -205,8 +209,8 @@ SUBROUTINE calculateReactionRates
     lastTemp=gasTemp(dstep)
 
     !turn off reactions outside their temperature range
-    WHERE(gasTemp(dstep) .lt. minTemps) rate=0.0
-    WHERE(gasTemp(dstep) .gt. maxTemps) rate=0.0
+    !WHERE(gasTemp(dstep) .lt. minTemps) rate=0.0
+    !WHERE(gasTemp(dstep) .gt. maxTemps) rate=0.0
 
     !Overwrite reactions for which we have a more detailed photoreaction treatment
     rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel)!H2 photodissociation

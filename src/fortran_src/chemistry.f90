@@ -22,7 +22,7 @@ IMPLICIT NONE
     INTEGER, PARAMETER :: maxLoops=10
 
     !Flags to control desorption processes
-    INTEGER :: h2desorb,crdesorb,uvdesorb,desorb,thermdesorb
+    LOGICAL :: desorb,h2desorb,crdesorb,uvdesorb,thermdesorb
 
 
     !Array to store reaction rates
@@ -35,13 +35,13 @@ IMPLICIT NONE
     REAL(dp), ALLOCATABLE :: abstol(:)
     TYPE(VODE_OPTS) :: OPTIONS
     !initial fractional elemental abudances and arrays to store abundances
-    REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,fli,fna,fpah,f15n,f13c,f18O,metallicity
+    REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,ffe,fli,fna,fpah,f15n,f13c,f18O,metallicity
     REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
     REAL(dp),ALLOCATABLE :: abund(:,:)
     
     !Variables controlling chemistry
     LOGICAL :: PARAMETERIZE_H2FORM=.True.
-    REAL(dp) :: radfield,zeta,fr,omega,grainArea,cion,h2dis,lastTemp=0.0
+    REAL(dp) :: radfield,fr,omega,grainArea,cion,h2dis,lastTemp=0.0
     REAL(dp) :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
     REAL(dp), PARAMETER :: h2StickingZero=0.87d0,hStickingZero=1.0d0, h2StickingTemp=87.0d0,hStickingTemp=52.0d0
     
@@ -68,6 +68,7 @@ CONTAINS
             abund(nmg,:) = fmg
             abund(np,:) = fp
             abund(nf,:) = ff
+            !abund(nfe,:) = ffe
             abund(nna,:) = fna
             abund(nli,:) = fli
             abund(npah,:) = fpah
@@ -103,7 +104,7 @@ CONTAINS
             abund(nd,:)=fd
 
             abund(nhe,:) = fhe  
-            abund(nspec+1,:)=density  
+            abund(neq,:)=density  
 
         ENDIF
         !Initial calculations of diffusion frequency for each species bound to grain
@@ -135,9 +136,9 @@ CONTAINS
         INTEGER, INTENT(OUT) :: successFlag
         loopCounter=0
         successFlag=1
-        DO WHILE((currentTime .lt. targetTime) .and. (loopCounter .lt. maxLoops))   
-            !allow option for dens to have been ch anged elsewhere.
-            IF (freefall .ne. 1) abund(nspec+1,dstep)=density(dstep)
+        DO WHILE((currentTime .lt. targetTime) .and. (loopCounter .lt. maxLoops)) 
+            !allow option for dens to have been changed elsewhere.
+            IF (.not. freefall) abund(nspec+1,dstep)=density(dstep)
 
             !First sum the total column density over all points further towards edge of cloud
             IF (dstep.gt.1) THEN
@@ -169,6 +170,11 @@ CONTAINS
                 RETURN
             END IF
 
+            !Integrator doesn't always make this perfectly accurate especially during warm up
+            !In those cases, once abundances go to zero, bulk/surface is never fixed because rates of change are tiny
+            abund(nBulk,dstep)=sum(abund(bulkList,dstep))
+            abund(nSurface,dstep)=sum(abund(surfaceList,dstep))
+
             !1.d-30 stops numbers getting too small for fortran.
             WHERE(abund<1.0d-30) abund=1.0d-30
             density(dstep)=abund(NEQ,dstep)
@@ -179,7 +185,7 @@ CONTAINS
 
     SUBROUTINE integrateODESystem(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
-        successFlag=0
+        successFlag=1
     !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
         !reset parameters for DVODE
         ITASK=1 !try to integrate to targetTime

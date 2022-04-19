@@ -15,37 +15,14 @@ CONTAINS
     SUBROUTINE initializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
         successFlag=0
-        ! Modules not restarted in python wraps so best to reset everything manually.
-        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,dustTemp,density)
-        ALLOCATE(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points))
-
-
-        currentTime=0.0
-        targetTime=0.0
-        timeInYears=0.0
 
         !Set up basic physics variables
         cloudSize=(rout-rin)*pc
-        gasTemp=initialTemp
-        dustTemp=gasTemp
+
 
         !Set up freefall.
-        SELECT CASE(freefall)
-            !freefall Rawlings 1992
-            CASE(0)
-                density=initialDens
-            CASE(1)
-                density=1.001*initialDens
-            CASE DEFAULT
-                write(*,*) "freefall must be 0 or 1 for clouds"
-        END SELECT
+        IF(freefall) density=1.001*initialDens
 
-        !calculate initial column density as distance from core edge to current point * density
-        DO dstep=1,points
-            coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
-        END DO
-          !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av= baseAv +coldens/1.6d21
     END SUBROUTINE
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

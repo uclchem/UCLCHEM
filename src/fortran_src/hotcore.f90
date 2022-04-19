@@ -25,33 +25,16 @@ contains
     SUBROUTINE initializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
         successFlag=0
+
         ! Modules not restarted in python wraps so best to reset everything manually.
-        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,dustTemp,density)
         IF (ALLOCATED(monoFracCopy)) DEALLOCATE(monoFracCopy)
-        ALLOCATE(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points),monoFracCopy(size(monoFractions)))
+        ALLOCATE(monoFracCopy(size(monoFractions)))
         coFlag=0 !reset sublimation
         solidFlag=0
         volcFlag=0
         monoFracCopy=monoFractions !reset monofractions
 
-        currentTime=0.0
-        targetTime=0.0
-        timeInYears=0.0
-
-        !Set up basic physics variables
-        cloudSize=(rout-rin)*pc
-        gasTemp=initialTemp
-        dustTemp=gasTemp
-
-        SELECT CASE(freefall)
-            !freefall Rawlings 1992
-            CASE(0)
-                density=initialDens
-            CASE(1)
-                density=1.001*initialDens
-            CASE DEFAULT
-                write(*,*) "freefall must be 0 or 1 for hot cores"
-        END SELECT
+        IF (freefall) density=1.001*initialDens
 
         IF (tempindx .gt. nMasses) THEN
             write(*,*) "tempindx was ",tempindx
@@ -60,13 +43,6 @@ contains
             successFlag=-1
             RETURN
         END IF 
-
-        !calculate initial column density as distance from core edge to current point * density
-        DO dstep=1,points
-            coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
-        END DO
-        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av= baseAv +coldens/1.6d21
     END SUBROUTINE
 
     !Called every time loop in main.f90. Sets the timestep for the next output from   
@@ -123,8 +99,8 @@ contains
         REAL(dp) :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
         IF (.not. THREE_PHASE) THEN
-            IF (instantSublimation .eq. 1) THEN
-                instantSublimation=0
+            IF (instantSublimation) THEN
+                instantSublimation=.False.
                 CALL totalSublimation(abund)
             ELSE IF (coflag .ne. 2) THEN
                 IF (gasTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1

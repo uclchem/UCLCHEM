@@ -33,9 +33,6 @@ CONTAINS
         INTEGER :: iLoop
         REAL(dp) :: v01,g1,g2
 
-        !Reset variables for python wrap.
-        IF (ALLOCATED(av)) deallocate(av,coldens,gasTemp,density,dustTemp)
-        allocate(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points))  
         driftVel=0.0
         zn0=0.0
         vn0=0.0
@@ -45,20 +42,13 @@ CONTAINS
 
         !check input sanity and set inital values
         cloudSize=(rout-rin)*pc
-        if (freefall .eq. 1) THEN
+        IF (freefall) THEN
             write(*,*) "Cannot have freefall on during cshock"
             Write(*,*) "setting freefall=0 and continuing"
-            freefall=0
+            freefall=.False.
         ENDIF
         density=initialDens
-         
-        gasTemp=initialTemp
-        dustTemp=gasTemp
 
-        !calculate initial column density as distance from core edge to current point * density
-        DO dstep=1,points
-            coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
-        END DO
 
         !cshock initialization
         IF (ALLOCATED(tn)) deallocate(tn,ti,tgc,tgr,tg)

@@ -15,15 +15,15 @@ CONTAINS
         IMPLICIT NONE
         INQUIRE(UNIT=columnId, OPENED=columnOutput)
         IF (columnOutput) write(columnId,333) specName(outIndx)
-        333 format("Time,Density,gasTemp,av,",(999(A,:,',')))
+        333 format("Time,Density,gasTemp,av,zeta,",(999(A,:,',')))
 
         INQUIRE(UNIT=outputId, OPENED=fullOutput)
         IF (fullOutput) THEN
             write(outputId,334) fc,fo,fn,fs
-            write(outputId,*) "Radfield ", radfield, " Zeta ",zeta
+            write(outputId,*) "Radfield ", radfield
             write(outputId,335) specName
         END IF
-        335 format("Time,Density,gasTemp,av,point,",(999(A,:,',')))
+        335 format("Time,Density,gasTemp,av,zeta,point,",(999(A,:,',')))
         334 format("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
 
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
@@ -45,31 +45,30 @@ CONTAINS
     SUBROUTINE output
 
         IF (fullOutput) THEN
-            write(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),dstep,abund(:neq-1,dstep)
-            8020 format(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
+            write(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,dstep,abund(:neq-1,dstep)
+            8020 format(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
         END IF
-
-        !If this is the last time step of phase I, write a start file for phase II
-        IF (writeAbunds) THEN
-        IF (switch .eq. 0 .and. timeInYears .ge. finalTime& 
-            &.or. switch .eq. 1 .and.density(dstep) .ge. finalDens) THEN
-            write(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
-            write(abundSaveID,8010) abund(:neq-1,dstep)
-        ENDIF
-        ENDIF
-        8010  format((999(1pe15.5,:,',')))
-        
-
+       
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90
         IF (writeCounter==writeStep .and. columnOutput) THEN
             writeCounter=1
-            write(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),av(dstep),abund(outIndx,dstep)
-            8030  format(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',(999(1pe15.5,:,',')))
+            write(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,abund(outIndx,dstep)
+            8030  format(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',(999(1pe15.5,:,',')))
         ELSE
             writeCounter=writeCounter+1
         END IF
     END SUBROUTINE output
+
+    SUBROUTINE finalOutput
+        IF (writeAbunds) THEN
+            DO dstep=1,points
+                write(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
+                write(abundSaveID,8010) abund(:neq-1,dstep)
+            8010  format((999(1pe15.5,:,',')))
+            END DO
+        END IF
+    END SUBROUTINE finalOutput
 
     SUBROUTINE debugout
         open(debugId,file='output/debuglog',status='unknown')       !debug file.

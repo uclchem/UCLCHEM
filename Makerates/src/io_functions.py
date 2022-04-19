@@ -8,6 +8,7 @@ import csv
 import numpy as np
 from .species import Species, elementList
 from .reaction import Reaction, reaction_types
+from os.path import join
 
 
 def read_species_file(file_name):
@@ -143,6 +144,45 @@ def kida_parser(kida_file):
                 rows.append(row[:7] + row[8:-1])
     return rows
 
+def output_drops(dropped_reactions,output_dir):
+    if output_dir is None:
+        output_dir=""
+    outputFile=join(output_dir,"dropped_reactions.csv")
+    # Print dropped reactions from grain file or write if many
+    if len(dropped_reactions) < 6:
+        print("Reactions dropped from grain file:\n")
+        for reaction in dropped_reactions:
+            print(reaction)
+    else:
+        print(f"\nReactions dropped from grain file written to {outputFile}\n")
+        with open(outputFile, "w") as f:
+            writer = csv.writer(
+                f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL, lineterminator="\n"
+            )
+            for reaction in dropped_reactions:
+                writer.writerow(reaction)   
+
+
+def write_outputs(network,output_dir):
+    if output_dir is None:
+        output_dir="../src/"
+        fortran_src_dir="../src/fortran_src"
+    else:
+        fortran_src_dir=output_dir
+        
+    # Create the species file
+    filename = join(output_dir,"species.csv")
+    write_species(filename, network.species_list)
+
+    filename = join(output_dir,"reactions.csv")
+    write_reactions(filename, network.reaction_list)
+
+    # Write the ODEs in the appropriate language format
+    filename = join(fortran_src_dir,"odes.f90")
+    write_odes_f90(filename, network.species_list, network.reaction_list, network.three_phase)
+
+    filename= join(fortran_src_dir,"network.f90")
+    write_network_file(filename,network)
 
 def write_species(file_name, species_list):
     """Write the human readable species file. Note UCLCHEM doesn't use this file.
@@ -484,18 +524,18 @@ def truncate_line(input_string, lineLength=72):
     return result
 
 
-def write_network_file(network,fileName="outputFiles/network.f90"):
+def write_network_file(file_name,network):
     """Write the Fortran code file that contains all network information for UCLCHEM.
     This includes lists of reactants, products, binding energies, formationEnthalpies
     and so on.
 
     Args:
+        file_name (str): The file name where the code will be written.
         network (Network): A Network object built from lists of species and reactions.
-        fileName (str, optional): The file name for the code. Defaults to "network.f90".
     """
     species_list = network.species_list
     reaction_list = network.reaction_list
-    openFile = open(fileName, "w")
+    openFile = open(file_name, "w")
     openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
     openFile.write(
         "    INTEGER, PARAMETER :: nSpec={0}, nReac={1}\n".format(

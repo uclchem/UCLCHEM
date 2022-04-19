@@ -14,18 +14,17 @@ def test_ode_conservation(species_list, element_list=["H", "N", "C", "O"]):
     :return: (dict) Dictionary containing total rate of change of important elements
     """
     param_dict = {
-        "switch": 0,
-        "freefall": 1,
-        "writeStep": 1,
-        "initialDens": 1e4,
-        "initialTemp": 10.0,
-        "finalDens": 1e5,
-        "finalTime": 1.0e3,
-        "outSpecies": len(species_list),
+        "endatfinaldensity": False,
+        "freefall": True,
+        "initialdens": 1e4,
+        "initialtemp": 10.0,
+        "finaldens": 1e5,
+        "finaltime": 1.0e3,
+        "outspecies": len(species_list),
     }
     abundances, success_flag = wrap.cloud(param_dict," ".join(species_list))
-    abundances=abundances[:param_dict["outSpecies"]]
-    param_dict.pop("outSpecies")
+    abundances=abundances[:param_dict["outspecies"]]
+    param_dict.pop("outspecies")
     input_abund = zeros(500)
     input_abund[: len(abundances)] = abundances
     rates = wrap.get_odes(param_dict, input_abund)

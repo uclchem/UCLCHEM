@@ -7,61 +7,53 @@
 # 		by UCLCHEM to run. It also performs basic cleaning and sanity checks on the network.
 #
 ####################################################################################################
-from src.io_functions import *
+import src.io_functions as io 
 from src.network import *
 import os
+import yaml
 
+param_list = [
+    "species_file",
+    "database_reaction_file",
+    "database_reaction_type",
+    "custom_reaction_file",
+    "custom_reaction_type",
+    "three_phase",
+]
 
-###################################################################################################
-# USER OPTIONS
-###################################################################################################
+with open("user_settings.yaml", "r") as f:
+    user_params = yaml.safe_load(f)
+for param in param_list:
+    try:
+        print(f"{param} : {user_params[param]}")
+    except:
+        raise KeyError(f"{param} not found in user_settings.yaml")
 
-database_reaction_file = "inputFiles/umist12-ucledit.csv"
-database_reaction_type = "UMIST"
-# database_reaction_file = "inputFiles/kida.uva.2014.dat"
-# database_reaction_type="KIDA"
-
-custom_reaction_file = "inputFiles/default_grain_network.csv"
-
-
-species_file = "inputFiles/default_species.csv"
-
-three_phase = True
-
+try:
+    user_output_dir = user_params["output_directory"]
+    if not os.path.exists(user_output_dir):
+        os.makedirs(user_output_dir)
+except:
+    user_output_dir = None
 
 #################################################################################################
-if not os.path.exists("outputFiles"):
-    os.makedirs("outputFiles")
+
 
 print("\n################################################")
 print("Reading and checking input")
 print("################################################\n")
 
 # Read user inputs
-species_list = read_species_file(species_file)
-reactions1, dropped_reactions = read_reaction_file(
-    database_reaction_file, species_list, database_reaction_type
+species_list = io.read_species_file(user_params["species_file"])
+reactions1, dropped_reactions = io.read_reaction_file(
+    user_params["database_reaction_file"], species_list, user_params["database_reaction_type"]
 )
-reactions2, dropped_reactions = read_reaction_file(custom_reaction_file, species_list, "UCL")
+reactions2, dropped_reactions = io.read_reaction_file(user_params["custom_reaction_file"], species_list, user_params["custom_reaction_type"])
 
 # Create Network
-network = Network(species=species_list, reactions=reactions1 + reactions2, three_phase=three_phase)
+network = Network(species=species_list, reactions=reactions1 + reactions2, three_phase=user_params["three_phase"])
 
-
-# Print dropped reactions from grain file or write if many
-if len(dropped_reactions) < 6:
-    print("Reactions dropped from grain file:\n")
-    for reaction in dropped_reactions:
-        print(reaction)
-else:
-    print("\nReactions dropped from grain file written to outputFiles/dropped_reactions.csv\n")
-    f = open("outputFiles/dropped_reactions.csv", "w")
-    writer = csv.writer(
-        f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL, lineterminator="\n"
-    )
-    for reaction in dropped_reactions:
-        writer.writerow(reaction)
-    f.close()
+io.output_drops(dropped_reactions, user_output_dir)
 
 # check network to see if there are potential problems
 print("Checking Network")
@@ -72,30 +64,8 @@ print("\n################################################")
 print("Checks complete, writing output files")
 print("################################################\n")
 
-# Create the species file
-print("\nWriting final species file...")
-filename = "outputFiles/species.csv"
-write_species(filename, network.species_list)
-print("\tFinal Species File:", filename)
+io.write_outputs(network, user_output_dir)
 
-# Create the reaction file
-print("Writing final reaction file...")
-filename = "outputFiles/reactions.csv"
-write_reactions(filename, network.reaction_list)
-print("\tFinal Reaction File:", filename)
-
-# Write the ODEs in the appropriate language format
-print("Writing system of ODEs in F95 format...")
-filename = "outputFiles/odes.f90"
-write_odes_f90(filename, network.species_list, network.reaction_list, three_phase)
-# filename = 'outputFiles/jacobian.f90'
-# write_jacobian(filename,speciesList)
-print("\tFinal ODE file:", filename)
-
-print("Writing Network File...")
-filename = ""
-write_network_file(network)
-print("\tFinal Network file:", filename)
 
 ngrain = len([x for x in species_list if x.is_surface_species()])
 

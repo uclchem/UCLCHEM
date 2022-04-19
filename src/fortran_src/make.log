@@ -1,0 +1,753 @@
+gfortran -g -fbacktrace -Wall -fcheck=all -c constants.f90
+gfortran -g -fbacktrace -Wall -fcheck=all -c network.f90
+network.f90:239:23:
+
+  239 | INTEGER, PARAMETER ::  re1 (3001)=(/16,71,75,81,89,107,122,192,268,294&
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:373:23:
+
+  373 | INTEGER, PARAMETER ::  re2 (3001)=(/9999,9999,9999,9999,9999,9999,9999&
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:547:23:
+
+  547 | INTEGER, PARAMETER ::  re3 (3001)=(/9999,9999,9999,9999,9999,9999,9999&
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:762:23:
+
+  762 | INTEGER, PARAMETER ::  p1 (3001)=(/14,65,74,77,82,96,112,191,267,293,19&
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:916:23:
+
+  916 | INTEGER, PARAMETER ::  p2 (3001)=(/9999,9999,9999,9999,9999,9999,9999&
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:1063:23:
+
+ 1063 | INTEGER, PARAMETER ::  p3 (3001)=(/9999,9999,9999,9999,9999,9999,9999&
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:1270:23:
+
+ 1270 | INTEGER, PARAMETER ::  p4 (3001)=(/9999,9999,9999,9999,9999,9999,9999&
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:1485:13:
+
+ 1485 | REAL(dp) ::  alpha (3001)=(/1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
+      |             1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:1986:13:
+
+ 1986 | REAL(dp) ::  beta (3001)=(/0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
+      |             1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:2487:13:
+
+ 2487 | REAL(dp) ::  gama (3001)=(/0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00&
+      |             1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:2988:24:
+
+ 2988 | REAL(dp), PARAMETER ::  minTemps (3001)=(/0.0000e+00,0.0000e+00,0.0000e&
+      |                        1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:3489:24:
+
+ 3489 | REAL(dp), PARAMETER ::  maxTemps (3001)=(/1.0000e+04,1.0000e+04,1.0000e&
+      |                        1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:3990:23:
+
+ 3990 | INTEGER, PARAMETER ::  freezePartners (73)=(/413,415,417,419,421,422,423&
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:3995:23:
+
+ 3995 | INTEGER, PARAMETER ::  photonReacs (2)=(/744,882/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:3996:23:
+
+ 3996 | INTEGER, PARAMETER ::  crpReacs (2)=(/74,97/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:3997:23:
+
+ 3997 | INTEGER, PARAMETER ::  crphotReacs (2)=(/98,191/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:3998:23:
+
+ 3998 | INTEGER, PARAMETER ::  freezeReacs (2)=(/413,578/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:3999:23:
+
+ 3999 | INTEGER, PARAMETER ::  thermReacs (2)=(/956,1101/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4000:23:
+
+ 4000 | INTEGER, PARAMETER ::  desoh2Reacs (2)=(/265,337/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4001:23:
+
+ 4001 | INTEGER, PARAMETER ::  descrReacs (2)=(/192,264/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4002:23:
+
+ 4002 | INTEGER, PARAMETER ::  deuvcrReacs (2)=(/338,410/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4003:23:
+
+ 4003 | INTEGER, PARAMETER ::  h2formReacs (2)=(/579,579/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4004:23:
+
+ 4004 | INTEGER, PARAMETER ::  erReacs (2)=(/411,411/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4005:23:
+
+ 4005 | INTEGER, PARAMETER ::  erdesReacs (2)=(/412,412/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4006:23:
+
+ 4006 | INTEGER, PARAMETER ::  lhReacs (2)=(/580,661/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4007:23:
+
+ 4007 | INTEGER, PARAMETER ::  lhdesReacs (2)=(/662,743/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4008:23:
+
+ 4008 | INTEGER, PARAMETER ::  bulkswapReacs (2)=(/1,73/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4009:23:
+
+ 4009 | INTEGER, PARAMETER ::  surfswapReacs (2)=(/883,955/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4010:23:
+
+ 4010 | INTEGER, PARAMETER ::  ionopol1Reacs (2)=(/99999,99999/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4011:23:
+
+ 4011 | INTEGER, PARAMETER ::  ionopol2Reacs (2)=(/99999,99999/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+network.f90:4012:23:
+
+ 4012 | INTEGER, PARAMETER ::  twobodyReacs (2)=(/1102,3001/)
+      |                       1
+Warning: Nonconforming tab character at (1) [-Wtabs]
+gfortran -g -fbacktrace -Wall -fcheck=all -c physics-core.f90
+gfortran -g -fbacktrace -Wall -fcheck=all -c cloud.f90
+cloud.f90:71:32:
+
+   71 |     SUBROUTINE sublimation(abund)
+      |                                1
+Warning: Unused dummy argument ‘abund’ at (1) [-Wunused-dummy-argument]
+gfortran -g -fbacktrace -Wall -fcheck=all -c hotcore.f90
+gfortran -g -fbacktrace -Wall -fcheck=all -c cshock.f90
+gfortran -g -fbacktrace -Wall -fcheck=all -c jshock.f90
+gfortran -g -fbacktrace -Wall -fcheck=all -c collapse.f90
+collapse.f90:49:14:
+
+   47 |          IF (writePhysics) OPEN(unit=66,file=collapseFile,status='unknown',err=99)
+      |                                                                                  2
+   48 |          IF (successFlag .lt. 0) THEN
+   49 |             99 write(*,*) "could not open physics output file",collapseFile
+      |              1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+collapse.f90:103:32:
+
+  103 |     SUBROUTINE sublimation(abund)
+      |                                1
+Warning: Unused dummy argument ‘abund’ at (1) [-Wunused-dummy-argument]
+gfortran -g -fbacktrace -Wall -fcheck=all -c dvode.f90
+dvode.f90:15887:45:
+
+15887 | 20          LOWL(IV) = MIN(LOWL(IV),LOWL(IW))
+      |                                             1
+Warning: Fortran 2018 deleted feature: DO termination statement which is not END DO or CONTINUE with label 20 at (1)
+dvode.f90:16008:28:
+
+16008 | 40        JCE = JCEP + JDISP
+      |                            1
+Warning: Fortran 2018 deleted feature: DO termination statement which is not END DO or CONTINUE with label 40 at (1)
+dvode.f90:16261:23:
+
+16261 | 20        IW1(J) = IOLD
+      |                       1
+Warning: Fortran 2018 deleted feature: DO termination statement which is not END DO or CONTINUE with label 20 at (1)
+dvode.f90:16457:47:
+
+16457 | 100         IW1(I,1) = IW1(I-1,1) + LENOFF(I-1)
+      |                                               1
+Warning: Fortran 2018 deleted feature: DO termination statement which is not END DO or CONTINUE with label 100 at (1)
+dvode.f90:16558:36:
+
+16558 | 20        WROWL = WROWL + ABS(A(JJ))
+      |                                    1
+Warning: Fortran 2018 deleted feature: DO termination statement which is not END DO or CONTINUE with label 20 at (1)
+dvode.f90:16567:37:
+
+16567 | 40        W(J) = MAX(ABS(A(JJ)),W(J))
+      |                                     1
+Warning: Fortran 2018 deleted feature: DO termination statement which is not END DO or CONTINUE with label 40 at (1)
+dvode.f90:1978:33:
+
+ 1978 |         MAXIT, MAXORD, MB28, MB48, METH, MICN, MICNCP, MINICN, MINIRN, MIRANK,  &
+      |                                 1
+Warning: Unused PRIVATE module variable ‘mb48’ declared at (1) [-Wunused-value]
+dvode.f90:7991:34:
+
+ 7991 |         INTEGER OMP_GET_THREAD_NUM
+      |                                  1
+Warning: Unused variable ‘omp_get_thread_num’ declared at (1) [-Wunused-variable]
+dvode.f90:8822:0:
+
+ 8822 |       SUBROUTINE DVSRCO(RSAV,ISAV,JOB)
+      | 
+Warning: ‘dvsrco’ defined but not used [-Wunused-function]
+dvode.f90:9138:0:
+
+ 9138 |       SUBROUTINE XSETF(MFLAG)
+      | 
+Warning: ‘xsetf’ defined but not used [-Wunused-function]
+dvode.f90:9160:0:
+
+ 9160 |       SUBROUTINE XSETUN(LUN)
+      | 
+Warning: ‘xsetun’ defined but not used [-Wunused-function]
+dvode.f90:13700:0:
+
+13700 |       SUBROUTINE MA28ID(N,NZ,AORG,IRNORG,ICNORG,LICN,A,ICN,IKEEP,RHS, &
+      | 
+Warning: ‘ma28id’ defined but not used [-Wunused-function]
+dvode.f90:16024:0:
+
+16024 |       SUBROUTINE MC20BD(NC,MAXA,A,INUM,JPTR)
+      | 
+Warning: ‘mc20bd’ defined but not used [-Wunused-function]
+dvode.f90:18220:0:
+
+18220 |     SUBROUTINE FDJS(M,N,COL,IND,NPNTR,NGRP,NUMGRP,D,FJACD,FJAC)
+      | 
+Warning: ‘fdjs’ defined but not used [-Wunused-function]
+dvode.f90:7327:0:
+
+ 7327 |         IF (MAXORD==NQ .AND. NEWQ==NQ+1) ETA = ETAQ
+      | 
+Warning: ‘etaq’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+dvode.f90:7329:0:
+
+ 7329 |           ETA = ETAQM1
+      | 
+Warning: ‘etaqm1’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+dvode.f90:4596:0:
+
+ 4596 |        RETURN
+      | 
+Warning: ‘opts’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+dvode.f90:3408:0:
+
+ 3408 |        RETURN
+      | 
+Warning: ‘opts’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+gfortran -g -fbacktrace -Wall -fcheck=all -c photoreactions.f90
+photoreactions.f90:302:21:
+
+  302 | SUBROUTINE splie2(x1a,x2a,ya,m,n,y2a)
+      |                     1
+Warning: Unused dummy argument ‘x1a’ at (1) [-Wunused-dummy-argument]
+gfortran -g -fbacktrace -Wall -fcheck=all -c surfacereactions.f90
+surfacereactions.f90:155:62:
+
+  155 |     double precision :: diffuseProb,desorbProb,reacProb,n_dust
+      |                                                              1
+Warning: Unused variable ‘n_dust’ declared at (1) [-Wunused-variable]
+surfacereactions.f90:64:73:
+
+   64 |     REAL(dp) :: THERMAL_VELOCITY,STICKING_COEFFICIENT,CROSS_SECTION_SCALE
+      |                                                                         1
+Warning: Unused variable ‘cross_section_scale’ declared at (1) [-Wunused-variable]
+gfortran -g -fbacktrace -Wall -fcheck=all -c chemistry.f90
+chemistry.f90:12:4:
+
+   12 | USE dvode_f90_m
+      |    1
+Warning: Type specified for intrinsic function ‘kind’ at (1) is ignored [-Wsurprising]
+chemistry.f90:237:33:
+
+  237 |         INTEGER NEQUATIONS,looper
+      |                                 1
+Warning: Unused variable ‘looper’ declared at (1) [-Wunused-variable]
+chemistry.f90:235:31:
+
+  235 |     SUBROUTINE F (NEQUATIONS, T, Y, YDOT)
+      |                               1
+Warning: Unused dummy argument ‘t’ at (1) [-Wunused-dummy-argument]
+rates.f90:2:25:
+
+    2 |     INTEGER:: idx1,idx2,k
+      |                         1
+Warning: Unused variable ‘k’ declared at (1) [-Wunused-variable]
+gfortran -g -fbacktrace -Wall -fcheck=all -c io.f90
+io.f90:2:8:
+
+    2 |     USE chemistry
+      |        1
+Warning: Type specified for intrinsic function ‘kind’ at (1) is ignored [-Wsurprising]
+gfortran -g -fbacktrace -Wall -fcheck=all -o ../../uclchem io.o physics-core.o cloud.o hotcore.o cshock.o jshock.o collapse.o dvode.o photoreactions.o surfacereactions.o chemistry.o network.o wrap.f90 main.f90
+wrap.f90:5:8:
+
+    5 |     USE chemistry
+      |        1
+Warning: Type specified for intrinsic function ‘kind’ at (1) is ignored [-Wsurprising]
+wrap.f90:460:11:
+
+  303 |                     READ(inputValue,*,err=666) initialTemp
+      |                                                          2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  305 |                     READ(inputValue,*,err=666) initialDens
+      |                                                          2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  307 |                     READ(inputValue,*,err=666) finalDens
+      |                                                        2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  309 |                     READ(inputValue,*,err=666) currentTime
+      |                                                          2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  311 |                     READ(inputValue,*,err=666) finalTime
+      |                                                        2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  313 |                     READ(inputValue,*,err=666) radfield
+      |                                                       2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  315 |                     READ(inputValue,*,err=666) zeta
+      |                                                   2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  317 |                     READ(inputValue,*,err=666) fr
+      |                                                 2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  319 |                     READ(inputValue,*,err=666) rout
+      |                                                   2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  321 |                     READ(inputValue,*,err=666) rin
+      |                                                  2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  323 |                     READ(inputValue,*,err=666) baseAv
+      |                                                     2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  325 |                     READ(inputValue,*,err=666) points
+      |                                                     2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  327 |                     Read(inputValue,*,err=666) endAtFinalDensity
+      |                                                                2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  329 |                     READ(inputValue,*,err=666) freefall
+      |                                                       2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  331 |                     READ(inputValue,*,err=666) bc
+      |                                                 2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  333 |                     READ(inputValue,*,err=666) desorb
+      |                                                     2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  335 |                     READ(inputValue,*,err=666) h2desorb
+      |                                                       2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  337 |                     READ(inputValue,*,ERR=666) crdesorb
+      |                                                       2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  339 |                     READ(inputValue,*,ERR=666) uvdesorb
+      |                                                       2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  341 |                     READ(inputValue,*,ERR=666) uvdesorb
+      |                                                       2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  343 |                     READ(inputValue,*,ERR=666) instantSublimation
+      |                                                                 2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  345 |                     READ(inputValue,*,ERR=666) ion
+      |                                                  2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  347 |                     READ(inputValue,*,ERR=666) fhe
+      |                                                  2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  349 |                     READ(inputValue,*,ERR=666) fc
+      |                                                 2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  351 |                     READ(inputValue,*,ERR=666) fo
+      |                                                 2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  353 |                     READ(inputValue,*,ERR=666) fn
+      |                                                 2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  355 |                     READ(inputValue,*,ERR=666) fs
+      |                                                 2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  357 |                     READ(inputValue,*,ERR=666) fmg
+      |                                                  2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  359 |                     READ(inputValue,*,ERR=666) fsi
+      |                                                  2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  361 |                     READ(inputValue,*,ERR=666) fcl
+      |                                                  2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  363 |                     READ(inputValue,*,ERR=666) fp
+      |                                                 2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  365 |                     READ(inputValue,*,ERR=666) ff
+      |                                                 2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  369 |                     READ(inputValue,*,ERR=666) nout
+      |                                                   2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:381:2:
+
+  379 |                         READ(outSpeciesIn,*, END=22) outSpecies
+      |                                                               2
+  380 |                         IF (outSpeciesIn .eq. "") THEN
+  381 | 22                              write(*,*) "mismatch between outSpeciesIn and number given in dictionary"
+      |  1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  395 |                     READ(inputValue,*,ERR=666) writeStep
+      |                                                        2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  397 |                     READ(inputValue,*,ERR=666) ebmaxh2
+      |                                                      2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  399 |                     READ(inputValue,*,ERR=666) epsilon
+      |                                                      2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  401 |                     READ(inputValue,*,ERR=666) ebmaxcrf
+      |                                                       2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  403 |                     READ(inputValue,*,ERR=666) uvcreff
+      |                                                      2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  405 |                     READ(inputValue,*,ERR=666) ebmaxcr
+      |                                                      2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  407 |                     READ(inputValue,*,ERR=666) phi
+      |                                                  2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  409 |                     READ(inputValue,*,ERR=666) ebmaxuvcr
+      |                                                        2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  411 |                     READ(inputValue,*,ERR=666) uv_yield
+      |                                                       2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  413 |                     READ(inputValue,*,ERR=666) metallicity
+      |                                                          2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  415 |                     READ(inputValue,*,ERR=666) omega
+      |                                                    2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  417 |                     READ(inputValue,*,ERR=666) reltol
+      |                                                     2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  419 |                     READ(inputValue,*,ERR=666) abstol_factor
+      |                                                            2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  421 |                     READ(inputValue,*,ERR=666) abstol_min
+      |                                                         2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  426 |                     READ(inputValue,*,ERR=666) abundSaveFile
+      |                                                            2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  430 |                     READ(inputValue,*,ERR=666) abundLoadFile
+      |                                                            2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  435 |                     READ(inputValue,*,ERR=666) outFile
+      |                                                      2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:460:11:
+
+  442 |                         READ(inputValue,*,ERR=666) columnFile
+      |                                                             2
+......
+  460 |         666 successFlag=-1
+      |           1
+Warning: Legacy Extension: Label at (1) is not in the same block as the GOTO statement at (2)
+wrap.f90:270:41:
+
+  270 |         LOGICAL :: ChemicalDuplicateCheck
+      |                                         1
+Warning: Unused variable ‘chemicalduplicatecheck’ declared at (1) [-Wunused-variable]
+wrap.f90:271:59:
+
+  271 |         INTEGER :: posStart, posEnd, whileInteger,inputindx
+      |                                                           1
+Warning: Unused variable ‘inputindx’ declared at (1) [-Wunused-variable]
+wrap.f90:269:55:
+
+  269 |         INTEGER, ALLOCATABLE, DIMENSION(:) :: locations
+      |                                                       1
+Warning: Unused variable ‘locations’ declared at (1) [-Wunused-variable]

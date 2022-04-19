@@ -9,7 +9,7 @@ params = {"switch": 0, "collapse": 0, "writeStep": 1,
 }
 
 start=perf_counter()
-uclchem.cloud(params.copy())
+uclchem.models.cloud(params.copy())
 stop=perf_counter()
 print(f"Static model in {stop-start:.1f} seconds")
 

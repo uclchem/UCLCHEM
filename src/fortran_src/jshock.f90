@@ -37,21 +37,17 @@ CONTAINS
         INTEGER :: iLoop
 
         !Reset variables for python wrap.
-        IF (ALLOCATED(av)) deallocate(av,coldens,gasTemp,dustTemp,density)
-        allocate(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points))  
         coflag=0 !should reset sputtering
         
         cloudSize=(rout-rin)*pc
 
-        if (freefall .eq. 1) THEN
+        if (freefall) THEN
             write(*,*) "Cannot have freefall on during jshock"
             Write(*,*) "setting freefall=0 and continuing"
-            freefall=0
+            freefall=.False.
         ENDIF
         density=initialDens
 
-        gasTemp = initialTemp
-        dustTemp = gasTemp
         ! Determine the maximum temperature
         maxTemp = (5e3)*(vs/10)**2
 
@@ -70,10 +66,6 @@ CONTAINS
         t_lambda = LOG(maxTemp/initialTemp)
         n_lambda = LOG(maxDens/initialDens)
 
-        !calculate initial column density as distance from core edge to current point * density
-        DO dstep=1,points
-            coldens(dstep)=(real(points-dstep+1)*cloudSize/real(points))*initialDens
-        END DO
 
         if (allocated(tn)) deallocate(tn,ti,tgc,tgr,tg)
         allocate(tn(points),ti(points),tgc(points),tgr(points),tg(points))

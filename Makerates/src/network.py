@@ -3,7 +3,7 @@ This python file contains all functions for de-duplicating species and reaction 
 checking for common errors, and automatic addition of reactions such as freeze out,
 desorption and bulk reactions for three phase models.
 """
-from .species import Species,elementList
+from .species import Species, elementList
 from .reaction import Reaction
 from copy import deepcopy
 from numpy import unique
@@ -286,7 +286,10 @@ class Network:
                 for j, reaction2 in enumerate(self.reaction_list):
                     if i != j:
                         if reaction1 == reaction2:
-                            if not ((reaction1.templow>=reaction2.temphigh) or (reaction1.temphigh<=reaction2.templow)):
+                            if not (
+                                (reaction1.templow >= reaction2.temphigh)
+                                or (reaction1.temphigh <= reaction2.templow)
+                            ):
                                 print(f"\tReactions {i+1} and {j+1} are possible duplicates")
                                 print(reaction1)
                                 print(reaction2)
@@ -306,6 +309,9 @@ class Network:
         """We have a whole bunch of important reactions and we want to store
         their indices. We find them all here.
         """
+
+        # Any None values in dictionary will raise an error
+        # therefore these reactions are mandatory and makerates will not complete if the user doesn't supply them.
         self.important_reactions = {
             "nR_H2Form_CT": None,
             "nR_H2Form_ERDes": None,
@@ -316,6 +322,9 @@ class Network:
             "nR_EFreeze": None,
             "nR_H2_hv": None,
         }
+        
+        #this looks complex but each if statement just uniquely identifies a special reaction
+        # if found, it is added to the dictionary with its fortran index as the value
         for i, reaction in enumerate(self.reaction_list):
             if ("CO" in reaction.reactants) and ("PHOTON" in reaction.reactants):
                 if "O" in reaction.products and "C" in reaction.products:
@@ -341,7 +350,8 @@ class Network:
                 self.important_reactions["nR_EFreeze"] = i + 1
             if ("H2" in reaction.reactants) and ("PHOTON" in reaction.reactants):
                 self.important_reactions["nR_H2_hv"] = i + 1
-        print([value is None for value in self.important_reactions.values()])
+            if ("H2" in reaction.reactants) and ("CRP" in reaction.reactants) and (reaction.products.count("H") == 2):
+                self.important_reactions["nR_H2_crp"] = i + 1
         if np_any([value is None for value in self.important_reactions.values()]):
             missing_reac_error = "Input reaction file is missing mandatory reactions"
             missing_reac_error += (
@@ -351,7 +361,7 @@ class Network:
             raise RuntimeError(missing_reac_error)
 
     def index_important_species(self):
-        self.species_indices={}
+        self.species_indices = {}
         names = [species.name for species in self.species_list]
         for element in [
             "C+",
@@ -375,5 +385,5 @@ class Network:
             except:
                 print(f"\t{element} not in network, adding dummy index")
                 species_index = len(self.species_list) + 1
-            name = "n"+element.lower().replace("+", "x").replace("e-", "elec").replace("#", "g")
-            self.species_indices[name]=species_index
+            name = "n" + element.lower().replace("+", "x").replace("e-", "elec").replace("#", "g")
+            self.species_indices[name] = species_index

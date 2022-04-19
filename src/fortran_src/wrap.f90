@@ -5,8 +5,6 @@ MODULE uclchemwrap
     USE chemistry
     USE io
     IMPLICIT NONE
-    
-
 CONTAINS
     SUBROUTINE cloud(dictionary, outSpeciesIn,abundance_out,successFlag)
         USE cloud_mod
@@ -108,11 +106,12 @@ CONTAINS
         INCLUDE 'defaultparameters.f90'
         
         CALL dictionary_parser(dictionary, "",successFlag)
-        IF (successFlag .le. 0) THEN
+        IF (successFlag .lt. 0) THEN
             WRITE(*,*) 'Error reading parameter dictionary'
             RETURN
         END IF
 
+        CALL coreInitializePhysics(successFlag)
         CALL initializePhysics(successFlag)
         IF (successFlag .lt. 0) then
             WRITE(*,*) 'Error initializing physics'
@@ -124,7 +123,7 @@ CONTAINS
         abund(:nspec,1)=abundancesIn(:nspec)
 
         !allow option for dens to have been changed elsewhere.
-        IF (freefall .ne. 1) abund(nspec+1,dstep)=density(dstep)
+        IF (.not. freefall) abund(nspec+1,dstep)=density(dstep)
 
         !First sum the total column density over all points further towards edge of cloud
         IF (dstep.gt.1) THEN
@@ -163,6 +162,7 @@ CONTAINS
         INCLUDE 'defaultparameters.f90'
         CALL dictionary_parser(dictionary, "",successFlag)
 
+        call coreInitializePhysics(successFlag)
         CALL initializePhysics(successFlag)
         IF (successFlag .lt. 0) then
             WRITE(*,*) 'Error initializing physics'
@@ -184,9 +184,11 @@ CONTAINS
         CALL F(NEQ,currentTime,abund(:,dstep),ratesOut(:NEQ))
     END SUBROUTINE get_odes
 
-    SUBROUTINE solveAbundances(dictionary,outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
+    SUBROUTINE solveAbundances(dictionary,outSpeciesIn,successFlag,&
+        &modelInitializePhysics,modelUpdatePhysics,updateTargetTime,&
+        &sublimation)
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
-        EXTERNAL initializePhysics,updateTargetTime,updatePhysics,sublimation
+        EXTERNAL modelInitializePhysics,updateTargetTime,modelUpdatePhysics,sublimation
 
         INTEGER, INTENT(OUT) :: successFlag
         successFlag=1
@@ -196,7 +198,7 @@ CONTAINS
         INCLUDE 'defaultparameters.f90'
         !Read input parameters from the dictionary
         CALL dictionary_parser(dictionary, outSpeciesIn,successFlag)
-        IF (successFlag .le. 0) THEN
+        IF (successFlag .lt. 0) THEN
             WRITE(*,*) 'Error reading parameter dictionary'
             RETURN
         END IF
@@ -205,7 +207,12 @@ CONTAINS
         currentTime=0.0
         timeInYears=0.0
 
-        CALL initializePhysics(successFlag)
+
+        !Initialize the physics, first do core physics
+        !Then do model specific. This allows it to overwrite core
+        call coreInitializePhysics(successFlag)
+        CALL modelInitializePhysics(successFlag)
+
         IF (successFlag .lt. 0) then
             WRITE(*,*) 'Error initializing physics'
             RETURN
@@ -219,8 +226,9 @@ CONTAINS
         call output
 
         !loop until the end condition of the model is reached
-        DO WHILE ((switch .eq. 1 .and. density(1) < finalDens) .or. (switch .eq. 0 .and. timeInYears < finalTime))
-            !store current time as starting point for each depth step
+        DO WHILE (((endAtFinalDensity) .and. (density(1) < finalDens)) .or. &
+            &((.not. endAtFinalDensity) .and. (timeInYears < finalTime)))
+          
             currentTimeold=currentTime
 
             !Each physics module has a subroutine to set the target time from the current time
@@ -239,13 +247,15 @@ CONTAINS
                 timeInYears= currentTime/SECONDS_PER_YEAR
 
                 !Update physics so it's correct for new currentTime and start of next time step
-                CALL updatePhysics
+                Call coreUpdatePhysics
+                CALL modelUpdatePhysics
                 !Sublimation checks if Sublimation should happen this time step and does it
                 CALL sublimation(abund)
                 !write this depth step now time, chemistry and physics are consistent
                 CALL output
             END DO
         END DO
+        CALL finalOutput
         !close outputs to attempt to force flush
         close(10)
         close(11)
@@ -289,15 +299,15 @@ CONTAINS
                     posStart=scan(dictionary,'{')
                     posEnd=scan(dictionary,'}')
                     CALL alpha_parser(dictionary(posStart+1:posEnd))
-                CASE('initialTemp')
+                CASE('initialtemp')
                     READ(inputValue,*,err=666) initialTemp
-                CASE('initialDens')
+                CASE('initialdens')
                     READ(inputValue,*,err=666) initialDens
-                CASE('finalDens')
+                CASE('finaldens')
                     READ(inputValue,*,err=666) finalDens
-                CASE('currentTime')
+                CASE('currenttime')
                     READ(inputValue,*,err=666) currentTime
-                CASE('finalTime')
+                CASE('finaltime')
                     READ(inputValue,*,err=666) finalTime
                 CASE('radfield')
                     READ(inputValue,*,err=666) radfield
@@ -309,12 +319,12 @@ CONTAINS
                     READ(inputValue,*,err=666) rout
                 CASE('rin')
                     READ(inputValue,*,err=666) rin
-                CASE('baseAv')
+                CASE('baseav')
                     READ(inputValue,*,err=666) baseAv
                 CASE('points')
                     READ(inputValue,*,err=666) points
-                CASE('switch')
-                    Read(inputValue,*,err=666) switch
+                CASE('endatfinaldensity')
+                    Read(inputValue,*,err=666) endAtFinalDensity
                 CASE('freefall')
                     READ(inputValue,*,err=666) freefall
                 CASE('bc')
@@ -329,7 +339,7 @@ CONTAINS
                     READ(inputValue,*,ERR=666) uvdesorb
                 CASE('thermdesorb')
                     READ(inputValue,*,ERR=666) uvdesorb
-                CASE('instantSublimation')
+                CASE('instantsublimation')
                     READ(inputValue,*,ERR=666) instantSublimation
                 CASE('ion')
                     READ(inputValue,*,ERR=666) ion
@@ -353,7 +363,7 @@ CONTAINS
                     READ(inputValue,*,ERR=666) fp
                 CASE('ff')
                     READ(inputValue,*,ERR=666) ff
-                CASE('outSpecies')
+                CASE('outspecies')
                     IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
                     IF (ALLOCATED(outSpecies)) DEALLOCATE(outSpecies)
                     READ(inputValue,*,ERR=666) nout
@@ -381,7 +391,7 @@ CONTAINS
                             IF (specname(i).eq.outSpecies(j)) outIndx(j)=i
                         END DO
                     END DO
-                CASE('writeStep')
+                CASE('writestep')
                     READ(inputValue,*,ERR=666) writeStep
                 CASE('ebmaxh2')
                     READ(inputValue,*,ERR=666) ebmaxh2
@@ -405,28 +415,28 @@ CONTAINS
                     READ(inputValue,*,ERR=666) omega
                 CASE('reltol')
                     READ(inputValue,*,ERR=666) reltol
-                CASE('abstol')
+                CASE('abstol_factor')
                     READ(inputValue,*,ERR=666) abstol_factor
                 CASE('abstol_min')
                     READ(inputValue,*,ERR=666) abstol_min
                 ! CASE('jacobian')
                 !     READ(inputValue,*) jacobian
-                CASE('abundSaveFile')
+                CASE('abundsavefile')
                     writeAbunds=.True.
                     READ(inputValue,*,ERR=666) abundSaveFile
                     abundSaveFile = TRIM(abundSaveFile)
                     open(72,file=abundSaveFile,status="unknown")
-                CASE('abundLoadFile')
+                CASE('abundloadfile')
                     READ(inputValue,*,ERR=666) abundLoadFile
                     abundLoadFile = TRIM(abundLoadFile)
                     readAbunds=.True.
                     open(71,file=abundLoadFile,status='old')
-                CASE('outputFile')
+                CASE('outputfile')
                     READ(inputValue,*,ERR=666) outFile
                     outputFile = trim(outFile)
                     fullOutput=.True.
                     open(10,file=outputFile,status='unknown')
-                CASE('columnFile')
+                CASE('columnfile')
                     IF (trim(outSpeciesIn) .NE. '' ) THEN
                         columnOutput=.True.
                         READ(inputValue,*,ERR=666) columnFile

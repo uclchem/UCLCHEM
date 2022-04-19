@@ -45,9 +45,7 @@ def read_output_file(output_file):
     f.readline()
     bits = f.readline().split()
     radfield = float(bits[1])
-    zeta = float(bits[3])
     data = read_csv(f)
-    data["zeta"] = zeta
     data["radfield"] = radfield
     data.columns = data.columns.str.strip()
     return data
@@ -162,11 +160,11 @@ def _param_dict_from_output(output_line):
     :param output_line: (pandas series) any row from the relevant UCLCHEM output
     """
     param_dict = {
-        "initialDens": output_line["Density"],
-        "initialTemp": output_line["gasTemp"],
+        "initialdens": output_line["Density"],
+        "initialtemp": output_line["gasTemp"],
         "zeta": output_line["zeta"],
         "radfield": output_line["radfield"],
-        "baseAv": 0.0,
+        "baseav": 0.0,
         "rout": output_line["av"] * (1.6e21) / output_line["Density"],
     }
     return param_dict

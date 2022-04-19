@@ -6,6 +6,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 try:
+    #exec_command.exec_command( "make clean", execute_in='src/fortran_src/', use_shell=True)
     exec_command.exec_command( "make python", execute_in='src/fortran_src/', use_shell=True)
 except Exception as e:
     print("Making UCLCHEM failed")

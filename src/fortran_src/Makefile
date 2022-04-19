@@ -30,7 +30,7 @@ CHEMISTRY_OBS = photoreactions.o surfacereactions.o chemistry.o
 
 ##physics module selected by changing physics variable to chosen fortran file.
 main: constants.o  network.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} io.o wrap.f90 defaultparameters.f90
-	${FC} ${FFLAGS} -o ../uclchem io.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} network.o wrap.f90 main.f90
+	${FC} ${FFLAGS} -o ../../uclchem io.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} network.o wrap.f90 main.f90
 
 # The order here is the compilation order and it's vital that modules are compiled after their dependencies
 python: constants.o  network.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} io.o wrap.f90  defaultparameters.f90

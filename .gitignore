@@ -1,15 +1,20 @@
+#built objects
 *.so
 *.o
 *.mod
 *.pyc
 src/*.o
 src/*.mod
+src/uclchem/*.so
+
+#outputs
 examples/test-output/*
 examples/*.png
-Python/uclchem/*.so
-test/*
+
+#dev stuff
+uclchem.egg-info
 test
 .vscode
-build/*
-dist/*
+build
+dist
 */__pycache__
