@@ -341,6 +341,12 @@ CONTAINS
                     READ(inputValue,*,ERR=666) uvdesorb
                 CASE('instantsublimation')
                     READ(inputValue,*,ERR=666) instantSublimation
+                CASE('cosmicrayattentuation')
+                    READ(inputValue,*,ERR=666) cosmicRayAttentuation
+                CASE('ionmodel')
+                    READ(inputValue,*,ERR=666) ionModel
+                CASE('improvedh2crpdissociation')
+                    READ(inputValue,*,ERR=666) improvedH2CRPDissociation
                 CASE('ion')
                     READ(inputValue,*,ERR=666) ion
                 CASE('fhe')
