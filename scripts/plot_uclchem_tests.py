@@ -11,7 +11,7 @@ for folder in ["example-output/","test-output/"]:
 	for model in ["phase1","phase2","static"]:
 		axis=axes[i]
 		#pick species, any number is fine
-		speciesNames=["H","H2","$H","H2O","$H2O","CO","$CO","$CH3OH","CH3OH","$SI"]
+		speciesNames=["H","H2","$H","H2O","$H2O","CO","$CO","$CH3OH","CH3OH"]
 
 		#call read_uclchem. 
 		model_data=uclchem.analysis.read_output_file("examples/"+folder+model+"-full.dat")
@@ -22,7 +22,7 @@ for folder in ["example-output/","test-output/"]:
 		if folder=="example-output/":
 			print(f"Testing element conservation for {model}")
 			print("Printing fractional change in total abundance")
-			conservation=uclchem.analysis.check_element_conservation(model_data,element_list=["SI"])
+			conservation=uclchem.analysis.check_element_conservation(model_data)
 			print(conservation)
 
 

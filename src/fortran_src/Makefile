@@ -35,7 +35,6 @@ main: constants.o  network.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} io.o wrap.f
 # The order here is the compilation order and it's vital that modules are compiled after their dependencies
 python: constants.o  network.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} io.o wrap.f90  defaultparameters.f90
 	python3 -m numpy.f2py -c --fcompiler=${f2pyFC} io.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} network.o -m uclchemwrap wrap.f90
-	mv *${EXT_SUFFIX} ../uclchem/uclchemwrap.so
 
 chemistry.o: odes.f90 rates.f90 chemistry.f90
 	${FC} ${FFLAGS} -c chemistry.f90
@@ -44,4 +43,4 @@ chemistry.o: odes.f90 rates.f90 chemistry.f90
 	${FC} ${FFLAGS} -c $<
 
 clean: 
-	rm *.o *.mod ../uclchem/*.so
+	rm *.o *.mod *.so ../uclchem/*.so

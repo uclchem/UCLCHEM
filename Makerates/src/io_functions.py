@@ -472,7 +472,7 @@ def write_evap_lists(network_file, species_list):
             binding_energygyList.append(species.binding_energy)
             enthalpyList.append(species.enthalpy)
         elif species.name[0] == "@":
-            j == species_names.index(species.desorb_products[0])
+            j = species_names.index(species.desorb_products[0])
             gasIceList.append(j + 1)
             bulkList.append(i + 1)
             iceList.append(i + 1)

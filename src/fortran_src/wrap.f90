@@ -220,7 +220,9 @@ CONTAINS
         CALL initializeChemistry(readAbunds)
         CALL fileSetup
 
+        !CALL simpleDebug("Initialized")
 
+    
         dstep=1
 
         call output
@@ -240,6 +242,7 @@ CONTAINS
                 !update chemistry from currentTime to targetTime
                 CALL updateChemistry(successFlag)
                 IF (successFlag .lt. 0) THEN
+                    write(*,*) 'Error updating chemistry'
                     RETURN
                 END IF
 
@@ -313,8 +316,8 @@ CONTAINS
                     READ(inputValue,*,err=666) radfield
                 CASE('zeta')
                     READ(inputValue,*,err=666) zeta
-                CASE('fr')
-                    READ(inputValue,*,err=666) fr
+                CASE('freezefactor')
+                    READ(inputValue,*,err=666) freezeFactor
                 CASE('rout')
                     READ(inputValue,*,err=666) rout
                 CASE('rin')
@@ -327,8 +330,8 @@ CONTAINS
                     Read(inputValue,*,err=666) endAtFinalDensity
                 CASE('freefall')
                     READ(inputValue,*,err=666) freefall
-                CASE('bc')
-                    READ(inputValue,*,err=666) bc
+                CASE('freefallfactor')
+                    READ(inputValue,*,err=666) freefallFactor
                 CASE('desorb')
                     READ(inputValue,*,err=666) desorb
                 CASE('h2desorb')
@@ -341,8 +344,8 @@ CONTAINS
                     READ(inputValue,*,ERR=666) uvdesorb
                 CASE('instantsublimation')
                     READ(inputValue,*,ERR=666) instantSublimation
-                CASE('cosmicrayattentuation')
-                    READ(inputValue,*,ERR=666) cosmicRayAttentuation
+                CASE('cosmicrayattenuation')
+                    READ(inputValue,*,ERR=666) cosmicRayAttenuation
                 CASE('ionmodel')
                     READ(inputValue,*,ERR=666) ionModel
                 CASE('improvedh2crpdissociation')
@@ -403,8 +406,6 @@ CONTAINS
                     READ(inputValue,*,ERR=666) ebmaxh2
                 CASE('epsilon')
                     READ(inputValue,*,ERR=666) epsilon
-                CASE('ebmaxcrf')
-                    READ(inputValue,*,ERR=666) ebmaxcrf
                 CASE('uvcreff')
                     READ(inputValue,*,ERR=666) uvcreff
                 CASE('ebmaxcr')

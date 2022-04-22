@@ -23,7 +23,7 @@ SUBROUTINE calculateReactionRates
         rate(idx1:idx2)=alpha(idx1:idx2)*gama(idx1:idx2)*1.0/(1.0-omega)*zeta*(gasTemp(dstep)/300)**beta(idx1:idx2)
     END IF
 
-    !freeze out only happens if fr>0 and depending on evap choice 
+    !freeze out only happens if freezeFactor>0 and depending on evap choice 
     idx1=freezeReacs(1)
     idx2=freezeReacs(2)
     IF (idx1 .ne. idx2) THEN
@@ -43,11 +43,13 @@ SUBROUTINE calculateReactionRates
     idx1=desoh2Reacs(1)
     idx2=desoh2Reacs(2)
     IF (idx1 .ne. idx2) THEN
-        IF ((desorb) .and. (h2desorb) .and. (gama(j) .le. ebmaxh2) &
-        & .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
+        IF ((desorb) .and. (h2desorb) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
             !Epsilon is efficieny of this process, number of molecules removed per event
             !h2form is formation rate of h2, dependent on hydrogen abundance. 
             rate(idx1:idx2) = epsilon*h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
+
+            !Don't remove species with binding energy > max BE removed by this process
+            WHERE(gama(idx1:idx2) .gt. ebmaxh2) rate(idx1:idx2)=0.0 
         ELSE
             rate(idx1:idx2) = 0.0
         ENDIF
@@ -60,13 +62,16 @@ SUBROUTINE calculateReactionRates
     idx1=descrReacs(1)
     idx2=descrReacs(2)
     IF (idx1 .ne. idx2) THEN
-        IF ((desorb) .and. (crdesorb) &
-        &.and. (gama(j) .le. ebmaxcr) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
+        IF ((desorb) .and. (crdesorb) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
             !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
             !as iron nuclei are main cause of CR heating.
             !GRAIN_SURFACEAREA_PER_H is the total surfaace area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
             !phi is efficieny of this reaction, number of molecules removed per event.
             rate(idx1:idx2) = 4.0*pi*zeta*1.64d-4*(GRAIN_SURFACEAREA_PER_H)*phi
+
+            !Don't remove species with binding energy > max BE removed by this process
+            WHERE(gama(idx1:idx2) .gt. ebmaxcr) rate(idx1:idx2)=0.0 
+
         ELSE
             rate(idx1:idx2) = 0.0
         ENDIF
@@ -79,14 +84,17 @@ SUBROUTINE calculateReactionRates
     idx1=deuvcrReacs(1)
     idx2=deuvcrReacs(2)
     IF (idx1 .ne. idx2) THEN
-        IF ((desorb) .and. (uvdesorb) .and. (gama(j) .le. ebmaxuvcr)&
-        &.and. (safeMantle .gt. MIN_SURFACE_ABUND).and.(zeta .gt. 0)) THEN
+        IF ((desorb) .and. (uvdesorb) .and. (safeMantle .gt. MIN_SURFACE_ABUND)&
+                &.and.(zeta .gt. 0)) THEN
             !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
             !UVY is yield per photon.
             rate(idx1:idx2) = GRAIN_CROSSSECTION_PER_H*uv_yield*4.875d3*zeta
             !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
             !CR induced UV to ISRF UV.
             rate(idx1:idx2) = rate(idx1:idx2) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
+
+            !Don't remove species with binding energy > max BE removed by this process
+            WHERE(gama(idx1:idx2) .gt. ebmaxuvcr) rate(idx1:idx2)=0.0 
         ELSE
             rate(idx1:idx2) = 0.0
         ENDIF
@@ -233,10 +241,10 @@ FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
     
     !additional factor for ions (beta=0 for neutrals)
     freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
-    IF (fr .eq. 0.0 .or. gasTemp(dstep) .gt. 50) then
+    IF (freezeFactor .eq. 0.0 .or. gasTemp(dstep) .gt. 50) then
         freezeRates=0.0
     ELSE
-        freezeRates=freezeRates*alpha(idx1:idx2)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
+        freezeRates=freezeRates*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
     END IF
 
 END FUNCTION freezeOutRate

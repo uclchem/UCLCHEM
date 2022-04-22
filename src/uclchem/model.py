@@ -105,7 +105,7 @@ def cshock(shock_vel, param_dict=None, out_species=None):
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
     Returns:
         int,list: A integer which is negative if the model failed to run, or a list of abundances of all species in `outSpecies`
-        float: The dissipation time of the shock
+        float: The dissipation time of the shock in years
     """
     n_out,param_dict,out_species=_reform_inputs(param_dict,out_species)
 
@@ -114,11 +114,10 @@ def cshock(shock_vel, param_dict=None, out_species=None):
         dictionary=param_dict,
         outspeciesin=out_species,
     )
-    if success_flag < 0 or n_out == 0:
+    result=abunds[: n_out] if n_out>0 else success_flag
+    if success_flag < 0:
         disspation_time=None
-        return success_flag, disspation_time
-    else:
-        return  abunds[: n_out], disspation_time
+    return result, disspation_time
     
 
 def jshock(shock_vel, param_dict=None, out_species=None):

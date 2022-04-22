@@ -36,7 +36,6 @@ CONTAINS
                 READ(abundLoadID,*) fhe,fc,fo,fn,fs,fmg
                 READ(abundLoadID,*) abund(:nspec,l)
                 REWIND(abundLoadID)
-                abund(nspec+1,l)=density(l)
             END DO
         END IF
     END SUBROUTINE fileSetup
@@ -81,5 +80,29 @@ CONTAINS
             if (rate(i) .ge. huge(i)) write(debugId,*) "Rate(",i,") is potentially infinite"
         END DO
     END SUBROUTINE debugout
+
+    SUBROUTINE simpleDebug(message)
+    !A very simply subroutine for debugging, just write a bunch of variables to screen
+    !so we can check they're all as expected. 
+    !Argument message is a string to print before the variables
+        CHARACTER(LEN=*) :: message
+        write(*,*) message
+        write(*,*)"endAtFinalDensity",endAtFinalDensity
+        write(*,*)"freefall",freefall
+        write(*,*)"initialDens",initialDens
+        write(*,*)"finalDens",finalDens
+        write(*,*)"initialTemp",initialTemp
+        write(*,*)"finalTime",finalTime
+        write(*,*)"rout",rout
+        write(*,*)"baseAv",baseAv
+        write(*,*) "freezeFactor",freezeFactor
+        write(*,*) "abstol_factor",abstol_factor
+        write(*,*) "neq",neq
+        write(*,*) "density abund",abund(neq,1)
+        write(*,*) "density arr",density
+        write(*,*) "gasTemp",gasTemp
+        write(*,*) "coldens",coldens
+        write(*,*) "av",av
+    END SUBROUTINE simpleDebug
 
 END MODULE IO

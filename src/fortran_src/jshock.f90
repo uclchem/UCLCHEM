@@ -139,7 +139,7 @@ CONTAINS
         av(dstep)= baseAv +coldens(dstep)/1.6d21
 
         ! Determine the shock velocity at the current time
-        v0 = vs*(exp(LOG(vMin/vs)*(currentTime/(finalTime*60*60*24*365))))
+        v0 = vs*(DEXP(LOG(vMin/vs)*(currentTime/(finalTime*60*60*24*365))))
         IF (v0 .lt. vMin) THEN
             v0 = vMin
         END IF
@@ -153,8 +153,8 @@ CONTAINS
             WHERE (density .lt. initialDens) density = initialDens
         ELSE IF (currentTime .gt. tShock .AND. currentTime .le. tCool) THEN
             ! Otherwise we're in the cooling phase
-            tn(dstep) = maxTemp*EXP(-t_lambda*(currentTime/(tCool)))
-            density = (4*initialDens)*EXP(n_lambda*(currentTime/(tCool)))
+            tn(dstep) = maxTemp*DEXP(-t_lambda*(currentTime/(tCool)))
+            density = (4*initialDens)*DEXP(n_lambda*(currentTime/(tCool)))
 
             ! Ensure the gas does not cool below around 10 K
             IF (tn(dstep) .le. 10) THEN
@@ -168,10 +168,6 @@ CONTAINS
         END IF
         gasTemp(dstep)=tn(dstep)
         dustTemp(dstep)=gasTemp(dstep)
-        IF (timeInYears .gt. 0) THEN
-            write(92,1234) tn(dstep),density(dstep),timeInYears
-            1234 format(3(e16.9))
-        ENDIF
     END SUBROUTINE updatePhysics
 
 
@@ -183,18 +179,9 @@ CONTAINS
     SUBROUTINE sublimation(abund)
         REAL(dp) :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
-
-        IF (coflag .ne. 1) THEN
-            IF (gasTemp(dstep) .gt. CODES_TEMP) THEN
-                coflag=1
-                abund(gasIceList,dstep)=abund(gasIceList,dstep)+abund(iceList,dstep)
-                abund(iceList,dstep)=1d-30
-            ELSE
-                IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0)) CALL sputtering(abund)
-            END IF
-        END IF
-        WHERE(abund<1.0d-30) abund=1.0d-30
-    END SUBROUTINE sublimation
+    
+        IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0)) CALL sputtering(abund)
+        END SUBROUTINE sublimation
 
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -204,7 +191,7 @@ CONTAINS
         REAL(dp) :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
         abund(gasIcelist,dstep)=abund(gasIcelist,dstep)+abund(iceList,dstep)
-        abund(iceList,dstep)=abund(iceList,dstep)-abund(iceList,dstep)
-    END SUBROUTINE
+        abund(iceList,dstep)=1.0d-30
+   END SUBROUTINE
 
 END MODULE jshock_mod

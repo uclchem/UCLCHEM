@@ -16,7 +16,6 @@ USE surfacereactions
 USE constants
 IMPLICIT NONE
     !These integers store the array index of important species and reactions, x is for ions    
-    INTEGER :: njunk
     !loop counters    
     INTEGER :: i,j,l,writeStep,writeCounter=0,loopCounter
     INTEGER, PARAMETER :: maxLoops=10
@@ -41,8 +40,8 @@ IMPLICIT NONE
     
     !Variables controlling chemistry
     LOGICAL :: PARAMETERIZE_H2FORM=.True.
-    REAL(dp) :: radfield,fr,omega,grainArea,cion,h2dis,lastTemp=0.0
-    REAL(dp) :: ebmaxh2,epsilon,ebmaxcrf,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
+    REAL(dp) :: radfield,freezeFactor,omega,grainArea,cion,h2dis,lastTemp=0.0
+    REAL(dp) :: ebmaxh2,epsilon,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
     REAL(dp), PARAMETER :: h2StickingZero=0.87d0,hStickingZero=1.0d0, h2StickingTemp=87.0d0,hStickingTemp=52.0d0
     
 
@@ -104,9 +103,8 @@ CONTAINS
             abund(nd,:)=fd
 
             abund(nhe,:) = fhe  
-            abund(neq,:)=density  
-
         ENDIF
+        abund(neq,:)=density  
         !Initial calculations of diffusion frequency for each species bound to grain
         !and other parameters required for diffusion reactions
         DO  i=lbound(iceList,1),ubound(iceList,1)
@@ -126,7 +124,9 @@ CONTAINS
         
         !Set rates to zero to ensure they don't hold previous values or random ones if we don't set them in calculateReactionRates
         rate=0.0
-        lastTemp=99.0d99!to save time, we always store last time step's temperature here and don't recalcuate some rates unless there's a change
+        !We typically don't recalculate rates that only depend on temperature if the temp hasn't changed
+        !use arbitrarily high value to make sure they are calculated at least once.
+        lastTemp=99.0d99
     END SUBROUTINE initializeChemistry
 
 
@@ -155,6 +155,9 @@ CONTAINS
             coCol=coColToCell+0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
             cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
 
+            !Reset surface and bulk values in case of integration error or sputtering
+            abund(nBulk,dstep)=sum(abund(bulkList,dstep))
+            abund(nSurface,dstep)=sum(abund(surfaceList,dstep))
             !recalculate coefficients for ice processes
             safeMantle=MAX(1d-30,abund(nSurface,dstep))
             safeBulk=MAX(1d-30,abund(nBulk,dstep))
@@ -170,10 +173,7 @@ CONTAINS
                 RETURN
             END IF
 
-            !Integrator doesn't always make this perfectly accurate especially during warm up
-            !In those cases, once abundances go to zero, bulk/surface is never fixed because rates of change are tiny
-            abund(nBulk,dstep)=sum(abund(bulkList,dstep))
-            abund(nSurface,dstep)=sum(abund(surfaceList,dstep))
+
 
             !1.d-30 stops numbers getting too small for fortran.
             WHERE(abund<1.0d-30) abund=1.0d-30
@@ -233,7 +233,7 @@ CONTAINS
 
     SUBROUTINE F (NEQUATIONS, T, Y, YDOT)
         INTEGER, PARAMETER :: WP = KIND(1.0D0)
-        INTEGER NEQUATIONS,looper
+        INTEGER NEQUATIONS
         REAL(WP) T
         REAL(WP), DIMENSION(NEQUATIONS) :: Y, YDOT
         INTENT(IN)  :: NEQUATIONS, T, Y

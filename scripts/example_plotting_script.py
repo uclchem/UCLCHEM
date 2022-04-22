@@ -1,10 +1,8 @@
-####################################################################
-# Example Plotting Script
-# UCLCHEM outputs a csv file (with two header rows that can be skipped)
-# This can be read into a dataframe using uclchem.read_output_file()
-# Users can then plot their abundances using any python script but some functions 
-# to make simple plotting easy are demonstrated below.
-###################################################################
+"""
+A script largely intended for people unfamiliar with Python.
+If you run run_uclchem_tests.py, you'll produce several example model outputs.
+This script then uses those outputs to demonstrate some simple plotting.
+"""
 
 import uclchem
 import matplotlib.pyplot as plt
@@ -15,12 +13,12 @@ input_file="output/test.csv"
 
 
 #call read_uclchem. 
-model_data=uclchem.read_output_file(input_file)
+model_data=uclchem.analysis.read_output_file(input_file)
 
 #create_abundance_plot will return pyplot figure and axis objects where the axis
 #contains a plot of the species abundance through time for all species in species_list
 #optionally, save it to plot_file
-fig,ax=uclchem.create_abundance_plot(model_data,species_list,plot_file="examples/example_plot.png")
+fig,ax=uclchem.analysis.create_abundance_plot(model_data,species_list,plot_file="examples/example_plot.png")
 
 
 
@@ -30,7 +28,7 @@ fig,ax=uclchem.create_abundance_plot(model_data,species_list,plot_file="examples
 #in which case, plot_species() may be more helpful
 
 fig,ax=plt.subplots()
-ax=uclchem.plot_species(ax,model_data,species_list)
+ax=uclchem.analysis.plot_species(ax,model_data,species_list)
 
 #the returned object lets us make some edits
 #lets plot the temperature on a second y axis 

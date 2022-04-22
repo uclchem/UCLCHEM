@@ -15,13 +15,13 @@ MODULE physicscore
     INTEGER :: ion
     
     !Optional CR attentuation with column density and better H2 dissociation rates
-    LOGICAL ::cosmicRayAttentuation,improvedH2CRPDissociation
+    LOGICAL ::cosmicRayAttenuation,improvedH2CRPDissociation
     REAL(dp) :: h2CRPRate,zetaScale
     CHARACTER(len=1) :: ionModel="L"
 
     !variables either controlled by physics or that user may wish to change
     REAL(dp) :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,initialTemp
-    REAL(dp) ::  bc,cloudSize,rout,rin,baseAv,zeta
+    REAL(dp) ::  freefallFactor,cloudSize,rout,rin,baseAv,zeta
     REAL(dp), allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:)
 
     !Arrays fopr calculating rates
@@ -62,7 +62,7 @@ CONTAINS
             write(*,*) "Error: ionModel must be either L or H"
             RETURN
         END IF
-        IF ((improvedH2CRPDissociation) .and. (.not. cosmicRayAttentuation)) THEN
+        IF ((improvedH2CRPDissociation) .and. (.not. cosmicRayAttenuation)) THEN
             successFlag=-1
             write(*,*) "Error: improvedH2CRPDissociation requires cosmicRayAttentuation to also be True"
             RETURN
@@ -78,7 +78,7 @@ CONTAINS
     END SUBROUTINE coreInitializePhysics
 
     SUBROUTINE coreUpdatePhysics
-        IF (cosmicRayAttentuation) CALL ionizationDependency
+        IF (cosmicRayAttenuation) CALL ionizationDependency
     END SUBROUTINE coreUpdatePhysics
 
     pure FUNCTION densdot(density)
@@ -87,9 +87,9 @@ CONTAINS
     ! Called from chemistry.f90, density integrated with abundances so this gives ydot
     REAL(dp), INTENT(IN) :: density
     REAL(dp) :: densdot
-    !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
+    !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
     IF ((density .lt. finalDens) .and. (freefall)) THEN
-        densdot=bc*(density**4./initialDens)**0.33*&
+        densdot=freefallFactor*(density**4./initialDens)**0.33*&
         &(8.4d-30*initialDens*((density/initialDens)**0.33-1.))**0.5
     ELSE
         densdot=0.0
@@ -102,9 +102,9 @@ CONTAINS
     !in the case one uses a Jacobian.
     REAL(dp), INTENT(IN) :: density
     REAL(dp) :: dByDnDensdot
-    !Rawlings et al. 1992 freefall collapse. With factor bc for B-field etc
+    !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
     IF (density .lt. finalDens) THEN
-        dByDndensdot=bc*8.4d-30*(density**3)*((9.0d0*((density/initialDens)**0.33))-8.0d0)
+        dByDndensdot=freefallFactor*8.4d-30*(density**3)*((9.0d0*((density/initialDens)**0.33))-8.0d0)
         dByDnDensdot=dByDnDensdot/(6.0d0*(((density**4.0)/initialDens)**0.66))
         dByDnDensdot=dByDnDensdot/dsqrt(initialDens*8.4d-30*(((density/initialDens)**0.33))-1.0d0)
     ELSE
@@ -118,7 +118,6 @@ CONTAINS
         !Attenuate CR by column density
         zeta= 1.0
         zSum = 0
-        write(*,*) "hi"
         DO k=0,9,1
             IF (ionModel .eq. 'L') THEN
                 ionRate=ckLIon(k+1)*log10(coldens(dstep))**k

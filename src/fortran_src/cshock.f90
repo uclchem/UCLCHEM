@@ -292,7 +292,9 @@ CONTAINS
         !this is M/N and we'll multiply by X below
         totalMantle=sum(abund(iceList,dstep))
         abundChangeFrac=abundChangeFrac/totalMantle
-        if (abundChangeFrac .gt. 1) abundChangeFrac=1.0
+        if (abundChangeFrac .gt. 1.0d0) abundChangeFrac=1.0d0
+        if (abundChangeFrac .lt. 0.00d0) abundChangeFrac=0.0d0
+
         !multiply M/N by x and add to gas phase
         abund(gasIceList,dstep)=abund(gasIceList,dstep)+abundChangeFrac*abund(iceList,dstep)
         abund(iceList,dstep)=abund(iceList,dstep)-abundChangeFrac*abund(iceList,dstep)

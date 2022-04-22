@@ -1,24 +1,18 @@
 import setuptools  # this is the "magic" import
-from numpy.distutils.core import setup, Extension
+from numpy.distutils.core import setup
 from glob import glob
 from numpy.distutils import exec_command
+from shutil import move
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-try:
-    #exec_command.exec_command( "make clean", execute_in='src/fortran_src/', use_shell=True)
-    exec_command.exec_command( "make python", execute_in='src/fortran_src/', use_shell=True)
-except Exception as e:
-    print("Making UCLCHEM failed")
-    print("You likely do not have gfortran and/or cmake installed")
-    print("Printing python exception...\n")
-    print(e)
 
-# wrap_ext=Extension('uclchemwrap', ['src/fortran_src/uclchemwrap.so'])
+status,output=exec_command.exec_command( "make python", execute_in='src/fortran_src/', use_shell=True)
+wrap_file=glob('src/fortran_src/uclchemwrap*.so')[0]
+move(wrap_file,'src/uclchem/uclchemwrap.so')
 
-print(setuptools.find_packages(where='src'))
 
-exec(open('src/uclchem/version.py').read())
+exec(open('src/uclchem/__version__.py').read())
 setup(
     name="uclchem", # Replace with your own username
     version=__version__,
