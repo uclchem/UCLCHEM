@@ -233,6 +233,7 @@ REAL(dp), PARAMETER :: formationEnthalpy (146)=(/5.1630e+01,5.1630e+01&
     &,-3.4000e+01,0.0000e+00,-3.4000e+01,0.0000e+00,1.8900e+02,1.8900e+02&
     &,-7.0300e+01,-9.9900e+02,-7.0300e+01,-9.9900e+02,4.0000e+00,4.0000e+00/&
     &)
+INTEGER, PARAMETER :: refractoryList (1)=(/-999/)
     INTEGER, PARAMETER ::nR_H2Form_CT=579,nR_H2Form_ERDes=412,nR_H2Form_ER=411,nR_H2Form_LH=583&
     &,nR_H2Form_LHDes=665,nR_HFreeze=463,nR_EFreeze=462,nR_H2_hv=795&
     &,nR_H2_crp=94,nR_H2Freeze=465,nR_C_hv=745,nR_CO_hv=789

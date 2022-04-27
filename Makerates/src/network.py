@@ -55,20 +55,11 @@ class Network:
                     reac_keeps = True
                     break
 
-            # also keep: all bulk species, and species where the user has listed a corresponding gas/grain pair
-            # This stops something like #CH4 being removed from network if there's no reactions for it other than freeze and desorb
-            grain_keeps = species.is_bulk_species()
-            grain_keeps = grain_keeps or (
-                not species.is_grain_species() and (species.freeze_products[0] in species_names)
-            )
-            grain_keeps = grain_keeps or (
-                species.is_surface_species() and (species.desorb_products[0] in species_names)
-            )
-
             # remove the species if it didn't make it into either keep list
-            if not (reac_keeps or grain_keeps):
+            if not (reac_keeps):
                 lostSpecies.append(species.name)
-                self.species_list.remove(species)
+        for species in lostSpecies:
+            self.species_list.remove(species)
 
         # then alert user to changes
         if len(lostSpecies) > 0:
@@ -145,10 +136,21 @@ class Network:
             species_index = species_names.index(desorb.reactants[0])
             self.species_list[species_index].desorb_products = desorb.products
 
+        #for all listed freeze out reactions, add them to correct species
         freezes = [x for x in self.reaction_list if x.reac_type == "FREEZE"]
         for freeze in freezes:
             species_index = species_names.index(freeze.reactants[0])
-            self.species_list[species_index].freeze_products = freeze.products
+            if self.species_list[species_index].freeze_products == None:
+                self.species_list[species_index].freeze_products = {}
+            self.species_list[species_index].freeze_products[
+                ",".join(freeze.products)
+            ] = freeze.alpha
+            
+        #then add default freeze out for species without a listed freeze out
+        for species in self.species_list:
+            if not species.is_grain_species():
+                if species.freeze_products is None:
+                    species.add_default_freeze()
 
         self.reaction_list = [
             reaction for reaction in self.reaction_list if reaction not in freezes + desorbs
@@ -159,12 +161,13 @@ class Network:
 
         for species in self.species_list:
             if not species.is_grain_species():
-                newReaction = Reaction(
-                    [species.name, "FREEZE", "NAN"]
-                    + species.freeze_products
-                    + [1, 0, species.binding_energy, 0.0, 10000.0]
-                )
-                self.reaction_list.append(newReaction)
+                for products, alpha in species.freeze_products.items():
+                    newReaction = Reaction(
+                        [species.name, "FREEZE", "NAN"]
+                        + products.split(",")
+                        + [alpha, 0, species.binding_energy, 0.0, 10000.0]
+                    )
+                    self.reaction_list.append(newReaction)
 
     def add_desorb_reactions(self):
         """Save the user effort by automatically generating desorption reactions"""
@@ -179,7 +182,7 @@ class Network:
                         + [1, 0, species.binding_energy, 0.0, 10000.0]
                     )
                     self.reaction_list.append(newReaction)
-            if species.is_bulk_species():
+            if species.is_bulk_species() and not species.is_refractory:
                 newReaction = Reaction(
                     [species.name, "THERM", "NAN"]
                     + species.desorb_products
@@ -232,10 +235,11 @@ class Network:
         bulk_species = [x for x in self.species_list if "@" in x.name]
         for species in bulk_species:
             # add individual swapping
-            new_reac_list = [species.name, "BULKSWAP", "NAN", species.name.replace("@", "#")]
-            new_reac_list = new_reac_list + ["NAN", "NAN", "NAN", 1, 0, 0, 0, 10000]
-            new_reac = Reaction(new_reac_list)
-            new_reactions.append(new_reac)
+            if not species.is_refractory:
+                new_reac_list = [species.name, "BULKSWAP", "NAN", species.name.replace("@", "#")]
+                new_reac_list = new_reac_list + ["NAN", "NAN", "NAN", 1, 0, 0, 0, 10000]
+                new_reac = Reaction(new_reac_list)
+                new_reactions.append(new_reac)
 
             # and the reverse
             new_reac_list[0] = species.name.replace("@", "#")
@@ -322,8 +326,8 @@ class Network:
             "nR_EFreeze": None,
             "nR_H2_hv": None,
         }
-        
-        #this looks complex but each if statement just uniquely identifies a special reaction
+
+        # this looks complex but each if statement just uniquely identifies a special reaction
         # if found, it is added to the dictionary with its fortran index as the value
         for i, reaction in enumerate(self.reaction_list):
             if ("CO" in reaction.reactants) and ("PHOTON" in reaction.reactants):
@@ -350,7 +354,11 @@ class Network:
                 self.important_reactions["nR_EFreeze"] = i + 1
             if ("H2" in reaction.reactants) and ("PHOTON" in reaction.reactants):
                 self.important_reactions["nR_H2_hv"] = i + 1
-            if ("H2" in reaction.reactants) and ("CRP" in reaction.reactants) and (reaction.products.count("H") == 2):
+            if (
+                ("H2" in reaction.reactants)
+                and ("CRP" in reaction.reactants)
+                and (reaction.products.count("H") == 2)
+            ):
                 self.important_reactions["nR_H2_crp"] = i + 1
         if np_any([value is None for value in self.important_reactions.values()]):
             missing_reac_error = "Input reaction file is missing mandatory reactions"

@@ -438,7 +438,15 @@ CONTAINS
                     READ(inputValue,*,ERR=666) outFile
                     outputFile = trim(outFile)
                     fullOutput=.True.
-                    open(outputId,file=outputFile,status='unknown')
+                    open(outputId,file=outputFile,status='unknown',err=667)
+                    IF (successFlag .lt. 0) THEN
+667                     write(*,*) "An error occured when opening the output file!"//&
+                                        & NEW_LINE('A')//&
+                                    &" The failed file was ",outputFile&
+                                    &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
+                                    &//NEW_LINE('A')//"************************"
+                        successFlag=-1
+                    END IF
                 CASE('columnfile')
                     IF (trim(outSpeciesIn) .NE. '' ) THEN
                         columnOutput=.True.

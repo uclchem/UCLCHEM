@@ -17,7 +17,13 @@ class Species:
     def __init__(self,inputRow):
         self.name=inputRow[0].upper()
         self.mass=int(inputRow[1])
-        self.binding_energy=float(inputRow[2])
+        
+        self.is_refractory = (str(inputRow[2]).lower()=="inf")
+        if self.is_refractory:
+            self.binding_energy=99.9e9
+        else:
+            self.binding_energy=float(inputRow[2])
+        
         self.solidFraction=float(inputRow[3])
         self.monoFraction=float(inputRow[4])
         self.volcFraction=float(inputRow[5])
@@ -29,12 +35,7 @@ class Species:
         if self.is_grain_species():
             self.desorb_products=[self.name[1:],"NAN","NAN","NAN"]
         else:
-            freeze="#"+self.name
-            if freeze[-1] in ["+","-"]:
-               freeze=freeze[:-1]
-            if self.name=="E-":
-                freeze=""
-            self.freeze_products=[freeze,"NAN","NAN","NAN"]
+            self.freeze_products=None
    
     def is_grain_species(self):
         if self.name in ["BULK","SURFACE"]:
@@ -50,6 +51,14 @@ class Species:
 
     def is_ion(self):
         return (self.name[-1]=="+" or self.name[-1]=="-")
+    
+    def add_default_freeze(self):
+        freeze="#"+self.name
+        if freeze[-1] in ["+","-"]:
+            freeze=freeze[:-1]
+        if self.name=="E-":
+            freeze=""
+        self.freeze_products={",".join([freeze,"NAN","NAN","NAN"]):1.0}
 
     def find_constituents(self):
         """Loop through the species' name and work out what its consituent 

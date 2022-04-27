@@ -21,3 +21,5 @@ UCLCHEM no longer uses STOP statements and instead return errors on failures. Th
 
 ## Bug fixes
 - Fixed bug that meant non-thermal desorption methods ignored maximum boundary constraints
+- Makerates handles multiple freeze out routes again
+- Makerates throws an error if the user tries to specify desorb or freeze reactions that get dropped

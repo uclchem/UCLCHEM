@@ -54,36 +54,48 @@ def read_reaction_file(file_name, species_list, ftype):
         with open(file_name, "r") as f:
             reader = csv.reader(f, delimiter=":", quotechar="|")
             for row in reader:
-                if all(
-                    x.upper() in keep_list for x in row[2:8]
-                ):  # if all the reaction elements belong to the keeplist
-                    # umist file doesn't have third reactant so add space and has a note for how reactions there are so remove that
-                    reactions.append(Reaction(row[2:4] + [""] + row[4:8] + row[9:]))
-
+                reaction_row=row[2:4] + [""] + row[4:8] + row[9:]
+                if check_reaction(reaction_row,keep_list):
+                    reactions.append(Reaction(reaction_row))
     elif ftype == "UCL":
         with open(file_name, "r") as f:
             reader = csv.reader(f, delimiter=",", quotechar="|")
             for row in reader:
-                if all(
-                    x.upper() in keep_list for x in row[0:7]
-                ):  # if all the reaction elements belong to the keeplist
-                    if row[10] == "":
-                        row[10] = 0.0
-                        row[11] = 10000.0
-                    reactions.append(Reaction(row))
-                else:
-                    if row[0][0] != "!":
+                if (len(row)>1) and (row[0][0]!="!"):
+                    if check_reaction(row,keep_list):
+                        reactions.append(Reaction(row))
+                    else:
                         dropped_reactions.append(row)
 
     elif ftype == "KIDA":
         for row in kida_parser(file_name):
-            if all(x.upper() in keep_list for x in row[0:7]):
+            if check_reaction(row,keep_list):
                 reactions.append(Reaction(row))
 
     else:
         raise ValueError("Reaction file type must be one of 'UMIST', 'UCL' or 'KIDA'")
     return reactions, dropped_reactions
 
+
+def check_reaction(reaction_row,keep_list):
+    """Checks a row parsed from a reaction file and checks it only contains acceptable things.
+
+    Args:
+        reaction_row (list): List parsed from a reaction file and formatted to be able to called Reaction(reaction_row)
+        keep_list (list): list of elements that are acceptable in the reactant or product bits of row
+    """
+    if all(x.upper() in keep_list for x in reaction_row[0:7]):
+        if reaction_row[10] == "":
+            reaction_row[10] = 0.0
+            reaction_row[11] = 10000.0
+        return True
+    else:
+        if reaction_row[1] in ["DESORB","FREEZE"]:
+            reac_error="Desorb or freeze reaction in custom input contains species not in species list"
+            reac_error=f"\nReaction was {reaction_row}"
+            raise ValueError(reac_error)
+        return False
+    
 
 def kida_parser(kida_file):
     """
@@ -107,8 +119,8 @@ def kida_parser(kida_file):
     ]
     rows = []
     with open(kida_file, "r") as f:
-        f.readline()
-        for line in f:
+        f.readline()#throw away header
+        for line in f: #then iterate over file
             row = []
             for item in kida_contents:
                 for i in range(item[0]):
@@ -373,12 +385,15 @@ def build_ode_string(species_list, reaction_list, three_phase):
         ode_string += "!Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
 
         ode_string += f"IF (YDOT({surface_index+1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
+        
         for n, species in enumerate(species_list):
             if species.name[0] == "#":
-                bulk_version = species_names.index(species.name.replace("#", "@"))
-                ode_string += f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({bulk_version+1})/safeBulk\n"
+                bulk_partner=species_names.index(species.name.replace("#", "@"))
+                if not species_list[bulk_partner].is_refractory:
+                    ode_string += f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({bulk_partner+1})/safeBulk\n"
             if species.name[0] == "@":
-                ode_string += f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({n+1})/safeBulk\n"
+                if not species.is_refractory:
+                    ode_string += f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({n+1})/safeBulk\n"
         ode_string += "ELSE\n"
         for n, species in enumerate(species_list):
             if species.name[0] == "@":
@@ -444,10 +459,11 @@ def write_evap_lists(network_file, species_list):
     solidList = []
     monoList = []
     volcList = []
-    binding_energygyList = []
+    binding_energyList = []
     enthalpyList = []
     bulkList = []
     iceList = []
+    refractoryList = []
     species_names = [spec.name for spec in species_list]
     for i, species in enumerate(species_list):
         if species.name[0] == "#":
@@ -469,15 +485,21 @@ def write_evap_lists(network_file, species_list):
             monoList.append(species.monoFraction)
             volcList.append(species.volcFraction)
             iceList.append(i + 1)
-            binding_energygyList.append(species.binding_energy)
+            binding_energyList.append(species.binding_energy)
             enthalpyList.append(species.enthalpy)
         elif species.name[0] == "@":
             j = species_names.index(species.desorb_products[0])
             gasIceList.append(j + 1)
             bulkList.append(i + 1)
             iceList.append(i + 1)
-            binding_energygyList.append(species.binding_energy)
+            binding_energyList.append(species.binding_energy)
             enthalpyList.append(species.enthalpy)
+            if species.is_refractory:
+                refractoryList.append(i+1)
+                
+    #dummy index that will be caught by UCLCHEM
+    if len(refractoryList)==0:
+        refractoryList=[-999]
 
     network_file.write(array_to_string("surfaceList", surfacelist, type="int"))
     if len(bulkList) > 0:
@@ -488,10 +510,10 @@ def write_evap_lists(network_file, species_list):
     network_file.write(array_to_string("monoFractions", monoList, type="float"))
     network_file.write(array_to_string("volcanicFractions", volcList, type="float"))
     network_file.write(
-        array_to_string("bindingEnergy", binding_energygyList, type="float", parameter=False)
+        array_to_string("bindingEnergy", binding_energyList, type="float", parameter=False)
     )
     network_file.write(array_to_string("formationEnthalpy", enthalpyList, type="float"))
-
+    network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
 
 def truncate_line(input_string, lineLength=72):
     """Take a string and adds line endings at regular intervals

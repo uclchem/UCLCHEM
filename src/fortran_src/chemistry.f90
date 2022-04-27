@@ -177,6 +177,8 @@ CONTAINS
             !recalculate coefficients for ice processes
             safeMantle=MAX(1d-30,abund(nSurface,dstep))
             safeBulk=MAX(1d-30,abund(nBulk,dstep))
+
+            if (refractoryList(0) .gt. 0) safeBulk=safeBulk-SUM(Y(refractoryList)))
             bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
             surfaceCoverage=bulkGainFromMantleBuildUp()
 
