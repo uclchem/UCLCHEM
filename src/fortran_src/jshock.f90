@@ -125,18 +125,6 @@ CONTAINS
     !Calculate shock properties for current time and set density, temperature and Av  !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updatePhysics
-        !calculate column density. Remember dstep counts from edge of core in to centre
-        !calculate column density. Remember dstep counts from edge of core in to centre
-        IF (dstep .lt. points) THEN
-            !column density of current point + column density of all points further out
-            coldens(dstep)=(cloudSize/real(points))*density(dstep)
-            coldens(dstep)=coldens(dstep)+sum(coldens(dstep:points))
-        ELSE
-            coldens(dstep)=cloudSize/real(points)*density(dstep)
-        END IF
-      
-        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av(dstep)= baseAv +coldens(dstep)/1.6d21
 
         ! Determine the shock velocity at the current time
         v0 = vs*(DEXP(LOG(vMin/vs)*(currentTime/(finalTime*60*60*24*365))))
@@ -191,7 +179,7 @@ CONTAINS
         REAL(dp) :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
         abund(gasIcelist,dstep)=abund(gasIcelist,dstep)+abund(iceList,dstep)
-        abund(iceList,dstep)=1.0d-30
+        abund(iceList,dstep)=0.0d-50
    END SUBROUTINE
 
 END MODULE jshock_mod

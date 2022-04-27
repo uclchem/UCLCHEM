@@ -17,8 +17,8 @@ USE constants
 IMPLICIT NONE
     !These integers store the array index of important species and reactions, x is for ions    
     !loop counters    
-    INTEGER :: i,j,l,writeStep,writeCounter=0,loopCounter
-    INTEGER, PARAMETER :: maxLoops=10
+    INTEGER :: i,j,l,writeStep,writeCounter=0,loopCounter,failedIntegrationCounter
+    INTEGER, PARAMETER :: maxLoops=10,maxConsecutiveFailures=10
 
     !Flags to control desorption processes
     LOGICAL :: desorb,h2desorb,crdesorb,uvdesorb,thermdesorb
@@ -49,9 +49,9 @@ IMPLICIT NONE
 CONTAINS
     SUBROUTINE initializeChemistry(readAbunds)
         LOGICAL, INTENT(IN) :: readAbunds
-    ! Sets variables at the start of every run.
-    ! Since python module persists, it's not enough to set initial
-    ! values in module definitions above. Reset here.
+        ! Sets variables at the start of every run.
+        ! Since python module persists, it's not enough to set initial
+        ! values in module definitions above. Reset here.
         NEQ=nspec+1
         IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff)
         ALLOCATE(abund(NEQ,points),vdiff(SIZE(iceList)))
@@ -117,6 +117,10 @@ CONTAINS
         ISTATE=1
         ITASK=1
 
+        !set integration counts
+        loopCounter=0
+        failedIntegrationCounter=0
+
         IF (.NOT. ALLOCATED(abstol)) THEN
             ALLOCATE(abstol(NEQ))
         END IF
@@ -132,10 +136,22 @@ CONTAINS
 
 
     SUBROUTINE updateChemistry(successFlag)
-    !Called every time/depth step and updates the abundances of all the species
+    !Updates the abundances for the next time step, first updating chemical variables and reaction rates,
+    !then by solving the ODE system to obtain new abundances.
+    !Solving ODEs is complex so we have two checks to try to automatically overcome difficulties and end stalled models
+    !Firstly, the integration subroutine is called up to maxLoops times whilst adjusting variables to help integration converge.
+    !If it succeeds before maxLoops, we continue as normal, otherwise we'll call it a fail.
+    !Secondly, we check for stalls caused by the the solver loop reducing the targetTime to overcome difficulties.
+    !That reduction the possibility of the code "succeeding" by integrating tiny target times. We have a counter that resets each time
+    !the code integrates to the planned targetTime rather than a reduced one. If the counter reaches maxConsecutiveFailures, we end the code.
+
         INTEGER, INTENT(OUT) :: successFlag
+        real(dp) :: originalTargetTime !targetTime can be altered by integrator but we'd like to know if it was changed
+
+        !Integration can fail in a way that we can manage. Allow maxLoops tries before giving up.
         loopCounter=0
         successFlag=1
+        originalTargetTime=targetTime
         DO WHILE((currentTime .lt. targetTime) .and. (loopCounter .lt. maxLoops)) 
             !allow option for dens to have been changed elsewhere.
             IF (.not. freefall) abund(nspec+1,dstep)=density(dstep)
@@ -167,6 +183,7 @@ CONTAINS
             
             CALL calculateReactionRates
 
+            !Integrate chemistry, and return fail if unrecoverable error was reached
             CALL integrateODESystem(successFlag)
             IF (successFlag .lt. 0) THEN
                 write(*,*) "Integration failed, exiting"
@@ -176,11 +193,22 @@ CONTAINS
 
 
             !1.d-30 stops numbers getting too small for fortran.
-            WHERE(abund<1.0d-30) abund=1.0d-30
+            WHERE(abund<1.0d-50) abund=0.0d-50
             density(dstep)=abund(NEQ,dstep)
             loopCounter=loopCounter+1
         END DO
         IF (loopCounter .eq. maxLoops) successFlag=-1
+
+        !Since targetTime can be altered, eventually leading to "successful" integration we want to
+        !check if integrator ever just reaches the planned target time. If it doesn't for many attempts,
+        !we will call the run a failure. This stops the target being constantly reduced to tiny increments
+        !so that the code all but stalls as the time is increased by seconds each integraiton.
+        IF (ABS(originalTargetTime- targetTime) .lt. 0.001*originalTargetTime) THEN
+            failedIntegrationCounter=0
+        ELSE
+            failedIntegrationCounter=failedIntegrationCounter+1
+        END IF
+        IF (failedIntegrationCounter .gt. maxConsecutiveFailures) successFlag=-1
     END SUBROUTINE updateChemistry
 
     SUBROUTINE integrateODESystem(successFlag)
@@ -199,15 +227,20 @@ CONTAINS
 
         SELECT CASE(ISTATE)
             CASE(-1)
-                write(*,*) "ISTATE -1: MAXSTEPS will be increased"
+                !ISTATE -1 means the integrator can't break the problem into small enough steps
+                !We could increase MXSTEP but better to reduce targetTime and get to physics update
+                !physical conditions may be easier to solve as time goes by so better to get to that update
+                write(*,*) "ISTATE -1: Reducing time step"
                 !More steps required for this problem
-                MXSTEP=MXSTEP*2   
-                targetTime=currentTime*1.01 
+                !MXSTEP=MXSTEP*2   
+                targetTime=currentTime+(targetTime-currentTime)*0.1
             CASE(-2)
+                !ISTATE -2 just needs an absol change so let's do that and try again
                 write(*,*) "ISTATE -2: Tolerances too small"
                 !Tolerances are too small for machine but succesful to current currentTime
                 abstol_factor=abstol_factor*10.0
             CASE(-3)
+                !ISTATE -3 is unrecoverable so just bail on intergration
                 write(*,*) "DVODE found invalid inputs"
                 write(*,*) "abstol:"
                 write(*,*) abstol
@@ -217,12 +250,12 @@ CONTAINS
                 !Successful as far as currentTime but many errors.
                 !Make targetTime smaller and just go again
                 write(*,*) "ISTATE -4 - shortening step"
-                targetTime=currentTime*1.01
+                targetTime=currentTime+(targetTime-currentTime)*0.1
             CASE(-5)
                 timeInYears=currentTime/SECONDS_PER_YEAR
                 write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
                 !WHERE(abund<1.0d-30) abund=1.0d-30
-                targetTime=currentTime*1.01
+                targetTime=currentTime+(targetTime-currentTime)*0.1
             CASE default
                 MXSTEP=10000    
         END SELECT

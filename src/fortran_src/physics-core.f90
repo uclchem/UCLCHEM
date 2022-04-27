@@ -78,6 +78,17 @@ CONTAINS
     END SUBROUTINE coreInitializePhysics
 
     SUBROUTINE coreUpdatePhysics
+        !calculate column density. Remember dstep counts from core centre to edge
+        !and coldens should be amount of gas from edge to parcel.
+        coldens(dstep)=cloudSize/real(points)*density(dstep)
+
+        ! add previous column densities to current as we move into cloud to get total
+        IF (dstep .lt. points) coldens(dstep)=coldens(dstep)+coldens(dstep-1)
+
+        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
+        av(dstep)= baseAv +coldens(dstep)/1.6d21
+        dustTemp=gasTemp
+
         IF (cosmicRayAttenuation) CALL ionizationDependency
     END SUBROUTINE coreUpdatePhysics
 

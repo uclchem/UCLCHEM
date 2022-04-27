@@ -59,15 +59,16 @@ CONTAINS
         END IF 
     END SUBROUTINE hot_core
 
-    SUBROUTINE cshock(shock_vel,dictionary, outSpeciesIn,abundance_out,dissipation_time,successFlag)
+    SUBROUTINE cshock(shock_vel,timestep_factor,dictionary, outSpeciesIn,abundance_out,dissipation_time,successFlag)
         USE cshock_mod
 
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
-        DOUBLE PRECISION :: abundance_out(500),shock_vel,dissipation_time
+        DOUBLE PRECISION :: abundance_out(500),shock_vel,timestep_factor,dissipation_time
         INTEGER :: successFlag
-        !f2py intent(in) shock_vel,dictionary,outSpeciesIn
+        !f2py intent(in) shock_vel,timestep_factor,dictionary,outSpeciesIn
         !f2py intent(out) abundance_out,dissipation_time,successFlag
         vs=shock_vel
+        timestepFactor=timestep_factor
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
 
         IF (successFlag .ge. 0) THEN 
@@ -170,7 +171,6 @@ CONTAINS
         END IF
 
         CALL initializeChemistry(readAbunds)
-
         
         dstep=1
         successFlag=1
@@ -207,6 +207,7 @@ CONTAINS
         currentTime=0.0
         timeInYears=0.0
 
+        CALL fileSetup
 
         !Initialize the physics, first do core physics
         !Then do model specific. This allows it to overwrite core
@@ -217,9 +218,9 @@ CONTAINS
             WRITE(*,*) 'Error initializing physics'
             RETURN
         END IF
-        CALL initializeChemistry(readAbunds)
-        CALL fileSetup
 
+        CALL initializeChemistry(readAbunds)
+        CALL readInputAbunds !this won't do anything if no abundLoadFile was in input
         !CALL simpleDebug("Initialized")
 
     
@@ -254,16 +255,13 @@ CONTAINS
                 CALL modelUpdatePhysics
                 !Sublimation checks if Sublimation should happen this time step and does it
                 CALL sublimation(abund)
+
                 !write this depth step now time, chemistry and physics are consistent
                 CALL output
             END DO
         END DO
         CALL finalOutput
-        !close outputs to attempt to force flush
-        close(10)
-        close(11)
-        close(71)
-        close(72)
+        CALL closeFiles
     END SUBROUTINE solveAbundances
 
     SUBROUTINE dictionary_parser(dictionary, outSpeciesIn,successFlag)
@@ -429,26 +427,24 @@ CONTAINS
                 ! CASE('jacobian')
                 !     READ(inputValue,*) jacobian
                 CASE('abundsavefile')
-                    writeAbunds=.True.
                     READ(inputValue,*,ERR=666) abundSaveFile
                     abundSaveFile = TRIM(abundSaveFile)
-                    open(72,file=abundSaveFile,status="unknown")
+                    open(abundSaveID,file=abundSaveFile,status="unknown")
                 CASE('abundloadfile')
                     READ(inputValue,*,ERR=666) abundLoadFile
                     abundLoadFile = TRIM(abundLoadFile)
-                    readAbunds=.True.
-                    open(71,file=abundLoadFile,status='old')
+                    open(abundLoadID,file=abundLoadFile,status='old')
                 CASE('outputfile')
                     READ(inputValue,*,ERR=666) outFile
                     outputFile = trim(outFile)
                     fullOutput=.True.
-                    open(10,file=outputFile,status='unknown')
+                    open(outputId,file=outputFile,status='unknown')
                 CASE('columnfile')
                     IF (trim(outSpeciesIn) .NE. '' ) THEN
                         columnOutput=.True.
                         READ(inputValue,*,ERR=666) columnFile
                         columnFile = trim(columnFile)
-                        open(11,file=columnFile,status='unknown')
+                        open(columnId,file=columnFile,status='unknown')
                     ELSE
                         WRITE(*,*) "Error in output species. No species were given but a column file was given."
                         WRITE(*,*) "columnated output requires output species to be chosen."

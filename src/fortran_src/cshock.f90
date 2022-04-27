@@ -8,7 +8,7 @@ MODULE cshock_mod
     USE constants
     IMPLICIT NONE
 
-    REAL(dp) :: tstart,maxTemp
+    REAL(dp) :: tstart,maxTemp,timestepFactor=0.01
     REAL(dp) :: z2,vs,v0,zn,vn,at,z3,tsat
     REAL(dp) :: ucm,z1,driftVel,vi,tempi,vn0,zn0,vA,dlength,dissipationTime
     REAL(dp) :: grainRadius5,dens6,grainNumberDensity,dzv
@@ -143,7 +143,7 @@ CONTAINS
     SUBROUTINE updateTargetTime
         IF (timeInYears .lt. 2.0*dissipationTime) THEN
             !get a nice sampling along the shock
-            targetTime=(timeInYears+0.025*dissipationTime)*SECONDS_PER_YEAR
+            targetTime=(timeInYears+timestepFactor*dissipationTime)*SECONDS_PER_YEAR
         ELSE
             targetTime=(1.1*timeInYears)*SECONDS_PER_YEAR
         END IF
@@ -151,18 +151,6 @@ CONTAINS
 
     !Calculate shock properties for current time and set density, temperature and Av
     SUBROUTINE updatePhysics
-        !calculate column density. Remember dstep counts from edge of core in to centre
-        IF (dstep .lt. points) THEN
-            !column density of current point + column density of all points further out
-            coldens(dstep)=(cloudSize/real(points))*density(dstep)
-            coldens(dstep)=coldens(dstep)+sum(coldens(dstep:points))
-        ELSE
-            coldens(dstep)=cloudSize/real(points)*density(dstep)
-        END IF
-      
-        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av(dstep)= baseAv +coldens(dstep)/1.6d21
-
         !First calculate velocity of neutrals and position of shock front at currentTime
         call shst
 
@@ -223,9 +211,8 @@ CONTAINS
     SUBROUTINE sublimation(abund)
         REAL(dp) :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
-
         IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0)) CALL sputtering(abund)
-        WHERE(abund<1.0d-30) abund=1.0d-30
+        WHERE(abund.lt. 1.0d-50) abund=0.0d-50
     END SUBROUTINE sublimation
 
 

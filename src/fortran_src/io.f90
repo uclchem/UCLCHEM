@@ -28,9 +28,10 @@ CONTAINS
 
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
         INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
+    END SUBROUTINE fileSetup
 
+    SUBROUTINE readInputAbunds
         !read start file if choosing to use abundances from previous run 
-        !
         IF (readAbunds) THEN
             DO l=1,points
                 READ(abundLoadID,*) fhe,fc,fo,fn,fs,fmg
@@ -38,7 +39,7 @@ CONTAINS
                 REWIND(abundLoadID)
             END DO
         END IF
-    END SUBROUTINE fileSetup
+    END SUBROUTINE readInputAbunds
 
     !Writes physical variables and fractional abundances to output file, called every time step.
     SUBROUTINE output
@@ -68,6 +69,13 @@ CONTAINS
             END DO
         END IF
     END SUBROUTINE finalOutput
+
+    SUBROUTINE closeFiles
+        close(outputId)
+        close(columnId)
+        close(abundSaveID)
+        close(abundLoadID)
+    END SUBROUTINE closeFiles
 
     SUBROUTINE debugout
         open(debugId,file='output/debuglog',status='unknown')       !debug file.

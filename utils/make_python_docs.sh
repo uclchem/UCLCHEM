@@ -22,5 +22,7 @@ sed -i 's|\[png\](.*\/|[png](.\/assets\/|g' Tutorials/*.md
 #remove styles from tables because they throw mdx errors
 find Tutorials/*.md -exec python utils/remove_table_styles.py  {} +
 mv Tutorials/*files/*.png $1/website/docs/assets
+cp Tutorials/assets/* $1/website/docs/assets
+
 mv Tutorials/*.md $1/website/docs
 rm -r Tutorials/*files/

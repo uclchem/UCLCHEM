@@ -52,23 +52,11 @@ CONTAINS
     !Update the density, temperature and av to their values at currentTime            !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updatePhysics
-        !calculate column density. Remember dstep counts from core centre to edge
-        !and coldens should be amount of gas from edge to parcel.
-        IF (dstep .lt. points) THEN
-            !column density of current point + column density of all points further out
-            coldens(dstep)=(cloudSize/real(points))*density(dstep)
-            coldens(dstep)=coldens(dstep)+sum(coldens(dstep:points))
-        ELSE
-            coldens(dstep)=cloudSize/real(points)*density(dstep)
-        END IF
-
-        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av(dstep)= baseAv +coldens(dstep)/1.6d21
-        dustTemp=gasTemp
+        !Nothing to do here :)
     END SUBROUTINE updatePhysics
 
-    ! This subroutine must be in every physics module so we dummy it here.
     SUBROUTINE sublimation(abund)
+    ! This subroutine must be in every physics module so we dummy it here.
         DOUBLE PRECISION :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
     END SUBROUTINE sublimation    

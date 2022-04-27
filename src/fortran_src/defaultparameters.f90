@@ -110,3 +110,4 @@ uv_yield=0.1 !Number of molecules desorbed per UV photon.
 phi=1.0d5 !Number of molecules desorbed per cosmic ray ionisation.
 uvcreff=1.0d-3 !Ratio of CR induced UV photons to ISRF UV photons.
 omega=0.5 !Dust grain albedo.
+!|alpha|{1:0.0,2:0.0}| Set alpha coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how alpha is used for each reaction type.|
