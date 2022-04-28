@@ -92,7 +92,7 @@ def check_reaction(reaction_row,keep_list):
     else:
         if reaction_row[1] in ["DESORB","FREEZE"]:
             reac_error="Desorb or freeze reaction in custom input contains species not in species list"
-            reac_error=f"\nReaction was {reaction_row}"
+            reac_error+=f"\nReaction was {reaction_row}"
             raise ValueError(reac_error)
         return False
     
