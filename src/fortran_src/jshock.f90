@@ -33,9 +33,10 @@ CONTAINS
     ! Checks inputs make sense and then calculates a few constants and!
     ! sets up variables for the shock paramterization that follows    !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE initializePhysics
+    SUBROUTINE initializePhysics(successFlag)
+        INTEGER, INTENT(OUT) :: successFlag
         INTEGER :: iLoop
-
+        successFlag=1
         !Reset variables for python wrap.
         coflag=0 !should reset sputtering
         
@@ -46,6 +47,12 @@ CONTAINS
             Write(*,*) "setting freefall=0 and continuing"
             freefall=.False.
         ENDIF
+        IF (points .gt. 1) THEN
+            WRITE(*,*) "Cannot have more than one point in shock"
+            successFlag=-1
+            RETURN
+        END IF
+
         density=initialDens
 
         ! Determine the maximum temperature

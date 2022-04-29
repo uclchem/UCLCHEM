@@ -29,10 +29,12 @@ CONTAINS
     ! Checks inputs make sense and then calculates a few constants and!
     ! sets up variables for the shock paramterization that follows    !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE initializePhysics
+    SUBROUTINE initializePhysics(successFlag)
+        INTEGER, INTENT(OUT) :: successFlag
         INTEGER :: iLoop
         REAL(dp) :: v01,g1,g2
 
+        successFlag=1
         driftVel=0.0
         zn0=0.0
         vn0=0.0
@@ -47,6 +49,11 @@ CONTAINS
             Write(*,*) "setting freefall=0 and continuing"
             freefall=.False.
         ENDIF
+        IF (points .gt. 1) THEN
+            WRITE(*,*) "Cannot have more than one point in cshock"
+            successFlag=-1
+            RETURN
+        END IF
         density=initialDens
 
 
