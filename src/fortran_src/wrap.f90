@@ -59,16 +59,19 @@ CONTAINS
         END IF 
     END SUBROUTINE hot_core
 
-    SUBROUTINE cshock(shock_vel,timestep_factor,dictionary, outSpeciesIn,abundance_out,dissipation_time,successFlag)
+    SUBROUTINE cshock(shock_vel,timestep_factor,minimum_temperature,dictionary, outSpeciesIn,&
+        &abundance_out,dissipation_time,successFlag)
         USE cshock_mod
 
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
-        DOUBLE PRECISION :: abundance_out(500),shock_vel,timestep_factor,dissipation_time
+        DOUBLE PRECISION :: abundance_out(500),shock_vel,timestep_factor
+        DOUBLE PRECISION :: minimum_temperature,dissipation_time
         INTEGER :: successFlag
-        !f2py intent(in) shock_vel,timestep_factor,dictionary,outSpeciesIn
+        !f2py intent(in) shock_vel,timestep_factor,minimum_temperature,dictionary,outSpeciesIn
         !f2py intent(out) abundance_out,dissipation_time,successFlag
         vs=shock_vel
         timestepFactor=timestep_factor
+        minimumPostshockTemp=minimum_temperature
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
 
         IF (successFlag .ge. 0) THEN 
@@ -275,7 +278,10 @@ CONTAINS
         close(10)
         close(11)
         close(7)
-        successFlag=1
+
+        !All reads use IOSTAT which will change successFlag from 0 if an error occurs
+        !so set zero and check for non-zero each loop.
+        successFlag=0
 
         whileInteger = 0
 
@@ -301,79 +307,79 @@ CONTAINS
                     posEnd=scan(dictionary,'}')
                     CALL alpha_parser(dictionary(posStart+1:posEnd))
                 CASE('initialtemp')
-                    READ(inputValue,*,err=666) initialTemp
+                    READ(inputValue,*,iostat=successFlag) initialTemp
                 CASE('initialdens')
-                    READ(inputValue,*,err=666) initialDens
+                    READ(inputValue,*,iostat=successFlag) initialDens
                 CASE('finaldens')
-                    READ(inputValue,*,err=666) finalDens
+                    READ(inputValue,*,iostat=successFlag) finalDens
                 CASE('currenttime')
-                    READ(inputValue,*,err=666) currentTime
+                    READ(inputValue,*,iostat=successFlag) currentTime
                 CASE('finaltime')
-                    READ(inputValue,*,err=666) finalTime
+                    READ(inputValue,*,iostat=successFlag) finalTime
                 CASE('radfield')
-                    READ(inputValue,*,err=666) radfield
+                    READ(inputValue,*,iostat=successFlag) radfield
                 CASE('zeta')
-                    READ(inputValue,*,err=666) zeta
+                    READ(inputValue,*,iostat=successFlag) zeta
                 CASE('freezefactor')
-                    READ(inputValue,*,err=666) freezeFactor
+                    READ(inputValue,*,iostat=successFlag) freezeFactor
                 CASE('rout')
-                    READ(inputValue,*,err=666) rout
+                    READ(inputValue,*,iostat=successFlag) rout
                 CASE('rin')
-                    READ(inputValue,*,err=666) rin
+                    READ(inputValue,*,iostat=successFlag) rin
                 CASE('baseav')
-                    READ(inputValue,*,err=666) baseAv
+                    READ(inputValue,*,iostat=successFlag) baseAv
                 CASE('points')
-                    READ(inputValue,*,err=666) points
+                    READ(inputValue,*,iostat=successFlag) points
                 CASE('endatfinaldensity')
-                    Read(inputValue,*,err=666) endAtFinalDensity
+                    Read(inputValue,*,iostat=successFlag) endAtFinalDensity
                 CASE('freefall')
-                    READ(inputValue,*,err=666) freefall
+                    READ(inputValue,*,iostat=successFlag) freefall
                 CASE('freefallfactor')
-                    READ(inputValue,*,err=666) freefallFactor
+                    READ(inputValue,*,iostat=successFlag) freefallFactor
                 CASE('desorb')
-                    READ(inputValue,*,err=666) desorb
+                    READ(inputValue,*,iostat=successFlag) desorb
                 CASE('h2desorb')
-                    READ(inputValue,*,err=666) h2desorb
+                    READ(inputValue,*,iostat=successFlag) h2desorb
                 CASE('crdesorb')
-                    READ(inputValue,*,ERR=666) crdesorb
+                    READ(inputValue,*,iostat=successFlag) crdesorb
                 CASE('uvdesorb')
-                    READ(inputValue,*,ERR=666) uvdesorb
+                    READ(inputValue,*,iostat=successFlag) uvdesorb
                 CASE('thermdesorb')
-                    READ(inputValue,*,ERR=666) uvdesorb
+                    READ(inputValue,*,iostat=successFlag) uvdesorb
                 CASE('instantsublimation')
-                    READ(inputValue,*,ERR=666) instantSublimation
+                    READ(inputValue,*,iostat=successFlag) instantSublimation
                 CASE('cosmicrayattenuation')
-                    READ(inputValue,*,ERR=666) cosmicRayAttenuation
+                    READ(inputValue,*,iostat=successFlag) cosmicRayAttenuation
                 CASE('ionmodel')
-                    READ(inputValue,*,ERR=666) ionModel
+                    READ(inputValue,*,iostat=successFlag) ionModel
                 CASE('improvedh2crpdissociation')
-                    READ(inputValue,*,ERR=666) improvedH2CRPDissociation
+                    READ(inputValue,*,iostat=successFlag) improvedH2CRPDissociation
                 CASE('ion')
-                    READ(inputValue,*,ERR=666) ion
+                    READ(inputValue,*,iostat=successFlag) ion
                 CASE('fhe')
-                    READ(inputValue,*,ERR=666) fhe
+                    READ(inputValue,*,iostat=successFlag) fhe
                 CASE('fc')
-                    READ(inputValue,*,ERR=666) fc
+                    READ(inputValue,*,iostat=successFlag) fc
                 CASE('fo')
-                    READ(inputValue,*,ERR=666) fo
+                    READ(inputValue,*,iostat=successFlag) fo
                 CASE('fn')
-                    READ(inputValue,*,ERR=666) fn
+                    READ(inputValue,*,iostat=successFlag) fn
                 CASE('fs')
-                    READ(inputValue,*,ERR=666) fs
+                    READ(inputValue,*,iostat=successFlag) fs
                 CASE('fmg')
-                    READ(inputValue,*,ERR=666) fmg
+                    READ(inputValue,*,iostat=successFlag) fmg
                 CASE('fsi')
-                    READ(inputValue,*,ERR=666) fsi
+                    READ(inputValue,*,iostat=successFlag) fsi
                 CASE('fcl')
-                    READ(inputValue,*,ERR=666) fcl
+                    READ(inputValue,*,iostat=successFlag) fcl
                 CASE('fp')
-                    READ(inputValue,*,ERR=666) fp
+                    READ(inputValue,*,iostat=successFlag) fp
                 CASE('ff')
-                    READ(inputValue,*,ERR=666) ff
+                    READ(inputValue,*,iostat=successFlag) ff
                 CASE('outspecies')
                     IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
                     IF (ALLOCATED(outSpecies)) DEALLOCATE(outSpecies)
-                    READ(inputValue,*,ERR=666) nout
+                    READ(inputValue,*,iostat=successFlag) nout
                     ALLOCATE(outIndx(nout))
                     ALLOCATE(outSpecies(nout))
                     IF (outSpeciesIn .eq. "") THEN
@@ -399,48 +405,48 @@ CONTAINS
                         END DO
                     END DO
                 CASE('writestep')
-                    READ(inputValue,*,ERR=666) writeStep
+                    READ(inputValue,*,iostat=successFlag) writeStep
                 CASE('ebmaxh2')
-                    READ(inputValue,*,ERR=666) ebmaxh2
+                    READ(inputValue,*,iostat=successFlag) ebmaxh2
                 CASE('epsilon')
-                    READ(inputValue,*,ERR=666) epsilon
+                    READ(inputValue,*,iostat=successFlag) epsilon
                 CASE('uvcreff')
-                    READ(inputValue,*,ERR=666) uvcreff
+                    READ(inputValue,*,iostat=successFlag) uvcreff
                 CASE('ebmaxcr')
-                    READ(inputValue,*,ERR=666) ebmaxcr
+                    READ(inputValue,*,iostat=successFlag) ebmaxcr
                 CASE('phi')
-                    READ(inputValue,*,ERR=666) phi
+                    READ(inputValue,*,iostat=successFlag) phi
                 CASE('ebmaxuvcr')
-                    READ(inputValue,*,ERR=666) ebmaxuvcr
+                    READ(inputValue,*,iostat=successFlag) ebmaxuvcr
                 CASE('uv_yield')
-                    READ(inputValue,*,ERR=666) uv_yield
+                    READ(inputValue,*,iostat=successFlag) uv_yield
                 CASE('metallicity')
-                    READ(inputValue,*,ERR=666) metallicity
+                    READ(inputValue,*,iostat=successFlag) metallicity
                 CASE('omega')
-                    READ(inputValue,*,ERR=666) omega
+                    READ(inputValue,*,iostat=successFlag) omega
                 CASE('reltol')
-                    READ(inputValue,*,ERR=666) reltol
+                    READ(inputValue,*,iostat=successFlag) reltol
                 CASE('abstol_factor')
-                    READ(inputValue,*,ERR=666) abstol_factor
+                    READ(inputValue,*,iostat=successFlag) abstol_factor
                 CASE('abstol_min')
-                    READ(inputValue,*,ERR=666) abstol_min
+                    READ(inputValue,*,iostat=successFlag) abstol_min
                 ! CASE('jacobian')
                 !     READ(inputValue,*) jacobian
                 CASE('abundsavefile')
-                    READ(inputValue,*,ERR=666) abundSaveFile
+                    READ(inputValue,*,iostat=successFlag) abundSaveFile
                     abundSaveFile = TRIM(abundSaveFile)
                     open(abundSaveID,file=abundSaveFile,status="unknown")
                 CASE('abundloadfile')
-                    READ(inputValue,*,ERR=666) abundLoadFile
+                    READ(inputValue,*,iostat=successFlag) abundLoadFile
                     abundLoadFile = TRIM(abundLoadFile)
                     open(abundLoadID,file=abundLoadFile,status='old')
                 CASE('outputfile')
-                    READ(inputValue,*,ERR=666) outFile
+                    READ(inputValue,*,iostat=successFlag) outFile
                     outputFile = trim(outFile)
                     fullOutput=.True.
-                    open(outputId,file=outputFile,status='unknown',err=667)
+                    open(outputId,file=outputFile,status='unknown',iostat=successFlag)
                     IF (successFlag .lt. 0) THEN
-667                     write(*,*) "An error occured when opening the output file!"//&
+                        write(*,*) "An error occured when opening the output file!"//&
                                         & NEW_LINE('A')//&
                                     &" The failed file was ",outputFile&
                                     &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
@@ -450,7 +456,7 @@ CONTAINS
                 CASE('columnfile')
                     IF (trim(outSpeciesIn) .NE. '' ) THEN
                         columnOutput=.True.
-                        READ(inputValue,*,ERR=666) columnFile
+                        READ(inputValue,*,iostat=successFlag) columnFile
                         columnFile = trim(columnFile)
                         open(columnId,file=columnFile,status='unknown')
                     ELSE
@@ -463,14 +469,21 @@ CONTAINS
                 CASE DEFAULT
                     WRITE(*,*) "Problem with given parameter: '", trim(inputParameter), "'."
                     WRITE(*,*) "This is either not supported yet, or invalid."
+                    successFlag=-1
+                    RETURN
             END SELECT
             dictionary = dictionary(posEnd:)
             IF (SCAN(dictionary,',') .eq. 0) whileInteger=1
+
+            !check for failure
+            IF (successFlag .ne. 0) THEN
+                WRITE(*,*) "Error reading ",inputParameter
+                write(*,*) "This is usually due to wrong type."
+                successFlag=-1
+                RETURN
+            END IF 
         END DO
-    IF (successFlag .lt. 0) THEN
-        666 successFlag=-1
-        write(*,*) "Error reading",inputParameter
-    END IF 
+
     END SUBROUTINE dictionary_parser
 
     SUBROUTINE alpha_parser(alpha_string)

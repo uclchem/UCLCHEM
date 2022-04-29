@@ -3,9 +3,14 @@ from numpy.distutils.core import setup
 from glob import glob
 from numpy.distutils import exec_command
 from shutil import move
+from sys import argv
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+
+#make clean every time slows things but is needed because users will mostly install after changing networks
+#and a make never seems to full update the new network
+status,output=exec_command.exec_command( "make clean", execute_in='src/fortran_src/', use_shell=True)
 
 status,output=exec_command.exec_command( "make python", execute_in='src/fortran_src/', use_shell=True)
 wrap_file=glob('src/fortran_src/uclchemwrap*.so')[0]

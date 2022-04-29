@@ -10,11 +10,11 @@ MODULE cshock_mod
 
     REAL(dp) :: tstart,maxTemp,timestepFactor=0.01
     REAL(dp) :: z2,vs,v0,zn,vn,at,z3,tsat
-    REAL(dp) :: ucm,z1,driftVel,vi,tempi,vn0,zn0,vA,dlength,dissipationTime
+    REAL(dp) :: ucm,z1,driftVel,vi,vn0,zn0,vA,dlength,dissipationTime
     REAL(dp) :: grainRadius5,dens6,grainNumberDensity,dzv
     REAL(dp), allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
-    integer :: manCoolTemp, postShock
-    REAL(dp), parameter :: coolTemp=100.0
+    LOGICAL :: postShock
+    REAL(dp) :: minimumPostshockTemp=0.0
     !variables for the collisional and radiative heating of grains
     REAL(dp) :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
     REAL(dp) :: coshinv1,coshinv2,zmax,a1,eta,eps,epso,sConst
@@ -38,7 +38,7 @@ CONTAINS
         vn0=0.0
 
         ! Set cooling variables to off by default (change if reqd)
-        manCoolTemp = 0
+        postShock = .False.
 
         !check input sanity and set inital values
         cloudSize=(rout-rin)*pc
@@ -194,15 +194,12 @@ CONTAINS
             tn(dstep)=initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
             gasTemp(dstep)=tn(dstep)
             ti(dstep)=tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ_CGS))
-            tempi=ti(dstep)
 
-            IF ((gasTemp(dstep) .gt. coolTemp) .AND. (manCoolTemp .eq. 1)) THEN
-                postShock = 1
-            END IF
         ENDIF
+        postShock = (timeInYears .gt. dissipationTime)
 
-        IF ((gasTemp(dstep) .lt. coolTemp) .AND. (postShock .eq. 1)) THEN
-            gasTemp(dstep) = coolTemp
+        IF ((gasTemp(dstep) .lt. minimumPostshockTemp) .AND. (postShock)) THEN
+            gasTemp(dstep) = minimumPostshockTemp
         END IF
         dustTemp=gasTemp
     END SUBROUTINE updatePhysics

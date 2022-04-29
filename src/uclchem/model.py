@@ -102,13 +102,14 @@ def hot_core(temp_indx, max_temperature, param_dict=None, out_species=None):
         return abunds[:n_out]
 
 
-def cshock(shock_vel, timestep_factor=0.01, param_dict=None, out_species=None):
+def cshock(shock_vel, timestep_factor=0.01, minimum_temperature=0.0, param_dict=None, out_species=None):
     """Run C-type shock model from UCLCHEM
 
     Args:
         shock_vel (float): Velocity of the shock in km/s
         timestep_factor (float, optional): Whilst the time is less than 2 times the dissipation time of shock, timestep is timestep_factor*dissipation time. Essentially controls
         how well resolved the shock is in your model. Defaults to 0.01.
+        minimum_temperature (float, optional) : Minimum post-shock temperature. Defaults to 0.0 (no minimum). The shocked gas typically cools to `initialTemp` if this is not set.
         param_dict (dict,optional): A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
     Returns:
@@ -120,6 +121,7 @@ def cshock(shock_vel, timestep_factor=0.01, param_dict=None, out_species=None):
     abunds, disspation_time, success_flag = wrap.cshock(
         shock_vel,
         timestep_factor=timestep_factor,
+        minimum_temperature=minimum_temperature,
         dictionary=param_dict,
         outspeciesin=out_species,
     )
@@ -127,6 +129,24 @@ def cshock(shock_vel, timestep_factor=0.01, param_dict=None, out_species=None):
     if success_flag < 0:
         disspation_time = None
     return result, disspation_time
+
+def cshock_dissipation_time(shock_vel,initial_dens):
+    """A simple function used to calculate the dissipation time of a C-type shock.
+    Use to obtain a useful timescale for your C-shock model runs. Velocity of
+    ions and neutrals equalizes at dissipation time and full cooling takes a few dissipation times.
+
+    Args:
+        shock_vel (float): Velocity of the shock in km/s
+        initial_dens (float): Preshock density of the gas in cm$^{-3}$
+
+    Returns:
+        float: The dissipation time of the shock in years
+    """
+    pc=3.086e18 #parsec in cgs
+    SECONDS_PER_YEAR=3.15569e7
+    dlength=12.0*pc*shock_vel/initial_dens
+    return (dlength*1.0e-5/shock_vel)/SECONDS_PER_YEAR
+    
 
 
 def jshock(shock_vel, param_dict=None, out_species=None):
