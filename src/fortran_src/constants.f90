@@ -16,6 +16,13 @@ MODULE CONSTANTS
    REAL(dp), PARAMETER :: EV = 1.60217646D-12 ! electron volt in erg
    REAL(dp), PARAMETER :: GRAV_G = 6.674d-8 !gravitational constant in cgs
    REAL(dp), PARAMETER :: SB_CONST=5.6704d-5 !Stefan Boltzmann constant in cgs
+
+   !Error codes for python wrap
+   INTEGER, PARAMETER :: PARAMETER_READ_ERROR=-1
+   INTEGER, PARAMETER :: PHYSICS_INIT_ERROR=-2
+   INTEGER, PARAMETER :: CHEM_INIT_ERROR=-3
+   INTEGER, PARAMETER :: INT_UNRECOVERABLE_ERROR=-4
+   INTEGER, PARAMETER :: INT_TOO_MANY_FAILS_ERROR=-5
 CONTAINS
     SUBROUTINE pair_insertion_sort(array)
     REAL(dp), INTENT(inout) :: array(:)

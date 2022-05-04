@@ -27,6 +27,12 @@ def _reform_inputs(param_dict, out_species):
         n_out = 0
     return n_out, param_dict, out_species
 
+def _format_output(n_out,abunds,success_flag):
+    if success_flag < 0 or n_out == 0:
+        abunds=[]
+    else:
+        abunds=list(abunds[:n_out])
+    return [success_flag]+abunds
 
 def cloud(param_dict=None, out_species=None):
     """Run cloud model from UCLCHEM
@@ -36,14 +42,11 @@ def cloud(param_dict=None, out_species=None):
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
 
     Returns:
-        int,list: A integer which is negative if the model failed to run, or a list of abundances of all species in `outSpecies`
+        A list where the first element is always an integer which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details. If the `out_species` parametere is provided, the remaining elements of this list will be the final abundances of the species in out_species.
     """
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
     abunds, success_flag = wrap.cloud(dictionary=param_dict, outspeciesin=out_species)
-    if success_flag < 0 or n_out == 0:
-        return success_flag
-    else:
-        return abunds[:n_out]
+    return _format_output(n_out,abunds,success_flag)
 
 
 def collapse(collapse, physics_output, param_dict=None, out_species=None):
@@ -56,7 +59,7 @@ def collapse(collapse, physics_output, param_dict=None, out_species=None):
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
 
     Returns:
-        int,list: A integer which is negative if the model failed to run, or a list of abundances of all species in `outSpecies`
+        A list where the first element is always an integer which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details. If the `out_species` parametere is provided, the remaining elements of this list will be the final abundances of the species in out_species.
     """
     collapse_dict = {"BE1.1": 1, "BE4": 2, "filament": 3, "ambipolar": 4}
     try:
@@ -71,10 +74,8 @@ def collapse(collapse, physics_output, param_dict=None, out_species=None):
     abunds, success_flag = wrap.collapse(
         collapse, physics_output, write_physics, dictionary=param_dict, outspeciesin=out_species
     )
-    if success_flag < 0 or n_out == 0:
-        return success_flag
-    else:
-        return abunds[:n_out]
+    return _format_output(n_out,abunds,success_flag)
+
 
 
 def hot_core(temp_indx, max_temperature, param_dict=None, out_species=None):
@@ -87,7 +88,7 @@ def hot_core(temp_indx, max_temperature, param_dict=None, out_species=None):
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
 
     Returns:
-        int,list: A integer which is negative if the model failed to run, or a list of abundances of all species in `outSpecies`
+        A list where the first element is always an integer which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details. If the `out_species` parametere is provided, the remaining elements of this list will be the final abundances of the species in out_species.
     """
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
     abunds, success_flag = wrap.hot_core(
@@ -96,10 +97,7 @@ def hot_core(temp_indx, max_temperature, param_dict=None, out_species=None):
         dictionary=param_dict,
         outspeciesin=out_species,
     )
-    if success_flag < 0 or n_out == 0:
-        return success_flag
-    else:
-        return abunds[:n_out]
+    return _format_output(n_out,abunds,success_flag)
 
 
 def cshock(shock_vel, timestep_factor=0.01, minimum_temperature=0.0, param_dict=None, out_species=None):
@@ -109,12 +107,11 @@ def cshock(shock_vel, timestep_factor=0.01, minimum_temperature=0.0, param_dict=
         shock_vel (float): Velocity of the shock in km/s
         timestep_factor (float, optional): Whilst the time is less than 2 times the dissipation time of shock, timestep is timestep_factor*dissipation time. Essentially controls
         how well resolved the shock is in your model. Defaults to 0.01.
-        minimum_temperature (float, optional) : Minimum post-shock temperature. Defaults to 0.0 (no minimum). The shocked gas typically cools to `initialTemp` if this is not set.
+        minimum_temperature (float, optional): Minimum post-shock temperature. Defaults to 0.0 (no minimum). The shocked gas typically cools to `initialTemp` if this is not set.
         param_dict (dict,optional): A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
     Returns:
-        int,list: A integer which is negative if the model failed to run, or a list of abundances of all species in `outSpecies`
-        float: The dissipation time of the shock in years
+        A list where the first element is always an integer which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details. If the model succeeded, the second element is the dissipation time and further elements are the abundances of all species in `out_species`.
     """
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
 
@@ -125,28 +122,13 @@ def cshock(shock_vel, timestep_factor=0.01, minimum_temperature=0.0, param_dict=
         dictionary=param_dict,
         outspeciesin=out_species,
     )
-    result = abunds[:n_out] if n_out > 0 else success_flag
     if success_flag < 0:
-        disspation_time = None
-    return result, disspation_time
-
-def cshock_dissipation_time(shock_vel,initial_dens):
-    """A simple function used to calculate the dissipation time of a C-type shock.
-    Use to obtain a useful timescale for your C-shock model runs. Velocity of
-    ions and neutrals equalizes at dissipation time and full cooling takes a few dissipation times.
-
-    Args:
-        shock_vel (float): Velocity of the shock in km/s
-        initial_dens (float): Preshock density of the gas in cm$^{-3}$
-
-    Returns:
-        float: The dissipation time of the shock in years
-    """
-    pc=3.086e18 #parsec in cgs
-    SECONDS_PER_YEAR=3.15569e7
-    dlength=12.0*pc*shock_vel/initial_dens
-    return (dlength*1.0e-5/shock_vel)/SECONDS_PER_YEAR
-    
+        disspation_time=None
+        abunds=[]
+    else:
+        abunds=list(abunds[:n_out])
+    result=[success_flag,disspation_time]+abunds
+    return result
 
 
 def jshock(shock_vel, param_dict=None, out_species=None):
@@ -157,7 +139,7 @@ def jshock(shock_vel, param_dict=None, out_species=None):
         param_dict (dict,optional): A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
     Returns:
-        int,list: A integer which is negative if the model failed to run, or a list of abundances of all species in `outSpecies`
+        A list where the first element is always an integer which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details. If the model succeeded, the second element is the dissipation time and further elements are the abundances of all species in `out_species`.
     """
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
 
@@ -166,7 +148,4 @@ def jshock(shock_vel, param_dict=None, out_species=None):
         dictionary=param_dict,
         outspeciesin=out_species,
     )
-    if success_flag < 0 or n_out == 0:
-        return success_flag
-    else:
-        return abunds[:n_out]
+    return _format_output(n_out,abunds,success_flag)

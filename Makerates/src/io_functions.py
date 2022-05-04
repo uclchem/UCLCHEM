@@ -54,22 +54,22 @@ def read_reaction_file(file_name, species_list, ftype):
         with open(file_name, "r") as f:
             reader = csv.reader(f, delimiter=":", quotechar="|")
             for row in reader:
-                reaction_row=row[2:4] + [""] + row[4:8] + row[9:]
-                if check_reaction(reaction_row,keep_list):
+                reaction_row = row[2:4] + [""] + row[4:8] + row[9:]
+                if check_reaction(reaction_row, keep_list):
                     reactions.append(Reaction(reaction_row))
     elif ftype == "UCL":
         with open(file_name, "r") as f:
             reader = csv.reader(f, delimiter=",", quotechar="|")
             for row in reader:
-                if (len(row)>1) and (row[0][0]!="!"):
-                    if check_reaction(row,keep_list):
+                if (len(row) > 1) and (row[0][0] != "!"):
+                    if check_reaction(row, keep_list):
                         reactions.append(Reaction(row))
                     else:
                         dropped_reactions.append(row)
 
     elif ftype == "KIDA":
         for row in kida_parser(file_name):
-            if check_reaction(row,keep_list):
+            if check_reaction(row, keep_list):
                 reactions.append(Reaction(row))
 
     else:
@@ -77,7 +77,7 @@ def read_reaction_file(file_name, species_list, ftype):
     return reactions, dropped_reactions
 
 
-def check_reaction(reaction_row,keep_list):
+def check_reaction(reaction_row, keep_list):
     """Checks a row parsed from a reaction file and checks it only contains acceptable things.
 
     Args:
@@ -90,12 +90,14 @@ def check_reaction(reaction_row,keep_list):
             reaction_row[11] = 10000.0
         return True
     else:
-        if reaction_row[1] in ["DESORB","FREEZE"]:
-            reac_error="Desorb or freeze reaction in custom input contains species not in species list"
-            reac_error+=f"\nReaction was {reaction_row}"
+        if reaction_row[1] in ["DESORB", "FREEZE"]:
+            reac_error = (
+                "Desorb or freeze reaction in custom input contains species not in species list"
+            )
+            reac_error += f"\nReaction was {reaction_row}"
             raise ValueError(reac_error)
         return False
-    
+
 
 def kida_parser(kida_file):
     """
@@ -119,8 +121,8 @@ def kida_parser(kida_file):
     ]
     rows = []
     with open(kida_file, "r") as f:
-        f.readline()#throw away header
-        for line in f: #then iterate over file
+        f.readline()  # throw away header
+        for line in f:  # then iterate over file
             row = []
             for item in kida_contents:
                 for i in range(item[0]):
@@ -129,37 +131,38 @@ def kida_parser(kida_file):
                             a = line[:count]
                             row.append(func(a))
                         line = line[count:]
-                        
-            #Some reformatting required
-            #KIDA gives CRP reactions in different units to UMIST
+
+            # Some reformatting required
+            # KIDA gives CRP reactions in different units to UMIST
             if row[-1] == 1:
-                #Amazingly both UMIST and KIDA use CRP but differently.
-                #Translate KIDA names to UMIST
-                if row[1]=="CRP":
-                    row[1]="CRPHOT"
-                    #with beta=0 and gamma=1, the KIDA formulation of 
-                    #CRPHOT reactions becomes the UMIST one
-                    row[10]=1.0
-                elif row[1]=="CR":
-                    row[1]="CRP"
-                #UMIST alpha includes zeta_0 but KIDA doesn't. Since UCLCHEM
-                #rate calculation follows UMIST, we convert.
-                row[8]=row[8]*1.36e-17
+                # Amazingly both UMIST and KIDA use CRP but differently.
+                # Translate KIDA names to UMIST
+                if row[1] == "CRP":
+                    row[1] = "CRPHOT"
+                    # with beta=0 and gamma=1, the KIDA formulation of
+                    # CRPHOT reactions becomes the UMIST one
+                    row[10] = 1.0
+                elif row[1] == "CR":
+                    row[1] = "CRP"
+                # UMIST alpha includes zeta_0 but KIDA doesn't. Since UCLCHEM
+                # rate calculation follows UMIST, we convert.
+                row[8] = row[8] * 1.36e-17
                 rows.append(row[:7] + row[8:-1])
-            elif row[-1] in [2,3]:
+            elif row[-1] in [2, 3]:
                 rows.append(row[:7] + row[8:-1])
-            elif row[-1]==4:
-                row[2]="IONOPOL1"
+            elif row[-1] == 4:
+                row[2] = "IONOPOL1"
                 rows.append(row[:7] + row[8:-1])
-            elif row[-1]==5:
-                row[2]="IONOPOL2"
+            elif row[-1] == 5:
+                row[2] = "IONOPOL2"
                 rows.append(row[:7] + row[8:-1])
     return rows
 
-def output_drops(dropped_reactions,output_dir):
+
+def output_drops(dropped_reactions, output_dir):
     if output_dir is None:
-        output_dir=""
-    outputFile=join(output_dir,"dropped_reactions.csv")
+        output_dir = ""
+    outputFile = join(output_dir, "dropped_reactions.csv")
     # Print dropped reactions from grain file or write if many
     if len(dropped_reactions) < 6:
         print("Reactions dropped from grain file:\n")
@@ -172,29 +175,30 @@ def output_drops(dropped_reactions,output_dir):
                 f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL, lineterminator="\n"
             )
             for reaction in dropped_reactions:
-                writer.writerow(reaction)   
+                writer.writerow(reaction)
 
 
-def write_outputs(network,output_dir):
+def write_outputs(network, output_dir):
     if output_dir is None:
-        output_dir="../src/"
-        fortran_src_dir="../src/fortran_src"
+        output_dir = "../src/"
+        fortran_src_dir = "../src/fortran_src"
     else:
-        fortran_src_dir=output_dir
-        
+        fortran_src_dir = output_dir
+
     # Create the species file
-    filename = join(output_dir,"species.csv")
+    filename = join(output_dir, "species.csv")
     write_species(filename, network.species_list)
 
-    filename = join(output_dir,"reactions.csv")
+    filename = join(output_dir, "reactions.csv")
     write_reactions(filename, network.reaction_list)
 
     # Write the ODEs in the appropriate language format
-    filename = join(fortran_src_dir,"odes.f90")
+    filename = join(fortran_src_dir, "odes.f90")
     write_odes_f90(filename, network.species_list, network.reaction_list, network.three_phase)
 
-    filename= join(fortran_src_dir,"network.f90")
-    write_network_file(filename,network)
+    filename = join(fortran_src_dir, "network.f90")
+    write_network_file(filename, network)
+
 
 def write_species(file_name, species_list):
     """Write the human readable species file. Note UCLCHEM doesn't use this file.
@@ -203,12 +207,14 @@ def write_species(file_name, species_list):
         fileName (str): path to output file
         species_list (list): List of species objects for network
     """
+    species_columns=["Name","Mass","N_atoms","Binding Energy","Enthalpy"]
     with open(file_name, "w") as f:
         writer = csv.writer(
             f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL, lineterminator="\n"
         )
+        writer.writerow(species_columns)
         for species in species_list:
-            writer.writerow([species.name, species.mass, species.n_atoms])
+            writer.writerow([species.name, species.mass, species.n_atoms,species.binding_energy,species.enthalpy])
 
 
 # Write the reaction file in the desired format
@@ -219,10 +225,25 @@ def write_reactions(fileName, reaction_list):
         fileName (str): path to output file
         reaction_list (list): List of reaction objects for network
     """
+    reaction_columns = [
+        "Reactant 1",
+        "Reactant 2",
+        "Reactant 3",
+        "Product 1",
+        "Product 2",
+        "Product 3",
+        "Product 4",
+        "Alpha",
+        "Beta",
+        "Gamma",
+        "T_min",
+        "T_max",
+    ]
     with open(fileName, "w") as f:
         writer = csv.writer(
             f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL, lineterminator="\n"
         )
+        writer.writerow(reaction_columns)
         for reaction in reaction_list:
             writer.writerow(
                 reaction.reactants
@@ -385,10 +406,10 @@ def build_ode_string(species_list, reaction_list, three_phase):
         ode_string += "!Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
 
         ode_string += f"IF (YDOT({surface_index+1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
-        
+
         for n, species in enumerate(species_list):
             if species.name[0] == "#":
-                bulk_partner=species_names.index(species.name.replace("#", "@"))
+                bulk_partner = species_names.index(species.name.replace("#", "@"))
                 if not species_list[bulk_partner].is_refractory:
                     ode_string += f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({bulk_partner+1})/safeBulk\n"
             if species.name[0] == "@":
@@ -495,11 +516,11 @@ def write_evap_lists(network_file, species_list):
             binding_energyList.append(species.binding_energy)
             enthalpyList.append(species.enthalpy)
             if species.is_refractory:
-                refractoryList.append(i+1)
-                
-    #dummy index that will be caught by UCLCHEM
-    if len(refractoryList)==0:
-        refractoryList=[-999]
+                refractoryList.append(i + 1)
+
+    # dummy index that will be caught by UCLCHEM
+    if len(refractoryList) == 0:
+        refractoryList = [-999]
 
     network_file.write(array_to_string("surfaceList", surfacelist, type="int"))
     if len(bulkList) > 0:
@@ -514,6 +535,7 @@ def write_evap_lists(network_file, species_list):
     )
     network_file.write(array_to_string("formationEnthalpy", enthalpyList, type="float"))
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
+
 
 def truncate_line(input_string, lineLength=72):
     """Take a string and adds line endings at regular intervals
@@ -546,7 +568,7 @@ def truncate_line(input_string, lineLength=72):
     return result
 
 
-def write_network_file(file_name,network):
+def write_network_file(file_name, network):
     """Write the Fortran code file that contains all network information for UCLCHEM.
     This includes lists of reactants, products, binding energies, formationEnthalpies
     and so on.
@@ -574,9 +596,8 @@ def write_network_file(file_name,network):
         masses.append(float(species.mass))
         atoms.append(species.n_atoms)
 
-
     speciesIndices = ""
-    for name,species_index in network.species_indices.items():
+    for name, species_index in network.species_indices.items():
         speciesIndices += "{0}={1},".format(name, species_index)
     if len(speciesIndices) > 72:
         speciesIndices = truncate_line(speciesIndices)
@@ -646,7 +667,7 @@ def write_network_file(file_name,network):
     openFile.write(array_to_string("\talpha", alpha, type="float", parameter=False))
     openFile.write(array_to_string("\tbeta", beta, type="float", parameter=False))
     openFile.write(array_to_string("\tgama", gama, type="float", parameter=False))
-    #openFile.write(array_to_string("\tduplicates", duplicates, type="int", parameter=True))
+    # openFile.write(array_to_string("\tduplicates", duplicates, type="int", parameter=True))
     openFile.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
     openFile.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
 

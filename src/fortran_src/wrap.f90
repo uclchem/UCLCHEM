@@ -4,6 +4,7 @@ MODULE uclchemwrap
     USE physicscore
     USE chemistry
     USE io
+    USE constants
     IMPLICIT NONE
 CONTAINS
     SUBROUTINE cloud(dictionary, outSpeciesIn,abundance_out,successFlag)
@@ -202,6 +203,7 @@ CONTAINS
         !Read input parameters from the dictionary
         CALL dictionary_parser(dictionary, outSpeciesIn,successFlag)
         IF (successFlag .lt. 0) THEN
+            successFlag=PARAMETER_READ_ERROR
             WRITE(*,*) 'Error reading parameter dictionary'
             RETURN
         END IF
@@ -218,6 +220,7 @@ CONTAINS
         CALL modelInitializePhysics(successFlag)
 
         IF (successFlag .lt. 0) then
+            successFlag=PHYSICS_INIT_ERROR
             WRITE(*,*) 'Error initializing physics'
             RETURN
         END IF
@@ -305,7 +308,19 @@ CONTAINS
                     !that dictionary should be index:value pairs for the alpha array    
                     posStart=scan(dictionary,'{')
                     posEnd=scan(dictionary,'}')
-                    CALL alpha_parser(dictionary(posStart+1:posEnd))
+                    CALL coefficientParser(dictionary(posStart+1:posEnd),alpha)
+                CASE('beta')
+                    !To provide alphas, set keyword alpha in inputdictionary with a dictionary value
+                    !that dictionary should be index:value pairs for the alpha array    
+                    posStart=scan(dictionary,'{')
+                    posEnd=scan(dictionary,'}')
+                    CALL coefficientParser(dictionary(posStart+1:posEnd),beta)
+                CASE('gamma')
+                    !To provide alphas, set keyword alpha in inputdictionary with a dictionary value
+                    !that dictionary should be index:value pairs for the alpha array    
+                    posStart=scan(dictionary,'{')
+                    posEnd=scan(dictionary,'}')
+                    CALL coefficientParser(dictionary(posStart+1:posEnd),gama)
                 CASE('initialtemp')
                     READ(inputValue,*,iostat=successFlag) initialTemp
                 CASE('initialdens')
@@ -479,42 +494,43 @@ CONTAINS
             IF (successFlag .ne. 0) THEN
                 WRITE(*,*) "Error reading ",inputParameter
                 write(*,*) "This is usually due to wrong type."
-                successFlag=-1
+                successFlag=PARAMETER_READ_ERROR
                 RETURN
             END IF 
         END DO
 
     END SUBROUTINE dictionary_parser
 
-    SUBROUTINE alpha_parser(alpha_string)
+    SUBROUTINE coefficientParser(coeffDictString,coeffArray)
+        CHARACTER(LEN=*) :: coeffDictString
+        REAL(dp), INTENT(INOUT) :: coeffArray(*)
         INTEGER :: inputIndx,posStart,posEnd
         CHARACTER(LEN=100) :: inputValue
-        CHARACTER(LEN=*) :: alpha_string
         LOGICAL :: continue_flag
         
         continue_flag=.True.
         DO WHILE (continue_flag)
             !substring containing integer key
             posStart=1
-            posEnd=SCAN(alpha_string,':')
+            posEnd=SCAN(coeffDictString,':')
             !read it into index integer
-            READ(alpha_string(posStart:posEnd-1),*) inputindx
+            READ(coeffDictString(posStart:posEnd-1),*) inputindx
 
             !substring including alpha value for the index.
             posStart=posEnd+1
-            posEnd=SCAN(alpha_string,',')
+            posEnd=SCAN(coeffDictString,',')
             !last value will have a } instead of , so grab index and tell loop to finish
             IF (posEnd .eq. 0) THEN
-                posEnd=SCAN(alpha_string,"}")
+                posEnd=SCAN(coeffDictString,"}")
                 continue_flag=.False.
             END IF
 
             !read that substring
-            inputValue=alpha_string(posStart:posEnd-1)
-            READ(inputValue,*) alpha(inputIndx)
+            inputValue=coeffDictString(posStart:posEnd-1)
+            READ(inputValue,*) coeffArray(inputIndx)
             !update string to remove this entry
-            alpha_string=alpha_string(posEnd+1:)
+            coeffDictString=coeffDictString(posEnd+1:)
         END DO
-    END SUBROUTINE alpha_parser
+    END SUBROUTINE coefficientParser
 
 END MODULE uclchemwrap

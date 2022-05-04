@@ -1,10 +1,10 @@
-initialTemp 10.0
-initialDens 1.00d5
-finalTime 1.00d6
-tempindx 3
-switch 0
-collapse 0
-fr 0.0
-phase 2
-abundLoadFile "examples/test-output/startcollapse.dat"
-outputFile "examples/test-output/phase2-full.dat"
+{"initialTemp":10.0,
+"initialDens":1.00d5,
+"finalTime":1.00d6,
+"tempindx":3,
+"switch":0,
+"collapse":0,
+"fr":0.0,
+"phase":2,
+"abundLoadFile":"examples/test-output/startcollapse.dat",
+"outputFile":"examples/test-output/phase2-full.dat"}

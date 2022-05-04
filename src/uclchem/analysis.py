@@ -112,12 +112,12 @@ def analysis(species_name,result_file,output_file):
     """
     result_df = read_output_file(result_file)
     species = np.loadtxt(
-        os.path.join(_ROOT,"species.csv"), usecols=[0], dtype=str, skiprows=0, unpack=True, delimiter=",", comments="%"
+        os.path.join(_ROOT,"species.csv"), usecols=[0], dtype=str, skiprows=1, unpack=True, delimiter=",", comments="%"
     )
     reactions = np.loadtxt(
         os.path.join(_ROOT,"reactions.csv"),
         dtype=str,
-        skiprows=0,
+        skiprows=1,
         delimiter=",",
         usecols=[0, 1, 2, 3, 4, 5, 6],
         comments="%",

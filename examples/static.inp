@@ -1,12 +1,12 @@
-initialTemp 10.0
-initialDens 1.00d4
-finalDens 1.00d4
-finalTime 5.00d6
-switch 0
-collapse 0
-phase 1
-outSpecies 4 OCS CO CS CH3OH
-writeStep 1
-abundSaveFile "examples/test-output/startstatic.dat"
-outputFile "examples/test-output/static-full.dat"
-columnFile "examples/test-output/static-column.dat"
+{"initialTemp":10.0,
+"initialDens":1.00d4,
+"finalDens":1.00d4,
+"finalTime":5.00d6,
+"switch":0,
+"collapse":0,
+"phase":1,
+"outSpecies":4":OCS":CO":CS":CH3OH,
+"writeStep":1,
+"abundSaveFile":"examples/test-output/startstatic.dat",
+"outputFile":"examples/test-output/static-full.dat",
+"columnFile":"examples/test-output/static-column.dat"}

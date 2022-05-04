@@ -199,7 +199,7 @@ CONTAINS
             density(dstep)=abund(NEQ,dstep)
             loopCounter=loopCounter+1
         END DO
-        IF (loopCounter .eq. maxLoops) successFlag=-1
+        IF (loopCounter .eq. maxLoops) successFlag=INT_TOO_MANY_FAILS_ERROR
 
         !Since targetTime can be altered, eventually leading to "successful" integration we want to
         !check if integrator ever just reaches the planned target time. If it doesn't for many attempts,
@@ -210,7 +210,8 @@ CONTAINS
         ELSE
             failedIntegrationCounter=failedIntegrationCounter+1
         END IF
-        IF (failedIntegrationCounter .gt. maxConsecutiveFailures) successFlag=-1
+        IF (failedIntegrationCounter .gt. maxConsecutiveFailures)&
+            &successFlag=INT_TOO_MANY_FAILS_ERROR
     END SUBROUTINE updateChemistry
 
     SUBROUTINE integrateODESystem(successFlag)
@@ -246,7 +247,7 @@ CONTAINS
                 write(*,*) "DVODE found invalid inputs"
                 write(*,*) "abstol:"
                 write(*,*) abstol
-                successFlag=-1
+                successFlag=INT_UNRECOVERABLE_ERROR
                 RETURN
             CASE(-4)
                 !Successful as far as currentTime but many errors.

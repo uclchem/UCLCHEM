@@ -1,25 +1,10 @@
-# version 3.0
+# Utils
+Added new python subpackage to do some simple tasks users may regularly need
 
-## Python First
-We now assume users will use the python version of UCLCHEM. It's possible but difficult to make the original binary. 
+# Models
+All models now return a list output intead of tuples. This is to make it easier to deal with failed models since user can check result[0]>0 or len(result)>0 to see if model succeeded whereas previous result would not be a list on a fail and would on a success which is awkward.
 
-However, you can now use pip to install UCLCHEM. You need to `pip install .` from the top directory of the UCLCHEM repository each time you run MakeRates in order to update your network but after that, you can `import uclchem` in your python scripts from anywhere.
+# Docs
+- Minor typo fixes and updated all notebooks to make sure they match latest version of the code.
 
-UCLCHEM no longer uses STOP statements and instead return errors on failures. This should let python users handle them gracefully.
-
-## Docs overhaul
-- New tutorials with more in depth examples of how to use the python module.
-- Utility scripts for contributors to autogenerate docs.
-
-## Physics improvements
-- Optionally attenuate cosmic rays with column density following [Padovani et al. 2018](https://arxiv.org/abs/1803.09348)
-- Users no longer need to recompile to run different physical models
-
-## Solver
-- Subroutines that solve ODEs have improved handling of failed integrations and should no longer be able to endlessly stall
-
-
-## Bug fixes
-- Fixed bug that meant non-thermal desorption methods ignored maximum boundary constraints
-- Makerates handles multiple freeze out routes again
-- Makerates throws an error if the user tries to specify desorb or freeze reactions that get dropped
+- Not technically a doc but updated examples to new code

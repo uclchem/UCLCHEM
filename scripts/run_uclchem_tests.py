@@ -2,6 +2,8 @@ import uclchem
 import numpy as np
 import matplotlib.pyplot as plt
 from time import perf_counter
+import os
+
 
 print("ODE element conservation")
 print("------------------------")
@@ -16,6 +18,9 @@ assert result["H"]<1e-15, f"H not conserved with total rate of change {result['H
 print("Elements are conserved.")
 print("------------------------")
 
+
+if not os.path.exists("examples/test-output/"):
+    os.makedirs("examples/test-output/")
 
 print("Running test models...")
 #set a parameter dictionary for static model

@@ -1,3 +1,4 @@
+Reactant 1,Reactant 2,Reactant 3,Product 1,Product 2,Product 3,Product 4,Alpha,Beta,Gamma,T_min,T_max
 @C,BULKSWAP,NAN,#C,NAN,NAN,NAN,1.0,0.0,0.0,0.0,10000.0
 @C2,BULKSWAP,NAN,#C2,NAN,NAN,NAN,1.0,0.0,0.0,0.0,10000.0
 @C2H,BULKSWAP,NAN,#C2H,NAN,NAN,NAN,1.0,0.0,0.0,0.0,10000.0
