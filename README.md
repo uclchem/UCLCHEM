@@ -8,16 +8,19 @@
 
 Full documentation is available from the website: [uclchem.github.io](https://uclchem.github.io)
 
-UCLCHEM is intended to be used as a python module. Once you've run MakeRates, you can simply run
-```
+UCLCHEM is intended to be used as a python module but must be installed from source rather than an online index such as Pypi. This is because users are expected to modify the source code, at least by creating their own networks. To obtain and install the code simply run:
+
+```bash
+git clone https://github.com/uclchem/UCLCHEM.git
 pip install .
 ```
-in the main directory to install Uclchem. You can then `import uclchem` in any python script.
+
+You can then `import uclchem` in any python script. You need to `pip install .` whenever you change your network. 
 
 To see the contents of this python module, check our [Python API docs](https://uclchem.github.io/docs/pythonapi). To see some example notebooks, check the tutorial section of the docs or the notebooks in `Tutorials/`.
 
 
-If you want to build an executable from the Fortran source, head to `src/fortran_src` and run `make`.
+If you want to build an executable from the Fortran source, head to `src/fortran_src` and run `make`. You can then run the executable with `./uclchem CLOUD input_file.inp` where there examples of input files in the `examples/` directory. We do not suggest users use the code this way unt
 
 ### Prerequisites
 To build UCLCHEM, you'll need gfortran and Cmake.
@@ -33,8 +36,15 @@ See change.log! We've made a large number of improvements for v3.0. The code has
 *************************************************************
 ## Contributing
 *************************************************************
-This is an open source science code for the community and we are happy to accept pull requests. We are also happy to work with you to produce a physics module if none of the ones available in the repository suit the modelling work you wish to do. If you are contributing ,please try to work with our current code style. We have the following general guidelines:
+This is an open source science code for the community and are open to pull requests. We are also happy to work with you to produce a physics module if none of the models available in the python module `uclchem.model` suit the modelling work you wish to do. If you are contributing, please try to work with our current code style. We have the following general guidelines:
 
+### Python
+- Use [Black](https://github.com/psf/black) to format your code.
+- snake_case variables and functions with self-explanatory names
+- Docstrings for all functions, they're used to produce the online docs!
+
+### Fortran
 - camelCase variable and subroutines names that are self-explanatory where possible 
-
 - CAPITALIZED fortran built in functions to make code structure apparent.
+- Modularization, related subroutines should be added as modules. Small tweaks should be inserted into relevant module
+

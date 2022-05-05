@@ -1,3 +1,2 @@
-# Bug fix
-- Quick fix of bug introduced by adding headers to the reactions and species files.
-- Made MIN_ABUND parameter instead of having random numbers in chemistry.f90
+# README Update
+Quick update to make sure it matches new version
