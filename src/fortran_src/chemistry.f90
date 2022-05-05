@@ -46,7 +46,7 @@ IMPLICIT NONE
     
 
     REAL(dp) :: turbVel=1.0
-    REAL(dp) :: MIN_ABUND = 0.0d-50 !Minimum abundance allowed, not sure if d-50 helps a zero...
+    REAL(dp) :: MIN_ABUND = 1.0d-30 !Minimum abundance allowed
 CONTAINS
     SUBROUTINE initializeChemistry(readAbunds)
         LOGICAL, INTENT(IN) :: readAbunds
