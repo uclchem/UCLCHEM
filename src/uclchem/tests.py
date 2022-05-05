@@ -1,8 +1,5 @@
 from .analysis import total_element_abundance
-try:
-    from .uclchemwrap import uclchemwrap as wrap
-except:
-    pass
+from .uclchemwrap import uclchemwrap as wrap
 from pandas import DataFrame
 from numpy import zeros
 

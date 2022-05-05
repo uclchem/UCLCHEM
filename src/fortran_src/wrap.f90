@@ -282,6 +282,11 @@ CONTAINS
         close(11)
         close(7)
 
+        !always deallocate these so that if user didn't specify them,
+        ! they don't remain from previous run
+        IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
+        IF (ALLOCATED(outSpecies)) DEALLOCATE(outSpecies)
+
         !All reads use IOSTAT which will change successFlag from 0 if an error occurs
         !so set zero and check for non-zero each loop.
         successFlag=0
@@ -392,8 +397,6 @@ CONTAINS
                 CASE('ff')
                     READ(inputValue,*,iostat=successFlag) ff
                 CASE('outspecies')
-                    IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
-                    IF (ALLOCATED(outSpecies)) DEALLOCATE(outSpecies)
                     READ(inputValue,*,iostat=successFlag) nout
                     ALLOCATE(outIndx(nout))
                     ALLOCATE(outSpecies(nout))

@@ -46,6 +46,7 @@ IMPLICIT NONE
     
 
     REAL(dp) :: turbVel=1.0
+    REAL(dp) :: MIN_ABUND = 0.0d-50 !Minimum abundance allowed, not sure if d-50 helps a zero...
 CONTAINS
     SUBROUTINE initializeChemistry(readAbunds)
         LOGICAL, INTENT(IN) :: readAbunds
@@ -58,7 +59,7 @@ CONTAINS
         !Set abundances to initial elemental if not reading them in.
         IF (.NOT. readAbunds) THEN
             !ensure abund is initially zero
-            abund= 0.
+            abund= MIN_ABUND
 
             !Start by filling all metallicity scaling elements
             !neutral atoms  
@@ -195,7 +196,7 @@ CONTAINS
 
 
             !1.d-30 stops numbers getting too small for fortran.
-            WHERE(abund<1.0d-50) abund=0.0d-50
+            WHERE(abund<MIN_ABUND) abund=MIN_ABUND
             density(dstep)=abund(NEQ,dstep)
             loopCounter=loopCounter+1
         END DO
@@ -257,7 +258,6 @@ CONTAINS
             CASE(-5)
                 timeInYears=currentTime/SECONDS_PER_YEAR
                 write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
-                !WHERE(abund<1.0d-30) abund=1.0d-30
                 targetTime=currentTime+(targetTime-currentTime)*0.1
             CASE default
                 MXSTEP=10000    

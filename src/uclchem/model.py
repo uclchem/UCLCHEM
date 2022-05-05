@@ -1,11 +1,4 @@
-try:
-    from .uclchemwrap import uclchemwrap as wrap
-except ImportError as error:
-    print("No UCLCHEM module, run ``make python'' in src/")
-    print("Utility and plotting functions available but UCLCHEM based functions will fail")
-    print("Import error was:")
-    print(error)
-    print("\n\n")
+from .uclchemwrap import uclchemwrap as wrap
 
 
 def _reform_inputs(param_dict, out_species):
