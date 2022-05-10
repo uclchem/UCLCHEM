@@ -100,16 +100,19 @@ CONTAINS
 
 
 
-    SUBROUTINE get_rates(dictionary,abundancesIn,rateIndxs,speciesRates,successFlag)
+    SUBROUTINE get_rates(dictionary,abundancesIn,speciesIndx,rateIndxs,&
+        &speciesRates,successFlag,transfer,swap,bulk_layers)
         USE cloud_mod
         CHARACTER(LEN=*) :: dictionary
-        DOUBLE PRECISION :: abundancesIn(500),speciesRates(500)
-        INTEGER :: rateIndxs(500),successFlag
-        !f2py intent(in) dictionary,abundancesIn
-        !f2py intent(out) :: speciesRates,successFlag
+        DOUBLE PRECISION :: abundancesIn(500),speciesRates(500),transfer,swap,bulk_layers
+        DOUBLE PRECISION :: ydot(NEQ)
+        INTEGER :: rateIndxs(500),speciesIndx,successFlag
+        INTEGER :: speci,bulk_version,surface_version
+        !f2py intent(in) dictionary,abundancesIn,speciesIndx
+        !f2py intent(out) :: speciesRates,successFlag,transfer,swap,bulk_layers
 
         INCLUDE 'defaultparameters.f90'
-        
+
         CALL dictionary_parser(dictionary, "",successFlag)
         IF (successFlag .lt. 0) THEN
             WRITE(*,*) 'Error reading parameter dictionary'
@@ -124,36 +127,38 @@ CONTAINS
         END IF
 
         CALL initializeChemistry(readAbunds)
+        
         dstep=1
-        abund(:nspec,1)=abundancesIn(:nspec)
+        successFlag=1
+        abund(:nspec,dstep)=abundancesIn(:nspec)
+        abund(neq,dstep)=initialDens
+        currentTime=0.0
+        timeInYears=0.0
 
-        !allow option for dens to have been changed elsewhere.
-        IF (.not. freefall) abund(nspec+1,dstep)=density(dstep)
+        targetTime=1.0d-7
+        CALL updateChemistry(successFlag)
+        CALL F(NEQ,currentTime,abund(:,dstep),ydot)
 
-        !First sum the total column density over all points further towards edge of cloud
-        IF (dstep.gt.1) THEN
-            h2ColToCell=(sum(abund(nh2,:dstep-1)*density(:dstep-1)))*(cloudSize/real(points))
-            coColToCell=(sum(abund(nco,:dstep-1)*density(:dstep-1)))*(cloudSize/real(points))
-            cColToCell=(sum(abund(nc,:dstep-1)*density(:dstep-1)))*(cloudSize/real(points))
-        ELSE
-            h2ColToCell=0.0
-            coColToCell=0.0
-            cColToCell=0.0
-        ENDIF
-        !then add half the column density of the current point to get average in this "cell"
-        h2Col=h2ColToCell+0.5*abund(nh2,dstep)*density(dstep)*(cloudSize/real(points))
-        coCol=coColToCell+0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
-        cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
-
-        !recalculate coefficients for ice processes
-        safeMantle=MAX(1d-30,abund(nSurface,dstep))
-        safeBulk=MAX(1d-30,abund(nBulk,dstep))
-        bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
-        surfaceCoverage=bulkGainFromMantleBuildUp()
-
-
-        CALL calculateReactionRates
         speciesRates=rate(rateIndxs)
+
+        IF ((specname(speciesIndx)(1:1) .eq. "#") .or.&
+        & (specname(speciesIndx)(1:1) .eq. "@")) THEN
+            DO speci=1,nSpec
+                IF (specname(speci) .eq. "@"//specname(speciesIndx)(2:)) bulk_version=speci
+                IF (specname(speci) .eq. "#"//specname(speciesIndx)(2:)) surface_version=speci
+            END DO
+            IF (YDOT(nsurface) .lt. 0) THEN
+                transfer=YDOT(nsurface)*surfaceCoverage*abund(bulk_version,1)/safeBulk
+            ELSE
+                transfer=YDOT(nsurface)*surfaceCoverage*abund(surface_version,1)
+            END If
+            swap=totalSwap
+            bulk_layers=bulkLayersReciprocal
+        ELSE
+            swap=0.0
+            transfer=0.0
+            bulk_layers=0.0
+        END IF
 
     END SUBROUTINE get_rates
 
@@ -183,7 +188,7 @@ CONTAINS
         currentTime=0.0
         timeInYears=0.0
 
-        CALL updateTargetTime
+        targetTime=1.0d-7
         CALL updateChemistry(successFlag)
         CALL F(NEQ,currentTime,abund(:,dstep),ratesOut(:NEQ))
     END SUBROUTINE get_odes

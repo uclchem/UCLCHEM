@@ -3,10 +3,11 @@ try:
 except:
     pass
 import numpy as np
-from pandas import Series,read_csv
+from pandas import Series, read_csv
 from seaborn import color_palette
 import matplotlib.pyplot as plt
 import os
+
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 
 elementList = [
@@ -32,6 +33,7 @@ elementList = [
     "BULK",
 ]
 
+
 def read_output_file(output_file):
     """Read the output of a UCLCHEM run created with the outputFile parameter into a pandas DataFrame
 
@@ -40,7 +42,7 @@ def read_output_file(output_file):
 
     Returns:
         pandas.DataFrame: A dataframe containing the abundances and physical parameters of the model at every time step.
-    """    
+    """
     f = open(output_file)
     f.readline()
     bits = f.readline().split()
@@ -49,6 +51,7 @@ def read_output_file(output_file):
     data["radfield"] = radfield
     data.columns = data.columns.str.strip()
     return data
+
 
 def create_abundance_plot(df, species, figsize=(16, 9), plot_file=None):
     """Create a plot of the abundance of a species through time.
@@ -61,7 +64,7 @@ def create_abundance_plot(df, species, figsize=(16, 9), plot_file=None):
 
     Returns:
         fig,ax: matplotlib figure and axis objects
-    """    
+    """
     fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
 
     ax = plot_species(ax, df, species)
@@ -86,8 +89,8 @@ def plot_species(ax, df, species):
 
     Returns:
         pyplot.axis: Modified input axis is returned
-    """    
-    
+    """
+
     color_palette(n_colors=len(species))
     for specIndx, specName in enumerate(species):
         if specName[0] == "$":
@@ -101,7 +104,8 @@ def plot_species(ax, df, species):
         ax.legend()
     return ax
 
-def analysis(species_name,result_file,output_file):
+
+def analysis(species_name, result_file, output_file, rate_threshold=0.99):
     """A function which loops over every time step in an output file and finds the rate of change of a species at that time due to each of the reactions it is involved in.
     From this, the most important reactions are identified and printed to file. This can be used to understand the chemical reason behind a species' behaviour.
 
@@ -109,13 +113,21 @@ def analysis(species_name,result_file,output_file):
         species_name (str): Name of species to be analysed
         result_file (str): The path to the file containing the UCLCHEM output
         output_file (str): The path to the file where the analysis output will be written
+        rate_threshold (float,optional): Analysis output will contain the only the most efficient reactions that are responsible for rate_threshold of the total production and destruction rate. Defaults to 0.99.
     """
     result_df = read_output_file(result_file)
     species = np.loadtxt(
-        os.path.join(_ROOT,"species.csv"), usecols=[0], dtype=str, skiprows=1, unpack=True, delimiter=",", comments="%"
+        os.path.join(_ROOT, "species.csv"),
+        usecols=[0],
+        dtype=str,
+        skiprows=1,
+        unpack=True,
+        delimiter=",",
+        comments="%",
     )
+    species = list(species)
     reactions = np.loadtxt(
-        os.path.join(_ROOT,"reactions.csv"),
+        os.path.join(_ROOT, "reactions.csv"),
         dtype=str,
         skiprows=1,
         delimiter=",",
@@ -125,28 +137,63 @@ def analysis(species_name,result_file,output_file):
 
     fortran_reac_indxs = [i + 1 for i, reaction in enumerate(reactions) if species_name in reaction]
     reac_indxs = [i for i, reaction in enumerate(reactions) if species_name in reaction]
-
+    species_index = species.index(species_name) + 1  # fortran index of species
     old_key_reactions = []
-    with open(output_file, "w") as f:
-        for i, row in result_df.iterrows():
+    old_total_destruct = 0.0
+    old_total_form = 0.0
+    formatted_reacs = _format_reactions(reactions[reac_indxs])
 
+    with open(output_file, "w") as f:
+        f.write("All Reactions\n************************\n")
+        for reaction in formatted_reacs:
+            f.write(reaction + "\n")
+        for i, row in result_df.iterrows():
+            # recreate the parameter dictionary needed to get accurate rates
             param_dict = _param_dict_from_output(row)
-            rates = _get_species_rates(param_dict, row[species], fortran_reac_indxs)
+            # get the rate of all reactions from UCLCHEM along with a few other necessary values
+            rates, transfer, swap, bulk_layers = _get_species_rates(
+                param_dict, row[species], species_index, fortran_reac_indxs
+            )
+            # convert reaction rates to total rates of change, this needs manually updating when you add new reaction types!
             change_reacs, changes = _get_rates_of_change(
-                rates, reactions[reac_indxs], species, species_name, row
+                rates, reactions[reac_indxs], species, species_name, row, swap, bulk_layers
             )
 
             change_reacs = _format_reactions(change_reacs)
 
+            # This whole block adds the transfer of material from surface to bulk as surface grows (or vice versa)
+            # it's not a reaction in the network so won't get picked up any other way. We manually add it.
+            if species_name[0] == "@":
+                if transfer >= 0:
+                    change_reacs.append(f"#{species_name[1:]} + SURFACE_TRANSFER -> {species_name}")
+                else:
+                    change_reacs.append(f"{species_name} + SURFACE_TRANSFER -> #{species_name[1:]}")
+                changes = np.append(changes, transfer)
+            elif species_name[0] == "#":
+                if transfer >= 0:
+                    change_reacs.append(f"@{species_name[1:]} + SURFACE_TRANSFER -> {species_name}")
+                else:
+                    change_reacs.append(f"{species_name} + SURFACE_TRANSFER -> @{species_name[1:]}")
+                changes = np.append(changes, transfer)
+
+            # Then we remove the reactions that are not important enough to be printed by finding
+            # which of the top reactions we need to reach rate_threshold*total_rate
             (
                 total_formation,
                 total_destruct,
                 key_reactions,
                 key_changes,
-            ) = _remove_slow_reactions(changes, change_reacs)
+            ) = _remove_slow_reactions(changes, change_reacs, rate_threshold=rate_threshold)
 
-            if old_key_reactions != key_reactions:
+            #only update if list of reactions change or rates change by factor of 10
+            if (
+                (old_key_reactions != key_reactions)
+                or (np.abs(np.log10(np.abs(old_total_destruct))-np.log10(np.abs(total_destruct)))>1)
+                or (np.abs(np.log10(old_total_form)-np.log10(total_formation))>1)
+            ):
                 old_key_reactions = key_reactions[:]
+                old_total_form=total_formation
+                old_total_destruct=total_destruct
                 _write_analysis(
                     f, row["Time"], total_formation, total_destruct, key_reactions, key_changes
                 )
@@ -170,7 +217,7 @@ def _param_dict_from_output(output_line):
     return param_dict
 
 
-def _get_species_rates(param_dict, input_abundances, reac_indxs):
+def _get_species_rates(param_dict, input_abundances, species_index, reac_indxs):
     """
     Get the rate of up to 500 reactions from UCLCHEM for a given set of parameters and abundances.
     Intended for use within the analysis script.
@@ -184,22 +231,29 @@ def _get_species_rates(param_dict, input_abundances, reac_indxs):
     input_abund[: len(input_abundances)] = input_abundances
     rate_indxs = np.zeros(500)
     rate_indxs[: len(reac_indxs)] = reac_indxs
-    rates, success_flag = wrap.get_rates(param_dict, input_abund, rate_indxs)
+    rates, success_flag, transfer, swap, bulk_layers = wrap.get_rates(
+        param_dict, input_abund, species_index, rate_indxs
+    )
     if success_flag < 0:
         raise RuntimeError("UCLCHEM failed to return rates for these parameters")
-    return rates[: len(reac_indxs)]
+    return rates[: len(reac_indxs)], transfer, swap, bulk_layers
 
 
-def _get_rates_of_change(rates, reactions, speciesList, species, row):
-    """
-    Calculate the terms in the rate of equation of a particular species using rates calculated using
+def _get_rates_of_change(rates, reactions, speciesList, species, row, swap, bulk_layers):
+    """Calculate the terms in the rate of equation of a particular species using rates calculated using
     get_species_rates() and a row from the full output of UCLCHEM. See `analysis.py` for intended use.
 
-    :param rates: (ndarray) Array of all reaction rates for a species, as obtained from `get_species_rates`
-    :param reactions: (ndarray) Array containing reactions as lists of reactants and products
-    :param speciesList: (ndarray) Array of all species names in network
-    :param species: (str) Name of species for which rates of change are calculated
-    :param row: (panda series) The UCLCHEM output row from the time step at which you want the rate of change
+    Args:
+        rates (float, array): Rates of all reactions the species is involved in
+        reactions (array): List of all reactions the species is involved in as a list of strings
+        speciesList (array): List of species names from network
+        species (string): name of species to be analyseds
+        row (pd.Series): row from output dataframe
+        swap (float): Total swap rate for individual swapping between bulk and surface
+        bulk_layers (float): Number of layers in the bulk for individual swapping calc.
+
+    Returns:
+        _type_: _description_
     """
     changes = []
     reactionList = []
@@ -217,8 +271,14 @@ def _get_rates_of_change(rates, reactions, speciesList, species, row):
             elif reactant in ["DESOH2", "FREEZE", "LH", "LHDES"]:
                 reactant_count += 1
 
-            if reactant in ["DEUVCR", "DESCR", "DESOH2"]:
+            if reactant in ["DEUVCR", "DESCR", "DESOH2", "SURFSWAP"]:
                 change = change / np.max([1.0e-30, row["SURFACE"]])
+
+            if reactant == "SURFSWAP":
+                change = change * swap
+            if reactant == "BULKSWAP":
+                change = change * bulk_layers
+
             if (not three_phase) and (reactant in ["THERM"]):
                 change = change * row[reaction[0]] / np.max([1.0e-30, row["SURFACE"]])
 
@@ -365,7 +425,7 @@ def check_element_conservation(df, element_list=["H", "N", "C", "O"]):
 
     Returns:
         dict: Dictionary containing the change in the total abundance of each element as a fraction of initial value
-    """    
+    """
     result = {}
     for element in element_list:
         discrep = total_element_abundance(element, df).values

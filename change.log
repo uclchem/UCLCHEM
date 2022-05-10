@@ -1,2 +1,2 @@
-# Minimum abundance
-Minimum abundance of 0 caused some problems, back to 1d-30.
+# Tests
+ODE test updated to use the package's  species.csv

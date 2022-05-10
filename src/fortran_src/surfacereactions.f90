@@ -138,7 +138,9 @@ CONTAINS
     ELSE
         DO i=idx1,idx2
             DO j=lbound(iceList,1),ubound(iceList,1)
-                IF (iceList(j) .eq. re1(i)) rate(i)=vdiff(j)*DEXP(-bindingEnergy(j)/gasTemperature)
+                IF (iceList(j) .eq. re1(i)) THEN
+                  rate(i)=vdiff(j)*DEXP(-bindingEnergy(j)/gasTemperature)
+                END IF
             END DO
         END DO
     END IF

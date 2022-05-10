@@ -7,10 +7,7 @@ import os
 
 print("ODE element conservation")
 print("------------------------")
-
-species=np.loadtxt("src/species.csv",usecols=[0],delimiter=",",
-                   dtype=str,comments=None,skiprows=1)
-result=uclchem.tests.test_ode_conservation(species)
+result=uclchem.tests.test_ode_conservation()
 print("Total rates of change:")
 for key,value in result.items():
     print(f"{key} {value:.2e}")

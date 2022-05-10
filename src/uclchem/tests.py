@@ -1,15 +1,31 @@
 from .analysis import total_element_abundance
 from .uclchemwrap import uclchemwrap as wrap
 from pandas import DataFrame
-from numpy import zeros
+from numpy import zeros,loadtxt
+import os
+_ROOT = os.path.dirname(os.path.abspath(__file__))
 
-def test_ode_conservation(species_list, element_list=["H", "N", "C", "O"]):
-    """Test function which checks whether the ODEs conserve elementsry_
+def test_ode_conservation(element_list=["H", "N", "C", "O"]):
+    """Test whether the ODEs conserve elements. Useful to run each time you change network.
+    Integrator errors may still cause elements not to be conserved but they cannot be conserved
+    if the ODEs are not correct.
 
-    :param species_list (list): list of each species in the network
+    Args:
+        element_list (list, optional): A list of elements for which to check the conservation. Defaults to ["H", "N", "C", "O"].
 
-    :return: (dict) Dictionary containing total rate of change of important elements
+    Returns:
+        dict: A dictionary of the elements in element list with values representing the total rate of change of each element.
     """
+    species_list = loadtxt(
+        os.path.join(_ROOT, "species.csv"),
+        usecols=[0],
+        dtype=str,
+        skiprows=1,
+        unpack=True,
+        delimiter=",",
+        comments="%",
+    )
+    species_list = list(species_list)
     param_dict = {
         "endatfinaldensity": False,
         "freefall": True,
