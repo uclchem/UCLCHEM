@@ -1,5 +1,6 @@
-!Python wrapper for uclchem, compiled with "make python"
-!Subroutines become functions in the Python module
+!The interface between main fortran code and python.
+!wrap.f90 subroutines are all accessible through the python wrap.
+! Core algorithm is found in solveAbundances subroutine below, all others call it
 MODULE uclchemwrap
     USE physicscore
     USE chemistry
@@ -8,6 +9,16 @@ MODULE uclchemwrap
     IMPLICIT NONE
 CONTAINS
     SUBROUTINE cloud(dictionary, outSpeciesIn,abundance_out,successFlag)
+        !Subroutine to call a cloud model, used to interface with python
+        ! Loads cloud specific subroutines and send to solveAbundances
+        !
+        !Args:
+        ! dictionary - python parameter dictionary
+        ! outSpeciesIn - list of species to output as a space separated string
+        !Returns:
+        ! abundance_out - list of abundances of species in outSpeciesIn
+        ! successFlag - integer flag indicating success or fail
+
         USE cloud_mod
 
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
@@ -25,6 +36,19 @@ CONTAINS
     END SUBROUTINE cloud
 
     SUBROUTINE collapse(collapseIn,collapseFileIn,writeOut,dictionary, outSpeciesIn,abundance_out,successFlag)
+        !Subroutine to call a collapse model, used to interface with python
+        ! Loads model specific subroutines and send to solveAbundances
+        !
+        !Args:
+        ! collapseIn - integer indicating which collapse mode to run
+        ! collapseFileIn - string indicating file to write collapse data to
+        ! writeOut - flag indicating whether to write to collapseFileIn
+        ! dictionary - python parameter dictionary
+        ! outSpeciesIn - list of species to output as a space separated string
+        !Returns:
+        ! abundance_out - list of abundances of species in outSpeciesIn
+        ! successFlag - integer flag indicating success or fail
+
         USE collapse_mod
 
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn,collapseFileIn
@@ -45,6 +69,18 @@ CONTAINS
     END SUBROUTINE collapse
 
     SUBROUTINE hot_core(temp_indx,max_temp,dictionary, outSpeciesIn,abundance_out,successFlag)
+        !Subroutine to call a hot core model, used to interface with python
+        ! Loads model specific subroutines and send to solveAbundances
+        !
+        !Args:
+        ! temp_indx - integer indicating which mass hot core to run - see hotcore.90
+        ! max_temp - maximum temperature before we stop increasing.
+        ! dictionary - python parameter dictionary
+        ! outSpeciesIn - list of species to output as a space separated string
+        !Returns:
+        ! abundance_out - list of abundances of species in outSpeciesIn
+        ! successFlag - integer flag indicating success or fail
+
         USE hotcore
 
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
@@ -62,6 +98,21 @@ CONTAINS
 
     SUBROUTINE cshock(shock_vel,timestep_factor,minimum_temperature,dictionary, outSpeciesIn,&
         &abundance_out,dissipation_time,successFlag)
+        !Subroutine to call a C-shock model, used to interface with python
+        ! Loads model specific subroutines and send to solveAbundances
+        !
+        !Args:
+        ! shock_vel - double precision shock velocity in km/s
+        ! timestep_factor - Multiply dissipation time of the shock by this double precision factor to
+        !                  get the timestep for the simulation up until dissipation time is reached
+        ! minimum_temperature - float indicating minimum temperature before we stop post shock cooling.
+        !                        set to zero to disable.
+        ! dictionary - python parameter dictionary
+        ! outSpeciesIn - list of species to output as a space separated string
+        !Returns:
+        ! abundance_out - list of abundances of species in outSpeciesIn
+        ! dissipation_time - float, dissipation time in years
+        ! successFlag - integer flag indicating success or fail
         USE cshock_mod
 
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
@@ -82,6 +133,16 @@ CONTAINS
     END SUBROUTINE cshock
 
     SUBROUTINE jshock(shock_vel,dictionary, outSpeciesIn,abundance_out,successFlag)
+        !Subroutine to call a J-shock model, used to interface with python
+        ! Loads model specific subroutines and send to solveAbundances
+        !
+        !Args:
+        ! shock_vel - double precision shock velocity in km/s
+        ! dictionary - python parameter dictionary
+        ! outSpeciesIn - list of species to output as a space separated string
+        !Returns:
+        ! abundance_out - list of abundances of species in outSpeciesIn
+        ! successFlag - integer flag indicating success or fail
         USE jshock_mod
 
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
@@ -102,6 +163,9 @@ CONTAINS
 
     SUBROUTINE get_rates(dictionary,abundancesIn,speciesIndx,rateIndxs,&
         &speciesRates,successFlag,transfer,swap,bulk_layers)
+        !Given a species of interest, some parameters and abundances, this subroutine
+        !return the rate of all reactions that include that species plus some extra variables
+        !to allow for the calculation of the rate of bulk/surface ice transfer.
         USE cloud_mod
         CHARACTER(LEN=*) :: dictionary
         DOUBLE PRECISION :: abundancesIn(500),speciesRates(500),transfer,swap,bulk_layers
@@ -113,7 +177,7 @@ CONTAINS
 
         INCLUDE 'defaultparameters.f90'
 
-        CALL dictionary_parser(dictionary, "",successFlag)
+        CALL dictionaryParser(dictionary, "",successFlag)
         IF (successFlag .lt. 0) THEN
             WRITE(*,*) 'Error reading parameter dictionary'
             RETURN
@@ -163,6 +227,8 @@ CONTAINS
     END SUBROUTINE get_rates
 
     SUBROUTINE get_odes(dictionary,abundancesIn,ratesOut)
+        !Obtain the ODE values for some given parameters and abundances.
+        !Essentially runs one time step of solveAbundances  then calls the ODE subroutine (F)
         USE cloud_mod
         CHARACTER(LEN=*) :: dictionary
         DOUBLE PRECISION :: abundancesIn(500),ratesOut(500)
@@ -170,7 +236,7 @@ CONTAINS
         !f2py intent(in) dictionary,abundancesIn
         !f2py intent(out) :: ratesOut
         INCLUDE 'defaultparameters.f90'
-        CALL dictionary_parser(dictionary, "",successFlag)
+        CALL dictionaryParser(dictionary, "",successFlag)
 
         call coreInitializePhysics(successFlag)
         CALL initializePhysics(successFlag)
@@ -196,17 +262,26 @@ CONTAINS
     SUBROUTINE solveAbundances(dictionary,outSpeciesIn,successFlag,&
         &modelInitializePhysics,modelUpdatePhysics,updateTargetTime,&
         &sublimation)
+        ! Core UCLCHEM routine. Solves the chemical equations for a given set of parameters through time 
+        ! for a specified physical model.
+        ! Change behaviour of physics by sending different subroutine arguments - hence the need for model subroutines above
+        ! dictionary - the parameter dictionary string reprenting a python dictionary
+        ! outSpeciesIn - the species to output
+        ! successFlag - Integer to indicate whether code completed successfully
+        ! modelInitializePhysics - subroutine to initialize physics from a physics module
+        ! modelUpdatePhysics - subroutine to update physics from a physics module
+        ! updateTargetTime - subroutine to update the target time from a physics module
+        ! sublimation - subroutine allowing physics module to directly modify abundances once per time step.
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         EXTERNAL modelInitializePhysics,updateTargetTime,modelUpdatePhysics,sublimation
 
         INTEGER, INTENT(OUT) :: successFlag
         successFlag=1
 
-        ! Set the boolean to True if you want to be able to return a python array
-        ! call the dictionary_parser function in order to read the dictionary of parameters
+        ! Set variables to default values
         INCLUDE 'defaultparameters.f90'
         !Read input parameters from the dictionary
-        CALL dictionary_parser(dictionary, outSpeciesIn,successFlag)
+        CALL dictionaryParser(dictionary, outSpeciesIn,successFlag)
         IF (successFlag .lt. 0) THEN
             successFlag=PARAMETER_READ_ERROR
             WRITE(*,*) 'Error reading parameter dictionary'
@@ -219,8 +294,8 @@ CONTAINS
 
         CALL fileSetup
 
-        !Initialize the physics, first do core physics
-        !Then do model specific. This allows it to overwrite core
+        !Initialize core physics first then model specific
+        !This allows model to overrule changes made by core
         call coreInitializePhysics(successFlag)
         CALL modelInitializePhysics(successFlag)
 
@@ -275,7 +350,12 @@ CONTAINS
         CALL closeFiles
     END SUBROUTINE solveAbundances
 
-    SUBROUTINE dictionary_parser(dictionary, outSpeciesIn,successFlag)
+    SUBROUTINE dictionaryParser(dictionary, outSpeciesIn,successFlag)
+        !Reads the input parameters from a string containing a python dictionary/JSON format
+        !set of parameter names and values.
+        !dictionary - lowercase keys matching the names of the parameters in the select case below
+        !OutSpeciesIn - string containing the species to output
+        !successFlag - integer flag to indicate success
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         INTEGER, INTENT(OUT) :: successFlag
         INTEGER, ALLOCATABLE, DIMENSION(:) :: locations
@@ -507,9 +587,13 @@ CONTAINS
             END IF 
         END DO
 
-    END SUBROUTINE dictionary_parser
+    END SUBROUTINE dictionaryParser
 
     SUBROUTINE coefficientParser(coeffDictString,coeffArray)
+        !Similar to dictionaryParser, it reads a python dictionary
+        !however, it's intended to read pairs of reaction indices and coefficient values
+        !for the alpha, beta, and gama arrays.
+        ! No return value, just modifies the coeffArray
         CHARACTER(LEN=*) :: coeffDictString
         REAL(dp), INTENT(INOUT) :: coeffArray(*)
         INTEGER :: inputIndx,posStart,posEnd

@@ -1,2 +1,5 @@
-# Tests
-ODE test updated to use the package's  species.csv
+# Wrap
+Better comments, including docstrings for the subroutines
+
+# Freeze out
+Removed fixed temperature for turning off freeze out, instead relying on the comparisons between desorption rates and freeze out that are done when desorbs are calculated. If desorb becomes too efficient for freeze out to increase surface abundance, freeze out is turned off.

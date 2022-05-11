@@ -65,7 +65,7 @@ SUBROUTINE calculateReactionRates
         IF ((desorb) .and. (crdesorb) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
             !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
             !as iron nuclei are main cause of CR heating.
-            !GRAIN_SURFACEAREA_PER_H is the total surfaace area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
+            !GRAIN_SURFACEAREA_PER_H is the total surface area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
             !phi is efficieny of this reaction, number of molecules removed per event.
             rate(idx1:idx2) = 4.0*pi*zeta*1.64d-4*(GRAIN_SURFACEAREA_PER_H)*phi
 
@@ -134,6 +134,7 @@ SUBROUTINE calculateReactionRates
             rate(idx1:idx2)=0.0
         END IF
     END IF
+
 
     !Reactions on surface can be treated considering diffusion of reactants
     !as in Langmuir-Hinshelwood mechanism
@@ -241,7 +242,7 @@ FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
     
     !additional factor for ions (beta=0 for neutrals)
     freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
-    IF (freezeFactor .eq. 0.0 .or. gasTemp(dstep) .gt. 50) then
+    IF ((freezeFactor .eq. 0.0) .or. (gasTemp(dstep) .gt. MAX_GRAIN_TEMP)) then
         freezeRates=0.0
     ELSE
         freezeRates=freezeRates*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H

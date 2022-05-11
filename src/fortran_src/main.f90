@@ -1,9 +1,9 @@
-! 2015 UCLCHEM by Serena Viti update by Jon Holdship
-! Rewritten for FORTRAN 95 and modulised
+! 2022 UCLCHEM v3.0
+! The canonical main file where the core code is written is actually found in wrap.f90
+! main.f90 just provides a simple fortran interface to the core code so that a binary can
+! be built and used directly from the command line.
 PROGRAM uclchem
-!Everything to do with physics should be stored in a physics module based on physics-template.f90
-!UCLCHEM uses density and temperature in chemical calculations so these MUST be provided, everything else is
-!user dependent
+
 USE uclchemwrap, only: cloud,hot_core,cshock
 USE io, only: inputId
 USE constants, only: dp
