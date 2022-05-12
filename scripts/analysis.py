@@ -11,4 +11,4 @@ result_file = "examples/test-output/phase1-full.dat"
 output="analysis.dat"
 
 ################################################
-uclchem.analysis.analysis(species_name, result_file, output,rate_threshold=10.0)
+uclchem.analysis.analysis(species_name, result_file, output)
