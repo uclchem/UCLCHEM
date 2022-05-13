@@ -12,6 +12,8 @@ UCLCHEM is intended to be used as a python module but must be installed from sou
 
 ```bash
 git clone https://github.com/uclchem/UCLCHEM.git
+cd UCLCHEM
+pip install -r requirements.txt
 pip install .
 ```
 
