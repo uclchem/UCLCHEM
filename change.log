@@ -1,2 +1,2 @@
-# Tidy up
-Some development things to turn off, a few files that should be deleted.
+# Docs utils script
+Remove the __Version__ entry from the python reference since it's totally useless to the user.

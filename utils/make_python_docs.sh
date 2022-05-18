@@ -10,6 +10,8 @@ echo "title: Python Reference" >> $api_file
 echo "---" >> $api_file
 pydoc-markdown -p uclchem --render-toc >> $api_file
 sed -i 's|# Table of Contents|# Python API|g' $api_file
+#get rid of version entries in the markdown
+sed -i 's|^.*\_version.*||g' $api_file
 
 #create default parameters file
 python utils/generate_param_docs.py src/fortran_src/defaultparameters.f90 Tutorials/start-parameters.md

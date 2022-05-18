@@ -54,11 +54,11 @@ def read_output_file(output_file):
 
 
 def create_abundance_plot(df, species, figsize=(16, 9), plot_file=None):
-    """Create a plot of the abundance of a species through time.
+    """Create a plot of the abundance of a list of species through time.
 
     Args:
         df (pd.DataFrame): Pandas dataframe containing the UCLCHEM output, see `read_output_file`
-        species (list): list of strings containing species names
+        species (list): list of strings containing species names. Using a $ instead of # or @ will plot the sum of surface and bulk abundances.
         figsize (tuple, optional): Size of figure, width by height in inches. Defaults to (16, 9).
         plot_file (str, optional): Path to file where figure will be saved. If None, figure is not saved. Defaults to None.
 
@@ -80,12 +80,12 @@ def create_abundance_plot(df, species, figsize=(16, 9), plot_file=None):
 
 
 def plot_species(ax, df, species):
-    """Plot the abundance of species through time directly onto an axis
+    """Plot the abundance of a list of species through time directly onto an axis.
 
     Args:
         ax (pyplot.axis): An axis object to plot on
         df (pd.DataFrame): A dataframe created by `read_output_file`
-        species (str): A list of species names to be plotted. If species name starts with "$", plots the sum of surface and bulk abundances
+        species (str): A list of species names to be plotted. If species name starts with "$" instead of # or @, plots the sum of surface and bulk abundances
 
     Returns:
         pyplot.axis: Modified input axis is returned
@@ -201,8 +201,8 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
 
 def _param_dict_from_output(output_line):
     """
-    Generate a parameter dictionary with enough variables to correctly estimate the rates of
-    reactions.
+    Generate a parameter dictionary from a UCLCHEM timestep that contains enough of
+    the physical variables to recreate the parameter dictionary used to run UCLCHEM.
 
     :param output_line: (pandas series) any row from the relevant UCLCHEM output
     """
@@ -334,7 +334,7 @@ def _remove_slow_reactions(changes, change_reacs, rate_threshold=0.99):
 def _write_analysis(
     output_file, time, total_production, total_destruction, key_reactions, key_changes
 ):
-    """Prints key reactions
+    """Prints key reactions to file
 
     Args:
         time (float): Simulation time at which analysis is performed
