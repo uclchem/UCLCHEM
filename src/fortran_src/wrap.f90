@@ -548,13 +548,14 @@ CONTAINS
                     outputFile = trim(outFile)
                     fullOutput=.True.
                     open(outputId,file=outputFile,status='unknown',iostat=successFlag)
-                    IF (successFlag .lt. 0) THEN
+                    IF (successFlag .ne. 0) THEN
                         write(*,*) "An error occured when opening the output file!"//&
                                         & NEW_LINE('A')//&
                                     &" The failed file was ",outputFile&
                                     &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
                                     &//NEW_LINE('A')//"************************"
                         successFlag=-1
+                        RETURN
                     END IF
                 CASE('columnfile')
                     IF (trim(outSpeciesIn) .NE. '' ) THEN

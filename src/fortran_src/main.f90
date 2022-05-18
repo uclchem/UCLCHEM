@@ -30,9 +30,11 @@ IMPLICIT NONE
     CASE("CLOUD")
         CALL cloud(paramDict,"",abundances,success)
     CASE("HOTCORE")
+        !call hot_core (temp_indx,maxTemp,....)
         CALL hot_core(3,3.0d2,paramDict,"",abundances,success)
     CASE("CSHOCK")
-        CALL cshock(20.0d0,paramDict,"",abundances,dissipationResult,success)
+        !call cshock(vs,timestep_factor,minimum_temp,....)
+        CALL cshock(20.0d0,0.01d0,0.0d0,paramDict,"",abundances,dissipationResult,success)
     CASE default
         write(*,*) 'Model type not recognised'
         WRITE(*,*) 'Supported models are: CLOUD, CSHOCK, HOTCORE'

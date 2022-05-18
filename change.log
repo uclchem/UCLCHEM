@@ -1,2 +1,5 @@
-# Docs utils script
-Remove the __Version__ entry from the python reference since it's totally useless to the user.
+# Wrap error
+Fixed a bug which caused users to get a generic bad parameter error message when they supplied an outputFile with a non-existant directory in the path.  User now gets the specific missing directory error.
+
+# Main
+Updated call to cshock subroutine in main so that it will compile!
