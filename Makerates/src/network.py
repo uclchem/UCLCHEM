@@ -135,6 +135,10 @@ class Network:
         for desorb in desorbs:
             species_index = species_names.index(desorb.reactants[0])
             self.species_list[species_index].desorb_products = desorb.products
+            #also modify bulk species desorb_products
+            if "@"+desorb.reactants[0][1:] in species_names:
+                bulk_index = species_names.index("@"+desorb.reactants[0][1:])
+                self.species_list[bulk_index].desorb_products = desorb.products
 
         #for all listed freeze out reactions, add them to correct species
         freezes = [x for x in self.reaction_list if x.reac_type == "FREEZE"]

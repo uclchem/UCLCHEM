@@ -3,6 +3,7 @@ reaction_types = [
     "CRP",
     "CRPHOT",
     "FREEZE",
+    "DESORB",
     "THERM",
     "DESOH2",
     "DESCR",
@@ -119,12 +120,7 @@ class Reaction:
         # every body after the first requires a factor of density
         for body in range(self.body_count):
             ode_bit = ode_bit + f"*D"
-
-        if "BULKSWAP" in self.reactants:
-            if "@CO" in self.reactants:
-                print(str(self))
-                print(i)
-        
+       
         # then bring in factors of abundances
         for species in self.reactants:
             if species in species_names:
