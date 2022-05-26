@@ -19,6 +19,7 @@ class Network:
 
         self.species_list = species
         self.remove_duplicate_species()
+        self.excited_species =  self.check_for_excited_species()
         self.three_phase = three_phase
         if self.three_phase:
             self.add_bulk_species()
@@ -111,6 +112,8 @@ class Network:
         self.add_freeze_reactions()
         self.add_desorb_reactions()
         self.add_chemdes_reactions()
+        if self.excited_species:
+            reaction_list = self.add_excited_surface_reactions()
         if self.three_phase:
             reaction_list = self.add_bulk_reactions()
         self.check_and_filter_species()
@@ -222,6 +225,70 @@ class Network:
 
         self.reaction_list = self.reaction_list + new_reacs
 
+    def check_for_excited_species(self):
+        check = False
+        for species in self.species_list:
+            if '*' in species.name:
+                check=True 
+        return check
+
+    def add_excited_surface_reactions(self):
+        """ All excited species will relax to the ground state if they do not react
+        the vibrational frequency of the species is used as a pseudo approximation of the rate coefficient
+        We assume all grain reactions have an excited variant. For example:
+        #A, #B LH #C will have the variants:
+        #A*, #B EXSOLID #C  and  #A, #B* EXSOLID #C
+        If only one of the reactants in the base reaction has an excited counterpart then
+        only one excited version of that reaction is created.
+        """
+        excited_species = [x for x in self.species_list if "*" in x.name]
+        lh_reactions = [x for x in self.reaction_list if "LH" in x.reactants]
+        lh_reactions = lh_reactions + [x for x in self.reaction_list if "LHDES" in x.reactants]
+
+        new_reactions = []
+        
+        # add relaxation of excited species
+        for spec in excited_species:
+            relax_reac = [spec.name,'EXRELAX','NAN',spec.name[:-1],'NAN','NAN','NAN',1.0,0.0,0.0,0.0,10000]
+            new_react = Reaction(relax_reac)
+            new_reactions.append(new_react)
+
+
+        for reaction in lh_reactions:
+            # if both #A and #B have excited counterparts
+            if reaction.reactants[0]+'*' in [excited_species[i].name for i in range(len(excited_species))] and reaction.reactants[1]+'*' in [excited_species[i].name for i in range(len(excited_species))]:
+                new_reac_A_list = [reaction.reactants[0] + '*', reaction.reactants[1], 'EXSOLID']
+                new_reac_A_list = new_reac_A_list + reaction.products + [reaction.alpha, 0, 0, 0, 10000]
+                new_reac_B_list = [reaction.reactants[0],reaction.reactants[1]+'*','EXSOLID']
+                new_reac_B_list = new_reac_B_list + reaction.products + [reaction.alpha, 0, 0, 0, 10000]
+
+                new_reac_A = Reaction(new_reac_A_list)
+                new_reac_B = Reaction(new_reac_B_list)
+                
+                # stops duplicate reactions e.g. #H* + #H and #H + #H*
+                if new_reac_A != new_reac_B:
+                    new_reactions.append(new_reac_A)
+                    new_reactions.append(new_reac_B)
+                else:
+                    new_reactions.append(new_reac_A)
+                    
+            # if only #A has an excited counterpart
+            elif reaction.reactants[0]+'*' in [excited_species[i].name for i in range(len(excited_species))]:
+                new_reac_A_list = [reaction.reactants[0] + '*', reaction.reactants[1], 'EXSOLID']
+                new_reac_A_list = new_reac_A_list + reaction.products + [reaction.alpha, 0, 0, 0, 10000]
+                new_reac_A = Reaction(new_reac_A_list)
+                new_reactions.append(new_reac_A)
+
+            # if only #B has an excited counterpart
+            elif reaction.reactants[1]+'*' in [excited_species[i].name for i in range(len(excited_species))]:
+                new_reac_B_list = [reaction.reactants[0], reaction.reactants[1]+'*', 'EXSOLID']
+                new_reac_B_list = new_reac_B_list + reaction.products + [reaction.alpha, 0, 0, 0, 10000]
+                new_reac_B = Reaction(new_reac_B_list)
+                new_reactions.append(new_reac_B)
+    
+        self.reaction_list = self.reaction_list + new_reactions
+
+
     def add_bulk_reactions(self):
         """We assume any reaction that happens on the surface of grains can also happen
         in the bulk (just more slowly due to binding energy). The user therefore only
@@ -229,8 +296,13 @@ class Network:
         """
         lh_reactions = [x for x in self.reaction_list if "LH" in x.reactants]
         lh_reactions = lh_reactions + [x for x in self.reaction_list if "LHDES" in x.reactants]
+        ex_reactions = [x for x in self.reaction_list if "CRS" in x.reactants]
+        ex_reactions = ex_reactions + [x for x in self.reaction_list if "EXSOLID" in x.reactants]
+        ex_reactions = ex_reactions + [x for x in self.reaction_list if "EXRELAX" in x.reactants]
+        surface_reactions = lh_reactions + ex_reactions
+
         new_reactions = []
-        for reaction in lh_reactions:
+        for reaction in surface_reactions:
             new_reac = deepcopy(reaction)
             new_reac.convert_to_bulk()
             new_reactions.append(new_reac)

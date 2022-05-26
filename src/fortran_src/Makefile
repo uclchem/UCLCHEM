@@ -9,7 +9,7 @@ FC =gfortran
 f2pyFC=gnu95 #this must match FC (ifort=intelem, gfortran=gnu95)
 
 #Unforgiving debugging flags
-#FFLAGS =-g -fbacktrace -Wall -fcheck=all
+#FFLAGS =-g -fbacktrace -Wall -fcheck=all -fPIC
 #Fast optimizing flags
 FFLAGS = -O3 -fPIC -ffree-line-length-0
 

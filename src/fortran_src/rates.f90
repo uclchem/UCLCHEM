@@ -1,5 +1,6 @@
 SUBROUTINE calculateReactionRates
     INTEGER:: idx1,idx2,k
+    REAL(dp) :: vA,vB
     !Calculate all reaction rates
     !Assuming the user has temperature changes or uses the desorption features of phase 1,
     !these need to be recalculated every time step.
@@ -103,6 +104,51 @@ SUBROUTINE calculateReactionRates
         &<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
     END IF
 
+    !CRS reactions represent the production of excited species from cosmic ray bombardment
+    !rate equations from Shingledecker et. al. 2018
+    idx1=crsReacs(1)
+    idx2=crsReacs(2)
+    IF (idx1 .ne. idx2) THEN
+        !8.6 is the Spitzer-Tomasko cosmic ray flux in cm^-2 s^-1
+        !1.3 converts to: ionisation rate/10^-17
+        rate(idx1:idx2)=alpha(idx1:idx2)*(beta(idx1:idx2)*(gama(idx1:idx2)/100)*(8.6*zeta*1.3))
+    END IF
+
+    !EXRELAX, relaxation reactions for each excited species
+    idx1=exrelaxReacs(1)
+    idx2=exrelaxReacs(2)
+    IF (idx1 .ne. idx2) THEN
+        DO j=idx1,idx2
+            DO i=lbound(iceList,1),ubound(iceList,1)
+                IF (iceList(i) .eq. re1(j)) THEN
+                    vA=vdiff(i)
+                END IF
+            END DO 
+            rate(j)=vA
+        END DO 
+    END IF  
+
+    !EXSOLID reactions represent the reactions of excited species on the grain
+    idx1=exsolidReacs(1)
+    idx2=exsolidReacs(2)
+
+    IF (idx1 .ne. idx2) THEN
+        !reaction rates calculated outside of UCLCHEM as per Shingledecker et al. 2018 and included in grain network
+        !alpha are branching ratios and beta is reaction rate
+        DO j=idx1,idx2
+            DO i=lbound(iceList,1),ubound(iceList,1)
+                IF (iceList(i) .eq. re1(j)) THEN
+                    vA = vdiff(i)
+                END IF
+                IF (iceList(i) .eq. re2(j)) THEN
+                    vB = vdiff(i)
+                END IF
+            END DO 
+            rate(j) = (vB + vA)/(SURFACE_SITE_DENSITY*1.8d-8)
+            rate(j) = alpha(j) * rate(j)
+        END DO 
+    END IF  
+
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !Continuous Thermal Desorption. Reactions can be generated through a flag in Makerates
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -193,7 +239,7 @@ SUBROUTINE calculateReactionRates
     END IF
 
     CALL bulkSurfaceExchangeReactions(rate,gasTemp(dstep))
-
+    
     !Basic gas phase reactions 
     !They only change if temperature has so we can save time with an if statement
     idx1=twobodyReacs(1)
@@ -219,6 +265,7 @@ SUBROUTINE calculateReactionRates
 
     !turn off reactions outside their temperature range
     WHERE(gasTemp(dstep) .lt. minTemps) rate=0.0
+
     WHERE(gasTemp(dstep) .gt. maxTemps) rate=0.0
 
     !Overwrite reactions for which we have a more detailed photoreaction treatment
