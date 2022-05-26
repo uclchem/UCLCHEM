@@ -1,8 +1,4 @@
-#wrap (Jon)
--fixed a bug where analysis failed because ydot array in get_rates had wrong shape
-
-# excited species
--added the ability to produce cosmic ray induced excited species
--added automatically generated excited surface reactions based on LH grain reactions 
--added automatic relaxation of excited species 
--these are off by default, to use see the user_settings.ymal file in Makerates
+# Shocks
+- Single sputtering module for J and C type Shocks
+- Sputtering ignores refractory species for v<19 km/species
+- Jshock tidy up, removing many unused variables
