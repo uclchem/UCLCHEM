@@ -11,7 +11,7 @@ from numpy import any as np_any
 
 
 class Network:
-    def __init__(self, species, reactions, three_phase=False, excited_species=False):
+    def __init__(self, species, reactions, three_phase=False):
         """
         Simple class to store network information such as indices of important reactions.
         Also logical home of functions meant to make network sensible.
@@ -19,7 +19,7 @@ class Network:
 
         self.species_list = species
         self.remove_duplicate_species()
-        self.excited_species = excited_species
+        self.excited_species =  self.check_for_excited_species()
         self.three_phase = three_phase
         if self.three_phase:
             self.add_bulk_species()
@@ -224,6 +224,13 @@ class Network:
                 new_reacs.append(new_reac)
 
         self.reaction_list = self.reaction_list + new_reacs
+
+    def check_for_excited_species(self):
+        check = False
+        for species in self.species_list:
+            if '*' in species.name:
+                check=True 
+        return check
 
     def add_excited_surface_reactions(self):
         """ All excited species will relax to the ground state if they do not react

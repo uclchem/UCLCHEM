@@ -14,10 +14,6 @@ custom_reaction_type : UCL
 #whether to automatically expand to three phase network
 three_phase : True
 
-#whether to include the production and reactions of cosmic ray induced excited species
-#if set to True, change the species_file and custom_reaction_file to the excited_species versions
-excited_species : False
-
 # Directory in which to store output. If not included we automatically move
 # the files to the uclchem src folder. This is the default behaviour.
 # output_directory : "outputFiles"
