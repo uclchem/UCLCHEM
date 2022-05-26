@@ -245,7 +245,8 @@ FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
     IF ((freezeFactor .eq. 0.0) .or. (gasTemp(dstep) .gt. MAX_GRAIN_TEMP)) then
         freezeRates=0.0
     ELSE
-        freezeRates=freezeRates*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
+        freezeRates=freezeRates*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL&
+        &*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
     END IF
 
 END FUNCTION freezeOutRate

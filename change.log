@@ -1,3 +1,4 @@
-# MakeRates
-- Removed last pseudohydrogenation reactions from default network
-- Fixed a bug that prevented custom desorb reaction products
+# Shocks
+- Single sputtering module for J and C type Shocks
+- Sputtering ignores refractory species for v<19 km/species
+- Jshock tidy up, removing many unused variables

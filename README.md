@@ -25,7 +25,7 @@ To see the contents of this python module, check our [Python API docs](https://u
 If you want to build an executable from the Fortran source, head to `src/fortran_src` and run `make`. You can then run the executable with `./uclchem CLOUD input_file.inp` where there examples of input files in the `examples/` directory. We do not suggest users use the code this way unt
 
 ### Prerequisites
-To build UCLCHEM, you'll need gfortran and Cmake.
+To build UCLCHEM, you'll need gfortran, make and python 3.6+.
 
 To run the python module, you'll need the python modules listed in `requirements.txt`
 

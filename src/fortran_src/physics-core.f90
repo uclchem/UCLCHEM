@@ -56,7 +56,7 @@ CONTAINS
         gasTemp=initialTemp
         dustTemp=gasTemp
         density=initialDens
-
+        currentTimeOld=0.0
         IF (.not. ((ionModel .eq. 'L') .or. (ionModel .eq. 'H'))) THEN
             successFlag=-1
             write(*,*) "Error: ionModel must be either L or H"

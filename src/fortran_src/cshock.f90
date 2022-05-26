@@ -6,6 +6,7 @@ MODULE cshock_mod
     USE network
     USE physicscore
     USE constants
+    USE sputtering
     IMPLICIT NONE
 
     REAL(dp) :: tstart,maxTemp,timestepFactor=0.01
@@ -17,10 +18,10 @@ MODULE cshock_mod
     REAL(dp) :: minimumPostshockTemp=0.0
     !variables for the collisional and radiative heating of grains
     REAL(dp) :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
-    REAL(dp) :: coshinv1,coshinv2,zmax,a1,eta,eps,epso,sConst
+    REAL(dp) :: coshinv1,coshinv2,zmax,a1,eps
 
-    integer :: inrad,projectiles(6)
-    REAL(dp), PARAMETER ::nu0=3.0d15,K_BOLTZ_CGS=1.38d-16,bm0=1.e-6,bt=6.
+    INTEGER :: inrad
+    REAL(dp), PARAMETER ::nu0=3.0d15,bm0=1.e-6,bt=6.
     REAL(dp), PARAMETER :: GAS_DUST_NUMBER_RATIO=1.14d-12,CODES_TEMP=130.0
     REAL(dp), PARAMETER :: grainRadius=1.0d-5
 
@@ -31,7 +32,6 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
-        INTEGER :: iLoop
         REAL(dp) :: v01,g1,g2
 
         successFlag=1
@@ -130,15 +130,7 @@ CONTAINS
             v0=sqrt(g1/g2)
         END DO
 
-        !Need to find the location of the sputtering projectiles in species arrays
-        DO iLoop=1,SIZE(specName)
-            IF (specName(iLoop).eq."H2") projectiles(1)=iLoop
-            IF (specName(iLoop).eq."HE") projectiles(2)=iLoop
-            IF (specName(iLoop).eq."C") projectiles(3)=iLoop
-            IF (specName(iLoop).eq."O") projectiles(4)=iLoop
-            IF (specName(iLoop).eq."SI") projectiles(5)=iLoop
-            IF (specName(iLoop).eq."CO") projectiles(6)=iLoop
-        END DO
+        CALL sputteringSetup
     END SUBROUTINE initializePhysics
 
 
@@ -173,7 +165,7 @@ CONTAINS
         !use the equations for the collisional and radiative heating of grains of
         !Draine, Roberge & Dalgarno (1983) and Hollenbach, Takahashi & Tielens (1991).
         tn(dstep)=initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
-        ti(dstep)=tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ_CGS))
+        ti(dstep)=tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ))
 
         !grain collisional heating
         tgc(dstep)=15*(dens6/grainRadius5)**(0.1818)*(tn(dstep)/1000.0)**(0.2727)
@@ -200,7 +192,7 @@ CONTAINS
         IF (timeInYears .gt. 0.0) THEN
             tn(dstep)=initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
             gasTemp(dstep)=tn(dstep)
-            ti(dstep)=tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ_CGS))
+            ti(dstep)=tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ))
 
         ENDIF
         postShock = (timeInYears .gt. dissipationTime)
@@ -215,7 +207,10 @@ CONTAINS
     SUBROUTINE sublimation(abund)
         REAL(dp) :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
-        IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0)) CALL sputtering(abund)
+        REAL(dp) :: timeDelta
+        timeDelta=(currentTime-currentTimeOld)
+        IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0))&
+        & CALL sputterIces(abund(:,dstep),driftVel,gasTemp(dstep),density(dstep),timeDelta)
         WHERE(abund.lt. 1.0d-50) abund=0.0d-50
     END SUBROUTINE sublimation
 
@@ -252,162 +247,5 @@ CONTAINS
         vn0=vn
     END SUBROUTINE shst
 
-    ! Sputter ices following Jimenez-Serra 2008 treatment
-    SUBROUTINE sputtering(abund)
-        REAL(dp) :: abund(nspec+1,points)
-        INTENT(INOUT) :: abund
-        REAL(dp) :: sputterRate,abundChangeFrac,totalMantle
-        INTEGER :: iSpec
-        !Constant relating mass and speed of projectile to energy
-        sConst=(driftVel*driftVel*km*km)/(2.0*gasTemp(dstep)*K_BOLTZ_CGS)
-        sConst=sqrt(sConst)
-
-        !loop over projectile species and get rates of change of mantle for each, summing them
-        sputterRate=0.0
-        DO iSpec=1,SIZE(projectiles) !!!! Make projectiles array in initialize
-            sputterRate=sputterRate+iceYieldRate(mass(projectiles(iSpec))*MH,density(dstep)*abund(projectiles(iSpec),dstep))
-        END DO
-
-        grainNumberDensity=density(dstep)*GAS_DUST_NUMBER_RATIO
-        !Total rate/cm3 (ie released particles /cm3/s) is sputterRate (per grain) multiplied by grain number density
-        sputterRate=sputterRate*grainNumberDensity
-
-        !integrate that forward from currentTimeOld to currentTime. to get total number of particles released
-        abundChangeFrac=sputterRate*(currentTime-currentTimeOld)!/density(dstep)
-        !I think that commented out dens is required for units. However, sputtering doesn't happen if it is uncommented
-        !and sputtering matches Jimenez-Serra et al. 2008 curves when it's commented out.
-
-
-        !if M particles are released and there are N particles on the grain total
-        !then a species with X particles on the grain will release M*(X/N)
-        !this is M/N and we'll multiply by X below
-        totalMantle=sum(abund(iceList,dstep))
-        abundChangeFrac=abundChangeFrac/totalMantle
-        if (abundChangeFrac .gt. 1.0d0) abundChangeFrac=1.0d0
-        if (abundChangeFrac .lt. 0.00d0) abundChangeFrac=0.0d0
-
-        !multiply M/N by x and add to gas phase
-        abund(gasIceList,dstep)=abund(gasIceList,dstep)+abundChangeFrac*abund(iceList,dstep)
-        abund(iceList,dstep)=abund(iceList,dstep)-abundChangeFrac*abund(iceList,dstep)
-    END SUBROUTINE
-
-    !Function calculates rate of change of ice mantle abundance of a species!
-    !due to the impact of molecules of a given mass. actual rate is         !
-    !proportional to projectile abundance                                   !
-    FUNCTION iceYieldRate(projectileMass,projectileDensity)
-        REAL(dp) :: iceYieldRate
-        REAL(dp) projectileMass,projectileDensity
-        REAL(dp) :: lowerLimit,upperLimit,s
-
-        REAL(dp), PARAMETER :: iceBindingEnergy=0.53*1.6d-12,targetMass=18.0*MH   
-        REAL(dp), PARAMETER :: iceYieldEfficiency=0.8 !
-
-        !eta is effectively reduced mass of the collision
-        eta=4.*iceYieldEfficiency*projectileMass*targetMass*((projectileMass+targetMass)**(-2.0))
-        epso=max(1.,4.*eta)
-        s=sConst*sqrt(projectileMass)
-
-
-        !Lower limit is xth in Jimenez-Serra et al. 2008
-        lowerLimit=sqrt(epso*iceBindingEnergy/(eta*K_BOLTZ_CGS*gasTemp(dstep)))
-
-        !Upper limit is just where the integrand goes to zero
-        upperLimit=iceYieldIntegralLimit(lowerLimit,projectileMass)
-
-        !calculate eq B.1 from Jimenez-Serra et al. 2008
-        IF ((upperlimit-lowerLimit) .gt. 1d-4) THEN
-            !first get integral from Eq B.1 including 1/s factor
-            iceYieldRate=trapezoidIntegrate(iceYieldIntegrand,lowerLimit,upperLimit,projectileMass)/s
-            !multiply through by constants
-            iceYieldRate=iceYieldRate*grainRadius*grainRadius*sqrt(8.0*K_BOLTZ_CGS*gasTemp(dstep)*pi/projectileMass)
-            !need projectile number density
-            iceYieldRate=iceYieldRate*projectileDensity
-        ELSE
-            iceYieldRate=0.0
-        ENDIF
-    END FUNCTION
-
-
-    !Function calculates integrand from Eq B.1 of Jimenez-Serra et al. 2008 !
-    !                                                                       !
-    !Inputs are mass of projectile and x. Returns value of integrand at x   !
-    !allowing trapezium rule to integrate from xth to infinity              !
-    FUNCTION iceYieldIntegrand(x,projectileMass)
-        REAL(dp) :: iceYieldIntegrand,x,projectileMass
-        REAL(dp) :: yield,s
-
-        REAL(dp), PARAMETER :: yieldConst=8.3d-4
-        REAL(dp), PARAMETER :: iceBindingEnergy=0.53*1.6d-12
-
-        !this is s from exp(x+s) in eq B.1, varies only with mass so constant precalculated in initialize
-        s=sConst*sqrt(projectileMass)
-
-        !epsilon is calculated from inmpact energy (Ep)
-        eps=(x**2)*K_BOLTZ_CGS*gasTemp(dstep)
-        !and some other factors
-        eps=eta*eps/iceBindingEnergy
-        !this yield is for ice averaged over all angles. There's a different one for cores (Appendix B Jimenez-Serra 2008)
-        !it's 2 times the normal incidence yield, but there's a factor of 0.5 in integrand so we drop both
-        yield=yieldConst*((eps-epso)**2)/(1.+((eps/30.)**(1.3333)))
-        iceYieldIntegrand=yield*(x**2)*(DEXP(-((x-s)**2))-DEXP(-((x+s)**2)))
-    END FUNCTION iceYieldIntegrand
-
-    !Function to calculate the upper limit beyond which there's no point   
-    !evaluating the ice yield integrand. Ie trapezoids from upper limit to 
-    !upperlimit+dx will have an area~0                                     
-    FUNCTION iceYieldIntegralLimit(xth,projectileMass)
-        REAL(dp) iceYieldIntegralLimit,xth,projectileMass
-        INTEGER :: i
-        i=1
-        !Take upperlimit to be half way between lowerLimit and 1000.
-        iceYieldIntegralLimit=xth+(1d3-xth)*(0.5**i)
-        !decrease upper limit for as long as f(upperlimit) is <1.0e-20 and 
-        !difference between lower and upper limit is not zero.
-        DO WHILE (iceYieldIntegrand(iceYieldIntegralLimit,projectileMass) .lt. 1d-200 .and.&
-            & (iceYieldIntegralLimit-xth) .gt. 1.0d-3)
-                i=i+1
-                iceYieldIntegralLimit=xth+(1d3-xth)*(0.5**i)
-        END DO
-    END FUNCTION iceYieldIntegralLimit
-
-
-   !Subroutine that calculates an integral using the trapezoidal method.
-    Function trapezoidIntegrate(func,lowerLimit,upperlimit,projectileMass)
-        REAL(dp) :: trapezoidIntegrate
-        INTEGER JMAX
-        REAL(dp) lowerLimit,upperlimit,func,tolerance,projectileMass
-        PARAMETER (tolerance=1.e-3, JMAX=25)
-        INTEGER j
-        REAL(dp) olds
-        external func
-        olds=-1.e30
-        DO j=1,JMAX
-            call trapzd(func,lowerLimit,upperlimit,trapezoidIntegrate,j,projectileMass)
-            if (abs(trapezoidIntegrate-olds).le.tolerance*abs(olds)) RETURN
-            olds=trapezoidIntegrate
-        END DO
-    END
-
-    SUBROUTINE trapzd(func,a,b,s,n,func_arg)
-        INTEGER n
-        REAL(dp) a,b,s,func,func_arg
-        INTEGER it,j
-        REAL(dp) del,sum,tnm,x
-        external func
-        IF(n.eq.1) THEN
-            s=0.5*(b-a)*(func(a,func_arg)+func(b,func_arg))
-        ELSE
-            it=2**(n-2)
-            tnm=it
-            del=(b-a)/tnm
-            x=a+0.5*del
-            sum=0.
-            DO j=1,it
-                sum=sum+func(x,func_arg)
-                x=x+del
-            END DO
-            s=0.5*(s+(b-a)*sum/tnm)
-        ENDIF
-        RETURN
-    END
+    
 END MODULE cshock_mod

@@ -6,6 +6,7 @@ MODULE jshock_mod
     USE physicscore
     USE network
     USE constants
+    USE sputtering
     IMPLICIT NONE
  
     
@@ -14,18 +15,9 @@ MODULE jshock_mod
     REAL(dp) :: tstart,maxTemp,vMin,mfp,tCool,tShock,d,dMax,maxDens
     REAL(dp) :: t_lambda, n_lambda
 
-    REAL(dp) :: z2,vs,v0,zn,vn,at,z3,tsat
-    REAL(dp) :: ucm,z1,driftVel,vi,tempi,vn0,zn0,vA,dlength
-    REAL(dp) :: grainRadius5,dens6,grainNumberDensity,dzv,start_vel
+    REAL(dp) :: z2,vs,v0,at
     REAL(dp), allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
-    !variables for the collisional and radiative heating of grains
-    REAL(dp) :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
-    REAL(dp) :: coshinv1,coshinv2,zmax,a1,eta,eps,epso,sConst
 
-    integer :: inrad,projectiles(6)
-    REAL(dp), PARAMETER ::nu0=3.0d15,K_BOLTZ_CGS=1.38d-16,bm0=1.e-6,bt=6.
-    REAL(dp), PARAMETER :: GAS_DUST_NUMBER_RATIO=1.14d-12,CODES_TEMP=130.0
-    REAL(dp), PARAMETER :: grainRadius=1.0d-5
     !*******************************************************************
 
 CONTAINS
@@ -35,7 +27,6 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
-        INTEGER :: iLoop
         successFlag=1
         !Reset variables for python wrap.
         coflag=0 !should reset sputtering
@@ -57,6 +48,7 @@ CONTAINS
 
         ! Determine the maximum temperature
         maxTemp = (5e3)*(vs/10)**2
+        currentTimeOld=0.0
 
 
         ! Determine minimum velocity
@@ -76,24 +68,9 @@ CONTAINS
 
         if (allocated(tn)) deallocate(tn,ti,tgc,tgr,tg)
         allocate(tn(points),ti(points),tgc(points),tgr(points),tg(points))
-        mun=2*mh
-        grainRadius5=grainRadius/4.e-5
-        dens6=density(dstep)/1.e6
+
         currentTimeOld=0.0
-
-        !Need to find the location of the sputtering projectiles in species arrays
-        DO iLoop=1,SIZE(specName)
-            IF (specName(iLoop).eq."H2") projectiles(1)=iLoop
-            IF (specName(iLoop).eq."HE") projectiles(2)=iLoop
-            IF (specName(iLoop).eq."C") projectiles(3)=iLoop
-            IF (specName(iLoop).eq."O") projectiles(4)=iLoop
-            IF (specName(iLoop).eq."SI") projectiles(5)=iLoop
-            IF (specName(iLoop).eq."CO") projectiles(6)=iLoop
-        END DO
-
-        !tsat proportional to 1/pre-shock density. Fit to tsats from Jimenez-Serra 2008.
-        tsat=(-15.38729*vs*vs*vs)+(2069.56962*vs*vs)-(90272.826991*vs)+1686858.54278
-        tsat=tsat/initialDens        
+        CALL sputteringSetup       
     END SUBROUTINE initializePhysics
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -172,21 +149,13 @@ CONTAINS
     ! In hot core that means following thermalEvaporation subroutine.                 !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE sublimation(abund)
-        REAL(dp) :: abund(nspec+1,points)
-        INTENT(INOUT) :: abund
-    
-        IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0)) CALL sputtering(abund)
-        END SUBROUTINE sublimation
+        REAL(dp),INTENT(INOUT) :: abund(nspec+1,points)
+        REAL(dp) :: timeDelta
+        timeDelta=(currentTime-currentTimeOld)
 
-
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! Subroutine that will sputter the ices based in their entirety
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE sputtering(abund)
-        REAL(dp) :: abund(nspec+1,points)
-        INTENT(INOUT) :: abund
-        abund(gasIcelist,dstep)=abund(gasIcelist,dstep)+abund(iceList,dstep)
-        abund(iceList,dstep)=0.0d-50
-   END SUBROUTINE
+        IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (v0 .gt. 0))&
+        & CALL sputterIces(abund(:,dstep),v0,gasTemp(dstep),density(dstep),timeDelta)
+        WHERE(abund.lt. 1.0d-50) abund=0.0d-50        
+    END SUBROUTINE sublimation
 
 END MODULE jshock_mod
