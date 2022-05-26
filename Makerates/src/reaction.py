@@ -17,6 +17,9 @@ reaction_types = [
     "SURFSWAP",
     "IONOPOL1",
     "IONOPOL2",
+    "CRS",
+    "EXSOLID",
+    "EXRELAX",
 ]
 
 

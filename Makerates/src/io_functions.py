@@ -45,7 +45,7 @@ def read_reaction_file(file_name, species_list, ftype):
     dropped_reactions = []
 
     # Every reactant/product of a reaction must be in keep_list to not be dropped
-    keep_list = ["", "NAN", "#", "E-", "e-", "ELECTR", "@"]
+    keep_list = ["", "NAN", "#", "*", "E-", "e-", "ELECTR", "@"]
     keep_list.extend(reaction_types)
     for species in species_list:
         keep_list.append(species.name)

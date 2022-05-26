@@ -1,6 +1,6 @@
 elementList=['H','D','HE','C','N','O','F','P','S','CL','LI','NA','MG','SI','PAH','15N','13C','18O',"E-","FE"]
 elementMass=[1,2,4,12,14,16,19,31,32,35,3,23,24,28,420,15,13,18,0,56]
-symbols=['#','@','+','-','(',')']
+symbols=['#','@','*','+','-','(',')']
 
 def is_number(s):
     try:
@@ -33,7 +33,11 @@ class Species:
         #in first instance, assume species freeze/desorb unchanged
         #this is updated by `check_freeze_desorbs()` later.
         if self.is_grain_species():
-            self.desorb_products=[self.name[1:],"NAN","NAN","NAN"]
+            #this will make any excited species desorb as their base counterparts
+            if "*" in self.name:
+                self.desorb_products=[self.name[1:-1],"NAN","NAN","NAN"]
+            else:
+                self.desorb_products=[self.name[1:],"NAN","NAN","NAN"]
         else:
             self.freeze_products=None
    

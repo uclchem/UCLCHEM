@@ -150,10 +150,12 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
         for i, row in result_df.iterrows():
             # recreate the parameter dictionary needed to get accurate rates
             param_dict = _param_dict_from_output(row)
+
             # get the rate of all reactions from UCLCHEM along with a few other necessary values
             rates, transfer, swap, bulk_layers = _get_species_rates(
                 param_dict, row[species], species_index, fortran_reac_indxs
             )
+
             # convert reaction rates to total rates of change, this needs manually updating when you add new reaction types!
             change_reacs, changes = _get_rates_of_change(
                 rates, reactions[reac_indxs], species, species_name, row, swap, bulk_layers
@@ -262,18 +264,15 @@ def _get_rates_of_change(rates, reactions, speciesList, species, row, swap, bulk
         change = rates[i]
         reactants = reaction[0:3]
         products = reaction[3:]
-
         reactant_count = 0
         for reactant in reactants:
             if reactant in speciesList:
                 change = change * row[reactant]
                 reactant_count += 1
-            elif reactant in ["DESOH2", "FREEZE", "LH", "LHDES"]:
+            elif reactant in ["DESOH2", "FREEZE", "LH", "LHDES","EXSOLID"]:
                 reactant_count += 1
-
             if reactant in ["DEUVCR", "DESCR", "DESOH2", "SURFSWAP"]:
                 change = change / np.max([1.0e-30, row["SURFACE"]])
-
             if reactant == "SURFSWAP":
                 change = change * swap
             if reactant == "BULKSWAP":
@@ -281,9 +280,7 @@ def _get_rates_of_change(rates, reactions, speciesList, species, row, swap, bulk
 
             if (not three_phase) and (reactant in ["THERM"]):
                 change = change * row[reaction[0]] / np.max([1.0e-30, row["SURFACE"]])
-
         change = change * (row["Density"] ** (reactant_count - 1))
-
         if species in reactants:
             changes.append(-change)
             reactionList.append(reaction)
