@@ -1,3 +1,8 @@
-# MakeRates
-- Removed last pseudohydrogenation reactions from default network
-- Fixed a bug that prevented custom desorb reaction products
+#wrap (Jon)
+-fixed a bug where analysis failed because ydot array in get_rates had wrong shape
+
+# excited species
+-added the ability to produce cosmic ray induced excited species
+-added automatically generated excited surface reactions based on LH grain reactions 
+-added automatic relaxation of excited species 
+-these are off by default, to use see the user_settings.ymal file in Makerates

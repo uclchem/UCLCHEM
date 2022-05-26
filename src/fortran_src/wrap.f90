@@ -167,14 +167,15 @@ CONTAINS
         !return the rate of all reactions that include that species plus some extra variables
         !to allow for the calculation of the rate of bulk/surface ice transfer.
         USE cloud_mod
-        CHARACTER(LEN=*) :: dictionary
-        DOUBLE PRECISION :: abundancesIn(500),speciesRates(500),transfer,swap,bulk_layers
-        DOUBLE PRECISION :: ydot(NEQ)
-        INTEGER :: rateIndxs(500),speciesIndx,successFlag
+        USE network, only : nspec
+        CHARACTER(LEN=*):: dictionary
+        DOUBLE PRECISION :: abundancesIn(500),speciesRates(500)
+        DOUBLE PRECISION :: transfer,swap,bulk_layers
+        INTEGER:: rateIndxs(500),speciesIndx, successFlag
+        DOUBLE PRECISION :: ydot(nspec+1)
         INTEGER :: speci,bulk_version,surface_version
-        !f2py intent(in) dictionary,abundancesIn,speciesIndx
-        !f2py intent(out) :: speciesRates,successFlag,transfer,swap,bulk_layers
-
+        !f2py intent(in) dictionary,abundancesIn,speciesIndx,rateIndxs
+        !f2py intent(out) speciesRates,successFlag,transfer,swap,bulk_layers
         INCLUDE 'defaultparameters.f90'
 
         CALL dictionaryParser(dictionary, "",successFlag)
@@ -182,7 +183,6 @@ CONTAINS
             WRITE(*,*) 'Error reading parameter dictionary'
             RETURN
         END IF
-
         CALL coreInitializePhysics(successFlag)
         CALL initializePhysics(successFlag)
         IF (successFlag .lt. 0) then
@@ -191,7 +191,6 @@ CONTAINS
         END IF
 
         CALL initializeChemistry(readAbunds)
-        
         dstep=1
         successFlag=1
         abund(:nspec,dstep)=abundancesIn(:nspec)
@@ -201,6 +200,7 @@ CONTAINS
 
         targetTime=1.0d-7
         CALL updateChemistry(successFlag)
+
         CALL F(NEQ,currentTime,abund(:,dstep),ydot)
 
         speciesRates=rate(rateIndxs)

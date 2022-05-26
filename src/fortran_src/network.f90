@@ -4117,5 +4117,8 @@ INTEGER, PARAMETER :: 	bulkswapReacs (2)=(/1,78/)
 INTEGER, PARAMETER :: 	surfswapReacs (2)=(/940,1017/)
 INTEGER, PARAMETER :: 	ionopol1Reacs (2)=(/99999,99999/)
 INTEGER, PARAMETER :: 	ionopol2Reacs (2)=(/99999,99999/)
+INTEGER, PARAMETER :: 	crsReacs (2)=(/99999,99999/)
+INTEGER, PARAMETER :: 	exsolidReacs (2)=(/99999,99999/)
+INTEGER, PARAMETER :: 	exrelaxReacs (2)=(/99999,99999/)
 INTEGER, PARAMETER :: 	twobodyReacs (2)=(/1174,3073/)
 END MODULE network

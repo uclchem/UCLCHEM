@@ -19,6 +19,7 @@ param_list = [
     "custom_reaction_file",
     "custom_reaction_type",
     "three_phase",
+    "excited_species",
 ]
 
 with open("user_settings.yaml", "r") as f:
@@ -51,7 +52,7 @@ reactions1, dropped_reactions = io.read_reaction_file(
 reactions2, dropped_reactions = io.read_reaction_file(user_params["custom_reaction_file"], species_list, user_params["custom_reaction_type"])
 
 # Create Network
-network = Network(species=species_list, reactions=reactions1 + reactions2, three_phase=user_params["three_phase"])
+network = Network(species=species_list, reactions=reactions1 + reactions2, three_phase=user_params["three_phase"], excited_species=user_params["excited_species"])
 
 io.output_drops(dropped_reactions, user_output_dir)
 
