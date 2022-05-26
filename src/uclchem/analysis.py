@@ -231,7 +231,7 @@ def _get_species_rates(param_dict, input_abundances, species_index, reac_indxs):
     """
     input_abund = np.zeros(500)
     input_abund[: len(input_abundances)] = input_abundances
-    rate_indxs = np.zeros(500)
+    rate_indxs = np.ones(500)
     rate_indxs[: len(reac_indxs)] = reac_indxs
     rates, success_flag, transfer, swap, bulk_layers = wrap.get_rates(
         param_dict, input_abund, species_index, rate_indxs
