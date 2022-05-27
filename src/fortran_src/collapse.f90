@@ -12,9 +12,9 @@ MODULE collapse_mod
    IMPLICIT NONE
    
    INTEGER :: collapse_mode
-   DOUBLE PRECISION :: maxTime
-   DOUBLE PRECISION, allocatable :: massInRadius(:),parcelRadius(:)
-   DOUBLE PRECISION :: dt,drad
+   REAL(dp) :: maxTime
+   REAL(dp), allocatable :: massInRadius(:),parcelRadius(:)
+   REAL(dp) :: dt,drad
    CHARACTER (LEN=100) :: collapseFile
    LOGICAL :: writePhysics
 CONTAINS
@@ -51,9 +51,7 @@ CONTAINS
             RETURN
          END IF
          density=rhofit(rin,rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
-         write(*,*) "mostly set"
          IF (collapse_mode .le. 2) CALL findmassInRadius
-         write(*,*) "set"
     END SUBROUTINE initializePhysics
 
     SUBROUTINE updateTargetTime
@@ -101,7 +99,7 @@ CONTAINS
     !This module is isothermal and as such, no sublimation occurs.
     !This is a dummy subroutine.
     SUBROUTINE sublimation(abund)
-        DOUBLE PRECISION :: abund(nspec+1,points)
+        REAL(dp) :: abund(nspec+1,points)
         INTENT(IN) :: abund
 
     END SUBROUTINE sublimation
@@ -109,9 +107,9 @@ CONTAINS
 
     ! finds initial mass within starting radius, assuming spherical symmetry
     SUBROUTINE findMassInRadius
-      DOUBLE PRECISION :: rho0,r0,a
+      REAL(dp) :: rho0,r0,a
       INTEGER :: i,np,dstep
-      DOUBLE PRECISION :: dr,drho
+      REAL(dp) :: dr,drho
 
         rho0=rho0fit(timeInYears)
         r0=r0fit(timeInYears)
@@ -130,10 +128,10 @@ CONTAINS
 
 ! finds radius enclosing a mass of massInRadius
     SUBROUTINE findNewRadius(massInRadius,r,rho0,r0,a,newRadius)
-      DOUBLE PRECISION,intent(in) :: massInRadius,r,rho0,r0,a
-      DOUBLE PRECISION,intent(out) :: newRadius
+      REAL(dp),intent(in) :: massInRadius,r,rho0,r0,a
+      REAL(dp),intent(out) :: newRadius
       INTEGER :: i
-      DOUBLE PRECISION :: dr,drho,m1
+      REAL(dp) :: dr,drho,m1
 
       i=1
       dr = r/1.0d4
@@ -150,10 +148,10 @@ CONTAINS
 
 ! finds column density to edge of cloud based on density profile
     SUBROUTINE findcoldens(coldens,rin,rho0,r0,a,rout)
-      DOUBLE PRECISION,intent(in) :: rin,rout,rho0,r0,a
-      DOUBLE PRECISION,intent(out) :: coldens
+      REAL(dp),intent(in) :: rin,rout,rho0,r0,a
+      REAL(dp),intent(out) :: coldens
       INTEGER :: i,np
-      DOUBLE PRECISION :: dr,drho,size,r1,r2
+      REAL(dp) :: dr,drho,size,r1,r2
 
       np = 10000
       size = rout-rin
@@ -171,9 +169,9 @@ CONTAINS
     END SUBROUTINE findcoldens
 
 ! fit to density profile of hydrodynamic simulations
-    DOUBLE PRECISION function rhofit(r,rho0,r0,a)
-      DOUBLE PRECISION :: r,rho0,r0,a
-      DOUBLE PRECISION :: rau,unitrho,unitr,r75
+    REAL(dp) FUNCTION rhofit(r,rho0,r0,a)
+      REAL(dp) :: r,rho0,r0,a
+      REAL(dp) :: rau,unitrho,unitr,r75
 
       IF (collapse_mode .eq. 1) then
          rau = r*au
@@ -191,11 +189,11 @@ CONTAINS
          rhofit = rho0/(1 + (r75/r0)**a)
       END IF
 
-    END function rhofit
+    END FUNCTION rhofit
 
 ! fit to time evolution of central density
-    DOUBLE PRECISION function rho0fit(t)
-      DOUBLE PRECISION :: t,logrho0,unitt
+    REAL(dp) FUNCTION rho0fit(t)
+      REAL(dp) :: t,logrho0,unitt
       IF (collapse_mode .eq. 1) then
          logrho0 = 61.8*(maxTime-t)**(-0.01) - 49.4
          rho0fit = 10**logrho0
@@ -216,11 +214,11 @@ CONTAINS
          END IF
       END IF
 
-    END function rho0fit
+    END FUNCTION rho0fit
 
 ! fit to time evolution of radius parameter
-    DOUBLE PRECISION function r0fit(t)
-      DOUBLE PRECISION :: t,logr0,unitt
+    REAL(dp) FUNCTION r0fit(t)
+      REAL(dp) :: t,logr0,unitt
 
       IF (collapse_mode .eq. 1) then
          logr0 = -28.5*(maxTime-t)**(-0.01) + 28.93
@@ -238,11 +236,11 @@ CONTAINS
          r0fit = 10**logr0
       END IF
 
-    END function r0fit
+    END FUNCTION r0fit
 
 ! fit to time evolution of density slope parameter
-    DOUBLE PRECISION function afit(t)
-      DOUBLE PRECISION :: t,unitt
+    REAL(dp) FUNCTION afit(t)
+      REAL(dp) :: t,unitt
 
       IF (collapse_mode .eq. 1) then
          afit = 2.4d0
@@ -256,12 +254,12 @@ CONTAINS
          afit = 2.4 - 0.2*(1d-6*t/16.138)**40
       END IF
 
-    END function afit
+    END FUNCTION afit
 
 ! fit to radial velocity of hydrodynamical simulation
-    DOUBLE PRECISION function vrfit(r,rmin,vmin,a)
-      DOUBLE PRECISION :: r,rmin,vmin,a
-      DOUBLE PRECISION :: unitr,newRadius,rmid,r75
+    REAL(dp) FUNCTION vrfit(r,rmin,vmin,a)
+      REAL(dp) :: r,rmin,vmin,a
+      REAL(dp) :: unitr,newRadius,rmid,r75
 
       IF (collapse_mode .eq. 3) then
          unitr = sqrt(1.38d-16*10/2/mh)*(2*pi*6.67d-8*2.2d4*mh)**(-0.5) ! distance unit equal to c_s * (2 pi G rho0)**-1/2
@@ -287,12 +285,12 @@ CONTAINS
          vrfit = 1d3*vrfit ! convert to cm s-1 from 1e-2 km s-1
       END IF
 
-    END function vrfit
+    END FUNCTION vrfit
 
 ! fit to time evolution of radius of minimum velocity
-    DOUBLE PRECISION function rminfit(t)
-      DOUBLE PRECISION :: t,unitt,tnew
-      DOUBLE PRECISION :: t6
+    REAL(dp) FUNCTION rminfit(t)
+      REAL(dp) :: t,unitt,tnew
+      REAL(dp) :: t6
 
       IF (collapse_mode .eq. 3) then
          unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5) ! time unit equal to (2 pi G rho0)**-1/2
@@ -318,12 +316,12 @@ CONTAINS
          END IF
       END IF
 
-    END function rminfit
+    END FUNCTION rminfit
 
 ! fit to time evolution of minimum velocity
-    DOUBLE PRECISION function vminfit(t)
-      DOUBLE PRECISION :: t,unitt,tnew
-      DOUBLE PRECISION :: t6
+    REAL(dp) FUNCTION vminfit(t)
+      REAL(dp) :: t,unitt,tnew
+      REAL(dp) :: t6
 
       IF (collapse_mode .eq. 3) then
          unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5) ! time unit equal to (2 pi G rho0)**-1/2
@@ -343,12 +341,12 @@ CONTAINS
          vminfit = 3.44*(16.138-t6)**(-0.35) - 0.7
       END IF
 
-    END function vminfit
+    END FUNCTION vminfit
 
 ! fit to time evolution of velocity a-parameter (collapse 4) or velocity at r=0.5 (collapse 5)
-    DOUBLE PRECISION function avfit(t)
-      DOUBLE PRECISION :: t,unitt,tnew
-      DOUBLE PRECISION :: t6
+    REAL(dp) FUNCTION avfit(t)
+      REAL(dp) :: t,unitt,tnew
+      REAL(dp) :: t6
 
       IF (collapse_mode .eq. 3) then
          unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5) ! time unit equal to (2 pi G rho0)**-1/2
@@ -372,7 +370,7 @@ CONTAINS
          END IF
       END IF
 
-    END function avfit
+    END FUNCTION avfit
 END MODULE collapse_mod
 
 !REQUIRED PHYSICS ENDS HERE, ANY ADDITIONAL PHYSICS CAN BE ADDED BELOW.

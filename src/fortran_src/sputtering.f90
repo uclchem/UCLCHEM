@@ -18,7 +18,8 @@ MODULE sputtering
 
       INTEGER :: projectiles(6)
       REAL(dp) :: sConst,eta,epso
-      REAL(dp), PARAMETER :: VAPORIZE_SPEED=19.0 !Speed at which refractory species are also removed from dust grains during sputtering. 19.0 taken from Guillet et al. 2011. (see above)
+      !Speed at which refractory species are also removed from dust grains during sputtering. 19.0 km/s taken from Guillet et al. 2011. (see above)
+      REAL(dp), PARAMETER :: VAPORIZE_SPEED=19.0 
       INTEGER, ALLOCATABLE :: sputters(:),gasSputters(:)
 CONTAINS
     SUBROUTINE sputteringSetup

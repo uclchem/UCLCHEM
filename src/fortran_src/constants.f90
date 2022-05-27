@@ -1,5 +1,5 @@
 MODULE CONSTANTS
-   use, intrinsic :: iso_fortran_env, dp=>real64
+   use, intrinsic :: iso_fortran_env, dp=>real64 !define the size of our double precision numbers
    REAL(dp), parameter :: C  = 2.99792458D+10 !Speed of light in cgs
    REAL(dp), PARAMETER :: K_BOLTZ = 1.38065040D-16 ! Boltzmann constant cgs
    REAL(dp), PARAMETER :: HP = 6.62606896D-27 !Planck constant in cgs
@@ -24,6 +24,7 @@ MODULE CONSTANTS
    INTEGER, PARAMETER :: INT_UNRECOVERABLE_ERROR=-4
    INTEGER, PARAMETER :: INT_TOO_MANY_FAILS_ERROR=-5
 CONTAINS
+   !Hold over from heating branch
     SUBROUTINE pair_insertion_sort(array)
     REAL(dp), INTENT(inout) :: array(:)
     INTEGER :: i,j,last

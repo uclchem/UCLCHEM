@@ -12,7 +12,7 @@ MODULE cshock_mod
     REAL(dp) :: tstart,maxTemp,timestepFactor=0.01
     REAL(dp) :: z2,vs,v0,zn,vn,at,z3,tsat
     REAL(dp) :: ucm,z1,driftVel,vi,vn0,zn0,vA,dlength,dissipationTime
-    REAL(dp) :: grainRadius5,dens6,grainNumberDensity,dzv
+    REAL(dp) :: grainRadius5,dens6,dzv
     REAL(dp), allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
     LOGICAL :: postShock
     REAL(dp) :: minimumPostshockTemp=0.0
@@ -22,7 +22,6 @@ MODULE cshock_mod
 
     INTEGER :: inrad
     REAL(dp), PARAMETER ::nu0=3.0d15,bm0=1.e-6,bt=6.
-    REAL(dp), PARAMETER :: GAS_DUST_NUMBER_RATIO=1.14d-12,CODES_TEMP=130.0
     REAL(dp), PARAMETER :: grainRadius=1.0d-5
 
 CONTAINS
@@ -157,9 +156,6 @@ CONTAINS
         dzv=1./(dzv*km)
         dzv=z2*((vs-v0)/(vs-v0-vn))*dzv
 
-        !number density of dust grains, rearrange following:
-        !100.0*dust grain mass*dustgrainnumberdensity=hydrogen mass * h nuclei number density
-        grainNumberDensity=density(dstep)*GAS_DUST_NUMBER_RATIO
         !We introduce the gas temperature curve along the dissipation region of the
         !C-shock. We also take into account that the gas and dust are decoupled. We
         !use the equations for the collisional and radiative heating of grains of

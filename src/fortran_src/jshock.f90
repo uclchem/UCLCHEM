@@ -9,9 +9,6 @@ MODULE jshock_mod
     USE sputtering
     IMPLICIT NONE
  
-    
-    integer :: coflag
-
     REAL(dp) :: tstart,maxTemp,vMin,mfp,tCool,tShock,d,dMax,maxDens
     REAL(dp) :: t_lambda, n_lambda
 
@@ -29,7 +26,6 @@ CONTAINS
         INTEGER, INTENT(OUT) :: successFlag
         successFlag=1
         !Reset variables for python wrap.
-        coflag=0 !should reset sputtering
         
         cloudSize=(rout-rin)*pc
 
@@ -90,19 +86,6 @@ CONTAINS
         ELSE
             targetTime=1.1*currentTime
         END IF
-        ! ELSE IF (timeInYears .gt. 1.) THEN
-        !     targetTime=(timeInYears+1.)*SECONDS_PER_YEAR
-        ! ELSE IF (timeInYears .gt. 0.001) THEN
-        !     targetTime=(timeInYears+0.1)*SECONDS_PER_YEAR
-        ! ELSE IF (timeInYears .gt. 0.00001) THEN
-        !     targetTime=(timeInYears+0.0001)*SECONDS_PER_YEAR
-        ! ELSE IF (timeInYears .gt. 0.000001) THEN
-        !     targetTime=(timeInYears+0.0000001)*SECONDS_PER_YEAR
-        ! ELSE IF  (timeInYears.gt.0.0) THEN
-        !     targetTime=(timeInYears+0.0000000001)*SECONDS_PER_YEAR
-        ! ELSE
-        !     targetTime=3.16d-03
-        ! ENDIF
     END SUBROUTINE updateTargetTime
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
