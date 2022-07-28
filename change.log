@@ -1,3 +1,3 @@
-# Jon's Last Update
-- Capitalizing fortran built ins
-- replacing some remaining double precisions with real(dp)
+# Minor Tweaks
+- Built in Warning for grain species not being properly added to networks
+- added optional parameter to analysis.check_element_conservation() to return a percentage difference or value difference of the elements.
