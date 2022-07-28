@@ -343,8 +343,17 @@ class Network:
         species freezes out via mutiple routes. This isn't necessarily an
         error so best just print.
         """
-        print("\tSpecies with multiple freeze outs, check alphas:")
+        print("\tCheck that species have surface counterparts or if they have multiple freeze outs/check alphas:")
         for spec in self.species_list:
+            if not spec.is_grain_species() and spec.name[-1] not in ['+', '-']:
+                exist_check=0
+                for checkSpeck in self.species_list:
+                    if checkSpeck.name == "#" + spec.name:
+                        exist_check+=1
+                if exist_check == 0:
+                    print(f'\nWarning {spec.name} does not have a surface counterpart in given default species file.')
+                    print('This will mean the binding energy will be set to zero,')
+                    print('which may cause errors in species conservation.')
             freezes = 0
             for reaction in self.reaction_list:
                 if spec.name in reaction.reactants and "FREEZE" in reaction.reactants:

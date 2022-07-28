@@ -6,8 +6,6 @@
 #HCNO,PHOTON,,#CH,#NO,,,1.00E-09,0.00,1.7,,,
 #HONC,PHOTON,,#OH,#CN,,,1.00E-09,0.00,1.7,,,
 #CNO,PHOTON,,#CN,#O,,,1.00E-11,0.00,2.0,,,
-#S,#H,LH,#HS,,,,1,0,0,,,
-#S2,#H,LH,#HS2,,,,1,0,0,,,
 #H,#OCN,LH,#HOCN,,,,0.5,0,0,,,
 #C,#HOCN,LH,#CO,#HCN,,,1,0,0,,,
 #H,#CNO,LH,#HCNO,,,,0.5,0,0,,,
