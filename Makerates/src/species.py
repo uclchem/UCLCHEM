@@ -63,6 +63,9 @@ class Species:
         if self.name=="E-":
             freeze=""
         self.freeze_products={",".join([freeze,"NAN","NAN","NAN"]):1.0}
+        print(f'\n\t{self.name} did not have a surface equivalent for freeze-out in the species file.')
+        print(f'\nPlaceholder values of {self.freeze_products} for #{self.name} have been added.')
+        print('\nPlease update these values as the placeholder input can affect elemental conservation.')
 
     def find_constituents(self):
         """Loop through the species' name and work out what its consituent 
