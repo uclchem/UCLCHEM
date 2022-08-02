@@ -11,7 +11,7 @@ from numpy import any as np_any
 
 
 class Network:
-    def __init__(self, species, reactions, three_phase=False):
+    def __init__(self, species, reactions, three_phase=False,user_defined_bulk=[]):
         """
         Simple class to store network information such as indices of important reactions.
         Also logical home of functions meant to make network sensible.
@@ -20,6 +20,7 @@ class Network:
         self.species_list = species
         self.remove_duplicate_species()
         self.excited_species =  self.check_for_excited_species()
+        self.user_defined_bulk = user_defined_bulk
         self.three_phase = three_phase
         if self.three_phase:
             self.add_bulk_species()
@@ -86,6 +87,7 @@ class Network:
         so that the user doesn't have to endlessly relist the same species
         """
         speciesNames = [species.name for species in self.species_list]
+        userSpecies = [manualSpec.name for manualSpec in self.user_defined_bulk]
         new_species = []
         try:
             h2o_binding_energy = speciesNames.index("#H2O")
@@ -100,6 +102,11 @@ class Network:
                 if not species.name.replace("#", "@") in speciesNames:
                     new_spec = deepcopy(species)
                     new_spec.name = new_spec.name.replace("#", "@")
+                    if new_spec.name in userSpecies:
+                        definedBinding = [userSpec.binding_energy for userSpec in self.user_defined_bulk if userSpec.name == new_spec.name]
+                        new_spec.binding_energy = definedBinding[0]
+                    else:
+                        new_spec.binding_energy = h2o_binding_energy                    
                     new_spec.binding_energy = h2o_binding_energy
                     new_species.append(new_spec)
         self.species_list = self.species_list + new_species
