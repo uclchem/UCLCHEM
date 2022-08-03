@@ -107,7 +107,6 @@ class Network:
                         new_spec.binding_energy = definedBinding[0]
                     else:
                         new_spec.binding_energy = h2o_binding_energy                    
-                    new_spec.binding_energy = h2o_binding_energy
                     new_species.append(new_spec)
         self.species_list = self.species_list + new_species
 
