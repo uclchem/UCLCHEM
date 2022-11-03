@@ -1,4 +1,4 @@
-# UCLCHEM v3.1 Pre-release, please use v3.0 for any research models, and v3.1 for development
+# UCLCHEM
 `UCLCHEM` is a gas-grain chemical code that propagates the abundances of chemical species through a network of user-defined reactions according to the physical conditions of the gas. We provide several physical models to enable the modelling of different astrophysical environments and a utility script `MakeRates` to help the user produce a chemical network from simple lists of reactions and species.
 
 
