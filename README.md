@@ -40,6 +40,9 @@ See change.log! We've made a large number of improvements for v3.0. The code has
 *************************************************************
 This is an open source science code for the community and are open to pull requests. We are also happy to work with you to produce a physics module if none of the models available in the python module `uclchem.model` suit the modelling work you wish to do. If you are contributing, please try to work with our current code style. We have the following general guidelines:
 
+### Github
+- Use the dev branch to merge your latest changes. Releases will be coordinated by the core developers.
+
 ### Python
 - Use [Black](https://github.com/psf/black) to format your code.
 - snake_case variables and functions with self-explanatory names
