@@ -38,10 +38,14 @@ See change.log! We've made a large number of improvements for v3.0. The code has
 *************************************************************
 ## Contributing
 *************************************************************
-This is an open source science code for the community and are open to pull requests. We are also happy to work with you to produce a physics module if none of the models available in the python module `uclchem.model` suit the modelling work you wish to do. If you are contributing, please try to work with our current code style. We have the following general guidelines:
+This is an open source science code for the community and are open to pull requests. We are also happy to work with you to produce a physics module if none of the models available in the python module `uclchem.model` suit the modelling work you wish to do. If you are contributing, please try to work with our current code style. Feel free to checkout the latest developments with `git fetch; git checkout develop` We have the following general guidelines:
 
 ### Github
-- Use the dev branch to merge your latest changes. Releases will be coordinated by the core developers.
+- Work in a personal branch or fork to your own Github to develop features.
+- Make sure you base your new work on the develop branch.
+- Pull requests should be opened with the `develop` branch as target.
+- In principle, squash and merge is preferred over keeping the entire git commit history when merging into develop.
+- Releases will be coordinated by the core developers, this will consitute a push to main and creating a release.
 
 ### Python
 - Use [Black](https://github.com/psf/black) to format your code.
