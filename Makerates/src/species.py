@@ -152,3 +152,10 @@ class Species:
     
     def __gt__(self,other):
         return self.mass>other.mass
+    
+    def __repr__(self):
+        return f"Specie: {self.name}"
+    
+    def __str__(self):
+        return self.name
+    
