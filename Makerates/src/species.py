@@ -146,13 +146,19 @@ class Species:
         if mass != int(self.mass):
             print(f"Input mass of {self.name} does not match calculated mass of constituents")
             print("using calculated mass")
-            self.mass = int(mass)
-
+            self.mass=int(mass)
+    
     def __eq__(self, other):
         return self.name == other.name
-
+    
     def __lt__(self, other):
         return self.mass < other.mass
-
+    
     def __gt__(self, other):
         return self.mass > other.mass
+    
+    def __get_state__(self):
+        return self.__dict__
+
+    def __set_state__(self, state):
+        self.__dict__ = state

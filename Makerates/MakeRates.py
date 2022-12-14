@@ -66,6 +66,15 @@ print("################################################\n")
 
 io.write_outputs(network, user_output_dir)
 
+io.pickle_network(network, "test.pl")
+
+# debug:
+
+print(network.__dict__)
+
+# end debug
+
+
 
 ngrain = len([x for x in species_list if x.is_surface_species()])
 

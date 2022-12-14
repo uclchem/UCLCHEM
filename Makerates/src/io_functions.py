@@ -4,6 +4,7 @@ Functions to read in the species and reaction files and write output files
 """
 ##########################################################################################
 
+import pickle
 import csv
 import numpy as np
 from .species import Species, elementList
@@ -760,3 +761,12 @@ def array_to_string(name, array, type="int", parameter=True):
     outString = outString[:-1] + "/)\n"
     outString = truncate_line(outString)
     return outString
+
+
+def pickle_network(network, path):
+        with open(path, "wb") as fh:
+            pickle.dump(network, fh)
+    
+def unpickle_network(path):
+    with open(path, "r") as fh:
+        return pickle.load(fh)

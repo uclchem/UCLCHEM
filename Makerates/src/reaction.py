@@ -149,3 +149,9 @@ class Reaction:
 
     def __str__(self):
         return " + ".join(self.reactants) + " -> " + " + ".join(self.products)
+
+    def __get_state__(self):
+        return self.__dict__
+
+    def __set_state__(self, state):
+        self.__dict__ = state

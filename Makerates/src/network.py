@@ -486,3 +486,11 @@ class Network:
                 species_index = len(self.species_list) + 1
             name = "n" + element.lower().replace("+", "x").replace("e-", "elec").replace("#", "g")
             self.species_indices[name] = species_index
+
+
+    def __get_state__(self):
+        return self.__dict__
+
+    def __set_state__(self, state):
+        self.__dict__ = state
+        
