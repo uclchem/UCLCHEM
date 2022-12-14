@@ -11,7 +11,7 @@ from numpy import any as np_any
 
 
 class Network:
-    def __init__(self, species, reactions, three_phase=False):
+    def __init__(self, species, reactions, three_phase=False,user_defined_bulk=[]):
         """
         Simple class to store network information such as indices of important reactions.
         Also logical home of functions meant to make network sensible.
@@ -20,6 +20,7 @@ class Network:
         self.species_list = species
         self.remove_duplicate_species()
         self.excited_species =  self.check_for_excited_species()
+        self.user_defined_bulk = user_defined_bulk
         self.three_phase = three_phase
         if self.three_phase:
             self.add_bulk_species()
@@ -86,6 +87,7 @@ class Network:
         so that the user doesn't have to endlessly relist the same species
         """
         speciesNames = [species.name for species in self.species_list]
+        userSpecies = [manualSpec.name for manualSpec in self.user_defined_bulk]
         new_species = []
         try:
             h2o_binding_energy = speciesNames.index("#H2O")
@@ -100,7 +102,11 @@ class Network:
                 if not species.name.replace("#", "@") in speciesNames:
                     new_spec = deepcopy(species)
                     new_spec.name = new_spec.name.replace("#", "@")
-                    new_spec.binding_energy = h2o_binding_energy
+                    if new_spec.name in userSpecies:
+                        definedBinding = [userSpec.binding_energy for userSpec in self.user_defined_bulk if userSpec.name == new_spec.name]
+                        new_spec.binding_energy = definedBinding[0]
+                    else:
+                        new_spec.binding_energy = h2o_binding_energy                    
                     new_species.append(new_spec)
         self.species_list = self.species_list + new_species
 
@@ -343,8 +349,17 @@ class Network:
         species freezes out via mutiple routes. This isn't necessarily an
         error so best just print.
         """
-        print("\tSpecies with multiple freeze outs, check alphas:")
+        print("\tCheck that species have surface counterparts or if they have multiple freeze outs/check alphas:")
         for spec in self.species_list:
+            if not spec.is_grain_species() and spec.name[-1] not in ['+', '-']:
+                exist_check=0
+                for checkSpeck in self.species_list:
+                    if checkSpeck.name == "#" + spec.name:
+                        exist_check+=1
+                if exist_check == 0:
+                    print(f'\nWarning {spec.name} does not have a surface counterpart in given default species file.')
+                    print('This will mean the binding energy will be set to zero,')
+                    print('which may cause errors in species conservation.')
             freezes = 0
             for reaction in self.reaction_list:
                 if spec.name in reaction.reactants and "FREEZE" in reaction.reactants:

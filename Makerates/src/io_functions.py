@@ -21,12 +21,17 @@ def read_species_file(file_name):
         list: List of Species objects
     """
     species_list = []
+    # list to hold user defined bulk species (for adjusting binding energy)
+    user_defined_bulk = []
     with open(file_name, "r") as f:
         reader = csv.reader(f, delimiter=",", quotechar="|")
         for row in reader:
             if row[0] != "NAME" and "!" not in row[0]:
-                species_list.append(Species(row))
-    return species_list
+                if "@" in row[0]:
+                    user_defined_bulk.append(Species(row))
+                else:
+                    species_list.append(Species(row))
+    return species_list, user_defined_bulk
 
 
 def read_reaction_file(file_name, species_list, ftype):

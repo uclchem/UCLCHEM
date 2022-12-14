@@ -1,3 +1,5 @@
-# Jon's Last Update
-- Capitalizing fortran built ins
-- replacing some remaining double precisions with real(dp)
+# User added bulk species
+- Created fix for indexing issues cause by user added bulk species in the species file
+- Makerates now stores user defined bulk species and their properties in separate list, and uses these values when auto-generating the defined species.
+- This requires no new procedure by the user, this is handled internally. 
+- Fixed typo that was overwriting this change

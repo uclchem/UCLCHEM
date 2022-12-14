@@ -413,7 +413,7 @@ def total_element_abundance(element, df):
     return df.mul(sums, axis=1).sum(axis=1)
 
 
-def check_element_conservation(df, element_list=["H", "N", "C", "O"]):
+def check_element_conservation(df, element_list=["H", "N", "C", "O"], percent=True):
     """Check the conservation of major element by comparing total abundance at start and end of model
 
     Args:
@@ -426,6 +426,10 @@ def check_element_conservation(df, element_list=["H", "N", "C", "O"]):
     result = {}
     for element in element_list:
         discrep = total_element_abundance(element, df).values
-        discrep = np.abs(discrep[0] - discrep[-1]) / discrep[0]
-        result[element] = f"{discrep:.3%}"
+        if percent:
+            discrep = np.abs(discrep[0] - discrep[-1]) / discrep[0]
+            result[element] = f"{discrep:.3%}"
+        else:
+            discrep = discrep[0] - discrep[-1]
+            result[element] = f"{discrep:.2e}"
     return result
