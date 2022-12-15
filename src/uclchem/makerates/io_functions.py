@@ -212,15 +212,14 @@ def write_species(file_name, species_list):
         fileName (str): path to output file
         species_list (list): List of species objects for network
     """
-    species_columns=["Name","Mass","N_atoms","Binding Energy","Enthalpy"]
+    species_columns=["NAME","MASS","BINDING ENERGY","SOLID FRACTION","MONO FRACTION","VOLCANO FRACTION","ENTHALPY"]    
     with open(file_name, "w") as f:
         writer = csv.writer(
             f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL, lineterminator="\n"
         )
         writer.writerow(species_columns)
         for species in species_list:
-            writer.writerow([species.name, species.mass, species.n_atoms,species.binding_energy,species.enthalpy])
-
+            writer.writerow([species.name, species.mass, species.binding_energy, species.solidFraction, species.monoFraction, species.volcFraction, species.enthalpy])
 
 # Write the reaction file in the desired format
 def write_reactions(fileName, reaction_list):
