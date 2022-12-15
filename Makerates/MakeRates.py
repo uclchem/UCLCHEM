@@ -7,8 +7,8 @@
 # 		by UCLCHEM to run. It also performs basic cleaning and sanity checks on the network.
 #
 ####################################################################################################
-import src.io_functions as io 
-from src.network import *
+import uclchem.makerates.io_functions as io 
+from uclchem.makerates import Network
 import os
 import yaml
 
