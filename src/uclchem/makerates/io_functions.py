@@ -5,6 +5,7 @@ Functions to read in the species and reaction files and write output files
 ##########################################################################################
 
 import csv
+import logging
 import numpy as np
 from .species import Species, elementList
 from .reaction import Reaction, reaction_types
@@ -164,17 +165,17 @@ def kida_parser(kida_file):
     return rows
 
 
-def output_drops(dropped_reactions, output_dir):
+def output_drops(dropped_reactions, output_dir, verbose=True):
     if output_dir is None:
         output_dir = ""
     outputFile = join(output_dir, "dropped_reactions.csv")
     # Print dropped reactions from grain file or write if many
     if len(dropped_reactions) < 6:
-        print("Reactions dropped from grain file:\n")
+        logging.info("Reactions dropped from grain file:\n")
         for reaction in dropped_reactions:
-            print(reaction)
+            logging.info(reaction)
     else:
-        print(f"\nReactions dropped from grain file written to {outputFile}\n")
+        logging.info(f"\nReactions dropped from grain file written to {outputFile}\n")
         with open(outputFile, "w") as f:
             writer = csv.writer(
                 f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL, lineterminator="\n"

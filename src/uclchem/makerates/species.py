@@ -1,3 +1,5 @@
+import logging
+
 elementList = ['H', 'D', 'HE', 'C', 'N', 'O', 'F', 'P', 'S', 'CL', 'LI', 'NA', 'MG', 'SI', 'PAH', '15N', '13C', '18O',
                "E-", "FE"]
 elementMass = [1, 2, 4, 12, 14, 16, 19, 31, 32, 35, 3, 23, 24, 28, 420, 15, 13, 18, 0, 56]
@@ -117,9 +119,9 @@ class Species:
                     else:
                         i = j
                 else:
-                    print(speciesName[i])
-                    print("\t{0} contains elements not in element list:".format(speciesName))
-                    print(elementList)
+                    logging.warning(speciesName[i])
+                    logging.warning("\t{0} contains elements not in element list:".format(speciesName))
+                    logging.warning(elementList)
             else:
                 # if symbol is start of a bracketed part of molecule, keep track
                 if (speciesName[i] == "("):
@@ -144,8 +146,7 @@ class Species:
         for atom in atoms:
             mass += elementMass[elementList.index(atom)]
         if mass != int(self.mass):
-            print(f"Input mass of {self.name} does not match calculated mass of constituents")
-            print("using calculated mass")
+            logging.warning(f"Input mass of {self.name} does not match calculated mass of constituents, using calculated mass: {int(mass)}")
             self.mass = int(mass)
 
     def __eq__(self, other):

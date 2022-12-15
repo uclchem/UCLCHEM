@@ -5,6 +5,7 @@ desorption and bulk reactions for three phase models.
 """
 from .species import Species, elementList
 from .reaction import Reaction
+import logging
 from copy import deepcopy
 from numpy import unique
 from numpy import any as np_any
@@ -37,7 +38,7 @@ class Network:
         """
         for species in self.species_list:
             if self.species_list.count(species) > 1:
-                print(f"\t {species.name} appears twice in input species list")
+                logging.warning(f"\t {species.name} appears twice in input species list")
 
         self.species_list = list(unique(self.species_list))
 
@@ -65,11 +66,9 @@ class Network:
 
         # then alert user to changes
         if len(lostSpecies) > 0:
-            print("\tSpecies in input list that do not appear in final list:")
-            print("\t", lostSpecies)
-            print("\n")
+            logging.warning("\tSpecies in input list that do not appear in final list:\t"+ lostSpecies)
         else:
-            print("\tAll input species in final network")
+            logging.info("\tAll input species in final network")
         for species in self.species_list:
             species.find_constituents()
 
@@ -219,14 +218,11 @@ class Network:
                         new_reac.products[i] = new_reac.products[i][1:]
                     else:
                         if product != "NAN":
-                            print(
-                                "All Langmuir-Hinshelwood and Eley-Rideal reactions should be input with products on grains only."
-                            )
-                            print(
-                                "The fraction of products that enter the gas is dealt with by Makerates and UCLCHEM."
-                            )
-                            print("the following reaction caused this warning")
-                            print("\t", reaction)
+                            logging.warning(
+                                "All Langmuir-Hinshelwood and Eley-Rideal reactions should be input with products on grains only.\n"+
+                                "The fraction of products that enter the gas is dealt with by Makerates and UCLCHEM.\n"+
+                                "the following reaction caused this warning\t"+
+                                reaction)
                 new_reacs.append(new_reac)
 
         self.reaction_list = self.reaction_list + new_reacs
@@ -349,7 +345,7 @@ class Network:
         species freezes out via mutiple routes. This isn't necessarily an
         error so best just print.
         """
-        print("\tCheck that species have surface counterparts or if they have multiple freeze outs/check alphas:")
+        logging.info("\tCheck that species have surface counterparts or if they have multiple freeze outs/check alphas:\n")
         for spec in self.species_list:
             if not spec.is_grain_species() and spec.name[-1] not in ['+', '-']:
                 exist_check=0
@@ -357,24 +353,23 @@ class Network:
                     if checkSpeck.name == "#" + spec.name:
                         exist_check+=1
                 if exist_check == 0:
-                    print(f'\nWarning {spec.name} does not have a surface counterpart in given default species file.')
-                    print('This will mean the binding energy will be set to zero,')
-                    print('which may cause errors in species conservation.')
+                    logging.warning(f'{spec.name} does not have a surface counterpart in given default species file.' +
+                    '\n\tThis sets the binding energy will be set to zero, it might cause species conservation errors.')
             freezes = 0
             for reaction in self.reaction_list:
                 if spec.name in reaction.reactants and "FREEZE" in reaction.reactants:
                     freezes += 1
             if freezes > 1:
-                print(f"\t{spec.name} freezes out through {freezes} routes")
+                logging.info(f"\t{spec.name} freezes out through {freezes} routes")
             elif freezes < 1 and not spec.is_grain_species():
-                print(f"\t{spec.name} does not freeze out")
+                logging.info(f"\t{spec.name} does not freeze out")
 
     def duplicate_checks(self):
         """
         Check reaction network to make sure no reaction appears twice unless
         they have different temperature ranges.
         """
-        print("\n\tPossible duplicate reactions for manual removal:")
+        logging.info("\n\tPossible duplicate reactions for manual removal:")
         duplicates = False
         for i, reaction1 in enumerate(self.reaction_list):
             if not reaction1.duplicate:
@@ -385,20 +380,19 @@ class Network:
                                 (reaction1.templow >= reaction2.temphigh)
                                 or (reaction1.temphigh <= reaction2.templow)
                             ):
-                                print(f"\tReactions {i+1} and {j+1} are possible duplicates")
-                                print(reaction1)
-                                print(reaction2)
+                                logging.warning(f"\tReactions {i+1} and {j+1} are possible duplicates\n\t\t" +
+                                            str(reaction1) + "\n\t\t" + str(reaction2))
                                 duplicates = True
                                 # adjust temperatures so temperature ranges are adjacent
                                 if reaction1.temphigh > reaction2.temphigh:
                                     if reaction1.templow < reaction2.temphigh:
-                                        print(
+                                        logging.warning(
                                             f"\tReactions {i+1} and {j+1} have non-adjacent temperature ranges"
                                         )
                                 reaction1.duplicate = True
                                 reaction2.duplicate = True
         if not duplicates:
-            print("\tNone")
+            logging.info("\tNone")
 
     def index_important_reactions(self):
         """We have a whole bunch of important reactions and we want to store
@@ -482,7 +476,7 @@ class Network:
             try:
                 species_index = names.index(element) + 1
             except:
-                print(f"\t{element} not in network, adding dummy index")
+                logging.info(f"\t{element} not in network, adding dummy index")
                 species_index = len(self.species_list) + 1
             name = "n" + element.lower().replace("+", "x").replace("e-", "elec").replace("#", "g")
             self.species_indices[name] = species_index

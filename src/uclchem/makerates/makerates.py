@@ -28,7 +28,7 @@ def run_makerates(configuration_file="user_settings.yaml", verbosity="INFO", wri
         try:
             # Check if we can access the needed parameter:
             user_params[param]
-            print(f"{param} : {user_params[param]}")
+            logging.info(f"{param} : {user_params[param]}")
         except:
             raise KeyError(f"{param} not found in user_settings.yaml")
 
@@ -42,7 +42,7 @@ def run_makerates(configuration_file="user_settings.yaml", verbosity="INFO", wri
 
     #################################################################################################
 
-    print("\n################################################\n"+
+    logging.info("\n################################################\n"+
                 "Reading and checking input\n" + 
                 "################################################\n")
 
@@ -59,18 +59,18 @@ def run_makerates(configuration_file="user_settings.yaml", verbosity="INFO", wri
     io.output_drops(dropped_reactions1 + dropped_reactions2, user_output_dir)
 
     # check network to see if there are potential problems
-    print("Checking Network")
+    logging.info("Checking Network")
     network.check_network()
 
-    print("\n################################################\n"+
+    logging.info("\n################################################\n"+
                 "Checks complete, writing output files\n"+
                 "################################################\n")
     if write_files:
         io.write_outputs(network, user_output_dir)        
 
     ngrain = len([x for x in species_list if x.is_surface_species()])
-    print(f"Total number of species = {len(network.species_list)}")
-    print(f"Number of surface species = {ngrain}")
-    print(f"Number of reactions = {len(network.reaction_list)}")
+    logging.info(f"Total number of species = {len(network.species_list)}")
+    logging.info(f"Number of surface species = {ngrain}")
+    logging.info(f"Number of reactions = {len(network.reaction_list)}")
     # return the network such that the object can be reused in code/notebooks
     return network
