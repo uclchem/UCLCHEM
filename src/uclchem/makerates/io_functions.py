@@ -10,6 +10,8 @@ import numpy as np
 from .species import Species, elementList
 from .reaction import Reaction, reaction_types
 from os.path import join
+from datetime import datetime
+import yaml
 
 
 def read_species_file(file_name):
@@ -97,9 +99,7 @@ def check_reaction(reaction_row, keep_list):
         return True
     else:
         if reaction_row[1] in ["DESORB", "FREEZE"]:
-            reac_error = (
-                "Desorb or freeze reaction in custom input contains species not in species list"
-            )
+            reac_error = "Desorb or freeze reaction in custom input contains species not in species list"
             reac_error += f"\nReaction was {reaction_row}"
             raise ValueError(reac_error)
         return False
@@ -174,7 +174,11 @@ def output_drops(dropped_reactions, output_dir, write_files=True):
         logging.info(f"\nReactions dropped from grain file written to {outputFile}\n")
         with open(outputFile, "w") as f:
             writer = csv.writer(
-                f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL, lineterminator="\n"
+                f,
+                delimiter=",",
+                quotechar="|",
+                quoting=csv.QUOTE_MINIMAL,
+                lineterminator="\n",
             )
             for reaction in dropped_reactions:
                 writer.writerow(reaction)
@@ -182,7 +186,7 @@ def output_drops(dropped_reactions, output_dir, write_files=True):
         logging.info("Reactions dropped from grain file:\n")
         for reaction in dropped_reactions:
             logging.info(reaction)
-        
+
 
 def write_outputs(network, output_dir):
     if output_dir is None:
@@ -200,10 +204,16 @@ def write_outputs(network, output_dir):
 
     # Write the ODEs in the appropriate language format
     filename = join(fortran_src_dir, "odes.f90")
-    write_odes_f90(filename, network.species_list, network.reaction_list, network.three_phase)
+    write_odes_f90(
+        filename, network.species_list, network.reaction_list, network.three_phase
+    )
 
     filename = join(fortran_src_dir, "network.f90")
     write_network_file(filename, network)
+
+    # Write some meta information that can be used to read back in the reactions into Python
+    filename = join(output_dir, "network_info.yaml")
+    write_network_info(filename, network)
 
 
 def write_species(file_name, species_list):
@@ -213,14 +223,37 @@ def write_species(file_name, species_list):
         fileName (str): path to output file
         species_list (list): List of species objects for network
     """
-    species_columns=["NAME","MASS","BINDING ENERGY","SOLID FRACTION","MONO FRACTION","VOLCANO FRACTION","ENTHALPY"]    
+    species_columns = [
+        "NAME",
+        "MASS",
+        "BINDING ENERGY",
+        "SOLID FRACTION",
+        "MONO FRACTION",
+        "VOLCANO FRACTION",
+        "ENTHALPY",
+    ]
     with open(file_name, "w") as f:
         writer = csv.writer(
-            f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL, lineterminator="\n"
+            f,
+            delimiter=",",
+            quotechar="|",
+            quoting=csv.QUOTE_MINIMAL,
+            lineterminator="\n",
         )
         writer.writerow(species_columns)
         for species in species_list:
-            writer.writerow([species.name, species.mass, species.binding_energy, species.solidFraction, species.monoFraction, species.volcFraction, species.enthalpy])
+            writer.writerow(
+                [
+                    species.name,
+                    species.mass,
+                    species.binding_energy,
+                    species.solidFraction,
+                    species.monoFraction,
+                    species.volcFraction,
+                    species.enthalpy,
+                ]
+            )
+
 
 # Write the reaction file in the desired format
 def write_reactions(fileName, reaction_list):
@@ -246,7 +279,11 @@ def write_reactions(fileName, reaction_list):
     ]
     with open(fileName, "w") as f:
         writer = csv.writer(
-            f, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL, lineterminator="\n"
+            f,
+            delimiter=",",
+            quotechar="|",
+            quoting=csv.QUOTE_MINIMAL,
+            lineterminator="\n",
         )
         writer.writerow(reaction_columns)
         for reaction in reaction_list:
@@ -309,8 +346,14 @@ def write_jacobian(file_name, species_list):
                     output.write(di_dj)
             else:
                 # every time an ode bit has our species in it, we remove it (dy/dx=a for y=ax)
-                di_dj = [f"-{x}".replace(f"*Y({j})", "", 1) for x in losses if f"*Y({j})" in x]
-                di_dj += [f"+{x}".replace(f"*Y({j})", "", 1) for x in gains if f"*Y({j})" in x]
+                di_dj = [
+                    f"-{x}".replace(f"*Y({j})", "", 1)
+                    for x in losses
+                    if f"*Y({j})" in x
+                ]
+                di_dj += [
+                    f"+{x}".replace(f"*Y({j})", "", 1) for x in gains if f"*Y({j})" in x
+                ]
                 # of course there might be y=a*x*x so we only replace first instance and if there's still an instance
                 # we put a factor of two in since dy/dx=2ax for y=a*x*x
                 di_dj = [x + "*2" if f"*Y({j})" in x else x for x in di_dj]
@@ -380,9 +423,13 @@ def build_ode_string(species_list, reaction_list, three_phase):
                 if ("ER" in reaction.reactants) and (
                     not species_list[species_names.index(species)].is_surface_species()
                 ):
-                    species_list[species_names.index("#" + species)].losses += reaction.ode_bit
+                    species_list[
+                        species_names.index("#" + species)
+                    ].losses += reaction.ode_bit
                 else:
-                    species_list[species_names.index(species)].losses += reaction.ode_bit
+                    species_list[
+                        species_names.index(species)
+                    ].losses += reaction.ode_bit
                 if reaction.reactants[1] == "BULKSWAP":
                     total_swap += reaction.ode_bit
         for species in reaction.products:
@@ -405,10 +452,10 @@ def build_ode_string(species_list, reaction_list, three_phase):
 
     # now add bulk transfer to rate of change of surface species after they've already been calculated
     if three_phase:
+        ode_string += "!Update surface species for bulk growth, replace surfaceCoverage with alpha_des\n"
         ode_string += (
-            "!Update surface species for bulk growth, replace surfaceCoverage with alpha_des\n"
+            "!Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
         )
-        ode_string += "!Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
 
         ode_string += f"IF (YDOT({surface_index+1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
 
@@ -430,7 +477,9 @@ def build_ode_string(species_list, reaction_list, three_phase):
         ode_string += "ENDIF\n"
 
         # once bulk transfer has been added, odes for bulk and surface must be updated to account for it
-        ode_string += "!Update total rate of change of bulk and surface for bulk growth\n"
+        ode_string += (
+            "!Update total rate of change of bulk and surface for bulk growth\n"
+        )
         ode_string += species_ode_string(bulk_index, species_list[bulk_index])
         ode_string += species_ode_string(surface_index, species_list[surface_index])
 
@@ -499,9 +548,7 @@ def write_evap_lists(network_file, species_list):
             except:
                 error = f"{species.name} desorbs as {species.desorb_products[0]}"
                 error += "which is not in species list. This desorption is likely user defined.\n"
-                error += (
-                    "Please amend the desorption route in your reaction file and re-run Makerates"
-                )
+                error += "Please amend the desorption route in your reaction file and re-run Makerates"
                 raise NameError(error)
 
             # plus ones as fortran and python label arrays differently
@@ -536,7 +583,9 @@ def write_evap_lists(network_file, species_list):
     network_file.write(array_to_string("monoFractions", monoList, type="float"))
     network_file.write(array_to_string("volcanicFractions", volcList, type="float"))
     network_file.write(
-        array_to_string("bindingEnergy", binding_energyList, type="float", parameter=False)
+        array_to_string(
+            "bindingEnergy", binding_energyList, type="float", parameter=False
+        )
     )
     network_file.write(array_to_string("formationEnthalpy", enthalpyList, type="float"))
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
@@ -679,7 +728,9 @@ def write_network_file(file_name, network):
     reacTypes = np.asarray(reacTypes)
 
     partners = get_desorption_freeze_partners(reaction_list)
-    openFile.write(array_to_string("\tfreezePartners", partners, type="int", parameter=True))
+    openFile.write(
+        array_to_string("\tfreezePartners", partners, type="int", parameter=True)
+    )
 
     for reaction_type in reaction_types + ["TWOBODY"]:
         list_name = reaction_type.lower() + "Reacs"
@@ -689,7 +740,9 @@ def write_network_file(file_name, network):
         else:
             # We still want a dummy array if the reaction type isn't in network
             indices = [99999, 99999]
-        openFile.write(array_to_string("\t" + list_name, indices, type="int", parameter=True))
+        openFile.write(
+            array_to_string("\t" + list_name, indices, type="int", parameter=True)
+        )
     openFile.write("END MODULE network")
     openFile.close()
 
@@ -760,3 +813,13 @@ def array_to_string(name, array, type="int", parameter=True):
     outString = outString[:-1] + "/)\n"
     outString = truncate_line(outString)
     return outString
+
+
+def write_network_info(file_name, network):
+    network_info = {
+        "three_phase": network.three_phase,
+        "reaction_type": "UCL",
+        "time_generated": datetime.now(),
+    }
+    with open(file_name, "w") as fh:
+        yaml.dump(network_info, fh)
