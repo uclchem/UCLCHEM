@@ -480,3 +480,6 @@ class Network:
                 species_index = len(self.species_list) + 1
             name = "n" + element.lower().replace("+", "x").replace("e-", "elec").replace("#", "g")
             self.species_indices[name] = species_index
+        
+    def __repr__(self):
+        return "Reaction network with \nSpecies:\n" + ', '.join(map(str, self.species_list))+ "\nReactions:\n" +  '\n'.join(map(repr, self.reaction_list))

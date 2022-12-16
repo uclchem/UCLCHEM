@@ -148,4 +148,8 @@ class Reaction:
         self.ode_bit = ode_bit
 
     def __str__(self):
-        return " + ".join(self.reactants) + " -> " + " + ".join(self.products)
+        return " + ".join(filter(lambda r: r != "NAN" , self.reactants)) + " -> " + " + ".join(filter(lambda p: p != "NAN", self.products))
+    
+    def __repr__(self):
+        return self.reac_type + " reaction: " + " + ".join(filter(lambda r: (r != "NAN") and (r not in reaction_types), self.reactants)) + " -> " + " + ".join(filter(lambda p: p != "NAN", self.products))
+    
