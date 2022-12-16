@@ -165,16 +165,12 @@ def kida_parser(kida_file):
     return rows
 
 
-def output_drops(dropped_reactions, output_dir, verbose=True):
+def output_drops(dropped_reactions, output_dir, write_files=True):
     if output_dir is None:
         output_dir = ""
     outputFile = join(output_dir, "dropped_reactions.csv")
     # Print dropped reactions from grain file or write if many
-    if len(dropped_reactions) < 6:
-        logging.info("Reactions dropped from grain file:\n")
-        for reaction in dropped_reactions:
-            logging.info(reaction)
-    else:
+    if write_files and dropped_reactions:
         logging.info(f"\nReactions dropped from grain file written to {outputFile}\n")
         with open(outputFile, "w") as f:
             writer = csv.writer(
@@ -182,7 +178,11 @@ def output_drops(dropped_reactions, output_dir, verbose=True):
             )
             for reaction in dropped_reactions:
                 writer.writerow(reaction)
-
+    else:
+        logging.info("Reactions dropped from grain file:\n")
+        for reaction in dropped_reactions:
+            logging.info(reaction)
+        
 
 def write_outputs(network, output_dir):
     if output_dir is None:
