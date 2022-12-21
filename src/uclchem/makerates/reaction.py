@@ -25,22 +25,27 @@ reaction_types = [
 
 class Reaction:
     def __init__(self, inputRow):
-        self.reactants = [
-            inputRow[0].upper(),
-            inputRow[1].upper(),
-            self.NANCheck(inputRow[2]).upper(),
-        ]
-        self.products = [
-            inputRow[3].upper(),
-            self.NANCheck(inputRow[4]).upper(),
-            self.NANCheck(inputRow[5]).upper(),
-            self.NANCheck(inputRow[6]).upper(),
-        ]
-        self.alpha = float(inputRow[7])
-        self.beta = float(inputRow[8])
-        self.gamma = float(inputRow[9])
-        self.templow = float(inputRow[10])
-        self.temphigh = float(inputRow[11])
+        try:
+            self.reactants = [
+                inputRow[0].upper(),
+                inputRow[1].upper(),
+                self.NANCheck(inputRow[2]).upper(),
+            ]
+            self.products = [
+                inputRow[3].upper(),
+                self.NANCheck(inputRow[4]).upper(),
+                self.NANCheck(inputRow[5]).upper(),
+                self.NANCheck(inputRow[6]).upper(),
+            ]
+            self.alpha = float(inputRow[7])
+            self.beta = float(inputRow[8])
+            self.gamma = float(inputRow[9])
+            self.templow = float(inputRow[10])
+            self.temphigh = float(inputRow[11])
+        except IndexError as error:
+            raise ValueError(
+                "Input for Reaction should be a list of length 12"
+            ) from error
         self.reac_type = self.get_reaction_type()
         self.duplicate = False
 
@@ -123,7 +128,7 @@ class Reaction:
         # every body after the first requires a factor of density
         for body in range(self.body_count):
             ode_bit = ode_bit + f"*D"
-       
+
         # then bring in factors of abundances
         for species in self.reactants:
             if species in species_names:
@@ -148,8 +153,21 @@ class Reaction:
         self.ode_bit = ode_bit
 
     def __str__(self):
-        return " + ".join(filter(lambda r: r != "NAN" , self.reactants)) + " -> " + " + ".join(filter(lambda p: p != "NAN", self.products))
-    
+        return (
+            " + ".join(filter(lambda r: r != "NAN", self.reactants))
+            + " -> "
+            + " + ".join(filter(lambda p: p != "NAN", self.products))
+        )
+
     def __repr__(self):
-        return self.reac_type + " reaction: " + " + ".join(filter(lambda r: (r != "NAN") and (r not in reaction_types), self.reactants)) + " -> " + " + ".join(filter(lambda p: p != "NAN", self.products))
-    
+        return (
+            self.reac_type
+            + " reaction: "
+            + " + ".join(
+                filter(
+                    lambda r: (r != "NAN") and (r not in reaction_types), self.reactants
+                )
+            )
+            + " -> "
+            + " + ".join(filter(lambda p: p != "NAN", self.products))
+        )
