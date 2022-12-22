@@ -1,9 +1,50 @@
 import logging
 
-elementList = ['H', 'D', 'HE', 'C', 'N', 'O', 'F', 'P', 'S', 'CL', 'LI', 'NA', 'MG', 'SI', 'PAH', '15N', '13C', '18O',
-               "E-", "FE"]
-elementMass = [1, 2, 4, 12, 14, 16, 19, 31, 32, 35, 3, 23, 24, 28, 420, 15, 13, 18, 0, 56]
-symbols = ['#', '@', '*', '+', '-', '(', ')']
+elementList = [
+    "H",
+    "D",
+    "HE",
+    "C",
+    "N",
+    "O",
+    "F",
+    "P",
+    "S",
+    "CL",
+    "LI",
+    "NA",
+    "MG",
+    "SI",
+    "PAH",
+    "15N",
+    "13C",
+    "18O",
+    "E-",
+    "FE",
+]
+elementMass = [
+    1,
+    2,
+    4,
+    12,
+    14,
+    16,
+    19,
+    31,
+    32,
+    35,
+    3,
+    23,
+    24,
+    28,
+    420,
+    15,
+    13,
+    18,
+    0,
+    56,
+]
+symbols = ["#", "@", "*", "+", "-", "(", ")"]
 
 
 def is_number(s):
@@ -24,7 +65,7 @@ class Species:
         self.name = inputRow[0].upper()
         self.mass = int(inputRow[1])
 
-        self.is_refractory = (str(inputRow[2]).lower() == "inf")
+        self.is_refractory = str(inputRow[2]).lower() == "inf"
         if self.is_refractory:
             self.binding_energy = 99.9e9
         else:
@@ -45,13 +86,28 @@ class Species:
             else:
                 self.desorb_products = [self.name[1:], "NAN", "NAN", "NAN"]
         else:
-            self.freeze_products = None
+            self.freeze_products = {}
+
+    def set_desorb_products(self, new_desorbs: list[str]) -> None:
+        self.desorb_products = new_desorbs
+
+    def get_desborb_products(self) -> list[str]:
+        return self.desorb_products
+
+    def set_freeze_products(self, product_list: list[str], freeze_alpha: float) -> None:
+        self.freeze_products[",".join(product_list)] = freeze_alpha
+
+    def get_freeze_products_list(self) -> float:
+        return [key.split(",") for key in self.freeze_products.keys()]
+
+    def get_freeze_alpha(self, product_list: list[str]) -> float:
+        return self.freeze_products[",".join(product_list)]
 
     def is_grain_species(self):
         if self.name in ["BULK", "SURFACE"]:
             return True
         else:
-            return (self.name[0] in ['#', '@'])
+            return self.name[0] in ["#", "@"]
 
     def is_surface_species(self):
         return self.name[0] == "#"
@@ -60,7 +116,7 @@ class Species:
         return self.name[0] == "@"
 
     def is_ion(self):
-        return (self.name[-1] == "+" or self.name[-1] == "-")
+        return self.name[-1] == "+" or self.name[-1] == "-"
 
     def add_default_freeze(self):
         freeze = "#" + self.name
@@ -68,7 +124,7 @@ class Species:
             freeze = freeze[:-1]
         if self.name == "E-":
             freeze = ""
-        self.freeze_products = {",".join([freeze, "NAN", "NAN", "NAN"]): 1.0}
+        self.set_freeze_products([freeze, "NAN", "NAN", "NAN"], 1.0)
 
     def find_constituents(self):
         """Loop through the species' name and work out what its consituent
@@ -86,9 +142,9 @@ class Species:
             if speciesName[i] not in symbols:
                 if i + 1 < len(speciesName):
                     # if next two characters are (eg) 'MG' then atom is Mg not M and G
-                    if speciesName[i:i + 3] in elementList:
+                    if speciesName[i : i + 3] in elementList:
                         j = i + 3
-                    elif speciesName[i:i + 2] in elementList:
+                    elif speciesName[i : i + 2] in elementList:
                         j = i + 2
                     # otherwise work out which element it is
                     elif speciesName[i] in elementList:
@@ -120,11 +176,15 @@ class Species:
                         i = j
                 else:
                     logging.warning(speciesName[i])
-                    logging.warning("\t{0} contains elements not in element list:".format(speciesName))
+                    logging.warning(
+                        "\t{0} contains elements not in element list:".format(
+                            speciesName
+                        )
+                    )
                     logging.warning(elementList)
             else:
                 # if symbol is start of a bracketed part of molecule, keep track
-                if (speciesName[i] == "("):
+                if speciesName[i] == "(":
                     bracket = True
                     bracketContent = []
                     i += 1
@@ -146,8 +206,16 @@ class Species:
         for atom in atoms:
             mass += elementMass[elementList.index(atom)]
         if mass != int(self.mass):
-            logging.warning(f"Input mass of {self.name} does not match calculated mass of constituents, using calculated mass: {int(mass)}")
+            logging.warning(
+                f"Input mass of {self.name} does not match calculated mass of constituents, using calculated mass: {int(mass)}"
+            )
             self.mass = int(mass)
+
+    def get_n_atoms(self) -> int:
+        return self.n_atoms
+
+    def set_n_atoms(self, new_n_atoms) -> None:
+        self.n_atoms = new_n_atoms
 
     def __eq__(self, other):
         return self.name == other.name
@@ -157,10 +225,9 @@ class Species:
 
     def __gt__(self, other):
         return self.mass > other.mass
-    
+
     def __repr__(self):
         return f"Specie: {self.name}"
-    
+
     def __str__(self):
         return self.name
-    
