@@ -88,16 +88,27 @@ class Species:
         else:
             self.freeze_products = {}
 
+    def get_name(self) -> str:
+        return self.name
+
     def set_desorb_products(self, new_desorbs: list[str]) -> None:
         self.desorb_products = new_desorbs
 
-    def get_desborb_products(self) -> list[str]:
+    def get_desorb_products(self) -> list[str]:
         return self.desorb_products
 
     def set_freeze_products(self, product_list: list[str], freeze_alpha: float) -> None:
         self.freeze_products[",".join(product_list)] = freeze_alpha
 
-    def get_freeze_products_list(self) -> float:
+    def get_freeze_products(self) -> dict:
+        keys = self.freeze_products.keys()
+        values = self.freeze_products.values()
+        logging.debug(f"freeze keys: {keys}, products {values}")
+        for key, value in zip(keys, values):
+            yield key.split(","), value
+
+    def get_freeze_products_list(self) -> list[list[str]]:
+        # TODO: Write an unit test for get_freeze_product_behaivour
         return [key.split(",") for key in self.freeze_products.keys()]
 
     def get_freeze_alpha(self, product_list: list[str]) -> float:
