@@ -197,15 +197,18 @@ def write_outputs(network, output_dir):
 
     # Create the species file
     filename = join(output_dir, "species.csv")
-    write_species(filename, network.species_list)
+    write_species(filename, network.get_species_list())
 
     filename = join(output_dir, "reactions.csv")
-    write_reactions(filename, network.reaction_list)
+    write_reactions(filename, network.get_reaction_list())
 
     # Write the ODEs in the appropriate language format
     filename = join(fortran_src_dir, "odes.f90")
     write_odes_f90(
-        filename, network.species_list, network.reaction_list, network.three_phase
+        filename,
+        network.get_species_list(),
+        network.get_reaction_list(),
+        network.three_phase,
     )
 
     filename = join(fortran_src_dir, "network.f90")
@@ -288,14 +291,14 @@ def write_reactions(fileName, reaction_list):
         writer.writerow(reaction_columns)
         for reaction in reaction_list:
             writer.writerow(
-                reaction.reactants
-                + reaction.products
+                reaction.get_reactants()
+                + reaction.get_products()
                 + [
-                    reaction.alpha,
-                    reaction.beta,
-                    reaction.gamma,
-                    reaction.templow,
-                    reaction.temphigh,
+                    reaction.get_alpha(),
+                    reaction.get_beta(),
+                    reaction.get_gamma(),
+                    reaction.get_templow(),
+                    reaction.get_temphigh(),
                 ]
             )
 
@@ -416,11 +419,11 @@ def build_ode_string(species_list, reaction_list, three_phase):
     total_swap = ""
 
     for i, reaction in enumerate(reaction_list):
-        for species in reaction.reactants:
+        for species in reaction.get_reactants():
             if species in species_names:
                 # Eley-Rideal reactions take a share of total freeze out rate which is already accounted for
                 # so we add as a loss term to the frozen version of the species rather than the gas version
-                if ("ER" in reaction.reactants) and (
+                if ("ER" in reaction.get_reactants()) and (
                     not species_list[species_names.index(species)].is_surface_species()
                 ):
                     species_list[
@@ -430,9 +433,9 @@ def build_ode_string(species_list, reaction_list, three_phase):
                     species_list[
                         species_names.index(species)
                     ].losses += reaction.ode_bit
-                if reaction.reactants[1] == "BULKSWAP":
+                if reaction.get_reactants()[1] == "BULKSWAP":
                     total_swap += reaction.ode_bit
-        for species in reaction.products:
+        for species in reaction.get_products():
             if species in species_names:
                 species_list[species_names.index(species)].gains += reaction.ode_bit
 
@@ -544,9 +547,9 @@ def write_evap_lists(network_file, species_list):
         if species.name[0] == "#":
             # find gas phase version of grain species. For #CO it looks for first species in list with just CO and then finds the index of that
             try:
-                j = species_names.index(species.desorb_products[0])
+                j = species_names.index(species.get_desorb_products()[0])
             except:
-                error = f"{species.name} desorbs as {species.desorb_products[0]}"
+                error = f"{species.name} desorbs as {species.get_desorb_products()[0]}"
                 error += "which is not in species list. This desorption is likely user defined.\n"
                 error += "Please amend the desorption route in your reaction file and re-run Makerates"
                 raise NameError(error)
@@ -561,7 +564,7 @@ def write_evap_lists(network_file, species_list):
             binding_energyList.append(species.binding_energy)
             enthalpyList.append(species.enthalpy)
         elif species.name[0] == "@":
-            j = species_names.index(species.desorb_products[0])
+            j = species_names.index(species.get_desorb_products()[0])
             gasIceList.append(j + 1)
             bulkList.append(i + 1)
             iceList.append(i + 1)
@@ -631,8 +634,8 @@ def write_network_file(file_name, network):
         file_name (str): The file name where the code will be written.
         network (Network): A Network object built from lists of species and reactions.
     """
-    species_list = network.species_list
-    reaction_list = network.reaction_list
+    species_list = network.get_species_list()
+    reaction_list = network.get_reaction_list()
     openFile = open(file_name, "w")
     openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
     openFile.write(
@@ -691,21 +694,21 @@ def write_network_file(file_name, network):
     openFile.write("    INTEGER, PARAMETER ::" + reaction_indices)
 
     for i, reaction in enumerate(reaction_list):
-        reactant1.append(find_reactant(names, reaction.reactants[0]))
-        reactant2.append(find_reactant(names, reaction.reactants[1]))
-        reactant3.append(find_reactant(names, reaction.reactants[2]))
-        prod1.append(find_reactant(names, reaction.products[0]))
-        prod2.append(find_reactant(names, reaction.products[1]))
-        prod3.append(find_reactant(names, reaction.products[2]))
-        prod4.append(find_reactant(names, reaction.products[3]))
-        alpha.append(reaction.alpha)
-        beta.append(reaction.beta)
-        gama.append(reaction.gamma)
+        reactant1.append(find_reactant(names, reaction.get_reactants()[0]))
+        reactant2.append(find_reactant(names, reaction.get_reactants()[1]))
+        reactant3.append(find_reactant(names, reaction.get_reactants()[2]))
+        prod1.append(find_reactant(names, reaction.get_products()[0]))
+        prod2.append(find_reactant(names, reaction.get_products()[1]))
+        prod3.append(find_reactant(names, reaction.get_products()[2]))
+        prod4.append(find_reactant(names, reaction.get_products()[3]))
+        alpha.append(reaction.get_alpha())
+        beta.append(reaction.get_beta())
+        gama.append(reaction.get_gamma())
         # if reaction.duplicate:
         #     duplicates.append(i + 1)
-        tmaxs.append(reaction.temphigh)
-        tmins.append(reaction.templow)
-        reacTypes.append(reaction.reac_type)
+        tmaxs.append(reaction.get_temphigh())
+        tmins.append(reaction.get_templow())
+        reacTypes.append(reaction.get_reaction_type())
     # if len(duplicates) == 0:
     #     duplicates = [9999]
     #     tmaxs = [0]
@@ -765,12 +768,14 @@ def get_desorption_freeze_partners(reaction_list):
     Returns:
         list: list of indices of freeze out reactions matching order of desorptions.
     """
-    freeze_species = [x.products[0] for x in reaction_list if x.reactants[1] == "DESCR"]
+    freeze_species = [
+        x.get_products()[0] for x in reaction_list if x.get_reactants()[1] == "DESCR"
+    ]
     partners = []
     for spec in freeze_species:
         for i, reaction in enumerate(reaction_list):
-            if reaction.reac_type == "FREEZE":
-                if reaction.reactants[0] == spec:
+            if reaction.get_reaction_type() == "FREEZE":
+                if reaction.get_reactants()[0] == spec:
                     partners.append(i + 1)
                     break
     return partners

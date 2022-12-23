@@ -70,12 +70,13 @@ def run_makerates(configuration_file="user_settings.yaml", write_files=True):
             output_dir=user_output_dir,
             write_files=write_files,
         )
+        print("These are dropped reactions:", dropped_reactions)
         io.write_outputs(network, user_output_dir)
 
-    ngrain = len([x for x in network.species_list if x.is_surface_species()])
-    logging.info(f"Total number of species = {len(network.species_list)}")
+    ngrain = len([x for x in network.get_species_list() if x.is_surface_species()])
+    logging.info(f"Total number of species = {len(network.get_species_list())}")
     logging.info(f"Number of surface species = {ngrain}")
-    logging.info(f"Number of reactions = {len(network.reaction_list)}")
+    logging.info(f"Number of reactions = {len(network.get_reaction_list())}")
     # return the network such that the object can be reused in code/notebooks
     return network
 
@@ -103,7 +104,7 @@ def get_network(
         )[0]
     else:
         with open(path_to_network_info, "r") as fh:
-            network_info = yaml.load(fh)
+            network_info = yaml.safe_load(fh)
         return _get_network_from_files(
             species_file=path_to_species_file,
             reaction_files=path_to_reaction_file,
@@ -135,14 +136,16 @@ def _get_network_from_files(
         dropped_reactions += temp_dropped_reactions
     # Create Network
     # dropped_reactions=sum(dropped_reactions)
-    print(reactions)
-    print(temp_dropped_reactions)
+    print("BEFORE LOADING", f"\n".join([str(x) for x in reactions]))
+    print(species_list)
     network = Network(
         species=species_list,
         reactions=reactions,
         three_phase=three_phase,
         user_defined_bulk=user_defined_bulk,
     )
+    # print("AFTER LOADING", f"\n".join([str(x) for x in network.get_reaction_list()]))
+    # print(f"\n".join([str(x) for x in network.get_species_list()]))
 
     #################################################################################################
 

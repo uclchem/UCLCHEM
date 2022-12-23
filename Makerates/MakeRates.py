@@ -12,8 +12,12 @@
 try:
     from uclchem.makerates import run_makerates
 except ModuleNotFoundError as err:
-    raise ModuleNotFoundError("The uclchem module could not be found, please make sure it is installed\nPlease refer to uclchem.github.io for installation instructions.") from err
-    
-if __name__=="__main__":
-    run_makerates("user_settings.yaml", verbosity="INFO")
-    
+    raise ModuleNotFoundError(
+        "The uclchem module could not be found, please make sure it is installed\nPlease refer to uclchem.github.io for installation instructions."
+    ) from err
+import logging
+
+if __name__ == "__main__":
+
+    logging.basicConfig(format="%(levelname)s: %(message)s", level="DEBUG")
+    run_makerates("user_settings.yaml")

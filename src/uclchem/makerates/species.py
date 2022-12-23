@@ -186,6 +186,9 @@ class Species:
                     else:
                         i = j
                 else:
+                    raise ValueError(
+                        f"Contains elements not in element list: {speciesName}"
+                    )
                     logging.warning(speciesName[i])
                     logging.warning(
                         "\t{0} contains elements not in element list:".format(
@@ -229,7 +232,12 @@ class Species:
         self.n_atoms = new_n_atoms
 
     def __eq__(self, other):
-        return self.name == other.name
+        if isinstance(other, Species):
+            return self.name == other.name
+        elif isinstance(other, str):
+            return self.name == other
+        else:
+            raise NotImplementedError
 
     def __lt__(self, other):
         return self.mass < other.mass
