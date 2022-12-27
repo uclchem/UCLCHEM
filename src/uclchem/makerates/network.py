@@ -119,9 +119,15 @@ class Network:
         current_reaction_list = self.get_reaction_list()
         for reaction in reactions:
             if reaction in current_reaction_list:
-                logging.warning(
-                    "Possibly adding a duplicate reaction to the reaction set"
-                )
+                # See if we have a collision with the any reactions with identical reactants and
+                # products, but different temperature ranges to avoid double definitions.
+                similar_reactions = self.find_similar_reactions(reaction)
+                for similar_reaction in similar_reactions:
+                    if reaction.check_temperature_collision(similar_reaction):
+                        raise RuntimeError(
+                            f"There already is a {reaction} present that has overlapping temperature ranges. Not adding the reaction."
+                        )
+
             # quick check to make sure all species in the reaction are in the species list.
             species_to_add = filter(
                 lambda spec: (spec not in self.get_species_list())
@@ -139,18 +145,21 @@ class Network:
             new_idx = list(self._reactions_dict.keys())[-1] + 1
             self._reactions_dict[new_idx] = reaction
 
+    def find_similar_reactions(self, reaction: Reaction) -> list[int]:
+        return list(
+            filter(
+                lambda x: x != None,
+                [k if v == reaction else None for k, v in self._reactions_dict.items()],
+            )
+        )
+
     def remove_reaction_by_index(self, reaction_idx: int) -> None:
         del self._reactions_dict[reaction_idx]
 
     def remove_reaction(self, reaction: Reaction) -> None:
         # In this reaction we use equality as defined for reactions, this does as of now not include
         # checking temperature ranges, so more than one key could be returned.
-        reaction_index = list(
-            filter(
-                lambda x: x != None,
-                [k if v == reaction else None for k, v in self._reactions_dict.items()],
-            )
-        )
+        reaction_index = self.find_similar_reactions(reaction)
         if len(reaction_index) == 1:
             logging.debug(
                 f"Trying to remove index: {reaction_index[0]}: {self._reactions_dict[reaction_index[0]]} "
@@ -297,7 +306,7 @@ class Network:
         if len(lostSpecies) > 0:
             logging.warning(
                 "\tSpecies in input list that do not appear in final list:\t"
-                + lostSpecies
+                + str(lostSpecies)
             )
         else:
             logging.info("\tAll input species in final network")

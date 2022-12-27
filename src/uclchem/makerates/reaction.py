@@ -250,17 +250,24 @@ class Reaction:
             raise NotImplementedError(
                 "Equality is not implemented for anything but comparing to other reactions."
             )
-        # Compare the first two values to quickly speed up large reaction set comparisons
-        # if set(self.get_reactants()) == set(other.get_reactants()):
-        #     if set(self.get_products()) == set(other.get_products()):
-        #         # TODO: Verify if this is needed?
-        #         # In order to be able to properly compare reactions also temperature ranges should be checked.
-        #         # if self.get_templow() == other.get_templow():
-        #         #     if self.get_temphigh() == other.get_temphigh():
-        #         return True
         if self.get_sorted_reactants() == other.get_sorted_reactants():
             if self.get_sorted_products() == other.get_sorted_products():
                 return True
+        return False
+
+    def check_temperature_collision(self, other) -> bool:
+        if not isinstance(other, Reaction):
+            raise NotImplementedError(
+                "Equality is not implemented for anything but comparing to other reactions."
+            )
+        if (other.get_templow() > self.get_templow()) and (
+            other.get_templow() < self.get_temphigh()
+        ):
+            return True
+        if (other.get_temphigh() > self.get_templow()) and (
+            other.get_temphigh() < self.get_temphigh()
+        ):
+            return True
         return False
 
     def changes_surface_count(self):
