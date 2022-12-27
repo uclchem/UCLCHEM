@@ -79,6 +79,14 @@ class Reaction:
         """
         return self._reactants[:]
 
+    def get_sorted_reactants(self) -> list[str]:
+        """Get the four reactants present in the reaction, sorted for fast comparisons
+
+        Args:
+            reactants (list[str]): The four sorted reactant names
+        """
+        return self._sorted_reactants
+
     def set_reactants(self, reactants: list[str]) -> None:
         """Set the four reactants present in the reaction, padded with NAN for nonexistent
 
@@ -86,6 +94,8 @@ class Reaction:
             reactants (list[str]): The four reactants names
         """
         self._reactants = reactants
+        # Store a sorted version for comparisons
+        self._sorted_reactants = sorted(self._reactants)
 
     def get_products(self) -> list[str]:
         """Get the four products present in the reaction, padded with NAN for nonexistent
@@ -95,6 +105,14 @@ class Reaction:
         """
         return self._products[:]
 
+    def get_sorted_products(self) -> list[str]:
+        """Get the four products present in the reaction, sorted for fast comparisons
+
+        Args:
+            products (list[str]): The four sorted products names
+        """
+        return self._sorted_products
+
     def set_products(self, products: list[str]) -> None:
         """Set the four products present in the reaction, padded with NAN for nonexistent
 
@@ -102,6 +120,8 @@ class Reaction:
             products (list[str]): The four products names
         """
         self._products = products
+        # Store a sorted version for comparisons
+        self._sorted_products = sorted(self._products)
 
     def get_alpha(self) -> float:
         """Get the alpha parameter from the Kooij-Arrhenius equation
@@ -230,8 +250,16 @@ class Reaction:
             raise NotImplementedError(
                 "Equality is not implemented for anything but comparing to other reactions."
             )
-        if set(self.get_reactants()) == set(other.get_reactants()):
-            if set(self.get_products()) == set(other.get_products()):
+        # Compare the first two values to quickly speed up large reaction set comparisons
+        # if set(self.get_reactants()) == set(other.get_reactants()):
+        #     if set(self.get_products()) == set(other.get_products()):
+        #         # TODO: Verify if this is needed?
+        #         # In order to be able to properly compare reactions also temperature ranges should be checked.
+        #         # if self.get_templow() == other.get_templow():
+        #         #     if self.get_temphigh() == other.get_temphigh():
+        #         return True
+        if self.get_sorted_reactants() == other.get_sorted_reactants():
+            if self.get_sorted_products() == other.get_sorted_products():
                 return True
         return False
 

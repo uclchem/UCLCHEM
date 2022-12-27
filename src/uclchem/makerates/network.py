@@ -28,16 +28,37 @@ class Network:
         self.user_defined_bulk = user_defined_bulk
         self.three_phase = three_phase
         # We used to add bulk here?
-        if self.three_phase:
-            self.add_bulk_species()
+        # if self.three_phase:
+        #     self.add_bulk_species()
         # self.species_list.sort()
-        electron_specie = Species(["E-", 0, 0, 0, 0, 0, 0])
+        electron_specie = Species(["E-", 0, 1.0, 0, 0, 0, 0])
         electron_specie.n_atoms = 1
         self.add_species(electron_specie)
         self._reactions_dict = {k: v for k, v in enumerate(reactions)}
-        self.add_grain_reactions()
+
+        #### Add reactions and species   ####
+        # check which species are changed on freeze or desorb
+        self.check_freeze_and_desorbs()
+
+        # Need additional grain reactions including non-thermal desorption and chemically induced desorption
+        self.add_freeze_reactions()
+        self.add_desorb_reactions()
+        self.add_chemdes_reactions()
+        if self.excited_species:
+            self.add_excited_surface_reactions()
         if self.three_phase:
             self.add_bulk_species()
+            self.add_bulk_reactions()
+        self.check_and_filter_species()
+
+        # TODO, decide if reordering the reactions is truly worth it?
+        # self.reaction_list = sorted(
+        #     self.reaction_list, key=lambda x: (x.reac_type, x.reactants[0])
+        # )
+
+        # self.add_grain_reactions()
+        # if self.three_phase:
+        #     self.add_bulk_species()
 
     @property
     def species(self):
@@ -95,30 +116,56 @@ class Network:
             raise ValueError(
                 "Input must either be (a list of) Reaction class or csv entries"
             )
+        current_reaction_list = self.get_reaction_list()
         for reaction in reactions:
-            if reaction in self.get_reaction_list():
+            if reaction in current_reaction_list:
                 logging.warning(
                     "Possibly adding a duplicate reaction to the reaction set"
                 )
             # quick check to make sure all species in the reaction are in the species list.
-            species_not_in_species_list = filter(
-                lambda spec: spec not in self.get_species_list(),
+            species_to_add = filter(
+                lambda spec: (spec not in self.get_species_list())
+                and (spec not in ["NAN", "", "E-"] + reaction_types),
                 reaction.get_reactants() + reaction.get_products(),
             )
             # if any(
             #     specie not in self.get_species_list()
             #     for specie in reaction.get_reactants() + reaction.get_products()
             # ):
-            for specie in species_not_in_species_list:
-                if specie not in ["NAN", "", "E-"]:
-                    logging.debug(f"Trying to add specie {specie}")
-                    self.add_species(Species([specie, -1, 0.0, 0.0, 0.0, 0.0, 0.0]))
+            for specie in species_to_add:
+                logging.debug(f"Trying to add specie {specie}")
+                self.add_species(Species([specie, -1, 0.0, 0.0, 0.0, 0.0, 0.0]))
             # Index and add the new reaction.
             new_idx = list(self._reactions_dict.keys())[-1] + 1
             self._reactions_dict[new_idx] = reaction
 
-    def remove_reaction(self, reaction_idx: int) -> None:
+    def remove_reaction_by_index(self, reaction_idx: int) -> None:
         del self._reactions_dict[reaction_idx]
+
+    def remove_reaction(self, reaction: Reaction) -> None:
+        # In this reaction we use equality as defined for reactions, this does as of now not include
+        # checking temperature ranges, so more than one key could be returned.
+        reaction_index = list(
+            filter(
+                lambda x: x != None,
+                [k if v == reaction else None for k, v in self._reactions_dict.items()],
+            )
+        )
+        if len(reaction_index) == 1:
+            logging.debug(
+                f"Trying to remove index: {reaction_index[0]}: {self._reactions_dict[reaction_index[0]]} "
+            )
+            del self._reactions_dict[reaction_index[0]]
+        elif len(reaction_index) == 0:
+            logging.warning(
+                f"The reaction {reaction} is not present in the reaction set, so cannot remove it"
+            )
+        elif len(reaction_index) > 1:
+            raise (
+                ValueError(
+                    "found more than one indices for the reaction {reaction}, remove by index instead of by reaction."
+                )
+            )
 
     def get_reaction(self, reaction_idx: int) -> Reaction:
         return deepcopy(self._reactions_dict[reaction_idx])
@@ -133,7 +180,7 @@ class Network:
         self._reactions_dict = new_dict
 
     def get_reaction_list(self):
-        return self._reactions_dict.values()
+        return list(self._reactions_dict.values())
 
     def add_species(
         self, species: Union[Union[Species, str], list[Union[Species, str]]]
@@ -166,7 +213,13 @@ class Network:
                     f"Trying to add a reaction type {specie}, reactions are not supposed to be in the species file! "
                 )
                 continue
-            self._species_dict[specie.name] = specie
+            # Filter out reactants that react into nothing, i.e. electrons.
+            if specie.name:
+                self._species_dict[specie.name] = specie
+            else:
+                logging.warning(
+                    f"You try to add a falsy specie called '{specie.name}', this cannot be done."
+                )
 
     def remove_species(self, specie_name):
         del self._species_dict[specie_name]
@@ -185,25 +238,6 @@ class Network:
 
     def set_species_dict(self, new_species_dict: dict[str, Species]):
         self._species_dict = new_species_dict
-
-    def add_grain_reactions(self):
-        # check which species are changed on freeze or desorb
-        self.check_freeze_and_desorbs()
-
-        # Need additional grain reactions including non-thermal desorption and chemically induced desorption
-        self.add_freeze_reactions()
-        self.add_desorb_reactions()
-        self.add_chemdes_reactions()
-        if self.excited_species:
-            self.add_excited_surface_reactions()
-        if self.three_phase:
-            self.add_bulk_reactions()
-        self.check_and_filter_species()
-
-        # TODO, decide if reordering the reactions is truly worth it?
-        # self.reaction_list = sorted(
-        #     self.reaction_list, key=lambda x: (x.reac_type, x.reactants[0])
-        # )
 
     # check reactions to alert user of potential issues including repeat reactions
     # and multiple freeze out routes
@@ -284,6 +318,7 @@ class Network:
         """For three phase models, MakeRates will produce the version of the species in the bulk
         so that the user doesn't have to endlessly relist the same species
         """
+        logging.debug("Adding bulk species")
         speciesNames = [species.name for species in self.get_species_list()]
         userSpecies = [manualSpec.name for manualSpec in self.user_defined_bulk]
         new_species = []
@@ -315,7 +350,7 @@ class Network:
                         new_spec.binding_energy = h2o_binding_energy
                     new_species.append(new_spec)
                     logging.debug(
-                        f"Adding a bulk partner species for {species},  new {new_spec}"
+                        f"Adding a bulk partner species for {species}, new {new_spec}"
                     )
         self.add_species(new_species)
 
@@ -353,16 +388,19 @@ class Network:
             x for x in self.get_reaction_list() if x.get_reaction_type() == "FREEZE"
         ]
         for freeze in freezes:
+            logging.debug(freeze)
             specie = self.get_specie(freeze.get_reactants()[0])
             specie.set_freeze_products(freeze.get_products(), freeze.get_alpha())
-            self.set_specie(freeze.get_reactants()[0])
+            self.set_specie(freeze.get_reactants()[0], specie)
 
         # then add default freeze out for species without a listed freeze out
         for species_name, specie in self.get_species_dict().items():
             if (not specie.is_grain_species()) and (
                 not specie.get_freeze_products_list()
             ):
-                logging.warning(f"Adding a freezeout for {specie}")
+                logging.warning(
+                    f"Adding a default freezeout for {specie} to the specie"
+                )
                 specie.add_default_freeze()
                 self.set_specie(species_name, specie)
 
@@ -371,18 +409,24 @@ class Network:
 
     def add_freeze_reactions(self):
         """Save the user effort by automatically generating freeze out reactions"""
+        logging.debug("Adding the freeze out reactions!")
+        new_reactions = []
+        new_species = []
         for species in self.get_species_list():
+            logging.debug(f"Checking if {species} needs to have its freezeout added")
             if not species.is_grain_species():
                 for products, alpha in species.get_freeze_products():
-                    newReaction = Reaction(
-                        [species.name, "FREEZE", "NAN"]
-                        + products
-                        + [alpha, 0, species.binding_energy, 0.0, 10000.0]
+                    new_reactions.append(
+                        Reaction(
+                            [species.name, "FREEZE", "NAN"]
+                            + products
+                            + [alpha, 0, species.binding_energy, 0.0, 10000.0]
+                        )
                     )
-                    self.add_reactions(newReaction)
-                    if products[0]:
+                    # Check if the product is in the species list
+                    if products[0] not in self.get_species_list():
                         logging.info(f"Trying to add new specie {products}")
-                        self.add_species(
+                        new_species.append(
                             Species(
                                 [
                                     products[0],
@@ -395,33 +439,40 @@ class Network:
                                 ]
                             )
                         )
+        self.add_reactions(new_reactions)
+        self.add_species(new_species)
 
     def add_desorb_reactions(self):
         """Save the user effort by automatically generating desorption reactions"""
         desorb_reacs = ["DESOH2", "DESCR", "DEUVCR", "THERM"]
-
+        logging.debug("Adding desorbtion reactions!")
+        new_reactions = []
         for species in self.get_species_list():
             if species.is_surface_species():
                 for reacType in desorb_reacs:
-                    newReaction = Reaction(
-                        [species.name, reacType, "NAN"]
+                    new_reactions.append(
+                        Reaction(
+                            [species.name, reacType, "NAN"]
+                            + species.get_desorb_products()
+                            + [1, 0, species.binding_energy, 0.0, 10000.0]
+                        )
+                    )
+            if species.is_bulk_species() and not species.is_refractory:
+                new_reactions.append(
+                    Reaction(
+                        [species.name, "THERM", "NAN"]
                         + species.get_desorb_products()
                         + [1, 0, species.binding_energy, 0.0, 10000.0]
                     )
-                    self.add_reactions(newReaction)
-            if species.is_bulk_species() and not species.is_refractory:
-                newReaction = Reaction(
-                    [species.name, "THERM", "NAN"]
-                    + species.get_desorb_products()
-                    + [1, 0, species.binding_energy, 0.0, 10000.0]
                 )
-                self.add_reactions(newReaction)
+        self.add_reactions(new_reactions)
 
     def add_chemdes_reactions(self):
         """We have the user list all Langmuir-Hinshelwood and Eley-Rideal
         reactions once. Then we duplicate so that the reaction branches
         with products on grain and products desorbing.
         """
+        logging.debug("Adding desascociation reactions for LH and ER mechanisms")
         new_reactions = []
         for reaction in self.get_reaction_list():
             if reaction.get_reaction_type() in ["LH", "ER"]:
@@ -444,7 +495,7 @@ class Network:
                         "All Langmuir-Hinshelwood and Eley-Rideal reactions should be input with products on grains only.\n"
                         + "The fraction of products that enter the gas is dealt with by Makerates and UCLCHEM.\n"
                         + "the following reaction caused this warning\t"
-                        + reaction
+                        + str(reaction)
                     )
                 # Replace all grain or bulk products with gas phase counterparts
                 new_products = [
@@ -474,6 +525,7 @@ class Network:
         If only one of the reactants in the base reaction has an excited counterpart then
         only one excited version of that reaction is created.
         """
+        logging.debug("Adding excited surface reactions")
         excited_species = [x for x in self.get_species_list() if "*" in x.name]
         lh_reactions = [
             x for x in self.get_reaction_list() if "LH" in x.get_reactants()
@@ -581,6 +633,7 @@ class Network:
         in the bulk (just more slowly due to binding energy). The user therefore only
         lists surface reactions in their input reaction file and we duplicate here.
         """
+        logging.debug("Adding bulk reactions")
         current_reaction_list = self.get_reaction_list()
         lh_reactions = [x for x in current_reaction_list if "LH" in x.get_reactants()]
         lh_reactions = lh_reactions + [
@@ -656,7 +709,7 @@ class Network:
                     freezeout_reactions.append(reaction)
             if freezes == 1:
                 logging.info(
-                    f"\t{spec.name} freezes out through the reaction:\n {freezeout_reactions}"
+                    f"\t{spec.name} freezes out through {freezeout_reactions[0]}"
                 )
             if freezes > 1:
                 logging.info(f"\t{spec.name} freezes out through {freezes} routes")
@@ -668,12 +721,13 @@ class Network:
         Check reaction network to make sure no reaction appears twice unless
         they have different temperature ranges.
         """
-        logging.info("\n\tPossible duplicate reactions for manual removal:")
+        logging.info("\tPossible duplicate reactions for manual removal:")
         duplicates = False
         for i, reaction1 in enumerate(self.get_reaction_list()):
             if not reaction1.duplicate:
                 for j, reaction2 in enumerate(self.get_reaction_list()):
-                    if i != j:
+                    # Save half the checks by only doing half the comparisons
+                    if j > i:
                         if reaction1 == reaction2:
                             if not (
                                 (reaction1.get_templow() >= reaction2.get_temphigh())
@@ -695,7 +749,7 @@ class Network:
                                         < reaction2.get_temphigh()
                                     ):
                                         logging.warning(
-                                            f"\tReactions {i+1} and {j+1} have non-adjacent temperature ranges"
+                                            f"\tReactions {reaction1} and {reaction2} have non-adjacent temperature ranges"
                                         )
                                 reaction1.duplicate = True
                                 reaction2.duplicate = True

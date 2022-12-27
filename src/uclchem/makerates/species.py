@@ -118,7 +118,10 @@ class Species:
         if self.name in ["BULK", "SURFACE"]:
             return True
         else:
-            return self.name[0] in ["#", "@"]
+            try:
+                return self.name[0] in ["#", "@"]
+            except IndexError:
+                return False
 
     def is_surface_species(self):
         return self.name[0] == "#"
@@ -221,7 +224,7 @@ class Species:
             mass += elementMass[elementList.index(atom)]
         if mass != int(self.mass):
             logging.warning(
-                f"Input mass of {self.name} does not match calculated mass of constituents, using calculated mass: {int(mass)}"
+                f"Input mass of {self.name} ({self.mass}) does not match calculated mass of constituents, using calculated mass: {int(mass)}"
             )
             self.mass = int(mass)
 
