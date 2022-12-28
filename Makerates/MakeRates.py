@@ -16,8 +16,23 @@ except ModuleNotFoundError as err:
         "The uclchem module could not be found, please make sure it is installed\nPlease refer to uclchem.github.io for installation instructions."
     ) from err
 import logging
+from argparse import ArgumentParser
+import pathlib
+
+
+def get_args():
+    parser = ArgumentParser()
+    parser.add_argument(
+        "settings_path", nargs="?", default="user_settings.yaml", type=pathlib.Path
+    )
+    parser.add_argument("-v", "--verbosity", default="WARNING", type=str)
+    return parser.parse_args()
+
 
 if __name__ == "__main__":
-
-    logging.basicConfig(format="%(levelname)s: %(message)s", level="DEBUG")
-    run_makerates("user_settings.yaml")
+    args = get_args()
+    logging.basicConfig(
+        format="%(levelname)s: %(message)s",
+        level=args.verbosity,
+    )
+    run_makerates(args.settings_path)
