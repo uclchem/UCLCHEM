@@ -70,7 +70,7 @@ def run_makerates(configuration_file="user_settings.yaml", write_files=True):
             output_dir=user_output_dir,
             write_files=write_files,
         )
-        print("These are dropped reactions:", dropped_reactions)
+        logging.info(f"There are {len(dropped_reactions)} droppped reactions")
         io.write_outputs(network, user_output_dir)
 
     ngrain = len([x for x in network.get_species_list() if x.is_surface_species()])
@@ -136,8 +136,8 @@ def _get_network_from_files(
         dropped_reactions += temp_dropped_reactions
     # Create Network
     # dropped_reactions=sum(dropped_reactions)
-    print("BEFORE LOADING", f"\n".join([str(x) for x in reactions]))
-    print(species_list)
+    # print("BEFORE LOADING", f"\n".join([str(x) for x in reactions]))
+    # print(species_list)
     network = Network(
         species=species_list,
         reactions=reactions,

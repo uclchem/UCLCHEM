@@ -42,13 +42,13 @@ class Network:
 
         # Need additional grain reactions including non-thermal desorption and chemically induced desorption
         self.add_freeze_reactions()
+        if self.three_phase:
+            self.add_bulk_species()
+            self.add_bulk_reactions()
         self.add_desorb_reactions()
         self.add_chemdes_reactions()
         if self.excited_species:
             self.add_excited_surface_reactions()
-        if self.three_phase:
-            self.add_bulk_species()
-            self.add_bulk_reactions()
         self.check_and_filter_species()
 
         # TODO, decide if reordering the reactions is truly worth it?
@@ -260,20 +260,6 @@ class Network:
         self.index_important_reactions()
         self.index_important_species()
 
-    # Becomes obsolete since dicts cannot have duplicate entries
-    # def remove_duplicate_species(self):
-    #     """Alerts user if the same species appears twice in species_list
-    #     then de-duplicates list
-
-    #     """
-    #     for species in self.get_species_list():
-    #         if self.species_list.count(species) > 1:
-    #             logging.warning(
-    #                 f"\t {species.name} appears twice in input species list"
-    #             )
-
-    #     self.species_list = list(unique(self.species_list))
-
     def check_and_filter_species(self):
         """Check every speces in network appears in at least one reaction.
         Remove any that do not and alert user.
@@ -377,7 +363,6 @@ class Network:
         Returns:
             list: species and reaction lists with user specified freeze and desorb reactions removed (but species updated)
         """
-        # species_names = [spec.name for spec in species]
         desorbs = [
             x for x in self.get_reaction_list() if x.get_reaction_type() == "DESORB"
         ]
