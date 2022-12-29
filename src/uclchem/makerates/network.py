@@ -51,14 +51,8 @@ class Network:
             self.add_excited_surface_reactions()
         self.check_and_filter_species()
 
-        # TODO, decide if reordering the reactions is truly worth it?
-        # self.reaction_list = sorted(
-        #     self.reaction_list, key=lambda x: (x.reac_type, x.reactants[0])
-        # )
-
-        # self.add_grain_reactions()
-        # if self.three_phase:
-        #     self.add_bulk_species()
+        # Sort the reactions before returning them, this is important for convergence of the ODE
+        self.sort_reactions()
 
     @property
     def species(self):
@@ -182,14 +176,35 @@ class Network:
     def set_reaction(self, reaction_idx: int, reaction: Reaction) -> None:
         self._reactions_dict[reaction_idx] = Reaction
 
-    def get_reaction_dict(self) -> Reaction:
-        return self._reactions_dict()
+    def get_reaction_dict(self) -> dict[int, Reaction]:
+        return self._reactions_dict
 
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
         self._reactions_dict = new_dict
 
-    def get_reaction_list(self):
+    def get_reaction_list(self) -> list[Reaction]:
         return list(self._reactions_dict.values())
+
+    def sort_reactions(self) -> None:
+        """Sort the reactions by the reaction type first, reactants second."""
+        reaction_dict = self.get_reaction_dict()
+        logging.debug(
+            f"Before sorting reactions {[(k, v) for i, (k, v) in enumerate(self.get_reaction_dict().items()) if i < 5]}"
+        )
+        self.set_reaction_dict(
+            dict(
+                sorted(
+                    reaction_dict.items(),
+                    key=lambda kv: (
+                        kv[1].get_reaction_type(),
+                        kv[1].get_reactants()[0],
+                    ),
+                )
+            )
+        )
+        logging.debug(
+            f"After sorting reactions {[(k,v ) for i, (k, v) in enumerate(self.get_reaction_dict().items()) if i < 5]}"
+        )
 
     def add_species(
         self, species: Union[Union[Species, str], list[Union[Species, str]]]
