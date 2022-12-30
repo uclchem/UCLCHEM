@@ -79,7 +79,7 @@ def create_abundance_plot(df, species, figsize=(16, 9), plot_file=None):
     return fig, ax
 
 
-def plot_species(ax, df, species):
+def plot_species(ax, df, species, **plot_kwargs):
     """Plot the abundance of a list of species through time directly onto an axis.
 
     Args:
@@ -93,13 +93,22 @@ def plot_species(ax, df, species):
 
     color_palette(n_colors=len(species))
     for specIndx, specName in enumerate(species):
+        linestyle = "solid"
         if specName[0] == "$":
             abundances = df[specName.replace("$", "#")]
+            linestyle = "dashed"
             if specName.replace("$", "@") in df.columns:
                 abundances = abundances + df[specName.replace("$", "@")]
         else:
             abundances = df[specName]
-        ax.plot(df["Time"], abundances, label=specName, lw=2)
+        ax.plot(
+            df["Time"],
+            abundances,
+            label=specName,
+            lw=2,
+            linestyle=linestyle,
+            **plot_kwargs,
+        )
         ax.set(yscale="log")
         ax.legend()
     return ax
@@ -135,7 +144,9 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
         comments="%",
     )
 
-    fortran_reac_indxs = [i + 1 for i, reaction in enumerate(reactions) if species_name in reaction]
+    fortran_reac_indxs = [
+        i + 1 for i, reaction in enumerate(reactions) if species_name in reaction
+    ]
     reac_indxs = [i for i, reaction in enumerate(reactions) if species_name in reaction]
     species_index = species.index(species_name) + 1  # fortran index of species
     old_key_reactions = []
@@ -158,7 +169,13 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
 
             # convert reaction rates to total rates of change, this needs manually updating when you add new reaction types!
             change_reacs, changes = _get_rates_of_change(
-                rates, reactions[reac_indxs], species, species_name, row, swap, bulk_layers
+                rates,
+                reactions[reac_indxs],
+                species,
+                species_name,
+                row,
+                swap,
+                bulk_layers,
             )
 
             change_reacs = _format_reactions(change_reacs)
@@ -167,15 +184,23 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
             # it's not a reaction in the network so won't get picked up any other way. We manually add it.
             if species_name[0] == "@":
                 if transfer >= 0:
-                    change_reacs.append(f"#{species_name[1:]} + SURFACE_TRANSFER -> {species_name}")
+                    change_reacs.append(
+                        f"#{species_name[1:]} + SURFACE_TRANSFER -> {species_name}"
+                    )
                 else:
-                    change_reacs.append(f"{species_name} + SURFACE_TRANSFER -> #{species_name[1:]}")
+                    change_reacs.append(
+                        f"{species_name} + SURFACE_TRANSFER -> #{species_name[1:]}"
+                    )
                 changes = np.append(changes, transfer)
             elif species_name[0] == "#":
                 if transfer >= 0:
-                    change_reacs.append(f"@{species_name[1:]} + SURFACE_TRANSFER -> {species_name}")
+                    change_reacs.append(
+                        f"@{species_name[1:]} + SURFACE_TRANSFER -> {species_name}"
+                    )
                 else:
-                    change_reacs.append(f"{species_name} + SURFACE_TRANSFER -> @{species_name[1:]}")
+                    change_reacs.append(
+                        f"{species_name} + SURFACE_TRANSFER -> @{species_name[1:]}"
+                    )
                 changes = np.append(changes, transfer)
 
             # Then we remove the reactions that are not important enough to be printed by finding
@@ -185,19 +210,32 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
                 total_destruct,
                 key_reactions,
                 key_changes,
-            ) = _remove_slow_reactions(changes, change_reacs, rate_threshold=rate_threshold)
+            ) = _remove_slow_reactions(
+                changes, change_reacs, rate_threshold=rate_threshold
+            )
 
-            #only update if list of reactions change or rates change by factor of 10
+            # only update if list of reactions change or rates change by factor of 10
             if (
                 (old_key_reactions != key_reactions)
-                or (np.abs(np.log10(np.abs(old_total_destruct))-np.log10(np.abs(total_destruct)))>1)
-                or (np.abs(np.log10(old_total_form)-np.log10(total_formation))>1)
+                or (
+                    np.abs(
+                        np.log10(np.abs(old_total_destruct))
+                        - np.log10(np.abs(total_destruct))
+                    )
+                    > 1
+                )
+                or (np.abs(np.log10(old_total_form) - np.log10(total_formation)) > 1)
             ):
                 old_key_reactions = key_reactions[:]
-                old_total_form=total_formation
-                old_total_destruct=total_destruct
+                old_total_form = total_formation
+                old_total_destruct = total_destruct
                 _write_analysis(
-                    f, row["Time"], total_formation, total_destruct, key_reactions, key_changes
+                    f,
+                    row["Time"],
+                    total_formation,
+                    total_destruct,
+                    key_reactions,
+                    key_changes,
                 )
 
 
@@ -241,7 +279,9 @@ def _get_species_rates(param_dict, input_abundances, species_index, reac_indxs):
     return rates[: len(reac_indxs)], transfer, swap, bulk_layers
 
 
-def _get_rates_of_change(rates, reactions, speciesList, species, row, swap, bulk_layers):
+def _get_rates_of_change(
+    rates, reactions, speciesList, species, row, swap, bulk_layers
+):
     """Calculate the terms in the rate of equation of a particular species using rates calculated using
     get_species_rates() and a row from the full output of UCLCHEM. See `analysis.py` for intended use.
 
@@ -269,7 +309,7 @@ def _get_rates_of_change(rates, reactions, speciesList, species, row, swap, bulk
             if reactant in speciesList:
                 change = change * row[reactant]
                 reactant_count += 1
-            elif reactant in ["DESOH2", "FREEZE", "LH", "LHDES","EXSOLID"]:
+            elif reactant in ["DESOH2", "FREEZE", "LH", "LHDES", "EXSOLID"]:
                 reactant_count += 1
             if reactant in ["DEUVCR", "DESCR", "DESOH2", "SURFSWAP"]:
                 change = change / np.max([1.0e-30, row["SURFACE"]])
@@ -341,7 +381,9 @@ def _write_analysis(
         key_changes (list): A list of rates of change contributing to total
     """
     output_file.write(
-        "\n\n***************************\nNew Important Reactions At: {0:.2e} years\n".format(time)
+        "\n\n***************************\nNew Important Reactions At: {0:.2e} years\n".format(
+            time
+        )
     )
     output_file.write("Formation = {0:.2e} from:".format(total_production))
     for k, reaction in enumerate(key_reactions):
@@ -352,7 +394,9 @@ def _write_analysis(
     output_file.write("\n\nDestruction = {0:.2e} from:".format(total_destruction))
     for k, reaction in enumerate(key_reactions):
         if key_changes[k] < 0:
-            outString = f"\n{reaction} : {float(key_changes[k] / total_destruction):.2%}"
+            outString = (
+                f"\n{reaction} : {float(key_changes[k] / total_destruction):.2%}"
+            )
             output_file.write(outString)
 
 
@@ -367,7 +411,9 @@ def _format_reactions(reactions):
     """
     formatted_reactions = []
     for reaction in reactions:
-        outString = "{x[0]} + {x[1]} + {x[2]} -> {x[3]} + {x[4]} + {x[5]}".format(x=reaction)
+        outString = "{x[0]} + {x[1]} + {x[2]} -> {x[3]} + {x[4]} + {x[5]}".format(
+            x=reaction
+        )
         outString = outString.replace(" + NAN", "")
         formatted_reactions.append(outString)
     return formatted_reactions

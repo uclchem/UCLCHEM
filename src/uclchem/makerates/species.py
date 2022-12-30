@@ -91,6 +91,9 @@ class Species:
     def get_name(self) -> str:
         return self.name
 
+    def get_mass(self) -> int:
+        return self.mass
+
     def set_desorb_products(self, new_desorbs: list[str]) -> None:
         self.desorb_products = new_desorbs
 

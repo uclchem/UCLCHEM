@@ -31,7 +31,7 @@ class Network:
         # if self.three_phase:
         #     self.add_bulk_species()
         # self.species_list.sort()
-        electron_specie = Species(["E-", 0, 1.0, 0, 0, 0, 0])
+        electron_specie = Species(["E-", 0, 0.0, 0, 0, 0, 0])
         electron_specie.n_atoms = 1
         self.add_species(electron_specie)
         self._reactions_dict = {k: v for k, v in enumerate(reactions)}
@@ -49,10 +49,12 @@ class Network:
         self.add_chemdes_reactions()
         if self.excited_species:
             self.add_excited_surface_reactions()
-        self.check_and_filter_species()
 
         # Sort the reactions before returning them, this is important for convergence of the ODE
         self.sort_reactions()
+        self.sort_species()
+
+        self.check_and_filter_species()
 
     @property
     def species(self):
@@ -134,7 +136,8 @@ class Network:
             # ):
             for specie in species_to_add:
                 logging.debug(f"Trying to add specie {specie}")
-                self.add_species(Species([specie, -1, 0.0, 0.0, 0.0, 0.0, 0.0]))
+                # TODO: get more sensible mass
+                self.add_species(Species([specie, 1000, 0.0, 0.0, 0.0, 0.0, 0.0]))
             # Index and add the new reaction.
             new_idx = list(self._reactions_dict.keys())[-1] + 1
             self._reactions_dict[new_idx] = reaction
@@ -205,6 +208,9 @@ class Network:
         logging.debug(
             f"After sorting reactions {[(k,v ) for i, (k, v) in enumerate(self.get_reaction_dict().items()) if i < 5]}"
         )
+        assert len(reaction_dict) == len(
+            self.get_reaction_dict()
+        ), "Sorting the species caused a difference in the number of species"
 
     def add_species(
         self, species: Union[Union[Species, str], list[Union[Species, str]]]
@@ -237,8 +243,14 @@ class Network:
                     f"Trying to add a reaction type {specie}, reactions are not supposed to be in the species file! "
                 )
                 continue
+
             # Filter out reactants that react into nothing, i.e. electrons.
             if specie.name:
+                # Filter out ice species with zero binding energy as they tend to give problems
+                if specie.name[0] in ["@", "#"] and specie.binding_energy == 0.0:
+                    raise ValueError(
+                        f"Trying to add an ice specie {specie.name} with zero binding energy, this is not possible. Make sure this specie was added manually to the species file."
+                    )
                 self._species_dict[specie.name] = specie
             else:
                 logging.warning(
@@ -262,6 +274,30 @@ class Network:
 
     def set_species_dict(self, new_species_dict: dict[str, Species]):
         self._species_dict = new_species_dict
+
+    def sort_species(self):
+        species_dict = self.get_species_dict()
+        logging.debug(
+            f"Before sorting species {[(k,v ) for i, (k, v) in enumerate(species_dict.items()) if i < 5]}"
+        )
+        self.set_species_dict(
+            dict(
+                sorted(
+                    species_dict.items(),
+                    # key=lambda kv: (kv[1].get_mass(),),
+                    key=lambda kv: custom_lookup[kv[1].name],
+                )
+            )
+        )
+        logging.debug(
+            f"After sorting species {[(k,v ) for i, (k, v) in enumerate(self.get_species_dict().items()) if i < 5]}"
+        )
+        assert len(species_dict) == len(
+            self.get_species_dict()
+        ), "Sorting the species caused a difference in the number of species"
+        electron = self.get_specie("E-")
+        self.remove_species("E-")
+        self.add_species(electron)
 
     # check reactions to alert user of potential issues including repeat reactions
     # and multiple freeze out routes
@@ -429,7 +465,7 @@ class Network:
                         Reaction(
                             [species.name, "FREEZE", "NAN"]
                             + products
-                            + [alpha, 0, species.binding_energy, 0.0, 10000.0]
+                            + [alpha, 0.0, species.binding_energy, 0.0, 10000.0]
                         )
                     )
                     # Check if the product is in the species list
@@ -889,3 +925,342 @@ class Network:
             + "\nReactions:\n"
             + "\n".join(map(repr, self.get_reaction_list()))
         )
+
+
+custom_lookup = {
+    "H": 0,
+    "#H": 1,
+    "H+": 2,
+    "@H": 3,
+    "H2": 4,
+    "#H2": 5,
+    "H2+": 6,
+    "@H2": 7,
+    "H3+": 8,
+    "HE": 9,
+    "#HE": 10,
+    "HE+": 11,
+    "@HE": 12,
+    "HEH+": 13,
+    "C+": 14,
+    "#C": 15,
+    "C": 16,
+    "@C": 17,
+    "CH": 18,
+    "CH+": 19,
+    "#CH": 20,
+    "@CH": 21,
+    "CH2": 22,
+    "CH2+": 23,
+    "#CH2": 24,
+    "N": 25,
+    "N+": 26,
+    "#N": 27,
+    "@CH2": 28,
+    "@N": 29,
+    "#NH": 30,
+    "NH+": 31,
+    "NH": 32,
+    "#CH3": 33,
+    "CH3+": 34,
+    "CH3": 35,
+    "@NH": 36,
+    "@CH3": 37,
+    "#CH4": 38,
+    "CH4": 39,
+    "CH4+": 40,
+    "NH2": 41,
+    "NH2+": 42,
+    "#NH2": 43,
+    "O": 44,
+    "#O": 45,
+    "O+": 46,
+    "@CH4": 47,
+    "@NH2": 48,
+    "@O": 49,
+    "#OH": 50,
+    "OH+": 51,
+    "OH": 52,
+    "CH5+": 53,
+    "NH3": 54,
+    "#NH3": 55,
+    "NH3+": 56,
+    "@OH": 57,
+    "@NH3": 58,
+    "#H2O": 59,
+    "H2O": 60,
+    "H2O+": 61,
+    "NH4+": 62,
+    "@H2O": 63,
+    "H3O+": 64,
+    "#MG": 65,
+    "#C2": 66,
+    "MG+": 67,
+    "C2+": 68,
+    "C2": 69,
+    "MG": 70,
+    "@MG": 71,
+    "@C2": 72,
+    "C2H": 73,
+    "C2H+": 74,
+    "#C2H": 75,
+    "@C2H": 76,
+    "CN+": 77,
+    "#C2H2": 78,
+    "C2H2": 79,
+    "C2H2+": 80,
+    "CN": 81,
+    "#CN": 82,
+    "@C2H2": 83,
+    "@CN": 84,
+    "#C2H3": 85,
+    "HNC": 86,
+    "HCN+": 87,
+    "#HCN": 88,
+    "C2H3": 89,
+    "#HNC": 90,
+    "HCN": 91,
+    "@C2H3": 92,
+    "@HCN": 93,
+    "@HNC": 94,
+    "SI+": 95,
+    "#H2CN": 96,
+    "SI": 97,
+    "C2H4": 98,
+    "#C2H4": 99,
+    "N2+": 100,
+    "N2": 101,
+    "HCNH+": 102,
+    "H2CN": 103,
+    "CO+": 104,
+    "CO": 105,
+    "#N2": 106,
+    "#CO": 107,
+    "#SI": 108,
+    "@H2CN": 109,
+    "@C2H4": 110,
+    "@N2": 111,
+    "@CO": 112,
+    "@SI": 113,
+    "#SIH": 114,
+    "#C2H5": 115,
+    "C2H5": 116,
+    "SIH": 117,
+    "SIH+": 118,
+    "HOC+": 119,
+    "#HCO": 120,
+    "HCO+": 121,
+    "HCO": 122,
+    "N2H+": 123,
+    "@SIH": 124,
+    "@C2H5": 125,
+    "@HCO": 126,
+    "#NO": 127,
+    "#H2CO": 128,
+    "H2CO": 129,
+    "H2CO+": 130,
+    "NO": 131,
+    "NO+": 132,
+    "SIH2": 133,
+    "SIH2+": 134,
+    "#SIH2": 135,
+    "@NO": 136,
+    "@H2CO": 137,
+    "@SIH2": 138,
+    "CH2OH": 139,
+    "#CH2OH": 140,
+    "#HNO": 141,
+    "#SIH3": 142,
+    "SIH3": 143,
+    "HNO+": 144,
+    "HNO": 145,
+    "H3CO": 146,
+    "H3CO+": 147,
+    "SIH3+": 148,
+    "#H3CO": 149,
+    "@CH2OH": 150,
+    "@HNO": 151,
+    "@SIH3": 152,
+    "@H3CO": 153,
+    "SIH4": 154,
+    "S+": 155,
+    "#S": 156,
+    "SIH4+": 157,
+    "O2+": 158,
+    "#CH3OH": 159,
+    "#SIH4": 160,
+    "#O2": 161,
+    "S": 162,
+    "H2NO+": 163,
+    "O2": 164,
+    "CH3OH": 165,
+    "@S": 166,
+    "@CH3OH": 167,
+    "@SIH4": 168,
+    "@O2": 169,
+    "HS": 170,
+    "#HS": 171,
+    "CH3OH2+": 172,
+    "SIH5+": 173,
+    "O2H+": 174,
+    "HS+": 175,
+    "O2H": 176,
+    "#O2H": 177,
+    "@HS": 178,
+    "@O2H": 179,
+    "#H2S": 180,
+    "H2S": 181,
+    "H2S+": 182,
+    "@H2S": 183,
+    "CL": 184,
+    "CL+": 185,
+    "#CL": 186,
+    "H3S+": 187,
+    "@CL": 188,
+    "HCL+": 189,
+    "HCL": 190,
+    "C3+": 191,
+    "#HCL": 192,
+    "@HCL": 193,
+    "H2CL+": 194,
+    "C2N": 195,
+    "#C2N": 196,
+    "C2N+": 197,
+    "C3H2": 198,
+    "#C3H2": 199,
+    "@C2N": 200,
+    "@C3H2": 201,
+    "C2NH+": 202,
+    "#SIC": 203,
+    "CH3CCH": 204,
+    "#CH3CCH": 205,
+    "SIC": 206,
+    "SIC+": 207,
+    "@SIC": 208,
+    "@CH3CCH": 209,
+    "#CH3CN": 210,
+    "C3H5+": 211,
+    "CH3CN": 212,
+    "@CH3CN": 213,
+    "CH2CO": 214,
+    "CH3CNH": 215,
+    "CH3CNH+": 216,
+    "OCN": 217,
+    "#OCN": 218,
+    "#CH2CO": 219,
+    "#CH3CNH": 220,
+    "@OCN": 221,
+    "@CH2CO": 222,
+    "@CH3CNH": 223,
+    "#HNCO": 224,
+    "HNCO": 225,
+    "@HNCO": 226,
+    "#CH3CHO": 227,
+    "CH3CHO": 228,
+    "SIO+": 229,
+    "CS": 230,
+    "CS+": 231,
+    "CO2": 232,
+    "#CS": 233,
+    "#SIO": 234,
+    "SIO": 235,
+    "#CO2": 236,
+    "@CH3CHO": 237,
+    "@CS": 238,
+    "@SIO": 239,
+    "@CO2": 240,
+    "#NH2CHO": 241,
+    "#HCOO": 242,
+    "HCOO": 243,
+    "NH2CHO": 244,
+    "SIOH+": 245,
+    "HCO2+": 246,
+    "HCS+": 247,
+    "#HSIO": 248,
+    "HCS": 249,
+    "#HCS": 250,
+    "@NH2CHO": 251,
+    "@HCOO": 252,
+    "@HSIO": 253,
+    "@HCS": 254,
+    "#H2SIO": 255,
+    "#H2CS": 256,
+    "#NS": 257,
+    "#HCOOH": 258,
+    "HCOOH": 259,
+    "#NO2": 260,
+    "NS": 261,
+    "NO2": 262,
+    "H2CS": 263,
+    "H2SIO": 264,
+    "H2CS+": 265,
+    "NS+": 266,
+    "@H2SIO": 267,
+    "@H2CS": 268,
+    "@NS": 269,
+    "@HCOOH": 270,
+    "@NO2": 271,
+    "H3CS+": 272,
+    "HNS+": 273,
+    "SO": 274,
+    "SO+": 275,
+    "#SO": 276,
+    "@SO": 277,
+    "#C4H": 278,
+    "C4H": 279,
+    "HSO+": 280,
+    "@C4H": 281,
+    "C3N": 282,
+    "#C3N": 283,
+    "@C3N": 284,
+    "#HC3N": 285,
+    "HC3N": 286,
+    "@HC3N": 287,
+    "#SIC2": 288,
+    "SIC2+": 289,
+    "C2N2+": 290,
+    "SIC2": 291,
+    "NCCN": 292,
+    "#NCCN": 293,
+    "@SIC2": 294,
+    "@NCCN": 295,
+    "SIS+": 296,
+    "#OCS": 297,
+    "#SIS": 298,
+    "OCS": 299,
+    "OCS+": 300,
+    "SIS": 301,
+    "@OCS": 302,
+    "@SIS": 303,
+    "HOCS+": 304,
+    "HSIS+": 305,
+    "C4N": 306,
+    "C4N+": 307,
+    "#C4N": 308,
+    "@C4N": 309,
+    "SO2": 310,
+    "S2+": 311,
+    "SO2+": 312,
+    "S2": 313,
+    "SIC3": 314,
+    "SIC3+": 315,
+    "#SIC3": 316,
+    "#S2": 317,
+    "#SO2": 318,
+    "@SIC3": 319,
+    "@S2": 320,
+    "@SO2": 321,
+    "HS2": 322,
+    "HS2+": 323,
+    "HSO2+": 324,
+    "#HS2": 325,
+    "@HS2": 326,
+    "H2S2+": 327,
+    "H2S2": 328,
+    "#H2S2": 329,
+    "@H2S2": 330,
+    "E-": 331,
+    "BULK": 332,
+    "SURFACE": 333,
+    "HSIO": 334,
+}

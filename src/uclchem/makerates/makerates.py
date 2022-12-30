@@ -99,9 +99,7 @@ def get_network(
         )
 
     if path_to_input_file:
-        return run_makerates(
-            path_to_input_file, verbosity=verbosity, write_files=False
-        )[0]
+        return run_makerates(path_to_input_file, write_files=False)
     else:
         with open(path_to_network_info, "r") as fh:
             network_info = yaml.safe_load(fh)

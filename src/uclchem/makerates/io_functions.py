@@ -314,7 +314,14 @@ def write_odes_f90(file_name, species_list, reaction_list, three_phase):
     """
     # First generate ODE contributions for all reactions
     species_names = [spec.name for spec in species_list]
+
+    [
+        logging.debug(f"{species_names.index(specie)+1}:{specie}")
+        for specie in species_list
+    ]
+
     for i, reaction in enumerate(reaction_list):
+        logging.debug(f"RATE({i+1}):{reaction}")
         reaction.generate_ode_bit(i, species_names, three_phase)
 
     # then create ODE code and write to file.
