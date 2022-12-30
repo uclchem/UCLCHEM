@@ -9,7 +9,9 @@ result = uclchem.tests.test_ode_conservation()
 print("Total rates of change:")
 for key, value in result.items():
     print(f"{key} {value:.2e}")
-assert result["H"] < 1e-15, f"H not conserved with total rate of change {result['H']:.2e}"
+assert (
+    result["H"] < 1e-15
+), f"H not conserved with total rate of change {result['H']:.2e}"
 print("Elements are conserved.")
 print("------------------------")
 
@@ -19,7 +21,7 @@ if not os.path.exists("examples/test-output/"):
 
 print("Running test models...")
 # set a parameter dictionary for static model
-outSpecies = ["OCS", "CO", "CS", "CH3OH"]
+outSpecies = ["OH", "OCS", "CO", "CS", "CH3OH"]
 params = {
     "endAtFinalDensity": False,
     "freefall": False,
