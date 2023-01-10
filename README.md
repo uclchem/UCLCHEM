@@ -57,3 +57,30 @@ This is an open source science code for the community and are open to pull reque
 - CAPITALIZED fortran built in functions to make code structure apparent.
 - Modularization, related subroutines should be added as modules. Small tweaks should be inserted into relevant module
 
+*************************************************************
+## Citing UCLCHEM
+*************************************************************
+If you use UCLCHEM for your research, please cite the following paper (https://ui.adsabs.harvard.edu/abs/2017AJ....154...38H/abstract): 
+
+```
+@ARTICLE{2017AJ....154...38H,
+       author = {{Holdship}, J. and {Viti}, S. and {Jim{\'e}nez-Serra}, I. and {Makrymallis}, A. and {Priestley}, F.},
+        title = "{UCLCHEM: A Gas-grain Chemical Code for Clouds, Cores, and C-Shocks}",
+      journal = {\aj},
+     keywords = {astrochemistry, ISM: molecules, shock waves, Astrophysics - Astrophysics of Galaxies},
+         year = 2017,
+        month = jul,
+       volume = {154},
+       number = {1},
+          eid = {38},
+        pages = {38},
+          doi = {10.3847/1538-3881/aa773f},
+archivePrefix = {arXiv},
+       eprint = {1705.10677},
+ primaryClass = {astro-ph.GA},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2017AJ....154...38H},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+```
+
+
