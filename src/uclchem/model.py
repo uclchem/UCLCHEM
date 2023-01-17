@@ -1,4 +1,5 @@
 from .uclchemwrap import uclchemwrap as wrap
+import numpy as np
 
 
 def _reform_inputs(param_dict, out_species):
@@ -27,7 +28,7 @@ def _format_output(n_out,abunds,success_flag):
         abunds=list(abunds[:n_out])
     return [success_flag]+abunds
 
-def cloud(param_dict=None, out_species=None):
+def cloud(param_dict=None, out_species=None, return_array=False):
     """Run cloud model from UCLCHEM
 
     Args:
@@ -38,8 +39,21 @@ def cloud(param_dict=None, out_species=None):
         A list where the first element is always an integer which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details. If the `out_species` parametere is provided, the remaining elements of this list will be the final abundances of the species in out_species.
     """
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
-    abunds, success_flag = wrap.cloud(dictionary=param_dict, outspeciesin=out_species)
-    return _format_output(n_out,abunds,success_flag)
+    if not ('points' in param_dict):
+        param_dict['points'] = 1
+
+    if return_array:
+        physicsArray = np.zeros(shape=(10000, param_dict['points'], 12), dtype=np.float64, order='F')
+        chemicalAbunArray = np.zeros(shape=(10000, param_dict['points'], 215), dtype=np.float64, order='F')
+        abunds, success_flag = wrap.cloud_array(dictionary=param_dict, outspeciesin=out_species, physicsarray=physicsArray,
+                                                chemicalabunarray=chemicalAbunArray, gridpoints=param_dict['points'])
+        lastStep = np.where((physicsArray == (np.zeros(shape=(param_dict['points'], 12)))).all(axis=1))[0][0]
+        physicsArray = physicsArray[:lastStep]
+        chemicalAbunArray = chemicalAbunArray[:lastStep]
+        return physicsArray, chemicalAbunArray, success_flag
+    else:
+        abunds, success_flag = wrap.cloud(dictionary=param_dict, outspeciesin=out_species)
+        return _format_output(n_out, abunds, success_flag)
 
 
 def collapse(collapse, physics_output, param_dict=None, out_species=None):

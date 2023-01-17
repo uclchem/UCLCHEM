@@ -28,12 +28,50 @@ CONTAINS
         !f2py intent(out) abundance_out,successFlag
         successFlag=1
 
-        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
+        &updatePhysics,updateTargetTime,sublimation)
 
         IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN 
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
         END IF 
     END SUBROUTINE cloud
+
+    SUBROUTINE cloud_array(dictionary, outSpeciesIn, physicsArray, chemicalAbunArray, &
+        &gridPoints,abundance_out,successFlag)
+        !Subroutine to call a cloud model, used to interface with python
+        ! Loads cloud specific subroutines and send to solveAbundances
+        !
+        !Args:
+        ! dictionary - python parameter dictionary
+        ! outSpeciesIn - list of species to output as a space separated string
+        !Returns:
+        ! abundance_out - list of abundances of species in outSpeciesIn
+        ! successFlag - integer flag indicating success or fail
+
+        USE cloud_mod
+
+        CHARACTER(LEN=*) :: dictionary, outSpeciesIn
+        DOUBLE PRECISION :: abundance_out(500)
+        INTEGER :: successFlag
+        INTEGER, INTENT(IN) :: gridPoints
+        !f2py intent(in) gridPoints
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(10000, gridPoints, 12) :: physicsArray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(10000, gridPoints, 215) :: chemicalAbunArray
+        !f2py intent(in out) physicsArray
+        !f2py depend(gridPoints) physicsArray
+        !f2py intent(in out) chemicalAbunArray
+        !f2py depend(gridPoints) chemicalAbunArray
+        !f2py intent(in) dictionary,outSpeciesIn
+        !f2py intent(out) abundance_out,successFlag
+        successFlag=1
+
+        CALL solveAbundances_array(dictionary,outSpeciesIn,successFlag,initializePhysics,updatePhysics,&
+        &updateTargetTime,sublimation,physicsArray,chemicalAbunArray)
+
+        IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN
+            abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
+        END IF
+    END SUBROUTINE cloud_array
 
     SUBROUTINE collapse(collapseIn,collapseFileIn,writeOut,dictionary, outSpeciesIn,abundance_out,successFlag)
         !Subroutine to call a collapse model, used to interface with python
@@ -61,7 +99,8 @@ CONTAINS
         collapse_mode=collapseIn
         writePhysics = writeOut
         collapseFile = collapseFileIn
-        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
+        &updatePhysics,updateTargetTime,sublimation)
         
         IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN 
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
@@ -90,7 +129,8 @@ CONTAINS
         !f2py intent(out) abundance_out,successFlag
         maxTemp=max_temp
         tempIndx=temp_indx
-        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
+        &updatePhysics,updateTargetTime,sublimation)
         IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN 
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
         END IF 
@@ -124,7 +164,8 @@ CONTAINS
         vs=shock_vel
         timestepFactor=timestep_factor
         minimumPostshockTemp=minimum_temperature
-        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
+        &updatePhysics,updateTargetTime,sublimation)
 
         IF (successFlag .ge. 0) THEN 
             IF (ALLOCATED(outIndx)) abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
@@ -151,7 +192,8 @@ CONTAINS
         !f2py intent(in) shock_vel,dictionary,outSpeciesIn
         !f2py intent(out) abundance_out,successFlag
         vs=shock_vel
-        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
+        &updatePhysics,updateTargetTime,sublimation)
 
         IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN 
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
@@ -281,7 +323,7 @@ CONTAINS
         ! Set variables to default values
         INCLUDE 'defaultparameters.f90'
         !Read input parameters from the dictionary
-        CALL dictionaryParser(dictionary, outSpeciesIn,successFlag)
+        CALL dictionaryParser(dictionary, outSpeciesIn, successFlag)
         IF (successFlag .lt. 0) THEN
             successFlag=PARAMETER_READ_ERROR
             WRITE(*,*) 'Error reading parameter dictionary'
@@ -349,6 +391,99 @@ CONTAINS
         CALL finalOutput
         CALL closeFiles
     END SUBROUTINE solveAbundances
+
+    SUBROUTINE solveAbundances_array(dictionary,outSpeciesIn,successFlag,&
+        &modelInitializePhysics,modelUpdatePhysics,updateTargetTime,&
+        &sublimation, physicsArray, chemicalAbunArray)
+        DOUBLE PRECISION, DIMENSION(:, :, :) :: physicsArray
+        DOUBLE PRECISION, DIMENSION(:, :, :) :: chemicalAbunArray
+        INTEGER :: dtime
+        ! Core UCLCHEM routine. Solves the chemical equations for a given set of parameters through time
+        ! for a specified physical model.
+        ! Change behaviour of physics by sending different subroutine arguments - hence the need for model subroutines above
+        ! dictionary - the parameter dictionary string reprenting a python dictionary
+        ! outSpeciesIn - the species to output
+        ! successFlag - Integer to indicate whether code completed successfully
+        ! modelInitializePhysics - subroutine to initialize physics from a physics module
+        ! modelUpdatePhysics - subroutine to update physics from a physics module
+        ! updateTargetTime - subroutine to update the target time from a physics module
+        ! sublimation - subroutine allowing physics module to directly modify abundances once per time step.
+        CHARACTER(LEN=*) :: dictionary, outSpeciesIn
+        EXTERNAL modelInitializePhysics,updateTargetTime,modelUpdatePhysics,sublimation
+
+        INTEGER, INTENT(OUT) :: successFlag
+        successFlag=1
+
+        ! Set variables to default values
+        INCLUDE 'defaultparameters.f90'
+        !Read input parameters from the dictionary
+        CALL dictionaryParser(dictionary, outSpeciesIn, successFlag)
+        IF (successFlag .lt. 0) THEN
+            successFlag=PARAMETER_READ_ERROR
+            WRITE(*,*) 'Error reading parameter dictionary'
+            RETURN
+        END IF
+
+        dstep=1
+        currentTime=0.0
+        timeInYears=0.0
+
+        !CALL fileSetup
+
+        !Initialize core physics first then model specific
+        !This allows model to overrule changes made by core
+        call coreInitializePhysics(successFlag)
+        CALL modelInitializePhysics(successFlag)
+
+        IF (successFlag .lt. 0) then
+            successFlag=PHYSICS_INIT_ERROR
+            WRITE(*,*) 'Error initializing physics'
+            RETURN
+        END IF
+
+        CALL initializeChemistry(readAbunds)
+        CALL readInputAbunds !this won't do anything if no abundLoadFile was in input
+        !CALL simpleDebug("Initialized")
+
+
+        dstep=1
+        dtime = 1
+        CALL output_array(physicsArray, chemicalAbunArray, dtime)
+        !loop until the end condition of the model is reached
+        DO WHILE (((endAtFinalDensity) .and. (density(1) < finalDens)) .or. &
+            &((.not. endAtFinalDensity) .and. (timeInYears < finalTime)))
+            dtime = dtime + 1
+            currentTimeold=currentTime
+
+            !Each physics module has a subroutine to set the target time from the current time
+            CALL updateTargetTime
+            !loop over parcels, counting from centre out to edge of cloud
+            DO dstep=1,points
+                !reset time if this isn't first depth point
+                currentTime=currentTimeold
+                !update chemistry from currentTime to targetTime
+                CALL updateChemistry(successFlag)
+                IF (successFlag .lt. 0) THEN
+                    write(*,*) 'Error updating chemistry'
+                    RETURN
+                END IF
+
+                !get time in years for output, currentTime is now equal to targetTime
+                timeInYears= currentTime/SECONDS_PER_YEAR
+
+                !Update physics so it's correct for new currentTime and start of next time step
+                Call coreUpdatePhysics
+                CALL modelUpdatePhysics
+                !Sublimation checks if Sublimation should happen this time step and does it
+                CALL sublimation(abund)
+
+                !write this depth step now time, chemistry and physics are consistent
+                CALL output_array(physicsArray, chemicalAbunArray, dtime)
+            END DO
+        END DO
+        !CALL finalOutput
+        !CALL closeFiles
+    END SUBROUTINE solveAbundances_array
 
     SUBROUTINE dictionaryParser(dictionary, outSpeciesIn,successFlag)
         !Reads the input parameters from a string containing a python dictionary/JSON format
@@ -625,5 +760,4 @@ CONTAINS
             coeffDictString=coeffDictString(posEnd+1:)
         END DO
     END SUBROUTINE coefficientParser
-
 END MODULE uclchemwrap

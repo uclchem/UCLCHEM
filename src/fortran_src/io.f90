@@ -70,6 +70,40 @@ CONTAINS
         END IF
     END SUBROUTINE finalOutput
 
+    SUBROUTINE output_array(physicsArray, chemicalAbunArray, dtime)
+        DOUBLE PRECISION, DIMENSION(:, :, :) :: physicsArray
+        DOUBLE PRECISION, DIMENSION(:, :, :) :: chemicalAbunArray
+        INTEGER :: dtime
+        IF (fullOutput) THEN
+            !WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,dstep,abund(:neq-1,dstep)
+            !8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
+            physicsArray(dtime, dstep, 1) = timeInYears
+            physicsArray(dtime, dstep, 2) = density(dstep)
+            physicsArray(dtime, dstep, 3) = gasTemp(dstep)
+            physicsArray(dtime, dstep, 4) = av(dstep)
+            physicsArray(dtime, dstep, 5) = radfield
+            physicsArray(dtime, dstep, 6) = zeta
+            physicsArray(dtime, dstep, 7) = h2form
+            physicsArray(dtime, dstep, 8) = fc
+            physicsArray(dtime, dstep, 9) = fo
+            physicsArray(dtime, dstep, 10) = fmg
+            physicsArray(dtime, dstep, 11) = fhe
+            physicsArray(dtime, dstep, 12) = dstep
+            chemicalAbunArray(dtime, dstep, :) = abund(:neq-1,dstep)
+        END IF
+
+        !Every 'writestep' timesteps, write the chosen species out to separate file
+        !choose species you're interested in by looking at parameters.f90
+        !IF (writeCounter==writeStep .and. columnOutput) THEN
+        !    writeCounter=1
+        !    !WRITE(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,abund(outIndx,dstep)
+        !    !8030  FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',(999(1pe15.5,:,',')))
+        !    chemicalAbunArray(dtime, dstep, :) = abund(outIndx,dstep)
+        !ELSE
+        !    writeCounter=writeCounter+1
+        !END IF
+    END SUBROUTINE output_array
+
     SUBROUTINE closeFiles
         CLOSE(outputId)
         CLOSE(columnId)
