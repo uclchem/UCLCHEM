@@ -13,28 +13,42 @@ from typing import Union
 
 
 class Network:
-    def __init__(self, species, reactions, three_phase=False, user_defined_bulk=[]):
-        """
-        Simple class to store network information such as indices of important reactions.
-        Also logical home of functions meant to make network sensible.
-        """
+    """The network class stores all the information about reaction network."""
 
+    def __init__(
+        self,
+        species: list[Species],
+        reactions: list[Reaction],
+        three_phase: bool = False,
+        user_defined_bulk: list = [],
+    ):
+        """A class to store network information such as indices of important reactions.
+
+        The class fully utilizes getters and setters, which can be used to add/remove
+        reactions and the species involved. Important is that you do not directly edit
+        the internal dictionaries that store the species and reactions, unless you
+        know what you are doing. The network by default checks for duplicates in species
+        and identical reactions that overlap in temperature ranges, potentially causing
+        problems.
+
+        Args:
+            species (list[Species]): A list of chemical species that are added to the network
+            reactions (list[Reaction]): A list of chemical reactions that are added to the network
+            three_phase (bool, optional): Whether to use a three phase model (gas, surface, bulk). Defaults to False.
+            user_defined_bulk (list, optional): List of user defined bulk. Defaults to [].
+        """
         assert len(set([s.name for s in species])) == len(
             species
         ), "Cannot have duplicate species in the species list."
-        self._species_dict = {s.name: s for s in species}
-        # self.remove_duplicate_species()
+        self.set_species_dict({s.name: s for s in species})
+
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
         self.three_phase = three_phase
-        # We used to add bulk here?
-        # if self.three_phase:
-        #     self.add_bulk_species()
-        # self.species_list.sort()
         electron_specie = Species(["E-", 0, 0.0, 0, 0, 0, 0])
         electron_specie.n_atoms = 1
         self.add_species(electron_specie)
-        self._reactions_dict = {k: v for k, v in enumerate(reactions)}
+        self.set_reaction_dict({k: v for k, v in enumerate(reactions)})
 
         #### Add reactions and species   ####
         # check which species are changed on freeze or desorb
@@ -118,10 +132,12 @@ class Network:
                 # See if we have a collision with the any reactions with identical reactants and
                 # products, but different temperature ranges to avoid double definitions.
                 similar_reactions = self.find_similar_reactions(reaction)
-                for similar_reaction in similar_reactions:
-                    if reaction.check_temperature_collision(similar_reaction):
+                for similar_reaction_key in similar_reactions:
+                    if reaction.check_temperature_collision(
+                        similar_reactions[similar_reaction_key]
+                    ):
                         raise RuntimeError(
-                            f"There already is a {reaction} present that has overlapping temperature ranges. Not adding the reaction."
+                            f"There already is a {reaction} present that has overlapping temperature ranges. Check the reaction set."
                         )
 
             # quick check to make sure all species in the reaction are in the species list.
@@ -142,54 +158,103 @@ class Network:
             new_idx = list(self._reactions_dict.keys())[-1] + 1
             self._reactions_dict[new_idx] = reaction
 
-    def find_similar_reactions(self, reaction: Reaction) -> list[int]:
-        return list(
-            filter(
-                lambda x: x != None,
-                [k if v == reaction else None for k, v in self._reactions_dict.items()],
-            )
-        )
+    def find_similar_reactions(self, reaction: Reaction) -> dict[int, Reaction]:
+        """Reactions are similar if the reaction has the same reactants and products,
+        find all reactions that are similar, returning their index and the reaction itself.
+
+        Args:
+            reaction (Reaction): Reaction with possible identical (but for temperature range) reactions in the network
+
+        Returns:
+            dict[int, Reaction]: A dict with the identical reactions.
+        """
+        return {k: v for k, v in self._reactions_dict.items() if v == reaction}
 
     def remove_reaction_by_index(self, reaction_idx: int) -> None:
+        """Remove a reaction by its index in the internal _reactions_dict, this is the only way
+        to remove reactions that are defined piecewise across temperature ranges.
+
+        Args:
+            reaction_idx (int): Index of the reaction to remove
+        """
         del self._reactions_dict[reaction_idx]
 
     def remove_reaction(self, reaction: Reaction) -> None:
+        """Remove the reaction by giving the object itself, this only works if the reaction is
+        not piecewise defined across the temperature ranges.
+
+        Args:
+            reaction (Reaction): The reaction you wish to delete.
+        """
         # In this reaction we use equality as defined for reactions, this does as of now not include
         # checking temperature ranges, so more than one key could be returned.
-        reaction_index = self.find_similar_reactions(reaction)
-        if len(reaction_index) == 1:
-            logging.debug(
-                f"Trying to remove index: {reaction_index[0]}: {self._reactions_dict[reaction_index[0]]} "
-            )
-            del self._reactions_dict[reaction_index[0]]
-        elif len(reaction_index) == 0:
+        #
+        # The find_similar_reaction returns a dict of (index[int], reaction[Reaction]),
+        # We make it a list of tuples as it is easier to index and manipulate for this case.
+        reaction_idx_dict_as_tuples = list(self.find_similar_reactions(reaction))
+        if len(reaction_idx_dict_as_tuples) == 1:
+            reac_idx, reac_value = reaction_idx_dict_as_tuples[0]
+            logging.debug(f"Trying to remove index: {reac_idx}: {reac_value} ")
+            # Remove the reaction with the index from the reaction set:
+            del self._reactions_dict[reac_idx]
+        elif len(reaction_idx_dict_as_tuples) == 0:
             logging.warning(
                 f"The reaction {reaction} is not present in the reaction set, so cannot remove it"
             )
-        elif len(reaction_index) > 1:
+        elif len(reaction_idx_dict_as_tuples) > 1:
             raise (
-                ValueError(
+                RuntimeError(
                     "found more than one indices for the reaction {reaction}, remove by index instead of by reaction."
                 )
             )
 
     def get_reaction(self, reaction_idx: int) -> Reaction:
+        """Obtain a reaction from the reaction set given an index of the internal _reactions_dict.
+
+        Args:
+            reaction_idx (int): The reaction index
+
+        Returns:
+            Reaction: the desired reaction
+        """
         return deepcopy(self._reactions_dict[reaction_idx])
 
     def set_reaction(self, reaction_idx: int, reaction: Reaction) -> None:
+        """This setter explicitely sets the reaction for a certain index.
+
+        Args:
+            reaction_idx (int): The index to be written to
+            reaction (Reaction): The reaction to be added to the index.
+        """
         self._reactions_dict[reaction_idx] = Reaction
 
     def get_reaction_dict(self) -> dict[int, Reaction]:
-        return self._reactions_dict
+        """Returns the whole internal reaction dictionary.
+
+        Returns:
+            dict[int, Reaction]: A copy of the internal reactions dictionary.
+        """
+        return deepcopy(self._reactions_dict)
 
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
+        """Override the reactions dictionary with a new dictionar.
+
+        Args:
+            new_dict (dict[int, Reaction]): The new reactions_dictionary.
+        """
         self._reactions_dict = new_dict
 
     def get_reaction_list(self) -> list[Reaction]:
+        """Obtain all the reactions in the Network.
+
+        Returns:
+            list[Reaction]: A list with all the reaction objects
+        """
         return list(self._reactions_dict.values())
 
     def sort_reactions(self) -> None:
-        """Sort the reactions by the reaction type first, reactants second."""
+        """Sort the reaction dictionary by reaction type first and by the first reactant second."""
+        # """Sort the reactions by the reaction type first, reactants second."""
         reaction_dict = self.get_reaction_dict()
         logging.debug(
             f"Before sorting reactions {[(k, v) for i, (k, v) in enumerate(self.get_reaction_dict().items()) if i < 5]}"
@@ -215,6 +280,17 @@ class Network:
     def add_species(
         self, species: Union[Union[Species, str], list[Union[Species, str]]]
     ):
+        """Add species to the network, given a (list of) species. If it is a list of strings,
+        it tries to instantiate a species class with it. It also checks for duplicate entries  and
+        filters out attempts to add reaction types to the species.
+
+        Args:
+            species (Union[Union[Species, str], list[Union[Species, str]]]): A (list of) species or strings.
+
+        Raises:
+            ValueError: If we cannot parse the (list of) reactions
+            ValueError: If an ice specie with binding energy of zero is added.
+        """
         if isinstance(species, list):
             if isinstance(species[0], Species):
                 # if it is a list of Species, no action is needed.
@@ -224,7 +300,7 @@ class Network:
                     species = [Species(spec) for spec in species]
                 except ValueError as error:
                     raise ValueError(
-                        "Failed to convert the list of csv entries to a species"
+                        "Failed to convert the list of csv style entries to a species"
                     ) from error
         elif isinstance(species, Species):
             species = [species]
@@ -257,25 +333,61 @@ class Network:
                     f"You try to add a falsy specie called '{specie.name}', this cannot be done."
                 )
 
-    def remove_species(self, specie_name):
+    def remove_species(self, specie_name: str) -> None:
+        """Remove a specie from the network
+
+        Args:
+            specie_name (str): Species to remove
+        """
         del self._species_dict[specie_name]
 
-    def get_species_list(self):
+    def get_species_list(self) -> list[Species]:
+        """Obtain a list with all the species in the network
+
+        Returns:
+            list[Species]: A list of all the species in the reaction network
+        """
         return list(self._species_dict.values())
 
-    def get_species_dict(self):
-        return self._species_dict
+    def get_species_dict(self) -> dict[str, Species]:
+        """Get the internal dictionary that stores all the species, it consists
+        of all species' names as key, with the species object as value.
 
-    def get_specie(self, specie_name: str):
+        Returns:
+            dict[str, Species]: A dictionary with the species
+        """
+        return deepcopy(self._species_dict)
+
+    def get_specie(self, specie_name: str) -> Species:
+        """Get the species of the reaction network (from the internal dictionary)
+
+        Args:
+            specie_name (str): the name of the species as a string
+
+        Returns:
+            Species: The species object
+        """
         return deepcopy(self._species_dict[specie_name])
 
-    def set_specie(self, specie_name: str, specie: Species):
-        self._species_dict[specie_name] = specie
+    def set_specie(self, species_name: str, species: Species) -> None:
+        """Set the species of the reaction network in the internal dictionary
 
-    def set_species_dict(self, new_species_dict: dict[str, Species]):
+        Args:
+            species_name (str): The name of the species as string
+            species (Species): The Species object to set
+        """
+        self._species_dict[species_name] = species
+
+    def set_species_dict(self, new_species_dict: dict[str, Species]) -> None:
+        """Set the internal species dict
+
+        Args:
+            new_species_dict (dict[str, Species]): The new dictionary to set
+        """
         self._species_dict = new_species_dict
 
-    def sort_species(self):
+    def sort_species(self) -> None:
+        """Sort the species based on their mass in ascending order. We always make sure the Electron is last."""
         species_dict = self.get_species_dict()
         logging.debug(
             f"Before sorting species {[(k,v ) for i, (k, v) in enumerate(species_dict.items()) if i < 5]}"
@@ -301,7 +413,7 @@ class Network:
 
     # check reactions to alert user of potential issues including repeat reactions
     # and multiple freeze out routes
-    def check_network(self):
+    def check_network(self) -> None:
         """Run through the list of reactions and check for obvious errors such
         as duplicate reactions, multiple freeze out routes (to warn, not necessarily
         an error), etc.
@@ -311,7 +423,7 @@ class Network:
         self.index_important_reactions()
         self.index_important_species()
 
-    def check_and_filter_species(self):
+    def check_and_filter_species(self) -> None:
         """Check every speces in network appears in at least one reaction.
         Remove any that do not and alert user.
         """
@@ -360,7 +472,7 @@ class Network:
         mantle_specs.append(Species(new_spec))
         self.add_species(mantle_specs)
 
-    def add_bulk_species(self):
+    def add_bulk_species(self) -> None:
         """For three phase models, MakeRates will produce the version of the species in the bulk
         so that the user doesn't have to endlessly relist the same species
         """
@@ -405,14 +517,6 @@ class Network:
         all desorption and freeze out reactions. However, user may want to change a species on freeze out
         eg C+ becomes #C rather than #C+. This function checks for that and updates species so they'll
         freeze or desorb correctly when reactions are generated.
-
-        LEGACY DOCUMENTATION ?????
-        Args:
-            species_list (list): list of species objects including all species in network
-            reaction_list (list): list of reaction objects including all reactions in network
-
-        Returns:
-            list: species and reaction lists with user specified freeze and desorb reactions removed (but species updated)
         """
         desorbs = [
             x for x in self.get_reaction_list() if x.get_reaction_type() == "DESORB"
@@ -449,10 +553,10 @@ class Network:
                 specie.add_default_freeze()
                 self.set_specie(species_name, specie)
 
-        # WHY: Here we filter all the freeze and desorb reactions for some reason?
+        # Here we filter all the freeze and desorb reactions in order to avoid duplicates
         [self.remove_reaction(reaction) for reaction in desorbs + freezes]
 
-    def add_freeze_reactions(self):
+    def add_freeze_reactions(self) -> None:
         """Save the user effort by automatically generating freeze out reactions"""
         logging.debug("Adding the freeze out reactions!")
         new_reactions = []
@@ -487,7 +591,7 @@ class Network:
         self.add_reactions(new_reactions)
         self.add_species(new_species)
 
-    def add_desorb_reactions(self):
+    def add_desorb_reactions(self) -> None:
         """Save the user effort by automatically generating desorption reactions"""
         desorb_reacs = ["DESOH2", "DESCR", "DEUVCR", "THERM"]
         logging.debug("Adding desorbtion reactions!")
@@ -512,7 +616,7 @@ class Network:
                 )
         self.add_reactions(new_reactions)
 
-    def add_chemdes_reactions(self):
+    def add_chemdes_reactions(self) -> None:
         """We have the user list all Langmuir-Hinshelwood and Eley-Rideal
         reactions once. Then we duplicate so that the reaction branches
         with products on grain and products desorbing.
@@ -554,7 +658,8 @@ class Network:
                 new_reactions.append(new_reaction)
         self.add_reactions(new_reactions)
 
-    def check_for_excited_species(self):
+    def check_for_excited_species(self) -> bool:
+        """Check if there are any exicted species in the network, true if there are any."""
         check = False
         for species in self.get_species_list():
             if "*" in species.name:
@@ -673,7 +778,7 @@ class Network:
                 new_reactions.append(new_reac_B)
         self.add_reactions(new_reactions)
 
-    def add_bulk_reactions(self):
+    def add_bulk_reactions(self) -> None:
         """We assume any reaction that happens on the surface of grains can also happen
         in the bulk (just more slowly due to binding energy). The user therefore only
         lists surface reactions in their input reaction file and we duplicate here.
@@ -725,7 +830,7 @@ class Network:
         )
         self.add_reactions(new_reactions)
 
-    def freeze_checks(self):
+    def freeze_checks(self) -> None:
         """Check that every species freezes out and alert the user if a
         species freezes out via mutiple routes. This isn't necessarily an
         error so best just print.
@@ -761,7 +866,7 @@ class Network:
             elif freezes < 1 and not spec.is_grain_species():
                 logging.info(f"\t{spec.name} does not freeze out")
 
-    def duplicate_checks(self):
+    def duplicate_checks(self) -> None:
         """
         Check reaction network to make sure no reaction appears twice unless
         they have different temperature ranges.
@@ -801,7 +906,7 @@ class Network:
         if not duplicates:
             logging.info("\tNone")
 
-    def index_important_reactions(self):
+    def index_important_reactions(self) -> None:
         """We have a whole bunch of important reactions and we want to store
         their indices. We find them all here.
         """
@@ -867,7 +972,7 @@ class Network:
                 "FREEZE" in reaction.get_reactants()
             ):
                 self.important_reactions["nR_EFreeze"] = i + 1
-            # H2 + PHOTON -? ...
+            # H2 + PHOTON -> ???
             if ("H2" in reaction.get_reactants()) and (
                 "PHOTON" in reaction.get_reactants()
             ):
@@ -888,7 +993,8 @@ class Network:
             missing_reac_error += " must all be included in user reaction list. Check default_grain_network.csv for example"
             raise RuntimeError(missing_reac_error)
 
-    def index_important_species(self):
+    def index_important_species(self) -> None:
+        """Obtain the indices for all the important reactions."""
         self.species_indices = {}
         names = [species.name for species in self.get_species_list()]
         for element in [
@@ -918,7 +1024,7 @@ class Network:
             ).replace("#", "g")
             self.species_indices[name] = species_index
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             "Reaction network with \nSpecies:\n"
             + ", ".join(map(str, self.get_species_list()))
@@ -927,340 +1033,22 @@ class Network:
         )
 
 
-custom_lookup = {
-    "H": 0,
-    "#H": 1,
-    "H+": 2,
-    "@H": 3,
-    "H2": 4,
-    "#H2": 5,
-    "H2+": 6,
-    "@H2": 7,
-    "H3+": 8,
-    "HE": 9,
-    "#HE": 10,
-    "HE+": 11,
-    "@HE": 12,
-    "HEH+": 13,
-    "C+": 14,
-    "#C": 15,
-    "C": 16,
-    "@C": 17,
-    "CH": 18,
-    "CH+": 19,
-    "#CH": 20,
-    "@CH": 21,
-    "CH2": 22,
-    "CH2+": 23,
-    "#CH2": 24,
-    "N": 25,
-    "N+": 26,
-    "#N": 27,
-    "@CH2": 28,
-    "@N": 29,
-    "#NH": 30,
-    "NH+": 31,
-    "NH": 32,
-    "#CH3": 33,
-    "CH3+": 34,
-    "CH3": 35,
-    "@NH": 36,
-    "@CH3": 37,
-    "#CH4": 38,
-    "CH4": 39,
-    "CH4+": 40,
-    "NH2": 41,
-    "NH2+": 42,
-    "#NH2": 43,
-    "O": 44,
-    "#O": 45,
-    "O+": 46,
-    "@CH4": 47,
-    "@NH2": 48,
-    "@O": 49,
-    "#OH": 50,
-    "OH+": 51,
-    "OH": 52,
-    "CH5+": 53,
-    "NH3": 54,
-    "#NH3": 55,
-    "NH3+": 56,
-    "@OH": 57,
-    "@NH3": 58,
-    "#H2O": 59,
-    "H2O": 60,
-    "H2O+": 61,
-    "NH4+": 62,
-    "@H2O": 63,
-    "H3O+": 64,
-    "#MG": 65,
-    "#C2": 66,
-    "MG+": 67,
-    "C2+": 68,
-    "C2": 69,
-    "MG": 70,
-    "@MG": 71,
-    "@C2": 72,
-    "C2H": 73,
-    "C2H+": 74,
-    "#C2H": 75,
-    "@C2H": 76,
-    "CN+": 77,
-    "#C2H2": 78,
-    "C2H2": 79,
-    "C2H2+": 80,
-    "CN": 81,
-    "#CN": 82,
-    "@C2H2": 83,
-    "@CN": 84,
-    "#C2H3": 85,
-    "HNC": 86,
-    "HCN+": 87,
-    "#HCN": 88,
-    "C2H3": 89,
-    "#HNC": 90,
-    "HCN": 91,
-    "@C2H3": 92,
-    "@HCN": 93,
-    "@HNC": 94,
-    "SI+": 95,
-    "#H2CN": 96,
-    "SI": 97,
-    "C2H4": 98,
-    "#C2H4": 99,
-    "N2+": 100,
-    "N2": 101,
-    "HCNH+": 102,
-    "H2CN": 103,
-    "CO+": 104,
-    "CO": 105,
-    "#N2": 106,
-    "#CO": 107,
-    "#SI": 108,
-    "@H2CN": 109,
-    "@C2H4": 110,
-    "@N2": 111,
-    "@CO": 112,
-    "@SI": 113,
-    "#SIH": 114,
-    "#C2H5": 115,
-    "C2H5": 116,
-    "SIH": 117,
-    "SIH+": 118,
-    "HOC+": 119,
-    "#HCO": 120,
-    "HCO+": 121,
-    "HCO": 122,
-    "N2H+": 123,
-    "@SIH": 124,
-    "@C2H5": 125,
-    "@HCO": 126,
-    "#NO": 127,
-    "#H2CO": 128,
-    "H2CO": 129,
-    "H2CO+": 130,
-    "NO": 131,
-    "NO+": 132,
-    "SIH2": 133,
-    "SIH2+": 134,
-    "#SIH2": 135,
-    "@NO": 136,
-    "@H2CO": 137,
-    "@SIH2": 138,
-    "CH2OH": 139,
-    "#CH2OH": 140,
-    "#HNO": 141,
-    "#SIH3": 142,
-    "SIH3": 143,
-    "HNO+": 144,
-    "HNO": 145,
-    "H3CO": 146,
-    "H3CO+": 147,
-    "SIH3+": 148,
-    "#H3CO": 149,
-    "@CH2OH": 150,
-    "@HNO": 151,
-    "@SIH3": 152,
-    "@H3CO": 153,
-    "SIH4": 154,
-    "S+": 155,
-    "#S": 156,
-    "SIH4+": 157,
-    "O2+": 158,
-    "#CH3OH": 159,
-    "#SIH4": 160,
-    "#O2": 161,
-    "S": 162,
-    "H2NO+": 163,
-    "O2": 164,
-    "CH3OH": 165,
-    "@S": 166,
-    "@CH3OH": 167,
-    "@SIH4": 168,
-    "@O2": 169,
-    "HS": 170,
-    "#HS": 171,
-    "CH3OH2+": 172,
-    "SIH5+": 173,
-    "O2H+": 174,
-    "HS+": 175,
-    "O2H": 176,
-    "#O2H": 177,
-    "@HS": 178,
-    "@O2H": 179,
-    "#H2S": 180,
-    "H2S": 181,
-    "H2S+": 182,
-    "@H2S": 183,
-    "CL": 184,
-    "CL+": 185,
-    "#CL": 186,
-    "H3S+": 187,
-    "@CL": 188,
-    "HCL+": 189,
-    "HCL": 190,
-    "C3+": 191,
-    "#HCL": 192,
-    "@HCL": 193,
-    "H2CL+": 194,
-    "C2N": 195,
-    "#C2N": 196,
-    "C2N+": 197,
-    "C3H2": 198,
-    "#C3H2": 199,
-    "@C2N": 200,
-    "@C3H2": 201,
-    "C2NH+": 202,
-    "#SIC": 203,
-    "CH3CCH": 204,
-    "#CH3CCH": 205,
-    "SIC": 206,
-    "SIC+": 207,
-    "@SIC": 208,
-    "@CH3CCH": 209,
-    "#CH3CN": 210,
-    "C3H5+": 211,
-    "CH3CN": 212,
-    "@CH3CN": 213,
-    "CH2CO": 214,
-    "CH3CNH": 215,
-    "CH3CNH+": 216,
-    "OCN": 217,
-    "#OCN": 218,
-    "#CH2CO": 219,
-    "#CH3CNH": 220,
-    "@OCN": 221,
-    "@CH2CO": 222,
-    "@CH3CNH": 223,
-    "#HNCO": 224,
-    "HNCO": 225,
-    "@HNCO": 226,
-    "#CH3CHO": 227,
-    "CH3CHO": 228,
-    "SIO+": 229,
-    "CS": 230,
-    "CS+": 231,
-    "CO2": 232,
-    "#CS": 233,
-    "#SIO": 234,
-    "SIO": 235,
-    "#CO2": 236,
-    "@CH3CHO": 237,
-    "@CS": 238,
-    "@SIO": 239,
-    "@CO2": 240,
-    "#NH2CHO": 241,
-    "#HCOO": 242,
-    "HCOO": 243,
-    "NH2CHO": 244,
-    "SIOH+": 245,
-    "HCO2+": 246,
-    "HCS+": 247,
-    "#HSIO": 248,
-    "HCS": 249,
-    "#HCS": 250,
-    "@NH2CHO": 251,
-    "@HCOO": 252,
-    "@HSIO": 253,
-    "@HCS": 254,
-    "#H2SIO": 255,
-    "#H2CS": 256,
-    "#NS": 257,
-    "#HCOOH": 258,
-    "HCOOH": 259,
-    "#NO2": 260,
-    "NS": 261,
-    "NO2": 262,
-    "H2CS": 263,
-    "H2SIO": 264,
-    "H2CS+": 265,
-    "NS+": 266,
-    "@H2SIO": 267,
-    "@H2CS": 268,
-    "@NS": 269,
-    "@HCOOH": 270,
-    "@NO2": 271,
-    "H3CS+": 272,
-    "HNS+": 273,
-    "SO": 274,
-    "SO+": 275,
-    "#SO": 276,
-    "@SO": 277,
-    "#C4H": 278,
-    "C4H": 279,
-    "HSO+": 280,
-    "@C4H": 281,
-    "C3N": 282,
-    "#C3N": 283,
-    "@C3N": 284,
-    "#HC3N": 285,
-    "HC3N": 286,
-    "@HC3N": 287,
-    "#SIC2": 288,
-    "SIC2+": 289,
-    "C2N2+": 290,
-    "SIC2": 291,
-    "NCCN": 292,
-    "#NCCN": 293,
-    "@SIC2": 294,
-    "@NCCN": 295,
-    "SIS+": 296,
-    "#OCS": 297,
-    "#SIS": 298,
-    "OCS": 299,
-    "OCS+": 300,
-    "SIS": 301,
-    "@OCS": 302,
-    "@SIS": 303,
-    "HOCS+": 304,
-    "HSIS+": 305,
-    "C4N": 306,
-    "C4N+": 307,
-    "#C4N": 308,
-    "@C4N": 309,
-    "SO2": 310,
-    "S2+": 311,
-    "SO2+": 312,
-    "S2": 313,
-    "SIC3": 314,
-    "SIC3+": 315,
-    "#SIC3": 316,
-    "#S2": 317,
-    "#SO2": 318,
-    "@SIC3": 319,
-    "@S2": 320,
-    "@SO2": 321,
-    "HS2": 322,
-    "HS2+": 323,
-    "HSO2+": 324,
-    "#HS2": 325,
-    "@HS2": 326,
-    "H2S2+": 327,
-    "H2S2": 328,
-    "#H2S2": 329,
-    "@H2S2": 330,
-    "E-": 331,
-    "BULK": 332,
-    "SURFACE": 333,
-    "HSIO": 334,
-}
+class LoadedNetwork(Network):
+    """Network version that skips all steps and just loads two lists. This is another
+    here be dragons version, use this with exceeding caution as no checks are performed for you.
+
+    Args:
+        Network (_type_): _description_
+    """
+
+    def __init__(self, species: list[Species], reactions: list[Reaction]) -> None:
+        """A loader of networks without any checks.
+
+        Here be dragons.
+
+        Args:
+            species (list[Species]): A list of species objects
+            reactions (list[Reaction]): A list of reaction objects.
+        """
+        self.set_species_dict({s.name: s for s in species})
+        self.set_reaction_dict({k: v for k, v in enumerate(reactions)})
