@@ -7,6 +7,8 @@ from logging import Logger
 from os import PathLike
 from typing import Union
 
+from UCLCHEM.src.uclchem.makerates.network import LoadedNetwork
+
 
 param_list = [
     "species_file",
@@ -18,7 +20,23 @@ param_list = [
 ]
 
 
-def run_makerates(configuration_file="user_settings.yaml", write_files=True):
+def run_makerates(
+    configuration_file: str = "user_settings.yaml", write_files: bool = True
+) -> Network:
+    """The main run wrapper for makerates, it loads a configuration, parses it in Network
+    and then returns the Network. It by default writes to the uclchem fortran directory, but
+    this can be skipped.
+
+    Args:
+        configuration_file (str, optional): A UCLCHEM Makerates configuration file. Defaults to "user_settings.yaml".
+        write_files (bool, optional): Whether to write the fortran files to the src/fortran_src. Defaults to True.
+
+    Raises:
+        KeyError: The configuration cannot be found
+
+    Returns:
+        Network: A chemical network instance.
+    """
 
     with open(configuration_file, "r") as f:
         user_params = yaml.safe_load(f)
@@ -85,11 +103,28 @@ def get_network(
     path_to_input_file: Union[str, bytes, os.PathLike] = None,
     path_to_species_file: Union[str, bytes, os.PathLike] = None,
     path_to_reaction_file: Union[str, bytes, os.PathLike] = None,
-    path_to_network_info: Union[str, bytes, os.PathLike] = None,
     verbosity=None,
 ):
     """In memory equivalent of Makerates, can either be used on the original input files
-    for makerates, or on the output files that makerates generates"""
+    for makerates, or on the output files that makerates generates. So either specify:
+
+    `path_to_input_file ` exclusive OR (`path_to_species_file` and `path_to_reaction_file`)
+
+    The latter scenario allows you to reload a reaction network from a network already written by Makerates.
+
+
+    Args:
+        path_to_input_file (Union[str, bytes, os.PathLike], optional): Path to input file. Defaults to None.
+        path_to_species_file (Union[str, bytes, os.PathLike], optional): Path to a species.csv in/from the src directory. Defaults to None.
+        path_to_reaction_file (Union[str, bytes, os.PathLike], optional): Path to a reactions.csv in/from the src directory. Defaults to None.
+        verbosity (LEVEL, optional): The verbosity level as specified in logging. Defaults to None.
+
+    Raises:
+        ValueError: You cannot specify both an input configuration and species+reaction.
+
+    Returns:
+        Network: A chemical reaction network.
+    """
     if verbosity:
         logging.basicConfig(format="%(levelname)s: %(message)s", level=verbosity)
 
@@ -101,14 +136,12 @@ def get_network(
     if path_to_input_file:
         return run_makerates(path_to_input_file, write_files=False)
     else:
-        with open(path_to_network_info, "r") as fh:
-            network_info = yaml.safe_load(fh)
-        return _get_network_from_files(
-            species_file=path_to_species_file,
-            reaction_files=path_to_reaction_file,
-            reaction_types=network_info["reaction_type"],
-            three_phase=network_info["three_phase"],
+        # If we load the species/reactions directly from UCLCHEM we can skip the checks
+        species_list, _ = io.read_species_file(path_to_species_file)
+        reactions_list, _ = io.read_reaction_file(
+            path_to_reaction_file, species_list, "UCL"
         )
+        return LoadedNetwork(species_list, reactions_list)
 
 
 def _get_network_from_files(
@@ -133,17 +166,12 @@ def _get_network_from_files(
         reactions += temp_reactions
         dropped_reactions += temp_dropped_reactions
     # Create Network
-    # dropped_reactions=sum(dropped_reactions)
-    # print("BEFORE LOADING", f"\n".join([str(x) for x in reactions]))
-    # print(species_list)
     network = Network(
         species=species_list,
         reactions=reactions,
         three_phase=three_phase,
         user_defined_bulk=user_defined_bulk,
     )
-    # print("AFTER LOADING", f"\n".join([str(x) for x in network.get_reaction_list()]))
-    # print(f"\n".join([str(x) for x in network.get_species_list()]))
 
     #################################################################################################
 

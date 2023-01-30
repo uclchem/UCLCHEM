@@ -7,6 +7,8 @@ Functions to read in the species and reaction files and write output files
 import csv
 import logging
 import numpy as np
+
+from UCLCHEM.src.uclchem.makerates.network import Network
 from .species import Species, elementList
 from .reaction import Reaction, reaction_types
 from os.path import join
@@ -14,7 +16,7 @@ from datetime import datetime
 import yaml
 
 
-def read_species_file(file_name):
+def read_species_file(file_name) -> list[Species]:
     """Reads in a Makerates species file
 
     Args:
@@ -37,13 +39,15 @@ def read_species_file(file_name):
     return species_list, user_defined_bulk
 
 
-def read_reaction_file(file_name, species_list, ftype):
+def read_reaction_file(
+    file_name: str, species_list: list[Species], ftype: str
+) -> tuple[list[Reaction], list[Reaction]]:
     """Reads in a reaction file of any kind (user, UMIST, KIDA)
     produces a list of reactions for the network, filtered by species_list
 
     Args:
-        file_name (str): _description_
-        species_list (list[Species]): _description_
+        file_name (str): A file name for the reaction file to read.
+        species_list (list[Species]): A list of chemical species to be used in the reading.
         ftype (str): 'UMIST','UCL', or 'KIDA' to describe format of file_name
 
     Returns:
@@ -85,12 +89,16 @@ def read_reaction_file(file_name, species_list, ftype):
     return reactions, dropped_reactions
 
 
-def check_reaction(reaction_row, keep_list):
+def check_reaction(reaction_row, keep_list) -> bool:
     """Checks a row parsed from a reaction file and checks it only contains acceptable things.
+    It checks if all species in the reaction are present, and adds the temperature range is none is specified.
 
     Args:
         reaction_row (list): List parsed from a reaction file and formatted to be able to called Reaction(reaction_row)
         keep_list (list): list of elements that are acceptable in the reactant or product bits of row
+
+    Returns:
+        bool: Whether the row contains acceptable entries.
     """
     if all(x.upper() in keep_list for x in reaction_row[0:7]):
         if reaction_row[10] == "":
@@ -165,7 +173,14 @@ def kida_parser(kida_file):
     return rows
 
 
-def output_drops(dropped_reactions, output_dir, write_files=True):
+def output_drops(dropped_reactions: list[Reaction], output_dir: str, write_files=True):
+    """Writes the reactions that are dropped to disk/logs
+
+    Args:
+        dropped_reactions (list[Reaction]): The reactions that were dropped
+        output_dir (str): The directory that dropped_reactions.csv will be written to.
+        write_files (bool, optional): Whether or not to write the file. Defaults to True.
+    """
     if output_dir is None:
         output_dir = ""
     outputFile = join(output_dir, "dropped_reactions.csv")
@@ -188,7 +203,13 @@ def output_drops(dropped_reactions, output_dir, write_files=True):
             logging.info(reaction)
 
 
-def write_outputs(network, output_dir):
+def write_outputs(network: Network, output_dir: str = None) -> None:
+    """Write the ODE and Network fortran source files to the fortran source.
+
+    Args:
+        network (network): The makerates Network class
+        output_dir (bool): The directory to write to.
+    """
     if output_dir is None:
         output_dir = "../src/"
         fortran_src_dir = "../src/fortran_src"
@@ -215,11 +236,9 @@ def write_outputs(network, output_dir):
     write_network_file(filename, network)
 
     # Write some meta information that can be used to read back in the reactions into Python
-    filename = join(output_dir, "network_info.yaml")
-    write_network_info(filename, network)
 
 
-def write_species(file_name, species_list):
+def write_species(file_name: str, species_list: list[Species]) -> None:
     """Write the human readable species file. Note UCLCHEM doesn't use this file.
 
     Args:
@@ -259,7 +278,7 @@ def write_species(file_name, species_list):
 
 
 # Write the reaction file in the desired format
-def write_reactions(fileName, reaction_list):
+def write_reactions(fileName, reaction_list) -> None:
     """Write the human readable reaction file. Note UCLCHEM doesn't use this file.
 
     Args:
@@ -303,7 +322,7 @@ def write_reactions(fileName, reaction_list):
             )
 
 
-def write_odes_f90(file_name, species_list, reaction_list, three_phase):
+def write_odes_f90(file_name, species_list, reaction_list, three_phase) -> None:
     """Write the ODEs in Modern Fortran. This is an actual code file.
 
     Args:
@@ -331,7 +350,7 @@ def write_odes_f90(file_name, species_list, reaction_list, three_phase):
         output.write(ydotString)
 
 
-def write_jacobian(file_name, species_list):
+def write_jacobian(file_name, species_list) -> None:
     """Write jacobian in Modern Fortran. This has never improved UCLCHEM's speed
     and so is not used in the code as it stands.
     Current only works for three phase model.
@@ -400,7 +419,7 @@ def write_jacobian(file_name, species_list):
     output.close()
 
 
-def build_ode_string(species_list, reaction_list, three_phase):
+def build_ode_string(species_list, reaction_list, three_phase) -> str:
     """A long, complex function that does the messy work of creating the actual ODE
     code to calculate the rate of change of each species. Test any change to this code
     thoroughly because ODE mistakes are very hard to spot.
@@ -496,7 +515,7 @@ def build_ode_string(species_list, reaction_list, three_phase):
     return ode_string
 
 
-def species_ode_string(n, species):
+def species_ode_string(n: int, species: Species) -> str:
     """Build the string of Fortran code for a species once it's loss and gains
     strings have been produced.
 
@@ -529,7 +548,7 @@ def species_ode_string(n, species):
     return ydot_string
 
 
-def write_evap_lists(network_file, species_list):
+def write_evap_lists(network_file, species_list: list[Species]) -> None:
     """Two phase networks mimic episodic thermal desorption seen in lab (see Viti et al. 2004)
     by desorbing fixed fractions of material at specific temperatures. Three phase networks just
     use binding energy and that fact we set binding energies in bulk to water by default.
@@ -537,7 +556,7 @@ def write_evap_lists(network_file, species_list):
 
     Args:
         network_file (file): Open file object to which the network code is being written
-        species_list (_type_): List of species in network
+        species_list (list[Species]): List of species in network
     """
     gasIceList = []
     surfacelist = []
@@ -601,7 +620,7 @@ def write_evap_lists(network_file, species_list):
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
 
 
-def truncate_line(input_string, lineLength=72):
+def truncate_line(input_string, lineLength=72) -> str:
     """Take a string and adds line endings at regular intervals
     keeps us from overshooting fortran's line limits and, frankly,
     makes for nicer ode.f90 even if human readability isn't very impotant
@@ -757,14 +776,23 @@ def write_network_file(file_name, network):
     openFile.close()
 
 
-def find_reactant(species_list, reactant):
+def find_reactant(species_list: list[str], reactant: str) -> int:
+    """Try to find a reactant in the species list
+
+    Args:
+        species_list (list[str]): A list of species in the network
+        reactant (str): The reactant to be indexed
+
+    Returns:
+        int: The index of the reactant, if it is not found, 9999
+    """
     try:
         return species_list.index(reactant) + 1
     except:
         return 9999
 
 
-def get_desorption_freeze_partners(reaction_list):
+def get_desorption_freeze_partners(reaction_list) -> list[Reaction]:
     """Every desorption has a corresponding freeze out eg desorption of #CO and freeze of CO.
     This find the corresponding freeze out for every desorb so that when desorb>>freeze
     we can turn off freeze out in UCLCHEM.
@@ -788,8 +816,8 @@ def get_desorption_freeze_partners(reaction_list):
     return partners
 
 
-def array_to_string(name, array, type="int", parameter=True):
-    """_summary_
+def array_to_string(name, array, type="int", parameter=True) -> str:
+    """Write an array to fortran source code
 
     Args:
         name (str): Variable name of array in Fortran
@@ -825,13 +853,3 @@ def array_to_string(name, array, type="int", parameter=True):
     outString = outString[:-1] + "/)\n"
     outString = truncate_line(outString)
     return outString
-
-
-def write_network_info(file_name, network):
-    network_info = {
-        "three_phase": network.three_phase,
-        "reaction_type": "UCL",
-        "time_generated": datetime.now(),
-    }
-    with open(file_name, "w") as fh:
-        yaml.dump(network_info, fh)

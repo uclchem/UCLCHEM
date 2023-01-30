@@ -239,6 +239,7 @@ class Reaction:
     def __eq__(self, other) -> bool:
         """Check for equality against another reaction based on the products and reactants.
         Note that it does not check for the temperature ranges that the reactions might have!
+        The Reaction.check_temperature_collision can be used for this purpose.
 
         Args:
             other: Another reaction set.
@@ -256,6 +257,17 @@ class Reaction:
         return False
 
     def check_temperature_collision(self, other) -> bool:
+        """Check if two reactions have overlapping temperature ranges, returning True means there is a collision.
+
+        Args:
+            other: Another reaction
+
+        Raises:
+            NotImplementedError: Currently we can only compare against instantiated Reaction objects.
+
+        Returns:
+            bool: Whether there is a collision (True), or not (False)
+        """
         if not isinstance(other, Reaction):
             raise NotImplementedError(
                 "Equality is not implemented for anything but comparing to other reactions."
