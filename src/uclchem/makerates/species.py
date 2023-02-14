@@ -47,7 +47,15 @@ elementMass = [
 symbols = ["#", "@", "*", "+", "-", "(", ")"]
 
 
-def is_number(s):
+def is_number(s) -> bool:
+    """Try to convert input to a float, if it succeeds, return True.
+
+    Args:
+        s: Input element to check for
+
+    Returns:
+        bool: True if a number, False if not.
+    """
     try:
         float(s)
         return True
@@ -62,6 +70,11 @@ class Species:
     """
 
     def __init__(self, inputRow):
+        """A class representing chemical species, it reads in rows which are formatted as follows:
+        NAME,MASS,BINDING ENERGY,SOLID FRACTION,MONO FRACTION,VOLCANO FRACTION,ENTHALPY
+        Args:
+            inputRow (list):
+        """
         self.name = inputRow[0].upper()
         self.mass = int(inputRow[1])
 
@@ -89,21 +102,60 @@ class Species:
             self.freeze_products = {}
 
     def get_name(self) -> str:
+        """Get the name of the chemical species.
+
+        Returns:
+            str: The name
+        """
         return self.name
 
     def get_mass(self) -> int:
+        """Get the molecular mass of the chemical species
+
+        Returns:
+            int: The molecular mass
+        """
         return self.mass
 
     def set_desorb_products(self, new_desorbs: list[str]) -> None:
+        """Set the desorption products for species on the surface or in the bulk. 
+        It is assumed that there is only one desorption pathway.
+
+        Args:
+            new_desorbs (list[str]): The new desorption products
+        """
         self.desorb_products = new_desorbs
 
     def get_desorb_products(self) -> list[str]:
+        """Obtain the desorbtion products of ice species
+
+        Returns:
+            list[str]: The desorption products
+        """
         return self.desorb_products
 
     def set_freeze_products(self, product_list: list[str], freeze_alpha: float) -> None:
+        """Add the freeze products of the species, one species can have several freeze products.
+
+        Args:
+            product_list (list[str]): The list of freeze out products
+            freeze_alpha (float): The freeze out ratio.
+            
+        It is called alpha, since it is derived from the alpha column in the UCLCHEM reaction format:
+        https://github.com/uclchem/UCLCHEM/blob/08d37f8c3063f8ff8a9a7aa16d9eff0ed4f99538/Makerates/src/network.py#L160
+        """
+
         self.freeze_products[",".join(product_list)] = freeze_alpha
 
-    def get_freeze_products(self) -> dict:
+    def get_freeze_products(self) -> dict[list[str], float]:
+        """Obtain the product to which the species freeze out
+
+        Returns:
+            dict[str, float]: Reactions and their respective freeze out ratios. 
+
+        Yields:
+            Iterator[dict[str, float]]: Iterator that returns all of the freeze out reactions with ratios
+        """
         keys = self.freeze_products.keys()
         values = self.freeze_products.values()
         logging.debug(f"freeze keys: {keys}, products {values}")
@@ -111,36 +163,65 @@ class Species:
             yield key.split(","), value
 
     def get_freeze_products_list(self) -> list[list[str]]:
+        """Returns all the freeze products without their ratios
+
+        Returns:
+            list[list[str]]: List of freeze products
+        """
         # TODO: Write an unit test for get_freeze_product_behaivour
         return [key.split(",") for key in self.freeze_products.keys()]
 
     def get_freeze_alpha(self, product_list: list[str]) -> float:
+        """Obtain the freeze out ratio of a species for a certain reaction
+
+        Args:
+            product_list (list[str]): For a specific reaction, get the freezeout ratio
+
+        Returns:
+            float: The freezeout ratio
+        """
         return self.freeze_products[",".join(product_list)]
 
-    def is_grain_species(self):
-        if self.name in ["BULK", "SURFACE"]:
-            return True
-        else:
-            try:
-                return self.name[0] in ["#", "@"]
-            except IndexError:
-                return False
+    def is_grain_species(self) -> bool:
+        """ Return whether the species is a species on the grain
 
-    def is_surface_species(self):
-        return self.name[0] == "#"
+        Returns:
+            bool: True if it is a grain species.
+        """
+        return self.name in ["BULK", "SURFACE"] or self.name.startswith("#",) or self.name.startswith("@")
 
-    def is_bulk_species(self):
-        return self.name[0] == "@"
+    def is_surface_species(self) -> bool:
+        """Checks if the species is on the surface
 
-    def is_ion(self):
-        return self.name[-1] == "+" or self.name[-1] == "-"
+        Returns:
+            bool: True if a surface species
+        """
+        return self.name.startswith("#")
 
-    def add_default_freeze(self):
+    def is_bulk_species(self) -> bool:
+        """Checks if the species is in the bulk
+
+        Returns:
+            bool: True if a bulk species
+        """
+        return self.name.startswith("@")
+
+    def is_ion(self) -> bool:
+        """Checks if the species is ionized, either postively or negatively.
+
+        Returns:
+            bool: True if it is an ionized
+        """
+        return self.name.endswith("+") or self.name.endswith("-")
+
+    def add_default_freeze(self) -> None:
+        """Adds a defalt freezeout, which is freezing out to the species itself, but with no ionization.
+        """
         freeze = "#" + self.name
         if freeze[-1] in ["+", "-"]:
             freeze = freeze[:-1]
         if self.name == "E-":
-            freeze = ""
+            freeze = "NAN" # Better to set electron products to NAN compared to empty string.
         self.set_freeze_products([freeze, "NAN", "NAN", "NAN"], 1.0)
 
     def find_constituents(self):
@@ -232,27 +313,64 @@ class Species:
             self.mass = int(mass)
 
     def get_n_atoms(self) -> int:
+        """Obtain the number of atoms in the molecule
+
+        Returns:
+            int: The number of atoms
+        """
         return self.n_atoms
 
-    def set_n_atoms(self, new_n_atoms) -> None:
+    def set_n_atoms(self, new_n_atoms: int) -> None:
+        """Set the number of atoms 
+
+        Args:
+            new_n_atoms (int): The new number of atoms
+        """
         self.n_atoms = new_n_atoms
 
     def __eq__(self, other):
+        """Check for equality based on either a string or another Species instance.
+
+        Args:
+            other (str, Species): Another species
+
+        Raises:
+            NotImplementedError: We can only compare between species or strings of species.
+
+        Returns:
+            bool: True if two species are identical.
+        """
         if isinstance(other, Species):
             return self.name == other.name
         elif isinstance(other, str):
             return self.name == other
         else:
-            raise NotImplementedError
+            raise NotImplementedError("We can only compare between species or strings of species")
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
+        """Compare the mass of the species
+
+        Args:
+            other (Species): Another species instance
+
+        Returns:
+            bool: True if less than the other species
+        """
         return self.mass < other.mass
 
-    def __gt__(self, other):
+    def __gt__(self, other) -> bool:
+        """Compare the mass of the species
+
+        Args:
+            other (Species): Another species instance
+
+        Returns:
+            bool: True if larger than than the other species
+        """
         return self.mass > other.mass
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Specie: {self.name}"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
