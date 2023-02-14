@@ -7,7 +7,7 @@ from logging import Logger
 from os import PathLike
 from typing import Union
 
-from UCLCHEM.src.uclchem.makerates.network import LoadedNetwork
+from uclchem.makerates.network import LoadedNetwork
 
 
 param_list = [

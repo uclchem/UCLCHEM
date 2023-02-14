@@ -8,7 +8,7 @@ import csv
 import logging
 import numpy as np
 
-from UCLCHEM.src.uclchem.makerates.network import Network
+from uclchem.makerates.network import Network
 from .species import Species, elementList
 from .reaction import Reaction, reaction_types
 from os.path import join

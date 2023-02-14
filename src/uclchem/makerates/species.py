@@ -221,7 +221,7 @@ class Species:
         if freeze[-1] in ["+", "-"]:
             freeze = freeze[:-1]
         if self.name == "E-":
-            freeze = "NAN" # Better to set electron products to NAN compared to empty string.
+            freeze = ""
         self.set_freeze_products([freeze, "NAN", "NAN", "NAN"], 1.0)
 
     def find_constituents(self):

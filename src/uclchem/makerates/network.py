@@ -85,7 +85,7 @@ class Network:
         logging.warning(
             "Reaction list should not be accessed directly, but using the get and set methods"
         )
-        return None
+        return self.get_reaction_list()
 
     @reaction_list.setter
     def reaction_list(self, value):
@@ -98,12 +98,12 @@ class Network:
         logging.warning(
             "Species list should not be accessed directly, but using the get and set methods"
         )
-        return None
+        return self.get_species_list()
 
     @species_list.setter
     def species_list(self, value):
         raise Exception(
-            "Do not set reaction lists explicitely, use the add and remove interfaces for reactions"
+            "Do not set species lists explicitely, use the add and remove interfaces for reactions"
         )
 
     def add_reactions(
@@ -141,19 +141,12 @@ class Network:
                         )
 
             # quick check to make sure all species in the reaction are in the species list.
-            species_to_add = filter(
-                lambda spec: (spec not in self.get_species_list())
-                and (spec not in ["NAN", "", "E-"] + reaction_types),
-                reaction.get_reactants() + reaction.get_products(),
-            )
-            # if any(
-            #     specie not in self.get_species_list()
-            #     for specie in reaction.get_reactants() + reaction.get_products()
-            # ):
-            for specie in species_to_add:
+            species_not_present = [spec for spec in reaction.get_reactants() + reaction.get_products() if (spec not in self.get_species_list())
+                and (spec not in ["NAN", "", "E-"] + reaction_types)]
+            for specie in species_not_present:
                 logging.debug(f"Trying to add specie {specie}")
                 # TODO: get more sensible mass
-                self.add_species(Species([specie, 1000, 0.0, 0.0, 0.0, 0.0, 0.0]))
+                self.add_species(Species([specie, -1, 0.0, 0.0, 0.0, 0.0, 0.0]))
             # Index and add the new reaction.
             new_idx = list(self._reactions_dict.keys())[-1] + 1
             self._reactions_dict[new_idx] = reaction
@@ -191,7 +184,7 @@ class Network:
         #
         # The find_similar_reaction returns a dict of (index[int], reaction[Reaction]),
         # We make it a list of tuples as it is easier to index and manipulate for this case.
-        reaction_idx_dict_as_tuples = list(self.find_similar_reactions(reaction))
+        reaction_idx_dict_as_tuples = list(self.find_similar_reactions(reaction).items())
         if len(reaction_idx_dict_as_tuples) == 1:
             reac_idx, reac_value = reaction_idx_dict_as_tuples[0]
             logging.debug(f"Trying to remove index: {reac_idx}: {reac_value} ")
@@ -396,8 +389,8 @@ class Network:
             dict(
                 sorted(
                     species_dict.items(),
-                    # key=lambda kv: (kv[1].get_mass(),),
-                    key=lambda kv: custom_lookup[kv[1].name],
+                    key=lambda kv: (kv[1].get_mass(),),
+                    # key=lambda kv: custom_lookup[kv[1].name],
                 )
             )
         )
