@@ -322,8 +322,8 @@ class Network:
                     )
                 self._species_dict[specie.name] = specie
             else:
-                logging.warning(
-                    f"You try to add a falsy specie called '{specie.name}', this cannot be done."
+                logging.info(
+                    f"You try to add a falsy specie called '{specie.name}', this cannot be done and will be ignored."
                 )
 
     def remove_species(self, specie_name: str) -> None:
@@ -540,7 +540,7 @@ class Network:
             if (not specie.is_grain_species()) and (
                 not specie.get_freeze_products_list()
             ):
-                logging.warning(
+                logging.info(
                     f"Adding a default freezeout for {specie} to the specie"
                 )
                 specie.add_default_freeze()

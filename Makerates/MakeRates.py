@@ -51,7 +51,7 @@ def get_logger(verbosity_stdout: str, debug: bool):
         verbosity_file = logging.DEBUG
     logging.basicConfig(
         level=verbosity_file,
-        format="%(levelname)s: %(message)s",
+        format="%(asctime)s %(levelname)s: %(message)s",
         datefmt="%m-%d %H:%M",
         filename="makerates.log",
         filemode="w",
@@ -60,7 +60,7 @@ def get_logger(verbosity_stdout: str, debug: bool):
     console = logging.StreamHandler()
     console.setLevel(verbosity_stdout)
     # set a format which is simpler for console use
-    formatter = logging.Formatter("%(asctime)s %(levelname)-8s %(message)s")
+    formatter = logging.Formatter(" %(levelname)-8s %(message)s")
     # tell the handler to use this format
     console.setFormatter(formatter)
     # add the handler to the root logger
