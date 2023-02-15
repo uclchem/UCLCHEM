@@ -191,3 +191,7 @@ C2N,FREEZE,,#CH3CNH,,,,1,0,0,,,
 C2N+,FREEZE,,#CH3CNH,,,,1,1,0,,,
 C3N,FREEZE,,#HC3N,,,,1,0,0,,,
 C2NH+,FREEZE,,#CH3CNH,,,,1,1,0,,,
+
+! Handle HEH and H3
+H3+,FREEZE,,#H,#H,#H,,1,1,0,,,
+HEH+,FREEZE,,#H,#HE,,,1,1,0,,,
