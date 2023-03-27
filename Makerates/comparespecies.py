@@ -1,6 +1,6 @@
 # enter two species files to see all species that are one file but not the other
 
-from src.io_functions import *
+from uclchem.makerates.io_functions import read_species_file
 
 
 speciesFile = "inputFiles/default_species.csv"

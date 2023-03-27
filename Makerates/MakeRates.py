@@ -7,69 +7,72 @@
 # 		by UCLCHEM to run. It also performs basic cleaning and sanity checks on the network.
 #
 ####################################################################################################
-import src.io_functions as io 
-from src.network import *
-import os
-import yaml
-
-param_list = [
-    "species_file",
-    "database_reaction_file",
-    "database_reaction_type",
-    "custom_reaction_file",
-    "custom_reaction_type",
-    "three_phase",
-]
-
-with open("user_settings.yaml", "r") as f:
-    user_params = yaml.safe_load(f)
-for param in param_list:
-    try:
-        print(f"{param} : {user_params[param]}")
-    except:
-        raise KeyError(f"{param} not found in user_settings.yaml")
+# All code that is run by this script resides in src/uclchem/makerates/makerates.py
 
 try:
-    user_output_dir = user_params["output_directory"]
-    if not os.path.exists(user_output_dir):
-        os.makedirs(user_output_dir)
-except:
-    user_output_dir = None
-
-#################################################################################################
-
-
-print("\n################################################")
-print("Reading and checking input")
-print("################################################\n")
-
-# Read user inputs
-species_list, user_defined_bulk = io.read_species_file(user_params["species_file"])
-reactions1, dropped_reactions = io.read_reaction_file(
-    user_params["database_reaction_file"], species_list, user_params["database_reaction_type"]
-)
-reactions2, dropped_reactions = io.read_reaction_file(user_params["custom_reaction_file"], species_list, user_params["custom_reaction_type"])
-
-# Create Network
-network = Network(species=species_list, reactions=reactions1 + reactions2, three_phase=user_params["three_phase"], user_defined_bulk=user_defined_bulk)
-
-io.output_drops(dropped_reactions, user_output_dir)
-
-# check network to see if there are potential problems
-print("Checking Network")
-network.check_network()
+    from uclchem.makerates import run_makerates
+except ModuleNotFoundError as err:
+    raise ModuleNotFoundError(
+        "The uclchem module could not be found, please make sure it is installed\nPlease refer to uclchem.github.io for installation instructions."
+    ) from err
+import logging
+from argparse import ArgumentParser
+import pathlib
 
 
-print("\n################################################")
-print("Checks complete, writing output files")
-print("################################################\n")
+def get_args():
+    """Allows for interacting with MakeRates.py via the command line i.e.
+    ```
+    python3 MakeRates.py /home/user/some_directory/custom_settings.yaml --verbosity DEBUG
+    ```
+    Returns:
+        Namespace: Arguments passed via the CLI or their defaults
+    """
+    parser = ArgumentParser()
+    parser.add_argument(
+        "settings_path", nargs="?", default="user_settings.yaml", type=pathlib.Path
+    )
+    parser.add_argument("-v", "--verbosity_stdout", default="WARNING", type=str)
+    parser.add_argument("-d", "--debug", action="store_true")
+    return parser.parse_args()
 
-io.write_outputs(network, user_output_dir)
+
+def get_logger(verbosity_stdout: str, debug: bool):
+    """Define a logger that logs both to file and stdout"""
+    # TODO: fix that both verbosity for file and stdout are the same type, but it works for now.
+    if debug:
+        verbosity_file = logging.DEBUG
+        verbosity_stdout = "DEBUG"
+    else:
+        verbosity_file = logging.INFO
+        verbosity_stdout = verbosity_stdout
+    # Make sure the verbosity to the file is always smaller than stdout to avoid confusion
+    if verbosity_stdout.upper() == "DEBUG":
+        verbosity_file = logging.DEBUG
+    logging.basicConfig(
+        level=verbosity_file,
+        format="%(asctime)s %(levelname)s: %(message)s",
+        datefmt="%m-%d %H:%M",
+        filename="makerates.log",
+        filemode="w",
+    )
+    # define a Handler which writes INFO messages or higher to the sys.stderr
+    console = logging.StreamHandler()
+    console.setLevel(verbosity_stdout)
+    # set a format which is simpler for console use
+    formatter = logging.Formatter(" %(levelname)-8s %(message)s")
+    # tell the handler to use this format
+    console.setFormatter(formatter)
+    # add the handler to the root logger
+    logging.getLogger("").addHandler(console)
+
+    # Now, we can log to the root logger, or any other logger. First the root...
+    logging.info(
+        f"Configured the logging. Files verbosity is {logging.getLevelName(verbosity_file)} and stdout verbosity is {verbosity_stdout}"
+    )
 
 
-ngrain = len([x for x in species_list if x.is_surface_species()])
-
-
-print(f"Total number of species = {len(network.species_list)}")
-print(f"Number of surface species = {ngrain}")
-print(f"Number of reactions = {len(network.reaction_list)}")
+if __name__ == "__main__":
+    args = get_args()
+    get_logger(args.verbosity_stdout, args.debug)
+    run_makerates(args.settings_path)
