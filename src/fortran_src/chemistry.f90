@@ -147,7 +147,7 @@ CONTAINS
     !the code integrates to the planned targetTime rather than a reduced one. If the counter reaches maxConsecutiveFailures, we end the code.
 
         INTEGER, INTENT(OUT) :: successFlag
-        real(dp) :: originalTargetTime !targetTime can be altered by integrator but we'd like to know if it was changed
+        REAL(dp) :: originalTargetTime !targetTime can be altered by integrator but we'd like to know if it was changed
 
         !Integration can fail in a way that we can manage. Allow maxLoops tries before giving up.
         loopCounter=0
@@ -178,12 +178,9 @@ CONTAINS
             !recalculate coefficients for ice processes
             safeMantle=MAX(1d-30,abund(nSurface,dstep))
             safeBulk=MAX(1d-30,abund(nBulk,dstep))
-
             if (refractoryList(1) .gt. 0) safeBulk=safeBulk-SUM(abund(refractoryList,dstep))
             bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
             surfaceCoverage=bulkGainFromMantleBuildUp()
-
-            
             CALL calculateReactionRates
 
             !Integrate chemistry, and return fail if unrecoverable error was reached
@@ -192,7 +189,6 @@ CONTAINS
                 write(*,*) "Integration failed, exiting"
                 RETURN
             END IF
-
 
 
             !1.d-30 stops numbers getting too small for fortran.
