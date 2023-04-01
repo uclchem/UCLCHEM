@@ -459,7 +459,7 @@ CONTAINS
         ! for a specified physical model.
         ! Change behaviour of physics by sending different subroutine arguments - hence the need for model subroutines above
         ! dictionary - the parameter dictionary string reprenting a python dictionary
-        ! outSpeciesIn - the species to output
+        ! outSpeciesIn - the species to output to seperate file
         ! successFlag - Integer to indicate whether code completed successfully
         ! modelInitializePhysics - subroutine to initialize physics from a physics module
         ! modelUpdatePhysics - subroutine to update physics from a physics module
@@ -577,6 +577,8 @@ CONTAINS
             CALL finalOutput
             CALL closeFiles
         END IF
+        IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
+        IF (ALLOCATED(outSpecies)) DEALLOCATE(outSpecies)
     END SUBROUTINE solveAbundances
 
     SUBROUTINE dictionaryParser(dictionary, outSpeciesIn,successFlag)
@@ -816,8 +818,6 @@ CONTAINS
                 RETURN
             END IF
         END DO
-        IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
-        IF (ALLOCATED(outSpecies)) DEALLOCATE(outSpecies)
     END SUBROUTINE dictionaryParser
 
     SUBROUTINE coefficientParser(coeffDictString,coeffArray)
