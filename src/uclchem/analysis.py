@@ -384,14 +384,15 @@ def _write_analysis(
         "\n\n***************************\nNew Important Reactions At: {0:.2e} years\n".format(
             time
         )
-    )
-    output_file.write("Formation = {0:.2e} from:".format(total_production))
+    )    
+    # Formation and destruction writing is disabled since the absolute numbers do not appear to be correct.
+    # output_file.write("Formation = {0:.2e} from:".format(total_production))
     for k, reaction in enumerate(key_reactions):
         if key_changes[k] > 0:
             outString = f"\n{reaction} : {float(key_changes[k] / total_production):.2%}"
             output_file.write(outString)
 
-    output_file.write("\n\nDestruction = {0:.2e} from:".format(total_destruction))
+    # output_file.write("\n\nDestruction = {0:.2e} from:".format(total_destruction))
     for k, reaction in enumerate(key_reactions):
         if key_changes[k] < 0:
             outString = (
