@@ -33,7 +33,7 @@ CONTAINS
 
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         DOUBLE PRECISION :: abundance_out(500)
-        CHARACTER(LEN=10) :: specname_out(500)
+        CHARACTER(LEN=32) :: specname_out(500)
         INTEGER :: successFlag
         !f2py intent(in) dictionary,outSpeciesIn
         !f2py intent(out) abundance_out,specname_out,successFlag
@@ -70,7 +70,6 @@ CONTAINS
             CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                     &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund)
         END IF
-
         IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
         END IF
@@ -104,7 +103,7 @@ CONTAINS
 
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn, collapseFileIn
         DOUBLE PRECISION :: abundance_out(500)
-        CHARACTER(LEN=10) :: specname_out(500)
+        CHARACTER(LEN=32) :: specname_out(500)
         INTEGER :: successFlag,collapseIn
         LOGICAL :: writeOut
         !f2py intent(in) collapseIn,dictionary,outSpeciesIn,collapseFileIn,writeOut
@@ -131,7 +130,7 @@ CONTAINS
         collapse_mode=collapseIn
         writePhysics = writeOut
         collapseFile = collapseFileIn
-
+        
         IF (returnArray .AND. givestartabund) THEN
             CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                     &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
@@ -176,7 +175,7 @@ CONTAINS
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         DOUBLE PRECISION :: abundance_out(500),max_temp
         INTEGER :: temp_indx,successFlag
-        CHARACTER(LEN=10) :: specname_out(500)
+        CHARACTER(LEN=32) :: specname_out(500)
         !f2py intent(in) temp_indx,max_temp,dictionary,outSpeciesIn
         !f2py intent(out) abundance_out,specname_out,successFlag
         LOGICAL, INTENT(IN) :: returnArray
@@ -247,7 +246,7 @@ CONTAINS
         DOUBLE PRECISION :: abundance_out(500),shock_vel,timestep_factor
         DOUBLE PRECISION :: minimum_temperature,dissipation_time
         INTEGER :: successFlag
-        CHARACTER(LEN=10) :: specname_out(500)
+        CHARACTER(LEN=32) :: specname_out(500)
         !f2py intent(in) shock_vel,timestep_factor,minimum_temperature,dictionary,outSpeciesIn
         !f2py intent(out) abundance_out,dissipation_time,specname_out,successFlag
         LOGICAL, INTENT(IN) :: returnArray
@@ -314,7 +313,7 @@ CONTAINS
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         DOUBLE PRECISION :: abundance_out(500),shock_vel
         INTEGER :: successFlag
-        CHARACTER(LEN=10) :: specname_out(500)
+        CHARACTER(LEN=32) :: specname_out(500)
         !f2py intent(in) shock_vel,dictionary,outSpeciesIn
         !f2py intent(out) abundance_out, specname_out, successFlag
         LOGICAL, INTENT(IN) :: returnArray
