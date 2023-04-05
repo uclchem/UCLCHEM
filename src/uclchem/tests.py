@@ -35,7 +35,7 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
         "finaltime": 1.0e3,
         "outspecies": len(species_list),
     }
-    abundances, success_flag = wrap.cloud(param_dict," ".join(species_list))
+    abundances, success_flag, test = wrap.cloud(param_dict," ".join(species_list), returnarray=False, givestartabund=False, gridpoints=1)
     abundances=abundances[:param_dict["outspecies"]]
     param_dict.pop("outspecies")
     input_abund = zeros(500)
