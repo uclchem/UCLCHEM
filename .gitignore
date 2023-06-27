@@ -18,3 +18,4 @@ test
 build
 dist
 */__pycache__
+.venv

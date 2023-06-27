@@ -41,25 +41,6 @@ CONTAINS
         END IF
     END SUBROUTINE readInputAbunds
 
-    !Writes physical variables and fractional abundances to output file, called every time step.
-    SUBROUTINE output
-
-        IF (fullOutput) THEN
-            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,dstep,abund(:neq-1,dstep)
-            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
-        END IF
-       
-        !Every 'writestep' timesteps, write the chosen species out to separate file
-        !choose species you're interested in by looking at parameters.f90
-        IF (writeCounter==writeStep .and. columnOutput) THEN
-            writeCounter=1
-            WRITE(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,abund(outIndx,dstep)
-            8030  FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',(999(1pe15.5,:,',')))
-        ELSE
-            writeCounter=writeCounter+1
-        END IF
-    END SUBROUTINE output
-
     SUBROUTINE finalOutput
         IF (writeAbunds) THEN
             DO dstep=1,points
@@ -69,6 +50,46 @@ CONTAINS
             END DO
         END IF
     END SUBROUTINE finalOutput
+
+    SUBROUTINE output(returnArray,physicsarray, chemicalabunarray, dtime)
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
+        INTEGER, OPTIONAL :: dtime
+        LOGICAL :: returnArray
+        IF (returnArray) THEN
+            !WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,dstep,abund(:neq-1,dstep)
+            !8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
+            physicsarray(dtime, dstep, 1) = timeInYears
+            physicsarray(dtime, dstep, 2) = density(dstep)
+            physicsarray(dtime, dstep, 3) = gasTemp(dstep)
+            physicsarray(dtime, dstep, 4) = av(dstep)
+            physicsarray(dtime, dstep, 5) = radfield
+            physicsarray(dtime, dstep, 6) = zeta
+            physicsarray(dtime, dstep, 7) = dstep
+            physicsarray(dtime, dstep, 8) = fhe
+            physicsarray(dtime, dstep, 9) = fc
+            physicsarray(dtime, dstep, 10) = fo
+            physicsarray(dtime, dstep, 11) = fn
+            physicsarray(dtime, dstep, 12) = fs
+            physicsarray(dtime, dstep, 13) = fmg
+            chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
+        ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
+            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,dstep,abund(:neq-1,dstep)
+            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
+        END IF
+
+        !Every 'writestep' timesteps, write the chosen species out to separate file
+        !choose species you're interested in by looking at parameters.f90
+        IF (.NOT. PRESENT(dtime)) THEN
+            IF (writeCounter==writeStep .and. columnOutput) THEN
+                writeCounter=1
+                WRITE(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,abund(outIndx,dstep)
+                8030  FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',(999(1pe15.5,:,',')))
+            ELSE
+                writeCounter=writeCounter+1
+            END IF
+        END IF
+    END SUBROUTINE output
 
     SUBROUTINE closeFiles
         CLOSE(outputId)
