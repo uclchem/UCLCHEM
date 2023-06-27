@@ -496,7 +496,11 @@ CONTAINS
         dstep=1
         currentTime=0.0
         timeInYears=0.0
-        IF (.NOT.(returnArray)) THEN
+        IF (returnArray) THEN
+            ! Fix to make sure that running in memory mode after running in file mode works correctly
+            readAbunds=.False.
+            writeAbunds=.False.
+        ELSE
             CALL fileSetup
         END IF
 

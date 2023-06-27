@@ -56,7 +56,6 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
         INTEGER, OPTIONAL :: dtime
         LOGICAL :: returnArray
-
         IF (returnArray) THEN
             !WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,dstep,abund(:neq-1,dstep)
             !8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
