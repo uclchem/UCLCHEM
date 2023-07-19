@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uclchem"
+version = "3.2.0"
+description="A package for chemical modelling"
+readme = "README.md"
+requires-python = ">=3.6"
+license = {text = "MIT License"}
+dependencies = [
+    "pandas", "numpy", "pyyaml", "matplotlib", "seaborn",
+]
+
