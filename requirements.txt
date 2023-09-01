@@ -1,5 +1,0 @@
-pyyaml
-numpy
-pandas
-seaborn
-matplotlib
