@@ -10,14 +10,16 @@ Full documentation is available from the website: [uclchem.github.io](https://uc
 
 UCLCHEM is intended to be used as a python module but must be installed from source rather than an online index such as Pypi. This is because users are expected to modify the source code, at least by creating their own networks. To obtain and install the code simply run:
 
+[!IMPORTANT]  
+From version 3.3 onwards, we need to install in `editable` mode. This means that the directory that you store UCLCHEM in will directly be used by Python instead of being copied to the site-packages. Keep in mind that code changes you make in the uclchem directory will now affect you directly!
+
 ```bash
 git clone https://github.com/uclchem/UCLCHEM.git
 cd UCLCHEM
-pip install -r requirements.txt
-pip install .
+pip install -e .
 ```
 
-You can then `import uclchem` in any python script. You need to `pip install .` whenever you change your network. 
+You can then `import uclchem` in any python script. You need to `pip install -e .` whenever you change your network. 
 
 To see the contents of this python module, check our [Python API docs](https://uclchem.github.io/docs/pythonapi). To see some example notebooks, check the tutorial section of the docs or the notebooks in `Tutorials/`.
 
