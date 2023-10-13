@@ -10,6 +10,8 @@ speciesFile = "inputFiles/default_species.csv"
 # differences are only relevant insofar as the missing reactions contain your species
 speciesList = read_species_file(speciesFile)
 
+speciesList = speciesList[0]
+
 print("\nReading reactions")
 reactions2, drops = read_reaction_file(reactions2, speciesList, "UCL")
 reactions1, drops = read_reaction_file(reactions1, speciesList, "UCL")
