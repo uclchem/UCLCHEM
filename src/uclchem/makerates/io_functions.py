@@ -174,7 +174,7 @@ def kida_parser(kida_file):
     return rows
 
 
-def output_drops(dropped_reactions: list[Reaction], output_dir: str, write_files=True):
+def output_drops(dropped_reactions: list[Reaction], output_dir: str = None, write_files: bool=True):
     """Writes the reactions that are dropped to disk/logs
 
     Args:
@@ -183,8 +183,8 @@ def output_drops(dropped_reactions: list[Reaction], output_dir: str, write_files
         write_files (bool, optional): Whether or not to write the file. Defaults to True.
     """
     if output_dir is None:
-        output_dir = Path(".")
-    outputFile = output_dir / "dropped_reactions.csv"
+        output_dir = "."
+    outputFile = Path(output_dir) / "dropped_reactions.csv"
     # Print dropped reactions from grain file or write if many
     if write_files and dropped_reactions:
         logging.info(f"\nReactions dropped from grain file written to {outputFile}\n")
