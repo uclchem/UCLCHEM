@@ -215,6 +215,7 @@ def write_outputs(network: Network, output_dir: str = None) -> None:
         output_dir = Path("../src/uclchem")
         fortran_src_dir = Path("../src/fortran_src")
     else:
+        output_dir = Path(output_dir)
         fortran_src_dir = Path(output_dir)
 
     # Create the species file
