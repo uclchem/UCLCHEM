@@ -1,0 +1,39 @@
+name: Run pytest
+
+on:
+  push:
+    branches:
+      - main
+      - develop  # Add the 'develop' branch here
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.x  # Specify the Python version you need
+
+    - name: Install gfortran
+      run: |
+        sudo apt-get -y update
+        sudo apt-get -y install gfortran
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt  # Replace with the path to your requirements file
+    
+    - name: Install package in editable mode
+      run: |
+        pip install -e .
+
+    - name: Run pytest
+      run: |
+        pytest tests/  # Specify the path to your 'tests' directory
+
