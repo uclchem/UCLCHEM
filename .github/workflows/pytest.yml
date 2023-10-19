@@ -1,7 +1,7 @@
 name: Run pytest
 
 on:
-  push:
+  pull_request:
     branches:
       - main
       - develop  # Add the 'develop' branch here
