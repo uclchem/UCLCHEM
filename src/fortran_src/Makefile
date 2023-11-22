@@ -18,7 +18,7 @@ FFLAGS = -O3 -fPIC -ffree-line-length-0
 EXT_SUFFIX = $(shell python3-config --extension-suffix)
 
 
-PHYSICS_OBS= physics-core.o cloud.o hotcore.o sputtering.o cshock.o jshock.o collapse.o
+PHYSICS_OBS= physics-core.o cloud.o hotcore.o sputtering.o cshock.o jshock.o collapse.o postprocess.o
 CHEMISTRY_OBS = photoreactions.o surfacereactions.o chemistry.o
 ##simple makefile for uclchem
 ##user must point the FC variable to their preferred fortran compiler
