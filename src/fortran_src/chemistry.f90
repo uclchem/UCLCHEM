@@ -14,6 +14,7 @@ USE network
 USE photoreactions
 USE surfacereactions
 USE constants
+USE postprocess_mod, only: lgpost,tstep,nhgrid,nh2grid,ncogrid
 IMPLICIT NONE
     !These integers store the array index of important species and reactions, x is for ions    
     !loop counters    
@@ -172,6 +173,13 @@ CONTAINS
             coCol=coColToCell+0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
             cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
 
+            ! Postprocessed tracers have column densities provided
+            if (lgpost) then
+               h2col = nh2grid(dstep,tstep)
+               cocol = ncogrid(dstep,tstep)
+               ccol = nhgrid(dstep,tstep) * abund(nc,dstep) ! No C column densities yet...
+            end if
+
             !Reset surface and bulk values in case of integration error or sputtering
             abund(nBulk,dstep)=sum(abund(bulkList,dstep))
             abund(nSurface,dstep)=sum(abund(surfaceList,dstep))
@@ -199,7 +207,13 @@ CONTAINS
             WHERE(abund<MIN_ABUND) abund=MIN_ABUND
             density(dstep)=abund(NEQ,dstep)
             loopCounter=loopCounter+1
+
+            ! For postprocessing, force solver to try and reach original target time
+            if (lgpost) targettime = originaltargettime
         END DO
+
+        ! Postprocessing needs to reach next timestep whatever the cost
+        if (.not. lgpost) then
         IF (loopCounter .eq. maxLoops) successFlag=INT_TOO_MANY_FAILS_ERROR
 
         !Since targetTime can be altered, eventually leading to "successful" integration we want to
@@ -212,7 +226,8 @@ CONTAINS
             failedIntegrationCounter=failedIntegrationCounter+1
         END IF
         IF (failedIntegrationCounter .gt. maxConsecutiveFailures)&
-            &successFlag=INT_TOO_MANY_FAILS_ERROR
+             &successFlag=INT_TOO_MANY_FAILS_ERROR
+        end if
     END SUBROUTINE updateChemistry
 
     SUBROUTINE integrateODESystem(successFlag)
@@ -278,7 +293,9 @@ CONTAINS
         !Set D to the gas density for use in the ODEs
         D=y(NEQ)
         ydot=0.0
-    
+
+        ! Column densities are fixed for postprocessing data, so don't do this bit
+        if (.not. lgpost) then
         !changing abundances of H2 and CO can causes oscillation since their rates depend on their abundances
         !recalculating rates as abundances are updated prevents that.
         !thus these are the only rates calculated each time the ODE system is called.
@@ -286,6 +303,7 @@ CONTAINS
         h2col=h2ColToCell+0.5*Y(nh2)*D*(cloudSize/real(points))
         rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel) !H2 photodissociation
         rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
+        end if
 
         !recalculate coefficients for ice processes
         safeMantle=MAX(1d-30,Y(nSurface))
