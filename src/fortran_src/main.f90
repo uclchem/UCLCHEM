@@ -4,7 +4,7 @@
 ! be built and used directly from the command line.
 PROGRAM uclchem
 
-USE uclchemwrap, only: cloud,hot_core,cshock
+USE uclchemwrap, only: cloud,hot_core,cshock,postprocess
 USE io, only: inputId
 USE constants, only: dp
 IMPLICIT NONE
@@ -34,7 +34,9 @@ IMPLICIT NONE
         CALL hot_core(3,3.0d2,paramDict,"",abundances,success)
     CASE("CSHOCK")
         !call cshock(vs,timestep_factor,minimum_temp,....)
-        CALL cshock(20.0d0,0.01d0,0.0d0,paramDict,"",abundances,dissipationResult,success)
+       CALL cshock(20.0d0,0.01d0,0.0d0,paramDict,"",abundances,dissipationResult,success)
+    CASE("POSTPROCESS")
+       CALL postprocess(paramDict,"",abundances,success)
     CASE default
         write(*,*) 'Model type not recognised'
         WRITE(*,*) 'Supported models are: CLOUD, CSHOCK, HOTCORE'
