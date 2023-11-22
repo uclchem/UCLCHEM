@@ -6,6 +6,7 @@ MODULE uclchemwrap
     USE chemistry
     USE io
     USE constants
+    USE postprocess_mod, ONLY: ntime,trajecfile
     IMPLICIT NONE
 CONTAINS
     SUBROUTINE cloud(dictionary, outSpeciesIn,abundance_out,successFlag)
@@ -34,6 +35,33 @@ CONTAINS
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
         END IF 
     END SUBROUTINE cloud
+
+    SUBROUTINE postprocess(dictionary, outSpeciesIn,abundance_out,successFlag)
+        ! Subroutine to call postprocessing routines for hydrodynamical simulations
+        ! Loads model specific subroutines and send to solveAbundances
+        !
+        !Args:
+        ! dictionary - python parameter dictionary
+        ! outSpeciesIn - list of species to output as a space separated string
+        !Returns:
+        ! abundance_out - list of abundances of species in outSpeciesIn
+        ! successFlag - integer flag indicating success or fail
+
+        USE postprocess_mod
+
+        CHARACTER(LEN=*) :: dictionary, outSpeciesIn
+        DOUBLE PRECISION :: abundance_out(500)
+        INTEGER :: successFlag
+        !f2py intent(in) dictionary,outSpeciesIn
+        !f2py intent(out) abundance_out,successFlag
+        successFlag=1
+
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,updatePhysics,updateTargetTime,sublimation)
+
+        IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN 
+            abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
+        END IF 
+    END SUBROUTINE postprocess
 
     SUBROUTINE collapse(collapseIn,collapseFileIn,writeOut,dictionary, outSpeciesIn,abundance_out,successFlag)
         !Subroutine to call a collapse model, used to interface with python
@@ -568,8 +596,14 @@ CONTAINS
                         WRITE(*,*) "columnated output requires output species to be chosen."
                         successFlag=-1
                         RETURN
-                    END IF
-
+                     END IF
+                ! Additional parameters for postprocessing mode
+                CASE('fh')
+                   READ(inputValue,*,iostat=successFlag) fh
+                CASE('ntime')
+                   READ(inputValue,*,iostat=successFlag) ntime
+                CASE('trajecfile')
+                   READ(inputValue,*,iostat=successFlag) trajecfile
                 CASE DEFAULT
                     WRITE(*,*) "Problem with given parameter: '", trim(inputParameter), "'."
                     WRITE(*,*) "This is either not supported yet, or invalid."
