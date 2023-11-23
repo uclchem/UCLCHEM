@@ -1,6 +1,7 @@
 from .uclchemwrap import uclchemwrap as wrap
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 def _reform_inputs(param_dict, out_species):
     """Copies param_dict so as not to modify user's dictionary. Then reformats out_species from pythonic list
@@ -11,7 +12,14 @@ def _reform_inputs(param_dict, out_species):
     else:
         # lower case (and conveniently copy so we don't edit) the user's dictionary
         # this is key to UCLCHEM's "case insensitivity"
-        param_dict = {k.lower(): v for k, v in param_dict.items()}
+        new_param_dict = {}
+        for k, v in param_dict.items():
+            assert k.lower() not in new_param_dict, f"Lower case key {k} is already in the dict, stopping"
+            if isinstance(v, Path):
+                v = str(v)
+            new_param_dict[k.lower()] = v
+        param_dict = new_param_dict.copy()
+        del new_param_dict
     if out_species is not None:
         n_out = len(out_species)
         param_dict["outspecies"] = n_out

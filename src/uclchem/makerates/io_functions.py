@@ -12,11 +12,12 @@ from uclchem.makerates.network import Network
 from .species import Species, elementList
 from .reaction import Reaction, reaction_types
 from os.path import join
+from pathlib import Path
 from datetime import datetime
 import yaml
 
 
-def read_species_file(file_name) -> list[Species]:
+def read_species_file(file_name: Path) -> list[Species]:
     """Reads in a Makerates species file
 
     Args:
@@ -40,7 +41,7 @@ def read_species_file(file_name) -> list[Species]:
 
 
 def read_reaction_file(
-    file_name: str, species_list: list[Species], ftype: str
+    file_name: Path, species_list: list[Species], ftype: str
 ) -> tuple[list[Reaction], list[Reaction]]:
     """Reads in a reaction file of any kind (user, UMIST, KIDA)
     produces a list of reactions for the network, filtered by species_list
@@ -173,7 +174,7 @@ def kida_parser(kida_file):
     return rows
 
 
-def output_drops(dropped_reactions: list[Reaction], output_dir: str, write_files=True):
+def output_drops(dropped_reactions: list[Reaction], output_dir: str = None, write_files: bool=True):
     """Writes the reactions that are dropped to disk/logs
 
     Args:
@@ -182,8 +183,8 @@ def output_drops(dropped_reactions: list[Reaction], output_dir: str, write_files
         write_files (bool, optional): Whether or not to write the file. Defaults to True.
     """
     if output_dir is None:
-        output_dir = ""
-    outputFile = join(output_dir, "dropped_reactions.csv")
+        output_dir = "."
+    outputFile = Path(output_dir) / "dropped_reactions.csv"
     # Print dropped reactions from grain file or write if many
     if write_files and dropped_reactions:
         logging.info(f"\nReactions dropped from grain file written to {outputFile}\n")
@@ -211,20 +212,21 @@ def write_outputs(network: Network, output_dir: str = None) -> None:
         output_dir (bool): The directory to write to.
     """
     if output_dir is None:
-        output_dir = "../src/"
-        fortran_src_dir = "../src/fortran_src"
+        output_dir = Path("../src/uclchem")
+        fortran_src_dir = Path("../src/fortran_src")
     else:
-        fortran_src_dir = output_dir
+        output_dir = Path(output_dir)
+        fortran_src_dir = Path(output_dir)
 
     # Create the species file
-    filename = join(output_dir, "species.csv")
+    filename = output_dir / "species.csv"
     write_species(filename, network.get_species_list())
 
-    filename = join(output_dir, "reactions.csv")
+    filename = output_dir / "reactions.csv"
     write_reactions(filename, network.get_reaction_list())
 
     # Write the ODEs in the appropriate language format
-    filename = join(fortran_src_dir, "odes.f90")
+    filename = fortran_src_dir / "odes.f90"
     write_odes_f90(
         filename,
         network.get_species_list(),
@@ -232,13 +234,13 @@ def write_outputs(network: Network, output_dir: str = None) -> None:
         network.three_phase,
     )
 
-    filename = join(fortran_src_dir, "network.f90")
+    filename = fortran_src_dir / "network.f90"
     write_network_file(filename, network)
 
     # Write some meta information that can be used to read back in the reactions into Python
 
 
-def write_species(file_name: str, species_list: list[Species]) -> None:
+def write_species(file_name: Path, species_list: list[Species]) -> None:
     """Write the human readable species file. Note UCLCHEM doesn't use this file.
 
     Args:
@@ -322,7 +324,7 @@ def write_reactions(fileName, reaction_list) -> None:
             )
 
 
-def write_odes_f90(file_name, species_list, reaction_list, three_phase) -> None:
+def write_odes_f90(file_name: Path, species_list: list[Species], reaction_list: list[Reaction], three_phase: bool) -> None:
     """Write the ODEs in Modern Fortran. This is an actual code file.
 
     Args:
@@ -350,7 +352,7 @@ def write_odes_f90(file_name, species_list, reaction_list, three_phase) -> None:
         output.write(ydotString)
 
 
-def write_jacobian(file_name, species_list) -> None:
+def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
     """Write jacobian in Modern Fortran. This has never improved UCLCHEM's speed
     and so is not used in the code as it stands.
     Current only works for three phase model.
@@ -419,7 +421,7 @@ def write_jacobian(file_name, species_list) -> None:
     output.close()
 
 
-def build_ode_string(species_list, reaction_list, three_phase) -> str:
+def build_ode_string(species_list: list[Species], reaction_list: list[Reaction], three_phase: bool) -> str:
     """A long, complex function that does the messy work of creating the actual ODE
     code to calculate the rate of change of each species. Test any change to this code
     thoroughly because ODE mistakes are very hard to spot.
@@ -620,10 +622,10 @@ def write_evap_lists(network_file, species_list: list[Species]) -> None:
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
 
 
-def truncate_line(input_string, lineLength=72) -> str:
+def truncate_line(input_string: str, lineLength:int=72) -> str:
     """Take a string and adds line endings at regular intervals
     keeps us from overshooting fortran's line limits and, frankly,
-    makes for nicer ode.f90 even if human readability isn't very impotant
+    makes for nicer ode.f90 even if human readability isn't very important
 
     Args:
         input_string (str): Line of code to be truncated
@@ -651,7 +653,7 @@ def truncate_line(input_string, lineLength=72) -> str:
     return result
 
 
-def write_network_file(file_name, network):
+def write_network_file(file_name: Path, network: Network):
     """Write the Fortran code file that contains all network information for UCLCHEM.
     This includes lists of reactants, products, binding energies, formationEnthalpies
     and so on.
@@ -792,7 +794,7 @@ def find_reactant(species_list: list[str], reactant: str) -> int:
         return 9999
 
 
-def get_desorption_freeze_partners(reaction_list) -> list[Reaction]:
+def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[Reaction]:
     """Every desorption has a corresponding freeze out eg desorption of #CO and freeze of CO.
     This find the corresponding freeze out for every desorb so that when desorb>>freeze
     we can turn off freeze out in UCLCHEM.
@@ -816,7 +818,7 @@ def get_desorption_freeze_partners(reaction_list) -> list[Reaction]:
     return partners
 
 
-def array_to_string(name, array, type="int", parameter=True) -> str:
+def array_to_string(name: str, array: np.array, type:str ="int", parameter:bool=True) -> str:
     """Write an array to fortran source code
 
     Args:
