@@ -669,6 +669,8 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) baseAv
                 CASE('points')
                     READ(inputValue,*,iostat=successFlag) points
+                CASE('bm0')
+                    READ(inputValue,*,iostat=successFlag) bm0
                 CASE('endatfinaldensity')
                     Read(inputValue,*,iostat=successFlag) endAtFinalDensity
                 CASE('freefall')
