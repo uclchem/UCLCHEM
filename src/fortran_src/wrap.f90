@@ -282,6 +282,7 @@ CONTAINS
             CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
         &updatePhysics,updateTargetTime,sublimation,returnArray, givestartabund)
         END IF
+        specname_out(:nspec) = specName
         IF (successFlag .ge. 0) THEN 
             IF (ALLOCATED(outIndx)) abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
             dissipation_time=dissipationTime
@@ -346,7 +347,7 @@ CONTAINS
             CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
         &updatePhysics,updateTargetTime,sublimation,returnArray, givestartabund)
         END IF
-
+        specname_out(:nspec) = specName
         IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN 
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
         END IF 
