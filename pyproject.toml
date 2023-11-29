@@ -23,6 +23,6 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT License"}
 dependencies = [
-    "pandas", "numpy", "pyyaml", "matplotlib", "seaborn",
+    "pandas", "numpy", "pyyaml", "matplotlib", "seaborn", "pytest"
 ]
 
