@@ -67,6 +67,8 @@ def read_reaction_file(
         with open(file_name, "r") as f:
             reader = csv.reader(f, delimiter=":", quotechar="|")
             for row in reader:
+                if row[0].startswith("#") or row[0].startswith("!"):
+                    continue
                 reaction_row = row[2:4] + [""] + row[4:8] + row[9:]
                 if check_reaction(reaction_row, keep_list):
                     reactions.append(Reaction(reaction_row))
@@ -174,7 +176,9 @@ def kida_parser(kida_file):
     return rows
 
 
-def output_drops(dropped_reactions: list[Reaction], output_dir: str = None, write_files: bool=True):
+def output_drops(
+    dropped_reactions: list[Reaction], output_dir: str = None, write_files: bool = True
+):
     """Writes the reactions that are dropped to disk/logs
 
     Args:
@@ -324,7 +328,12 @@ def write_reactions(fileName, reaction_list) -> None:
             )
 
 
-def write_odes_f90(file_name: Path, species_list: list[Species], reaction_list: list[Reaction], three_phase: bool) -> None:
+def write_odes_f90(
+    file_name: Path,
+    species_list: list[Species],
+    reaction_list: list[Reaction],
+    three_phase: bool,
+) -> None:
     """Write the ODEs in Modern Fortran. This is an actual code file.
 
     Args:
@@ -421,7 +430,9 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
     output.close()
 
 
-def build_ode_string(species_list: list[Species], reaction_list: list[Reaction], three_phase: bool) -> str:
+def build_ode_string(
+    species_list: list[Species], reaction_list: list[Reaction], three_phase: bool
+) -> str:
     """A long, complex function that does the messy work of creating the actual ODE
     code to calculate the rate of change of each species. Test any change to this code
     thoroughly because ODE mistakes are very hard to spot.
@@ -622,7 +633,7 @@ def write_evap_lists(network_file, species_list: list[Species]) -> None:
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
 
 
-def truncate_line(input_string: str, lineLength:int=72) -> str:
+def truncate_line(input_string: str, lineLength: int = 72) -> str:
     """Take a string and adds line endings at regular intervals
     keeps us from overshooting fortran's line limits and, frankly,
     makes for nicer ode.f90 even if human readability isn't very important
@@ -818,7 +829,9 @@ def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[Reacti
     return partners
 
 
-def array_to_string(name: str, array: np.array, type:str ="int", parameter:bool=True) -> str:
+def array_to_string(
+    name: str, array: np.array, type: str = "int", parameter: bool = True
+) -> str:
     """Write an array to fortran source code
 
     Args:
