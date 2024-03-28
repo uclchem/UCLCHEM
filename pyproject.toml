@@ -20,7 +20,7 @@ maintainers = [
 {name="Gijs Vermariën", email="vermarien@strw.leidenuniv.nl"}]
 description="A package for the astrochemical modelling of gas-grain chemistries."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.12"
 license = {text = "MIT License"}
 dependencies = [
     "pandas", "numpy", "pyyaml", "matplotlib", "seaborn", "pytest"
