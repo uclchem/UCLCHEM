@@ -1,0 +1,6 @@
+{'trajecfile': "examples/fortran_cli/neath_small_data.out",
+'outputfile': 'examples/test-output/neath_output.dat',
+"abundsavefile": "examples/test-output/neath_abund.dat",
+"ntime": 121,
+"writestep": 1,
+"points": 5}

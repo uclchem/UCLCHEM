@@ -1,0 +1,6 @@
+{'initialtemp': 10.0,
+"initialdens": 1.00d2,
+"finaldens": 1.00d5,
+"freefall": .true.,
+"abundsavefile": "examples/test-output/startcollapse.dat",
+"outputfile": "examples/test-output/phase1-full.dat"}

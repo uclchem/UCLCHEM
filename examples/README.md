@@ -6,7 +6,7 @@ This directory contains a few simple example runs of UCLCHEM. You can use it to 
 
 `test-output` - is a folder where your output files will go, we have various ways to generate equivalent files to those in `example-output`.
 
-`.inp files` - It is possible to run UCLCHEM as a binary. The inp files are how we set parameters when using the binary. **Most people can simply ignore these**.
+`fortran_cli` - Are files that document the way that one can interact with the LEGACY Fortran CLI. 
 
 
 ## How to Use This

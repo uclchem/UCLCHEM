@@ -1,0 +1,7 @@
+{'initialtemp': 10.0,
+'initialdens': 1.00d5,
+'finaltime': 1.00d6,
+'endatfinaldensity': .false.
+'collapse': .false.,
+'abundloadfile': 'examples/test-output/startcollapse.dat',
+'outputfile': 'examples/test-output/phase2-full.dat'}

@@ -1,7 +1,0 @@
-{'initialTemp': 10.0,
-"initialDens": 1.00d2,
-"finalDens": 1.00d5,
-"switch": 1,
-"freefall": 1,
-"abundSaveFile": "examples/test-output/startcollapse.dat",
-"outputFile": "examples/test-output/phase1-full.dat"}
