@@ -50,26 +50,30 @@ CONTAINS
         END IF
     END SUBROUTINE finalOutput
 
-    SUBROUTINE output(returnArray,physicsarray, chemicalabunarray, dtime, timepoints)
+    SUBROUTINE output(returnArray,successflag,physicsarray, chemicalabunarray, dtime, timepoints)
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
         INTEGER, OPTIONAL :: dtime, timepoints
+        INTEGER, intent(out) :: successflag
         LOGICAL :: returnArray
+        successflag = 0
         IF (returnArray) THEN
+            ! Try to catch out of bounds errors before they create a segfault
             if (dtime .gt. timepoints) then
-                write(*,*) "Ran out of timepoints in arrays, stopping"
-                succesflag=NOT_ENOUGH_TIMEPOINTS_ERROR
-                stop
-            end if
-            physicsarray(dtime, dstep, 1) = timeInYears
-            physicsarray(dtime, dstep, 2) = density(dstep)
-            physicsarray(dtime, dstep, 3) = gasTemp(dstep)
-            physicsarray(dtime, dstep, 4) = dustTemp(dstep)
-            physicsarray(dtime, dstep, 5) = av(dstep)
-            physicsarray(dtime, dstep, 6) = radfield
-            physicsarray(dtime, dstep, 7) = zeta
-            physicsarray(dtime, dstep, 8) = dstep
-            chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
+                write(*,*) "Ran out of timepoints in arrays, trying to stop gracefully"
+                successflag=NOT_ENOUGH_TIMEPOINTS_ERROR
+                return
+            else 
+                physicsarray(dtime, dstep, 1) = timeInYears
+                physicsarray(dtime, dstep, 2) = density(dstep)
+                physicsarray(dtime, dstep, 3) = gasTemp(dstep)
+                physicsarray(dtime, dstep, 4) = dustTemp(dstep)
+                physicsarray(dtime, dstep, 5) = av(dstep)
+                physicsarray(dtime, dstep, 6) = radfield
+                physicsarray(dtime, dstep, 7) = zeta
+                physicsarray(dtime, dstep, 8) = dstep
+                chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
+            end if 
         ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
             WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,dstep,abund(:neq-1,dstep)
             8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))

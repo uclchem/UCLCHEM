@@ -98,14 +98,16 @@ def _array_clean(
     specname_new = specname.astype(str)
     specname_new = np.array([x.strip() for x in specname_new if x != ""])
     # Find the first element with all the zeros
-    print(physicalParameterArray.shape)
     lastStep = np.where(
         (
             (physicalParameterArray[:, 0, :n_physics_params])
             == (np.zeros(shape=(n_physics_params)))
         ).all(axis=1)
     )
-    last_timestep_index = lastStep[0][0]
+    if len(lastStep[0]) == 0:
+        last_timestep_index = -1
+    else:
+        last_timestep_index = lastStep[0][0]
     # Get the arrays for only the simulated timesteps (not the zero padded ones)
     physicsArray = physicalParameterArray[:last_timestep_index, :, :n_physics_params]
     chemArray = chemicalAbundanceArray[:last_timestep_index, :, : len(specname_new)]

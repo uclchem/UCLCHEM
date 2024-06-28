@@ -582,15 +582,16 @@ CONTAINS
         dtime = 1
 
         IF (returnArray) THEN
-            CALL output(returnArray, physicsarray, chemicalabunarray, dtime, timepoints)
+            CALL output(returnArray, successflag, physicsarray, chemicalabunarray, dtime, timepoints)
         ELSE
-            CALL output(returnArray)
+            CALL output(returnArray, successflag)
         END IF
         
 
         !loop until the end condition of the model is reached
-        DO WHILE (((endAtFinalDensity) .and. (density(1) < finalDens)) .or. &
-            &((.not. endAtFinalDensity) .and. (timeInYears < finalTime)))
+        DO WHILE ((successFlag .eq. 0) .and. (((endAtFinalDensity) .and. &
+            &(density(1) < finalDens)) .or. &
+            &((.not. endAtFinalDensity) .and. (timeInYears < finalTime))))
             dtime = dtime + 1
             currentTimeold=currentTime
             !Each physics module has a subroutine to set the target time from the current time
@@ -617,9 +618,9 @@ CONTAINS
 
                 !write this depth step now time, chemistry and physics are consistent
                 IF (returnArray) THEN
-                    CALL output(returnArray, physicsarray, chemicalabunarray, dtime, timepoints)
+                    CALL output(returnArray, successFlag, physicsarray, chemicalabunarray, dtime, timepoints)
                 ELSE
-                    CALL output(returnArray)
+                    CALL output(returnArray, successFlag)
                 END IF
             END DO
         END DO
