@@ -1,28 +1,36 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm", "numpy", "wheel", "setuptools-git-versioning<2"]
+requires = [
+    "setuptools",
+    # "setuptools-scm",
+    "numpy",
+    "wheel",
+    "setuptools-git-versioning>=2.0,<3",
+]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools-git-versioning]
 enabled = true
+version_file = "VERSION"
+count_commits_from_version_file = true
+dev_template = "{branch}{ccount}"      # <--- without {tag}
+dirty_template = "{branch}{ccount}"
 
 [project]
 name = "uclchem"
-# version = "3.2.0"
+# version = "3.3.69"
 dynamic = ["version"]
 authors = [
-{name="Gijs Vermariën", email="vermarien@strw.leidenuniv.nl"},
-{name="Marcus Keil"},
-{name="Jon Holdship"},
-{name="Tomas James"},
-{name="Ross O'Donoghue"}
+    { name = "Gijs Vermariën", email = "vermarien@strw.leidenuniv.nl" },
+    { name = "Marcus Keil" },
+    { name = "Jon Holdship" },
+    { name = "Tomas James" },
+    { name = "Ross O'Donoghue" },
 ]
 maintainers = [
-{name="Gijs Vermariën", email="vermarien@strw.leidenuniv.nl"}]
-description="A package for the astrochemical modelling of gas-grain chemistries."
-readme = "README.md"
-requires-python = ">=3.8"
-license = {text = "MIT License"}
-dependencies = [
-    "pandas", "numpy", "pyyaml", "matplotlib", "seaborn",
+    { name = "Gijs Vermariën", email = "vermarien@strw.leidenuniv.nl" },
 ]
-
+description = "A package for the astrochemical modelling of gas-grain chemistries."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT License" }
+dependencies = ["pandas", "numpy", "pyyaml", "matplotlib", "seaborn", "pytest"]

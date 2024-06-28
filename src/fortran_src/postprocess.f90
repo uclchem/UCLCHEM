@@ -4,6 +4,7 @@ MODULE postprocess_mod
     USE physicscore
     USE network
     USE constants
+    USE f2py_constants
     IMPLICIT NONE
 
     character(len=100) :: trajecfile
@@ -23,7 +24,7 @@ CONTAINS
       integer ::i,j,k
       double precision :: junk
       
-      successFlag=1
+      successFlag=0
 
       lgpost = .true.
 

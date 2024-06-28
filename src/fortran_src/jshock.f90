@@ -6,6 +6,7 @@ MODULE jshock_mod
     USE physicscore
     USE network
     USE constants
+    USE f2py_constants
     USE sputtering
     IMPLICIT NONE
  
@@ -24,7 +25,7 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
-        successFlag=1
+        successFlag=0
         !Reset variables for python wrap.
         
         cloudSize=(rout-rin)*pc

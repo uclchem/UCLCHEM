@@ -19,12 +19,12 @@ CONTAINS
 
         INQUIRE(UNIT=outputId, OPENED=fullOutput)
         IF (fullOutput) THEN
-            WRITE(outputId,334) fc,fo,fn,fs
-            WRITE(outputId,*) "Radfield ", radfield
+            ! WRITE(outputId,334) fc,fo,fn,fs
+            ! WRITE(outputId,*) "Radfield ", radfield
             WRITE(outputId,335) specName
         END IF
         335 FORMAT("Time,Density,gasTemp,av,zeta,point,",(999(A,:,',')))
-        334 FORMAT("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
+        ! 334 FORMAT("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
 
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
         INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
@@ -34,31 +34,11 @@ CONTAINS
         !read start file if choosing to use abundances from previous run 
         IF (readAbunds) THEN
             DO l=1,points
-                READ(abundLoadID,*) fhe,fc,fo,fn,fs,fmg
                 READ(abundLoadID,*) abund(:nspec,l)
                 REWIND(abundLoadID)
             END DO
         END IF
     END SUBROUTINE readInputAbunds
-
-    !Writes physical variables and fractional abundances to output file, called every time step.
-    SUBROUTINE output
-
-        IF (fullOutput) THEN
-            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,dstep,abund(:neq-1,dstep)
-            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
-        END IF
-       
-        !Every 'writestep' timesteps, write the chosen species out to separate file
-        !choose species you're interested in by looking at parameters.f90
-        IF (writeCounter==writeStep .and. columnOutput) THEN
-            writeCounter=1
-            WRITE(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,abund(outIndx,dstep)
-            8030  FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',(999(1pe15.5,:,',')))
-        ELSE
-            writeCounter=writeCounter+1
-        END IF
-    END SUBROUTINE output
 
     SUBROUTINE finalOutput
         IF (writeAbunds) THEN
@@ -69,6 +49,44 @@ CONTAINS
             END DO
         END IF
     END SUBROUTINE finalOutput
+
+    SUBROUTINE output(returnArray,physicsarray, chemicalabunarray, dtime, timepoints)
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
+        INTEGER, OPTIONAL :: dtime, timepoints
+        LOGICAL :: returnArray
+        IF (returnArray) THEN
+            if (dtime .gt. timepoints) then
+                write(*,*) "Ran out of timepoints in arrays, stopping"
+                succesflag=NOT_ENOUGH_TIMEPOINTS_ERROR
+                stop
+            end if
+            physicsarray(dtime, dstep, 1) = timeInYears
+            physicsarray(dtime, dstep, 2) = density(dstep)
+            physicsarray(dtime, dstep, 3) = gasTemp(dstep)
+            physicsarray(dtime, dstep, 4) = dustTemp(dstep)
+            physicsarray(dtime, dstep, 5) = av(dstep)
+            physicsarray(dtime, dstep, 6) = radfield
+            physicsarray(dtime, dstep, 7) = zeta
+            physicsarray(dtime, dstep, 8) = dstep
+            chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
+        ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
+            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,dstep,abund(:neq-1,dstep)
+            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
+        END IF
+
+        !Every 'writestep' timesteps, write the chosen species out to separate file
+        !choose species you're interested in by looking at parameters.f90
+        IF (.NOT. PRESENT(dtime)) THEN
+            IF (writeCounter==writeStep .and. columnOutput) THEN
+                writeCounter=1
+                WRITE(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,abund(outIndx,dstep)
+                8030  FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',(999(1pe15.5,:,',')))
+            ELSE
+                writeCounter=writeCounter+1
+            END IF
+        END IF
+    END SUBROUTINE output
 
     SUBROUTINE closeFiles
         CLOSE(outputId)

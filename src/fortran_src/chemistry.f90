@@ -14,6 +14,7 @@ USE network
 USE photoreactions
 USE surfacereactions
 USE constants
+use f2py_constants
 USE postprocess_mod, only: lgpost,tstep,nhgrid,nh2grid,ncogrid
 IMPLICIT NONE
     !These integers store the array index of important species and reactions, x is for ions    
@@ -37,7 +38,7 @@ IMPLICIT NONE
     !initial fractional elemental abudances and arrays to store abundances
     REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,ffe,fli,fna,fpah,f15n,f13c,f18O,metallicity
     REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
-    REAL(dp),ALLOCATABLE :: abund(:,:)
+    REAL(dp), ALLOCATABLE :: abund(:,:)
     
     !Variables controlling chemistry
     LOGICAL :: PARAMETERIZE_H2FORM=.True.
@@ -152,7 +153,7 @@ CONTAINS
 
         !Integration can fail in a way that we can manage. Allow maxLoops tries before giving up.
         loopCounter=0
-        successFlag=1
+        successFlag=0
         originalTargetTime=targetTime
         DO WHILE((currentTime .lt. targetTime) .and. (loopCounter .lt. maxLoops)) 
             !allow option for dens to have been changed elsewhere.
@@ -232,14 +233,13 @@ CONTAINS
 
     SUBROUTINE integrateODESystem(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
-        successFlag=1
+        successFlag=0
     !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
         !reset parameters for DVODE
         ITASK=1 !try to integrate to targetTime
         ISTATE=1 !pretend every step is the first
         abstol=abstol_factor*abund(:,dstep) !absolute tolerances depend on value of abundance
         WHERE(abstol<abstol_min) abstol=abstol_min ! to a minimum degree
-
         !Call the integrator.
         OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
         CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)

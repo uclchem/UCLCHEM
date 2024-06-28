@@ -1,9 +1,13 @@
+import os
+
+import numpy as np
+from pandas import DataFrame
+
 from .analysis import total_element_abundance
 from .uclchemwrap import uclchemwrap as wrap
-from pandas import DataFrame
-from numpy import zeros,loadtxt
-import os
+
 _ROOT = os.path.dirname(os.path.abspath(__file__))
+
 
 def test_ode_conservation(element_list=["H", "N", "C", "O"]):
     """Test whether the ODEs conserve elements. Useful to run each time you change network.
@@ -16,7 +20,7 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
     Returns:
         dict: A dictionary of the elements in element list with values representing the total rate of change of each element.
     """
-    species_list = loadtxt(
+    species_list = np.loadtxt(
         os.path.join(_ROOT, "species.csv"),
         usecols=[0],
         dtype=str,
@@ -35,10 +39,27 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
         "finaltime": 1.0e3,
         "outspecies": len(species_list),
     }
-    abundances, success_flag = wrap.cloud(param_dict," ".join(species_list))
-    abundances=abundances[:param_dict["outspecies"]]
+    abundances, specname, success_flag = wrap.cloud(
+        dictionary=param_dict,
+        outspeciesin=" ".join(species_list),
+        timepoints=2,
+        gridpoints=1,
+        physicsarray=np.zeros(
+            shape=(2, 1, 8),
+            dtype=np.float64,
+            order="F",
+        ),
+        chemicalabunarray=np.zeros(
+            shape=(2, 1, 335),
+            dtype=np.float64,
+            order="F",
+        ),
+        returnarray=False,
+        givestartabund=False,
+    )
+    abundances = abundances[: param_dict["outspecies"]]
     param_dict.pop("outspecies")
-    input_abund = zeros(500)
+    input_abund = np.zeros(335)
     input_abund[: len(abundances)] = abundances
     rates = wrap.get_odes(param_dict, input_abund)
     df = DataFrame(columns=species_list)

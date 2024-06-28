@@ -12,6 +12,7 @@
 MODULE sputtering
       USE network
       USE constants
+      USE f2py_constants
       USE SurfaceReactions, only: GAS_DUST_DENSITY_RATIO,GRAIN_RADIUS
       USE physicscore, only: timeInYears
       IMPLICIT NONE
