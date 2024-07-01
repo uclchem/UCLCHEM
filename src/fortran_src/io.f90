@@ -59,11 +59,12 @@ CONTAINS
         successflag = 0
         IF (returnArray) THEN
             ! Try to catch out of bounds errors before they create a segfault
-            if (dtime .gt. timepoints) then
+            if (dtime .gt. timepoints+1) then
                 write(*,*) "Ran out of timepoints in arrays, trying to stop gracefully"
                 successflag=NOT_ENOUGH_TIMEPOINTS_ERROR
                 return
             else 
+                write(*,*) dtime
                 physicsarray(dtime, dstep, 1) = timeInYears
                 physicsarray(dtime, dstep, 2) = density(dstep)
                 physicsarray(dtime, dstep, 3) = gasTemp(dstep)

@@ -85,7 +85,6 @@ def test_static_model_return_array(common_output_directory):
     (
         physics,
         chemistry,
-        physics_start,
         abundances_start,
         return_code,
     ) = uclchem.model.cloud(
@@ -118,7 +117,6 @@ def test_static_model_return_dataframe(common_output_directory):
     (
         physics,
         chemistry,
-        physics_start,
         abundances_start,
         return_code,
     ) = uclchem.model.cloud(
@@ -172,7 +170,6 @@ def test_stage1_return_array(common_output_directory):
     (
         physics,
         chemistry,
-        physics_start,
         abundances_start,
         return_code,
     ) = uclchem.model.cloud(
@@ -184,7 +181,6 @@ def test_stage1_return_array(common_output_directory):
     elapsed_time = stop - start
     print(return_code)
     assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
-    np.save("stage1_phys_array.npy", physics_start)
     np.save("stage1_abund_array.npy", abundances_start)
     np.save("physics_1_array.npy", physics)
     np.save("abund_1_array.npy", chemistry)
@@ -201,7 +197,6 @@ def test_stage1_return_dataframe(common_output_directory):
     (
         physics,
         chemistry,
-        physics_start,
         abundances_start,
         return_code,
     ) = uclchem.model.cloud(
@@ -213,7 +208,6 @@ def test_stage1_return_dataframe(common_output_directory):
     elapsed_time = stop - start
     print(return_code)
     assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
-    np.save("stage1_phys_df.npy", physics_start)
     np.save("stage1_abund_df.npy", abundances_start)
 
 
@@ -250,13 +244,11 @@ def test_stage2_return_array(common_output_directory):
         "freefall": False,
         "finalTime": 1e6,
     }
-    start_physics = np.asfortranarray(np.load("stage1_phys_array.npy"))
     start_abundances = np.asfortranarray(np.load("stage1_abund_array.npy"))
     start = perf_counter()
     (
         physics,
         chemistry,
-        physics_start,
         abundances_start,
         return_code,
     ) = uclchem.model.hot_core(
@@ -265,7 +257,6 @@ def test_stage2_return_array(common_output_directory):
         param_dict=params,
         out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
         return_array=True,
-        starting_physics=start_physics,
         starting_chemistry=start_abundances,
     )
     stop = perf_counter()
@@ -285,13 +276,11 @@ def test_stage2_return_dataframe(common_output_directory):
         "outputFile": common_output_directory / "stage2-full.dat",
         "abundLoadFile": common_output_directory / "startstage1.dat",
     }
-    start_physics = np.asfortranarray(np.load("stage1_phys_df.npy"))
     start_abundances = np.asfortranarray(np.load("stage1_abund_df.npy"))
     start = perf_counter()
     (
         physics,
         chemistry,
-        physics_start,
         abundances_start,
         return_code,
     ) = uclchem.model.hot_core(
@@ -306,7 +295,6 @@ def test_stage2_return_dataframe(common_output_directory):
             "CH3OH",
         ],
         return_dataframe=True,
-        starting_physics=start_physics,
         starting_chemistry=start_abundances,
     )
     stop = perf_counter()

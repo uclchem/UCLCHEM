@@ -15,7 +15,7 @@ USE photoreactions
 USE surfacereactions
 USE constants
 use f2py_constants
-USE postprocess_mod, only: lgpost,tstep,nhgrid,nh2grid,ncogrid
+USE postprocess_mod, only: usecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
 IMPLICIT NONE
     !These integers store the array index of important species and reactions, x is for ions    
     !loop counters    
@@ -42,7 +42,7 @@ IMPLICIT NONE
     
     !Variables controlling chemistry
     LOGICAL :: PARAMETERIZE_H2FORM=.True.
-    REAL(dp) :: radfield,freezeFactor,omega,grainArea,cion,h2dis,lastTemp=0.0
+    REAL(dp) :: freezeFactor,omega,grainArea,cion,h2dis,lastTemp=0.0
     REAL(dp) :: ebmaxh2,epsilon,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
     REAL(dp), PARAMETER :: h2StickingZero=0.87d0,hStickingZero=1.0d0, h2StickingTemp=87.0d0,hStickingTemp=52.0d0
     
@@ -175,10 +175,11 @@ CONTAINS
             cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
 
             ! Postprocessed tracers have column densities provided
-            if (lgpost) then
-               h2col = nh2grid(dstep,tstep)
-               cocol = ncogrid(dstep,tstep)
-               ccol = nhgrid(dstep,tstep) * abund(nc,dstep) ! No C column densities yet...
+            if (usecoldens) then
+               h2col = lnh2(tstep)
+               cocol = lnco(tstep)
+               ! ccol = lnc(dstep, tstep) ! TODO enable C column density support
+               ccol = lnh(tstep) * abund(nc,dstep) ! No C column densities yet...
             end if
 
             !Reset surface and bulk values in case of integration error or sputtering
@@ -210,11 +211,11 @@ CONTAINS
             loopCounter=loopCounter+1
 
             ! For postprocessing, force solver to try and reach original target time
-            if (lgpost) targettime = originaltargettime
+            if (usepostprocess) targettime = originaltargettime
         END DO
 
         ! Postprocessing needs to reach next timestep whatever the cost
-        if (.not. lgpost) then
+        if (.not. usepostprocess) then
         IF (loopCounter .eq. maxLoops) successFlag=INT_TOO_MANY_FAILS_ERROR
 
         !Since targetTime can be altered, eventually leading to "successful" integration we want to
@@ -295,7 +296,7 @@ CONTAINS
         ydot=0.0
 
         ! Column densities are fixed for postprocessing data, so don't do this bit
-        if (.not. lgpost) then
+        if (.not. usecoldens) then
         !changing abundances of H2 and CO can causes oscillation since their rates depend on their abundances
         !recalculating rates as abundances are updated prevents that.
         !thus these are the only rates calculated each time the ODE system is called.

@@ -58,14 +58,14 @@ def _format_output(n_out, abunds, success_flag):
     return [success_flag] + abunds
 
 
-def _create_fortranarray(param_dict, nPhysParam):
+def _create_fortranarray(param_dict, nPhysParam, timepoints=TIMEPOINTS):
     physicsArray = np.zeros(
-        shape=(TIMEPOINTS, param_dict["points"], nPhysParam),
+        shape=(timepoints, param_dict["points"], nPhysParam),
         dtype=np.float64,
         order="F",
     )
     chemicalAbunArray = np.zeros(
-        shape=(TIMEPOINTS, param_dict["points"], MAX_SPECIES),
+        shape=(timepoints, param_dict["points"], MAX_SPECIES),
         dtype=np.float64,
         order="F",
     )
@@ -98,25 +98,16 @@ def _array_clean(
     specname_new = specname.astype(str)
     specname_new = np.array([x.strip() for x in specname_new if x != ""])
     # Find the first element with all the zeros
-    lastStep = np.where(
-        (
-            (physicalParameterArray[:, 0, :n_physics_params])
-            == (np.zeros(shape=(n_physics_params)))
-        ).all(axis=1)
-    )
-    if len(lastStep[0]) == 0:
-        last_timestep_index = -1
-    else:
-        last_timestep_index = lastStep[0][0]
+    last_timestep_index = physicalParameterArray[:, 0, 0].nonzero()[0][-1]
     # Get the arrays for only the simulated timesteps (not the zero padded ones)
-    physicsArray = physicalParameterArray[:last_timestep_index, :, :n_physics_params]
-    chemArray = chemicalAbundanceArray[:last_timestep_index, :, : len(specname_new)]
+    physicsArray = physicalParameterArray[:last_timestep_index, :, :]
+    print(chemicalAbundanceArray.shape)
+    chemArray = chemicalAbundanceArray[:last_timestep_index, :, :]
     # Get the last arrays simulated, easy for starting another model.
-    physicsStart = physicalParameterArray[last_timestep_index - 1, 0, :n_physics_params]
     abundanceStart = chemicalAbundanceArray[last_timestep_index - 1, 0, :]
     # Zero the abundances that are not there (to pass to the next model)
     abundanceStart[len(specname_new) + 1 :] = 0
-    return physicsArray, chemArray, specname_new, physicsStart, abundanceStart
+    return physicsArray, chemArray, specname_new, abundanceStart
 
 
 def outputArrays_to_DataFrame(
@@ -151,7 +142,6 @@ def cloud(
     out_species=None,
     return_array=False,
     return_dataframe=False,
-    starting_physics=None,
     starting_chemistry=None,
 ):
     """Run cloud model from UCLCHEM
@@ -161,7 +151,6 @@ def cloud(
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
         return_array (bool, optional): A boolean on whether a np.array should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
         return_dataframe (bool, optional): A boolean on whether a pandas.DataFrame should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
-        starting_physics (array, optional): np.array containing the starting physical parameters needed by uclchem
         starting_chemistry (array, optional): np.array containing the starting chemical abundances needed by uclchem
     Returns:
         if return_array and return_dataframe are False:
@@ -169,33 +158,17 @@ def cloud(
         if return_array is True:
             - physicsArray (array): array containing the physical outputs for each written timestep
             - chemicalAbunArray (array): array containing the chemical abundances for each written timestep
-            - physicsStart (array): array containing the physical parameters of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
         if return_dataframe is True:
             - physicsDF (pandas.DataFrame): DataFrame containing the physical outputs for each written timestep
             - chemicalDF (pandas.DataFrame): DataFrame containing the chemical abundances for each written timestep
-            - physicsStart (array): array containing the physical parameters of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
     with open("signature_file.txt", "w") as fh:
         fh.write(wrap.__doc__)
-    assert bool(starting_physics) == bool(
-        starting_chemistry
-    ), "Starting physics and chemistry must either be BOTH specified or omitted."
-    give_start_abund = starting_physics is not None
-    if not give_start_abund:
-        starting_physics = np.zeros(
-            shape=(N_PHYSICAL_PARAMETERS),
-            dtype=np.float64,
-            order="F",
-        )
-        starting_chemistry = np.zeros(
-            shape=(MAX_SPECIES),
-            dtype=np.float64,
-            order="F",
-        )
+    give_start_abund = starting_chemistry is not None
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
     if "points" not in param_dict:
         param_dict["points"] = 1
@@ -210,18 +183,15 @@ def cloud(
         outspeciesin=out_species,
         timepoints=TIMEPOINTS,
         gridpoints=param_dict["points"],
-        returnarray=return_array,
+        returnarray=return_array or return_dataframe,
         givestartabund=give_start_abund,
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
-        physicsstart=starting_physics,
         abundancestart=starting_chemistry,
     )
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, physicsStart, abundanceStart = (
-            _array_clean(
-                physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
-            )
+        physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
+            physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
         )
     if return_dataframe:
         # Mode that returns dataframes
@@ -231,12 +201,11 @@ def cloud(
             specname,
             PHYSICAL_PARAMETERS[:N_PHYSICAL_PARAMETERS],
         )
-        return physics_df, abundances_df, physicsStart, abundanceStart, success_flag
+        return physics_df, abundances_df, abundanceStart, success_flag
     elif return_array:
         return (
             physicsArray,
             chemicalAbunArray,
-            physicsStart,
             abundanceStart,
             success_flag,
         )
@@ -251,7 +220,6 @@ def collapse(
     out_species=None,
     return_array=False,
     return_dataframe=False,
-    starting_physics=None,
     starting_chemistry=None,
 ):
     """Run collapse model from UCLCHEM based on Priestley et al 2018 AJ 156 51 (https://ui.adsabs.harvard.edu/abs/2018AJ....156...51P/abstract)
@@ -263,7 +231,6 @@ def collapse(
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
         return_array (bool, optional): A boolean on whether a np.array should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
         return_dataframe (bool, optional): A boolean on whether a pandas.DataFrame should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
-        starting_physics (array, optional): np.array containing the starting physical parameters needed by uclchem
         starting_chemistry (array, optional): np.array containing the starting chemical abundances needed by uclchem
 
     Returns:
@@ -272,13 +239,11 @@ def collapse(
         if return_array is True:
             - physicsArray (array): array containing the physical outputs for each written timestep
             - chemicalAbunArray (array): array containing the chemical abundances for each written timestep
-            - physicsStart (array): array containing the physical parameters of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
         if return_dataframe is True:
             - physicsDF (pandas.DataFrame): DataFrame containing the physical outputs for each written timestep
             - chemicalDF (pandas.DataFrame): DataFrame containing the chemical abundances for each written timestep
-            - physicsStart (array): array containing the physical parameters of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
@@ -292,6 +257,7 @@ def collapse(
     write_physics = physics_output is not None
     if not write_physics:
         physics_output = ""
+    give_start_abund = starting_chemistry is not None
 
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
     if "points" not in param_dict:
@@ -307,20 +273,17 @@ def collapse(
         writeOut=write_physics,
         dictionary=param_dict,
         outspeciesin=out_species,
-        returnarray=False,
-        givesstartabund=False,
+        returnarray=return_array or return_dataframe,
+        givesstartabund=give_start_abund,
         timepoints=TIMEPOINTS,
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
-        physicsStart=starting_physics,
         abundanceStart=starting_chemistry,
     )
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, physicsStart, abundanceStart = (
-            _array_clean(
-                physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
-            )
+        physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
+            physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
         )
     if return_dataframe:
         physicsDF, chemicalDF = outputArrays_to_DataFrame(
@@ -329,12 +292,11 @@ def collapse(
             specname,
             PHYSICAL_PARAMETERS[:N_PHYSICAL_PARAMETERS],
         )
-        return physicsDF, chemicalDF, physicsStart, abundanceStart, success_flag
+        return physicsDF, chemicalDF, abundanceStart, success_flag
     elif return_array:
         return (
             physicsArray,
             chemicalAbunArray,
-            physicsStart,
             abundanceStart,
             success_flag,
         )
@@ -349,7 +311,6 @@ def hot_core(
     out_species=None,
     return_array=False,
     return_dataframe=False,
-    starting_physics=None,
     starting_chemistry=None,
 ):
     """Run hot core model from UCLCHEM, based on Viti et al. 2004 and Collings et al. 2004
@@ -361,7 +322,6 @@ def hot_core(
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
         return_array (bool, optional): A boolean on whether a np.array should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
         return_dataframe (bool, optional): A boolean on whether a pandas.DataFrame should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
-        starting_physics (array, optional): np.array containing the starting physical parameters needed by uclchem
         starting_chemistry (array, optional): np.array containing the starting chemical abundances needed by uclchem
 
     Returns:
@@ -370,13 +330,11 @@ def hot_core(
         if return_array is True:
             - physicsArray (array): array containing the physical outputs for each written timestep
             - chemicalAbunArray (array): array containing the chemical abundances for each written timestep
-            - physicsStart (array): array containing the physical parameters of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
         if return_dataframe is True:
             - physicsDF (pandas.DataFrame): DataFrame containing the physical outputs for each written timestep
             - chemicalDF (pandas.DataFrame): DataFrame containing the chemical abundances for each written timestep
-            - physicsStart (array): array containing the physical parameters of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
@@ -389,25 +347,25 @@ def hot_core(
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, len(PHYSICAL_PARAMETERS)
     )
+
+    give_start_abund = starting_chemistry is not None
+
     abunds, specname, success_flag = wrap.hot_core(
         temp_indx=temp_indx,
         max_temp=max_temperature,
         dictionary=param_dict,
         outspeciesin=out_species,
-        returnarray=return_array,
-        givestartabund=False,
+        returnarray=return_array or return_dataframe,
+        givestartabund=give_start_abund,
         timepoints=TIMEPOINTS,
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
-        physicsstart=starting_physics,
         abundancestart=starting_chemistry,
     )
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, physicsStart, abundanceStart = (
-            _array_clean(
-                physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
-            )
+        physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
+            physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
         )
     if return_dataframe:
         physicsDF, chemicalDF = outputArrays_to_DataFrame(
@@ -416,12 +374,11 @@ def hot_core(
             specname,
             PHYSICAL_PARAMETERS[:N_PHYSICAL_PARAMETERS],
         )
-        return physicsDF, chemicalDF, physicsStart, abundanceStart, success_flag
+        return physicsDF, chemicalDF, abundanceStart, success_flag
     elif return_array:
         return (
             physicsArray,
             chemicalAbunArray,
-            physicsStart,
             abundanceStart,
             success_flag,
         )
@@ -437,7 +394,6 @@ def cshock(
     out_species=None,
     return_array=False,
     return_dataframe=False,
-    starting_physics=None,
     starting_chemistry=None,
 ):
     """Run C-type shock model from UCLCHEM
@@ -451,7 +407,6 @@ def cshock(
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
         return_array (bool, optional): A boolean on whether a np.array should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
         return_dataframe (bool, optional): A boolean on whether a pandas.DataFrame should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
-        starting_physics (array, optional): np.array containing the starting physical parameters needed by uclchem
         starting_chemistry (array, optional): np.array containing the starting chemical abundances needed by uclchem
 
     Returns:
@@ -461,14 +416,12 @@ def cshock(
             - physicsArray (array): array containing the physical outputs for each written timestep
             - chemicalAbunArray (array): array containing the chemical abundances for each written timestep
             - disspation_time (float): dissipation time in years
-            - physicsStart (array): array containing the physical parameters of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
         if return_dataframe is True:
             - physicsDF (pandas.DataFrame): DataFrame containing the physical outputs for each written timestep
             - chemicalDF (pandas.DataFrame): DataFrame containing the chemical abundances for each written timestep
             - disspation_time (float): dissipation time in years
-            - physicsStart (array): array containing the physical parameters of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
@@ -480,19 +433,19 @@ def cshock(
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, N_PHYSICAL_PARAMETERS
     )
+    give_start_abund = starting_chemistry is not None
     abunds, disspation_time, specname, success_flag = wrap.cshock(
         shock_vel=shock_vel,
         timestep_factor=timestep_factor,
         minimum_temperature=minimum_temperature,
         dictionary=param_dict,
         outspeciesin=out_species,
-        returnarray=True,
-        givestartabund=True,
+        returnarray=return_array or return_dataframe,
+        givestartabund=give_start_abund,
         timepoints=TIMEPOINTS,
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
-        physicsstart=starting_physics,
         abundancestart=starting_chemistry,
     )
     if success_flag < 0:
@@ -501,10 +454,8 @@ def cshock(
     else:
         abunds = list(abunds[:n_out])
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, physicsStart, abundanceStart = (
-            _array_clean(
-                physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
-            )
+        physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
+            physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
         )
     if return_dataframe:
         physicsDF, chemicalDF = outputArrays_to_DataFrame(
@@ -517,7 +468,6 @@ def cshock(
             physicsDF,
             chemicalDF,
             disspation_time,
-            physicsStart,
             abundanceStart,
             success_flag,
         )
@@ -526,7 +476,6 @@ def cshock(
             physicsArray,
             chemicalAbunArray,
             disspation_time,
-            physicsStart,
             abundanceStart,
             success_flag,
         )
@@ -546,7 +495,6 @@ def jshock(
     out_species=None,
     return_array=False,
     return_dataframe=False,
-    starting_physics=None,
     starting_chemistry=None,
 ):
     """Run J-type shock model from UCLCHEM
@@ -557,7 +505,6 @@ def jshock(
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
         return_array (bool, optional): A boolean on whether a np.array should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
         return_dataframe (bool, optional): A boolean on whether a pandas.DataFrame should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
-        starting_physics (array, optional): np.array containing the starting physical parameters needed by uclchem
         starting_chemistry (array, optional): np.array containing the starting chemical abundances needed by uclchem
 
     Returns:if return_array and return_dataframe are False:
@@ -565,13 +512,11 @@ def jshock(
         if return_array is True:
             - physicsArray (array): array containing the physical outputs for each written timestep
             - chemicalAbunArray (array): array containing the chemical abundances for each written timestep
-            - physicsStart (array): array containing the physical parameters of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
         if return_dataframe is True:
             - physicsDF (pandas.DataFrame): DataFrame containing the physical outputs for each written timestep
             - chemicalDF (pandas.DataFrame): DataFrame containing the chemical abundances for each written timestep
-            - physicsStart (array): array containing the physical parameters of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
 
@@ -594,14 +539,11 @@ def jshock(
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
-        physicsstart=starting_physics,
         abundancestart=starting_chemistry,
     )
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, physicsStart, abundanceStart = (
-            _array_clean(
-                physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
-            )
+        physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
+            physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
         )
     if return_dataframe:
         physicsDF, chemicalDF = outputArrays_to_DataFrame(
@@ -610,12 +552,128 @@ def jshock(
             specname,
             PHYSICAL_PARAMETERS[:N_PHYSICAL_PARAMETERS],
         )
-        return physicsDF, chemicalDF, physicsStart, abundanceStart, success_flag
+        return physicsDF, chemicalDF, abundanceStart, success_flag
     elif return_array:
         return (
             physicsArray,
             chemicalAbunArray,
-            physicsStart,
+            abundanceStart,
+            success_flag,
+        )
+    else:
+        return _format_output(n_out, abunds, success_flag)
+
+
+def postprocess(
+    param_dict=None,
+    out_species=None,
+    return_array=False,
+    return_dataframe=False,
+    starting_chemistry=None,
+    time_array=None,
+    density_array=None,
+    gas_temperature_array=None,
+    dust_temperature_array=None,
+    zeta_array=None,
+    radfield_array=None,
+    coldens_H_array=None,
+    coldens_H2_array=None,
+    coldens_CO_array=None,
+    coldens_C_array=None,
+):
+    """Run cloud model from UCLCHEM
+
+    Args:
+        param_dict (dict,optional): A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
+        out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned.. Defaults to None.
+        return_array (bool, optional): A boolean on whether a np.array should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
+        return_dataframe (bool, optional): A boolean on whether a pandas.DataFrame should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
+        starting_chemistry (array, optional): np.array containing the starting chemical abundances needed by uclchem
+    Returns:
+        if return_array and return_dataframe are False:
+            - A list where the first element is always an integer which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details. If the `out_species` parametere is provided, the remaining elements of this list will be the final abundances of the species in out_species.
+        if return_array is True:
+            - physicsArray (array): array containing the physical outputs for each written timestep
+            - chemicalAbunArray (array): array containing the chemical abundances for each written timestep
+            - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
+            - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
+        if return_dataframe is True:
+            - physicsDF (pandas.DataFrame): DataFrame containing the physical outputs for each written timestep
+            - chemicalDF (pandas.DataFrame): DataFrame containing the chemical abundances for each written timestep
+            - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
+            - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
+    """
+    with open("signature_file.txt", "w") as fh:
+        fh.write(wrap.__doc__)
+    # Assure that every array is cast to a fortran array
+    postprocess_arrays = dict(
+        timegrid=time_array,
+        densgrid=density_array,
+        gastempgrid=gas_temperature_array,
+        dusttempgrid=dust_temperature_array,
+        radfieldgrid=radfield_array,
+        zetagrid=zeta_array,
+        nhgrid=coldens_H_array,
+        nh2grid=coldens_H2_array,
+        ncogrid=coldens_CO_array,
+        ncgrid=coldens_C_array,
+    )
+    for key, array in postprocess_arrays.items():
+        if array is not None:
+            # Convert single values into arrays that can be used
+            if isinstance(array, float):
+                array = np.ones(shape=time_array.shape) * array
+            # Assure lengths are correct
+            assert len(array) == len(time_array), "All arrays must be the same length"
+            # Ensure Fortran memory
+            array = np.asfortranarray(array, dtype=np.float64)
+            postprocess_arrays[key] = array
+
+    give_start_abund = starting_chemistry is not None
+    if not give_start_abund:
+        starting_chemistry = np.zeros(
+            shape=(MAX_SPECIES),
+            dtype=np.float64,
+            order="F",
+        )
+    n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
+    if "points" not in param_dict:
+        param_dict["points"] = 1
+    # Check to make sure no output files are specified, if so, halt the execution.
+    if return_array or return_dataframe:
+        _return_array_checks(param_dict)
+    physicsArray, chemicalAbunArray = _create_fortranarray(
+        param_dict, N_PHYSICAL_PARAMETERS, timepoints=len(time_array)
+    )
+    abunds, specname, success_flag = wrap.postprocess(
+        dictionary=param_dict,
+        outspeciesin=out_species,
+        timepoints=len(time_array),
+        gridpoints=param_dict["points"],
+        returnarray=return_array or return_dataframe,
+        givestartabund=give_start_abund,
+        physicsarray=physicsArray,
+        chemicalabunarray=chemicalAbunArray,
+        abundancestart=starting_chemistry,
+        **postprocess_arrays,
+    )
+    if return_array or return_dataframe:
+        physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
+            physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
+        )
+    if return_dataframe:
+        # Mode that returns dataframes
+        physics_df, abundances_df = outputArrays_to_DataFrame(
+            physicsArray,
+            chemicalAbunArray,
+            specname,
+            PHYSICAL_PARAMETERS[:N_PHYSICAL_PARAMETERS],
+        )
+        return physics_df, abundances_df, abundanceStart, success_flag
+    elif return_array:
+        return (
+            physicsArray,
+            chemicalAbunArray,
             abundanceStart,
             success_flag,
         )

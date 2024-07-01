@@ -7,11 +7,13 @@ MODULE postprocess_mod
     USE f2py_constants
     IMPLICIT NONE
 
-    character(len=100) :: trajecfile
-    logical :: lgpost=.false.
-    integer,parameter :: tfid=66
+    ! character(len=100) :: trajecfile
+    logical :: usecoldens = .false.
+    logical :: usepostprocess = .true.
+    ! integer,parameter :: tfid=66
     integer :: ntime,tstep
-    double precision,allocatable :: timegrid(:),densgrid(:,:),tempgrid(:,:),nhgrid(:,:),nh2grid(:,:),ncogrid(:,:)
+    double precision, allocatable, dimension(:) :: ltime, ldens, lra, lzeta, lradfield, lgtemp, ldtemp
+    double precision, allocatable, dimension(:) :: lnh, lnh2, lnco, lnc
     
 CONTAINS
 
@@ -19,44 +21,73 @@ CONTAINS
     ! Called at start of UCLCHEM run
     ! Uses values in defaultparamters.f90 and any inputs to set initial values        !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE initializePhysics(successFlag)
+    SUBROUTINE initializePhysics(successFlag, timegrid, densgrid, radgrid, zetagrid, gtempgrid,&
+        &dtempgrid, nhgrid, nh2grid, ncogrid, ncgrid, timepoints)
       INTEGER, INTENT(OUT) :: successFlag
-      integer ::i,j,k
-      double precision :: junk
+      INTEGER, INTENT(IN) :: timepoints
+      DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: timegrid
+      DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: densgrid
+      DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: radgrid
+      DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: zetagrid
+      DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: gtempgrid
+      DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: dtempgrid
+      DOUBLE PRECISION, INTENT(IN), OPTIONAL, DIMENSION(timePoints) :: nhgrid
+      DOUBLE PRECISION, INTENT(IN), OPTIONAL, DIMENSION(timePoints) :: nh2grid
+      DOUBLE PRECISION, INTENT(IN), OPTIONAL, DIMENSION(timePoints) :: ncogrid
+      DOUBLE PRECISION, INTENT(IN), OPTIONAL, DIMENSION(timePoints) :: ncgrid
+      
+
       
       successFlag=0
 
-      lgpost = .true.
-
+      ! Check if NHgrid is present, if so, we need to use the custom column densities
+      if (present(nhgrid)) then 
         cloudSize=0. ! Shielding column densities supplied separately
-        endatfinaldensity = .false. ! Needs to end at final time to work properly
-        freefall = .false. ! Won't work with freefall on
+        usecoldens = .true.
+      end if
+      endatfinaldensity = .false. ! Needs to end at final time to work properly
+      freefall = .false. ! Won't work with freefall on
+      
+      write(*,*) "Allocating local variables"
+      if (.not. allocated(ltime)) then 
+        allocate (ltime(timepoints), ldens(timepoints), lradfield(timepoints), lzeta(timepoints),&
+       &lgtemp(timepoints), ldtemp(timepoints))
+      end if
+      write(*,*) "Writing to local variables"
+      ! Store the parameter grids into a local module contexts
+      ltime(:) = timegrid
+      ldens(:) = densgrid
+      lradfield(:) = radgrid
+      lzeta(:) = zetagrid
+      lgtemp(:) = gtempgrid
+      ldtemp(:) = dtempgrid
+      write(*,*) "writing to local column densities"
+      ! If we have custom column densities, allocate and store them
+      if (usecoldens) then
+      ! Only allocate the column densities if we need them:
+        if (.not. allocated(lnh)) then
+          allocate (lnh(timepoints), lnh2(timepoints), lnco(timepoints), lnc(timepoints))
+        end if
+        lnh(:) = nhgrid
+        lnh2(:) = nh2grid
+        lnco(:) = ncogrid
+        lnc(:) = ncgrid
+      end if 
 
-        allocate(timegrid(ntime),densgrid(points,ntime),tempgrid(points,ntime),nhgrid(points,ntime),nh2grid(points,ntime),ncogrid(points,ntime))
-
-        open(unit=tfid,file=trim(trajecfile),status='old')
-
-        ! Read tracer particle histories from file
-        do i=1,points
-           do j=1,ntime
-              read(tfid,*) timegrid(j),(junk,k=1,3),densgrid(i,j),(junk,k=1,3),tempgrid(i,j),(junk,k=1,2),nhgrid(i,j),nh2grid(i,j),ncogrid(i,j)
-           end do
-        end do
-
-        close(unit=tfid)
-
-        ! Initialise values to t=1
-        tstep = 1
-
-        density(:) = densgrid(:,tstep)
-        gastemp(:) = tempgrid(:,tstep)
-        dusttemp(:) = tempgrid(:,tstep) ! No separate dust temperature as yet...
-        coldens(:) = nhgrid(:,tstep)
-        av(:) = 5.348e-22 * coldens(:)
-
-        ! Set final time to end of tracer histories
-        finaltime = timegrid(ntime)/seconds_per_year
-
+      ! Initialise values to t=1 and overwrite them.
+      tstep = 1
+      targettime = ltime(tstep)
+      density(dstep) = ldens(tstep)
+      gastemp(dstep) = lgtemp(tstep)
+      dusttemp(dstep) = ldtemp(tstep)
+      radfield = lradfield(tstep)
+      zeta = lzeta(tstep)
+      if (usecoldens) then
+        coldens(dstep) = lnh(tstep)
+        av(dstep) = 5.348e-22 * coldens(dstep)
+      end if 
+      ! Set final time to end of tracer histories
+      finaltime = timegrid(timepoints)/seconds_per_year
     END SUBROUTINE
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -66,9 +97,8 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     SUBROUTINE updateTargetTime
-
       ! Set target time from postprocessing data
-      targettime = timegrid(tstep) + 1.*seconds_per_year
+      targettime = ltime(tstep) + 1.*seconds_per_year
 
       write(*,"('Integrating chemistry to timestep ',I3,' ',ES10.3,' years')") tstep,targettime/seconds_per_year
 
@@ -81,14 +111,19 @@ CONTAINS
     SUBROUTINE updatePhysics
 
       ! Update physical properties to values at tstep (== targettime)
-      density(dstep) = densgrid(dstep,tstep)
-      gastemp(dstep) = tempgrid(dstep,tstep)
-      dusttemp(dstep) = tempgrid(dstep,tstep) ! No separate dust temperature as yet...
-      coldens(dstep) = nhgrid(dstep,tstep)
-      av(dstep) = 5.348e-22 * coldens(dstep)
-
+      targettime = ltime(tstep)
+      density(dstep) = ldens(tstep)
+      gastemp(dstep) = lgtemp(tstep)
+      dusttemp(dstep) = ldtemp(tstep) 
+      radfield = lradfield(tstep)
+      zeta = lzeta(tstep)
+      
+      if (usecoldens) then
+        coldens(dstep) = lnh(tstep)
+        av(dstep) = 5.348e-22 * coldens(dstep)
+      end if 
       ! If this is the last point, update tstep to move onto next time dump
-      if (dstep .eq. points) tstep = tstep + 1
+      tstep = tstep + 1
       
     END SUBROUTINE updatePhysics
 

@@ -35,7 +35,7 @@ main: constants.o  network.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} io.o wrap.f
 # The order here is the compilation order and it's vital that modules are compiled after their dependencies
 # We need to pass f2py_constants.f90 into wrap.f90 in order for nspec (and other parameters) to be in scope in wrap.
 python: constants.o f2py_constants.o network.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} io.o  wrap.f90  defaultparameters.f90
-	python3 -m numpy.f2py -c  --fcompiler=${f2pyFC} constants.o network.o io.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} -m uclchemwrap f2py_constants.f90 wrap.f90
+	python3 -m numpy.f2py -c  --debug-capi --debug --fcompiler=${f2pyFC} constants.o network.o io.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} -m uclchemwrap f2py_constants.f90 wrap.f90
 # Optional useful flags for debugging: --debug-capi, --debug, --f90flags="-fcheck=all"
 
 chemistry.o: odes.f90 rates.f90 chemistry.f90
@@ -47,5 +47,5 @@ sputtering.o: surfacereactions.o sputtering.f90
 %.o: %.f90 
 	${FC} ${FFLAGS} -c $<
 
-clean: 
-	rm *.o *.mod *.so ../uclchem/*.so
+# clean: 
+# 	rm *.o *.mod *.so ../uclchem/*.so
