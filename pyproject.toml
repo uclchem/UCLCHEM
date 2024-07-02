@@ -1,23 +1,12 @@
 [build-system]
-requires = [
-    "setuptools",
-    # "setuptools-scm",
-    "numpy",
-    "wheel",
-    "setuptools-git-versioning>=2.0,<3",
-]
+requires = ["setuptools", "numpy", "wheel", "setuptools-git-versioning>=2.0,<3"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools-git-versioning]
 enabled = true
-version_file = "VERSION"
-count_commits_from_version_file = true
-dev_template = "{branch}{ccount}"      # <--- without {tag}
-dirty_template = "{branch}{ccount}"
 
 [project]
 name = "uclchem"
-# version = "3.3.69"
 dynamic = ["version"]
 authors = [
     { name = "Gijs Vermariën", email = "vermarien@strw.leidenuniv.nl" },
