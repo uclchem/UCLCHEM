@@ -64,7 +64,6 @@ CONTAINS
                 successflag=NOT_ENOUGH_TIMEPOINTS_ERROR
                 return
             else 
-                write(*,*) dtime
                 physicsarray(dtime, dstep, 1) = timeInYears
                 physicsarray(dtime, dstep, 2) = density(dstep)
                 physicsarray(dtime, dstep, 3) = gasTemp(dstep)

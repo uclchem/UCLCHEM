@@ -1,4 +1,3 @@
-! This is a machine generated file!
 MODULE network
 USE constants
 IMPLICIT NONE

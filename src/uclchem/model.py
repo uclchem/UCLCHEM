@@ -3,22 +3,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from uclchem.constants import MAX_SPECIES, PHYSICAL_PARAMETERS, TIMEPOINTS
+
 from .uclchemwrap import uclchemwrap as wrap
-
-TIMEPOINTS = 420
-MAX_SPECIES = 335
-
-PHYSICAL_PARAMETERS = [
-    "age",
-    "density",
-    "gasTemp",
-    "dustTemp",
-    "Av",
-    "radfield",
-    "zeta",
-    "dstep",
-]
-N_PHYSICAL_PARAMETERS = len(PHYSICAL_PARAMETERS)
 
 
 def _reform_inputs(param_dict, out_species):
@@ -97,16 +84,14 @@ def _array_clean(
     """
     specname_new = specname.astype(str)
     specname_new = np.array([x.strip() for x in specname_new if x != ""])
+
     # Find the first element with all the zeros
     last_timestep_index = physicalParameterArray[:, 0, 0].nonzero()[0][-1]
     # Get the arrays for only the simulated timesteps (not the zero padded ones)
-    physicsArray = physicalParameterArray[:last_timestep_index, :, :]
-    print(chemicalAbundanceArray.shape)
-    chemArray = chemicalAbundanceArray[:last_timestep_index, :, :]
+    physicsArray = physicalParameterArray[: last_timestep_index + 1, :, :]
+    chemArray = chemicalAbundanceArray[: last_timestep_index + 1, :, :]
     # Get the last arrays simulated, easy for starting another model.
-    abundanceStart = chemicalAbundanceArray[last_timestep_index - 1, 0, :]
-    # Zero the abundances that are not there (to pass to the next model)
-    abundanceStart[len(specname_new) + 1 :] = 0
+    abundanceStart = chemicalAbundanceArray[last_timestep_index, 0, :]
     return physicsArray, chemArray, specname_new, abundanceStart
 
 
@@ -643,7 +628,7 @@ def postprocess(
     if return_array or return_dataframe:
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, N_PHYSICAL_PARAMETERS, timepoints=len(time_array)
+        param_dict, N_PHYSICAL_PARAMETERS, timepoints=len(time_array) + 1
     )
     abunds, specname, success_flag = wrap.postprocess(
         dictionary=param_dict,
@@ -657,6 +642,8 @@ def postprocess(
         abundancestart=starting_chemistry,
         **postprocess_arrays,
     )
+    print(physicsArray)
+    print(chemicalAbunArray)
     if return_array or return_dataframe:
         physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
             physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS

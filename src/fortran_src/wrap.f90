@@ -49,10 +49,10 @@ CONTAINS
         INTEGER, INTENT(IN) :: timePoints
         !f2py intent(in) timePoints
 
-        DOUBLE PRECISION, INTENT(OUT), OPTIONAL, DIMENSION(timePoints, gridPoints, n_physics_params) :: physicsarray
+        DOUBLE PRECISION, INTENT(OUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, n_physics_params) :: physicsarray
         !f2py intent(in,out) physicsarray
         !f2py depend(timePoints,gridPoints, n_physics_params) physicsarray
-        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints, gridPoints, nspec) :: chemicalabunarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nspec) :: chemicalabunarray
         !f2py intent(in,out) chemicalabunarray
         !f2py depend(timePoints,gridPoints,nspec) chemicalabunarray
         DOUBLE PRECISION, OPTIONAL, DIMENSION(nspec) :: abundanceStart
@@ -112,10 +112,10 @@ CONTAINS
         !f2py intent(in) gridPoints
         INTEGER, INTENT(IN) :: timePoints
         !f2py intent(in) timePoints
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints, gridPoints, n_physics_params), OPTIONAL :: physicsarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, n_physics_params), OPTIONAL :: physicsarray
         !f2py intent(in out) physicsarray
         !f2py depend(gridPoints) physicsarray
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints, gridPoints, nspec), OPTIONAL :: chemicalabunarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, nspec), OPTIONAL :: chemicalabunarray
         !f2py intent(in out) chemicalabunarray
         !f2py depend(gridPoints) chemicalabunarray
         DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
@@ -173,10 +173,10 @@ CONTAINS
         !f2py intent(in) gridPoints
         INTEGER, INTENT(IN) :: timePoints
         !f2py intent(in) timePoints
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints, gridPoints, n_physics_params), OPTIONAL :: physicsarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, n_physics_params), OPTIONAL :: physicsarray
         !f2py intent(in out) physicsarray
         !f2py depend(gridPoints) physicsarray
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints, gridPoints, nspec), OPTIONAL :: chemicalabunarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, nspec), OPTIONAL :: chemicalabunarray
         !f2py intent(in out) chemicalabunarray
         !f2py depend(gridPoints) chemicalabunarray
         DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
@@ -237,10 +237,10 @@ CONTAINS
         !f2py intent(in) gridPoints
         INTEGER, INTENT(IN) :: timePoints
         !f2py intent(in) timePoints
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints, gridPoints, n_physics_params), OPTIONAL :: physicsarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, n_physics_params), OPTIONAL :: physicsarray
         !f2py intent(in out) physicsarray
         !f2py depend(gridPoints) physicsarray
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints, gridPoints, nspec), OPTIONAL :: chemicalabunarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, nspec), OPTIONAL :: chemicalabunarray
         !f2py intent(in out) chemicalabunarray
         !f2py depend(gridPoints) chemicalabunarray
         DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
@@ -358,8 +358,8 @@ CONTAINS
         !f2py intent(in) gridPoints
         INTEGER, INTENT(IN) :: timePoints
         !f2py intent(in) timePoints
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints, gridPoints, n_physics_params), OPTIONAL :: physicsarray
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints, gridPoints, nspec), OPTIONAL :: chemicalabunarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, n_physics_params), OPTIONAL :: physicsarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, nspec), OPTIONAL :: chemicalabunarray
         !f2py intent(in out) physicsarray
         !f2py depend(gridPoints) physicsarray
         !f2py intent(in out) chemicalabunarray
