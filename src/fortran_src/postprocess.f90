@@ -8,7 +8,7 @@ MODULE postprocess_mod
     IMPLICIT NONE
 
     ! character(len=100) :: trajecfile
-    logical :: usecoldens = .false.
+    logical :: lusecoldens
     logical :: usepostprocess = .true.
     ! integer,parameter :: tfid=66
     integer :: ntime,tstep
@@ -22,7 +22,7 @@ CONTAINS
     ! Uses values in defaultparamters.f90 and any inputs to set initial values        !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics(successFlag, timegrid, densgrid, radgrid, zetagrid, gtempgrid,&
-        &dtempgrid, nhgrid, nh2grid, ncogrid, ncgrid, timepoints)
+        &dtempgrid, usecoldens, timepoints, nhgrid, nh2grid, ncogrid, ncgrid)
       INTEGER, INTENT(OUT) :: successFlag
       INTEGER, INTENT(IN) :: timepoints
       DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: timegrid
@@ -31,29 +31,28 @@ CONTAINS
       DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: zetagrid
       DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: gtempgrid
       DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: dtempgrid
+      LOGICAL, INTENT(IN) :: usecoldens
       DOUBLE PRECISION, INTENT(IN), OPTIONAL, DIMENSION(timePoints) :: nhgrid
       DOUBLE PRECISION, INTENT(IN), OPTIONAL, DIMENSION(timePoints) :: nh2grid
       DOUBLE PRECISION, INTENT(IN), OPTIONAL, DIMENSION(timePoints) :: ncogrid
       DOUBLE PRECISION, INTENT(IN), OPTIONAL, DIMENSION(timePoints) :: ncgrid
+      write(*,*) 'Initialising postprocessing module'
       
 
-      
       successFlag=0
-
+      ! Create a local variable that can be recycled in updatePhysics
+      lusecoldens = usecoldens
       ! Check if NHgrid is present, if so, we need to use the custom column densities
-      if (present(nhgrid)) then 
+      if ( lusecoldens) then 
         cloudSize=0. ! Shielding column densities supplied separately
-        usecoldens = .true.
       end if
       endatfinaldensity = .false. ! Needs to end at final time to work properly
       freefall = .false. ! Won't work with freefall on
       
-      write(*,*) "Allocating local variables"
       if (.not. allocated(ltime)) then 
         allocate (ltime(timepoints), ldens(timepoints), lradfield(timepoints), lzeta(timepoints),&
        &lgtemp(timepoints), ldtemp(timepoints))
       end if
-      write(*,*) "Writing to local variables"
       ! Store the parameter grids into a local module contexts
       ltime(:) = timegrid
       ldens(:) = densgrid
@@ -61,9 +60,8 @@ CONTAINS
       lzeta(:) = zetagrid
       lgtemp(:) = gtempgrid
       ldtemp(:) = dtempgrid
-      write(*,*) "writing to local column densities"
       ! If we have custom column densities, allocate and store them
-      if (usecoldens) then
+      if (lusecoldens) then
       ! Only allocate the column densities if we need them:
         if (.not. allocated(lnh)) then
           allocate (lnh(timepoints), lnh2(timepoints), lnco(timepoints), lnc(timepoints))
@@ -82,7 +80,7 @@ CONTAINS
       dusttemp(dstep) = ldtemp(tstep)
       radfield = lradfield(tstep)
       zeta = lzeta(tstep)
-      if (usecoldens) then
+      if (lusecoldens) then
         coldens(dstep) = lnh(tstep)
         av(dstep) = 5.348e-22 * coldens(dstep)
       end if 
@@ -118,7 +116,7 @@ CONTAINS
       radfield = lradfield(tstep)
       zeta = lzeta(tstep)
       
-      if (usecoldens) then
+      if (lusecoldens) then
         coldens(dstep) = lnh(tstep)
         av(dstep) = 5.348e-22 * coldens(dstep)
       end if 

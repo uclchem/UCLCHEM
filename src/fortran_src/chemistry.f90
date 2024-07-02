@@ -15,7 +15,7 @@ USE photoreactions
 USE surfacereactions
 USE constants
 use f2py_constants
-USE postprocess_mod, only: usecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
+USE postprocess_mod, only: lusecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
 IMPLICIT NONE
     !These integers store the array index of important species and reactions, x is for ions    
     !loop counters    
@@ -175,7 +175,7 @@ CONTAINS
             cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
 
             ! Postprocessed tracers have column densities provided
-            if (usecoldens) then
+            if (lusecoldens) then
                h2col = lnh2(tstep)
                cocol = lnco(tstep)
                ! ccol = lnc(dstep, tstep) ! TODO enable C column density support
@@ -296,7 +296,7 @@ CONTAINS
         ydot=0.0
 
         ! Column densities are fixed for postprocessing data, so don't do this bit
-        if (.not. usecoldens) then
+        if (.not. lusecoldens) then
         !changing abundances of H2 and CO can causes oscillation since their rates depend on their abundances
         !recalculating rates as abundances are updated prevents that.
         !thus these are the only rates calculated each time the ODE system is called.

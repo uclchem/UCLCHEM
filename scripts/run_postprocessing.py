@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-
 import uclchem
+from uclchem.utils import get_species
 
 NEATH_COLUMNS = [
     "time",
@@ -47,13 +47,52 @@ if __name__ == "__main__":
             dust_temperature_array=particle_df["Tgas"],
             zeta_array=1.0,
             radfield_array=1.0,
+            coldens_H_array=None,
+            coldens_H2_array=None,
+            coldens_CO_array=None,
+            coldens_C_array=None,
+        )
+        pd.DataFrame(
+            physicsArray[:, 0, :],
+            columns=uclchem.constants.PHYSICAL_PARAMETERS,
+        ).to_csv(
+            "physics_nocoldens.csv",
+            index=False,
+        )
+        pd.DataFrame(chemicalAbunArray[:, 0, :], columns=get_species()).to_csv(
+            "abunds_nocoldens.csv", index=False
+        )
+        (
+            physicsArray,
+            chemicalAbunArray,
+            abundanceStart,
+            success_flag,
+        ) = uclchem.model.postprocess(
+            param_dict=dict(
+                #     outputfile="postprocess.dat",
+            ),
+            out_species=["H2"],
+            return_array=True,
+            time_array=particle_df["time"],
+            density_array=particle_df["density"],
+            gas_temperature_array=particle_df["Tgas"],
+            dust_temperature_array=particle_df["Tgas"],
+            zeta_array=1.0,
+            radfield_array=1.0,
             coldens_H_array=particle_df["N_H"],
             coldens_H2_array=particle_df["N_H2"],
             coldens_CO_array=particle_df["N_CO"],
             coldens_C_array=0.0,
         )
-        pd.DataFrame(physicsArray[:, 0, :]).to_csv("physics.csv", index=False)
-        pd.DataFrame(chemicalAbunArray[:, 0, :]).to_csv(
-            "chemical_abundances.csv", index=False
+        pd.DataFrame(
+            physicsArray[:, 0, :],
+            columns=uclchem.constants.PHYSICAL_PARAMETERS,
+        ).to_csv(
+            "physics_coldens.csv",
+            index=False,
+        )
+
+        pd.DataFrame(chemicalAbunArray[:, 0, :], columns=get_species()).to_csv(
+            "abunds_coldens.csv", index=False
         )
         break

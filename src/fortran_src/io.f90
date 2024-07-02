@@ -43,7 +43,7 @@ CONTAINS
     SUBROUTINE finalOutput
         IF (writeAbunds) THEN
             DO dstep=1,points
-                WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
+                ! WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
                 WRITE(abundSaveID,8010) abund(:neq-1,dstep)
             8010  FORMAT((999(1pe15.5,:,',')))
             END DO

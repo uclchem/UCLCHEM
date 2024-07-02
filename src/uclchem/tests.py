@@ -3,6 +3,8 @@ import os
 import numpy as np
 from pandas import DataFrame
 
+import uclchem
+
 from .analysis import total_element_abundance
 from .uclchemwrap import uclchemwrap as wrap
 
@@ -39,18 +41,18 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
         "finaltime": 1.0e3,
         "outspecies": len(species_list),
     }
-    abundances, specname, success_flag = wrap.cloud(
+    _, _, abundances, specname, success_flag = wrap.cloud(
         dictionary=param_dict,
         outspeciesin=" ".join(species_list),
-        timepoints=2,
+        timepoints=1,
         gridpoints=1,
         physicsarray=np.zeros(
-            shape=(2, 1, 8),
+            shape=(2, 1, uclchem.constants.N_PHYSICAL_PARAMETERS),
             dtype=np.float64,
             order="F",
         ),
         chemicalabunarray=np.zeros(
-            shape=(2, 1, 335),
+            shape=(2, 1, uclchem.constants.MAX_SPECIES),
             dtype=np.float64,
             order="F",
         ),
@@ -59,7 +61,7 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
     )
     abundances = abundances[: param_dict["outspecies"]]
     param_dict.pop("outspecies")
-    input_abund = np.zeros(335)
+    input_abund = np.zeros(uclchem.constants.MAX_SPECIES)
     input_abund[: len(abundances)] = abundances
     rates = wrap.get_odes(param_dict, input_abund)
     df = DataFrame(columns=species_list)

@@ -3,7 +3,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from uclchem.constants import MAX_SPECIES, PHYSICAL_PARAMETERS, TIMEPOINTS
+from uclchem.constants import (
+    MAX_SPECIES,
+    N_PHYSICAL_PARAMETERS,
+    PHYSICAL_PARAMETERS,
+    TIMEPOINTS,
+)
 
 from .uclchemwrap import uclchemwrap as wrap
 
@@ -46,13 +51,14 @@ def _format_output(n_out, abunds, success_flag):
 
 
 def _create_fortranarray(param_dict, nPhysParam, timepoints=TIMEPOINTS):
+    # fencepost problem, need to add 1 to timepoints to account for the 0th timestep
     physicsArray = np.zeros(
-        shape=(timepoints, param_dict["points"], nPhysParam),
+        shape=(timepoints + 1, param_dict["points"], nPhysParam),
         dtype=np.float64,
         order="F",
     )
     chemicalAbunArray = np.zeros(
-        shape=(timepoints, param_dict["points"], MAX_SPECIES),
+        shape=(timepoints + 1, param_dict["points"], MAX_SPECIES),
         dtype=np.float64,
         order="F",
     )
@@ -613,7 +619,7 @@ def postprocess(
             # Ensure Fortran memory
             array = np.asfortranarray(array, dtype=np.float64)
             postprocess_arrays[key] = array
-
+    print(postprocess_arrays)
     give_start_abund = starting_chemistry is not None
     if not give_start_abund:
         starting_chemistry = np.zeros(
@@ -628,7 +634,7 @@ def postprocess(
     if return_array or return_dataframe:
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, N_PHYSICAL_PARAMETERS, timepoints=len(time_array) + 1
+        param_dict, N_PHYSICAL_PARAMETERS, timepoints=len(time_array)
     )
     abunds, specname, success_flag = wrap.postprocess(
         dictionary=param_dict,
@@ -640,6 +646,7 @@ def postprocess(
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
         abundancestart=starting_chemistry,
+        usecoldens=coldens_H_array is not None,
         **postprocess_arrays,
     )
     print(physicsArray)

@@ -49,7 +49,7 @@ CONTAINS
         INTEGER, INTENT(IN) :: timePoints
         !f2py intent(in) timePoints
 
-        DOUBLE PRECISION, INTENT(OUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, n_physics_params) :: physicsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, n_physics_params) :: physicsarray
         !f2py intent(in,out) physicsarray
         !f2py depend(timePoints,gridPoints, n_physics_params) physicsarray
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nspec) :: chemicalabunarray
@@ -324,7 +324,7 @@ CONTAINS
     SUBROUTINE postprocess(dictionary,outSpeciesIn,returnArray,givestartabund,&
         &timePoints,gridPoints,physicsarray,chemicalabunarray,&
         &abundanceStart,timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,&
-        &nhgrid,nh2grid,ncogrid,ncgrid,abundance_out,specname_out,successFlag)
+        &usecoldens,nhgrid,nh2grid,ncogrid,ncgrid,abundance_out,specname_out,successFlag)
         !Subroutine to call a J-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -358,6 +358,8 @@ CONTAINS
         !f2py intent(in) gridPoints
         INTEGER, INTENT(IN) :: timePoints
         !f2py intent(in) timePoints
+        LOGICAL, INTENT(IN) :: usecoldens
+        !f2py intent(in) usecoldens
         DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, n_physics_params), OPTIONAL :: physicsarray
         DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, nspec), OPTIONAL :: chemicalabunarray
         !f2py intent(in out) physicsarray
@@ -381,17 +383,18 @@ CONTAINS
         !f2py  intent(in) nhgrid,nh2grid,ncogrid,ncgrid
 
         successFlag=0
-        if (present(nhgrid)) then
+        if (usecoldens) then
             call solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
                 &timepoints,physicsarray,chemicalabunarray,abundanceStart,&
                 &timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,&
-                &nhgrid,nh2grid,ncogrid,ncgrid)
+                &usecoldens,nhgrid,nh2grid,ncogrid,ncgrid)
         else
             call solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
                 &timepoints,physicsarray,chemicalabunarray,abundanceStart,&
-                &timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid)
+                &timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,&
+                &usecoldens)
         end if
         
         IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN 
@@ -504,7 +507,7 @@ CONTAINS
     SUBROUTINE solveAbundances(dictionary,outSpeciesIn,successFlag,modelInitializePhysics,&
             &modelUpdatePhysics,updateTargetTime, sublimation, returnArray, givestartabund,&
             &timePoints, physicsarray, chemicalabunarray, abundanceStart,&
-            &timegrid,densgrid,gtempgrid,dtempgrid,radgrid,zetagrid,nhgrid,nh2grid,ncogrid,ncgrid)
+            &timegrid,densgrid,gtempgrid,dtempgrid,radgrid,zetagrid,usecoldens,nhgrid,nh2grid,ncogrid,ncgrid)
         ! Core UCLCHEM routine. Solves the chemical equations for a given set of parameters through time
         ! for a specified physical model.
         ! Change behaviour of physics by sending different subroutine arguments - hence the need for model subroutines above
@@ -540,12 +543,12 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: dtempgrid
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: radgrid
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: zetagrid
+        LOGICAL, OPTIONAL :: usecoldens
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: nhgrid
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: nh2grid
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: ncogrid
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: ncgrid
         successFlag=0
-
         ! Set variables to default values
         INCLUDE 'defaultparameters.f90'
         !Read input parameters from the dictionary
@@ -555,7 +558,6 @@ CONTAINS
             WRITE(*,*) 'Error reading parameter dictionary'
             RETURN
         END IF
-
         dstep=1
         currentTime=0.0
         timeInYears=0.0
@@ -566,17 +568,20 @@ CONTAINS
         ELSE
             CALL fileSetup
         END IF
-
         !Initialize core physics first then model specific
         !This allows model to overrule changes made by core
         CALL coreInitializePhysics(successFlag)
         if (present(timegrid)) then
-            call modelInitializePhysics(successflag, timegrid,densgrid,radgrid,zetagrid,&
-            &gtempgrid,dtempgrid,nhgrid,nh2grid,ncogrid,ncgrid, timepoints)
+            if (usecoldens) then
+                call modelInitializePhysics(successflag, timegrid,densgrid,radgrid,zetagrid,&
+                &gtempgrid,dtempgrid,usecoldens,timepoints,nhgrid,nh2grid,ncogrid,ncgrid)
+            else 
+                call modelInitializePhysics(successflag, timegrid,densgrid,radgrid,zetagrid,&
+                &gtempgrid,dtempgrid,usecoldens,timepoints) 
+            end if
         else 
             call modelInitializePhysics(successFlag)
         end if 
-
         IF (successFlag .lt. 0) then
             successFlag=PHYSICS_INIT_ERROR
             WRITE(*,*) 'Error initializing physics'
@@ -585,7 +590,6 @@ CONTAINS
         
         ! Initialize the chemistry
         CALL initializeChemistry(readAbunds)
-
         IF (returnArray .AND. givestartabund) THEN
             ! In case we have custom abundances, set them here
             DO l=1,points
@@ -599,7 +603,6 @@ CONTAINS
 
         dstep = 1
         dtime = 1
-
         IF (returnArray) THEN
             CALL output(returnArray, successflag, physicsarray, chemicalabunarray, dtime, timepoints)
         ELSE
@@ -625,17 +628,14 @@ CONTAINS
                     write(*,*) 'Error updating chemistry'
                     RETURN
                 END IF
-
                 !get time in years for output, currentTime is now equal to targetTime
                 timeInYears= currentTime/SECONDS_PER_YEAR
 
                 !Update physics so it's correct for new currentTime and start of next time step
                 call coreUpdatePhysics
                 call modelUpdatePhysics()
-
                 !Sublimation checks if Sublimation should happen this time step and does it
                 CALL sublimation(abund)
-
                 !write this depth step now time, chemistry and physics are consistent
                 IF (returnArray) THEN
                     CALL output(returnArray, successFlag, physicsarray, chemicalabunarray, dtime, timepoints)
