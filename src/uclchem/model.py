@@ -157,8 +157,6 @@ def cloud(
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
-    with open("signature_file.txt", "w") as fh:
-        fh.write(wrap.__doc__)
     give_start_abund = starting_chemistry is not None
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
     if "points" not in param_dict:
