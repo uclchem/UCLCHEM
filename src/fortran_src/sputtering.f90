@@ -98,7 +98,7 @@ CONTAINS
       if (abundChangeFrac .gt. 1.0d0) abundChangeFrac=1.0d0
       if (abundChangeFrac .lt. 0.00d0) abundChangeFrac=0.0d0
 
-    write(87,*) timeInYears,shockVel,abundChangeFrac,timeDelta/SECONDS_PER_YEAR
+      !write(87,*) timeInYears,shockVel,abundChangeFrac,timeDelta/SECONDS_PER_YEAR
       !multiply M/N by x and add to gas phase
       if (shockVel .ge. VAPORIZE_SPEED) THEN
         abund(gasIceList)=abund(gasIceList)+abundChangeFrac*abund(iceList)
