@@ -181,9 +181,9 @@ def test_stage1_return_array(common_output_directory):
     elapsed_time = stop - start
     print(return_code)
     assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
-    np.save("stage1_abund_array.npy", abundances_start)
-    np.save("physics_1_array.npy", physics)
-    np.save("abund_1_array.npy", chemistry)
+    np.save(common_output_directory /"stage1_abund_array.npy", abundances_start)
+    np.save(common_output_directory /"physics_1_array.npy", physics)
+    np.save(common_output_directory /"abund_1_array.npy", chemistry)
 
 
 def test_stage1_return_dataframe(common_output_directory):
@@ -208,7 +208,7 @@ def test_stage1_return_dataframe(common_output_directory):
     elapsed_time = stop - start
     print(return_code)
     assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
-    np.save("stage1_abund_df.npy", abundances_start)
+    np.save(common_output_directory /"stage1_abund_df.npy", abundances_start)
 
 
 # Test for running Stage 2
