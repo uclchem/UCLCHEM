@@ -244,7 +244,7 @@ def test_stage2_return_array(common_output_directory):
         "freefall": False,
         "finalTime": 1e6,
     }
-    start_abundances = np.asfortranarray(common_output_directory /np.load("stage1_abund_array.npy"))
+    start_abundances = np.asfortranarray(np.load(common_output_directory / "stage1_abund_array.npy"))
     start = perf_counter()
     (
         physics,
@@ -276,7 +276,7 @@ def test_stage2_return_dataframe(common_output_directory):
         "outputFile": common_output_directory / "stage2-full.dat",
         "abundLoadFile": common_output_directory / "startstage1.dat",
     }
-    start_abundances = np.asfortranarray(common_output_directory /np.load("stage1_abund_df.npy"))
+    start_abundances = np.asfortranarray(np.load(common_output_directory / "stage1_abund_df.npy"))
     start = perf_counter()
     (
         physics,
