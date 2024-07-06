@@ -473,12 +473,12 @@ CONTAINS
         !Obtain the ODE values for some given parameters and abundances.
         !Essentially runs one time step of solveAbundances  then calls the ODE subroutine (F)
         USE cloud_mod
-        ! USE CONSTANTS
+        use f2py_constants
         !f2py integer, intent(aux) :: nspec
         CHARACTER(LEN=*) :: dictionary
-        DOUBLE PRECISION :: abundancesIn(nspec),ratesOut(nspec)
+        DOUBLE PRECISION :: abundancesIn(nspec),ratesOut(nspec+1)
         INTEGER :: successFlag
-        !f2py intent(in) dictionary,abundancesIn
+        !f2py intent(in) :: dictionary, abundancesIn
         !f2py intent(out) :: ratesOut
         INCLUDE 'defaultparameters.f90'
         CALL dictionaryParser(dictionary, "",successFlag)
@@ -491,14 +491,12 @@ CONTAINS
         END IF
 
         CALL initializeChemistry(readAbunds)
-        
         dstep=1
         successFlag=0
         abund(:nspec,dstep)=abundancesIn(:nspec)
         abund(neq,dstep)=initialDens
         currentTime=0.0
         timeInYears=0.0
-
         targetTime=1.0d-7
         CALL updateChemistry(successFlag)
         CALL F(NEQ,currentTime,abund(:,dstep),ratesOut(:NEQ))

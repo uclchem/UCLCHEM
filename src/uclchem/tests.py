@@ -61,11 +61,13 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
     )
     abundances = abundances[: param_dict["outspecies"]]
     param_dict.pop("outspecies")
-    input_abund = np.zeros(uclchem.constants.MAX_SPECIES)
+    input_abund = np.zeros(uclchem.constants.MAX_SPECIES, dtype=np.float64, order="F")
     input_abund[: len(abundances)] = abundances
     rates = wrap.get_odes(param_dict, input_abund)
-    df = DataFrame(columns=species_list)
-    df.loc[len(df)] = rates[: len(species_list)]
+    # Explicitely clean off the last element, for some reason the shape
+    # of the ODE is n_species + 1, and we don't need the last one.
+    rates = rates[:len(species_list)]
+    df = DataFrame(rates.reshape(1, -1), columns=species_list)
     result = {}
     for element in element_list:
         discrep = total_element_abundance(element, df).values
