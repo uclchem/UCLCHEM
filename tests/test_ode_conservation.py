@@ -1,16 +1,12 @@
 import pytest
-
 import uclchem
 
 
 def test_ode_conservation():
     result = uclchem.tests.test_ode_conservation()
-
-    for key, value in result.items():
-        print(f"{key} {value:.2e}")
-    assert (
-        result["H"] < 1e-15
-    ), f"H not conserved with total rate of change {result['H']:.2e}"
+    assert all(
+        discrep < 1e-15 for discrep in result.values()
+    ), f"ODE not conserved with total rate of change {result}"
 
 
 def main():
