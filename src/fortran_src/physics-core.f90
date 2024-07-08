@@ -21,7 +21,7 @@ MODULE physicscore
 
     !variables either controlled by physics or that user may wish to change
     REAL(dp) :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,initialTemp
-    REAL(dp) ::  freefallFactor,cloudSize,rout,rin,baseAv,zeta,bm0
+    REAL(dp) ::  freefallFactor,cloudSize,rout,rin,baseAv,zeta,radfield,bm0
     REAL(dp), allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:)
 
     !Arrays fopr calculating rates
@@ -86,7 +86,7 @@ CONTAINS
         IF (dstep .lt. points) coldens(dstep)=coldens(dstep)+coldens(dstep-1)
 
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av(dstep)= baseAv +coldens(dstep)/1.6d21
+        av(dstep)= baseAv + coldens(dstep)/1.6d21
         dustTemp=gasTemp
 
         IF (cosmicRayAttenuation) CALL ionizationDependency

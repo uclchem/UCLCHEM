@@ -6,11 +6,13 @@ MODULE uclchemwrap
     USE chemistry
     USE io
     USE constants
+    USE F2PY_CONSTANTS
+    USE postprocess_mod, ONLY: ntime
     IMPLICIT NONE
 CONTAINS
     SUBROUTINE cloud(dictionary, outSpeciesIn,&
-            &returnArray,givestartabund,gridPoints,physicsarray,chemicalabunarray,physicsStart,abundanceStart,&
-            &abundance_out,specname_out,successFlag)
+            &returnArray,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
+            &abundanceStart,abundance_out,specname_out,successFlag)
         !Subroutine to call a cloud model, used to interface with python
         ! Loads cloud specific subroutines and send to solveAbundances
         !
@@ -22,61 +24,55 @@ CONTAINS
         ! gridPoints - number of points uclchem should simulate
         ! physicsarray - array to be filled with physical information for each timestep
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep
-        ! physicsStart - array containing starting phyisical conditions
         ! abundanceStart - array containing starting chemical conditions
         !Returns:
         ! abundance_out - list of abundances of species in outSpeciesIn
         ! specname_out - array of species that are in the chemicalabunarray
         ! successFlag - integer flag indicating success or fail
-
+        
         USE cloud_mod
-
-        CHARACTER(LEN=*) :: dictionary, outSpeciesIn
-        DOUBLE PRECISION :: abundance_out(500)
-        CHARACTER(LEN=32) :: specname_out(500)
+            
+        !f2py integer, intent(aux) :: nspec, n_physics_params
+        !f2py intent(out) abundance_out, specname_out 
+        CHARACTER(LEN=*), INTENT(IN) :: dictionary, outSpeciesIn
+        DOUBLE PRECISION, INTENT(OUT) :: abundance_out(nspec)
+        CHARACTER(LEN=32), INTENT(OUT) :: specname_out(nspec)
         INTEGER :: successFlag
         !f2py intent(in) dictionary,outSpeciesIn
-        !f2py intent(out) abundance_out,specname_out,successFlag
+        !f2py intent(out) successFlag
         LOGICAL, INTENT(IN) :: returnArray
         !f2py intent(in) returnArray
         LOGICAL, INTENT(IN) :: givestartabund
         !f2py intent(in) givestartabund
         INTEGER, INTENT(IN) :: gridPoints
         !f2py intent(in) gridPoints
-        DOUBLE PRECISION, OPTIONAL, INTENT(INOUT), DIMENSION(10000, gridPoints, 13) :: physicsarray
-        !f2py intent(in out) physicsarray
-        !f2py depend(gridPoints) physicsarray
-        DOUBLE PRECISION, OPTIONAL, INTENT(INOUT), DIMENSION(10000, gridPoints, 500) :: chemicalabunarray
-        !f2py intent(in out) chemicalabunarray
-        !f2py depend(gridPoints) chemicalabunarray
-        DOUBLE PRECISION, OPTIONAL, DIMENSION(6) :: physicsStart
-        !f2py intent(in) physicsStart
-        !f2py depend(gridPoints) physicsStart
-        DOUBLE PRECISION, DIMENSION(500), OPTIONAL :: abundanceStart
-        !f2py intent(in) abundanceStart
-        !f2py depend(gridPoints) abundanceStart
-        successFlag=1
-        specname_out(:nspec) = specName
+        INTEGER, INTENT(IN) :: timePoints
+        !f2py intent(in) timePoints
 
-        IF (returnArray .AND. givestartabund) THEN
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-                    &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
-                    &physicsarray,chemicalabunarray,physicsStart,abundanceStart)
-        ELSE IF (returnArray) THEN
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-                    &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
-                    &physicsarray,chemicalabunarray)
-        ELSE
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-                    &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund)
-        END IF
-        IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, n_physics_params) :: physicsarray
+        !f2py intent(in,out) physicsarray
+        !f2py depend(timePoints,gridPoints, n_physics_params) physicsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nspec) :: chemicalabunarray
+        !f2py intent(in,out) chemicalabunarray
+        !f2py depend(timePoints,gridPoints,nspec) chemicalabunarray
+        DOUBLE PRECISION, OPTIONAL, DIMENSION(nspec) :: abundanceStart
+        !f2py intent(in) abundanceStart
+        !f2py depend(nspec) abundanceStart
+
+        successFlag=0
+        specname_out = specName
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
+                &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
+                &timePoints,physicsarray,chemicalabunarray,abundanceStart)
+        IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
         END IF
+
     END SUBROUTINE cloud
 
+
     SUBROUTINE collapse(collapseIn,collapseFileIn,writeOut,dictionary,outSpeciesIn,&
-            &returnArray,givestartabund,gridPoints,physicsarray,chemicalabunarray,physicsStart,abundanceStart,&
+            &returnArray,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,abundanceStart,&
             &abundance_out,specname_out,successFlag)
         !Subroutine to call a collapse model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
@@ -92,7 +88,6 @@ CONTAINS
         ! gridPoints - number of points uclchem should simulate
         ! physicsarray - array to be filled with physical information for each timestep
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep
-        ! physicsStart - array containing starting phyisical conditions
         ! abundanceStart - array containing starting chemical conditions
         !Returns:
         ! abundance_out - list of abundances of species in outSpeciesIn
@@ -101,9 +96,10 @@ CONTAINS
 
         USE collapse_mod
 
+        !f2py integer,parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn, collapseFileIn
-        DOUBLE PRECISION :: abundance_out(500)
-        CHARACTER(LEN=32) :: specname_out(500)
+        DOUBLE PRECISION :: abundance_out(nspec)
+        CHARACTER(LEN=32) :: specname_out(nspec)
         INTEGER :: successFlag,collapseIn
         LOGICAL :: writeOut
         !f2py intent(in) collapseIn,dictionary,outSpeciesIn,collapseFileIn,writeOut
@@ -114,44 +110,35 @@ CONTAINS
         !f2py intent(in) givestartabund
         INTEGER, INTENT(IN) :: gridPoints
         !f2py intent(in) gridPoints
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(10000, gridPoints, 13), OPTIONAL :: physicsarray
+        INTEGER, INTENT(IN) :: timePoints
+        !f2py intent(in) timePoints
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, n_physics_params), OPTIONAL :: physicsarray
         !f2py intent(in out) physicsarray
         !f2py depend(gridPoints) physicsarray
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(10000, gridPoints, 500), OPTIONAL :: chemicalabunarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, nspec), OPTIONAL :: chemicalabunarray
         !f2py intent(in out) chemicalabunarray
         !f2py depend(gridPoints) chemicalabunarray
-        DOUBLE PRECISION, DIMENSION(6), OPTIONAL :: physicsStart
-        !f2py  intent(in) physicsStart
-        DOUBLE PRECISION, DIMENSION(500), OPTIONAL :: abundanceStart
+        DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
         !f2py  intent(in) abundanceStart
         !f2py  depend(gridPoints) abundanceStart
-        successFlag=1
+        successFlag=0
         specname_out(:nspec) = specName
         collapse_mode=collapseIn
         writePhysics = writeOut
         collapseFile = collapseFileIn
         
-        IF (returnArray .AND. givestartabund) THEN
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-                    &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
-                    &physicsarray,chemicalabunarray,physicsStart,abundanceStart)
-        ELSE IF (returnArray) THEN
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-                    &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
-                    &physicsarray,chemicalabunarray)
-        ELSE
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-                    &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund)
-        END IF
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
+                &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
+                &timepoints,physicsarray,chemicalabunarray,abundanceStart)
         
-        IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN 
+        IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN 
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
-        END IF 
+        END IF
     END SUBROUTINE collapse
 
     SUBROUTINE hot_core(temp_indx,max_temp,dictionary,outSpeciesIn,&
-            &returnArray,givestartabund,gridPoints,physicsarray,chemicalabunarray,physicsStart,abundanceStart,&
-            &abundance_out,specname_out,successFlag)
+            &returnArray,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
+            &abundanceStart,abundance_out,specname_out,successFlag)
         !Subroutine to call a hot core model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -165,17 +152,17 @@ CONTAINS
         ! gridPoints - number of points uclchem should simulate
         ! physicsarray - array to be filled with physical information for each timestep
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep
-        ! physicsStart - array containing starting phyisical conditions
         ! abundanceStart - array containing starting chemical conditions
         !Returns:
         ! abundance_out - list of abundances of species in outSpeciesIn
         ! successFlag - integer flag indicating success or fail
         USE hotcore
 
+        !f2py integer, parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
-        DOUBLE PRECISION :: abundance_out(500),max_temp
+        DOUBLE PRECISION :: abundance_out(nspec),max_temp
         INTEGER :: temp_indx,successFlag
-        CHARACTER(LEN=32) :: specname_out(500)
+        CHARACTER(LEN=32) :: specname_out(nspec)
         !f2py intent(in) temp_indx,max_temp,dictionary,outSpeciesIn
         !f2py intent(out) abundance_out,specname_out,successFlag
         LOGICAL, INTENT(IN) :: returnArray
@@ -184,39 +171,32 @@ CONTAINS
         !f2py intent(in) givestartabund
         INTEGER, INTENT(IN) :: gridPoints
         !f2py intent(in) gridPoints
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(10000, gridPoints, 13), OPTIONAL :: physicsarray
+        INTEGER, INTENT(IN) :: timePoints
+        !f2py intent(in) timePoints
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, n_physics_params), OPTIONAL :: physicsarray
         !f2py intent(in out) physicsarray
         !f2py depend(gridPoints) physicsarray
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(10000, gridPoints, 500), OPTIONAL :: chemicalabunarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, nspec), OPTIONAL :: chemicalabunarray
         !f2py intent(in out) chemicalabunarray
         !f2py depend(gridPoints) chemicalabunarray
-        DOUBLE PRECISION, DIMENSION(6), OPTIONAL :: physicsStart
-        !f2py  intent(in) physicsStart
-        DOUBLE PRECISION, DIMENSION(500), OPTIONAL :: abundanceStart
+        DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
         !f2py  intent(in) abundanceStart
         !f2py  depend(gridPoints) abundanceStart
         specname_out(:nspec) = specName
         maxTemp=max_temp
         tempIndx=temp_indx
 
-        IF (returnArray .AND. givestartabund) THEN
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-                    &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
-                    &physicsarray,chemicalabunarray,physicsStart,abundanceStart)
-        ELSE IF (returnArray) THEN
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-        &updatePhysics,updateTargetTime,sublimation,returnArray, givestartabund,physicsarray,chemicalabunarray)
-        ELSE
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-        &updatePhysics,updateTargetTime,sublimation,returnArray, givestartabund)
-        END IF
-        IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN 
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
+        &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
+        &timepoints,physicsarray,chemicalabunarray,abundanceStart)
+    
+        IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN 
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
         END IF 
     END SUBROUTINE hot_core
 
     SUBROUTINE cshock(shock_vel,timestep_factor,minimum_temperature,dictionary, outSpeciesIn,&
-            &returnArray,givestartabund,gridPoints,physicsarray,chemicalabunarray,physicsStart,abundanceStart,&
+            &returnArray,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,abundanceStart,&
             &abundance_out,dissipation_time,specname_out,successFlag)
         !Subroutine to call a C-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
@@ -234,7 +214,6 @@ CONTAINS
         ! gridPoints - number of points uclchem should simulate
         ! physicsarray - array to be filled with physical information for each timestep
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep
-        ! physicsStart - array containing starting phyisical conditions
         ! abundanceStart - array containing starting chemical conditions
         !Returns:
         ! abundance_out - list of abundances of species in outSpeciesIn
@@ -242,11 +221,12 @@ CONTAINS
         ! successFlag - integer flag indicating success or fail
         USE cshock_mod
 
+        !f2py integer, parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
-        DOUBLE PRECISION :: abundance_out(500),shock_vel,timestep_factor
+        DOUBLE PRECISION :: abundance_out(nspec),shock_vel,timestep_factor
         DOUBLE PRECISION :: minimum_temperature,dissipation_time
         INTEGER :: successFlag
-        CHARACTER(LEN=32) :: specname_out(500)
+        CHARACTER(LEN=32) :: specname_out(nspec)
         !f2py intent(in) shock_vel,timestep_factor,minimum_temperature,dictionary,outSpeciesIn
         !f2py intent(out) abundance_out,dissipation_time,specname_out,successFlag
         LOGICAL, INTENT(IN) :: returnArray
@@ -255,15 +235,15 @@ CONTAINS
         !f2py intent(in) givestartabund
         INTEGER, INTENT(IN) :: gridPoints
         !f2py intent(in) gridPoints
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(10000, gridPoints, 13), OPTIONAL :: physicsarray
+        INTEGER, INTENT(IN) :: timePoints
+        !f2py intent(in) timePoints
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, n_physics_params), OPTIONAL :: physicsarray
         !f2py intent(in out) physicsarray
         !f2py depend(gridPoints) physicsarray
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(10000, gridPoints, 500), OPTIONAL :: chemicalabunarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, nspec), OPTIONAL :: chemicalabunarray
         !f2py intent(in out) chemicalabunarray
         !f2py depend(gridPoints) chemicalabunarray
-        DOUBLE PRECISION, DIMENSION(6), OPTIONAL :: physicsStart
-        !f2py  intent(in) physicsStart
-        DOUBLE PRECISION, DIMENSION(500), OPTIONAL :: abundanceStart
+        DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
         !f2py  intent(in) abundanceStart
         !f2py  depend(gridPoints) abundanceStart
 
@@ -271,27 +251,21 @@ CONTAINS
         timestepFactor=timestep_factor
         minimumPostshockTemp=minimum_temperature
 
-        IF (returnArray .AND. givestartabund) THEN
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-                    &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
-                    &physicsarray,chemicalabunarray,physicsStart,abundanceStart)
-        ELSE IF (returnArray) THEN
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-        &updatePhysics,updateTargetTime,sublimation,returnArray, givestartabund,physicsarray,chemicalabunarray)
-        ELSE
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-        &updatePhysics,updateTargetTime,sublimation,returnArray, givestartabund)
-        END IF
-        specname_out(:nspec) = specName
-        IF (successFlag .ge. 0) THEN 
+        specname_out = specName
+        successFlag=0
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
+                &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
+                &timepoints,physicsarray,chemicalabunarray,abundanceStart)
+        
+        IF (successFlag .eq. 0) THEN 
             IF (ALLOCATED(outIndx)) abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
             dissipation_time=dissipationTime
         END IF
     END SUBROUTINE cshock
 
-    SUBROUTINE jshock(shock_vel,dictionary,outSpeciesIn,returnArray,givestartabund,gridPoints,&
-            &physicsarray,chemicalabunarray,physicsStart,abundanceStart,&
-            &abundance_out,specname_out,successFlag)
+    SUBROUTINE jshock(shock_vel,dictionary,outSpeciesIn,returnArray,givestartabund,&
+            &timePoints,gridPoints,physicsarray,chemicalabunarray,&
+            &abundanceStart,abundance_out,specname_out,successFlag)
         !Subroutine to call a J-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -304,17 +278,17 @@ CONTAINS
         ! gridPoints - number of points uclchem should simulate
         ! physicsarray - array to be filled with physical information for each timestep
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep
-        ! physicsStart - array containing starting phyisical conditions
         ! abundanceStart - array containing starting chemical conditions
         !Returns:
         ! abundance_out - list of abundances of species in outSpeciesIn
         ! successFlag - integer flag indicating success or fail
         USE jshock_mod
 
+        !f2py integer, parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
-        DOUBLE PRECISION :: abundance_out(500),shock_vel
+        DOUBLE PRECISION :: abundance_out(nspec),shock_vel
         INTEGER :: successFlag
-        CHARACTER(LEN=32) :: specname_out(500)
+        CHARACTER(LEN=32) :: specname_out(nspec)
         !f2py intent(in) shock_vel,dictionary,outSpeciesIn
         !f2py intent(out) abundance_out, specname_out, successFlag
         LOGICAL, INTENT(IN) :: returnArray
@@ -323,35 +297,111 @@ CONTAINS
         !f2py intent(in) givestartabund
         INTEGER, INTENT(IN) :: gridPoints
         !f2py intent(in) gridPoints
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(10000, gridPoints, 13), OPTIONAL :: physicsarray
-        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(10000, gridPoints, 500), OPTIONAL :: chemicalabunarray
+        INTEGER, INTENT(IN) :: timePoints
+        !f2py intent(in) timePoints
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints, gridPoints, n_physics_params), OPTIONAL :: physicsarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints, gridPoints, nspec), OPTIONAL :: chemicalabunarray
         !f2py intent(in out) physicsarray
         !f2py depend(gridPoints) physicsarray
         !f2py intent(in out) chemicalabunarray
         !f2py depend(gridPoints) chemicalabunarray
-        DOUBLE PRECISION, DIMENSION(6), OPTIONAL :: physicsStart
-        !f2py  intent(in) physicsStart
-        DOUBLE PRECISION, DIMENSION(500), OPTIONAL :: abundanceStart
+        DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
         !f2py  intent(in) abundanceStart
         !f2py  depend(gridPoints) abundanceStart
         vs=shock_vel
 
-        IF (returnArray .AND. givestartabund) THEN
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-                    &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
-                    &physicsarray,chemicalabunarray,physicsStart,abundanceStart)
-        ELSE IF (returnArray) THEN
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-        &updatePhysics,updateTargetTime,sublimation,returnArray, givestartabund,physicsarray,chemicalabunarray)
-        ELSE
-            CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
-        &updatePhysics,updateTargetTime,sublimation,returnArray, givestartabund)
-        END IF
+     
+        CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
+        &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
+        &timepoints,physicsarray,chemicalabunarray,abundanceStart)
+
         specname_out(:nspec) = specName
-        IF ((ALLOCATED(outIndx)) .and. (successFlag .ge. 0)) THEN 
+        IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN 
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
         END IF 
     END SUBROUTINE jshock
+
+    SUBROUTINE postprocess(dictionary,outSpeciesIn,returnArray,givestartabund,&
+        &timePoints,gridPoints,physicsarray,chemicalabunarray,&
+        &abundanceStart,timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,&
+        &usecoldens,nhgrid,nh2grid,ncogrid,ncgrid,abundance_out,specname_out,successFlag)
+        !Subroutine to call a J-shock model, used to interface with python
+        ! Loads model specific subroutines and send to solveAbundances
+        !
+        !Args:
+        ! shock_vel - double precision shock velocity in km/s
+        ! dictionary - python parameter dictionary
+        ! outSpeciesIn - list of species to output as a space separated string
+        ! returnArray - boolean on whether arrays will be returned
+        ! givestartabund -  boolean on whether starting abundances were given
+        ! gridPoints - number of points uclchem should simulate
+        ! physicsarray - array to be filled with physical information for each timestep
+        ! chemicalabunarray - array to be filled with chemical abundances for each timestep
+        ! abundanceStart - array containing starting chemical conditions
+        !Returns:
+        ! abundance_out - list of abundances of species in outSpeciesIn
+        ! successFlag - integer flag indicating success or fail
+        USE postprocess_mod  
+
+        !f2py integer, parameter intent(aux) nspec, n_physics_params
+        CHARACTER(LEN=*) :: dictionary, outSpeciesIn
+        DOUBLE PRECISION :: abundance_out(nspec)
+        INTEGER :: successFlag
+        CHARACTER(LEN=32) :: specname_out(nspec)
+        !f2py intent(in) shock_vel,dictionary,outSpeciesIn
+        !f2py intent(out) abundance_out, specname_out, successFlag
+        LOGICAL, INTENT(IN) :: returnArray
+        !f2py intent(in) returnArray
+        LOGICAL, INTENT(IN) :: givestartabund
+        !f2py intent(in) givestartabund
+        INTEGER, INTENT(IN) :: gridPoints
+        !f2py intent(in) gridPoints
+        INTEGER, INTENT(IN) :: timePoints
+        !f2py intent(in) timePoints
+        LOGICAL, INTENT(IN) :: usecoldens
+        !f2py intent(in) usecoldens
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, n_physics_params), OPTIONAL :: physicsarray
+        DOUBLE PRECISION, INTENT(INOUT), DIMENSION(timePoints+1, gridPoints, nspec), OPTIONAL :: chemicalabunarray
+        !f2py intent(in out) physicsarray
+        !f2py depend(gridPoints) physicsarray
+        !f2py intent(in out) chemicalabunarray
+        !f2py depend(gridPoints) chemicalabunarray
+        DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
+        !f2py  intent(in) abundanceStart
+        !f2py  depend(gridPoints) abundanceStart
+        DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: timegrid
+        DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: densgrid
+        DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: gastempgrid
+        DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: dusttempgrid
+        DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: radfieldgrid
+        DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: zetagrid
+        DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints), OPTIONAL :: nhgrid
+        DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints), OPTIONAL :: nh2grid
+        DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints), OPTIONAL :: ncogrid
+        DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints), OPTIONAL :: ncgrid
+        !f2py  intent(in) timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid
+        !f2py  intent(in) nhgrid,nh2grid,ncogrid,ncgrid
+
+        successFlag=0
+        if (usecoldens) then
+            call solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
+                &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
+                &timepoints,physicsarray,chemicalabunarray,abundanceStart,&
+                &timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,&
+                &usecoldens,nhgrid,nh2grid,ncogrid,ncgrid)
+        else
+            call solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
+                &updatePhysics,updateTargetTime,sublimation,returnArray,givestartabund,&
+                &timepoints,physicsarray,chemicalabunarray,abundanceStart,&
+                &timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,&
+                &usecoldens)
+        end if
+        
+        IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN 
+            abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
+        END IF 
+    END SUBROUTINE postprocess
+
 
     SUBROUTINE get_rates(dictionary,abundancesIn,speciesIndx,rateIndxs,&
         &speciesRates,successFlag,transfer,swap,bulk_layers)
@@ -359,11 +409,12 @@ CONTAINS
         !return the rate of all reactions that include that species plus some extra variables
         !to allow for the calculation of the rate of bulk/surface ice transfer.
         USE cloud_mod
-        USE network, only : nspec
+        ! USE constants, only : nspec
+        !f2py integer, intent(aux) :: nspec
         CHARACTER(LEN=*):: dictionary
-        DOUBLE PRECISION :: abundancesIn(500),speciesRates(500)
+        DOUBLE PRECISION :: abundancesIn(nspec),speciesRates(nspec)
         DOUBLE PRECISION :: transfer,swap,bulk_layers
-        INTEGER:: rateIndxs(500),speciesIndx, successFlag
+        INTEGER:: rateIndxs(nspec),speciesIndx, successFlag
         DOUBLE PRECISION :: ydot(nspec+1)
         INTEGER :: speci,bulk_version,surface_version
         !f2py intent(in) dictionary,abundancesIn,speciesIndx,rateIndxs
@@ -384,7 +435,7 @@ CONTAINS
 
         CALL initializeChemistry(readAbunds)
         dstep=1
-        successFlag=1
+        successFlag=0
         abund(:nspec,dstep)=abundancesIn(:nspec)
         abund(neq,dstep)=initialDens
         currentTime=0.0
@@ -399,7 +450,7 @@ CONTAINS
 
         IF ((specname(speciesIndx)(1:1) .eq. "#") .or.&
         & (specname(speciesIndx)(1:1) .eq. "@")) THEN
-            DO speci=1,nSpec
+            DO speci=1,nspec
                 IF (specname(speci) .eq. "@"//specname(speciesIndx)(2:)) bulk_version=speci
                 IF (specname(speci) .eq. "#"//specname(speciesIndx)(2:)) surface_version=speci
             END DO
@@ -422,10 +473,12 @@ CONTAINS
         !Obtain the ODE values for some given parameters and abundances.
         !Essentially runs one time step of solveAbundances  then calls the ODE subroutine (F)
         USE cloud_mod
+        use f2py_constants
+        !f2py integer, intent(aux) :: nspec
         CHARACTER(LEN=*) :: dictionary
-        DOUBLE PRECISION :: abundancesIn(500),ratesOut(500)
+        DOUBLE PRECISION :: abundancesIn(nspec),ratesOut(nspec+1)
         INTEGER :: successFlag
-        !f2py intent(in) dictionary,abundancesIn
+        !f2py intent(in) :: dictionary, abundancesIn
         !f2py intent(out) :: ratesOut
         INCLUDE 'defaultparameters.f90'
         CALL dictionaryParser(dictionary, "",successFlag)
@@ -438,23 +491,21 @@ CONTAINS
         END IF
 
         CALL initializeChemistry(readAbunds)
-        
         dstep=1
-        successFlag=1
+        successFlag=0
         abund(:nspec,dstep)=abundancesIn(:nspec)
         abund(neq,dstep)=initialDens
         currentTime=0.0
         timeInYears=0.0
-
         targetTime=1.0d-7
         CALL updateChemistry(successFlag)
         CALL F(NEQ,currentTime,abund(:,dstep),ratesOut(:NEQ))
     END SUBROUTINE get_odes
 
-    SUBROUTINE solveAbundances(dictionary,outSpeciesIn,successFlag,&
-            &modelInitializePhysics,modelUpdatePhysics,updateTargetTime,&
-            &sublimation, returnArray, givestartabund, physicsarray, chemicalabunarray, physicsStart, &
-            &abundanceStart)
+    SUBROUTINE solveAbundances(dictionary,outSpeciesIn,successFlag,modelInitializePhysics,&
+            &modelUpdatePhysics,updateTargetTime, sublimation, returnArray, givestartabund,&
+            &timePoints, physicsarray, chemicalabunarray, abundanceStart,&
+            &timegrid,densgrid,gtempgrid,dtempgrid,radgrid,zetagrid,usecoldens,nhgrid,nh2grid,ncogrid,ncgrid)
         ! Core UCLCHEM routine. Solves the chemical equations for a given set of parameters through time
         ! for a specified physical model.
         ! Change behaviour of physics by sending different subroutine arguments - hence the need for model subroutines above
@@ -468,22 +519,34 @@ CONTAINS
         ! returnArray - boolean on whether arrays will be returned
         ! givestartabund -  boolean on whether starting abundances were given
         ! gridPoints - number of points uclchem should simulate
-        ! physicsarray - array to be filled with physical information for each timestep
-        ! chemicalabunarray - array to be filled with chemical abundances for each timestep
-        ! physicsStart - array containing starting phyisical conditions
-        ! abundanceStart - array containing starting chemical conditions
-        USE network, only : nspec
+        ! physicsarray - array to be filled with physical information for each timestep (optional)
+        ! chemicalabunarray - array to be filled with chemical abundances for each timestep (optional)
+        ! abundanceStart - array containing starting chemical conditions (optional)
+        ! USE constants, only : nspec
+        !f2py integer, intent(aux) :: nspec
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         EXTERNAL modelInitializePhysics,updateTargetTime,modelUpdatePhysics,sublimation
         INTEGER, INTENT(OUT) :: successFlag
         LOGICAL :: returnArray, givestartabund
+        INTEGER :: dtime, timePoints
+        ! Arrays needed to work return physics in memory mode
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
-        DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: physicsStart
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: abundanceStart
-        INTEGER :: dtime
-        successFlag=1
-
+        ! Arrays neede to work with custom density/temperature profiles
+        !  &timegrid,densgrid,gastempgrid,dusttempgrid,nhgrid,nh2grid,ncogrodi,ncgrid)
+        DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: timegrid
+        DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: densgrid
+        DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: gtempgrid
+        DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: dtempgrid
+        DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: radgrid
+        DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: zetagrid
+        LOGICAL, OPTIONAL :: usecoldens
+        DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: nhgrid
+        DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: nh2grid
+        DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: ncogrid
+        DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: ncgrid
+        successFlag=0
         ! Set variables to default values
         INCLUDE 'defaultparameters.f90'
         !Read input parameters from the dictionary
@@ -493,7 +556,6 @@ CONTAINS
             WRITE(*,*) 'Error reading parameter dictionary'
             RETURN
         END IF
-
         dstep=1
         currentTime=0.0
         timeInYears=0.0
@@ -504,49 +566,54 @@ CONTAINS
         ELSE
             CALL fileSetup
         END IF
-
         !Initialize core physics first then model specific
         !This allows model to overrule changes made by core
         CALL coreInitializePhysics(successFlag)
-        CALL modelInitializePhysics(successFlag)
-
+        if (present(timegrid)) then
+            if (usecoldens) then
+                call modelInitializePhysics(successflag, timegrid,densgrid,radgrid,zetagrid,&
+                &gtempgrid,dtempgrid,usecoldens,timepoints,nhgrid,nh2grid,ncogrid,ncgrid)
+            else 
+                call modelInitializePhysics(successflag, timegrid,densgrid,radgrid,zetagrid,&
+                &gtempgrid,dtempgrid,usecoldens,timepoints) 
+            end if
+        else 
+            call modelInitializePhysics(successFlag)
+        end if 
         IF (successFlag .lt. 0) then
             successFlag=PHYSICS_INIT_ERROR
             WRITE(*,*) 'Error initializing physics'
             RETURN
         END IF
-
+        
+        ! Initialize the chemistry
         CALL initializeChemistry(readAbunds)
         IF (returnArray .AND. givestartabund) THEN
+            ! In case we have custom abundances, set them here
             DO l=1,points
-                fhe = physicsStart(1)
-                fc = physicsStart(2)
-                fo = physicsStart(3)
-                fn = physicsStart(4)
-                fs = physicsStart(5)
-                fmg = physicsStart(6)
                 abund(:nspec+1,l) = abundanceStart(:nspec+1)
             END DO
         ELSE
+            ! Else just use the default readInputAbunds routine:
             CALL readInputAbunds !this won't do anything if no abundLoadFile was in input
         END IF
         !CALL simpleDebug("Initialized")
 
-        dstep=1
+        dstep = 1
         dtime = 1
-
         IF (returnArray) THEN
-            CALL output(returnArray, physicsarray, chemicalabunarray, dtime)
+            CALL output(returnArray, successflag, physicsarray, chemicalabunarray, dtime, timepoints)
         ELSE
-            CALL output(returnArray)
+            CALL output(returnArray, successflag)
         END IF
+        
 
         !loop until the end condition of the model is reached
-        DO WHILE (((endAtFinalDensity) .and. (density(1) < finalDens)) .or. &
-            &((.not. endAtFinalDensity) .and. (timeInYears < finalTime)))
+        DO WHILE ((successFlag .eq. 0) .and. (((endAtFinalDensity) .and. &
+            &(density(1) < finalDens)) .or. &
+            &((.not. endAtFinalDensity) .and. (timeInYears < finalTime))))
             dtime = dtime + 1
             currentTimeold=currentTime
-
             !Each physics module has a subroutine to set the target time from the current time
             CALL updateTargetTime
             !loop over parcels, counting from centre out to edge of cloud
@@ -559,21 +626,19 @@ CONTAINS
                     write(*,*) 'Error updating chemistry'
                     RETURN
                 END IF
-
                 !get time in years for output, currentTime is now equal to targetTime
                 timeInYears= currentTime/SECONDS_PER_YEAR
 
                 !Update physics so it's correct for new currentTime and start of next time step
-                Call coreUpdatePhysics
-                CALL modelUpdatePhysics
+                call coreUpdatePhysics
+                call modelUpdatePhysics()
                 !Sublimation checks if Sublimation should happen this time step and does it
                 CALL sublimation(abund)
-
                 !write this depth step now time, chemistry and physics are consistent
                 IF (returnArray) THEN
-                    CALL output(returnArray, physicsarray, chemicalabunarray, dtime)
+                    CALL output(returnArray, successFlag, physicsarray, chemicalabunarray, dtime, timepoints)
                 ELSE
-                    CALL output(returnArray)
+                    CALL output(returnArray, successFlag)
                 END IF
             END DO
         END DO
@@ -581,8 +646,8 @@ CONTAINS
             CALL finalOutput
             CALL closeFiles
         END IF
-        IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
-        IF (ALLOCATED(outSpecies)) DEALLOCATE(outSpecies)
+        ! IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
+        ! IF (ALLOCATED(outSpecies)) DEALLOCATE(outSpecies)
     END SUBROUTINE solveAbundances
 
     SUBROUTINE dictionaryParser(dictionary, outSpeciesIn,successFlag)
@@ -591,6 +656,8 @@ CONTAINS
         !dictionary - lowercase keys matching the names of the parameters in the select case below
         !OutSpeciesIn - string containing the species to output
         !successFlag - integer flag to indicate success
+        
+        !f2py integer, intent(aux) :: nspec
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         INTEGER, INTENT(OUT) :: successFlag
         INTEGER, ALLOCATABLE, DIMENSION(:) :: locations
@@ -805,8 +872,14 @@ CONTAINS
                         WRITE(*,*) "columnated output requires output species to be chosen."
                         successFlag=-1
                         RETURN
-                    END IF
-
+                     END IF
+                ! Additional parameters for postprocessing mode
+                CASE('fh')
+                   READ(inputValue,*,iostat=successFlag) fh
+                CASE('ntime')
+                   READ(inputValue,*,iostat=successFlag) ntime
+                ! CASE('trajecfile')
+                !    READ(inputValue,*,iostat=successFlag) trajecfile
                 CASE DEFAULT
                     WRITE(*,*) "Problem with given parameter: '", trim(inputParameter), "'."
                     WRITE(*,*) "This is either not supported yet, or invalid."
@@ -861,4 +934,5 @@ CONTAINS
             coeffDictString=coeffDictString(posEnd+1:)
         END DO
     END SUBROUTINE coefficientParser
+
 END MODULE uclchemwrap

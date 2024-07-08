@@ -2,11 +2,14 @@ try:
     from .uclchemwrap import uclchemwrap as wrap
 except:
     pass
+import os
+
+import matplotlib.pyplot as plt
 import numpy as np
 from pandas import Series, read_csv
 from seaborn import color_palette
-import matplotlib.pyplot as plt
-import os
+
+from uclchem.constants import MAX_SPECIES
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -44,11 +47,7 @@ def read_output_file(output_file):
         pandas.DataFrame: A dataframe containing the abundances and physical parameters of the model at every time step.
     """
     f = open(output_file)
-    f.readline()
-    bits = f.readline().split()
-    radfield = float(bits[1])
     data = read_csv(f)
-    data["radfield"] = radfield
     data.columns = data.columns.str.strip()
     return data
 
@@ -267,9 +266,9 @@ def _get_species_rates(param_dict, input_abundances, species_index, reac_indxs):
 
     :returns: (ndarray) Array containing the rate of every reaction specified by reac_indxs
     """
-    input_abund = np.zeros(500)
+    input_abund = np.zeros(MAX_SPECIES)
     input_abund[: len(input_abundances)] = input_abundances
-    rate_indxs = np.ones(500)
+    rate_indxs = np.ones(MAX_SPECIES)
     rate_indxs[: len(reac_indxs)] = reac_indxs
     rates, success_flag, transfer, swap, bulk_layers = wrap.get_rates(
         param_dict, input_abund, species_index, rate_indxs
@@ -384,7 +383,7 @@ def _write_analysis(
         "\n\n***************************\nNew Important Reactions At: {0:.2e} years\n".format(
             time
         )
-    )    
+    )
     # Formation and destruction writing is disabled since the absolute numbers do not appear to be correct.
     # output_file.write("Formation = {0:.2e} from:".format(total_production))
     for k, reaction in enumerate(key_reactions):

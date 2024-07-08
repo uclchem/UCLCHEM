@@ -6,6 +6,7 @@ MODULE cshock_mod
     USE network
     USE physicscore
     USE constants
+    use f2py_constants
     USE sputtering
     IMPLICIT NONE
 
@@ -33,7 +34,7 @@ CONTAINS
         INTEGER, INTENT(OUT) :: successFlag
         REAL(dp) :: v01,g1,g2
 
-        successFlag=1
+        successFlag=0
         driftVel=0.0
         zn0=0.0
         vn0=0.0

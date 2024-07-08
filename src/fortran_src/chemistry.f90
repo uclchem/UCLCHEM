@@ -14,6 +14,8 @@ USE network
 USE photoreactions
 USE surfacereactions
 USE constants
+use f2py_constants
+USE postprocess_mod, only: lusecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
 IMPLICIT NONE
     !These integers store the array index of important species and reactions, x is for ions    
     !loop counters    
@@ -36,11 +38,11 @@ IMPLICIT NONE
     !initial fractional elemental abudances and arrays to store abundances
     REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,ffe,fli,fna,fpah,f15n,f13c,f18O,metallicity
     REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
-    REAL(dp),ALLOCATABLE :: abund(:,:)
+    REAL(dp), ALLOCATABLE :: abund(:,:)
     
     !Variables controlling chemistry
     LOGICAL :: PARAMETERIZE_H2FORM=.True.
-    REAL(dp) :: radfield,freezeFactor,omega,grainArea,cion,h2dis,lastTemp=0.0
+    REAL(dp) :: freezeFactor,omega,grainArea,cion,h2dis,lastTemp=0.0
     REAL(dp) :: ebmaxh2,epsilon,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
     REAL(dp), PARAMETER :: h2StickingZero=0.87d0,hStickingZero=1.0d0, h2StickingTemp=87.0d0,hStickingTemp=52.0d0
     
@@ -151,7 +153,7 @@ CONTAINS
 
         !Integration can fail in a way that we can manage. Allow maxLoops tries before giving up.
         loopCounter=0
-        successFlag=1
+        successFlag=0
         originalTargetTime=targetTime
         DO WHILE((currentTime .lt. targetTime) .and. (loopCounter .lt. maxLoops)) 
             !allow option for dens to have been changed elsewhere.
@@ -171,6 +173,14 @@ CONTAINS
             h2Col=h2ColToCell+0.5*abund(nh2,dstep)*density(dstep)*(cloudSize/real(points))
             coCol=coColToCell+0.5*abund(nco,dstep)*density(dstep)*(cloudSize/real(points))
             cCol=cColToCell+0.5*abund(nc,dstep)*density(dstep)*(cloudSize/real(points))
+
+            ! Postprocessed tracers have column densities provided
+            if (lusecoldens) then
+               h2col = lnh2(tstep)
+               cocol = lnco(tstep)
+               ! ccol = lnc(dstep, tstep) ! TODO enable C column density support
+               ccol = lnh(tstep) * abund(nc,dstep) ! No C column densities yet...
+            end if
 
             !Reset surface and bulk values in case of integration error or sputtering
             abund(nBulk,dstep)=sum(abund(bulkList,dstep))
@@ -199,7 +209,13 @@ CONTAINS
             WHERE(abund<MIN_ABUND) abund=MIN_ABUND
             density(dstep)=abund(NEQ,dstep)
             loopCounter=loopCounter+1
+
+            ! For postprocessing, force solver to try and reach original target time
+            if (usepostprocess) targettime = originaltargettime
         END DO
+
+        ! Postprocessing needs to reach next timestep whatever the cost
+        if (.not. usepostprocess) then
         IF (loopCounter .eq. maxLoops) successFlag=INT_TOO_MANY_FAILS_ERROR
 
         !Since targetTime can be altered, eventually leading to "successful" integration we want to
@@ -212,19 +228,19 @@ CONTAINS
             failedIntegrationCounter=failedIntegrationCounter+1
         END IF
         IF (failedIntegrationCounter .gt. maxConsecutiveFailures)&
-            &successFlag=INT_TOO_MANY_FAILS_ERROR
+             &successFlag=INT_TOO_MANY_FAILS_ERROR
+        end if
     END SUBROUTINE updateChemistry
 
     SUBROUTINE integrateODESystem(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
-        successFlag=1
+        successFlag=0
     !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
         !reset parameters for DVODE
         ITASK=1 !try to integrate to targetTime
         ISTATE=1 !pretend every step is the first
         abstol=abstol_factor*abund(:,dstep) !absolute tolerances depend on value of abundance
         WHERE(abstol<abstol_min) abstol=abstol_min ! to a minimum degree
-
         !Call the integrator.
         OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
         CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
@@ -278,7 +294,9 @@ CONTAINS
         !Set D to the gas density for use in the ODEs
         D=y(NEQ)
         ydot=0.0
-    
+
+        ! Column densities are fixed for postprocessing data, so don't do this bit
+        if (.not. lusecoldens) then
         !changing abundances of H2 and CO can causes oscillation since their rates depend on their abundances
         !recalculating rates as abundances are updated prevents that.
         !thus these are the only rates calculated each time the ODE system is called.
@@ -286,6 +304,7 @@ CONTAINS
         h2col=h2ColToCell+0.5*Y(nh2)*D*(cloudSize/real(points))
         rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel) !H2 photodissociation
         rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
+        end if
 
         !recalculate coefficients for ice processes
         safeMantle=MAX(1d-30,Y(nSurface))

@@ -9,6 +9,7 @@ MODULE collapse_mod
    USE physicscore
    USE network
    USE constants
+   use f2py_constants
    IMPLICIT NONE
    
    INTEGER :: collapse_mode

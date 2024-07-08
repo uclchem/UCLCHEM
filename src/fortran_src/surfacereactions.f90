@@ -1,5 +1,6 @@
 MODULE SurfaceReactions
   USE constants
+  USE f2py_constants
   USE network
   IMPLICIT NONE
   REAL(dp) :: surfaceCoverage,totalSwap,bulkLayersReciprocal

@@ -19,12 +19,12 @@ CONTAINS
 
         INQUIRE(UNIT=outputId, OPENED=fullOutput)
         IF (fullOutput) THEN
-            WRITE(outputId,334) fc,fo,fn,fs
-            WRITE(outputId,*) "Radfield ", radfield
+            ! WRITE(outputId,334) fc,fo,fn,fs
+            ! WRITE(outputId,*) "Radfield ", radfield
             WRITE(outputId,335) specName
         END IF
         335 FORMAT("Time,Density,gasTemp,av,zeta,point,",(999(A,:,',')))
-        334 FORMAT("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
+        ! 334 FORMAT("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
 
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
         INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
@@ -34,7 +34,6 @@ CONTAINS
         !read start file if choosing to use abundances from previous run 
         IF (readAbunds) THEN
             DO l=1,points
-                READ(abundLoadID,*) fhe,fc,fo,fn,fs,fmg
                 READ(abundLoadID,*) abund(:nspec,l)
                 REWIND(abundLoadID)
             END DO
@@ -44,35 +43,37 @@ CONTAINS
     SUBROUTINE finalOutput
         IF (writeAbunds) THEN
             DO dstep=1,points
-                WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
+                ! WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
                 WRITE(abundSaveID,8010) abund(:neq-1,dstep)
             8010  FORMAT((999(1pe15.5,:,',')))
             END DO
         END IF
     END SUBROUTINE finalOutput
 
-    SUBROUTINE output(returnArray,physicsarray, chemicalabunarray, dtime)
+    SUBROUTINE output(returnArray,successflag,physicsarray, chemicalabunarray, dtime, timepoints)
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
-        INTEGER, OPTIONAL :: dtime
+        INTEGER, OPTIONAL :: dtime, timepoints
+        INTEGER, intent(out) :: successflag
         LOGICAL :: returnArray
+        successflag = 0
         IF (returnArray) THEN
-            !WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,dstep,abund(:neq-1,dstep)
-            !8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
-            physicsarray(dtime, dstep, 1) = timeInYears
-            physicsarray(dtime, dstep, 2) = density(dstep)
-            physicsarray(dtime, dstep, 3) = gasTemp(dstep)
-            physicsarray(dtime, dstep, 4) = av(dstep)
-            physicsarray(dtime, dstep, 5) = radfield
-            physicsarray(dtime, dstep, 6) = zeta
-            physicsarray(dtime, dstep, 7) = dstep
-            physicsarray(dtime, dstep, 8) = fhe
-            physicsarray(dtime, dstep, 9) = fc
-            physicsarray(dtime, dstep, 10) = fo
-            physicsarray(dtime, dstep, 11) = fn
-            physicsarray(dtime, dstep, 12) = fs
-            physicsarray(dtime, dstep, 13) = fmg
-            chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
+            ! Try to catch out of bounds errors before they create a segfault
+            if (dtime .gt. timepoints+1) then
+                write(*,*) "Ran out of timepoints in arrays, trying to stop gracefully"
+                successflag=NOT_ENOUGH_TIMEPOINTS_ERROR
+                return
+            else 
+                physicsarray(dtime, dstep, 1) = timeInYears
+                physicsarray(dtime, dstep, 2) = density(dstep)
+                physicsarray(dtime, dstep, 3) = gasTemp(dstep)
+                physicsarray(dtime, dstep, 4) = dustTemp(dstep)
+                physicsarray(dtime, dstep, 5) = av(dstep)
+                physicsarray(dtime, dstep, 6) = radfield
+                physicsarray(dtime, dstep, 7) = zeta
+                physicsarray(dtime, dstep, 8) = dstep
+                chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
+            end if 
         ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
             WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,dstep,abund(:neq-1,dstep)
             8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))

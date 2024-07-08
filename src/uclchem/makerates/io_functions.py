@@ -2,19 +2,21 @@
 """
 Functions to read in the species and reaction files and write output files
 """
-##########################################################################################
-
 import csv
+import fileinput
 import logging
-import numpy as np
-
-from uclchem.makerates.network import Network
-from .species import Species, elementList
-from .reaction import Reaction, reaction_types
+import os
+from datetime import datetime
 from os.path import join
 from pathlib import Path
-from datetime import datetime
+
+import numpy as np
 import yaml
+
+from uclchem.constants import N_PHYSICAL_PARAMETERS
+from uclchem.makerates.network import Network
+from uclchem.makerates.reaction import Reaction, reaction_types
+from uclchem.makerates.species import Species
 
 
 def read_species_file(file_name: Path) -> list[Species]:
@@ -238,10 +240,56 @@ def write_outputs(network: Network, output_dir: str = None) -> None:
         network.three_phase,
     )
 
+    # Write the network files
     filename = fortran_src_dir / "network.f90"
     write_network_file(filename, network)
+    # write the constants needed for wrap.f90
 
+    filename = fortran_src_dir / "f2py_constants.f90"
+    f2py_constants = {
+        "n_species": len(network.get_species_list()),
+        "n_reactions": len(network.get_reaction_list()),
+        "n_physical_parameters": N_PHYSICAL_PARAMETERS,
+    }
+    write_f90_constants(f2py_constants, filename)
     # Write some meta information that can be used to read back in the reactions into Python
+    write_python_constants(f2py_constants, "../src/uclchem/constants.py")
+
+
+def write_f90_constants(
+    replace_dict, output_file_name: Path, template_file_path: Path = "fortran_templates"
+):
+    _ROOT = Path(__file__).parent
+    template_file_path = _ROOT / template_file_path
+    with open(template_file_path / "f2py_constants.f90", "r") as fh:
+        constants = fh.read()
+    constants = constants.format(**replace_dict)
+    with open(output_file_name, "w") as fh:
+        fh.writelines(constants)
+
+
+def write_python_constants(replace_dict, python_constants_file):
+    with fileinput.input(python_constants_file, inplace=True, backup=".bak") as file:
+        for line in file:
+            if fileinput.isfirstline():
+                print(
+                    "# This file was machine generated with Makerates on",
+                    datetime.now(),
+                    end="\n",
+                )
+                if line.startswith(
+                    "# This file was machine generated with Makerates on"
+                ):
+                    continue
+            hits = {
+                constant: line.strip().startswith(constant) for constant in replace_dict
+            }
+            if any(hits.values()):
+                variable = filter(hits.get, hits)
+
+                print(f"{variable} = {replace_dict[variable]}", end="")
+            else:
+                print(line, end="")
 
 
 def write_species(file_name: Path, species_list: list[Species]) -> None:
@@ -677,11 +725,12 @@ def write_network_file(file_name: Path, network: Network):
     reaction_list = network.get_reaction_list()
     openFile = open(file_name, "w")
     openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
-    openFile.write(
-        "    INTEGER, PARAMETER :: nSpec={0}, nReac={1}\n".format(
-            len(species_list), len(reaction_list)
-        )
-    )
+    # The following line has been moved to f2py_constants.f90
+    # openFile.write(
+    #     "    INTEGER, PARAMETER :: nSpec={0}, nReac={1}\n".format(
+    #         len(species_list), len(reaction_list)
+    #     )
+    # )
 
     # write arrays of all species stuff
     names = []
