@@ -36,7 +36,7 @@ CONTAINS
       DOUBLE PRECISION, INTENT(IN), OPTIONAL, DIMENSION(timePoints) :: nh2grid
       DOUBLE PRECISION, INTENT(IN), OPTIONAL, DIMENSION(timePoints) :: ncogrid
       DOUBLE PRECISION, INTENT(IN), OPTIONAL, DIMENSION(timePoints) :: ncgrid
-      write(*,*) 'Initialising postprocessing module'
+      ! write(*,*) 'Initialising postprocessing module'
       
 
       successFlag=0
@@ -98,7 +98,7 @@ CONTAINS
       ! Set target time from postprocessing data
       targettime = ltime(tstep) + 1.*seconds_per_year
 
-      write(*,"('Integrating chemistry to timestep ',I3,' ',ES10.3,' years')") tstep,targettime/seconds_per_year
+      ! write(*,"('Integrating chemistry to timestep ',I3,' ',ES10.3,' years')") tstep,targettime/seconds_per_year
 
     END SUBROUTINE updateTargetTime
 

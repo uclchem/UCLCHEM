@@ -2,7 +2,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
 from uclchem.constants import (
     MAX_SPECIES,
     N_PHYSICAL_PARAMETERS,
@@ -592,8 +591,6 @@ def postprocess(
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
-    with open("signature_file.txt", "w") as fh:
-        fh.write(wrap.__doc__)
     # Assure that every array is cast to a fortran array
     postprocess_arrays = dict(
         timegrid=time_array,
@@ -617,7 +614,6 @@ def postprocess(
             # Ensure Fortran memory
             array = np.asfortranarray(array, dtype=np.float64)
             postprocess_arrays[key] = array
-    print(postprocess_arrays)
     give_start_abund = starting_chemistry is not None
     if not give_start_abund:
         starting_chemistry = np.zeros(
@@ -647,8 +643,6 @@ def postprocess(
         usecoldens=coldens_H_array is not None,
         **postprocess_arrays,
     )
-    print(physicsArray)
-    print(chemicalAbunArray)
     if return_array or return_dataframe:
         physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
             physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
