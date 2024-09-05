@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "numpy", "wheel", "setuptools-git-versioning>=2.0,<3"]
+requires = ["setuptools>64,<74", "setuptools-scm", "numpy<2", "wheel", "setuptools-git-versioning>=2.0,<3"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools-git-versioning]
@@ -16,10 +16,12 @@ authors = [
     { name = "Ross O'Donoghue" },
 ]
 maintainers = [
-    { name = "Gijs Vermariën", email = "vermarien@strw.leidenuniv.nl" },
+	{name="Gijs Vermariën", email="vermarien@strw.leidenuniv.nl"},
 ]
+license = {text = "MIT License"}
 description = "A package for the astrochemical modelling of gas-grain chemistries."
 readme = "README.md"
-requires-python = ">=3.9"
-license = { text = "MIT License" }
-dependencies = ["pandas", "numpy", "pyyaml", "matplotlib", "seaborn", "pytest"]
+requires-python = ">=3.9,<3.12"
+dependencies = [
+    "pandas<2", "numpy<2", "pyyaml", "matplotlib", "seaborn", "pytest"
+]
