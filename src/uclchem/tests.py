@@ -52,7 +52,7 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
             order="F",
         ),
         chemicalabunarray=np.zeros(
-            shape=(2, 1, uclchem.constants.MAX_SPECIES),
+            shape=(2, 1, uclchem.constants.n_species),
             dtype=np.float64,
             order="F",
         ),
@@ -61,7 +61,7 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
     )
     abundances = abundances[: param_dict["outspecies"]]
     param_dict.pop("outspecies")
-    input_abund = np.zeros(uclchem.constants.MAX_SPECIES, dtype=np.float64, order="F")
+    input_abund = np.zeros(uclchem.constants.n_species, dtype=np.float64, order="F")
     input_abund[: len(abundances)] = abundances
     rates = wrap.get_odes(param_dict, input_abund)
     # Explicitely clean off the last element, for some reason the shape

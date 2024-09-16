@@ -2,6 +2,7 @@
 """
 Functions to read in the species and reaction files and write output files
 """
+
 import csv
 import fileinput
 import logging
@@ -9,11 +10,12 @@ import os
 from datetime import datetime
 from os.path import join
 from pathlib import Path
+from typing import Dict
 
 import numpy as np
 import yaml
 
-from uclchem.constants import N_PHYSICAL_PARAMETERS
+from uclchem.constants import PHYSICAL_PARAMETERS
 from uclchem.makerates.network import Network
 from uclchem.makerates.reaction import Reaction, reaction_types
 from uclchem.makerates.species import Species
@@ -249,7 +251,7 @@ def write_outputs(network: Network, output_dir: str = None) -> None:
     f2py_constants = {
         "n_species": len(network.get_species_list()),
         "n_reactions": len(network.get_reaction_list()),
-        "n_physical_parameters": N_PHYSICAL_PARAMETERS,
+        "n_physical_parameters": len(PHYSICAL_PARAMETERS),
     }
     write_f90_constants(f2py_constants, filename)
     # Write some meta information that can be used to read back in the reactions into Python
@@ -257,8 +259,18 @@ def write_outputs(network: Network, output_dir: str = None) -> None:
 
 
 def write_f90_constants(
-    replace_dict, output_file_name: Path, template_file_path: Path = "fortran_templates"
-):
+    replace_dict: Dict[str, int],
+    output_file_name: Path,
+    template_file_path: Path = "fortran_templates",
+) -> None:
+    """ Write the physical reactions to the f2py_constants.f90 file after every run of 
+    makerates, this ensures the Fortran and Python bits are compatible with one another.
+
+    Args:
+        replace_dict (Dict[str, int]): The dictionary with keys to replace and their values
+        output_file_name (Path): The path to the target f2py_constants.f90 file
+        template_file_path (Path, optional): The file to use as the template. Defaults to "fortran_templates".
+    """
     _ROOT = Path(__file__).parent
     template_file_path = _ROOT / template_file_path
     with open(template_file_path / "f2py_constants.f90", "r") as fh:
@@ -268,26 +280,39 @@ def write_f90_constants(
         fh.writelines(constants)
 
 
-def write_python_constants(replace_dict, python_constants_file):
+def write_python_constants(
+    replace_dict: Dict[str, int], python_constants_file: Path
+) -> None:
+    """Function to write the python constants to the constants.py file after every run,
+    this ensure the Python and Fortran bits are compatible with one another.
+
+    Args:
+        replace_dict (Dict[str, int]]): Dict with keys to replace and their values
+        python_constants_file (Path): Path to the target constant files.
+    """
     with fileinput.input(python_constants_file, inplace=True, backup=".bak") as file:
         for line in file:
+            # Add a timestamp to the file before the old one:
             if fileinput.isfirstline():
                 print(
                     "# This file was machine generated with Makerates on",
                     datetime.now(),
                     end="\n",
                 )
+                # Don't copy the old timestamp into the new file.
                 if line.startswith(
                     "# This file was machine generated with Makerates on"
                 ):
                     continue
+            # For every line, try to find constants, if we find them, replace them,
+            # if not, just print the line.
             hits = {
                 constant: line.strip().startswith(constant) for constant in replace_dict
             }
             if any(hits.values()):
-                variable = filter(hits.get, hits)
-
-                print(f"{variable} = {replace_dict[variable]}", end="")
+                # Filter, also we can only get one hit at a time
+                variable = list(filter(hits.get, hits))[0]
+                print(f"{variable} = {replace_dict[variable]}")
             else:
                 print(line, end="")
 
