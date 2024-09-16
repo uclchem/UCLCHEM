@@ -2,11 +2,12 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
 from uclchem.constants import (
-    MAX_SPECIES,
     N_PHYSICAL_PARAMETERS,
     PHYSICAL_PARAMETERS,
     TIMEPOINTS,
+    n_species,
 )
 
 from .uclchemwrap import uclchemwrap as wrap
@@ -57,7 +58,7 @@ def _create_fortranarray(param_dict, nPhysParam, timepoints=TIMEPOINTS):
         order="F",
     )
     chemicalAbunArray = np.zeros(
-        shape=(timepoints + 1, param_dict["points"], MAX_SPECIES),
+        shape=(timepoints + 1, param_dict["points"], n_species),
         dtype=np.float64,
         order="F",
     )
@@ -617,7 +618,7 @@ def postprocess(
     give_start_abund = starting_chemistry is not None
     if not give_start_abund:
         starting_chemistry = np.zeros(
-            shape=(MAX_SPECIES),
+            shape=(n_species),
             dtype=np.float64,
             order="F",
         )
@@ -664,4 +665,5 @@ def postprocess(
             success_flag,
         )
     else:
+        return _format_output(n_out, abunds, success_flag)
         return _format_output(n_out, abunds, success_flag)
