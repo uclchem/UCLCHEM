@@ -17,3 +17,5 @@ Contents
 .. toctree::
 
    api
+   uclchem
+   uclchem.makerates
