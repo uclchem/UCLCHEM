@@ -10,6 +10,11 @@ release = "0.1"
 version = "0.1.0"
 
 # -- General configuration
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath('../../src/uclchem'))
+
 
 extensions = [
     'sphinx.ext.duration',
@@ -36,13 +41,6 @@ html_theme = 'sphinx_rtd_theme'
 epub_show_urls = 'footnote'
 
 apidoc_module_dir = '../../src/uclchem'
-apidoc_output_dir = 'reference'
+apidoc_output_dir = 'api'
 apidoc_excluded_paths = ['tests']
 apidoc_separate_modules = True
-
-
-
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath('../../src/uclchem'))
