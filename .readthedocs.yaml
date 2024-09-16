@@ -16,8 +16,9 @@ build:
     # golang: "1.19"
   apt_packages:
     - gfortran
-  commands:
-    - pip install -e .
+  jobs:
+    pre_build:
+      - pip install -e .
 
 
 # Build documentation in the "docs/" directory with Sphinx
