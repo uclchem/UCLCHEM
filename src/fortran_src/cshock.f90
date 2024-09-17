@@ -32,6 +32,7 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
+        !f2py integer, intent(aux) :: points
         REAL(dp) :: v01,g1,g2
 
         successFlag=0
@@ -203,6 +204,7 @@ CONTAINS
 
     !For c-shock, sublimation is simply the sputtering subroutine
     SUBROUTINE sublimation(abund)
+        !f2py integer, intent(aux) :: points
         REAL(dp) :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
         REAL(dp) :: timeDelta

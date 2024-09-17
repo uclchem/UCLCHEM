@@ -32,6 +32,7 @@ CONTAINS
 
     SUBROUTINE readInputAbunds
         !read start file if choosing to use abundances from previous run 
+        !f2py integer, intent(aux) :: points
         IF (readAbunds) THEN
             DO l=1,points
                 READ(abundLoadID,*) abund(:nspec,l)
@@ -41,6 +42,7 @@ CONTAINS
     END SUBROUTINE readInputAbunds
 
     SUBROUTINE finalOutput
+        !f2py integer, intent(aux) :: points
         IF (writeAbunds) THEN
             DO dstep=1,points
                 ! WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg

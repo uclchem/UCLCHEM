@@ -24,6 +24,7 @@ CONTAINS
     ! sets up variables for the shock paramterization that follows    !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics(successFlag)
+        !f2py integer, intent(aux) :: points
         INTEGER, INTENT(OUT) :: successFlag
         successFlag=0
         !Reset variables for python wrap.
@@ -133,6 +134,7 @@ CONTAINS
     ! In hot core that means following thermalEvaporation subroutine.                 !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE sublimation(abund)
+        !f2py integer, intent(aux) :: points
         REAL(dp),INTENT(INOUT) :: abund(nspec+1,points)
         REAL(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)

@@ -70,6 +70,7 @@ contains
     !Update the density, temperature and av to their values at currentTime            !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updatePhysics
+        !f2py integer, intent(aux) :: points
          IF (gasTemp(dstep) .lt. maxTemp) THEN
         !Below we include temperature profiles for hot cores, selected using tempindx
         !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
@@ -83,7 +84,8 @@ contains
     END SUBROUTINE updatePhysics
 
     SUBROUTINE sublimation(abund)
-    ! This subroutine mimics episodic thermal desorption if the network is two pahse
+        ! This subroutine mimics episodic thermal desorption if the network is two pahse
+        !f2py integer, intent(aux) :: points
         REAL(dp) :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
         IF (.not. THREE_PHASE) THEN
@@ -103,6 +105,7 @@ contains
         !Evaporation is based on Viti et al. 2004. A proportion of the frozen species is released into the gas phase
         !in specific events. These events are activated by flags (eg solidflag) which can be set in physics module.
         !The species evaporated are in lists, created by Makerates and based on groupings. see the viti 2004 paper.
+        !f2py integer, intent(aux) :: points
         REAL(dp) :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
        
@@ -131,6 +134,7 @@ contains
     END SUBROUTINE thermalEvaporation
 
     SUBROUTINE partialSublimation(fractions, abund)
+        !f2py integer, intent(aux) :: points
         REAL(dp) :: abund(nspec+1,points)
         REAL(dp) :: fractions(:)
 
@@ -140,12 +144,14 @@ contains
     END SUBROUTINE partialSublimation
 
     SUBROUTINE totalSublimation(abund)
+        !f2py integer, intent(aux) :: points
         REAL(dp) :: abund(nspec+1,points)
         abund(gasiceList,dstep)=abund(gasiceList,dstep)+abund(iceList,dstep)
         abund(iceList,dstep)=1d-30
     END SUBROUTINE totalSublimation
 
     SUBROUTINE bindingEnergyEvap(abund)
+        !f2py integer, intent(aux) :: points
         REAL(dp) :: abund(nspec+1,points)
         REAL(dp), parameter :: SURFACE_SITE_DENSITY = 1.5d15
         INTENT(INOUT) :: abund

@@ -57,6 +57,7 @@ CONTAINS
     END SUBROUTINE updatePhysics
 
     SUBROUTINE sublimation(abund)
+        !f2py integer, intent(aux) :: points
     ! This subroutine must be in every physics module so we dummy it here.
         DOUBLE PRECISION :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
