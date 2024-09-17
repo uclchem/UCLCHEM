@@ -10,7 +10,7 @@
 MODULE chemistry
 USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
 & zeta, currentTime, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av
-USE dvode !dvode_f90_m
+USE DVODE_F90_M !dvode_f90_m
 USE network
 USE photoreactions
 USE surfacereactions

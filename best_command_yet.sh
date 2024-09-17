@@ -1,0 +1,1 @@
+f2py -m uclchemwrap -c --fcompiler=gfortran -I$PWD libdvode.a f2py_constants.f90 constants.f90 defaultparameters.f90 network.f90 physics-core.f90 cloud.f90 hotcore.f90 postprocess.f90 surfacereactions.f90 sputtering.f90 cshock.f90 jshock.f90 collapse.f90 photoreactions.f90  network.f90 chemistry.f90 rates.f90 io.f90 odes.f90 wrap.f90
