@@ -193,7 +193,7 @@ CONTAINS
             surfaceCoverage=bulkGainFromMantleBuildUp()
 
             
-            CALL calculateReactionRates(abund,safeMantle, safeBulk, rate)
+            CALL calculateReactionRates(abund,safeMantle, h2col, cocol, ccol, rate)
 
             !Integrate chemistry, and return fail if unrecoverable error was reached
             CALL integrateODESystem(successFlag)

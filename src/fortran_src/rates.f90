@@ -22,8 +22,8 @@ MODULE RATES
 
     REAL(dp) :: turbVel=1.0
 CONTAINS
-    SUBROUTINE calculateReactionRates(abund, safemantle, safebulk,  h2col, cocol, ccol, rate)
-        REAL(dp), INTENT(IN) :: abund(:, :), safemantle, safebulk, h2col, cocol, ccol
+    SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
+        REAL(dp), INTENT(IN) :: abund(:, :), safemantle, h2col, cocol, ccol
         REAL(dp), INTENT(INOUT) :: rate(:)
         INTEGER:: idx1,idx2,k
         REAL(dp) :: vA,vB
