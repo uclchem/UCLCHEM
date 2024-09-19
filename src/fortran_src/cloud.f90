@@ -5,7 +5,9 @@ MODULE cloud_mod
     USE constants
     USE DEFAULTPARAMETERS
     !f2py INTEGER, parameter :: dp
-    USE physicscore
+    USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
+    &coldens
     USE network
     use f2py_constants
     IMPLICIT NONE
@@ -58,12 +60,11 @@ CONTAINS
         !Nothing to do here :)
     END SUBROUTINE updatePhysics
 
-    SUBROUTINE sublimation(abund)
-        !f2py integer, intent(aux) :: points
-    ! This subroutine must be in every physics module so we dummy it here.
-        DOUBLE PRECISION :: abund(nspec+1,points)
-        INTENT(INOUT) :: abund
-    END SUBROUTINE sublimation    
+    !This is a dummy subroutine.
+    SUBROUTINE sublimation(abund, lpoints)
+        INTEGER, INTENT(IN) :: lpoints
+        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+    END SUBROUTINE sublimation
 END MODULE cloud_mod
 
 

@@ -642,7 +642,7 @@ CONTAINS
                 call coreUpdatePhysics
                 call modelUpdatePhysics()
                 !Sublimation checks if Sublimation should happen this time step and does it
-                CALL sublimation(abund)
+                CALL sublimation(abund, points)
                 !write this depth step now time, chemistry and physics are consistent
                 IF (returnArray) THEN
                     CALL output(returnArray, successFlag, physicsarray, chemicalabunarray, dtime, timepoints)

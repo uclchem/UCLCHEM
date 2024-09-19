@@ -5,8 +5,12 @@
 MODULE cshock_mod
     USE constants
     USE DEFAULTPARAMETERS
-    !f2py INTEGER, parameter :: dp    USE network
-    USE physicscore
+    !f2py INTEGER, parameter :: dp   
+    USE network
+    USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
+    &coldens
+    USE constants
     use f2py_constants
     USE sputtering
     IMPLICIT NONE
@@ -204,10 +208,9 @@ CONTAINS
     END SUBROUTINE updatePhysics
 
     !For c-shock, sublimation is simply the sputtering subroutine
-    SUBROUTINE sublimation(abund)
-        !f2py integer, intent(aux) :: points
-        REAL(dp) :: abund(nspec+1,points)
-        INTENT(INOUT) :: abund
+    SUBROUTINE sublimation(abund,lpoints)
+        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+        INTEGER, INTENT(IN) :: lpoints
         REAL(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)
         IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0))&

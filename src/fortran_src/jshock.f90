@@ -6,7 +6,9 @@ MODULE jshock_mod
     USE constants
     USE DEFAULTPARAMETERS
     !f2py INTEGER, parameter :: dp    
-    USE physicscore
+    USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
+    &coldens
     USE network
     USE f2py_constants
     USE sputtering
@@ -135,9 +137,9 @@ CONTAINS
     ! It receives the abundance array and performs any sublimation related activity   !
     ! In hot core that means following thermalEvaporation subroutine.                 !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE sublimation(abund)
-        !f2py integer, intent(aux) :: points
-        REAL(dp),INTENT(INOUT) :: abund(nspec+1,points)
+    SUBROUTINE sublimation(abund, lpoints)
+        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+        INTEGER, INTENT(IN) :: lpoints
         REAL(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)
 

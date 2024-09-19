@@ -122,8 +122,8 @@ REAL(dp) :: omega=0.5 !Dust grain albedo.
 !|gama|{1:0.0,2:0.0}| Set gama coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how gama is used for each reaction type.|
 CONTAINS
 ! Add a dummy subroutine to help f2py compile: https://github.com/numpy/numpy/issues/27167
-SUBROUTINE DUMMY_TWO()
-        integer :: dummy_two_output = 1
+SUBROUTINE DUMMY_TWO(dummy_two_output)
+        integer, intent(out) :: dummy_two_output
         dummy_two_output = 2
     END SUBROUTINE DUMMY_TWO
 END MODULE DEFAULTPARAMETERS

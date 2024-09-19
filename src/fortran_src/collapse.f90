@@ -9,7 +9,9 @@ MODULE collapse_mod
    USE constants
    USE DEFAULTPARAMETERS
    !f2py INTEGER, parameter :: dp
-   USE physicscore
+   USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+   & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av, &
+   &coldens
    USE network
    USE F2PY_CONSTANTS
    IMPLICIT NONE
@@ -103,11 +105,9 @@ CONTAINS
 
     !This module is isothermal and as such, no sublimation occurs.
     !This is a dummy subroutine.
-    SUBROUTINE sublimation(abund)
-         !f2py integer, intent(aux) :: points
-        REAL(dp) :: abund(nspec+1,points)
-        INTENT(IN) :: abund
-
+    SUBROUTINE sublimation(abund, lpoints)
+      REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+      INTEGER, INTENT(IN) :: lpoints
     END SUBROUTINE sublimation
 
 
