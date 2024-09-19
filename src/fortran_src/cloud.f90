@@ -2,9 +2,11 @@
 ! It simulates a static or collapsing cloud of isothermal gas.
 ! It is useful for static models or for producing initial abundances for the other modules.
 MODULE cloud_mod
+    USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp
     USE physicscore
     USE network
-    USE constants
     use f2py_constants
     IMPLICIT NONE
 CONTAINS

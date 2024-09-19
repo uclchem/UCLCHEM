@@ -1,33 +1,31 @@
 MODULE RATES
+    USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp
     USE network
     USE physicscore
     USE SurfaceReactions, only: MIN_SURFACE_ABUND, h2FormEfficiency, GRAIN_SURFACEAREA_PER_H, &
     & GRAIN_RADIUS, MAX_GRAIN_TEMP, THERMAL_VEL, SURFACE_SITE_DENSITY, GRAIN_CROSSSECTION_PER_H, &
     & diffusionreactionrate, desorptionfraction, vdiff
-    USE DEFAULTPARAMETERS, only: epsilon
     use photoreactions, only: H2PhotoDissRate, COPhotoDissRate, cIonizationRate
     IMPLICIT NONE
 
     !Variables controlling chemistry:
     LOGICAL :: PARAMETERIZE_H2FORM=.True.
     REAL(dp) :: grainArea,cion,h2dis,lastTemp=0.0
-    REAL(dp) :: freezeFactor 
-    REAL(dp) :: ebmaxh2, ebmaxcr, phi, ebmaxuvcr, uv_yield, uvcreff
-    REAL(dp) :: omega
 
     ! Controlling ice chemistry
     REAL(dp), PARAMETER :: h2StickingZero=0.87d0,hStickingZero=1.0d0, h2StickingTemp=87.0d0,hStickingTemp=52.0d0
     !Flags to control desorption processes
-    LOGICAL :: desorb,h2desorb,crdesorb,uvdesorb,thermdesorb
     REAL(dp) :: turbVel=1.0
     
 CONTAINS
     SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
         REAL(dp), INTENT(IN) :: abund(:, :), safemantle, h2col, cocol, ccol
         REAL(dp), INTENT(INOUT) :: rate(:)
-        INTEGER:: idx1,idx2
+        INTEGER(dp):: idx1,idx2
         REAL(dp) :: vA,vB
-        INTEGER :: i,j
+        INTEGER(dp) :: i,j
         ! REAL(dp) :: vdiff(:)
     
         !Calculate all reaction rates
@@ -317,7 +315,7 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
         REAL(dp) :: freezeRates(idx2-idx1+1)
-        INTEGER :: idx1,idx2
+        INTEGER(dp) :: idx1,idx2
         
         !additional factor for ions (beta=0 for neutrals)
         freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))

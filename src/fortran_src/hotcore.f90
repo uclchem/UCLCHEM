@@ -2,9 +2,11 @@
 ! It can also reproduce the episodic thermal sublimation seen in laboratory experiments for two phase models
 ! It is based on Viti et al. 2004 and Collings et al. 2004
 MODULE hotcore
+    USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp    
     USE physicscore
     USE network
-    USE constants
     USE f2py_constants
     IMPLICIT NONE
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done

@@ -10,18 +10,20 @@
 ! refratory dust grain material is sputtered.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 MODULE sputtering
-      USE network
-      USE constants
-      USE f2py_constants
-      USE SurfaceReactions, only: GAS_DUST_DENSITY_RATIO,GRAIN_RADIUS
-      USE physicscore, only: timeInYears
-      IMPLICIT NONE
+    USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp
+    USE network
+    USE f2py_constants
+    USE SurfaceReactions, only: GAS_DUST_DENSITY_RATIO,GRAIN_RADIUS
+    USE physicscore, only: timeInYears
+    IMPLICIT NONE
 
-      INTEGER :: projectiles(6)
-      REAL(dp) :: sConst,eta,epso
-      !Speed at which refractory species are also removed from dust grains during sputtering. 19.0 km/s taken from Guillet et al. 2011. (see above)
-      REAL(dp), PARAMETER :: VAPORIZE_SPEED=19.0 
-      INTEGER, ALLOCATABLE :: sputters(:),gasSputters(:)
+    INTEGER :: projectiles(6)
+    REAL(dp) :: sConst,eta,epso
+    !Speed at which refractory species are also removed from dust grains during sputtering. 19.0 km/s taken from Guillet et al. 2011. (see above)
+    REAL(dp), PARAMETER :: VAPORIZE_SPEED=19.0 
+    INTEGER, ALLOCATABLE :: sputters(:),gasSputters(:)
 CONTAINS
     SUBROUTINE sputteringSetup
         INTEGER :: i,j,k,new_size

@@ -8,13 +8,15 @@
 ! written to the fullOutput file.                                                             !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 MODULE chemistry
+USE constants
+USE DEFAULTPARAMETERS
+!f2py INTEGER, parameter :: dp
 USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
 & zeta, currentTime, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av
 USE DVODE_F90_M !dvode_f90_m
 USE network
 USE photoreactions
 USE surfacereactions
-USE constants
 use f2py_constants, only: nspec, nreac
 USE postprocess_mod, only: lusecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
 USE rates
@@ -23,19 +25,17 @@ IMPLICIT NONE
     !f2py integer, intent(aux) :: points
     !These integers store the array index of important species and reactions, x is for ions    
     !loop counters    
-    INTEGER :: i,j,l,writeStep,writeCounter=0,loopCounter,failedIntegrationCounter
+    INTEGER :: i,j,l,writeCounter=0,loopCounter,failedIntegrationCounter
     INTEGER, PARAMETER :: maxLoops=10,maxConsecutiveFailures=10
 
     !Array to store reaction rates
     REAL(dp) :: rate(nreac)
     
     !DLSODE variables    
-    INTEGER :: ITASK,ISTATE,NEQ,MXSTEP
-    REAL(dp) :: reltol,abstol_factor,abstol_min
+    INTEGER :: ITASK,ISTATE,NEQ
     REAL(dp), ALLOCATABLE :: abstol(:)
     ! TYPE(VODE_OPTS) :: OPTIONS
     !initial fractional elemental abudances and arrays to store abundances
-    REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,ffe,fli,fna,fpah,f15n,f13c,f18O,metallicity
     REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
     REAL(dp), ALLOCATABLE :: abund(:,:)
     

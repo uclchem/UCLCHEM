@@ -3,9 +3,11 @@
 !Based on James et al. 2019 A&A 634
 !https://ui.adsabs.harvard.edu/abs/2020A%26A...634A..17J/abstract
 MODULE jshock_mod
+    USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp    
     USE physicscore
     USE network
-    USE constants
     USE f2py_constants
     USE sputtering
     IMPLICIT NONE

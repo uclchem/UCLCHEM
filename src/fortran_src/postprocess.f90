@@ -1,9 +1,11 @@
 ! Module for post-processing data from hydrodynamical simulations
 ! Requires modifications to some core functions of the code
 MODULE postprocess_mod
+    USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp
     USE physicscore
     USE network
-    USE constants
     USE f2py_constants
     IMPLICIT NONE
 

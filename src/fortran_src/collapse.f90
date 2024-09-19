@@ -6,10 +6,12 @@
 ! collapse = 4: magnetised filament, initially unstable to collapse (Nakamura+1995)
 ! collapse = 5: magnetised cloud, initially stable, collapse due to ambipolar diffusion (Fiedler+1993)
 MODULE collapse_mod
+   USE constants
+   USE DEFAULTPARAMETERS
+   !f2py INTEGER, parameter :: dp
    USE physicscore
    USE network
    USE F2PY_CONSTANTS
-   USE constants
    IMPLICIT NONE
    
    INTEGER :: collapse_mode

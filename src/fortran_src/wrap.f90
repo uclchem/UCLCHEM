@@ -2,11 +2,12 @@
 !wrap.f90 subroutines are all accessible through the python wrap.
 ! Core algorithm is found in solveAbundances subroutine below, all others call it
 MODULE uclchemwrap
+    USE constants
     USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp
     USE physicscore
     USE chemistry
     USE io
-    USE constants
     USE F2PY_CONSTANTS
     USE postprocess_mod, ONLY: ntime
     IMPLICIT NONE
@@ -855,20 +856,20 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) abundLoadFile
                     abundLoadFile = TRIM(abundLoadFile)
                     open(abundLoadID,file=abundLoadFile,status='old')
-                CASE('outputfile')
-                    READ(inputValue,*,iostat=successFlag) outFile
-                    outputFile = trim(outFile)
-                    fullOutput=.True.
-                    open(outputId,file=outputFile,status='unknown',iostat=successFlag)
-                    IF (successFlag .ne. 0) THEN
-                        write(*,*) "An error occured when opening the output file!"//&
-                                        & NEW_LINE('A')//&
-                                    &" The failed file was ",outputFile&
-                                    &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
-                                    &//NEW_LINE('A')//"************************"
-                        successFlag=-1
-                        RETURN
-                    END IF
+                ! CASE('outputfile')
+                !     READ(inputValue,*,iostat=successFlag) outFile
+                !     outputFile = trim(outFile)
+                !     fullOutput=.True.
+                !     open(outputId,file=outputFile,status='unknown',iostat=successFlag)
+                !     IF (successFlag .ne. 0) THEN
+                !         write(*,*) "An error occured when opening the output file!"//&
+                !                         & NEW_LINE('A')//&
+                !                     &" The failed file was ",outputFile&
+                !                     &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
+                !                     &//NEW_LINE('A')//"************************"
+                !         successFlag=-1
+                !         RETURN
+                !     END IF
                 CASE('columnfile')
                     IF (trim(outSpeciesIn) .NE. '' ) THEN
                         columnOutput=.True.

@@ -3,9 +3,10 @@
 !Based on Jimenez-Serra et al. 2008 A&A 482
 !http://adsabs.harvard.edu/abs/2008A&A...482..549J
 MODULE cshock_mod
-    USE network
-    USE physicscore
     USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp    USE network
+    USE physicscore
     use f2py_constants
     USE sputtering
     IMPLICIT NONE
