@@ -2,6 +2,7 @@
 !wrap.f90 subroutines are all accessible through the python wrap.
 ! Core algorithm is found in solveAbundances subroutine below, all others call it
 MODULE uclchemwrap
+    USE DEFAULTPARAMETERS
     USE physicscore
     USE chemistry
     USE io
@@ -31,7 +32,8 @@ CONTAINS
         ! successFlag - integer flag indicating success or fail
         
         USE cloud_mod
-            
+        USE DEFAULTPARAMETERS
+
         !f2py integer, intent(aux) :: nspec, n_physics_params
         !f2py intent(out) abundance_out, specname_out 
         CHARACTER(LEN=*), INTENT(IN) :: dictionary, outSpeciesIn
@@ -95,6 +97,7 @@ CONTAINS
         ! successFlag - integer flag indicating success or fail
 
         USE collapse_mod
+        USE DEFAULTPARAMETERS
 
         !f2py integer,parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn, collapseFileIn
@@ -157,6 +160,7 @@ CONTAINS
         ! abundance_out - list of abundances of species in outSpeciesIn
         ! successFlag - integer flag indicating success or fail
         USE hotcore
+        USE DEFAULTPARAMETERS
 
         !f2py integer, parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
@@ -220,6 +224,7 @@ CONTAINS
         ! dissipation_time - float, dissipation time in years
         ! successFlag - integer flag indicating success or fail
         USE cshock_mod
+        USE DEFAULTPARAMETERS
 
         !f2py integer, parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
@@ -283,6 +288,7 @@ CONTAINS
         ! abundance_out - list of abundances of species in outSpeciesIn
         ! successFlag - integer flag indicating success or fail
         USE jshock_mod
+        USE DEFAULTPARAMETERS
 
         !f2py integer, parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
@@ -342,6 +348,7 @@ CONTAINS
         ! abundance_out - list of abundances of species in outSpeciesIn
         ! successFlag - integer flag indicating success or fail
         USE postprocess_mod  
+        USE DEFAULTPARAMETERS
 
         !f2py integer, parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
@@ -409,6 +416,7 @@ CONTAINS
         !return the rate of all reactions that include that species plus some extra variables
         !to allow for the calculation of the rate of bulk/surface ice transfer.
         USE cloud_mod
+        USE DEFAULTPARAMETERS
         ! USE constants, only : nspec
         !f2py integer, intent(aux) :: nspec
         CHARACTER(LEN=*):: dictionary
@@ -419,7 +427,7 @@ CONTAINS
         INTEGER :: speci,bulk_version,surface_version
         !f2py intent(in) dictionary,abundancesIn,speciesIndx,rateIndxs
         !f2py intent(out) speciesRates,successFlag,transfer,swap,bulk_layers
-        INCLUDE 'defaultparameters.f90'
+        ! INCLUDE 'defaultparameters.f90'
 
         CALL dictionaryParser(dictionary, "",successFlag)
         IF (successFlag .lt. 0) THEN
@@ -480,7 +488,7 @@ CONTAINS
         INTEGER :: successFlag
         !f2py intent(in) :: dictionary, abundancesIn
         !f2py intent(out) :: ratesOut
-        INCLUDE 'defaultparameters.f90'
+        ! INCLUDE 'defaultparameters.f90'
         CALL dictionaryParser(dictionary, "",successFlag)
 
         call coreInitializePhysics(successFlag)
@@ -548,7 +556,7 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: ncgrid
         successFlag=0
         ! Set variables to default values
-        INCLUDE 'defaultparameters.f90'
+        ! INCLUDE 'defaultparameters.f90'
         !Read input parameters from the dictionary
         CALL dictionaryParser(dictionary, outSpeciesIn, successFlag)
         IF (successFlag .lt. 0) THEN

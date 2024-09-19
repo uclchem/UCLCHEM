@@ -19,13 +19,13 @@ MODULE RATES
     REAL(dp), PARAMETER :: h2StickingZero=0.87d0,hStickingZero=1.0d0, h2StickingTemp=87.0d0,hStickingTemp=52.0d0
     !Flags to control desorption processes
     LOGICAL :: desorb,h2desorb,crdesorb,uvdesorb,thermdesorb
-
     REAL(dp) :: turbVel=1.0
+    
 CONTAINS
     SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
         REAL(dp), INTENT(IN) :: abund(:, :), safemantle, h2col, cocol, ccol
         REAL(dp), INTENT(INOUT) :: rate(:)
-        INTEGER:: idx1,idx2,k
+        INTEGER:: idx1,idx2
         REAL(dp) :: vA,vB
         INTEGER :: i,j
         ! REAL(dp) :: vdiff(:)

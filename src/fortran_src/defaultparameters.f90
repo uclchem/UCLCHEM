@@ -3,7 +3,6 @@
 !!If you add a parameter, please take the time to add a useful descriptor comment on the same line
 !!and then re-run utils/generate_param_docs.py to update the docs.
 !!note the resuting md file needs manually adding to the website.
-
 MODULE DEFAULTPARAMETERS
 use, intrinsic :: iso_fortran_env, dp=>real64 !define the size of our double precision numbers
 !---  
@@ -19,7 +18,7 @@ IMPLICIT NONE
 REAL(dp), PARAMETER :: initialTemp=10.0 !Initial gas temperature in Kelvin for all gas parcels in model.
 REAL(dp), PARAMETER :: initialDens=1.00d2 !Initial gas density in H nuclei per cm$^{-3}$ for all gas parcels in model.
 REAL(dp), PARAMETER :: finalDens=1.00d5 !Final gas density achieved via freefall.
-REAL(dp), PARAMETER :: currentTime=0.0 !Time at start of model in years.
+! REAL(dp), PARAMETER :: currentTime=0.0 !Time at start of model in years.
 REAL(dp), PARAMETER :: finalTime=5.0d6 !Time to stop model in years, if not using `endAtFinalDensity` below.
 REAL(dp), PARAMETER :: radfield=1.0 !Interstellar radiation field in Habing
 REAL(dp), PARAMETER :: zeta=1.0 !Cosmic ray ionisation rate as multiple of $1.3 10^{-17} s^{-1}$

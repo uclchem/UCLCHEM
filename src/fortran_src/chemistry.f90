@@ -17,7 +17,8 @@ USE surfacereactions
 USE constants
 use f2py_constants, only: nspec, nreac
 USE postprocess_mod, only: lusecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
-USE rates, only: calculateReactionRates
+USE rates
+USE odes
 IMPLICIT NONE
     !f2py integer, intent(aux) :: points
     !These integers store the array index of important species and reactions, x is for ions    
@@ -25,13 +26,9 @@ IMPLICIT NONE
     INTEGER :: i,j,l,writeStep,writeCounter=0,loopCounter,failedIntegrationCounter
     INTEGER, PARAMETER :: maxLoops=10,maxConsecutiveFailures=10
 
-   
-
-
     !Array to store reaction rates
     REAL(dp) :: rate(nreac)
     
-
     !DLSODE variables    
     INTEGER :: ITASK,ISTATE,NEQ,MXSTEP
     REAL(dp) :: reltol,abstol_factor,abstol_min
@@ -42,9 +39,6 @@ IMPLICIT NONE
     REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
     REAL(dp), ALLOCATABLE :: abund(:,:)
     
-
-    
-
     REAL(dp) :: MIN_ABUND = 1.0d-30 !Minimum abundance allowed
 CONTAINS
     SUBROUTINE initializeChemistry(readAbunds)
@@ -314,7 +308,7 @@ CONTAINS
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         ! INCLUDE 'odes.f90'
-        CALL GETYDOT(RATE, Y, bulkLayersReciprocal, safeMantle, D, YDOT)
+        CALL GETYDOT(RATE, Y, bulkLayersReciprocal, safeMantle,safeBulk, D, YDOT)
 
         ! get density change from physics module to send to DLSODE
 
