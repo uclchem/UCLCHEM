@@ -5,7 +5,7 @@ MODULE IO
     USE chemistry
     USE physicscore
     
-    ! CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile, outFile
+    ! CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile
     LOGICAL :: columnOutput=.False.,fullOutput=.False.,readAbunds=.False.,writeAbunds=.False.
     CHARACTER (LEN=15),ALLOCATABLE :: outSpecies(:)
     INTEGER :: nout
