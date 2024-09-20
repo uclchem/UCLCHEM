@@ -4,9 +4,7 @@ MODULE RATES
     !f2py INTEGER, parameter :: dp
     USE network
     USE physicscore
-    USE SurfaceReactions, only: MIN_SURFACE_ABUND, h2FormEfficiency, GRAIN_SURFACEAREA_PER_H, &
-    & GRAIN_RADIUS, MAX_GRAIN_TEMP, THERMAL_VEL, SURFACE_SITE_DENSITY, GRAIN_CROSSSECTION_PER_H, &
-    & diffusionreactionrate, desorptionfraction, vdiff
+    USE SurfaceReactions
     use photoreactions, only: H2PhotoDissRate, COPhotoDissRate, cIonizationRate
     IMPLICIT NONE
 
