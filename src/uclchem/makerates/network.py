@@ -65,6 +65,9 @@ class Network:
         if self.excited_species:
             self.add_excited_surface_reactions()
 
+        # Ensure that the branching ratios are correct, if not, edit the network to enforce it.
+        self.branching_ratios_checks()
+
         # Sort the reactions before returning them, this is important for convergence of the ODE
         self.sort_reactions()
         self.sort_species()
@@ -110,6 +113,12 @@ class Network:
     def add_reactions(
         self, reactions: Union[Union[Reaction, str], list[Union[Reaction, str]]]
     ):
+        """ Add a reaction, list of inputs to the Reaction class or list of reactions to the network.
+
+        Args:
+            reactions (Union[Union[Reaction, str], list[Union[Reaction, str]]]): Reaction or list or reactions
+
+        """
         if isinstance(reactions, list):
             if isinstance(reactions[0], Reaction):
                 # if it is a list of reactions, no action is needed.
@@ -151,7 +160,8 @@ class Network:
                 self.add_species(Species([specie, -1, 0.0, 0.0, 0.0, 0.0, 0.0]))
             # Index and add the new reaction.
             new_idx = max(list(self._reactions_dict.keys())) + 1
-            logging.debug(f"New key is: {new_idx}")
+            if new_idx in self._reactions_dict.keys():
+                raise ValueError(f"Makerates is trying to add a reaction with index {new_idx}, but something is already there, please report this to the developers.")
             self._reactions_dict[new_idx] = reaction
         logging.debug(f"n_reactions {len(current_reaction_list)} after adding them to the internal dict")
 
@@ -420,7 +430,6 @@ class Network:
         self.duplicate_checks()
         self.index_important_reactions()
         self.index_important_species()
-        self.branching_ratios_checks()
 
     def check_and_filter_species(self) -> None:
         """Check every speces in network appears in at least one reaction.
