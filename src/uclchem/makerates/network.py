@@ -3,18 +3,19 @@ This python file contains all functions for de-duplicating species and reaction 
 checking for common errors, and automatic addition of reactions such as freeze out,
 desorption and bulk reactions for three phase models.
 """
-from .species import Species, elementList
-from .reaction import Reaction, reaction_types
 import logging
 from copy import deepcopy
-from numpy import unique
-from numpy import any as np_any
 from typing import Union
+
+from numpy import any as np_any
+from numpy import unique
+
+from .reaction import Reaction, reaction_types
+from .species import Species, elementList
 
 
 class Network:
     """The network class stores all the information about reaction network."""
-
     def __init__(
         self,
         species: list[Species],
@@ -64,6 +65,9 @@ class Network:
         if self.excited_species:
             self.add_excited_surface_reactions()
 
+        # Ensure that the branching ratios are correct, if not, edit the network to enforce it.
+        self.branching_ratios_checks()
+
         # Sort the reactions before returning them, this is important for convergence of the ODE
         self.sort_reactions()
         self.sort_species()
@@ -109,6 +113,12 @@ class Network:
     def add_reactions(
         self, reactions: Union[Union[Reaction, str], list[Union[Reaction, str]]]
     ):
+        """ Add a reaction, list of inputs to the Reaction class or list of reactions to the network.
+
+        Args:
+            reactions (Union[Union[Reaction, str], list[Union[Reaction, str]]]): Reaction or list or reactions
+
+        """
         if isinstance(reactions, list):
             if isinstance(reactions[0], Reaction):
                 # if it is a list of reactions, no action is needed.
@@ -127,6 +137,7 @@ class Network:
                 "Input must either be (a list of) Reaction class or csv entries"
             )
         current_reaction_list = self.get_reaction_list()
+        logging.debug(f"n_reactions {len(current_reaction_list)} before adding new reactions to the internal dict")
         for reaction in reactions:
             if reaction in current_reaction_list:
                 # See if we have a collision with the any reactions with identical reactants and
@@ -148,8 +159,12 @@ class Network:
                 # TODO: get more sensible mass
                 self.add_species(Species([specie, -1, 0.0, 0.0, 0.0, 0.0, 0.0]))
             # Index and add the new reaction.
-            new_idx = list(self._reactions_dict.keys())[-1] + 1
+            new_idx = max(list(self._reactions_dict.keys())) + 1
+            if new_idx in self._reactions_dict.keys():
+                raise ValueError(f"Makerates is trying to add a reaction with index {new_idx}, but something is already there, please report this to the developers.")
             self._reactions_dict[new_idx] = reaction
+        logging.debug(f"n_reactions {len(current_reaction_list)} after adding them to the internal dict")
+
 
     def find_similar_reactions(self, reaction: Reaction) -> dict[int, Reaction]:
         """Reactions are similar if the reaction has the same reactants and products,
@@ -1016,6 +1031,41 @@ class Network:
                 "e-", "elec"
             ).replace("#", "g")
             self.species_indices[name] = species_index
+            
+    def branching_ratios_checks(self) -> None:
+        """ Check that the branching ratios for the ice reactions sum to 1.0. If they do not, correct them.
+        This needs to be done for LH and LHDES separately since we already added the desorption to the network.
+        """
+        branching_reactions = {}
+        for i, reaction in enumerate(self.get_reaction_list()):
+            if reaction.get_reaction_type() in ["LH", "LHDES"]:
+                reactant_string = ",".join(reaction.get_reactants())
+                if reactant_string in branching_reactions:
+                    branching_reactions[reactant_string] += reaction.get_alpha()
+                else:
+                    branching_reactions[reactant_string] = reaction.get_alpha()
+        if not all(branching_reactions.values()) == 1.0:
+            logging.warning("Some of the branching ratios do not sum to 1.0, correcting those that do not")
+            for i, reaction in enumerate(self.get_reaction_list()):
+                    if reaction.get_reaction_type() in ["LH", "LHDES"]:
+                        reactant_string = ",".join(reaction.get_reactants())
+                        if reactant_string in branching_reactions and branching_reactions[reactant_string] != 1.0:
+                            new_reaction = deepcopy(reaction)
+                            if branching_reactions[reactant_string] != 0.0:
+                                new_alpha = new_reaction.get_alpha() / branching_reactions[reactant_string]
+                                logging.warning(f"Grain reaction {reaction} has a branching ratio of {new_reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}")
+                                new_reaction.set_alpha(new_alpha)
+                                logging.debug(f"n_reactions: {len(self.get_reaction_list())}removing reaction {reaction}")
+                                self.remove_reaction(reaction)
+                                logging.debug(f"n_reactions: {len(self.get_reaction_list())} removed {reaction}, adding {new_reaction}")
+                                self.add_reactions(new_reaction)
+                                logging.debug(f"n_reactions: {len(self.get_reaction_list())} added {new_reaction}")
+                            else:
+                                logging.warning(f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether")
+                                self.remove_reaction(reaction)
+                
+
+                
 
     def __repr__(self) -> str:
         return (
