@@ -35,12 +35,17 @@ def read_species_file(file_name: Path) -> list[Species]:
     user_defined_bulk = []
     with open(file_name, "r") as f:
         reader = csv.reader(f, delimiter=",", quotechar="|")
-        for row in reader:
-            if row[0] != "NAME" and "!" not in row[0]:
-                if "@" in row[0]:
-                    user_defined_bulk.append(Species(row))
-                else:
-                    species_list.append(Species(row))
+        for idx, row in enumerate(reader):
+            try:
+                if row[0] != "NAME" and "!" not in row[0]:
+                    if "@" in row[0]:
+                        user_defined_bulk.append(Species(row))
+                    else:
+                        species_list.append(Species(row))
+            except IndexError as exc:
+                print(f"Error reading species file {file_name} at line {idx}")
+                raise exc
+            
     return species_list, user_defined_bulk
 
 

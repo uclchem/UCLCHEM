@@ -3,18 +3,19 @@ This python file contains all functions for de-duplicating species and reaction 
 checking for common errors, and automatic addition of reactions such as freeze out,
 desorption and bulk reactions for three phase models.
 """
-from .species import Species, elementList
-from .reaction import Reaction, reaction_types
 import logging
 from copy import deepcopy
-from numpy import unique
-from numpy import any as np_any
 from typing import Union
+
+from numpy import any as np_any
+from numpy import unique
+
+from .reaction import Reaction, reaction_types
+from .species import Species, elementList
 
 
 class Network:
     """The network class stores all the information about reaction network."""
-
     def __init__(
         self,
         species: list[Species],
@@ -415,6 +416,7 @@ class Network:
         self.duplicate_checks()
         self.index_important_reactions()
         self.index_important_species()
+        self.branching_ratios_checks()
 
     def check_and_filter_species(self) -> None:
         """Check every speces in network appears in at least one reaction.
@@ -1016,6 +1018,35 @@ class Network:
                 "e-", "elec"
             ).replace("#", "g")
             self.species_indices[name] = species_index
+            
+    def branching_ratios_checks(self) -> None:
+        branching_reactions = {}
+        for i, reaction in enumerate(self.get_reaction_list()):
+            if reaction.get_reaction_type() in ["LH", "LHDES"]:
+                reactant_string = ",".join(reaction.get_reactants())
+                if reactant_string in branching_reactions:
+                    branching_reactions[reactant_string] += reaction.get_alpha()
+                else:
+                    branching_reactions[reactant_string] = reaction.get_alpha()
+        if not all(branching_reactions.values()) == 1.0:
+            logging.warning("Some of the branching ratios do not sum to 1.0, correcting those that do not")
+            for i, reaction in enumerate(self.get_reaction_list()):
+                    if reaction.get_reaction_type() in ["LH", "LHDES"]:
+                        reactant_string = ",".join(reaction.get_reactants())
+                        if reactant_string in branching_reactions and branching_reactions[reactant_string] != 1.0:
+                            new_reaction = deepcopy(reaction)
+                            if branching_reactions[reactant_string] != 0.0:
+                                new_alpha = new_reaction.get_alpha() / branching_reactions[reactant_string]
+                                logging.warning(f"Grain reaction {reaction} has a branching ratio of {new_reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}")
+                                new_reaction.set_alpha(new_alpha)
+                                self.remove_reaction(reaction)
+                                self.add_reactions(new_reaction)
+                            else:
+                                logging.warning(f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether")
+                                self.remove_reaction(reaction)
+                
+
+                
 
     def __repr__(self) -> str:
         return (
