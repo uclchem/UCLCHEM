@@ -128,6 +128,7 @@ class Network:
                 "Input must either be (a list of) Reaction class or csv entries"
             )
         current_reaction_list = self.get_reaction_list()
+        logging.debug(f"n_reactions {len(current_reaction_list)} before adding new reactions to the internal dict")
         for reaction in reactions:
             if reaction in current_reaction_list:
                 # See if we have a collision with the any reactions with identical reactants and
@@ -149,8 +150,11 @@ class Network:
                 # TODO: get more sensible mass
                 self.add_species(Species([specie, -1, 0.0, 0.0, 0.0, 0.0, 0.0]))
             # Index and add the new reaction.
-            new_idx = list(self._reactions_dict.keys())[-1] + 1
+            new_idx = max(list(self._reactions_dict.keys())) + 1
+            logging.debug(f"New key is: {new_idx}")
             self._reactions_dict[new_idx] = reaction
+        logging.debug(f"n_reactions {len(current_reaction_list)} after adding them to the internal dict")
+
 
     def find_similar_reactions(self, reaction: Reaction) -> dict[int, Reaction]:
         """Reactions are similar if the reaction has the same reactants and products,
@@ -1020,6 +1024,9 @@ class Network:
             self.species_indices[name] = species_index
             
     def branching_ratios_checks(self) -> None:
+        """ Check that the branching ratios for the ice reactions sum to 1.0. If they do not, correct them.
+        This needs to be done for LH and LHDES separately since we already added the desorption to the network.
+        """
         branching_reactions = {}
         for i, reaction in enumerate(self.get_reaction_list()):
             if reaction.get_reaction_type() in ["LH", "LHDES"]:
@@ -1039,8 +1046,11 @@ class Network:
                                 new_alpha = new_reaction.get_alpha() / branching_reactions[reactant_string]
                                 logging.warning(f"Grain reaction {reaction} has a branching ratio of {new_reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}")
                                 new_reaction.set_alpha(new_alpha)
+                                logging.debug(f"n_reactions: {len(self.get_reaction_list())}removing reaction {reaction}")
                                 self.remove_reaction(reaction)
+                                logging.debug(f"n_reactions: {len(self.get_reaction_list())} removed {reaction}, adding {new_reaction}")
                                 self.add_reactions(new_reaction)
+                                logging.debug(f"n_reactions: {len(self.get_reaction_list())} added {new_reaction}")
                             else:
                                 logging.warning(f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether")
                                 self.remove_reaction(reaction)
