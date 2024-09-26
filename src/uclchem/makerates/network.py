@@ -951,42 +951,28 @@ class Network:
             # CO + PHOTON -> O + C
             reacs = reaction.get_reactants()
             prods = reaction.get_products() 
-            if ("CO" in reacs) and ("PHOTON" in reacs):
-                if "O" in prods and "C" in prods:
-                    self.important_reactions["nR_CO_hv"] = i + 1
-            # C + PHOTON -> ???
-            if ("C" in reacs) and ("PHOTON" in reacs):
-                self.important_reactions["nR_C_hv"] = i + 1
-            # H2FORM -> ???
-            if "H2FORM" in reacs:
-                self.important_reactions["nR_H2Form_CT"] = i + 1
-            # H + #H -> H2 AND H + #H -> #H2
-            if ("H" in reacs) and ("#H" in reacs):
-                if "H2" in prods:
-                    self.important_reactions["nR_H2Form_ERDes"] = i + 1
-                elif "#H2" in prods:
-                    self.important_reactions["nR_H2Form_ER"] = i + 1
-            # #H + #H + LH -> ???
-            if (reacs.count("#H") == 2) and ("LH" in reacs):
-                self.important_reactions["nR_H2Form_LH"] = i + 1
-            # #H + #H + LHDES -> ???
-            if (reacs.count("#H") == 2) and ("LHDES" in reacs):
-                self.important_reactions["nR_H2Form_LHDes"] = i + 1
-            # H + FREEZE -> ???
-            if ("H" in reacs) and ("FREEZE" in reacs):
-                self.important_reactions["nR_HFreeze"] = i + 1
-            # H2 + FREEZE -> ???
-            if ("H2" in reacs) and ("FREEZE" in reacs):
-                self.important_reactions["nR_H2Freeze"] = i + 1
-            # E- + FREEZE -> ???
-            if ("E-" in reacs) and ("FREEZE" in reacs):
-                self.important_reactions["nR_EFreeze"] = i + 1
-            # H2 + PHOTON -> ???
-            if ("H2" in reacs) and ("PHOTON" in reacs):
-                self.important_reactions["nR_H2_hv"] = i + 1
-            # H2 + CRP -> H + H
-            if ("H2" in reacs) and ("CRP" in reacs) and (prods.count("H") == 2):
-                self.important_reactions["nR_H2_crp"] = i + 1
+            
+            reaction_filters = {"nR_CO_hv" : lambda reacs, prods: ("CO" in reacs) and ("PHOTON" in reacs) and ("O" in prods) and ("C" in prods),
+                                "nR_C_hv": lambda reacs, prods: ("C" in reacs) and ("PHOTON" in reacs),
+                                "nR_H2Form_CT": lambda reacs, prods: "H2FORM" in reacs,
+                                "nR_H2Form_ERDes": lambda reacs, prods: ("H" in reacs) and ("#H" in reacs) and ("H2" in prods),
+                                "nR_H2Form_ER": lambda reacs, prods: ("H" in reacs) and ("#H" in reacs) and ("#H2" in prods),
+                                "nR_H2Form_LH": lambda reacs, prods: (reacs.count("#H") == 2) and ("LH" in reacs),
+                                "nR_H2Form_LHDes": lambda reacs, prods: (reacs.count("#H") == 2) and ("LHDES" in reacs),
+                                "nR_HFreeze": lambda reacs, prods: ("H" in reacs) and ("FREEZE" in reacs),
+                                "nR_H2Freeze": lambda reacs, prods: ("H2" in reacs) and ("FREEZE" in reacs),
+                                "nR_EFreeze": lambda reacs, prods: ("E-" in reacs) and ("FREEZE" in reacs),
+                                "nR_H2_hv": lambda reacs, prods: ("H2" in reacs) and ("PHOTON" in reacs),
+                                "nR_H2_crp": lambda reacs, prods: ("H2" in reacs) and ("CRP" in reacs) and (prods.count("H") == 2)}
+            
+            for key, lambda_filter in reaction_filters.items():
+                if lambda_filter(reacs, prods):
+                    if key in self.important_reactions and self.important_reactions[key] is not None:
+                        raise RuntimeError(
+                            f"When trying to index the important reactions, we found a disastrous reaction {reaction} is a duplicate of {self.important_reactions[key]}, there can only be one reaction that matches {key}, {value}"
+                        )
+                    self.important_reactions[key] = i + 1
+
         if np_any([value is None for value in self.important_reactions.values()]):
             logging.debug(self.important_reactions)
             missing_reac_error = "Input reaction file is missing mandatory reactions"
