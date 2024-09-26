@@ -900,15 +900,18 @@ class Network:
                             if not (
                                 (reaction1.get_templow() >= reaction2.get_temphigh())
                                 or (reaction1.get_temphigh() <= reaction2.get_templow())
-                            ):
-                                logging.warning(
-                                    f"\tReactions {i+1} and {j+1} are possible duplicates\n\t\t"
-                                    + str(reaction1)
-                                    + f"with temperature range [{reaction1.get_templow()}, {reaction1.get_temphigh()}]"
-                                    + "\n\t\t"
-                                    + str(reaction2)
-                                    + f"with temperature range [{reaction2.get_templow()}, {reaction2.get_temphigh()}]"
-                                )
+                            ):  
+                                if reaction1.get_source() == reaction2.get_source() and reaction1.get_source() == "UMIST":
+                                    logging.info(f"Detected overlapping UMIST reactions {reaction1} wit indices {i+1} {j+1}, this is done in UMIST to provide better rates. ")
+                                else:                                    
+                                    logging.warning(
+                                        f"\tReactions with indices {i+1} and {j+1} are possible duplicates\n\t\t"
+                                        + str(reaction1)
+                                        + f" with temperature range [{reaction1.get_templow()}, {reaction1.get_temphigh()}] and source {reaction1.get_source()}"
+                                        + "\n\t\t"
+                                        + str(reaction2)
+                                        + f" with temperature range [{reaction2.get_templow()}, {reaction2.get_temphigh()}] and source {reaction2.get_source()}"
+                                    )
                                 duplicates = True
                                 # adjust temperatures so temperature ranges are adjacent
                                 if reaction1.get_temphigh() > reaction2.get_temphigh():

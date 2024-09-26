@@ -80,21 +80,21 @@ def read_reaction_file(
                     continue
                 reaction_row = row[2:4] + [""] + row[4:8] + row[9:]
                 if check_reaction(reaction_row, keep_list):
-                    reactions.append(Reaction(reaction_row))
+                    reactions.append(Reaction(reaction_row, reaction_source="UMIST"))
     elif ftype == "UCL":
         with open(file_name, "r") as f:
             reader = csv.reader(f, delimiter=",", quotechar="|")
             for row in reader:
                 if (len(row) > 1) and (row[0][0] != "!"):
                     if check_reaction(row, keep_list):
-                        reactions.append(Reaction(row))
+                        reactions.append(Reaction(row, reaction_source="UCL"))
                     else:
                         dropped_reactions.append(row)
 
     elif ftype == "KIDA":
         for row in kida_parser(file_name):
             if check_reaction(row, keep_list):
-                reactions.append(Reaction(row))
+                reactions.append(Reaction(row, reaction_source="KIDA"))
 
     else:
         raise ValueError("Reaction file type must be one of 'UMIST', 'UCL' or 'KIDA'")
