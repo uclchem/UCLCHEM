@@ -24,7 +24,7 @@ reaction_types = [
 
 
 class Reaction:
-    def __init__(self, inputRow):
+    def __init__(self, inputRow, reaction_source=None):
         try:
             self.set_reactants(
                 [
@@ -51,7 +51,8 @@ class Reaction:
                 "Input for Reaction should be a list of length 12"
             ) from error
         self.duplicate = False
-
+        self.source = reaction_source  # The source of the reaction, e.g. UMIST, KIDA or user defined
+        
         # body_count is the number of factors of density to include in ODE
         # we drop a factor of density from both the LHS and RHS of ODES
         # So reactions with 1 body have no factors of density which we manage by counting from -1
@@ -230,6 +231,22 @@ class Reaction:
             return self.get_reactants()[1]
         else:
             return "TWOBODY"
+        
+    def get_source(self) -> str:
+        """Get the source of the reaction
+
+        Returns:
+            str: The source of the reaction
+        """
+        return self.source
+
+    def set_source(self, source: str) -> None:
+        """Set the source of the reaction
+
+        Args:
+            source (str): The source of the reaction
+        """
+        self.source = source
 
     def convert_to_bulk(self) -> None:
         """Convert the surface species to bulk species in place for this reaction."""
