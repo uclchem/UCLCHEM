@@ -1,0 +1,4 @@
+09-30 14:46 INFO: Configured the logging. Files verbosity is INFO and stdout verbosity is WARNING
+09-30 14:46 INFO: species_file : /home/tobiasdijkhuis/PhD/2024-Dijkhuis-Network-Testing/species.csv
+09-30 14:46 INFO: database_reaction_file : /home/tobiasdijkhuis/PhD/2024-Dijkhuis-Network-Testing/reactions-500.csv
+09-30 14:46 INFO: database_reaction_type : UCL

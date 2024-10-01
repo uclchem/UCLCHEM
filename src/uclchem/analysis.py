@@ -78,7 +78,7 @@ def create_abundance_plot(df, species, figsize=(16, 9), plot_file=None):
     return fig, ax
 
 
-def plot_species(ax, df, species, **plot_kwargs):
+def plot_species(ax, df, species, legend=True, **plot_kwargs):
     """Plot the abundance of a list of species through time directly onto an axis.
 
     Args:
@@ -109,7 +109,8 @@ def plot_species(ax, df, species, **plot_kwargs):
             **plot_kwargs,
         )
         ax.set(yscale="log")
-        ax.legend()
+        if legend:
+            ax.legend()
     return ax
 
 
@@ -177,8 +178,20 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
                 bulk_layers,
             )
 
+            #GAS_DUST_MASS_RATIO = 100.0
+            #GRAIN_RADIUS = 1.0e-5
+            #GRAIN_DENSITY = 3.0
+            #AMU = 1.66053982e-24
+            #PI = 3.141592654
+            #SURFACE_SITE_DENSITY = 1.5e15
+            #NUM_SITES_PER_GRAIN = (
+            #    GRAIN_RADIUS * GRAIN_RADIUS * SURFACE_SITE_DENSITY * 4.0 * PI
+            #)
+            #GAS_DUST_DENSITY_RATIO = (
+            #    4.0 * PI * (GRAIN_RADIUS**3) * GRAIN_DENSITY * GAS_DUST_MASS_RATIO
+            #) / (3.0 * AMU)
+            surfaceCoverage = np.min([1.0, row["BULK"] / row["SURFACE"]])
             change_reacs = _format_reactions(change_reacs)
-
             # This whole block adds the transfer of material from surface to bulk as surface grows (or vice versa)
             # it's not a reaction in the network so won't get picked up any other way. We manually add it.
             if species_name[0] == "@":
@@ -186,20 +199,25 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
                     change_reacs.append(
                         f"#{species_name[1:]} + SURFACE_TRANSFER -> {species_name}"
                     )
+                    #transfer = transfer * row[f"#{species_name[1:]}"] * surfaceCoverage
                 else:
                     change_reacs.append(
                         f"{species_name} + SURFACE_TRANSFER -> #{species_name[1:]}"
                     )
+                    #transfer = transfer * row[species_name] * surfaceCoverage / np.max([1.0e-30, row["BULK"]])
                 changes = np.append(changes, transfer)
             elif species_name[0] == "#":
                 if transfer >= 0:
                     change_reacs.append(
                         f"@{species_name[1:]} + SURFACE_TRANSFER -> {species_name}"
                     )
+                    #transfer = transfer / surfaceCoverage/  row[f"@{species_name[1:]}"] * np.min([1.0e-30, row["BULK"]])
+                    #transfer = transfer / surfaceCoverage/  row["#{species_name[1:]}"] # * np.min([1.0e-30, row["BULK"]])
                 else:
                     change_reacs.append(
                         f"{species_name} + SURFACE_TRANSFER -> @{species_name[1:]}"
                     )
+                    #transfer = transfer / row[species_name] / surfaceCoverage
                 changes = np.append(changes, transfer)
 
             # Then we remove the reactions that are not important enough to be printed by finding
@@ -221,9 +239,9 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
                         np.log10(np.abs(old_total_destruct))
                         - np.log10(np.abs(total_destruct))
                     )
-                    > 1
+                    > 0
                 )
-                or (np.abs(np.log10(old_total_form) - np.log10(total_formation)) > 1)
+                or (np.abs(np.log10(old_total_form) - np.log10(total_formation)) > 0)
             ):
                 old_key_reactions = key_reactions[:]
                 old_total_form = total_formation
@@ -245,14 +263,24 @@ def _param_dict_from_output(output_line):
 
     :param output_line: (pandas series) any row from the relevant UCLCHEM output
     """
-    param_dict = {
-        "initialdens": output_line["Density"],
-        "initialtemp": output_line["gasTemp"],
-        "zeta": output_line["zeta"],
-        "radfield": output_line["radfield"],
-        "baseav": 0.0,
-        "rout": output_line["av"] * (1.6e21) / output_line["Density"],
-    }
+    try:
+        param_dict = {
+            "initialdens": output_line["Density"],
+            "initialtemp": output_line["gasTemp"],
+            "zeta": output_line["zeta"],
+            "radfield": output_line["radfield"],
+            "baseav": output_line["av"],
+            "rout": output_line["av"] * (1.6e21) / output_line["Density"],
+        }
+    except:
+        param_dict = {
+            "initialdens": output_line["Density"],
+            "initialtemp": output_line["gasTemp"],
+            "zeta": output_line["zeta"],
+            "radfield": 1.0,
+            "baseav": output_line["av"],
+            "rout": output_line["av"] * (1.6e21) / output_line["Density"],
+        }
     return param_dict
 
 
@@ -303,22 +331,39 @@ def _get_rates_of_change(
         change = rates[i]
         reactants = reaction[0:3]
         products = reaction[3:]
+
+        # Counting the same as Reaction.body_count
+        # TODO: Move reactant_count to here
         reactant_count = 0
+        
         for reactant in reactants:
             if reactant in speciesList:
                 change = change * row[reactant]
                 reactant_count += 1
-            elif reactant in ["DESOH2", "FREEZE", "LH", "LHDES", "EXSOLID"]:
+            elif reactant in ["LH", "LHDES"]:
+                reactant_count -= 1
+                if "@" in reactants[0]:
+                    change = change * bulk_layers
+            elif reactant in ["FREEZE"]:
                 reactant_count += 1
-            if reactant in ["DEUVCR", "DESCR", "DESOH2", "SURFSWAP"]:
+            
+            elif reactant in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
                 change = change / np.max([1.0e-30, row["SURFACE"]])
-            if reactant == "SURFSWAP":
-                change = change * swap
-            if reactant == "BULKSWAP":
+                if reactant in ["DESOH2"]:
+                    reactant_count += 1
+                    change = change * row["H"]
+            elif reactant == "SURFSWAP":
+                change = change * swap / np.max([1.0e-30, row["SURFACE"]])
+            elif reactant == "BULKSWAP":
                 change = change * bulk_layers
+            
+            if "H2FORM" in reactants:
+                reactant_count += 1
+                # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
+                break
 
             if (not three_phase) and (reactant in ["THERM"]):
-                change = change * row[reaction[0]] / np.max([1.0e-30, row["SURFACE"]])
+                change = change * row["Density"] / np.max([1.0e-30, row["SURFACE"]])
         change = change * (row["Density"] ** (reactant_count - 1))
         if species in reactants:
             changes.append(-change)
@@ -326,6 +371,7 @@ def _get_rates_of_change(
         if species in products:
             changes.append(change)
             reactionList.append(reaction)
+    
     A = zip(changes, reactionList)
     A = sorted(A, key=lambda x: np.abs(x[0]), reverse=True)
     changes, reactionList = zip(*A)
@@ -385,18 +431,16 @@ def _write_analysis(
         )
     )
     # Formation and destruction writing is disabled since the absolute numbers do not appear to be correct.
-    # output_file.write("Formation = {0:.2e} from:".format(total_production))
+    output_file.write("Formation = {0:.8e} from:".format(total_production))
     for k, reaction in enumerate(key_reactions):
         if key_changes[k] > 0:
-            outString = f"\n{reaction} : {float(key_changes[k] / total_production):.2%}"
+            outString = f"\n{reaction} : {float(key_changes[k])} = {float(key_changes[k] / total_production):.2%}"
             output_file.write(outString)
 
-    # output_file.write("\n\nDestruction = {0:.2e} from:".format(total_destruction))
+    output_file.write("\n\nDestruction = {0:.8e} from:".format(total_destruction))
     for k, reaction in enumerate(key_reactions):
         if key_changes[k] < 0:
-            outString = (
-                f"\n{reaction} : {float(key_changes[k] / total_destruction):.2%}"
-            )
+            outString = f"\n{reaction} : {float(key_changes[k])} = {float(key_changes[k] / total_destruction):.2%}"
             output_file.write(outString)
 
 

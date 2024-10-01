@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 reaction_types = [
     "PHOTON",
     "CRP",
@@ -24,7 +26,7 @@ reaction_types = [
 
 
 class Reaction:
-    def __init__(self, inputRow):
+    def __init__(self, inputRow: list[str]):
         try:
             self.set_reactants(
                 [
@@ -247,7 +249,7 @@ class Reaction:
         Returns:
             bool: equality
         """
-        if not isinstance(other, Reaction):
+        if not isinstance(other, Reaction) and not isinstance(other, CoupledReaction):
             raise NotImplementedError(
                 "Equality is not implemented for anything but comparing to other reactions."
             )
@@ -268,7 +270,7 @@ class Reaction:
         Returns:
             bool: Whether there is a collision (True), or not (False)
         """
-        if not isinstance(other, Reaction):
+        if not isinstance(other, Reaction) and not isinstance(other, CoupledReaction):
             raise NotImplementedError(
                 "Equality is not implemented for anything but comparing to other reactions."
             )
@@ -348,6 +350,38 @@ class Reaction:
                 ode_bit += "*bulkLayersReciprocal"
         self.ode_bit = ode_bit
 
+    def to_UCL_format(self):
+        """Convert a reaction to UCLCHEM reaction file format"""
+        reactants = self.get_reactants()
+        joined_reactants = ",".join(
+            [reactant if reactant != "NAN" else "" for reactant in reactants]
+        )
+
+        products = self.get_products()
+        joined_products = ",".join(
+            [product if product != "NAN" else "" for product in products]
+        )
+        reactants_products = joined_reactants + "," + joined_products
+        alpha, beta, gamma = (
+            self.get_alpha(),
+            self.get_beta(),
+            self.get_gamma(),
+        )
+        str_alpha, str_beta, str_gamma = (
+            str(alpha).replace("e", "E"),
+            str(beta).replace("e", "E"),
+            str(gamma).replace("e", "E"),
+        )
+        if alpha == 0:
+            str_alpha = "0"
+        if beta == 0:
+            str_beta = "0"
+        if gamma == 0:
+            str_gamma = "0"
+        reaction_parameters = f"{str_alpha},{str_beta},{str_gamma}"
+        formatted_reaction = reactants_products + "," + reaction_parameters + ",,,,,"
+        return formatted_reaction
+
     def __str__(self):
         return (
             " + ".join(filter(lambda r: r != "NAN", self.get_reactants()))
@@ -368,3 +402,64 @@ class Reaction:
             + " -> "
             + " + ".join(filter(lambda p: p != "NAN", self.get_products()))
         )
+
+
+# class SurfaceReaction(Reaction):
+#    def __init__(self, inputRow: list[str]):
+#        super.__init__(self, inputRow)
+
+
+class CoupledReaction(Reaction):
+    def __init__(self, inputRow: list[str]):
+        super().__init__(self, inputRow)
+        self.partner = None
+
+    def __init__(self, reaction: Reaction):
+        try:
+            self.set_reactants(reaction.get_reactants())
+            self.set_products(reaction.get_products())
+            self.set_alpha(reaction.get_alpha())
+            self.set_beta(reaction.get_beta())
+            self.set_gamma(reaction.get_gamma())
+            self.set_templow(reaction.get_templow())
+            self.set_temphigh(reaction.get_temphigh())
+            self.partner = None
+        except:
+            raise ValueError("hello")
+
+        self.duplicate = False
+
+        # body_count is the number of factors of density to include in ODE
+        # we drop a factor of density from both the LHS and RHS of ODES
+        # So reactions with 1 body have no factors of density which we manage by counting from -1
+        self.body_count = -1
+        for reactant in self.get_reactants():
+            if (reactant not in reaction_types) and reactant != "NAN":
+                self.body_count += 1
+            if reactant in ["DESOH2", "FREEZE"]:
+                self.body_count += 1
+            if reactant in ["LH", "LHDES"]:
+                self.body_count -= 1
+
+        if (self.get_reaction_type() == "FREEZE") and (
+            self.get_reactants()[0][-1] == "+"
+        ):
+            self.beta = 1
+
+    def set_partner(self, partner: Reaction):
+        self.partner = partner
+
+    def get_partner(self):
+        return self.partner
+
+
+# class BulkReaction(Reaction):
+#   def __init__(self, inputRow: list[str], surfacePartner: SurfaceReaction):
+#       super.__init__(self, inputRow)
+#       self.set_surface_partner(surfacePartner)
+#
+#   def set_surface_partner(self, surfacePartner: SurfaceReaction):
+#       self.surface_partner = surfacePartner
+#
+#   def get_surface_partner(self):
+#       return self.surface_partner

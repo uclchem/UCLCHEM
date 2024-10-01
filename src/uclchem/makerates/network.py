@@ -3,6 +3,8 @@ This python file contains all functions for de-duplicating species and reaction 
 checking for common errors, and automatic addition of reactions such as freeze out,
 desorption and bulk reactions for three phase models.
 """
+
+import sys
 import logging
 from copy import deepcopy
 from typing import Union
@@ -10,12 +12,13 @@ from typing import Union
 from numpy import any as np_any
 from numpy import unique
 
-from .reaction import Reaction, reaction_types
+from .reaction import Reaction, CoupledReaction, reaction_types
 from .species import Species, elementList
 
 
 class Network:
     """The network class stores all the information about reaction network."""
+
     def __init__(
         self,
         species: list[Species],
@@ -113,7 +116,7 @@ class Network:
     def add_reactions(
         self, reactions: Union[Union[Reaction, str], list[Union[Reaction, str]]]
     ):
-        """ Add a reaction, list of inputs to the Reaction class or list of reactions to the network.
+        """Add a reaction, list of inputs to the Reaction class or list of reactions to the network.
 
         Args:
             reactions (Union[Union[Reaction, str], list[Union[Reaction, str]]]): Reaction or list or reactions
@@ -137,7 +140,9 @@ class Network:
                 "Input must either be (a list of) Reaction class or csv entries"
             )
         current_reaction_list = self.get_reaction_list()
-        logging.debug(f"n_reactions {len(current_reaction_list)} before adding new reactions to the internal dict")
+        logging.debug(
+            f"n_reactions {len(current_reaction_list)} before adding new reactions to the internal dict"
+        )
         for reaction in reactions:
             if reaction in current_reaction_list:
                 # See if we have a collision with the any reactions with identical reactants and
@@ -152,8 +157,12 @@ class Network:
                         )
 
             # quick check to make sure all species in the reaction are in the species list.
-            species_not_present = [spec for spec in reaction.get_reactants() + reaction.get_products() if (spec not in self.get_species_list())
-                and (spec not in ["NAN", "", "E-"] + reaction_types)]
+            species_not_present = [
+                spec
+                for spec in reaction.get_reactants() + reaction.get_products()
+                if (spec not in self.get_species_list())
+                and (spec not in ["NAN", "", "E-"] + reaction_types)
+            ]
             for specie in species_not_present:
                 logging.debug(f"Trying to add specie {specie}")
                 # TODO: get more sensible mass
@@ -161,10 +170,13 @@ class Network:
             # Index and add the new reaction.
             new_idx = max(list(self._reactions_dict.keys())) + 1
             if new_idx in self._reactions_dict.keys():
-                raise ValueError(f"Makerates is trying to add a reaction with index {new_idx}, but something is already there, please report this to the developers.")
+                raise ValueError(
+                    f"Makerates is trying to add a reaction with index {new_idx}, but something is already there, please report this to the developers."
+                )
             self._reactions_dict[new_idx] = reaction
-        logging.debug(f"n_reactions {len(current_reaction_list)} after adding them to the internal dict")
-
+        logging.debug(
+            f"n_reactions {len(current_reaction_list)} after adding them to the internal dict"
+        )
 
     def find_similar_reactions(self, reaction: Reaction) -> dict[int, Reaction]:
         """Reactions are similar if the reaction has the same reactants and products,
@@ -199,12 +211,26 @@ class Network:
         #
         # The find_similar_reaction returns a dict of (index[int], reaction[Reaction]),
         # We make it a list of tuples as it is easier to index and manipulate for this case.
-        reaction_idx_dict_as_tuples = list(self.find_similar_reactions(reaction).items())
+        reaction_idx_dict_as_tuples = list(
+            self.find_similar_reactions(reaction).items()
+        )
         if len(reaction_idx_dict_as_tuples) == 1:
             reac_idx, reac_value = reaction_idx_dict_as_tuples[0]
             logging.debug(f"Trying to remove index: {reac_idx}: {reac_value} ")
             # Remove the reaction with the index from the reaction set:
             del self._reactions_dict[reac_idx]
+
+            if not isinstance(reaction, CoupledReaction):
+                to_pop = []
+                for k, v in self._reactions_dict.items():
+                    if not isinstance(v, CoupledReaction):
+                        continue
+                    if v.get_partner() == reaction:
+                        logging.debug(f"Coupled reaction {v} will also be removed")
+                        to_pop.append(v)
+                if to_pop:
+                    [self.remove_reaction(coupled_reac) for coupled_reac in to_pop]
+
         elif len(reaction_idx_dict_as_tuples) == 0:
             logging.warning(
                 f"The reaction {reaction} is not present in the reaction set, so cannot remove it"
@@ -215,6 +241,50 @@ class Network:
                     "found more than one indices for the reaction {reaction}, remove by index instead of by reaction."
                 )
             )
+
+    def change_reaction_barrier(self, reaction: Reaction, barrier: float) -> None:
+        reaction_idx_dict_as_tuples = list(
+            self.find_similar_reactions(reaction).items()
+        )
+        if len(reaction_idx_dict_as_tuples) == 1:
+            reac_idx, reac_value = reaction_idx_dict_as_tuples[0]
+            logging.debug(
+                f"Trying to change barrier of reaction index: {reac_idx}: {reac_value} "
+            )
+            # Change the barrier of the reaction with the index from the reaction set:
+            self._reactions_dict[reac_idx].set_gamma(barrier)
+
+            if not isinstance(reaction, CoupledReaction):
+                to_change = []
+                for k, v in self._reactions_dict.items():
+                    if not isinstance(v, CoupledReaction):
+                        continue
+                    if v.get_partner() == reaction:
+                        logging.debug(f"Coupled reaction {v} will also be removed")
+                        to_change.append(v)
+                if to_change:
+                    [
+                        self.change_reaction_barrier(coupled_reac, barrier)
+                        for coupled_reac in to_change
+                    ]
+
+        elif len(reaction_idx_dict_as_tuples) == 0:
+            logging.warning(
+                f"The reaction {reaction} is not present in the reaction set, so cannot change its barrier it"
+            )
+        elif len(reaction_idx_dict_as_tuples) > 1:
+            raise (
+                RuntimeError("found more than one indices for the reaction {reaction}.")
+            )
+
+    def change_binding_energy(self, specie: str, new_binding_energy: float) -> None:
+        for specie_in_network in self.get_species_list():
+            if specie_in_network.get_name() == specie:
+                specie_in_network.binding_energy = new_binding_energy
+                return
+        print(
+            f"WARNING: COULD NOT FIND {specie} IN LIST OF SPECIES. NOTHING CHANGED ABOUT NETWORK"
+        )
 
     def get_reaction(self, reaction_idx: int) -> Reaction:
         """Obtain a reaction from the reaction set given an index of the internal _reactions_dict.
@@ -439,7 +509,6 @@ class Network:
         # check for species not involved in any reactions
         lostSpecies = []
         for species in self.get_species_list():
-
             # keep species that appear in a reaction
             reac_keeps = False
             for reaction in self.get_reaction_list():
@@ -555,9 +624,7 @@ class Network:
             if (not specie.is_grain_species()) and (
                 not specie.get_freeze_products_list()
             ):
-                logging.info(
-                    f"Adding a default freezeout for {specie} to the specie"
-                )
+                logging.info(f"Adding a default freezeout for {specie} to the specie")
                 specie.add_default_freeze()
                 self.set_specie(species_name, specie)
 
@@ -663,6 +730,13 @@ class Network:
                 logging.debug(
                     f"Adding deassociation reaction for {reaction}, new reaction {new_reaction}"
                 )
+
+                new_reaction = CoupledReaction(new_reaction)
+                while isinstance(reaction, CoupledReaction):
+                    # If the current loop reaction is also coupled, get its partner.
+                    reaction = reaction.get_partner()
+                new_reaction.set_partner(reaction)
+
                 new_reactions.append(new_reaction)
         self.add_reactions(new_reactions)
 
@@ -810,6 +884,11 @@ class Network:
         for reaction in surface_reactions:
             new_reac = deepcopy(reaction)
             new_reac.convert_to_bulk()
+            new_reac = CoupledReaction(new_reac)
+            while isinstance(reaction, CoupledReaction):
+                # If the current loop reaction is also coupled, get its partner.
+                reaction = reaction.get_partner()
+            new_reac.set_partner(reaction)
             new_reactions.append(new_reac)
         new_reactions = [
             reac for reac in new_reactions if reac not in current_reaction_list
@@ -1031,9 +1110,9 @@ class Network:
                 "e-", "elec"
             ).replace("#", "g")
             self.species_indices[name] = species_index
-            
+
     def branching_ratios_checks(self) -> None:
-        """ Check that the branching ratios for the ice reactions sum to 1.0. If they do not, correct them.
+        """Check that the branching ratios for the ice reactions sum to 1.0. If they do not, correct them.
         This needs to be done for LH and LHDES separately since we already added the desorption to the network.
         """
         branching_reactions = {}
@@ -1045,27 +1124,52 @@ class Network:
                 else:
                     branching_reactions[reactant_string] = reaction.get_alpha()
         if not all(branching_reactions.values()) == 1.0:
-            logging.warning("Some of the branching ratios do not sum to 1.0, correcting those that do not")
+            logging.warning(
+                "Some of the branching ratios do not sum to 1.0, correcting those that do not"
+            )
             for i, reaction in enumerate(self.get_reaction_list()):
-                    if reaction.get_reaction_type() in ["LH", "LHDES"]:
-                        reactant_string = ",".join(reaction.get_reactants())
-                        if reactant_string in branching_reactions and branching_reactions[reactant_string] != 1.0:
-                            new_reaction = deepcopy(reaction)
-                            if branching_reactions[reactant_string] != 0.0:
-                                new_alpha = new_reaction.get_alpha() / branching_reactions[reactant_string]
-                                logging.warning(f"Grain reaction {reaction} has a branching ratio of {new_reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}")
-                                new_reaction.set_alpha(new_alpha)
-                                logging.debug(f"n_reactions: {len(self.get_reaction_list())}removing reaction {reaction}")
-                                self.remove_reaction(reaction)
-                                logging.debug(f"n_reactions: {len(self.get_reaction_list())} removed {reaction}, adding {new_reaction}")
-                                self.add_reactions(new_reaction)
-                                logging.debug(f"n_reactions: {len(self.get_reaction_list())} added {new_reaction}")
-                            else:
-                                logging.warning(f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether")
-                                self.remove_reaction(reaction)
-                
+                if reaction.get_reaction_type() in ["LH", "LHDES"]:
+                    reactant_string = ",".join(reaction.get_reactants())
+                    if (
+                        reactant_string in branching_reactions
+                        and branching_reactions[reactant_string] != 1.0
+                    ):
+                        new_reaction = deepcopy(reaction)
+                        if branching_reactions[reactant_string] != 0.0:
+                            new_alpha = (
+                                new_reaction.get_alpha()
+                                / branching_reactions[reactant_string]
+                            )
+                            logging.warning(
+                                f"Grain reaction {reaction} has a branching ratio of {new_reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
+                            )
+                            new_reaction.set_alpha(new_alpha)
+                            logging.debug(
+                                f"n_reactions: {len(self.get_reaction_list())}removing reaction {reaction}"
+                            )
+                            self.remove_reaction(reaction)
+                            logging.debug(
+                                f"n_reactions: {len(self.get_reaction_list())} removed {reaction}, adding {new_reaction}"
+                            )
+                            self.add_reactions(new_reaction)
+                            logging.debug(
+                                f"n_reactions: {len(self.get_reaction_list())} added {new_reaction}"
+                            )
+                        else:
+                            logging.warning(
+                                f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
+                            )
+                            self.remove_reaction(reaction)
 
-                
+    def to_files(self, species_file: str, reaction_file: str) -> None:
+        with open(reaction_file, "w") as file:
+            for reaction in self.get_reaction_list():
+                file.write(reaction.to_UCL_format() + "\n")
+        with open(species_file, "w") as file:
+            for specie in self.get_species_list():
+                if specie in ["E-", "SURFACE", "BULK"]:
+                    continue
+                file.write(specie.to_UCL_format() + "\n")
 
     def __repr__(self) -> str:
         return (
