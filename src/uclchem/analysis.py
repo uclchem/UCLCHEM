@@ -7,6 +7,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from pandas import Series, read_csv
+import pandas as pd
 from seaborn import color_palette
 
 from uclchem.constants import n_species
@@ -89,7 +90,6 @@ def plot_species(ax, df, species, legend=True, **plot_kwargs):
     Returns:
         pyplot.axis: Modified input axis is returned
     """
-
     color_palette(n_colors=len(species))
     for specIndx, specName in enumerate(species):
         linestyle = "solid"
@@ -100,18 +100,85 @@ def plot_species(ax, df, species, legend=True, **plot_kwargs):
                 abundances = abundances + df[specName.replace("$", "@")]
         else:
             abundances = df[specName]
+        if "linestyle" not in plot_kwargs:
+            plot_kwargs["linestyle"] = linestyle
+        if "label" not in plot_kwargs:
+            plot_kwargs["label"] = specName
+        print(plot_kwargs)
         ax.plot(
             df["Time"],
             abundances,
-            label=specName,
             lw=2,
-            linestyle=linestyle,
             **plot_kwargs,
         )
         ax.set(yscale="log")
         if legend:
             ax.legend()
     return ax
+
+
+def read_analysis(filepath):
+    with open(filepath, "r") as file:
+        lines = file.readlines()
+    for i, line in enumerate(lines):
+        if "All Reactions" in line:
+            first_newline = lines.index("\n", i)
+            all_reactions = lines[i + 2 : first_newline]
+            all_reactions = [reaction.strip("\n") for reaction in all_reactions]
+            break
+
+    n_cols = len(all_reactions) + 1
+    columns = ["Time"]
+    columns.extend(all_reactions)
+    df = pd.DataFrame(columns=columns)
+
+    segments_min = [
+        i for i, line in enumerate(lines) if "New Important Reactions At:" in line
+    ]
+    segments_max = [i - 1 for i in segments_min[1:]]
+    segments_max.append(len(lines) - 1)
+    segments = [
+        lines[segments_min[i] : segments_max[i]] for i in range(len(segments_min))
+    ]
+
+    for segment_lines in segments:
+        new_row = [0] * n_cols
+        time = float(segment_lines[0].split()[-2])
+        new_row[0] = time
+        for i, reaction in enumerate(all_reactions):
+            if not any(reaction in line for line in segment_lines):
+                rate = 0
+            else:
+                reac_indx = [
+                    j for j, line in enumerate(segment_lines) if reaction in line
+                ][0]
+                rate = float(segment_lines[reac_indx].split()[-3])
+            new_row[i + 1] = rate
+
+        new_row_dict = dict(zip(columns, new_row))
+        new_row_df = pd.DataFrame(new_row_dict, index=[0])
+        df = pd.concat(
+            [df, new_row_df],
+            axis=0,
+            ignore_index=True,
+        )
+    return df, all_reactions
+
+
+def analysis_condensed_phase(
+    species_name, result_file, output_file, rate_threshold=0.99
+):
+    if "$" in species_name:
+        species_name = species_name[1:]
+    elif "@" in species_name or "#" in species_name:
+        raise ValueError("'#' or '@' in species_name argument, but should be '$' or ''")
+    surf_output = f"surf_{output_file}"
+    bulk_output = f"bulk_{output_file}"
+    analysis(f"#{species_name}", result_file, surf_output, rate_threshold)
+    analysis(f"@{species_name}", result_file, bulk_output, rate_threshold)
+
+    with open(surf_output, "r") as surf_file:
+        surf_lines = surf_file.readlines()
 
 
 def analysis(species_name, result_file, output_file, rate_threshold=0.99):
@@ -178,47 +245,29 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
                 bulk_layers,
             )
 
-            #GAS_DUST_MASS_RATIO = 100.0
-            #GRAIN_RADIUS = 1.0e-5
-            #GRAIN_DENSITY = 3.0
-            #AMU = 1.66053982e-24
-            #PI = 3.141592654
-            #SURFACE_SITE_DENSITY = 1.5e15
-            #NUM_SITES_PER_GRAIN = (
-            #    GRAIN_RADIUS * GRAIN_RADIUS * SURFACE_SITE_DENSITY * 4.0 * PI
-            #)
-            #GAS_DUST_DENSITY_RATIO = (
-            #    4.0 * PI * (GRAIN_RADIUS**3) * GRAIN_DENSITY * GAS_DUST_MASS_RATIO
-            #) / (3.0 * AMU)
-            surfaceCoverage = np.min([1.0, row["BULK"] / row["SURFACE"]])
             change_reacs = _format_reactions(change_reacs)
+
             # This whole block adds the transfer of material from surface to bulk as surface grows (or vice versa)
             # it's not a reaction in the network so won't get picked up any other way. We manually add it.
-            if species_name[0] == "@":
-                if transfer >= 0:
-                    change_reacs.append(
-                        f"#{species_name[1:]} + SURFACE_TRANSFER -> {species_name}"
-                    )
-                    #transfer = transfer * row[f"#{species_name[1:]}"] * surfaceCoverage
-                else:
-                    change_reacs.append(
-                        f"{species_name} + SURFACE_TRANSFER -> #{species_name[1:]}"
-                    )
-                    #transfer = transfer * row[species_name] * surfaceCoverage / np.max([1.0e-30, row["BULK"]])
-                changes = np.append(changes, transfer)
-            elif species_name[0] == "#":
-                if transfer >= 0:
+            if transfer <= 0:
+                if species_name[0] == "#":
                     change_reacs.append(
                         f"@{species_name[1:]} + SURFACE_TRANSFER -> {species_name}"
                     )
-                    #transfer = transfer / surfaceCoverage/  row[f"@{species_name[1:]}"] * np.min([1.0e-30, row["BULK"]])
-                    #transfer = transfer / surfaceCoverage/  row["#{species_name[1:]}"] # * np.min([1.0e-30, row["BULK"]])
-                else:
+                elif species_name[0] == "@":
+                    change_reacs.append(
+                        f"{species_name} + SURFACE_TRANSFER -> #{species_name[1:]}"
+                    )
+            else:
+                if species_name[0] == "#":
                     change_reacs.append(
                         f"{species_name} + SURFACE_TRANSFER -> @{species_name[1:]}"
                     )
-                    #transfer = transfer / row[species_name] / surfaceCoverage
-                changes = np.append(changes, transfer)
+                elif species_name[0] == "@":
+                    change_reacs.append(
+                        f"#{species_name[1:]} + SURFACE_TRANSFER -> {species_name}"
+                    )
+            changes = np.append(changes, transfer)
 
             # Then we remove the reactions that are not important enough to be printed by finding
             # which of the top reactions we need to reach rate_threshold*total_rate
@@ -263,24 +312,14 @@ def _param_dict_from_output(output_line):
 
     :param output_line: (pandas series) any row from the relevant UCLCHEM output
     """
-    try:
-        param_dict = {
-            "initialdens": output_line["Density"],
-            "initialtemp": output_line["gasTemp"],
-            "zeta": output_line["zeta"],
-            "radfield": output_line["radfield"],
-            "baseav": output_line["av"],
-            "rout": output_line["av"] * (1.6e21) / output_line["Density"],
-        }
-    except:
-        param_dict = {
-            "initialdens": output_line["Density"],
-            "initialtemp": output_line["gasTemp"],
-            "zeta": output_line["zeta"],
-            "radfield": 1.0,
-            "baseav": output_line["av"],
-            "rout": output_line["av"] * (1.6e21) / output_line["Density"],
-        }
+    param_dict = {
+        "initialdens": output_line["Density"],
+        "initialtemp": output_line["gasTemp"],
+        "zeta": output_line["zeta"],
+        "radfield": output_line["radfield"],
+        "baseav": output_line["av"],
+        "rout": output_line["av"] * (1.6e21) / output_line["Density"],
+    }
     return param_dict
 
 
@@ -327,6 +366,7 @@ def _get_rates_of_change(
     changes = []
     reactionList = []
     three_phase = "@" in "".join(speciesList)
+    # surfaceCoverage = np.min([1.0, row["SURFACE"] / row["BULK"]])
     for i, reaction in enumerate(reactions):
         change = rates[i]
         reactants = reaction[0:3]
@@ -335,7 +375,7 @@ def _get_rates_of_change(
         # Counting the same as Reaction.body_count
         # TODO: Move reactant_count to here
         reactant_count = 0
-        
+
         for reactant in reactants:
             if reactant in speciesList:
                 change = change * row[reactant]
@@ -346,7 +386,7 @@ def _get_rates_of_change(
                     change = change * bulk_layers
             elif reactant in ["FREEZE"]:
                 reactant_count += 1
-            
+
             elif reactant in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
                 change = change / np.max([1.0e-30, row["SURFACE"]])
                 if reactant in ["DESOH2"]:
@@ -356,7 +396,7 @@ def _get_rates_of_change(
                 change = change * swap / np.max([1.0e-30, row["SURFACE"]])
             elif reactant == "BULKSWAP":
                 change = change * bulk_layers
-            
+
             if "H2FORM" in reactants:
                 reactant_count += 1
                 # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
@@ -371,7 +411,7 @@ def _get_rates_of_change(
         if species in products:
             changes.append(change)
             reactionList.append(reaction)
-    
+
     A = zip(changes, reactionList)
     A = sorted(A, key=lambda x: np.abs(x[0]), reverse=True)
     changes, reactionList = zip(*A)

@@ -1,8 +1,11 @@
 # Your list of all species:
-species_file: /home/tobiasdijkhuis/PhD/2024-Dijkhuis-Network-Testing/species.csv
+species_file: /home/tobiasdijkhuis/PhD/Networks/2024-Dijkhuis/default_species.csv
 
-database_reaction_file: /home/tobiasdijkhuis/PhD/2024-Dijkhuis-Network-Testing/reactions-4000.csv
-database_reaction_type: UCL
+database_reaction_file: /home/tobiasdijkhuis/PhD/UCLCHEM/Makerates/inputFiles/umist22.csv
+database_reaction_type: UMIST
+
+custom_reaction_file: /home/tobiasdijkhuis/PhD/Networks/2024-Dijkhuis/default_grain_network.csv
+custom_reaction_type: UCL
 
 three_phase: True
 

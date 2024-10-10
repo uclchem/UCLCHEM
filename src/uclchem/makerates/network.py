@@ -278,13 +278,38 @@ class Network:
             )
 
     def change_binding_energy(self, specie: str, new_binding_energy: float) -> None:
-        for specie_in_network in self.get_species_list():
+        all_species = self.get_species_list()
+        all_species_names = [specie.get_name() for specie in all_species]
+        if specie not in all_species_names:
+            error = f"Specie {specie} was not found in the network while attempting to change its binding energy."
+            raise ValueError(error)
+        old_bulk_h2o_binding_energy = all_species[all_species_names.index("@H2O")]
+        old_bulk_h2o_binding_energy = old_bulk_h2o_binding_energy.binding_energy
+        if specie == "@H2O":
+            # If specie is bulk H2O, we need to change binding energies of all other bulk species,
+            # as the diffusion is limited by diffusion of bulk H2O. (Ghesquiere 2015)
+            for specie_in_network in all_species:
+                if (
+                    "@" in specie_in_network.get_name()
+                    and specie_in_network.binding_energy == old_bulk_h2o_binding_energy
+                ):
+                    # If the specie had a different bulk binding energy, do not change it, as it was user specified.
+                    specie_in_network.binding_energy = new_binding_energy
+            return
+        if "@" in specie:
+            if (
+                all_species[all_species_names.index(specie)].binding_energy
+                == old_bulk_h2o_binding_energy
+            ):
+                # If the bulk species has the same binding energy as bulk H2O,
+                # but we are trying to change it directly, give user a warning.
+                print(
+                    f"WARNING: ATTEMPTING TO CHANGE BINDING ENERGY OF BULK SPECIE {specie} THAT WAS PREVIOUSLY @H2O BINDING ENERGY LIMITED"
+                )
+        for specie_in_network in all_species:
             if specie_in_network.get_name() == specie:
                 specie_in_network.binding_energy = new_binding_energy
                 return
-        print(
-            f"WARNING: COULD NOT FIND {specie} IN LIST OF SPECIES. NOTHING CHANGED ABOUT NETWORK"
-        )
 
     def get_reaction(self, reaction_idx: int) -> Reaction:
         """Obtain a reaction from the reaction set given an index of the internal _reactions_dict.
