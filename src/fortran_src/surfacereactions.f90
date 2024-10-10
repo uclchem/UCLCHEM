@@ -39,7 +39,7 @@ MODULE SurfaceReactions
   REAL(dp), PARAMETER :: GRAIN_SURFACEAREA_PER_H=4.0*GRAIN_CROSSSECTION_PER_H!2.0*4.0*PI*GRAIN_RADIUS*GRAIN_RADIUS/GAS_DUST_DENSITY_RATIO
 
   !Below are values for grain surface reactions
-  LOGICAL, PARAMETER :: DIFFUSE_REACT_COMPETITION=.TRUE., GRAINS_HAVE_ICE=.TRUE.
+  LOGICAL, PARAMETER :: DIFFUSE_REACT_COMPETITION=.True., GRAINS_HAVE_ICE=.True.
   REAL(dp), PARAMETER :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8  !gre Parameter used to compute the probability for a surface reaction with 
   !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
   REAL(dp), PARAMETER :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]

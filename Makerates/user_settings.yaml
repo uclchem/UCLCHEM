@@ -1,11 +1,18 @@
-# Your list of all species:
-species_file: /home/tobiasdijkhuis/PhD/Networks/2024-Dijkhuis/default_species.csv
+#Your list of all species
+species_file: inputFiles/default_species.csv
 
-database_reaction_file: /home/tobiasdijkhuis/PhD/UCLCHEM/Makerates/inputFiles/umist22.csv
+#core reactions from gas phase database
+database_reaction_file: inputFiles/umist22.csv
 database_reaction_type: UMIST
+#database_reaction_file : inputFiles/kida.uva.2014.dat
+#database_reaction_type : KIDA
 
-custom_reaction_file: /home/tobiasdijkhuis/PhD/Networks/2024-Dijkhuis/default_grain_network.csv
+#set of additional reactions: eg grain network
+custom_reaction_file: inputFiles/default_grain_network.csv
 custom_reaction_type: UCL
 
+#whether to automatically expand to three phase network
 three_phase: True
-
+# Directory in which to store output. If not included we automatically move
+# the files to the uclchem src folder. This is the default behaviour.
+# output_directory : "outputFiles"
