@@ -9,7 +9,7 @@ repos:
     # Run the formatter.
     - id: ruff-format
 - repo: https://github.com/kynan/nbstripout
-  rev: master
+  rev: main
   hooks:
     - id: nbstripout
 
