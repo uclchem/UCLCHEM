@@ -35,6 +35,6 @@ jobs:
 
     - name: Test notebooks
       run: |
-        pytest -n auto --nbmake --nbmake-timeout=2400 --nbmake-kernel=ipykernel notebooks
+        pytest -n auto --nbmake --nbmake-timeout=2400 --nbmake-kernel=python3 notebooks
 
 
