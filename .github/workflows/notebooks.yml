@@ -1,4 +1,4 @@
-name: Test install and interface
+name: Test notebooks
 
 on:
   pull_request:
