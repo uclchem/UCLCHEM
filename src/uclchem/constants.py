@@ -8,8 +8,8 @@
 # The physical parameters in the model, this is used in the fortran bits to
 # ensure the physical parameter array is created in the right size.
 PHYSICAL_PARAMETERS = [
-    "age",
-    "density",
+    "Time",
+    "Density",
     "gasTemp",
     "dustTemp",
     "Av",

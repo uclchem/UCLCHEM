@@ -166,7 +166,7 @@ def cloud(
     if return_array or return_dataframe:
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, N_PHYSICAL_PARAMETERS
+        param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
     _, _, abunds, specname, success_flag = wrap.cloud(
         dictionary=param_dict,
@@ -256,7 +256,7 @@ def collapse(
     if return_array or return_dataframe:
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, len(PHYSICAL_PARAMETERS)
+        param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints
     )
     abunds, specname, success_flag = wrap.collapse(
         collapseIn=collapse,
@@ -337,7 +337,7 @@ def hot_core(
         # Check to make sure no output files are specified, if so, halt the execution.
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, len(PHYSICAL_PARAMETERS)
+        param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints
     )
 
     give_start_abund = starting_chemistry is not None
@@ -424,7 +424,7 @@ def cshock(
     if return_array or return_dataframe:
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, N_PHYSICAL_PARAMETERS
+        param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
     give_start_abund = starting_chemistry is not None
     abunds, disspation_time, specname, success_flag = wrap.cshock(
@@ -521,7 +521,7 @@ def jshock(
     if return_array or return_dataframe:
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, N_PHYSICAL_PARAMETERS
+        param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
     give_start_abund = starting_chemistry is not None
     abunds, specname, success_flag = wrap.jshock(

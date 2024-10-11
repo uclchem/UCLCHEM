@@ -6,8 +6,8 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-from pandas import Series, read_csv
 import pandas as pd
+from pandas import Series, read_csv
 from seaborn import color_palette
 
 from uclchem.constants import n_species
@@ -100,11 +100,9 @@ def plot_species(ax, df, species, legend=True, **plot_kwargs):
                 abundances = abundances + df[specName.replace("$", "@")]
         else:
             abundances = df[specName]
-        if "linestyle" not in plot_kwargs:
-            plot_kwargs["linestyle"] = linestyle
-        if "label" not in plot_kwargs:
-            plot_kwargs["label"] = specName
-        print(plot_kwargs)
+        print(specName)
+        plot_kwargs["linestyle"] = linestyle
+        plot_kwargs["label"] = specName
         ax.plot(
             df["Time"],
             abundances,
