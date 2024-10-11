@@ -30,7 +30,7 @@ import os
 
 # ## H3O+ and SO
 #
-# In a piece of inference work in which we measured the cosmic ray ionization rate (CRIR) in NGC 253 [(Holdship et al. 2022)](https://ui.adsabs.harvard.edu/abs/2022arXiv220403668H/abstract). We found that both H3O+ and SO were sensitive to the ionization rate. Furthermore, since H3O+ was increased in abundance by increasing CRIR and SO was destroyed, their ratio was extremely sensitive to the rate. 
+# In a piece of inference work in which we measured the cosmic ray ionization rate (CRIR) in NGC 253 [(Holdship et al. 2022)](https://ui.adsabs.harvard.edu/abs/2022arXiv220403668H/abstract). We found that both H3O+ and SO were sensitive to the ionization rate. Furthermore, since H3O+ was increased in abundance by increasing CRIR and SO was destroyed, their ratio was extremely sensitive to the rate.
 #
 # In the work, we present the plot below which shows how the equilibrium abundance of each species changes with the CRIR as well as the ratio. We plot this for a range of temperatures to show that this behaviour is not particularly sensitive to the gas temperature.
 #
@@ -47,7 +47,7 @@ import os
 # Let's run a simple grid with all possible combinations of the following:
 # - A low CRIR (zeta=1) and high CRIR (zeta=1e4)
 # - A typical cloud density (n=1e4) and high density (n=1e6)
-# - The lower temperature bound of NGC 253 CMZ (75 K)* and a high temperature (250 K) 
+# - The lower temperature bound of NGC 253 CMZ (75 K)* and a high temperature (250 K)
 # * The lower boundary is a bit lower, but the computational time of 50K models is a lot longer than 75K so we stick with a bit higher values for speed
 #
 # and that will give us enough to work with for our analysis.
@@ -57,30 +57,34 @@ temperatures = [75, 250]
 densities = [1e4, 1e6]
 zetas = [1, 1e4]
 
-parameterSpace = np.asarray(np.meshgrid(temperatures,densities,zetas)).reshape(3, -1)
-model_table=pd.DataFrame(parameterSpace.T, columns=['temperature','density','zeta'])
-model_table["outputFile"]=model_table.apply(lambda row: f"../output/{row.temperature}_{row.density}_{row.zeta}.csv", axis=1)
+parameterSpace = np.asarray(np.meshgrid(temperatures, densities, zetas)).reshape(3, -1)
+model_table = pd.DataFrame(parameterSpace.T, columns=["temperature", "density", "zeta"])
+model_table["outputFile"] = model_table.apply(
+    lambda row: f"../output/{row.temperature}_{row.density}_{row.zeta}.csv", axis=1
+)
 print(f"{model_table.shape[0]} models to run")
 if not os.path.exists("../output"):
     os.makedirs("../output")
 
 
 def run_model(row):
-    #basic set of parameters we'll use for this grid. 
+    # basic set of parameters we'll use for this grid.
     ParameterDictionary = {
-        'baseAv':10, #UV shielded gas in our model
-        'freefall':False,
-        'finalTime':1e6,
-        "initialtemp":row['temperature'],
-        "initialdens":row['density'],
-        "zeta":row['zeta'],
-        "outputFile":row['outputFile'],
+        "baseAv": 10,  # UV shielded gas in our model
+        "freefall": False,
+        "finalTime": 1e6,
+        "initialtemp": row["temperature"],
+        "initialdens": row["density"],
+        "zeta": row["zeta"],
+        "outputFile": row["outputFile"],
     }
     result = uclchem.model.cloud(param_dict=ParameterDictionary)
-    return result[0]#just the integer error code
-    
+    return result[0]  # just the integer error code
 
-results=  Parallel(n_jobs=4, verbose=100)(delayed(run_model)(row) for idx, row in model_table.iterrows())
+
+results = Parallel(n_jobs=4, verbose=100)(
+    delayed(run_model)(row) for idx, row in model_table.iterrows()
+)
 # -
 
 # ### 2. Run the Analysis
@@ -102,10 +106,10 @@ results=  Parallel(n_jobs=4, verbose=100)(delayed(run_model)(row) for idx, row i
 #
 # `analysis()` takes three arguments: the species, the output file to analyse, and a file to store the analsis output. Let's run it for every model in our little grid so we can inspect the outputs.
 
-outputs=glob("../output/[0-9]*.csv") #all files that start with a number
-for output in outputs:  
-    analysis_output="../output/H3O-analysis-"+output[10:]
-    uclchem.analysis.analysis("H3O+",output,analysis_output)
+outputs = glob("../output/[0-9]*.csv")  # all files that start with a number
+for output in outputs:
+    analysis_output = "../output/H3O-analysis-" + output[10:]
+    uclchem.analysis.analysis("H3O+", output, analysis_output)
 
 # This will produce one file per model output with lists of the most important reactions at each time step. Analysis will only print a time step when the most important reactions change from the previous one so we often see many fewer steps than in the full output. Let's inspect the reaction file of H3O+ for a high temperature, low density and low radiation field model.
 
@@ -113,8 +117,8 @@ with open("../output/H3O-analysis-250.0_10000.0_1.0.csv") as fh:
     print(fh.read())
 
 # As of 11-10-2024, we use UMIST22 for the notebook, so we need to repeat this analysis. Some dominant formation and destruction pathways are no longer present for in UMIST22.
-#  
-#  
+#
+#
 #  We can then delve into specifically the low temperature, low density, low zeta case:
 #
 # ```
@@ -134,7 +138,7 @@ with open("../output/H3O-analysis-250.0_10000.0_1.0.csv") as fh:
 # H3O+ + SIO -> SIOH+ + H2O : 0.33%
 # ```
 #
-# What this shows is the reactions that cause 99.9% of the formation and 99.9% of the destruction of $H_3O^+$ at a time step. The total rate of formation and destruction in units of $s^{-1}$ is  given as well the percentage of the total that each reaction contributes. 
+# What this shows is the reactions that cause 99.9% of the formation and 99.9% of the destruction of $H_3O^+$ at a time step. The total rate of formation and destruction in units of $s^{-1}$ is  given as well the percentage of the total that each reaction contributes.
 #
 # What we need to find is a pattern in these reactions which holds across time and across different densities and temperatures. It actually turns out that the reactions printed above are the dominate formation and destruction routes of $H_3O^+$ for all parameters for all times. For example, at high temperature, high density and high zeta, we get:
 #
@@ -159,10 +163,12 @@ with open("../output/H3O-analysis-250.0_10000.0_1.0.csv") as fh:
 #
 # With a strong explanation for $H_3O^+$, we can now look at SO. We start by running analysis again and then by looking at the reactions as before.
 
-outputs=glob("../output/[0-9]*.csv") #won't pick up H3O+ analysis because it's not a number
+outputs = glob(
+    "../output/[0-9]*.csv"
+)  # won't pick up H3O+ analysis because it's not a number
 for output in outputs:
-  analysis_output="../output/SO-analysis-"+output[10:]
-  uclchem.analysis.analysis("SO",output,analysis_output)
+    analysis_output = "../output/SO-analysis-" + output[10:]
+    uclchem.analysis.analysis("SO", output, analysis_output)
 
 # Again, let's start by looking at the low temperature, high density, low zeta case:
 #
@@ -178,7 +184,7 @@ for output in outputs:
 # HCO+ + SO -> HSO+ + CO : 20.97%
 # ```
 #
-# An interesting point here is that equilbrium is reached at around $1.31 \times 10^4$ yr in this model. Since `analysis()` only prints a time step when the most important reactions are different to the last one, this time step is the last output from the analysis. We can see that we broadly reach an equilibrium between thermal desorption and freeze out of SO, with some formation and destruction via ions. 
+# An interesting point here is that equilbrium is reached at around $1.31 \times 10^4$ yr in this model. Since `analysis()` only prints a time step when the most important reactions are different to the last one, this time step is the last output from the analysis. We can see that we broadly reach an equilibrium between thermal desorption and freeze out of SO, with some formation and destruction via ions.
 #
 # This doesn't hold up at lower densities or higher temperatures, looking at the high temperature, low density, low zeta case, we see a second pattern of reactions:
 #

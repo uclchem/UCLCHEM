@@ -1,9 +1,6 @@
-import gc
-import os
 import shutil
 import tempfile
 from pathlib import Path
-from time import perf_counter
 
 import numpy as np
 import pytest
@@ -12,6 +9,7 @@ import pytest
 
 try:
     import uclchem
+
     uclchem_imported = True
 except ImportError:
     uclchem_imported = False
@@ -125,7 +123,7 @@ def test_collapse_hotcore_on_disk(common_output_directory):
     assert (
         return_code[0] == 0
     ), f"Stage 1 returned with nonzero exit code {return_code[0]}"
-    
+
     # Stage 2
     params = {
         "initialDens": 1e5,
@@ -163,7 +161,7 @@ def test_collapse_hotcore_return_array(common_output_directory):
         return_array=True,
     )
     assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
-    # STAGE 2    
+    # STAGE 2
     params = {
         "initialDens": 1e5,
         "freezeFactor": 0.0,
@@ -186,6 +184,7 @@ def test_collapse_hotcore_return_array(common_output_directory):
         starting_chemistry=abundances_start,
     )
     assert return_code == 0, f"Stage 2 returned with nonzero exit code {return_code}"
+
 
 def test_collapse_hotcore_return_dataframe(common_output_directory):
     # STAGE 1
@@ -234,7 +233,8 @@ def test_collapse_hotcore_return_dataframe(common_output_directory):
         starting_chemistry=abundances_start,
     )
     assert return_code == 0, f"Stage 2 returned with nonzero exit code {return_code}"
-    
+
+
 def test_cshock_return_dataframe(common_output_directory):
     # STAGE 1 - cshock
     param_dict = {
@@ -246,16 +246,36 @@ def test_cshock_return_dataframe(common_output_directory):
         "finalTime": 6.0e6,  # final time
         "rout": 0.1,  # radius of cloud in pc
         "baseAv": 1.0,  # visual extinction at cloud edge.
-        }
-    df_stage1_physics, df_stage1_chemistry, final_abundances, return_code = uclchem.model.cloud(param_dict=param_dict, return_dataframe=True, )
-    assert return_code == 0, f"Stage 1 pre-cshock returned with nonzero exit code {return_code}"
+    }
+    df_stage1_physics, df_stage1_chemistry, final_abundances, return_code = (
+        uclchem.model.cloud(
+            param_dict=param_dict,
+            return_dataframe=True,
+        )
+    )
+    assert (
+        return_code == 0
+    ), f"Stage 1 pre-cshock returned with nonzero exit code {return_code}"
     # STAGE 2 - cshock
-    param_dict["initialDens"]=1e4
-    param_dict["finalTime"]=1e6
-    df_stage2_physics, df_stage2_chemistry, dissipation_time, final_abundances, return_code = uclchem.model.cshock(shock_vel=40,param_dict=param_dict, return_dataframe=True, starting_chemistry=final_abundances)
-    assert return_code == 0, f"Stage 2 cshock returned with nonzero exit code {return_code}"
-    
-    
+    param_dict["initialDens"] = 1e4
+    param_dict["finalTime"] = 1e6
+    (
+        df_stage2_physics,
+        df_stage2_chemistry,
+        dissipation_time,
+        final_abundances,
+        return_code,
+    ) = uclchem.model.cshock(
+        shock_vel=40,
+        param_dict=param_dict,
+        return_dataframe=True,
+        starting_chemistry=final_abundances,
+    )
+    assert (
+        return_code == 0
+    ), f"Stage 2 cshock returned with nonzero exit code {return_code}"
+
+
 # jshock is super slow, so disable it for now:
 # def test_jshock_return_dataframe(common_output_directory):
 #     # STAGE 1 - jshock
@@ -279,9 +299,8 @@ def test_cshock_return_dataframe(common_output_directory):
 #     df_jshock_physics, df_jshock_chemistry, final_abundances, return_code = uclchem.model.jshock(shock_vel=shock_vel,param_dict=param_dict, return_dataframe=True, starting_chemistry=final_abundances, timepoints=2000)
 #     assert return_code == 0, f"Stage 2 jshock returned with nonzero exit code {return_code}"
 
-def main():
-    import uclchem
 
+def main():
     # Run the tests using pytest
     pytest.main(["-v", __file__])
 

@@ -1,6 +1,6 @@
 try:
     from .uclchemwrap import uclchemwrap as wrap
-except:
+except ImportError:
     pass
 import os
 
@@ -175,8 +175,8 @@ def analysis_condensed_phase(
     analysis(f"#{species_name}", result_file, surf_output, rate_threshold)
     analysis(f"@{species_name}", result_file, bulk_output, rate_threshold)
 
-    with open(surf_output, "r") as surf_file:
-        surf_lines = surf_file.readlines()
+    # with open(surf_output, "r") as surf_file:
+    #     surf_lines = surf_file.readlines()
 
 
 def analysis(species_name, result_file, output_file, rate_threshold=0.99):

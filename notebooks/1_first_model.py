@@ -58,7 +58,7 @@ print(result)
 result_df = uclchem.analysis.read_output_file("../examples/test-output/static-full.dat")
 result_df.head()
 
-# We can also test whether the model run went well by checking for element conservation. We do this because integrator errors often show up as a failure to conserve elemental abundances. 
+# We can also test whether the model run went well by checking for element conservation. We do this because integrator errors often show up as a failure to conserve elemental abundances.
 #
 # We can use `check_element_conservation()` to test whether we conserve elements in this run. This function returns a dictionary where each entry gives the change in the total abundance of an element as a percentage of the original abundance. In an ideal case, these values are 0\% indicating the total abundance at the end of the model is exactly the same as the total at the start.
 #
@@ -78,5 +78,3 @@ fig, ax = uclchem.analysis.create_abundance_plot(result_df, species, figsize=(10
 ax = ax.set(xscale="log", ylim=(1e-15, 1), xlim=(1e3, 1e6))
 
 # and that's it! You've run your first UCLCHEM model, checked that the element conservation is correct, and plotted the abundances.
-
-
