@@ -161,7 +161,6 @@ with open("../output/H3O-analysis-250.0_10000.0_1.0.csv") as fh:
 
 outputs=glob("../output/[0-9]*.csv") #won't pick up H3O+ analysis because it's not a number
 for output in outputs:
-  
   analysis_output="../output/SO-analysis-"+output[10:]
   uclchem.analysis.analysis("SO",output,analysis_output)
 

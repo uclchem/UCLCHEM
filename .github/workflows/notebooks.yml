@@ -27,7 +27,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest nbmake pytest-xdist
+        pip install pytest nbmake pytest-xdist jupyter
     
     - name: Install package in editable mode
       run: |
@@ -35,6 +35,6 @@ jobs:
 
     - name: Test notebooks
       run: |
-        pytest -n auto --nbmake --nbmake-timeout=2400 notebooks
+        pytest -n auto --nbmake --nbmake-timeout=2400 --nbmake-kernel=default notebooks
 
 
