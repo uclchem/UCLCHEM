@@ -17,13 +17,9 @@
 #
 # In the previous tutorial, we simply modelled the chemistry of a static cloud for 1 Myr. This is unlikely to meet everybody's modelling needs and UCLCHEM is capable of modelling much more complex environments such as hot cores and shocks. In this tutorial, we model both a hot core and a shock to explore how these models work and to demonstrate the workflow that the UCLCHEM team normally follow.
 
-# +
 import uclchem
 import matplotlib.pyplot as plt
 import pandas as pd
-
-# PLease run the notebook on the develop branch only :D jshock still has a bug with timepoints being 1 point too small as of 10-10-2024 (I might have fixed it, Gijs).
-# -
 
 # ## The Hot Core
 #

@@ -19,6 +19,7 @@
 
 import uclchem
 import matplotlib.pyplot as plt
+import os
 
 # ## The Hot Core
 #
@@ -27,7 +28,6 @@ import matplotlib.pyplot as plt
 #
 # To do this, we will use `uclchem.model.cloud()` to run a model where a cloud of gas collapses from a density of $10^2 cm^{-3}$ to our hot core density of $10^6 cm^{-3}$, keeping all other parameters constant. During this collapse, chemistry will occur and we can assume the final abundances of this model will be reasonable starting abundances for the hot core.
 
-# +
 # set a parameter dictionary for cloud collapse model
 param_dict = {
     "endAtFinalDensity": False,  # stop at finalTime
@@ -41,9 +41,10 @@ param_dict = {
     "abundSaveFile": "../examples/test-output/startcollapse.dat",  # save final abundances to file
     "outputFile": "../examples/test-output/phase1-full.dat",
 }
+if not os.path.exists("../examples/test-output/"):
+    os.makedirs("../examples/test-output/")
 result = uclchem.model.cloud(param_dict=param_dict)
 print(result)
-# -
 
 # With that done, we now have a file containing the final abundances of a cloud of gas after this collapse: `param_dict["abundSaveFile"]` we can pass this to our hot core model to use those abundances as our initial abundances.
 #

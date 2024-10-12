@@ -18,6 +18,7 @@
 # In this notebook, we demonstrate the basic use of UCLCHEM's python module by running a simple model and then using the analysis functions to examine the output. Otherwise, it is identical to notebook 3.
 
 import uclchem
+import os
 
 # ## A Simple Cloud
 #
@@ -41,6 +42,10 @@ param_dict = {
     "outputFile": "../examples/test-output/static-full.dat",  # full UCLCHEM output
     "abundSaveFile": "../examples/test-output/startstatic.dat",  # save final abundances to file
 }
+# Ensure the output directory is present:
+if not os.path.exists("../examples/test-output/"):
+    os.makedirs("../examples/test-output/")
+
 result = uclchem.model.cloud(param_dict=param_dict, out_species=out_species)
 print(result)
 # -
