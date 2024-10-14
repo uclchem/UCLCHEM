@@ -25,6 +25,7 @@ rout=0.05 !Outer radius of cloud being modelled in pc.
 rin=0.0 !Minimum radial distance from cloud centre to consider.
 baseAv=2.0 !Extinction at cloud edge, Av of a parcel at rout.
 points=1 !Number of gas parcels equally spaced between rin to rout to consider
+bm0=1 !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
 !
 !## Behavioural Controls
 !*The following parameters generally turn on or off features of the model. If a parameter is set to `True`, then it is turned on. If it is set to `False`, then it is turned off.*
@@ -106,7 +107,7 @@ ebmaxh2=1.21d3 ! Maximum binding energy of species desorbed by H2 formation.
 ebmaxcr=1.21d3 ! Maximum binding energy of species desorbed by cosmic ray ionisation.
 ebmaxuvcr=1.0d4 ! Maximum binding energy of species desorbed by UV photons.
 epsilon=0.01 !Number of molecules desorbed per H2 formation.
-uv_yield=0.1 !Number of molecules desorbed per UV photon.
+uv_yield=0.03 !Number of molecules desorbed per UV photon. The yield is extrapolated from Oberg et al. 2009
 phi=1.0d5 !Number of molecules desorbed per cosmic ray ionisation.
 uvcreff=1.0d-3 !Ratio of CR induced UV photons to ISRF UV photons.
 omega=0.5 !Dust grain albedo.

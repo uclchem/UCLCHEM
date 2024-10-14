@@ -1,0 +1,6 @@
+{"initialtemp": 10.0,
+"initialdens": 1.00d4,
+"finaldens": 1.00d4,
+"finaltime": 5.00d6,
+"freefall": .false.,
+"outputfile": "examples/test-output/static-full.dat"}

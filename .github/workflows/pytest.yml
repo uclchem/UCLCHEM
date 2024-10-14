@@ -1,4 +1,4 @@
-name: Run pytest
+name: Test install and interface
 
 on:
   pull_request:
@@ -27,13 +27,17 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest
+        pip install pytest pytest-xdist
     
     - name: Install package in editable mode
       run: |
         pip install -e .
 
-    - name: Run pytest
+    - name: Run pytest install test
       run: |
-        pytest tests/  # Specify the path to your 'tests' directory
+        pytest tests/test_install.py
+
+    - name: Run pytest install test
+      run: |
+        pytest -n auto tests/{test_ode_conservation.py,test_run_stages.py}
 

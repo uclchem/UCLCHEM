@@ -5,6 +5,7 @@ MODULE hotcore
     USE physicscore
     USE network
     USE constants
+    USE f2py_constants
     IMPLICIT NONE
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
     INTEGER :: solidflag,volcflag,coflag

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>64,<74", "setuptools-scm", "numpy<2", "wheel", "setuptools-git-versioning<2"]
+requires = ["setuptools>64,<74", "setuptools-scm", "numpy<2", "wheel", "setuptools-git-versioning>=2.0,<3"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools-git-versioning]
@@ -7,22 +7,21 @@ enabled = true
 
 [project]
 name = "uclchem"
-# version = "3.2.0"
 dynamic = ["version"]
 authors = [
-{name="Gijs Vermariën", email="vermarien@strw.leidenuniv.nl"},
-{name="Marcus Keil"},
-{name="Jon Holdship"},
-{name="Tomas James"},
-{name="Ross O'Donoghue"}
+    { name = "Gijs Vermariën", email = "vermarien@strw.leidenuniv.nl" },
+    { name = "Marcus Keil" },
+    { name = "Jon Holdship" },
+    { name = "Tomas James" },
+    { name = "Ross O'Donoghue" },
 ]
 maintainers = [
-{name="Gijs Vermariën", email="vermarien@strw.leidenuniv.nl"}]
-description="A package for the astrochemical modelling of gas-grain chemistries."
+	{name="Gijs Vermariën", email="vermarien@strw.leidenuniv.nl"},
+]
+license = {text = "MIT License"}
+description = "A package for the astrochemical modelling of gas-grain chemistries."
 readme = "README.md"
 requires-python = ">=3.9,<3.12"
-license = {text = "MIT License"}
 dependencies = [
-    "pandas<2", "numpy<2", "pyyaml", "matplotlib", "seaborn", "pytest"
+    "pandas<2", "numpy<2", "pyyaml", "matplotlib", "seaborn", "pytest", "joblib", "pytest-xdist", "pre-commit"
 ]
-

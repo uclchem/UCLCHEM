@@ -1,0 +1,39 @@
+name: Test notebooks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.11"  # Specify the Python version you need
+
+    - name: Install gfortran
+      run: |
+        sudo apt-get -y update
+        sudo apt-get -y install gfortran
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest nbmake pytest-xdist jupyter
+    
+    - name: Install package in editable mode
+      run: |
+        pip install -e .
+
+    - name: Test notebooks
+      run: |
+        pytest -n auto --nbmake --nbmake-timeout=2400 --nbmake-kernel=python3 notebooks
+
+

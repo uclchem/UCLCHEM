@@ -18,7 +18,7 @@ FFLAGS = -O3 -fPIC -ffree-line-length-0
 EXT_SUFFIX = $(shell python3-config --extension-suffix)
 
 
-PHYSICS_OBS= physics-core.o cloud.o hotcore.o sputtering.o cshock.o jshock.o collapse.o
+PHYSICS_OBS= physics-core.o cloud.o hotcore.o sputtering.o cshock.o jshock.o collapse.o postprocess.o
 CHEMISTRY_OBS = photoreactions.o surfacereactions.o chemistry.o
 ##simple makefile for uclchem
 ##user must point the FC variable to their preferred fortran compiler
@@ -33,8 +33,10 @@ main: constants.o  network.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} io.o wrap.f
 	${FC} ${FFLAGS} -o ../../uclchem io.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} network.o wrap.f90 main.f90
 
 # The order here is the compilation order and it's vital that modules are compiled after their dependencies
-python: constants.o  network.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} io.o wrap.f90  defaultparameters.f90
-	python3 -m numpy.f2py -c --fcompiler=${f2pyFC} io.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} network.o -m uclchemwrap wrap.f90
+# We need to pass f2py_constants.f90 into wrap.f90 in order for nspec (and other parameters) to be in scope in wrap.
+python: constants.o f2py_constants.o network.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} io.o  wrap.f90  defaultparameters.f90
+	python3 -m numpy.f2py -c --fcompiler=${f2pyFC} constants.o network.o io.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} -m uclchemwrap f2py_constants.f90 wrap.f90
+# Optional useful flags for debugging: --debug-capi, --debug, --f90flags="-fcheck=all"
 
 chemistry.o: odes.f90 rates.f90 chemistry.f90
 	${FC} ${FFLAGS} -c chemistry.f90
@@ -45,5 +47,6 @@ sputtering.o: surfacereactions.o sputtering.f90
 %.o: %.f90 
 	${FC} ${FFLAGS} -c $<
 
+# This can de disabled for fast development, but it will cause major issues when you change chemical networks.
 clean: 
 	rm *.o *.mod *.so ../uclchem/*.so

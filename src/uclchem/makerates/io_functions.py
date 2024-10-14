@@ -2,19 +2,20 @@
 """
 Functions to read in the species and reaction files and write output files
 """
-##########################################################################################
 
 import csv
+import fileinput
 import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Dict
+
 import numpy as np
 
-from uclchem.makerates.network import Network
-from .species import Species, elementList
+from uclchem.constants import PHYSICAL_PARAMETERS
+from .network import Network
 from .reaction import Reaction, reaction_types
-from os.path import join
-from pathlib import Path
-from datetime import datetime
-import yaml
+from .species import Species
 
 
 def read_species_file(file_name: Path) -> list[Species]:
@@ -31,12 +32,17 @@ def read_species_file(file_name: Path) -> list[Species]:
     user_defined_bulk = []
     with open(file_name, "r") as f:
         reader = csv.reader(f, delimiter=",", quotechar="|")
-        for row in reader:
-            if row[0] != "NAME" and "!" not in row[0]:
-                if "@" in row[0]:
-                    user_defined_bulk.append(Species(row))
-                else:
-                    species_list.append(Species(row))
+        for idx, row in enumerate(reader):
+            try:
+                if row[0] != "NAME" and "!" not in row[0]:
+                    if "@" in row[0]:
+                        user_defined_bulk.append(Species(row))
+                    else:
+                        species_list.append(Species(row))
+            except IndexError as exc:
+                print(f"Error reading species file {file_name} at line {idx}")
+                raise exc
+
     return species_list, user_defined_bulk
 
 
@@ -67,23 +73,25 @@ def read_reaction_file(
         with open(file_name, "r") as f:
             reader = csv.reader(f, delimiter=":", quotechar="|")
             for row in reader:
+                if row[0].startswith("#") or row[0].startswith("!"):
+                    continue
                 reaction_row = row[2:4] + [""] + row[4:8] + row[9:]
                 if check_reaction(reaction_row, keep_list):
-                    reactions.append(Reaction(reaction_row))
+                    reactions.append(Reaction(reaction_row, reaction_source="UMIST"))
     elif ftype == "UCL":
         with open(file_name, "r") as f:
             reader = csv.reader(f, delimiter=",", quotechar="|")
             for row in reader:
                 if (len(row) > 1) and (row[0][0] != "!"):
                     if check_reaction(row, keep_list):
-                        reactions.append(Reaction(row))
+                        reactions.append(Reaction(row, reaction_source="UCL"))
                     else:
                         dropped_reactions.append(row)
 
     elif ftype == "KIDA":
         for row in kida_parser(file_name):
             if check_reaction(row, keep_list):
-                reactions.append(Reaction(row))
+                reactions.append(Reaction(row, reaction_source="KIDA"))
 
     else:
         raise ValueError("Reaction file type must be one of 'UMIST', 'UCL' or 'KIDA'")
@@ -121,7 +129,9 @@ def kida_parser(kida_file):
     NOTE KIDA defines some of the same reaction types to UMIST but with different names
     and coefficients. We fix that by converting them here.
     """
-    str_parse = lambda x: str(x).strip().upper()
+
+    def str_parse(x):
+        return str(x).strip().upper()
 
     kida_contents = [
         [3, {str_parse: 11}],
@@ -174,7 +184,9 @@ def kida_parser(kida_file):
     return rows
 
 
-def output_drops(dropped_reactions: list[Reaction], output_dir: str = None, write_files: bool=True):
+def output_drops(
+    dropped_reactions: list[Reaction], output_dir: str = None, write_files: bool = True
+):
     """Writes the reactions that are dropped to disk/logs
 
     Args:
@@ -234,10 +246,79 @@ def write_outputs(network: Network, output_dir: str = None) -> None:
         network.three_phase,
     )
 
+    # Write the network files
     filename = fortran_src_dir / "network.f90"
     write_network_file(filename, network)
+    # write the constants needed for wrap.f90
 
+    filename = fortran_src_dir / "f2py_constants.f90"
+    f2py_constants = {
+        "n_species": len(network.get_species_list()),
+        "n_reactions": len(network.get_reaction_list()),
+        "n_physical_parameters": len(PHYSICAL_PARAMETERS),
+    }
+    write_f90_constants(f2py_constants, filename)
     # Write some meta information that can be used to read back in the reactions into Python
+    write_python_constants(f2py_constants, "../src/uclchem/constants.py")
+
+
+def write_f90_constants(
+    replace_dict: Dict[str, int],
+    output_file_name: Path,
+    template_file_path: Path = "fortran_templates",
+) -> None:
+    """Write the physical reactions to the f2py_constants.f90 file after every run of
+    makerates, this ensures the Fortran and Python bits are compatible with one another.
+
+    Args:
+        replace_dict (Dict[str, int]): The dictionary with keys to replace and their values
+        output_file_name (Path): The path to the target f2py_constants.f90 file
+        template_file_path (Path, optional): The file to use as the template. Defaults to "fortran_templates".
+    """
+    _ROOT = Path(__file__).parent
+    template_file_path = _ROOT / template_file_path
+    with open(template_file_path / "f2py_constants.f90", "r") as fh:
+        constants = fh.read()
+    constants = constants.format(**replace_dict)
+    with open(output_file_name, "w") as fh:
+        fh.writelines(constants)
+
+
+def write_python_constants(
+    replace_dict: Dict[str, int], python_constants_file: Path
+) -> None:
+    """Function to write the python constants to the constants.py file after every run,
+    this ensure the Python and Fortran bits are compatible with one another.
+
+    Args:
+        replace_dict (Dict[str, int]]): Dict with keys to replace and their values
+        python_constants_file (Path): Path to the target constant files.
+    """
+    with fileinput.input(python_constants_file, inplace=True, backup=".bak") as file:
+        for line in file:
+            # Add a timestamp to the file before the old one:
+            if fileinput.isfirstline():
+                print(
+                    "# This file was machine generated with Makerates on",
+                    datetime.now(),
+                    end="\n",
+                )
+                # Don't copy the old timestamp into the new file.
+                if line.startswith(
+                    "# This file was machine generated with Makerates on"
+                ):
+                    continue
+            # For every line, try to find constants, if we find them, replace them,
+            # if not, just print the line.
+            hits = {
+                constant: line.strip().startswith(constant) for constant in replace_dict
+            }
+            if any(hits.values()):
+                # Filter, also we can only get one hit at a time
+                variable = list(filter(hits.get, hits))[0]
+                print(f"{variable} = {replace_dict[variable]}")
+            else:
+                print(line, end="")
 
 
 def write_species(file_name: Path, species_list: list[Species]) -> None:
@@ -324,7 +405,12 @@ def write_reactions(fileName, reaction_list) -> None:
             )
 
 
-def write_odes_f90(file_name: Path, species_list: list[Species], reaction_list: list[Reaction], three_phase: bool) -> None:
+def write_odes_f90(
+    file_name: Path,
+    species_list: list[Species],
+    reaction_list: list[Reaction],
+    three_phase: bool,
+) -> None:
     """Write the ODEs in Modern Fortran. This is an actual code file.
 
     Args:
@@ -392,8 +478,8 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
                 # safeMantle is a stand in for the surface so do it manually here
                 # since it's divided by safemantle, derivative is negative so sign flips and we get another factor of 1/safeMantle
                 if species_list[j - 1].name == "SURFACE":
-                    di_dj = [f"+{x}/safeMantle" for x in losses if f"/safeMantle" in x]
-                    di_dj += [f"-{x}/safeMantle" for x in gains if f"/safeMantle" in x]
+                    di_dj = [f"+{x}/safeMantle" for x in losses if "/safeMantle" in x]
+                    di_dj += [f"-{x}/safeMantle" for x in gains if "/safeMantle" in x]
                 if len(di_dj) > 0:
                     di_dj = f"J({i+1},{j})=" + "".join(di_dj) + "\n"
                     output.write(di_dj)
@@ -408,9 +494,9 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
                 di_dj = f"J({i+1},{j})=SUM(J(bulkList,{j}))\n"
                 output.write(di_dj)
         else:
-            di_dj = [f"-{x}".replace(f"*D", "", 1) for x in losses if f"*D" in x]
-            di_dj += [f"+{x}".replace(f"*D", "", 1) for x in gains if f"*D" in x]
-            di_dj = [x + "*2" if f"*D" in x else x for x in di_dj]
+            di_dj = [f"-{x}".replace("*D", "", 1) for x in losses if "*D" in x]
+            di_dj += [f"+{x}".replace("*D", "", 1) for x in gains if "*D" in x]
+            di_dj = [x + "*2" if "*D" in x else x for x in di_dj]
             if len(di_dj) > 0:
                 di_dj = f"J({i+1},{j})=" + ("".join(di_dj)) + "\n"
                 output.write(di_dj)
@@ -421,7 +507,9 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
     output.close()
 
 
-def build_ode_string(species_list: list[Species], reaction_list: list[Reaction], three_phase: bool) -> str:
+def build_ode_string(
+    species_list: list[Species], reaction_list: list[Reaction], three_phase: bool
+) -> str:
     """A long, complex function that does the messy work of creating the actual ODE
     code to calculate the rate of change of each species. Test any change to this code
     thoroughly because ODE mistakes are very hard to spot.
@@ -576,7 +664,7 @@ def write_evap_lists(network_file, species_list: list[Species]) -> None:
             # find gas phase version of grain species. For #CO it looks for first species in list with just CO and then finds the index of that
             try:
                 j = species_names.index(species.get_desorb_products()[0])
-            except:
+            except ValueError:
                 error = f"{species.name} desorbs as {species.get_desorb_products()[0]}"
                 error += "which is not in species list. This desorption is likely user defined.\n"
                 error += "Please amend the desorption route in your reaction file and re-run Makerates"
@@ -622,7 +710,7 @@ def write_evap_lists(network_file, species_list: list[Species]) -> None:
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
 
 
-def truncate_line(input_string: str, lineLength:int=72) -> str:
+def truncate_line(input_string: str, lineLength: int = 72) -> str:
     """Take a string and adds line endings at regular intervals
     keeps us from overshooting fortran's line limits and, frankly,
     makes for nicer ode.f90 even if human readability isn't very important
@@ -666,11 +754,12 @@ def write_network_file(file_name: Path, network: Network):
     reaction_list = network.get_reaction_list()
     openFile = open(file_name, "w")
     openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
-    openFile.write(
-        "    INTEGER, PARAMETER :: nSpec={0}, nReac={1}\n".format(
-            len(species_list), len(reaction_list)
-        )
-    )
+    # The following line has been moved to f2py_constants.f90
+    # openFile.write(
+    #     "    INTEGER, PARAMETER :: nSpec={0}, nReac={1}\n".format(
+    #         len(species_list), len(reaction_list)
+    #     )
+    # )
 
     # write arrays of all species stuff
     names = []
@@ -711,7 +800,7 @@ def write_network_file(file_name: Path, network: Network):
     beta = []
     gama = []
     reacTypes = []
-    duplicates = []
+    # duplicates = []
     tmins = []
     tmaxs = []
     # store important reactions
@@ -790,7 +879,7 @@ def find_reactant(species_list: list[str], reactant: str) -> int:
     """
     try:
         return species_list.index(reactant) + 1
-    except:
+    except ValueError:
         return 9999
 
 
@@ -818,7 +907,9 @@ def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[Reacti
     return partners
 
 
-def array_to_string(name: str, array: np.array, type:str ="int", parameter:bool=True) -> str:
+def array_to_string(
+    name: str, array: np.array, type: str = "int", parameter: bool = True
+) -> str:
     """Write an array to fortran source code
 
     Args:

@@ -1,12 +1,16 @@
 try:
     from .uclchemwrap import uclchemwrap as wrap
-except:
+except ImportError:
     pass
+import os
+
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from pandas import Series, read_csv
 from seaborn import color_palette
-import matplotlib.pyplot as plt
-import os
+
+from uclchem.constants import n_species
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -44,11 +48,7 @@ def read_output_file(output_file):
         pandas.DataFrame: A dataframe containing the abundances and physical parameters of the model at every time step.
     """
     f = open(output_file)
-    f.readline()
-    bits = f.readline().split()
-    radfield = float(bits[1])
     data = read_csv(f)
-    data["radfield"] = radfield
     data.columns = data.columns.str.strip()
     return data
 
@@ -79,7 +79,7 @@ def create_abundance_plot(df, species, figsize=(16, 9), plot_file=None):
     return fig, ax
 
 
-def plot_species(ax, df, species, **plot_kwargs):
+def plot_species(ax, df, species, legend=True, **plot_kwargs):
     """Plot the abundance of a list of species through time directly onto an axis.
 
     Args:
@@ -90,7 +90,6 @@ def plot_species(ax, df, species, **plot_kwargs):
     Returns:
         pyplot.axis: Modified input axis is returned
     """
-
     color_palette(n_colors=len(species))
     for specIndx, specName in enumerate(species):
         linestyle = "solid"
@@ -101,17 +100,83 @@ def plot_species(ax, df, species, **plot_kwargs):
                 abundances = abundances + df[specName.replace("$", "@")]
         else:
             abundances = df[specName]
+        print(specName)
+        plot_kwargs["linestyle"] = linestyle
+        plot_kwargs["label"] = specName
         ax.plot(
             df["Time"],
             abundances,
-            label=specName,
             lw=2,
-            linestyle=linestyle,
             **plot_kwargs,
         )
         ax.set(yscale="log")
-        ax.legend()
+        if legend:
+            ax.legend()
     return ax
+
+
+def read_analysis(filepath):
+    with open(filepath, "r") as file:
+        lines = file.readlines()
+    for i, line in enumerate(lines):
+        if "All Reactions" in line:
+            first_newline = lines.index("\n", i)
+            all_reactions = lines[i + 2 : first_newline]
+            all_reactions = [reaction.strip("\n") for reaction in all_reactions]
+            break
+
+    n_cols = len(all_reactions) + 1
+    columns = ["Time"]
+    columns.extend(all_reactions)
+    df = pd.DataFrame(columns=columns)
+
+    segments_min = [
+        i for i, line in enumerate(lines) if "New Important Reactions At:" in line
+    ]
+    segments_max = [i - 1 for i in segments_min[1:]]
+    segments_max.append(len(lines) - 1)
+    segments = [
+        lines[segments_min[i] : segments_max[i]] for i in range(len(segments_min))
+    ]
+
+    for segment_lines in segments:
+        new_row = [0] * n_cols
+        time = float(segment_lines[0].split()[-2])
+        new_row[0] = time
+        for i, reaction in enumerate(all_reactions):
+            if not any(reaction in line for line in segment_lines):
+                rate = 0
+            else:
+                reac_indx = [
+                    j for j, line in enumerate(segment_lines) if reaction in line
+                ][0]
+                rate = float(segment_lines[reac_indx].split()[-3])
+            new_row[i + 1] = rate
+
+        new_row_dict = dict(zip(columns, new_row))
+        new_row_df = pd.DataFrame(new_row_dict, index=[0])
+        df = pd.concat(
+            [df, new_row_df],
+            axis=0,
+            ignore_index=True,
+        )
+    return df, all_reactions
+
+
+def analysis_condensed_phase(
+    species_name, result_file, output_file, rate_threshold=0.99
+):
+    if "$" in species_name:
+        species_name = species_name[1:]
+    elif "@" in species_name or "#" in species_name:
+        raise ValueError("'#' or '@' in species_name argument, but should be '$' or ''")
+    surf_output = f"surf_{output_file}"
+    bulk_output = f"bulk_{output_file}"
+    analysis(f"#{species_name}", result_file, surf_output, rate_threshold)
+    analysis(f"@{species_name}", result_file, bulk_output, rate_threshold)
+
+    # with open(surf_output, "r") as surf_file:
+    #     surf_lines = surf_file.readlines()
 
 
 def analysis(species_name, result_file, output_file, rate_threshold=0.99):
@@ -182,26 +247,25 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
 
             # This whole block adds the transfer of material from surface to bulk as surface grows (or vice versa)
             # it's not a reaction in the network so won't get picked up any other way. We manually add it.
-            if species_name[0] == "@":
-                if transfer >= 0:
-                    change_reacs.append(
-                        f"#{species_name[1:]} + SURFACE_TRANSFER -> {species_name}"
-                    )
-                else:
-                    change_reacs.append(
-                        f"{species_name} + SURFACE_TRANSFER -> #{species_name[1:]}"
-                    )
-                changes = np.append(changes, transfer)
-            elif species_name[0] == "#":
-                if transfer >= 0:
+            if transfer <= 0:
+                if species_name[0] == "#":
                     change_reacs.append(
                         f"@{species_name[1:]} + SURFACE_TRANSFER -> {species_name}"
                     )
-                else:
+                elif species_name[0] == "@":
+                    change_reacs.append(
+                        f"{species_name} + SURFACE_TRANSFER -> #{species_name[1:]}"
+                    )
+            else:
+                if species_name[0] == "#":
                     change_reacs.append(
                         f"{species_name} + SURFACE_TRANSFER -> @{species_name[1:]}"
                     )
-                changes = np.append(changes, transfer)
+                elif species_name[0] == "@":
+                    change_reacs.append(
+                        f"#{species_name[1:]} + SURFACE_TRANSFER -> {species_name}"
+                    )
+            changes = np.append(changes, transfer)
 
             # Then we remove the reactions that are not important enough to be printed by finding
             # which of the top reactions we need to reach rate_threshold*total_rate
@@ -222,9 +286,9 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
                         np.log10(np.abs(old_total_destruct))
                         - np.log10(np.abs(total_destruct))
                     )
-                    > 1
+                    > 0
                 )
-                or (np.abs(np.log10(old_total_form) - np.log10(total_formation)) > 1)
+                or (np.abs(np.log10(old_total_form) - np.log10(total_formation)) > 0)
             ):
                 old_key_reactions = key_reactions[:]
                 old_total_form = total_formation
@@ -251,7 +315,7 @@ def _param_dict_from_output(output_line):
         "initialtemp": output_line["gasTemp"],
         "zeta": output_line["zeta"],
         "radfield": output_line["radfield"],
-        "baseav": 0.0,
+        "baseav": output_line["av"],
         "rout": output_line["av"] * (1.6e21) / output_line["Density"],
     }
     return param_dict
@@ -267,9 +331,9 @@ def _get_species_rates(param_dict, input_abundances, species_index, reac_indxs):
 
     :returns: (ndarray) Array containing the rate of every reaction specified by reac_indxs
     """
-    input_abund = np.zeros(500)
+    input_abund = np.zeros(n_species)
     input_abund[: len(input_abundances)] = input_abundances
-    rate_indxs = np.ones(500)
+    rate_indxs = np.ones(n_species)
     rate_indxs[: len(reac_indxs)] = reac_indxs
     rates, success_flag, transfer, swap, bulk_layers = wrap.get_rates(
         param_dict, input_abund, species_index, rate_indxs
@@ -300,26 +364,44 @@ def _get_rates_of_change(
     changes = []
     reactionList = []
     three_phase = "@" in "".join(speciesList)
+    # surfaceCoverage = np.min([1.0, row["SURFACE"] / row["BULK"]])
     for i, reaction in enumerate(reactions):
         change = rates[i]
         reactants = reaction[0:3]
         products = reaction[3:]
+
+        # Counting the same as Reaction.body_count
+        # TODO: Move reactant_count to here
         reactant_count = 0
+
         for reactant in reactants:
             if reactant in speciesList:
                 change = change * row[reactant]
                 reactant_count += 1
-            elif reactant in ["DESOH2", "FREEZE", "LH", "LHDES", "EXSOLID"]:
+            elif reactant in ["LH", "LHDES"]:
+                reactant_count -= 1
+                if "@" in reactants[0]:
+                    change = change * bulk_layers
+            elif reactant in ["FREEZE"]:
                 reactant_count += 1
-            if reactant in ["DEUVCR", "DESCR", "DESOH2", "SURFSWAP"]:
+
+            elif reactant in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
                 change = change / np.max([1.0e-30, row["SURFACE"]])
-            if reactant == "SURFSWAP":
-                change = change * swap
-            if reactant == "BULKSWAP":
+                if reactant in ["DESOH2"]:
+                    reactant_count += 1
+                    change = change * row["H"]
+            elif reactant == "SURFSWAP":
+                change = change * swap / np.max([1.0e-30, row["SURFACE"]])
+            elif reactant == "BULKSWAP":
                 change = change * bulk_layers
 
+            if "H2FORM" in reactants:
+                reactant_count += 1
+                # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
+                break
+
             if (not three_phase) and (reactant in ["THERM"]):
-                change = change * row[reaction[0]] / np.max([1.0e-30, row["SURFACE"]])
+                change = change * row["Density"] / np.max([1.0e-30, row["SURFACE"]])
         change = change * (row["Density"] ** (reactant_count - 1))
         if species in reactants:
             changes.append(-change)
@@ -327,6 +409,7 @@ def _get_rates_of_change(
         if species in products:
             changes.append(change)
             reactionList.append(reaction)
+
     A = zip(changes, reactionList)
     A = sorted(A, key=lambda x: np.abs(x[0]), reverse=True)
     changes, reactionList = zip(*A)
@@ -384,20 +467,18 @@ def _write_analysis(
         "\n\n***************************\nNew Important Reactions At: {0:.2e} years\n".format(
             time
         )
-    )    
+    )
     # Formation and destruction writing is disabled since the absolute numbers do not appear to be correct.
-    # output_file.write("Formation = {0:.2e} from:".format(total_production))
+    output_file.write("Formation = {0:.8e} from:".format(total_production))
     for k, reaction in enumerate(key_reactions):
         if key_changes[k] > 0:
-            outString = f"\n{reaction} : {float(key_changes[k] / total_production):.2%}"
+            outString = f"\n{reaction} : {float(key_changes[k])} = {float(key_changes[k] / total_production):.2%}"
             output_file.write(outString)
 
-    # output_file.write("\n\nDestruction = {0:.2e} from:".format(total_destruction))
+    output_file.write("\n\nDestruction = {0:.8e} from:".format(total_destruction))
     for k, reaction in enumerate(key_reactions):
         if key_changes[k] < 0:
-            outString = (
-                f"\n{reaction} : {float(key_changes[k] / total_destruction):.2%}"
-            )
+            outString = f"\n{reaction} : {float(key_changes[k])} = {float(key_changes[k] / total_destruction):.2%}"
             output_file.write(outString)
 
 

@@ -5,6 +5,7 @@ MODULE cloud_mod
     USE physicscore
     USE network
     USE constants
+    use f2py_constants
     IMPLICIT NONE
 CONTAINS
 
@@ -14,7 +15,7 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
-        successFlag=1
+        successFlag=0
 
         !Set up basic physics variables
         cloudSize=(rout-rin)*pc

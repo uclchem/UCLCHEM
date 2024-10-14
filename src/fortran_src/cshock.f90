@@ -6,6 +6,7 @@ MODULE cshock_mod
     USE network
     USE physicscore
     USE constants
+    use f2py_constants
     USE sputtering
     IMPLICIT NONE
 
@@ -21,7 +22,7 @@ MODULE cshock_mod
     REAL(dp) :: coshinv1,coshinv2,zmax,a1,eps
 
     INTEGER :: inrad
-    REAL(dp), PARAMETER ::nu0=3.0d15,bm0=1.e-6,bt=6.
+    REAL(dp), PARAMETER ::nu0=3.0d15,bt=6.
     REAL(dp), PARAMETER :: grainRadius=1.0d-5
 
 CONTAINS
@@ -33,7 +34,7 @@ CONTAINS
         INTEGER, INTENT(OUT) :: successFlag
         REAL(dp) :: v01,g1,g2
 
-        successFlag=1
+        successFlag=0
         driftVel=0.0
         zn0=0.0
         vn0=0.0
@@ -116,6 +117,7 @@ CONTAINS
         !For the general case, the Alfven velocity is calculated as vA=B0/sqrt(4*pi*2*initialDens). If we
         !substitute the expression of B0 on this equation, we obtain that vA=bm0/sqrt(4*pi*mH).
         !B0=bm0*sqrt(2*initialDens)
+        bm0 = bm0*1D-06
         vA=bm0/sqrt(4*pi*mh)
         vA=vA/km
 
