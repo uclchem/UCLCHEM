@@ -1056,12 +1056,17 @@ class Network:
             for i, reaction in enumerate(self.get_reaction_list()):
                 if reaction.get_reaction_type() in ["LH", "LHDES"]:
                     reactant_string = ",".join(reaction.get_reactants())
+                    # Check if we need to correct the branching ratio (smaller than 0.98 is allowed)
                     if (
                         reactant_string in branching_reactions
                         and branching_reactions[reactant_string] != 1.0
-                    ):
+                    ):	
                         new_reaction = deepcopy(reaction)
                         if branching_reactions[reactant_string] != 0.0:
+
+                            if branching_reactions[reactant_string] < 0.99:
+                                 logging.warning(f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string] } we are assuming you set this lower on purpose.")
+                                 continue
                             new_alpha = (
                                 new_reaction.get_alpha()
                                 / branching_reactions[reactant_string]

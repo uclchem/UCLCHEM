@@ -13,9 +13,9 @@ from typing import Dict
 import numpy as np
 
 from uclchem.constants import PHYSICAL_PARAMETERS
-from uclchem.makerates.network import Network
-from uclchem.makerates.reaction import Reaction, reaction_types
-from uclchem.makerates.species import Species
+from .network import Network
+from .reaction import Reaction, reaction_types
+from .species import Species
 
 
 def read_species_file(file_name: Path) -> list[Species]:
