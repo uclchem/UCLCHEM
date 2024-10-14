@@ -118,7 +118,7 @@ class Species:
         return self.mass
 
     def set_desorb_products(self, new_desorbs: list[str]) -> None:
-        """Set the desorption products for species on the surface or in the bulk. 
+        """Set the desorption products for species on the surface or in the bulk.
         It is assumed that there is only one desorption pathway.
 
         Args:
@@ -140,7 +140,7 @@ class Species:
         Args:
             product_list (list[str]): The list of freeze out products
             freeze_alpha (float): The freeze out ratio.
-            
+
         It is called alpha, since it is derived from the alpha column in the UCLCHEM reaction format:
         https://github.com/uclchem/UCLCHEM/blob/08d37f8c3063f8ff8a9a7aa16d9eff0ed4f99538/Makerates/src/network.py#L160
         """
@@ -151,7 +151,7 @@ class Species:
         """Obtain the product to which the species freeze out
 
         Returns:
-            dict[str, float]: Reactions and their respective freeze out ratios. 
+            dict[str, float]: Reactions and their respective freeze out ratios.
 
         Yields:
             Iterator[dict[str, float]]: Iterator that returns all of the freeze out reactions with ratios
@@ -183,12 +183,18 @@ class Species:
         return self.freeze_products[",".join(product_list)]
 
     def is_grain_species(self) -> bool:
-        """ Return whether the species is a species on the grain
+        """Return whether the species is a species on the grain
 
         Returns:
             bool: True if it is a grain species.
         """
-        return self.name in ["BULK", "SURFACE"] or self.name.startswith("#",) or self.name.startswith("@")
+        return (
+            self.name in ["BULK", "SURFACE"]
+            or self.name.startswith(
+                "#",
+            )
+            or self.name.startswith("@")
+        )
 
     def is_surface_species(self) -> bool:
         """Checks if the species is on the surface
@@ -215,8 +221,7 @@ class Species:
         return self.name.endswith("+") or self.name.endswith("-")
 
     def add_default_freeze(self) -> None:
-        """Adds a defalt freezeout, which is freezing out to the species itself, but with no ionization.
-        """
+        """Adds a defalt freezeout, which is freezing out to the species itself, but with no ionization."""
         freeze = "#" + self.name
         if freeze[-1] in ["+", "-"]:
             freeze = freeze[:-1]
@@ -321,7 +326,7 @@ class Species:
         return self.n_atoms
 
     def set_n_atoms(self, new_n_atoms: int) -> None:
-        """Set the number of atoms 
+        """Set the number of atoms
 
         Args:
             new_n_atoms (int): The new number of atoms
@@ -345,7 +350,9 @@ class Species:
         elif isinstance(other, str):
             return self.name == other
         else:
-            raise NotImplementedError("We can only compare between species or strings of species")
+            raise NotImplementedError(
+                "We can only compare between species or strings of species"
+            )
 
     def __lt__(self, other) -> bool:
         """Compare the mass of the species

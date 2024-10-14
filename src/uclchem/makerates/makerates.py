@@ -1,14 +1,12 @@
-import uclchem.makerates.io_functions as io
-from uclchem.makerates import Network
-import os
-import yaml
 import logging
-from logging import Logger
-from os import PathLike
+import os
 from typing import Union
 
-from uclchem.makerates.network import LoadedNetwork
+import yaml
 
+import uclchem.makerates.io_functions as io
+from uclchem.makerates import Network
+from uclchem.makerates.network import LoadedNetwork
 
 param_list = [
     "species_file",
@@ -42,18 +40,15 @@ def run_makerates(
         user_params = yaml.safe_load(f)
 
     for param in param_list:
-        try:
-            # Check if we can access the needed parameter:
-            user_params[param]
-            logging.info(f"{param} : {user_params[param]}")
-        except:
+        if param not in user_params:
             raise KeyError(f"{param} not found in user_settings.yaml")
+        logging.info(f"{param} : {user_params[param]}")
 
-    try:
+    if "output_directory" in user_params:
         user_output_dir = user_params["output_directory"]
         if not os.path.exists(user_output_dir):
             os.makedirs(user_output_dir)
-    except:
+    else:
         user_output_dir = None
 
     # load everything from the configuration file

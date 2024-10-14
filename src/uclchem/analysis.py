@@ -1,13 +1,13 @@
 try:
     from .uclchemwrap import uclchemwrap as wrap
-except:
+except ImportError:
     pass
 import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-from pandas import Series, read_csv
 import pandas as pd
+from pandas import Series, read_csv
 from seaborn import color_palette
 
 from uclchem.constants import n_species
@@ -100,11 +100,9 @@ def plot_species(ax, df, species, legend=True, **plot_kwargs):
                 abundances = abundances + df[specName.replace("$", "@")]
         else:
             abundances = df[specName]
-        if "linestyle" not in plot_kwargs:
-            plot_kwargs["linestyle"] = linestyle
-        if "label" not in plot_kwargs:
-            plot_kwargs["label"] = specName
-        print(plot_kwargs)
+        print(specName)
+        plot_kwargs["linestyle"] = linestyle
+        plot_kwargs["label"] = specName
         ax.plot(
             df["Time"],
             abundances,
@@ -177,8 +175,8 @@ def analysis_condensed_phase(
     analysis(f"#{species_name}", result_file, surf_output, rate_threshold)
     analysis(f"@{species_name}", result_file, bulk_output, rate_threshold)
 
-    with open(surf_output, "r") as surf_file:
-        surf_lines = surf_file.readlines()
+    # with open(surf_output, "r") as surf_file:
+    #     surf_lines = surf_file.readlines()
 
 
 def analysis(species_name, result_file, output_file, rate_threshold=0.99):
