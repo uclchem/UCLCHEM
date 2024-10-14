@@ -4,9 +4,9 @@ from typing import Union
 
 import yaml
 
-import uclchem.makerates.io_functions as io
-from uclchem.makerates import Network
-from uclchem.makerates.network import LoadedNetwork
+from . import io_functions as io
+from .network import Network
+from .network import LoadedNetwork
 
 param_list = [
     "species_file",
