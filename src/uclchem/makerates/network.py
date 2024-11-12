@@ -23,6 +23,7 @@ class Network:
         reactions: list[Reaction],
         three_phase: bool = False,
         user_defined_bulk: list = [],
+        add_crp_photo_to_grain: bool = True,
     ):
         """A class to store network information such as indices of important reactions.
 
@@ -38,6 +39,7 @@ class Network:
             reactions (list[Reaction]): A list of chemical reactions that are added to the network
             three_phase (bool, optional): Whether to use a three phase model (gas, surface, bulk). Defaults to False.
             user_defined_bulk (list, optional): List of user defined bulk. Defaults to [].
+            add_crp_photo_to_grain (bool, optional): Whether to add CRP, CRPHOT and PHOTON reactions from gas-phase into solid phase too.
         """
         assert len(set([s.name for s in species])) == len(
             species
@@ -47,6 +49,7 @@ class Network:
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
         self.three_phase = three_phase
+        self.add_crp_photo_to_grain = add_crp_photo_to_grain
         electron_specie = Species(["E-", 0, 0.0, 0, 0, 0, 0])
         electron_specie.n_atoms = 1
         self.add_species(electron_specie)
@@ -58,6 +61,8 @@ class Network:
 
         # Need additional grain reactions including non-thermal desorption and chemically induced desorption
         self.add_freeze_reactions()
+        if self.add_crp_photo_to_grain:
+            self.add_CRP_and_PHOTO_reactions_to_grain()
         if self.three_phase:
             self.add_bulk_species()
             self.add_bulk_reactions()
@@ -611,7 +616,7 @@ class Network:
     def add_desorb_reactions(self) -> None:
         """Save the user effort by automatically generating desorption reactions"""
         desorb_reacs = ["DESOH2", "DESCR", "DEUVCR", "THERM"]
-        logging.debug("Adding desorbtion reactions!")
+        logging.debug("Adding desorption reactions!")
         new_reactions = []
         for species in self.get_species_list():
             if species.is_surface_species():
@@ -638,10 +643,18 @@ class Network:
         reactions once. Then we duplicate so that the reaction branches
         with products on grain and products desorbing.
         """
-        logging.debug("Adding desascociation reactions for LH and ER mechanisms")
+        logging.debug("Adding desorption reactions for LH and ER mechanisms")
         new_reactions = []
         for reaction in self.get_reaction_list():
             if reaction.get_reaction_type() in ["LH", "ER"]:
+                reaction_copy = deepcopy(reaction)
+                reaction_copy.convert_to_bulk()
+                if reaction_copy == reaction:
+                    # If the reaction is a bulk reaction, do not let it chemically desorb
+                    logging.debug(
+                        f"Bulk reactions are not able to chemically desorb. Skipping reaction {reaction}"
+                    )
+                    continue
                 new_reaction = deepcopy(reaction)
                 # Convert to disassociation reaction
                 new_reactants = new_reaction.get_reactants()
@@ -670,7 +683,7 @@ class Network:
                 ]
                 new_reaction.set_products(new_products)
                 logging.debug(
-                    f"Adding deassociation reaction for {reaction}, new reaction {new_reaction}"
+                    f"Adding desorption reaction for {reaction}, new reaction {new_reaction}"
                 )
                 new_reactions.append(new_reaction)
         self.add_reactions(new_reactions)
@@ -801,22 +814,17 @@ class Network:
         lists surface reactions in their input reaction file and we duplicate here.
         """
         logging.debug("Adding bulk reactions")
+        surface_reactions = self.get_reactions_on_grain()
+        bulk_reaction_types = ["CRP", "CRPHOT", "PHOTON", "LH", "EXSOLID", "EXRELAX"]
+        surface_reactions_can_be_bulk = [
+            reaction
+            for reaction in surface_reactions
+            if reaction.get_reaction_type() in bulk_reaction_types
+        ]
         current_reaction_list = self.get_reaction_list()
-        lh_reactions = [x for x in current_reaction_list if "LH" in x.get_reactants()]
-        lh_reactions = lh_reactions + [
-            x for x in current_reaction_list if "LHDES" in x.get_reactants()
-        ]
-        ex_reactions = [x for x in current_reaction_list if "CRS" in x.get_reactants()]
-        ex_reactions = ex_reactions + [
-            x for x in current_reaction_list if "EXSOLID" in x.get_reactants()
-        ]
-        ex_reactions = ex_reactions + [
-            x for x in current_reaction_list if "EXRELAX" in x.get_reactants()
-        ]
-        surface_reactions = lh_reactions + ex_reactions
 
         new_reactions = []
-        for reaction in surface_reactions:
+        for reaction in surface_reactions_can_be_bulk:
             new_reac = deepcopy(reaction)
             new_reac.convert_to_bulk()
             new_reactions.append(new_reac)
@@ -837,11 +845,14 @@ class Network:
                 new_reac_list = new_reac_list + ["NAN", "NAN", "NAN", 1, 0, 0, 0, 10000]
                 new_reactions.append(Reaction(new_reac_list))
 
-            # and the reverse
-            new_reac_list[0] = species.name.replace("@", "#")
-            new_reac_list[1] = "SURFSWAP"
-            new_reac_list[3] = species.name
-            new_reactions.append(Reaction(new_reac_list))
+            # and the reverse, going from surface to bulk
+            if not species in [
+                "@H2"
+            ]:  # If species is H2, do not allow it to go from surface to bulk
+                new_reac_list[0] = species.name.replace("@", "#")
+                new_reac_list[1] = "SURFSWAP"
+                new_reac_list[3] = species.name
+                new_reactions.append(Reaction(new_reac_list))
         logging.debug(
             f"The following bulk reactions are added to the reactions: {new_reactions}"
         )
@@ -882,6 +893,88 @@ class Network:
                 logging.info(f"\t{spec.name} freezes out through {freezes} routes")
             elif freezes < 1 and not spec.is_grain_species():
                 logging.info(f"\t{spec.name} does not freeze out")
+
+    def get_reactions_on_grain(self) -> list[Reaction]:
+        reactions_on_grain = []
+        for reaction in self.get_reaction_list():
+            reactants = reaction.get_reactants()
+            if any("#" in reactant or "@" in reactant for reactant in reactants):
+                reactions_on_grain.append(reaction)
+        return reactions_on_grain
+
+    def add_CRP_and_PHOTO_reactions_to_grain(self) -> None:
+        """Add all the gas-phase reactions with CRP, CRPHOT or PHOTON to the grain surface too"""
+        logging.debug("Adding gas-phase reactions with CRP, CRPHOT or PHOTON to grain")
+        reactions_on_grain = self.get_reactions_on_grain()
+        reactions_on_grain_filtered = [
+            reaction
+            for reaction in reactions_on_grain
+            if reaction.get_reaction_type() in ["CRP", "CRPHOT", "PHOTON"]
+        ]
+        new_reactions = []
+        for reaction in self.get_reaction_list():
+            if not reaction.get_reaction_type() in ["CRP", "CRPHOT", "PHOTON"]:
+                continue
+            if reaction in reactions_on_grain_filtered:
+                continue
+            reactants = reaction.get_reactants()
+            products = reaction.get_products()
+            if any(
+                "@" + reactants[0] in reaction.get_reactants()
+                or "#" + reactants[0] in reaction.get_reactants()
+                for reaction in reactions_on_grain_filtered
+            ):
+                # There is already another version in the network, keep that
+                continue
+
+            if not all(
+                reactant in self.get_species_list()
+                or reactant in ["CRP", "CRPHOT", "PHOTON", "NAN"]
+                for reactant in reactants
+            ) or not all(
+                product in self.get_species_list() or product in ["NAN"]
+                for product in products
+            ):
+                continue
+            if any("+" in reactant for reactant in reactants):
+                logging.debug(
+                    f"Reaction {reaction} had reactant ions, which is not possible on grain. Skipping"
+                )
+                # Cannot have ions in grain
+                continue
+            # We have now filtered to have only gas-phase reactions that have type CRP, CRPHOT or PHOTON
+            reaction_copy = deepcopy(reaction)
+            for i, reactant in enumerate(reactants):
+                if reactant not in ["CRP", "CRPHOT", "PHOTON", "NAN"]:
+                    reactants[i] = "#" + reactant
+            for i, product in enumerate(products):
+                if product == "E-":
+                    product = "NAN"
+                if product != "NAN":
+                    products[i] = "#" + product.strip("+")
+            if products[0] == reactants[0]:
+                # This means the reaction was simply an ionization reaction. We can skip this reaction.
+                logging.debug(
+                    f"Reaction {reaction} is ionization reaction, skip on grain surface"
+                )
+                continue
+            if not all(
+                species in self.get_species_list()
+                or species in ["NAN", "CRP", "CRPHOT", "PHOTON"]
+                for species in reactants + products
+            ):
+                # Reaction contains species that were not defined on grain surface.
+                # Do not add this reaction to the network.
+                logging.debug(
+                    f"Reaction {reaction} contains species that were not set on grain. Skipping"
+                )
+                continue
+            reaction_copy.set_reactants(reactants)
+            reaction_copy.set_products(products)
+            new_reactions.append(reaction_copy)
+        logging.debug(f"Adding new reactions to grain")
+        self.add_reactions(new_reactions)
+        logging.info(f"Added {len(new_reactions)} reactions to grain")
 
     def duplicate_checks(self) -> None:
         """
@@ -955,7 +1048,6 @@ class Network:
             # CO + PHOTON -> O + C
             reacs = reaction.get_reactants()
             prods = reaction.get_products()
-
             reaction_filters = {
                 "nR_CO_hv": lambda reacs, prods: ("CO" in reacs)
                 and ("PHOTON" in reacs)
@@ -1060,13 +1152,14 @@ class Network:
                     if (
                         reactant_string in branching_reactions
                         and branching_reactions[reactant_string] != 1.0
-                    ):	
+                    ):
                         new_reaction = deepcopy(reaction)
                         if branching_reactions[reactant_string] != 0.0:
-
                             if branching_reactions[reactant_string] < 0.99:
-                                 logging.warning(f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string] } we are assuming you set this lower on purpose.")
-                                 continue
+                                logging.warning(
+                                    f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string] } we are assuming you set this lower on purpose."
+                                )
+                                continue
                             new_alpha = (
                                 new_reaction.get_alpha()
                                 / branching_reactions[reactant_string]

@@ -15,6 +15,15 @@ SUBROUTINE calculateReactionRates
     idx2=photonReacs(2)
     IF (idx1 .ne. idx2) THEN
         rate(idx1:idx2) = alpha(idx1:idx2)*dexp(-gama(idx1:idx2)*av(dstep))*radfield/1.7
+        ! For all solid species, decrease rate by 0.3 (Kalvans 2018)
+        ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
+        DO j=idx1,idx2
+            IF (ANY(bulkList==re1(j))) THEN
+                rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * (1-0.007)**(1+0.5/bulkLayersReciprocal)
+            ELSE IF (ANY(surfaceList==re1(j))) THEN
+                rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO
+            END IF
+        END DO 
     END IF
 
     !Reactions involving cosmic ray induced photon
@@ -22,6 +31,15 @@ SUBROUTINE calculateReactionRates
     idx2=crphotReacs(2)
     IF (idx1 .ne. idx2) THEN
         rate(idx1:idx2)=alpha(idx1:idx2)*gama(idx1:idx2)*1.0/(1.0-omega)*zeta*(gasTemp(dstep)/300)**beta(idx1:idx2)
+        ! For all solid species, decrease rate by 0.3 (Kalvans 2018)
+        ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
+        DO j=idx1,idx2
+            IF (ANY(bulkList==re1(j))) THEN
+                rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * (1-0.007)**(1+0.5/bulkLayersReciprocal)
+            ELSE IF (ANY(surfaceList==re1(j))) THEN
+                rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO
+            END IF
+        END DO 
     END IF
 
     !freeze out only happens if freezeFactor>0 and depending on evap choice 
@@ -162,7 +180,7 @@ SUBROUTINE calculateReactionRates
                     !See Cuppen, Walsh et al. 2017 review (section 4.1)
                     IF (iceList(i) .eq. re1(j)) THEN
                         !Basic rate at which thermal desorption occurs
-                        rate(j)=vdiff(i)*exp(-gama(j)/gasTemp(dstep))
+                        rate(j)=vdiff(i)*exp(-gama(j)/dustTemp(dstep))
                         !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
                         !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                         !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
@@ -189,9 +207,9 @@ SUBROUTINE calculateReactionRates
     idx1=lhReacs(1)
     idx2=lhReacs(2)
     if (idx1 .ne. idx2) THEN
-        if ((gasTemp(dstep) .lt. MAX_GRAIN_TEMP) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
+        if ((dustTemp(dstep) .lt. MAX_GRAIN_TEMP) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
             DO j=idx1,idx2
-                rate(j)=diffusionReactionRate(j,gasTemp(dstep))
+                rate(j)=diffusionReactionRate(j,dustTemp(dstep))
             END DO
             !two routes for every diffusion reaction: products to gas or products remain on surface
             rate(lhdesReacs(1):lhdesReacs(2))=rate(idx1:idx2)
@@ -216,7 +234,7 @@ SUBROUTINE calculateReactionRates
     idx2=erReacs(2)
     if (idx1 .ne. idx2) THEN
         rate(idx1:idx2)=freezeOutRate(idx1,idx2)
-        rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/gasTemp(dstep))
+        rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/dustTemp(dstep))
         rate(erdesReacs(1):erdesReacs(2))=rate(idx1:idx2)
         !calculate fraction of reaction that goes down desorption route
         idx1=erdesReacs(1)
@@ -229,7 +247,7 @@ SUBROUTINE calculateReactionRates
     END IF
 
     IF (PARAMETERIZE_H2FORM) THEN
-        rate(nR_H2Form_CT)=h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
+        rate(nR_H2Form_CT)=h2FormEfficiency(dustTemp(dstep),dustTemp(dstep))
         !rate(nR_H2Form_LH)=0.0
         rate(nR_H2Form_ER)=0.0
         !rate(nR_H2Form_LHDes)=0.0
@@ -238,7 +256,7 @@ SUBROUTINE calculateReactionRates
         rate(nR_H2Form_CT)= 0.0
     END IF
 
-    CALL bulkSurfaceExchangeReactions(rate,gasTemp(dstep))
+    CALL bulkSurfaceExchangeReactions(rate,dustTemp(dstep))
     
     !Basic gas phase reactions 
     !They only change if temperature has so we can save time with an if statement
@@ -289,7 +307,7 @@ FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
     
     !additional factor for ions (beta=0 for neutrals)
     freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
-    IF ((freezeFactor .eq. 0.0) .or. (gasTemp(dstep) .gt. MAX_GRAIN_TEMP)) then
+    IF ((freezeFactor .eq. 0.0) .or. (dustTemp(dstep) .gt. MAX_GRAIN_TEMP)) then
         freezeRates=0.0
     ELSE
         freezeRates=freezeRates*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL&
