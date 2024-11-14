@@ -52,7 +52,7 @@ class Reaction:
             ) from error
         self.duplicate = False
         self.source = reaction_source  # The source of the reaction, e.g. UMIST, KIDA or user defined
-        
+
         # body_count is the number of factors of density to include in ODE
         # we drop a factor of density from both the LHS and RHS of ODES
         # So reactions with 1 body have no factors of density which we manage by counting from -1
@@ -231,7 +231,7 @@ class Reaction:
             return self.get_reactants()[1]
         else:
             return "TWOBODY"
-        
+
     def get_source(self) -> str:
         """Get the source of the reaction
 
@@ -340,7 +340,7 @@ class Reaction:
         ode_bit = f"+RATE({i+1})"
         # every body after the first requires a factor of density
         for body in range(self.body_count):
-            ode_bit = ode_bit + f"*D"
+            ode_bit = ode_bit + "*D"
 
         # then bring in factors of abundances
         for species in self.get_reactants():
@@ -351,11 +351,11 @@ class Reaction:
             elif species == "SURFSWAP":
                 ode_bit += "*totalSwap/safeMantle"
             elif species in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
-                ode_bit = ode_bit + f"/safeMantle"
+                ode_bit = ode_bit + "/safeMantle"
                 if species == "DESOH2":
                     ode_bit = ode_bit + f"*Y({species_names.index('H')+1})"
             elif (species in ["THERM"]) and not (three_phase):
-                ode_bit += f"*D/safeMantle"
+                ode_bit += "*D/safeMantle"
             if "H2FORM" in self.get_reactants():
                 # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
                 break

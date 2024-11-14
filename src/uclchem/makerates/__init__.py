@@ -1,5 +1,4 @@
-from .species import Species
-from .network import Network
-from .reaction import Reaction
-
-from .makerates import run_makerates
+from .makerates import run_makerates as run_makerates
+from .network import Network as Network
+from .reaction import Reaction as Reaction
+from .species import Species as Species

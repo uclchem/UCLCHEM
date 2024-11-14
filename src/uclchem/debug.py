@@ -1,4 +1,4 @@
-""" Functions to help debugging UCLCHEM"""
+"""Functions to help debugging UCLCHEM"""
 
 from uclchem.uclchemwrap import uclchemwrap as wrap
 

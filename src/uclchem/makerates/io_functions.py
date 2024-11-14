@@ -6,19 +6,16 @@ Functions to read in the species and reaction files and write output files
 import csv
 import fileinput
 import logging
-import os
 from datetime import datetime
-from os.path import join
 from pathlib import Path
 from typing import Dict
 
 import numpy as np
-import yaml
 
 from uclchem.constants import PHYSICAL_PARAMETERS
-from uclchem.makerates.network import Network
-from uclchem.makerates.reaction import Reaction, reaction_types
-from uclchem.makerates.species import Species
+from .network import Network
+from .reaction import Reaction, reaction_types
+from .species import Species
 
 
 def read_species_file(file_name: Path) -> list[Species]:
@@ -45,7 +42,7 @@ def read_species_file(file_name: Path) -> list[Species]:
             except IndexError as exc:
                 print(f"Error reading species file {file_name} at line {idx}")
                 raise exc
-            
+
     return species_list, user_defined_bulk
 
 
@@ -132,7 +129,9 @@ def kida_parser(kida_file):
     NOTE KIDA defines some of the same reaction types to UMIST but with different names
     and coefficients. We fix that by converting them here.
     """
-    str_parse = lambda x: str(x).strip().upper()
+
+    def str_parse(x):
+        return str(x).strip().upper()
 
     kida_contents = [
         [3, {str_parse: 11}],
@@ -268,7 +267,7 @@ def write_f90_constants(
     output_file_name: Path,
     template_file_path: Path = "fortran_templates",
 ) -> None:
-    """ Write the physical reactions to the f2py_constants.f90 file after every run of 
+    """Write the physical reactions to the f2py_constants.f90 file after every run of
     makerates, this ensures the Fortran and Python bits are compatible with one another.
 
     Args:
@@ -479,8 +478,8 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
                 # safeMantle is a stand in for the surface so do it manually here
                 # since it's divided by safemantle, derivative is negative so sign flips and we get another factor of 1/safeMantle
                 if species_list[j - 1].name == "SURFACE":
-                    di_dj = [f"+{x}/safeMantle" for x in losses if f"/safeMantle" in x]
-                    di_dj += [f"-{x}/safeMantle" for x in gains if f"/safeMantle" in x]
+                    di_dj = [f"+{x}/safeMantle" for x in losses if "/safeMantle" in x]
+                    di_dj += [f"-{x}/safeMantle" for x in gains if "/safeMantle" in x]
                 if len(di_dj) > 0:
                     di_dj = f"J({i+1},{j})=" + "".join(di_dj) + "\n"
                     output.write(di_dj)
@@ -495,9 +494,9 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
                 di_dj = f"J({i+1},{j})=SUM(J(bulkList,{j}))\n"
                 output.write(di_dj)
         else:
-            di_dj = [f"-{x}".replace(f"*D", "", 1) for x in losses if f"*D" in x]
-            di_dj += [f"+{x}".replace(f"*D", "", 1) for x in gains if f"*D" in x]
-            di_dj = [x + "*2" if f"*D" in x else x for x in di_dj]
+            di_dj = [f"-{x}".replace("*D", "", 1) for x in losses if "*D" in x]
+            di_dj += [f"+{x}".replace("*D", "", 1) for x in gains if "*D" in x]
+            di_dj = [x + "*2" if "*D" in x else x for x in di_dj]
             if len(di_dj) > 0:
                 di_dj = f"J({i+1},{j})=" + ("".join(di_dj)) + "\n"
                 output.write(di_dj)
@@ -665,7 +664,7 @@ def write_evap_lists(network_file, species_list: list[Species]) -> None:
             # find gas phase version of grain species. For #CO it looks for first species in list with just CO and then finds the index of that
             try:
                 j = species_names.index(species.get_desorb_products()[0])
-            except:
+            except ValueError:
                 error = f"{species.name} desorbs as {species.get_desorb_products()[0]}"
                 error += "which is not in species list. This desorption is likely user defined.\n"
                 error += "Please amend the desorption route in your reaction file and re-run Makerates"
@@ -801,7 +800,7 @@ def write_network_file(file_name: Path, network: Network):
     beta = []
     gama = []
     reacTypes = []
-    duplicates = []
+    # duplicates = []
     tmins = []
     tmaxs = []
     # store important reactions
@@ -880,7 +879,7 @@ def find_reactant(species_list: list[str], reactant: str) -> int:
     """
     try:
         return species_list.index(reactant) + 1
-    except:
+    except ValueError:
         return 9999
 
 

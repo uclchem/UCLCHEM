@@ -9,7 +9,6 @@ from copy import deepcopy
 from typing import Union
 
 from numpy import any as np_any
-from numpy import unique
 
 from .reaction import Reaction, reaction_types
 from .species import Species, elementList
@@ -448,7 +447,7 @@ class Network:
         """Check every speces in network appears in at least one reaction.
         Remove any that do not and alert user.
         """
-        species_names = [species.name for species in self.get_species_list()]
+        # species_names = [species.name for species in self.get_species_list()]
         # check for species not involved in any reactions
         lostSpecies = []
         for species in self.get_species_list():
@@ -505,7 +504,7 @@ class Network:
             h2o_binding_energy = self.get_species_list()[
                 h2o_binding_energy
             ].binding_energy
-        except:
+        except ValueError:
             error = "You are trying to create a three phase model but #H2O is not in your network"
             error += "\nThis is likely an error so Makerates will not complete"
             error += (
@@ -514,7 +513,7 @@ class Network:
             raise RuntimeError(error)
         for species in self.get_species_list():
             if species.is_surface_species():
-                if not species.name.replace("#", "@") in speciesNames:
+                if species.name.replace("#", "@") not in speciesNames:
                     new_spec = deepcopy(species)
                     new_spec.name = new_spec.name.replace("#", "@")
                     if new_spec.name in userSpecies:
@@ -900,10 +899,15 @@ class Network:
                             if not (
                                 (reaction1.get_templow() >= reaction2.get_temphigh())
                                 or (reaction1.get_temphigh() <= reaction2.get_templow())
-                            ):  
-                                if reaction1.get_source() == reaction2.get_source() and reaction1.get_source() == "UMIST":
-                                    logging.info(f"Detected overlapping UMIST reactions {reaction1} wit indices {i+1} {j+1}, this is done in UMIST to provide better rates. ")
-                                else:                                    
+                            ):
+                                if (
+                                    reaction1.get_source() == reaction2.get_source()
+                                    and reaction1.get_source() == "UMIST"
+                                ):
+                                    logging.info(
+                                        f"Detected overlapping UMIST reactions {reaction1} wit indices {i+1} {j+1}, this is done in UMIST to provide better rates. "
+                                    )
+                                else:
                                     logging.warning(
                                         f"\tReactions with indices {i+1} and {j+1} are possible duplicates\n\t\t"
                                         + str(reaction1)
@@ -950,26 +954,46 @@ class Network:
         for i, reaction in enumerate(self.get_reaction_list()):
             # CO + PHOTON -> O + C
             reacs = reaction.get_reactants()
-            prods = reaction.get_products() 
-            
-            reaction_filters = {"nR_CO_hv" : lambda reacs, prods: ("CO" in reacs) and ("PHOTON" in reacs) and ("O" in prods) and ("C" in prods),
-                                "nR_C_hv": lambda reacs, prods: ("C" in reacs) and ("PHOTON" in reacs),
-                                "nR_H2Form_CT": lambda reacs, prods: "H2FORM" in reacs,
-                                "nR_H2Form_ERDes": lambda reacs, prods: ("H" in reacs) and ("#H" in reacs) and ("H2" in prods),
-                                "nR_H2Form_ER": lambda reacs, prods: ("H" in reacs) and ("#H" in reacs) and ("#H2" in prods),
-                                "nR_H2Form_LH": lambda reacs, prods: (reacs.count("#H") == 2) and ("LH" in reacs),
-                                "nR_H2Form_LHDes": lambda reacs, prods: (reacs.count("#H") == 2) and ("LHDES" in reacs),
-                                "nR_HFreeze": lambda reacs, prods: ("H" in reacs) and ("FREEZE" in reacs),
-                                "nR_H2Freeze": lambda reacs, prods: ("H2" in reacs) and ("FREEZE" in reacs),
-                                "nR_EFreeze": lambda reacs, prods: ("E-" in reacs) and ("FREEZE" in reacs),
-                                "nR_H2_hv": lambda reacs, prods: ("H2" in reacs) and ("PHOTON" in reacs),
-                                "nR_H2_crp": lambda reacs, prods: ("H2" in reacs) and ("CRP" in reacs) and (prods.count("H") == 2)}
-            
+            prods = reaction.get_products()
+
+            reaction_filters = {
+                "nR_CO_hv": lambda reacs, prods: ("CO" in reacs)
+                and ("PHOTON" in reacs)
+                and ("O" in prods)
+                and ("C" in prods),
+                "nR_C_hv": lambda reacs, prods: ("C" in reacs) and ("PHOTON" in reacs),
+                "nR_H2Form_CT": lambda reacs, prods: "H2FORM" in reacs,
+                "nR_H2Form_ERDes": lambda reacs, prods: ("H" in reacs)
+                and ("#H" in reacs)
+                and ("H2" in prods),
+                "nR_H2Form_ER": lambda reacs, prods: ("H" in reacs)
+                and ("#H" in reacs)
+                and ("#H2" in prods),
+                "nR_H2Form_LH": lambda reacs, prods: (reacs.count("#H") == 2)
+                and ("LH" in reacs),
+                "nR_H2Form_LHDes": lambda reacs, prods: (reacs.count("#H") == 2)
+                and ("LHDES" in reacs),
+                "nR_HFreeze": lambda reacs, prods: ("H" in reacs)
+                and ("FREEZE" in reacs),
+                "nR_H2Freeze": lambda reacs, prods: ("H2" in reacs)
+                and ("FREEZE" in reacs),
+                "nR_EFreeze": lambda reacs, prods: ("E-" in reacs)
+                and ("FREEZE" in reacs),
+                "nR_H2_hv": lambda reacs, prods: ("H2" in reacs)
+                and ("PHOTON" in reacs),
+                "nR_H2_crp": lambda reacs, prods: ("H2" in reacs)
+                and ("CRP" in reacs)
+                and (prods.count("H") == 2),
+            }
+
             for key, lambda_filter in reaction_filters.items():
                 if lambda_filter(reacs, prods):
-                    if key in self.important_reactions and self.important_reactions[key] is not None:
+                    if (
+                        key in self.important_reactions
+                        and self.important_reactions[key] is not None
+                    ):
                         raise RuntimeError(
-                            f"When trying to index the important reactions, we found a disastrous reaction {reaction} is a duplicate of {self.important_reactions[key]}, there can only be one reaction that matches {key}, {value}"
+                            f"When trying to index the important reactions, we found a disastrous reaction {reaction} is a duplicate of {self.important_reactions[key]}, there can only be one reaction that matches {key}"
                         )
                     self.important_reactions[key] = i + 1
 
@@ -1005,7 +1029,7 @@ class Network:
         ] + elementList:
             try:
                 species_index = names.index(element) + 1
-            except:
+            except ValueError:
                 logging.info(f"\t{element} not in network, adding dummy index")
                 species_index = len(self.get_species_list()) + 1
             name = "n" + element.lower().replace("+", "x").replace(
@@ -1032,12 +1056,17 @@ class Network:
             for i, reaction in enumerate(self.get_reaction_list()):
                 if reaction.get_reaction_type() in ["LH", "LHDES"]:
                     reactant_string = ",".join(reaction.get_reactants())
+                    # Check if we need to correct the branching ratio (smaller than 0.98 is allowed)
                     if (
                         reactant_string in branching_reactions
                         and branching_reactions[reactant_string] != 1.0
-                    ):
+                    ):	
                         new_reaction = deepcopy(reaction)
                         if branching_reactions[reactant_string] != 0.0:
+
+                            if branching_reactions[reactant_string] < 0.99:
+                                 logging.warning(f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string] } we are assuming you set this lower on purpose.")
+                                 continue
                             new_alpha = (
                                 new_reaction.get_alpha()
                                 / branching_reactions[reactant_string]
