@@ -1,8 +1,7 @@
-
 ! Cshock paramterization
 ! Based on Jimenez-Serra et al. 2008 A&A 482
 ! http://adsabs.harvard.edu/abs/2008A&A...482..549J
-! Latest version: 08-2023 by Dutkowska, K.M.
+! Latest version: 11-2024 by Dutkowska, K.M.
 
 MODULE cshock_mod
     USE network
@@ -20,6 +19,7 @@ MODULE cshock_mod
     REAL(dp)              :: grainRadius5, dens6                 ! grain radius and medium density fixed for unit
     REAL(dp)              :: tsat, dissipationTime               ! saturation and dissipation time
     REAL(dp)              :: mun                                 ! mean molecular weight of neutrals (2*H nucleus mass in cgs)
+    REAL(dp)              :: bm0                                 ! magnetic parameter; bm0 = B0/sqrt(initialDens); in microGauss
     REAL(dp)              :: at, a1, maxTemp                     ! temperature constants (Eq. (4); Jimenez-Serra et al. 2008) and T_n,max
     REAL(dp)              :: minimumPostshockTemp = 0.0          ! defined post-shock conditon 
     REAL(dp)              :: timestepFactor = 0.01               ! time increment 
@@ -142,6 +142,9 @@ CONTAINS
         ! vA = B0/sqrt(4*pi*initialDens). 
         ! If we substitute the expression of B0, we obtain that:
         ! vA = bm0/sqrt(4*pi*mH)
+        ! For historical reasons, we leave the calculation of the Alfven speed
+        ! in neutrals that uses the magnetic parameter bm0
+        bm0 = B0/sqrt(initialDens)
         bm0 = bm0*1D-06
         vA  = bm0/sqrt(4*pi*mh)
         vA  = vA/km
@@ -155,7 +158,6 @@ CONTAINS
             g2  = v01**2-v01*vs-vA**2/2
             v0  = sqrt(g1/g2)
         END DO
-        WRITE(*,*) v0
         CALL sputteringSetup
     END SUBROUTINE initializePhysics
 
@@ -190,7 +192,6 @@ CONTAINS
         ! For more on Tn and Ti see Sect. 2 in in Jimenez-Serra et al. (2008)
         tn(dstep) = initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
         ti(dstep) = tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ))
-        WRITE(*,*) tn
         ! Grain collisional heating; Eq. (58) in Draine et al. 1983
         tgc(dstep) = 15*(dens6/grainRadius5)**(0.1818)*(tn(dstep)/1000.0)**(0.2727)
 
@@ -276,5 +277,13 @@ CONTAINS
         vn0      = vn    ! neutrals velocity
         v_out    = f0    ! final-shock velocity
     END SUBROUTINE shst
+
+    SUBROUTINE ShockTypeCheck
+        REAL(dp)   :: vAc        ! Alfven speed in charged fluid
+        REAL(dp)   :: rhoc, rhon ! Density of charged and neutral fluid
+        INTENT(IN) :: abund      ! Read the abundances from the 1st time step to evaluate the conditions
+
+
+    END SUBROUTINE ShockTypeCheck
     
 END MODULE cshock_mod

@@ -21,7 +21,7 @@ MODULE physicscore
 
     !variables either controlled by physics or that user may wish to change
     REAL(dp) :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,initialTemp
-    REAL(dp) ::  freefallFactor,cloudSize,rout,rin,baseAv,zeta,radfield,bm0
+    REAL(dp) ::  freefallFactor,cloudSize,rout,rin,baseAv,zeta,radfield,B0
     REAL(dp), allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:)
 
     !Arrays fopr calculating rates

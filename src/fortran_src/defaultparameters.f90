@@ -25,7 +25,7 @@ rout=0.05 !Outer radius of cloud being modelled in pc.
 rin=0.0 !Minimum radial distance from cloud centre to consider.
 baseAv=2.0 !Extinction at cloud edge, Av of a parcel at rout.
 points=1 !Number of gas parcels equally spaced between rin to rout to consider
-bm0=1 !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
+B0=100 !Strength of the magnetic field [microGauss]
 !
 !## Behavioural Controls
 !*The following parameters generally turn on or off features of the model. If a parameter is set to `True`, then it is turned on. If it is set to `False`, then it is turned off.*
