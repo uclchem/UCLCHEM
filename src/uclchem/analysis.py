@@ -1,11 +1,12 @@
 try:
     from .uclchemwrap import uclchemwrap as wrap
-except:
+except ImportError:
     pass
 import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from pandas import Series, read_csv
 import pandas as pd
 from seaborn import color_palette
@@ -100,11 +101,6 @@ def plot_species(ax, df, species, legend=True, **plot_kwargs):
                 abundances = abundances + df[specName.replace("$", "@")]
         else:
             abundances = df[specName]
-        if "linestyle" not in plot_kwargs:
-            plot_kwargs["linestyle"] = linestyle
-        if "label" not in plot_kwargs:
-            plot_kwargs["label"] = specName
-        print(plot_kwargs)
         ax.plot(
             df["Time"],
             abundances,
@@ -163,22 +159,6 @@ def read_analysis(filepath):
             ignore_index=True,
         )
     return df, all_reactions
-
-
-def analysis_condensed_phase(
-    species_name, result_file, output_file, rate_threshold=0.99
-):
-    if "$" in species_name:
-        species_name = species_name[1:]
-    elif "@" in species_name or "#" in species_name:
-        raise ValueError("'#' or '@' in species_name argument, but should be '$' or ''")
-    surf_output = f"surf_{output_file}"
-    bulk_output = f"bulk_{output_file}"
-    analysis(f"#{species_name}", result_file, surf_output, rate_threshold)
-    analysis(f"@{species_name}", result_file, bulk_output, rate_threshold)
-
-    with open(surf_output, "r") as surf_file:
-        surf_lines = surf_file.readlines()
 
 
 def analysis(species_name, result_file, output_file, rate_threshold=0.99):

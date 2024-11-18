@@ -1,10 +1,9 @@
-name: Test install and interface
+name: Test notebooks
 
 on:
   pull_request:
     branches:
       - main
-      - develop  # Add the 'develop' branch here
 
 jobs:
   test:
@@ -27,17 +26,14 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest pytest-xdist
+        pip install pytest nbmake pytest-xdist jupyter
     
     - name: Install package in editable mode
       run: |
         pip install -e .
 
-    - name: Run pytest install test
+    - name: Test notebooks
       run: |
-        pytest tests/test_install.py
+        pytest -n auto --nbmake --nbmake-timeout=2400 --nbmake-kernel=python3 notebooks
 
-    - name: Run pytest install test
-      run: |
-        pytest -n auto tests/{test_ode_conservation.py,test_run_stages.py}
 

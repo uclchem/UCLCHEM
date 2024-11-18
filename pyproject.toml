@@ -23,5 +23,5 @@ description = "A package for the astrochemical modelling of gas-grain chemistrie
 readme = "README.md"
 requires-python = ">=3.9,<3.12"
 dependencies = [
-    "pandas<2", "numpy<2", "pyyaml", "matplotlib", "seaborn", "pytest"
+    "pandas<2", "numpy<2", "pyyaml", "matplotlib", "seaborn", "pytest", "joblib", "pytest-xdist", "pre-commit"
 ]

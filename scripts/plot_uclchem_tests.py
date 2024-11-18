@@ -47,7 +47,14 @@ for folder in ["example-output/", "test-output/"]:
             )
 
         # plot species returns the axis so we can further edit
-        axis.set(xscale="log", ylim=(1e-15, 1), xlim=(1, 6e6), yscale="log", ylabel="n_specie / n_H", xlabel="time (yr)")
+        axis.set(
+            xscale="log",
+            ylim=(1e-15, 1),
+            xlim=(1, 6e6),
+            yscale="log",
+            ylabel="n_specie / n_H",
+            xlabel="time (yr)",
+        )
         axis.grid()
         axis.legend()
         if model == "phase1":

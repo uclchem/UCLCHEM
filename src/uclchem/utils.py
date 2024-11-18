@@ -42,7 +42,7 @@ def check_error(error_code):
     }
     try:
         return errors[error_code]
-    except:
+    except KeyError:
         raise ValueError(f"Unknown error code: {error_code}")
 
 

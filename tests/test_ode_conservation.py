@@ -11,7 +11,6 @@ def test_ode_conservation():
 
 
 def main():
-
     # Run the tests using pytest
     pytest.main(["-v", __file__])
 
