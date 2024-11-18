@@ -219,6 +219,7 @@ SUBROUTINE calculateReactionRates
             idx2=lhdesReacs(2)
             DO j=idx1,idx2
                 rate(j)=desorptionFraction(j)*rate(j)
+                IF ANY(bulkList==re1(j)) rate(j)=0.0 ! Bulk species are not able to chemically desorb
             END DO
             !remove that fraction from total rate of the diffusion route
             rate(lhReacs(1):lhReacs(2))=rate(lhReacs(1):lhReacs(2))-rate(idx1:idx2)
@@ -241,6 +242,7 @@ SUBROUTINE calculateReactionRates
         idx2=erdesReacs(2)
         DO j=idx1,idx2
             rate(j)=desorptionFraction(j)*rate(j)
+            IF ANY(bulkList==re1(j)) rate(j)=0.0 ! Bulk species are not able to chemically desorb
         END DO
         !remove that fraction from total rate of the diffusion route
         rate(erReacs(1):erReacs(2))=rate(erReacs(1):erReacs(2))-rate(idx1:idx2)

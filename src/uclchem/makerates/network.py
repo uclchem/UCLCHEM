@@ -647,14 +647,6 @@ class Network:
         new_reactions = []
         for reaction in self.get_reaction_list():
             if reaction.get_reaction_type() in ["LH", "ER"]:
-                reaction_copy = deepcopy(reaction)
-                reaction_copy.convert_to_bulk()
-                if reaction_copy == reaction:
-                    # If the reaction is a bulk reaction, do not let it chemically desorb
-                    logging.debug(
-                        f"Bulk reactions are not able to chemically desorb. Skipping reaction {reaction}"
-                    )
-                    continue
                 new_reaction = deepcopy(reaction)
                 # Convert to disassociation reaction
                 new_reactants = new_reaction.get_reactants()
@@ -826,7 +818,7 @@ class Network:
         new_reactions = []
         for reaction in surface_reactions_can_be_bulk:
             new_reac = deepcopy(reaction)
-            new_reac.convert_to_bulk()
+            new_reac.convert_surf_to_bulk()
             new_reactions.append(new_reac)
         new_reactions = [
             reac for reac in new_reactions if reac not in current_reaction_list
@@ -904,7 +896,7 @@ class Network:
 
     def add_CRP_and_PHOTO_reactions_to_grain(self) -> None:
         """Add all the gas-phase reactions with CRP, CRPHOT or PHOTON to the grain surface too"""
-        logging.debug("Adding gas-phase reactions with CRP, CRPHOT or PHOTON to grain")
+        logging.info("Adding gas-phase reactions with CRP, CRPHOT or PHOTON to grain")
         reactions_on_grain = self.get_reactions_on_grain()
         reactions_on_grain_filtered = [
             reaction
@@ -927,15 +919,6 @@ class Network:
                 # There is already another version in the network, keep that
                 continue
 
-            if not all(
-                reactant in self.get_species_list()
-                or reactant in ["CRP", "CRPHOT", "PHOTON", "NAN"]
-                for reactant in reactants
-            ) or not all(
-                product in self.get_species_list() or product in ["NAN"]
-                for product in products
-            ):
-                continue
             if any("+" in reactant for reactant in reactants):
                 logging.debug(
                     f"Reaction {reaction} had reactant ions, which is not possible on grain. Skipping"
@@ -943,16 +926,13 @@ class Network:
                 # Cannot have ions in grain
                 continue
             # We have now filtered to have only gas-phase reactions that have type CRP, CRPHOT or PHOTON
-            reaction_copy = deepcopy(reaction)
-            for i, reactant in enumerate(reactants):
-                if reactant not in ["CRP", "CRPHOT", "PHOTON", "NAN"]:
-                    reactants[i] = "#" + reactant
-            for i, product in enumerate(products):
-                if product == "E-":
-                    product = "NAN"
-                if product != "NAN":
-                    products[i] = "#" + product.strip("+")
-            if products[0] == reactants[0]:
+            new_reaction = deepcopy(reaction)
+            new_reaction.convert_gas_to_surf()
+            reactants, products = (
+                new_reaction.get_reactants(),
+                new_reaction.get_products(),
+            )
+            if reactants[0] == products[0]:
                 # This means the reaction was simply an ionization reaction. We can skip this reaction.
                 logging.debug(
                     f"Reaction {reaction} is ionization reaction, skip on grain surface"
@@ -969,9 +949,7 @@ class Network:
                     f"Reaction {reaction} contains species that were not set on grain. Skipping"
                 )
                 continue
-            reaction_copy.set_reactants(reactants)
-            reaction_copy.set_products(products)
-            new_reactions.append(reaction_copy)
+            new_reactions.append(new_reaction)
         logging.debug(f"Adding new reactions to grain")
         self.add_reactions(new_reactions)
         logging.info(f"Added {len(new_reactions)} reactions to grain")
