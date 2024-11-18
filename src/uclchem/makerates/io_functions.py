@@ -75,7 +75,7 @@ def read_reaction_file(
             for row in reader:
                 if row[0].startswith("#") or row[0].startswith("!"):
                     continue
-                reaction_row = row[2:4] + [""] + row[4:8] + row[9:]
+                reaction_row = row[2:4] + [""] + row[4:8] + row[9:14] + [""]
                 if check_reaction(reaction_row, keep_list):
                     reactions.append(Reaction(reaction_row, reaction_source="UMIST"))
     elif ftype == "UCL":
@@ -113,6 +113,8 @@ def check_reaction(reaction_row, keep_list) -> bool:
         if reaction_row[10] == "":
             reaction_row[10] = 0.0
             reaction_row[11] = 10000.0
+        if reaction_row[12] == "":
+            reaction_row[12] = 0.0
         return True
     else:
         if reaction_row[1] in ["DESORB", "FREEZE"]:
@@ -803,6 +805,7 @@ def write_network_file(file_name: Path, network: Network):
     # duplicates = []
     tmins = []
     tmaxs = []
+    reduced_masses = []
     # store important reactions
     reaction_indices = ""
     for reaction, index in network.important_reactions.items():
@@ -825,6 +828,7 @@ def write_network_file(file_name: Path, network: Network):
         #     duplicates.append(i + 1)
         tmaxs.append(reaction.get_temphigh())
         tmins.append(reaction.get_templow())
+        reduced_masses.append(reaction.get_reduced_mass())
         reacTypes.append(reaction.get_reaction_type())
     # if len(duplicates) == 0:
     #     duplicates = [9999]
@@ -844,7 +848,9 @@ def write_network_file(file_name: Path, network: Network):
     # openFile.write(array_to_string("\tduplicates", duplicates, type="int", parameter=True))
     openFile.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
     openFile.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
-
+    openFile.write(
+        array_to_string("\treducedMasses", reduced_masses, type="float", parameter=True)
+    )
     reacTypes = np.asarray(reacTypes)
 
     partners = get_desorption_freeze_partners(reaction_list)

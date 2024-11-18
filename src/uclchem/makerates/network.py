@@ -23,7 +23,6 @@ class Network:
         reactions: list[Reaction],
         three_phase: bool = False,
         user_defined_bulk: list = [],
-        add_crp_photo_to_grain: bool = True,
     ):
         """A class to store network information such as indices of important reactions.
 
@@ -49,7 +48,6 @@ class Network:
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
         self.three_phase = three_phase
-        self.add_crp_photo_to_grain = add_crp_photo_to_grain
         electron_specie = Species(["E-", 0, 0.0, 0, 0, 0, 0])
         electron_specie.n_atoms = 1
         self.add_species(electron_specie)
@@ -61,8 +59,6 @@ class Network:
 
         # Need additional grain reactions including non-thermal desorption and chemically induced desorption
         self.add_freeze_reactions()
-        if self.add_crp_photo_to_grain:
-            self.add_CRP_and_PHOTO_reactions_to_grain()
         if self.three_phase:
             self.add_bulk_species()
             self.add_bulk_reactions()
@@ -591,7 +587,7 @@ class Network:
                         Reaction(
                             [species.name, "FREEZE", "NAN"]
                             + products
-                            + [alpha, 0.0, species.binding_energy, 0.0, 10000.0]
+                            + [alpha, 0.0, species.binding_energy, 0.0, 10000.0, 0.0]
                         )
                     )
                     # Check if the product is in the species list
@@ -625,7 +621,7 @@ class Network:
                         Reaction(
                             [species.name, reacType, "NAN"]
                             + species.get_desorb_products()
-                            + [1, 0, species.binding_energy, 0.0, 10000.0]
+                            + [1, 0, species.binding_energy, 0.0, 10000.0, 0.0]
                         )
                     )
             if species.is_bulk_species() and not species.is_refractory:
@@ -633,7 +629,7 @@ class Network:
                     Reaction(
                         [species.name, "THERM", "NAN"]
                         + species.get_desorb_products()
-                        + [1, 0, species.binding_energy, 0.0, 10000.0]
+                        + [1, 0, species.binding_energy, 0.0, 10000.0, 0.0]
                     )
                 )
         self.add_reactions(new_reactions)
@@ -723,6 +719,7 @@ class Network:
                 0.0,
                 0.0,
                 10000,
+                0.0,
             ]
             new_react = Reaction(relax_reac)
             new_reactions.append(new_react)
@@ -742,7 +739,7 @@ class Network:
                 new_reac_A_list = (
                     new_reac_A_list
                     + reaction.get_products()
-                    + [reaction.get_alpha(), 0, 0, 0, 10000]
+                    + [reaction.get_alpha(), 0, 0, 0, 10000, 0.0]
                 )
                 new_reac_B_list = [
                     reaction.get_reactants()[0],
@@ -752,7 +749,7 @@ class Network:
                 new_reac_B_list = (
                     new_reac_B_list
                     + reaction.get_products()
-                    + [reaction.get_alpha(), 0, 0, 0, 10000]
+                    + [reaction.get_alpha(), 0, 0, 0, 10000, 0.0]
                 )
 
                 new_reac_A = Reaction(new_reac_A_list)
@@ -777,7 +774,7 @@ class Network:
                 new_reac_A_list = (
                     new_reac_A_list
                     + reaction.get_products()
-                    + [reaction.get_alpha(), 0, 0, 0, 10000]
+                    + [reaction.get_alpha(), 0, 0, 0, 10000, 0.0]
                 )
                 new_reac_A = Reaction(new_reac_A_list)
                 new_reactions.append(new_reac_A)
@@ -794,7 +791,7 @@ class Network:
                 new_reac_B_list = (
                     new_reac_B_list
                     + reaction.get_products()
-                    + [reaction.get_alpha(), 0, 0, 0, 10000]
+                    + [reaction.get_alpha(), 0, 0, 0, 10000, 0.0]
                 )
                 new_reac_B = Reaction(new_reac_B_list)
                 new_reactions.append(new_reac_B)
@@ -834,7 +831,17 @@ class Network:
                     "NAN",
                     species.name.replace("@", "#"),
                 ]
-                new_reac_list = new_reac_list + ["NAN", "NAN", "NAN", 1, 0, 0, 0, 10000]
+                new_reac_list = new_reac_list + [
+                    "NAN",
+                    "NAN",
+                    "NAN",
+                    1,
+                    0,
+                    0,
+                    0,
+                    10000,
+                    0.0,
+                ]
                 new_reactions.append(Reaction(new_reac_list))
 
             # and the reverse, going from surface to bulk
@@ -893,66 +900,6 @@ class Network:
             if any("#" in reactant or "@" in reactant for reactant in reactants):
                 reactions_on_grain.append(reaction)
         return reactions_on_grain
-
-    def add_CRP_and_PHOTO_reactions_to_grain(self) -> None:
-        """Add all the gas-phase reactions with CRP, CRPHOT or PHOTON to the grain surface too"""
-        logging.info("Adding gas-phase reactions with CRP, CRPHOT or PHOTON to grain")
-        reactions_on_grain = self.get_reactions_on_grain()
-        reactions_on_grain_filtered = [
-            reaction
-            for reaction in reactions_on_grain
-            if reaction.get_reaction_type() in ["CRP", "CRPHOT", "PHOTON"]
-        ]
-        new_reactions = []
-        for reaction in self.get_reaction_list():
-            if not reaction.get_reaction_type() in ["CRP", "CRPHOT", "PHOTON"]:
-                continue
-            if reaction in reactions_on_grain_filtered:
-                continue
-            reactants = reaction.get_reactants()
-            products = reaction.get_products()
-            if any(
-                "@" + reactants[0] in reaction.get_reactants()
-                or "#" + reactants[0] in reaction.get_reactants()
-                for reaction in reactions_on_grain_filtered
-            ):
-                # There is already another version in the network, keep that
-                continue
-
-            if any("+" in reactant for reactant in reactants):
-                logging.debug(
-                    f"Reaction {reaction} had reactant ions, which is not possible on grain. Skipping"
-                )
-                # Cannot have ions in grain
-                continue
-            # We have now filtered to have only gas-phase reactions that have type CRP, CRPHOT or PHOTON
-            new_reaction = deepcopy(reaction)
-            new_reaction.convert_gas_to_surf()
-            reactants, products = (
-                new_reaction.get_reactants(),
-                new_reaction.get_products(),
-            )
-            if reactants[0] == products[0]:
-                # This means the reaction was simply an ionization reaction. We can skip this reaction.
-                logging.debug(
-                    f"Reaction {reaction} is ionization reaction, skip on grain surface"
-                )
-                continue
-            if not all(
-                species in self.get_species_list()
-                or species in ["NAN", "CRP", "CRPHOT", "PHOTON"]
-                for species in reactants + products
-            ):
-                # Reaction contains species that were not defined on grain surface.
-                # Do not add this reaction to the network.
-                logging.debug(
-                    f"Reaction {reaction} contains species that were not set on grain. Skipping"
-                )
-                continue
-            new_reactions.append(new_reaction)
-        logging.debug(f"Adding new reactions to grain")
-        self.add_reactions(new_reactions)
-        logging.info(f"Added {len(new_reactions)} reactions to grain")
 
     def duplicate_checks(self) -> None:
         """

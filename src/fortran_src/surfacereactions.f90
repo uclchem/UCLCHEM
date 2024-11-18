@@ -158,7 +158,6 @@ double precision FUNCTION diffusionReactionRate(reacIndx,dustTemperature)
     double precision :: diffuseProb,desorbProb,reacProb,n_dust
     integer :: index1,index2,reacIndx,i
 
-
     !want position of species in the grain array but gas phase species aren't in there
     !so store species index
     index1=re1(reacIndx)
@@ -181,7 +180,11 @@ double precision FUNCTION diffusionReactionRate(reacIndx,dustTemperature)
     !Calculate classical activation energy barrier exponent
     reacProb = gama(reacIndx)/dustTemperature
     !Calculate quantum activation energy barrier exponent
-    reducedMass = mass(iceList(index1)) * mass(iceList(index2)) / (mass(iceList(index1)) + mass(iceList(index2)))
+    reducedMass = reducedMasses(reacIndx)
+    IF (reducedMass .eq. 0.0) THEN 
+        ! If no reducedMass was supplied in the array, calculate it from the two reacting species
+        reducedMass = mass(icelist(index1)) * mass(icelist(index2)) / (mass(icelist(index1)) + mass(icelist(index2)))
+    END IF
     tunnelProb = 2.0d0 *CHEMICAL_BARRIER_THICKNESS/REDUCED_PLANCK * dsqrt(2.0d0*AMU*reducedMass*K_BOLTZ*gama(reacIndx))
 
     !Choose fastest between classical and tunnelling

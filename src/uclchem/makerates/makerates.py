@@ -15,7 +15,6 @@ param_list = [
     "custom_reaction_file",
     "custom_reaction_type",
     "three_phase",
-    "add_crp_photo_to_grain",
 ]
 
 
@@ -63,14 +62,13 @@ def run_makerates(
     ]
     species_file = user_params["species_file"]
     three_phase = user_params["three_phase"]
-    add_crp_photo_to_grain = user_params["add_crp_photo_to_grain"]
+
     # retrieve the network and the dropped reactions
     network, dropped_reactions = _get_network_from_files(
         reaction_files=reaction_files,
         reaction_types=reaction_types,
         species_file=species_file,
         three_phase=three_phase,
-        add_crp_photo_to_grain=add_crp_photo_to_grain,
     )
 
     if write_files:
@@ -146,7 +144,6 @@ def _get_network_from_files(
     reaction_files: list[Union[str, bytes, os.PathLike]],
     reaction_types: list[str],
     three_phase: bool,
-    add_crp_photo_to_grain: bool,
 ):
     species_list, user_defined_bulk = io.read_species_file(species_file)
     # Check if reaction and type files are lists, if not, make them lists
@@ -169,7 +166,6 @@ def _get_network_from_files(
         reactions=reactions,
         three_phase=three_phase,
         user_defined_bulk=user_defined_bulk,
-        add_crp_photo_to_grain=add_crp_photo_to_grain,
     )
 
     #################################################################################################

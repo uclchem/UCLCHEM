@@ -15,15 +15,6 @@ SUBROUTINE calculateReactionRates
     idx2=photonReacs(2)
     IF (idx1 .ne. idx2) THEN
         rate(idx1:idx2) = alpha(idx1:idx2)*dexp(-gama(idx1:idx2)*av(dstep))*radfield/1.7
-        ! For all solid species, decrease rate by 0.3 (Kalvans 2018)
-        ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
-        DO j=idx1,idx2
-            IF (ANY(bulkList==re1(j))) THEN
-                rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * (1-0.007)**(1+0.5/bulkLayersReciprocal)
-            ELSE IF (ANY(surfaceList==re1(j))) THEN
-                rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO
-            END IF
-        END DO 
     END IF
 
     !Reactions involving cosmic ray induced photon
@@ -31,15 +22,6 @@ SUBROUTINE calculateReactionRates
     idx2=crphotReacs(2)
     IF (idx1 .ne. idx2) THEN
         rate(idx1:idx2)=alpha(idx1:idx2)*gama(idx1:idx2)*1.0/(1.0-omega)*zeta*(gasTemp(dstep)/300)**beta(idx1:idx2)
-        ! For all solid species, decrease rate by 0.3 (Kalvans 2018)
-        ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
-        DO j=idx1,idx2
-            IF (ANY(bulkList==re1(j))) THEN
-                rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * (1-0.007)**(1+0.5/bulkLayersReciprocal)
-            ELSE IF (ANY(surfaceList==re1(j))) THEN
-                rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO
-            END IF
-        END DO 
     END IF
 
     !freeze out only happens if freezeFactor>0 and depending on evap choice 

@@ -46,13 +46,19 @@ class Reaction:
             self.set_gamma(float(inputRow[9]))
             self.set_templow(float(inputRow[10]))
             self.set_temphigh(float(inputRow[11]))
+            self.set_reduced_mass(float(inputRow[12]))
         except IndexError as error:
             raise ValueError(
-                "Input for Reaction should be a list of length 12"
+                f"Input for Reaction should be a list of length 12. The following row caused this error: {inputRow}"
             ) from error
         self.duplicate = False
         self.source = reaction_source  # The source of the reaction, e.g. UMIST, KIDA or user defined
-
+        if (
+            self.source == "UCL"
+            and "#H" in self._reactants
+            and "#HOCN" in self._reactants
+        ):
+            print(inputRow, self.get_reduced_mass())
         # body_count is the number of factors of density to include in ODE
         # we drop a factor of density from both the LHS and RHS of ODES
         # So reactions with 1 body have no factors of density which we manage by counting from -1
@@ -203,6 +209,22 @@ class Reaction:
             float: the higher temperature boundary
         """
         return self._temphigh
+
+    def set_reduced_mass(self, reduced_mass: float) -> None:
+        """Set the reduced mass to be used to calculate tunneling rate in AMU
+
+        Args:
+            reduced_mass (float): reduced mass of moving atoms
+        """
+        self._reduced_mass = reduced_mass
+
+    def get_reduced_mass(self) -> float:
+        """Get the reduced mass to be used to calculate tunneling rate in AMU
+
+        Returns:
+            float: reduced mass of moving atoms
+        """
+        return self._reduced_mass
 
     ## C
 
