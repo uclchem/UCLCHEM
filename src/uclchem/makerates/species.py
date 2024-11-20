@@ -1,4 +1,5 @@
 import logging
+from collections import Counter
 
 elementList = [
     "H",
@@ -117,6 +118,20 @@ class Species:
         """
         return self.mass
 
+    def get_charge(self) -> int:
+        """Get the charge of the chemical species in e. Positive integer indicates positive ion,
+        negative indicates negative ion. Assumes species are at most charged +1 or -1.
+
+        Returns:
+            int: The charge of the species
+        """
+        if not self.is_ion():
+            return 0
+        elif "+" in self.name:
+            return 1
+        elif "-" in self.name:
+            return -1
+
     def set_desorb_products(self, new_desorbs: list[str]) -> None:
         """Set the desorption products for species on the surface or in the bulk.
         It is assumed that there is only one desorption pathway.
@@ -168,7 +183,7 @@ class Species:
         Returns:
             list[list[str]]: List of freeze products
         """
-        # TODO: Write an unit test for get_freeze_product_behaivour
+        # TODO: Write an unit test for get_freeze_product_behaviour
         return [key.split(",") for key in self.freeze_products.keys()]
 
     def get_freeze_alpha(self, product_list: list[str]) -> float:
@@ -229,7 +244,7 @@ class Species:
             freeze = ""
         self.set_freeze_products([freeze, "NAN", "NAN", "NAN"], 1.0)
 
-    def find_constituents(self):
+    def find_constituents(self, quiet=False):
         """Loop through the species' name and work out what its consituent
         atoms are. Then calculate mass and alert user if it doesn't match
         input mass.
@@ -312,10 +327,15 @@ class Species:
         for atom in atoms:
             mass += elementMass[elementList.index(atom)]
         if mass != int(self.mass):
-            logging.warning(
-                f"Input mass of {self.name} ({self.mass}) does not match calculated mass of constituents, using calculated mass: {int(mass)}"
-            )
+            if not quiet:
+                logging.warning(
+                    f"Input mass of {self.name} ({self.mass}) does not match calculated mass of constituents, using calculated mass: {int(mass)}"
+                )
             self.mass = int(mass)
+        counter = Counter()
+        for element in elementList:
+            counter[element] = atoms.count(element)
+        return counter
 
     def get_n_atoms(self) -> int:
         """Obtain the number of atoms in the molecule

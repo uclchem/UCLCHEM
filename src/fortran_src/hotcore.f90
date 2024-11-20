@@ -91,9 +91,9 @@ contains
                 instantSublimation=.False.
                 CALL totalSublimation(abund)
             ELSE IF (coflag .ne. 2) THEN
-                IF (gasTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
-                IF (gasTemp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
-                IF (gasTemp(dstep) .gt. codestemp(tempindx)) coflag=1
+                IF (dustTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
+                IF (dustTemp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
+                IF (dustTemp(dstep) .gt. codestemp(tempindx)) coflag=1
                 CALL thermalEvaporation(abund)
             END IF
         END IF
@@ -157,7 +157,7 @@ contains
         DO i=lbound(iceList,1),ubound(iceList,1)
             speci=iceList(i)
             en=bindingEnergy(i)*K_BOLTZ_SI
-            expdust=bindingEnergy(i)/gasTemp(dstep)
+            expdust=bindingEnergy(i)/dustTemp(dstep)
             newm = mass(speci)*1.66053e-27
             freq = dsqrt((2*(SURFACE_SITE_DENSITY)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)

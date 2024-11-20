@@ -38,6 +38,7 @@ class Network:
             reactions (list[Reaction]): A list of chemical reactions that are added to the network
             three_phase (bool, optional): Whether to use a three phase model (gas, surface, bulk). Defaults to False.
             user_defined_bulk (list, optional): List of user defined bulk. Defaults to [].
+            add_crp_photo_to_grain (bool, optional): Whether to add CRP, CRPHOT and PHOTON reactions from gas-phase into solid phase too.
         """
         assert len(set([s.name for s in species])) == len(
             species
@@ -586,7 +587,7 @@ class Network:
                         Reaction(
                             [species.name, "FREEZE", "NAN"]
                             + products
-                            + [alpha, 0.0, species.binding_energy, 0.0, 10000.0]
+                            + [alpha, 0.0, species.binding_energy, 0.0, 10000.0, 0.0]
                         )
                     )
                     # Check if the product is in the species list
@@ -611,7 +612,7 @@ class Network:
     def add_desorb_reactions(self) -> None:
         """Save the user effort by automatically generating desorption reactions"""
         desorb_reacs = ["DESOH2", "DESCR", "DEUVCR", "THERM"]
-        logging.debug("Adding desorbtion reactions!")
+        logging.debug("Adding desorption reactions!")
         new_reactions = []
         for species in self.get_species_list():
             if species.is_surface_species():
@@ -620,7 +621,7 @@ class Network:
                         Reaction(
                             [species.name, reacType, "NAN"]
                             + species.get_desorb_products()
-                            + [1, 0, species.binding_energy, 0.0, 10000.0]
+                            + [1, 0, species.binding_energy, 0.0, 10000.0, 0.0]
                         )
                     )
             if species.is_bulk_species() and not species.is_refractory:
@@ -628,7 +629,7 @@ class Network:
                     Reaction(
                         [species.name, "THERM", "NAN"]
                         + species.get_desorb_products()
-                        + [1, 0, species.binding_energy, 0.0, 10000.0]
+                        + [1, 0, species.binding_energy, 0.0, 10000.0, 0.0]
                     )
                 )
         self.add_reactions(new_reactions)
@@ -638,7 +639,7 @@ class Network:
         reactions once. Then we duplicate so that the reaction branches
         with products on grain and products desorbing.
         """
-        logging.debug("Adding desascociation reactions for LH and ER mechanisms")
+        logging.debug("Adding desorption reactions for LH and ER mechanisms")
         new_reactions = []
         for reaction in self.get_reaction_list():
             if reaction.get_reaction_type() in ["LH", "ER"]:
@@ -670,7 +671,7 @@ class Network:
                 ]
                 new_reaction.set_products(new_products)
                 logging.debug(
-                    f"Adding deassociation reaction for {reaction}, new reaction {new_reaction}"
+                    f"Adding desorption reaction for {reaction}, new reaction {new_reaction}"
                 )
                 new_reactions.append(new_reaction)
         self.add_reactions(new_reactions)
@@ -718,6 +719,7 @@ class Network:
                 0.0,
                 0.0,
                 10000,
+                0.0,
             ]
             new_react = Reaction(relax_reac)
             new_reactions.append(new_react)
@@ -737,7 +739,7 @@ class Network:
                 new_reac_A_list = (
                     new_reac_A_list
                     + reaction.get_products()
-                    + [reaction.get_alpha(), 0, 0, 0, 10000]
+                    + [reaction.get_alpha(), 0, 0, 0, 10000, 0.0]
                 )
                 new_reac_B_list = [
                     reaction.get_reactants()[0],
@@ -747,7 +749,7 @@ class Network:
                 new_reac_B_list = (
                     new_reac_B_list
                     + reaction.get_products()
-                    + [reaction.get_alpha(), 0, 0, 0, 10000]
+                    + [reaction.get_alpha(), 0, 0, 0, 10000, 0.0]
                 )
 
                 new_reac_A = Reaction(new_reac_A_list)
@@ -772,7 +774,7 @@ class Network:
                 new_reac_A_list = (
                     new_reac_A_list
                     + reaction.get_products()
-                    + [reaction.get_alpha(), 0, 0, 0, 10000]
+                    + [reaction.get_alpha(), 0, 0, 0, 10000, 0.0]
                 )
                 new_reac_A = Reaction(new_reac_A_list)
                 new_reactions.append(new_reac_A)
@@ -789,7 +791,7 @@ class Network:
                 new_reac_B_list = (
                     new_reac_B_list
                     + reaction.get_products()
-                    + [reaction.get_alpha(), 0, 0, 0, 10000]
+                    + [reaction.get_alpha(), 0, 0, 0, 10000, 0.0]
                 )
                 new_reac_B = Reaction(new_reac_B_list)
                 new_reactions.append(new_reac_B)
@@ -801,24 +803,19 @@ class Network:
         lists surface reactions in their input reaction file and we duplicate here.
         """
         logging.debug("Adding bulk reactions")
+        surface_reactions = self.get_reactions_on_grain()
+        bulk_reaction_types = ["CRP", "CRPHOT", "PHOTON", "LH", "EXSOLID", "EXRELAX"]
+        surface_reactions_can_be_bulk = [
+            reaction
+            for reaction in surface_reactions
+            if reaction.get_reaction_type() in bulk_reaction_types
+        ]
         current_reaction_list = self.get_reaction_list()
-        lh_reactions = [x for x in current_reaction_list if "LH" in x.get_reactants()]
-        lh_reactions = lh_reactions + [
-            x for x in current_reaction_list if "LHDES" in x.get_reactants()
-        ]
-        ex_reactions = [x for x in current_reaction_list if "CRS" in x.get_reactants()]
-        ex_reactions = ex_reactions + [
-            x for x in current_reaction_list if "EXSOLID" in x.get_reactants()
-        ]
-        ex_reactions = ex_reactions + [
-            x for x in current_reaction_list if "EXRELAX" in x.get_reactants()
-        ]
-        surface_reactions = lh_reactions + ex_reactions
 
         new_reactions = []
-        for reaction in surface_reactions:
+        for reaction in surface_reactions_can_be_bulk:
             new_reac = deepcopy(reaction)
-            new_reac.convert_to_bulk()
+            new_reac.convert_surf_to_bulk()
             new_reactions.append(new_reac)
         new_reactions = [
             reac for reac in new_reactions if reac not in current_reaction_list
@@ -834,14 +831,27 @@ class Network:
                     "NAN",
                     species.name.replace("@", "#"),
                 ]
-                new_reac_list = new_reac_list + ["NAN", "NAN", "NAN", 1, 0, 0, 0, 10000]
+                new_reac_list = new_reac_list + [
+                    "NAN",
+                    "NAN",
+                    "NAN",
+                    1,
+                    0,
+                    0,
+                    0,
+                    10000,
+                    0.0,
+                ]
                 new_reactions.append(Reaction(new_reac_list))
 
-            # and the reverse
-            new_reac_list[0] = species.name.replace("@", "#")
-            new_reac_list[1] = "SURFSWAP"
-            new_reac_list[3] = species.name
-            new_reactions.append(Reaction(new_reac_list))
+            # and the reverse, going from surface to bulk
+            if not species in [
+                "@H2"
+            ]:  # If species is H2, do not allow it to go from surface to bulk
+                new_reac_list[0] = species.name.replace("@", "#")
+                new_reac_list[1] = "SURFSWAP"
+                new_reac_list[3] = species.name
+                new_reactions.append(Reaction(new_reac_list))
         logging.debug(
             f"The following bulk reactions are added to the reactions: {new_reactions}"
         )
@@ -882,6 +892,14 @@ class Network:
                 logging.info(f"\t{spec.name} freezes out through {freezes} routes")
             elif freezes < 1 and not spec.is_grain_species():
                 logging.info(f"\t{spec.name} does not freeze out")
+
+    def get_reactions_on_grain(self) -> list[Reaction]:
+        reactions_on_grain = []
+        for reaction in self.get_reaction_list():
+            reactants = reaction.get_reactants()
+            if any("#" in reactant or "@" in reactant for reactant in reactants):
+                reactions_on_grain.append(reaction)
+        return reactions_on_grain
 
     def duplicate_checks(self) -> None:
         """
@@ -955,7 +973,6 @@ class Network:
             # CO + PHOTON -> O + C
             reacs = reaction.get_reactants()
             prods = reaction.get_products()
-
             reaction_filters = {
                 "nR_CO_hv": lambda reacs, prods: ("CO" in reacs)
                 and ("PHOTON" in reacs)
@@ -1060,13 +1077,14 @@ class Network:
                     if (
                         reactant_string in branching_reactions
                         and branching_reactions[reactant_string] != 1.0
-                    ):	
+                    ):
                         new_reaction = deepcopy(reaction)
                         if branching_reactions[reactant_string] != 0.0:
-
                             if branching_reactions[reactant_string] < 0.99:
-                                 logging.warning(f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string] } we are assuming you set this lower on purpose.")
-                                 continue
+                                logging.warning(
+                                    f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string] } we are assuming you set this lower on purpose."
+                                )
+                                continue
                             new_alpha = (
                                 new_reaction.get_alpha()
                                 / branching_reactions[reactant_string]
