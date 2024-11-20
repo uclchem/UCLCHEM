@@ -182,6 +182,7 @@ double precision FUNCTION diffusionReactionRate(reacIndx,dustTemperature)
     !Calculate quantum activation energy barrier exponent
     reducedMass = reducedMasses(reacIndx)
     IF (reducedMass .eq. 0.0) THEN 
+        ! Should never happen, just as a backup
         ! If no reducedMass was supplied in the array, calculate it from the two reacting species
         reducedMass = mass(icelist(index1)) * mass(icelist(index2)) / (mass(icelist(index1)) + mass(icelist(index2)))
     END IF
