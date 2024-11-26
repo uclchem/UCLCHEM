@@ -277,13 +277,5 @@ CONTAINS
         vn0      = vn    ! neutrals velocity
         v_out    = f0    ! final-shock velocity
     END SUBROUTINE shst
-
-    SUBROUTINE ShockTypeCheck
-        REAL(dp)   :: vAc        ! Alfven speed in charged fluid
-        REAL(dp)   :: rhoc, rhon ! Density of charged and neutral fluid
-        INTENT(IN) :: abund      ! Read the abundances from the 1st time step to evaluate the conditions
-
-
-    END SUBROUTINE ShockTypeCheck
     
 END MODULE cshock_mod
