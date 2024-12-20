@@ -41,13 +41,13 @@ MODULE SurfaceReactions
   !Below are values for grain surface reactions
   LOGICAL, PARAMETER :: DIFFUSE_REACT_COMPETITION=.True., GRAINS_HAVE_ICE=.True.
   REAL(dp), PARAMETER :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8  !gre Parameter used to compute the probability for a surface reaction with 
-  !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
+  !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 cd (1992).)
   REAL(dp), PARAMETER :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
   REAL(dp), PARAMETER :: VDIFF_PREFACTOR=2.0*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
   REAL(dp), PARAMETER :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
 
 
-  REAL(dp), PARAMETER :: MAX_GRAIN_TEMP=150.0, MIN_SURFACE_ABUND=1.0d-20
+  REAL(dp), PARAMETER :: MAX_GRAIN_TEMP=30.0, MIN_SURFACE_ABUND=1.0d-20
 
   REAL(dp), ALLOCATABLE ::vdiff(:)
 CONTAINS

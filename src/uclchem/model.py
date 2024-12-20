@@ -377,28 +377,28 @@ def hot_core(
     else:
         return _format_output(n_out, abunds, success_flag)
 
-def shock(shock_vel,
-          param_dict):
-    
-    def mass_in_kg(spec):
-        spec = spec
-        return species_info.query('NAME == @spec')['MASS'].squeeze() * 1.6605390666e-27
-    def number_density_m3(spec, entry_abundances):
-        spec_abund = entry_abundances[spec].squeeze()
-        return (spec_abund*param_dict['initialDens'])*1e6
-    
-    species_info = get_species_table().copy()
-    species_list = get_species()
-    mI = 1e6*30*1.6605390666e-27
-    entry_abundances = pd.read_csv(param_dict["abundLoadFile"], sep=',', names=species_list, header=None)
-    rho_c = entry_abundances['E-']*number_density_m3('E-',entry_abundances)*mI
-    c_s = np.sqrt((5/3) * ((1.380649e-23*param_dict['initialTemp'])/1.6735575e-27))/1e3
-    #---
-    vA_c = (param_dict['B0']*1E-10/np.sqrt(4*np.pi*rho_c))
-    #---
-    v_MS = np.sqrt(c_s**2 + vA_c**2)
-
-    return print(v_MS)
+#def shock(shock_vel,
+#          param_dict):
+#    
+#    def mass_in_kg(spec):
+#        spec = spec
+#        return species_info.query('NAME == @spec')['MASS'].squeeze() * 1.6605390666e-27
+#    def number_density_m3(spec, entry_abundances):
+#        spec_abund = entry_abundances[spec].squeeze()
+#        return (spec_abund*param_dict['initialDens'])*1e6
+#    
+#    species_info = get_species_table().copy()
+#    species_list = get_species()
+#    mI = 1e6*30*1.6605390666e-27
+#    entry_abundances = pd.read_csv(param_dict["abundLoadFile"], sep=',', names=species_list, header=None)
+#    rho_c = entry_abundances['E-']*number_density_m3('E-',entry_abundances)*mI
+#    c_s = np.sqrt((5/3) * ((1.380649e-23*param_dict['initialTemp'])/1.6735575e-27))/1e3
+#    #---
+#    vA_c = (param_dict['B0']*1E-10/np.sqrt(4*np.pi*rho_c))
+#    #---
+#    v_MS = np.sqrt(c_s**2 + vA_c**2)
+#
+#    return print(v_MS)
 
 def cshock(
     shock_vel,
