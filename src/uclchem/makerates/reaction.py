@@ -421,11 +421,6 @@ class Reaction:
         )
 
 
-# class SurfaceReaction(Reaction):
-#    def __init__(self, inputRow: list[str]):
-#        super.__init__(self, inputRow)
-
-
 class CoupledReaction(Reaction):
     def __init__(self, inputRow: list[str]):
         super().__init__(self, inputRow)
