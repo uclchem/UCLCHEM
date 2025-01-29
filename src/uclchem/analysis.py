@@ -1,11 +1,12 @@
 try:
     from .uclchemwrap import uclchemwrap as wrap
-except:
+except ImportError:
     pass
 import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from pandas import Series, read_csv
 import pandas as pd
 from seaborn import color_palette
@@ -100,11 +101,8 @@ def plot_species(ax, df, species, legend=True, **plot_kwargs):
                 abundances = abundances + df[specName.replace("$", "@")]
         else:
             abundances = df[specName]
-        if "linestyle" not in plot_kwargs:
-            plot_kwargs["linestyle"] = linestyle
-        if "label" not in plot_kwargs:
-            plot_kwargs["label"] = specName
-        print(plot_kwargs)
+        plot_kwargs["linestyle"] = linestyle
+        plot_kwargs["label"] = specName
         ax.plot(
             df["Time"],
             abundances,
@@ -165,22 +163,6 @@ def read_analysis(filepath):
     return df, all_reactions
 
 
-def analysis_condensed_phase(
-    species_name, result_file, output_file, rate_threshold=0.99
-):
-    if "$" in species_name:
-        species_name = species_name[1:]
-    elif "@" in species_name or "#" in species_name:
-        raise ValueError("'#' or '@' in species_name argument, but should be '$' or ''")
-    surf_output = f"surf_{output_file}"
-    bulk_output = f"bulk_{output_file}"
-    analysis(f"#{species_name}", result_file, surf_output, rate_threshold)
-    analysis(f"@{species_name}", result_file, bulk_output, rate_threshold)
-
-    with open(surf_output, "r") as surf_file:
-        surf_lines = surf_file.readlines()
-
-
 def analysis(species_name, result_file, output_file, rate_threshold=0.99):
     """A function which loops over every time step in an output file and finds the rate of change of a species at that time due to each of the reactions it is involved in.
     From this, the most important reactions are identified and printed to file. This can be used to understand the chemical reason behind a species' behaviour.
@@ -191,6 +173,12 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
         output_file (str): The path to the file where the analysis output will be written
         rate_threshold (float,optional): Analysis output will contain the only the most efficient reactions that are responsible for rate_threshold of the total production and destruction rate. Defaults to 0.99.
     """
+    print(
+        "WARNING: THIS VERSION OF THE ANALYSIS TOOL IS CURRENTLY INCORRECT FOR SOLID (SURFACE/BULK) SPECIES,"
+    )
+    print(
+        "ONLY USE IT FOR GAS-PHASE. IF YOU WANT INFORMATION ABOUT FORMATION/DESTRUCTION RATES OF ICE SPECIES, RUN THE MODEL WITH THE 'rateOutput' OPTION SET TO A FILEPATH"
+    )
     result_df = read_output_file(result_file)
     species = np.loadtxt(
         os.path.join(_ROOT, "species.csv"),

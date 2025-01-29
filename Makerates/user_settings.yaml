@@ -1,14 +1,14 @@
 #Your list of all species
-species_file: inputFiles/default_species.csv
+species_file: data/default/default_species.csv
 
 #core reactions from gas phase database
-database_reaction_file: inputFiles/umist22.csv
+database_reaction_file: data/databases/umist22.csv
 database_reaction_type: UMIST
-#database_reaction_file : inputFiles/kida.uva.2014.dat
+#database_reaction_file : data/databases/kida.uva.2014.dat
 #database_reaction_type : KIDA
 
 #set of additional reactions: eg grain network
-custom_reaction_file: inputFiles/default_grain_network.csv
+custom_reaction_file: data/default/default_grain_network.csv
 custom_reaction_type: UCL
 
 #whether to automatically expand to three phase network
