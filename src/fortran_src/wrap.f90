@@ -861,6 +861,20 @@ CONTAINS
                         successFlag=-1
                         RETURN
                     END IF
+                CASE('ratefile')
+                    READ(inputValue,*,iostat=successFlag) rateFile
+                    rateFile = trim(rateFile)
+                    rateOutput=.True.
+                    open(rateId,file=rateFile,status='unknown',iostat=successFlag)
+                    IF (successFlag .ne. 0) THEN
+                        write(*,*) "An error occured when opening the rate file!"//&
+                                        & NEW_LINE('A')//&
+                                    &" The failed file was ",rateFile&
+                                    &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
+                                    &//NEW_LINE('A')//"************************"
+                        successFlag=-1
+                        RETURN
+                    END IF
                 CASE('columnfile')
                     IF (trim(outSpeciesIn) .NE. '' ) THEN
                         columnOutput=.True.

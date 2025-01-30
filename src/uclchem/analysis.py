@@ -54,6 +54,115 @@ def read_output_file(output_file):
     return data
 
 
+def read_rate_file(rate_file):
+    """Read the output of a UCLCHEM run created with the rateFile parameter into a pandas DataFrame
+
+    Args:
+        rate_file (str): path to file containing the UCLCHEM reaction rates.
+
+    Returns:
+        pandas.DataFrame: A dataframe containing the physical parameters, and reaction rates (s-1) at each timestep.
+    """
+    f = open(rate_file)
+    data = read_csv(f)
+    data.columns = data.columns.str.strip()
+    return data
+
+
+def _reactant_count(species: str, reaction_string: str) -> int:
+    """Count how many times a species is consumed in a reaction
+
+    Args:
+        species (str): species which is maybe consumed in reaction
+        reaction_string (str): reaction which maybe consumes species
+
+    Returns:
+        int: amount of times species is consumed in reaction
+    """
+    split_str = reaction_string.split("->")[0].strip()
+    if " " not in split_str:
+        return species == split_str
+    return split_str.split().count(species)
+
+
+def _product_count(species: str, reaction_string: str) -> int:
+    """Count how many times a species is produced in a reaction
+
+    Args:
+        species (str): species which is maybe produced by reaction
+        reaction_string (str): reaction which maybe produces species
+
+    Returns:
+        int: amount of times species is produced by reaction
+    """
+    split_str = reaction_string.split("->")[1].strip()
+    if " " not in split_str:
+        return species == split_str
+    return split_str.split().count(species)
+
+
+def _get_rates_change(rate_df: pd.DataFrame, species: str) -> pd.DataFrame:
+    phys_param_columns = []
+    for i, column in enumerate(rate_df.columns):
+        if not "->" in column:  # It is not a reaction, but a physical parameter
+            phys_param_columns.append(i)
+        if "->" in column:  # Assume reactions come after all the physical parameters
+            break
+    change_df = rate_df.iloc[:, phys_param_columns]
+    for i, column in enumerate(rate_df.columns):
+        if not "->" in column:  # It is not a reaction, but a physical parameter
+            continue
+        rcount = _reactant_count(species, column)
+        pcount = _product_count(species, column)
+        if rcount == 0 and pcount == 0:
+            # Species is unaffected by reaction
+            continue
+        change_df = pd.concat([change_df, rate_df[column] * (pcount - rcount)], axis=1)
+    return change_df
+
+
+def get_change_df(
+    rate_df: pd.DataFrame, species: str, on_grain: bool = False
+) -> pd.DataFrame:
+    """From a dataframe containing all the reaction rates, get the change of a species over time, due to each reaction.
+
+    Args:
+        rate_df (pd.DataFrame): dataframe containing physical parameters and reaction rates over time
+        species (str): species to get the change over time
+        on_grain (bool): whether to analyse the ice phase of this species
+
+    Returns:
+        change_df (pd.DataFrame): change of species over time due to each reaction the species is involved in
+    """
+    if "#" in species or "@" in species:
+        msg = "WARNING: get_change_df IS ONLY FOR ANALYSING ALL OF THE GAS PHASE AND ALL OF THE ICE. "
+        msg += "USE on_grain PARAMETER TO INDICATE THIS. IF YOU WANT TO ANALYSE ONLY SURFACE OR ONLY BULK, "
+        msg += "USE FUNCTION _get_rates_change WITH SPECIES CONTAINING # OR @ TO INDICATE SURFACE OF BULK."
+        raise ValueError(msg)
+    if not on_grain:
+        return _get_rates_change(rate_df, species)
+    df_surf = _get_rates_change(rate_df, "#" + species)
+    df_bulk = _get_rates_change(rate_df, "@" + species)
+    surf_columns = df_surf.columns
+    bulk_columns = df_bulk.columns
+    for column in surf_columns:
+        if not "->" in column:
+            df_bulk.drop(
+                columns=column, inplace=True
+            )  # Drop the physical parameters from bulk column so we do not have them twice in the final df
+            continue
+        if column in bulk_columns:
+            # If the same reaction is in both dfs, that means that both surf and bulk version of the species is involved in the reaction
+            # which means that either surface is lost and bulk forms, or the other way, and so we drop this column
+            # from both dfs since it has no effect on the ice overall.
+            df_surf.drop(columns=column, inplace=True)
+            df_bulk.drop(columns=column, inplace=True)
+    # Maybe TODO:
+    # Make it such that the columns of the same reactions (but surf and bulk versions) are added
+    # such that we have a single reaction rate in the ice, and not seperate surf and bulk reaction rates.
+    return pd.concat([df_surf, df_bulk], axis=1)
+
+
 def create_abundance_plot(df, species, figsize=(16, 9), plot_file=None):
     """Create a plot of the abundance of a list of species through time.
 

@@ -50,6 +50,7 @@ improvedH2CRPDissociation=.False. !Use H2 CRP dissociation rate from [Padovani e
 !|Parameter|Default Value |Description|
 !| ----- | ------| ------ |
 outputFile="output/full.dat" !File to write full output of UCLCHEM. This includes physical parameter values and all abundances at every time step.
+rateFile="output/rates.dat" !File to write reaction rates at each timestep. This includes physical parameter values.
 columnFile="output/column.dat" !File to write specific species abundances, see outSpecies.
 writeStep=1 !Writing to columnFile only happens every writeStep timesteps.
 !|abundSaveFile |None| File to store final abundances at the end of the model so future models can use them as the initial abundances. If not provided, no file will be produced.

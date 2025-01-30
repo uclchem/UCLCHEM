@@ -259,6 +259,2126 @@ INTEGER, PARAMETER :: refractoryList (1)=(/-999/)
     INTEGER, PARAMETER ::nR_H2Form_CT=646,nR_H2Form_ERDes=478,nR_H2Form_ER=477,nR_H2Form_LH=653&
     &,nR_H2Form_LHDes=745,nR_HFreeze=529,nR_EFreeze=528,nR_H2_hv=882&
     &,nR_H2_crp=105,nR_H2Freeze=531,nR_C_hv=832,nR_CO_hv=876
+CHARACTER(Len=36), PARAMETER ::     reactionNames (3353)=(/"@C &
+    &+ BULKSWAP -> #C                 ","@C2 &
+    &+ BULKSWAP -> #C2               ","@C2H + BULKSWAP -> #C2H             "&
+    &,"@C2H2 + BULKSWAP -> #C2H2           ","@C2H3 &
+    &+ BULKSWAP -> #C2H3           ","@C2H4 + BULKSWAP -> #C2H4           "&
+    &,"@C2H5 + BULKSWAP -> #C2H5           ","@C2N &
+    &+ BULKSWAP -> #C2N             ","@C3H2 + BULKSWAP -> #C3H2           "&
+    &,"@C3N + BULKSWAP -> #C3N             ","@C4H &
+    &+ BULKSWAP -> #C4H             ","@C4N + BULKSWAP -> #C4N             "&
+    &,"@CH + BULKSWAP -> #CH               ","@CH2 &
+    &+ BULKSWAP -> #CH2             ","@CH2CO + BULKSWAP -> #CH2CO         "&
+    &,"@CH2OH + BULKSWAP -> #CH2OH         ","@CH3 &
+    &+ BULKSWAP -> #CH3             ","@CH3CCH + BULKSWAP -> #CH3CCH       "&
+    &,"@CH3CHO + BULKSWAP -> #CH3CHO       ","@CH3CN &
+    &+ BULKSWAP -> #CH3CN         ","@CH3CNH + BULKSWAP -> #CH3CNH       "&
+    &,"@CH3OH + BULKSWAP -> #CH3OH         ","@CH4 &
+    &+ BULKSWAP -> #CH4             ","@CL + BULKSWAP -> #CL               "&
+    &,"@CN + BULKSWAP -> #CN               ","@CO &
+    &+ BULKSWAP -> #CO               ","@CO2 + BULKSWAP -> #CO2             "&
+    &,"@CS + BULKSWAP -> #CS               ","@H &
+    &+ BULKSWAP -> #H                 ","@H2 &
+    &+ BULKSWAP -> #H2               ","@H2CN + BULKSWAP -> #H2CN           "&
+    &,"@H2CO + BULKSWAP -> #H2CO           ","@H2COH &
+    &+ BULKSWAP -> #H2COH         ","@H2CS + BULKSWAP -> #H2CS           "&
+    &,"@H2O + BULKSWAP -> #H2O             ","@H2S &
+    &+ BULKSWAP -> #H2S             ","@H2S2 + BULKSWAP -> #H2S2           "&
+    &,"@H2SIO + BULKSWAP -> #H2SIO         ","@HC3N &
+    &+ BULKSWAP -> #HC3N           ","@HCL + BULKSWAP -> #HCL             "&
+    &,"@HCN + BULKSWAP -> #HCN             ","@HCO &
+    &+ BULKSWAP -> #HCO             ","@HCOO + BULKSWAP -> #HCOO           "&
+    &,"@HCOOH + BULKSWAP -> #HCOOH         ","@HCS &
+    &+ BULKSWAP -> #HCS             ","@HE + BULKSWAP -> #HE               "&
+    &,"@HNC + BULKSWAP -> #HNC             ","@HNCO &
+    &+ BULKSWAP -> #HNCO           ","@HNO + BULKSWAP -> #HNO             "&
+    &,"@HS + BULKSWAP -> #HS               ","@HS2 &
+    &+ BULKSWAP -> #HS2             ","@HSIO + BULKSWAP -> #HSIO           "&
+    &,"@MG + BULKSWAP -> #MG               ","@N &
+    &+ BULKSWAP -> #N                 ","@N2 &
+    &+ BULKSWAP -> #N2               ","@NCCN + BULKSWAP -> #NCCN           "&
+    &,"@NH + BULKSWAP -> #NH               ","@NH2 &
+    &+ BULKSWAP -> #NH2             ","@NH2CHO + BULKSWAP -> #NH2CHO       "&
+    &,"@NH3 + BULKSWAP -> #NH3             ","@NO &
+    &+ BULKSWAP -> #NO               ","@NO2 + BULKSWAP -> #NO2             "&
+    &,"@NS + BULKSWAP -> #NS               ","@O &
+    &+ BULKSWAP -> #O                 ","@O2 &
+    &+ BULKSWAP -> #O2               ","@O2H + BULKSWAP -> #O2H             "&
+    &,"@OCN + BULKSWAP -> #OCN             ","@OCS &
+    &+ BULKSWAP -> #OCS             ","@OH + BULKSWAP -> #OH               "&
+    &,"@S + BULKSWAP -> #S                 ","@S2 &
+    &+ BULKSWAP -> #S2               ","@SI + BULKSWAP -> #SI               "&
+    &,"@SIC + BULKSWAP -> #SIC             ","@SIC2 &
+    &+ BULKSWAP -> #SIC2           ","@SIC3 + BULKSWAP -> #SIC3           "&
+    &,"@SIH + BULKSWAP -> #SIH             ","@SIH2 &
+    &+ BULKSWAP -> #SIH2           ","@SIH3 + BULKSWAP -> #SIH3           "&
+    &,"@SIH4 + BULKSWAP -> #SIH4           ","@SIO &
+    &+ BULKSWAP -> #SIO             ","@SIS + BULKSWAP -> #SIS             "&
+    &,"@SO + BULKSWAP -> #SO               ","@SO2 &
+    &+ BULKSWAP -> #SO2             ","#CH3 + CRP -> #CH2 + #H             "&
+    &,"#CH3OH + CRP -> #CH2OH + #H         ","#CH3OH + CRP -> #H2COH &
+    &+ #H         ","#CH3OH + CRP -> #CH3 + #OH          ","#CH4 &
+    &+ CRP -> #CH2 + #H2            ","#H2CO + CRP -> #HCO + #H            "&
+    &,"#H2CO + CRP -> #CO + H2             ","#H2O + CRP -> #OH &
+    &+ #H              ","#H2S + CRP -> #HS + H               ","#HCO &
+    &+ CRP -> #CO + #H              ","#HCOOH + CRP -> #HCOO + H           "&
+    &,"#HCS + CRP -> #CS + #H              ","#HNO + CRP -> #NO &
+    &+ #H              ","#NH3 + CRP -> #NH + #H2             ","#NH3 &
+    &+ CRP -> #NH2 + #H             ","C + CRP -> C+ + E-                  "&
+    &,"CL + CRP -> CL+ + E-                ","CO + CRP -> CO+ &
+    &+ E-                ","H + CRP -> H+ + E-                  ","H2 &
+    &+ CRP -> H+ + H + E-             ","H2 + CRP -> H2+ &
+    &+ E-                ","H2 + CRP -> H + H                   ","HE &
+    &+ CRP -> HE+ + E-                ","N + CRP -> N+ &
+    &+ E-                  ","O + CRP -> O+ + E-                  ","#HNCO &
+    &+ CRPHOT -> #NH + #CO         ","C + CRPHOT -> C+ + E-               "&
+    &,"C2 + CRPHOT -> C + C                ","C2 + CRPHOT -> C2+ &
+    &+ E-             ","C2H + CRPHOT -> C2 + H              ","C2H2 &
+    &+ CRPHOT -> C2H2+ + E-         ","C2H2 + CRPHOT -> C2H + H            "&
+    &,"C2H3 + CRPHOT -> C2H2 + H           ","C2H4 + CRPHOT -> C2H2 &
+    &+ H2          ","C2H5 + CRPHOT -> C2H3 + H2          ","C2N &
+    &+ CRPHOT -> C2 + N              ","C2N + CRPHOT -> CN + C              "&
+    &,"C3N + CRPHOT -> CN + C2             ","C4H + CRPHOT -> C2H &
+    &+ C2            ","CH + CRPHOT -> C + H                ","CH &
+    &+ CRPHOT -> CH+ + E-             ","CH+ + CRPHOT -> C+ &
+    &+ H              ","CH2 + CRPHOT -> CH2+ + E-           ","CH2 &
+    &+ CRPHOT -> CH + H              ","CH2+ + CRPHOT -> C+ + H2            "&
+    &,"CH2+ + CRPHOT -> CH+ + H            ","CH2+ + CRPHOT -> CH + H&
+    &+            ","CH2CO + CRPHOT -> CO + CH2          ","CH2OH &
+    &+ CRPHOT -> CH2 + OH          ","CH3 + CRPHOT -> CH3+ + E-           "&
+    &,"CH3 + CRPHOT -> CH2 + H             ","CH3 + CRPHOT -> CH &
+    &+ H2             ","CH3CHO + CRPHOT -> CO + CH4         ","CH3CHO &
+    &+ CRPHOT -> HCO + CH3        ","CH3CN + CRPHOT -> CN + CH3          "&
+    &,"CH3OH + CRPHOT -> H2CO + H2         ","CH3OH + CRPHOT -> OH &
+    &+ CH3          ","CH4 + CRPHOT -> CH2 + H2            ","CH4 &
+    &+ CRPHOT -> CH4+ + E-           ","CH4+ + CRPHOT -> CH2+ + H2          "&
+    &,"CH4+ + CRPHOT -> CH3+ + H           ","CL + CRPHOT -> CL+ &
+    &+ E-             ","CN + CRPHOT -> N + C                ","CO &
+    &+ CRPHOT -> O + C                ","CO+ + CRPHOT -> C+ &
+    &+ O              ","CO2 + CRPHOT -> CO + O              ","CS &
+    &+ CRPHOT -> CS+ + E-             ","CS + CRPHOT -> S &
+    &+ C                ","H2+ + CRPHOT -> H+ + H              ","H2CN &
+    &+ CRPHOT -> HCN + H            ","H2CO + CRPHOT -> CO + H2            "&
+    &,"H2CO + CRPHOT -> H2CO+ + E-         ","H2CS + CRPHOT -> CS &
+    &+ H2            ","H2O + CRPHOT -> OH + H              ","H2O &
+    &+ CRPHOT -> H2O+ + E-           ","H2S + CRPHOT -> H2S+ + E-           "&
+    &,"H2S + CRPHOT -> S + H2              ","H2S + CRPHOT -> HS &
+    &+ H              ","H2S2 + CRPHOT -> HS + HS            ","H2SIO &
+    &+ CRPHOT -> SIO + H2          ","H2SIO + CRPHOT -> HSIO + H          "&
+    &,"HC3N + CRPHOT -> CN + C2H           ","HCL + CRPHOT -> HCL+ &
+    &+ E-           ","HCL + CRPHOT -> CL + H              ","HCN &
+    &+ CRPHOT -> CN + H              ","HCO + CRPHOT -> CO + H              "&
+    &,"HCO + CRPHOT -> HCO+ + E-           ","HCOOH + CRPHOT -> HCO &
+    &+ OH          ","HCS + CRPHOT -> CS + H              ","HCS &
+    &+ CRPHOT -> HCS+ + E-           ","HNC + CRPHOT -> CN + H              "&
+    &,"HNCO + CRPHOT -> NH + CO            ","HNO + CRPHOT -> NO &
+    &+ H              ","HS + CRPHOT -> HS+ + E-             ","HS &
+    &+ CRPHOT -> S + H                ","HS+ + CRPHOT -> S+ &
+    &+ H              ","HS2 + CRPHOT -> HS + S              ","HSIO &
+    &+ CRPHOT -> SIO + H            ","MG + CRPHOT -> MG+ + E-             "&
+    &,"N2 + CRPHOT -> N + N                ","NCCN + CRPHOT -> CN &
+    &+ CN            ","NH + CRPHOT -> N + H                ","NH &
+    &+ CRPHOT -> NH+ + E-             ","NH+ + CRPHOT -> N + H&
+    &+              ","NH2 + CRPHOT -> NH2+ + E-           ","NH2 &
+    &+ CRPHOT -> NH + H              ","NH2CHO + CRPHOT -> NH2 + HCO        "&
+    &,"NH3 + CRPHOT -> NH3+ + E-           ","NH3 + CRPHOT -> NH2 &
+    &+ H             ","NH3 + CRPHOT -> NH + H2             ","NO &
+    &+ CRPHOT -> NO+ + E-             ","NO + CRPHOT -> O &
+    &+ N                ","NO2 + CRPHOT -> NO + O              ","NS &
+    &+ CRPHOT -> S + N                ","O + CRPHOT -> O+ &
+    &+ E-               ","O2 + CRPHOT -> O2+ + E-             ","O2 &
+    &+ CRPHOT -> O + O                ","O2+ + CRPHOT -> O+ &
+    &+ O              ","O2H + CRPHOT -> O2 + H              ","O2H &
+    &+ CRPHOT -> OH + O              ","OCN + CRPHOT -> CN + O              "&
+    &,"OCS + CRPHOT -> OCS+ + E-           ","OCS + CRPHOT -> S &
+    &+ CO              ","OH + CRPHOT -> O + H                ","OH+ &
+    &+ CRPHOT -> O+ + H              ","S + CRPHOT -> S+ + E-               "&
+    &,"S2 + CRPHOT -> S2+ + E-             ","S2 + CRPHOT -> S &
+    &+ S                ","SI + CRPHOT -> SI+ + E-             ","SIC &
+    &+ CRPHOT -> SI + C              ","SIC2 + CRPHOT -> SIC + C            "&
+    &,"SIC3 + CRPHOT -> SIC2 + C           ","SIH + CRPHOT -> SI &
+    &+ H              ","SIH+ + CRPHOT -> SI+ + H            ","SIH2 &
+    &+ CRPHOT -> SIH + H            ","SIH3 + CRPHOT -> SIH2 + H           "&
+    &,"SIH4 + CRPHOT -> SI + H2 + H2       ","SIH4 + CRPHOT -> SIH + H &
+    &+ H2       ","SIO + CRPHOT -> SI + O              ","SIS + CRPHOT -> S &
+    &+ SI              ","SO + CRPHOT -> SO+ + E-             ","SO &
+    &+ CRPHOT -> S + O                ","SO2 + CRPHOT -> SO2+ &
+    &+ E-           ","SO2 + CRPHOT -> SO + O              ","#C &
+    &+ DESCR -> C                     ","#C2 &
+    &+ DESCR -> C2                   ","#C2H + DESCR -> C2H                 "&
+    &,"#C2H2 + DESCR -> C2H2               ","#C2H3 &
+    &+ DESCR -> C2H3               ","#C2H4 + DESCR -> C2H4               "&
+    &,"#C2H5 + DESCR -> C2H5               ","#C2N &
+    &+ DESCR -> C2N                 ","#C3H2 + DESCR -> C3H2               "&
+    &,"#C3N + DESCR -> C3N                 ","#C4H &
+    &+ DESCR -> C4H                 ","#C4N + DESCR -> C4N                 "&
+    &,"#CH + DESCR -> CH                   ","#CH2 &
+    &+ DESCR -> CH2                 ","#CH2CO + DESCR -> CH2CO             "&
+    &,"#CH2OH + DESCR -> CH2OH             ","#CH3 &
+    &+ DESCR -> CH3                 ","#CH3CCH + DESCR -> CH3CCH           "&
+    &,"#CH3CHO + DESCR -> CH3CHO           ","#CH3CN &
+    &+ DESCR -> CH3CN             ","#CH3CNH + DESCR -> CH3CNH           "&
+    &,"#CH3OH + DESCR -> CH3OH             ","#CH4 &
+    &+ DESCR -> CH4                 ","#CL + DESCR -> CL                   "&
+    &,"#CN + DESCR -> CN                   ","#CO &
+    &+ DESCR -> CO                   ","#CO2 + DESCR -> CO2                 "&
+    &,"#CS + DESCR -> CS                   ","#H &
+    &+ DESCR -> H                     ","#H2 &
+    &+ DESCR -> H2                   ","#H2CN + DESCR -> H2CN               "&
+    &,"#H2CO + DESCR -> H2CO               ","#H2COH &
+    &+ DESCR -> H2COH             ","#H2CS + DESCR -> H2CS               "&
+    &,"#H2O + DESCR -> H2O                 ","#H2S &
+    &+ DESCR -> H2S                 ","#H2S2 + DESCR -> H2S2               "&
+    &,"#H2SIO + DESCR -> H2SIO             ","#HC3N &
+    &+ DESCR -> HC3N               ","#HCL + DESCR -> HCL                 "&
+    &,"#HCN + DESCR -> HCN                 ","#HCO &
+    &+ DESCR -> HCO                 ","#HCOO + DESCR -> HCOO               "&
+    &,"#HCOOH + DESCR -> HCOOH             ","#HCS &
+    &+ DESCR -> HCS                 ","#HE + DESCR -> HE                   "&
+    &,"#HNC + DESCR -> HNC                 ","#HNCO &
+    &+ DESCR -> HNCO               ","#HNO + DESCR -> HNO                 "&
+    &,"#HS + DESCR -> HS                   ","#HS2 &
+    &+ DESCR -> HS2                 ","#HSIO + DESCR -> SIOH+              "&
+    &,"#MG + DESCR -> MG                   ","#N &
+    &+ DESCR -> N                     ","#N2 &
+    &+ DESCR -> N2                   ","#NCCN + DESCR -> NCCN               "&
+    &,"#NH + DESCR -> NH                   ","#NH2 &
+    &+ DESCR -> NH2                 ","#NH2CHO + DESCR -> NH2CHO           "&
+    &,"#NH3 + DESCR -> NH3                 ","#NO &
+    &+ DESCR -> NO                   ","#NO2 + DESCR -> NO2                 "&
+    &,"#NS + DESCR -> NS                   ","#O &
+    &+ DESCR -> O                     ","#O2 &
+    &+ DESCR -> O2                   ","#O2H + DESCR -> O2H                 "&
+    &,"#OCN + DESCR -> OCN                 ","#OCS &
+    &+ DESCR -> OCS                 ","#OH + DESCR -> OH                   "&
+    &,"#S + DESCR -> S                     ","#S2 &
+    &+ DESCR -> S2                   ","#SI + DESCR -> SI                   "&
+    &,"#SIC + DESCR -> SIC                 ","#SIC2 &
+    &+ DESCR -> SIC2               ","#SIC3 + DESCR -> SIC3               "&
+    &,"#SIH + DESCR -> SIH                 ","#SIH2 &
+    &+ DESCR -> SIH2               ","#SIH3 + DESCR -> SIH3               "&
+    &,"#SIH4 + DESCR -> SIH4               ","#SIO &
+    &+ DESCR -> SIO                 ","#SIS + DESCR -> SIS                 "&
+    &,"#SO + DESCR -> SO                   ","#SO2 &
+    &+ DESCR -> SO2                 ","#C + DESOH2 -> C                    "&
+    &,"#C2 + DESOH2 -> C2                  ","#C2H &
+    &+ DESOH2 -> C2H                ","#C2H2 + DESOH2 -> C2H2              "&
+    &,"#C2H3 + DESOH2 -> C2H3              ","#C2H4 &
+    &+ DESOH2 -> C2H4              ","#C2H5 + DESOH2 -> C2H5              "&
+    &,"#C2N + DESOH2 -> C2N                ","#C3H2 &
+    &+ DESOH2 -> C3H2              ","#C3N + DESOH2 -> C3N                "&
+    &,"#C4H + DESOH2 -> C4H                ","#C4N &
+    &+ DESOH2 -> C4N                ","#CH + DESOH2 -> CH                  "&
+    &,"#CH2 + DESOH2 -> CH2                ","#CH2CO &
+    &+ DESOH2 -> CH2CO            ","#CH2OH + DESOH2 -> CH2OH            "&
+    &,"#CH3 + DESOH2 -> CH3                ","#CH3CCH &
+    &+ DESOH2 -> CH3CCH          ","#CH3CHO + DESOH2 -> CH3CHO          "&
+    &,"#CH3CN + DESOH2 -> CH3CN            ","#CH3CNH &
+    &+ DESOH2 -> CH3CNH          ","#CH3OH + DESOH2 -> CH3OH            "&
+    &,"#CH4 + DESOH2 -> CH4                ","#CL &
+    &+ DESOH2 -> CL                  ","#CN + DESOH2 -> CN                  "&
+    &,"#CO + DESOH2 -> CO                  ","#CO2 &
+    &+ DESOH2 -> CO2                ","#CS + DESOH2 -> CS                  "&
+    &,"#H + DESOH2 -> H                    ","#H2 &
+    &+ DESOH2 -> H2                  ","#H2CN + DESOH2 -> H2CN              "&
+    &,"#H2CO + DESOH2 -> H2CO              ","#H2COH &
+    &+ DESOH2 -> H2COH            ","#H2CS + DESOH2 -> H2CS              "&
+    &,"#H2O + DESOH2 -> H2O                ","#H2S &
+    &+ DESOH2 -> H2S                ","#H2S2 + DESOH2 -> H2S2              "&
+    &,"#H2SIO + DESOH2 -> H2SIO            ","#HC3N &
+    &+ DESOH2 -> HC3N              ","#HCL + DESOH2 -> HCL                "&
+    &,"#HCN + DESOH2 -> HCN                ","#HCO &
+    &+ DESOH2 -> HCO                ","#HCOO + DESOH2 -> HCOO              "&
+    &,"#HCOOH + DESOH2 -> HCOOH            ","#HCS &
+    &+ DESOH2 -> HCS                ","#HE + DESOH2 -> HE                  "&
+    &,"#HNC + DESOH2 -> HNC                ","#HNCO &
+    &+ DESOH2 -> HNCO              ","#HNO + DESOH2 -> HNO                "&
+    &,"#HS + DESOH2 -> HS                  ","#HS2 &
+    &+ DESOH2 -> HS2                ","#HSIO + DESOH2 -> SIOH+             "&
+    &,"#MG + DESOH2 -> MG                  ","#N &
+    &+ DESOH2 -> N                    ","#N2 &
+    &+ DESOH2 -> N2                  ","#NCCN + DESOH2 -> NCCN              "&
+    &,"#NH + DESOH2 -> NH                  ","#NH2 &
+    &+ DESOH2 -> NH2                ","#NH2CHO + DESOH2 -> NH2CHO          "&
+    &,"#NH3 + DESOH2 -> NH3                ","#NO &
+    &+ DESOH2 -> NO                  ","#NO2 + DESOH2 -> NO2                "&
+    &,"#NS + DESOH2 -> NS                  ","#O &
+    &+ DESOH2 -> O                    ","#O2 &
+    &+ DESOH2 -> O2                  ","#O2H + DESOH2 -> O2H                "&
+    &,"#OCN + DESOH2 -> OCN                ","#OCS &
+    &+ DESOH2 -> OCS                ","#OH + DESOH2 -> OH                  "&
+    &,"#S + DESOH2 -> S                    ","#S2 &
+    &+ DESOH2 -> S2                  ","#SI + DESOH2 -> SI                  "&
+    &,"#SIC + DESOH2 -> SIC                ","#SIC2 &
+    &+ DESOH2 -> SIC2              ","#SIC3 + DESOH2 -> SIC3              "&
+    &,"#SIH + DESOH2 -> SIH                ","#SIH2 &
+    &+ DESOH2 -> SIH2              ","#SIH3 + DESOH2 -> SIH3              "&
+    &,"#SIH4 + DESOH2 -> SIH4              ","#SIO &
+    &+ DESOH2 -> SIO                ","#SIS + DESOH2 -> SIS                "&
+    &,"#SO + DESOH2 -> SO                  ","#SO2 &
+    &+ DESOH2 -> SO2                ","#C + DEUVCR -> C                    "&
+    &,"#C2 + DEUVCR -> C2                  ","#C2H &
+    &+ DEUVCR -> C2H                ","#C2H2 + DEUVCR -> C2H2              "&
+    &,"#C2H3 + DEUVCR -> C2H3              ","#C2H4 &
+    &+ DEUVCR -> C2H4              ","#C2H5 + DEUVCR -> C2H5              "&
+    &,"#C2N + DEUVCR -> C2N                ","#C3H2 &
+    &+ DEUVCR -> C3H2              ","#C3N + DEUVCR -> C3N                "&
+    &,"#C4H + DEUVCR -> C4H                ","#C4N &
+    &+ DEUVCR -> C4N                ","#CH + DEUVCR -> CH                  "&
+    &,"#CH2 + DEUVCR -> CH2                ","#CH2CO &
+    &+ DEUVCR -> CH2CO            ","#CH2OH + DEUVCR -> CH2OH            "&
+    &,"#CH3 + DEUVCR -> CH3                ","#CH3CCH &
+    &+ DEUVCR -> CH3CCH          ","#CH3CHO + DEUVCR -> CH3CHO          "&
+    &,"#CH3CN + DEUVCR -> CH3CN            ","#CH3CNH &
+    &+ DEUVCR -> CH3CNH          ","#CH3OH + DEUVCR -> CH3OH            "&
+    &,"#CH4 + DEUVCR -> CH4                ","#CL &
+    &+ DEUVCR -> CL                  ","#CN + DEUVCR -> CN                  "&
+    &,"#CO + DEUVCR -> CO                  ","#CO2 &
+    &+ DEUVCR -> CO2                ","#CS + DEUVCR -> CS                  "&
+    &,"#H + DEUVCR -> H                    ","#H2 &
+    &+ DEUVCR -> H2                  ","#H2CN + DEUVCR -> H2CN              "&
+    &,"#H2CO + DEUVCR -> H2CO              ","#H2COH &
+    &+ DEUVCR -> H2COH            ","#H2CS + DEUVCR -> H2CS              "&
+    &,"#H2O + DEUVCR -> H2O                ","#H2S &
+    &+ DEUVCR -> H2S                ","#H2S2 + DEUVCR -> H2S2              "&
+    &,"#H2SIO + DEUVCR -> H2SIO            ","#HC3N &
+    &+ DEUVCR -> HC3N              ","#HCL + DEUVCR -> HCL                "&
+    &,"#HCN + DEUVCR -> HCN                ","#HCO &
+    &+ DEUVCR -> HCO                ","#HCOO + DEUVCR -> HCOO              "&
+    &,"#HCOOH + DEUVCR -> HCOOH            ","#HCS &
+    &+ DEUVCR -> HCS                ","#HE + DEUVCR -> HE                  "&
+    &,"#HNC + DEUVCR -> HNC                ","#HNCO &
+    &+ DEUVCR -> HNCO              ","#HNO + DEUVCR -> HNO                "&
+    &,"#HS + DEUVCR -> HS                  ","#HS2 &
+    &+ DEUVCR -> HS2                ","#HSIO + DEUVCR -> SIOH+             "&
+    &,"#MG + DEUVCR -> MG                  ","#N &
+    &+ DEUVCR -> N                    ","#N2 &
+    &+ DEUVCR -> N2                  ","#NCCN + DEUVCR -> NCCN              "&
+    &,"#NH + DEUVCR -> NH                  ","#NH2 &
+    &+ DEUVCR -> NH2                ","#NH2CHO + DEUVCR -> NH2CHO          "&
+    &,"#NH3 + DEUVCR -> NH3                ","#NO &
+    &+ DEUVCR -> NO                  ","#NO2 + DEUVCR -> NO2                "&
+    &,"#NS + DEUVCR -> NS                  ","#O &
+    &+ DEUVCR -> O                    ","#O2 &
+    &+ DEUVCR -> O2                  ","#O2H + DEUVCR -> O2H                "&
+    &,"#OCN + DEUVCR -> OCN                ","#OCS &
+    &+ DEUVCR -> OCS                ","#OH + DEUVCR -> OH                  "&
+    &,"#S + DEUVCR -> S                    ","#S2 &
+    &+ DEUVCR -> S2                  ","#SI + DEUVCR -> SI                  "&
+    &,"#SIC + DEUVCR -> SIC                ","#SIC2 &
+    &+ DEUVCR -> SIC2              ","#SIC3 + DEUVCR -> SIC3              "&
+    &,"#SIH + DEUVCR -> SIH                ","#SIH2 &
+    &+ DEUVCR -> SIH2              ","#SIH3 + DEUVCR -> SIH3              "&
+    &,"#SIH4 + DEUVCR -> SIH4              ","#SIO &
+    &+ DEUVCR -> SIO                ","#SIS + DEUVCR -> SIS                "&
+    &,"#SO + DEUVCR -> SO                  ","#SO2 &
+    &+ DEUVCR -> SO2                ","H + #H + ER -> #H2                  "&
+    &,"H + #H + ERDES -> H2                ","C &
+    &+ FREEZE -> #C                    ","C+ &
+    &+ FREEZE -> #C                   ","C2 &
+    &+ FREEZE -> #C2                  ","C2+ &
+    &+ FREEZE -> #C2                 ","C2H + FREEZE -> #C2H                "&
+    &,"C2H+ + FREEZE -> #C2H               ","C2H2 &
+    &+ FREEZE -> #C2H2              ","C2H2+ + FREEZE -> #C2H2             "&
+    &,"C2H3 + FREEZE -> #C2H3              ","C2H4 &
+    &+ FREEZE -> #C2H4              ","C2H5 + FREEZE -> #C2H5              "&
+    &,"C2N + FREEZE -> #CH3CNH             ","C2N+ &
+    &+ FREEZE -> #CH3CNH            ","C2N2+ + FREEZE -> #NCCN             "&
+    &,"C2NH+ + FREEZE -> #CH3CNH           ","C3+ + FREEZE -> #C2 &
+    &+ C             ","C3H2 + FREEZE -> #C3H2              ","C3H5+ &
+    &+ FREEZE -> #CH3CCH + H       ","C3N + FREEZE -> #HC3N               "&
+    &,"C4H + FREEZE -> #C4H                ","C4N &
+    &+ FREEZE -> #C4N                ","C4N+ + FREEZE -> #C4N               "&
+    &,"CH + FREEZE -> #CH                  ","CH+ &
+    &+ FREEZE -> #CH                 ","CH2 + FREEZE -> #CH2                "&
+    &,"CH2+ + FREEZE -> #CH2               ","CH2CO &
+    &+ FREEZE -> #CH2CO            ","CH2OH + FREEZE -> #CH2OH            "&
+    &,"CH3 + FREEZE -> #CH3                ","CH3+ &
+    &+ FREEZE -> #CH3               ","CH3CCH + FREEZE -> #CH3CCH          "&
+    &,"CH3CHO + FREEZE -> #CH3CHO          ","CH3CN &
+    &+ FREEZE -> #CH3CN            ","CH3CNH + FREEZE -> #CH3CNH          "&
+    &,"CH3CNH+ + FREEZE -> #CH3CNH         ","CH3OH &
+    &+ FREEZE -> #CH3OH            ","CH3OH2+ + FREEZE -> #CH3OH + H      "&
+    &,"CH4 + FREEZE -> #CH4                ","CH4+ &
+    &+ FREEZE -> #CH4               ","CH5+ + FREEZE -> #CH4 + H           "&
+    &,"CL + FREEZE -> #CL                  ","CL+ &
+    &+ FREEZE -> #CL                 ","CN + FREEZE -> #CN                  "&
+    &,"CN+ + FREEZE -> #CN                 ","CO &
+    &+ FREEZE -> #CO                  ","CO+ &
+    &+ FREEZE -> #CO                 ","CO2 + FREEZE -> #CO2                "&
+    &,"CS + FREEZE -> #CS                  ","CS+ &
+    &+ FREEZE -> #CS                 ","E- + FREEZE ->                      "&
+    &,"H + FREEZE -> #H                    ","H+ &
+    &+ FREEZE -> #H                   ","H2 &
+    &+ FREEZE -> #H2                  ","H2+ &
+    &+ FREEZE -> #H2                 ","H2CL+ + FREEZE -> #HCL + H          "&
+    &,"H2CN + FREEZE -> #H2CN              ","H2CO &
+    &+ FREEZE -> #H2CO              ","H2CO+ + FREEZE -> #H2CO             "&
+    &,"H2COH + FREEZE -> #H2COH            ","H2COH+ &
+    &+ FREEZE -> #H2COH           ","H2CS + FREEZE -> #H2CS              "&
+    &,"H2CS+ + FREEZE -> #H2CS             ","H2CSH+ + FREEZE -> #H2CS &
+    &+ H        ","H2NO+ + FREEZE -> #HNO + H          ","H2O &
+    &+ FREEZE -> #H2O                ","H2O+ + FREEZE -> #H2O               "&
+    &,"H2S + FREEZE -> #H2S                ","H2S+ &
+    &+ FREEZE -> #H2S               ","H2S2 + FREEZE -> #H2S2              "&
+    &,"H2S2+ + FREEZE -> #H2S2             ","H2SIO &
+    &+ FREEZE -> #H2SIO            ","H3+ + FREEZE -> #H + #H + #H        "&
+    &,"H3O+ + FREEZE -> #H2O + H           ","H3S+ + FREEZE -> #H2S &
+    &+ H           ","HC3N + FREEZE -> #HC3N              ","HCL &
+    &+ FREEZE -> #HCL                ","HCL+ + FREEZE -> #HCL               "&
+    &,"HCN + FREEZE -> #HCN                ","HCN+ &
+    &+ FREEZE -> #HCN               ","HCNH+ + FREEZE -> #HCN + H          "&
+    &,"HCO + FREEZE -> #HCO                ","HCO+ &
+    &+ FREEZE -> #HCO               ","HCO2+ + FREEZE -> #CO2 + H          "&
+    &,"HCOO + FREEZE -> #HCOO              ","HCOOH &
+    &+ FREEZE -> #HCOOH            ","HCS + FREEZE -> #HCS                "&
+    &,"HCS+ + FREEZE -> #HCS               ","HE &
+    &+ FREEZE -> #HE                  ","HE+ &
+    &+ FREEZE -> #HE                 ","HEH+ + FREEZE -> #H + #HE           "&
+    &,"HNC + FREEZE -> #HNC                ","HNCO &
+    &+ FREEZE -> #HNCO              ","HNO + FREEZE -> #HNO                "&
+    &,"HNO+ + FREEZE -> #HNO               ","HNS+ + FREEZE -> #NS &
+    &+ H            ","HOC+ + FREEZE -> #HCO               ","HOSO+ &
+    &+ FREEZE -> #SO2 + H          ","HS + FREEZE -> #HS                  "&
+    &,"HS+ + FREEZE -> #HS                 ","HS2 &
+    &+ FREEZE -> #HS2                ","HS2+ + FREEZE -> #HS2               "&
+    &,"HSIO + FREEZE -> #HSIO              ","HSO+ + FREEZE -> #SO &
+    &+ H            ","MG + FREEZE -> #MG                  ","MG+ &
+    &+ FREEZE -> #MG                 ","N + FREEZE -> #N                    "&
+    &,"N+ + FREEZE -> #N                   ","N2 &
+    &+ FREEZE -> #N2                  ","N2+ &
+    &+ FREEZE -> #N2                 ","N2H+ + FREEZE -> #N2 + H            "&
+    &,"NCCN + FREEZE -> #NCCN              ","NH &
+    &+ FREEZE -> #NH                  ","NH+ &
+    &+ FREEZE -> #NH                 ","NH2 + FREEZE -> #NH2                "&
+    &,"NH2+ + FREEZE -> #NH2               ","NH2CHO &
+    &+ FREEZE -> #NH2CHO          ","NH3 + FREEZE -> #NH3                "&
+    &,"NH3+ + FREEZE -> #NH3               ","NH4+ + FREEZE -> #NH3 &
+    &+ H           ","NO + FREEZE -> #NO                  ","NO+ &
+    &+ FREEZE -> #NO                 ","NO2 + FREEZE -> #NO2                "&
+    &,"NS + FREEZE -> #NS                  ","NS+ &
+    &+ FREEZE -> #NS                 ","O + FREEZE -> #O                    "&
+    &,"O+ + FREEZE -> #O                   ","O2 &
+    &+ FREEZE -> #O2                  ","O2+ &
+    &+ FREEZE -> #O2                 ","O2H + FREEZE -> #O2H                "&
+    &,"O2H+ + FREEZE -> #O2H               ","OCN &
+    &+ FREEZE -> #OCN                ","OCS + FREEZE -> #OCS                "&
+    &,"OCS+ + FREEZE -> #OCS               ","OCSH+ + FREEZE -> #OCS &
+    &+ H          ","OH + FREEZE -> #OH                  ","OH+ &
+    &+ FREEZE -> #OH                 ","S + FREEZE -> #S                    "&
+    &,"S+ + FREEZE -> #S                   ","S2 &
+    &+ FREEZE -> #S2                  ","S2+ &
+    &+ FREEZE -> #S2                 ","SI + FREEZE -> #SI                  "&
+    &,"SI+ + FREEZE -> #SI                 ","SIC &
+    &+ FREEZE -> #SIC                ","SIC+ + FREEZE -> #SIC               "&
+    &,"SIC2 + FREEZE -> #SIC2              ","SIC2+ &
+    &+ FREEZE -> #SIC2             ","SIC3 + FREEZE -> #SIC3              "&
+    &,"SIC3+ + FREEZE -> #SIC3             ","SIH &
+    &+ FREEZE -> #SIH                ","SIH+ + FREEZE -> #SIH               "&
+    &,"SIH2 + FREEZE -> #SIH2              ","SIH2+ &
+    &+ FREEZE -> #SIH2             ","SIH3 + FREEZE -> #SIH3              "&
+    &,"SIH3+ + FREEZE -> #SIH3             ","SIH4 &
+    &+ FREEZE -> #SIH4              ","SIH4+ + FREEZE -> #SIH4             "&
+    &,"SIH5+ + FREEZE -> #SIH4 + H         ","SIO &
+    &+ FREEZE -> #SIO                ","SIO+ + FREEZE -> #SIO               "&
+    &,"SIOH+ + FREEZE -> #HSIO             ","SIS &
+    &+ FREEZE -> #SIS                ","SIS+ + FREEZE -> #SIS               "&
+    &,"SISH+ + FREEZE -> #SIS + H          ","SO &
+    &+ FREEZE -> #SO                  ","SO+ &
+    &+ FREEZE -> #SO                 ","SO2 + FREEZE -> #SO2                "&
+    &,"SO2+ + FREEZE -> #SO2               ","H + H &
+    &+ H2FORM -> H2                ","#C + #OCN + LH -> #CN + #CO         "&
+    &,"#CH3 + #HCO + LH -> #CH3CHO         ","#CL + #H &
+    &+ LH -> #HCL               ","#CN + #H + LH -> #HCN               "&
+    &,"#CO + #OH + LH -> #CO2              ","#CS + #H &
+    &+ LH -> #HCS               ","#H + #H + LH -> #H2                 ","#H &
+    &+ #C + LH -> #CH                 ","#H + #CH &
+    &+ LH -> #CH2               ","#H + #CH2 + LH -> #CH3              ","#H &
+    &+ #CH3 + LH -> #CH4              ","#H + #O &
+    &+ LH -> #OH                 ","#H + #OH + LH -> #H2O               "&
+    &,"#H + #N + LH -> #NH                 ","#H + #NH &
+    &+ LH -> #NH2               ","#H + #NH2 + LH -> #NH3              ","#H &
+    &+ #CO + LH -> #HCO               ","#H + #HCO &
+    &+ LH -> #H2CO             ","#H + #HCO + LH -> #CO + #H2         ","#H &
+    &+ #CH2OH + LH -> #CH3OH          ","#H + #H2COH &
+    &+ LH -> #CH3OH          ","#H + #OCN + LH -> #HNCO             ","#H &
+    &+ #HNCO + LH -> #NH2 + #CO       ","#H + #H2CO &
+    &+ LH -> #CH2OH           ","#H + #H2CO + LH -> #H2COH           ","#H &
+    &+ #H2CO + LH -> #HCO + #H2       ","#H2CO + #O + LH -> #CO2 &
+    &+ H2        ","#HCO + #OH + LH -> #HCOOH           ","#HCS + #H &
+    &+ LH -> #H2CS             ","#HS + #H + LH -> #H2S               "&
+    &,"#HS2 + #H + LH -> #H2S2             ","#HSIO + #H &
+    &+ LH -> #H2SIO           ","#NH + #CO + LH -> #HNCO             ","#NH2 &
+    &+ #HCO + LH -> #NH2CHO         ","#NH2 + #HCO + LH -> #NH3 + #CO      "&
+    &,"#NH2 + #H2CO + LH -> #NH2CHO + H    ","#NH2 + #H2CO + LH -> #NH3 &
+    &+ #HCO    ","#O + #O + LH -> #O2                 ","#O + #OCN &
+    &+ LH -> #CO + #NO         ","#S + #H + LH -> #HS                 ","#S2 &
+    &+ #H + LH -> #HS2               ","#SI + #H + LH -> #SIH               "&
+    &,"#SIH + #H + LH -> #SIH2             ","#SIH2 + #H &
+    &+ LH -> #SIH3            ","#SIH3 + #H + LH -> #SIH4            ","#SIO &
+    &+ #H + LH -> #HSIO             ","@C + @OCN + LH -> @CN + @CO         "&
+    &,"@CH3 + @HCO + LH -> @CH3CHO         ","@CL + @H &
+    &+ LH -> @HCL               ","@CN + @H + LH -> @HCN               "&
+    &,"@CO + @OH + LH -> @CO2              ","@CS + @H &
+    &+ LH -> @HCS               ","@H + @H + LH -> @H2                 ","@H &
+    &+ @C + LH -> @CH                 ","@H + @CH &
+    &+ LH -> @CH2               ","@H + @CH2 + LH -> @CH3              ","@H &
+    &+ @CH3 + LH -> @CH4              ","@H + @O &
+    &+ LH -> @OH                 ","@H + @OH + LH -> @H2O               "&
+    &,"@H + @N + LH -> @NH                 ","@H + @NH &
+    &+ LH -> @NH2               ","@H + @NH2 + LH -> @NH3              ","@H &
+    &+ @CO + LH -> @HCO               ","@H + @HCO &
+    &+ LH -> @H2CO             ","@H + @HCO + LH -> @CO + @H2         ","@H &
+    &+ @CH2OH + LH -> @CH3OH          ","@H + @H2COH &
+    &+ LH -> @CH3OH          ","@H + @OCN + LH -> @HNCO             ","@H &
+    &+ @HNCO + LH -> @NH2 + @CO       ","@H + @H2CO &
+    &+ LH -> @CH2OH           ","@H + @H2CO + LH -> @H2COH           ","@H &
+    &+ @H2CO + LH -> @HCO + @H2       ","@H2CO + @O + LH -> @CO2 &
+    &+ H2        ","@HCO + @OH + LH -> @HCOOH           ","@HCS + @H &
+    &+ LH -> @H2CS             ","@HS + @H + LH -> @H2S               "&
+    &,"@HS2 + @H + LH -> @H2S2             ","@HSIO + @H &
+    &+ LH -> @H2SIO           ","@NH + @CO + LH -> @HNCO             ","@NH2 &
+    &+ @HCO + LH -> @NH2CHO         ","@NH2 + @HCO + LH -> @NH3 + @CO      "&
+    &,"@NH2 + @H2CO + LH -> @NH2CHO + H    ","@NH2 + @H2CO + LH -> @NH3 &
+    &+ @HCO    ","@O + @O + LH -> @O2                 ","@O + @OCN &
+    &+ LH -> @CO + @NO         ","@S + @H + LH -> @HS                 ","@S2 &
+    &+ @H + LH -> @HS2               ","@SI + @H + LH -> @SIH               "&
+    &,"@SIH + @H + LH -> @SIH2             ","@SIH2 + @H &
+    &+ LH -> @SIH3            ","@SIH3 + @H + LH -> @SIH4            ","@SIO &
+    &+ @H + LH -> @HSIO             ","#C + #OCN + LHDES -> CN + CO        "&
+    &,"#CH3 + #HCO + LHDES -> CH3CHO       ","#CL + #H &
+    &+ LHDES -> HCL             ","#CN + #H + LHDES -> HCN             "&
+    &,"#CO + #OH + LHDES -> CO2            ","#CS + #H &
+    &+ LHDES -> HCS             ","#H + #H + LHDES -> H2               ","#H &
+    &+ #C + LHDES -> CH               ","#H + #CH &
+    &+ LHDES -> CH2             ","#H + #CH2 + LHDES -> CH3            ","#H &
+    &+ #CH3 + LHDES -> CH4            ","#H + #O &
+    &+ LHDES -> OH               ","#H + #OH + LHDES -> H2O             "&
+    &,"#H + #N + LHDES -> NH               ","#H + #NH &
+    &+ LHDES -> NH2             ","#H + #NH2 + LHDES -> NH3            ","#H &
+    &+ #CO + LHDES -> HCO             ","#H + #HCO &
+    &+ LHDES -> H2CO           ","#H + #HCO + LHDES -> CO + H2        ","#H &
+    &+ #CH2OH + LHDES -> CH3OH        ","#H + #H2COH &
+    &+ LHDES -> CH3OH        ","#H + #OCN + LHDES -> HNCO           ","#H &
+    &+ #HNCO + LHDES -> NH2 + CO      ","#H + #H2CO &
+    &+ LHDES -> CH2OH         ","#H + #H2CO + LHDES -> H2COH         ","#H &
+    &+ #H2CO + LHDES -> HCO + H2      ","#H2CO + #O + LHDES -> CO2 &
+    &+ H2      ","#HCO + #OH + LHDES -> HCOOH         ","#HCS + #H &
+    &+ LHDES -> H2CS           ","#HS + #H + LHDES -> H2S             "&
+    &,"#HS2 + #H + LHDES -> H2S2           ","#HSIO + #H &
+    &+ LHDES -> H2SIO         ","#NH + #CO + LHDES -> HNCO           ","#NH2 &
+    &+ #HCO + LHDES -> NH2CHO       ","#NH2 + #HCO + LHDES -> NH3 + CO     "&
+    &,"#NH2 + #H2CO + LHDES -> NH2CHO + H  ","#NH2 + #H2CO + LHDES -> NH3 &
+    &+ HCO   ","#O + #O + LHDES -> O2               ","#O + #OCN &
+    &+ LHDES -> CO + NO        ","#S + #H + LHDES -> HS               ","#S2 &
+    &+ #H + LHDES -> HS2             ","#SI + #H + LHDES -> SIH             "&
+    &,"#SIH + #H + LHDES -> SIH2           ","#SIH2 + #H &
+    &+ LHDES -> SIH3          ","#SIH3 + #H + LHDES -> SIH4          ","#SIO &
+    &+ #H + LHDES -> HSIO           ","@C + @OCN + LHDES -> CN + CO        "&
+    &,"@CH3 + @HCO + LHDES -> CH3CHO       ","@CL + @H &
+    &+ LHDES -> HCL             ","@CN + @H + LHDES -> HCN             "&
+    &,"@CO + @OH + LHDES -> CO2            ","@CS + @H &
+    &+ LHDES -> HCS             ","@H + @H + LHDES -> H2               ","@H &
+    &+ @C + LHDES -> CH               ","@H + @CH &
+    &+ LHDES -> CH2             ","@H + @CH2 + LHDES -> CH3            ","@H &
+    &+ @CH3 + LHDES -> CH4            ","@H + @O &
+    &+ LHDES -> OH               ","@H + @OH + LHDES -> H2O             "&
+    &,"@H + @N + LHDES -> NH               ","@H + @NH &
+    &+ LHDES -> NH2             ","@H + @NH2 + LHDES -> NH3            ","@H &
+    &+ @CO + LHDES -> HCO             ","@H + @HCO &
+    &+ LHDES -> H2CO           ","@H + @HCO + LHDES -> CO + H2        ","@H &
+    &+ @CH2OH + LHDES -> CH3OH        ","@H + @H2COH &
+    &+ LHDES -> CH3OH        ","@H + @OCN + LHDES -> HNCO           ","@H &
+    &+ @HNCO + LHDES -> NH2 + CO      ","@H + @H2CO &
+    &+ LHDES -> CH2OH         ","@H + @H2CO + LHDES -> H2COH         ","@H &
+    &+ @H2CO + LHDES -> HCO + H2      ","@H2CO + @O + LHDES -> CO2 &
+    &+ H2      ","@HCO + @OH + LHDES -> HCOOH         ","@HCS + @H &
+    &+ LHDES -> H2CS           ","@HS + @H + LHDES -> H2S             "&
+    &,"@HS2 + @H + LHDES -> H2S2           ","@HSIO + @H &
+    &+ LHDES -> H2SIO         ","@NH + @CO + LHDES -> HNCO           ","@NH2 &
+    &+ @HCO + LHDES -> NH2CHO       ","@NH2 + @HCO + LHDES -> NH3 + CO     "&
+    &,"@NH2 + @H2CO + LHDES -> NH2CHO + H  ","@NH2 + @H2CO + LHDES -> NH3 &
+    &+ HCO   ","@O + @O + LHDES -> O2               ","@O + @OCN &
+    &+ LHDES -> CO + NO        ","@S + @H + LHDES -> HS               ","@S2 &
+    &+ @H + LHDES -> HS2             ","@SI + @H + LHDES -> SIH             "&
+    &,"@SIH + @H + LHDES -> SIH2           ","@SIH2 + @H &
+    &+ LHDES -> SIH3          ","@SIH3 + @H + LHDES -> SIH4          ","@SIO &
+    &+ @H + LHDES -> HSIO           ","#HNCO + PHOTON -> #NH + #CO         "&
+    &,"C + PHOTON -> C+ + E-               ","C2 + PHOTON -> C2+ &
+    &+ E-             ","C2 + PHOTON -> C + C                ","C2+ &
+    &+ PHOTON -> C+ + C              ","C2H + PHOTON -> C2 + H              "&
+    &,"C2H + PHOTON -> C2H+ + E-           ","C2H+ + PHOTON -> C2+ &
+    &+ H            ","C2H2 + PHOTON -> C2H2+ + E-         ","C2H2 &
+    &+ PHOTON -> C2H + H            ","C2H3 + PHOTON -> C2H2 + H           "&
+    &,"C2H4 + PHOTON -> C2H2 + H2          ","C2H5 + PHOTON -> C2H3 &
+    &+ H2          ","C2N + PHOTON -> C2 + N              ","C2N &
+    &+ PHOTON -> CN + C              ","C3N + PHOTON -> CN + C2             "&
+    &,"C4H + PHOTON -> C2H + C2            ","CH + PHOTON -> C &
+    &+ H                ","CH + PHOTON -> CH+ + E-             ","CH+ &
+    &+ PHOTON -> C + H+              ","CH2 + PHOTON -> CH2+ + E-           "&
+    &,"CH2 + PHOTON -> CH + H              ","CH2+ + PHOTON -> C+ &
+    &+ H2            ","CH2+ + PHOTON -> CH+ + H            ","CH2+ &
+    &+ PHOTON -> CH + H+            ","CH2CO + PHOTON -> CO + CH2          "&
+    &,"CH2OH + PHOTON -> CH2 + OH          ","CH3 + PHOTON -> CH2 &
+    &+ H             ","CH3 + PHOTON -> CH + H2             ","CH3 &
+    &+ PHOTON -> CH3+ + E-           ","CH3+ + PHOTON -> CH+ + H2           "&
+    &,"CH3+ + PHOTON -> CH2+ + H           ","CH3CHO + PHOTON -> CO &
+    &+ CH4         ","CH3CHO + PHOTON -> HCO + CH3        ","CH3CN &
+    &+ PHOTON -> CN + CH3          ","CH3OH + PHOTON -> H2CO + H2         "&
+    &,"CH3OH + PHOTON -> OH + CH3          ","CH4 + PHOTON -> CH2 &
+    &+ H2            ","CH4 + PHOTON -> CH3 + H             ","CH4 &
+    &+ PHOTON -> CH + H2 + H         ","CH4 + PHOTON -> CH4+ + E-           "&
+    &,"CH4+ + PHOTON -> CH2+ + H2          ","CH4+ + PHOTON -> CH3+ &
+    &+ H           ","CL + PHOTON -> CL+ + E-             ","CN &
+    &+ PHOTON -> N + C                ","CO + PHOTON -> O &
+    &+ C                ","CO+ + PHOTON -> C+ + O              ","CO2 &
+    &+ PHOTON -> CO + O              ","CS + PHOTON -> CS+ + E-             "&
+    &,"CS + PHOTON -> S + C                ","CS+ + PHOTON -> S+ &
+    &+ C              ","H2 + PHOTON -> H + H                ","H2+ &
+    &+ PHOTON -> H+ + H              ","H2CN + PHOTON -> HCN + H            "&
+    &,"H2CO + PHOTON -> CO + H2            ","H2CO + PHOTON -> CO + H &
+    &+ H         ","H2CO + PHOTON -> H2CO+ + E-         ","H2CO &
+    &+ PHOTON -> HCO+ + H + E-      ","H2CS + PHOTON -> CS + H2            "&
+    &,"H2O + PHOTON -> H2O+ + E-           ","H2O + PHOTON -> OH &
+    &+ H              ","H2O+ + PHOTON -> OH+ + H            ","H2S &
+    &+ PHOTON -> H2S+ + E-           ","H2S + PHOTON -> HS + H              "&
+    &,"H2S + PHOTON -> S + H2              ","H2S2 + PHOTON -> HS &
+    &+ HS            ","H2SIO + PHOTON -> SIO + H2          ","H2SIO &
+    &+ PHOTON -> HSIO + H          ","HC3N + PHOTON -> CN + C2H           "&
+    &,"HCL + PHOTON -> CL + H              ","HCL + PHOTON -> HCL+ &
+    &+ E-           ","HCN + PHOTON -> CN + H              ","HCO &
+    &+ PHOTON -> CO + H              ","HCO + PHOTON -> HCO+ + E-           "&
+    &,"HCO+ + PHOTON -> CO+ + H            ","HCOOH + PHOTON -> HCO &
+    &+ OH          ","HCS + PHOTON -> CS + H              ","HCS &
+    &+ PHOTON -> HCS+ + E-           ","HNC + PHOTON -> CN + H              "&
+    &,"HNCO + PHOTON -> NH + CO            ","HNO + PHOTON -> NO &
+    &+ H              ","HS + PHOTON -> HS+ + E-             ","HS &
+    &+ PHOTON -> H + S                ","HS+ + PHOTON -> S+ &
+    &+ H              ","HS2 + PHOTON -> HS2+ + E-           ","HS2 &
+    &+ PHOTON -> S + HS              ","HSIO + PHOTON -> SIO + H            "&
+    &,"MG + PHOTON -> MG+ + E-             ","N2 + PHOTON -> N &
+    &+ N                ","NCCN + PHOTON -> C2N2+ + E-         ","NCCN &
+    &+ PHOTON -> CN + CN            ","NH + PHOTON -> N + H                "&
+    &,"NH + PHOTON -> NH+ + E-             ","NH+ + PHOTON -> N + H&
+    &+              ","NH2 + PHOTON -> NH2+ + E-           ","NH2 &
+    &+ PHOTON -> NH + H              ","NH2CHO + PHOTON -> NH2 + HCO        "&
+    &,"NH3 + PHOTON -> NH2 + H             ","NH3 + PHOTON -> NH &
+    &+ H2             ","NH3 + PHOTON -> NH3+ + E-           ","NO &
+    &+ PHOTON -> NO+ + E-             ","NO + PHOTON -> O &
+    &+ N                ","NO2 + PHOTON -> NO + O              ","NS &
+    &+ PHOTON -> S + N                ","O2 + PHOTON -> O2+ &
+    &+ E-             ","O2 + PHOTON -> O + O                ","O2+ &
+    &+ PHOTON -> O+ + O              ","O2H + PHOTON -> O2 + H              "&
+    &,"O2H + PHOTON -> OH + O              ","OCN + PHOTON -> CN &
+    &+ O              ","OCS + PHOTON -> OCS+ + E-           ","OCS &
+    &+ PHOTON -> S + CO              ","OH + PHOTON -> O + H                "&
+    &,"OH + PHOTON -> OH+ + E-             ","OH+ + PHOTON -> O+ &
+    &+ H              ","S + PHOTON -> S+ + E-               ","S2 &
+    &+ PHOTON -> S2+ + E-             ","S2 + PHOTON -> S &
+    &+ S                ","SI + PHOTON -> SI+ + E-             ","SIC &
+    &+ PHOTON -> SI + C              ","SIC2 + PHOTON -> C2 + SI            "&
+    &,"SIC3 + PHOTON -> C2 + SIC           ","SIC3 + PHOTON -> SIC2 &
+    &+ C           ","SIH + PHOTON -> SI + H              ","SIH+ &
+    &+ PHOTON -> SI+ + H            ","SIH2 + PHOTON -> SIH2+ + E-         "&
+    &,"SIH2 + PHOTON -> SIH + H            ","SIH3 + PHOTON -> SIH2 &
+    &+ H           ","SIH3 + PHOTON -> SIH3+ + E-         ","SIH3 &
+    &+ PHOTON -> SIH + H2           ","SIH4 + PHOTON -> SI + H2 + H2       "&
+    &,"SIH4 + PHOTON -> SIH + H + H2       ","SIO + PHOTON -> SI &
+    &+ O              ","SIO + PHOTON -> SIO+ + E-           ","SIO+ &
+    &+ PHOTON -> SI+ + O            ","SIS + PHOTON -> S + SI              "&
+    &,"SO + PHOTON -> S + O                ","SO + PHOTON -> SO+ &
+    &+ E-             ","SO2 + PHOTON -> SO2+ + E-           ","SO2 &
+    &+ PHOTON -> SO + O              ","#C + SURFSWAP -> @C                 "&
+    &,"#C2 + SURFSWAP -> @C2               ","#C2H &
+    &+ SURFSWAP -> @C2H             ","#C2H2 + SURFSWAP -> @C2H2           "&
+    &,"#C2H3 + SURFSWAP -> @C2H3           ","#C2H4 &
+    &+ SURFSWAP -> @C2H4           ","#C2H5 + SURFSWAP -> @C2H5           "&
+    &,"#C2N + SURFSWAP -> @C2N             ","#C3H2 &
+    &+ SURFSWAP -> @C3H2           ","#C3N + SURFSWAP -> @C3N             "&
+    &,"#C4H + SURFSWAP -> @C4H             ","#C4N &
+    &+ SURFSWAP -> @C4N             ","#CH + SURFSWAP -> @CH               "&
+    &,"#CH2 + SURFSWAP -> @CH2             ","#CH2CO &
+    &+ SURFSWAP -> @CH2CO         ","#CH2OH + SURFSWAP -> @CH2OH         "&
+    &,"#CH3 + SURFSWAP -> @CH3             ","#CH3CCH &
+    &+ SURFSWAP -> @CH3CCH       ","#CH3CHO + SURFSWAP -> @CH3CHO       "&
+    &,"#CH3CN + SURFSWAP -> @CH3CN         ","#CH3CNH &
+    &+ SURFSWAP -> @CH3CNH       ","#CH3OH + SURFSWAP -> @CH3OH         "&
+    &,"#CH4 + SURFSWAP -> @CH4             ","#CL &
+    &+ SURFSWAP -> @CL               ","#CN + SURFSWAP -> @CN               "&
+    &,"#CO + SURFSWAP -> @CO               ","#CO2 &
+    &+ SURFSWAP -> @CO2             ","#CS + SURFSWAP -> @CS               "&
+    &,"#H + SURFSWAP -> @H                 ","#H2 &
+    &+ SURFSWAP -> @H2               ","#H2CN + SURFSWAP -> @H2CN           "&
+    &,"#H2CO + SURFSWAP -> @H2CO           ","#H2COH &
+    &+ SURFSWAP -> @H2COH         ","#H2CS + SURFSWAP -> @H2CS           "&
+    &,"#H2O + SURFSWAP -> @H2O             ","#H2S &
+    &+ SURFSWAP -> @H2S             ","#H2S2 + SURFSWAP -> @H2S2           "&
+    &,"#H2SIO + SURFSWAP -> @H2SIO         ","#HC3N &
+    &+ SURFSWAP -> @HC3N           ","#HCL + SURFSWAP -> @HCL             "&
+    &,"#HCN + SURFSWAP -> @HCN             ","#HCO &
+    &+ SURFSWAP -> @HCO             ","#HCOO + SURFSWAP -> @HCOO           "&
+    &,"#HCOOH + SURFSWAP -> @HCOOH         ","#HCS &
+    &+ SURFSWAP -> @HCS             ","#HE + SURFSWAP -> @HE               "&
+    &,"#HNC + SURFSWAP -> @HNC             ","#HNCO &
+    &+ SURFSWAP -> @HNCO           ","#HNO + SURFSWAP -> @HNO             "&
+    &,"#HS + SURFSWAP -> @HS               ","#HS2 &
+    &+ SURFSWAP -> @HS2             ","#HSIO + SURFSWAP -> @HSIO           "&
+    &,"#MG + SURFSWAP -> @MG               ","#N &
+    &+ SURFSWAP -> @N                 ","#N2 &
+    &+ SURFSWAP -> @N2               ","#NCCN + SURFSWAP -> @NCCN           "&
+    &,"#NH + SURFSWAP -> @NH               ","#NH2 &
+    &+ SURFSWAP -> @NH2             ","#NH2CHO + SURFSWAP -> @NH2CHO       "&
+    &,"#NH3 + SURFSWAP -> @NH3             ","#NO &
+    &+ SURFSWAP -> @NO               ","#NO2 + SURFSWAP -> @NO2             "&
+    &,"#NS + SURFSWAP -> @NS               ","#O &
+    &+ SURFSWAP -> @O                 ","#O2 &
+    &+ SURFSWAP -> @O2               ","#O2H + SURFSWAP -> @O2H             "&
+    &,"#OCN + SURFSWAP -> @OCN             ","#OCS &
+    &+ SURFSWAP -> @OCS             ","#OH + SURFSWAP -> @OH               "&
+    &,"#S + SURFSWAP -> @S                 ","#S2 &
+    &+ SURFSWAP -> @S2               ","#SI + SURFSWAP -> @SI               "&
+    &,"#SIC + SURFSWAP -> @SIC             ","#SIC2 &
+    &+ SURFSWAP -> @SIC2           ","#SIC3 + SURFSWAP -> @SIC3           "&
+    &,"#SIH + SURFSWAP -> @SIH             ","#SIH2 &
+    &+ SURFSWAP -> @SIH2           ","#SIH3 + SURFSWAP -> @SIH3           "&
+    &,"#SIH4 + SURFSWAP -> @SIH4           ","#SIO &
+    &+ SURFSWAP -> @SIO             ","#SIS + SURFSWAP -> @SIS             "&
+    &,"#SO + SURFSWAP -> @SO               ","#SO2 &
+    &+ SURFSWAP -> @SO2             ","#C + THERM -> C                     "&
+    &,"#C2 + THERM -> C2                   ","#C2H &
+    &+ THERM -> C2H                 ","#C2H2 + THERM -> C2H2               "&
+    &,"#C2H3 + THERM -> C2H3               ","#C2H4 &
+    &+ THERM -> C2H4               ","#C2H5 + THERM -> C2H5               "&
+    &,"#C2N + THERM -> C2N                 ","#C3H2 &
+    &+ THERM -> C3H2               ","#C3N + THERM -> C3N                 "&
+    &,"#C4H + THERM -> C4H                 ","#C4N &
+    &+ THERM -> C4N                 ","#CH + THERM -> CH                   "&
+    &,"#CH2 + THERM -> CH2                 ","#CH2CO &
+    &+ THERM -> CH2CO             ","#CH2OH + THERM -> CH2OH             "&
+    &,"#CH3 + THERM -> CH3                 ","#CH3CCH &
+    &+ THERM -> CH3CCH           ","#CH3CHO + THERM -> CH3CHO           "&
+    &,"#CH3CN + THERM -> CH3CN             ","#CH3CNH &
+    &+ THERM -> CH3CNH           ","#CH3OH + THERM -> CH3OH             "&
+    &,"#CH4 + THERM -> CH4                 ","#CL &
+    &+ THERM -> CL                   ","#CN + THERM -> CN                   "&
+    &,"#CO + THERM -> CO                   ","#CO2 &
+    &+ THERM -> CO2                 ","#CS + THERM -> CS                   "&
+    &,"#H + THERM -> H                     ","#H2 &
+    &+ THERM -> H2                   ","#H2CN + THERM -> H2CN               "&
+    &,"#H2CO + THERM -> H2CO               ","#H2COH &
+    &+ THERM -> H2COH             ","#H2CS + THERM -> H2CS               "&
+    &,"#H2O + THERM -> H2O                 ","#H2S &
+    &+ THERM -> H2S                 ","#H2S2 + THERM -> H2S2               "&
+    &,"#H2SIO + THERM -> H2SIO             ","#HC3N &
+    &+ THERM -> HC3N               ","#HCL + THERM -> HCL                 "&
+    &,"#HCN + THERM -> HCN                 ","#HCO &
+    &+ THERM -> HCO                 ","#HCOO + THERM -> HCOO               "&
+    &,"#HCOOH + THERM -> HCOOH             ","#HCS &
+    &+ THERM -> HCS                 ","#HE + THERM -> HE                   "&
+    &,"#HNC + THERM -> HNC                 ","#HNCO &
+    &+ THERM -> HNCO               ","#HNO + THERM -> HNO                 "&
+    &,"#HS + THERM -> HS                   ","#HS2 &
+    &+ THERM -> HS2                 ","#HSIO + THERM -> SIOH+              "&
+    &,"#MG + THERM -> MG                   ","#N &
+    &+ THERM -> N                     ","#N2 &
+    &+ THERM -> N2                   ","#NCCN + THERM -> NCCN               "&
+    &,"#NH + THERM -> NH                   ","#NH2 &
+    &+ THERM -> NH2                 ","#NH2CHO + THERM -> NH2CHO           "&
+    &,"#NH3 + THERM -> NH3                 ","#NO &
+    &+ THERM -> NO                   ","#NO2 + THERM -> NO2                 "&
+    &,"#NS + THERM -> NS                   ","#O &
+    &+ THERM -> O                     ","#O2 &
+    &+ THERM -> O2                   ","#O2H + THERM -> O2H                 "&
+    &,"#OCN + THERM -> OCN                 ","#OCS &
+    &+ THERM -> OCS                 ","#OH + THERM -> OH                   "&
+    &,"#S + THERM -> S                     ","#S2 &
+    &+ THERM -> S2                   ","#SI + THERM -> SI                   "&
+    &,"#SIC + THERM -> SIC                 ","#SIC2 &
+    &+ THERM -> SIC2               ","#SIC3 + THERM -> SIC3               "&
+    &,"#SIH + THERM -> SIH                 ","#SIH2 &
+    &+ THERM -> SIH2               ","#SIH3 + THERM -> SIH3               "&
+    &,"#SIH4 + THERM -> SIH4               ","#SIO &
+    &+ THERM -> SIO                 ","#SIS + THERM -> SIS                 "&
+    &,"#SO + THERM -> SO                   ","#SO2 &
+    &+ THERM -> SO2                 ","@C + THERM -> C                     "&
+    &,"@C2 + THERM -> C2                   ","@C2H &
+    &+ THERM -> C2H                 ","@C2H2 + THERM -> C2H2               "&
+    &,"@C2H3 + THERM -> C2H3               ","@C2H4 &
+    &+ THERM -> C2H4               ","@C2H5 + THERM -> C2H5               "&
+    &,"@C2N + THERM -> C2N                 ","@C3H2 &
+    &+ THERM -> C3H2               ","@C3N + THERM -> C3N                 "&
+    &,"@C4H + THERM -> C4H                 ","@C4N &
+    &+ THERM -> C4N                 ","@CH + THERM -> CH                   "&
+    &,"@CH2 + THERM -> CH2                 ","@CH2CO &
+    &+ THERM -> CH2CO             ","@CH2OH + THERM -> CH2OH             "&
+    &,"@CH3 + THERM -> CH3                 ","@CH3CCH &
+    &+ THERM -> CH3CCH           ","@CH3CHO + THERM -> CH3CHO           "&
+    &,"@CH3CN + THERM -> CH3CN             ","@CH3CNH &
+    &+ THERM -> CH3CNH           ","@CH3OH + THERM -> CH3OH             "&
+    &,"@CH4 + THERM -> CH4                 ","@CL &
+    &+ THERM -> CL                   ","@CN + THERM -> CN                   "&
+    &,"@CO + THERM -> CO                   ","@CO2 &
+    &+ THERM -> CO2                 ","@CS + THERM -> CS                   "&
+    &,"@H + THERM -> H                     ","@H2 &
+    &+ THERM -> H2                   ","@H2CN + THERM -> H2CN               "&
+    &,"@H2CO + THERM -> H2CO               ","@H2COH &
+    &+ THERM -> H2COH             ","@H2CS + THERM -> H2CS               "&
+    &,"@H2O + THERM -> H2O                 ","@H2S &
+    &+ THERM -> H2S                 ","@H2S2 + THERM -> H2S2               "&
+    &,"@H2SIO + THERM -> H2SIO             ","@HC3N &
+    &+ THERM -> HC3N               ","@HCL + THERM -> HCL                 "&
+    &,"@HCN + THERM -> HCN                 ","@HCO &
+    &+ THERM -> HCO                 ","@HCOO + THERM -> HCOO               "&
+    &,"@HCOOH + THERM -> HCOOH             ","@HCS &
+    &+ THERM -> HCS                 ","@HE + THERM -> HE                   "&
+    &,"@HNC + THERM -> HNC                 ","@HNCO &
+    &+ THERM -> HNCO               ","@HNO + THERM -> HNO                 "&
+    &,"@HS + THERM -> HS                   ","@HS2 &
+    &+ THERM -> HS2                 ","@HSIO + THERM -> SIOH+              "&
+    &,"@MG + THERM -> MG                   ","@N &
+    &+ THERM -> N                     ","@N2 &
+    &+ THERM -> N2                   ","@NCCN + THERM -> NCCN               "&
+    &,"@NH + THERM -> NH                   ","@NH2 &
+    &+ THERM -> NH2                 ","@NH2CHO + THERM -> NH2CHO           "&
+    &,"@NH3 + THERM -> NH3                 ","@NO &
+    &+ THERM -> NO                   ","@NO2 + THERM -> NO2                 "&
+    &,"@NS + THERM -> NS                   ","@O &
+    &+ THERM -> O                     ","@O2 &
+    &+ THERM -> O2                   ","@O2H + THERM -> O2H                 "&
+    &,"@OCN + THERM -> OCN                 ","@OCS &
+    &+ THERM -> OCS                 ","@OH + THERM -> OH                   "&
+    &,"@S + THERM -> S                     ","@S2 &
+    &+ THERM -> S2                   ","@SI + THERM -> SI                   "&
+    &,"@SIC + THERM -> SIC                 ","@SIC2 &
+    &+ THERM -> SIC2               ","@SIC3 + THERM -> SIC3               "&
+    &,"@SIH + THERM -> SIH                 ","@SIH2 &
+    &+ THERM -> SIH2               ","@SIH3 + THERM -> SIH3               "&
+    &,"@SIH4 + THERM -> SIH4               ","@SIO &
+    &+ THERM -> SIO                 ","@SIS + THERM -> SIS                 "&
+    &,"@SO + THERM -> SO                   ","@SO2 &
+    &+ THERM -> SO2                 ","C + C2+ -> C2 + C+                  "&
+    &,"C + CN+ -> CN + C+                  ","C + CO+ -> CO + C&
+    &+                  ","C + N2+ -> N2 + C+                  ","C + O2&
+    &+ -> O2 + C+                  ","C + C2H+ -> C3+ + H                 "&
+    &,"C + CH+ -> C2+ + H                  ","C + CH2+ -> C2H+ &
+    &+ H                ","C + CH3+ -> C2H+ + H2               ","C + CH5&
+    &+ -> CH4 + CH+               ","C + H2O+ -> OH + CH+                "&
+    &,"C + H2S+ -> HCS+ + H                ","C + H3O+ -> HCO+ &
+    &+ H2               ","C + HCN+ -> CN + CH+                ","C + HCO2&
+    &+ -> CO2 + CH+              ","C + HNO+ -> NO + CH+                ","C &
+    &+ HS+ -> CS+ + H                  ","C + N2H+ -> N2 + CH&
+    &+                ","C + NH+ -> N + CH+                  ","C + O2+ -> CO&
+    &+ + O                  ","C + O2H+ -> O2 + CH+                ","C + OH&
+    &+ -> O + CH+                  ","C + SIH+ -> SIC+ + H                "&
+    &,"C + SIO+ -> SI+ + CO                ","C + C2H3 -> C3H2 &
+    &+ H                ","C + C2H5 -> CH3CCH + H              ","C &
+    &+ C2N -> C2 + CN                  ","C + C3H2 -> C4H &
+    &+ H                 ","C + CH2 -> C2H + H                  ","C &
+    &+ CH2 -> CH + CH                  ","C + CH3 -> C2H2 &
+    &+ H                 ","C + CH3OH -> CH3 + HCO              ","C &
+    &+ CH -> C2 + H                    ","C + CN -> C2 &
+    &+ N                    ","C + CO -> C2 + O                    ","C &
+    &+ CS -> S + C2                    ","C + H2CN -> C2N &
+    &+ H2                ","C + HCO -> CO + CH                  ","C &
+    &+ HS -> CS + H                    ","C + HS -> S &
+    &+ CH                    ","C + H2S -> HCS + H                  ","C &
+    &+ N2 -> CN + N                    ","C + NCCN -> CN &
+    &+ C2N                ","C + NH -> CN + H                    ","C &
+    &+ NH -> N + CH                    ","C + NH2 -> HCN &
+    &+ H                  ","C + NH2 -> HNC + H                  ","C &
+    &+ NH2 -> NH + CH                  ","C + NH3 -> H2CN &
+    &+ H                 ","C + NO -> CN + O                    ","C &
+    &+ NO -> CO + N                    ","C + NS -> CS &
+    &+ N                    ","C + NS -> S + CN                    ","C &
+    &+ O2 -> CO + O                    ","C + OCN -> CO &
+    &+ CN                  ","C + OCS -> CO + CS                  ","C &
+    &+ OH -> CO + H                    ","C + OH -> O &
+    &+ CH                    ","C + S2 -> CS + S                    ","C &
+    &+ SO2 -> CO + SO                  ","C + SO -> CS &
+    &+ O                    ","C + SO -> S + CO                    ","C &
+    &+ SIH -> SIC + H                  ","C + H2CS -> CH2 &
+    &+ CS                ","C + C -> C2 + PHOTON                ","C &
+    &+ N -> CN + PHOTON                ","C + O+ -> CO+ &
+    &+ PHOTON              ","C + O -> CO + PHOTON                ","C &
+    &+ SI -> SIC + PHOTON              ","C + S+ -> CS+ &
+    &+ PHOTON              ","C + S -> CS + PHOTON                ","C &
+    &+ S -> CS + PHOTON                ","C + S -> CS &
+    &+ PHOTON                ","C + S -> CS + PHOTON                ","C+ &
+    &+ CH2 -> CH2+ + C                ","C+ + CH -> CH+ &
+    &+ C                  ","C+ + H2CO -> H2CO+ + C              ","C+ &
+    &+ H2S -> H2S+ + C                ","C+ + HCO -> HCO+ &
+    &+ C                ","C+ + MG -> MG+ + C                  ","C+ &
+    &+ NH3 -> NH3+ + C                ","C+ + NO -> NO+ &
+    &+ C                  ","C+ + NS -> NS+ + C                  ","C+ &
+    &+ OCS -> OCS+ + C                ","C+ + SO -> SO+ &
+    &+ C                  ","C+ + SI -> SI+ + C                  ","C+ &
+    &+ SIC2 -> SIC2+ + C              ","C+ + SIC3 -> SIC3+ &
+    &+ C              ","C+ + SIC -> SIC+ + C                ","C+ &
+    &+ SIH2 -> SIH2+ + C              ","C+ + SIH3 -> SIH3+ &
+    &+ C              ","C+ + SIS -> SIS+ + C                ","C+ &
+    &+ C2H -> C3+ + H                 ","C+ + CH2 -> C2H+ &
+    &+ H                ","C+ + CH3 -> C2H+ + H2               ","C+ &
+    &+ CH3 -> C2H2+ + H               ","C+ + CH3CCH -> C2H2+ &
+    &+ C2H2         ","C+ + CH3OH -> H2COH+ + CH           ","C+ &
+    &+ CH3OH -> HCO + CH3+            ","C+ + CH4 -> C2H2+ &
+    &+ H2              ","C+ + CH -> C2+ + H                  ","C+ &
+    &+ CO2 -> CO+ + CO                ","C+ + H2CO -> CO + CH2&
+    &+              ","C+ + H2CO -> HCO+ + CH              ","C+ &
+    &+ H2CS -> CS + CH2+              ","C+ + H2O -> HCO+ &
+    &+ H                ","C+ + H2O -> HOC+ + H                ","C+ &
+    &+ H2S -> HCS+ + H                ","C+ + NCCN -> C2N+ &
+    &+ CN              ","C+ + HC3N -> C2N+ + C2H             ","C+ &
+    &+ HC3N -> C3+ + HCN              ","C+ + HC3N -> C4N+ &
+    &+ H               ","C+ + HCO -> CO + CH+                ","C+ &
+    &+ HNC -> C2N+ + H                ","C+ + HS -> CS+ &
+    &+ H                  ","C+ + NH2 -> HCN+ + H                ","C+ &
+    &+ NH3 -> HCN+ + H2               ","C+ + NH -> CN+ &
+    &+ H                  ","C+ + NS -> CS+ + N                  ","C+ &
+    &+ O2 -> CO+ + O                  ","C+ + O2 -> CO + O&
+    &+                  ","C+ + OCN -> CO+ + CN                ","C+ &
+    &+ NH2CHO -> H2CO+ + HCN          ","C+ + NH2CHO -> HCNH+ &
+    &+ HCO          ","C+ + OCS -> CS+ + CO                ","C+ + OH -> CO+ &
+    &+ H                  ","C+ + SO2 -> SO+ + CO                ","C+ &
+    &+ SO -> CS+ + O                  ","C+ + SO -> S+ &
+    &+ CO                  ","C+ + SO -> S + CO+                  ","C+ &
+    &+ SIC -> SI+ + C2                ","C+ + SIH2 -> SIC+ &
+    &+ H2              ","C+ + SIH -> SIC+ + H                ","C+ &
+    &+ SIO -> SI+ + CO                ","C+ + SIS -> SIC+ &
+    &+ S                ","C+ + H2CN -> CH2+ + CN              ","C+ &
+    &+ HNO -> NO+ + CH                ","C+ + HNO -> NH+ &
+    &+ CO                ","C+ + C -> C2+ + PHOTON              ","C+ &
+    &+ N -> CN+ + PHOTON              ","C+ + O -> CO+ &
+    &+ PHOTON              ","C+ + S -> CS+ + PHOTON              ","C+ &
+    &+ E- -> C + PHOTON               ","C2 + CN+ -> CN + C2&
+    &+                ","C2 + CO+ -> CO + C2+                ","C2 + N2&
+    &+ -> N2 + C2+                ","C2 + O2+ -> O2 + C2+                "&
+    &,"C2 + H2CO+ -> HCO + C2H+            ","C2 + HCN+ -> CN + C2H&
+    &+              ","C2 + HCO+ -> CO + C2H+              ","C2 + HNO&
+    &+ -> NO + C2H+              ","C2 + N2H+ -> N2 + C2H+              "&
+    &,"C2 + O2+ -> CO+ + CO                ","C2 + O2H+ -> O2 + C2H&
+    &+              ","C2 + S+ -> CS+ + C                  ","C2 + SIO&
+    &+ -> SIC+ + CO              ","C2 + C2H2 -> C4H + H                "&
+    &,"C2 + HCN -> C3N + H                 ","C2 + O2 -> CO &
+    &+ CO                  ","C2 + S -> CS + C                    ","C2+ &
+    &+ HCO -> HCO+ + C2              ","C2+ + NO -> NO+ + C2                "&
+    &,"C2+ + S -> S+ + C2                  ","C2+ + E- -> C &
+    &+ C                   ","C2+ + C2 -> C3+ + C                 ","C2+ &
+    &+ HCO -> CO + C2H+              ","C2+ + O2 -> CO+ + CO                "&
+    &,"C2+ + S -> CS+ + C                  ","C2H + CN+ -> CN + C2H&
+    &+              ","C2H + CO+ -> CO + C2H+              ","C2H + N2&
+    &+ -> N2 + C2H+              ","C2H + CO+ -> HCO+ + C2              "&
+    &,"C2H + H2CO+ -> HCO + C2H2+          ","C2H + HCN+ -> C2H2+ &
+    &+ CN            ","C2H + HCO+ -> CO + C2H2+            ","C2H + HNO&
+    &+ -> NO + C2H2+            ","C2H + N2H+ -> N2 + C2H2+            "&
+    &,"C2H + O2H+ -> O2 + C2H2+            ","C2H + SI+ -> SIC2+ &
+    &+ H              ","C2H + HCN -> HC3N + H               ","C2H &
+    &+ HNC -> HC3N + H               ","C2H + NCCN -> HC3N + CN             "&
+    &,"C2H + CH2OH -> H2CO + C2H2          ","C2H + O2 -> HCO &
+    &+ CO                ","C2H + O2 -> CH + CO2                ","C2H &
+    &+ O2 -> CO + CO + H             ","C2H + CN -> HC3N + PHOTON           "&
+    &,"C2H+ + NO -> NO+ + C2H              ","C2H+ + S -> S+ &
+    &+ C2H                ","C2H+ + E- -> C2 + H                 ","C2H+ &
+    &+ E- -> CH + C                 ","C2H+ + H2CO -> H2COH+ + C2          "&
+    &,"C2H+ + HCN -> C2H2+ + CN            ","C2H+ + HCN -> HCNH+ &
+    &+ C2            ","C2H+ + HCO -> CO + C2H2+            ","C2H+ &
+    &+ HNC -> HCNH+ + C2            ","C2H2 + C2N2+ -> C2H2+ + NCCN        "&
+    &,"C2H2 + HCN+ -> C2H2+ + HCN          ","C2H2 + NO -> HCN + CO &
+    &+ H           ","C2H2 + SI -> SIC2 + H2              ","C2H2+ &
+    &+ H2CO -> H2CO+ + C2H2        ","C2H2+ + H2S -> H2S+ + C2H2          "&
+    &,"C2H2+ + HCO -> HCO+ + C2H2          ","C2H2+ + NO -> NO+ &
+    &+ C2H2            ","C2H2+ + E- -> C2 + H + H            ","C2H2+ &
+    &+ E- -> C2H + H               ","C2H2+ + E- -> CH + CH               "&
+    &,"C2H2+ + CH3CN -> C3H5+ + CN         ","C2H2+ + CH3CN -> CH3CNH+ &
+    &+ C2H      ","C2H2+ + H2S -> H3S+ + C2H           ","C2H2+ + HCN -> HCNH&
+    &+ + C2H          ","C2H2+ + HNC -> HCNH+ + C2H          ","C2H2+ &
+    &+ SI -> SIC2+ + H2            ","C2H2+ + SIH4 -> SI+ + C2H4 + H2     "&
+    &,"C2H2+ + SIH4 -> SIH+ + C2H5         ","C2H2+ + SIH4 -> SIH2+ &
+    &+ C2H4        ","C2H2+ + SIH4 -> SIH3+ + C2H3        ","C2H3 &
+    &+ O2 -> H2CO + HCO             ","C2H3 + O2 -> O2H + C2H2             "&
+    &,"C2H4 + S+ -> HCS+ + CH3             ","C2N+ + E- -> C2 &
+    &+ N                 ","C2N+ + E- -> CN + C                 ","C2N2+ &
+    &+ E- -> C2N + N               ","C2N2+ + E- -> CN + CN               "&
+    &,"C2NH+ + E- -> C2N + H               ","C3+ + E- -> C2 &
+    &+ C                  ","C3H5+ + E- -> CH3CCH + H            ","C4N+ &
+    &+ E- -> C2N + C2               ","C4N+ + E- -> C3N + C                "&
+    &,"CH + O -> HCO+ + E-                 ","CH + C2+ -> C2 + CH&
+    &+                ","CH + CN+ -> CN + CH+                ","CH + CO&
+    &+ -> CO + CH+                ","CH + H2CO+ -> H2CO + CH+            "&
+    &,"CH + H2O+ -> H2O + CH+              ","CH + N+ -> N + CH&
+    &+                  ","CH + N2+ -> N2 + CH+                ","CH + NH2&
+    &+ -> NH2 + CH+              ","CH + O+ -> O + CH+                  "&
+    &,"CH + O2+ -> O2 + CH+                ","CH + OH+ -> OH + CH&
+    &+                ","CH + C2+ -> C3+ + H                 ","CH + C2H&
+    &+ -> C2 + CH2+              ","CH + CH3+ -> C2H2+ + H2             "&
+    &,"CH + CH5+ -> CH4 + CH2+             ","CH + CO+ -> HCO+ &
+    &+ C                ","CH + H2CO+ -> HCO + CH2+            ","CH + H2O&
+    &+ -> OH + CH2+              ","CH + H2COH+ -> H2CO + CH2+          "&
+    &,"CH + H3O+ -> H2O + CH2+             ","CH + HCN+ -> CN + CH2&
+    &+              ","CH + HCNH+ -> HCN + CH2+            ","CH + HCNH&
+    &+ -> HNC + CH2+            ","CH + HCO+ -> CO + CH2+              ","CH &
+    &+ HNO+ -> NO + CH2+              ","CH + HS+ -> S + CH2&
+    &+                ","CH + N+ -> CN+ + H                  ","CH + N2H&
+    &+ -> N2 + CH2+              ","CH + NH+ -> CH2+ + N                "&
+    &,"CH + NH2+ -> NH + CH2+              ","CH + NH3+ -> NH4+ &
+    &+ C               ","CH + O+ -> CO+ + H                  ","CH + O2&
+    &+ -> HCO+ + O                ","CH + O2H+ -> O2 + CH2+              "&
+    &,"CH + OH+ -> O + CH2+                ","CH + S+ -> CS+ &
+    &+ H                  ","CH + SI+ -> SIC+ + H                ","CH + SIH&
+    &+ -> SI + CH2+              ","CH + SIO+ -> HCO+ + SI              "&
+    &,"CH + C2H4 -> CH3CCH + H             ","CH + CH3OH -> CH3CHO &
+    &+ H            ","CH + CH3OH -> H2CO + CH3            ","CH &
+    &+ CH3OH -> C2H4 + OH             ","CH + CH4 -> C2H4 &
+    &+ H                ","CH + CO2 -> HCO + CO                ","CH &
+    &+ H2CO -> HCO + CH2              ","CH + HCO -> CO &
+    &+ CH2                ","CH + HNO -> NO + CH2                ","CH &
+    &+ N2 -> HCN + N                  ","CH + N -> CN &
+    &+ H                    ","CH + N -> NH + C                    ","CH &
+    &+ NO -> HCN + O                  ","CH + NO -> HCO &
+    &+ N                  ","CH + NO -> OCN + H                  ","CH &
+    &+ O2 -> CO2 + H                  ","CH + O2 -> CO + O &
+    &+ H               ","CH + O2 -> CO + OH                  ","CH &
+    &+ O2 -> HCO + O                  ","CH + O2H -> HCO &
+    &+ OH                ","CH + O2H -> O2 + CH2                ","CH &
+    &+ O -> CO + H                    ","CH + O -> OH &
+    &+ C                    ","CH + OCS -> CO + CS + H             ","CH &
+    &+ OH -> HCO + H                  ","CH + S -> CS &
+    &+ H                    ","CH + S -> HS + C                    ","CH &
+    &+ H2S -> H2CS + H                ","CH + SO -> CO &
+    &+ HS                  ","CH + SO -> OCS + H                  ","CH &
+    &+ H2CO -> H + CH2CO              ","CH + H2CO -> CH3 &
+    &+ CO               ","CH+ + HCO -> HCO+ + CH              ","CH+ &
+    &+ MG -> MG+ + CH                ","CH+ + NH3 -> NH3+ + CH              "&
+    &,"CH+ + NO -> NO+ + CH                ","CH+ + S -> S+ &
+    &+ CH                  ","CH+ + SI -> SI+ + CH                ","CH+ &
+    &+ E- -> C + H                   ","CH+ + C2 -> C3+ + H                 "&
+    &,"CH+ + C2H -> C3+ + H2               ","CH+ + CH2 -> C2H+ &
+    &+ H2              ","CH+ + CH3OH -> CH3OH2+ + C          ","CH+ &
+    &+ CH3OH -> H2CO + CH3+          ","CH+ + CH3OH -> H2COH+ + CH2         "&
+    &,"CH+ + CH4 -> C2H2+ + H2 + H         ","CH+ + CH -> C2+ &
+    &+ H2                ","CH+ + CN -> C2N+ + H                ","CH+ &
+    &+ CO2 -> HCO+ + CO              ","CH+ + H2CO -> CO + CH3+             "&
+    &,"CH+ + H2CO -> H2COH+ + C            ","CH+ + H2CO -> HCO+ &
+    &+ CH2            ","CH+ + H2O -> H2CO+ + H              ","CH+ &
+    &+ H2O -> H3O+ + C               ","CH+ + H2O -> HCO+ + H2              "&
+    &,"CH+ + H2S -> H3S+ + C               ","CH+ + H2S -> HCS+ &
+    &+ H2              ","CH+ + HCN -> C2N+ + H2              ","CH+ &
+    &+ HCN -> C2NH+ + H              ","CH+ + HCN -> HCNH+ + C              "&
+    &,"CH+ + HCO -> CO + CH2+              ","CH+ + HNC -> HCNH+ &
+    &+ C              ","CH+ + N -> CN+ + H                  ","CH+ &
+    &+ NH2 -> HCN+ + H2              ","CH+ + NH3 -> NH4+ + C               "&
+    &,"CH+ + NH -> CN+ + H2                ","CH+ + O2 -> CO+ &
+    &+ OH                ","CH+ + O2 -> HCO+ + O                ","CH+ &
+    &+ O2 -> HCO + O+                ","CH+ + O -> CO+ + H                  "&
+    &,"CH+ + OCS -> HCS+ + CO              ","CH+ + OCS -> OCSH+ &
+    &+ C              ","CH+ + OH -> CO+ + H2                ","CH+ + S -> CS&
+    &+ + H                  ","CH+ + S -> HS+ + C                  ","CH2 &
+    &+ C2+ -> C2 + CH2+              ","CH2 + CN+ -> CN + CH2+              "&
+    &,"CH2 + CO+ -> CO + CH2+              ","CH2 + H2CO+ -> H2CO + CH2&
+    &+          ","CH2 + H2O+ -> H2O + CH2+            ","CH2 + N2+ -> N2 &
+    &+ CH2+              ","CH2 + NH2+ -> NH2 + CH2+            ","CH2 + O&
+    &+ -> O + CH2+                ","CH2 + O2+ -> O2 + CH2+              "&
+    &,"CH2 + OH+ -> OH + CH2+              ","CH2 + C2H+ -> C2 + CH3&
+    &+             ","CH2 + CH5+ -> CH4 + CH3+            ","CH2 + CO+ -> HCO&
+    &+ + CH              ","CH2 + H2CO+ -> HCO + CH3+           ","CH2 + H2O&
+    &+ -> OH + CH3+             ","CH2 + H3O+ -> H2O + CH3+            "&
+    &,"CH2 + HCN+ -> CN + CH3+             ","CH2 + HCNH+ -> HCN + CH3&
+    &+           ","CH2 + HCNH+ -> HNC + CH3+           ","CH2 + HCO+ -> CO &
+    &+ CH3+             ","CH2 + HNO+ -> NO + CH3+             ","CH2 + N2H&
+    &+ -> N2 + CH3+             ","CH2 + NH+ -> CH3+ + N               "&
+    &,"CH2 + NH2+ -> CH3+ + NH             ","CH2 + NH3+ -> NH2 + CH3&
+    &+            ","CH2 + O2+ -> H2CO+ + O              ","CH2 + O2H+ -> O2 &
+    &+ CH3+             ","CH2 + OH+ -> O + CH3+               ","CH2 + SIO&
+    &+ -> H2CO + SI+            ","CH2 + CH2 -> C2H2 + H2              "&
+    &,"CH2 + CH2 -> C2H2 + H + H           ","CH2 + CH4 -> CH3 &
+    &+ CH3              ","CH2 + CN -> HCN + CH                ","CH2 &
+    &+ H2CO -> HCO + CH3             ","CH2 + HCO -> CO + CH3               "&
+    &,"CH2 + HNO -> NO + CH3               ","CH2 + N2 -> HCN &
+    &+ NH                ","CH2 + NO2 -> H2CO + NO              ","CH2 &
+    &+ NO -> H2CO + N                ","CH2 + NO -> HCN + OH                "&
+    &,"CH2 + NO -> HNCO + H                ","CH2 + O2 -> CO2 &
+    &+ H2                ","CH2 + O2 -> CO2 + H + H             ","CH2 &
+    &+ O2 -> CO + H2O                ","CH2 + O2 -> H2CO + O                "&
+    &,"CH2 + O2 -> HCO + OH                ","CH2 + O -> CO &
+    &+ H2                  ","CH2 + O -> CO + H + H               ","CH2 &
+    &+ O -> HCO + H                  ","CH2 + OH -> H2CO + H                "&
+    &,"CH2 + OH -> H2O + CH                ","CH2 + OH -> O &
+    &+ CH3                 ","CH2 + S -> HCS + H                  ","CH2+ &
+    &+ NO -> NO+ + CH2              ","CH2+ + E- -> C + H2                 "&
+    &,"CH2+ + E- -> C + H + H              ","CH2+ + E- -> CH &
+    &+ H                 ","CH2+ + CO2 -> H2CO+ + CO            ","CH2+ &
+    &+ H2CO -> HCO+ + CH3           ","CH2+ + H2O -> H2COH+ + H            "&
+    &,"CH2+ + H2S -> H2CSH+ + H            ","CH2+ + H2S -> H3S+ &
+    &+ CH             ","CH2+ + H2S -> HCS+ + H2 + H         ","CH2+ &
+    &+ HCO -> CO + CH3+             ","CH2+ + NH3 -> NH4+ + CH             "&
+    &,"CH2+ + O2 -> HCO+ + OH              ","CH2+ + O -> HCO+ &
+    &+ H                ","CH2+ + OCS -> H2CS+ + CO            ","CH2+ &
+    &+ OCS -> HCS+ + HCO            ","CH2+ + S -> HCS+ + H                "&
+    &,"CH3 + C2H3 -> C2H2 + CH4            ","CH3 + CH3 -> C2H4 &
+    &+ H2              ","CH3 + CH3 -> C2H5 + H               ","CH3 &
+    &+ CH3 -> CH4 + CH2              ","CH3 + CN -> HCN + CH2               "&
+    &,"CH3 + H2CO -> HCO + CH4             ","CH3 + H2O -> OH &
+    &+ CH4               ","CH3 + H2S -> HS + CH4               ","CH3 &
+    &+ HCO -> CO + CH4               ","CH3 + HNO -> NO + CH4               "&
+    &,"CH3 + NH2 -> CH4 + NH               ","CH3 + NH3 -> CH4 &
+    &+ NH2              ","CH3 + NO2 -> H2CO + HNO             ","CH3 &
+    &+ NO -> HCN + H2O               ","CH3 + O2 -> H2CO + OH               "&
+    &,"CH3 + O2 -> O2H + CH2               ","CH3 + O2H -> O2 &
+    &+ CH4               ","CH3 + O -> CO + H2 + H              ","CH3 &
+    &+ O -> H2CO + H                 ","CH3 + OH -> CH4 + O                 "&
+    &,"CH3 + OH -> H2CO + H2               ","CH3 + OH -> H2O &
+    &+ CH2               ","CH3 + S -> H2CS + H                 ","CH3 &
+    &+ CN -> CH3CN + PHOTON          ","CH3+ + HCO -> HCO+ + CH3            "&
+    &,"CH3+ + MG -> MG+ + CH3              ","CH3+ + NO -> NO+ &
+    &+ CH3              ","CH3+ + E- -> CH2 + H                ","CH3+ &
+    &+ E- -> CH + H2                ","CH3+ + E- -> CH + H + H             "&
+    &,"CH3+ + C2H4 -> C3H5+ + H2           ","CH3+ + CH3CHO -> H2COH+ &
+    &+ C2H4      ","CH3+ + CH3CN -> HCNH+ + C2H4        ","CH3+ &
+    &+ CH3OH -> H2COH+ + CH4        ","CH3+ + H2CO -> HCO+ + CH4           "&
+    &,"CH3+ + H2S -> H2CSH+ + H2           ","CH3+ + HCO -> CO + CH4&
+    &+             ","CH3+ + HS -> H2CS+ + H2             ","CH3+ &
+    &+ NH3 -> NH4+ + CH2            ","CH3+ + O2 -> H2COH+ + O             "&
+    &,"CH3+ + O -> H2CO+ + H               ","CH3+ + O -> HCO+ &
+    &+ H2               ","CH3+ + OCS -> H2CSH+ + CO           ","CH3+ &
+    &+ OH -> H2CO+ + H2             ","CH3+ + S -> HCS+ + H2               "&
+    &,"CH3+ + SO -> OCSH+ + H2             ","CH3+ + SIH4 -> SIH3+ &
+    &+ CH4          ","CH3+ + H2O -> CH3OH2+ + PHOTON      ","CH3+ &
+    &+ HCN -> CH3CNH+ + PHOTON      ","CH3+ + E- -> CH3 + PHOTON           "&
+    &,"CH3CN + HCO2+ -> CO2 + CH3CNH+      ","CH3CNH+ + E- -> CH3CN &
+    &+ H           ","CH3CNH+ + E- -> HNC + CH3           ","CH3OH + S2&
+    &+ -> H2S2+ + H2CO         ","CH3OH2+ + E- -> CH2 + H2O + H       "&
+    &,"CH3OH2+ + E- -> CH3 + H2O           ","CH3OH2+ + E- -> CH3 + OH &
+    &+ H        ","CH3OH2+ + E- -> CH3OH + H           ","CH3OH2+ &
+    &+ E- -> H2CO + H2 + H       ","CH3OH2+ + E- -> CH2OH + H2          "&
+    &,"CH3OH2+ + NH3 -> CH3OH + NH4+       ","CH4 + CO+ -> CO + CH4&
+    &+              ","CH4 + C2+ -> C2H+ + CH3             ","CH4 + C2&
+    &+ -> C2H2+ + CH2            ","CH4 + C2H+ -> C2H2+ + CH3           "&
+    &,"CH4 + C2H2+ -> C3H5+ + H            ","CH4 + CO+ -> HCO+ &
+    &+ CH3             ","CH4 + CS+ -> HCS+ + CH3             ","CH4 + H2CO&
+    &+ -> H2COH+ + CH3         ","CH4 + H2O+ -> H3O+ + CH3            ","CH4 &
+    &+ HCN+ -> HCNH+ + CH3           ","CH4 + HCO2+ -> CO2 + CH5+           "&
+    &,"CH4 + HNO+ -> NO + CH5+             ","CH4 + HS+ -> H2CSH+ &
+    &+ H2            ","CH4 + N2+ -> N2 + CH2+ + H2         ","CH4 + N2&
+    &+ -> N2 + CH3+ + H          ","CH4 + N2H+ -> N2 + CH5+             "&
+    &,"CH4 + NH3+ -> NH4+ + CH3            ","CH4 + OH+ -> CH5+ &
+    &+ O               ","CH4 + OH+ -> H3O+ + CH2             ","CH4 + S&
+    &+ -> H2CSH+ + H              ","CH4 + S+ -> HCS+ + H2 + H           "&
+    &,"CH4 + CN -> HCN + CH3               ","CH4 + O2 -> O2H &
+    &+ CH3               ","CH4 + OH -> H2O + CH3               ","CH4 &
+    &+ S -> HS + CH3                 ","CH4+ + C2H2 -> C2H2+ + CH4          "&
+    &,"CH4+ + H2CO -> H2CO+ + CH4          ","CH4+ + H2S -> H2S+ &
+    &+ CH4            ","CH4+ + NH3 -> NH3+ + CH4            ","CH4+ &
+    &+ O2 -> O2+ + CH4              ","CH4+ + OCS -> OCS+ + CH4            "&
+    &,"CH4+ + E- -> CH2 + H + H            ","CH4+ + E- -> CH3 &
+    &+ H                ","CH4+ + CH3OH -> CH3OH2+ + CH3       ","CH4+ &
+    &+ CH4 -> CH5+ + CH3            ","CH4+ + CO2 -> HCO2+ + CH3           "&
+    &,"CH4+ + CO -> HCO+ + CH3             ","CH4+ + H2CO -> H2COH+ &
+    &+ CH3         ","CH4+ + H2O -> H3O+ + CH3            ","CH4+ &
+    &+ H2S -> H3S+ + CH3            ","CH4+ + NH3 -> NH4+ + CH3            "&
+    &,"CH4+ + OCS -> OCSH+ + CH3           ","CH5+ + E- -> CH2 + H2 &
+    &+ H           ","CH5+ + E- -> CH3 + H2               ","CH5+ &
+    &+ E- -> CH3 + H + H            ","CH5+ + E- -> CH4 + H                "&
+    &,"CH5+ + E- -> CH + H2 + H2           ","CH5+ + C2 -> C2H+ &
+    &+ CH4             ","CH5+ + C2H -> C2H2+ + CH4           ","CH5+ &
+    &+ CO2 -> HCO2+ + CH4           ","CH5+ + CO -> HCO+ + CH4             "&
+    &,"CH5+ + H2CO -> H2COH+ + CH4         ","CH5+ + H2O -> H3O+ &
+    &+ CH4            ","CH5+ + H2S -> H3S+ + CH4            ","CH5+ &
+    &+ HCN -> HCNH+ + CH4           ","CH5+ + HCO -> H2CO+ + CH4           "&
+    &,"CH5+ + HCL -> H2CL+ + CH4           ","CH5+ + HNC -> HCNH+ &
+    &+ CH4           ","CH5+ + MG -> MG+ + CH4 + H          ","CH5+ + S -> HS&
+    &+ + CH4               ","CH5+ + SIH4 -> SIH3+ + CH4 + H2     ","CL + H&
+    &+ -> CL+ + H                  ","CL + CH4 -> CH3 + HCL               "&
+    &,"CL + CH2OH -> H2CO + HCL            ","CL + CH3OH -> CH2OH &
+    &+ HCL           ","CL + H2CO -> HCO + HCL              ","CL &
+    &+ NH3 -> NH2 + HCL               ","CL+ + H -> CL + H&
+    &+                  ","CL+ + E- -> CL + PHOTON             ","CN + N2&
+    &+ -> N2 + CN+                ","CN + HNO+ -> NO + HCN+              "&
+    &,"CN + O2H+ -> O2 + HCN+              ","CN + C2H2 -> HC3N &
+    &+ H               ","CN + C2H4 -> C2H3 + HCN             ","CN &
+    &+ CH3CCH -> HC3N + CH3           ","CN + CN -> N2 &
+    &+ C2                  ","CN + H2CO -> HCO + HCN              ","CN &
+    &+ HCN -> NCCN + H                ","CN + HCO -> CO &
+    &+ HCN                ","CN + HNC -> NCCN + H                ","CN &
+    &+ HNO -> NO + HCN                ","CN + NO2 -> NO &
+    &+ OCN                ","CN + NO -> N2 + CO                  ","CN &
+    &+ NO -> OCN + N                  ","CN + O2 -> NO &
+    &+ CO                  ","CN + O2 -> OCN + O                  ","CN &
+    &+ S -> NS + C                    ","CN + SIH4 -> HCN &
+    &+ SIH3             ","CN + CH3OH -> CH2OH + HCN           ","CN+ &
+    &+ CO -> CO+ + CN                ","CN+ + H2CO -> H2CO+ + CN            "&
+    &,"CN+ + HCN -> HCN+ + CN              ","CN+ + HCO -> HCO+ &
+    &+ CN              ","CN+ + NO -> NO+ + CN                ","CN+ &
+    &+ O2 -> O2+ + CN                ","CN+ + S -> S+ + CN                  "&
+    &,"CN+ + E- -> N + C                   ","CN+ + H2CO -> HCO+ &
+    &+ HCN            ","CN+ + HCN -> C2N2+ + H              ","CN+ &
+    &+ HCO -> CO + HCN+              ","CN+ + O2 -> NO+ + CO                "&
+    &,"CO + N2+ -> N2 + CO+                ","CO + H2CL+ -> HCL + HCO&
+    &+            ","CO + HCO2+ -> CO2 + HCO+            ","CO + HNO+ -> NO &
+    &+ HCO+              ","CO + N2H+ -> HCO+ + N2              ","CO + O2H&
+    &+ -> O2 + HCO+              ","CO + SO2+ -> SO+ + CO2              "&
+    &,"CO + SIH4+ -> SIH3 + HCO+           ","CO + SIO+ -> CO2 + SI&
+    &+              ","CO + HNO -> CO2 + NH                ","CO &
+    &+ NO2 -> CO2 + NO                ","CO + O2 -> CO2 &
+    &+ O                  ","CO + O2H -> CO2 + OH                ","CO+ &
+    &+ H2CO -> H2CO+ + CO            ","CO+ + H2S -> H2S+ + CO              "&
+    &,"CO+ + HCO -> HCO+ + CO              ","CO+ + NO -> NO+ &
+    &+ CO                ","CO+ + O2 -> O2+ + CO                ","CO+ &
+    &+ S -> S+ + CO                  ","CO+ + E- -> O + C                   "&
+    &,"CO+ + H2CO -> HCO+ + HCO            ","CO+ + H2S -> HS + HCO&
+    &+              ","CO+ + SO2 -> SO+ + CO2              ","CS+ + E- -> S &
+    &+ C                   ","H + CH -> C + H + H                 ","H &
+    &+ H2 -> H + H + H                 ","H + H2O -> OH + H &
+    &+ H               ","H + O2 -> O + O + H                 ","H + OH -> O &
+    &+ H + H                 ","H + CN+ -> CN + H+                  ","H + CO&
+    &+ -> CO + H+                  ","H + H2+ -> H2 + H+                  "&
+    &,"H + HCN+ -> HCN + H+                ","H + HE+ -> HE + H&
+    &+                  ","H + O+ -> O + H+                    ","H + C2N2&
+    &+ -> HCN+ + CN              ","H + CH+ -> C+ + H2                  ","H &
+    &+ CH2+ -> CH+ + H2                ","H + CH3+ -> CH2+ &
+    &+ H2               ","H + CH4+ -> CH3+ + H2               ","H + CH5&
+    &+ -> CH4+ + H2               ","H + H2S+ -> HS+ + H2                "&
+    &,"H + H3S+ -> H2S+ + H2               ","H + HS+ -> S+ &
+    &+ H2                  ","H + HEH+ -> HE + H2+                ","H + SO2&
+    &+ -> SO+ + OH                ","H + SIH+ -> SI+ + H2                "&
+    &,"H + SIS+ -> HS + SI+                ","H + C2 -> CH &
+    &+ C                    ","H + C2H2 -> C2H + H2                ","H &
+    &+ C2H3 -> C2H2 + H2               ","H + CH2 -> CH &
+    &+ H2                  ","H + CH2 -> CH + H2                  ","H &
+    &+ CH2CO -> CH3 + CO               ","H + CH3 -> CH2 &
+    &+ H2                 ","H + CH4 -> CH3 + H2                 ","H &
+    &+ CH -> C + H2                    ","H + CO2 -> CO &
+    &+ OH                  ","H + CO -> OH + C                    ","H &
+    &+ H2CN -> HCN + H2                ","H + H2CO -> HCO &
+    &+ H2                ","H + H2O -> OH + H2                  ","H &
+    &+ H2S -> HS + H2                  ","H + HCN -> CN &
+    &+ H2                  ","H + HCO -> CO + H2                  ","H &
+    &+ HCO -> O + CH2                  ","H + CH2OH -> H2CO &
+    &+ H2              ","H + HCS -> H2 + CS                  ","H &
+    &+ HNC -> HCN + H                  ","H + HNO -> NH2 &
+    &+ O                  ","H + HNO -> NO + H2                  ","H &
+    &+ HNO -> OH + NH                  ","H + HS -> S &
+    &+ H2                    ","H + NCCN -> HCN + CN                ","H &
+    &+ NH2 -> NH + H2                  ","H + NH3 -> NH2 &
+    &+ H2                 ","H + NH -> N + H2                    ","H &
+    &+ NO2 -> NO + OH                  ","H + NO -> O &
+    &+ NH                    ","H + NO -> OH + N                    ","H &
+    &+ NS -> HS + N                    ","H + NS -> S &
+    &+ NH                    ","H + O2 -> OH + O                    ","H &
+    &+ O2H -> H2O + O                  ","H + O2H -> O2 &
+    &+ H2                  ","H + O2H -> OH + OH                  ","H &
+    &+ OCN -> HCN + O                  ","H + OCN -> NH &
+    &+ CO                  ","H + OCN -> OH + CN                  ","H &
+    &+ OCS -> HS + CO                  ","H + OH -> O &
+    &+ H2                    ","H + S2 -> HS + S                    ","H &
+    &+ SO -> HS + O                    ","H + SO -> S &
+    &+ OH                    ","H + C+ -> CH+ + PHOTON              ","H &
+    &+ C -> CH + PHOTON                ","H + O -> OH &
+    &+ PHOTON                ","H + OH -> H2O + PHOTON              ","H + SI&
+    &+ -> SIH+ + PHOTON            ","H+ + HNC -> HCN + H+                "&
+    &,"H+ + C2 -> C2+ + H                  ","H+ + C2H2 -> C2H2+ &
+    &+ H              ","H+ + C2H -> C2H+ + H                ","H+ &
+    &+ C2N -> C2N+ + H                ","H+ + CH2 -> CH2+ &
+    &+ H                ","H+ + CH3 -> CH3+ + H                ","H+ &
+    &+ CH4 -> CH4+ + H                ","H+ + CH -> CH+ &
+    &+ H                  ","H+ + CS -> CS+ + H                  ","H+ &
+    &+ H2CO -> H2CO+ + H              ","H+ + H2CS -> H2CS+ &
+    &+ H              ","H+ + H2O -> H2O+ + H                ","H+ &
+    &+ H2S2 -> H2S2+ + H              ","H+ + H2S -> H2S+ &
+    &+ H                ","H+ + HCN -> HCN+ + H                ","H+ &
+    &+ HCO -> HCO+ + H                ","H+ + HCL -> HCL+ &
+    &+ H                ","H+ + HS2 -> HS2+ + H                ","H+ &
+    &+ HS -> HS+ + H                  ","H+ + MG -> MG+ &
+    &+ H                  ","H+ + NH2 -> NH2+ + H                ","H+ &
+    &+ NH3 -> NH3+ + H                ","H+ + NH -> NH+ &
+    &+ H                  ","H+ + NO -> NO+ + H                  ","H+ &
+    &+ NS -> NS+ + H                  ","H+ + O2 -> O2+ &
+    &+ H                  ","H+ + O -> O+ + H                    ","H+ &
+    &+ OCS -> OCS+ + H                ","H+ + OH -> OH+ &
+    &+ H                  ","H+ + S2 -> S2+ + H                  ","H+ &
+    &+ S -> S+ + H                    ","H+ + SO2 -> SO2+ &
+    &+ H                ","H+ + SO -> SO+ + H                  ","H+ &
+    &+ SI -> SI+ + H                  ","H+ + SIC2 -> SIC2+ &
+    &+ H              ","H+ + SIC3 -> SIC3+ + H              ","H+ &
+    &+ SIC -> SIC+ + H                ","H+ + SIH2 -> SIH2+ &
+    &+ H              ","H+ + SIH3 -> SIH3+ + H              ","H+ &
+    &+ SIH4 -> SIH4+ + H              ","H+ + SIH -> SIH+ &
+    &+ H                ","H+ + SIO -> SIO+ + H                ","H+ &
+    &+ SIS -> SIS+ + H                ","H+ + C2H3 -> C2H2+ &
+    &+ H2             ","H+ + C2H4 -> C2H2+ + H2 + H         ","H+ &
+    &+ C2H -> C2+ + H2                ","H+ + CH2 -> CH+ &
+    &+ H2                ","H+ + CH3CN -> CH3+ + HCN            ","H+ &
+    &+ CH3OH -> CH3+ + H2O            ","H+ + CH3OH -> H2COH+ &
+    &+ H2           ","H+ + CH3OH -> HCO+ + H2 + H2        ","H+ + CH4 -> CH3&
+    &+ + H2               ","H+ + CO2 -> HCO+ + O                ","H+ &
+    &+ H2CO -> CO+ + H2 + H           ","H+ + H2CO -> HCO+ &
+    &+ H2              ","H+ + H2S -> HS+ + H2                ","H+ &
+    &+ H2S -> S+ + H2 + H             ","H+ + H2SIO -> SIOH+ &
+    &+ H2            ","H+ + HCO -> CO+ + H2                ","H+ &
+    &+ HCO -> CO + H2+                ","H+ + HCS -> CS+ &
+    &+ H2                ","H+ + HNCO -> NH2+ + CO              ","H+ &
+    &+ HNO -> NO+ + H2                ","H+ + HS -> S+ &
+    &+ H2                  ","H+ + NO2 -> NO+ + OH                ","H+ &
+    &+ OCS -> HS+ + CO                ","H+ + SIH2 -> SIH+ &
+    &+ H2              ","H+ + SIH3 -> SIH2+ + H2             ","H+ &
+    &+ SIH4 -> SIH3+ + H2             ","H+ + SIH -> SI+ &
+    &+ H2                ","H+ + H -> H2+ + PHOTON              ","H+ &
+    &+ HE -> HEH+ + PHOTON            ","H+ + E- -> H &
+    &+ PHOTON               ","H2 + CH -> C + H2 + H               ","H2 &
+    &+ H2 -> H2 + H + H               ","H2 + H2O -> OH + H2 &
+    &+ H             ","H2 + HOC+ -> HCO+ + H2              ","H2 + O2 -> O &
+    &+ O + H2               ","H2 + OH -> O + H2 + H               ","H2 &
+    &+ E- -> H + H + E-               ","H2 + HE+ -> HE + H2&
+    &+                ","H2 + C+ -> CH+ + H                  ","H2 + C2&
+    &+ -> C2H+ + H                ","H2 + C2H+ -> C2H2+ + H              "&
+    &,"H2 + CH+ -> CH2+ + H                ","H2 + CH2+ -> CH3+ &
+    &+ H               ","H2 + CH4+ -> CH5+ + H               ","H2 + CN&
+    &+ -> HCN+ + H                ","H2 + CO+ -> HCO+ + H                "&
+    &,"H2 + CO+ -> HOC+ + H                ","H2 + CS+ -> HCS+ &
+    &+ H                ","H2 + CL+ -> HCL+ + H                ","H2 + H2O&
+    &+ -> H3O+ + H               ","H2 + H2S+ -> H3S+ + H               "&
+    &,"H2 + HCN+ -> HCNH+ + H              ","H2 + HCL+ -> H2CL+ &
+    &+ H              ","H2 + HS+ -> H2S+ + H                ","H2 + HE+ -> H&
+    &+ + H + HE             ","H2 + HEH+ -> HE + H3+               ","H2 + N&
+    &+ -> NH+ + H                  ","H2 + N2+ -> N2H+ + H                "&
+    &,"H2 + NH+ -> N + H3+                 ","H2 + NH+ -> NH2+ &
+    &+ H                ","H2 + NH2+ -> NH3+ + H               ","H2 + NH3&
+    &+ -> NH4+ + H               ","H2 + O+ -> OH+ + H                  "&
+    &,"H2 + O2H+ -> O2 + H3+               ","H2 + OH+ -> H2O+ &
+    &+ H                ","H2 + S+ -> HS+ + H                  ","H2 + SO2&
+    &+ -> HOSO+ + H              ","H2 + SIH4+ -> SIH5+ + H             "&
+    &,"H2 + SIO+ -> SIOH+ + H              ","H2 + CL -> HCL &
+    &+ H                  ","H2 + C2H -> C2H2 + H                ","H2 &
+    &+ C -> CH + H                    ","H2 + CH3 -> CH4 &
+    &+ H                 ","H2 + CH -> CH2 + H                  ","H2 &
+    &+ CN -> HCN + H                  ","H2 + HS -> H2S &
+    &+ H                  ","H2 + N -> NH + H                    ","H2 &
+    &+ NH2 -> NH3 + H                 ","H2 + NH -> NH2 &
+    &+ H                  ","H2 + O2 -> O2H + H                  ","H2 &
+    &+ O2 -> OH + OH                  ","H2 + O -> OH &
+    &+ H                    ","H2 + OH -> H2O + H                  ","H2 &
+    &+ S -> HS + H                    ","H2 + C+ -> CH2+ &
+    &+ PHOTON            ","H2 + C -> CH2 + PHOTON              ","H2 + CH3&
+    &+ -> CH5+ + PHOTON          ","H2 + CH -> CH3 + PHOTON             "&
+    &,"H2 + HS+ -> H3S+ + PHOTON           ","H2 + S+ -> H2S+ &
+    &+ PHOTON            ","H2 + SI+ -> SIH2+ + PHOTON          ","H2 + SIH&
+    &+ -> SIH3+ + PHOTON         ","H2 + SIH3+ -> SIH5+ + PHOTON        ","H2&
+    &+ + C2 -> C2+ + H2                ","H2+ + C2H2 -> C2H2+ &
+    &+ H2            ","H2+ + C2H -> C2H+ + H2              ","H2+ &
+    &+ CH2 -> CH2+ + H2              ","H2+ + CH4 -> CH4+ + H2              "&
+    &,"H2+ + CH -> CH+ + H2                ","H2+ + CN -> CN+ &
+    &+ H2                ","H2+ + CO -> CO+ + H2                ","H2+ &
+    &+ H2CO -> H2CO+ + H2            ","H2+ + H2O -> H2O+ + H2              "&
+    &,"H2+ + H2S -> H2S+ + H2              ","H2+ + HCN -> HCN+ &
+    &+ H2              ","H2+ + HCO -> HCO+ + H2              ","H2+ &
+    &+ NH2 -> NH2+ + H2              ","H2+ + NH3 -> NH3+ + H2              "&
+    &,"H2+ + NH -> NH+ + H2                ","H2+ + NO -> NO+ &
+    &+ H2                ","H2+ + O2 -> O2+ + H2                ","H2+ &
+    &+ OH -> OH+ + H2                ","H2+ + E- -> H + H                   "&
+    &,"H2+ + C2 -> C2H+ + H                ","H2+ + C2H4 -> C2H2+ + H2 &
+    &+ H2       ","H2+ + C2H -> C2H2+ + H              ","H2+ + C -> CH+ &
+    &+ H                  ","H2+ + CH2 -> CH3+ + H               ","H2+ &
+    &+ CH4 -> CH3+ + H2 + H          ","H2+ + CH4 -> CH5+ + H               "&
+    &,"H2+ + CH -> CH2+ + H                ","H2+ + CN -> HCN+ &
+    &+ H                ","H2+ + CO2 -> HCO2+ + H              ","H2+ &
+    &+ CO -> HCO+ + H                ","H2+ + H2 -> H3+ + H                 "&
+    &,"H2+ + H2CO -> HCO+ + H2 + H         ","H2+ + H2O -> H3O+ &
+    &+ H               ","H2+ + H2S -> HS+ + H2 + H           ","H2+ &
+    &+ H2S -> S+ + H2 + H2           ","H2+ + HCO -> CO + H3+               "&
+    &,"H2+ + HE -> HEH+ + H                ","H2+ + N2 -> N2H+ &
+    &+ H                ","H2+ + N -> NH+ + H                  ","H2+ &
+    &+ NH -> NH2+ + H                ","H2+ + NO -> HNO+ + H                "&
+    &,"H2+ + O2 -> O2H+ + H                ","H2+ + O -> OH+ &
+    &+ H                  ","H2+ + OH -> H2O+ + H                ","H2CL+ &
+    &+ E- -> HCL + H               ","H2CL+ + E- -> CL + H2               "&
+    &,"H2CL+ + E- -> CL + H + H            ","H2CO + O2+ -> O2 + H2CO&
+    &+            ","H2CO + H3S+ -> H2S + H2COH+         ","H2CO + HNO&
+    &+ -> H2COH+ + NO          ","H2CO + O2+ -> O2 + HCO+ + H         "&
+    &,"H2CO + O2H+ -> O2 + H2COH+          ","H2CO + S+ -> H2S+ &
+    &+ CO              ","H2CO + S+ -> HS + HCO+              ","H2CO+ &
+    &+ S -> S+ + H2CO              ","H2CO+ + E- -> CH2 + O               "&
+    &,"H2CO+ + E- -> CO + H2               ","H2CO+ + E- -> CO + H &
+    &+ H            ","H2CO+ + E- -> HCO + H               ","H2CO+ &
+    &+ CH3OH -> CH3OH2+ + HCO      ","H2CO+ + H2CO -> H2COH+ + HCO        "&
+    &,"H2CO+ + O2 -> O2H + HCO+            ","H2CO+ + S -> HS+ &
+    &+ HCO              ","H2CO+ + E- -> H2CO + PHOTON         ","H2COH+ &
+    &+ E- -> CH2 + OH             ","H2COH+ + E- -> CH + H2O             "&
+    &,"H2COH+ + E- -> CO + H2 + H          ","H2COH+ + E- -> H2CO &
+    &+ H             ","H2COH+ + E- -> HCO + H + H          ","H2COH+ &
+    &+ CH3OH -> CH3OH2+ + H2CO    ","H2COH+ + H2S -> H3S+ + H2CO         "&
+    &,"H2CS+ + E- -> CS + H + H            ","H2CS+ + E- -> HCS &
+    &+ H               ","H2CS+ + E- -> H2CS + PHOTON         ","H2CSH+ &
+    &+ E- -> CS + H2 + H          ","H2CSH+ + E- -> H2CS + H             "&
+    &,"H2NO+ + E- -> HNO + H               ","H2NO+ + E- -> NO &
+    &+ H2               ","H2O + CO+ -> CO + H2O+              ","H2O + HCN&
+    &+ -> HCN + H2O+            ","H2O + N2+ -> N2 + H2O+              "&
+    &,"H2O + C2+ -> C2H+ + OH              ","H2O + C2H2+ -> C2H + H3O&
+    &+           ","H2O + C2N+ -> C2NH+ + OH            ","H2O + C2N+ -> HCO&
+    &+ + HCN            ","H2O + C4N+ -> HC3N + HCO+           ","H2O + CN&
+    &+ -> HCN+ + OH              ","H2O + CN+ -> HCO+ + NH              "&
+    &,"H2O + CO+ -> HCO+ + OH              ","H2O + H2CO+ -> HCO + H3O&
+    &+           ","H2O + H2CL+ -> HCL + H3O+           ","H2O + H2S+ -> HS &
+    &+ H3O+             ","H2O + H2COH+ -> H2CO + H3O+         ","H2O + HCN&
+    &+ -> CN + H3O+             ","H2O + HCO+ -> CO + H3O+             "&
+    &,"H2O + HCO2+ -> CO2 + H3O+           ","H2O + HNO+ -> NO + H3O&
+    &+             ","H2O + OCSH+ -> H3O+ + OCS           ","H2O + HS+ -> S &
+    &+ H3O+               ","H2O + HOSO+ -> SO2 + H3O+           ","H2O &
+    &+ SISH+ -> SIOH+ + H2S          ","H2O + N2+ -> N2H+ + OH              "&
+    &,"H2O + N2H+ -> N2 + H3O+             ","H2O + O2H+ -> O2 + H3O&
+    &+             ","H2O + SI+ -> SIOH+ + H              ","H2O + SIH&
+    &+ -> SI + H3O+             ","H2O + SIH4+ -> SIH3 + H3O+          "&
+    &,"H2O + SIH5+ -> SIH4 + H3O+          ","H2O+ + C2 -> C2+ &
+    &+ H2O              ","H2O+ + C2H2 -> C2H2+ + H2O          ","H2O+ &
+    &+ C2H -> C2H+ + H2O            ","H2O+ + H2CO -> H2CO+ + H2O          "&
+    &,"H2O+ + H2S -> H2S+ + H2O            ","H2O+ + HCO -> HCO+ &
+    &+ H2O            ","H2O+ + MG -> MG+ + H2O              ","H2O+ &
+    &+ NO -> NO+ + H2O              ","H2O+ + O2 -> O2+ + H2O              "&
+    &,"H2O+ + OCS -> OCS+ + H2O            ","H2O+ + S -> S+ &
+    &+ H2O                ","H2O+ + SI -> SI+ + H2O              ","H2O+ &
+    &+ E- -> O + H2                 ","H2O+ + E- -> O + H + H              "&
+    &,"H2O+ + E- -> OH + H                 ","H2O+ + C2 -> C2H+ &
+    &+ OH              ","H2O+ + C2H -> C2H2+ + OH            ","H2O+ &
+    &+ CO -> HCO+ + OH              ","H2O+ + H2CO -> H2COH+ + OH          "&
+    &,"H2O+ + H2O -> H3O+ + OH             ","H2O+ + H2S -> H3S+ &
+    &+ OH             ","H2O+ + H2S -> HS + H3O+             ","H2O+ &
+    &+ HCN -> HCNH+ + OH            ","H2O+ + HCO -> CO + H3O+             "&
+    &,"H2O+ + HCO -> H2CO+ + OH            ","H2O+ + HNC -> HCNH+ &
+    &+ OH            ","H2O+ + S -> HS+ + OH                ","H2O+ &
+    &+ S -> HSO+ + H                ","H2O+ + SO2 -> HOSO+ + OH            "&
+    &,"H2S + OCS+ -> H2S+ + OCS            ","H2S + C2N+ -> HCS+ &
+    &+ HCN            ","H2S + HS2+ -> S2 + H3S+             ","H2S + SISH&
+    &+ -> H3S+ + SIS           ","H2S + SO+ -> S2+ + H2O              ","H2S&
+    &+ + E- -> HS + H                 ","H2S+ + E- -> S + H &
+    &+ H              ","H2S+ + H2S -> H3S+ + HS             ","H2S+ &
+    &+ E- -> H2S + PHOTON           ","H2S2+ + E- -> HS2 + H               "&
+    &,"H2S2+ + E- -> HS + HS               ","H3+ + E- -> H2 &
+    &+ H                  ","H3+ + E- -> H + H + H               ","H3+ &
+    &+ C2 -> C2H+ + H2               ","H3+ + C2H -> C2H2+ + H2             "&
+    &,"H3+ + C2N -> C2NH+ + H2             ","H3+ + C -> CH+ &
+    &+ H2                 ","H3+ + CH2 -> CH3+ + H2              ","H3+ &
+    &+ CH3 -> CH4+ + H2              ","H3+ + CH3CHO -> CH3+ + CH3OH        "&
+    &,"H3+ + CH3CHO -> CH5+ + H2CO         ","H3+ + CH3CHO -> H3O+ &
+    &+ C2H4         ","H3+ + CH3CN -> CH3CNH+ + H2         ","H3+ &
+    &+ CH3OH -> CH3+ + H2O + H2      ","H3+ + CH3OH -> CH3OH2+ + H2         "&
+    &,"H3+ + CH4 -> CH5+ + H2              ","H3+ + CH -> CH2+ &
+    &+ H2               ","H3+ + CN -> HCN+ + H2               ","H3+ &
+    &+ CO2 -> HCO2+ + H2             ","H3+ + CO -> HCO+ + H2               "&
+    &,"H3+ + CO -> HOC+ + H2               ","H3+ + CS -> HCS+ &
+    &+ H2               ","H3+ + CL -> HCL+ + H2               ","H3+ &
+    &+ H2CO -> H2COH+ + H2           ","H3+ + H2CS -> H2CSH+ + H2           "&
+    &,"H3+ + H2O -> H3O+ + H2              ","H3+ + H2S -> H3S+ &
+    &+ H2              ","H3+ + HCN -> HCNH+ + H2             ","H3+ &
+    &+ HCO -> H2CO+ + H2             ","H3+ + HCOOH -> H3O+ + CO + H2       "&
+    &,"H3+ + HCOOH -> HCO+ + H2O + H2      ","H3+ + HCS -> H2CS+ &
+    &+ H2             ","H3+ + HCL -> H2CL+ + H2             ","H3+ &
+    &+ HNC -> HCNH+ + H2             ","H3+ + HNO -> H2NO+ + H2             "&
+    &,"H3+ + HS2 -> H2S2+ + H2             ","H3+ + HS -> H2S+ &
+    &+ H2               ","H3+ + MG -> MG+ + H2 + H            ","H3+ &
+    &+ N2 -> N2H+ + H2               ","H3+ + NH2 -> NH3+ + H2              "&
+    &,"H3+ + NH3 -> NH4+ + H2              ","H3+ + NH -> NH2+ &
+    &+ H2               ","H3+ + NO2 -> NO+ + OH + H2          ","H3+ &
+    &+ NO -> HNO+ + H2               ","H3+ + NS -> HNS+ + H2               "&
+    &,"H3+ + O2 -> O2H+ + H2               ","H3+ + O -> H2O+ &
+    &+ H                 ","H3+ + O -> OH+ + H2                 ","H3+ &
+    &+ OCS -> OCSH+ + H2             ","H3+ + OH -> H2O+ + H2               "&
+    &,"H3+ + S2 -> HS2+ + H2               ","H3+ + S -> HS+ &
+    &+ H2                 ","H3+ + SO2 -> HOSO+ + H2             ","H3+ &
+    &+ SO -> HSO+ + H2               ","H3+ + SI -> SIH+ + H2               "&
+    &,"H3+ + SIH2 -> SIH3+ + H2            ","H3+ + SIH3 -> SIH4+ &
+    &+ H2            ","H3+ + SIH4 -> SIH5+ + H2            ","H3+ &
+    &+ SIH -> SIH2+ + H2             ","H3+ + SIO -> SIOH+ + H2             "&
+    &,"H3+ + SIS -> SISH+ + H2             ","H3O+ + E- -> H2O &
+    &+ H                ","H3O+ + E- -> O + H2 + H             ","H3O+ &
+    &+ E- -> OH + H2                ","H3O+ + E- -> OH + H + H             "&
+    &,"H3O+ + C2 -> C2H+ + H2O             ","H3O+ + CH3CCH -> C3H5+ &
+    &+ H2O        ","H3O+ + CH3CN -> CH3CNH+ + H2O       ","H3O+ &
+    &+ CH3OH -> CH3OH2+ + H2O       ","H3O+ + CS -> HCS+ + H2O             "&
+    &,"H3O+ + H2CO -> H2COH+ + H2O         ","H3O+ + H2S -> H3S+ &
+    &+ H2O            ","H3O+ + HCN -> HCNH+ + H2O           ","H3O+ &
+    &+ HNC -> HCNH+ + H2O           ","H3O+ + HS2 -> H2S2+ + H2O           "&
+    &,"H3O+ + S2 -> HS2+ + H2O             ","H3O+ + SI -> SIH+ &
+    &+ H2O             ","H3O+ + SIH2 -> SIH3+ + H2O          ","H3O+ &
+    &+ SIH -> SIH2+ + H2O           ","H3O+ + SIO -> SIOH+ + H2O           "&
+    &,"H3O+ + HCS -> H2CS+ + H2O           ","H3O+ + HNO -> H2NO+ &
+    &+ H2O           ","H3S+ + E- -> H2S + H                ","H3S+ &
+    &+ E- -> HS + H2                ","H3S+ + E- -> HS + H + H             "&
+    &,"H3S+ + E- -> S + H2 + H             ","HCL + H -> CL &
+    &+ H2                  ","HCL+ + E- -> CL + H                 ","HCN + CO&
+    &+ -> CO + HCN+              ","HCN + N2+ -> N2 + HCN+              "&
+    &,"HCN + C2N2+ -> HCN+ + NCCN          ","HCN + C3+ -> C4N+ &
+    &+ H               ","HCN + CH3OH2+ -> CH3CNH+ + H2O      ","HCN + H2CO&
+    &+ -> HCO + HCNH+          ","HCN + H2COH+ -> H2CO + HCNH+        ","HCN &
+    &+ H3S+ -> H2S + HCNH+           ","HCN + HCO+ -> HCNH+ + CO            "&
+    &,"HCN + HNO+ -> NO + HCNH+            ","HCN + HS+ -> S + HCNH&
+    &+              ","HCN + SISH+ -> HCNH+ + SIS          ","HCN + N2H&
+    &+ -> HCNH+ + N2            ","HCN + O2H+ -> O2 + HCNH+            ","HCN&
+    &+ + NO -> NO+ + HCN              ","HCN+ + O2 -> O2+ &
+    &+ HCN              ","HCN+ + S -> S+ + HCN                ","HCN+ &
+    &+ E- -> CN + H                 ","HCN+ + CO2 -> HCO2+ + CN            "&
+    &,"HCN+ + CO -> HCO+ + CN              ","HCN+ + H2CO -> H2COH+ &
+    &+ CN          ","HCN+ + HCN -> HCNH+ + CN            ","HCN+ &
+    &+ HCO -> H2CO+ + CN            ","HCN+ + HCO -> HCNH+ + CO            "&
+    &,"HCN+ + HNC -> HCNH+ + CN            ","HCN+ + S -> HS+ &
+    &+ CN                ","HCNH+ + E- -> CN + H + H            ","HCNH+ &
+    &+ E- -> HCN + H               ","HCNH+ + E- -> HNC + H               "&
+    &,"HCNH+ + CH3CN -> CH3CNH+ + HCN      ","HCNH+ + CH3CN -> CH3CNH+ &
+    &+ HNC      ","HCNH+ + H2CO -> H2COH+ + HCN        ","HCNH+ &
+    &+ H2CO -> H2COH+ + HNC        ","HCNH+ + H2S -> H3S+ + HCN           "&
+    &,"HCNH+ + H2S -> H3S+ + HNC           ","HCO + H2CO+ -> H2CO + HCO&
+    &+          ","HCO + H2S+ -> H2S + HCO+            ","HCO + O2+ -> O2 &
+    &+ HCO+              ","HCO + S+ -> S + HCO+                ","HCO + SIO&
+    &+ -> SIO + HCO+            ","HCO + H2CO+ -> H2COH+ + CO          "&
+    &,"HCO + HNO+ -> H2CO+ + NO            ","HCO + N2H+ -> H2CO+ &
+    &+ N2            ","HCO + O2+ -> O2H+ + CO              ","HCO + O2H&
+    &+ -> O2 + H2CO+            ","HCO + S+ -> HS+ + CO                "&
+    &,"HCO + HCO -> CO + CO + H2           ","HCO + HCO -> H2CO &
+    &+ CO              ","HCO + HNO -> H2CO + NO              ","HCO &
+    &+ NO -> HNO + CO                ","HCO + O2 -> CO2 + OH                "&
+    &,"HCO + O2 -> O2H + CO                ","HCO + O2H -> O2 &
+    &+ H2CO              ","HCO+ + E- -> CO + H                 ","HCO+ &
+    &+ CH3CCH -> C3H5+ + CO         ","HCO+ + CH3CN -> CH3CNH+ + CO        "&
+    &,"HCO+ + CH3OH -> CH3OH2+ + CO        ","HCO+ + CS -> HCS+ &
+    &+ CO              ","HCO+ + H2CO -> H2COH+ + CO          ","HCO+ &
+    &+ H2CS -> H2CSH+ + CO          ","HCO+ + H2S -> H3S+ + CO             "&
+    &,"HCO+ + HCO -> H2CO+ + CO            ","HCO+ + HS2 -> H2S2+ &
+    &+ CO            ","HCO+ + HS -> H2S+ + CO              ","HCO+ &
+    &+ NS -> HNS+ + CO              ","HCO+ + OCS -> OCSH+ + CO            "&
+    &,"HCO+ + S2 -> HS2+ + CO              ","HCO+ + S -> HS+ &
+    &+ CO                ","HCO+ + SO -> HSO+ + CO              ","HCO+ &
+    &+ SIH2 -> SIH3+ + CO           ","HCO+ + SIH4 -> SIH5+ + CO           "&
+    &,"HCO+ + SIH -> SIH2+ + CO            ","HCO+ + SIO -> SIOH+ &
+    &+ CO            ","HCO+ + SIS -> SISH+ + CO            ","HCO+ &
+    &+ HCS -> H2CS+ + CO            ","HCO+ + HNO -> H2NO+ + CO            "&
+    &,"HCO2+ + E- -> CO2 + H               ","HCO2+ + E- -> CO + O &
+    &+ H            ","HCO2+ + E- -> CO + OH               ","HCS+ &
+    &+ E- -> CH + S                 ","HCS+ + E- -> CS + H                 "&
+    &,"HE+ + C2 -> C2+ + HE                ","HE+ + C2H2 -> C2H2+ &
+    &+ HE            ","HE+ + C -> C+ + HE                  ","HE+ &
+    &+ CH4 -> CH4+ + HE              ","HE+ + CH -> CH+ + HE                "&
+    &,"HE+ + H2CO -> H2CO+ + HE            ","HE+ + H2O -> H2O+ &
+    &+ HE              ","HE+ + H2S -> H2S+ + HE              ","HE+ &
+    &+ N2 -> N2+ + HE                ","HE+ + NH3 -> NH3+ + HE              "&
+    &,"HE+ + O2 -> O2+ + HE                ","HE+ + SO2 -> SO2+ &
+    &+ HE              ","HE+ + SI -> SI+ + HE                ","HE+ &
+    &+ C2 -> C+ + C + HE             ","HE+ + C2H2 -> C2+ + HE + H2         "&
+    &,"HE+ + C2H2 -> C2H+ + HE + H         ","HE+ + C2H2 -> CH+ + CH &
+    &+ HE         ","HE+ + C2H3 -> C2H+ + HE + H2        ","HE+ &
+    &+ C2H3 -> C2H2+ + HE + H        ","HE+ + C2H4 -> C2H+ + HE + H2 + H    "&
+    &,"HE+ + C2H4 -> C2H2+ + HE + H2       ","HE+ + C2H4 -> CH2+ + CH2 &
+    &+ HE       ","HE+ + C2H -> C2+ + HE + H           ","HE+ + C2H -> CH+ &
+    &+ C + HE           ","HE+ + C2H -> CH + C+ + HE           ","HE+ &
+    &+ C2N -> CN + C+ + HE           ","HE+ + C3N -> CN + C2+ + HE          "&
+    &,"HE+ + C4H -> C2H+ + C2 + HE         ","HE+ + CH2 -> C+ + HE &
+    &+ H2           ","HE+ + CH2 -> CH+ + HE + H           ","HE+ &
+    &+ CH2CO -> CO+ + CH2 + HE       ","HE+ + CH2CO -> CO + CH2+ + HE       "&
+    &,"HE+ + CH3 -> CH+ + HE + H2          ","HE+ + CH3CCH -> C3+ + HE + H2 &
+    &+ H2  ","HE+ + CH3CHO -> HCO + CH3+ + HE     ","HE+ + CH3CN -> CN+ &
+    &+ CH3 + HE       ","HE+ + CH3CN -> CN + CH3+ + HE       ","HE+ &
+    &+ CH2OH -> OH + CH2+ + HE       ","HE+ + CH3OH -> OH+ + CH3 + HE       "&
+    &,"HE+ + CH3OH -> OH + CH3+ + HE       ","HE+ + CH4 -> CH+ + HE + H2 &
+    &+ H      ","HE+ + CH4 -> CH2+ + HE + H2         ","HE+ + CH4 -> CH3+ &
+    &+ HE + H          ","HE+ + CH4 -> CH3 + HE + H+          ","HE+ &
+    &+ CH -> C+ + HE + H             ","HE+ + CN -> N+ + C + HE             "&
+    &,"HE+ + CN -> N + C+ + HE             ","HE+ + CO2 -> CO+ + O &
+    &+ HE           ","HE+ + CO2 -> CO + O+ + HE           ","HE+ + CO2 -> O2&
+    &+ + C + HE           ","HE+ + CO2 -> O2 + C+ + HE           ","HE+ &
+    &+ CO -> O + C+ + HE             ","HE+ + CS -> S+ + C + HE             "&
+    &,"HE+ + CS -> S + C+ + HE             ","HE+ + H2CO -> CO+ + HE &
+    &+ H2         ","HE+ + H2CO -> HCO+ + HE + H         ","HE+ + H2CO -> O &
+    &+ CH2+ + HE         ","HE+ + H2CS -> CS+ + HE + H2         ","HE+ &
+    &+ H2CS -> S+ + CH2 + HE         ","HE+ + H2CS -> S + CH2+ + HE         "&
+    &,"HE+ + H2O -> OH+ + HE + H           ","HE+ + H2O -> OH + HE + H&
+    &+           ","HE+ + H2S2 -> HS+ + HS + HE         ","HE+ + H2S2 -> HS2&
+    &+ + HE + H         ","HE+ + H2S -> HS+ + HE + H           ","HE+ &
+    &+ H2S -> S+ + HE + H2           ","HE+ + H2SIO -> SIOH+ + HE + H       "&
+    &,"HE+ + HC3N -> C2N+ + CH + HE        ","HE+ + HC3N -> CN + C2H+ &
+    &+ HE        ","HE+ + HCN -> CN+ + HE + H           ","HE+ + HCN -> N+ &
+    &+ CH + HE           ","HE+ + HCN -> N + C+ + HE + H        ","HE+ &
+    &+ HCN -> N + CH+ + HE           ","HE+ + HCO -> CO+ + HE + H           "&
+    &,"HE+ + HCO -> CO + HEH+              ","HE+ + HCO -> O + CH+ &
+    &+ HE           ","HE+ + HCS -> CS+ + HE + H           ","HE+ &
+    &+ HCS -> CS + HE + H+           ","HE+ + HCL -> CL+ + HE + H           "&
+    &,"HE+ + HNC -> CN+ + HE + H           ","HE+ + HNC -> N + C+ + HE &
+    &+ H        ","HE+ + HNC -> NH+ + C + HE           ","HE+ + HNO -> NO+ &
+    &+ HE + H           ","HE+ + HNO -> NO + HE + H+           ","HE+ &
+    &+ NH2CHO -> CO+ + NH3 + HE      ","HE+ + NH2CHO -> HCO+ + NH2 + HE     "&
+    &,"HE+ + HS2 -> HS + S+ + HE           ","HE+ + HS2 -> S2+ + HE &
+    &+ H           ","HE+ + HS -> S+ + HE + H             ","HE+ + N2 -> N+ &
+    &+ N + HE             ","HE+ + NCCN -> CN+ + CN + HE         ","HE+ &
+    &+ NH2 -> N+ + HE + H2           ","HE+ + NH2 -> NH+ + HE + H           "&
+    &,"HE+ + NH3 -> NH+ + HE + H2          ","HE+ + NH3 -> NH2+ + HE &
+    &+ H          ","HE+ + NH -> N+ + HE + H             ","HE+ + NO -> O+ &
+    &+ N + HE             ","HE+ + NO -> O + N+ + HE             ","HE+ &
+    &+ NS -> S+ + N + HE             ","HE+ + NS -> S + N+ + HE             "&
+    &,"HE+ + O2 -> O+ + O + HE             ","HE+ + OCN -> CN+ + O &
+    &+ HE           ","HE+ + OCN -> CN + O+ + HE           ","HE+ + OCS -> CS&
+    &+ + O + HE           ","HE+ + OCS -> CS + O+ + HE           ","HE+ &
+    &+ OCS -> S+ + CO + HE           ","HE+ + OCS -> S + CO+ + HE           "&
+    &,"HE+ + OH -> O+ + HE + H             ","HE+ + S2 -> S+ + S &
+    &+ HE             ","HE+ + SO2 -> S+ + O2 + HE           ","HE+ &
+    &+ SO2 -> SO+ + O + HE           ","HE+ + SO -> S+ + O + HE             "&
+    &,"HE+ + SO -> S + O+ + HE             ","HE+ + SIC2 -> SI+ + C2 &
+    &+ HE         ","HE+ + SIC3 -> SIC2+ + C + HE        ","HE+ + SIC -> SI+ &
+    &+ C + HE           ","HE+ + SIC -> SI + C+ + HE           ","HE+ &
+    &+ SIH2 -> SI+ + HE + H2         ","HE+ + SIH2 -> SIH+ + HE + H         "&
+    &,"HE+ + SIH3 -> SIH+ + HE + H2        ","HE+ + SIH3 -> SIH2+ + HE &
+    &+ H        ","HE+ + SIH4 -> SI+ + HE + H2 + H2    ","HE+ + SIH4 -> SIH+ &
+    &+ HE + H2 + H    ","HE+ + SIH -> SI+ + HE + H           ","HE+ &
+    &+ SIO -> SI+ + O + HE           ","HE+ + SIO -> SI + O+ + HE           "&
+    &,"HE+ + SIS -> S+ + SI + HE           ","HE+ + SIS -> S + SI+ &
+    &+ HE           ","HE+ + H2CN -> CN+ + H2 + HE         ","HE+ + H -> HEH&
+    &+ + PHOTON            ","HE+ + E- -> HE + PHOTON             ","HEH+ &
+    &+ E- -> HE + H                 ","HNC + H2CO+ -> HCO + HCNH+          "&
+    &,"HNC + H2COH+ -> H2CO + HCNH+        ","HNC + H3S+ -> H2S + HCNH&
+    &+           ","HNC + HCO+ -> HCNH+ + CO            ","HNC + HNO+ -> NO &
+    &+ HCNH+            ","HNC + HS+ -> S + HCNH+              ","HNC + N2H&
+    &+ -> HCNH+ + N2            ","HNC + O2H+ -> O2 + HCNH+            "&
+    &,"HNCO + C -> CO + HNC                ","HNO+ + E- -> NO &
+    &+ H                 ","HNO+ + CO2 -> HCO2+ + NO            ","HNO+ &
+    &+ S -> HS+ + NO                ","HNS+ + E- -> NS + H                 "&
+    &,"HOC+ + E- -> CO + H                 ","HOSO+ + E- -> SO2 &
+    &+ H               ","HOSO+ + E- -> SO + O + H            ","HOSO+ &
+    &+ E- -> SO + OH               ","HS + HS -> H2S + S                  "&
+    &,"HS+ + E- -> S + H                   ","HS+ + H2S -> H3S+ &
+    &+ S               ","HS+ + H2S -> HS2+ + H2              ","HS2+ &
+    &+ E- -> HS + S                 ","HS2+ + E- -> S2 + H                 "&
+    &,"HSO+ + E- -> SO + H                 ","MG + C2H2+ -> C2H2 + MG&
+    &+            ","MG + CS+ -> CS + MG+                ","MG + H2CO&
+    &+ -> H2CO + MG+            ","MG + H2S+ -> H2S + MG+              ","MG &
+    &+ HCO+ -> HCO + MG+              ","MG + HS+ -> HS + MG&
+    &+                ","MG + N2+ -> N2 + MG+                ","MG + NO&
+    &+ -> NO + MG+                ","MG + O2+ -> O2 + MG+                "&
+    &,"MG + S+ -> S + MG+                  ","MG + SO+ -> SO + MG&
+    &+                ","MG + SI+ -> SI + MG+                ","MG + SIO&
+    &+ -> SIO + MG+              ","MG+ + E- -> MG + PHOTON             ","N &
+    &+ N2+ -> N2 + N+                  ","N + C2+ -> CN + C&
+    &+                  ","N + C2H+ -> C2N+ + H                ","N + C2H&
+    &+ -> CN + CH+                ","N + C2H2+ -> C2N+ + H2              "&
+    &,"N + C2H2+ -> C2NH+ + H              ","N + C2H2+ -> HCN + CH&
+    &+              ","N + CH2+ -> HCN+ + H                ","N + CN+ -> N2+ &
+    &+ C                  ","N + H2O+ -> HNO+ + H                ","N + H2O&
+    &+ -> NO+ + H2                ","N + H2S+ -> NS+ + H2                "&
+    &,"N + HS+ -> NS+ + H                  ","N + NH+ -> N2+ &
+    &+ H                  ","N + NH2+ -> N2H+ + H                ","N + O2&
+    &+ -> NO+ + O                  ","N + OH+ -> NO+ + H                  "&
+    &,"N + SO+ -> NS+ + O                  ","N + SIC+ -> SI+ &
+    &+ CN                ","N + SIO+ -> NO+ + SI                ","N + SIO&
+    &+ -> NO + SI+                ","N + C2 -> CN + C                    "&
+    &,"N + C2H3 -> C2H2 + NH               ","N + C2H4 -> HCN &
+    &+ CH3               ","N + C2H5 -> C2H4 + NH               ","N &
+    &+ C2H5 -> H2CN + CH3              ","N + C2H -> C2N &
+    &+ H                  ","N + C2N -> CN + CN                  ","N &
+    &+ C3H2 -> HC3N + H                ","N + C3N -> CN &
+    &+ C2N                 ","N + C4H -> C4N + H                  ","N &
+    &+ C4N -> CN + C3N                 ","N + CH2 -> HCN &
+    &+ H                  ","N + CH2 -> HNC + H                  ","N &
+    &+ CH2 -> NH + CH                  ","N + CH3 -> H2CN &
+    &+ H                 ","N + CH3 -> HCN + H2                 ","N &
+    &+ CH3 -> HCN + H + H              ","N + CN -> N2 &
+    &+ C                    ","N + CO2 -> NO + CO                  ","N &
+    &+ CS -> S + CN                    ","N + H2CN -> HCN &
+    &+ NH                ","N + HCO -> CO + NH                  ","N &
+    &+ HCO -> HCN + O                  ","N + HCO -> OCN &
+    &+ H                  ","N + HCS -> S + HCN                  ","N &
+    &+ HNO -> NO + NH                  ","N + HS -> NS &
+    &+ H                    ","N + HS -> S + NH                    ","N &
+    &+ NCCN -> N2 + C2N                ","N + NH -> N2 &
+    &+ H                    ","N + NO2 -> N2 + O + O               ","N &
+    &+ NO2 -> NO + NO                  ","N + NO2 -> O2 &
+    &+ N2                  ","N + NO -> N2 + O                    ","N &
+    &+ NS -> S + N2                    ","N + O2 -> NO &
+    &+ O                    ","N + O2H -> O2 + NH                  ","N &
+    &+ OH -> NO + H                    ","N + OH -> O &
+    &+ NH                    ","N + S2 -> NS + S                    ","N &
+    &+ SO -> NS + O                    ","N + SO -> S &
+    &+ NO                    ","N + SIC -> SI + CN                  ","N+ &
+    &+ C2 -> C2+ + N                  ","N+ + C2H -> C2H+ &
+    &+ N                ","N+ + CH2 -> CH2+ + N                ","N+ &
+    &+ CH4 -> CH4+ + N                ","N+ + CN -> CN+ &
+    &+ N                  ","N+ + CO -> CO+ + N                  ","N+ &
+    &+ H2CO -> H2CO+ + N              ","N+ + H2O -> H2O+ &
+    &+ N                ","N+ + H2S -> H2S+ + N                ","N+ &
+    &+ HCN -> HCN+ + N                ","N+ + HCO -> HCO+ &
+    &+ N                ","N+ + MG -> MG+ + N                  ","N+ &
+    &+ NH2 -> NH2+ + N                ","N+ + NH3 -> NH3+ &
+    &+ N                ","N+ + NH -> NH+ + N                  ","N+ &
+    &+ NO -> NO+ + N                  ","N+ + O2 -> O2+ &
+    &+ N                  ","N+ + OCS -> OCS+ + N                ","N+ &
+    &+ OH -> OH+ + N                  ","N+ + CH3OH -> H2CO+ + NH &
+    &+ H        ","N+ + CH3OH -> H2COH+ + NH           ","N+ + CH3OH -> NO+ &
+    &+ CH3 + H         ","N+ + CH3OH -> NO + CH3+ + H         ","N+ &
+    &+ CH4 -> CH3+ + N + H            ","N+ + CH4 -> HCN+ + H2 &
+    &+ H           ","N+ + CH4 -> HCNH+ + H + H           ","N+ + CO2 -> NO &
+    &+ CO+                ","N+ + CO -> NO+ + C                  ","N+ &
+    &+ H2CO -> HCO+ + NH              ","N+ + H2CO -> NO+ &
+    &+ CH2              ","N+ + H2S -> HS+ + NH                ","N+ &
+    &+ H2S -> HS + NH+                ","N+ + H2S -> S+ + NH &
+    &+ H             ","N+ + HCO -> CO + NH+                ","N+ &
+    &+ NCCN -> C2N+ + N2              ","N+ + NCCN -> C2N2+ &
+    &+ N              ","N+ + NH3 -> N2H+ + H2               ","N+ &
+    &+ NH3 -> NH2+ + NH               ","N+ + NH -> N2+ &
+    &+ H                  ","N+ + NO -> N2+ + O                  ","N+ &
+    &+ O2 -> NO+ + O                  ","N+ + O2 -> NO + O&
+    &+                  ","N+ + OCS -> CS+ + NO                ","N+ &
+    &+ OCS -> S+ + CO + N             ","N+ + N -> N2+ &
+    &+ PHOTON              ","N+ + E- -> N + PHOTON               ","N2 + HNO&
+    &+ -> NO + N2H+              ","N2 + O2H+ -> O2 + N2H+              ","N2&
+    &+ + H2CO -> H2CO+ + N2            ","N2+ + H2S -> H2S+ &
+    &+ N2              ","N2+ + HCO -> HCO+ + N2              ","N2+ &
+    &+ NO -> NO+ + N2                ","N2+ + O2 -> O2+ + N2                "&
+    &,"N2+ + OCS -> OCS+ + N2              ","N2+ + S -> S+ &
+    &+ N2                  ","N2+ + E- -> N + N                   ","N2+ &
+    &+ H2CO -> HCO+ + N2 + H         ","N2+ + H2S -> HS+ + N2 + H           "&
+    &,"N2+ + H2S -> S+ + N2 + H2           ","N2+ + HCO -> N2H+ &
+    &+ CO              ","N2+ + OCS -> S+ + N2 + CO           ","N2H+ &
+    &+ E- -> N2 + H                 ","N2H+ + E- -> N + NH                 "&
+    &,"N2H+ + CH3CN -> CH3CNH+ + N2        ","N2H+ + CO2 -> HCO2+ &
+    &+ N2            ","N2H+ + H2CO -> H2COH+ + N2          ","N2H+ &
+    &+ CH3OH -> CH3OH2+ + N2        ","N2H+ + CH3OH -> H2COH+ + N2 + H2    "&
+    &,"N2H+ + CH3OH -> CH3+ + N2 + H2O     ","N2H+ + S -> HS+ &
+    &+ N2                ","N2H+ + CS -> HCS+ + N2              ","N2H+ &
+    &+ HCS -> H2CS+ + N2            ","N2H+ + HNO -> H2NO+ + N2            "&
+    &,"N2H+ + CH3CCH -> C3H5+ + N2         ","NH + CN+ -> CN + NH&
+    &+                ","NH + CO+ -> CO + NH+                ","NH + N2&
+    &+ -> N2 + NH+                ","NH + O+ -> O + NH+                  "&
+    &,"NH + C2+ -> C2H+ + N                ","NH + C2+ -> C2N+ &
+    &+ H                ","NH + CH3+ -> HCNH+ + H2             ","NH + CH5&
+    &+ -> CH4 + NH2+             ","NH + CO+ -> HCO+ + N                "&
+    &,"NH + H2CO+ -> H2COH+ + N            ","NH + H2O+ -> H3O+ &
+    &+ N               ","NH + HCN+ -> CN + NH2+              ","NH + HCO&
+    &+ -> CO + NH2+              ","NH + HNO+ -> NO + NH2+              "&
+    &,"NH + N2H+ -> N2 + NH2+              ","NH + NH2+ -> NH3+ &
+    &+ N               ","NH + NH3+ -> NH4+ + N               ","NH + O&
+    &+ -> NO+ + H                  ","NH + O2+ -> HNO+ + O                "&
+    &,"NH + O2H+ -> O2 + NH2+              ","NH + OH+ -> NH2+ &
+    &+ O                ","NH + S+ -> NS+ + H                  ","NH &
+    &+ CH4 -> CH3 + NH2               ","NH + CN -> HCN &
+    &+ N                  ","NH + H2O -> OH + NH2                ","NH &
+    &+ NH3 -> NH2 + NH2               ","NH + NH -> NH2 &
+    &+ N                  ","NH + NH -> N2 + H + H               ","NH &
+    &+ NO2 -> HNO + NO                ","NH + NO -> N2 + O &
+    &+ H               ","NH + NO -> N2 + OH                  ","NH &
+    &+ O2 -> HNO + O                  ","NH + O2 -> NO &
+    &+ OH                  ","NH + O -> NO + H                    ","NH &
+    &+ O -> OH + N                    ","NH + OH -> H2O &
+    &+ N                  ","NH + OH -> HNO + H                  ","NH &
+    &+ OH -> NH2 + O                  ","NH + S -> HS &
+    &+ N                    ","NH + S -> NS + H                    ","NH+ &
+    &+ H2CO -> H2CO+ + NH            ","NH+ + H2O -> H2O+ + NH              "&
+    &,"NH+ + NH3 -> NH3+ + NH              ","NH+ + NO -> NO+ &
+    &+ NH                ","NH+ + O2 -> O2+ + NH                ","NH+ &
+    &+ S -> S+ + NH                  ","NH+ + E- -> N + H                   "&
+    &,"NH+ + C2 -> C2H+ + N                ","NH+ + C2 -> C2N+ &
+    &+ H                ","NH+ + C2 -> HCN+ + C                ","NH+ &
+    &+ C2H -> C2H2+ + N              ","NH+ + CN -> HCN+ + N                "&
+    &,"NH+ + CO2 -> HCO2+ + N              ","NH+ + CO2 -> HNO+ &
+    &+ CO              ","NH+ + CO2 -> NO+ + HCO              ","NH+ &
+    &+ CO -> HCO+ + N                ","NH+ + H2CO -> H2COH+ + N            "&
+    &,"NH+ + H2CO -> HCO+ + NH2            ","NH+ + H2O -> H3O+ &
+    &+ N               ","NH+ + H2O -> HNO+ + H2              ","NH+ &
+    &+ H2O -> NH3+ + O               ","NH+ + H2O -> OH + NH2+              "&
+    &,"NH+ + HCN -> HCNH+ + N              ","NH+ + HCO -> H2CO+ &
+    &+ N              ","NH+ + HNC -> HCNH+ + N              ","NH+ &
+    &+ N2 -> N2H+ + N                ","NH+ + NH2 -> NH3+ + N               "&
+    &,"NH+ + NH3 -> NH4+ + N               ","NH+ + NH -> NH2+ &
+    &+ N                ","NH+ + NO -> N2H+ + O                ","NH+ &
+    &+ O2 -> NO+ + OH                ","NH+ + O2 -> O2H+ + N                "&
+    &,"NH+ + O -> OH+ + N                  ","NH+ + OH -> H2O+ &
+    &+ N                ","NH+ + S -> HS+ + N                  ","NH+ &
+    &+ S -> NS+ + H                  ","NH2 + C2+ -> C2 + NH2+              "&
+    &,"NH2 + CN+ -> CN + NH2+              ","NH2 + CO+ -> CO + NH2&
+    &+              ","NH2 + H2O+ -> H2O + NH2+            ","NH2 + N2&
+    &+ -> N2 + NH2+              ","NH2 + O2+ -> O2 + NH2+              "&
+    &,"NH2 + OH+ -> OH + NH2+              ","NH2 + C2+ -> C2NH+ &
+    &+ H              ","NH2 + C2H+ -> C2 + NH3+             ","NH2 + C2H2&
+    &+ -> C2H + NH3+           ","NH2 + CH5+ -> NH3+ + CH4            ","NH2 &
+    &+ CO+ -> HCO+ + NH              ","NH2 + H2CO+ -> HCO + NH3+           "&
+    &,"NH2 + H2O+ -> NH3+ + OH             ","NH2 + H2COH+ -> H2CO + NH3&
+    &+         ","NH2 + H3O+ -> H2O + NH3+            ","NH2 + HCN+ -> CN &
+    &+ NH3+             ","NH2 + HCNH+ -> HCN + NH3+           ","NH2 + HCNH&
+    &+ -> HNC + NH3+           ","NH2 + HCO+ -> CO + NH3+             ","NH2 &
+    &+ HNO+ -> NO + NH3+             ","NH2 + N2H+ -> N2 + NH3+             "&
+    &,"NH2 + NH3+ -> NH4+ + NH             ","NH2 + O2H+ -> O2 + NH3&
+    &+             ","NH2 + OH+ -> NH3+ + O               ","NH2 &
+    &+ CH4 -> CH3 + NH3              ","NH2 + NO -> N2 + H2O                "&
+    &,"NH2 + NO -> N2 + OH + H             ","NH2 + OH -> H2O &
+    &+ NH                ","NH2 + OH -> NH3 + O                 ","NH2 &
+    &+ H2CO -> NH3 + HCO             ","NH2 + H2CO -> NH2CHO + H            "&
+    &,"NH2+ + H2S -> H2S+ + NH2            ","NH2+ + HCO -> HCO+ &
+    &+ NH2            ","NH2+ + NH3 -> NH3+ + NH2            ","NH2+ &
+    &+ NO -> NO+ + NH2              ","NH2+ + S -> S+ + NH2                "&
+    &,"NH2+ + E- -> N + H + H              ","NH2+ + E- -> NH &
+    &+ H                 ","NH2+ + C2 -> C2H+ + NH              ","NH2+ &
+    &+ C2H -> C2H2+ + NH            ","NH2+ + H2CO -> H2COH+ + NH          "&
+    &,"NH2+ + H2CO -> HCO + NH3+           ","NH2+ + H2O -> H3O+ &
+    &+ NH             ","NH2+ + H2O -> NH3+ + OH             ","NH2+ &
+    &+ H2O -> NH4+ + O              ","NH2+ + H2S -> H3S+ + NH             "&
+    &,"NH2+ + H2S -> HS+ + NH3             ","NH2+ + H2S -> HS + NH3&
+    &+             ","NH2+ + H2S -> S + NH4+              ","NH2+ &
+    &+ HCN -> HCNH+ + NH            ","NH2+ + HCO -> H2CO+ + NH            "&
+    &,"NH2+ + HNC -> HCNH+ + NH            ","NH2+ + NH2 -> NH3+ &
+    &+ NH             ","NH2+ + NH3 -> NH4+ + NH             ","NH2+ &
+    &+ O2 -> H2NO+ + O              ","NH2+ + O2 -> HNO+ + OH              "&
+    &,"NH2+ + S -> HNS+ + H                ","NH2+ + S -> HS+ &
+    &+ NH                ","NH3 + C2H2+ -> C2H2 + NH3+          ","NH3 + CO&
+    &+ -> CO + NH3+              ","NH3 + H2CO+ -> H2CO + NH3+          "&
+    &,"NH3 + H2O+ -> H2O + NH3+            ","NH3 + H2S+ -> H2S + NH3&
+    &+            ","NH3 + HCN+ -> HCN + NH3+            ","NH3 + HS+ -> HS &
+    &+ NH3+              ","NH3 + N2+ -> N2 + NH3+              ","NH3 + O2&
+    &+ -> O2 + NH3+              ","NH3 + OCS+ -> NH3+ + OCS            "&
+    &,"NH3 + S+ -> S + NH3+                ","NH3 + SO+ -> SO + NH3&
+    &+              ","NH3 + C2H+ -> C2 + NH4+             ","NH3 + C2H2&
+    &+ -> C2H + NH4+           ","NH3 + C2N+ -> HCNH+ + HCN           ","NH3 &
+    &+ CH5+ -> NH4+ + CH4            ","NH3 + CO+ -> HCO+ + NH2             "&
+    &,"NH3 + H2CO+ -> HCO + NH4+           ","NH3 + H2O+ -> NH4+ &
+    &+ OH             ","NH3 + H2S+ -> HS + NH4+             ","NH3 + H2COH&
+    &+ -> H2CO + NH4+         ","NH3 + H3O+ -> NH4+ + H2O            ","NH3 &
+    &+ H3S+ -> H2S + NH4+            ","NH3 + HCN+ -> HCNH+ + NH2           "&
+    &,"NH3 + HCNH+ -> HCN + NH4+           ","NH3 + HCNH+ -> HNC + NH4&
+    &+           ","NH3 + HCO+ -> CO + NH4+             ","NH3 + HCO2&
+    &+ -> CO2 + NH4+           ","NH3 + HCS+ -> CS + NH4+             ","NH3 &
+    &+ HNO+ -> NO + NH4+             ","NH3 + HS+ -> S + NH4+               "&
+    &,"NH3 + HOSO+ -> SO2 + NH4+           ","NH3 + SISH+ -> NH4+ &
+    &+ SIS           ","NH3 + N2H+ -> N2 + NH4+             ","NH3 + O2H&
+    &+ -> O2 + NH4+             ","NH3 + SIH+ -> SI + NH4+             "&
+    &,"NH3 + SIOH+ -> NH4+ + SIO           ","NH3 + CN -> HCN &
+    &+ NH2               ","NH3+ + HCO -> HCO+ + NH3            ","NH3+ &
+    &+ MG -> MG+ + NH3              ","NH3+ + NO -> NO+ + NH3              "&
+    &,"NH3+ + SI -> SI+ + NH3              ","NH3+ + E- -> NH2 &
+    &+ H                ","NH3+ + E- -> NH + H + H             ","NH3+ &
+    &+ C2 -> C2H2+ + NH             ","NH3+ + H2CO -> HCO + NH4+           "&
+    &,"NH3+ + H2O -> NH4+ + OH             ","NH3+ + H2S -> HS + NH4&
+    &+             ","NH3+ + HCO -> CO + NH4+             ","NH3+ &
+    &+ NH3 -> NH4+ + NH2            ","NH4+ + E- -> NH2 + H2               "&
+    &,"NH4+ + E- -> NH2 + H + H            ","NH4+ + E- -> NH3 &
+    &+ H                ","NO + H2CO+ -> H2CO + NO+            ","NO + H2S&
+    &+ -> H2S + NO+              ","NO + HNO+ -> HNO + NO+              "&
+    &,"NO + HS+ -> HS + NO+                ","NO + O2+ -> O2 + NO&
+    &+                ","NO + S+ -> S + NO+                  ","NO + S2&
+    &+ -> S2 + NO+                ","NO + SIO+ -> SIO + NO+              "&
+    &,"NO + O2H+ -> O2 + HNO+              ","NO + O2 -> NO2 &
+    &+ O                  ","NO + OCN -> N2 + CO2                ","NO &
+    &+ S -> NS + O                    ","NO + S -> SO &
+    &+ N                    ","NO+ + E- -> O + N                   ","NS+ &
+    &+ E- -> S + N                   ","O + CN+ -> CN + O+                  "&
+    &,"O + CO+ -> CO + O+                  ","O + N2+ -> N2 + O&
+    &+                  ","O + C2+ -> CO+ + C                  ","O + C2H&
+    &+ -> HCO+ + C                ","O + C2H2+ -> HCO+ + CH              "&
+    &,"O + CH4+ -> OH + CH3+               ","O + CH5+ -> H2COH+ &
+    &+ H2             ","O + CH5+ -> H3O+ + CH2              ","O + CS+ -> S &
+    &+ CO+                  ","O + H2O+ -> O2+ + H2                ","O + H2S&
+    &+ -> HS+ + OH                ","O + H2S+ -> SO+ + H2                "&
+    &,"O + HCO2+ -> O2 + HCO+              ","O + HCS+ -> OCS+ &
+    &+ H                ","O + HCS+ -> S + HCO+                ","O + HS&
+    &+ -> S+ + OH                  ","O + HS+ -> SO+ + H                  "&
+    &,"O + N2+ -> NO+ + N                  ","O + N2H+ -> N2 + OH&
+    &+                ","O + NH2+ -> HNO+ + H                ","O + NH3&
+    &+ -> HNO+ + H2               ","O + NS+ -> S + NO+                  "&
+    &,"O + O2H+ -> O2 + OH+                ","O + OH+ -> O2+ &
+    &+ H                  ","O + SIC+ -> SIO+ + C                ","O + SIH&
+    &+ -> SIO+ + H                ","O + SIH2+ -> SIOH+ + H              "&
+    &,"O + SIH3+ -> SIOH+ + H2             ","O + SIO+ -> O2 + SI&
+    &+                ","O + C2 -> CO + C                    ","O &
+    &+ C2H2 -> CO + CH2                ","O + C2H3 -> CH2CO &
+    &+ H               ","O + C2H4 -> C2H3 + OH               ","O &
+    &+ C2H4 -> CH2CO + H2              ","O + C2H4 -> H2CO &
+    &+ CH2              ","O + C2H4 -> HCO + CH3               ","O &
+    &+ C2H5 -> CH3CHO + H              ","O + C2H5 -> H2CO &
+    &+ CH3              ","O + C2H5 -> C2H4 + OH               ","O &
+    &+ C2H -> CO + CH                  ","O + C2N -> CO &
+    &+ CN                  ","O + C3N -> C2N + CO                 ","O &
+    &+ C4N -> C3N + CO                 ","O + CH4 -> OH &
+    &+ CH3                 ","O + CN -> CO + N                    ","O &
+    &+ CN -> NO + C                    ","O + CO2 -> O2 &
+    &+ CO                  ","O + CS -> S + CO                    ","O &
+    &+ CS -> SO + C                    ","O + H2CN -> OCN &
+    &+ H2                ","O + H2CO -> HCO + OH                ","O &
+    &+ CH2OH -> H2CO + OH              ","O + CH3OH -> CH2OH &
+    &+ OH             ","O + H2O -> OH + OH                  ","O &
+    &+ H2S -> HS + OH                  ","O + HCN -> CN &
+    &+ OH                  ","O + HCN -> CO + NH                  ","O &
+    &+ HCN -> OCN + H                  ","O + HCO -> CO2 &
+    &+ H                  ","O + HCO -> CO + OH                  ","O &
+    &+ HCS -> HS + CO                  ","O + HCS -> OCS &
+    &+ H                  ","O + HNC -> CO + NH                  ","O &
+    &+ HNO -> NO2 + H                  ","O + HNO -> NO &
+    &+ OH                  ","O + HNO -> O2 + NH                  ","O &
+    &+ HS -> S + OH                    ","O + HS -> SO &
+    &+ H                    ","O + N2 -> NO + N                    ","O &
+    &+ NH2 -> HNO + H                  ","O + NH2 -> OH &
+    &+ NH                  ","O + NH3 -> OH + NH2                 ","O &
+    &+ NO2 -> O2 + NO                  ","O + NO -> O2 &
+    &+ N                    ","O + NS -> S + NO                    ","O &
+    &+ NS -> SO + N                    ","O + O2H -> O2 &
+    &+ OH                  ","O + OCN -> CO + NO                  ","O &
+    &+ OCN -> O2 + CN                  ","O + OCS -> CO2 &
+    &+ S                  ","O + OCS -> SO + CO                  ","O &
+    &+ OH -> O2 + H                    ","O + S2 -> SO &
+    &+ S                    ","O + SO2 -> SO + O2                  ","O &
+    &+ SO -> S + O2                    ","O + SIC2 -> SIC &
+    &+ CO                ","O + SIC3 -> SIC2 + CO               ","O &
+    &+ SIC -> SI + CO                  ","O + SIC -> SIO &
+    &+ C                  ","O + SIH2 -> SIO + H2                ","O &
+    &+ SIH2 -> SIO + H + H             ","O + SIH3 -> H2SIO &
+    &+ H               ","O + SIH4 -> SIH3 + OH               ","O &
+    &+ SIH -> SIO + H                  ","O + HSIO -> SIO &
+    &+ OH                ","O + SIS -> SIO + S                  ","O &
+    &+ O -> O2 + PHOTON                ","O + SO -> SO2 &
+    &+ PHOTON              ","O + SI+ -> SIO+ + PHOTON            ","O &
+    &+ SI -> SIO + PHOTON              ","O + SI -> SIO &
+    &+ PHOTON              ","O + S -> SO + PHOTON                ","O+ &
+    &+ C2 -> C2+ + O                  ","O+ + C2H2 -> C2H2+ &
+    &+ O              ","O+ + C2H -> C2H+ + O                ","O+ &
+    &+ CH4 -> CH4+ + O                ","O+ + CO -> CO+ &
+    &+ O                  ","O+ + H2CO -> H2CO+ + O              ","O+ &
+    &+ H2O -> H2O+ + O                ","O+ + H2S -> H2S+ &
+    &+ O                ","O+ + HCO -> HCO+ + O                ","O+ &
+    &+ NH2 -> NH2+ + O                ","O+ + NH3 -> NH3+ &
+    &+ O                ","O+ + O2 -> O2+ + O                  ","O+ &
+    &+ OCS -> OCS+ + O                ","O+ + OH -> OH+ &
+    &+ O                  ","O+ + SO2 -> SO2+ + O                ","O+ &
+    &+ C2 -> CO+ + C                  ","O+ + C2H4 -> C2H2+ &
+    &+ H2O            ","O+ + C2H -> CO+ + CH                ","O+ &
+    &+ CH3OH -> H2CO+ + H2O           ","O+ + CH3OH -> H2COH+ &
+    &+ OH           ","O+ + CH4 -> OH + CH3+               ","O+ + CN -> NO+ &
+    &+ C                  ","O+ + CO2 -> O2+ + CO                ","O+ &
+    &+ H2CO -> HCO+ + OH              ","O+ + H2S -> HS+ &
+    &+ OH                ","O+ + H2S -> S+ + H2O                ","O+ &
+    &+ HCN -> HCO+ + N                ","O+ + HCN -> NO+ &
+    &+ CH                ","O+ + HCO -> CO + OH+                ","O+ &
+    &+ N2 -> NO+ + N                  ","O+ + NO2 -> O2 + NO&
+    &+                ","O+ + OCS -> CO2 + S+                ","O+ + OH -> O2&
+    &+ + H                  ","O+ + SO2 -> SO+ + O2                ","O+ &
+    &+ E- -> O + PHOTON               ","O2 + CL+ -> CL + O2&
+    &+                ","O2 + SO2+ -> SO2 + O2+              ","O2 + CS&
+    &+ -> OCS+ + O                ","O2 + S+ -> SO+ + O                  "&
+    &,"O2 + SIS+ -> SO+ + SIO              ","O2 + SIS+ -> SIO+ &
+    &+ SO              ","O2 + OCN -> CO2 + NO                ","O2 &
+    &+ OCN -> NO2 + CO                ","O2 + S -> SO &
+    &+ O                    ","O2 + SO -> SO2 + O                  ","O2+ &
+    &+ C2H2 -> C2H2+ + O2            ","O2+ + H2S -> H2S+ + O2              "&
+    &,"O2+ + S -> S+ + O2                  ","O2+ + E- -> O &
+    &+ O                   ","O2+ + C2H2 -> HCO+ + H + CO         ","O2+ &
+    &+ CH3OH -> O2 + H2COH+ + H      ","O2+ + HCOOH -> HCO2+ + O2H          "&
+    &,"O2+ + S -> SO+ + O                  ","O2H+ + E- -> O2 &
+    &+ H                 ","O2H+ + CO2 -> HCO2+ + O2            ","OCS+ &
+    &+ E- -> C + SO                 ","OCS+ + E- -> CS + O                 "&
+    &,"OCS+ + E- -> S + CO                 ","OCSH+ + E- -> CS &
+    &+ OH               ","OCSH+ + E- -> OCS + H               ","OH + C2&
+    &+ -> C2 + OH+                ","OH + CN+ -> CN + OH+                "&
+    &,"OH + CO+ -> CO + OH+                ","OH + N2+ -> N2 + OH&
+    &+                ","OH + CH5+ -> H2O+ + CH4             ","OH + CO&
+    &+ -> HCO+ + O                ","OH + H2O+ -> H3O+ + O               "&
+    &,"OH + HCN+ -> CN + H2O+              ","OH + HCO+ -> CO + H2O&
+    &+              ","OH + HCO+ -> HCO2+ + H              ","OH + HNO&
+    &+ -> NO + H2O+              ","OH + N2H+ -> N2 + H2O+              "&
+    &,"OH + NH3+ -> NH4+ + O               ","OH + O2H+ -> O2 + H2O&
+    &+              ","OH + S+ -> SO+ + H                  ","OH + SI+ -> SIO&
+    &+ + H                ","OH + C2H2 -> C2H + H2O              ","OH &
+    &+ C2H2 -> CH2CO + H              ","OH + C2H2 -> CO &
+    &+ CH3               ","OH + C2H3 -> C2H2 + H2O             ","OH &
+    &+ C2H5 -> C2H4 + H2O             ","OH + CN -> HCN &
+    &+ O                  ","OH + CN -> OCN + H                  ","OH &
+    &+ CO -> CO2 + H                  ","OH + CS -> CO &
+    &+ HS                  ","OH + CS -> H + OCS                  ","OH &
+    &+ H2CO -> HCO + H2O              ","OH + H2CO -> HCOOH &
+    &+ H              ","OH + CH2OH -> H2CO + H2O            ","OH &
+    &+ H2S -> HS + H2O                ","OH + HCN -> CN &
+    &+ H2O                ","OH + HCN -> CO + NH2                ","OH &
+    &+ HCO -> CO + H2O                ","OH + HNC -> HNCO &
+    &+ H                ","OH + HNO -> NO + H2O                ","OH &
+    &+ NCCN -> HCN + OCN              ","OH + NH3 -> H2O &
+    &+ NH2               ","OH + NO -> NO2 + H                  ","OH &
+    &+ O2H -> O2 + H2O                ","OH + OH -> H2O &
+    &+ O                  ","OH + S -> SO + H                    ","OH &
+    &+ SO -> SO2 + H                  ","OH + SI -> SIO &
+    &+ H                  ","OH + HSIO -> SIO + H2O              ","OH &
+    &+ H2SIO -> HSIO + H2O            ","OH + SIH3 -> H2SIO &
+    &+ H2             ","OH+ + C2 -> C2+ + OH                ","OH+ &
+    &+ C2H -> C2H+ + OH              ","OH+ + H2CO -> H2CO+ + OH            "&
+    &,"OH+ + H2O -> H2O+ + OH              ","OH+ + H2S -> H2S+ &
+    &+ OH              ","OH+ + HCO -> HCO+ + OH              ","OH+ &
+    &+ NH3 -> NH3+ + OH              ","OH+ + NO -> NO+ + OH                "&
+    &,"OH+ + O2 -> O2+ + OH                ","OH+ + S -> S+ &
+    &+ OH                  ","OH+ + E- -> O + H                   ","OH+ &
+    &+ C2 -> C2H+ + O                ","OH+ + C2H -> C2H2+ + O              "&
+    &,"OH+ + CN -> HCN+ + O                ","OH+ + CO2 -> HCO2+ &
+    &+ O              ","OH+ + CO -> HCO+ + O                ","OH+ &
+    &+ H2CO -> H2COH+ + O            ","OH+ + H2O -> H3O+ + O               "&
+    &,"OH+ + H2S -> H3S+ + O               ","OH+ + HCN -> HCNH+ &
+    &+ O              ","OH+ + HCO -> CO + H2O+              ","OH+ &
+    &+ HCO -> H2CO+ + O              ","OH+ + HNC -> HCNH+ + O              "&
+    &,"OH+ + N2 -> N2H+ + O                ","OH+ + NH3 -> NH4+ &
+    &+ O               ","OH+ + NO -> HNO+ + O                ","OH+ &
+    &+ OH -> H2O+ + O                ","OH+ + S -> HS+ + O                  "&
+    &,"OH+ + S -> SO+ + H                  ","OH+ + SI -> SIH+ &
+    &+ O                ","OH+ + SIH -> SIH2+ + O              ","OH+ &
+    &+ SIO -> SIOH+ + O              ","S + C+ -> C + S+                    "&
+    &,"S + H2S+ -> H2S + S+                ","S + HS+ -> HS + S&
+    &+                  ","S + H3S+ -> H2S2+ + H               ","S + O2H&
+    &+ -> HS+ + O2                ","S + SIO+ -> SO + SI+                "&
+    &,"S + HCO -> H + OCS                  ","S + HCO -> HS &
+    &+ CO                  ","S + HS -> S2 + H                    ","S &
+    &+ SO2 -> SO + SO                  ","S + SO -> S2 &
+    &+ O                    ","S + C2H3 -> CS + CH3                ","S &
+    &+ C3H2 -> C2H2 + CS               ","S + S -> S2 &
+    &+ PHOTON                ","S+ + SIC -> SIC+ + S                ","S+ &
+    &+ CH2 -> HCS+ + H                ","S+ + CH3 -> H2CS+ &
+    &+ H               ","S+ + H2S -> HS2+ + H                ","S+ &
+    &+ H2S -> S2+ + H2                ","S+ + OCS -> S2+ &
+    &+ CO                ","S+ + CH3CHO -> SO+ + C2H4           ","S+ &
+    &+ E- -> S + PHOTON               ","S2+ + E- -> S &
+    &+ S                   ","SI + CS+ -> CS + SI+                ","SI &
+    &+ H2CO+ -> H2CO + SI+            ","SI + H2S+ -> H2S + SI&
+    &+              ","SI + HS+ -> HS + SI+                ","SI + NO+ -> NO &
+    &+ SI+                ","SI + O2+ -> O2 + SI+                ","SI + S&
+    &+ -> S + SI+                  ","SI + HCO+ -> SIH+ + CO              "&
+    &,"SI + HS -> SIS + H                  ","SI + H2S -> SIS &
+    &+ H2                ","SI + CO2 -> SIO + CO                ","SI &
+    &+ CO -> SIO + C                  ","SI + NO -> SIO &
+    &+ N                  ","SI + O2 -> SIO + O                  ","SI &
+    &+ SO -> SIO + S                  ","SI + SO -> SIS &
+    &+ O                  ","SI + SO2 -> SIO + SO                ","SI &
+    &+ SO2 -> SIS + O2                ","SI + S -> SIS &
+    &+ PHOTON              ","SI+ + CH3OH -> SIOH+ + CH3          ","SI+ &
+    &+ OCS -> SIS+ + CO              ","SI+ + E- -> SI + PHOTON             "&
+    &,"SIC+ + E- -> SI + C                 ","SIC2+ + E- -> SI &
+    &+ C2               ","SIC2+ + E- -> SIC + C               ","SIC3+ &
+    &+ E- -> SIC2 + C              ","SIC3+ + E- -> SIC + C2              "&
+    &,"SIH + S+ -> S + SIH+                ","SIH + S+ -> SIS+ &
+    &+ H                ","SIH + S -> SIS + H                  ","SIH &
+    &+ S2 -> SIS + HS                ","SIH + H2O -> HSIO + H2              "&
+    &,"SIH + H2O -> HSIO + H2              ","SIH + H2O -> H2SIO &
+    &+ H              ","SIH + H2O -> H2SIO + H              ","SIH &
+    &+ O2 -> SIO + OH                ","SIH+ + E- -> SI + H                 "&
+    &,"SIH2+ + E- -> SI + H2               ","SIH2+ + E- -> SI + H &
+    &+ H            ","SIH2+ + E- -> SIH + H               ","SIH2+ &
+    &+ O2 -> SIOH+ + OH            ","SIH2+ + S -> SISH+ + H              "&
+    &,"SIH3+ + E- -> SIH2 + H              ","SIH3+ + E- -> SIH &
+    &+ H2              ","SIH4+ + E- -> SIH2 + H2             ","SIH4+ &
+    &+ E- -> SIH3 + H              ","SIH5+ + E- -> SIH3 + H2             "&
+    &,"SIH5+ + E- -> SIH4 + H              ","SIO+ + E- -> SI &
+    &+ O                 ","SIOH+ + E- -> SI + OH               ","SIOH+ &
+    &+ E- -> SIO + H               ","SIS+ + E- -> S + SI                 "&
+    &,"SISH+ + E- -> HS + SI               ","SISH+ + E- -> SIS &
+    &+ H               ","SO+ + E- -> S + O                   ","SO+ &
+    &+ C2H2 -> H2CS+ + CO            ","SO+ + C2H2 -> HCO+ + HCS            "&
+    &,"SO+ + C2H2 -> HCS+ + HCO            ","SO+ + C2H4 -> H2CS+ &
+    &+ H2CO          ","SO+ + C2H4 -> H2COH+ + HCS          ","SO+ &
+    &+ C2H4 -> H2CSH+ + HCO          ","SO+ + OCS -> S2+ + CO2              "&
+    &,"SO2+ + E- -> S + O + O              ","SO2+ + E- -> SO &
+    &+ O                 ","#H + SURFACETRANSFER -> @H          ","#H2 &
+    &+ SURFACETRANSFER -> @H2        ","#HE + SURFACETRANSFER -> @HE        "&
+    &,"#C + SURFACETRANSFER -> @C          ","#CH &
+    &+ SURFACETRANSFER -> @CH        ","#CH2 + SURFACETRANSFER -> @CH2      "&
+    &,"#N + SURFACETRANSFER -> @N          ","#CH3 &
+    &+ SURFACETRANSFER -> @CH3      ","#NH + SURFACETRANSFER -> @NH        "&
+    &,"#CH4 + SURFACETRANSFER -> @CH4      ","#NH2 &
+    &+ SURFACETRANSFER -> @NH2      ","#O + SURFACETRANSFER -> @O          "&
+    &,"#NH3 + SURFACETRANSFER -> @NH3      ","#OH &
+    &+ SURFACETRANSFER -> @OH        ","#H2O + SURFACETRANSFER -> @H2O      "&
+    &,"#C2 + SURFACETRANSFER -> @C2        ","#MG &
+    &+ SURFACETRANSFER -> @MG        ","#C2H + SURFACETRANSFER -> @C2H      "&
+    &,"#C2H2 + SURFACETRANSFER -> @C2H2    ","#CN &
+    &+ SURFACETRANSFER -> @CN        ","#HCN + SURFACETRANSFER -> @HCN      "&
+    &,"#HNC + SURFACETRANSFER -> @HNC      ","#C2H3 &
+    &+ SURFACETRANSFER -> @C2H3    ","#CO + SURFACETRANSFER -> @CO        "&
+    &,"#N2 + SURFACETRANSFER -> @N2        ","#H2CN &
+    &+ SURFACETRANSFER -> @H2CN    ","#C2H4 + SURFACETRANSFER -> @C2H4    "&
+    &,"#SI + SURFACETRANSFER -> @SI        ","#HCO &
+    &+ SURFACETRANSFER -> @HCO      ","#C2H5 + SURFACETRANSFER -> @C2H5    "&
+    &,"#SIH + SURFACETRANSFER -> @SIH      ","#NO &
+    &+ SURFACETRANSFER -> @NO        ","#H2CO + SURFACETRANSFER -> @H2CO    "&
+    &,"#SIH2 + SURFACETRANSFER -> @SIH2    ","#H2COH &
+    &+ SURFACETRANSFER -> @H2COH  ","#HNO + SURFACETRANSFER -> @HNO      "&
+    &,"#CH2OH + SURFACETRANSFER -> @CH2OH  ","#SIH3 &
+    &+ SURFACETRANSFER -> @SIH3    ","#O2 + SURFACETRANSFER -> @O2        "&
+    &,"#CH3OH + SURFACETRANSFER -> @CH3OH  ","#SIH4 &
+    &+ SURFACETRANSFER -> @SIH4    ","#S + SURFACETRANSFER -> @S          "&
+    &,"#O2H + SURFACETRANSFER -> @O2H      ","#HS &
+    &+ SURFACETRANSFER -> @HS        ","#H2S + SURFACETRANSFER -> @H2S      "&
+    &,"#CL + SURFACETRANSFER -> @CL        ","#HCL &
+    &+ SURFACETRANSFER -> @HCL      ","#C2N + SURFACETRANSFER -> @C2N      "&
+    &,"#C3H2 + SURFACETRANSFER -> @C3H2    ","#CH3CCH &
+    &+ SURFACETRANSFER -> @CH3CCH","#SIC + SURFACETRANSFER -> @SIC      "&
+    &,"#CH3CN + SURFACETRANSFER -> @CH3CN  ","#CH2CO &
+    &+ SURFACETRANSFER -> @CH2CO  ","#CH3CNH + SURFACETRANSFER -> @CH3CNH"&
+    &,"#OCN + SURFACETRANSFER -> @OCN      ","#HNCO &
+    &+ SURFACETRANSFER -> @HNCO    ","#SIO + SURFACETRANSFER -> @SIO      "&
+    &,"#CS + SURFACETRANSFER -> @CS        ","#CO2 &
+    &+ SURFACETRANSFER -> @CO2      ","#CH3CHO + SURFACETRANSFER -> @CH3CHO"&
+    &,"#HCS + SURFACETRANSFER -> @HCS      ","#HSIO &
+    &+ SURFACETRANSFER -> @HSIO    ","#NH2CHO + SURFACETRANSFER -> @NH2CHO"&
+    &,"#HCOO + SURFACETRANSFER -> @HCOO    ","#H2CS &
+    &+ SURFACETRANSFER -> @H2CS    ","#NO2 + SURFACETRANSFER -> @NO2      "&
+    &,"#NS + SURFACETRANSFER -> @NS        ","#H2SIO &
+    &+ SURFACETRANSFER -> @H2SIO  ","#HCOOH + SURFACETRANSFER -> @HCOOH  "&
+    &,"#SO + SURFACETRANSFER -> @SO        ","#C4H &
+    &+ SURFACETRANSFER -> @C4H      ","#C3N + SURFACETRANSFER -> @C3N      "&
+    &,"#HC3N + SURFACETRANSFER -> @HC3N    ","#NCCN &
+    &+ SURFACETRANSFER -> @NCCN    ","#SIC2 + SURFACETRANSFER -> @SIC2    "&
+    &,"#SIS + SURFACETRANSFER -> @SIS      ","#OCS &
+    &+ SURFACETRANSFER -> @OCS      ","#C4N + SURFACETRANSFER -> @C4N      "&
+    &,"#SIC3 + SURFACETRANSFER -> @SIC3    ","#SO2 &
+    &+ SURFACETRANSFER -> @SO2      ","#S2 + SURFACETRANSFER -> @S2        "&
+    &,"#HS2 + SURFACETRANSFER -> @HS2      ","#H2S2 &
+    &+ SURFACETRANSFER -> @H2S2    ","@H + SURFACETRANSFER -> #H          "&
+    &,"@H2 + SURFACETRANSFER -> #H2        ","@HE &
+    &+ SURFACETRANSFER -> #HE        ","@C + SURFACETRANSFER -> #C          "&
+    &,"@CH + SURFACETRANSFER -> #CH        ","@CH2 &
+    &+ SURFACETRANSFER -> #CH2      ","@N + SURFACETRANSFER -> #N          "&
+    &,"@CH3 + SURFACETRANSFER -> #CH3      ","@NH &
+    &+ SURFACETRANSFER -> #NH        ","@CH4 + SURFACETRANSFER -> #CH4      "&
+    &,"@NH2 + SURFACETRANSFER -> #NH2      ","@O &
+    &+ SURFACETRANSFER -> #O          ","@NH3 &
+    &+ SURFACETRANSFER -> #NH3      ","@OH + SURFACETRANSFER -> #OH        "&
+    &,"@H2O + SURFACETRANSFER -> #H2O      ","@C2 &
+    &+ SURFACETRANSFER -> #C2        ","@MG + SURFACETRANSFER -> #MG        "&
+    &,"@C2H + SURFACETRANSFER -> #C2H      ","@C2H2 &
+    &+ SURFACETRANSFER -> #C2H2    ","@CN + SURFACETRANSFER -> #CN        "&
+    &,"@HCN + SURFACETRANSFER -> #HCN      ","@HNC &
+    &+ SURFACETRANSFER -> #HNC      ","@C2H3 + SURFACETRANSFER -> #C2H3    "&
+    &,"@CO + SURFACETRANSFER -> #CO        ","@N2 &
+    &+ SURFACETRANSFER -> #N2        ","@H2CN + SURFACETRANSFER -> #H2CN    "&
+    &,"@C2H4 + SURFACETRANSFER -> #C2H4    ","@SI &
+    &+ SURFACETRANSFER -> #SI        ","@HCO + SURFACETRANSFER -> #HCO      "&
+    &,"@C2H5 + SURFACETRANSFER -> #C2H5    ","@SIH &
+    &+ SURFACETRANSFER -> #SIH      ","@NO + SURFACETRANSFER -> #NO        "&
+    &,"@H2CO + SURFACETRANSFER -> #H2CO    ","@SIH2 &
+    &+ SURFACETRANSFER -> #SIH2    ","@H2COH + SURFACETRANSFER -> #H2COH  "&
+    &,"@HNO + SURFACETRANSFER -> #HNO      ","@CH2OH &
+    &+ SURFACETRANSFER -> #CH2OH  ","@SIH3 + SURFACETRANSFER -> #SIH3    "&
+    &,"@O2 + SURFACETRANSFER -> #O2        ","@CH3OH &
+    &+ SURFACETRANSFER -> #CH3OH  ","@SIH4 + SURFACETRANSFER -> #SIH4    "&
+    &,"@S + SURFACETRANSFER -> #S          ","@O2H &
+    &+ SURFACETRANSFER -> #O2H      ","@HS + SURFACETRANSFER -> #HS        "&
+    &,"@H2S + SURFACETRANSFER -> #H2S      ","@CL &
+    &+ SURFACETRANSFER -> #CL        ","@HCL + SURFACETRANSFER -> #HCL      "&
+    &,"@C2N + SURFACETRANSFER -> #C2N      ","@C3H2 &
+    &+ SURFACETRANSFER -> #C3H2    ","@CH3CCH + SURFACETRANSFER -> #CH3CCH"&
+    &,"@SIC + SURFACETRANSFER -> #SIC      ","@CH3CN &
+    &+ SURFACETRANSFER -> #CH3CN  ","@CH2CO + SURFACETRANSFER -> #CH2CO  "&
+    &,"@CH3CNH + SURFACETRANSFER -> #CH3CNH","@OCN &
+    &+ SURFACETRANSFER -> #OCN      ","@HNCO + SURFACETRANSFER -> #HNCO    "&
+    &,"@SIO + SURFACETRANSFER -> #SIO      ","@CS &
+    &+ SURFACETRANSFER -> #CS        ","@CO2 + SURFACETRANSFER -> #CO2      "&
+    &,"@CH3CHO + SURFACETRANSFER -> #CH3CHO","@HCS &
+    &+ SURFACETRANSFER -> #HCS      ","@HSIO + SURFACETRANSFER -> #HSIO    "&
+    &,"@NH2CHO + SURFACETRANSFER -> #NH2CHO","@HCOO &
+    &+ SURFACETRANSFER -> #HCOO    ","@H2CS + SURFACETRANSFER -> #H2CS    "&
+    &,"@NO2 + SURFACETRANSFER -> #NO2      ","@NS &
+    &+ SURFACETRANSFER -> #NS        ","@H2SIO + SURFACETRANSFER -> #H2SIO  "&
+    &,"@HCOOH + SURFACETRANSFER -> #HCOOH  ","@SO &
+    &+ SURFACETRANSFER -> #SO        ","@C4H + SURFACETRANSFER -> #C4H      "&
+    &,"@C3N + SURFACETRANSFER -> #C3N      ","@HC3N &
+    &+ SURFACETRANSFER -> #HC3N    ","@NCCN + SURFACETRANSFER -> #NCCN    "&
+    &,"@SIC2 + SURFACETRANSFER -> #SIC2    ","@SIS &
+    &+ SURFACETRANSFER -> #SIS      ","@OCS + SURFACETRANSFER -> #OCS      "&
+    &,"@C4N + SURFACETRANSFER -> #C4N      ","@SIC3 &
+    &+ SURFACETRANSFER -> #SIC3    ","@SO2 + SURFACETRANSFER -> #SO2      "&
+    &,"@S2 + SURFACETRANSFER -> #S2        ","@HS2 &
+    &+ SURFACETRANSFER -> #HS2      ","@H2S2 + SURFACETRANSFER -> #H2S2    "/&
+    &)
+    REAL(dp) :: REACTIONRATE(3353)
 INTEGER, PARAMETER :: 	re1 (3187)=(/18,72,77,84,95,113,126,201,202,286&
     &,283,311,22,29,222,153,37,209,241,214,223,168,48,189,85,110,240,239,4,8&
     &,112,138,151,269,64,184,332,272,289,194,93,125,256,273,253,13,94,227,152&

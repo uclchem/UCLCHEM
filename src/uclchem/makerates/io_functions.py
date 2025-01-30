@@ -565,6 +565,9 @@ def build_ode_string(
         elif species.name[0] == "#":
             species_list[surface_index].gains += f"+YDOT({n+1})"
 
+    for n, reaction in enumerate(reaction_list):
+        ode_string += truncate_line(f"REACTIONRATE({n+1})={reaction.ode_bit}\n")
+
     for n, species in enumerate(species_list):
         ydot_string = species_ode_string(n, species)
         ode_string += ydot_string
@@ -578,18 +581,35 @@ def build_ode_string(
 
         ode_string += f"IF (YDOT({surface_index+1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
 
+        surf_species = [
+            i
+            for i in species_list
+            if i.name not in ["SURFACE", "BULK"] and i.is_surface_species()
+        ]
+        i = len(reaction_list)
+        j = len(reaction_list) + len(surf_species)
         for n, species in enumerate(species_list):
             if species.name[0] == "#":
+                i += 1
+                j += 1
                 bulk_partner = species_names.index(species.name.replace("#", "@"))
+                ode_string += f"    REACTIONRATE({i}) = -YDOT({surface_index+1})*surfaceCoverage*Y({bulk_partner+1})/safeBulk\n"
+                ode_string += f"    REACTIONRATE({j}) = 0.0\n"
                 if not species_list[bulk_partner].is_refractory:
                     ode_string += f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({bulk_partner+1})/safeBulk\n"
             if species.name[0] == "@":
                 if not species.is_refractory:
                     ode_string += f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({n+1})/safeBulk\n"
         ode_string += "ELSE\n"
+        i = len(reaction_list)
+        j = len(reaction_list) + len(surf_species)
         for n, species in enumerate(species_list):
             if species.name[0] == "@":
+                i += 1
+                j += 1
                 surface_version = species_names.index(species.name.replace("@", "#"))
+                ode_string += f"    REACTIONRATE({i}) = 0.0\n"
+                ode_string += f"    REACTIONRATE({j}) = -YDOT({surface_index+1})*surfaceCoverage*Y({surface_version+1})\n"
                 ode_string += f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({surface_version+1})\n"
             if species.name[0] == "#":
                 ode_string += f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({n+1})\n"
@@ -638,7 +658,7 @@ def species_ode_string(n: int, species: Species) -> str:
     return ydot_string
 
 
-def write_evap_lists(network_file, species_list: list[Species]) -> None:
+def write_evap_lists(network_file, species_list: list[Species]) -> int:
     """Two phase networks mimic episodic thermal desorption seen in lab (see Viti et al. 2004)
     by desorbing fixed fractions of material at specific temperatures. Three phase networks just
     use binding energy and that fact we set binding energies in bulk to water by default.
@@ -708,6 +728,7 @@ def write_evap_lists(network_file, species_list: list[Species]) -> None:
     )
     network_file.write(array_to_string("formationEnthalpy", enthalpyList, type="float"))
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
+    return len(iceList)
 
 
 def truncate_line(input_string: str, lineLength: int = 72) -> str:
@@ -786,7 +807,7 @@ def write_network_file(file_name: Path, network: Network):
     openFile.write(array_to_string("    atomCounts", atoms, type="int"))
 
     # then write evaporation stuff
-    write_evap_lists(openFile, species_list)
+    n_ice_species = write_evap_lists(openFile, species_list)
 
     # finally all reactions
     reactant1 = []
@@ -803,6 +824,7 @@ def write_network_file(file_name: Path, network: Network):
     # duplicates = []
     tmins = []
     tmaxs = []
+
     # store important reactions
     reaction_indices = ""
     for reaction, index in network.important_reactions.items():
@@ -830,6 +852,21 @@ def write_network_file(file_name: Path, network: Network):
     #     duplicates = [9999]
     #     tmaxs = [0]
     #     tmins = [0]
+
+    reaction_names = []
+    for n, reaction in enumerate(reaction_list):
+        reaction_names.append(str(reaction))
+    for n, species in enumerate(species_list):
+        if species.is_surface_species() and species.name not in ["SURFACE", "BULK"]:
+            reaction_name = f"{species.name} + SURFACETRANSFER -> @{species.name[1:]}"
+            reaction_names.append(reaction_name)
+    for n, species in enumerate(species_list):
+        if species.is_surface_species() and species.name not in ["SURFACE", "BULK"]:
+            reaction_name = f"@{species.name[1:]} + SURFACETRANSFER -> {species.name}"
+            reaction_names.append(reaction_name)
+
+    openFile.write(array_to_string("    reactionNames", reaction_names, type="string"))
+    openFile.write(f"    REAL(dp) :: REACTIONRATE({len(reactant1)+n_ice_species})\n")
 
     openFile.write(array_to_string("\tre1", reactant1, type="int"))
     openFile.write(array_to_string("\tre2", reactant2, type="int"))

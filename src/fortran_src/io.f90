@@ -2,13 +2,13 @@ MODULE IO
     USE chemistry
     USE physicscore
     
-    CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile, outFile
-    LOGICAL :: columnOutput=.False.,fullOutput=.False.,readAbunds=.False.,writeAbunds=.False.
+    CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, rateFile, columnFile, outFile
+    LOGICAL :: columnOutput=.False.,fullOutput=.False.,rateOutput=.False.,readAbunds=.False.,writeAbunds=.False.
     CHARACTER (LEN=15),ALLOCATABLE :: outSpecies(:)
     INTEGER :: nout
     INTEGER, ALLOCATABLE :: outIndx(:)
 
-    INTEGER, PARAMETER :: outputId=10,columnId=11,abundLoadID=71,abundSaveID=72,outID=74,debugId=79,inputId=21
+    INTEGER, PARAMETER :: outputId=10,columnId=11,rateId=12,abundLoadID=71,abundSaveID=72,outID=74,debugId=79,inputId=21
 CONTAINS
     !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     SUBROUTINE fileSetup
@@ -25,6 +25,12 @@ CONTAINS
         END IF
         335 FORMAT("Time,Density,gasTemp,dustTemp,av,radfield,zeta,point,",(999(A,:,',')))
         ! 334 FORMAT("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
+        
+        INQUIRE(UNIT=rateId, OPENED=rateOutput)
+        IF (rateOutput) THEN
+            WRITE(rateId, 336) reactionNames
+        END IF
+        336 FORMAT("Time,Density,gasTemp,dustTemp,av,radfield,zeta,point,",(9999(A,:,',')))
 
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
         INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
@@ -78,6 +84,10 @@ CONTAINS
             WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,abund(:neq-1,dstep)
             8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
         END IF
+        IF (rateOutput) THEN
+            WRITE(rateId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
+            8021 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
+        END IF
 
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90
@@ -94,6 +104,7 @@ CONTAINS
 
     SUBROUTINE closeFiles
         CLOSE(outputId)
+        CLOSE(rateId)
         CLOSE(columnId)
         CLOSE(abundSaveID)
         CLOSE(abundLoadID)
