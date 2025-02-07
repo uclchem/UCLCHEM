@@ -23,14 +23,14 @@ CONTAINS
             ! WRITE(outputId,*) "Radfield ", radfield
             WRITE(outputId,335) specName
         END IF
-        335 FORMAT("Time,Density,gasTemp,dustTemp,av,radfield,zeta,point,",(999(A,:,',')))
+        335 FORMAT("Time,Density,gasTemp,dustTemp,baseAv,Av,radfield,zeta,point,",(999(A,:,',')))
         ! 334 FORMAT("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
         
         INQUIRE(UNIT=rateId, OPENED=rateOutput)
         IF (rateOutput) THEN
             WRITE(rateId, 336) reactionNames
         END IF
-        336 FORMAT("Time,Density,gasTemp,dustTemp,av,radfield,zeta,point,",(9999(A,:,',')))
+        336 FORMAT("Time,Density,gasTemp,dustTemp,baseAv,Av,radfield,zeta,point,",(9999(A,:,',')))
 
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
         INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
@@ -81,12 +81,12 @@ CONTAINS
                 chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
             end if 
         ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
-            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,abund(:neq-1,dstep)
-            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
+            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),baseAv,av(dstep),radfield,zeta,dstep,abund(:neq-1,dstep)
+            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
         END IF
         IF (rateOutput) THEN
-            WRITE(rateId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
-            8021 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
+            WRITE(rateId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),baseAv,av(dstep),radfield,zeta,dstep,REACTIONRATE
+            8021 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
         END IF
 
         !Every 'writestep' timesteps, write the chosen species out to separate file

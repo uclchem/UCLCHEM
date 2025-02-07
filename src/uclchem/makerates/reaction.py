@@ -348,6 +348,7 @@ class Reaction:
         for species in self.get_reactants():
             if species in species_names:
                 ode_bit += f"*Y({species_names.index(species)+1})"
+
             elif species == "BULKSWAP":
                 ode_bit += "*bulkLayersReciprocal"
             elif species == "SURFSWAP":
@@ -358,6 +359,7 @@ class Reaction:
                     ode_bit = ode_bit + f"*Y({species_names.index('H')+1})"
             elif (species in ["THERM"]) and not (three_phase):
                 ode_bit += "*D/safeMantle"
+
             if "H2FORM" in self.get_reactants():
                 # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
                 break

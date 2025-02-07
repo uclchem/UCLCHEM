@@ -406,7 +406,7 @@ CONTAINS
     SUBROUTINE get_rates(dictionary,abundancesIn,speciesIndx,rateIndxs,&
         &speciesRates,successFlag,transfer,swap,bulk_layers)
         !Given a species of interest, some parameters and abundances, this subroutine
-        !return the rate of all reactions that include that species plus some extra variables
+        !returns the rate of all reactions that include that species plus some extra variables
         !to allow for the calculation of the rate of bulk/surface ice transfer.
         USE cloud_mod
         ! USE constants, only : nspec
@@ -454,10 +454,12 @@ CONTAINS
                 IF (specname(speci) .eq. "@"//specname(speciesIndx)(2:)) bulk_version=speci
                 IF (specname(speci) .eq. "#"//specname(speciesIndx)(2:)) surface_version=speci
             END DO
-            IF (YDOT(nsurface) .lt. 0) THEN
-                transfer=YDOT(nsurface)*surfaceCoverage*abund(bulk_version,1)/safeBulk
+            IF (SURFGROWTHUNCORRECTED .lt. 0) THEN
+                surfaceCoverage = MIN(1.0, safeBulk/safeMantle)
+                transfer=SURFGROWTHUNCORRECTED*surfaceCoverage*abund(bulk_version,1)/safeBulk
             ELSE
-                transfer=YDOT(nsurface)*surfaceCoverage*abund(surface_version,1)
+                surfaceCoverage = bulkGainFromMantleBuildUp()
+                transfer=SURFGROWTHUNCORRECTED*surfaceCoverage*abund(surface_version,1)
             END If
             swap=totalSwap
             bulk_layers=bulkLayersReciprocal

@@ -6,6 +6,7 @@ IMPLICIT NONE
     &,nn=26,no=45,nf=336,np=336,ns=162,ncl=185,nli=336,nna=336,nmg=68,nsi=104&
     &,npah=336,n15n=336,n13c=336,n18o=336,nelec=333,nfe=336
     LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.
+    REAL(dp) :: SURFGROWTHUNCORRECTED
 CHARACTER(Len=7), PARAMETER ::     specname (335)=(/"H      ","#H     "&
     &,"H+     ","@H     ","H2     ","#H2    ","H2+    ","@H2    ","H3+    "&
     &,"HE     ","#HE    ","HE+    ","@HE    ","HEH+   ","C      ","#C     "&

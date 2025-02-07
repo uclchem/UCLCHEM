@@ -572,6 +572,8 @@ def build_ode_string(
         ydot_string = species_ode_string(n, species)
         ode_string += ydot_string
 
+    ode_string += f"    SURFGROWTHUNCORRECTED = YDOT({surface_index+1})\n"
+
     # now add bulk transfer to rate of change of surface species after they've already been calculated
     if three_phase:
         ode_string += "!Update surface species for bulk growth, replace surfaceCoverage with alpha_des\n"
@@ -802,6 +804,7 @@ def write_network_file(file_name: Path, network: Network):
         openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
     else:
         openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .FALSE.\n")
+    openFile.write("    REAL(dp) :: SURFGROWTHUNCORRECTED\n")
     openFile.write(array_to_string("    specname", names, type="string"))
     openFile.write(array_to_string("    mass", masses, type="float"))
     openFile.write(array_to_string("    atomCounts", atoms, type="int"))

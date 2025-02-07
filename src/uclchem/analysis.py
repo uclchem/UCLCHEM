@@ -10,6 +10,7 @@ import pandas as pd
 from pandas import Series, read_csv
 import pandas as pd
 from seaborn import color_palette
+from uclchem.makerates import Reaction
 
 from uclchem.constants import n_species
 
@@ -317,6 +318,18 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
     old_total_destruct = 0.0
     old_total_form = 0.0
     formatted_reacs = _format_reactions(reactions[reac_indxs])
+    if species_name[0] == "#":
+        surftransfer_reacs = [
+            f"@{species_name[1:]} + SURFACETRANSFER -> {species_name}",
+            f"{species_name} + SURFACETRANSFER -> @{species_name[1:]}",
+        ]
+        formatted_reacs.extend(surftransfer_reacs)
+    if species_name[0] == "@":
+        surftransfer_reacs = [
+            f"{species_name} + SURFACETRANSFER -> #{species_name[1:]}",
+            f"#{species_name[1:]} + SURFACETRANSFER -> {species_name}",
+        ]
+        formatted_reacs.extend(surftransfer_reacs)
 
     with open(output_file, "w") as f:
         f.write("All Reactions\n************************\n")
@@ -348,23 +361,18 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
             # it's not a reaction in the network so won't get picked up any other way. We manually add it.
             if transfer <= 0:
                 if species_name[0] == "#":
-                    change_reacs.append(
-                        f"@{species_name[1:]} + SURFACE_TRANSFER -> {species_name}"
-                    )
+                    change_reacs.append(surftransfer_reacs[0])
+                    changes = np.append(changes, transfer)
                 elif species_name[0] == "@":
-                    change_reacs.append(
-                        f"{species_name} + SURFACE_TRANSFER -> #{species_name[1:]}"
-                    )
+                    change_reacs.append(surftransfer_reacs[1])
+                    changes = np.append(changes, transfer)
             else:
                 if species_name[0] == "#":
-                    change_reacs.append(
-                        f"{species_name} + SURFACE_TRANSFER -> @{species_name[1:]}"
-                    )
+                    change_reacs.append(surftransfer_reacs[1])
+                    changes = np.append(changes, -transfer)
                 elif species_name[0] == "@":
-                    change_reacs.append(
-                        f"#{species_name[1:]} + SURFACE_TRANSFER -> {species_name}"
-                    )
-            changes = np.append(changes, transfer)
+                    change_reacs.append(surftransfer_reacs[0])
+                    changes = np.append(changes, transfer)
 
             # Then we remove the reactions that are not important enough to be printed by finding
             # which of the top reactions we need to reach rate_threshold*total_rate
@@ -378,28 +386,28 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
             )
 
             # only update if list of reactions change or rates change by factor of 10
-            if (
-                (old_key_reactions != key_reactions)
-                or (
-                    np.abs(
-                        np.log10(np.abs(old_total_destruct))
-                        - np.log10(np.abs(total_destruct))
-                    )
-                    > 0
-                )
-                or (np.abs(np.log10(old_total_form) - np.log10(total_formation)) > 0)
-            ):
-                old_key_reactions = key_reactions[:]
-                old_total_form = total_formation
-                old_total_destruct = total_destruct
-                _write_analysis(
-                    f,
-                    row["Time"],
-                    total_formation,
-                    total_destruct,
-                    key_reactions,
-                    key_changes,
-                )
+            # if (
+            #     (old_key_reactions != key_reactions)
+            #     or (
+            #         np.abs(
+            #             np.log10(np.abs(old_total_destruct))
+            #             - np.log10(np.abs(total_destruct))
+            #         )
+            #         > 0
+            #     )
+            #     or (np.abs(np.log10(old_total_form) - np.log10(total_formation)) > 0)
+            # ):
+            old_key_reactions = key_reactions[:]
+            old_total_form = total_formation
+            old_total_destruct = total_destruct
+            _write_analysis(
+                f,
+                row["Time"],
+                total_formation,
+                total_destruct,
+                change_reacs,
+                changes,
+            )
 
 
 def _param_dict_from_output(output_line):
@@ -414,8 +422,7 @@ def _param_dict_from_output(output_line):
         "initialtemp": output_line["gasTemp"],
         "zeta": output_line["zeta"],
         "radfield": output_line["radfield"],
-        "baseav": output_line["av"],
-        "rout": output_line["av"] * (1.6e21) / output_line["Density"],
+        "baseav": output_line["baseAv"],
     }
     return param_dict
 
@@ -463,45 +470,40 @@ def _get_rates_of_change(
     changes = []
     reactionList = []
     three_phase = "@" in "".join(speciesList)
-    # surfaceCoverage = np.min([1.0, row["SURFACE"] / row["BULK"]])
+    safeMantle = np.max([1.0e-30, row["SURFACE"]])
     for i, reaction in enumerate(reactions):
+        reaction_instance = Reaction([*reaction, 0, 0, 0, 0, 0])
         change = rates[i]
         reactants = reaction[0:3]
         products = reaction[3:]
 
         # Counting the same as Reaction.body_count
-        # TODO: Move reactant_count to here
-        reactant_count = 0
+        reactant_count = reaction_instance.body_count
 
+        change = change * (row["Density"] ** (reactant_count))
         for reactant in reactants:
             if reactant in speciesList:
                 change = change * row[reactant]
-                reactant_count += 1
-            elif reactant in ["LH", "LHDES"]:
-                reactant_count -= 1
-                if "@" in reactants[0]:
-                    change = change * bulk_layers
-            elif reactant in ["FREEZE"]:
-                reactant_count += 1
 
-            elif reactant in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
-                change = change / np.max([1.0e-30, row["SURFACE"]])
-                if reactant in ["DESOH2"]:
-                    reactant_count += 1
-                    change = change * row["H"]
-            elif reactant == "SURFSWAP":
-                change = change * swap / np.max([1.0e-30, row["SURFACE"]])
             elif reactant == "BULKSWAP":
                 change = change * bulk_layers
+            elif reactant == "SURFSWAP":
+                change = change * swap / safeMantle
+            elif reactant in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
+                change = change / safeMantle
+                if reactant == "DESOH2":
+                    change = change * row["H"]
+            elif (not three_phase) and (reactant in ["THERM"]):
+                change = change * row["Density"] / safeMantle
 
             if "H2FORM" in reactants:
-                reactant_count += 1
                 # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
                 break
 
-            if (not three_phase) and (reactant in ["THERM"]):
-                change = change * row["Density"] / np.max([1.0e-30, row["SURFACE"]])
-        change = change * (row["Density"] ** (reactant_count - 1))
+        if "LH" in reactants[2]:
+            if "@" in reactants[0]:
+                change = change * bulk_layers
+
         if species in reactants:
             changes.append(-change)
             reactionList.append(reaction)

@@ -8042,6 +8042,7 @@ REACTIONRATE(3187)=+RATE(3187)*D*Y(319)*Y(333)
     &+YDOT(287)+YDOT(294)+YDOT(295)+YDOT(298)+YDOT(299)+YDOT(310)+YDOT(312)&
     &+YDOT(315)+YDOT(317)+YDOT(327)+YDOT(331)
     YDOT(335) = PROD
+    SURFGROWTHUNCORRECTED = YDOT(335)
 !Update surface species for bulk growth, replace surfaceCoverage with alpha_des
 !Since ydot(surface_index) is negative, bulk is lost and surface forms
 IF (YDOT(335) .lt. 0) THEN
