@@ -12,7 +12,7 @@ import pandas as pd
 from seaborn import color_palette
 from uclchem.makerates import Reaction
 
-from uclchem.constants import n_species
+from uclchem.constants import n_species, n_reactions
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -68,7 +68,6 @@ def read_rate_file(rate_file):
     data = read_csv(f)
     data.columns = data.columns.str.strip()
     return data
-
 
 def _reactant_count(species: str, reaction_string: str) -> int:
     """Count how many times a species is consumed in a reaction
@@ -225,7 +224,7 @@ def plot_species(ax, df, species, legend=True, **plot_kwargs):
     return ax
 
 
-def read_analysis(filepath):
+def read_analysis(filepath, species):
     with open(filepath, "r") as file:
         lines = file.readlines()
     for i, line in enumerate(lines):
@@ -234,6 +233,15 @@ def read_analysis(filepath):
             all_reactions = lines[i + 2 : first_newline]
             all_reactions = [reaction.strip("\n") for reaction in all_reactions]
             break
+
+    counts = [all_reactions.count(reac) for reac in all_reactions]
+    for i, count in enumerate(counts):
+        if count > 1:
+            print(
+                f"{all_reactions[i]} was found to be in the reaction list {count} times."
+            )
+            print(f"Renaming this time to '{all_reactions[i]} ({i})'")
+            all_reactions[i] = f"{all_reactions[i]} ({i})"
 
     n_cols = len(all_reactions) + 1
     columns = ["Time"]
@@ -261,7 +269,11 @@ def read_analysis(filepath):
                     j for j, line in enumerate(segment_lines) if reaction in line
                 ][0]
                 rate = float(segment_lines[reac_indx].split()[-3])
-            new_row[i + 1] = rate
+            # Here we use the fact that the sign of the formation/destruction rate is already
+            # correct, so we only need to scale it by 1 (in e.g. H+OH->H2O) or 2 (H+H->H2)
+            new_row[i + 1] = rate * (
+                _product_count(species, reaction) + _reactant_count(species, reaction)
+            )
 
         new_row_dict = dict(zip(columns, new_row))
         new_row_df = pd.DataFrame(new_row_dict, index=[0])
@@ -318,6 +330,7 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
     old_total_destruct = 0.0
     old_total_form = 0.0
     formatted_reacs = _format_reactions(reactions[reac_indxs])
+
     if species_name[0] == "#":
         surftransfer_reacs = [
             f"@{species_name[1:]} + SURFACETRANSFER -> {species_name}",
@@ -376,14 +389,14 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
 
             # Then we remove the reactions that are not important enough to be printed by finding
             # which of the top reactions we need to reach rate_threshold*total_rate
-            (
-                total_formation,
-                total_destruct,
-                key_reactions,
-                key_changes,
-            ) = _remove_slow_reactions(
-                changes, change_reacs, rate_threshold=rate_threshold
-            )
+            # (
+            #     total_formation,
+            #     total_destruct,
+            #     key_reactions,
+            #     key_changes,
+            # ) = _remove_slow_reactions(
+            #     changes, change_reacs, rate_threshold=rate_threshold
+            # )
 
             # only update if list of reactions change or rates change by factor of 10
             # if (
@@ -439,7 +452,7 @@ def _get_species_rates(param_dict, input_abundances, species_index, reac_indxs):
     """
     input_abund = np.zeros(n_species)
     input_abund[: len(input_abundances)] = input_abundances
-    rate_indxs = np.ones(n_species)
+    rate_indxs = np.ones(n_reactions)
     rate_indxs[: len(reac_indxs)] = reac_indxs
     rates, success_flag, transfer, swap, bulk_layers = wrap.get_rates(
         param_dict, input_abund, species_index, rate_indxs

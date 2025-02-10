@@ -412,9 +412,9 @@ CONTAINS
         ! USE constants, only : nspec
         !f2py integer, intent(aux) :: nspec
         CHARACTER(LEN=*):: dictionary
-        DOUBLE PRECISION :: abundancesIn(nspec),speciesRates(nspec)
+        DOUBLE PRECISION :: abundancesIn(nspec),speciesRates(nReac)
         DOUBLE PRECISION :: transfer,swap,bulk_layers
-        INTEGER:: rateIndxs(nspec),speciesIndx, successFlag
+        INTEGER:: rateIndxs(nReac),speciesIndx, successFlag
         DOUBLE PRECISION :: ydot(nspec+1)
         INTEGER :: speci,bulk_version,surface_version
         !f2py intent(in) dictionary,abundancesIn,speciesIndx,rateIndxs
