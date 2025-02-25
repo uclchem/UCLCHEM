@@ -19,7 +19,7 @@ SUBROUTINE calculateReactionRates
         ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
         DO j=idx1,idx2
             IF (ANY(bulkList==re1(j))) THEN
-                rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * (1-0.007)**(1+0.5/bulkLayersReciprocal)
+                rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * (1.0-0.007)**(1.0+0.5/bulkLayersReciprocal)
             ELSE IF (ANY(surfaceList==re1(j))) THEN
                 rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO
             END IF
