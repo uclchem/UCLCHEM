@@ -259,18 +259,18 @@ def collapse(
         param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints
     )
     abunds, specname, success_flag = wrap.collapse(
-        collapseIn=collapse,
-        collapseFileIn=physics_output,
-        writeOut=write_physics,
+        collapsein=collapse,
+        collapsefilein=physics_output,
+        writeout=write_physics,
         dictionary=param_dict,
         outspeciesin=out_species,
         returnarray=return_array or return_dataframe,
-        givesstartabund=give_start_abund,
+        givestartabund=give_start_abund,
         timepoints=timepoints,
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
-        abundanceStart=starting_chemistry,
+        abundancestart=starting_chemistry,
     )
     if return_array or return_dataframe:
         physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
