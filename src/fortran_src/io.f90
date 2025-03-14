@@ -1,6 +1,7 @@
 MODULE IO
     USE chemistry
     USE physicscore
+    USE network
     
     CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, rateFile, columnFile, outFile
     LOGICAL :: columnOutput=.False.,fullOutput=.False.,rateOutput=.False.,readAbunds=.False.,writeAbunds=.False.
