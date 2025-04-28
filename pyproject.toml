@@ -1,9 +1,7 @@
 [build-system]
-build-backend="setuptools.build_meta"
-requires = ["setuptools>64,<74", "numpy", "wheel", "setuptools-git-versioning>=2.0,<3", "meson-python"]
-
-[tool.setuptools-git-versioning]
-enabled = true
+# build-backend="setuptools.build_meta"
+requires = ["setuptools>64,<74", "numpy", "wheel", "setuptools-git-versioning>=2.0,<3", "meson-python",  "charset_normalizer"]
+build-backend = "mesonpy"
 
 [project]
 name = "uclchem"
@@ -23,6 +21,6 @@ description = "A package for the astrochemical modelling of gas-grain chemistrie
 readme = "README.md"
 requires-python = ">=3.9,<3.14"
 dependencies = [
-    "pandas", "numpy", "pyyaml", "matplotlib", "seaborn", "pytest"
+    "pandas", "numpy", "pyyaml", "matplotlib", "seaborn", "pytest", "charset_normalizer", "scipy", "tqdm"
 ]
 

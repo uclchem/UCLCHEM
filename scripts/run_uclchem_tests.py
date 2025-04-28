@@ -17,8 +17,8 @@ params = {
     "initialTemp": 10.0,
     "finalDens": 1e5,
     "finalTime": 5.0e6,
-    "outputFile": "examples/test-output/static-full.dat",
-    "abundSaveFile": "examples/test-output/startstatic.dat",
+    # "outputFile": "examples/test-output/static-full.dat",
+    # "abundSaveFile": "examples/test-output/startstatic.dat",
 }
 
 start = perf_counter()
@@ -30,9 +30,9 @@ print(f"Static model in {stop-start:.1f} seconds")
 params["freefall"] = True
 params["endAtFinalDensity"] = True
 params["initialDens"] = 1e2
-params["abundSaveFile"] = "examples/test-output/startcollapse.dat"
-params["outputFile"] = "examples/test-output/phase1-full.dat"
-params["columnFile"] = "examples/test-output/phase1-column.dat"
+# params["abundSaveFile"] = "examples/test-output/startcollapse.dat"
+# params["outputFile"] = "examples/test-output/phase1-full.dat"
+# params["columnFile"] = "examples/test-output/phase1-column.dat"
 start = perf_counter()
 uclchem.model.cloud(param_dict=params, out_species=outSpecies)
 stop = perf_counter()
@@ -45,10 +45,10 @@ params["thermdesorb"] = True
 params["endAtFinalDensity"] = False
 params["freefall"] = False
 params["finalTime"] = 1e6
-params.pop("abundSaveFile")
-params["abundLoadFile"] = "examples/test-output/startcollapse.dat"
-params["outputFile"] = "examples/test-output/phase2-full.dat"
-params.pop("columnFile")
+# params.pop("abundSaveFile")
+# params["abundLoadFile"] = "examples/test-output/startcollapse.dat"
+# params["outputFile"] = "examples/test-output/phase2-full.dat"
+# params.pop("columnFile")
 start = perf_counter()
 uclchem.model.hot_core(3, 300.0, param_dict=params, out_species=outSpecies)
 stop = perf_counter()

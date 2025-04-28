@@ -101,7 +101,7 @@ def plot_species(ax, df, species, **plot_kwargs):
         else:
             abundances = df[specName]
         ax.plot(
-            df["Time"],
+            df["age"],
             abundances,
             label=specName,
             lw=2,
