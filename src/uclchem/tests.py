@@ -6,7 +6,7 @@ from pandas import DataFrame
 import uclchem
 
 from .analysis import total_element_abundance
-from .uclchemwrap import uclchemwrap as wrap
+from uclchemwrap import uclchemwrap as wrap
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 

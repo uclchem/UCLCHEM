@@ -1,5 +1,5 @@
 try:
-    from .uclchemwrap import uclchemwrap as wrap
+    from uclchemwrap import uclchemwrap as wrap
 except:
     pass
 import os

@@ -1,6 +1,6 @@
 """ Functions to help debugging UCLCHEM"""
 
-from uclchem.uclchemwrap import uclchemwrap as wrap
+from uclchemwrap import uclchemwrap as wrap
 
 
 def get_f2py_signature(write=False) -> str:
