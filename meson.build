@@ -85,26 +85,3 @@ py.extension_module('uclchemwrap',
                      ],
                      link_with : dvode_lib,
                      install : true)
-
-
-usource = meson.current_source_dir() / 'src' / 'uclchem'
-python_files = files( usource / '__init__.py',
-                      usource / '__version__.py',
-                      usource / 'analysis.py',
-                      usource / 'constants.py',
-                      usource / 'debug.py',
-                      usource / 'model.py',
-                      usource / 'reactions.csv',
-                      usource / 'species.csv',
-                      usource / 'tests.py',
-                      usource / 'utils.py',
-                      usource / 'makerates' / '__init__.py',
-                      usource / 'makerates' / 'io_functions.py',
-                      usource / 'makerates' / 'makerates.py',
-                      usource / 'makerates' / 'network.py',
-                      usource / 'makerates' / 'reaction.py',
-                      usource / 'makerates' / 'species.py',
-                      usource / 'makerates' / 'fortran_templates' / 'f2py_constants.f90'
-                    )
-
-install_sources(python_files, install_dir: py.site_packages())
