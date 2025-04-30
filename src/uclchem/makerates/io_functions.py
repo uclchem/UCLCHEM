@@ -555,7 +555,15 @@ def build_ode_string(
             if species in species_names:
                 species_list[species_names.index(species)].gains += reaction.ode_bit
 
-    ode_string = ""
+    ode_string = """MODULE ODES
+USE constants
+IMPLICIT NONE
+CONTAINS
+SUBROUTINE GETYDOT(RATE, Y, bulkLayersReciprocal, safeMantle, safebulk, D, YDOT)
+REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulkLayersReciprocal, safeMantle, safebulk, D
+REAL(dp), INTENT(INOUT) :: YDOT(:)
+REAL(dp) :: totalSwap, LOSS, PROD, surfaceCoverage
+    """
     if three_phase:
         ode_string += truncate_line(f"totalSwap={total_swap[1:]}\n\n")
     # First get total rate of change of bulk and surface by adding ydots
@@ -601,7 +609,8 @@ def build_ode_string(
         )
         ode_string += species_ode_string(bulk_index, species_list[bulk_index])
         ode_string += species_ode_string(surface_index, species_list[surface_index])
-
+    ode_string += """    END SUBROUTINE GETYDOT
+END MODULE ODES"""
     return ode_string
 
 
