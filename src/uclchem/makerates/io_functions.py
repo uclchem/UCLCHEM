@@ -785,7 +785,7 @@ def write_network_file(file_name: Path, network: Network):
     if len(speciesIndices) > 72:
         speciesIndices = truncate_line(speciesIndices)
     speciesIndices = speciesIndices[:-1] + "\n"
-    openFile.write("    INTEGER, PARAMETER ::" + speciesIndices)
+    openFile.write("    INTEGER(dp), PARAMETER ::" + speciesIndices)
     if network.three_phase:
         openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
     else:
@@ -817,7 +817,7 @@ def write_network_file(file_name: Path, network: Network):
     for reaction, index in network.important_reactions.items():
         reaction_indices += reaction + f"={index},"
     reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
-    openFile.write("    INTEGER, PARAMETER ::" + reaction_indices)
+    openFile.write("    INTEGER(dp), PARAMETER ::" + reaction_indices)
 
     for i, reaction in enumerate(reaction_list):
         reactant1.append(find_reactant(names, reaction.get_reactants()[0]))
@@ -938,7 +938,7 @@ def array_to_string(
     else:
         outString = " :: " + name + " ({0})=(/".format(len(array))
     if type == "int":
-        outString = "INTEGER" + outString
+        outString = "INTEGER(dp)" + outString
         for value in array:
             outString += "{0},".format(value)
     elif type == "float":
