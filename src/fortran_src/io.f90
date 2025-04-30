@@ -18,7 +18,7 @@ CONTAINS
         IMPLICIT NONE
         INQUIRE(UNIT=columnId, OPENED=columnOutput)
         IF (columnOutput) WRITE(columnId,333) specName(outIndx)
-        333 FORMAT("Time,Density,gasTemp,av,zeta,",(999(A,:,',')))
+        333 FORMAT("Time,Density,gasTemp,dustTemp,av,radfield,zeta,",(999(A,:,',')))
 
         INQUIRE(UNIT=outputId, OPENED=fullOutput)
         IF (fullOutput) THEN
@@ -26,7 +26,7 @@ CONTAINS
             ! WRITE(outputId,*) "Radfield ", radfield
             WRITE(outputId,335) specName
         END IF
-        335 FORMAT("Time,Density,gasTemp,av,zeta,point,",(999(A,:,',')))
+        335 FORMAT("Time,Density,gasTemp,dustTemp,av,radfield,zeta,point,",(999(A,:,',')))
         ! 334 FORMAT("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
 
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
@@ -80,8 +80,8 @@ CONTAINS
                 chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
             end if 
         ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
-            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,dstep,abund(:neq-1,dstep)
-            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
+            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,abund(:neq-1,dstep)
+            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
         END IF
 
         !Every 'writestep' timesteps, write the chosen species out to separate file
@@ -89,8 +89,8 @@ CONTAINS
         IF (.NOT. PRESENT(dtime)) THEN
             IF (writeCounter==writeStep .and. columnOutput) THEN
                 writeCounter=1
-                WRITE(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),av(dstep),zeta,abund(outIndx,dstep)
-                8030  FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',(999(1pe15.5,:,',')))
+                WRITE(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,abund(outIndx,dstep)
+                8030  FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',1pe11.4,',',(999(1pe15.5,:,',')))
             ELSE
                 writeCounter=writeCounter+1
             END IF

@@ -66,7 +66,7 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
     rates = wrap.get_odes(param_dict, input_abund)
     # Explicitely clean off the last element, for some reason the shape
     # of the ODE is n_species + 1, and we don't need the last one.
-    rates = rates[:len(species_list)]
+    rates = rates[: len(species_list)]
     df = DataFrame(rates.reshape(1, -1), columns=species_list)
     result = {}
     for element in element_list:

@@ -14,11 +14,15 @@ print(f"I found {len(speciesList)} species in the file {speciesFile}")
 
 print("\nReading reactions")
 reactions1, drops = read_reaction_file(reactionsFile1, speciesList, "UCL")
-print(f"I found {len(reactions1)} reactions in the file {reactionsFile1}, I dropped {len(drops)} reactions.")
+print(
+    f"I found {len(reactions1)} reactions in the file {reactionsFile1}, I dropped {len(drops)} reactions."
+)
 # If you need to see which reactions are dropped:
 # print("\n".join([str(drop) for drop in drops]))
 reactions2, drops = read_reaction_file(reactionsFile2, speciesList, "UCL")
-print(f"I found {len(reactions2)} reactions in the file {reactionsFile2}, I dropped {len(drops)} reactions.")
+print(
+    f"I found {len(reactions2)} reactions in the file {reactionsFile2}, I dropped {len(drops)} reactions."
+)
 
 
 print("\nReactions from file 1 not in file 2")

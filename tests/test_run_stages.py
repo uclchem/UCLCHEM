@@ -1,9 +1,6 @@
-import gc
-import os
 import shutil
 import tempfile
 from pathlib import Path
-from time import perf_counter
 
 import numpy as np
 import pytest
@@ -34,13 +31,6 @@ def common_output_directory(request):
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-# # Test for ODE element conservation
-# def test_element_conservation():
-#     result = uclchem.tests.test_ode_conservation()
-#     for key, value in result.items():
-#         assert abs(value) < 1e-12, f"{key} not conserved with total rate of change {value:.2e}"
-
-
 # Test for running the static model (Stage 1)
 def test_static_model_on_disk(common_output_directory):
     params = {
@@ -54,20 +44,12 @@ def test_static_model_on_disk(common_output_directory):
         "outputFile": common_output_directory / "static-full.dat",
         "abundSaveFile": common_output_directory / "startstatic.dat",
     }
-    start = perf_counter()
-    print("Running the model")
     return_code = uclchem.model.cloud(
         param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
-    print("Finished running!")
-    print(return_code)
-    stop = perf_counter()
-    elapsed_time = stop - start
     assert (
         return_code[0] == 0
     ), f"Static model returned with nonzero exit code {return_code[0]}"
-
-    # Test for running the static model (Stage 1)
 
 
 def test_static_model_return_array(common_output_directory):
@@ -80,8 +62,6 @@ def test_static_model_return_array(common_output_directory):
         "finalDens": 1e5,
         "finalTime": 5.0e6,
     }
-    start = perf_counter()
-    print("Running the model")
     (
         physics,
         chemistry,
@@ -92,9 +72,6 @@ def test_static_model_return_array(common_output_directory):
         out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
         return_array=True,
     )
-    print("Finished running!")
-    stop = perf_counter()
-    elapsed_time = stop - start
     assert (
         return_code == 0
     ), f"Static model returned with nonzero exit code {return_code}"
@@ -112,8 +89,6 @@ def test_static_model_return_dataframe(common_output_directory):
         "finalDens": 1e5,
         "finalTime": 5.0e6,
     }
-    start = perf_counter()
-    print("Running the model")
     (
         physics,
         chemistry,
@@ -124,9 +99,6 @@ def test_static_model_return_dataframe(common_output_directory):
         out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
         return_dataframe=True,
     )
-    print("Finished running!")
-    stop = perf_counter()
-    elapsed_time = stop - start
     assert (
         return_code == 0
     ), f"Static model returned with nonzero exit code {return_code}"
@@ -134,10 +106,9 @@ def test_static_model_return_dataframe(common_output_directory):
     chemistry.to_csv(common_output_directory / "chemistry_static_array.csv")
 
 
-# Test for running Stage 1
-
-
-def test_stage1_on_disk(common_output_directory):
+# Test for running on disk
+def test_collapse_hotcore_on_disk(common_output_directory):
+    # Stage 1
     params = {
         "freefall": True,
         "endAtFinalDensity": True,
@@ -146,73 +117,14 @@ def test_stage1_on_disk(common_output_directory):
         "outputFile": common_output_directory / "stage1-full.dat",
         "columnFile": common_output_directory / "stage1-column.dat",
     }
-
-    start = perf_counter()
     return_code = uclchem.model.cloud(
         param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
-    stop = perf_counter()
-    elapsed_time = stop - start
-    print(return_code)
     assert (
         return_code[0] == 0
     ), f"Stage 1 returned with nonzero exit code {return_code[0]}"
 
-
-def test_stage1_return_array(common_output_directory):
-    params = {
-        "freefall": True,
-        "endAtFinalDensity": True,
-        "initialDens": 1e2,
-    }
-
-    start = perf_counter()
-    (
-        physics,
-        chemistry,
-        abundances_start,
-        return_code,
-    ) = uclchem.model.cloud(
-        param_dict=params,
-        out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
-        return_array=True,
-    )
-    stop = perf_counter()
-    elapsed_time = stop - start
-    print(return_code)
-    assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
-    np.save(common_output_directory /"stage1_abund_array.npy", abundances_start)
-    np.save(common_output_directory /"physics_1_array.npy", physics)
-    np.save(common_output_directory /"abund_1_array.npy", chemistry)
-
-
-def test_stage1_return_dataframe(common_output_directory):
-    params = {
-        "freefall": True,
-        "endAtFinalDensity": True,
-        "initialDens": 1e2,
-    }
-
-    start = perf_counter()
-    (
-        physics,
-        chemistry,
-        abundances_start,
-        return_code,
-    ) = uclchem.model.cloud(
-        param_dict=params,
-        out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
-        return_array=True,
-    )
-    stop = perf_counter()
-    elapsed_time = stop - start
-    print(return_code)
-    assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
-    np.save(common_output_directory /"stage1_abund_df.npy", abundances_start)
-
-
-# Test for running Stage 2
-def test_stage2_on_disk(common_output_directory):
+    # Stage 2
     params = {
         "initialDens": 1e5,
         "freezeFactor": 0.0,
@@ -223,19 +135,33 @@ def test_stage2_on_disk(common_output_directory):
         "outputFile": common_output_directory / "stage2-full.dat",
         "abundLoadFile": common_output_directory / "startstage1.dat",
     }
-    start = perf_counter()
     return_code = uclchem.model.hot_core(
         3, 300.0, param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
-    stop = perf_counter()
-    elapsed_time = stop - start
     assert (
         return_code[0] == 0
     ), f"Stage 2 returned with nonzero exit code {return_code[0]}"
 
 
-# Test for running Stage 2
-def test_stage2_return_array(common_output_directory):
+def test_collapse_hotcore_return_array(common_output_directory):
+    # STAGE 1
+    params = {
+        "freefall": True,
+        "endAtFinalDensity": True,
+        "initialDens": 1e2,
+    }
+    (
+        physics,
+        chemistry,
+        abundances_start,
+        return_code,
+    ) = uclchem.model.cloud(
+        param_dict=params,
+        out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
+        return_array=True,
+    )
+    assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
+    # STAGE 2
     params = {
         "initialDens": 1e5,
         "freezeFactor": 0.0,
@@ -244,8 +170,6 @@ def test_stage2_return_array(common_output_directory):
         "freefall": False,
         "finalTime": 1e6,
     }
-    start_abundances = np.asfortranarray(np.load(common_output_directory / "stage1_abund_array.npy"))
-    start = perf_counter()
     (
         physics,
         chemistry,
@@ -257,15 +181,30 @@ def test_stage2_return_array(common_output_directory):
         param_dict=params,
         out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
         return_array=True,
-        starting_chemistry=start_abundances,
+        starting_chemistry=abundances_start,
     )
-    stop = perf_counter()
-    elapsed_time = stop - start
     assert return_code == 0, f"Stage 2 returned with nonzero exit code {return_code}"
 
 
-# Test for running Stage 2
-def test_stage2_return_dataframe(common_output_directory):
+def test_collapse_hotcore_return_dataframe(common_output_directory):
+    # STAGE 1
+    params = {
+        "freefall": True,
+        "endAtFinalDensity": True,
+        "initialDens": 1e2,
+    }
+    (
+        physics,
+        chemistry,
+        abundances_start,
+        return_code,
+    ) = uclchem.model.cloud(
+        param_dict=params,
+        out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
+        return_dataframe=True,
+    )
+    assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
+    # STAGE 2
     params = {
         "initialDens": 1e5,
         "freezeFactor": 0.0,
@@ -273,11 +212,7 @@ def test_stage2_return_dataframe(common_output_directory):
         "endAtFinalDensity": False,
         "freefall": False,
         "finalTime": 1e6,
-        "outputFile": common_output_directory / "stage2-full.dat",
-        "abundLoadFile": common_output_directory / "startstage1.dat",
     }
-    start_abundances = np.asfortranarray(np.load(common_output_directory / "stage1_abund_df.npy"))
-    start = perf_counter()
     (
         physics,
         chemistry,
@@ -295,40 +230,80 @@ def test_stage2_return_dataframe(common_output_directory):
             "CH3OH",
         ],
         return_dataframe=True,
-        starting_chemistry=start_abundances,
+        starting_chemistry=abundances_start,
     )
-    stop = perf_counter()
-    elapsed_time = stop - start
     assert return_code == 0, f"Stage 2 returned with nonzero exit code {return_code}"
 
 
-def main():
-    import uclchem
+def test_cshock_return_dataframe(common_output_directory):
+    # STAGE 1 - cshock
+    param_dict = {
+        "endAtFinalDensity": False,  # stop at finalTime
+        "freefall": True,  # increase density in freefall
+        "initialDens": 1e2,  # starting density
+        "finalDens": 1e4,  # final density
+        "initialTemp": 10.0,  # temperature of gas
+        "finalTime": 6.0e6,  # final time
+        "rout": 0.1,  # radius of cloud in pc
+        "baseAv": 1.0,  # visual extinction at cloud edge.
+    }
+    df_stage1_physics, df_stage1_chemistry, final_abundances, return_code = (
+        uclchem.model.cloud(
+            param_dict=param_dict,
+            return_dataframe=True,
+        )
+    )
+    assert (
+        return_code == 0
+    ), f"Stage 1 pre-cshock returned with nonzero exit code {return_code}"
+    # STAGE 2 - cshock
+    param_dict["initialDens"] = 1e4
+    param_dict["finalTime"] = 1e6
+    (
+        df_stage2_physics,
+        df_stage2_chemistry,
+        dissipation_time,
+        final_abundances,
+        return_code,
+    ) = uclchem.model.cshock(
+        shock_vel=40,
+        param_dict=param_dict,
+        return_dataframe=True,
+        starting_chemistry=final_abundances,
+    )
+    assert (
+        return_code == 0
+    ), f"Stage 2 cshock returned with nonzero exit code {return_code}"
 
+
+# jshock is super slow, so disable it for now:
+# def test_jshock_return_dataframe(common_output_directory):
+#     # STAGE 1 - jshock
+#     param_dict = {
+#     "endAtFinalDensity": False,
+#     "freefall": False,
+#     "initialDens": 1e2,
+#     "finalDens": 1e4,
+#     "initialTemp": 10.0,
+#     "finalTime": 6.0e6,
+#     "rout": 0.1,
+#     "baseAv": 1.0,
+#     "reltol": 1e-12
+#     }
+#     df_stage1_physics, df_stage1_chemistry, final_abundances, return_code = uclchem.model.cloud(param_dict=param_dict, return_dataframe=True, )
+#     assert return_code == 0, f"Stage 1 pre-jshock returned with nonzero exit code {return_code}"
+#     param_dict["initialDens"] = 1e4
+#     param_dict["freefall"] = False
+#     param_dict["reltol"] = 1e-12
+#     shock_vel = 10.0
+#     df_jshock_physics, df_jshock_chemistry, final_abundances, return_code = uclchem.model.jshock(shock_vel=shock_vel,param_dict=param_dict, return_dataframe=True, starting_chemistry=final_abundances, timepoints=2000)
+#     assert return_code == 0, f"Stage 2 jshock returned with nonzero exit code {return_code}"
+
+
+def main():
     # Run the tests using pytest
     pytest.main(["-v", __file__])
 
 
 if __name__ == "__main__":
     main()
-
-
-# if __name__ == "__main__":
-#     datapath = Path("data")
-#     datapath.mkdir(exist_ok=True, parents=True)
-#     print("static 1")
-#     test_static_model_on_disk(datapath)
-#     print("static 2")
-#     test_static_model_return_array(datapath)
-#     print("static 3")
-#     test_static_model_return_dataframe(datapath)
-#     print("Stage 1 1")
-#     test_stage1_on_disk(datapath)
-#     print("Stage 1 2")
-#     test_stage1_return_array(datapath)
-#     print("Stage 1 3")
-#     test_stage1_return_dataframe(datapath)
-#     print("Stage 2")
-#     test_stage2_on_disk(datapath)
-#     test_stage2_return_array(datapath)
-#     test_stage2_return_dataframe(datapath)

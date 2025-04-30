@@ -134,6 +134,7 @@ def cloud(
     return_array=False,
     return_dataframe=False,
     starting_chemistry=None,
+    timepoints=TIMEPOINTS,
 ):
     """Run cloud model from UCLCHEM
 
@@ -165,12 +166,12 @@ def cloud(
     if return_array or return_dataframe:
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, N_PHYSICAL_PARAMETERS
+        param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
     _, _, abunds, specname, success_flag = wrap.cloud(
         dictionary=param_dict,
         outspeciesin=out_species,
-        timepoints=TIMEPOINTS,
+        timepoints=timepoints,
         gridpoints=param_dict["points"],
         returnarray=return_array or return_dataframe,
         givestartabund=give_start_abund,
@@ -210,6 +211,7 @@ def collapse(
     return_array=False,
     return_dataframe=False,
     starting_chemistry=None,
+    timepoints=TIMEPOINTS,
 ):
     """Run collapse model from UCLCHEM based on Priestley et al 2018 AJ 156 51 (https://ui.adsabs.harvard.edu/abs/2018AJ....156...51P/abstract)
 
@@ -254,7 +256,7 @@ def collapse(
     if return_array or return_dataframe:
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, len(PHYSICAL_PARAMETERS)
+        param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints
     )
     abunds, specname, success_flag = wrap.collapse(
         collapseIn=collapse,
@@ -264,7 +266,7 @@ def collapse(
         outspeciesin=out_species,
         returnarray=return_array or return_dataframe,
         givesstartabund=give_start_abund,
-        timepoints=TIMEPOINTS,
+        timepoints=timepoints,
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
@@ -301,6 +303,7 @@ def hot_core(
     return_array=False,
     return_dataframe=False,
     starting_chemistry=None,
+    timepoints=TIMEPOINTS,
 ):
     """Run hot core model from UCLCHEM, based on Viti et al. 2004 and Collings et al. 2004
 
@@ -334,7 +337,7 @@ def hot_core(
         # Check to make sure no output files are specified, if so, halt the execution.
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, len(PHYSICAL_PARAMETERS)
+        param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints
     )
 
     give_start_abund = starting_chemistry is not None
@@ -346,7 +349,7 @@ def hot_core(
         outspeciesin=out_species,
         returnarray=return_array or return_dataframe,
         givestartabund=give_start_abund,
-        timepoints=TIMEPOINTS,
+        timepoints=timepoints,
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
@@ -384,6 +387,7 @@ def cshock(
     return_array=False,
     return_dataframe=False,
     starting_chemistry=None,
+    timepoints=TIMEPOINTS,
 ):
     """Run C-type shock model from UCLCHEM
 
@@ -420,7 +424,7 @@ def cshock(
     if return_array or return_dataframe:
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, N_PHYSICAL_PARAMETERS
+        param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
     give_start_abund = starting_chemistry is not None
     abunds, disspation_time, specname, success_flag = wrap.cshock(
@@ -431,7 +435,7 @@ def cshock(
         outspeciesin=out_species,
         returnarray=return_array or return_dataframe,
         givestartabund=give_start_abund,
-        timepoints=TIMEPOINTS,
+        timepoints=timepoints,
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
@@ -485,6 +489,7 @@ def jshock(
     return_array=False,
     return_dataframe=False,
     starting_chemistry=None,
+    timepoints=TIMEPOINTS,
 ):
     """Run J-type shock model from UCLCHEM
 
@@ -516,15 +521,16 @@ def jshock(
     if return_array or return_dataframe:
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, N_PHYSICAL_PARAMETERS
+        param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
+    give_start_abund = starting_chemistry is not None
     abunds, specname, success_flag = wrap.jshock(
         shock_vel=shock_vel,
         dictionary=param_dict,
         outspeciesin=out_species,
-        returnarray=True,
-        givestartabund=True,
-        timepoints=TIMEPOINTS,
+        returnarray=return_array or return_dataframe,
+        givestartabund=give_start_abund,
+        timepoints=timepoints,
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
