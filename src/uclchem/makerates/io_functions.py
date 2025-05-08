@@ -561,8 +561,8 @@ IMPLICIT NONE
 CONTAINS
 SUBROUTINE GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle, safebulk, D, YDOT)
 REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulkLayersReciprocal, safeMantle, safebulk, D
-REAL(dp), INTENT(INOUT) :: YDOT(:)
-REAL(dp) :: totalSwap, LOSS, PROD, surfaceCoverage
+REAL(dp), INTENT(INOUT) :: YDOT(:), surfaceCoverage
+REAL(dp) :: totalSwap, LOSS, PROD
     """
     if three_phase:
         ode_string += truncate_line(f"totalSwap={total_swap[1:]}\n\n")

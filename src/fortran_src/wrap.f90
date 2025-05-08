@@ -426,6 +426,7 @@ CONTAINS
         INTEGER:: rateIndxs(nspec),speciesIndx, successFlag
         DOUBLE PRECISION :: ydot(nspec+1)
         INTEGER :: speci,bulk_version,surface_version
+        real(dp) :: surfaceCoverage
         !f2py intent(in) dictionary,abundancesIn,speciesIndx,rateIndxs
         !f2py intent(out) speciesRates,successFlag,transfer,swap,bulk_layers
         ! INCLUDE 'defaultparameters.f90'

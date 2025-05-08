@@ -143,6 +143,8 @@ CONTAINS
         !f2py integer, intent(aux) :: points
         INTEGER, INTENT(OUT) :: successFlag
         real(dp) :: originalTargetTime !targetTime can be altered by integrator but we'd like to know if it was changed
+        real(dp) :: surfaceCoverage
+
 
         !Integration can fail in a way that we can manage. Allow maxLoops tries before giving up.
         loopCounter=0
@@ -284,7 +286,7 @@ CONTAINS
         INTENT(IN)  :: NEQUATIONS, T, Y
         INTENT(OUT) :: YDOT
         REAL(dp) :: D,loss,prod
-        REAL(dp) :: surfaceCoverage, safeMantle, safeBulk, bulkLayersReciprocal
+        real(dp) :: surfaceCoverage
         !Set D to the gas density for use in the ODEs
         D=y(NEQ)
         ydot=0.0
