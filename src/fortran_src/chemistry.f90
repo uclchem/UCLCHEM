@@ -181,7 +181,7 @@ CONTAINS
             !recalculate coefficients for ice processes
             safeMantle=MAX(1d-30,abund(nSurface,dstep))
             safeBulk=MAX(1d-30,abund(nBulk,dstep))
-
+            
             if (refractoryList(1) .gt. 0) safeBulk=safeBulk-SUM(abund(refractoryList,dstep))
             bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
             surfaceCoverage=bulkGainFromMantleBuildUp()
@@ -284,6 +284,7 @@ CONTAINS
         INTENT(IN)  :: NEQUATIONS, T, Y
         INTENT(OUT) :: YDOT
         REAL(dp) :: D,loss,prod
+        REAL(dp) :: surfaceCoverage, safeMantle, safeBulk, bulkLayersReciprocal
         !Set D to the gas density for use in the ODEs
         D=y(NEQ)
         ydot=0.0
@@ -308,11 +309,11 @@ CONTAINS
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         ! INCLUDE 'odes.f90'
-        CALL GETYDOT(RATE, Y, bulkLayersReciprocal, safeMantle,safeBulk, D, YDOT)
-
+        CALL GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
         ! get density change from physics module to send to DLSODE
-
+        
         ydot(NEQUATIONS)=densdot(y(NEQUATIONS))
+    
     END SUBROUTINE F
 
     ! SUBROUTINE JAC(NEQ, T, Y, ML, MU, J, NROWPD)

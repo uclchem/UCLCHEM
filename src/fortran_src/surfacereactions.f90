@@ -110,7 +110,7 @@ CONTAINS
     REAL(dp), INTENT(INOUT) :: rate(*)
     REAL(dp) :: gasTemperature
     IF (THREE_PHASE) THEN
-      surfaceCoverage=bulkGainFromMantleBuildUp()
+      ! surfaceCoverage=bulkGainFromMantleBuildUp()
       CALL bulkToSurfaceSwappingRates(rate,bulkswapReacs(1),bulkswapReacs(2),gasTemperature)
       rate(surfSwapReacs(1):surfSwapReacs(2))=surfaceToBulkSwappingRates(gasTemperature)
     END IF

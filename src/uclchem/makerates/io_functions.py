@@ -559,7 +559,7 @@ def build_ode_string(
 USE constants
 IMPLICIT NONE
 CONTAINS
-SUBROUTINE GETYDOT(RATE, Y, bulkLayersReciprocal, safeMantle, safebulk, D, YDOT)
+SUBROUTINE GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle, safebulk, D, YDOT)
 REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulkLayersReciprocal, safeMantle, safebulk, D
 REAL(dp), INTENT(INOUT) :: YDOT(:)
 REAL(dp) :: totalSwap, LOSS, PROD, surfaceCoverage
