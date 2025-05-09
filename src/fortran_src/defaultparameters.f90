@@ -52,11 +52,11 @@ LOGICAL :: improvedH2CRPDissociation=.False. !Use H2 CRP dissociation rate from 
 !## Input and Output
 !|Parameter|Default Value |Description|
 !| ----- | ------| ------ |
-CHARACTER :: outputFile="output/full.dat" !File to write full output of UCLCHEM. This includes physical parameter values and all abundances at every time step.
-CHARACTER :: columnFile="output/column.dat" !File to write specific species abundances, see outSpecies.
+CHARACTER(256) :: outputFile="" !File to write full output of UCLCHEM. This includes physical parameter values and all abundances at every time step.
+CHARACTER(256) :: columnFile="" !File to write specific species abundances, see outSpecies.
 INTEGER :: writeStep=1 !Writing to columnFile only happens every writeStep timesteps.
-CHARACTER :: abundSaveFile="abund.txt"
-CHARACTER :: abundLoadFile="initial_abund.txt"
+CHARACTER(256) :: abundSaveFile=""
+CHARACTER(256) :: abundLoadFile=""
 !|abundSaveFile |None| File to store final abundances at the end of the model so future models can use them as the initial abundances. If not provided, no file will be produced.
 !|abundLoadFile |None| File from which to load initial abundances for the model, created through `abundSaveFile`. If not provided, the model starts from elemental gas.
 !|outSpecies|None| A space separated list of species to output to columnFile. Supplied as a separate list argument to most python functions, see python API docs.

@@ -9,7 +9,6 @@ import pytest
 
 try:
     import uclchem
-
     uclchem_imported = True
 except ImportError:
     uclchem_imported = False

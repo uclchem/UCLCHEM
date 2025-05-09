@@ -852,16 +852,23 @@ CONTAINS
                 CASE('abundsavefile')
                     READ(inputValue,*,iostat=successFlag) abundSaveFile
                     abundSaveFile = TRIM(abundSaveFile)
-                    open(abundSaveID,file=abundSaveFile,status="unknown")
+                    if (LEN(abundSaveFile) .gt. 0) then
+                        open(abundSaveID,file=abundSaveFile,status='unknown')
+                    end if
                 CASE('abundloadfile')
                     READ(inputValue,*,iostat=successFlag) abundLoadFile
                     abundLoadFile = TRIM(abundLoadFile)
-                    open(abundLoadID,file=abundLoadFile,status='old')
+                    if (LEN(abundLoadFile) .gt. 0) then
+                        open(abundLoadID,file=abundLoadFile,status='old')
+                    end if
                 CASE('outputfile')
                     READ(inputValue,*,iostat=successFlag) outputFile
                     outputFile = trim(outputFile)
                     fullOutput=.True.
-                    open(outputId,file=outputFile,status='unknown',iostat=successFlag)
+                    if (LEN(outputFile) .gt. 0) then
+                        open(outputId,file=outputFile,status='unknown',iostat=successFlag)
+                    end if
+                    
                     IF (successFlag .ne. 0) THEN
                         write(*,*) "An error occured when opening the output file!"//&
                                         & NEW_LINE('A')//&
@@ -874,9 +881,12 @@ CONTAINS
                 CASE('columnfile')
                     IF (trim(outSpeciesIn) .NE. '' ) THEN
                         columnOutput=.True.
+                        
                         READ(inputValue,*,iostat=successFlag) columnFile
                         columnFile = trim(columnFile)
-                        open(columnId,file=columnFile,status='unknown')
+                        if (LEN(columnFile) .gt. 0) then
+                            open(columnId,file=columnFile,status='unknown')
+                        end if
                     ELSE
                         WRITE(*,*) "Error in output species. No species were given but a column file was given."
                         WRITE(*,*) "columnated output requires output species to be chosen."
