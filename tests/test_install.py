@@ -12,7 +12,7 @@ def test_package_installation():
     ), f"Package installation failed:\n{result.stdout}\n{result.stderr}"
 
     # Install the package using pip
-    install_command = "pip install -e ."
+    install_command = "pip install ."
     result = subprocess.run(install_command, shell=True, text=True, capture_output=True)
 
     # Check if the installation was successful
@@ -23,8 +23,8 @@ def test_package_installation():
     # Import the package and test if it can be imported
     try:
         import uclchem  # noqa: F401
-    except ImportError:
-        assert False, "Failed to import the installed package"
+    except ImportError as e:
+        assert False, "Failed to import the installed package, with ImportError: {e}",
 
     result = subprocess.run(
         "cd Makerates; python Makerates.py data/small_chemistry/user_settings.yaml; cd ../ ",
