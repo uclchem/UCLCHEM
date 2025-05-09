@@ -1,6 +1,5 @@
 [build-system]
-# build-backend="setuptools.build_meta"
-requires = ["setuptools>64,<74", "numpy", "wheel", "setuptools-git-versioning>=2.0,<3", "meson-python",  "charset_normalizer"]
+requires = ["numpy", "wheel", "meson-python",  "charset_normalizer"]
 build-backend = "mesonpy"
 
 [project]
