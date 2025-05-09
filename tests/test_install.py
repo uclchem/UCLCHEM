@@ -24,8 +24,7 @@ def test_package_installation():
     try:
         import uclchem  # noqa: F401
     except ImportError as e:
-        assert False, "Failed to import the installed package, with ImportError: {e}",
-
+        assert False, f"Failed to import the installed package, with ImportError: {e}"
     result = subprocess.run(
         "cd Makerates; python Makerates.py data/small_chemistry/user_settings.yaml; cd ../ ",
         shell=True,
