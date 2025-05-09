@@ -84,6 +84,7 @@ py.extension_module('uclchemwrap',
                      quadmath_dep,
                      ],
                      link_with : dvode_lib,
+                     fortran_args: ['-O3', '-fPIC', '-ffree-line-length-0'],
                      install : true)
 
 # Add the python module to the install directory
