@@ -1,10 +1,11 @@
 project('uclchemwrap',
         ['c', 'fortran'],
-        version : run_command('sh', '-c', 
-  'git describe --tags --always | ' +
-  'python3 -c "import sys,re;v=sys.stdin.read().strip(); ' +
-  'm=re.match(r\'v?(\\d+\\.\\d+\\.\\d+)(?:-(\\d+)-g([0-9a-f]+))?\', v); ' +
-  'print(f\'{m.group(1)}\' + (f\'.post{m.group(2)}+{m.group(3)}\' if m.group(2) else \'\'))"'
+        version : run_command('sh', '-c',
+  'git describe --tags --always 2>/dev/null | ' +
+  'python3 -c "import sys, re; ' +
+  'v = sys.stdin.read().strip(); ' +
+  'm = re.match(r\'v?(\\d+\\.\\d+\\.\\d+)(?:-(\\d+)-g([0-9a-f]+))?\', v); ' +
+  'print(f\'{m.group(1)}.post{m.group(2)}+{m.group(3)}\' if m and m.group(2) else (m.group(1) if m else \'0.0.0dev_nogit\'))"'
 ).stdout().strip(),
         meson_version: '>= 1.7.0',
         default_options : [
@@ -28,10 +29,12 @@ version_file = vcs_tag(
   install_dir: py.get_install_dir() / 'uclchem',
   install : true,
   # Literal copy paste since we cannot define a variable before the project() call
-  command : run_command('sh', '-c','git describe --tags --always | ' +
-  'python3 -c "import sys,re;v=sys.stdin.read().strip(); ' +
-  'm=re.match(r\'v?(\\d+\\.\\d+\\.\\d+)(?:-(\\d+)-g([0-9a-f]+))?\', v); ' +
-  'print(f\'{m.group(1)}\' + (f\'.post{m.group(2)}+{m.group(3)}\' if m.group(2) else \'\'))"'
+  command : run_command('sh', '-c',
+  'git describe --tags --always 2>/dev/null | ' +
+  'python3 -c "import sys, re; ' +
+  'v = sys.stdin.read().strip(); ' +
+  'm = re.match(r\'v?(\\d+\\.\\d+\\.\\d+)(?:-(\\d+)-g([0-9a-f]+))?\', v); ' +
+  'print(f\'{m.group(1)}.post{m.group(2)}+{m.group(3)}\' if m and m.group(2) else (m.group(1) if m else \'0.0.0dev_nogit\'))"'
 ).stdout().strip(),
 )
 

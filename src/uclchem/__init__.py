@@ -8,3 +8,4 @@ from . import analysis as analysis
 from . import model as model
 from . import tests as tests
 from . import utils as utils
+from . import version as version
