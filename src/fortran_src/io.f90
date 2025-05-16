@@ -1,8 +1,11 @@
 MODULE IO
+    USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp    
     USE chemistry
     USE physicscore
     
-    CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile, outFile
+    ! CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile
     LOGICAL :: columnOutput=.False.,fullOutput=.False.,readAbunds=.False.,writeAbunds=.False.
     CHARACTER (LEN=15),ALLOCATABLE :: outSpecies(:)
     INTEGER :: nout
@@ -32,6 +35,7 @@ CONTAINS
 
     SUBROUTINE readInputAbunds
         !read start file if choosing to use abundances from previous run 
+        !f2py integer, intent(aux) :: points
         IF (readAbunds) THEN
             DO l=1,points
                 READ(abundLoadID,*) abund(:nspec,l)
@@ -41,6 +45,7 @@ CONTAINS
     END SUBROUTINE readInputAbunds
 
     SUBROUTINE finalOutput
+        !f2py integer, intent(aux) :: points
         IF (writeAbunds) THEN
             DO dstep=1,points
                 ! WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
@@ -75,8 +80,10 @@ CONTAINS
                 chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
             end if 
         ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
-            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,abund(:neq-1,dstep)
-            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
+            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
+            av(dstep),radfield,zeta,dstep,abund(:neq-1,dstep)
+            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,&
+            &','1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
         END IF
 
         !Every 'writestep' timesteps, write the chosen species out to separate file
@@ -84,8 +91,10 @@ CONTAINS
         IF (.NOT. PRESENT(dtime)) THEN
             IF (writeCounter==writeStep .and. columnOutput) THEN
                 writeCounter=1
-                WRITE(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,abund(outIndx,dstep)
-                8030  FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',1pe11.4,',',(999(1pe15.5,:,',')))
+                WRITE(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
+                &av(dstep),radfield,zeta,abund(outIndx,dstep)
+                8030  FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,&
+                &',',1pe11.4,',',(999(1pe15.5,:,',')))
             ELSE
                 writeCounter=writeCounter+1
             END IF

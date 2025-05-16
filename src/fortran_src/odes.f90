@@ -1,4 +1,12 @@
-totalSwap=RATE(1)*Y(18)*bulkLayersReciprocal+RATE(2)*Y(72)&
+MODULE ODES
+USE constants
+IMPLICIT NONE
+CONTAINS
+SUBROUTINE GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle, safebulk, D, YDOT)
+REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulkLayersReciprocal, safeMantle, safebulk, D
+REAL(dp), INTENT(INOUT) :: YDOT(:), surfaceCoverage
+REAL(dp) :: totalSwap, LOSS, PROD
+    totalSwap=RATE(1)*Y(18)*bulkLayersReciprocal+RATE(2)*Y(72)&
     &*bulkLayersReciprocal+RATE(3)*Y(77)*bulkLayersReciprocal+RATE(4)*Y(84)&
     &*bulkLayersReciprocal+RATE(5)*Y(95)*bulkLayersReciprocal+RATE(6)*Y(113)&
     &*bulkLayersReciprocal+RATE(7)*Y(126)*bulkLayersReciprocal+RATE(8)*Y(201)&
@@ -5220,3 +5228,5 @@ ENDIF
     &+YDOT(287)+YDOT(294)+YDOT(295)+YDOT(298)+YDOT(299)+YDOT(310)+YDOT(312)&
     &+YDOT(315)+YDOT(317)+YDOT(327)+YDOT(331)
     YDOT(335) = PROD
+    END SUBROUTINE GETYDOT
+END MODULE ODES

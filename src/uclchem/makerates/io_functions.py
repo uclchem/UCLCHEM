@@ -555,7 +555,15 @@ def build_ode_string(
             if species in species_names:
                 species_list[species_names.index(species)].gains += reaction.ode_bit
 
-    ode_string = ""
+    ode_string = """MODULE ODES
+USE constants
+IMPLICIT NONE
+CONTAINS
+SUBROUTINE GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle, safebulk, D, YDOT)
+REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulkLayersReciprocal, safeMantle, safebulk, D
+REAL(dp), INTENT(INOUT) :: YDOT(:), surfaceCoverage
+REAL(dp) :: totalSwap, LOSS, PROD
+    """
     if three_phase:
         ode_string += truncate_line(f"totalSwap={total_swap[1:]}\n\n")
     # First get total rate of change of bulk and surface by adding ydots
@@ -601,7 +609,8 @@ def build_ode_string(
         )
         ode_string += species_ode_string(bulk_index, species_list[bulk_index])
         ode_string += species_ode_string(surface_index, species_list[surface_index])
-
+    ode_string += """    END SUBROUTINE GETYDOT
+END MODULE ODES"""
     return ode_string
 
 
@@ -776,7 +785,7 @@ def write_network_file(file_name: Path, network: Network):
     if len(speciesIndices) > 72:
         speciesIndices = truncate_line(speciesIndices)
     speciesIndices = speciesIndices[:-1] + "\n"
-    openFile.write("    INTEGER, PARAMETER ::" + speciesIndices)
+    openFile.write("    INTEGER(dp), PARAMETER ::" + speciesIndices)
     if network.three_phase:
         openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
     else:
@@ -808,7 +817,7 @@ def write_network_file(file_name: Path, network: Network):
     for reaction, index in network.important_reactions.items():
         reaction_indices += reaction + f"={index},"
     reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
-    openFile.write("    INTEGER, PARAMETER ::" + reaction_indices)
+    openFile.write("    INTEGER(dp), PARAMETER ::" + reaction_indices)
 
     for i, reaction in enumerate(reaction_list):
         reactant1.append(find_reactant(names, reaction.get_reactants()[0]))
@@ -929,7 +938,7 @@ def array_to_string(
     else:
         outString = " :: " + name + " ({0})=(/".format(len(array))
     if type == "int":
-        outString = "INTEGER" + outString
+        outString = "INTEGER(dp)" + outString
         for value in array:
             outString += "{0},".format(value)
     elif type == "float":

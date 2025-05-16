@@ -3,8 +3,13 @@
 !Based on Jimenez-Serra et al. 2008 A&A 482
 !http://adsabs.harvard.edu/abs/2008A&A...482..549J
 MODULE cshock_mod
+    USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp   
     USE network
-    USE physicscore
+    USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
+    &coldens
     USE constants
     use f2py_constants
     USE sputtering
@@ -32,6 +37,7 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
+        !f2py integer, intent(aux) :: points
         REAL(dp) :: v01,g1,g2
 
         successFlag=0
@@ -202,9 +208,9 @@ CONTAINS
     END SUBROUTINE updatePhysics
 
     !For c-shock, sublimation is simply the sputtering subroutine
-    SUBROUTINE sublimation(abund)
-        REAL(dp) :: abund(nspec+1,points)
-        INTENT(INOUT) :: abund
+    SUBROUTINE sublimation(abund,lpoints)
+        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+        INTEGER, INTENT(IN) :: lpoints
         REAL(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)
         IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0))&

@@ -1,5 +1,5 @@
 try:
-    from .uclchemwrap import uclchemwrap as wrap
+    from uclchemwrap import uclchemwrap as wrap
 except ImportError:
     pass
 import os
@@ -103,8 +103,15 @@ def plot_species(ax, df, species, legend=True, **plot_kwargs):
         print(specName)
         plot_kwargs["linestyle"] = linestyle
         plot_kwargs["label"] = specName
+        # Support legacy code that use either "age" or "Time" as the time variable
+        if "age" in df.columns:
+            timecolumn = "age"
+        elif "Time" in df.columns:
+            timecolumn = "Time"
+        else:
+            raise ValueError("No time variable in dataframe")
         ax.plot(
-            df["Time"],
+            df[timecolumn],
             abundances,
             lw=2,
             **plot_kwargs,

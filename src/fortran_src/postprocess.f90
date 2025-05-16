@@ -1,9 +1,11 @@
 ! Module for post-processing data from hydrodynamical simulations
 ! Requires modifications to some core functions of the code
 MODULE postprocess_mod
+    USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp
     USE physicscore
     USE network
-    USE constants
     USE f2py_constants
     IMPLICIT NONE
 
@@ -126,7 +128,8 @@ CONTAINS
     END SUBROUTINE updatePhysics
 
     SUBROUTINE sublimation(abund)
-    ! This subroutine must be in every physics module so we dummy it here.
+        ! This subroutine must be in every physics module so we dummy it here.
+        !f2py integer, intent(aux) :: points
         DOUBLE PRECISION :: abund(nspec+1,points)
         INTENT(INOUT) :: abund
     END SUBROUTINE sublimation    

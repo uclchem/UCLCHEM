@@ -1,5 +1,7 @@
 MODULE SurfaceReactions
   USE constants
+  USE DEFAULTPARAMETERS
+  !f2py INTEGER, parameter :: dp
   USE f2py_constants
   USE network
   IMPLICIT NONE
@@ -108,7 +110,7 @@ CONTAINS
     REAL(dp), INTENT(INOUT) :: rate(*)
     REAL(dp) :: gasTemperature
     IF (THREE_PHASE) THEN
-      surfaceCoverage=bulkGainFromMantleBuildUp()
+      ! surfaceCoverage=bulkGainFromMantleBuildUp()
       CALL bulkToSurfaceSwappingRates(rate,bulkswapReacs(1),bulkswapReacs(2),gasTemperature)
       rate(surfSwapReacs(1):surfSwapReacs(2))=surfaceToBulkSwappingRates(gasTemperature)
     END IF
@@ -133,7 +135,7 @@ CONTAINS
   SUBROUTINE bulkToSurfaceSwappingRates(rate,idx1,idx2,gasTemperature)
     REAL(dp), INTENT(INOUT) :: rate(*)
     REAL(dp) :: gasTemperature
-    INTEGER :: idx1,idx2,i,j
+    INTEGER(dp) :: idx1,idx2,i,j
     IF ((gasTemperature .gt. MAX_GRAIN_TEMP) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
         rate(idx1:idx2) = 0.0
     ELSE
@@ -156,7 +158,7 @@ CONTAINS
 double precision FUNCTION diffusionReactionRate(reacIndx,gasTemperature)
     double precision :: reducedMass,tunnelProb,gasTemperature
     double precision :: diffuseProb,desorbProb,reacProb,n_dust
-    integer :: index1,index2,reacIndx,i
+    integer(dp) :: index1,index2,reacIndx,i
 
 
     !want position of species in the grain array but gas phase species aren't in there
@@ -210,8 +212,8 @@ END FUNCTION diffusionReactionRate
 ! From Minissalle+ 2016 and Vasyunin+ 2016
 ! ---------------------------------------------------------------------
 double precision FUNCTION desorptionFraction(reacIndx)
-    integer :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom,i
-    integer :: productIndex(4)
+    integer(dp) :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom,i
+    integer(dp) :: productIndex(4)
 
     double precision :: deltaEnthalpy,maxBindingEnergy,epsilonCd,productEnthalpy
     double precision, parameter :: EFFECTIVE_SURFACE_MASS = 120.0
