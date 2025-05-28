@@ -1,9 +1,12 @@
 MODULE IO
+    USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp    
     USE chemistry
     USE physicscore
     USE network
     
-    CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, rateFile, columnFile, outFile
+    ! CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile
     LOGICAL :: columnOutput=.False.,fullOutput=.False.,rateOutput=.False.,readAbunds=.False.,writeAbunds=.False.
     CHARACTER (LEN=15),ALLOCATABLE :: outSpecies(:)
     INTEGER :: nout
@@ -27,11 +30,11 @@ CONTAINS
         335 FORMAT("Time,Density,gasTemp,dustTemp,baseAv,Av,radfield,zeta,point,",(999(A,:,',')))
         ! 334 FORMAT("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
         
-        INQUIRE(UNIT=rateId, OPENED=rateOutput)
-        IF (rateOutput) THEN
-            WRITE(rateId, 336) reactionNames
-        END IF
-        336 FORMAT("Time,Density,gasTemp,dustTemp,baseAv,Av,radfield,zeta,point,",(9999(A,:,',')))
+        ! INQUIRE(UNIT=rateId, OPENED=rateOutput)
+        ! IF (rateOutput) THEN
+        !     WRITE(rateId, 336) reactionNames
+        ! END IF
+        ! 336 FORMAT("Time,Density,gasTemp,dustTemp,baseAv,Av,radfield,zeta,point,",(9999(A,:,',')))
 
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
         INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
@@ -39,6 +42,7 @@ CONTAINS
 
     SUBROUTINE readInputAbunds
         !read start file if choosing to use abundances from previous run 
+        !f2py integer, intent(aux) :: points
         IF (readAbunds) THEN
             DO l=1,points
                 READ(abundLoadID,*) abund(:nspec,l)
@@ -48,6 +52,7 @@ CONTAINS
     END SUBROUTINE readInputAbunds
 
     SUBROUTINE finalOutput
+        !f2py integer, intent(aux) :: points
         IF (writeAbunds) THEN
             DO dstep=1,points
                 ! WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
@@ -82,12 +87,14 @@ CONTAINS
                 chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
             end if 
         ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
-            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),baseAv,av(dstep),radfield,zeta,dstep,abund(:neq-1,dstep)
-            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
+            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
+            av(dstep),radfield,zeta,dstep,abund(:neq-1,dstep)
+            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,&
+            &','1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
         END IF
         IF (rateOutput) THEN
-            WRITE(rateId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),baseAv,av(dstep),radfield,zeta,dstep,REACTIONRATE
-            8021 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
+            WRITE(rateId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
+            8021 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
         END IF
 
         !Every 'writestep' timesteps, write the chosen species out to separate file
@@ -95,8 +102,10 @@ CONTAINS
         IF (.NOT. PRESENT(dtime)) THEN
             IF (writeCounter==writeStep .and. columnOutput) THEN
                 writeCounter=1
-                WRITE(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,abund(outIndx,dstep)
-                8030  FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,',',1pe11.4,',',(999(1pe15.5,:,',')))
+                WRITE(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
+                &av(dstep),radfield,zeta,abund(outIndx,dstep)
+                8030  FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,&
+                &',',1pe11.4,',',(999(1pe15.5,:,',')))
             ELSE
                 writeCounter=writeCounter+1
             END IF

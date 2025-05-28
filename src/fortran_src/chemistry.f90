@@ -8,50 +8,43 @@
 ! written to the fullOutput file.                                                             !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 MODULE chemistry
-USE physicscore
-USE dvode_f90_m
+USE constants
+USE DEFAULTPARAMETERS
+!f2py INTEGER, parameter :: dp
+USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+& zeta, currentTime, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av
+USE DVODE_F90_M !dvode_f90_m
 USE network
 USE photoreactions
 USE surfacereactions
-USE constants
-use f2py_constants
+use f2py_constants, only: nspec, nreac
 USE postprocess_mod, only: lusecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
+USE rates
+USE odes
 IMPLICIT NONE
+    !f2py integer, intent(aux) :: points
     !These integers store the array index of important species and reactions, x is for ions    
     !loop counters    
-    INTEGER :: i,j,l,writeStep,writeCounter=0,loopCounter,failedIntegrationCounter
+    INTEGER :: i,j,l,writeCounter=0,loopCounter,failedIntegrationCounter
     INTEGER, PARAMETER :: maxLoops=10,maxConsecutiveFailures=10
-
-    !Flags to control desorption processes
-    LOGICAL :: desorb,h2desorb,crdesorb,uvdesorb,thermdesorb
-
 
     !Array to store reaction rates
     REAL(dp) :: rate(nreac)
     
-
     !DLSODE variables    
-    INTEGER :: ITASK,ISTATE,NEQ,MXSTEP
-    REAL(dp) :: reltol,abstol_factor,abstol_min
+    INTEGER :: ITASK,ISTATE,NEQ
     REAL(dp), ALLOCATABLE :: abstol(:)
-    TYPE(VODE_OPTS) :: OPTIONS
+    ! TYPE(VODE_OPTS) :: OPTIONS
     !initial fractional elemental abudances and arrays to store abundances
-    REAL(dp) :: fh,fd,fhe,fc,fo,fn,fs,fmg,fsi,fcl,fp,ff,ffe,fli,fna,fpah,f15n,f13c,f18O,metallicity
     REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
     REAL(dp), ALLOCATABLE :: abund(:,:)
     
-    !Variables controlling chemistry
-    LOGICAL :: PARAMETERIZE_H2FORM=.True.
-    REAL(dp) :: freezeFactor,omega,grainArea,cion,h2dis,lastTemp=0.0
-    REAL(dp) :: ebmaxh2,epsilon,ebmaxcr,phi,ebmaxuvcr,uv_yield,uvcreff
-    REAL(dp), PARAMETER :: h2StickingZero=0.87d0,hStickingZero=1.0d0, h2StickingTemp=87.0d0,hStickingTemp=52.0d0
-    
-
-    REAL(dp) :: turbVel=1.0
     REAL(dp) :: MIN_ABUND = 1.0d-30 !Minimum abundance allowed
 CONTAINS
     SUBROUTINE initializeChemistry(readAbunds)
         LOGICAL, INTENT(IN) :: readAbunds
+        !f2py integer, intent(aux) :: points
+
         ! Sets variables at the start of every run.
         ! Since python module persists, it's not enough to set initial
         ! values in module definitions above. Reset here.
@@ -147,9 +140,11 @@ CONTAINS
     !Secondly, we check for stalls caused by the the solver loop reducing the targetTime to overcome difficulties.
     !That reduction the possibility of the code "succeeding" by integrating tiny target times. We have a counter that resets each time
     !the code integrates to the planned targetTime rather than a reduced one. If the counter reaches maxConsecutiveFailures, we end the code.
-
+        !f2py integer, intent(aux) :: points
         INTEGER, INTENT(OUT) :: successFlag
         real(dp) :: originalTargetTime !targetTime can be altered by integrator but we'd like to know if it was changed
+        real(dp) :: surfaceCoverage
+
 
         !Integration can fail in a way that we can manage. Allow maxLoops tries before giving up.
         loopCounter=0
@@ -188,13 +183,13 @@ CONTAINS
             !recalculate coefficients for ice processes
             safeMantle=MAX(1d-30,abund(nSurface,dstep))
             safeBulk=MAX(1d-30,abund(nBulk,dstep))
-
+            
             if (refractoryList(1) .gt. 0) safeBulk=safeBulk-SUM(abund(refractoryList,dstep))
             bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
             surfaceCoverage=bulkGainFromMantleBuildUp()
 
             
-            CALL calculateReactionRates
+            CALL calculateReactionRates(abund,safeMantle, h2col, cocol, ccol, rate)
 
             !Integrate chemistry, and return fail if unrecoverable error was reached
             CALL integrateODESystem(successFlag)
@@ -234,7 +229,9 @@ CONTAINS
 
     SUBROUTINE integrateODESystem(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
+        TYPE(VODE_OPTS) :: OPTIONS
         successFlag=0
+
     !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
         !reset parameters for DVODE
         ITASK=1 !try to integrate to targetTime
@@ -280,10 +277,8 @@ CONTAINS
         END SELECT
     END SUBROUTINE integrateODESystem
 
-    !This is where reacrates subroutine is hidden
-    include 'rates.f90'
-
     SUBROUTINE F (NEQUATIONS, T, Y, YDOT)
+        USE ODES
         INTEGER, PARAMETER :: WP = KIND(1.0D0)
         INTEGER NEQUATIONS
         REAL(WP) T
@@ -291,6 +286,7 @@ CONTAINS
         INTENT(IN)  :: NEQUATIONS, T, Y
         INTENT(OUT) :: YDOT
         REAL(dp) :: D,loss,prod
+        real(dp) :: surfaceCoverage
         !Set D to the gas density for use in the ODEs
         D=y(NEQ)
         ydot=0.0
@@ -314,10 +310,12 @@ CONTAINS
 
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
-        INCLUDE 'odes.f90'
+        ! INCLUDE 'odes.f90'
+        CALL GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
         ! get density change from physics module to send to DLSODE
-
+        
         ydot(NEQUATIONS)=densdot(y(NEQUATIONS))
+    
     END SUBROUTINE F
 
     ! SUBROUTINE JAC(NEQ, T, Y, ML, MU, J, NROWPD)

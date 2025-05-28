@@ -2,9 +2,13 @@
 ! It simulates a static or collapsing cloud of isothermal gas.
 ! It is useful for static models or for producing initial abundances for the other modules.
 MODULE cloud_mod
-    USE physicscore
-    USE network
     USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp
+    USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
+    &coldens
+    USE network
     use f2py_constants
     IMPLICIT NONE
 CONTAINS
@@ -56,11 +60,11 @@ CONTAINS
         !Nothing to do here :)
     END SUBROUTINE updatePhysics
 
-    SUBROUTINE sublimation(abund)
-    ! This subroutine must be in every physics module so we dummy it here.
-        DOUBLE PRECISION :: abund(nspec+1,points)
-        INTENT(INOUT) :: abund
-    END SUBROUTINE sublimation    
+    !This is a dummy subroutine.
+    SUBROUTINE sublimation(abund, lpoints)
+        INTEGER, INTENT(IN) :: lpoints
+        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+    END SUBROUTINE sublimation
 END MODULE cloud_mod
 
 

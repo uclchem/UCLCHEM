@@ -1,9 +1,6 @@
 [build-system]
-requires = ["setuptools>64,<74", "setuptools-scm", "numpy<2", "wheel", "setuptools-git-versioning>=2.0,<3"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools-git-versioning]
-enabled = true
+requires = ["numpy", "wheel", "meson-python", "charset_normalizer", "meson>=1.7.0"]
+build-backend = "mesonpy"
 
 [project]
 name = "uclchem"
@@ -21,7 +18,7 @@ maintainers = [
 license = {text = "MIT License"}
 description = "A package for the astrochemical modelling of gas-grain chemistries."
 readme = "README.md"
-requires-python = ">=3.9,<3.12"
+requires-python = ">=3.9,<3.14"
 dependencies = [
-    "pandas<2", "numpy<2", "pyyaml", "matplotlib", "seaborn", "pytest", "joblib", "pytest-xdist", "pre-commit"
+    "pandas", "numpy", "pyyaml", "matplotlib", "seaborn", "pytest", "charset_normalizer", "scipy", "tqdm", "joblib", "pytest-xdist", "pre-commit"
 ]

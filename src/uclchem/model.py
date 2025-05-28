@@ -10,7 +10,7 @@ from uclchem.constants import (
     n_species,
 )
 
-from .uclchemwrap import uclchemwrap as wrap
+from uclchemwrap import uclchemwrap as wrap
 
 
 def _reform_inputs(param_dict, out_species):

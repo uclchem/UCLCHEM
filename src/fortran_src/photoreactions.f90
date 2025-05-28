@@ -1,5 +1,7 @@
 MODULE photoreactions
-USE constants
+    USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp
 IMPLICIT NONE
     REAL(dp) :: UV_FAC=3.02
 

@@ -2,10 +2,12 @@
 !wrap.f90 subroutines are all accessible through the python wrap.
 ! Core algorithm is found in solveAbundances subroutine below, all others call it
 MODULE uclchemwrap
+    USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp
     USE physicscore
     USE chemistry
     USE io
-    USE constants
     USE F2PY_CONSTANTS
     USE postprocess_mod, ONLY: ntime
     IMPLICIT NONE
@@ -31,7 +33,8 @@ CONTAINS
         ! successFlag - integer flag indicating success or fail
         
         USE cloud_mod
-            
+        USE DEFAULTPARAMETERS
+
         !f2py integer, intent(aux) :: nspec, n_physics_params
         !f2py intent(out) abundance_out, specname_out 
         CHARACTER(LEN=*), INTENT(IN) :: dictionary, outSpeciesIn
@@ -95,6 +98,7 @@ CONTAINS
         ! successFlag - integer flag indicating success or fail
 
         USE collapse_mod
+        USE DEFAULTPARAMETERS
 
         !f2py integer,parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn, collapseFileIn
@@ -157,6 +161,7 @@ CONTAINS
         ! abundance_out - list of abundances of species in outSpeciesIn
         ! successFlag - integer flag indicating success or fail
         USE hotcore
+        USE DEFAULTPARAMETERS
 
         !f2py integer, parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
@@ -220,6 +225,7 @@ CONTAINS
         ! dissipation_time - float, dissipation time in years
         ! successFlag - integer flag indicating success or fail
         USE cshock_mod
+        USE DEFAULTPARAMETERS
 
         !f2py integer, parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
@@ -283,6 +289,7 @@ CONTAINS
         ! abundance_out - list of abundances of species in outSpeciesIn
         ! successFlag - integer flag indicating success or fail
         USE jshock_mod
+        USE DEFAULTPARAMETERS
 
         !f2py integer, parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
@@ -342,6 +349,7 @@ CONTAINS
         ! abundance_out - list of abundances of species in outSpeciesIn
         ! successFlag - integer flag indicating success or fail
         USE postprocess_mod  
+        USE DEFAULTPARAMETERS
 
         !f2py integer, parameter intent(aux) nspec, n_physics_params
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
@@ -409,6 +417,7 @@ CONTAINS
         !returns the rate of all reactions that include that species plus some extra variables
         !to allow for the calculation of the rate of bulk/surface ice transfer.
         USE cloud_mod
+        USE DEFAULTPARAMETERS
         ! USE constants, only : nspec
         !f2py integer, intent(aux) :: nspec
         CHARACTER(LEN=*):: dictionary
@@ -417,9 +426,10 @@ CONTAINS
         INTEGER:: rateIndxs(nReac),speciesIndx, successFlag
         DOUBLE PRECISION :: ydot(nspec+1)
         INTEGER :: speci,bulk_version,surface_version
+        real(dp) :: surfaceCoverage
         !f2py intent(in) dictionary,abundancesIn,speciesIndx,rateIndxs
         !f2py intent(out) speciesRates,successFlag,transfer,swap,bulk_layers
-        INCLUDE 'defaultparameters.f90'
+        ! INCLUDE 'defaultparameters.f90'
 
         CALL dictionaryParser(dictionary, "",successFlag)
         IF (successFlag .lt. 0) THEN
@@ -482,7 +492,7 @@ CONTAINS
         INTEGER :: successFlag
         !f2py intent(in) :: dictionary, abundancesIn
         !f2py intent(out) :: ratesOut
-        INCLUDE 'defaultparameters.f90'
+        ! INCLUDE 'defaultparameters.f90'
         CALL dictionaryParser(dictionary, "",successFlag)
 
         call coreInitializePhysics(successFlag)
@@ -550,7 +560,7 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: ncgrid
         successFlag=0
         ! Set variables to default values
-        INCLUDE 'defaultparameters.f90'
+        ! INCLUDE 'defaultparameters.f90'
         !Read input parameters from the dictionary
         CALL dictionaryParser(dictionary, outSpeciesIn, successFlag)
         IF (successFlag .lt. 0) THEN
@@ -635,7 +645,7 @@ CONTAINS
                 call coreUpdatePhysics
                 call modelUpdatePhysics()
                 !Sublimation checks if Sublimation should happen this time step and does it
-                CALL sublimation(abund)
+                CALL sublimation(abund, points)
                 !write this depth step now time, chemistry and physics are consistent
                 IF (returnArray) THEN
                     CALL output(returnArray, successFlag, physicsarray, chemicalabunarray, dtime, timepoints)
@@ -844,16 +854,23 @@ CONTAINS
                 CASE('abundsavefile')
                     READ(inputValue,*,iostat=successFlag) abundSaveFile
                     abundSaveFile = TRIM(abundSaveFile)
-                    open(abundSaveID,file=abundSaveFile,status="unknown")
+                    if (LEN(abundSaveFile) .gt. 0) then
+                        open(abundSaveID,file=abundSaveFile,status='unknown')
+                    end if
                 CASE('abundloadfile')
                     READ(inputValue,*,iostat=successFlag) abundLoadFile
                     abundLoadFile = TRIM(abundLoadFile)
-                    open(abundLoadID,file=abundLoadFile,status='old')
+                    if (LEN(abundLoadFile) .gt. 0) then
+                        open(abundLoadID,file=abundLoadFile,status='old')
+                    end if
                 CASE('outputfile')
-                    READ(inputValue,*,iostat=successFlag) outFile
-                    outputFile = trim(outFile)
+                    READ(inputValue,*,iostat=successFlag) outputFile
+                    outputFile = trim(outputFile)
                     fullOutput=.True.
-                    open(outputId,file=outputFile,status='unknown',iostat=successFlag)
+                    if (LEN(outputFile) .gt. 0) then
+                        open(outputId,file=outputFile,status='unknown',iostat=successFlag)
+                    end if
+                    
                     IF (successFlag .ne. 0) THEN
                         write(*,*) "An error occured when opening the output file!"//&
                                         & NEW_LINE('A')//&
@@ -880,9 +897,12 @@ CONTAINS
                 CASE('columnfile')
                     IF (trim(outSpeciesIn) .NE. '' ) THEN
                         columnOutput=.True.
+                        
                         READ(inputValue,*,iostat=successFlag) columnFile
                         columnFile = trim(columnFile)
-                        open(columnId,file=columnFile,status='unknown')
+                        if (LEN(columnFile) .gt. 0) then
+                            open(columnId,file=columnFile,status='unknown')
+                        end if
                     ELSE
                         WRITE(*,*) "Error in output species. No species were given but a column file was given."
                         WRITE(*,*) "columnated output requires output species to be chosen."
