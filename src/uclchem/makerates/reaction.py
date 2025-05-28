@@ -438,8 +438,8 @@ class CoupledReaction(Reaction):
             self.set_templow(reaction.get_templow())
             self.set_temphigh(reaction.get_temphigh())
             self.partner = None
-        except:
-            raise ValueError("hello")
+        except AttributeError:
+            raise ValueError("Input for CoupledReaction should be a Reaction object")
 
         self.duplicate = False
 

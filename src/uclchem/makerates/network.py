@@ -188,6 +188,25 @@ class Network:
             dict[int, Reaction]: A dict with the identical reactions.
         """
         return {k: v for k, v in self._reactions_dict.items() if v == reaction}
+    
+    def get_reaction_index(self, reaction: Reaction) -> int:
+        """Get the index of a reaction in the internal _reactions_dict.
+
+        Args:
+            reaction (Reaction): The reaction to find the index of
+
+        Returns:
+            int: The index of the reaction in the internal _reactions_dict
+        """
+        similar_reactions = self.find_similar_reactions(reaction)
+        if len(similar_reactions) == 1:
+            return list(similar_reactions.keys())[0]
+        elif len(similar_reactions) == 0:
+            raise ValueError(f"The reaction {reaction} is not present in the network.")
+        else:
+            raise RuntimeError(
+                f"Found more than one index for the reaction {reaction}, cannot uniquely identify it; use find_similar_reactions instead."
+            )    
 
     def remove_reaction_by_index(self, reaction_idx: int) -> None:
         """Remove a reaction by its index in the internal _reactions_dict, this is the only way
@@ -328,7 +347,11 @@ class Network:
             reaction_idx (int): The index to be written to
             reaction (Reaction): The reaction to be added to the index.
         """
-        self._reactions_dict[reaction_idx] = Reaction
+        old_length = len(self._reactions_dict)
+        self._reactions_dict[reaction_idx] = reaction
+        assert old_length == len(self._reactions_dict), (
+            "Setting the reaction caused a change in the number of reactions, use add_reaction and remove_reaction for add and remove operations."
+        )
 
     def get_reaction_dict(self) -> dict[int, Reaction]:
         """Returns the whole internal reaction dictionary.
@@ -1155,7 +1178,6 @@ class Network:
                         reactant_string in branching_reactions
                         and branching_reactions[reactant_string] != 1.0
                     ):
-                        new_reaction = deepcopy(reaction)
                         if branching_reactions[reactant_string] != 0.0:
                             if branching_reactions[reactant_string] < 0.99:
                                 logging.warning(
@@ -1163,29 +1185,24 @@ class Network:
                                 )
                                 continue
                             new_alpha = (
-                                new_reaction.get_alpha()
+                                reaction.get_alpha()
                                 / branching_reactions[reactant_string]
                             )
                             logging.warning(
-                                f"Grain reaction {reaction} has a branching ratio of {new_reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
+                                f"Grain reaction {reaction} has a branching ratio of {reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
                             )
-                            new_reaction.set_alpha(new_alpha)
-                            logging.debug(
-                                f"n_reactions: {len(self.get_reaction_list())}removing reaction {reaction}"
-                            )
-                            self.remove_reaction(reaction)
-                            logging.debug(
-                                f"n_reactions: {len(self.get_reaction_list())} removed {reaction}, adding {new_reaction}"
-                            )
-                            self.add_reactions(new_reaction)
-                            logging.debug(
-                                f"n_reactions: {len(self.get_reaction_list())} added {new_reaction}"
-                            )
+                            reaction_index = self.get_reaction_index(reaction)
+                            reaction.set_alpha(new_alpha)
+                            self.set_reaction(reaction_idx=reaction_index, reaction=reaction)
                         else:
-                            logging.warning(
-                                f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
-                            )
-                            self.remove_reaction(reaction)
+                            if isinstance(reaction, CoupledReaction) and (not reaction in self.get_reaction_list()):
+                                logging.info(f"Tried to remove a coupled reaction {reaction}, but it was already removed by one of its partners.")
+                            else:
+                                logging.warning(
+                                    f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
+                                )
+                                self.remove_reaction(reaction)
+                                
 
     def __repr__(self) -> str:
         return (
