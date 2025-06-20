@@ -412,12 +412,13 @@ class Network:
         logging.debug(
             f"Before sorting species {[(k,v ) for i, (k, v) in enumerate(species_dict.items()) if i < 5]}"
         )
+    
         self.set_species_dict(
             dict(
                 sorted(
                     species_dict.items(),
-                    key=lambda kv: (kv[1].get_mass(),),
-                    # key=lambda kv: custom_lookup[kv[1].name],
+                    # key=lambda kv: (kv[1].get_mass(),),
+                    key=lambda kv: (kv[1].is_ice(), kv[1].is_bulk(), kv[1].get_mass()),
                 )
             )
         )
