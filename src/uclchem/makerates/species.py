@@ -332,7 +332,8 @@ class Species:
             new_n_atoms (int): The new number of atoms
         """
         self.n_atoms = new_n_atoms
-
+        
+    
     def __eq__(self, other):
         """Check for equality based on either a string or another Species instance.
 
