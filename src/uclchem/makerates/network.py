@@ -654,7 +654,7 @@ class Network:
                         for existing_reaction in existing_desorption_reactions
                     ]
                 ):
-                    logging.warning("We were trying to add an automatic desorb reaction for {reaction}, but it already exists in the network, so skipping it.")
+                    logging.warning(f"We were trying to add an automatic desorb reaction for {reaction}, but it already exists in the network, so skipping it.")
                     continue
                 new_reaction = deepcopy(reaction)
                 # Convert to disassociation reaction
