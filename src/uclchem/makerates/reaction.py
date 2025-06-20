@@ -97,6 +97,16 @@ class Reaction:
         self._reactants = reactants
         # Store a sorted version for comparisons
         self._sorted_reactants = sorted(self._reactants)
+        
+    def get_only_elemental_reactants(self) -> list[str]:
+        """Get the reactants that are only elemental species, excluding any reaction types.
+
+        Returns:
+            list[str]: The reactants that are only elemental species.
+        """
+        return [
+            reac for reac in self.get_reactants() if reac not in reaction_types
+        ]
 
     def get_products(self) -> list[str]:
         """Get the four products present in the reaction, padded with NAN for nonexistent

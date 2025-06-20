@@ -333,15 +333,7 @@ class Species:
         """
         self.n_atoms = new_n_atoms
         
-    def is_surface(self) -> bool:
-        return self.name.startswith("#")
     
-    def is_bulk(self) -> bool:
-        return self.name.startswith("@")
-    
-    def is_ice(self) -> bool:
-        return self.is_surface_species() or self.is_bulk_species()        
-
     def __eq__(self, other):
         """Check for equality based on either a string or another Species instance.
 

@@ -418,7 +418,7 @@ class Network:
                 sorted(
                     species_dict.items(),
                     # key=lambda kv: (kv[1].get_mass(),),
-                    key=lambda kv: (kv[1].is_ice(), kv[1].is_bulk(), kv[1].get_mass()),
+                    key=lambda kv: (kv[1].is_grain_species(), kv[1].is_bulk_species(), kv[1].get_mass()),
                 )
             )
         )
@@ -615,7 +615,7 @@ class Network:
         logging.debug("Adding desorbtion reactions!")
         new_reactions = []
         for species in self.get_species_list():
-            if species.is_surface_species():
+            if species.is_surface_species():          
                 for reacType in desorb_reacs:
                     new_reactions.append(
                         Reaction(
@@ -641,8 +641,21 @@ class Network:
         """
         logging.debug("Adding desascociation reactions for LH and ER mechanisms")
         new_reactions = []
+        existing_desorption_reactions = [
+            x for x in self.get_reaction_list() if x.get_reaction_type() in ["LHDES", "ERDES"]
+        ]
         for reaction in self.get_reaction_list():
             if reaction.get_reaction_type() in ["LH", "ER"]:
+                # If either the LH or ER reaction already has a desorption reaction, skip it.
+                if any(
+                    [   
+                     (existing_reaction.get_reaction_type() + "DES" == reaction.get_reaction_type()) and 
+                        (existing_reaction.get_only_elemental_reactants() == reaction.get_only_elemental_reactants()) 
+                        for existing_reaction in existing_desorption_reactions
+                    ]
+                ):
+                    logging.warning("We were trying to add an automatic desorb reaction for {reaction}, but it already exists in the network, so skipping it.")
+                    continue
                 new_reaction = deepcopy(reaction)
                 # Convert to disassociation reaction
                 new_reactants = new_reaction.get_reactants()
