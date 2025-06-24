@@ -273,7 +273,7 @@ CONTAINS
                 write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
                 targetTime=currentTime+(targetTime-currentTime)*0.1
             CASE default
-                MXSTEP=10000    
+                MXSTEP=10000
         END SELECT
     END SUBROUTINE integrateODESystem
 

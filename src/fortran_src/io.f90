@@ -17,6 +17,7 @@ CONTAINS
     !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     SUBROUTINE fileSetup
         IMPLICIT NONE
+        ! TODO: improve the file setup to interact with in memory mode (not opening the file handles if not needed.)
         INQUIRE(UNIT=columnId, OPENED=columnOutput)
         IF (columnOutput) WRITE(columnId,333) specName(outIndx)
         333 FORMAT("Time,Density,gasTemp,dustTemp,av,radfield,zeta,",(999(A,:,',')))
@@ -30,12 +31,12 @@ CONTAINS
         335 FORMAT("Time,Density,gasTemp,dustTemp,baseAv,Av,radfield,zeta,point,",(999(A,:,',')))
         ! 334 FORMAT("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
         
-        ! INQUIRE(UNIT=rateId, OPENED=rateOutput)
+        INQUIRE(UNIT=rateID, OPENED=rateOutput)
         ! IF (rateOutput) THEN
-        !     WRITE(rateId, 336) reactionNames
+        !     WRITE(rateIDd, 336) reactionNames
         ! END IF
         ! 336 FORMAT("Time,Density,gasTemp,dustTemp,baseAv,Av,radfield,zeta,point,",(9999(A,:,',')))
-
+        
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
         INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
     END SUBROUTINE fileSetup
@@ -62,12 +63,13 @@ CONTAINS
         END IF
     END SUBROUTINE finalOutput
 
-    SUBROUTINE output(returnArray,successflag,physicsarray, chemicalabunarray, dtime, timepoints)
+    SUBROUTINE output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, ratesarray, dtime, timepoints)
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: ratesarray
         INTEGER, OPTIONAL :: dtime, timepoints
         INTEGER, intent(out) :: successflag
-        LOGICAL :: returnArray
+        LOGICAL :: returnArray, writerates
         successflag = 0
         IF (returnArray) THEN
             ! Try to catch out of bounds errors before they create a segfault
@@ -92,9 +94,17 @@ CONTAINS
             8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,&
             &','1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
         END IF
-        IF (rateOutput) THEN
-            WRITE(rateId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
-            8021 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
+        IF (writerates) THEN
+            IF (returnArray) THEN
+                ! If returnArray is true, we write the rates to the rates array
+                ratesarray(dtime, dstep, :) = rate(:nreac)
+            ELSE 
+                ! Else, we write the rates to the file.
+                IF (rateOutput) THEN
+                    WRITE(rateId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
+                    8021 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
+                END IF
+            END IF
         END IF
 
         !Every 'writestep' timesteps, write the chosen species out to separate file

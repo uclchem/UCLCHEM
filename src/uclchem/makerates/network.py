@@ -4,14 +4,14 @@ checking for common errors, and automatic addition of reactions such as freeze o
 desorption and bulk reactions for three phase models.
 """
 
-import sys
 import logging
+import sys
 from copy import deepcopy
 from typing import Union
 
 from numpy import any as np_any
 
-from .reaction import Reaction, CoupledReaction, reaction_types
+from .reaction import CoupledReaction, Reaction, reaction_types
 from .species import Species, elementList
 
 
@@ -1191,6 +1191,7 @@ class Network:
                             logging.warning(
                                 f"Grain reaction {reaction} has a branching ratio of {reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
                             )
+                            # TODO: apply to all partners of the reaction
                             reaction_index = self.get_reaction_index(reaction)
                             reaction.set_alpha(new_alpha)
                             self.set_reaction(reaction_idx=reaction_index, reaction=reaction)

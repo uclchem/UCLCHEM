@@ -424,11 +424,16 @@ class Reaction:
 
 
 class CoupledReaction(Reaction):
+    # TODO: remove double __init__ methods
     def __init__(self, inputRow: list[str]):
         super().__init__(self, inputRow)
         self.partner = None
 
     def __init__(self, reaction: Reaction):
+        if not isinstance(reaction, Reaction):
+            raise TypeError(
+                "Input must be a Reaction object"
+            )
         try:
             self.set_reactants(reaction.get_reactants())
             self.set_products(reaction.get_products())
