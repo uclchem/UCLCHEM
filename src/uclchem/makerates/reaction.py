@@ -115,7 +115,7 @@ class Reaction:
         self._reactants = reactants
         # Store a sorted version for comparisons
         self._sorted_reactants = sorted(self._reactants)
-
+        
     def get_products(self) -> list[str]:
         """Get the four products present in the reaction, padded with NAN for nonexistent
 
