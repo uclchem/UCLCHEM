@@ -13,6 +13,7 @@ from typing import Dict
 import numpy as np
 
 from uclchem.constants import PHYSICAL_PARAMETERS
+
 from .network import Network
 from .reaction import Reaction, reaction_types
 from .species import Species
@@ -539,7 +540,7 @@ def build_ode_string(
             if species in species_names:
                 # Eley-Rideal reactions take a share of total freeze out rate which is already accounted for
                 # so we add as a loss term to the frozen version of the species rather than the gas version
-                if ("ER" in reaction.get_reactants()) and (
+                if (reaction.get_reaction_type() == "ER") and (
                     not species_list[species_names.index(species)].is_surface_species()
                 ):
                     species_list[
@@ -549,7 +550,7 @@ def build_ode_string(
                     species_list[
                         species_names.index(species)
                     ].losses += reaction.ode_bit
-                if reaction.get_reactants()[1] == "BULKSWAP":
+                if reaction.get_reaction_type() == "BULKSWAP":
                     total_swap += reaction.ode_bit
         for species in reaction.get_products():
             if species in species_names:
@@ -604,6 +605,7 @@ REAL(dp) :: totalSwap, LOSS, PROD
                 i += 1
                 j += 1
                 bulk_partner = species_names.index(species.name.replace("#", "@"))
+                # ode_string += f"    ! {species}  {species_list[bulk_partner]}\n"
                 ode_string += f"    REACTIONRATE({i}) = -YDOT({surface_index+1})*surfaceCoverage*Y({bulk_partner+1})/safeBulk\n"
                 ode_string += f"    REACTIONRATE({j}) = 0.0\n"
                 if not species_list[bulk_partner].is_refractory:
@@ -619,6 +621,7 @@ REAL(dp) :: totalSwap, LOSS, PROD
                 i += 1
                 j += 1
                 surface_version = species_names.index(species.name.replace("@", "#"))
+                ode_string += f"    ! {species}  {species_list[surface_version]}\n"
                 ode_string += f"    REACTIONRATE({i}) = 0.0\n"
                 ode_string += f"    REACTIONRATE({j}) = -YDOT({surface_index+1})*surfaceCoverage*Y({surface_version+1})\n"
                 ode_string += f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({surface_version+1})\n"

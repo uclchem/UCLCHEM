@@ -37,7 +37,7 @@ class Reaction:
             )
             self.set_products(
                 [
-                    inputRow[3].upper(),
+                    self.NANCheck(inputRow[3].upper()),
                     self.NANCheck(inputRow[4]).upper(),
                     self.NANCheck(inputRow[5]).upper(),
                     self.NANCheck(inputRow[6]).upper(),
@@ -82,6 +82,22 @@ class Reaction:
         """
         return self._reactants[:]
 
+    def get_pure_reactants(self) -> list[str]:
+        """Get only the pure species, no reaction types and NAN entries
+
+        Returns:
+            list[str]: The list of reacting species.
+        """
+        return [
+            r
+            for r in self._reactants[:]
+            if r
+            not in reaction_types
+            + [
+                "NAN",
+            ]
+        ]
+
     def get_sorted_reactants(self) -> list[str]:
         """Get the four reactants present in the reaction, sorted for fast comparisons
 
@@ -107,6 +123,22 @@ class Reaction:
             reactants (list[str]): The four products names
         """
         return self._products[:]
+
+    def get_pure_products(self) -> list[str]:
+        """Get only the pure species that are products, no reaction types and NAN entries
+
+        Returns:
+            list[str]: The list of produced species.
+        """
+        return [
+            r
+            for r in self._products[:]
+            if r
+            not in reaction_types
+            + [
+                "NAN",
+            ]
+        ]
 
     def get_sorted_products(self) -> list[str]:
         """Get the four products present in the reaction, sorted for fast comparisons
@@ -339,7 +371,7 @@ class Reaction:
             species_names (list): List of species names so we can find index of reactants in species list
             three_phase (bool): Bool indicating whether this is three phase network
         """
-        ode_bit = f"+RATE({i+1})"
+        ode_bit = f"+RATE({i + 1})"
         # every body after the first requires a factor of density
         for body in range(self.body_count):
             ode_bit = ode_bit + "*D"
@@ -347,7 +379,7 @@ class Reaction:
         # then bring in factors of abundances
         for species in self.get_reactants():
             if species in species_names:
-                ode_bit += f"*Y({species_names.index(species)+1})"
+                ode_bit += f"*Y({species_names.index(species) + 1})"
 
             elif species == "BULKSWAP":
                 ode_bit += "*bulkLayersReciprocal"
@@ -356,7 +388,7 @@ class Reaction:
             elif species in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
                 ode_bit = ode_bit + "/safeMantle"
                 if species == "DESOH2":
-                    ode_bit = ode_bit + f"*Y({species_names.index('H')+1})"
+                    ode_bit = ode_bit + f"*Y({species_names.index('H') + 1})"
             elif (species in ["THERM"]) and not (three_phase):
                 ode_bit += "*D/safeMantle"
 
@@ -401,6 +433,106 @@ class Reaction:
         formatted_reaction = reactants_products + "," + reaction_parameters + ",,,,,"
         return formatted_reaction
 
+    def _is_reaction_wrap(self, include_reactants=True, include_products=True):
+        assert include_reactants or include_products, (
+            "Either include reactants or products"
+        )
+        species_to_check = []
+        if include_reactants:
+            species_to_check += self.get_pure_reactants()
+        if include_products:
+            species_to_check += self.get_pure_products()
+        return species_to_check
+
+    def is_gas_reaction(
+        self, include_reactants=True, include_products=True, strict=True
+    ) -> bool:
+        """Check whether it is a gas reaction, by default it is strict - all
+        reactions must be in the gas-phase - if strict=False; any reaction in
+        the gas-phase returns true.
+
+        Args:
+            include_reactants (bool, optional): Include the reactants. Defaults to True.
+            include_products (bool, optional): Include the products. Defaults to True.
+            strict (bool, optional): Choose between all (true) or any (false) must be gas phase . Defaults to True.
+
+        Returns:
+            bool: Is it a gas phase reaction?
+        """
+        checklist = [
+            not (s.startswith("#") or s.startswith("@"))
+            for s in self._is_reaction_wrap(include_reactants, include_products)
+        ]
+        return all(checklist) if strict else any(checklist)
+
+    def is_ice_reaction(
+        self, include_reactants=True, include_products=True, strict=True
+    ) -> bool:
+        """Check whether it is an ice (surface OR bulk) reaction
+        
+        By default it is strict (strict=True); all species must be in the ice phase
+        If strict=False; any species in ice phase returns True
+
+        Args:
+            include_reactants (bool, optional): Include the reactants. Defaults to True.
+            include_products (bool, optional): Include the products. Defaults to True.
+            strict (bool, optional): Choose between all (true) or any (false) must be ice phase . Defaults to True.
+
+        Returns:
+            bool: Is it an ice phase reaction?
+        """
+        checklist = [
+            (s.startswith("#") or s.startswith("@"))
+            for s in self._is_reaction_wrap(include_reactants, include_products)
+        ]
+        return all(checklist) if strict else any(checklist)
+
+    def is_surface_reaction(
+        self, include_reactants=True, include_products=True, strict=False
+    ) -> bool:
+        """Check whether it is a surface reaction, defaults to non-strict since many
+        important surface reactions can lead to desorption in some way.
+        
+        By default it is NOT strict (strict=False); any species on the surface returns true
+        If strict=True; all species must be on the ice phase
+
+        Args:
+            include_reactants (bool, optional): Include the reactants. Defaults to True.
+            include_products (bool, optional): Include the products. Defaults to True.
+            strict (bool, optional): Choose between all (true) or any (false) must be on the surface . Defaults to False.
+
+        Returns:
+            bool: Is it a surface reaction?
+        """
+        checklist = [
+            s.startswith("#")
+            for s in self._is_reaction_wrap(include_reactants, include_products)
+        ]
+        return all(checklist) if strict else any(checklist)
+
+    def is_bulk_reaction(
+        self, include_reactants=True, include_products=True, strict=False
+    ) -> bool:
+        """Check whether it is a bulk reaction, defaults to non-strict since many
+        important bulk reactions interact with the surface.
+        
+        By default it is NOT strict (strict=False); any species in the bulk returns true
+        If strict=True; all species must be on the ice phase
+
+        Args:
+            include_reactants (bool, optional): Include the reactants. Defaults to True.
+            include_products (bool, optional): Include the products. Defaults to True.
+            strict (bool, optional): Choose between all (true) or any (false) must in the bulk . Defaults to False.
+
+        Returns:
+            bool: Is it a bulk reaction?
+        """
+        checklist = [
+            s.startswith("@")
+            for s in self._is_reaction_wrap(include_reactants, include_products)
+        ]
+        return all(checklist) if strict else any(checklist)
+
     def __str__(self):
         return (
             " + ".join(filter(lambda r: r != "NAN", self.get_reactants()))
@@ -421,6 +553,9 @@ class Reaction:
             + " -> "
             + " + ".join(filter(lambda p: p != "NAN", self.get_products()))
         )
+        
+    def __hash__(self):
+        return hash(f"{self.get_alpha(), self.get_beta(), self.get_gamma(), self.get_reactants(), self.get_products(), self.get_templow(), self.get_temphigh()}")
 
 
 class CoupledReaction(Reaction):
@@ -431,9 +566,7 @@ class CoupledReaction(Reaction):
 
     def __init__(self, reaction: Reaction):
         if not isinstance(reaction, Reaction):
-            raise TypeError(
-                "Input must be a Reaction object"
-            )
+            raise TypeError("Input must be a Reaction object")
         try:
             self.set_reactants(reaction.get_reactants())
             self.set_products(reaction.get_products())

@@ -1,18 +1,26 @@
 try:
     from uclchemwrap import uclchemwrap as wrap
-except ImportError:
-    pass
+except ImportError as E:
+    E.add_note("Failed to import wrap.f90 from uclchemwrap, did the installation with f2py succeed?")
+    raise
+try:     
+    from uclchemwrap import surfacereactions
+except ImportError as E:
+    E.add_note("Failed to import surfacereactions.f90 from uclchemwrap, did the installation with f2py succeed?")
+    raise
 import os
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pandas import Series, read_csv
-import pandas as pd
 from seaborn import color_palette
-from uclchem.makerates import Reaction
 
-from uclchem.constants import n_species, n_reactions
+from uclchem.constants import n_reactions, n_species
+from uclchem.makerates import Reaction
+from uclchem.makerates.network import Network
+from uclchem.makerates.species import Species
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -682,3 +690,202 @@ def check_element_conservation(df, element_list=["H", "N", "C", "O"], percent=Tr
             discrep = discrep[0] - discrep[-1]
             result[element] = f"{discrep:.2e}"
     return result
+
+
+def get_total_swap(rates: pd.DataFrame, abundances: pd.DataFrame, reactions: List[Reaction]) -> np.ndarray:
+    """ Obtain the amount of 'random' swapping per timestep
+
+    Args:
+        rates (pd.DataFrame): The rates obtained from running an UCLCHEM model
+        abundances (pd.DataFrame): The abundances obtained from running an UCLCHEM model
+        reactions (List[Reaction]): The reactions used in UCLCHEM
+
+    Returns:
+        np.ndarray: The total swap per timestep
+    """
+    assert len(rates) == len(abundances), "Rates and abundances must be the same length"
+    assert rates.shape[1] == len(reactions), "The number of rates and reactions must be equal"
+    totalSwap = np.zeros(abundances.shape[0])
+    for idx, reac in enumerate(reactions):
+        if reac.get_reaction_type() == "BULKSWAP":
+            totalSwap += rates.iloc[:, idx] * abundances[reac.get_pure_reactants()[0]]
+    return totalSwap
+
+
+def construct_incidence(species: List[Species], reactions: List[Reaction]) -> np.ndarray:
+    """ Construct the incidence matrix, a matrix that describes the in and out degree
+    for each of the reactions; useful to matrix multiply by the indvidual fluxes per reaction
+    to obtain a flux (dy) per species.
+
+    Args:
+        species (List[Species]): A list of species S
+        reactions (List[Reaction]): The list of reactions S
+
+    Returns:
+        np.ndarray: A RxS incidence matrix
+    """
+    incidence = np.zeros(
+        dtype=np.int8,
+        shape=(len(reactions), len(species)),
+    )
+    for idx, reaction in enumerate(reactions):
+        products = reaction.get_pure_products()
+        for prod in products:
+            incidence[idx, species.index(prod)] += 1
+        reactants = reaction.get_pure_reactants()
+        for reac in reactants:
+            incidence[idx, species.index(reac)] -= 1
+    return incidence
+
+
+def postprocess_rates_to_dy(
+    physics: pd.DataFrame,
+    abundances: pd.DataFrame,
+    rates: pd.DataFrame,
+    network: Network = None,
+    species: list[Species] = None,
+    reactions: list[Reaction] = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Apply postprocessing to obtain the equivalent of GETYDOT from the fortran
+    side; It returns two dataframes:
+        - ydot: the RHS that is solved in UCLCHEM at every output timestep
+        - flux_by_reaction: the individual terms that result in ydot when multiplied by the incidence matrix
+
+    Args:
+        physics (pd.DataFrame): The physics output from running a model
+        abundances (pd.DataFrame): The abundances output from running a model
+        rates (pd.DataFrame): The rates output from running a model
+        network (Network, optional): The reaction network used to postprocess the rates. Defaults to None.
+        species (list[Species], optional): The species used to postprocess the rates . Defaults to None.
+        reactions (list[Reaction], optional): The reactions used to postprocess the rates. Defaults to None.
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame]: dy, flux_by_reaction.
+    """
+    assert bool(species) == bool(reactions), (
+        "If species is specified, reactions also must be and vice ver"
+    )
+    assert not (network and (species or reactions)), (
+        "Choose between providing a network OR (species AND reactions)"
+    )
+    if network:
+        species = network.get_species_list()
+        reactions = network.get_reaction_list()
+    # Import all of the constants directly from UCLCHEMWRAP to avoid discrepancies
+    GAS_DUST_DENSITY_RATIO = surfacereactions.gas_dust_density_ratio
+    NUM_SITES_PER_GRAIN = surfacereactions.num_sites_per_grain
+    # Compute dynamic quantities that can be precomputed
+    bulkLayersReciprocal = (
+        NUM_SITES_PER_GRAIN / (GAS_DUST_DENSITY_RATIO * abundances["BULK"])
+    ).apply(lambda x: min(1.0, x))
+    totalSwap = bulkLayersReciprocal * get_total_swap(rates, abundances, reactions)
+
+    # Create the incidence matrix, we use this to evaluate the rates and
+    incidence = construct_incidence(species, reactions)
+
+    # Create a copy so we don't overwrite
+    flux_by_reaction = rates.copy()
+
+    # Iterate over each of the rates and compute the contribution to dy for that reaction.
+    for idx, reaction in enumerate(network.get_reaction_list()):
+        density_multiplier_factor = reaction.body_count
+        rate = flux_by_reaction.iloc[:, idx]
+        # Multiply by density the right number of times:
+        for iiii in range(int(density_multiplier_factor)):
+            rate *= physics["Density"]
+        # Multiply by the abundances:
+        for reactant in reaction.get_sorted_reactants():
+            if reactant in list(abundances.columns):
+                rate *= abundances[reactant]
+        match reaction.get_reaction_type():
+            case x if x in ["LH", "LHDES", "BULKSWAP"]:
+                if reaction.is_bulk_reaction(include_products=False):
+                    rate *= bulkLayersReciprocal
+            case "SURFSWAP":
+                rate *= totalSwap / abundances["SURFACE"]
+            case x if x in ["DESCR", "DEUVCR", "ER", "ERDES"]:
+                rate /= abundances["SURFACE"]
+            case "DESOH2":
+                rate *= abundances["H"] / abundances["SURFACE"]
+            case "H2FORM":
+                # For some reason, H2form only uses the hydrogen density once
+                rate /= abundances["H"]
+        flux_by_reaction.iloc[:, idx] = rate
+
+    # Compute the flux at each timestep, adding the appropriate header
+    dy = flux_by_reaction @ incidence
+    dy.columns = [str(s) for s in species]
+    # Compute the SURFACE and BULK:
+    dy.loc[:, "SURFACE"] = dy.loc[:, dy.columns.str.startswith("#")].sum(axis=1)
+    dy.loc[:, "BULK"] = dy.loc[:, dy.columns.str.startswith("@")].sum(axis=1)
+
+    # Compute the corrections to account for the transport between SURFACE and BULK
+    swap_flux_correction = pd.DataFrame()
+    # Then correct for the addition or subtraction of material to/from the bulk:
+    surfswap_reactions = [r for r in reactions if r.get_reaction_type() == "SURFSWAP"]
+    bulkswap_reactions = [r for r in reactions if r.get_reaction_type() == "BULKSWAP"]
+    # Sort them in the correct order, s.t. it matches the saving to disk format.
+    surfswap_reactions = sorted(
+        surfswap_reactions,
+        key=lambda x: species.index(x.get_reactants()[0]),
+    )
+    bulkswap_reactions = sorted(
+        bulkswap_reactions,
+        key=lambda x: species.index(x.get_reactants()[0]),
+    )
+    for (idx_j, rate_row), (idx_i, abunds_row) in zip(
+        rates.iterrows(), abundances.iterrows()
+    ):
+        # Walk through the bulkswap and reactionswap pathways:
+        _sswap_rates = {}
+        _bswap_rates = {}
+        # TODO: vectorize this, because this is slower than it has to be.
+        for r_bswap, r_sswap in zip(bulkswap_reactions, surfswap_reactions):
+            surfaceCoverage = min(1.0, abunds_row["BULK"] / abunds_row["SURFACE"])
+            if dy.iloc[idx_j]["SURFACE"] < 0.0:
+                surfaceCoverage = min(1.0, abunds_row["BULK"] / abunds_row["SURFACE"])
+                # SURFACE is shrinking, so bulk must be growing
+                bswap = (
+                    dy.iloc[idx_j]["SURFACE"]
+                    * surfaceCoverage
+                    * abunds_row[r_bswap.get_reactants()[0]]
+                    / abunds_row["BULK"]
+                )
+                _bswap_rates[str(r_bswap).replace("SWAP", "SWAP_TRANSPORT")] = bswap
+                _sswap_rates[str(r_sswap).replace("SWAP", "SWAP_TRANSPORT")] = 0.0
+                # Immedidiately correct dy:
+                dy.loc[idx_j, r_bswap.get_reactants()[0]] -= bswap
+                dy.loc[idx_j, r_bswap.get_products()[0]] += bswap
+            else:
+                surfaceCoverage = 0.5 * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN
+                sswap = (
+                    dy.iloc[idx_j]["SURFACE"]
+                    * surfaceCoverage
+                    * abunds_row[r_sswap.get_reactants()[0]]
+                )
+                _bswap_rates[str(r_bswap).replace("SWAP", "SWAP_TRANSPORT")] = 0.0
+                _sswap_rates[str(r_sswap).replace("SWAP", "SWAP_TRANSPORT")] = sswap
+                # Immedidiately correct dy:
+                dy.loc[idx_j, r_sswap.get_products()[0]] -= sswap
+                dy.loc[idx_j, r_sswap.get_reactants()[0]] += sswap
+        swap_flux_correction = pd.concat(
+            (
+                swap_flux_correction,
+                (
+                    pd.DataFrame.from_dict(
+                        _bswap_rates | _sswap_rates,
+                        orient="index",
+                    ).T
+                ),
+            )
+        )
+    swap_flux_correction = swap_flux_correction.reset_index(drop=True)
+    flux_by_reaction = pd.concat((flux_by_reaction, swap_flux_correction), axis=1)
+    # Correct the change in surface and bulk by summing the constituents:
+    dy.loc[:, "SURFACE"] = dy.loc[:, dy.columns.str.startswith("#")].sum(axis=1)
+    dy.loc[:, "BULK"] = dy.loc[:, dy.columns.str.startswith("@")].sum(axis=1)
+    # Apply the new fluxes to the ydots and compute a new ydot for surface and bulk:
+    return (
+        dy,
+        flux_by_reaction,
+    )

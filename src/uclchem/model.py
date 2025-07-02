@@ -1,10 +1,9 @@
+import os
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from uclchemwrap import uclchemwrap as wrap
-
-import os
 
 from uclchem.constants import (
     N_PHYSICAL_PARAMETERS,
@@ -14,10 +13,11 @@ from uclchem.constants import (
     n_species,
 )
 
+
 def reaction_line_formatter(line):
-    reactants = filter(lambda x: x, line[0:2])
-    products = filter(lambda x: x, line[3:6])
-    return "+".join(reactants) + "→" + "+".join(products)
+    reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
+    products = list(filter(lambda x: not str(x).lower().endswith("nan"), line[3:7]))
+    return " + ".join(reactants) + " -> " + " + ".join(products)
 
 
 class ReactionNamesStore():
@@ -27,13 +27,10 @@ class ReactionNamesStore():
     def __call__(self):
         # Only load the reactions once, after that use the cached version
         if self.reaction_names is None:
-            reactions = pd.read_csv(os.path.join(os.path.dirname(os.path.abspath(__file__), "reactions.csv")))
+            reactions = pd.read_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "reactions.csv"))
             # format the reactions:
-            self.reaction_names = [str(idx) + reaction_line_formatter(line) for idx, line in reactions.iterrows()]
+            self.reaction_names = [reaction_line_formatter(line) for idx, line in reactions.iterrows()]
         return self.reaction_names
-        
-        
-
 getReactionNames = ReactionNamesStore()
 
 
@@ -394,7 +391,7 @@ def hot_core(
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints
     )
-    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints))
+    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
     give_start_abund = starting_chemistry is not None
     _, _, _, abunds, specname, success_flag = wrap.hot_core(
         temp_indx=temp_indx,

@@ -1,4 +1,5 @@
 import logging
+from warnings import warn
 
 elementList = [
     "H",
@@ -187,6 +188,21 @@ class Species:
 
         Returns:
             bool: True if it is a grain species.
+        """
+        warn('This method is deprecated in favour of is_ice_species.', DeprecationWarning, stacklevel=2)
+        return (
+            self.name in ["BULK", "SURFACE"]
+            or self.name.startswith(
+                "#",
+            )
+            or self.name.startswith("@")
+        )
+        
+    def is_ice_species(self) -> bool:
+        """Return whether the species is a species on the grain
+
+        Returns:
+            bool: True if it is an ice species.
         """
         return (
             self.name in ["BULK", "SURFACE"]

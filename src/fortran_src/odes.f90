@@ -8056,110 +8056,138 @@ REACTIONRATE(3187)=+RATE(3187)*D*Y(319)*Y(333)
 !Since ydot(surface_index) is negative, bulk is lost and surface forms
 IF (YDOT(335) .lt. 0) THEN
     surfaceCoverage = MIN(1.0,safeBulk/safeMantle)
+    ! #H  @H
     REACTIONRATE(3188) = -YDOT(335)*surfaceCoverage*Y(4)/safeBulk
     REACTIONRATE(3271) = 0.0
     YDOT(2)=YDOT(2)-YDOT(335)*surfaceCoverage*Y(4)/safeBulk
     YDOT(4)=YDOT(4)+YDOT(335)*surfaceCoverage*Y(4)/safeBulk
+    ! #H2  @H2
     REACTIONRATE(3189) = -YDOT(335)*surfaceCoverage*Y(8)/safeBulk
     REACTIONRATE(3272) = 0.0
     YDOT(6)=YDOT(6)-YDOT(335)*surfaceCoverage*Y(8)/safeBulk
     YDOT(8)=YDOT(8)+YDOT(335)*surfaceCoverage*Y(8)/safeBulk
+    ! #HE  @HE
     REACTIONRATE(3190) = -YDOT(335)*surfaceCoverage*Y(13)/safeBulk
     REACTIONRATE(3273) = 0.0
     YDOT(11)=YDOT(11)-YDOT(335)*surfaceCoverage*Y(13)/safeBulk
     YDOT(13)=YDOT(13)+YDOT(335)*surfaceCoverage*Y(13)/safeBulk
+    ! #C  @C
     REACTIONRATE(3191) = -YDOT(335)*surfaceCoverage*Y(18)/safeBulk
     REACTIONRATE(3274) = 0.0
     YDOT(16)=YDOT(16)-YDOT(335)*surfaceCoverage*Y(18)/safeBulk
     YDOT(18)=YDOT(18)+YDOT(335)*surfaceCoverage*Y(18)/safeBulk
+    ! #CH  @CH
     REACTIONRATE(3192) = -YDOT(335)*surfaceCoverage*Y(22)/safeBulk
     REACTIONRATE(3275) = 0.0
     YDOT(21)=YDOT(21)-YDOT(335)*surfaceCoverage*Y(22)/safeBulk
     YDOT(22)=YDOT(22)+YDOT(335)*surfaceCoverage*Y(22)/safeBulk
+    ! #CH2  @CH2
     REACTIONRATE(3193) = -YDOT(335)*surfaceCoverage*Y(29)/safeBulk
     REACTIONRATE(3276) = 0.0
     YDOT(25)=YDOT(25)-YDOT(335)*surfaceCoverage*Y(29)/safeBulk
+    ! #N  @N
     REACTIONRATE(3194) = -YDOT(335)*surfaceCoverage*Y(30)/safeBulk
     REACTIONRATE(3277) = 0.0
     YDOT(28)=YDOT(28)-YDOT(335)*surfaceCoverage*Y(30)/safeBulk
     YDOT(29)=YDOT(29)+YDOT(335)*surfaceCoverage*Y(29)/safeBulk
     YDOT(30)=YDOT(30)+YDOT(335)*surfaceCoverage*Y(30)/safeBulk
+    ! #CH3  @CH3
     REACTIONRATE(3195) = -YDOT(335)*surfaceCoverage*Y(37)/safeBulk
     REACTIONRATE(3278) = 0.0
     YDOT(33)=YDOT(33)-YDOT(335)*surfaceCoverage*Y(37)/safeBulk
+    ! #NH  @NH
     REACTIONRATE(3196) = -YDOT(335)*surfaceCoverage*Y(38)/safeBulk
     REACTIONRATE(3279) = 0.0
     YDOT(36)=YDOT(36)-YDOT(335)*surfaceCoverage*Y(38)/safeBulk
     YDOT(37)=YDOT(37)+YDOT(335)*surfaceCoverage*Y(37)/safeBulk
     YDOT(38)=YDOT(38)+YDOT(335)*surfaceCoverage*Y(38)/safeBulk
+    ! #CH4  @CH4
     REACTIONRATE(3197) = -YDOT(335)*surfaceCoverage*Y(48)/safeBulk
     REACTIONRATE(3280) = 0.0
     YDOT(39)=YDOT(39)-YDOT(335)*surfaceCoverage*Y(48)/safeBulk
+    ! #NH2  @NH2
     REACTIONRATE(3198) = -YDOT(335)*surfaceCoverage*Y(49)/safeBulk
     REACTIONRATE(3281) = 0.0
     YDOT(44)=YDOT(44)-YDOT(335)*surfaceCoverage*Y(49)/safeBulk
+    ! #O  @O
     REACTIONRATE(3199) = -YDOT(335)*surfaceCoverage*Y(50)/safeBulk
     REACTIONRATE(3282) = 0.0
     YDOT(46)=YDOT(46)-YDOT(335)*surfaceCoverage*Y(50)/safeBulk
     YDOT(48)=YDOT(48)+YDOT(335)*surfaceCoverage*Y(48)/safeBulk
     YDOT(49)=YDOT(49)+YDOT(335)*surfaceCoverage*Y(49)/safeBulk
     YDOT(50)=YDOT(50)+YDOT(335)*surfaceCoverage*Y(50)/safeBulk
+    ! #NH3  @NH3
     REACTIONRATE(3200) = -YDOT(335)*surfaceCoverage*Y(58)/safeBulk
     REACTIONRATE(3283) = 0.0
     YDOT(51)=YDOT(51)-YDOT(335)*surfaceCoverage*Y(58)/safeBulk
+    ! #OH  @OH
     REACTIONRATE(3201) = -YDOT(335)*surfaceCoverage*Y(59)/safeBulk
     REACTIONRATE(3284) = 0.0
     YDOT(57)=YDOT(57)-YDOT(335)*surfaceCoverage*Y(59)/safeBulk
     YDOT(58)=YDOT(58)+YDOT(335)*surfaceCoverage*Y(58)/safeBulk
     YDOT(59)=YDOT(59)+YDOT(335)*surfaceCoverage*Y(59)/safeBulk
+    ! #H2O  @H2O
     REACTIONRATE(3202) = -YDOT(335)*surfaceCoverage*Y(64)/safeBulk
     REACTIONRATE(3285) = 0.0
     YDOT(60)=YDOT(60)-YDOT(335)*surfaceCoverage*Y(64)/safeBulk
     YDOT(64)=YDOT(64)+YDOT(335)*surfaceCoverage*Y(64)/safeBulk
+    ! #C2  @C2
     REACTIONRATE(3203) = -YDOT(335)*surfaceCoverage*Y(72)/safeBulk
     REACTIONRATE(3286) = 0.0
     YDOT(70)=YDOT(70)-YDOT(335)*surfaceCoverage*Y(72)/safeBulk
+    ! #MG  @MG
     REACTIONRATE(3204) = -YDOT(335)*surfaceCoverage*Y(73)/safeBulk
     REACTIONRATE(3287) = 0.0
     YDOT(71)=YDOT(71)-YDOT(335)*surfaceCoverage*Y(73)/safeBulk
     YDOT(72)=YDOT(72)+YDOT(335)*surfaceCoverage*Y(72)/safeBulk
     YDOT(73)=YDOT(73)+YDOT(335)*surfaceCoverage*Y(73)/safeBulk
+    ! #C2H  @C2H
     REACTIONRATE(3205) = -YDOT(335)*surfaceCoverage*Y(77)/safeBulk
     REACTIONRATE(3288) = 0.0
     YDOT(76)=YDOT(76)-YDOT(335)*surfaceCoverage*Y(77)/safeBulk
     YDOT(77)=YDOT(77)+YDOT(335)*surfaceCoverage*Y(77)/safeBulk
+    ! #C2H2  @C2H2
     REACTIONRATE(3206) = -YDOT(335)*surfaceCoverage*Y(84)/safeBulk
     REACTIONRATE(3289) = 0.0
     YDOT(78)=YDOT(78)-YDOT(335)*surfaceCoverage*Y(84)/safeBulk
+    ! #CN  @CN
     REACTIONRATE(3207) = -YDOT(335)*surfaceCoverage*Y(85)/safeBulk
     REACTIONRATE(3290) = 0.0
     YDOT(83)=YDOT(83)-YDOT(335)*surfaceCoverage*Y(85)/safeBulk
     YDOT(84)=YDOT(84)+YDOT(335)*surfaceCoverage*Y(84)/safeBulk
     YDOT(85)=YDOT(85)+YDOT(335)*surfaceCoverage*Y(85)/safeBulk
+    ! #HCN  @HCN
     REACTIONRATE(3208) = -YDOT(335)*surfaceCoverage*Y(93)/safeBulk
     REACTIONRATE(3291) = 0.0
     YDOT(86)=YDOT(86)-YDOT(335)*surfaceCoverage*Y(93)/safeBulk
+    ! #HNC  @HNC
     REACTIONRATE(3209) = -YDOT(335)*surfaceCoverage*Y(94)/safeBulk
     REACTIONRATE(3292) = 0.0
     YDOT(87)=YDOT(87)-YDOT(335)*surfaceCoverage*Y(94)/safeBulk
+    ! #C2H3  @C2H3
     REACTIONRATE(3210) = -YDOT(335)*surfaceCoverage*Y(95)/safeBulk
     REACTIONRATE(3293) = 0.0
     YDOT(92)=YDOT(92)-YDOT(335)*surfaceCoverage*Y(95)/safeBulk
     YDOT(93)=YDOT(93)+YDOT(335)*surfaceCoverage*Y(93)/safeBulk
     YDOT(94)=YDOT(94)+YDOT(335)*surfaceCoverage*Y(94)/safeBulk
     YDOT(95)=YDOT(95)+YDOT(335)*surfaceCoverage*Y(95)/safeBulk
+    ! #CO  @CO
     REACTIONRATE(3211) = -YDOT(335)*surfaceCoverage*Y(110)/safeBulk
     REACTIONRATE(3294) = 0.0
     YDOT(96)=YDOT(96)-YDOT(335)*surfaceCoverage*Y(110)/safeBulk
+    ! #N2  @N2
     REACTIONRATE(3212) = -YDOT(335)*surfaceCoverage*Y(111)/safeBulk
     REACTIONRATE(3295) = 0.0
     YDOT(97)=YDOT(97)-YDOT(335)*surfaceCoverage*Y(111)/safeBulk
+    ! #H2CN  @H2CN
     REACTIONRATE(3213) = -YDOT(335)*surfaceCoverage*Y(112)/safeBulk
     REACTIONRATE(3296) = 0.0
     YDOT(106)=YDOT(106)-YDOT(335)*surfaceCoverage*Y(112)/safeBulk
+    ! #C2H4  @C2H4
     REACTIONRATE(3214) = -YDOT(335)*surfaceCoverage*Y(113)/safeBulk
     REACTIONRATE(3297) = 0.0
     YDOT(107)=YDOT(107)-YDOT(335)*surfaceCoverage*Y(113)/safeBulk
+    ! #SI  @SI
     REACTIONRATE(3215) = -YDOT(335)*surfaceCoverage*Y(114)/safeBulk
     REACTIONRATE(3298) = 0.0
     YDOT(109)=YDOT(109)-YDOT(335)*surfaceCoverage*Y(114)/safeBulk
@@ -8168,39 +8196,49 @@ IF (YDOT(335) .lt. 0) THEN
     YDOT(112)=YDOT(112)+YDOT(335)*surfaceCoverage*Y(112)/safeBulk
     YDOT(113)=YDOT(113)+YDOT(335)*surfaceCoverage*Y(113)/safeBulk
     YDOT(114)=YDOT(114)+YDOT(335)*surfaceCoverage*Y(114)/safeBulk
+    ! #HCO  @HCO
     REACTIONRATE(3216) = -YDOT(335)*surfaceCoverage*Y(125)/safeBulk
     REACTIONRATE(3299) = 0.0
     YDOT(117)=YDOT(117)-YDOT(335)*surfaceCoverage*Y(125)/safeBulk
+    ! #C2H5  @C2H5
     REACTIONRATE(3217) = -YDOT(335)*surfaceCoverage*Y(126)/safeBulk
     REACTIONRATE(3300) = 0.0
     YDOT(123)=YDOT(123)-YDOT(335)*surfaceCoverage*Y(126)/safeBulk
+    ! #SIH  @SIH
     REACTIONRATE(3218) = -YDOT(335)*surfaceCoverage*Y(127)/safeBulk
     REACTIONRATE(3301) = 0.0
     YDOT(124)=YDOT(124)-YDOT(335)*surfaceCoverage*Y(127)/safeBulk
     YDOT(125)=YDOT(125)+YDOT(335)*surfaceCoverage*Y(125)/safeBulk
     YDOT(126)=YDOT(126)+YDOT(335)*surfaceCoverage*Y(126)/safeBulk
     YDOT(127)=YDOT(127)+YDOT(335)*surfaceCoverage*Y(127)/safeBulk
+    ! #NO  @NO
     REACTIONRATE(3219) = -YDOT(335)*surfaceCoverage*Y(137)/safeBulk
     REACTIONRATE(3302) = 0.0
     YDOT(128)=YDOT(128)-YDOT(335)*surfaceCoverage*Y(137)/safeBulk
+    ! #H2CO  @H2CO
     REACTIONRATE(3220) = -YDOT(335)*surfaceCoverage*Y(138)/safeBulk
     REACTIONRATE(3303) = 0.0
     YDOT(129)=YDOT(129)-YDOT(335)*surfaceCoverage*Y(138)/safeBulk
+    ! #SIH2  @SIH2
     REACTIONRATE(3221) = -YDOT(335)*surfaceCoverage*Y(139)/safeBulk
     REACTIONRATE(3304) = 0.0
     YDOT(136)=YDOT(136)-YDOT(335)*surfaceCoverage*Y(139)/safeBulk
     YDOT(137)=YDOT(137)+YDOT(335)*surfaceCoverage*Y(137)/safeBulk
     YDOT(138)=YDOT(138)+YDOT(335)*surfaceCoverage*Y(138)/safeBulk
     YDOT(139)=YDOT(139)+YDOT(335)*surfaceCoverage*Y(139)/safeBulk
+    ! #H2COH  @H2COH
     REACTIONRATE(3222) = -YDOT(335)*surfaceCoverage*Y(151)/safeBulk
     REACTIONRATE(3305) = 0.0
     YDOT(142)=YDOT(142)-YDOT(335)*surfaceCoverage*Y(151)/safeBulk
+    ! #HNO  @HNO
     REACTIONRATE(3223) = -YDOT(335)*surfaceCoverage*Y(152)/safeBulk
     REACTIONRATE(3306) = 0.0
     YDOT(147)=YDOT(147)-YDOT(335)*surfaceCoverage*Y(152)/safeBulk
+    ! #CH2OH  @CH2OH
     REACTIONRATE(3224) = -YDOT(335)*surfaceCoverage*Y(153)/safeBulk
     REACTIONRATE(3307) = 0.0
     YDOT(149)=YDOT(149)-YDOT(335)*surfaceCoverage*Y(153)/safeBulk
+    ! #SIH3  @SIH3
     REACTIONRATE(3225) = -YDOT(335)*surfaceCoverage*Y(154)/safeBulk
     REACTIONRATE(3308) = 0.0
     YDOT(150)=YDOT(150)-YDOT(335)*surfaceCoverage*Y(154)/safeBulk
@@ -8208,15 +8246,19 @@ IF (YDOT(335) .lt. 0) THEN
     YDOT(152)=YDOT(152)+YDOT(335)*surfaceCoverage*Y(152)/safeBulk
     YDOT(153)=YDOT(153)+YDOT(335)*surfaceCoverage*Y(153)/safeBulk
     YDOT(154)=YDOT(154)+YDOT(335)*surfaceCoverage*Y(154)/safeBulk
+    ! #O2  @O2
     REACTIONRATE(3226) = -YDOT(335)*surfaceCoverage*Y(167)/safeBulk
     REACTIONRATE(3309) = 0.0
     YDOT(155)=YDOT(155)-YDOT(335)*surfaceCoverage*Y(167)/safeBulk
+    ! #CH3OH  @CH3OH
     REACTIONRATE(3227) = -YDOT(335)*surfaceCoverage*Y(168)/safeBulk
     REACTIONRATE(3310) = 0.0
     YDOT(156)=YDOT(156)-YDOT(335)*surfaceCoverage*Y(168)/safeBulk
+    ! #SIH4  @SIH4
     REACTIONRATE(3228) = -YDOT(335)*surfaceCoverage*Y(169)/safeBulk
     REACTIONRATE(3311) = 0.0
     YDOT(157)=YDOT(157)-YDOT(335)*surfaceCoverage*Y(169)/safeBulk
+    ! #S  @S
     REACTIONRATE(3229) = -YDOT(335)*surfaceCoverage*Y(170)/safeBulk
     REACTIONRATE(3312) = 0.0
     YDOT(163)=YDOT(163)-YDOT(335)*surfaceCoverage*Y(170)/safeBulk
@@ -8224,71 +8266,89 @@ IF (YDOT(335) .lt. 0) THEN
     YDOT(168)=YDOT(168)+YDOT(335)*surfaceCoverage*Y(168)/safeBulk
     YDOT(169)=YDOT(169)+YDOT(335)*surfaceCoverage*Y(169)/safeBulk
     YDOT(170)=YDOT(170)+YDOT(335)*surfaceCoverage*Y(170)/safeBulk
+    ! #O2H  @O2H
     REACTIONRATE(3230) = -YDOT(335)*surfaceCoverage*Y(179)/safeBulk
     REACTIONRATE(3313) = 0.0
     YDOT(177)=YDOT(177)-YDOT(335)*surfaceCoverage*Y(179)/safeBulk
+    ! #HS  @HS
     REACTIONRATE(3231) = -YDOT(335)*surfaceCoverage*Y(180)/safeBulk
     REACTIONRATE(3314) = 0.0
     YDOT(178)=YDOT(178)-YDOT(335)*surfaceCoverage*Y(180)/safeBulk
     YDOT(179)=YDOT(179)+YDOT(335)*surfaceCoverage*Y(179)/safeBulk
     YDOT(180)=YDOT(180)+YDOT(335)*surfaceCoverage*Y(180)/safeBulk
+    ! #H2S  @H2S
     REACTIONRATE(3232) = -YDOT(335)*surfaceCoverage*Y(184)/safeBulk
     REACTIONRATE(3315) = 0.0
     YDOT(181)=YDOT(181)-YDOT(335)*surfaceCoverage*Y(184)/safeBulk
     YDOT(184)=YDOT(184)+YDOT(335)*surfaceCoverage*Y(184)/safeBulk
+    ! #CL  @CL
     REACTIONRATE(3233) = -YDOT(335)*surfaceCoverage*Y(189)/safeBulk
     REACTIONRATE(3316) = 0.0
     YDOT(187)=YDOT(187)-YDOT(335)*surfaceCoverage*Y(189)/safeBulk
     YDOT(189)=YDOT(189)+YDOT(335)*surfaceCoverage*Y(189)/safeBulk
+    ! #HCL  @HCL
     REACTIONRATE(3234) = -YDOT(335)*surfaceCoverage*Y(194)/safeBulk
     REACTIONRATE(3317) = 0.0
     YDOT(190)=YDOT(190)-YDOT(335)*surfaceCoverage*Y(194)/safeBulk
     YDOT(194)=YDOT(194)+YDOT(335)*surfaceCoverage*Y(194)/safeBulk
+    ! #C2N  @C2N
     REACTIONRATE(3235) = -YDOT(335)*surfaceCoverage*Y(201)/safeBulk
     REACTIONRATE(3318) = 0.0
     YDOT(197)=YDOT(197)-YDOT(335)*surfaceCoverage*Y(201)/safeBulk
+    ! #C3H2  @C3H2
     REACTIONRATE(3236) = -YDOT(335)*surfaceCoverage*Y(202)/safeBulk
     REACTIONRATE(3319) = 0.0
     YDOT(200)=YDOT(200)-YDOT(335)*surfaceCoverage*Y(202)/safeBulk
     YDOT(201)=YDOT(201)+YDOT(335)*surfaceCoverage*Y(201)/safeBulk
     YDOT(202)=YDOT(202)+YDOT(335)*surfaceCoverage*Y(202)/safeBulk
+    ! #CH3CCH  @CH3CCH
     REACTIONRATE(3237) = -YDOT(335)*surfaceCoverage*Y(209)/safeBulk
     REACTIONRATE(3320) = 0.0
     YDOT(204)=YDOT(204)-YDOT(335)*surfaceCoverage*Y(209)/safeBulk
+    ! #SIC  @SIC
     REACTIONRATE(3238) = -YDOT(335)*surfaceCoverage*Y(210)/safeBulk
     REACTIONRATE(3321) = 0.0
     YDOT(208)=YDOT(208)-YDOT(335)*surfaceCoverage*Y(210)/safeBulk
     YDOT(209)=YDOT(209)+YDOT(335)*surfaceCoverage*Y(209)/safeBulk
     YDOT(210)=YDOT(210)+YDOT(335)*surfaceCoverage*Y(210)/safeBulk
+    ! #CH3CN  @CH3CN
     REACTIONRATE(3239) = -YDOT(335)*surfaceCoverage*Y(214)/safeBulk
     REACTIONRATE(3322) = 0.0
     YDOT(211)=YDOT(211)-YDOT(335)*surfaceCoverage*Y(214)/safeBulk
     YDOT(214)=YDOT(214)+YDOT(335)*surfaceCoverage*Y(214)/safeBulk
+    ! #CH2CO  @CH2CO
     REACTIONRATE(3240) = -YDOT(335)*surfaceCoverage*Y(222)/safeBulk
     REACTIONRATE(3323) = 0.0
     YDOT(215)=YDOT(215)-YDOT(335)*surfaceCoverage*Y(222)/safeBulk
+    ! #CH3CNH  @CH3CNH
     REACTIONRATE(3241) = -YDOT(335)*surfaceCoverage*Y(223)/safeBulk
     REACTIONRATE(3324) = 0.0
     YDOT(216)=YDOT(216)-YDOT(335)*surfaceCoverage*Y(223)/safeBulk
+    ! #OCN  @OCN
     REACTIONRATE(3242) = -YDOT(335)*surfaceCoverage*Y(224)/safeBulk
     REACTIONRATE(3325) = 0.0
     YDOT(221)=YDOT(221)-YDOT(335)*surfaceCoverage*Y(224)/safeBulk
     YDOT(222)=YDOT(222)+YDOT(335)*surfaceCoverage*Y(222)/safeBulk
     YDOT(223)=YDOT(223)+YDOT(335)*surfaceCoverage*Y(223)/safeBulk
     YDOT(224)=YDOT(224)+YDOT(335)*surfaceCoverage*Y(224)/safeBulk
+    ! #HNCO  @HNCO
     REACTIONRATE(3243) = -YDOT(335)*surfaceCoverage*Y(227)/safeBulk
     REACTIONRATE(3326) = 0.0
     YDOT(225)=YDOT(225)-YDOT(335)*surfaceCoverage*Y(227)/safeBulk
     YDOT(227)=YDOT(227)+YDOT(335)*surfaceCoverage*Y(227)/safeBulk
+    ! #SIO  @SIO
     REACTIONRATE(3244) = -YDOT(335)*surfaceCoverage*Y(238)/safeBulk
     REACTIONRATE(3327) = 0.0
     YDOT(228)=YDOT(228)-YDOT(335)*surfaceCoverage*Y(238)/safeBulk
+    ! #CS  @CS
     REACTIONRATE(3245) = -YDOT(335)*surfaceCoverage*Y(239)/safeBulk
     REACTIONRATE(3328) = 0.0
     YDOT(229)=YDOT(229)-YDOT(335)*surfaceCoverage*Y(239)/safeBulk
+    ! #CO2  @CO2
     REACTIONRATE(3246) = -YDOT(335)*surfaceCoverage*Y(240)/safeBulk
     REACTIONRATE(3329) = 0.0
     YDOT(230)=YDOT(230)-YDOT(335)*surfaceCoverage*Y(240)/safeBulk
+    ! #CH3CHO  @CH3CHO
     REACTIONRATE(3247) = -YDOT(335)*surfaceCoverage*Y(241)/safeBulk
     REACTIONRATE(3330) = 0.0
     YDOT(237)=YDOT(237)-YDOT(335)*surfaceCoverage*Y(241)/safeBulk
@@ -8296,15 +8356,19 @@ IF (YDOT(335) .lt. 0) THEN
     YDOT(239)=YDOT(239)+YDOT(335)*surfaceCoverage*Y(239)/safeBulk
     YDOT(240)=YDOT(240)+YDOT(335)*surfaceCoverage*Y(240)/safeBulk
     YDOT(241)=YDOT(241)+YDOT(335)*surfaceCoverage*Y(241)/safeBulk
+    ! #HCS  @HCS
     REACTIONRATE(3248) = -YDOT(335)*surfaceCoverage*Y(253)/safeBulk
     REACTIONRATE(3331) = 0.0
     YDOT(245)=YDOT(245)-YDOT(335)*surfaceCoverage*Y(253)/safeBulk
+    ! #HSIO  @HSIO
     REACTIONRATE(3249) = -YDOT(335)*surfaceCoverage*Y(254)/safeBulk
     REACTIONRATE(3332) = 0.0
     YDOT(248)=YDOT(248)-YDOT(335)*surfaceCoverage*Y(254)/safeBulk
+    ! #NH2CHO  @NH2CHO
     REACTIONRATE(3250) = -YDOT(335)*surfaceCoverage*Y(255)/safeBulk
     REACTIONRATE(3333) = 0.0
     YDOT(250)=YDOT(250)-YDOT(335)*surfaceCoverage*Y(255)/safeBulk
+    ! #HCOO  @HCOO
     REACTIONRATE(3251) = -YDOT(335)*surfaceCoverage*Y(256)/safeBulk
     REACTIONRATE(3334) = 0.0
     YDOT(252)=YDOT(252)-YDOT(335)*surfaceCoverage*Y(256)/safeBulk
@@ -8312,18 +8376,23 @@ IF (YDOT(335) .lt. 0) THEN
     YDOT(254)=YDOT(254)+YDOT(335)*surfaceCoverage*Y(254)/safeBulk
     YDOT(255)=YDOT(255)+YDOT(335)*surfaceCoverage*Y(255)/safeBulk
     YDOT(256)=YDOT(256)+YDOT(335)*surfaceCoverage*Y(256)/safeBulk
+    ! #H2CS  @H2CS
     REACTIONRATE(3252) = -YDOT(335)*surfaceCoverage*Y(269)/safeBulk
     REACTIONRATE(3335) = 0.0
     YDOT(257)=YDOT(257)-YDOT(335)*surfaceCoverage*Y(269)/safeBulk
+    ! #NO2  @NO2
     REACTIONRATE(3253) = -YDOT(335)*surfaceCoverage*Y(270)/safeBulk
     REACTIONRATE(3336) = 0.0
     YDOT(258)=YDOT(258)-YDOT(335)*surfaceCoverage*Y(270)/safeBulk
+    ! #NS  @NS
     REACTIONRATE(3254) = -YDOT(335)*surfaceCoverage*Y(271)/safeBulk
     REACTIONRATE(3337) = 0.0
     YDOT(259)=YDOT(259)-YDOT(335)*surfaceCoverage*Y(271)/safeBulk
+    ! #H2SIO  @H2SIO
     REACTIONRATE(3255) = -YDOT(335)*surfaceCoverage*Y(272)/safeBulk
     REACTIONRATE(3338) = 0.0
     YDOT(260)=YDOT(260)-YDOT(335)*surfaceCoverage*Y(272)/safeBulk
+    ! #HCOOH  @HCOOH
     REACTIONRATE(3256) = -YDOT(335)*surfaceCoverage*Y(273)/safeBulk
     REACTIONRATE(3339) = 0.0
     YDOT(268)=YDOT(268)-YDOT(335)*surfaceCoverage*Y(273)/safeBulk
@@ -8332,152 +8401,189 @@ IF (YDOT(335) .lt. 0) THEN
     YDOT(271)=YDOT(271)+YDOT(335)*surfaceCoverage*Y(271)/safeBulk
     YDOT(272)=YDOT(272)+YDOT(335)*surfaceCoverage*Y(272)/safeBulk
     YDOT(273)=YDOT(273)+YDOT(335)*surfaceCoverage*Y(273)/safeBulk
+    ! #SO  @SO
     REACTIONRATE(3257) = -YDOT(335)*surfaceCoverage*Y(279)/safeBulk
     REACTIONRATE(3340) = 0.0
     YDOT(276)=YDOT(276)-YDOT(335)*surfaceCoverage*Y(279)/safeBulk
     YDOT(279)=YDOT(279)+YDOT(335)*surfaceCoverage*Y(279)/safeBulk
+    ! #C4H  @C4H
     REACTIONRATE(3258) = -YDOT(335)*surfaceCoverage*Y(283)/safeBulk
     REACTIONRATE(3341) = 0.0
     YDOT(282)=YDOT(282)-YDOT(335)*surfaceCoverage*Y(283)/safeBulk
     YDOT(283)=YDOT(283)+YDOT(335)*surfaceCoverage*Y(283)/safeBulk
+    ! #C3N  @C3N
     REACTIONRATE(3259) = -YDOT(335)*surfaceCoverage*Y(286)/safeBulk
     REACTIONRATE(3342) = 0.0
     YDOT(285)=YDOT(285)-YDOT(335)*surfaceCoverage*Y(286)/safeBulk
     YDOT(286)=YDOT(286)+YDOT(335)*surfaceCoverage*Y(286)/safeBulk
+    ! #HC3N  @HC3N
     REACTIONRATE(3260) = -YDOT(335)*surfaceCoverage*Y(289)/safeBulk
     REACTIONRATE(3343) = 0.0
     YDOT(287)=YDOT(287)-YDOT(335)*surfaceCoverage*Y(289)/safeBulk
     YDOT(289)=YDOT(289)+YDOT(335)*surfaceCoverage*Y(289)/safeBulk
+    ! #NCCN  @NCCN
     REACTIONRATE(3261) = -YDOT(335)*surfaceCoverage*Y(296)/safeBulk
     REACTIONRATE(3344) = 0.0
     YDOT(294)=YDOT(294)-YDOT(335)*surfaceCoverage*Y(296)/safeBulk
+    ! #SIC2  @SIC2
     REACTIONRATE(3262) = -YDOT(335)*surfaceCoverage*Y(297)/safeBulk
     REACTIONRATE(3345) = 0.0
     YDOT(295)=YDOT(295)-YDOT(335)*surfaceCoverage*Y(297)/safeBulk
     YDOT(296)=YDOT(296)+YDOT(335)*surfaceCoverage*Y(296)/safeBulk
     YDOT(297)=YDOT(297)+YDOT(335)*surfaceCoverage*Y(297)/safeBulk
+    ! #SIS  @SIS
     REACTIONRATE(3263) = -YDOT(335)*surfaceCoverage*Y(304)/safeBulk
     REACTIONRATE(3346) = 0.0
     YDOT(298)=YDOT(298)-YDOT(335)*surfaceCoverage*Y(304)/safeBulk
+    ! #OCS  @OCS
     REACTIONRATE(3264) = -YDOT(335)*surfaceCoverage*Y(305)/safeBulk
     REACTIONRATE(3347) = 0.0
     YDOT(299)=YDOT(299)-YDOT(335)*surfaceCoverage*Y(305)/safeBulk
     YDOT(304)=YDOT(304)+YDOT(335)*surfaceCoverage*Y(304)/safeBulk
     YDOT(305)=YDOT(305)+YDOT(335)*surfaceCoverage*Y(305)/safeBulk
+    ! #C4N  @C4N
     REACTIONRATE(3265) = -YDOT(335)*surfaceCoverage*Y(311)/safeBulk
     REACTIONRATE(3348) = 0.0
     YDOT(310)=YDOT(310)-YDOT(335)*surfaceCoverage*Y(311)/safeBulk
     YDOT(311)=YDOT(311)+YDOT(335)*surfaceCoverage*Y(311)/safeBulk
+    ! #SIC3  @SIC3
     REACTIONRATE(3266) = -YDOT(335)*surfaceCoverage*Y(321)/safeBulk
     REACTIONRATE(3349) = 0.0
     YDOT(312)=YDOT(312)-YDOT(335)*surfaceCoverage*Y(321)/safeBulk
+    ! #SO2  @SO2
     REACTIONRATE(3267) = -YDOT(335)*surfaceCoverage*Y(322)/safeBulk
     REACTIONRATE(3350) = 0.0
     YDOT(315)=YDOT(315)-YDOT(335)*surfaceCoverage*Y(322)/safeBulk
+    ! #S2  @S2
     REACTIONRATE(3268) = -YDOT(335)*surfaceCoverage*Y(323)/safeBulk
     REACTIONRATE(3351) = 0.0
     YDOT(317)=YDOT(317)-YDOT(335)*surfaceCoverage*Y(323)/safeBulk
     YDOT(321)=YDOT(321)+YDOT(335)*surfaceCoverage*Y(321)/safeBulk
     YDOT(322)=YDOT(322)+YDOT(335)*surfaceCoverage*Y(322)/safeBulk
     YDOT(323)=YDOT(323)+YDOT(335)*surfaceCoverage*Y(323)/safeBulk
+    ! #HS2  @HS2
     REACTIONRATE(3269) = -YDOT(335)*surfaceCoverage*Y(328)/safeBulk
     REACTIONRATE(3352) = 0.0
     YDOT(327)=YDOT(327)-YDOT(335)*surfaceCoverage*Y(328)/safeBulk
     YDOT(328)=YDOT(328)+YDOT(335)*surfaceCoverage*Y(328)/safeBulk
+    ! #H2S2  @H2S2
     REACTIONRATE(3270) = -YDOT(335)*surfaceCoverage*Y(332)/safeBulk
     REACTIONRATE(3353) = 0.0
     YDOT(331)=YDOT(331)-YDOT(335)*surfaceCoverage*Y(332)/safeBulk
     YDOT(332)=YDOT(332)+YDOT(335)*surfaceCoverage*Y(332)/safeBulk
 ELSE
     YDOT(2)=YDOT(2)-YDOT(335)*surfaceCoverage*Y(2)
+    ! @H  #H
     REACTIONRATE(3188) = 0.0
     REACTIONRATE(3271) = -YDOT(335)*surfaceCoverage*Y(2)
     YDOT(4)=YDOT(4)+YDOT(335)*surfaceCoverage*Y(2)
     YDOT(6)=YDOT(6)-YDOT(335)*surfaceCoverage*Y(6)
+    ! @H2  #H2
     REACTIONRATE(3189) = 0.0
     REACTIONRATE(3272) = -YDOT(335)*surfaceCoverage*Y(6)
     YDOT(8)=YDOT(8)+YDOT(335)*surfaceCoverage*Y(6)
     YDOT(11)=YDOT(11)-YDOT(335)*surfaceCoverage*Y(11)
+    ! @HE  #HE
     REACTIONRATE(3190) = 0.0
     REACTIONRATE(3273) = -YDOT(335)*surfaceCoverage*Y(11)
     YDOT(13)=YDOT(13)+YDOT(335)*surfaceCoverage*Y(11)
     YDOT(16)=YDOT(16)-YDOT(335)*surfaceCoverage*Y(16)
+    ! @C  #C
     REACTIONRATE(3191) = 0.0
     REACTIONRATE(3274) = -YDOT(335)*surfaceCoverage*Y(16)
     YDOT(18)=YDOT(18)+YDOT(335)*surfaceCoverage*Y(16)
     YDOT(21)=YDOT(21)-YDOT(335)*surfaceCoverage*Y(21)
+    ! @CH  #CH
     REACTIONRATE(3192) = 0.0
     REACTIONRATE(3275) = -YDOT(335)*surfaceCoverage*Y(21)
     YDOT(22)=YDOT(22)+YDOT(335)*surfaceCoverage*Y(21)
     YDOT(25)=YDOT(25)-YDOT(335)*surfaceCoverage*Y(25)
     YDOT(28)=YDOT(28)-YDOT(335)*surfaceCoverage*Y(28)
+    ! @CH2  #CH2
     REACTIONRATE(3193) = 0.0
     REACTIONRATE(3276) = -YDOT(335)*surfaceCoverage*Y(25)
     YDOT(29)=YDOT(29)+YDOT(335)*surfaceCoverage*Y(25)
+    ! @N  #N
     REACTIONRATE(3194) = 0.0
     REACTIONRATE(3277) = -YDOT(335)*surfaceCoverage*Y(28)
     YDOT(30)=YDOT(30)+YDOT(335)*surfaceCoverage*Y(28)
     YDOT(33)=YDOT(33)-YDOT(335)*surfaceCoverage*Y(33)
     YDOT(36)=YDOT(36)-YDOT(335)*surfaceCoverage*Y(36)
+    ! @CH3  #CH3
     REACTIONRATE(3195) = 0.0
     REACTIONRATE(3278) = -YDOT(335)*surfaceCoverage*Y(33)
     YDOT(37)=YDOT(37)+YDOT(335)*surfaceCoverage*Y(33)
+    ! @NH  #NH
     REACTIONRATE(3196) = 0.0
     REACTIONRATE(3279) = -YDOT(335)*surfaceCoverage*Y(36)
     YDOT(38)=YDOT(38)+YDOT(335)*surfaceCoverage*Y(36)
     YDOT(39)=YDOT(39)-YDOT(335)*surfaceCoverage*Y(39)
     YDOT(44)=YDOT(44)-YDOT(335)*surfaceCoverage*Y(44)
     YDOT(46)=YDOT(46)-YDOT(335)*surfaceCoverage*Y(46)
+    ! @CH4  #CH4
     REACTIONRATE(3197) = 0.0
     REACTIONRATE(3280) = -YDOT(335)*surfaceCoverage*Y(39)
     YDOT(48)=YDOT(48)+YDOT(335)*surfaceCoverage*Y(39)
+    ! @NH2  #NH2
     REACTIONRATE(3198) = 0.0
     REACTIONRATE(3281) = -YDOT(335)*surfaceCoverage*Y(44)
     YDOT(49)=YDOT(49)+YDOT(335)*surfaceCoverage*Y(44)
+    ! @O  #O
     REACTIONRATE(3199) = 0.0
     REACTIONRATE(3282) = -YDOT(335)*surfaceCoverage*Y(46)
     YDOT(50)=YDOT(50)+YDOT(335)*surfaceCoverage*Y(46)
     YDOT(51)=YDOT(51)-YDOT(335)*surfaceCoverage*Y(51)
     YDOT(57)=YDOT(57)-YDOT(335)*surfaceCoverage*Y(57)
+    ! @NH3  #NH3
     REACTIONRATE(3200) = 0.0
     REACTIONRATE(3283) = -YDOT(335)*surfaceCoverage*Y(51)
     YDOT(58)=YDOT(58)+YDOT(335)*surfaceCoverage*Y(51)
+    ! @OH  #OH
     REACTIONRATE(3201) = 0.0
     REACTIONRATE(3284) = -YDOT(335)*surfaceCoverage*Y(57)
     YDOT(59)=YDOT(59)+YDOT(335)*surfaceCoverage*Y(57)
     YDOT(60)=YDOT(60)-YDOT(335)*surfaceCoverage*Y(60)
+    ! @H2O  #H2O
     REACTIONRATE(3202) = 0.0
     REACTIONRATE(3285) = -YDOT(335)*surfaceCoverage*Y(60)
     YDOT(64)=YDOT(64)+YDOT(335)*surfaceCoverage*Y(60)
     YDOT(70)=YDOT(70)-YDOT(335)*surfaceCoverage*Y(70)
     YDOT(71)=YDOT(71)-YDOT(335)*surfaceCoverage*Y(71)
+    ! @C2  #C2
     REACTIONRATE(3203) = 0.0
     REACTIONRATE(3286) = -YDOT(335)*surfaceCoverage*Y(70)
     YDOT(72)=YDOT(72)+YDOT(335)*surfaceCoverage*Y(70)
+    ! @MG  #MG
     REACTIONRATE(3204) = 0.0
     REACTIONRATE(3287) = -YDOT(335)*surfaceCoverage*Y(71)
     YDOT(73)=YDOT(73)+YDOT(335)*surfaceCoverage*Y(71)
     YDOT(76)=YDOT(76)-YDOT(335)*surfaceCoverage*Y(76)
+    ! @C2H  #C2H
     REACTIONRATE(3205) = 0.0
     REACTIONRATE(3288) = -YDOT(335)*surfaceCoverage*Y(76)
     YDOT(77)=YDOT(77)+YDOT(335)*surfaceCoverage*Y(76)
     YDOT(78)=YDOT(78)-YDOT(335)*surfaceCoverage*Y(78)
     YDOT(83)=YDOT(83)-YDOT(335)*surfaceCoverage*Y(83)
+    ! @C2H2  #C2H2
     REACTIONRATE(3206) = 0.0
     REACTIONRATE(3289) = -YDOT(335)*surfaceCoverage*Y(78)
     YDOT(84)=YDOT(84)+YDOT(335)*surfaceCoverage*Y(78)
+    ! @CN  #CN
     REACTIONRATE(3207) = 0.0
     REACTIONRATE(3290) = -YDOT(335)*surfaceCoverage*Y(83)
     YDOT(85)=YDOT(85)+YDOT(335)*surfaceCoverage*Y(83)
     YDOT(86)=YDOT(86)-YDOT(335)*surfaceCoverage*Y(86)
     YDOT(87)=YDOT(87)-YDOT(335)*surfaceCoverage*Y(87)
     YDOT(92)=YDOT(92)-YDOT(335)*surfaceCoverage*Y(92)
+    ! @HCN  #HCN
     REACTIONRATE(3208) = 0.0
     REACTIONRATE(3291) = -YDOT(335)*surfaceCoverage*Y(86)
     YDOT(93)=YDOT(93)+YDOT(335)*surfaceCoverage*Y(86)
+    ! @HNC  #HNC
     REACTIONRATE(3209) = 0.0
     REACTIONRATE(3292) = -YDOT(335)*surfaceCoverage*Y(87)
     YDOT(94)=YDOT(94)+YDOT(335)*surfaceCoverage*Y(87)
+    ! @C2H3  #C2H3
     REACTIONRATE(3210) = 0.0
     REACTIONRATE(3293) = -YDOT(335)*surfaceCoverage*Y(92)
     YDOT(95)=YDOT(95)+YDOT(335)*surfaceCoverage*Y(92)
@@ -8486,42 +8592,53 @@ ELSE
     YDOT(106)=YDOT(106)-YDOT(335)*surfaceCoverage*Y(106)
     YDOT(107)=YDOT(107)-YDOT(335)*surfaceCoverage*Y(107)
     YDOT(109)=YDOT(109)-YDOT(335)*surfaceCoverage*Y(109)
+    ! @CO  #CO
     REACTIONRATE(3211) = 0.0
     REACTIONRATE(3294) = -YDOT(335)*surfaceCoverage*Y(96)
     YDOT(110)=YDOT(110)+YDOT(335)*surfaceCoverage*Y(96)
+    ! @N2  #N2
     REACTIONRATE(3212) = 0.0
     REACTIONRATE(3295) = -YDOT(335)*surfaceCoverage*Y(97)
     YDOT(111)=YDOT(111)+YDOT(335)*surfaceCoverage*Y(97)
+    ! @H2CN  #H2CN
     REACTIONRATE(3213) = 0.0
     REACTIONRATE(3296) = -YDOT(335)*surfaceCoverage*Y(106)
     YDOT(112)=YDOT(112)+YDOT(335)*surfaceCoverage*Y(106)
+    ! @C2H4  #C2H4
     REACTIONRATE(3214) = 0.0
     REACTIONRATE(3297) = -YDOT(335)*surfaceCoverage*Y(107)
     YDOT(113)=YDOT(113)+YDOT(335)*surfaceCoverage*Y(107)
+    ! @SI  #SI
     REACTIONRATE(3215) = 0.0
     REACTIONRATE(3298) = -YDOT(335)*surfaceCoverage*Y(109)
     YDOT(114)=YDOT(114)+YDOT(335)*surfaceCoverage*Y(109)
     YDOT(117)=YDOT(117)-YDOT(335)*surfaceCoverage*Y(117)
     YDOT(123)=YDOT(123)-YDOT(335)*surfaceCoverage*Y(123)
     YDOT(124)=YDOT(124)-YDOT(335)*surfaceCoverage*Y(124)
+    ! @HCO  #HCO
     REACTIONRATE(3216) = 0.0
     REACTIONRATE(3299) = -YDOT(335)*surfaceCoverage*Y(117)
     YDOT(125)=YDOT(125)+YDOT(335)*surfaceCoverage*Y(117)
+    ! @C2H5  #C2H5
     REACTIONRATE(3217) = 0.0
     REACTIONRATE(3300) = -YDOT(335)*surfaceCoverage*Y(123)
     YDOT(126)=YDOT(126)+YDOT(335)*surfaceCoverage*Y(123)
+    ! @SIH  #SIH
     REACTIONRATE(3218) = 0.0
     REACTIONRATE(3301) = -YDOT(335)*surfaceCoverage*Y(124)
     YDOT(127)=YDOT(127)+YDOT(335)*surfaceCoverage*Y(124)
     YDOT(128)=YDOT(128)-YDOT(335)*surfaceCoverage*Y(128)
     YDOT(129)=YDOT(129)-YDOT(335)*surfaceCoverage*Y(129)
     YDOT(136)=YDOT(136)-YDOT(335)*surfaceCoverage*Y(136)
+    ! @NO  #NO
     REACTIONRATE(3219) = 0.0
     REACTIONRATE(3302) = -YDOT(335)*surfaceCoverage*Y(128)
     YDOT(137)=YDOT(137)+YDOT(335)*surfaceCoverage*Y(128)
+    ! @H2CO  #H2CO
     REACTIONRATE(3220) = 0.0
     REACTIONRATE(3303) = -YDOT(335)*surfaceCoverage*Y(129)
     YDOT(138)=YDOT(138)+YDOT(335)*surfaceCoverage*Y(129)
+    ! @SIH2  #SIH2
     REACTIONRATE(3221) = 0.0
     REACTIONRATE(3304) = -YDOT(335)*surfaceCoverage*Y(136)
     YDOT(139)=YDOT(139)+YDOT(335)*surfaceCoverage*Y(136)
@@ -8529,15 +8646,19 @@ ELSE
     YDOT(147)=YDOT(147)-YDOT(335)*surfaceCoverage*Y(147)
     YDOT(149)=YDOT(149)-YDOT(335)*surfaceCoverage*Y(149)
     YDOT(150)=YDOT(150)-YDOT(335)*surfaceCoverage*Y(150)
+    ! @H2COH  #H2COH
     REACTIONRATE(3222) = 0.0
     REACTIONRATE(3305) = -YDOT(335)*surfaceCoverage*Y(142)
     YDOT(151)=YDOT(151)+YDOT(335)*surfaceCoverage*Y(142)
+    ! @HNO  #HNO
     REACTIONRATE(3223) = 0.0
     REACTIONRATE(3306) = -YDOT(335)*surfaceCoverage*Y(147)
     YDOT(152)=YDOT(152)+YDOT(335)*surfaceCoverage*Y(147)
+    ! @CH2OH  #CH2OH
     REACTIONRATE(3224) = 0.0
     REACTIONRATE(3307) = -YDOT(335)*surfaceCoverage*Y(149)
     YDOT(153)=YDOT(153)+YDOT(335)*surfaceCoverage*Y(149)
+    ! @SIH3  #SIH3
     REACTIONRATE(3225) = 0.0
     REACTIONRATE(3308) = -YDOT(335)*surfaceCoverage*Y(150)
     YDOT(154)=YDOT(154)+YDOT(335)*surfaceCoverage*Y(150)
@@ -8545,71 +8666,89 @@ ELSE
     YDOT(156)=YDOT(156)-YDOT(335)*surfaceCoverage*Y(156)
     YDOT(157)=YDOT(157)-YDOT(335)*surfaceCoverage*Y(157)
     YDOT(163)=YDOT(163)-YDOT(335)*surfaceCoverage*Y(163)
+    ! @O2  #O2
     REACTIONRATE(3226) = 0.0
     REACTIONRATE(3309) = -YDOT(335)*surfaceCoverage*Y(155)
     YDOT(167)=YDOT(167)+YDOT(335)*surfaceCoverage*Y(155)
+    ! @CH3OH  #CH3OH
     REACTIONRATE(3227) = 0.0
     REACTIONRATE(3310) = -YDOT(335)*surfaceCoverage*Y(156)
     YDOT(168)=YDOT(168)+YDOT(335)*surfaceCoverage*Y(156)
+    ! @SIH4  #SIH4
     REACTIONRATE(3228) = 0.0
     REACTIONRATE(3311) = -YDOT(335)*surfaceCoverage*Y(157)
     YDOT(169)=YDOT(169)+YDOT(335)*surfaceCoverage*Y(157)
+    ! @S  #S
     REACTIONRATE(3229) = 0.0
     REACTIONRATE(3312) = -YDOT(335)*surfaceCoverage*Y(163)
     YDOT(170)=YDOT(170)+YDOT(335)*surfaceCoverage*Y(163)
     YDOT(177)=YDOT(177)-YDOT(335)*surfaceCoverage*Y(177)
     YDOT(178)=YDOT(178)-YDOT(335)*surfaceCoverage*Y(178)
+    ! @O2H  #O2H
     REACTIONRATE(3230) = 0.0
     REACTIONRATE(3313) = -YDOT(335)*surfaceCoverage*Y(177)
     YDOT(179)=YDOT(179)+YDOT(335)*surfaceCoverage*Y(177)
+    ! @HS  #HS
     REACTIONRATE(3231) = 0.0
     REACTIONRATE(3314) = -YDOT(335)*surfaceCoverage*Y(178)
     YDOT(180)=YDOT(180)+YDOT(335)*surfaceCoverage*Y(178)
     YDOT(181)=YDOT(181)-YDOT(335)*surfaceCoverage*Y(181)
+    ! @H2S  #H2S
     REACTIONRATE(3232) = 0.0
     REACTIONRATE(3315) = -YDOT(335)*surfaceCoverage*Y(181)
     YDOT(184)=YDOT(184)+YDOT(335)*surfaceCoverage*Y(181)
     YDOT(187)=YDOT(187)-YDOT(335)*surfaceCoverage*Y(187)
+    ! @CL  #CL
     REACTIONRATE(3233) = 0.0
     REACTIONRATE(3316) = -YDOT(335)*surfaceCoverage*Y(187)
     YDOT(189)=YDOT(189)+YDOT(335)*surfaceCoverage*Y(187)
     YDOT(190)=YDOT(190)-YDOT(335)*surfaceCoverage*Y(190)
+    ! @HCL  #HCL
     REACTIONRATE(3234) = 0.0
     REACTIONRATE(3317) = -YDOT(335)*surfaceCoverage*Y(190)
     YDOT(194)=YDOT(194)+YDOT(335)*surfaceCoverage*Y(190)
     YDOT(197)=YDOT(197)-YDOT(335)*surfaceCoverage*Y(197)
     YDOT(200)=YDOT(200)-YDOT(335)*surfaceCoverage*Y(200)
+    ! @C2N  #C2N
     REACTIONRATE(3235) = 0.0
     REACTIONRATE(3318) = -YDOT(335)*surfaceCoverage*Y(197)
     YDOT(201)=YDOT(201)+YDOT(335)*surfaceCoverage*Y(197)
+    ! @C3H2  #C3H2
     REACTIONRATE(3236) = 0.0
     REACTIONRATE(3319) = -YDOT(335)*surfaceCoverage*Y(200)
     YDOT(202)=YDOT(202)+YDOT(335)*surfaceCoverage*Y(200)
     YDOT(204)=YDOT(204)-YDOT(335)*surfaceCoverage*Y(204)
     YDOT(208)=YDOT(208)-YDOT(335)*surfaceCoverage*Y(208)
+    ! @CH3CCH  #CH3CCH
     REACTIONRATE(3237) = 0.0
     REACTIONRATE(3320) = -YDOT(335)*surfaceCoverage*Y(204)
     YDOT(209)=YDOT(209)+YDOT(335)*surfaceCoverage*Y(204)
+    ! @SIC  #SIC
     REACTIONRATE(3238) = 0.0
     REACTIONRATE(3321) = -YDOT(335)*surfaceCoverage*Y(208)
     YDOT(210)=YDOT(210)+YDOT(335)*surfaceCoverage*Y(208)
     YDOT(211)=YDOT(211)-YDOT(335)*surfaceCoverage*Y(211)
+    ! @CH3CN  #CH3CN
     REACTIONRATE(3239) = 0.0
     REACTIONRATE(3322) = -YDOT(335)*surfaceCoverage*Y(211)
     YDOT(214)=YDOT(214)+YDOT(335)*surfaceCoverage*Y(211)
     YDOT(215)=YDOT(215)-YDOT(335)*surfaceCoverage*Y(215)
     YDOT(216)=YDOT(216)-YDOT(335)*surfaceCoverage*Y(216)
     YDOT(221)=YDOT(221)-YDOT(335)*surfaceCoverage*Y(221)
+    ! @CH2CO  #CH2CO
     REACTIONRATE(3240) = 0.0
     REACTIONRATE(3323) = -YDOT(335)*surfaceCoverage*Y(215)
     YDOT(222)=YDOT(222)+YDOT(335)*surfaceCoverage*Y(215)
+    ! @CH3CNH  #CH3CNH
     REACTIONRATE(3241) = 0.0
     REACTIONRATE(3324) = -YDOT(335)*surfaceCoverage*Y(216)
     YDOT(223)=YDOT(223)+YDOT(335)*surfaceCoverage*Y(216)
+    ! @OCN  #OCN
     REACTIONRATE(3242) = 0.0
     REACTIONRATE(3325) = -YDOT(335)*surfaceCoverage*Y(221)
     YDOT(224)=YDOT(224)+YDOT(335)*surfaceCoverage*Y(221)
     YDOT(225)=YDOT(225)-YDOT(335)*surfaceCoverage*Y(225)
+    ! @HNCO  #HNCO
     REACTIONRATE(3243) = 0.0
     REACTIONRATE(3326) = -YDOT(335)*surfaceCoverage*Y(225)
     YDOT(227)=YDOT(227)+YDOT(335)*surfaceCoverage*Y(225)
@@ -8617,15 +8756,19 @@ ELSE
     YDOT(229)=YDOT(229)-YDOT(335)*surfaceCoverage*Y(229)
     YDOT(230)=YDOT(230)-YDOT(335)*surfaceCoverage*Y(230)
     YDOT(237)=YDOT(237)-YDOT(335)*surfaceCoverage*Y(237)
+    ! @SIO  #SIO
     REACTIONRATE(3244) = 0.0
     REACTIONRATE(3327) = -YDOT(335)*surfaceCoverage*Y(228)
     YDOT(238)=YDOT(238)+YDOT(335)*surfaceCoverage*Y(228)
+    ! @CS  #CS
     REACTIONRATE(3245) = 0.0
     REACTIONRATE(3328) = -YDOT(335)*surfaceCoverage*Y(229)
     YDOT(239)=YDOT(239)+YDOT(335)*surfaceCoverage*Y(229)
+    ! @CO2  #CO2
     REACTIONRATE(3246) = 0.0
     REACTIONRATE(3329) = -YDOT(335)*surfaceCoverage*Y(230)
     YDOT(240)=YDOT(240)+YDOT(335)*surfaceCoverage*Y(230)
+    ! @CH3CHO  #CH3CHO
     REACTIONRATE(3247) = 0.0
     REACTIONRATE(3330) = -YDOT(335)*surfaceCoverage*Y(237)
     YDOT(241)=YDOT(241)+YDOT(335)*surfaceCoverage*Y(237)
@@ -8633,15 +8776,19 @@ ELSE
     YDOT(248)=YDOT(248)-YDOT(335)*surfaceCoverage*Y(248)
     YDOT(250)=YDOT(250)-YDOT(335)*surfaceCoverage*Y(250)
     YDOT(252)=YDOT(252)-YDOT(335)*surfaceCoverage*Y(252)
+    ! @HCS  #HCS
     REACTIONRATE(3248) = 0.0
     REACTIONRATE(3331) = -YDOT(335)*surfaceCoverage*Y(245)
     YDOT(253)=YDOT(253)+YDOT(335)*surfaceCoverage*Y(245)
+    ! @HSIO  #HSIO
     REACTIONRATE(3249) = 0.0
     REACTIONRATE(3332) = -YDOT(335)*surfaceCoverage*Y(248)
     YDOT(254)=YDOT(254)+YDOT(335)*surfaceCoverage*Y(248)
+    ! @NH2CHO  #NH2CHO
     REACTIONRATE(3250) = 0.0
     REACTIONRATE(3333) = -YDOT(335)*surfaceCoverage*Y(250)
     YDOT(255)=YDOT(255)+YDOT(335)*surfaceCoverage*Y(250)
+    ! @HCOO  #HCOO
     REACTIONRATE(3251) = 0.0
     REACTIONRATE(3334) = -YDOT(335)*surfaceCoverage*Y(252)
     YDOT(256)=YDOT(256)+YDOT(335)*surfaceCoverage*Y(252)
@@ -8650,74 +8797,93 @@ ELSE
     YDOT(259)=YDOT(259)-YDOT(335)*surfaceCoverage*Y(259)
     YDOT(260)=YDOT(260)-YDOT(335)*surfaceCoverage*Y(260)
     YDOT(268)=YDOT(268)-YDOT(335)*surfaceCoverage*Y(268)
+    ! @H2CS  #H2CS
     REACTIONRATE(3252) = 0.0
     REACTIONRATE(3335) = -YDOT(335)*surfaceCoverage*Y(257)
     YDOT(269)=YDOT(269)+YDOT(335)*surfaceCoverage*Y(257)
+    ! @NO2  #NO2
     REACTIONRATE(3253) = 0.0
     REACTIONRATE(3336) = -YDOT(335)*surfaceCoverage*Y(258)
     YDOT(270)=YDOT(270)+YDOT(335)*surfaceCoverage*Y(258)
+    ! @NS  #NS
     REACTIONRATE(3254) = 0.0
     REACTIONRATE(3337) = -YDOT(335)*surfaceCoverage*Y(259)
     YDOT(271)=YDOT(271)+YDOT(335)*surfaceCoverage*Y(259)
+    ! @H2SIO  #H2SIO
     REACTIONRATE(3255) = 0.0
     REACTIONRATE(3338) = -YDOT(335)*surfaceCoverage*Y(260)
     YDOT(272)=YDOT(272)+YDOT(335)*surfaceCoverage*Y(260)
+    ! @HCOOH  #HCOOH
     REACTIONRATE(3256) = 0.0
     REACTIONRATE(3339) = -YDOT(335)*surfaceCoverage*Y(268)
     YDOT(273)=YDOT(273)+YDOT(335)*surfaceCoverage*Y(268)
     YDOT(276)=YDOT(276)-YDOT(335)*surfaceCoverage*Y(276)
+    ! @SO  #SO
     REACTIONRATE(3257) = 0.0
     REACTIONRATE(3340) = -YDOT(335)*surfaceCoverage*Y(276)
     YDOT(279)=YDOT(279)+YDOT(335)*surfaceCoverage*Y(276)
     YDOT(282)=YDOT(282)-YDOT(335)*surfaceCoverage*Y(282)
+    ! @C4H  #C4H
     REACTIONRATE(3258) = 0.0
     REACTIONRATE(3341) = -YDOT(335)*surfaceCoverage*Y(282)
     YDOT(283)=YDOT(283)+YDOT(335)*surfaceCoverage*Y(282)
     YDOT(285)=YDOT(285)-YDOT(335)*surfaceCoverage*Y(285)
+    ! @C3N  #C3N
     REACTIONRATE(3259) = 0.0
     REACTIONRATE(3342) = -YDOT(335)*surfaceCoverage*Y(285)
     YDOT(286)=YDOT(286)+YDOT(335)*surfaceCoverage*Y(285)
     YDOT(287)=YDOT(287)-YDOT(335)*surfaceCoverage*Y(287)
+    ! @HC3N  #HC3N
     REACTIONRATE(3260) = 0.0
     REACTIONRATE(3343) = -YDOT(335)*surfaceCoverage*Y(287)
     YDOT(289)=YDOT(289)+YDOT(335)*surfaceCoverage*Y(287)
     YDOT(294)=YDOT(294)-YDOT(335)*surfaceCoverage*Y(294)
     YDOT(295)=YDOT(295)-YDOT(335)*surfaceCoverage*Y(295)
+    ! @NCCN  #NCCN
     REACTIONRATE(3261) = 0.0
     REACTIONRATE(3344) = -YDOT(335)*surfaceCoverage*Y(294)
     YDOT(296)=YDOT(296)+YDOT(335)*surfaceCoverage*Y(294)
+    ! @SIC2  #SIC2
     REACTIONRATE(3262) = 0.0
     REACTIONRATE(3345) = -YDOT(335)*surfaceCoverage*Y(295)
     YDOT(297)=YDOT(297)+YDOT(335)*surfaceCoverage*Y(295)
     YDOT(298)=YDOT(298)-YDOT(335)*surfaceCoverage*Y(298)
     YDOT(299)=YDOT(299)-YDOT(335)*surfaceCoverage*Y(299)
+    ! @SIS  #SIS
     REACTIONRATE(3263) = 0.0
     REACTIONRATE(3346) = -YDOT(335)*surfaceCoverage*Y(298)
     YDOT(304)=YDOT(304)+YDOT(335)*surfaceCoverage*Y(298)
+    ! @OCS  #OCS
     REACTIONRATE(3264) = 0.0
     REACTIONRATE(3347) = -YDOT(335)*surfaceCoverage*Y(299)
     YDOT(305)=YDOT(305)+YDOT(335)*surfaceCoverage*Y(299)
     YDOT(310)=YDOT(310)-YDOT(335)*surfaceCoverage*Y(310)
+    ! @C4N  #C4N
     REACTIONRATE(3265) = 0.0
     REACTIONRATE(3348) = -YDOT(335)*surfaceCoverage*Y(310)
     YDOT(311)=YDOT(311)+YDOT(335)*surfaceCoverage*Y(310)
     YDOT(312)=YDOT(312)-YDOT(335)*surfaceCoverage*Y(312)
     YDOT(315)=YDOT(315)-YDOT(335)*surfaceCoverage*Y(315)
     YDOT(317)=YDOT(317)-YDOT(335)*surfaceCoverage*Y(317)
+    ! @SIC3  #SIC3
     REACTIONRATE(3266) = 0.0
     REACTIONRATE(3349) = -YDOT(335)*surfaceCoverage*Y(312)
     YDOT(321)=YDOT(321)+YDOT(335)*surfaceCoverage*Y(312)
+    ! @SO2  #SO2
     REACTIONRATE(3267) = 0.0
     REACTIONRATE(3350) = -YDOT(335)*surfaceCoverage*Y(315)
     YDOT(322)=YDOT(322)+YDOT(335)*surfaceCoverage*Y(315)
+    ! @S2  #S2
     REACTIONRATE(3268) = 0.0
     REACTIONRATE(3351) = -YDOT(335)*surfaceCoverage*Y(317)
     YDOT(323)=YDOT(323)+YDOT(335)*surfaceCoverage*Y(317)
     YDOT(327)=YDOT(327)-YDOT(335)*surfaceCoverage*Y(327)
+    ! @HS2  #HS2
     REACTIONRATE(3269) = 0.0
     REACTIONRATE(3352) = -YDOT(335)*surfaceCoverage*Y(327)
     YDOT(328)=YDOT(328)+YDOT(335)*surfaceCoverage*Y(327)
     YDOT(331)=YDOT(331)-YDOT(335)*surfaceCoverage*Y(331)
+    ! @H2S2  #H2S2
     REACTIONRATE(3270) = 0.0
     REACTIONRATE(3353) = -YDOT(335)*surfaceCoverage*Y(331)
     YDOT(332)=YDOT(332)+YDOT(335)*surfaceCoverage*Y(331)
