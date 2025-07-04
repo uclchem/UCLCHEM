@@ -4,8 +4,8 @@ species_file: data/default/default_species.csv
 #core reactions from gas phase database
 database_reaction_file: data/databases/umist22.csv
 database_reaction_type: UMIST
-#database_reaction_file : data/databases/kida.uva.2014.dat
-#database_reaction_type : KIDA
+# database_reaction_file : data/databases/gas_reactions_kida.uva.2024.in
+# database_reaction_type : KIDA
 
 #set of additional reactions: eg grain network
 custom_reaction_file: data/default/default_grain_network.csv
