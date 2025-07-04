@@ -300,7 +300,7 @@ def read_analysis(filepath, species):
     return df, all_reactions
 
 
-def analysis(species_name, result_file, output_file, rate_threshold=0.99):
+def analysis(species_name, rates, output_file, rate_threshold=0.99):
     """A function which loops over every time step in an output file and finds the rate of change of a species at that time due to each of the reactions it is involved in.
     From this, the most important reactions are identified and printed to file. This can be used to understand the chemical reason behind a species' behaviour.
 
@@ -310,12 +310,6 @@ def analysis(species_name, result_file, output_file, rate_threshold=0.99):
         output_file (str): The path to the file where the analysis output will be written
         rate_threshold (float,optional): Analysis output will contain the only the most efficient reactions that are responsible for rate_threshold of the total production and destruction rate. Defaults to 0.99.
     """
-    print(
-        "WARNING: THIS VERSION OF THE ANALYSIS TOOL IS CURRENTLY INCORRECT FOR SOLID (SURFACE/BULK) SPECIES,"
-    )
-    print(
-        "ONLY USE IT FOR GAS-PHASE. IF YOU WANT INFORMATION ABOUT FORMATION/DESTRUCTION RATES OF ICE SPECIES, RUN THE MODEL WITH THE 'rateOutput' OPTION SET TO A FILEPATH"
-    )
     result_df = read_output_file(result_file)
     species = np.loadtxt(
         os.path.join(_ROOT, "species.csv"),
@@ -465,6 +459,7 @@ def _get_species_rates(param_dict, input_abundances, species_index, reac_indxs):
 
     :returns: (ndarray) Array containing the rate of every reaction specified by reac_indxs
     """
+    raise DeprecationWarning("This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained")
     input_abund = np.zeros(n_species)
     input_abund[: len(input_abundances)] = input_abundances
     rate_indxs = np.ones(n_reactions)
@@ -495,6 +490,7 @@ def _get_rates_of_change(
     Returns:
         _type_: _description_
     """
+    raise DeprecationWarning("This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained")
     changes = []
     reactionList = []
     three_phase = "@" in "".join(speciesList)
@@ -738,7 +734,7 @@ def construct_incidence(species: List[Species], reactions: List[Reaction]) -> np
     return incidence
 
 
-def postprocess_rates_to_dy(
+def rates_to_dy_and_flux(
     physics: pd.DataFrame,
     abundances: pd.DataFrame,
     rates: pd.DataFrame,
@@ -892,3 +888,15 @@ def postprocess_rates_to_dy(
         dy,
         flux_by_reaction,
     )
+
+
+def get_production_and_destruction(species: str, rates_or_flux: pd.DataFrame):
+    reactions = [r.strip() for r in list(rates_or_flux.columns)]
+    reactions = [r.strip() for r in list(rates_or_flux.columns)]
+    destruction = [
+        r for r in reactions if species in r.split(" -> ")[0].split(" + ")
+    ]
+    production = [
+        r for r in reactions if species in r.split(" -> ")[-1].split(" + ")
+    ]
+    return rates_or_flux.loc[:, production], rates_or_flux.loc[:, destruction]
