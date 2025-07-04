@@ -41,21 +41,11 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
         "finaltime": 1.0e3,
         "outspecies": len(species_list),
     }
-    _, _, abundances, _, specname, success_flag = wrap.cloud(
+    _, _, _, abundances, specname, success_flag = wrap.cloud(
         dictionary=param_dict,
         outspeciesin=" ".join(species_list),
         timepoints=1,
         gridpoints=1,
-        physicsarray=np.zeros(
-            shape=(2, 1, uclchem.constants.N_PHYSICAL_PARAMETERS),
-            dtype=np.float64,
-            order="F",
-        ),
-        chemicalabunarray=np.zeros(
-            shape=(2, 1, uclchem.constants.n_species),
-            dtype=np.float64,
-            order="F",
-        ),
         returnarray=False,
         givestartabund=False,
         returnrates=False,
