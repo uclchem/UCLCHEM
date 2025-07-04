@@ -54,7 +54,8 @@ LOGICAL :: improvedH2CRPDissociation=.False. !Use H2 CRP dissociation rate from 
 !| ----- | ------| ------ |
 CHARACTER(256) :: outputFile="" !File to write full output of UCLCHEM. This includes physical parameter values and all abundances at every time step.
 CHARACTER(256) :: columnFile="" !File to write specific species abundances, see outSpecies.
-CHARACTER(256) :: rateFile="" !File to write reaction rates at each timestep. This includes physical parameter values.
+CHARACTER(256) :: rateFile="" !File to write rate 'constants' at each timestep. This includes physical parameter values.
+CHARACTER(256) :: fluxFile="" !File to write reaction rates (flux) at each timestep. This includes physical parameter values.
 INTEGER :: writeStep=1 !Writing to columnFile only happens every writeStep timesteps.
 CHARACTER(256) :: abundSaveFile=""
 CHARACTER(256) :: abundLoadFile=""

@@ -851,8 +851,11 @@ def postprocess_rates_to_dy(
                     * abunds_row[r_bswap.get_reactants()[0]]
                     / abunds_row["BULK"]
                 )
-                _bswap_rates[str(r_bswap).replace("SWAP", "SWAP_TRANSPORT")] = bswap
-                _sswap_rates[str(r_sswap).replace("SWAP", "SWAP_TRANSPORT")] = 0.0
+                # Call it SWAP_GEOMETRIC since it is due to the swap induced by the effect
+                # of the surface layers growing, this is a geometric bookkeeping thing,
+                # So the name geometric makes the most sense.
+                _bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = bswap
+                _sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
                 # Immedidiately correct dy:
                 dy.loc[idx_j, r_bswap.get_reactants()[0]] -= bswap
                 dy.loc[idx_j, r_bswap.get_products()[0]] += bswap
@@ -863,8 +866,8 @@ def postprocess_rates_to_dy(
                     * surfaceCoverage
                     * abunds_row[r_sswap.get_reactants()[0]]
                 )
-                _bswap_rates[str(r_bswap).replace("SWAP", "SWAP_TRANSPORT")] = 0.0
-                _sswap_rates[str(r_sswap).replace("SWAP", "SWAP_TRANSPORT")] = sswap
+                _bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
+                _sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = sswap
                 # Immedidiately correct dy:
                 dy.loc[idx_j, r_sswap.get_products()[0]] -= sswap
                 dy.loc[idx_j, r_sswap.get_reactants()[0]] += sswap

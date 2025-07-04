@@ -7,12 +7,12 @@ MODULE IO
     USE network
     
     ! CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile
-    LOGICAL :: columnOutput=.False.,fullOutput=.False.,rateOutput=.False.,readAbunds=.False.,writeAbunds=.False.
+    LOGICAL :: columnOutput=.False.,fullOutput=.False.,rateOutput=.False.,fluxOutput=.False.,readAbunds=.False.,writeAbunds=.False.
     CHARACTER (LEN=15),ALLOCATABLE :: outSpecies(:)
     INTEGER :: nout
     INTEGER, ALLOCATABLE :: outIndx(:)
 
-    INTEGER, PARAMETER :: outputId=10,columnId=11,rateId=12,abundLoadID=71,abundSaveID=72,outID=74,debugId=79,inputId=21
+    INTEGER, PARAMETER :: outputId=10,columnId=11,rateId=12,fluxId=13,abundLoadID=71,abundSaveID=72,outID=74,debugId=79,inputId=21
 CONTAINS
     !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     SUBROUTINE fileSetup
@@ -24,19 +24,12 @@ CONTAINS
 
         INQUIRE(UNIT=outputId, OPENED=fullOutput)
         IF (fullOutput) THEN
-            ! WRITE(outputId,334) fc,fo,fn,fs
-            ! WRITE(outputId,*) "Radfield ", radfield
             WRITE(outputId,335) specName
         END IF
         335 FORMAT("Time,Density,gasTemp,dustTemp,baseAv,Av,radfield,zeta,point,",(999(A,:,',')))
-        ! 334 FORMAT("Elemental abundances, C:",1pe15.5e3," O:",1pe15.5e3," N:",1pe15.5e3," S:",1pe15.5e3)
         
         INQUIRE(UNIT=rateID, OPENED=rateOutput)
-        ! IF (rateOutput) THEN
-        !     WRITE(rateIDd, 336) reactionNames
-        ! END IF
-        ! 336 FORMAT("Time,Density,gasTemp,dustTemp,baseAv,Av,radfield,zeta,point,",(9999(A,:,',')))
-        
+        INQUIRE(UNIT=fluxID, OPENED=fluxOutput)
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
         INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
     END SUBROUTINE fileSetup
@@ -96,13 +89,17 @@ CONTAINS
         END IF
         IF (writerates) THEN
             IF (returnArray) THEN
-                ! If returnArray is true, we write the rates to the rates array
+                ! If returnArray is true, we write the rates to the rates array, we compute the flux in Python.
                 ratesarray(dtime, dstep, :) = rate(:nreac)
             ELSE 
-                ! Else, we write the rates to the file.
+                ! Else, we write the rates and flux to the file.
                 IF (rateOutput) THEN
-                    WRITE(rateId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
+                    WRITE(rateId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,RATE
                     8021 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
+                END IF
+                if (fluxOutput) THEN
+                    WRITE(fluxId,8022) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
+                    8022 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
                 END IF
             END IF
         END IF

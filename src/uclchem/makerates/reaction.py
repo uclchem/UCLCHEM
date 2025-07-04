@@ -362,44 +362,8 @@ class Reaction:
         else:
             return False
 
-    def generate_ode_bit(self, i: int, species_names: list, three_phase: bool):
-        """Every reaction contributes a fixed rate of change to whatever species it
-        affects. We create the string of fortran code describing that change here.
-
-        Args:
-            i (int): index of reaction in network in python format (counting from 0)
-            species_names (list): List of species names so we can find index of reactants in species list
-            three_phase (bool): Bool indicating whether this is three phase network
-        """
-        ode_bit = f"+RATE({i + 1})"
-        # every body after the first requires a factor of density
-        for body in range(self.body_count):
-            ode_bit = ode_bit + "*D"
-
-        # then bring in factors of abundances
-        for species in self.get_reactants():
-            if species in species_names:
-                ode_bit += f"*Y({species_names.index(species) + 1})"
-
-            elif species == "BULKSWAP":
-                ode_bit += "*bulkLayersReciprocal"
-            elif species == "SURFSWAP":
-                ode_bit += "*totalSwap/safeMantle"
-            elif species in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
-                ode_bit = ode_bit + "/safeMantle"
-                if species == "DESOH2":
-                    ode_bit = ode_bit + f"*Y({species_names.index('H') + 1})"
-            elif (species in ["THERM"]) and not (three_phase):
-                ode_bit += "*D/safeMantle"
-
-            if "H2FORM" in self.get_reactants():
-                # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
-                break
-
-        if "LH" in self.get_reactants()[2]:
-            if "@" in self.get_reactants()[0]:
-                ode_bit += "*bulkLayersReciprocal"
-        self.ode_bit = ode_bit
+    def generate_ode_bit(self, i: int, species_names: list):
+        self.ode_bit = _generate_reaction_ode_bit(i, species_names, self.body_count, self.get_reactants())
 
     def to_UCL_format(self):
         """Convert a reaction to UCLCHEM reaction file format"""
@@ -604,14 +568,39 @@ class CoupledReaction(Reaction):
     def get_partner(self):
         return self.partner
 
+def _generate_reaction_ode_bit(i: int, species_names: list, body_count: int, reactants: list[str]):
+        """Every reaction contributes a fixed rate of change to whatever species it
+        affects. We create the string of fortran code describing that change here.
 
-# class BulkReaction(Reaction):
-#   def __init__(self, inputRow: list[str], surfacePartner: SurfaceReaction):
-#       super.__init__(self, inputRow)
-#       self.set_surface_partner(surfacePartner)
-#
-#   def set_surface_partner(self, surfacePartner: SurfaceReaction):
-#       self.surface_partner = surfacePartner
-#
-#   def get_surface_partner(self):
-#       return self.surface_partner
+        Args:
+            i (int): index of reaction in network in python format (counting from 0)
+            species_names (list): List of species names so we can find index of reactants in species list
+            three_phase (bool): Bool indicating whether this is three phase network
+        """
+        ode_bit = f"+RATE({i + 1})"
+        # every body after the first requires a factor of density
+        for body in range(body_count):
+            ode_bit = ode_bit + "*D"
+
+        # then bring in factors of abundances
+        for species in reactants:
+            if species in species_names:
+                ode_bit += f"*Y({species_names.index(species) + 1})"
+
+            elif species == "BULKSWAP":
+                ode_bit += "*bulkLayersReciprocal"
+            elif species == "SURFSWAP":
+                ode_bit += "*totalSwap/safeMantle"
+            elif species in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
+                ode_bit = ode_bit + "/safeMantle"
+                if species == "DESOH2":
+                    ode_bit = ode_bit + f"*Y({species_names.index('H') + 1})"
+
+            if "H2FORM" in reactants:
+                # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
+                break
+
+        if "LH" in reactants[2]:
+            if "@" in reactants[0]:
+                ode_bit += "*bulkLayersReciprocal"
+        return ode_bit

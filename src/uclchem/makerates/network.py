@@ -22,7 +22,6 @@ class Network:
         self,
         species: list[Species],
         reactions: list[Reaction],
-        three_phase: bool = False,
         user_defined_bulk: list = [],
     ):
         """A class to store network information such as indices of important reactions.
@@ -37,7 +36,6 @@ class Network:
         Args:
             species (list[Species]): A list of chemical species that are added to the network
             reactions (list[Reaction]): A list of chemical reactions that are added to the network
-            three_phase (bool, optional): Whether to use a three phase model (gas, surface, bulk). Defaults to False.
             user_defined_bulk (list, optional): List of user defined bulk. Defaults to [].
         """
         assert len(set([s.name for s in species])) == len(
@@ -47,7 +45,6 @@ class Network:
 
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
-        self.three_phase = three_phase
         electron_specie = Species(["E-", 0, 0.0, 0, 0, 0, 0])
         electron_specie.n_atoms = 1
         self.add_species(electron_specie)
@@ -59,9 +56,9 @@ class Network:
 
         # Need additional grain reactions including non-thermal desorption and chemically induced desorption
         self.add_freeze_reactions()
-        if self.three_phase:
-            self.add_bulk_species()
-            self.add_bulk_reactions()
+        # Add the bulk species:
+        self.add_bulk_species()
+        self.add_bulk_reactions()
         self.add_desorb_reactions()
         self.add_chemdes_reactions()
         if self.excited_species:
@@ -517,7 +514,6 @@ class Network:
         logging.debug(
             f"Before sorting species {[(k,v ) for i, (k, v) in enumerate(species_dict.items()) if i < 5]}"
         )
-    
         self.set_species_dict(
             dict(
                 sorted(
@@ -612,10 +608,7 @@ class Network:
             ].binding_energy
         except ValueError:
             error = "You are trying to create a three phase model but #H2O is not in your network"
-            error += "\nThis is likely an error so Makerates will not complete"
-            error += (
-                "\nTry adding #H2O or switching to three_phase=False in Makerates.py"
-            )
+            error += "\nThis is likely an error so Makerates will not complete. Try adding #H2O"
             raise RuntimeError(error)
         for species in self.get_species_list():
             if species.is_surface_species():

@@ -2,11 +2,11 @@ import os
 
 import numpy as np
 from pandas import DataFrame
+from uclchemwrap import uclchemwrap as wrap
 
 import uclchem
 
 from .analysis import total_element_abundance
-from uclchemwrap import uclchemwrap as wrap
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -41,7 +41,7 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
         "finaltime": 1.0e3,
         "outspecies": len(species_list),
     }
-    _, _, abundances, specname, success_flag = wrap.cloud(
+    _, _, abundances, _, specname, success_flag = wrap.cloud(
         dictionary=param_dict,
         outspeciesin=" ".join(species_list),
         timepoints=1,
@@ -58,6 +58,7 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
         ),
         returnarray=False,
         givestartabund=False,
+        returnrates=False,
     )
     abundances = abundances[: param_dict["outspecies"]]
     param_dict.pop("outspecies")

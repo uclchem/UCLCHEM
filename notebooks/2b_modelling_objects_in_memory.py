@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.17.2
 #   kernelspec:
 #     display_name: UCLCHEM 3.4.0 Release Candidate
 #     language: python
@@ -23,8 +23,8 @@ import pandas as pd
 
 # ## The Hot Core
 #
-# ### Initial Conditions (Phase 1)
-# UCLCHEM typically starts with the gas in atomic/ionic form with no molecules. However, this clearly is not appropriate when modelling an object such as a hot core. In these objects, the gas is already evolved and there should be molecules in the gas phase as well as ice mantles on the dust. To allow for this, one must provide some initial abundances to the model. There are many ways to do this but we typically chose to run a preliminary model to produce our abundances. In many UCLCHEM papers, we refer to the preliminary model as *phase 1* and the science model as *phase 2*. Phase 1 simply models a collapsing cloud and phase 2 models the object in question.
+# ### Initial Conditions (Stage 1)
+# UCLCHEM typically starts with the gas in atomic/ionic form with no molecules. However, this clearly is not appropriate when modelling an object such as a hot core. In these objects, the gas is already evolved and there should be molecules in the gas phase as well as ice mantles on the dust. To allow for this, one must provide some initial abundances to the model. There are many ways to do this but we typically chose to run a preliminary model to produce our abundances. In many UCLCHEM papers, we refer to the preliminary model as *stage 1* and the science model as *stage 2*. Stage 1 simply models a collapsing cloud and stage 2 models the object in question.
 #
 # To do this, we will use `uclchem.model.cloud()` to run a model where a cloud of gas collapses from a density of $10^2 cm^{-3}$ to our hot core density of $10^6 cm^{-3}$, keeping all other parameters constant. During this collapse, chemistry will occur and we can assume the final abundances of this model will be reasonable starting abundances for the hot core.
 
@@ -39,16 +39,18 @@ param_dict = {
     "rout": 0.1,  # radius of cloud in pc
     "baseAv": 1.0,  # visual extinction at cloud edge.
 }
-df_stage1_physics, df_stage1_chemistry, final_abundances, result = uclchem.model.cloud(
-    param_dict=param_dict,
-    return_dataframe=True,
+df_stage1_physics, df_stage1_chemistry, df_stage1_rates, final_abundances, result = (
+    uclchem.model.cloud(
+        param_dict=param_dict,
+        return_dataframe=True,
+    )
 )
 
 df_stage1_chemistry
 
 # With that done, we now have a file containing the final abundances of a cloud of gas after this collapse: `param_dict["abundSaveFile"]` we can pass this to our hot core model to use those abundances as our initial abundances.
 #
-# ### Running the Science Model (Phase 2)
+# ### Running the Science Model (Stage 2)
 #
 # We need to change just a few things in `param_dict` to set up the hot core model. The key one is that UCLCHEM saves final abundances to `abundSaveFile` but loads them from `abundLoadFile` so we need to swap that key over to make the abundances we just produced our initial abundances.
 #
@@ -56,7 +58,7 @@ df_stage1_chemistry
 #
 
 # +
-# change other bits of input to set up phase 2
+# change other bits of input to set up stage 2
 param_dict["initialDens"] = 1e6
 param_dict["finalTime"] = 1e6
 param_dict["freefall"] = False
@@ -68,7 +70,7 @@ param_dict["freezeFactor"] = 0.0
 # param_dict["abstol_factor"]=1e-18
 # param_dict["reltol"]=1e-12
 
-df_stage2_physics, df_stage2_chemistry, final_abundances, result = (
+df_stage2_physics, df_stage2_chemistry, df_stage2_rates, final_abundances, result = (
     uclchem.model.hot_core(
         temp_indx=3,
         max_temperature=300.0,
@@ -92,12 +94,7 @@ df_stage2
 # ### Checking the Result
 # With a successful run, we can check the output. We first load the file and check the abundance conservation, then we can plot it up.
 
-# phase2_df=uclchem.analysis.read_output_file("../examples/test-output/phase2-full.dat")
 uclchem.analysis.check_element_conservation(df_stage2)
-
-# +
-# df_stage2.rename(columns={"age":"Time", "density":"Density"}, inplace=True)
-# -
 
 df_stage2.iloc[0]
 
@@ -123,14 +120,14 @@ ax3.set(ylabel="Temperature", facecolor="red", xlim=(1e2, 1e6))
 ax3.tick_params(axis="y", colors="red")
 # -
 
-# Here, we see the value of running a collapse phase before the science run. Having run a collapse, we start this model with well developed ices and having material in the surface and bulk allows us to properly model the effect of warm up in a hot core. For example, the @CO abundance is $\sim10^{-4}$ and #CO is $\sim10^{-6}$. As the gas warms to around 30K, the #CO abundance drops drastically as CO's binding energy is such that it is efficiently desorbed from the surface at this temperature. However, the rest of the CO is trapped in the bulk, surrounded by more strongly bound H2O molecules. Thus, the @CO abundance stays high until the gas reaches around 130K, when the H2O molecules are released along with the entire bulk.
+# Here, we see the value of running a collapse stage before the science run. Having run a collapse, we start this model with well developed ices and having material in the surface and bulk allows us to properly model the effect of warm up in a hot core. For example, the @CO abundance is $\sim10^{-4}$ and #CO is $\sim10^{-6}$. As the gas warms to around 30K, the #CO abundance drops drastically as CO's binding energy is such that it is efficiently desorbed from the surface at this temperature. However, the rest of the CO is trapped in the bulk, surrounded by more strongly bound H2O molecules. Thus, the @CO abundance stays high until the gas reaches around 130K, when the H2O molecules are released along with the entire bulk.
 
 # ## Shocks
 #
 # Essentially the same process should be followed for shocks. Let's run a C-type and J-type shock through a gas of density $10^4 cm^{-3}$. Again, we first run a simple cloud model to obtain some reasonable starting abundances, then we can run the shocks.
 
 # +
-# set a parameter dictionary for phase 1 collapse model
+# set a parameter dictionary for stage 1 collapse model
 
 param_dict = {
     "endAtFinalDensity": False,  # stop at finalTime
@@ -143,9 +140,11 @@ param_dict = {
     "baseAv": 1.0,  # visual extinction at cloud edge.
     # "abundSaveFile": "../examples/test-output/shockstart.dat",
 }
-df_stage1_physics, df_stage1_chemistry, final_abundances, result = uclchem.model.cloud(
-    param_dict=param_dict,
-    return_dataframe=True,
+df_stage1_physics, df_stage1_chemistry, df_stage1_rates, final_abundances, result = (
+    uclchem.model.cloud(
+        param_dict=param_dict,
+        return_dataframe=True,
+    )
 )
 # -
 
@@ -163,13 +162,18 @@ if "abundSaveFile" in param_dict:
 # param_dict["outputFile"]="../examples/test-output/cshock.dat"
 
 
-df_stage2_physics, df_stage2_chemistry, dissipation_time, final_abundances, result = (
-    uclchem.model.cshock(
-        shock_vel=40,
-        param_dict=param_dict,
-        return_dataframe=True,
-        starting_chemistry=final_abundances,
-    )
+(
+    df_stage2_physics,
+    df_stage2_chemistry,
+    df_stage2_rates,
+    dissipation_time,
+    final_abundances,
+    result,
+) = uclchem.model.cshock(
+    shock_vel=40,
+    param_dict=param_dict,
+    return_dataframe=True,
+    starting_chemistry=final_abundances,
 )
 # result,dissipation_time=result
 # -
@@ -218,13 +222,14 @@ param_dict["freefall"] = False  # lets remember to turn it off this time
 param_dict["reltol"] = 1e-12
 
 shock_vel = 10.0
-
-df_jshock_physics, df_jshock_chemistry, final_abundances, result = uclchem.model.jshock(
-    shock_vel=shock_vel,
-    param_dict=param_dict,
-    return_dataframe=True,
-    starting_chemistry=final_abundances,
-    timepoints=1500,
+df_jshock_physics, df_jshock_chemistry, df_jshock_rates, final_abundances, result = (
+    uclchem.model.jshock(
+        shock_vel=shock_vel,
+        param_dict=param_dict,
+        return_dataframe=True,
+        starting_chemistry=final_abundances,
+        timepoints=1500,
+    )
 )
 # -
 

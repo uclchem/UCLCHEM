@@ -223,7 +223,7 @@ def cloud(
         abundancestart=starting_chemistry,
     )
     # Overwrite the ratesArray with None if its not used:
-    if not return_rates:
+    if not return_rates or not (return_array or return_dataframe):
         ratesArray = None
     if return_array or return_dataframe:
         physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
@@ -321,7 +321,7 @@ def collapse(
         abundanceStart=starting_chemistry,
     )
     # Overwrite the ratesArray with None if its not used:
-    if not return_rates:
+    if not return_rates or not (return_array or return_dataframe):
         ratesArray = None
     if return_array or return_dataframe:
         physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
@@ -409,7 +409,7 @@ def hot_core(
         abundancestart=starting_chemistry,
     )
     # Overwrite the ratesArray with None if its not used:
-    if not return_rates:
+    if not return_rates or not (return_array or return_dataframe):
         ratesArray = None
     if return_array or return_dataframe:
         physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
@@ -510,7 +510,7 @@ def cshock(
     else:
         abunds = list(abunds[:n_out])
     # Overwrite the ratesArray with None if its not used:
-    if not return_rates:
+    if not return_rates or not (return_array or return_dataframe):
         ratesArray = None
     if return_array or return_dataframe:
         physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
@@ -602,7 +602,7 @@ def jshock(
         abundancestart=starting_chemistry,
     )
     # Overwrite the ratesArray with None if its not used:
-    if not return_rates:
+    if not return_rates or not (return_array or return_dataframe):
         ratesArray = None
     if return_array or return_dataframe:
         physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
@@ -722,10 +722,13 @@ def postprocess(
         usecoldens=coldens_H_array is not None,
         **postprocess_arrays,
     )
+    if not return_rates or not (return_array or return_dataframe):
+        ratesArray = None
     if return_array or return_dataframe:
         physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
             physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
         )
+
     if return_dataframe:
         return outputArrays_to_DataFrame(
             physicsArray,

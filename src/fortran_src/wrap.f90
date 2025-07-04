@@ -927,6 +927,19 @@ CONTAINS
                         successFlag=-1
                         RETURN
                     END IF
+                CASE('fluxfile')
+                    READ(inputValue,*,iostat=successFlag) fluxFile
+                    fluxFile = trim(fluxFile)
+                    open(fluxId,file=fluxFile,status='unknown',iostat=successFlag)
+                    IF (successFlag .ne. 0) THEN
+                        write(*,*) "An error occured when opening the rate file!"//&
+                                        & NEW_LINE('A')//&
+                                    &" The failed file was ",fluxFile&
+                                    &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
+                                    &//NEW_LINE('A')//"************************"
+                        successFlag=-1
+                        RETURN
+                    END IF
                 CASE('columnfile')
                     IF (trim(outSpeciesIn) .NE. '' ) THEN
                         columnOutput=.True.
