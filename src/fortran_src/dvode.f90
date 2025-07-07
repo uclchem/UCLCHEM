@@ -2065,7 +2065,7 @@
 !_______________________________________________________________________
 ! ..
 ! .. Intrinsic Functions ..
-!      INTRINSIC KIND
+      INTRINSIC KIND
 ! ..
 ! .. Data Statements ..
       DATA OPTS_CALLED/ .FALSE./

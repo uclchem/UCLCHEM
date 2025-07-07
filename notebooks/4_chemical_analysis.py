@@ -6,31 +6,34 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.17.2
 #   kernelspec:
-#     display_name: UCLCHEM 3.4.0 Release Candidate
+#     display_name: .conda
 #     language: python
-#     name: uclchem_rc3.4.0
+#     name: python3
 # ---
 
 # # Chemical Analysis
-#
 # Chemical networks are complex systems where the interplay between many elements often means that small changes in one aspect of the network can greatly effect the outcome in unexpected ways. Nevertheless, there are cases where a simple chemical explanation can be found for some observed behaviour in the model outputs. This tutorial demonstrates how to use some of the functionality of the UCLCHEM library to analyse model outputs and discover these explanations.
 #
-# We do recommend caution when following the approach laid out in this tutorial. There are many pitfalls which we will try to point out as we go. Ultimately, a comprehensive view of how important a reaction is to the outcome of your model requires detailed statistical calculations such as the use of [SHAP values](https://github.com/slundberg/shap) to assign meaningful scores to how much various reactions in a network contribute to a species' abundance. Therefore, care must be taken by the user to ensure that the conclusions they draw from a simpler approach are sound.
+# We do recommend caution when following the approach laid out in this tutorial. There are many pitfalls which we will try to point out as we go. Ultimately, a comprehensive view of how important a reaction is to the outcome of your model requires detailed statistical calculations such as the use of [SHAP values](https://github.com/slundberg/shap) to assign meaningful scores to how much various reactions in a network contribute to a species' abundance. Therefore, care must be taken by the user to ensure that the conclusions they draw from a simpler approach are sound. Examples of papers doing this for UCLCHEM include:
+# - [Understanding molecular abundances in star-forming regions using interpretable machine learning Open Access](https://ui.adsabs.harvard.edu/abs/2023MNRAS.526..404H/abstract) Heyl, J., Butterworth, J., & Viti, S. 2023, MNRAS, 526, 404
+# - [A statistical and machine learning approach to the study of astrochemistry](https://ui.adsabs.harvard.edu/abs/2023FaDi..245..569H/abstract) Heyl, J., Viti, S., & Vermariën, G. 2023, Faraday Discussions, 245,
+# 569
+# - [Understanding molecular ratios in the carbon and oxygen poor outer Milky Way with interpretable machine learning](https://ui.adsabs.harvard.edu/abs/2025arXiv250508410V/abstract) Vermariën, G., Viti, S., Heyl, J., Fontani, F., 2025, A&A, 699, A18  
 #
-# We'll use an example from work that was recently published at the time of writing this tutorial to demonstrate the use of `uclchem.analysis.analysis()` and how it can be used to draw conclusions about the most important reactions in a network for a given species/behaviour.
+# We'll use an example from work that was published in 2022 [Energizing Star Formation: The Cosmic-Ray Ionization Rate in NGC 253 Derived from ALCHEMI Measurements of H3O+ and SO](https://ui.adsabs.harvard.edu/abs/2022ApJ...931...89H/abstract) to demonstrate the use of the rates coming out of UCLCHEM and how it can be used to draw conclusions about the most important reactions in a network for a given species/behaviour.
 
 import uclchem
 from glob import glob
 from joblib import Parallel, delayed
 import numpy as np
 import pandas as pd
-import os
+import matplotlib.pyplot as plt
 
 # ## H3O+ and SO
 #
-# In a piece of inference work in which we measured the cosmic ray ionization rate (CRIR) in NGC 253 [(Holdship et al. 2022)](https://ui.adsabs.harvard.edu/abs/2022arXiv220403668H/abstract). We found that both H3O+ and SO were sensitive to the ionization rate. Furthermore, since H3O+ was increased in abundance by increasing CRIR and SO was destroyed, their ratio was extremely sensitive to the rate.
+# In a piece of inference work in which we measured the cosmic ray ionization rate (CRIR) in NGC 253 [(Holdship et al. 2022)](https://ui.adsabs.harvard.edu/abs/2022arXiv220403668H/abstract). We found that both H3O+ and SO were sensitive to the ionization rate. Furthermore, since H3O+ was increased in abundance by increasing CRIR and SO was destroyed, their ratio was extremely sensitive to the rate. 
 #
 # In the work, we present the plot below which shows how the equilibrium abundance of each species changes with the CRIR as well as the ratio. We plot this for a range of temperatures to show that this behaviour is not particularly sensitive to the gas temperature.
 #
@@ -47,24 +50,25 @@ import os
 # Let's run a simple grid with all possible combinations of the following:
 # - A low CRIR (zeta=1) and high CRIR (zeta=1e4)
 # - A typical cloud density (n=1e4) and high density (n=1e6)
-# - The lower temperature bound of NGC 253 CMZ (75 K)* and a high temperature (250 K)
+# - The lower temperature bound of NGC 253 CMZ (75 K)* and a high temperature (250 K) 
 # * The lower boundary is a bit lower, but the computational time of 50K models is a lot longer than 75K so we stick with a bit higher values for speed
 #
 # and that will give us enough to work with for our analysis.
+#
+# When we run the model and want to interact with the rates directly after running, UCLCHEM must be told to return it to the user. This 
+# can be done using both `return_dataframe=True` and `return_rates=True`. The model will then return the
+# physics (temperature, density etc), abundances and rates as a function of time.
 
 # +
-temperatures = [75, 250]
+temperatures = [100, 200]
 densities = [1e4, 1e6]
 zetas = [1, 1e4]
 
 parameterSpace = np.asarray(np.meshgrid(temperatures, densities, zetas)).reshape(3, -1)
 model_table = pd.DataFrame(parameterSpace.T, columns=["temperature", "density", "zeta"])
-model_table["outputFile"] = model_table.apply(
-    lambda row: f"../output/{row.temperature}_{row.density}_{row.zeta}.csv", axis=1
-)
+model_names = [f"model_{i}" for i in range(len(model_table))]
+model_table.index = model_names
 print(f"{model_table.shape[0]} models to run")
-if not os.path.exists("../output"):
-    os.makedirs("../output")
 
 
 def run_model(row):
@@ -73,23 +77,31 @@ def run_model(row):
         "baseAv": 10,  # UV shielded gas in our model
         "freefall": False,
         "finalTime": 1e6,
-        "initialtemp": row["temperature"],
-        "initialdens": row["density"],
-        "zeta": row["zeta"],
-        "outputFile": row["outputFile"],
+        "initialtemp": float(row["temperature"]),
+        "initialdens": float(row["density"]),
+        "zeta": float(row["zeta"]),
     }
-    result = uclchem.model.cloud(param_dict=ParameterDictionary)
-    return result[0]  # just the integer error code
+    result = uclchem.model.cloud(
+        param_dict=ParameterDictionary, return_dataframe=True, return_rates=True
+    )
+    return result
 
 
-results = Parallel(n_jobs=4, verbose=100)(
-    delayed(run_model)(row) for idx, row in model_table.iterrows()
-)
+model_table
+
 # -
 
-# ### 2. Run the Analysis
+# Each result contains: physics, abundances, rates, final_abundances and succesflag
+results = Parallel(n_jobs=10, verbose=100)(
+    delayed(run_model)(row) for idx, row in model_table.iterrows()
+)
+results = {k: v for k, v in zip(model_names, results)}
+
+
+
+# ### 2. Analyze the rates
+# UCLCHEM will compute and save the rates of each of your reactions during the simulation. It is then returned to the user to be inspected. 
 #
-# The `analysis` function is very simple. For every time step in your model output, it will use UCLCHEM to calculate the rate of every reaction which includes a chosen species. It then uses the abundances at that time step to calculate the total contribution of that reaction to the rate of change of the species' abundance.
 #
 # For example, if we care about H3O+ and find that it is created by $H_2O$ + $H^+$, then UCLCHEM is called to get $k$, the rate of that reaction and then analysis calculates
 # $$
@@ -104,22 +116,63 @@ results = Parallel(n_jobs=4, verbose=100)(
 #
 # #### 2.1 $H_3O^+$
 #
-# `analysis()` takes three arguments: the species, the output file to analyse, and a file to store the analsis output. Let's run it for every model in our little grid so we can inspect the outputs.
+# Let's inspect the reaction file of H3O+ for a high temperature, low density and low radiation field model (model 2)
 
-outputs = glob("../output/[0-9]*.csv")  # all files that start with a number
-for output in outputs:
-    analysis_output = "../output/H3O-analysis-" + output[10:]
-    uclchem.analysis.analysis("H3O+", output, analysis_output)
+# +
+# Retrieve the outputs from the grid:
+physics, abundances, rates, final_abundances, successflag = results["model_2"]
 
-# This will produce one file per model output with lists of the most important reactions at each time step. Analysis will only print a time step when the most important reactions change from the previous one so we often see many fewer steps than in the full output. Let's inspect the reaction file of H3O+ for a high temperature, low density and low radiation field model.
+# Add everything together into one large dataframe
+super_df = pd.concat((physics, abundances, rates), axis=1)
 
-with open("../output/H3O-analysis-250.0_10000.0_1.0.csv") as fh:
-    print(fh.read())
+# Plot the evolution of H3O+:
+super_df.plot("Time", "H3O+", logx=True, logy=True)
+# -
 
-# As of 11-10-2024, we use UMIST22 for the notebook, so we need to repeat this analysis. Some dominant formation and destruction pathways are no longer present for in UMIST22.
+# Above, we can see that the H3O+ is being formed effectively. If we then want to better understand which reactions are responsible for this formation process, we can easily obtain the production and struction routes using:
 #
 #
-#  We can then delve into specifically the low temperature, low density, low zeta case:
+
+# +
+from uclchem.analysis import get_production_and_destruction
+
+production, destruction = get_production_and_destruction("H3O+", rates)
+
+production.tail()
+# -
+
+production.iloc[-1].sort_values(ascending=True)[:5].plot.barh()
+
+# We can then also effectively convert from rates constants k, to the actual RHS
+# elements that contribute to each reaction; We can then get fluxes rather than rates:
+#
+
+# +
+from uclchem.analysis import rates_to_dy_and_flux
+from uclchem.utils import get_reaction_network
+
+network = get_reaction_network()
+dy, flux = rates_to_dy_and_flux(physics, abundances, rates, network=network)
+# -
+
+# We can then inspect the RHS of the differential equation per reaction. This informs us that the only relevant term is actually the destruction of the molecule via its reaction with HCS and H2S. Explaining the small decrease at 1 million years.
+
+production, destruction = get_production_and_destruction("H3O+", flux)
+fig, ax = plt.subplots(2, 1, sharex=True)
+production.iloc[-1].sort_values(ascending=True)[:5].plot.barh(
+    ax=ax[0], title="production"
+)
+destruction.iloc[-1].sort_values(ascending=True)[:5].plot.barh(
+    ax=ax[1], title="destruction"
+)
+
+# # UPDATE to UMIST22
+# As of 11-10-2024, we use UMIST22 for the notebook, so we need to repeat this analysis. Some dominant formation and destruction pathways are no longer present for in UMIST22. The rest of the notebook is thus no longer up to-date!
+#
+
+#
+#  
+# We can then delve into specifically the low temperature, low density, low zeta case:
 #
 # ```
 # New Important Reactions At: 7.90e+05 years
@@ -138,7 +191,7 @@ with open("../output/H3O-analysis-250.0_10000.0_1.0.csv") as fh:
 # H3O+ + SIO -> SIOH+ + H2O : 0.33%
 # ```
 #
-# What this shows is the reactions that cause 99.9% of the formation and 99.9% of the destruction of $H_3O^+$ at a time step. The total rate of formation and destruction in units of $s^{-1}$ is  given as well the percentage of the total that each reaction contributes.
+# What this shows is the reactions that cause 99.9% of the formation and 99.9% of the destruction of $H_3O^+$ at a time step. The total rate of formation and destruction in units of $s^{-1}$ is  given as well the percentage of the total that each reaction contributes. 
 #
 # What we need to find is a pattern in these reactions which holds across time and across different densities and temperatures. It actually turns out that the reactions printed above are the dominate formation and destruction routes of $H_3O^+$ for all parameters for all times. For example, at high temperature, high density and high zeta, we get:
 #
@@ -163,13 +216,6 @@ with open("../output/H3O-analysis-250.0_10000.0_1.0.csv") as fh:
 #
 # With a strong explanation for $H_3O^+$, we can now look at SO. We start by running analysis again and then by looking at the reactions as before.
 
-outputs = glob(
-    "../output/[0-9]*.csv"
-)  # won't pick up H3O+ analysis because it's not a number
-for output in outputs:
-    analysis_output = "../output/SO-analysis-" + output[10:]
-    uclchem.analysis.analysis("SO", output, analysis_output)
-
 # Again, let's start by looking at the low temperature, high density, low zeta case:
 #
 # ```
@@ -184,7 +230,7 @@ for output in outputs:
 # HCO+ + SO -> HSO+ + CO : 20.97%
 # ```
 #
-# An interesting point here is that equilbrium is reached at around $1.31 \times 10^4$ yr in this model. Since `analysis()` only prints a time step when the most important reactions are different to the last one, this time step is the last output from the analysis. We can see that we broadly reach an equilibrium between thermal desorption and freeze out of SO, with some formation and destruction via ions.
+# An interesting point here is that equilbrium is reached at around $1.31 \times 10^4$ yr in this model. Since `analysis()` only prints a time step when the most important reactions are different to the last one, this time step is the last output from the analysis. We can see that we broadly reach an equilibrium between thermal desorption and freeze out of SO, with some formation and destruction via ions. 
 #
 # This doesn't hold up at lower densities or higher temperatures, looking at the high temperature, low density, low zeta case, we see a second pattern of reactions:
 #

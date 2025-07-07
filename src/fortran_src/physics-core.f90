@@ -68,7 +68,7 @@ CONTAINS
             coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
         END DO
           !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av= baseAv +coldens/1.6d21
+        av= baseAv + coldens/1.6d21
         zetaScale=zeta
     END SUBROUTINE coreInitializePhysics
 

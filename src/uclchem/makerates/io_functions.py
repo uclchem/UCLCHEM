@@ -13,6 +13,7 @@ from typing import Dict
 import numpy as np
 
 from uclchem.constants import PHYSICAL_PARAMETERS
+
 from .network import Network
 from .reaction import Reaction, reaction_types
 from .species import Species
@@ -216,7 +217,7 @@ def output_drops(
             logging.info(reaction)
 
 
-def write_outputs(network: Network, output_dir: str = None) -> None:
+def write_outputs(network: Network, output_dir: str = None, rates_to_disk:bool= False) -> None:
     """Write the ODE and Network fortran source files to the fortran source.
 
     Args:
@@ -243,12 +244,12 @@ def write_outputs(network: Network, output_dir: str = None) -> None:
         filename,
         network.get_species_list(),
         network.get_reaction_list(),
-        network.three_phase,
+        rates_to_disk=rates_to_disk,
     )
 
     # Write the network files
     filename = fortran_src_dir / "network.f90"
-    write_network_file(filename, network)
+    write_network_file(filename, network, rates_to_disk=rates_to_disk)
     # write the constants needed for wrap.f90
 
     filename = fortran_src_dir / "f2py_constants.f90"
@@ -409,7 +410,7 @@ def write_odes_f90(
     file_name: Path,
     species_list: list[Species],
     reaction_list: list[Reaction],
-    three_phase: bool,
+    rates_to_disk: bool = False,
 ) -> None:
     """Write the ODEs in Modern Fortran. This is an actual code file.
 
@@ -417,7 +418,6 @@ def write_odes_f90(
         file_name (str): Path to file where code will be written
         species_list (list): List of species describing network
         reaction_list (list): List of reactions describing network
-        three_phase (bool): Flag for whether this is a 3 phase network
     """
     # First generate ODE contributions for all reactions
     species_names = [spec.name for spec in species_list]
@@ -429,12 +429,12 @@ def write_odes_f90(
 
     for i, reaction in enumerate(reaction_list):
         logging.debug(f"RATE({i+1}):{reaction}")
-        reaction.generate_ode_bit(i, species_names, three_phase)
+        reaction.generate_ode_bit(i, species_names)
 
     # then create ODE code and write to file.
     with open(file_name, mode="w") as output:
         # go through every species and build two strings, one with eq for all destruction routes and one for all formation
-        ydotString = build_ode_string(species_list, reaction_list, three_phase)
+        ydotString = build_ode_string(species_list, reaction_list, rates_to_disk)
         output.write(ydotString)
 
 
@@ -508,7 +508,7 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
 
 
 def build_ode_string(
-    species_list: list[Species], reaction_list: list[Reaction], three_phase: bool
+    species_list: list[Species], reaction_list: list[Reaction], rates_to_disk: bool = False
 ) -> str:
     """A long, complex function that does the messy work of creating the actual ODE
     code to calculate the rate of change of each species. Test any change to this code
@@ -517,7 +517,7 @@ def build_ode_string(
     Args:
         species_list (list): List of species in network
         reaction_list (list): List of reactions in network
-        three_phase (bool): Bool denoting if this is a three phase network
+        rates_to_disk (bool): Enable the writing of the rates to the disk.
 
     Returns:
         str: One long string containing the entire ODE fortran code.
@@ -539,7 +539,7 @@ def build_ode_string(
             if species in species_names:
                 # Eley-Rideal reactions take a share of total freeze out rate which is already accounted for
                 # so we add as a loss term to the frozen version of the species rather than the gas version
-                if ("ER" in reaction.get_reactants()) and (
+                if (reaction.get_reaction_type() == "ER") and (
                     not species_list[species_names.index(species)].is_surface_species()
                 ):
                     species_list[
@@ -549,7 +549,7 @@ def build_ode_string(
                     species_list[
                         species_names.index(species)
                     ].losses += reaction.ode_bit
-                if reaction.get_reactants()[1] == "BULKSWAP":
+                if reaction.get_reaction_type() == "BULKSWAP":
                     total_swap += reaction.ode_bit
         for species in reaction.get_products():
             if species in species_names:
@@ -557,6 +557,7 @@ def build_ode_string(
 
     ode_string = """MODULE ODES
 USE constants
+USE network
 IMPLICIT NONE
 CONTAINS
 SUBROUTINE GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle, safebulk, D, YDOT)
@@ -564,51 +565,74 @@ REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulkLayersReciprocal, safeMantle, safebul
 REAL(dp), INTENT(INOUT) :: YDOT(:), surfaceCoverage
 REAL(dp) :: totalSwap, LOSS, PROD
     """
-    if three_phase:
-        ode_string += truncate_line(f"totalSwap={total_swap[1:]}\n\n")
+    # Add a logical to determine whether we can write the reaction rates in realtime 
+    ode_string += truncate_line(f"totalSwap={total_swap[1:]}\n\n")
     # First get total rate of change of bulk and surface by adding ydots
     for n, species in enumerate(species_list):
         if species.name[0] == "@":
             species_list[bulk_index].gains += f"+YDOT({n+1})"
         elif species.name[0] == "#":
             species_list[surface_index].gains += f"+YDOT({n+1})"
+    if rates_to_disk:
+        for n, reaction in enumerate(reaction_list):
+            ode_string += truncate_line(f"REACTIONRATE({n+1})={reaction.ode_bit}\n")
 
     for n, species in enumerate(species_list):
         ydot_string = species_ode_string(n, species)
         ode_string += ydot_string
 
+    ode_string += f"    SURFGROWTHUNCORRECTED = YDOT({surface_index+1})\n"
+
     # now add bulk transfer to rate of change of surface species after they've already been calculated
-    if three_phase:
-        ode_string += "!Update surface species for bulk growth, replace surfaceCoverage with alpha_des\n"
-        ode_string += (
-            "!Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
-        )
+    ode_string += "!Update surface species for bulk growth, replace surfaceCoverage with alpha_des\n"
+    ode_string += (
+        "!Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
+    )
 
-        ode_string += f"IF (YDOT({surface_index+1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
+    ode_string += f"IF (YDOT({surface_index+1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
 
-        for n, species in enumerate(species_list):
-            if species.name[0] == "#":
-                bulk_partner = species_names.index(species.name.replace("#", "@"))
-                if not species_list[bulk_partner].is_refractory:
-                    ode_string += f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({bulk_partner+1})/safeBulk\n"
-            if species.name[0] == "@":
-                if not species.is_refractory:
-                    ode_string += f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({n+1})/safeBulk\n"
-        ode_string += "ELSE\n"
-        for n, species in enumerate(species_list):
-            if species.name[0] == "@":
-                surface_version = species_names.index(species.name.replace("@", "#"))
-                ode_string += f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({surface_version+1})\n"
-            if species.name[0] == "#":
-                ode_string += f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({n+1})\n"
-        ode_string += "ENDIF\n"
+    surf_species = [
+        i
+        for i in species_list
+        if i.name not in ["SURFACE", "BULK"] and i.is_surface_species()
+    ]
+    i = len(reaction_list)
+    j = len(reaction_list) + len(surf_species)
+    for n, species in enumerate(species_list):
+        if species.name[0] == "#":
+            i += 1
+            j += 1
+            bulk_partner = species_names.index(species.name.replace("#", "@"))
+            if rates_to_disk:
+                ode_string += f"    REACTIONRATE({i}) = -YDOT({surface_index+1})*surfaceCoverage*Y({bulk_partner+1})/safeBulk\n"
+                ode_string += f"    REACTIONRATE({j}) = 0.0\n"
+            if not species_list[bulk_partner].is_refractory:
+                ode_string += f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({bulk_partner+1})/safeBulk\n"
+        if species.name[0] == "@":
+            if not species.is_refractory:
+                ode_string += f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({n+1})/safeBulk\n"
+    ode_string += "ELSE\n"
+    i = len(reaction_list)
+    j = len(reaction_list) + len(surf_species)
+    for n, species in enumerate(species_list):
+        if species.name[0] == "@":
+            i += 1
+            j += 1
+            surface_version = species_names.index(species.name.replace("@", "#"))
+            if rates_to_disk:
+                ode_string += f"    REACTIONRATE({i}) = 0.0\n"
+                ode_string += f"    REACTIONRATE({j}) = -YDOT({surface_index+1})*surfaceCoverage*Y({surface_version+1})\n"
+            ode_string += f"    YDOT({n+1})=YDOT({n+1})+YDOT({surface_index+1})*surfaceCoverage*Y({surface_version+1})\n"
+        if species.name[0] == "#":
+            ode_string += f"    YDOT({n+1})=YDOT({n+1})-YDOT({surface_index+1})*surfaceCoverage*Y({n+1})\n"
+    ode_string += "ENDIF\n"
 
-        # once bulk transfer has been added, odes for bulk and surface must be updated to account for it
-        ode_string += (
-            "!Update total rate of change of bulk and surface for bulk growth\n"
-        )
-        ode_string += species_ode_string(bulk_index, species_list[bulk_index])
-        ode_string += species_ode_string(surface_index, species_list[surface_index])
+    # once bulk transfer has been added, odes for bulk and surface must be updated to account for it
+    ode_string += (
+        "!Update total rate of change of bulk and surface for bulk growth\n"
+    )
+    ode_string += species_ode_string(bulk_index, species_list[bulk_index])
+    ode_string += species_ode_string(surface_index, species_list[surface_index])
     ode_string += """    END SUBROUTINE GETYDOT
 END MODULE ODES"""
     return ode_string
@@ -647,7 +671,7 @@ def species_ode_string(n: int, species: Species) -> str:
     return ydot_string
 
 
-def write_evap_lists(network_file, species_list: list[Species]) -> None:
+def write_evap_lists(network_file, species_list: list[Species]) -> int:
     """Two phase networks mimic episodic thermal desorption seen in lab (see Viti et al. 2004)
     by desorbing fixed fractions of material at specific temperatures. Three phase networks just
     use binding energy and that fact we set binding energies in bulk to water by default.
@@ -717,6 +741,7 @@ def write_evap_lists(network_file, species_list: list[Species]) -> None:
     )
     network_file.write(array_to_string("formationEnthalpy", enthalpyList, type="float"))
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
+    return len(iceList)
 
 
 def truncate_line(input_string: str, lineLength: int = 72) -> str:
@@ -750,7 +775,7 @@ def truncate_line(input_string: str, lineLength: int = 72) -> str:
     return result
 
 
-def write_network_file(file_name: Path, network: Network):
+def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = False):
     """Write the Fortran code file that contains all network information for UCLCHEM.
     This includes lists of reactants, products, binding energies, formationEnthalpies
     and so on.
@@ -763,12 +788,6 @@ def write_network_file(file_name: Path, network: Network):
     reaction_list = network.get_reaction_list()
     openFile = open(file_name, "w")
     openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
-    # The following line has been moved to f2py_constants.f90
-    # openFile.write(
-    #     "    INTEGER, PARAMETER :: nSpec={0}, nReac={1}\n".format(
-    #         len(species_list), len(reaction_list)
-    #     )
-    # )
 
     # write arrays of all species stuff
     names = []
@@ -786,16 +805,14 @@ def write_network_file(file_name: Path, network: Network):
         speciesIndices = truncate_line(speciesIndices)
     speciesIndices = speciesIndices[:-1] + "\n"
     openFile.write("    INTEGER(dp), PARAMETER ::" + speciesIndices)
-    if network.three_phase:
-        openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
-    else:
-        openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .FALSE.\n")
+    openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
+    openFile.write("    REAL(dp) :: SURFGROWTHUNCORRECTED\n")
     openFile.write(array_to_string("    specname", names, type="string"))
     openFile.write(array_to_string("    mass", masses, type="float"))
     openFile.write(array_to_string("    atomCounts", atoms, type="int"))
 
     # then write evaporation stuff
-    write_evap_lists(openFile, species_list)
+    n_ice_species = write_evap_lists(openFile, species_list)
 
     # finally all reactions
     reactant1 = []
@@ -812,6 +829,7 @@ def write_network_file(file_name: Path, network: Network):
     # duplicates = []
     tmins = []
     tmaxs = []
+
     # store important reactions
     reaction_indices = ""
     for reaction, index in network.important_reactions.items():
@@ -839,6 +857,25 @@ def write_network_file(file_name: Path, network: Network):
     #     duplicates = [9999]
     #     tmaxs = [0]
     #     tmins = [0]
+
+    reaction_names = []
+    for n, reaction in enumerate(reaction_list):
+        reaction_names.append(str(reaction))
+    for n, species in enumerate(species_list):
+        if species.is_surface_species() and species.name not in ["SURFACE", "BULK"]:
+            reaction_name = f"{species.name} + SURFACETRANSFER -> @{species.name[1:]}"
+            reaction_names.append(reaction_name)
+    for n, species in enumerate(species_list):
+        if species.is_surface_species() and species.name not in ["SURFACE", "BULK"]:
+            reaction_name = f"@{species.name[1:]} + SURFACETRANSFER -> {species.name}"
+            reaction_names.append(reaction_name)
+
+    if rates_to_disk:
+        openFile.write(f"    REAL(dp) :: REACTIONRATE({len(reactant1)+n_ice_species})\n")
+        openFile.write("     LOGICAL :: ReactionRatesToDisk=.true.\n")
+    else:
+        openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
+        openFile.write("    LOGICAL :: ReactionRatesToDisk=.false.\n")
 
     openFile.write(array_to_string("\tre1", reactant1, type="int"))
     openFile.write(array_to_string("\tre2", reactant2, type="int"))
