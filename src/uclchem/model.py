@@ -23,7 +23,7 @@ def reaction_line_formatter(line):
 class ReactionNamesStore():
     def __init__(self):
         self.reaction_names = None
-        
+
     def __call__(self):
         # Only load the reactions once, after that use the cached version
         if self.reaction_names is None:
@@ -31,7 +31,9 @@ class ReactionNamesStore():
             # format the reactions:
             self.reaction_names = [reaction_line_formatter(line) for idx, line in reactions.iterrows()]
         return self.reaction_names
-getReactionNames = ReactionNamesStore()
+
+
+get_reaction_names = ReactionNamesStore()
 
 
 
@@ -155,12 +157,10 @@ def outputArrays_to_DataFrame(
     chemistry_df = pd.DataFrame(
         chemicalAbundanceArray[:, 0, :], index=None, columns=specname
     )
-    
     if ratesArray is not None:
-        
         # Create a rates dataframe.
         rates_df = pd.DataFrame(
-            ratesArray[:, 0, :], index=None, columns=getReactionNames()
+            ratesArray[:, 0, :], index=None, columns=get_reaction_names()
         )
     else: 
         rates_df = None
