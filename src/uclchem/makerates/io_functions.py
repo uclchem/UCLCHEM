@@ -149,6 +149,8 @@ def kida_parser(kida_file):
     with open(kida_file, "r") as f:
         f.readline()  # throw away header
         for line in f:  # then iterate over file
+            if line.startswith("!"):
+                continue
             row = []
             for item in kida_contents:
                 for i in range(item[0]):
@@ -363,7 +365,7 @@ def write_species(file_name: Path, species_list: list[Species]) -> None:
 
 # Write the reaction file in the desired format
 def write_reactions(fileName, reaction_list) -> None:
-    """Write the human readable reaction file. Note UCLCHEM doesn't use this file.
+    """Write the human readable reaction file.
 
     Args:
         fileName (str): path to output file
@@ -382,6 +384,7 @@ def write_reactions(fileName, reaction_list) -> None:
         "Gamma",
         "T_min",
         "T_max",
+        "extrapolate",
     ]
     with open(fileName, "w") as f:
         writer = csv.writer(
@@ -402,6 +405,7 @@ def write_reactions(fileName, reaction_list) -> None:
                     reaction.get_gamma(),
                     reaction.get_templow(),
                     reaction.get_temphigh(),
+                    reaction.get_extrapolation(),
                 ]
             )
 
@@ -829,6 +833,7 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
     # duplicates = []
     tmins = []
     tmaxs = []
+    extrapolations = []
 
     # store important reactions
     reaction_indices = ""
@@ -853,6 +858,7 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
         tmaxs.append(reaction.get_temphigh())
         tmins.append(reaction.get_templow())
         reacTypes.append(reaction.get_reaction_type())
+        extrapolations.append(reaction.get_extrapolation())
     # if len(duplicates) == 0:
     #     duplicates = [9999]
     #     tmaxs = [0]
@@ -890,6 +896,7 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
     # openFile.write(array_to_string("\tduplicates", duplicates, type="int", parameter=True))
     openFile.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
     openFile.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
+    openFile.write(array_to_string("\tExtrapolateRates", extrapolations, type="logical", parameter=True))
 
     reacTypes = np.asarray(reacTypes)
 
@@ -987,6 +994,10 @@ def array_to_string(
         outString = "CHARACTER(Len={0:.0f})".format(strLength) + outString
         for value in array:
             outString += '"' + value.ljust(strLength) + '",'
+    elif type == "logical":
+        outString = "LOGICAL(dp)" + outString
+        for value in array:
+            outString += ".{0}.,".format(value)
     else:
         raise ValueError("Not a valid type for array to string")
     outString = outString[:-1] + "/)\n"

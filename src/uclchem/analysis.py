@@ -900,3 +900,36 @@ def get_production_and_destruction(species: str, rates_or_flux: pd.DataFrame):
         r for r in reactions if species in r.split(" -> ")[-1].split(" + ")
     ]
     return rates_or_flux.loc[:, production], rates_or_flux.loc[:, destruction]
+
+
+def derive_phase_from_name(name) -> str:
+    if name.startswith("@"):
+        return "bulk"
+    elif name.startswith("#"):
+        return "surface"
+    elif name.endswith("+"):
+        return "ion"
+    else:
+        return "gas"
+
+
+def analyze_element_per_phase(element, df):
+    """Calculates that the total elemental abundance of a species as a function of time. Allows you to check conservation.
+
+    Args:
+        element (str): Name of element
+        df (pandas.DataFrame): DataFrame from `read_output_file()`
+
+    Returns:
+        pandas.Series: Total abundance of element for all time steps in df.
+    """
+    content = pd.DataFrame()
+    # Split the columns into ionized, gas, surface and bulk:
+    for phase in ["bulk", "surface", "ion", "gas"]:
+        species_to_select = [
+            s for s in list(df.columns) if derive_phase_from_name(s) == phase
+        ]
+        _df = df.loc[:, species_to_select]
+        sums = _count_element(species_to_select, element)
+        content.loc[:, element + "_" + phase] = _df.mul(sums.values, axis=1).sum(axis=1)
+    return content

@@ -247,7 +247,8 @@ CONTAINS
                 !ISTATE -1 means the integrator can't break the problem into small enough steps
                 !We could increase MXSTEP but better to reduce targetTime and get to physics update
                 !physical conditions may be easier to solve as time goes by so better to get to that update
-                write(*,*) "ISTATE -1: Reducing time step"
+                timeInYears=currentTime/SECONDS_PER_YEAR
+                write(*,*) "ISTATE -1: Reducing time step to ", timeInYears*(targetTime-currentTime)*0.1, "years"
                 !More steps required for this problem
                 !MXSTEP=MXSTEP*2   
                 targetTime=currentTime+(targetTime-currentTime)*0.1

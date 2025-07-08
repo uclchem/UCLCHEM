@@ -23,6 +23,7 @@ class Network:
         species: list[Species],
         reactions: list[Reaction],
         user_defined_bulk: list = [],
+        gas_phase_extrapolation: bool = False,
     ):
         """A class to store network information such as indices of important reactions.
 
@@ -42,7 +43,6 @@ class Network:
             species
         ), "Cannot have duplicate species in the species list."
         self.set_species_dict({s.name: s for s in species})
-
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
         electron_specie = Species(["E-", 0, 0.0, 0, 0, 0, 0])
@@ -66,6 +66,10 @@ class Network:
 
         # Ensure that the branching ratios are correct, if not, edit the network to enforce it.
         self.branching_ratios_checks()
+        
+        # Extrapolate Gas phase reactions if needed:
+        if gas_phase_extrapolation:
+            self.add_gas_phase_extrapolation()
 
         # Sort the reactions before returning them, this is important for convergence of the ODE
         self.sort_reactions()
@@ -1211,6 +1215,14 @@ class Network:
                                 )
                                 self.remove_reaction(reaction)
                                 
+    def add_gas_phase_extrapolation(self):
+        for reaction in self.reactions:
+            if reaction.get_reaction_type() in ["TWOBODY", "PHOTON", "CRP", "CRPHOT"]:
+                similar_reactions = self.find_similar_reactions(reaction)
+                # Only enable extrapolation if we have one or overlapping reactions
+                # UMIST uses overlapping reactions to get more correct reaction rates.
+                if all([reaction.check_temperature_collision(similar_reactions[similar_reaction_key]) for similar_reaction_key in similar_reactions ]):
+                    reaction.set_extrapolation = True
 
     def __repr__(self) -> str:
         return (

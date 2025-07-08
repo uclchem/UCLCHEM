@@ -26,7 +26,7 @@ CONTAINS
         IF (fullOutput) THEN
             WRITE(outputId,335) specName
         END IF
-        335 FORMAT("Time,Density,gasTemp,dustTemp,baseAv,Av,radfield,zeta,point,",(999(A,:,',')))
+        335 FORMAT("Time,Density,gasTemp,dustTemp,Av,radfield,zeta,point,",(999(A,:,',')))
         
         INQUIRE(UNIT=rateID, OPENED=rateOutput)
         INQUIRE(UNIT=fluxID, OPENED=fluxOutput)

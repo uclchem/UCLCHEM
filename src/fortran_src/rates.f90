@@ -16,6 +16,7 @@ MODULE RATES
     REAL(dp), PARAMETER :: h2StickingZero=0.87d0,hStickingZero=1.0d0, h2StickingTemp=87.0d0,hStickingTemp=52.0d0
     !Flags to control desorption processes
     REAL(dp) :: turbVel=1.0
+
     
 CONTAINS
     SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
@@ -292,9 +293,9 @@ CONTAINS
         lastTemp=gasTemp(dstep)
 
         !turn off reactions outside their temperature range
-        WHERE(gasTemp(dstep) .lt. minTemps) rate=0.0
+        WHERE(.not. ExtrapolateRates .and. (gasTemp(dstep) .lt. minTemps)) rate=0.0
 
-        WHERE(gasTemp(dstep) .gt. maxTemps) rate=0.0
+        WHERE(.not. ExtrapolateRates .and. (gasTemp(dstep) .gt. maxTemps)) rate=0.0
 
         !Overwrite reactions for which we have a more detailed photoreaction treatment
         rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel)!H2 photodissociation

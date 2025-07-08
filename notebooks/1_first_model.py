@@ -17,8 +17,9 @@
 #
 # In this notebook, we demonstrate the basic use of UCLCHEM's python module by running a simple model and then using the analysis functions to examine the output. Otherwise, it is identical to notebook 3.
 
-import uclchem
 import os
+
+import uclchem
 
 # ## A Simple Cloud
 #

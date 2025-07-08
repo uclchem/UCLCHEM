@@ -1,4 +1,5 @@
 from copy import deepcopy
+from typing import Union
 
 reaction_types = [
     "PHOTON",
@@ -27,31 +28,43 @@ reaction_types = [
 
 class Reaction:
     def __init__(self, inputRow, reaction_source=None):
-        try:
-            self.set_reactants(
-                [
-                    inputRow[0].upper(),
-                    inputRow[1].upper(),
-                    self.NANCheck(inputRow[2]).upper(),
-                ]
-            )
-            self.set_products(
-                [
-                    self.NANCheck(inputRow[3].upper()),
-                    self.NANCheck(inputRow[4]).upper(),
-                    self.NANCheck(inputRow[5]).upper(),
-                    self.NANCheck(inputRow[6]).upper(),
-                ]
-            )
-            self.set_alpha(float(inputRow[7]))
-            self.set_beta(float(inputRow[8]))
-            self.set_gamma(float(inputRow[9]))
-            self.set_templow(float(inputRow[10]))
-            self.set_temphigh(float(inputRow[11]))
-        except IndexError as error:
-            raise ValueError(
-                "Input for Reaction should be a list of length 12"
-            ) from error
+        if isinstance(inputRow, Reaction):
+            self.set_reactants(inputRow.get_reactants())
+            self.set_products(inputRow.get_products())
+            self.set_alpha(inputRow.get_alpha())
+            self.set_beta(inputRow.get_beta())
+            self.set_gamma(inputRow.get_gamma())
+            self.set_templow(inputRow.get_templow())
+            self.set_temphigh(inputRow.get_temphigh())
+            self.set_extrapolation(inputRow.get_extrapolation())
+        else:
+            try:
+                self.set_reactants(
+                    [
+                        inputRow[0].upper(),
+                        inputRow[1].upper(),
+                        self.NANCheck(inputRow[2]).upper(),
+                    ]
+                )
+                self.set_products(
+                    [
+                        self.NANCheck(inputRow[3].upper()),
+                        self.NANCheck(inputRow[4]).upper(),
+                        self.NANCheck(inputRow[5]).upper(),
+                        self.NANCheck(inputRow[6]).upper(),
+                    ]
+                )
+                self.set_alpha(float(inputRow[7]))
+                self.set_beta(float(inputRow[8]))
+                self.set_gamma(float(inputRow[9]))
+                self.set_templow(float(inputRow[10]))
+                self.set_temphigh(float(inputRow[11]))
+                self.set_extrapolation(bool(inputRow[12]) if len(inputRow) > 12 else False)
+            except IndexError as error:
+                raise ValueError(
+                    "Input for Reaction should be a list of length 12"
+                ) from error
+
         self.duplicate = False
         self.source = reaction_source  # The source of the reaction, e.g. UMIST, KIDA or user defined
 
@@ -238,8 +251,6 @@ class Reaction:
         """
         return self._temphigh
 
-    ## C
-
     def NANCheck(self, a):
         """Convert any Falsy statement to a NAN string
 
@@ -281,6 +292,13 @@ class Reaction:
             source (str): The source of the reaction
         """
         self.source = source
+       
+    def set_extrapolation(self, flag: bool) -> None:
+        assert isinstance(flag, bool)
+        self.extrapolate = flag
+        
+    def get_extrapolation(self) -> bool:
+        return self.extrapolate
 
     def convert_to_bulk(self) -> None:
         """Convert the surface species to bulk species in place for this reaction."""
@@ -395,6 +413,7 @@ class Reaction:
             str_gamma = "0"
         reaction_parameters = f"{str_alpha},{str_beta},{str_gamma}"
         formatted_reaction = reactants_products + "," + reaction_parameters + ",,,,,"
+        formatted_reaction += str(int(self.get_extrapolation()))
         return formatted_reaction
 
     def _is_reaction_wrap(self, include_reactants=True, include_products=True):
@@ -523,44 +542,9 @@ class Reaction:
 
 
 class CoupledReaction(Reaction):
-    # TODO: remove double __init__ methods
-    def __init__(self, inputRow: list[str]):
-        super().__init__(self, inputRow)
+    def __init__(self, input):
+        super().__init__(input)
         self.partner = None
-
-    def __init__(self, reaction: Reaction):
-        if not isinstance(reaction, Reaction):
-            raise TypeError("Input must be a Reaction object")
-        try:
-            self.set_reactants(reaction.get_reactants())
-            self.set_products(reaction.get_products())
-            self.set_alpha(reaction.get_alpha())
-            self.set_beta(reaction.get_beta())
-            self.set_gamma(reaction.get_gamma())
-            self.set_templow(reaction.get_templow())
-            self.set_temphigh(reaction.get_temphigh())
-            self.partner = None
-        except AttributeError:
-            raise ValueError("Input for CoupledReaction should be a Reaction object")
-
-        self.duplicate = False
-
-        # body_count is the number of factors of density to include in ODE
-        # we drop a factor of density from both the LHS and RHS of ODES
-        # So reactions with 1 body have no factors of density which we manage by counting from -1
-        self.body_count = -1
-        for reactant in self.get_reactants():
-            if (reactant not in reaction_types) and reactant != "NAN":
-                self.body_count += 1
-            if reactant in ["DESOH2", "FREEZE"]:
-                self.body_count += 1
-            if reactant in ["LH", "LHDES"]:
-                self.body_count -= 1
-
-        if (self.get_reaction_type() == "FREEZE") and (
-            self.get_reactants()[0][-1] == "+"
-        ):
-            self.beta = 1
 
     def set_partner(self, partner: Reaction):
         self.partner = partner
