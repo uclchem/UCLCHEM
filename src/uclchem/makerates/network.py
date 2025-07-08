@@ -518,6 +518,7 @@ class Network:
         logging.debug(
             f"Before sorting species {[(k,v ) for i, (k, v) in enumerate(species_dict.items()) if i < 5]}"
         )
+    
         self.set_species_dict(
             dict(
                 sorted(
