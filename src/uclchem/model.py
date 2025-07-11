@@ -1,16 +1,40 @@
+import os
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from uclchemwrap import uclchemwrap as wrap
 
 from uclchem.constants import (
     N_PHYSICAL_PARAMETERS,
     PHYSICAL_PARAMETERS,
     TIMEPOINTS,
+    n_reactions,
     n_species,
 )
 
-from .uclchemwrap import uclchemwrap as wrap
+
+def reaction_line_formatter(line):
+    reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
+    products = list(filter(lambda x: not str(x).lower().endswith("nan"), line[3:7]))
+    return " + ".join(reactants) + " -> " + " + ".join(products)
+
+
+class ReactionNamesStore():
+    def __init__(self):
+        self.reaction_names = None
+
+    def __call__(self):
+        # Only load the reactions once, after that use the cached version
+        if self.reaction_names is None:
+            reactions = pd.read_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "reactions.csv"))
+            # format the reactions:
+            self.reaction_names = [reaction_line_formatter(line) for idx, line in reactions.iterrows()]
+        return self.reaction_names
+
+
+get_reaction_names = ReactionNamesStore()
+
 
 
 def _reform_inputs(param_dict, out_species):
@@ -65,6 +89,10 @@ def _create_fortranarray(param_dict, nPhysParam, timepoints=TIMEPOINTS):
     return physicsArray, chemicalAbunArray
 
 
+def _create_ratesarray(points, nReacs, timepoints=TIMEPOINTS):
+    return np.zeros(shape=(timepoints + 1, points, nReacs), dtype=np.float64, order="F")
+
+
 def _return_array_checks(params):
     if any([key.endswith("File") for key in list(params.keys())]):
         raise RuntimeError(
@@ -73,7 +101,8 @@ def _return_array_checks(params):
 
 
 def _array_clean(
-    physicalParameterArray, chemicalAbundanceArray, specname, n_physics_params
+    physicalParameterArray, chemicalAbundanceArray, specname, ratesArray = None
+    
 ):
     """Clean the array
 
@@ -96,13 +125,16 @@ def _array_clean(
     # Get the arrays for only the simulated timesteps (not the zero padded ones)
     physicsArray = physicalParameterArray[: last_timestep_index + 1, :, :]
     chemArray = chemicalAbundanceArray[: last_timestep_index + 1, :, :]
+    # Also clean the rates array, only if we have it:
+    if ratesArray is not None:
+        ratesArray = ratesArray[: last_timestep_index + 1, :, :]
     # Get the last arrays simulated, easy for starting another model.
     abundanceStart = chemicalAbundanceArray[last_timestep_index, 0, :]
-    return physicsArray, chemArray, specname_new, abundanceStart
+    return physicsArray, chemArray, specname_new, ratesArray, abundanceStart
 
 
 def outputArrays_to_DataFrame(
-    physicalParameterArray, chemicalAbundanceArray, specname, physParameter
+    physicalParameterArray, chemicalAbundanceArray, specname, ratesArray, 
 ):
     """Convert the output arrays to a pandas dataframe
 
@@ -117,15 +149,22 @@ def outputArrays_to_DataFrame(
     """
     # Create a physical parameter dataframe
     physics_df = pd.DataFrame(
-        physicalParameterArray[:, 0, : len(physParameter)],
+        physicalParameterArray[:, 0, : N_PHYSICAL_PARAMETERS],
         index=None,
-        columns=physParameter,
+        columns=PHYSICAL_PARAMETERS,
     )
     # Create a abundances dataframe.
     chemistry_df = pd.DataFrame(
         chemicalAbundanceArray[:, 0, :], index=None, columns=specname
     )
-    return physics_df, chemistry_df
+    if ratesArray is not None:
+        # Create a rates dataframe.
+        rates_df = pd.DataFrame(
+            ratesArray[:, 0, :], index=None, columns=get_reaction_names()
+        )
+    else: 
+        rates_df = None
+    return physics_df, chemistry_df, rates_df
 
 
 def cloud(
@@ -133,6 +172,7 @@ def cloud(
     out_species=None,
     return_array=False,
     return_dataframe=False,
+    return_rates=False,
     starting_chemistry=None,
     timepoints=TIMEPOINTS,
 ):
@@ -168,34 +208,39 @@ def cloud(
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
-    _, _, abunds, specname, success_flag = wrap.cloud(
+    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
+    _, _, _, abunds, specname, success_flag = wrap.cloud(
         dictionary=param_dict,
         outspeciesin=out_species,
         timepoints=timepoints,
         gridpoints=param_dict["points"],
         returnarray=return_array or return_dataframe,
+        returnrates=return_rates,
         givestartabund=give_start_abund,
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
+        ratesarray=ratesArray,
         abundancestart=starting_chemistry,
     )
+    # Overwrite the ratesArray with None if its not used:
+    if not return_rates or not (return_array or return_dataframe):
+        ratesArray = None
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
-            physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
+        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
+            physicsArray, chemicalAbunArray, specname, ratesArray
         )
     if return_dataframe:
-        # Mode that returns dataframes
-        physics_df, abundances_df = outputArrays_to_DataFrame(
+        return outputArrays_to_DataFrame(
             physicsArray,
             chemicalAbunArray,
             specname,
-            PHYSICAL_PARAMETERS[:N_PHYSICAL_PARAMETERS],
-        )
-        return physics_df, abundances_df, abundanceStart, success_flag
+            ratesArray,
+        ) + (abundanceStart, success_flag,)
     elif return_array:
         return (
             physicsArray,
             chemicalAbunArray,
+            ratesArray,
             abundanceStart,
             success_flag,
         )
@@ -210,6 +255,7 @@ def collapse(
     out_species=None,
     return_array=False,
     return_dataframe=False,
+    return_rates=False,
     starting_chemistry=None,
     timepoints=TIMEPOINTS,
 ):
@@ -256,38 +302,43 @@ def collapse(
     if return_array or return_dataframe:
         _return_array_checks(param_dict)
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints
-    )
-    abunds, specname, success_flag = wrap.collapse(
+        param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints)
+    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
+    _, _, _, abunds, specname, success_flag = wrap.collapse(
         collapseIn=collapse,
         collapseFileIn=physics_output,
         writeOut=write_physics,
         dictionary=param_dict,
         outspeciesin=out_species,
         returnarray=return_array or return_dataframe,
+        returnrates=return_rates,
         givesstartabund=give_start_abund,
         timepoints=timepoints,
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
+        ratesarray=ratesArray,
         abundanceStart=starting_chemistry,
     )
+    # Overwrite the ratesArray with None if its not used:
+    if not return_rates or not (return_array or return_dataframe):
+        ratesArray = None
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
-            physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
+        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
+            physicsArray, chemicalAbunArray, specname, ratesArray
         )
     if return_dataframe:
-        physicsDF, chemicalDF = outputArrays_to_DataFrame(
+        return outputArrays_to_DataFrame(
             physicsArray,
             chemicalAbunArray,
             specname,
-            PHYSICAL_PARAMETERS[:N_PHYSICAL_PARAMETERS],
-        )
-        return physicsDF, chemicalDF, abundanceStart, success_flag
+            ratesArray,
+        ) + (abundanceStart, success_flag,)
     elif return_array:
         return (
             physicsArray,
             chemicalAbunArray,
+            ratesArray,
             abundanceStart,
             success_flag,
         )
@@ -302,6 +353,7 @@ def hot_core(
     out_species=None,
     return_array=False,
     return_dataframe=False,
+    return_rates=False,
     starting_chemistry=None,
     timepoints=TIMEPOINTS,
 ):
@@ -339,38 +391,42 @@ def hot_core(
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints
     )
-
+    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
     give_start_abund = starting_chemistry is not None
-
-    abunds, specname, success_flag = wrap.hot_core(
+    _, _, _, abunds, specname, success_flag = wrap.hot_core(
         temp_indx=temp_indx,
         max_temp=max_temperature,
         dictionary=param_dict,
         outspeciesin=out_species,
         returnarray=return_array or return_dataframe,
+        returnrates=return_rates,
         givestartabund=give_start_abund,
         timepoints=timepoints,
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
+        ratesarray=ratesArray,
         chemicalabunarray=chemicalAbunArray,
         abundancestart=starting_chemistry,
     )
+    # Overwrite the ratesArray with None if its not used:
+    if not return_rates or not (return_array or return_dataframe):
+        ratesArray = None
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
-            physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
+        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
+            physicsArray, chemicalAbunArray, specname, ratesArray
         )
     if return_dataframe:
-        physicsDF, chemicalDF = outputArrays_to_DataFrame(
+        return outputArrays_to_DataFrame(
             physicsArray,
             chemicalAbunArray,
             specname,
-            PHYSICAL_PARAMETERS[:N_PHYSICAL_PARAMETERS],
-        )
-        return physicsDF, chemicalDF, abundanceStart, success_flag
+            ratesArray,
+        ) + (abundanceStart, success_flag,)
     elif return_array:
         return (
             physicsArray,
             chemicalAbunArray,
+            ratesArray,
             abundanceStart,
             success_flag,
         )
@@ -386,6 +442,7 @@ def cshock(
     out_species=None,
     return_array=False,
     return_dataframe=False,
+    return_rates=False,
     starting_chemistry=None,
     timepoints=TIMEPOINTS,
 ):
@@ -426,48 +483,51 @@ def cshock(
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
+    ratesArray=_create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
     give_start_abund = starting_chemistry is not None
-    abunds, disspation_time, specname, success_flag = wrap.cshock(
+    _, _, _, abunds, disspation_time, specname, success_flag = wrap.cshock(
         shock_vel=shock_vel,
         timestep_factor=timestep_factor,
         minimum_temperature=minimum_temperature,
         dictionary=param_dict,
         outspeciesin=out_species,
         returnarray=return_array or return_dataframe,
+        returnrates=return_rates,
         givestartabund=give_start_abund,
         timepoints=timepoints,
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
+        ratesarray=ratesArray,
         chemicalabunarray=chemicalAbunArray,
         abundancestart=starting_chemistry,
     )
+    # Overwrite the ratesArray with None if its not used:
+    if not return_rates:
+        ratesArray = None
     if success_flag < 0:
         disspation_time = None
         abunds = []
     else:
         abunds = list(abunds[:n_out])
+    # Overwrite the ratesArray with None if its not used:
+    if not return_rates or not (return_array or return_dataframe):
+        ratesArray = None
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
-            physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
+        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
+            physicsArray, chemicalAbunArray, specname, ratesArray
         )
     if return_dataframe:
-        physicsDF, chemicalDF = outputArrays_to_DataFrame(
+        return outputArrays_to_DataFrame(
             physicsArray,
             chemicalAbunArray,
             specname,
-            PHYSICAL_PARAMETERS[:N_PHYSICAL_PARAMETERS],
-        )
-        return (
-            physicsDF,
-            chemicalDF,
-            disspation_time,
-            abundanceStart,
-            success_flag,
-        )
+            ratesArray,
+        ) + (disspation_time, abundanceStart, success_flag,)
     elif return_array:
         return (
             physicsArray,
             chemicalAbunArray,
+            ratesArray,
             disspation_time,
             abundanceStart,
             success_flag,
@@ -488,6 +548,7 @@ def jshock(
     out_species=None,
     return_array=False,
     return_dataframe=False,
+    return_rates=False,
     starting_chemistry=None,
     timepoints=TIMEPOINTS,
 ):
@@ -524,34 +585,41 @@ def jshock(
         param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
     give_start_abund = starting_chemistry is not None
-    abunds, specname, success_flag = wrap.jshock(
+    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
+
+    _, _, _, abunds, specname, success_flag = wrap.jshock(
         shock_vel=shock_vel,
         dictionary=param_dict,
         outspeciesin=out_species,
         returnarray=return_array or return_dataframe,
+        returnrates=return_rates,
         givestartabund=give_start_abund,
         timepoints=timepoints,
         gridpoints=param_dict["points"],
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
+        ratesarray=ratesArray,
         abundancestart=starting_chemistry,
     )
+    # Overwrite the ratesArray with None if its not used:
+    if not return_rates or not (return_array or return_dataframe):
+        ratesArray = None
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
-            physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
+        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
+            physicsArray, chemicalAbunArray, specname, ratesArray,
         )
     if return_dataframe:
-        physicsDF, chemicalDF = outputArrays_to_DataFrame(
+        return outputArrays_to_DataFrame(
             physicsArray,
             chemicalAbunArray,
             specname,
-            PHYSICAL_PARAMETERS[:N_PHYSICAL_PARAMETERS],
-        )
-        return physicsDF, chemicalDF, abundanceStart, success_flag
+            ratesArray,
+        ) + (abundanceStart, success_flag,)
     elif return_array:
         return (
             physicsArray,
             chemicalAbunArray,
+            ratesArray,
             abundanceStart,
             success_flag,
         )
@@ -564,6 +632,7 @@ def postprocess(
     out_species=None,
     return_array=False,
     return_dataframe=False,
+    return_rates=False,
     starting_chemistry=None,
     time_array=None,
     density_array=None,
@@ -637,36 +706,41 @@ def postprocess(
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, N_PHYSICAL_PARAMETERS, timepoints=len(time_array)
     )
-    abunds, specname, success_flag = wrap.postprocess(
+    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=len(time_array))
+    _, _, _, abunds, specname, success_flag = wrap.postprocess(
         dictionary=param_dict,
         outspeciesin=out_species,
         timepoints=len(time_array),
         gridpoints=param_dict["points"],
         returnarray=return_array or return_dataframe,
+        returnrates=return_rates,
         givestartabund=give_start_abund,
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
+        ratesarray=ratesArray,
         abundancestart=starting_chemistry,
         usecoldens=coldens_H_array is not None,
         **postprocess_arrays,
     )
+    if not return_rates or not (return_array or return_dataframe):
+        ratesArray = None
     if return_array or return_dataframe:
         physicsArray, chemicalAbunArray, specname, abundanceStart = _array_clean(
             physicsArray, chemicalAbunArray, specname, N_PHYSICAL_PARAMETERS
         )
+
     if return_dataframe:
-        # Mode that returns dataframes
-        physics_df, abundances_df = outputArrays_to_DataFrame(
+        return outputArrays_to_DataFrame(
             physicsArray,
             chemicalAbunArray,
             specname,
-            PHYSICAL_PARAMETERS[:N_PHYSICAL_PARAMETERS],
-        )
-        return physics_df, abundances_df, abundanceStart, success_flag
+            ratesArray,
+        ) + (abundanceStart, success_flag,)
     elif return_array:
         return (
             physicsArray,
             chemicalAbunArray,
+            ratesArray,
             abundanceStart,
             success_flag,
         )

@@ -1,8 +1,9 @@
 # demonstration of plotfunctions. called from main UCLCHEM directory
 # it reads full UCLCHEM output and saves a plot of the abudances of select species
 
-import uclchem
 import matplotlib.pyplot as plt
+
+import uclchem
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9), tight_layout=True)
 axes = axes.flatten()
@@ -38,26 +39,26 @@ for folder in ["example-output/", "test-output/"]:
 
         # plot species and save to test.png, alternatively send dens instead of time.
         axis = uclchem.analysis.plot_species(
-            axis, model_data[folder + model], speciesNames
+            axis, model_data[folder + model], speciesNames, legend=False
         )
         if folder == "test-output/":
             axis.set_prop_cycle(None)
             axis = uclchem.analysis.plot_species(
-                axis, model_data["example-output/" + model], speciesNames, alpha=0.5
+                axis, model_data["example-output/" + model], speciesNames, alpha=0.5, legend=False
             )
-
         # plot species returns the axis so we can further edit
         axis.set(
             xscale="log",
             ylim=(1e-15, 1),
             xlim=(1, 6e6),
             yscale="log",
-            ylabel="n_specie / n_H",
-            xlabel="time (yr)",
+            ylabel=r"Fractional abundance $x_i (n_i/n_{\mathrm{H,nuclei}}) [\mathrm{cm}^{-3}]$",
+            xlabel="Time [yr]",
         )
         axis.grid()
-        axis.legend()
-        if model == "phase1":
+        if i == 0:
+            axis.legend(bbox_to_anchor=(-0.25, 0.5), loc="center right")
+        if model == "Stage 1":
             axis.set(xlim=(1e3, 6e6))
         axis.set_title(model_names[model])
         i = i + 1

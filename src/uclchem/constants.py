@@ -1,4 +1,4 @@
-# This file was machine generated with Makerates on 2025-06-20 16:01:15.048688
+# This file was machine generated with Makerates on 2025-07-08 14:05:54.055902
 # This file contains the default magic numbers that ensure that fortran and
 # python are in sync. If you adjust anything here, you must:
 # 1. rerun makerates (this puts the magic numbers in fortran)

@@ -5,12 +5,13 @@ desorption and bulk reactions for three phase models.
 """
 
 import logging
+import sys
 from copy import deepcopy
 from typing import Union
 
 from numpy import any as np_any
 
-from .reaction import Reaction, reaction_types
+from .reaction import CoupledReaction, Reaction, reaction_types
 from .species import Species, elementList
 
 
@@ -21,8 +22,8 @@ class Network:
         self,
         species: list[Species],
         reactions: list[Reaction],
-        three_phase: bool = False,
         user_defined_bulk: list = [],
+        gas_phase_extrapolation: bool = False,
     ):
         """A class to store network information such as indices of important reactions.
 
@@ -36,17 +37,14 @@ class Network:
         Args:
             species (list[Species]): A list of chemical species that are added to the network
             reactions (list[Reaction]): A list of chemical reactions that are added to the network
-            three_phase (bool, optional): Whether to use a three phase model (gas, surface, bulk). Defaults to False.
             user_defined_bulk (list, optional): List of user defined bulk. Defaults to [].
         """
         assert len(set([s.name for s in species])) == len(
             species
         ), "Cannot have duplicate species in the species list."
         self.set_species_dict({s.name: s for s in species})
-
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
-        self.three_phase = three_phase
         electron_specie = Species(["E-", 0, 0.0, 0, 0, 0, 0])
         electron_specie.n_atoms = 1
         self.add_species(electron_specie)
@@ -58,9 +56,9 @@ class Network:
 
         # Need additional grain reactions including non-thermal desorption and chemically induced desorption
         self.add_freeze_reactions()
-        if self.three_phase:
-            self.add_bulk_species()
-            self.add_bulk_reactions()
+        # Add the bulk species:
+        self.add_bulk_species()
+        self.add_bulk_reactions()
         self.add_desorb_reactions()
         self.add_chemdes_reactions()
         if self.excited_species:
@@ -68,6 +66,10 @@ class Network:
 
         # Ensure that the branching ratios are correct, if not, edit the network to enforce it.
         self.branching_ratios_checks()
+        
+        # Extrapolate Gas phase reactions if needed:
+        if gas_phase_extrapolation:
+            self.add_gas_phase_extrapolation()
 
         # Sort the reactions before returning them, this is important for convergence of the ODE
         self.sort_reactions()
@@ -187,6 +189,25 @@ class Network:
             dict[int, Reaction]: A dict with the identical reactions.
         """
         return {k: v for k, v in self._reactions_dict.items() if v == reaction}
+    
+    def get_reaction_index(self, reaction: Reaction) -> int:
+        """Get the index of a reaction in the internal _reactions_dict.
+
+        Args:
+            reaction (Reaction): The reaction to find the index of
+
+        Returns:
+            int: The index of the reaction in the internal _reactions_dict
+        """
+        similar_reactions = self.find_similar_reactions(reaction)
+        if len(similar_reactions) == 1:
+            return list(similar_reactions.keys())[0]
+        elif len(similar_reactions) == 0:
+            raise ValueError(f"The reaction {reaction} is not present in the network.")
+        else:
+            raise RuntimeError(
+                f"Found more than one index for the reaction {reaction}, cannot uniquely identify it; use find_similar_reactions instead."
+            )    
 
     def remove_reaction_by_index(self, reaction_idx: int) -> None:
         """Remove a reaction by its index in the internal _reactions_dict, this is the only way
@@ -217,6 +238,18 @@ class Network:
             logging.debug(f"Trying to remove index: {reac_idx}: {reac_value} ")
             # Remove the reaction with the index from the reaction set:
             del self._reactions_dict[reac_idx]
+
+            if not isinstance(reaction, CoupledReaction):
+                to_pop = []
+                for k, v in self._reactions_dict.items():
+                    if not isinstance(v, CoupledReaction):
+                        continue
+                    if v.get_partner() == reaction:
+                        logging.debug(f"Coupled reaction {v} will also be removed")
+                        to_pop.append(v)
+                if to_pop:
+                    [self.remove_reaction(coupled_reac) for coupled_reac in to_pop]
+
         elif len(reaction_idx_dict_as_tuples) == 0:
             logging.warning(
                 f"The reaction {reaction} is not present in the reaction set, so cannot remove it"
@@ -227,6 +260,75 @@ class Network:
                     "found more than one indices for the reaction {reaction}, remove by index instead of by reaction."
                 )
             )
+
+    def change_reaction_barrier(self, reaction: Reaction, barrier: float) -> None:
+        reaction_idx_dict_as_tuples = list(
+            self.find_similar_reactions(reaction).items()
+        )
+        if len(reaction_idx_dict_as_tuples) == 1:
+            reac_idx, reac_value = reaction_idx_dict_as_tuples[0]
+            logging.debug(
+                f"Trying to change barrier of reaction index: {reac_idx}: {reac_value} "
+            )
+            # Change the barrier of the reaction with the index from the reaction set:
+            self._reactions_dict[reac_idx].set_gamma(barrier)
+
+            if not isinstance(reaction, CoupledReaction):
+                to_change = []
+                for k, v in self._reactions_dict.items():
+                    if not isinstance(v, CoupledReaction):
+                        continue
+                    if v.get_partner() == reaction:
+                        logging.debug(f"Coupled reaction {v} will also be removed")
+                        to_change.append(v)
+                if to_change:
+                    [
+                        self.change_reaction_barrier(coupled_reac, barrier)
+                        for coupled_reac in to_change
+                    ]
+
+        elif len(reaction_idx_dict_as_tuples) == 0:
+            logging.warning(
+                f"The reaction {reaction} is not present in the reaction set, so cannot change its barrier it"
+            )
+        elif len(reaction_idx_dict_as_tuples) > 1:
+            raise (
+                RuntimeError("found more than one indices for the reaction {reaction}.")
+            )
+
+    def change_binding_energy(self, specie: str, new_binding_energy: float) -> None:
+        all_species = self.get_species_list()
+        all_species_names = [specie.get_name() for specie in all_species]
+        if specie not in all_species_names:
+            error = f"Specie {specie} was not found in the network while attempting to change its binding energy."
+            raise ValueError(error)
+        old_bulk_h2o_binding_energy = all_species[all_species_names.index("@H2O")]
+        old_bulk_h2o_binding_energy = old_bulk_h2o_binding_energy.binding_energy
+        if specie == "@H2O":
+            # If specie is bulk H2O, we need to change binding energies of all other bulk species,
+            # as the diffusion is limited by diffusion of bulk H2O. (Ghesquiere 2015)
+            for specie_in_network in all_species:
+                if (
+                    "@" in specie_in_network.get_name()
+                    and specie_in_network.binding_energy == old_bulk_h2o_binding_energy
+                ):
+                    # If the specie had a different bulk binding energy, do not change it, as it was user specified.
+                    specie_in_network.binding_energy = new_binding_energy
+            return
+        if "@" in specie:
+            if (
+                all_species[all_species_names.index(specie)].binding_energy
+                == old_bulk_h2o_binding_energy
+            ):
+                # If the bulk species has the same binding energy as bulk H2O,
+                # but we are trying to change it directly, give user a warning.
+                print(
+                    f"WARNING: ATTEMPTING TO CHANGE BINDING ENERGY OF BULK SPECIE {specie} THAT WAS PREVIOUSLY @H2O BINDING ENERGY LIMITED"
+                )
+        for specie_in_network in all_species:
+            if specie_in_network.get_name() == specie:
+                specie_in_network.binding_energy = new_binding_energy
+                return
 
     def get_reaction(self, reaction_idx: int) -> Reaction:
         """Obtain a reaction from the reaction set given an index of the internal _reactions_dict.
@@ -246,7 +348,11 @@ class Network:
             reaction_idx (int): The index to be written to
             reaction (Reaction): The reaction to be added to the index.
         """
-        self._reactions_dict[reaction_idx] = Reaction
+        old_length = len(self._reactions_dict)
+        self._reactions_dict[reaction_idx] = reaction
+        assert old_length == len(self._reactions_dict), (
+            "Setting the reaction caused a change in the number of reactions, use add_reaction and remove_reaction for add and remove operations."
+        )
 
     def get_reaction_dict(self) -> dict[int, Reaction]:
         """Returns the whole internal reaction dictionary.
@@ -507,10 +613,7 @@ class Network:
             ].binding_energy
         except ValueError:
             error = "You are trying to create a three phase model but #H2O is not in your network"
-            error += "\nThis is likely an error so Makerates will not complete"
-            error += (
-                "\nTry adding #H2O or switching to three_phase=False in Makerates.py"
-            )
+            error += "\nThis is likely an error so Makerates will not complete. Try adding #H2O"
             raise RuntimeError(error)
         for species in self.get_species_list():
             if species.is_surface_species():
@@ -650,7 +753,7 @@ class Network:
                 if any(
                     [   
                      (existing_reaction.get_reaction_type() + "DES" == reaction.get_reaction_type()) and 
-                        (existing_reaction.get_only_elemental_reactants() == reaction.get_only_elemental_reactants()) 
+                        (existing_reaction.get_pure_reactants() == reaction.get_pure_reactants()) 
                         for existing_reaction in existing_desorption_reactions
                     ]
                 ):
@@ -686,6 +789,13 @@ class Network:
                 logging.debug(
                     f"Adding deassociation reaction for {reaction}, new reaction {new_reaction}"
                 )
+
+                new_reaction = CoupledReaction(new_reaction)
+                while isinstance(reaction, CoupledReaction):
+                    # If the current loop reaction is also coupled, get its partner.
+                    reaction = reaction.get_partner()
+                new_reaction.set_partner(reaction)
+
                 new_reactions.append(new_reaction)
         self.add_reactions(new_reactions)
 
@@ -833,6 +943,11 @@ class Network:
         for reaction in surface_reactions:
             new_reac = deepcopy(reaction)
             new_reac.convert_to_bulk()
+            new_reac = CoupledReaction(new_reac)
+            while isinstance(reaction, CoupledReaction):
+                # If the current loop reaction is also coupled, get its partner.
+                reaction = reaction.get_partner()
+            new_reac.set_partner(reaction)
             new_reactions.append(new_reac)
         new_reactions = [
             reac for reac in new_reactions if reac not in current_reaction_list
@@ -1074,37 +1189,41 @@ class Network:
                     if (
                         reactant_string in branching_reactions
                         and branching_reactions[reactant_string] != 1.0
-                    ):	
-                        new_reaction = deepcopy(reaction)
+                    ):
                         if branching_reactions[reactant_string] != 0.0:
-
                             if branching_reactions[reactant_string] < 0.99:
-                                 logging.warning(f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string] } we are assuming you set this lower on purpose.")
-                                 continue
+                                logging.warning(
+                                    f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string] } we are assuming you set this lower on purpose."
+                                )
+                                continue
                             new_alpha = (
-                                new_reaction.get_alpha()
+                                reaction.get_alpha()
                                 / branching_reactions[reactant_string]
                             )
                             logging.warning(
-                                f"Grain reaction {reaction} has a branching ratio of {new_reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
+                                f"Grain reaction {reaction} has a branching ratio of {reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
                             )
-                            new_reaction.set_alpha(new_alpha)
-                            logging.debug(
-                                f"n_reactions: {len(self.get_reaction_list())}removing reaction {reaction}"
-                            )
-                            self.remove_reaction(reaction)
-                            logging.debug(
-                                f"n_reactions: {len(self.get_reaction_list())} removed {reaction}, adding {new_reaction}"
-                            )
-                            self.add_reactions(new_reaction)
-                            logging.debug(
-                                f"n_reactions: {len(self.get_reaction_list())} added {new_reaction}"
-                            )
+                            # TODO: apply to all partners of the reaction
+                            reaction_index = self.get_reaction_index(reaction)
+                            reaction.set_alpha(new_alpha)
+                            self.set_reaction(reaction_idx=reaction_index, reaction=reaction)
                         else:
-                            logging.warning(
-                                f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
-                            )
-                            self.remove_reaction(reaction)
+                            if isinstance(reaction, CoupledReaction) and (not reaction in self.get_reaction_list()):
+                                logging.info(f"Tried to remove a coupled reaction {reaction}, but it was already removed by one of its partners.")
+                            else:
+                                logging.warning(
+                                    f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
+                                )
+                                self.remove_reaction(reaction)
+                                
+    def add_gas_phase_extrapolation(self):
+        for reaction in self.reactions:
+            if reaction.get_reaction_type() in ["TWOBODY", "PHOTON", "CRP", "CRPHOT"]:
+                similar_reactions = self.find_similar_reactions(reaction)
+                # Only enable extrapolation if we have one or overlapping reactions
+                # UMIST uses overlapping reactions to get more correct reaction rates.
+                if all([reaction.check_temperature_collision(similar_reactions[similar_reaction_key]) for similar_reaction_key in similar_reactions ]):
+                    reaction.set_extrapolation = True
 
     def __repr__(self) -> str:
         return (

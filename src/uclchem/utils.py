@@ -2,6 +2,10 @@ from os import path
 
 import pandas as pd
 
+from uclchem.makerates.network import LoadedNetwork
+from uclchem.makerates.reaction import Reaction
+from uclchem.makerates.species import Species
+
 _ROOT = path.dirname(path.abspath(__file__))
 
 
@@ -77,3 +81,11 @@ def get_reaction_table():
 
     reactions = pd.read_csv(path.join(_ROOT, "reactions.csv"))
     return reactions
+
+
+def get_reaction_network():
+    species = pd.read_csv(path.join(_ROOT, "species.csv"))
+    species = [Species(list(spec)) for idx, spec in species.iterrows()]
+    reactions = pd.read_csv(path.join(_ROOT, "reactions.csv"))
+    reactions = [Reaction(list(reac)) for idx, reac in reactions.iterrows()]
+    return LoadedNetwork(species, reactions)

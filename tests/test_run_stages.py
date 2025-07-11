@@ -9,7 +9,6 @@ import pytest
 
 try:
     import uclchem
-
     uclchem_imported = True
 except ImportError:
     uclchem_imported = False
@@ -65,6 +64,7 @@ def test_static_model_return_array(common_output_directory):
     (
         physics,
         chemistry,
+        rates,
         abundances_start,
         return_code,
     ) = uclchem.model.cloud(
@@ -92,6 +92,7 @@ def test_static_model_return_dataframe(common_output_directory):
     (
         physics,
         chemistry,
+        rates,
         abundances_start,
         return_code,
     ) = uclchem.model.cloud(
@@ -153,6 +154,7 @@ def test_collapse_hotcore_return_array(common_output_directory):
     (
         physics,
         chemistry,
+        rates,
         abundances_start,
         return_code,
     ) = uclchem.model.cloud(
@@ -173,6 +175,7 @@ def test_collapse_hotcore_return_array(common_output_directory):
     (
         physics,
         chemistry,
+        rates,
         abundances_start,
         return_code,
     ) = uclchem.model.hot_core(
@@ -196,6 +199,7 @@ def test_collapse_hotcore_return_dataframe(common_output_directory):
     (
         physics,
         chemistry,
+        rates,
         abundances_start,
         return_code,
     ) = uclchem.model.cloud(
@@ -216,6 +220,7 @@ def test_collapse_hotcore_return_dataframe(common_output_directory):
     (
         physics,
         chemistry,
+        rates,
         abundances_start,
         return_code,
     ) = uclchem.model.hot_core(
@@ -247,7 +252,7 @@ def test_cshock_return_dataframe(common_output_directory):
         "rout": 0.1,  # radius of cloud in pc
         "baseAv": 1.0,  # visual extinction at cloud edge.
     }
-    df_stage1_physics, df_stage1_chemistry, final_abundances, return_code = (
+    df_stage1_physics, df_stage1_chemistry, rates, final_abundances, return_code = (
         uclchem.model.cloud(
             param_dict=param_dict,
             return_dataframe=True,
@@ -262,6 +267,7 @@ def test_cshock_return_dataframe(common_output_directory):
     (
         df_stage2_physics,
         df_stage2_chemistry,
+        rates,
         dissipation_time,
         final_abundances,
         return_code,

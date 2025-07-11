@@ -2,9 +2,13 @@
 ! It can also reproduce the episodic thermal sublimation seen in laboratory experiments for two phase models
 ! It is based on Viti et al. 2004 and Collings et al. 2004
 MODULE hotcore
-    USE physicscore
-    USE network
     USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp    
+    USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
+    &coldens
+    USE network
     USE f2py_constants
     IMPLICIT NONE
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
@@ -70,6 +74,7 @@ contains
     !Update the density, temperature and av to their values at currentTime            !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updatePhysics
+        !f2py integer, intent(aux) :: points
          IF (gasTemp(dstep) .lt. maxTemp) THEN
         !Below we include temperature profiles for hot cores, selected using tempindx
         !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
@@ -82,73 +87,76 @@ contains
         dustTemp=gasTemp
     END SUBROUTINE updatePhysics
 
-    SUBROUTINE sublimation(abund)
-    ! This subroutine mimics episodic thermal desorption if the network is two pahse
-        REAL(dp) :: abund(nspec+1,points)
-        INTENT(INOUT) :: abund
+    SUBROUTINE sublimation(abund, lpoints)
+        ! This subroutine mimics episodic thermal desorption if the network is two pahse
+        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+        INTEGER, INTENT(IN) :: lpoints
         IF (.not. THREE_PHASE) THEN
             IF (instantSublimation) THEN
                 instantSublimation=.False.
-                CALL totalSublimation(abund)
+                CALL totalSublimation(abund, lpoints)
             ELSE IF (coflag .ne. 2) THEN
                 IF (gasTemp(dstep) .gt. solidtemp(tempindx) .and. solidflag .ne. 2) solidflag=1
                 IF (gasTemp(dstep) .gt. volctemp(tempindx) .and. volcflag .ne. 2) volcflag=1
                 IF (gasTemp(dstep) .gt. codestemp(tempindx)) coflag=1
-                CALL thermalEvaporation(abund)
+                CALL thermalEvaporation(abund, lpoints)
             END IF
         END IF
     END SUBROUTINE sublimation
 
-    SUBROUTINE thermalEvaporation(abund)
+    SUBROUTINE thermalEvaporation(abund, lpoints)
         !Evaporation is based on Viti et al. 2004. A proportion of the frozen species is released into the gas phase
         !in specific events. These events are activated by flags (eg solidflag) which can be set in physics module.
         !The species evaporated are in lists, created by Makerates and based on groupings. see the viti 2004 paper.
-        REAL(dp) :: abund(nspec+1,points)
-        INTENT(INOUT) :: abund
+        !f2py integer, intent(aux) :: points
+        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+        INTEGER, INTENT(IN) :: lpoints
        
             IF (sum(abund(iceList,dstep)) .gt. 1d-30) THEN
                 !Solid Evap
                 IF (solidflag .eq. 1) THEN
-                    CALL partialSublimation(solidFractions,abund)
+                    CALL partialSublimation(solidFractions,abund, lpoints)
                     solidflag=2
                 ENDIF
     
                 !monotonic evaporation at binding energy of species
-                CALL bindingEnergyEvap(abund)
+                CALL bindingEnergyEvap(abund, lpoints)
     
                 !Volcanic evap
                 IF (volcflag .eq. 1) THEN
-                    CALL partialSublimation(volcanicFractions,abund)
+                    CALL partialSublimation(volcanicFractions,abund, lpoints)
                     volcflag=2 !Set flag to 2 to stop it being recalled
                 ENDIF
     
                 !Co-desorption
                 IF (coflag .eq. 1) THEN
-                    CALL totalSublimation(abund)
+                    CALL totalSublimation(abund, lpoints)
                     coflag=2
                 ENDIF
             ENDIF
     END SUBROUTINE thermalEvaporation
 
-    SUBROUTINE partialSublimation(fractions, abund)
-        REAL(dp) :: abund(nspec+1,points)
-        REAL(dp) :: fractions(:)
+    SUBROUTINE partialSublimation(fractions, abund, lpoints)
+        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+        INTEGER, INTENT(IN) :: lpoints
+        REAL(dp), INTENT(IN) :: fractions(:)
 
         abund(gasiceList,dstep)=abund(gasiceList,dstep)+fractions*abund(iceList,dstep)
         abund(iceList,dstep)=(1.0-fractions)*abund(iceList,dstep)
 
     END SUBROUTINE partialSublimation
 
-    SUBROUTINE totalSublimation(abund)
-        REAL(dp) :: abund(nspec+1,points)
+    SUBROUTINE totalSublimation(abund, lpoints)
+        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+        INTEGER, INTENT(IN) :: lpoints
         abund(gasiceList,dstep)=abund(gasiceList,dstep)+abund(iceList,dstep)
         abund(iceList,dstep)=1d-30
     END SUBROUTINE totalSublimation
 
-    SUBROUTINE bindingEnergyEvap(abund)
-        REAL(dp) :: abund(nspec+1,points)
+    SUBROUTINE bindingEnergyEvap(abund, lpoints)
+        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+        INTEGER, INTENT(IN) :: lpoints
         REAL(dp), parameter :: SURFACE_SITE_DENSITY = 1.5d15
-        INTENT(INOUT) :: abund
         INTEGER :: i
         !Subroutine to handle mono-evaporation. See viti 2004
         REAL(dp) en,newm,expdust,freq,kevap
