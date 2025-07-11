@@ -40,6 +40,8 @@ IMPLICIT NONE
     REAL(dp), ALLOCATABLE :: abund(:,:)
     
     REAL(dp) :: MIN_ABUND = 1.0d-30 !Minimum abundance allowed
+    INTEGER :: dvodeId = 28
+    INTEGER :: successFlag=0
 CONTAINS
     SUBROUTINE initializeChemistry(readAbunds)
         LOGICAL, INTENT(IN) :: readAbunds
@@ -52,6 +54,10 @@ CONTAINS
         IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff)
         ALLOCATE(abund(NEQ,points),vdiff(SIZE(iceList)))
         !Set abundances to initial elemental if not reading them in.
+        open(dvodeId,file="DVODE_STATUS",status='unknown',iostat=successFlag)
+        write(dvodeId,*) "T ISTATE HU HCUR TCUR TOLSF NST NFE NJE NQU NQCUR IMXER &
+        &LENRW LENIW NLU NNI NCFN NETF dwT"
+
         IF (.NOT. readAbunds) THEN
             !ensure abund is initially zero
             abund= MIN_ABUND
@@ -230,18 +236,26 @@ CONTAINS
     SUBROUTINE integrateODESystem(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
         TYPE(VODE_OPTS) :: OPTIONS
+        DOUBLE PRECISION :: RSTATS(22)
+        INTEGER :: ISTATS(31)
+        DOUBLE PRECISION :: starttime, endtime
         successFlag=0
 
     !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
         !reset parameters for DVODE
         ITASK=1 !try to integrate to targetTime
-        ISTATE=1 !pretend every step is the first
+        ! ISTATE=1 !pretend every step is the first
+        if (ISTATE .lt. 0) ISTATE=1 !reset state if it was negative; this enables the reuse of the approximate jacobian
         abstol=abstol_factor*abund(:,dstep) !absolute tolerances depend on value of abundance
         WHERE(abstol<abstol_min) abstol=abstol_min ! to a minimum degree
         !Call the integrator.
         OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
+        call CPU_TIME(starttime)
         CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
+        call CPU_TIME(endtime)
+        CALL GET_STATS(RSTATS,ISTATS)
 
+        WRITE(dvodeId, *), currentTime, ISTATE, RSTATS(11:14), ISTATS(11:22), endtime - starttime
         SELECT CASE(ISTATE)
             CASE(-1)
                 !ISTATE -1 means the integrator can't break the problem into small enough steps
