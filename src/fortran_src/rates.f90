@@ -57,7 +57,7 @@ CONTAINS
         idx1=freezeReacs(1)
         idx2=freezeReacs(2)
         IF (idx1 .ne. idx2) THEN
-            rate(idx1:idx2)=freezeOutRate(idx1,idx2)
+            rate(idx1:idx2)=freezeOutRate(idx1,idx2,abund)
             !freeze out rate uses thermal velocity but mass of E is 0 giving us infinite rates
             !just assume it's same as H
             rate(nR_EFreeze)=rate(nR_HFreeze)
@@ -244,7 +244,7 @@ CONTAINS
         idx1=erReacs(1)
         idx2=erReacs(2)
         if (idx1 .ne. idx2) THEN
-            rate(idx1:idx2)=freezeOutRate(idx1,idx2)
+            rate(idx1:idx2)=freezeOutRate(idx1,idx2,abund)
             rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/gasTemp(dstep))
             rate(erdesReacs(1):erdesReacs(2))=rate(idx1:idx2)
             !calculate fraction of reaction that goes down desorption route
@@ -312,10 +312,11 @@ CONTAINS
     ! eg Le Bourlot et al. 2013, Molpeceres et al. 2020
     !Above 150 K, thermal desorption will completely remove grain species
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
+    FUNCTION freezeOutRate(idx1,idx2,abund) RESULT(freezeRates)
         REAL(dp) :: freezeRates(idx2-idx1+1)
         INTEGER(dp) :: idx1,idx2
-        
+        REAL(dp) :: abund(:, :)
+
         !additional factor for ions (beta=0 for neutrals)
         freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
         IF ((freezeFactor .eq. 0.0) .or. (gasTemp(dstep) .gt. MAX_GRAIN_TEMP)) then
@@ -323,6 +324,8 @@ CONTAINS
         ELSE
             freezeRates=freezeRates*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL&
             &*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
+            ! Set the freezeout rate to zero for gas phase species lower than 1e-20
+            WHERE(abund(re1(idx1:idx2), dstep) .lt. 1.0D-20) freezeRates = 0.0 
         END IF
 
     END FUNCTION freezeOutRate
