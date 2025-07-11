@@ -10,3 +10,4 @@ from . import plot as plot
 from . import tests as tests
 from . import utils as utils
 from . import version as version
+from . import trialmodel as trialmodel
