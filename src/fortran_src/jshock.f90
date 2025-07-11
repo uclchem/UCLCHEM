@@ -3,9 +3,13 @@
 !Based on James et al. 2019 A&A 634
 !https://ui.adsabs.harvard.edu/abs/2020A%26A...634A..17J/abstract
 MODULE jshock_mod
-    USE physicscore
-    USE network
     USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp    
+    USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
+    &coldens
+    USE network
     USE f2py_constants
     USE sputtering
     IMPLICIT NONE
@@ -24,6 +28,7 @@ CONTAINS
     ! sets up variables for the shock paramterization that follows    !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics(successFlag)
+        !f2py integer, intent(aux) :: points
         INTEGER, INTENT(OUT) :: successFlag
         successFlag=0
         !Reset variables for python wrap.
@@ -132,8 +137,9 @@ CONTAINS
     ! It receives the abundance array and performs any sublimation related activity   !
     ! In hot core that means following thermalEvaporation subroutine.                 !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE sublimation(abund)
-        REAL(dp),INTENT(INOUT) :: abund(nspec+1,points)
+    SUBROUTINE sublimation(abund, lpoints)
+        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+        INTEGER, INTENT(IN) :: lpoints
         REAL(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)
 

@@ -4,9 +4,10 @@ from typing import Union
 
 import yaml
 
+from uclchem.makerates.reaction import Reaction
+
 from . import io_functions as io
-from .network import Network
-from .network import LoadedNetwork
+from .network import LoadedNetwork, Network
 
 param_list = [
     "species_file",
@@ -16,6 +17,7 @@ param_list = [
     "custom_reaction_type",
     "three_phase",
     "add_crp_photo_to_grain",
+    "enable_rates_to_disk",
 ]
 
 
@@ -62,14 +64,17 @@ def run_makerates(
         user_params["custom_reaction_type"],
     ]
     species_file = user_params["species_file"]
-    three_phase = user_params["three_phase"]
-    add_crp_photo_to_grain = user_params["add_crp_photo_to_grain"]
+    if not user_params.get("three_phase", True):
+        raise RuntimeError("three_phase=False is deprecated as of UCLCHEM v3.5.0, please remove three_phase=False from your makerates configuration.")
+    enable_rates_to_disk = user_params.get("enable_rates_to_disk", False) 
+    gas_phase_extrapolation = user_params.get("gas_phase_extrapolation", False)
+    add_crp_photo_to_grain = user_params.get("add_crp_photo_to_grain", False)
     # retrieve the network and the dropped reactions
     network, dropped_reactions = _get_network_from_files(
         reaction_files=reaction_files,
         reaction_types=reaction_types,
         species_file=species_file,
-        three_phase=three_phase,
+        gas_phase_extrapolation=gas_phase_extrapolation,
         add_crp_photo_to_grain=add_crp_photo_to_grain,
     )
 
@@ -86,7 +91,7 @@ def run_makerates(
             write_files=write_files,
         )
         logging.info(f"There are {len(dropped_reactions)} droppped reactions")
-        io.write_outputs(network, user_output_dir)
+        io.write_outputs(network, user_output_dir, enable_rates_to_disk)
 
     ngrain = len([x for x in network.get_species_list() if x.is_surface_species()])
     logging.info(f"Total number of species = {len(network.get_species_list())}")
@@ -145,7 +150,7 @@ def _get_network_from_files(
     species_file: Union[str, bytes, os.PathLike],
     reaction_files: list[Union[str, bytes, os.PathLike]],
     reaction_types: list[str],
-    three_phase: bool,
+    gas_phase_extrapolation: bool,
     add_crp_photo_to_grain: bool,
 ):
     species_list, user_defined_bulk = io.read_species_file(species_file)
@@ -167,8 +172,8 @@ def _get_network_from_files(
     network = Network(
         species=species_list,
         reactions=reactions,
-        three_phase=three_phase,
         user_defined_bulk=user_defined_bulk,
+        gas_phase_extrapolation=gas_phase_extrapolation,
         add_crp_photo_to_grain=add_crp_photo_to_grain,
     )
 

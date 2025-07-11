@@ -4,18 +4,18 @@ species_file: data/default/default_species.csv
 #core reactions from gas phase database
 database_reaction_file: data/databases/umist22.csv
 database_reaction_type: UMIST
-#database_reaction_file : data/databases/kida.uva.2014.dat
-#database_reaction_type : KIDA
+# database_reaction_file : data/databases/gas_reactions_kida.uva.2024.in
+# database_reaction_type : KIDA
 
 #set of additional reactions: eg grain network
 custom_reaction_file: data/default/default_grain_network.csv
 custom_reaction_type: UCL
 
-#whether to automatically expand to three phase network
-three_phase: True
 # Directory in which to store output. If not included we automatically move
 # the files to the uclchem src folder. This is the default behaviour.
 # output_directory : "outputFiles"
 
 #whether to add gas-phase CRP, CRPHOT and PHOTON reactions to grains as well
 add_crp_photo_to_grain: True
+# Enable the writing of the rates and flux to the disk
+enable_rates_to_disk: False
