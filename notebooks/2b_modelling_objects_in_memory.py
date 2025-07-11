@@ -8,9 +8,9 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.17.2
 #   kernelspec:
-#     display_name: UCLCHEM 3.4.0 Release Candidate
+#     display_name: Python 3
 #     language: python
-#     name: uclchem_rc3.4.0
+#     name: python3
 # ---
 
 # # Advanced Physical Modelling

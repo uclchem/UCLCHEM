@@ -10,16 +10,13 @@ Full documentation is available from the website: [uclchem.github.io](https://uc
 
 UCLCHEM is intended to be used as a python module but must be installed from source rather than an online index such as Pypi. This is because users are expected to modify the source code, at least by creating their own networks. To obtain and install the code simply run:
 
-[!IMPORTANT]  
-From version 3.3 onwards, we need to install in `editable` mode. This means that the directory that you store UCLCHEM in will directly be used by Python instead of being copied to the site-packages. Keep in mind that code changes you make in the uclchem directory will now affect you directly!
-
 ```bash
 git clone https://github.com/uclchem/UCLCHEM.git
 cd UCLCHEM
-pip install -e .
+pip install .
 ```
 
-You can then `import uclchem` in any python script. You need to `pip install -e .` whenever you change your network. 
+You can then `import uclchem` in any python script. You need to `pip install .` whenever you change your network with Makerates. 
 
 To see the contents of this python module, check our [Python API docs](https://uclchem.github.io/docs/pythonapi). To see some example notebooks, check the tutorial section of the docs or the notebooks in `Tutorials/`.
 
@@ -27,9 +24,7 @@ To see the contents of this python module, check our [Python API docs](https://u
 If you want to build an executable from the Fortran source, head to `src/fortran_src` and run `make`. You can then run the executable with `./uclchem CLOUD input_file.inp` where there examples of input files in the `examples/` directory. We do not suggest users use the code this way unt
 
 ### Prerequisites
-To build UCLCHEM, you'll need gfortran, make and python 3.9+.
-
-To run the python module, you'll need the python modules listed in `requirements.txt`
+To build UCLCHEM, you'll need gfortran, make and python 3.11+. On MacOS, make sure to have xcode installed.
 
 
 **************************************************************

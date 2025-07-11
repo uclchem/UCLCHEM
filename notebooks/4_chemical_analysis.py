@@ -8,7 +8,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.17.2
 #   kernelspec:
-#     display_name: .conda
+#     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
@@ -60,9 +60,9 @@ import matplotlib.pyplot as plt
 # physics (temperature, density etc), abundances and rates as a function of time.
 
 # +
-temperatures = [100, 200]
+temperatures = [50, 250]
 densities = [1e4, 1e6]
-zetas = [1, 1e4]
+zetas = [1e1, 1e4]
 
 parameterSpace = np.asarray(np.meshgrid(temperatures, densities, zetas)).reshape(3, -1)
 model_table = pd.DataFrame(parameterSpace.T, columns=["temperature", "density", "zeta"])
@@ -80,6 +80,10 @@ def run_model(row):
         "initialtemp": float(row["temperature"]),
         "initialdens": float(row["density"]),
         "zeta": float(row["zeta"]),
+        # Specify some custom tolerance since Silicon chemistry at 50K is tough to solve
+        "abstol_factor": 1e-7,
+        "reltol": 1e-6,
+        "abstol_min": 5e-20,
     }
     result = uclchem.model.cloud(
         param_dict=ParameterDictionary, return_dataframe=True, return_rates=True
@@ -97,7 +101,17 @@ results = Parallel(n_jobs=10, verbose=100)(
 )
 results = {k: v for k, v in zip(model_names, results)}
 
+phys, abun, rates, _, _ = results["model_5"]
 
+# +
+from uclchem.analysis import check_element_conservation, analyze_element_per_phase
+
+# We check that everything is conserved:
+check_element_conservation(abun, ["H", "N", "C", "O", "S", "SI"])
+# -
+
+# Here we can see why the solve was slow, all of the silicon seems to get stuck on the grains.
+analyze_element_per_phase("SI", abun).plot(logy=True);
 
 # ### 2. Analyze the rates
 # UCLCHEM will compute and save the rates of each of your reactions during the simulation. It is then returned to the user to be inspected. 
@@ -126,7 +140,7 @@ physics, abundances, rates, final_abundances, successflag = results["model_2"]
 super_df = pd.concat((physics, abundances, rates), axis=1)
 
 # Plot the evolution of H3O+:
-super_df.plot("Time", "H3O+", logx=True, logy=True)
+super_df.plot("Time", "H3O+", logx=True, logy=True);
 # -
 
 # Above, we can see that the H3O+ is being formed effectively. If we then want to better understand which reactions are responsible for this formation process, we can easily obtain the production and struction routes using:
@@ -139,9 +153,12 @@ from uclchem.analysis import get_production_and_destruction
 production, destruction = get_production_and_destruction("H3O+", rates)
 
 production.tail()
-# -
 
-production.iloc[-1].sort_values(ascending=True)[:5].plot.barh()
+# +
+from uclchem.plot import plot_rate_summary
+
+plot_rate_summary(production, destruction, 10)
+# -
 
 # We can then also effectively convert from rates constants k, to the actual RHS
 # elements that contribute to each reaction; We can then get fluxes rather than rates:
@@ -157,14 +174,7 @@ dy, flux = rates_to_dy_and_flux(physics, abundances, rates, network=network)
 
 # We can then inspect the RHS of the differential equation per reaction. This informs us that the only relevant term is actually the destruction of the molecule via its reaction with HCS and H2S. Explaining the small decrease at 1 million years.
 
-production, destruction = get_production_and_destruction("H3O+", flux)
-fig, ax = plt.subplots(2, 1, sharex=True)
-production.iloc[-1].sort_values(ascending=True)[:5].plot.barh(
-    ax=ax[0], title="production"
-)
-destruction.iloc[-1].sort_values(ascending=True)[:5].plot.barh(
-    ax=ax[1], title="destruction"
-)
+plot_rate_summary(production, destruction, -10, "flux")
 
 # # UPDATE to UMIST22
 # As of 11-10-2024, we use UMIST22 for the notebook, so we need to repeat this analysis. Some dominant formation and destruction pathways are no longer present for in UMIST22. The rest of the notebook is thus no longer up to-date!

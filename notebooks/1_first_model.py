@@ -6,20 +6,19 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.17.2
 #   kernelspec:
-#     display_name: UCLCHEM 3.4.0 Release Candidate
+#     display_name: Python 3
 #     language: python
-#     name: uclchem_rc3.4.0
+#     name: python3
 # ---
 
 # # Running Your First Models
 #
 # In this notebook, we demonstrate the basic use of UCLCHEM's python module by running a simple model and then using the analysis functions to examine the output. Otherwise, it is identical to notebook 3.
 
-import os
-
 import uclchem
+import os
 
 # ## A Simple Cloud
 #

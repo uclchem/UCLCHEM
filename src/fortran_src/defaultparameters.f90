@@ -5,8 +5,6 @@
 !!note the resuting md file needs manually adding to the website.
 MODULE DEFAULTPARAMETERS
 USE constants
-!f2py INTEGER, parameter :: dp
-! use, intrinsic :: iso_fortran_env, dp=>real64 !define the size of our double precision numbers
 !---  
 !id: parameters
 !title: Model Parameters
@@ -57,8 +55,8 @@ CHARACTER(256) :: columnFile="" !File to write specific species abundances, see 
 CHARACTER(256) :: rateFile="" !File to write rate 'constants' at each timestep. This includes physical parameter values.
 CHARACTER(256) :: fluxFile="" !File to write reaction rates (flux) at each timestep. This includes physical parameter values.
 INTEGER :: writeStep=1 !Writing to columnFile only happens every writeStep timesteps.
-CHARACTER(256) :: abundSaveFile=""
-CHARACTER(256) :: abundLoadFile=""
+CHARACTER(256) :: abundSaveFile="" ! The file to save the abundances to at the end of the model.
+CHARACTER(256) :: abundLoadFile="" ! The file to load the abundances from at the start of the model.
 !|abundSaveFile |None| File to store final abundances at the end of the model so future models can use them as the initial abundances. If not provided, no file will be produced.
 !|abundLoadFile |None| File from which to load initial abundances for the model, created through `abundSaveFile`. If not provided, the model starts from elemental gas.
 !|outSpecies|None| A space separated list of species to output to columnFile. Supplied as a separate list argument to most python functions, see python API docs.
