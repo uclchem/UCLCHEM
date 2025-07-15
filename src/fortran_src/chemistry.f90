@@ -239,7 +239,8 @@ CONTAINS
         abstol=abstol_factor*abund(:,dstep) !absolute tolerances depend on value of abundance
         WHERE(abstol<abstol_min) abstol=abstol_min ! to a minimum degree
         !Call the integrator.
-        OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
+        OPTIONS = SET_OPTS(METHOD_FLAG=27, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
+        CALL USERSETS_IAJA(IAUSER, NIAUSER, JAUSER, NJAUSER)
         CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
 
         SELECT CASE(ISTATE)

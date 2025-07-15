@@ -64,6 +64,9 @@ dvode_sources = files(fsource_dir / 'dvode.f90')
 dvode_lib = static_library('dvode', dvode_sources,
   # include_directories: inc_np,
   dependencies: [quadmath_dep],
+  fortran_args: ['-O3', '-fPIC', '-ffree-line-length-0',],
+  # Optional flags for debugging
+  # fortran_args:  ['-g', '-fcheck=all', '-fbacktrace', '-O0', '-Wall'],
 )
 
 uclchemwrap_source = files(fsource_dir / 'constants.f90',
@@ -109,6 +112,8 @@ py.extension_module('uclchemwrap',
                      ],
                      link_with : dvode_lib,
                      fortran_args: ['-O3', '-fPIC', '-ffree-line-length-0'],
+                     # Optional flags for debugging
+  # fortran_args:  ['-g', '-fcheck=all', '-fbacktrace', '-O0', '-Wall'],
                      install : true)
 
 # Add the python module to the install directory

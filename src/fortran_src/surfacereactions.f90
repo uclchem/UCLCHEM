@@ -269,10 +269,16 @@ double precision FUNCTION desorptionFraction(reacIndx)
     IF (deltaEnthalpy.eq.0.00) deltaEnthalpy = 1e-30 
 
     !Degrees of freedom = 3 * number of atoms in the molecule
-    degreesOfFreedom = atomCounts(productIndex(1))
-    if (productIndex(2).NE.0) degreesOfFreedom = max(degreesOfFreedom,atomCounts(productIndex(2)))
-    if (productIndex(3).NE.0) degreesOfFreedom = max(degreesOfFreedom,atomCounts(productIndex(3)))
-    if (productIndex(4).NE.0) degreesOfFreedom = max(degreesOfFreedom,atomCounts(productIndex(4)))                    
+    degreesOfFreedom = 0
+    do i = 1, 4 
+        if (productIndex(i).ne.0) then
+            degreesOfFreedom = max(degreesOfFreedom,atomCounts(productIndex(i)))
+        end if
+    end do
+    ! degreesOfFreedom = atomCounts(productIndex(1))
+    ! if (productIndex(2).NE.0) degreesOfFreedom = max(degreesOfFreedom,atomCounts(productIndex(2)))
+    ! if (productIndex(3).NE.0) degreesOfFreedom = max(degreesOfFreedom,atomCounts(productIndex(3)))
+    ! if (productIndex(4).NE.0) degreesOfFreedom = max(degreesOfFreedom,atomCounts(productIndex(4)))                    
     degreesOfFreedom = 3 * degreesOfFreedom
         
     desorptionFraction = dexp((-maxBindingEnergy*real(degreesOfFreedom)) / (epsilonCd * deltaEnthalpy))

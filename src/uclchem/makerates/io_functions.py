@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict
 
 import numpy as np
+from scipy.sparse import coo_matrix
 
 from uclchem.constants import PHYSICAL_PARAMETERS
 
@@ -779,6 +780,43 @@ def truncate_line(input_string: str, lineLength: int = 72) -> str:
     return result
 
 
+
+def get_mf27_jacobian(species_list, reaction_list):
+    """Get the sparse jacobian format for the MF27 solver"""
+    # Obtain the jacobian elements in the COO format
+    coo_pairs = set()
+    species_strings = [species.name for species in species_list]
+    for reaction in reaction_list:
+        for reactant in reaction.get_reactants():
+            for product in reaction.get_products():
+                if reactant in species_strings and product in species_strings:
+                    coo_pairs.add((species_list.index(reactant), species_list.index(product)))
+    # Additionally, we need to connect all bulk and surface species:
+    for species in species_list:
+        surface_idx = species_strings.index("SURFACE") 
+        bulk_idx = species_strings.index("BULK")
+        if species.is_surface_species() and species.name not in ["SURFACE", "BULK"]:
+            # connect surface species to their bulk version
+            coo_pairs.add((species_strings.index(species.name), surface_idx))
+            coo_pairs.add((surface_idx, species_strings.index(species.name)))
+        elif species.is_bulk_species() and species.name not in ["SURFACE", "BULK"]:
+            # connect bulk species to their surface version
+            coo_pairs.add((species_strings.index(species.name), bulk_idx))
+            coo_pairs.add((bulk_idx, species_strings.index(species.name)))
+      
+    # Add self connections for all species # +1 to account for the densitydot in the last position!
+    n_equations = len(species_list) + 1
+    
+    for i in range(n_equations):
+        coo_pairs.add((i, i))
+    coo_pairs = np.array(list(coo_pairs), dtype=int)
+    matrix = coo_matrix((np.ones(len(coo_pairs)), (coo_pairs[:, 1], coo_pairs[:, 0])), shape=(n_equations, n_equations))
+    matrix = matrix.tocsc()
+    IA = matrix.indptr + 1
+    JA = matrix.indices + 1
+    return IA, JA
+
+
 def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = False):
     """Write the Fortran code file that contains all network information for UCLCHEM.
     This includes lists of reactants, products, binding energies, formationEnthalpies
@@ -897,6 +935,17 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
     openFile.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
     openFile.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
     openFile.write(array_to_string("\tExtrapolateRates", extrapolations, type="logical", parameter=True))
+    
+    iauser, jauser = get_mf27_jacobian(
+        species_list, reaction_list
+    )
+    
+    openFile.write(array_to_string("\tiauser", iauser, type="int", parameter=True, double_precision=False))
+    openFile.write(array_to_string("\tjauser", jauser, type="int", parameter=True, double_precision=False))
+    openFile.write("\t integer :: niauser = " + str(len(iauser)) + "\n"
+                   )
+    openFile.write("\t integer :: njauser = " + str(len(jauser)) + "\n"
+                   )
 
     reacTypes = np.asarray(reacTypes)
 
@@ -961,7 +1010,7 @@ def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[Reacti
 
 
 def array_to_string(
-    name: str, array: np.array, type: str = "int", parameter: bool = True
+    name: str, array: np.array, type: str = "int", parameter: bool = True, double_precision: bool=True
 ) -> str:
     """Write an array to fortran source code
 
@@ -982,11 +1031,11 @@ def array_to_string(
     else:
         outString = " :: " + name + " ({0})=(/".format(len(array))
     if type == "int":
-        outString = "INTEGER(dp)" + outString
+        outString = "INTEGER" + ("(dp)" if double_precision else "") + outString
         for value in array:
             outString += "{0},".format(value)
     elif type == "float":
-        outString = "REAL(dp)" + outString
+        outString = "REAL" + ("(dp) " if double_precision else "") + outString
         for value in array:
             outString += "{0:.4e},".format(value)
     elif type == "string":
@@ -995,7 +1044,7 @@ def array_to_string(
         for value in array:
             outString += '"' + value.ljust(strLength) + '",'
     elif type == "logical":
-        outString = "LOGICAL(dp)" + outString
+        outString = "LOGICAL" + ("(dp)" if double_precision else "")+  outString
         for value in array:
             outString += ".{0}.,".format(value)
     else:
