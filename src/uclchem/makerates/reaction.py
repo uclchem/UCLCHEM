@@ -300,10 +300,30 @@ class Reaction:
     def get_extrapolation(self) -> bool:
         return self.extrapolate
 
-    def convert_to_bulk(self) -> None:
+    def convert_surf_to_bulk(self) -> None:
         """Convert the surface species to bulk species in place for this reaction."""
         self.set_reactants([reac.replace("#", "@") for reac in self.get_reactants()])
         self.set_products([prod.replace("#", "@") for prod in self.get_products()])
+
+    def convert_gas_to_surf(self) -> None:
+        """Convert the gas-phase species to surface species in place for this reaction.
+        If any ions are produced, the ion is assumed to become neutral because it is on the surface.
+        If any electrons are produced, they are assumed to be absorbed by the grain."""
+        do_not_convert = reaction_types + ["E-", "NAN"]
+        self.set_reactants(
+            [
+                "#" + reac if reac not in do_not_convert else reac
+                for reac in self.get_reactants()
+            ]
+        )
+        self.set_products(
+            [
+                "#" + prod.replace("+", "")
+                if prod not in do_not_convert
+                else prod.replace("E-", "NAN")
+                for prod in self.get_products()
+            ]
+        )
 
     def __eq__(self, other) -> bool:
         """Check for equality against another reaction based on the products and reactants.
@@ -559,7 +579,8 @@ def _generate_reaction_ode_bit(i: int, species_names: list, body_count: int, rea
         Args:
             i (int): index of reaction in network in python format (counting from 0)
             species_names (list): List of species names so we can find index of reactants in species list
-            three_phase (bool): Bool indicating whether this is three phase network
+            body_count (bool): Number of bodies in the reaction, used to determine how many factors of density to include
+            reactants (list[str]): The reactants of the reaction
         """
         ode_bit = f"+RATE({i + 1})"
         # every body after the first requires a factor of density

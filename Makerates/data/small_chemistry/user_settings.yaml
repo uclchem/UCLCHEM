@@ -15,5 +15,7 @@ custom_reaction_type : UCL
 # the files to the uclchem src folder. This is the default behaviour.
 # output_directory : "outputFiles"
 
+#whether to add gas-phase CRP, CRPHOT and PHOTON reactions to grains as well
+add_crp_photo_to_grain: False
 # Enable the writing of the rates and flux to the disk
 enable_rates_to_disk: False
