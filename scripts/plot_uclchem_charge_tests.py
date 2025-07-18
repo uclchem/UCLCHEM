@@ -19,7 +19,8 @@ for folder in ["example-output/", "test-output/"]:
     for model in ["phase1", "phase2", "static"]:
         axis = axes[i]
         # pick species, any number is fine
-        speciesNames = ["H", "H2", "$H", "H2O", "$H2O", "CO", "$CO", "$CH3OH", "CH3OH"]
+        # speciesNames = ["H", "H2", "$H", "H2O", "$H2O", "CO", "$CO", "$CH3OH", "CH3OH", "E-"]
+        speciesNames = ["E-", "C+", "H2O+", "H+", "HE+", "HCO+"]
 
         # call read_uclchem.
         model_data[folder + model] = uclchem.analysis.read_output_file(
@@ -36,7 +37,7 @@ for folder in ["example-output/", "test-output/"]:
                 model_data[folder + model]
             )
             print(conservation)
-
+        
         # plot species and save to test.png, alternatively send dens instead of time.
         axis = uclchem.analysis.plot_species(
             axis, model_data[folder + model], speciesNames, legend=False
@@ -46,6 +47,8 @@ for folder in ["example-output/", "test-output/"]:
             axis = uclchem.analysis.plot_species(
                 axis, model_data["example-output/" + model], speciesNames, alpha=0.5, legend=False
             )
+        ions = [s for s in list(model_data[folder+model].columns) if "+" in s]
+        charge_conservation = model_data[folder+model].loc[:, "E-"] - model_data[folder+model].loc[:, ions].sum(axis=1)
         # plot species returns the axis so we can further edit
         axis.set(
             xscale="log",
@@ -60,7 +63,7 @@ for folder in ["example-output/", "test-output/"]:
             axis.legend(bbox_to_anchor=(-0.25, 0.5), loc="center right")
         if model == "Stage 1":
             axis.set(xlim=(1e3, 6e6))
-        axis.set_title(model_names[model])
+        axis.set_title(model_names[model] + f"\nCharge conservation: {charge_conservation.mean():.2e}")
         i = i + 1
 axes[0].text(
     0.02,

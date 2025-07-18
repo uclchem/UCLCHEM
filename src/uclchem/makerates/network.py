@@ -418,7 +418,9 @@ class Network:
             ValueError: If an ice specie with binding energy of zero is added.
         """
         if isinstance(species, list):
-            if isinstance(species[0], Species):
+            if len(species) == 0:
+                logging.warning("Tried to add a list of species, but it was empty, ignoring.")
+            elif isinstance(species[0], Species):
                 # if it is a list of Species, no action is needed.
                 pass
             elif isinstance(species[0], list):
@@ -686,6 +688,9 @@ class Network:
             logging.debug(f"Checking if {species} needs to have its freezeout added")
             if not species.is_grain_species():
                 for products, alpha in species.get_freeze_products():
+                    if species.name == "E-":
+                        # Set electron freeze out to zero:
+                        alpha = 0.0
                     new_reactions.append(
                         Reaction(
                             [species.name, "FREEZE", "NAN"]
@@ -709,8 +714,10 @@ class Network:
                                 ]
                             )
                         )
-        self.add_reactions(new_reactions)
-        self.add_species(new_species)
+        if new_reactions:
+            self.add_reactions(new_reactions)
+        if new_species:
+            self.add_species(new_species)
 
     def add_desorb_reactions(self) -> None:
         """Save the user effort by automatically generating desorption reactions"""
@@ -1143,11 +1150,23 @@ class Network:
             "C+",
             "H+",
             "H2",
+            "HE",
+            "HE+",
+            "N",
+            "N+",
+            "O",
+            "O+",
+            "C",
+            "C+",
             "SI+",
             "S+",
+            "H2O",
+            "CH3OH",
+            "CL",
             "CL+",
             "CO",
-            "HE+",
+            "MG",
+            "MG+",
             "#H",
             "#H2",
             "#N",
@@ -1159,6 +1178,7 @@ class Network:
             try:
                 species_index = names.index(element) + 1
             except ValueError:
+                # TODO: The dummy value is currently SURFACE/BULK; We could handle this better somehow
                 logging.info(f"\t{element} not in network, adding dummy index")
                 species_index = len(self.get_species_list()) + 1
             name = "n" + element.lower().replace("+", "x").replace(
