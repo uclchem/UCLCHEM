@@ -24,7 +24,7 @@ class Network:
         reactions: list[Reaction],
         user_defined_bulk: list = [],
         gas_phase_extrapolation: bool = False,
-        add_crp_photo_to_grain: bool = True,
+        add_crp_photo_to_grain: bool = False,
     ):
         """A class to store network information such as indices of important reactions.
 
