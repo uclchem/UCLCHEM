@@ -38,6 +38,8 @@ IMPLICIT NONE
       & -1.303D+00,-1.312D+00,-1.367D+00,-1.676D+00,-2.305D+00,-3.034D+00,-3.758D+00,-5.077D+00, &
       & -3.883D+00,-3.888D+00,-3.936D+00,-4.197D+00,-4.739D+00,-5.165D+00,-5.441D+00,-6.446D+00/), (/8,6/))
     REAL(KIND=DP), DIMENSION(8,6) :: SCO_DERIV
+
+    REAL(dp) :: ICE_GAS_PHOTO_CROSSSECTION_RATIO = 0.3 ! Kalvans 2018
 CONTAINS
 
 !photodissociation rate of H2  accounting for self-shielding
