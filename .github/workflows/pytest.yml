@@ -37,7 +37,7 @@ jobs:
       run: |
         pytest tests/test_install.py
 
-    - name: Run pytest install test for conservation and run_stages
+    - name: Run ode conservation test, stages run and photo on grains (not enabled by default)
       run: |
-        pytest -n auto tests/{test_ode_conservation.py,test_run_stages.py}
+        pytest -n auto tests/{test_ode_conservation.py,test_run_stages.py, tests/test_photo_on_grains.py}
 

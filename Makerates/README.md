@@ -29,9 +29,6 @@ database_reaction_type : UMIST
 custom_reaction_file : inputFiles/default_grain_network.csv
 custom_reaction_type : UCL
 
-#whether to automatically expand to three phase network
-three_phase : True
-
 # Directory in which to store output. If not included we automatically move
 # the files to the uclchem src folder. This is the default behaviour.
 output_directory : "outputFiles"

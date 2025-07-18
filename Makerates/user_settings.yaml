@@ -15,7 +15,9 @@ custom_reaction_type: UCL
 # the files to the uclchem src folder. This is the default behaviour.
 # output_directory : "outputFiles"
 
-#whether to add gas-phase CRP, CRPHOT and PHOTON reactions to grains as well
-add_crp_photo_to_grain: True
+# Enable to add gas-phase CRP, CRPHOT and PHOTON reactions to grains as well
+# Be aware that this will cause stiffness, see tests/test_photo_on_grains.py for 
+# solver settings that should work for static, stage 1 and stage 2 models.
+add_crp_photo_to_grain: False
 # Enable the writing of the rates and flux to the disk
 enable_rates_to_disk: False

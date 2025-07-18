@@ -15,7 +15,6 @@ param_list = [
     "database_reaction_type",
     "custom_reaction_file",
     "custom_reaction_type",
-    "three_phase",
     "add_crp_photo_to_grain",
     "enable_rates_to_disk",
 ]

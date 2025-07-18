@@ -47,7 +47,6 @@ class Network:
         self.set_species_dict({s.name: s for s in species})
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
-        self.three_phase = three_phase
         self.add_crp_photo_to_grain = add_crp_photo_to_grain
         electron_specie = Species(["E-", 0, 0.0, 0, 0, 0, 0])
         electron_specie.n_atoms = 1
@@ -62,9 +61,8 @@ class Network:
         self.add_freeze_reactions()
         if self.add_crp_photo_to_grain:
             self.add_CRP_and_PHOTO_reactions_to_grain()
-        if self.three_phase:
-            self.add_bulk_species()
-            self.add_bulk_reactions()
+        self.add_bulk_species()
+        self.add_bulk_reactions()
         self.add_desorb_reactions()
         self.add_chemdes_reactions()
         if self.excited_species:

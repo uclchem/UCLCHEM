@@ -579,7 +579,8 @@ def _generate_reaction_ode_bit(i: int, species_names: list, body_count: int, rea
         Args:
             i (int): index of reaction in network in python format (counting from 0)
             species_names (list): List of species names so we can find index of reactants in species list
-            three_phase (bool): Bool indicating whether this is three phase network
+            body_count (bool): Number of bodies in the reaction, used to determine how many factors of density to include
+            reactants (list[str]): The reactants of the reaction
         """
         ode_bit = f"+RATE({i + 1})"
         # every body after the first requires a factor of density
