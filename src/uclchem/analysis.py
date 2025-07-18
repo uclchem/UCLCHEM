@@ -203,7 +203,7 @@ def plot_species(ax, df, species, legend=True, **plot_kwargs):
     Args:
         ax (pyplot.axis): An axis object to plot on
         df (pd.DataFrame): A dataframe created by `read_output_file`
-        species (str): A list of species names to be plotted. If species name starts with "$" instead of # or @, plots the sum of surface and bulk abundances
+        species (list[str]): A list of species names to be plotted. If species name starts with "$" instead of # or @, plots the sum of surface and bulk abundances
 
     Returns:
         pyplot.axis: Modified input axis is returned

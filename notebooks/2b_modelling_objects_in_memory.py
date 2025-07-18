@@ -39,14 +39,9 @@ param_dict = {
     "rout": 0.1,  # radius of cloud in pc
     "baseAv": 1.0,  # visual extinction at cloud edge.
 }
-df_stage1_physics, df_stage1_chemistry, df_stage1_rates, final_abundances, result = (
-    uclchem.model.cloud(
-        param_dict=param_dict,
-        return_dataframe=True,
-    )
-)
 
-df_stage1_chemistry
+
+stage1 = uclchem.trialmodel.Cloud(param_dict=param_dict)
 
 # With that done, we now have a file containing the final abundances of a cloud of gas after this collapse: `param_dict["abundSaveFile"]` we can pass this to our hot core model to use those abundances as our initial abundances.
 #
@@ -70,20 +65,10 @@ param_dict["freezeFactor"] = 0.0
 # param_dict["abstol_factor"]=1e-18
 # param_dict["reltol"]=1e-12
 
-df_stage2_physics, df_stage2_chemistry, df_stage2_rates, final_abundances, result = (
-    uclchem.model.hot_core(
-        temp_indx=3,
-        max_temperature=300.0,
-        param_dict=param_dict,
-        return_dataframe=True,
-        starting_chemistry=final_abundances,
-    )
-)
-# -
-
-df_stage2 = pd.concat((df_stage2_physics, df_stage2_chemistry), axis=1)
-
-df_stage2
+stage2 = uclchem.trialmodel.PrestellarCore(temp_indx=3,
+                                           max_temperature=300.0,
+                                           param_dict=param_dict,
+                                           previous_model=stage1)
 
 # Note that we've changed made two changes to the parameters here which aren't strictly necessary but can be helpful in certain situations.
 #
@@ -94,14 +79,12 @@ df_stage2
 # ### Checking the Result
 # With a successful run, we can check the output. We first load the file and check the abundance conservation, then we can plot it up.
 
-uclchem.analysis.check_element_conservation(df_stage2)
-
-df_stage2.iloc[0]
-
+stage2.check_conservation()
+df_stage2 = stage2.get_dataframes()
 # +
 species = ["CO", "H2O", "CH3OH", "#CO", "#H2O", "#CH3OH", "@H2O", "@CO", "@CH3OH"]
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
-ax = uclchem.analysis.plot_species(ax, df_stage2, species)
+ax = stage2.plot_species(ax, species)
 settings = ax.set(
     yscale="log",
     xlim=(1e2, 1e6),
@@ -138,14 +121,9 @@ param_dict = {
     "finalTime": 6.0e6,  # final time
     "rout": 0.1,  # radius of cloud in pc
     "baseAv": 1.0,  # visual extinction at cloud edge.
-    # "abundSaveFile": "../examples/test-output/shockstart.dat",
 }
-df_stage1_physics, df_stage1_chemistry, df_stage1_rates, final_abundances, result = (
-    uclchem.model.cloud(
-        param_dict=param_dict,
-        return_dataframe=True,
-    )
-)
+
+shock_start = uclchem.trialmodel.Cloud(param_dict=param_dict)
 # -
 
 # ### C-shock
@@ -156,32 +134,15 @@ df_stage1_physics, df_stage1_chemistry, df_stage1_rates, final_abundances, resul
 # change other bits of input to set up phase 2
 param_dict["initialDens"] = 1e4
 param_dict["finalTime"] = 1e6
-if "abundSaveFile" in param_dict:
-    param_dict.pop("abundSaveFile")
-# param_dict["abundLoadFile"]="../examples/test-output/shockstart.dat"
-# param_dict["outputFile"]="../examples/test-output/cshock.dat"
 
-
-(
-    df_stage2_physics,
-    df_stage2_chemistry,
-    df_stage2_rates,
-    dissipation_time,
-    final_abundances,
-    result,
-) = uclchem.model.cshock(
-    shock_vel=40,
-    param_dict=param_dict,
-    return_dataframe=True,
-    starting_chemistry=final_abundances,
-)
+cshock = uclchem.trialmodel.CShock(shock_vel=40, param_dict=param_dict, previous_model=shock_start)
 # result,dissipation_time=result
 # -
 
 # The code completes fine. We do get a couple of warnings though. First, we're informed that `freefall` must be set to False for the C-shock model. Then we get a few integrator warnings. These are not important and can be ignored as long as the element conservation looks ok. However, it is an indication that the integrator did struggle with these ODEs under these conditions.
 
-df_stage2 = pd.concat((df_stage2_physics, df_stage2_chemistry), axis=1)
-uclchem.analysis.check_element_conservation(df_stage2)
+df_cshock = cshock.get_dataframes()
+cshock.check_conservation()
 
 # +
 # df_stage2.rename(columns={"age":"Time", "density":"Density"}, inplace=True)
@@ -190,22 +151,22 @@ uclchem.analysis.check_element_conservation(df_stage2)
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
-ax = uclchem.analysis.plot_species(ax, df_stage2, species)
+ax = cshock.plot_species(ax, species)
 settings = ax.set(
     yscale="log",
-    xlim=(1, 20 * dissipation_time),
+    xlim=(1, 20 * cshock.dissipation_time),
     ylim=(1e-10, 1e-2),
     xlabel="Time / years",
     ylabel="Fractional Abundance",
     xscale="log",
 )
 
-ax2.plot(df_stage2["Time"], df_stage2["Density"], color="black")
+ax2.plot(df_cshock["Time"], df_cshock["Density"], color="black")
 ax2.set(xscale="log")
 ax3 = ax2.twinx()
-ax3.plot(df_stage2["Time"], df_stage2["gasTemp"], color="red")
+ax3.plot(df_cshock["Time"], df_cshock["gasTemp"], color="red")
 ax2.set(xlabel="Time / year", ylabel="Density")
-ax3.set(ylabel="Temperature", facecolor="red", xlim=(1, 20 * dissipation_time))
+ax3.set(ylabel="Temperature", facecolor="red", xlim=(1, 20 * cshock.dissipation_time))
 ax3.tick_params(axis="y", colors="red")
 # -
 
@@ -222,30 +183,19 @@ param_dict["freefall"] = False  # lets remember to turn it off this time
 param_dict["reltol"] = 1e-12
 
 shock_vel = 10.0
-df_jshock_physics, df_jshock_chemistry, df_jshock_rates, final_abundances, result = (
-    uclchem.model.jshock(
-        shock_vel=shock_vel,
-        param_dict=param_dict,
-        return_dataframe=True,
-        starting_chemistry=final_abundances,
-        timepoints=1500,
-    )
-)
+jshock = uclchem.trialmodel.JShock(shock_vel=shock_vel, param_dict=param_dict, previous_model=shock_start)
 # -
 
 # This time, we've turned off the freefall option and made reltol a little more stringent. The j-shock ends up running a bit slower but we get no warnings on this run.
 
-df_jshock = pd.concat((df_jshock_physics, df_jshock_chemistry), axis=1)
-# df_jshock.rename(columns={"age":"Time", "density":"Density"}, inplace=True)
-uclchem.analysis.check_element_conservation(df_jshock)
-
-df_jshock.shape
+df_jshock = jshock.get_dataframes()
+jshock.check_conservation()
 
 # +
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
-ax = uclchem.analysis.plot_species(ax, df_jshock, species)
+ax = jshock.plot_species(ax, species)
 settings = ax.set(
     yscale="log",
     xlim=(1e-7, 1e6),
@@ -262,6 +212,9 @@ ax3.plot(df_jshock["Time"], df_jshock["gasTemp"], color="red")
 ax2.set(xlabel="Time / year", ylabel="Density")
 ax3.set(ylabel="Temperature", facecolor="red", xlim=(1e-7, 1e6))
 ax3.tick_params(axis="y", colors="red")
+
+plt.show()
+
 # -
 
 # That's everything! We've run various science models using reasonable starting abundances that we produced by running a simple UCLCHEM model beforehand. One benefit of this method is that the abundances are consistent with the network. If we start with arbitrary, perhaps observationally motivated, abundances, it would be possible to initiate the model in a state our network could never produce.

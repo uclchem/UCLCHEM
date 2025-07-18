@@ -3,10 +3,12 @@ from abc import abstractmethod
 import os
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from uclchemwrap import uclchemwrap as wrap
 
+from uclchemwrap import uclchemwrap as wrap
+from uclchem.analysis import check_element_conservation, create_abundance_plot, plot_species
 from uclchem.constants import (
     N_PHYSICAL_PARAMETERS,
     PHYSICAL_PARAMETERS,
@@ -15,13 +17,14 @@ from uclchem.constants import (
     n_species,
 )
 
+
 def reaction_line_formatter(line):
     reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
     products = list(filter(lambda x: not str(x).lower().endswith("nan"), line[3:7]))
     return " + ".join(reactants) + " -> " + " + ".join(products)
 
 
-class ReactionNamesStore():
+class ReactionNamesStore:
     def __init__(self):
         self.reaction_names = None
 
@@ -42,38 +45,180 @@ class AbstractModel:
                  param_dict: dict = None,
                  out_species: list = None,
                  starting_chemistry: np.ndarray = None,
+                 previous_model: object = None,
                  timepoints: int = TIMEPOINTS,
-                 debug: bool = False
+                 debug: bool = False,
+                 read_file: str = None
                  ):
-        self.n_out = 0
-        self.param_dict = {}
-        self.out_species = []
-        self.timepoints = timepoints
-        self.physics_array = None
-        self.chemical_abun_array = None
-        self.ratesArray = None
-        self.debug = debug
-        self.success_flag = None
+        if read_file is not None:
+            self.n_out = None
+            self.param_dict = {}
+            self.out_species = None
+            self.timepoints = None
+            self.physics_array = None
+            self.chemical_abun_array = None
+            self.ratesArray = None
+            self.debug = debug
+            self.success_flag = None
+            self.full_array = None
+            self.was_read = True
+            self.PHYSICAL_PARAMETERS = None
 
-        specname = wrap.get_specname()
-        self.specname = np.array([x.strip() for x in specname.astype(str) if x != ""])
+            specname = wrap.get_specname()
+            self.specname = np.array([x.strip() for x in specname.astype(str) if x != ""])
 
-        self._reform_inputs(param_dict, out_species)
-        if "points" not in self.param_dict:
-            self.param_dict["points"] = 1
+            self.give_start_abund = False
+            self.next_starting_chemistry = None
+            self.read_output_file(read_file)
+        else:
+            self.n_out = 0
+            self.param_dict = {}
+            self.out_species = []
+            self.timepoints = timepoints
+            self.physics_array = None
+            self.chemical_abun_array = None
+            self.ratesArray = None
+            self.debug = debug
+            self.success_flag = None
+            self.was_read = False
+            self.PHYSICAL_PARAMETERS = PHYSICAL_PARAMETERS
 
-        self.starting_chemistry = starting_chemistry
-        self.give_start_abund = self.starting_chemistry is not None
-        self.next_starting_chemistry = starting_chemistry
+            specname = wrap.get_specname()
+            self.specname = np.array([x.strip() for x in specname.astype(str) if x != ""])
+
+            self._reform_inputs(param_dict, out_species)
+            if "points" not in self.param_dict:
+                self.param_dict["points"] = 1
+            if previous_model is None:
+                self.starting_chemistry = starting_chemistry
+            elif 'next_starting_chemistry' in [attr for attr in dir(previous_model) if
+                                               not callable(getattr(previous_model, attr)) and
+                                               not attr.startswith("__") and
+                                               attr is not None]:
+                self.starting_chemistry = previous_model.next_starting_chemistry
+            self.give_start_abund = self.starting_chemistry is not None
+            self.next_starting_chemistry = None
+        return
 
     def run(self,):
-        self.physics_array = None
-        self.chemical_abun_array = None
-        self.ratesArray = None
-        self._create_fortran_array()
-        self._create_rates_array()
+        if not self.was_read:
+            self.physics_array = None
+            self.chemical_abun_array = None
+            self.ratesArray = None
+            self._create_fortran_array()
+            self._create_rates_array()
+        else:
+            raise("This model was read. It can not be run. ")
+        return
 
-    def _reform_inputs(self, param_dict, out_species):
+    def get_dataframes(self, point: int = 0, joined: bool = True, with_rates: bool = False):
+        """Convert the output array of "point" to a pandas dataframe
+        Returns:
+            _type_: _description_
+        """
+        # Create a physical parameter dataframe
+        physics_df = pd.DataFrame(
+            self.physics_array[:, point, : len(self.PHYSICAL_PARAMETERS)],
+            index=None,
+            columns=self.PHYSICAL_PARAMETERS,
+        )
+        # Create an abundances dataframe.
+        chemistry_df = pd.DataFrame(
+            self.chemical_abun_array[:, point, :], index=None, columns=self.specname
+        )
+        if self.ratesArray is not None:
+            # Create a rates dataframe.
+            rates_df = pd.DataFrame(
+                self.ratesArray[:, point, :], index=None, columns=get_reaction_names()
+            )
+        else:
+            rates_df = None
+        if joined:
+            if with_rates:
+                return_df = physics_df.join(chemistry_df.join(rates_df))
+            else:
+                return_df = physics_df.join(chemistry_df)
+            return return_df
+        else:
+            if with_rates:
+                return physics_df, chemistry_df, rates_df
+            else:
+                return physics_df, chemistry_df
+
+
+    def check_conservation(self,
+                            element_list: list = ["H", "N", "C", "O"],
+                            percent: bool = True
+                            ):
+        if self.param_dict["points"] > 1:
+            for i in range(self.param_dict["points"]):
+                print(f"Element conservation report for point {i+1} of {self.param_dict['points']}")
+                print(check_element_conservation(self.get_dataframes(i), element_list, percent))
+        else:
+            print(f"Element conservation report")
+            print(check_element_conservation(self.get_dataframes(0), element_list, percent))
+
+    def create_abundance_plot(self,
+                       species: list = ["H", "N", "C", "O"],
+                       figsize: tuple[2] = (10, 7),
+                       point: int = 0,
+                       plot_file = None):
+        if point > self.param_dict["points"]:
+            raise Exception("'point' must be less than number of modelled points.")
+        return create_abundance_plot(self.get_dataframes(point), species, figsize, plot_file)
+
+    def plot_species(self, ax: plt.axes, species: list[str], point: int = 0, legend: bool=True, **plot_kwargs):
+        return plot_species(ax, self.get_dataframes(point), species, legend, **plot_kwargs)
+
+    def write_output_file(self, output_file: str):
+        '''Perform classic output file writing.
+
+        '''
+
+        phys = self.physics_array.reshape(-1, self.physics_array.shape[-1])
+        chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
+
+        appended = np.append(phys, chem, axis=1)
+        df = pd.DataFrame(appended, columns=[self.PHYSICAL_PARAMETERS + ["point"] + self.specname])
+        np.savetxt(output_file, np.array([a[0] for a in df.columns.to_list()])[None, :], delimiter=',\t', fmt='%s')
+        with open(output_file, "ab") as f:
+            np.savetxt(f, df, delimiter=',\t', fmt='%.5g')
+        return
+
+    def read_output_file(self, abund_load_file: str, rates_load_file: str = None):
+        '''Perform classic output file reading.
+        Args:
+            abund_load_file (str): path to file containing a full UCLCHEM output
+        '''
+        self.was_read = True
+        loaded = pd.read_csv(abund_load_file)
+        loaded.columns = loaded.columns.str.strip()
+        self.param_dict["points"] = loaded["point"].max()
+        row_count = int(len(loaded) / self.param_dict["points"]) + 1
+        self.PHYSICAL_PARAMETERS = [p for p in PHYSICAL_PARAMETERS if p in loaded.columns]
+        self.specname = [c for c in self.specname if c in loaded.columns]
+        phys_output_array = np.empty((row_count, self.param_dict["points"], len(self.PHYSICAL_PARAMETERS)+1))
+        chem_output_array = np.empty((row_count,  self.param_dict["points"], len(self.specname)))
+        for p in range(self.param_dict["points"]):
+            if p == 0:
+                phys_output_array[:, p, :] = loaded[loaded['point'] == (p + 1)][self.PHYSICAL_PARAMETERS + ["point"]].to_numpy()
+                chem_output_array[:, p, :] = loaded[loaded['point'] == (p + 1)][self.specname].to_numpy()
+            else:
+                phys_output_array[:, p, :] = np.append(np.zeros((1, len(self.PHYSICAL_PARAMETERS + ["point"]))),
+                                                       loaded[loaded['point'] == (p + 1)][self.PHYSICAL_PARAMETERS + ["point"]].to_numpy(), axis=0)
+                chem_output_array[:, p, :] = np.append(np.zeros((1, len(self.specname))),
+                                                       loaded[loaded['point'] == (p + 1)][self.specname].to_numpy(), axis=0)
+        self.physics_array = phys_output_array
+        self.chemical_abun_array = chem_output_array
+
+        self._array_clean()
+        last_timestep_index = self.physics_array[:, 0, 0].nonzero()[0][-1]
+        self.next_starting_chemistry = self.chemical_abun_array[last_timestep_index, 0, :]
+        return
+
+    def _reform_inputs(self,
+                       param_dict: dict,
+                       out_species: list):
         """Copies param_dict so as not to modify user's dictionary. Then reformats out_species from pythonic list
         to a string of space separated names for Fortran.
         """
@@ -99,6 +244,7 @@ class AbstractModel:
         else:
             self.out_species = ""
             self.n_out = 0
+        return
 
     def _create_fortran_array(self):
         # fencepost problem, need to add 1 to timepoints to account for the 0th timestep
@@ -112,9 +258,11 @@ class AbstractModel:
             dtype=np.float64,
             order="F",
         )
+        return
 
     def _create_rates_array(self):
         self.ratesArray = np.zeros(shape=(self.timepoints + 1, self.param_dict["points"], n_reactions), dtype=np.float64, order="F")
+        return
 
     def _array_clean(self):
         """
@@ -129,6 +277,10 @@ class AbstractModel:
             self.ratesArray = self.ratesArray[: last_timestep_index + 1, :, :]
         # Get the last arrays simulated, easy for starting another model.
         self.next_starting_chemistry = self.chemical_abun_array[last_timestep_index, 0, :]
+        return
+
+    def _xarray_conversion(self):
+        return
 
 
 class Cloud(AbstractModel):
@@ -136,17 +288,22 @@ class Cloud(AbstractModel):
                  param_dict: dict = None,
                  out_species: list = None,
                  starting_chemistry: np.ndarray = None,
+                 previous_model: AbstractModel = None,
                  timepoints: int = TIMEPOINTS,
-                 debug: bool = False
+                 debug: bool = False,
+                 read_file: str = None
                  ):
         super().__init__(
             param_dict,
             out_species,
             starting_chemistry,
+            previous_model,
             timepoints,
-            debug
+            debug,
+            read_file
         )
-        self.run()
+        if read_file is None:
+            self.run()
 
     def run(self):
         super().run()
@@ -172,28 +329,33 @@ class Collapse(AbstractModel):
                  param_dict: dict = None,
                  out_species: list = None,
                  starting_chemistry: np.ndarray = None,
+                 previous_model: AbstractModel = None,
                  timepoints: int = TIMEPOINTS,
-                 debug: bool = False
+                 debug: bool = False,
+                 read_file: str = None
                  ):
-        collapse_dict = {"BE1.1": 1, "BE4": 2, "filament": 3, "ambipolar": 4}
-        try:
-            self.collapse = collapse_dict[collapse]
-        except KeyError:
-            raise ValueError(
-                f"collapse must be in {collapse_dict.keys()}"
-            )
-        self.physics_output = physics_output
-        self.write_physics = self.physics_output is not None
-        if not self.write_physics:
-            self.physics_output = ""
         super().__init__(
             param_dict,
             out_species,
             starting_chemistry,
+            previous_model,
             timepoints,
-            debug
+            debug,
+            read_file
         )
-        self.run()
+        if read_file is None:
+            collapse_dict = {"BE1.1": 1, "BE4": 2, "filament": 3, "ambipolar": 4}
+            try:
+                self.collapse = collapse_dict[collapse]
+            except KeyError:
+                raise ValueError(
+                    f"collapse must be in {collapse_dict.keys()}"
+                )
+            self.physics_output = physics_output
+            self.write_physics = self.physics_output is not None
+            if not self.write_physics:
+                self.physics_output = ""
+            self.run()
 
     def run(self):
         super().run()
@@ -222,19 +384,27 @@ class PrestellarCore(AbstractModel):
                  param_dict: dict = None,
                  out_species: list = None,
                  starting_chemistry: np.ndarray = None,
+                 previous_model: AbstractModel = None,
                  timepoints: int = TIMEPOINTS,
-                 debug: bool = False
+                 debug: bool = False,
+                 read_file: str = None
                  ):
-        self.temp_indx = temp_indx
-        self.max_temperature = max_temperature
         super().__init__(
             param_dict,
             out_species,
             starting_chemistry,
+            previous_model,
             timepoints,
-            debug
+            debug,
+            read_file
         )
-        self.run()
+        if read_file is None:
+            if temp_indx is None or max_temperature is None:
+                raise("temp_indx and max_temperature must be specified if not reading from file.")
+            self.temp_indx = temp_indx
+            self.max_temperature = max_temperature
+
+            self.run()
 
     def run(self):
         super().run()
@@ -257,27 +427,34 @@ class PrestellarCore(AbstractModel):
 
 class CShock(AbstractModel):
     def __init__(self,
-                 shock_vel,
-                 timestep_factor=0.01,
-                 minimum_temperature=0.0,
+                 shock_vel: float = None,
+                 timestep_factor: float = 0.01,
+                 minimum_temperature: float = 0.0,
                  param_dict: dict = None,
                  out_species: list = None,
                  starting_chemistry: np.ndarray = None,
+                 previous_model: AbstractModel = None,
                  timepoints: int = TIMEPOINTS,
-                 debug: bool = False
+                 debug: bool = False,
+                 read_file: str = None
                  ):
         super().__init__(
             param_dict,
             out_species,
             starting_chemistry,
+            previous_model,
             timepoints,
-            debug
+            debug,
+            read_file
         )
-        self.shock_vel = shock_vel
-        self.timestep_factor = timestep_factor
-        self.minimum_temperature = minimum_temperature
-        self.dissipation_time = -1
-        self.run()
+        if read_file is None:
+            if shock_vel is None:
+                raise ("shock_vel must be specified if not reading from file.")
+            self.shock_vel = shock_vel
+            self.timestep_factor = timestep_factor
+            self.minimum_temperature = minimum_temperature
+            self.dissipation_time = -1
+            self.run()
 
     def run(self):
         super().run()
@@ -303,22 +480,30 @@ class CShock(AbstractModel):
 
 class JShock(AbstractModel):
     def __init__(self,
-                 shock_vel,
+                 shock_vel: float = None,
                  param_dict: dict = None,
                  out_species: list = None,
                  starting_chemistry: np.ndarray = None,
+                 previous_model: AbstractModel = None,
                  timepoints: int = TIMEPOINTS,
-                 debug: bool = False
+                 debug: bool = False,
+                 read_file: str = None
                  ):
-        self.shock_vel = shock_vel
         super().__init__(
             param_dict,
             out_species,
             starting_chemistry,
+            previous_model,
             timepoints,
-            debug
+            debug,
+            read_file
         )
-        self.run()
+        if read_file is None:
+            if shock_vel is None:
+                raise ("shock_vel must be specified if not reading from file.")
+            self.shock_vel = shock_vel
+            self.run()
+
 
     def run(self):
         super().run()
@@ -343,47 +528,52 @@ class Model(AbstractModel):
                  param_dict: dict = None,
                  out_species: list = None,
                  starting_chemistry: np.ndarray = None,
+                 previous_model: AbstractModel = None,
                  time_array: np.array = None,
                  density_array: np.array = None,
                  gas_temperature_array: np.array = None,
                  dust_temperature_array: np.array = None,
                  zeta_array: np.array = None,
                  radfield_array: np.array = None,
-                 debug: bool = False
+                 debug: bool = False,
+                 read_file: str = None
                  ):
-        self.postprocess_arrays = dict(
-            timegrid=time_array,
-            densgrid=density_array,
-            gastempgrid=gas_temperature_array,
-            dusttempgrid=dust_temperature_array,
-            radfieldgrid=radfield_array,
-            zetagrid=zeta_array
-        )
-        for key, array in self.postprocess_arrays.items():
-            if array is not None:
-                # Convert single values into arrays that can be used
-                if isinstance(array, float):
-                    array = np.ones(shape=time_array.shape) * array
-                # Assure lengths are correct
-                assert len(array) == len(time_array), "All arrays must be the same length"
-                # Ensure Fortran memory
-                array = np.asfortranarray(array, dtype=np.float64)
-                self.postprocess_arrays[key] = array
-        self.time_array = time_array
         super().__init__(
             param_dict,
             out_species,
             starting_chemistry,
+            previous_model,
             len(time_array),
-            debug
+            debug,
+            read_file
         )
-        if not self.give_start_abund:
-            self.starting_chemistry = np.zeros(
-                shape=n_species,
-                dtype=np.float64,
-                order="F",
+        if read_file is None:
+            self.postprocess_arrays = dict(
+                timegrid=time_array,
+                densgrid=density_array,
+                gastempgrid=gas_temperature_array,
+                dusttempgrid=dust_temperature_array,
+                radfieldgrid=radfield_array,
+                zetagrid=zeta_array
             )
-        self.run()
+            for key, array in self.postprocess_arrays.items():
+                if array is not None:
+                    # Convert single values into arrays that can be used
+                    if isinstance(array, float):
+                        array = np.ones(shape=time_array.shape) * array
+                    # Assure lengths are correct
+                    assert len(array) == len(time_array), "All arrays must be the same length"
+                    # Ensure Fortran memory
+                    array = np.asfortranarray(array, dtype=np.float64)
+                    self.postprocess_arrays[key] = array
+            self.time_array = time_array
+            if not self.give_start_abund:
+                self.starting_chemistry = np.zeros(
+                    shape=n_species,
+                    dtype=np.float64,
+                    order="F",
+                )
+            self.run()
 
     def run(self):
         super().run()
@@ -409,6 +599,7 @@ class Postprocess(AbstractModel):
                  param_dict: dict = None,
                  out_species: list = None,
                  starting_chemistry: np.ndarray = None,
+                 previous_model: AbstractModel = None,
                  time_array: np.array = None,
                  density_array: np.array = None,
                  gas_temperature_array: np.array = None,
@@ -419,46 +610,50 @@ class Postprocess(AbstractModel):
                  coldens_H2_array: np.array = None,
                  coldens_CO_array: np.array = None,
                  coldens_C_array: np.array = None,
-                 debug: bool = False
+                 debug: bool = False,
+                 read_file: str = None
                  ):
-        self.postprocess_arrays = dict(
-            timegrid=time_array,
-            densgrid=density_array,
-            gastempgrid=gas_temperature_array,
-            dusttempgrid=dust_temperature_array,
-            radfieldgrid=radfield_array,
-            zetagrid=zeta_array,
-            nhgrid=coldens_H_array,
-            nh2grid=coldens_H2_array,
-            ncogrid=coldens_CO_array,
-            ncgrid=coldens_C_array,
-        )
-        for key, array in self.postprocess_arrays.items():
-            if array is not None:
-                # Convert single values into arrays that can be used
-                if isinstance(array, float):
-                    array = np.ones(shape=time_array.shape) * array
-                # Assure lengths are correct
-                assert len(array) == len(time_array), "All arrays must be the same length"
-                # Ensure Fortran memory
-                array = np.asfortranarray(array, dtype=np.float64)
-                self.postprocess_arrays[key] = array
-        self.time_array = time_array
-        self.coldens_H_array = coldens_H_array
         super().__init__(
             param_dict,
             out_species,
             starting_chemistry,
+            previous_model,
             len(time_array),
-            debug
+            debug,
+            read_file
         )
-        if not self.give_start_abund:
-            self.starting_chemistry = np.zeros(
-                shape=n_species,
-                dtype=np.float64,
-                order="F",
+        if read_file is None:
+            self.postprocess_arrays = dict(
+                timegrid=time_array,
+                densgrid=density_array,
+                gastempgrid=gas_temperature_array,
+                dusttempgrid=dust_temperature_array,
+                radfieldgrid=radfield_array,
+                zetagrid=zeta_array,
+                nhgrid=coldens_H_array,
+                nh2grid=coldens_H2_array,
+                ncogrid=coldens_CO_array,
+                ncgrid=coldens_C_array,
             )
-        self.run()
+            for key, array in self.postprocess_arrays.items():
+                if array is not None:
+                    # Convert single values into arrays that can be used
+                    if isinstance(array, float):
+                        array = np.ones(shape=time_array.shape) * array
+                    # Assure lengths are correct
+                    assert len(array) == len(time_array), "All arrays must be the same length"
+                    # Ensure Fortran memory
+                    array = np.asfortranarray(array, dtype=np.float64)
+                    self.postprocess_arrays[key] = array
+            self.time_array = time_array
+            self.coldens_H_array = coldens_H_array
+            if not self.give_start_abund:
+                self.starting_chemistry = np.zeros(
+                    shape=n_species,
+                    dtype=np.float64,
+                    order="F",
+                )
+            self.run()
 
     def run(self):
         super().run()
@@ -482,6 +677,7 @@ class Postprocess(AbstractModel):
 '''
 Beyond here lie deprecated functions for model.py
 '''
+
 
 
 def _reform_inputs(param_dict, out_species):
