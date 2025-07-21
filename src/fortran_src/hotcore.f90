@@ -62,6 +62,8 @@ contains
             targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 1000) THEN
             targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
+        ELSE IF (timeInYears .gt. 100) THEN
+            targetTime=(timeInYears+10.0)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 0.0) THEN
             targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR
         ELSE

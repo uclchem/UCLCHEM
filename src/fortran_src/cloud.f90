@@ -37,16 +37,14 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     SUBROUTINE updateTargetTime
-        IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
+        real(dp) :: orderMagnitude, currentValue
+        IF (timeInYears .ge. 1.0d6) THEN
             targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
-        ELSE  IF (timeInYears .gt. 1.0d5) THEN
-            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1.0d4) THEN
-            targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1000) THEN
-            targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
+        ELSE IF (timeInYears .gt. 10.0) THEN
+            orderMagnitude = 10.0_dp**(FLOOR(LOG10(timeInYears)))
+            targetTime = ((FLOOR(timeInYears/orderMagnitude) + 1.0_dp) * orderMagnitude)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 0.0) THEN
-            targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR
+            targetTime = 10 * timeInYears * SECONDS_PER_YEAR
         ELSE
             targetTime=SECONDS_PER_YEAR*1.0d-7
         ENDIF

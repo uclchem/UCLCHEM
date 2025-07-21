@@ -281,7 +281,6 @@ CONTAINS
                 write(*,*) "ISTATE -4 - shortening step"
                 targetTime=currentTime+(targetTime-currentTime)*0.1
             CASE(-5)
-                timeInYears=currentTime/SECONDS_PER_YEAR
                 write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
                 targetTime=currentTime+(targetTime-currentTime)*0.1
             CASE default
