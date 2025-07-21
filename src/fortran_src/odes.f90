@@ -103,7 +103,8 @@ REAL(dp) :: totalSwap, LOSS, PROD
     &)*D*Y(137)+RATE(591)*D*Y(164)+RATE(597)*D*Y(141)+RATE(604)*D*Y(62)&
     &+RATE(613)*D*Y(34)+RATE(628)*D*Y(152)+RATE(651)*D*Y(92)+RATE(657)*D&
     &*Y(153)+RATE(698)*Y(177)*Y(199)+RATE(744)*Y(260)*Y(282)&
-    &*bulkLayersReciprocal+RATE(790)*Y(177)*Y(199)+RATE(836)*Y(260)*Y(282)&
+    &*bulkLayersReciprocal+RATE(759)*Y(190)*Y(180)+RATE(790)*Y(177)*Y(199)&
+    &+RATE(805)*Y(273)*Y(263)*bulkLayersReciprocal+RATE(836)*Y(260)*Y(282)&
     &*bulkLayersReciprocal+RATE(853)*Y(40)+RATE(855)*Y(41)+RATE(857)*Y(42)&
     &+RATE(858)*Y(46)+RATE(865)*Y(11)+RATE(869)*Y(13)+RATE(871)*Y(14)&
     &+RATE(875)*Y(17)+RATE(879)*Y(18)+RATE(886)*Y(21)+RATE(887)*Y(21)&
@@ -3745,7 +3746,7 @@ REAL(dp) :: totalSwap, LOSS, PROD
     &*Y(206)+RATE(86)*Y(206)+RATE(89)*Y(199)+RATE(91)*Y(181)+RATE(93)*Y(195)&
     &+RATE(95)*Y(227)+RATE(96)*Y(202)+RATE(98)*Y(179)+RATE(545)*D*Y(1)&
     &+RATE(546)*D*Y(2)+RATE(566)*D*Y(5)+RATE(566)*D*Y(5)+RATE(566)*D*Y(5)&
-    &+RATE(584)*D*Y(8)
+    &+RATE(584)*D*Y(8)+RATE(667)*Y(190)*Y(180)
     YDOT(167) = PROD-LOSS
     LOSS = RATE(273)*Y(168)/safeMantle+RATE(356)*D*Y(168)/safeMantle*Y(1&
     &)+RATE(439)*Y(168)/safeMantle+RATE(1099)*Y(168)
@@ -4309,7 +4310,8 @@ REAL(dp) :: totalSwap, LOSS, PROD
     &*bulkLayersReciprocal+RATE(1181)*Y(250)
     PROD = RATE(99)*Y(257)+RATE(100)*Y(289)+RATE(101)*Y(289)+RATE(104)&
     &*Y(282)+RATE(106)*Y(264)+RATE(108)*Y(278)+RATE(110)*Y(310)+RATE(111)&
-    &*Y(285)+RATE(113)*Y(262)+RATE(1016)*Y(167)*totalSwap/safeMantle
+    &*Y(285)+RATE(113)*Y(262)+RATE(713)*Y(273)*Y(263)*bulkLayersReciprocal&
+    &+RATE(1016)*Y(167)*totalSwap/safeMantle
     YDOT(250) = PROD-LOSS
     LOSS = RATE(30)*Y(251)*bulkLayersReciprocal+RATE(1182)*Y(251)
     PROD = RATE(103)*Y(259)+RATE(112)*Y(262)+RATE(715)*Y(250)*Y(250)&

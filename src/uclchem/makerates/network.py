@@ -694,7 +694,7 @@ class Network:
                         Reaction(
                             [species.name, "FREEZE", "NAN"]
                             + products
-                            + [alpha, 0.0, species.binding_energy, 0.0, 10000.0]
+                            + [alpha, 0.0, species.binding_energy, 0.0, 10000.0, 0.0]
                         )
                     )
                     # Check if the product is in the species list
@@ -728,7 +728,7 @@ class Network:
                         Reaction(
                             [species.name, reacType, "NAN"]
                             + species.get_desorb_products()
-                            + [1, 0, species.binding_energy, 0.0, 10000.0]
+                            + [1, 0, species.binding_energy, 0.0, 10000.0, 0.0]
                         )
                     )
             if species.is_bulk_species() and not species.is_refractory:
@@ -736,7 +736,7 @@ class Network:
                     Reaction(
                         [species.name, "THERM", "NAN"]
                         + species.get_desorb_products()
-                        + [1, 0, species.binding_energy, 0.0, 10000.0]
+                        + [1, 0, species.binding_energy, 0.0, 10000.0, 0.0]
                     )
                 )
         self.add_reactions(new_reactions)
@@ -846,6 +846,7 @@ class Network:
                 0.0,
                 0.0,
                 10000,
+                0.0,
             ]
             new_react = Reaction(relax_reac)
             new_reactions.append(new_react)
@@ -865,7 +866,7 @@ class Network:
                 new_reac_A_list = (
                     new_reac_A_list
                     + reaction.get_products()
-                    + [reaction.get_alpha(), 0, 0, 0, 10000]
+                    + [reaction.get_alpha(), 0, 0, 0, 10000, 0.0]
                 )
                 new_reac_B_list = [
                     reaction.get_reactants()[0],
@@ -875,7 +876,7 @@ class Network:
                 new_reac_B_list = (
                     new_reac_B_list
                     + reaction.get_products()
-                    + [reaction.get_alpha(), 0, 0, 0, 10000]
+                    + [reaction.get_alpha(), 0, 0, 0, 10000, 0.0]
                 )
 
                 new_reac_A = Reaction(new_reac_A_list)
@@ -900,7 +901,7 @@ class Network:
                 new_reac_A_list = (
                     new_reac_A_list
                     + reaction.get_products()
-                    + [reaction.get_alpha(), 0, 0, 0, 10000]
+                    + [reaction.get_alpha(), 0, 0, 0, 10000, 0.0]
                 )
                 new_reac_A = Reaction(new_reac_A_list)
                 new_reactions.append(new_reac_A)
@@ -917,7 +918,7 @@ class Network:
                 new_reac_B_list = (
                     new_reac_B_list
                     + reaction.get_products()
-                    + [reaction.get_alpha(), 0, 0, 0, 10000]
+                    + [reaction.get_alpha(), 0, 0, 0, 10000, 0.0]
                 )
                 new_reac_B = Reaction(new_reac_B_list)
                 new_reactions.append(new_reac_B)
@@ -962,7 +963,17 @@ class Network:
                     "NAN",
                     species.name.replace("@", "#"),
                 ]
-                new_reac_list = new_reac_list + ["NAN", "NAN", "NAN", 1, 0, 0, 0, 10000]
+                new_reac_list = new_reac_list + [
+                    "NAN",
+                    "NAN",
+                    "NAN",
+                    1,
+                    0,
+                    0,
+                    0,
+                    10000,
+                    0.0,
+                ]
                 new_reactions.append(Reaction(new_reac_list))
 
             # and the reverse, going from surface to bulk
@@ -1259,6 +1270,7 @@ class Network:
                         reactant_string in branching_reactions
                         and branching_reactions[reactant_string] != 1.0
                     ):
+                        new_reaction = deepcopy(reaction)
                         if branching_reactions[reactant_string] != 0.0:
                             if branching_reactions[reactant_string] < 0.99:
                                 logging.warning(
