@@ -16,8 +16,8 @@ except ModuleNotFoundError as err:
         "The uclchem module could not be found, please make sure it is installed\nPlease refer to uclchem.github.io for installation instructions."
     ) from err
 import logging
-from argparse import ArgumentParser
 import pathlib
+from argparse import ArgumentParser
 
 
 def get_args():

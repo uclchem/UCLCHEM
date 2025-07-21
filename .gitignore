@@ -20,4 +20,4 @@ dist
 */__pycache__
 .venv
 conda*
-.conda
+.conda*

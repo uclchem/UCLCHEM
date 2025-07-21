@@ -1,5 +1,7 @@
 MODULE SurfaceReactions
   USE constants
+  USE DEFAULTPARAMETERS
+  !f2py INTEGER, parameter :: dp
   USE f2py_constants
   USE network
   IMPLICIT NONE
@@ -63,7 +65,7 @@ CONTAINS
     REAL(dp), INTENT(IN) :: gasTemp,dustTemp
 
     REAL(dp) :: THERMAL_VELOCITY,STICKING_COEFFICIENT,CROSS_SECTION_SCALE
-    REAL(dp) :: FLUX,FACTOR1,FACTOR2,EPSILON
+    REAL(dp) :: HFLUX,FACTOR1,FACTOR2,EPSILON
     REAL(dp) :: SILICATE_FORMATION_EFFICIENCY,GRAPHITE_FORMATION_EFFICIENCY
     !  Mean thermal velocity of hydrogen atoms (cm s^-1)
     THERMAL_VELOCITY=1.45D5*SQRT(gasTemp/1.0D2)
@@ -73,25 +75,25 @@ CONTAINS
     STICKING_COEFFICIENT=1.0D0/(1.0D0+0.04D0*SQRT(gasTemp+dustTemp) &
                     & + 0.2D0*(gasTemp/1.0D2)+0.08D0*(gasTemp/1.0D2)**2)
 
-    FLUX=1.0D-10 ! Flux of H atoms in monolayers per second (mLy s^-1)
+    HFLUX=1.0D-10 ! Flux of H atoms in monolayers per second (mLy s^-1)
 
-    FACTOR1=SILICATE_MU*FLUX/(2*SILICATE_NU_H2*EXP(-SILICATE_E_H2/dustTemp))
+    FACTOR1=SILICATE_MU*HFLUX/(2*SILICATE_NU_H2*EXP(-SILICATE_E_H2/dustTemp))
 
    FACTOR2=1.0D0*(1.0D0+SQRT((SILICATE_E_HC-SILICATE_E_S)/(SILICATE_E_HP-SILICATE_E_S)))**2 &
         & /4.0D0*EXP(-SILICATE_E_S/dustTemp)
 
-   EPSILON=1.0D0/(1.0D0+SILICATE_NU_HC/(2*FLUX)*EXP(-1.5*SILICATE_E_HC/dustTemp) &
+   EPSILON=1.0D0/(1.0D0+SILICATE_NU_HC/(2*HFLUX)*EXP(-1.5*SILICATE_E_HC/dustTemp) &
               & *(1.0D0+SQRT((SILICATE_E_HC-SILICATE_E_S)/(SILICATE_E_HP-SILICATE_E_S)))**2)
 
    SILICATE_FORMATION_EFFICIENCY=1.0D0/(1.0D0+FACTOR1+FACTOR2)*EPSILON
 
 
-   FACTOR1=GRAPHITE_MU*FLUX/(2*GRAPHITE_NU_H2*EXP(-GRAPHITE_E_H2/dustTemp))
+   FACTOR1=GRAPHITE_MU*HFLUX/(2*GRAPHITE_NU_H2*EXP(-GRAPHITE_E_H2/dustTemp))
 
    FACTOR2=1.0D0*(1.0D0+SQRT((GRAPHITE_E_HC-GRAPHITE_E_S)/(GRAPHITE_E_HP-GRAPHITE_E_S)))**2 &
         & /4.0D0*EXP(-GRAPHITE_E_S/dustTemp)
 
-   EPSILON=1.0D0/(1.0D0+GRAPHITE_NU_HC/(2*FLUX)*EXP(-1.5*GRAPHITE_E_HC/dustTemp) &
+   EPSILON=1.0D0/(1.0D0+GRAPHITE_NU_HC/(2*HFLUX)*EXP(-1.5*GRAPHITE_E_HC/dustTemp) &
               & *(1.0D0+SQRT((GRAPHITE_E_HC-GRAPHITE_E_S)/(GRAPHITE_E_HP-GRAPHITE_E_S)))**2)
 
    GRAPHITE_FORMATION_EFFICIENCY=1.0D0/(1.0D0+FACTOR1+FACTOR2)*EPSILON
@@ -133,7 +135,7 @@ CONTAINS
   SUBROUTINE bulkToSurfaceSwappingRates(rate,idx1,idx2,dustTemperature)
     REAL(dp), INTENT(INOUT) :: rate(*)
     REAL(dp) :: dustTemperature
-    INTEGER :: idx1,idx2,i,j
+    INTEGER(dp) :: idx1,idx2,i,j
     IF ((dustTemperature .gt. MAX_GRAIN_TEMP) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
         rate(idx1:idx2) = 0.0
     ELSE
@@ -156,7 +158,7 @@ CONTAINS
 double precision FUNCTION diffusionReactionRate(reacIndx,dustTemperature)
     double precision :: reducedMass,tunnelProb,dustTemperature
     double precision :: diffuseProb,desorbProb,reacProb,n_dust
-    integer :: index1,index2,reacIndx,i
+    integer(dp) :: index1,index2,reacIndx,i
 
     !want position of species in the grain array but gas phase species aren't in there
     !so store species index
@@ -214,8 +216,8 @@ END FUNCTION diffusionReactionRate
 ! From Minissalle+ 2016 and Vasyunin+ 2016
 ! ---------------------------------------------------------------------
 double precision FUNCTION desorptionFraction(reacIndx)
-    integer :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom,i
-    integer :: productIndex(4)
+    integer(dp) :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom,i
+    integer(dp) :: productIndex(4)
 
     double precision :: deltaEnthalpy,maxBindingEnergy,epsilonCd,productEnthalpy
     double precision, parameter :: EFFECTIVE_SURFACE_MASS = 120.0

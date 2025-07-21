@@ -17,8 +17,8 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: "3.11"  # Specify the Python version you need
-
+        python-version: "3.12"  
+        
     - name: Install gfortran
       run: |
         sudo apt-get -y update
@@ -29,15 +29,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest pytest-xdist
     
-    - name: Install package in editable mode
+    - name: Install package
       run: |
-        pip install -e .
+        pip install .
 
     - name: Run pytest install test
       run: |
         pytest tests/test_install.py
 
-    - name: Run pytest install test
+    - name: Run ode conservation test, standard stages run and photo on grains (not enabled by default)
       run: |
-        pytest -n auto tests/{test_ode_conservation.py,test_run_stages.py}
+        pytest -n auto tests/{test_ode_conservation.py,test_run_stages.py,test_photo_on_grain.py}
 

@@ -4,24 +4,19 @@
 
 MODULE physicscore
     USE constants
+    USE DEFAULTPARAMETERS
+    !f2py INTEGER, parameter :: dp
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
-    INTEGER :: dstep,points
-    !Switches for processes are also here, 1 is on/0 is off.
-    LOGICAL :: endAtFinalDensity,freefall,instantSublimation
+    INTEGER :: dstep
 
-    !evap changes evaporation mode (see chem_evaporate), ion sets c/cx ratio (see initializeChemistry)
-    !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
-    INTEGER :: ion
     
     !Optional CR attentuation with column density and better H2 dissociation rates
-    LOGICAL ::cosmicRayAttenuation,improvedH2CRPDissociation
     REAL(dp) :: h2CRPRate,zetaScale
-    CHARACTER(len=1) :: ionModel="L"
 
     !variables either controlled by physics or that user may wish to change
-    REAL(dp) :: initialDens,timeInYears,targetTime,currentTime,currentTimeold,finalDens,finalTime,initialTemp
-    REAL(dp) ::  freefallFactor,cloudSize,rout,rin,baseAv,zeta,radfield,bm0
+    REAL(dp) :: timeInYears,targetTime,currentTimeold
+    REAL(dp) ::  cloudSize
     REAL(dp), allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:)
 
     !Arrays fopr calculating rates
@@ -73,7 +68,7 @@ CONTAINS
             coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
         END DO
           !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av= baseAv +coldens/1.6d21
+        av= baseAv + coldens/1.6d21
         zetaScale=zeta
     END SUBROUTINE coreInitializePhysics
 
@@ -124,10 +119,10 @@ CONTAINS
     END FUNCTION dByDnDensdot
 
     SUBROUTINE ionizationDependency
-        REAL(dp) :: dissSum,dRate,zSum,ionRate
+        REAL(dp) :: dissSum,dRate,zSum,ionRate, zeta_new
         INTEGER :: k
         !Attenuate CR by column density
-        zeta= 1.0
+        zeta_new = 1.0
         zSum = 0
         DO k=0,9,1
             IF (ionModel .eq. 'L') THEN
@@ -140,7 +135,9 @@ CONTAINS
             zSum=zSum+ionRate
         END DO
 
-        zeta=((10**zSum)/1.3d-17)* zetaScale
+        zeta_new = ((10**zSum)/1.3d-17)* zetaScale
+
+        ! TODO: reimlement the zeta calculation, using zeta_init and zeta (now zeta_new)
 
         !rate calculation for H2 dissociation
         IF (improvedH2CRPDissociation) THEN

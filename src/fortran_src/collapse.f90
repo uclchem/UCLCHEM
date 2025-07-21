@@ -6,10 +6,14 @@
 ! collapse = 4: magnetised filament, initially unstable to collapse (Nakamura+1995)
 ! collapse = 5: magnetised cloud, initially stable, collapse due to ambipolar diffusion (Fiedler+1993)
 MODULE collapse_mod
-   USE physicscore
-   USE network
    USE constants
-   use f2py_constants
+   USE DEFAULTPARAMETERS
+   !f2py INTEGER, parameter :: dp
+   USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+   & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av, &
+   &coldens
+   USE network
+   USE F2PY_CONSTANTS
    IMPLICIT NONE
    
    INTEGER :: collapse_mode
@@ -21,6 +25,7 @@ MODULE collapse_mod
 CONTAINS
    
     SUBROUTINE initializePhysics(successFlag)
+        !f2py integer, intent(aux) :: points
         INTEGER, INTENT(OUT) :: successFlag
        
         IF (ALLOCATED(parcelRadius)) DEALLOCATE(parcelRadius,massInRadius)
@@ -72,6 +77,7 @@ CONTAINS
     !This routine is formed for every parcel at every time step.
     !update any physics here. For example, set density
     SUBROUTINE updatePhysics
+         !f2py integer, intent(aux) :: points
         !calculate column density. Remember dstep counts from core to edge
         !and coldens should be amount of gas from edge to parcel.
         call findcoldens(coldens(dstep),rin,rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears),rout)
@@ -99,15 +105,15 @@ CONTAINS
 
     !This module is isothermal and as such, no sublimation occurs.
     !This is a dummy subroutine.
-    SUBROUTINE sublimation(abund)
-        REAL(dp) :: abund(nspec+1,points)
-        INTENT(IN) :: abund
-
+    SUBROUTINE sublimation(abund, lpoints)
+      REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+      INTEGER, INTENT(IN) :: lpoints
     END SUBROUTINE sublimation
 
 
     ! finds initial mass within starting radius, assuming spherical symmetry
     SUBROUTINE findMassInRadius
+      !f2py integer, intent(aux) :: points
       REAL(dp) :: rho0,r0,a
       INTEGER :: i,np,dstep
       REAL(dp) :: dr,drho
