@@ -386,6 +386,7 @@ def write_reactions(fileName, reaction_list) -> None:
         "Gamma",
         "T_min",
         "T_max",
+        "reduced_mass",
         "extrapolate",
     ]
     with open(fileName, "w") as f:
@@ -407,6 +408,7 @@ def write_reactions(fileName, reaction_list) -> None:
                     reaction.get_gamma(),
                     reaction.get_templow(),
                     reaction.get_temphigh(),
+                    reaction.get_reduced_mass(),
                     reaction.get_extrapolation(),
                 ]
             )
