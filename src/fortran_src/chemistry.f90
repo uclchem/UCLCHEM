@@ -330,11 +330,13 @@ CONTAINS
         ! get density change from physics module to send to DLSODE
         
         ! Taken from NEATH (Priestley et al 2023)
-        ! grain-assisted recombination stuff from Weingartner & Draine (2001)
+        ! grain-assisted recombination stuff from Weingartner & Draine (2001) 
+        ! https://ui.adsabs.harvard.edu/abs/2001ApJ...563..842W/abstract
         ! For now, we tack this onto the ODES; We should include this in ODEs.f90.
         ! TODO: add k(re(1)==E-)=0.0 as a check somwhere.
         phi = radfield * exp(-2.5*av(dstep)) * sqrt(gasTemp(dstep)) / (D*y(nelec)) ! phi = G T^0.5 / n_e
-        phi = max(phi,1e2)
+        ! Ensure phi is within the 1e2 to 1e6 range from the paper:
+        phi = min(max(phi,1e2), 1e6)
         ! H
         cgr = (/ 8.074e-6, 1.378, 5.087e2, 1.586e-2, 0.4723, 1.102e-5 /)
         denom = 1. + cgr(1) * phi**cgr(2) * (1. + cgr(3) * gasTemp(dstep)**cgr(4) * phi**(-cgr(5)-cgr(6)*log(gasTemp(dstep))))
@@ -384,7 +386,6 @@ CONTAINS
         end do
         ydot(nelec) = prod + loss
 
-        ! 
         ydot(NEQUATIONS)=densdot(y(NEQUATIONS))
     
     END SUBROUTINE F
