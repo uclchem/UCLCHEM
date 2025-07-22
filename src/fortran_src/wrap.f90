@@ -660,6 +660,7 @@ CONTAINS
             dtime = dtime + 1
             currentTimeold=currentTime
             !Each physics module has a subroutine to set the target time from the current time
+            timeInYears=currentTime/SECONDS_PER_YEAR
             CALL updateTargetTime
             !loop over parcels, counting from centre out to edge of cloud
             DO dstep=1,points
@@ -672,7 +673,7 @@ CONTAINS
                     RETURN
                 END IF
                 !get time in years for output, currentTime is now equal to targetTime
-                timeInYears= currentTime/SECONDS_PER_YEAR
+                timeInYears= targetTime/SECONDS_PER_YEAR
 
                 !Update physics so it's correct for new currentTime and start of next time step
                 call coreUpdatePhysics

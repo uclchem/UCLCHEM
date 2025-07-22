@@ -264,6 +264,7 @@ def write_outputs(network: Network, output_dir: str = None, rates_to_disk:bool= 
     }
     write_f90_constants(f2py_constants, filename)
     # Write some meta information that can be used to read back in the reactions into Python
+    # TODO: we can update this s.t. we can directly access the f90 constants from the f2py wrapped Fortran codes
     write_python_constants(f2py_constants, "../src/uclchem/constants.py")
 
 

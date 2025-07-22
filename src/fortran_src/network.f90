@@ -1,10 +1,11 @@
 MODULE network
 USE constants
 IMPLICIT NONE
-    INTEGER(dp), PARAMETER ::ncx=10,nhx=2,nh2=3,nsix=57,nsx=84,nclx=96,nco=50,nhex=7,ngh=167,ngh2=168&
-    &,ngn=173,ngo=178,ngoh=180,nsurface=335,nbulk=334,nh=1,nd=336,nhe=6,nc=9&
-    &,nn=15,no=25,nf=336,np=336,ns=83,ncl=95,nli=336,nna=336,nmg=38,nsi=56&
-    &,npah=336,n15n=336,n13c=336,n18o=336,nelec=333,nfe=336
+    INTEGER(dp), PARAMETER ::ncx=10,nhx=2,nh2=3,nhe=6,nhex=7,nn=15,nnx=16,no=25,nox=26,nc=9,nsix=57&
+    &,nsx=84,nh2o=32,nch3oh=79,ncl=95,nclx=96,nco=50,nmg=38,nmgx=39,ngh=167&
+    &,ngh2=168,ngn=173,ngo=178,ngoh=180,nsurface=335,nbulk=334,nh=1,nd=336&
+    &,nf=336,np=336,ns=83,nli=336,nna=336,nsi=56,npah=336,n15n=336,n13c=336&
+    &,n18o=336,nelec=333,nfe=336
     LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.
     REAL(dp) :: SURFGROWTHUNCORRECTED
 CHARACTER(Len=7), PARAMETER ::     specname (335)=(/"H      ","H+     "&
@@ -1657,7 +1658,7 @@ REAL(dp) :: 	alpha (3203)=(/1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
     &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
     &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
     &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
-    &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
+    &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,0.0000e+00&
     &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
     &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
     &,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00,1.0000e+00&
