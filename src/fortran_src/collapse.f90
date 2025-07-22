@@ -33,11 +33,17 @@ CONTAINS
       
          SELECT CASE(collapse_mode)
             CASE(1)
-                maxTime=1.175d6
-                finalTime=0.97*maxTime
+               maxTime=1.175d6
+               ! finalTime=0.89*maxTime
+               ! finalTime=0.97*maxTime
+               ! maxTime=1.05d6
+               ! finalTime=1.0*maxTime ! 1.05d6
             CASE(2) 
-                maxTime=1.855d5
-                finalTime=0.97*maxTime
+               maxTime=1.855d5
+               ! finalTime=0.68*maxTime
+               ! finalTime=0.97*maxTime
+               ! maxTime=1.25d5 ! 1.29d5
+               ! finalTime=1.0*maxTime ! 1.25d5
             CASE(3)
             CASE(4)
             CASE DEFAULT
@@ -48,6 +54,9 @@ CONTAINS
 
          DO dstep=1,points
                parcelRadius(dstep)=dstep*rout/float(points)
+               ! parcelRadius(dstep) = rin + (dstep-1)*(rout - rin)/REAL(points-1)
+               ! parcelRadius(dstep)=real(points-dstep+1)*rout/real(points)
+
          END DO
          
          IF (writePhysics) OPEN(unit=66,file=collapseFile,status='unknown',err=99)
@@ -61,14 +70,28 @@ CONTAINS
     END SUBROUTINE initializePhysics
 
     SUBROUTINE updateTargetTime
-        IF (timeInYears .gt. 10000) THEN
+      !   IF (timeInYears .gt. 10000) THEN
+      !       targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
+      !   ELSE IF (timeInYears .gt. 1000) THEN
+      !       targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
+      !   ELSE IF (timeInYears .gt. 0.0) THEN
+      !       targetTime=(timeInYears*10)*SECONDS_PER_YEAR
+      !   ELSE
+      !       targetTime=3.16d7*10.d-8
+      !   ENDIF
+
+        IF (timeInYears .ge. 1.0d6) THEN !code in years for readability, targetTime in s
+            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
+        ELSE  IF (timeInYears .gt. 1.0d5) THEN
+            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
+        ELSE IF (timeInYears .gt. 1.0d4) THEN
             targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1000) THEN
-            targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
+        ELSE IF (timeInYears .ge. 1000) THEN
+            targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 0.0) THEN
-            targetTime=(timeInYears*10)*SECONDS_PER_YEAR
+            targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR
         ELSE
-            targetTime=3.16d7*10.d-8
+            targetTime=SECONDS_PER_YEAR*1.0d-7
         ENDIF
 
        !IF (targetTime .gt. finalTime*SECONDS_PER_YEAR) targetTime=finalTime*SECONDS_PER_YEAR

@@ -68,8 +68,8 @@ CONTAINS
             coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
         END DO
           !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av= baseAv + coldens/1.6d21
-        zetaScale=zeta
+        av= baseAv +coldens/1.6d21
+        zetaScale=zeta 
     END SUBROUTINE coreInitializePhysics
 
     SUBROUTINE coreUpdatePhysics
@@ -82,7 +82,11 @@ CONTAINS
 
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= baseAv + coldens(dstep)/1.6d21
-        dustTemp=gasTemp
+        if (heatingFlag) then
+            dustTemp(dstep)= dustTemp(dstep)
+        else 
+            dustTemp(dstep)=gasTemp(dstep)
+        end if
 
         IF (cosmicRayAttenuation) CALL ionizationDependency
     END SUBROUTINE coreUpdatePhysics

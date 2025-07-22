@@ -65,7 +65,7 @@ CONTAINS
     REAL(dp), INTENT(IN) :: gasTemp,dustTemp
 
     REAL(dp) :: THERMAL_VELOCITY,STICKING_COEFFICIENT,CROSS_SECTION_SCALE
-    REAL(dp) :: HFLUX,FACTOR1,FACTOR2,EPSILON
+    REAL(dp) :: FLUX,FACTOR1,FACTOR2,EPSILON
     REAL(dp) :: SILICATE_FORMATION_EFFICIENCY,GRAPHITE_FORMATION_EFFICIENCY
     !  Mean thermal velocity of hydrogen atoms (cm s^-1)
     THERMAL_VELOCITY=1.45D5*SQRT(gasTemp/1.0D2)
@@ -75,25 +75,25 @@ CONTAINS
     STICKING_COEFFICIENT=1.0D0/(1.0D0+0.04D0*SQRT(gasTemp+dustTemp) &
                     & + 0.2D0*(gasTemp/1.0D2)+0.08D0*(gasTemp/1.0D2)**2)
 
-    HFLUX=1.0D-10 ! Flux of H atoms in monolayers per second (mLy s^-1)
+    FLUX=1.0D-10 ! Flux of H atoms in monolayers per second (mLy s^-1)
 
-    FACTOR1=SILICATE_MU*HFLUX/(2*SILICATE_NU_H2*EXP(-SILICATE_E_H2/dustTemp))
+    FACTOR1=SILICATE_MU*FLUX/(2*SILICATE_NU_H2*EXP(-SILICATE_E_H2/dustTemp))
 
    FACTOR2=1.0D0*(1.0D0+SQRT((SILICATE_E_HC-SILICATE_E_S)/(SILICATE_E_HP-SILICATE_E_S)))**2 &
         & /4.0D0*EXP(-SILICATE_E_S/dustTemp)
 
-   EPSILON=1.0D0/(1.0D0+SILICATE_NU_HC/(2*HFLUX)*EXP(-1.5*SILICATE_E_HC/dustTemp) &
+   EPSILON=1.0D0/(1.0D0+SILICATE_NU_HC/(2*FLUX)*EXP(-1.5*SILICATE_E_HC/dustTemp) &
               & *(1.0D0+SQRT((SILICATE_E_HC-SILICATE_E_S)/(SILICATE_E_HP-SILICATE_E_S)))**2)
 
    SILICATE_FORMATION_EFFICIENCY=1.0D0/(1.0D0+FACTOR1+FACTOR2)*EPSILON
 
 
-   FACTOR1=GRAPHITE_MU*HFLUX/(2*GRAPHITE_NU_H2*EXP(-GRAPHITE_E_H2/dustTemp))
+   FACTOR1=GRAPHITE_MU*FLUX/(2*GRAPHITE_NU_H2*EXP(-GRAPHITE_E_H2/dustTemp))
 
    FACTOR2=1.0D0*(1.0D0+SQRT((GRAPHITE_E_HC-GRAPHITE_E_S)/(GRAPHITE_E_HP-GRAPHITE_E_S)))**2 &
         & /4.0D0*EXP(-GRAPHITE_E_S/dustTemp)
 
-   EPSILON=1.0D0/(1.0D0+GRAPHITE_NU_HC/(2*HFLUX)*EXP(-1.5*GRAPHITE_E_HC/dustTemp) &
+   EPSILON=1.0D0/(1.0D0+GRAPHITE_NU_HC/(2*FLUX)*EXP(-1.5*GRAPHITE_E_HC/dustTemp) &
               & *(1.0D0+SQRT((GRAPHITE_E_HC-GRAPHITE_E_S)/(GRAPHITE_E_HP-GRAPHITE_E_S)))**2)
 
    GRAPHITE_FORMATION_EFFICIENCY=1.0D0/(1.0D0+FACTOR1+FACTOR2)*EPSILON
@@ -106,13 +106,13 @@ CONTAINS
      RETURN
   END FUNCTION h2FormEfficiency
 
-  SUBROUTINE bulkSurfaceExchangeReactions(rate,gasTemperature)
+  SUBROUTINE bulkSurfaceExchangeReactions(rate,dustTemperature)
     REAL(dp), INTENT(INOUT) :: rate(*)
-    REAL(dp) :: gasTemperature
+    REAL(dp) :: dustTemperature
     IF (THREE_PHASE) THEN
       ! surfaceCoverage=bulkGainFromMantleBuildUp()
-      CALL bulkToSurfaceSwappingRates(rate,bulkswapReacs(1),bulkswapReacs(2),gasTemperature)
-      rate(surfSwapReacs(1):surfSwapReacs(2))=surfaceToBulkSwappingRates(gasTemperature)
+      CALL bulkToSurfaceSwappingRates(rate,bulkswapReacs(1),bulkswapReacs(2),dustTemperature)
+      rate(surfSwapReacs(1):surfSwapReacs(2))=surfaceToBulkSwappingRates(dustTemperature)
     END IF
   END SUBROUTINE bulkSurfaceExchangeReactions
 
@@ -122,27 +122,27 @@ CONTAINS
     rate=0.5*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
   END FUNCTION bulkGainFromMantleBuildUp
 
-  FUNCTION surfaceToBulkSwappingRates(gasTemperature) RESULT(rate)
-    REAL(dp) ::rate,gasTemperature
-    IF ((gasTemperature .gt. MAX_GRAIN_TEMP) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
-              rate = 0.0
+  FUNCTION surfaceToBulkSwappingRates(dustTemperature) RESULT(rate)
+    REAL(dp) ::rate,dustTemperature
+    IF ((dustTemperature .gt. MAX_GRAIN_TEMP) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
+        rate = 0.0
     ELSE
         rate = 1.0
     END IF
   END FUNCTION surfaceToBulkSwappingRates
 
 
-  SUBROUTINE bulkToSurfaceSwappingRates(rate,idx1,idx2,gasTemperature)
+  SUBROUTINE bulkToSurfaceSwappingRates(rate,idx1,idx2,dustTemperature)
     REAL(dp), INTENT(INOUT) :: rate(*)
-    REAL(dp) :: gasTemperature
+    REAL(dp) :: dustTemperature
     INTEGER(dp) :: idx1,idx2,i,j
-    IF ((gasTemperature .gt. MAX_GRAIN_TEMP) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
+    IF ((dustTemperature .gt. MAX_GRAIN_TEMP) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
         rate(idx1:idx2) = 0.0
     ELSE
         DO i=idx1,idx2
             DO j=lbound(iceList,1),ubound(iceList,1)
                 IF (iceList(j) .eq. re1(i)) THEN
-                  rate(i)=vdiff(j)*DEXP(-bindingEnergy(j)/gasTemperature)
+                  rate(i)=vdiff(j)*DEXP(-bindingEnergy(j)/dustTemperature)
                 END IF
             END DO
         END DO
@@ -155,8 +155,8 @@ CONTAINS
 !Assuming Eb = 0.5 Ed. Units of s-1. 
 !David Quenard 2017 Arxiv:1711.05184
 !----------------------------------------------------------------------------------------------------
-double precision FUNCTION diffusionReactionRate(reacIndx,gasTemperature)
-    double precision :: reducedMass,tunnelProb,gasTemperature
+double precision FUNCTION diffusionReactionRate(reacIndx,dustTemperature)
+    double precision :: reducedMass,tunnelProb,dustTemperature
     double precision :: diffuseProb,desorbProb,reacProb,n_dust
     integer(dp) :: index1,index2,reacIndx,i
 
@@ -173,15 +173,18 @@ double precision FUNCTION diffusionReactionRate(reacIndx,gasTemperature)
     END DO
 
     !Hasegawa 1992 diffusion rate. Rate that two species diffuse and meet on grain surface
-    diffuseProb = vdiff(index1)*dexp(-0.5*bindingEnergy(index1)/gasTemperature)
-    diffuseProb = diffuseProb+ (vdiff(index2)*dexp(-0.5*bindingEnergy(index2)/gasTemperature))
+    ! diffuseProb = vdiff(index1)*dexp(-0.5*bindingEnergy(index1)/gasTemperature)
+    ! diffuseProb = diffuseProb+ (vdiff(index2)*dexp(-0.5*bindingEnergy(index2)/gasTemperature))
+    
+    diffuseProb = vdiff(index1)*dexp(-0.5*bindingEnergy(index1)/dustTemperature)
+    diffuseProb = diffuseProb+ (vdiff(index2)*dexp(-0.5*bindingEnergy(index2)/dustTemperature))
 
     !probability a reactant will just desorb
-    desorbProb = vdiff(index1)*dexp(-bindingEnergy(index1)/gasTemperature)
-    desorbProb = desorbProb + vdiff(index2)*dexp(-bindingEnergy(index2)/gasTemperature) 
+    desorbProb = vdiff(index1)*dexp(-bindingEnergy(index1)/dustTemperature)
+    desorbProb = desorbProb + vdiff(index2)*dexp(-bindingEnergy(index2)/dustTemperature) 
 
     !Calculate classical activation energy barrier exponent
-    reacProb = gama(reacIndx)/gasTemperature
+    reacProb = gama(reacIndx)/dustTemperature
     !Calculate quantum activation energy barrier exponent
     reducedMass = mass(iceList(index1)) * mass(iceList(index2)) / (mass(iceList(index1)) + mass(iceList(index2)))
     tunnelProb = 2.0d0 *CHEMICAL_BARRIER_THICKNESS/REDUCED_PLANCK * dsqrt(2.0d0*AMU*reducedMass*K_BOLTZ*gama(reacIndx))

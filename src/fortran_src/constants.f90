@@ -1,4 +1,5 @@
 MODULE CONSTANTS
+   ! use, intrinsic :: iso_fortran_env, dp=>real64 !define the size of our double precision numbers
    INTEGER, parameter :: dp = KIND(1.0D+0)
    REAL(dp), parameter :: C  = 2.99792458D+10 !Speed of light in cgs
    REAL(dp), PARAMETER :: K_BOLTZ = 1.38065040D-16 ! Boltzmann constant cgs

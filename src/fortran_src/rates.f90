@@ -15,8 +15,7 @@ MODULE RATES
     ! Controlling ice chemistry
     REAL(dp), PARAMETER :: h2StickingZero=0.87d0,hStickingZero=1.0d0, h2StickingTemp=87.0d0,hStickingTemp=52.0d0
     !Flags to control desorption processes
-    REAL(dp) :: turbVel=1.0
-
+    REAL(dp) :: turbVel=1.0 !unit? km/s or cm/s
     
 CONTAINS
     SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
@@ -191,7 +190,7 @@ CONTAINS
                         !See Cuppen, Walsh et al. 2017 review (section 4.1)
                         IF (iceList(i) .eq. re1(j)) THEN
                             !Basic rate at which thermal desorption occurs
-                            rate(j)=vdiff(i)*exp(-gama(j)/gasTemp(dstep))
+                            rate(j)=vdiff(i)*exp(-gama(j)/dustTemp(dstep))
                             !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
                             !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                             !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
@@ -218,9 +217,9 @@ CONTAINS
         idx1=lhReacs(1)
         idx2=lhReacs(2)
         if (idx1 .ne. idx2) THEN
-            if ((gasTemp(dstep) .lt. MAX_GRAIN_TEMP) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
+            if ((dustTemp(dstep) .lt. MAX_GRAIN_TEMP) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
                 DO j=idx1,idx2
-                    rate(j)=diffusionReactionRate(j,gasTemp(dstep))
+                    rate(j)=diffusionReactionRate(j,dustTemp(dstep))
                 END DO
                 !two routes for every diffusion reaction: products to gas or products remain on surface
                 rate(lhdesReacs(1):lhdesReacs(2))=rate(idx1:idx2)
@@ -245,7 +244,7 @@ CONTAINS
         idx2=erReacs(2)
         if (idx1 .ne. idx2) THEN
             rate(idx1:idx2)=freezeOutRate(idx1,idx2)
-            rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/gasTemp(dstep))
+            rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/dustTemp(dstep))
             rate(erdesReacs(1):erdesReacs(2))=rate(idx1:idx2)
             !calculate fraction of reaction that goes down desorption route
             idx1=erdesReacs(1)
@@ -267,7 +266,7 @@ CONTAINS
             rate(nR_H2Form_CT)= 0.0
         END IF
 
-        CALL bulkSurfaceExchangeReactions(rate,gasTemp(dstep))
+        CALL bulkSurfaceExchangeReactions(rate,dustTemp(dstep))
         
         !Basic gas phase reactions 
         !They only change if temperature has so we can save time with an if statement
@@ -293,9 +292,9 @@ CONTAINS
         lastTemp=gasTemp(dstep)
 
         !turn off reactions outside their temperature range
-        WHERE(.not. ExtrapolateRates .and. (gasTemp(dstep) .lt. minTemps)) rate=0.0
+        WHERE(gasTemp(dstep) .lt. minTemps) rate=0.0
 
-        WHERE(.not. ExtrapolateRates .and. (gasTemp(dstep) .gt. maxTemps)) rate=0.0
+        WHERE(gasTemp(dstep) .gt. maxTemps) rate=0.0
 
         !Overwrite reactions for which we have a more detailed photoreaction treatment
         rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel)!H2 photodissociation
@@ -318,7 +317,7 @@ CONTAINS
         
         !additional factor for ions (beta=0 for neutrals)
         freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
-        IF ((freezeFactor .eq. 0.0) .or. (gasTemp(dstep) .gt. MAX_GRAIN_TEMP)) then
+        IF ((freezeFactor .eq. 0.0) .or. (dustTemp(dstep) .gt. MAX_GRAIN_TEMP)) then
             freezeRates=0.0
         ELSE
             freezeRates=freezeRates*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL&

@@ -12,7 +12,7 @@ USE constants
 USE DEFAULTPARAMETERS
 !f2py INTEGER, parameter :: dp
 USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
-& zeta, currentTime, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av
+& zeta, currentTime, targetTime, timeinyears, freefall, density, ion, densdot, gasTemp, dustTemp, av, colDens
 USE DVODE_F90_M !dvode_f90_m
 USE network
 USE photoreactions
@@ -21,6 +21,7 @@ use f2py_constants, only: nspec, nreac
 USE postprocess_mod, only: lusecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
 USE rates
 USE odes
+USE heating
 IMPLICIT NONE
     !f2py integer, intent(aux) :: points
     !These integers store the array index of important species and reactions, x is for ions    
@@ -40,6 +41,10 @@ IMPLICIT NONE
     REAL(dp), ALLOCATABLE :: abund(:,:)
     
     REAL(dp) :: MIN_ABUND = 1.0d-30 !Minimum abundance allowed
+
+    REAL(dp) :: tempDot, oldTemp=0.0d0
+    REAL(dp) :: h2form
+
 CONTAINS
     SUBROUTINE initializeChemistry(readAbunds)
         LOGICAL, INTENT(IN) :: readAbunds
@@ -48,13 +53,14 @@ CONTAINS
         ! Sets variables at the start of every run.
         ! Since python module persists, it's not enough to set initial
         ! values in module definitions above. Reset here.
-        NEQ=nspec+1
+        NEQ=nspec+2
         IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff)
         ALLOCATE(abund(NEQ,points),vdiff(SIZE(iceList)))
         !Set abundances to initial elemental if not reading them in.
         IF (.NOT. readAbunds) THEN
             !ensure abund is initially zero
-            abund= MIN_ABUND
+            ! abund= MIN_ABUND
+            abund(1:nspec,:)=MIN_ABUND
 
             !Start by filling all metallicity scaling elements
             !neutral atoms  
@@ -100,7 +106,8 @@ CONTAINS
 
             abund(nhe,:) = fhe  
         ENDIF
-        abund(neq,:)=density  
+        abund(nspec+2,:)=density      !Gas density
+        abund(nspec+1,:)=gasTemp    !Gas temperature
         !Initial calculations of diffusion frequency for each species bound to grain
         !and other parameters required for diffusion reactions
         DO  i=lbound(iceList,1),ubound(iceList,1)
@@ -122,14 +129,17 @@ CONTAINS
         END IF
         !OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.FALSE.)
         
+        IF (heatingFlag) THEN
+            !Initializing heating.f90 --> get coolants
+            CALL initializeHeating(gasTemp(dstep),density(dstep),abund(:,1),colDens(dstep),cloudSize,heatWriteFlag)
+        END IF
+        
         !Set rates to zero to ensure they don't hold previous values or random ones if we don't set them in calculateReactionRates
         rate=0.0
         !We typically don't recalculate rates that only depend on temperature if the temp hasn't changed
         !use arbitrarily high value to make sure they are calculated at least once.
         lastTemp=99.0d99
     END SUBROUTINE initializeChemistry
-
-
 
     SUBROUTINE updateChemistry(successFlag)
     !Updates the abundances for the next time step, first updating chemical variables and reaction rates,
@@ -145,14 +155,14 @@ CONTAINS
         real(dp) :: originalTargetTime !targetTime can be altered by integrator but we'd like to know if it was changed
         real(dp) :: surfaceCoverage
 
-
+        ! write(*,*) "update Chemistry ..."
         !Integration can fail in a way that we can manage. Allow maxLoops tries before giving up.
         loopCounter=0
         successFlag=0
         originalTargetTime=targetTime
         DO WHILE((currentTime .lt. targetTime) .and. (loopCounter .lt. maxLoops)) 
             !allow option for dens to have been changed elsewhere.
-            IF (.not. freefall) abund(nspec+1,dstep)=density(dstep)
+            IF (.not. freefall) abund(nspec+2,dstep)=density(dstep)
 
             !First sum the total column density over all points further towards edge of cloud
             IF (dstep.gt.1) THEN
@@ -188,9 +198,46 @@ CONTAINS
             bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
             surfaceCoverage=bulkGainFromMantleBuildUp()
 
-            
             CALL calculateReactionRates(abund,safeMantle, h2col, cocol, ccol, rate)
+            if (heatingFlag) then
+                !Calculate the dust temperature based on the radiation field and UV attenuation
+                ! dustTemp(dstep)=calculateDustTemp(radfield*EXP(-UV_FAC*av(dstep)),radfield)
+                dustTemp(dstep)=calculateDustTemp(radfield,av(dstep))
+                ! write(*,*) "    Tgas=", abund(nspec+1,dstep)
+                ! write(*,*) "    D=", abund(nspec+2,dstep)
+                ! write(*,*) "    Cols=", colDens(dstep)
+                ! write(*,*) "    radfield,UV_FAC,av,all=", radfield,UV_FAC,av(dstep),radfield*EXP(-UV_FAC*av(dstep))
+                ! write(*,*) "    h2dis=", h2dis
+                ! write(*,*) "    h2form=", h2form
+                ! write(*,*) "    zeta=", zeta
+                ! write(*,*) "    cphot=", rate(nR_C_hv)
+                ! write(*,*) "    gd_ratio=", 1.0/GAS_DUST_DENSITY_RATIO
+                ! write(*,*) "    grain_Radius=", grain_Radius
+                ! write(*,*) "    metallicity=", metallicity
+                ! write(*,*) "    heatWriteFlag=", heatWriteFlag
+                ! write(*,*) "    dusttemp=", dusttemp(dstep)
+                ! write(*,*) "    turbVel=", turbVel
 
+                tempDot= getTempDot( &
+                                &    timeinyears, &                       ! time 
+                                &    abund(nspec+1,dstep), &              ! gas temperature
+                                &    abund(nspec+2,dstep), &              ! gas density
+                                &    colDens(dstep), &                    ! gas column density
+                                &    radfield*EXP(-UV_FAC*av(dstep)), &   ! attenuated radiation field
+                                &    abund(:,dstep), &                    ! full abundance vector
+                                &    h2dis, &                             ! H2 dissociation rate
+                                &    h2form, &                            ! H2 formation rate
+                                &    zeta, &                              ! cosmic ray ionization rate
+                                &    rate(nR_C_hv), &                     ! C-photo rate
+                                &    1.0/GAS_DUST_DENSITY_RATIO, &        ! dust-to-gas ratio
+                                &    grain_Radius, &                      ! grain radius
+                                &    metallicity, &                       ! metallicity
+                                &    heatWriteFlag, &                     ! write flag
+                                &    dusttemp(dstep), &                   ! dust temperature
+                                &    turbVel &                            ! turbulence velocity
+                                )
+            end if
+                                
             !Integrate chemistry, and return fail if unrecoverable error was reached
             CALL integrateODESystem(successFlag)
             IF (successFlag .lt. 0) THEN
@@ -198,13 +245,22 @@ CONTAINS
                 RETURN
             END IF
 
-
-
             !1.d-30 stops numbers getting too small for fortran.
-            WHERE(abund<MIN_ABUND) abund=MIN_ABUND
-            density(dstep)=abund(NEQ,dstep)
+            ! WHERE(abund<MIN_ABUND) abund=MIN_ABUND
+            WHERE(abund(1:nspec,:)<MIN_ABUND) abund(1:nspec,:)=MIN_ABUND
+            gasTemp(dstep)=abund(nspec+1,dstep)
+            density(dstep)=abund(nspec+2,dstep)
+            ! IF (gasTemp(dstep) .lt. 10) gasTemp(dstep)=10.0
+            IF (gasTemp(dstep) .lt. 2.73) gasTemp(dstep)=2.73
             loopCounter=loopCounter+1
 
+            ! WRITE(*,*) "abund(nspec+1,dstep) (should be temp):", abund(nspec+1,dstep)
+            ! WRITE(*,*) "abund(nspec+2,dstep) (should be dens):", abund(nspec+2,dstep)
+            ! WRITE(*,*) "gasTemp(dstep):", gasTemp(dstep)
+            ! WRITE(*,*) "density(dstep):", density(dstep)
+            ! WRITE(*,*) "dustTemp(dstep):", dustTemp(dstep)
+
+            ! write(*,*) "gasTemp=", gasTemp(dstep)
             ! For postprocessing, force solver to try and reach original target time
             if (usepostprocess) targettime = originaltargettime
         END DO
@@ -225,6 +281,10 @@ CONTAINS
         IF (failedIntegrationCounter .gt. maxConsecutiveFailures)&
              &successFlag=INT_TOO_MANY_FAILS_ERROR
         end if
+
+        write(*,'(A6,1PE12.4,2X,A8,1PE12.4,2X,A7,0PF8.5,2X,A7,0PF10.5,2X,A7,0PF10.5)') &
+            & 'Time =', timeInYears, 'nH =', density(dstep), 'Av=', av(dstep), 'Tgas =', gasTemp(dstep), 'Tdust =', dustTemp(dstep)
+
     END SUBROUTINE updateChemistry
 
     SUBROUTINE integrateODESystem(successFlag)
@@ -247,7 +307,7 @@ CONTAINS
                 !ISTATE -1 means the integrator can't break the problem into small enough steps
                 !We could increase MXSTEP but better to reduce targetTime and get to physics update
                 !physical conditions may be easier to solve as time goes by so better to get to that update
-                write(*,*) "ISTATE -1: Reducing time step to ", (targetTime-currentTime)*0.1/SECONDS_PER_YEAR, "years"
+                write(*,*) "ISTATE -1: Reducing time step"
                 !More steps required for this problem
                 !MXSTEP=MXSTEP*2   
                 targetTime=currentTime+(targetTime-currentTime)*0.1
@@ -273,7 +333,7 @@ CONTAINS
                 write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
                 targetTime=currentTime+(targetTime-currentTime)*0.1
             CASE default
-                MXSTEP=10000
+                MXSTEP=10000    
         END SELECT
     END SUBROUTINE integrateODESystem
 
@@ -285,10 +345,11 @@ CONTAINS
         REAL(WP), DIMENSION(NEQUATIONS) :: Y, YDOT
         INTENT(IN)  :: NEQUATIONS, T, Y
         INTENT(OUT) :: YDOT
-        REAL(dp) :: D,loss,prod
+        REAL(dp) :: D,loss,prod,Tgas
         real(dp) :: surfaceCoverage
         !Set D to the gas density for use in the ODEs
-        D=y(NEQ)
+        Tgas=y(nspec+1)     !Gas temperature
+        D   =y(nspec+2)     !Gas density
         ydot=0.0
 
         ! Column densities are fixed for postprocessing data, so don't do this bit
@@ -311,11 +372,50 @@ CONTAINS
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         ! INCLUDE 'odes.f90'
+        ! CALL GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
         CALL GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
         ! get density change from physics module to send to DLSODE
         
-        ydot(NEQUATIONS)=densdot(y(NEQUATIONS))
-    
+        ! ydot(NEQUATIONS)=densdot(y(NEQUATIONS))     !Gas density ODE
+        ydot(nspec+2) = densdot(Y(nspec+2))     !Gas density ODE
+
+        IF (heatingFlag) THEN
+            ! Write(*,*) "Updating heating and cooling rates"
+            ! IF (ABS(y(nspec+1)-oldTemp)/oldTemp.gt.0.1) THEN
+            IF (ABS(y(nspec+1)-oldTemp).gt.0.1) THEN
+                gasTemp(dstep)=y(nspec+1)
+                IF (gasTemp(dstep) .lt. 10) gasTemp(dstep)=10.0
+                IF (gasTemp(dstep) .gt. 1.0d4) gasTemp(dstep)=1.0d4
+                ! CALL calculateReactionRates
+                ! CALL calculateReactionRates(abund,safeMantle, h2col, cocol, ccol, rate)
+                h2form= h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))!h2FormRate(gasTemp(dstep),dustTemp(dstep))
+                ! tempDot=getTempDot(Y(NEQ-1),Y(NEQ),radfield*EXP(-UV_FAC*av(dstep)),Y,h2dis,h2form,zeta,rate(nR_C_hv),1.0/GAS_DUST_DENSITY_RATIO&
+                !     &,grainRadius,metallicity,y(exoReactants1),y(exoReactants2),RATE(exoReacIdxs),exothermicities,heatWriteFlag,dustTemp(dstep),turbVel)
+                tempDot=getTempDot( &
+                            &    timeInYears, &                         ! time 
+                            &    Y(nspec+1), &                          ! gas temperature
+                            &    Y(nspec+2), &                          ! gas density
+                            &    colDens(dstep), &                      ! gas column density
+                            &    radfield*EXP(-UV_FAC*av(dstep)), &     ! attenuated radiation field
+                            &    Y, &                                   ! attenuated radiation field
+                            &    h2dis, &                               ! H2 dissociation rate
+                            &    h2form, &                              ! H2 formation rate
+                            &    zeta, &                                ! cosmic ray ionization rate
+                            &    rate(nR_C_hv), &                       ! C-photo rate
+                            &    1.0/GAS_DUST_DENSITY_RATIO, &          ! dust-to-gas ratio
+                            &    grain_Radius, &                        ! grain radius
+                            &    metallicity, &                         ! metallicity
+                            &    heatWriteFlag, &                       ! write flag
+                            &    dusttemp(dstep), &                     ! dust temperature
+                            &    turbVel &                              ! turbulence velocity
+                        )
+                oldTemp=y(nspec+1)
+            END IF
+            ydot(nspec+1)=tempDot
+        ELSE
+            ydot(nspec+1)=0.0
+        END IF
+
     END SUBROUTINE F
 
     ! SUBROUTINE JAC(NEQ, T, Y, ML, MU, J, NROWPD)
