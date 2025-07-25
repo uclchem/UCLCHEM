@@ -377,6 +377,7 @@ CONTAINS
         ydot(nelec) = 0.
         prod = 0.
         loss = 0.
+        ! Enforce the conservation of charge by summing the ydot of all positive ions
         do ii=1,nion
            if (ydot(ionlist(ii)) .ge. 0.) then
               prod = prod + ydot(ionlist(ii))

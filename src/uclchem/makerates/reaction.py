@@ -1,5 +1,4 @@
 import logging
-
 from copy import deepcopy
 from typing import Union
 
@@ -35,8 +34,9 @@ tunneling_reaction_types = [
 ]
 
 from collections import Counter
-from uclchem.makerates.species import elementList, elementMass, Species
 from copy import deepcopy
+
+from uclchem.makerates.species import Species, elementList, elementMass
 
 
 class Reaction:
@@ -64,7 +64,7 @@ class Reaction:
                 )
                 self.set_products(
                     [
-                        inputRow[3].upper(),
+                        self.NANCheck(inputRow[3]).upper(),
                         self.NANCheck(inputRow[4]).upper(),
                         self.NANCheck(inputRow[5]).upper(),
                         self.NANCheck(inputRow[6]).upper(),
