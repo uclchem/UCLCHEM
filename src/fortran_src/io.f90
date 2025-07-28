@@ -50,7 +50,7 @@ CONTAINS
         IF (writeAbunds) THEN
             DO dstep=1,points
                 ! WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
-                WRITE(abundSaveID,8010) abund(:neq-1,dstep)
+                WRITE(abundSaveID,8010) abund(:nspec+2,dstep)
             8010  FORMAT((999(1pe15.5,:,',')))
             END DO
         END IF
@@ -79,11 +79,12 @@ CONTAINS
                 physicsarray(dtime, dstep, 6) = radfield
                 physicsarray(dtime, dstep, 7) = zeta
                 physicsarray(dtime, dstep, 8) = dstep
-                chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
+                ! chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
+                chemicalabunarray(dtime, dstep, :) = abund(1:nspec,dstep)
             end if 
         ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
             WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
-            av(dstep),radfield,zeta,dstep,abund(:neq-1,dstep)
+                & av(dstep),radfield,zeta,dstep,abund(1:nspec,dstep)
             8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,&
             &','1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
         END IF
@@ -125,13 +126,17 @@ CONTAINS
         CLOSE(columnId)
         CLOSE(abundSaveID)
         CLOSE(abundLoadID)
+        CLOSE(15)  ! cooling rates file
+        CLOSE(16)  ! heating rates file
+
     END SUBROUTINE closeFiles
 
     SUBROUTINE debugout
         OPEN(debugId,file='output/debuglog',status='unknown')       !debug file.
         WRITE(debugId,*) "Integrator failed, printing relevant debugging information"
         WRITE(debugId,*) "dens",density(dstep)
-        WRITE(debugId,*) "density in integration array",abund(nspec+1,dstep)
+        WRITE(debugId,*) "gas temperature in integration array",abund(nspec+1,dstep)
+        WRITE(debugId,*) "density in integration array",abund(nspec+2,dstep)
         WRITE(debugId,*) "Av", av(dstep)
         WRITE(debugId,*) "Temp", gasTemp(dstep)
         DO i=1,nreac

@@ -15,8 +15,7 @@ MODULE RATES
     ! Controlling ice chemistry
     REAL(dp), PARAMETER :: h2StickingZero=0.87d0,hStickingZero=1.0d0, h2StickingTemp=87.0d0,hStickingTemp=52.0d0
     !Flags to control desorption processes
-    REAL(dp) :: turbVel=1.0
-
+    REAL(dp) :: turbVel=1.0 !unit? km/s or cm/s
     
 CONTAINS
     SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
@@ -212,6 +211,7 @@ CONTAINS
                         IF (iceList(i) .eq. re1(j)) THEN
                             !Basic rate at which thermal desorption occurs
                             rate(j)=vdiff(i)*exp(-gama(j)/dustTemp(dstep))
+                            rate(j)=vdiff(i)*exp(-gama(j)/dustTemp(dstep))
                             !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
                             !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                             !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
@@ -316,9 +316,9 @@ CONTAINS
         lastTemp=gasTemp(dstep)
 
         !turn off reactions outside their temperature range
-        WHERE(.not. ExtrapolateRates .and. (gasTemp(dstep) .lt. minTemps)) rate=0.0
+        WHERE(gasTemp(dstep) .lt. minTemps) rate=0.0
 
-        WHERE(.not. ExtrapolateRates .and. (gasTemp(dstep) .gt. maxTemps)) rate=0.0
+        WHERE(gasTemp(dstep) .gt. maxTemps) rate=0.0
 
         !Overwrite reactions for which we have a more detailed photoreaction treatment
         rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel)!H2 photodissociation

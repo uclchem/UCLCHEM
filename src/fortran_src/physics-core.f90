@@ -82,7 +82,9 @@ CONTAINS
 
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= baseAv + coldens(dstep)/1.6d21
-        dustTemp=gasTemp
+        if (.not. heatingFlag) then 
+            dustTemp(dstep)=gasTemp(dstep)
+        end if
 
         IF (cosmicRayAttenuation) CALL ionizationDependency
     END SUBROUTINE coreUpdatePhysics

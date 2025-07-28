@@ -707,14 +707,19 @@ CONTAINS
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         INTEGER, INTENT(OUT) :: successFlag
         INTEGER, ALLOCATABLE, DIMENSION(:) :: locations
-        LOGICAL :: ChemicalDuplicateCheck
+        LOGICAL :: ChemicalDuplicateCheck, isOpen
         INTEGER :: posStart, posEnd, whileInteger,inputindx
         CHARACTER(LEN=100) :: inputParameter, inputValue
+        CHARACTER(256) :: fullPath
 
         close(10)
         close(11)
         close(7)
-
+        INQUIRE(unit=15, opened=isOpen)
+        IF (isOpen) close(15)
+        INQUIRE(unit=16, opened=isOpen)
+        IF (isOpen) close(16)
+        
         !always deallocate these so that if user didn't specify them,
         ! they don't remain from previous run
         IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
@@ -859,6 +864,10 @@ CONTAINS
                     END DO
                 CASE('writestep')
                     READ(inputValue,*,iostat=successFlag) writeStep
+                CASE('heatingFlag', 'heatingflag')
+                    READ(inputValue,*,iostat=successFlag) heatingFlag
+                CASE('heatWriteFlag', 'heatwriteflag')
+                    READ(inputValue,*,iostat=successFlag) heatWriteFlag
                 CASE('ebmaxh2')
                     READ(inputValue,*,iostat=successFlag) ebmaxh2
                 CASE('epsilon')

@@ -27,6 +27,8 @@ REAL(dp) :: rin=0.0 !Minimum radial distance from cloud centre to consider.
 REAL(dp) :: baseAv=2.0 !Extinction at cloud edge, Av of a parcel at rout.
 INTEGER(dp) :: points=1 !Number of gas parcels equally spaced between rin to rout to consider
 REAL(dp) :: bm0=1.0 !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
+LOGICAL :: heatingFlag=.False. !If True, heating is applied to the gas parcels.
+LOGICAL :: heatWriteFlag=.False.
 !
 !## Behavioural Controls
 !*The following parameters generally turn on or off features of the model. If a parameter is set to `True`, then it is turned on. If it is set to `False`, then it is turned off.*
@@ -57,6 +59,7 @@ CHARACTER(256) :: fluxFile="" !File to write reaction rates (flux) at each times
 INTEGER :: writeStep=1 !Writing to columnFile only happens every writeStep timesteps.
 CHARACTER(256) :: abundSaveFile="" ! The file to save the abundances to at the end of the model.
 CHARACTER(256) :: abundLoadFile="" ! The file to load the abundances from at the start of the model.
+CHARACTER(256) :: coolantDataDir="" ! Directory where the collisional rate files are stored.
 !|abundSaveFile |None| File to store final abundances at the end of the model so future models can use them as the initial abundances. If not provided, no file will be produced.
 !|abundLoadFile |None| File from which to load initial abundances for the model, created through `abundSaveFile`. If not provided, the model starts from elemental gas.
 !|outSpecies|None| A space separated list of species to output to columnFile. Supplied as a separate list argument to most python functions, see python API docs.
