@@ -151,3 +151,9 @@ py.install_sources([
   usource / 'tests.py',
   usource / 'utils.py',
 ], subdir:'uclchem')
+# Lastly, we also copy the data needed for the cooling module:
+install_subdir(
+  'data',
+  install_dir: py.get_install_dir(pure: false) / 'uclchem' ,
+
+)

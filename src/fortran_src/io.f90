@@ -1,18 +1,19 @@
 MODULE IO
     USE constants
     USE DEFAULTPARAMETERS
-    !f2py INTEGER, parameter :: dp    
     USE chemistry
     USE physicscore
     USE network
+    USE heating
     
     ! CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile
-    LOGICAL :: columnOutput=.False.,fullOutput=.False.,rateOutput=.False.,fluxOutput=.False.,readAbunds=.False.,writeAbunds=.False.
+    LOGICAL :: columnOutput=.False.,fullOutput=.False.,rateOutput=.False.,fluxOutput=.False.,&
+    &readAbunds=.False.,writeAbunds=.False.,heatingOutput=.False.
     CHARACTER (LEN=15),ALLOCATABLE :: outSpecies(:)
     INTEGER :: nout
     INTEGER, ALLOCATABLE :: outIndx(:)
 
-    INTEGER, PARAMETER :: outputId=10,columnId=11,rateId=12,fluxId=13,abundLoadID=71,abundSaveID=72,outID=74,debugId=79,inputId=21
+    INTEGER, PARAMETER :: outputId=10,columnId=11,rateId=12,fluxId=13,heatingId=14,abundLoadID=71,abundSaveID=72,outID=74,debugId=79,inputId=21
 CONTAINS
     !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     SUBROUTINE fileSetup
@@ -32,6 +33,15 @@ CONTAINS
         INQUIRE(UNIT=fluxID, OPENED=fluxOutput)
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
         INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
+        INQUIRE(UNIT=heatingId, OPENED=heatingOutput)
+
+
+        if (heatingOutput) then
+            ! write cooling/heating rates headers
+            WRITE(heatingId,'(A)') "Time,Lyman-alpha,C+,O,C,CO,p-H2,o-H2,SI+,S,Photoelectric,&
+            &H2Formation,FUVPumping,Photodissociation,Cionization,CRheating,turbHeating,gasGrainColls"
+        END IF
+
     END SUBROUTINE fileSetup
 
     SUBROUTINE readInputAbunds
@@ -102,7 +112,13 @@ CONTAINS
                     WRITE(fluxId,8022) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
                     8022 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
                 END IF
+                IF (heatingOutput) THEN
+                    WRITE(heatingId,8023) time, moleculeCooling, photoelec, h2forming, fuvpumping, photodis,&
+                    &cionizing, crheating, turbHeating, gasgraincolls
+                    8023 FORMAT(1PE16.6E3,:,',', 999(1PE16.6E3,:,','))
+                END IF
             END IF
+        
         END IF
 
         !Every 'writestep' timesteps, write the chosen species out to separate file
@@ -126,8 +142,7 @@ CONTAINS
         CLOSE(columnId)
         CLOSE(abundSaveID)
         CLOSE(abundLoadID)
-        CLOSE(15)  ! cooling rates file
-        CLOSE(16)  ! heating rates file
+        CLOSE(heatingId)  ! heating rates file
 
     END SUBROUTINE closeFiles
 

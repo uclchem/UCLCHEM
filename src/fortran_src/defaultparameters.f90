@@ -27,8 +27,6 @@ REAL(dp) :: rin=0.0 !Minimum radial distance from cloud centre to consider.
 REAL(dp) :: baseAv=2.0 !Extinction at cloud edge, Av of a parcel at rout.
 INTEGER(dp) :: points=1 !Number of gas parcels equally spaced between rin to rout to consider
 REAL(dp) :: bm0=1.0 !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
-LOGICAL :: heatingFlag=.False. !If True, heating is applied to the gas parcels.
-LOGICAL :: heatWriteFlag=.False.
 !
 !## Behavioural Controls
 !*The following parameters generally turn on or off features of the model. If a parameter is set to `True`, then it is turned on. If it is set to `False`, then it is turned off.*
@@ -48,6 +46,7 @@ LOGICAL :: instantSublimation=.False. !Toggle instantaneous sublimation of the i
 LOGICAL :: cosmicRayAttenuation=.False. !Use column density to attenuate cosmic ray ionisation rate following [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 CHARACTER :: ionModel='L' !L/H model for cosmic ray attenuation [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 LOGICAL :: improvedH2CRPDissociation=.False. !Use H2 CRP dissociation rate from [Padovani et al. 2018b](https://arxiv.org/abs/1809.04168).
+LOGICAL :: heatingFlag=.True. !If True, heating is applied to the gas parcels.
 !
 !## Input and Output
 !|Parameter|Default Value |Description|
@@ -56,6 +55,7 @@ CHARACTER(256) :: outputFile="" !File to write full output of UCLCHEM. This incl
 CHARACTER(256) :: columnFile="" !File to write specific species abundances, see outSpecies.
 CHARACTER(256) :: rateFile="" !File to write rate 'constants' at each timestep. This includes physical parameter values.
 CHARACTER(256) :: fluxFile="" !File to write reaction rates (flux) at each timestep. This includes physical parameter values.
+CHARACTER(256) :: heatingFile="" !File to write heating and cooling rates at each timestep.
 INTEGER :: writeStep=1 !Writing to columnFile only happens every writeStep timesteps.
 CHARACTER(256) :: abundSaveFile="" ! The file to save the abundances to at the end of the model.
 CHARACTER(256) :: abundLoadFile="" ! The file to load the abundances from at the start of the model.

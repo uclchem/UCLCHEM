@@ -143,7 +143,7 @@ CONTAINS
         
         IF (heatingFlag) THEN
             !Initializing heating.f90 --> get coolants
-            CALL initializeHeating(gasTemp(dstep),density(dstep),abund(:,1),colDens(dstep),cloudSize,heatWriteFlag)
+            CALL initializeHeating(gasTemp(dstep),density(dstep),abund(:,1),colDens(dstep),cloudSize)
         END IF
         
         !Set rates to zero to ensure they don't hold previous values or random ones if we don't set them in calculateReactionRates
@@ -230,7 +230,7 @@ CONTAINS
                                 &    1.0/GAS_DUST_DENSITY_RATIO, &        ! dust-to-gas ratio
                                 &    grain_Radius, &                      ! grain radius
                                 &    metallicity, &                       ! metallicity
-                                &    heatWriteFlag, &                     ! write flag
+                                ! &    heatWriteFlag, &                     ! write flag
                                 &    dusttemp(dstep), &                   ! dust temperature
                                 &    turbVel &                            ! turbulence velocity
                                 )
@@ -454,7 +454,7 @@ CONTAINS
                             &    1.0/GAS_DUST_DENSITY_RATIO, &          ! dust-to-gas ratio
                             &    grain_Radius, &                        ! grain radius
                             &    metallicity, &                         ! metallicity
-                            &    heatWriteFlag, &                       ! write flag
+                            ! &    heatWriteFlag, &                       ! write flag
                             &    dusttemp(dstep), &                     ! dust temperature
                             &    turbVel &                              ! turbulence velocity
                         )

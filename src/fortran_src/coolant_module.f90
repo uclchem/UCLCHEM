@@ -2,7 +2,6 @@ MODULE COOLANT_MODULE
    USE constants
    USE network
    USE defaultparameters, only: coolantDataDir
-   use, intrinsic :: iso_fortran_env!, dp=>real64
    IMPLICIT NONE
 
 !  Specify the properties that define each coolant species
@@ -63,6 +62,7 @@ CONTAINS
       IMPLICIT NONE
       INTEGER :: I,J,K,L,M,N,INDEX,IER
       INTEGER :: NLEVEL,NLINE,NTEMP,NPARTNER,NCOLL,PARTNER_ID,MAX_NTEMP
+      INTEGER :: coolantID = 81
 
       IF (ALLOCATED(coolants)) DEALLOCATE(coolants)
       ALLOCATE(coolants(NCOOL))
@@ -72,14 +72,13 @@ CONTAINS
          ! WRITE(*,*) "Trying to open: ", TRIM(dataDir)//coolants(N)%FILENAME
          ! OPEN(UNIT=1,FILE='Datafiles/Collisional-Rates/'//coolants(N)%FILENAME,IOSTAT=IER,ACTION='READ',STATUS='OLD')
          ! TODO: Remove magic number 1
-         OPEN(UNIT=1, FILE=TRIM(coolantDataDir)//coolants(N)%FILENAME, IOSTAT=IER, ACTION='READ', STATUS='OLD')
-         READ(1,*,IOSTAT=IER) ! Skip the first comment line
+         OPEN(UNIT=coolantID, FILE=TRIM(coolantDataDir)//coolants(N)%FILENAME, IOSTAT=IER, ACTION='READ', STATUS='OLD')
+         READ(coolantID,*,IOSTAT=IER) ! Skip the first comment line
 
    !     Produce an error message if the file does not exist (or cannot be opened for whatever reason)
          IF(IER.NE.0) THEN
-            WRITE(6,*) 'ERROR! Cannot open coolant data file ',TRIM(coolants(N)%FILENAME),' for input'
-            WRITE(6,*)
-            CLOSE(1)
+            WRITE(*,*) 'ERROR! Cannot open coolant data file ',TRIM(coolants(N)%FILENAME),' for input. I tried to open:', TRIM(coolantDataDir)//coolants(N)%FILENAME
+            CLOSE(coolantID)
             STOP
          END IF
 
@@ -88,20 +87,20 @@ CONTAINS
             STOP
          END IF
 
-         READ(1,*,IOSTAT=IER) coolants(N)%NAME ! Read the name of the coolant
-         READ(1,*,IOSTAT=IER)
-         READ(1,*,IOSTAT=IER) coolants(N)%MOLECULAR_MASS ! Read the molecular mass
-         READ(1,*,IOSTAT=IER)
+         READ(coolantID,*,IOSTAT=IER) coolants(N)%NAME ! Read the name of the coolant
+         READ(coolantID,*,IOSTAT=IER)
+         READ(coolantID,*,IOSTAT=IER) coolants(N)%MOLECULAR_MASS ! Read the molecular mass
+         READ(coolantID,*,IOSTAT=IER)
          coolants(N)%INDEX=0 ! Initialize the coolant species index (assigned later)
 
    !     Read the number of levels and allocate the energy, statistical weight,
    !     Einstein A & B coefficient and transition frequency arrays accordingly
-         READ(1,*,IOSTAT=IER) NLEVEL
-         READ(1,*,IOSTAT=IER)
+         READ(coolantID,*,IOSTAT=IER) NLEVEL
+         READ(coolantID,*,IOSTAT=IER)
          IF(NLEVEL.LT.2) THEN
-            WRITE(6,*) 'ERROR! Incorrect number of energy levels in coolant data file ',&
+            WRITE(*,*) 'ERROR! Incorrect number of energy levels in coolant data file ',&
                         &TRIM(coolants(N)%FILENAME),' (NLEVEL=',NLEVEL,')'
-            CLOSE(1)
+            CLOSE(coolantID)
             STOP
          END IF
          coolants(N)%NLEVEL=NLEVEL
@@ -121,23 +120,23 @@ CONTAINS
 
    !     Read the energy (cm^-1) and statistical weight of each level
          DO L=1,NLEVEL ! Loop over levels
-            READ(1,*,IOSTAT=IER) I,coolants(N)%ENERGY(I),coolants(N)%WEIGHT(I)
+            READ(coolantID,*,IOSTAT=IER) I,coolants(N)%ENERGY(I),coolants(N)%WEIGHT(I)
             coolants(N)%ENERGY(I)=coolants(N)%ENERGY(I)*C*HP ! Convert from cm^-1 to erg
          END DO ! End of loop over levels
-         READ(1,*,IOSTAT=IER)
+         READ(coolantID,*,IOSTAT=IER)
 
    !     Read the Einstein A coefficient (s^-1) and frequency (GHz) of each radiative transition
-         READ(1,*,IOSTAT=IER) NLINE
-         READ(1,*,IOSTAT=IER)
+         READ(coolantID,*,IOSTAT=IER) NLINE
+         READ(coolantID,*,IOSTAT=IER)
          DO L=1,NLINE ! Loop over radiative transitions
-            READ(1,*,IOSTAT=IER) INDEX,I,J,coolants(N)%A_COEFF(I,J),coolants(N)%FREQUENCY(I,J)
+            READ(coolantID,*,IOSTAT=IER) INDEX,I,J,coolants(N)%A_COEFF(I,J),coolants(N)%FREQUENCY(I,J)
             coolants(N)%FREQUENCY(I,J)=coolants(N)%FREQUENCY(I,J)*1.0D9 ! Convert from GHz to Hz
    !        Calculate the Einstein B coefficient using B_ij = A_ij/(2.h.nu^3/c^2)
             coolants(N)%B_COEFF(I,J)=coolants(N)%A_COEFF(I,J)/(2*HP*(coolants(N)%FREQUENCY(I,J)**3)/(C**2))
    !        Calculate the Einstein B coefficient for the reverse transition from detailed balance
             coolants(N)%B_COEFF(J,I)=coolants(N)%B_COEFF(I,J)*(coolants(N)%WEIGHT(I)/coolants(N)%WEIGHT(J))
          END DO ! End of loop over radiative transitions
-         READ(1,*,IOSTAT=IER)
+         READ(coolantID,*,IOSTAT=IER)
 
    !     Calculate the transition frequencies between all levels (even if forbidden)
          DO I=1,NLEVEL
@@ -147,10 +146,10 @@ CONTAINS
                IF(coolants(N)%FREQUENCY(I,J).NE.0.0D0) THEN
                   IF(ABS(coolants(N)%FREQUENCY(I,J)-ABS(coolants(N)%ENERGY(I)-coolants(N)%ENERGY(J))/HP) &
                       & /coolants(N)%FREQUENCY(I,J).GT.1.0D-3) THEN
-                     WRITE(6,*) 'ERROR! Calculated frequency differs from measured frequency by >0.1%'
-                     WRITE(6,"(1PD12.5,'Hz vs',1PD12.5,'Hz')") ABS(coolants(N)%ENERGY(I)-coolants(N)%ENERGY(J))/HP, &
+                     WRITE(*,*) 'ERROR! Calculated frequency differs from measured frequency by >0.1%'
+                     WRITE(*,"(1PD12.5,'Hz vs',1PD12.5,'Hz')") ABS(coolants(N)%ENERGY(I)-coolants(N)%ENERGY(J))/HP, &
                                                              & coolants(N)%FREQUENCY(I,J)
-                     CLOSE(1)
+                     CLOSE(coolantID)
                      STOP
                   END IF
                ELSE
@@ -170,31 +169,31 @@ CONTAINS
 
    !     Read the collisional rate coefficients (cm^3 s^-1) for each collision partner
          MAX_NTEMP=0
-         READ(1,*,IOSTAT=IER) NPARTNER
+         READ(coolantID,*,IOSTAT=IER) NPARTNER
          DO L=1,NPARTNER ! Loop over collision partners
-            READ(1,*,IOSTAT=IER)
-            READ(1,*,IOSTAT=IER) PARTNER_ID
+            READ(coolantID,*,IOSTAT=IER)
+            READ(coolantID,*,IOSTAT=IER) PARTNER_ID
             IF(PARTNER_ID.LT.1 .OR. PARTNER_ID.GT.7) THEN
-               WRITE(6,*) 'ERROR! Unrecognized collision partner ID in coolant data file ',&
+               WRITE(*,*) 'ERROR! Unrecognized collision partner ID in coolant data file ',&
                            &TRIM(coolants(N)%FILENAME),' (ID=',PARTNER_ID,')'
-               CLOSE(1)
+               CLOSE(coolantID)
                STOP
             END IF
-            READ(1,*,IOSTAT=IER)
-            READ(1,*,IOSTAT=IER) NCOLL
-            READ(1,*,IOSTAT=IER)
-            READ(1,*,IOSTAT=IER) NTEMP ; MAX_NTEMP=MAX(MAX_NTEMP,NTEMP)
+            READ(coolantID,*,IOSTAT=IER)
+            READ(coolantID,*,IOSTAT=IER) NCOLL
+            READ(coolantID,*,IOSTAT=IER)
+            READ(coolantID,*,IOSTAT=IER) NTEMP ; MAX_NTEMP=MAX(MAX_NTEMP,NTEMP)
             IF(NTEMP.GT.1000) THEN
-               WRITE(6,*) 'ERROR! Number of temperature values exceeds limit in coolant data file ',&
+               WRITE(*,*) 'ERROR! Number of temperature values exceeds limit in coolant data file ',&
                            &TRIM(coolants(N)%FILENAME),' (NTEMP=',NTEMP,')'
-               CLOSE(1)
+               CLOSE(coolantID)
                STOP
             END IF
-            READ(1,*,IOSTAT=IER)
-            READ(1,*,IOSTAT=IER) (coolants(N)%TEMPERATURE(PARTNER_ID,K),K=1,NTEMP)
-            READ(1,*,IOSTAT=IER)
+            READ(coolantID,*,IOSTAT=IER)
+            READ(coolantID,*,IOSTAT=IER) (coolants(N)%TEMPERATURE(PARTNER_ID,K),K=1,NTEMP)
+            READ(coolantID,*,IOSTAT=IER)
             DO M=1,NCOLL ! Loop over collisional transitions
-               READ(1,*,IOSTAT=IER) INDEX,I,J,(coolants(N)%C_COEFF(PARTNER_ID,I,J,K),K=1,NTEMP)
+               READ(coolantId,*,IOSTAT=IER) INDEX,I,J,(coolants(N)%C_COEFF(PARTNER_ID,I,J,K),K=1,NTEMP)
    !           Calculate the reverse (excitation) rate coefficients from
    !           detailed balance: C_ji = C_ij*gi/gj*exp(-(Ei-Ej)/kT)
                DO K=1,NTEMP ! Loop over temperatures
@@ -211,7 +210,7 @@ CONTAINS
 
          coolants(N)%NTEMP=MAX_NTEMP
          coolants(N)%previousCooling=0.0d0
-         CLOSE(1)
+         CLOSE(coolantID)
 
       END DO ! End of loop over coolants
       
@@ -582,14 +581,14 @@ SUBROUTINE GAUSS_JORDAN(N,A,B)
             DO K=1,N
                IF(IPIV(K).EQ.0) THEN
                   IF(ISNAN(A(J,K))) THEN
-                     WRITE(6,*)
-                     WRITE(6,*) 'ERROR! NaN found in coefficient matrix A of Gauss-Jordan routine'
-                     WRITE(6,"(' A(',I3,',',I3,') =',F4.1)") J,K,A(J,K)
-                     WRITE(6,*) 'A ='
+                     WRITE(*,*)
+                     WRITE(*,*) 'ERROR! NaN found in coefficient matrix A of Gauss-Jordan routine'
+                     WRITE(*,"(' A(',I3,',',I3,') =',F4.1)") J,K,A(J,K)
+                     WRITE(*,*) 'A ='
                      DO L=1,N
-                        WRITE(6,"(100(0PD9.1))") A(L,:)
+                        WRITE(*,"(100(0PD9.1))") A(L,:)
                      END DO
-                     WRITE(6,*)
+                     WRITE(*,*)
                      STOP
                   END IF
                   IF(ABS(A(J,K)).GE.MAX) THEN
@@ -598,9 +597,9 @@ SUBROUTINE GAUSS_JORDAN(N,A,B)
                      ICOL=K
                   END IF
                ELSE IF(IPIV(K).GT.1) THEN
-                  WRITE(6,*)
-                  WRITE(6,*) 'ERROR! Singular matrix found in Gauss-Jordan routine (#1)'
-                  WRITE(6,*)
+                  WRITE(*,*)
+                  WRITE(*,*) 'ERROR! Singular matrix found in Gauss-Jordan routine (#1)'
+                  WRITE(*,*)
                   STOP
                END IF
             END DO
@@ -614,9 +613,9 @@ SUBROUTINE GAUSS_JORDAN(N,A,B)
       INDEX_ROW(I)=IROW
       INDEX_COL(I)=ICOL
       IF(A(ICOL,ICOL).EQ.0.0D0) THEN
-         WRITE(6,*)
-         WRITE(6,*) 'ERROR! Singular matrix found in Gauss-Jordan routine (#2)'
-         WRITE(6,*)
+         WRITE(*,*)
+         WRITE(*,*) 'ERROR! Singular matrix found in Gauss-Jordan routine (#2)'
+         WRITE(*,*)
          STOP
       END IF
       PIVINV=1.0D0/A(ICOL,ICOL)

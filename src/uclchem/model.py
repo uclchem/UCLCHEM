@@ -1,8 +1,10 @@
+import logging
 import os
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import uclchemwrap
 from uclchemwrap import uclchemwrap as wrap
 
 from uclchem.constants import (
@@ -13,6 +15,20 @@ from uclchem.constants import (
     n_species,
 )
 
+
+def set_collisional_rates_directory():
+    coolant_directory = os.path.dirname(os.path.abspath(__file__)) + "/data/collisional_rates/"
+    # Provide the correct path to the coolant files:
+    assert len(coolant_directory) < 256, "Coolant directory path is too long, please shorten it. Path is " + coolant_directory
+    try:
+        uclchemwrap.defaultparameters.coolantdatadir = coolant_directory
+        assert uclchemwrap.defaultparameters.coolantdatadir == coolant_directory, "Coolant directory path is not set correctly, please check the path."
+    except AttributeError:
+        logging.warning("Cannot set the coolant directory path, please set 'coolantDataDir' correctly at runtime.")
+    print(uclchemwrap.defaultparameters.coolantdatadir)
+
+
+set_collisional_rates_directory()
 
 def reaction_line_formatter(line):
     reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))

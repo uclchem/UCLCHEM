@@ -2,21 +2,20 @@
 !Module that provides heating and cooling rates		  !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 MODULE heating
-    USE NETWORK
-    USE COOLANT_MODULE
     USE CONSTANTS
     USE F2PY_CONSTANTS, only : nspec
     USE DEFAULTPARAMETERS
+    USE NETWORK
+    USE COOLANT_MODULE
 IMPLICIT NONE
 
     REAL(dp) :: pahAbund=6e-7
 
  CONTAINS
 
-    SUBROUTINE initializeHeating(gasTemperature, gasDensity,abundances,columnDensity,cloudSize,writeFlag)
+    SUBROUTINE initializeHeating(gasTemperature, gasDensity,abundances,columnDensity,cloudSize)
         REAL(dp), INTENT(in) :: gasTemperature,gasDensity,columnDensity,cloudSize
         REAL(dp), INTENT(in) :: abundances(:)
-        LOGICAL, INTENT(in) ::writeFlag
         CHARACTER(5) :: coolName
         INTEGER ::i,j
 
@@ -36,66 +35,34 @@ IMPLICIT NONE
         CLOUD_COLUMN=columnDensity
         CLOUD_DENSITY=gasDensity
         cloud_size=cloudSize
-        
-        IF (writeFlag) THEN
-
-            OPEN(15, FILE=TRIM(".")//'/cooling_rates.csv', STATUS='unknown')
-            OPEN(16, FILE=TRIM(".")//'/heating_rates.csv', STATUS='unknown')
-
-            ! write cooling/heating rates headers
-            WRITE(15,'(A)') "Time,Lyman-alpha,C+,O,C,CO,p-H2,o-H2,SI+,S"
-            WRITE(16,'(A)') "Time,Photoelectric,H2Formation,FUVPumping,Photodissociation,Cionization,CRheating,turbHeating,gasGrainColls"
-
-        END IF
-        ! ! write(*,*) "      **** checking:", CLOUD_COLUMN, CLOUD_DENSITY, columnDensity, gasDensity, gasTemperature
-        ! if (writeFlag) write(15,*) "Lyman-alpha,C+,O,C,CO,p-H2,o-H2,SI+,S"
-        ! ! if (writeFlag) write(16,*) &
-        ! !     "Photoelectric,H2Formation,FUVPumping,Photodissociation,Cionization,CRheating,turbHeating,Chemheating,gasGrainColls"
-        ! if (writeFlag) write(16,*) &
-        !     "Photoelectric,H2Formation,FUVPumping,Photodissociation,Cionization,CRheating,turbHeating,gasGrainColls"
+        ! Moved IO handling to io.f90
     END SUBROUTINE initializeHeating
 
-    SUBROUTINE writeCoolingRates(time, moleculeCooling)
-        REAL(dp), INTENT(IN) :: time
-        REAL(dp), INTENT(IN) :: moleculeCooling(:)
-        WRITE(15,1666) time, moleculeCooling
-    1666 FORMAT(1PE16.6E3,:,',', 999(1PE16.6E3,:,','))
-    END SUBROUTINE writeCoolingRates
-
-    SUBROUTINE writeHeatingRates(time, photoelec, h2forming, fuvpumping, photodis, cionizing, crheating, turbHeating, gasgraincolls)
-        REAL(dp), INTENT(IN) :: time
-        REAL(dp), INTENT(IN) :: photoelec, h2forming, fuvpumping, photodis, cionizing, crheating, turbHeating, gasgraincolls
-        WRITE(16,1667) time, photoelec, h2forming, fuvpumping, photodis, cionizing, crheating, turbHeating, gasgraincolls
-    1667 FORMAT(1PE16.6E3,:,',', 8(1PE16.6E3,:,','))
-    END SUBROUTINE writeHeatingRates
 
     ! REAL(dp) FUNCTION getTempDot(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance,dustRadius,metallicity&
-    !                             &,exoReactants1,exoReactants2,exoRates,exothermicities,writeFlag,dustTemp,turbVel)
+    !                             &,exoReactants1,exoReactants2,exoRates,exothermicities,,dustTemp,turbVel)
     REAL(dp) FUNCTION getTempDot(time,gasTemperature,gasDensity,gasCols,habingField,abundances,h2dis,h2form,zeta,cIonRate, &
                                 & dustAbundance,dustRadius,metallicity, &
-                                & writeFlag,dustTemp,turbVel)
+                                & dustTemp,turbVel)
         !Habing field is radfield diminished by Av
         REAL(dp), INTENT(in) :: time,gasTemperature,gasDensity,gasCols,habingField,h2dis,h2form,metallicity
         REAL(dp), INTENT(in) :: zeta,cIonRate,dustAbundance,dustRadius,dustTemp,turbVel
         REAL(dp), INTENT(in) :: abundances(:)!,exoReactants1(:),exoReactants2(:),exoRates(:),exothermicities(:)
-        LOGICAL, INTENT(IN) :: writeFlag
 
         REAL(dp) adiabaticIdx,heating,cooling
 
         !First calculate adiabatic index - should use number density but that's just an additional common factor
         adiabaticIdx=5.0*(abundances(nh)+abundances(nhe)+abundances(nelec)+abundances(nh2))+2.0*abundances(nh2)
         adiabaticIdx=adiabaticIdx/(3.0*(abundances(nh)+abundances(nhe)+abundances(nelec)+abundances(nh2))+2.0*abundances(nh2))
-        ! write(*,*) "    [heating.f90] adiabaticIdx=", adiabaticIdx
 
         !then calculate overall heating/cooling rate
         ! heating=getHeatingRate(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance,dustRadius,metallicity&
         !     &,exoReactants1,exoReactants2,exoRates,exothermicities,dustTemp,turbVel,writeFlag)
         heating=getHeatingRate(time,gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate, &
-                                & dustAbundance,dustRadius,metallicity, dustTemp,turbVel,writeFlag)
-        !write(*,*) "Total Heating", heating
+                                & dustAbundance,dustRadius,metallicity, dustTemp,turbVel)
 
         IF (gasTemperature .gt. 3.0) THEN
-            cooling=getCoolingRate(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,h2dis,turbVel,writeFlag)!6.951290d-17!!
+            cooling=getCoolingRate(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,h2dis,turbVel)!6.951290d-17!!
         ELSE
             Cooling=0.0
         END IF
@@ -110,11 +77,10 @@ IMPLICIT NONE
     ! REAL(dp) FUNCTION getHeatingRate(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance,dustRadius,metallicity&
     !                                 &,exoReactants1,exoReactants2,exoRates,exothermicities,dustTemp,turbVel,writeFlag)
     REAL(dp) FUNCTION getHeatingRate(time, gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate, & 
-                                      & dustAbundance,dustRadius,metallicity,dustTemp,turbVel,writeFlag)
+                                      & dustAbundance,dustRadius,metallicity,dustTemp,turbVel)
         REAL(dp), INTENT(in) :: time,gasTemperature,gasDensity,habingField,h2dis,metallicity
         REAL(dp), INTENT(in) :: h2form,zeta,cIonRate,dustAbundance,dustRadius,dustTemp,turbVel
         REAL(dp), INTENT(IN):: abundances(:)!,exoReactants1(:),exoReactants2(:),exoRates(:),exothermicities(:)
-        LOGICAL, INTENT(IN) :: writeFlag
         REAL(dp) :: turbHeating,L_TURB=5.0d0
         REAL(dp) :: photoelec,h2forming,fuvpumping,photodis,cionizing,crheating,chemheating,gasgraincolls
 
@@ -158,25 +124,12 @@ IMPLICIT NONE
         ! getHeatingRate=photoelec+h2forming+fuvpumping+photodis+cionizing+crheating+chemheating+turbHeating+gasgraincolls
         getHeatingRate=photoelec+h2forming+fuvpumping+photodis+cionizing+crheating+turbHeating+gasgraincolls
         !write to file
-        ! IF (writeFlag) write(16,1666) [ &
-        !     photoelec,h2forming,fuvpumping,photodis,cionizing,crheating, &
-        !     turbHeating,gasgraincolls]
-        ! 1666 format((999(1pe16.6e3,:,',')))
-
-        IF (writeFlag) CALL writeHeatingRates(time, photoelec, h2forming, fuvpumping, photodis, cionizing, crheating, turbHeating, gasgraincolls)
-
-        ! IF (writeFlag) THEN
-        !     ! Write heating rates to file 16 in a clear, robust way
-        !     WRITE(16, 1666) photoelec, h2forming, fuvpumping, photodis, cionizing, crheating, turbHeating, gasgraincolls
-        ! END IF
-        ! 1666 FORMAT(*(1PE16.6E3,:,','))
 
     END FUNCTION getHeatingRate
 
-    REAL(dp) FUNCTION getCoolingRate(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,h2dis,turbVel,writeFlag)
+    REAL(dp) FUNCTION getCoolingRate(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,h2dis,turbVel)
         REAL(dp), INTENT(IN) :: time,gasTemperature,gasDensity,gasCols,dustTemp,h2dis,turbVel
         REAL(dp), INTENT(IN) :: abundances(:)
-        LOGICAL, INTENT(IN) :: writeFlag
         real(dp) :: coolingMode, coolings(5)
         INTEGER :: ti
 
@@ -204,7 +157,7 @@ IMPLICIT NONE
         
         !We do the line cooling 5 times and take median value since solver will occasionally do something wild
         DO ti=1,5
-            coolings(ti)=lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel,writeFlag)
+            coolings(ti)=lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
         END DO
         call pair_insertion_sort(coolings)
 
@@ -214,9 +167,8 @@ IMPLICIT NONE
     END FUNCTION getCoolingRate
 
 
-    REAL(dp) FUNCTION lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel,writeFlag)
+    REAL(dp) FUNCTION lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
         REAL(dp), INTENT(IN) :: time,gasTemperature,gasDensity,gasCols,dustTemp,abundances(:),turbVel
-        LOGICAL, INTENT(IN) :: writeFlag
 
         INTEGER :: N,I!, collisionalIndices(5)=(/nh,nhx,nh2,nhe,nelec/)
         real(dp) :: moleculeCooling(NCOOL)=0.0
@@ -310,16 +262,7 @@ IMPLICIT NONE
             !IF (moleculeCooling(N) .gt. -1.0d-30 .and. abundances(coolantIndices(N)) .gt. 1.0d-20) 
             lineCooling= lineCooling+moleculeCooling(N)
         END DO
-        ! IF (writeFlag) write(15,1666) moleculeCooling
-        ! 1666 format((999(1pe16.6e3,:,',')))
 
-        IF (writeFlag) CALL writeCoolingRates(time,moleculeCooling)
-
-        ! IF (writeFlag) THEN
-        !     WRITE(15,1666) moleculeCooling
-        ! END IF
-        ! 1666 FORMAT(*(1PE16.6E3,:,','))
-        !!write(*,*) lineCooling
 
     END FUNCTION lineCooling
 

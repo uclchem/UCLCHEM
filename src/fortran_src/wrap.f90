@@ -866,8 +866,6 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) writeStep
                 CASE('heatingFlag', 'heatingflag')
                     READ(inputValue,*,iostat=successFlag) heatingFlag
-                CASE('heatWriteFlag', 'heatwriteflag')
-                    READ(inputValue,*,iostat=successFlag) heatWriteFlag
                 CASE('ebmaxh2')
                     READ(inputValue,*,iostat=successFlag) ebmaxh2
                 CASE('epsilon')
@@ -945,6 +943,19 @@ CONTAINS
                         write(*,*) "An error occured when opening the rate file!"//&
                                         & NEW_LINE('A')//&
                                     &" The failed file was ",fluxFile&
+                                    &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
+                                    &//NEW_LINE('A')//"************************"
+                        successFlag=-1
+                        RETURN
+                    END IF
+                CASE('heatingFile')
+                    READ(inputValue,*,iostat=successFlag) heatingFile
+                    heatingFile = trim(heatingFile)
+                    open(heatingId,file=heatingFile,status='unknown',iostat=successFlag)
+                    IF (successFlag .ne. 0) THEN
+                        write(*,*) "An error occured when opening the heating rate file!"//&
+                                        & NEW_LINE('A')//&
+                                    &" The failed file was ",heatingFile&
                                     &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
                                     &//NEW_LINE('A')//"************************"
                         successFlag=-1
