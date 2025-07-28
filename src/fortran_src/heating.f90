@@ -10,6 +10,9 @@ MODULE heating
 IMPLICIT NONE
 
     REAL(dp) :: pahAbund=6e-7
+    REAL(dp) :: photoelec,h2forming,fuvpumping,photodis,cionizing,crheating,chemheating,gasgraincolls,turbHeating
+    REAL(dp) :: atomicCool, colIndEmission,comptonCool,contEmissionCool, &
+                coolingMode, coolings(5)
 
  CONTAINS
 
@@ -81,8 +84,8 @@ IMPLICIT NONE
         REAL(dp), INTENT(in) :: time,gasTemperature,gasDensity,habingField,h2dis,metallicity
         REAL(dp), INTENT(in) :: h2form,zeta,cIonRate,dustAbundance,dustRadius,dustTemp,turbVel
         REAL(dp), INTENT(IN):: abundances(:)!,exoReactants1(:),exoReactants2(:),exoRates(:),exothermicities(:)
-        REAL(dp) :: turbHeating,L_TURB=5.0d0
-        REAL(dp) :: photoelec,h2forming,fuvpumping,photodis,cionizing,crheating,chemheating,gasgraincolls
+        REAL(dp) :: L_TURB=5.0d0
+        
 
         !Photoelectric heating due to PAHs and large dust grains
         photoelec=photoelectricHeating(gasTemperature,gasDensity,habingField,abundances(nelec),metallicity)
@@ -130,30 +133,19 @@ IMPLICIT NONE
     REAL(dp) FUNCTION getCoolingRate(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,h2dis,turbVel)
         REAL(dp), INTENT(IN) :: time,gasTemperature,gasDensity,gasCols,dustTemp,h2dis,turbVel
         REAL(dp), INTENT(IN) :: abundances(:)
-        real(dp) :: coolingMode, coolings(5)
         INTEGER :: ti
 
 
-        coolingMode=atomicCooling(gasTemperature,gasDensity,abundances(nh),abundances(nhe),&
+        atomicCool=atomicCooling(gasTemperature,gasDensity,abundances(nh),abundances(nhe),&
                         &abundances(nelec),abundances(nhx),abundances(nhex))
-        getCoolingRate=coolingMode
-        ! write(*,*) "    [heating.f90] atomic-cooling=", coolingMode
 
-        coolingMode=collionallyInducedEmission(gasTemperature,gasDensity,abundances(nh2))
-        getCoolingRate=getCoolingRate+coolingMode
-        ! write(*,*) "    [heating.f90] collisional-induced-emisison-cooling=", coolingMode
+        colIndEmission=collionallyInducedEmission(gasTemperature,gasDensity,abundances(nh2))
 
-        coolingMode=comptonCooling(gasTemperature,gasDensity,abundances(nelec))
-        getCoolingRate=getCoolingRate+coolingMode
-        ! write(*,*) "    [heating.f90] compton-cooling=", coolingMode
+        comptonCool=comptonCooling(gasTemperature,gasDensity,abundances(nelec))
 
-        coolingMode=continuumEmission(gasTemperature,gasDensity)
-        getCoolingRate=getCoolingRate+coolingMode
-        ! write(*,*) "    [heating.f90] continuum-emission-cooling=", coolingMode
+        contEmissionCool=continuumEmission(gasTemperature,gasDensity)
 
-        !This is already handed by heating FUV pumping function
-        !coolingMode=H2VibrationalCooling(gasTemperature,gasDensity,abundances(nh2),h2dis)
-        !getCoolingRate=getCoolingRate+coolingMode
+        !H2VibrationalCooling is handled by heating FUV pumping function
         
         !We do the line cooling 5 times and take median value since solver will occasionally do something wild
         DO ti=1,5
@@ -161,9 +153,7 @@ IMPLICIT NONE
         END DO
         call pair_insertion_sort(coolings)
 
-        coolingMode=coolings(3)
-        getCoolingRate=coolingMode+getCoolingRate
-        ! write(*,*) "    [heating.f90] line-cooling=", coolingMode
+        getCoolingRate = atomicCool + colIndEmission + comptonCool + contEmissionCool + coolingMode + coolings(3)
     END FUNCTION getCoolingRate
 
 
@@ -251,7 +241,7 @@ IMPLICIT NONE
         DO N=1,NCOOL
             WHERE(coolants(N)%EMISSIVITY .lt. -HUGE(1.0)) coolants(N)%EMISSIVITY = 0.0
             moleculeCooling(N)=SUM(coolants(N)%EMISSIVITY,MASK=.NOT.ISNAN(coolants(N)%EMISSIVITY))
-            ! !we get these wild changes in cooling rate so let's force it not to change too much in a timestep
+            ! !we get these wild cha nges in cooling rate so let's force it not to change too much in a timestep
             ! IF ( (abs(moleculeCooling-coolants(N)%previousCooling)/coolants(N)%previousCooling) .gt. 2.0d0) THEN
             !     !unless it's step 1, use old cooling for this time step
             !     IF (coolants(N)%previousCooling .ne. 0.0d0) moleculeCooling=coolants(N)%previousCooling

@@ -66,12 +66,14 @@ CONTAINS
         END IF
     END SUBROUTINE finalOutput
 
-    SUBROUTINE output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, ratesarray, dtime, timepoints)
+    SUBROUTINE output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, ratesarray, heatarray, dtime, timepoints)
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: ratesarray
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: heatarray
         INTEGER, OPTIONAL :: dtime, timepoints
         INTEGER, intent(out) :: successflag
+        INTEGER :: i  ! Loop variable for heating array assignment
         LOGICAL :: returnArray, writerates
         successflag = 0
         IF (returnArray) THEN
@@ -102,6 +104,28 @@ CONTAINS
             IF (returnArray) THEN
                 ! If returnArray is true, we write the rates to the rates array, we compute the flux in Python.
                 ratesarray(dtime, dstep, :) = rate(:nreac)
+                ! Only populate the heating array if it is present and properly sized
+                IF (SIZE(heatarray, 1) .ge. timePoints) THEN
+                    heatarray(dtime, dstep, 1) = time
+                    heatarray(dtime, dstep, 2) = atomicCool
+                    heatarray(dtime, dstep, 3) = colIndEmission
+                    heatarray(dtime, dstep, 4) = comptonCool
+                    heatarray(dtime, dstep, 5) = contEmissionCool
+                    ! Currently we write the 5 summed line cooling terms
+                    DO i = 1, 5
+                        heatarray(dtime, dstep, 5+i) = coolings(i)
+                    END DO
+
+                    ! Heating terms
+                    heatarray(dtime, dstep, 11) = photoelec
+                    heatarray(dtime, dstep, 12) = h2forming
+                    heatarray(dtime, dstep, 13) = fuvpumping
+                    heatarray(dtime, dstep, 14) = photodis
+                    heatarray(dtime, dstep, 15) = cionizing
+                    heatarray(dtime, dstep, 16) = crheating
+                    heatarray(dtime, dstep, 17) = turbHeating
+                    heatarray(dtime, dstep, 18) = gasgraincolls
+                END IF
             ELSE 
                 ! Else, we write the rates and flux to the file.
                 IF (rateOutput) THEN
@@ -113,12 +137,15 @@ CONTAINS
                     8022 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
                 END IF
                 IF (heatingOutput) THEN
-                    WRITE(heatingId,8023) time, moleculeCooling, photoelec, h2forming, fuvpumping, photodis,&
+                    WRITE(heatingId,8023) time, atomicCool, colIndEmission, comptonCool, contEmissionCool, coolings(1),&
+                    &coolings(2), coolings(3), coolings(4), coolings(5), photoelec, h2forming, fuvpumping, photodis,&
                     &cionizing, crheating, turbHeating, gasgraincolls
-                    8023 FORMAT(1PE16.6E3,:,',', 999(1PE16.6E3,:,','))
+                    8023 FORMAT(1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,','&
+                    &,1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,','&
+                    &,1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',') 
+                    !  999(1PE16.6E3,:,','), ) for the future heating by enthalpy
                 END IF
             END IF
-        
         END IF
 
         !Every 'writestep' timesteps, write the chosen species out to separate file

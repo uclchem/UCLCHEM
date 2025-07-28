@@ -11,6 +11,7 @@ from uclchem.constants import (
     N_PHYSICAL_PARAMETERS,
     PHYSICAL_PARAMETERS,
     TIMEPOINTS,
+    n_heating_terms,
     n_reactions,
     n_species,
 )
@@ -22,10 +23,9 @@ def set_collisional_rates_directory():
     assert len(coolant_directory) < 256, "Coolant directory path is too long, please shorten it. Path is " + coolant_directory
     try:
         uclchemwrap.defaultparameters.coolantdatadir = coolant_directory
-        assert uclchemwrap.defaultparameters.coolantdatadir == coolant_directory, "Coolant directory path is not set correctly, please check the path."
+        assert str(np.char.decode(uclchemwrap.defaultparameters.coolantdatadir)).strip() == coolant_directory, "Coolant directory path is not set correctly, please check the path."
     except AttributeError:
         logging.warning("Cannot set the coolant directory path, please set 'coolantDataDir' correctly at runtime.")
-    print(uclchemwrap.defaultparameters.coolantdatadir)
 
 
 set_collisional_rates_directory()
@@ -90,6 +90,86 @@ def _format_output(n_out, abunds, success_flag):
     return [success_flag] + abunds
 
 
+def _get_standard_array_specs(return_rates=False, return_heating=False):
+    """Get standard array specifications for UCLCHEM models
+    
+    Args:
+        return_rates (bool): Whether to include rates array
+        return_heating (bool): Whether to include heating array
+        
+    Returns:
+        dict: Array specifications
+    """
+    specs = {
+        'physicsarray': {
+            'third_dim': N_PHYSICAL_PARAMETERS,
+            'dtype': 'float64',
+            'required': True
+        },
+        'chemicalabunarray': {
+            'third_dim': n_species,
+            'dtype': 'float64',
+            'required': True
+        }
+    }
+    
+    if return_rates:
+        specs['ratesarray'] = {
+            'third_dim': n_reactions,
+            'dtype': 'float64',
+            'required': True
+        }
+    
+    if return_heating:
+        specs['heatarray'] = {
+            'third_dim': n_heating_terms,
+            'dtype': 'float64',
+            'required': True
+        }
+    
+    return specs
+
+
+def _create_arrays(param_dict, array_specs, timepoints=TIMEPOINTS):
+    """Create Fortran arrays based on specifications
+    
+    Args:
+        param_dict (dict): Parameter dictionary containing 'points'
+        array_specs (dict): Dictionary specifying arrays to create. Format:
+            {
+                'array_name': {
+                    'third_dim': int,  # Size of third dimension
+                    'dtype': str,      # 'float64' or 'int64'
+                    'required': bool   # Whether array is required
+                }
+            }
+        timepoints (int): Number of timepoints
+        
+    Returns:
+        dict: Dictionary containing the created arrays
+    """
+    arrays = {}
+    points = param_dict.get("points", 1)
+    
+    for array_name, spec in array_specs.items():
+        if spec.get('required', True):
+            dtype_map = {
+                'float64': np.float64,
+                'int64': np.int64
+            }
+            dtype = dtype_map.get(spec['dtype'], np.float64)
+            
+            arrays[array_name] = np.zeros(
+                shape=(timepoints + 1, points, spec['third_dim']),
+                dtype=dtype,
+                order="F"
+            )
+        else:
+            arrays[array_name] = None
+            
+    return arrays
+
+
 def _create_fortranarray(param_dict, nPhysParam, timepoints=TIMEPOINTS):
     # fencepost problem, need to add 1 to timepoints to account for the 0th timestep
     physicsArray = np.zeros(
@@ -117,8 +197,7 @@ def _return_array_checks(params):
 
 
 def _array_clean(
-    physicalParameterArray, chemicalAbundanceArray, specname, ratesArray = None
-    
+    physicalParameterArray, chemicalAbundanceArray, specname, ratesArray=None, heatArray=None
 ):
     """Clean the array
 
@@ -144,13 +223,16 @@ def _array_clean(
     # Also clean the rates array, only if we have it:
     if ratesArray is not None:
         ratesArray = ratesArray[: last_timestep_index + 1, :, :]
+    # Also clean the heating array, only if we have it:
+    if heatArray is not None:
+        heatArray = heatArray[: last_timestep_index + 1, :, :]
     # Get the last arrays simulated, easy for starting another model.
     abundanceStart = chemicalAbundanceArray[last_timestep_index, 0, :]
-    return physicsArray, chemArray, specname_new, ratesArray, abundanceStart
+    return physicsArray, chemArray, specname_new, ratesArray, heatArray, abundanceStart
 
 
 def outputArrays_to_DataFrame(
-    physicalParameterArray, chemicalAbundanceArray, specname, ratesArray, 
+    physicalParameterArray, chemicalAbundanceArray, specname, ratesArray, heatArray=None
 ):
     """Convert the output arrays to a pandas dataframe
 
@@ -180,7 +262,21 @@ def outputArrays_to_DataFrame(
         )
     else: 
         rates_df = None
-    return physics_df, chemistry_df, rates_df
+    
+    if heatArray is not None:
+        # Create a heating dataframe.
+        heating_columns = [
+            "Time", "H", "C+", "O", "C", "CO", "p-H2", "o-H2", "SI+", "S",
+            "Photoelectric", "H2Formation", "FUVPumping", "Photodissociation",
+            "CIonization", "CRheating", "TurbHeating", "GasGrainColls"
+        ]
+        heating_df = pd.DataFrame(
+            heatArray[:, 0, :], index=None, columns=heating_columns
+        )
+    else:
+        heating_df = None
+    
+    return physics_df, chemistry_df, rates_df, heating_df
 
 
 def cloud(
@@ -189,6 +285,7 @@ def cloud(
     return_array=False,
     return_dataframe=False,
     return_rates=False,
+    return_heating=False,
     starting_chemistry=None,
     timepoints=TIMEPOINTS,
 ):
@@ -221,11 +318,18 @@ def cloud(
     # Check to make sure no output files are specified, if so, halt the execution.
     if return_array or return_dataframe:
         _return_array_checks(param_dict)
-    physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
+    
+    # Create all arrays using the generalized approach
+    array_specs = _get_standard_array_specs(
+        return_rates=return_rates,
+        return_heating=return_heating
     )
-    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
-    _, _, _, abunds, specname, success_flag = wrap.cloud(
+    arrays = _create_arrays(param_dict, array_specs, timepoints)
+    physicsArray = arrays["physicsarray"]
+    chemicalAbunArray = arrays["chemicalabunarray"]
+    ratesArray = arrays.get("ratesarray")
+    heatArray = arrays.get("heatarray")
+    _, _, _, _, abunds, specname, success_flag = wrap.cloud(
         dictionary=param_dict,
         outspeciesin=out_species,
         timepoints=timepoints,
@@ -236,27 +340,35 @@ def cloud(
         physicsarray=physicsArray,
         chemicalabunarray=chemicalAbunArray,
         ratesarray=ratesArray,
+        heatarray=heatArray,
         abundancestart=starting_chemistry,
     )
     # Overwrite the ratesArray with None if its not used:
     if not return_rates or not (return_array or return_dataframe):
         ratesArray = None
+    # Overwrite the heatArray with None if its not used:
+    if not return_heating or not (return_array or return_dataframe):
+        heatArray = None
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
-            physicsArray, chemicalAbunArray, specname, ratesArray
+        result = _array_clean(
+            physicsArray, chemicalAbunArray, specname, ratesArray, heatArray
         )
+        (physicsArray, chemicalAbunArray, specname,
+         ratesArray, heatArray, abundanceStart) = result
     if return_dataframe:
         return outputArrays_to_DataFrame(
             physicsArray,
             chemicalAbunArray,
             specname,
             ratesArray,
+            heatArray,
         ) + (abundanceStart, success_flag,)
     elif return_array:
         return (
             physicsArray,
             chemicalAbunArray,
             ratesArray,
+            heatArray,
             abundanceStart,
             success_flag,
         )
@@ -320,7 +432,7 @@ def collapse(
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints)
     ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
-    _, _, _, abunds, specname, success_flag = wrap.collapse(
+    _, _, _, _, abunds, specname, success_flag = wrap.collapse(
         collapseIn=collapse,
         collapseFileIn=physics_output,
         writeOut=write_physics,
@@ -409,7 +521,7 @@ def hot_core(
     )
     ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
     give_start_abund = starting_chemistry is not None
-    _, _, _, abunds, specname, success_flag = wrap.hot_core(
+    _, _, _, _, abunds, specname, success_flag = wrap.hot_core(
         temp_indx=temp_indx,
         max_temp=max_temperature,
         dictionary=param_dict,
@@ -501,7 +613,7 @@ def cshock(
     )
     ratesArray=_create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
     give_start_abund = starting_chemistry is not None
-    _, _, _, abunds, disspation_time, specname, success_flag = wrap.cshock(
+    _, _, _, _, abunds, disspation_time, specname, success_flag = wrap.cshock(
         shock_vel=shock_vel,
         timestep_factor=timestep_factor,
         minimum_temperature=minimum_temperature,
@@ -603,7 +715,7 @@ def jshock(
     give_start_abund = starting_chemistry is not None
     ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
 
-    _, _, _, abunds, specname, success_flag = wrap.jshock(
+    _, _, _, _, abunds, specname, success_flag = wrap.jshock(
         shock_vel=shock_vel,
         dictionary=param_dict,
         outspeciesin=out_species,
@@ -723,7 +835,7 @@ def postprocess(
         param_dict, N_PHYSICAL_PARAMETERS, timepoints=len(time_array)
     )
     ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=len(time_array))
-    _, _, _, abunds, specname, success_flag = wrap.postprocess(
+    _, _, _, _, abunds, specname, success_flag = wrap.postprocess(
         dictionary=param_dict,
         outspeciesin=out_species,
         timepoints=len(time_array),
@@ -761,5 +873,4 @@ def postprocess(
             success_flag,
         )
     else:
-        return _format_output(n_out, abunds, success_flag)
         return _format_output(n_out, abunds, success_flag)
