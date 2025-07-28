@@ -24,3 +24,4 @@ TIMEPOINTS = 500
 N_PHYSICAL_PARAMETERS = 8
 n_species = 335
 n_reactions = 3203
+n_heating_terms = 18

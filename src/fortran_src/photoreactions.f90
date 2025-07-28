@@ -78,6 +78,7 @@ FUNCTION cIonizationRate(alpha,gamma,gasTemp,NC,NH2,av,radfield) RESULT(RATE)
 
 !  Calculate the optical depth in the CI absorption band, accounting
 !  for grain extinction and shielding by CI and overlapping H2 lines
+!  1.1D-17 seems the value of the ionization cross-section of C
    TAUC=gamma*av+1.1D-17*NC+(0.9D0*gasTemp**0.27D0*(NH2/1.59D21)**0.45D0)
 !  Calculate the CI photoionization rate
    RATE=alpha*(radfield/1.7)*EXP(-TAUC)

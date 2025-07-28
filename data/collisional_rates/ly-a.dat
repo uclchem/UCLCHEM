@@ -1,0 +1,27 @@
+!MOLECULE
+H Lyman-alpha
+!MOLECULAR WEIGHT
+1.0
+!NUMBER OF ENERGY LEVELS
+2
+!LEVEL + ENERGIES(cm^-1) + WEIGHT + Qnum
+   1    0.0000000     2.0  2_S_1/2
+   2   82258.9191     2.0  2_P_1/2
+!NUMBER OF RADIATIVE TRANSITIONS
+1
+!TRANS + UP + LOW + EINSTEINA(s^-1) + FREQ(GHz) + E_u(K) + Qnum_u + Qnum_l
+    1     2     1   6.265E+08   2466060.3553  118352.090  2_P_1/2  2_S_1/2
+!NUMBER OF COLL PARTNERS
+1
+!COLLISIONS BETWEEN
+4 H + e ! van Regemorter (1962, ApJ, 136, 906, eqn 18)
+!NUMBER OF COLL TRANS
+1
+!NUMBER OF COLL TEMPS
+11
+!COLL TEMPS
+                      1000.0    2000.0    3000.0    5000.0    7000.0   10000.0   20000.0   30000.0   50000.0   70000.0  100000.0
+!TRANS + UP + LOW + COLLRATES(cm^3 s^-1)
+    1     2     1   4.45E-09  4.45E-09  4.45E-09  4.45E-09  4.45E-09  4.45E-09  5.67E-09  5.44E-09  6.09E-09  6.52E-09  6.83E-09
+! NOTES:
+! A-values and transition wavelengths are taken from the NIST database.
