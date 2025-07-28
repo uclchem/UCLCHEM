@@ -57,17 +57,17 @@ class Reaction:
             try:
                 self.set_reactants(
                     [
-                        inputRow[0].upper(),
-                        inputRow[1].upper(),
-                        self.NANCheck(inputRow[2]).upper(),
+                        str(inputRow[0]).upper(),
+                        str(inputRow[1]).upper(),
+                        self.NANCheck(str(inputRow[2])).upper(),
                     ]
                 )
                 self.set_products(
                     [
-                        self.NANCheck(inputRow[3]).upper(),
-                        self.NANCheck(inputRow[4]).upper(),
-                        self.NANCheck(inputRow[5]).upper(),
-                        self.NANCheck(inputRow[6]).upper(),
+                        self.NANCheck(str(inputRow[3])).upper(),
+                        self.NANCheck(str(inputRow[4])).upper(),
+                        self.NANCheck(str(inputRow[5])).upper(),
+                        self.NANCheck(str(inputRow[6])).upper(),
                     ]
                 )
                 self.check_element_conservation()
