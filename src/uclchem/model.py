@@ -105,6 +105,47 @@ class AbstractModel:
             raise ("This model was read. It can not be run. ")
         return
 
+    def check_conservation(self,
+                           element_list: list = ["H", "N", "C", "O"],
+                           percent: bool = True
+                           ):
+        if self.param_dict["points"] > 1:
+            for i in range(self.param_dict["points"]):
+                print(f"Element conservation report for point {i + 1} of {self.param_dict['points']}")
+                print(check_element_conservation(self.get_dataframes(i), element_list, percent))
+        else:
+            print(f"Element conservation report")
+            print(check_element_conservation(self.get_dataframes(0), element_list, percent))
+
+    def check_error(self):
+        """Prints the error message of the model"""
+        if self.success_flag != 0 and self.success_flag is not None:
+            errors = {
+                -1: "Parameter read failed. Likely due to a mispelled parameter name, compare your dictionary to the parameters docs.",
+                -2: "Physics intiialization failed. Often due to user chosing unacceptable parameters such as hot core masses or collapse modes that don't exist. Check the docs for your model function.",
+                -3: "Chemistry initialization failed",  # this doesn't exist yet
+                -4: "Unrecoverable integrator error, DVODE failed to integrate the ODEs in a way that UCLCHEM could not fix. Run UCLCHEM tests to check your network works at all then try to see if bad parameter combination is at play.",
+                -5: "Too many integrator fails. DVODE failed to integrate the ODE and UCLCHEM repeatedly altered settings to try to make it pass but tried too many times without success so code aborted to stop infinite loop.",
+                -6: "The model was stopped because there are not enough time points allocated in the time array. Increase the number of time points in the time array in constants.py and try again.",
+            }
+            try:
+                print(f'{errors[self.success_flag]}')
+            except KeyError:
+                raise ValueError(f"Unknown error code: {self.success_flag}")
+        elif self.success_flag == 0:
+            print(f'Model ran successfully.')
+        elif self.success_flag is None:
+            print(f'Model has not been run.')
+
+    def create_abundance_plot(self,
+                              species: list = ["H", "N", "C", "O"],
+                              figsize: tuple[2] = (10, 7),
+                              point: int = 0,
+                              plot_file=None):
+        if point > self.param_dict["points"]:
+            raise Exception("'point' must be less than number of modelled points.")
+        return create_abundance_plot(self.get_dataframes(point), species, figsize, plot_file)
+
     def get_dataframes(self, point: int = 0, joined: bool = True, with_rates: bool = False):
         """Convert the output array of "point" to a pandas dataframe
         Returns:
@@ -139,29 +180,41 @@ class AbstractModel:
             else:
                 return physics_df, chemistry_df
 
-    def check_conservation(self,
-                           element_list: list = ["H", "N", "C", "O"],
-                           percent: bool = True
-                           ):
-        if self.param_dict["points"] > 1:
-            for i in range(self.param_dict["points"]):
-                print(f"Element conservation report for point {i + 1} of {self.param_dict['points']}")
-                print(check_element_conservation(self.get_dataframes(i), element_list, percent))
-        else:
-            print(f"Element conservation report")
-            print(check_element_conservation(self.get_dataframes(0), element_list, percent))
-
-    def create_abundance_plot(self,
-                              species: list = ["H", "N", "C", "O"],
-                              figsize: tuple[2] = (10, 7),
-                              point: int = 0,
-                              plot_file=None):
-        if point > self.param_dict["points"]:
-            raise Exception("'point' must be less than number of modelled points.")
-        return create_abundance_plot(self.get_dataframes(point), species, figsize, plot_file)
-
     def plot_species(self, ax: plt.axes, species: list[str], point: int = 0, legend: bool = True, **plot_kwargs):
         return plot_species(ax, self.get_dataframes(point), species, legend, **plot_kwargs)
+
+    def read_output_file(self, read_file: str, rates_load_file: str = None):
+        '''Perform classic output file reading.
+        Args:
+            abund_load_file (str): path to file containing a full UCLCHEM output
+        '''
+        self.was_read = True
+        columns = np.char.strip(np.loadtxt(read_file, delimiter=",", max_rows=1, dtype=str, comments='%'))
+        array = np.loadtxt(read_file, delimiter=",", skiprows=1)
+        point_index = np.where(columns == 'point')[0][0]
+        self.param_dict["points"] = int(np.max(array[:, point_index]))
+        if self.param_dict["points"] > 1:
+            array = np.loadtxt(read_file, delimiter=",", skiprows=2)
+        row_count = int(np.shape(array)[0] / self.param_dict["points"])
+
+        self.PHYSICAL_PARAMETERS = [p for p in PHYSICAL_PARAMETERS if p in columns]
+        specname = wrap.get_specname()
+        self.specname = [c for c in np.array([x.strip() for x in specname.astype(str) if x != ""]) if c in columns]
+
+        self.physics_array = np.empty((row_count, self.param_dict["points"], len(self.PHYSICAL_PARAMETERS) + 1))
+        self.chemical_abun_array = np.empty((row_count, self.param_dict["points"], len(self.specname)))
+        for p in range(self.param_dict["points"]):
+            self.physics_array[:, p, :] = \
+            array[np.where(array[:, point_index] == p + 1), :len(self.PHYSICAL_PARAMETERS) + 1][0]
+            self.chemical_abun_array[:, p, :] = \
+            array[np.where(array[:, point_index] == p + 1), (len(self.PHYSICAL_PARAMETERS) + 1):][0]
+        self._array_clean()
+        last_timestep_index = self.physics_array[:, 0, 0].nonzero()[0][-1]
+        self.next_starting_chemistry = self.chemical_abun_array[last_timestep_index, :, :]
+        return
+
+    def read_starting_chemistry_output_file(self):
+        self.starting_chemistry = np.loadtxt(self.abundLoadFile, delimiter=",")
 
     def write_full_output_file(self):
         '''Perform classic output file writing.
@@ -186,35 +239,38 @@ class AbstractModel:
             np.savetxt(f, self.chemical_abun_array[last_timestep_index, :, :], fmt=number_fmt_string)
         return
 
-    def read_starting_chemistry_output_file(self):
-        self.starting_chemistry = np.loadtxt(self.abundLoadFile, delimiter=",")
-
-    def read_output_file(self, rates_load_file: str = None):
-        '''Perform classic output file reading.
-        Args:
-            abund_load_file (str): path to file containing a full UCLCHEM output
-        '''
-        self.was_read = True
-        columns = np.char.strip(np.loadtxt(self.abundLoadFile, delimiter=",", max_rows=1, dtype=str, comments='%'))
-        array = np.loadtxt(self.abundLoadFile, delimiter=",", skiprows=1)
-        point_index = np.where(columns == 'point')[0][0]
-        self.param_dict["points"] = int(np.max(array[:, point_index]))
-        if self.param_dict["points"] > 1:
-            array = np.loadtxt(self.abundLoadFile, delimiter=",", skiprows=2)
-        row_count = int(np.shape(array)[0] / self.param_dict["points"])
-
-        self.PHYSICAL_PARAMETERS = [p for p in PHYSICAL_PARAMETERS if p in columns]
-        specname = wrap.get_specname()
-        self.specname = [c for c in np.array([x.strip() for x in specname.astype(str) if x != ""]) if c in columns]
-
-        self.physics_array = np.empty((row_count, self.param_dict["points"], len(self.PHYSICAL_PARAMETERS) + 1))
-        self.chemical_abun_array = np.empty((row_count, self.param_dict["points"], len(self.specname)))
-        for p in range(self.param_dict["points"]):
-            self.physics_array[:, p, :] = array[np.where(array[:, point_index] == p+1), :len(self.PHYSICAL_PARAMETERS) + 1][0]
-            self.chemical_abun_array[:, p, :] = array[np.where(array[:, point_index] == p+1), (len(self.PHYSICAL_PARAMETERS) + 1):][0]
-        self._array_clean()
+    def _array_clean(self):
+        """
+        Clean the array
+        """
+        # Find the first element with all the zeros
         last_timestep_index = self.physics_array[:, 0, 0].nonzero()[0][-1]
+        # Get the arrays for only the simulated timesteps (not the zero padded ones)
+        self.physics_array = self.physics_array[: last_timestep_index + 1, :, :]
+        self.chemical_abun_array = self.chemical_abun_array[: last_timestep_index + 1, :, :]
+        if self.ratesArray is not None:
+            self.ratesArray = self.ratesArray[: last_timestep_index + 1, :, :]
+        # Get the last arrays simulated, easy for starting another model.
         self.next_starting_chemistry = self.chemical_abun_array[last_timestep_index, :, :]
+        return
+
+    def _create_fortran_array(self):
+        # fencepost problem, need to add 1 to timepoints to account for the 0th timestep
+        self.physics_array = np.zeros(
+            shape=(self.timepoints + 1, self.param_dict["points"], N_PHYSICAL_PARAMETERS),
+            dtype=np.float64,
+            order="F",
+        )
+        self.chemical_abun_array = np.zeros(
+            shape=(self.timepoints + 1, self.param_dict["points"], n_species),
+            dtype=np.float64,
+            order="F",
+        )
+        return
+
+    def _create_rates_array(self):
+        self.ratesArray = np.zeros(shape=(self.timepoints + 1, self.param_dict["points"], n_reactions),
+                                   dtype=np.float64, order="F")
         return
 
     def _reform_inputs(self,
@@ -245,40 +301,6 @@ class AbstractModel:
         else:
             self.out_species = ""
             self.n_out = 0
-        return
-
-    def _create_fortran_array(self):
-        # fencepost problem, need to add 1 to timepoints to account for the 0th timestep
-        self.physics_array = np.zeros(
-            shape=(self.timepoints + 1, self.param_dict["points"], N_PHYSICAL_PARAMETERS),
-            dtype=np.float64,
-            order="F",
-        )
-        self.chemical_abun_array = np.zeros(
-            shape=(self.timepoints + 1, self.param_dict["points"], n_species),
-            dtype=np.float64,
-            order="F",
-        )
-        return
-
-    def _create_rates_array(self):
-        self.ratesArray = np.zeros(shape=(self.timepoints + 1, self.param_dict["points"], n_reactions),
-                                   dtype=np.float64, order="F")
-        return
-
-    def _array_clean(self):
-        """
-        Clean the array
-        """
-        # Find the first element with all the zeros
-        last_timestep_index = self.physics_array[:, 0, 0].nonzero()[0][-1]
-        # Get the arrays for only the simulated timesteps (not the zero padded ones)
-        self.physics_array = self.physics_array[: last_timestep_index + 1, :, :]
-        self.chemical_abun_array = self.chemical_abun_array[: last_timestep_index + 1, :, :]
-        if self.ratesArray is not None:
-            self.ratesArray = self.ratesArray[: last_timestep_index + 1, :, :]
-        # Get the last arrays simulated, easy for starting another model.
-        self.next_starting_chemistry = self.chemical_abun_array[last_timestep_index, :, :]
         return
 
     def _xarray_conversion(self):
