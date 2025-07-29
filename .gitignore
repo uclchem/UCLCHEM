@@ -11,6 +11,9 @@ src/uclchem/*.so
 examples/test-output/*
 examples/*.png
 
+#notebooks for dev testing
+notebooks/*newAPI.ipynb
+
 #dev stuff
 uclchem.egg-info
 test
