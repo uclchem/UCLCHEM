@@ -81,3 +81,16 @@ archivePrefix = {arXiv},
 ```
 
 
+# Developers
+## Makerates only install instruction 
+
+
+In order to install UCLCHEM with only Makerates, one can use the makerates_only flag.
+This will skip the fortran compile step such that you can use makerates to generate
+consistent odes.f90 and network.f90 files. It might be that you need to comment out
+some pieces of code that rely on uclchemwrap to be present; for now
+commenting out all lines of code in `__init__.py` seems to be enough.
+
+```bash
+pip install . --config-settings=setup-args="-Dmakerates_only=true"
+```

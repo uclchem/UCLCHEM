@@ -17,33 +17,33 @@ H2,PHOTON,,H,H,,,1,1,0,,,
 !
 ! H ABSTRACTION REACTIONS. RATES FROM GARROD 2008
 !
-#CH4,CRP,,#CH2,#H2,,,3.04E-14,0,0,,
-#CH3,CRP,,#CH2,#H,,,3E-16,0,0,,
-#NH3,CRP,,#NH,#H2,,,7.02E-15,0,0,,
-#NH3,CRP,,#NH2,#H,,,1.716E-14,0,0,,
-#H2O,CRP,,#OH,#H,,,1.26E-14,0,0,,
-#HCO,CRP,,#CO,#H,,,5.473E-15,0,0,,
-#H2CO,CRP,,#HCO,#H,,,1.73E-14,0,0,,
-#H2CO,CRP,,#CO,H2,,,1.73E-14,0,0,,
-#CH3OH,CRP,,#CH2OH,#H,,,6.5E-15,0,0,,
-#CH3OH,CRP,,#H2COH,#H,,,6.5E-15,0,0,,
-#CH3OH,CRP,,#CH3,#OH,,,1.95E-14,0,0,,
-#H2S,CRP,,#HS,H,,,3E-16,0,0,,
-#HCOOH,CRP,,#HCOO,H,,,3E-16,0,0,,
-#HNO,CRP,,#NO,#H,,,3E-16,0,0,,
-#HCS,CRP,,#CS,#H,,,3E-16,0,0,,
+#CH4,CRP,,#CH2,#H2,,,3.04E-14,0,0,,,
+#CH3,CRP,,#CH2,#H,,,3E-16,0,0,,,
+#NH3,CRP,,#NH,#H2,,,7.02E-15,0,0,,,
+#NH3,CRP,,#NH2,#H,,,1.716E-14,0,0,,,
+#H2O,CRP,,#OH,#H,,,1.26E-14,0,0,,,
+#HCO,CRP,,#CO,#H,,,5.473E-15,0,0,,,
+#H2CO,CRP,,#HCO,#H,,,1.73E-14,0,0,,,
+#H2CO,CRP,,#CO,H2,,,1.73E-14,0,0,,,
+#CH3OH,CRP,,#CH2OH,#H,,,6.5E-15,0,0,,,
+#CH3OH,CRP,,#H2COH,#H,,,6.5E-15,0,0,,,
+#CH3OH,CRP,,#CH3,#OH,,,1.95E-14,0,0,,,
+#H2S,CRP,,#HS,H,,,3E-16,0,0,,,
+#HCOOH,CRP,,#HCOO,H,,,3E-16,0,0,,,
+#HNO,CRP,,#NO,#H,,,3E-16,0,0,,,
+#HCS,CRP,,#CS,#H,,,3E-16,0,0,,,
 !
 ! MORE CRP REACTIONS WITH GRAIN
-#HNCO,CRPHOT,,#NH,#CO,,,1.3E-17,0,1500,,,
-#HOCN,CRPHOT,,#OH,#CN,,,1.3E-17,0,1500,,,
-#HCNO,CRPHOT,,#CH,#NO,,,1.3E-17,0,1500,,,
-#HONC,CRPHOT,,#OH,#CN,,,1.3E-17,0,1500,,,
-#CNO,CRPHOT,,#CN,#O,,,1.3E-17,0,750,,,
-#HNCO,PHOTON,,#NH,#CO,,,1.00E-09,0.00,1.7,,,
-#HOCN,PHOTON,,#OH,#CN,,,1.00E-09,0.00,1.7,,,
-#HCNO,PHOTON,,#CH,#NO,,,1.00E-09,0.00,1.7,,,
-#HONC,PHOTON,,#OH,#CN,,,1.00E-09,0.00,1.7,,,
-#CNO,PHOTON,,#CN,#O,,,1.00E-11,0.00,2.0,,,
+#HNCO,CRPHOT,,#NH,#CO,,,1.3E-17,0,1500,,,,
+#HOCN,CRPHOT,,#OH,#CN,,,1.3E-17,0,1500,,,,
+#HCNO,CRPHOT,,#CH,#NO,,,1.3E-17,0,1500,,,,
+#HONC,CRPHOT,,#OH,#CN,,,1.3E-17,0,1500,,,,
+#CNO,CRPHOT,,#CN,#O,,,1.3E-17,0,750,,,,
+#HNCO,PHOTON,,#NH,#CO,,,1.00E-09,0.00,1.7,,,,
+#HOCN,PHOTON,,#OH,#CN,,,1.00E-09,0.00,1.7,,,,
+#HCNO,PHOTON,,#CH,#NO,,,1.00E-09,0.00,1.7,,,,
+#HONC,PHOTON,,#OH,#CN,,,1.00E-09,0.00,1.7,,,,
+#CNO,PHOTON,,#CN,#O,,,1.00E-11,0.00,2.0,,,,
 !
 !
 ! BASIC GRAIN NETWORK
@@ -53,44 +53,44 @@ H2,PHOTON,,H,H,,,1,1,0,,,
 ! BOTH REACTION TYPES BE LISTED WITH ALL PRODUCTS ON THE GRAIN HERE
 ! CHEMICAL DESORPTION WILL BE DEALT WITH BY MAKERATES AND UCLCHEM
 !
-#H,#C,LH,#CH,,,,1,0,0,,,
-#H,#CH,LH,#CH2,,,,1,0,0,,,
-#H,#CH2,LH,#CH3,,,,1,0,0,,,
-#H,#CH3,LH,#CH4,,,,1,0,0,,,
-#H,#O,LH,#OH,,,,1,0,0,,,
-#H,#OH,LH,#H2O,,,,1,0,0,,,
-#H,#N,LH,#NH,,,,1,0,0,,,
-#H,#NH,LH,#NH2,,,,1,0,0,,,
-#H,#NH2,LH,#NH3,,,,1,0,0,,,
-#H,#CO,LH,#HCO,,,,1,0,2500,,,
-#H,#HCO,LH,#H2CO,,,,0.5,0,0,,,
-#H,#HCO,LH,#CO,#H2,,,0.5,0,0,,,
-#H,#H2CO,LH,#CH2OH,,,,0.33,0,5400,,,
-#H,#H2CO,LH,#H2COH,,,,0.33,0,2200,,,
-#H,#H2CO,LH,#HCO,#H2,,,0.33,0,1740,,,
-#H,#CH2OH,LH,#CH3OH,,,,1,0,0,,,
-#H,#H2COH,LH,#CH3OH,,,,1,0,0,,,
-#SI,#H,LH,#SIH,,,,1.0,0,0,,,
-#SIH,#H,LH,#SIH2,,,,1.0,0,0,,,
-#SIH2,#H,LH,#SIH3,,,,1.0,0,0,,,
-#SIH3,#H,LH,#SIH4,,,,1.0,0,0,,,
-#S,#H,LH,#HS,,,,1,0,0,,,
-#HS,#H,LH,#H2S,,,,1,0,0,,,
-#S2,#H,LH,#HS2,,,,1,0,0,,,
-#HS2,#H,LH,#H2S2,,,,1,0,0,,,
-#CS,#H,LH,#HCS,,,,1,0,0,,,
-#HCS,#H,LH,#H2CS,,,,1,0,0,,,
-#CN,#H,LH,#HCN,,,,1,0,0,,,
-#SIO,#H,LH,#HSIO,,,,1,0,0,,,
-#HSIO,#H,LH,#H2SIO,,,,1,0,0,,,
-#CL,#H,LH,#HCL,,,,1,0,0,,,
+#H,#C,LH,#CH,,,,1,0,0,,,,
+#H,#CH,LH,#CH2,,,,1,0,0,,,,
+#H,#CH2,LH,#CH3,,,,1,0,0,,,,
+#H,#CH3,LH,#CH4,,,,1,0,0,,,,
+#H,#O,LH,#OH,,,,1,0,0,,,,
+#H,#OH,LH,#H2O,,,,1,0,0,,,,
+#H,#N,LH,#NH,,,,1,0,0,,,,
+#H,#NH,LH,#NH2,,,,1,0,0,,,,
+#H,#NH2,LH,#NH3,,,,1,0,0,,,,
+#H,#CO,LH,#HCO,,,,1,0,2500,,,,
+#H,#HCO,LH,#H2CO,,,,0.5,0,0,,,,
+#H,#HCO,LH,#CO,#H2,,,0.5,0,0,,,,
+#H,#H2CO,LH,#CH2OH,,,,0.33,0,5400,,,,
+#H,#H2CO,LH,#H2COH,,,,0.33,0,2200,,,,
+#H,#H2CO,LH,#HCO,#H2,,,0.33,0,1740,,,,
+#H,#CH2OH,LH,#CH3OH,,,,1,0,0,,,,
+#H,#H2COH,LH,#CH3OH,,,,1,0,0,,,,
+#SI,#H,LH,#SIH,,,,1.0,0,0,,,,
+#SIH,#H,LH,#SIH2,,,,1.0,0,0,,,,
+#SIH2,#H,LH,#SIH3,,,,1.0,0,0,,,,
+#SIH3,#H,LH,#SIH4,,,,1.0,0,0,,,,
+#S,#H,LH,#HS,,,,1,0,0,,,,
+#HS,#H,LH,#H2S,,,,1,0,0,,,,
+#S2,#H,LH,#HS2,,,,1,0,0,,,,
+#HS2,#H,LH,#H2S2,,,,1,0,0,,,,
+#CS,#H,LH,#HCS,,,,1,0,0,,,,
+#HCS,#H,LH,#H2CS,,,,1,0,0,,,,
+#CN,#H,LH,#HCN,,,,1,0,0,,,,
+#SIO,#H,LH,#HSIO,,,,1,0,0,,,,
+#HSIO,#H,LH,#H2SIO,,,,1,0,0,,,,
+#CL,#H,LH,#HCL,,,,1,0,0,,,,
 !
 ! MINISSALE 2016 REACTIONS
 !
-#N,#N,LH,#N2,,,,0,0,0,,,       ! UNLIKELY ON DUST GRAINS (MINISSALE ET AL. 2016)
-#CO,#OH,LH,#CO2,,,,1,0,1000,,, !IOPPOLO 2013
-#O,#O,LH,#O2,,,,1,0,0,,,
-#H2CO,#O,LH,#CO2,H2,,,1,0,0,,,
+#N,#N,LH,#N2,,,,0,0,0,,,,       ! UNLIKELY ON DUST GRAINS (MINISSALE ET AL. 2016)
+#CO,#OH,LH,#CO2,#H,,,1,0,1000,,,, !IOPPOLO 2013
+#O,#O,LH,#O2,,,,1,0,0,,,,
+#H2CO,#O,LH,#CO2,H2,,,1,0,0,,,,
 !
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !%%%%%%%% HNCO NETWORK %%%%%%%%%
@@ -98,31 +98,31 @@ H2,PHOTON,,H,H,,,1,1,0,,,
 !
 ! FROM QUAN+ 2010
 !
-#H,#OCN,LH,#HNCO,,,,0.5,0,0,,,
-#H,#OCN,LH,#HOCN,,,,0.5,0,0,,,
-#C,#HOCN,LH,#CO,#HCN,,,1,0,0,,,
-#H,#CNO,LH,#HCNO,,,,0.5,0,0,,,
-#C,#HCNO,LH,#C2H,#NO,,,1,0,0,,,
-#H,#CNO,LH,#HONC,,,,0.5,0,0,,,
-#O,#HONC,LH,#O2H,#CN,,,1,0,0,,,
-#C,#OCN,LH,#CN,#CO,,,1,0,0,,,
-#O,#OCN,LH,#CO,#NO,,,1,0,0,,,
-#C,#CNO,LH,#CN,#CO,,,1,0,0,,,
-#C,#NO,LH,#CNO,,,,1,0,0,,,
+#H,#OCN,LH,#HNCO,,,,0.5,0,0,,,,
+#H,#OCN,LH,#HOCN,,,,0.5,0,0,,,,
+#C,#HOCN,LH,#CO,#HCN,,,1,0,0,,,,
+#H,#CNO,LH,#HCNO,,,,0.5,0,0,,,,
+#C,#HCNO,LH,#C2H,#NO,,,1,0,0,,,,
+#H,#CNO,LH,#HONC,,,,0.5,0,0,,,,
+#O,#HONC,LH,#O2H,#CN,,,1,0,0,,,,
+#C,#OCN,LH,#CN,#CO,,,1,0,0,,,,
+#O,#OCN,LH,#CO,#NO,,,1,0,0,,,,
+#C,#CNO,LH,#CN,#CO,,,1,0,0,,,,
+#C,#NO,LH,#CNO,,,,1,0,0,,,,
 !
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ! FROM FEDOSEEV+ 2015, BELLOCHE+2017
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !
-HOCN,H,,HNCO,H,,,1.0E-10,0,2000,,,
-HONC,H,,HCNO,H,,,1.0E-10,0,2000,,,
+HOCN,H,,HNCO,H,,,1.0E-10,0,2000,,,,
+HONC,H,,HCNO,H,,,1.0E-10,0,2000,,,,
 !
-#NH,#CO,LH,#HNCO,,,,1,0,4200,,, 
-#H2COH,#HNCO,LH,#CH3OH,#OCN,,,0,0,1200,,,
-#CH3,#HNCO,LH,#CH4,#OCN,,,0,0,1200,,,
-#NH,#HNCO,LH,#NH2,#OCN,,,0,0,1200,,,
-#NH2,#HNCO,LH,#NH3,#OCN,,,0,0,1200,,,
-#OH,#HNCO,LH,#H2O,#OCN,,,0,0,1290,,,
+#NH,#CO,LH,#HNCO,,,,1,0,4200,,,,
+#H2COH,#HNCO,LH,#CH3OH,#OCN,,,0,0,1200,,,,
+#CH3,#HNCO,LH,#CH4,#OCN,,,0,0,1200,,,,
+#NH,#HNCO,LH,#NH2,#OCN,,,0,0,1200,,,,
+#NH2,#HNCO,LH,#NH3,#OCN,,,0,0,1200,,,,
+#OH,#HNCO,LH,#H2O,#OCN,,,0,0,1290,,,,
 !
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 !% KIDA NETWORK
@@ -130,31 +130,31 @@ HONC,H,,HCNO,H,,,1.0E-10,0,2000,,,
 !
 ! HYDROGENATION OF HNCO (SONG ET AL. 2016)
 !
-#H,#HOCN,LH,#H2O,#CN,,,0.5,0,2300,,,              ! E_A FROM GARROD
-#H,#HOCN,LH,#H2OCN,,,,0.5,0,1962,,,
-#H,#HCNO,LH,#CH2,#NO,,,0.5,0,2300,,,       		! E_A FROM GARROD
-#H,#HCNO,LH,#H2CNO,,,,0.5,0,1962,,,
-#H,#HNCO,LH,#NH2,#CO,,,0.5,0,2300,,,      		! E_A FROM GARROD
-#H,#HNCO,LH,#H2NCO,,,,0.5,0,1962,,,
-#H,#H2NCO,LH,#NH2CHO,,,,0.0,0,0,,,
+#H,#HOCN,LH,#H2O,#CN,,,0.5,0,2300,,,,              ! E_A FROM GARROD
+#H,#HOCN,LH,#H2OCN,,,,0.5,0,1962,,,,
+#H,#HCNO,LH,#CH2,#NO,,,0.5,0,2300,,,,       		! E_A FROM GARROD
+#H,#HCNO,LH,#H2CNO,,,,0.5,0,1962,,,,
+#H,#HNCO,LH,#NH2,#CO,,,0.5,0,2300,,,,      		! E_A FROM GARROD
+#H,#HNCO,LH,#H2NCO,,,,0.5,0,1962,,,,
+#H,#H2NCO,LH,#NH2CHO,,,,0.0,0,0,,,,
 !
-! RADICAL REACTION (FEDOSEEV ET AL. 2016)                                   
+! RADICAL REACTION (FEDOSEEV ET AL. 2016)
 !
-#NH2,#HCO,LH,#NH2CHO,,,,0.5,0,0,,,
-#NH2,#HCO,LH,#NH3,#CO,,,0.5,0,0,,,
-#NH2,#H2CO,LH,#NH2CHO,H,,,0.5,0,0,,,
-#NH2,#H2CO,LH,#NH3,#HCO,,,0.5,0,0,,,
-H,#H2NCO,LH,#HNCO,H2,,,1.0,0,0,,,! NOBLE ET AL. 2015
-! NH2,H2CO,,NH2CHO,H,,,77.9E-16,-2.56,25,,,! SKOUTERIS ET AL. 2017
+#NH2,#HCO,LH,#NH2CHO,,,,0.5,0,0,,,,
+#NH2,#HCO,LH,#NH3,#CO,,,0.5,0,0,,,,
+#NH2,#H2CO,LH,#NH2CHO,H,,,0.5,0,0,,,,
+#NH2,#H2CO,LH,#NH3,#HCO,,,0.5,0,0,,,,
+H,#H2NCO,LH,#HNCO,H2,,,1.0,0,0,,,, ! NOBLE ET AL. 2015
+! NH2,H2CO,,NH2CHO,H,,,77.9E-16,-2.56,25,,,, ! SKOUTERIS ET AL. 2017
 !
 ! (GARROD 2006)
 !
-#HCO,#H2COH,LH,#HCOOCH3,,,,1.0,0,0,,,
-#HCO,#CH2OH,LH,#HCOOCH3,,,,1.0,0,0,,,
-#CH3,#H2COH,LH,#CH3OCH3,,,,1.0,0,0,,,
-#HCO,#OH,LH,#HCOOH,,,,1.0,0,0,,,
-#CH3,#C2H3,LH,#CH3CHCH2,,,,1.0,0,0,,,
-#CH3,#HCO,LH,#CH3CHO,,,,1.0,0,0,,,
+#HCO,#H2COH,LH,#HCOOCH3,,,,1.0,0,0,,,,
+#HCO,#CH2OH,LH,#HCOOCH3,,,,1.0,0,0,,,,
+#CH3,#H2COH,LH,#CH3OCH3,,,,1.0,0,0,,,,
+#HCO,#OH,LH,#HCOOH,,,,1.0,0,0,,,,
+#CH3,#C2H3,LH,#CH3CHCH2,,,,1.0,0,0,,,,
+#CH3,#HCO,LH,#CH3CHO,,,,1.0,0,0,,,,
 !
 !
 ! FREEZE OUTS
@@ -162,36 +162,36 @@ H,#H2NCO,LH,#HNCO,H2,,,1.0,0,0,,,! NOBLE ET AL. 2015
 ! IONS FREEZE AS THEIR NEUTRAL FORM (CO+ -> #CO)
 ! YOU ONLY NEED TO SPECIFY HERE WHEN YOU WANT TO OVERRIDE THAT BEHAVIOUR
 !
-C3H5+,FREEZE,,#CH3CCH,H,,,1,1,0,,,
-CH3OH2+,FREEZE,,#CH3OH,H,,,1,1,0,,,
-C2N2+,FREEZE,,#NCCN,,,,1,0,0,,,
-SISH+,FREEZE,,#SIS,H,,,1,1,0,,,
-SIH5+,FREEZE,,#SIH4,H,,,1,1,0,,,
-H2CL+,FREEZE,,#HCL,H,,,1,1,0,,,
-!COOCH4+,FREEZE,,#HCOOCH3,,,,1,1,0,,,
-H3O+,FREEZE,,#H2O,H,,,1,0,0,,,
-HCO2+,FREEZE,,#CO2,H,,,1,1,0,,,
-CH5+,FREEZE,,#CH4,H,,,1,1,0,,,
-H2NO+,FREEZE,,#HNO,H,,,1,1,0,,,
-H3S+,FREEZE,,#H2S,H,,,1,1,0,,,
-H2CSH+,FREEZE,,#H2CS,H,,,1,1,0,,,
-HSO+,FREEZE,,#SO,H,,,1,1,0,,,
-OCSH+,FREEZE,,#OCS,H,,,1,1,0,,,
-NH4+,FREEZE,,#NH3,H,,,1,1,0,,,
-HCNH+,FREEZE,,#HCN,H,,,1,1,0,,,
-N2H+,FREEZE,,#N2,H,,,1,1,0,,,
-HNS+,FREEZE,,#NS,H,,,1,1,0,,,
-C3+,FREEZE,,#C2,C,,,1,1,0,,,
-HOSO+,FREEZE,,#SO2,H,,,1,1,0,,,
-SIOH+,FREEZE,,#HSIO,,,,1,1,0,,,
-#HSIO,DESORB,,SIOH+,,,,1,1,0,,,
-HOC+,FREEZE,,#HCO,,,,1.0,1,0,,,
+C3H5+,FREEZE,,#CH3CCH,H,,,1,1,0,,,,
+CH3OH2+,FREEZE,,#CH3OH,H,,,1,1,0,,,,
+C2N2+,FREEZE,,#NCCN,,,,1,0,0,,,,
+SISH+,FREEZE,,#SIS,H,,,1,1,0,,,,
+SIH5+,FREEZE,,#SIH4,H,,,1,1,0,,,,
+H2CL+,FREEZE,,#HCL,H,,,1,1,0,,,,
+!COOCH4+,FREEZE,,#HCOOCH3,,,,1,1,0,,,,
+H3O+,FREEZE,,#H2O,H,,,1,0,0,,,,
+HCO2+,FREEZE,,#CO2,H,,,1,1,0,,,,
+CH5+,FREEZE,,#CH4,H,,,1,1,0,,,,
+H2NO+,FREEZE,,#HNO,H,,,1,1,0,,,,
+H3S+,FREEZE,,#H2S,H,,,1,1,0,,,,
+H2CSH+,FREEZE,,#H2CS,H,,,1,1,0,,,,
+HSO+,FREEZE,,#SO,H,,,1,1,0,,,,
+OCSH+,FREEZE,,#OCS,H,,,1,1,0,,,,
+NH4+,FREEZE,,#NH3,H,,,1,1,0,,,,
+HCNH+,FREEZE,,#HCN,H,,,1,1,0,,,,
+N2H+,FREEZE,,#N2,H,,,1,1,0,,,,
+HNS+,FREEZE,,#NS,H,,,1,1,0,,,,
+C3+,FREEZE,,#C2,C,,,1,1,0,,,,
+HOSO+,FREEZE,,#SO2,H,,,1,1,0,,,,
+SIOH+,FREEZE,,#HSIO,,,,1,1,0,,,,
+#HSIO,DESORB,,SIOH+,,,,1,1,0,,,,
+HOC+,FREEZE,,#HCO,,,,1.0,1,0,,,,
 !
-C2N,FREEZE,,#CH3CNH,,,,1,0,0,,,
-C2N+,FREEZE,,#CH3CNH,,,,1,1,0,,,
-C3N,FREEZE,,#HC3N,,,,1,0,0,,,
-C2NH+,FREEZE,,#CH3CNH,,,,1,1,0,,,
-
+C2N,FREEZE,,#CH3CNH,,,,1,0,0,,,,
+C2N+,FREEZE,,#CH3CNH,,,,1,1,0,,,,
+C3N,FREEZE,,#HC3N,,,,1,0,0,,,,
+C2NH+,FREEZE,,#CH3CNH,,,,1,1,0,,,,
+!
 ! Handle HEH and H3
-H3+,FREEZE,,#H,#H,#H,,1,1,0,,,
-HEH+,FREEZE,,#H,#HE,,,1,1,0,,,
+H3+,FREEZE,,#H,#H,#H,,1,1,0,,,,
+HEH+,FREEZE,,#H,#HE,,,1,1,0,,,,

@@ -5,7 +5,7 @@ MODULE RATES
     USE network
     USE physicscore
     USE SurfaceReactions
-    use photoreactions, only: H2PhotoDissRate, COPhotoDissRate, cIonizationRate
+    use photoreactions, only: H2PhotoDissRate, COPhotoDissRate, cIonizationRate, ICE_GAS_PHOTO_CROSSSECTION_RATIO
     IMPLICIT NONE
 
     !Variables controlling chemistry:
@@ -22,7 +22,7 @@ CONTAINS
     SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
         REAL(dp), INTENT(IN) :: abund(:, :), safemantle, h2col, cocol, ccol
         REAL(dp), INTENT(INOUT) :: rate(:)
-        INTEGER(dp):: idx1,idx2
+        INTEGER:: idx1,idx2
         REAL(dp) :: vA,vB
         INTEGER(dp) :: i,j
         ! REAL(dp) :: vdiff(:)
@@ -31,6 +31,7 @@ CONTAINS
         !Assuming the user has temperature changes or uses the desorption features of phase 1,
         !these need to be recalculated every time step.
 
+        ! CRP
         idx1=crpReacs(1)
         idx2=crpReacs(2)
         IF (idx1 .ne. idx2) THEN 
@@ -39,11 +40,21 @@ CONTAINS
         IF (improvedH2CRPDissociation) THEN
             rate(nR_H2_CRP)=h2CRPRate
         END IF
+
         !UV photons, radfield has (factor of 1.7 conversion from habing to Draine)
         idx1=photonReacs(1)
         idx2=photonReacs(2)
         IF (idx1 .ne. idx2) THEN
             rate(idx1:idx2) = alpha(idx1:idx2)*dexp(-gama(idx1:idx2)*av(dstep))*radfield/1.7
+            ! For all solid species, decrease rate by 0.3 (Kalvans 2018)
+            ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
+            DO j=idx1,idx2
+                IF (ANY(bulkList==re1(j))) THEN
+                    rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * (1.0-0.007)**(1.0+0.5/bulkLayersReciprocal)
+                ELSE IF (ANY(surfaceList==re1(j))) THEN
+                    rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO
+                END IF
+            END DO 
         END IF
 
         !Reactions involving cosmic ray induced photon
@@ -51,6 +62,15 @@ CONTAINS
         idx2=crphotReacs(2)
         IF (idx1 .ne. idx2) THEN
             rate(idx1:idx2)=alpha(idx1:idx2)*gama(idx1:idx2)*1.0/(1.0-omega)*zeta*(gasTemp(dstep)/300)**beta(idx1:idx2)
+            ! For all solid species, decrease rate by 0.3 (Kalvans 2018)
+            ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
+            DO j=idx1,idx2
+                IF (ANY(bulkList==re1(j))) THEN
+                    rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * (1-0.007)**(1+0.5/bulkLayersReciprocal)
+                ELSE IF (ANY(surfaceList==re1(j))) THEN
+                    rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO
+                END IF
+            END DO 
         END IF
 
         !freeze out only happens if freezeFactor>0 and depending on evap choice 
@@ -191,7 +211,7 @@ CONTAINS
                         !See Cuppen, Walsh et al. 2017 review (section 4.1)
                         IF (iceList(i) .eq. re1(j)) THEN
                             !Basic rate at which thermal desorption occurs
-                            rate(j)=vdiff(i)*exp(-gama(j)/gasTemp(dstep))
+                            rate(j)=vdiff(i)*exp(-gama(j)/dustTemp(dstep))
                             !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
                             !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                             !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
@@ -211,25 +231,27 @@ CONTAINS
         END IF
 
 
-        !Reactions on surface can be treated considering diffusion of reactants
-        !as in Langmuir-Hinshelwood mechanism
-        !See work of David Quenard 2017 Arxiv:1711.05184
-        !First calculate rate of the diffusion reaction
-        idx1=lhReacs(1)
-        idx2=lhReacs(2)
-        if (idx1 .ne. idx2) THEN
-            if ((gasTemp(dstep) .lt. MAX_GRAIN_TEMP) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
-                DO j=idx1,idx2
-                    rate(j)=diffusionReactionRate(j,gasTemp(dstep))
-                END DO
-                !two routes for every diffusion reaction: products to gas or products remain on surface
-                rate(lhdesReacs(1):lhdesReacs(2))=rate(idx1:idx2)
+    !Reactions on surface can be treated considering diffusion of reactants
+    !as in Langmuir-Hinshelwood mechanism
+    !See work of David Quenard 2017 Arxiv:1711.05184
+    !First calculate rate of the diffusion reaction
+    idx1=lhReacs(1)
+    idx2=lhReacs(2)
+    if (idx1 .ne. idx2) THEN
+        if ((dustTemp(dstep) .lt. MAX_GRAIN_TEMP) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
+            DO j=idx1,idx2
+                rate(j)=diffusionReactionRate(j,dustTemp(dstep))
+            END DO
+            !two routes for every diffusion reaction: products to gas or products remain on surface
+            rate(lhdesReacs(1):lhdesReacs(2))=rate(idx1:idx2)
 
                 !calculate fraction of reaction that goes down desorption route
                 idx1=lhdesReacs(1)
                 idx2=lhdesReacs(2)
                 DO j=idx1,idx2
                     rate(j)=desorptionFraction(j)*rate(j)
+                IF (ANY(bulkList==re1(j))) rate(j)=0.0 ! Bulk species are not able to chemically desorb
+                    IF (ANY(bulkList==re1(j))) rate(j)=0.0 ! Bulk species are not able to chemically desorb
                 END DO
                 !remove that fraction from total rate of the diffusion route
                 rate(lhReacs(1):lhReacs(2))=rate(lhReacs(1):lhReacs(2))-rate(idx1:idx2)
@@ -239,43 +261,44 @@ CONTAINS
             END IF
         END IF
 
-        !Account for Eley-Rideal reactions in a similar way.
-        !First calculate overall rate and then split between desorption and sticking
-        idx1=erReacs(1)
-        idx2=erReacs(2)
-        if (idx1 .ne. idx2) THEN
-            rate(idx1:idx2)=freezeOutRate(idx1,idx2)
-            rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/gasTemp(dstep))
-            rate(erdesReacs(1):erdesReacs(2))=rate(idx1:idx2)
-            !calculate fraction of reaction that goes down desorption route
-            idx1=erdesReacs(1)
-            idx2=erdesReacs(2)
-            DO j=idx1,idx2
-                rate(j)=desorptionFraction(j)*rate(j)
-            END DO
-            !remove that fraction from total rate of the diffusion route
-            rate(erReacs(1):erReacs(2))=rate(erReacs(1):erReacs(2))-rate(idx1:idx2)
-        END IF
+    !Account for Eley-Rideal reactions in a similar way.
+    !First calculate overall rate and then split between desorption and sticking
+    idx1=erReacs(1)
+    idx2=erReacs(2)
+    if (idx1 .ne. idx2) THEN
+        rate(idx1:idx2)=freezeOutRate(idx1,idx2)
+        rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/dustTemp(dstep))
+        rate(erdesReacs(1):erdesReacs(2))=rate(idx1:idx2)
+        !calculate fraction of reaction that goes down desorption route
+        idx1=erdesReacs(1)
+        idx2=erdesReacs(2)
+        DO j=idx1,idx2
+            rate(j)=desorptionFraction(j)*rate(j)
+            IF (ANY(bulkList==re1(j))) rate(j)=0.0 ! Bulk species are not able to chemically desorb
+        END DO
+        !remove that fraction from total rate of the diffusion route
+        rate(erReacs(1):erReacs(2))=rate(erReacs(1):erReacs(2))-rate(idx1:idx2)
+    END IF
 
-        IF (PARAMETERIZE_H2FORM) THEN
-            rate(nR_H2Form_CT)=h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
-            !rate(nR_H2Form_LH)=0.0
-            rate(nR_H2Form_ER)=0.0
-            !rate(nR_H2Form_LHDes)=0.0
-            rate(nR_H2Form_ERDes)=0.0
-        ELSE
-            rate(nR_H2Form_CT)= 0.0
-        END IF
+    IF (PARAMETERIZE_H2FORM) THEN
+        rate(nR_H2Form_CT)=h2FormEfficiency(dustTemp(dstep),dustTemp(dstep))
+        !rate(nR_H2Form_LH)=0.0
+        rate(nR_H2Form_ER)=0.0
+        !rate(nR_H2Form_LHDes)=0.0
+        rate(nR_H2Form_ERDes)=0.0
+    ELSE
+        rate(nR_H2Form_CT)= 0.0
+    END IF
 
-        CALL bulkSurfaceExchangeReactions(rate,gasTemp(dstep))
-        
-        !Basic gas phase reactions 
-        !They only change if temperature has so we can save time with an if statement
-        idx1=twobodyReacs(1)
-        idx2=twobodyReacs(2)
-        IF (lastTemp .ne. gasTemp(dstep)) THEN
-            rate(idx1:idx2) = alpha(idx1:idx2)*((gasTemp(dstep)/300.)**beta(idx1:idx2))*dexp(-gama(idx1:idx2)/gasTemp(dstep)) 
-        END IF
+    CALL bulkSurfaceExchangeReactions(rate,dustTemp(dstep))
+    
+    !Basic gas phase reactions 
+    !They only change if temperature has so we can save time with an if statement
+    idx1=twobodyReacs(1)
+    idx2=twobodyReacs(2)
+    IF (lastTemp .ne. gasTemp(dstep)) THEN
+        rate(idx1:idx2) = alpha(idx1:idx2)*((gasTemp(dstep)/300.)**beta(idx1:idx2))*dexp(-gama(idx1:idx2)/gasTemp(dstep)) 
+    END IF
 
         idx1=ionopol1Reacs(1)
         idx2=ionopol1Reacs(2)
@@ -305,25 +328,25 @@ CONTAINS
 
 
 
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !
-    !Freeze out determined by rate of collisions with grain
-    !No sticking coefficient is used because typical values are >0.95 below 150 K
-    ! eg Le Bourlot et al. 2013, Molpeceres et al. 2020
-    !Above 150 K, thermal desorption will completely remove grain species
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
-        REAL(dp) :: freezeRates(idx2-idx1+1)
-        INTEGER(dp) :: idx1,idx2
-        
-        !additional factor for ions (beta=0 for neutrals)
-        freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
-        IF ((freezeFactor .eq. 0.0) .or. (gasTemp(dstep) .gt. MAX_GRAIN_TEMP)) then
-            freezeRates=0.0
-        ELSE
-            freezeRates=freezeRates*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL&
-            &*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
-        END IF
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!Freeze out determined by rate of collisions with grain
+!No sticking coefficient is used because typical values are >0.95 below 150 K
+! eg Le Bourlot et al. 2013, Molpeceres et al. 2020
+!Above 150 K, thermal desorption will completely remove grain species
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
+    REAL(dp) :: freezeRates(idx2-idx1+1)
+    INTEGER :: idx1,idx2
+    
+    !additional factor for ions (beta=0 for neutrals)
+    freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
+    IF ((freezeFactor .eq. 0.0) .or. (dustTemp(dstep) .gt. MAX_GRAIN_TEMP)) then
+        freezeRates=0.0
+    ELSE
+        freezeRates=freezeRates*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL&
+        &*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
+    END IF
 
     END FUNCTION freezeOutRate
 

@@ -1,0 +1,2 @@
+option('makerates_only', type: 'boolean', value: false,
+       description: 'Skip Fortran compilation, install only makerates Python package')
