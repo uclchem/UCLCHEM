@@ -1,10 +1,12 @@
 import warnings
 import os
 from pathlib import Path
+from abc import ABC
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from numpy.f2py.auxfuncs import throw_error
 
 from uclchemwrap import uclchemwrap as wrap
 from uclchem.analysis import check_element_conservation, create_abundance_plot, plot_species
@@ -39,16 +41,37 @@ class ReactionNamesStore:
 get_reaction_names = ReactionNamesStore()
 
 
-class AbstractModel:
+class AbstractModel(ABC):
+    """Base model class used for inheritance only
+
+    The AbstractModel class serves as an abstract class from which other model classes can be built. It is not intended
+    to be used as a standalone class for running UCLCHEM.
+
+    Args:
+        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+            default values if not provided.
+        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to ["H", "N", "C", "O"].
+        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+            Defaults to None.
+        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+            of the new UCLCHEM model that will be run. Defaults to None
+        timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
+            Defaults to uclchem.constants.TIMEPOINTS
+        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+            being run. Defaults to None.
+    """
     def __init__(self,
                  param_dict: dict = None,
-                 out_species: list = None,
+                 out_species: list = ["H", "N", "C", "O"],
                  starting_chemistry: np.ndarray = None,
                  previous_model: object = None,
                  timepoints: int = TIMEPOINTS,
                  debug: bool = False,
                  read_file: str = None
                  ):
+        """Initiates the model with all common factors found within models"""
         self.param_dict = {}
         self.physics_array = None
         self.chemical_abun_array = None
@@ -95,6 +118,7 @@ class AbstractModel:
         return
 
     def __run__(self):
+        """__run__ resets the Fortran arrays if the model was not read, allowing the arrays to be reused for new runs."""
         if not self.was_read:
             self.physics_array = None
             self.chemical_abun_array = None
@@ -106,9 +130,16 @@ class AbstractModel:
         return
 
     def check_conservation(self,
-                           element_list: list = ["H", "N", "C", "O"],
+                           element_list: list = None,
                            percent: bool = True
                            ):
+        """Utility method to check conservation of the self.out_species abundances if no overriding element_list is provided
+        Args:
+            element_list (list, optional): List of elements to check conservation for. Defaults to self.out_species.
+            percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
+        """
+        if element_list is None:
+            element_list = self.out_species
         if self.param_dict["points"] > 1:
             for i in range(self.param_dict["points"]):
                 print(f"Element conservation report for point {i + 1} of {self.param_dict['points']}")
@@ -117,8 +148,14 @@ class AbstractModel:
             print(f"Element conservation report")
             print(check_element_conservation(self.get_dataframes(0), element_list, percent))
 
-    def check_error(self):
-        """Prints the error message of the model"""
+    def check_error(self, only_error: bool = False):
+        """
+        Prints the error message of the model based on self.success_flag, this method was originally an uclchem.utils function.
+
+        Args:
+            only_error (bool, optional): Flag to inform check_error to only print a message if self.success_flag was
+                not 0
+        """
         if self.success_flag != 0 and self.success_flag is not None:
             errors = {
                 -1: "Parameter read failed. Likely due to a mispelled parameter name, compare your dictionary to the parameters docs.",
@@ -132,24 +169,44 @@ class AbstractModel:
                 print(f'{errors[self.success_flag]}')
             except KeyError:
                 raise ValueError(f"Unknown error code: {self.success_flag}")
-        elif self.success_flag == 0:
+        elif self.success_flag == 0 and not only_error:
             print(f'Model ran successfully.')
         elif self.success_flag is None:
             print(f'Model has not been run.')
 
     def create_abundance_plot(self,
-                              species: list = ["H", "N", "C", "O"],
-                              figsize: tuple[2] = (10, 7),
+                              element_list: list = None,
+                              figsize: tuple[2] = (16, 9),
                               point: int = 0,
                               plot_file=None):
+        """uclchem.analysis.create_abundance_plot wrapper method
+        Args:
+            element_list (list, optional): List of elements to check conservation for. Defaults to  self.out_species.
+            figsize (tuple[2], optional): The figure size to use for matplotlib Defaults to (16, 9).
+            point (int, optional): Integer referring to which point of the UCLCHEM model to use. Defaults to 0.
+        Returns:
+            fig,ax: matplotlib figure and axis objects
+        """
+        if element_list is None:
+            element_list = self.out_species
         if point > self.param_dict["points"]:
             raise Exception("'point' must be less than number of modelled points.")
-        return create_abundance_plot(self.get_dataframes(point), species, figsize, plot_file)
+        return create_abundance_plot(self.get_dataframes(point), element_list, figsize, plot_file)
 
     def get_dataframes(self, point: int = 0, joined: bool = True, with_rates: bool = False):
-        """Convert the output array of "point" to a pandas dataframe
+        """Converts the model physics and chemical_abun arrays from numpy to pandas arrays.
+        Args:
+            point (int, optional): Integer referring to which point of the UCLCHEM model to return as pandas does not support higher
+                than 2D data structures. Defaults to 0.
+            joined (bool, optional): Flag on whether the returned pandas dataframe should be one, or if two dataframes should be
+                returned. One physical, one chemical_abun dataframe. Defaults to True.
+            with_rates (bool, optional): Flag on whether to include reaction rates in the dataframe, and/or as a separate
+                dataframe depending on the value of `joined`. Defaults to False. #TODO Add the code to read rates.
         Returns:
-            _type_: _description_
+            return_df (pandas.DataFrame): Dataframe of the joined arrays for point 'point' if joined = True
+            physics_df (pandas.DataFrame): Dataframe of the physical parameters for point 'point' if joined = False
+            chemistry_df (pandas.DataFrame): Dataframe of the chemical abundances  for point 'point' if joined = False
+            rates_df (pandas.DataFrame): Dataframe of the reaction rates  for point 'point' if joined = False and with_rates = True
         """
         # Create a physical parameter dataframe
         physics_df = pd.DataFrame(
@@ -180,13 +237,25 @@ class AbstractModel:
             else:
                 return physics_df, chemistry_df
 
-    def plot_species(self, ax: plt.axes, species: list[str], point: int = 0, legend: bool = True, **plot_kwargs):
+    def plot_species(self, ax: plt.axes, species: list[str] = None, point: int = 0, legend: bool = True, **plot_kwargs):
+        """uclchem.analysis.plot(species) wrapper method
+        Args:
+            ax (plt.axes):
+            species (list, optional):
+            point (int, optional):
+            legend (bool, optional):
+            plot_kwargs (dict, optional):
+        """
+        if species is None:
+            species = self.out_species
         return plot_species(ax, self.get_dataframes(point), species, legend, **plot_kwargs)
 
     def read_output_file(self, read_file: str, rates_load_file: str = None):
         '''Perform classic output file reading.
         Args:
-            abund_load_file (str): path to file containing a full UCLCHEM output
+            read_file (str): path to file containing a full UCLCHEM output
+            rates_load_file (str, optional): path to file containing the reaction rates output from UCLCHEM. Defaults
+                to None. #TODO Add the code to read the rates files.
         '''
         self.was_read = True
         columns = np.char.strip(np.loadtxt(read_file, delimiter=",", max_rows=1, dtype=str, comments='%'))
@@ -214,12 +283,11 @@ class AbstractModel:
         return
 
     def read_starting_chemistry_output_file(self):
+        """Method to read the starting chemistry from the self.abundLoadFile provided in param_dict"""
         self.starting_chemistry = np.loadtxt(self.abundLoadFile, delimiter=",")
 
     def write_full_output_file(self):
-        '''Perform classic output file writing.
-
-        '''
+        """Perform classic output file writing to the file self.outputFile provided in param_dict"""
         phys = self.physics_array.reshape(-1, self.physics_array.shape[-1])
         chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
         full_array = np.append(phys, chem, axis=1)
@@ -233,6 +301,7 @@ class AbstractModel:
         return
 
     def write_starting_chemistry_output_file(self):
+        """Perform classic starting abundance file writing to the file self.abundSaveFile provided in param_dict"""
         last_timestep_index = self.chemical_abun_array[:, 0, 0].nonzero()[0][-1]
         number_fmt_string = f' {", ".join(["%9.5E"] * len(self.specname.tolist()))}'
         with open(self.abundSaveFile, "wb") as f:
@@ -240,8 +309,8 @@ class AbstractModel:
         return
 
     def _array_clean(self):
-        """
-        Clean the array
+        """Internal Method.
+        Clean the arrays changed by UCLCHEM Fortran code.
         """
         # Find the first element with all the zeros
         last_timestep_index = self.physics_array[:, 0, 0].nonzero()[0][-1]
@@ -255,6 +324,9 @@ class AbstractModel:
         return
 
     def _create_fortran_array(self):
+        """Internal Method.
+        Creates Fortran compliant np.arrays that can be passed to the Fortran part of UCLCHEM.
+        """
         # fencepost problem, need to add 1 to timepoints to account for the 0th timestep
         self.physics_array = np.zeros(
             shape=(self.timepoints + 1, self.param_dict["points"], N_PHYSICAL_PARAMETERS),
@@ -269,6 +341,9 @@ class AbstractModel:
         return
 
     def _create_rates_array(self):
+        """Internal Method.
+        Creates Fortran compliant np.array for rates that can be passed to the Fortran part of UCLCHEM.
+        """
         self.ratesArray = np.zeros(shape=(self.timepoints + 1, self.param_dict["points"], n_reactions),
                                    dtype=np.float64, order="F")
         return
@@ -276,8 +351,13 @@ class AbstractModel:
     def _reform_inputs(self,
                        param_dict: dict,
                        out_species: list):
-        """Copies param_dict so as not to modify user's dictionary. Then reformats out_species from pythonic list
+        """Internal Method.
+        Copies param_dict so as not to modify user's dictionary. Then reformats out_species from pythonic list
         to a string of space separated names for Fortran.
+
+        Args:
+            param_dict (dict): Parameter dictionary passed by the user to the model.
+            out_species (list): List of output species that are considered important for this model.
         """
         if param_dict is None:
             self.param_dict = {}
@@ -304,10 +384,30 @@ class AbstractModel:
         return
 
     def _xarray_conversion(self):
+        """Internal Method. #TODO for Issue #94 add xarray support and conversion.
+                Creates Fortran compliant np.array for rates that can be passed to the Fortran part of UCLCHEM.
+        """
         return
 
 
 class Cloud(AbstractModel):
+    """Cloud model class inheriting from AbstractModel.
+
+    Args:
+        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+            default values found in defaultparameters.f90.
+        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to ["H", "N", "C", "O"].
+        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+            Defaults to None.
+        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+            of the new UCLCHEM model that will be run. Defaults to None
+        timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
+            Defaults to uclchem.constants.TIMEPOINTS
+        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+            being run. Defaults to None.
+    """
     def __init__(self,
                  param_dict: dict = None,
                  out_species: list = None,
@@ -317,6 +417,7 @@ class Cloud(AbstractModel):
                  debug: bool = False,
                  read_file: str = None
                  ):
+        """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
             param_dict,
             out_species,
@@ -330,6 +431,10 @@ class Cloud(AbstractModel):
             self.run()
 
     def run(self):
+        """
+        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
+        check_error, and array_clean are automatically called post model run.
+        """
         super().__run__()
         _, _, _, abunds, _, self.success_flag = wrap.cloud(
             dictionary=self.param_dict,
@@ -343,6 +448,7 @@ class Cloud(AbstractModel):
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
         )
+        self.check_error(only_error=True)
         self._array_clean()
         if self.outputFile is not None:
             self.write_full_output_file()
@@ -351,9 +457,30 @@ class Cloud(AbstractModel):
 
 
 class Collapse(AbstractModel):
+    """Collapse model class inheriting from AbstractModel.
+
+    Args:
+        collapse (str, optional):A string containing the collapse type, options are 'BE1.1', 'BE4', 'filament', or 'ambipolar'.
+            Defaults to 'BE1.1'.
+        physics_output (str, optional): Filename to store physics output, only relevant for 'filament' and 'ambipolar' collapses.
+            If None, no physics output will be saved.
+        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+            default values found in defaultparameters.f90.
+        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to ["H", "N", "C", "O"].
+        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+            Defaults to None.
+        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+            of the new UCLCHEM model that will be run. Defaults to None
+        timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
+            Defaults to uclchem.constants.TIMEPOINTS
+        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+            being run. Defaults to None.
+    """
     def __init__(self,
-                 collapse: str,
-                 physics_output: str,
+                 collapse: str = "BE1.1",
+                 physics_output: str = None,
                  param_dict: dict = None,
                  out_species: list = None,
                  starting_chemistry: np.ndarray = None,
@@ -362,6 +489,9 @@ class Collapse(AbstractModel):
                  debug: bool = False,
                  read_file: str = None
                  ):
+        """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
+        if collapse not in ["filament", "ambipolar"] and physics_output is None:
+            warnings.warn("`physics_output` was None but `collapse` was `filament` or `ambipolar`. No output file will be created.", UserWarning)
         super().__init__(
             param_dict,
             out_species,
@@ -386,6 +516,10 @@ class Collapse(AbstractModel):
             self.run()
 
     def run(self):
+        """
+        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
+        check_error, and array_clean are automatically called post model run.
+        """
         super().__run__()
         _, _, _, abunds, _, self.success_flag = wrap.collapse(
             collapseIn=self.collapse,
@@ -402,6 +536,7 @@ class Collapse(AbstractModel):
             chemicalabunarray=self.chemical_abun_array,
             abundanceStart=self.starting_chemistry,
         )
+        self.check_error(only_error=True)
         self._array_clean()
         if self.outputFile is not None:
             self.write_full_output_file()
@@ -410,9 +545,29 @@ class Collapse(AbstractModel):
 
 
 class PrestellarCore(AbstractModel):
+    """PrestellarCore model class inheriting from AbstractModel. This model type was previously known as hot core.
+
+    Args:
+        temp_indx (int, optional): Used to select the mass of the prestellar core from the following selection
+            [1=1Msun, 2=5, 3=10, 4=15, 5=25,6=60]. Defaults to 1, which is 1 Msun
+        max_temperature (float, optional): Value at which gas temperature will stop increasing. Defaults to 300.0.
+        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+            default values found in defaultparameters.f90.
+        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to ["H", "N", "C", "O"].
+        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+            Defaults to None.
+        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+            of the new UCLCHEM model that will be run. Defaults to None
+        timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
+            Defaults to uclchem.constants.TIMEPOINTS
+        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+            being run. Defaults to None.
+    """
     def __init__(self,
-                 temp_indx,
-                 max_temperature,
+                 temp_indx: int = 1,
+                 max_temperature: float = 300.0,
                  param_dict: dict = None,
                  out_species: list = None,
                  starting_chemistry: np.ndarray = None,
@@ -421,6 +576,7 @@ class PrestellarCore(AbstractModel):
                  debug: bool = False,
                  read_file: str = None
                  ):
+        """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
             param_dict,
             out_species,
@@ -438,6 +594,10 @@ class PrestellarCore(AbstractModel):
             self.run()
 
     def run(self):
+        """
+        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
+        check_error, and array_clean are automatically called post model run.
+        """
         super().__run__()
         _, _, _, abunds, _, self.success_flag = wrap.hot_core(
             temp_indx=self.temp_indx,
@@ -454,6 +614,7 @@ class PrestellarCore(AbstractModel):
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
         )
+        self.check_error(only_error=True)
         self._array_clean()
         if self.outputFile is not None:
             self.write_full_output_file()
@@ -462,8 +623,31 @@ class PrestellarCore(AbstractModel):
 
 
 class CShock(AbstractModel):
+    """C-Shock model class inheriting from AbstractModel.
+
+    Args:
+        shock_vel (float, optional): Velocity of the shock in km/s. Defaults to 10.0.
+        timestep_factor (float, optional): Whilst the time is less than 2 times the dissipation time of shock,
+            timestep is timestep_factor*dissipation time. Essentially controls how well resolved the shock is
+            in your model. Defaults to 0.01.
+        minimum_temperature (float, optional): Minimum post-shock temperature. Defaults to 0.0 (no minimum). The
+            shocked gas typically cools to `initialTemp` if this is not set.
+        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+            default values found in defaultparameters.f90.
+        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to ["H", "N", "C", "O"].
+        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+            Defaults to None.
+        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+            of the new UCLCHEM model that will be run. Defaults to None
+        timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
+            Defaults to uclchem.constants.TIMEPOINTS
+        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+            being run. Defaults to None.
+    """
     def __init__(self,
-                 shock_vel: float = None,
+                 shock_vel: float = 10.0,
                  timestep_factor: float = 0.01,
                  minimum_temperature: float = 0.0,
                  param_dict: dict = None,
@@ -474,6 +658,7 @@ class CShock(AbstractModel):
                  debug: bool = False,
                  read_file: str = None
                  ):
+        """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
             param_dict,
             out_species,
@@ -493,6 +678,10 @@ class CShock(AbstractModel):
             self.run()
 
     def run(self):
+        """
+        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
+        check_error, and array_clean are automatically called post model run.
+        """
         super().__run__()
         _, _, _, abunds, self.dissipation_time, _, self.success_flag = wrap.cshock(
             shock_vel=self.shock_vel,
@@ -509,6 +698,7 @@ class CShock(AbstractModel):
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
         )
+        self.check_error(only_error=True)
         if self.success_flag < 0:
             self.dissipation_time = None
         self._array_clean()
@@ -519,8 +709,26 @@ class CShock(AbstractModel):
 
 
 class JShock(AbstractModel):
+    """J-Shock model class inheriting from AbstractModel.
+
+    Args:
+        shock_vel (float): Velocity of the shock. Defaults to 10.0.
+        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+            default values found in defaultparameters.f90.
+        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to ["H", "N", "C", "O"].
+        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+            Defaults to None.
+        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+            of the new UCLCHEM model that will be run. Defaults to None
+        timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
+            Defaults to uclchem.constants.TIMEPOINTS
+        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+            being run. Defaults to None.
+    """
     def __init__(self,
-                 shock_vel: float = None,
+                 shock_vel: float = 10.0,
                  param_dict: dict = None,
                  out_species: list = None,
                  starting_chemistry: np.ndarray = None,
@@ -529,6 +737,7 @@ class JShock(AbstractModel):
                  debug: bool = False,
                  read_file: str = None
                  ):
+        """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
             param_dict,
             out_species,
@@ -545,6 +754,10 @@ class JShock(AbstractModel):
             self.run()
 
     def run(self):
+        """
+        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
+        check_error, and array_clean are automatically called post model run.
+        """
         super().__run__()
         _, _, _, abunds, _, self.success_flag = wrap.jshock(
             shock_vel=self.shock_vel,
@@ -559,81 +772,7 @@ class JShock(AbstractModel):
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
         )
-        self._array_clean()
-        if self.outputFile is not None:
-            self.write_full_output_file()
-        if self.abundSaveFile is not None:
-            self.write_starting_chemistry_output_file()
-
-
-class Model(AbstractModel):
-    def __init__(self,
-                 param_dict: dict = None,
-                 out_species: list = None,
-                 starting_chemistry: np.ndarray = None,
-                 previous_model: AbstractModel = None,
-                 time_array: np.array = None,
-                 density_array: np.array = None,
-                 gas_temperature_array: np.array = None,
-                 dust_temperature_array: np.array = None,
-                 zeta_array: np.array = None,
-                 radfield_array: np.array = None,
-                 debug: bool = False,
-                 read_file: str = None
-                 ):
-        super().__init__(
-            param_dict,
-            out_species,
-            starting_chemistry,
-            previous_model,
-            len(time_array),
-            debug,
-            read_file
-        )
-        if read_file is None:
-            self.postprocess_arrays = dict(
-                timegrid=time_array,
-                densgrid=density_array,
-                gastempgrid=gas_temperature_array,
-                dusttempgrid=dust_temperature_array,
-                radfieldgrid=radfield_array,
-                zetagrid=zeta_array
-            )
-            for key, array in self.postprocess_arrays.items():
-                if array is not None:
-                    # Convert single values into arrays that can be used
-                    if isinstance(array, float):
-                        array = np.ones(shape=time_array.shape) * array
-                    # Assure lengths are correct
-                    assert len(array) == len(time_array), "All arrays must be the same length"
-                    # Ensure Fortran memory
-                    array = np.asfortranarray(array, dtype=np.float64)
-                    self.postprocess_arrays[key] = array
-            self.time_array = time_array
-            if not self.give_start_abund:
-                self.starting_chemistry = np.zeros(
-                    shape=n_species,
-                    dtype=np.float64,
-                    order="F",
-                )
-            self.run()
-
-    def run(self):
-        super().__run__()
-        _, _, _, abunds, _, self.success_flag = wrap.postprocess(
-            dictionary=self.param_dict,
-            outspeciesin=self.out_species,
-            timepoints=self.timepoints,
-            gridpoints=self.param_dict["points"],
-            returnarray=True,
-            returnrates=True,
-            givestartabund=self.give_start_abund,
-            physicsarray=self.physics_array,
-            chemicalabunarray=self.chemical_abun_array,
-            abundancestart=self.starting_chemistry,
-            usecoldens=False,
-            **self.postprocess_arrays,
-        )
+        self.check_error(only_error=True)
         self._array_clean()
         if self.outputFile is not None:
             self.write_full_output_file()
@@ -642,6 +781,36 @@ class Model(AbstractModel):
 
 
 class Postprocess(AbstractModel):
+    """Postprocess represents a model class with additional controls. It inherits from AbstractModel.
+
+    Postprocess allows for additional controls of the time, density, gas temperature, radiation field, cosmic ray
+    ionisation rate, atomic and molecular Hydrogen, CO and C column densities through the use of arrays. Using these
+    arrays allows for experimental model crafting beyond the standard models in other model classes.
+
+    Args:
+        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+            default values found in defaultparameters.f90.
+        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to ["H", "N", "C", "O"].
+        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+            Defaults to None.
+        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+            of the new UCLCHEM model that will be run. Defaults to None
+        time_array (np.array, optional): Represents the time grid to be used for the model. This sets the target timesteps for
+            which outputs will be stored.
+        density_array (np.array, optional): Represents the value of the density at different timepoints found in time_array.
+        gas_temperature_array (np.array, optional): Represents the value of the gas temperature at different timepoints found in time_array.
+        dust_temperature_array (np.array, optional):Represents the value of the dust temperature at different timepoints found in time_array.
+        zeta_array (np.array, optional): Represents the value of the cosmic ray ionisation rate at different timepoints found in time_array.
+        radfield_array (np.array, optional): Represents the value of the UV radiation field at different timepoints found in time_array.
+        coldens_H_array (np.array, optional): Represents the value of the column density of H at different timepoints found in time_array.
+        coldens_H2_array (np.array, optional): Represents the value of the column density of H2 at different timepoints found in time_array.
+        coldens_CO_array (np.array, optional): Represents the value of the column density of CO at different timepoints found in time_array.
+        coldens_C_array (np.array, optional): Represents the value of the column density of C at different timepoints found in time_array.
+        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+            being run. Defaults to None.
+    """
     def __init__(self,
                  param_dict: dict = None,
                  out_species: list = None,
@@ -660,6 +829,7 @@ class Postprocess(AbstractModel):
                  debug: bool = False,
                  read_file: str = None
                  ):
+        """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
             param_dict,
             out_species,
@@ -669,7 +839,7 @@ class Postprocess(AbstractModel):
             debug,
             read_file
         )
-        if read_file is None:
+        if read_file is None and time_array is not None:
             self.postprocess_arrays = dict(
                 timegrid=time_array,
                 densgrid=density_array,
@@ -701,8 +871,14 @@ class Postprocess(AbstractModel):
                     order="F",
                 )
             self.run()
+        elif time_array is None and read_file is None:
+            throw_error(f"time_array must be an array if read_file is None. A value of {time_array} with type {type(time_array)} was given.")
 
     def run(self):
+        """
+        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
+        check_error, and array_clean are automatically called post model run.
+        """
         super().__run__()
         _, _, _, abunds, _, self.success_flag = wrap.postprocess(
             dictionary=self.param_dict,
@@ -718,6 +894,116 @@ class Postprocess(AbstractModel):
             usecoldens=self.coldens_H_array is not None,
             **self.postprocess_arrays,
         )
+        self.check_error(only_error=True)
+        self._array_clean()
+        if self.outputFile is not None:
+            self.write_full_output_file()
+        if self.abundSaveFile is not None:
+            self.write_starting_chemistry_output_file()
+
+
+class Model(AbstractModel):
+    """Model, like Postprocess, represents a model class with additional controls. It inherits from AbstractModel.
+
+    Model follows the same logic as Postprocess but without the coldens Arguments. It allows for additional controls of
+    the time, density, gas temperature, radiation field, and cosmic ray ionisation rate through the use of arrays.
+    Using these arrays allows for experimental model crafting beyond the standard models in other model classes.
+
+    Args:
+        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+            default values found in defaultparameters.f90.
+        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to ["H", "N", "C", "O"].
+        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+            Defaults to None.
+        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+            of the new UCLCHEM model that will be run. Defaults to None
+        time_array (np.array, optional): Represents the time grid to be used for the model. This sets the target timesteps for
+            which outputs will be stored. While listed as optional, this is only done to allow
+        density_array (np.array, optional): Represents the value of the density at different timepoints found in time_array.
+        gas_temperature_array (np.array, optional): Represents the value of the gas temperature at different timepoints found in time_array.
+        dust_temperature_array (np.array, optional):Represents the value of the dust temperature at different timepoints found in time_array.
+        zeta_array (np.array, optional): Represents the value of the cosmic ray ionisation rate at different timepoints found in time_array.
+        radfield_array (np.array, optional): Represents the value of the UV radiation field at different timepoints found in time_array.
+        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+            being run. Defaults to None.
+    """
+    def __init__(self,
+                 param_dict: dict = None,
+                 out_species: list = None,
+                 starting_chemistry: np.ndarray = None,
+                 previous_model: AbstractModel = None,
+                 time_array: np.array = None,
+                 density_array: np.array = None,
+                 gas_temperature_array: np.array = None,
+                 dust_temperature_array: np.array = None,
+                 zeta_array: np.array = None,
+                 radfield_array: np.array = None,
+                 debug: bool = False,
+                 read_file: str = None
+                 ):
+        """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
+        super().__init__(
+            param_dict,
+            out_species,
+            starting_chemistry,
+            previous_model,
+            len(time_array),
+            debug,
+            read_file
+        )
+        if read_file is None and time_array is not None:
+            self.time_array = time_array
+            self.postprocess_arrays = dict(
+                timegrid=time_array,
+                densgrid=density_array,
+                gastempgrid=gas_temperature_array,
+                dusttempgrid=dust_temperature_array,
+                radfieldgrid=radfield_array,
+                zetagrid=zeta_array
+            )
+            for key, array in self.postprocess_arrays.items():
+                if array is not None:
+                    # Convert single values into arrays that can be used
+                    if isinstance(array, float):
+                        array = np.ones(shape=time_array.shape) * array
+                    # Assure lengths are correct
+                    assert len(array) == len(time_array), "All arrays must be the same length"
+                    # Ensure Fortran memory
+                    array = np.asfortranarray(array, dtype=np.float64)
+                    self.postprocess_arrays[key] = array
+            if not self.give_start_abund:
+                self.starting_chemistry = np.zeros(
+                    shape=n_species,
+                    dtype=np.float64,
+                    order="F",
+                )
+            self.run()
+        elif time_array is None and read_file is None:
+            throw_error(f"time_array must be an array if read_file is None. A value of {time_array} with type {type(time_array)} was given.")
+
+    def run(self):
+        """
+        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
+        check_error, and array_clean are automatically called post model run.
+        """
+        super().__run__()
+        _, _, _, abunds, _, self.success_flag = wrap.postprocess(
+            dictionary=self.param_dict,
+            outspeciesin=self.out_species,
+            timepoints=self.timepoints,
+            gridpoints=self.param_dict["points"],
+            returnarray=True,
+            returnrates=True,
+            givestartabund=self.give_start_abund,
+            physicsarray=self.physics_array,
+            chemicalabunarray=self.chemical_abun_array,
+            abundancestart=self.starting_chemistry,
+            usecoldens=False,
+            **self.postprocess_arrays,
+        )
+        self.check_error(only_error=True)
         self._array_clean()
         if self.outputFile is not None:
             self.write_full_output_file()
