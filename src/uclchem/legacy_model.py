@@ -152,7 +152,7 @@ def outputArrays_to_DataFrame(
 
 
 # noinspection PyUnresolvedReferences
-def legacy_cloud(
+def cloud(
         param_dict=None,
         out_species=None,
         return_array=False,
