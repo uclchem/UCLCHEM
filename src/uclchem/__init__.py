@@ -6,8 +6,9 @@
 
 from . import analysis as analysis
 from . import model as model
+from . import legacy_model as legacy_model
+from . import trialmodel as trialmodel
 from . import plot as plot
 from . import tests as tests
 from . import utils as utils
 from . import version as version
-from . import trialmodel as trialmodel
