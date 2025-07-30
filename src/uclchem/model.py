@@ -178,7 +178,7 @@ class AbstractModel(ABC):
             print(f'Model has not been run.')
 
     def create_abundance_plot(self,
-                              element_list: list = None,
+                              species: list = None,
                               figsize: tuple[2] = (16, 9),
                               point: int = 0,
                               plot_file=None):
@@ -190,12 +190,12 @@ class AbstractModel(ABC):
         Returns:
             fig,ax: matplotlib figure and axis objects
         """
-        if element_list is None:
-            element_list = self.out_species_list
+        if species is None:
+            species = self.out_species_list
 
         if point > self.param_dict["points"]:
             raise Exception("'point' must be less than number of modelled points.")
-        return create_abundance_plot(self.get_dataframes(point), element_list, figsize, plot_file)
+        return create_abundance_plot(self.get_dataframes(point), species, figsize, plot_file)
 
     def get_dataframes(self, point: int = 0, joined: bool = True, with_rates: bool = False):
         """Converts the model physics and chemical_abun arrays from numpy to pandas arrays.
