@@ -12,7 +12,6 @@ memory, bypassing the file system entirely.
 
 import uclchem
 import matplotlib.pyplot as plt
-import os
 
 '''
 ## The Prestellar Core

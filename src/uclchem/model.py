@@ -41,6 +41,7 @@ class ReactionNamesStore:
 get_reaction_names = ReactionNamesStore()
 
 
+# noinspection PyUnresolvedReferences
 class AbstractModel(ABC):
     """Base model class used for inheritance only
 
@@ -50,7 +51,7 @@ class AbstractModel(ABC):
     Args:
         param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
             default values if not provided.
-        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
+        out_specie_list (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
             provided. Defaults to ["H", "N", "C", "O"].
         starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
             Defaults to None.
@@ -396,6 +397,7 @@ class AbstractModel(ABC):
         return
 
 
+# noinspection PyUnresolvedReferences
 class Cloud(AbstractModel):
     """Cloud model class inheriting from AbstractModel.
 
@@ -451,6 +453,7 @@ class Cloud(AbstractModel):
             returnrates=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
+            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
         )
@@ -462,6 +465,7 @@ class Cloud(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
+# noinspection PyUnresolvedReferences
 class Collapse(AbstractModel):
     """Collapse model class inheriting from AbstractModel.
 
@@ -539,6 +543,7 @@ class Collapse(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
+            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
             abundanceStart=self.starting_chemistry,
         )
@@ -550,6 +555,7 @@ class Collapse(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
+# noinspection PyUnresolvedReferences
 class PrestellarCore(AbstractModel):
     """PrestellarCore model class inheriting from AbstractModel. This model type was previously known as hot core.
 
@@ -628,6 +634,7 @@ class PrestellarCore(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
+# noinspection PyUnresolvedReferences
 class CShock(AbstractModel):
     """C-Shock model class inheriting from AbstractModel.
 
@@ -701,6 +708,7 @@ class CShock(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
+            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
         )
@@ -714,6 +722,7 @@ class CShock(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
+# noinspection PyUnresolvedReferences
 class JShock(AbstractModel):
     """J-Shock model class inheriting from AbstractModel.
 
@@ -775,6 +784,7 @@ class JShock(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
+            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
         )
@@ -786,6 +796,7 @@ class JShock(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
+# noinspection PyUnresolvedReferences
 class Postprocess(AbstractModel):
     """Postprocess represents a model class with additional controls. It inherits from AbstractModel.
 
@@ -895,6 +906,7 @@ class Postprocess(AbstractModel):
             returnrates=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
+            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
             usecoldens=self.coldens_H_array is not None,
@@ -908,6 +920,7 @@ class Postprocess(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
+# noinspection PyUnresolvedReferences
 class Model(AbstractModel):
     """Model, like Postprocess, represents a model class with additional controls. It inherits from AbstractModel.
 
@@ -1004,6 +1017,7 @@ class Model(AbstractModel):
             returnrates=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
+            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
             usecoldens=False,
@@ -1095,8 +1109,7 @@ def _array_clean(
         physicalParameterArray (np.ndarray): Array with the UCLCHEM physical parameters
         chemicalAbundanceArray (np.ndarray): Array with the output chemical abundances
         specname (np.ndarray): Numpy array with the names of all the species
-        nPhysParam (int): The number of physical parameters you are interested in.
-
+        ratesArray (np.ndarray): Array with the reaction rates.
     Returns:
         np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray:
         The physical parameters, the abundances, overtime species names, the last
@@ -1127,7 +1140,7 @@ def outputArrays_to_DataFrame(
         physicalParameterArray (np.array): Array with the output physical parameters
         chemicalAbundanceArray (np.array): Array with the output chemical abundances
         specname (list): List with the names of all the species
-        physParameter (list): Array with all the physical parameter names
+        ratesArray (np.ndarray): Array with the reaction rates.
 
     Returns:
         _type_: _description_
@@ -1152,6 +1165,7 @@ def outputArrays_to_DataFrame(
     return physics_df, chemistry_df, rates_df
 
 
+# noinspection PyUnresolvedReferences
 def cloud(
         param_dict=None,
         out_species=None,
@@ -1235,6 +1249,7 @@ def cloud(
         return _format_output(n_out, abunds, success_flag)
 
 
+# noinspection PyUnresolvedReferences
 def collapse(
         collapse,
         physics_output,
@@ -1335,6 +1350,7 @@ def collapse(
         return _format_output(n_out, abunds, success_flag)
 
 
+# noinspection PyUnresolvedReferences
 def hot_core(
         temp_indx,
         max_temperature,
@@ -1425,6 +1441,7 @@ def hot_core(
         return _format_output(n_out, abunds, success_flag)
 
 
+# noinspection PyUnresolvedReferences
 def cshock(
         shock_vel,
         timestep_factor=0.01,
@@ -1535,6 +1552,7 @@ def cshock(
         return result
 
 
+# noinspection PyUnresolvedReferences
 def jshock(
         shock_vel,
         param_dict=None,
@@ -1622,6 +1640,7 @@ def jshock(
         return _format_output(n_out, abunds, success_flag)
 
 
+# noinspection PyUnresolvedReferences
 def postprocess(
         param_dict=None,
         out_species=None,

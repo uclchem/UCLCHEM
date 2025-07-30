@@ -25,11 +25,9 @@
 # We'll use an example from work that was published in 2022 [Energizing Star Formation: The Cosmic-Ray Ionization Rate in NGC 253 Derived from ALCHEMI Measurements of H3O+ and SO](https://ui.adsabs.harvard.edu/abs/2022ApJ...931...89H/abstract) to demonstrate the use of the rates coming out of UCLCHEM and how it can be used to draw conclusions about the most important reactions in a network for a given species/behaviour.
 
 import uclchem
-from glob import glob
 from joblib import Parallel, delayed
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 # ## H3O+ and SO
 #

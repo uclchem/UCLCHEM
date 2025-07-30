@@ -94,11 +94,9 @@ def test_static_model_return_dataframe(common_output_directory):
         out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
     )
     physics, chemistry = cloud.get_dataframes(joined=False)
-    assert (
-        cloud.success_flag == 0
-    ), f"Static model returned with nonzero exit code {cloud.success_flag}"
-    physics.to_csv(common_output_directory / "physics_static_array.csv")
-    chemistry.to_csv(common_output_directory / "chemistry_static_array.csv")
+    assert cloud.success_flag == 0, f"Static model returned with nonzero exit code {cloud.success_flag}"
+    physics.to_csv(common_output_directory / "physics_static_dataframe.csv")
+    chemistry.to_csv(common_output_directory / "chemistry_static_dataframe.csv")
 
 
 # Test for running on disk
@@ -207,8 +205,8 @@ def test_collapse_prestellarcore_return_dataframe(common_output_directory):
     )
     physics, chemistry = p_core.get_dataframes(joined=False)
     assert p_core.success_flag == 0, f"Stage 2 returned with nonzero exit code {p_core.success_flag}"
-    physics.to_csv(common_output_directory / "physics_static_array.csv")
-    chemistry.to_csv(common_output_directory / "chemistry_static_array.csv")
+    physics.to_csv(common_output_directory / "physics_static_dataframe.csv")
+    chemistry.to_csv(common_output_directory / "chemistry_static_dataframe.csv")
 
 
 def test_cshock_return_array(common_output_directory):
@@ -265,8 +263,8 @@ def test_cshock_return_dataframe(common_output_directory):
     )
     physics, chemistry = cshock.get_dataframes(joined=False)
     assert (cshock.success_flag == 0), f"Stage 2 cshock returned with nonzero exit code {cshock.success_flag}"
-    physics.to_csv(common_output_directory / "physics_static_array.csv")
-    chemistry.to_csv(common_output_directory / "chemistry_static_array.csv")
+    physics.to_csv(common_output_directory / "physics_static_dataframe.csv")
+    chemistry.to_csv(common_output_directory / "chemistry_static_dataframe.csv")
 
 
 
