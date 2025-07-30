@@ -205,7 +205,7 @@ class AbstractModel(ABC):
             joined (bool, optional): Flag on whether the returned pandas dataframe should be one, or if two dataframes should be
                 returned. One physical, one chemical_abun dataframe. Defaults to True.
             with_rates (bool, optional): Flag on whether to include reaction rates in the dataframe, and/or as a separate
-                dataframe depending on the value of `joined`. Defaults to False. #TODO Add the code to read rates.
+                dataframe depending on the value of `joined`. Defaults to False.
         Returns:
             return_df (pandas.DataFrame): Dataframe of the joined arrays for point 'point' if joined = True
             physics_df (pandas.DataFrame): Dataframe of the physical parameters for point 'point' if joined = False
