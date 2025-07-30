@@ -92,7 +92,6 @@ def test_static_model_return_dataframe(common_output_directory):
     cloud = uclchem.model.Cloud(
         param_dict=params,
         out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
-        return_dataframe=True,
     )
     physics, chemistry = cloud.get_dataframes(joined=False)
     assert (
