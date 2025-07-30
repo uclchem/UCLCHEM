@@ -64,7 +64,7 @@ class AbstractModel(ABC):
     """
     def __init__(self,
                  param_dict: dict = None,
-                 out_species: list = ["H", "N", "C", "O"],
+                 out_specie_list: list = ["H", "N", "C", "O"],
                  starting_chemistry: np.ndarray = None,
                  previous_model: object = None,
                  timepoints: int = TIMEPOINTS,
@@ -73,6 +73,8 @@ class AbstractModel(ABC):
                  ):
         """Initiates the model with all common factors found within models"""
         self.param_dict = {}
+        self.out_species_list = out_specie_list
+        self.out_species = ""
         self.physics_array = None
         self.chemical_abun_array = None
         self.ratesArray = None
@@ -84,24 +86,22 @@ class AbstractModel(ABC):
 
         if read_file is not None:
             self.n_out = None
-            self.out_species = None
             self.timepoints = None
             self.was_read = True
             self.PHYSICAL_PARAMETERS = None
-
             self.give_start_abund = False
             self.next_starting_chemistry = None
+            self._reform_inputs(param_dict, self.out_species_list)
             self.read_output_file(read_file)
         else:
             self.n_out = 0
-            self.out_species = []
             self.timepoints = timepoints
             self.was_read = False
             self.PHYSICAL_PARAMETERS = PHYSICAL_PARAMETERS
             self.outputFile = param_dict.pop("outputFile") if "outputFile" in param_dict else None
             self.abundSaveFile = param_dict.pop("abundSaveFile") if "abundSaveFile" in param_dict else None
             self.abundLoadFile = param_dict.pop("abundLoadFile") if "abundLoadFile" in param_dict else None
-            self._reform_inputs(param_dict, out_species)
+            self._reform_inputs(param_dict, self.out_species_list)
             if "points" not in self.param_dict:
                 self.param_dict["points"] = 1
             if previous_model is None and self.abundLoadFile is None:
@@ -133,13 +133,14 @@ class AbstractModel(ABC):
                            element_list: list = None,
                            percent: bool = True
                            ):
-        """Utility method to check conservation of the self.out_species abundances if no overriding element_list is provided
+        """Utility method to check conservation of the chemical abundances
+
         Args:
-            element_list (list, optional): List of elements to check conservation for. Defaults to self.out_species.
+            element_list (list, optional): List of elements to check conservation for. Defaults to self.out_species_lists.
             percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
         """
         if element_list is None:
-            element_list = self.out_species
+            element_list = self.out_species_list
 
         if self.param_dict["points"] > 1:
             for i in range(self.param_dict["points"]):
@@ -182,14 +183,14 @@ class AbstractModel(ABC):
                               plot_file=None):
         """uclchem.analysis.create_abundance_plot wrapper method
         Args:
-            element_list (list, optional): List of elements to check conservation for. Defaults to  self.out_species.
+            element_list (list, optional): List of elements to check conservation for. Defaults to  self.out_species_list.
             figsize (tuple[2], optional): The figure size to use for matplotlib Defaults to (16, 9).
             point (int, optional): Integer referring to which point of the UCLCHEM model to use. Defaults to 0.
         Returns:
             fig,ax: matplotlib figure and axis objects
         """
         if element_list is None:
-            element_list = self.out_species
+            element_list = self.out_species_list
 
         if point > self.param_dict["points"]:
             raise Exception("'point' must be less than number of modelled points.")
@@ -249,7 +250,7 @@ class AbstractModel(ABC):
             plot_kwargs (dict, optional):
         """
         if species is None:
-            species = self.out_species
+            species = self.out_species_list
         return plot_species(ax, self.get_dataframes(point), species, legend, **plot_kwargs)
 
     def read_output_file(self, read_file: str, rates_load_file: str = None):
@@ -293,8 +294,10 @@ class AbstractModel(ABC):
         phys = self.physics_array.reshape(-1, self.physics_array.shape[-1])
         chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
         full_array = np.append(phys, chem, axis=1)
+        #TODO Move away from the magic numbers seen here.
         string_fmt_string = f'{", ".join(["%10s"] * (len(self.PHYSICAL_PARAMETERS)))}, {", ".join(["%11s"] * len(self.specname.tolist()))}'
         # Magic numbers here to match/improve the formatting of the classic version
+        #TODO Move away from the magic numbers seen here.
         number_fmt_string = f'%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i, {", ".join(["%9.5E"] * len(self.specname.tolist()))}'
         columns = np.array([self.PHYSICAL_PARAMETERS[:-1] + ["point"] + self.specname.tolist()])
         np.savetxt(self.outputFile, columns, fmt=string_fmt_string)
@@ -305,6 +308,7 @@ class AbstractModel(ABC):
     def write_starting_chemistry_output_file(self):
         """Perform classic starting abundance file writing to the file self.abundSaveFile provided in param_dict"""
         last_timestep_index = self.chemical_abun_array[:, 0, 0].nonzero()[0][-1]
+        #TODO Move away from the magic numbers seen here.
         number_fmt_string = f' {", ".join(["%9.5E"] * len(self.specname.tolist()))}'
         with open(self.abundSaveFile, "wb") as f:
             np.savetxt(f, self.chemical_abun_array[last_timestep_index, :, :], fmt=number_fmt_string)
