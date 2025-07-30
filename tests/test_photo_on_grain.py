@@ -123,7 +123,6 @@ def test_photo_on_grain():
     params["freefall"] = False
     params["finalTime"] = 1e6
     params["abstol_min"] = 1e-25
-    params.pop("abundSaveFile")
     params["abundLoadFile"] = f"{TEST_DIR}/startcollapse.dat"
     params["outputFile"] = f"{TEST_DIR}/stage2-full.dat"
     params.pop("columnFile")
