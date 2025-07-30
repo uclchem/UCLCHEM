@@ -1,3 +1,4 @@
+import logging
 from copy import deepcopy
 from typing import Union
 
@@ -25,46 +26,66 @@ reaction_types = [
     "EXRELAX",
 ]
 
+tunneling_reaction_types = [
+    "LH",
+    "LHDES",
+    "ER",
+    "ERDES",
+]
+
+from collections import Counter
+from copy import deepcopy
+
+from uclchem.makerates.species import Species, elementList, elementMass
+
 
 class Reaction:
     def __init__(self, inputRow, reaction_source=None):
         if isinstance(inputRow, Reaction):
             self.set_reactants(inputRow.get_reactants())
             self.set_products(inputRow.get_products())
+            self.check_element_conservation()
+            self.check_charge_conservation()
             self.set_alpha(inputRow.get_alpha())
             self.set_beta(inputRow.get_beta())
             self.set_gamma(inputRow.get_gamma())
             self.set_templow(inputRow.get_templow())
             self.set_temphigh(inputRow.get_temphigh())
+            self.set_reduced_mass(inputRow.get_reduced_mass())
             self.set_extrapolation(inputRow.get_extrapolation())
         else:
             try:
                 self.set_reactants(
                     [
-                        inputRow[0].upper(),
-                        inputRow[1].upper(),
-                        self.NANCheck(inputRow[2]).upper(),
+                        str(inputRow[0]).upper(),
+                        str(inputRow[1]).upper(),
+                        self.NANCheck(str(inputRow[2])).upper(),
                     ]
                 )
                 self.set_products(
                     [
-                        self.NANCheck(inputRow[3].upper()),
-                        self.NANCheck(inputRow[4]).upper(),
-                        self.NANCheck(inputRow[5]).upper(),
-                        self.NANCheck(inputRow[6]).upper(),
+                        self.NANCheck(str(inputRow[3])).upper(),
+                        self.NANCheck(str(inputRow[4])).upper(),
+                        self.NANCheck(str(inputRow[5])).upper(),
+                        self.NANCheck(str(inputRow[6])).upper(),
                     ]
                 )
+                self.check_element_conservation()
+                self.check_charge_conservation()
+                
                 self.set_alpha(float(inputRow[7]))
                 self.set_beta(float(inputRow[8]))
                 self.set_gamma(float(inputRow[9]))
                 self.set_templow(float(inputRow[10]))
                 self.set_temphigh(float(inputRow[11]))
-                self.set_extrapolation(bool(inputRow[12]) if len(inputRow) > 12 else False)
+                if len(inputRow) > 12:
+                    self.set_reduced_mass(float(inputRow[12]))
+                self.set_extrapolation(bool(inputRow[13]) if len(inputRow) > 13 else False)
+                
             except IndexError as error:
                 raise ValueError(
-                    "Input for Reaction should be a list of length 12"
+                    "Input for Reaction should be a list of length 12 with optional 13th entry for reduced mass and 14th for extrapolation flag."
                 ) from error
-
         self.duplicate = False
         self.source = reaction_source  # The source of the reaction, e.g. UMIST, KIDA or user defined
 
@@ -85,8 +106,14 @@ class Reaction:
         ):
             self.beta = 1
 
-    # Simple getters and setters for parsing the inputrow or changing parameters
+        if (
+            self.get_reaction_type() in tunneling_reaction_types
+            and self._reduced_mass == 0.0
+        ):
+            # If the reaction is tunneling based, and no reduced mass was supplied, try to predict it.
+            self.predict_reduced_mass()
 
+    # Simple getters and setters for parsing the inputrow or changing parameters
     def get_reactants(self) -> list[str]:
         """Get the four reactants present in the reaction, padded with NAN for nonexistent
 
@@ -251,6 +278,119 @@ class Reaction:
         """
         return self._temphigh
 
+    def predict_reduced_mass(self) -> None:
+        """Predict the reduced mass of the tunneling particle in this reaction.
+        This is used in the calculation of the tunneling rates.
+        """
+        reac_constituents = []
+        reac_species = []
+        # Get all reactant species and their elemental buildup
+        for reac in self._reactants:
+            if reac in reaction_types:
+                continue
+            specie = Species([reac] + [0] * 6)
+            atoms = specie.find_constituents(quiet=True)
+            reac_species.append(specie)
+            reac_constituents.append(atoms)
+
+        prod_constituents = []
+        prod_species = []
+        # Get all product species and their elemental buildup
+        for prod in self._products:
+            if prod in "NAN":
+                continue
+            specie = Species([prod] + [0] * 6)
+            atoms = specie.find_constituents(quiet=True)
+            prod_species.append(specie)
+            prod_constituents.append(atoms)
+
+        # Get mass and number of reactants and products
+        m_reacs = [reac_specie.get_mass() for reac_specie in reac_species]
+        naive_reduced_mass = m_reacs[0] * m_reacs[1] / (m_reacs[0] + m_reacs[1])
+        n_reacs = len(reac_constituents)
+        n_prods = len(prod_constituents)
+        if n_reacs == n_prods:
+            for i, reac_constituent in enumerate(reac_constituents):
+                # For each reactant, find which product is closest (most similar in buildup) to it.
+                min_total = int(1e10)
+                min_copy = None
+                for j, prod_constituent in enumerate(prod_constituents):
+                    diff = deepcopy(reac_constituent)
+                    diff.subtract(prod_constituent)
+                    total_change = 0
+                    for element in elementList:
+                        total_change += abs(diff[element])
+                    if total_change < min_total:
+                        min_total = total_change
+                        min_index = j
+                        min_diff = diff
+                changing_species = Counter(
+                    {k: c for k, c in min_diff.items() if c != 0}
+                )
+
+                items = changing_species.items()
+                if len(items) == 1:
+                    # Exchange reaction
+                    tuple_items = tuple(items)[0]
+                    if abs(tuple_items[1]) == 1:
+                        # One element is switched
+                        element_index = elementList.index(tuple_items[0])
+                        # Set reduced mass to mass of switched element
+                        reduced_mass = elementMass[element_index]
+                        self.set_reduced_mass(float(reduced_mass))
+                        logging.debug(
+                            f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
+                        )
+                        return
+        elif n_reacs == 2 and n_prods == 1:
+            # Addition reaction
+            if reac_species[0].name.strip("#@") == reac_species[1].name.strip("#@"):
+                # If the two species are the same (e.g. #H+#H-> #H2), set reduced mass to m/2
+                mass = reac_species[0].mass
+                # mass = elementMass[elementList.index(reac_species[0].name.strip("#@"))]
+                reduced_mass = float(mass) / 2.0
+                self.set_reduced_mass(reduced_mass)
+                logging.debug(
+                    f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
+                )
+                return
+            elif any(species == Counter({"H": 1}) for species in reac_constituents):
+                # If one of the species is #H, set reduced mass to 1
+                self.set_reduced_mass(1.0)
+                logging.debug(
+                    f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
+                )
+                return
+            else:
+                pass
+        elif n_reacs == 1 and n_prods == 2:
+            # Splitting reaction. Not in network (also not LH or ER type, so would never get here)
+            pass
+        msg = f"Could not predict reduced mass of '{self}' cleverly.\n"
+        msg += f"Instead, using regular definition with masses of two reactants (mu={naive_reduced_mass:.3})."
+        if self._gamma == 0.0:
+            msg += " (Reaction is barrierless anyway)"
+        logging.warning(msg)
+        self.set_reduced_mass(naive_reduced_mass)
+
+    def set_reduced_mass(self, reduced_mass: float) -> None:
+        """Set the reduced mass to be used to calculate tunneling rate in AMU
+
+        Args:
+            reduced_mass (float): reduced mass of moving atoms
+        """
+        self._reduced_mass = reduced_mass
+
+    def get_reduced_mass(self) -> float:
+        """Get the reduced mass to be used to calculate tunneling rate in AMU
+
+        Returns:
+            float: reduced mass of moving atoms
+        """
+        return self._reduced_mass
+
+    ## C
+
     def NANCheck(self, a):
         """Convert any Falsy statement to a NAN string
 
@@ -300,10 +440,90 @@ class Reaction:
     def get_extrapolation(self) -> bool:
         return self.extrapolate
 
-    def convert_to_bulk(self) -> None:
+    def convert_surf_to_bulk(self) -> None:
         """Convert the surface species to bulk species in place for this reaction."""
         self.set_reactants([reac.replace("#", "@") for reac in self.get_reactants()])
         self.set_products([prod.replace("#", "@") for prod in self.get_products()])
+
+    def check_element_conservation(self) -> None:
+        if self.get_reaction_type() in ["FREEZE", "DESORB"]:
+            return
+
+        counter_reactants = Counter()
+        for reac in self._reactants:
+            if reac in reaction_types:
+                continue
+            if reac in ["NAN", "E-"]:
+                continue
+            specie = Species([reac] + [0] * 6)
+            atoms_counter_specie = specie.find_constituents(quiet=True)
+            counter_reactants += atoms_counter_specie
+
+        counter_products = Counter()
+        for prod in self._products:
+            if prod in reaction_types:
+                continue
+            if prod in ["NAN", "E-"]:
+                continue
+            specie = Species([prod] + [0] * 6)
+            atoms_counter_specie = specie.find_constituents(quiet=True)
+            counter_products += atoms_counter_specie
+
+        if counter_products != counter_reactants:
+            msg = "Elements not conserved in a reaction.\n"
+            msg += f"The following reaction caused this error: {self}.\n"
+            msg += f"Reactants: {counter_reactants}. Products: {counter_products}"
+            raise ValueError(msg)
+        
+    def check_charge_conservation(self) -> None:
+        if self.get_reaction_type() in [
+            "FREEZE",
+            "DESORB",
+            "DESOH2",
+            "DESCR",
+            "DEUVCR",
+            "THERM",
+        ]:
+            return
+        charge_reactants = 0
+        for reac in self._reactants:
+            if reac in ["NAN"]:
+                continue
+            specie = Species([reac] + [0] * 6)
+            charge_reactants += specie.get_charge()
+        charge_products = 0
+        for prod in self._products:
+            if prod in ["NAN"]:
+                continue
+            specie = Species([prod] + [0] * 6)
+            charge_products += specie.get_charge()
+
+        if charge_products != charge_reactants:
+            msg = "Charges not conserved in a reaction.\n"
+            msg += f"The following reaction caused this error: {self}.\n"
+            msg += f"Reactants: {charge_reactants}. Products: {charge_products}"
+            raise ValueError(msg)
+
+
+    def convert_gas_to_surf(self) -> None:
+        """Convert the gas-phase species to surface species in place for this reaction.
+        If any ions are produced, the ion is assumed to become neutral because it is on the surface.
+        If any electrons are produced, they are assumed to be absorbed by the grain."""
+        do_not_convert = reaction_types + ["E-", "NAN"]
+        self.set_reactants(
+            [
+                "#" + reac if reac not in do_not_convert else reac
+                for reac in self.get_reactants()
+            ]
+        )
+        self.set_products(
+            [
+                "#" + prod.replace("+", "")
+                if prod not in do_not_convert
+                else prod.replace("E-", "NAN")
+                for prod in self.get_products()
+            ]
+        )
 
     def __eq__(self, other) -> bool:
         """Check for equality against another reaction based on the products and reactants.
@@ -559,7 +779,8 @@ def _generate_reaction_ode_bit(i: int, species_names: list, body_count: int, rea
         Args:
             i (int): index of reaction in network in python format (counting from 0)
             species_names (list): List of species names so we can find index of reactants in species list
-            three_phase (bool): Bool indicating whether this is three phase network
+            body_count (bool): Number of bodies in the reaction, used to determine how many factors of density to include
+            reactants (list[str]): The reactants of the reaction
         """
         ode_bit = f"+RATE({i + 1})"
         # every body after the first requires a factor of density

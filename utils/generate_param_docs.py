@@ -13,10 +13,15 @@ with open(param_file, "r") as f:
             if line.startswith("!"):
                 if not line.startswith("!!"):
                     output.write(line.replace("!", ""))
+            elif line.startswith(("USE", "MODULE", "IMPLICIT", "END"),):
+                # Do not read the placeholder function that was introduced for f2py
+                continue
+            elif line.startswith("CONTAINS"):
+                break
             else:
                 if "=" in line:
                     new_line = line.split("=")
-                    line = "|" + new_line[0] + "|"
+                    line = "|" + new_line[0].split("::")[-1].strip() + "|"
                     new_line = new_line[1].split("!")
                     line = line + new_line[0] + "|" + new_line[1].strip() + "|\n"
                     output.write(line)

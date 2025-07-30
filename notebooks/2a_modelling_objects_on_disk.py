@@ -1,3 +1,4 @@
+
 '''
 # Advanced Physical Modelling
 
@@ -9,6 +10,7 @@ classic approach, by writing the outputs to files, before passing them to the su
 we calculate the exact same models, but take advantage of the model objects in order to perform all calculations in
 memory, bypassing the file system entirely.
 '''
+
 import uclchem
 import matplotlib.pyplot as plt
 import os

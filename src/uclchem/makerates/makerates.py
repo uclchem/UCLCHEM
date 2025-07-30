@@ -15,6 +15,7 @@ param_list = [
     "database_reaction_type",
     "custom_reaction_file",
     "custom_reaction_type",
+    "add_crp_photo_to_grain",
     "enable_rates_to_disk",
 ]
 
@@ -66,13 +67,14 @@ def run_makerates(
         raise RuntimeError("three_phase=False is deprecated as of UCLCHEM v3.5.0, please remove three_phase=False from your makerates configuration.")
     enable_rates_to_disk = user_params.get("enable_rates_to_disk", False) 
     gas_phase_extrapolation = user_params.get("gas_phase_extrapolation", False)
-    
+    add_crp_photo_to_grain = user_params.get("add_crp_photo_to_grain", False)
     # retrieve the network and the dropped reactions
     network, dropped_reactions = _get_network_from_files(
         reaction_files=reaction_files,
         reaction_types=reaction_types,
         species_file=species_file,
         gas_phase_extrapolation=gas_phase_extrapolation,
+        add_crp_photo_to_grain=add_crp_photo_to_grain,
     )
 
     if write_files:
@@ -147,7 +149,8 @@ def _get_network_from_files(
     species_file: Union[str, bytes, os.PathLike],
     reaction_files: list[Union[str, bytes, os.PathLike]],
     reaction_types: list[str],
-    gas_phase_extrapolation: bool
+    gas_phase_extrapolation: bool,
+    add_crp_photo_to_grain: bool,
 ):
     species_list, user_defined_bulk = io.read_species_file(species_file)
     # Check if reaction and type files are lists, if not, make them lists
@@ -170,6 +173,7 @@ def _get_network_from_files(
         reactions=reactions,
         user_defined_bulk=user_defined_bulk,
         gas_phase_extrapolation=gas_phase_extrapolation,
+        add_crp_photo_to_grain=add_crp_photo_to_grain,
     )
 
     #################################################################################################

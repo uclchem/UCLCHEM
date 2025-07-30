@@ -76,7 +76,7 @@ def read_reaction_file(
             for row in reader:
                 if row[0].startswith("#") or row[0].startswith("!"):
                     continue
-                reaction_row = row[2:4] + [""] + row[4:8] + row[9:]
+                reaction_row = row[2:4] + [""] + row[4:8] + row[9:14] + [""]
                 if check_reaction(reaction_row, keep_list):
                     reactions.append(Reaction(reaction_row, reaction_source="UMIST"))
     elif ftype == "UCL":
@@ -114,6 +114,8 @@ def check_reaction(reaction_row, keep_list) -> bool:
         if reaction_row[10] == "":
             reaction_row[10] = 0.0
             reaction_row[11] = 10000.0
+        if reaction_row[12] == "":
+            reaction_row[12] = 0.0
         return True
     else:
         if reaction_row[1] in ["DESORB", "FREEZE"]:
@@ -262,6 +264,7 @@ def write_outputs(network: Network, output_dir: str = None, rates_to_disk:bool= 
     }
     write_f90_constants(f2py_constants, filename)
     # Write some meta information that can be used to read back in the reactions into Python
+    # TODO: we can update this s.t. we can directly access the f90 constants from the f2py wrapped Fortran codes
     write_python_constants(f2py_constants, "../src/uclchem/constants.py")
 
 
@@ -384,6 +387,7 @@ def write_reactions(fileName, reaction_list) -> None:
         "Gamma",
         "T_min",
         "T_max",
+        "reduced_mass",
         "extrapolate",
     ]
     with open(fileName, "w") as f:
@@ -405,6 +409,7 @@ def write_reactions(fileName, reaction_list) -> None:
                     reaction.get_gamma(),
                     reaction.get_templow(),
                     reaction.get_temphigh(),
+                    reaction.get_reduced_mass(),
                     reaction.get_extrapolation(),
                 ]
             )
@@ -833,6 +838,7 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
     # duplicates = []
     tmins = []
     tmaxs = []
+    reduced_masses = []
     extrapolations = []
 
     # store important reactions
@@ -857,6 +863,7 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
         #     duplicates.append(i + 1)
         tmaxs.append(reaction.get_temphigh())
         tmins.append(reaction.get_templow())
+        reduced_masses.append(reaction.get_reduced_mass())
         reacTypes.append(reaction.get_reaction_type())
         extrapolations.append(reaction.get_extrapolation())
     # if len(duplicates) == 0:
@@ -896,6 +903,9 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
     # openFile.write(array_to_string("\tduplicates", duplicates, type="int", parameter=True))
     openFile.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
     openFile.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
+    openFile.write(
+        array_to_string("\treducedMasses", reduced_masses, type="float", parameter=True)
+    )
     openFile.write(array_to_string("\tExtrapolateRates", extrapolations, type="logical", parameter=True))
 
     reacTypes = np.asarray(reacTypes)

@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.17.2
 #   kernelspec:
-#     display_name: UCLCHEM 3.4.0 Release Candidate
+#     display_name: Python 3
 #     language: python
-#     name: uclchem_rc3.4.0
+#     name: python3
 # ---
 
 # # Running a Grid
@@ -54,7 +54,6 @@ model_table.head()
 # ### Set up the model
 # Next, we need a function that will run our model. We write a quick function that takes a row from our dataframe and uses it to populate a parameter dictionary for UCLCHEM and then run a cloud model. We can then map our dataframe to that function.
 
-
 def run_model(row):
     # basic set of parameters we'll use for this grid.
     ParameterDictionary = {
@@ -66,12 +65,13 @@ def run_model(row):
         "outputFile": row.outputFile,
         "finalTime": 1.0e6,
         "baseAv": 10,
+        "abstol_min": 1e-22,
     }
     result = uclchem.model.cloud(param_dict=ParameterDictionary)
     return result[0]  # just the integer error code
 
 
-# ### Run Grid
+# ### Run Grid 
 #
 # #### The Simple Way
 # We can use pandas apply to simply pass each row to our helper function in turn. This will take some time since we're running the models one by one. I'll use the `head` function just to run five rows as an example here.
@@ -90,7 +90,6 @@ results = Parallel(n_jobs=4, verbose=100)(
 
 # ## Checking Your Grid
 # After running, we should do two things. First, let's add `results` to our dataframe as a new column. Positive results mean a successful UCLCHEM run and negative ones are unsuccessful. Then we can run each model through `check_element_conservation` to check the integration was successful. We'll use both these things to flag models that failed in some way.
-
 
 def element_check(output_file):
     df = uclchem.analysis.read_output_file(output_file)
@@ -125,7 +124,7 @@ def run_prelim(density):
         "endatfinaldensity": True,
         "freefall": True,
         "initialDens": 1e2,
-        "finalDens": density,
+        "finalDens": float(density),
         "initialTemp": 10.0,
         "abundSaveFile": f"../grid_folder/starts/{density:.0f}.csv",
         "baseAv": 1,
@@ -139,13 +138,14 @@ def run_model(row):
     ParameterDictionary = {
         "endatfinaldensity": False,
         "freefall": False,
-        "initialDens": row.density,
+        "initialDens": float(row.density),
         "initialTemp": 10.0,
         "outputFile": row.outputFile,
         "abundLoadFile": f"../grid_folder/starts/{row.density:.0f}.csv",
         "finalTime": 1.0e5,
-        "abstol_factor": 1e-18,
-        "reltol": 1e-12,
+        "abstol_factor": 1e-14,
+        "abstol_min": 1e-20,
+        "reltol": 1e-6,
         "baseAv": 1,
     }
     result = uclchem.model.cshock(
@@ -200,4 +200,6 @@ model_table
 # There are many ways to run grids of models and users will naturally develop their own methods. This notebook is just a simple example of how to run UCLCHEM for many parameter combinations whilst producing a useful output (the model_table) to keep track of all the combinations that were run. In a real script, we'd save the model file to csv at the end.
 #
 # For much larger grids, it's recommended that you find a way to make your script robust to failure. Over a huge range of parameters, it is quite likely UCLCHEM will hit integration trouble for at least a few parameter combinations. Very occasionally, UCLCHEM will get caught in a loop where it fails to integrate and cannot adjust its strategy to manage it. This isn't a problem for small grids as the model can be stopped and the tolerances adjusted. However, for very large grids, you may end up locking all threads as they each get stuck on a different model. The best solution we've found for this case is to add a check so that models in your dataframe are skipped if their file already exists, this allows you to stop and restart the grid script as needed.
+#
+
 #
