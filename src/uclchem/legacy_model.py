@@ -748,4 +748,3 @@ def postprocess(
         )
     else:
         return _format_output(n_out, abunds, success_flag)
-        return _format_output(n_out, abunds, success_flag)

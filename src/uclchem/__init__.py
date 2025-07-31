@@ -5,8 +5,9 @@
 """
 
 from . import analysis as analysis
+# This following contains the virtual submodule `functional`, which allows for calling the new API in the legacy format.
 from . import model as model
-from . import legacy_model as legacy_model
+#from . import legacy_model as legacy_model
 from . import trialmodel as trialmodel
 from . import plot as plot
 from . import tests as tests
