@@ -37,15 +37,15 @@ jobs:
       run: |
         pytest tests/test_install.py
 
-    - name: Run ode conservation test (not enabled by default)
+    - name: Run ode conservation test
       run: |
         pytest -n auto tests/test_ode_conservation.py
 
-    - name: Run standard stages run (not enabled by default)
+    - name: Run standard stages run
       run: |
         pytest -n auto tests/test_run_stages.py
 
-    - name: Run photo on grains (not enabled by default)
+    - name: Run photo on grains (run unit-tests to verify photo_on_grains is not broken by changes)
       run: |
         pytest -n auto tests/test_photo_on_grain.py
 
