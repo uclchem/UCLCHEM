@@ -42,7 +42,6 @@ class ReactionNamesStore():
 get_reaction_names = ReactionNamesStore()
 
 
-# noinspection PyUnresolvedReferences
 class AbstractModel(ABC):
     """Base model class used for inheritance only
 
@@ -399,7 +398,6 @@ class AbstractModel(ABC):
         return
 
 
-# noinspection PyUnresolvedReferences
 class Cloud(AbstractModel):
     """Cloud model class inheriting from AbstractModel.
 
@@ -472,7 +470,6 @@ class Cloud(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
-# noinspection PyUnresolvedReferences
 class Collapse(AbstractModel):
     """Collapse model class inheriting from AbstractModel.
 
@@ -567,7 +564,6 @@ class Collapse(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
-# noinspection PyUnresolvedReferences
 class PrestellarCore(AbstractModel):
     """PrestellarCore model class inheriting from AbstractModel. This model type was previously known as hot core.
 
@@ -651,7 +647,6 @@ class PrestellarCore(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
-# noinspection PyUnresolvedReferences
 class CShock(AbstractModel):
     """C-Shock model class inheriting from AbstractModel.
 
@@ -743,7 +738,6 @@ class CShock(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
-# noinspection PyUnresolvedReferences
 class JShock(AbstractModel):
     """J-Shock model class inheriting from AbstractModel.
 
@@ -822,7 +816,6 @@ class JShock(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
-# noinspection PyUnresolvedReferences
 class Postprocess(AbstractModel):
     """Postprocess represents a model class with additional controls. It inherits from AbstractModel.
 
@@ -951,7 +944,6 @@ class Postprocess(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
-# noinspection PyUnresolvedReferences
 class Model(AbstractModel):
     """Model, like Postprocess, represents a model class with additional controls. It inherits from AbstractModel.
 

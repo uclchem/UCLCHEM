@@ -1,8 +1,10 @@
 import os
 import sys
+import json
 import types
 import warnings
 import numpy as np
+import xarray as xr
 import pandas as pd
 from abc import ABC
 from pathlib import Path
@@ -41,8 +43,10 @@ class ReactionNamesStore():
 
 get_reaction_names = ReactionNamesStore()
 
+#TODO make sure multipoint model to model works.
+#TODO Add a way to load a model without specifying the class type.
 
-# noinspection PyUnresolvedReferences
+
 class AbstractModel(ABC):
     """Base model class used for inheritance only
 
@@ -73,13 +77,14 @@ class AbstractModel(ABC):
                  debug: bool = False,
                  read_file: str = None
                  ):
+        self._data = xr.Dataset()
         """Initiates the model with all common factors found within models"""
         self.param_dict = {}
         self.out_species_list = out_specie_list
         self.out_species = ""
         self.physics_array = None
         self.chemical_abun_array = None
-        self.ratesArray = None
+        self.rates_array = None
         self.out_species_abundances = None
         self.full_array = None
         self.debug = debug
@@ -87,49 +92,127 @@ class AbstractModel(ABC):
         specname = wrap.get_specname()
         self.specname = np.array([x.strip() for x in specname.astype(str) if x != ""])
 
+        self.n_out = 0 if read_file is None else None
+        self.timepoints = timepoints if read_file is None else None
+        self.was_read = False if read_file is None else True
+        self.PHYSICAL_PARAMETERS = PHYSICAL_PARAMETERS if read_file is None else None
+
+        self.outputFile = param_dict.pop("outputFile") if "outputFile" in param_dict else None
+        self.abundSaveFile = param_dict.pop("abundSaveFile") if "abundSaveFile" in param_dict else None
+        self.abundLoadFile = param_dict.pop("abundLoadFile") if "abundLoadFile" in param_dict else None
+
+        self._reform_inputs(param_dict, self.out_species_list)
+        if "points" not in self.param_dict:
+            self.param_dict["points"] = 1
+
+        if previous_model is None and self.abundLoadFile is None:
+            self.starting_chemistry = starting_chemistry
+        elif previous_model.has_attr('next_starting_chemistry'):
+            self.starting_chemistry = previous_model.next_starting_chemistry
+        elif self.abundLoadFile is not None:
+            self.read_starting_chemistry_output_file()
+        self.give_start_abund = self.starting_chemistry is not None
+        self.next_starting_chemistry = None
+
         if read_file is not None:
-            self.n_out = None
-            self.timepoints = None
-            self.was_read = True
-            self.PHYSICAL_PARAMETERS = None
-            self.give_start_abund = False
-            self.next_starting_chemistry = None
-            self._reform_inputs(param_dict, self.out_species_list)
             self.read_output_file(read_file)
-        else:
-            self.n_out = 0
-            self.timepoints = timepoints
-            self.was_read = False
-            self.PHYSICAL_PARAMETERS = PHYSICAL_PARAMETERS
-            self.outputFile = param_dict.pop("outputFile") if "outputFile" in param_dict else None
-            self.abundSaveFile = param_dict.pop("abundSaveFile") if "abundSaveFile" in param_dict else None
-            self.abundLoadFile = param_dict.pop("abundLoadFile") if "abundLoadFile" in param_dict else None
-            self._reform_inputs(param_dict, self.out_species_list)
-            if "points" not in self.param_dict:
-                self.param_dict["points"] = 1
-            if previous_model is None and self.abundLoadFile is None:
-                self.starting_chemistry = starting_chemistry
-            elif 'next_starting_chemistry' in [attr for attr in dir(previous_model) if
-                                               not callable(getattr(previous_model, attr)) and
-                                               not attr.startswith("__") and
-                                               attr is not None]:
-                self.starting_chemistry = previous_model.next_starting_chemistry
-            elif self.abundLoadFile is not None:
-                self.read_starting_chemistry_output_file()
-            self.give_start_abund = self.starting_chemistry is not None
-            self.next_starting_chemistry = None
+
         return
+
+    @classmethod
+    def load_model(cls, file: str, name: str = 'default', engine: str = "h5netcdf", debug: bool = False):
+        """
+        load_model bypasses __init__ in order to load a pre-existing model from a file.
+
+        Args:
+            file (str): Path to a file that contains previously run and stored models.
+            name (str, optional): Name of the stored object, if none was provided `default` will have been used. Defaults to 'default'
+            engine (str, optional): “netcdf4”, “h5netcdf” or “zarr”, depending on the engine to be used. Defaults to "h5netcdf".
+            debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False.
+        Returns:
+            obj (object): Loaded object that inherited from AbstractModel.
+        """
+        obj = cls.__new__(cls)
+        try:
+            loaded_data = xr.open_dataset(filename_or_obj=file, group=name, engine=engine)
+        except FileNotFoundError:
+            print(f"Unable to find file {file}")
+            raise FileNotFoundError
+        except OSError:
+            print(f"Could not find model with name: {name}, in file {file}.")
+            raise OSError
+        except ValueError:
+            print(f"Engine {engine}, is incompatible with xr.open_dataset")
+            raise ValueError
+
+        if loaded_data["model_type"].item() != obj.__class__.__name__:
+            raise Exception(
+                f'Attempted to load model of type {loaded_data["model_type"].item()}, using model class {obj.__class__.__name__}'
+            )
+        else:
+            loaded_data.__delitem__("model_type")
+        obj.param_dict = json.loads(loaded_data["param_dict"].item())
+        loaded_data.__delitem__("param_dict")
+        obj._data = loaded_data.copy()
+        obj.debug = debug
+        return obj
+
+    def __getattr__(self, key):
+        if key == "debug":
+            return self.debug
+        #TODO: Remove try and replace with check if key is in self._data
+        try:
+            values = self._data[key].values
+            if np.shape(values) != ():
+                if type(values) == tuple:
+                    return values[1]
+                else:
+                    return values
+            else:
+                return self._data[key].item()
+        except (KeyError):
+            raise AttributeError(f'{self.__class__.__name__} has no attribute and no parameter in param_dict of name: "{key}"".')
+
+    def __setattr__(self, key, value):
+        try:
+            if key in ("param_dict", "_data", "debug"):
+                super().__setattr__(key, value)
+            else:
+                if key in self._data:
+                    self._data.__delitem__(key)
+                self._data[key] = value
+        except xr.core.variable.MissingDimensionsError:
+            if np.ndim(value) == 3:
+                self._data[key] = (["time_step", "point", key.replace('array', 'values')], value)
+            elif np.ndim(value) == 2:
+                self._data[key] = (["point", key], value)
+            else:
+                print(f"Unable to store {value} into _data[{key}]")
+                raise ValueError
 
     def __run__(self):
         """__run__ resets the Fortran arrays if the model was not read, allowing the arrays to be reused for new runs."""
         if not self.was_read:
             self.physics_array = None
             self.chemical_abun_array = None
-            self.ratesArray = None
+            self.rates_array = None
             self._create_fortran_array()
             self._create_rates_array()
         else:
             raise ("This model was read. It can not be run. ")
+        if self.debug:
+            print(f"About to run {self.__class__.__name__} model with the following options:")
+            print(f'dictionary = {self.param_dict},')
+            print(f'outspeciesin = {self.out_species},')
+            print(f'timepoints = {self.timepoints},')
+            print(f'gridpoints = {self.param_dict["points"]},')
+            print(f'returnarray = True,')
+            print(f'returnrates = True,')
+            print(f'givestartabund = {self.give_start_abund},')
+            print(f'physicsarray = {self.physics_array},')
+            print(f'ratesarray = {self.rates_array},')
+            print(f'chemicalabunarray = {self.chemical_abun_array},')
+            print(f'abundancestart = {self.starting_chemistry},')
         return
 
     def check_conservation(self,
@@ -224,10 +307,10 @@ class AbstractModel(ABC):
         chemistry_df = pd.DataFrame(
             self.chemical_abun_array[:, point, :], index=None, columns=self.specname
         )
-        if self.ratesArray is not None:
+        if self.rates_array is not None:
             # Create a rates dataframe.
             rates_df = pd.DataFrame(
-                self.ratesArray[:, point, :], index=None, columns=get_reaction_names()
+                self.rates_array[:, point, :], index=None, columns=get_reaction_names()
             )
         else:
             rates_df = None
@@ -242,6 +325,10 @@ class AbstractModel(ABC):
                 return physics_df, chemistry_df, rates_df
             else:
                 return physics_df, chemistry_df
+
+    def has_attr(self, key):
+        """Method to check if the object has an attribute stored in self._data"""
+        return key in self._data
 
     def plot_species(self, ax: plt.axes, species: list[str] = None, point: int = 0, legend: bool = True, **plot_kwargs):
         """uclchem.analysis.plot(species) wrapper method
@@ -288,6 +375,30 @@ class AbstractModel(ABC):
         self.next_starting_chemistry = self.chemical_abun_array[last_timestep_index, :, :]
         return
 
+    def save_model(self, file: str, name: str = 'default', engine: str = "h5netcdf", overwrite: bool = False):
+        """
+        save_model saves a model to a file on disk. Multiple models can be saved into the same file if different names are used to store them.
+
+        Args:
+            file (str): Path to a file to store models.
+            name (str, optional): Name to use for the group of the object. Defaults to 'default'
+            engine (str, optional): “netcdf4”, “h5netcdf” or “zarr”, depending on the engine to be used. Defaults to "h5netcdf".
+            overwrite (bool, optional): Boolean on whether to overwrite pre-existing models, or error out. Defaults to False
+        """
+        #TODO: Allow for toggling of saving float64 or float32 for the arrays
+        #TODO: Store all none array components of _data as DataArray in _data for efficient saving. When loading, unpack that DataArray by mapping to attributes.
+        if os.path.isfile(file):
+            with xr.open_datatree(filename_or_obj=file, engine=engine) as tree:
+                if "/" + name in tree.groups:
+                    if not overwrite:
+                        warnings.warn(f"Model with name: `{name}` already exists in `{file}` but overwrite is set to False. Unable to save model.")
+                        return
+                    elif overwrite:
+                        warnings.warn(f"Model with name: `{name}` already exists in `{file}`, overwriting model.")
+        self._data["model_type"] = str(self.__class__.__name__)
+        self._data["param_dict"] = xr.DataArray([json.dumps(self.param_dict)])
+        self._data.to_netcdf(path=file, group=name, mode='a', engine=engine)
+
     def read_starting_chemistry_output_file(self):
         """Method to read the starting chemistry from the self.abundLoadFile provided in param_dict"""
         self.starting_chemistry = np.loadtxt(self.abundLoadFile, delimiter=",")
@@ -322,12 +433,16 @@ class AbstractModel(ABC):
         Clean the arrays changed by UCLCHEM Fortran code.
         """
         # Find the first element with all the zeros
+        if self.debug:
+            print(f"in _array_clean: physics_array = {self.physics_array}")
+            print(f"in _array_clean: physics_array type = {type(self.physics_array)}")
         last_timestep_index = self.physics_array[:, 0, 0].nonzero()[0][-1]
         # Get the arrays for only the simulated timesteps (not the zero padded ones)
-        self.physics_array = self.physics_array[: last_timestep_index + 1, :, :]
-        self.chemical_abun_array = self.chemical_abun_array[: last_timestep_index + 1, :, :]
-        if self.ratesArray is not None:
-            self.ratesArray = self.ratesArray[: last_timestep_index + 1, :, :]
+        self._data = self._data.isel(time_step=slice(0, last_timestep_index+1))
+        #self.physics_array = self.physics_array[:(last_timestep_index + 1), :, :]
+        #self.chemical_abun_array = self.chemical_abun_array[:(last_timestep_index + 1), :, :]
+        #if self.rates_array is not None:
+        #    self.rates_array = self.rates_array[: last_timestep_index + 1, :, :]
         # Get the last arrays simulated, easy for starting another model.
         self.next_starting_chemistry = self.chemical_abun_array[last_timestep_index, :, :]
         return
@@ -353,7 +468,7 @@ class AbstractModel(ABC):
         """Internal Method.
         Creates Fortran compliant np.array for rates that can be passed to the Fortran part of UCLCHEM.
         """
-        self.ratesArray = np.zeros(shape=(self.timepoints + 1, self.param_dict["points"], n_reactions),
+        self.rates_array = np.zeros(shape=(self.timepoints + 1, self.param_dict["points"], n_reactions),
                                    dtype=np.float64, order="F")
         return
 
@@ -392,14 +507,7 @@ class AbstractModel(ABC):
             self.n_out = 0
         return
 
-    def _xarray_conversion(self):
-        """Internal Method. #TODO for Issue #94 add xarray support and conversion.
-                Creates Fortran compliant np.array for rates that can be passed to the Fortran part of UCLCHEM.
-        """
-        return
 
-
-# noinspection PyUnresolvedReferences
 class Cloud(AbstractModel):
     """Cloud model class inheriting from AbstractModel.
 
@@ -455,7 +563,7 @@ class Cloud(AbstractModel):
             returnrates=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
+            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
         )
@@ -472,7 +580,6 @@ class Cloud(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
-# noinspection PyUnresolvedReferences
 class Collapse(AbstractModel):
     """Collapse model class inheriting from AbstractModel.
 
@@ -550,7 +657,7 @@ class Collapse(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
+            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
             abundanceStart=self.starting_chemistry,
         )
@@ -567,7 +674,6 @@ class Collapse(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
-# noinspection PyUnresolvedReferences
 class PrestellarCore(AbstractModel):
     """PrestellarCore model class inheriting from AbstractModel. This model type was previously known as hot core.
 
@@ -634,7 +740,7 @@ class PrestellarCore(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
+            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
         )
@@ -651,7 +757,6 @@ class PrestellarCore(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
-# noinspection PyUnresolvedReferences
 class CShock(AbstractModel):
     """C-Shock model class inheriting from AbstractModel.
 
@@ -725,7 +830,7 @@ class CShock(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
+            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
         )
@@ -743,7 +848,6 @@ class CShock(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
-# noinspection PyUnresolvedReferences
 class JShock(AbstractModel):
     """J-Shock model class inheriting from AbstractModel.
 
@@ -805,7 +909,7 @@ class JShock(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
+            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
         )
@@ -932,7 +1036,7 @@ class Postprocess(AbstractModel):
             returnrates=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
+            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
             usecoldens=self.coldens_H_array is not None,
@@ -1048,7 +1152,7 @@ class Model(AbstractModel):
             returnrates=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
+            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
             abundancestart=self.starting_chemistry,
             usecoldens=False,
@@ -1134,7 +1238,7 @@ def __functional_return__(model_object: AbstractModel,
             return (
                 model_object.physics_array,
                 model_object.chemical_abun_array,
-                model_object.ratesArray if return_rates else None,
+                model_object.rates_array if return_rates else None,
                 model_object.dissipation_time,
                 model_object.next_starting_chemistry,
                 model_object.success_flag
@@ -1143,7 +1247,7 @@ def __functional_return__(model_object: AbstractModel,
             return (
                 model_object.physics_array,
                 model_object.chemical_abun_array,
-                model_object.ratesArray if return_rates else None,
+                model_object.rates_array if return_rates else None,
                 model_object.next_starting_chemistry,
                 model_object.success_flag
             )
