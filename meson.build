@@ -144,7 +144,6 @@ py.install_sources([
   usource / 'debug.py',
   usource / 'model.py',
   usource / 'trialmodel.py',
-#  usource / 'legacy_model.py',
   usource / 'plot.py',
   usource / 'reactions.csv',
   usource / 'species.csv',
