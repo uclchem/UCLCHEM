@@ -19,6 +19,10 @@ from uclchem.constants import (
     n_species,
 )
 
+"""
+trialmodel.py contains additional changes to the new API method such as adding xarray support.
+"""
+
 
 def reaction_line_formatter(line):
     reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
