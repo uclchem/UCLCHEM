@@ -25,9 +25,11 @@
 # We'll use an example from work that was published in 2022 [Energizing Star Formation: The Cosmic-Ray Ionization Rate in NGC 253 Derived from ALCHEMI Measurements of H3O+ and SO](https://ui.adsabs.harvard.edu/abs/2022ApJ...931...89H/abstract) to demonstrate the use of the rates coming out of UCLCHEM and how it can be used to draw conclusions about the most important reactions in a network for a given species/behaviour.
 
 import uclchem
+from glob import glob
 from joblib import Parallel, delayed
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # ## H3O+ and SO
 #
@@ -83,14 +85,13 @@ def run_model(row):
         "reltol": 1e-6,
         "abstol_min": 5e-20,
     }
-    result = uclchem.model.cloud(
+    result = uclchem.model.functional.cloud(
         param_dict=ParameterDictionary, return_dataframe=True, return_rates=True
     )
     return result
 
 
 model_table
-
 # -
 
 # Each result contains: physics, abundances, rates, final_abundances and succesflag
@@ -303,5 +304,3 @@ plot_rate_summary(production, destruction, -10, "flux")
 # `uclchem.analysis.analysis()` looks at a snapshot of the gas and calculates the instantaneous rate of change of important reactions. However, over the course of a time step, abundances change and reactions rise and fall in importance. More importantly, complex interplay between reactions can contribute to an outcome. This is ultimately a simple, first order look at what is happening in the network but in many cases, a deeper view will be required.
 #
 # If you struggle to find an explanation that fits all time steps in your outputs and is true across a range of parameters, then it is best not to report simple conclusions about the chemistry and to look for other ways to understand the network.
-
-#
