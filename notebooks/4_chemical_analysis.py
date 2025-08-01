@@ -85,14 +85,13 @@ def run_model(row):
         "reltol": 1e-6,
         "abstol_min": 5e-20,
     }
-    result = uclchem.model.cloud(
+    result = uclchem.model.functional.cloud(
         param_dict=ParameterDictionary, return_dataframe=True, return_rates=True
     )
     return result
 
 
 model_table
-
 # -
 
 # Each result contains: physics, abundances, rates, final_abundances and succesflag
@@ -305,5 +304,3 @@ plot_rate_summary(production, destruction, -10, "flux")
 # `uclchem.analysis.analysis()` looks at a snapshot of the gas and calculates the instantaneous rate of change of important reactions. However, over the course of a time step, abundances change and reactions rise and fall in importance. More importantly, complex interplay between reactions can contribute to an outcome. This is ultimately a simple, first order look at what is happening in the network but in many cases, a deeper view will be required.
 #
 # If you struggle to find an explanation that fits all time steps in your outputs and is true across a range of parameters, then it is best not to report simple conclusions about the chemistry and to look for other ways to understand the network.
-
-#

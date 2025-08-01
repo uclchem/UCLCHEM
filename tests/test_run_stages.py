@@ -43,12 +43,12 @@ def test_static_model_on_disk(common_output_directory):
         "outputFile": common_output_directory / "static-full.dat",
         "abundSaveFile": common_output_directory / "startstatic.dat",
     }
-    return_code = uclchem.model.cloud(
+    cloud = uclchem.model.Cloud(
         param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
     assert (
-        return_code[0] == 0
-    ), f"Static model returned with nonzero exit code {return_code[0]}"
+        cloud.success_flag == 0
+    ), f"Static model returned with nonzero exit code {cloud.success_flag}"
 
 
 def test_static_model_return_array(common_output_directory):
@@ -61,22 +61,22 @@ def test_static_model_return_array(common_output_directory):
         "finalDens": 1e5,
         "finalTime": 5.0e6,
     }
-    (
-        physics,
-        chemistry,
-        rates,
-        abundances_start,
-        return_code,
-    ) = uclchem.model.cloud(
+    #(
+    #    physics,
+    #    chemistry,
+    #    rates,
+    #    abundances_start,
+    #    return_code,
+    #) =
+    cloud = uclchem.model.Cloud(
         param_dict=params,
-        out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
-        return_array=True,
+        out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
     assert (
-        return_code == 0
-    ), f"Static model returned with nonzero exit code {return_code}"
-    np.save(common_output_directory / "physics_static_array.npy", physics)
-    np.save(common_output_directory / "chemistry_static_array.npy", chemistry)
+        cloud.success_flag == 0
+    ), f"Static model returned with nonzero exit code {cloud.success_flag}"
+    np.save(common_output_directory / "physics_static_array.npy", cloud.physics_array)
+    np.save(common_output_directory / "chemistry_static_array.npy", cloud.chemical_abun_array)
 
 
 def test_static_model_return_dataframe(common_output_directory):
@@ -89,26 +89,18 @@ def test_static_model_return_dataframe(common_output_directory):
         "finalDens": 1e5,
         "finalTime": 5.0e6,
     }
-    (
-        physics,
-        chemistry,
-        rates,
-        abundances_start,
-        return_code,
-    ) = uclchem.model.cloud(
+    cloud = uclchem.model.Cloud(
         param_dict=params,
         out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
-        return_dataframe=True,
     )
-    assert (
-        return_code == 0
-    ), f"Static model returned with nonzero exit code {return_code}"
-    physics.to_csv(common_output_directory / "physics_static_array.csv")
-    chemistry.to_csv(common_output_directory / "chemistry_static_array.csv")
+    physics, chemistry = cloud.get_dataframes(joined=False)
+    assert cloud.success_flag == 0, f"Static model returned with nonzero exit code {cloud.success_flag}"
+    physics.to_csv(common_output_directory / "physics_static_dataframe.csv")
+    chemistry.to_csv(common_output_directory / "chemistry_static_dataframe.csv")
 
 
 # Test for running on disk
-def test_collapse_hotcore_on_disk(common_output_directory):
+def test_collapse_prestellarcore_on_disk(common_output_directory):
     # Stage 1
     params = {
         "freefall": True,
@@ -118,12 +110,12 @@ def test_collapse_hotcore_on_disk(common_output_directory):
         "outputFile": common_output_directory / "stage1-full.dat",
         "columnFile": common_output_directory / "stage1-column.dat",
     }
-    return_code = uclchem.model.cloud(
+    cloud = uclchem.model.Cloud(
         param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
     assert (
-        return_code[0] == 0
-    ), f"Stage 1 returned with nonzero exit code {return_code[0]}"
+        cloud.success_flag == 0
+    ), f"Stage 1 returned with nonzero exit code {cloud.success_flag}"
 
     # Stage 2
     params = {
@@ -136,33 +128,26 @@ def test_collapse_hotcore_on_disk(common_output_directory):
         "outputFile": common_output_directory / "stage2-full.dat",
         "abundLoadFile": common_output_directory / "startstage1.dat",
     }
-    return_code = uclchem.model.hot_core(
+    p_core = uclchem.model.PrestellarCore(
         3, 300.0, param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
     assert (
-        return_code[0] == 0
-    ), f"Stage 2 returned with nonzero exit code {return_code[0]}"
+        p_core.success_flag == 0
+    ), f"Stage 2 returned with nonzero exit code {p_core.success_flag}"
 
 
-def test_collapse_hotcore_return_array(common_output_directory):
+def test_collapse_prestellarcore_return_array(common_output_directory):
     # STAGE 1
     params = {
         "freefall": True,
         "endAtFinalDensity": True,
         "initialDens": 1e2,
     }
-    (
-        physics,
-        chemistry,
-        rates,
-        abundances_start,
-        return_code,
-    ) = uclchem.model.cloud(
+    cloud = uclchem.model.Cloud(
         param_dict=params,
         out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
-        return_array=True,
     )
-    assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
+    assert cloud.success_flag == 0, f"Stage 1 returned with nonzero exit code {cloud.success_flag}"
     # STAGE 2
     params = {
         "initialDens": 1e5,
@@ -172,42 +157,30 @@ def test_collapse_hotcore_return_array(common_output_directory):
         "freefall": False,
         "finalTime": 1e6,
     }
-    (
-        physics,
-        chemistry,
-        rates,
-        abundances_start,
-        return_code,
-    ) = uclchem.model.hot_core(
+    p_core = uclchem.model.PrestellarCore(
         3,
         300.0,
         param_dict=params,
         out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
-        return_array=True,
-        starting_chemistry=abundances_start,
+        previous_model=cloud,
     )
-    assert return_code == 0, f"Stage 2 returned with nonzero exit code {return_code}"
+    assert p_core.success_flag == 0, f"Stage 2 returned with nonzero exit code {p_core.success_flag}"
+    np.save(common_output_directory / "physics_prestellarcore_array.npy", p_core.physics_array)
+    np.save(common_output_directory / "chemistry_prestellarcore_array.npy", p_core.chemical_abun_array)
 
 
-def test_collapse_hotcore_return_dataframe(common_output_directory):
+def test_collapse_prestellarcore_return_dataframe(common_output_directory):
     # STAGE 1
     params = {
         "freefall": True,
         "endAtFinalDensity": True,
         "initialDens": 1e2,
     }
-    (
-        physics,
-        chemistry,
-        rates,
-        abundances_start,
-        return_code,
-    ) = uclchem.model.cloud(
+    cloud = uclchem.model.Cloud(
         param_dict=params,
         out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
-        return_dataframe=True,
     )
-    assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
+    assert cloud.success_flag == 0, f"Stage 1 returned with nonzero exit code {cloud.success_flag}"
     # STAGE 2
     params = {
         "initialDens": 1e5,
@@ -217,13 +190,7 @@ def test_collapse_hotcore_return_dataframe(common_output_directory):
         "freefall": False,
         "finalTime": 1e6,
     }
-    (
-        physics,
-        chemistry,
-        rates,
-        abundances_start,
-        return_code,
-    ) = uclchem.model.hot_core(
+    p_core = uclchem.model.PrestellarCore(
         3,
         300.0,
         param_dict=params,
@@ -234,10 +201,40 @@ def test_collapse_hotcore_return_dataframe(common_output_directory):
             "CS",
             "CH3OH",
         ],
-        return_dataframe=True,
-        starting_chemistry=abundances_start,
+        previous_model=cloud,
     )
-    assert return_code == 0, f"Stage 2 returned with nonzero exit code {return_code}"
+    physics, chemistry = p_core.get_dataframes(joined=False)
+    assert p_core.success_flag == 0, f"Stage 2 returned with nonzero exit code {p_core.success_flag}"
+    physics.to_csv(common_output_directory / "physics_static_dataframe.csv")
+    chemistry.to_csv(common_output_directory / "chemistry_static_dataframe.csv")
+
+
+def test_cshock_return_array(common_output_directory):
+    param_dict = {
+        "endAtFinalDensity": False,  # stop at finalTime
+        "freefall": True,  # increase density in freefall
+        "initialDens": 1e2,  # starting density
+        "finalDens": 1e4,  # final density
+        "initialTemp": 10.0,  # temperature of gas
+        "finalTime": 6.0e6,  # final time
+        "rout": 0.1,  # radius of cloud in pc
+        "baseAv": 1.0,  # visual extinction at cloud edge.
+    }
+    shock_start = uclchem.model.Cloud(
+        param_dict=param_dict,
+    )
+    assert shock_start.success_flag==0, f"Stage 1 pre-cshock returned with nonzero exit code {shock_start.success_flag}"
+    # STAGE 2 - cshock
+    param_dict["initialDens"] = 1e4
+    param_dict["finalTime"] = 1e6
+    cshock = uclchem.model.CShock(
+        shock_vel=40,
+        param_dict=param_dict,
+        previous_model=shock_start,
+    )
+    assert cshock.success_flag == 0, f"Stage 2 cshock returned with nonzero exit code {cshock.success_flag}"
+    np.save(common_output_directory / "physics_prestellarcore_array.npy", cshock.physics_array)
+    np.save(common_output_directory / "chemistry_prestellarcore_array.npy", cshock.chemical_abun_array)
 
 
 def test_cshock_return_dataframe(common_output_directory):
@@ -252,59 +249,48 @@ def test_cshock_return_dataframe(common_output_directory):
         "rout": 0.1,  # radius of cloud in pc
         "baseAv": 1.0,  # visual extinction at cloud edge.
     }
-    df_stage1_physics, df_stage1_chemistry, rates, final_abundances, return_code = (
-        uclchem.model.cloud(
+    shock_start = uclchem.model.Cloud(
             param_dict=param_dict,
-            return_dataframe=True,
         )
-    )
-    assert (
-        return_code == 0
-    ), f"Stage 1 pre-cshock returned with nonzero exit code {return_code}"
+    assert shock_start.success_flag==0, f"Stage 1 pre-cshock returned with nonzero exit code {shock_start.success_flag}"
     # STAGE 2 - cshock
     param_dict["initialDens"] = 1e4
     param_dict["finalTime"] = 1e6
-    (
-        df_stage2_physics,
-        df_stage2_chemistry,
-        rates,
-        dissipation_time,
-        final_abundances,
-        return_code,
-    ) = uclchem.model.cshock(
+    cshock = uclchem.model.CShock(
         shock_vel=40,
         param_dict=param_dict,
-        return_dataframe=True,
-        starting_chemistry=final_abundances,
+        previous_model=shock_start,
     )
-    assert (
-        return_code == 0
-    ), f"Stage 2 cshock returned with nonzero exit code {return_code}"
+    physics, chemistry = cshock.get_dataframes(joined=False)
+    assert (cshock.success_flag == 0), f"Stage 2 cshock returned with nonzero exit code {cshock.success_flag}"
+    physics.to_csv(common_output_directory / "physics_static_dataframe.csv")
+    chemistry.to_csv(common_output_directory / "chemistry_static_dataframe.csv")
 
 
-# jshock is super slow, so disable it for now:
-# def test_jshock_return_dataframe(common_output_directory):
-#     # STAGE 1 - jshock
-#     param_dict = {
-#     "endAtFinalDensity": False,
-#     "freefall": False,
-#     "initialDens": 1e2,
-#     "finalDens": 1e4,
-#     "initialTemp": 10.0,
-#     "finalTime": 6.0e6,
-#     "rout": 0.1,
-#     "baseAv": 1.0,
-#     "reltol": 1e-12
-#     }
-#     df_stage1_physics, df_stage1_chemistry, final_abundances, return_code = uclchem.model.cloud(param_dict=param_dict, return_dataframe=True, )
-#     assert return_code == 0, f"Stage 1 pre-jshock returned with nonzero exit code {return_code}"
-#     param_dict["initialDens"] = 1e4
-#     param_dict["freefall"] = False
-#     param_dict["reltol"] = 1e-12
-#     shock_vel = 10.0
-#     df_jshock_physics, df_jshock_chemistry, final_abundances, return_code = uclchem.model.jshock(shock_vel=shock_vel,param_dict=param_dict, return_dataframe=True, starting_chemistry=final_abundances, timepoints=2000)
-#     assert return_code == 0, f"Stage 2 jshock returned with nonzero exit code {return_code}"
 
+''' jshock is super slow, so disable it for now:
+def test_jshock_return_dataframe(common_output_directory):
+    # STAGE 1 - jshock
+    param_dict = {
+    "endAtFinalDensity": False,
+    "freefall": False,
+    "initialDens": 1e2,
+    "finalDens": 1e4,
+    "initialTemp": 10.0,
+    "finalTime": 6.0e6,
+    "rout": 0.1,
+    "baseAv": 1.0,
+    "reltol": 1e-12
+    }
+    df_stage1_physics, df_stage1_chemistry, final_abundances, return_code = uclchem.model.cloud(param_dict=param_dict, return_dataframe=True, )
+    assert return_code == 0, f"Stage 1 pre-jshock returned with nonzero exit code {return_code}"
+    param_dict["initialDens"] = 1e4
+    param_dict["freefall"] = False
+    param_dict["reltol"] = 1e-12
+    shock_vel = 10.0
+    df_jshock_physics, df_jshock_chemistry, final_abundances, return_code = uclchem.model.jshock(shock_vel=shock_vel,param_dict=param_dict, return_dataframe=True, starting_chemistry=final_abundances, timepoints=2000)
+    assert return_code == 0, f"Stage 2 jshock returned with nonzero exit code {return_code}"
+'''
 
 def main():
     # Run the tests using pytest

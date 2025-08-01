@@ -101,8 +101,8 @@ def test_photo_on_grain():
         "outputFile": f"{TEST_DIR}/static-full.dat",
         "abundSaveFile": f"{TEST_DIR}/startstatic.dat",
     }
-    result = uclchem.model.cloud(param_dict=params, out_species=outSpecies)
-    assert result[0] == 0, f"Static model failed with result code {result[0]}"
+    cloud = uclchem.model.Cloud(param_dict=params, out_species=outSpecies)
+    assert cloud.success_flag == 0, f"Static model failed with result code {cloud.success_flag}"
 
     # change to collapsing stage1 params
     params["freefall"] = True
@@ -111,9 +111,9 @@ def test_photo_on_grain():
     params["abundSaveFile"] = f"{TEST_DIR}/startcollapse.dat"
     params["outputFile"] = f"{TEST_DIR}/stage1-full.dat"
     params["columnFile"] = f"{TEST_DIR}/stage1-column.dat"
-    result = uclchem.model.cloud(param_dict=params, out_species=outSpecies)
+    cloud = uclchem.model.Cloud(param_dict=params, out_species=outSpecies)
 
-    assert result[0] == 0, f"stage 1 model failed with result code {result[0]}]"
+    assert cloud.success_flag == 0, f"stage 1 model failed with result code {cloud.success_flag}]"
 
     # finally, run stage 2 from the stage 1 model.
     params["initialDens"] = 1e5
@@ -123,13 +123,12 @@ def test_photo_on_grain():
     params["freefall"] = False
     params["finalTime"] = 1e6
     params["abstol_min"] = 1e-25
-    params.pop("abundSaveFile")
     params["abundLoadFile"] = f"{TEST_DIR}/startcollapse.dat"
     params["outputFile"] = f"{TEST_DIR}/stage2-full.dat"
     params.pop("columnFile")
-    result = uclchem.model.hot_core(3, 300.0, param_dict=params, out_species=outSpecies)
+    p_core = uclchem.model.PrestellarCore(3, 300.0, param_dict=params, out_species=outSpecies)
 
-    assert result[0] == 0, f"stage 2 model failed with result code {result[0]}"
+    assert p_core.success_flag == 0, f"stage 2 model failed with result code {p_core.success_flag}"
 
 
 if __name__ == "__main__":

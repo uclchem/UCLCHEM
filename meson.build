@@ -1,3 +1,4 @@
+
 project('uclchemwrap',
         ['c', 'fortran'],
         version : run_command('sh', '-c',
@@ -91,9 +92,9 @@ uclchemwrap_source = files(fsource_dir / 'constants.f90',
                      fsource_dir / 'wrap.f90'
                     )
 
-# Custom target to generate the f2py wrappers 
+# Custom target to generate the f2py wrappers
 uclchem_wrapper = custom_target('uclchemwrapmodule.c',
-  input : uclchemwrap_source,  
+  input : uclchemwrap_source,
   output : ['uclchemwrapmodule.c', 'uclchemwrap-f2pywrappers2.f90'],
   command : [py, '-m', 'numpy.f2py', '@INPUT@', '-m', 'uclchemwrap', '--lower']
 )
@@ -142,9 +143,25 @@ py.install_sources([
   usource / 'constants.py',
   usource / 'debug.py',
   usource / 'model.py',
+  usource / 'trialmodel.py',
   usource / 'plot.py',
   usource / 'reactions.csv',
   usource / 'species.csv',
   usource / 'tests.py',
   usource / 'utils.py',
 ], subdir:'uclchem')
+
+# Install makerates/ subpackage
+py.install_sources([
+  usource / 'makerates' / '__init__.py',
+  usource / 'makerates' / 'io_functions.py',
+  usource / 'makerates' / 'makerates.py',
+  usource / 'makerates' / 'network.py',
+  usource / 'makerates' / 'reaction.py',
+  usource / 'makerates' / 'species.py'
+], subdir: 'uclchem' / 'makerates')
+
+# Install nested f2py_constants.f90 template
+py.install_sources([
+  usource / 'makerates' / 'fortran_templates' / 'f2py_constants.f90'
+], subdir: 'uclchem' / 'makerates' / 'fortran_templates')

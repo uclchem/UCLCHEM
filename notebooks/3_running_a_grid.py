@@ -31,9 +31,9 @@ from joblib import Parallel, delayed
 # +
 # This part can be substituted with any choice of grid
 # here we just vary the density, temperature and zeta
-temperatures = np.linspace(10, 50, 3)
-densities = np.logspace(4, 6, 3)
-zetas = np.logspace(1, 3, 3)
+temperatures = np.linspace(10, 50, 2)
+densities = np.logspace(4, 6, 2)
+zetas = np.logspace(1, 3, 2)
 
 # meshgrid will give all combinations, then we shape into columns and put into a table
 parameterSpace = np.asarray(np.meshgrid(temperatures, densities, zetas)).reshape(3, -1)
@@ -67,7 +67,7 @@ def run_model(row):
         "baseAv": 10,
         "abstol_min": 1e-22,
     }
-    result = uclchem.model.cloud(param_dict=ParameterDictionary)
+    result = uclchem.model.functional.cloud(param_dict=ParameterDictionary)
     return result[0]  # just the integer error code
 
 
@@ -83,7 +83,7 @@ result = model_table.head().apply(run_model, axis=1)
 # Alternatively, we can use multiprocessing to run the models in parallel. That will allow us to run many models simulataneously and make use of all the cores available on our machine.
 
 # %%time
-results = Parallel(n_jobs=4, verbose=100)(
+results = Parallel(n_jobs=8, verbose=100)(
     delayed(run_model)(row) for idx, row in model_table.iterrows()
 )
 
@@ -129,7 +129,7 @@ def run_prelim(density):
         "abundSaveFile": f"../grid_folder/starts/{density:.0f}.csv",
         "baseAv": 1,
     }
-    result = uclchem.model.cloud(param_dict=ParameterDictionary)
+    result = uclchem.model.functional.cloud(param_dict=ParameterDictionary)
     return result
 
 
@@ -148,7 +148,7 @@ def run_model(row):
         "reltol": 1e-6,
         "baseAv": 1,
     }
-    result = uclchem.model.cshock(
+    result = uclchem.model.functional.cshock(
         row.shock_velocity, param_dict=ParameterDictionary, out_species=out_species
     )
     # First check UCLCHEM's result flag to seeif it ran succesfully, if it is return the abundances
@@ -166,8 +166,8 @@ def run_model(row):
 # +
 # This part can be substituted with any choice of grid
 # here we just combine various initial and final densities into an easily iterable array
-shock_velocities = np.linspace(10, 50, 3)
-densities = np.logspace(4, 6, 3)
+shock_velocities = np.linspace(10, 20, 2)
+densities = np.logspace(4, 6, 2)
 
 parameterSpace = np.asarray(np.meshgrid(shock_velocities, densities)).reshape(2, -1)
 model_table = pd.DataFrame(parameterSpace.T, columns=["shock_velocity", "density"])
@@ -200,6 +200,4 @@ model_table
 # There are many ways to run grids of models and users will naturally develop their own methods. This notebook is just a simple example of how to run UCLCHEM for many parameter combinations whilst producing a useful output (the model_table) to keep track of all the combinations that were run. In a real script, we'd save the model file to csv at the end.
 #
 # For much larger grids, it's recommended that you find a way to make your script robust to failure. Over a huge range of parameters, it is quite likely UCLCHEM will hit integration trouble for at least a few parameter combinations. Very occasionally, UCLCHEM will get caught in a loop where it fails to integrate and cannot adjust its strategy to manage it. This isn't a problem for small grids as the model can be stopped and the tolerances adjusted. However, for very large grids, you may end up locking all threads as they each get stuck on a different model. The best solution we've found for this case is to add a check so that models in your dataframe are skipped if their file already exists, this allows you to stop and restart the grid script as needed.
-#
-
 #

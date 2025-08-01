@@ -79,7 +79,6 @@ CONTAINS
 
     END SUBROUTINE cloud
 
-
     SUBROUTINE collapse(collapseIn,collapseFileIn,writeOut,dictionary,outSpeciesIn,&
             &returnArray,returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &ratesarray,abundanceStart,abundance_out,specname_out,successFlag)
@@ -441,7 +440,6 @@ CONTAINS
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
         END IF 
     END SUBROUTINE postprocess
-
 
     SUBROUTINE get_rates(dictionary,abundancesIn,speciesIndx,rateIndxs,&
         &speciesRates,successFlag,transfer,swap,bulk_layers)
@@ -1017,5 +1015,13 @@ CONTAINS
             coeffDictString=coeffDictString(posEnd+1:)
         END DO
     END SUBROUTINE coefficientParser
+
+    SUBROUTINE get_specname(specname_out)
+        !Returns:
+        ! specname_out - array of species that are in the chemicalabunarray
+        !f2py intent(out) specname_out
+        CHARACTER(LEN=32), INTENT(OUT) :: specname_out(nspec)
+        specname_out(:nspec) = specName
+    END SUBROUTINE get_specname
 
 END MODULE uclchemwrap
