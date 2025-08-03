@@ -970,7 +970,7 @@ CONTAINS
                         successFlag=-1
                         RETURN
                     END IF
-                CASE('heatingFile')
+                CASE('heatingfile')
                     READ(inputValue,*,iostat=successFlag) heatingFile
                     heatingFile = trim(heatingFile)
                     open(heatingId,file=heatingFile,status='unknown',iostat=successFlag)
