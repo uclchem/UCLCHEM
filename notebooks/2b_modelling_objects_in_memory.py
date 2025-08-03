@@ -13,13 +13,21 @@
 #     name: python3
 # ---
 
-# # Advanced Physical Modelling
+# # Advanced Physical Modelling in Memory
 #
 # In the previous tutorial, we simply modelled the chemistry of a static cloud for 1 Myr. This is unlikely to meet everybody's modelling needs and UCLCHEM is capable of modelling much more complex environments such as hot cores and shocks. In this tutorial, we model both a hot core and a shock to explore how these models work and to demonstrate the workflow that the UCLCHEM team normally follow.
 
 import uclchem
 import matplotlib.pyplot as plt
 import pandas as pd
+
+# +
+# SPECIAL CODE BITS FOR HEATING AND COOLING
+import uclchemwrap
+
+# We can set the heating flag via directly accessing uclchemwrap:
+uclchemwrap.defaultparameters.heatingflag = True
+# -
 
 # ## The Hot Core
 #
@@ -39,14 +47,50 @@ param_dict = {
     "rout": 0.1,  # radius of cloud in pc
     "baseAv": 1.0,  # visual extinction at cloud edge.
 }
-df_stage1_physics, df_stage1_chemistry, df_stage1_rates, final_abundances, result = (
-    uclchem.model.cloud(
-        param_dict=param_dict,
-        return_dataframe=True,
-    )
+(
+    df_stage1_physics,
+    df_stage1_chemistry,
+    df_stage1_rates,
+    df_stage1_heating,
+    final_abundances,
+    result,
+) = uclchem.model.cloud(
+    param_dict=param_dict,
+    return_dataframe=True,
+    return_rates=True,
+    return_heating=True,
 )
 
 df_stage1_chemistry
+
+# +
+df_stage1 = pd.concat((df_stage1_physics, df_stage1_chemistry), axis=1)
+species = ["CO", "H2O", "CH3OH", "#CO", "#H2O", "#CH3OH", "@H2O", "@CO", "@CH3OH"]
+fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
+ax = uclchem.analysis.plot_species(ax, df_stage1, species)
+settings = ax.set(
+    yscale="log",
+    xlim=(1e2, 1e6),
+    ylim=(1e-10, 1e-2),
+    xlabel="Time / years",
+    ylabel="Fractional Abundance",
+    xscale="log",
+)
+
+ax2.plot(df_stage1["Time"], df_stage1["Density"], color="black")
+ax2.set(xscale="log")
+ax3 = ax2.twinx()
+ax3.plot(df_stage1["Time"], df_stage1["gasTemp"], color="red")
+ax2.set(xlabel="Time / year", ylabel="Density")
+ax3.set(ylabel="Temperature", facecolor="red", xlim=(1e2, 1e6))
+ax3.tick_params(axis="y", colors="red")
+# -
+
+df_stage1_heating.Time = df_stage1_physics.Time
+ax = df_stage1_heating.plot(x="Time", colormap="tab20")
+ax.set_yscale("symlog", linthresh=1e-40)
+ax.set_ylim(-1e-15, 1e-15)
+ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
 
 # With that done, we now have a file containing the final abundances of a cloud of gas after this collapse: `param_dict["abundSaveFile"]` we can pass this to our hot core model to use those abundances as our initial abundances.
 #
@@ -70,14 +114,19 @@ param_dict["freezeFactor"] = 0.0
 # param_dict["abstol_factor"]=1e-18
 # param_dict["reltol"]=1e-12
 
-df_stage2_physics, df_stage2_chemistry, df_stage2_rates, final_abundances, result = (
-    uclchem.model.hot_core(
-        temp_indx=3,
-        max_temperature=300.0,
-        param_dict=param_dict,
-        return_dataframe=True,
-        starting_chemistry=final_abundances,
-    )
+(
+    df_stage2_physics,
+    df_stage2_chemistry,
+    df_stage2_rates,
+    df_stage2_heating,
+    final_abundances,
+    result,
+) = uclchem.model.hot_core(
+    temp_indx=3,
+    max_temperature=300.0,
+    param_dict=param_dict,
+    return_dataframe=True,
+    starting_chemistry=final_abundances,
 )
 # -
 
@@ -140,11 +189,16 @@ param_dict = {
     "baseAv": 1.0,  # visual extinction at cloud edge.
     # "abundSaveFile": "../examples/test-output/shockstart.dat",
 }
-df_stage1_physics, df_stage1_chemistry, df_stage1_rates, final_abundances, result = (
-    uclchem.model.cloud(
-        param_dict=param_dict,
-        return_dataframe=True,
-    )
+(
+    df_stage1_physics,
+    df_stage1_chemistry,
+    df_stage1_rates,
+    df_stage1_heating,
+    final_abundances,
+    result,
+) = uclchem.model.cloud(
+    param_dict=param_dict,
+    return_dataframe=True,
 )
 # -
 
@@ -166,6 +220,7 @@ if "abundSaveFile" in param_dict:
     df_stage2_physics,
     df_stage2_chemistry,
     df_stage2_rates,
+    df_stage2_heating,
     dissipation_time,
     final_abundances,
     result,
@@ -222,14 +277,19 @@ param_dict["freefall"] = False  # lets remember to turn it off this time
 param_dict["reltol"] = 1e-12
 
 shock_vel = 10.0
-df_jshock_physics, df_jshock_chemistry, df_jshock_rates, final_abundances, result = (
-    uclchem.model.jshock(
-        shock_vel=shock_vel,
-        param_dict=param_dict,
-        return_dataframe=True,
-        starting_chemistry=final_abundances,
-        timepoints=1500,
-    )
+(
+    df_jshock_physics,
+    df_jshock_chemistry,
+    df_jshock_rates,
+    df_jshock_heating,
+    final_abundances,
+    result,
+) = uclchem.model.jshock(
+    shock_vel=shock_vel,
+    param_dict=param_dict,
+    return_dataframe=True,
+    starting_chemistry=final_abundances,
+    timepoints=1500,
 )
 # -
 
