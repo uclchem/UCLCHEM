@@ -64,9 +64,9 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nReac) :: ratesarray
         !f2py intent(in,out) ratesarray
         !f2py depend(timePoints,gridPoints,nReac) ratesarray
-        DOUBLE PRECISION, OPTIONAL, DIMENSION(nspec) :: abundanceStart
+        DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
         !f2py intent(in) abundanceStart
-        !f2py depend(nspec) abundanceStart
+        !f2py depend(gridPoints, nspec) abundanceStart
 
         successFlag=0
         specname_out = specName
@@ -132,9 +132,9 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nReac) :: ratesarray
         !f2py intent(in,out) ratesarray
         !f2py depend(timePoints,gridPoints,nReac) ratesarray
-        DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
-        !f2py  intent(in) abundanceStart
-        !f2py  depend(gridPoints) abundanceStart
+        DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
+        !f2py intent(in) abundanceStart
+        !f2py depend(gridPoints, nspec) abundanceStart
         successFlag=0
         specname_out(:nspec) = specName
         collapse_mode=collapseIn
@@ -199,9 +199,9 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nReac) :: ratesarray
         !f2py intent(in,out) ratesarray
         !f2py depend(timePoints,gridPoints,nReac) ratesarray
-        DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
-        !f2py  intent(in) abundanceStart
-        !f2py  depend(gridPoints) abundanceStart
+        DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
+        !f2py intent(in) abundanceStart
+        !f2py depend(gridPoints, nspec) abundanceStart
         specname_out(:nspec) = specName
         maxTemp=max_temp
         tempIndx=temp_indx
@@ -269,9 +269,9 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nReac) :: ratesarray
         !f2py intent(in,out) ratesarray
         !f2py depend(timePoints,gridPoints,nReac) ratesarray
-        DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
-        !f2py  intent(in) abundanceStart
-        !f2py  depend(gridPoints) abundanceStart
+        DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
+        !f2py intent(in) abundanceStart
+        !f2py depend(gridPoints, nspec) abundanceStart
 
         vs=shock_vel
         timestepFactor=timestep_factor
@@ -337,9 +337,9 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nReac) :: ratesarray
         !f2py intent(in,out) ratesarray
         !f2py depend(timePoints,gridPoints,nReac) ratesarray
-        DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
-        !f2py  intent(in) abundanceStart
-        !f2py  depend(gridPoints) abundanceStart
+        DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
+        !f2py intent(in) abundanceStart
+        !f2py depend(gridPoints, nspec) abundanceStart
         vs=shock_vel
 
      
@@ -404,9 +404,9 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nReac) :: ratesarray
         !f2py intent(in,out) ratesarray
         !f2py depend(timePoints,gridPoints,nReac) ratesarray
-        DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
-        !f2py  intent(in) abundanceStart
-        !f2py  depend(gridPoints) abundanceStart
+        DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
+        !f2py intent(in) abundanceStart
+        !f2py depend(gridPoints, nspec) abundanceStart
         DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: timegrid
         DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: densgrid
         DOUBLE PRECISION, INTENT(IN), DIMENSION(timePoints) :: gastempgrid
@@ -575,7 +575,7 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: ratesarray
-        DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: abundanceStart
+        DOUBLE PRECISION, DIMENSION(:, :), OPTIONAL :: abundanceStart
         ! Arrays neede to work with custom density/temperature profiles
         !  &timegrid,densgrid,gastempgrid,dusttempgrid,nhgrid,nh2grid,ncogrodi,ncgrid)
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: timegrid
@@ -634,7 +634,7 @@ CONTAINS
         IF (returnArray .AND. givestartabund) THEN
             ! In case we have custom abundances, set them here
             DO l=1,points
-                abund(:nspec+1,l) = abundanceStart(:nspec+1)
+                abund(:nspec+1,l) = abundanceStart(l, :nspec+1)
             END DO
         ELSE
             ! Else just use the default readInputAbunds routine:
@@ -827,8 +827,24 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) fcl
                 CASE('fp')
                     READ(inputValue,*,iostat=successFlag) fp
+                CASE('ffe')
+                    READ(inputValue,*,iostat=successFlag) ffe
                 CASE('ff')
                     READ(inputValue,*,iostat=successFlag) ff
+                CASE('fd')
+                    READ(inputValue,*,iostat=successFlag) fd
+                CASE('fli')
+                    READ(inputValue,*,iostat=successFlag) fli
+                CASE('fna')
+                    READ(inputValue,*,iostat=successFlag) fna
+                CASE('fpah')
+                    READ(inputValue,*,iostat=successFlag) fpah
+                CASE('f15n')
+                    READ(inputValue,*,iostat=successFlag) f15n
+                CASE('f13c')
+                    READ(inputValue,*,iostat=successFlag) f13c
+                CASE('f18o')
+                    READ(inputValue,*,iostat=successFlag) f18o
                 CASE('outspecies')
                     READ(inputValue,*,iostat=successFlag) nout
                     ALLOCATE(outIndx(nout))
@@ -959,6 +975,8 @@ CONTAINS
                    READ(inputValue,*,iostat=successFlag) fh
                 CASE('ntime')
                    READ(inputValue,*,iostat=successFlag) ntime
+                CASE('mxstep')
+                   READ(inputValue,*,iostat=successFlag) MXSTEP
                 ! CASE('trajecfile')
                 !    READ(inputValue,*,iostat=successFlag) trajecfile
                 CASE DEFAULT

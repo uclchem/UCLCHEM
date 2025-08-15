@@ -7,6 +7,7 @@ import pandas as pd
 from abc import ABC
 from pathlib import Path
 import matplotlib.pyplot as plt
+from typing import Optional, Dict, Type
 from numpy.f2py.auxfuncs import throw_error
 
 from uclchemwrap import uclchemwrap as wrap
@@ -17,16 +18,36 @@ from uclchem.constants import (
     TIMEPOINTS,
     n_reactions,
     n_species,
+    default_param_dictionary
 )
 
+#Global variables determining formats of write files
+PHYSICAL_PARAMETERS_HEADER_FORMAT = "%10s"
+# in the below variable, the outputs were chosen according to the spacing needed for
+# "      Time,    Density,    gasTemp,   dustTemp,         Av,   radfield,       zeta,      point,"
+PHYSICAL_PARAMETERS_VALUE_FORMAT = "%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i"
+SPECNAME_HEADER_FORMAT = "%11s"
+SPECNAME_VALUE_FORMAT = "%9.5E"
+#
 
+# Model registration is intended to prevent code injection during loading time.
+REGISTRY: Dict[str, Type["AbstractModel"]] = {}
+
+def register_model(cls: Type["AbstractModel"]):
+    name = getattr(cls, "MODEL_NAME", cls.__name__)
+    if name in REGISTRY and REGISTRY[name] is not cls:
+        raise ValueError(f"Duplicate model registration for {name}")
+    REGISTRY[name] = cls
+    return cls
+#
+
+# Reaction and Species name retrieval classes to reduce file read repetition.
 def reaction_line_formatter(line):
     reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
     products = list(filter(lambda x: not str(x).lower().endswith("nan"), line[3:7]))
     return " + ".join(reactants) + " -> " + " + ".join(products)
 
-
-class ReactionNamesStore():
+class ReactionNamesStore:
     def __init__(self):
         self.reaction_names = None
 
@@ -38,8 +59,21 @@ class ReactionNamesStore():
             self.reaction_names = [reaction_line_formatter(line) for idx, line in reactions.iterrows()]
         return self.reaction_names
 
-
 get_reaction_names = ReactionNamesStore()
+
+class SpeciesNameStore:
+    def __init__(self):
+        self.species_names = None
+
+    def __call__(self):
+        # Only load the species once, after that use the cached version
+        if self.species_names is None:
+            species = pd.read_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "species.csv"))
+            self.species_names = species["NAME"].tolist()
+        return self.species_names
+
+get_species_names = SpeciesNameStore()
+#
 
 
 class AbstractModel(ABC):
@@ -73,50 +107,43 @@ class AbstractModel(ABC):
                  read_file: str = None
                  ):
         """Initiates the model with all common factors found within models"""
+        self.model_type = str(self.__class__.__name__)
         self.param_dict = {}
         self.out_species_list = out_specie_list
         self.out_species = ""
         self.physics_array = None
         self.chemical_abun_array = None
-        self.ratesArray = None
+        self.rates_array = None
         self.out_species_abundances = None
         self.full_array = None
         self.debug = debug
         self.success_flag = None
-        specname = wrap.get_specname()
-        self.specname = np.array([x.strip() for x in specname.astype(str) if x != ""])
+        self.specname = get_species_names()
+
+        self.n_out = 0 if read_file is None else None
+        self.timepoints = timepoints if read_file is None else None
+        self.was_read = False if read_file is None else True
+        self.PHYSICAL_PARAMETERS = PHYSICAL_PARAMETERS if read_file is None else None
+
+        self.outputFile = param_dict.pop("outputFile") if "outputFile" in param_dict else None
+        self.abundSaveFile = param_dict.pop("abundSaveFile") if "abundSaveFile" in param_dict else None
+        self.abundLoadFile = param_dict.pop("abundLoadFile") if "abundLoadFile" in param_dict else None
+
+        self._reform_inputs(param_dict, self.out_species_list)
+        if "points" not in self.param_dict:
+            self.param_dict["points"] = 1
+
+        if previous_model is None and self.abundLoadFile is None:
+            self._create_starting_array(starting_chemistry)
+        elif hasattr(previous_model, 'next_starting_chemistry'):
+            self._create_starting_array(previous_model.next_starting_chemistry_array)
+        elif self.abundLoadFile is not None:
+            self.read_starting_chemistry_output_file()
+        self.give_start_abund = self.starting_chemistry is not None
+        self.next_starting_chemistry = None
 
         if read_file is not None:
-            self.n_out = None
-            self.timepoints = None
-            self.was_read = True
-            self.PHYSICAL_PARAMETERS = None
-            self.give_start_abund = False
-            self.next_starting_chemistry = None
-            self._reform_inputs(param_dict, self.out_species_list)
             self.read_output_file(read_file)
-        else:
-            self.n_out = 0
-            self.timepoints = timepoints
-            self.was_read = False
-            self.PHYSICAL_PARAMETERS = PHYSICAL_PARAMETERS
-            self.outputFile = param_dict.pop("outputFile") if "outputFile" in param_dict else None
-            self.abundSaveFile = param_dict.pop("abundSaveFile") if "abundSaveFile" in param_dict else None
-            self.abundLoadFile = param_dict.pop("abundLoadFile") if "abundLoadFile" in param_dict else None
-            self._reform_inputs(param_dict, self.out_species_list)
-            if "points" not in self.param_dict:
-                self.param_dict["points"] = 1
-            if previous_model is None and self.abundLoadFile is None:
-                self.starting_chemistry = starting_chemistry
-            elif 'next_starting_chemistry' in [attr for attr in dir(previous_model) if
-                                               not callable(getattr(previous_model, attr)) and
-                                               not attr.startswith("__") and
-                                               attr is not None]:
-                self.starting_chemistry = previous_model.next_starting_chemistry
-            elif self.abundLoadFile is not None:
-                self.read_starting_chemistry_output_file()
-            self.give_start_abund = self.starting_chemistry is not None
-            self.next_starting_chemistry = None
         return
 
     def __run__(self):
@@ -289,18 +316,16 @@ class AbstractModel(ABC):
 
     def read_starting_chemistry_output_file(self):
         """Method to read the starting chemistry from the self.abundLoadFile provided in param_dict"""
-        self.starting_chemistry = np.loadtxt(self.abundLoadFile, delimiter=",")
+        self._create_starting_array(np.loadtxt(self.abundLoadFile, delimiter=","))
 
     def write_full_output_file(self):
         """Perform classic output file writing to the file self.outputFile provided in param_dict"""
         phys = self.physics_array.reshape(-1, self.physics_array.shape[-1])
         chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
         full_array = np.append(phys, chem, axis=1)
-        #TODO Move away from the magic numbers seen here.
-        string_fmt_string = f'{", ".join(["%10s"] * (len(self.PHYSICAL_PARAMETERS)))}, {", ".join(["%11s"] * len(self.specname.tolist()))}'
+        string_fmt_string = f'{", ".join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(self.PHYSICAL_PARAMETERS)))}, {", ".join([SPECNAME_HEADER_FORMAT] * len(self.specname.tolist()))}'
         # Magic numbers here to match/improve the formatting of the classic version
-        #TODO Move away from the magic numbers seen here.
-        number_fmt_string = f'%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i, {", ".join(["%9.5E"] * len(self.specname.tolist()))}'
+        number_fmt_string = f'{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {", ".join([SPECNAME_VALUE_FORMAT] * len(self.specname.tolist()))}'
         columns = np.array([self.PHYSICAL_PARAMETERS[:-1] + ["point"] + self.specname.tolist()])
         np.savetxt(self.outputFile, columns, fmt=string_fmt_string)
         with open(self.outputFile, "ab") as f:
@@ -356,6 +381,14 @@ class AbstractModel(ABC):
                                    dtype=np.float64, order="F")
         return
 
+    def _create_starting_array(self, starting_chemistry):
+        if starting_chemistry is None:
+            self.starting_chemistry_array = None
+        else:
+            if len(np.shape(starting_chemistry)) == 1:
+                starting_chemistry = starting_chemistry[np.newaxis, :]
+            self.starting_chemistry_array = np.asfortranarray(starting_chemistry, dtype=np.float64)
+
     def _reform_inputs(self,
                        param_dict: dict,
                        out_species: list):
@@ -368,7 +401,7 @@ class AbstractModel(ABC):
             out_species (list): List of output species that are considered important for this model.
         """
         if param_dict is None:
-            self.param_dict = {}
+            self.param_dict = default_param_dictionary
         else:
             # lower case (and conveniently copy so we don't edit) the user's dictionary
             # this is key to UCLCHEM's "case insensitivity"
@@ -380,8 +413,11 @@ class AbstractModel(ABC):
                 if isinstance(v, Path):
                     v = str(v)
                 new_param_dict[k.lower()] = v
-            self.param_dict = new_param_dict.copy()
+            self.param_dict = {**default_param_dictionary, **new_param_dict.copy()}
             del new_param_dict
+            for k, v in default_param_dictionary.items():
+                if v is None:
+                    del self.param_dict[k]
         if out_species is not None:
             self.n_out = len(out_species)
             self.param_dict["outspecies"] = self.n_out
@@ -391,13 +427,7 @@ class AbstractModel(ABC):
             self.n_out = 0
         return
 
-    def _xarray_conversion(self):
-        """Internal Method. #TODO for Issue #94 add xarray support and conversion.
-                Creates Fortran compliant np.array for rates that can be passed to the Fortran part of UCLCHEM.
-        """
-        return
-
-
+@register_model
 class Cloud(AbstractModel):
     """Cloud model class inheriting from AbstractModel.
 
@@ -453,8 +483,8 @@ class Cloud(AbstractModel):
             returnrates=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
+            ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry,
         )
         self.check_error(only_error=True)
@@ -469,7 +499,7 @@ class Cloud(AbstractModel):
         if self.abundSaveFile is not None:
             self.write_starting_chemistry_output_file()
 
-
+@register_model
 class Collapse(AbstractModel):
     """Collapse model class inheriting from AbstractModel.
 
@@ -541,15 +571,15 @@ class Collapse(AbstractModel):
             writeOut=self.write_physics,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
-            returnarray=True,
-            returnrates=True,
-            givesstartabund=self.give_start_abund,
             timepoints=self.timepoints,
             gridpoints=self.param_dict["points"],
+            returnarray=True,
+            returnrates=True,
+            givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
-            abundanceStart=self.starting_chemistry,
+            ratesarray=self.rates_array,
+            abundancestart=self.starting_chemistry,
         )
         self.check_error(only_error=True)
         if self.success_flag < 0:
@@ -563,7 +593,7 @@ class Collapse(AbstractModel):
         if self.abundSaveFile is not None:
             self.write_starting_chemistry_output_file()
 
-
+@register_model
 class PrestellarCore(AbstractModel):
     """PrestellarCore model class inheriting from AbstractModel. This model type was previously known as hot core.
 
@@ -624,14 +654,14 @@ class PrestellarCore(AbstractModel):
             max_temp=self.max_temperature,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
+            timepoints=self.timepoints,
+            gridpoints=self.param_dict["points"],
             returnarray=True,
             returnrates=True,
             givestartabund=self.give_start_abund,
-            timepoints=self.timepoints,
-            gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
+            ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry,
         )
         self.check_error(only_error=True)
@@ -646,7 +676,7 @@ class PrestellarCore(AbstractModel):
         if self.abundSaveFile is not None:
             self.write_starting_chemistry_output_file()
 
-
+@register_model
 class CShock(AbstractModel):
     """C-Shock model class inheriting from AbstractModel.
 
@@ -714,14 +744,14 @@ class CShock(AbstractModel):
             minimum_temperature=self.minimum_temperature,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
+            timepoints=self.timepoints,
+            gridpoints=self.param_dict["points"],
             returnarray=True,
             returnrates=True,
             givestartabund=self.give_start_abund,
-            timepoints=self.timepoints,
-            gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
+            ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry,
         )
         self.check_error(only_error=True)
@@ -737,7 +767,7 @@ class CShock(AbstractModel):
         if self.abundSaveFile is not None:
             self.write_starting_chemistry_output_file()
 
-
+@register_model
 class JShock(AbstractModel):
     """J-Shock model class inheriting from AbstractModel.
 
@@ -793,14 +823,14 @@ class JShock(AbstractModel):
             shock_vel=self.shock_vel,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
+            timepoints=self.timepoints,
+            gridpoints=self.param_dict["points"],
             returnarray=True,
             returnrates=True,
             givestartabund=self.give_start_abund,
-            timepoints=self.timepoints,
-            gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
+            ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry,
         )
         self.check_error(only_error=True)
@@ -815,7 +845,7 @@ class JShock(AbstractModel):
         if self.abundSaveFile is not None:
             self.write_starting_chemistry_output_file()
 
-
+@register_model
 class Postprocess(AbstractModel):
     """Postprocess represents a model class with additional controls. It inherits from AbstractModel.
 
@@ -917,6 +947,8 @@ class Postprocess(AbstractModel):
         """
         super().__run__()
         _, _, _, self.out_species_abundances, _, self.success_flag = wrap.postprocess(
+            usecoldens=self.coldens_H_array is not None,
+            **self.postprocess_arrays,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
@@ -925,11 +957,9 @@ class Postprocess(AbstractModel):
             returnrates=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
+            ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry,
-            usecoldens=self.coldens_H_array is not None,
-            **self.postprocess_arrays,
         )
         self.check_error(only_error=True)
         if self.success_flag < 0:
@@ -943,7 +973,7 @@ class Postprocess(AbstractModel):
         if self.abundSaveFile is not None:
             self.write_starting_chemistry_output_file()
 
-
+@register_model
 class Model(AbstractModel):
     """Model, like Postprocess, represents a model class with additional controls. It inherits from AbstractModel.
 
@@ -1032,6 +1062,8 @@ class Model(AbstractModel):
         """
         super().__run__()
         _, _, _, self.out_species_abundances, _, self.success_flag = wrap.postprocess(
+            usecoldens=False,
+            **self.postprocess_arrays,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
@@ -1040,11 +1072,9 @@ class Model(AbstractModel):
             returnrates=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
-            ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
+            ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry,
-            usecoldens=False,
-            **self.postprocess_arrays,
         )
         self.check_error(only_error=True)
         if self.success_flag < 0:

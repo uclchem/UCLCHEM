@@ -2,12 +2,15 @@ import os
 import sys
 import json
 import types
+import signal
 import warnings
 import numpy as np
 import xarray as xr
 import pandas as pd
 from abc import ABC
 from pathlib import Path
+from datetime import datetime
+from typing import Optional, Dict, Type, Any
 import matplotlib.pyplot as plt
 from numpy.f2py.auxfuncs import throw_error
 
@@ -19,16 +22,36 @@ from uclchem.constants import (
     TIMEPOINTS,
     n_reactions,
     n_species,
+    default_param_dictionary,
 )
 
+#Global variables determining formats of write files
+PHYSICAL_PARAMETERS_HEADER_FORMAT = "%10s"
+# in the below variable, the outputs were chosen according to the spacing needed for
+# "      Time,    Density,    gasTemp,   dustTemp,         Av,   radfield,       zeta,      point,"
+PHYSICAL_PARAMETERS_VALUE_FORMAT = "%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i"
+SPECNAME_HEADER_FORMAT = "%11s"
+SPECNAME_VALUE_FORMAT = "%9.5E"
+#
 
+# Model registration is intended to prevent code injection during loading time.
+REGISTRY: Dict[str, Type["AbstractModel"]] = {}
+
+def register_model(cls: Type["AbstractModel"]):
+    name = getattr(cls, "MODEL_NAME", cls.__name__)
+    if name in REGISTRY and REGISTRY[name] is not cls:
+        raise ValueError(f"Duplicate model registration for {name}")
+    REGISTRY[name] = cls
+    return cls
+#
+
+# Reaction and Species name retrieval classes to reduce file read repetition.
 def reaction_line_formatter(line):
     reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
     products = list(filter(lambda x: not str(x).lower().endswith("nan"), line[3:7]))
     return " + ".join(reactants) + " -> " + " + ".join(products)
 
-
-class ReactionNamesStore():
+class ReactionNamesStore:
     def __init__(self):
         self.reaction_names = None
 
@@ -40,13 +63,52 @@ class ReactionNamesStore():
             self.reaction_names = [reaction_line_formatter(line) for idx, line in reactions.iterrows()]
         return self.reaction_names
 
-
 get_reaction_names = ReactionNamesStore()
 
-#TODO make sure multipoint model to model works.
-#TODO Add a way to load a model without specifying the class type.
+class SpeciesNameStore:
+    def __init__(self):
+        self.species_names = None
+
+    def __call__(self):
+        # Only load the species once, after that use the cached version
+        if self.species_names is None:
+            species = pd.read_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "species.csv"))
+            self.species_names = species["NAME"].tolist()
+        return self.species_names
+
+get_species_names = SpeciesNameStore()
+#
 
 
+def load_model(file: str, name: str = 'default', engine: str = "h5netcdf", debug: bool = False):
+    """
+    load_model bypasses __init__ in order to load a pre-existing model from a file.
+
+    Args:
+        file (str): Path to a file that contains previously run and stored models.
+        name (str, optional): Name of the stored object, if none was provided `default` will have been used. Defaults to 'default'
+        engine (str, optional): “netcdf4”, “h5netcdf” or “zarr”, depending on the engine to be used. Defaults to "h5netcdf".
+        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False.
+    Returns:
+        obj (object): Loaded object that inherited from AbstractModel and has the class of to the model found in the loaded file.
+    """
+    try:
+        loaded_data = xr.open_dataset(filename_or_obj=file, group=name, engine=engine)
+    except FileNotFoundError:
+        print(f"Unable to find file {file}")
+        raise FileNotFoundError
+    except OSError:
+        print(f"Could not find model with name: {name}, in file {file}.")
+        raise OSError
+    except ValueError:
+        print(f"Engine {engine}, is incompatible with xr.open_dataset")
+        raise ValueError
+    cls = REGISTRY.get(loaded_data["model_type"].item())
+    if cls is None:
+        raise ValueError(f"Unrecognized model type '{loaded_data['model_type'].item()}'. Not in trusted registry.")
+    return cls.load_from_dataset(model_ds=loaded_data, debug=debug)
+
+#TODO Add catch of ctrl+c or other aborts so that it saves model and a full output to files of year, month, day, time type.
 class AbstractModel(ABC):
     """Base model class used for inheritance only
 
@@ -64,7 +126,7 @@ class AbstractModel(ABC):
             of the new UCLCHEM model that will be run. Defaults to None
         timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
             Defaults to uclchem.constants.TIMEPOINTS
-        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False.
         read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
     """
@@ -79,18 +141,19 @@ class AbstractModel(ABC):
                  ):
         self._data = xr.Dataset()
         """Initiates the model with all common factors found within models"""
+        self._prev_handler: Optional[signal.Handlers] = None
+        self.model_type = str(self.__class__.__name__)
         self.param_dict = {}
         self.out_species_list = out_specie_list
         self.out_species = ""
         self.physics_array = None
         self.chemical_abun_array = None
         self.rates_array = None
-        self.out_species_abundances = None
+        self.out_species_abundances_array = None
         self.full_array = None
         self.debug = debug
         self.success_flag = None
-        specname = wrap.get_specname()
-        self.specname = np.array([x.strip() for x in specname.astype(str) if x != ""])
+        self.specname = get_species_names()
 
         self.n_out = 0 if read_file is None else None
         self.timepoints = timepoints if read_file is None else None
@@ -105,19 +168,35 @@ class AbstractModel(ABC):
         if "points" not in self.param_dict:
             self.param_dict["points"] = 1
 
+        self.starting_chemistry_array = None
         if previous_model is None and self.abundLoadFile is None:
-            self.starting_chemistry = starting_chemistry
-        elif previous_model.has_attr('next_starting_chemistry'):
-            self.starting_chemistry = previous_model.next_starting_chemistry
+            self._create_starting_array(starting_chemistry)
+        elif previous_model.has_attr('next_starting_chemistry_array'):
+            self._create_starting_array(previous_model.next_starting_chemistry_array)
         elif self.abundLoadFile is not None:
             self.read_starting_chemistry_output_file()
-        self.give_start_abund = self.starting_chemistry is not None
-        self.next_starting_chemistry = None
+
+        self.give_start_abund = self.starting_chemistry_array is not None
+        self.next_starting_chemistry_array = None
 
         if read_file is not None:
             self.read_output_file(read_file)
 
         return
+
+    @classmethod
+    def load_from_dataset(cls, model_ds: xr.Dataset, debug: bool = False):
+        obj = cls.__new__(cls)
+        obj.param_dict = json.loads(model_ds["param_dict"].item())
+        model_ds.__delitem__("param_dict")
+        obj._data = model_ds.copy()
+        model_ds.close()
+        temp_attribute_dict = json.loads(obj._data["attributes_dict"].item())
+        for k, v in temp_attribute_dict.items():
+            obj._data[k] = v
+        obj._data.__delitem__("attributes_dict")
+        obj.debug = debug
+        return obj
 
     @classmethod
     def load_model(cls, file: str, name: str = 'default', engine: str = "h5netcdf", debug: bool = False):
@@ -149,19 +228,19 @@ class AbstractModel(ABC):
             raise Exception(
                 f'Attempted to load model of type {loaded_data["model_type"].item()}, using model class {obj.__class__.__name__}'
             )
-        else:
-            loaded_data.__delitem__("model_type")
         obj.param_dict = json.loads(loaded_data["param_dict"].item())
         loaded_data.__delitem__("param_dict")
         obj._data = loaded_data.copy()
+        loaded_data.close()
+        temp_attribute_dict = json.loads(obj._data["attributes_dict"].item())
+        for k, v in temp_attribute_dict.items():
+            obj._data[k] = v
+        obj._data.__delitem__("attributes_dict")
         obj.debug = debug
         return obj
 
     def __getattr__(self, key):
-        if key == "debug":
-            return self.debug
-        #TODO: Remove try and replace with check if key is in self._data
-        try:
+        if key in self._data:
             values = self._data[key].values
             if np.shape(values) != ():
                 if type(values) == tuple:
@@ -170,25 +249,40 @@ class AbstractModel(ABC):
                     return values
             else:
                 return self._data[key].item()
-        except (KeyError):
-            raise AttributeError(f'{self.__class__.__name__} has no attribute and no parameter in param_dict of name: "{key}"".')
+        elif key == "debug":
+            return self.debug
+        elif key == "_prev_handler":
+            return self._prev_handler
+        else:
+            raise AttributeError(f'{self.__class__.__name__} has no attribute of name: "{key}"".')
 
     def __setattr__(self, key, value):
-        try:
-            if key in ("param_dict", "_data", "debug"):
-                super().__setattr__(key, value)
-            else:
-                if key in self._data:
-                    self._data.__delitem__(key)
-                self._data[key] = value
-        except xr.core.variable.MissingDimensionsError:
+        if key in ("param_dict", "_data", "debug", "_prev_handler"):
+            super().__setattr__(key, value)
+        else:
+            if key in self._data:
+                self._data.__delitem__(key)
+
             if np.ndim(value) == 3:
                 self._data[key] = (["time_step", "point", key.replace('array', 'values')], value)
             elif np.ndim(value) == 2:
                 self._data[key] = (["point", key], value)
             else:
-                print(f"Unable to store {value} into _data[{key}]")
-                raise ValueError
+                self._data[key] = value
+
+#    def __on_sigint__(self, signum, frame):
+#        # Keep it light: set a flag and let the main loop handle heavy work.
+#        error_time = datetime.now().strftime("%y_%m_%d_%H_%M")
+#        if self.outputFile is None:
+#            self.outputFile = "./" + error_time + ".dat"
+#        elif "/" in self.outputFile:
+#            self.outputFile = self.outputFile[:self.outputFile.rfind("/")+1] + error_time + self.outputFile[self.outputFile.rfind("."):]
+#        else:
+#            self.outputFile = "./" + error_time + ".dat"
+#        self._array_clean()
+#        self.write_full_output_file()
+#        self._was_interrupted = True
+#        self.save_model(file = "./" + error_time + ".h5", name = error_time, overwrite = True)
 
     def __run__(self):
         """__run__ resets the Fortran arrays if the model was not read, allowing the arrays to be reused for new runs."""
@@ -200,6 +294,8 @@ class AbstractModel(ABC):
             self._create_rates_array()
         else:
             raise ("This model was read. It can not be run. ")
+#        self._prev_handler = signal.getsignal(signal.SIGINT)
+#        signal.signal(signal.SIGINT, self.__on_sigint__)
         if self.debug:
             print(f"About to run {self.__class__.__name__} model with the following options:")
             print(f'dictionary = {self.param_dict},')
@@ -212,7 +308,7 @@ class AbstractModel(ABC):
             print(f'physicsarray = {self.physics_array},')
             print(f'ratesarray = {self.rates_array},')
             print(f'chemicalabunarray = {self.chemical_abun_array},')
-            print(f'abundancestart = {self.starting_chemistry},')
+            print(f'abundancestart = {self.starting_chemistry_array},')
         return
 
     def check_conservation(self,
@@ -360,8 +456,7 @@ class AbstractModel(ABC):
         row_count = int(np.shape(array)[0] / self.param_dict["points"])
 
         self.PHYSICAL_PARAMETERS = [p for p in PHYSICAL_PARAMETERS if p in columns]
-        specname = wrap.get_specname()
-        self.specname = [c for c in np.array([x.strip() for x in specname.astype(str) if x != ""]) if c in columns]
+        self.specname = get_species_names()
 
         self.physics_array = np.empty((row_count, self.param_dict["points"], len(self.PHYSICAL_PARAMETERS) + 1))
         self.chemical_abun_array = np.empty((row_count, self.param_dict["points"], len(self.specname)))
@@ -372,10 +467,10 @@ class AbstractModel(ABC):
             array[np.where(array[:, point_index] == p + 1), (len(self.PHYSICAL_PARAMETERS) + 1):][0]
         self._array_clean()
         last_timestep_index = self.physics_array[:, 0, 0].nonzero()[0][-1]
-        self.next_starting_chemistry = self.chemical_abun_array[last_timestep_index, :, :]
+        self.next_starting_chemistry_array = self.chemical_abun_array[last_timestep_index, :, :]
         return
 
-    def save_model(self, file: str, name: str = 'default', engine: str = "h5netcdf", overwrite: bool = False):
+    def save_model(self, file: str, name: str = 'default', engine: str = "h5netcdf", single_precision: bool = False, overwrite: bool = False):
         """
         save_model saves a model to a file on disk. Multiple models can be saved into the same file if different names are used to store them.
 
@@ -393,15 +488,26 @@ class AbstractModel(ABC):
                     if not overwrite:
                         warnings.warn(f"Model with name: `{name}` already exists in `{file}` but overwrite is set to False. Unable to save model.")
                         return
-                    elif overwrite:
-                        warnings.warn(f"Model with name: `{name}` already exists in `{file}`, overwriting model.")
-        self._data["model_type"] = str(self.__class__.__name__)
+        temp_attribute_dict = {}
+        for v in self._data.variables:
+            if "_array" not in v:
+                if np.shape(self._data[v].values) != ():
+                    if type(self._data[v].values) == tuple:
+                        temp_attribute_dict[v] = self._data[v].values[1].tolist()
+                        self._data.drop_vars(v)
+                    else:
+                        temp_attribute_dict[v] = self._data[v].values.tolist()
+                        self._data.drop_vars(v)
+                else:
+                    temp_attribute_dict[v] = self._data[v].item()
+                    self._data.drop_vars(v)
+        self._data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
         self._data["param_dict"] = xr.DataArray([json.dumps(self.param_dict)])
         self._data.to_netcdf(path=file, group=name, mode='a', engine=engine)
 
     def read_starting_chemistry_output_file(self):
         """Method to read the starting chemistry from the self.abundLoadFile provided in param_dict"""
-        self.starting_chemistry = np.loadtxt(self.abundLoadFile, delimiter=",")
+        self._create_starting_array(np.loadtxt(self.abundLoadFile, delimiter=","))
 
     def write_full_output_file(self):
         """Perform classic output file writing to the file self.outputFile provided in param_dict"""
@@ -409,11 +515,11 @@ class AbstractModel(ABC):
         chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
         full_array = np.append(phys, chem, axis=1)
         #TODO Move away from the magic numbers seen here.
-        string_fmt_string = f'{", ".join(["%10s"] * (len(self.PHYSICAL_PARAMETERS)))}, {", ".join(["%11s"] * len(self.specname.tolist()))}'
+        string_fmt_string = f'{", ".join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(self.PHYSICAL_PARAMETERS)))}, {", ".join([SPECNAME_HEADER_FORMAT] * len(self.specname))}'
         # Magic numbers here to match/improve the formatting of the classic version
         #TODO Move away from the magic numbers seen here.
-        number_fmt_string = f'%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i, {", ".join(["%9.5E"] * len(self.specname.tolist()))}'
-        columns = np.array([self.PHYSICAL_PARAMETERS[:-1] + ["point"] + self.specname.tolist()])
+        number_fmt_string = f'{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {", ".join([SPECNAME_VALUE_FORMAT] * len(self.specname))}'
+        columns = np.array([self.PHYSICAL_PARAMETERS[:-1].tolist() + ["point"] + self.specname.tolist()])
         np.savetxt(self.outputFile, columns, fmt=string_fmt_string)
         with open(self.outputFile, "ab") as f:
             np.savetxt(f, full_array, fmt=number_fmt_string)
@@ -423,7 +529,7 @@ class AbstractModel(ABC):
         """Perform classic starting abundance file writing to the file self.abundSaveFile provided in param_dict"""
         last_timestep_index = self.chemical_abun_array[:, 0, 0].nonzero()[0][-1]
         #TODO Move away from the magic numbers seen here.
-        number_fmt_string = f' {", ".join(["%9.5E"] * len(self.specname.tolist()))}'
+        number_fmt_string = f' {", ".join(["%9.5E"] * len(self.specname))}'
         with open(self.abundSaveFile, "wb") as f:
             np.savetxt(f, self.chemical_abun_array[last_timestep_index, :, :], fmt=number_fmt_string)
         return
@@ -439,12 +545,7 @@ class AbstractModel(ABC):
         last_timestep_index = self.physics_array[:, 0, 0].nonzero()[0][-1]
         # Get the arrays for only the simulated timesteps (not the zero padded ones)
         self._data = self._data.isel(time_step=slice(0, last_timestep_index+1))
-        #self.physics_array = self.physics_array[:(last_timestep_index + 1), :, :]
-        #self.chemical_abun_array = self.chemical_abun_array[:(last_timestep_index + 1), :, :]
-        #if self.rates_array is not None:
-        #    self.rates_array = self.rates_array[: last_timestep_index + 1, :, :]
-        # Get the last arrays simulated, easy for starting another model.
-        self.next_starting_chemistry = self.chemical_abun_array[last_timestep_index, :, :]
+        self.next_starting_chemistry_array = self.chemical_abun_array[last_timestep_index, :, :]
         return
 
     def _create_fortran_array(self):
@@ -472,6 +573,14 @@ class AbstractModel(ABC):
                                    dtype=np.float64, order="F")
         return
 
+    def _create_starting_array(self, starting_chemistry):
+        if starting_chemistry is None:
+            self.starting_chemistry_array = None
+        else:
+            if len(np.shape(starting_chemistry)) == 1:
+                starting_chemistry = starting_chemistry[np.newaxis, :]
+            self.starting_chemistry_array = np.asfortranarray(starting_chemistry, dtype=np.float64)
+
     def _reform_inputs(self,
                        param_dict: dict,
                        out_species: list):
@@ -484,7 +593,7 @@ class AbstractModel(ABC):
             out_species (list): List of output species that are considered important for this model.
         """
         if param_dict is None:
-            self.param_dict = {}
+            self.param_dict = default_param_dictionary
         else:
             # lower case (and conveniently copy so we don't edit) the user's dictionary
             # this is key to UCLCHEM's "case insensitivity"
@@ -496,8 +605,11 @@ class AbstractModel(ABC):
                 if isinstance(v, Path):
                     v = str(v)
                 new_param_dict[k.lower()] = v
-            self.param_dict = new_param_dict.copy()
+            self.param_dict = {**default_param_dictionary, **new_param_dict.copy()}
             del new_param_dict
+        for k, v in default_param_dictionary.items():
+            if v is None:
+                del self.param_dict[k]
         if out_species is not None:
             self.n_out = len(out_species)
             self.param_dict["outspecies"] = self.n_out
@@ -507,7 +619,7 @@ class AbstractModel(ABC):
             self.n_out = 0
         return
 
-
+@register_model
 class Cloud(AbstractModel):
     """Cloud model class inheriting from AbstractModel.
 
@@ -554,7 +666,7 @@ class Cloud(AbstractModel):
         check_error, and array_clean are automatically called post model run.
         """
         super().__run__()
-        _, _, _, self.out_species_abundances, _, self.success_flag = wrap.cloud(
+        _, _, _, self.out_species_abundances_array, _, self.success_flag = wrap.cloud(
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
@@ -563,23 +675,23 @@ class Cloud(AbstractModel):
             returnrates=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
-            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
-            abundancestart=self.starting_chemistry,
+            ratesarray=self.rates_array,
+            abundancestart=self.starting_chemistry_array,
         )
         self.check_error(only_error=True)
         if self.success_flag < 0:
-            self.out_species_abundances = []
+            self.out_species_abundances_array = []
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances = list(self.out_species_abundances[:out_species_length])
+            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
         self._array_clean()
         if self.outputFile is not None:
             self.write_full_output_file()
         if self.abundSaveFile is not None:
             self.write_starting_chemistry_output_file()
 
-
+@register_model
 class Collapse(AbstractModel):
     """Collapse model class inheriting from AbstractModel.
 
@@ -645,35 +757,35 @@ class Collapse(AbstractModel):
         check_error, and array_clean are automatically called post model run.
         """
         super().__run__()
-        _, _, _, self.out_species_abundances, _, self.success_flag = wrap.collapse(
+        _, _, _, self.out_species_abundances_array, _, self.success_flag = wrap.collapse(
             collapseIn=self.collapse,
             collapseFileIn=self.physics_output,
             writeOut=self.write_physics,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
-            returnarray=True,
-            returnrates=True,
-            givesstartabund=self.give_start_abund,
             timepoints=self.timepoints,
             gridpoints=self.param_dict["points"],
+            returnarray=True,
+            returnrates=True,
+            givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
-            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
-            abundanceStart=self.starting_chemistry,
+            ratesarray=self.rates_array,
+            abundancestart=self.starting_chemistry_array,
         )
         self.check_error(only_error=True)
         if self.success_flag < 0:
-            self.out_species_abundances = []
+            self.out_species_abundances_array = []
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances = list(self.out_species_abundances[:out_species_length])
+            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
         self._array_clean()
         if self.outputFile is not None:
             self.write_full_output_file()
         if self.abundSaveFile is not None:
             self.write_starting_chemistry_output_file()
 
-
+@register_model
 class PrestellarCore(AbstractModel):
     """PrestellarCore model class inheriting from AbstractModel. This model type was previously known as hot core.
 
@@ -729,34 +841,34 @@ class PrestellarCore(AbstractModel):
         check_error, and array_clean are automatically called post model run.
         """
         super().__run__()
-        _, _, _, self.out_species_abundances, _, self.success_flag = wrap.hot_core(
+        _, _, _, self.out_species_abundances_array, _, self.success_flag = wrap.hot_core(
             temp_indx=self.temp_indx,
             max_temp=self.max_temperature,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
+            timepoints=self.timepoints,
+            gridpoints=self.param_dict["points"],
             returnarray=True,
             returnrates=True,
             givestartabund=self.give_start_abund,
-            timepoints=self.timepoints,
-            gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
-            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
-            abundancestart=self.starting_chemistry,
+            ratesarray=self.rates_array,
+            abundancestart=self.starting_chemistry_array,
         )
         self.check_error(only_error=True)
         if self.success_flag < 0:
-            self.out_species_abundances = []
+            self.out_species_abundances_array = []
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances = list(self.out_species_abundances[:out_species_length])
+            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
         self._array_clean()
         if self.outputFile is not None:
             self.write_full_output_file()
         if self.abundSaveFile is not None:
             self.write_starting_chemistry_output_file()
 
-
+@register_model
 class CShock(AbstractModel):
     """C-Shock model class inheriting from AbstractModel.
 
@@ -818,36 +930,36 @@ class CShock(AbstractModel):
         check_error, and array_clean are automatically called post model run.
         """
         super().__run__()
-        _, _, _, self.out_species_abundances, self.dissipation_time, _, self.success_flag = wrap.cshock(
+        _, _, _, self.out_species_abundances_array, self.dissipation_time, _, self.success_flag = wrap.cshock(
             shock_vel=self.shock_vel,
             timestep_factor=self.timestep_factor,
             minimum_temperature=self.minimum_temperature,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
+            timepoints=self.timepoints,
+            gridpoints=self.param_dict["points"],
             returnarray=True,
             returnrates=True,
             givestartabund=self.give_start_abund,
-            timepoints=self.timepoints,
-            gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
-            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
-            abundancestart=self.starting_chemistry,
+            ratesarray=self.rates_array,
+            abundancestart=self.starting_chemistry_array,
         )
         self.check_error(only_error=True)
         if self.success_flag < 0:
             self.dissipation_time = None
-            self.out_species_abundances = []
+            self.out_species_abundances_array = []
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances = list(self.out_species_abundances[:out_species_length])
+            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
         self._array_clean()
         if self.outputFile is not None:
             self.write_full_output_file()
         if self.abundSaveFile is not None:
             self.write_starting_chemistry_output_file()
 
-
+@register_model
 class JShock(AbstractModel):
     """J-Shock model class inheriting from AbstractModel.
 
@@ -899,34 +1011,33 @@ class JShock(AbstractModel):
         check_error, and array_clean are automatically called post model run.
         """
         super().__run__()
-        _, _, _, self.out_species_abundances, _, self.success_flag = wrap.jshock(
+        _, _, _, self.out_species_abundances_array, _, self.success_flag = wrap.jshock(
             shock_vel=self.shock_vel,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
+            timepoints=self.timepoints,
+            gridpoints=self.param_dict["points"],
             returnarray=True,
             returnrates=True,
             givestartabund=self.give_start_abund,
-            timepoints=self.timepoints,
-            gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
-            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
-            abundancestart=self.starting_chemistry,
+            ratesarray=self.rates_array,
+            abundancestart=self.starting_chemistry_array,
         )
         self.check_error(only_error=True)
         if self.success_flag < 0:
-            self.out_species_abundances = []
+            self.out_species_abundances_array = []
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances = list(self.out_species_abundances[:out_species_length])
+            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
         self._array_clean()
         if self.outputFile is not None:
             self.write_full_output_file()
         if self.abundSaveFile is not None:
             self.write_starting_chemistry_output_file()
 
-
-# noinspection PyUnresolvedReferences
+@register_model
 class Postprocess(AbstractModel):
     """Postprocess represents a model class with additional controls. It inherits from AbstractModel.
 
@@ -1012,7 +1123,7 @@ class Postprocess(AbstractModel):
             self.time_array = time_array
             self.coldens_H_array = coldens_H_array
             if not self.give_start_abund:
-                self.starting_chemistry = np.zeros(
+                self.starting_chemistry_array = np.zeros(
                     shape=n_species,
                     dtype=np.float64,
                     order="F",
@@ -1027,7 +1138,9 @@ class Postprocess(AbstractModel):
         check_error, and array_clean are automatically called post model run.
         """
         super().__run__()
-        _, _, _, self.out_species_abundances, _, self.success_flag = wrap.postprocess(
+        _, _, _, self.out_species_abundances_array, _, self.success_flag = wrap.postprocess(
+            usecoldens=self.coldens_H_array is not None,
+            **self.postprocess_arrays,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
@@ -1036,26 +1149,23 @@ class Postprocess(AbstractModel):
             returnrates=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
-            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
-            abundancestart=self.starting_chemistry,
-            usecoldens=self.coldens_H_array is not None,
-            **self.postprocess_arrays,
+            ratesarray=self.rates_array,
+            abundancestart=self.starting_chemistry_array,
         )
         self.check_error(only_error=True)
         if self.success_flag < 0:
-            self.out_species_abundances = []
+            self.out_species_abundances_array = []
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances = list(self.out_species_abundances[:out_species_length])
+            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
         self._array_clean()
         if self.outputFile is not None:
             self.write_full_output_file()
         if self.abundSaveFile is not None:
             self.write_starting_chemistry_output_file()
 
-
-# noinspection PyUnresolvedReferences
+@register_model
 class Model(AbstractModel):
     """Model, like Postprocess, represents a model class with additional controls. It inherits from AbstractModel.
 
@@ -1128,7 +1238,7 @@ class Model(AbstractModel):
                     array = np.asfortranarray(array, dtype=np.float64)
                     self.postprocess_arrays[key] = array
             if not self.give_start_abund:
-                self.starting_chemistry = np.zeros(
+                self.starting_chemistry_array = np.zeros(
                     shape=n_species,
                     dtype=np.float64,
                     order="F",
@@ -1143,7 +1253,9 @@ class Model(AbstractModel):
         check_error, and array_clean are automatically called post model run.
         """
         super().__run__()
-        _, _, _, self.out_species_abundances, _, self.success_flag = wrap.postprocess(
+        _, _, _, self.out_species_abundances_array, _, self.success_flag = wrap.postprocess(
+            usecoldens=False,
+            **self.postprocess_arrays,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
@@ -1152,18 +1264,16 @@ class Model(AbstractModel):
             returnrates=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
-            ratesarray=self.rates_array,
             chemicalabunarray=self.chemical_abun_array,
-            abundancestart=self.starting_chemistry,
-            usecoldens=False,
-            **self.postprocess_arrays,
+            ratesarray=self.rates_array,
+            abundancestart=self.starting_chemistry_array,
         )
         self.check_error(only_error=True)
         if self.success_flag < 0:
-            self.out_species_abundances = []
+            self.out_species_abundances_array = []
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances = list(self.out_species_abundances[:out_species_length])
+            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
         self._array_clean()
         if self.outputFile is not None:
             self.write_full_output_file()
@@ -1222,7 +1332,7 @@ def __functional_return__(model_object: AbstractModel,
                 chem_df,
                 rates_df,
                 model_object.dissipation_time,
-                model_object.next_starting_chemistry,
+                model_object.next_starting_chemistry_array,
                 model_object.success_flag,
             )
         else:
@@ -1230,7 +1340,7 @@ def __functional_return__(model_object: AbstractModel,
                 phys_df,
                 chem_df,
                 rates_df,
-                model_object.next_starting_chemistry,
+                model_object.next_starting_chemistry_array,
                 model_object.success_flag,
             )
     elif return_array:
@@ -1240,7 +1350,7 @@ def __functional_return__(model_object: AbstractModel,
                 model_object.chemical_abun_array,
                 model_object.rates_array if return_rates else None,
                 model_object.dissipation_time,
-                model_object.next_starting_chemistry,
+                model_object.next_starting_chemistry_array,
                 model_object.success_flag
             )
         else:
@@ -1248,7 +1358,7 @@ def __functional_return__(model_object: AbstractModel,
                 model_object.physics_array,
                 model_object.chemical_abun_array,
                 model_object.rates_array if return_rates else None,
-                model_object.next_starting_chemistry,
+                model_object.next_starting_chemistry_array,
                 model_object.success_flag
             )
     else:
