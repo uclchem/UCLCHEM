@@ -11,7 +11,7 @@ from pathlib import Path
 from datetime import datetime
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Type, Literal
+from typing import Optional, Dict, List, AnyStr, Type, Literal
 
 # UCLCHEM related imports
 from uclchemwrap import uclchemwrap as wrap
@@ -657,7 +657,7 @@ class Cloud(AbstractModel):
             ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry_array,
         )
-        if self.success_flag < 0:
+        if success_flag < 0:
             out_species_abundances_array = np.array([])
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
@@ -740,7 +740,7 @@ class Collapse(AbstractModel):
             ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry_array,
         )
-        if self.success_flag < 0:
+        if success_flag < 0:
             out_species_abundances_array = np.array([])
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
@@ -1211,6 +1211,43 @@ class Model(AbstractModel):
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
             out_species_abundances_array = list(out_species_abundances_array[:out_species_length])
         return {"success_flag": success_flag, "out_species_abundances_array": out_species_abundances_array}
+
+
+class SequentialModel:
+    def __init__(
+            self,
+            model_type_sequence: List[AnyStr],
+            joined_parameter_sequence: List[Dict],
+            parameters_to_match: List = None
+    ):
+        self.models = []
+        for model_number in range(len(model_type_sequence)):
+            cls = REGISTRY.get(model_type_sequence[model_number])
+            if model_number > 0:
+                joined_parameter_sequence[model_number]["param_dict"] = \
+                    {**joined_parameter_sequence[model_number - 1]["param_dict"],
+                     **joined_parameter_sequence[model_number]["param_dict"]}
+                if parameters_to_match is not None:
+                    for parameter in parameters_to_match:
+                        if parameter == "finalDens":
+                            joined_parameter_sequence[model_number]["param_dict"]["initialDens"] = (
+                                self.models[model_number-1].physics_array[-1,0,1]
+                            )
+                            continue
+                        elif parameter == "finalTemp":
+                            joined_parameter_sequence[model_number]["param_dict"]["initialTemp"] = (
+                                self.models[model_number - 1].physics_array[-1, 0, 2]
+                            )
+                        else:
+                            warnings.warn(f"Parameter '{parameter}' has not been implemented for parameter matching")
+                self.models += [cls(**joined_parameter_sequence[model_number],
+                                    previous_model=self.models[model_number - 1])]
+            else:
+                self.models += [cls(**joined_parameter_sequence[model_number])]
+        return
+
+    def save_models(self):
+        return
 
 '''
 Functional Submodule. 
