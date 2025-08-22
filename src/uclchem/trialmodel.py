@@ -393,7 +393,13 @@ class AbstractModel(ABC):
             print(f'chemicalabunarray = {self.chemical_abun_array},')
             print(f'abundancestart = {self.starting_chemistry_array},')
 
-        self.run_fortran()
+        output = self.run_fortran()
+
+        for k, v in output.items():
+            self.__setattr__(k, v)
+
+        self._array_clean()
+        self.check_error(only_error=True)
         if self.outputFile is not None:
             self.write_full_output_file()
         if self.abundSaveFile is not None:
@@ -638,7 +644,7 @@ class Cloud(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, self.out_species_abundances_array, _, self.success_flag = wrap.cloud(
+        _, _, _, out_species_abundances_array, _, success_flag = wrap.cloud(
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
@@ -651,13 +657,12 @@ class Cloud(AbstractModel):
             ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry_array,
         )
-        self._array_clean()
-        self.check_error(only_error=True)
         if self.success_flag < 0:
-            self.out_species_abundances_array = np.array([])
+            out_species_abundances_array = np.array([])
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
+            out_species_abundances_array = list(out_species_abundances_array[:out_species_length])
+        return {"success_flag": success_flag, "out_species_abundances_array": out_species_abundances_array}
 
 @register_model
 class Collapse(AbstractModel):
@@ -719,7 +724,7 @@ class Collapse(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, self.out_species_abundances_array, _, self.success_flag = wrap.collapse(
+        _, _, _, out_species_abundances_array, _, success_flag = wrap.collapse(
             collapseIn=self.collapse,
             collapseFileIn=self.physics_output,
             writeOut=self.write_physics,
@@ -735,13 +740,12 @@ class Collapse(AbstractModel):
             ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry_array,
         )
-        self._array_clean()
-        self.check_error(only_error=True)
         if self.success_flag < 0:
-            self.out_species_abundances_array = np.array([])
+            out_species_abundances_array = np.array([])
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
+            out_species_abundances_array = list(out_species_abundances_array[:out_species_length])
+        return {"success_flag": success_flag, "out_species_abundances_array": out_species_abundances_array}
 
 @register_model
 class PrestellarCore(AbstractModel):
@@ -798,7 +802,7 @@ class PrestellarCore(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, self.out_species_abundances_array, _, self.success_flag = wrap.hot_core(
+        _, _, _, out_species_abundances_array, _, success_flag = wrap.hot_core(
             temp_indx=self.temp_indx,
             max_temp=self.max_temperature,
             dictionary=self.param_dict,
@@ -813,13 +817,12 @@ class PrestellarCore(AbstractModel):
             ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry_array,
         )
-        self._array_clean()
-        self.check_error(only_error=True)
-        if self.success_flag < 0:
-            self.out_species_abundances_array = np.array([])
+        if success_flag < 0:
+            out_species_abundances_array = np.array([])
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
+            out_species_abundances_array = list(out_species_abundances_array[:out_species_length])
+        return {"success_flag": success_flag, "out_species_abundances_array": out_species_abundances_array}
 
 @register_model
 class CShock(AbstractModel):
@@ -882,7 +885,7 @@ class CShock(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, self.out_species_abundances_array, self.dissipation_time, _, self.success_flag = wrap.cshock(
+        _, _, _, out_species_abundances_array, dissipation_time, _, success_flag = wrap.cshock(
             shock_vel=self.shock_vel,
             timestep_factor=self.timestep_factor,
             minimum_temperature=self.minimum_temperature,
@@ -898,14 +901,13 @@ class CShock(AbstractModel):
             ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry_array,
         )
-        self._array_clean()
-        self.check_error(only_error=True)
-        if self.success_flag < 0:
-            self.dissipation_time = None
-            self.out_species_abundances_array = np.array([])
+        if success_flag < 0:
+            dissipation_time = None
+            out_species_abundances_array = np.array([])
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
+            out_species_abundances_array = list(out_species_abundances_array[:out_species_length])
+        return {"success_flag": success_flag, "out_species_abundances_array": out_species_abundances_array, "dissipation_time": dissipation_time}
 
 @register_model
 class JShock(AbstractModel):
@@ -958,7 +960,7 @@ class JShock(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, self.out_species_abundances_array, _, self.success_flag = wrap.jshock(
+        _, _, _, out_species_abundances_array, _, success_flag = wrap.jshock(
             shock_vel=self.shock_vel,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
@@ -972,13 +974,12 @@ class JShock(AbstractModel):
             ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry_array,
         )
-        self.check_error(only_error=True)
-        if self.success_flag < 0:
-            self.out_species_abundances_array = np.array([])
+        if success_flag < 0:
+            out_species_abundances_array = np.array([])
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
-        self._array_clean()
+            out_species_abundances_array = list(out_species_abundances_array[:out_species_length])
+        return {"success_flag": success_flag, "out_species_abundances_array": out_species_abundances_array}
 
 @register_model
 class Postprocess(AbstractModel):
@@ -1080,7 +1081,7 @@ class Postprocess(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, self.out_species_abundances_array, _, self.success_flag = wrap.postprocess(
+        _, _, _, out_species_abundances_array, _, success_flag = wrap.postprocess(
             usecoldens=self.coldens_H_array is not None,
             **self.postprocess_arrays,
             dictionary=self.param_dict,
@@ -1095,13 +1096,12 @@ class Postprocess(AbstractModel):
             ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry_array,
         )
-        self._array_clean()
-        self.check_error(only_error=True)
-        if self.success_flag < 0:
-            self.out_species_abundances_array = np.array([])
+        if success_flag < 0:
+            out_species_abundances_array = np.array([])
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
+            out_species_abundances_array = list(out_species_abundances_array[:out_species_length])
+        return {"success_flag": success_flag, "out_species_abundances_array": out_species_abundances_array}
 
 @register_model
 class Model(AbstractModel):
@@ -1190,7 +1190,7 @@ class Model(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.__run__(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, self.out_species_abundances_array, _, self.success_flag = wrap.postprocess(
+        _, _, _, out_species_abundances_array, _, success_flag = wrap.postprocess(
             usecoldens=False,
             **self.postprocess_arrays,
             dictionary=self.param_dict,
@@ -1205,13 +1205,12 @@ class Model(AbstractModel):
             ratesarray=self.rates_array,
             abundancestart=self.starting_chemistry_array,
         )
-        self._array_clean()
-        self.check_error(only_error=True)
-        if self.success_flag < 0:
-            self.out_species_abundances_array = np.array([])
+        if success_flag < 0:
+            out_species_abundances_array = np.array([])
         else:
             out_species_length = len(self.out_species_list) if self.out_species_list is not None else 0
-            self.out_species_abundances_array = list(self.out_species_abundances_array[:out_species_length])
+            out_species_abundances_array = list(out_species_abundances_array[:out_species_length])
+        return {"success_flag": success_flag, "out_species_abundances_array": out_species_abundances_array}
 
 '''
 Functional Submodule. 
