@@ -2,13 +2,11 @@ import os
 import sys
 import json
 import types
-import signal
 import warnings
 import numpy as np
 import xarray as xr
 import pandas as pd
 from pathlib import Path
-from datetime import datetime
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, List, AnyStr, Type, Literal
@@ -144,7 +142,6 @@ class AbstractModel(ABC):
                  ):
         self._data = xr.Dataset()
         """Initiates the model with all common factors found within models"""
-        self._prev_handler: Optional[signal.Handlers] = None
         self.model_type = str(self.__class__.__name__)
         self.param_dict = {}
         self.out_species_list = out_specie_list
