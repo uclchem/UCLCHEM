@@ -21,3 +21,6 @@ custom_reaction_type: UCL
 add_crp_photo_to_grain: False
 # Enable the writing of the rates and flux to the disk
 enable_rates_to_disk: False
+
+# Add the parameterization for the grain-assisted recombination reactions from Weingartner & Draine (2001)
+grain_assisted_recombination_file: data/databases/weingartner01_grain_assisted_recombination.yaml

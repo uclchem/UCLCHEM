@@ -24,6 +24,7 @@ reaction_types = [
     "CRS",
     "EXSOLID",
     "EXRELAX",
+    "GAR"
 ]
 
 tunneling_reaction_types = [
@@ -499,6 +500,9 @@ class Reaction:
             charge_products += specie.get_charge()
 
         if charge_products != charge_reactants:
+            if self.get_reaction_type() == "GAR":
+                # GAR reactions do not conserve charge since it relies on grain electrons.
+                return
             msg = "Charges not conserved in a reaction.\n"
             msg += f"The following reaction caused this error: {self}.\n"
             msg += f"Reactants: {charge_reactants}. Products: {charge_products}"

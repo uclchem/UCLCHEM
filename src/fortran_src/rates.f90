@@ -16,8 +16,7 @@ MODULE RATES
     REAL(dp), PARAMETER :: h2StickingZero=0.87d0,hStickingZero=1.0d0, h2StickingTemp=87.0d0,hStickingTemp=52.0d0
     !Flags to control desorption processes
     REAL(dp) :: turbVel=1.0
-
-    
+    ! TODO: integrate into makerates and put it in network.f90
 CONTAINS
     SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
         REAL(dp), INTENT(IN) :: abund(:, :), safemantle, h2col, cocol, ccol
@@ -300,30 +299,37 @@ CONTAINS
         rate(idx1:idx2) = alpha(idx1:idx2)*((gasTemp(dstep)/300.)**beta(idx1:idx2))*dexp(-gama(idx1:idx2)/gasTemp(dstep)) 
     END IF
 
-        idx1=ionopol1Reacs(1)
-        idx2=ionopol1Reacs(2)
-        IF (idx1 .ne. idx2)&
+    idx1=ionopol1Reacs(1)
+    idx2=ionopol1Reacs(2)
+    IF (idx1 .ne. idx2)&
+    !This formula including the magic numbers come from KIDA help page.
+    &rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(0.62d0+0.4767d0*gama(idx1:idx2)*dsqrt(300.0d0/gasTemp(dstep)))
+
+    idx1=ionopol2Reacs(1)
+    idx2=ionopol2Reacs(2)
+    IF (idx1 .ne. idx2) THEN
         !This formula including the magic numbers come from KIDA help page.
-        &rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(0.62d0+0.4767d0*gama(idx1:idx2)*dsqrt(300.0d0/gasTemp(dstep)))
+        rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(1.0d0+0.0967d0*gama(idx1:idx2)&
+        &*dsqrt(300.0d0/gasTemp(dstep))+gama(idx1:idx2)*gama(idx1:idx2)*300.0/(10.526*gasTemp(dstep)))
+    END IF
+    lastTemp=gasTemp(dstep)
 
-        idx1=ionopol2Reacs(1)
-        idx2=ionopol2Reacs(2)
-        IF (idx1 .ne. idx2) THEN
-            !This formula including the magic numbers come from KIDA help page.
-            rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(1.0d0+0.0967d0*gama(idx1:idx2)&
-            &*dsqrt(300.0d0/gasTemp(dstep))+gama(idx1:idx2)*gama(idx1:idx2)*300.0/(10.526*gasTemp(dstep)))
-        END IF
-        lastTemp=gasTemp(dstep)
+    idx1=garReacs(1)
+    idx2=garReacs(2)
+    IF (idx1 .ne. idx2) THEN
+        rate(idx1:idx2)= garParams(1,1) / 1. + garParams(1,2) * phi**garParams(1,3) * &
+        &(1. + garParams(1,4) * gasTemp(dstep)**garParams(1,5) * phi**(-garParams(1,6)-garParams(1,7)*log(gasTemp(dstep))))
+    END IF
 
-        !turn off reactions outside their temperature range
-        WHERE(.not. ExtrapolateRates .and. (gasTemp(dstep) .lt. minTemps)) rate=0.0
+    !turn off reactions outside their temperature range
+    WHERE(.not. ExtrapolateRates .and. (gasTemp(dstep) .lt. minTemps)) rate=0.0
 
-        WHERE(.not. ExtrapolateRates .and. (gasTemp(dstep) .gt. maxTemps)) rate=0.0
+    WHERE(.not. ExtrapolateRates .and. (gasTemp(dstep) .gt. maxTemps)) rate=0.0
 
-        !Overwrite reactions for which we have a more detailed photoreaction treatment
-        rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel)!H2 photodissociation
-        rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
-        rate(nR_C_hv)=cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),radfield) !C photoionization
+    !Overwrite reactions for which we have a more detailed photoreaction treatment
+    rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel)!H2 photodissociation
+    rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
+    rate(nR_C_hv)=cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),radfield) !C photoionization
     END SUBROUTINE calculateReactionRates
 
 
