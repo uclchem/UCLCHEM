@@ -42,6 +42,7 @@ IMPLICIT NONE
     REAL(dp) :: MIN_ABUND = 1.0d-30 !Minimum abundance allowed
 
     ! list of positive ions to conserve charge
+    LOGICAL :: enforceChargeConservation = .true.
     INTEGER :: nion,ionlist(nspec)
 CONTAINS
     SUBROUTINE initializeChemistry(readAbunds)
@@ -373,19 +374,21 @@ CONTAINS
         ! grec = 0.6 * 2.166e-14 / denom
         ! ydot(nsix) = ydot(nsix) - grec*y(nsix)*D
         ! ydot(nsi) = ydot(nsi) + grec*y(nsix)*D
-        ! replace electron ydot with sum of positive ion ydots to conserve charge
-        ydot(nelec) = 0.
-        prod = 0.
-        loss = 0.
-        ! Enforce the conservation of charge by summing the ydot of all positive ions
-        do ii=1,nion
-           if (ydot(ionlist(ii)) .ge. 0.) then
-              prod = prod + ydot(ionlist(ii))
-           else
-              loss = loss + ydot(ionlist(ii))
-           end if
-        end do
-        ydot(nelec) = prod + loss
+        if (enforceChargeConservation) then 
+            ! replace electron ydot with sum of positive ion ydots to conserve charge
+            ydot(nelec) = 0.
+            prod = 0.
+            loss = 0.
+            ! Enforce the conservation of charge by summing the ydot of all positive ions
+            do ii=1,nion
+            if (ydot(ionlist(ii)) .ge. 0.) then
+                prod = prod + ydot(ionlist(ii))
+            else
+                loss = loss + ydot(ionlist(ii))
+            end if
+            end do
+            ydot(nelec) = prod + loss
+        end if 
 
         ydot(NEQUATIONS)=densdot(y(NEQUATIONS))
     

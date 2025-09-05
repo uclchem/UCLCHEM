@@ -605,7 +605,7 @@ class Reaction:
             return False
 
     def generate_ode_bit(self, i: int, species_names: list):
-        self.ode_bit = _generate_reaction_ode_bit(i, species_names, self.body_count, self.get_reactants())
+        self.ode_bit = _generate_reaction_ode_bit(i, species_names, self.body_count, self.get_reactants(), self.get_reaction_type())
 
     def to_UCL_format(self):
         """Convert a reaction to UCLCHEM reaction file format"""
@@ -776,7 +776,7 @@ class CoupledReaction(Reaction):
     def get_partner(self):
         return self.partner
 
-def _generate_reaction_ode_bit(i: int, species_names: list, body_count: int, reactants: list[str]):
+def _generate_reaction_ode_bit(i: int, species_names: list, body_count: int, reactants: list[str], reaction_type: str=None):
         """Every reaction contributes a fixed rate of change to whatever species it
         affects. We create the string of fortran code describing that change here.
 
@@ -789,6 +789,10 @@ def _generate_reaction_ode_bit(i: int, species_names: list, body_count: int, rea
         ode_bit = f"+RATE({i + 1})"
         # every body after the first requires a factor of density
         for body in range(body_count):
+            ode_bit = ode_bit + "*D"
+        
+        # GAR needs an additional factor of density: 
+        if reaction_type == "GAR":
             ode_bit = ode_bit + "*D"
 
         # then bring in factors of abundances
