@@ -316,7 +316,9 @@ CONTAINS
 
     idx1=garReacs(1)
     idx2=garReacs(2)
-    ! TODO: add k(re(1)==E-)=0.0 as a check somwhere.
+    ! Taken from NEATH (Priestley et al 2023)
+        ! grain-assisted recombination stuff from Weingartner & Draine (2001) 
+        ! https://ui.adsabs.harvard.edu/abs/2001ApJ...563..842W/abstract
     phi = HABING_TO_DRAINE * radfield  * exp(-2.5*av(dstep)) * sqrt(gasTemp(dstep)) /&
     & (abund(nspec+1,dstep)*abund(nelec,dstep)) ! phi = G T^0.5 / n_e
     
