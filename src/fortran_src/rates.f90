@@ -317,12 +317,16 @@ CONTAINS
     idx1=garReacs(1)
     idx2=garReacs(2)
     ! TODO: add k(re(1)==E-)=0.0 as a check somwhere.
-    phi = radfield / 1.7 * exp(-2.5*av(dstep)) * sqrt(gasTemp(dstep)) / (abund(nspec+1,dstep)*abund(nelec,dstep)) ! phi = G T^0.5 / n_e
+    phi = HABING_TO_DRAINE * radfield  * exp(-2.5*av(dstep)) * sqrt(gasTemp(dstep)) /&
+    & (abund(nspec+1,dstep)*abund(nelec,dstep)) ! phi = G T^0.5 / n_e
+    
     ! Ensure phi is within the 1e2 to 1e6 range from the paper:
     phi = min(max(phi,1e2), 1e6)
+    
     IF (idx1 .ne. idx2) THEN
-        rate(idx1:idx2)= alpha(idx1:idx2) *  garParams(:,1) / (1. + garParams(:,2) * phi**garParams(:,3) * &
-        &(1. + garParams(:,4) * gasTemp(dstep)**garParams(:,5) * phi**(-garParams(:,6)-garParams(:,7)*log(gasTemp(dstep)))))
+        rate(idx1:idx2)= alpha(idx1:idx2) *  garParams(:,1) / (1. + garParams(:,2) *&  
+        &phi**garParams(:,3) * (1. + garParams(:,4) * gasTemp(dstep)**garParams(:,5) *&
+        &phi**(-garParams(:,6)-garParams(:,7)*log(gasTemp(dstep)))))
     END IF
 
     !turn off reactions outside their temperature range

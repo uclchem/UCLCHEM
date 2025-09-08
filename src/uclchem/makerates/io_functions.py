@@ -1012,7 +1012,7 @@ def array_to_string(
     arr = np.array(array)
     if arr.ndim == 2:
         shape = arr.shape
-        flat = arr.flatten(order="C")
+        flat = arr.flatten(order="F")
         if type == "int":
             dtype = "INTEGER(dp)"
             values = ",".join(str(int(v)) for v in flat)
