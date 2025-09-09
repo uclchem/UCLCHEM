@@ -934,7 +934,7 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
         array_to_string("\tfreezePartners", partners, type="int", parameter=True)
     )
 
-    openFile.write(array_to_string("\t garParams", np.array(list(gar_database.values())), type="float", parameter=True))
+    openFile.write(array_to_string("\t garParams", np.array(list(gar_database.values())) if gar_database else np.zeros((1,7)), type="float", parameter=True))
     
     for reaction_type in reaction_types + ["TWOBODY"]:
         list_name = reaction_type.lower() + "Reacs"

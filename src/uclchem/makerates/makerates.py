@@ -61,15 +61,19 @@ def run_makerates(
     else:
         user_output_dir = None
 
-    # load everything from the configuration file
-    reaction_files = [
-        user_params["database_reaction_file"],
-        user_params["custom_reaction_file"],
-    ]
-    reaction_types = [
-        user_params["database_reaction_type"],
-        user_params["custom_reaction_type"],
-    ]
+    reaction_files_keys = [rf for rf in user_params if rf.endswith("_reaction_file")]
+    reaction_types_keys = [rt for rt in user_params if rt.endswith("_reaction_type")]
+    assert len(reaction_files_keys) == len(reaction_types_keys), (
+        "You need to have the same amount of reaction files and reaction types")
+    # Ensure that each reaction file has a corresponding type
+    for rf in reaction_files_keys:
+        rt = rf.replace("file", "type")
+        if rt not in user_params:
+            raise KeyError(f"You need to specify a reaction type for {rf}, missing {rt}")
+    # Sort them to have the correct order:
+    reaction_files = [user_params[rf] for rf in reaction_files_keys]
+    reaction_types = [user_params[rf.replace("file", "type")] for rf in reaction_files_keys]
+    
     species_file = user_params["species_file"]
     if not user_params.get("three_phase", True):
         raise RuntimeError("three_phase=False is deprecated as of UCLCHEM v3.5.0, please remove three_phase=False from your makerates configuration.")

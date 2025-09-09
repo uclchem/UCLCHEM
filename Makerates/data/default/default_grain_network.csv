@@ -195,11 +195,3 @@ C2NH+,FREEZE,,#CH3CNH,,,,1,1,0,,,,
 ! Handle HEH and H3
 H3+,FREEZE,,#H,#H,#H,,1,1,0,,,,
 HEH+,FREEZE,,#H,#HE,,,1,1,0,,,,
-
-! Add the grain-assisted recombination of ions:
-H+,GAR,,H,,,,1,0,0,,,,
-He+,GAR,,HE,,,,1,0,0,,,,
-C+,GAR,,C,,,,1,0,0,,,,
-MG+,GAR,,MG,,,,1,0,0,,,,
-SI+,GAR,,SI,,,,1,0,0,,,,
-S+,GAR,,S,,,,1,0,0,,,,

@@ -4,12 +4,16 @@ species_file: data/default/default_species.csv
 #core reactions from gas phase database
 database_reaction_file: data/databases/umist22.csv
 database_reaction_type: UMIST
-# database_reaction_file : data/databases/gas_reactions_kida.uva.2024.in
-# database_reaction_type : KIDA
-
-#set of additional reactions: eg grain network
-custom_reaction_file: data/default/default_grain_network.csv
+custom_reaction_file: data/default/default_grain_network.csv 
 custom_reaction_type: UCL
+
+# Add the custom grain-assisted recombination network to the default grain network, needs a database
+gar_reaction_file: data/grain_assisted_recombination/grain_assisted_recombination.csv
+gar_reaction_type: UCL
+# Add the parameterization for the grain-assisted recombination reactions from Weingartner & Draine (2001)
+grain_assisted_recombination_file: data/databases/weingartner01_grain_assisted_recombination.yaml
+
+
 
 # Directory in which to store output. If not included we automatically move
 # the files to the uclchem src folder. This is the default behaviour.
