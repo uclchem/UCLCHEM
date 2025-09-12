@@ -5141,6 +5141,9 @@ INTEGER(dp), PARAMETER :: 	freezePartners (83)=(/495,497,499,501,503,504&
     &,578,579,580,582,585,586,587,592,594,654,598,600,602,605,606,608,610,611&
     &,614,616,617,619,621,623,625,626,629,631,633,635,637,639,641,643,645,647&
     &,649,652,655,658,660/)
+REAL(dp), PARAMETER :: 	 garParams(1,7) = RESHAPE((/ 0.0000e+00,0.0000e&
+    &+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00 /), (/ 1, 7 /&
+    &))
 INTEGER(dp), PARAMETER :: 	photonReacs (2)=(/847,987/)
 INTEGER(dp), PARAMETER :: 	crpReacs (2)=(/84,123/)
 INTEGER(dp), PARAMETER :: 	crphotReacs (2)=(/124,243/)
@@ -5162,5 +5165,6 @@ INTEGER(dp), PARAMETER :: 	ionopol2Reacs (2)=(/99999,99999/)
 INTEGER(dp), PARAMETER :: 	crsReacs (2)=(/99999,99999/)
 INTEGER(dp), PARAMETER :: 	exsolidReacs (2)=(/99999,99999/)
 INTEGER(dp), PARAMETER :: 	exrelaxReacs (2)=(/99999,99999/)
+INTEGER(dp), PARAMETER :: 	garReacs (2)=(/99999,99999/)
 INTEGER(dp), PARAMETER :: 	twobodyReacs (2)=(/1236,3203/)
 END MODULE network

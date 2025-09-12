@@ -46,6 +46,7 @@ LOGICAL :: instantSublimation=.False. !Toggle instantaneous sublimation of the i
 LOGICAL :: cosmicRayAttenuation=.False. !Use column density to attenuate cosmic ray ionisation rate following [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 CHARACTER :: ionModel='L' !L/H model for cosmic ray attenuation [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 LOGICAL :: improvedH2CRPDissociation=.False. !Use H2 CRP dissociation rate from [Padovani et al. 2018b](https://arxiv.org/abs/1809.04168).
+LOGICAL :: enforceChargeConservation = .false. ! Enforce the chrage by keeping track of charged ions.
 !
 !## Input and Output
 !|Parameter|Default Value |Description|
