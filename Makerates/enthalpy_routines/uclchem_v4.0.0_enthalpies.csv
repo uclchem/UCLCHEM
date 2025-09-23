@@ -1,0 +1,140 @@
+uclchem_species,atct_name,atct_formula,enthalpy_298k,match_type,selection_reason,has_enthalpy
+C,Carbon,C,716.869,exact,exact_formula_match,YES
+C+,Carbon cation,C+,1803.435,exact,exact_formula_match,YES
+C2,Ethynylene,C2,828.433,exact,exact_formula_match,YES
+C2+,Ethynylene cation,[C2]+,1971.52,isomer,auto_selected_only_option,YES
+C2H,Ethynyl,CCH,567.86,isomer,auto_selected_only_option,YES
+C2H+,Ethynylium,[CCH]+,1690.97,isomer,auto_selected_only_option,YES
+C2H2,Acetylene,HCCH,228.32,isomer,user_selected_option_1_of_2,YES
+C2H2+,Acetylene cation,[HCCH]+,1328.23,isomer,user_selected_option_2_of_2,YES
+C2H3,Ethylidyne,CH3C,504.94,isomer,user_selected_option_1_of_4,YES
+C2H4,Ethylene,CH2CH2,52.39,isomer,user_selected_option_3_of_3,YES
+C2H5,Ethyl,CH3CH2,120.75,isomer,auto_selected_only_option,YES
+C2N,Cyanomethylidyne,CCN,689.1,isomer,user_selected_option_1_of_3,YES
+C2N+,Cyanomethyliumylidene,[CCN]+,1725.3,isomer,user_selected_option_1_of_2,YES
+C2N2+,Cyanogen cation,[NCCN]+,1600.49,isomer,user_selected_option_1_of_4,YES
+C2NH+,Cyanomethyliumyl,[HCCN]+,1508.0,isomer,user_selected_option_2_of_2,YES
+C3+,"1,2-Propadien-1-ylium-1-yl-3-ylidene",[CCC]+,1947.0,isomer,user_selected_option_2_of_2,YES
+C3H2,Cyclopropenylidene,C(CHCH),496.1,isomer,user_selected_option_5_of_8,YES
+C3H5+,Cyclopropylium,[CH(CH2CH2)]+,1088.75,isomer,user_selected_option_3_of_4,YES
+C3N,Cyanoethynyl,CCCN,722.2,isomer,auto_selected_only_option,YES
+C4H,Butadiynyl,CCCCH,808.48,isomer,user_selected_option_3_of_3,YES
+CH,Methylidyne,CH,596.304,exact,exact_formula_match,YES
+CH+,Methyliumylidene,[CH]+,1623.084,isomer,auto_selected_only_option,YES
+CH2,Methylene,CH2,391.615,exact,exact_formula_match,YES
+CH2+,Methyliumyl,[CH2]+,1394.062,isomer,auto_selected_only_option,YES
+CH2CO,Ketene,CH2CO,-48.4,exact,exact_formula_match,YES
+CH2OH,Hydroxymethyl,CH2OH,-16.41,exact,exact_formula_match,YES
+CH3,Methyl,CH3,146.479,exact,exact_formula_match,YES
+CH3+,Methylium,[CH3]+,1095.409,isomer,auto_selected_only_option,YES
+CH3CCH,Propyne,CH3CCH,185.56,exact,exact_formula_match,YES
+CH3CHO,Acetaldehyde,CH3CHO,-165.4,exact,exact_formula_match,YES
+CH3CN,Acetonitrile,CH3CN,74.08,exact,exact_formula_match,YES
+CH3CNH,1-Iminoethyl,CH3CNH,223.0,exact,exact_formula_match,YES
+CH3CNH+,1-Iminoethylium,[CH3CNH]+,823.2,isomer,user_selected_option_6_of_11,YES
+CH3OH,Methanol,CH3OH,-200.85,exact,exact_formula_match,YES
+CH3OH2+,Methyloxonium,[CH3OH2]+,575.0,isomer,auto_selected_only_option,YES
+CH4,Methane,CH4,-74.513,exact,exact_formula_match,YES
+CH4+,Methane cation,[CH4]+,1144.303,isomer,auto_selected_only_option,YES
+CH5+,Methanium,[CH5]+,911.78,isomer,auto_selected_only_option,YES
+CL,Chlorine atom,Cl,121.302,exact,exact_formula_match,YES
+CL+,Chlorine atom cation,Cl+,1372.603,exact,exact_formula_match,YES
+CN,Nitrilomethyl,CN,440.03,exact,exact_formula_match,YES
+CN+,Nitrilomethylium,[CN]+,1786.62,isomer,auto_selected_only_option,YES
+CO,Carbon monoxide,CO,-110.519,exact,exact_formula_match,YES
+CO+,Carbon monoxide cation,[CO]+,1241.59,isomer,auto_selected_only_option,YES
+CO2,Carbon dioxide,CO2,-393.477,exact,exact_formula_match,YES
+CS,Carbon monosulfide,CS,282.21,exact,exact_formula_match,YES
+CS+,Carbon monosulfide cation,[CS]+,1374.62,isomer,auto_selected_only_option,YES
+H,Hydrogen atom,H,217.998,exact,exact_formula_match,YES
+H+,Hydron,H+,1530.047,exact,exact_formula_match,YES
+H2,Dihydrogen,H2,0.0,exact,exact_formula_match,YES
+H2+,Dihydrogen cation,[H2]+,1488.48,isomer,auto_selected_only_option,YES
+H2CL+,Chloronium,[HClH]+,878.4,isomer,auto_selected_only_option,YES
+H2CN,Iminomethyl,HCNH,272.21,isomer,user_selected_option_1_of_5,YES
+H2CO,Hydroxymethylene,HCOH,108.94,isomer,user_selected_option_1_of_4,YES
+H2CO+,Hydroxymethylene cation,[HCOH]+,968.3,isomer,user_selected_option_3_of_4,YES
+H2COH,Hydroxymethyl,CH2OH,-16.41,isomer,user_selected_option_4_of_4,YES
+H2COH+,Hydroxymethylium,[CH2OH]+,709.8,isomer,user_selected_option_2_of_2,YES
+H2CS,Thioformaldehyde,CH2S,117.6,isomer,auto_selected_only_option,YES
+H2CS+,Thioformaldehyde cation,[CH2S]+,1022.3,isomer,auto_selected_only_option,YES
+H2NO+,Hydroxyaminylium,[HNOH]+,1012.4,isomer,user_selected_option_2_of_2,YES
+H2O,Water,H2O,-241.808,exact,exact_formula_match,YES
+H2O+,Oxoniumyl ion,[H2O]+,975.591,isomer,user_selected_option_2_of_2,YES
+H2S,Hydrogen sulfide,H2S,-20.3,exact,exact_formula_match,YES
+H2S+,Sulfoniumyl,[H2S]+,989.75,isomer,auto_selected_only_option,YES
+H2SIO,Silanone,SiH2O,-99.13,isomer,auto_selected_only_option,YES
+H3+,Trihydrogen cation,[H3]+,1106.696,isomer,auto_selected_only_option,YES
+H3O+,Oxonium,[H3O]+,599.14,isomer,auto_selected_only_option,YES
+HC3N,Cyanoacetylene,HCCCN,373.99,isomer,user_selected_option_2_of_4,YES
+HCL,Hydrogen chloride,HCl,-92.172,exact,exact_formula_match,YES
+HCL+,Chloroniumyl ion,[HCl]+,1137.732,isomer,auto_selected_only_option,YES
+HCN,Hydrogen cyanide,HCN,129.303,exact,exact_formula_match,YES
+HCN+,Hydrogen cyanide cation,[HCN]+,1442.07,isomer,user_selected_option_1_of_2,YES
+HCNH+,Iminomethylium,[HCNH]+,949.3,isomer,user_selected_option_2_of_3,YES
+HCO,Formyl,HCO,41.762,exact,exact_formula_match,YES
+HCO+,Oxomethylium,[HCO]+,827.179,isomer,user_selected_option_1_of_2,YES
+HCO2+,Hydroxyoxomethylium,[HOCO]+,597.62,isomer,user_selected_option_1_of_2,YES
+HCOO,Dioxymethylene,HCOO,361.7,exact,exact_formula_match,YES
+HCOOH,Formic acid,HC(O)OH,-378.28,isomer,user_selected_option_3_of_3,YES
+HE,Helium,He,0.0,exact,exact_formula_match,YES
+HE+,Helium cation,He+,2372.322,exact,exact_formula_match,YES
+HEH+,Helium hydride cation,[HeH]+,1348.258,isomer,auto_selected_only_option,YES
+HNC,Hydrogen isocyanide,HNC,192.45,exact,exact_formula_match,YES
+HNCO,Isocyanic acid,HNCO,-118.91,exact,exact_formula_match,YES
+HNO,Nitrosyl hydride,HNO,106.99,exact,exact_formula_match,YES
+HNO+,Oxoammoniumyl,[HNO]+,1089.57,isomer,user_selected_option_1_of_2,YES
+HOC+,Hydroxymethyliumylidene,[COH]+,987.65,isomer,user_selected_option_2_of_2,YES
+HS,Sulfanyl,SH,143.26,isomer,auto_selected_only_option,YES
+HS+,Sulfanylium,[SH]+,1148.35,isomer,auto_selected_only_option,YES
+HSO+,Sulfoxoniumylidene,[HSO]+,935.7,isomer,user_selected_option_2_of_2,YES
+N,Nitrogen atom,N,472.475,exact,exact_formula_match,YES
+N+,Nitrogen atom cation,N+,1875.722,exact,exact_formula_match,YES
+N2,Dinitrogen,N2,0.0,exact,exact_formula_match,YES
+N2+,Dinitrogen cation,[N2]+,1503.312,isomer,auto_selected_only_option,YES
+N2H+,Diazynium,[NNH]+,1038.97,isomer,auto_selected_only_option,YES
+NCCN,Cyanogen,NCCN,310.15,exact,exact_formula_match,YES
+NH,Imidogen,NH,358.82,exact,exact_formula_match,YES
+NH+,Aminyliumyl,[NH]+,1659.99,isomer,auto_selected_only_option,YES
+NH2,Amidogen,NH2,186.04,exact,exact_formula_match,YES
+NH2+,Azanylium,[NH2]+,1264.5,isomer,auto_selected_only_option,YES
+NH2CHO,Formamide,CH(O)NH2,-189.0,isomer,user_selected_option_6_of_7,YES
+NH3,Ammonia,NH3,-45.554,exact,exact_formula_match,YES
+NH3+,Azanylium,[NH3]+,937.321,isomer,auto_selected_only_option,YES
+NH4+,Ammonium,[NH4]+,631.7,isomer,auto_selected_only_option,YES
+NO,Nitric oxide,NO,91.151,exact,exact_formula_match,YES
+NO+,Nitrosyl ion,[NO]+,984.51,isomer,auto_selected_only_option,YES
+NO2,Peroxyimidogen,NOO,403.4,isomer,user_selected_option_1_of_3,YES
+O,Oxygen atom,O,249.229,exact,exact_formula_match,YES
+O+,Oxygen atom cation,O+,1562.643,exact,exact_formula_match,YES
+O2,Dioxygen,O2,0.0,exact,exact_formula_match,YES
+O2+,Dioxygen cation,[O2]+,1165.221,isomer,auto_selected_only_option,YES
+O2H,Dioxidanyl,HOO,12.16,isomer,user_selected_option_1_of_2,YES
+O2H+,Dioxidenium,[HOO]+,1107.98,isomer,auto_selected_only_option,YES
+OCN,Cyanooxidanyl,NCO,127.45,isomer,user_selected_option_2_of_3,YES
+OCS,Carbonyl sulfide,OCS,-139.95,exact,exact_formula_match,YES
+OCS+,Carbonyl sulfide cation,[OCS]+,939.97,isomer,auto_selected_only_option,YES
+OH,Hydroxyl,OH,37.516,exact,exact_formula_match,YES
+OH+,Oxidanylium,[OH]+,1293.391,isomer,auto_selected_only_option,YES
+S,Sulfur,S,279.07,exact,exact_formula_match,YES
+S+,Monosulfur cation,S+,1278.2,exact,exact_formula_match,YES
+S2,Disulfur,S2,127.67,exact,exact_formula_match,YES
+S2+,Disulfur cation,[S2]+,1032.06,isomer,auto_selected_only_option,YES
+SI,Silicon,Si,454.66,exact,exact_formula_match,YES
+SI+,Silicon cation,Si+,1240.97,exact,exact_formula_match,YES
+SIC,Silicon carbide,SiC,744.2,exact,exact_formula_match,YES
+SIC+,Silicon carbide cation,[SiC]+,1609.4,isomer,auto_selected_only_option,YES
+SIH,Silylidyne,SiH,373.01,exact,exact_formula_match,YES
+SIH+,Silyliumylidene,[SiH]+,1137.68,isomer,auto_selected_only_option,YES
+SIH2,Silylene,SiH2,269.92,exact,exact_formula_match,YES
+SIH2+,Silyliumyl,[SiH2]+,1153.83,isomer,auto_selected_only_option,YES
+SIH3,Silyl,SiH3,199.21,exact,exact_formula_match,YES
+SIH3+,Silylium,[SiH3]+,984.07,isomer,auto_selected_only_option,YES
+SIH4,Silane,SiH4,33.02,exact,exact_formula_match,YES
+SIH4+,Silane cation,[SiH4]+,1097.4,isomer,auto_selected_only_option,YES
+SIO,Oxosilylene,SiO,-97.22,exact,exact_formula_match,YES
+SIO+,Oxosilyliumyl,[SiO]+,1023.1,isomer,auto_selected_only_option,YES
+SO,Sulfur monoxide,SO,5.99,exact,exact_formula_match,YES
+SO+,Oxosulfur,[SO]+,999.86,isomer,auto_selected_only_option,YES
+SO2,Sulfur dioxide,OSO,-296.75,isomer,user_selected_option_2_of_3,YES
+SO2+,Sulfonyl cation,[OSO]+,894.73,isomer,auto_selected_only_option,YES
