@@ -40,7 +40,6 @@ CONTAINS
             rate(nR_H2_CRP)=h2CRPRate
         END IF
 
-        !UV photons, radfield has (factor of 1.7 conversion from habing to Draine)
         idx1=photonReacs(1)
         idx2=photonReacs(2)
         IF (idx1 .ne. idx2) THEN
@@ -316,17 +315,18 @@ CONTAINS
 
     idx1=garReacs(1)
     idx2=garReacs(2)
-    ! Taken from NEATH (Priestley et al 2023)
-        ! grain-assisted recombination stuff from Weingartner & Draine (2001) 
-        ! https://ui.adsabs.harvard.edu/abs/2001ApJ...563..842W/abstract
-    phi = HABING_TO_DRAINE * radfield  * exp(-2.5*av(dstep)) * sqrt(gasTemp(dstep)) /&
+    ! Adapted from NEATH (Priestley et al 2023)
+    ! grain-assisted recombination stuff from Weingartner & Draine (2001) 
+    ! https://ui.adsabs.harvard.edu/abs/2001ApJ...563..842W/abstract
+    ! We use the 0.6 factor as provided in Gong et al 2017 (DOI:10.3847/1538-4357/aa7561)
+    phi = radfield  * exp(-2.5*av(dstep)) * sqrt(gasTemp(dstep)) /&
     & (abund(nspec+1,dstep)*abund(nelec,dstep)) ! phi = G T^0.5 / n_e
     
     ! Ensure phi is within the 1e2 to 1e6 range from the paper:
     phi = min(max(phi,1e2), 1e6)
     
     IF (idx1 .ne. idx2) THEN
-        rate(idx1:idx2)= alpha(idx1:idx2) *  garParams(:,1) / (1. + garParams(:,2) *&  
+        rate(idx1:idx2)= 0.6 * alpha(idx1:idx2) * garParams(:,1) / (1. + garParams(:,2) *&  
         &phi**garParams(:,3) * (1. + garParams(:,4) * gasTemp(dstep)**garParams(:,5) *&
         &phi**(-garParams(:,6)-garParams(:,7)*log(gasTemp(dstep)))))
     END IF
