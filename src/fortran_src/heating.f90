@@ -3,7 +3,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 MODULE heating
     USE CONSTANTS
-    USE F2PY_CONSTANTS, only : nspec
+    USE F2PY_CONSTANTS
     USE DEFAULTPARAMETERS
     USE NETWORK
     USE COOLANT_MODULE
@@ -64,13 +64,18 @@ IMPLICIT NONE
         heating=getHeatingRate(time,gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate, &
                                 & dustAbundance,dustRadius,metallicity, dustTemp,turbVel)
 
+        cooling=0.0
         IF (gasTemperature .gt. 3.0) THEN
             cooling=getCoolingRate(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,h2dis,turbVel)!6.951290d-17!!
-        ELSE
-            Cooling=0.0
+        END IF
+        
+        chemheating=0.0
+        IF (deltaEnthalpyFlag) THEN
+            ! Here we need the "flux" in cm^-3 s^-1 to get the heating per reaction.
+            chemheating= sum(reactionrate(:nReac) * deltaEnthalpy(:))
         END IF
 
-        getTempDot=heating-cooling
+        getTempDot=heating+chemheating-cooling
         !write(*,*) "Temp Dot",getTempDot
          !and convert to dT/dt
         getTempDot=((adiabaticIdx-1.0)*getTempDot)/(K_BOLTZ*gasDensity)

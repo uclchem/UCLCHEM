@@ -362,8 +362,6 @@ CONTAINS
 
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
-        ! INCLUDE 'odes.f90'
-        ! CALL GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
         CALL GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
         ! get density change from physics module to send to DLSODE
         
@@ -446,7 +444,7 @@ CONTAINS
                             &    Y(nspec+2), &                          ! gas density
                             &    colDens(dstep), &                      ! gas column density
                             &    radfield*EXP(-UV_FAC*av(dstep)), &     ! attenuated radiation field
-                            &    Y, &                                   ! attenuated radiation field
+                            &    Y, &                                   ! all number densities
                             &    h2dis, &                               ! H2 dissociation rate
                             &    h2form, &                              ! H2 formation rate
                             &    zeta, &                                ! cosmic ray ionization rate
