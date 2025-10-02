@@ -24,7 +24,7 @@ reaction_types = [
     "CRS",
     "EXSOLID",
     "EXRELAX",
-    "GAR"
+    "GAR",
     "TWOBODY"
 ]
 
