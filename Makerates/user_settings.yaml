@@ -21,3 +21,5 @@ custom_reaction_type: UCL
 add_crp_photo_to_grain: False
 # Enable the writing of the rates and flux to the disk
 enable_rates_to_disk: False
+# Enable the computation of all the enthalpies:
+add_delta_enthalpy: ALL

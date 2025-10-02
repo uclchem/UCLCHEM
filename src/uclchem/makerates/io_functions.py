@@ -950,7 +950,7 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
         array_to_string("\tfreezePartners", partners, type="int", parameter=True)
     )
 
-    for reaction_type in reaction_types + ["TWOBODY"]:
+    for reaction_type in reaction_types:
         list_name = reaction_type.lower() + "Reacs"
         indices = np.where(reacTypes == reaction_type)[0]
         if len(indices > 1):
