@@ -16,9 +16,10 @@ Usage:
     matcher.save_mapping_yaml(mapping, "species_mapping_v1.220.yaml")  # Optional YAML
 """
 
+import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -292,9 +293,9 @@ class SpeciesMatcher:
         if not multi_option:
             return canonical_matches
 
-        print(f"\n📋 Interactive selection needed for {len(multi_option)} species...")
+        print(f"\n Interactive selection needed for {len(multi_option)} species...")
         print("=" * 60)
-        print("📖 INSTRUCTIONS:")
+        print("  INSTRUCTIONS:")
         print("   • Progress is automatically saved after each selection")
         print("   • You can quit anytime with 'q' and resume later")
         print("   • Enter numbers (1,2,3...) to select species")
@@ -404,7 +405,7 @@ class SpeciesMatcher:
                         canonical_matches[species] = {
                             **selected,
                             "match_type": "isomer",
-                            "selection_reason": f"user_selected_option_{choice}_of_{len(matches)}",
+                            "selection_reason": "user_selected_option",
                             "total_options": len(matches),
                         }
                         print(f"→ SELECTED: {selected['atct_name']} (option {choice})")
@@ -459,7 +460,7 @@ class SpeciesMatcher:
                 f"{remaining_count} remaining → {session_file}"
             )
         except Exception as e:
-            print(f"⚠️  Warning: Could not save session: {e}")
+            logging.warning(f"Warning: Could not save session: {e}")
 
     def _resume_matching(
         self, target_species: List[str], resume_file: str
@@ -556,31 +557,127 @@ class SpeciesMatcher:
         print(f"  - {len(df)} total mappings")
         print(f"  - {len(df[df['has_enthalpy'] == 'YES'])} with enthalpy data")
 
+    def write_back_to_file(
+        self,
+        species_df: pd.DataFrame,
+        mapping: Dict[str, Dict[str, Any]],
+        original_csv_path: str
+    ) -> None:
+        """Write back the original species DataFrame with enthalpy data.
+
+        Creates a backup of the original file as NAME_backup.csv and writes
+        the updated DataFrame with enthalpy column to the original file.
+
+        Args:
+            species_df: Original UCLCHEM species DataFrame
+            mapping: Species mapping dictionary from match_species()
+            original_csv_path: Path to the original species CSV file
+        """
+        import shutil
+        from pathlib import Path
+
+        # Create backup file path
+        original_path = Path(original_csv_path)
+        backup_path = original_path.with_name(
+            f"{original_path.stem}_backup{original_path.suffix}"
+        )
+
+        # Create backup
+        try:
+            shutil.copy2(original_csv_path, backup_path)
+            print(f"✓ Created backup: {backup_path}")
+        except Exception as e:
+            print(f"⚠️  Could not create backup: {e}")
+
+        # Create a copy of the DataFrame to avoid modifying the original
+        updated_df = species_df.copy()
+
+        # Check if gas_enthalpy column already exists with non-zero values
+        if "GAS_ENTHALPY" in updated_df.columns:
+            existing_nonzero = updated_df[
+                (updated_df["GAS_ENTHALPY"].notna()) &
+                (updated_df["GAS_ENTHALPY"] != 0.0)
+            ]
+            if len(existing_nonzero) > 0:
+                logging.warning(
+                    f"Warning: Found {len(existing_nonzero)} existing non-zero "
+                    f"GAS_ENTHALPY values in the file. These will be "
+                    f"overwritten."
+                )
+
+        # Add enthalpy column
+        enthalpy_values = []
+        for _, row in updated_df.iterrows():
+            species_name = row["NAME"]
+            if species_name in mapping:
+                enthalpy_values.append(mapping[species_name]["enthalpy_298k"])
+            else:
+                enthalpy_values.append(None)
+
+        updated_df["GAS_ENTHALPY"] = enthalpy_values
+
+        # Write back to original file
+        try:
+            updated_df.to_csv(original_csv_path, index=False)
+            mapped_count = len([e for e in enthalpy_values if e is not None])
+            print(f"✓ Updated {original_csv_path} with enthalpy data")
+            print(f"  - {mapped_count}/{len(updated_df)} species have "
+                  f"enthalpy values")
+        except Exception as e:
+            print(f"❌ Error writing to file: {e}")
+            # Restore backup if write failed
+            try:
+                shutil.copy2(backup_path, original_csv_path)
+                print("✓ Restored original file from backup")
+            except Exception as restore_error:
+                print(f"❌ Could not restore backup: {restore_error}")
+
 
 def main():
     """Command-line interface for species matcher."""
+    import argparse
     import sys
 
-    if len(sys.argv) < 4:
-        print(
-            "Usage: python atct_uclchem_user_interactive.py "
-            "<atct_csv> <uclchem_species_csv> <output_mapping.csv>"
-        )
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Interactive tool for matching UCLCHEM species with "
+        "ATCT thermochemical data."
+    )
 
-    atct_file, species_file, output_file = sys.argv[1], sys.argv[2], sys.argv[3]
+    parser.add_argument(
+        "--atct_csv",
+        required=True,
+        help="Path to the cleaned ATCT CSV file containing thermochemical data",
+    )
+
+    parser.add_argument(
+        "--uclchem_species_csv",
+        required=True,
+        help="Path to CSV file containing UCLCHEM species (must have 'NAME' column)",
+    )
+
+    parser.add_argument(
+        "--output_mapping",
+        help="Path for full output CSV mapping file.",
+        required=False,
+        default=None,
+    )
+
+    args = parser.parse_args()
 
     try:
         # Load UCLCHEM species
-        species_df = pd.read_csv(species_file)
+        species_df = pd.read_csv(args.uclchem_species_csv)
         species_list = species_df["NAME"].tolist()
 
         # Run matching
-        matcher = SpeciesMatcher(atct_file)
+        matcher = SpeciesMatcher(args.atct_csv)
         mapping = matcher.match_species(species_list)
 
         # Save results (default to CSV)
-        matcher.save_mapping(mapping, output_file)
+        if args.output_mapping is not None:
+            matcher.save_mapping(mapping, args.output_mapping)
+        else:
+            matcher.write_back_to_file(species_df, mapping, args.uclchem_species_csv)
 
         print(f"\n✅ Matching complete! Mapped {len(mapping)} species.")
 

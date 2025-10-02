@@ -24,6 +24,8 @@ reaction_types = [
     "CRS",
     "EXSOLID",
     "EXRELAX",
+    "GAR"
+    "TWOBODY"
 ]
 
 tunneling_reaction_types = [
@@ -36,7 +38,7 @@ tunneling_reaction_types = [
 from collections import Counter
 from copy import deepcopy
 
-from uclchem.makerates.species import Species, elementList, elementMass
+from uclchem.makerates.species import Species, elementList, elementMass, species_header
 
 
 class Reaction:
@@ -53,6 +55,7 @@ class Reaction:
             self.set_temphigh(inputRow.get_temphigh())
             self.set_reduced_mass(inputRow.get_reduced_mass())
             self.set_extrapolation(inputRow.get_extrapolation())
+            self.set_delta_enthalpy(inputRow.get_delta_enthalpy())
         else:
             try:
                 self.set_reactants(
@@ -81,6 +84,7 @@ class Reaction:
                 if len(inputRow) > 12:
                     self.set_reduced_mass(float(inputRow[12]))
                 self.set_extrapolation(bool(inputRow[13]) if len(inputRow) > 13 else False)
+                self.set_delta_enthalpy(float(inputRow[14]) if len(inputRow) > 14 else 0.0)
                 
             except IndexError as error:
                 raise ValueError(
@@ -277,6 +281,22 @@ class Reaction:
             float: the higher temperature boundary
         """
         return self._temphigh
+    
+    def set_delta_enthalpy(self, delta_h: float) -> None:
+        """Set the reaction enthalpy change in Kelvin
+
+        Args:
+            delta_h (float): the reaction enthalpy change
+        """
+        self._delta_enthalpy = delta_h
+    
+    def get_delta_enthalpy(self) -> float:
+        """Get the reaction enthalpy change in Kelvin
+
+        Returns:
+            float: the reaction enthalpy change
+        """
+        return self._delta_enthalpy        
 
     def predict_reduced_mass(self) -> None:
         """Predict the reduced mass of the tunneling particle in this reaction.
@@ -288,7 +308,7 @@ class Reaction:
         for reac in self._reactants:
             if reac in reaction_types:
                 continue
-            specie = Species([reac] + [0] * 6)
+            specie = Species([reac] + [0] * len(species_header))
             atoms = specie.find_constituents(quiet=True)
             reac_species.append(specie)
             reac_constituents.append(atoms)
@@ -299,7 +319,7 @@ class Reaction:
         for prod in self._products:
             if prod in "NAN":
                 continue
-            specie = Species([prod] + [0] * 6)
+            specie = Species([prod] + [0] * len(species_header))
             atoms = specie.find_constituents(quiet=True)
             prod_species.append(specie)
             prod_constituents.append(atoms)
@@ -344,10 +364,10 @@ class Reaction:
                         return
         elif n_reacs == 2 and n_prods == 1:
             # Addition reaction
-            if reac_species[0].name.strip("#@") == reac_species[1].name.strip("#@"):
+            if reac_species[0].get_name().strip("#@") == reac_species[1].get_name().strip("#@"):
                 # If the two species are the same (e.g. #H+#H-> #H2), set reduced mass to m/2
-                mass = reac_species[0].mass
-                # mass = elementMass[elementList.index(reac_species[0].name.strip("#@"))]
+                mass = reac_species[0].get_mass()
+                # mass = elementMass[elementList.index(reac_species[0].get_name().strip("#@"))]
                 reduced_mass = float(mass) / 2.0
                 self.set_reduced_mass(reduced_mass)
                 logging.debug(
@@ -455,7 +475,7 @@ class Reaction:
                 continue
             if reac in ["NAN", "E-"]:
                 continue
-            specie = Species([reac] + [0] * 6)
+            specie = Species([reac] + [0] * len(species_header))
             atoms_counter_specie = specie.find_constituents(quiet=True)
             counter_reactants += atoms_counter_specie
 
@@ -465,7 +485,7 @@ class Reaction:
                 continue
             if prod in ["NAN", "E-"]:
                 continue
-            specie = Species([prod] + [0] * 6)
+            specie = Species([prod] + [0] * len(species_header))
             atoms_counter_specie = specie.find_constituents(quiet=True)
             counter_products += atoms_counter_specie
 
@@ -489,13 +509,13 @@ class Reaction:
         for reac in self._reactants:
             if reac in ["NAN"]:
                 continue
-            specie = Species([reac] + [0] * 6)
+            specie = Species([reac] + [0] * len(species_header))
             charge_reactants += specie.get_charge()
         charge_products = 0
         for prod in self._products:
             if prod in ["NAN"]:
                 continue
-            specie = Species([prod] + [0] * 6)
+            specie = Species([prod] + [0] * len(species_header))
             charge_products += specie.get_charge()
 
         if charge_products != charge_reactants:
