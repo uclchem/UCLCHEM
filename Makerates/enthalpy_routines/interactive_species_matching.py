@@ -616,6 +616,9 @@ class SpeciesMatcher:
 
         updated_df["GAS_ENTHALPY"] = enthalpy_values
 
+        # Convert kJ/mol to kcal/mol
+        updated_df["GAS_ENTHALPY"] /= 4.184
+          
         # Write back to original file
         try:
             updated_df.to_csv(original_csv_path, index=False)

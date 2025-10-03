@@ -72,7 +72,7 @@ IMPLICIT NONE
         chemheating=0.0
         IF (deltaEnthalpyFlag) THEN
             ! Here we need the "flux" in cm^-3 s^-1 to get the heating per reaction.
-            chemheating= sum(reactionrate(:nReac) * deltaEnthalpy(:))
+            chemheating= sum(reactionrate(:nReac) * deltaEnthalpy(:)) * 1.6022e-19
         END IF
 
         getTempDot=heating+chemheating-cooling
