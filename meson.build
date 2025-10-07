@@ -63,6 +63,39 @@ inc_np = include_directories(incdir_numpy, incdir_f2py)
 # gh-25000
 quadmath_dep = fc.find_library('quadmath', required: false)
 
+# SUNDIALS/CVODE libraries and include directories
+sundials_inc = include_directories('sundials_install' / 'fortran')
+sundials_lib_dir = meson.current_source_dir() / 'sundials_install' / 'lib'
+
+# Find SUNDIALS libraries
+sundials_core = fc.find_library('sundials_core', dirs: sundials_lib_dir, required: true)
+sundials_nvecserial = fc.find_library('sundials_nvecserial', dirs: sundials_lib_dir, required: true)
+sundials_sunmatrixdense = fc.find_library('sundials_sunmatrixdense', dirs: sundials_lib_dir, required: true)
+sundials_sunlinsoldense = fc.find_library('sundials_sunlinsoldense', dirs: sundials_lib_dir, required: true)
+sundials_cvode = fc.find_library('sundials_cvode', dirs: sundials_lib_dir, required: true)
+sundials_fcvode_mod = fc.find_library('sundials_fcvode_mod', dirs: sundials_lib_dir, required: true)
+sundials_fnvecserial_mod = fc.find_library('sundials_fnvecserial_mod', dirs: sundials_lib_dir, required: true)
+sundials_fsunmatrixdense_mod = fc.find_library('sundials_fsunmatrixdense_mod', dirs: sundials_lib_dir, required: true)
+sundials_fsunlinsoldense_mod = fc.find_library('sundials_fsunlinsoldense_mod', dirs: sundials_lib_dir, required: true)
+sundials_fcore_mod = fc.find_library('sundials_fcore_mod', dirs: sundials_lib_dir, required: true)
+
+# Create dependency object for all SUNDIALS libraries
+sundials_dep = declare_dependency(
+  dependencies: [
+    sundials_core,
+    sundials_nvecserial,
+    sundials_sunmatrixdense,
+    sundials_sunlinsoldense,
+    sundials_cvode,
+    sundials_fcvode_mod,
+    sundials_fnvecserial_mod,
+    sundials_fsunmatrixdense_mod,
+    sundials_fsunlinsoldense_mod,
+    sundials_fcore_mod,
+  ],
+  include_directories: sundials_inc
+)
+
 dvode_sources = files(fsource_dir / 'dvode.f90')
 
 dvode_lib = static_library('dvode', dvode_sources,
@@ -70,7 +103,8 @@ dvode_lib = static_library('dvode', dvode_sources,
   dependencies: [quadmath_dep],
 )
 
-uclchemwrap_source = files(fsource_dir / 'constants.f90',
+# Sources for f2py wrapper generation (excludes cvode_interface)
+uclchemwrap_f2py_source = files(fsource_dir / 'constants.f90',
                      fsource_dir / 'defaultparameters.f90',
                      fsource_dir / 'f2py_constants.f90',
                      fsource_dir / 'physics-core.f90',
@@ -91,9 +125,32 @@ uclchemwrap_source = files(fsource_dir / 'constants.f90',
                      fsource_dir / 'wrap.f90'
                     )
 
-# Custom target to generate the f2py wrappers 
+# All sources including cvode_interface for compilation
+uclchemwrap_source = files(fsource_dir / 'constants.f90',
+                     fsource_dir / 'defaultparameters.f90',
+                     fsource_dir / 'f2py_constants.f90',
+                     fsource_dir / 'physics-core.f90',
+                     fsource_dir / 'network.f90',
+                     fsource_dir / 'cvode_interface.f90',
+                     fsource_dir / 'cloud.f90',
+                     fsource_dir / 'hotcore.f90',
+                     fsource_dir / 'postprocess.f90',
+                     fsource_dir / 'surfacereactions.f90',
+                     fsource_dir / 'sputtering.f90',
+                     fsource_dir / 'cshock.f90',
+                     fsource_dir / 'jshock.f90',
+                     fsource_dir / 'collapse.f90',
+                     fsource_dir / 'photoreactions.f90',
+                     fsource_dir / 'rates.f90',
+                     fsource_dir / 'odes.f90',
+                     fsource_dir / 'chemistry.f90',
+                     fsource_dir / 'io.f90',
+                     fsource_dir / 'wrap.f90'
+                    )
+
+# Custom target to generate the f2py wrappers (only from f2py_source)
 uclchem_wrapper = custom_target('uclchemwrapmodule.c',
-  input : uclchemwrap_source,  
+  input : uclchemwrap_f2py_source,  
   output : ['uclchemwrapmodule.c', 'uclchemwrap-f2pywrappers2.f90'],
   command : [py, '-m', 'numpy.f2py', '@INPUT@', '-m', 'uclchemwrap', '--lower']
 )
@@ -106,10 +163,12 @@ py.extension_module('uclchemwrap',
                      ],
                      include_directories: [
                      inc_np,
+                     sundials_inc,
                      ],
                      dependencies : [
                      py_dep,
                      quadmath_dep,
+                     sundials_dep,
                      ],
                      link_with : dvode_lib,
                      fortran_args: ['-O3', '-fPIC', '-ffree-line-length-0'],

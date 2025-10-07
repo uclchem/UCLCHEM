@@ -13,7 +13,8 @@ USE DEFAULTPARAMETERS
 !f2py INTEGER, parameter :: dp
 USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
 & zeta, currentTime, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av
-USE DVODE_F90_M !dvode_f90_m
+! USE DVODE_F90_M !dvode_f90_m  ! REPLACED WITH CVODE
+USE cvode_interface_mod  ! CVODE interface module
 USE network
 USE photoreactions
 USE surfacereactions
@@ -240,18 +241,19 @@ CONTAINS
 
     SUBROUTINE integrateODESystem(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
-        TYPE(VODE_OPTS) :: OPTIONS
+        ! TYPE(VODE_OPTS) :: OPTIONS  ! DVODE OPTIONS - no longer needed
         successFlag=0
 
-    !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
-        !reset parameters for DVODE
+    !This subroutine calls CVODE (SUNDIALS ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
+        !reset parameters for CVODE
         ITASK=1 !try to integrate to targetTime
-        ISTATE=1 !pretend every step is the first
+        ISTATE=1 !pretend every step is the first (reinitialize)
         abstol=abstol_factor*abund(:,dstep) !absolute tolerances depend on value of abundance
         WHERE(abstol<abstol_min) abstol=abstol_min ! to a minimum degree
-        !Call the integrator.
-        OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
-        CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
+        !Call the integrator - CVODE replaces DVODE
+        ! OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
+        ! CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
+        CALL solve_with_cvode(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,reltol,abstol)
 
         SELECT CASE(ISTATE)
             CASE(-1)
