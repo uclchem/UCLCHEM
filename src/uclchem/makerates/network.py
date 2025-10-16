@@ -42,9 +42,9 @@ class Network:
             user_defined_bulk (list, optional): List of user defined bulk. Defaults to [].
             add_crp_photo_to_grain (bool, optional): Whether to add CRP, CRPHOT and PHOTON reactions from gas-phase into solid phase too.
         """
-        assert len(set([s.name for s in species])) == len(
-            species
-        ), "Cannot have duplicate species in the species list."
+        assert len(set([s.name for s in species])) == len(species), (
+            "Cannot have duplicate species in the species list."
+        )
         self.set_species_dict({s.name: s for s in species})
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
@@ -71,7 +71,7 @@ class Network:
 
         # Ensure that the branching ratios are correct, if not, edit the network to enforce it.
         self.branching_ratios_checks()
-        
+
         # Extrapolate Gas phase reactions if needed:
         if gas_phase_extrapolation:
             self.add_gas_phase_extrapolation()
@@ -194,7 +194,7 @@ class Network:
             dict[int, Reaction]: A dict with the identical reactions.
         """
         return {k: v for k, v in self._reactions_dict.items() if v == reaction}
-    
+
     def get_reaction_index(self, reaction: Reaction) -> int:
         """Get the index of a reaction in the internal _reactions_dict.
 
@@ -212,7 +212,7 @@ class Network:
         else:
             raise RuntimeError(
                 f"Found more than one index for the reaction {reaction}, cannot uniquely identify it; use find_similar_reactions instead."
-            )    
+            )
 
     def remove_reaction_by_index(self, reaction_idx: int) -> None:
         """Remove a reaction by its index in the internal _reactions_dict, this is the only way
@@ -383,7 +383,9 @@ class Network:
         """
         return list(self._reactions_dict.values())
 
-    def get_reactions_by_types(self, reaction_type: Union[str, list[str]]) -> list[Reaction]:
+    def get_reactions_by_types(
+        self, reaction_type: Union[str, list[str]]
+    ) -> list[Reaction]:
         """Get the union of all reactions of a certain type.
 
         Args:
@@ -394,7 +396,11 @@ class Network:
         """
         if isinstance(reaction_type, str):
             reaction_type = [reaction_type]
-        return [r for r in self.get_reaction_list() if (r.get_reaction_type() in reaction_type)]
+        return [
+            r
+            for r in self.get_reaction_list()
+            if (r.get_reaction_type() in reaction_type)
+        ]
 
     def sort_reactions(self) -> None:
         """Sort the reaction dictionary by reaction type first and by the first reactant second."""
@@ -415,11 +421,11 @@ class Network:
             )
         )
         logging.debug(
-            f"After sorting reactions {[(k,v ) for i, (k, v) in enumerate(self.get_reaction_dict().items()) if i < 5]}"
+            f"After sorting reactions {[(k, v) for i, (k, v) in enumerate(self.get_reaction_dict().items()) if i < 5]}"
         )
-        assert len(reaction_dict) == len(
-            self.get_reaction_dict()
-        ), "Sorting the species caused a difference in the number of species"
+        assert len(reaction_dict) == len(self.get_reaction_dict()), (
+            "Sorting the species caused a difference in the number of species"
+        )
 
     def add_species(
         self, species: Union[Union[Species, str], list[Union[Species, str]]]
@@ -437,7 +443,9 @@ class Network:
         """
         if isinstance(species, list):
             if len(species) == 0:
-                logging.warning("Tried to add a list of species, but it was empty, ignoring.")
+                logging.warning(
+                    "Tried to add a list of species, but it was empty, ignoring."
+                )
             elif isinstance(species[0], Species):
                 # if it is a list of Species, no action is needed.
                 pass
@@ -470,9 +478,13 @@ class Network:
             if specie.name:
                 # Filter out ice species with zero binding energy as they tend to give problems
                 if specie.name[0] in ["@", "#"] and specie.binding_energy == 0.0:
-                    raise ValueError(
-                        f"Trying to add an ice specie {specie.name} with zero binding energy, this is not possible. Make sure this specie was added manually to the species file."
+                    specie.binding_energy = 5600.0  # Default to water binding energy
+                    logging.warning(
+                        f"Setting binding energy of ice specie {specie.name} to default of 5600K as it was zero."
                     )
+                    # raise ValueError(
+                    #     f"Trying to add an ice specie {specie.name} with zero binding energy, this is not possible. Make sure this specie was added manually to the species file."
+                    # )
                 self._species_dict[specie.name] = specie
             else:
                 logging.info(
@@ -536,24 +548,28 @@ class Network:
         """Sort the species based on their mass in ascending order. We always make sure the Electron is last."""
         species_dict = self.get_species_dict()
         logging.debug(
-            f"Before sorting species {[(k,v ) for i, (k, v) in enumerate(species_dict.items()) if i < 5]}"
+            f"Before sorting species {[(k, v) for i, (k, v) in enumerate(species_dict.items()) if i < 5]}"
         )
-    
+
         self.set_species_dict(
             dict(
                 sorted(
                     species_dict.items(),
                     # key=lambda kv: (kv[1].get_mass(),),
-                    key=lambda kv: (kv[1].is_grain_species(), kv[1].is_bulk_species(), kv[1].get_mass()),
+                    key=lambda kv: (
+                        kv[1].is_grain_species(),
+                        kv[1].is_bulk_species(),
+                        kv[1].get_mass(),
+                    ),
                 )
             )
         )
         logging.debug(
-            f"After sorting species {[(k,v ) for i, (k, v) in enumerate(self.get_species_dict().items()) if i < 5]}"
+            f"After sorting species {[(k, v) for i, (k, v) in enumerate(self.get_species_dict().items()) if i < 5]}"
         )
-        assert len(species_dict) == len(
-            self.get_species_dict()
-        ), "Sorting the species caused a difference in the number of species"
+        assert len(species_dict) == len(self.get_species_dict()), (
+            "Sorting the species caused a difference in the number of species"
+        )
         electron = self.get_specie("E-")
         self.remove_species("E-")
         self.add_species(electron)
@@ -743,7 +759,7 @@ class Network:
         logging.debug("Adding desorption reactions!")
         new_reactions = []
         for species in self.get_species_list():
-            if species.is_surface_species():          
+            if species.is_surface_species():
                 for reacType in desorb_reacs:
                     new_reactions.append(
                         Reaction(
@@ -770,19 +786,29 @@ class Network:
         logging.debug("Adding desorption reactions for LH and ER mechanisms")
         new_reactions = []
         existing_desorption_reactions = [
-            x for x in self.get_reaction_list() if x.get_reaction_type() in ["LHDES", "ERDES"]
+            x
+            for x in self.get_reaction_list()
+            if x.get_reaction_type() in ["LHDES", "ERDES"]
         ]
         for reaction in self.get_reaction_list():
             if reaction.get_reaction_type() in ["LH", "ER"]:
                 # If either the LH or ER reaction already has a desorption reaction, skip it.
                 if any(
-                    [   
-                     (existing_reaction.get_reaction_type() + "DES" == reaction.get_reaction_type()) and 
-                        (existing_reaction.get_pure_reactants() == reaction.get_pure_reactants()) 
+                    [
+                        (
+                            existing_reaction.get_reaction_type() + "DES"
+                            == reaction.get_reaction_type()
+                        )
+                        and (
+                            existing_reaction.get_pure_reactants()
+                            == reaction.get_pure_reactants()
+                        )
                         for existing_reaction in existing_desorption_reactions
                     ]
                 ):
-                    logging.warning(f"We were trying to add an automatic desorb reaction for {reaction}, but it already exists in the network, so skipping it.")
+                    logging.warning(
+                        f"We were trying to add an automatic desorb reaction for {reaction}, but it already exists in the network, so skipping it."
+                    )
                     continue
                 new_reaction = deepcopy(reaction)
                 # Convert to disassociation reaction
@@ -1136,11 +1162,11 @@ class Network:
                                     and reaction1.get_source() == "UMIST"
                                 ):
                                     logging.info(
-                                        f"Detected overlapping UMIST reactions {reaction1} wit indices {i+1} {j+1}, this is done in UMIST to provide better rates. "
+                                        f"Detected overlapping UMIST reactions {reaction1} wit indices {i + 1} {j + 1}, this is done in UMIST to provide better rates. "
                                     )
                                 else:
                                     logging.warning(
-                                        f"\tReactions with indices {i+1} and {j+1} are possible duplicates\n\t\t"
+                                        f"\tReactions with indices {i + 1} and {j + 1} are possible duplicates\n\t\t"
                                         + str(reaction1)
                                         + f" with temperature range [{reaction1.get_templow()}, {reaction1.get_temphigh()}] and source {reaction1.get_source()}"
                                         + "\n\t\t"
@@ -1308,7 +1334,7 @@ class Network:
                         if branching_reactions[reactant_string] != 0.0:
                             if branching_reactions[reactant_string] < 0.99:
                                 logging.warning(
-                                    f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string] } we are assuming you set this lower on purpose."
+                                    f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string]} we are assuming you set this lower on purpose."
                                 )
                                 continue
                             new_alpha = (
@@ -1321,23 +1347,36 @@ class Network:
                             # TODO: apply to all partners of the reaction
                             reaction_index = self.get_reaction_index(reaction)
                             reaction.set_alpha(new_alpha)
-                            self.set_reaction(reaction_idx=reaction_index, reaction=reaction)
+                            self.set_reaction(
+                                reaction_idx=reaction_index, reaction=reaction
+                            )
                         else:
-                            if isinstance(reaction, CoupledReaction) and (not reaction in self.get_reaction_list()):
-                                logging.info(f"Tried to remove a coupled reaction {reaction}, but it was already removed by one of its partners.")
+                            if isinstance(reaction, CoupledReaction) and (
+                                not reaction in self.get_reaction_list()
+                            ):
+                                logging.info(
+                                    f"Tried to remove a coupled reaction {reaction}, but it was already removed by one of its partners."
+                                )
                             else:
                                 logging.warning(
                                     f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
                                 )
                                 self.remove_reaction(reaction)
-                                
+
     def add_gas_phase_extrapolation(self):
         for reaction in self.reactions:
             if reaction.get_reaction_type() in ["TWOBODY", "PHOTON", "CRP", "CRPHOT"]:
                 similar_reactions = self.find_similar_reactions(reaction)
                 # Only enable extrapolation if we have one or overlapping reactions
                 # UMIST uses overlapping reactions to get more correct reaction rates.
-                if all([reaction.check_temperature_collision(similar_reactions[similar_reaction_key]) for similar_reaction_key in similar_reactions ]):
+                if all(
+                    [
+                        reaction.check_temperature_collision(
+                            similar_reactions[similar_reaction_key]
+                        )
+                        for similar_reaction_key in similar_reactions
+                    ]
+                ):
                     reaction.set_extrapolation = True
 
     def __repr__(self) -> str:
@@ -1368,4 +1407,3 @@ class LoadedNetwork(Network):
         """
         self.set_species_dict({s.name: s for s in species})
         self.set_reaction_dict({k: v for k, v in enumerate(reactions)})
-        

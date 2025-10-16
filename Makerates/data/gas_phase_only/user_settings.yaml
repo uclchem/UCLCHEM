@@ -1,14 +1,12 @@
-#Your list of all species
-species_file: data/small_chemistry/species.csv
+#Your list of all species - gas-phase only from default network
+species_file: data/gas_phase_only/species.csv
 
 #core reactions from gas phase database
 database_reaction_file : data/databases/umist22.csv
 database_reaction_type : UMIST
-#database_reaction_file : inputFiles/kida.uva.2014.dat
-#database_reaction_type : KIDA
 
-#set of additional reactions: eg grain network
-custom_reaction_file : data/small_chemistry/grain_reactions.csv
+#set of additional reactions: minimal grain reactions for UCLCHEM functionality
+custom_reaction_file : data/gas_phase_only/grain_reactions.csv
 custom_reaction_type : UCL
 
 # Directory in which to store output. If not included we automatically move

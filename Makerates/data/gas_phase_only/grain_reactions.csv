@@ -1,0 +1,11 @@
+H,H,H2FORM,H2,NAN,NAN,NAN,1,0,0,,,,
+H,#H,ER,#H2,NAN,NAN,NAN,1,0,0,,,,
+#H,#H,LH,#H2,NAN,NAN,NAN,1,0,0,,,,
+H2,PHOTON,NAN,H,H,NAN,NAN,1,1,0,,,,
+! Super simple ice chemistry, hydrogenation up to methane
+#H,#C,LH,#CH,,,,1,0,0,,,,
+#H,#CH,LH,#CH2,,,,1,0,0,,,,
+#H,#CH2,LH,#CH3,,,,1,0,0,,,,
+#H,#CH3,LH,#CH4,,,,1,0,0,,,,
+
+
