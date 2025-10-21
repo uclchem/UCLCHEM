@@ -16,6 +16,10 @@ sed -i 's|^.*\_version.*||g' $api_file
 #create default parameters file
 python utils/generate_param_docs.py src/fortran_src/defaultparameters.f90 notebooks/start-parameters.md
 
+# First run all the notebooks
+PYTHON_EXEC=$(which python)
+$PYTHON_EXEC utils/run_notebooks.py notebooks
+
 #create markdown file from notebooks then change image links to point to img folder
 #of uclchem.github.io. Then move images and notebooks to the right place.
 jupyter nbconvert --to markdown notebooks/*.ipynb --output-dir notebooks

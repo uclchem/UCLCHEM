@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict
 
 import numpy as np
+import yaml
 
 from uclchem.constants import PHYSICAL_PARAMETERS
 
@@ -189,6 +190,12 @@ def kida_parser(kida_file):
     return rows
 
 
+def read_grain_assisted_recombination_file(file_name: Path) -> dict:
+    with open(file_name, "r") as fh:
+        gar_parameters = yaml.safe_load(fh)
+    return gar_parameters
+
+
 def output_drops(
     dropped_reactions: list[Reaction], output_dir: str = None, write_files: bool = True
 ):
@@ -222,7 +229,10 @@ def output_drops(
 
 
 def write_outputs(
-    network: Network, output_dir: str = None, rates_to_disk: bool = False
+    network: Network,
+    output_dir: str = None,
+    rates_to_disk: bool = False,
+    gar_database: dict[str, np.array] = None,
 ) -> None:
     """Write the ODE and Network fortran source files to the fortran source.
 
@@ -255,7 +265,9 @@ def write_outputs(
 
     # Write the network files
     filename = fortran_src_dir / "network.f90"
-    write_network_file(filename, network, rates_to_disk=rates_to_disk)
+    write_network_file(
+        filename, network, rates_to_disk=rates_to_disk, gar_database=gar_database
+    )
     # write the constants needed for wrap.f90
 
     filename = fortran_src_dir / "f2py_constants.f90"
@@ -790,7 +802,7 @@ def truncate_line(input_string: str, lineLength: int = 72) -> str:
     return result
 
 
-def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = False):
+def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = False, gar_database=None):
     """Write the Fortran code file that contains all network information for UCLCHEM.
     This includes lists of reactants, products, binding energies, formationEnthalpies
     and so on.
@@ -942,7 +954,6 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
             "\tExtrapolateRates", extrapolations, type="logical", parameter=True
         )
     )
-
     reacTypes = np.asarray(reacTypes)
 
     partners = get_desorption_freeze_partners(reaction_list)
@@ -950,7 +961,9 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
         array_to_string("\tfreezePartners", partners, type="int", parameter=True)
     )
 
-    for reaction_type in reaction_types:
+    openFile.write(array_to_string("\t garParams", np.array(list(gar_database.values())) if gar_database else np.zeros((1,7)), type="float", parameter=True))
+    
+    for reaction_type in reaction_types + ["TWOBODY"]:
         list_name = reaction_type.lower() + "Reacs"
         indices = np.where(reacTypes == reaction_type)[0]
         if len(indices > 1):
@@ -1022,29 +1035,54 @@ def array_to_string(
     Returns:
         str: String containing the Fortran code to declare this array.
     """
-    if parameter:
-        outString = ", PARAMETER :: " + name + " ({0})=(/".format(len(array))
+    # Check for 2D array
+    arr = np.array(array)
+    if arr.ndim == 2:
+        shape = arr.shape
+        flat = arr.flatten(order="F")
+        if type == "int":
+            dtype = "INTEGER(dp)"
+            values = ",".join(str(int(v)) for v in flat)
+        elif type == "float":
+            dtype = "REAL(dp)"
+            values = ",".join("{0:.4e}".format(float(v)) for v in flat)
+        elif type == "string":
+            strLength = len(max(flat, key=len))
+            dtype = f"CHARACTER(Len={strLength})"
+            values = ",".join('"' + str(v).ljust(strLength) + '"' for v in flat)
+        elif type == "logical":
+            dtype = "LOGICAL(dp)"
+            values = ",".join(f".{str(v).upper()}." for v in flat)
+        else:
+            raise ValueError("Not a valid type for array to string")
+        param_str = ", PARAMETER" if parameter else ""
+        outString = f"{dtype}{param_str} :: {name}({','.join(str(s) for s in shape)}) = RESHAPE((/ {values} /), (/ {', '.join(str(s) for s in shape)} /))\n"
+        outString = truncate_line(outString)
+        return outString
     else:
-        outString = " :: " + name + " ({0})=(/".format(len(array))
-    if type == "int":
-        outString = "INTEGER(dp)" + outString
-        for value in array:
-            outString += "{0},".format(value)
-    elif type == "float":
-        outString = "REAL(dp)" + outString
-        for value in array:
-            outString += "{0:.4e},".format(value)
-    elif type == "string":
-        strLength = len(max(array, key=len))
-        outString = "CHARACTER(Len={0:.0f})".format(strLength) + outString
-        for value in array:
-            outString += '"' + value.ljust(strLength) + '",'
-    elif type == "logical":
-        outString = "LOGICAL(dp)" + outString
-        for value in array:
-            outString += ".{0}.,".format(value)
-    else:
-        raise ValueError("Not a valid type for array to string")
-    outString = outString[:-1] + "/)\n"
-    outString = truncate_line(outString)
-    return outString
+        if parameter:
+            outString = ", PARAMETER :: " + name + " ({0})=(/".format(len(arr))
+        else:
+            outString = " :: " + name + " ({0})=(/".format(len(arr))
+        if type == "int":
+            outString = "INTEGER(dp)" + outString
+            for value in arr:
+                outString += "{0},".format(value)
+        elif type == "float":
+            outString = "REAL(dp)" + outString
+            for value in arr:
+                outString += "{0:.4e},".format(value)
+        elif type == "string":
+            strLength = len(max(arr, key=len))
+            outString = "CHARACTER(Len={0:.0f})".format(strLength) + outString
+            for value in arr:
+                outString += '"' + value.ljust(strLength) + '",'
+        elif type == "logical":
+            outString = "LOGICAL(dp)" + outString
+            for value in arr:
+                outString += ".{0}.,".format(value)
+        else:
+            raise ValueError("Not a valid type for array to string")
+        outString = outString[:-1] + "/)\n"
+        outString = truncate_line(outString)
+        return outString

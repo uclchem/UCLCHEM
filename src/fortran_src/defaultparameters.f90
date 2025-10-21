@@ -47,6 +47,7 @@ LOGICAL :: cosmicRayAttenuation=.False. !Use column density to attenuate cosmic 
 CHARACTER :: ionModel='L' !L/H model for cosmic ray attenuation [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 LOGICAL :: improvedH2CRPDissociation=.False. !Use H2 CRP dissociation rate from [Padovani et al. 2018b](https://arxiv.org/abs/1809.04168).
 LOGICAL :: heatingFlag=.True. !If True, heating is applied to the gas parcels.
+LOGICAL :: enforceChargeConservation = .false. ! Enforce the chrage by keeping track of charged ions.
 !
 !## Input and Output
 !|Parameter|Default Value |Description|

@@ -7,6 +7,7 @@ desorption and bulk reactions for three phase models.
 import logging
 import sys
 from copy import deepcopy
+from pathlib import Path
 from typing import Union
 
 from numpy import any as np_any
@@ -389,6 +390,19 @@ class Network:
             list[Reaction]: A list with all the reaction objects
         """
         return list(self._reactions_dict.values())
+
+    def get_reactions_by_types(self, reaction_type: Union[str, list[str]]) -> list[Reaction]:
+        """Get the union of all reactions of a certain type.
+
+        Args:
+            reaction_type (str): The reaction type to filter on
+
+        Returns:
+            list[Reaction]: A list of reactions of the specified type
+        """
+        if isinstance(reaction_type, str):
+            reaction_type = [reaction_type]
+        return [r for r in self.get_reaction_list() if (r.get_reaction_type() in reaction_type)]
 
     def sort_reactions(self) -> None:
         """Sort the reaction dictionary by reaction type first and by the first reactant second."""
@@ -1438,3 +1452,4 @@ class LoadedNetwork(Network):
         """
         self.set_species_dict({s.get_name(): s for s in species})
         self.set_reaction_dict({k: v for k, v in enumerate(reactions)})
+        

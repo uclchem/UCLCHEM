@@ -42,7 +42,6 @@ IMPLICIT NONE
     
     REAL(dp) :: MIN_ABUND = 1.0d-30 !Minimum abundance allowed
 
-    ! list of positive ions to conserve charge
     INTEGER :: nion,ionlist(nspec)
 
     REAL(dp) :: tempDot, oldTemp=0.0d0
@@ -322,8 +321,10 @@ CONTAINS
             CASE default
                 MXSTEP=10000    
         END SELECT
-    ! Ensure the conservation of charge explicitly
-    abund(nelec,dstep) = sum(abund(ionlist(1:nion),dstep))
+    if (enforceChargeConservation) then
+        ! REALLY ensure charge is always conserved (also after integrating)
+        abund(nelec,dstep) = sum(abund(ionlist(1:nion),dstep))
+    end if
     END SUBROUTINE integrateODESystem
 
     SUBROUTINE F (NEQUATIONS, T, Y, YDOT)
@@ -365,63 +366,22 @@ CONTAINS
         CALL GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
         ! get density change from physics module to send to DLSODE
         
-        ! Taken from NEATH (Priestley et al 2023)
-        ! grain-assisted recombination stuff from Weingartner & Draine (2001) 
-        ! https://ui.adsabs.harvard.edu/abs/2001ApJ...563..842W/abstract
-        ! For now, we tack this onto the ODES; We should include this in ODEs.f90.
-        ! TODO: add k(re(1)==E-)=0.0 as a check somwhere.
-        phi = radfield * exp(-2.5*av(dstep)) * sqrt(gasTemp(dstep)) / (D*y(nelec)) ! phi = G T^0.5 / n_e
-        ! Ensure phi is within the 1e2 to 1e6 range from the paper:
-        phi = min(max(phi,1e2), 1e6)
-        ! H
-        cgr = (/ 8.074e-6, 1.378, 5.087e2, 1.586e-2, 0.4723, 1.102e-5 /)
-        denom = 1. + cgr(1) * phi**cgr(2) * (1. + cgr(3) * gasTemp(dstep)**cgr(4) * phi**(-cgr(5)-cgr(6)*log(gasTemp(dstep))))
-        grec = 0.6 * 12.25e-14 / denom
-        ydot(nhx) = ydot(nhx) - grec*y(nhx)*D
-        ydot(nh) = ydot(nh) + grec*y(nhx)*D
-        ! He
-        cgr = (/ 3.185e-7, 1.512, 5.115e3, 3.903e-7, 0.4956, 5.494e-7 /)
-        denom = 1. + cgr(1) * phi**cgr(2) * (1. + cgr(3) * gasTemp(dstep)**cgr(4) * phi**(-cgr(5)-cgr(6)*log(gasTemp(dstep))))
-        grec = 0.6 * 5.572e-14 / denom
-        ydot(nhex) = ydot(nhex) - grec*y(nhex)*D
-        ydot(nhe) = ydot(nhe) + grec*y(nhex)*D
-        ! C
-        cgr = (/ 6.089e-3, 1.128, 4.331e2, 4.845e-2, 0.8120, 1.333e-4 /)
-        denom = 1. + cgr(1) * phi**cgr(2) * (1. + cgr(3) * gasTemp(dstep)**cgr(4) * phi**(-cgr(5)-cgr(6)*log(gasTemp(dstep))))
-        grec = 0.6 * 45.58e-14 / denom
-        ydot(ncx) = ydot(ncx) - grec*y(ncx)*D
-        ydot(nc) = ydot(nc) + grec*y(ncx)*D
-        ! Mg
-        cgr = (/ 8.116e-8, 1.864, 6.170e4, 2.169e-6, 0.9605, 7.232e-5 /)
-        denom = 1. + cgr(1) * phi**cgr(2) * (1. + cgr(3) * gasTemp(dstep)**cgr(4) * phi**(-cgr(5)-cgr(6)*log(gasTemp(dstep))))
-        grec = 0.6 * 2.510e-14 / denom
-        ydot(nmgx) = ydot(nmgx) - grec*y(nmgx)*D
-        ydot(nmg) = ydot(nmg) + grec*y(nmgx)*D
-        ! S
-        cgr = (/ 7.769e-5, 1.319, 1.087e2, 3.475e-1, 0.4790, 4.689e-2 /)
-        denom = 1. + cgr(1) * phi**cgr(2) * (1. + cgr(3) * gasTemp(dstep)**cgr(4) * phi**(-cgr(5)-cgr(6)*log(gasTemp(dstep))))
-        grec = 0.6 * 3.064e-14 / denom
-        ydot(nsx) = ydot(nsx) - grec*y(nsx)*D
-        ydot(ns) = ydot(ns) + grec*y(nsx)*D
-        ! Si
-        cgr = (/ 5.678e-8, 1.874, 4.375e4, 1.635e-6, 0.8964, 7.538e-5 /)
-        denom = 1. + cgr(1) * phi**cgr(2) * (1. + cgr(3) * gasTemp(dstep)**cgr(4) * phi**(-cgr(5)-cgr(6)*log(gasTemp(dstep))))
-        grec = 0.6 * 2.166e-14 / denom
-        ydot(nsix) = ydot(nsix) - grec*y(nsix)*D
-        ydot(nsi) = ydot(nsi) + grec*y(nsix)*D
-        ! replace electron ydot with sum of positive ion ydots to conserve charge
-        ydot(nelec) = 0.
-        prod = 0.
-        loss = 0.
-        ! Enforce the conservation of charge by summing the ydot of all positive ions
-        do ii=1,nion
-           if (ydot(ionlist(ii)) .ge. 0.) then
-              prod = prod + ydot(ionlist(ii))
-           else
-              loss = loss + ydot(ionlist(ii))
-           end if
-        end do
-        ydot(nelec) = prod + loss
+        if (enforceChargeConservation) then 
+            ydot(nelec) = sum(ydot(ionlist(1:nion)))
+            ! ! replace electron ydot with sum of positive ion ydots to conserve charge
+            ! ydot(nelec) = 0.
+            ! prod = 0.
+            ! loss = 0.
+            ! ! Enforce the conservation of charge by summing the ydot of all positive ions
+            ! do ii=1,nion
+            ! if (ydot(ionlist(ii)) .ge. 0.) then
+            !     prod = prod + ydot(ionlist(ii))
+            ! else
+            !     loss = loss + ydot(ionlist(ii))
+            ! end if
+            ! end do
+            ! ydot(nelec) = prod + loss
+        end if 
 
         ! ydot(NEQUATIONS)=densdot(y(NEQUATIONS))     !Gas density ODE
         ydot(nspec+2) = densdot(Y(nspec+2))     !Gas density ODE

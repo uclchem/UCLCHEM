@@ -19,6 +19,14 @@ param_list = [
     "enable_rates_to_disk",
 ]
 
+# Optional parameters that don't raise errors if missing
+optional_params = [
+    "grain_assisted_recombination_file",
+    "output_directory",
+    "three_phase",
+    "gas_phase_extrapolation",
+]
+
 
 def run_makerates(
     configuration_file: str = "user_settings.yaml", write_files: bool = True
@@ -53,15 +61,19 @@ def run_makerates(
     else:
         user_output_dir = None
 
-    # load everything from the configuration file
-    reaction_files = [
-        user_params["database_reaction_file"],
-        user_params["custom_reaction_file"],
-    ]
-    reaction_types = [
-        user_params["database_reaction_type"],
-        user_params["custom_reaction_type"],
-    ]
+    reaction_files_keys = [rf for rf in user_params if rf.endswith("_reaction_file")]
+    reaction_types_keys = [rt for rt in user_params if rt.endswith("_reaction_type")]
+    assert len(reaction_files_keys) == len(reaction_types_keys), (
+        "You need to have the same amount of reaction files and reaction types")
+    # Ensure that each reaction file has a corresponding type
+    for rf in reaction_files_keys:
+        rt = rf.replace("file", "type")
+        if rt not in user_params:
+            raise KeyError(f"You need to specify a reaction type for {rf}, missing {rt}")
+    # Sort them to have the correct order:
+    reaction_files = [user_params[rf] for rf in reaction_files_keys]
+    reaction_types = [user_params[rf.replace("file", "type")] for rf in reaction_files_keys]
+    
     species_file = user_params["species_file"]
     if not user_params.get("three_phase", True):
         raise RuntimeError("three_phase=False is deprecated as of UCLCHEM v3.5.0, please remove three_phase=False from your makerates configuration.")
@@ -69,6 +81,7 @@ def run_makerates(
     gas_phase_extrapolation = user_params.get("gas_phase_extrapolation", False)
     add_crp_photo_to_grain = user_params.get("add_crp_photo_to_grain", False)
     add_delta_enthalpy = user_params.get("add_delta_enthalpy", False)
+    gar_file = user_params.get("grain_assisted_recombination_file", None)
     # retrieve the network and the dropped reactions
     network, dropped_reactions = _get_network_from_files(
         reaction_files=reaction_files,
@@ -92,7 +105,26 @@ def run_makerates(
             write_files=write_files,
         )
         logging.info(f"There are {len(dropped_reactions)} droppped reactions")
-        io.write_outputs(network, user_output_dir, enable_rates_to_disk)
+        
+        # Check for GAR reactions, and ensure the database is defined.
+        gar_reactions = network.get_reactions_by_types("GAR")
+        gar_parameters = None
+        if len(gar_reactions) > 0:
+            if gar_file is None:
+                raise ValueError(
+                    "You have GAR reactions in your network, but you did not specify a gar_file in your configuration. Refer to makerates documentation."
+                )
+            # Get all the individual ions that can recombine:
+            gar_ions = [gar.get_reactants()[0] for gar in gar_reactions]
+            _gar_parameters = io.read_grain_assisted_recombination_file(gar_file)
+            if not set(gar_ions).issubset(set(_gar_parameters.keys())):
+                missing_ions = set(gar_ions) - set(_gar_parameters.keys())
+                raise ValueError(
+                    f"You have GAR reactions for ions {missing_ions} but they are not defined in your gar_file {gar_file}"
+                )
+            # Save the gar parameters in the correct order:
+            gar_parameters = {ion: _gar_parameters[ion] for ion in gar_ions}            
+        io.write_outputs(network, user_output_dir, enable_rates_to_disk, gar_parameters)
 
     ngrain = len([x for x in network.get_species_list() if x.is_surface_species()])
     logging.info(f"Total number of species = {len(network.get_species_list())}")
@@ -170,6 +202,7 @@ def _get_network_from_files(
         )
         reactions += temp_reactions
         dropped_reactions += temp_dropped_reactions
+    
     # Create Network
     network = Network(
         species=species_list,
