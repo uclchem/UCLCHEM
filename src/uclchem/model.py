@@ -198,6 +198,11 @@ def cloud(
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
+    if starting_chemistry:
+        assert return_array or return_dataframe, (
+            "starting_chemistry can only be used with return_array or return_dataframe set to True;\n"
+            "Instead specify 'abundLoadFile' in the param_dict to load starting abundances from a file."
+        )
     give_start_abund = starting_chemistry is not None
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
     if "points" not in param_dict:
@@ -294,6 +299,11 @@ def collapse(
     write_physics = physics_output is not None
     if not write_physics:
         physics_output = ""
+    if starting_chemistry:
+        assert return_array or return_dataframe, (
+            "starting_chemistry can only be used with return_array or return_dataframe set to True;\n"
+            "Instead specify 'abundLoadFile' in the param_dict to load starting abundances from a file."
+        )
     give_start_abund = starting_chemistry is not None
 
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
@@ -392,6 +402,11 @@ def hot_core(
         param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints
     )
     ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
+    if starting_chemistry:
+        assert return_array or return_dataframe, (
+            "starting_chemistry can only be used with return_array or return_dataframe set to True;\n"
+            "Instead specify 'abundLoadFile' in the param_dict to load starting abundances from a file."
+        )
     give_start_abund = starting_chemistry is not None
     _, _, _, abunds, specname, success_flag = wrap.hot_core(
         temp_indx=temp_indx,
@@ -484,6 +499,11 @@ def cshock(
         param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
     ratesArray=_create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
+    if starting_chemistry:
+        assert return_array or return_dataframe, (
+            "starting_chemistry can only be used with return_array or return_dataframe set to True;\n"
+            "Instead specify 'abundLoadFile' in the param_dict to load starting abundances from a file."
+        )
     give_start_abund = starting_chemistry is not None
     _, _, _, abunds, disspation_time, specname, success_flag = wrap.cshock(
         shock_vel=shock_vel,
@@ -584,6 +604,11 @@ def jshock(
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
+    if starting_chemistry:
+        assert return_array or return_dataframe, (
+            "starting_chemistry can only be used with return_array or return_dataframe set to True;\n"
+            "Instead specify 'abundLoadFile' in the param_dict to load starting abundances from a file."
+        )
     give_start_abund = starting_chemistry is not None
     ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
 
@@ -690,6 +715,11 @@ def postprocess(
             # Ensure Fortran memory
             array = np.asfortranarray(array, dtype=np.float64)
             postprocess_arrays[key] = array
+    if starting_chemistry:
+        assert return_array or return_dataframe, (
+            "starting_chemistry can only be used with return_array or return_dataframe set to True;\n"
+            "Instead specify 'abundLoadFile' in the param_dict to load starting abundances from a file."
+        )
     give_start_abund = starting_chemistry is not None
     if not give_start_abund:
         starting_chemistry = np.zeros(
