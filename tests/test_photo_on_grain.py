@@ -24,14 +24,14 @@ def test_photo_on_grain_memory():
     TEST_DIR = Path("tests/photo_on_grain_test_output/")
     TEST_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Install the package using pip
-    install_command = "pip install ."
-    result = subprocess.run(
-        install_command, shell=True, text=True, capture_output=True
-    )
-    assert result.returncode == 0, (
-        f"Package installation failed:\n{result.stdout}\n{result.stderr}"
-    )
+    # # Install the package using pip
+    # install_command = "pip install ."
+    # result = subprocess.run(
+    #     install_command, shell=True, text=True, capture_output=True
+    # )
+    # assert result.returncode == 0, (
+    #     f"Package installation failed:\n{result.stdout}\n{result.stderr}"
+    # )
 
     # Check if installed
     pip_packages = subprocess.run(

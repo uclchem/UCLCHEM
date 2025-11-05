@@ -1,4 +1,4 @@
-name: Test install and interface
+name: Test the photo on grain feature
 
 on:
   pull_request:
@@ -35,5 +35,4 @@ jobs:
 
     - name: Run ode conservation test, standard stages run and photo on grains (not enabled by default)
       run: |
-        pytest -n 1 tests/{test_photo_on_grain_memory.py,test_photo_on_grain_disk.py}
-
+        pytest tests/test_photo_on_grain.py
