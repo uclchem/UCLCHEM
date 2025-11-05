@@ -1,4 +1,9 @@
-import os
+"""
+Test photo_on_grain network with DISK-BASED I/O only.
+
+This test uses outputFile, abundSaveFile, abundLoadFile, and columnFile
+to ensure the photo_on_grain network works with Fortran disk I/O.
+"""
 import shutil
 import subprocess
 from pathlib import Path
@@ -6,14 +11,14 @@ from pathlib import Path
 import pytest
 
 
-def test_photo_on_grain():
-    # Check that fortran is present:
+def test_photo_on_grain_disk():
+    """Test photo_on_grain network using disk-based file I/O"""
+    # Check that fortran is present
     result = subprocess.run(
         "gfortran --version", shell=True, text=True, capture_output=True
     )
-
     assert result.returncode == 0, (
-        f"Package installation failed:\n{result.stdout}\n{result.stderr}"
+        f"gfortran not available:\n{result.stdout}\n{result.stderr}"
     )
 
     TEST_DIR = Path("tests/photo_on_grain_test_output/")
@@ -21,19 +26,19 @@ def test_photo_on_grain():
 
     # Install the package using pip
     install_command = "pip install ."
-    result = subprocess.run(install_command, shell=True, text=True, capture_output=True)
+    result = subprocess.run(
+        install_command, shell=True, text=True, capture_output=True
+    )
+    assert result.returncode == 0, (
+        f"Package installation failed:\n{result.stdout}\n{result.stderr}"
+    )
 
-    # Check that is installed in pip:
+    # Check if installed
     pip_packages = subprocess.run(
         "pip list", shell=True, text=True, capture_output=True
     )
     assert "uclchem" in pip_packages.stdout, (
-        f"Package uclchem not found in pip list:\n{pip_packages.stdout}\n{pip_packages.stderr}"
-    )
-
-    # Check if the installation was successful
-    assert result.returncode == 0, (
-        f"Package installation failed:\n{result.stdout}\n{result.stderr}"
+        "Package uclchem not found in pip list"
     )
 
     # Copy the default settings file
@@ -41,41 +46,48 @@ def test_photo_on_grain():
     test_settings_path = f"{TEST_DIR}/photo_on_grain_settings.yaml"
     shutil.copy(default_settings_path, test_settings_path)
 
-    # Update add_crp_photo_to_grain to True in the settings file using sed
-    result = subprocess.run(
-        f"sed -i 's/add_crp_photo_to_grain:.*/add_crp_photo_to_grain: True/' {test_settings_path}",
-        shell=True,
-        text=True,
-        capture_output=True
+    # Update add_crp_photo_to_grain to True in the settings file
+    import re
+
+    with open(test_settings_path, "r") as file:
+        content = file.read()
+
+    # Find and replace the line with add_crp_photo_to_grain
+    content = re.sub(
+        r"add_crp_photo_to_grain:\s*\w+",
+        "add_crp_photo_to_grain: True",
+        content,
     )
-    
-    assert result.returncode == 0, (
-        f"Failed to update settings file with sed:\n{result.stdout}\n{result.stderr}"
-    )
-    
+
+    with open(test_settings_path, "w") as file:
+        file.write(content)
+
     # Verify the change was made
-    with open(test_settings_path, 'r') as file:
+    with open(test_settings_path, "r") as file:
         verify_content = file.read()
-    assert 'add_crp_photo_to_grain: True' in verify_content, (
+    assert "add_crp_photo_to_grain: True" in verify_content, (
         f"Failed to update add_crp_photo_to_grain in {test_settings_path}"
     )
+
     # Run Makerates with the modified config
     result = subprocess.run(
-        f"cd Makerates; python Makerates.py {test_settings_path}; cd ../",
+        f"cd Makerates; python MakeRates.py {test_settings_path}; cd ../",
         shell=True,
         text=True,
         capture_output=True,
     )
-
     assert result.returncode == 0, (
-        f"Running Makerates with crp_photo_to_grain=True failed: \n{result.stdout}\n{result.stderr}"
+        f"Running Makerates with crp_photo_to_grain=True failed: \n"
+        f"{result.stdout}\n{result.stderr}"
     )
 
     # Reinstall with the new network
-    result = subprocess.run(install_command, shell=True, text=True, capture_output=True)
-
+    result = subprocess.run(
+        install_command, shell=True, text=True, capture_output=True
+    )
     assert result.returncode == 0, (
-        f"Package installation w/ crp_photo_to_grain network failed:\n{result.stdout}\n{result.stderr}"
+        f"Package installation w/ crp_photo_to_grain network failed:\n"
+        f"{result.stdout}\n{result.stderr}"
     )
 
     # Import the package and test if it can be imported
@@ -83,10 +95,11 @@ def test_photo_on_grain():
         import uclchem  # noqa: F401
     except ImportError:
         assert False, (
-            "Failed to import the installed package after running Makerates with crp_photo_to_grain=True"
+            "Failed to import the installed package after running Makerates "
+            "with crp_photo_to_grain=True"
         )
 
-    # set a parameter dictionary for static model
+    # Test static model with DISK I/O
     outSpecies = ["OH", "OCS", "CO", "CS", "CH3OH"]
     params = {
         "endAtFinalDensity": False,
@@ -104,7 +117,7 @@ def test_photo_on_grain():
     result = uclchem.model.cloud(param_dict=params, out_species=outSpecies)
     assert result[0] == 0, f"Static model failed with result code {result[0]}"
 
-    # change to collapsing stage1 params
+    # Test Stage 1: Collapse with DISK I/O
     params["freefall"] = True
     params["endAtFinalDensity"] = True
     params["initialDens"] = 1e2
@@ -112,10 +125,9 @@ def test_photo_on_grain():
     params["outputFile"] = f"{TEST_DIR}/stage1-full.dat"
     params["columnFile"] = f"{TEST_DIR}/stage1-column.dat"
     result = uclchem.model.cloud(param_dict=params, out_species=outSpecies)
+    assert result[0] == 0, f"Stage 1 model failed with result code {result[0]}"
 
-    assert result[0] == 0, f"stage 1 model failed with result code {result[0]}]"
-
-    # finally, run stage 2 from the stage 1 model.
+    # Test Stage 2: Hot core with DISK I/O
     params["initialDens"] = 1e5
     params["freezeFactor"] = 0.0
     params["thermdesorb"] = True
@@ -127,10 +139,11 @@ def test_photo_on_grain():
     params["abundLoadFile"] = f"{TEST_DIR}/startcollapse.dat"
     params["outputFile"] = f"{TEST_DIR}/stage2-full.dat"
     params.pop("columnFile")
-    result = uclchem.model.hot_core(3, 300.0, param_dict=params, out_species=outSpecies)
-
-    assert result[0] == 0, f"stage 2 model failed with result code {result[0]}"
+    result = uclchem.model.hot_core(
+        3, 300.0, param_dict=params, out_species=outSpecies
+    )
+    assert result[0] == 0, f"Stage 2 model failed with result code {result[0]}"
 
 
 if __name__ == "__main__":
-    pytest.main()
+    pytest.main(["-v", __file__])

@@ -138,12 +138,12 @@ def pre_flight_checklist(
             )
         if return_rates:
             assert return_array or return_dataframe, (
-                "return_rates and return_heating can only be used with return_array or return_dataframe set to True;"
+                "return_rates and return_heating can only be used with return_array or return_dataframe set to True; "
             )
         # Check we didn't run a disk based model before:
         if OUTPUT_MODE:
             assert OUTPUT_MODE == "memory", (
-                "Cannot run an in memory based model after running a disk based one in the same session."
+                f"Cannot run an in memory based model after running a disk based one in the same session. Found prior run with: {OUTPUT_MODE}"
             )
         OUTPUT_MODE = "memory"
     else:
