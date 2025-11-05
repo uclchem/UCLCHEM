@@ -13,6 +13,8 @@ from uclchem.constants import (
     n_species,
 )
 
+OUTPUT_MODE = ""
+
 
 def reaction_line_formatter(line):
     reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
@@ -20,21 +22,26 @@ def reaction_line_formatter(line):
     return " + ".join(reactants) + " -> " + " + ".join(products)
 
 
-class ReactionNamesStore():
+class ReactionNamesStore:
     def __init__(self):
         self.reaction_names = None
 
     def __call__(self):
         # Only load the reactions once, after that use the cached version
         if self.reaction_names is None:
-            reactions = pd.read_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "reactions.csv"))
+            reactions = pd.read_csv(
+                os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), "reactions.csv"
+                )
+            )
             # format the reactions:
-            self.reaction_names = [reaction_line_formatter(line) for idx, line in reactions.iterrows()]
+            self.reaction_names = [
+                reaction_line_formatter(line) for idx, line in reactions.iterrows()
+            ]
         return self.reaction_names
 
 
 get_reaction_names = ReactionNamesStore()
-
 
 
 def _reform_inputs(param_dict, out_species):
@@ -48,9 +55,9 @@ def _reform_inputs(param_dict, out_species):
         # this is key to UCLCHEM's "case insensitivity"
         new_param_dict = {}
         for k, v in param_dict.items():
-            assert (
-                k.lower() not in new_param_dict
-            ), f"Lower case key {k} is already in the dict, stopping"
+            assert k.lower() not in new_param_dict, (
+                f"Lower case key {k} is already in the dict, stopping"
+            )
             if isinstance(v, Path):
                 v = str(v)
             new_param_dict[k.lower()] = v
@@ -93,16 +100,63 @@ def _create_ratesarray(points, nReacs, timepoints=TIMEPOINTS):
     return np.zeros(shape=(timepoints + 1, points, nReacs), dtype=np.float64, order="F")
 
 
-def _return_array_checks(params):
-    if any([key.endswith("File") for key in list(params.keys())]):
-        raise RuntimeError(
-            "return_array or return_dataframe cannot be used if any output of input file is specified."
+def pre_flight_checklist(
+    return_array,
+    return_dataframe,
+    return_rates,
+    # return_heating,
+    starting_chemistry=None,
+    user_params={},
+):
+    global OUTPUT_MODE
+    """Function that ensures that we aren't mixing in memory and write to disk mode.
+
+    Args:
+        return_array (bool): Whether to return arrays
+        return_dataframe (bool): whether to return dataframes
+        starting_chemistry (np.array): Starting chemistry array
+        return rates (bool): Whether to return reaction rates
+        return_heating (bool): Whether to return heating and cooling rates
+        user_params (dict): The user parameter that has to be specified
+
+    Raises:
+        RuntimeError: If anything causes undefined behaviour during UCLCHEM runtime.
+    """
+    if starting_chemistry is not None:
+        assert return_array or return_dataframe, (
+            "starting_chemistry can only be used with return_array or return_dataframe set to True;\n"
+            "Instead specify 'abundLoadFile' in the param_dict to load starting abundances from a file."
         )
+    # Check that we aren't mixing in memory and write to disk mode
+    if return_array or return_dataframe or return_rates:
+        file_keys = [k for k in user_params.keys() if k.lower().endswith("file")]
+        if file_keys:
+            raise RuntimeError(
+                "return_array or return_dataframe cannot be used if any "
+                "output of input file is specified.\n"
+                + f"Offending keys: {', '.join(file_keys)}"
+            )
+        if return_rates:
+            assert return_array or return_dataframe, (
+                "return_rates and return_heating can only be used with return_array or return_dataframe set to True; "
+            )
+        # Check we didn't run a disk based model before:
+        if OUTPUT_MODE:
+            assert OUTPUT_MODE == "memory", (
+                f"Cannot run an in memory based model after running a disk based one in the same session. Found prior run with: {OUTPUT_MODE}"
+            )
+        OUTPUT_MODE = "memory"
+    else:
+        # Ensure we never run a disk based model after running an in memory one
+        if OUTPUT_MODE:
+            assert OUTPUT_MODE == "disk", (
+                "Cannot run a disk based model after running an in memory one in the same session."
+            )
+        OUTPUT_MODE = "disk"
 
 
 def _array_clean(
-    physicalParameterArray, chemicalAbundanceArray, specname, ratesArray = None
-    
+    physicalParameterArray, chemicalAbundanceArray, specname, ratesArray=None
 ):
     """Clean the array
 
@@ -134,7 +188,10 @@ def _array_clean(
 
 
 def outputArrays_to_DataFrame(
-    physicalParameterArray, chemicalAbundanceArray, specname, ratesArray, 
+    physicalParameterArray,
+    chemicalAbundanceArray,
+    specname,
+    ratesArray,
 ):
     """Convert the output arrays to a pandas dataframe
 
@@ -149,7 +206,7 @@ def outputArrays_to_DataFrame(
     """
     # Create a physical parameter dataframe
     physics_df = pd.DataFrame(
-        physicalParameterArray[:, 0, : N_PHYSICAL_PARAMETERS],
+        physicalParameterArray[:, 0, :N_PHYSICAL_PARAMETERS],
         index=None,
         columns=PHYSICAL_PARAMETERS,
     )
@@ -162,7 +219,7 @@ def outputArrays_to_DataFrame(
         rates_df = pd.DataFrame(
             ratesArray[:, 0, :], index=None, columns=get_reaction_names()
         )
-    else: 
+    else:
         rates_df = None
     return physics_df, chemistry_df, rates_df
 
@@ -203,12 +260,20 @@ def cloud(
     if "points" not in param_dict:
         param_dict["points"] = 1
     # Check to make sure no output files are specified, if so, halt the execution.
-    if return_array or return_dataframe:
-        _return_array_checks(param_dict)
+    pre_flight_checklist(
+        return_array,
+        return_dataframe,
+        return_rates,
+        # return_heating,
+        starting_chemistry,
+        param_dict,
+    )
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
-    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
+    ratesArray = _create_ratesarray(
+        param_dict["points"], n_reactions, timepoints=timepoints
+    )
     _, _, _, abunds, specname, success_flag = wrap.cloud(
         dictionary=param_dict,
         outspeciesin=out_species,
@@ -226,8 +291,8 @@ def cloud(
     if not return_rates or not (return_array or return_dataframe):
         ratesArray = None
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
-            physicsArray, chemicalAbunArray, specname, ratesArray
+        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = (
+            _array_clean(physicsArray, chemicalAbunArray, specname, ratesArray)
         )
     if return_dataframe:
         return outputArrays_to_DataFrame(
@@ -235,7 +300,10 @@ def cloud(
             chemicalAbunArray,
             specname,
             ratesArray,
-        ) + (abundanceStart, success_flag,)
+        ) + (
+            abundanceStart,
+            success_flag,
+        )
     elif return_array:
         return (
             physicsArray,
@@ -299,11 +367,20 @@ def collapse(
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
     if "points" not in param_dict:
         param_dict["points"] = 1
-    if return_array or return_dataframe:
-        _return_array_checks(param_dict)
+    pre_flight_checklist(
+        return_array,
+        return_dataframe,
+        return_rates,
+        # return_heating,
+        starting_chemistry,
+        param_dict,
+    )
     physicsArray, chemicalAbunArray = _create_fortranarray(
-        param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints)
-    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
+        param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints
+    )
+    ratesArray = _create_ratesarray(
+        param_dict["points"], n_reactions, timepoints=timepoints
+    )
     _, _, _, abunds, specname, success_flag = wrap.collapse(
         collapseIn=collapse,
         collapseFileIn=physics_output,
@@ -324,8 +401,8 @@ def collapse(
     if not return_rates or not (return_array or return_dataframe):
         ratesArray = None
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
-            physicsArray, chemicalAbunArray, specname, ratesArray
+        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = (
+            _array_clean(physicsArray, chemicalAbunArray, specname, ratesArray)
         )
     if return_dataframe:
         return outputArrays_to_DataFrame(
@@ -333,7 +410,10 @@ def collapse(
             chemicalAbunArray,
             specname,
             ratesArray,
-        ) + (abundanceStart, success_flag,)
+        ) + (
+            abundanceStart,
+            success_flag,
+        )
     elif return_array:
         return (
             physicsArray,
@@ -385,13 +465,20 @@ def hot_core(
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
     if "points" not in param_dict:
         param_dict["points"] = 1
-    if return_array or return_dataframe:
-        # Check to make sure no output files are specified, if so, halt the execution.
-        _return_array_checks(param_dict)
+    pre_flight_checklist(
+        return_array,
+        return_dataframe,
+        return_rates,
+        # return_heating,
+        starting_chemistry,
+        param_dict,
+    )
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, len(PHYSICAL_PARAMETERS), timepoints=timepoints
     )
-    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
+    ratesArray = _create_ratesarray(
+        param_dict["points"], n_reactions, timepoints=timepoints
+    )
     give_start_abund = starting_chemistry is not None
     _, _, _, abunds, specname, success_flag = wrap.hot_core(
         temp_indx=temp_indx,
@@ -412,8 +499,8 @@ def hot_core(
     if not return_rates or not (return_array or return_dataframe):
         ratesArray = None
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
-            physicsArray, chemicalAbunArray, specname, ratesArray
+        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = (
+            _array_clean(physicsArray, chemicalAbunArray, specname, ratesArray)
         )
     if return_dataframe:
         return outputArrays_to_DataFrame(
@@ -421,7 +508,10 @@ def hot_core(
             chemicalAbunArray,
             specname,
             ratesArray,
-        ) + (abundanceStart, success_flag,)
+        ) + (
+            abundanceStart,
+            success_flag,
+        )
     elif return_array:
         return (
             physicsArray,
@@ -478,12 +568,20 @@ def cshock(
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
     if "points" not in param_dict:
         param_dict["points"] = 1
-    if return_array or return_dataframe:
-        _return_array_checks(param_dict)
+    pre_flight_checklist(
+        return_array,
+        return_dataframe,
+        return_rates,
+        # return_heating,
+        starting_chemistry,
+        param_dict,
+    )
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
-    ratesArray=_create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
+    ratesArray = _create_ratesarray(
+        param_dict["points"], n_reactions, timepoints=timepoints
+    )
     give_start_abund = starting_chemistry is not None
     _, _, _, abunds, disspation_time, specname, success_flag = wrap.cshock(
         shock_vel=shock_vel,
@@ -513,8 +611,8 @@ def cshock(
     if not return_rates or not (return_array or return_dataframe):
         ratesArray = None
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
-            physicsArray, chemicalAbunArray, specname, ratesArray
+        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = (
+            _array_clean(physicsArray, chemicalAbunArray, specname, ratesArray)
         )
     if return_dataframe:
         return outputArrays_to_DataFrame(
@@ -522,7 +620,11 @@ def cshock(
             chemicalAbunArray,
             specname,
             ratesArray,
-        ) + (disspation_time, abundanceStart, success_flag,)
+        ) + (
+            disspation_time,
+            abundanceStart,
+            success_flag,
+        )
     elif return_array:
         return (
             physicsArray,
@@ -579,13 +681,21 @@ def jshock(
     if "points" not in param_dict:
         param_dict["points"] = 1
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
-    if return_array or return_dataframe:
-        _return_array_checks(param_dict)
+    pre_flight_checklist(
+        return_array,
+        return_dataframe,
+        return_rates,
+        # return_heating,
+        starting_chemistry,
+        param_dict,
+    )
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, N_PHYSICAL_PARAMETERS, timepoints=timepoints
     )
     give_start_abund = starting_chemistry is not None
-    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=timepoints)
+    ratesArray = _create_ratesarray(
+        param_dict["points"], n_reactions, timepoints=timepoints
+    )
 
     _, _, _, abunds, specname, success_flag = wrap.jshock(
         shock_vel=shock_vel,
@@ -605,8 +715,13 @@ def jshock(
     if not return_rates or not (return_array or return_dataframe):
         ratesArray = None
     if return_array or return_dataframe:
-        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = _array_clean(
-            physicsArray, chemicalAbunArray, specname, ratesArray,
+        physicsArray, chemicalAbunArray, specname, ratesArray, abundanceStart = (
+            _array_clean(
+                physicsArray,
+                chemicalAbunArray,
+                specname,
+                ratesArray,
+            )
         )
     if return_dataframe:
         return outputArrays_to_DataFrame(
@@ -614,7 +729,10 @@ def jshock(
             chemicalAbunArray,
             specname,
             ratesArray,
-        ) + (abundanceStart, success_flag,)
+        ) + (
+            abundanceStart,
+            success_flag,
+        )
     elif return_array:
         return (
             physicsArray,
@@ -691,6 +809,7 @@ def postprocess(
             array = np.asfortranarray(array, dtype=np.float64)
             postprocess_arrays[key] = array
     give_start_abund = starting_chemistry is not None
+
     if not give_start_abund:
         starting_chemistry = np.zeros(
             shape=(n_species),
@@ -701,12 +820,20 @@ def postprocess(
     if "points" not in param_dict:
         param_dict["points"] = 1
     # Check to make sure no output files are specified, if so, halt the execution.
-    if return_array or return_dataframe:
-        _return_array_checks(param_dict)
+    pre_flight_checklist(
+        return_array,
+        return_dataframe,
+        return_rates,
+        # return_heating,
+        starting_chemistry,
+        param_dict,
+    )
     physicsArray, chemicalAbunArray = _create_fortranarray(
         param_dict, N_PHYSICAL_PARAMETERS, timepoints=len(time_array)
     )
-    ratesArray = _create_ratesarray(param_dict["points"], n_reactions, timepoints=len(time_array))
+    ratesArray = _create_ratesarray(
+        param_dict["points"], n_reactions, timepoints=len(time_array)
+    )
     _, _, _, abunds, specname, success_flag = wrap.postprocess(
         dictionary=param_dict,
         outspeciesin=out_species,
@@ -735,7 +862,10 @@ def postprocess(
             chemicalAbunArray,
             specname,
             ratesArray,
-        ) + (abundanceStart, success_flag,)
+        ) + (
+            abundanceStart,
+            success_flag,
+        )
     elif return_array:
         return (
             physicsArray,
@@ -745,5 +875,4 @@ def postprocess(
             success_flag,
         )
     else:
-        return _format_output(n_out, abunds, success_flag)
         return _format_output(n_out, abunds, success_flag)

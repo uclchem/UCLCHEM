@@ -1,4 +1,4 @@
-name: Test install and interface
+name: Test the photo on grain feature
 
 on:
   pull_request:
@@ -33,11 +33,6 @@ jobs:
       run: |
         pip install .
 
-    - name: Run pytest install test
-      run: |
-        pytest tests/test_install.py
-
     - name: Run ode conservation test, standard stages run and photo on grains (not enabled by default)
       run: |
-        pytest -n auto tests/{test_ode_conservation.py,test_run_stages.py,test_photo_on_grain.py}
-
+        pytest tests/test_photo_on_grain.py
