@@ -39,5 +39,5 @@ jobs:
 
     - name: Run ode conservation test, standard stages run and photo on grains (not enabled by default)
       run: |
-        pytest -n auto tests/{test_ode_conservation.py,test_run_stages.py,test_photo_on_grain.py}
+        pytest -n auto tests/{test_ode_conservation.py,test_run_stages_disk.py,test_run_stages_memory.py,test_output_mode_mixing.py}
 
