@@ -24,8 +24,8 @@ def test_photo_on_grain_memory():
     TEST_DIR = Path("tests/photo_on_grain_test_output/")
     TEST_DIR.mkdir(parents=True, exist_ok=True)
 
-    # # Install the package using pip
-    # install_command = "pip install ."
+    # Install the package using pip
+    install_command = "pip install ."
     # result = subprocess.run(
     #     install_command, shell=True, text=True, capture_output=True
     # )
