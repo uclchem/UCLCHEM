@@ -276,6 +276,7 @@ def outputArrays_to_DataFrame(
             "Cosmic Ray Heating",
             "Turbulent Heating",
             "Gas-Grain Collisions",
+            "Chemical Heating",
         ]
         heating_df = pd.DataFrame(
             heatArray[:, 0, :], index=None, columns=heating_columns

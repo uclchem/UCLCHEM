@@ -26,7 +26,7 @@ MODULE CONSTANTS
    INTEGER, PARAMETER :: INT_TOO_MANY_FAILS_ERROR=-5
    INTEGER, PARAMETER :: NOT_ENOUGH_TIMEPOINTS_ERROR=-6
    ! Number of heating and cooling terms that are implemented
-   INTEGER, PARAMETER :: nHeatingTerms=18 !Number of heating/cooling terms tracked
+   INTEGER, PARAMETER :: nHeatingTerms=19 !Number of heating/cooling terms tracked
    
 CONTAINS
 SUBROUTINE DUMMY_THREE(dummy_three_output)

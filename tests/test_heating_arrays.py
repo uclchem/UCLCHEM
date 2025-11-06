@@ -57,7 +57,7 @@ class TestHeatingArrays:
         # Test array specifications
         array_specs = _get_standard_array_specs(return_heating=True)
         assert "heatarray" in array_specs
-        assert array_specs["heatarray"]["third_dim"] == 18
+        assert array_specs["heatarray"]["third_dim"] == 19
         assert array_specs["heatarray"]["dtype"] == "float64"
 
         # Test array creation
@@ -68,7 +68,7 @@ class TestHeatingArrays:
 
         # Verify heating array has correct dimensions
         # timepoints+1, points, n_heating_terms
-        expected_shape = (timepoints + 1, 1, 18)
+        expected_shape = (timepoints + 1, 1, 19)
         assert arrays["heatarray"].shape == expected_shape
 
     def test_cloud_function_with_return_array(self, param_dict):
@@ -94,7 +94,7 @@ class TestHeatingArrays:
         assert success_flag == 0, "Model run should be successful"
         assert heatArray is not None, "Heat array should be returned"
         assert isinstance(heatArray, np.ndarray), "Heat array should be numpy array"
-        assert heatArray.shape[2] == 18, "Heat array should have 18 columns per particle"
+        assert heatArray.shape[2] == 19, "Heat array should have 19 columns per particle"
 
     def test_cloud_function_with_return_dataframe(
         self, param_dict, expected_heating_columns

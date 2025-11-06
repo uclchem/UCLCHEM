@@ -106,7 +106,7 @@ CONTAINS
                 ratesarray(dtime, dstep, :) = rate(:nreac)
                 ! Only populate the heating array if it is present and properly sized
                 IF (SIZE(heatarray, 1) .ge. timePoints) THEN
-                    heatarray(dtime, dstep, 1) = time
+                    heatarray(dtime, dstep, 1) = timeInYears
                     heatarray(dtime, dstep, 2) = atomicCool
                     heatarray(dtime, dstep, 3) = colIndEmission
                     heatarray(dtime, dstep, 4) = comptonCool
@@ -125,6 +125,7 @@ CONTAINS
                     heatarray(dtime, dstep, 16) = crheating
                     heatarray(dtime, dstep, 17) = turbHeating
                     heatarray(dtime, dstep, 18) = gasgraincolls
+                    heatarray(dtime, dstep, 19) = chemheating  ! Placeholder for future heating by enthalpy
                 END IF
             ELSE 
                 ! Else, we write the rates and flux to the file.

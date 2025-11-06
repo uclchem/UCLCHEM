@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 from typing import Union
 
 import yaml
@@ -28,6 +29,26 @@ optional_params = [
 ]
 
 
+def _resolve_path(file_path: Union[str, Path], base_dir: Path) -> Path:
+    """
+    Resolve a file path relative to a base directory.
+    If the path is already absolute, return it as-is.
+    Otherwise, resolve it relative to base_dir.
+    
+    Args:
+        file_path: The path to resolve (can be string or Path)
+        base_dir: The base directory to resolve relative paths against
+        
+    Returns:
+        Resolved absolute Path object
+    """
+    path = Path(file_path)
+    if path.is_absolute():
+        return path
+    else:
+        return (base_dir / path).resolve()
+
+
 def run_makerates(
     configuration_file: str = "user_settings.yaml", write_files: bool = True
 ) -> Network:
@@ -45,8 +66,15 @@ def run_makerates(
     Returns:
         Network: A chemical network instance.
     """
+    
+    # Convert configuration file to absolute path and get its directory
+    config_path = Path(configuration_file).resolve()
+    config_dir = config_path.parent
+    
+    logging.info(f"Reading configuration from: {config_path}")
+    logging.info(f"Configuration directory: {config_dir}")
 
-    with open(configuration_file, "r") as f:
+    with open(config_path, "r") as f:
         user_params = yaml.safe_load(f)
 
     for param in param_list:
@@ -55,7 +83,7 @@ def run_makerates(
         logging.info(f"{param} : {user_params[param]}")
 
     if "output_directory" in user_params:
-        user_output_dir = user_params["output_directory"]
+        user_output_dir = _resolve_path(user_params["output_directory"], config_dir)
         if not os.path.exists(user_output_dir):
             os.makedirs(user_output_dir)
     else:
@@ -74,7 +102,11 @@ def run_makerates(
     reaction_files = [user_params[rf] for rf in reaction_files_keys]
     reaction_types = [user_params[rf.replace("file", "type")] for rf in reaction_files_keys]
     
+    # Resolve all file paths relative to config directory
     species_file = user_params["species_file"]
+    species_file = _resolve_path(species_file, config_dir)
+    reaction_files = [_resolve_path(rf, config_dir) for rf in reaction_files]
+    
     if not user_params.get("three_phase", True):
         raise RuntimeError("three_phase=False is deprecated as of UCLCHEM v3.5.0, please remove three_phase=False from your makerates configuration.")
     enable_rates_to_disk = user_params.get("enable_rates_to_disk", False)
@@ -82,6 +114,8 @@ def run_makerates(
     add_crp_photo_to_grain = user_params.get("add_crp_photo_to_grain", False)
     add_delta_enthalpy = user_params.get("add_delta_enthalpy", False)
     gar_file = user_params.get("grain_assisted_recombination_file", None)
+    if gar_file is not None:
+        gar_file = _resolve_path(gar_file, config_dir)
     # retrieve the network and the dropped reactions
     network, dropped_reactions = _get_network_from_files(
         reaction_files=reaction_files,

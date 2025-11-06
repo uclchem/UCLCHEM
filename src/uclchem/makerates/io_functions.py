@@ -963,7 +963,7 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
 
     openFile.write(array_to_string("\t garParams", np.array(list(gar_database.values())) if gar_database else np.zeros((1,7)), type="float", parameter=True))
     
-    for reaction_type in reaction_types + ["TWOBODY"]:
+    for reaction_type in reaction_types:
         list_name = reaction_type.lower() + "Reacs"
         indices = np.where(reacTypes == reaction_type)[0]
         if len(indices > 1):

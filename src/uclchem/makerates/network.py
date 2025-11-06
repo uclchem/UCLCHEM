@@ -1161,9 +1161,12 @@ class Network:
         for reaction in self.get_reaction_list():
             logging.debug(f"Checking if we need to add enthalpy to {reaction}")
             if reaction.get_reaction_type() in enthalpy_reaction_types:
-                if exclude_ices and reaction.is_ice_reaction():
+                if exclude_ices and reaction.is_ice_reaction(strict=(not exclude_ices)):
                     logging.debug("Skipping ice reaction")
-                    return 
+                    continue 
+                if "E-" in (reaction.get_pure_products() + reaction.get_pure_reactants()):
+                    logging.debug("Reaction involving electrons, skipping enthalpy due to poor estimates")
+                    continue
                 delta_h = self.compute_delta_enthalpy(reaction)
                 reaction.set_delta_enthalpy(delta_h)
                 logging.debug(
