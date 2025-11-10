@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from uclchem.makerates.io_functions import array_to_string
 

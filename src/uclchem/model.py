@@ -16,6 +16,8 @@ from uclchem.constants import (
     n_species,
 )
 
+OUTPUT_MODE = ""
+
 
 def set_collisional_rates_directory():
     coolant_directory = (
@@ -177,11 +179,59 @@ def _create_arrays(param_dict, array_specs, timepoints=TIMEPOINTS):
     return arrays
 
 
-def _return_array_checks(params):
-    if any([key.endswith("File") for key in list(params.keys())]):
-        raise RuntimeError(
-            "return_array or return_dataframe cannot be used if any output of input file is specified."
+def pre_flight_checklist(
+    return_array,
+    return_dataframe,
+    return_rates,
+    # return_heating,
+    starting_chemistry=None,
+    user_params={},
+):
+    global OUTPUT_MODE
+    """Function that ensures that we aren't mixing in memory and write to disk mode.
+
+    Args:
+        return_array (bool): Whether to return arrays
+        return_dataframe (bool): whether to return dataframes
+        starting_chemistry (np.array): Starting chemistry array
+        return rates (bool): Whether to return reaction rates
+        return_heating (bool): Whether to return heating and cooling rates
+        user_params (dict): The user parameter that has to be specified
+
+    Raises:
+        RuntimeError: If anything causes undefined behaviour during UCLCHEM runtime.
+    """
+    if starting_chemistry is not None:
+        assert return_array or return_dataframe, (
+            "starting_chemistry can only be used with return_array or return_dataframe set to True;\n"
+            "Instead specify 'abundLoadFile' in the param_dict to load starting abundances from a file."
         )
+    # Check that we aren't mixing in memory and write to disk mode
+    if return_array or return_dataframe or return_rates:
+        file_keys = [k for k in user_params.keys() if k.lower().endswith("file")]
+        if file_keys:
+            raise RuntimeError(
+                "return_array or return_dataframe cannot be used if any "
+                "output of input file is specified.\n"
+                + f"Offending keys: {', '.join(file_keys)}"
+            )
+        if return_rates:
+            assert return_array or return_dataframe, (
+                "return_rates and return_heating can only be used with return_array or return_dataframe set to True; "
+            )
+        # Check we didn't run a disk based model before:
+        if OUTPUT_MODE:
+            assert OUTPUT_MODE == "memory", (
+                f"Cannot run an in memory based model after running a disk based one in the same session. Found prior run with: {OUTPUT_MODE}"
+            )
+        OUTPUT_MODE = "memory"
+    else:
+        # Ensure we never run a disk based model after running an in memory one
+        if OUTPUT_MODE:
+            assert OUTPUT_MODE == "disk", (
+                "Cannot run a disk based model after running an in memory one in the same session."
+            )
+        OUTPUT_MODE = "disk"
 
 
 def _array_clean(
@@ -324,8 +374,14 @@ def cloud(
     if "points" not in param_dict:
         param_dict["points"] = 1
     # Check to make sure no output files are specified, if so, halt the execution.
-    if return_array or return_dataframe:
-        _return_array_checks(param_dict)
+    pre_flight_checklist(
+        return_array,
+        return_dataframe,
+        return_rates,
+        # return_heating,
+        starting_chemistry,
+        param_dict,
+    )
 
     # Create all arrays using the generalized approach
     array_specs = _get_standard_array_specs(
@@ -443,8 +499,14 @@ def collapse(
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
     if "points" not in param_dict:
         param_dict["points"] = 1
-    if return_array or return_dataframe:
-        _return_array_checks(param_dict)
+    pre_flight_checklist(
+        return_array,
+        return_dataframe,
+        return_rates,
+        # return_heating,
+        starting_chemistry,
+        param_dict,
+    )
     array_specs = _get_standard_array_specs(
         return_rates=return_rates, return_heating=return_heating
     )
@@ -551,9 +613,14 @@ def hot_core(
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
     if "points" not in param_dict:
         param_dict["points"] = 1
-    if return_array or return_dataframe:
-        # Check to make sure no output files are specified, if so, halt the execution.
-        _return_array_checks(param_dict)
+    pre_flight_checklist(
+        return_array,
+        return_dataframe,
+        return_rates,
+        # return_heating,
+        starting_chemistry,
+        param_dict,
+    )
 
     # Create all arrays using the generalized approach
     array_specs = _get_standard_array_specs(
@@ -667,8 +734,14 @@ def cshock(
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
     if "points" not in param_dict:
         param_dict["points"] = 1
-    if return_array or return_dataframe:
-        _return_array_checks(param_dict)
+    pre_flight_checklist(
+        return_array,
+        return_dataframe,
+        return_rates,
+        # return_heating,
+        starting_chemistry,
+        param_dict,
+    )
 
     # Create all arrays using the generalized approach
     array_specs = _get_standard_array_specs(
@@ -806,8 +879,14 @@ def jshock(
     if "points" not in param_dict:
         param_dict["points"] = 1
     n_out, param_dict, out_species = _reform_inputs(param_dict, out_species)
-    if return_array or return_dataframe:
-        _return_array_checks(param_dict)
+    pre_flight_checklist(
+        return_array,
+        return_dataframe,
+        return_rates,
+        # return_heating,
+        starting_chemistry,
+        param_dict,
+    )
 
     # Create all arrays using the generalized approach
     array_specs = _get_standard_array_specs(
@@ -941,6 +1020,7 @@ def postprocess(
             array = np.asfortranarray(array, dtype=np.float64)
             postprocess_arrays[key] = array
     give_start_abund = starting_chemistry is not None
+
     if not give_start_abund:
         starting_chemistry = np.zeros(
             shape=(n_species),
@@ -951,9 +1031,14 @@ def postprocess(
     if "points" not in param_dict:
         param_dict["points"] = 1
     # Check to make sure no output files are specified, if so, halt the execution.
-    if return_array or return_dataframe:
-        _return_array_checks(param_dict)
-
+    pre_flight_checklist(
+        return_array,
+        return_dataframe,
+        return_rates,
+        # return_heating,
+        starting_chemistry,
+        param_dict,
+    )
     # Create all arrays using the generalized approach
     array_specs = _get_standard_array_specs(
         return_rates=return_rates, return_heating=return_heating
