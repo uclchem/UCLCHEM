@@ -355,8 +355,7 @@ def write_species(file_name: Path, species_list: list[Species]) -> None:
         "SOLID_FRACTION",
         "MONO_FRACTION",
         "VOLCANO_FRACTION",
-        "ICE_ENTHALPY",
-        "GAS_ENTHALPY",
+        "ENTHALPY",
     ]
     with open(file_name, "w") as f:
         writer = csv.writer(
@@ -376,8 +375,7 @@ def write_species(file_name: Path, species_list: list[Species]) -> None:
                     species.get_solid_fraction(),
                     species.get_mono_fraction(),
                     species.get_volcano_fraction(),
-                    species.get_ice_enthalpy(),
-                    species.get_gas_enthalpy(),
+                    species.get_enthalpy(),
                 ]
             )
 
@@ -405,7 +403,7 @@ def write_reactions(fileName, reaction_list) -> None:
         "T_max",
         "reduced_mass",
         "extrapolate",
-        "delta_enthalpy",
+        "exothermicity",
     ]
     with open(fileName, "w") as f:
         writer = csv.writer(
@@ -428,7 +426,7 @@ def write_reactions(fileName, reaction_list) -> None:
                     reaction.get_temphigh(),
                     reaction.get_reduced_mass(),
                     reaction.get_extrapolation(),
-                    reaction.get_delta_enthalpy(),
+                    reaction.get_exothermicity(),
                 ]
             )
 
@@ -738,14 +736,14 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
             volcList.append(species.get_volcano_fraction())
             iceList.append(i + 1)
             binding_energyList.append(species.get_binding_energy())
-            enthalpyList.append(species.get_ice_enthalpy())
+            enthalpyList.append(species.get_enthalpy())
         elif species.get_name()[0] == "@":
             j = species_names.index(species.get_desorb_products()[0])
             gasIceList.append(j + 1)
             bulkList.append(i + 1)
             iceList.append(i + 1)
             binding_energyList.append(species.get_binding_energy())
-            enthalpyList.append(species.get_ice_enthalpy())
+            enthalpyList.append(species.get_enthalpy())
             if species.is_refractory:
                 refractoryList.append(i + 1)
 
@@ -858,7 +856,7 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
     tmaxs = []
     reduced_masses = []
     extrapolations = []
-    delta_enthalpy = []
+    exothermicity = []
 
     # store important reactions
     reaction_indices = ""
@@ -885,7 +883,7 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
         reduced_masses.append(reaction.get_reduced_mass())
         reacTypes.append(reaction.get_reaction_type())
         extrapolations.append(reaction.get_extrapolation())
-        delta_enthalpy.append(reaction.get_delta_enthalpy())
+        exothermicity.append(reaction.get_exothermicity())
     # if len(duplicates) == 0:
     #     duplicates = [9999]
     #     tmaxs = [0]
@@ -922,16 +920,16 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
     else:
         openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
         openFile.write("    LOGICAL :: ReactionRatesToDisk=.false.\n")
-    if any([delta_enthalpy != 0.0]):
+    if any([exothermicity != 0.0]):
         openFile.write(
             array_to_string(
-                "\tdeltaEnthalpy", delta_enthalpy, type="float", parameter=True
+                "\texothermicities", exothermicity, type="float", parameter=True
             )
         )
-        openFile.write("    LOGICAL, PARAMETER :: deltaEnthalpyFlag = .TRUE.\n")
+        openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .TRUE.\n")
     else:
-        openFile.write("    REAL(dp) :: \tdeltaEnthalpy(1)\n")
-        openFile.write("    LOGICAL, PARAMETER :: deltaEnthalpyFlag = .FALSE.\n")
+        openFile.write("    REAL(dp) :: \exothermicities(1)\n")
+        openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .FALSE.\n")
 
     openFile.write(array_to_string("\tre1", reactant1, type="int"))
     openFile.write(array_to_string("\tre2", reactant2, type="int"))

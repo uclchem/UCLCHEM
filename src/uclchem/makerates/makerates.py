@@ -26,6 +26,8 @@ optional_params = [
     "output_directory",
     "three_phase",
     "gas_phase_extrapolation",
+    "add_exothermicity",
+    "exothermicity_files",
 ]
 
 
@@ -112,10 +114,18 @@ def run_makerates(
     enable_rates_to_disk = user_params.get("enable_rates_to_disk", False)
     gas_phase_extrapolation = user_params.get("gas_phase_extrapolation", False)
     add_crp_photo_to_grain = user_params.get("add_crp_photo_to_grain", False)
-    add_delta_enthalpy = user_params.get("add_delta_enthalpy", False)
+    add_exothermicity = user_params.get("add_exothermicity", False)
     gar_file = user_params.get("grain_assisted_recombination_file", None)
     if gar_file is not None:
         gar_file = _resolve_path(gar_file, config_dir)
+    
+    # Handle exothermicity files (can be a single file or list of files)
+    exothermicity_files = user_params.get("exothermicity_files", None)
+    if exothermicity_files is not None:
+        if isinstance(exothermicity_files, str):
+            exothermicity_files = [exothermicity_files]
+        exothermicity_files = [_resolve_path(ef, config_dir) for ef in exothermicity_files]
+    
     # retrieve the network and the dropped reactions
     network, dropped_reactions = _get_network_from_files(
         reaction_files=reaction_files,
@@ -123,7 +133,8 @@ def run_makerates(
         species_file=species_file,
         gas_phase_extrapolation=gas_phase_extrapolation,
         add_crp_photo_to_grain=add_crp_photo_to_grain,
-        add_delta_enthalpy=add_delta_enthalpy,
+        add_exothermicity=add_exothermicity,
+        exothermicity_files=exothermicity_files,
     )
 
     if write_files:
@@ -219,8 +230,11 @@ def _get_network_from_files(
     reaction_types: list[str],
     gas_phase_extrapolation: bool,
     add_crp_photo_to_grain: bool,
-    add_delta_enthalpy: Union[bool, str, list[str]],
+    add_exothermicity: Union[bool, str, list[str]],
+    exothermicity_files: list[Union[str, bytes, os.PathLike]] = None,
 ):
+    print(f"DEBUG _get_network_from_files exothermicity_files={exothermicity_files}")
+    logging.info(f"_get_network_from_files called with exothermicity_files={exothermicity_files}")
     species_list, user_defined_bulk = io.read_species_file(species_file)
     # Check if reaction and type files are lists, if not, make them lists
     if not isinstance(reaction_files, list):
@@ -244,7 +258,8 @@ def _get_network_from_files(
         user_defined_bulk=user_defined_bulk,
         gas_phase_extrapolation=gas_phase_extrapolation,
         add_crp_photo_to_grain=add_crp_photo_to_grain,
-        add_delta_enthalpy=add_delta_enthalpy,
+        add_exothermicity=add_exothermicity,
+        exothermicity_files=exothermicity_files,
     )
 
     #################################################################################################

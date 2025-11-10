@@ -55,7 +55,7 @@ class Reaction:
             self.set_temphigh(inputRow.get_temphigh())
             self.set_reduced_mass(inputRow.get_reduced_mass())
             self.set_extrapolation(inputRow.get_extrapolation())
-            self.set_delta_enthalpy(inputRow.get_delta_enthalpy())
+            self.set_exothermicity(inputRow.get_exothermicity())
         else:
             try:
                 self.set_reactants(
@@ -84,7 +84,7 @@ class Reaction:
                 if len(inputRow) > 12:
                     self.set_reduced_mass(float(inputRow[12]))
                 self.set_extrapolation(bool(inputRow[13]) if len(inputRow) > 13 else False)
-                self.set_delta_enthalpy(float(inputRow[14]) if len(inputRow) > 14 else 0.0)
+                self.set_exothermicity(float(inputRow[14]) if len(inputRow) > 14 else 0.0)
                 
             except IndexError as error:
                 raise ValueError(
@@ -282,21 +282,21 @@ class Reaction:
         """
         return self._temphigh
     
-    def set_delta_enthalpy(self, delta_h: float) -> None:
-        """Set the reaction enthalpy change in Kelvin
+    def set_exothermicity(self, rate: float) -> None:
+        """Set the cooling/heating for the reaction in erg s^-1
 
         Args:
             delta_h (float): the reaction enthalpy change
         """
-        self._delta_enthalpy = delta_h
+        self._exothermicity = rate
     
-    def get_delta_enthalpy(self) -> float:
-        """Get the reaction enthalpy change in Kelvin
+    def get_exothermicity(self) -> float:
+        """Get the cooling/heating for the reaction in erg s^-1
 
         Returns:
             float: the reaction enthalpy change
         """
-        return self._delta_enthalpy        
+        return self._exothermicity       
 
     def predict_reduced_mass(self) -> None:
         """Predict the reduced mass of the tunneling particle in this reaction.

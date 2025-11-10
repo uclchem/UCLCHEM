@@ -183,7 +183,7 @@ def pre_flight_checklist(
     return_array,
     return_dataframe,
     return_rates,
-    # return_heating,
+    return_heating,
     starting_chemistry=None,
     user_params={},
 ):
@@ -207,7 +207,7 @@ def pre_flight_checklist(
             "Instead specify 'abundLoadFile' in the param_dict to load starting abundances from a file."
         )
     # Check that we aren't mixing in memory and write to disk mode
-    if return_array or return_dataframe or return_rates:
+    if return_array or return_dataframe or return_rates or return_heating:
         file_keys = [k for k in user_params.keys() if k.lower().endswith("file")]
         if file_keys:
             raise RuntimeError(
@@ -378,7 +378,7 @@ def cloud(
         return_array,
         return_dataframe,
         return_rates,
-        # return_heating,
+        return_heating,
         starting_chemistry,
         param_dict,
     )
@@ -503,7 +503,7 @@ def collapse(
         return_array,
         return_dataframe,
         return_rates,
-        # return_heating,
+        return_heating,
         starting_chemistry,
         param_dict,
     )
@@ -617,7 +617,7 @@ def hot_core(
         return_array,
         return_dataframe,
         return_rates,
-        # return_heating,
+        return_heating,
         starting_chemistry,
         param_dict,
     )
@@ -738,7 +738,7 @@ def cshock(
         return_array,
         return_dataframe,
         return_rates,
-        # return_heating,
+        return_heating,
         starting_chemistry,
         param_dict,
     )
@@ -883,7 +883,7 @@ def jshock(
         return_array,
         return_dataframe,
         return_rates,
-        # return_heating,
+        return_heating,
         starting_chemistry,
         param_dict,
     )
@@ -1035,7 +1035,7 @@ def postprocess(
         return_array,
         return_dataframe,
         return_rates,
-        # return_heating,
+        return_heating,
         starting_chemistry,
         param_dict,
     )

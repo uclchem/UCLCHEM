@@ -26,7 +26,8 @@ class Network:
         user_defined_bulk: list = [],
         gas_phase_extrapolation: bool = False,
         add_crp_photo_to_grain: bool = False,
-        add_delta_enthalpy: list[str] = None,
+        add_exothermicity: list[str] = None,
+        exothermicity_files: list[Union[str, Path]] = None,
     ):
         """A class to store network information such as indices of important reactions.
 
@@ -50,7 +51,8 @@ class Network:
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
         self.add_crp_photo_to_grain = add_crp_photo_to_grain
-        self.add_delta_enthalpy = add_delta_enthalpy
+        self.add_exothermicity = add_exothermicity
+        self.exothermicity_files = exothermicity_files
         self.enthalpies_present = False
         electron_specie = Species(["E-", 0, 0.0, 0, 0, 0, 0])
         electron_specie.set_n_atoms(1)
@@ -80,8 +82,15 @@ class Network:
             self.add_gas_phase_extrapolation()
 
         # Add the enhalpies for certain reaction types:
-        if self.add_delta_enthalpy:
-            self.add_reaction_enthalpies(self.add_delta_enthalpy)
+        if self.add_exothermicity:
+            self.add_reaction_enthalpies(self.add_exothermicity)
+        
+        # Apply custom exothermicity files if provided
+        if self.exothermicity_files:
+            logging.info(f"About to apply custom exothermicity files: {self.exothermicity_files}")
+            self.apply_custom_exothermicities(self.exothermicity_files)
+        else:
+            logging.info(f"No custom exothermicity files to apply: {self.exothermicity_files}")
 
         # Sort the reactions before returning them, this is important for convergence of the ODE
         self.sort_reactions()
@@ -1167,13 +1176,29 @@ class Network:
                 if "E-" in (reaction.get_pure_products() + reaction.get_pure_reactants()):
                     logging.debug("Reaction involving electrons, skipping enthalpy due to poor estimates")
                     continue
-                delta_h = self.compute_delta_enthalpy(reaction)
-                reaction.set_delta_enthalpy(delta_h)
+                delta_h = self.compute_exothermicity(reaction)
+                reaction.set_exothermicity(delta_h)
                 logging.debug(
                     f"Setting reaction enthalpy of {reaction} to {delta_h} kcal/mol"
                 )
 
-    def compute_delta_enthalpy(self, reaction: Reaction) -> float:
+    def apply_custom_exothermicities(self, exothermicity_files: list):
+        """Apply custom exothermicity values from CSV files to the network reactions.
+        
+        Args:
+            exothermicity_files (list): List of paths to custom exothermicity CSV files.
+        """
+        from .heating import set_custom_exothermicities
+        
+        for csv_path in exothermicity_files:
+            logging.info(f"Applying custom exothermicities from {csv_path}")
+            set_custom_exothermicities(
+                reactions=self.get_reaction_list(),
+                csv_path=csv_path,
+                overwrite=True
+            )
+
+    def compute_exothermicity(self, reaction: Reaction) -> float:
         """Compute the reaction enthalpy in eV for a given reaction based on the
         species enthalpies.
 

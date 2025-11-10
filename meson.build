@@ -129,7 +129,8 @@ py.install_sources([
   usource / 'makerates' / 'makerates.py',
   usource / 'makerates' / 'network.py',
   usource / 'makerates' / 'reaction.py',
-  usource / 'makerates' / 'species.py'
+  usource / 'makerates' / 'species.py',
+  usource / 'makerates' / 'heating.py',
 ], subdir: 'uclchem' / 'makerates')
 
 # Always install nested f2py_constants.f90 template

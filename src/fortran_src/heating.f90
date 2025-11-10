@@ -70,10 +70,10 @@ IMPLICIT NONE
         END IF
         
         chemheating=0.0
-        IF (deltaEnthalpyFlag) THEN
+        IF (enableChemicalHeating) THEN
             ! Here we need the "flux" in cm^-3 s^-1 to get the heating per reaction.
             ! Energy is in kcal so convert to eV per reaction by multiplying by 1.6022e-12
-            chemheating= sum(reactionrate(:nReac) * deltaEnthalpy(:)) * 4.184D+10 / 6.022D+23
+            chemheating= sum(reactionrate(:nReac) * exothermicities(:)) * 4.184D+10 / 6.022D+23
         END IF
 
         getTempDot=heating+chemheating-cooling
@@ -404,7 +404,7 @@ IMPLICIT NONE
         !         & *(1.0D0+C3*(habingField*SQRT(gasTemperature)/(gasDensity*electronAbund))**C6))
 
         !Bakes & Tielens 1994 with updates from Wolfire 2008
-        !  Adopt the PAH rate scaling factor of Wolfire et al. (2008, ApJ, 680, 384)
+    !  Adopt the PAH rate scaling factor of Wolfire et al. (2008, ApJ, 680, 384)
         !  Setting this factor to 1.0 gives the standard Bakes & Tielens expression
 
         !Skip photoelectric heating for now if electron abundance is zero because cooling is infinite

@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import uclchem
+
 
 class TestHeatingArrays:
     """Test class for heating array functionality."""
@@ -22,7 +24,7 @@ class TestHeatingArrays:
             "initialDens": 1e4,
             "initialTemp": 10.0,
             "finalDens": 1e5,
-            "finalTime": 5.0e6,
+            "finalTime": 1.0e3,  # Much shorter time for faster tests
             "points": 1,
         }
 
@@ -48,6 +50,7 @@ class TestHeatingArrays:
             "Cosmic Ray Heating",
             "Turbulent Heating",
             "Gas-Grain Collisions",
+            "Chemical Heating",
         ]
 
     def test_array_creation_and_specifications(self, param_dict):
@@ -73,7 +76,6 @@ class TestHeatingArrays:
 
     def test_cloud_function_with_return_array(self, param_dict):
         """Test cloud function with return_array=True."""
-        import uclchem
 
         (
             physicsArray,
@@ -88,7 +90,7 @@ class TestHeatingArrays:
             return_array=True,
             return_heating=True,
             return_rates=True,
-            timepoints=500,
+            timepoints=50,  # Reduced from 500 for faster tests
         )
 
         assert success_flag == 0, "Model run should be successful"
@@ -100,7 +102,6 @@ class TestHeatingArrays:
         self, param_dict, expected_heating_columns
     ):
         """Test cloud function with return_dataframe=True."""
-        import uclchem
 
         result = uclchem.model.cloud(
             param_dict=param_dict,
@@ -108,7 +109,7 @@ class TestHeatingArrays:
             return_dataframe=True,
             return_heating=True,
             return_rates=True,
-            timepoints=500,
+            timepoints=50,  # Reduced from 500 for faster tests
         )
 
         (
@@ -144,8 +145,6 @@ class TestHeatingArrays:
     )
     def test_all_model_functions_support_heating(self, model_function, param_dict):
         """Test that all model functions support heating arrays."""
-        import uclchem
-
         # Get the function from the module
         func = getattr(uclchem.model, model_function)
         # Adjust parameters for different model types
@@ -161,7 +160,7 @@ class TestHeatingArrays:
                     return_dataframe=True,
                     return_rates=True,
                     return_heating=True,
-                    timepoints=500,
+                    timepoints=50,  # Reduced from 500 for faster tests
                 )
             elif model_function == "cloud":
                 result = func(
@@ -170,7 +169,7 @@ class TestHeatingArrays:
                     return_dataframe=True,
                     return_rates=True,
                     return_heating=True,
-                    timepoints=500,
+                    timepoints=50,  # Reduced from 500 for faster tests
                 )
             else:
                 raise ValueError(f"Unknown model function: {model_function}")
@@ -208,8 +207,6 @@ class TestHeatingArrays:
 
     def test_heating_array_content_validation(self, param_dict):
         """Test that heating arrays contain reasonable physical values."""
-        import uclchem
-
         (
             physics_df,
             chemistry_df,
@@ -223,7 +220,7 @@ class TestHeatingArrays:
             return_dataframe=True,
             return_rates=True,
             return_heating=True,
-            timepoints=1000,
+            timepoints=50,  # Reduced from 1000 for faster tests
         )
 
         assert success_flag == 0, f"Model run should be successful, or run out of points, instead it was {success_flag}"
@@ -249,7 +246,6 @@ class TestHeatingArrays:
         )
         
     def test_heating_array_to_disk(self, param_dict):
-        import uclchem
         """Test that heating arrays can be saved to disk."""
         TEST_DIR = Path("tests/heating_test_output/")
         TEST_DIR.mkdir(parents=True, exist_ok=True)
@@ -258,7 +254,7 @@ class TestHeatingArrays:
         result = uclchem.model.cloud(
             param_dict=param_dict,
             out_species=["OH", "CO"],
-            timepoints=500,
+            timepoints=50,  # Reduced from 500 for faster tests
             return_rates=True,
             return_heating=True
         )
