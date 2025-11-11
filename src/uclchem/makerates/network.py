@@ -1177,7 +1177,8 @@ class Network:
                     logging.debug("Reaction involving electrons, skipping enthalpy due to poor estimates")
                     continue
                 delta_h = self.compute_exothermicity(reaction)
-                reaction.set_exothermicity(convert_to_erg(delta_h, "kcal/mol"))
+                # TODO: add a heating efficiency factor in here:
+                reaction.set_exothermicity(convert_to_erg(-delta_h, "kcal/mol"))
                 logging.debug(
                     f"Setting reaction enthalpy of {reaction} to {delta_h} kcal/mol"
                 )
