@@ -37,9 +37,12 @@ CONTAINS
 
 
         if (heatingOutput) then
-            ! write cooling/heating rates headers
-            WRITE(heatingId,'(A)') "Time,Lyman-alpha,C+,O,C,CO,p-H2,o-H2,SI+,S,Photoelectric,&
-            &H2Formation,FUVPumping,Photodissociation,Cionization,CRheating,turbHeating,gasGrainColls"
+            ! Write cooling/heating rates headers dynamically
+            ! Format: Time, [4 cooling values], [NCOOL line cooling], [8 heating values], [1 chem heating]
+            WRITE(heatingId,'(A)',advance='no') "Time,"
+            WRITE(heatingId,'(A)',advance='no') "AtomicCooling,CollisionallyInducedEmission,ComptonCooling,ContinuumEmission,"
+            WRITE(heatingId,'(A)',advance='no') "LineCooling_H,LineCooling_C+,LineCooling_O,LineCooling_C,LineCooling_CO,LineCooling_p-H2,LineCooling_o-H2,"
+            WRITE(heatingId,'(A)') "Photoelectric,H2Formation,FUVPumping,Photodissociation,CIonization,CRHeating,TurbHeating,GasGrainColls,ChemicalHeating"
         END IF
 
     END SUBROUTINE fileSetup
@@ -104,18 +107,17 @@ CONTAINS
             IF (returnArray) THEN
                 ! If returnArray is true, we write the rates to the rates array, we compute the flux in Python.
                 ratesarray(dtime, dstep, :) = rate(:nreac)
-                ! Only populate the heating array if it is present and properly sized
-                IF (SIZE(heatarray, 1) .ge. timePoints) THEN
+                ! Only populate the heating array if it is present, properly sized, AND heating is enabled
+                IF (SIZE(heatarray, 1) .ge. timePoints .AND. heatingFlag .AND. ALLOCATED(lineCoolingArray)) THEN
                     heatarray(dtime, dstep, 1) = timeInYears
                     heatarray(dtime, dstep, 2:5) = coolingValues(:)
-                    ! Currently we write the 5 summed line cooling terms
-                    DO i = 1, ncool
-                        heatarray(dtime, dstep, 6:11) = lineCoolingArray(median_line_index, i)
-                    END DO
+                    ! Write all NCOOL line cooling terms (currently 7: H, C+, O, C, CO, p-H2, o-H2)
+                    heatarray(dtime, dstep, 6:(5+NCOOL)) = lineCoolingArray(median_line_index, :)
 
-                    ! Heating terms
-                    heatarray(dtime, dstep, 12:19) = heatingValues(:)
-                    heatarray(dtime, dstep, 20 ) = chemheating
+                    ! Heating terms (8 values)
+                    heatarray(dtime, dstep, (6+NCOOL):(13+NCOOL)) = heatingValues(:)
+                    ! Chemical heating (1 value)
+                    heatarray(dtime, dstep, 14+NCOOL) = chemheating
                 END IF
             ELSE 
                 ! Else, we write the rate constants and rates to the file.
@@ -128,15 +130,11 @@ CONTAINS
                     8022 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
                 END IF
                 IF (heatingOutput) THEN
-                    WRITE(*,*) "TODO: fix this."
-                    ! WRITE(heatingId,8023) time, atomicCool, colIndEmission, comptonCool, contEmissionCool, lineCoolingArray(1, median_line_index),&
-                    ! &lineCoolingArray(2, median_line_index), lineCoolingArray(3, median_line_index), lineCoolingArray(4, median_line_index), &
-                    ! &lineCoolingArray(5, median_line_index), lineCoolingArray(6, median_line_index), photoelec, h2forming, fuvpumping, photodis,&
-                    ! &cionizing, crheating, turbHeating, gasgraincolls
-                    ! 8023 FORMAT(1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,','&
-                    ! &,1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,','&
-                    ! &,1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',') 
-                    ! !  999(1PE16.6E3,:,','), ) for the future heating by enthalpy
+                    ! Write: time, cooling values (4), line cooling array (NCOOL), heating values (8), chem heating
+                    WRITE(heatingId,8023) timeInYears, coolingValues(:), &
+                        lineCoolingArray(median_line_index, :), &
+                        heatingValues(:), chemheating
+                    8023 FORMAT(1PE16.6E3,:,(999(',',1PE16.6E3)))
                 END IF
             END IF
         END IF

@@ -1,6 +1,6 @@
 MODULE COOLANT_MODULE
    USE constants
-   USE F2PY_CONSTANTS, only: NCOOL
+   USE F2PY_CONSTANTS, only: NCOOL, coolantFiles, coolantNames
    USE network
    USE defaultparameters, only: coolantDataDir
    IMPLICIT NONE
@@ -42,10 +42,8 @@ MODULE COOLANT_MODULE
 
 
    TYPE(COOLANT_TYPE), allocatable :: coolants(:)
-   ! NCOOL is imported from F2PY_CONSTANTS
-   CHARACTER(*), PARAMETER :: coolantFiles(NCOOL)=(/"ly-a.dat       ","12c+_nometa.dat","16o.dat        ","12c.dat        ",&
-            &"12co.dat       ","p-h2.dat       ","o-h2.dat       "/)!,"28si+.dat      ","32s.dat        "/)
-   CHARACTER(*), PARAMETER :: coolantNames(NCOOL)=(/"H   ","C+  ","O   ","C   ","CO  ","p-H2","o-H2"/)
+   ! NCOOL, coolantFiles, and coolantNames are imported from F2PY_CONSTANTS
+   ! They are generated at build time by MakeRates based on user configuration
    INTEGER :: coolantIndices(NCOOL)
    REAL(dp) :: CLOUD_DENSITY,CLOUD_COLUMN,CLOUD_SIZE
 

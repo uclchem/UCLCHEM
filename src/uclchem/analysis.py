@@ -908,7 +908,7 @@ def compute_heating_per_reaction(
     if network:
         reactions = network.get_reaction_list()
     
-    assert len(reactions == rates.shape[1]), "Number of reactions and rates must be equal"
+    assert len(reactions) == rates.shape[1], "Number of reactions and rates must be equal"
     exothermicities = np.array([r.get_exothermicity() for r in reactions])
     return rates * exothermicities
 

@@ -20,6 +20,23 @@ from .reaction import Reaction, reaction_types
 from .species import Species
 
 
+def get_default_coolants() -> list[dict]:
+    """Returns the default coolant configuration for UCLCHEM.
+    
+    Returns:
+        list[dict]: List of coolant dictionaries with 'file' and 'name' keys.
+    """
+    return [
+        {"file": "ly-a.dat", "name": "H"},
+        {"file": "12c+_nometa.dat", "name": "C+"},
+        {"file": "16o.dat", "name": "O"},
+        {"file": "12c.dat", "name": "C"},
+        {"file": "12co.dat", "name": "CO"},
+        {"file": "p-h2.dat", "name": "p-H2"},
+        {"file": "o-h2.dat", "name": "o-H2"},
+    ]
+
+
 def read_species_file(file_name: Path) -> list[Species]:
     """Reads in a Makerates species file
 
@@ -233,12 +250,15 @@ def write_outputs(
     output_dir: str = None,
     enable_rates_storage: bool = False,
     gar_database: dict[str, np.array] = None,
+    coolants: list[dict] = None,
 ) -> None:
     """Write the ODE and Network fortran source files to the fortran source.
 
     Args:
         network (network): The makerates Network class
         output_dir (bool): The directory to write to.
+        coolants (list[dict]): List of coolant dictionaries with 'file' and 'name' keys.
+                               If None, uses default coolants.
     """
     if output_dir is None:
         output_dir = Path("../src/uclchem")
@@ -246,6 +266,10 @@ def write_outputs(
     else:
         output_dir = Path(output_dir)
         fortran_src_dir = Path(output_dir)
+
+    # Use default coolants if none provided
+    if coolants is None:
+        coolants = get_default_coolants()
 
     # Create the species file
     filename = output_dir / "species.csv"
@@ -275,6 +299,10 @@ def write_outputs(
         "n_species": len(network.get_species_list()),
         "n_reactions": len(network.get_reaction_list()),
         "n_physical_parameters": len(PHYSICAL_PARAMETERS),
+        "n_coolants": len(coolants),
+        "coolant_files": [c["file"] for c in coolants],
+        "coolant_names": [c["name"] for c in coolants],
+        "n_heating_terms": 21,
     }
     write_f90_constants(f2py_constants, filename)
     # Write some meta information that can be used to read back in the reactions into Python
@@ -287,18 +315,35 @@ def write_f90_constants(
     output_file_name: Path,
     template_file_path: Path = "fortran_templates",
 ) -> None:
-    """Write the physical reactions to the f2py_constants.f90 file after every run of
-    makerates, this ensures the Fortran and Python bits are compatible with one another.
+    """Write the physical reactions to the f2py_constants.f90 file after every
+    run of makerates, this ensures the Fortran and Python bits are compatible.
 
     Args:
-        replace_dict (Dict[str, int]): The dictionary with keys to replace and their values
-        output_file_name (Path): The path to the target f2py_constants.f90 file
-        template_file_path (Path, optional): The file to use as the template. Defaults to "fortran_templates".
+        replace_dict (Dict[str, int]): The dictionary with keys to replace
+        output_file_name (Path): The path to target f2py_constants.f90 file
+        template_file_path (Path, optional): The file to use as the template.
     """
     _ROOT = Path(__file__).parent
     template_file_path = _ROOT / template_file_path
     with open(template_file_path / "f2py_constants.f90", "r") as fh:
         constants = fh.read()
+    
+    # Handle string arrays separately for coolants
+    if "coolant_files" in replace_dict and "coolant_names" in replace_dict:
+        # Format coolant files
+        coolant_files = replace_dict.pop("coolant_files")
+        max_file_len = max(len(f) for f in coolant_files)
+        coolant_files_str = ",".join(f'"{f.ljust(max_file_len)}"' for f in coolant_files)
+        replace_dict["coolant_file_len"] = max_file_len
+        replace_dict["coolant_files"] = "/" + coolant_files_str + "/"
+        
+        # Format coolant names
+        coolant_names = replace_dict.pop("coolant_names")
+        max_name_len = max(len(n) for n in coolant_names)
+        coolant_names_str = ",".join(f'"{n.ljust(max_name_len)}"' for n in coolant_names)
+        replace_dict["coolant_name_len"] = max_name_len
+        replace_dict["coolant_names"] = "/" + coolant_names_str + "/"
+    
     constants = constants.format(**replace_dict)
     with open(output_file_name, "w") as fh:
         fh.writelines(constants)
