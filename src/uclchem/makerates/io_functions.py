@@ -231,7 +231,7 @@ def output_drops(
 def write_outputs(
     network: Network,
     output_dir: str = None,
-    rates_to_disk: bool = False,
+    enable_rates_storage: bool = False,
     gar_database: dict[str, np.array] = None,
 ) -> None:
     """Write the ODE and Network fortran source files to the fortran source.
@@ -260,13 +260,13 @@ def write_outputs(
         filename,
         network.get_species_list(),
         network.get_reaction_list(),
-        rates_to_disk=rates_to_disk,
+        enable_rates_storage=enable_rates_storage,
     )
 
     # Write the network files
     filename = fortran_src_dir / "network.f90"
     write_network_file(
-        filename, network, rates_to_disk=rates_to_disk, gar_database=gar_database
+        filename, network, enable_rates_storage=enable_rates_storage, gar_database=gar_database
     )
     # write the constants needed for wrap.f90
 
@@ -435,7 +435,7 @@ def write_odes_f90(
     file_name: Path,
     species_list: list[Species],
     reaction_list: list[Reaction],
-    rates_to_disk: bool = False,
+    enable_rates_storage: bool = False,
 ) -> None:
     """Write the ODEs in Modern Fortran. This is an actual code file.
 
@@ -459,7 +459,7 @@ def write_odes_f90(
     # then create ODE code and write to file.
     with open(file_name, mode="w") as output:
         # go through every species and build two strings, one with eq for all destruction routes and one for all formation
-        ydotString = build_ode_string(species_list, reaction_list, rates_to_disk)
+        ydotString = build_ode_string(species_list, reaction_list, enable_rates_storage)
         output.write(ydotString)
 
 
@@ -535,7 +535,7 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
 def build_ode_string(
     species_list: list[Species],
     reaction_list: list[Reaction],
-    rates_to_disk: bool = False,
+    enable_rates_storage: bool = False,
 ) -> str:
     """A long, complex function that does the messy work of creating the actual ODE
     code to calculate the rate of change of each species. Test any change to this code
@@ -544,7 +544,7 @@ def build_ode_string(
     Args:
         species_list (list): List of species in network
         reaction_list (list): List of reactions in network
-        rates_to_disk (bool): Enable the writing of the rates to the disk.
+        enable_rates_storage (bool): Enable the writing of the rates to the disk.
 
     Returns:
         str: One long string containing the entire ODE fortran code.
@@ -600,7 +600,7 @@ REAL(dp) :: totalSwap, LOSS, PROD
             species_list[bulk_index].gains += f"+YDOT({n + 1})"
         elif species.get_name()[0] == "#":
             species_list[surface_index].gains += f"+YDOT({n + 1})"
-    if rates_to_disk:
+    if enable_rates_storage:
         for n, reaction in enumerate(reaction_list):
             ode_string += truncate_line(f"REACTIONRATE({n + 1})={reaction.ode_bit}\n")
 
@@ -630,7 +630,7 @@ REAL(dp) :: totalSwap, LOSS, PROD
             i += 1
             j += 1
             bulk_partner = species_names.index(species.get_name().replace("#", "@"))
-            if rates_to_disk:
+            if enable_rates_storage:
                 ode_string += f"    REACTIONRATE({i}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})/safeBulk\n"
                 ode_string += f"    REACTIONRATE({j}) = 0.0\n"
             if not species_list[bulk_partner].is_refractory:
@@ -646,7 +646,7 @@ REAL(dp) :: totalSwap, LOSS, PROD
             i += 1
             j += 1
             surface_version = species_names.index(species.get_name().replace("@", "#"))
-            if rates_to_disk:
+            if enable_rates_storage:
                 ode_string += f"    REACTIONRATE({i}) = 0.0\n"
                 ode_string += f"    REACTIONRATE({j}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({surface_version + 1})\n"
             ode_string += f"    YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({surface_version + 1})\n"
@@ -800,7 +800,7 @@ def truncate_line(input_string: str, lineLength: int = 72) -> str:
     return result
 
 
-def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = False, gar_database=None):
+def write_network_file(file_name: Path, network: Network, enable_rates_storage: bool = False, gar_database=None):
     """Write the Fortran code file that contains all network information for UCLCHEM.
     This includes lists of reactants, products, binding energies, formationEnthalpies
     and so on.
@@ -912,15 +912,16 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
             reaction_names.append(reaction_name)
 
     # Save some memory by only allocating things we actually want to use:
-    if rates_to_disk:
+    if enable_rates_storage:
         openFile.write(
             f"    REAL(dp) :: REACTIONRATE({len(reactant1) + n_ice_species})\n"
         )
-        openFile.write("     LOGICAL :: ReactionRatesToDisk=.true.\n")
+        openFile.write("     LOGICAL :: storeRatesComputation=.true.\n")
     else:
         openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
-        openFile.write("    LOGICAL :: ReactionRatesToDisk=.false.\n")
+        openFile.write("    LOGICAL :: storeRatesComputation=.false.\n")
     if any([exo != 0.0 for exo in exothermicity]):
+        assert enable_rates_storage, "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
         openFile.write(
             array_to_string(
                 "\texothermicities", exothermicity, type="float", parameter=True

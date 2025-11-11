@@ -126,6 +126,7 @@ usource = 'src' / 'uclchem'
 # Always install makerates/ subpackage (core functionality)
 py.install_sources([
   usource / 'makerates' / '__init__.py',
+  usource / 'makerates' / 'config.py',
   usource / 'makerates' / 'io_functions.py',
   usource / 'makerates' / 'makerates.py',
   usource / 'makerates' / 'network.py',

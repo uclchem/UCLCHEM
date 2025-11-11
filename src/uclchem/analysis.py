@@ -64,7 +64,7 @@ def read_output_file(output_file):
 
 
 def read_rate_file(rate_file):
-    """Read the output of a UCLCHEM run created with the rateFile parameter into a pandas DataFrame
+    """Read the output of a UCLCHEM run created with the rateConstantFile parameter into a pandas DataFrame
 
     Args:
         rate_file (str): path to file containing the UCLCHEM reaction rates.
@@ -710,8 +710,8 @@ def get_total_swap(rates: pd.DataFrame, abundances: pd.DataFrame, reactions: Lis
 
 def construct_incidence(species: List[Species], reactions: List[Reaction]) -> np.ndarray:
     """ Construct the incidence matrix, a matrix that describes the in and out degree
-    for each of the reactions; useful to matrix multiply by the indvidual fluxes per reaction
-    to obtain a flux (dy) per species.
+    for each of the reactions; useful to matrix multiply by the indvidual rates per reaction
+    to obtain a rates (dy) per species.
 
     Args:
         species (List[Species]): A list of species S
@@ -734,10 +734,10 @@ def construct_incidence(species: List[Species], reactions: List[Reaction]) -> np
     return incidence
 
 
-def rates_to_dy_and_flux(
+def rate_constants_to_dy_and_rates(
     physics: pd.DataFrame,
     abundances: pd.DataFrame,
-    rates: pd.DataFrame,
+    rate_constants: pd.DataFrame,
     network: Network = None,
     species: list[Species] = None,
     reactions: list[Reaction] = None,
@@ -745,18 +745,18 @@ def rates_to_dy_and_flux(
     """Apply postprocessing to obtain the equivalent of GETYDOT from the fortran
     side; It returns two dataframes:
         - ydot: the RHS that is solved in UCLCHEM at every output timestep
-        - flux_by_reaction: the individual terms that result in ydot when multiplied by the incidence matrix
+        - rate_by_reaction: the individual terms that result in ydot when multiplied by the incidence matrix
 
     Args:
         physics (pd.DataFrame): The physics output from running a model
         abundances (pd.DataFrame): The abundances output from running a model
-        rates (pd.DataFrame): The rates output from running a model
-        network (Network, optional): The reaction network used to postprocess the rates. Defaults to None.
-        species (list[Species], optional): The species used to postprocess the rates . Defaults to None.
-        reactions (list[Reaction], optional): The reactions used to postprocess the rates. Defaults to None.
+        rate_constants (pd.DataFrame): The rate constants output from running a model
+        network (Network, optional): The reaction network used to postprocess the rate constants. Defaults to None.
+        species (list[Species], optional): The species used to postprocess the rate constants . Defaults to None.
+        reactions (list[Reaction], optional): The reactions used to postprocess the rate constants. Defaults to None.
 
     Returns:
-        tuple[pd.DataFrame, pd.DataFrame]: dy, flux_by_reaction.
+        tuple[pd.DataFrame, pd.DataFrame]: dy, rate_by_reaction.
     """
     assert bool(species) == bool(reactions), (
         "If species is specified, reactions also must be and vice ver"
@@ -774,18 +774,18 @@ def rates_to_dy_and_flux(
     bulkLayersReciprocal = (
         NUM_SITES_PER_GRAIN / (GAS_DUST_DENSITY_RATIO * abundances["BULK"])
     ).apply(lambda x: min(1.0, x))
-    totalSwap = bulkLayersReciprocal * get_total_swap(rates, abundances, reactions)
+    totalSwap = bulkLayersReciprocal * get_total_swap(rate_constants, abundances, reactions)
 
     # Create the incidence matrix, we use this to evaluate the rates and
     incidence = construct_incidence(species, reactions)
 
     # Create a copy so we don't overwrite
-    flux_by_reaction = rates.copy()
+    rate_by_reaction = rate_constants.copy()
 
     # Iterate over each of the rates and compute the contribution to dy for that reaction.
     for idx, reaction in enumerate(network.get_reaction_list()):
         density_multiplier_factor = reaction.body_count
-        rate = flux_by_reaction.iloc[:, idx]
+        rate = rate_by_reaction.iloc[:, idx]
         # Multiply by density the right number of times:
         for iiii in range(int(density_multiplier_factor)):
             rate *= physics["Density"]
@@ -806,17 +806,17 @@ def rates_to_dy_and_flux(
             case "H2FORM":
                 # For some reason, H2form only uses the hydrogen density once
                 rate /= abundances["H"]
-        flux_by_reaction.iloc[:, idx] = rate
+        rate_by_reaction.iloc[:, idx] = rate
 
-    # Compute the flux at each timestep, adding the appropriate header
-    dy = flux_by_reaction @ incidence
+    # Compute the rate at each timestep, adding the appropriate header
+    dy = rate_by_reaction @ incidence
     dy.columns = [str(s) for s in species]
     # Compute the SURFACE and BULK:
     dy.loc[:, "SURFACE"] = dy.loc[:, dy.columns.str.startswith("#")].sum(axis=1)
     dy.loc[:, "BULK"] = dy.loc[:, dy.columns.str.startswith("@")].sum(axis=1)
 
     # Compute the corrections to account for the transport between SURFACE and BULK
-    swap_flux_correction = pd.DataFrame()
+    swap_rate_correction = pd.DataFrame()
     # Then correct for the addition or subtraction of material to/from the bulk:
     surfswap_reactions = [r for r in reactions if r.get_reaction_type() == "SURFSWAP"]
     bulkswap_reactions = [r for r in reactions if r.get_reaction_type() == "BULKSWAP"]
@@ -830,7 +830,7 @@ def rates_to_dy_and_flux(
         key=lambda x: species.index(x.get_reactants()[0]),
     )
     for (idx_j, rate_row), (idx_i, abunds_row) in zip(
-        rates.iterrows(), abundances.iterrows()
+        rate_constants.iterrows(), abundances.iterrows()
     ):
         # Walk through the bulkswap and reactionswap pathways:
         _sswap_rates = {}
@@ -867,9 +867,9 @@ def rates_to_dy_and_flux(
                 # Immedidiately correct dy:
                 dy.loc[idx_j, r_sswap.get_products()[0]] -= sswap
                 dy.loc[idx_j, r_sswap.get_reactants()[0]] += sswap
-        swap_flux_correction = pd.concat(
+        swap_rate_correction = pd.concat(
             (
-                swap_flux_correction,
+                swap_rate_correction,
                 (
                     pd.DataFrame.from_dict(
                         _bswap_rates | _sswap_rates,
@@ -878,28 +878,60 @@ def rates_to_dy_and_flux(
                 ),
             )
         )
-    swap_flux_correction = swap_flux_correction.reset_index(drop=True)
-    flux_by_reaction = pd.concat((flux_by_reaction, swap_flux_correction), axis=1)
+    swap_rate_correction = swap_rate_correction.reset_index(drop=True)
+    rate_by_reaction = pd.concat((rate_by_reaction, swap_rate_correction), axis=1)
     # Correct the change in surface and bulk by summing the constituents:
     dy.loc[:, "SURFACE"] = dy.loc[:, dy.columns.str.startswith("#")].sum(axis=1)
     dy.loc[:, "BULK"] = dy.loc[:, dy.columns.str.startswith("@")].sum(axis=1)
-    # Apply the new fluxes to the ydots and compute a new ydot for surface and bulk:
+    # Apply the new ratees to the ydots and compute a new ydot for surface and bulk:
     return (
         dy,
-        flux_by_reaction,
+        rate_by_reaction,
     )
 
 
-def get_production_and_destruction(species: str, rates_or_flux: pd.DataFrame):
-    reactions = [r.strip() for r in list(rates_or_flux.columns)]
-    reactions = [r.strip() for r in list(rates_or_flux.columns)]
+def compute_heating_per_reaction(
+    rates: pd.DataFrame,
+    network: Network = None,
+    reactions: List[Reaction] = None,
+) -> pd.DataFrame:
+    """Compute heating/cooling per reaction by multiplying rates by exothermicity.
+    
+    Args:
+        rates: DataFrame (time x n_reactions) of reaction rates
+        network: Network object with exothermicity data
+        reactions: List of Reaction objects (alternative to network)
+    
+    Returns:
+        DataFrame (time x n_reactions) of heating rates in erg/s
+    """
+    if network:
+        reactions = network.get_reaction_list()
+    
+    assert len(reactions == rates.shape[1]), "Number of reactions and rates must be equal"
+    exothermicities = np.array([r.get_exothermicity() for r in reactions])
+    return rates * exothermicities
+
+
+
+def get_production_and_destruction(species: str, dataframe: pd.DataFrame):
+    """Function to split the rate constants or rates into production and destruction parts for a given species.
+    Args:
+        species (str): Name of species to split rates for
+        dataframe (pd.DataFrame): DataFrame of rates
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame]: production rates, destruction rates    
+    """
+    reactions = [r.strip() for r in list(dataframe.columns)]
+    reactions = [r.strip() for r in list(dataframe.columns)]
     destruction = [
         r for r in reactions if species in r.split(" -> ")[0].split(" + ")
     ]
     production = [
         r for r in reactions if species in r.split(" -> ")[-1].split(" + ")
     ]
-    return rates_or_flux.loc[:, production], rates_or_flux.loc[:, destruction]
+    return dataframe.loc[:, production], dataframe.loc[:, destruction]
 
 
 def derive_phase_from_name(name) -> str:
@@ -933,3 +965,6 @@ def analyze_element_per_phase(element, df):
         sums = _count_element(species_to_select, element)
         content.loc[:, element + "_" + phase] = _df.mul(sums.values, axis=1).sum(axis=1)
     return content
+
+
+

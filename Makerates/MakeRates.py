@@ -11,9 +11,12 @@
 
 try:
     from uclchem.makerates import run_makerates
+    from uclchem.makerates.config import MakeratesConfig
 except ModuleNotFoundError as err:
     raise ModuleNotFoundError(
-        "The uclchem module could not be found, please make sure it is installed\nPlease refer to uclchem.github.io for installation instructions."
+        "The uclchem module could not be found, please make sure it is "
+        "installed\nPlease refer to uclchem.github.io for installation "
+        "instructions."
     ) from err
 import logging
 import pathlib
@@ -21,19 +24,57 @@ from argparse import ArgumentParser
 
 
 def get_args():
-    """Allows for interacting with MakeRates.py via the command line i.e.
-    ```
-    python3 MakeRates.py /home/user/some_directory/custom_settings.yaml --verbosity DEBUG
-    ```
+    """
+    Allows for interacting with MakeRates.py via the command line.
+    
+    Examples:
+        python3 MakeRates.py custom_settings.yaml --verbosity DEBUG
+        python3 MakeRates.py --generate-template
+        python3 MakeRates.py --help-config
+        
     Returns:
         Namespace: Arguments passed via the CLI or their defaults
     """
-    parser = ArgumentParser()
-    parser.add_argument(
-        "settings_path", nargs="?", default="user_settings.yaml", type=pathlib.Path
+    parser = ArgumentParser(
+        description="UCLCHEM Makerates: Generate chemical network files"
     )
-    parser.add_argument("-v", "--verbosity_stdout", default="WARNING", type=str)
-    parser.add_argument("-d", "--debug", action="store_true")
+    
+    # Main argument - config file path
+    parser.add_argument(
+        "settings_path",
+        nargs="?",
+        default="user_settings.yaml",
+        type=pathlib.Path,
+        help="Path to YAML configuration file (default: user_settings.yaml)",
+    )
+    
+    # Verbosity options
+    parser.add_argument(
+        "-v",
+        "--verbosity_stdout",
+        default="WARNING",
+        type=str,
+        help="Console output verbosity (DEBUG, INFO, WARNING, ERROR)",
+    )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help="Enable debug mode (same as --verbosity DEBUG)",
+    )
+    
+    # Helper options
+    parser.add_argument(
+        "--generate-template",
+        action="store_true",
+        help="Generate a template configuration file and exit",
+    )
+    parser.add_argument(
+        "--help-config",
+        action="store_true",
+        help="Print detailed help about configuration parameters and exit",
+    )
+    
     return parser.parse_args()
 
 
@@ -74,5 +115,19 @@ def get_logger(verbosity_stdout: str, debug: bool):
 
 if __name__ == "__main__":
     args = get_args()
+    
+    # Handle helper commands that exit immediately
+    if args.help_config:
+        MakeratesConfig.print_help()
+        exit(0)
+    
+    if args.generate_template:
+        output_file = "user_settings_template.yaml"
+        MakeratesConfig.generate_template(output_file)
+        exit(0)
+    
+    # Set up logging
     get_logger(args.verbosity_stdout, args.debug)
+    
+    # Run makerates with the specified config file
     run_makerates(args.settings_path)

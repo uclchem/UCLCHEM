@@ -3,137 +3,74 @@ import os
 from pathlib import Path
 from typing import Union
 
-import yaml
-
 from uclchem.makerates.reaction import Reaction
 
 from . import io_functions as io
+from .config import MakeratesConfig
 from .network import LoadedNetwork, Network
-
-param_list = [
-    "species_file",
-    "database_reaction_file",
-    "database_reaction_type",
-    "custom_reaction_file",
-    "custom_reaction_type",
-    "add_crp_photo_to_grain",
-    "enable_rates_to_disk",
-]
-
-# Optional parameters that don't raise errors if missing
-optional_params = [
-    "grain_assisted_recombination_file",
-    "output_directory",
-    "three_phase",
-    "gas_phase_extrapolation",
-    "derive_reaction_exothermicity",
-    "database_reaction_exothermicity",
-]
-
-
-def _resolve_path(file_path: Union[str, Path], base_dir: Path) -> Path:
-    """
-    Resolve a file path relative to a base directory.
-    If the path is already absolute, return it as-is.
-    Otherwise, resolve it relative to base_dir.
-    
-    Args:
-        file_path: The path to resolve (can be string or Path)
-        base_dir: The base directory to resolve relative paths against
-        
-    Returns:
-        Resolved absolute Path object
-    """
-    path = Path(file_path)
-    if path.is_absolute():
-        return path
-    else:
-        return (base_dir / path).resolve()
 
 
 def run_makerates(
     configuration_file: str = "user_settings.yaml", write_files: bool = True
 ) -> Network:
-    """The main run wrapper for makerates, it loads a configuration, parses it in Network
-    and then returns the Network. It by default writes to the uclchem fortran directory, but
-    this can be skipped.
+    """
+    Main run wrapper for makerates. Loads and validates configuration,
+    generates chemical network, and optionally writes output files.
 
     Args:
-        configuration_file (str, optional): A UCLCHEM Makerates configuration file. Defaults to "user_settings.yaml".
-        write_files (bool, optional): Whether to write the fortran files to the src/fortran_src. Defaults to True.
-
-    Raises:
-        KeyError: The configuration cannot be found
+        configuration_file: Path to YAML configuration file.
+            Defaults to "user_settings.yaml".
+        write_files: Whether to write fortran files to src/fortran_src.
+            Defaults to True.
 
     Returns:
-        Network: A chemical network instance.
+        Network: A validated chemical network instance.
+
+    Raises:
+        ValidationError: If configuration is invalid
+        FileNotFoundError: If required files are missing
     """
-    
-    # Convert configuration file to absolute path and get its directory
-    config_path = Path(configuration_file).resolve()
-    config_dir = config_path.parent
-    
-    logging.info(f"Reading configuration from: {config_path}")
-    logging.info(f"Configuration directory: {config_dir}")
+    # Load and validate configuration using Pydantic
+    config = MakeratesConfig.from_yaml(configuration_file)
 
-    with open(config_path, "r") as f:
-        user_params = yaml.safe_load(f)
+    # Log the configuration
+    config.log_configuration()
 
-    for param in param_list:
-        if param not in user_params:
-            raise KeyError(f"{param} not found in user_settings.yaml")
-        logging.info(f"{param} : {user_params[param]}")
-
-    if "output_directory" in user_params:
-        user_output_dir = _resolve_path(user_params["output_directory"], config_dir)
+    # Prepare output directory
+    if config.output_directory:
+        user_output_dir = config.resolve_path(config.output_directory)
         if not os.path.exists(user_output_dir):
             os.makedirs(user_output_dir)
     else:
         user_output_dir = None
 
-    reaction_files_keys = [rf for rf in user_params if rf.endswith("_reaction_file")]
-    reaction_types_keys = [rt for rt in user_params if rt.endswith("_reaction_type")]
-    assert len(reaction_files_keys) == len(reaction_types_keys), (
-        "You need to have the same amount of reaction files and reaction types")
-    # Ensure that each reaction file has a corresponding type
-    for rf in reaction_files_keys:
-        rt = rf.replace("file", "type")
-        if rt not in user_params:
-            raise KeyError(f"You need to specify a reaction type for {rf}, missing {rt}")
-    # Sort them to have the correct order:
-    reaction_files = [user_params[rf] for rf in reaction_files_keys]
-    reaction_types = [user_params[rf.replace("file", "type")] for rf in reaction_files_keys]
-    
-    # Resolve all file paths relative to config directory
-    species_file = user_params["species_file"]
-    species_file = _resolve_path(species_file, config_dir)
-    reaction_files = [_resolve_path(rf, config_dir) for rf in reaction_files]
-    
-    if not user_params.get("three_phase", True):
-        raise RuntimeError("three_phase=False is deprecated as of UCLCHEM v3.5.0, please remove three_phase=False from your makerates configuration.")
-    enable_rates_to_disk = user_params.get("enable_rates_to_disk", False)
-    gas_phase_extrapolation = user_params.get("gas_phase_extrapolation", False)
-    add_crp_photo_to_grain = user_params.get("add_crp_photo_to_grain", False)
-    derive_reaction_exothermicity = user_params.get("derive_reaction_exothermicity", False)
-    gar_file = user_params.get("grain_assisted_recombination_file", None)
-    if gar_file is not None:
-        gar_file = _resolve_path(gar_file, config_dir)
-    
-    # Handle exothermicity files (can be a single file or list of files)
-    database_reaction_exothermicity = user_params.get("database_reaction_exothermicity", None)
-    if database_reaction_exothermicity is not None:
-        if isinstance(database_reaction_exothermicity, str):
-            database_reaction_exothermicity = [database_reaction_exothermicity]
-        database_reaction_exothermicity = [_resolve_path(ef, config_dir) for ef in database_reaction_exothermicity]
-    
-    # retrieve the network and the dropped reactions
+    # Get all reaction files and types
+    reaction_files = config.get_all_reaction_files()
+    reaction_types = config.get_all_reaction_types()
+
+    # Resolve species file path
+    species_file = config.resolve_path(config.species_file)
+
+    # Resolve GAR file if present
+    gar_file = None
+    if config.grain_assisted_recombination_file:
+        gar_file = config.resolve_path(config.grain_assisted_recombination_file)
+
+    # Resolve exothermicity files if present
+    database_reaction_exothermicity = None
+    if config.database_reaction_exothermicity:
+        database_reaction_exothermicity = [
+            config.resolve_path(ef) for ef in config.database_reaction_exothermicity
+        ]
+
+    # Retrieve the network and the dropped reactions
     network, dropped_reactions = _get_network_from_files(
         reaction_files=reaction_files,
         reaction_types=reaction_types,
         species_file=species_file,
-        gas_phase_extrapolation=gas_phase_extrapolation,
-        add_crp_photo_to_grain=add_crp_photo_to_grain,
-        derive_reaction_exothermicity=derive_reaction_exothermicity,
+        gas_phase_extrapolation=config.gas_phase_extrapolation,
+        add_crp_photo_to_grain=config.add_crp_photo_to_grain,
+        derive_reaction_exothermicity=config.derive_reaction_exothermicity,
         database_reaction_exothermicity=database_reaction_exothermicity,
     )
 
@@ -143,39 +80,48 @@ def run_makerates(
             + "Checks complete, writing output files\n"
             + "################################################\n"
         )
-        # Write or output the written files
+        # Write dropped reactions
         io.output_drops(
             dropped_reactions=dropped_reactions,
             output_dir=user_output_dir,
             write_files=write_files,
         )
-        logging.info(f"There are {len(dropped_reactions)} droppped reactions")
-        
-        # Check for GAR reactions, and ensure the database is defined.
+        logging.info(f"There are {len(dropped_reactions)} dropped reactions")
+
+        # Check for GAR reactions and validate parameters
         gar_reactions = network.get_reactions_by_types("GAR")
         gar_parameters = None
         if len(gar_reactions) > 0:
             if gar_file is None:
                 raise ValueError(
-                    "You have GAR reactions in your network, but you did not specify a gar_file in your configuration. Refer to makerates documentation."
+                    "You have GAR reactions in your network, but you did "
+                    "not specify a grain_assisted_recombination_file in "
+                    "your configuration. Refer to makerates documentation."
                 )
-            # Get all the individual ions that can recombine:
+            # Get all the individual ions that can recombine
             gar_ions = [gar.get_reactants()[0] for gar in gar_reactions]
             _gar_parameters = io.read_grain_assisted_recombination_file(gar_file)
             if not set(gar_ions).issubset(set(_gar_parameters.keys())):
                 missing_ions = set(gar_ions) - set(_gar_parameters.keys())
                 raise ValueError(
-                    f"You have GAR reactions for ions {missing_ions} but they are not defined in your gar_file {gar_file}"
+                    f"You have GAR reactions for ions {missing_ions} but "
+                    f"they are not defined in your gar_file {gar_file}"
                 )
-            # Save the gar parameters in the correct order:
-            gar_parameters = {ion: _gar_parameters[ion] for ion in gar_ions}            
-        io.write_outputs(network, user_output_dir, enable_rates_to_disk, gar_parameters)
+            # Save the gar parameters in the correct order
+            gar_parameters = {ion: _gar_parameters[ion] for ion in gar_ions}
+        io.write_outputs(
+            network,
+            user_output_dir,
+            config.enable_rates_storage,
+            gar_parameters,
+        )
 
     ngrain = len([x for x in network.get_species_list() if x.is_surface_species()])
     logging.info(f"Total number of species = {len(network.get_species_list())}")
     logging.info(f"Number of surface species = {ngrain}")
     logging.info(f"Number of reactions = {len(network.get_reaction_list())}")
-    # return the network such that the object can be reused in code/notebooks
+
+    # Return the network for reuse in code/notebooks
     return network
 
 
@@ -233,8 +179,12 @@ def _get_network_from_files(
     derive_reaction_exothermicity: Union[bool, str, list[str]],
     database_reaction_exothermicity: list[Union[str, bytes, os.PathLike]] = None,
 ):
-    print(f"DEBUG _get_network_from_files database_reaction_exothermicity={database_reaction_exothermicity}")
-    logging.info(f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}")
+    print(
+        f"DEBUG _get_network_from_files database_reaction_exothermicity={database_reaction_exothermicity}"
+    )
+    logging.info(
+        f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"
+    )
     species_list, user_defined_bulk = io.read_species_file(species_file)
     # Check if reaction and type files are lists, if not, make them lists
     if not isinstance(reaction_files, list):
@@ -250,7 +200,7 @@ def _get_network_from_files(
         )
         reactions += temp_reactions
         dropped_reactions += temp_dropped_reactions
-    
+
     # Create Network
     network = Network(
         species=species_list,

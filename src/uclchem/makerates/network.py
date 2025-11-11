@@ -86,13 +86,11 @@ class Network:
         # Add the enhalpies for certain reaction types:
         if self.derive_reaction_exothermicity:
             self.add_reaction_enthalpies(self.derive_reaction_exothermicity)
-        
+
         # Apply custom exothermicity files if provided
         if self.database_reaction_exothermicity:
             logging.info(f"About to apply custom exothermicity files: {self.database_reaction_exothermicity}")
             self.apply_custom_exothermicities(self.database_reaction_exothermicity)
-        else:
-            logging.info(f"No custom exothermicity files to apply: {self.database_reaction_exothermicity}")
 
         # Sort the reactions before returning them, this is important for convergence of the ODE
         self.sort_reactions()
