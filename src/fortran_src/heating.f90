@@ -10,9 +10,22 @@ MODULE heating
 IMPLICIT NONE
 
     REAL(dp) :: pahAbund=6e-7
-    REAL(dp) :: photoelec,h2forming,fuvpumping,photodis,cionizing,crheating,chemheating,gasgraincolls,turbHeating
-    REAL(dp) :: atomicCool, colIndEmission,comptonCool,contEmissionCool, &
-                coolingMode, coolings(5)
+    REAL(dp) :: chemheating
+    REAL(dp) :: heatingValues(8)
+    REAL(dp) :: coolingValues(4)
+    
+    LOGICAL :: heating_modules(8)=(/ .TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE./)
+    LOGICAL :: cooling_modules(4)=(/ .TRUE.,.TRUE.,.TRUE.,.TRUE./)
+    
+    ! LINE_SOLVER_ATTEMPTS: Number of times to solve line cooling and take median
+    INTEGER :: LINE_SOLVER_ATTEMPTS = 5
+    INTEGER :: median_line_index
+    ! Allocatable arrays to store cooling iterations and permutations
+    REAL(dp), ALLOCATABLE :: lineCoolingArray(:, :)  ! (LINE_SOLVER_ATTEMPTS x NCOOL)
+    INTEGER, ALLOCATABLE :: permutationArray(:)      ! (LINE_SOLVER_ATTEMPTS)
+    !f2py depend(ncool) lineCoolingArray
+    INTEGER :: lineCoolingArray_size = 0
+    INTEGER :: permutationArray_size = 0
 
  CONTAINS
 
@@ -42,8 +55,6 @@ IMPLICIT NONE
     END SUBROUTINE initializeHeating
 
 
-    ! REAL(dp) FUNCTION getTempDot(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance,dustRadius,metallicity&
-    !                             &,exoReactants1,exoReactants2,exoRates,exothermicities,,dustTemp,turbVel)
     REAL(dp) FUNCTION getTempDot(time,gasTemperature,gasDensity,gasCols,habingField,abundances,h2dis,h2form,zeta,cIonRate, &
                                 & dustAbundance,dustRadius,metallicity, &
                                 & dustTemp,turbVel)
@@ -59,8 +70,6 @@ IMPLICIT NONE
         adiabaticIdx=adiabaticIdx/(3.0*(abundances(nh)+abundances(nhe)+abundances(nelec)+abundances(nh2))+2.0*abundances(nh2))
 
         !then calculate overall heating/cooling rate
-        ! heating=getHeatingRate(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance,dustRadius,metallicity&
-        !     &,exoReactants1,exoReactants2,exoRates,exothermicities,dustTemp,turbVel,writeFlag)
         heating=getHeatingRate(time,gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate, &
                                 & dustAbundance,dustRadius,metallicity, dustTemp,turbVel)
 
@@ -83,56 +92,24 @@ IMPLICIT NONE
     END FUNCTION getTempDot
 
 
-    ! REAL(dp) FUNCTION getHeatingRate(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance,dustRadius,metallicity&
-    !                                 &,exoReactants1,exoReactants2,exoRates,exothermicities,dustTemp,turbVel,writeFlag)
     REAL(dp) FUNCTION getHeatingRate(time, gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate, & 
                                       & dustAbundance,dustRadius,metallicity,dustTemp,turbVel)
         REAL(dp), INTENT(in) :: time,gasTemperature,gasDensity,habingField,h2dis,metallicity
         REAL(dp), INTENT(in) :: h2form,zeta,cIonRate,dustAbundance,dustRadius,dustTemp,turbVel
-        REAL(dp), INTENT(IN):: abundances(:)!,exoReactants1(:),exoReactants2(:),exoRates(:),exothermicities(:)
+        REAL(dp), INTENT(IN):: abundances(:)
         REAL(dp) :: L_TURB=5.0d0
-        
-
-        !Photoelectric heating due to PAHs and large dust grains
-        photoelec=photoelectricHeating(gasTemperature,gasDensity,habingField,abundances(nelec),metallicity)
-        ! write(*,*) "    [heating.f90] photoelectric-heating=", photoelec
-
-        !heating due to H2 formation
-        h2forming=H2FormationHeating(gasTemperature,gasDensity,abundances(nh),h2form)
-        ! write(*,*) "    [heating.f90] H2formation-heating=", h2forming
-
-        !heating due to photodissociation of H2
-        photodis=H2PhotodisHeating(gasDensity,abundances(nh2),h2dis)
-        ! write(*,*) "    [heating.f90] H2dissocitation-heating=", photodis
-        
-        !heating due to FUV pumping of H2
-        fuvpumping=h2FUVPumpHeating(abundances(nh),abundances(nh2),gasTemperature,gasDensity,h2dis)
-        ! write(*,*) "    [heating.f90] FUVpumping-heating=", fuvpumping
-
-        !heating due to carbon photo ionization          
-        cionizing=CarbonIonizationHeating(cIonRate,abundances(nc),gasDensity)
-        ! write(*,*) "    [heating.f90] carbon-photo-ionization-heating=", cionizing
-
-        !CR dissociation of H2
-        crheating=cosmicRayHeating(zeta,gasDensity,abundances(nh2))
-        ! write(*,*) "    [heating.f90] CR-heating=", crheating
-
-        !Exothermic reactions -- keep it for the moment because need to make the indices in newtork.f90 consistent
-        ! chemheating=chemicalHeating(gasDensity,exoReactants1,exoReactants2,exoRates,exothermicities)
-        !turbulent heating
-        ! turbHeating=3.5D-28*((turbVel/1.0D5)**3)*(1.0D0/L_TURB)*gasDensity
-        turbHeating=3.5D-28*(turbVel**3)*(1.0D0/L_TURB)*gasDensity  !check the unit of turbVel
-
-        ! write(*,*) "    [heating.f90] turbulence-heating=", turbHeating
-                
-        !gas-grain collisional heaing/cooling
-        gasgraincolls=gasGrainCollisions(gasTemperature,gasDensity,dustAbundance,dustRadius,dustTemp)
-        ! write(*,*) "    [heating.f90] gas-grain-collisional-heating=", gasgraincolls
-
-        !sum all heating types
-        ! getHeatingRate=photoelec+h2forming+fuvpumping+photodis+cionizing+crheating+chemheating+turbHeating+gasgraincolls
-        getHeatingRate=photoelec+h2forming+fuvpumping+photodis+cionizing+crheating+turbHeating+gasgraincolls
-        !write to file
+        heatingValues = 0.0D0
+        heatingValues(1) = photoelectricHeating(gasTemperature,gasDensity,habingField,abundances(nelec),metallicity)
+        heatingValues(2) = H2FormationHeating(gasTemperature,gasDensity,abundances(nh),h2form)
+        heatingValues(3) = H2PhotodisHeating(gasDensity,abundances(nh2),h2dis)
+        heatingValues(4) = h2FUVPumpHeating(abundances(nh),abundances(nh2),gasTemperature,gasDensity,h2dis)
+        heatingValues(5) = CarbonIonizationHeating(cIonRate,abundances(nc),gasDensity)
+        heatingValues(6) = cosmicRayHeating(zeta,gasDensity,abundances(nh2))
+        heatingValues(7) = 3.5D-28*(turbVel**3)*(1.0D0/L_TURB)*gasDensity  !turbulent heating
+        heatingValues(8) = gasGrainCollisions(gasTemperature,gasDensity,dustAbundance,dustRadius,dustTemp)
+        ! Mask values we do not need.
+        WHERE(heating_modules .eqv. .FALSE.) heatingValues = 0.0D0
+        getHeatingRate=SUM(heatingValues)
 
     END FUNCTION getHeatingRate
 
@@ -140,34 +117,61 @@ IMPLICIT NONE
         REAL(dp), INTENT(IN) :: time,gasTemperature,gasDensity,gasCols,dustTemp,h2dis,turbVel
         REAL(dp), INTENT(IN) :: abundances(:)
         INTEGER :: ti
-
-
-        atomicCool=atomicCooling(gasTemperature,gasDensity,abundances(nh),abundances(nhe),&
-                        &abundances(nelec),abundances(nhx),abundances(nhex))
-
-        colIndEmission=collionallyInducedEmission(gasTemperature,gasDensity,abundances(nh2))
-
-        comptonCool=comptonCooling(gasTemperature,gasDensity,abundances(nelec))
-
-        contEmissionCool=continuumEmission(gasTemperature,gasDensity)
-
-        !H2VibrationalCooling is handled by heating FUV pumping function
+        REAL(dp) :: lineCoolingSum(LINE_SOLVER_ATTEMPTS)
+        lineCoolingSum = 0.0_dp
+        coolingValues = 0.0_dp
         
-        !We do the line cooling 5 times and take median value since solver will occasionally do something wild
-        DO ti=1,5
-            coolings(ti)=lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
-        END DO
-        call pair_insertion_sort(coolings)
+        ! Allocate lineCoolingArray if not already allocated or if size changed
+        IF (.NOT. ALLOCATED(lineCoolingArray) .OR. lineCoolingArray_size /= LINE_SOLVER_ATTEMPTS) THEN
+            IF (ALLOCATED(lineCoolingArray)) THEN
+                ! Size changed - deallocate and reallocate
+                DEALLOCATE(lineCoolingArray)
+            END IF
+            ALLOCATE(lineCoolingArray(LINE_SOLVER_ATTEMPTS, NCOOL))
+            lineCoolingArray_size = LINE_SOLVER_ATTEMPTS
+        END IF
+        
+        ! Allocate permutationArray if not already allocated or if size changed
+        IF (.NOT. ALLOCATED(permutationArray) .OR. permutationArray_size /= LINE_SOLVER_ATTEMPTS) THEN
+            IF (ALLOCATED(permutationArray)) THEN
+                ! Size changed - deallocate and reallocate
+                DEALLOCATE(permutationArray)
+            END IF
+            ALLOCATE(permutationArray(LINE_SOLVER_ATTEMPTS))
+            permutationArray_size = LINE_SOLVER_ATTEMPTS
+        END IF
+        
+        ! Initialize to zero before computation
+        lineCoolingArray = 0.0_dp
 
-        getCoolingRate = atomicCool + colIndEmission + comptonCool + contEmissionCool + coolingMode + coolings(3)
+        coolingValues(1)=atomicCooling(gasTemperature,gasDensity,abundances(nh),abundances(nhe),&
+                        &abundances(nelec),abundances(nhx),abundances(nhex))
+        coolingValues(2)=collionallyInducedEmission(gasTemperature,gasDensity,abundances(nh2))
+        coolingValues(3)=comptonCooling(gasTemperature,gasDensity,abundances(nelec))
+        coolingValues(4)=continuumEmission(gasTemperature,gasDensity)
+        !H2VibrationalCooling is handled by heating FUV pumping function
+        !We do the line cooling multiple times and take median value since solver will occasionally do something wild
+        DO ti=1,LINE_SOLVER_ATTEMPTS
+            lineCoolingArray(ti, :)=lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
+            lineCoolingSum(ti) = sum(lineCoolingArray(ti, :))
+        END DO
+        
+        ! Sort and reorder using module-level permutationArray
+        CALL pair_insertion_sort_with_perm(lineCoolingSum, permutationArray)
+        lineCoolingArray = lineCoolingArray(permutationArray, :)
+        median_line_index = (LINE_SOLVER_ATTEMPTS + 1) / 2
+
+        WHERE(cooling_modules .eqv. .FALSE.) coolingValues = 0.0D0
+        getCoolingRate = sum(coolingValues) + lineCoolingSum(median_line_index)
     END FUNCTION getCoolingRate
 
 
-    REAL(dp) FUNCTION lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
+    FUNCTION lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel) RESULT(moleculeCooling)
         REAL(dp), INTENT(IN) :: time,gasTemperature,gasDensity,gasCols,dustTemp,abundances(:),turbVel
-
         INTEGER :: N,I!, collisionalIndices(5)=(/nh,nhx,nh2,nhe,nelec/)
-        real(dp) :: moleculeCooling(NCOOL)=0.0
+        real(dp)  :: moleculeCooling(NCOOL)
+
+        moleculeCooling = 0.0_dp
 
         ! Update CLOUD_DENSITY and CLOUD_COLUMN
         CLOUD_DENSITY = gasDensity
@@ -243,7 +247,6 @@ IMPLICIT NONE
         END DO
 
         !Calculate the cooling rates
-        lineCooling=0.0
         DO N=1,NCOOL
             WHERE(coolants(N)%EMISSIVITY .lt. -HUGE(1.0)) coolants(N)%EMISSIVITY = 0.0
             moleculeCooling(N)=SUM(coolants(N)%EMISSIVITY,MASK=.NOT.ISNAN(coolants(N)%EMISSIVITY))
@@ -256,9 +259,8 @@ IMPLICIT NONE
             ! END IF
             IF (moleculeCooling(N) .lt. 0.0) moleculeCooling(N)=0.0d0
             !IF (moleculeCooling(N) .gt. -1.0d-30 .and. abundances(coolantIndices(N)) .gt. 1.0d-20) 
-            lineCooling= lineCooling+moleculeCooling(N)
         END DO
-
+        WHERE(moleculeCooling .lt. 0.0) moleculeCooling=0.0d0
 
     END FUNCTION lineCooling
 
@@ -319,7 +321,7 @@ IMPLICIT NONE
                                                             &13.5075841245848,-1.31983368963974,0.0500087685129987/)
         REAL(dp),PARAMETER :: c=3.0,d=21.2968837223113
         REAL(dp) :: tau,logt
-        INTEGER :: i        
+        INTEGER :: i
 
         logt=LOG10(gasTemperature)
 
@@ -818,6 +820,77 @@ SUBROUTINE pair_insertion_sort(array)
        array(j+1)=t1
     ENDIF
 END SUBROUTINE pair_insertion_sort
+
+!-----------------------------------------------------------------------
+! pair_insertion_sort_with_perm - Sort a 1D array and track permutation
+!
+! Sorts a 1D array using pair insertion sort while maintaining a 
+! permutation array that tracks where each element originally came from.
+! This allows you to reorder other arrays using the same permutation.
+!
+! Arguments:
+!   array(:)    - 1D array to sort (modified in place)
+!-----------------------------------------------------------------------
+SUBROUTINE pair_insertion_sort_with_perm(array, perm)
+    REAL(dp), INTENT(inout) :: array(:)
+    INTEGER, INTENT(out) :: perm(:)
+    INTEGER :: i, j, last
+    REAL(dp) :: t1, t2
+    INTEGER :: p1, p2
+
+    last = SIZE(array)
+    
+    ! Initialize permutation array (caller must allocate with correct size)
+    perm = [(i, i=1, last)]
+    
+    ! Pair insertion sort - process elements two at a time
+    DO i = 2, last-1, 2
+       ! Get the pair and their permutation indices
+       IF (array(i) <= array(i+1)) THEN
+          t1 = array(i)
+          t2 = array(i+1)
+          p1 = perm(i)
+          p2 = perm(i+1)
+       ELSE
+          t1 = array(i+1)
+          t2 = array(i)
+          p1 = perm(i+1)
+          p2 = perm(i)
+       END IF
+       
+       ! Find position for larger element (t2)
+       j = i - 1
+       DO WHILE ((j >= 1) .AND. (array(j) > t2))
+          array(j+2) = array(j)
+          perm(j+2) = perm(j)
+          j = j - 1
+       END DO
+       array(j+2) = t2
+       perm(j+2) = p2
+       
+       ! Find position for smaller element (t1)
+       DO WHILE ((j >= 1) .AND. (array(j) > t1))
+          array(j+1) = array(j)
+          perm(j+1) = perm(j)
+          j = j - 1
+       END DO
+       array(j+1) = t1
+       perm(j+1) = p1
+    END DO
+
+    ! Handle last element if array has even number of elements
+    IF (MOD(last, 2) == 0) THEN
+       t1 = array(last)
+       p1 = perm(last)
+       DO j = last-1, 1, -1
+          IF (array(j) <= t1) EXIT
+          array(j+1) = array(j)
+          perm(j+1) = perm(j)
+       END DO
+       array(j+1) = t1
+       perm(j+1) = p1
+    END IF
+END SUBROUTINE pair_insertion_sort_with_perm
 
 END MODULE heating
 

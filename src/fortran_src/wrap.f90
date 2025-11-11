@@ -37,7 +37,7 @@ CONTAINS
         USE cloud_mod
         USE DEFAULTPARAMETERS
 
-        !f2py integer, intent(aux) :: nspec, n_physics_params, nHeatingTerms
+        !f2py integer, intent(aux) :: nspec, n_physics_params, nHeatingTerms, NCOOL
         !f2py intent(out) abundance_out, specname_out 
         CHARACTER(LEN=*), INTENT(IN) :: dictionary, outSpeciesIn
         DOUBLE PRECISION, INTENT(OUT) :: abundance_out(nspec)
@@ -586,7 +586,7 @@ CONTAINS
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep (optional)
         ! abundanceStart - array containing starting chemical conditions (optional)
         ! USE constants, only : nspec
-        !f2py integer, intent(aux) :: nspec, nHeatingTerms
+        !f2py integer, intent(aux) :: nspec, nHeatingTerms, NCOOL
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         EXTERNAL modelInitializePhysics,updateTargetTime,modelUpdatePhysics,sublimation
         INTEGER, INTENT(OUT) :: successFlag
@@ -943,28 +943,39 @@ CONTAINS
                         successFlag=-1
                         RETURN
                     END IF
-                CASE('ratefile')
-                    READ(inputValue,*,iostat=successFlag) rateFile
-                    rateFile = trim(rateFile)
-                    ! rateOutput=.True.
-                    open(rateId,file=rateFile,status='unknown',iostat=successFlag)
+                CASE('rateConstantFile')
+                    READ(inputValue,*,iostat=successFlag) rateConstantFile
+                    rateConstantFile = trim(rateConstantFile)
+                    if ((LEN(ratesFile) .gt. 0) .and. (.not. storeRatesComputation))then
+                        WRITE(*,*) "Error: a ratesFile was specified as output, but fortran was"//&
+                        & NEW_LINE('A')//&
+                        &"compiled without the rate storage option, please enable `enable_rates_storage` "//&
+                        & NEW_LINE('A')//"in the Makerates compilation process."
+                    end if
+                    open(rateConstantId,file=rateConstantFile,status='unknown',iostat=successFlag)
                     IF (successFlag .ne. 0) THEN
                         write(*,*) "An error occured when opening the rate file!"//&
                                         & NEW_LINE('A')//&
-                                    &" The failed file was ",rateFile&
+                                    &" The failed file was ",rateConstantFile&
                                     &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
                                     &//NEW_LINE('A')//"************************"
                         successFlag=-1
                         RETURN
                     END IF
-                CASE('fluxfile')
-                    READ(inputValue,*,iostat=successFlag) fluxFile
-                    fluxFile = trim(fluxFile)
-                    open(fluxId,file=fluxFile,status='unknown',iostat=successFlag)
+                CASE('ratesFile')
+                    READ(inputValue,*,iostat=successFlag) ratesFile
+                    ratesFile = trim(ratesFile)
+                    if ((LEN(ratesFile) .gt. 0) .and. (.not. storeRatesComputation))then
+                        WRITE(*,*) "Error: a ratesFile was specified as output, but fortran was"//&
+                        & NEW_LINE('A')//&
+                        &"compiled without the rate storage option, please enable `enable_rates_storage` "//&
+                        & NEW_LINE('A')//"in the Makerates compilation process."
+                    end if
+                    open(ratesId,file=ratesFile,status='unknown',iostat=successFlag)
                     IF (successFlag .ne. 0) THEN
                         write(*,*) "An error occured when opening the rate file!"//&
                                         & NEW_LINE('A')//&
-                                    &" The failed file was ",fluxFile&
+                                    &" The failed file was ",ratesFile&
                                     &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
                                     &//NEW_LINE('A')//"************************"
                         successFlag=-1

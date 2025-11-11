@@ -24,12 +24,14 @@
 #
 # We'll use an example from work that was published in 2022 [Energizing Star Formation: The Cosmic-Ray Ionization Rate in NGC 253 Derived from ALCHEMI Measurements of H3O+ and SO](https://ui.adsabs.harvard.edu/abs/2022ApJ...931...89H/abstract) to demonstrate the use of the rates coming out of UCLCHEM and how it can be used to draw conclusions about the most important reactions in a network for a given species/behaviour.
 
-import uclchem
 from glob import glob
-from joblib import Parallel, delayed
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+from joblib import Parallel, delayed
+
+import uclchem
 
 # ## H3O+ and SO
 #
@@ -104,7 +106,7 @@ results = {k: v for k, v in zip(model_names, results)}
 phys, abun, rates, _, _ = results["model_5"]
 
 # +
-from uclchem.analysis import check_element_conservation, analyze_element_per_phase
+from uclchem.analysis import analyze_element_per_phase, check_element_conservation
 
 # We check that everything is conserved:
 check_element_conservation(abun, ["H", "N", "C", "O", "S", "SI"])
@@ -165,11 +167,11 @@ plot_rate_summary(production, destruction, 10)
 #
 
 # +
-from uclchem.analysis import rates_to_dy_and_flux
+from uclchem.analysis import rate_constants_to_dy_and_rates
 from uclchem.utils import get_reaction_network
 
 network = get_reaction_network()
-dy, flux = rates_to_dy_and_flux(physics, abundances, rates, network=network)
+dy, flux = rate_constants_to_dy_and_rates(physics, abundances, rates, network=network)
 # -
 
 # We can then inspect the RHS of the differential equation per reaction. This informs us that the only relevant term is actually the destruction of the molecule via its reaction with HCS and H2S. Explaining the small decrease at 1 million years.

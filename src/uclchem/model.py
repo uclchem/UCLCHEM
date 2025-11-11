@@ -310,7 +310,7 @@ def outputArrays_to_DataFrame(
         heating_columns = [
             "Time",
             "Atomic Cooling",
-            "Collisionally Induced Emission",
+            "Collisionally Induced Emission Cooling",
             "Compton Scattering Cooling",
             "Continuum Emission Cooling",
             "Line Cooling 1",

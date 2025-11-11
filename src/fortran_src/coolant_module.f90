@@ -1,5 +1,6 @@
 MODULE COOLANT_MODULE
    USE constants
+   USE F2PY_CONSTANTS, only: NCOOL
    USE network
    USE defaultparameters, only: coolantDataDir
    IMPLICIT NONE
@@ -41,7 +42,7 @@ MODULE COOLANT_MODULE
 
 
    TYPE(COOLANT_TYPE), allocatable :: coolants(:)
-   integer,PARAMETER :: NCOOL=7
+   ! NCOOL is imported from F2PY_CONSTANTS
    CHARACTER(*), PARAMETER :: coolantFiles(NCOOL)=(/"ly-a.dat       ","12c+_nometa.dat","16o.dat        ","12c.dat        ",&
             &"12co.dat       ","p-h2.dat       ","o-h2.dat       "/)!,"28si+.dat      ","32s.dat        "/)
    CHARACTER(*), PARAMETER :: coolantNames(NCOOL)=(/"H   ","C+  ","O   ","C   ","CO  ","p-H2","o-H2"/)

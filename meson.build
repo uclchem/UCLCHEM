@@ -42,6 +42,9 @@ version_file = vcs_tag(
 # Only compile Fortran extension if not makerates_only build
 if not makerates_only
 
+# Clean any old .mod files that might cause symbol conflicts
+run_command('sh', '-c', 'rm -f ' + fsource_dir + '/*.mod', check: false)
+
 incdir_numpy = run_command(py,
   ['-c', 'import os; os.chdir(".."); import numpy; print(numpy.get_include())'],
   check : true

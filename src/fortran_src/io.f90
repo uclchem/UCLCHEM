@@ -13,7 +13,7 @@ MODULE IO
     INTEGER :: nout
     INTEGER, ALLOCATABLE :: outIndx(:)
 
-    INTEGER, PARAMETER :: outputId=10,columnId=11,rateId=12,fluxId=13,heatingId=14,abundLoadID=71,abundSaveID=72,outID=74,debugId=79,inputId=21
+    INTEGER, PARAMETER :: outputId=10,columnId=11,rateConstantId=12,ratesId=13,heatingId=14,abundLoadID=71,abundSaveID=72,outID=74,debugId=79,inputId=21
 CONTAINS
     !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     SUBROUTINE fileSetup
@@ -29,8 +29,8 @@ CONTAINS
         END IF
         335 FORMAT("Time,Density,gasTemp,dustTemp,Av,radfield,zeta,point,",(999(A,:,',')))
         
-        INQUIRE(UNIT=rateID, OPENED=rateOutput)
-        INQUIRE(UNIT=fluxID, OPENED=fluxOutput)
+        INQUIRE(UNIT=rateConstantId, OPENED=rateOutput)
+        INQUIRE(UNIT=ratesId, OPENED=fluxOutput)
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
         INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
         INQUIRE(UNIT=heatingId, OPENED=heatingOutput)
@@ -107,44 +107,36 @@ CONTAINS
                 ! Only populate the heating array if it is present and properly sized
                 IF (SIZE(heatarray, 1) .ge. timePoints) THEN
                     heatarray(dtime, dstep, 1) = timeInYears
-                    heatarray(dtime, dstep, 2) = atomicCool
-                    heatarray(dtime, dstep, 3) = colIndEmission
-                    heatarray(dtime, dstep, 4) = comptonCool
-                    heatarray(dtime, dstep, 5) = contEmissionCool
+                    heatarray(dtime, dstep, 2:5) = coolingValues(:)
                     ! Currently we write the 5 summed line cooling terms
-                    DO i = 1, 5
-                        heatarray(dtime, dstep, 5+i) = coolings(i)
+                    DO i = 1, ncool
+                        heatarray(dtime, dstep, 6:11) = lineCoolingArray(median_line_index, i)
                     END DO
 
                     ! Heating terms
-                    heatarray(dtime, dstep, 11) = photoelec
-                    heatarray(dtime, dstep, 12) = h2forming
-                    heatarray(dtime, dstep, 13) = fuvpumping
-                    heatarray(dtime, dstep, 14) = photodis
-                    heatarray(dtime, dstep, 15) = cionizing
-                    heatarray(dtime, dstep, 16) = crheating
-                    heatarray(dtime, dstep, 17) = turbHeating
-                    heatarray(dtime, dstep, 18) = gasgraincolls
-                    heatarray(dtime, dstep, 19) = chemheating
+                    heatarray(dtime, dstep, 12:19) = heatingValues(:)
+                    heatarray(dtime, dstep, 20 ) = chemheating
                 END IF
             ELSE 
-                ! Else, we write the rates and flux to the file.
+                ! Else, we write the rate constants and rates to the file.
                 IF (rateOutput) THEN
-                    WRITE(rateId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,RATE
+                    WRITE(rateConstantId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,RATE
                     8021 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
                 END IF
                 if (fluxOutput) THEN
-                    WRITE(fluxId,8022) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
+                    WRITE(ratesId,8022) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
                     8022 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
                 END IF
                 IF (heatingOutput) THEN
-                    WRITE(heatingId,8023) time, atomicCool, colIndEmission, comptonCool, contEmissionCool, coolings(1),&
-                    &coolings(2), coolings(3), coolings(4), coolings(5), photoelec, h2forming, fuvpumping, photodis,&
-                    &cionizing, crheating, turbHeating, gasgraincolls
-                    8023 FORMAT(1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,','&
-                    &,1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,','&
-                    &,1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',') 
-                    !  999(1PE16.6E3,:,','), ) for the future heating by enthalpy
+                    WRITE(*,*) "TODO: fix this."
+                    ! WRITE(heatingId,8023) time, atomicCool, colIndEmission, comptonCool, contEmissionCool, lineCoolingArray(1, median_line_index),&
+                    ! &lineCoolingArray(2, median_line_index), lineCoolingArray(3, median_line_index), lineCoolingArray(4, median_line_index), &
+                    ! &lineCoolingArray(5, median_line_index), lineCoolingArray(6, median_line_index), photoelec, h2forming, fuvpumping, photodis,&
+                    ! &cionizing, crheating, turbHeating, gasgraincolls
+                    ! 8023 FORMAT(1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,','&
+                    ! &,1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,','&
+                    ! &,1PE16.6E3,:,',',1PE16.6E3,:,',',1PE16.6E3,:,',') 
+                    ! !  999(1PE16.6E3,:,','), ) for the future heating by enthalpy
                 END IF
             END IF
         END IF
@@ -166,7 +158,7 @@ CONTAINS
 
     SUBROUTINE closeFiles
         CLOSE(outputId)
-        CLOSE(rateId)
+        CLOSE(rateConstantId)
         CLOSE(columnId)
         CLOSE(abundSaveID)
         CLOSE(abundLoadID)

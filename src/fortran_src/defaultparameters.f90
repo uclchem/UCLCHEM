@@ -54,8 +54,8 @@ LOGICAL :: enforceChargeConservation = .false. ! Enforce the chrage by keeping t
 !| ----- | ------| ------ |
 CHARACTER(256) :: outputFile="" !File to write full output of UCLCHEM. This includes physical parameter values and all abundances at every time step.
 CHARACTER(256) :: columnFile="" !File to write specific species abundances, see outSpecies.
-CHARACTER(256) :: rateFile="" !File to write rate 'constants' at each timestep. This includes physical parameter values.
-CHARACTER(256) :: fluxFile="" !File to write reaction rates (flux) at each timestep. This includes physical parameter values.
+CHARACTER(256) :: rateConstantFile="" !File to write rate 'constants' at each timestep. This includes physical parameter values.
+CHARACTER(256) :: ratesFile="" !File to write reaction rates (flux) at each timestep. This includes physical parameter values.
 CHARACTER(256) :: heatingFile="" !File to write heating and cooling rates at each timestep.
 INTEGER :: writeStep=1 !Writing to columnFile only happens every writeStep timesteps.
 CHARACTER(256) :: abundSaveFile="" ! The file to save the abundances to at the end of the model.
