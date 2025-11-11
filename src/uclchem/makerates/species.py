@@ -50,7 +50,7 @@ symbols = ["#", "@", "*", "+", "-", "(", ")"]
 
 species_header = (
     "name", "mass", "binding_energy", "solid_fraction", "mono_fraction",
-    "volcano_fraction", "ice_enthalpy", "gas_enthalpy"
+    "volcano_fraction", "enthalpy"
 )
 
 
@@ -85,7 +85,7 @@ class Species:
 
     def __init__(self, inputRow):
         """A class representing chemical species, it reads in rows which are formatted as follows:
-        NAME,MASS,BINDING ENERGY,SOLID FRACTION,MONO FRACTION,VOLCANO FRACTION,ICE_ENTHALPY,GAS_ENTHALPY
+        NAME,MASS,BINDING ENERGY,SOLID FRACTION,MONO FRACTION,VOLCANO FRACTION,ENTHALPY
         Args:
             inputRow (list):
         """
@@ -95,8 +95,7 @@ class Species:
         self.solidFraction = 0.0
         self.monoFraction = 0.0
         self.volcFraction = 0.0
-        self.ice_enthalpy = 0.0
-        self.gas_enthalpy = 0.0
+        self.enthalpy = 0.0
 
         if len(inputRow) > 2:
             self.is_refractory = str(inputRow[2]).lower() == "inf"
@@ -111,8 +110,7 @@ class Species:
         self.set_solid_fraction(sanitize_input_float(inputRow, 3, 0.0))
         self.set_mono_fraction(sanitize_input_float(inputRow, 4, 0.0))
         self.set_volcano_fraction(sanitize_input_float(inputRow, 5, 0.0))
-        self.set_ice_enthalpy(sanitize_input_float(inputRow, 6, 0.0))
-        self.set_gas_enthalpy(sanitize_input_float(inputRow, 7, 0.0))
+        self.set_enthalpy(sanitize_input_float(inputRow, 6, 0.0))
         self.set_n_atoms(0)
 
         # in first instance, assume species freeze/desorb unchanged
@@ -188,21 +186,13 @@ class Species:
         """
         return self.volcFraction
 
-    def get_ice_enthalpy(self) -> float:
+    def get_enthalpy(self) -> float:
         """Get the ice enthalpy of the species
 
         Returns:
             float: The ice enthalpy
         """
-        return self.ice_enthalpy
-
-    def get_gas_enthalpy(self) -> float:
-        """Get the gas enthalpy of the species
-
-        Returns:
-            float: The gas enthalpy
-        """
-        return self.gas_enthalpy
+        return self.enthalpy
 
     def set_name(self, name: str) -> None:
         """Set the name of the chemical species.
@@ -252,22 +242,14 @@ class Species:
         """
         self.volcFraction = float(volcano_fraction)
 
-    def set_ice_enthalpy(self, ice_enthalpy: float) -> None:
-        """Set the ice enthalpy of the species
+    def set_enthalpy(self, enthalpy: float) -> None:
+        """Set the enthalpy of the species in kcal per
 
         Args:
-            ice_enthalpy (float): The new ice enthalpy
+            enthalpy (float): The new ice enthalpy
         """
-        self.ice_enthalpy = float(ice_enthalpy)
-
-    def set_gas_enthalpy(self, gas_enthalpy: float) -> None:
-        """Set the gas enthalpy of the species
-
-        Args:
-            gas_enthalpy (float): The new gas enthalpy
-        """
-        self.gas_enthalpy = float(gas_enthalpy)
-
+        self.enthalpy = float(enthalpy)
+        
     def set_desorb_products(self, new_desorbs: list[str]) -> None:
         """Set the desorption products for species on the surface or in the bulk.
         It is assumed that there is only one desorption pathway.
@@ -509,7 +491,7 @@ class Species:
         self.n_atoms = new_n_atoms
 
     def to_UCL_format(self) -> str:
-        return f"{self.get_name()},{self.get_mass()},{self.get_binding_energy()},{self.get_solid_fraction()},{self.get_mono_fraction()},{self.get_volcano_fraction()},{self.get_ice_enthalpy()},{self.get_gas_enthalpy()}"
+        return f"{self.get_name()},{self.get_mass()},{self.get_binding_energy()},{self.get_solid_fraction()},{self.get_mono_fraction()},{self.get_volcano_fraction()},{self.get_enthalpy()}"
 
     def __eq__(self, other):
         """Check for equality based on either a string or another Species instance.

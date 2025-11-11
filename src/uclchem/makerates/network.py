@@ -12,6 +12,8 @@ from typing import Union
 
 from numpy import any as np_any
 
+from uclchem.makerates.heating import convert_to_erg
+
 from .reaction import CoupledReaction, Reaction, reaction_types
 from .species import Species, elementList
 
@@ -1177,7 +1179,7 @@ class Network:
                     logging.debug("Reaction involving electrons, skipping enthalpy due to poor estimates")
                     continue
                 delta_h = self.compute_exothermicity(reaction)
-                reaction.set_exothermicity(delta_h)
+                reaction.set_exothermicity(convert_to_erg(delta_h, "kcal/mol"))
                 logging.debug(
                     f"Setting reaction enthalpy of {reaction} to {delta_h} kcal/mol"
                 )
@@ -1209,8 +1211,8 @@ class Network:
         """
         reactants = reaction.get_pure_reactants()
         products = reaction.get_pure_products()
-        return sum([self.species[p].get_gas_enthalpy() for p in products]) - sum(
-            self.species[r].get_gas_enthalpy() for r in reactants
+        return sum([self.species[p].get_enthalpy() for p in products]) - sum(
+            self.species[r].get_enthalpy() for r in reactants
         )
         
     def duplicate_checks(self) -> None:
@@ -1438,20 +1440,19 @@ class Network:
 
     def add_gas_phase_extrapolation(self):
         for reaction in self.reactions:
-            if reaction.get_reaction_type() in ["TWOBODY", "PHOTON", "CRP", "CRPHOT"]:
+            if reaction.is_gas_reaction() and (reaction.get_reaction_type() in ["TWOBODY", "PHOTON", "CRP", "CRPHOT"]):
                 similar_reactions = self.find_similar_reactions(reaction)
                 # Only enable extrapolation if we have one or overlapping reactions
                 # UMIST uses overlapping reactions to get more correct reaction rates.
                 if all(
                     [
-                        reaction.check_temperature_collision(
-                            similar_reactions[similar_reaction_key]
-                        )
-                        for similar_reaction_key in similar_reactions
+                        (reaction.get_templow() == v.get_templow()) and
+                        (reaction.get_temphigh() == v.get_temphigh())
+                        for k, v in similar_reactions.items()
                     ]
                 ):
-                    reaction.set_extrapolation = True
-
+                    reaction.set_extrapolation(True)
+                    
     def __repr__(self) -> str:
         return (
             "Reaction network with \nSpecies:\n"

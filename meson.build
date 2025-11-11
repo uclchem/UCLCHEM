@@ -115,7 +115,8 @@ py.extension_module('uclchemwrap',
                      quadmath_dep,
                      ],
                      link_with : dvode_lib,
-                     fortran_args: ['-O3', '-fPIC', '-ffree-line-length-0'],
+                     # fortran_args: ['-O3', '-fPIC', '-ffree-line-length-0'],
+                     fortran_args: ['-fPIC', '-ffree-line-length-0'],
                      install : true)
 
 endif  # End of Fortran compilation section

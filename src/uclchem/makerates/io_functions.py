@@ -920,7 +920,7 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
     else:
         openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
         openFile.write("    LOGICAL :: ReactionRatesToDisk=.false.\n")
-    if any([exothermicity != 0.0]):
+    if any([exo != 0.0 for exo in exothermicity]):
         openFile.write(
             array_to_string(
                 "\texothermicities", exothermicity, type="float", parameter=True
@@ -928,7 +928,7 @@ def write_network_file(file_name: Path, network: Network, rates_to_disk: bool = 
         )
         openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .TRUE.\n")
     else:
-        openFile.write("    REAL(dp) :: \exothermicities(1)\n")
+        openFile.write("    REAL(dp) :: \texothermicities(" + str(len(exothermicity)) + ")\n")
         openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .FALSE.\n")
 
     openFile.write(array_to_string("\tre1", reactant1, type="int"))

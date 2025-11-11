@@ -22,4 +22,13 @@ add_crp_photo_to_grain: False
 # Enable the writing of the rates and flux to the disk
 enable_rates_to_disk: True
 # Enable the computation of all the enthalpies:
-add_delta_enthalpy: GAS
+add_exothermicity: GAS
+
+# Optional: Specify custom exothermicity files to override computed values
+# Can be a single file or a list of files. Files are processed in order.
+# Example single file:
+exothermicity_files: enthalpy_routines/custom_heating_cooling_reactions.csv
+# Example multiple files:
+# exothermicity_files:
+#   - enthalpy_routines/custom_heating_cooling_reactions.csv
+#   - enthalpy_routines/additional_reactions.csv

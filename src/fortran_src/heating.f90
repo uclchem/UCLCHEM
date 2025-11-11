@@ -73,7 +73,7 @@ IMPLICIT NONE
         IF (enableChemicalHeating) THEN
             ! Here we need the "flux" in cm^-3 s^-1 to get the heating per reaction.
             ! Energy is in kcal so convert to eV per reaction by multiplying by 1.6022e-12
-            chemheating= sum(reactionrate(:nReac) * exothermicities(:)) * 4.184D+10 / 6.022D+23
+            chemheating= sum(reactionrate(:nReac) * exothermicities(:))
         END IF
 
         getTempDot=heating+chemheating-cooling

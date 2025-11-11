@@ -156,8 +156,7 @@ class SpeciesMatcher:
         ].copy()
         self.parser = FormulaParser()
 
-        print(f"✓ Loaded ATCT data: {len(self.atct_data)} total species")
-        print(f"✓ Gas phase species: {len(self.atct_gas)} species")
+        print(f"Loaded ATCT: {len(self.atct_gas)} gas-phase species")
 
     def match_species(
         self, uclchem_species: List[str], resume_file: Optional[str] = None
@@ -178,20 +177,21 @@ class SpeciesMatcher:
             if pd.notna(s) and s not in ["NAN", ""] and not s.startswith(("#", "@"))
         ]
 
-        print(f"Matching {len(target_species)} UCLCHEM species...")
-
         # Resume from previous session if requested
         if resume_file and Path(resume_file).exists():
             return self._resume_matching(target_species, resume_file)
 
         # Stage 1: Find exact matches
         exact_matches = self._find_exact_matches(target_species)
-        print(f"✓ Found {len(exact_matches)} exact matches")
 
         # Stage 2: Find isomer matches for unmatched species
         unmatched_species = [s for s in target_species if s not in exact_matches]
         isomer_matches = self._find_isomer_matches(unmatched_species)
-        print(f"✓ Found isomer matches for {len(isomer_matches)} species")
+        
+        print(
+            f"Matched {len(exact_matches)} exact, "
+            f"{len(isomer_matches)} isomers from {len(target_species)} species"
+        )
 
         # Stage 3: Interactive selection for multi-option species
         canonical_matches = exact_matches.copy()
@@ -288,18 +288,11 @@ class SpeciesMatcher:
                 "total_options": 1,
             }
 
-        print(f"✓ Auto-selected {len(single_option)} species with single option")
-
         if not multi_option:
             return canonical_matches
 
-        print(f"\n Interactive selection needed for {len(multi_option)} species...")
-        print("=" * 60)
-        print("  INSTRUCTIONS:")
-        print("   • Progress is automatically saved after each selection")
-        print("   • You can quit anytime with 'q' and resume later")
-        print("   • Enter numbers (1,2,3...) to select species")
-        print("   • Enter 's' to skip a species")
+        print(f"\nInteractive selection: {len(multi_option)} species")
+        print("Enter choice number, 's' to skip, 'q' to quit and save")
         print("=" * 60)
 
         # Check if user wants to continue from previous session or start fresh
@@ -327,30 +320,25 @@ class SpeciesMatcher:
                         try:
                             with open(session_file, "r") as f:
                                 previous_session = yaml.safe_load(f)
-                            previous_completed = previous_session.get("completed", {})
-                            canonical_matches.update(previous_completed)
-                            print(
-                                f"✓ Loaded {len(previous_completed)} previous selections"
-                            )
-                            # Remove already completed species from multi_option
+                            prev = previous_session.get("completed", {})
+                            canonical_matches.update(prev)
+                            print(f"Loaded {len(prev)} previous selections")
                             multi_option = {
                                 s: m
                                 for s, m in multi_option.items()
-                                if s not in previous_completed
+                                if s not in prev
                             }
                             if not multi_option:
-                                print("✓ All selections already completed!")
+                                print("All selections completed")
                                 return canonical_matches
                             break
                         except Exception as e:
-                            print(f"Error loading session: {e}")
-                            print("Starting fresh...")
+                            logging.warning(f"Error loading session: {e}")
                             break
                     elif continue_choice == "n":
                         # Backup existing session instead of deleting it
                         backup_name = self._backup_session_file(session_file)
-                        print(f"✓ Previous session backed up as: {backup_name}")
-                        print("Starting fresh session...")
+                        print(f"Session backed up: {backup_name}")
                         break
                     else:
                         print("Invalid choice. Please enter 'c', 'n', or 'q'")
@@ -361,9 +349,8 @@ class SpeciesMatcher:
         session_data = {"completed": canonical_matches, "remaining": multi_option}
 
         for i, (species, matches) in enumerate(multi_option.items(), 1):
-            print(f"\n[{i}/{len(multi_option)}] UCLCHEM Species: {species}")
-            print(f"Chemical formula: {self.parser.parse_uclchem_formula(species)}")
-            print(f"Found {len(matches)} isomer matches in ATCT:")
+            print(f"\n[{i}/{len(multi_option)}] {species}")
+            print(f"Found {len(matches)} isomer matches:")
 
             # Display options
             for j, match in enumerate(matches, 1):
@@ -382,21 +369,19 @@ class SpeciesMatcher:
             while True:
                 try:
                     user_input = (
-                        input(
-                            f"\nEnter choice (1-{len(matches)}), 's' to skip, 'q' to quit: "
-                        )
+                        input(f"\nChoice (1-{len(matches)}, s, q): ")
                         .strip()
                         .lower()
                     )
 
                     if user_input == "q":
-                        print("Session saved. You can resume later.")
+                        print("Session saved")
                         if session_file:
                             self._save_session(session_data, session_file)
                         return canonical_matches
 
                     if user_input == "s":
-                        print(f"→ SKIPPED: {species}")
+                        print(f"Skipped: {species}")
                         break
 
                     choice = int(user_input)
@@ -408,13 +393,13 @@ class SpeciesMatcher:
                             "selection_reason": "user_selected_option",
                             "total_options": len(matches),
                         }
-                        print(f"→ SELECTED: {selected['atct_name']} (option {choice})")
+                        print(f"Selected: {selected['atct_name']}")
                         break
                     else:
-                        print(f"Invalid choice. Enter 1-{len(matches)}, 's', or 'q'")
+                        print(f"Invalid: use 1-{len(matches)}, s, or q")
 
                 except ValueError:
-                    print(f"Invalid input. Enter 1-{len(matches)}, 's', or 'q'")
+                    print(f"Invalid: use 1-{len(matches)}, s, or q")
                 except KeyboardInterrupt:
                     print("\nSession interrupted. Saving progress...")
                     if session_file:
@@ -425,7 +410,9 @@ class SpeciesMatcher:
             if session_file:
                 session_data["completed"] = canonical_matches
                 remaining_multi = {
-                    s: m for s, m in multi_option.items() if s not in canonical_matches
+                    s: m
+                    for s, m in multi_option.items()
+                    if s not in canonical_matches
                 }
                 session_data["remaining"] = remaining_multi
                 self._save_session(session_data, session_file)
@@ -444,7 +431,7 @@ class SpeciesMatcher:
             shutil.copy2(session_file, backup_name)
             return backup_name
         except Exception as e:
-            print(f"⚠️  Could not backup session file: {e}")
+            logging.warning(f"Could not backup session file: {e}")
             return f"backup_failed{extension}"
 
     def _save_session(self, session_data: Dict, session_file: str) -> None:
@@ -453,12 +440,9 @@ class SpeciesMatcher:
             with open(session_file, "w") as f:
                 yaml.dump(session_data, f, indent=2, default_flow_style=False)
 
-            completed_count = len(session_data.get("completed", {}))
-            remaining_count = len(session_data.get("remaining", {}))
-            print(
-                f"✓ Progress saved: {completed_count} completed, "
-                f"{remaining_count} remaining → {session_file}"
-            )
+            completed = len(session_data.get("completed", {}))
+            remaining = len(session_data.get("remaining", {}))
+            print(f"Progress: {completed} done, {remaining} left")
         except Exception as e:
             logging.warning(f"Warning: Could not save session: {e}")
 
@@ -472,12 +456,12 @@ class SpeciesMatcher:
         completed = session_data.get("completed", {})
         remaining = session_data.get("remaining", {})
 
-        print(
-            f"✓ Resumed session: {len(completed)} completed, {len(remaining)} remaining"
-        )
+        print(f"Resumed: {len(completed)} done, {len(remaining)} left")
 
         if remaining:
-            completed.update(self._interactive_selection(remaining, resume_file))
+            completed.update(
+                self._interactive_selection(remaining, resume_file)
+            )
 
         return completed
 
@@ -496,7 +480,7 @@ class SpeciesMatcher:
         with open(output_file, "w") as f:
             yaml.dump(mapping, f, indent=2, default_flow_style=False)
 
-        print(f"✓ Saved YAML mapping for {len(mapping)} species to {output_path}")
+        print(f"Saved YAML: {len(mapping)} species → {output_path}")
 
     def save_mapping(
         self, mapping: Dict[str, Dict[str, Any]], output_path: str
@@ -521,7 +505,7 @@ class SpeciesMatcher:
         with open(mapping_path, "r") as f:
             mapping = yaml.safe_load(f)
 
-        print(f"✓ Loaded mapping for {len(mapping)} species from {mapping_path}")
+        print(f"Loaded: {len(mapping)} species from {mapping_path}")
         return mapping
 
     def export_mapping_csv(
@@ -553,9 +537,8 @@ class SpeciesMatcher:
         df = df.sort_values("uclchem_species").reset_index(drop=True)
         df.to_csv(output_path, index=False)
 
-        print(f"✓ Exported mapping CSV to {output_path}")
-        print(f"  - {len(df)} total mappings")
-        print(f"  - {len(df[df['has_enthalpy'] == 'YES'])} with enthalpy data")
+        has_enthalpy = len(df[df["has_enthalpy"] == "YES"])
+        print(f"Exported CSV: {len(df)} species ({has_enthalpy} with data)")
 
     def write_back_to_file(
         self,
@@ -565,8 +548,9 @@ class SpeciesMatcher:
     ) -> None:
         """Write back the original species DataFrame with enthalpy data.
 
-        Creates a backup of the original file as NAME_backup.csv and writes
-        the updated DataFrame with enthalpy column to the original file.
+        Merges ATCT enthalpy data into the existing ENTHALPY column without
+        overwriting any existing non-zero values. Creates a backup of the
+        original file as NAME_backup.csv.
 
         Args:
             species_df: Original UCLCHEM species DataFrame
@@ -585,61 +569,79 @@ class SpeciesMatcher:
         # Create backup
         try:
             shutil.copy2(original_csv_path, backup_path)
-            print(f"✓ Created backup: {backup_path}")
         except Exception as e:
-            print(f"⚠️  Could not create backup: {e}")
+            logging.warning(f"Backup failed: {e}")
 
         # Create a copy of the DataFrame to avoid modifying the original
         updated_df = species_df.copy()
 
-        # Check if gas_enthalpy column already exists with non-zero values
-        if "GAS_ENTHALPY" in updated_df.columns:
-            existing_nonzero = updated_df[
-                (updated_df["GAS_ENTHALPY"].notna()) &
-                (updated_df["GAS_ENTHALPY"] != 0.0)
-            ]
-            if len(existing_nonzero) > 0:
-                logging.warning(
-                    f"Warning: Found {len(existing_nonzero)} existing non-zero "
-                    f"GAS_ENTHALPY values in the file. These will be "
-                    f"overwritten."
-                )
+        # Ensure ENTHALPY column exists
+        if "ENTHALPY" not in updated_df.columns:
+            updated_df["ENTHALPY"] = 0.0
 
-        # Add enthalpy column
-        enthalpy_values = []
-        for _, row in updated_df.iterrows():
+        # Track statistics
+        existing_nonzero_count = 0
+        new_values_added = 0
+        skipped_existing = 0
+
+        # Merge enthalpy values into existing ENTHALPY column
+        for idx, row in updated_df.iterrows():
             species_name = row["NAME"]
+            current_enthalpy = row.get("ENTHALPY", 0.0)
+
+            # Check if current value is non-zero (already has data)
+            has_existing_value = (
+                pd.notna(current_enthalpy) and abs(current_enthalpy) > 1e-10
+            )
+
+            if has_existing_value:
+                existing_nonzero_count += 1
+                # Never overwrite existing non-zero values
+                if (
+                    species_name in mapping
+                    and mapping[species_name]["enthalpy_298k"] is not None
+                ):
+                    skipped_existing += 1
+                continue
+
+            # Fill in missing/zero values from ATCT mapping
             if species_name in mapping:
-                enthalpy_values.append(mapping[species_name]["enthalpy_298k"])
-            else:
-                enthalpy_values.append(None)
+                atct_enthalpy = mapping[species_name]["enthalpy_298k"]
+                if atct_enthalpy is not None:
+                    # Convert kJ/mol to kcal/mol
+                    updated_df.at[idx, "ENTHALPY"] = atct_enthalpy / 4.184
+                    new_values_added += 1
 
-        updated_df["GAS_ENTHALPY"] = enthalpy_values
-
-        # Convert kJ/mol to kcal/mol
-        updated_df["GAS_ENTHALPY"] /= 4.184
-          
         # Write back to original file
         try:
             updated_df.to_csv(original_csv_path, index=False)
-            mapped_count = len([e for e in enthalpy_values if e is not None])
-            print(f"✓ Updated {original_csv_path} with enthalpy data")
-            print(f"  - {mapped_count}/{len(updated_df)} species have "
-                  f"enthalpy values")
+            total_with_enthalpy = existing_nonzero_count + new_values_added
+            print(
+                f"Updated {original_csv_path}: "
+                f"{new_values_added} added, "
+                f"{existing_nonzero_count} preserved, "
+                f"{total_with_enthalpy}/{len(updated_df)} total"
+            )
         except Exception as e:
-            print(f"❌ Error writing to file: {e}")
+            logging.warning(f"Write failed: {e}")
             # Restore backup if write failed
             try:
                 shutil.copy2(backup_path, original_csv_path)
-                print("✓ Restored original file from backup")
+                print("Restored from backup")
             except Exception as restore_error:
-                print(f"❌ Could not restore backup: {restore_error}")
+                logging.warning(f"Restore failed: {restore_error}")
 
 
 def main():
     """Command-line interface for species matcher."""
     import argparse
     import sys
+
+    # Configure logging
+    logging.basicConfig(
+        level=logging.WARNING,
+        format="%(levelname)s: %(message)s"
+    )
 
     parser = argparse.ArgumentParser(
         description="Interactive tool for matching UCLCHEM species with "
@@ -649,13 +651,19 @@ def main():
     parser.add_argument(
         "--atct_csv",
         required=True,
-        help="Path to the cleaned ATCT CSV file containing thermochemical data",
+        help=(
+            "Path to the cleaned ATCT CSV file containing "
+            "thermochemical data"
+        ),
     )
 
     parser.add_argument(
         "--uclchem_species_csv",
         required=True,
-        help="Path to CSV file containing UCLCHEM species (must have 'NAME' column)",
+        help=(
+            "Path to CSV file containing UCLCHEM species "
+            "(must have 'NAME' column)"
+        ),
     )
 
     parser.add_argument(
@@ -663,6 +671,14 @@ def main():
         help="Path for full output CSV mapping file.",
         required=False,
         default=None,
+    )
+    parser.add_argument(
+        "--overwrite_uclchem_species_csv",
+        action="store_true",
+        help=(
+            "If set, enchance the original UCLCHEM species CSV with "
+            "enthalpy data based on the matching."
+        ),
     )
 
     args = parser.parse_args()
@@ -679,13 +695,15 @@ def main():
         # Save results (default to CSV)
         if args.output_mapping is not None:
             matcher.save_mapping(mapping, args.output_mapping)
-        else:
-            matcher.write_back_to_file(species_df, mapping, args.uclchem_species_csv)
+        if args.overwrite_uclchem_species_csv:
+            matcher.write_back_to_file(
+                species_df, mapping, args.uclchem_species_csv
+            )
 
-        print(f"\n✅ Matching complete! Mapped {len(mapping)} species.")
+        print(f"Complete: {len(mapping)} species mapped")
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        logging.error(f"Error: {e}")
         sys.exit(1)
 
 

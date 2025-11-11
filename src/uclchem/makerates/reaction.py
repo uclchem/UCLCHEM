@@ -454,6 +454,7 @@ class Reaction:
         self.source = source
        
     def set_extrapolation(self, flag: bool) -> None:
+        logging.info(f"Setting for {self} extrapolation to {flag}")  
         assert isinstance(flag, bool)
         self.extrapolate = flag
         

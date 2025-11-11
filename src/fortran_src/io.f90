@@ -125,7 +125,7 @@ CONTAINS
                     heatarray(dtime, dstep, 16) = crheating
                     heatarray(dtime, dstep, 17) = turbHeating
                     heatarray(dtime, dstep, 18) = gasgraincolls
-                    heatarray(dtime, dstep, 19) = chemheating  ! Placeholder for future heating by enthalpy
+                    heatarray(dtime, dstep, 19) = chemheating
                 END IF
             ELSE 
                 ! Else, we write the rates and flux to the file.
