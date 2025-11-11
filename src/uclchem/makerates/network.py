@@ -28,8 +28,8 @@ class Network:
         user_defined_bulk: list = [],
         gas_phase_extrapolation: bool = False,
         add_crp_photo_to_grain: bool = False,
-        add_exothermicity: list[str] = None,
-        exothermicity_files: list[Union[str, Path]] = None,
+        derive_reaction_exothermicity: list[str] = None,
+        database_reaction_exothermicity: list[Union[str, Path]] = None,
     ):
         """A class to store network information such as indices of important reactions.
 
@@ -53,8 +53,8 @@ class Network:
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
         self.add_crp_photo_to_grain = add_crp_photo_to_grain
-        self.add_exothermicity = add_exothermicity
-        self.exothermicity_files = exothermicity_files
+        self.derive_reaction_exothermicity = derive_reaction_exothermicity
+        self.database_reaction_exothermicity = database_reaction_exothermicity
         self.enthalpies_present = False
         electron_specie = Species(["E-", 0, 0.0, 0, 0, 0, 0])
         electron_specie.set_n_atoms(1)
@@ -84,15 +84,15 @@ class Network:
             self.add_gas_phase_extrapolation()
 
         # Add the enhalpies for certain reaction types:
-        if self.add_exothermicity:
-            self.add_reaction_enthalpies(self.add_exothermicity)
+        if self.derive_reaction_exothermicity:
+            self.add_reaction_enthalpies(self.derive_reaction_exothermicity)
         
         # Apply custom exothermicity files if provided
-        if self.exothermicity_files:
-            logging.info(f"About to apply custom exothermicity files: {self.exothermicity_files}")
-            self.apply_custom_exothermicities(self.exothermicity_files)
+        if self.database_reaction_exothermicity:
+            logging.info(f"About to apply custom exothermicity files: {self.database_reaction_exothermicity}")
+            self.apply_custom_exothermicities(self.database_reaction_exothermicity)
         else:
-            logging.info(f"No custom exothermicity files to apply: {self.exothermicity_files}")
+            logging.info(f"No custom exothermicity files to apply: {self.database_reaction_exothermicity}")
 
         # Sort the reactions before returning them, this is important for convergence of the ODE
         self.sort_reactions()
@@ -1184,15 +1184,15 @@ class Network:
                     f"Setting reaction enthalpy of {reaction} to {delta_h} kcal/mol"
                 )
 
-    def apply_custom_exothermicities(self, exothermicity_files: list):
+    def apply_custom_exothermicities(self, database_reaction_exothermicity: list):
         """Apply custom exothermicity values from CSV files to the network reactions.
         
         Args:
-            exothermicity_files (list): List of paths to custom exothermicity CSV files.
+            database_reaction_exothermicity (list): List of paths to custom exothermicity CSV files.
         """
         from .heating import set_custom_exothermicities
         
-        for csv_path in exothermicity_files:
+        for csv_path in database_reaction_exothermicity:
             logging.info(f"Applying custom exothermicities from {csv_path}")
             set_custom_exothermicities(
                 reactions=self.get_reaction_list(),
