@@ -539,27 +539,29 @@ class AbstractModel(ABC):
 
     # Model Passing through Pickling
     def pickle(self):
-        for k, v in self._data.items():
-            if np.shape(v.values) != ():
-                if type(v.values) == tuple:
-                    self._pickle_dict[k] = v.values[1]
+        if self._data is not None and not bool(self._pickle_dict):
+            for k, v in self._data.items():
+                if np.shape(v.values) != ():
+                    if type(v.values) == tuple:
+                        self._pickle_dict[k] = v.values[1]
+                    else:
+                        self._pickle_dict[k] = v.values
                 else:
-                    self._pickle_dict[k] = v.values
-            else:
-                self._pickle_dict[k] = v.item()
-        self._data = None
+                    self._pickle_dict[k] = v.item()
+            self._data = None
         return
 
     def un_pickle(self):
-        self._data = xr.Dataset()
-        for k, v in self._pickle_dict.items():
-            if np.ndim(v) == 3 and "_array" in k:
-                self._data[k] = (["time_step", "point", k.replace('array', 'values')], v)
-            elif np.ndim(v) == 2 and "_array" in k:
-                self._data[k] = (["point", k], v)
-            else:
-                self._data[k] = v
-        self._pickle_dict = {}
+        if self._data is None and bool(self._pickle_dict):
+            self._data = xr.Dataset()
+            for k, v in self._pickle_dict.items():
+                if np.ndim(v) == 3 and "_array" in k:
+                    self._data[k] = (["time_step", "point", k.replace('array', 'values')], v)
+                elif np.ndim(v) == 2 and "_array" in k:
+                    self._data[k] = (["point", k], v)
+                else:
+                    self._data[k] = v
+            self._pickle_dict = {}
         return
     # /Model Passing through Pickling
 
