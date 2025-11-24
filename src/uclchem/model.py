@@ -559,6 +559,7 @@ class AbstractModel(ABC):
                 self._data[k] = (["point", k], v)
             else:
                 self._data[k] = v
+        self._pickle_dict = {}
         return
     # /Model Passing through Pickling
 
