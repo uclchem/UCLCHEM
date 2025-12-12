@@ -306,30 +306,32 @@ def outputArrays_to_DataFrame(
         rates_df = None
 
     if heatArray is not None:
-        # Create a heating dataframe.
-        heating_columns = [
-            "Time",
-            "Atomic Cooling",
-            "Collisionally Induced Emission Cooling",
-            "Compton Scattering Cooling",
-            "Continuum Emission Cooling",
-            "H Line Cooling",
-            "C+ Line Cooling",
-            "O Line Cooling",
-            "C Line Cooling",
-            "CO Line Cooling",
-            "p-H2 Line Cooling",
-            "o-H2 Line Cooling",
-            "Photoelectric Heating",
-            "H2Formation Heating",
-            "FUVPumping Heating",
-            "Photodissociation Heating",
-            "CIonization Heating",
-            "Cosmic Ray Heating",
-            "Turbulent Heating",
-            "Gas-Grain Collisions Heating",
-            "Chemical Heating",
-        ]
+        # Create a heating dataframe dynamically using labels from heating.f90
+        # Access the labels directly from the compiled Fortran module
+        from uclchemwrap import f2py_constants
+        from uclchemwrap import heating as heating_module
+        
+        heating_columns = ["Time"]
+        
+        # Add cooling mechanism labels (strip trailing spaces from Fortran strings)
+        cooling_labels = [str(np.char.decode(label)).strip() 
+                         for label in heating_module.coolinglabels]
+        heating_columns.extend(cooling_labels)
+        
+        # Add line cooling labels with species names from f2py_constants
+        line_cooling_labels = [str(np.char.decode(label)).strip() 
+                              for label in f2py_constants.coolantnames]
+        for label in line_cooling_labels:
+            heating_columns.append(f"LineCooling_{label}")
+        
+        # Add heating mechanism labels
+        heating_labels = [str(np.char.decode(label)).strip() 
+                         for label in heating_module.heatinglabels]
+        heating_columns.extend(heating_labels)
+        
+        # Add chemical heating
+        heating_columns.append("ChemicalHeating")
+        
         heating_df = pd.DataFrame(
             heatArray[:, 0, :], index=None, columns=heating_columns
         )

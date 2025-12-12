@@ -295,6 +295,14 @@ def write_outputs(
     # write the constants needed for wrap.f90
 
     filename = fortran_src_dir / "f2py_constants.f90"
+    
+    # Calculate n_heating_terms dynamically based on heating.f90 structure:
+    # Time (1) + cooling (5 NCOOLING) + line cooling (NCOOL) + heating (9 NHEATING) + chem heating (1)
+    # Note: NHEATING=9 and NCOOLING=5 are defined in heating.f90
+    NHEATING = 9  # Must match heating.f90
+    NCOOLING = 5  # Must match heating.f90
+    n_heating_terms = 1 + NCOOLING + len(coolants) + NHEATING + 1
+    
     f2py_constants = {
         "n_species": len(network.get_species_list()),
         "n_reactions": len(network.get_reaction_list()),
@@ -302,7 +310,7 @@ def write_outputs(
         "n_coolants": len(coolants),
         "coolant_files": [c["file"] for c in coolants],
         "coolant_names": [c["name"] for c in coolants],
-        "n_heating_terms": 21,
+        "n_heating_terms": n_heating_terms,
     }
     write_f90_constants(f2py_constants, filename)
     # Write some meta information that can be used to read back in the reactions into Python

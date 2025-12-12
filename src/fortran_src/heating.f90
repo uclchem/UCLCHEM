@@ -11,21 +11,74 @@ IMPLICIT NONE
 
     REAL(dp) :: pahAbund=6e-7
     REAL(dp) :: chemheating
-    REAL(dp) :: heatingValues(8)
-    REAL(dp) :: coolingValues(4)
     
-    LOGICAL :: heating_modules(8)=(/ .TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE./)
-    LOGICAL :: cooling_modules(4)=(/ .TRUE.,.TRUE.,.TRUE.,.TRUE./)
+    ! Heating mechanisms:
+    ! only ONE photoelectric mechanism should be enabled at once
+    ! 1 = Photoelectric - Bakes method
+    ! 2 = Photoelectric - Weingartner method
+    ! 3 = H2 Formation Heating
+    ! 4 = H2 Photodissociation Heating
+    ! 5 = H2 FUV Pumping Heating
+    ! 6 = Carbon Ionization Heating
+    ! 7 = Cosmic Ray Heating
+    ! 8 = Turbulent Heating
+    ! 9 = Gas-Grain Collisional Heating/Cooling
+    INTEGER, PARAMETER :: NHEATING = 9
+    REAL(dp) :: heatingValues(NHEATING)
+    LOGICAL :: heating_modules(NHEATING)=(/ .TRUE.,.FALSE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE./)
+    CHARACTER(LEN=30), PARAMETER :: heatingLabels(NHEATING) = (/ &
+        'PhotoelectricBakes         ', &
+        'PhotoelectricWeingartner   ', &
+        'H2Formation                ', &
+        'H2Photodissociation        ', &
+        'H2FUVPumping               ', &
+        'CarbonIonization           ', &
+        'CosmicRay                  ', &
+        'Turbulent                  ', &
+        'GasGrainCollisions         ' /)
+    
+    ! Cooling mechanisms:
+    ! 1 = Atomic Line Cooling
+    ! 2 = H2 Collisionally Induced Emission
+    ! 3 = Compton Cooling
+    ! 4 = Continuum Emission
+    ! 5 = Molecular Line Cooling
+    INTEGER, PARAMETER :: NCOOLING = 5
+    REAL(dp) :: coolingValues(NCOOLING)
+    LOGICAL :: cooling_modules(NCOOLING)=(/ .TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE./)
+    CHARACTER(LEN=30), PARAMETER :: coolingLabels(NCOOLING) = (/ &
+        'AtomicLineCooling          ', &
+        'H2CollisionallyInduced     ', &
+        'ComptonCooling             ', &
+        'ContinuumEmission          ', &
+        'MolecularLineCooling       ' /)
+    
+    ! Line cooling species labels
+    CHARACTER(LEN=10), PARAMETER :: lineCoolingLabels(7) = (/ &
+        'H         ', &
+        'C+        ', &
+        'O         ', &
+        'C         ', &
+        'CO        ', &
+        'p-H2      ', &
+        'o-H2      ' /)
+
+    ! Treatment of the dust-gas temperature coupling
+    ! 1 = Simple treatment Hocuk et al. 2017
+    ! 2 = Detailed balance method Hollenbach 1991 
+    INTEGER :: dust_gas_coupling_method = 1
     
     ! LINE_SOLVER_ATTEMPTS: Number of times to solve line cooling and take median
     INTEGER :: LINE_SOLVER_ATTEMPTS = 5
     INTEGER :: median_line_index
     ! Allocatable arrays to store cooling iterations and permutations
-    REAL(dp), ALLOCATABLE :: lineCoolingArray(:, :)  ! (LINE_SOLVER_ATTEMPTS x NCOOL)
+    REAL(dp), ALLOCATABLE :: lineCoolingArray(:, :)  ! (LINE_SOLVER_ATTEMPTS x NCOOLANTS)
     INTEGER, ALLOCATABLE :: permutationArray(:)      ! (LINE_SOLVER_ATTEMPTS)
-    !f2py depend(ncool) lineCoolingArray
+    !f2py depend(ncoolants) lineCoolingArray
     INTEGER :: lineCoolingArray_size = 0
     INTEGER :: permutationArray_size = 0
+
+    
 
  CONTAINS
 
@@ -37,7 +90,7 @@ IMPLICIT NONE
 
         ! write(*,*) "Initializing heating.f90 ..."
         CALL READ_COOLANTS()
-        DO i=1,ncool
+        DO i=1,ncoolants
             coolName=coolantNames(i)
             if (coolName .eq. "p-H2") coolName="H2"
             if (coolName .eq. "o-H2") coolName="H2"
@@ -99,14 +152,15 @@ IMPLICIT NONE
         REAL(dp), INTENT(IN):: abundances(:)
         REAL(dp) :: L_TURB=5.0d0
         heatingValues = 0.0D0
-        heatingValues(1) = photoelectricHeating(gasTemperature,gasDensity,habingField,abundances(nelec),metallicity)
-        heatingValues(2) = H2FormationHeating(gasTemperature,gasDensity,abundances(nh),h2form)
-        heatingValues(3) = H2PhotodisHeating(gasDensity,abundances(nh2),h2dis)
-        heatingValues(4) = h2FUVPumpHeating(abundances(nh),abundances(nh2),gasTemperature,gasDensity,h2dis)
-        heatingValues(5) = CarbonIonizationHeating(cIonRate,abundances(nc),gasDensity)
-        heatingValues(6) = cosmicRayHeating(zeta,gasDensity,abundances(nh2))
-        heatingValues(7) = 3.5D-28*(turbVel**3)*(1.0D0/L_TURB)*gasDensity  !turbulent heating
-        heatingValues(8) = gasGrainCollisions(gasTemperature,gasDensity,dustAbundance,dustRadius,dustTemp)
+        heatingValues(1) = photoelectricHeatingBakes(gasTemperature,gasDensity,habingField,abundances(nelec),metallicity)
+        heatingValues(2) = photoelectricHeatingWeingartner(gasTemperature,gasDensity,habingField,abundances(nelec),metallicity)
+        heatingValues(3) = H2FormationHeating(gasTemperature,gasDensity,abundances(nh),h2form)
+        heatingValues(4) = H2PhotodisHeating(gasDensity,abundances(nh2),h2dis)
+        heatingValues(5) = h2FUVPumpHeating(abundances(nh),abundances(nh2),gasTemperature,gasDensity,h2dis)
+        heatingValues(6) = CarbonIonizationHeating(cIonRate,abundances(nc),gasDensity)
+        heatingValues(7) = cosmicRayHeating(zeta,gasDensity,abundances(nh2))
+        heatingValues(8) = turbulentHeating(gasDensity,turbVel)
+        heatingValues(9) = gasGrainCollisions(gasTemperature,gasDensity,dustAbundance,dustRadius,dustTemp)
         ! Mask values we do not need.
         WHERE(heating_modules .eqv. .FALSE.) heatingValues = 0.0D0
         getHeatingRate=SUM(heatingValues)
@@ -127,7 +181,7 @@ IMPLICIT NONE
                 ! Size changed - deallocate and reallocate
                 DEALLOCATE(lineCoolingArray)
             END IF
-            ALLOCATE(lineCoolingArray(LINE_SOLVER_ATTEMPTS, NCOOL))
+            ALLOCATE(lineCoolingArray(LINE_SOLVER_ATTEMPTS, NCOOLANTS))
             lineCoolingArray_size = LINE_SOLVER_ATTEMPTS
         END IF
         
@@ -149,27 +203,36 @@ IMPLICIT NONE
         coolingValues(2)=collionallyInducedEmission(gasTemperature,gasDensity,abundances(nh2))
         coolingValues(3)=comptonCooling(gasTemperature,gasDensity,abundances(nelec))
         coolingValues(4)=continuumEmission(gasTemperature,gasDensity)
-        !H2VibrationalCooling is handled by heating FUV pumping function
-        !We do the line cooling multiple times and take median value since solver will occasionally do something wild
-        DO ti=1,LINE_SOLVER_ATTEMPTS
-            lineCoolingArray(ti, :)=lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
-            lineCoolingSum(ti) = sum(lineCoolingArray(ti, :))
-        END DO
         
-        ! Sort and reorder using module-level permutationArray
-        CALL pair_insertion_sort_with_perm(lineCoolingSum, permutationArray)
-        lineCoolingArray = lineCoolingArray(permutationArray, :)
-        median_line_index = (LINE_SOLVER_ATTEMPTS + 1) / 2
-
-        WHERE(cooling_modules .eqv. .FALSE.) coolingValues = 0.0D0
-        getCoolingRate = sum(coolingValues) + lineCoolingSum(median_line_index)
+        !H2VibrationalCooling is handled by heating FUV pumping function
+        
+        ! Only compute expensive line cooling if enabled (guard clause for performance)
+        IF (cooling_modules(5)) THEN
+            !We do the line cooling multiple times and take median value since solver will occasionally do something wild
+            DO ti=1,LINE_SOLVER_ATTEMPTS
+                lineCoolingArray(ti, :)=lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
+                lineCoolingSum(ti) = sum(lineCoolingArray(ti, :))
+            END DO
+            
+            ! Sort and reorder using module-level permutationArray
+            CALL pair_insertion_sort_with_perm(lineCoolingSum, permutationArray)
+            lineCoolingArray = lineCoolingArray(permutationArray, :)
+            median_line_index = (LINE_SOLVER_ATTEMPTS + 1) / 2
+            coolingValues(5) = lineCoolingSum(median_line_index)
+        ELSE
+            coolingValues(5) = 0.0_dp
+        END IF
+        
+        ! Mask the first 4 cooling values (line cooling already handled above)
+        WHERE(cooling_modules(1:4) .eqv. .FALSE.) coolingValues(1:4) = 0.0D0
+        getCoolingRate = sum(coolingValues)
     END FUNCTION getCoolingRate
 
 
     FUNCTION lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel) RESULT(moleculeCooling)
         REAL(dp), INTENT(IN) :: time,gasTemperature,gasDensity,gasCols,dustTemp,abundances(:),turbVel
         INTEGER :: N,I!, collisionalIndices(5)=(/nh,nhx,nh2,nhe,nelec/)
-        real(dp)  :: moleculeCooling(NCOOL)
+        real(dp)  :: moleculeCooling(NCOOLANTS)
 
         moleculeCooling = 0.0_dp
 
@@ -180,7 +243,7 @@ IMPLICIT NONE
         CALL UPDATE_COOLANT_LINEWIDTHS(gasTemperature,turbVel)
         CALL UPDATE_COOLANT_ABUNDANCES(gasDensity,gasTemperature,abundances)
 
-        DO N=1,NCOOL
+        DO N=1,NCOOLANTS
             ! IF (TRIM(coolants(N)%NAME) == "C+") THEN
             !     write(*,*) "    DEBUG C+: DENSITY=", coolants(N)%DENSITY
             !     write(*,*) "    DEBUG C+: ENERGY(1:5)=", coolants(N)%ENERGY(1:MIN(5,coolants(N)%NLEVEL))
@@ -205,7 +268,7 @@ IMPLICIT NONE
         !!write(*,*)  "lte done"
         !I should then do LVG interactions
          DO I=1,500!while not converged and less than 100 tries:
-            DO N=1,NCOOL
+            DO N=1,NCOOLANTS
                 ! write(*,*) "-----------------------------------------------------------------"
                 ! write(*,*) "  cloud_column: ", CLOUD_COLUMN
                 ! write(*,*) "  cloud_density: ", CLOUD_DENSITY
@@ -234,7 +297,7 @@ IMPLICIT NONE
 
         !  Calculate the cooling rate due to the Lyman-alpha emission for each particle
         !  using the analytical expression of Spitzer (1978) neglecting photon trapping
-        DO N=1,NCOOL
+        DO N=1,NCOOLANTS
             if (.not. allocated(coolants(N)%EMISSIVITY)) then
                 write(*,*) "ERROR: EMISSIVITY not allocated for coolant ", N
             end if
@@ -247,7 +310,7 @@ IMPLICIT NONE
         END DO
 
         !Calculate the cooling rates
-        DO N=1,NCOOL
+        DO N=1,NCOOLANTS
             WHERE(coolants(N)%EMISSIVITY .lt. -HUGE(1.0)) coolants(N)%EMISSIVITY = 0.0
             moleculeCooling(N)=SUM(coolants(N)%EMISSIVITY,MASK=.NOT.ISNAN(coolants(N)%EMISSIVITY))
             ! !we get these wild cha nges in cooling rate so let's force it not to change too much in a timestep
@@ -392,21 +455,13 @@ IMPLICIT NONE
     !  account for the revised PAH abundance estimate from Spitzer data.
     ! 
     ! !-----------------------------------------------------------------------
-    REAL(dp) FUNCTION photoelectricHeating(gasTemperature,gasDensity,habingField,electronAbund,metallicity)
+    REAL(dp) FUNCTION photoelectricHeatingBakes(gasTemperature,gasDensity,habingField,electronAbund,metallicity)
         REAL(dp), INTENT(IN) :: gasTemperature,gasDensity,habingField,electronAbund,metallicity
         REAL(dp), PARAMETER :: PHI_PAH=0.4d0,ALPHA=0.944D0
         REAL(dp) :: beta,delta,epsilon,nElec,PAH_HEATING_RATE,PAH_COOLING_RATE
-        REAL(dp), PARAMETER ::C0=5.72D+0,C1=3.45D-2,C2=7.08D-3
-        REAL(dp), PARAMETER ::C3=1.98D-2, C4=4.95D-1,C5=6.92D-1
-        REAL(dp), PARAMETER ::C6=5.20D-1
-
-        ! !Weingartner & Draine2001
-        ! photoelectricHeating=1.0D-26*(habingField*gasDensity)*(C0+C1*gasTemperature**C4) &
-        !         & /(1.0D0+C2*(habingField*SQRT(gasTemperature)/(gasDensity*electronAbund))**C5  &
-        !         & *(1.0D0+C3*(habingField*SQRT(gasTemperature)/(gasDensity*electronAbund))**C6))
 
         !Bakes & Tielens 1994 with updates from Wolfire 2008
-    !  Adopt the PAH rate scaling factor of Wolfire et al. (2008, ApJ, 680, 384)
+        !  Adopt the PAH rate scaling factor of Wolfire et al. (2008, ApJ, 680, 384)
         !  Setting this factor to 1.0 gives the standard Bakes & Tielens expression
 
         !Skip photoelectric heating for now if electron abundance is zero because cooling is infinite
@@ -419,14 +474,25 @@ IMPLICIT NONE
 
             PAH_HEATING_RATE=1.30D-24*EPSILON*habingField*gasDensity
             PAH_COOLING_RATE=4.65D-30*gasTemperature**ALPHA*(DELTA**BETA)*nElec*PHI_PAH*gasDensity
-            photoelectricHeating=PAH_HEATING_RATE-PAH_COOLING_RATE
+            photoelectricHeatingBakes=PAH_HEATING_RATE-PAH_COOLING_RATE
 
             !Assume the PE heating rate scales linearly with PAH abundance
-            photoelectricHeating=photoelectricHeating*metallicity!*(pahAbund/6.0d-7)
+            photoelectricHeatingBakes=photoelectricHeatingBakes*metallicity!*(pahAbund/6.0d-7)
         ELSE
-            photoelectricHeating=0.0
+            photoelectricHeatingBakes=0.0
         END IF
-    END FUNCTION photoelectricHeating
+    END FUNCTION photoelectricHeatingBakes
+
+    REAL(dp) FUNCTION photoelectricHeatingWeingartner(gasTemperature,gasDensity,habingField,electronAbund,metallicity)
+        REAL(dp), INTENT(IN) :: gasTemperature,gasDensity,habingField,electronAbund,metallicity
+        REAL(dp), PARAMETER ::C0=5.72D+0,C1=3.45D-2,C2=7.08D-3
+        REAL(dp), PARAMETER ::C3=1.98D-2, C4=4.95D-1,C5=6.92D-1
+        REAL(dp), PARAMETER ::C6=5.20D-1
+        !Weingartner & Draine2001
+        photoelectricHeatingWeingartner=1.0D-26*(habingField*gasDensity)*(C0+C1*gasTemperature**C4) &
+                & /(1.0D0+C2*(habingField*SQRT(gasTemperature)/(gasDensity*electronAbund))**C5  &
+                & *(1.0D0+C3*(habingField*SQRT(gasTemperature)/(gasDensity*electronAbund))**C6))
+    END FUNCTION photoelectricHeatingWeingartner
 
     ! !-----------------------------------------------------------------------
     ! !  H2 formation heating
@@ -622,6 +688,24 @@ FUNCTION gasGrainCollisions(gasTemperature,gasDensity,dustAbundance,dustRadius,d
                        & *accommodation*(2.0*K_BOLTZ*dustTemp-2.0*K_BOLTZ*gasTemperature)
 END FUNCTION gasGrainCollisions
 
+FUNCTION calculateDustTemp(localField,surfaceField,Av) result(dustTemperature)
+    IMPLICIT NONE
+    REAL(dp), INTENT(IN) :: localField,surfaceField,Av
+    REAL(dp) :: dustTemperature
+
+    !Choose which dust temperature calculation to use
+    select case (dust_gas_coupling_method)
+    case (1)
+        dustTemperature=calculateDustTempHollenbach(localField,surfaceField)
+    case (2)
+        dustTemperature=calculateDustTempHocuk(surfaceField,Av)
+    case default
+        write(*,*) 'Unimplemented dust temperature calculation method choose 1 or 2. Exiting.'
+        stop
+    end select 
+    RETURN
+END FUNCTION calculateDustTemp
+
 !=======================================================================
 !
 !  Calculate the dust temperature for each particle using the treatment
@@ -666,63 +750,63 @@ END FUNCTION gasGrainCollisions
 !
 !-----------------------------------------------------------------------
 
-! FUNCTION calculateDustTemp(localField,surfaceField) result(dustTemperature)
-!     USE constants
-!     IMPLICIT NONE
-!     !UV field in Habing at this depth and at surface required for this calculation
-!     !Both in Habing as required for this treatment
-!     REAL(dp), INTENT(IN) :: localField,surfaceField 
-!     REAL(dp) :: dustTemperature
+FUNCTION calculateDustTempHollenbach(localField,surfaceField) result(dustTemperature)
+    USE constants
+    IMPLICIT NONE
+    !UV field in Habing at this depth and at surface required for this calculation
+    !Both in Habing as required for this treatment
+    REAL(dp), INTENT(IN) :: localField,surfaceField 
+    REAL(dp) :: dustTemperature
 
-!     REAL(KIND=DP) :: NU_0,R_0,T_0,TAU_100
+    REAL(KIND=DP) :: NU_0,R_0,T_0,TAU_100
 
-!     !Parameters used in the HHT equations (see their paper for details)
-!     NU_0=2.65D15
-!     TAU_100=1.0D-3
-!     R_0=1.0D0/1.6d-21!avFactor
+    !Parameters used in the HHT equations (see their paper for details)
+    NU_0=2.65D15
+    TAU_100=1.0D-3
+    R_0=1.0D0/1.6d-21!avFactor
 
-!     !Calculate the contribution to the dust temperature from the local FUV flux and the CMB background
-!     !UCLPDR had afactor of 1.7 which I assume was Habing conversion so removed
-!     dustTemperature=8.9D-11*NU_0*localField+T_CMB**5
+    !Calculate the contribution to the dust temperature from the local FUV flux and the CMB background
+    !UCLPDR had afactor of 1.7 which I assume was Habing conversion so removed
+    dustTemperature=8.9D-11*NU_0*localField+T_CMB**5
 
 
-!     !The minimum dust temperature is related to the incident FUV flux along each ray
-!     T_0=12.2*surfaceField**0.2
+    !The minimum dust temperature is related to the incident FUV flux along each ray
+    T_0=12.2*surfaceField**0.2
 
-!     !!Attenuate the FIR radiation produced in the surface layer
-!     !!JH why is this commented?
-!     !IF(PARTICLE(P)%TOTAL_COLUMN(J).GT.R_0) THEN
-!     !     T_0=T_0*(PARTICLE(P)%TOTAL_COLUMN(J)/R_0)**(-0.4)
-!     !END IF
+    !!Attenuate the FIR radiation produced in the surface layer
+    !!JH why is this commented?
+    !IF(PARTICLE(P)%TOTAL_COLUMN(J).GT.R_0) THEN
+    !     T_0=T_0*(PARTICLE(P)%TOTAL_COLUMN(J)/R_0)**(-0.4)
+    !END IF
 
-!     !        Add the contribution to the dust temperature from the FUV flux incident along this ray
-!     IF(T_0.GT.0) dustTemperature=dustTemperature &
-!           & + (0.42-LOG(3.45D-2*TAU_100*T_0))*(3.45D-2*TAU_100*T_0)*T_0**5
+    !        Add the contribution to the dust temperature from the FUV flux incident along this ray
+    IF(T_0.GT.0) dustTemperature=dustTemperature &
+          & + (0.42-LOG(3.45D-2*TAU_100*T_0))*(3.45D-2*TAU_100*T_0)*T_0**5
 
-!     !Convert from total dust emission intensity to dust temperature
-!     dustTemperature=dustTemperature**0.2
+    !Convert from total dust emission intensity to dust temperature
+    dustTemperature=dustTemperature**0.2
 
-!     !Calculate the contribution to the dust temperature from the local X-ray flux (assuming a fixed grain abundance of 1.6E-8)
-!     !JH We have no xrays sthis
-!     !dustTemperature=dustTemperature+1.5D4*(XRAY_ENERGY_DEPOSITION_RATE/1.6D-8)**0.2
+    !Calculate the contribution to the dust temperature from the local X-ray flux (assuming a fixed grain abundance of 1.6E-8)
+    !JH We have no xrays sthis
+    !dustTemperature=dustTemperature+1.5D4*(XRAY_ENERGY_DEPOSITION_RATE/1.6D-8)**0.2
 
-!     !Impose a lower limit on the dust temperature, since values below 10 K can dramatically
-!     !limit the rate of H2 formation on grains (the molecule cannot desorb from the surface)
-!     IF(dustTemperature.LT.10) THEN
-!         dustTemperature=10.0D0
-!     END IF
+    !Impose a lower limit on the dust temperature, since values below 10 K can dramatically
+    !limit the rate of H2 formation on grains (the molecule cannot desorb from the surface)
+    IF(dustTemperature.LT.10) THEN
+        dustTemperature=10.0D0
+    END IF
 
-!     !     Check that the dust temperature is physical
-!     IF(dustTemperature.GT.1000) THEN
-!         write(*,*) localField, surfaceField!WRITE(6,*) 'ERROR! Calculated dust temperature exceeds 1000 K'
-!         dustTemperature=1000.0
-!     END IF
-!     RETURN
-! END FUNCTION calculateDustTemp
+    !     Check that the dust temperature is physical
+    IF(dustTemperature.GT.1000) THEN
+        write(*,*) localField, surfaceField!WRITE(6,*) 'ERROR! Calculated dust temperature exceeds 1000 K'
+        dustTemperature=1000.0
+    END IF
+    RETURN
+END FUNCTION calculateDustTempHollenbach
 
 ! Using the new parametric formulation for dust temperature in Hocuk et al. 2017
 ! See equation 8 in DOI: 10.1051/0004-6361/201629944
-FUNCTION calculateDustTemp(surfaceField,Av) result(dustTemperature)
+FUNCTION calculateDustTempHocuk(surfaceField,Av) result(dustTemperature)
     IMPLICIT NONE
     REAL(dp):: surfaceField, Av
     REAL(dp):: tanh_term
@@ -742,7 +826,7 @@ FUNCTION calculateDustTemp(surfaceField,Av) result(dustTemperature)
         dustTemperature=1000.0
     END IF
     RETURN
-END FUNCTION calculateDustTemp
+END FUNCTION calculateDustTempHocuk
 !=======================================================================
 
 
@@ -772,7 +856,6 @@ END FUNCTION calculateDustTemp
 
 
 
-
 ! !-----------------------------------------------------------------------
 ! !  Supersonic turbulent decay heating
 ! !
@@ -783,9 +866,15 @@ END FUNCTION calculateDustTemp
 ! !  V_TURB = turbulent velocity (km/s); Galactic center ~ 15 km/s
 ! !  L_TURB = turbulent scale length (pc); typically 5 pc
 ! !-----------------------------------------------------------------------
+FUNCTION turbulentHeating(gasDensity,V_TURB)
+    REAL(dp), INTENT(IN) :: gasDensity,V_TURB
+    REAL(dp) :: turbulentHeating
+    REAL(dp) :: L_TURB
 
-!    L_TURB=5.0D0
-!    TURBULENT_HEATING_RATE=3.5D-28*((V_TURB/1.0D5)**3)*(1.0D0/L_TURB)*GAS_DENSITY
+   L_TURB=5.0D0
+   turbulentHeating=3.5D-28*((V_TURB/1.0D5)**3)*(1.0D0/L_TURB)*gasDensity
+
+END FUNCTION turbulentHeating
 
 
 

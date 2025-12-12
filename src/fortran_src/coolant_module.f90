@@ -1,6 +1,6 @@
 MODULE COOLANT_MODULE
    USE constants
-   USE F2PY_CONSTANTS, only: NCOOL, coolantFiles, coolantNames
+   USE F2PY_CONSTANTS, only: NCOOLANTS, coolantFiles, coolantNames
    USE network
    USE defaultparameters, only: coolantDataDir
    IMPLICIT NONE
@@ -42,9 +42,9 @@ MODULE COOLANT_MODULE
 
 
    TYPE(COOLANT_TYPE), allocatable :: coolants(:)
-   ! NCOOL, coolantFiles, and coolantNames are imported from F2PY_CONSTANTS
+   ! NCOOLANTS, coolantFiles, and coolantNames are imported from F2PY_CONSTANTS
    ! They are generated at build time by MakeRates based on user configuration
-   INTEGER :: coolantIndices(NCOOL)
+   INTEGER :: coolantIndices(NCOOLANTS)
    REAL(dp) :: CLOUD_DENSITY,CLOUD_COLUMN,CLOUD_SIZE
 
 
@@ -64,8 +64,8 @@ CONTAINS
       INTEGER :: coolantID = 81
 
       IF (ALLOCATED(coolants)) DEALLOCATE(coolants)
-      ALLOCATE(coolants(NCOOL))
-      DO N=1,NCOOL ! Loop over coolants
+      ALLOCATE(coolants(NCOOLANTS))
+      DO N=1,NCOOLANTS ! Loop over coolants
          coolants(N)%FILENAME=coolantFiles(N)
    !     Open the input file
          ! WRITE(*,*) "Trying to open: ", TRIM(dataDir)//coolants(N)%FILENAME
@@ -214,7 +214,7 @@ CONTAINS
       END DO ! End of loop over coolants
       
 
-       DO N=1,NCOOL
+       DO N=1,NCOOLANTS
          ALLOCATE(coolants(N)%POPULATION(1:coolants(N)%NLEVEL))
          ALLOCATE(coolants(N)%PREVIOUS_POPULATION(1:coolants(N)%NLEVEL))
          ALLOCATE(coolants(N)%EMISSIVITY(1:coolants(N)%NLEVEL,1:coolants(N)%NLEVEL))
@@ -253,7 +253,7 @@ CONTAINS
       thermVel=2.0*K_BOLTZ*GasTemperature/MH
       
       ! Loop over coolants
-      DO N=1,NCOOL 
+      DO N=1,NCOOLANTS 
          COOLANTS(N)%LINEWIDTH = SQRT((thermVel/coolants(N)%MOLECULAR_MASS)+(turbVel*turbVel)) ! v_thermal = (2kT/m)^1/2
       END DO ! End of loop over coolants
       RETURN
@@ -265,7 +265,7 @@ CONTAINS
       REAL(dp), INTENT(IN) :: gasDensity,gasTemperature,abundances(:)
       REAL(dp) :: fraction
       INTEGER :: N
-      DO N=1,NCOOL
+      DO N=1,NCOOLANTS
          IF (coolantNames(N).eq."p-H2") then
             fraction=1.0D0/(1.0D0+ORTHO_PARA_RATIO(gasTemperature))
             ! write(*,*) gasTemperature,"p",fraction
@@ -347,7 +347,7 @@ CONTAINS
       INTEGER :: N,ILEVEL,JLEVEL
       REAL(dp) :: STEP_SIZE,FACTOR1,FACTOR2,FACTOR3
 
-      DO N=1,NCOOL ! Loop over coolants
+      DO N=1,NCOOLANTS ! Loop over coolants
          IF(coolants(N)%CONVERGED) CYCLE
          coolants(N)%OPACITY = 0.0D0
          DO ILEVEL=1,coolants(N)%NLEVEL ! Loop over levels (i)
@@ -405,7 +405,7 @@ SUBROUTINE CALCULATE_LAMBDA_OPERATOR()
    IMPLICIT NONE
    INTEGER :: N,i,j
    REAL(kind=dp) :: dTau_1=0.0,ALI_ij
-   DO N=1,NCOOL ! Loop over coolants
+   DO N=1,NCOOLANTS ! Loop over coolants
       IF(coolants(N)%CONVERGED) CYCLE
 
       DO i=1,coolants(N)%nLevel
@@ -925,9 +925,9 @@ LOGICAL FUNCTION CHECK_CONVERGENCE()
    INTEGER :: I,N
    REAL(dp) :: RELATIVE_CHANGE
    REAL(dp), PARAMETER :: POPULATION_LIMIT=1.0D-14,POPULATION_CONVERGENCE_CRITERION=1.0d-2
-   LOGICAL :: convergence(NCOOL)
+   LOGICAL :: convergence(NCOOLANTS)
 
-      DO N=1,NCOOL ! Loop over coolants
+      DO N=1,NCOOLANTS ! Loop over coolants
          coolants(N)%CONVERGED=.True.
          DO I=1,coolants(N)%NLEVEL ! Loop over levels
 
@@ -969,7 +969,7 @@ FUNCTION ORTHO_PARA_RATIO(TEMPERATURE)
    REAL(dp) :: I_ORTHO,I_PARA,ORTHO_FRACTION,PARA_FRACTION
 !  Check if coolant data is available for the ortho and para forms
    ORTHO_INDEX=0; PARA_INDEX=0
-   DO N=1,NCOOL
+   DO N=1,NCOOLANTS
       IF(COOLANTS(N)%NAME.EQ."o-H2") ORTHO_INDEX=N
       IF(COOLANTS(N)%NAME.EQ."p-H2") PARA_INDEX=N
    END DO
@@ -1044,9 +1044,9 @@ SUBROUTINE writePopulations(fileName,modelNumber)
    CHARACTER(*), INTENT(IN) :: fileName, modelNumber
    CHARACTER(LEN=11), ALLOCATABLE :: populationLabels(:)
    INTEGER :: i,n,p
-   ALLOCATE(populationLabels(1:SUM((/(coolants(N)%nLevel,N=1,NCOOL)/))))
+   ALLOCATE(populationLabels(1:SUM((/(coolants(N)%nLevel,N=1,NCOOLANTS)/))))
    p=1
-   DO n=1,nCool
+   DO n=1,NCOOLANTS
       DO I=1,coolants(n)%nLevel
          WRITE(populationLabels(p),"(I3)") I-1
          populationLabels(p)='n('//TRIM(ADJUSTL(coolants(N)%NAME))//','//&
@@ -1057,7 +1057,7 @@ SUBROUTINE writePopulations(fileName,modelNumber)
    ! TODO: REMOVE MAGIC NUMBER 53
    OPEN(53,file=fileName,status='unknown')
    WRITE(53,"(A5,999(':',A11))") "MODEL",populationLabels
-   WRITE(53,"(A2,999(':',E13.5))") modelNumber,(coolants(N)%POPULATION,N=1,NCOOL)
+   WRITE(53,"(A2,999(':',E13.5))") modelNumber,(coolants(N)%POPULATION,N=1,NCOOLANTS)
    CLOSE(53)
 END SUBROUTINE writePopulations
 
@@ -1071,9 +1071,9 @@ SUBROUTINE writeOpacities(fileName,modelNumber)
    INTEGER  :: I,J,N,P
 
 !  Create the transition label for each emission line
-   ALLOCATE(LINE_LABELS(1:COUNT((/(coolants(N)%A_COEFF,N=1,NCOOL)/).GT.0)))
+   ALLOCATE(LINE_LABELS(1:COUNT((/(coolants(N)%A_COEFF,N=1,NCOOLANTS)/).GT.0)))
    P=1
-   DO N=1,NCOOL ! Loop over coolants
+   DO N=1,NCOOLANTS ! Loop over coolants
       DO I=1,coolants(N)%NLEVEL ! Loop over levels (i)
          DO J=1,coolants(N)%NLEVEL ! Loop over levels (j)
             IF(coolants(N)%A_COEFF(I,J).EQ.0) CYCLE
@@ -1142,7 +1142,7 @@ SUBROUTINE writeOpacities(fileName,modelNumber)
    ! TODO: REMOVE MAGIC NUMBER 53
    OPEN(UNIT=53,FILE=fileName,STATUS='REPLACE')
    WRITE(53,"('Particle',999(2X,A11))") LINE_LABELS
-   DO N=1,NCOOL
+   DO N=1,NCOOLANTS
       DO I=1,coolants(N)%NLEVEL
          DO J=1,coolants(N)%NLEVEL
             IF(coolants(N)%A_COEFF(I,J).EQ.0) CYCLE

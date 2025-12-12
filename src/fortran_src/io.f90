@@ -38,11 +38,26 @@ CONTAINS
 
         if (heatingOutput) then
             ! Write cooling/heating rates headers dynamically
-            ! Format: Time, [4 cooling values], [NCOOL line cooling], [8 heating values], [1 chem heating]
+            ! Format: Time, [NCOOLING cooling values], [NCOOLANTS line cooling], [NHEATING heating values], [1 chem heating]
             WRITE(heatingId,'(A)',advance='no') "Time,"
-            WRITE(heatingId,'(A)',advance='no') "AtomicCooling,CollisionallyInducedEmission,ComptonCooling,ContinuumEmission,"
-            WRITE(heatingId,'(A)',advance='no') "LineCooling_H,LineCooling_C+,LineCooling_O,LineCooling_C,LineCooling_CO,LineCooling_p-H2,LineCooling_o-H2,"
-            WRITE(heatingId,'(A)') "Photoelectric,H2Formation,FUVPumping,Photodissociation,CIonization,CRHeating,TurbHeating,GasGrainColls,ChemicalHeating"
+            
+            ! Write cooling mechanism labels
+            DO i = 1, NCOOLING
+                WRITE(heatingId,'(A,A)',advance='no') TRIM(coolingLabels(i)), ","
+            END DO
+            
+            ! Write line cooling labels with species names
+            DO i = 1, NCOOLANTS
+                WRITE(heatingId,'(A,A,A)',advance='no') "LineCooling_", TRIM(lineCoolingLabels(i)), ","
+            END DO
+            
+            ! Write heating mechanism labels
+            DO i = 1, NHEATING
+                WRITE(heatingId,'(A,A)',advance='no') TRIM(heatingLabels(i)), ","
+            END DO
+            
+            ! Write chemical heating label (last column, no comma)
+            WRITE(heatingId,'(A)') "ChemicalHeating"
         END IF
 
     END SUBROUTINE fileSetup
@@ -110,14 +125,14 @@ CONTAINS
                 ! Only populate the heating array if it is present, properly sized, AND heating is enabled
                 IF (SIZE(heatarray, 1) .ge. timePoints .AND. heatingFlag .AND. ALLOCATED(lineCoolingArray)) THEN
                     heatarray(dtime, dstep, 1) = timeInYears
-                    heatarray(dtime, dstep, 2:5) = coolingValues(:)
-                    ! Write all NCOOL line cooling terms (currently 7: H, C+, O, C, CO, p-H2, o-H2)
-                    heatarray(dtime, dstep, 6:(5+NCOOL)) = lineCoolingArray(median_line_index, :)
+                    heatarray(dtime, dstep, 2:(1+NCOOLING)) = coolingValues(:)
+                    ! Write all NCOOLANTS line cooling terms (currently 7: H, C+, O, C, CO, p-H2, o-H2)
+                    heatarray(dtime, dstep, (2+NCOOLING):(1+NCOOLING+NCOOLANTS)) = lineCoolingArray(median_line_index, :)
 
-                    ! Heating terms (8 values)
-                    heatarray(dtime, dstep, (6+NCOOL):(13+NCOOL)) = heatingValues(:)
+                    ! Heating terms (NHEATING values)
+                    heatarray(dtime, dstep, (2+NCOOLING+NCOOLANTS):(1+NCOOLING+NCOOLANTS+NHEATING)) = heatingValues(:)
                     ! Chemical heating (1 value)
-                    heatarray(dtime, dstep, 14+NCOOL) = chemheating
+                    heatarray(dtime, dstep, 2+NCOOLING+NCOOLANTS+NHEATING) = chemheating
                 END IF
             ELSE 
                 ! Else, we write the rate constants and rates to the file.
@@ -130,7 +145,7 @@ CONTAINS
                     8022 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
                 END IF
                 IF (heatingOutput) THEN
-                    ! Write: time, cooling values (4), line cooling array (NCOOL), heating values (8), chem heating
+                    ! Write: time, cooling values (4), line cooling array (NCOOLANTS), heating values (8), chem heating
                     WRITE(heatingId,8023) timeInYears, coolingValues(:), &
                         lineCoolingArray(median_line_index, :), &
                         heatingValues(:), chemheating

@@ -586,7 +586,7 @@ CONTAINS
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep (optional)
         ! abundanceStart - array containing starting chemical conditions (optional)
         ! USE constants, only : nspec
-        !f2py integer, intent(aux) :: nspec, nHeatingTerms, NCOOL
+        !f2py integer, intent(aux) :: nspec, nHeatingTerms, NCOOLANTS
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         EXTERNAL modelInitializePhysics,updateTargetTime,modelUpdatePhysics,sublimation
         INTEGER, INTENT(OUT) :: successFlag

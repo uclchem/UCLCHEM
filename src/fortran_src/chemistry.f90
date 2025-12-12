@@ -213,9 +213,11 @@ CONTAINS
             if (heatingFlag) then
                 !Calculate the dust temperature based on the radiation field and UV attenuation
                 ! dustTemp(dstep)=calculateDustTemp(radfield*EXP(-UV_FAC*av(dstep)),radfield)
-                dustTemp(dstep)=calculateDustTemp(radfield,av(dstep))
+                ! TODO: check that the local and global radiation fields are correct.
+                dustTemp(dstep)=calculateDustTemp(radfield*EXP(-UV_FAC*av(dstep)),radfield,av(dstep))
 
-                tempDot= getTempDot( &
+
+                tempDot= getTempDot(&
                                 &    timeinyears, &                       ! time 
                                 &    abund(nspec+1,dstep), &              ! gas temperature
                                 &    abund(nspec+2,dstep), &              ! gas density
