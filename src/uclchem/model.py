@@ -17,7 +17,7 @@ from pathlib import Path
 from datetime import datetime
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, List, AnyStr, Type, Literal, Iterator
+from typing import Dict, Any, List, AnyStr, Type, Literal, Iterator
 
 # UCLCHEM related imports
 from uclchemwrap import uclchemwrap as wrap
@@ -33,12 +33,8 @@ from uclchem.constants import (
 # /UCLCHEM related imports
 
 # Multiprocessing imports
-import threading
 import multiprocessing as mp
 from multiprocessing import shared_memory
-from typing import Optional, Dict, Any, Tuple
-import h5netcdf
-from concurrent.futures import ProcessPoolExecutor, as_completed
 # /Multiprocessing imports
 
 # Global variables determining formats of write files
@@ -171,8 +167,6 @@ class AbstractModel(ABC):
                  ):
         self._data = xr.Dataset()
         self._pickle_dict = {}
-        """Initiates the model with all common factors found within models"""
-#["_param_dict", "_data", "_debug", "_prev_handler", "_shm_desc", "_shm_handles", "_orig_sigint", "_proc_handle"]
         # Shared memory
         self.run_type = run_type
         self._shm_desc = {}
@@ -232,7 +226,7 @@ class AbstractModel(ABC):
         return
 
     def __del__(self):
-        if hasattr(self, "_shm_handles"):
+        if hasattr(self, "_shm_desc"):
             self._coordinator_unlink_memory()
 
     # Separate class building method(s)
@@ -249,6 +243,7 @@ class AbstractModel(ABC):
             obj._data[k] = v
         obj._data.__delitem__("attributes_dict")
         obj.debug = debug
+        obj._coord_assign()
         return obj
 
     @classmethod
@@ -428,8 +423,7 @@ class AbstractModel(ABC):
         """__run__ resets the Fortran arrays if the model was not read, allowing the arrays to be reused for new runs."""
         if self.was_read:
             raise RuntimeError("This model was read. It can not be run. ")
-        #        self._prev_handler = signal.getsignal(signal.SIGINT)
-        #        signal.signal(signal.SIGINT, self.__on_sigint__)
+
         if self._debug:
             print(f"About to run {self.__class__.__name__} model with the following options:")
             print(f'dictionary = {self._param_dict},')
@@ -451,6 +445,7 @@ class AbstractModel(ABC):
                 # Restore default and re-raise KeyboardInterrupt to stop execution
                 signal.signal(signal.SIGINT, self._orig_sigint)
                 raise KeyboardInterrupt
+
         if self.run_type in self.shared_memory_types:
             signal.signal(signal.SIGINT, _handler)
 
@@ -477,7 +472,7 @@ class AbstractModel(ABC):
         if self.run_type in self.shared_memory_types:
             signal.signal(signal.SIGINT, self._orig_sigint)
 
-        if bool(self._shm_desc):
+        if hasattr(self, "_shm_handles"):
             self._coordinator_unlink_memory()
 
         for k, v in output.items():
@@ -497,7 +492,7 @@ class AbstractModel(ABC):
     # /Methods to start run of model
 
     # Model saving
-    def save_model(self, file: str, name: str = 'default', engine: str = "h5netcdf", single_precision: bool = False, overwrite: bool = False):
+    def save_model(self, file: str, name: str = 'default', engine: str = "h5netcdf", overwrite: bool = False):
         """
         save_model saves a model to a file on disk. Multiple models can be saved into the same file if different names are used to store them.
 
@@ -540,16 +535,16 @@ class AbstractModel(ABC):
     # Model Passing through Pickling
     def pickle(self):
         if self._data is not None and not bool(self._pickle_dict):
-            for k, v in self._data.items():
-                if np.shape(v.values) != ():
-                    if type(v.values) == tuple:
-                        self._pickle_dict[k] = v.values[1]
+            for v in self._data.variables:
+                if np.shape(self._data[v].values) != ():
+                    if type(self._data[v].values) == tuple:
+                        self._pickle_dict[v] = self._data[v].values[1].tolist()
                     else:
-                        self._pickle_dict[k] = v.values
+                        self._pickle_dict[v] = self._data[v].values.tolist()
                 else:
-                    self._pickle_dict[k] = v.item()
+                    self._pickle_dict[v] = self._data[v].item()
             self._data = None
-        return
+        return self
 
     def un_pickle(self):
         if self._data is None and bool(self._pickle_dict):
@@ -559,10 +554,13 @@ class AbstractModel(ABC):
                     self._data[k] = (["time_step", "point", k.replace('array', 'values')], v)
                 elif np.ndim(v) == 2 and "_array" in k:
                     self._data[k] = (["point", k], v)
+                elif "_values" in k:
+                    pass
                 else:
                     self._data[k] = v
             self._pickle_dict = {}
-        return
+        self._coord_assign()
+        return self
     # /Model Passing through Pickling
 
     # Legacy in & output support
@@ -640,7 +638,13 @@ class AbstractModel(ABC):
         last_timestep_index = self.physics_array[:, 0, 0].nonzero()[0][-1]
         # Get the arrays for only the simulated timesteps (not the zero padded ones)
         self._data = self._data.isel(time_step=slice(0, last_timestep_index+1))
+        self._coord_assign()
         self.next_starting_chemistry_array = self.chemical_abun_array[last_timestep_index, :, :]
+        return
+
+    def _coord_assign(self):
+        self._data = self._data.assign_coords({"physics_values": self.PHYSICAL_PARAMETERS})
+        self._data = self._data.assign_coords({"chemical_abun_values": self.specname})
         return
 
     def _reform_inputs(self,
@@ -807,19 +811,21 @@ class AbstractModel(ABC):
         return
 
     def _coordinator_unlink_memory(self):
-        for k, v in self._shm_desc.items():
-            try:
-                self.__setattr__(k, self.__getattr__(k).copy())
-                self._shm_handles[k].close()
-                self._shm_handles[k].unlink()
-            except:
-                pass
-            finally:
-                del self._shm_handles[k]
-        del self._shm_desc
-        self._shm_desc = {}
-        del self._shm_handles
-        self._shm_handles = {}
+        if bool(self._shm_desc):
+            for k, v in self._shm_desc.items():
+                try:
+                    self.__setattr__(k, self.__getattr__(k).copy())
+                    self._shm_handles[k].close()
+                    self._shm_handles[k].unlink()
+                except:
+                    print(f'Warning, unable to close and unlike {k}')
+                    pass
+                finally:
+                    del self._shm_handles[k]
+            del self._shm_desc
+            self._shm_desc = {}
+            del self._shm_handles
+            self._shm_handles = {}
         return
     # /Shared memory handlers
 
@@ -1573,58 +1579,122 @@ class Model(AbstractModel):
 
 @register_model
 class SequentialModel:
+    """The SequentialModel class allows for multiple models to be run back to back.
+
+    By defining a specific dictionary to hold the information of each model class to run in sequence, SewuentialModel allows
+    for the automatic running of multiple models as well as matching some physical parameters from one model to the next.
+
+    Args:
+        sequenced_model_parameters (Dict): The dictionary to pass to SequentialModel takes the format of
+            {"<First Model Class>":{"param_dict":{<parameters>}, <other arguments>}, "<Second Model Class>:{"param_dict":{<parameters>}, <other arguments>}, ...}
+        parameters_to_match (List, optional): The list provided to this argument decides which parameters should be matched from a previous model
+            to the next model in the sequence. Currently, supports ["finalDens", "finalTemp"].
+    """
     def __init__(
             self,
-            model_type_sequence: List[AnyStr],
-            joined_parameter_sequence: List[Dict],
-            parameters_to_match: List = None
+            sequenced_model_parameters: Dict,
+            parameters_to_match: List = None,
+            run_type: Literal["managed", "external"] = "managed"
     ):
-        self.models = {}
-        for model in model_type_sequence:
+        for model in list(sequenced_model_parameters.keys()):
             assert(model != SequentialModel)
+        self.models = []
+        self.sequenced_model_parameters = sequenced_model_parameters
+        self.parameters_to_match = parameters_to_match
+        self.run_type = run_type
+        self.model_count = 0
+        self._pickle_dict = {}
+        if self.run_type == "managed":
+            self.run()
 
-        for model_number in range(len(model_type_sequence)):
-            cls = REGISTRY.get(model_type_sequence[model_number])
-            if model_number > 0 and parameters_to_match is not None:
-                joined_parameter_sequence[model_number]["_param_dict"] = \
-                    {**joined_parameter_sequence[model_number - 1]["_param_dict"],
-                     **joined_parameter_sequence[model_number]["_param_dict"]}
-                print("Parameter matching to be implemented")
-                for parameter in parameters_to_match:
-                    if parameter == "finalDens":
-                        joined_parameter_sequence[model_number]["_param_dict"]["initialDens"] = (
-                            self.models[f"{model_number-1}"].physics_array[-1,0,1]
-                        )
-                        continue
-                    elif parameter == "finalTemp":
-                        joined_parameter_sequence[model_number]["_param_dict"]["initialTemp"] = (
-                            self.models[f"{model_number-1}"].physics_array[-1, 0, 2]
-                        )
-                    else:
-                        print(f"Parameter '{parameter}' has not been implemented for parameter matching")
-                self.models[f"{model_number}"] = cls(**joined_parameter_sequence[model_number],
-                                    previous_model=self.models[f"{model_number-1}"])
-            if model_number > 0:
-                joined_parameter_sequence[model_number]["_param_dict"] = \
-                    {**joined_parameter_sequence[model_number-1]["_param_dict"],
-                     **joined_parameter_sequence[model_number]["_param_dict"]}
-                self.models[f"{model_number}"] = cls(**joined_parameter_sequence[model_number],
-                                     previous_model=self.models[f"{model_number-1}"])
+    def run(self):
+        previous_model = None
+        for model_type, model_dict in self.sequenced_model_parameters.items():
+            model_dict["param_dict"] = {k.lower(): v for k, v in model_dict["param_dict"].items()}
+            if self.model_count > 0:
+                model_dict["param_dict"] = {
+                    **{k.lower(): v for k, v in previous_model._param_dict.items()},
+                    **model_dict["param_dict"]
+                }
+                if self.parameters_to_match is not None:
+                    for parameter in self.parameters_to_match:
+                        if parameter == "finalDens":
+                            model_dict["param_dict"]["initialdens"] = (
+                                previous_model.physics_array[-1, 0, 1]
+                            )
+                            continue
+                        elif parameter == "finalTemp":
+                            model_dict["param_dict"]["initialtemp"] = (
+                                previous_model.physics_arrayy[-1, 0, 2]
+                            )
+                        else:
+                            print(f"Parameter '{parameter}' has not been implemented for parameter matching")
+                tmp_model = REGISTRY[model_type](**model_dict, run_type=self.run_type, previous_model=previous_model)
+                if self.run_type == "external":
+                    tmp_model.run()
+                self.models += [{"Model_Type": model_type, "Model_Order": self.model_count, "Model": tmp_model}]
             else:
-                self.models[f"{model_number}"] = cls(**joined_parameter_sequence[model_number])
+                tmp_model = REGISTRY[model_type](**model_dict, run_type=self.run_type, previous_model=previous_model)
+                if self.run_type == "external":
+                    tmp_model.run()
+                self.models += [{"Model_Type": model_type, "Model_Order": self.model_count, "Model": tmp_model}]
+                self.models[self.model_count]["Successful"] = True if self.models[self.model_count]["Model"].success_flag == 0 else False
+                previous_model = self.models[self.model_count]["Model"]
+            self.model_count+=1
         return
 
-    def save_models(self, file_name, sequence_name: str = 'default', overwrite: bool = False):
-        for k, v in self.models.items():
-            v.save_model(file_name, f"{sequence_name}_{k}", overwrite)
+    def save_model(self, file: str, name: str = 'default', engine: str = "h5netcdf", overwrite: bool = False):
+        for model in self.models:
+            model["Model"].save_model(file = file, name=f'{name}_{model["Model_Type"]}_{model["Model_Order"]}', engine=engine, overwrite=overwrite)
         return
 
+    def check_conservation(self,
+                           element_list: list = ["H", "N", "C", "O"],
+                           percent: bool = True
+                           ):
+        """Utility method to check conservation of the chemical abundances
 
-def run_grid_model(model_id, model_type, param_dict, pending_model):
-    """Run a single model (called by compute workers)"""
+        Args:
+            element_list (list, optional): List of elements to check conservation for. Defaults to self.out_species_lists.
+            percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
+        """
+        for model in self.models:
+            conserve_dicts = []
+            if model["Model"]._param_dict["points"] > 1:
+                for i in range(model["Model"]._param_dict["points"]):
+                    conserve_dicts += [check_element_conservation(model["Model"].get_dataframes(i), element_list, percent)]
+            else:
+                conserve_dicts += [check_element_conservation(model["Model"].get_dataframes(0), element_list, percent)]
+            conserved = True
+            for i in conserve_dicts:
+                conserved = True if all([float(x[:1]) < 1 for x in i.values()]) else False
+            model["elements_conserved"] = conserved
+
+    def pickle(self):
+        if not bool(self._pickle_dict):
+            for model in self.models:
+                model["Model"] = model["Model"].pickle()
+                self._pickle_dict[f'{model["Model_Type"]}_{model["Model_Order"]}'] = model["Model"]._pickle_dict.copy()
+        return
+
+    def un_pickle(self):
+        if bool(self._pickle_dict):
+            for model in self.models:
+                model["Model"]._pickle_dict = self._pickle_dict[f'{model["Model_Type"]}_{model["Model_Order"]}']
+                model["Model"] = model["Model"].un_pickle()
+        return
+
+    def _coordinator_unlink_memory(self):
+        for model in self.models:
+            model["Model"]._coordinator_unlink_memory()
+
+
+def _run_grid_model(model_id, model_type, pending_model):
+    """
+    Internal function to run a single model. This is used by the GridModels class
+    """
     cls = REGISTRY.get(model_type)
     model_obj = cls(
-        param_dict=param_dict,
         **pending_model,
         run_type="external"
     )
@@ -1635,43 +1705,91 @@ def run_grid_model(model_id, model_type, param_dict, pending_model):
 
 
 class GridModels:
+    """GridModels, like SequentialModel is not an actual uclchem model, instead it allows running multiple models on a grid of parameter space.
+
+    Args
+        model_type (str of model class to run):
+        full_parameters (Dict): The dictionary passed to GridModels should nest into it, the param_dict argument that would
+            be passed to any other model, with the addition of extra keys for the none param_dict variables of a model.
+            Any variables that are turned into lists or arrays, will automatically be assumed to be used for the gridding.
+        max_workers (int, optional): Maximum number of workers to use in parallel for the grid run. Defaults to 8.
+        grid_file (str, optional): Name and path of the output file to which the models should be saved.
+            Defaults to "./default_grid_out.h5".
+        model_name_prefix (str, optional): Name prefix convention to use. The fifth model in the grid would have the name
+            "<model_name_prefix>5>" assigned to it. Defaults to "" which would make the fifth model have the name "5".
+        delay_run (bool, optional): Defaults to False.
+    """
     def __init__(self,
                  model_type: AnyStr,
                  full_parameters: Dict,
                  max_workers: int = 8,
-                 grid_file: str = "./default_grid_out.h5"
+                 grid_file: str = "./default_grid_out.h5",
+                 model_name_prefix: str = "",
+                 delay_run: bool=False
                  ):
+        assert(model_type in REGISTRY)
         self.model_type = model_type
         self.full_parameters = full_parameters
-        self.max_workers = max_workers-1 if max_workers < int(os.cpu_count()/2) else int(os.cpu_count()/2)-1
+        self.max_workers = max_workers-1 if (max_workers < int(os.cpu_count()) and int(os.cpu_count()) > 32) else int(os.cpu_count())-1 if int(os.cpu_count()) > 32 else int(os.cpu_count()/2)-1
         self.grid_file = grid_file if ".h5" in grid_file else grid_file+".h5"
-
+        #TODO: Implement model appending to grid file
+        #TODO: Implement option to append or overwrite grid file.
+        # Initial placeholder statement to remove pre-existing grid files
+        if os.path.isfile(self.grid_file):
+            os.remove(self.grid_file)
+        #
+        self.model_name_prefix = model_name_prefix
         self._orig_sigint = signal.getsignal(signal.SIGINT)
-
         self.parameters_to_grid = {}
-        for k, v in self.full_parameters.items():
-            if type(v) == list:
-                self.parameters_to_grid[k] = v
-                self.parameters_to_grid[k] = np.array(v, dtype=object)
-        grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
-        self.flat_grids = np.reshape(grids,
-                                        (
-                                            len(self.parameters_to_grid),
-                                            int(np.prod(np.shape(grids)) / len(self.parameters_to_grid))
-                                        )
-                                     )
-        self.models = {}
-        self.run()
+
+        if self.model_type == "SequentialModel":
+            for model_type, model_full_params in self.full_parameters.items():
+                if type(model_full_params) == dict:
+                    for k, v in model_full_params.items():
+                        if k == "param_dict":
+                            for k_p, v_p in v.items():
+                                self._grid_def(k_p, v_p, model_type)
+                        else:
+                            self._grid_def(k, v, model_type)
+            grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
+        else:
+            for k, v in self.full_parameters.items():
+                if k == "param_dict":
+                    for k_p, v_p in v.items():
+                        self._grid_def(k_p, v_p)
+                else:
+                    self._grid_def(k, v)
+            grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
+
+        self.flat_grids = np.reshape(
+            grids,
+            (len(self.parameters_to_grid), int(np.prod(np.shape(grids)) / len(self.parameters_to_grid)))
+        )
+
+        self.model_id_dict = {}
+        self.models = []
+        self.physics_values = None
+        self.chemical_abun_values = None
+        if not delay_run:
+            self.run()
         return
+
+    def _grid_def(self, key, value, model_type=None):
+        if model_type is None:
+            model_type = ""
+        if type(value) == list:
+            self.parameters_to_grid[model_type + key] = value
+            self.parameters_to_grid[model_type + key] = np.array(value, dtype=object)
+        elif type(value) == np.array or type(value) == np.ndarray:
+            self.parameters_to_grid[model_type + key] = value.astype(dtype=object)
 
     def run(self):
         signal.signal(signal.SIGINT, self._handler)
-        pending = self.grid_iter(self.full_parameters, list(self.parameters_to_grid.keys()), self.flat_grids)
+        pending = self.grid_iter(self.full_parameters, list(self.parameters_to_grid.keys()), self.flat_grids, self.model_type)
         with mp.Pool(self.max_workers) as pool:
             active = 0
             submitted = 0
             completed = 0
-            total_models = len(self.flat_grids[0])
 
             def submit_next() -> bool:
                 nonlocal active, submitted
@@ -1683,15 +1801,10 @@ class GridModels:
                 active += 1
                 submitted += 1
                 model_id = pending_model.pop("id")
-
-                param_dict = {}
-                for key in list(pending_model.keys()):
-                    if key.lower() in default_param_dictionary:
-                        param_dict[key] = pending_model.pop(key)
                 try:
                     pool.apply_async(
-                        run_grid_model,
-                        args=(model_id, self.model_type, param_dict, pending_model),
+                        _run_grid_model,
+                        args=(model_id, self.model_type, pending_model),
                         callback=lambda result: on_result(result),
                         error_callback=lambda exc, _model_id=model_id: on_error(exc, model_id)
                     )
@@ -1704,10 +1817,8 @@ class GridModels:
                 active -= 1
                 completed += 1
                 model_id, model_object = result
-
                 try:
-                    save_name = f'grid_model_{model_id}'
-                    print(f"saving model: '{save_name}'")
+                    save_name = f'{self.model_name_prefix}{model_id}'
                     model_object.un_pickle()
                     model_object.save_model(
                         file=self.grid_file,
@@ -1715,8 +1826,7 @@ class GridModels:
                         engine="h5netcdf",
                         overwrite=True
                     )
-                    # Update reference to just the name
-                    self.models[model_id] = save_name
+                    self.model_id_dict[model_id] = save_name
                 except Exception as e:
                     print(f"Error saving model {model_id}: {e}")
                     import traceback
@@ -1729,8 +1839,8 @@ class GridModels:
                 nonlocal active
                 active -= 1
                 # Optionally record/log the exception here.
-                self.models[_model_id]._coordinator_unlink_memory()
-                print(f"on_error: {_exc}; model_id: {_model_id}")
+                self.model_id_dict[_model_id]._coordinator_unlink_memory()
+                print(f"error: {_exc}; for model: {_model_id}")
                 if not submit_next() and active == 0:
                     print("No more models to submit")
 
@@ -1741,28 +1851,81 @@ class GridModels:
 
             pool.close()
             pool.join()
-
         signal.signal(signal.SIGINT, self._orig_sigint)
-        print(f"GridModels complete. Output: {self.grid_file}")
+        self.models = [{"Model":v} for _, v in sorted(self.model_id_dict.items(), key=lambda item: item[1])]
+        self._load_params()
 
-        #with ProcessPoolExecutor(max_workers=self.max_workers) as p:
-        #    iteration = self.grid_iter(self.full_parameters, list(self.parameters_to_grid.keys()), self.flat_grids)
-        #    futures = {p.submit(self.run_grid_model, x): x for x in itertools.islice(iteration, self.max_workers)}
-        #    results = []
-        #    for fut in as_completed(futures):
-        #        results.append(fut.result())
-        #        try:
-        #            x = next(iteration)  # get next item
-        #            futures[p.submit(self.run_grid_model, x)] = x
-        #        except StopIteration:
-        #            pass
-        #with ProcessPoolExecutor(max_workers=self.max_workers) as p:
-        #    models_list = p.map(self.run_grid_model, list(self.grid_iter(self.full_parameters, list(self.parameters_to_grid.keys()), self.flat_grids)))
-        #for model in models_list:
-        #    key = next(iter(model))
-        #    self.models[key] = model[key]
+    def load_phys(self, engine: str = "h5netcdf"):
+        if self.model_type == "SequentialModel":
+            warnings.warn("Sequantial Model physics loading not implemented")
+            return
+        for model in range(len(self.models)):
+            loaded_data = self._load_model_data(model=self.models[model]["Model"])
+            if self.physics_values is None:
+                self.physics_values = json.loads(loaded_data["attributes_dict"].item())["physics_values"]
+            loaded_data = loaded_data.assign_coords({"physics_values": self.physics_values})
+            self.models[model]["physics_array"] = loaded_data["physics_array"]
+        return
 
-    def on_interrupt(self):
+    def load_chem(self, out_specie_list: list = ["H", "N", "C", "O"], engine: str = "h5netcdf"):
+        if self.model_type == "SequentialModel":
+            warnings.warn("Sequantial Model chemistry loading not implemented")
+            return
+        for model in range(len(self.models)):
+            loaded_data = self._load_model_data(model=self.models[model]["Model"])
+            if self.chemical_abun_values is None:
+                self.chemical_abun_values = json.loads(loaded_data["attributes_dict"].item())["chemical_abun_values"]
+            loaded_data = loaded_data.assign_coords({"chemical_abun_values": self.chemical_abun_values})
+            self.models[model]["out_species_abundances_array"] = loaded_data["chemical_abun_array"].sel(chemical_abun_values=out_specie_list)
+        return
+
+    def _load_params(self, engine: str = "h5netcdf"):
+        if self.model_type == "SequentialModel":
+            for model in range(len(self.models)):
+                model_number = 0
+                for mt_k, mt_v in self.full_parameters.items():
+                    if type(mt_v) == dict:
+                        tmp_model = self._load_model_data(model=f'{self.models[model]["Model"]}_{mt_k}_{model_number}')
+
+                        self.models[model][f'{mt_k}_{model_number}'] = {
+                            **{k.replace(mt_k, ''): tmp_model._param_dict[k.replace(mt_k, "").lower()] for k in list(self.parameters_to_grid.keys()) if mt_k in k and k.replace(mt_k, "").lower() in tmp_model._param_dict},
+                            **{k.replace(mt_k, ''): tmp_model.__getattr__(k.replace(mt_k, "")) for k in list(self.parameters_to_grid.keys()) if mt_k in k and k.replace(mt_k, "").lower() in tmp_model._data.keys()}
+                        }
+                        self.models[model][f'{mt_k}_{model_number}']["Successful"] = True if tmp_model.success_flag == 0 else tmp_model.success_flag
+                        model_number+=1
+        else:
+            for model in range(len(self.models)):
+                loaded_data = self._load_model_data(model=self.models[model]["Model"])
+                loaded_dict = json.loads(loaded_data["_param_dict"].item())
+                self.models[model] = {**self.models[model], **{k: loaded_dict[k.lower()] for k in list(self.parameters_to_grid.keys())}}
+                self.models[model]["Successful"] = True if json.loads(loaded_data["attributes_dict"].item())["success_flag"] == 0 else json.loads(loaded_data["attributes_dict"].item())["success_flag"]
+
+    def _load_model_data(self, model: str, engine: str = "h5netcdf"):
+        tmp_model = load_model(file=self.grid_file, name=model, engine=engine)
+        return tmp_model
+
+    def check_conservation(self,
+                           element_list: list = ["H", "N", "C", "O"],
+                           percent: bool = True
+                           ):
+        """Utility method to check conservation of the chemical abundances
+
+        Args:
+            element_list (list, optional): List of elements to check conservation for. Defaults to self.out_species_lists.
+            percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
+        """
+        for model in range(len(self.models)):
+            tmp_model = load_model(file=self.grid_file, name=self.models[model]["Model"])
+            conserve_dicts= []
+            if tmp_model._param_dict["points"] > 1:
+                for i in range(tmp_model._param_dict["points"]):
+                    conserve_dicts+= [check_element_conservation(tmp_model.get_dataframes(i), element_list, percent)]
+            else:
+                conserve_dicts+= [check_element_conservation(tmp_model.get_dataframes(0), element_list, percent)]
+            conserved = True
+            for i in conserve_dicts:
+                conserved = True if all([float(x[:1]) < 1 for x in i.values()]) else False
+            self.models[model]["elements_conserved"] = conserved
         return
 
     def _handler(self, signum, frame):
@@ -1773,14 +1936,34 @@ class GridModels:
             signal.signal(signal.SIGINT, self._orig_sigint)
             raise KeyboardInterrupt
 
+    def on_interrupt(self):
+        return
+
     @staticmethod
-    def grid_iter(full_parameters: dict, param_keys: list, flattened_grids: np.ndarray) -> Iterator[Dict[str, Any]]:
-        for i in range(len(flattened_grids[0])):
-            combo = ()
-            for j in range(np.shape(flattened_grids)[0]):
-                combo += (flattened_grids[j][i],)
-            grid_dict = {k: v for k, v in zip(param_keys, combo)}
-            yield {**full_parameters, **grid_dict, "id": i}
+    def grid_iter(full_parameters: dict, param_keys: list, flattened_grids: np.ndarray, model_type: str) -> Iterator[Dict[str, Any]]:
+        if model_type == "SequentialModel":
+            for i in range(len(flattened_grids[0])):
+                combo = ()
+                for j in range(np.shape(flattened_grids)[0]):
+                    combo += (flattened_grids[j][i],)
+                yield_dict = {"id": i}
+                run_dict = {}
+                for model_type, model_full_parameters in full_parameters.items():
+                    if type(model_full_parameters) == dict:
+                        grid_param_dict = {k.replace(model_type, ""): v for k, v in zip(param_keys, combo) if k.replace(model_type, "") in model_full_parameters["param_dict"]}
+                        grid_dict = {k.replace(model_type, ""): v for k, v in zip(param_keys, combo) if k.replace(model_type, "") not in model_full_parameters["param_dict"] and (not any(mt in k for mt in list(full_parameters.keys())) or model_type in k)}
+                        run_dict[model_type] = {**model_full_parameters, "param_dict": {**model_full_parameters["param_dict"], **grid_param_dict}, **grid_dict}
+                    else:
+                        yield_dict[model_type] = model_full_parameters
+                yield {**yield_dict, **{"sequenced_model_parameters": {**run_dict}}}
+        else:
+            for i in range(len(flattened_grids[0])):
+                combo = ()
+                for j in range(np.shape(flattened_grids)[0]):
+                    combo += (flattened_grids[j][i],)
+                grid_param_dict = {k: v for k, v in zip(param_keys, combo) if k in full_parameters["param_dict"]}
+                grid_dict = {k: v for k, v in zip(param_keys, combo) if k not in full_parameters["param_dict"]}
+                yield {**full_parameters, "param_dict": {**full_parameters["param_dict"], **grid_param_dict}, **grid_dict, "id": i}
 
 
 '''

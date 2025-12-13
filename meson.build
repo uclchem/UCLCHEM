@@ -143,7 +143,6 @@ py.install_sources([
   usource / 'constants.py',
   usource / 'debug.py',
   usource / 'model.py',
-  usource / 'trialmodel.py',
   usource / 'plot.py',
   usource / 'reactions.csv',
   usource / 'species.csv',
