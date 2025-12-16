@@ -178,6 +178,9 @@ class AbstractModel(ABC):
     def __run__(self):
         """__run__ resets the Fortran arrays if the model was not read, allowing the arrays to be reused for new runs."""
         if not self.was_read:
+            # Validate mode consistency before running
+            __validate_mode_consistency__(self)
+
             self.physics_array = None
             self.chemical_abun_array = None
             self.ratesArray = None
@@ -422,10 +425,15 @@ class AbstractModel(ABC):
                 (len(self.PHYSICAL_PARAMETERS) + 1) :,
             ][0]
         self._array_clean()
-        last_timestep_index = self.physics_array[:, 0, 0].nonzero()[0][-1]
-        self.next_starting_chemistry = self.chemical_abun_array[
-            last_timestep_index, :, :
-        ]
+        nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
+        if len(nonzero_indices) > 0:
+            last_timestep_index = nonzero_indices[-1]
+            self.next_starting_chemistry = self.chemical_abun_array[
+                last_timestep_index, :, :
+            ]
+        else:
+            # Model failed immediately, no valid timesteps
+            self.next_starting_chemistry = None
         return
 
     def read_starting_chemistry_output_file(self):
@@ -438,10 +446,10 @@ class AbstractModel(ABC):
         chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
         full_array = np.append(phys, chem, axis=1)
         # TODO Move away from the magic numbers seen here.
-        string_fmt_string = f'{", ".join(["%10s"] * (len(self.PHYSICAL_PARAMETERS)))}, {", ".join(["%11s"] * len(self.specname.tolist()))}'
+        string_fmt_string = f"{', '.join(['%10s'] * (len(self.PHYSICAL_PARAMETERS)))}, {', '.join(['%11s'] * len(self.specname.tolist()))}"
         # Magic numbers here to match/improve the formatting of the classic version
         # TODO Move away from the magic numbers seen here.
-        number_fmt_string = f'%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i, {", ".join(["%9.5E"] * len(self.specname.tolist()))}'
+        number_fmt_string = f"%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i, {', '.join(['%9.5E'] * len(self.specname.tolist()))}"
         columns = np.array(
             [self.PHYSICAL_PARAMETERS[:-1] + ["point"] + self.specname.tolist()]
         )
@@ -452,9 +460,16 @@ class AbstractModel(ABC):
 
     def write_starting_chemistry_output_file(self):
         """Perform classic starting abundance file writing to the file self.abundSaveFile provided in param_dict"""
-        last_timestep_index = self.chemical_abun_array[:, 0, 0].nonzero()[0][-1]
+        nonzero_indices = self.chemical_abun_array[:, 0, 0].nonzero()[0]
+        if len(nonzero_indices) == 0:
+            # Model failed immediately, cannot write starting chemistry
+            print(
+                "Warning: Model failed with no valid timesteps, cannot write abundSaveFile"
+            )
+            return
+        last_timestep_index = nonzero_indices[-1]
         # TODO Move away from the magic numbers seen here.
-        number_fmt_string = f' {", ".join(["%9.5E"] * len(self.specname.tolist()))}'
+        number_fmt_string = f" {', '.join(['%9.5E'] * len(self.specname.tolist()))}"
         with open(self.abundSaveFile, "wb") as f:
             np.savetxt(
                 f,
@@ -468,7 +483,19 @@ class AbstractModel(ABC):
         Clean the arrays changed by UCLCHEM Fortran code.
         """
         # Find the first element with all the zeros
-        last_timestep_index = self.physics_array[:, 0, 0].nonzero()[0][-1]
+        nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
+        if len(nonzero_indices) == 0:
+            # Model failed immediately, all arrays are zeros
+            # Keep only the first row to indicate failure
+            self.physics_array = self.physics_array[:1, :, :]
+            self.chemical_abun_array = self.chemical_abun_array[:1, :, :]
+            if self.ratesArray is not None:
+                self.ratesArray = self.ratesArray[:1, :, :]
+            if self.heatArray is not None:
+                self.heatArray = self.heatArray[:1, :, :]
+            return
+
+        last_timestep_index = nonzero_indices[-1]
         # Get the arrays for only the simulated timesteps (not the zero padded ones)
         self.physics_array = self.physics_array[: last_timestep_index + 1, :, :]
         self.chemical_abun_array = self.chemical_abun_array[
@@ -721,21 +748,21 @@ class Collapse(AbstractModel):
         """
         super().__run__()
         _, _, _, _, self.out_species_abundances, _, self.success_flag = wrap.collapse(
-            collapseIn=self.collapse,
-            collapseFileIn=self.physics_output,
-            writeOut=self.write_physics,
+            collapsein=self.collapse,
+            collapsefilein=self.physics_output,
+            writeout=self.write_physics,
             dictionary=self.param_dict,
             outspeciesin=self.out_species,
             returnarray=True,
             returnrates=True,
-            givesstartabund=self.give_start_abund,
+            givestartabund=self.give_start_abund,
             timepoints=self.timepoints,
             gridpoints=self.param_dict["points"],
             physicsarray=self.physics_array,
             ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
             heatarray=self.heatArray,
-            abundanceStart=self.starting_chemistry,
+            abundancestart=self.starting_chemistry,
         )
         self.check_error(only_error=True)
         if self.success_flag < 0:
@@ -910,6 +937,7 @@ class CShock(AbstractModel):
         """
         super().__run__()
         (
+            _,
             _,
             _,
             _,
@@ -1315,6 +1343,112 @@ above to facilitate ease of maintenance.
 """
 
 
+def __validate_functional_api_params__(
+    param_dict: dict,
+    return_array: bool,
+    return_dataframe: bool,
+    return_rates: bool,
+    return_heating: bool,
+    starting_chemistry: np.ndarray,
+):
+    """
+    Validate functional API specific constraints.
+    Checks that return_* parameters are not mixed with file parameters,
+    and enforces OUTPUT_MODE consistency across functional API calls.
+
+    Args:
+        param_dict: The parameter dictionary
+        return_array: Whether arrays are being returned
+        return_dataframe: Whether DataFrames are being returned
+        return_rates: Whether rates are being returned
+        return_heating: Whether heating arrays are being returned
+        starting_chemistry: Starting chemistry array if provided
+
+    Raises:
+        RuntimeError: If file parameters are mixed with memory mode returns
+        AssertionError: If starting_chemistry is used without return_array/return_dataframe
+                        or if modes are mixed in a session
+    """
+    global OUTPUT_MODE
+
+    # Check starting_chemistry constraint first (independent of return flags)
+    if starting_chemistry is not None and not (return_array or return_dataframe):
+        raise AssertionError(
+            "starting_chemistry can only be used with return_array or return_dataframe set to True. "
+            "To use starting_chemistry with disk-based I/O, use abundLoadFile parameter instead."
+        )
+
+    # Determine if this is a memory mode request
+    memory_mode_requested = (
+        return_array or return_dataframe or return_rates or return_heating
+    )
+
+    # Check file parameter mixing with memory mode returns
+    if memory_mode_requested:
+        file_params = ["outputFile", "abundSaveFile", "abundLoadFile", "columnFile"]
+        if param_dict is not None and any(k in param_dict for k in file_params):
+            raise RuntimeError(
+                "return_array or return_dataframe cannot be used if any output of input file is specified. "
+                "These parameters are mutually exclusive: use either disk-based I/O (outputFile, abundSaveFile, etc.) "
+                "OR in-memory returns (return_array, return_dataframe), but not both."
+            )
+
+    # Enforce OUTPUT_MODE consistency in functional API
+    # (This prevents mixing disk and memory modes in same session when using functional API)
+    if OUTPUT_MODE == "disk" and memory_mode_requested:
+        raise AssertionError(
+            "Cannot run an in memory based model after running a disk based one. "
+            "This is to prevent confusion between different output modes. "
+            "Restart your Python session to switch modes."
+        )
+    elif OUTPUT_MODE == "memory" and not memory_mode_requested:
+        raise AssertionError(
+            "Cannot run a disk based model after running an in memory one. "
+            "This is to prevent confusion between different output modes. "
+            "Restart your Python session to switch modes."
+        )
+
+    # Set the OUTPUT_MODE if it hasn't been set yet (only for functional API)
+    if OUTPUT_MODE == "":
+        if memory_mode_requested:
+            OUTPUT_MODE = "memory"
+        else:
+            OUTPUT_MODE = "disk"
+
+
+def __validate_mode_consistency__(model_object):
+    """
+    Validate that the user is not mixing disk-based and in-memory modes.
+    Called from __run__ method to check before running any model.
+
+    Args:
+        model_object: The AbstractModel instance being run
+
+    Raises:
+        AssertionError: If starting_chemistry is used with disk mode incorrectly
+
+    Note:
+        OUTPUT_MODE tracking is only enforced in the functional API through
+        __validate_functional_api_params__. The OO API allows flexible mixing
+        of modes since users explicitly specify files or not on each run.
+    """
+    # Rule: starting_chemistry requires memory mode (no file outputs)
+    # OR must use abundLoadFile if using disk mode
+    has_file_outputs = (
+        model_object.outputFile is not None or model_object.abundSaveFile is not None
+    )
+
+    if (
+        model_object.give_start_abund
+        and has_file_outputs
+        and model_object.abundLoadFile is None
+    ):
+        raise AssertionError(
+            "starting_chemistry can only be used with in-memory mode (no outputFile/abundSaveFile). "
+            "To use starting chemistry with disk-based I/O, use abundLoadFile parameter instead."
+        )
+
+
 def __functional_return__(
     model_object: AbstractModel,
     return_array: bool = False,
@@ -1460,6 +1594,14 @@ def __cloud__(
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
+    __validate_functional_api_params__(
+        param_dict,
+        return_array,
+        return_dataframe,
+        return_rates,
+        return_heating,
+        starting_chemistry,
+    )
 
     model_object = Cloud(
         param_dict=param_dict,
@@ -1521,6 +1663,14 @@ def __collapse__(
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
+    __validate_functional_api_params__(
+        param_dict,
+        return_array,
+        return_dataframe,
+        return_rates,
+        return_heating,
+        starting_chemistry,
+    )
 
     model_object = Collapse(
         collapse=collapse,
@@ -1584,6 +1734,14 @@ def __prestellar_core__(
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
+    __validate_functional_api_params__(
+        param_dict,
+        return_array,
+        return_dataframe,
+        return_rates,
+        return_heating,
+        starting_chemistry,
+    )
 
     model_object = PrestellarCore(
         temp_indx=temp_indx,
@@ -1652,6 +1810,14 @@ def __cshock__(
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
+    __validate_functional_api_params__(
+        param_dict,
+        return_array,
+        return_dataframe,
+        return_rates,
+        return_heating,
+        starting_chemistry,
+    )
 
     model_object = CShock(
         shock_vel=shock_vel,
@@ -1714,6 +1880,14 @@ def __jshock__(
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
 
     """
+    __validate_functional_api_params__(
+        param_dict,
+        return_array,
+        return_dataframe,
+        return_rates,
+        return_heating,
+        starting_chemistry,
+    )
 
     model_object = JShock(
         shock_vel=shock_vel,

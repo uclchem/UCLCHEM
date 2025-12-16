@@ -128,7 +128,7 @@ def test_cshock_disk(common_output_directory):
     param_dict["finalTime"] = 1e6
     param_dict["abundLoadFile"] = common_output_directory / "start_cshock.dat"
     param_dict["outputFile"] = common_output_directory / "cshock.dat"
-    param_dict.pop("abundSaveFile")
+    param_dict.pop("abundSaveFile", None)  # Remove abundSaveFile for second stage
     return_code = uclchem.model.functional.cshock(shock_vel=40, param_dict=param_dict)
     assert (
         return_code[0] == 0

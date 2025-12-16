@@ -57,7 +57,7 @@ def test_static_model_return_array(common_output_directory):
         "finalTime": 5.0e6,
     }
     physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.model.cloud(
+        uclchem.model.functional.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_array=True,
@@ -100,7 +100,7 @@ def test_collapse_hotcore_return_array(common_output_directory):
         "initialDens": 1e2,
     }
     physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.model.cloud(
+        uclchem.model.functional.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_array=True,
@@ -118,7 +118,7 @@ def test_collapse_hotcore_return_array(common_output_directory):
         "finalTime": 1e6,
     }
     physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.model.hot_core(
+        uclchem.model.functional.prestellar_core(
             3,
             300.0,
             param_dict=params,
@@ -197,19 +197,23 @@ def test_cshock_return_dataframe(common_output_directory):
     # C-shock with starting_chemistry
     param_dict["initialDens"] = 1e4
     param_dict["finalTime"] = 1e6
-    (
-        df_stage2_physics,
-        df_stage2_chemistry,
-        rates,
-        dissipation_time,
-        final_abundances,
-        return_code,
-    ) = uclchem.model.functional.cshock(
+    result = uclchem.model.functional.cshock(
         shock_vel=40,
         param_dict=param_dict,
         return_dataframe=True,
         starting_chemistry=final_abundances,
     )
+    # CShock returns: phys_df, chem_df, rates_df, heating_df, dissipation_time, abundances, return_code
+    assert len(result) == 7, f"Expected 7 return values from cshock, got {len(result)}"
+    (
+        df_stage2_physics,
+        df_stage2_chemistry,
+        rates,
+        heating,
+        dissipation_time,
+        final_abundances,
+        return_code,
+    ) = result
     assert return_code == 0, f"C-shock returned with nonzero exit code {return_code}"
 
 
