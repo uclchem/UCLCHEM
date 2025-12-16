@@ -156,7 +156,18 @@ py.install_sources([
   usource / 'species.csv',
   usource / 'tests.py',
   usource / 'utils.py',
+  # advanced.py replaced by advanced package modules
 ], subdir:'uclchem')
+
+# Install advanced package with YAML metadata and split modules
+py.install_sources([
+  usource / 'advanced' / '__init__.py',
+  usource / 'advanced' / 'constants.py',
+  usource / 'advanced' / 'advanced_heating.py',
+  usource / 'advanced' / 'advanced_network.py',
+  usource / 'advanced' / 'advanced_settings.py',
+  usource / 'advanced' / 'fortran_metadata.yaml',
+], subdir: 'uclchem' / 'advanced')
 # Lastly, we also copy the data needed for the cooling module:
 install_subdir(
   'data',

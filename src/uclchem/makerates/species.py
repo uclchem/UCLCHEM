@@ -49,8 +49,13 @@ elementMass = [
 symbols = ["#", "@", "*", "+", "-", "(", ")"]
 
 species_header = (
-    "name", "mass", "binding_energy", "solid_fraction", "mono_fraction",
-    "volcano_fraction", "enthalpy"
+    "name",
+    "mass",
+    "binding_energy",
+    "solid_fraction",
+    "mono_fraction",
+    "volcano_fraction",
+    "enthalpy",
 )
 
 
@@ -115,7 +120,7 @@ class Species:
 
         # in first instance, assume species freeze/desorb unchanged
         # this is updated by `check_freeze_desorbs()` later.
-        if self.is_grain_species():
+        if self.is_ice_species():
             # this will make any excited species desorb as their base counterparts
             if "*" in self.get_name():
                 self.desorb_products = [self.get_name()[1:-1], "NAN", "NAN", "NAN"]
@@ -209,7 +214,7 @@ class Species:
             mass (int): The new molecular mass
         """
         self.mass = int(mass)
-        
+
     def set_binding_energy(self, binding_energy: float) -> None:
         """Set the binding energy of the species in K
 
@@ -249,7 +254,7 @@ class Species:
             enthalpy (float): The new ice enthalpy
         """
         self.enthalpy = float(enthalpy)
-        
+
     def set_desorb_products(self, new_desorbs: list[str]) -> None:
         """Set the desorption products for species on the surface or in the bulk.
         It is assumed that there is only one desorption pathway.

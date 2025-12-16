@@ -755,10 +755,10 @@ SUBROUTINE CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,GasTemperature,
 !  Construct the transition matrix: R_ij = A_ij + B_ij.<J> + C_ij
    DO I=1,COOLANT%NLEVEL
       DO J=1,COOLANT%NLEVEL
-         if (isnan(coolant%A_COEFF(I,J))) WRITE(*,*) "A_COEFF!"
-         if (isnan(coolant%b_COEFF(I,J))) WRITE(*,*) "b_COEFF!"
-         if (isnan(RADIATION_FIELD(I,J))) WRITE(*,*) "RADFIELD!"
-         if (isnan(COLLISIONAL_RATE(I,J))) WRITE(*,*) "COLLS!"
+         if (isnan(coolant%A_COEFF(I,J))) WRITE(*,*) "detected NaN A_COEFF!"
+         if (isnan(coolant%b_COEFF(I,J))) WRITE(*,*) "detected NaN b_COEFF!"
+         if (isnan(RADIATION_FIELD(I,J))) WRITE(*,*) "detected NaN RADFIELD!"
+         if (isnan(COLLISIONAL_RATE(I,J))) WRITE(*,*) "Detection NaN collisional rates!"
          TRANSITION_MATRIX(I,J)=COOLANT%A_COEFF(I,J) &
                             & + COOLANT%B_COEFF(I,J)*RADIATION_FIELD(I,J) &
                             & + COLLISIONAL_RATE(I,J)

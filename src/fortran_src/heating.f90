@@ -27,15 +27,15 @@ IMPLICIT NONE
     REAL(dp) :: heatingValues(NHEATING)
     LOGICAL :: heating_modules(NHEATING)=(/ .TRUE.,.FALSE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE./)
     CHARACTER(LEN=30), PARAMETER :: heatingLabels(NHEATING) = (/ &
-        'PhotoelectricBakes         ', &
-        'PhotoelectricWeingartner   ', &
-        'H2Formation                ', &
-        'H2Photodissociation        ', &
-        'H2FUVPumping               ', &
-        'CarbonIonization           ', &
-        'CosmicRay                  ', &
-        'Turbulent                  ', &
-        'GasGrainCollisions         ' /)
+        'PhotoelectricBakes            ', &
+        'PhotoelectricWeingartner      ', &
+        'H2Formation                   ', &
+        'H2Photodissociation           ', &
+        'H2FUVPumping                  ', &
+        'CarbonIonization              ', &
+        'CosmicRay                     ', &
+        'Turbulent                     ', &
+        'GasGrainCollisions            ' /)
     
     ! Cooling mechanisms:
     ! 1 = Atomic Line Cooling
@@ -47,36 +47,31 @@ IMPLICIT NONE
     REAL(dp) :: coolingValues(NCOOLING)
     LOGICAL :: cooling_modules(NCOOLING)=(/ .TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE./)
     CHARACTER(LEN=30), PARAMETER :: coolingLabels(NCOOLING) = (/ &
-        'AtomicLineCooling          ', &
-        'H2CollisionallyInduced     ', &
-        'ComptonCooling             ', &
-        'ContinuumEmission          ', &
-        'MolecularLineCooling       ' /)
-    
-    ! Line cooling species labels
-    CHARACTER(LEN=10), PARAMETER :: lineCoolingLabels(7) = (/ &
-        'H         ', &
-        'C+        ', &
-        'O         ', &
-        'C         ', &
-        'CO        ', &
-        'p-H2      ', &
-        'o-H2      ' /)
+        'AtomicLineEmission            ', &
+        'H2CollisionallyInduced        ', &
+        'Compton                       ', &
+        'ContinuumEmission             ', &
+        'MolecularLine                 ' /)
 
+    INTEGER, PARAMETER :: nHeatingTerms = 2 + NHEATING + NCOOLING + NCOOLANTS !Total number of heating and cooling terms tracked including time and chemical heating.
+    
     ! Treatment of the dust-gas temperature coupling
     ! 1 = Simple treatment Hocuk et al. 2017
     ! 2 = Detailed balance method Hollenbach 1991 
     INTEGER :: dust_gas_coupling_method = 1
     
-    ! LINE_SOLVER_ATTEMPTS: Number of times to solve line cooling and take median
+    ! LINE_SOLVER_ATTEMPTS: Number of times to solve line cooling and take median, must be <= MAX_LINE_SOLVE_ATTEMPTS
     INTEGER :: LINE_SOLVER_ATTEMPTS = 5
-    INTEGER :: median_line_index
-    ! Allocatable arrays to store cooling iterations and permutations
-    REAL(dp), ALLOCATABLE :: lineCoolingArray(:, :)  ! (LINE_SOLVER_ATTEMPTS x NCOOLANTS)
-    INTEGER, ALLOCATABLE :: permutationArray(:)      ! (LINE_SOLVER_ATTEMPTS)
-    !f2py depend(ncoolants) lineCoolingArray
-    INTEGER :: lineCoolingArray_size = 0
-    INTEGER :: permutationArray_size = 0
+    ! Maximum number of line solver attempts (fixed size for arrays)
+    INTEGER, PARAMETER :: MAX_LINE_SOLVE_ATTEMPTS = 5
+
+    ! Maximum number of coolants (fixed size for arrays)
+    ! Leave a bit of headroom in case we add more coolants during runtime
+    INTEGER, PARAMETER :: MAX_COOLANTS = 10
+    ! Arrays for the line cooling and median calculation
+    REAL(dp) :: lineCoolingArray(MAX_LINE_SOLVE_ATTEMPTS, MAX_COOLANTS)
+    INTEGER :: permutationArray(MAX_LINE_SOLVE_ATTEMPTS)
+    REAL(dp) :: lineCoolingSum(MAX_LINE_SOLVE_ATTEMPTS)
 
     
 
@@ -170,34 +165,11 @@ IMPLICIT NONE
     REAL(dp) FUNCTION getCoolingRate(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,h2dis,turbVel)
         REAL(dp), INTENT(IN) :: time,gasTemperature,gasDensity,gasCols,dustTemp,h2dis,turbVel
         REAL(dp), INTENT(IN) :: abundances(:)
-        INTEGER :: ti
-        REAL(dp) :: lineCoolingSum(LINE_SOLVER_ATTEMPTS)
-        lineCoolingSum = 0.0_dp
+        INTEGER :: ti, median_line_index, num_attempts
         coolingValues = 0.0_dp
-        
-        ! Allocate lineCoolingArray if not already allocated or if size changed
-        IF (.NOT. ALLOCATED(lineCoolingArray) .OR. lineCoolingArray_size /= LINE_SOLVER_ATTEMPTS) THEN
-            IF (ALLOCATED(lineCoolingArray)) THEN
-                ! Size changed - deallocate and reallocate
-                DEALLOCATE(lineCoolingArray)
-            END IF
-            ALLOCATE(lineCoolingArray(LINE_SOLVER_ATTEMPTS, NCOOLANTS))
-            lineCoolingArray_size = LINE_SOLVER_ATTEMPTS
-        END IF
-        
-        ! Allocate permutationArray if not already allocated or if size changed
-        IF (.NOT. ALLOCATED(permutationArray) .OR. permutationArray_size /= LINE_SOLVER_ATTEMPTS) THEN
-            IF (ALLOCATED(permutationArray)) THEN
-                ! Size changed - deallocate and reallocate
-                DEALLOCATE(permutationArray)
-            END IF
-            ALLOCATE(permutationArray(LINE_SOLVER_ATTEMPTS))
-            permutationArray_size = LINE_SOLVER_ATTEMPTS
-        END IF
-        
-        ! Initialize to zero before computation
         lineCoolingArray = 0.0_dp
-
+        lineCoolingSum = 0.0_dp
+        
         coolingValues(1)=atomicCooling(gasTemperature,gasDensity,abundances(nh),abundances(nhe),&
                         &abundances(nelec),abundances(nhx),abundances(nhex))
         coolingValues(2)=collionallyInducedEmission(gasTemperature,gasDensity,abundances(nh2))
@@ -208,16 +180,19 @@ IMPLICIT NONE
         
         ! Only compute expensive line cooling if enabled (guard clause for performance)
         IF (cooling_modules(5)) THEN
+            ! Use LINE_SOLVER_ATTEMPTS (up to MAX_LINE_SOLVE_ATTEMPTS) for actual number of solves
+            num_attempts = MIN(LINE_SOLVER_ATTEMPTS, MAX_LINE_SOLVE_ATTEMPTS)
+            
             !We do the line cooling multiple times and take median value since solver will occasionally do something wild
-            DO ti=1,LINE_SOLVER_ATTEMPTS
-                lineCoolingArray(ti, :)=lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
-                lineCoolingSum(ti) = sum(lineCoolingArray(ti, :))
+            DO ti=1,num_attempts
+                lineCoolingArray(ti, :NCOOLANTS)=lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
+                lineCoolingSum(ti) = sum(lineCoolingArray(ti, :NCOOLANTS+1))
             END DO
             
-            ! Sort and reorder using module-level permutationArray
-            CALL pair_insertion_sort_with_perm(lineCoolingSum, permutationArray)
-            lineCoolingArray = lineCoolingArray(permutationArray, :)
-            median_line_index = (LINE_SOLVER_ATTEMPTS + 1) / 2
+            ! Sort and reorder using function-local permutationArray
+            CALL pair_insertion_sort_with_perm(lineCoolingSum(1:num_attempts), permutationArray(1:num_attempts))
+            lineCoolingArray(1:num_attempts, :NCOOLANTS+1) = lineCoolingArray(permutationArray(1:num_attempts), :NCOOLANTS+1)
+            median_line_index = (num_attempts + 1) / 2
             coolingValues(5) = lineCoolingSum(median_line_index)
         ELSE
             coolingValues(5) = 0.0_dp
@@ -244,21 +219,9 @@ IMPLICIT NONE
         CALL UPDATE_COOLANT_ABUNDANCES(gasDensity,gasTemperature,abundances)
 
         DO N=1,NCOOLANTS
-            ! IF (TRIM(coolants(N)%NAME) == "C+") THEN
-            !     write(*,*) "    DEBUG C+: DENSITY=", coolants(N)%DENSITY
-            !     write(*,*) "    DEBUG C+: ENERGY(1:5)=", coolants(N)%ENERGY(1:MIN(5,coolants(N)%NLEVEL))
-            !     write(*,*) "    DEBUG C+: WEIGHT(1:5)=", coolants(N)%WEIGHT(1:MIN(5,coolants(N)%NLEVEL))
-            !     write(*,*) "    DEBUG C+: gasTemperature=", gasTemperature
-            ! END IF
-
-            CALL CALCULATE_LTE_POPULATIONS(coolants(N)%NLEVEL,coolants(N)%ENERGY,coolants(N)%WEIGHT, &
-                                          & coolants(N)%DENSITY,gasTemperature, &
-                                          & coolants(N)%POPULATION)
-            ! IF (TRIM(coolants(N)%NAME) == "C+") THEN
-            !     write(*,*) "    DEBUG C+: LTE population=", coolants(N)%POPULATION
-
-            ! END IF
-
+        CALL CALCULATE_LTE_POPULATIONS(coolants(N)%NLEVEL,coolants(N)%ENERGY,coolants(N)%WEIGHT, &
+                                        & coolants(N)%DENSITY,gasTemperature, &
+                                        & coolants(N)%POPULATION)
         END DO
         ! After LTE populations
 
@@ -269,26 +232,9 @@ IMPLICIT NONE
         !I should then do LVG interactions
          DO I=1,500!while not converged and less than 100 tries:
             DO N=1,NCOOLANTS
-                ! write(*,*) "-----------------------------------------------------------------"
-                ! write(*,*) "  cloud_column: ", CLOUD_COLUMN
-                ! write(*,*) "  cloud_density: ", CLOUD_DENSITY
-                ! write(*,*) "  Coolant: ", N, TRIM(coolants(N)%NAME)
-                ! write(*,*) "  DENSITY: ", coolants(N)%DENSITY
-                ! write(*,*) "  ENERGY(1:5): ", coolants(N)%ENERGY(1:MIN(5,coolants(N)%NLEVEL))
-                ! write(*,*) "  WEIGHT(1:5): ", coolants(N)%WEIGHT(1:MIN(5,coolants(N)%NLEVEL))
-                ! write(*,*) "  gasTemperature: ", gasTemperature
-                ! write(*,*) "  gasDensity: ", gasDensity
-                ! write(*,*) "  abundance: ", abundances(coolantIndices(N))
-
-                CALL CALCULATE_LEVEL_POPULATIONS(coolants(N),gasTemperature,gasDensity,&
-                    &abundances,dustTemp)
-                ! write(*,*) "LVG iter", I, "' Coolant: '", TRIM(coolants(N)%name), "' POPULATION(1:10): '", &
-                !             coolants(N)%POPULATION(1:MIN(10, coolants(N)%NLEVEL))
+            CALL CALCULATE_LEVEL_POPULATIONS(coolants(N),gasTemperature,gasDensity,&
+                &abundances,dustTemp)
             END DO
-         !!write(*,*) "after Lvg",abundances(nh)
-
-            !!write(*,*) I
-
             CALL CALCULATE_LINE_OPACITIES()
             CALL CALCULATE_LAMBDA_OPERATOR()
             IF (CHECK_CONVERGENCE()) EXIT

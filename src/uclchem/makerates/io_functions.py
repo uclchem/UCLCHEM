@@ -22,7 +22,7 @@ from .species import Species
 
 def get_default_coolants() -> list[dict]:
     """Returns the default coolant configuration for UCLCHEM.
-    
+
     Returns:
         list[dict]: List of coolant dictionaries with 'file' and 'name' keys.
     """
@@ -290,19 +290,15 @@ def write_outputs(
     # Write the network files
     filename = fortran_src_dir / "network.f90"
     write_network_file(
-        filename, network, enable_rates_storage=enable_rates_storage, gar_database=gar_database
+        filename,
+        network,
+        enable_rates_storage=enable_rates_storage,
+        gar_database=gar_database,
     )
     # write the constants needed for wrap.f90
 
     filename = fortran_src_dir / "f2py_constants.f90"
-    
-    # Calculate n_heating_terms dynamically based on heating.f90 structure:
-    # Time (1) + cooling (5 NCOOLING) + line cooling (NCOOL) + heating (9 NHEATING) + chem heating (1)
-    # Note: NHEATING=9 and NCOOLING=5 are defined in heating.f90
-    NHEATING = 9  # Must match heating.f90
-    NCOOLING = 5  # Must match heating.f90
-    n_heating_terms = 1 + NCOOLING + len(coolants) + NHEATING + 1
-    
+
     f2py_constants = {
         "n_species": len(network.get_species_list()),
         "n_reactions": len(network.get_reaction_list()),
@@ -310,7 +306,6 @@ def write_outputs(
         "n_coolants": len(coolants),
         "coolant_files": [c["file"] for c in coolants],
         "coolant_names": [c["name"] for c in coolants],
-        "n_heating_terms": n_heating_terms,
     }
     write_f90_constants(f2py_constants, filename)
     # Write some meta information that can be used to read back in the reactions into Python
@@ -335,23 +330,27 @@ def write_f90_constants(
     template_file_path = _ROOT / template_file_path
     with open(template_file_path / "f2py_constants.f90", "r") as fh:
         constants = fh.read()
-    
+
     # Handle string arrays separately for coolants
     if "coolant_files" in replace_dict and "coolant_names" in replace_dict:
         # Format coolant files
         coolant_files = replace_dict.pop("coolant_files")
         max_file_len = max(len(f) for f in coolant_files)
-        coolant_files_str = ",".join(f'"{f.ljust(max_file_len)}"' for f in coolant_files)
+        coolant_files_str = ",".join(
+            f'"{f.ljust(max_file_len)}"' for f in coolant_files
+        )
         replace_dict["coolant_file_len"] = max_file_len
         replace_dict["coolant_files"] = "/" + coolant_files_str + "/"
-        
+
         # Format coolant names
         coolant_names = replace_dict.pop("coolant_names")
         max_name_len = max(len(n) for n in coolant_names)
-        coolant_names_str = ",".join(f'"{n.ljust(max_name_len)}"' for n in coolant_names)
+        coolant_names_str = ",".join(
+            f'"{n.ljust(max_name_len)}"' for n in coolant_names
+        )
         replace_dict["coolant_name_len"] = max_name_len
         replace_dict["coolant_names"] = "/" + coolant_names_str + "/"
-    
+
     constants = constants.format(**replace_dict)
     with open(output_file_name, "w") as fh:
         fh.writelines(constants)
@@ -853,7 +852,12 @@ def truncate_line(input_string: str, lineLength: int = 72) -> str:
     return result
 
 
-def write_network_file(file_name: Path, network: Network, enable_rates_storage: bool = False, gar_database=None):
+def write_network_file(
+    file_name: Path,
+    network: Network,
+    enable_rates_storage: bool = False,
+    gar_database=None,
+):
     """Write the Fortran code file that contains all network information for UCLCHEM.
     This includes lists of reactants, products, binding energies, formationEnthalpies
     and so on.
@@ -982,7 +986,9 @@ def write_network_file(file_name: Path, network: Network, enable_rates_storage: 
         )
         openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .TRUE.\n")
     else:
-        openFile.write("    REAL(dp) :: \texothermicities(" + str(len(exothermicity)) + ")\n")
+        openFile.write(
+            "    REAL(dp) :: \texothermicities(" + str(len(exothermicity)) + ")\n"
+        )
         openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .FALSE.\n")
 
     openFile.write(array_to_string("\tre1", reactant1, type="int"))
@@ -1013,8 +1019,15 @@ def write_network_file(file_name: Path, network: Network, enable_rates_storage: 
         array_to_string("\tfreezePartners", partners, type="int", parameter=True)
     )
 
-    openFile.write(array_to_string("\t garParams", np.array(list(gar_database.values())) if gar_database else np.zeros((1,7)), type="float", parameter=True))
-    
+    openFile.write(
+        array_to_string(
+            "\t garParams",
+            np.array(list(gar_database.values())) if gar_database else np.zeros((1, 7)),
+            type="float",
+            parameter=True,
+        )
+    )
+
     for reaction_type in reaction_types:
         list_name = reaction_type.lower() + "Reacs"
         indices = np.where(reacTypes == reaction_type)[0]

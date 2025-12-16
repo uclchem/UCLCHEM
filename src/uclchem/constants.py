@@ -1,4 +1,4 @@
-# This file was machine generated with Makerates on 2025-11-11 22:24:05.698719
+# This file was machine generated with Makerates on 2025-12-16 12:42:34.763504
 # This file contains the default magic numbers that ensure that fortran and
 # python are in sync. If you adjust anything here, you must:
 # 1. rerun makerates (this puts the magic numbers in fortran)
@@ -24,4 +24,3 @@ TIMEPOINTS = 500
 N_PHYSICAL_PARAMETERS = 8
 n_species = 335
 n_reactions = 3203
-n_heating_terms = 21

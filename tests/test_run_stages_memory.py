@@ -4,6 +4,7 @@ Test multi-stage model runs with IN-MEMORY return modes only.
 This test uses return_array and return_dataframe with starting_chemistry
 to ensure all model stages work with Python in-memory arrays.
 """
+
 import shutil
 import tempfile
 from pathlib import Path
@@ -55,16 +56,16 @@ def test_static_model_return_array(common_output_directory):
         "finalDens": 1e5,
         "finalTime": 5.0e6,
     }
-    physics, chemistry, rates, abundances_start, return_code = (
+    physics, chemistry, rates, heating, abundances_start, return_code = (
         uclchem.model.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_array=True,
         )
     )
-    assert return_code == 0, (
-        f"Static model returned with nonzero exit code {return_code}"
-    )
+    assert (
+        return_code == 0
+    ), f"Static model returned with nonzero exit code {return_code}"
 
 
 def test_static_model_return_dataframe(common_output_directory):
@@ -78,16 +79,16 @@ def test_static_model_return_dataframe(common_output_directory):
         "finalDens": 1e5,
         "finalTime": 5.0e6,
     }
-    physics, chemistry, rates, abundances_start, return_code = (
+    physics, chemistry, rates, heating, abundances_start, return_code = (
         uclchem.model.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_dataframe=True,
         )
     )
-    assert return_code == 0, (
-        f"Static model returned with nonzero exit code {return_code}"
-    )
+    assert (
+        return_code == 0
+    ), f"Static model returned with nonzero exit code {return_code}"
 
 
 def test_collapse_hotcore_return_array(common_output_directory):
@@ -98,16 +99,14 @@ def test_collapse_hotcore_return_array(common_output_directory):
         "endAtFinalDensity": True,
         "initialDens": 1e2,
     }
-    physics, chemistry, rates, abundances_start, return_code = (
+    physics, chemistry, rates, heating, abundances_start, return_code = (
         uclchem.model.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_array=True,
         )
     )
-    assert return_code == 0, (
-        f"Stage 1 returned with nonzero exit code {return_code}"
-    )
+    assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
 
     # Stage 2: Hot core using starting_chemistry
     params = {
@@ -118,7 +117,7 @@ def test_collapse_hotcore_return_array(common_output_directory):
         "freefall": False,
         "finalTime": 1e6,
     }
-    physics, chemistry, rates, abundances_start, return_code = (
+    physics, chemistry, rates, heating, abundances_start, return_code = (
         uclchem.model.hot_core(
             3,
             300.0,
@@ -128,9 +127,7 @@ def test_collapse_hotcore_return_array(common_output_directory):
             starting_chemistry=abundances_start,
         )
     )
-    assert return_code == 0, (
-        f"Stage 2 returned with nonzero exit code {return_code}"
-    )
+    assert return_code == 0, f"Stage 2 returned with nonzero exit code {return_code}"
 
 
 def test_collapse_hotcore_return_dataframe(common_output_directory):
@@ -141,16 +138,14 @@ def test_collapse_hotcore_return_dataframe(common_output_directory):
         "endAtFinalDensity": True,
         "initialDens": 1e2,
     }
-    physics, chemistry, rates, abundances_start, return_code = (
+    physics, chemistry, rates, heating, abundances_start, return_code = (
         uclchem.model.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_dataframe=True,
         )
     )
-    assert return_code == 0, (
-        f"Stage 1 returned with nonzero exit code {return_code}"
-    )
+    assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
 
     # Stage 2: Hot core using starting_chemistry
     params = {
@@ -161,7 +156,7 @@ def test_collapse_hotcore_return_dataframe(common_output_directory):
         "freefall": False,
         "finalTime": 1e6,
     }
-    physics, chemistry, rates, abundances_start, return_code = (
+    physics, chemistry, rates, heating, abundances_start, return_code = (
         uclchem.model.hot_core(
             3,
             300.0,
@@ -171,9 +166,7 @@ def test_collapse_hotcore_return_dataframe(common_output_directory):
             starting_chemistry=abundances_start,
         )
     )
-    assert return_code == 0, (
-        f"Stage 2 returned with nonzero exit code {return_code}"
-    )
+    assert return_code == 0, f"Stage 2 returned with nonzero exit code {return_code}"
 
 
 def test_cshock_return_dataframe(common_output_directory):
@@ -193,12 +186,13 @@ def test_cshock_return_dataframe(common_output_directory):
         df_stage1_physics,
         df_stage1_chemistry,
         rates,
+        heating,
         final_abundances,
         return_code,
     ) = uclchem.model.cloud(param_dict=param_dict, return_dataframe=True)
-    assert return_code == 0, (
-        f"Pre-cshock cloud returned with nonzero exit code {return_code}"
-    )
+    assert (
+        return_code == 0
+    ), f"Pre-cshock cloud returned with nonzero exit code {return_code}"
 
     # C-shock with starting_chemistry
     param_dict["initialDens"] = 1e4
@@ -216,9 +210,7 @@ def test_cshock_return_dataframe(common_output_directory):
         return_dataframe=True,
         starting_chemistry=final_abundances,
     )
-    assert return_code == 0, (
-        f"C-shock returned with nonzero exit code {return_code}"
-    )
+    assert return_code == 0, f"C-shock returned with nonzero exit code {return_code}"
 
 
 def main():

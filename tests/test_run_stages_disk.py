@@ -4,6 +4,7 @@ Test multi-stage model runs with DISK-BASED I/O only.
 This test uses outputFile, abundSaveFile, abundLoadFile, and columnFile
 to ensure all model stages work with Fortran disk I/O.
 """
+
 import shutil
 import tempfile
 from pathlib import Path
@@ -60,9 +61,9 @@ def test_static_model_disk(common_output_directory):
     return_code = uclchem.model.cloud(
         param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
-    assert return_code[0] == 0, (
-        f"Static model returned with nonzero exit code {return_code[0]}"
-    )
+    assert (
+        return_code[0] == 0
+    ), f"Static model returned with nonzero exit code {return_code[0]}"
 
 
 def test_collapse_hotcore_disk(common_output_directory):
@@ -79,9 +80,9 @@ def test_collapse_hotcore_disk(common_output_directory):
     return_code = uclchem.model.cloud(
         param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
-    assert return_code[0] == 0, (
-        f"Stage 1 returned with nonzero exit code {return_code[0]}"
-    )
+    assert (
+        return_code[0] == 0
+    ), f"Stage 1 returned with nonzero exit code {return_code[0]}"
 
     # Stage 2: Hot core
     params = {
@@ -97,9 +98,9 @@ def test_collapse_hotcore_disk(common_output_directory):
     return_code = uclchem.model.hot_core(
         3, 300.0, param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
-    assert return_code[0] == 0, (
-        f"Stage 2 returned with nonzero exit code {return_code[0]}"
-    )
+    assert (
+        return_code[0] == 0
+    ), f"Stage 2 returned with nonzero exit code {return_code[0]}"
 
 
 def test_cshock_disk(common_output_directory):
@@ -118,9 +119,9 @@ def test_cshock_disk(common_output_directory):
         "outputFile": common_output_directory / "pre_cshock.dat",
     }
     return_code = uclchem.model.cloud(param_dict=param_dict)
-    assert return_code[0] == 0, (
-        f"Pre-cshock cloud returned with nonzero exit code {return_code[0]}"
-    )
+    assert (
+        return_code[0] == 0
+    ), f"Pre-cshock cloud returned with nonzero exit code {return_code[0]}"
 
     # C-shock
     param_dict["initialDens"] = 1e4
@@ -129,9 +130,9 @@ def test_cshock_disk(common_output_directory):
     param_dict["outputFile"] = common_output_directory / "cshock.dat"
     param_dict.pop("abundSaveFile")
     return_code = uclchem.model.cshock(shock_vel=40, param_dict=param_dict)
-    assert return_code[0] == 0, (
-        f"C-shock returned with nonzero exit code {return_code[0]}"
-    )
+    assert (
+        return_code[0] == 0
+    ), f"C-shock returned with nonzero exit code {return_code[0]}"
 
 
 def main():

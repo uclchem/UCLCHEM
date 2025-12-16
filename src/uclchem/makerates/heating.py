@@ -7,12 +7,11 @@ databases or custom CSV files with various units.
 
 import logging
 import re
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 import pandas as pd
 
-from .reaction import Reaction, reaction_types
+from .reaction import Reaction
 
 # Physical constants (2019 SI definitions)
 AVOGADRO_NUMBER = 6.02214076e23  # mol^-1
@@ -45,121 +44,6 @@ _DENOMINATORS = {
     "reaction": 1.0,
     "mol": 1.0 / AVOGADRO_NUMBER,
 }
-
-
-# def load_enthalpies_mapping(
-#     csv_path: Union[str, Path], enthalpy_key: str = "entalpy_298k"
-# ) -> Dict[str, float]:
-#     """Load species enthalpies from ATCT mapping CSV.
-
-#     Args:
-#         csv_path: Path to CSV with columns uclchem_species, 'enthalpy_key'
-#         enthalpy_key: Column name for enthalpy values
-
-#     Returns:
-#         dict: Species name -> enthalpy in erg mapping
-#     """
-#     df = pd.read_csv(csv_path)
-#     enthalpies = {}
-
-#     ignore_list = reaction_types + ["E-"]
-
-#     for _, row in df.iterrows():
-#         species = row["uclchem_species"]
-#         try:
-#             enthalpy = float(row[enthalpy_key])
-#         except KeyError as e:
-#             e.add_note(f"Missing {enthalpy_key} for {species}")
-#             raise e
-
-#         if species in ignore_list:
-#             enthalpy = 0.0
-
-#         enthalpies[species] = enthalpy
-
-#     return enthalpies
-
-
-# def calculate_reaction_enthalpy(
-#     reaction: Reaction, enthalpies: Dict[str, float]
-# ) -> Tuple[float, List[str]]:
-#     """Calculate enthalpy change for a reaction.
-
-#     Args:
-#         reaction: Reaction object
-#         enthalpies: Species name -> enthalpy mapping
-
-#     Returns:
-#         tuple: (delta_h in erg, list of missing species)
-#     """
-#     reactants = reaction.get_pure_reactants()
-#     products = reaction.get_pure_products()
-
-#     ignore_list = reaction_types + ["E-", "NAN"]
-#     all_species = [s for s in reactants + products if s not in ignore_list]
-#     missing = [s for s in all_species if s not in enthalpies]
-
-#     if missing:
-#         return 0.0, missing
-
-#     products_h = sum(enthalpies.get(p, 0.0) for p in products)
-#     reactants_h = sum(enthalpies.get(r, 0.0) for r in reactants)
-
-#     return products_h - reactants_h, []
-
-
-# def set_enthalpies_from_mapping(
-#     reactions: List[Reaction], atct_csv: str
-# ) -> Tuple[int, int]:
-#     """Set reaction exothermicities from ATCT thermochemical data.
-
-#     Args:
-#         reactions: List of Reaction objects to modify
-#         atct_csv: Path to ATCT mapping CSV file
-
-#     Returns:
-#         tuple: (num_set, num_skipped)
-#     """
-#     enthalpies = load_enthalpies_mapping(atct_csv)
-#     num_set = 0
-#     num_skipped = 0
-
-#     for reaction in reactions:
-#         delta_h, missing = calculate_reaction_enthalpy(reaction, enthalpies)
-#         if missing:
-#             num_skipped += 1
-#         else:
-#             reaction.set_exothermicity(delta_h)
-#             num_set += 1
-
-#     return num_set, num_skipped
-
-
-def load_custom_exothermicities(csv_path: str) -> pd.DataFrame:
-    """Load custom exothermicities from CSV.
-
-    Expected columns: reactant1-3, product1-4, exothermicity, unit
-
-    Args:
-        csv_path: Path to CSV file
-
-    Returns:
-        DataFrame with custom exothermicities
-    """
-    df = pd.read_csv(csv_path, comment="#")
-
-    required = ["exothermicity", "unit"]
-    missing = [c for c in required if c not in df.columns]
-    if missing:
-        raise ValueError(f"CSV missing columns: {missing}")
-
-    has_reactants = any(c.startswith("reactant") for c in df.columns)
-    has_products = any(c.startswith("product") for c in df.columns)
-
-    if not has_reactants or not has_products:
-        raise ValueError("CSV must have reactant and product columns")
-
-    return df
 
 
 def parse_species_from_row(row: pd.Series, prefix: str) -> List[str]:
@@ -275,6 +159,33 @@ def match_reaction(
         ):
             return reaction
     return None
+
+
+def load_custom_exothermicities(csv_path: str) -> pd.DataFrame:
+    """Load custom exothermicities from CSV.
+
+    Expected columns: reactant1-3, product1-4, exothermicity, unit
+
+    Args:
+        csv_path: Path to CSV file
+
+    Returns:
+        DataFrame with custom exothermicities
+    """
+    df = pd.read_csv(csv_path, comment="#")
+
+    required = ["exothermicity", "unit"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ValueError(f"CSV missing columns: {missing}")
+
+    has_reactants = any(c.startswith("reactant") for c in df.columns)
+    has_products = any(c.startswith("product") for c in df.columns)
+
+    if not has_reactants or not has_products:
+        raise ValueError("CSV must have reactant and product columns")
+
+    return df
 
 
 def set_custom_exothermicities(

@@ -48,7 +48,7 @@ CONTAINS
             
             ! Write line cooling labels with species names
             DO i = 1, NCOOLANTS
-                WRITE(heatingId,'(A,A,A)',advance='no') "LineCooling_", TRIM(lineCoolingLabels(i)), ","
+                WRITE(heatingId,'(A,A,A)',advance='no') "LineCooling_", TRIM(coolantNames(i)), ","
             END DO
             
             ! Write heating mechanism labels
@@ -123,11 +123,11 @@ CONTAINS
                 ! If returnArray is true, we write the rates to the rates array, we compute the flux in Python.
                 ratesarray(dtime, dstep, :) = rate(:nreac)
                 ! Only populate the heating array if it is present, properly sized, AND heating is enabled
-                IF (SIZE(heatarray, 1) .ge. timePoints .AND. heatingFlag .AND. ALLOCATED(lineCoolingArray)) THEN
+                IF (SIZE(heatarray, 1) .ge. timePoints .AND. heatingFlag) THEN
                     heatarray(dtime, dstep, 1) = timeInYears
                     heatarray(dtime, dstep, 2:(1+NCOOLING)) = coolingValues(:)
                     ! Write all NCOOLANTS line cooling terms (currently 7: H, C+, O, C, CO, p-H2, o-H2)
-                    heatarray(dtime, dstep, (2+NCOOLING):(1+NCOOLING+NCOOLANTS)) = lineCoolingArray(median_line_index, :)
+                    heatarray(dtime, dstep, (2+NCOOLING):(1+NCOOLING+NCOOLANTS)) = lineCoolingArray(median_line_index, :NCOOLANTS)
 
                     ! Heating terms (NHEATING values)
                     heatarray(dtime, dstep, (2+NCOOLING+NCOOLANTS):(1+NCOOLING+NCOOLANTS+NHEATING)) = heatingValues(:)
@@ -147,7 +147,7 @@ CONTAINS
                 IF (heatingOutput) THEN
                     ! Write: time, cooling values (4), line cooling array (NCOOLANTS), heating values (8), chem heating
                     WRITE(heatingId,8023) timeInYears, coolingValues(:), &
-                        lineCoolingArray(median_line_index, :), &
+                        lineCoolingArray(median_line_index, :NCOOLANTS), &
                         heatingValues(:), chemheating
                     8023 FORMAT(1PE16.6E3,:,(999(',',1PE16.6E3)))
                 END IF

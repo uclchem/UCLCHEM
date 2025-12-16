@@ -11,7 +11,6 @@ from uclchem.constants import (
     N_PHYSICAL_PARAMETERS,
     PHYSICAL_PARAMETERS,
     TIMEPOINTS,
-    n_heating_terms,
     n_reactions,
     n_species,
 )
@@ -20,6 +19,7 @@ OUTPUT_MODE = ""
 
 
 def set_collisional_rates_directory():
+    # TODO: move this functionality into the advanced heating suite.
     coolant_directory = (
         os.path.dirname(os.path.abspath(__file__)) + "/data/collisional_rates/"
     )
@@ -81,9 +81,9 @@ def _reform_inputs(param_dict, out_species):
         # this is key to UCLCHEM's "case insensitivity"
         new_param_dict = {}
         for k, v in param_dict.items():
-            assert k.lower() not in new_param_dict, (
-                f"Lower case key {k} is already in the dict, stopping"
-            )
+            assert (
+                k.lower() not in new_param_dict
+            ), f"Lower case key {k} is already in the dict, stopping"
             if isinstance(v, Path):
                 v = str(v)
             new_param_dict[k.lower()] = v
@@ -137,7 +137,10 @@ def _get_standard_array_specs(return_rates=False, return_heating=False):
         }
     if return_heating:
         specs["heatarray"] = {
-            "third_dim": n_heating_terms,
+            "third_dim": 2
+            + uclchemwrap.heating.ncooling
+            + uclchemwrap.heating.nheating
+            + uclchemwrap.f2py_constants.ncoolants,
             "dtype": "float64",
             "dummy": False,
         }
@@ -207,7 +210,7 @@ def pre_flight_checklist(
             "Instead specify 'abundLoadFile' in the param_dict to load starting abundances from a file."
         )
     # Check that we aren't mixing in memory and write to disk mode
-    if return_array or return_dataframe or return_rates or return_heating:
+    if return_array or return_dataframe:
         file_keys = [k for k in user_params.keys() if k.lower().endswith("file")]
         if file_keys:
             raise RuntimeError(
@@ -216,21 +219,21 @@ def pre_flight_checklist(
                 + f"Offending keys: {', '.join(file_keys)}"
             )
         if return_rates:
-            assert return_array or return_dataframe, (
-                "return_rates and return_heating can only be used with return_array or return_dataframe set to True; "
-            )
+            assert (
+                return_array or return_dataframe
+            ), "return_rates and return_heating can only be used with return_array or return_dataframe set to True; "
         # Check we didn't run a disk based model before:
         if OUTPUT_MODE:
-            assert OUTPUT_MODE == "memory", (
-                f"Cannot run an in memory based model after running a disk based one in the same session. Found prior run with: {OUTPUT_MODE}"
-            )
+            assert (
+                OUTPUT_MODE == "memory"
+            ), f"Cannot run an in memory based model after running a disk based one in the same session. Found prior run with: {OUTPUT_MODE}"
         OUTPUT_MODE = "memory"
     else:
         # Ensure we never run a disk based model after running an in memory one
         if OUTPUT_MODE:
-            assert OUTPUT_MODE == "disk", (
-                "Cannot run a disk based model after running an in memory one in the same session."
-            )
+            assert (
+                OUTPUT_MODE == "disk"
+            ), "Cannot run a disk based model after running an in memory one in the same session."
         OUTPUT_MODE = "disk"
 
 
@@ -310,28 +313,32 @@ def outputArrays_to_DataFrame(
         # Access the labels directly from the compiled Fortran module
         from uclchemwrap import f2py_constants
         from uclchemwrap import heating as heating_module
-        
+
         heating_columns = ["Time"]
-        
+
         # Add cooling mechanism labels (strip trailing spaces from Fortran strings)
-        cooling_labels = [str(np.char.decode(label)).strip() 
-                         for label in heating_module.coolinglabels]
+        cooling_labels = [
+            str(np.char.decode(label)).strip() + " Cooling"
+            for label in heating_module.coolinglabels
+        ]
         heating_columns.extend(cooling_labels)
-        
+
         # Add line cooling labels with species names from f2py_constants
-        line_cooling_labels = [str(np.char.decode(label)).strip() 
-                              for label in f2py_constants.coolantnames]
+        line_cooling_labels = [
+            str(np.char.decode(label)).strip() for label in f2py_constants.coolantnames
+        ]
         for label in line_cooling_labels:
-            heating_columns.append(f"LineCooling_{label}")
-        
+            heating_columns.append(f"{label} Line Cooling")
+
         # Add heating mechanism labels
-        heating_labels = [str(np.char.decode(label)).strip() 
-                         for label in heating_module.heatinglabels]
+        heating_labels = [
+            str(np.char.decode(label)).strip() + " Heating"
+            for label in heating_module.heatinglabels
+        ]
         heating_columns.extend(heating_labels)
-        
-        # Add chemical heating
-        heating_columns.append("ChemicalHeating")
-        
+
+        heating_columns.append("Chemical Heating")
+
         heating_df = pd.DataFrame(
             heatArray[:, 0, :], index=None, columns=heating_columns
         )
@@ -827,22 +834,7 @@ def cshock(
             abunds = []
         else:
             abunds = list(abunds[:n_out])
-        (
-            physicsArray,
-            chemicalAbunArray,
-            specname,
-            ratesArray,
-            heatArray,
-            abundanceStart,
-        ) = [success_flag, disspation_time] + abunds
-        return (
-            physicsArray,
-            chemicalAbunArray,
-            specname,
-            ratesArray,
-            heatArray,
-            abundanceStart,
-        )
+        return _format_output(n_out, abunds, success_flag) + [disspation_time]
 
 
 def jshock(

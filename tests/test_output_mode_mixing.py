@@ -1,7 +1,7 @@
 """
 Unit tests to verify that users cannot mix in-memory and write-to-disk modes.
 
-Core principle: Never cross-pollinate between Fortran-based disk I/O 
+Core principle: Never cross-pollinate between Fortran-based disk I/O
 and Python in-memory arrays/dataframes.
 
 These tests check the pre_flight_checklist function in model.py to ensure:
@@ -19,6 +19,7 @@ import pytest
 
 try:
     import uclchem
+
     uclchem_imported = True
 except ImportError:
     uclchem_imported = False
@@ -44,6 +45,7 @@ def temp_output_directory():
 def reset_output_mode():
     """Reset the OUTPUT_MODE global variable between tests"""
     import uclchem.model as model
+
     original_mode = model.OUTPUT_MODE
     model.OUTPUT_MODE = ""
     yield
@@ -103,7 +105,9 @@ def test_starting_chemistry_requires_memory_mode(basic_params, reset_output_mode
 
 
 # Test 4: return_rates requires memory mode
-def test_return_rates_with_file_raises_error(basic_params, reset_output_mode, temp_output_directory):
+def test_return_rates_with_file_raises_error(
+    basic_params, reset_output_mode, temp_output_directory
+):
     """Test that return_rates with file output raises error"""
     params = basic_params.copy()
     params["outputFile"] = temp_output_directory / "test_output.dat"
@@ -116,7 +120,9 @@ def test_return_rates_with_file_raises_error(basic_params, reset_output_mode, te
 
 
 # Test 5: Cannot run memory mode after disk mode
-def test_disk_then_memory_mode_raises_error(basic_params, temp_output_directory, reset_output_mode):
+def test_disk_then_memory_mode_raises_error(
+    basic_params, temp_output_directory, reset_output_mode
+):
     """Test that running disk-based model then in-memory model raises AssertionError"""
     # First run a disk-based model
     params_disk = basic_params.copy()
@@ -134,11 +140,13 @@ def test_disk_then_memory_mode_raises_error(basic_params, temp_output_directory,
 
 
 # Test 6: Cannot run disk mode after memory mode
-def test_memory_then_disk_mode_raises_error(basic_params, temp_output_directory, reset_output_mode):
+def test_memory_then_disk_mode_raises_error(
+    basic_params, temp_output_directory, reset_output_mode
+):
     """Test that running in-memory model then disk-based model raises AssertionError"""
     # First run an in-memory model
     params_memory = basic_params.copy()
-    physics, chemistry, rates, abundances, return_code = uclchem.model.cloud(
+    physics, chemistry, rates, heating, abundances, return_code = uclchem.model.cloud(
         param_dict=params_memory, return_array=True
     )
     assert return_code == 0
@@ -159,20 +167,22 @@ def test_multiple_memory_models_succeed(basic_params, reset_output_mode):
     params = basic_params.copy()
 
     # Run first in-memory model
-    physics1, chemistry1, rates1, abundances1, return_code1 = uclchem.model.cloud(
-        param_dict=params, return_array=True
+    physics1, chemistry1, rates1, heating1, abundances1, return_code1 = (
+        uclchem.model.cloud(param_dict=params, return_array=True)
     )
     assert return_code1 == 0
 
     # Run second in-memory model - should succeed
-    physics2, chemistry2, rates2, abundances2, return_code2 = uclchem.model.cloud(
-        param_dict=params, return_dataframe=True
+    physics2, chemistry2, rates2, heating2, abundances2, return_code2 = (
+        uclchem.model.cloud(param_dict=params, return_dataframe=True)
     )
     assert return_code2 == 0
 
 
 # Test 8: Multiple disk models succeed
-def test_multiple_disk_models_succeed(basic_params, temp_output_directory, reset_output_mode):
+def test_multiple_disk_models_succeed(
+    basic_params, temp_output_directory, reset_output_mode
+):
     """Test that running multiple disk-based models in sequence works"""
     # Run first disk-based model
     params1 = basic_params.copy()
@@ -201,7 +211,7 @@ def test_chained_models_in_memory(basic_params, reset_output_mode):
         "rout": 0.1,
         "baseAv": 1.0,
     }
-    _, _, _, final_abundances, result1 = uclchem.model.cloud(
+    _, _, _, _, final_abundances, result1 = uclchem.model.cloud(
         param_dict=params_stage1, return_dataframe=True
     )
     assert result1 == 0
@@ -213,7 +223,7 @@ def test_chained_models_in_memory(basic_params, reset_output_mode):
         "freefall": False,
         "freezeFactor": 0.0,
     }
-    _, _, _, final_abundances2, result2 = uclchem.model.hot_core(
+    _, _, _, _, final_abundances2, result2 = uclchem.model.hot_core(
         temp_indx=3,
         max_temperature=300.0,
         param_dict=params_stage2,
@@ -224,7 +234,9 @@ def test_chained_models_in_memory(basic_params, reset_output_mode):
 
 
 # Test 10: Cannot mix disk and memory in chained models
-def test_cannot_mix_disk_and_memory_in_chain(basic_params, temp_output_directory, reset_output_mode):
+def test_cannot_mix_disk_and_memory_in_chain(
+    basic_params, temp_output_directory, reset_output_mode
+):
     """Test that you cannot start with disk mode then switch to memory mode in a chain"""
     # Stage 1: Cloud collapse (disk mode)
     params_stage1 = {
