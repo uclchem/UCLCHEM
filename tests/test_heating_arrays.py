@@ -89,7 +89,7 @@ class TestHeatingArrays:
             heatArray,
             abundanceStart,
             success_flag,
-        ) = uclchem.model.cloud(
+        ) = uclchem.model.functional.cloud(
             param_dict=param_dict,
             out_species=["OH", "CO", "H2O"],
             return_array=True,
@@ -110,7 +110,7 @@ class TestHeatingArrays:
     ):
         """Test cloud function with return_dataframe=True."""
 
-        result = uclchem.model.cloud(
+        result = uclchem.model.functional.cloud(
             param_dict=param_dict,
             out_species=["OH", "CO", "H2O"],
             return_dataframe=True,
@@ -238,7 +238,7 @@ class TestHeatingArrays:
             heating_df,
             abundanceStart,
             success_flag,
-        ) = uclchem.model.cloud(
+        ) = uclchem.model.functional.cloud(
             param_dict=param_dict,
             out_species=["OH", "CO", "H2O"],
             return_dataframe=True,
@@ -278,7 +278,7 @@ class TestHeatingArrays:
     #     TEST_DIR.mkdir(parents=True, exist_ok=True)
     #     TEST_FILE = TEST_DIR / "heating_file.csv"
     #     param_dict["heatingFile"] = str(TEST_FILE)
-    #     result = uclchem.model.cloud(
+    #     result = uclchem.model.functional.cloud(
     #         param_dict=param_dict,
     #         out_species=["OH", "CO"],
     #         timepoints=50,  # Reduced from 500 for faster tests

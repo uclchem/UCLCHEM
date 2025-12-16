@@ -75,7 +75,7 @@ def test_return_array_with_file_raises_error(basic_params, reset_output_mode):
         RuntimeError,
         match="return_array or return_dataframe cannot be used if any output of input file is specified",
     ):
-        uclchem.model.cloud(param_dict=params, return_array=True)
+        uclchem.model.functional.cloud(param_dict=params, return_array=True)
 
 
 # Test 2: Files cannot be specified with return_dataframe
@@ -88,7 +88,7 @@ def test_return_dataframe_with_file_raises_error(basic_params, reset_output_mode
         RuntimeError,
         match="return_array or return_dataframe cannot be used if any output of input file is specified",
     ):
-        uclchem.model.cloud(param_dict=params, return_dataframe=True)
+        uclchem.model.functional.cloud(param_dict=params, return_dataframe=True)
 
 
 # Test 3: starting_chemistry requires memory mode
@@ -101,7 +101,9 @@ def test_starting_chemistry_requires_memory_mode(basic_params, reset_output_mode
         AssertionError,
         match="starting_chemistry can only be used with return_array or return_dataframe set to True",
     ):
-        uclchem.model.cloud(param_dict=params, starting_chemistry=dummy_abundances)
+        uclchem.model.functional.cloud(
+            param_dict=params, starting_chemistry=dummy_abundances
+        )
 
 
 # Test 4: return_rates requires memory mode
@@ -116,7 +118,7 @@ def test_return_rates_with_file_raises_error(
         RuntimeError,
         match="return_array or return_dataframe cannot be used if any output of input file is specified",
     ):
-        uclchem.model.cloud(param_dict=params, return_rates=True)
+        uclchem.model.functional.cloud(param_dict=params, return_rates=True)
 
 
 # Test 5: Cannot run memory mode after disk mode
@@ -127,7 +129,7 @@ def test_disk_then_memory_mode_raises_error(
     # First run a disk-based model
     params_disk = basic_params.copy()
     params_disk["outputFile"] = temp_output_directory / "test1.dat"
-    result = uclchem.model.cloud(param_dict=params_disk)
+    result = uclchem.model.functional.cloud(param_dict=params_disk)
     assert result[0] == 0
 
     # Now try to run an in-memory model - should fail
@@ -136,7 +138,7 @@ def test_disk_then_memory_mode_raises_error(
         AssertionError,
         match="Cannot run an in memory based model after running a disk based one",
     ):
-        uclchem.model.cloud(param_dict=params_memory, return_array=True)
+        uclchem.model.functional.cloud(param_dict=params_memory, return_array=True)
 
 
 # Test 6: Cannot run disk mode after memory mode
@@ -146,8 +148,8 @@ def test_memory_then_disk_mode_raises_error(
     """Test that running in-memory model then disk-based model raises AssertionError"""
     # First run an in-memory model
     params_memory = basic_params.copy()
-    physics, chemistry, rates, heating, abundances, return_code = uclchem.model.cloud(
-        param_dict=params_memory, return_array=True
+    physics, chemistry, rates, heating, abundances, return_code = (
+        uclchem.model.functional.cloud(param_dict=params_memory, return_array=True)
     )
     assert return_code == 0
 
@@ -158,7 +160,7 @@ def test_memory_then_disk_mode_raises_error(
         AssertionError,
         match="Cannot run a disk based model after running an in memory one",
     ):
-        uclchem.model.cloud(param_dict=params_disk)
+        uclchem.model.functional.cloud(param_dict=params_disk)
 
 
 # Test 7: Multiple memory models succeed
@@ -168,13 +170,13 @@ def test_multiple_memory_models_succeed(basic_params, reset_output_mode):
 
     # Run first in-memory model
     physics1, chemistry1, rates1, heating1, abundances1, return_code1 = (
-        uclchem.model.cloud(param_dict=params, return_array=True)
+        uclchem.model.functional.cloud(param_dict=params, return_array=True)
     )
     assert return_code1 == 0
 
     # Run second in-memory model - should succeed
     physics2, chemistry2, rates2, heating2, abundances2, return_code2 = (
-        uclchem.model.cloud(param_dict=params, return_dataframe=True)
+        uclchem.model.functional.cloud(param_dict=params, return_dataframe=True)
     )
     assert return_code2 == 0
 
@@ -187,13 +189,13 @@ def test_multiple_disk_models_succeed(
     # Run first disk-based model
     params1 = basic_params.copy()
     params1["outputFile"] = temp_output_directory / "test1.dat"
-    result1 = uclchem.model.cloud(param_dict=params1)
+    result1 = uclchem.model.functional.cloud(param_dict=params1)
     assert result1[0] == 0
 
     # Run second disk-based model - should succeed
     params2 = basic_params.copy()
     params2["outputFile"] = temp_output_directory / "test2.dat"
-    result2 = uclchem.model.cloud(param_dict=params2)
+    result2 = uclchem.model.functional.cloud(param_dict=params2)
     assert result2[0] == 0
 
 
@@ -211,7 +213,7 @@ def test_chained_models_in_memory(basic_params, reset_output_mode):
         "rout": 0.1,
         "baseAv": 1.0,
     }
-    _, _, _, _, final_abundances, result1 = uclchem.model.cloud(
+    _, _, _, _, final_abundances, result1 = uclchem.model.functional.cloud(
         param_dict=params_stage1, return_dataframe=True
     )
     assert result1 == 0
@@ -223,7 +225,7 @@ def test_chained_models_in_memory(basic_params, reset_output_mode):
         "freefall": False,
         "freezeFactor": 0.0,
     }
-    _, _, _, _, final_abundances2, result2 = uclchem.model.hot_core(
+    _, _, _, _, final_abundances2, result2 = uclchem.model.functional.prestellar_core(
         temp_indx=3,
         max_temperature=300.0,
         param_dict=params_stage2,
@@ -250,7 +252,7 @@ def test_cannot_mix_disk_and_memory_in_chain(
         "baseAv": 1.0,
         "outputFile": temp_output_directory / "stage1-full.dat",
     }
-    result1 = uclchem.model.cloud(param_dict=params_stage1)
+    result1 = uclchem.model.functional.cloud(param_dict=params_stage1)
     assert result1[0] == 0
 
     # Stage 2: Try to use memory mode - should fail
@@ -263,7 +265,7 @@ def test_cannot_mix_disk_and_memory_in_chain(
         AssertionError,
         match="Cannot run an in memory based model after running a disk based one",
     ):
-        uclchem.model.hot_core(
+        uclchem.model.functional.prestellar_core(
             temp_indx=3,
             max_temperature=300.0,
             param_dict=params_stage2,

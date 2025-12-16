@@ -80,7 +80,7 @@ def test_static_model_return_dataframe(common_output_directory):
         "finalTime": 5.0e6,
     }
     physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.model.cloud(
+        uclchem.model.functional.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_dataframe=True,
@@ -139,7 +139,7 @@ def test_collapse_hotcore_return_dataframe(common_output_directory):
         "initialDens": 1e2,
     }
     physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.model.cloud(
+        uclchem.model.functional.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_dataframe=True,
@@ -157,7 +157,7 @@ def test_collapse_hotcore_return_dataframe(common_output_directory):
         "finalTime": 1e6,
     }
     physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.model.hot_core(
+        uclchem.model.functional.prestellar_core(
             3,
             300.0,
             param_dict=params,
@@ -189,7 +189,7 @@ def test_cshock_return_dataframe(common_output_directory):
         heating,
         final_abundances,
         return_code,
-    ) = uclchem.model.cloud(param_dict=param_dict, return_dataframe=True)
+    ) = uclchem.model.functional.cloud(param_dict=param_dict, return_dataframe=True)
     assert (
         return_code == 0
     ), f"Pre-cshock cloud returned with nonzero exit code {return_code}"
@@ -204,7 +204,7 @@ def test_cshock_return_dataframe(common_output_directory):
         dissipation_time,
         final_abundances,
         return_code,
-    ) = uclchem.model.cshock(
+    ) = uclchem.model.functional.cshock(
         shock_vel=40,
         param_dict=param_dict,
         return_dataframe=True,
