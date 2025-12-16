@@ -64,37 +64,32 @@ def find_existing_kernel_spec(python_exec):
     try:
         # List all available kernel specs
         result = subprocess.run(
-            ['jupyter', 'kernelspec', 'list', '--json'],
-            capture_output=True,
-            text=True
+            ["jupyter", "kernelspec", "list", "--json"], capture_output=True, text=True
         )
-        
+
         if result.returncode == 0:
             import json
+
             kernel_specs = json.loads(result.stdout)
-            
+
             # Check each kernel spec to see if it uses our Python executable
-            specs = kernel_specs.get('kernelspecs', {}).items()
+            specs = kernel_specs.get("kernelspecs", {}).items()
             for kernel_name, spec_info in specs:
-                spec_file = os.path.join(
-                    spec_info['resource_dir'], 'kernel.json'
-                )
+                spec_file = os.path.join(spec_info["resource_dir"], "kernel.json")
                 if os.path.exists(spec_file):
                     try:
-                        with open(spec_file, 'r') as f:
+                        with open(spec_file, "r") as f:
                             kernel_config = json.load(f)
                             # Check if argv[0] (Python executable) matches ours
-                            argv = kernel_config.get('argv', [])
-                            if (argv and
-                                    os.path.samefile(argv[0], python_exec)):
-                                print(f"Found existing kernel spec: "
-                                      f"{kernel_name}")
+                            argv = kernel_config.get("argv", [])
+                            if argv and os.path.samefile(argv[0], python_exec):
+                                print(f"Found existing kernel spec: " f"{kernel_name}")
                                 return kernel_name
                     except (json.JSONDecodeError, OSError, FileNotFoundError):
                         continue
     except Exception as e:
         print(f"Error checking existing kernel specs: {e}")
-    
+
     return None
 
 
@@ -103,13 +98,13 @@ def create_kernel_spec(python_exec):
     # Get the current working directory name for a human-readable kernel name
     cwd = os.getcwd()
     dir_name = os.path.basename(cwd)
-    
+
     # If the directory is just "uclchem" or "UCLCHEM", make it more specific
     if dir_name.lower() == "uclchem":
         dir_name = "uclchem_notebooks"
-    
+
     kernel_name = f"{dir_name}_kernel"
-    
+
     try:
         # Install kernel spec
         result = subprocess.run(
@@ -162,7 +157,7 @@ def run_all_notebooks(notebooks_dir):
 
     # Check if a kernel spec already exists for this environment
     existing_kernel = find_existing_kernel_spec(python_exec)
-    
+
     if existing_kernel:
         kernel_name = existing_kernel
         print(f"Using existing kernel: {kernel_name}")
@@ -183,9 +178,7 @@ def run_all_notebooks(notebooks_dir):
                     with open(notebook_path) as f:
                         nb = nbformat.read(f, as_version=4)
 
-                        ep = ExecutePreprocessor(
-                            timeout=3600, kernel_name=kernel_name
-                        )
+                        ep = ExecutePreprocessor(timeout=3600, kernel_name=kernel_name)
 
                         ep.preprocess(nb, {"metadata": {"path": root}})
 

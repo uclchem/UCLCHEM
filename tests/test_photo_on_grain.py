@@ -107,21 +107,25 @@ def test_photo_on_grain_memory():
         "abstol_min": 1e-15,
         "reltol": 1e-5,
     }
-    physics, chemistry, rates, heating, abundances, return_code = uclchem.model.cloud(
-        param_dict=params, out_species=outSpecies, return_array=True
-    )
-    assert return_code == 0, f"Static model failed with result code {return_code}"
+    cloud = uclchem.model.Cloud(param_dict=params, out_species=outSpecies)
+    assert (
+        cloud.success_flag == 0
+    ), f"Static model failed with result code {cloud.success_flag}"
 
     # Test Stage 1: Collapse with IN-MEMORY return_dataframe
     params["freefall"] = True
     params["endAtFinalDensity"] = True
     params["initialDens"] = 1e2
-    physics, chemistry, rates, heating, abundances, return_code = uclchem.model.cloud(
-        param_dict=params, out_species=outSpecies, return_array=True
-    )
-    assert return_code == 0, f"Stage 1 model failed with result code {return_code}"
+    params["abundSaveFile"] = f"{TEST_DIR}/startcollapse.dat"
+    params["outputFile"] = f"{TEST_DIR}/stage1-full.dat"
+    params["columnFile"] = f"{TEST_DIR}/stage1-column.dat"
+    cloud = uclchem.model.Cloud(param_dict=params, out_species=outSpecies)
 
-    # Test Stage 2: Hot core with IN-MEMORY and starting_chemistry
+    assert (
+        cloud.success_flag == 0
+    ), f"stage 1 model failed with result code {cloud.success_flag}]"
+
+    # finally, run stage 2 from the stage 1 model.
     params["initialDens"] = 1e5
     params["freezeFactor"] = 0.0
     params["thermdesorb"] = True
@@ -129,21 +133,16 @@ def test_photo_on_grain_memory():
     params["freefall"] = False
     params["finalTime"] = 1e6
     params["abstol_min"] = 1e-25
-    (
-        physics,
-        chemistry,
-        rates,
-        abundances,
-        return_code,
-    ) = uclchem.model.hot_core(
-        3,
-        300.0,
-        param_dict=params,
-        out_species=outSpecies,
-        return_array=True,
-        starting_chemistry=abundances,
+    params["abundLoadFile"] = f"{TEST_DIR}/startcollapse.dat"
+    params["outputFile"] = f"{TEST_DIR}/stage2-full.dat"
+    params.pop("columnFile")
+    p_core = uclchem.model.PrestellarCore(
+        3, 300.0, param_dict=params, out_species=outSpecies
     )
-    assert return_code == 0, f"Stage 2 model failed with result code {return_code}"
+
+    assert (
+        p_core.success_flag == 0
+    ), f"stage 2 model failed with result code {p_core.success_flag}"
 
 
 if __name__ == "__main__":

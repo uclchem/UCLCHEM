@@ -187,7 +187,7 @@ class SpeciesMatcher:
         # Stage 2: Find isomer matches for unmatched species
         unmatched_species = [s for s in target_species if s not in exact_matches]
         isomer_matches = self._find_isomer_matches(unmatched_species)
-        
+
         print(
             f"Matched {len(exact_matches)} exact, "
             f"{len(isomer_matches)} isomers from {len(target_species)} species"
@@ -324,9 +324,7 @@ class SpeciesMatcher:
                             canonical_matches.update(prev)
                             print(f"Loaded {len(prev)} previous selections")
                             multi_option = {
-                                s: m
-                                for s, m in multi_option.items()
-                                if s not in prev
+                                s: m for s, m in multi_option.items() if s not in prev
                             }
                             if not multi_option:
                                 print("All selections completed")
@@ -369,9 +367,7 @@ class SpeciesMatcher:
             while True:
                 try:
                     user_input = (
-                        input(f"\nChoice (1-{len(matches)}, s, q): ")
-                        .strip()
-                        .lower()
+                        input(f"\nChoice (1-{len(matches)}, s, q): ").strip().lower()
                     )
 
                     if user_input == "q":
@@ -410,9 +406,7 @@ class SpeciesMatcher:
             if session_file:
                 session_data["completed"] = canonical_matches
                 remaining_multi = {
-                    s: m
-                    for s, m in multi_option.items()
-                    if s not in canonical_matches
+                    s: m for s, m in multi_option.items() if s not in canonical_matches
                 }
                 session_data["remaining"] = remaining_multi
                 self._save_session(session_data, session_file)
@@ -459,9 +453,7 @@ class SpeciesMatcher:
         print(f"Resumed: {len(completed)} done, {len(remaining)} left")
 
         if remaining:
-            completed.update(
-                self._interactive_selection(remaining, resume_file)
-            )
+            completed.update(self._interactive_selection(remaining, resume_file))
 
         return completed
 
@@ -544,7 +536,7 @@ class SpeciesMatcher:
         self,
         species_df: pd.DataFrame,
         mapping: Dict[str, Dict[str, Any]],
-        original_csv_path: str
+        original_csv_path: str,
     ) -> None:
         """Write back the original species DataFrame with enthalpy data.
 
@@ -638,10 +630,7 @@ def main():
     import sys
 
     # Configure logging
-    logging.basicConfig(
-        level=logging.WARNING,
-        format="%(levelname)s: %(message)s"
-    )
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
     parser = argparse.ArgumentParser(
         description="Interactive tool for matching UCLCHEM species with "
@@ -651,18 +640,14 @@ def main():
     parser.add_argument(
         "--atct_csv",
         required=True,
-        help=(
-            "Path to the cleaned ATCT CSV file containing "
-            "thermochemical data"
-        ),
+        help=("Path to the cleaned ATCT CSV file containing " "thermochemical data"),
     )
 
     parser.add_argument(
         "--uclchem_species_csv",
         required=True,
         help=(
-            "Path to CSV file containing UCLCHEM species "
-            "(must have 'NAME' column)"
+            "Path to CSV file containing UCLCHEM species " "(must have 'NAME' column)"
         ),
     )
 
@@ -696,9 +681,7 @@ def main():
         if args.output_mapping is not None:
             matcher.save_mapping(mapping, args.output_mapping)
         if args.overwrite_uclchem_species_csv:
-            matcher.write_back_to_file(
-                species_df, mapping, args.uclchem_species_csv
-            )
+            matcher.write_back_to_file(species_df, mapping, args.uclchem_species_csv)
 
         print(f"Complete: {len(mapping)} species mapped")
 

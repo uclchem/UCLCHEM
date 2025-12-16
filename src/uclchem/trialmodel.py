@@ -1,18 +1,15 @@
-import logging
 import os
 import sys
 import types
 import warnings
-from abc import ABC
-from pathlib import Path
-
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import uclchemwrap
+from abc import ABC
+from pathlib import Path
+import matplotlib.pyplot as plt
 from numpy.f2py.auxfuncs import throw_error
-from uclchemwrap import uclchemwrap as wrap
 
+from uclchemwrap import uclchemwrap as wrap
 from uclchem.analysis import (
     check_element_conservation,
     create_abundance_plot,
@@ -26,29 +23,9 @@ from uclchem.constants import (
     n_species,
 )
 
-OUTPUT_MODE = ""
-
-
-def set_collisional_rates_directory():
-    # TODO: move this functionality into the advanced heating suite.
-    coolant_directory = (
-        os.path.dirname(os.path.abspath(__file__)) + "/data/collisional_rates/"
-    )
-    # Provide the correct path to the coolant files:
-    assert len(coolant_directory) < 256, (
-        "Coolant directory path is too long, please shorten it. Path is "
-        + coolant_directory
-    )
-    try:
-        uclchemwrap.defaultparameters.coolantdatadir = coolant_directory
-        assert (
-            str(np.char.decode(uclchemwrap.defaultparameters.coolantdatadir)).strip()
-            == coolant_directory
-        ), "Coolant directory path is not set correctly, please check the path."
-    except AttributeError:
-        logging.warning(
-            "Cannot set the coolant directory path, please set 'coolantDataDir' correctly at runtime."
-        )
+"""
+trialmodel.py contains additional changes to the new API method such as adding xarray support.
+"""
 
 
 def reaction_line_formatter(line):
@@ -78,10 +55,8 @@ class ReactionNamesStore:
 
 get_reaction_names = ReactionNamesStore()
 
-# Before doing anything else, set the right collision rate directory.
-set_collisional_rates_directory()
 
-
+# noinspection PyUnresolvedReferences
 class AbstractModel(ABC):
     """Base model class used for inheritance only
 
@@ -121,7 +96,6 @@ class AbstractModel(ABC):
         self.physics_array = None
         self.chemical_abun_array = None
         self.ratesArray = None
-        self.heatArray = None
         self.out_species_abundances = None
         self.full_array = None
         self.debug = debug
@@ -181,10 +155,8 @@ class AbstractModel(ABC):
             self.physics_array = None
             self.chemical_abun_array = None
             self.ratesArray = None
-            self.heatArray = None
             self._create_fortran_array()
             self._create_rates_array()
-            self._create_heating_array()
         else:
             raise ("This model was read. It can not be run. ")
         return
@@ -268,11 +240,7 @@ class AbstractModel(ABC):
         )
 
     def get_dataframes(
-        self,
-        point: int = 0,
-        joined: bool = True,
-        with_rates: bool = False,
-        with_heating: bool = False,
+        self, point: int = 0, joined: bool = True, with_rates: bool = False
     ):
         """Converts the model physics and chemical_abun arrays from numpy to pandas arrays.
         Args:
@@ -282,14 +250,11 @@ class AbstractModel(ABC):
                 returned. One physical, one chemical_abun dataframe. Defaults to True.
             with_rates (bool, optional): Flag on whether to include reaction rates in the dataframe, and/or as a separate
                 dataframe depending on the value of `joined`. Defaults to False.
-            with_heating (bool, optional): Flag on whether to include heating/cooling rates in the dataframe, and/or as a separate
-                dataframe depending on the value of `joined`. Defaults to False.
         Returns:
             return_df (pandas.DataFrame): Dataframe of the joined arrays for point 'point' if joined = True
             physics_df (pandas.DataFrame): Dataframe of the physical parameters for point 'point' if joined = False
             chemistry_df (pandas.DataFrame): Dataframe of the chemical abundances  for point 'point' if joined = False
             rates_df (pandas.DataFrame): Dataframe of the reaction rates  for point 'point' if joined = False and with_rates = True
-            heating_df (pandas.DataFrame): Dataframe of the heating/cooling rates for point 'point' if joined = False and with_heating = True
         """
         # Create a physical parameter dataframe
         physics_df = pd.DataFrame(
@@ -308,55 +273,17 @@ class AbstractModel(ABC):
             )
         else:
             rates_df = None
-
-        if self.heatArray is not None and with_heating:
-            # Create a heating dataframe dynamically using labels from heating.f90
-            heating_columns = ["Time"]
-
-            # Add cooling mechanism labels
-            cooling_labels = [
-                str(np.char.decode(label)).strip() + " Cooling"
-                for label in uclchemwrap.heating.coolinglabels
-            ]
-            heating_columns.extend(cooling_labels)
-
-            # Add line cooling labels with species names
-            line_cooling_labels = [
-                str(np.char.decode(label)).strip()
-                for label in uclchemwrap.f2py_constants.coolantnames
-            ]
-            for label in line_cooling_labels:
-                heating_columns.append(f"{label} Line Cooling")
-
-            # Add heating mechanism labels
-            heating_labels = [
-                str(np.char.decode(label)).strip() + " Heating"
-                for label in uclchemwrap.heating.heatinglabels
-            ]
-            heating_columns.extend(heating_labels)
-
-            heating_columns.append("Chemical Heating")
-
-            heating_df = pd.DataFrame(
-                self.heatArray[:, point, :], index=None, columns=heating_columns
-            )
-        else:
-            heating_df = None
-
         if joined:
-            return_df = physics_df.join(chemistry_df)
-            if with_rates and rates_df is not None:
-                return_df = return_df.join(rates_df)
-            if with_heating and heating_df is not None:
-                return_df = return_df.join(heating_df)
+            if with_rates:
+                return_df = physics_df.join(chemistry_df.join(rates_df))
+            else:
+                return_df = physics_df.join(chemistry_df)
             return return_df
         else:
-            result = [physics_df, chemistry_df]
             if with_rates:
-                result.append(rates_df)
-            if with_heating:
-                result.append(heating_df)
-            return tuple(result)
+                return physics_df, chemistry_df, rates_df
+            else:
+                return physics_df, chemistry_df
 
     def plot_species(
         self,
@@ -476,8 +403,6 @@ class AbstractModel(ABC):
         ]
         if self.ratesArray is not None:
             self.ratesArray = self.ratesArray[: last_timestep_index + 1, :, :]
-        if self.heatArray is not None:
-            self.heatArray = self.heatArray[: last_timestep_index + 1, :, :]
         # Get the last arrays simulated, easy for starting another model.
         self.next_starting_chemistry = self.chemical_abun_array[
             last_timestep_index, :, :
@@ -511,23 +436,6 @@ class AbstractModel(ABC):
         """
         self.ratesArray = np.zeros(
             shape=(self.timepoints + 1, self.param_dict["points"], n_reactions),
-            dtype=np.float64,
-            order="F",
-        )
-        return
-
-    def _create_heating_array(self):
-        """Internal Method.
-        Creates Fortran compliant np.array for heating/cooling rates that can be passed to the Fortran part of UCLCHEM.
-        """
-        heating_array_size = (
-            2
-            + uclchemwrap.heating.ncooling
-            + uclchemwrap.heating.nheating
-            + uclchemwrap.f2py_constants.ncoolants
-        )
-        self.heatArray = np.zeros(
-            shape=(self.timepoints + 1, self.param_dict["points"], heating_array_size),
             dtype=np.float64,
             order="F",
         )
@@ -573,6 +481,7 @@ class AbstractModel(ABC):
         return
 
 
+# noinspection PyUnresolvedReferences
 class Cloud(AbstractModel):
     """Cloud model class inheriting from AbstractModel.
 
@@ -632,7 +541,6 @@ class Cloud(AbstractModel):
             physicsarray=self.physics_array,
             ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
-            heatarray=self.heatArray,
             abundancestart=self.starting_chemistry,
         )
         self.check_error(only_error=True)
@@ -652,6 +560,7 @@ class Cloud(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
+# noinspection PyUnresolvedReferences
 class Collapse(AbstractModel):
     """Collapse model class inheriting from AbstractModel.
 
@@ -734,7 +643,6 @@ class Collapse(AbstractModel):
             physicsarray=self.physics_array,
             ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
-            heatarray=self.heatArray,
             abundanceStart=self.starting_chemistry,
         )
         self.check_error(only_error=True)
@@ -754,6 +662,7 @@ class Collapse(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
+# noinspection PyUnresolvedReferences
 class PrestellarCore(AbstractModel):
     """PrestellarCore model class inheriting from AbstractModel. This model type was previously known as hot core.
 
@@ -826,7 +735,6 @@ class PrestellarCore(AbstractModel):
             physicsarray=self.physics_array,
             ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
-            heatarray=self.heatArray,
             abundancestart=self.starting_chemistry,
         )
         self.check_error(only_error=True)
@@ -846,6 +754,7 @@ class PrestellarCore(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
+# noinspection PyUnresolvedReferences
 class CShock(AbstractModel):
     """C-Shock model class inheriting from AbstractModel.
 
@@ -931,7 +840,6 @@ class CShock(AbstractModel):
             physicsarray=self.physics_array,
             ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
-            heatarray=self.heatArray,
             abundancestart=self.starting_chemistry,
         )
         self.check_error(only_error=True)
@@ -952,6 +860,7 @@ class CShock(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
+# noinspection PyUnresolvedReferences
 class JShock(AbstractModel):
     """J-Shock model class inheriting from AbstractModel.
 
@@ -1017,7 +926,6 @@ class JShock(AbstractModel):
             physicsarray=self.physics_array,
             ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
-            heatarray=self.heatArray,
             abundancestart=self.starting_chemistry,
         )
         self.check_error(only_error=True)
@@ -1037,6 +945,7 @@ class JShock(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
+# noinspection PyUnresolvedReferences
 class Postprocess(AbstractModel):
     """Postprocess represents a model class with additional controls. It inherits from AbstractModel.
 
@@ -1154,7 +1063,6 @@ class Postprocess(AbstractModel):
             physicsarray=self.physics_array,
             ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
-            heatarray=self.heatArray,
             abundancestart=self.starting_chemistry,
             usecoldens=self.coldens_H_array is not None,
             **self.postprocess_arrays,
@@ -1176,6 +1084,7 @@ class Postprocess(AbstractModel):
             self.write_starting_chemistry_output_file()
 
 
+# noinspection PyUnresolvedReferences
 class Model(AbstractModel):
     """Model, like Postprocess, represents a model class with additional controls. It inherits from AbstractModel.
 
@@ -1280,7 +1189,6 @@ class Model(AbstractModel):
             physicsarray=self.physics_array,
             ratesarray=self.ratesArray,
             chemicalabunarray=self.chemical_abun_array,
-            heatarray=self.heatArray,
             abundancestart=self.starting_chemistry,
             usecoldens=False,
             **self.postprocess_arrays,
@@ -1316,7 +1224,6 @@ def __functional_return__(
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rates: bool = False,
-    return_heating: bool = False,
 ):
     """
     return function that takes in the object that was modelled and returns the values based on the specified booleans.
@@ -1328,52 +1235,39 @@ def __functional_return__(
         return_dataframe: A boolean on whether a pandas.DataFrame should be returned to a user, if both return_array and return_dataframe are false, the function will return
             the success_flag, dissipation_time if the model_object has that attribute, and the final abundances of the out_species.
         return_rates (bool, optional): A boolean on whether the reaction rates should be returned to a user.
-        return_heating (bool, optional): A boolean on whether the heating/cooling rates should be returned to a user.
     Returns:
         if return_array and return_dataframe are False:
             - A list where the first element is always an integer which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details. If the model succeeded, and the model_object has the dissipation_time attribute the second element is the dissipation time. Further elements are the abundances of all species in `out_species`.
         if return_array is True:
             - physicsArray (array): array containing the physical outputs for each written timestep
             - chemicalAbunArray (array): array containing the chemical abundances for each written timestep
-            - ratesArray (array): array containing reaction rates (if return_rates=True)
-            - heatArray (array): array containing heating/cooling rates (if return_heating=True)
             - dissipation_time (float): dissipation time in years (if model_object contains the dissipation_time attribute)
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
         if return_dataframe is True:
             - physicsDF (pandas.DataFrame): DataFrame containing the physical outputs for each written timestep
             - chemicalDF (pandas.DataFrame): DataFrame containing the chemical abundances for each written timestep
-            - ratesDF (pandas.DataFrame): DataFrame containing reaction rates (if return_rates=True)
-            - heatingDF (pandas.DataFrame): DataFrame containing heating/cooling rates (if return_heating=True)
             - dissipation_time (float): dissipation time in years (if model_object contains the dissipation_time attribute)
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
 
     """
     if return_dataframe:
-        result = model_object.get_dataframes(
-            joined=False, with_rates=return_rates, with_heating=return_heating
-        )
-        # Unpack based on what was requested
-        if return_rates and return_heating:
-            phys_df, chem_df, rates_df, heating_df = result
-        elif return_rates:
-            phys_df, chem_df, rates_df = result
-            heating_df = None
-        elif return_heating:
-            phys_df, chem_df, heating_df = result
-            rates_df = None
+        if return_rates:
+            phys_df, chem_df, rates_df = model_object.get_dataframes(
+                joined=False, with_rates=return_rates
+            )
         else:
-            phys_df, chem_df = result
+            phys_df, chem_df = model_object.get_dataframes(
+                joined=False, with_rates=return_rates
+            )
             rates_df = None
-            heating_df = None
 
         if hasattr(model_object, "dissipation_time"):
             return (
                 phys_df,
                 chem_df,
                 rates_df,
-                heating_df,
                 model_object.dissipation_time,
                 model_object.next_starting_chemistry,
                 model_object.success_flag,
@@ -1383,7 +1277,6 @@ def __functional_return__(
                 phys_df,
                 chem_df,
                 rates_df,
-                heating_df,
                 model_object.next_starting_chemistry,
                 model_object.success_flag,
             )
@@ -1393,7 +1286,6 @@ def __functional_return__(
                 model_object.physics_array,
                 model_object.chemical_abun_array,
                 model_object.ratesArray if return_rates else None,
-                model_object.heatArray if return_heating else None,
                 model_object.dissipation_time,
                 model_object.next_starting_chemistry,
                 model_object.success_flag,
@@ -1403,7 +1295,6 @@ def __functional_return__(
                 model_object.physics_array,
                 model_object.chemical_abun_array,
                 model_object.ratesArray if return_rates else None,
-                model_object.heatArray if return_heating else None,
                 model_object.next_starting_chemistry,
                 model_object.success_flag,
             )
@@ -1423,7 +1314,6 @@ def __cloud__(
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rates: bool = False,
-    return_heating: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -1464,7 +1354,6 @@ def __cloud__(
         return_array=return_array,
         return_dataframe=return_dataframe,
         return_rates=return_rates,
-        return_heating=return_heating,
     )
 
 
@@ -1476,7 +1365,6 @@ def __collapse__(
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rates: bool = False,
-    return_heating: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -1522,7 +1410,6 @@ def __collapse__(
         return_array=return_array,
         return_dataframe=return_dataframe,
         return_rates=return_rates,
-        return_heating=return_heating,
     )
 
 
@@ -1534,7 +1421,6 @@ def __prestellar_core__(
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rates: bool = False,
-    return_heating: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -1580,7 +1466,6 @@ def __prestellar_core__(
         return_array=return_array,
         return_dataframe=return_dataframe,
         return_rates=return_rates,
-        return_heating=return_heating,
     )
 
 
@@ -1593,7 +1478,6 @@ def __cshock__(
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rates: bool = False,
-    return_heating: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -1644,7 +1528,6 @@ def __cshock__(
         return_array=return_array,
         return_dataframe=return_dataframe,
         return_rates=return_rates,
-        return_heating=return_heating,
     )
 
 
@@ -1655,7 +1538,6 @@ def __jshock__(
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rates: bool = False,
-    return_heating: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -1699,7 +1581,6 @@ def __jshock__(
         return_array=return_array,
         return_dataframe=return_dataframe,
         return_rates=return_rates,
-        return_heating=return_heating,
     )
 
 

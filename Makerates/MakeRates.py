@@ -26,19 +26,19 @@ from argparse import ArgumentParser
 def get_args():
     """
     Allows for interacting with MakeRates.py via the command line.
-    
+
     Examples:
         python3 MakeRates.py custom_settings.yaml --verbosity DEBUG
         python3 MakeRates.py --generate-template
         python3 MakeRates.py --help-config
-        
+
     Returns:
         Namespace: Arguments passed via the CLI or their defaults
     """
     parser = ArgumentParser(
         description="UCLCHEM Makerates: Generate chemical network files"
     )
-    
+
     # Main argument - config file path
     parser.add_argument(
         "settings_path",
@@ -47,7 +47,7 @@ def get_args():
         type=pathlib.Path,
         help="Path to YAML configuration file (default: user_settings.yaml)",
     )
-    
+
     # Verbosity options
     parser.add_argument(
         "-v",
@@ -62,7 +62,7 @@ def get_args():
         action="store_true",
         help="Enable debug mode (same as --verbosity DEBUG)",
     )
-    
+
     # Helper options
     parser.add_argument(
         "--generate-template",
@@ -74,7 +74,7 @@ def get_args():
         action="store_true",
         help="Print detailed help about configuration parameters and exit",
     )
-    
+
     return parser.parse_args()
 
 
@@ -115,19 +115,19 @@ def get_logger(verbosity_stdout: str, debug: bool):
 
 if __name__ == "__main__":
     args = get_args()
-    
+
     # Handle helper commands that exit immediately
     if args.help_config:
         MakeratesConfig.print_help()
         exit(0)
-    
+
     if args.generate_template:
         output_file = "user_settings_template.yaml"
         MakeratesConfig.generate_template(output_file)
         exit(0)
-    
+
     # Set up logging
     get_logger(args.verbosity_stdout, args.debug)
-    
+
     # Run makerates with the specified config file
     run_makerates(args.settings_path)

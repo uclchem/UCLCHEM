@@ -1,9 +1,7 @@
 import logging
 import os
-from pathlib import Path
 from typing import Union
 
-from uclchem.makerates.reaction import Reaction
 
 from . import io_functions as io
 from .config import MakeratesConfig

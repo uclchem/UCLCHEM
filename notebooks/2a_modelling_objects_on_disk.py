@@ -13,21 +13,22 @@
 #     name: python3
 # ---
 
-# # Advanced Physical Modelling
+# # Advanced Physical Modelling on Disk using Objects
 #
-# In the previous tutorial, we simply modelled the chemistry of a static cloud for 1 Myr. This is unlikely to meet everybody's modelling needs and UCLCHEM is capable of modelling much more complex environments such as hot cores and shocks. In this tutorial, we model both a hot core and a shock to explore how these models work and to demonstrate the workflow that the UCLCHEM team normally follow.
+# In the previous tutorial, we simply modelled the chemistry of a static cloud for 1 Myr. This is unlikely to meet everybody's modelling needs and UCLCHEM is capable of modelling much more complex environments such as prestellar cores and shocks. In this tutorial, we model both a prestellar core and a shock to explore how these models work and to demonstrate the workflow that the UCLCHEM team normally follow. In tutorial 2a, we approach the modeling in a more classic approach, by writing the outputs to files, before passing them to the subsequent model class. In tutorial 2b, we calculate the exact same models, but take advantage of the model objects in order to perform all calculations in memory, bypassing the file system entirely.
 
 import uclchem
 import matplotlib.pyplot as plt
 import os
 
-# ## The Hot Core
+# ## The Prestellar Core
 #
 # ### Initial Conditions (Phase 1)
-# UCLCHEM typically starts with the gas in atomic/ionic form with no molecules. However, this clearly is not appropriate when modelling an object such as a hot core. In these objects, the gas is already evolved and there should be molecules in the gas phase as well as ice mantles on the dust. To allow for this, one must provide some initial abundances to the model. There are many ways to do this but we typically chose to run a preliminary model to produce our abundances. In many UCLCHEM papers, we refer to the preliminary model as *phase 1* and the science model as *phase 2*. Phase 1 simply models a collapsing cloud and phase 2 models the object in question.
+# UCLCHEM typically starts with the gas in atomic/ionic form with no molecules. However, this clearly is not appropriate when modelling an object such as a prestellar core. In these objects, the gas is already evolved and there should be molecules in the gas phase as well as ice mantles on the dust. To allow for this, one must provide some initial abundances to the model. There are many ways to do this, but we typically chose to run a preliminary model to produce our abundances. In many UCLCHEM papers, we refer to the preliminary model as *phase 1* and the science model as *phase 2*. Phase 1 simply models a collapsing cloud and phase 2 models the object in question.
 #
-# To do this, we will use `uclchem.model.cloud()` to run a model where a cloud of gas collapses from a density of $10^2 cm^{-3}$ to our hot core density of $10^6 cm^{-3}$, keeping all other parameters constant. During this collapse, chemistry will occur and we can assume the final abundances of this model will be reasonable starting abundances for the hot core.
+# To do this, we will use `uclchem.model.Cloud()` to run a model where a cloud of gas collapses from a density of $10^2 cm^{-3}$ to our prestellar core density of $10^6 cm^{-3}$, keeping all other parameters constant. During this collapse, chemistry will occur, and we can assume the final abundances of this model will be reasonable starting abundances for the prestellar core.
 
+# +
 # set a parameter dictionary for cloud collapse model
 param_dict = {
     "endAtFinalDensity": False,  # stop at finalTime
@@ -43,14 +44,19 @@ param_dict = {
 }
 if not os.path.exists("../examples/test-output/"):
     os.makedirs("../examples/test-output/")
-result = uclchem.model.cloud(param_dict=param_dict)
-print(result)
 
-# With that done, we now have a file containing the final abundances of a cloud of gas after this collapse: `param_dict["abundSaveFile"]` we can pass this to our hot core model to use those abundances as our initial abundances.
+cloud = uclchem.model.Cloud(param_dict=param_dict)
+# Alternatively we could load in a pre-existing version like so
+# cloud = uclchem.model.Cloud(read_file="../examples/test-output/phase1-full.dat")
+# For file reading demonstration purposes, we will now delete the object.
+del cloud
+# -
+
+# With that done, we have run the model and stored the outputs into the object `cloud`, while also storing the final abundances by using: `param_dict["abundSaveFile"]`. We can pass this value our prestellar core model to use those abundances as our initial abundances. Of note, the parameter `abundSaveFile` has been removed from param_dict by creating the `cloud` object.
 #
 # ### Running the Science Model (Phase 2)
 #
-# We need to change just a few things in `param_dict` to set up the hot core model. The key one is that UCLCHEM saves final abundances to `abundSaveFile` but loads them from `abundLoadFile` so we need to swap that key over to make the abundances we just produced our initial abundances.
+# We need to change just a few things in `param_dict` to set up the prestellar core model. The key one is that UCLCHEM saves final abundances to `abundSaveFile` but loads them from `abundLoadFile` so we need to provide the `abundLoadFile` parameter to make the abundances we just produced our initial abundances.
 #
 # We also want to turn off freefall and change how long the model runs for.
 #
@@ -69,32 +75,38 @@ param_dict["abstol_factor"] = 1e-18
 param_dict["reltol"] = 1e-12
 
 # pop is dangerous, it removes the original key so you can't rerun this cell.
-param_dict["abundLoadFile"] = param_dict.pop("abundSaveFile")
+param_dict["abundLoadFile"] = "../examples/test-output/startcollapse.dat"
 param_dict["outputFile"] = "../examples/test-output/phase2-full.dat"
 
-result = uclchem.model.hot_core(
+p_core = uclchem.model.PrestellarCore(
     temp_indx=3, max_temperature=300.0, param_dict=param_dict
 )
+# For file reading demonstration purposes, we will now delete the object.
+del p_core
 # -
 
-# Note that we've changed made two changes to the parameters here which aren't strictly necessary but can be helpful in certain situations.
+# Note that we've made two changes to the parameters here which aren't strictly necessary but can be helpful in certain situations.
 #
-# Since the gas temperature increases throughout a hot core model, freeze out is much slower than thermal desorption for all but the first few time steps. Turning it off doesn't affect the abundances but will speed up the solution.
+# Since the gas temperature increases throughout a prestellar core model, freeze out is much slower than thermal desorption for all but the first few time steps. Turning it off doesn't affect the abundances but will speed up the solution.
 #
 # We also change abstol and reltol here, largely to demonstrate their use. They control the integrator accuracy and whilst making them smaller does slow down successful runs, it can make runs complete that stall completely otherwise or give correct solutions where lower tolerances allow issues like element conservation failure to sneak in. If your code does not complete or element conservation fails, you can change them.
 #
 # ### Checking the Result
-# With a successful run, we can check the output. We first load the file and check the abundance conservation, then we can plot it up.
+# With a successful run, we can check the output. We first load the file and check the abundance conservation, then we can plot it up. To demonstrate how these files can be read in the new class method, we recreate the `p_core` object but instead of passing `param_dict`, we use the argument `read_file` and point it to the full output file we previously wrote to.
 
 phase2_df = uclchem.analysis.read_output_file("../examples/test-output/phase2-full.dat")
 uclchem.analysis.check_element_conservation(phase2_df)
 
-phase2_df
+p_core = uclchem.model.PrestellarCore(
+    read_file="../examples/test-output/phase2-full.dat"
+)
+p_core.check_conservation()
 
 # +
+df_p_core = p_core.get_dataframes()
 species = ["CO", "H2O", "CH3OH", "#CO", "#H2O", "#CH3OH", "@H2O", "@CO", "@CH3OH"]
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
-ax = uclchem.analysis.plot_species(ax, phase2_df, species)
+ax = p_core.plot_species(ax, species)
 settings = ax.set(
     yscale="log",
     xlim=(1e2, 1e6),
@@ -104,16 +116,16 @@ settings = ax.set(
     xscale="log",
 )
 
-ax2.plot(phase2_df["Time"], phase2_df["Density"], color="black")
+ax2.plot(df_p_core["Time"], df_p_core["Density"], color="black")
 ax2.set(xscale="log")
 ax3 = ax2.twinx()
-ax3.plot(phase2_df["Time"], phase2_df["gasTemp"], color="red")
+ax3.plot(df_p_core["Time"], df_p_core["gasTemp"], color="red")
 ax2.set(xlabel="Time / year", ylabel="Density")
 ax3.set(ylabel="Temperature", facecolor="red", xlim=(1e2, 1e6))
 ax3.tick_params(axis="y", colors="red")
 # -
 
-# Here, we see the value of running a collapse phase before the science run. Having run a collapse, we start this model with well developed ices and having material in the surface and bulk allows us to properly model the effect of warm up in a hot core. For example, the @CO abundance is $\sim10^{-4}$ and #CO is $\sim10^{-6}$. As the gas warms to around 30K, the #CO abundance drops drastically as CO's binding energy is such that it is efficiently desorbed from the surface at this temperature. However, the rest of the CO is trapped in the bulk, surrounded by more strongly bound H2O molecules. Thus, the @CO abundance stays high until the gas reaches around 130K, when the H2O molecules are released along with the entire bulk.
+# Here, we see the value of running a collapse phase before the science run. Having run a collapse, we start this model with well developed ices and having material in the surface and bulk allows us to properly model the effect of warm up in a prestellar core. For example, the @CO abundance is $\sim10^{-4}$ and #CO is $\sim10^{-6}$. As the gas warms to around 30K, the #CO abundance drops drastically as CO's binding energy is such that it is efficiently desorbed from the surface at this temperature. However, the rest of the CO is trapped in the bulk, surrounded by more strongly bound H2O molecules. Thus, the @CO abundance stays high until the gas reaches around 130K, when the H2O molecules are released along with the entire bulk.
 
 # ## Shocks
 #
@@ -133,37 +145,43 @@ param_dict = {
     "baseAv": 1.0,  # visual extinction at cloud edge.
     "abundSaveFile": "../examples/test-output/shockstart.dat",
 }
-result = uclchem.model.cloud(param_dict=param_dict)
+
+shock_start = uclchem.model.Cloud(param_dict=param_dict)
+# Alternatively we could load in a pre-existing version like so
+# shock_start = uclchem.model.Cloud(read_file="../examples/test-output/shockstart.dat")
+# For file reading demonstration purposes, we will now delete the object.
+del shock_start
 # -
 
 # ### C-shock
 #
-# We'll first run a c-shock. We'll run a 40 km s $^{-1}$ shock through a gas of density $10^4$ cm $^{-3}$, using the abundances we just produced. Note that c-shock is the only model which returns an additional output in its result list. Not only is the first element the success flag indicating whether UCLCHEM completed, the second element is the dissipation time of the shock. We'll use that time to make our plots look nicer, cutting to a reasonable time. You can also obtain it from `uclchem.utils.cshock_dissipation_time()`.
+# We'll first run a c-shock. We choose to crate a 40 km s $^{-1}$ shock through a gas of density $10^4$ cm $^{-3}$, using the abundances we just produced. Note that c-shock is the only model which returns an additional output in its result list. Shock models include an additional variable that can be accessed, the dissipation time. This can be retrieved like so `cshock.dissipation_time` where `cshock` would be the object created using `uclchem.model.CShock()`.
 
 # +
 # change other bits of input to set up phase 2
 param_dict["initialDens"] = 1e4
 param_dict["finalTime"] = 1e6
-if "abundSaveFile" in param_dict:
-    param_dict.pop("abundSaveFile")
 param_dict["abundLoadFile"] = "../examples/test-output/shockstart.dat"
 param_dict["outputFile"] = "../examples/test-output/cshock.dat"
 
-
-result = uclchem.model.cshock(shock_vel=40, param_dict=param_dict)
-result, dissipation_time = result
+cshock = uclchem.model.CShock(shock_vel=40, param_dict=param_dict)
+dissipation_time = cshock.dissipation_time
+# For file reading demonstration purposes, we will now delete the object.
+del cshock
 # -
 
-# The code completes fine. We do get a couple of warnings though. First, we're informed that `freefall` must be set to False for the C-shock model. Then we get a few integrator warnings. These are not important and can be ignored as long as the element conservation looks ok. However, it is an indication that the integrator did struggle with these ODEs under these conditions.
+# The code completes fine. We do get a couple of warnings though. First, we're informed that `freefall` must be set to False for the C-shock model. Then we get a few integrator warnings. These are not important and can be ignored as long as the element conservation looks ok. However, it is an indication that the integrator did struggle with these ODEs under these conditions. As we load in this model, we could estimate the dissipation time using `uclchem.utils.cshock_dissipation_time()`, however, for this example we stored it from the object directly.
 
-phase2_df = uclchem.analysis.read_output_file("../examples/test-output/cshock.dat")
-uclchem.analysis.check_element_conservation(phase2_df)
+cshock = uclchem.model.CShock(read_file="../examples/test-output/cshock.dat")
+# dissipation_time = uclchem.utils.cshock_dissipation_time(shock_vel=40, initial_dens=param_dict["initialDens"]) # As an example
+cshock.check_conservation()
 
 # +
+df_cshock = cshock.get_dataframes()
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
-ax = uclchem.analysis.plot_species(ax, phase2_df, species)
+ax = cshock.plot_species(ax, species)
 settings = ax.set(
     yscale="log",
     xlim=(1, 20 * dissipation_time),
@@ -173,17 +191,20 @@ settings = ax.set(
     xscale="log",
 )
 
-ax2.plot(phase2_df["Time"], phase2_df["Density"], color="black")
+ax2.plot(df_cshock["Time"], df_cshock["Density"], color="black")
 ax2.set(xscale="log")
 ax3 = ax2.twinx()
-ax3.plot(phase2_df["Time"], phase2_df["gasTemp"], color="red")
+ax3.plot(df_cshock["Time"], df_cshock["gasTemp"], color="red")
 ax2.set(xlabel="Time / year", ylabel="Density")
 ax3.set(ylabel="Temperature", facecolor="red", xlim=(1, 20 * dissipation_time))
+ax3.tick_params(axis="y", colors="red")
 ax3.tick_params(axis="y", colors="red")
 # -
 
 # ### J-shock
-# Running a j-shock is a simple case of changing function. We'll run a 10 km s $^{-1}$ shock through a gas of density $10^3$ cm $^{-3}$ gas this time. Note that nothing stops us using the intial abundances we produced for the c-shock. UCLCHEM will not check that the initial density matches the density of the `abundLoadFile`. It may not always be a good idea to do this but we should remember the intial abundances really are just a rough approximation.
+# Running a j-shock is a simple case of changing function. We'll run a 10 km s $^{-1}$ shock through a gas of density $10^3$ cm $^{-3}$ gas this time. Note that nothing stops us using the initial abundances we produced for the c-shock. UCLCHEM will not check that the initial density matches the density of the `abundLoadFile`. It may not always be a good idea to do this, but we should remember the initial abundances really are just a rough approximation.
+#
+# By default, UCLCHEM uses 500 timepoints for a model, but this turns out not to be enough, which is why we increase the number of timepoints to 1500.
 
 # +
 param_dict["initialDens"] = 1e3
@@ -192,26 +213,27 @@ param_dict["reltol"] = 1e-12
 
 shock_vel = 10.0
 
-if "abundSaveFile" in param_dict:
-    param_dict.pop("abundSaveFile")
 param_dict["abundLoadFile"] = "../examples/test-output/shockstart.dat"
 param_dict["outputFile"] = "../examples/test-output/jshock.dat"
 
-result = uclchem.model.jshock(shock_vel=shock_vel, param_dict=param_dict)
+jshock = uclchem.model.JShock(
+    shock_vel=shock_vel, param_dict=param_dict, timepoints=1500
+)
+# For file reading demonstration purposes, we will now delete the object.
+del jshock
 # -
-
-print(result)
 
 # This time, we've turned off the freefall option and made reltol a little more stringent. The j-shock ends up running a bit slower but we get no warnings on this run.
 
-phase2_df = uclchem.analysis.read_output_file(param_dict["outputFile"])
-uclchem.analysis.check_element_conservation(phase2_df)
+jshock = uclchem.model.JShock(read_file="../examples/test-output/jshock.dat")
+jshock.check_conservation()
 
 # +
+df_jshock = jshock.get_dataframes()
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
-ax = uclchem.analysis.plot_species(ax, phase2_df, species)
+ax = jshock.plot_species(ax, species)
 settings = ax.set(
     yscale="log",
     xlim=(1e-7, 1e6),
@@ -221,10 +243,10 @@ settings = ax.set(
     xscale="log",
 )
 
-ax2.plot(phase2_df["Time"], phase2_df["Density"], color="black")
+ax2.plot(df_jshock["Time"], df_jshock["Density"], color="black")
 ax2.set(xscale="log", yscale="log")
 ax3 = ax2.twinx()
-ax3.plot(phase2_df["Time"], phase2_df["gasTemp"], color="red")
+ax3.plot(df_jshock["Time"], df_jshock["gasTemp"], color="red")
 ax2.set(xlabel="Time / year", ylabel="Density")
 ax3.set(ylabel="Temperature", facecolor="red", xlim=(1e-7, 1e6))
 ax3.tick_params(axis="y", colors="red")

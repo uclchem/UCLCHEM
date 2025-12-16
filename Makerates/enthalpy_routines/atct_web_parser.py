@@ -23,7 +23,9 @@ import pandas as pd
 try:
     from bs4 import BeautifulSoup
 except ImportError:
-    raise ImportError("BeautifulSoup4 is required. Install with `pip install beautifulsoup4`.")
+    raise ImportError(
+        "BeautifulSoup4 is required. Install with `pip install beautifulsoup4`."
+    )
 
 
 class ATCTParser:

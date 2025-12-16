@@ -5,7 +5,6 @@ desorption and bulk reactions for three phase models.
 """
 
 import logging
-import sys
 from copy import deepcopy
 from pathlib import Path
 from typing import Union
@@ -46,9 +45,9 @@ class Network:
             user_defined_bulk (list, optional): List of user defined bulk. Defaults to [].
             add_crp_photo_to_grain (bool, optional): Whether to add CRP, CRPHOT and PHOTON reactions from gas-phase into solid phase too.
         """
-        assert len(set([s.get_name() for s in species])) == len(species), (
-            "Cannot have duplicate species in the species list."
-        )
+        assert len(set([s.get_name() for s in species])) == len(
+            species
+        ), "Cannot have duplicate species in the species list."
         self.set_species_dict({s.get_name(): s for s in species})
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
@@ -89,7 +88,9 @@ class Network:
 
         # Apply custom exothermicity files if provided
         if self.database_reaction_exothermicity:
-            logging.info(f"About to apply custom exothermicity files: {self.database_reaction_exothermicity}")
+            logging.info(
+                f"About to apply custom exothermicity files: {self.database_reaction_exothermicity}"
+            )
             self.apply_custom_exothermicities(self.database_reaction_exothermicity)
 
         # Sort the reactions before returning them, this is important for convergence of the ODE
@@ -372,9 +373,9 @@ class Network:
         """
         old_length = len(self._reactions_dict)
         self._reactions_dict[reaction_idx] = reaction
-        assert old_length == len(self._reactions_dict), (
-            "Setting the reaction caused a change in the number of reactions, use add_reaction and remove_reaction for add and remove operations."
-        )
+        assert (
+            old_length == len(self._reactions_dict)
+        ), "Setting the reaction caused a change in the number of reactions, use add_reaction and remove_reaction for add and remove operations."
 
     def get_reaction_dict(self) -> dict[int, Reaction]:
         """Returns the whole internal reaction dictionary.
@@ -400,7 +401,9 @@ class Network:
         """
         return list(self._reactions_dict.values())
 
-    def get_reactions_by_types(self, reaction_type: Union[str, list[str]]) -> list[Reaction]:
+    def get_reactions_by_types(
+        self, reaction_type: Union[str, list[str]]
+    ) -> list[Reaction]:
         """Get the union of all reactions of a certain type.
 
         Args:
@@ -411,7 +414,11 @@ class Network:
         """
         if isinstance(reaction_type, str):
             reaction_type = [reaction_type]
-        return [r for r in self.get_reaction_list() if (r.get_reaction_type() in reaction_type)]
+        return [
+            r
+            for r in self.get_reaction_list()
+            if (r.get_reaction_type() in reaction_type)
+        ]
 
     def sort_reactions(self) -> None:
         """Sort the reaction dictionary by reaction type first and by the first reactant second."""
@@ -434,9 +441,9 @@ class Network:
         logging.debug(
             f"After sorting reactions {[(k, v) for i, (k, v) in enumerate(self.get_reaction_dict().items()) if i < 5]}"
         )
-        assert len(reaction_dict) == len(self.get_reaction_dict()), (
-            "Sorting the species caused a difference in the number of species"
-        )
+        assert len(reaction_dict) == len(
+            self.get_reaction_dict()
+        ), "Sorting the species caused a difference in the number of species"
 
     def add_species(
         self, species: Union[Union[Species, str], list[Union[Species, str]]]
@@ -577,9 +584,9 @@ class Network:
         logging.debug(
             f"After sorting species {[(k, v) for i, (k, v) in enumerate(self.get_species_dict().items()) if i < 5]}"
         )
-        assert len(species_dict) == len(self.get_species_dict()), (
-            "Sorting the species caused a difference in the number of species"
-        )
+        assert len(species_dict) == len(
+            self.get_species_dict()
+        ), "Sorting the species caused a difference in the number of species"
         electron = self.get_specie("E-")
         self.remove_species("E-")
         self.add_species(electron)
@@ -1040,7 +1047,7 @@ class Network:
                 new_reactions.append(Reaction(new_reac_list))
 
             # and the reverse, going from surface to bulk
-            if not species in [
+            if species not in [
                 "@H2"
             ]:  # If species is H2, do not allow it to go from surface to bulk
                 new_reac_list[0] = species.get_name().replace("@", "#")
@@ -1109,7 +1116,7 @@ class Network:
         ]
         new_reactions = []
         for reaction in self.get_reaction_list():
-            if not reaction.get_reaction_type() in ["CRP", "CRPHOT", "PHOTON"]:
+            if reaction.get_reaction_type() not in ["CRP", "CRPHOT", "PHOTON"]:
                 continue
             if reaction in reactions_on_grain_filtered:
                 continue
@@ -1154,7 +1161,7 @@ class Network:
                 )
                 continue
             new_reactions.append(new_reaction)
-        logging.debug(f"Adding new reactions to grain")
+        logging.debug("Adding new reactions to grain")
         self.add_reactions(new_reactions)
         logging.info(f"Added {len(new_reactions)} reactions to grain")
 
@@ -1172,9 +1179,13 @@ class Network:
             if reaction.get_reaction_type() in enthalpy_reaction_types:
                 if exclude_ices and reaction.is_ice_reaction(strict=(not exclude_ices)):
                     logging.debug("Skipping ice reaction")
-                    continue 
-                if "E-" in (reaction.get_pure_products() + reaction.get_pure_reactants()):
-                    logging.debug("Reaction involving electrons, skipping enthalpy due to poor estimates")
+                    continue
+                if "E-" in (
+                    reaction.get_pure_products() + reaction.get_pure_reactants()
+                ):
+                    logging.debug(
+                        "Reaction involving electrons, skipping enthalpy due to poor estimates"
+                    )
                     continue
                 delta_h = self.compute_exothermicity(reaction)
                 # TODO: add a heating efficiency factor in here:
@@ -1185,18 +1196,16 @@ class Network:
 
     def apply_custom_exothermicities(self, database_reaction_exothermicity: list):
         """Apply custom exothermicity values from CSV files to the network reactions.
-        
+
         Args:
             database_reaction_exothermicity (list): List of paths to custom exothermicity CSV files.
         """
         from .heating import set_custom_exothermicities
-        
+
         for csv_path in database_reaction_exothermicity:
             logging.info(f"Applying custom exothermicities from {csv_path}")
             set_custom_exothermicities(
-                reactions=self.get_reaction_list(),
-                csv_path=csv_path,
-                overwrite=True
+                reactions=self.get_reaction_list(), csv_path=csv_path, overwrite=True
             )
 
     def compute_exothermicity(self, reaction: Reaction) -> float:
@@ -1213,7 +1222,7 @@ class Network:
         return sum([self.species[p].get_enthalpy() for p in products]) - sum(
             self.species[r].get_enthalpy() for r in reactants
         )
-        
+
     def duplicate_checks(self) -> None:
         """
         Check reaction network to make sure no reaction appears twice unless
@@ -1404,7 +1413,7 @@ class Network:
                         reactant_string in branching_reactions
                         and branching_reactions[reactant_string] != 1.0
                     ):
-                        new_reaction = deepcopy(reaction)
+                        # new_reaction = deepcopy(reaction)  # Unused variable
                         if branching_reactions[reactant_string] != 0.0:
                             if branching_reactions[reactant_string] < 0.99:
                                 logging.warning(
@@ -1426,7 +1435,7 @@ class Network:
                             )
                         else:
                             if isinstance(reaction, CoupledReaction) and (
-                                not reaction in self.get_reaction_list()
+                                reaction not in self.get_reaction_list()
                             ):
                                 logging.info(
                                     f"Tried to remove a coupled reaction {reaction}, but it was already removed by one of its partners."
@@ -1439,19 +1448,21 @@ class Network:
 
     def add_gas_phase_extrapolation(self):
         for reaction in self.reactions:
-            if reaction.is_gas_reaction() and (reaction.get_reaction_type() in ["TWOBODY", "PHOTON", "CRP", "CRPHOT"]):
+            if reaction.is_gas_reaction() and (
+                reaction.get_reaction_type() in ["TWOBODY", "PHOTON", "CRP", "CRPHOT"]
+            ):
                 similar_reactions = self.find_similar_reactions(reaction)
                 # Only enable extrapolation if we have one or overlapping reactions
                 # UMIST uses overlapping reactions to get more correct reaction rates.
                 if all(
                     [
-                        (reaction.get_templow() == v.get_templow()) and
-                        (reaction.get_temphigh() == v.get_temphigh())
+                        (reaction.get_templow() == v.get_templow())
+                        and (reaction.get_temphigh() == v.get_temphigh())
                         for k, v in similar_reactions.items()
                     ]
                 ):
                     reaction.set_extrapolation(True)
-                    
+
     def __repr__(self) -> str:
         return (
             "Reaction network with \nSpecies:\n"
@@ -1480,4 +1491,3 @@ class LoadedNetwork(Network):
         """
         self.set_species_dict({s.get_name(): s for s in species})
         self.set_reaction_dict({k: v for k, v in enumerate(reactions)})
-        

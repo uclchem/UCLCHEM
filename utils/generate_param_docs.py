@@ -13,7 +13,9 @@ with open(param_file, "r") as f:
             if line.startswith("!"):
                 if not line.startswith("!!"):
                     output.write(line.replace("!", ""))
-            elif line.startswith(("USE", "MODULE", "IMPLICIT", "END"),):
+            elif line.startswith(
+                ("USE", "MODULE", "IMPLICIT", "END"),
+            ):
                 # Do not read the placeholder function that was introduced for f2py
                 continue
             elif line.startswith("CONTAINS"):
