@@ -43,6 +43,9 @@ version_file = vcs_tag(
 # Only compile Fortran extension if not makerates_only build
 if not makerates_only
 
+# Clean any old .mod files that might cause symbol conflicts
+run_command('sh', '-c', 'rm -f ' + fsource_dir + '/*.mod', check: false)
+
 incdir_numpy = run_command(py,
   ['-c', 'import os; os.chdir(".."); import numpy; print(numpy.get_include())'],
   check : true
@@ -87,6 +90,9 @@ uclchemwrap_source = files(fsource_dir / 'constants.f90',
                      fsource_dir / 'photoreactions.f90',
                      fsource_dir / 'rates.f90',
                      fsource_dir / 'odes.f90',
+                     fsource_dir / 'heating.f90',
+                     fsource_dir / 'coolant_module.f90',
+                     fsource_dir / 'swap_function.f90',
                      fsource_dir / 'chemistry.f90',
                      fsource_dir / 'io.f90',
                      fsource_dir / 'wrap.f90'
@@ -113,7 +119,8 @@ py.extension_module('uclchemwrap',
                      quadmath_dep,
                      ],
                      link_with : dvode_lib,
-                     fortran_args: ['-O3', '-fPIC', '-ffree-line-length-0'],
+                     # fortran_args: ['-O3', '-fPIC', '-ffree-line-length-0'],
+                     fortran_args: ['-fPIC', '-ffree-line-length-0'],
                      install : true)
 
 endif  # End of Fortran compilation section
@@ -123,11 +130,13 @@ usource = 'src' / 'uclchem'
 # Always install makerates/ subpackage (core functionality)
 py.install_sources([
   usource / 'makerates' / '__init__.py',
+  usource / 'makerates' / 'config.py',
   usource / 'makerates' / 'io_functions.py',
   usource / 'makerates' / 'makerates.py',
   usource / 'makerates' / 'network.py',
   usource / 'makerates' / 'reaction.py',
-  usource / 'makerates' / 'species.py'
+  usource / 'makerates' / 'species.py',
+  usource / 'makerates' / 'heating.py',
 ], subdir: 'uclchem' / 'makerates')
 
 # Always install nested f2py_constants.f90 template
@@ -149,18 +158,24 @@ py.install_sources([
   usource / 'species.csv',
   usource / 'tests.py',
   usource / 'utils.py',
+  # advanced.py replaced by advanced package modules
 ], subdir:'uclchem')
 
-# Install makerates/ subpackage
+# Install advanced package with YAML metadata and split modules
 py.install_sources([
-  usource / 'makerates' / '__init__.py',
-  usource / 'makerates' / 'io_functions.py',
-  usource / 'makerates' / 'makerates.py',
-  usource / 'makerates' / 'network.py',
-  usource / 'makerates' / 'reaction.py',
-  usource / 'makerates' / 'species.py'
-], subdir: 'uclchem' / 'makerates')
+  usource / 'advanced' / '__init__.py',
+  usource / 'advanced' / 'constants.py',
+  usource / 'advanced' / 'advanced_heating.py',
+  usource / 'advanced' / 'advanced_network.py',
+  usource / 'advanced' / 'advanced_settings.py',
+  usource / 'advanced' / 'fortran_metadata.yaml',
+], subdir: 'uclchem' / 'advanced')
+# Lastly, we also copy the data needed for the cooling module:
+install_subdir(
+  'data',
+  install_dir: py.get_install_dir(pure: false) / 'uclchem' ,
 
+)
 # Install nested f2py_constants.f90 template
 py.install_sources([
   usource / 'makerates' / 'fortran_templates' / 'f2py_constants.f90'

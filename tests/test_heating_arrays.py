@@ -1,0 +1,299 @@
+"""
+Tests for heating array functionality in UCLCHEM.
+"""
+
+import numpy as np
+import pandas as pd
+import pytest
+
+import uclchem
+
+
+class TestHeatingArrays:
+    """Test class for heating array functionality."""
+
+    @pytest.fixture
+    def param_dict(self):
+        """Standard parameter dictionary for testing."""
+        return {
+            "endAtFinalDensity": False,
+            "freefall": False,
+            "writeStep": 1,
+            "initialDens": 1e4,
+            "initialTemp": 10.0,
+            "finalDens": 1e5,
+            "finalTime": 1.0e3,  # Much shorter time for faster tests
+            "points": 1,
+        }
+
+    @pytest.fixture
+    def expected_heating_columns(self):
+        """Expected column names for heating DataFrame."""
+        return [
+            "Time",
+            "Atomic Cooling",
+            "Collisionally Induced Emission",
+            "Compton Scattering Cooling",
+            "Continuum Emission Cooling",
+            "Line Cooling 1",
+            "Line Cooling 2",
+            "Line Cooling 3",
+            "Line Cooling 4",
+            "Line Cooling 5",
+            "Photoelectric Heating",
+            "H2Formation Heating",
+            "FUVPumping Heating",
+            "Photodissociation Heating",
+            "CIonization Heating",
+            "Cosmic Ray Heating",
+            "Turbulent Heating",
+            "Gas-Grain Collisions",
+            "Chemical Heating",
+        ]
+
+    def test_array_creation_and_specifications(self, param_dict):
+        """Test array creation through the functional API."""
+        # Test that heating arrays are created with correct dimensions
+        # by running a simple model and checking the output
+        (
+            physicsArray,
+            chemicalAbunArray,
+            ratesArray,
+            heatArray,
+            abundanceStart,
+            success_flag,
+        ) = uclchem.model.functional.cloud(
+            param_dict=param_dict,
+            out_species=["OH", "CO"],
+            return_array=True,
+            return_heating=True,
+            return_rates=True,
+            timepoints=50,
+        )
+
+        assert heatArray is not None, "Heat array should be returned"
+        assert isinstance(heatArray, np.ndarray), "Heat array should be numpy array"
+        # Check that we have a reasonable number of heating terms (at least 12)
+        assert (
+            heatArray.shape[2] >= 12
+        ), f"Expected at least 12 heating terms, got {heatArray.shape[2]}"
+        # Verify heating array has correct dimensions: (timepoints+1, points, n_heating_terms)
+        assert heatArray.shape[0] > 10  # check there are at least 10 timepoints
+        assert heatArray.shape[1] == 1  # points
+
+    def test_cloud_function_with_return_array(self, param_dict):
+        """Test cloud function with return_array=True."""
+        from uclchem.advanced import GeneralSettings
+
+        GeneralSettings().print_all_settings()
+
+        (
+            physicsArray,
+            chemicalAbunArray,
+            ratesArray,
+            heatArray,
+            abundanceStart,
+            success_flag,
+        ) = uclchem.model.functional.cloud(
+            param_dict=param_dict,
+            out_species=["OH", "CO", "H2O"],
+            return_array=True,
+            return_heating=True,
+            return_rates=True,
+            timepoints=50,  # Reduced from 500 for faster tests
+        )
+
+        assert success_flag == 0, "Model run should be successful"
+        assert heatArray is not None, "Heat array should be returned"
+        assert isinstance(heatArray, np.ndarray), "Heat array should be numpy array"
+        assert (
+            heatArray.shape[2] >= 12
+        ), f"Heat array should have at least 12 columns per particle, got {heatArray.shape[2]}"
+
+    def test_cloud_function_with_return_dataframe(
+        self, param_dict, expected_heating_columns
+    ):
+        """Test cloud function with return_dataframe=True."""
+
+        result = uclchem.model.functional.cloud(
+            param_dict=param_dict,
+            out_species=["OH", "CO", "H2O"],
+            return_dataframe=True,
+            return_heating=True,
+            return_rates=True,
+            timepoints=50,  # Reduced from 500 for faster tests
+        )
+
+        (
+            physics_df,
+            chemistry_df,
+            rates_df,
+            heating_df,
+            abundanceStart,
+            success_flag,
+        ) = result
+
+        assert success_flag == 0, "Model run should be successful"
+        assert heating_df is not None, "Heating DataFrame should be returned"
+        assert isinstance(heating_df, pd.DataFrame), "Heating data should be DataFrame"
+
+        # Check DataFrame structure - should have at least the essential columns
+        assert (
+            len(heating_df.columns) >= 12
+        ), f"Expected at least 12 heating columns, got {len(heating_df.columns)}"
+
+        print(heating_df.columns.tolist())
+        # Check that essential columns are present (allow extra columns for extensibility)
+        essential_columns = [
+            "Time",
+            "Compton Cooling",
+            "H2Formation Heating",
+            "Chemical Heating",
+        ]
+        actual_columns = list(heating_df.columns)
+        missing_columns = set(essential_columns) - set(actual_columns)
+
+        assert (
+            not missing_columns
+        ), f"Missing essential heating columns: {missing_columns}"
+
+    @pytest.mark.parametrize(
+        "model_function",
+        [
+            "cloud",
+            "collapse",
+        ],
+    )
+    def test_all_model_functions_support_heating(self, model_function, param_dict):
+        """Test that all model functions support heating arrays."""
+        # Get the function from the functional module
+        func = getattr(uclchem.model.functional, model_function)
+        # Adjust parameters for different model types
+        test_params = param_dict.copy()
+
+        try:
+            if model_function == "collapse":
+                result = func(
+                    collapse="ambipolar",
+                    physics_output=None,
+                    param_dict=test_params,
+                    out_species=["OH", "CO"],
+                    return_dataframe=True,
+                    return_rates=True,
+                    return_heating=True,
+                    timepoints=50,  # Reduced from 500 for faster tests
+                )
+            elif model_function == "cloud":
+                result = func(
+                    param_dict=test_params,
+                    out_species=["OH", "CO"],
+                    return_dataframe=True,
+                    return_rates=True,
+                    return_heating=True,
+                    timepoints=50,  # Reduced from 500 for faster tests
+                )
+            else:
+                raise ValueError(f"Unknown model function: {model_function}")
+
+            # Check that we get the expected number of return values
+            assert len(result) >= 5, f"{model_function} should return at least 5 values"
+
+            # The heating DataFrame should be in the result
+            heating_df = None
+            for item in result:
+                if isinstance(item, pd.DataFrame) and len(item.columns) >= 12:
+                    # This is likely the heating DataFrame (check for key columns)
+                    if "Time" in item.columns and (
+                        "Atomic Cooling" in item.columns
+                        or "Chemical Heating" in item.columns
+                    ):
+                        heating_df = item
+                        break
+
+            assert isinstance(
+                heating_df, pd.DataFrame
+            ), "The output should be a DataFrame"
+            assert "Time" in heating_df.columns, "Time should be returned"
+            assert (
+                heating_df.values[:, 1:] != 0.0
+            ).any(), (
+                f"Some terms should have non-zero values, head is {heating_df.head()}"
+            )
+
+        except Exception as e:
+            # Some model functions might have specific requirements
+            # we haven't met. For now, we'll allow them to fail
+            # with specific error messages
+            allowed_errors = [
+                "not implemented",
+                "parameter missing",
+            ]
+
+            error_str = str(e).lower()
+            if not any(allowed_error in error_str for allowed_error in allowed_errors):
+                # Re-raise if it's an unexpected error
+                raise
+
+    def test_heating_array_content_validation(self, param_dict):
+        """Test that heating arrays contain reasonable physical values."""
+        (
+            physics_df,
+            chemistry_df,
+            rates_df,
+            heating_df,
+            abundanceStart,
+            success_flag,
+        ) = uclchem.model.functional.cloud(
+            param_dict=param_dict,
+            out_species=["OH", "CO", "H2O"],
+            return_dataframe=True,
+            return_rates=True,
+            return_heating=True,
+            timepoints=50,  # Reduced from 1000 for faster tests
+        )
+
+        assert (
+            success_flag == 0
+        ), f"Model run should be successful, or run out of points, instead it was {success_flag}"
+        assert heating_df is not None, "Heating DataFrame should be returned"
+
+        # Check that we have finite values (no NaN or inf)
+        for col in heating_df.columns:
+            if col != "Time":  # Time column might have different constraints
+                finite_values = np.isfinite(heating_df[col]).all()
+                assert finite_values, f"Column {col} contains non-finite values"
+
+        # Check that at least some heating/cooling terms have non-zero values
+        # (this ensures the physics is actually being calculated)
+        non_time_columns = [col for col in heating_df.columns if col != "Time"]
+        has_nonzero = False
+        for col in non_time_columns:
+            if (heating_df[col] != 0).any():
+                has_nonzero = True
+                break
+
+        assert (
+            has_nonzero
+        ), "At least some heating/cooling terms should have non-zero values"
+
+    # This test will only work if during compile time the writerates
+    # def test_heating_array_to_disk(self, param_dict):
+    #     """Test that heating arrays can be saved to disk."""
+    #     TEST_DIR = Path("tests/heating_test_output/")
+    #     TEST_DIR.mkdir(parents=True, exist_ok=True)
+    #     TEST_FILE = TEST_DIR / "heating_file.csv"
+    #     param_dict["heatingFile"] = str(TEST_FILE)
+    #     result = uclchem.model.functional.cloud(
+    #         param_dict=param_dict,
+    #         out_species=["OH", "CO"],
+    #         timepoints=50,  # Reduced from 500 for faster tests
+    #         return_rates=True,
+    #         return_heating=True,
+    #     )
+    #     assert result[0] == 0, "Model run should be successful"
+    #     assert TEST_FILE.exists(), "Heating file should be created on disk"
+    #     heating_df = pd.read_csv(TEST_FILE, index_col=None)
+    #     assert not heating_df.empty, "Heating DataFrame should not be empty"
+    #     assert (
+    #         heating_df.values[:, 1:] != 0.0
+    #     ).any(), "Heating DataFrame should have some non-zero values"

@@ -8,13 +8,14 @@ MODULE uclchemwrap
     USE physicscore
     USE chemistry
     USE io
+    USE heating
     USE F2PY_CONSTANTS
     USE postprocess_mod, ONLY: ntime
     IMPLICIT NONE
 CONTAINS
     SUBROUTINE cloud(dictionary, outSpeciesIn,returnArray,returnRates,&
             &givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
-            &ratesarray,abundanceStart,abundance_out,specname_out,successFlag)
+            &ratesarray, heatarray, abundanceStart ,abundance_out,specname_out,successFlag)
         !Subroutine to call a cloud model, used to interface with python
         ! Loads cloud specific subroutines and send to solveAbundances
         !
@@ -36,7 +37,7 @@ CONTAINS
         USE cloud_mod
         USE DEFAULTPARAMETERS
 
-        !f2py integer, intent(aux) :: nspec, n_physics_params
+        !f2py integer, intent(aux) :: nspec, n_physics_params, nHeatingTerms
         !f2py intent(out) abundance_out, specname_out 
         CHARACTER(LEN=*), INTENT(IN) :: dictionary, outSpeciesIn
         DOUBLE PRECISION, INTENT(OUT) :: abundance_out(nspec)
@@ -64,6 +65,9 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nReac) :: ratesarray
         !f2py intent(in,out) ratesarray
         !f2py depend(timePoints,gridPoints,nReac) ratesarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nHeatingTerms) :: heatarray
+        !f2py intent(in,out) heatarray
+        !f2py depend(timePoints,gridPoints,nHeatingTerms) heatarray
         DOUBLE PRECISION, OPTIONAL, DIMENSION(nspec) :: abundanceStart
         !f2py intent(in) abundanceStart
         !f2py depend(nspec) abundanceStart
@@ -72,7 +76,7 @@ CONTAINS
         specname_out = specName
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray,returnRates,givestartabund,&
-                &timePoints,physicsarray,chemicalabunarray,ratesarray,abundanceStart)
+                &timePoints,physicsarray,chemicalabunarray,ratesarray, heatarray, abundanceStart)
         IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
         END IF
@@ -81,7 +85,7 @@ CONTAINS
 
     SUBROUTINE collapse(collapseIn,collapseFileIn,writeOut,dictionary,outSpeciesIn,&
             &returnArray,returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
-            &ratesarray,abundanceStart,abundance_out,specname_out,successFlag)
+            &ratesarray, heatarray,abundanceStart, abundance_out,specname_out,successFlag)
         !Subroutine to call a collapse model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -105,7 +109,7 @@ CONTAINS
         USE collapse_mod
         USE DEFAULTPARAMETERS
 
-        !f2py integer,parameter intent(aux) nspec, n_physics_params
+        !f2py integer,parameter intent(aux) nspec, n_physics_params, nHeatingTerms
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn, collapseFileIn
         DOUBLE PRECISION :: abundance_out(nspec)
         CHARACTER(LEN=32) :: specname_out(nspec)
@@ -132,6 +136,9 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nReac) :: ratesarray
         !f2py intent(in,out) ratesarray
         !f2py depend(timePoints,gridPoints,nReac) ratesarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nHeatingTerms) :: heatarray
+        !f2py intent(in,out) heatarray
+        !f2py depend(timePoints,gridPoints,nHeatingTerms) heatarray
         DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
         !f2py  intent(in) abundanceStart
         !f2py  depend(gridPoints) abundanceStart
@@ -143,7 +150,7 @@ CONTAINS
         
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray, returnRates,givestartabund,&
-                &timepoints,physicsarray,chemicalabunarray,ratesarray,abundanceStart)
+                &timepoints,physicsarray,chemicalabunarray,ratesarray, heatarray, abundanceStart)
         
         IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN 
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
@@ -152,7 +159,7 @@ CONTAINS
 
     SUBROUTINE hot_core(temp_indx,max_temp,dictionary,outSpeciesIn,returnArray,&
             &returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
-            &ratesarray,abundanceStart,abundance_out,specname_out,successFlag)
+            &ratesarray, heatarray, abundanceStart, abundance_out,specname_out,successFlag)
         !Subroutine to call a hot core model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -173,7 +180,7 @@ CONTAINS
         USE hotcore
         USE DEFAULTPARAMETERS
 
-        !f2py integer, parameter intent(aux) nspec, n_physics_params
+        !f2py integer, parameter intent(aux) nspec, n_physics_params, nHeatingTerms
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         DOUBLE PRECISION :: abundance_out(nspec),max_temp
         INTEGER :: temp_indx,successFlag
@@ -199,6 +206,9 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nReac) :: ratesarray
         !f2py intent(in,out) ratesarray
         !f2py depend(timePoints,gridPoints,nReac) ratesarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nHeatingTerms) :: heatarray
+        !f2py intent(in,out) heatarray
+        !f2py depend(timePoints,gridPoints,nHeatingTerms) heatarray
         DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
         !f2py  intent(in) abundanceStart
         !f2py  depend(gridPoints) abundanceStart
@@ -208,7 +218,7 @@ CONTAINS
 
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
         &updatePhysics,updateTargetTime,sublimation,returnArray, returnRates,givestartabund,&
-        &timepoints,physicsarray,chemicalabunarray,ratesarray,abundanceStart)
+        &timepoints,physicsarray,chemicalabunarray,ratesarray, heatarray, abundanceStart)
     
         IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN 
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
@@ -217,7 +227,7 @@ CONTAINS
 
     SUBROUTINE cshock(shock_vel,timestep_factor,minimum_temperature,dictionary, outSpeciesIn,&
             &returnArray,returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
-            &ratesarray,abundanceStart,abundance_out,dissipation_time,specname_out,successFlag)
+            &ratesarray, heatarray, abundanceStart, abundance_out,dissipation_time,specname_out,successFlag)
         !Subroutine to call a C-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -242,7 +252,7 @@ CONTAINS
         USE cshock_mod
         USE DEFAULTPARAMETERS
 
-        !f2py integer, parameter intent(aux) nspec, n_physics_params
+        !f2py integer, parameter intent(aux) nspec, n_physics_params, nHeatingTerms
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         DOUBLE PRECISION :: abundance_out(nspec),shock_vel,timestep_factor
         DOUBLE PRECISION :: minimum_temperature,dissipation_time
@@ -269,6 +279,9 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nReac) :: ratesarray
         !f2py intent(in,out) ratesarray
         !f2py depend(timePoints,gridPoints,nReac) ratesarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nHeatingTerms) :: heatarray
+        !f2py intent(in,out) heatarray
+        !f2py depend(timePoints,gridPoints,nHeatingTerms) heatarray
         DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
         !f2py  intent(in) abundanceStart
         !f2py  depend(gridPoints) abundanceStart
@@ -281,7 +294,7 @@ CONTAINS
         successFlag=0
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray, returnRates,givestartabund,&
-                &timepoints,physicsarray,chemicalabunarray,ratesarray,abundanceStart)
+                &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,abundanceStart)
         
         IF (successFlag .eq. 0) THEN 
             IF (ALLOCATED(outIndx)) abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
@@ -291,7 +304,7 @@ CONTAINS
 
     SUBROUTINE jshock(shock_vel,dictionary,outSpeciesIn,returnArray,returnRates,givestartabund,&
             &timePoints,gridPoints,physicsarray,chemicalabunarray,&
-            &ratesarray,abundanceStart,abundance_out,specname_out,successFlag)
+            &ratesarray, heatarray,abundanceStart,abundance_out,specname_out,successFlag)
         !Subroutine to call a J-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -311,7 +324,7 @@ CONTAINS
         USE jshock_mod
         USE DEFAULTPARAMETERS
 
-        !f2py integer, parameter intent(aux) nspec, n_physics_params
+        !f2py integer, parameter intent(aux) nspec, n_physics_params, nHeatingTerms
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         DOUBLE PRECISION :: abundance_out(nspec),shock_vel
         INTEGER :: successFlag
@@ -337,6 +350,9 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nReac) :: ratesarray
         !f2py intent(in,out) ratesarray
         !f2py depend(timePoints,gridPoints,nReac) ratesarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nHeatingTerms) :: heatarray
+        !f2py intent(in,out) heatarray
+        !f2py depend(timePoints,gridPoints,nHeatingTerms) heatarray
         DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
         !f2py  intent(in) abundanceStart
         !f2py  depend(gridPoints) abundanceStart
@@ -345,7 +361,7 @@ CONTAINS
      
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
         &updatePhysics,updateTargetTime,sublimation,returnArray, returnRates,givestartabund,&
-        &timepoints,physicsarray,chemicalabunarray,ratesarray,abundanceStart)
+        &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,abundanceStart)
 
         specname_out(:nspec) = specName
         IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN 
@@ -354,7 +370,7 @@ CONTAINS
     END SUBROUTINE jshock
 
     SUBROUTINE postprocess(dictionary,outSpeciesIn,returnArray,returnRates,givestartabund,&
-        &timePoints,gridPoints,physicsarray,chemicalabunarray,ratesarray,&
+        &timePoints,gridPoints,physicsarray,chemicalabunarray,ratesarray,heatarray,&
         &abundanceStart,timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,&
         &usecoldens,nhgrid,nh2grid,ncogrid,ncgrid,abundance_out,specname_out,successFlag)
         !Subroutine to call a J-shock model, used to interface with python
@@ -376,7 +392,7 @@ CONTAINS
         USE postprocess_mod  
         USE DEFAULTPARAMETERS
 
-        !f2py integer, parameter intent(aux) nspec, n_physics_params
+        !f2py integer, parameter intent(aux) nspec, n_physics_params, nHeatingTerms
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         DOUBLE PRECISION :: abundance_out(nspec)
         INTEGER :: successFlag
@@ -404,6 +420,9 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nReac) :: ratesarray
         !f2py intent(in,out) ratesarray
         !f2py depend(timePoints,gridPoints,nReac) ratesarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, nHeatingTerms) :: heatarray
+        !f2py intent(in,out) heatarray
+        !f2py depend(timePoints,gridPoints,nHeatingTerms) heatarray
         DOUBLE PRECISION, DIMENSION(nspec), OPTIONAL :: abundanceStart
         !f2py  intent(in) abundanceStart
         !f2py  depend(gridPoints) abundanceStart
@@ -425,13 +444,13 @@ CONTAINS
         if (usecoldens) then
             call solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray,returnRates,givestartabund,&
-                &timepoints,physicsarray,chemicalabunarray,ratesarray,abundanceStart,&
+                &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,abundanceStart,&
                 &timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,&
                 &usecoldens,nhgrid,nh2grid,ncogrid,ncgrid)
         else
             call solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray,returnRates,givestartabund,&
-                &timepoints,physicsarray,chemicalabunarray,ratesarray,abundanceStart,&
+                &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,abundanceStart,&
                 &timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,&
                 &usecoldens)
         end if
@@ -546,7 +565,7 @@ CONTAINS
 
     SUBROUTINE solveAbundances(dictionary,outSpeciesIn,successFlag,modelInitializePhysics,&
             &modelUpdatePhysics,updateTargetTime, sublimation, returnArray, returnRates,givestartabund,&
-            &timePoints, physicsarray, chemicalabunarray,ratesarray,abundanceStart,&
+            &timePoints, physicsarray, chemicalabunarray,ratesarray,heatarray,abundanceStart,&
             &timegrid,densgrid,gtempgrid,dtempgrid,radgrid,zetagrid,usecoldens,nhgrid,nh2grid,ncogrid,ncgrid)
         ! Core UCLCHEM routine. Solves the chemical equations for a given set of parameters through time
         ! for a specified physical model.
@@ -565,7 +584,7 @@ CONTAINS
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep (optional)
         ! abundanceStart - array containing starting chemical conditions (optional)
         ! USE constants, only : nspec
-        !f2py integer, intent(aux) :: nspec
+        !f2py integer, intent(aux) :: nspec, nHeatingTerms, NCOOLANTS
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         EXTERNAL modelInitializePhysics,updateTargetTime,modelUpdatePhysics,sublimation
         INTEGER, INTENT(OUT) :: successFlag
@@ -575,6 +594,7 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: ratesarray
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: heatarray
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: abundanceStart
         ! Arrays neede to work with custom density/temperature profiles
         !  &timegrid,densgrid,gastempgrid,dusttempgrid,nhgrid,nh2grid,ncogrodi,ncgrid)
@@ -645,7 +665,8 @@ CONTAINS
         dstep = 1
         dtime = 1
         IF (returnArray) THEN
-            CALL output(returnArray, returnRates, successflag, physicsarray, chemicalabunarray, ratesarray, dtime, timepoints)
+            CALL output(returnArray, returnRates, successflag, physicsarray, chemicalabunarray, ratesarray,& 
+            & heatarray, dtime, timepoints)
         ELSE
             CALL output(returnArray, returnRates, successflag)
         END IF
@@ -680,7 +701,8 @@ CONTAINS
                 CALL sublimation(abund, points)
                 !write this depth step now time, chemistry and physics are consistent
                 IF (returnArray) THEN
-                    CALL output(returnArray, returnRates, successFlag, physicsarray, chemicalabunarray, ratesarray, dtime, timepoints)
+                    CALL output(returnArray, returnRates, successFlag, physicsarray, chemicalabunarray, ratesarray,&
+                    &heatarray, dtime, timepoints)
                 ELSE
                     CALL output(returnArray, returnRates, successFlag)
                 END IF
@@ -705,14 +727,19 @@ CONTAINS
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         INTEGER, INTENT(OUT) :: successFlag
         INTEGER, ALLOCATABLE, DIMENSION(:) :: locations
-        LOGICAL :: ChemicalDuplicateCheck
+        LOGICAL :: ChemicalDuplicateCheck, isOpen
         INTEGER :: posStart, posEnd, whileInteger,inputindx
         CHARACTER(LEN=100) :: inputParameter, inputValue
+        CHARACTER(256) :: fullPath
 
         close(10)
         close(11)
         close(7)
-
+        INQUIRE(unit=15, opened=isOpen)
+        IF (isOpen) close(15)
+        INQUIRE(unit=16, opened=isOpen)
+        IF (isOpen) close(16)
+        
         !always deallocate these so that if user didn't specify them,
         ! they don't remain from previous run
         IF (ALLOCATED(outIndx)) DEALLOCATE(outIndx)
@@ -857,6 +884,8 @@ CONTAINS
                     END DO
                 CASE('writestep')
                     READ(inputValue,*,iostat=successFlag) writeStep
+                CASE('heatingFlag', 'heatingflag')
+                    READ(inputValue,*,iostat=successFlag) heatingFlag
                 CASE('ebmaxh2')
                     READ(inputValue,*,iostat=successFlag) ebmaxh2
                 CASE('epsilon')
@@ -912,28 +941,52 @@ CONTAINS
                         successFlag=-1
                         RETURN
                     END IF
-                CASE('ratefile')
-                    READ(inputValue,*,iostat=successFlag) rateFile
-                    rateFile = trim(rateFile)
-                    ! rateOutput=.True.
-                    open(rateId,file=rateFile,status='unknown',iostat=successFlag)
+                CASE('rateConstantFile')
+                    READ(inputValue,*,iostat=successFlag) rateConstantFile
+                    rateConstantFile = trim(rateConstantFile)
+                    if ((LEN(ratesFile) .gt. 0) .and. (.not. storeRatesComputation))then
+                        WRITE(*,*) "Error: a ratesFile was specified as output, but fortran was"//&
+                        & NEW_LINE('A')//&
+                        &"compiled without the rate storage option, please enable `enable_rates_storage` "//&
+                        & NEW_LINE('A')//"in the Makerates compilation process."
+                    end if
+                    open(rateConstantId,file=rateConstantFile,status='unknown',iostat=successFlag)
                     IF (successFlag .ne. 0) THEN
                         write(*,*) "An error occured when opening the rate file!"//&
                                         & NEW_LINE('A')//&
-                                    &" The failed file was ",rateFile&
+                                    &" The failed file was ",rateConstantFile&
                                     &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
                                     &//NEW_LINE('A')//"************************"
                         successFlag=-1
                         RETURN
                     END IF
-                CASE('fluxfile')
-                    READ(inputValue,*,iostat=successFlag) fluxFile
-                    fluxFile = trim(fluxFile)
-                    open(fluxId,file=fluxFile,status='unknown',iostat=successFlag)
+                CASE('ratesFile')
+                    READ(inputValue,*,iostat=successFlag) ratesFile
+                    ratesFile = trim(ratesFile)
+                    if ((LEN(ratesFile) .gt. 0) .and. (.not. storeRatesComputation))then
+                        WRITE(*,*) "Error: a ratesFile was specified as output, but fortran was"//&
+                        & NEW_LINE('A')//&
+                        &"compiled without the rate storage option, please enable `enable_rates_storage` "//&
+                        & NEW_LINE('A')//"in the Makerates compilation process."
+                    end if
+                    open(ratesId,file=ratesFile,status='unknown',iostat=successFlag)
                     IF (successFlag .ne. 0) THEN
                         write(*,*) "An error occured when opening the rate file!"//&
                                         & NEW_LINE('A')//&
-                                    &" The failed file was ",fluxFile&
+                                    &" The failed file was ",ratesFile&
+                                    &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
+                                    &//NEW_LINE('A')//"************************"
+                        successFlag=-1
+                        RETURN
+                    END IF
+                CASE('heatingfile')
+                    READ(inputValue,*,iostat=successFlag) heatingFile
+                    heatingFile = trim(heatingFile)
+                    open(heatingId,file=heatingFile,status='unknown',iostat=successFlag)
+                    IF (successFlag .ne. 0) THEN
+                        write(*,*) "An error occured when opening the heating rate file!"//&
+                                        & NEW_LINE('A')//&
+                                    &" The failed file was ",heatingFile&
                                     &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
                                     &//NEW_LINE('A')//"************************"
                         successFlag=-1

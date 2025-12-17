@@ -1,0 +1,173 @@
+# Fortran Parameter Classification
+# This file defines which Fortran variables are compile-time constants (PARAMETER)
+# and which are internal solver/computation variables (INTERNAL).
+#
+# Variables not listed here are considered user-facing modifiable parameters.
+
+fortran_parameters:
+  # network.f90 - species/reaction data arrays (compile-time constants)
+  network:
+    - mintemps
+    - maxtemps
+    - exothermicities
+    - reducedmasses
+    - mass
+    - atomcounts
+    - surfacelist
+    - bulklist
+    - icelist
+    - gasicelist
+    - solidfractions
+    - monofractions
+    - volcanicfractions
+    - formationenthalpy
+    - refractorylist
+    - re1
+    - re2
+    - re3
+    - p1
+    - p2
+    - p3
+    - p4
+    - extrapolaterates
+    # network.f90 - reaction range arrays
+    - photonreacs
+    - crpreacs
+    - crphotreacs
+    - freezereacs
+    - desorbreacs
+    - thermreacs
+    - desoh2reacs
+    - descrreacs
+    - deuvcrreacs
+    - h2formreacs
+    - erreacs
+    - erdesreacs
+    - lhreacs
+    - lhdesreacs
+    - bulkswapreacs
+    - surfswapreacs
+    - ionopol1reacs
+    - ionopol2reacs
+    - crsreacs
+    - exsolidreacs
+    - exrelaxreacs
+    - twobodyreacs
+    - garreacs
+    - freezepartners
+    # network.f90 - species indices (compile-time lookups)
+    - n13c
+    - n15n
+    - n18o
+    - nbulk
+    - nc
+    - nch3oh
+    - ncl
+    - nclx
+    - nco
+    - ncx
+    - nd
+    - nelec
+    - nf
+    - nfe
+    - ngh
+    - ngh2
+    - ngn
+    - ngo
+    - ngoh
+    - nh
+    - nh2
+    - nh2o
+    - nhe
+    - nhex
+    - nhx
+    - nli
+    - nmg
+    - nmgx
+    - nn
+    - nna
+    - nnx
+    - "no"
+    - nox
+    - np
+    - npah
+    - nsurface
+    - ns
+    - nsi
+    - nsix
+    - nsx
+    # network.f90 - reaction indices
+    - nr_c_hv
+    - nr_co_hv
+    - nr_efreeze
+    - nr_h2_crp
+    - nr_h2_hv
+    - nr_h2form_ct
+    - nr_h2form_er
+    - nr_h2form_erdes
+    - nr_h2form_lh
+    - nr_h2form_lhdes
+    - nr_h2freeze
+    - nr_hfreeze
+
+internal_parameters:
+  # physicscore - ODE solver internals
+  physicscore:
+    - currenttimeold
+    - dstep
+    - ckhdiss
+    - ckhion
+    - ckldiss
+    - cklion
+  
+  # network - reaction computation internals
+  network:
+    - reactionrate
+    - storeratescomputation
+  
+  # heating - internal computation arrays
+  heating:
+    - chemheating
+    - coolingvalues
+    - heatingvalues
+    - linecoolingarray_size
+    - linecoolinglabels
+    - median_line_index
+    - permutationarray_size
+    - line_solver_attempts
+  
+  # io - file unit numbers
+  io:
+    - columnfunit
+    - filenum
+    - heatfunit
+    - logfunit
+    - outputfunit
+    - rateconstantfunit
+    - ratesfunit
+    - readabundfunit
+    - rout_funit
+    - saveabundfunit
+  
+  # cshock/jshock - internal iteration variables
+  cshock_mod:
+    - postshock
+    - inrad
+    - tempindx
+  jshock_mod:
+    - postshock
+    - inrad
+    - tempindx
+
+file_path_parameters:
+  # File paths that should only be set via param_dict, not GeneralSettings
+  # These are handled specially by logic inside wrap.f90 (opening and closing of files)
+  defaultparameters:
+    - outputfile
+    - columnfile
+    - rateconstantfile
+    - ratesfile
+    - heatingfile
+    - abundsavefile
+    - abundloadfile
+    - coolantdatadir
