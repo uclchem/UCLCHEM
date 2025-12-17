@@ -6,12 +6,14 @@ desorption and bulk reactions for three phase models.
 
 import logging
 from copy import deepcopy
+from os import path
 from pathlib import Path
 from typing import Union
 
 from numpy import any as np_any
 
 from uclchem.makerates.heating import convert_to_erg
+from uclchem.utils import _ROOT
 
 from .reaction import CoupledReaction, Reaction, reaction_types
 from .species import Species, elementList
@@ -1491,3 +1493,32 @@ class LoadedNetwork(Network):
         """
         self.set_species_dict({s.get_name(): s for s in species})
         self.set_reaction_dict({k: v for k, v in enumerate(reactions)})
+
+    @classmethod
+    def from_files(
+        cls,
+        species_filepath: str | Path | None = None,
+        reactions_filepath: str | Path | None = None,
+    ) -> LoadedNetwork:
+        """Load the network from a set of species and reactions files.
+
+        Args:
+            species_file (str | Path | None): file with species.
+                If None, defaults to `uclchem/src/species.csv`. Default: None
+            reactions_file (str | Path | None): file with reactions. Default: None
+                If None, defaults to `uclchem/src/reactions.csv`. Default: None
+
+        Returns:
+            LoadedNetwork: loaded network
+        """
+        if species_filepath is None:
+            species_filepath = path.join(_ROOT, "species.csv")
+        species = pd.read_csv(species_filepath)
+        species = [Species(list(spec)) for idx, spec in species.iterrows()]
+
+        if reactions_filepath is None:
+            reactions_filepath = path.join(_ROOT, "reactions.csv")
+        reactions = pd.read_csv(reactions_filepath)
+        reactions = [Reaction(list(reac)) for idx, reac in reactions.iterrows()]
+
+        return LoadedNetwork(species, reactions)

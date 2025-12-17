@@ -5,6 +5,7 @@ from typing import Union
 from . import io_functions as io
 from .config import MakeratesConfig
 from .network import LoadedNetwork, Network
+from .reaction import Reaction
 
 
 def run_makerates(
@@ -160,11 +161,7 @@ def get_network(
         return run_makerates(path_to_input_file, write_files=False)
     else:
         # If we load the species/reactions directly from UCLCHEM we can skip the checks
-        species_list, _ = io.read_species_file(path_to_species_file)
-        reactions_list, _ = io.read_reaction_file(
-            path_to_reaction_file, species_list, "UCL"
-        )
-        return LoadedNetwork(species_list, reactions_list)
+        return LoadedNetwork.from_files(path_to_species_file, path_to_reaction_file)
 
 
 def _get_network_from_files(
@@ -175,7 +172,7 @@ def _get_network_from_files(
     add_crp_photo_to_grain: bool,
     derive_reaction_exothermicity: Union[bool, str, list[str]],
     database_reaction_exothermicity: list[Union[str, bytes, os.PathLike]] = None,
-):
+) -> tuple[Network, list[Reaction]]:
     logging.info(
         f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"
     )
