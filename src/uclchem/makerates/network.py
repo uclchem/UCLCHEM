@@ -4,6 +4,8 @@ checking for common errors, and automatic addition of reactions such as freeze o
 desorption and bulk reactions for three phase models.
 """
 
+from __future__ import annotations
+
 import logging
 from copy import deepcopy
 from os import path
