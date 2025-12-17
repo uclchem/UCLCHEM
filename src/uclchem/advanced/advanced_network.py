@@ -82,13 +82,37 @@ class RuntimeSpecies:
         return None
 
     def is_grain_species(self) -> bool:
-        """Check if this is a grain surface species.
+        """Return whether the species is a species on the grain
 
         Returns:
-            True if species name starts with # or @
+            bool: True if it is a grain species.
         """
-        name = self.get_name()
-        return name.startswith("#") or name.startswith("@")
+        warn(
+            "This method is deprecated in favour of is_ice_species.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return (
+            self.get_name() in ["BULK", "SURFACE"]
+            or self.get_name().startswith(
+                "#",
+            )
+            or self.get_name().startswith("@")
+        )
+
+    def is_ice_species(self) -> bool:
+        """Return whether the species is a species on the grain
+
+        Returns:
+            bool: True if it is an ice species.
+        """
+        return (
+            self.get_name() in ["BULK", "SURFACE"]
+            or self.get_name().startswith(
+                "#",
+            )
+            or self.get_name().startswith("@")
+        )
 
     def is_ion(self) -> bool:
         """Check if this is an ion.
