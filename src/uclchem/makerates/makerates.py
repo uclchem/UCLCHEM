@@ -2,7 +2,6 @@ import logging
 import os
 from typing import Union
 
-
 from . import io_functions as io
 from .config import MakeratesConfig
 from .network import LoadedNetwork, Network
@@ -177,9 +176,6 @@ def _get_network_from_files(
     derive_reaction_exothermicity: Union[bool, str, list[str]],
     database_reaction_exothermicity: list[Union[str, bytes, os.PathLike]] = None,
 ):
-    print(
-        f"DEBUG _get_network_from_files database_reaction_exothermicity={database_reaction_exothermicity}"
-    )
     logging.info(
         f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"
     )

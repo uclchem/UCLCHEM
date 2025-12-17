@@ -19,15 +19,4 @@ from .advanced_heating import HeatingSettings
 from .advanced_network import NetworkState, RuntimeReaction, RuntimeSpecies
 from .advanced_settings import GeneralSettings, ModuleSettings, Setting
 
-__all__ = [
-    "HeatingSettings",
-    "NetworkState",
-    "RuntimeSpecies",
-    "RuntimeReaction",
-    "GeneralSettings",
-    "Setting",
-    "ModuleSettings",
-]
-
 __all__ = ["HeatingSettings", "NetworkState", "GeneralSettings"]
-__version__ = "1.0.0"
