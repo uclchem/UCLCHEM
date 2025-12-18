@@ -45,9 +45,9 @@ class Network:
             user_defined_bulk (list, optional): List of user defined bulk. Defaults to [].
             add_crp_photo_to_grain (bool, optional): Whether to add CRP, CRPHOT and PHOTON reactions from gas-phase into solid phase too.
         """
-        assert len(set([s.get_name() for s in species])) == len(
-            species
-        ), "Cannot have duplicate species in the species list."
+        assert len(set([s.get_name() for s in species])) == len(species), (
+            "Cannot have duplicate species in the species list."
+        )
         self.set_species_dict({s.get_name(): s for s in species})
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
@@ -373,9 +373,9 @@ class Network:
         """
         old_length = len(self._reactions_dict)
         self._reactions_dict[reaction_idx] = reaction
-        assert (
-            old_length == len(self._reactions_dict)
-        ), "Setting the reaction caused a change in the number of reactions, use add_reaction and remove_reaction for add and remove operations."
+        assert old_length == len(self._reactions_dict), (
+            "Setting the reaction caused a change in the number of reactions, use add_reaction and remove_reaction for add and remove operations."
+        )
 
     def get_reaction_dict(self) -> dict[int, Reaction]:
         """Returns the whole internal reaction dictionary.
@@ -441,9 +441,9 @@ class Network:
         logging.debug(
             f"After sorting reactions {[(k, v) for i, (k, v) in enumerate(self.get_reaction_dict().items()) if i < 5]}"
         )
-        assert len(reaction_dict) == len(
-            self.get_reaction_dict()
-        ), "Sorting the species caused a difference in the number of species"
+        assert len(reaction_dict) == len(self.get_reaction_dict()), (
+            "Sorting the species caused a difference in the number of species"
+        )
 
     def add_species(
         self, species: Union[Union[Species, str], list[Union[Species, str]]]
@@ -574,7 +574,7 @@ class Network:
                     species_dict.items(),
                     # key=lambda kv: (kv[1].get_mass(),),
                     key=lambda kv: (
-                        kv[1].is_grain_species(),
+                        kv[1].is_ice_species(),
                         kv[1].is_bulk_species(),
                         kv[1].get_mass(),
                     ),
@@ -584,9 +584,9 @@ class Network:
         logging.debug(
             f"After sorting species {[(k, v) for i, (k, v) in enumerate(self.get_species_dict().items()) if i < 5]}"
         )
-        assert len(species_dict) == len(
-            self.get_species_dict()
-        ), "Sorting the species caused a difference in the number of species"
+        assert len(species_dict) == len(self.get_species_dict()), (
+            "Sorting the species caused a difference in the number of species"
+        )
         electron = self.get_specie("E-")
         self.remove_species("E-")
         self.add_species(electron)
@@ -719,7 +719,7 @@ class Network:
 
         # then add default freeze out for species without a listed freeze out
         for species_name, specie in self.get_species_dict().items():
-            if (not specie.is_grain_species()) and (
+            if (not specie.is_ice_species()) and (
                 not specie.get_freeze_products_list()
             ):
                 logging.info(f"Adding a default freezeout for {specie} to the specie")
@@ -736,7 +736,7 @@ class Network:
         new_species = []
         for species in self.get_species_list():
             logging.debug(f"Checking if {species} needs to have its freezeout added")
-            if not species.is_grain_species():
+            if not species.is_ice_species():
                 for products, alpha in species.get_freeze_products():
                     if species.get_name() == "E-":
                         # Set electron freeze out to zero:
@@ -1068,7 +1068,7 @@ class Network:
             "\tCheck that species have surface counterparts or if they have multiple freeze outs/check alphas:\n"
         )
         for spec in self.get_species_list():
-            if not spec.is_grain_species() and spec.get_name()[-1] not in ["+", "-"]:
+            if not spec.is_ice_species() and spec.get_name()[-1] not in ["+", "-"]:
                 exist_check = 0
                 for checkSpeck in self.get_species_list():
                     if checkSpeck.get_name() == "#" + spec.get_name():
@@ -1094,7 +1094,7 @@ class Network:
                 logging.info(
                     f"\t{spec.get_name()} freezes out through {freezes} routes"
                 )
-            elif freezes < 1 and not spec.is_grain_species():
+            elif freezes < 1 and not spec.is_ice_species():
                 logging.info(f"\t{spec.get_name()} does not freeze out")
 
     def get_reactions_on_grain(self) -> list[Reaction]:
