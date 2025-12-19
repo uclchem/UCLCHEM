@@ -1,8 +1,32 @@
 import logging
 from collections import Counter
+from contextlib import contextmanager
 from copy import deepcopy
 
 from uclchem.makerates.species import Species, elementList, elementMass, species_header
+
+# Global flag for validation control
+_skip_reaction_validation = False
+
+
+@contextmanager
+def skip_reaction_validation():
+    """Context manager to temporarily disable reaction validation.
+
+    This is useful when loading pre-validated networks where you do not want any checks. 
+
+    Example:
+        >>> with skip_validation():
+        ...     reaction = Reaction(["C2N", "FREEZE", "NAN", "#CH3CNH", ...])
+    """
+    global _skip_reaction_validation
+    old_value = _skip_reaction_validation
+    _skip_reaction_validation = True
+    try:
+        yield
+    finally:
+        _skip_reaction_validation = old_value
+
 
 reaction_types = [
     "PHOTON",
@@ -40,11 +64,23 @@ tunneling_reaction_types = [
 
 class Reaction:
     def __init__(self, inputRow, reaction_source=None):
+        """Initialize a Reaction object.
+
+        Args:
+            inputRow: Either a Reaction object to copy, or a list/array with reaction data
+            reaction_source: Optional source identifier for the reaction
+
+        Note:
+            Validation can be disabled using the skip_validation() context manager.
+            This is useful when loading pre-validated networks from Fortran where
+            validation would fail due to modeling simplifications.
+        """
         if isinstance(inputRow, Reaction):
             self.set_reactants(inputRow.get_reactants())
             self.set_products(inputRow.get_products())
-            self.check_element_conservation()
-            self.check_charge_conservation()
+            if not _skip_reaction_validation:
+                self.check_element_conservation()
+                self.check_charge_conservation()
             self.set_alpha(inputRow.get_alpha())
             self.set_beta(inputRow.get_beta())
             self.set_gamma(inputRow.get_gamma())
@@ -70,8 +106,9 @@ class Reaction:
                         self.NANCheck(str(inputRow[6])).upper(),
                     ]
                 )
-                self.check_element_conservation()
-                self.check_charge_conservation()
+                if not _skip_reaction_validation:
+                    self.check_element_conservation()
+                    self.check_charge_conservation()
 
                 self.set_alpha(float(inputRow[7]))
                 self.set_beta(float(inputRow[8]))
@@ -499,14 +536,10 @@ class Reaction:
             raise ValueError(msg)
 
     def check_charge_conservation(self) -> None:
-        if self.get_reaction_type() in [
-            "FREEZE",
-            "DESORB",
-            "DESOH2",
-            "DESCR",
-            "DEUVCR",
-            "THERM",
-        ]:
+        # Grain reactions don't need to conserve charge (grains can absorb/release electrons)
+        if self.is_ice_reaction(
+            include_reactants=True, include_products=True, strict=False
+        ):
             return
         charge_reactants = 0
         for reac in self._reactants:
@@ -522,8 +555,10 @@ class Reaction:
             charge_products += specie.get_charge()
 
         if charge_products != charge_reactants:
-            if self.get_reaction_type() == "GAR":
-                # GAR reactions do not conserve charge since it relies on grain electrons.
+            # GAR and FREEZE reactions do not conserve charge
+            if self.get_reaction_type() in ["GAR", "FREEZE"]:
+                # GAR reactions rely on grain electrons
+                # FREEZE reactions can have electron freeze-out (E- -> nothing with alpha=0)
                 return
             msg = "Charges not conserved in a reaction.\n"
             msg += f"The following reaction caused this error: {self}.\n"
@@ -668,9 +703,9 @@ class Reaction:
         return formatted_reaction
 
     def _is_reaction_wrap(self, include_reactants=True, include_products=True):
-        assert (
-            include_reactants or include_products
-        ), "Either include reactants or products"
+        assert include_reactants or include_products, (
+            "Either include reactants or products"
+        )
         species_to_check = []
         if include_reactants:
             species_to_check += self.get_pure_reactants()

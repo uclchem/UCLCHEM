@@ -18,5 +18,11 @@ Settings should only be modified during initialization, before running models.
 from .advanced_heating import HeatingSettings
 from .advanced_network import NetworkState, RuntimeReaction, RuntimeSpecies
 from .advanced_settings import GeneralSettings, ModuleSettings, Setting
+from .runtime_network import RuntimeNetwork
 
-__all__ = ["HeatingSettings", "NetworkState", "GeneralSettings"]
+__all__ = [
+    "HeatingSettings",
+    "NetworkState",
+    "GeneralSettings",
+    "RuntimeNetwork",
+]

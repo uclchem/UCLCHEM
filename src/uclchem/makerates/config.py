@@ -516,7 +516,7 @@ database_reaction_type: "UMIST12"
     def log_configuration(self):
         """Log the current configuration for debugging."""
         logging.info("Configuration loaded successfully:")
-        for field_name, field_info in self.model_fields.items():
+        for field_name, field_info in self.__class__.model_fields.items():
             if field_name.startswith("_"):
                 continue
             value = getattr(self, field_name)

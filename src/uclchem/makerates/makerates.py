@@ -4,7 +4,7 @@ from typing import Union
 
 from . import io_functions as io
 from .config import MakeratesConfig
-from .network import LoadedNetwork, Network
+from .network import Network
 from .reaction import Reaction
 
 
@@ -161,7 +161,7 @@ def get_network(
         return run_makerates(path_to_input_file, write_files=False)
     else:
         # If we load the species/reactions directly from UCLCHEM we can skip the checks
-        return LoadedNetwork.from_files(path_to_species_file, path_to_reaction_file)
+        return Network.from_csv(path_to_species_file, path_to_reaction_file)
 
 
 def _get_network_from_files(
@@ -192,8 +192,8 @@ def _get_network_from_files(
         reactions += temp_reactions
         dropped_reactions += temp_dropped_reactions
 
-    # Create Network
-    network = Network(
+    # Create Network using the build() factory method
+    network = Network.build(
         species=species_list,
         reactions=reactions,
         user_defined_bulk=user_defined_bulk,
@@ -211,7 +211,5 @@ def _get_network_from_files(
         + "################################################\n"
     )
 
-    # check network to see if there are potential problems, in the get wrapper because checking should always happen!
-    logging.info("Checking Network")
-    network.check_network()
+    # Network checking is now done automatically during build in NetworkBuilder._check_network()
     return network, dropped_reactions
