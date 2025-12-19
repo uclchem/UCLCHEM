@@ -134,6 +134,8 @@ py.install_sources([
   usource / 'makerates' / 'io_functions.py',
   usource / 'makerates' / 'makerates.py',
   usource / 'makerates' / 'network.py',
+  usource / 'makerates' / 'network_builder.py',
+  usource / 'makerates' / 'network_compat.py',
   usource / 'makerates' / 'reaction.py',
   usource / 'makerates' / 'species.py',
   usource / 'makerates' / 'heating.py',
@@ -168,6 +170,7 @@ py.install_sources([
   usource / 'advanced' / 'advanced_heating.py',
   usource / 'advanced' / 'advanced_network.py',
   usource / 'advanced' / 'advanced_settings.py',
+  usource / 'advanced' / 'runtime_network.py',
   usource / 'advanced' / 'fortran_metadata.yaml',
 ], subdir: 'uclchem' / 'advanced')
 # Lastly, we also copy the data needed for the cooling module:
