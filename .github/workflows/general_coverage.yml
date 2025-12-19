@@ -5,10 +5,15 @@ on:
     branches:
       - main
       - develop  # Add the 'develop' branch here
+  workflow_run:
+    workflows: ["Lint"]
+    types:
+      - completed
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
 
     steps:
     - name: Checkout code
