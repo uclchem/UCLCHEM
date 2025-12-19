@@ -45,9 +45,9 @@ class Network:
             user_defined_bulk (list, optional): List of user defined bulk. Defaults to [].
             add_crp_photo_to_grain (bool, optional): Whether to add CRP, CRPHOT and PHOTON reactions from gas-phase into solid phase too.
         """
-        assert len(set([s.get_name() for s in species])) == len(species), (
-            "Cannot have duplicate species in the species list."
-        )
+        assert len(set([s.get_name() for s in species])) == len(
+            species
+        ), "Cannot have duplicate species in the species list."
         self.set_species_dict({s.get_name(): s for s in species})
         self.excited_species = self.check_for_excited_species()
         self.user_defined_bulk = user_defined_bulk
@@ -373,9 +373,9 @@ class Network:
         """
         old_length = len(self._reactions_dict)
         self._reactions_dict[reaction_idx] = reaction
-        assert old_length == len(self._reactions_dict), (
-            "Setting the reaction caused a change in the number of reactions, use add_reaction and remove_reaction for add and remove operations."
-        )
+        assert (
+            old_length == len(self._reactions_dict)
+        ), "Setting the reaction caused a change in the number of reactions, use add_reaction and remove_reaction for add and remove operations."
 
     def get_reaction_dict(self) -> dict[int, Reaction]:
         """Returns the whole internal reaction dictionary.
@@ -441,9 +441,9 @@ class Network:
         logging.debug(
             f"After sorting reactions {[(k, v) for i, (k, v) in enumerate(self.get_reaction_dict().items()) if i < 5]}"
         )
-        assert len(reaction_dict) == len(self.get_reaction_dict()), (
-            "Sorting the species caused a difference in the number of species"
-        )
+        assert len(reaction_dict) == len(
+            self.get_reaction_dict()
+        ), "Sorting the species caused a difference in the number of species"
 
     def add_species(
         self, species: Union[Union[Species, str], list[Union[Species, str]]]
@@ -584,9 +584,9 @@ class Network:
         logging.debug(
             f"After sorting species {[(k, v) for i, (k, v) in enumerate(self.get_species_dict().items()) if i < 5]}"
         )
-        assert len(species_dict) == len(self.get_species_dict()), (
-            "Sorting the species caused a difference in the number of species"
-        )
+        assert len(species_dict) == len(
+            self.get_species_dict()
+        ), "Sorting the species caused a difference in the number of species"
         electron = self.get_specie("E-")
         self.remove_species("E-")
         self.add_species(electron)
