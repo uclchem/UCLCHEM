@@ -44,5 +44,5 @@ jobs:
 
     - name: Run all test suite
       run: |
-        pytest -n auto tests/{test_ode_conservation.py,test_run_stages_disk.py,test_run_stages_memory.py,test_output_mode_mixing.py,test_exothermic_network.py,test_exothermic_units.py,test_advanced.py,test_custom_exothermicity.py,test_heating_arrays.py,test_heating_module.py,test_io_functions.py,test_parameter_classification.py,test_photo_on_grain.py, test_loaded_network.py}
+        pytest -n auto tests/ --ignore=tests/test_install.py --ignore=tests/test_photo_on_grain.py
 
