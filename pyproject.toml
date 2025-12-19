@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-xdist", "pre-commit", "sphinx"]  # Development dependencies
+dev = ["pytest", "pytest-xdist", "pytest-github-actions-annotate-failures", "pre-commit", "sphinx"]  # Development dependencies
 docs = ["pydoc-markdown", "jupyter", "jupyter_contrib_nbextensions", "notebook<7"]
 
 [tool.ruff]
