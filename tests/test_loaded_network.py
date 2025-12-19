@@ -33,21 +33,21 @@ def sample_reactions():
     return [
         Reaction(
             [
-                "H",        # R1
-                "H",        # R2
-                "NAN",      # R3
-                "H2",       # P1
-                "NAN",      # P2
-                "NAN",      # P3
-                "NAN",      # P4
-                1.0e-10,    # alpha
-                0.5,        # beta
-                0.0,        # gamma
-                0.0,        # templow
-                0.0,        # temphigh
-                2.0,        # reduced mass
-                0,          # extrapolation
-                0.0,        # exothermicity
+                "H",  # R1
+                "H",  # R2
+                "NAN",  # R3
+                "H2",  # P1
+                "NAN",  # P2
+                "NAN",  # P3
+                "NAN",  # P4
+                1.0e-10,  # alpha
+                0.5,  # beta
+                0.0,  # gamma
+                0.0,  # templow
+                0.0,  # temphigh
+                2.0,  # reduced mass
+                0,  # extrapolation
+                0.0,  # exothermicity
             ]
         ),
     ]
@@ -151,22 +151,20 @@ def test_option3_load_from_default_installation():
     assert any("H" in name for name in species_dict.keys())
 
 
-def test_different_factory_methods_produce_networks(
-    sample_species, sample_reactions
-):
+def test_different_factory_methods_produce_networks(sample_species, sample_reactions):
     """
     Test that different factory methods all produce valid Network objects.
 
     This verifies that Network supports multiple creation patterns:
     - from_csv() for loading from files
-    - from_lists() for direct object construction  
+    - from_lists() for direct object construction
     - build() for full validation and generation
     """
     # Test from_csv works
     network1 = Network.from_csv()
     assert isinstance(network1, Network)
     assert len(network1.get_species_dict()) > 0
-    
+
     # Test from_lists works
     network2 = Network.from_lists(species=sample_species, reactions=sample_reactions)
     assert isinstance(network2, Network)
@@ -181,11 +179,11 @@ def test_network_supports_crud_operations():
     removing, and modifying species and reactions.
     """
     network = Network.from_csv()
-    
+
     # Test that modification methods exist
-    assert hasattr(network, 'add_species')
-    assert hasattr(network, 'remove_species')
-    assert hasattr(network, 'add_reactions')
-    assert hasattr(network, 'remove_reaction')
-    assert hasattr(network, 'change_binding_energy')
-    assert hasattr(network, 'change_reaction_barrier')
+    assert hasattr(network, "add_species")
+    assert hasattr(network, "remove_species")
+    assert hasattr(network, "add_reactions")
+    assert hasattr(network, "remove_reaction")
+    assert hasattr(network, "change_binding_energy")
+    assert hasattr(network, "change_reaction_barrier")

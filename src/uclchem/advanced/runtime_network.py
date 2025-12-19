@@ -500,7 +500,9 @@ class RuntimeNetwork(BaseNetwork):
         Raises:
             ValueError: If reaction not found or multiple matches
         """
-        assert reaction.is_ice_reaction(), "Only ice reactions have modifiable barriers."
+        assert (
+            reaction.is_ice_reaction()
+        ), "Only ice reactions have modifiable barriers."
         reaction_idx = self.get_reaction_index(reaction)
         self.modify_reaction_parameters(reaction_idx, gamma=barrier)
 

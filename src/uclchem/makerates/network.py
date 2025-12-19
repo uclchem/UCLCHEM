@@ -15,12 +15,11 @@ from uclchem.advanced.runtime_network instead.
 """
 
 import logging
-import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from os import path
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 import pandas as pd
 
@@ -124,7 +123,9 @@ class NetworkABC(ABC):
         """String representation of the network."""
         n_species = len(self.get_species_list())
         n_reactions = len(self.get_reaction_list())
-        return f"{self.__class__.__name__}(species={n_species},\n reactions={n_reactions})"
+        return (
+            f"{self.__class__.__name__}(species={n_species},\n reactions={n_reactions})"
+        )
 
 
 class MutableNetworkABC(NetworkABC):
@@ -204,127 +205,131 @@ class MutableNetworkABC(NetworkABC):
 
 class BaseNetwork(NetworkABC):
     """Base implementation providing common network operations.
-    
+
     Implements all read and query operations that are common between
     Network and RuntimeNetwork. Both classes store data in _species_dict
     and _reactions_dict, so this base class can implement all the shared logic.
-    
+
     Subclasses only need to:
     1. Initialize _species_dict and _reactions_dict
     2. Implement modification methods (change_binding_energy, change_reaction_barrier)
     3. Optionally implement add/remove operations (MutableNetworkABC)
     """
-    
+
     # Subclasses must define these
     _species_dict: dict[str, Species]
     _reactions_dict: dict[int, Reaction]
-    
+
     # ========================================================================
     # Properties (NetworkABC Implementation)
     # ========================================================================
-    
+
     @property
     def species(self):
         """Get species dictionary."""
         return self._species_dict
-    
+
     @property
     def reactions(self):
         """Get reactions dictionary."""
         return self._reactions_dict
-    
+
     # ========================================================================
     # Species Read Interface (NetworkABC Implementation)
     # ========================================================================
-    
+
     def get_species_list(self) -> list[Species]:
         """Get all species as a list."""
         return list(self._species_dict.values())
-    
+
     def get_species_dict(self) -> dict[str, Species]:
         """Get species dictionary (copy)."""
         return deepcopy(self._species_dict)
-    
+
     def get_specie(self, specie_name: str) -> Species:
         """Get a species by name (copy)."""
         return deepcopy(self._species_dict[specie_name])
-    
+
     # ========================================================================
     # Reaction Read Interface (NetworkABC Implementation)
     # ========================================================================
-    
+
     def get_reaction_list(self) -> list[Reaction]:
         """Get all reactions as a list."""
         return list(self._reactions_dict.values())
-    
+
     def get_reaction_dict(self) -> dict[int, Reaction]:
         """Get reactions dictionary (copy)."""
         return deepcopy(self._reactions_dict)
-    
+
     def get_reaction(self, reaction_idx: int) -> Reaction:
         """Get a reaction by index (copy)."""
         return deepcopy(self._reactions_dict[reaction_idx])
-    
+
     # ========================================================================
     # Query Methods (NetworkABC Implementation)
     # ========================================================================
-    
+
     def get_reactions_by_types(
         self, reaction_type: Union[str, list[str]]
     ) -> list[Reaction]:
         """Get all reactions of specific type(s).
-        
+
         Args:
             reaction_type: Single type or list of types to filter by
-        
+
         Returns:
             List of reactions matching the type(s)
         """
         if isinstance(reaction_type, str):
             reaction_type = [reaction_type]
-        
+
         return [
-            reaction for reaction in self._reactions_dict.values()
+            reaction
+            for reaction in self._reactions_dict.values()
             if reaction.get_type() in reaction_type
         ]
-    
+
     def find_similar_reactions(self, reaction: Reaction) -> dict[int, Reaction]:
         """Find reactions with same reactants and products.
-        
+
         Args:
             reaction: Reaction to find similar reactions for
-        
+
         Returns:
             Dictionary of {index: Reaction} for matching reactions
         """
         similar = {}
-        
+
         target_reactants = set(reaction.get_reactants()) - {"NAN"}
         target_products = set(reaction.get_products()) - {"NAN"}
-        
+
         for idx, other_reaction in self._reactions_dict.items():
             other_reactants = set(other_reaction.get_reactants()) - {"NAN"}
             other_products = set(other_reaction.get_products()) - {"NAN"}
-            
-            if other_reactants == target_reactants and other_products == target_products:
+
+            if (
+                other_reactants == target_reactants
+                and other_products == target_products
+            ):
                 similar[idx] = other_reaction
-        
+
         return similar
-    
+
     def get_reaction_index(self, reaction: Reaction) -> int:
         """Get the index of a reaction in the network.
-        
+
         Args:
             reaction: Reaction to find
-        
+
         Returns:
             Index of the reaction
-        
+
         Raises:
             ValueError: If reaction not found or multiple matches exist
         """
         similar = self.find_similar_reactions(reaction)
-        
+
         if len(similar) == 0:
             raise ValueError(f"Reaction {reaction} not found in network")
         elif len(similar) > 1:
@@ -332,7 +337,7 @@ class BaseNetwork(NetworkABC):
                 f"Multiple reactions match {reaction}. "
                 f"Found indices: {list(similar.keys())}"
             )
-        
+
         return list(similar.keys())[0]
 
 
@@ -622,9 +627,9 @@ class Network(BaseNetwork, MutableNetworkABC):
         """Set/update a reaction at specific index."""
         old_length = len(self._reactions_dict)
         self._reactions_dict[reaction_idx] = reaction
-        assert old_length == len(self._reactions_dict), (
-            "Setting the reaction caused a change in the number of reactions"
-        )
+        assert old_length == len(
+            self._reactions_dict
+        ), "Setting the reaction caused a change in the number of reactions"
 
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
         """Replace entire reaction dictionary."""
