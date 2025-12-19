@@ -710,6 +710,9 @@ class Network(BaseNetwork, MutableNetworkABC):
                 )
             )
         )
+        assert len(reaction_dict) == len(
+            self.get_reaction_dict()
+        ), "Sorting the species caused a difference in the number of species"
 
     # Note: Query methods (find_similar_reactions, get_reaction_index, etc.)
     # are inherited from BaseNetwork
