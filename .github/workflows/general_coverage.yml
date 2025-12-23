@@ -1,0 +1,48 @@
+name: Test install and interface
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop  # Add the 'develop' branch here
+  workflow_run:
+    workflows: ["Lint"]
+    types:
+      - completed
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.12"  
+        
+    - name: Install gfortran
+      run: |
+        sudo apt-get -y update
+        sudo apt-get -y install gfortran
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-xdist pytest-github-actions-annotate-failures
+    
+    - name: Install package
+      run: |
+        pip install .
+
+    - name: Run pytest install test
+      run: |
+        pytest tests/test_install.py
+
+    - name: Run all test suite
+      run: |
+        pytest -n auto tests/ --ignore=tests/test_install.py --ignore=tests/test_photo_on_grain.py
+

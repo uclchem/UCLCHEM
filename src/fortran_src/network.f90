@@ -240,7 +240,7 @@ REAL(dp), PARAMETER :: formationEnthalpy (166)=(/5.1630e+01,0.0000e+00&
     &,0.0000e+00,-4.5400e+01,1.1000e+01,2.7700e+02,3.6300e+00,0.0000e+00&
     &,-4.2000e+00,-3.9910e+01,-2.2000e+01,6.7400e+02,1.3783e+02,4.7700e+01&
     &,1.7088e+02,1.9000e+01,-1.0700e+01,1.9500e+02,3.0600e+01,-2.8450e+01&
-    &,-2.4300e+01,6.5300e+01,-9.3960e+01,0.0000e+00,7.1700e+01,0.0000e+00&
+    &,-2.4300e+01,6.5300e+01,-9.3960e+01,0.0000e+00,7.1700e+01,-2.4300e+01&
     &,0.0000e+00,0.0000e+00,2.8300e+01,8.8000e+00,6.3800e+01,-9.9900e+02&
     &,0.0000e+00,1.2000e+00,1.9111e+02,0.0000e+00,8.4000e+01,7.3460e+01&
     &,1.4938e+02,0.0000e+00,-3.4000e+01,1.8900e+02,-9.9900e+02,-7.0300e+01&
@@ -254,7 +254,7 @@ REAL(dp), PARAMETER :: formationEnthalpy (166)=(/5.1630e+01,0.0000e+00&
     &,-4.5400e+01,1.1000e+01,2.7700e+02,3.6300e+00,0.0000e+00,-4.2000e+00&
     &,-3.9910e+01,-2.2000e+01,6.7400e+02,1.3783e+02,4.7700e+01,1.7088e+02&
     &,1.9000e+01,-1.0700e+01,1.9500e+02,3.0600e+01,-2.8450e+01,-2.4300e+01&
-    &,6.5300e+01,-9.3960e+01,0.0000e+00,7.1700e+01,0.0000e+00,0.0000e+00&
+    &,6.5300e+01,-9.3960e+01,0.0000e+00,7.1700e+01,-2.4300e+01,0.0000e+00&
     &,0.0000e+00,2.8300e+01,8.8000e+00,6.3800e+01,-9.9900e+02,0.0000e+00&
     &,1.2000e+00,1.9111e+02,0.0000e+00,8.4000e+01,7.3460e+01,1.4938e+02&
     &,0.0000e+00,-3.4000e+01,1.8900e+02,-9.9900e+02,-7.0300e+01,1.2800e+02&
@@ -264,7 +264,9 @@ INTEGER(dp), PARAMETER :: refractoryList (1)=(/-999/)
     &,nR_H2Form_LHDes=761,nR_HFreeze=545,nR_EFreeze=544,nR_H2_hv=899&
     &,nR_H2_crp=120,nR_H2Freeze=547,nR_C_hv=849,nR_CO_hv=893
     REAL(dp) :: REACTIONRATE(1)
-    LOGICAL :: ReactionRatesToDisk=.false.
+    LOGICAL :: storeRatesComputation=.false.
+    REAL(dp) :: 	exothermicities(3203)
+    LOGICAL, PARAMETER :: enableChemicalHeating = .FALSE.
 INTEGER(dp), PARAMETER :: 	re1 (3203)=(/253,265,267,268,272,276,279,297&
     &,298,321,320,327,254,255,302,286,257,299,309,301,303,289,259,295,269,273&
     &,308,307,250,251,275,282,284,314,264,294,332,317,322,296,270,278,313,318&
@@ -4852,25 +4854,25 @@ LOGICAL(dp), PARAMETER :: 	ExtrapolateRates (3203)=(/.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
-    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.True.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
-    &,.False.,.True.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
-    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
-    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.True.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
-    &,.False.,.False.,.True.,.False.,.False.,.False.,.False.,.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
-    &,.True.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
-    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
-    &,.False.,.False.,.False.,.True.,.False.,.False.,.False.,.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
-    &,.False.,.True.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
-    &,.False.,.False.,.False.,.False.,.True.,.False.,.False.,.False.,.False.&
+    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
+    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
+    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
+    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
+    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
+    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
+    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
+    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
+    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
+    &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
     &,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
@@ -5141,6 +5143,9 @@ INTEGER(dp), PARAMETER :: 	freezePartners (83)=(/495,497,499,501,503,504&
     &,578,579,580,582,585,586,587,592,594,654,598,600,602,605,606,608,610,611&
     &,614,616,617,619,621,623,625,626,629,631,633,635,637,639,641,643,645,647&
     &,649,652,655,658,660/)
+REAL(dp), PARAMETER :: 	 garParams(1,7) = RESHAPE((/ 0.0000e+00,0.0000e&
+    &+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00,0.0000e+00 /), (/ 1, 7 /&
+    &))
 INTEGER(dp), PARAMETER :: 	photonReacs (2)=(/847,987/)
 INTEGER(dp), PARAMETER :: 	crpReacs (2)=(/84,123/)
 INTEGER(dp), PARAMETER :: 	crphotReacs (2)=(/124,243/)
@@ -5162,5 +5167,6 @@ INTEGER(dp), PARAMETER :: 	ionopol2Reacs (2)=(/99999,99999/)
 INTEGER(dp), PARAMETER :: 	crsReacs (2)=(/99999,99999/)
 INTEGER(dp), PARAMETER :: 	exsolidReacs (2)=(/99999,99999/)
 INTEGER(dp), PARAMETER :: 	exrelaxReacs (2)=(/99999,99999/)
+INTEGER(dp), PARAMETER :: 	garReacs (2)=(/99999,99999/)
 INTEGER(dp), PARAMETER :: 	twobodyReacs (2)=(/1236,3203/)
 END MODULE network

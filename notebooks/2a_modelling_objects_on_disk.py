@@ -78,7 +78,9 @@ param_dict["reltol"] = 1e-12
 param_dict["abundLoadFile"] = "../examples/test-output/startcollapse.dat"
 param_dict["outputFile"] = "../examples/test-output/phase2-full.dat"
 
-p_core = uclchem.model.PrestellarCore(temp_indx=3, max_temperature=300.0, param_dict=param_dict)
+p_core = uclchem.model.PrestellarCore(
+    temp_indx=3, max_temperature=300.0, param_dict=param_dict
+)
 # For file reading demonstration purposes, we will now delete the object.
 del p_core
 # -
@@ -95,7 +97,9 @@ del p_core
 phase2_df = uclchem.analysis.read_output_file("../examples/test-output/phase2-full.dat")
 uclchem.analysis.check_element_conservation(phase2_df)
 
-p_core = uclchem.model.PrestellarCore(read_file="../examples/test-output/phase2-full.dat")
+p_core = uclchem.model.PrestellarCore(
+    read_file="../examples/test-output/phase2-full.dat"
+)
 p_core.check_conservation()
 
 # +
@@ -212,7 +216,9 @@ shock_vel = 10.0
 param_dict["abundLoadFile"] = "../examples/test-output/shockstart.dat"
 param_dict["outputFile"] = "../examples/test-output/jshock.dat"
 
-jshock = uclchem.model.JShock(shock_vel=shock_vel, param_dict=param_dict, timepoints=1500)
+jshock = uclchem.model.JShock(
+    shock_vel=shock_vel, param_dict=param_dict, timepoints=1500
+)
 # For file reading demonstration purposes, we will now delete the object.
 del jshock
 # -

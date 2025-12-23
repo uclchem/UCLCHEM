@@ -20,8 +20,18 @@ description = "A package for the astrochemical modelling of gas-grain chemistrie
 readme = "README.md"
 requires-python = ">=3.9,<3.14"
 dependencies = [
-    "pandas", "numpy", "pyyaml", "charset_normalizer", "matplotlib", "seaborn", "scipy", "tqdm", "joblib", "xarray",
+    "pandas", "numpy", "pyyaml", "charset_normalizer", "matplotlib", "seaborn", "scipy", "tqdm", "joblib", "xarray", "pydantic>=2.0"
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-xdist", "pre-commit", "sphinx"]  # Development dependencies
+dev = ["pytest", "pytest-xdist", "pytest-github-actions-annotate-failures", "pre-commit", "sphinx"]  # Development dependencies
+docs = ["pydoc-markdown", "jupyter", "jupyter_contrib_nbextensions", "notebook<7"]
+
+[tool.ruff]
+# Exclude notebooks directory from most checks since they're generated from .ipynb
+extend-exclude = ["notebooks/*.py"]
+
+[tool.ruff.lint.per-file-ignores]
+# E402: Module level import not at top of file - normal for notebook-derived files
+"notebooks/*.py" = ["E402"]
+"*/__init__.py" = ["F401"]

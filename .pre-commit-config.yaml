@@ -12,4 +12,9 @@ repos:
   rev: 0.7.1
   hooks:
     - id: nbstripout
-
+- repo: https://github.com/PyCQA/flake8
+  rev: 7.1.1
+  hooks:
+    - id: flake8
+      args: ['--select=F821,E999', '--per-file-ignores=*/__init__.py:F401 notebooks/*.py:E402']
+      files: ^src/uclchem/

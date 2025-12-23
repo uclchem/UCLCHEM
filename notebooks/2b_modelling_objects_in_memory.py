@@ -13,7 +13,7 @@
 #     name: python3
 # ---
 
-'''
+"""
 # Advanced Physical Modelling
 
 In the previous tutorial, we simply modelled the chemistry of a static cloud for 1 Myr. This is unlikely to meet
@@ -23,12 +23,12 @@ to demonstrate the workflow that the UCLCHEM team normally follow. In tutorial 2
 classic approach, by writing the outputs to files, before passing them to the subsequent model class. In tutorial 2b,
 we calculate the exact same models, but take advantage of the model objects in order to perform all calculations in
 memory, bypassing the file system entirely.
-'''
+"""
 
 import uclchem
 import matplotlib.pyplot as plt
 
-'''
+"""
 ## The Prestellar Core
 
 ### Initial Conditions (Phase 1)
@@ -43,7 +43,7 @@ To do this, we will use `uclchem.model.Cloud()` to run a model where a cloud of 
 $10^2 cm^{-3}$ to our prestellar core density of $10^6 cm^{-3}$, keeping all other parameters constant. During this 
 collapse, chemistry will occur, and we can assume the final abundances of this model will be reasonable starting 
 abundances for the prestellar core.
-'''
+"""
 
 # set a parameter dictionary for cloud collapse model
 param_dict = {
@@ -59,7 +59,7 @@ param_dict = {
 
 cloud = uclchem.model.Cloud(param_dict=param_dict)
 
-'''
+"""
 With that done, we have run the model and stored the outputs into the object `cloud`, while also storing the final abundances by using: `param_dict["abundSaveFile"]`. We can pass this value our prestellar core model to use those abundances as our initial abundances. Of note, the parameter `abundSaveFile` has been removed from param_dict by creating the `cloud` object.
 
 ### Running the Science Model (Phase 2)
@@ -67,7 +67,7 @@ With that done, we have run the model and stored the outputs into the object `cl
 We need to change just a few things in `param_dict` to set up the prestellar core model. The key one is that UCLCHEM saves final abundances to `abundSaveFile` but loads them from `abundLoadFile` so we need to provide the `abundLoadFile` parameter to make the abundances we just produced our initial abundances.
 
 We also want to turn off freefall and change how long the model runs for.
-'''
+"""
 
 # change other bits of input to set up phase 2
 param_dict["initialDens"] = 1e6
@@ -81,11 +81,13 @@ param_dict["freezeFactor"] = 0.0
 param_dict["abstol_factor"] = 1e-18
 param_dict["reltol"] = 1e-12
 
-p_core = uclchem.model.PrestellarCore(temp_indx=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud)
+p_core = uclchem.model.PrestellarCore(
+    temp_indx=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
+)
 
 p_core.check_conservation()
 
-'''
+"""
 Note that we've made two changes to the parameters here which aren't strictly necessary but can be helpful in certain 
 situations.
 
@@ -101,7 +103,7 @@ code does not complete or element conservation fails, you can change them.
 ### Checking the Result
 With a successful run, we can check the output. To easily work with the output, we first retrieve the pandas dataframe 
 version of it, then we can plot it up.
-'''
+"""
 
 df_p_core = p_core.get_dataframes()
 
@@ -125,7 +127,7 @@ ax2.set(xlabel="Time / year", ylabel="Density")
 ax3.set(ylabel="Temperature", facecolor="red", xlim=(1e2, 1e6))
 ax3.tick_params(axis="y", colors="red")
 
-'''
+"""
 Here, we see the value of running a collapse phase before the science run. Having run a collapse, we start this model 
 with well developed ices and having material in the surface and bulk allows us to properly model the effect of warm up 
 in a prestellar core. For example, the @CO abundance is $\sim10^{-4}$ and #CO is $\sim10^{-6}$. As the gas warms to 
@@ -138,7 +140,7 @@ released along with the entire bulk.
 Essentially the same process should be followed for shocks. Let's run a C-type and J-type shock through a gas of 
 density $10^4 cm^{-3}$. Again, we first run a simple cloud model to obtain some reasonable starting abundances, then 
 we can run the shocks.
-'''
+"""
 
 # set a parameter dictionary for phase 1 collapse model
 param_dict = {
@@ -154,19 +156,21 @@ param_dict = {
 
 shock_start = uclchem.model.Cloud(param_dict=param_dict)
 
-'''
+"""
 ### C-shock
 We'll first run a c-shock. We choose to crate a 40 km s $^{-1}$ shock through a gas of density $10^4$ cm $^{-3}$, 
 using the model we just produced. Note that c-shock is the only model which returns an additional output in its 
 result list. C-Shock models include an additional variable that can be accessed, the dissipation time. This can be 
 retrieved like so `cshock.dissipation_time` where `cshock` would be the object created using `uclchem.model.CShock()`.
-'''
+"""
 
 # change other bits of input to set up phase 2
 param_dict["initialDens"] = 1e4
 param_dict["finalTime"] = 1e6
 
-cshock = uclchem.model.CShock(shock_vel=40, param_dict=param_dict, previous_model=shock_start)
+cshock = uclchem.model.CShock(
+    shock_vel=40, param_dict=param_dict, previous_model=shock_start
+)
 
 df_cshock = cshock.get_dataframes()
 cshock.check_conservation()
@@ -192,7 +196,7 @@ ax2.set(xlabel="Time / year", ylabel="Density")
 ax3.set(ylabel="Temperature", facecolor="red", xlim=(1, 20 * cshock.dissipation_time))
 ax3.tick_params(axis="y", colors="red")
 
-'''
+"""
 ### J-shock
 Running a j-shock is a simple case of changing function. We'll run a 10 km s $^{-1}$ shock through a gas of density 
 $10^3$ cm $^{-3}$ gas this time. Note that nothing stops us using the initial abundances we produced for the c-shock. 
@@ -201,19 +205,24 @@ idea to do this, but we should remember the initial abundances really are just a
 
 By default, UCLCHEM uses 500 timepoints for a model, but this turns out to not be enough, which is why we increase the 
 number of timepoints to 1500.
-'''
+"""
 
 param_dict["initialDens"] = 1e3
 param_dict["freefall"] = False  # lets remember to turn it off this time
 param_dict["reltol"] = 1e-12
 
 shock_vel = 10.0
-jshock = uclchem.model.JShock(shock_vel=shock_vel, param_dict=param_dict, previous_model=shock_start, timepoints=1500)
+jshock = uclchem.model.JShock(
+    shock_vel=shock_vel,
+    param_dict=param_dict,
+    previous_model=shock_start,
+    timepoints=1500,
+)
 
-'''
+"""
 This time, we've turned off the freefall option and made reltol a little more stringent. The j-shock ends up running a 
 bit slower but we get no warnings on this run.
-'''
+"""
 df_jshock = jshock.get_dataframes()
 jshock.check_conservation()
 
@@ -238,7 +247,7 @@ ax2.set(xlabel="Time / year", ylabel="Density")
 ax3.set(ylabel="Temperature", facecolor="red", xlim=(1e-7, 1e6))
 ax3.tick_params(axis="y", colors="red")
 
-'''
+"""
 That's everything! We've run various science models using reasonable starting abundances that we produced by running a 
 simple UCLCHEM model beforehand. One benefit of this method is that the abundances are consistent with the network. If
 we start with arbitrary, perhaps observationally motivated, abundances, it would be possible to initiate the model in a 
@@ -252,4 +261,4 @@ exact density is a good way to make sure these approximations are not problemati
 Bear in mind that all model objects can be passed as inputs to `previous_model`. This lets you chain model runs 
 together. For example, you could run a c-shock from a cloud model as we did here and then a j-shock with the c-shock 
 object as the previous model.
-'''
+"""

@@ -87,6 +87,10 @@ contains
             if (gasTemp(dstep) .gt. maxTemp) gasTemp(dstep)=maxTemp
         END IF
         dustTemp=gasTemp
+        ! IF (.not. heatingFlag) THEN 
+        !     dustTemp=gasTemp
+        ! END IF
+
     END SUBROUTINE updatePhysics
 
     SUBROUTINE sublimation(abund, lpoints)

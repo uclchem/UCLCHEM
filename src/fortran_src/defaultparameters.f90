@@ -46,17 +46,21 @@ LOGICAL :: instantSublimation=.False. !Toggle instantaneous sublimation of the i
 LOGICAL :: cosmicRayAttenuation=.False. !Use column density to attenuate cosmic ray ionisation rate following [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 CHARACTER :: ionModel='L' !L/H model for cosmic ray attenuation [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 LOGICAL :: improvedH2CRPDissociation=.False. !Use H2 CRP dissociation rate from [Padovani et al. 2018b](https://arxiv.org/abs/1809.04168).
+LOGICAL :: heatingFlag=.True. !If True, heating is applied to the gas parcels.
+LOGICAL :: enforceChargeConservation = .false. ! Enforce the chrage by keeping track of charged ions.
 !
 !## Input and Output
 !|Parameter|Default Value |Description|
 !| ----- | ------| ------ |
 CHARACTER(256) :: outputFile="" !File to write full output of UCLCHEM. This includes physical parameter values and all abundances at every time step.
 CHARACTER(256) :: columnFile="" !File to write specific species abundances, see outSpecies.
-CHARACTER(256) :: rateFile="" !File to write rate 'constants' at each timestep. This includes physical parameter values.
-CHARACTER(256) :: fluxFile="" !File to write reaction rates (flux) at each timestep. This includes physical parameter values.
+CHARACTER(256) :: rateConstantFile="" !File to write rate 'constants' at each timestep. This includes physical parameter values.
+CHARACTER(256) :: ratesFile="" !File to write reaction rates (flux) at each timestep. This includes physical parameter values.
+CHARACTER(256) :: heatingFile="" !File to write heating and cooling rates at each timestep.
 INTEGER :: writeStep=1 !Writing to columnFile only happens every writeStep timesteps.
 CHARACTER(256) :: abundSaveFile="" ! The file to save the abundances to at the end of the model.
 CHARACTER(256) :: abundLoadFile="" ! The file to load the abundances from at the start of the model.
+CHARACTER(256) :: coolantDataDir="" ! Directory where the collisional rate files are stored.
 !|abundSaveFile |None| File to store final abundances at the end of the model so future models can use them as the initial abundances. If not provided, no file will be produced.
 !|abundLoadFile |None| File from which to load initial abundances for the model, created through `abundSaveFile`. If not provided, the model starts from elemental gas.
 !|outSpecies|None| A space separated list of species to output to columnFile. Supplied as a separate list argument to most python functions, see python API docs.

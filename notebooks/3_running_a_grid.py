@@ -54,6 +54,7 @@ model_table.head()
 # ### Set up the model
 # Next, we need a function that will run our model. We write a quick function that takes a row from our dataframe and uses it to populate a parameter dictionary for UCLCHEM and then run a cloud model. We can then map our dataframe to that function.
 
+
 def run_model(row):
     # basic set of parameters we'll use for this grid.
     ParameterDictionary = {
@@ -71,7 +72,7 @@ def run_model(row):
     return result[0]  # just the integer error code
 
 
-# ### Run Grid 
+# ### Run Grid
 #
 # #### The Simple Way
 # We can use pandas apply to simply pass each row to our helper function in turn. This will take some time since we're running the models one by one. I'll use the `head` function just to run five rows as an example here.
@@ -90,6 +91,7 @@ results = Parallel(n_jobs=8, verbose=100)(
 
 # ## Checking Your Grid
 # After running, we should do two things. First, let's add `results` to our dataframe as a new column. Positive results mean a successful UCLCHEM run and negative ones are unsuccessful. Then we can run each model through `check_element_conservation` to check the integration was successful. We'll use both these things to flag models that failed in some way.
+
 
 def element_check(output_file):
     df = uclchem.analysis.read_output_file(output_file)

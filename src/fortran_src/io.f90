@@ -1,18 +1,19 @@
 MODULE IO
     USE constants
     USE DEFAULTPARAMETERS
-    !f2py INTEGER, parameter :: dp    
     USE chemistry
     USE physicscore
     USE network
+    USE heating
     
     ! CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile
-    LOGICAL :: columnOutput=.False.,fullOutput=.False.,rateOutput=.False.,fluxOutput=.False.,readAbunds=.False.,writeAbunds=.False.
+    LOGICAL :: columnOutput=.False.,fullOutput=.False.,rateOutput=.False.,fluxOutput=.False.,&
+    &readAbunds=.False.,writeAbunds=.False.,heatingOutput=.False.
     CHARACTER (LEN=15),ALLOCATABLE :: outSpecies(:)
     INTEGER :: nout
     INTEGER, ALLOCATABLE :: outIndx(:)
 
-    INTEGER, PARAMETER :: outputId=10,columnId=11,rateId=12,fluxId=13,abundLoadID=71,abundSaveID=72,outID=74,debugId=79,inputId=21
+    INTEGER, PARAMETER :: outputId=10,columnId=11,rateConstantId=12,ratesId=13,heatingId=14,abundLoadID=71,abundSaveID=72,outID=74,debugId=79,inputId=21
 CONTAINS
     !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     SUBROUTINE fileSetup
@@ -28,10 +29,37 @@ CONTAINS
         END IF
         335 FORMAT("Time,Density,gasTemp,dustTemp,Av,radfield,zeta,point,",(999(A,:,',')))
         
-        INQUIRE(UNIT=rateID, OPENED=rateOutput)
-        INQUIRE(UNIT=fluxID, OPENED=fluxOutput)
+        INQUIRE(UNIT=rateConstantId, OPENED=rateOutput)
+        INQUIRE(UNIT=ratesId, OPENED=fluxOutput)
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
         INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
+        INQUIRE(UNIT=heatingId, OPENED=heatingOutput)
+
+
+        if (heatingOutput) then
+            ! Write cooling/heating rates headers dynamically
+            ! Format: Time, [NCOOLING cooling values], [NCOOLANTS line cooling], [NHEATING heating values], [1 chem heating]
+            WRITE(heatingId,'(A)',advance='no') "Time,"
+            
+            ! Write cooling mechanism labels
+            DO i = 1, NCOOLING
+                WRITE(heatingId,'(A,A)',advance='no') TRIM(coolingLabels(i)), ","
+            END DO
+            
+            ! Write line cooling labels with species names
+            DO i = 1, NCOOLANTS
+                WRITE(heatingId,'(A,A,A)',advance='no') "LineCooling_", TRIM(coolantNames(i)), ","
+            END DO
+            
+            ! Write heating mechanism labels
+            DO i = 1, NHEATING
+                WRITE(heatingId,'(A,A)',advance='no') TRIM(heatingLabels(i)), ","
+            END DO
+            
+            ! Write chemical heating label (last column, no comma)
+            WRITE(heatingId,'(A)') "ChemicalHeating"
+        END IF
+
     END SUBROUTINE fileSetup
 
     SUBROUTINE readInputAbunds
@@ -50,18 +78,20 @@ CONTAINS
         IF (writeAbunds) THEN
             DO dstep=1,points
                 ! WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
-                WRITE(abundSaveID,8010) abund(:neq-1,dstep)
+                WRITE(abundSaveID,8010) abund(:nspec+2,dstep)
             8010  FORMAT((999(1pe15.5,:,',')))
             END DO
         END IF
     END SUBROUTINE finalOutput
 
-    SUBROUTINE output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, ratesarray, dtime, timepoints)
+    SUBROUTINE output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, ratesarray, heatarray, dtime, timepoints)
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: ratesarray
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: heatarray
         INTEGER, OPTIONAL :: dtime, timepoints
         INTEGER, intent(out) :: successflag
+        INTEGER :: i  ! Loop variable for heating array assignment
         LOGICAL :: returnArray, writerates
         successflag = 0
         IF (returnArray) THEN
@@ -79,11 +109,12 @@ CONTAINS
                 physicsarray(dtime, dstep, 6) = radfield
                 physicsarray(dtime, dstep, 7) = zeta
                 physicsarray(dtime, dstep, 8) = dstep
-                chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
+                ! chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
+                chemicalabunarray(dtime, dstep, :) = abund(1:nspec,dstep)
             end if 
         ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
             WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
-            av(dstep),radfield,zeta,dstep,abund(:neq-1,dstep)
+                & av(dstep),radfield,zeta,dstep,abund(1:nspec,dstep)
             8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,&
             &','1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
         END IF
@@ -91,15 +122,34 @@ CONTAINS
             IF (returnArray) THEN
                 ! If returnArray is true, we write the rates to the rates array, we compute the flux in Python.
                 ratesarray(dtime, dstep, :) = rate(:nreac)
+                ! Only populate the heating array if it is present, properly sized, AND heating is enabled
+                IF (SIZE(heatarray, 1) .ge. timePoints .AND. heatingFlag) THEN
+                    heatarray(dtime, dstep, 1) = timeInYears
+                    heatarray(dtime, dstep, 2:(1+NCOOLING)) = coolingValues(:)
+                    ! Write all NCOOLANTS line cooling terms (currently 7: H, C+, O, C, CO, p-H2, o-H2)
+                    heatarray(dtime, dstep, (2+NCOOLING):(1+NCOOLING+NCOOLANTS)) = lineCoolingArray(median_line_index, :NCOOLANTS)
+
+                    ! Heating terms (NHEATING values)
+                    heatarray(dtime, dstep, (2+NCOOLING+NCOOLANTS):(1+NCOOLING+NCOOLANTS+NHEATING)) = heatingValues(:)
+                    ! Chemical heating (1 value)
+                    heatarray(dtime, dstep, 2+NCOOLING+NCOOLANTS+NHEATING) = chemheating
+                END IF
             ELSE 
-                ! Else, we write the rates and flux to the file.
+                ! Else, we write the rate constants and rates to the file.
                 IF (rateOutput) THEN
-                    WRITE(rateId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,RATE
+                    WRITE(rateConstantId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,RATE
                     8021 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
                 END IF
                 if (fluxOutput) THEN
-                    WRITE(fluxId,8022) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
+                    WRITE(ratesId,8022) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
                     8022 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
+                END IF
+                IF (heatingOutput) THEN
+                    ! Write: time, cooling values (4), line cooling array (NCOOLANTS), heating values (8), chem heating
+                    WRITE(heatingId,8023) timeInYears, coolingValues(:), &
+                        lineCoolingArray(median_line_index, :NCOOLANTS), &
+                        heatingValues(:), chemheating
+                    8023 FORMAT(1PE16.6E3,:,(999(',',1PE16.6E3)))
                 END IF
             END IF
         END IF
@@ -121,17 +171,20 @@ CONTAINS
 
     SUBROUTINE closeFiles
         CLOSE(outputId)
-        CLOSE(rateId)
+        CLOSE(rateConstantId)
         CLOSE(columnId)
         CLOSE(abundSaveID)
         CLOSE(abundLoadID)
+        CLOSE(heatingId)  ! heating rates file
+
     END SUBROUTINE closeFiles
 
     SUBROUTINE debugout
         OPEN(debugId,file='output/debuglog',status='unknown')       !debug file.
         WRITE(debugId,*) "Integrator failed, printing relevant debugging information"
         WRITE(debugId,*) "dens",density(dstep)
-        WRITE(debugId,*) "density in integration array",abund(nspec+1,dstep)
+        WRITE(debugId,*) "gas temperature in integration array",abund(nspec+1,dstep)
+        WRITE(debugId,*) "density in integration array",abund(nspec+2,dstep)
         WRITE(debugId,*) "Av", av(dstep)
         WRITE(debugId,*) "Temp", gasTemp(dstep)
         DO i=1,nreac

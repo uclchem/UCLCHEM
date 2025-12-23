@@ -4,12 +4,13 @@
 # A common task is to run UCLCHEM over a grid of parameter combinations. This notebook sets up a simple approach to doing so for regular grids.
 
 # %%
-import uclchem
+import os
+from multiprocessing import Pool
+
 import numpy as np
 import pandas as pd
-from multiprocessing import Pool
-import os
 
+import uclchem
 
 # ## A Simple Grid
 # ### Define Parameter Space
@@ -51,7 +52,7 @@ def run_model(row):
         "finalTime": 1.0e6,
         "baseAv": 10,
     }
-    result = uclchem.model.cloud(param_dict=ParameterDictionary)
+    result = uclchem.model.functional.cloud(param_dict=ParameterDictionary)
     return result
 
 

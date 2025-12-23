@@ -1,6 +1,32 @@
 import logging
+from collections import Counter
+from contextlib import contextmanager
 from copy import deepcopy
-from typing import Union
+
+from uclchem.makerates.species import Species, elementList, elementMass, species_header
+
+# Global flag for validation control
+_skip_reaction_validation = False
+
+
+@contextmanager
+def skip_reaction_validation():
+    """Context manager to temporarily disable reaction validation.
+
+    This is useful when loading pre-validated networks where you do not want any checks.
+
+    Example:
+        >>> with skip_validation():
+        ...     reaction = Reaction(["C2N", "FREEZE", "NAN", "#CH3CNH", ...])
+    """
+    global _skip_reaction_validation
+    old_value = _skip_reaction_validation
+    _skip_reaction_validation = True
+    try:
+        yield
+    finally:
+        _skip_reaction_validation = old_value
+
 
 reaction_types = [
     "PHOTON",
@@ -24,6 +50,8 @@ reaction_types = [
     "CRS",
     "EXSOLID",
     "EXRELAX",
+    "GAR",
+    "TWOBODY",
 ]
 
 tunneling_reaction_types = [
@@ -33,19 +61,26 @@ tunneling_reaction_types = [
     "ERDES",
 ]
 
-from collections import Counter
-from copy import deepcopy
-
-from uclchem.makerates.species import Species, elementList, elementMass
-
 
 class Reaction:
     def __init__(self, inputRow, reaction_source=None):
+        """Initialize a Reaction object.
+
+        Args:
+            inputRow: Either a Reaction object to copy, or a list/array with reaction data
+            reaction_source: Optional source identifier for the reaction
+
+        Note:
+            Validation can be disabled using the skip_validation() context manager.
+            This is useful when loading pre-validated networks from Fortran where
+            validation would fail due to modeling simplifications.
+        """
         if isinstance(inputRow, Reaction):
             self.set_reactants(inputRow.get_reactants())
             self.set_products(inputRow.get_products())
-            self.check_element_conservation()
-            self.check_charge_conservation()
+            if not _skip_reaction_validation:
+                self.check_element_conservation()
+                self.check_charge_conservation()
             self.set_alpha(inputRow.get_alpha())
             self.set_beta(inputRow.get_beta())
             self.set_gamma(inputRow.get_gamma())
@@ -53,6 +88,7 @@ class Reaction:
             self.set_temphigh(inputRow.get_temphigh())
             self.set_reduced_mass(inputRow.get_reduced_mass())
             self.set_extrapolation(inputRow.get_extrapolation())
+            self.set_exothermicity(inputRow.get_exothermicity())
         else:
             try:
                 self.set_reactants(
@@ -70,9 +106,10 @@ class Reaction:
                         self.NANCheck(str(inputRow[6])).upper(),
                     ]
                 )
-                self.check_element_conservation()
-                self.check_charge_conservation()
-                
+                if not _skip_reaction_validation:
+                    self.check_element_conservation()
+                    self.check_charge_conservation()
+
                 self.set_alpha(float(inputRow[7]))
                 self.set_beta(float(inputRow[8]))
                 self.set_gamma(float(inputRow[9]))
@@ -80,8 +117,13 @@ class Reaction:
                 self.set_temphigh(float(inputRow[11]))
                 if len(inputRow) > 12:
                     self.set_reduced_mass(float(inputRow[12]))
-                self.set_extrapolation(bool(inputRow[13]) if len(inputRow) > 13 else False)
-                
+                self.set_extrapolation(
+                    bool(inputRow[13]) if len(inputRow) > 13 else False
+                )
+                self.set_exothermicity(
+                    float(inputRow[14]) if len(inputRow) > 14 else 0.0
+                )
+
             except IndexError as error:
                 raise ValueError(
                     "Input for Reaction should be a list of length 12 with optional 13th entry for reduced mass and 14th for extrapolation flag."
@@ -155,7 +197,7 @@ class Reaction:
         self._reactants = reactants
         # Store a sorted version for comparisons
         self._sorted_reactants = sorted(self._reactants)
-        
+
     def get_products(self) -> list[str]:
         """Get the four products present in the reaction, padded with NAN for nonexistent
 
@@ -278,6 +320,22 @@ class Reaction:
         """
         return self._temphigh
 
+    def set_exothermicity(self, rate: float) -> None:
+        """Set the cooling/heating for the reaction in erg s^-1
+
+        Args:
+            delta_h (float): the reaction enthalpy change
+        """
+        self._exothermicity = rate
+
+    def get_exothermicity(self) -> float:
+        """Get the cooling/heating for the reaction in erg s^-1
+
+        Returns:
+            float: the reaction enthalpy change
+        """
+        return self._exothermicity
+
     def predict_reduced_mass(self) -> None:
         """Predict the reduced mass of the tunneling particle in this reaction.
         This is used in the calculation of the tunneling rates.
@@ -288,7 +346,7 @@ class Reaction:
         for reac in self._reactants:
             if reac in reaction_types:
                 continue
-            specie = Species([reac] + [0] * 6)
+            specie = Species([reac] + [0] * len(species_header))
             atoms = specie.find_constituents(quiet=True)
             reac_species.append(specie)
             reac_constituents.append(atoms)
@@ -299,7 +357,7 @@ class Reaction:
         for prod in self._products:
             if prod in "NAN":
                 continue
-            specie = Species([prod] + [0] * 6)
+            specie = Species([prod] + [0] * len(species_header))
             atoms = specie.find_constituents(quiet=True)
             prod_species.append(specie)
             prod_constituents.append(atoms)
@@ -313,7 +371,7 @@ class Reaction:
             for i, reac_constituent in enumerate(reac_constituents):
                 # For each reactant, find which product is closest (most similar in buildup) to it.
                 min_total = int(1e10)
-                min_copy = None
+                min_diff = None
                 for j, prod_constituent in enumerate(prod_constituents):
                     diff = deepcopy(reac_constituent)
                     diff.subtract(prod_constituent)
@@ -322,7 +380,6 @@ class Reaction:
                         total_change += abs(diff[element])
                     if total_change < min_total:
                         min_total = total_change
-                        min_index = j
                         min_diff = diff
                 changing_species = Counter(
                     {k: c for k, c in min_diff.items() if c != 0}
@@ -344,10 +401,12 @@ class Reaction:
                         return
         elif n_reacs == 2 and n_prods == 1:
             # Addition reaction
-            if reac_species[0].name.strip("#@") == reac_species[1].name.strip("#@"):
+            if reac_species[0].get_name().strip("#@") == reac_species[
+                1
+            ].get_name().strip("#@"):
                 # If the two species are the same (e.g. #H+#H-> #H2), set reduced mass to m/2
-                mass = reac_species[0].mass
-                # mass = elementMass[elementList.index(reac_species[0].name.strip("#@"))]
+                mass = reac_species[0].get_mass()
+                # mass = elementMass[elementList.index(reac_species[0].get_name().strip("#@"))]
                 reduced_mass = float(mass) / 2.0
                 self.set_reduced_mass(reduced_mass)
                 logging.debug(
@@ -432,11 +491,12 @@ class Reaction:
             source (str): The source of the reaction
         """
         self.source = source
-       
+
     def set_extrapolation(self, flag: bool) -> None:
+        logging.info(f"Setting for {self} extrapolation to {flag}")
         assert isinstance(flag, bool)
         self.extrapolate = flag
-        
+
     def get_extrapolation(self) -> bool:
         return self.extrapolate
 
@@ -455,7 +515,7 @@ class Reaction:
                 continue
             if reac in ["NAN", "E-"]:
                 continue
-            specie = Species([reac] + [0] * 6)
+            specie = Species([reac] + [0] * len(species_header))
             atoms_counter_specie = specie.find_constituents(quiet=True)
             counter_reactants += atoms_counter_specie
 
@@ -465,7 +525,7 @@ class Reaction:
                 continue
             if prod in ["NAN", "E-"]:
                 continue
-            specie = Species([prod] + [0] * 6)
+            specie = Species([prod] + [0] * len(species_header))
             atoms_counter_specie = specie.find_constituents(quiet=True)
             counter_products += atoms_counter_specie
 
@@ -474,36 +534,36 @@ class Reaction:
             msg += f"The following reaction caused this error: {self}.\n"
             msg += f"Reactants: {counter_reactants}. Products: {counter_products}"
             raise ValueError(msg)
-        
+
     def check_charge_conservation(self) -> None:
-        if self.get_reaction_type() in [
-            "FREEZE",
-            "DESORB",
-            "DESOH2",
-            "DESCR",
-            "DEUVCR",
-            "THERM",
-        ]:
+        # Grain reactions don't need to conserve charge (grains can absorb/release electrons)
+        if self.is_ice_reaction(
+            include_reactants=True, include_products=True, strict=False
+        ):
             return
         charge_reactants = 0
         for reac in self._reactants:
             if reac in ["NAN"]:
                 continue
-            specie = Species([reac] + [0] * 6)
+            specie = Species([reac] + [0] * len(species_header))
             charge_reactants += specie.get_charge()
         charge_products = 0
         for prod in self._products:
             if prod in ["NAN"]:
                 continue
-            specie = Species([prod] + [0] * 6)
+            specie = Species([prod] + [0] * len(species_header))
             charge_products += specie.get_charge()
 
         if charge_products != charge_reactants:
+            # GAR and FREEZE reactions do not conserve charge
+            if self.get_reaction_type() in ["GAR", "FREEZE"]:
+                # GAR reactions rely on grain electrons
+                # FREEZE reactions can have electron freeze-out (E- -> nothing with alpha=0)
+                return
             msg = "Charges not conserved in a reaction.\n"
             msg += f"The following reaction caused this error: {self}.\n"
             msg += f"Reactants: {charge_reactants}. Products: {charge_products}"
             raise ValueError(msg)
-
 
     def convert_gas_to_surf(self) -> None:
         """Convert the gas-phase species to surface species in place for this reaction.
@@ -601,7 +661,13 @@ class Reaction:
             return False
 
     def generate_ode_bit(self, i: int, species_names: list):
-        self.ode_bit = _generate_reaction_ode_bit(i, species_names, self.body_count, self.get_reactants())
+        self.ode_bit = _generate_reaction_ode_bit(
+            i,
+            species_names,
+            self.body_count,
+            self.get_reactants(),
+            self.get_reaction_type(),
+        )
 
     def to_UCL_format(self):
         """Convert a reaction to UCLCHEM reaction file format"""
@@ -637,9 +703,9 @@ class Reaction:
         return formatted_reaction
 
     def _is_reaction_wrap(self, include_reactants=True, include_products=True):
-        assert include_reactants or include_products, (
-            "Either include reactants or products"
-        )
+        assert (
+            include_reactants or include_products
+        ), "Either include reactants or products"
         species_to_check = []
         if include_reactants:
             species_to_check += self.get_pure_reactants()
@@ -672,7 +738,7 @@ class Reaction:
         self, include_reactants=True, include_products=True, strict=True
     ) -> bool:
         """Check whether it is an ice (surface OR bulk) reaction
-        
+
         By default it is strict (strict=True); all species must be in the ice phase
         If strict=False; any species in ice phase returns True
 
@@ -695,7 +761,7 @@ class Reaction:
     ) -> bool:
         """Check whether it is a surface reaction, defaults to non-strict since many
         important surface reactions can lead to desorption in some way.
-        
+
         By default it is NOT strict (strict=False); any species on the surface returns true
         If strict=True; all species must be on the ice phase
 
@@ -718,7 +784,7 @@ class Reaction:
     ) -> bool:
         """Check whether it is a bulk reaction, defaults to non-strict since many
         important bulk reactions interact with the surface.
-        
+
         By default it is NOT strict (strict=False); any species in the bulk returns true
         If strict=True; all species must be on the ice phase
 
@@ -756,9 +822,11 @@ class Reaction:
             + " -> "
             + " + ".join(filter(lambda p: p != "NAN", self.get_products()))
         )
-        
+
     def __hash__(self):
-        return hash(f"{self.get_alpha(), self.get_beta(), self.get_gamma(), self.get_reactants(), self.get_products(), self.get_templow(), self.get_temphigh()}")
+        return hash(
+            f"{self.get_alpha(), self.get_beta(), self.get_gamma(), self.get_reactants(), self.get_products(), self.get_templow(), self.get_temphigh()}"
+        )
 
 
 class CoupledReaction(Reaction):
@@ -772,40 +840,51 @@ class CoupledReaction(Reaction):
     def get_partner(self):
         return self.partner
 
-def _generate_reaction_ode_bit(i: int, species_names: list, body_count: int, reactants: list[str]):
-        """Every reaction contributes a fixed rate of change to whatever species it
-        affects. We create the string of fortran code describing that change here.
 
-        Args:
-            i (int): index of reaction in network in python format (counting from 0)
-            species_names (list): List of species names so we can find index of reactants in species list
-            body_count (bool): Number of bodies in the reaction, used to determine how many factors of density to include
-            reactants (list[str]): The reactants of the reaction
-        """
-        ode_bit = f"+RATE({i + 1})"
-        # every body after the first requires a factor of density
-        for body in range(body_count):
-            ode_bit = ode_bit + "*D"
+def _generate_reaction_ode_bit(
+    i: int,
+    species_names: list,
+    body_count: int,
+    reactants: list[str],
+    reaction_type: str = None,
+):
+    """Every reaction contributes a fixed rate of change to whatever species it
+    affects. We create the string of fortran code describing that change here.
 
-        # then bring in factors of abundances
-        for species in reactants:
-            if species in species_names:
-                ode_bit += f"*Y({species_names.index(species) + 1})"
+    Args:
+        i (int): index of reaction in network in python format (counting from 0)
+        species_names (list): List of species names so we can find index of reactants in species list
+        body_count (bool): Number of bodies in the reaction, used to determine how many factors of density to include
+        reactants (list[str]): The reactants of the reaction
+    """
+    ode_bit = f"+RATE({i + 1})"
+    # every body after the first requires a factor of density
+    for body in range(body_count):
+        ode_bit = ode_bit + "*D"
 
-            elif species == "BULKSWAP":
-                ode_bit += "*bulkLayersReciprocal"
-            elif species == "SURFSWAP":
-                ode_bit += "*totalSwap/safeMantle"
-            elif species in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
-                ode_bit = ode_bit + "/safeMantle"
-                if species == "DESOH2":
-                    ode_bit = ode_bit + f"*Y({species_names.index('H') + 1})"
+    # GAR needs an additional factor of density:
+    if reaction_type == "GAR":
+        ode_bit = ode_bit + "*D"
 
-            if "H2FORM" in reactants:
-                # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
-                break
+    # then bring in factors of abundances
+    for species in reactants:
+        if species in species_names:
+            ode_bit += f"*Y({species_names.index(species) + 1})"
 
-        if "LH" in reactants[2]:
-            if "@" in reactants[0]:
-                ode_bit += "*bulkLayersReciprocal"
-        return ode_bit
+        elif species == "BULKSWAP":
+            ode_bit += "*bulkLayersReciprocal"
+        elif species == "SURFSWAP":
+            ode_bit += "*totalSwap/safeMantle"
+        elif species in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
+            ode_bit = ode_bit + "/safeMantle"
+            if species == "DESOH2":
+                ode_bit = ode_bit + f"*Y({species_names.index('H') + 1})"
+
+        if "H2FORM" in reactants:
+            # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
+            break
+
+    if "LH" in reactants[2]:
+        if "@" in reactants[0]:
+            ode_bit += "*bulkLayersReciprocal"
+    return ode_bit

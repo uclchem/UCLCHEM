@@ -48,6 +48,16 @@ elementMass = [
 ]
 symbols = ["#", "@", "*", "+", "-", "(", ")"]
 
+species_header = (
+    "name",
+    "mass",
+    "binding_energy",
+    "solid_fraction",
+    "mono_fraction",
+    "volcano_fraction",
+    "enthalpy",
+)
+
 
 def is_number(s) -> bool:
     """Try to convert input to a float, if it succeeds, return True.
@@ -65,6 +75,13 @@ def is_number(s) -> bool:
         return False
 
 
+def sanitize_input_float(row, index, default=0.0) -> float:
+    output = default
+    if len(row) > index and is_number(row[index]):
+        output = float(row[index])
+    return output
+
+
 class Species:
     """Species is a class that holds all the information about an individual species in the
     network. It also has convenience functions to check whether the species is a gas or grain
@@ -79,27 +96,36 @@ class Species:
         """
         self.name = inputRow[0].upper()
         self.mass = int(inputRow[1])
+        self.binding_energy = 0.0
+        self.solidFraction = 0.0
+        self.monoFraction = 0.0
+        self.volcFraction = 0.0
+        self.enthalpy = 0.0
 
-        self.is_refractory = str(inputRow[2]).lower() == "inf"
-        if self.is_refractory:
-            self.binding_energy = 99.9e9
+        if len(inputRow) > 2:
+            self.is_refractory = str(inputRow[2]).lower() == "inf"
+            if self.is_refractory:
+                self.set_binding_energy(99.9e9)
+            else:
+                self.set_binding_energy(inputRow[2])
         else:
-            self.binding_energy = float(inputRow[2])
+            self.is_refractory = False
+            self.set_binding_energy(0.0)
 
-        self.solidFraction = float(inputRow[3])
-        self.monoFraction = float(inputRow[4])
-        self.volcFraction = float(inputRow[5])
-        self.enthalpy = float(inputRow[6])
-        self.n_atoms = 0
+        self.set_solid_fraction(sanitize_input_float(inputRow, 3, 0.0))
+        self.set_mono_fraction(sanitize_input_float(inputRow, 4, 0.0))
+        self.set_volcano_fraction(sanitize_input_float(inputRow, 5, 0.0))
+        self.set_enthalpy(sanitize_input_float(inputRow, 6, 0.0))
+        self.set_n_atoms(0)
 
         # in first instance, assume species freeze/desorb unchanged
         # this is updated by `check_freeze_desorbs()` later.
-        if self.is_grain_species():
+        if self.is_ice_species():
             # this will make any excited species desorb as their base counterparts
-            if "*" in self.name:
-                self.desorb_products = [self.name[1:-1], "NAN", "NAN", "NAN"]
+            if "*" in self.get_name():
+                self.desorb_products = [self.get_name()[1:-1], "NAN", "NAN", "NAN"]
             else:
-                self.desorb_products = [self.name[1:], "NAN", "NAN", "NAN"]
+                self.desorb_products = [self.get_name()[1:], "NAN", "NAN", "NAN"]
         else:
             self.freeze_products = {}
 
@@ -128,10 +154,106 @@ class Species:
         """
         if not self.is_ion():
             return 0
-        elif "+" in self.name:
+        elif "+" in self.get_name():
             return 1
-        elif "-" in self.name:
+        elif "-" in self.get_name():
             return -1
+
+    def get_binding_energy(self) -> float:
+        """Get the binding energy of the species in K
+
+        Returns:
+            float: The binding energy in K
+        """
+        return self.binding_energy
+
+    def get_solid_fraction(self) -> float:
+        """Get the solid fraction of the species
+
+        Returns:
+            float: The solid fraction
+        """
+        return self.solidFraction
+
+    def get_mono_fraction(self) -> float:
+        """Get the monolayer fraction of the species
+
+        Returns:
+            float: The monolayer fraction
+        """
+        return self.monoFraction
+
+    def get_volcano_fraction(self) -> float:
+        """Get the volcano fraction of the species
+
+        Returns:
+            float: The volcano fraction
+        """
+        return self.volcFraction
+
+    def get_enthalpy(self) -> float:
+        """Get the ice enthalpy of the species
+
+        Returns:
+            float: The ice enthalpy
+        """
+        return self.enthalpy
+
+    def set_name(self, name: str) -> None:
+        """Set the name of the chemical species.
+
+        Args:
+            name (str): The new name for the species
+        """
+        self.name = name.upper()
+
+    def set_mass(self, mass: int) -> None:
+        """Set the molecular mass of the chemical species
+
+        Args:
+            mass (int): The new molecular mass
+        """
+        self.mass = int(mass)
+
+    def set_binding_energy(self, binding_energy: float) -> None:
+        """Set the binding energy of the species in K
+
+        Args:
+            binding_energy (float): The new binding energy in K
+        """
+        self.binding_energy = float(binding_energy)
+
+    def set_solid_fraction(self, solid_fraction: float) -> None:
+        """Set the solid fraction of the species
+
+        Args:
+            solid_fraction (float): The new solid fraction
+        """
+        self.solidFraction = float(solid_fraction)
+
+    def set_mono_fraction(self, mono_fraction: float) -> None:
+        """Set the monolayer fraction of the species
+
+        Args:
+            mono_fraction (float): The new monolayer fraction
+        """
+        self.monoFraction = float(mono_fraction)
+
+    def set_volcano_fraction(self, volcano_fraction: float) -> None:
+        """Set the volcano fraction of the species
+
+        Args:
+            volcano_fraction (float): The new volcano fraction
+        """
+        self.volcFraction = float(volcano_fraction)
+
+    def set_enthalpy(self, enthalpy: float) -> None:
+        """Set the enthalpy of the species in kcal per
+
+        Args:
+            enthalpy (float): The new ice enthalpy
+        """
+        self.enthalpy = float(enthalpy)
 
     def set_desorb_products(self, new_desorbs: list[str]) -> None:
         """Set the desorption products for species on the surface or in the bulk.
@@ -204,15 +326,19 @@ class Species:
         Returns:
             bool: True if it is a grain species.
         """
-        warn('This method is deprecated in favour of is_ice_species.', DeprecationWarning, stacklevel=2)
+        warn(
+            "This method is deprecated in favour of is_ice_species.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return (
-            self.name in ["BULK", "SURFACE"]
-            or self.name.startswith(
+            self.get_name() in ["BULK", "SURFACE"]
+            or self.get_name().startswith(
                 "#",
             )
-            or self.name.startswith("@")
+            or self.get_name().startswith("@")
         )
-        
+
     def is_ice_species(self) -> bool:
         """Return whether the species is a species on the grain
 
@@ -220,11 +346,11 @@ class Species:
             bool: True if it is an ice species.
         """
         return (
-            self.name in ["BULK", "SURFACE"]
-            or self.name.startswith(
+            self.get_name() in ["BULK", "SURFACE"]
+            or self.get_name().startswith(
                 "#",
             )
-            or self.name.startswith("@")
+            or self.get_name().startswith("@")
         )
 
     def is_surface_species(self) -> bool:
@@ -233,7 +359,7 @@ class Species:
         Returns:
             bool: True if a surface species
         """
-        return self.name.startswith("#")
+        return self.get_name().startswith("#")
 
     def is_bulk_species(self) -> bool:
         """Checks if the species is in the bulk
@@ -241,7 +367,7 @@ class Species:
         Returns:
             bool: True if a bulk species
         """
-        return self.name.startswith("@")
+        return self.get_name().startswith("@")
 
     def is_ion(self) -> bool:
         """Checks if the species is ionized, either postively or negatively.
@@ -249,14 +375,14 @@ class Species:
         Returns:
             bool: True if it is an ionized
         """
-        return self.name.endswith("+") or self.name.endswith("-")
+        return self.get_name().endswith("+") or self.get_name().endswith("-")
 
     def add_default_freeze(self) -> None:
         """Adds a defalt freezeout, which is freezing out to the species itself, but with no ionization."""
-        freeze = "#" + self.name
+        freeze = "#" + self.get_name()
         if freeze[-1] in ["+", "-"]:
             freeze = freeze[:-1]
-        if self.name == "E-":
+        if self.get_name() == "E-":
             freeze = ""
         self.set_freeze_products([freeze, "NAN", "NAN", "NAN"], 1.0)
 
@@ -265,7 +391,7 @@ class Species:
         atoms are. Then calculate mass and alert user if it doesn't match
         input mass.
         """
-        speciesName = self.name[:]
+        speciesName = self.get_name()[:]
         i = 0
         atoms = []
         bracket = False
@@ -342,12 +468,12 @@ class Species:
         mass = 0
         for atom in atoms:
             mass += elementMass[elementList.index(atom)]
-        if mass != int(self.mass):
+        if mass != int(self.get_mass()):
             if not quiet:
                 logging.warning(
-                    f"Input mass of {self.name} ({self.mass}) does not match calculated mass of constituents, using calculated mass: {int(mass)}"
+                    f"Input mass of {self.get_name()} ({self.get_mass()}) does not match calculated mass of constituents, using calculated mass: {int(mass)}"
                 )
-            self.mass = int(mass)
+            self.set_mass(int(mass))
         counter = Counter()
         for element in elementList:
             counter[element] = atoms.count(element)
@@ -370,7 +496,7 @@ class Species:
         self.n_atoms = new_n_atoms
 
     def to_UCL_format(self) -> str:
-        return f"{self.get_name()},{self.get_mass()},{self.binding_energy},{self.solidFraction},{self.monoFraction},{self.volcFraction},{self.enthalpy}"
+        return f"{self.get_name()},{self.get_mass()},{self.get_binding_energy()},{self.get_solid_fraction()},{self.get_mono_fraction()},{self.get_volcano_fraction()},{self.get_enthalpy()}"
 
     def __eq__(self, other):
         """Check for equality based on either a string or another Species instance.
@@ -385,9 +511,9 @@ class Species:
             bool: True if two species are identical.
         """
         if isinstance(other, Species):
-            return self.name == other.name
+            return self.get_name() == other.get_name()
         elif isinstance(other, str):
-            return self.name == other
+            return self.get_name() == other
         else:
             raise NotImplementedError(
                 "We can only compare between species or strings of species"
@@ -402,7 +528,7 @@ class Species:
         Returns:
             bool: True if less than the other species
         """
-        return self.mass < other.mass
+        return self.get_mass() < other.get_mass()
 
     def __gt__(self, other) -> bool:
         """Compare the mass of the species
@@ -413,10 +539,10 @@ class Species:
         Returns:
             bool: True if larger than than the other species
         """
-        return self.mass > other.mass
+        return self.get_mass() > other.get_mass()
 
     def __repr__(self) -> str:
-        return f"Specie: {self.name}"
+        return f"Specie: {self.get_name()}"
 
     def __str__(self) -> str:
-        return self.name
+        return self.get_name()

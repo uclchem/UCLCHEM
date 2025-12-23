@@ -16,6 +16,7 @@ MODULE CONSTANTS
    REAL(dp), PARAMETER :: EV = 1.60217646D-12 ! electron volt in erg
    REAL(dp), PARAMETER :: GRAV_G = 6.674d-8 !gravitational constant in cgs
    REAL(dp), PARAMETER :: SB_CONST=5.6704d-5 !Stefan Boltzmann constant in cgs
+   REAL(dp), PARAMETER :: HABING_TO_DRAINE = 1 / 1.7 !conversion factor from Habing to Draine field
 
    !Error codes for python wrap
    INTEGER, PARAMETER :: PARAMETER_READ_ERROR=-1

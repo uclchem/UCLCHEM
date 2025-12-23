@@ -1,0 +1,57 @@
+!MOLECULE
+C+ [CII]
+!MOLECULAR WEIGHT
+12.0
+!NUMBER OF ENERGY LEVELS
+2
+!LEVEL + ENERGIES(cm^-1) + WEIGHT + Qnum
+   1    0.0000000     2.0  2_P_1/2
+   2    63.395087     4.0  2_P_3/2
+!NUMBER OF RADIATIVE TRANSITIONS
+1
+!TRANS + UP + LOW + EINSTEINA(s^-1) + FREQ(GHz) + E_u(K) + Qnum_u + Qnum_l
+    1     2     1   2.321E-06      1900.5369      91.211  2_P_3/2  2_P_1/2
+!NUMBER OF COLL PARTNERS
+4
+!COLLISIONS BETWEEN
+2 C+ + p-H2 ! Flower & Launay (1977, J. Phys. B, 10, 3673)
+!NUMBER OF COLL TRANS
+1
+!NUMBER OF COLL TEMPS
+17
+!COLL TEMPS
+                        10.0      20.0      30.0      40.0      50.0      60.0      70.0      80.0      90.0     100.0     120.0     140.0     160.0     180.0     200.0     220.0     250.0
+!TRANS + UP + LOW + COLLRATES(cm^3 s^-1)
+    1     2     1   2.98E-10  3.38E-10  3.57E-10  3.77E-10  3.94E-10  3.99E-10  4.09E-10  4.10E-10  4.27E-10  4.25E-10  4.33E-10  4.42E-10  4.49E-10  4.55E-10  4.57E-10  4.63E-10  4.69E-10
+!COLLISIONS BETWEEN
+3 C+ + o-H2 ! Flower & Launay (1977, J. Phys. B, 10, 3673)
+!NUMBER OF COLL TRANS
+1
+!NUMBER OF COLL TEMPS
+17
+!COLL TEMPS
+                        10.0      20.0      30.0      40.0      50.0      60.0      70.0      80.0      90.0     100.0     120.0     140.0     160.0     180.0     200.0     220.0     250.0
+!TRANS + UP + LOW + COLLRATES(cm^3 s^-1)
+    1     2     1   4.36E-10  4.56E-10  4.73E-10  4.66E-10  4.92E-10  4.90E-10  4.97E-10  5.09E-10  5.14E-10  5.14E-10  5.26E-10  5.33E-10  5.48E-10  5.54E-10  5.64E-10  5.71E-10  5.72E-10
+!COLLISIONS BETWEEN
+4 C+ + e ! Wilson & Bell (2002, MNRAS, 337, 1027) and Lennon et al. (1985, ApJ, 294, 200) + extrapolation to lower temperatures
+!NUMBER OF COLL TRANS
+1
+!NUMBER OF COLL TEMPS
+9
+!COLL TEMPS
+                        10.0      20.0      50.0     100.0     316.2    1000.0    2000.0   10000.0   20000.0
+!TRANS + UP + LOW + COLLRATES(cm^3 s^-1)
+    1     2     1   1.20E-06  8.40E-07  5.30E-07  3.80E-07  2.10E-07  1.20E-07  8.60E-08  4.80E-08  3.70E-08
+!COLLISIONS BETWEEN
+5 C+ + H ! Barinovs et al. (2005, ApJ, 620, 537)
+!NUMBER OF COLL TRANS
+1
+!NUMBER OF COLL TEMPS
+18
+!COLL TEMPS
+                        10.0      20.0      40.0      60.0      80.0     100.0     120.0     140.0     160.0     180.0     200.0     300.0     400.0     600.0     800.0    1000.0    1500.0    2000.0
+!TRANS + UP + LOW + COLLRATES(cm^3 s^-1)
+    1     2     1   5.54E-10  5.96E-10  6.79E-10  7.19E-10  7.42E-10  7.58E-10  7.72E-10  7.84E-10  7.96E-10  8.06E-10  8.17E-10  8.63E-10  9.02E-10  9.67E-10  1.02E-09  1.07E-09  1.16E-09  1.23E-09
+! NOTES:
+! A-values and transition frequencies are taken from the LAMDA database entry (no reference given).

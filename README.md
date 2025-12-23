@@ -37,6 +37,16 @@ See change.log! We've made a large number of improvements for v3.0. The code has
 *************************************************************
 This is an open source science code for the community and are open to pull requests. We are also happy to work with you to produce a physics module if none of the models available in the python module `uclchem.model` suit the modelling work you wish to do. If you are contributing, please try to work with our current code style. Feel free to checkout the latest developments with `git fetch; git checkout develop` We have the following general guidelines:
 
+### Development Setup
+After cloning the repository, install the development dependencies and set up pre-commit hooks:
+
+```bash
+pip install .[dev]
+pre-commit install
+```
+
+This will automatically run linting and formatting checks before each commit.
+
 ### Github
 - Work in a personal branch or fork to your own Github to develop features.
 - Make sure you base your new work on the develop branch.

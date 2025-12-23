@@ -2,7 +2,7 @@
 file that can be copied over to the website docs. Run it with
 python generate_param_docs.py default_parameter_fortran_file output_markdown_file
 """
-from os import WCONTINUED
+
 from sys import argv
 import ast
 
@@ -17,7 +17,9 @@ with open(param_file, "r") as f:
             if line.startswith("!"):
                 if not line.startswith("!!"):
                     output.write(line.replace("!", ""))
-            elif line.startswith(("USE", "MODULE", "IMPLICIT", "END"),):
+            elif line.startswith(
+                ("USE", "MODULE", "IMPLICIT", "END"),
+            ):
                 # Do not read the placeholder function that was introduced for f2py
                 continue
             elif line.startswith("CONTAINS"):
@@ -31,18 +33,28 @@ with open(param_file, "r") as f:
                     new_line = new_line[1].split("!")
                     value = new_line[0]
                     description = new_line[1]
-                    line = "|" + key + "|" + new_line[0] + "|" + new_line[1].strip() + "|\n"
+                    line = (
+                        "|"
+                        + key
+                        + "|"
+                        + new_line[0]
+                        + "|"
+                        + new_line[1].strip()
+                        + "|\n"
+                    )
                     output.write(line)
                     if "REAL" in type_of_value:
-                        default_param_dictionary[key.lower()] = float(value.replace("d", "e").strip())
+                        default_param_dictionary[key.lower()] = float(
+                            value.replace("d", "e").strip()
+                        )
                     elif "LOGICAL" in type_of_value:
                         default_param_dictionary[key.lower()] = bool(value[1:-1])
                     elif "CHARACTER" in type_of_value:
                         if '"' in value:
-                            value = value[value.find('"') + 1:value.rfind('"')]
+                            value = value[value.find('"') + 1 : value.rfind('"')]
                         elif "'" in value:
-                            value = value[value.find("'") + 1:value.rfind("'")]
-                        if value == '':
+                            value = value[value.find("'") + 1 : value.rfind("'")]
+                        if value == "":
                             value = None
 
                         default_param_dictionary[key.lower()] = value
@@ -68,7 +80,3 @@ with open(param_file, "r") as f:
 
     with open(constants_file, "w") as constants_w:
         constants_w.writelines(lines)
-
-
-
-

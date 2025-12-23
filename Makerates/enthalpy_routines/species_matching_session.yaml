@@ -1,0 +1,642 @@
+completed:
+  C2+:
+    atct_formula: '[C2]+'
+    atct_name: Ethynylene cation
+    enthalpy_298k: 1971.52
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.4
+  C2H:
+    atct_formula: CCH
+    atct_name: Ethynyl
+    enthalpy_298k: 567.86
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.15
+  C2H+:
+    atct_formula: '[CCH]+'
+    atct_name: Ethynylium
+    enthalpy_298k: 1690.97
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.15
+  C2H2:
+    atct_formula: HCCH
+    atct_name: Acetylene
+    enthalpy_298k: 228.32
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_2
+    total_options: 2
+    uncertainty: 0.12
+  C2H2+:
+    atct_formula: '[HCCH]+'
+    atct_name: Acetylene cation
+    enthalpy_298k: 1328.23
+    match_type: isomer
+    selection_reason: user_selected_option_2_of_2
+    total_options: 2
+    uncertainty: 0.12
+  C2H3:
+    atct_formula: CH3C
+    atct_name: Ethylidyne
+    enthalpy_298k: 504.94
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_4
+    total_options: 4
+    uncertainty: 0.8
+  C2H4:
+    atct_formula: CH2CH2
+    atct_name: Ethylene
+    enthalpy_298k: 52.39
+    match_type: isomer
+    selection_reason: user_selected_option_3_of_3
+    total_options: 3
+    uncertainty: 0.11
+  C2H5:
+    atct_formula: CH3CH2
+    atct_name: Ethyl
+    enthalpy_298k: 120.75
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.2
+  C2N:
+    atct_formula: CCN
+    atct_name: Cyanomethylidyne
+    enthalpy_298k: 689.1
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_3
+    total_options: 3
+    uncertainty: 2.1
+  C2N+:
+    atct_formula: '[CCN]+'
+    atct_name: Cyanomethyliumylidene
+    enthalpy_298k: 1725.3
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_2
+    total_options: 2
+    uncertainty: 2.1
+  C2N2+:
+    atct_formula: '[NCCN]+'
+    atct_name: Cyanogen cation
+    enthalpy_298k: 1600.49
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_4
+    total_options: 4
+    uncertainty: 0.42
+  C2NH+:
+    atct_formula: '[HCCN]+'
+    atct_name: Cyanomethyliumyl
+    enthalpy_298k: 1508.0
+    match_type: isomer
+    selection_reason: user_selected_option_2_of_2
+    total_options: 2
+    uncertainty: 2.3
+  C3+:
+    atct_formula: '[CCC]+'
+    atct_name: 1,2-Propadien-1-ylium-1-yl-3-ylidene
+    enthalpy_298k: 1947.0
+    match_type: isomer
+    selection_reason: user_selected_option_2_of_2
+    total_options: 2
+    uncertainty: 1.3
+  C3H2:
+    atct_formula: C(CHCH)
+    atct_name: Cyclopropenylidene
+    enthalpy_298k: 496.1
+    match_type: isomer
+    selection_reason: user_selected_option_5_of_8
+    total_options: 8
+    uncertainty: 0.45
+  C3H5+:
+    atct_formula: '[CH(CH2CH2)]+'
+    atct_name: Cyclopropylium
+    enthalpy_298k: 1088.75
+    match_type: isomer
+    selection_reason: user_selected_option_3_of_4
+    total_options: 4
+    uncertainty: 0.73
+  C3N:
+    atct_formula: CCCN
+    atct_name: Cyanoethynyl
+    enthalpy_298k: 722.2
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 1.1
+  C4H:
+    atct_formula: CCCCH
+    atct_name: Butadiynyl
+    enthalpy_298k: 808.48
+    match_type: isomer
+    selection_reason: user_selected_option_3_of_3
+    total_options: 3
+    uncertainty: 0.96
+  CH+:
+    atct_formula: '[CH]+'
+    atct_name: Methyliumylidene
+    enthalpy_298k: 1623.084
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.04
+  CH2+:
+    atct_formula: '[CH2]+'
+    atct_name: Methyliumyl
+    enthalpy_298k: 1394.062
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.099
+  CH3+:
+    atct_formula: '[CH3]+'
+    atct_name: Methylium
+    enthalpy_298k: 1095.409
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.045
+  CH3CNH+:
+    atct_formula: '[CH3CNH]+'
+    atct_name: 1-Iminoethylium
+    enthalpy_298k: 823.2
+    match_type: isomer
+    selection_reason: user_selected_option_6_of_11
+    total_options: 11
+    uncertainty: 3.0
+  CH3OH2+:
+    atct_formula: '[CH3OH2]+'
+    atct_name: Methyloxonium
+    enthalpy_298k: 575.0
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 1.1
+  CH4+:
+    atct_formula: '[CH4]+'
+    atct_name: Methane cation
+    enthalpy_298k: 1144.303
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.057
+  CH5+:
+    atct_formula: '[CH5]+'
+    atct_name: Methanium
+    enthalpy_298k: 911.78
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.44
+  CN+:
+    atct_formula: '[CN]+'
+    atct_name: Nitrilomethylium
+    enthalpy_298k: 1786.62
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.48
+  CO+:
+    atct_formula: '[CO]+'
+    atct_name: Carbon monoxide cation
+    enthalpy_298k: 1241.59
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.026
+  CS+:
+    atct_formula: '[CS]+'
+    atct_name: Carbon monosulfide cation
+    enthalpy_298k: 1374.62
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.77
+  H2+:
+    atct_formula: '[H2]+'
+    atct_name: Dihydrogen cation
+    enthalpy_298k: 1488.48
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.0
+  H2CL+:
+    atct_formula: '[HClH]+'
+    atct_name: Chloronium
+    enthalpy_298k: 878.4
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 1.1
+  H2CN:
+    atct_formula: HCNH
+    atct_name: Iminomethyl
+    enthalpy_298k: 272.21
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_5
+    total_options: 5
+    uncertainty: 0.56
+  H2CO:
+    atct_formula: HCOH
+    atct_name: Hydroxymethylene
+    enthalpy_298k: 108.94
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_4
+    total_options: 4
+    uncertainty: 0.27
+  H2CO+:
+    atct_formula: '[HCOH]+'
+    atct_name: Hydroxymethylene cation
+    enthalpy_298k: 968.3
+    match_type: isomer
+    selection_reason: user_selected_option_3_of_4
+    total_options: 4
+    uncertainty: 1.4
+  H2COH:
+    atct_formula: CH2OH
+    atct_name: Hydroxymethyl
+    enthalpy_298k: -16.41
+    match_type: isomer
+    selection_reason: user_selected_option_4_of_4
+    total_options: 4
+    uncertainty: 0.28
+  H2COH+:
+    atct_formula: '[CH2OH]+'
+    atct_name: Hydroxymethylium
+    enthalpy_298k: 709.8
+    match_type: isomer
+    selection_reason: user_selected_option_2_of_2
+    total_options: 2
+    uncertainty: 0.18
+  H2CS:
+    atct_formula: CH2S
+    atct_name: Thioformaldehyde
+    enthalpy_298k: 117.6
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 2.0
+  H2CS+:
+    atct_formula: '[CH2S]+'
+    atct_name: Thioformaldehyde cation
+    enthalpy_298k: 1022.3
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 2.0
+  H2NO+:
+    atct_formula: '[HNOH]+'
+    atct_name: Hydroxyaminylium
+    enthalpy_298k: 1012.4
+    match_type: isomer
+    selection_reason: user_selected_option_2_of_2
+    total_options: 2
+    uncertainty: 2.5
+  H2O+:
+    atct_formula: '[H2O]+'
+    atct_name: Oxoniumyl ion
+    enthalpy_298k: 975.591
+    match_type: isomer
+    selection_reason: user_selected_option_2_of_2
+    total_options: 2
+    uncertainty: 0.024
+  H2S+:
+    atct_formula: '[H2S]+'
+    atct_name: Sulfoniumyl
+    enthalpy_298k: 989.75
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.18
+  H2SIO:
+    atct_formula: SiH2O
+    atct_name: Silanone
+    enthalpy_298k: -99.13
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.99
+  H3+:
+    atct_formula: '[H3]+'
+    atct_name: Trihydrogen cation
+    enthalpy_298k: 1106.696
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.013
+  H3O+:
+    atct_formula: '[H3O]+'
+    atct_name: Oxonium
+    enthalpy_298k: 599.14
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.17
+  HC3N:
+    atct_formula: HCCCN
+    atct_name: Cyanoacetylene
+    enthalpy_298k: 373.99
+    match_type: isomer
+    selection_reason: user_selected_option_2_of_4
+    total_options: 4
+    uncertainty: 0.57
+  HCL+:
+    atct_formula: '[HCl]+'
+    atct_name: Chloroniumyl ion
+    enthalpy_298k: 1137.732
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.0051
+  HCN+:
+    atct_formula: '[HCN]+'
+    atct_name: Hydrogen cyanide cation
+    enthalpy_298k: 1442.07
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_2
+    total_options: 2
+    uncertainty: 0.2
+  HCNH+:
+    atct_formula: '[HCNH]+'
+    atct_name: Iminomethylium
+    enthalpy_298k: 949.3
+    match_type: isomer
+    selection_reason: user_selected_option_2_of_3
+    total_options: 3
+    uncertainty: 1.4
+  HCO+:
+    atct_formula: '[HCO]+'
+    atct_name: Oxomethylium
+    enthalpy_298k: 827.179
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_2
+    total_options: 2
+    uncertainty: 0.094
+  HCO2+:
+    atct_formula: '[HOCO]+'
+    atct_name: Hydroxyoxomethylium
+    enthalpy_298k: 597.62
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_2
+    total_options: 2
+    uncertainty: 0.43
+  HCOOH:
+    atct_formula: HC(O)OH
+    atct_name: Formic acid
+    enthalpy_298k: -378.28
+    match_type: isomer
+    selection_reason: user_selected_option_3_of_3
+    total_options: 3
+    uncertainty: 0.2
+  HEH+:
+    atct_formula: '[HeH]+'
+    atct_name: Helium hydride cation
+    enthalpy_298k: 1348.258
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.0
+  HNO+:
+    atct_formula: '[HNO]+'
+    atct_name: Oxoammoniumyl
+    enthalpy_298k: 1089.57
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_2
+    total_options: 2
+    uncertainty: 0.67
+  HOC+:
+    atct_formula: '[COH]+'
+    atct_name: Hydroxymethyliumylidene
+    enthalpy_298k: 987.65
+    match_type: isomer
+    selection_reason: user_selected_option_2_of_2
+    total_options: 2
+    uncertainty: 0.83
+  HS:
+    atct_formula: SH
+    atct_name: Sulfanyl
+    enthalpy_298k: 143.26
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.18
+  HS+:
+    atct_formula: '[SH]+'
+    atct_name: Sulfanylium
+    enthalpy_298k: 1148.35
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.18
+  HSO+:
+    atct_formula: '[HSO]+'
+    atct_name: Sulfoxoniumylidene
+    enthalpy_298k: 935.7
+    match_type: isomer
+    selection_reason: user_selected_option_2_of_2
+    total_options: 2
+    uncertainty: 1.7
+  N2+:
+    atct_formula: '[N2]+'
+    atct_name: Dinitrogen cation
+    enthalpy_298k: 1503.312
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.0
+  N2H+:
+    atct_formula: '[NNH]+'
+    atct_name: Diazynium
+    enthalpy_298k: 1038.97
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.67
+  NH+:
+    atct_formula: '[NH]+'
+    atct_name: Aminyliumyl
+    enthalpy_298k: 1659.99
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.24
+  NH2+:
+    atct_formula: '[NH2]+'
+    atct_name: Azanylium
+    enthalpy_298k: 1264.5
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.11
+  NH2CHO:
+    atct_formula: CH(O)NH2
+    atct_name: Formamide
+    enthalpy_298k: -189.0
+    match_type: isomer
+    selection_reason: user_selected_option_6_of_7
+    total_options: 7
+    uncertainty: 0.34
+  NH3+:
+    atct_formula: '[NH3]+'
+    atct_name: Azanylium
+    enthalpy_298k: 937.321
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.029
+  NH4+:
+    atct_formula: '[NH4]+'
+    atct_name: Ammonium
+    enthalpy_298k: 631.7
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.2
+  NO+:
+    atct_formula: '[NO]+'
+    atct_name: Nitrosyl ion
+    enthalpy_298k: 984.51
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.066
+  NO2:
+    atct_formula: NOO
+    atct_name: Peroxyimidogen
+    enthalpy_298k: 403.4
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_3
+    total_options: 3
+    uncertainty: 1.9
+  O2+:
+    atct_formula: '[O2]+'
+    atct_name: Dioxygen cation
+    enthalpy_298k: 1165.221
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.0092
+  O2H:
+    atct_formula: HOO
+    atct_name: Dioxidanyl
+    enthalpy_298k: 12.16
+    match_type: isomer
+    selection_reason: user_selected_option_1_of_2
+    total_options: 2
+    uncertainty: 0.14
+  O2H+:
+    atct_formula: '[HOO]+'
+    atct_name: Dioxidenium
+    enthalpy_298k: 1107.98
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.11
+  OCN:
+    atct_formula: NCO
+    atct_name: Cyanooxidanyl
+    enthalpy_298k: 127.45
+    match_type: isomer
+    selection_reason: user_selected_option_2_of_3
+    total_options: 3
+    uncertainty: 0.33
+  OCS+:
+    atct_formula: '[OCS]+'
+    atct_name: Carbonyl sulfide cation
+    enthalpy_298k: 939.97
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.32
+  OH+:
+    atct_formula: '[OH]+'
+    atct_name: Oxidanylium
+    enthalpy_298k: 1293.391
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.026
+  S2+:
+    atct_formula: '[S2]+'
+    atct_name: Disulfur cation
+    enthalpy_298k: 1032.06
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.32
+  SIC+:
+    atct_formula: '[SiC]+'
+    atct_name: Silicon carbide cation
+    enthalpy_298k: 1609.4
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 2.4
+  SIH+:
+    atct_formula: '[SiH]+'
+    atct_name: Silyliumylidene
+    enthalpy_298k: 1137.68
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.8
+  SIH2+:
+    atct_formula: '[SiH2]+'
+    atct_name: Silyliumyl
+    enthalpy_298k: 1153.83
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.93
+  SIH3+:
+    atct_formula: '[SiH3]+'
+    atct_name: Silylium
+    enthalpy_298k: 984.07
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.89
+  SIH4+:
+    atct_formula: '[SiH4]+'
+    atct_name: Silane cation
+    enthalpy_298k: 1097.4
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 1.6
+  SIO+:
+    atct_formula: '[SiO]+'
+    atct_name: Oxosilyliumyl
+    enthalpy_298k: 1023.1
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 2.9
+  SO+:
+    atct_formula: '[SO]+'
+    atct_name: Oxosulfur
+    enthalpy_298k: 999.86
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.13
+  SO2:
+    atct_formula: OSO
+    atct_name: Sulfur dioxide
+    enthalpy_298k: -296.75
+    match_type: isomer
+    selection_reason: user_selected_option_2_of_3
+    total_options: 3
+    uncertainty: 0.13
+  SO2+:
+    atct_formula: '[OSO]+'
+    atct_name: Sulfonyl cation
+    enthalpy_298k: 894.73
+    match_type: isomer
+    selection_reason: auto_selected_only_option
+    total_options: 1
+    uncertainty: 0.13
+remaining: {}
