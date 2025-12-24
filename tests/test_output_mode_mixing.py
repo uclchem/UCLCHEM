@@ -181,8 +181,8 @@ def test_multiple_memory_models_succeed(basic_params, reset_output_mode):
     assert return_code1 == 0
 
     # Run second in-memory model - should succeed
-    physics2, chemistry2, rates2, heating2, abundances2, return_code2 = uclchem.model.functional.cloud(
-        param_dict=params, return_dataframe=True
+    physics2, chemistry2, rates2, heating2, abundances2, return_code2 = (
+        uclchem.model.functional.cloud(param_dict=params, return_dataframe=True)
     )
     assert return_code2 == 0
 
