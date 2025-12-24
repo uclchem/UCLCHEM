@@ -1309,7 +1309,7 @@ class Collapse(AbstractModel):
             ratesarray=self.rates_array,
             heatarray=self.heat_array,
             abundancestart=self.starting_chemistry_array
-            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            if self.starting_chemistry_array is not None
             else None,
         )
         if success_flag < 0:
@@ -1418,7 +1418,7 @@ class PrestellarCore(AbstractModel):
             ratesarray=self.rates_array,
             heatarray=self.heat_array,
             abundancestart=self.starting_chemistry_array
-            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            if self.starting_chemistry_array is not None
             else None,
         )
         if success_flag < 0:
@@ -2567,81 +2567,61 @@ def __functional_return__(
         if return_heating and len(result_dfs) > idx:
             heating_df = result_dfs[idx]
 
+        # FIXED format: [phys, chem, rates/None, heating/None, abundances/dissipation, flag]
+        # For models with dissipation_time: [phys, chem, rates/None, heating/None, dissipation, abundances, flag]
         if hasattr(model_object, "dissipation_time"):
-            result = [
+            return (
                 phys_df,
                 chem_df,
-            ]
-            if return_rates:
-                result.append(rates_df)
-            if return_heating:
-                result.append(heating_df)
-            result.extend(
-                [
-                    model_object.dissipation_time,
-                    model_object.next_starting_chemistry_array,
-                    model_object.success_flag,
-                ]
+                rates_df,
+                heating_df,
+                model_object.dissipation_time,
+                model_object.next_starting_chemistry_array,
+                model_object.success_flag,
             )
-            return tuple(result)
         else:
-            result = [
+            return (
                 phys_df,
                 chem_df,
-            ]
-            if return_rates:
-                result.append(rates_df)
-            if return_heating:
-                result.append(heating_df)
-            result.extend(
-                [
-                    model_object.next_starting_chemistry_array,
-                    model_object.success_flag,
-                ]
+                rates_df,
+                heating_df,
+                model_object.next_starting_chemistry_array,
+                model_object.success_flag,
             )
-            return tuple(result)
     elif return_array:
+        # FIXED format: [phys, chem, rates/None, heating/None, abundances/dissipation, flag]
+        # For models with dissipation_time: [phys, chem, rates/None, heating/None, dissipation, abundances, flag]
         if hasattr(model_object, "dissipation_time"):
-            result = [
+            return (
                 model_object.physics_array,
                 model_object.chemical_abun_array,
                 model_object.rates_array if return_rates else None,
-            ]
-            if return_heating:
-                result.append(model_object.heat_array)
-            result.extend(
-                [
-                    model_object.dissipation_time,
-                    model_object.next_starting_chemistry_array,
-                    model_object.success_flag,
-                ]
+                model_object.heat_array if return_heating else None,
+                model_object.dissipation_time,
+                model_object.next_starting_chemistry_array,
+                model_object.success_flag,
             )
-            return tuple(result)
         else:
-            result = [
+            return (
                 model_object.physics_array,
                 model_object.chemical_abun_array,
                 model_object.rates_array if return_rates else None,
-            ]
-            if return_heating:
-                result.append(model_object.heat_array)
-            result.extend(
-                [
-                    model_object.next_starting_chemistry_array,
-                    model_object.success_flag,
-                ]
+                model_object.heat_array if return_heating else None,
+                model_object.next_starting_chemistry_array,
+                model_object.success_flag,
             )
-            return tuple(result)
     else:
+        # Disk mode with file output
+        # FIXED format: [success_flag, abundances] OR [success_flag, dissipation_time, abundances]
         if hasattr(model_object, "dissipation_time"):
-            return [
+            return (
                 model_object.success_flag,
                 model_object.dissipation_time,
-            ] + model_object.out_species_abundances_array
+            ) + tuple(model_object.out_species_abundances_array)
         else:
-            return [
-                model_object.success_flag
-            ] + model_object.out_species_abundances_array
+            return (
+                model_object.success_flag,
+            ) + tuple(model_object.out_species_abundances_array)
 
 
 def __cloud__(
@@ -2682,7 +2662,7 @@ def __cloud__(
     if param_dict is not None:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
         has_file_param = any(k in param_dict for k in file_params)
-        if (return_array or return_dataframe) and has_file_param:
+        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
             raise RuntimeError(
                 "return_array or return_dataframe cannot be used if any output of input file is specified"
             )
@@ -2749,6 +2729,21 @@ def __collapse__(
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
 
+    # Validate that file I/O and in-memory modes are not mixed
+    if param_dict is not None:
+        file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
+        has_file_param = any(k in param_dict for k in file_params)
+        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+            raise RuntimeError(
+                "return_array or return_dataframe cannot be used if any output of input file is specified"
+            )
+
+    # Validate that starting_chemistry requires memory mode
+    if starting_chemistry is not None and not (return_array or return_dataframe):
+        raise AssertionError(
+            "starting_chemistry can only be used with return_array or return_dataframe set to True"
+        )
+
     model_object = Collapse(
         collapse=collapse,
         physics_output=physics_output,
@@ -2806,6 +2801,21 @@ def __prestellar_core__(
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
+
+    # Validate that file I/O and in-memory modes are not mixed
+    if param_dict is not None:
+        file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
+        has_file_param = any(k in param_dict for k in file_params)
+        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+            raise RuntimeError(
+                "return_array or return_dataframe cannot be used if any output of input file is specified"
+            )
+
+    # Validate that starting_chemistry requires memory mode
+    if starting_chemistry is not None and not (return_array or return_dataframe):
+        raise AssertionError(
+            "starting_chemistry can only be used with return_array or return_dataframe set to True"
+        )
 
     model_object = PrestellarCore(
         temp_indx=temp_indx,
@@ -2870,6 +2880,21 @@ def __cshock__(
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
     """
 
+    # Validate that file I/O and in-memory modes are not mixed
+    if param_dict is not None:
+        file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
+        has_file_param = any(k in param_dict for k in file_params)
+        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+            raise RuntimeError(
+                "return_array or return_dataframe cannot be used if any output of input file is specified"
+            )
+
+    # Validate that starting_chemistry requires memory mode
+    if starting_chemistry is not None and not (return_array or return_dataframe):
+        raise AssertionError(
+            "starting_chemistry can only be used with return_array or return_dataframe set to True"
+        )
+
     model_object = CShock(
         shock_vel=shock_vel,
         timestep_factor=timestep_factor,
@@ -2926,6 +2951,21 @@ def __jshock__(
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
 
     """
+
+    # Validate that file I/O and in-memory modes are not mixed
+    if param_dict is not None:
+        file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
+        has_file_param = any(k in param_dict for k in file_params)
+        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+            raise RuntimeError(
+                "return_array or return_dataframe cannot be used if any output of input file is specified"
+            )
+
+    # Validate that starting_chemistry requires memory mode
+    if starting_chemistry is not None and not (return_array or return_dataframe):
+        raise AssertionError(
+            "starting_chemistry can only be used with return_array or return_dataframe set to True"
+        )
 
     model_object = JShock(
         shock_vel=shock_vel,

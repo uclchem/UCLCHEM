@@ -122,47 +122,49 @@ def test_return_rates_with_file_raises_error(
 
 
 # Test 5: Cannot run memory mode after disk mode
-def test_disk_then_memory_mode_raises_error(
-    basic_params, temp_output_directory, reset_output_mode
-):
-    """Test that running disk-based model then in-memory model raises AssertionError"""
-    # First run a disk-based model
-    params_disk = basic_params.copy()
-    params_disk["outputFile"] = temp_output_directory / "test1.dat"
-    result = uclchem.model.functional.cloud(param_dict=params_disk)
-    assert result[0] == 0
-
-    # Now try to run an in-memory model - should fail
-    params_memory = basic_params.copy()
-    with pytest.raises(
-        AssertionError,
-        match="Cannot run an in memory based model after running a disk based one",
-    ):
-        uclchem.model.functional.cloud(param_dict=params_memory, return_array=True)
+# TODO: DEPRECATED - Mode mixing checks no longer needed since IO is handled by model objects directly, not in Fortran
+# def test_disk_then_memory_mode_raises_error(
+#     basic_params, temp_output_directory, reset_output_mode
+# ):
+#     """Test that running disk-based model then in-memory model raises AssertionError"""
+#     # First run a disk-based model
+#     params_disk = basic_params.copy()
+#     params_disk["outputFile"] = temp_output_directory / "test1.dat"
+#     result = uclchem.model.functional.cloud(param_dict=params_disk)
+#     assert result[0] == 0
+#
+#     # Now try to run an in-memory model - should fail
+#     params_memory = basic_params.copy()
+#     with pytest.raises(
+#         AssertionError,
+#         match="Cannot run an in memory based model after running a disk based one",
+#     ):
+#         uclchem.model.functional.cloud(param_dict=params_memory, return_array=True)
 
 
 # Test 6: Cannot run disk mode after memory mode
-def test_memory_then_disk_mode_raises_error(
-    basic_params, temp_output_directory, reset_output_mode
-):
-    """Test that running in-memory model then disk-based model raises AssertionError"""
-    # First run an in-memory model
-    params_memory = basic_params.copy()
-    physics, chemistry, rates, heating, abundances, return_code = (
-        uclchem.model.functional.cloud(
-            param_dict=params_memory, return_array=True, return_rates=True
-        )
-    )
-    assert return_code == 0
-
-    # Now try to run a disk-based model - should fail
-    params_disk = basic_params.copy()
-    params_disk["outputFile"] = temp_output_directory / "test2.dat"
-    with pytest.raises(
-        AssertionError,
-        match="Cannot run a disk based model after running an in memory one",
-    ):
-        uclchem.model.functional.cloud(param_dict=params_disk)
+# TODO: DEPRECATED - Mode mixing checks no longer needed since IO is handled by model objects directly, not in Fortran
+# def test_memory_then_disk_mode_raises_error(
+#     basic_params, temp_output_directory, reset_output_mode
+# ):
+#     """Test that running in-memory model then disk-based model raises AssertionError"""
+#     # First run an in-memory model
+#     params_memory = basic_params.copy()
+#     physics, chemistry, rates, heating, abundances, return_code = (
+#         uclchem.model.functional.cloud(
+#             param_dict=params_memory, return_array=True, return_rates=True
+#         )
+#     )
+#     assert return_code == 0
+#
+#     # Now try to run a disk-based model - should fail
+#     params_disk = basic_params.copy()
+#     params_disk["outputFile"] = temp_output_directory / "test2.dat"
+#     with pytest.raises(
+#         AssertionError,
+#         match="Cannot run a disk based model after running an in memory one",
+#     ):
+#         uclchem.model.functional.cloud(param_dict=params_disk)
 
 
 # Test 7: Multiple memory models succeed
@@ -171,7 +173,7 @@ def test_multiple_memory_models_succeed(basic_params, reset_output_mode):
     params = basic_params.copy()
 
     # Run first in-memory model
-    physics1, chemistry1, rates1, abundances1, return_code1 = (
+    physics1, chemistry1, rates1, heating1, abundances1, return_code1 = (
         uclchem.model.functional.cloud(
             param_dict=params, return_array=True, return_rates=True
         )
@@ -179,7 +181,7 @@ def test_multiple_memory_models_succeed(basic_params, reset_output_mode):
     assert return_code1 == 0
 
     # Run second in-memory model - should succeed
-    physics2, chemistry2, abundances2, return_code2 = uclchem.model.functional.cloud(
+    physics2, chemistry2, rates2, heating2, abundances2, return_code2 = uclchem.model.functional.cloud(
         param_dict=params, return_dataframe=True
     )
     assert return_code2 == 0
@@ -217,7 +219,7 @@ def test_chained_models_in_memory(basic_params, reset_output_mode):
         "rout": 0.1,
         "baseAv": 1.0,
     }
-    _, _, final_abundances, result1 = uclchem.model.functional.cloud(
+    _, _, _, _, final_abundances, result1 = uclchem.model.functional.cloud(
         param_dict=params_stage1, return_dataframe=True
     )
     assert result1 == 0
@@ -229,7 +231,7 @@ def test_chained_models_in_memory(basic_params, reset_output_mode):
         "freefall": False,
         "freezeFactor": 0.0,
     }
-    _, _, final_abundances2, result2 = uclchem.model.functional.prestellar_core(
+    _, _, _, _, final_abundances2, result2 = uclchem.model.functional.prestellar_core(
         temp_indx=3,
         max_temperature=300.0,
         param_dict=params_stage2,
@@ -240,41 +242,42 @@ def test_chained_models_in_memory(basic_params, reset_output_mode):
 
 
 # Test 10: Cannot mix disk and memory in chained models
-def test_cannot_mix_disk_and_memory_in_chain(
-    basic_params, temp_output_directory, reset_output_mode
-):
-    """Test that you cannot start with disk mode then switch to memory mode in a chain"""
-    # Stage 1: Cloud collapse (disk mode)
-    params_stage1 = {
-        "endAtFinalDensity": False,
-        "freefall": True,
-        "initialDens": 1e2,
-        "finalDens": 1e6,
-        "initialTemp": 10.0,
-        "finalTime": 6.0e5,
-        "rout": 0.1,
-        "baseAv": 1.0,
-        "outputFile": temp_output_directory / "stage1-full.dat",
-    }
-    result1 = uclchem.model.functional.cloud(param_dict=params_stage1)
-    assert result1[0] == 0
-
-    # Stage 2: Try to use memory mode - should fail
-    params_stage2 = {
-        "initialDens": 1e6,
-        "finalTime": 1e5,
-        "freefall": False,
-    }
-    with pytest.raises(
-        AssertionError,
-        match="Cannot run an in memory based model after running a disk based one",
-    ):
-        uclchem.model.functional.prestellar_core(
-            temp_indx=3,
-            max_temperature=300.0,
-            param_dict=params_stage2,
-            return_dataframe=True,
-        )
+# TODO: DEPRECATED - Mode mixing checks no longer needed since IO is handled by model objects directly, not in Fortran
+# def test_cannot_mix_disk_and_memory_in_chain(
+#     basic_params, temp_output_directory, reset_output_mode
+# ):
+#     """Test that you cannot start with disk mode then switch to memory mode in a chain"""
+#     # Stage 1: Cloud collapse (disk mode)
+#     params_stage1 = {
+#         "endAtFinalDensity": False,
+#         "freefall": True,
+#         "initialDens": 1e2,
+#         "finalDens": 1e6,
+#         "initialTemp": 10.0,
+#         "finalTime": 6.0e5,
+#         "rout": 0.1,
+#         "baseAv": 1.0,
+#         "outputFile": temp_output_directory / "stage1-full.dat",
+#     }
+#     result1 = uclchem.model.functional.cloud(param_dict=params_stage1)
+#     assert result1[0] == 0
+#
+#     # Stage 2: Try to use memory mode - should fail
+#     params_stage2 = {
+#         "initialDens": 1e6,
+#         "finalTime": 1e5,
+#         "freefall": False,
+#     }
+#     with pytest.raises(
+#         AssertionError,
+#         match="Cannot run an in memory based model after running a disk based one",
+#     ):
+#         uclchem.model.functional.prestellar_core(
+#             temp_indx=3,
+#             max_temperature=300.0,
+#             param_dict=params_stage2,
+#             return_dataframe=True,
+#         )
 
 
 def main():
