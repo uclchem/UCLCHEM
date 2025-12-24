@@ -2524,6 +2524,112 @@ above to facilitate ease of maintenance.
 """
 
 
+def __validate_functional_api_params__(
+    param_dict: dict,
+    return_array: bool,
+    return_dataframe: bool,
+    return_rates: bool,
+    return_heating: bool,
+    starting_chemistry: np.ndarray,
+):
+    """
+    Validate functional API specific constraints.
+    Checks that return_* parameters are not mixed with file parameters,
+    and enforces OUTPUT_MODE consistency across functional API calls.
+
+    Args:
+        param_dict: The parameter dictionary
+        return_array: Whether arrays are being returned
+        return_dataframe: Whether DataFrames are being returned
+        return_rates: Whether rates are being returned
+        return_heating: Whether heating arrays are being returned
+        starting_chemistry: Starting chemistry array if provided
+
+    Raises:
+        RuntimeError: If file parameters are mixed with memory mode returns
+        AssertionError: If starting_chemistry is used without return_array/return_dataframe
+                        or if modes are mixed in a session
+    """
+    global OUTPUT_MODE
+
+    # Check starting_chemistry constraint first (independent of return flags)
+    if starting_chemistry is not None and not (return_array or return_dataframe):
+        raise AssertionError(
+            "starting_chemistry can only be used with return_array or return_dataframe set to True. "
+            "To use starting_chemistry with disk-based I/O, use abundLoadFile parameter instead."
+        )
+
+    # Determine if this is a memory mode request
+    memory_mode_requested = (
+        return_array or return_dataframe or return_rates or return_heating
+    )
+
+    # Check file parameter mixing with memory mode returns
+    if memory_mode_requested:
+        file_params = ["outputFile", "abundSaveFile", "abundLoadFile", "columnFile"]
+        if param_dict is not None and any(k in param_dict for k in file_params):
+            raise RuntimeError(
+                "return_array or return_dataframe cannot be used if any output of input file is specified. "
+                "These parameters are mutually exclusive: use either disk-based I/O (outputFile, abundSaveFile, etc.) "
+                "OR in-memory returns (return_array, return_dataframe), but not both."
+            )
+
+    # Enforce OUTPUT_MODE consistency in functional API
+    # (This prevents mixing disk and memory modes in same session when using functional API)
+    if OUTPUT_MODE == "disk" and memory_mode_requested:
+        raise AssertionError(
+            "Cannot run an in memory based model after running a disk based one. "
+            "This is to prevent confusion between different output modes. "
+            "Restart your Python session to switch modes."
+        )
+    elif OUTPUT_MODE == "memory" and not memory_mode_requested:
+        raise AssertionError(
+            "Cannot run a disk based model after running an in memory one. "
+            "This is to prevent confusion between different output modes. "
+            "Restart your Python session to switch modes."
+        )
+
+    # Set the OUTPUT_MODE if it hasn't been set yet (only for functional API)
+    if OUTPUT_MODE == "":
+        if memory_mode_requested:
+            OUTPUT_MODE = "memory"
+        else:
+            OUTPUT_MODE = "disk"
+
+
+def __validate_mode_consistency__(model_object):
+    """
+    Validate that the user is not mixing disk-based and in-memory modes.
+    Called from __run__ method to check before running any model.
+
+    Args:
+        model_object: The AbstractModel instance being run
+
+    Raises:
+        AssertionError: If starting_chemistry is used with disk mode incorrectly
+
+    Note:
+        OUTPUT_MODE tracking is only enforced in the functional API through
+        __validate_functional_api_params__. The OO API allows flexible mixing
+        of modes since users explicitly specify files or not on each run.
+    """
+    # Rule: starting_chemistry requires memory mode (no file outputs)
+    # OR must use abundLoadFile if using disk mode
+    has_file_outputs = (
+        model_object.outputFile is not None or model_object.abundSaveFile is not None
+    )
+
+    if (
+        model_object.give_start_abund
+        and has_file_outputs
+        and model_object.abundLoadFile is None
+    ):
+        raise AssertionError(
+            "starting_chemistry can only be used with in-memory mode (no outputFile/abundSaveFile). "
+            "To use starting chemistry with disk-based I/O, use abundLoadFile parameter instead."
+        )
+
+
 def __functional_return__(
     model_object: AbstractModel,
     return_array: bool = False,
@@ -2632,9 +2738,10 @@ def __functional_return__(
                 model_object.dissipation_time,
             ) + tuple(model_object.out_species_abundances_array)
         else:
-            return (
-                model_object.success_flag,
-            ) + tuple(model_object.out_species_abundances_array)
+            return (model_object.success_flag,) + tuple(
+                model_object.out_species_abundances_array
+            )
+
 
 def __cloud__(
     param_dict: dict = None,
@@ -2679,7 +2786,9 @@ def __cloud__(
     if param_dict is not None:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
         has_file_param = any(k in param_dict for k in file_params)
-        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+        if (
+            return_array or return_dataframe or return_rates or return_heating
+        ) and has_file_param:
             raise RuntimeError(
                 "return_array or return_dataframe cannot be used if any output of input file is specified"
             )
@@ -2763,7 +2872,9 @@ def __collapse__(
     if param_dict is not None:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
         has_file_param = any(k in param_dict for k in file_params)
-        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+        if (
+            return_array or return_dataframe or return_rates or return_heating
+        ) and has_file_param:
             raise RuntimeError(
                 "return_array or return_dataframe cannot be used if any output of input file is specified"
             )
@@ -2849,7 +2960,9 @@ def __prestellar_core__(
     if param_dict is not None:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
         has_file_param = any(k in param_dict for k in file_params)
-        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+        if (
+            return_array or return_dataframe or return_rates or return_heating
+        ) and has_file_param:
             raise RuntimeError(
                 "return_array or return_dataframe cannot be used if any output of input file is specified"
             )
@@ -2940,7 +3053,9 @@ def __cshock__(
     if param_dict is not None:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
         has_file_param = any(k in param_dict for k in file_params)
-        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+        if (
+            return_array or return_dataframe or return_rates or return_heating
+        ) and has_file_param:
             raise RuntimeError(
                 "return_array or return_dataframe cannot be used if any output of input file is specified"
             )
@@ -3025,7 +3140,9 @@ def __jshock__(
     if param_dict is not None:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
         has_file_param = any(k in param_dict for k in file_params)
-        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+        if (
+            return_array or return_dataframe or return_rates or return_heating
+        ) and has_file_param:
             raise RuntimeError(
                 "return_array or return_dataframe cannot be used if any output of input file is specified"
             )
