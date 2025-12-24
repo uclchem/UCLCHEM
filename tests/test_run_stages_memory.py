@@ -34,17 +34,6 @@ def common_output_directory(request):
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-@pytest.fixture(scope="module", autouse=True)
-def reset_output_mode():
-    """Reset OUTPUT_MODE at start of module to allow memory tests"""
-    import uclchem.model as model
-
-    original_mode = model.OUTPUT_MODE
-    model.OUTPUT_MODE = ""
-    yield
-    model.OUTPUT_MODE = original_mode
-
-
 def test_static_model_return_array(common_output_directory):
     """Test static cloud model with return_array"""
     params = {
@@ -57,7 +46,7 @@ def test_static_model_return_array(common_output_directory):
         "finalTime": 5.0e6,
     }
     physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.model.functional.cloud(
+        uclchem.functional.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_array=True,
@@ -81,7 +70,7 @@ def test_static_model_return_dataframe(common_output_directory):
         "finalTime": 5.0e6,
     }
     physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.model.functional.cloud(
+        uclchem.functional.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_dataframe=True,
@@ -102,7 +91,7 @@ def test_collapse_hotcore_return_array(common_output_directory):
     }
     # return_array with return_rates=True returns 6 values: physics, chemistry, rates, heating(None), abundances, flag
     physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.model.functional.cloud(
+        uclchem.functional.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_array=True,
@@ -122,7 +111,7 @@ def test_collapse_hotcore_return_array(common_output_directory):
     }
     # prestellar_core with return_array also returns 6 values
     physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.model.functional.prestellar_core(
+        uclchem.functional.prestellar_core(
             3,
             300.0,
             param_dict=params,
@@ -144,7 +133,7 @@ def test_collapse_hotcore_return_dataframe(common_output_directory):
     }
     # return_dataframe returns 6 values: physics, chemistry, rates(None), heating(None), abundances, flag
     physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.model.functional.cloud(
+        uclchem.functional.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_dataframe=True,
@@ -163,7 +152,7 @@ def test_collapse_hotcore_return_dataframe(common_output_directory):
     }
     # prestellar_core with return_dataframe also returns 6 values
     physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.model.functional.prestellar_core(
+        uclchem.functional.prestellar_core(
             3,
             300.0,
             param_dict=params,
@@ -196,7 +185,7 @@ def test_cshock_return_dataframe(common_output_directory):
         heating,
         final_abundances,
         return_code,
-    ) = uclchem.model.functional.cloud(param_dict=param_dict, return_dataframe=True)
+    ) = uclchem.functional.cloud(param_dict=param_dict, return_dataframe=True)
     assert (
         return_code == 0
     ), f"Pre-cshock cloud returned with nonzero exit code {return_code}"
@@ -213,7 +202,7 @@ def test_cshock_return_dataframe(common_output_directory):
         dissipation_time,
         final_abundances2,
         return_code,
-    ) = uclchem.model.functional.cshock(
+    ) = uclchem.functional.cshock(
         shock_vel=40,
         param_dict=param_dict,
         return_dataframe=True,

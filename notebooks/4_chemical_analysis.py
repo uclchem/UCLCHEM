@@ -83,7 +83,7 @@ def run_model(row):
         "reltol": 1e-6,
         "abstol_min": 5e-20,
     }
-    result = uclchem.model.functional.cloud(
+    result = uclchem.functional.cloud(
         param_dict=ParameterDictionary, return_dataframe=True, return_rates=True
     )
     return result

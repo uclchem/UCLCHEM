@@ -52,7 +52,7 @@ def run_model(row):
         "finalTime": 1.0e6,
         "baseAv": 10,
     }
-    result = uclchem.model.functional.cloud(param_dict=ParameterDictionary)
+    result = uclchem.functional.cloud(param_dict=ParameterDictionary)
     return result
 
 

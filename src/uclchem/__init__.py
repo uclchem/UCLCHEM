@@ -10,6 +10,7 @@ from . import analysis as analysis
 
 # This following contains the virtual submodule `functional`, which allows for calling the new API in the legacy format.
 from . import model as model
+from . import functional as functional
 from . import plot as plot
 from . import tests as tests
 from . import utils as utils

@@ -34,17 +34,6 @@ def common_output_directory(request):
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-@pytest.fixture(scope="module", autouse=True)
-def reset_output_mode():
-    """Reset OUTPUT_MODE at start of module to allow disk tests"""
-    import uclchem.model as model
-
-    original_mode = model.OUTPUT_MODE
-    model.OUTPUT_MODE = ""
-    yield
-    model.OUTPUT_MODE = original_mode
-
-
 def test_static_model_disk(common_output_directory):
     """Test static cloud model with disk output"""
     params = {
@@ -58,7 +47,7 @@ def test_static_model_disk(common_output_directory):
         "outputFile": common_output_directory / "static-full.dat",
         "abundSaveFile": common_output_directory / "startstatic.dat",
     }
-    return_code = uclchem.model.functional.cloud(
+    return_code = uclchem.functional.cloud(
         param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
     assert (
@@ -77,7 +66,7 @@ def test_collapse_hotcore_disk(common_output_directory):
         "outputFile": common_output_directory / "stage1-full.dat",
         "columnFile": common_output_directory / "stage1-column.dat",
     }
-    return_code = uclchem.model.functional.cloud(
+    return_code = uclchem.functional.cloud(
         param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
     assert (
@@ -95,7 +84,7 @@ def test_collapse_hotcore_disk(common_output_directory):
         "outputFile": common_output_directory / "stage2-full.dat",
         "abundLoadFile": common_output_directory / "startstage1.dat",
     }
-    return_code = uclchem.model.functional.prestellar_core(
+    return_code = uclchem.functional.prestellar_core(
         3, 300.0, param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
     assert (
@@ -118,7 +107,7 @@ def test_cshock_disk(common_output_directory):
         "abundSaveFile": common_output_directory / "start_cshock.dat",
         "outputFile": common_output_directory / "pre_cshock.dat",
     }
-    return_code = uclchem.model.functional.cloud(param_dict=param_dict)
+    return_code = uclchem.functional.cloud(param_dict=param_dict)
     assert (
         return_code[0] == 0
     ), f"Pre-cshock cloud returned with nonzero exit code {return_code[0]}"
@@ -129,7 +118,7 @@ def test_cshock_disk(common_output_directory):
     param_dict["abundLoadFile"] = common_output_directory / "start_cshock.dat"
     param_dict["outputFile"] = common_output_directory / "cshock.dat"
     param_dict.pop("abundSaveFile", None)  # Remove abundSaveFile for second stage
-    return_code = uclchem.model.functional.cshock(shock_vel=40, param_dict=param_dict)
+    return_code = uclchem.functional.cshock(shock_vel=40, param_dict=param_dict)
     assert (
         return_code[0] == 0
     ), f"C-shock returned with nonzero exit code {return_code[0]}"
