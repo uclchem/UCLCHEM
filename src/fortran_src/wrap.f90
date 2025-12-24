@@ -356,6 +356,7 @@ CONTAINS
         DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
         !f2py intent(in) abundanceStart
         !f2py depend(gridPoints, nspec) abundanceStart
+        vs=shock_vel
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
         &updatePhysics,updateTargetTime,sublimation,returnArray, returnRates,givestartabund,&
         &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,abundanceStart)

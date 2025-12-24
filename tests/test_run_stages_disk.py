@@ -80,11 +80,9 @@ def test_collapse_hotcore_disk(common_output_directory):
     return_code = uclchem.model.functional.cloud(
         param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
-    assert return_code[0] == 0 or abs(return_code[0]) < 1e-5, (
-        f"Stage 1 returned with nonzero exit code {return_code[0]}"
-        if return_code[0] != 0
-        else "Success!"
-    )
+    assert (
+        return_code[0] == 0
+    ), f"Stage 1 returned with nonzero exit code {return_code[0]}"
 
     # Stage 2: Hot core
     params = {
@@ -121,11 +119,9 @@ def test_cshock_disk(common_output_directory):
         "outputFile": common_output_directory / "pre_cshock.dat",
     }
     return_code = uclchem.model.functional.cloud(param_dict=param_dict)
-    assert return_code[0] == 0 or abs(return_code[0]) < 1e-4, (
-        f"Pre-cshock cloud returned with nonzero exit code {return_code[0]}"
-        if return_code[0] != 0
-        else "Success!"
-    )
+    assert (
+        return_code[0] == 0
+    ), f"Pre-cshock cloud returned with nonzero exit code {return_code[0]}"
 
     # C-shock
     param_dict["initialDens"] = 1e4
