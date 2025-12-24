@@ -2632,9 +2632,10 @@ def __functional_return__(
                 model_object.dissipation_time,
             ) + tuple(model_object.out_species_abundances_array)
         else:
-            return (
-                model_object.success_flag,
-            ) + tuple(model_object.out_species_abundances_array)
+            return (model_object.success_flag,) + tuple(
+                model_object.out_species_abundances_array
+            )
+
 
 def __cloud__(
     param_dict: dict = None,
@@ -2679,7 +2680,9 @@ def __cloud__(
     if param_dict is not None:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
         has_file_param = any(k in param_dict for k in file_params)
-        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+        if (
+            return_array or return_dataframe or return_rates or return_heating
+        ) and has_file_param:
             raise RuntimeError(
                 "return_array or return_dataframe cannot be used if any output of input file is specified"
             )
@@ -2763,7 +2766,9 @@ def __collapse__(
     if param_dict is not None:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
         has_file_param = any(k in param_dict for k in file_params)
-        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+        if (
+            return_array or return_dataframe or return_rates or return_heating
+        ) and has_file_param:
             raise RuntimeError(
                 "return_array or return_dataframe cannot be used if any output of input file is specified"
             )
@@ -2849,7 +2854,9 @@ def __prestellar_core__(
     if param_dict is not None:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
         has_file_param = any(k in param_dict for k in file_params)
-        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+        if (
+            return_array or return_dataframe or return_rates or return_heating
+        ) and has_file_param:
             raise RuntimeError(
                 "return_array or return_dataframe cannot be used if any output of input file is specified"
             )
@@ -2940,7 +2947,9 @@ def __cshock__(
     if param_dict is not None:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
         has_file_param = any(k in param_dict for k in file_params)
-        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+        if (
+            return_array or return_dataframe or return_rates or return_heating
+        ) and has_file_param:
             raise RuntimeError(
                 "return_array or return_dataframe cannot be used if any output of input file is specified"
             )
@@ -3025,7 +3034,9 @@ def __jshock__(
     if param_dict is not None:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile"]
         has_file_param = any(k in param_dict for k in file_params)
-        if (return_array or return_dataframe or return_rates or return_heating) and has_file_param:
+        if (
+            return_array or return_dataframe or return_rates or return_heating
+        ) and has_file_param:
             raise RuntimeError(
                 "return_array or return_dataframe cannot be used if any output of input file is specified"
             )
