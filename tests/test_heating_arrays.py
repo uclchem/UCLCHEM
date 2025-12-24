@@ -24,6 +24,7 @@ class TestHeatingArrays:
             "finalDens": 1e5,
             "finalTime": 1.0e3,  # Much shorter time for faster tests
             "points": 1,
+            "heatingFlag": True,  # Enable heating/cooling calculations
         }
 
     @pytest.fixture
