@@ -24,6 +24,7 @@ class TestHeatingArrays:
             "finalDens": 1e5,
             "finalTime": 1.0e3,  # Much shorter time for faster tests
             "points": 1,
+            "heatingFlag": True,  # Enable heating/cooling calculations
         }
 
     @pytest.fixture
@@ -62,7 +63,7 @@ class TestHeatingArrays:
             heatArray,
             abundanceStart,
             success_flag,
-        ) = uclchem.model.functional.cloud(
+        ) = uclchem.functional.cloud(
             param_dict=param_dict,
             out_species=["OH", "CO"],
             return_array=True,
@@ -94,7 +95,7 @@ class TestHeatingArrays:
             heatArray,
             abundanceStart,
             success_flag,
-        ) = uclchem.model.functional.cloud(
+        ) = uclchem.functional.cloud(
             param_dict=param_dict,
             out_species=["OH", "CO", "H2O"],
             return_array=True,
@@ -115,7 +116,7 @@ class TestHeatingArrays:
     ):
         """Test cloud function with return_dataframe=True."""
 
-        result = uclchem.model.functional.cloud(
+        result = uclchem.functional.cloud(
             param_dict=param_dict,
             out_species=["OH", "CO", "H2O"],
             return_dataframe=True,
@@ -167,7 +168,7 @@ class TestHeatingArrays:
     def test_all_model_functions_support_heating(self, model_function, param_dict):
         """Test that all model functions support heating arrays."""
         # Get the function from the functional module
-        func = getattr(uclchem.model.functional, model_function)
+        func = getattr(uclchem.functional, model_function)
         # Adjust parameters for different model types
         test_params = param_dict.copy()
 
@@ -243,7 +244,7 @@ class TestHeatingArrays:
             heating_df,
             abundanceStart,
             success_flag,
-        ) = uclchem.model.functional.cloud(
+        ) = uclchem.functional.cloud(
             param_dict=param_dict,
             out_species=["OH", "CO", "H2O"],
             return_dataframe=True,
@@ -283,7 +284,7 @@ class TestHeatingArrays:
     #     TEST_DIR.mkdir(parents=True, exist_ok=True)
     #     TEST_FILE = TEST_DIR / "heating_file.csv"
     #     param_dict["heatingFile"] = str(TEST_FILE)
-    #     result = uclchem.model.functional.cloud(
+    #     result = uclchem.functional.cloud(
     #         param_dict=param_dict,
     #         out_species=["OH", "CO"],
     #         timepoints=50,  # Reduced from 500 for faster tests

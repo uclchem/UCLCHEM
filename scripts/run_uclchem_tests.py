@@ -25,7 +25,7 @@ params = {
 }
 
 start = perf_counter()
-uclchem.model.functional.cloud(param_dict=params, out_species=outSpecies)
+uclchem.functional.cloud(param_dict=params, out_species=outSpecies)
 stop = perf_counter()
 print(f"Static model in {stop - start:.1f} seconds")
 
@@ -37,7 +37,7 @@ params["abundSaveFile"] = "examples/test-output/startcollapse.dat"
 params["outputFile"] = "examples/test-output/phase1-full.dat"
 params["columnFile"] = "examples/test-output/phase1-column.dat"
 start = perf_counter()
-uclchem.model.functional.cloud(param_dict=params, out_species=outSpecies)
+uclchem.functional.cloud(param_dict=params, out_species=outSpecies)
 stop = perf_counter()
 print(f"Phase 1 in {stop - start:.1f} seconds")
 
@@ -52,8 +52,6 @@ params["abundLoadFile"] = "examples/test-output/startcollapse.dat"
 params["outputFile"] = "examples/test-output/phase2-full.dat"
 params.pop("columnFile")
 start = perf_counter()
-uclchem.model.functional.prestellar_core(
-    3, 300.0, param_dict=params, out_species=outSpecies
-)
+uclchem.functional.prestellar_core(3, 300.0, param_dict=params, out_species=outSpecies)
 stop = perf_counter()
 print(f"Phase 2 in {stop - start:.1f} seconds")

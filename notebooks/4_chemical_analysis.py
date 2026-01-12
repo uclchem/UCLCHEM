@@ -24,12 +24,10 @@
 #
 # We'll use an example from work that was published in 2022 [Energizing Star Formation: The Cosmic-Ray Ionization Rate in NGC 253 Derived from ALCHEMI Measurements of H3O+ and SO](https://ui.adsabs.harvard.edu/abs/2022ApJ...931...89H/abstract) to demonstrate the use of the rates coming out of UCLCHEM and how it can be used to draw conclusions about the most important reactions in a network for a given species/behaviour.
 
-
+import uclchem
+from joblib import Parallel, delayed
 import numpy as np
 import pandas as pd
-from joblib import Parallel, delayed
-
-import uclchem
 
 # ## H3O+ and SO
 #
@@ -85,7 +83,7 @@ def run_model(row):
         "reltol": 1e-6,
         "abstol_min": 5e-20,
     }
-    result = uclchem.model.functional.cloud(
+    result = uclchem.functional.cloud(
         param_dict=ParameterDictionary, return_dataframe=True, return_rates=True
     )
     return result

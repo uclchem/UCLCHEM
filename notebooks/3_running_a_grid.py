@@ -68,7 +68,7 @@ def run_model(row):
         "baseAv": 10,
         "abstol_min": 1e-22,
     }
-    result = uclchem.model.functional.cloud(param_dict=ParameterDictionary)
+    result = uclchem.functional.cloud(param_dict=ParameterDictionary)
     return result[0]  # just the integer error code
 
 
@@ -131,7 +131,7 @@ def run_prelim(density):
         "abundSaveFile": f"../grid_folder/starts/{density:.0f}.csv",
         "baseAv": 1,
     }
-    result = uclchem.model.functional.cloud(param_dict=ParameterDictionary)
+    result = uclchem.functional.cloud(param_dict=ParameterDictionary)
     return result
 
 
@@ -150,7 +150,7 @@ def run_model(row):
         "reltol": 1e-6,
         "baseAv": 1,
     }
-    result = uclchem.model.functional.cshock(
+    result = uclchem.functional.cshock(
         row.shock_velocity, param_dict=ParameterDictionary, out_species=out_species
     )
     # First check UCLCHEM's result flag to seeif it ran succesfully, if it is return the abundances
