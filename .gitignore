@@ -1,1 +1,23 @@
-.conda
+#built objects
+*.so
+*.o
+*.mod
+*.pyc
+src/*.o
+src/*.mod
+src/uclchem/*.so
+
+#outputs
+examples/test-output/*
+examples/*.png
+
+#dev stuff
+uclchem.egg-info
+test
+.vscode
+build
+dist
+*/__pycache__
+.venv
+conda*
+.conda*
