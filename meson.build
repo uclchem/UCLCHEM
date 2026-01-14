@@ -76,6 +76,7 @@ dvode_lib = static_library('dvode', dvode_sources,
 
 uclchemwrap_source = files(fsource_dir / 'constants.f90',
                      fsource_dir / 'defaultparameters.f90',
+                     fsource_dir / 'extinction.f90',
                      fsource_dir / 'f2py_constants.f90',
                      fsource_dir / 'physics-core.f90',
                      fsource_dir / 'network.f90',

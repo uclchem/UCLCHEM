@@ -19,7 +19,7 @@ REAL(dp) :: initialTemp=10.0 !Initial gas temperature in Kelvin for all gas parc
 REAL(dp) :: initialDens=1.00d2 !Initial gas density in H nuclei per cm$^{-3}$ for all gas parcels in model.
 REAL(dp) :: finalDens=1.00d5 !Final gas density achieved via freefall. 
 REAL(dp) :: currentTime=0.0 !Time at start of model in years.
-REAL(dp) :: finalTime=5.0d6 !Time to stop model in years, if not using `endAtFinalDensity` below.
+REAL(dp) :: finalTime=5.0d6 !Time to stop model in years.
 REAL(dp) :: radfield=1.0 !Interstellar radiation field in Habing
 REAL(dp) :: zeta=1.0 !Cosmic ray ionisation rate as multiple of $1.3 10^{-17} s^{-1}$
 REAL(dp) :: rout=0.05 !Outer radius of cloud being modelled in pc.
@@ -27,6 +27,12 @@ REAL(dp) :: rin=0.0 !Minimum radial distance from cloud centre to consider.
 REAL(dp) :: baseAv=2.0 !Extinction at cloud edge, Av of a parcel at rout.
 INTEGER(dp) :: points=1 !Number of gas parcels equally spaced between rin to rout to consider
 REAL(dp) :: bm0=1.0 !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
+!Physical profiles for 1D model with pre-described gas density
+REAL(dp) :: density_scale_radius=0.05 !unit of pc, distance below which the gas volume density is constant, and above which the gas density drops as n ~ r^{-a}
+REAL(dp) :: density_power_index=2.0 !Power-law index for density profile: n(r) = n0/(1 + (r/density_scale_radius)^density_power_index)
+!Luminosity source for hotcore in 1D model
+REAL(dp) :: lum_star=1.00d6 !unit of Lsun, bolometric luminosity of the central source
+REAL(dp) :: temp_star=4.50d4 !unit of K, temperature of the central source
 !
 !## Behavioural Controls
 !*The following parameters generally turn on or off features of the model. If a parameter is set to `True`, then it is turned on. If it is set to `False`, then it is turned off.*
@@ -34,7 +40,6 @@ REAL(dp) :: bm0=1.0 !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
 !|Parameter|Default Value |Description|
 !| ----- | ------| ------ |
 REAL(dp) :: freezeFactor=1.0 !Modify freeze out rate of gas parcels by this factor.
-LOGICAL :: endAtFinalDensity=.False. !Choose to end model at final density, otherwise end at final time.
 LOGICAL :: freefall=.False. !Controls whether models density increaes following freefall equation.
 REAL(dp) :: freefallFactor=1.0 !Modify freefall rate by factor, usually to slow it.
 LOGICAL :: desorb=.True. !Toggles all non-thermal desoprtion processes on or off.
@@ -48,6 +53,8 @@ CHARACTER :: ionModel='L' !L/H model for cosmic ray attenuation [Padovani et al.
 LOGICAL :: improvedH2CRPDissociation=.False. !Use H2 CRP dissociation rate from [Padovani et al. 2018b](https://arxiv.org/abs/1809.04168).
 LOGICAL :: heatingFlag=.false. !If True, heating is applied to the gas parcels.
 LOGICAL :: enforceChargeConservation = .false. ! Enforce the chrage by keeping track of charged ions.
+LOGICAL :: enable_radiative_transfer=.false. !Enable 1D radiative transfer calculations for spatial models (points>1).
+INTEGER :: parcelStoppingMode=0 !Controls when parcels stop evolving in 1D freefall models: 0=never stop (default), 1=stop when outermost parcel reaches max density, 2=stop each parcel individually at max density.
 !
 !## Input and Output
 !|Parameter|Default Value |Description|

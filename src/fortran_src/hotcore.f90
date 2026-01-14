@@ -7,9 +7,10 @@ MODULE hotcore
     !f2py INTEGER, parameter :: dp    
     USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens
+    &coldens, density_max, ngas_r, findcoldens_core2edge
     USE network
     USE f2py_constants
+    USE extinction_module
     IMPLICIT NONE
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
     INTEGER :: solidflag,volcflag,coflag
@@ -25,6 +26,15 @@ MODULE hotcore
     REAL(dp),PARAMETER :: codestemp(nMasses)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
     REAL(dp), allocatable :: monoFracCopy(:)
     REAL(dp) :: maxTemp
+    
+    ! 1D radiative transfer arrays
+    REAL(dp) :: av_max
+    REAL(dp) :: Td_r
+    REAL(dp) :: U_r
+    REAL(dp), allocatable :: parcelRadius(:)
+    REAL(dp), allocatable :: coldens_max(:)
+    REAL(dp), allocatable :: maximum_Temp(:)
+
 contains
 
     SUBROUTINE initializePhysics(successFlag)
@@ -38,8 +48,32 @@ contains
         solidFlag=0
         volcFlag=0
         monoFracCopy=monoFractions !reset monofractions
+        
+        ! Allocate 1D arrays if 1D radiative transfer is enabled
+        IF (enable_radiative_transfer .AND. points.gt.1) THEN
+            IF (ALLOCATED(parcelRadius)) DEALLOCATE(parcelRadius)
+            ALLOCATE(parcelRadius(points))
+
+            IF (ALLOCATED(coldens_max)) DEALLOCATE(coldens_max)
+            ALLOCATE(coldens_max(points))
+            
+            IF (ALLOCATED(maximum_Temp)) DEALLOCATE(maximum_Temp)
+            ALLOCATE(maximum_Temp(points))
+
+            DO dstep=1,points
+                parcelRadius(dstep)=dstep*rout/float(points) !unit of parsec -- note: parcelRadius is from core to edge
+            END DO
+        END IF
 
         IF (freefall) density=1.001*initialDens
+        
+        IF (enable_radiative_transfer .AND. points.gt.1) THEN
+            DO dstep=1,points 
+                density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
+                density(dstep)=density_max(dstep)
+                maximum_Temp(dstep) = maxTemp
+            END DO
+        END IF
 
         IF (tempindx .gt. nMasses) THEN
             write(*,*) "tempindx was ",tempindx
@@ -77,6 +111,28 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updatePhysics
         !f2py integer, intent(aux) :: points
+        
+        ! 1D radiative transfer calculations
+        IF (enable_radiative_transfer .AND. points.gt.1) THEN
+            density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
+            density(dstep)=density_max(dstep)
+
+            call findcoldens_core2edge(coldens_max(dstep),rin,finalDens,density_scale_radius,density_power_index,parcelRadius(dstep))
+            av_max = coldens_max(dstep)/1.6d21 + baseAv !note: av_max from core to edge
+
+            coldens(dstep)=cloudSize/real(points)*density(dstep) !Note: Ngas from edge to core
+            ! add previous column densities to current as we move into cloud to get total
+            IF (dstep .lt. points) coldens(dstep)=coldens(dstep)+coldens(dstep+1)
+
+            !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
+            av(dstep)= baseAv +coldens(dstep)/1.6d21
+
+            ! Get maximum temperature at a given position
+            call radiation(parcelRadius(dstep)*pc, lum_star*Lsun, temp_star, av_max, Td_r, U_r)
+            maximum_Temp(dstep)=Td_r !get global variable value for wrap.f90
+            maxTemp=maximum_Temp(dstep) !set the local variable in this routine
+        END IF
+
          IF (gasTemp(dstep) .lt. maxTemp) THEN
         !Below we include temperature profiles for hot cores, selected using tempindx
         !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
@@ -90,6 +146,13 @@ contains
         ! IF (.not. heatingFlag) THEN 
         !     dustTemp=gasTemp
         ! END IF
+        
+        ! 1D diagnostic output
+        IF (enable_radiative_transfer .AND. points.gt.1) THEN
+            PRINT '(A,1PE12.3,A,0PF8.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3)', &
+                't=',timeInYears, '  r=',parcelRadius(dstep), '  ngas(t)=',density(dstep), '  Ngas(t)=',coldens(dstep), &
+                '  Td(t)=',gasTemp(dstep), '  Td(r)_max=',Td_r, ' U(r)_max=',U_r, ' av(core2edge)=',av_max, ' av(edge2core)=',av(dstep)
+        END IF
 
     END SUBROUTINE updatePhysics
 
@@ -182,4 +245,71 @@ contains
             END IF 
         END DO
     END SUBROUTINE bindingEnergyEvap
+
+    ! 1D Radiative transfer subroutines
+    SUBROUTINE radiation(r, Lstar, Tstar, Avs, temperatures, U)
+        IMPLICIT NONE
+        REAL(dp) :: Lstar, Tstar, r
+        REAL(dp), INTENT(OUT) :: temperatures, U
+        INTEGER :: i
+        REAL(dp), DIMENSION(:), ALLOCATABLE :: wave, wave_cm, Istar, uwave_star, uwave_red, tau_wave
+        REAL(dp) :: ZZ, wave1, Avs, wave2, rsub
+        REAL(dp) :: h, sum_odd, sum_even
+        REAL(dp) :: uISRF, NH_EBV, RV, Tdsub
+        REAL(8)  ::  urad_red
+        INTEGER, PARAMETER :: nw=129
+        REAL(dp), DIMENSION(2, nw) :: ext_curves
+        CHARACTER(LEN=10) :: model
+
+        uISRF = 8.64d-13 !erg cm-3
+        Tdsub=2300.d0 !K
+        RV = 4.0d0
+        NH_EBV = 5.8d21
+        
+        ! sublimation distance
+        rsub = 155.3d0*(Lstar/1.0d6/Lsun)**(0.5) * (Tdsub/1500.d0)**(-5.6/2.0) * aunit !in cm
+
+        ZZ = HP * C / (K_BOLTZ * Tstar)
+
+        wave1 = HP * C * 1.d4 / (13.6d0 * EV)
+        wave2 = 20.0d0
+
+        !logspace for wave in micron
+        ALLOCATE(wave(nw))
+        CALL logspace(LOG10(wave1), LOG10(wave2), nw, wave)
+
+        ! Call the function from the module
+        CALL extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
+
+        wave_cm = wave*1.d-4 !in cm
+
+        Istar   = (2.d0*HP*C**2.0/wave_cm**5.0)*(1.d0/(EXP(ZZ/wave_cm)-1.0d0)) !an array
+        uwave_star = (4.d0*PI*wave_cm/C)*(Istar)/wave_cm !an array
+
+        tau_wave = Avs * ext_curves(1,:)/1.086d0 !an array
+        uwave_red = uwave_star*EXP(-tau_wave) !an array
+        
+        ! Initialize the integral value
+        urad_red = 0.0d0
+
+        ! Apply trapezoidal rule for numerical integration
+        DO i = 1, 129-1
+            urad_red = urad_red + 0.5d0 * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
+        END DO
+        ! Outputs
+        U = urad_red / uISRF * (r / rsub)**(-2.0)
+        temperatures = 16.4d0 * U**(1.0/6.0)  ! For silicate grains
+    END SUBROUTINE radiation
+
+    SUBROUTINE logspace(start, stop, num, result)
+        IMPLICIT NONE
+        REAL(dp), INTENT(IN) :: start, stop
+        INTEGER, INTENT(IN) :: num
+        REAL(dp), DIMENSION(num), INTENT(OUT) :: result
+        INTEGER :: i
+
+        DO i = 1, num
+            result(i) = 10.0d0**(start + (i-1)*(stop-start)/DBLE(num-1))
+        END DO
+    END SUBROUTINE logspace
 END MODULE hotcore 

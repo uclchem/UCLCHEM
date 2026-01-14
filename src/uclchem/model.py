@@ -204,6 +204,31 @@ def _worker_entry(
 # /Worker entry for parallel jobs
 
 
+# Short compatibility helper for legacy parameter `endAtFinalDensity`
+def _convert_legacy_stopping_param(param_dict: dict) -> dict:
+    """Minimal conversion of legacy `endAtFinalDensity` to `parcelStoppingMode`.
+    Rules (short and strict):
+      - If both keys are present: raise RuntimeError
+      - If `endAtFinalDensity` is present and points>1: raise RuntimeError
+      - Otherwise convert True->1, False->0 and remove the old key
+    """
+    if param_dict is None:
+        return param_dict
+    has_old = any(k.lower() == 'endatfinaldensity' for k in param_dict.keys())
+    has_new = any(k.lower() == 'parcelstoppingmode' for k in param_dict.keys())
+    if has_old and has_new:
+        raise RuntimeError("Cannot specify both 'endAtFinalDensity' and 'parcelStoppingMode'. Use 'parcelStoppingMode' only.")
+    if has_old:
+        points = param_dict.get('points', param_dict.get('Points', 1))
+        if points > 1:
+            raise RuntimeError("endAtFinalDensity is no longer supported for multi-point models (points > 1). Use 'parcelStoppingMode' instead.")
+        # case insensitive matching to make things easier on the user:
+        old_key = [k for k in param_dict.keys() if k.lower() == 'endatfinaldensity'][0]
+        old_val = param_dict.pop(old_key)
+        param_dict['parcelstoppingmode'] = 1 if old_val else 2
+    return param_dict
+
+
 # TODO Add catch of ctrl+c or other aborts so that it saves model and a full output to files of year, month, day, time type.
 class AbstractModel(ABC):
     """Base model class used for inheritance only
@@ -862,6 +887,10 @@ class AbstractModel(ABC):
             param_dict (dict): Parameter dictionary passed by the user to the model.
             out_species (list): List of output species that are considered important for this model.
         """
+        # Handle deprecated endAtFinalDensity parameter
+        if param_dict is not None:
+            param_dict = _convert_legacy_stopping_param(param_dict)
+        
         if param_dict is None:
             self._param_dict = default_param_dictionary
         else:

@@ -193,7 +193,7 @@ def test_chained_models_in_memory(basic_params):
     """Test Stage 1 -> Stage 2 workflow using in-memory arrays with starting_chemistry"""
     # Stage 1: Cloud collapse
     params_stage1 = {
-        "endAtFinalDensity": False,
+        "parcelStoppingMode": 2,  # Stop each parcel individually
         "freefall": True,
         "initialDens": 1e2,
         "finalDens": 1e6,

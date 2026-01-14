@@ -31,7 +31,7 @@ IMPLICIT NONE
 
     !Array to store reaction rates
     REAL(dp) :: rate(nreac)
-    
+
     !DLSODE variables    
     INTEGER :: ITASK,ISTATE,NEQ
     REAL(dp), ALLOCATABLE :: abstol(:)

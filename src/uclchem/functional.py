@@ -7,6 +7,7 @@ in the model module to facilitate ease of maintenance.
 """
 
 import numpy as np
+import pandas as pd
 
 from uclchem.constants import TIMEPOINTS
 from uclchem.model import (
@@ -104,24 +105,60 @@ def __functional_return__(
 
     """
     if return_dataframe:
-        result_dfs = model_object.get_dataframes(
-            joined=False, with_rates=return_rates, with_heating=return_heating
-        )
-        phys_df = result_dfs[0]
-        chem_df = result_dfs[1]
+        # If multiple spatial points are present, return DataFrames concatenated across points
+        points = model_object._param_dict.get("points", 1)
         rates_df = None
         heating_df = None
 
-        # Extract rates and heating based on what was requested
-        idx = 2
-        if return_rates and len(result_dfs) > idx:
-            rates_df = result_dfs[idx]
-            idx += 1
-        if return_heating and len(result_dfs) > idx:
-            heating_df = result_dfs[idx]
+        if points > 1:
+            physics_list = []
+            chemistry_list = []
+            rates_list = []
+            heating_list = []
+            for pt in range(points):
+                res = model_object.get_dataframes(
+                    point=pt, joined=False, with_rates=return_rates, with_heating=return_heating
+                )
+                phys = res[0].copy()
+                chem = res[1].copy()
+                phys["Point"] = pt + 1
+                chem["Point"] = pt + 1
+                physics_list.append(phys)
+                chemistry_list.append(chem)
+                idx = 2
+                if return_rates and len(res) > idx:
+                    rates_list.append(res[idx].assign(Point=pt + 1))
+                    idx += 1
+                if return_heating and len(res) > idx:
+                    heating_list.append(res[idx].assign(Point=pt + 1))
 
-        # FIXED format: [phys, chem, rates/None, heating/None, abundances/dissipation, flag]
-        # For models with dissipation_time: [phys, chem, rates/None, heating/None, dissipation, abundances, flag]
+            phys_df = pd.concat(physics_list, ignore_index=True)
+            chem_df = pd.concat(chemistry_list, ignore_index=True)
+            # Legacy compatibility: add lowercase 'point' column (mirrors 'Point')
+            phys_df["point"] = phys_df["Point"]
+            chem_df["point"] = chem_df["Point"]
+            rates_df = pd.concat(rates_list, ignore_index=True) if rates_list else None
+            heating_df = pd.concat(heating_list, ignore_index=True) if heating_list else None
+        else:
+            # Single point: behave as before but include a Point column
+            result_dfs = model_object.get_dataframes(
+                joined=False, with_rates=return_rates, with_heating=return_heating
+            )
+            phys_df = result_dfs[0]
+            chem_df = result_dfs[1]
+            idx = 2
+            if return_rates and len(result_dfs) > idx:
+                rates_df = result_dfs[idx]
+                idx += 1
+            if return_heating and len(result_dfs) > idx:
+                heating_df = result_dfs[idx]
+            phys_df["Point"] = 1
+            chem_df["Point"] = 1
+            # Legacy compatibility: include lowercase 'point' for callers relying on the old name
+            phys_df["point"] = 1
+            chem_df["point"] = 1
+
+        # Return values: phys, chem, rates/None, heating/None, abundances/dissipation or abundances, flag
         if hasattr(model_object, "dissipation_time"):
             return (
                 phys_df,
@@ -314,8 +351,8 @@ def __collapse__(
 
 
 def __prestellar_core__(
-    temp_indx: int,
-    max_temperature: float,
+    temp_indx: int = 1,
+    max_temperature: float = 300.0,
     param_dict: dict = None,
     out_species: list = ["H", "N", "C", "O"],
     return_array: bool = False,
@@ -529,6 +566,10 @@ def __jshock__(
     )
 
 
+# Expose the functional API functions at module level
+cloud = __cloud__
+collapse = __collapse__
+prestellar_core = __prestellar_core__
 # Expose the functional API functions at module level
 cloud = __cloud__
 collapse = __collapse__

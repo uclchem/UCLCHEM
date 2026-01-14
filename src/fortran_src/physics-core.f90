@@ -17,7 +17,7 @@ MODULE physicscore
     !variables either controlled by physics or that user may wish to change
     REAL(dp) :: timeInYears,targetTime,currentTimeold
     REAL(dp) ::  cloudSize
-    REAL(dp), allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:)
+    REAL(dp), allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:),density_max(:)
 
     !Arrays for calculating rates
     !if ionModel = L use the L model coefficients, if = H use the H model
@@ -70,8 +70,8 @@ CONTAINS
         timeInYears=currentTime/SECONDS_PER_YEAR
 
         ! Modules not restarted in python wraps so best to reset everything manually.
-        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,dustTemp,density)
-        ALLOCATE(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points))
+        IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,dustTemp,density,density_max)
+        ALLOCATE(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points),density_max(points))
 
         cloudSize = (rout-rin)*pc
         gasTemp=initialTemp
@@ -182,5 +182,86 @@ CONTAINS
             h2CRPRate=(10**dissSum)*zetaScale
         END IF
     END SUBROUTINE ionizationDependency
+
+! 1D MODEL FUNCTIONS
+FUNCTION centrifugalpotential(mass_mol,urad,mean_wavelength,isodegree,gasdense,gasTemp) RESULT(Ecentri)
+!          INTEGER, INTENT(IN) :: mol
+          REAL(dp) :: Ecentri
+          REAL(dp) :: atrans,a_norm,n_norm,Tgas_norm, FIR, grain_radius, mCO
+          REAL(dp), INTENT(IN) :: mass_mol,urad,mean_wavelength,isodegree,gasdense,gasTemp
+
+          grain_radius=1.0D-5
+          n_norm    = gasdense/10
+          Tgas_norm = gasTemp/100
+          a_norm    = grain_radius/1.D-5
+
+          ! Calculate FIR (far-infrared radiation field correction factor)
+          FIR       = 0.4/a_norm * urad**(2./3.) * (30.0/gasdense) * dsqrt(100.0/gasTemp)
+
+          atrans    = mean_wavelength/1.8
+          mCO    = (12.0 + 16.0)*AMU ![g]
+          !mass_mol = mass(mol)*AMU
+
+          IF (grain_radius .le. atrans) THEN
+             Ecentri = 1.8D-3 * isodegree**(2.) * (a_norm)**(3.4) * (mean_wavelength/0.5D-4)**(-3.4) * (urad/(n_norm*dsqrt(Tgas_norm)))**(2.) * (1.D0/(1.D0+FIR))**(2.) * (mass_mol/mCO) * 11605.43 ! convert from eV to K
+          ELSE
+             Ecentri = 0.6    * isodegree**(2.) * (a_norm)**(-2.)* (mean_wavelength/0.5D-4)**(2.)   * (urad/(n_norm*dsqrt(Tgas_norm)))**(2.)  * (1.D0/(1.D0+FIR))**(2.) * (mass_mol/mCO) * 11605.43 ! convert from eV to K
+          END IF
+
+          IF (Ecentri .le. 0.5) Ecentri = 0.0 !unit of Kelvin
+    END FUNCTION centrifugalpotential
+
+    ! Estimate the column density
+    SUBROUTINE findcoldens_core2edge(coldens,rin,rho0,density_scale_radius,density_power_index,r)
+      REAL(dp),intent(in) :: rin,r,rho0,density_scale_radius,density_power_index
+      REAL(dp),intent(out) :: coldens
+      INTEGER :: i,np
+      REAL(dp) :: dr,drho,size,r1,r2
+
+      np = 10000
+      size = r-rin ![size] in pc
+      dr = size/np ![dr] in pc
+      coldens = 0.0d0
+      IF (size .le. 0.0d0) return
+
+      DO i=1,np
+         r1 = rin + (i-1)*dr ![r1] in pc
+         r2 = rin + i*dr ![r2] in pc
+         drho = 0.5d0*(ngas_r(r2,rho0,density_scale_radius,density_power_index)+ngas_r(r1,rho0,density_scale_radius,density_power_index))
+         coldens = coldens + drho*dr*pc
+      END DO
+
+    END SUBROUTINE findcoldens_core2edge
+
+    SUBROUTINE findcoldens_edge2core(coldens,rho0,density_scale_radius,density_power_index,r)
+        REAL(dp),intent(in) :: rho0,density_scale_radius,density_power_index,r
+        REAL(dp),intent(out):: coldens
+        if (r.gt.density_scale_radius) then
+            coldens = rho0*density_scale_radius*pc/(density_power_index-1.d0) * (r/density_scale_radius)**(1.d0-density_power_index)
+        else
+            coldens = rho0*density_scale_radius*pc*(density_power_index/(density_power_index-1.d0)-r/density_scale_radius)
+        end if
+    END SUBROUTINE findcoldens_edge2core
+
+    ! The profile of the gas volumn density
+    ! REAL(dp) FUNCTION rhofit(r,rho0,r0,a)
+    REAL(dp) FUNCTION ngas_r(r,rho0,density_scale_radius,density_power_index)
+      REAL(dp) :: r,rho0,density_scale_radius,density_power_index
+      ! [r] in pc, [density_scale_radius] in pc
+      ngas_r = rho0/(1.d0 + (r/density_scale_radius)**density_power_index)
+
+    END FUNCTION ngas_r
+
+    REAL(dp) FUNCTION initialDens_r(r,p)
+        REAL(dp) :: logn0, logr0,n0_init,r0_init
+        REAL(dp) :: r,t,p
+        t = 0.0d0
+        logn0=61.8d0*(1.175d6-t)**(-0.01) - 49.4d0
+        logr0=-28.5d0*(1.175e6-t)**(-0.01) + 28.93d0
+        n0_init=10**(logn0)
+        r0_init=10**(logr0) * aunit
+        initialDens_r=1.0+(r/r0_init)**p
+        initialDens_r = n0_init/initialDens_r
+    END FUNCTION initialDens_r
 
 END MODULE physicscore

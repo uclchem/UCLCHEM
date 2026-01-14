@@ -48,7 +48,6 @@ CONTAINS
       if ( lusecoldens) then 
         cloudSize=0. ! Shielding column densities supplied separately
       end if
-      endatfinaldensity = .false. ! Needs to end at final time to work properly
       freefall = .false. ! Won't work with freefall on
       
       if (.not. allocated(ltime)) then 
