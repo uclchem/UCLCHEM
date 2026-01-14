@@ -214,18 +214,22 @@ def _convert_legacy_stopping_param(param_dict: dict) -> dict:
     """
     if param_dict is None:
         return param_dict
-    has_old = any(k.lower() == 'endatfinaldensity' for k in param_dict.keys())
-    has_new = any(k.lower() == 'parcelstoppingmode' for k in param_dict.keys())
+    has_old = any(k.lower() == "endatfinaldensity" for k in param_dict.keys())
+    has_new = any(k.lower() == "parcelstoppingmode" for k in param_dict.keys())
     if has_old and has_new:
-        raise RuntimeError("Cannot specify both 'endAtFinalDensity' and 'parcelStoppingMode'. Use 'parcelStoppingMode' only.")
+        raise RuntimeError(
+            "Cannot specify both 'endAtFinalDensity' and 'parcelStoppingMode'. Use 'parcelStoppingMode' only."
+        )
     if has_old:
-        points = param_dict.get('points', param_dict.get('Points', 1))
+        points = param_dict.get("points", param_dict.get("Points", 1))
         if points > 1:
-            raise RuntimeError("endAtFinalDensity is no longer supported for multi-point models (points > 1). Use 'parcelStoppingMode' instead.")
+            raise RuntimeError(
+                "endAtFinalDensity is no longer supported for multi-point models (points > 1). Use 'parcelStoppingMode' instead."
+            )
         # case insensitive matching to make things easier on the user:
-        old_key = [k for k in param_dict.keys() if k.lower() == 'endatfinaldensity'][0]
+        old_key = [k for k in param_dict.keys() if k.lower() == "endatfinaldensity"][0]
         old_val = param_dict.pop(old_key)
-        param_dict['parcelstoppingmode'] = 1 if old_val else 2
+        param_dict["parcelstoppingmode"] = 1 if old_val else 2
     return param_dict
 
 
@@ -890,7 +894,7 @@ class AbstractModel(ABC):
         # Handle deprecated endAtFinalDensity parameter
         if param_dict is not None:
             param_dict = _convert_legacy_stopping_param(param_dict)
-        
+
         if param_dict is None:
             self._param_dict = default_param_dictionary
         else:
