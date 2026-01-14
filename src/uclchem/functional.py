@@ -117,7 +117,10 @@ def __functional_return__(
             heating_list = []
             for pt in range(points):
                 res = model_object.get_dataframes(
-                    point=pt, joined=False, with_rates=return_rates, with_heating=return_heating
+                    point=pt,
+                    joined=False,
+                    with_rates=return_rates,
+                    with_heating=return_heating,
                 )
                 phys = res[0].copy()
                 chem = res[1].copy()
@@ -138,7 +141,9 @@ def __functional_return__(
             phys_df["point"] = phys_df["Point"]
             chem_df["point"] = chem_df["Point"]
             rates_df = pd.concat(rates_list, ignore_index=True) if rates_list else None
-            heating_df = pd.concat(heating_list, ignore_index=True) if heating_list else None
+            heating_df = (
+                pd.concat(heating_list, ignore_index=True) if heating_list else None
+            )
         else:
             # Single point: behave as before but include a Point column
             result_dfs = model_object.get_dataframes(

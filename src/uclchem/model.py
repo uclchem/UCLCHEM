@@ -220,13 +220,15 @@ def _convert_legacy_stopping_param(param_dict: dict) -> dict:
     has_old = 'endatfinaldensity' in param_dict
     has_new = 'parcelstoppingmode' in param_dict
     if has_old and has_new:
-        raise RuntimeError("Cannot specify both 'endAtFinalDensity' and 'parcelStoppingMode'. Use 'parcelStoppingMode' only.")
+        raise RuntimeError(
+            "Cannot specify both 'endAtFinalDensity' and 'parcelStoppingMode'. Use 'parcelStoppingMode' only."
+        )
     if has_old:
         points = param_dict.get('points', 1)
         if points > 1:
             raise RuntimeError("endAtFinalDensity is no longer supported for multi-point models (points > 1). Use 'parcelStoppingMode' instead.")
         old_val = param_dict.pop('endatfinaldensity')
-        param_dict['parcelstoppingmode'] = 1 if old_val else 2
+        param_dict['parcelstoppingmode'] = 1 if old_val else 0
     return param_dict
 
 
@@ -888,6 +890,10 @@ class AbstractModel(ABC):
             param_dict (dict): Parameter dictionary passed by the user to the model.
             out_species (list): List of output species that are considered important for this model.
         """
+        # Handle deprecated endAtFinalDensity parameter
+        if param_dict is not None:
+            param_dict = _convert_legacy_stopping_param(param_dict)
+
         if param_dict is None:
             self._param_dict = default_param_dictionary
         else:
