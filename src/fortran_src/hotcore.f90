@@ -271,25 +271,28 @@ contains
 
         ZZ = HP * C / (K_BOLTZ * Tstar)
 
-        wave1 = HP * C * 1.d4 / (13.6d0 * EV)
-        wave2 = 20.0d0
+        ! wavelength range from 13.6eV to 20microns
+        wave1 = HP * C * 1.d4 / (13.6d0 * EV) ! in micron
+        wave2 = 20.0d0                        ! in micron
 
         !logspace for wave in micron
         ALLOCATE(wave(nw))
         CALL logspace(LOG10(wave1), LOG10(wave2), nw, wave)
 
-        ! Call the function from the module
+        ! Call the function of the extinction curve from the module
         CALL extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
 
         wave_cm = wave*1.d-4 !in cm
 
+        ! Intensity of the star
         Istar   = (2.d0*HP*C**2.0/wave_cm**5.0)*(1.d0/(EXP(ZZ/wave_cm)-1.0d0)) !an array
         uwave_star = (4.d0*PI*wave_cm/C)*(Istar)/wave_cm !an array
 
+        ! Optical depth and reddening of the star's intensity
         tau_wave = Avs * ext_curves(1,:)/1.086d0 !an array
-        uwave_red = uwave_star*EXP(-tau_wave) !an array
+        uwave_red = uwave_star*EXP(-tau_wave)    !an array
         
-        ! Initialize the integral value
+        ! Initialize the integral intensity value
         urad_red = 0.0d0
 
         ! Apply trapezoidal rule for numerical integration
