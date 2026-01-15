@@ -183,34 +183,6 @@ CONTAINS
         END IF
     END SUBROUTINE ionizationDependency
 
-! 1D MODEL FUNCTIONS
-FUNCTION centrifugalpotential(mass_mol,urad,mean_wavelength,isodegree,gasdense,gasTemp) RESULT(Ecentri)
-!          INTEGER, INTENT(IN) :: mol
-          REAL(dp) :: Ecentri
-          REAL(dp) :: atrans,a_norm,n_norm,Tgas_norm, FIR, grain_radius, mCO
-          REAL(dp), INTENT(IN) :: mass_mol,urad,mean_wavelength,isodegree,gasdense,gasTemp
-
-          grain_radius=1.0D-5
-          n_norm    = gasdense/10
-          Tgas_norm = gasTemp/100
-          a_norm    = grain_radius/1.D-5
-
-          ! Calculate FIR (far-infrared radiation field correction factor)
-          FIR       = 0.4/a_norm * urad**(2./3.) * (30.0/gasdense) * dsqrt(100.0/gasTemp)
-
-          atrans    = mean_wavelength/1.8
-          mCO    = (12.0 + 16.0)*AMU ![g]
-          !mass_mol = mass(mol)*AMU
-
-          IF (grain_radius .le. atrans) THEN
-             Ecentri = 1.8D-3 * isodegree**(2.) * (a_norm)**(3.4) * (mean_wavelength/0.5D-4)**(-3.4) * (urad/(n_norm*dsqrt(Tgas_norm)))**(2.) * (1.D0/(1.D0+FIR))**(2.) * (mass_mol/mCO) * 11605.43 ! convert from eV to K
-          ELSE
-             Ecentri = 0.6    * isodegree**(2.) * (a_norm)**(-2.)* (mean_wavelength/0.5D-4)**(2.)   * (urad/(n_norm*dsqrt(Tgas_norm)))**(2.)  * (1.D0/(1.D0+FIR))**(2.) * (mass_mol/mCO) * 11605.43 ! convert from eV to K
-          END IF
-
-          IF (Ecentri .le. 0.5) Ecentri = 0.0 !unit of Kelvin
-    END FUNCTION centrifugalpotential
-
     ! Estimate the column density
     SUBROUTINE findcoldens_core2edge(coldens,rin,rho0,density_scale_radius,density_power_index,r)
       REAL(dp),intent(in) :: rin,r,rho0,density_scale_radius,density_power_index
