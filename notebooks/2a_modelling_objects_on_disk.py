@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.17.2
+#       jupytext_version: 1.18.1
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -143,6 +143,7 @@ param_dict = {
     "finalTime": 6.0e6,  # final time
     "rout": 0.1,  # radius of cloud in pc
     "baseAv": 1.0,  # visual extinction at cloud edge.
+    "freezeFactor": 0.0,
     "abundSaveFile": "../examples/test-output/shockstart.dat",
 }
 
