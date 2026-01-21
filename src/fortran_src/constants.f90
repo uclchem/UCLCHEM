@@ -17,6 +17,8 @@ MODULE CONSTANTS
    REAL(dp), PARAMETER :: GRAV_G = 6.674d-8 !gravitational constant in cgs
    REAL(dp), PARAMETER :: SB_CONST=5.6704d-5 !Stefan Boltzmann constant in cgs
    REAL(dp), PARAMETER :: HABING_TO_DRAINE = 1 / 1.7 !conversion factor from Habing to Draine field
+   REAL(dp), PARAMETER :: Lsun = 3.828d+33 ! Sun luminosity in cgs
+   REAL(dp), PARAMETER :: aunit = 1.495978d13 ! AU in cm
 
    !Error codes for python wrap
    INTEGER, PARAMETER :: PARAMETER_READ_ERROR=-1
