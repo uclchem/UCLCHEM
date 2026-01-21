@@ -275,13 +275,19 @@ class AbstractModel(ABC):
         object.__setattr__(self, "gridPoints", self._param_dict["points"])
 
         self.outputFile = (
-            self._param_dict.pop("outputFile") if "outputFile" in self._param_dict else None
+            self._param_dict.pop("outputFile")
+            if "outputFile" in self._param_dict
+            else None
         )
         self.abundSaveFile = (
-            self._param_dict.pop("abundSaveFile") if "abundSaveFile" in self._param_dict else None
+            self._param_dict.pop("abundSaveFile")
+            if "abundSaveFile" in self._param_dict
+            else None
         )
         self.abundLoadFile = (
-            self._param_dict.pop("abundLoadFile") if "abundLoadFile" in self._param_dict else None
+            self._param_dict.pop("abundLoadFile")
+            if "abundLoadFile" in self._param_dict
+            else None
         )
 
         self.starting_chemistry_array = None
@@ -293,7 +299,9 @@ class AbstractModel(ABC):
             self._create_starting_array(previous_model.next_starting_chemistry_array)
 
         self.give_start_abund = self.starting_chemistry_array is not None
-        assert not np.all(self.starting_chemistry_array == 0.0), "Detected all zeros starting chemistry array."
+        assert not np.all(
+            self.starting_chemistry_array == 0.0
+        ), "Detected all zeros starting chemistry array."
         self.next_starting_chemistry_array = None
 
         self.physics_array = None
@@ -1713,19 +1721,23 @@ class Postprocess(AbstractModel):
             run_type,
         )
         if read_file is None and time_array is not None:
-            object.__setattr__(self, "postprocess_arrays", dict(
-                timegrid=time_array,
-                densgrid=density_array,
-                gastempgrid=gas_temperature_array,
-                dusttempgrid=dust_temperature_array,
-                radfieldgrid=radfield_array,
-                zetagrid=zeta_array,
-                avgrid=visual_extinction_array,
-                nhgrid=coldens_H_array,
-                nh2grid=coldens_H2_array,
-                ncogrid=coldens_CO_array,
-                ncgrid=coldens_C_array,
-            ))
+            object.__setattr__(
+                self,
+                "postprocess_arrays",
+                dict(
+                    timegrid=time_array,
+                    densgrid=density_array,
+                    gastempgrid=gas_temperature_array,
+                    dusttempgrid=dust_temperature_array,
+                    radfieldgrid=radfield_array,
+                    zetagrid=zeta_array,
+                    avgrid=visual_extinction_array,
+                    nhgrid=coldens_H_array,
+                    nh2grid=coldens_H2_array,
+                    ncogrid=coldens_CO_array,
+                    ncgrid=coldens_C_array,
+                ),
+            )
             for key, array in self.postprocess_arrays.items():
                 if array is not None:
                     # Convert single values into arrays that can be used
@@ -1770,7 +1782,9 @@ class Postprocess(AbstractModel):
         """
         # Determine whether an Av grid was provided and set the flag expected by the Fortran wrapper
         # Only pass arrays that are present (not None) to the Fortran wrapper
-        post_kwargs = {k: v for k, v in self.postprocess_arrays.items() if v is not None}
+        post_kwargs = {
+            k: v for k, v in self.postprocess_arrays.items() if v is not None
+        }
         _, _, _, _, out_species_abundances_array, _, success_flag = wrap.postprocess(
             usecoldens=self.usecoldens,
             useav=self.useav,
@@ -1786,7 +1800,7 @@ class Postprocess(AbstractModel):
             chemicalabunarray=self.chemical_abun_array,
             ratesarray=self.rates_array,
             heatarray=self.heat_array,
-            abundancestart=self.starting_chemistry_array
+            abundancestart=self.starting_chemistry_array,
         )
         if success_flag < 0:
             out_species_abundances_array = np.array([])
