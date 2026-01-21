@@ -271,15 +271,23 @@ class AbstractModel(ABC):
         self._reform_inputs(param_dict, self.out_species_list)
         if "points" not in self._param_dict:
             self._param_dict["points"] = 1
+        # Expose grid points as attribute for legacy code expecting `gridPoints`
+        object.__setattr__(self, "gridPoints", self._param_dict["points"])
 
         self.outputFile = (
-            param_dict.pop("outputFile") if "outputFile" in param_dict else None
+            self._param_dict.pop("outputFile")
+            if "outputFile" in self._param_dict
+            else None
         )
         self.abundSaveFile = (
-            param_dict.pop("abundSaveFile") if "abundSaveFile" in param_dict else None
+            self._param_dict.pop("abundSaveFile")
+            if "abundSaveFile" in self._param_dict
+            else None
         )
         self.abundLoadFile = (
-            param_dict.pop("abundLoadFile") if "abundLoadFile" in param_dict else None
+            self._param_dict.pop("abundLoadFile")
+            if "abundLoadFile" in self._param_dict
+            else None
         )
 
         self.starting_chemistry_array = None
@@ -291,6 +299,9 @@ class AbstractModel(ABC):
             self._create_starting_array(previous_model.next_starting_chemistry_array)
 
         self.give_start_abund = self.starting_chemistry_array is not None
+        assert not np.all(
+            self.starting_chemistry_array == 0.0
+        ), "Detected all zeros starting chemistry array."
         self.next_starting_chemistry_array = None
 
         self.physics_array = None
@@ -877,7 +888,7 @@ class AbstractModel(ABC):
                 new_param_dict[k.lower()] = v
             self._param_dict = {**default_param_dictionary, **new_param_dict.copy()}
             del new_param_dict
-        for k, v in default_param_dictionary.items():
+        for k, v in default_param_dictionary.copy().items():
             if v is None:
                 del self._param_dict[k]
         if out_species is not None:
@@ -1163,22 +1174,6 @@ class Cloud(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        if self._debug:
-            print("got to run_fortran")
-            print(
-                f"using "
-                f"dictionary={self._param_dict},"
-                f"outspeciesin={self.out_species},"
-                f"timepoints={self.timepoints},"
-                f"gridpoints={self._param_dict['points']},"
-                f"returnarray={True},"
-                f"returnrates={True},"
-                f"givestartabund={self.give_start_abund},"
-                f"physicsarray={self.physics_array},"
-                f"chemicalabunarray={self.chemical_abun_array},"
-                f"ratesarray={self.rates_array},"
-                f"abundancestart={self.starting_chemistry_array},"
-            )
         _, _, _, _, out_species_abundances_array, _, success_flag = wrap.cloud(
             dictionary=self._param_dict,
             outspeciesin=self.out_species,
@@ -1705,6 +1700,7 @@ class Postprocess(AbstractModel):
         dust_temperature_array: np.array = None,
         zeta_array: np.array = None,
         radfield_array: np.array = None,
+        visual_extinction_array: np.array = None,
         coldens_H_array: np.array = None,
         coldens_H2_array: np.array = None,
         coldens_CO_array: np.array = None,
@@ -1725,17 +1721,22 @@ class Postprocess(AbstractModel):
             run_type,
         )
         if read_file is None and time_array is not None:
-            self.postprocess_arrays = dict(
-                timegrid=time_array,
-                densgrid=density_array,
-                gastempgrid=gas_temperature_array,
-                dusttempgrid=dust_temperature_array,
-                radfieldgrid=radfield_array,
-                zetagrid=zeta_array,
-                nhgrid=coldens_H_array,
-                nh2grid=coldens_H2_array,
-                ncogrid=coldens_CO_array,
-                ncgrid=coldens_C_array,
+            object.__setattr__(
+                self,
+                "postprocess_arrays",
+                dict(
+                    timegrid=time_array,
+                    densgrid=density_array,
+                    gastempgrid=gas_temperature_array,
+                    dusttempgrid=dust_temperature_array,
+                    radfieldgrid=radfield_array,
+                    zetagrid=zeta_array,
+                    avgrid=visual_extinction_array,
+                    nhgrid=coldens_H_array,
+                    nh2grid=coldens_H2_array,
+                    ncogrid=coldens_CO_array,
+                    ncgrid=coldens_C_array,
+                ),
             )
             for key, array in self.postprocess_arrays.items():
                 if array is not None:
@@ -1750,8 +1751,16 @@ class Postprocess(AbstractModel):
                     array = np.asfortranarray(array, dtype=np.float64)
                     self.postprocess_arrays[key] = array
             self.time_array = time_array
+            # Column-density (coldens) and visual extinction (Av) arrays
             self.coldens_H_array = coldens_H_array
+            self.visual_extinction_array = visual_extinction_array
+            # Flags exposed for Fortran wrapper (mutually exclusive)
             self.usecoldens = self.coldens_H_array is not None
+            self.useav = self.visual_extinction_array is not None
+            assert not (
+                self.usecoldens and self.useav
+            ), "Cannot use both column density and visual extinction arrays simultaneously."
+
             if not self.give_start_abund:
                 self.starting_chemistry_array = np.zeros(
                     shape=(self.gridPoints, n_species),
@@ -1771,9 +1780,15 @@ class Postprocess(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
+        # Determine whether an Av grid was provided and set the flag expected by the Fortran wrapper
+        # Only pass arrays that are present (not None) to the Fortran wrapper
+        post_kwargs = {
+            k: v for k, v in self.postprocess_arrays.items() if v is not None
+        }
         _, _, _, _, out_species_abundances_array, _, success_flag = wrap.postprocess(
             usecoldens=self.usecoldens,
-            **self.postprocess_arrays,
+            useav=self.useav,
+            **post_kwargs,
             dictionary=self._param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,

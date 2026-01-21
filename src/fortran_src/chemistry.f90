@@ -211,8 +211,6 @@ CONTAINS
 
             CALL calculateReactionRates(abund,safeMantle, h2col, cocol, ccol, rate)
             if (heatingFlag) then
-                !Calculate the dust temperature based on the radiation field and UV attenuation
-                ! dustTemp(dstep)=calculateDustTemp(radfield*EXP(-UV_FAC*av(dstep)),radfield)
                 ! TODO: check that the local and global radiation fields are correct.
                 dustTemp(dstep)=calculateDustTemp(radfield*EXP(-UV_FAC*av(dstep)),radfield,av(dstep))
 
@@ -337,13 +335,12 @@ CONTAINS
         REAL(WP), DIMENSION(NEQUATIONS) :: Y, YDOT
         INTENT(IN)  :: NEQUATIONS, T, Y
         INTENT(OUT) :: YDOT
-        REAL(dp) :: D,loss,prod,Tgas
+        REAL(dp) :: D,loss,prod
         REAL(dp) :: surfaceCoverage
         REAL(dp) :: phi,cgr(6),grec,denom
         integer :: ii
         !Set D to the gas density for use in the ODEs
-        Tgas=y(nspec+1)     !Gas temperature
-        D   =y(nspec+2)     !Gas density
+        D=y(nspec+2)     !Gas density
         ydot=0.0
 
         ! Column densities are fixed for postprocessing data, so don't do this bit
@@ -367,25 +364,10 @@ CONTAINS
         !of the reactions between it and every other species it reacts with.
         CALL GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
         ! get density change from physics module to send to DLSODE
-        
         if (enforceChargeConservation) then 
             ydot(nelec) = sum(ydot(ionlist(1:nion)))
-            ! ! replace electron ydot with sum of positive ion ydots to conserve charge
-            ! ydot(nelec) = 0.
-            ! prod = 0.
-            ! loss = 0.
-            ! ! Enforce the conservation of charge by summing the ydot of all positive ions
-            ! do ii=1,nion
-            ! if (ydot(ionlist(ii)) .ge. 0.) then
-            !     prod = prod + ydot(ionlist(ii))
-            ! else
-            !     loss = loss + ydot(ionlist(ii))
-            ! end if
-            ! end do
-            ! ydot(nelec) = prod + loss
         end if 
 
-        ! ydot(NEQUATIONS)=densdot(y(NEQUATIONS))     !Gas density ODE
         ydot(nspec+2) = densdot(Y(nspec+2))     !Gas density ODE
 
         IF (heatingFlag) THEN
@@ -395,11 +377,7 @@ CONTAINS
                 gasTemp(dstep)=y(nspec+1)
                 IF (gasTemp(dstep) .lt. 10) gasTemp(dstep)=10.0
                 IF (gasTemp(dstep) .gt. 1.0d4) gasTemp(dstep)=1.0d4
-                ! CALL calculateReactionRates
-                ! CALL calculateReactionRates(abund,safeMantle, h2col, cocol, ccol, rate)
                 h2form= h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))!h2FormRate(gasTemp(dstep),dustTemp(dstep))
-                ! tempDot=getTempDot(Y(NEQ-1),Y(NEQ),radfield*EXP(-UV_FAC*av(dstep)),Y,h2dis,h2form,zeta,rate(nR_C_hv),1.0/GAS_DUST_DENSITY_RATIO&
-                !     &,grainRadius,metallicity,y(exoReactants1),y(exoReactants2),RATE(exoReacIdxs),exothermicities,heatWriteFlag,dustTemp(dstep),turbVel)
                 tempDot=getTempDot( &
                             &    timeInYears, &                         ! time 
                             &    Y(nspec+1), &                          ! gas temperature
@@ -414,7 +392,6 @@ CONTAINS
                             &    1.0/GAS_DUST_DENSITY_RATIO, &          ! dust-to-gas ratio
                             &    grain_Radius, &                        ! grain radius
                             &    metallicity, &                         ! metallicity
-                            ! &    heatWriteFlag, &                       ! write flag
                             &    dusttemp(dstep), &                     ! dust temperature
                             &    turbVel &                              ! turbulence velocity
                         )

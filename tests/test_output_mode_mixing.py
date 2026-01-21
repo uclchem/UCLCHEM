@@ -84,7 +84,16 @@ def test_return_dataframe_with_file_raises_error(basic_params):
 def test_starting_chemistry_with_memory_mode(basic_params):
     """Test that starting_chemistry works with return_array/return_dataframe"""
     params = basic_params.copy()
-    dummy_abundances = np.zeros(uclchem.constants.n_species)
+    dummy_abundances = np.ones(uclchem.constants.n_species) * 1e-20
+    # Ensure that common species have sensible defaults (use model lookup for indices):
+    species = uclchem.model.get_species_names()
+    species_idx = {name: i for i, name in enumerate(species)}
+    # Set common species where available
+    dummy_abundances[species_idx["H2"]] = 0.45
+    dummy_abundances[species_idx["H"]] = 0.1
+    dummy_abundances[species_idx["HE"]] = 0.1
+    dummy_abundances[species_idx["C"]] = 1e-7
+    dummy_abundances[species_idx["O"]] = 3e-7
 
     # This should work fine now
     result = uclchem.functional.cloud(
