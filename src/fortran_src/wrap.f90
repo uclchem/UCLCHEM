@@ -678,8 +678,6 @@ CONTAINS
             &(density(1) < finalDens)) .or. &
             &((.not. endAtFinalDensity) .and. (timeInYears < finalTime))))
             dtime = dtime + 1
-            write(*,*) 'MAIN_LOOP: dtime=', dtime, ' timeInYears=', timeInYears, ' finalTime=', finalTime, &
-                      ' timepoints=', timepoints, ' condition=', (timeInYears < finalTime)
             currentTimeold=currentTime
             !Each physics module has a subroutine to set the target time from the current time
             timeInYears=currentTime/SECONDS_PER_YEAR
