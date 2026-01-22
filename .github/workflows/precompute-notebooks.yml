@@ -121,7 +121,12 @@ jobs:
 
       - name: Set executed notebooks zip name
         run: |
-          REF_SAFE=${{ steps.pick-ref.outputs.ref }:-unknown}
+          REF="${{ steps.pick-ref.outputs.ref }}"
+          if [ -z "$REF" ]; then
+            REF_SAFE="unknown"
+          else
+            REF_SAFE="$REF"
+          fi
           REF_SAFE=$(echo "$REF_SAFE" | sed -E 's/[^A-Za-z0-9._-]/-/g')
           ZIP_NAME="executed_notebooks-${REF_SAFE}-${COMMIT_SHA:-none}-${BUILD_DATE}.zip"
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
@@ -141,7 +146,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: executed-notebooks
-          path: ${{ env.ZIP_NAME || 'executed_notebooks.zip' }}
+          path: ${{ env.ZIP_NAME }}
           retention-days: ${{ github.event.inputs.retention_days }}
 
       - name: Attach executed notebooks to release (when triggered by release)
