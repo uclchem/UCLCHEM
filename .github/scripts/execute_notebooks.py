@@ -3,6 +3,7 @@
 
 Exit code: 0 even if some notebooks failed (mirrors previous behavior). Writes a simple log file executed_notebooks/run.log.
 """
+
 import glob
 import os
 import shutil
@@ -24,12 +25,27 @@ with open(LOG, "a") as lf:
 py_files = glob.glob(os.path.join(SRC_DIR, "*.py"))
 if py_files:
     try:
-        subprocess.check_call([sys.executable, "-m", "jupytext", "--to", "ipynb"] + py_files)
+        subprocess.check_call(
+            [sys.executable, "-m", "jupytext", "--to", "ipynb"] + py_files
+        )
         with open(LOG, "a") as lf:
             lf.write(f"Converted {len(py_files)} .py -> .ipynb\n")
     except Exception as e:
         with open(LOG, "a") as lf:
             lf.write(f"jupytext conversion failed: {e}\n")
+
+# Allow override of execution timeout via EXEC_TIMEOUT env var (seconds)
+EXEC_TIMEOUT = os.environ.get("EXEC_TIMEOUT")
+if EXEC_TIMEOUT:
+    try:
+        timeout_val = int(EXEC_TIMEOUT)
+    except Exception:
+        timeout_val = 7200
+else:
+    timeout_val = 7200
+
+with open(LOG, "a") as lf:
+    lf.write(f"Using EXEC_TIMEOUT={timeout_val}\n")
 
 # Copy ipynb sources into executed_notebooks
 ipynbs = glob.glob(os.path.join(SRC_DIR, "*.ipynb"))
@@ -51,14 +67,20 @@ for nb in exec_ipynbs:
         lf.write(f"Executing: {nb}\n")
     try:
         # Use nbconvert as in previous workflow for parity
-        subprocess.check_call([
-            sys.executable, "-m", "jupyter", "nbconvert",
-            "--to", "notebook",
-            "--inplace",
-            "--ExecutePreprocessor.timeout=72000",
-            "--execute",
-            nb,
-        ])
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "jupyter",
+                "nbconvert",
+                "--to",
+                "notebook",
+                "--inplace",
+                f"--ExecutePreprocessor.timeout={timeout_val}",
+                "--execute",
+                nb,
+            ]
+        )
         with open(LOG, "a") as lf:
             lf.write(f"Executed successfully: {nb}\n")
     except subprocess.CalledProcessError as e:

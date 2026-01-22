@@ -77,6 +77,10 @@ jobs:
           git fetch --tags --prune || true
           git checkout --force "$REF" || true
 
+          # Install system dependencies required to build UCLCHEM
+          sudo apt-get update
+          sudo apt-get install -y gfortran build-essential
+
           # Install package normally (no editable installs, no wheel build).
           python -m pip install --upgrade pip
           python -m pip install .
@@ -87,10 +91,14 @@ jobs:
       - name: Copy notebook sources
         run: |
           mkdir -p notebooks
-          if ls notebooks/* 1> /dev/null 2>&1; then rm -f notebooks/* || true; fi
-          if ls ./notebooks/*.py 1> /dev/null 2>&1; then
-            jupytext --to ipynb notebooks/*.py || true
-          fi
+          # Keep checked-in notebook sources present; do not delete them here
+          # Any conversion is handled in the execution script to avoid duplication
+
+
+      - name: "Debug: list notebooks contents"
+        run: |
+          echo "Listing notebooks directory"
+          ls -la notebooks || true
 
       - name: Prepare and execute notebooks
         run: |
@@ -103,25 +111,42 @@ jobs:
         run: |
           REF=${{ steps.pick-ref.outputs.ref }}
           export BUILD_DATE=$(date -u +%Y%m%d)
+          export BUILD_TS=$(date -u +%Y%m%dT%H%M%SZ)
           export COMMIT_SHA=${COMMIT_SHA:-$(git rev-parse --short HEAD)}
           echo "REF=$REF" >> $GITHUB_ENV
           echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
+          echo "BUILD_TS=$BUILD_TS" >> $GITHUB_ENV
           echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
           python .github/scripts/write_meta.py
 
+      - name: Set executed notebooks zip name
+        run: |
+          REF="${{ steps.pick-ref.outputs.ref }}"
+          if [ -z "$REF" ]; then
+            REF_SAFE="unknown"
+          else
+            REF_SAFE="$REF"
+          fi
+          REF_SAFE=$(echo "$REF_SAFE" | sed -E 's/[^A-Za-z0-9._-]/-/g')
+          ZIP_NAME="executed_notebooks-${REF_SAFE}-${COMMIT_SHA:-none}-${BUILD_DATE}.zip"
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+
       - name: Zip executed notebooks
         run: |
+          if [ -z "${ZIP_NAME}" ]; then
+            ZIP_NAME="executed_notebooks.zip"
+          fi
           if [ -d "executed_notebooks" ]; then
-            cd executed_notebooks && zip -r ../executed_notebooks.zip . || true
+            cd executed_notebooks && zip -r ../"${ZIP_NAME}" . || true
           else
-            echo "No executed_notebooks directory found; creating empty zip" && mkdir -p executed_notebooks && cd executed_notebooks && zip -r ../executed_notebooks.zip . || true
+            echo "No executed_notebooks directory found; creating empty zip" && mkdir -p executed_notebooks && cd executed_notebooks && zip -r ../"${ZIP_NAME}" . || true
           fi
 
       - name: Upload executed notebooks artifact (non-unique name)
         uses: actions/upload-artifact@v4
         with:
           name: executed-notebooks
-          path: executed_notebooks.zip
+          path: ${{ env.ZIP_NAME }}
           retention-days: ${{ github.event.inputs.retention_days }}
 
       - name: Attach executed notebooks to release (when triggered by release)
@@ -132,8 +157,8 @@ jobs:
             echo "$GITHUB_TOKEN" | gh auth login --with-token || true
           fi
           TAG="${{ github.event.release.tag_name }}"
-          echo "Attaching executed_notebooks.zip to release $TAG (clobbering existing asset)"
-          gh release upload "$TAG" executed_notebooks.zip --clobber || true
+          echo "Attaching ${ZIP_NAME:-executed_notebooks.zip} to release $TAG (clobbering existing asset)"
+          gh release upload "$TAG" "${ZIP_NAME:-executed_notebooks.zip}" --clobber || true
 
       - name: Optionally create a release and attach the artifact
         if: ${{ github.event_name != 'release' && (github.event.inputs.create_release == 'true' || startsWith(github.ref, 'refs/tags/v') || startsWith(github.event.inputs.ref, 'develop')) }}
@@ -157,4 +182,4 @@ jobs:
 
           echo "Creating/updating release $RELEASE_TAG and attaching executed_notebooks.zip"
           gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" --notes "Executed notebooks for $REF (commit $COMMIT_SHA)" || true
-          gh release upload "$RELEASE_TAG" executed_notebooks.zip --clobber || true
+          gh release upload "$RELEASE_TAG" "${ZIP_NAME:-executed_notebooks.zip}" --clobber || true
