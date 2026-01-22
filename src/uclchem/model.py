@@ -1,3 +1,85 @@
+"""UCLCHEM Model Module
+
+Core module for running gas-grain chemical models under different physical conditions.
+
+This module provides both object-oriented and functional interfaces for running
+UCLCHEM chemical models. The object-oriented API (model classes) is recommended
+for most use cases as it provides better state management and built-in analysis tools.
+
+**Model Classes (Object-Oriented API - Recommended):**
+
+- :class:`Cloud` - Static or freefall collapsing cloud
+- :class:`Collapse` - Collapsing cloud with various prescriptions (BE, filament, ambipolar)
+- :class:`PrestellarCore` - Prestellar core with heating and chemistry
+- :class:`CShock` - C-type shock model
+- :class:`JShock` - J-type shock model
+- :class:`Postprocess` - Custom physics from user-provided arrays
+- :class:`GridModels` - Run parameter grids in parallel
+- :class:`SequentialModel` - Chain multiple physical stages
+
+**Legacy Functions (Functional API):**
+
+Available in :mod:`uclchem.functional` for backward compatibility.
+Returns arrays/DataFrames instead of model objects.
+
+**Quick Example:**
+
+.. code-block:: python
+
+    import uclchem
+
+    # Create a collapsing cloud model
+    cloud = uclchem.model.Cloud(
+        param_dict={
+            \"initialDens\": 1e2,
+            \"initialTemp\": 10.0,
+            \"finalTime\": 1e6,
+            \"freefall\": True
+        },
+        out_species=[\"CO\", \"H2O\", \"CH3OH\"]
+    )
+
+    # Check for errors and plot
+    cloud.check_error()
+    cloud.create_abundance_plot([\"CO\", \"$CO\"])
+
+**Model Workflow:**
+
+1. **Initialize**: Create model object with parameters
+2. **Run**: Model runs automatically on initialization (or use `read_file` to load)
+3. **Analyze**: Access results via attributes (`.final_abundances`, `.chemistry_dataframe`)
+4. **Plot**: Use built-in plotting methods (`.create_abundance_plot()`)
+5. **Chain**: Use as input to next stage (`.previous_model` parameter)
+
+**Common Parameters:**
+
+All models accept these key parameters in `param_dict`:
+
+- ``initialDens`` (float): Initial density [cm⁻³]
+- ``initialTemp`` (float): Initial temperature [K]
+- ``finalTime`` (float): Simulation end time [years]
+- ``freefall`` (bool): Enable freefall collapse (Cloud only)
+- ``outputFile`` (str): Output file path (optional with OO API)
+
+See the user guide for complete parameter list.
+
+**Species Naming:**
+
+- Gas phase: ``CO``, ``H2O``, ``CH3OH``
+- Ice surface: ``$CO``, ``$H2O``, ``$CH3OH``
+- Ice bulk: ``@CO``, ``@H2O``, ``@CH3OH``
+
+**See Also:**
+
+- :mod:`uclchem.analysis` - Analyze model outputs and reaction pathways
+- :mod:`uclchem.advanced` - Advanced controls for heating and network state
+
+**Note on Thread Safety:**
+
+Model objects are **not thread-safe** when using advanced features that modify
+Fortran module state. Use multiprocessing (not threading) for parallel runs.
+"""
+
 import json
 import logging
 
@@ -264,7 +346,7 @@ class AbstractModel(ABC):
         self.specname = get_species_names()
 
         self.n_out = 0 if read_file is None else None
-        self.timepoints = timepoints if read_file is None else None
+        self.timepoints = timepoints
         self.was_read = False if read_file is None else True
         self.PHYSICAL_PARAMETERS = PHYSICAL_PARAMETERS if read_file is None else None
 
@@ -273,13 +355,19 @@ class AbstractModel(ABC):
             self._param_dict["points"] = 1
 
         self.outputFile = (
-            param_dict.pop("outputFile") if "outputFile" in param_dict else None
+            self._param_dict.pop("outputFile")
+            if "outputFile" in self._param_dict
+            else None
         )
         self.abundSaveFile = (
-            param_dict.pop("abundSaveFile") if "abundSaveFile" in param_dict else None
+            self._param_dict.pop("abundSaveFile")
+            if "abundSaveFile" in self._param_dict
+            else None
         )
         self.abundLoadFile = (
-            param_dict.pop("abundLoadFile") if "abundLoadFile" in param_dict else None
+            self._param_dict.pop("abundLoadFile")
+            if "abundLoadFile" in self._param_dict
+            else None
         )
 
         self.starting_chemistry_array = None
@@ -303,7 +391,7 @@ class AbstractModel(ABC):
         self.out_species_abundances_array = None
 
         if read_file is not None:
-            self.read_output_file(read_file)
+            self.legacy_read_output_file(read_file)
         return
 
     def __del__(self):
@@ -863,7 +951,8 @@ class AbstractModel(ABC):
             out_species (list): List of output species that are considered important for this model.
         """
         if param_dict is None:
-            self._param_dict = default_param_dictionary
+            # copy the default dict so we do not mutate the module-level dict when pruning None values
+            self._param_dict = default_param_dictionary.copy()
         else:
             # lower case (and conveniently copy so we don't edit) the user's dictionary
             # this is key to UCLCHEM's "case insensitivity"

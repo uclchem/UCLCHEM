@@ -1,3 +1,53 @@
+"""UCLCHEM Utility Functions
+
+Helper functions and utilities for UCLCHEM operations.
+
+This module provides utility functions for:
+- Error handling and reporting
+- Physics calculations (shock dissipation times)
+- Parameter validation
+- File path management
+
+**Key Functions:**
+
+- :func:`check_error` - Convert UCLCHEM error codes to messages
+- :func:`cshock_dissipation_time` - Calculate C-shock dissipation timescale
+
+**Example Usage:**
+
+.. code-block:: python
+
+    import uclchem.utils as utils
+
+    # Check error from model run
+    success_flag = cloud.success_flag
+    if success_flag < 0:
+        error_msg = utils.check_error(success_flag)
+        print(f"Model failed: {error_msg}")
+
+    # Calculate shock timescale
+    t_diss = utils.cshock_dissipation_time(
+        shock_vel=50.0,  # km/s
+        initial_dens=1e4  # cm^-3
+    )
+    print(f"Dissipation time: {t_diss:.1e} years")
+
+**Error Codes:**
+
+UCLCHEM model functions return negative integer error codes on failure:
+
+- ``-1``: Parameter read failed (misspelled parameter)
+- ``-2``: Physics initialization failed (invalid parameters)
+- ``-3``: Chemistry initialization failed
+- ``-4``: Integrator error (DVODE failed)
+
+Use :func:`check_error` to get human-readable error messages.
+
+**See Also:**
+
+- :mod:`uclchem.model` - Model classes that use these utilities
+"""
+
 from os import path
 
 import pandas as pd

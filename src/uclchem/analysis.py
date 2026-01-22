@@ -1,3 +1,49 @@
+"""UCLCHEM Analysis Module
+
+Tools for analyzing chemical model outputs and reaction pathways.
+
+This module provides functions to:
+- Read and parse UCLCHEM output files
+- Analyze chemical reaction pathways for specific species
+- Check element conservation in model results
+- Create abundance plots and visualizations
+- Compare model results across different runs
+
+**Key Functions:**
+
+- :func:`read_output_file` - Read UCLCHEM output files into DataFrames
+- :func:`analysis` - Analyze production/destruction pathways for a species
+- :func:`check_element_conservation` - Verify element conservation
+- :func:`plot_species` - Plot species abundances over time
+- :func:`create_abundance_plot` - Create publication-ready abundance plots
+
+**Example Usage:**
+
+.. code-block:: python
+
+    import uclchem.analysis as analysis
+
+    # Read model output
+    df = analysis.read_output_file("output.dat")
+
+    # Analyze CO chemistry
+    analysis.analysis(
+        "CO",
+        "output.dat",
+        "co_reactions.dat"
+    )
+
+    # Check conservation
+    conservation = analysis.check_element_conservation(
+        df, ["C", "O", "N"]
+    )
+
+**See Also:**
+
+- :mod:`uclchem.plot` - Dedicated plotting utilities
+- :mod:`uclchem.model` - Run chemical models
+"""
+
 try:
     from uclchemwrap import uclchemwrap as wrap
 except ImportError as E:
