@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-"""Execute notebooks: convert .py sources (jupytext), copy ipynb to executed_notebooks, execute them in place, and continue on errors.
+"""Execute notebooks (duplicate of .github/scripts/execute_notebooks.py for CI visibility)."""
 
-Exit code: 0 even if some notebooks failed (mirrors previous behavior). Writes a simple log file executed_notebooks/run.log.
-"""
-
-import glob
 import os
+import sys
+import glob
 import shutil
 import subprocess
-import sys
 from datetime import datetime
 
 ROOT = os.getcwd()
@@ -66,7 +63,6 @@ for nb in exec_ipynbs:
     with open(LOG, "a") as lf:
         lf.write(f"Executing: {nb}\n")
     try:
-        # Use nbconvert as in previous workflow for parity
         subprocess.check_call(
             [
                 sys.executable,
@@ -97,5 +93,5 @@ with open(LOG, "a") as lf:
 with open(LOG) as lf:
     sys.stdout.write(lf.read())
 
-# Always exit 0 to mirror previous behaviour (continue on notebook failures)
+# Always exit 0 to mirror previous behaviour
 sys.exit(0)
