@@ -92,42 +92,31 @@ jobs:
             jupytext --to ipynb notebooks/*.py || true
           fi
 
-      - name: Execute notebooks
+      - name: Prepare and execute notebooks
         run: |
-          mkdir -p executed_notebooks
-          for nb in notebooks/*.ipynb; do
-            echo "Running $nb"
-            jupyter nbconvert --to notebook --inplace --ExecutePreprocessor.timeout=7200 --execute "$nb" || echo "Notebook $nb failed (continuing)"
-            cp "$nb" executed_notebooks/ || true
-          done
+          # Ensure required tools are available
+          python -m pip install --upgrade jupytext nbformat nbclient || true
+          python .github/scripts/execute_notebooks.py
+
 
       - name: Generate metadata
         run: |
           REF=${{ steps.pick-ref.outputs.ref }}
-          BUILD_DATE=$(date -u +%Y%m%d)
-          PKG_VER=$(python - <<'PY'
-              import importlib.metadata
-              try:
-                  print(importlib.metadata.version('uclchem'))
-              except Exception:
-                  print('0.0.0')
-            PY)
-          COMMIT_SHA=${COMMIT_SHA:-$(git rev-parse --short HEAD)}
-          mkdir -p executed_notebooks
-          # Write metadata via Python to avoid heredoc/indentation issues
-          python - <<'PY'
-              import os, json
-              data = {
-                  "ref": os.environ.get("REF"),
-                  "site_version": os.environ.get("PKG_VER"),
-                  "commit_sha": os.environ.get("COMMIT_SHA"),
-                  "built_at": os.environ.get("BUILD_DATE"),
-                  "built_by": os.environ.get("GITHUB_ACTOR"),
-              }
-              with open("executed_notebooks/meta.json", "w") as fh:
-                  json.dump(data, fh, indent=2)
-              print(open("executed_notebooks/meta.json").read())
-            PY
+          export BUILD_DATE=$(date -u +%Y%m%d)
+          export COMMIT_SHA=${COMMIT_SHA:-$(git rev-parse --short HEAD)}
+          echo "REF=$REF" >> $GITHUB_ENV
+          echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
+          echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
+          python .github/scripts/write_meta.py
+
+      - name: Zip executed notebooks
+        run: |
+          if [ -d "executed_notebooks" ]; then
+            cd executed_notebooks && zip -r ../executed_notebooks.zip . || true
+          else
+            echo "No executed_notebooks directory found; creating empty zip" && mkdir -p executed_notebooks && cd executed_notebooks && zip -r ../executed_notebooks.zip . || true
+          fi
+
       - name: Upload executed notebooks artifact (non-unique name)
         uses: actions/upload-artifact@v4
         with:
