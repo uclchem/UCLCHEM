@@ -455,7 +455,7 @@ CONTAINS
                 &timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,useav,avgrid,&
                 &usecoldens)
         end if
-        
+        specname_out(:nspec) = specName
         IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN 
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
         END IF 

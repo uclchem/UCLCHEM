@@ -89,7 +89,6 @@ def find_existing_kernel_spec(python_exec):
                         continue
     except Exception as e:
         print(f"Error checking existing kernel specs: {e}")
-
     return None
 
 
@@ -174,7 +173,6 @@ def run_all_notebooks(notebooks_dir):
 
     # Check if a kernel spec already exists for this environment
     existing_kernel = find_existing_kernel_spec(python_exec)
-
     if existing_kernel:
         kernel_name = existing_kernel
         print(f"Using existing kernel: {kernel_name}")

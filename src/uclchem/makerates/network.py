@@ -695,6 +695,25 @@ class Network(BaseNetwork, MutableNetworkABC):
         else:
             logging.warning(f"Reaction index {reaction_idx} not found in network")
 
+    def get_reactions_by_types(
+        self, reaction_type: Union[str, list[str]]
+    ) -> list[Reaction]:
+        """Get the union of all reactions of a certain type.
+
+        Args:
+            reaction_type (str): The reaction type to filter on
+
+        Returns:
+            list[Reaction]: A list of reactions of the specified type
+        """
+        if isinstance(reaction_type, str):
+            reaction_type = [reaction_type]
+        return [
+            r
+            for r in self.get_reaction_list()
+            if (r.get_reaction_type() in reaction_type)
+        ]
+
     def sort_reactions(self) -> None:
         """Sort reactions by type and first reactant."""
         reaction_dict = self.get_reaction_dict()

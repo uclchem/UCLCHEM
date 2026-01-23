@@ -7,6 +7,14 @@ from .config import MakeratesConfig
 from .network import Network
 from .reaction import Reaction
 
+# Optional parameters that don't raise errors if missing
+optional_params = [
+    "grain_assisted_recombination_file",
+    "output_directory",
+    "three_phase",
+    "gas_phase_extrapolation",
+]
+
 
 def run_makerates(
     configuration_file: str = "user_settings.yaml", write_files: bool = True
