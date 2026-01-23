@@ -240,8 +240,13 @@ class AbstractModel(ABC):
     ):
         self._data = xr.Dataset()
         self._pickle_dict = {}
-        # Shared memory
+        # Per-instance metadata containers (scalars and small values)
+        object.__setattr__(self, "_meta", {})
+        object.__setattr__(self, "_pickle_meta", {})
+        # Set run_type into metadata
         self.run_type = run_type
+
+        # Shared memory
         self._shm_desc = {}
         self._shm_handles = {}
         self._proc_handle = None
@@ -261,14 +266,18 @@ class AbstractModel(ABC):
         self.full_array = None
         self._debug = debug
         self.success_flag = None
-        self.specname = get_species_names()
+        # Note: specname is now accessed via get_species_names() global function
+        # Note: PHYSICAL_PARAMETERS is now accessed via the global constant
 
         self.n_out = 0 if read_file is None else None
         self.timepoints = timepoints if read_file is None else None
         self.was_read = False if read_file is None else True
-        self.PHYSICAL_PARAMETERS = PHYSICAL_PARAMETERS if read_file is None else None
 
         self._reform_inputs(param_dict, self.out_species_list)
+        # If we were given a previously-written output file, populate the model
+        # arrays and metadata from that file now so later initialization can rely on them.
+        if read_file is not None:
+            self.legacy_read_output_file(read_file)
         if "points" not in self._param_dict:
             self._param_dict["points"] = 1
         # Expose grid points as attribute for legacy code expecting `gridPoints`
@@ -295,26 +304,42 @@ class AbstractModel(ABC):
             self._create_starting_array(starting_chemistry)
         elif self.abundLoadFile is not None:
             self.legacy_read_starting_chemistry()
-        elif previous_model.has_attr("next_starting_chemistry_array"):
+        elif previous_model is not None and previous_model.has_attr("next_starting_chemistry_array"):
+            # All models must use the same hard-coded PHYSICAL_PARAMETERS from constants.py
+            # If previous_model was loaded from a legacy file with different parameters,
+            # that's a compatibility issue that should have been caught during load.
             self._create_starting_array(previous_model.next_starting_chemistry_array)
 
         self.give_start_abund = self.starting_chemistry_array is not None
         assert not np.all(
             self.starting_chemistry_array == 0.0
         ), "Detected all zeros starting chemistry array."
-        self.next_starting_chemistry_array = None
+        
+        # Only initialize next_starting_chemistry_array if we didn't load it from a file
+        # (legacy_read_output_file sets it from the last timestep)
+        if read_file is None:
+            self.next_starting_chemistry_array = None
 
-        self.physics_array = None
-        self.chemical_abun_array = None
-        self._create_fortran_array()
-        self.rates_array = None
-        self._create_rates_array()
-        self.heat_array = None
-        self._create_heating_array()
-        self.out_species_abundances_array = None
+        # Only create new arrays if we didn't load them from a file
+        if read_file is None:
+            self.physics_array = None
+            self.chemical_abun_array = None
+            self._create_fortran_array()
+            self.rates_array = None
+            self._create_rates_array()
+            self.heat_array = None
+            self._create_heating_array()
+            self.out_species_abundances_array = None
+        else:
+            # When loading from file, arrays are already populated; just initialize
+            # the arrays that weren't loaded
+            self.rates_array = None
+            self.heat_array = None
+            self.out_species_abundances_array = None
 
         if read_file is not None:
-            self.read_output_file(read_file)
+            # Reading from file is handled earlier by legacy_read_output_file
+            pass
         return
 
     def __del__(self):
@@ -331,8 +356,8 @@ class AbstractModel(ABC):
         obj._data = model_ds.copy()
         model_ds.close()
         temp_attribute_dict = json.loads(obj._data["attributes_dict"].item())
-        for k, v in temp_attribute_dict.items():
-            obj._data[k] = v
+        # Restore these values into the metadata dict rather than dataset variables
+        object.__setattr__(obj, "_meta", temp_attribute_dict)
         obj._data.__delitem__("attributes_dict")
         obj.debug = debug
         obj._coord_assign()
@@ -350,9 +375,20 @@ class AbstractModel(ABC):
 
     # Class utility methods
     def __getattr__(self, key):
+        # Internal attributes behave normally
         if key.startswith("_") and key != "_data":
             return super().__getattribute__(key)
-        elif key in super().__getattribute__("_data"):
+
+        # First check instance metadata
+        try:
+            meta = super().__getattribute__("_meta")
+        except Exception:
+            meta = {}
+        if key in meta:
+            return meta[key]
+
+        # Next check the xarray Dataset
+        if key in super().__getattribute__("_data"):
             values = super().__getattribute__("_data")[key].values
             if np.shape(values) != ():
                 if isinstance(values, tuple):
@@ -361,32 +397,115 @@ class AbstractModel(ABC):
                     return values
             else:
                 return self._data[key].item()
-        else:
-            raise AttributeError(
-                f'{self.__class__.__name__} has no attribute of name: "{key}".'
-            )
+
+        raise AttributeError(
+            f'{self.__class__.__name__} has no attribute of name: "{key}".'
+        )
 
     def __setattr__(self, key, value):
+        # Underscored attributes are real attributes
         if key.startswith("_"):
             super().__setattr__(key, value)
-        else:
-            if key in self._data:
-                self._data.__delitem__(key)
+            return
 
-            if np.ndim(value) == 3 and "_array" in key:
-                self._data[key] = (
-                    ["time_step", "point", key.replace("array", "values")],
-                    value,
-                )
-            elif np.ndim(value) == 2 and "_array" in key:
+        # Determine ndim safely
+        try:
+            ndim = np.ndim(value)
+        except Exception:
+            ndim = None
+
+        # If this looks like an array variable (name contains '_array' and ndim >= 2), store in _data
+        if ndim is not None and "_array" in key and ndim >= 2:
+            # Remove any existing conflicting metadata entry
+            try:
+                meta = super().__getattribute__("_meta")
+                if key in meta:
+                    del meta[key]
+            except Exception:
+                pass
+
+            # Remove any existing dataset var of same name before inserting
+            if key in self._data:
+                try:
+                    self._data = self._data.drop_vars(key)
+                except Exception:
+                    pass
+
+            # Choose a time dimension name that avoids conflicts with existing dims
+            time_dim = "time_step"
+            existing_time = None
+            try:
+                # Use .sizes (mapping of dim name -> length) instead of .dims to avoid FutureWarning
+                existing_time = self._data.sizes.get("time_step", None)
+            except Exception:
+                existing_time = None
+
+            if existing_time is not None and existing_time != value.shape[0]:
+                # create a per-variable time dim to avoid conflicts
+                base_time_dim = f"time_step_{key}"
+                time_dim = base_time_dim
+                i = 1
+                while time_dim in self._data.sizes:
+                    time_dim = f"{base_time_dim}_{i}"
+                    i += 1
+
+            if ndim == 3:
+                # Determine the 'values' dimension name for the variable
+                values_dim = key.replace("array", "values")
+                # If an existing coordinate with this name has a conflicting
+                # length, create a per-variable values dimension to avoid
+                # xarray merge conflicts (similar to per-variable time dims).
+                try:
+                    existing_values_len = self._data.sizes.get(values_dim, None)
+                except Exception:
+                    existing_values_len = None
+
+                if existing_values_len is not None and existing_values_len != value.shape[2]:
+                    base_values_dim = f"{values_dim}_{key}"
+                    new_values_dim = base_values_dim
+                    j = 1
+                    while new_values_dim in self._data.sizes:
+                        new_values_dim = f"{base_values_dim}_{j}"
+                        j += 1
+                    self._data[key] = ([time_dim, "point", new_values_dim], value)
+                    # add numeric coords for the new dimension
+                    self._data = self._data.assign_coords({new_values_dim: np.arange(value.shape[2])})
+                else:
+                    self._data[key] = ([time_dim, "point", values_dim], value)
+
+                # Add coordinate for custom time dim if we created one
+                if time_dim != "time_step":
+                    self._data = self._data.assign_coords({time_dim: np.arange(value.shape[0])})
+            elif ndim == 2:
                 self._data[key] = (["point", key], value)
             else:
                 self._data[key] = value
+            return
+
+        # Otherwise, store in metadata
+        try:
+            meta = super().__getattribute__("_meta")
+        except Exception:
+            object.__setattr__(self, "_meta", {})
+            meta = self._meta
+
+        # If a dataset variable exists with this name, drop it to avoid ambiguity
+        if key in self._data:
+            try:
+                self._data = self._data.drop_vars(key)
+            except Exception:
+                pass
+
+        meta[key] = value
         return
 
     def has_attr(self, key):
-        """Method to check if the object has an attribute stored in self._data"""
-        return key in self._data
+        """Method to check if the object has an attribute stored in self._meta or self._data"""
+        try:
+            meta = super().__getattribute__("_meta")
+        except Exception:
+            meta = {}
+        return (key in meta) or (key in self._data)
 
     # /Class utility method
 
@@ -494,15 +613,19 @@ class AbstractModel(ABC):
             rates_df (pandas.DataFrame): Dataframe of the reaction rates  for point 'point' if joined = False and with_rates = True
             heating_df (pandas.DataFrame): Dataframe of the heating/cooling rates  for point 'point' if joined = False and with_heating = True
         """
-        # Create a physical parameter dataframe
+        # Create a physical parameter dataframe using global constants
+        # Arrays are guaranteed to match these dimensions due to validation in legacy_read_output_file
         physics_df = pd.DataFrame(
-            self.physics_array[:, point, : len(self.PHYSICAL_PARAMETERS)],
+            self.physics_array[:, point, :],
             index=None,
-            columns=self.PHYSICAL_PARAMETERS,
+            columns=PHYSICAL_PARAMETERS,
         )
-        # Create an abundances dataframe.
+        # Create an abundances dataframe using global species names
+        species_names = get_species_names()
         chemistry_df = pd.DataFrame(
-            self.chemical_abun_array[:, point, :], index=None, columns=self.specname
+            self.chemical_abun_array[:, point, :], 
+            index=None, 
+            columns=species_names
         )
         if self.rates_array is not None and with_rates:
             # Create a rates dataframe.
@@ -682,8 +805,15 @@ class AbstractModel(ABC):
                         return
                 tree.close()
 
+        # Start with metadata values
         temp_attribute_dict = {}
-        for v in self._data.variables:
+        try:
+            temp_attribute_dict.update(super().__getattribute__("_meta"))
+        except Exception:
+            pass
+
+        # Collect remaining non-array dataset variables into attributes (same behaviour as before)
+        for v in list(self._data.variables):
             if "_array" not in v and v not in ["_orig_sigint"]:
                 if np.shape(self._data[v].values) != ():
                     if isinstance(self._data[v].values, tuple):
@@ -715,7 +845,14 @@ class AbstractModel(ABC):
                         self._pickle_dict[v] = self._data[v].values.tolist()
                 else:
                     self._pickle_dict[v] = self._data[v].item()
+            # Save metadata separately for pickle roundtrip
+            try:
+                object.__setattr__(self, "_pickle_meta", super().__getattribute__("_meta").copy())
+            except Exception:
+                object.__setattr__(self, "_pickle_meta", {})
             self._data = None
+            # Clear runtime metadata to reflect pickled state
+            object.__setattr__(self, "_meta", {})
         return self
 
     def un_pickle(self):
@@ -723,10 +860,32 @@ class AbstractModel(ABC):
             self._data = xr.Dataset()
             for k, v in self._pickle_dict.items():
                 if np.ndim(v) == 3 and "_array" in k:
-                    self._data[k] = (
-                        ["time_step", "point", k.replace("array", "values")],
-                        v,
-                    )
+                    # Avoid colliding with existing 'time_step' dim sizes by
+                    # making a per-variable time dim if necessary
+                    time_dim = "time_step"
+                    existing_time = None
+                    try:
+                        existing_time = self._data.sizes.get("time_step", None)
+                    except Exception:
+                        existing_time = None
+                    v_arr = np.asarray(v)
+                    if existing_time is not None and existing_time != np.shape(v_arr)[0]:
+                        base_time_dim = f"time_step_{k}"
+                        time_dim = base_time_dim
+                        i = 1
+                        while time_dim in self._data.sizes:
+                            time_dim = f"{base_time_dim}_{i}"
+                            i += 1
+                        self._data[k] = (
+                            [time_dim, "point", k.replace("array", "values")],
+                            v_arr,
+                        )
+                        self._data = self._data.assign_coords({time_dim: np.arange(np.shape(v_arr)[0])})
+                    else:
+                        self._data[k] = (
+                            ["time_step", "point", k.replace("array", "values")],
+                            v_arr,
+                        )
                 elif np.ndim(v) == 2 and "_array" in k:
                     self._data[k] = (["point", k], v)
                 elif "_values" in k:
@@ -734,6 +893,14 @@ class AbstractModel(ABC):
                 else:
                     self._data[k] = v
             self._pickle_dict = {}
+            # Restore saved metadata if present
+            try:
+                if hasattr(self, "_pickle_meta") and self._pickle_meta:
+                    object.__setattr__(self, "_meta", self._pickle_meta.copy())
+            except Exception:
+                pass
+            finally:
+                object.__setattr__(self, "_pickle_meta", {})
         self._coord_assign()
         return self
 
@@ -742,41 +909,144 @@ class AbstractModel(ABC):
     # Legacy in & output support
     def legacy_read_output_file(self, read_file: str, rates_load_file: str = None):
         """Perform classic output file reading.
-        Args:
-            read_file (str): path to file containing a full UCLCHEM output
-            rates_load_file (str, optional): path to file containing the reaction rates output from UCLCHEM. Defaults
-                to None. #TODO Add the code to read the rates files.
+
+        This reader constructs the internal :class:`xarray.Dataset` directly from the
+        parsed header and data in the legacy ``.dat`` output format. The classic
+        files place a `point` column between the physics and chemistry columns; we
+        therefore use the location of `point` in the header to split the columns
+        reliably and avoid using global constants as authoritative metadata.
         """
         self.was_read = True
+        # Read header and numeric data
         columns = np.char.strip(
             np.loadtxt(read_file, delimiter=",", max_rows=1, dtype=str, comments="%")
         )
-        array = np.loadtxt(read_file, delimiter=",", skiprows=1)
+        raw_array = np.loadtxt(read_file, delimiter=",", skiprows=1)
+
+        # Determine where the `point` column is and how many points exist
         point_index = np.where(columns == "point")[0][0]
-        self._param_dict["points"] = int(np.max(array[:, point_index]))
+        self._param_dict["points"] = int(np.max(raw_array[:, point_index]))
+
+        # Some legacy files include an additional metadata row; if more than one
+        # point exists the legacy format contains that extra row which we must skip
         if self._param_dict["points"] > 1:
             array = np.loadtxt(read_file, delimiter=",", skiprows=2)
+        else:
+            array = raw_array
+
         row_count = int(np.shape(array)[0] / self._param_dict["points"])
 
-        self.PHYSICAL_PARAMETERS = [p for p in PHYSICAL_PARAMETERS if p in columns]
-        self.specname = get_species_names()
+        # Extract physics and species columns from legacy file header
+        physics_cols_from_file = [c for c in columns[:point_index].tolist()]
+        species_cols_from_file = [c for c in columns[point_index + 1 :].tolist()]
 
-        self.physics_array = np.empty(
-            (row_count, self._param_dict["points"], len(self.PHYSICAL_PARAMETERS) + 1)
-        )
-        self.chemical_abun_array = np.empty(
-            (row_count, self._param_dict["points"], len(self.specname))
-        )
+        # Validate compatibility with current UCLCHEM constants - these are non-negotiable
+        # PHYSICAL_PARAMETERS are hard-coded and tied to the Fortran wrapper
+        if physics_cols_from_file != list(PHYSICAL_PARAMETERS):
+            # Special case: backward compatibility for missing 'dstep' parameter
+            # Old UCLCHEM versions didn't have dstep; we can infer it if safe
+            missing_params = set(PHYSICAL_PARAMETERS) - set(physics_cols_from_file)
+            extra_params = set(physics_cols_from_file) - set(PHYSICAL_PARAMETERS)
+            
+            if missing_params == {"dstep"} and not extra_params:
+                # Only dstep is missing - check if we can safely infer it
+                # If there are no duplicate timesteps, we can assume dstep=1
+                time_column_index = physics_cols_from_file.index("Time")
+                time_values = array[:, time_column_index]
+                
+                if len(time_values) == len(np.unique(time_values)):
+                    # No duplicate timesteps - safe to assume dstep=1
+                    warnings.warn(
+                        f"LEGACY FILE COMPATIBILITY: The file is missing the 'dstep' parameter.\n"
+                        f"No duplicate timesteps detected, safely assuming dstep=1 for all rows.\n"
+                        f"This file was likely created with an older UCLCHEM version.\n"
+                        f"Consider regenerating the file with the current version for full compatibility.",
+                        UserWarning
+                    )
+                    # Add dstep=1 column to the array
+                    dstep_column = np.ones((array.shape[0], 1))
+                    array = np.hstack([array[:, :point_index], dstep_column, array[:, point_index:]])
+                    physics_cols_from_file.append("dstep")
+                    point_index += 1  # point column shifted by 1
+                else:
+                    raise ValueError(
+                        f"INCOMPATIBLE LEGACY FILE: Cannot infer 'dstep' parameter.\n\n"
+                        f"The file is missing 'dstep' and contains duplicate timesteps,\n"
+                        f"making it impossible to safely infer the particle step values.\n\n"
+                        f"  File contains:        {physics_cols_from_file}\n"
+                        f"  Current UCLCHEM has:  {list(PHYSICAL_PARAMETERS)}\n\n"
+                        f"To load this file, regenerate it with the current UCLCHEM version."
+                    )
+            else:
+                # Other parameter mismatch - cannot fix automatically
+                raise ValueError(
+                    f"INCOMPATIBLE LEGACY FILE: Physical parameters mismatch.\n\n"
+                    f"The file you are loading has different PHYSICAL_PARAMETERS than the currently installed UCLCHEM.\n"
+                    f"This means the file was created with a different version of UCLCHEM and cannot be loaded.\n\n"
+                    f"  File contains:        {physics_cols_from_file} ({len(physics_cols_from_file)} parameters)\n"
+                    f"  Current UCLCHEM has:  {list(PHYSICAL_PARAMETERS)} ({len(PHYSICAL_PARAMETERS)} parameters)\n"
+                    f"  Missing parameters:   {list(missing_params)}\n"
+                    f"  Extra parameters:     {list(extra_params)}\n\n"
+                    f"PHYSICAL_PARAMETERS are hard-coded in the Fortran wrapper and cannot be changed at runtime.\n"
+                    f"To load this file, you must use the same UCLCHEM version that created it, or regenerate the file.\n"
+                )
+        
+        if species_cols_from_file != list(get_species_names()):
+            raise ValueError(
+                f"INCOMPATIBLE LEGACY FILE: Species list mismatch.\n\n"
+                f"The file you are loading has a different species network than the currently installed UCLCHEM.\n"
+                f"This means the file was created with a different chemical network and cannot be loaded.\n\n"
+                f"  File contains:        {len(species_cols_from_file)} species\n"
+                f"  Current UCLCHEM has:  {len(get_species_names())} species\n\n"
+                f"The species list is tied to the chemical network compiled into UCLCHEM.\n"
+                f"To load this file, you must use the same UCLCHEM version/network that created it, or regenerate the file.\n"
+            )
+
+        # At this point, we've validated that dimensions match
+        # Allocate arrays using the validated file dimensions (which equal current constants)
+        self.physics_array = np.empty((row_count, self._param_dict["points"], len(PHYSICAL_PARAMETERS)))
+        self.chemical_abun_array = np.empty((row_count, self._param_dict["points"], n_species))
+
         for p in range(self._param_dict["points"]):
-            self.physics_array[:, p, :] = array[
-                np.where(array[:, point_index] == p + 1),
-                : len(self.PHYSICAL_PARAMETERS) + 1,
-            ][0]
-            self.chemical_abun_array[:, p, :] = array[
-                np.where(array[:, point_index] == p + 1),
-                (len(self.PHYSICAL_PARAMETERS) + 1) :,
-            ][0]
+            sel = np.where(array[:, point_index] == p + 1)[0]
+            self.physics_array[:, p, :] = array[sel, :point_index]
+            self.chemical_abun_array[:, p, :] = array[sel, point_index + 1 :]
+
+        # Construct Dataset using current UCLCHEM constants (validated to match file)
+        import xarray as xr
+
+        self._data = xr.Dataset(
+            {
+                "physics_array": (
+                    ["time_step", "point", "physics_values"],
+                    self.physics_array,
+                ),
+                "chemical_abun_array": (
+                    ["time_step", "point", "chemical_abun_values"],
+                    self.chemical_abun_array,
+                ),
+            },
+            coords={
+                "physics_values": PHYSICAL_PARAMETERS,
+                "chemical_abun_values": get_species_names(),
+                "time_step": np.arange(self.physics_array.shape[0]),
+                "point": np.arange(self._param_dict["points"]),
+            },
+        )
+
+        # Clean trailing zero-padded timesteps and finish
         self._array_clean()
+
+        # Ensure timepoints is consistent with the dataset we just constructed
+        # Fortran expects arrays of shape (timepoints+1, points, ...), so we
+        # store `timepoints` as the number of simulated timesteps minus one.
+        try:
+            tp = int(self._data.sizes.get("time_step", 0))
+            object.__setattr__(self, "timepoints", tp - 1 if tp > 0 else 0)
+        except Exception:
+            # Be defensive; if something goes wrong leave timepoints as-is
+            pass
+
         nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
         if len(nonzero_indices) > 0:
             last_timestep_index = nonzero_indices[-1]
@@ -799,15 +1069,16 @@ class AbstractModel(ABC):
         chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
         full_array = np.append(phys, chem, axis=1)
         # TODO Move away from the magic numbers seen here.
-        string_fmt_string = f'{", ".join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(self.PHYSICAL_PARAMETERS)))}, {", ".join([SPECNAME_HEADER_FORMAT] * len(self.specname))}'
+        species_names = get_species_names()
+        string_fmt_string = f'{", ".join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {", ".join([SPECNAME_HEADER_FORMAT] * len(species_names))}'
         # Magic numbers here to match/improve the formatting of the classic version
         # TODO Move away from the magic numbers seen here.
-        number_fmt_string = f'{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {", ".join([SPECNAME_VALUE_FORMAT] * len(self.specname))}'
+        number_fmt_string = f'{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {", ".join([SPECNAME_VALUE_FORMAT] * len(species_names))}'
         columns = np.array(
             [
-                self.PHYSICAL_PARAMETERS[:-1].tolist()
+                PHYSICAL_PARAMETERS[:-1].tolist()
                 + ["point"]
-                + self.specname.tolist()
+                + species_names
             ]
         )
         np.savetxt(self.outputFile, columns, fmt=string_fmt_string)
@@ -858,10 +1129,49 @@ class AbstractModel(ABC):
         return
 
     def _coord_assign(self):
-        self._data = self._data.assign_coords(
-            {"physics_values": self.PHYSICAL_PARAMETERS}
-        )
-        self._data = self._data.assign_coords({"chemical_abun_values": self.specname})
+        """Assign coordinate values derived from arrays and metadata.
+
+        Be conservative: prefer existing dataset coordinates if they are consistent
+        with array shapes. Only override coords from metadata when lengths match
+        the corresponding array dimensions to avoid xarray dimension conflicts.
+        """
+        # physics coords
+        try:
+            phys_len = self.physics_array.shape[-1]
+        except Exception:
+            phys_len = None
+        if phys_len is not None:
+            if "physics_values" in self._data.coords:
+                if len(self._data.coords["physics_values"]) != phys_len:
+                    if len(PHYSICAL_PARAMETERS) == phys_len:
+                        self._data = self._data.assign_coords({"physics_values": PHYSICAL_PARAMETERS})
+                    else:
+                        # fallback to numeric indices if dimensions don't match
+                        self._data = self._data.assign_coords({"physics_values": np.arange(phys_len)})
+            else:
+                if len(PHYSICAL_PARAMETERS) == phys_len:
+                    self._data = self._data.assign_coords({"physics_values": PHYSICAL_PARAMETERS})
+                else:
+                    self._data = self._data.assign_coords({"physics_values": np.arange(phys_len)})
+
+        # chemical abundances coords
+        try:
+            chem_len = self.chemical_abun_array.shape[-1]
+        except Exception:
+            chem_len = None
+        if chem_len is not None:
+            species_names = get_species_names()
+            if "chemical_abun_values" in self._data.coords:
+                if len(self._data.coords["chemical_abun_values"]) != chem_len:
+                    if len(species_names) == chem_len:
+                        self._data = self._data.assign_coords({"chemical_abun_values": species_names})
+                    else:
+                        self._data = self._data.assign_coords({"chemical_abun_values": np.arange(chem_len)})
+            else:
+                if len(species_names) == chem_len:
+                    self._data = self._data.assign_coords({"chemical_abun_values": species_names})
+                else:
+                    self._data = self._data.assign_coords({"chemical_abun_values": np.arange(chem_len)})
         return
 
     def _reform_inputs(self, param_dict: dict, out_species: list):
@@ -874,7 +1184,8 @@ class AbstractModel(ABC):
             out_species (list): List of output species that are considered important for this model.
         """
         if param_dict is None:
-            self._param_dict = default_param_dictionary
+            # avoid mutating the shared default dictionary
+            self._param_dict = default_param_dictionary.copy()
         else:
             # lower case (and conveniently copy so we don't edit) the user's dictionary
             # this is key to UCLCHEM's "case insensitivity"
