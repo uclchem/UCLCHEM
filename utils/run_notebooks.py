@@ -151,6 +151,23 @@ def run_all_notebooks(notebooks_dir):
     python_exec = get_python_executable()
     print(f"Using Python executable: {python_exec}")
 
+    # Generate notebooks from .py files if notebooks.sh exists
+    notebooks_script = os.path.join(notebooks_dir, "notebooks.sh")
+    if os.path.exists(notebooks_script):
+        print("Generating .ipynb from .py files...")
+        try:
+            subprocess.run(
+                ["bash", notebooks_script, "--generate"],
+                cwd=notebooks_dir,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            print("Notebooks generated successfully")
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: Failed to generate notebooks: {e}")
+            print(f"Stderr: {e.stderr}")
+
     # Ensure ipykernel is installed
     if not ensure_ipykernel_installed(python_exec):
         raise RuntimeError("Failed to install ipykernel")
