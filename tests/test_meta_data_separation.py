@@ -5,6 +5,7 @@ This module consolidates tests for:
 - Legacy output file reading with validation
 - Save/load/pickle roundtrip preservation
 """
+
 import numpy as np
 import pytest
 import xarray as xr
@@ -15,6 +16,7 @@ from uclchem.model import PrestellarCore, get_species_names, load_model
 # ============================================================================
 # Metadata Separation Tests
 # ============================================================================
+
 
 def test_assignment_array_goes_to_dataset():
     """Array variables with _array suffix should be stored in the xarray Dataset."""
@@ -79,17 +81,18 @@ def test_pickle_roundtrip_preserves_meta_and_arrays():
 # Legacy File Reading Tests
 # ============================================================================
 
+
 def test_legacy_read_output_infers_dstep_safely():
     """Loading a legacy file missing 'dstep' should succeed with warning when safe."""
     # phase2-full.dat has 7 physical parameters (missing 'dstep')
     # If no duplicate timesteps, it should load successfully with a warning
     with pytest.warns(UserWarning, match="missing the 'dstep' parameter"):
         model = PrestellarCore(read_file="examples/test-output/phase2-full.dat")
-    
+
     # Model should load successfully
     assert model.physics_array is not None
     assert model.chemical_abun_array is not None
-    
+
     # Arrays should now have the correct dimensions (8 physical parameters)
     assert model.physics_array.shape[-1] == len(PHYSICAL_PARAMETERS)
     assert model.chemical_abun_array.shape[-1] == n_species
@@ -99,9 +102,11 @@ def test_legacy_read_output_coords_use_global_constants():
     """After inferring dstep, coordinates should use global PHYSICAL_PARAMETERS."""
     with pytest.warns(UserWarning, match="dstep"):
         model = PrestellarCore(read_file="examples/test-output/phase2-full.dat")
-    
+
     # Coordinates should match global constants
-    assert list(model._data.coords["physics_values"].values) == list(PHYSICAL_PARAMETERS)
+    assert list(model._data.coords["physics_values"].values) == list(
+        PHYSICAL_PARAMETERS
+    )
     assert len(model._data.coords["chemical_abun_values"]) == n_species
 
 
@@ -109,13 +114,15 @@ def test_legacy_read_output_coords_use_global_constants():
 # Global Constants Tests
 # ============================================================================
 
+
 def test_physical_parameters_always_from_global():
     """All models use the same global PHYSICAL_PARAMETERS constant."""
     m1 = PrestellarCore()
     m2 = PrestellarCore()
-    
+
     # Both should use the same global constant (can't be modified per-instance)
     from uclchem.constants import PHYSICAL_PARAMETERS as CONST
+
     assert list(PHYSICAL_PARAMETERS) == list(CONST)
     assert len(PHYSICAL_PARAMETERS) == 8
 
@@ -124,7 +131,7 @@ def test_species_names_always_from_global():
     """All models use the same global species list."""
     m1 = PrestellarCore()
     m2 = PrestellarCore()
-    
+
     # Both should use the same global constant
     species = get_species_names()
     assert len(species) == n_species
@@ -135,7 +142,14 @@ def test_constants_cannot_be_modified():
     """PHYSICAL_PARAMETERS and n_species are hard-coded constants."""
     # These are defined at module level and tied to Fortran code
     assert PHYSICAL_PARAMETERS == [
-        "Time", "Density", "gasTemp", "dustTemp", "Av", "radfield", "zeta", "dstep"
+        "Time",
+        "Density",
+        "gasTemp",
+        "dustTemp",
+        "Av",
+        "radfield",
+        "zeta",
+        "dstep",
     ]
     assert n_species == 335
 
@@ -160,7 +174,7 @@ def test_scalar_meta_not_stored_in_dataset():
     m = PrestellarCore()
     m.scalar_value = 42.5
     m.string_value = "test"
-    
+
     # Should be in _meta, not in _data
     assert m.scalar_value == 42.5
     assert m.string_value == "test"
@@ -175,6 +189,6 @@ def test_dstep_inference_validation():
     # For now, verify the successful case loads
     with pytest.warns(UserWarning):
         model = PrestellarCore(read_file="examples/test-output/phase2-full.dat")
-    
+
     # Verify dstep was properly added
     assert "dstep" in model._data.coords["physics_values"].values
