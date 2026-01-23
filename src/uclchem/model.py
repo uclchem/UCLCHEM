@@ -1,3 +1,85 @@
+"""UCLCHEM Model Module
+
+Core module for running gas-grain chemical models under different physical conditions.
+
+This module provides both object-oriented and functional interfaces for running
+UCLCHEM chemical models. The object-oriented API (model classes) is recommended
+for most use cases as it provides better state management and built-in analysis tools.
+
+**Model Classes (Object-Oriented API - Recommended):**
+
+- :class:`Cloud` - Static or freefall collapsing cloud
+- :class:`Collapse` - Collapsing cloud with various prescriptions (BE, filament, ambipolar)
+- :class:`PrestellarCore` - Prestellar core with heating and chemistry
+- :class:`CShock` - C-type shock model
+- :class:`JShock` - J-type shock model
+- :class:`Postprocess` - Custom physics from user-provided arrays
+- :class:`GridModels` - Run parameter grids in parallel
+- :class:`SequentialModel` - Chain multiple physical stages
+
+**Legacy Functions (Functional API):**
+
+Available in :mod:`uclchem.functional` for backward compatibility.
+Returns arrays/DataFrames instead of model objects.
+
+**Quick Example:**
+
+.. code-block:: python
+
+    import uclchem
+
+    # Create a collapsing cloud model
+    cloud = uclchem.model.Cloud(
+        param_dict={
+            \"initialDens\": 1e2,
+            \"initialTemp\": 10.0,
+            \"finalTime\": 1e6,
+            \"freefall\": True
+        },
+        out_species=[\"CO\", \"H2O\", \"CH3OH\"]
+    )
+
+    # Check for errors and plot
+    cloud.check_error()
+    cloud.create_abundance_plot([\"CO\", \"$CO\"])
+
+**Model Workflow:**
+
+1. **Initialize**: Create model object with parameters
+2. **Run**: Model runs automatically on initialization (or use `read_file` to load)
+3. **Analyze**: Access results via attributes (`.final_abundances`, `.chemistry_dataframe`)
+4. **Plot**: Use built-in plotting methods (`.create_abundance_plot()`)
+5. **Chain**: Use as input to next stage (`.previous_model` parameter)
+
+**Common Parameters:**
+
+All models accept these key parameters in `param_dict`:
+
+- ``initialDens`` (float): Initial density [cm⁻³]
+- ``initialTemp`` (float): Initial temperature [K]
+- ``finalTime`` (float): Simulation end time [years]
+- ``freefall`` (bool): Enable freefall collapse (Cloud only)
+- ``outputFile`` (str): Output file path (optional with OO API)
+
+See the user guide for complete parameter list.
+
+**Species Naming:**
+
+- Gas phase: ``CO``, ``H2O``, ``CH3OH``
+- Ice surface: ``$CO``, ``$H2O``, ``$CH3OH``
+- Ice bulk: ``@CO``, ``@H2O``, ``@CH3OH``
+
+**See Also:**
+
+- :mod:`uclchem.analysis` - Analyze model outputs and reaction pathways
+- :mod:`uclchem.advanced` - Advanced controls for heating and network state
+
+**Note on Thread Safety:**
+
+Model objects are **not thread-safe** when using advanced features that modify
+Fortran module state. Use multiprocessing (not threading) for parallel runs.
+"""
+
 import json
 import logging
 
@@ -270,7 +352,7 @@ class AbstractModel(ABC):
         # Note: PHYSICAL_PARAMETERS is now accessed via the global constant
 
         self.n_out = 0 if read_file is None else None
-        self.timepoints = timepoints if read_file is None else None
+        self.timepoints = timepoints
         self.was_read = False if read_file is None else True
 
         self._reform_inputs(param_dict, self.out_species_list)
@@ -338,10 +420,6 @@ class AbstractModel(ABC):
             self.rates_array = None
             self.heat_array = None
             self.out_species_abundances_array = None
-
-        if read_file is not None:
-            # Reading from file is handled earlier by legacy_read_output_file
-            pass
         return
 
     def __del__(self):

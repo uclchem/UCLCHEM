@@ -1,9 +1,69 @@
-"""
-Functional Submodule.
+"""Functional API for UCLCHEM models.
 
-The following functions are wrappers of the model classes. The format of the wrappers has been chosen such that they follow
-the legacy methods of running UCLCHEM both in inputs and in return values, while depending on the Class objects defined
-in the model module to facilitate ease of maintenance.
+This module provides a functional interface to UCLCHEM's physics models, designed for backward
+compatibility with UCLCHEM v2 while leveraging the modern object-oriented architecture.
+
+The functional API offers convenience functions that wrap the model classes (:mod:`uclchem.model`)
+with a simpler calling convention. Each function follows a consistent pattern:
+
+- **Input**: parameter dictionary, output species list, and return format flags
+- **Output**: Either file output (default) or in-memory arrays/DataFrames
+- **Modes**: Choose between disk I/O or memory-based workflows
+
+Available Models
+----------------
+- :func:`cloud` - Static cloud models
+- :func:`collapse` - Collapsing cloud models (BE, filament, ambipolar)
+- :func:`prestellar_core` (alias :func:`hot_core`) - Prestellar core with temperature evolution
+- :func:`cshock` - C-type shock models
+- :func:`jshock` - J-type shock models
+
+Usage Patterns
+--------------
+
+**Disk mode (default)** - Results written to files::
+
+    import uclchem
+
+    result = uclchem.functional.cloud(
+        param_dict={'initialDens': 1e4, 'outputFile': 'cloud.dat'},
+        out_species=['CO', 'H2O']
+    )
+    # Returns: (success_flag, abundance_CO, abundance_H2O)
+
+**Memory mode** - Results returned as arrays::
+
+    phys, chem, rates, heat, final_abun, flag = uclchem.functional.cloud(
+        param_dict={'initialDens': 1e4},
+        out_species=['CO', 'H2O'],
+        return_array=True,
+        return_rates=True,
+        return_heating=True
+    )
+
+**DataFrame mode** - Results as pandas DataFrames::
+
+    phys_df, chem_df, rates_df, heat_df, final_abun, flag = uclchem.functional.cloud(
+        param_dict={'initialDens': 1e4},
+        out_species=['CO'],
+        return_dataframe=True,
+        return_rates=True
+    )
+
+.. note::
+   You cannot mix file I/O parameters (``outputFile``, ``abundSaveFile``) with memory return
+   modes (``return_array``, ``return_dataframe``). Choose one approach per run.
+
+.. tip::
+   For interactive work and complex analysis, the object-oriented API (:mod:`uclchem.model`)
+   offers more flexibility. Use the functional API when you need backward compatibility or
+   prefer a simpler interface.
+
+See Also
+--------
+- :mod:`uclchem.model` - Object-oriented model classes
+- :mod:`uclchem.utils` - Utility functions including ``check_error()``
+- :doc:`/tutorials/index` - Interactive tutorials for both APIs
 """
 
 import numpy as np
@@ -13,9 +73,9 @@ from uclchem.model import (
     AbstractModel,
     Cloud,
     Collapse,
-    PrestellarCore,
     CShock,
     JShock,
+    PrestellarCore,
 )
 
 

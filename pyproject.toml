@@ -20,7 +20,7 @@ description = "A package for the astrochemical modelling of gas-grain chemistrie
 readme = "README.md"
 requires-python = ">=3.9,<3.14"
 dependencies = [
-    "h5py", "pandas", "numpy", "pyyaml", "charset_normalizer", "matplotlib", "seaborn", "scipy", "tqdm", "joblib", "xarray", "h5netcdf", "pydantic>=2.0"
+    "h5py", "pandas", "numpy", "pyyaml", "charset_normalizer", "matplotlib", "h5netcdf","seaborn", "scipy", "tqdm", "joblib", "xarray", "pydantic>=2.0"
 ]
 
 [project.optional-dependencies]
