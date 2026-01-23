@@ -22,6 +22,10 @@ import uclchem
 from uclchem import advanced
 import os
 
+# Ensure output directory exists
+if not os.path.exists("output_6"):
+    os.makedirs("output_6")
+
 # %% [markdown]
 # ## Using GeneralSettings Instead of param_dict
 #
@@ -66,13 +70,13 @@ print(f"New initial density: {settings.defaultparameters.initialdens.get()}")
 
 # %%
 # Ensure output directory exists
-if not os.path.exists("notebook_6"):
-    os.makedirs("notebook_6")
+if not os.path.exists("output_6"):
+    os.makedirs("output_6")
 
 # Note: Output file paths should be set via param_dict, not GeneralSettings
 # This is because file paths are handled specially by the model wrapper
 param_dict = {
-    "outputFile": "notebook_6/advanced-settings.dat",
+    "outputFile": "output_6/baseline.dat",
 }
 
 # Run model with param_dict for file I/O, but using GeneralSettings for other parameters
@@ -105,7 +109,7 @@ with settings.temporary_changes():
     print(f"Inside context: {settings.defaultparameters.initialdens.get()}")
 
     # Use param_dict for file paths
-    param_dict_high = {"outputFile": "notebook_6/high-density.dat"}
+    param_dict_high = {"outputFile": "output_6/high_density.dat"}
     cloud_high = uclchem.model.Cloud(
         param_dict=param_dict_high, out_species=out_species
     )
@@ -120,8 +124,8 @@ print(f"After context: {settings.defaultparameters.initialdens.get()}")
 # Let's load and compare the two model runs:
 
 # %%
-result_baseline = uclchem.analysis.read_output_file("notebook_6/advanced-settings.dat")
-result_high_dens = uclchem.analysis.read_output_file("notebook_6/high-density.dat")
+result_baseline = uclchem.analysis.read_output_file("output_6/baseline.dat")
+result_high_dens = uclchem.analysis.read_output_file("output_6/high_density.dat")
 
 print(f"Baseline final CO abundance: {result_baseline['CO'].iloc[-1]:.2e}")
 print(f"High density final CO abundance: {result_high_dens['CO'].iloc[-1]:.2e}")

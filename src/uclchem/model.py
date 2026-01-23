@@ -304,7 +304,9 @@ class AbstractModel(ABC):
             self._create_starting_array(starting_chemistry)
         elif self.abundLoadFile is not None:
             self.legacy_read_starting_chemistry()
-        elif previous_model is not None and previous_model.has_attr("next_starting_chemistry_array"):
+        elif previous_model is not None and previous_model.has_attr(
+            "next_starting_chemistry_array"
+        ):
             # All models must use the same hard-coded PHYSICAL_PARAMETERS from constants.py
             # If previous_model was loaded from a legacy file with different parameters,
             # that's a compatibility issue that should have been caught during load.
@@ -314,7 +316,7 @@ class AbstractModel(ABC):
         assert not np.all(
             self.starting_chemistry_array == 0.0
         ), "Detected all zeros starting chemistry array."
-        
+
         # Only initialize next_starting_chemistry_array if we didn't load it from a file
         # (legacy_read_output_file sets it from the last timestep)
         if read_file is None:
@@ -374,7 +376,7 @@ class AbstractModel(ABC):
     # /Separate class building methods
 
     # Class utility methods
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         # Internal attributes behave normally
         if key.startswith("_") and key != "_data":
             return super().__getattribute__(key)
@@ -402,7 +404,7 @@ class AbstractModel(ABC):
             f'{self.__class__.__name__} has no attribute of name: "{key}".'
         )
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         # Underscored attributes are real attributes
         if key.startswith("_"):
             super().__setattr__(key, value)
@@ -460,7 +462,10 @@ class AbstractModel(ABC):
                 except Exception:
                     existing_values_len = None
 
-                if existing_values_len is not None and existing_values_len != value.shape[2]:
+                if (
+                    existing_values_len is not None
+                    and existing_values_len != value.shape[2]
+                ):
                     base_values_dim = f"{values_dim}_{key}"
                     new_values_dim = base_values_dim
                     j = 1
@@ -469,13 +474,17 @@ class AbstractModel(ABC):
                         j += 1
                     self._data[key] = ([time_dim, "point", new_values_dim], value)
                     # add numeric coords for the new dimension
-                    self._data = self._data.assign_coords({new_values_dim: np.arange(value.shape[2])})
+                    self._data = self._data.assign_coords(
+                        {new_values_dim: np.arange(value.shape[2])}
+                    )
                 else:
                     self._data[key] = ([time_dim, "point", values_dim], value)
 
                 # Add coordinate for custom time dim if we created one
                 if time_dim != "time_step":
-                    self._data = self._data.assign_coords({time_dim: np.arange(value.shape[0])})
+                    self._data = self._data.assign_coords(
+                        {time_dim: np.arange(value.shape[0])}
+                    )
             elif ndim == 2:
                 self._data[key] = (["point", key], value)
             else:
@@ -595,7 +604,7 @@ class AbstractModel(ABC):
         joined: bool = True,
         with_rates: bool = False,
         with_heating: bool = False,
-    ):
+    ) -> pd.DataFrame | tuple[pd.DataFrame, ...]:  # Returns joined DF or tuple of DFs
         """Converts the model physics and chemical_abun arrays from numpy to pandas arrays.
         Args:
             point (int, optional): Integer referring to which point of the UCLCHEM model to return as pandas does not support higher
@@ -623,9 +632,7 @@ class AbstractModel(ABC):
         # Create an abundances dataframe using global species names
         species_names = get_species_names()
         chemistry_df = pd.DataFrame(
-            self.chemical_abun_array[:, point, :], 
-            index=None, 
-            columns=species_names
+            self.chemical_abun_array[:, point, :], index=None, columns=species_names
         )
         if self.rates_array is not None and with_rates:
             # Create a rates dataframe.
@@ -847,7 +854,9 @@ class AbstractModel(ABC):
                     self._pickle_dict[v] = self._data[v].item()
             # Save metadata separately for pickle roundtrip
             try:
-                object.__setattr__(self, "_pickle_meta", super().__getattribute__("_meta").copy())
+                object.__setattr__(
+                    self, "_pickle_meta", super().__getattribute__("_meta").copy()
+                )
             except Exception:
                 object.__setattr__(self, "_pickle_meta", {})
             self._data = None
@@ -869,7 +878,10 @@ class AbstractModel(ABC):
                     except Exception:
                         existing_time = None
                     v_arr = np.asarray(v)
-                    if existing_time is not None and existing_time != np.shape(v_arr)[0]:
+                    if (
+                        existing_time is not None
+                        and existing_time != np.shape(v_arr)[0]
+                    ):
                         base_time_dim = f"time_step_{k}"
                         time_dim = base_time_dim
                         i = 1
@@ -880,7 +892,9 @@ class AbstractModel(ABC):
                             [time_dim, "point", k.replace("array", "values")],
                             v_arr,
                         )
-                        self._data = self._data.assign_coords({time_dim: np.arange(np.shape(v_arr)[0])})
+                        self._data = self._data.assign_coords(
+                            {time_dim: np.arange(np.shape(v_arr)[0])}
+                        )
                     else:
                         self._data[k] = (
                             ["time_step", "point", k.replace("array", "values")],
@@ -907,7 +921,9 @@ class AbstractModel(ABC):
     # /Model Passing through Pickling
 
     # Legacy in & output support
-    def legacy_read_output_file(self, read_file: str, rates_load_file: str = None):
+    def legacy_read_output_file(
+        self, read_file: str, rates_load_file: str | None = None
+    ) -> None:
         """Perform classic output file reading.
 
         This reader constructs the internal :class:`xarray.Dataset` directly from the
@@ -947,25 +963,27 @@ class AbstractModel(ABC):
             # Old UCLCHEM versions didn't have dstep; we can infer it if safe
             missing_params = set(PHYSICAL_PARAMETERS) - set(physics_cols_from_file)
             extra_params = set(physics_cols_from_file) - set(PHYSICAL_PARAMETERS)
-            
+
             if missing_params == {"dstep"} and not extra_params:
                 # Only dstep is missing - check if we can safely infer it
                 # If there are no duplicate timesteps, we can assume dstep=1
                 time_column_index = physics_cols_from_file.index("Time")
                 time_values = array[:, time_column_index]
-                
+
                 if len(time_values) == len(np.unique(time_values)):
                     # No duplicate timesteps - safe to assume dstep=1
                     warnings.warn(
-                        f"LEGACY FILE COMPATIBILITY: The file is missing the 'dstep' parameter.\n"
-                        f"No duplicate timesteps detected, safely assuming dstep=1 for all rows.\n"
-                        f"This file was likely created with an older UCLCHEM version.\n"
-                        f"Consider regenerating the file with the current version for full compatibility.",
-                        UserWarning
+                        "LEGACY FILE COMPATIBILITY: The file is missing the 'dstep' parameter.\n"
+                        "No duplicate timesteps detected, safely assuming dstep=1 for all rows.\n"
+                        "This file was likely created with an older UCLCHEM version.\n"
+                        "Consider regenerating the file with the current version for full compatibility.",
+                        UserWarning,
                     )
                     # Add dstep=1 column to the array
                     dstep_column = np.ones((array.shape[0], 1))
-                    array = np.hstack([array[:, :point_index], dstep_column, array[:, point_index:]])
+                    array = np.hstack(
+                        [array[:, :point_index], dstep_column, array[:, point_index:]]
+                    )
                     physics_cols_from_file.append("dstep")
                     point_index += 1  # point column shifted by 1
                 else:
@@ -990,7 +1008,7 @@ class AbstractModel(ABC):
                     f"PHYSICAL_PARAMETERS are hard-coded in the Fortran wrapper and cannot be changed at runtime.\n"
                     f"To load this file, you must use the same UCLCHEM version that created it, or regenerate the file.\n"
                 )
-        
+
         if species_cols_from_file != list(get_species_names()):
             raise ValueError(
                 f"INCOMPATIBLE LEGACY FILE: Species list mismatch.\n\n"
@@ -1004,8 +1022,12 @@ class AbstractModel(ABC):
 
         # At this point, we've validated that dimensions match
         # Allocate arrays using the validated file dimensions (which equal current constants)
-        self.physics_array = np.empty((row_count, self._param_dict["points"], len(PHYSICAL_PARAMETERS)))
-        self.chemical_abun_array = np.empty((row_count, self._param_dict["points"], n_species))
+        self.physics_array = np.empty(
+            (row_count, self._param_dict["points"], len(PHYSICAL_PARAMETERS))
+        )
+        self.chemical_abun_array = np.empty(
+            (row_count, self._param_dict["points"], n_species)
+        )
 
         for p in range(self._param_dict["points"]):
             sel = np.where(array[:, point_index] == p + 1)[0]
@@ -1063,7 +1085,7 @@ class AbstractModel(ABC):
         self._create_starting_array(np.loadtxt(self.abundLoadFile, delimiter=","))
         return
 
-    def legacy_write_full(self):
+    def legacy_write_full(self) -> None:
         """Perform classic output file writing to the file self.outputFile provided in _param_dict"""
         phys = self.physics_array.reshape(-1, self.physics_array.shape[-1])
         chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
@@ -1075,18 +1097,14 @@ class AbstractModel(ABC):
         # TODO Move away from the magic numbers seen here.
         number_fmt_string = f'{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {", ".join([SPECNAME_VALUE_FORMAT] * len(species_names))}'
         columns = np.array(
-            [
-                PHYSICAL_PARAMETERS[:-1].tolist()
-                + ["point"]
-                + species_names
-            ]
+            [PHYSICAL_PARAMETERS[:-1].tolist() + ["point"] + species_names]
         )
         np.savetxt(self.outputFile, columns, fmt=string_fmt_string)
         with open(self.outputFile, "ab") as f:
             np.savetxt(f, full_array, fmt=number_fmt_string)
         return
 
-    def legacy_write_starting_chemistry(self):
+    def legacy_write_starting_chemistry(self) -> None:
         """Perform classic starting abundance file writing to the file self.abundSaveFile provided in _param_dict"""
         last_timestep_index = self.chemical_abun_array[:, 0, 0].nonzero()[0][-1]
         # TODO Move away from the magic numbers seen here.
@@ -1144,15 +1162,23 @@ class AbstractModel(ABC):
             if "physics_values" in self._data.coords:
                 if len(self._data.coords["physics_values"]) != phys_len:
                     if len(PHYSICAL_PARAMETERS) == phys_len:
-                        self._data = self._data.assign_coords({"physics_values": PHYSICAL_PARAMETERS})
+                        self._data = self._data.assign_coords(
+                            {"physics_values": PHYSICAL_PARAMETERS}
+                        )
                     else:
                         # fallback to numeric indices if dimensions don't match
-                        self._data = self._data.assign_coords({"physics_values": np.arange(phys_len)})
+                        self._data = self._data.assign_coords(
+                            {"physics_values": np.arange(phys_len)}
+                        )
             else:
                 if len(PHYSICAL_PARAMETERS) == phys_len:
-                    self._data = self._data.assign_coords({"physics_values": PHYSICAL_PARAMETERS})
+                    self._data = self._data.assign_coords(
+                        {"physics_values": PHYSICAL_PARAMETERS}
+                    )
                 else:
-                    self._data = self._data.assign_coords({"physics_values": np.arange(phys_len)})
+                    self._data = self._data.assign_coords(
+                        {"physics_values": np.arange(phys_len)}
+                    )
 
         # chemical abundances coords
         try:
@@ -1164,14 +1190,22 @@ class AbstractModel(ABC):
             if "chemical_abun_values" in self._data.coords:
                 if len(self._data.coords["chemical_abun_values"]) != chem_len:
                     if len(species_names) == chem_len:
-                        self._data = self._data.assign_coords({"chemical_abun_values": species_names})
+                        self._data = self._data.assign_coords(
+                            {"chemical_abun_values": species_names}
+                        )
                     else:
-                        self._data = self._data.assign_coords({"chemical_abun_values": np.arange(chem_len)})
+                        self._data = self._data.assign_coords(
+                            {"chemical_abun_values": np.arange(chem_len)}
+                        )
             else:
                 if len(species_names) == chem_len:
-                    self._data = self._data.assign_coords({"chemical_abun_values": species_names})
+                    self._data = self._data.assign_coords(
+                        {"chemical_abun_values": species_names}
+                    )
                 else:
-                    self._data = self._data.assign_coords({"chemical_abun_values": np.arange(chem_len)})
+                    self._data = self._data.assign_coords(
+                        {"chemical_abun_values": np.arange(chem_len)}
+                    )
         return
 
     def _reform_inputs(self, param_dict: dict, out_species: list):

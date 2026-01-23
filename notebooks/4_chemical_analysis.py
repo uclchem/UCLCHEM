@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.18.1
+#       jupytext_version: 1.19.0
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -164,11 +164,11 @@ plot_rate_summary(production, destruction, 10)
 #
 
 # +
-from uclchem.analysis import rates_to_dy_and_flux
-from uclchem.utils import get_reaction_network
+from uclchem.analysis import rate_constants_to_dy_and_rates
+from uclchem.makerates.network import Network
 
-network = get_reaction_network()
-dy, flux = rates_to_dy_and_flux(physics, abundances, rates, network=network)
+network = Network.from_csv()
+dy, flux = rate_constants_to_dy_and_rates(physics, abundances, rates, network=network) 
 # -
 
 # We can then inspect the RHS of the differential equation per reaction. This informs us that the only relevant term is actually the destruction of the molecule via its reaction with HCS and H2S. Explaining the small decrease at 1 million years.

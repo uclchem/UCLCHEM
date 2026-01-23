@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.18.1
+#       jupytext_version: 1.19.0
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -19,6 +19,11 @@
 
 import uclchem
 import numpy as np
+import os
+
+# Ensure output directory exists
+if not os.path.exists("./output_3"):
+    os.makedirs("./output_3")
 
 
 # ## A Simple Grid
@@ -41,7 +46,7 @@ grid = uclchem.model.GridModels(
     model_type="Cloud",
     full_parameters=ParameterDictionary,
     max_workers=18,
-    grid_file="./GridRun.h5",
+    grid_file="./output_3/grid_basic.h5",
     model_name_prefix="",
     delay_run=True,
 )
@@ -63,9 +68,9 @@ grid.models
 
 
 
-# Each model is stored in the "./GridRun.h5" under the name listed in the key 'Model' for each of the entries of ```grid.models```. Each of these models can be loaded individually using the ```load_model``` function. If we wanted to load the model '9' with initialDens=10000, initialTemp=30 and zeta=10 we could do the following.
+# Each model is stored in the "./output_3/grid_basic.h5" under the name listed in the key 'Model' for each of the entries of ```grid.models```. Each of these models can be loaded individually using the ```load_model``` function. If we wanted to load the model '9' with initialDens=10000, initialTemp=30 and zeta=10 we could do the following.
 
-cloud = uclchem.model.load_model("./GridRun.h5", "9")
+cloud = uclchem.model.load_model("./output_3/grid_basic.h5", "9")
 
 # Now ```cloud``` behaves as any model object should, allowing us to perform the same analyses and plotting as done in previous notebooks.
 
@@ -145,7 +150,7 @@ complex_grid = uclchem.model.GridModels(
     model_type="SequentialModel",
     full_parameters=models_to_run,
     max_workers=10,
-    grid_file="./ComplexGrid.h5",
+    grid_file="./output_3/grid_complex.h5",
 )
 # -
 
