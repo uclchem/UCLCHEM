@@ -21,3 +21,6 @@ dist
 .venv
 conda*
 .conda*
+
+# Notebooks - only version control .py files
+notebooks/*.ipynb

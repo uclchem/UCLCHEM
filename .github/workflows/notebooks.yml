@@ -31,11 +31,16 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest nbmake pytest-xdist pytest-github-actions-annotate-failures jupyter
+        pip install pytest nbmake pytest-xdist pytest-github-actions-annotate-failures jupyter jupytext
     
     - name: Install package in editable mode
       run: |
         pip install .
+
+    - name: Generate notebooks from .py files
+      run: |
+        cd notebooks
+        bash notebooks.sh --generate
 
     - name: Test notebooks
       run: |
