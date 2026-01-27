@@ -38,7 +38,7 @@ default_param_dictionary = {
     "points": 1,
     "bm0": 1.0,
     "freezefactor": 1.0,
-    "endatfinaldensity": True,
+    "endatfinaldensity": False,
     "freefall": True,
     "freefallfactor": 1.0,
     "desorb": True,

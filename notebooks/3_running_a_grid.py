@@ -45,14 +45,12 @@ ParameterDictionary = {
 grid = uclchem.model.GridModels(
     model_type="Cloud",
     full_parameters=ParameterDictionary,
-    max_workers=18,
+    max_workers=4,
     grid_file="./output_3/grid_basic.h5",
     model_name_prefix="",
     delay_run=True,
 )
-grid.flat_grids
-
-# 27 models to run
+print(f"Total models to run: {len(grid.flat_grids)}")
 
 # # Run Grid
 #

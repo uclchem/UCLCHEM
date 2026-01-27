@@ -46,10 +46,10 @@ if not os.path.exists("output_2a/"):
     os.makedirs("output_2a/")
 
 cloud = uclchem.model.Cloud(param_dict=param_dict)
-# Alternatively we could load in a pre-existing version like so
-# cloud = uclchem.model.Cloud(read_file="output_2a/phase1.dat")
-# For file reading demonstration purposes, we will now delete the object.
+# The cloud model has completed and saved output to output_2a/phase1.dat
+# We can now load this file directly without the cloud object
 del cloud
+print("Cloud object deleted. Model saved to file for later loading.")
 # -
 
 # With that done, we have run the model and stored the outputs into the object `cloud`, while also storing the final abundances by using: `param_dict["abundSaveFile"]`. We can pass this value our prestellar core model to use those abundances as our initial abundances. Of note, the parameter `abundSaveFile` has been removed from param_dict by creating the `cloud` object.
@@ -81,8 +81,10 @@ param_dict["outputFile"] = "output_2a/phase2.dat"
 p_core = uclchem.model.PrestellarCore(
     temp_indx=3, max_temperature=300.0, param_dict=param_dict
 )
-# For file reading demonstration purposes, we will now delete the object.
+# The p_core model has completed and saved output to output_2a/phase2.dat
+# We can now delete the object and load it back from the file
 del p_core
+print("PrestellarCore object deleted. Model saved to file for later loading.")
 # -
 
 # Note that we've made two changes to the parameters here which aren't strictly necessary but can be helpful in certain situations.

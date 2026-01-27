@@ -674,14 +674,24 @@ CONTAINS
         
 
         !loop until the end condition of the model is reached
-        DO WHILE ((successFlag .eq. 0) .and. (((endAtFinalDensity) .and. &
-            &(density(1) < finalDens)) .or. &
-            &((.not. endAtFinalDensity) .and. (timeInYears < finalTime))))
+        ! Loop continues while:
+        ! - If endAtFinalDensity: stop when (density >= finalDens) OR (time >= finalTime)
+        ! - If NOT endAtFinalDensity: stop when (time >= finalTime)
+        ! TODO: Update this logic to for better compatibility with 1D models
+        DO WHILE ((successFlag .eq. 0) .and. (timeInYears < finalTime) .and. &
+            &((.not. endAtFinalDensity) .or. (density(dstep) < finalDens)))
             dtime = dtime + 1
             currentTimeold=currentTime
             !Each physics module has a subroutine to set the target time from the current time
-            timeInYears=currentTime/SECONDS_PER_YEAR
             CALL updateTargetTime
+            ! Exit loop if targetTime would exceed finalTime
+            IF (targetTime/SECONDS_PER_YEAR .ge. finalTime) THEN
+                EXIT
+            END IF
+            ! Exit loop if density exceeds finalDens (when using density-based stopping)
+            IF (endAtFinalDensity .and. (density(dstep) .ge. finalDens)) THEN
+                EXIT
+            END IF
             !loop over parcels, counting from centre out to edge of cloud
             DO dstep=1,points
                 !reset time if this isn't first depth point
@@ -694,7 +704,6 @@ CONTAINS
                 END IF
                 !get time in years for output, currentTime is now equal to targetTime
                 timeInYears= targetTime/SECONDS_PER_YEAR
-
 
                 !Update physics so it's correct for new currentTime and start of next time step
                 call coreUpdatePhysics

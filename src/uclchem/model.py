@@ -356,6 +356,20 @@ class AbstractModel(ABC):
         self.was_read = False if read_file is None else True
 
         self._reform_inputs(param_dict, self.out_species_list)
+
+        # Validate endAtFinalDensity usage
+        if self._param_dict.get("endatfinaldensity", False):
+            if not self._param_dict.get("freefall", False):
+                # Check if this is a Collapse model (which is allowed)
+                if self.model_type != "Collapse":
+                    raise ValueError(
+                        "endAtFinalDensity=True can only be used with:\n"
+                        "  - Collapse models\n"
+                        "  - Cloud models with freefall=True\n"
+                        f"Current model: {self.model_type}, freefall={self._param_dict.get('freefall', False)}\n"
+                        "Please either set freefall=True or set endAtFinalDensity=False"
+                    )
+
         # If we were given a previously-written output file, populate the model
         # arrays and metadata from that file now so later initialization can rely on them.
         if read_file is not None:
@@ -366,18 +380,18 @@ class AbstractModel(ABC):
         object.__setattr__(self, "gridPoints", self._param_dict["points"])
 
         self.outputFile = (
-            self._param_dict.pop("outputFile")
-            if "outputFile" in self._param_dict
+            self._param_dict.pop("outputfile")
+            if "outputfile" in self._param_dict
             else None
         )
         self.abundSaveFile = (
-            self._param_dict.pop("abundSaveFile")
-            if "abundSaveFile" in self._param_dict
+            self._param_dict.pop("abundsavefile")
+            if "abundsavefile" in self._param_dict
             else None
         )
         self.abundLoadFile = (
-            self._param_dict.pop("abundLoadFile")
-            if "abundLoadFile" in self._param_dict
+            self._param_dict.pop("abundloadfile")
+            if "abundloadfile" in self._param_dict
             else None
         )
 
@@ -849,9 +863,29 @@ class AbstractModel(ABC):
         self._array_clean()
         self.check_error(only_error=True)
         if self.outputFile is not None:
-            self.legacy_write_full()
+            logging.debug(f"Writing output file: {self.outputFile}")
+            logging.debug(
+                f"Physics array shape: {self.physics_array.shape if self.physics_array is not None else None}"
+            )
+            logging.debug(
+                f"Chemical array shape: {self.chemical_abun_array.shape if self.chemical_abun_array is not None else None}"
+            )
+            try:
+                self.legacy_write_full()
+                logging.debug(f"Successfully wrote {self.outputFile}")
+            except Exception as e:
+                logging.error(f"Failed to write {self.outputFile}: {e}", exc_info=True)
+                raise
         if self.abundSaveFile is not None:
-            self.legacy_write_starting_chemistry()
+            logging.debug(f"Writing abundance file: {self.abundSaveFile}")
+            try:
+                self.legacy_write_starting_chemistry()
+                logging.debug(f"Successfully wrote {self.abundSaveFile}")
+            except Exception as e:
+                logging.error(
+                    f"Failed to write {self.abundSaveFile}: {e}", exc_info=True
+                )
+                raise
         return
 
     @abstractmethod
@@ -913,7 +947,6 @@ class AbstractModel(ABC):
 
         self._data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
         self._data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
-
         self._data.to_netcdf(file, group=name, engine=engine, mode="a")
         return
 
@@ -1174,9 +1207,7 @@ class AbstractModel(ABC):
         # Magic numbers here to match/improve the formatting of the classic version
         # TODO Move away from the magic numbers seen here.
         number_fmt_string = f'{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {", ".join([SPECNAME_VALUE_FORMAT] * len(species_names))}'
-        columns = np.array(
-            [PHYSICAL_PARAMETERS[:-1].tolist() + ["point"] + species_names]
-        )
+        columns = np.array([PHYSICAL_PARAMETERS[:-1] + ["point"] + species_names])
         np.savetxt(self.outputFile, columns, fmt=string_fmt_string)
         with open(self.outputFile, "ab") as f:
             np.savetxt(f, full_array, fmt=number_fmt_string)
@@ -1186,7 +1217,8 @@ class AbstractModel(ABC):
         """Perform classic starting abundance file writing to the file self.abundSaveFile provided in _param_dict"""
         last_timestep_index = self.chemical_abun_array[:, 0, 0].nonzero()[0][-1]
         # TODO Move away from the magic numbers seen here.
-        number_fmt_string = f' {", ".join(["%9.5E"] * len(self.specname))}'
+        species_names = get_species_names()
+        number_fmt_string = f' {", ".join(["%9.5E"] * len(species_names))}'
         with open(self.abundSaveFile, "wb") as f:
             np.savetxt(
                 f,
@@ -1311,9 +1343,11 @@ class AbstractModel(ABC):
                 new_param_dict[k.lower()] = v
             self._param_dict = {**default_param_dictionary, **new_param_dict.copy()}
             del new_param_dict
-        for k, v in default_param_dictionary.copy().items():
-            if v is None:
-                del self._param_dict[k]
+        # Remove keys with None values from the merged _param_dict
+        # Check the merged dict, not the defaults, to preserve user-provided values
+        keys_to_delete = [k for k, v in self._param_dict.items() if v is None]
+        for k in keys_to_delete:
+            del self._param_dict[k]
         if out_species is not None:
             self.n_out = len(out_species)
             self._param_dict["outspecies"] = self.n_out
@@ -2811,7 +2845,7 @@ class GridModels:
         else:
             for model in range(len(self.models)):
                 loaded_data = self._load_model_data(model=self.models[model]["Model"])
-                loaded_dict = json.loads(loaded_data["_param_dict"].item())
+                loaded_dict = loaded_data._param_dict
                 self.models[model] = {
                     **self.models[model],
                     **{
@@ -2820,12 +2854,7 @@ class GridModels:
                     },
                 }
                 self.models[model]["Successful"] = (
-                    True
-                    if json.loads(loaded_data["attributes_dict"].item())["success_flag"]
-                    == 0
-                    else json.loads(loaded_data["attributes_dict"].item())[
-                        "success_flag"
-                    ]
+                    True if loaded_data.success_flag == 0 else loaded_data.success_flag
                 )
 
     def _load_model_data(self, model: str, engine: str = "h5netcdf"):

@@ -17,16 +17,21 @@
 # %%
 import os
 import uclchem
+from pathlib import Path
 
 # %% [markdown]
 # # The Prestellar Core
 # We will run both the initial conditions (Phase 1) and the science model (Phase 2) in one cell, storing the p_core object into the file `"../examples/test-models/models.h5"` with a name of `"prestellar_core"` so we can easily recall it later.
 
 # %%
-save_file = "../../examples/test-models/models.h5"
+save_file = Path("output_2c/models.h5")
 
-if not os.path.exists("../../examples/test-models/"):
-    os.makedirs("../../examples/test-models/")
+if not os.path.exists(save_file.parent):
+    os.makedirs(save_file.parent)
+else:
+    # Remove existing file to avoid appending to old data
+    if os.path.exists(save_file):
+        os.remove(save_file)
 
 # %%
 # set a parameter dictionary for cloud collapse model
@@ -41,7 +46,7 @@ param_dict = {
     "baseAv": 1.0,  # visual extinction at cloud edge.
 }
 
-cloud = uclchem.trialmodel.Cloud(param_dict=param_dict)
+cloud = uclchem.model.Cloud(param_dict=param_dict)
 cloud.save_model(file=save_file, name="cloud", overwrite=True)
 
 # change other bits of input to set up phase 2
@@ -56,7 +61,7 @@ param_dict["freezeFactor"] = 0.0
 param_dict["abstol_factor"] = 1e-18
 param_dict["reltol"] = 1e-12
 
-p_core = uclchem.trialmodel.PrestellarCore(
+p_core = uclchem.model.PrestellarCore(
     temp_indx=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
 )
 p_core.save_model(file=save_file, name="prestellar_core", overwrite=True)
@@ -83,13 +88,13 @@ param_dict = {
     "abundSaveFile": "../examples/test-output/shockstart.dat",
 }
 
-shock_start = uclchem.trialmodel.Cloud(param_dict=param_dict)
+shock_start = uclchem.model.Cloud(param_dict=param_dict)
 shock_start.save_model(file=save_file, name="shock_start", overwrite=True)
 
 param_dict["initialDens"] = 1e4
 param_dict["finalTime"] = 1e6
 
-cshock = uclchem.trialmodel.CShock(
+cshock = uclchem.model.CShock(
     shock_vel=40, param_dict=param_dict, previous_model=shock_start
 )
 cshock.save_model(file=save_file, name="cshock", overwrite=True)
@@ -98,7 +103,7 @@ param_dict["initialDens"] = 1e3
 param_dict["freefall"] = False  # lets remember to turn it off this time
 param_dict["reltol"] = 1e-12
 
-jshock = uclchem.trialmodel.JShock(
+jshock = uclchem.model.JShock(
     shock_vel=10.0, param_dict=param_dict, previous_model=shock_start, timepoints=1500
 )
 jshock.save_model(file=save_file, name="jshock", overwrite=True)
@@ -124,7 +129,7 @@ save_file = "../../examples/test-models/models.h5"
 # We begin by loading the prestellar core model. We will check the conservation of elements, as well as the success flag and plot it as was done in tutorial 2b.
 
 # %%
-loaded_p_core = uclchem.trialmodel.PrestellarCore.load_model(
+loaded_p_core = uclchem.model.load_model(
     file=save_file, name="prestellar_core"
 )
 print(f"Success Flag = {loaded_p_core.success_flag}")
@@ -160,12 +165,12 @@ ax3.tick_params(axis="y", colors="red")
 # We start again with checking the success flag, and the element conservation check for each model
 
 # %%
-loaded_cshock = uclchem.trialmodel.CShock.load_model(file=save_file, name="cshock")
+loaded_cshock = uclchem.model.load_model(file=save_file, name="cshock")
 print(f"Success Flag for cshock = {loaded_cshock.success_flag}")
 print("cshock conservation check:")
 loaded_cshock.check_conservation()
 
-loaded_jshock = uclchem.trialmodel.JShock.load_model(file=save_file, name="jshock")
+loaded_jshock = uclchem.model.load_model(file=save_file, name="jshock")
 print(f"Success Flag for jshock = {loaded_cshock.success_flag}")
 print("jshock conservation check:")
 loaded_jshock.check_conservation()

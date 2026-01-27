@@ -60,7 +60,7 @@ CONTAINS
         mfp = ((SQRT(2.0)*(1e3)*(pi*(2.4e-8)**2))**(-1))/1d4
         tShock = mfp/(vs*1d5)
         ! Determine shock width
-        tCool = (1/initialDens)*1d6*(60*60*24*365)
+        tCool = (1/initialDens)*1d6*SECONDS_PER_YEAR
         ! Determine the maximum density attained
         maxDens = vs*initialDens*(1d2)
         ! Determine the rate constants
@@ -100,7 +100,7 @@ CONTAINS
     SUBROUTINE updatePhysics
 
         ! Determine the shock velocity at the current time
-        v0 = vs*(DEXP(LOG(vMin/vs)*(currentTime/(finalTime*60*60*24*365))))
+        v0 = vs*(DEXP(LOG(vMin/vs)*(currentTime/(finalTime*SECONDS_PER_YEAR))))
         IF (v0 .lt. vMin) THEN
             v0 = vMin
         END IF
@@ -114,8 +114,8 @@ CONTAINS
             WHERE (density .lt. initialDens) density = initialDens
         ELSE IF (currentTime .gt. tShock .AND. currentTime .le. tCool) THEN
             ! Otherwise we're in the cooling phase
-            tn(dstep) = maxTemp*DEXP(-t_lambda*(currentTime/(tCool)))
-            density = (4*initialDens)*DEXP(n_lambda*(currentTime/(tCool)))
+            tn(dstep) = maxTemp*DEXP(-t_lambda*(currentTime/tCool))
+            density = (4*initialDens)*DEXP(n_lambda*(currentTime/tCool))
 
             ! Ensure the gas does not cool below around 10 K
             IF (tn(dstep) .le. 10) THEN
