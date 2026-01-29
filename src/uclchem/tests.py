@@ -41,7 +41,7 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
         "finaltime": 1.0e3,
         "outspecies": len(species_list),
     }
-    _, _, _, _,_, abundances, specname, success_flag = wrap.cloud(
+    _, _, _, _, _, abundances, specname, success_flag = wrap.cloud(
         dictionary=param_dict,
         outspeciesin=" ".join(species_list),
         timepoints=1,

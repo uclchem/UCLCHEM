@@ -111,7 +111,11 @@ def __validate_functional_api_params__(
     """
     # Determine if this is a memory return request (user wants data returned, not written)
     memory_return_requested = (
-        return_array or return_dataframe or return_rates or return_heating or return_stats
+        return_array
+        or return_dataframe
+        or return_rates
+        or return_heating
+        or return_stats
     )
 
     # Check file parameter mixing with memory return parameters
@@ -168,7 +172,9 @@ def __functional_return__(
     """
     if return_dataframe:
         result_dfs = model_object.get_dataframes(
-            joined=False, with_rates=return_rates, with_heating=return_heating,
+            joined=False,
+            with_rates=return_rates,
+            with_heating=return_heating,
             with_stats=return_stats,
         )
         phys_df = result_dfs[0]

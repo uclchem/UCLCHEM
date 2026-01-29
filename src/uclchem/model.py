@@ -2011,25 +2011,33 @@ class CShock(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, _, _, out_species_abundances_array, dissipation_time, _, success_flag = (
-            wrap.cshock(
-                shock_vel=self.shock_vel,
-                timestep_factor=self.timestep_factor,
-                minimum_temperature=self.minimum_temperature,
-                dictionary=self._param_dict,
-                outspeciesin=self.out_species,
-                timepoints=self.timepoints,
-                gridpoints=self._param_dict["points"],
-                returnarray=True,
-                returnrates=True,
-                givestartabund=self.give_start_abund,
-                physicsarray=self.physics_array,
-                chemicalabunarray=self.chemical_abun_array,
-                ratesarray=self.rates_array,
-                heatarray=self.heat_array,
-                statsarray=self.stats_array,
-                abundancestart=self.starting_chemistry_array,
-            )
+        (
+            _,
+            _,
+            _,
+            _,
+            _,
+            out_species_abundances_array,
+            dissipation_time,
+            _,
+            success_flag,
+        ) = wrap.cshock(
+            shock_vel=self.shock_vel,
+            timestep_factor=self.timestep_factor,
+            minimum_temperature=self.minimum_temperature,
+            dictionary=self._param_dict,
+            outspeciesin=self.out_species,
+            timepoints=self.timepoints,
+            gridpoints=self._param_dict["points"],
+            returnarray=True,
+            returnrates=True,
+            givestartabund=self.give_start_abund,
+            physicsarray=self.physics_array,
+            chemicalabunarray=self.chemical_abun_array,
+            ratesarray=self.rates_array,
+            heatarray=self.heat_array,
+            statsarray=self.stats_array,
+            abundancestart=self.starting_chemistry_array,
         )
         if success_flag < 0:
             dissipation_time = None
