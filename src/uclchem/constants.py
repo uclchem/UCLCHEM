@@ -24,6 +24,27 @@ TIMEPOINTS = 2000
 N_PHYSICAL_PARAMETERS = 8
 n_species = 335
 n_reactions = 3203
+N_DVODE_STATS = 18
+DVODE_STAT_NAMES = [
+    "ISTATE",
+    "HU",
+    "HCUR",
+    "TCUR",
+    "TOLSF",
+    "NST",
+    "NFE",
+    "NJE",
+    "NQU",
+    "NQCUR",
+    "IMXER",
+    "LENRW",
+    "LENIW",
+    "NLU",
+    "NNI",
+    "NCFN",
+    "NETF",
+    "CPU_TIME",
+]
 default_param_dictionary = {
     "initialtemp": 10.0,
     "initialdens": 100.0,

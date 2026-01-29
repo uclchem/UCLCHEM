@@ -84,11 +84,12 @@ CONTAINS
         END IF
     END SUBROUTINE finalOutput
 
-    SUBROUTINE output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, ratesarray, heatarray, dtime, timepoints)
+    SUBROUTINE output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, ratesarray, heatarray, statsarray, dtime, timepoints)
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: ratesarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: heatarray
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: statsarray
         INTEGER, OPTIONAL :: dtime, timepoints
         INTEGER, intent(out) :: successflag
         INTEGER :: i  ! Loop variable for heating array assignment
@@ -100,7 +101,7 @@ CONTAINS
                 write(*,*) "Ran out of timepoints in arrays, trying to stop gracefully"
                 successflag=NOT_ENOUGH_TIMEPOINTS_ERROR
                 return
-            else 
+            else
                 physicsarray(dtime, dstep, 1) = timeInYears
                 physicsarray(dtime, dstep, 2) = density(dstep)
                 physicsarray(dtime, dstep, 3) = gasTemp(dstep)
@@ -111,6 +112,13 @@ CONTAINS
                 physicsarray(dtime, dstep, 8) = dstep
                 ! chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
                 chemicalabunarray(dtime, dstep, :) = abund(1:nspec,dstep)
+                ! DVODE solver statistics
+                IF (PRESENT(statsarray)) THEN
+                    statsarray(dtime, dstep, 1) = DBLE(dvode_istate_out)
+                    statsarray(dtime, dstep, 2:5) = dvode_rstats(11:14)
+                    statsarray(dtime, dstep, 6:17) = DBLE(dvode_istats(11:22))
+                    statsarray(dtime, dstep, 18) = dvode_cpu_time
+                END IF
             end if 
         ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
             WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
