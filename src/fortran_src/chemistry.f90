@@ -47,6 +47,12 @@ IMPLICIT NONE
     REAL(dp) :: tempDot, oldTemp=0.0d0
     REAL(dp) :: h2form
 
+    !DVODE solver statistics (populated by integrateODESystem, read by output)
+    REAL(dp) :: dvode_rstats(22)
+    INTEGER :: dvode_istats(31)
+    INTEGER :: dvode_istate_out
+    REAL(dp) :: dvode_cpu_start, dvode_cpu_end, dvode_cpu_time
+
 CONTAINS
     SUBROUTINE initializeChemistry(readAbunds)
         LOGICAL, INTENT(IN) :: readAbunds
@@ -283,11 +289,17 @@ CONTAINS
         !reset parameters for DVODE
         ITASK=1 !try to integrate to targetTime
         ISTATE=1 !pretend every step is the first
+        !Alternative: if (ISTATE .lt. 0) ISTATE=1  !only reset on error, allows Jacobian reuse
         abstol=abstol_factor*abund(:,dstep) !absolute tolerances depend on value of abundance
         WHERE(abstol<abstol_min) abstol=abstol_min ! to a minimum degree
         !Call the integrator.
         OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
+        CALL CPU_TIME(dvode_cpu_start)
         CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
+        CALL CPU_TIME(dvode_cpu_end)
+        dvode_cpu_time = dvode_cpu_end - dvode_cpu_start
+        dvode_istate_out = ISTATE
+        CALL GET_STATS(dvode_rstats, dvode_istats)
 
         SELECT CASE(ISTATE)
             CASE(-1)

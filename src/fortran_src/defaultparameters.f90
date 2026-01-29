@@ -58,6 +58,7 @@ CHARACTER(256) :: rateConstantFile="" !File to write rate 'constants' at each ti
 CHARACTER(256) :: ratesFile="" !File to write reaction rates (flux) at each timestep. This includes physical parameter values.
 CHARACTER(256) :: heatingFile="" !File to write heating and cooling rates at each timestep.
 INTEGER :: writeStep=1 !Writing to columnFile only happens every writeStep timesteps.
+LOGICAL :: writeTimestepInfo=.False. !If True, print timestep progress (current time, final time, next timestep goal) each time the target time is set.
 CHARACTER(256) :: abundSaveFile="" ! The file to save the abundances to at the end of the model.
 CHARACTER(256) :: abundLoadFile="" ! The file to load the abundances from at the start of the model.
 CHARACTER(256) :: coolantDataDir="" ! Directory where the collisional rate files are stored.
