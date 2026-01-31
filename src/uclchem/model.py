@@ -945,6 +945,22 @@ class AbstractModel(ABC):
                     temp_attribute_dict[v] = self._data[v].item()
                     self._data = self._data.drop_vars(v)
 
+        # Convert numpy arrays to lists for JSON serialization
+        def make_json_serializable(obj):
+            """Recursively convert numpy arrays and other non-JSON types to serializable forms."""
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, dict):
+                return {k: make_json_serializable(v) for k, v in obj.items()}
+            elif isinstance(obj, (list, tuple)):
+                return [make_json_serializable(item) for item in obj]
+            elif isinstance(obj, (np.integer, np.floating)):
+                return obj.item()
+            else:
+                return obj
+
+        temp_attribute_dict = make_json_serializable(temp_attribute_dict)
+
         self._data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
         self._data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
         self._data.to_netcdf(file, group=name, engine=engine, mode="a")
@@ -2167,6 +2183,7 @@ class Postprocess(AbstractModel):
         run_type: Literal["local", "managed", "external"] = "local",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
+        # Postprocess uses a fixed time grid, so output length = len(time_array)
         super().__init__(
             param_dict,
             out_species,
@@ -2426,6 +2443,591 @@ class Model(AbstractModel):
 
 
 @register_model
+class PDR(AbstractModel):
+    """PDR (Photon-Dominated Region) model class for depth-stratified chemistry.
+
+    The PDR class runs multiple independent Postprocess models in parallel, one for each
+    depth point in a photon-dominated region. Each depth point experiences different
+    physical conditions (temperature, density, radiation field, etc.) but all start with
+    the same initial chemistry.
+
+    This class leverages GridModels infrastructure for parallel execution and HDF5 storage.
+
+    Args:
+        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model.
+            Uses UCLCHEM default values found in defaultparameters.f90.
+        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check.
+            Defaults to ["H", "N", "C", "O"].
+        time_array (np.ndarray, optional): 1D array of shape (N_time,) representing the time grid.
+        temperature_array (np.ndarray, optional): 2D array of shape (N_depth, N_time) representing
+            gas temperature at each depth and time.
+        dust_temperature_array (np.ndarray, optional): 2D array of shape (N_depth, N_time) representing
+            dust temperature at each depth and time. If None, defaults to temperature_array.
+        density_array (np.ndarray, optional): 2D array of shape (N_depth, N_time) representing
+            density at each depth and time.
+        radfield_array (np.ndarray, optional): 2D array of shape (N_depth, N_time) representing
+            UV radiation field at each depth and time.
+        zeta_array (np.ndarray, optional): 2D array of shape (N_depth, N_time) representing
+            cosmic ray ionization rate at each depth and time.
+        av_array (np.ndarray, optional): 2D array of shape (N_depth, N_time) representing
+            visual extinction at each depth and time.
+        starting_chemistry (np.ndarray, optional): Starting abundances used for all depth points.
+        previous_model (AbstractModel, optional): Model object to use for starting abundances.
+        n_depth_points (int, optional): Number of depth points. If not provided, inferred from array shapes.
+        max_workers (int, optional): Maximum number of parallel workers. Defaults to 8.
+        grid_file (str, optional): Path to HDF5 output file. If None, creates temporary file in current directory.
+        timepoints (int, optional): Number of timesteps. Defaults to TIMEPOINTS.
+        debug (bool, optional): Flag for extra debug information. Defaults to False.
+        read_file (str, optional): Path to file to read. Defaults to None.
+        run_type (str, optional): Type of run ("local", "managed", or "external"). Defaults to "local".
+
+    Example:
+        >>> import numpy as np
+        >>> import uclchem
+        >>>
+        >>> # Define depth structure
+        >>> n_depth = 10
+        >>> n_time = 50
+        >>> time = np.logspace(0, 6, n_time)  # 1 to 1e6 years
+        >>> av = np.linspace(0.1, 10, n_depth)  # Visual extinction from 0.1 to 10 mag
+        >>>
+        >>> # Create 2D physics arrays
+        >>> temperature = np.ones((n_depth, n_time)) * 50.0  # 50 K everywhere
+        >>> density = np.ones((n_depth, n_time)) * 1e4  # 1e4 cm^-3
+        >>> radfield = np.outer(np.exp(-av), np.ones(n_time))  # Attenuated radiation
+        >>> zeta = np.ones((n_depth, n_time)) * 1e-17  # Cosmic ray ionization
+        >>> av_2d = np.outer(av, np.ones(n_time))  # Av constant in time
+        >>>
+        >>> # Run PDR model
+        >>> pdr = uclchem.model.PDR(
+        ...     time_array=time,
+        ...     temperature_array=temperature,
+        ...     density_array=density,
+        ...     radfield_array=radfield,
+        ...     zeta_array=zeta,
+        ...     av_array=av_2d,
+        ...     out_species=["CO", "H2O", "CH3OH"],
+        ...     max_workers=4
+        ... )
+        >>>
+        >>> # Access results as xarray Dataset
+        >>> print(pdr.data)  # 3D structure: (depth, time, species)
+        >>>
+        >>> # Access individual depth models
+        >>> depth0_model = pdr.get_depth_model(0)
+    """
+
+    def __init__(
+        self,
+        param_dict: dict = None,
+        out_species: list = ["H", "N", "C", "O"],
+        time_array: np.ndarray = None,
+        temperature_array: np.ndarray = None,
+        dust_temperature_array: np.ndarray = None,
+        density_array: np.ndarray = None,
+        radfield_array: np.ndarray = None,
+        zeta_array: np.ndarray = None,
+        av_array: np.ndarray = None,
+        starting_chemistry: np.ndarray = None,
+        previous_model: AbstractModel = None,
+        n_depth_points: int = None,
+        max_workers: int = 8,
+        grid_file: str = None,
+        timepoints: int = TIMEPOINTS,
+        debug: bool = False,
+        read_file: str = None,
+        run_type: Literal["local", "managed", "external"] = "local",
+    ):
+        """Initialize PDR model with depth-stratified physics arrays."""
+        # Validation and setup
+        if read_file is None:
+            if time_array is None:
+                raise ValueError("time_array must be provided when read_file is None")
+
+            # Default dust_temperature to gas temperature if not provided
+            if dust_temperature_array is None and temperature_array is not None:
+                dust_temperature_array = temperature_array
+
+            # Validate that all 2D arrays have the same shape
+            arrays_2d = {
+                "temperature_array": temperature_array,
+                "dust_temperature_array": dust_temperature_array,
+                "density_array": density_array,
+                "radfield_array": radfield_array,
+                "zeta_array": zeta_array,
+                "av_array": av_array,
+            }
+
+            # Filter out None arrays and check consistency
+            provided_arrays = {k: v for k, v in arrays_2d.items() if v is not None}
+            if not provided_arrays:
+                raise ValueError(
+                    "At least one physics array (temperature, density, radfield, zeta, or av) must be provided"
+                )
+
+            shapes = {k: v.shape for k, v in provided_arrays.items()}
+            first_shape = next(iter(shapes.values()))
+
+            # Check all provided arrays have the same shape
+            for name, shape in shapes.items():
+                if shape != first_shape:
+                    raise ValueError(
+                        f"All 2D physics arrays must have the same shape. "
+                        f"Got {name} with shape {shape}, expected {first_shape}"
+                    )
+
+            # Validate 2D arrays have exactly 2 dimensions
+            if len(first_shape) != 2:
+                raise ValueError(
+                    f"Physics arrays must be 2D (n_depth, n_time). Got shape {first_shape}"
+                )
+
+            n_depth_inferred, n_time = first_shape
+
+            # Validate time_array shape
+            if time_array.shape != (n_time,):
+                raise ValueError(
+                    f"time_array must have shape ({n_time},) to match physics arrays, "
+                    f"got {time_array.shape}"
+                )
+
+            # Handle n_depth_points
+            if n_depth_points is not None:
+                if n_depth_points != n_depth_inferred:
+                    raise ValueError(
+                        f"n_depth_points ({n_depth_points}) does not match "
+                        f"inferred depth dimension ({n_depth_inferred})"
+                    )
+            else:
+                n_depth_points = n_depth_inferred
+
+            # Store attributes using object.__setattr__ to bypass AbstractModel's __setattr__
+            # This is necessary because _data doesn't exist yet before super().__init__()
+            object.__setattr__(self, "n_depth_points", n_depth_points)
+            object.__setattr__(self, "max_workers", max_workers)
+
+            # Convert arrays to Fortran order and store
+            object.__setattr__(
+                self, "time_array", np.asfortranarray(time_array, dtype=np.float64)
+            )
+            object.__setattr__(
+                self,
+                "temperature_array",
+                (
+                    np.asfortranarray(temperature_array, dtype=np.float64)
+                    if temperature_array is not None
+                    else None
+                ),
+            )
+            object.__setattr__(
+                self,
+                "dust_temperature_array",
+                (
+                    np.asfortranarray(dust_temperature_array, dtype=np.float64)
+                    if dust_temperature_array is not None
+                    else None
+                ),
+            )
+            object.__setattr__(
+                self,
+                "density_array",
+                (
+                    np.asfortranarray(density_array, dtype=np.float64)
+                    if density_array is not None
+                    else None
+                ),
+            )
+            object.__setattr__(
+                self,
+                "radfield_array",
+                (
+                    np.asfortranarray(radfield_array, dtype=np.float64)
+                    if radfield_array is not None
+                    else None
+                ),
+            )
+            object.__setattr__(
+                self,
+                "zeta_array",
+                (
+                    np.asfortranarray(zeta_array, dtype=np.float64)
+                    if zeta_array is not None
+                    else None
+                ),
+            )
+            object.__setattr__(
+                self,
+                "av_array",
+                (
+                    np.asfortranarray(av_array, dtype=np.float64)
+                    if av_array is not None
+                    else None
+                ),
+            )
+
+            # Determine HDF5 output location (store temporarily)
+            # Create a temp directory to store individual depth model files
+            if grid_file is None:
+                import tempfile
+                import time as time_module
+
+                temp_dir = tempfile.mkdtemp(
+                    prefix=f"pdr_output_{int(time_module.time())}_"
+                )
+                grid_file = os.path.join(temp_dir, "pdr_models")
+            else:
+                # If grid_file is specified, create a directory based on its name
+                base_name = os.path.splitext(grid_file)[0]
+                temp_dir = f"{base_name}_temp"
+                os.makedirs(temp_dir, exist_ok=True)
+                grid_file = os.path.join(temp_dir, "pdr_models")
+
+            object.__setattr__(self, "_grid_file_temp", grid_file)
+            object.__setattr__(self, "_temp_dir", temp_dir)
+
+        # Initialize parent class
+        # Note: timepoints here refers to the number of output timepoints for AbstractModel
+        # Ensure param_dict has points=1 (PDR creates multiple single-point models)
+        if param_dict is None:
+            param_dict = {}
+        if "points" not in param_dict:
+            param_dict = {**param_dict, "points": 1}
+
+        super().__init__(
+            param_dict,
+            out_species,
+            starting_chemistry,
+            previous_model,
+            timepoints,
+            debug,
+            read_file,
+            run_type,
+        )
+
+        # Set grid_file after parent init (now _meta exists and __setattr__ works properly)
+        try:
+            grid_file_temp = object.__getattribute__(self, "_grid_file_temp")
+            self._meta["grid_file"] = grid_file_temp
+            object.__delattr__(self, "_grid_file_temp")
+        except AttributeError:
+            pass  # No grid_file_temp (e.g., when reading from file)
+
+        # Run the model if not reading from file and not external
+        if read_file is None and self.run_type != "external":
+            self.run()
+
+    def run(self):
+        """Execute parallel PDR model runs for each depth point independently."""
+        if not hasattr(self, "time_array") or self.time_array is None:
+            raise RuntimeError("Cannot run PDR model: time_array not initialized")
+
+        # Get grid_file from _meta
+        grid_file = self._meta.get("grid_file")
+        if grid_file is None:
+            raise RuntimeError("grid_file not set in _meta")
+
+        # Run parallel Postprocess models (one per depth point)
+        self._run_parallel_depth_models(grid_file)
+
+        # Setup accessors for depth models
+        self._setup_depth_model_access()
+
+        # Aggregate results into 3D structure for backward compatibility
+        self._aggregate_results_from_grid()
+
+    def _run_parallel_depth_models(self, grid_file):
+        """
+        Run Postprocess models in parallel for each depth point.
+
+        Each depth point is an independent model run with its own physics arrays.
+        Uses multiprocessing to parallelize across depth points.
+        Results are saved to individual files in a temporary directory.
+
+        Args:
+            grid_file: Base path for output (actual files go in a directory)
+        """
+        import multiprocessing as mp
+
+        # Get the temporary directory
+        output_dir = os.path.dirname(grid_file)
+
+        # Ensure the directory exists
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+            logging.debug(f"Created output directory: {output_dir}")
+
+        n_depth = self.n_depth_points
+
+        # Build parameter sets for each depth point
+        param_sets = []
+
+        for i in range(n_depth):
+            depth_params = {
+                "param_dict": self._param_dict.copy(),
+                "out_species": self.out_species_list,
+                "time_array": self.time_array,
+                "starting_chemistry": (
+                    self.starting_chemistry_array if self.give_start_abund else None
+                ),
+            }
+
+            # Add depth-specific 1D physics arrays
+            if self.temperature_array is not None:
+                depth_params["gas_temperature_array"] = self.temperature_array[i, :]
+
+            if self.dust_temperature_array is not None:
+                depth_params["dust_temperature_array"] = self.dust_temperature_array[
+                    i, :
+                ]
+
+            if self.density_array is not None:
+                depth_params["density_array"] = self.density_array[i, :]
+
+            if self.radfield_array is not None:
+                depth_params["radfield_array"] = self.radfield_array[i, :]
+
+            if self.zeta_array is not None:
+                depth_params["zeta_array"] = self.zeta_array[i, :]
+
+            if self.av_array is not None:
+                depth_params["visual_extinction_array"] = self.av_array[i, :]
+
+            param_sets.append((i, depth_params, output_dir))
+
+        # Run models in parallel using pool.imap_unordered for progress reporting
+        max_workers = min(self.max_workers, mp.cpu_count())
+
+        print(f"\n{'='*60}")
+        print(f"Running {n_depth} depth models in parallel")
+        print(f"  Workers: {max_workers}")
+        print(f"  Temp directory: {output_dir}")
+        print(f"{'='*60}")
+
+        errors = []
+        temp_files = {}
+
+        with mp.Pool(max_workers) as pool:
+            # Use imap_unordered for progress reporting
+            results_iter = pool.imap_unordered(_run_pdr_depth_model, param_sets)
+
+            for i, (depth_idx, error, temp_file) in enumerate(results_iter, 1):
+                if error is not None:
+                    errors.append((depth_idx, error))
+                    print(
+                        f"  [{i}/{n_depth}] Depth {depth_idx:3d}: FAILED - {error.split(chr(10))[0][:50]}"
+                    )
+                elif temp_file is not None:
+                    temp_files[depth_idx] = temp_file
+                    print(
+                        f"  [{i}/{n_depth}] Depth {depth_idx:3d}: ✓ Complete",
+                        flush=True,
+                    )
+
+                # Show progress summary every 10 models or at the end
+                if i % 10 == 0 or i == n_depth:
+                    success_count = len(temp_files)
+                    fail_count = len(errors)
+                    pct = 100 * i / n_depth
+                    print(
+                        f"    Progress: {pct:.0f}% ({success_count} success, {fail_count} failed)",
+                        flush=True,
+                    )
+
+        print(f"{'='*60}")
+
+        if errors:
+            print(f"⚠ Warning: {len(errors)} depth points failed")
+            if len(errors) <= 3:
+                for depth_idx, error in errors:
+                    print(f"  Depth {depth_idx}: {error.split(chr(10))[0]}")
+
+        # Store temp files directly instead of merging (much faster!)
+        print(f"✓ Successfully completed {len(temp_files)}/{n_depth} models")
+        print(f"{'='*60}\n")
+
+        # Store mapping of depth_idx to temp file path
+        self._temp_file_map = temp_files
+        self._grid_models = {i: str(i) for i in temp_files.keys()}
+        self.n_depth_points = len(temp_files)
+
+        # Store grid_file path for reference (but we won't use it for individual models)
+        self._grid_file = grid_file
+
+    def _setup_depth_model_access(self):
+        """Provide convenient access to depth-stratified models."""
+        # Models are stored in individual temp files (not merged)
+
+        # Accessor method for depth models
+        def get_depth_model(depth_idx):
+            """Load model for specific depth point."""
+            if depth_idx < 0 or depth_idx >= self.n_depth_points:
+                raise ValueError(
+                    f"depth_idx must be in range [0, {self.n_depth_points}), got {depth_idx}"
+                )
+            # Load from individual temp file
+            if depth_idx not in self._temp_file_map:
+                raise ValueError(f"No model available for depth {depth_idx}")
+            temp_file = self._temp_file_map[depth_idx]
+            return load_model(temp_file, name=str(depth_idx))
+
+        self.get_depth_model = get_depth_model
+
+        # Set success flag (will be updated if failures found during aggregation)
+        self.success_flag = 1
+
+    def _aggregate_results_from_grid(self):
+        """
+        Aggregate results from individual temp files into 3D xarray Dataset.
+        Uses h5py for fast array reading.
+        """
+        import h5py
+
+        print(f"\n{'='*60}")
+        print("Aggregating results from depth models...")
+        print(f"{'='*60}")
+
+        n_depth = self.n_depth_points
+
+        # Get dimensions from first model (quick h5py read)
+        first_idx = min(self._temp_file_map.keys())
+        first_file = self._temp_file_map[first_idx]
+
+        with h5py.File(first_file, "r") as f:
+            group = f[str(first_idx)]
+
+            # The arrays are saved as [time_step, point, values]
+            # So shape (N, 1, M) means N time steps, 1 point, M values
+            n_time_out = group["chemical_abun_array"].shape[
+                0
+            ]  # First dimension is time
+            n_species = group["chemical_abun_array"].shape[2]
+            n_physics = group["physics_array"].shape[2]
+
+            # Time is in the physics_array: [time_step, point, physics_param]
+            # We want the time series, so [:, 0, 0] to get all time points for first point, first param (time)
+            time_output = group["physics_array"][:, 0, 0]
+
+        # Pre-allocate 3D arrays
+        chemistry_3d = np.zeros((n_depth, n_time_out, n_species), dtype=np.float64)
+        physics_3d = np.zeros((n_depth, n_time_out, n_physics), dtype=np.float64)
+
+        # Fast parallel read using h5py
+        # Arrays are saved as [time_step, point, values], so we need [:, 0, :]
+        print(f"Reading {n_depth} depth models from HDF5 files...")
+        failed = []
+        for i, depth_idx in enumerate(sorted(self._temp_file_map.keys()), 1):
+            temp_file = self._temp_file_map[depth_idx]
+            try:
+                with h5py.File(temp_file, "r") as f:
+                    group = f[str(depth_idx)]
+                    # Read all time steps for the single point (point index 0)
+                    chemistry_3d[depth_idx, :, :] = group["chemical_abun_array"][
+                        :, 0, :
+                    ]
+                    physics_3d[depth_idx, :, :] = group["physics_array"][:, 0, :]
+            except Exception as e:
+                logging.warning(f"Failed to read depth {depth_idx}: {e}")
+                failed.append(depth_idx)
+
+            # Progress indicator every 25 models
+            if i % 25 == 0 or i == n_depth:
+                pct = 100 * i / n_depth
+                print(f"  Read {i}/{n_depth} models ({pct:.0f}%)", flush=True)
+
+        if failed:
+            print(
+                f"⚠ Warning: {len(failed)} depth points failed to aggregate: {failed}"
+            )
+            self.success_flag = -1
+        else:
+            print(f"✓ Successfully aggregated all {n_depth} depth models")
+            self.success_flag = 1
+
+        # Create xarray Dataset
+        species_names = get_species_names()
+        physics_labels = PHYSICAL_PARAMETERS
+        depth_coords = np.arange(n_depth)
+
+        # Build the dataset
+        data_vars = {}
+
+        # Add species abundances
+        for i, species in enumerate(species_names):
+            data_vars[species] = (
+                ["depth", "time"],
+                chemistry_3d[:, :, i],
+                {"long_name": f"Abundance of {species}"},
+            )
+
+        # Add physics variables
+        for i, label in enumerate(physics_labels):
+            data_vars[label] = (
+                ["depth", "time"],
+                physics_3d[:, :, i],
+                {"long_name": label},
+            )
+
+        # Create dataset
+        self._data = xr.Dataset(
+            data_vars,
+            coords={
+                "depth": (["depth"], depth_coords, {"long_name": "Depth point index"}),
+                "time": (
+                    ["time"],
+                    time_output,
+                    {"long_name": "Time", "units": "years"},
+                ),
+            },
+            attrs={
+                "model_type": "PDR",
+                "n_depth_points": n_depth,
+                "description": "PDR model with depth-stratified chemistry",
+            },
+        )
+
+        # Store traditional arrays for compatibility
+        self._meta["chemistry_array"] = chemistry_3d
+        self._meta["physics_array"] = physics_3d
+        self._meta["time_output_array"] = time_output
+
+        print(
+            f"✓ Created xarray Dataset with {len(species_names)} species and {len(physics_labels)} physics variables"
+        )
+        print(f"  Dimensions: depth={n_depth}, time={n_time_out}")
+        print(f"{'='*60}\n")
+
+    def run_fortran(self):
+        """
+        Not used for PDR model - we use run() with GridModels instead.
+        This method is required by AbstractModel but PDR handles execution differently.
+        """
+        raise NotImplementedError(
+            "PDR model does not use run_fortran directly. Use run() instead."
+        )
+
+    def _create_init_dict(self):
+        """Create initialization dictionary for serialization."""
+        return {
+            "_param_dict": self._param_dict,
+            "out_species_list": self.out_species_list,
+            "out_species": self.out_species,
+            "timepoints": self.timepoints,
+            "give_start_abund": self.give_start_abund,
+            "_debug": self._debug,
+            "time_array": self.time_array,
+            "temperature_array": self.temperature_array,
+            "dust_temperature_array": self.dust_temperature_array,
+            "density_array": self.density_array,
+            "radfield_array": self.radfield_array,
+            "zeta_array": self.zeta_array,
+            "av_array": self.av_array,
+            "n_depth_points": self.n_depth_points,
+            "max_workers": self.max_workers,
+            "grid_file": self.grid_file,
+        }
+
+
+@register_model
 class SequentialModel:
     """The SequentialModel class allows for multiple models to be run back to back.
 
@@ -2596,6 +3198,50 @@ def _run_grid_model(model_id, model_type, pending_model):
     model_obj._coordinator_unlink_memory()
     model_obj.pickle()
     return (model_id, model_obj)
+
+
+def _run_pdr_depth_model(args):
+    """
+    Internal function to run a single PDR depth point model.
+
+    Args:
+        args: Tuple of (depth_idx, params, output_dir)
+
+    Returns:
+        Tuple of (depth_idx, error, temp_file) where error is None if successful
+    """
+    depth_idx, params, output_dir = args
+    temp_file = None
+    try:
+        # Create Postprocess model (runs automatically via __init__ unless run_type="external")
+        model = Postprocess(**params)
+
+        # Ensure output directory
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+
+        # Save to the output directory
+        temp_file = os.path.join(output_dir, f"depth_{depth_idx:04d}.h5")
+
+        model.save_model(
+            file=temp_file,
+            name=str(depth_idx),
+            engine="h5netcdf",
+            overwrite=True,
+        )
+
+        return (depth_idx, None, temp_file)
+    except Exception as e:
+        import traceback
+
+        error_msg = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
+        # Clean up temp file on error
+        if temp_file and os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except Exception:
+                pass
+        return (depth_idx, error_msg, None)
 
 
 class GridModels:
