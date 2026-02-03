@@ -7,6 +7,10 @@ MODULE SurfaceReactions
   IMPLICIT NONE
   REAL(dp) :: surfaceCoverage,totalSwap,bulkLayersReciprocal
   REAL(dp) :: safeMantle,safeBulk
+  REAL(dp) :: diffToBindRatio, EDEndothermicityFactor
+  LOGICAL :: h2EncounterDesorption, hEncounterDesorption
+  LOGICAL :: h2StickingCoeffByh2Coverage, hStickingCoeffByh2Coverage
+  LOGICAL :: useTSTprefactors, seperateDiffAndDesorbPrefactor, useCustomPrefactors
 
   !Silicate grain properties for H2 Formation
   REAL(dp),PARAMETER :: SILICATE_MU=0.005D0 ! Fraction of newly formed H2 that stays on the grain surface
@@ -42,16 +46,28 @@ MODULE SurfaceReactions
 
   !Below are values for grain surface reactions
   LOGICAL, PARAMETER :: DIFFUSE_REACT_COMPETITION=.True., GRAINS_HAVE_ICE=.True.
+  REAL(dp), PARAMETER :: NUM_MONOLAYERS_IS_SURFACE=2.0D0 ! Number of monolayers to count as surface
+  LOGICAL, PARAMETER :: useGarrod2011Transfer=.True. ! Use Garrod 2011 transfer upon net desorption
+  LOGICAL, PARAMETER :: useCustomReducedMass=.True. ! Use custom predicted reduced mass for tunneling
   REAL(dp), PARAMETER :: DIFFUSION_BIND_RATIO=0.5 ! Ratio between diffusion barrier and binding energy of a species
   REAL(dp), PARAMETER :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8! Parameter used to compute the probability for a surface reaction with 
   !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
   REAL(dp), PARAMETER :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
   REAL(dp), PARAMETER :: VDIFF_PREFACTOR=2.0*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
   REAL(dp), PARAMETER :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
+  
+  ! TST prefactor constants
+  REAL(dp), PARAMETER :: HH_VDES_PREFACTOR=2.0D0*K_BOLTZ_SI*SURFACE_SITE_DENSITY*1.0D4/(PI*PI*AMU)
+  REAL(dp), PARAMETER :: TST_VDES_PREFACTOR = 2.0d0*PI*K_BOLTZ_SI**2*AMU/ &
+    (SURFACE_SITE_DENSITY*1.0d4*(HP_SI**3)*1.0d3)
+  
+  ! Encounter desorption constants
+  REAL(dp), PARAMETER :: H2_ON_H2_BINDING_ENERGY=23.0D0 ! K
+  REAL(dp), PARAMETER :: H_ON_H2_BINDING_ENERGY=45.0D0  ! K
 
   REAL(dp), PARAMETER :: MAX_GRAIN_TEMP=150.0, MIN_SURFACE_ABUND=1.0d-20
 
-  REAL(dp), ALLOCATABLE ::vdiff(:)
+  REAL(dp), ALLOCATABLE ::vdiff(:),vdes(:)
 CONTAINS
   !=======================================================================
   !
@@ -297,4 +313,108 @@ double precision FUNCTION desorptionFraction(reacIndx)
             &.or. (re1(reacIndx).eq.nh.and.re2(reacIndx).eq.ngoh)) desorptionFraction = 0.25
     ENDIF
 END FUNCTION desorptionFraction
+
+! ---------------------------------------------------------------------
+! Update diffusion and desorption rates with TST or Hasegawa-Herbst
+! ---------------------------------------------------------------------
+SUBROUTINE updateVdiffAndVdes(gasTemp, dustTemp, nIce, vdiff, vdes)
+    REAL(dp), INTENT(IN) :: gasTemp, dustTemp
+    INTEGER, INTENT(IN) :: nIce
+    REAL(dp), INTENT(OUT) :: vdiff(nIce), vdes(nIce)
+
+    ! inertiaProducts are scaled up by 1e50 in Makerates to avoid numerical issues
+    ! We need to scale them down again here
+    REAL(dp), PARAMETER :: scaleFactor = 1d-50
+
+    REAL(dp) :: estimatedInertiaProduct
+    integer :: i, j
+
+    IF (.NOT. useTSTprefactors) THEN
+        DO i=1,nIce
+            j = iceList(i)
+            ! Original treatment by Hasegawa et al, 1992
+            vdes(i) = SQRT(HH_VDES_PREFACTOR*bindingEnergy(i)*mass(j))
+            vdiff(i) = vdes(i)
+        END DO
+    ELSE
+        ! TST treatment - use dust temperature for desorption
+        vdes(:) = TST_VDES_PREFACTOR * dustTemp * dustTemp
+        
+        DO  i=1,nIce
+            j=iceList(i)
+            IF (atomCounts(j) .eq. 1) THEN 
+                ! Atomic species, no rotational partition function
+                vdes(i) = vdes(i) * mass(j)
+            ELSE IF (inertiaProducts(i) .gt. 0.0) THEN 
+                ! Custom supplied 1/sigma*SQRT(Ix*Iy*Iz)
+                IF (moleculeIsLinear(i)) THEN 
+                    ! Linear molecule (H2, OH, CO2, etc)
+                    vdes(i) = vdes(i) * mass(j)*scaleFactor * &
+                        SQRT(PI) / (HP_SI**2)*(8.0D0*PI**2*K_BOLTZ_SI*dustTemp)*&
+                        inertiaProducts(i)
+                ELSE
+                    ! Nonlinear molecule
+                    vdes(i) = vdes(i) * mass(j) *scaleFactor* &
+                        SQRT(PI) / (HP_SI**3)*(8.0D0*PI**2*K_BOLTZ_SI*dustTemp)**(3.0D0/2.0D0)*&
+                        inertiaProducts(i)
+                END IF
+            ELSE
+                ! No inertia data available - estimate for polyatomic molecules
+                IF (atomCounts(j) .ge. 3) THEN
+                    ! Fitted function to estimate inertia product for nonlinear molecules
+                    estimatedInertiaProduct = 2.35425621D-21*EXP(1.04448580D-01*mass(j))
+                    vdes(i) = vdes(i) * mass(j) *scaleFactor* &
+                        SQRT(PI) / (HP_SI**3)*(8.0D0*PI**2*K_BOLTZ_SI*dustTemp)** &
+                        (3.0D0/2.0D0)*estimatedInertiaProduct
+                ELSE
+                    ! Diatomic - use HH as fallback
+                    vdes(i) = SQRT(HH_VDES_PREFACTOR*bindingEnergy(i)*mass(j))
+                END IF
+            END IF
+        END DO
+
+        ! For diffusion, use stationary adsorbate assumption: q^TS = q^RS
+        vdiff = K_BOLTZ_SI * dustTemp / HP_SI
+    END IF
+END SUBROUTINE updateVdiffAndVdes
+
+! ---------------------------------------------------------------------
+! Encounter Desorption for H and H2 on H2-covered surfaces
+! Hincelin et al. 2015
+! ---------------------------------------------------------------------
+REAL(dp) FUNCTION EncounterDesorptionRate(reacIndx,dustTemperature)
+    REAL(dp) :: dustTemperature
+    REAL(dp) :: meetProb,desorbProb,diffuseProb
+    
+    integer :: index1,index2,reacIndx,i
+
+    ! Get position of reactant in grain array
+    index1=re1(reacIndx)
+
+    DO i=lbound(iceList,1),ubound(iceList,1)
+        IF (iceList(i) .eq. index1) index1 = i
+        IF (iceList(i) .eq. ngh2) index2 = i
+    END DO
+    
+    ! Diffusion rate that species meets H2 on grain surface
+    meetProb = vdiff(index1)*exp(-DIFFUSION_BIND_RATIO*bindingEnergy(index1)/dustTemperature)
+    meetProb = meetProb + (vdiff(index2)*exp(-DIFFUSION_BIND_RATIO*bindingEnergy(index2)/dustTemperature))
+
+    ! Adjust for energy required to move from H2O onto H2
+    IF (EDEndothermicityFactor .ne. 0.0) THEN
+        meetProb = meetProb &
+        & * exp(-EDEndothermicityFactor*(bindingEnergy(index1)-H2_ON_H2_BINDING_ENERGY)/dustTemperature)
+    END IF
+
+    ! Rate of diffusion off of H2
+    diffuseProb = vdiff(index1)*exp(-diffToBindRatio*H2_ON_H2_BINDING_ENERGY/dustTemperature)
+    
+    ! Rate of desorption off of H2
+    desorbProb = vdiff(index1)*exp(-H2_ON_H2_BINDING_ENERGY/dustTemperature)
+
+    ! Overall rate accounting for competition
+    EncounterDesorptionRate = desorbProb * meetProb / (desorbProb + diffuseProb + meetProb)
+    EncounterDesorptionRate = EncounterDesorptionRate * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN
+END FUNCTION EncounterDesorptionRate
+
 END MODULE SurfaceReactions

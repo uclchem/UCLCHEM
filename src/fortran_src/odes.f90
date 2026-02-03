@@ -1,6 +1,7 @@
 MODULE ODES
 USE constants
 USE network
+USE SurfaceReactions, ONLY: useGarrod2011Transfer
 IMPLICIT NONE
 CONTAINS
 SUBROUTINE GETYDOT(RATE, Y, ratioSurfaceToBulk, surfaceCoverage, safeMantle, safebulk, D, YDOT)

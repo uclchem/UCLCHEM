@@ -303,6 +303,7 @@ def write_outputs(
         "n_species": len(network.get_species_list()),
         "n_reactions": len(network.get_reaction_list()),
         "n_physical_parameters": len(PHYSICAL_PARAMETERS),
+        "n_dvode_stats": 18,
         "n_coolants": len(coolants),
         "coolant_files": [c["file"] for c in coolants],
         "coolant_names": [c["name"] for c in coolants],
@@ -637,6 +638,7 @@ def build_ode_string(
     ode_string = """MODULE ODES
 USE constants
 USE network
+USE SurfaceReactions, ONLY: useGarrod2011Transfer
 IMPLICIT NONE
 CONTAINS
 SUBROUTINE GETYDOT(RATE, Y, ratioSurfaceToBulk, surfaceCoverage, safeMantle, safebulk, D, YDOT)

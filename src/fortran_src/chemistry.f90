@@ -62,8 +62,8 @@ CONTAINS
         ! Since python module persists, it's not enough to set initial
         ! values in module definitions above. Reset here.
         NEQ=nspec+2
-        IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff)
-        ALLOCATE(abund(NEQ,points),vdiff(SIZE(iceList)))
+        IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff,vdes)
+        ALLOCATE(abund(NEQ,points),vdiff(SIZE(iceList)),vdes(SIZE(iceList)))
         !Set abundances to initial elemental if not reading them in.
         IF (.NOT. readAbunds) THEN
             !ensure abund is initially zero
@@ -116,13 +116,9 @@ CONTAINS
         ENDIF
         abund(nspec+2,:)=density      !Gas density
         abund(nspec+1,:)=gasTemp    !Gas temperature
-        !Initial calculations of diffusion frequency for each species bound to grain
-        !and other parameters required for diffusion reactions
-        DO  i=lbound(iceList,1),ubound(iceList,1)
-            j=iceList(i)
-            vdiff(i)=VDIFF_PREFACTOR*bindingEnergy(i)/mass(j)
-            vdiff(i)=dsqrt(vdiff(i))
-        END DO
+        !Initial calculations of diffusion and desorption frequencies
+        !Uses updateVdiffAndVdes which supports both HH1992 and TST treatments
+        CALL updateVdiffAndVdes(gasTemp(1), dustTemp(1), SIZE(iceList), vdiff, vdes)
 
         ! get list of positive-charged species to conserve charge later
         nion = 0
