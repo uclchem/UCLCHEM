@@ -24,6 +24,8 @@ CONTAINS
         INTEGER:: idx1,idx2
         REAL(dp) :: vA,vB
         INTEGER(dp) :: i,j
+        INTEGER :: k
+        REAL(dp) :: numMonolayers
         ! REAL(dp) :: vdiff(:)
     
         !Calculate all reaction rates
@@ -234,6 +236,10 @@ CONTAINS
     !as in Langmuir-Hinshelwood mechanism
     !See work of David Quenard 2017 Arxiv:1711.05184
     !First calculate rate of the diffusion reaction
+    
+    ! Calculate ice coverage in monolayers for chemical desorption
+    numMonolayers = getNumberMonolayers(safeMantle + safeBulk)
+    
     idx1=lhReacs(1)
     idx2=lhReacs(2)
     if (idx1 .ne. idx2) THEN
@@ -241,24 +247,31 @@ CONTAINS
             DO j=idx1,idx2
                 rate(j)=diffusionReactionRate(j,dustTemp(dstep))
             END DO
-            !two routes for every diffusion reaction: products to gas or products remain on surface
-            rate(lhdesReacs(1):lhdesReacs(2))=rate(idx1:idx2)
 
+            IF ((desorb) .and. (chemdesorb)) THEN
+                !two routes for every diffusion reaction: products to gas or products remain on surface
                 !calculate fraction of reaction that goes down desorption route
                 idx1=lhdesReacs(1)
                 idx2=lhdesReacs(2)
-                DO j=idx1,idx2
-                    rate(j)=desorptionFraction(j)*rate(j)
-                IF (ANY(bulkList==re1(j))) rate(j)=0.0 ! Bulk species are not able to chemically desorb
-                    IF (ANY(bulkList==re1(j))) rate(j)=0.0 ! Bulk species are not able to chemically desorb
+                k = 0
+                DO i=idx1, idx2
+                    k = k + 1
+                    rate(i)=desorptionFractionIncludingIce(INT(i), numMonolayers)*rate(LHDEScorrespondingLHreacs(k))
+                    IF (ANY(bulkList==re1(i))) rate(i)=0.0 ! Bulk species are not able to chemically desorb
                 END DO
+                
                 !remove that fraction from total rate of the diffusion route
-                rate(lhReacs(1):lhReacs(2))=rate(lhReacs(1):lhReacs(2))-rate(idx1:idx2)
+                k = 0
+                DO i = idx1, idx2
+                    k = k + 1
+                    rate(LHDEScorrespondingLHreacs(k)) = rate(LHDEScorrespondingLHreacs(k)) - rate(i)
+                END DO
             ELSE
                 rate(idx1:idx2)=0.0
                 rate(lhdesReacs(1):lhdesReacs(2))=0.0
             END IF
         END IF
+    END IF
 
     !Account for Eley-Rideal reactions in a similar way.
     !First calculate overall rate and then split between desorption and sticking
@@ -267,16 +280,28 @@ CONTAINS
     if (idx1 .ne. idx2) THEN
         rate(idx1:idx2)=freezeOutRate(idx1,idx2)
         rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/dustTemp(dstep))
-        rate(erdesReacs(1):erdesReacs(2))=rate(idx1:idx2)
-        !calculate fraction of reaction that goes down desorption route
-        idx1=erdesReacs(1)
-        idx2=erdesReacs(2)
-        DO j=idx1,idx2
-            rate(j)=desorptionFraction(j)*rate(j)
-            IF (ANY(bulkList==re1(j))) rate(j)=0.0 ! Bulk species are not able to chemically desorb
-        END DO
-        !remove that fraction from total rate of the diffusion route
-        rate(erReacs(1):erReacs(2))=rate(erReacs(1):erReacs(2))-rate(idx1:idx2)
+        
+        IF ((desorb) .and. (chemdesorb)) THEN
+            !calculate fraction of reaction that goes down desorption route
+            idx1 = erdesReacs(1)
+            idx2 = erdesReacs(2)
+            k = 0
+            DO i=idx1, idx2
+                k = k + 1
+                rate(i)=desorptionFractionIncludingIce(INT(i), numMonolayers)*rate(ERDEScorrespondingERreacs(k))
+                IF (ANY(bulkList==re1(i))) rate(i)=0.0 ! Bulk species are not able to chemically desorb
+            END DO
+            
+            !remove that fraction from total rate of the diffusion route
+            k = 0
+            DO i = idx1, idx2
+                k = k + 1
+                rate(ERDEScorrespondingERreacs(k)) = rate(ERDEScorrespondingERreacs(k)) - rate(i)
+            END DO
+        ELSE
+            rate(idx1:idx2)=0.0
+            rate(erdesReacs(1):erdesReacs(2))=0.0
+        END IF
     END IF
 
     IF (PARAMETERIZE_H2FORM) THEN

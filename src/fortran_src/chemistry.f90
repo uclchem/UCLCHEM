@@ -147,6 +147,18 @@ CONTAINS
             CALL initializeHeating(gasTemp(dstep),density(dstep),abund(:,1),colDens(dstep),cloudSize)
         END IF
         
+        ! Pre-calculate desorption fractions for LHDES and ERDES reactions
+        desorptionFractionsBare = 0.0D0
+        desorptionFractionsFullCoverage = 0.0D0
+        DO j = lhdesReacs(1), lhdesReacs(2)
+            desorptionFractionsBare(j) = getDesorptionFractionBare(INT(j), INT(j-lhdesReacs(1)+1))
+            desorptionFractionsFullCoverage(j) = getDesorptionFractionFullCoverage(INT(j), INT(j-lhdesReacs(1)+1))
+        END DO
+        DO j = erdesReacs(1), erdesReacs(2)
+            desorptionFractionsBare(j) = getDesorptionFractionBare(INT(j), INT(j-erdesReacs(1)+1))
+            desorptionFractionsFullCoverage(j) = getDesorptionFractionFullCoverage(INT(j), INT(j-erdesReacs(1)+1))
+        END DO
+        
         !Set rates to zero to ensure they don't hold previous values or random ones if we don't set them in calculateReactionRates
         rate=0.0
         !We typically don't recalculate rates that only depend on temperature if the temp hasn't changed

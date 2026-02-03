@@ -41,6 +41,7 @@ LOGICAL :: desorb=.True. !Toggles all non-thermal desoprtion processes on or off
 LOGICAL :: h2desorb=.True. !Individually toggle non-thermal desorption due to H2 formation.
 LOGICAL :: crdesorb=.True. !Individually toggle non-thermal desorption due to cosmic rays.
 LOGICAL :: uvdesorb=.True. !Individually toggle non-thermal desorption due to uv photons.
+LOGICAL :: chemdesorb=.True. !Individually toggle non-thermal desorption due to chemical reactions.
 LOGICAL :: thermdesorb=.True. !Toggle continuous thermal desorption.
 LOGICAL :: instantSublimation=.False. !Toggle instantaneous sublimation of the ices at t=0
 LOGICAL :: cosmicRayAttenuation=.False. !Use column density to attenuate cosmic ray ionisation rate following [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
