@@ -668,19 +668,21 @@ REAL(dp) :: totalSwap, LOSS, PROD
     ode_string += "!Update surface species for bulk growth\n"
 
     ode_string += f"IF (YDOT({surface_index + 1}) .lt. 0) THEN\n"
-    ode_string += "    ! Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
+    ode_string += (
+        "    ! Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
+    )
     ode_string += "    IF (useGarrod2011Transfer) THEN\n"
     ode_string += "        ! Three-phase treatment of Garrod & Pauly 2011\n"
     ode_string += "        ! Replace surfaceCoverage with alpha_des\n"
     ode_string += "        ! Real value of alpha_des: alpha_des = MIN(1.0D0, safeBulk / safeMantle).\n"
     ode_string += "        ! However, the YDOTs calculated below need to be multiplied with Y(bulkspec)/safeBulk,\n"
     ode_string += "        ! so we divide by safeBulk here to save time\n"
-    ode_string += (
-        "        surfaceCoverage = MIN(1.0D0, safeBulk/safeMantle)/safeBulk\n"
-    )
+    ode_string += "        surfaceCoverage = MIN(1.0D0, safeBulk/safeMantle)/safeBulk\n"
     ode_string += "    ELSE\n        ! Hasegawa & Herbst 1993\n"
-    ode_string += "        surfaceCoverage = MIN(1.0D0, surfaceCoverage*safeMantle)/safeBulk\n"
-    ode_string += f"    END IF\n"
+    ode_string += (
+        "        surfaceCoverage = MIN(1.0D0, surfaceCoverage*safeMantle)/safeBulk\n"
+    )
+    ode_string += "    END IF\n"
 
     surf_species = [
         i
@@ -1082,7 +1084,7 @@ def write_network_file(
     LHDEScorrespondingLHreacs = []
     for reaction in reaction_list:
         if reaction.get_reaction_type() == "LHDES":
-            if hasattr(reaction, 'get_partner') and reaction.get_partner() is not None:
+            if hasattr(reaction, "get_partner") and reaction.get_partner() is not None:
                 partner = reaction.get_partner()
                 reacIndex = reaction_list.index(partner) + 1
                 LHDEScorrespondingLHreacs.append(reacIndex)
@@ -1105,7 +1107,7 @@ def write_network_file(
     ERDEScorrespondingERreacs = []
     for reaction in reaction_list:
         if reaction.get_reaction_type() == "ERDES":
-            if hasattr(reaction, 'get_partner') and reaction.get_partner() is not None:
+            if hasattr(reaction, "get_partner") and reaction.get_partner() is not None:
                 partner = reaction.get_partner()
                 reacIndex = reaction_list.index(partner) + 1
                 ERDEScorrespondingERreacs.append(reacIndex)
