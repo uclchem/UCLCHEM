@@ -81,8 +81,20 @@ CONTAINS
             !freeze out rate uses thermal velocity but mass of E is 0 giving us infinite rates
             !just assume it's same as H
             rate(nR_EFreeze)=rate(nR_HFreeze)
+
             rate(nR_H2Freeze)=stickingCoefficient(h2StickingZero,h2StickingTemp,gasTemp(dstep))*rate(nR_H2Freeze)
+            IF (h2StickingCoeffByh2Coverage) THEN
+                ! If all surface is H2, (i.e. x_#H2 = safeMantle), assume no H2 sticks
+                ! and so set the sticking coeff to 0. Linearly interpolate according to chance it will hit a H2 molecule on surface
+                rate(nR_H2Freeze)=rate(nR_H2Freeze)*(1.0D0-abund(ngh2, dstep)/safeMantle)
+            END IF
+            
             rate(nR_HFreeze)=stickingCoefficient(hStickingZero,hStickingTemp,gasTemp(dstep))*rate(nR_HFreeze)
+            IF (hStickingCoeffByh2Coverage) THEN
+                ! If all surface is H2, (i.e. x_#H2 = safeMantle), assume no H sticks
+                ! and so set the sticking coeff to 0. Linearly interpolate according to chance it will hit a H2 molecule on surface
+                rate(nR_HFreeze)=rate(nR_HFreeze)*(1.0D0-abund(ngh2, dstep)/safeMantle)
+            END IF
         END IF
         ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !The below desorption mechanisms are from Roberts et al. 2007 MNRAS with
