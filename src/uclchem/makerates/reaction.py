@@ -872,7 +872,7 @@ def _generate_reaction_ode_bit(
             ode_bit += f"*Y({species_names.index(species) + 1})"
 
         elif species == "BULKSWAP":
-            ode_bit += "*bulkLayersReciprocal"
+            ode_bit += "*ratioSurfaceToBulk"
         elif species == "SURFSWAP":
             ode_bit += "*totalSwap/safeMantle"
         elif species in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
@@ -886,5 +886,5 @@ def _generate_reaction_ode_bit(
 
     if "LH" in reactants[2]:
         if "@" in reactants[0]:
-            ode_bit += "*bulkLayersReciprocal"
+            ode_bit += "*ratioSurfaceToBulk"
     return ode_bit

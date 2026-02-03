@@ -56,6 +56,10 @@ species_header = (
     "mono_fraction",
     "volcano_fraction",
     "enthalpy",
+    "Ix",
+    "Iy",
+    "Iz",
+    "symmetry_number",
 )
 
 
@@ -90,9 +94,13 @@ class Species:
 
     def __init__(self, inputRow):
         """A class representing chemical species, it reads in rows which are formatted as follows:
-        NAME,MASS,BINDING ENERGY,SOLID FRACTION,MONO FRACTION,VOLCANO FRACTION,ENTHALPY
+        NAME,MASS,BINDING ENERGY,SOLID FRACTION,MONO FRACTION,VOLCANO FRACTION,ENTHALPY,Ix,Iy,Iz,SYMMETRY_NUMBER
+        
+        The last 4 columns (Ix, Iy, Iz, SYMMETRY_NUMBER) are optional for backward compatibility.
+        If not provided, TST prefactors will not be available for that species.
+        
         Args:
-            inputRow (list):
+            inputRow (list): Row from species CSV file
         """
         self.name = inputRow[0].upper()
         self.mass = int(inputRow[1])
@@ -116,6 +124,26 @@ class Species:
         self.set_mono_fraction(sanitize_input_float(inputRow, 4, 0.0))
         self.set_volcano_fraction(sanitize_input_float(inputRow, 5, 0.0))
         self.set_enthalpy(sanitize_input_float(inputRow, 6, 0.0))
+        
+        # TST prefactor support - backward compatible with old species files
+        # If Ix, Iy, Iz, SYMMETRY_NUMBER columns are missing, use sentinel values
+        self.Ix = sanitize_input_float(inputRow, 7, -999.0)
+        self.Iy = sanitize_input_float(inputRow, 8, -999.0)
+        self.Iz = sanitize_input_float(inputRow, 9, -999.0)
+        try:
+            if len(inputRow) > 10:
+                sym_val = inputRow[10]
+                if isinstance(sym_val, (int, float)):
+                    self.symmetry_factor = int(sym_val) if sym_val != 0 else -1
+                elif isinstance(sym_val, str) and sym_val.strip():
+                    self.symmetry_factor = int(sym_val)
+                else:
+                    self.symmetry_factor = -1
+            else:
+                self.symmetry_factor = -1
+        except (ValueError, IndexError, TypeError):
+            self.symmetry_factor = -1
+        
         self.set_n_atoms(0)
 
         # in first instance, assume species freeze/desorb unchanged
@@ -546,3 +574,66 @@ class Species:
 
     def __str__(self) -> str:
         return self.get_name()
+
+    def calculate_rotational_partition_factor(self) -> float:
+        """Calculate 1/sigma*(SQRT(IxIyIz)) for non-linear molecules, and
+        1/sigma*(SQRT(IyIz)) for linear molecules.
+        
+        Returns -999.0 if molecular inertia data is not available (backward compatibility).
+        This signals that TST prefactors cannot be used for this species.
+        
+        Returns:
+            float: Rotational partition factor scaled by 1e50, or -999.0 if unavailable
+        """
+        if self.n_atoms == 1:
+            # For atoms, this is undefined, just return a value such that
+            # it is clearly an atomic species.
+            return -1.0
+        if self.Ix == -999.0 or self.Iy == -999.0 or self.Iz == -999.0:
+            # For species without custom input Ix, Iy and Iz, we cannot do this,
+            # Return sentinel value for backward compatibility
+            return -999.0
+        if self.symmetry_factor <= 0:
+            # No symmetry factor provided
+            return -999.0
+            
+        # Ix, Iy and Iz are in units of amu Angstrom^2,
+        # so need to convert to kg m2
+        import numpy as np
+        amu = 1.66053907e-27  # kg/amu
+        scalingFactor = 1e50
+        
+        if not self.is_linear():
+            return (
+                (1.0 / self.symmetry_factor)
+                * np.sqrt(self.Ix * self.Iy * self.Iz * amu**3 / 1e60)
+                * scalingFactor
+            )
+        else:
+            return (
+                (1.0 / self.symmetry_factor)
+                * np.sqrt(self.Iy * self.Iz * amu**2 / 1e40)
+                * scalingFactor
+            )
+
+    def is_linear(self) -> bool:
+        """Check if molecule is linear based on moment of inertia.
+        
+        For linear molecules, Ix = 0 (rotation axis along molecular axis has no inertia).
+        
+        Returns:
+            bool: True if linear, False otherwise
+        """
+        if self.n_atoms == 1:
+            # Atomic species are not linear (doesn't matter, filtered out anyway)
+            return False
+        if self.n_atoms == 2:
+            # Diatomic molecules are always linear
+            return True
+        if self.Ix == -999.0 or self.Iy == -999.0 or self.Iz == -999.0:
+            # No inertia data available
+            return False
+        if not self.is_ice_species():
+            # Only implement for grain species
+            return False
+        return self.Ix == 0.0

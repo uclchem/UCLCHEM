@@ -259,6 +259,31 @@ REAL(dp), PARAMETER :: formationEnthalpy (166)=(/5.1630e+01,0.0000e+00&
     &,1.2000e+00,1.9111e+02,0.0000e+00,8.4000e+01,7.3460e+01,1.4938e+02&
     &,0.0000e+00,-3.4000e+01,1.8900e+02,-9.9900e+02,-7.0300e+01,1.2800e+02&
     &,4.0000e+00,3.4580e+02/)
+REAL(dp), PARAMETER :: inertiaProducts (83)=(/-1.0000e+00,-9.9900e+02&
+    &,-1.0000e+00,-1.0000e+00,-9.9900e+02,-9.9900e+02,-1.0000e+00,-9.9900e+02&
+    &,-9.9900e+02,-9.9900e+02,-9.9900e+02,-1.0000e+00,-9.9900e+02,-9.9900e+02&
+    &,-9.9900e+02,-9.9900e+02,-1.0000e+00,-9.9900e+02,-9.9900e+02,-9.9900e+02&
+    &,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02&
+    &,-9.9900e+02,-1.0000e+00,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02&
+    &,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02&
+    &,-9.9900e+02,-9.9900e+02,-9.9900e+02,-1.0000e+00,-9.9900e+02,-9.9900e+02&
+    &,-9.9900e+02,-1.0000e+00,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02&
+    &,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02&
+    &,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02&
+    &,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02&
+    &,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02&
+    &,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02,-9.9900e+02&
+    &,-9.9900e+02,-9.9900e+02,-9.9900e+02/)
+LOGICAL(dp), PARAMETER :: moleculeIsLinear (83)=(/.False.,.True.,.False.&
+    &,.False.,.True.,.False.,.False.,.False.,.True.,.False.,.False.,.False.&
+    &,.False.,.True.,.False.,.True.,.False.,.False.,.False.,.True.,.False.&
+    &,.False.,.False.,.True.,.True.,.False.,.False.,.False.,.False.,.False.&
+    &,.True.,.True.,.False.,.False.,.False.,.False.,.False.,.False.,.True.&
+    &,.False.,.False.,.False.,.False.,.True.,.False.,.False.,.True.,.False.&
+    &,.False.,.False.,.True.,.False.,.False.,.False.,.False.,.False.,.True.&
+    &,.True.,.False.,.False.,.False.,.False.,.False.,.False.,.False.,.False.&
+    &,.True.,.False.,.False.,.True.,.False.,.False.,.False.,.False.,.False.&
+    &,.True.,.False.,.False.,.False.,.False.,.True.,.False.,.False./)
 INTEGER(dp), PARAMETER :: refractoryList (1)=(/-999/)
     INTEGER(dp), PARAMETER ::nR_H2Form_CT=662,nR_H2Form_ERDes=494,nR_H2Form_ER=493,nR_H2Form_LH=669&
     &,nR_H2Form_LHDes=761,nR_HFreeze=545,nR_EFreeze=544,nR_H2_hv=899&
@@ -5169,4 +5194,11 @@ INTEGER(dp), PARAMETER :: 	exsolidReacs (2)=(/99999,99999/)
 INTEGER(dp), PARAMETER :: 	exrelaxReacs (2)=(/99999,99999/)
 INTEGER(dp), PARAMETER :: 	garReacs (2)=(/99999,99999/)
 INTEGER(dp), PARAMETER :: 	twobodyReacs (2)=(/1236,3203/)
+INTEGER(dp), PARAMETER :: 	LHDEScorrespondingLHreacs (92)=(/663,664,665&
+    &,666,667,668,669,670,671,672,673,674,675,676,677,678,679,680,681,682,683&
+    &,684,685,686,687,688,689,690,691,692,693,694,695,696,697,698,699,700,701&
+    &,702,703,704,705,706,707,708,663,664,665,666,667,668,669,670,671,672,673&
+    &,674,675,676,677,678,679,680,681,682,683,684,685,686,687,688,689,690,691&
+    &,692,693,694,695,696,697,698,699,700,701,702,703,704,705,706,707,708/)
+INTEGER(dp), PARAMETER :: 	ERDEScorrespondingERreacs (2)=(/493,493/)
 END MODULE network

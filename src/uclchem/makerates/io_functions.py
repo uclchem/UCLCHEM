@@ -639,8 +639,8 @@ USE constants
 USE network
 IMPLICIT NONE
 CONTAINS
-SUBROUTINE GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle, safebulk, D, YDOT)
-REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulkLayersReciprocal, safeMantle, safebulk, D
+SUBROUTINE GETYDOT(RATE, Y, ratioSurfaceToBulk, surfaceCoverage, safeMantle, safebulk, D, YDOT)
+REAL(dp), INTENT(IN) :: RATE(:), Y(:), ratioSurfaceToBulk, safeMantle, safebulk, D
 REAL(dp), INTENT(INOUT) :: YDOT(:), surfaceCoverage
 REAL(dp) :: totalSwap, LOSS, PROD
     """
@@ -663,12 +663,22 @@ REAL(dp) :: totalSwap, LOSS, PROD
     ode_string += f"    SURFGROWTHUNCORRECTED = YDOT({surface_index + 1})\n"
 
     # now add bulk transfer to rate of change of surface species after they've already been calculated
-    ode_string += "!Update surface species for bulk growth, replace surfaceCoverage with alpha_des\n"
-    ode_string += (
-        "!Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
-    )
+    ode_string += "!Update surface species for bulk growth\n"
 
-    ode_string += f"IF (YDOT({surface_index + 1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
+    ode_string += f"IF (YDOT({surface_index + 1}) .lt. 0) THEN\n"
+    ode_string += "    ! Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
+    ode_string += "    IF (useGarrod2011Transfer) THEN\n"
+    ode_string += "        ! Three-phase treatment of Garrod & Pauly 2011\n"
+    ode_string += "        ! Replace surfaceCoverage with alpha_des\n"
+    ode_string += "        ! Real value of alpha_des: alpha_des = MIN(1.0D0, safeBulk / safeMantle).\n"
+    ode_string += "        ! However, the YDOTs calculated below need to be multiplied with Y(bulkspec)/safeBulk,\n"
+    ode_string += "        ! so we divide by safeBulk here to save time\n"
+    ode_string += (
+        "        surfaceCoverage = MIN(1.0D0, safeBulk/safeMantle)/safeBulk\n"
+    )
+    ode_string += "    ELSE\n        ! Hasegawa & Herbst 1993\n"
+    ode_string += "        surfaceCoverage = MIN(1.0D0, surfaceCoverage*safeMantle)/safeBulk\n"
+    ode_string += f"    END IF\n"
 
     surf_species = [
         i
@@ -683,23 +693,38 @@ REAL(dp) :: totalSwap, LOSS, PROD
             j += 1
             bulk_partner = species_names.index(species.get_name().replace("#", "@"))
             if enable_rates_storage:
-                ode_string += f"    REACTIONRATE({i}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})/safeBulk\n"
-                ode_string += f"    REACTIONRATE({j}) = 0.0\n"
+                ode_string += f"    REACTIONRATE({i}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})\n"
+                ode_string += f"    REACTIONRATE({j}) = 0.0D0\n"
             if not species_list[bulk_partner].is_refractory:
-                ode_string += f"    YDOT({n + 1})=YDOT({n + 1})-YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})/safeBulk\n"
+                ode_string += f"    YDOT({n + 1})=YDOT({n + 1})-YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})\n"
         if species.get_name()[0] == "@":
             if not species.is_refractory:
-                ode_string += f"    YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({n + 1})/safeBulk\n"
+                ode_string += f"    YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({n + 1})\n"
     ode_string += "ELSE\n"
+    ode_string += "    ! surfaceCoverage = fractional surface coverage\n"
+    ode_string += "    ! Real value of surfaceCoverage: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
+    ode_string += "    ! However, the YDOTs calculated below need to be multiplied with Y(surfspec)/safeMantle, so we divide by safeMantle here to save time\n"
+    ode_string += "    ! In chemistry.f90: surfaceCoverage = 1/NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
+    ode_string += (
+        "    surfaceCoverage = MIN(1.0D0, surfaceCoverage*safeMantle)/safeMantle\n"
+    )
     i = len(reaction_list)
     j = len(reaction_list) + len(surf_species)
     for n, species in enumerate(species_list):
+        if species.get_name() in [
+            "#H2",
+            "@H2",
+        ]:  # Do not allow H2 to transfer from surface to bulk
+            if species.get_name() == "@H2":
+                i += 1
+                j += 1
+            continue
         if species.get_name()[0] == "@":
             i += 1
             j += 1
             surface_version = species_names.index(species.get_name().replace("@", "#"))
             if enable_rates_storage:
-                ode_string += f"    REACTIONRATE({i}) = 0.0\n"
+                ode_string += f"    REACTIONRATE({i}) = 0.0D0\n"
                 ode_string += f"    REACTIONRATE({j}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({surface_version + 1})\n"
             ode_string += f"    YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({surface_version + 1})\n"
         if species.get_name()[0] == "#":
@@ -765,6 +790,8 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
     volcList = []
     binding_energyList = []
     enthalpyList = []
+    inertiaProductsList = []
+    moleculeIsLinearList = []
     bulkList = []
     iceList = []
     refractoryList = []
@@ -796,6 +823,8 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
             iceList.append(i + 1)
             binding_energyList.append(species.get_binding_energy())
             enthalpyList.append(species.get_enthalpy())
+            inertiaProductsList.append(species.calculate_rotational_partition_factor())
+            moleculeIsLinearList.append(species.is_linear())
             if species.is_refractory:
                 refractoryList.append(i + 1)
 
@@ -817,6 +846,12 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
         )
     )
     network_file.write(array_to_string("formationEnthalpy", enthalpyList, type="float"))
+    network_file.write(
+        array_to_string("inertiaProducts", inertiaProductsList, type="float")
+    )
+    network_file.write(
+        array_to_string("moleculeIsLinear", moleculeIsLinearList, type="logical")
+    )
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
     return len(iceList)
 
@@ -1039,6 +1074,57 @@ def write_network_file(
         openFile.write(
             array_to_string("\t" + list_name, indices, type="int", parameter=True)
         )
+
+    # Write LHDES and ERDES mapping arrays (Feature 3: LH/ER-DES mapping)
+    # These arrays map chemical reactive desorption reactions to their parent reactions
+    LHDEScorrespondingLHreacs = []
+    for reaction in reaction_list:
+        if reaction.get_reaction_type() == "LHDES":
+            if hasattr(reaction, 'get_partner') and reaction.get_partner() is not None:
+                partner = reaction.get_partner()
+                reacIndex = reaction_list.index(partner) + 1
+                LHDEScorrespondingLHreacs.append(reacIndex)
+            else:
+                # If no partner set, use dummy index
+                LHDEScorrespondingLHreacs.append(99999)
+
+    # Write array (use dummy if empty for backward compatibility)
+    if len(LHDEScorrespondingLHreacs) == 0:
+        LHDEScorrespondingLHreacs = [99999]
+    openFile.write(
+        array_to_string(
+            "\tLHDEScorrespondingLHreacs",
+            LHDEScorrespondingLHreacs,
+            type="int",
+            parameter=True,
+        )
+    )
+
+    ERDEScorrespondingERreacs = []
+    for reaction in reaction_list:
+        if reaction.get_reaction_type() == "ERDES":
+            if hasattr(reaction, 'get_partner') and reaction.get_partner() is not None:
+                partner = reaction.get_partner()
+                reacIndex = reaction_list.index(partner) + 1
+                ERDEScorrespondingERreacs.append(reacIndex)
+            else:
+                # If no partner set, use dummy index
+                ERDEScorrespondingERreacs.append(99999)
+
+    # Write array (use dummy if empty for backward compatibility)
+    if len(ERDEScorrespondingERreacs) == 0:
+        ERDEScorrespondingERreacs = [99999]
+    elif len(ERDEScorrespondingERreacs) == 1:
+        # Fortran needs at least 2 elements for array
+        ERDEScorrespondingERreacs.append(ERDEScorrespondingERreacs[0])
+    openFile.write(
+        array_to_string(
+            "\tERDEScorrespondingERreacs",
+            ERDEScorrespondingERreacs,
+            type="int",
+            parameter=True,
+        )
+    )
     openFile.write("END MODULE network")
     openFile.close()
 
