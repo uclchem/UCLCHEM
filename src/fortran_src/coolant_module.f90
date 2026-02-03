@@ -1,14 +1,15 @@
 MODULE COOLANT_MODULE
    USE constants
-   USE F2PY_CONSTANTS, only: NCOOLANTS, coolantFiles, coolantNames
+   USE F2PY_CONSTANTS, only: NCOOLANTS, coolantFiles, coolantNames, coolantDataDir
    USE network
-   USE defaultparameters, only: coolantDataDir
+   USE defaultparameters, only: freq_rel_tol, pop_rel_tol
    IMPLICIT NONE
 
+   ! Tolerances are provided via the DEFAULTPARAMETERS module (freq_rel_tol, pop_rel_tol).
 !  Specify the properties that define each coolant species
    TYPE COOLANT_TYPE
 
-      CHARACTER(LEN=10) :: NAME ! Coolant species name
+      CHARACTER(LEN=20) :: NAME ! Coolant species name
       CHARACTER(LEN=256):: FILENAME ! Name of the coolant data file
 
       INTEGER :: INDEX  ! Index number of the coolant species
@@ -63,11 +64,16 @@ CONTAINS
       INTEGER :: NLEVEL,NLINE,NTEMP,NPARTNER,NCOLL,PARTNER_ID,MAX_NTEMP
       INTEGER :: coolantID = 81
 
+!      WRITE(*,*) 'DEBUG: READ_COOLANTS starting. NCOOLANTS=', NCOOLANTS
+!      WRITE(*,*) 'DEBUG: coolantDataDir=', TRIM(coolantDataDir)
+
       IF (ALLOCATED(coolants)) DEALLOCATE(coolants)
+!      WRITE(*,*) 'DEBUG: Allocating coolants array of size ', NCOOLANTS
       ALLOCATE(coolants(NCOOLANTS))
       DO N=1,NCOOLANTS ! Loop over coolants
          coolants(N)%FILENAME=coolantFiles(N)
    !     Open the input file
+!         WRITE(*,*) 'DEBUG: Attempting to open coolant file ', TRIM(coolants(N)%FILENAME)
          ! WRITE(*,*) "Trying to open: ", TRIM(dataDir)//coolants(N)%FILENAME
          ! OPEN(UNIT=1,FILE='Datafiles/Collisional-Rates/'//coolants(N)%FILENAME,IOSTAT=IER,ACTION='READ',STATUS='OLD')
          ! TODO: Remove magic number 1
@@ -77,6 +83,7 @@ CONTAINS
    !     Produce an error message if the file does not exist (or cannot be opened for whatever reason)
          IF(IER.NE.0) THEN
             WRITE(*,*) 'ERROR! Cannot open coolant data file ',TRIM(coolants(N)%FILENAME),' for input. I tried to open:', TRIM(coolantDataDir)//coolants(N)%FILENAME
+!            WRITE(*,*) 'DEBUG: IOSTAT after OPEN = ', IER
             CLOSE(coolantID)
             STOP
          END IF
@@ -87,14 +94,20 @@ CONTAINS
          END IF
 
          READ(coolantID,*,IOSTAT=IER) coolants(N)%NAME ! Read the name of the coolant
+!         WRITE(*,*) 'DEBUG: Read coolant name = ', TRIM(coolants(N)%NAME)
          READ(coolantID,*,IOSTAT=IER)
+!         WRITE(*,*) 'DEBUG: Skipped comment line (molecular weight header)'
          READ(coolantID,*,IOSTAT=IER) coolants(N)%MOLECULAR_MASS ! Read the molecular mass
+!         WRITE(*,*) 'DEBUG: Read coolant molecular mass = ', coolants(N)%MOLECULAR_MASS
          READ(coolantID,*,IOSTAT=IER)
+!         WRITE(*,*) 'DEBUG: Skipped comment line (number of energy levels header)'
          coolants(N)%INDEX=0 ! Initialize the coolant species index (assigned later)
 
    !     Read the number of levels and allocate the energy, statistical weight,
    !     Einstein A & B coefficient and transition frequency arrays accordingly
+!         WRITE(*,*) 'DEBUG: About to read NLEVEL'
          READ(coolantID,*,IOSTAT=IER) NLEVEL
+!         WRITE(*,*) 'DEBUG: Read NLEVEL =', NLEVEL
          READ(coolantID,*,IOSTAT=IER)
          IF(NLEVEL.LT.2) THEN
             WRITE(*,*) 'ERROR! Incorrect number of energy levels in coolant data file ',&
@@ -140,12 +153,13 @@ CONTAINS
    !     Calculate the transition frequencies between all levels (even if forbidden)
          DO I=1,NLEVEL
             DO J=1,NLEVEL
-   !           Check that the calculated and measured frequencies differ by <0.1%
+   !           Check that the calculated and measured frequencies differ by <1.0%
    !           Produce an error message if the difference between them is greater
                IF(coolants(N)%FREQUENCY(I,J).NE.0.0D0) THEN
                   IF(ABS(coolants(N)%FREQUENCY(I,J)-ABS(coolants(N)%ENERGY(I)-coolants(N)%ENERGY(J))/HP) &
-                      & /coolants(N)%FREQUENCY(I,J).GT.1.0D-3) THEN
-                     WRITE(*,*) 'ERROR! Calculated frequency differs from measured frequency by >0.1%'
+                      & /coolants(N)%FREQUENCY(I,J).GT.freq_rel_tol) THEN
+                     WRITE(*,*) 'ERROR! Calculated frequency differs from measured frequency beyond configured tolerance.'
+                     WRITE(*,"('Tolerance (fraction)=',F10.6)") freq_rel_tol
                      WRITE(*,"(1PD12.5,'Hz vs',1PD12.5,'Hz')") ABS(coolants(N)%ENERGY(I)-coolants(N)%ENERGY(J))/HP, &
                                                              & coolants(N)%FREQUENCY(I,J)
                      CLOSE(coolantID)
@@ -320,8 +334,8 @@ CONTAINS
       DO ILEVEL=1,NLEVEL
          IF (isnan(population(ilevel))) write(*,*) ilevel,PARTITION_FUNCTION,density,temperature
       END DO
-   !  Check that the sum of the level populations matches the total density to within 0.1%
-      IF(ABS(DENSITY-SUM(POPULATION))/DENSITY.GT.1.0D-3) THEN
+   !  Check that the sum of the level populations matches the total density within the configured tolerance
+      IF(ABS(DENSITY-SUM(POPULATION))/DENSITY.GT.pop_rel_tol) THEN
          WRITE(*,"('ERROR! Sum of LTE level populations differs from the total density by',F4.1,'%')") &
             & 1.0D2*ABS(SUM(POPULATION)-DENSITY)/DENSITY
          STOP
@@ -486,6 +500,12 @@ SUBROUTINE CALCULATE_LEVEL_POPULATIONS(COOLANT,GasTemperature,gasDensity,abundan
    R=0.0D0
    ! write(*,*) "temp",gasTemperature
    ! write(*,*) "pop",coolant%population
+
+!  Debug: print dustTemp before entering CONSTRUCT_TRANSITION_MATRIX
+!   WRITE(*,'(A,F12.4,A,F12.4,A,I3)') "DEBUG dustTemp=", dustTemp, &
+!      " gasTemp=", gasTemperature, " NLEVEL=", COOLANT%NLEVEL
+   IF (ISNAN(dustTemp)) WRITE(*,*) "WARNING: dustTemp is NaN!"
+   IF (dustTemp <= 0.0D0) WRITE(*,*) "WARNING: dustTemp <= 0!"
 
 !  Construct the matrix of transition rates R_ij (s^-1)
    CALL CONSTRUCT_TRANSITION_MATRIX(COOLANT,R,gasTemperature,gasDensity&
@@ -663,6 +683,16 @@ SUBROUTINE CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,GasTemperature,
 
    REAL(dp) :: S_ij_PREVIOUS,LAMBDA_ij,rhoGrain,dustDensity
 
+   ! Debug: Check for NaN inputs
+   IF (ISNAN(dustTemp)) THEN
+      WRITE(*,*) 'ERROR: dustTemp is NaN in CONSTRUCT_TRANSITION_MATRIX for ', TRIM(COOLANT%NAME)
+      RETURN
+   END IF
+   IF (ISNAN(GasTemperature)) THEN
+      WRITE(*,*) 'ERROR: GasTemperature is NaN in CONSTRUCT_TRANSITION_MATRIX for ', TRIM(COOLANT%NAME)
+      RETURN
+   END IF
+
 !  Allocate and initialize the mean integrated radiation field
    ALLOCATE(RADIATION_FIELD(1:COOLANT%NLEVEL,1:COOLANT%NLEVEL))
    RADIATION_FIELD=0.0D0
@@ -682,7 +712,14 @@ SUBROUTINE CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,GasTemperature,
            rhoGrain=2.0D0 ! Grain mass density (g cm^-3)
            dustDensity=1.0d-12*gasDensity
            dustEmissivity=(rhoGrain*dustDensity)*(0.01*(1.3*COOLANT%FREQUENCY(I,J)/3.0D11))
-           B_ij_DUST=(2*HP*COOLANT%FREQUENCY(I,J)**3)/(C**2)/(EXP(HP*COOLANT%FREQUENCY(I,J)/(K_BOLTZ*dustTemp))-1.D0)*dustEmissivity
+           
+           ! Protect against invalid dustTemp
+           IF (dustTemp .LE. 0.0D0 .OR. ISNAN(dustTemp)) THEN
+              B_ij_DUST = 0.0D0
+           ELSE
+              B_ij_DUST=(2*HP*COOLANT%FREQUENCY(I,J)**3)/(C**2)/(EXP(HP*COOLANT%FREQUENCY(I,J)/(K_BOLTZ*dustTemp))-1.D0)*dustEmissivity
+              IF (ISNAN(B_ij_DUST)) B_ij_DUST = 0.0D0
+           END IF
 !#else
  !           B_ij_DUST=0.0D0
 !#endif
@@ -721,6 +758,11 @@ SUBROUTINE CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,GasTemperature,
          END IF
 !        Calculate the mean integrated radiation field <J_ij>
          RADIATION_FIELD(I,J)=(1.0D0-BETA_ij)*S_ij+BETA_ij*B_ij
+         
+         ! Protect against NaN in radiation field
+         IF (ISNAN(RADIATION_FIELD(I,J))) THEN
+            RADIATION_FIELD(I,J) = 0.0D0
+         END IF
 
 !        Lambda operator keeps breaking so lets not use ALI for now
 ! !        Calculate the source function in the same manner for

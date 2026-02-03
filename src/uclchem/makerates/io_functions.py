@@ -13,11 +13,25 @@ from typing import Dict
 import numpy as np
 import yaml
 
-from uclchem.constants import PHYSICAL_PARAMETERS
+from uclchem.utils import _ROOT
 
 from .network import Network
 from .reaction import Reaction, reaction_types
 from .species import Species
+
+
+# Canonical definition of physical parameters
+# This list defines the physical parameter array passed to Fortran
+PHYSICAL_PARAMETERS = [
+    "Time",
+    "Density",
+    "gasTemp",
+    "dustTemp",
+    "Av",
+    "radfield",
+    "zeta",
+    "dstep",
+]
 
 
 def get_default_coolants() -> list[dict]:
@@ -35,6 +49,22 @@ def get_default_coolants() -> list[dict]:
         {"file": "p-h2.dat", "name": "p-H2"},
         {"file": "o-h2.dat", "name": "o-H2"},
     ]
+
+
+def get_default_coolant_directory(user_specified: str = "") -> str:
+    """Returns the default collisional rates directory path.
+
+    Args:
+        user_specified: Optional user-specified directory from config.
+                       If empty, uses default (set by Python at runtime).
+
+    Returns the path to the bundled collisional rate files that ship with UCLCHEM.
+    Returns empty string by default - will be set by Python at runtime.
+
+    Returns:
+        str: Directory path (empty string means runtime detection)
+    """
+    return user_specified if user_specified else ""
 
 
 def read_species_file(file_name: Path) -> list[Species]:
@@ -213,6 +243,42 @@ def read_grain_assisted_recombination_file(file_name: Path) -> dict:
     return gar_parameters
 
 
+def read_coolants_file(file_name: Path) -> list[dict]:
+    """Read a YAML file specifying coolants.
+
+    The file should contain either a single mapping or a list of mappings where each
+    mapping contains 'file' and 'name' keys. 'file' must be a bare filename (no path).
+
+    Returns:
+        list[dict]: Normalized list of coolant dicts.
+    """
+    with open(file_name, "r") as fh:
+        data = yaml.safe_load(fh)
+
+    if data is None:
+        return []
+    if isinstance(data, dict):
+        data = [data]
+    if not isinstance(data, list):
+        raise ValueError("Coolants file must contain a mapping or list of mappings")
+
+    normalized = []
+    from pathlib import Path as _Path
+
+    for item in data:
+        if not isinstance(item, dict):
+            raise ValueError("Each coolant entry must be a mapping with 'file' and 'name' keys")
+        if "file" not in item or "name" not in item:
+            raise ValueError("Each coolant mapping must contain 'file' and 'name' keys")
+        file_val = str(item["file"])
+        if _Path(file_val).name != file_val or _Path(file_val).parent != _Path('.'):
+            raise ValueError(
+                "Coolant 'file' entries in coolants_file must be bare filenames (no directories)"
+            )
+        normalized.append({"file": file_val, "name": str(item["name"])})
+    return normalized
+
+
 def output_drops(
     dropped_reactions: list[Reaction], output_dir: str = None, write_files: bool = True
 ):
@@ -251,6 +317,7 @@ def write_outputs(
     enable_rates_storage: bool = False,
     gar_database: dict[str, np.array] = None,
     coolants: list[dict] = None,
+    coolant_data_dir: str = "",
 ) -> None:
     """Write the ODE and Network fortran source files to the fortran source.
 
@@ -270,6 +337,18 @@ def write_outputs(
     # Use default coolants if none provided
     if coolants is None:
         coolants = get_default_coolants()
+
+    # Validate that coolant 'file' entries are bare filenames (not paths)
+    from pathlib import Path as _Path
+    for c in coolants:
+        f = c.get("file")
+        if f is None:
+            raise ValueError("Each coolant dict must contain a 'file' key")
+        if _Path(f).name != f or _Path(f).parent != _Path('.'):
+            raise ValueError(
+                "Coolant file names must be bare filenames (no directories). "
+                "Set the coolant directory at runtime via coolantDataDir."
+            )
 
     # Create the species file
     filename = output_dir / "species.csv"
@@ -306,11 +385,12 @@ def write_outputs(
         "n_coolants": len(coolants),
         "coolant_files": [c["file"] for c in coolants],
         "coolant_names": [c["name"] for c in coolants],
+        "coolant_data_dir": get_default_coolant_directory(coolant_data_dir),
     }
     write_f90_constants(f2py_constants, filename)
-    # Write some meta information that can be used to read back in the reactions into Python
-    # TODO: we can update this s.t. we can directly access the f90 constants from the f2py wrapped Fortran codes
-    write_python_constants(f2py_constants, "../src/uclchem/constants.py")
+    # Note: constants.py now reads directly from f2py_constants module,
+    # so we no longer need to write it during MakeRates.
+    # After running MakeRates, just reinstall to update the Python constants.
 
 
 def write_f90_constants(
@@ -359,13 +439,25 @@ def write_f90_constants(
 def write_python_constants(
     replace_dict: Dict[str, int], python_constants_file: Path
 ) -> None:
-    """Function to write the python constants to the constants.py file after every run,
-    this ensure the Python and Fortran bits are compatible with one another.
+    """DEPRECATED: Function to write the python constants to the constants.py file.
+
+    As of the latest version, constants.py reads directly from the f2py_constants
+    module, so this function is no longer needed. It's kept for backward compatibility
+    but does nothing.
 
     Args:
-        replace_dict (Dict[str, int]]): Dict with keys to replace and their values
-        python_constants_file (Path): Path to the target constant files.
+        replace_dict (Dict[str, int]]): Dict with keys to replace and their values (ignored)
+        python_constants_file (Path): Path to the target constant files (ignored)
     """
+    import warnings
+
+    warnings.warn(
+        "write_python_constants() is deprecated. "
+        "constants.py now reads directly from f2py_constants module.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    # Do nothing - constants.py is now self-updating
     with fileinput.input(python_constants_file, inplace=True, backup=".bak") as file:
         for line in file:
             # Add a timestamp to the file before the old one:

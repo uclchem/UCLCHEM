@@ -16,8 +16,13 @@ optional_params = [
 ]
 
 
+from typing import Dict, List, Optional, Union
+
+
 def run_makerates(
-    configuration_file: str = "user_settings.yaml", write_files: bool = True
+    configuration_file: str = "user_settings.yaml",
+    write_files: bool = True,
+    output_directory: Union[str, os.PathLike] | None = None,
 ) -> Network:
     """
     Main run wrapper for makerates. Loads and validates configuration,
@@ -28,6 +33,9 @@ def run_makerates(
             Defaults to "user_settings.yaml".
         write_files: Whether to write fortran files to src/fortran_src.
             Defaults to True.
+        output_directory: Optional override for the output directory where files
+            should be written. If None, uses the 'output_directory' from the config
+            (if present) or the package defaults.
 
     Returns:
         Network: A validated chemical network instance.
@@ -42,8 +50,12 @@ def run_makerates(
     # Log the configuration
     config.log_configuration()
 
-    # Prepare output directory
-    if config.output_directory:
+    # Prepare output directory (allow caller to override)
+    if output_directory is not None:
+        user_output_dir = output_directory
+        if not os.path.exists(user_output_dir):
+            os.makedirs(user_output_dir)
+    elif config.output_directory:
         user_output_dir = config.resolve_path(config.output_directory)
         if not os.path.exists(user_output_dir):
             os.makedirs(user_output_dir)
@@ -115,11 +127,30 @@ def run_makerates(
                 )
             # Save the gar parameters in the correct order
             gar_parameters = {ion: _gar_parameters[ion] for ion in gar_ions}
+        # Determine which coolants to write. Precedence (highest -> lowest):
+        # 1) inline `coolants` in config, 2) `coolants_file` referenced in config,
+        # 3) defaults used by write_outputs.
+        coolants_to_write = None
+        if config.coolants is not None:
+            logging.info(f"Using {len(config.coolants)} inline coolants from config")
+            coolants_to_write = config.coolants
+        elif config.coolants_file:
+            coolants_path = config.resolve_path(config.coolants_file)
+            try:
+                _coolants = io.read_coolants_file(coolants_path)
+                logging.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")
+                coolants_to_write = _coolants
+            except Exception as exc:
+                raise ValueError(f"Error reading coolants_file {coolants_path}: {exc}")
+
+        # Pass resolved coolants and coolant_data_dir through to write_outputs
         io.write_outputs(
             network,
             user_output_dir,
             config.enable_rates_storage,
             gar_parameters,
+            coolants=coolants_to_write,
+            coolant_data_dir=config.coolant_data_dir,
         )
 
     ngrain = len([x for x in network.get_species_list() if x.is_surface_species()])

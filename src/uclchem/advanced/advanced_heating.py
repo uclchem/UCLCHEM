@@ -16,6 +16,7 @@ across model runs in the same Python session.
 from typing import Dict
 
 import numpy as np
+from uclchemwrap import f2py_constants as f2py_constants_module
 from uclchemwrap import heating as heating_module
 
 
@@ -91,6 +92,7 @@ class HeatingSettings:
         configuration for reset_to_defaults().
         """
         self._heating_module = heating_module
+        self._f2py_constants_module = f2py_constants_module
 
         # Build a mapping of mechanism IDs to their groups (for mutual exclusion)
         self._heating_groups = {}
@@ -110,6 +112,7 @@ class HeatingSettings:
         )
         self._default_line_solver_attempts = self._heating_module.line_solver_attempts
         self._default_pahabund = self._heating_module.pahabund
+        self._default_coolant_data_dir = self._f2py_constants_module.coolantdatadir
 
     def set_heating_mechanism(self, mechanism_id: int, enabled: bool = True):
         """Enable or disable a specific heating mechanism.
@@ -283,6 +286,52 @@ class HeatingSettings:
         """
         return self._heating_module.pahabund
 
+    def set_coolant_directory(self, directory: str):
+        """Set the directory containing collisional rate data files.
+
+        This directory must contain the LAMDA-format collisional rate files
+        (e.g., co.dat, o-h2.dat, etc.) used for molecular line cooling calculations.
+
+        Args:
+            directory: Path to directory containing LAMDA-format rate files.
+                      Must end with '/'. Max 255 characters.
+
+        Raises:
+            ValueError: If path is too long or doesn't end with '/'
+            FileNotFoundError: If directory doesn't exist
+
+        Example:
+            >>> settings = HeatingSettings()
+            >>> settings.set_coolant_directory("/custom/rates/")
+        """
+        from pathlib import Path
+
+        # Validate
+        if not directory.endswith("/"):
+            directory += "/"
+
+        dir_path = Path(directory)
+        if not dir_path.exists():
+            raise FileNotFoundError(f"Directory not found: {directory}")
+        if not dir_path.is_dir():
+            raise ValueError(f"Not a directory: {directory}")
+        if len(directory) > 255:
+            raise ValueError(f"Path too long (max 255): {directory}")
+
+        # Pad and set
+        current = self._f2py_constants_module.coolantdatadir
+        max_len = int(current.dtype.itemsize)
+        padded = directory.ljust(max_len)
+        self._f2py_constants_module.coolantdatadir = padded
+
+    def get_coolant_directory(self) -> str:
+        """Get the current collisional rate data directory.
+
+        Returns:
+            Directory path as string (stripped of trailing spaces)
+        """
+        return str(np.char.decode(self._f2py_constants_module.coolantdatadir)).strip()
+
     def reset_to_defaults(self):
         """Reset all heating and cooling mechanisms to their initial values.
 
@@ -303,6 +352,7 @@ class HeatingSettings:
         )
         self._heating_module.line_solver_attempts = self._default_line_solver_attempts
         self._heating_module.pahabund = self._default_pahabund
+        self._f2py_constants_module.coolantdatadir = self._default_coolant_data_dir
 
     def print_configuration(self):
         """Print the current heating and cooling configuration.
@@ -336,4 +386,5 @@ class HeatingSettings:
         print(f"  Dust-Gas Coupling Method       : {method} ({method_name})")
         print(f"  Line Solver Attempts           : {self.get_line_solver_attempts()}")
         print(f"  PAH Abundance                  : {self.get_pah_abundance():.2e}")
+        print(f"  Coolant Data Directory         : {self.get_coolant_directory()}")
         print("=" * 60)

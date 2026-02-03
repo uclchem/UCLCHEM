@@ -67,7 +67,7 @@ IMPLICIT NONE
 
     ! Maximum number of coolants (fixed size for arrays)
     ! Leave a bit of headroom in case we add more coolants during runtime
-    INTEGER, PARAMETER :: MAX_COOLANTS = 10
+    INTEGER, PARAMETER :: MAX_COOLANTS = 50
     ! Arrays for the line cooling and median calculation
     REAL(dp) :: lineCoolingArray(MAX_LINE_SOLVE_ATTEMPTS, MAX_COOLANTS)
     INTEGER :: permutationArray(MAX_LINE_SOLVE_ATTEMPTS)

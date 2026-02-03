@@ -129,41 +129,7 @@ PHYSICAL_PARAMETERS_VALUE_FORMAT = (
 )
 SPECNAME_HEADER_FORMAT = "%11s"
 SPECNAME_VALUE_FORMAT = "%9.5E"
-#
 
-
-# Set collisional rates directory for heating/cooling calculations
-def set_collisional_rates_directory():
-    # TODO: move this functionality into the advanced heating suite.
-    coolant_directory = (
-        os.path.dirname(os.path.abspath(__file__)) + "/data/collisional_rates/"
-    )
-    # Provide the correct path to the coolant files:
-    assert len(coolant_directory) < 256, (
-        "Coolant directory path is too long, please shorten it. Path is "
-        + coolant_directory
-    )
-    try:
-        uclchemwrap.defaultparameters.coolantdatadir = coolant_directory
-        actual_dir = str(
-            np.char.decode(uclchemwrap.defaultparameters.coolantdatadir)
-        ).strip()
-        assert actual_dir == coolant_directory, (
-            f"Coolant directory path not set correctly. "
-            f"Expected: {coolant_directory} "
-            f"Got: {actual_dir}"
-        )
-    except AttributeError:
-        logging.warning(
-            "Cannot set the coolant directory path, please set 'coolantDataDir' correctly at runtime."
-        )
-
-
-# Call set_collisional_rates_directory to initialize heating/cooling support
-try:
-    set_collisional_rates_directory()
-except Exception as e:
-    logging.warning(f"Could not set collisional rates directory: {e}")
 
 # Model registration is intended to prevent code injection during loading time.
 REGISTRY: Dict[str, Type["AbstractModel"]] = {}
@@ -207,10 +173,6 @@ class ReactionNamesStore:
 
 
 get_reaction_names = ReactionNamesStore()
-
-# Before doing anything else, set the right collision rate directory.
-set_collisional_rates_directory()
-
 
 class SpeciesNameStore:
     def __init__(self):

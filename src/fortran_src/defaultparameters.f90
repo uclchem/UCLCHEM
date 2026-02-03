@@ -60,7 +60,13 @@ CHARACTER(256) :: heatingFile="" !File to write heating and cooling rates at eac
 INTEGER :: writeStep=1 !Writing to columnFile only happens every writeStep timesteps.
 CHARACTER(256) :: abundSaveFile="" ! The file to save the abundances to at the end of the model.
 CHARACTER(256) :: abundLoadFile="" ! The file to load the abundances from at the start of the model.
-CHARACTER(256) :: coolantDataDir="" ! Directory where the collisional rate files are stored.
+
+!## Coolant / Validation tolerances
+!|Parameter|Default Value|Description|
+!| ----- | ------| ------ |
+REAL(dp) :: freq_rel_tol = 1.0d-1 ! Relative tolerance (fraction) for comparing file vs calculated frequencies. Can be adjusted at runtime via Generalsettings (tutorial 6).
+REAL(dp) :: pop_rel_tol  = 1.0d-1 ! Relative tolerance (fraction) for checking LTE population consistency. Can be adjusted at runtime via Generalsettings (tutorial 6).
+
 !|abundSaveFile |None| File to store final abundances at the end of the model so future models can use them as the initial abundances. If not provided, no file will be produced.
 !|abundLoadFile |None| File from which to load initial abundances for the model, created through `abundSaveFile`. If not provided, the model starts from elemental gas.
 !|outSpecies|None| A space separated list of species to output to columnFile. Supplied as a separate list argument to most python functions, see python API docs.
