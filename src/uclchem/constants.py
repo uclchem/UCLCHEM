@@ -21,6 +21,29 @@ n_species = int(f2py_constants.nspec)
 n_reactions = int(f2py_constants.nreac)
 N_PHYSICAL_PARAMETERS = int(f2py_constants.n_physics_params)
 NCOOLANTS = int(f2py_constants.ncoolants)
+N_DVODE_STATS = int(f2py_constants.n_dvode_stats)
+
+# DVODE solver statistics names
+DVODE_STAT_NAMES = [
+    "ISTATE",
+    "HU",
+    "HCUR",
+    "TCUR",
+    "TOLSF",
+    "NST",
+    "NFE",
+    "NJE",
+    "NQU",
+    "NQCUR",
+    "IMXER",
+    "LENRW",
+    "LENIW",
+    "NLU",
+    "NNI",
+    "NCFN",
+    "NETF",
+    "CPU_TIME",
+]
 
 # Import PHYSICAL_PARAMETERS from its canonical source
 # This is defined in makerates to avoid circular dependency
