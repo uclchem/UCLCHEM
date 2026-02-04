@@ -1,0 +1,21 @@
+# Dijkhuis 2025 Configuration
+# Enhanced surface chemistry network with TST inertia data
+# This configuration generates a network compatible with advanced surface chemistry features highlighted in:
+# DOI
+
+# Species with extended format including TST inertia data (Ix, Iy, Iz, symmetry_factor)
+species_file: data/dijkhuis2025/species.csv
+
+# Core reactions from gas phase database
+database_reaction_file: data/databases/umist22.csv
+database_reaction_type: UMIST
+
+# Enhanced grain network
+custom_reaction_file: data/dijkhuis2025/grain_network.csv
+custom_reaction_type: UCL
+
+# Optional: Enable photo-reactions on grains (may cause stiffness)
+add_crp_photo_to_grain: False
+
+# Optional: Enable rates storage for analysis
+enable_rates_storage: False
