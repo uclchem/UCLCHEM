@@ -19,7 +19,6 @@ from .network import Network
 from .reaction import Reaction, reaction_types
 from .species import Species
 
-
 # Canonical definition of physical parameters
 # This list defines the physical parameter array passed to Fortran
 PHYSICAL_PARAMETERS = [
@@ -382,7 +381,9 @@ def write_outputs(
         "n_species": len(network.get_species_list()),
         "n_reactions": len(network.get_reaction_list()),
         "n_physical_parameters": len(PHYSICAL_PARAMETERS),
+        "n_dvode_stats": 18,
         "n_coolants": len(coolants),
+        "n_dvode_stats": 18,
         "coolant_files": [c["file"] for c in coolants],
         "coolant_names": [c["name"] for c in coolants],
         "coolant_data_dir": get_default_coolant_directory(coolant_data_dir),

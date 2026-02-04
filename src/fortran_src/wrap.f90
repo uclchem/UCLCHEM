@@ -9,6 +9,7 @@ MODULE uclchemwrap
     USE chemistry
     USE io
     USE heating
+    USE COOLANT_MODULE
     USE F2PY_CONSTANTS
     USE postprocess_mod, ONLY: postprocess_error
     IMPLICIT NONE
@@ -1133,4 +1134,39 @@ CONTAINS
         specname_out(:nspec) = specName
     END SUBROUTINE get_specname
 
+    ! TODO: move this to coolant_module, but coolant_module is not being exposed
+    ! to f2py currently. So for now, keep it here.
+    !=======================================================================
+    !
+    !  Wrapper function to get the current coolant restart mode
+    !  Accessible from Python via f2py
+    !
+    !-----------------------------------------------------------------------
+    INTEGER FUNCTION get_coolant_restart_mode_wrap()
+
+        IMPLICIT NONE
+        !f2py intent(out) get_coolant_restart_mode_wrap
+        get_coolant_restart_mode_wrap = GET_COOLANT_RESTART_MODE()
+    END FUNCTION get_coolant_restart_mode_wrap
+
+
+    !=======================================================================
+    !
+    !  Wrapper subroutine to set the coolant restart mode
+    !  Accessible from Python via f2py
+    !
+    !  mode values:
+    !    0 = WARM (default): Initialize to LTE on first call, rescale on density change
+    !    1 = FORCE_LTE: Always reset to LTE before SE iteration
+    !    2 = FORCE_GROUND: Always reset to ground state before SE iteration
+    !
+    !-----------------------------------------------------------------------
+    SUBROUTINE set_coolant_restart_mode_wrap(mode)
+        IMPLICIT NONE
+        INTEGER, INTENT(IN) :: mode
+        !f2py intent(in) mode
+        CALL SET_COOLANT_RESTART_MODE(mode)
+    END SUBROUTINE set_coolant_restart_mode_wrap
+
 END MODULE uclchemwrap
+

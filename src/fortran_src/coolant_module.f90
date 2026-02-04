@@ -37,6 +37,20 @@ MODULE COOLANT_MODULE
       REAL(dp), ALLOCATABLE :: OPACITY(:,:) ! Optical depth of each transition along each HEALPix ray to the PDR surface (or simulation boundary)
       REAL(dp), ALLOCATABLE :: LAMBDA(:,:) ! Lambda operator value for each transition
 
+      ! Persistent workspace arrays to avoid repeated allocations (added for performance)
+      REAL(dp), ALLOCATABLE :: R(:,:) ! Transition rate matrix (s^-1)
+      REAL(dp), ALLOCATABLE :: A(:,:) ! Coefficient matrix for SE equations
+      REAL(dp), ALLOCATABLE :: B(:) ! Right-hand-side vector for SE equations
+      REAL(dp), ALLOCATABLE :: RADIATION_FIELD(:,:) ! Mean integrated radiation field
+      REAL(dp), ALLOCATABLE :: COLLISIONAL_RATE(:,:) ! Collisional rate coefficients
+      INTEGER, ALLOCATABLE :: IPIV(:), INDEX_ROW(:), INDEX_COL(:) ! Gauss-Jordan workspace
+
+      ! Collisional rate cache (temperature-keyed, per species)
+      ! Cache has 10 entries per coolant (configurable via CACHE_RESOLUTION)
+      REAL(dp) :: CACHE_RESOLUTION ! Temperature rounding resolution (K), default 0.01
+      REAL(dp) :: CACHED_TEMPERATURE(10) ! Cached temperature keys (rounded)
+      REAL(dp), ALLOCATABLE :: CACHED_COLLISIONAL_RATE(:,:,:) ! (10, NLEVEL, NLEVEL)
+      INTEGER :: CACHE_INDEX ! Current cache position (round-robin)
 
    END TYPE COOLANT_TYPE
 
@@ -46,6 +60,16 @@ MODULE COOLANT_MODULE
    ! NCOOLANTS, coolantFiles, and coolantNames are imported from F2PY_CONSTANTS
    ! They are generated at build time by MakeRates based on user configuration
    INTEGER :: coolantIndices(NCOOLANTS)
+
+   ! Coolant population restart mode control
+   ! 0 = WARM (default): Rescale existing populations when density changes, initialize to LTE on first call
+   ! 1 = FORCE_LTE: Always reset to LTE before SE iteration
+   ! 2 = FORCE_GROUND: Always reset to ground state before SE iteration
+   !f2py INTEGER :: coolant_restart_mode
+   INTEGER :: coolant_restart_mode = 0
+
+   ! Track whether populations have been initialized (per coolant)
+   LOGICAL :: coolant_populations_initialized = .FALSE.
    REAL(dp) :: CLOUD_DENSITY,CLOUD_COLUMN,CLOUD_SIZE
 
 
@@ -240,6 +264,31 @@ CONTAINS
          coolants(N)%EMISSIVITY=0.0
          coolants(N)%OPACITY=0.0
          coolants(N)%LAMBDA=0.0
+
+         ! Allocate persistent workspace arrays to avoid repeated allocations
+         ALLOCATE(coolants(N)%R(1:coolants(N)%NLEVEL,1:coolants(N)%NLEVEL))
+         ALLOCATE(coolants(N)%A(1:coolants(N)%NLEVEL,1:coolants(N)%NLEVEL))
+         ALLOCATE(coolants(N)%B(1:coolants(N)%NLEVEL))
+         ALLOCATE(coolants(N)%RADIATION_FIELD(1:coolants(N)%NLEVEL,1:coolants(N)%NLEVEL))
+         ALLOCATE(coolants(N)%COLLISIONAL_RATE(1:coolants(N)%NLEVEL,1:coolants(N)%NLEVEL))
+         ALLOCATE(coolants(N)%IPIV(1:coolants(N)%NLEVEL))
+         ALLOCATE(coolants(N)%INDEX_ROW(1:coolants(N)%NLEVEL))
+         ALLOCATE(coolants(N)%INDEX_COL(1:coolants(N)%NLEVEL))
+         coolants(N)%R=0.0D0
+         coolants(N)%A=0.0D0
+         coolants(N)%B=0.0D0
+         coolants(N)%RADIATION_FIELD=0.0D0
+         coolants(N)%COLLISIONAL_RATE=0.0D0
+         coolants(N)%IPIV=0
+         coolants(N)%INDEX_ROW=0
+         coolants(N)%INDEX_COL=0
+
+         ! Allocate and initialize collisional rate cache (10 entries per coolant)
+         ALLOCATE(coolants(N)%CACHED_COLLISIONAL_RATE(10,1:coolants(N)%NLEVEL,1:coolants(N)%NLEVEL))
+         coolants(N)%CACHED_COLLISIONAL_RATE=0.0D0
+         coolants(N)%CACHED_TEMPERATURE=-1.0D0  ! -1 indicates empty cache entry
+         coolants(N)%CACHE_RESOLUTION=0.01D0  ! Default resolution: 0.01 K
+         coolants(N)%CACHE_INDEX=1  ! Start at first cache position
       END DO
 
       RETURN
@@ -489,15 +538,11 @@ SUBROUTINE CALCULATE_LEVEL_POPULATIONS(COOLANT,GasTemperature,gasDensity,abundan
    TYPE(COOLANT_TYPE),  INTENT(INOUT)    :: COOLANT
    INTEGER:: I,J,N
    REAL(dp)     :: SUM
-   REAL(dp), ALLOCATABLE :: R(:,:),A(:,:),B(:)
 
-!  Allocate the arrays
-   ALLOCATE(R(1:COOLANT%NLEVEL,1:COOLANT%NLEVEL))
-   ALLOCATE(A(1:COOLANT%NLEVEL,1:COOLANT%NLEVEL))
-   ALLOCATE(B(1:COOLANT%NLEVEL))
-   A=0.0D0
-   B=0.0D0
-   R=0.0D0
+!  Reset the persistent workspace arrays (no allocation needed)
+   COOLANT%A=0.0D0
+   COOLANT%B=0.0D0
+   COOLANT%R=0.0D0
    ! write(*,*) "temp",gasTemperature
    ! write(*,*) "pop",coolant%population
 
@@ -508,7 +553,7 @@ SUBROUTINE CALCULATE_LEVEL_POPULATIONS(COOLANT,GasTemperature,gasDensity,abundan
    IF (dustTemp <= 0.0D0) WRITE(*,*) "WARNING: dustTemp <= 0!"
 
 !  Construct the matrix of transition rates R_ij (s^-1)
-   CALL CONSTRUCT_TRANSITION_MATRIX(COOLANT,R,gasTemperature,gasDensity&
+   CALL CONSTRUCT_TRANSITION_MATRIX(COOLANT,COOLANT%R,gasTemperature,gasDensity&
       &,abundances,dustTemp)
 
 
@@ -517,38 +562,38 @@ SUBROUTINE CALCULATE_LEVEL_POPULATIONS(COOLANT,GasTemperature,gasDensity,abundan
       SUM=0.0D0
       DO J=1,COOLANT%NLEVEL
          IF(J.EQ.I) CYCLE
-         IF(ISNAN(R(J,I))) THEN
+         IF(ISNAN(COOLANT%R(J,I))) THEN
             write(*,*) coolant%name
              DO N=1,COOLANT%NLEVEL
-               write(*,*) R(N,:)
+               write(*,*) COOLANT%R(N,:)
             END DO
             STOP
          END IF
-         ! IF (R(J,I) .eq. 0.0) write(*,*) coolant%name,I,J
-         A(I,J) = -R(J,I)
-         SUM=SUM+R(I,J)
+         ! IF (COOLANT%R(J,I) .eq. 0.0) write(*,*) coolant%name,I,J
+         COOLANT%A(I,J) = -COOLANT%R(J,I)
+         SUM=SUM+COOLANT%R(I,J)
       END DO
-      A(I,I)=SUM
-      IF (A(I,I) .eq. 0.0) write(*,*) coolant%name,I
+      COOLANT%A(I,I)=SUM
+      IF (COOLANT%A(I,I) .eq. 0.0) write(*,*) coolant%name,I
    END DO
-   B=0.0D0
+   COOLANT%B=0.0D0
 
 !  Replace the last equilibrium equation in the transition matrix with
 !  the conservation equation (i.e. the sum of the population densities
 !  over all levels), and replace the last entry in the right-hand-side
 !  vector with the total density of the coolant species.
-   A(COOLANT%NLEVEL,:)=1 ! Sum over all levels, ∑_j n_j
-   B(COOLANT%NLEVEL)=coolant%density
+   COOLANT%A(COOLANT%NLEVEL,:)=1 ! Sum over all levels, ∑_j n_j
+   COOLANT%B(COOLANT%NLEVEL)=coolant%density
 
 !  Call the Gauss-Jordan solver (the solution is returned in vector b)
-   CALL GAUSS_JORDAN(COOLANT%NLEVEL,A,B)
+   CALL GAUSS_JORDAN(COOLANT%NLEVEL,COOLANT%A,COOLANT%B,COOLANT%IPIV,COOLANT%INDEX_ROW,COOLANT%INDEX_COL)
 
 !  Replace negative or NaN values caused by numerical noise around zero
    DO I=1,COOLANT%NLEVEL
-      IF(.NOT.B(I).GE.0) B(I)=0.0D0
-      IF (ISNAN(B(I))) THEN
-         write(*,*) "NaN in population: ", I, B(I),COOLANT%NLEVEL
-         write(*,*) A
+      IF(.NOT.COOLANT%B(I).GE.0) COOLANT%B(I)=0.0D0
+      IF (ISNAN(COOLANT%B(I))) THEN
+         write(*,*) "NaN in population: ", I, COOLANT%B(I),COOLANT%NLEVEL
+         write(*,*) COOLANT%A
       END IF
    END DO
 
@@ -556,10 +601,10 @@ SUBROUTINE CALCULATE_LEVEL_POPULATIONS(COOLANT,GasTemperature,gasDensity,abundan
    coolant%PREVIOUS_POPULATION=coolant%POPULATION
 
 !  Store the new population densities
-   coolant%POPULATION=B
+   coolant%POPULATION=COOLANT%B
 
-   DEALLOCATE(R,A,B)
-         
+!  Note: Arrays are persistent and reused, no deallocation needed
+
    RETURN
 END SUBROUTINE CALCULATE_LEVEL_POPULATIONS
 !=======================================================================
@@ -575,20 +620,19 @@ END SUBROUTINE CALCULATE_LEVEL_POPULATIONS
 !  values.
 !
 !-----------------------------------------------------------------------
-SUBROUTINE GAUSS_JORDAN(N,A,B)
+SUBROUTINE GAUSS_JORDAN(N,A,B,IPIV,INDEX_ROW,INDEX_COL)
    USE SWAP_FUNCTION
    IMPLICIT NONE
 
    INTEGER, INTENT(IN)    :: N
    REAL(dp),     INTENT(INOUT) :: A(:,:)
    REAL(dp),     INTENT(INOUT) :: B(:)
+   INTEGER, INTENT(INOUT) :: IPIV(:),INDEX_ROW(:),INDEX_COL(:)
 
    INTEGER :: I,J,K,L,IROW,ICOL
-   INTEGER, ALLOCATABLE :: IPIV(:),INDEX_ROW(:),INDEX_COL(:)
    REAL(dp) :: MAX,DUMMY,PIVINV
 
-   ALLOCATE(IPIV(1:N),INDEX_ROW(1:N),INDEX_COL(1:N))
-
+!  Reset the persistent workspace arrays (no allocation needed)
    ICOL=0
    IROW=0
    IPIV=0
@@ -657,7 +701,7 @@ SUBROUTINE GAUSS_JORDAN(N,A,B)
       CALL SWAP(A(:,INDEX_ROW(L)),A(:,INDEX_COL(L)))
    END DO
 
-   DEALLOCATE(IPIV,INDEX_ROW,INDEX_COL)
+!  Note: Arrays are persistent and reused, no deallocation needed
 
    RETURN
 END SUBROUTINE GAUSS_JORDAN
@@ -675,13 +719,12 @@ SUBROUTINE CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,GasTemperature,
    REAL(dp), INTENT(IN)    :: GasTemperature,gasDensity,abundances(:),dustTemp
    REAL(dp), INTENT(OUT)   :: TRANSITION_MATRIX(:,:)
 
-   INTEGER :: I,J
+   INTEGER :: I,J,K,cache_hit
    REAL(dp) :: dustEmissivity
    REAL(dp) :: S_ij,B_ij,B_ij_CMB,B_ij_DUST,BETA_ij
-   REAL(dp), ALLOCATABLE :: RADIATION_FIELD(:,:)
-   REAL(dp), ALLOCATABLE :: COLLISIONAL_RATE(:,:)
-
    REAL(dp) :: S_ij_PREVIOUS,LAMBDA_ij,rhoGrain,dustDensity
+   REAL(dp) :: temp_key
+   LOGICAL :: found_in_cache
 
    ! Debug: Check for NaN inputs
    IF (ISNAN(dustTemp)) THEN
@@ -693,9 +736,8 @@ SUBROUTINE CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,GasTemperature,
       RETURN
    END IF
 
-!  Allocate and initialize the mean integrated radiation field
-   ALLOCATE(RADIATION_FIELD(1:COOLANT%NLEVEL,1:COOLANT%NLEVEL))
-   RADIATION_FIELD=0.0D0
+!  Reset the persistent workspace arrays (no allocation needed)
+   COOLANT%RADIATION_FIELD=0.0D0
    ! TRANSITION_MATRIX=0.0D0
 !  Initialize the local emissivities
    COOLANT%EMISSIVITY=0.0D0
@@ -757,11 +799,11 @@ SUBROUTINE CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,GasTemperature,
                                              & *HP*COOLANT%FREQUENCY(I,J)*BETA_ij*(S_ij-B_ij)/S_ij
          END IF
 !        Calculate the mean integrated radiation field <J_ij>
-         RADIATION_FIELD(I,J)=(1.0D0-BETA_ij)*S_ij+BETA_ij*B_ij
-         
+         COOLANT%RADIATION_FIELD(I,J)=(1.0D0-BETA_ij)*S_ij+BETA_ij*B_ij
+
          ! Protect against NaN in radiation field
-         IF (ISNAN(RADIATION_FIELD(I,J))) THEN
-            RADIATION_FIELD(I,J) = 0.0D0
+         IF (ISNAN(COOLANT%RADIATION_FIELD(I,J))) THEN
+            COOLANT%RADIATION_FIELD(I,J) = 0.0D0
          END IF
 
 !        Lambda operator keeps breaking so lets not use ALI for now
@@ -780,34 +822,62 @@ SUBROUTINE CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,GasTemperature,
 ! !        Use the Accelerated Lambda Iteration method to speed up convergence
 ! !        by amplifying the incremental difference of the new source function
 !          LAMBDA_ij=COOLANT%LAMBDA(I,J)
-!          RADIATION_FIELD(I,J)=(1.0D0-BETA_ij)*(LAMBDA_ij*S_ij+(1.0D0-LAMBDA_ij)*S_ij_PREVIOUS)+BETA_ij*B_ij
+!          COOLANT%RADIATION_FIELD(I,J)=(1.0D0-BETA_ij)*(LAMBDA_ij*S_ij+(1.0D0-LAMBDA_ij)*S_ij_PREVIOUS)+BETA_ij*B_ij
 
-         RADIATION_FIELD(J,I)=RADIATION_FIELD(I,J)
+         COOLANT%RADIATION_FIELD(J,I)=COOLANT%RADIATION_FIELD(I,J)
       END DO ! End of loop over levels (j)
    END DO ! End of loop over levels (i)
 
-!  Allocate and calculate the collisional rates
-   ALLOCATE(COLLISIONAL_RATE(1:COOLANT%NLEVEL,1:COOLANT%NLEVEL))
-   CALL CALCULATE_COLLISIONAL_RATES(COOLANT,gasDensity,GasTemperature,abundances,COLLISIONAL_RATE)
+!  Calculate or retrieve cached collisional rates
+!  Round temperature to cache resolution and check cache
+   temp_key = NINT(GasTemperature / COOLANT%CACHE_RESOLUTION) * COOLANT%CACHE_RESOLUTION
+   found_in_cache = .FALSE.
+   cache_hit = -1
+
+   ! Search cache for matching temperature
+   DO K=1,10
+      IF (ABS(COOLANT%CACHED_TEMPERATURE(K) - temp_key) .LT. 1.0D-10) THEN
+         found_in_cache = .TRUE.
+         cache_hit = K
+         EXIT
+      END IF
+   END DO
+
+   IF (found_in_cache) THEN
+      ! Use cached collisional rates
+      COOLANT%COLLISIONAL_RATE = COOLANT%CACHED_COLLISIONAL_RATE(cache_hit,:,:)
+   ELSE
+      ! Calculate new collisional rates
+      COOLANT%COLLISIONAL_RATE=0.0D0
+      CALL CALCULATE_COLLISIONAL_RATES(COOLANT,gasDensity,GasTemperature,abundances,COOLANT%COLLISIONAL_RATE)
+
+      ! Store in cache (round-robin replacement)
+      COOLANT%CACHED_TEMPERATURE(COOLANT%CACHE_INDEX) = temp_key
+      COOLANT%CACHED_COLLISIONAL_RATE(COOLANT%CACHE_INDEX,:,:) = COOLANT%COLLISIONAL_RATE
+
+      ! Advance cache index (circular)
+      COOLANT%CACHE_INDEX = COOLANT%CACHE_INDEX + 1
+      IF (COOLANT%CACHE_INDEX .GT. 10) COOLANT%CACHE_INDEX = 1
+   END IF
    ! IF (TRIM(coolant%name) == "C+") THEN
    !    write(*,*) "      **** opaticy: ", coolant%opacity
    !    write(*,*) "      **** coefficients", BETA_ij, S_ij, B_ij
-   !    write(*,*) "      **** coolant: ", TRIM(coolant%name), "' radiation_field=", RADIATION_FIELD
+   !    write(*,*) "      **** coolant: ", TRIM(coolant%name), "' radiation_field=", COOLANT%RADIATION_FIELD
    ! END IF
 !  Construct the transition matrix: R_ij = A_ij + B_ij.<J> + C_ij
    DO I=1,COOLANT%NLEVEL
       DO J=1,COOLANT%NLEVEL
          if (isnan(coolant%A_COEFF(I,J))) WRITE(*,*) "detected NaN A_COEFF!"
          if (isnan(coolant%b_COEFF(I,J))) WRITE(*,*) "detected NaN b_COEFF!"
-         if (isnan(RADIATION_FIELD(I,J))) WRITE(*,*) "detected NaN RADFIELD!"
-         if (isnan(COLLISIONAL_RATE(I,J))) WRITE(*,*) "Detection NaN collisional rates!"
+         if (isnan(COOLANT%RADIATION_FIELD(I,J))) WRITE(*,*) "detected NaN RADFIELD!"
+         if (isnan(COOLANT%COLLISIONAL_RATE(I,J))) WRITE(*,*) "Detection NaN collisional rates!"
          TRANSITION_MATRIX(I,J)=COOLANT%A_COEFF(I,J) &
-                            & + COOLANT%B_COEFF(I,J)*RADIATION_FIELD(I,J) &
-                            & + COLLISIONAL_RATE(I,J)
+                            & + COOLANT%B_COEFF(I,J)*COOLANT%RADIATION_FIELD(I,J) &
+                            & + COOLANT%COLLISIONAL_RATE(I,J)
       END DO
    END DO
 
-   DEALLOCATE(RADIATION_FIELD,COLLISIONAL_RATE)
+!  Note: Arrays are persistent and reused, no deallocation needed
 
    RETURN
 END SUBROUTINE CONSTRUCT_TRANSITION_MATRIX
@@ -993,6 +1063,205 @@ LOGICAL FUNCTION CHECK_CONVERGENCE()
       END DO ! End of loop over coolant
    CHECK_CONVERGENCE=ALL(convergence)
 END FUNCTION CHECK_CONVERGENCE
+
+
+!=======================================================================
+!
+!  Reset coolant level populations to start fresh.
+!  When use_lte=.TRUE., populations are set to LTE values at the given
+!  temperature. When use_lte=.FALSE., all population is put in ground state.
+!
+!-----------------------------------------------------------------------
+SUBROUTINE RESET_COOLANT_POPULATIONS(gasTemperature, use_lte)
+   IMPLICIT NONE
+   REAL(dp), INTENT(IN) :: gasTemperature
+   LOGICAL, INTENT(IN) :: use_lte
+   INTEGER :: N
+
+   DO N=1,NCOOLANTS
+      IF (use_lte) THEN
+         ! Initialize populations to LTE
+         CALL CALCULATE_LTE_POPULATIONS(coolants(N)%NLEVEL, &
+                                       coolants(N)%ENERGY, &
+                                       coolants(N)%WEIGHT, &
+                                       coolants(N)%DENSITY, &
+                                       gasTemperature, &
+                                       coolants(N)%POPULATION)
+         coolants(N)%PREVIOUS_POPULATION = coolants(N)%POPULATION
+      ELSE
+         ! Put all population in ground state (level 1)
+         coolants(N)%POPULATION = 0.0D0
+         coolants(N)%POPULATION(1) = coolants(N)%DENSITY
+         coolants(N)%PREVIOUS_POPULATION = coolants(N)%POPULATION
+      END IF
+      ! Mark as not converged to trigger recalculation
+      coolants(N)%CONVERGED = .FALSE.
+   END DO
+
+   RETURN
+END SUBROUTINE RESET_COOLANT_POPULATIONS
+
+
+!=======================================================================
+!
+!  Warm restart: rescale existing coolant populations to new densities.
+!  This preserves the population distribution while adjusting to new
+!  total densities. The old populations (which sum to old density) are
+!  rescaled proportionally so they sum to the new density.
+!
+!  This is useful when physical conditions change slightly - the relative
+!  population distribution should be similar, just scaled to the new total.
+!
+!-----------------------------------------------------------------------
+SUBROUTINE WARMSTART_COOLANT_POPULATIONS()
+   IMPLICIT NONE
+   INTEGER :: N
+   REAL(dp) :: old_total, scale_factor
+
+   DO N=1,NCOOLANTS
+      ! Calculate the current total population
+      old_total = SUM(coolants(N)%POPULATION)
+
+      ! Avoid division by zero - if no populations exist, skip rescaling
+      IF (old_total .GT. 0.0D0) THEN
+         ! Calculate scale factor to match new density
+         scale_factor = coolants(N)%DENSITY / old_total
+
+         ! Rescale all level populations
+         coolants(N)%POPULATION = coolants(N)%POPULATION * scale_factor
+         coolants(N)%PREVIOUS_POPULATION = coolants(N)%PREVIOUS_POPULATION * scale_factor
+
+         ! Mark as not converged to trigger refinement
+         coolants(N)%CONVERGED = .FALSE.
+      END IF
+   END DO
+
+   RETURN
+END SUBROUTINE WARMSTART_COOLANT_POPULATIONS
+
+
+!=======================================================================
+!
+!  Manage coolant populations with automatic initialization and warm restart.
+!  This should be called BEFORE the SE iteration loop to ensure populations
+!  are properly initialized or restarted based on the coolant_restart_mode.
+!
+!  Modes:
+!    0 = WARM (default): Initialize to LTE on first call, then rescale when density changes
+!    1 = FORCE_LTE: Always reset to LTE before each SE iteration (original behavior)
+!    2 = FORCE_GROUND: Always reset to ground state before each SE iteration
+!
+!-----------------------------------------------------------------------
+SUBROUTINE MANAGE_COOLANT_POPULATIONS(gasTemperature)
+   IMPLICIT NONE
+   REAL(dp), INTENT(IN) :: gasTemperature
+   INTEGER :: N
+   REAL(dp) :: old_total, scale_factor
+
+   ! Mode 1: FORCE_LTE - always reset to LTE (original behavior)
+   IF (coolant_restart_mode .EQ. 1) THEN
+      DO N=1,NCOOLANTS
+         CALL CALCULATE_LTE_POPULATIONS(coolants(N)%NLEVEL, &
+                                       coolants(N)%ENERGY, &
+                                       coolants(N)%WEIGHT, &
+                                       coolants(N)%DENSITY, &
+                                       gasTemperature, &
+                                       coolants(N)%POPULATION)
+         coolants(N)%PREVIOUS_POPULATION = coolants(N)%POPULATION
+         coolants(N)%CONVERGED = .FALSE.
+      END DO
+      RETURN
+   END IF
+
+   ! Mode 2: FORCE_GROUND - always reset to ground state
+   IF (coolant_restart_mode .EQ. 2) THEN
+      DO N=1,NCOOLANTS
+         coolants(N)%POPULATION = 0.0D0
+         coolants(N)%POPULATION(1) = coolants(N)%DENSITY
+         coolants(N)%PREVIOUS_POPULATION = coolants(N)%POPULATION
+         coolants(N)%CONVERGED = .FALSE.
+      END DO
+      RETURN
+   END IF
+
+   ! Mode 0: WARM (default) - smart initialization and warm restart
+   IF (.NOT. coolant_populations_initialized) THEN
+      ! First call: Initialize populations to LTE
+      DO N=1,NCOOLANTS
+         CALL CALCULATE_LTE_POPULATIONS(coolants(N)%NLEVEL, &
+                                       coolants(N)%ENERGY, &
+                                       coolants(N)%WEIGHT, &
+                                       coolants(N)%DENSITY, &
+                                       gasTemperature, &
+                                       coolants(N)%POPULATION)
+         coolants(N)%PREVIOUS_POPULATION = coolants(N)%POPULATION
+         coolants(N)%CONVERGED = .FALSE.
+      END DO
+      coolant_populations_initialized = .TRUE.
+   ELSE
+      ! Subsequent calls: Warm restart - rescale if density changed
+      DO N=1,NCOOLANTS
+         old_total = SUM(coolants(N)%POPULATION)
+
+         ! Check if density changed significantly (> 0.1% relative change)
+         IF (old_total .GT. 0.0D0) THEN
+            IF (ABS(coolants(N)%DENSITY - old_total) / old_total .GT. 1.0D-3) THEN
+               ! Density changed: rescale populations proportionally
+               scale_factor = coolants(N)%DENSITY / old_total
+               coolants(N)%POPULATION = coolants(N)%POPULATION * scale_factor
+               coolants(N)%PREVIOUS_POPULATION = coolants(N)%PREVIOUS_POPULATION * scale_factor
+               coolants(N)%CONVERGED = .FALSE.
+            END IF
+         ELSE
+            ! No existing populations: initialize to ground state
+            coolants(N)%POPULATION = 0.0D0
+            coolants(N)%POPULATION(1) = coolants(N)%DENSITY
+            coolants(N)%PREVIOUS_POPULATION = coolants(N)%POPULATION
+            coolants(N)%CONVERGED = .FALSE.
+         END IF
+      END DO
+   END IF
+
+   RETURN
+END SUBROUTINE MANAGE_COOLANT_POPULATIONS
+
+
+!=======================================================================
+!
+!  Get the current coolant restart mode
+!
+!-----------------------------------------------------------------------
+INTEGER FUNCTION GET_COOLANT_RESTART_MODE()
+   IMPLICIT NONE
+   GET_COOLANT_RESTART_MODE = coolant_restart_mode
+   RETURN
+END FUNCTION GET_COOLANT_RESTART_MODE
+
+
+!=======================================================================
+!
+!  Set the coolant restart mode
+!
+!  mode values:
+!    0 = WARM (default): Initialize to LTE on first call, rescale on density change
+!    1 = FORCE_LTE: Always reset to LTE before SE iteration
+!    2 = FORCE_GROUND: Always reset to ground state before SE iteration
+!
+!-----------------------------------------------------------------------
+SUBROUTINE SET_COOLANT_RESTART_MODE(mode)
+   IMPLICIT NONE
+   INTEGER, INTENT(IN) :: mode
+   IF (mode .LT. 0 .OR. mode .GT. 2) THEN
+      WRITE(*,*) "WARNING: Invalid coolant_restart_mode ", mode
+      WRITE(*,*) "Valid modes: 0 (WARM), 1 (FORCE_LTE), 2 (FORCE_GROUND)"
+      WRITE(*,*) "Keeping current mode: ", coolant_restart_mode
+      RETURN
+   END IF
+   coolant_restart_mode = mode
+   ! Reset initialization flag when mode changes to force reinitialization
+   coolant_populations_initialized = .FALSE.
+   RETURN
+END SUBROUTINE SET_COOLANT_RESTART_MODE
 
 
 !=======================================================================

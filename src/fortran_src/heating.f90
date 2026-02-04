@@ -61,9 +61,9 @@ IMPLICIT NONE
     INTEGER :: dust_gas_coupling_method = 1
     
     ! LINE_SOLVER_ATTEMPTS: Number of times to solve line cooling and take median, must be <= MAX_LINE_SOLVE_ATTEMPTS
-    INTEGER :: LINE_SOLVER_ATTEMPTS = 5
+    INTEGER :: LINE_SOLVER_ATTEMPTS = 1
     ! Maximum number of line solver attempts (fixed size for arrays)
-    INTEGER, PARAMETER :: MAX_LINE_SOLVE_ATTEMPTS = 5
+    INTEGER, PARAMETER :: MAX_LINE_SOLVE_ATTEMPTS = 3
 
     ! Maximum number of coolants (fixed size for arrays)
     ! Leave a bit of headroom in case we add more coolants during runtime
@@ -85,6 +85,10 @@ IMPLICIT NONE
 
         ! write(*,*) "Initializing heating.f90 ..."
         CALL READ_COOLANTS()
+
+        ! Reset population initialization flag for new model run
+        coolant_populations_initialized = .FALSE.
+
         DO i=1,ncoolants
             coolName=coolantNames(i)
             if (coolName .eq. "p-H2") coolName="H2"
@@ -182,17 +186,14 @@ IMPLICIT NONE
         IF (cooling_modules(5)) THEN
             ! Use LINE_SOLVER_ATTEMPTS (up to MAX_LINE_SOLVE_ATTEMPTS) for actual number of solves
             num_attempts = MIN(LINE_SOLVER_ATTEMPTS, MAX_LINE_SOLVE_ATTEMPTS)
-            
+
             !We do the line cooling multiple times and take median value since solver will occasionally do something wild
             DO ti=1,num_attempts
-                lineCoolingArray(ti, :NCOOLANTS)=lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
+                lineCoolingArray(ti, :NCOOLANTS )=lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
                 lineCoolingSum(ti) = sum(lineCoolingArray(ti, :NCOOLANTS+1))
             END DO
-            
-            ! Sort and reorder using function-local permutationArray
             CALL pair_insertion_sort_with_perm(lineCoolingSum(1:num_attempts), permutationArray(1:num_attempts))
-            lineCoolingArray(1:num_attempts, :NCOOLANTS+1) = lineCoolingArray(permutationArray(1:num_attempts), :NCOOLANTS+1)
-            median_line_index = (num_attempts + 1) / 2
+            median_line_index = permutationArray((num_attempts + 1) / 2)
             coolingValues(5) = lineCoolingSum(median_line_index)
         ELSE
             coolingValues(5) = 0.0_dp
@@ -218,12 +219,9 @@ IMPLICIT NONE
         CALL UPDATE_COOLANT_LINEWIDTHS(gasTemperature,turbVel)
         CALL UPDATE_COOLANT_ABUNDANCES(gasDensity,gasTemperature,abundances)
 
-        DO N=1,NCOOLANTS
-        CALL CALCULATE_LTE_POPULATIONS(coolants(N)%NLEVEL,coolants(N)%ENERGY,coolants(N)%WEIGHT, &
-                                        & coolants(N)%DENSITY,gasTemperature, &
-                                        & coolants(N)%POPULATION)
-        END DO
-        ! After LTE populations
+        ! Manage coolant populations with automatic initialization and warm restart
+        ! This replaces the forced LTE reset with smart restart logic based on coolant_restart_mode
+        CALL MANAGE_COOLANT_POPULATIONS(gasTemperature)
 
         CALL CALCULATE_LINE_OPACITIES()
         CALL CALCULATE_LAMBDA_OPERATOR()

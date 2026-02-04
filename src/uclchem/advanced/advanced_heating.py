@@ -16,6 +16,7 @@ across model runs in the same Python session.
 from typing import Dict
 
 import numpy as np
+import uclchemwrap
 from uclchemwrap import f2py_constants as f2py_constants_module
 from uclchemwrap import heating as heating_module
 
@@ -47,6 +48,10 @@ class HeatingSettings:
 
         DUST_TEMP_HOCUK (int): Hocuk et al. 2017 dust temperature method
         DUST_TEMP_HOLLENBACH (int): Hollenbach 1991 dust temperature method
+
+        COOLANT_WARM (int): Warm restart mode - initialize LTE, rescale on density change (default)
+        COOLANT_FORCE_LTE (int): Always reset to LTE before SE iteration (original behavior)
+        COOLANT_FORCE_GROUND (int): Always reset to ground state before SE iteration
 
     Example:
         >>> from uclchem.advanced import HeatingSettings
@@ -84,6 +89,11 @@ class HeatingSettings:
     DUST_TEMP_HOCUK = 1  # Hocuk et al. 2017 parametric formulation
     DUST_TEMP_HOLLENBACH = 2  # Hollenbach 1991 detailed balance method
 
+    # Coolant population restart modes
+    COOLANT_WARM = 0  # Initialize to LTE on first call, then rescale on density change (default, most efficient)
+    COOLANT_FORCE_LTE = 1  # Always reset to LTE before SE iteration (original behavior)
+    COOLANT_FORCE_GROUND = 2  # Always reset to ground state before SE iteration
+
     def __init__(self):
         """Initialize the HeatingSettings wrapper.
 
@@ -93,6 +103,7 @@ class HeatingSettings:
         """
         self._heating_module = heating_module
         self._f2py_constants_module = f2py_constants_module
+        self._uclchemwrap = uclchemwrap
 
         # Build a mapping of mechanism IDs to their groups (for mutual exclusion)
         self._heating_groups = {}
@@ -113,6 +124,18 @@ class HeatingSettings:
         self._default_line_solver_attempts = self._heating_module.line_solver_attempts
         self._default_pahabund = self._heating_module.pahabund
         self._default_coolant_data_dir = self._f2py_constants_module.coolantdatadir
+
+        # Check if coolant restart mode functions are available
+        self._coolant_functions_available = hasattr(
+            self._uclchemwrap, "get_coolant_restart_mode_wrap"
+        )
+        if self._coolant_functions_available:
+            self._default_coolant_restart_mode = (
+                self._uclchemwrap.get_coolant_restart_mode_wrap()
+            )
+        else:
+            # Functions not yet exposed, use default value
+            self._default_coolant_restart_mode = 0  # WARM mode
 
     def set_heating_mechanism(self, mechanism_id: int, enabled: bool = True):
         """Enable or disable a specific heating mechanism.
@@ -332,6 +355,32 @@ class HeatingSettings:
         """
         return str(np.char.decode(self._f2py_constants_module.coolantdatadir)).strip()
 
+    # TODO: refactor once Fortran is exposed
+    def set_coolant_restart_mode(self, mode: int):
+        """Set the coolant population restart mode.
+
+        Args:
+            mode: Restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND)
+
+        Example:
+            >>> settings = HeatingSettings()
+            >>> settings.set_coolant_restart_mode(settings.COOLANT_WARM)
+        """
+        if mode not in [0, 1, 2]:
+            raise ValueError(f"mode must be 0, 1, or 2, got {mode}")
+        self._uclchemwrap.uclchemwrap.set_coolant_restart_mode_wrap(mode)
+        assert self.get_coolant_restart_mode() == mode, "Failed to set coolant restart mode"
+
+    # TODO: refactor once Fortran is exposed
+    def get_coolant_restart_mode(self) -> int:
+        """Get the current coolant population restart mode.
+
+        Returns:
+            Current restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND)
+        """
+        return self._uclchemwrap.uclchemwrap.get_coolant_restart_mode_wrap()
+
+
     def reset_to_defaults(self):
         """Reset all heating and cooling mechanisms to their initial values.
 
@@ -353,6 +402,10 @@ class HeatingSettings:
         self._heating_module.line_solver_attempts = self._default_line_solver_attempts
         self._heating_module.pahabund = self._default_pahabund
         self._f2py_constants_module.coolantdatadir = self._default_coolant_data_dir
+        if self._coolant_functions_available:
+            self._uclchemwrap.set_coolant_restart_mode_wrap(
+                self._default_coolant_restart_mode
+            )
 
     def print_configuration(self):
         """Print the current heating and cooling configuration.
@@ -387,4 +440,9 @@ class HeatingSettings:
         print(f"  Line Solver Attempts           : {self.get_line_solver_attempts()}")
         print(f"  PAH Abundance                  : {self.get_pah_abundance():.2e}")
         print(f"  Coolant Data Directory         : {self.get_coolant_directory()}")
+
+        restart_mode = self.get_coolant_restart_mode()
+        restart_names = {0: "WARM", 1: "FORCE_LTE", 2: "FORCE_GROUND"}
+        restart_name = restart_names.get(restart_mode, "UNKNOWN")
+        print(f"  Coolant Restart Mode           : {restart_mode} ({restart_name})")
         print("=" * 60)
