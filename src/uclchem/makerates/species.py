@@ -95,10 +95,10 @@ class Species:
     def __init__(self, inputRow):
         """A class representing chemical species, it reads in rows which are formatted as follows:
         NAME,MASS,BINDING ENERGY,SOLID FRACTION,MONO FRACTION,VOLCANO FRACTION,ENTHALPY,Ix,Iy,Iz,SYMMETRY_NUMBER
-        
+
         The last 4 columns (Ix, Iy, Iz, SYMMETRY_NUMBER) are optional for backward compatibility.
         If not provided, TST prefactors will not be available for that species.
-        
+
         Args:
             inputRow (list): Row from species CSV file
         """
@@ -124,7 +124,7 @@ class Species:
         self.set_mono_fraction(sanitize_input_float(inputRow, 4, 0.0))
         self.set_volcano_fraction(sanitize_input_float(inputRow, 5, 0.0))
         self.set_enthalpy(sanitize_input_float(inputRow, 6, 0.0))
-        
+
         # TST prefactor support - backward compatible with old species files
         # If Ix, Iy, Iz, SYMMETRY_NUMBER columns are missing, use sentinel values
         self.Ix = sanitize_input_float(inputRow, 7, -999.0)
@@ -143,7 +143,7 @@ class Species:
                 self.symmetry_factor = -1
         except (ValueError, IndexError, TypeError):
             self.symmetry_factor = -1
-        
+
         self.set_n_atoms(0)
 
         # in first instance, assume species freeze/desorb unchanged
@@ -578,10 +578,10 @@ class Species:
     def calculate_rotational_partition_factor(self) -> float:
         """Calculate 1/sigma*(SQRT(IxIyIz)) for non-linear molecules, and
         1/sigma*(SQRT(IyIz)) for linear molecules.
-        
+
         Returns -999.0 if molecular inertia data is not available (backward compatibility).
         This signals that TST prefactors cannot be used for this species.
-        
+
         Returns:
             float: Rotational partition factor scaled by 1e50, or -999.0 if unavailable
         """
@@ -596,13 +596,14 @@ class Species:
         if self.symmetry_factor <= 0:
             # No symmetry factor provided
             return -999.0
-            
+
         # Ix, Iy and Iz are in units of amu Angstrom^2,
         # so need to convert to kg m2
         import numpy as np
+
         amu = 1.66053907e-27  # kg/amu
         scalingFactor = 1e50
-        
+
         if not self.is_linear():
             return (
                 (1.0 / self.symmetry_factor)
@@ -618,9 +619,9 @@ class Species:
 
     def is_linear(self) -> bool:
         """Check if molecule is linear based on moment of inertia.
-        
+
         For linear molecules, Ix = 0 (rotation axis along molecular axis has no inertia).
-        
+
         Returns:
             bool: True if linear, False otherwise
         """
