@@ -26,7 +26,7 @@ IMPLICIT NONE
     !f2py integer, intent(aux) :: points
     !These integers store the array index of important species and reactions, x is for ions    
     !loop counters    
-    INTEGER :: i,j,l,writeCounter=0,loopCounter,failedIntegrationCounter
+    INTEGER(dp) :: i,j,l,writeCounter=0,loopCounter,failedIntegrationCounter
     INTEGER, PARAMETER :: maxLoops=10,maxConsecutiveFailures=10
 
     !Array to store reaction rates
@@ -39,13 +39,16 @@ IMPLICIT NONE
     !initial fractional elemental abudances and arrays to store abundances
     REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
     REAL(dp), ALLOCATABLE :: abund(:,:)
+    REAL(dp) :: numMonolayers,ratioSurfaceToBulk
     
     REAL(dp) :: MIN_ABUND = 1.0d-30 !Minimum abundance allowed
 
-    INTEGER :: nion,ionlist(nspec)
+    INTEGER(dp) :: nion,ionlist(nspec)
 
     REAL(dp) :: tempDot, oldTemp=0.0d0
     REAL(dp) :: h2form
+
+    REAL(dp)::lastGasTemp,lastDustTemp
 
     !DVODE solver statistics (populated by integrateODESystem, read by output)
     REAL(dp) :: dvode_rstats(22)
@@ -146,24 +149,40 @@ CONTAINS
             !Initializing heating.f90 --> get coolants
             CALL initializeHeating(gasTemp(dstep),density(dstep),abund(:,1),colDens(dstep),cloudSize)
         END IF
+
+        !Set rates to zero to ensure they don't hold previous values or random ones if we don't set them in calculateReactionRates
+        rate=0.0
+
+        !We typically don't recalculate rates that only depend on temperature if the temp hasn't changed
+        !use arbitrarily high value to make sure they are calculated at least once.
+        lastGasTemp=99.0d99
+        lastDustTemp=99.0d99
+
+        ! If the hydrogen diffusion energy is still its default value (-1.0 in default_parameters.f90),
+        ! i.e. no custom value was set in the input dictionary, set it to the correct value
+        ! according to the ratio of the ratio of diffusion energy to binding energy.
+        IF (HdiffusionBarrier .eq. -1.0) THEN
+            DO i = LBOUND(iceList, 1), UBOUND(iceList, 1)
+                IF (iceList(i) .eq. ngh) HdiffusionBarrier = diffToBindRatio*bindingEnergy(i)
+            END DO
+        END IF
         
         ! Pre-calculate desorption fractions for LHDES and ERDES reactions
         desorptionFractionsBare = 0.0D0
         desorptionFractionsFullCoverage = 0.0D0
         DO j = lhdesReacs(1), lhdesReacs(2)
-            desorptionFractionsBare(j) = getDesorptionFractionBare(INT(j), INT(j-lhdesReacs(1)+1))
-            desorptionFractionsFullCoverage(j) = getDesorptionFractionFullCoverage(INT(j), INT(j-lhdesReacs(1)+1))
+            WRITE(*,*) "DEBUG initializeChemistry LHDES CALL: j=", j, " LHDESindex=", j-lhdesReacs(1)+1, " re1=", re1(j), " re2=", re2(j)
+            desorptionFractionsBare(j) = getDesorptionFractionBare(j, j-lhdesReacs(1)+1)
+            desorptionFractionsFullCoverage(j) = getDesorptionFractionFullCoverage(j, j-lhdesReacs(1)+1)
+            WRITE(*,*) "DEBUG initializeChemistry LHDES DONE: j=", j, " fullCoverage=", desorptionFractionsFullCoverage(j)
         END DO
         DO j = erdesReacs(1), erdesReacs(2)
-            desorptionFractionsBare(j) = getDesorptionFractionBare(INT(j), INT(j-erdesReacs(1)+1))
-            desorptionFractionsFullCoverage(j) = getDesorptionFractionFullCoverage(INT(j), INT(j-erdesReacs(1)+1))
+            WRITE(*,*) "DEBUG initializeChemistry ERDES CALL: j=", j, " ERDESindex=", j-erdesReacs(1)+1, " re1=", re1(j), " re2=", re2(j)
+            desorptionFractionsBare(j) = getDesorptionFractionBare(j, j-erdesReacs(1)+1)
+            desorptionFractionsFullCoverage(j) = getDesorptionFractionFullCoverage(j, j-erdesReacs(1)+1)
+            WRITE(*,*) "DEBUG initializeChemistry ERDES DONE: j=", j, " fullCoverage=", desorptionFractionsFullCoverage(j)
         END DO
         
-        !Set rates to zero to ensure they don't hold previous values or random ones if we don't set them in calculateReactionRates
-        rate=0.0
-        !We typically don't recalculate rates that only depend on temperature if the temp hasn't changed
-        !use arbitrarily high value to make sure they are calculated at least once.
-        lastTemp=99.0d99
     END SUBROUTINE initializeChemistry
 
     SUBROUTINE updateChemistry(successFlag)
@@ -220,8 +239,15 @@ CONTAINS
             safeBulk=MAX(1d-30,abund(nBulk,dstep))
             
             if (refractoryList(1) .gt. 0) safeBulk=safeBulk-SUM(abund(refractoryList,dstep))
+
+            ratioSurfaceToBulk=MIN(1.0D0, safeMantle/safeBulk)
             bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
             surfaceCoverage=bulkGainFromMantleBuildUp()
+
+            IF ((.NOT. dustTemp(dstep) .eq. lastDustTemp) .OR. &
+                (.NOT. gasTemp(dstep) .eq. lastGasTemp)) THEN
+                CALL updateVdiffAndVdes(gasTemp(dstep), dustTemp(dstep), SIZE(icelist), vdiff, vdes)
+            END IF
 
             CALL calculateReactionRates(abund,safeMantle, h2col, cocol, ccol, rate)
             if (heatingFlag) then
@@ -358,7 +384,7 @@ CONTAINS
         REAL(dp) :: D,loss,prod
         REAL(dp) :: surfaceCoverage
         REAL(dp) :: phi,cgr(6),grec,denom
-        integer :: ii
+        INTEGER(dp) :: ii
         !Set D to the gas density for use in the ODEs
         D=y(nspec+2)     !Gas density
         ydot=0.0
@@ -382,7 +408,7 @@ CONTAINS
 
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
-        CALL GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
+        CALL GETYDOT(RATE, Y, bulkLayersReciprocal, ratioSurfaceToBulk, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
         ! get density change from physics module to send to DLSODE
         if (enforceChargeConservation) then 
             ydot(nelec) = sum(ydot(ionlist(1:nion)))

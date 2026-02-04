@@ -404,11 +404,18 @@ def write_species(file_name: Path, species_list: list[Species]) -> None:
     species_columns = [
         "NAME",
         "MASS",
-        "BINDING_ENERGY",
+        "BINDING ENERGY",
+        "DESORPTION PREFACTOR",
+        "DIFFUSION BARRIER",
+        "DIFFUSION PREFACTOR",
         "SOLID_FRACTION",
         "MONO_FRACTION",
         "VOLCANO_FRACTION",
         "ENTHALPY",
+        "Ix",
+        "Iy",
+        "Iz",
+        "SYMMETRY FACTOR",
     ]
     with open(file_name, "w") as f:
         writer = csv.writer(
@@ -425,20 +432,27 @@ def write_species(file_name: Path, species_list: list[Species]) -> None:
                     species.get_name(),
                     species.get_mass(),
                     species.get_binding_energy(),
+                    species.get_vdes(),
+                    species.get_diffusion_barrier(),
+                    species.get_vdiff(),
                     species.get_solid_fraction(),
                     species.get_mono_fraction(),
                     species.get_volcano_fraction(),
                     species.get_enthalpy(),
+                    species.get_Ix(),
+                    species.get_Iy(),
+                    species.get_Iz(),
+                    species.get_symmetry_factor(),
                 ]
             )
 
 
 # Write the reaction file in the desired format
-def write_reactions(fileName, reaction_list) -> None:
+def write_reactions(file_name: Path, reaction_list: list[Reaction]) -> None:
     """Write the human readable reaction file.
 
     Args:
-        fileName (str): path to output file
+        file_name (Path): path to output file
         reaction_list (list): List of reaction objects for network
     """
     reaction_columns = [
@@ -458,7 +472,7 @@ def write_reactions(fileName, reaction_list) -> None:
         "extrapolate",
         "exothermicity",
     ]
-    with open(fileName, "w") as f:
+    with open(file_name, "w") as f:
         writer = csv.writer(
             f,
             delimiter=",",
@@ -641,8 +655,8 @@ USE network
 USE SurfaceReactions, ONLY: useGarrod2011Transfer
 IMPLICIT NONE
 CONTAINS
-SUBROUTINE GETYDOT(RATE, Y, ratioSurfaceToBulk, surfaceCoverage, safeMantle, safebulk, D, YDOT)
-REAL(dp), INTENT(IN) :: RATE(:), Y(:), ratioSurfaceToBulk, safeMantle, safebulk, D
+SUBROUTINE GETYDOT(RATE, Y, bulklayersreciprocal, ratioSurfaceToBulk, surfaceCoverage, safeMantle, safebulk, D, YDOT)
+REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulklayersreciprocal, ratioSurfaceToBulk, safeMantle, safebulk, D
 REAL(dp), INTENT(INOUT) :: YDOT(:), surfaceCoverage
 REAL(dp) :: totalSwap, LOSS, PROD
     """
@@ -793,9 +807,13 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
     monoList = []
     volcList = []
     binding_energyList = []
+    customVdesList = []
+    diffusion_barriersList = []
+    customVdiffList = []
+    inertiaProducts = []
+    isLinears = []
+
     enthalpyList = []
-    inertiaProductsList = []
-    moleculeIsLinearList = []
     bulkList = []
     iceList = []
     refractoryList = []
@@ -818,17 +836,31 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
             monoList.append(species.get_mono_fraction())
             volcList.append(species.get_volcano_fraction())
             iceList.append(i + 1)
+
             binding_energyList.append(species.get_binding_energy())
+            customVdesList.append(species.get_vdes())
+            diffusion_barriersList.append(species.get_diffusion_barrier())
+            customVdiffList.append(species.get_vdiff())
+
+            isLinears.append(species.is_linear())
+            inertiaProducts.append(species.calculate_rotational_partition_factor())
+
             enthalpyList.append(species.get_enthalpy())
         elif species.get_name()[0] == "@":
             j = species_names.index(species.get_desorb_products()[0])
             gasIceList.append(j + 1)
             bulkList.append(i + 1)
             iceList.append(i + 1)
+
             binding_energyList.append(species.get_binding_energy())
+            customVdesList.append(species.get_vdes())
+            diffusion_barriersList.append(species.get_diffusion_barrier())
+            customVdiffList.append(species.get_vdiff())
+
+            isLinears.append(species.is_linear())
+            inertiaProducts.append(species.calculate_rotational_partition_factor())
+
             enthalpyList.append(species.get_enthalpy())
-            inertiaProductsList.append(species.calculate_rotational_partition_factor())
-            moleculeIsLinearList.append(species.is_linear())
             if species.is_refractory:
                 refractoryList.append(i + 1)
 
@@ -849,13 +881,19 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
             "bindingEnergy", binding_energyList, type="float", parameter=False
         )
     )
+    network_file.write(array_to_string("customVdes", customVdesList, type="float"))
+    network_file.write(
+        array_to_string(
+            "diffusionBarrier", diffusion_barriersList, type="float", parameter=False
+        )
+    )
+    network_file.write(array_to_string("customVdiff", customVdiffList, type="float"))
+
+    network_file.write(array_to_string("moleculeIsLinear", isLinears, type="logical"))
+    network_file.write(
+        array_to_string("inertiaProducts", inertiaProducts, type="float")
+    )
     network_file.write(array_to_string("formationEnthalpy", enthalpyList, type="float"))
-    network_file.write(
-        array_to_string("inertiaProducts", inertiaProductsList, type="float")
-    )
-    network_file.write(
-        array_to_string("moleculeIsLinear", moleculeIsLinearList, type="logical")
-    )
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
     return len(iceList)
 

@@ -990,6 +990,8 @@ class NetworkBuilder:
             "nR_HFreeze": None,
             "nR_EFreeze": None,
             "nR_H2_hv": None,
+            "nR_H2_ED": None,
+            "nR_H_ED": None,
         }
 
         # this looks complex but each if statement just uniquely identifies a special reaction
@@ -1026,6 +1028,12 @@ class NetworkBuilder:
                 "nR_H2_crp": lambda reacs, prods: ("H2" in reacs)
                 and ("CRP" in reacs)
                 and (prods.count("H") == 2),
+                "nR_H2_ED": lambda reacs, prods: ("#H2" in reacs)
+                and ("ED" in reacs)
+                and ("H2" in prods),
+                "nR_H_ED": lambda reacs, prods: ("#H" in reacs)
+                and ("ED" in reacs)
+                and ("H" in prods),
             }
 
             for key, lambda_filter in reaction_filters.items():

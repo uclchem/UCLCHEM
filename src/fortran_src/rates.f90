@@ -21,10 +21,10 @@ CONTAINS
     SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
         REAL(dp), INTENT(IN) :: abund(:, :), safemantle, h2col, cocol, ccol
         REAL(dp), INTENT(INOUT) :: rate(:)
-        INTEGER:: idx1,idx2
+        INTEGER(dp) :: idx1,idx2
         REAL(dp) :: vA,vB
         INTEGER(dp) :: i,j
-        INTEGER :: k
+        INTEGER(dp) :: k
         REAL(dp) :: numMonolayers
         ! REAL(dp) :: vdiff(:)
     
@@ -268,7 +268,7 @@ CONTAINS
                 k = 0
                 DO i=idx1, idx2
                     k = k + 1
-                    rate(i)=desorptionFractionIncludingIce(INT(i), numMonolayers)*rate(LHDEScorrespondingLHreacs(k))
+                    rate(i)=desorptionFractionIncludingIce(i, numMonolayers)*rate(LHDEScorrespondingLHreacs(k))
                     IF (ANY(bulkList==re1(i))) rate(i)=0.0 ! Bulk species are not able to chemically desorb
                 END DO
                 
@@ -298,9 +298,9 @@ CONTAINS
             idx1 = erdesReacs(1)
             idx2 = erdesReacs(2)
             k = 0
-            DO i=idx1, idx2
-                k = k + 1
-                rate(i)=desorptionFractionIncludingIce(INT(i), numMonolayers)*rate(ERDEScorrespondingERreacs(k))
+                DO i=idx1, idx2
+                    k = k + 1
+                    rate(i)=desorptionFractionIncludingIce(i, numMonolayers)*rate(ERDEScorrespondingERreacs(k))
                 IF (ANY(bulkList==re1(i))) rate(i)=0.0 ! Bulk species are not able to chemically desorb
             END DO
             
@@ -317,7 +317,7 @@ CONTAINS
     END IF
 
     IF (PARAMETERIZE_H2FORM) THEN
-        rate(nR_H2Form_CT)=h2FormEfficiency(dustTemp(dstep),dustTemp(dstep))
+        rate(nR_H2Form_CT)=h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
         !rate(nR_H2Form_LH)=0.0
         rate(nR_H2Form_ER)=0.0
         !rate(nR_H2Form_LHDes)=0.0
@@ -378,6 +378,22 @@ CONTAINS
     rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel)!H2 photodissociation
     rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
     rate(nR_C_hv)=cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),radfield) !C photoionization
+
+    ! Encounter Desorption mechanism (Hincelin et al. 2015)
+    ! Species diffuse onto H2-covered surfaces and can desorb upon encountering H2
+    IF ((h2EncounterDesorption) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
+        rate(nR_H2_ED)=EncounterDesorptionRate(nR_H2_ED, dustTemp(dstep)) !H2 Encounter Desorption
+    ELSE
+        rate(nR_H2_ED)=0.0D0
+    END IF
+
+    IF ((hEncounterDesorption) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
+        ! H atom encounter desorption on H2-covered surfaces
+        rate(nR_H_ED)=EncounterDesorptionRate(nR_H_ED, dustTemp(dstep)) !H Encounter Desorption
+    ELSE
+        rate(nR_H_ED)=0.0D0
+    END IF
+
     END SUBROUTINE calculateReactionRates
 
 
@@ -391,7 +407,7 @@ CONTAINS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
     REAL(dp) :: freezeRates(idx2-idx1+1)
-    INTEGER :: idx1,idx2
+    INTEGER(dp) :: idx1,idx2
     
     !additional factor for ions (beta=0 for neutrals)
     freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))

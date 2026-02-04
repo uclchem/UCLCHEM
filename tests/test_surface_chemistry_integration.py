@@ -4,11 +4,12 @@ Integration test for new surface chemistry features.
 Runs a cloud model and verifies the new physics produces different/better results.
 """
 
-import pytest
-import numpy as np
-from pathlib import Path
-import tempfile
 import shutil
+import tempfile
+from pathlib import Path
+
+import numpy as np
+import pytest
 
 import uclchem
 

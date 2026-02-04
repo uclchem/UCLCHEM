@@ -56,6 +56,9 @@ species_header = (
     "mono_fraction",
     "volcano_fraction",
     "enthalpy",
+    "desorption_pref",
+    "diffusion_barrier",
+    "diffusion_pref",
     "Ix",
     "Iy",
     "Iz",
@@ -93,55 +96,57 @@ class Species:
     """
 
     def __init__(self, inputRow):
-        """A class representing chemical species, it reads in rows which are formatted as follows:
-        NAME,MASS,BINDING ENERGY,SOLID FRACTION,MONO FRACTION,VOLCANO FRACTION,ENTHALPY,Ix,Iy,Iz,SYMMETRY_NUMBER
+        """Simple positional parsing of species rows using the new extended order:
 
-        The last 4 columns (Ix, Iy, Iz, SYMMETRY_NUMBER) are optional for backward compatibility.
-        If not provided, TST prefactors will not be available for that species.
+        NAME,MASS,BINDING_ENERGY,SOLID_FRACTION,MONO_FRACTION,VOLCANO_FRACTION,ENTHALPY,
+        DESORPTION_PREF,DIFFUSION_BARRIER,DIFFUSION_PREF,Ix,Iy,Iz,SYMMETRYFACTOR
 
-        Args:
-            inputRow (list): Row from species CSV file
+        Falls back to sensible defaults when fields are missing.
         """
         self.name = inputRow[0].upper()
         self.mass = int(inputRow[1])
-        self.binding_energy = 0.0
-        self.solidFraction = 0.0
-        self.monoFraction = 0.0
-        self.volcFraction = 0.0
-        self.enthalpy = 0.0
 
-        if len(inputRow) > 2:
+        # binding energy and refractory handling
+        try:
             self.is_refractory = str(inputRow[2]).lower() == "inf"
             if self.is_refractory:
-                self.set_binding_energy(99.9e9)
+                self.binding_energy = 99.9e9
             else:
-                self.set_binding_energy(inputRow[2])
-        else:
+                self.binding_energy = float(inputRow[2])
+        except (IndexError, ValueError):
             self.is_refractory = False
-            self.set_binding_energy(0.0)
+            self.binding_energy = 0.0
 
-        self.set_solid_fraction(sanitize_input_float(inputRow, 3, 0.0))
-        self.set_mono_fraction(sanitize_input_float(inputRow, 4, 0.0))
-        self.set_volcano_fraction(sanitize_input_float(inputRow, 5, 0.0))
-        self.set_enthalpy(sanitize_input_float(inputRow, 6, 0.0))
+        # core solid/mono/volcano/enthalpy
+        self.solidFraction = sanitize_input_float(inputRow, 3, 0.0)
+        self.monoFraction = sanitize_input_float(inputRow, 4, 0.0)
+        self.volcFraction = sanitize_input_float(inputRow, 5, 0.0)
+        self.enthalpy = sanitize_input_float(inputRow, 6, 0.0)
 
-        # TST prefactor support - backward compatible with old species files
-        # If Ix, Iy, Iz, SYMMETRY_NUMBER columns are missing, use sentinel values
-        self.Ix = sanitize_input_float(inputRow, 7, -999.0)
-        self.Iy = sanitize_input_float(inputRow, 8, -999.0)
-        self.Iz = sanitize_input_float(inputRow, 9, -999.0)
+        # extended Tobias fields after enthalpy
+        # vdes (desorption attempt frequency)
+        self.vdes = sanitize_input_float(inputRow, 7, 0.0)
+
+        self.diffusion_barrier = sanitize_input_float(inputRow, 8, 0.0)
+        # vdiff (diffusion attempt frequency)
+        self.vdiff = sanitize_input_float(inputRow, 9, 0.0)
+
+        # TST prefactors (optional)
         try:
-            if len(inputRow) > 10:
-                sym_val = inputRow[10]
-                if isinstance(sym_val, (int, float)):
-                    self.symmetry_factor = int(sym_val) if sym_val != 0 else -1
-                elif isinstance(sym_val, str) and sym_val.strip():
-                    self.symmetry_factor = int(sym_val)
-                else:
-                    self.symmetry_factor = -1
-            else:
-                self.symmetry_factor = -1
-        except (ValueError, IndexError, TypeError):
+            self.Ix = float(inputRow[10])
+        except (IndexError, ValueError):
+            self.Ix = -999.0
+        try:
+            self.Iy = float(inputRow[11])
+        except (IndexError, ValueError):
+            self.Iy = -999.0
+        try:
+            self.Iz = float(inputRow[12])
+        except (IndexError, ValueError):
+            self.Iz = -999.0
+        try:
+            self.symmetry_factor = int(inputRow[13])
+        except (IndexError, ValueError, TypeError):
             self.symmetry_factor = -1
 
         self.set_n_atoms(0)
@@ -524,7 +529,101 @@ class Species:
         self.n_atoms = new_n_atoms
 
     def to_UCL_format(self) -> str:
-        return f"{self.get_name()},{self.get_mass()},{self.get_binding_energy()},{self.get_solid_fraction()},{self.get_mono_fraction()},{self.get_volcano_fraction()},{self.get_enthalpy()}"
+        """Serialize to the extended UCLCHEM species CSV order.
+
+        Order: NAME,MASS,BINDING_ENERGY,SOLID_FRACTION,MONO_FRACTION,VOLCANO_FRACTION,ENTHALPY,
+               DESORPTION_PREF,DIFFUSION_BARRIER,DIFFUSION_PREF,Ix,Iy,Iz,SYMMETRYFACTOR
+        """
+        return (
+            f"{self.get_name()},{self.get_mass()},{self.get_binding_energy()},{self.get_solid_fraction()},{self.get_mono_fraction()},{self.get_volcano_fraction()},{self.get_enthalpy()},{self.get_vdes()},{self.get_diffusion_barrier()},{self.get_vdiff()},{self.get_Ix()},{self.get_Iy()},{self.get_Iz()},{self.get_symmetry_factor()}"
+        )
+    
+    def get_binding_energy(self) -> float:
+        """Get the binding energy of the species in K
+
+        Returns:
+            float: The binding energy in K
+        """
+        return self.binding_energy
+
+    def get_vdes(self) -> float:
+        """Get the desorption prefactor (vdes) for the species."""
+        return float(self.vdes)
+
+    def get_desorption_pref(self) -> float:
+        """Alias getter matching CSV column name `desorption_pref`."""
+        return self.get_vdes()
+
+
+    def get_diffusion_barrier(self) -> float:
+        """Get the diffusion barrier for the species
+
+        Returns:
+            float: The diffusion barrier
+        """
+        return self.diffusion_barrier
+
+    def get_vdiff(self) -> float:
+        """Get the diffusion prefactor (vdiff) for the species."""
+        return float(self.vdiff)
+
+    def get_diffusion_pref(self) -> float:
+        """Alias getter matching CSV column name `diffusion_pref`."""
+        return self.get_vdiff()
+
+
+    def get_Ix(self) -> float:
+        return self.Ix
+
+    def get_Iy(self) -> float:
+        return self.Iy
+
+    def get_Iz(self) -> float:
+        return self.Iz
+
+    def get_symmetry_factor(self) -> int:
+        return self.symmetry_factor
+
+    def set_vdes(self, vdes: float) -> None:
+        """Set the desorption prefactor (vdes) for the species."""
+        self.vdes = float(vdes)
+
+    def set_desorption_pref(self, v: float) -> None:
+        """Alias setter matching CSV column name `desorption_pref`."""
+        self.set_vdes(v)
+
+
+    def set_diffusion_barrier(self, barrier: float) -> None:
+        """Set the diffusion barrier for the species
+
+        Args:
+            barrier (float): Diffusion barrier
+        """
+        self.diffusion_barrier = float(barrier)
+
+    def set_vdiff(self, vdiff: float) -> None:
+        """Set the diffusion prefactor (vdiff) for the species."""
+        self.vdiff = float(vdiff)
+
+    def set_diffusion_pref(self, v: float) -> None:
+        """Alias setter matching CSV column name `diffusion_pref`."""
+        self.set_vdiff(v)
+
+
+    def set_Ix(self, Ix: float) -> None:
+        self.Ix = float(Ix)
+
+    def set_Iy(self, Iy: float) -> None:
+        self.Iy = float(Iy)
+
+    def set_Iz(self, Iz: float) -> None:
+        self.Iz = float(Iz)
+
+    def set_symmetry_factor(self, sym: int) -> None:
+        try:
+            self.symmetry_factor = int(sym)
+        except (ValueError, TypeError):
+            self.symmetry_factor = -1
 
     def __eq__(self, other):
         """Check for equality based on either a string or another Species instance.
@@ -638,3 +737,24 @@ class Species:
             # Only implement for grain species
             return False
         return self.Ix == 0.0
+    
+    def check_symmetry_factor(self) -> None:
+        if self.n_atoms == 1:  # Nothing to check
+            return
+        if self.n_atoms > 2:  # Can not correctly check everything
+            return
+        constituents = self.find_constituents(quiet=True)
+        if (
+            len(constituents) == 2
+        ):  # Only one constituent, i.e. both atoms are the same element.
+            if self.symmetry_factor == 1:
+                return
+            msg = f"For diatomic molecule consisting of two different atoms (in this case {self.name}), the symmetry factor should be 1, but was given to be {self.symmetry_factor}. Correcting to 1."
+            logging.warning(msg)
+            self.symmetry_factor = 1
+            return
+        if self.symmetry_factor == 2:
+            return
+        msg = f"For diatomic molecule consisting of two of the same atoms (in this case {self.name}), the symmetry factor should be 2, but was given to be {self.symmetry_factor}. Correcting to 2."
+        logging.warning(msg)
+        self.symmetry_factor = 2

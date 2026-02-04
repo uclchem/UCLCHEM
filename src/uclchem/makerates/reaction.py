@@ -52,6 +52,7 @@ reaction_types = [
     "EXRELAX",
     "GAR",
     "TWOBODY",
+    "ED",
 ]
 
 tunneling_reaction_types = [
@@ -870,8 +871,8 @@ def _generate_reaction_ode_bit(
     for species in reactants:
         if species in species_names:
             ode_bit += f"*Y({species_names.index(species) + 1})"
-
         elif species == "BULKSWAP":
+            # ode_bit += "*bulkLayersReciprocal"
             ode_bit += "*ratioSurfaceToBulk"
         elif species == "SURFSWAP":
             ode_bit += "*totalSwap/safeMantle"
@@ -879,6 +880,8 @@ def _generate_reaction_ode_bit(
             ode_bit = ode_bit + "/safeMantle"
             if species == "DESOH2":
                 ode_bit = ode_bit + f"*Y({species_names.index('H') + 1})"
+        elif species in ["ED"]:
+                ode_bit = ode_bit + f"*Y({species_names.index('#H2') + 1})"
 
         if "H2FORM" in reactants:
             # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
@@ -886,5 +889,5 @@ def _generate_reaction_ode_bit(
 
     if "LH" in reactants[2]:
         if "@" in reactants[0]:
-            ode_bit += "*ratioSurfaceToBulk"
+            ode_bit += "*bulkLayersReciprocal"
     return ode_bit

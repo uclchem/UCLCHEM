@@ -1,7 +1,7 @@
 # Dijkhuis 2025 Configuration
 # Enhanced surface chemistry network with TST inertia data
 # This configuration generates a network compatible with advanced surface chemistry features highlighted in:
-# DOI
+# DOI: 
 
 # Species with extended format including TST inertia data (Ix, Iy, Iz, symmetry_factor)
 species_file: data/dijkhuis2025/species.csv
