@@ -534,10 +534,8 @@ class Species:
         Order: NAME,MASS,BINDING_ENERGY,SOLID_FRACTION,MONO_FRACTION,VOLCANO_FRACTION,ENTHALPY,
                DESORPTION_PREF,DIFFUSION_BARRIER,DIFFUSION_PREF,Ix,Iy,Iz,SYMMETRYFACTOR
         """
-        return (
-            f"{self.get_name()},{self.get_mass()},{self.get_binding_energy()},{self.get_solid_fraction()},{self.get_mono_fraction()},{self.get_volcano_fraction()},{self.get_enthalpy()},{self.get_vdes()},{self.get_diffusion_barrier()},{self.get_vdiff()},{self.get_Ix()},{self.get_Iy()},{self.get_Iz()},{self.get_symmetry_factor()}"
-        )
-    
+        return f"{self.get_name()},{self.get_mass()},{self.get_binding_energy()},{self.get_solid_fraction()},{self.get_mono_fraction()},{self.get_volcano_fraction()},{self.get_enthalpy()},{self.get_vdes()},{self.get_diffusion_barrier()},{self.get_vdiff()},{self.get_Ix()},{self.get_Iy()},{self.get_Iz()},{self.get_symmetry_factor()}"
+
     def get_binding_energy(self) -> float:
         """Get the binding energy of the species in K
 
@@ -554,7 +552,6 @@ class Species:
         """Alias getter matching CSV column name `desorption_pref`."""
         return self.get_vdes()
 
-
     def get_diffusion_barrier(self) -> float:
         """Get the diffusion barrier for the species
 
@@ -570,7 +567,6 @@ class Species:
     def get_diffusion_pref(self) -> float:
         """Alias getter matching CSV column name `diffusion_pref`."""
         return self.get_vdiff()
-
 
     def get_Ix(self) -> float:
         return self.Ix
@@ -592,7 +588,6 @@ class Species:
         """Alias setter matching CSV column name `desorption_pref`."""
         self.set_vdes(v)
 
-
     def set_diffusion_barrier(self, barrier: float) -> None:
         """Set the diffusion barrier for the species
 
@@ -608,7 +603,6 @@ class Species:
     def set_diffusion_pref(self, v: float) -> None:
         """Alias setter matching CSV column name `diffusion_pref`."""
         self.set_vdiff(v)
-
 
     def set_Ix(self, Ix: float) -> None:
         self.Ix = float(Ix)
@@ -737,7 +731,7 @@ class Species:
             # Only implement for grain species
             return False
         return self.Ix == 0.0
-    
+
     def check_symmetry_factor(self) -> None:
         if self.n_atoms == 1:  # Nothing to check
             return

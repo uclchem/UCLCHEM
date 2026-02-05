@@ -881,7 +881,7 @@ def _generate_reaction_ode_bit(
             if species == "DESOH2":
                 ode_bit = ode_bit + f"*Y({species_names.index('H') + 1})"
         elif species in ["ED"]:
-                ode_bit = ode_bit + f"*Y({species_names.index('#H2') + 1})"
+            ode_bit = ode_bit + f"*Y({species_names.index('#H2') + 1})"
 
         if "H2FORM" in reactants:
             # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
