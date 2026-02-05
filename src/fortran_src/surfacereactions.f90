@@ -437,8 +437,6 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
 
     REAL(dp) :: desorptionFractionFullCoverage
 
-    WRITE(*,*) "DEBUG getDesorptionFractionFullCoverage ENTRY: reacIndx=", reacIndx, " re1=", re1(reacIndx), " re2=", re2(reacIndx)
-
     IF (.NOT.(ANY(iceList .eq. re1(reacIndx)) .OR. (ANY(iceList .eq. re2(reacIndx))))) THEN
        ! Gasphase reactions do not need to b calculated, should be 0
        desorptionFractionFullCoverage = 0.0d0
@@ -446,13 +444,11 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
     END IF
     IF (ANY(bulkList .eq. re1(reacIndx))) THEN
         ! No chemical desorption from bulk ice allowed
-        WRITE(*,*) "DEBUG getDesorptionFractionFullCoverage BULK: reacIndx=", reacIndx, " reactants=", re1(reacIndx), re2(reacIndx)
         desorptionFractionFullCoverage = 0.0d0
         RETURN
     END IF
     
     IF (useMinissaleIceChemdesEfficiency) THEN
-        WRITE(*,*) "DEBUG getDesorptionFractionFullCoverage MINISSALE: reacIndx=", reacIndx, " bare=", desorptionFractionsBare(reacIndx)
         desorptionFractionFullCoverage = desorptionFractionsBare(reacIndx)/10.0D0    !< See Minisalle et al. 2016 for icy grain surface.
         ! Special case of OH+H, O+H, N+N on ices, see same paper
         if (re1(reacIndx).eq.ngn.and.re2(reacIndx).eq.ngn) desorptionFractionFullCoverage = 0.5D0
@@ -514,7 +510,6 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
         STOP
     END IF
 
-    WRITE(*,*) "DEBUG getDesorptionFractionFullCoverage DESORB: desorbingIndex=", desorbingIndex, " desorbingOnGrainIndex=", desorbingOnGrainIndex
 
     ! Now we know which product desorbs, we just have to calculate bare desorption prob using Minissale et al 2016.
 
@@ -533,8 +528,6 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
             END IF
         END IF
     END DO
-
-    WRITE(*,*) "DEBUG getDesorptionFractionFullCoverage AFTER_PROD: reacIndx=", reacIndx, " reactIndex1=", reactIndex1, " reactIndex2=", reactIndex2, " productIndex=", productIndex, " desorbingIceListIndex=", desorbingIceListIndex, " productEnthalpy=", productEnthalpy
 
     IF (reactIndex1 .eq. 0 .OR. reactIndex2 .eq. 0) THEN
         WRITE(*,*) "ERROR getDesorptionFractionFullCoverage: reactIndex not set, returning 0 for reacIndx", reacIndx, " reactIndex1=", reactIndex1, " reactIndex2=", reactIndex2
@@ -569,7 +562,6 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
         RETURN
     END IF
     bindingEnergyDesorbingSpec = bindingEnergy(desorbingIceListIndex)
-    WRITE(*,*) "DEBUG getDesorptionFractionFullCoverage BINDING: desorbingIceListIndex=", desorbingIceListIndex, " bindingEnergy=", bindingEnergyDesorbingSpec
     IF (deltaEnthalpy .lt. bindingEnergyDesorbingSpec) THEN
         desorptionFractionFullCoverage = 0.0d0
         RETURN
@@ -587,7 +579,6 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
             STOP
         END IF
     END IF
-    WRITE(*,*) "DEBUG getDesorptionFractionFullCoverage VALUES: chi=", chi, " deltaEnthalpy=", deltaEnthalpy, " bindingE=", bindingEnergyDesorbingSpec
     IF (chi * deltaEnthalpy - bindingEnergyDesorbingSpec .lt. 0.0) THEN
         desorptionFractionFullCoverage = 0.0D0
     ELSE
