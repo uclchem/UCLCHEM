@@ -23,6 +23,10 @@ dependencies = [
     "h5py", "pandas", "numpy", "pyyaml", "charset_normalizer", "matplotlib", "h5netcdf","seaborn", "scipy", "tqdm", "joblib", "xarray", "pydantic>=2.0"
 ]
 
+[project.urls]
+Repository = "https://github.com/uclchem/UCLCHEM"
+Documentation = "https://uclchem.github.io"
+
 [project.optional-dependencies]
 dev = ["pytest", "pytest-xdist", "pytest-github-actions-annotate-failures", "pre-commit", "sphinx"]  # Development dependencies
 docs = ["pydoc-markdown", "jupyter", "jupyter_contrib_nbextensions", "notebook<7"]
