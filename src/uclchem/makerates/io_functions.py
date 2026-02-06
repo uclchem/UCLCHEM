@@ -17,7 +17,7 @@ from uclchem.constants import PHYSICAL_PARAMETERS
 
 from .network import Network
 from .reaction import Reaction, reaction_types
-from .species import Species
+from .species import Species, species_header
 
 
 def get_default_coolants() -> list[dict]:
@@ -395,22 +395,6 @@ def write_species(file_name: Path, species_list: list[Species]) -> None:
         fileName (str): path to output file
         species_list (list): List of species objects for network
     """
-    species_columns = [
-        "NAME",
-        "MASS",
-        "BINDING ENERGY",
-        "DESORPTION PREFACTOR",
-        "DIFFUSION BARRIER",
-        "DIFFUSION PREFACTOR",
-        "SOLID_FRACTION",
-        "MONO_FRACTION",
-        "VOLCANO_FRACTION",
-        "ENTHALPY",
-        "Ix",
-        "Iy",
-        "Iz",
-        "SYMMETRY FACTOR",
-    ]
     with open(file_name, "w") as f:
         writer = csv.writer(
             f,
@@ -419,20 +403,21 @@ def write_species(file_name: Path, species_list: list[Species]) -> None:
             quoting=csv.QUOTE_MINIMAL,
             lineterminator="\n",
         )
-        writer.writerow(species_columns)
+        writer.writerow(species_header)
         for species in species_list:
+            # Order is the same as in uclchem.species.species_header
             writer.writerow(
                 [
                     species.get_name(),
                     species.get_mass(),
                     species.get_binding_energy(),
-                    species.get_vdes(),
-                    species.get_diffusion_barrier(),
-                    species.get_vdiff(),
                     species.get_solid_fraction(),
                     species.get_mono_fraction(),
                     species.get_volcano_fraction(),
                     species.get_enthalpy(),
+                    species.get_vdes(),
+                    species.get_diffusion_barrier(),
+                    species.get_vdiff(),
                     species.get_Ix(),
                     species.get_Iy(),
                     species.get_Iz(),

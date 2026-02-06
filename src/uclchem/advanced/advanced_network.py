@@ -360,16 +360,16 @@ class NetworkState:
 
         for _, row in self._species_df.iterrows():
             # Create Species object from CSV row
-            species_row = [
-                row["NAME"],
-                int(row["MASS"]),
-                row["BINDING_ENERGY"],
-                row["SOLID_FRACTION"],
-                row["MONO_FRACTION"],
-                row["VOLCANO_FRACTION"],
-                row["ENTHALPY"],
-            ]
-            species = Species(species_row)
+            # species_row = [
+            #     row["name"],
+            #     int(row["mass"]),
+            #     row["binding_energy"],
+            #     row["solid_fraction"],
+            #     row["mono_fraction"],
+            #     row["volcano"],
+            #     row["ENTHALPY"],
+            # ]
+            species = Species(row)
             self.species_list.append(species)
 
     def _parse_reactions(self):
