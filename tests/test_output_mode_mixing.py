@@ -168,9 +168,7 @@ def test_multiple_memory_models_succeed(basic_params):
 
     # Run first in-memory model
     physics1, chemistry1, rates1, heating1, abundances1, return_code1 = (
-        uclchem.functional.cloud(
-            param_dict=params, return_array=True, return_rates=True
-        )
+        uclchem.functional.cloud(param_dict=params, return_array=True, return_rates=True)
     )
     assert return_code1 == 0
 

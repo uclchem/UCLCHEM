@@ -369,9 +369,7 @@ class RuntimeNetwork(BaseNetwork):
         Raises:
             NotImplementedError: Always - Fortran arrays have fixed size
         """
-        raise NotImplementedError(
-            "Cannot replace species dictionary in RuntimeNetwork."
-        )
+        raise NotImplementedError("Cannot replace species dictionary in RuntimeNetwork.")
 
     def sort_species(self) -> None:
         """NOT SUPPORTED: Species order is fixed in compiled network.
@@ -442,9 +440,7 @@ class RuntimeNetwork(BaseNetwork):
         Raises:
             NotImplementedError: Always - Fortran arrays have fixed size
         """
-        raise NotImplementedError(
-            "Cannot replace reaction dictionary in RuntimeNetwork."
-        )
+        raise NotImplementedError("Cannot replace reaction dictionary in RuntimeNetwork.")
 
     def sort_reactions(self) -> None:
         """NOT SUPPORTED: Reaction order is fixed in compiled network.
@@ -500,9 +496,7 @@ class RuntimeNetwork(BaseNetwork):
         Raises:
             ValueError: If reaction not found or multiple matches
         """
-        assert (
-            reaction.is_ice_reaction()
-        ), "Only ice reactions have modifiable barriers."
+        assert reaction.is_ice_reaction(), "Only ice reactions have modifiable barriers."
         reaction_idx = self.get_reaction_index(reaction)
         self.modify_reaction_parameters(reaction_idx, gamma=barrier)
 

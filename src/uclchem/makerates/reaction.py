@@ -123,9 +123,7 @@ class Reaction:
                 self.set_extrapolation(
                     bool(inputRow[13]) if len(inputRow) > 13 else False
                 )
-                self.set_exothermicity(
-                    float(inputRow[14]) if len(inputRow) > 14 else 0.0
-                )
+                self.set_exothermicity(float(inputRow[14]) if len(inputRow) > 14 else 0.0)
 
             except IndexError as error:
                 raise ValueError(
@@ -384,9 +382,7 @@ class Reaction:
                     if total_change < min_total:
                         min_total = total_change
                         min_diff = diff
-                changing_species = Counter(
-                    {k: c for k, c in min_diff.items() if c != 0}
-                )
+                changing_species = Counter({k: c for k, c in min_diff.items() if c != 0})
 
                 items = changing_species.items()
                 if len(items) == 1:
@@ -404,9 +400,9 @@ class Reaction:
                         return
         elif n_reacs == 2 and n_prods == 1:
             # Addition reaction
-            if reac_species[0].get_name().strip("#@") == reac_species[
-                1
-            ].get_name().strip("#@"):
+            if reac_species[0].get_name().strip("#@") == reac_species[1].get_name().strip(
+                "#@"
+            ):
                 # If the two species are the same (e.g. #H+#H-> #H2), set reduced mass to m/2
                 mass = reac_species[0].get_mass()
                 # mass = elementMass[elementList.index(reac_species[0].get_name().strip("#@"))]
@@ -706,9 +702,9 @@ class Reaction:
         return formatted_reaction
 
     def _is_reaction_wrap(self, include_reactants=True, include_products=True):
-        assert include_reactants or include_products, (
-            "Either include reactants or products"
-        )
+        assert (
+            include_reactants or include_products
+        ), "Either include reactants or products"
         species_to_check = []
         if include_reactants:
             species_to_check += self.get_pure_reactants()

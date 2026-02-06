@@ -200,9 +200,7 @@ class SpeciesMatcher:
         if resume_file is None and len(isomer_matches) > 0:
             resume_file = "species_matching_session.yaml"
 
-        canonical_matches.update(
-            self._interactive_selection(isomer_matches, resume_file)
-        )
+        canonical_matches.update(self._interactive_selection(isomer_matches, resume_file))
 
         return canonical_matches
 
@@ -474,9 +472,7 @@ class SpeciesMatcher:
 
         print(f"Saved YAML: {len(mapping)} species → {output_path}")
 
-    def save_mapping(
-        self, mapping: Dict[str, Dict[str, Any]], output_path: str
-    ) -> None:
+    def save_mapping(self, mapping: Dict[str, Dict[str, Any]], output_path: str) -> None:
         """Save species mapping to CSV file (default format).
 
         Args:
@@ -646,9 +642,7 @@ def main():
     parser.add_argument(
         "--uclchem_species_csv",
         required=True,
-        help=(
-            "Path to CSV file containing UCLCHEM species " "(must have 'NAME' column)"
-        ),
+        help=("Path to CSV file containing UCLCHEM species " "(must have 'NAME' column)"),
     )
 
     parser.add_argument(

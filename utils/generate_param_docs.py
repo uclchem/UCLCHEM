@@ -34,13 +34,7 @@ with open(param_file, "r") as f:
                     value = new_line[0]
                     description = new_line[1]
                     line = (
-                        "|"
-                        + key
-                        + "|"
-                        + new_line[0]
-                        + "|"
-                        + new_line[1].strip()
-                        + "|\n"
+                        "|" + key + "|" + new_line[0] + "|" + new_line[1].strip() + "|\n"
                     )
                     output.write(line)
                     if "REAL" in type_of_value:

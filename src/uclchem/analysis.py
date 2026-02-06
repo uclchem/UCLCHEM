@@ -525,9 +525,7 @@ def _get_species_rates(param_dict, input_abundances, species_index, reac_indxs):
     return rates[: len(reac_indxs)], transfer, swap, bulk_layers
 
 
-def _get_rates_of_change(
-    rates, reactions, speciesList, species, row, swap, bulk_layers
-):
+def _get_rates_of_change(rates, reactions, speciesList, species, row, swap, bulk_layers):
     """Calculate the terms in the rate of equation of a particular species using rates calculated using
     get_species_rates() and a row from the full output of UCLCHEM. See `analysis.py` for intended use.
 
@@ -767,9 +765,7 @@ def get_total_swap(
     return totalSwap
 
 
-def construct_incidence(
-    species: List[Species], reactions: List[Reaction]
-) -> np.ndarray:
+def construct_incidence(species: List[Species], reactions: List[Reaction]) -> np.ndarray:
     """Construct the incidence matrix, a matrix that describes the in and out degree
     for each of the reactions; useful to matrix multiply by the indvidual rates per reaction
     to obtain a rates (dy) per species.
@@ -971,9 +967,7 @@ def compute_heating_per_reaction(
     if network:
         reactions = network.get_reaction_list()
 
-    assert (
-        len(reactions) == rates.shape[1]
-    ), "Number of reactions and rates must be equal"
+    assert len(reactions) == rates.shape[1], "Number of reactions and rates must be equal"
     exothermicities = np.array([r.get_exothermicity() for r in reactions])
     return rates * exothermicities
 

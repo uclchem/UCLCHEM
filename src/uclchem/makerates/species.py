@@ -467,9 +467,7 @@ class Species:
                     )
                     logging.warning(speciesName[i])
                     logging.warning(
-                        "\t{0} contains elements not in element list:".format(
-                            speciesName
-                        )
+                        "\t{0} contains elements not in element list:".format(speciesName)
                     )
                     logging.warning(elementList)
             else:

@@ -285,9 +285,7 @@ def generate_markdown(params: Dict[str, Tuple[Any, str, str]], output_file: str)
 
     with open(output_file, "w") as f:
         f.write("# UCLCHEM Parameters\n\n")
-        f.write(
-            "*Auto-generated from compiled uclchemwrap.defaultparameters module*\n\n"
-        )
+        f.write("*Auto-generated from compiled uclchemwrap.defaultparameters module*\n\n")
         f.write(
             "UCLCHEM will default to these values unless they are overridden by the user. "
         )
