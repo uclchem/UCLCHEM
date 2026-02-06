@@ -171,16 +171,12 @@ CONTAINS
         desorptionFractionsBare = 0.0D0
         desorptionFractionsFullCoverage = 0.0D0
         DO j = lhdesReacs(1), lhdesReacs(2)
-            WRITE(*,*) "DEBUG initializeChemistry LHDES CALL: j=", j, " LHDESindex=", j-lhdesReacs(1)+1, " re1=", re1(j), " re2=", re2(j)
             desorptionFractionsBare(j) = getDesorptionFractionBare(j, j-lhdesReacs(1)+1)
             desorptionFractionsFullCoverage(j) = getDesorptionFractionFullCoverage(j, j-lhdesReacs(1)+1)
-            WRITE(*,*) "DEBUG initializeChemistry LHDES DONE: j=", j, " fullCoverage=", desorptionFractionsFullCoverage(j)
         END DO
         DO j = erdesReacs(1), erdesReacs(2)
-            WRITE(*,*) "DEBUG initializeChemistry ERDES CALL: j=", j, " ERDESindex=", j-erdesReacs(1)+1, " re1=", re1(j), " re2=", re2(j)
             desorptionFractionsBare(j) = getDesorptionFractionBare(j, j-erdesReacs(1)+1)
             desorptionFractionsFullCoverage(j) = getDesorptionFractionFullCoverage(j, j-erdesReacs(1)+1)
-            WRITE(*,*) "DEBUG initializeChemistry ERDES DONE: j=", j, " fullCoverage=", desorptionFractionsFullCoverage(j)
         END DO
         
     END SUBROUTINE initializeChemistry

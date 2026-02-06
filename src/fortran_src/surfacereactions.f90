@@ -460,7 +460,7 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
     ENDIF
 
     !Get indices of grain surface version of products products 
-    productIndex=0
+    productIndex = 0
     reactIndex1 = 0
     reactIndex2 = 0
     desorbingIceListIndex = 0
@@ -485,6 +485,13 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
         IF (gasiceList(i) .eq. p3(reacIndx)) productIndex(3) = i
         IF (gasiceList(i) .eq. p4(reacIndx)) productIndex(4) = i
     END DO
+
+    IF (ALL(productIndex == 0)) THEN
+        WRITE(*,*) "ERROR Could not determine productIndex for LHDES reaction"
+        WRITE(*,*) "ERROR", specname(re1(reacIndx)), "+", specname(re2(reacIndx)), "->", &
+            & specname(p1(reacIndx)), "+", specname(p2(reacIndx))
+        STOP
+    END IF
 
     IF (p2(reacIndx) .eq. 9999) THEN
         ! Only one product, and so that one product is desorbing
@@ -512,7 +519,6 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
 
 
     ! Now we know which product desorbs, we just have to calculate bare desorption prob using Minissale et al 2016.
-
     productEnthalpy = 0.0D0
     DO i = 1,4
         IF (productIndex(i) .ne. 0) THEN
@@ -531,8 +537,7 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
 
     IF (reactIndex1 .eq. 0 .OR. reactIndex2 .eq. 0) THEN
         WRITE(*,*) "ERROR getDesorptionFractionFullCoverage: reactIndex not set, returning 0 for reacIndx", reacIndx, " reactIndex1=", reactIndex1, " reactIndex2=", reactIndex2
-        desorptionFractionFullCoverage = 0.0d0
-        RETURN
+        STOP
     END IF
 
     deltaEnthalpy = productEnthalpy - (formationEnthalpy(reactIndex1) + formationEnthalpy(reactIndex2))
@@ -554,13 +559,19 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
     IF (desorbingIceListIndex .eq. 0) THEN
         WRITE(*,*) "ERROR getDesorptionFractionFullCoverage: desorbingIceListIndex is 0; reacIndx=", reacIndx
         desorptionFractionFullCoverage = 0.0d0
-        RETURN
+        WRITE(*,*) "ERROR", specname(re1(reacIndx)), "+", specname(re2(reacIndx)), "->", specname(p1(reacIndx)), "+", &
+            & specname(p2(reacIndx))
+        WRITE(*,*) "ERROR Corresponding LH reaction:", specname(re1(LHDEScorrespondingLHreacs(LHDESindex))), &
+            & specname(re2(LHDEScorrespondingLHreacs(LHDESindex))), specname(p1(LHDEScorrespondingLHreacs(LHDESindex)))
+        STOP
     END IF
     IF (desorbingIceListIndex < LBOUND(bindingEnergy,1) .OR. desorbingIceListIndex > UBOUND(bindingEnergy,1)) THEN
         WRITE(*,*) "ERROR getDesorptionFractionFullCoverage: desorbingIceListIndex out of bounds; reacIndx=", reacIndx, " idx=", desorbingIceListIndex
         desorptionFractionFullCoverage = 0.0d0
-        RETURN
+        WRITE(*,*) "ERROR", re1(reacIndx), "+", re2(reacIndx), "->", p1(reacIndx), "->", p2(reacIndx)
+        STOP
     END IF
+
     bindingEnergyDesorbingSpec = bindingEnergy(desorbingIceListIndex)
     IF (deltaEnthalpy .lt. bindingEnergyDesorbingSpec) THEN
         desorptionFractionFullCoverage = 0.0d0

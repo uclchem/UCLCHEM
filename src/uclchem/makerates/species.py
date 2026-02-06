@@ -303,6 +303,8 @@ class Species:
         Returns:
             list[str]: The desorption products
         """
+        if not hasattr(self, "desorb_products"):
+            raise AttributeError(f"Species {self} has no attribute 'desorb_products'")
         return self.desorb_products
 
     def set_freeze_products(self, product_list: list[str], freeze_alpha: float) -> None:
