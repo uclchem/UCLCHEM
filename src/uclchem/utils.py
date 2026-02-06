@@ -55,7 +55,7 @@ import pandas as pd
 _ROOT = path.dirname(path.abspath(__file__))
 
 
-def cshock_dissipation_time(shock_vel, initial_dens):
+def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
     """A simple function used to calculate the dissipation time of a C-type shock.
     Use to obtain a useful timescale for your C-shock model runs. Velocity of
     ions and neutrals equalizes at dissipation time and full cooling takes a few dissipation times.
@@ -73,7 +73,7 @@ def cshock_dissipation_time(shock_vel, initial_dens):
     return (dlength * 1.0e-5 / shock_vel) / SECONDS_PER_YEAR
 
 
-def check_error(error_code):
+def check_error(error_code: int) -> str:
     """Converts the UCLCHEM integer result flag to a simple messaging explaining what went wrong"
 
     Args:
@@ -96,7 +96,7 @@ def check_error(error_code):
         raise ValueError(f"Unknown error code: {error_code}")
 
 
-def get_species_table():
+def get_species_table() -> pd.DataFrame:
     """A simple function to load the list of species in the UCLCHEM network into a pandas dataframe.
 
     Returns:
@@ -118,7 +118,7 @@ def get_species() -> list[str]:
     return species_list
 
 
-def get_reaction_table():
+def get_reaction_table() -> pd.DataFrame:
     """A function to load the reaction table from the UCLCHEM network into a pandas dataframe.
 
     Returns:
@@ -127,3 +127,27 @@ def get_reaction_table():
 
     reactions = pd.read_csv(path.join(_ROOT, "reactions.csv"))
     return reactions
+
+
+def find_number_of_consecutive_digits(string: str, start: int) -> int:
+    """Determine the number of consecutive digits in a string.
+
+    Args:
+        string (str): the string
+        start (int): the starting index
+
+    Returns:
+        num_digits (int): the number of consecutive digits in the string
+            starting from "start".
+
+    Examples:
+        >> find_number_of_consecutive_digits("Hello123", 0) -> 0,
+        >> find_number_of_consecutive_digits("Hello123", 5) -> 3,
+        >> find_number_of_consecutive_digits("Hello123", 6) -> 2,
+        >> find_number_of_consecutive_digits("He1llo23", 2) -> 1,
+
+    """
+    num_digits = 0
+    while start + num_digits < len(string) and string[start + num_digits].isdigit():
+        num_digits += 1
+    return num_digits

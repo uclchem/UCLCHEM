@@ -1077,8 +1077,8 @@ class AbstractModel(ABC):
         row_count = int(np.shape(array)[0] / self._param_dict["points"])
 
         # Extract physics and species columns from legacy file header
-        physics_cols_from_file = [c for c in columns[:point_index].tolist()]
-        species_cols_from_file = [c for c in columns[point_index + 1 :].tolist()]
+        physics_cols_from_file = list(columns[:point_index].tolist())
+        species_cols_from_file = list(columns[point_index + 1 :].tolist())
 
         # Validate compatibility with current UCLCHEM constants - these are non-negotiable
         # PHYSICAL_PARAMETERS are hard-coded and tied to the Fortran wrapper
@@ -2224,19 +2224,19 @@ class Postprocess(AbstractModel):
             object.__setattr__(
                 self,
                 "postprocess_arrays",
-                dict(
-                    timegrid=time_array,
-                    densgrid=density_array,
-                    gastempgrid=gas_temperature_array,
-                    dusttempgrid=dust_temperature_array,
-                    radfieldgrid=radfield_array,
-                    zetagrid=zeta_array,
-                    avgrid=visual_extinction_array,
-                    nhgrid=coldens_H_array,
-                    nh2grid=coldens_H2_array,
-                    ncogrid=coldens_CO_array,
-                    ncgrid=coldens_C_array,
-                ),
+                {
+                    "timegrid": time_array,
+                    "densgrid": density_array,
+                    "gastempgrid": gas_temperature_array,
+                    "dusttempgrid": dust_temperature_array,
+                    "radfieldgrid": radfield_array,
+                    "zetagrid": zeta_array,
+                    "avgrid": visual_extinction_array,
+                    "nhgrid": coldens_H_array,
+                    "nh2grid": coldens_H2_array,
+                    "ncogrid": coldens_CO_array,
+                    "ncgrid": coldens_C_array,
+                },
             )
             for key, array in self.postprocess_arrays.items():
                 if array is not None:
@@ -2386,14 +2386,14 @@ class Model(AbstractModel):
         )
         if read_file is None and time_array is not None:
             self.time_array = time_array
-            self.postprocess_arrays = dict(
-                timegrid=time_array,
-                densgrid=density_array,
-                gastempgrid=gas_temperature_array,
-                dusttempgrid=dust_temperature_array,
-                radfieldgrid=radfield_array,
-                zetagrid=zeta_array,
-            )
+            self.postprocess_arrays = {
+                "timegrid": time_array,
+                "densgrid": density_array,
+                "gastempgrid": gas_temperature_array,
+                "dusttempgrid": dust_temperature_array,
+                "radfieldgrid": radfield_array,
+                "zetagrid": zeta_array,
+            }
             for key, array in self.postprocess_arrays.items():
                 if array is not None:
                     # Convert single values into arrays that can be used
@@ -2601,7 +2601,7 @@ class SequentialModel:
                 ]
             conserved = True
             for i in conserve_dicts:
-                conserved = True if all([float(x[:1]) < 1 for x in i.values()]) else False
+                conserved = True if all(float(x[:1]) < 1 for x in i.values()) else False
             model["elements_conserved"] = conserved
 
     def pickle(self):
@@ -2928,7 +2928,7 @@ class GridModels:
                 ]
             conserved = True
             for i in conserve_dicts:
-                conserved = True if all([float(x[:1]) < 1 for x in i.values()]) else False
+                conserved = True if all(float(x[:1]) < 1 for x in i.values()) else False
             self.models[model]["elements_conserved"] = conserved
         return
 
