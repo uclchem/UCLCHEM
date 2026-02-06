@@ -183,7 +183,16 @@ def register_model(cls: Type["AbstractModel"]):
 
 
 # Reaction and Species name retrieval classes to reduce file read repetition.
-def reaction_line_formatter(line):
+def reaction_line_formatter(line: list[str]) -> str:
+    """Format a list of strings as a reaction, while filtering out "NAN"s.
+
+    Args:
+        line (list[str]): list of species involved in the reaction
+
+    Returns:
+        str: formatted reaction for printing.
+    """
+
     reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
     products = list(filter(lambda x: not str(x).lower().endswith("nan"), line[3:7]))
     return " + ".join(reactants) + " -> " + " + ".join(products)
@@ -640,7 +649,7 @@ class AbstractModel(ABC):
                 check_element_conservation(self.get_dataframes(0), element_list, percent)
             )
 
-    def check_error(self, only_error: bool = False):
+    def check_error(self, only_error: bool = False) -> None:
         """
         Prints the error message of the model based on self.success_flag, this method was originally an uclchem.utils function.
 
@@ -665,7 +674,6 @@ class AbstractModel(ABC):
             print("Model ran successfully.")
         elif self.success_flag is None:
             print("Model has not been run.")
-        return
 
     def create_abundance_plot(
         self,
@@ -673,12 +681,14 @@ class AbstractModel(ABC):
         figsize: tuple[2] = (16, 9),
         point: int = 0,
         plot_file=None,
-    ):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """uclchem.analysis.create_abundance_plot wrapper method
+
         Args:
             element_list (list, optional): List of elements to check conservation for. Defaults to  self.out_species_list.
             figsize (tuple[2], optional): The figure size to use for matplotlib Defaults to (16, 9).
             point (int, optional): Integer referring to which point of the UCLCHEM model to use. Defaults to 0.
+
         Returns:
             fig,ax: matplotlib figure and axis objects
         """
@@ -806,7 +816,7 @@ class AbstractModel(ABC):
         point: int = 0,
         legend: bool = True,
         **plot_kwargs,
-    ):
+    ) -> plt.Axes:
         """uclchem.analysis.plot(species) wrapper method
         Args:
             ax (plt.axes):
@@ -814,6 +824,9 @@ class AbstractModel(ABC):
             point (int, optional):
             legend (bool, optional):
             plot_kwargs (dict, optional):
+
+        Returns:
+            plt.Axes: Modified input axis
         """
         if species is None:
             species = self.out_species_list
@@ -917,7 +930,7 @@ class AbstractModel(ABC):
         name: str = "default",
         engine: str = "h5netcdf",
         overwrite: bool = False,
-    ):
+    ) -> None:
         """
         save_model saves a model to a file on disk. Multiple models can be saved into the same file if different names are used to store them.
 
@@ -964,7 +977,6 @@ class AbstractModel(ABC):
         self._data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
         self._data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
         self._data.to_netcdf(file, group=name, engine=engine, mode="a")
-        return
 
     # /Model saving
 
@@ -1216,10 +1228,10 @@ class AbstractModel(ABC):
         full_array = np.append(phys, chem, axis=1)
         # TODO Move away from the magic numbers seen here.
         species_names = get_species_names()
-        string_fmt_string = f'{", ".join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {", ".join([SPECNAME_HEADER_FORMAT] * len(species_names))}'
+        string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(species_names))}"
         # Magic numbers here to match/improve the formatting of the classic version
         # TODO Move away from the magic numbers seen here.
-        number_fmt_string = f'{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {", ".join([SPECNAME_VALUE_FORMAT] * len(species_names))}'
+        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(species_names))}"
         columns = np.array([PHYSICAL_PARAMETERS[:-1] + ["point"] + species_names])
         np.savetxt(self.outputFile, columns, fmt=string_fmt_string)
         with open(self.outputFile, "ab") as f:
@@ -1231,7 +1243,7 @@ class AbstractModel(ABC):
         last_timestep_index = self.chemical_abun_array[:, 0, 0].nonzero()[0][-1]
         # TODO Move away from the magic numbers seen here.
         species_names = get_species_names()
-        number_fmt_string = f' {", ".join(["%9.5E"] * len(species_names))}'
+        number_fmt_string = f" {', '.join(['%9.5E'] * len(species_names))}"
         with open(self.abundSaveFile, "wb") as f:
             np.savetxt(
                 f,
@@ -2569,7 +2581,7 @@ class SequentialModel:
         for model in self.models:
             model["Model"].save_model(
                 file=file,
-                name=f'{name}_{model["Model_Type"]}_{model["Model_Order"]}',
+                name=f"{name}_{model['Model_Type']}_{model['Model_Order']}",
                 engine=engine,
                 overwrite=overwrite,
             )
@@ -2608,7 +2620,7 @@ class SequentialModel:
         if not bool(self._pickle_dict):
             for model in self.models:
                 model["Model"] = model["Model"].pickle()
-                self._pickle_dict[f'{model["Model_Type"]}_{model["Model_Order"]}'] = (
+                self._pickle_dict[f"{model['Model_Type']}_{model['Model_Order']}"] = (
                     model["Model"]._pickle_dict.copy()
                 )
         return
@@ -2617,7 +2629,7 @@ class SequentialModel:
         if bool(self._pickle_dict):
             for model in self.models:
                 model["Model"]._pickle_dict = self._pickle_dict[
-                    f'{model["Model_Type"]}_{model["Model_Order"]}'
+                    f"{model['Model_Type']}_{model['Model_Order']}"
                 ]
                 model["Model"] = model["Model"].un_pickle()
         return
@@ -2855,7 +2867,7 @@ class GridModels:
                 for mt_k, mt_v in self.full_parameters.items():
                     if isinstance(mt_v, dict):
                         tmp_model = self._load_model_data(
-                            model=f'{self.models[model]["Model"]}_{mt_k}_{model_number}'
+                            model=f"{self.models[model]['Model']}_{mt_k}_{model_number}"
                         )
 
                         self.models[model][f"{mt_k}_{model_number}"] = {
