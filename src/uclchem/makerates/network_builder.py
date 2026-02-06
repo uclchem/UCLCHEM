@@ -71,9 +71,9 @@ class NetworkBuilder:
             AssertionError: If duplicate species are provided
         """
         # Validate inputs
-        assert len(set([s.get_name() for s in species])) == len(species), (
-            "Cannot have duplicate species in the species list."
-        )
+        assert len(set([s.get_name() for s in species])) == len(
+            species
+        ), "Cannot have duplicate species in the species list."
 
         # Store inputs
         self.input_species = species
