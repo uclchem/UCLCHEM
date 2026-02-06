@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from collections import Counter
 from contextlib import contextmanager
@@ -64,7 +66,7 @@ tunneling_reaction_types = [
 
 
 class Reaction:
-    def __init__(self, inputRow, reaction_source=None):
+    def __init__(self, inputRow: list | Reaction, reaction_source=None):
         """Initialize a Reaction object.
 
         Args:
@@ -449,7 +451,7 @@ class Reaction:
         """
         return self._reduced_mass
 
-    ## C
+    # C
 
     def NANCheck(self, a):
         """Convert any Falsy statement to a NAN string
@@ -704,9 +706,9 @@ class Reaction:
         return formatted_reaction
 
     def _is_reaction_wrap(self, include_reactants=True, include_products=True):
-        assert (
-            include_reactants or include_products
-        ), "Either include reactants or products"
+        assert include_reactants or include_products, (
+            "Either include reactants or products"
+        )
         species_to_check = []
         if include_reactants:
             species_to_check += self.get_pure_reactants()

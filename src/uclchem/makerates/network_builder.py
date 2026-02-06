@@ -71,9 +71,9 @@ class NetworkBuilder:
             AssertionError: If duplicate species are provided
         """
         # Validate inputs
-        assert len(set([s.get_name() for s in species])) == len(
-            species
-        ), "Cannot have duplicate species in the species list."
+        assert len({s.get_name() for s in species}) == len(species), (
+            "Cannot have duplicate species in the species list."
+        )
 
         # Store inputs
         self.input_species = species
@@ -293,9 +293,7 @@ class NetworkBuilder:
 
         # then add default freeze out for species without a listed freeze out
         for species_name, specie in self.network.get_species_dict().items():
-            if (not specie.is_ice_species()) and (
-                not specie.get_freeze_products_list()
-            ):
+            if (not specie.is_ice_species()) and (not specie.get_freeze_products_list()):
                 logging.info(f"Adding a default freezeout for {specie} to the specie")
                 specie.add_default_freeze()
                 self.network.set_specie(species_name, specie)
@@ -355,9 +353,7 @@ class NetworkBuilder:
         so that the user doesn't have to endlessly relist the same species
         """
         logging.debug("Adding bulk species")
-        speciesNames = [
-            species.get_name() for species in self.network.get_species_list()
-        ]
+        speciesNames = [species.get_name() for species in self.network.get_species_list()]
         userSpecies = [manualSpec.get_name() for manualSpec in self.user_defined_bulk]
         new_species = []
         try:
@@ -418,9 +414,7 @@ class NetworkBuilder:
             reac for reac in new_reactions if reac not in current_reaction_list
         ]
 
-        bulk_species = [
-            x for x in self.network.get_species_list() if "@" in x.get_name()
-        ]
+        bulk_species = [x for x in self.network.get_species_list() if "@" in x.get_name()]
         for species in bulk_species:
             # add individual swapping
             if not species.is_refractory:
@@ -515,10 +509,8 @@ class NetworkBuilder:
                     new_products = new_reaction.get_products()
                     # Check there are no products incompatible with LH/ER reactions by counting them
                     if new_products.count("NAN") + sum(
-                        [
-                            prod.startswith("#") or prod.startswith("@")
-                            for prod in new_products
-                        ]
+                        prod.startswith("#") or prod.startswith("@")
+                        for prod in new_products
                     ) != len(new_products):
                         logging.warning(
                             "All Langmuir-Hinshelwood and Eley-Rideal reactions should be input with products on grains only.\n"
@@ -796,11 +788,9 @@ class NetworkBuilder:
                 # Only enable extrapolation if we have one or overlapping reactions
                 # UMIST uses overlapping reactions to get more correct reaction rates.
                 if all(
-                    [
-                        (reaction.get_templow() == v.get_templow())
-                        and (reaction.get_temphigh() == v.get_temphigh())
-                        for k, v in similar_reactions.items()
-                    ]
+                    (reaction.get_templow() == v.get_templow())
+                    and (reaction.get_temphigh() == v.get_temphigh())
+                    for k, v in similar_reactions.items()
                 ):
                     reaction.set_extrapolation(True)
 
@@ -824,9 +814,7 @@ class NetworkBuilder:
                 if exclude_ices and reaction.is_ice_reaction(strict=(not exclude_ices)):
                     logging.debug("Skipping ice reaction")
                     continue
-                if "E-" in (
-                    reaction.get_pure_products() + reaction.get_pure_reactants()
-                ):
+                if "E-" in (reaction.get_pure_products() + reaction.get_pure_reactants()):
                     logging.debug(
                         "Reaction involving electrons, skipping enthalpy due to poor estimates"
                     )
@@ -865,9 +853,9 @@ class NetworkBuilder:
         """
         reactants = reaction.get_pure_reactants()
         products = reaction.get_pure_products()
-        return sum(
-            [self.network._species_dict[p].get_enthalpy() for p in products]
-        ) - sum(self.network._species_dict[r].get_enthalpy() for r in reactants)
+        return sum(self.network._species_dict[p].get_enthalpy() for p in products) - sum(
+            self.network._species_dict[r].get_enthalpy() for r in reactants
+        )
 
     def _get_reactions_on_grain(self) -> list[Reaction]:
         """Get all reactions that occur on grain surfaces (# prefix) or in bulk (@prefix)."""
@@ -921,9 +909,7 @@ class NetworkBuilder:
                     f"\t{spec.get_name()} freezes out through {freezeout_reactions[0]}"
                 )
             if freezes > 1:
-                logging.info(
-                    f"\t{spec.get_name()} freezes out through {freezes} routes"
-                )
+                logging.info(f"\t{spec.get_name()} freezes out through {freezes} routes")
             elif freezes < 1 and not spec.is_ice_species():
                 logging.info(f"\t{spec.get_name()} does not freeze out")
 
@@ -963,10 +949,7 @@ class NetworkBuilder:
                                 duplicates = True
                                 # adjust temperatures so temperature ranges are adjacent
                                 if reaction1.get_temphigh() > reaction2.get_temphigh():
-                                    if (
-                                        reaction1.get_templow()
-                                        < reaction2.get_temphigh()
-                                    ):
+                                    if reaction1.get_templow() < reaction2.get_temphigh():
                                         logging.warning(
                                             f"\tReactions {reaction1} and {reaction2} have non-adjacent temperature ranges"
                                         )
@@ -1022,18 +1005,14 @@ class NetworkBuilder:
                 "nR_H2Form_LHDes": lambda reacs, prods: (
                     (reacs.count("#H") == 2) and ("LHDES" in reacs)
                 ),
-                "nR_HFreeze": lambda reacs, prods: (
-                    ("H" in reacs) and ("FREEZE" in reacs)
-                ),
+                "nR_HFreeze": lambda reacs, prods: ("H" in reacs) and ("FREEZE" in reacs),
                 "nR_H2Freeze": lambda reacs, prods: (
                     ("H2" in reacs) and ("FREEZE" in reacs)
                 ),
                 "nR_EFreeze": lambda reacs, prods: (
                     ("E-" in reacs) and ("FREEZE" in reacs)
                 ),
-                "nR_H2_hv": lambda reacs, prods: (
-                    ("H2" in reacs) and ("PHOTON" in reacs)
-                ),
+                "nR_H2_hv": lambda reacs, prods: ("H2" in reacs) and ("PHOTON" in reacs),
                 "nR_H2_crp": lambda reacs, prods: (
                     ("H2" in reacs) and ("CRP" in reacs) and (prods.count("H") == 2)
                 ),
@@ -1056,9 +1035,7 @@ class NetworkBuilder:
                         )
                     self.network.important_reactions[key] = i + 1
 
-        if np_any(
-            [value is None for value in self.network.important_reactions.values()]
-        ):
+        if np_any([value is None for value in self.network.important_reactions.values()]):
             logging.debug(self.network.important_reactions)
             missing_reac_error = "Input reaction file is missing mandatory reactions"
             missing_reac_error += (
@@ -1106,7 +1083,7 @@ class NetworkBuilder:
                 # TODO: The dummy value is currently SURFACE/BULK; We could handle this better somehow
                 logging.info(f"\t{element} not in network, adding dummy index")
                 species_index = len(self.network.get_species_list()) + 1
-            name = "n" + element.lower().replace("+", "x").replace(
-                "e-", "elec"
-            ).replace("#", "g")
+            name = "n" + element.lower().replace("+", "x").replace("e-", "elec").replace(
+                "#", "g"
+            )
             self.network.species_indices[name] = species_index

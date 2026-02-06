@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+
 import uclchem
 from uclchem.utils import get_species
 
@@ -68,9 +69,9 @@ if __name__ == "__main__":
             abundanceStart,
             success_flag,
         ) = uclchem.model.postprocess(
-            param_dict=dict(
+            param_dict={
                 #     outputfile="postprocess.dat",
-            ),
+            },
             out_species=["H2"],
             return_array=True,
             time_array=particle_df["time"],

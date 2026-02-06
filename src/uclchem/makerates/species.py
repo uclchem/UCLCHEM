@@ -192,14 +192,6 @@ class Species:
         elif "-" in self.get_name():
             return -1
 
-    def get_binding_energy(self) -> float:
-        """Get the binding energy of the species in K
-
-        Returns:
-            float: The binding energy in K
-        """
-        return self.binding_energy
-
     def get_solid_fraction(self) -> float:
         """Get the solid fraction of the species
 

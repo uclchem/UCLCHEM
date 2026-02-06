@@ -337,18 +337,14 @@ def write_f90_constants(
         # Format coolant files
         coolant_files = replace_dict.pop("coolant_files")
         max_file_len = max(len(f) for f in coolant_files)
-        coolant_files_str = ",".join(
-            f'"{f.ljust(max_file_len)}"' for f in coolant_files
-        )
+        coolant_files_str = ",".join(f'"{f.ljust(max_file_len)}"' for f in coolant_files)
         replace_dict["coolant_file_len"] = max_file_len
         replace_dict["coolant_files"] = "/" + coolant_files_str + "/"
 
         # Format coolant names
         coolant_names = replace_dict.pop("coolant_names")
         max_name_len = max(len(n) for n in coolant_names)
-        coolant_names_str = ",".join(
-            f'"{n.ljust(max_name_len)}"' for n in coolant_names
-        )
+        coolant_names_str = ",".join(f'"{n.ljust(max_name_len)}"' for n in coolant_names)
         replace_dict["coolant_name_len"] = max_name_len
         replace_dict["coolant_names"] = "/" + coolant_names_str + "/"
 
@@ -377,9 +373,7 @@ def write_python_constants(
                     end="\n",
                 )
                 # Don't copy the old timestamp into the new file.
-                if line.startswith(
-                    "# This file was machine generated with Makerates on"
-                ):
+                if line.startswith("# This file was machine generated with Makerates on"):
                     continue
             # For every line, try to find constants, if we find them, replace them,
             # if not, just print the line.
@@ -556,9 +550,7 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
             else:
                 # every time an ode bit has our species in it, we remove it (dy/dx=a for y=ax)
                 di_dj = [
-                    f"-{x}".replace(f"*Y({j})", "", 1)
-                    for x in losses
-                    if f"*Y({j})" in x
+                    f"-{x}".replace(f"*Y({j})", "", 1) for x in losses if f"*Y({j})" in x
                 ]
                 di_dj += [
                     f"+{x}".replace(f"*Y({j})", "", 1) for x in gains if f"*Y({j})" in x
@@ -640,9 +632,7 @@ def build_ode_string(
                         species_names.index("#" + species)
                     ].losses += reaction.ode_bit
                 else:
-                    species_list[
-                        species_names.index(species)
-                    ].losses += reaction.ode_bit
+                    species_list[species_names.index(species)].losses += reaction.ode_bit
                 if reaction.get_reaction_type() == "BULKSWAP":
                     total_swap += reaction.ode_bit
         for species in reaction.get_products():
@@ -824,7 +814,9 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
             try:
                 j = species_names.index(species.get_desorb_products()[0])
             except ValueError:
-                error = f"{species.get_name()} desorbs as {species.get_desorb_products()[0]}"
+                error = (
+                    f"{species.get_name()} desorbs as {species.get_desorb_products()[0]}"
+                )
                 error += "which is not in species list. This desorption is likely user defined.\n"
                 error += "Please amend the desorption route in your reaction file and re-run Makerates"
                 raise NameError(error)
@@ -890,9 +882,7 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
     network_file.write(array_to_string("customVdiff", customVdiffList, type="float"))
 
     network_file.write(array_to_string("moleculeIsLinear", isLinears, type="logical"))
-    network_file.write(
-        array_to_string("inertiaProducts", inertiaProducts, type="float")
-    )
+    network_file.write(array_to_string("inertiaProducts", inertiaProducts, type="float"))
     network_file.write(array_to_string("formationEnthalpy", enthalpyList, type="float"))
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
     return len(iceList)
@@ -1054,8 +1044,10 @@ def write_network_file(
     else:
         openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
         openFile.write("    LOGICAL :: storeRatesComputation=.false.\n")
-    if any([exo != 0.0 for exo in exothermicity]):
-        assert enable_rates_storage, "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
+    if any(exo != 0.0 for exo in exothermicity):
+        assert enable_rates_storage, (
+            "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
+        )
         openFile.write(
             array_to_string(
                 "\texothermicities", exothermicity, type="float", parameter=True

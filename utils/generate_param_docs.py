@@ -3,8 +3,8 @@ file that can be copied over to the website docs. Run it with
 python generate_param_docs.py default_parameter_fortran_file output_markdown_file
 """
 
-from sys import argv
 import ast
+from sys import argv
 
 param_file = argv[1]
 output_file = argv[2]

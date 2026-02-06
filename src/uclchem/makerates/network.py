@@ -308,10 +308,7 @@ class BaseNetwork(NetworkABC):
             other_reactants = set(other_reaction.get_reactants()) - {"NAN"}
             other_products = set(other_reaction.get_products()) - {"NAN"}
 
-            if (
-                other_reactants == target_reactants
-                and other_products == target_products
-            ):
+            if other_reactants == target_reactants and other_products == target_products:
                 similar[idx] = other_reaction
 
         return similar
@@ -442,13 +439,11 @@ class Network(BaseNetwork, MutableNetworkABC):
 
         # Parse into objects
         species_list = [Species(list(spec)) for idx, spec in species_data.iterrows()]
-        reactions_list = [
-            Reaction(list(reac)) for idx, reac in reactions_data.iterrows()
-        ]
+        reactions_list = [Reaction(list(reac)) for idx, reac in reactions_data.iterrows()]
 
         # Create dictionaries
         species_dict = {s.get_name(): s for s in species_list}
-        reaction_dict = {k: v for k, v in enumerate(reactions_list)}
+        reaction_dict = dict(enumerate(reactions_list))
 
         return cls(species_dict, reaction_dict)
 
@@ -475,7 +470,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             >>> network = Network.from_lists(species_list, reactions_list)
         """
         species_dict = {s.get_name(): s for s in species}
-        reaction_dict = {k: v for k, v in enumerate(reactions)}
+        reaction_dict = dict(enumerate(reactions))
         return cls(species_dict, reaction_dict)
 
     @classmethod
@@ -627,9 +622,9 @@ class Network(BaseNetwork, MutableNetworkABC):
         """Set/update a reaction at specific index."""
         old_length = len(self._reactions_dict)
         self._reactions_dict[reaction_idx] = reaction
-        assert old_length == len(
-            self._reactions_dict
-        ), "Setting the reaction caused a change in the number of reactions"
+        assert old_length == len(self._reactions_dict), (
+            "Setting the reaction caused a change in the number of reactions"
+        )
 
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
         """Replace entire reaction dictionary."""
@@ -729,9 +724,9 @@ class Network(BaseNetwork, MutableNetworkABC):
                 )
             )
         )
-        assert len(reaction_dict) == len(
-            self.get_reaction_dict()
-        ), "Sorting the species caused a difference in the number of species"
+        assert len(reaction_dict) == len(self.get_reaction_dict()), (
+            "Sorting the species caused a difference in the number of species"
+        )
 
     # Note: Query methods (find_similar_reactions, get_reaction_index, etc.)
     # are inherited from BaseNetwork
