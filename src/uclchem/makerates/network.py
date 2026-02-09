@@ -621,9 +621,9 @@ class Network(BaseNetwork, MutableNetworkABC):
         """Set/update a reaction at specific index."""
         old_length = len(self._reactions_dict)
         self._reactions_dict[reaction_idx] = reaction
-        assert old_length == len(self._reactions_dict), (
-            "Setting the reaction caused a change in the number of reactions"
-        )
+        assert old_length == len(
+            self._reactions_dict
+        ), "Setting the reaction caused a change in the number of reactions"
 
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
         """Replace entire reaction dictionary."""
@@ -723,9 +723,9 @@ class Network(BaseNetwork, MutableNetworkABC):
                 )
             )
         )
-        assert len(reaction_dict) == len(self.get_reaction_dict()), (
-            "Sorting the species caused a difference in the number of species"
-        )
+        assert len(reaction_dict) == len(
+            self.get_reaction_dict()
+        ), "Sorting the species caused a difference in the number of species"
 
     # Note: Query methods (find_similar_reactions, get_reaction_index, etc.)
     # are inherited from BaseNetwork

@@ -1030,9 +1030,7 @@ def write_network_file(
         openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
         openFile.write("    LOGICAL :: storeRatesComputation=.false.\n")
     if any(exo != 0.0 for exo in exothermicity):
-        assert enable_rates_storage, (
-            "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
-        )
+        assert enable_rates_storage, "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
         openFile.write(
             array_to_string(
                 "\texothermicities", exothermicity, type="float", parameter=True
