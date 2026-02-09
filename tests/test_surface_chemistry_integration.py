@@ -34,7 +34,6 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     - Surface chemistry evolves as ice grows
     - Chemical desorption efficiency varies with coverage
     """
-
     param_dict = {
         "endAtFinalDensity": False,
         "freefall": False,
@@ -47,7 +46,7 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     }
 
     result = uclchem.model.Cloud(
-        param_dict=param_dict, out_species=["Time", "#H2O", "#CO", "CH4"]
+        param_dict=param_dict, out_species=["#H2O", "#CO", "CH4"]
     )
 
     # Basic checks
@@ -61,9 +60,9 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     # Verify ice buildup (SURFACE + BULK = total ice)
     early_ice = df["SURFACE"].iloc[2] + df["BULK"].iloc[2]
     late_ice = df["SURFACE"].iloc[-1] + df["BULK"].iloc[-1]
-    assert (
-        late_ice > early_ice * 10
-    ), f"Ice should build up significantly: {early_ice:.2e} → {late_ice:.2e}"
+    assert late_ice > early_ice * 10, (
+        f"Ice should build up significantly: {early_ice:.2e} → {late_ice:.2e}"
+    )
 
     # Verify chemistry evolves
     early_co = df["#CO"].iloc[2]
@@ -73,10 +72,6 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     # Verify complex molecules form (tests that chemistry is active)
     final_ch4 = df["CH4"].iloc[-1]
     assert final_ch4 > 1e-20, "Complex molecules should form"
-
-    print(f"✓ Ice buildup: {early_ice:.2e} → {late_ice:.2e}")
-    print(f"✓ Surface CO: {early_co:.2e} → {late_co:.2e}")
-    print(f"✓ CH4 formed: {final_ch4:.2e}")
 
     settings = uclchem.advanced.GeneralSettings()
     num_monolayers_is_surface = list(
@@ -94,9 +89,9 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     )
 
     tol = 5e-2
-    assert (
-        num_monolayers_in_run <= num_monolayers_is_surface + tol
-    ), f"Number of monolayers of surface should be less than {num_monolayers_is_surface}, but was {num_monolayers_in_run:.2f} at most"
+    assert num_monolayers_in_run <= num_monolayers_is_surface + tol, (
+        f"Number of monolayers of surface should be less than {num_monolayers_is_surface}, but was {num_monolayers_in_run:.2f} at most"
+    )
 
 
 if __name__ == "__main__":

@@ -206,7 +206,9 @@ class ReactionNamesStore:
         # Only load the reactions once, after that use the cached version
         if self.reaction_names is None:
             reactions = pd.read_csv(
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "reactions.csv")
+                os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), "reactions.csv"
+                )
             )
             # format the reactions:
             self.reaction_names = [
@@ -418,9 +420,9 @@ class AbstractModel(ABC):
             self._create_starting_array(previous_model.next_starting_chemistry_array)
 
         self.give_start_abund = self.starting_chemistry_array is not None
-        assert not np.all(
-            self.starting_chemistry_array == 0.0
-        ), "Detected all zeros starting chemistry array."
+        assert not np.all(self.starting_chemistry_array == 0.0), (
+            "Detected all zeros starting chemistry array."
+        )
 
         # Only initialize next_starting_chemistry_array if we didn't load it from a file
         # (legacy_read_output_file sets it from the last timestep)
@@ -646,7 +648,9 @@ class AbstractModel(ABC):
         else:
             print("Element conservation report")
             print(
-                check_element_conservation(self.get_dataframes(0), element_list, percent)
+                check_element_conservation(
+                    self.get_dataframes(0), element_list, percent
+                )
             )
 
     def check_error(self, only_error: bool = False) -> None:
@@ -913,7 +917,9 @@ class AbstractModel(ABC):
                 self.legacy_write_starting_chemistry()
                 logging.debug(f"Successfully wrote {self.abundSaveFile}")
             except Exception as e:
-                logging.error(f"Failed to write {self.abundSaveFile}: {e}", exc_info=True)
+                logging.error(
+                    f"Failed to write {self.abundSaveFile}: {e}", exc_info=True
+                )
                 raise
         return
 
@@ -1017,7 +1023,10 @@ class AbstractModel(ABC):
                     except Exception:
                         existing_time = None
                     v_arr = np.asarray(v)
-                    if existing_time is not None and existing_time != np.shape(v_arr)[0]:
+                    if (
+                        existing_time is not None
+                        and existing_time != np.shape(v_arr)[0]
+                    ):
                         base_time_dim = f"time_step_{k}"
                         time_dim = base_time_dim
                         i = 1
@@ -1360,9 +1369,9 @@ class AbstractModel(ABC):
             # this is key to UCLCHEM's "case insensitivity"
             new_param_dict = {}
             for k, v in param_dict.items():
-                assert (
-                    k.lower() not in new_param_dict
-                ), f"Lower case key {k} is already in the dict, stopping"
+                assert k.lower() not in new_param_dict, (
+                    f"Lower case key {k} is already in the dict, stopping"
+                )
                 if isinstance(v, Path):
                     v = str(v)
                 new_param_dict[k.lower()] = v
@@ -1374,6 +1383,15 @@ class AbstractModel(ABC):
         for k in keys_to_delete:
             del self._param_dict[k]
         if out_species is not None:
+            # Validate out_species: list/tuple of strings and known species
+            if not (
+                isinstance(out_species, (list, tuple))
+                and all(isinstance(s, str) for s in out_species)
+                and all(s.strip() in get_species_names() for s in out_species)
+            ):
+                raise ValueError(
+                    "out_species must be a list/tuple of valid species names; check available species via uclchem.model.get_species_names()"
+                )
             self.n_out = len(out_species)
             self._param_dict["outspecies"] = self.n_out
             self.out_species = " ".join(out_species)
@@ -1517,7 +1535,9 @@ class AbstractModel(ABC):
                     self._shm_desc["starting_chemistry_array"],
                     self.starting_chemistry_array,
                 ) = self._create_shared_memory_allocation(np.shape(starting_chemistry))
-                np.copyto(self.starting_chemistry_array, starting_chemistry, casting="no")
+                np.copyto(
+                    self.starting_chemistry_array, starting_chemistry, casting="no"
+                )
             else:
                 self.starting_chemistry_array = np.asfortranarray(
                     starting_chemistry, dtype=np.float64
@@ -1580,7 +1600,9 @@ class AbstractModel(ABC):
             object.__setattr__(
                 self,
                 k,
-                np.ndarray(shape=v["shape"], dtype=np.float64, buffer=shm.buf, order="F"),
+                np.ndarray(
+                    shape=v["shape"], dtype=np.float64, buffer=shm.buf, order="F"
+                ),
             )
             self._shm_handles[k] = shm
             del shm
@@ -2256,9 +2278,9 @@ class Postprocess(AbstractModel):
                     if isinstance(array, float):
                         array = np.ones(shape=time_array.shape) * array
                     # Assure lengths are correct
-                    assert len(array) == len(
-                        time_array
-                    ), "All arrays must be the same length"
+                    assert len(array) == len(time_array), (
+                        "All arrays must be the same length"
+                    )
                     # Ensure Fortran memory
                     array = np.asfortranarray(array, dtype=np.float64)
                     self.postprocess_arrays[key] = array
@@ -2269,9 +2291,9 @@ class Postprocess(AbstractModel):
             # Flags exposed for Fortran wrapper (mutually exclusive)
             self.usecoldens = self.coldens_H_array is not None
             self.useav = self.visual_extinction_array is not None
-            assert not (
-                self.usecoldens and self.useav
-            ), "Cannot use both column density and visual extinction arrays simultaneously."
+            assert not (self.usecoldens and self.useav), (
+                "Cannot use both column density and visual extinction arrays simultaneously."
+            )
 
             if not self.give_start_abund:
                 self.starting_chemistry_array = np.zeros(
@@ -2294,7 +2316,9 @@ class Postprocess(AbstractModel):
         """
         # Determine whether an Av grid was provided and set the flag expected by the Fortran wrapper
         # Only pass arrays that are present (not None) to the Fortran wrapper
-        post_kwargs = {k: v for k, v in self.postprocess_arrays.items() if v is not None}
+        post_kwargs = {
+            k: v for k, v in self.postprocess_arrays.items() if v is not None
+        }
         _, _, _, _, _, out_species_abundances_array, _, success_flag = wrap.postprocess(
             usecoldens=self.usecoldens,
             useav=self.useav,
@@ -2412,9 +2436,9 @@ class Model(AbstractModel):
                     if isinstance(array, float):
                         array = np.ones(shape=time_array.shape) * array
                     # Assure lengths are correct
-                    assert len(array) == len(
-                        time_array
-                    ), "All arrays must be the same length"
+                    assert len(array) == len(time_array), (
+                        "All arrays must be the same length"
+                    )
                     # Ensure Fortran memory
                     array = np.asfortranarray(array, dtype=np.float64)
                     self.postprocess_arrays[key] = array
@@ -2885,7 +2909,8 @@ class GridModels:
                                 )
                                 for k in list(self.parameters_to_grid.keys())
                                 if mt_k in k
-                                and k.replace(mt_k, "").lower() in tmp_model._data.keys()
+                                and k.replace(mt_k, "").lower()
+                                in tmp_model._data.keys()
                             },
                         }
                         self.models[model][f"{mt_k}_{model_number}"]["Successful"] = (
@@ -2923,7 +2948,9 @@ class GridModels:
             percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
         """
         for model in range(len(self.models)):
-            tmp_model = load_model(file=self.grid_file, name=self.models[model]["Model"])
+            tmp_model = load_model(
+                file=self.grid_file, name=self.models[model]["Model"]
+            )
             conserve_dicts = []
             if tmp_model._param_dict["points"] > 1:
                 for i in range(tmp_model._param_dict["points"]):
