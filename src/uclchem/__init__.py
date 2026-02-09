@@ -13,7 +13,6 @@ from . import analysis as analysis
 from . import model as model
 from . import functional as functional
 from . import plot as plot
-from . import tests as tests
 from . import utils as utils
 from . import version as version
 # isort: off

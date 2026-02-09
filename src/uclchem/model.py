@@ -119,6 +119,7 @@ from uclchem.constants import (
     n_reactions,
     n_species,
 )
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 # /Multiprocessing imports
 
@@ -137,11 +138,9 @@ SPECNAME_VALUE_FORMAT = "%9.5E"
 # Set collisional rates directory for heating/cooling calculations
 def set_collisional_rates_directory():
     # TODO: move this functionality into the advanced heating suite.
-    coolant_directory = (
-        os.path.dirname(os.path.abspath(__file__)) + "/data/collisional_rates/"
-    )
+    coolant_directory = UCLCHEM_ROOT_DIR / "data/collisional_rates/"
     # Provide the correct path to the coolant files:
-    assert len(coolant_directory) < 256, (
+    assert len(str(coolant_directory)) < 256, (
         "Coolant directory path is too long, please shorten it. Path is "
         + coolant_directory
     )
@@ -150,7 +149,7 @@ def set_collisional_rates_directory():
         actual_dir = str(
             np.char.decode(uclchemwrap.defaultparameters.coolantdatadir)
         ).strip()
-        assert actual_dir == coolant_directory, (
+        assert actual_dir == str(coolant_directory), (
             f"Coolant directory path not set correctly. "
             f"Expected: {coolant_directory} "
             f"Got: {actual_dir}"
@@ -205,9 +204,7 @@ class ReactionNamesStore:
     def __call__(self):
         # Only load the reactions once, after that use the cached version
         if self.reaction_names is None:
-            reactions = pd.read_csv(
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "reactions.csv")
-            )
+            reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
             # format the reactions:
             self.reaction_names = [
                 reaction_line_formatter(line) for idx, line in reactions.iterrows()
@@ -228,9 +225,7 @@ class SpeciesNameStore:
     def __call__(self):
         # Only load the species once, after that use the cached version
         if self.species_names is None:
-            species = pd.read_csv(
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "species.csv")
-            )
+            species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
             self.species_names = species["NAME"].tolist()
         return self.species_names
 
@@ -418,9 +413,9 @@ class AbstractModel(ABC):
             self._create_starting_array(previous_model.next_starting_chemistry_array)
 
         self.give_start_abund = self.starting_chemistry_array is not None
-        assert not np.all(
-            self.starting_chemistry_array == 0.0
-        ), "Detected all zeros starting chemistry array."
+        assert not np.all(self.starting_chemistry_array == 0.0), (
+            "Detected all zeros starting chemistry array."
+        )
 
         # Only initialize next_starting_chemistry_array if we didn't load it from a file
         # (legacy_read_output_file sets it from the last timestep)
@@ -1360,9 +1355,9 @@ class AbstractModel(ABC):
             # this is key to UCLCHEM's "case insensitivity"
             new_param_dict = {}
             for k, v in param_dict.items():
-                assert (
-                    k.lower() not in new_param_dict
-                ), f"Lower case key {k} is already in the dict, stopping"
+                assert k.lower() not in new_param_dict, (
+                    f"Lower case key {k} is already in the dict, stopping"
+                )
                 if isinstance(v, Path):
                     v = str(v)
                 new_param_dict[k.lower()] = v
@@ -2256,9 +2251,9 @@ class Postprocess(AbstractModel):
                     if isinstance(array, float):
                         array = np.ones(shape=time_array.shape) * array
                     # Assure lengths are correct
-                    assert len(array) == len(
-                        time_array
-                    ), "All arrays must be the same length"
+                    assert len(array) == len(time_array), (
+                        "All arrays must be the same length"
+                    )
                     # Ensure Fortran memory
                     array = np.asfortranarray(array, dtype=np.float64)
                     self.postprocess_arrays[key] = array
@@ -2269,9 +2264,9 @@ class Postprocess(AbstractModel):
             # Flags exposed for Fortran wrapper (mutually exclusive)
             self.usecoldens = self.coldens_H_array is not None
             self.useav = self.visual_extinction_array is not None
-            assert not (
-                self.usecoldens and self.useav
-            ), "Cannot use both column density and visual extinction arrays simultaneously."
+            assert not (self.usecoldens and self.useav), (
+                "Cannot use both column density and visual extinction arrays simultaneously."
+            )
 
             if not self.give_start_abund:
                 self.starting_chemistry_array = np.zeros(
@@ -2412,9 +2407,9 @@ class Model(AbstractModel):
                     if isinstance(array, float):
                         array = np.ones(shape=time_array.shape) * array
                     # Assure lengths are correct
-                    assert len(array) == len(
-                        time_array
-                    ), "All arrays must be the same length"
+                    assert len(array) == len(time_array), (
+                        "All arrays must be the same length"
+                    )
                     # Ensure Fortran memory
                     array = np.asfortranarray(array, dtype=np.float64)
                     self.postprocess_arrays[key] = array

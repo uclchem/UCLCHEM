@@ -17,13 +17,12 @@ from uclchem.advanced.runtime_network instead.
 import logging
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from os import path
 from pathlib import Path
 from typing import Union
 
 import pandas as pd
 
-from uclchem.utils import _ROOT
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 from .reaction import Reaction, reaction_types
 from .species import Species
@@ -427,9 +426,9 @@ class Network(BaseNetwork, MutableNetworkABC):
         """
         # Use defaults if not provided
         if species_path is None:
-            species_path = path.join(_ROOT, "species.csv")
+            species_path = UCLCHEM_ROOT_DIR / "species.csv"
         if reactions_path is None:
-            reactions_path = path.join(_ROOT, "reactions.csv")
+            reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
 
         logging.debug(f"Loading network from {species_path} and {reactions_path}")
 
@@ -622,9 +621,9 @@ class Network(BaseNetwork, MutableNetworkABC):
         """Set/update a reaction at specific index."""
         old_length = len(self._reactions_dict)
         self._reactions_dict[reaction_idx] = reaction
-        assert old_length == len(
-            self._reactions_dict
-        ), "Setting the reaction caused a change in the number of reactions"
+        assert old_length == len(self._reactions_dict), (
+            "Setting the reaction caused a change in the number of reactions"
+        )
 
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
         """Replace entire reaction dictionary."""
@@ -724,9 +723,9 @@ class Network(BaseNetwork, MutableNetworkABC):
                 )
             )
         )
-        assert len(reaction_dict) == len(
-            self.get_reaction_dict()
-        ), "Sorting the species caused a difference in the number of species"
+        assert len(reaction_dict) == len(self.get_reaction_dict()), (
+            "Sorting the species caused a difference in the number of species"
+        )
 
     # Note: Query methods (find_similar_reactions, get_reaction_index, etc.)
     # are inherited from BaseNetwork

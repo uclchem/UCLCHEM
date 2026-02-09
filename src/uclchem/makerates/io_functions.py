@@ -14,6 +14,7 @@ import numpy as np
 import yaml
 
 from uclchem.constants import PHYSICAL_PARAMETERS
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 from .network import Network
 from .reaction import Reaction, reaction_types
@@ -327,8 +328,7 @@ def write_f90_constants(
         output_file_name (Path): The path to target f2py_constants.f90 file
         template_file_path (Path, optional): The file to use as the template.
     """
-    _ROOT = Path(__file__).parent
-    template_file_path = _ROOT / template_file_path
+    template_file_path = UCLCHEM_ROOT_DIR / "makerates" / template_file_path
     with open(template_file_path / "f2py_constants.f90", "r") as fh:
         constants = fh.read()
 
@@ -1030,7 +1030,9 @@ def write_network_file(
         openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
         openFile.write("    LOGICAL :: storeRatesComputation=.false.\n")
     if any(exo != 0.0 for exo in exothermicity):
-        assert enable_rates_storage, "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
+        assert enable_rates_storage, (
+            "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
+        )
         openFile.write(
             array_to_string(
                 "\texothermicities", exothermicity, type="float", parameter=True
