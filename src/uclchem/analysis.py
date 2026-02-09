@@ -753,9 +753,9 @@ def get_total_swap(
         np.ndarray: The total swap per timestep
     """
     assert len(rates) == len(abundances), "Rates and abundances must be the same length"
-    assert rates.shape[1] == len(reactions), (
-        "The number of rates and reactions must be equal"
-    )
+    assert rates.shape[1] == len(
+        reactions
+    ), "The number of rates and reactions must be equal"
     totalSwap = np.zeros(abundances.shape[0])
     for idx, reac in enumerate(reactions):
         if reac.get_reaction_type() == "BULKSWAP":
@@ -813,12 +813,12 @@ def rate_constants_to_dy_and_rates(
     Returns:
         tuple[pd.DataFrame, pd.DataFrame]: dy, rate_by_reaction.
     """
-    assert bool(species) == bool(reactions), (
-        "If species is specified, reactions also must be and vice ver"
-    )
-    assert not (network and (species or reactions)), (
-        "Choose between providing a network OR (species AND reactions)"
-    )
+    assert bool(species) == bool(
+        reactions
+    ), "If species is specified, reactions also must be and vice ver"
+    assert not (
+        network and (species or reactions)
+    ), "Choose between providing a network OR (species AND reactions)"
     if network:
         species = network.get_species_list()
         reactions = network.get_reaction_list()
