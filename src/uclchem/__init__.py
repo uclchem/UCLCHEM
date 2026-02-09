@@ -2,7 +2,6 @@
 `model` contains the functions for running chemical models under different physics.
 `analysis` contains functions for reading and plotting output files as well as investigating the chemistry.
 `advanced` provides access to Fortran modules, parameters, heating/cooling controls and advanced solver parameters.
-`tests` contains functions for testing the code.
 """
 
 from . import advanced as advanced
@@ -14,5 +13,6 @@ from . import model as model
 from . import functional as functional
 from . import plot as plot
 from . import utils as utils
+from . import tests as tests
 from . import version as version
 # isort: off
