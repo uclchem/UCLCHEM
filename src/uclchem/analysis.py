@@ -753,9 +753,9 @@ def get_total_swap(
         np.ndarray: The total swap per timestep
     """
     assert len(rates) == len(abundances), "Rates and abundances must be the same length"
-    assert rates.shape[1] == len(
-        reactions
-    ), "The number of rates and reactions must be equal"
+    assert rates.shape[1] == len(reactions), (
+        "The number of rates and reactions must be equal"
+    )
     totalSwap = np.zeros(abundances.shape[0])
     for idx, reac in enumerate(reactions):
         if reac.get_reaction_type() == "BULKSWAP":
@@ -813,12 +813,12 @@ def rate_constants_to_dy_and_rates(
     Returns:
         tuple[pd.DataFrame, pd.DataFrame]: dy, rate_by_reaction.
     """
-    assert bool(species) == bool(
-        reactions
-    ), "If species is specified, reactions also must be and vice ver"
-    assert not (
-        network and (species or reactions)
-    ), "Choose between providing a network OR (species AND reactions)"
+    assert bool(species) == bool(reactions), (
+        "If species is specified, reactions also must be and vice ver"
+    )
+    assert not (network and (species or reactions)), (
+        "Choose between providing a network OR (species AND reactions)"
+    )
     if network:
         species = network.get_species_list()
         reactions = network.get_reaction_list()
@@ -850,19 +850,22 @@ def rate_constants_to_dy_and_rates(
         for reactant in reaction.get_sorted_reactants():
             if reactant in list(abundances.columns):
                 rate *= abundances[reactant]
-        match reaction.get_reaction_type():
-            case x if x in ["LH", "LHDES", "BULKSWAP"]:
-                if reaction.is_bulk_reaction(include_products=False):
-                    rate *= bulkLayersReciprocal
-            case "SURFSWAP":
-                rate *= totalSwap / abundances["SURFACE"]
-            case x if x in ["DESCR", "DEUVCR", "ER", "ERDES"]:
-                rate /= abundances["SURFACE"]
-            case "DESOH2":
-                rate *= abundances["H"] / abundances["SURFACE"]
-            case "H2FORM":
-                # For some reason, H2form only uses the hydrogen density once
-                rate /= abundances["H"]
+
+        reaction_type = reaction.get_reaction_type()
+        if reaction_type in ["LH", "LHDES", "BULKSWAP"]:
+            if reaction.is_bulk_reaction(include_products=False):
+                rate *= bulkLayersReciprocal
+        elif reaction_type == "SURFSWAP":
+            rate *= totalSwap / abundances["SURFACE"]
+        elif reaction_type in ["DESCR", "DEUVCR", "ER", "ERDES"]:
+            rate /= abundances["SURFACE"]
+        elif reaction_type == "DESOH2":
+            rate *= abundances["H"] / abundances["SURFACE"]
+        elif reaction_type == "H2FORM":
+            # For some reason, H2form only uses the hydrogen density once
+            rate /= abundances["H"]
+        else:
+            raise ValueError(f"Unknown reaction type {reaction_type}")
         rate_by_reaction.iloc[:, idx] = rate
 
     # Compute the rate at each timestep, adding the appropriate header
