@@ -48,11 +48,11 @@ Use :func:`check_error` to get human-readable error messages.
 - :mod:`uclchem.model` - Model classes that use these utilities
 """
 
-from os import path
+from pathlib import Path
 
 import pandas as pd
 
-_ROOT = path.dirname(path.abspath(__file__))
+UCLCHEM_ROOT_DIR: Path = Path(__file__).parent.resolve().absolute()
 
 
 def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
@@ -103,7 +103,7 @@ def get_species_table() -> pd.DataFrame:
         pandas.DataFrame: A dataframe containing the species names and their details
     """
 
-    species_list = pd.read_csv(path.join(_ROOT, "species.csv"))
+    species_list = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
     return species_list
 
 
@@ -114,7 +114,7 @@ def get_species() -> list[str]:
         list[str] : A list of species names
     """
 
-    species_list = pd.read_csv(path.join(_ROOT, "species.csv")).iloc[:, 0].tolist()
+    species_list = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv").iloc[:, 0].tolist()
     return species_list
 
 
@@ -125,12 +125,13 @@ def get_reaction_table() -> pd.DataFrame:
         pandas.DataFrame: A dataframe containing the reactions and their rates
     """
 
-    reactions = pd.read_csv(path.join(_ROOT, "reactions.csv"))
+    reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
     return reactions
 
 
 def find_number_of_consecutive_digits(string: str, start: int) -> int:
-    """Determine the number of consecutive digits in a string.
+    """Determine the number of consecutive digits in a string, starting
+    from some index `start`.
 
     Args:
         string (str): the string

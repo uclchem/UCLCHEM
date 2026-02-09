@@ -21,13 +21,12 @@ Thread Safety Warning:
 """
 
 import warnings
-from os import path
 from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
 
-from uclchem.utils import _ROOT
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 # Import the base network implementation from makerates
 from ..makerates.network import BaseNetwork
@@ -105,12 +104,12 @@ class RuntimeNetwork(BaseNetwork):
 
         These provide better indexing and validation against the Fortran network.
         """
-        species_path = path.join(_ROOT, "species.csv")
-        reactions_path = path.join(_ROOT, "reactions.csv")
+        species_path = UCLCHEM_ROOT_DIR / "species.csv"
+        reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
 
-        if not path.exists(species_path):
+        if not species_path.is_file():
             raise FileNotFoundError(f"Species CSV not found: {species_path}")
-        if not path.exists(reactions_path):
+        if not reactions_path.is_file():
             raise FileNotFoundError(f"Reactions CSV not found: {reactions_path}")
 
         self._species_csv = pd.read_csv(species_path)

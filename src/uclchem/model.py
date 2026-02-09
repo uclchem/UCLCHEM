@@ -119,6 +119,7 @@ from uclchem.constants import (
     n_reactions,
     n_species,
 )
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 # /Multiprocessing imports
 
@@ -137,11 +138,9 @@ SPECNAME_VALUE_FORMAT = "%9.5E"
 # Set collisional rates directory for heating/cooling calculations
 def set_collisional_rates_directory():
     # TODO: move this functionality into the advanced heating suite.
-    coolant_directory = (
-        os.path.dirname(os.path.abspath(__file__)) + "/data/collisional_rates/"
-    )
+    coolant_directory = UCLCHEM_ROOT_DIR / "data/collisional_rates/"
     # Provide the correct path to the coolant files:
-    assert len(coolant_directory) < 256, (
+    assert len(str(coolant_directory)) < 256, (
         "Coolant directory path is too long, please shorten it. Path is "
         + coolant_directory
     )
@@ -150,7 +149,7 @@ def set_collisional_rates_directory():
         actual_dir = str(
             np.char.decode(uclchemwrap.defaultparameters.coolantdatadir)
         ).strip()
-        assert actual_dir == coolant_directory, (
+        assert actual_dir == str(coolant_directory), (
             f"Coolant directory path not set correctly. "
             f"Expected: {coolant_directory} "
             f"Got: {actual_dir}"
@@ -205,11 +204,7 @@ class ReactionNamesStore:
     def __call__(self):
         # Only load the reactions once, after that use the cached version
         if self.reaction_names is None:
-            reactions = pd.read_csv(
-                os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)), "reactions.csv"
-                )
-            )
+            reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
             # format the reactions:
             self.reaction_names = [
                 reaction_line_formatter(line) for idx, line in reactions.iterrows()
@@ -230,9 +225,7 @@ class SpeciesNameStore:
     def __call__(self):
         # Only load the species once, after that use the cached version
         if self.species_names is None:
-            species = pd.read_csv(
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "species.csv")
-            )
+            species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
             self.species_names = species["NAME"].tolist()
         return self.species_names
 

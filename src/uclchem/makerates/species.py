@@ -504,6 +504,7 @@ class Species:
                     f"Input mass of {self.get_name()} ({self.get_mass()}) does not match calculated mass of constituents, using calculated mass: {int(mass)}"
                 )
             self.set_mass(int(mass))
+        self.n_atoms = counter.total()
 
         return counter
 
