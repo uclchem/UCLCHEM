@@ -508,8 +508,13 @@ class AbstractModel(ABC):
         except Exception:
             ndim = None
 
-        # If this looks like an array variable (name contains '_array' and ndim >= 2), store in _data
-        if ndim is not None and "_array" in key and ndim >= 2:
+        # If this looks like an array variable (name contains '_array' and ndim >= 1), store in _data
+        if ndim is not None and "_array" in key and ndim >= 1:
+            # Ensure value is a numpy array (convert lists, tuples, etc.)
+            if not isinstance(value, np.ndarray):
+                value = np.asarray(value)
+                ndim = value.ndim  # Update ndim after conversion
+
             # Remove any existing conflicting metadata entry
             try:
                 meta = super().__getattribute__("_meta")
@@ -579,6 +584,10 @@ class AbstractModel(ABC):
                     )
             elif ndim == 2:
                 self._data[key] = (["point", key], value)
+            elif ndim == 1:
+                # For 1D arrays, use the array name as the dimension
+                dim_name = key.replace("_array", "")
+                self._data[key] = ([dim_name], value)
             else:
                 self._data[key] = value
             return
