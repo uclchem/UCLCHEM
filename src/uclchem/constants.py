@@ -16,12 +16,18 @@ reinstall UCLCHEM for these constants to update:
 # Import canonical values from compiled Fortran module
 from uclchemwrap import f2py_constants
 
+# Import PHYSICAL_PARAMETERS from its canonical source
+# This is defined in makerates to avoid circular dependency
+from uclchem.makerates.io_functions import PHYSICAL_PARAMETERS
+
 # Read canonical values from Fortran
 n_species = int(f2py_constants.nspec)
 n_reactions = int(f2py_constants.nreac)
 N_PHYSICAL_PARAMETERS = int(f2py_constants.n_physics_params)
 NCOOLANTS = int(f2py_constants.ncoolants)
 N_DVODE_STATS = int(f2py_constants.n_dvode_stats)
+N_TOTAL_LEVELS = int(f2py_constants.n_total_levels)
+N_SE_STATS_PER_COOLANT = int(f2py_constants.n_se_stats_per_coolant)
 
 # DVODE solver statistics names
 DVODE_STAT_NAMES = [
@@ -45,9 +51,14 @@ DVODE_STAT_NAMES = [
     "CPU_TIME",
 ]
 
-# Import PHYSICAL_PARAMETERS from its canonical source
-# This is defined in makerates to avoid circular dependency
-from uclchem.makerates.io_functions import PHYSICAL_PARAMETERS
+# SE solver statistics names (per coolant: convergence flag, iterations, max relative change)
+SE_STAT_NAMES = []
+for i in range(NCOOLANTS):
+    SE_STAT_NAMES.extend([
+        f"COOLANT_{i:02d}_CONVERGED",
+        f"COOLANT_{i:02d}_ITERATIONS",
+        f"COOLANT_{i:02d}_MAX_REL_CHANGE"
+    ])
 
 # Validate consistency
 if len(PHYSICAL_PARAMETERS) != N_PHYSICAL_PARAMETERS:

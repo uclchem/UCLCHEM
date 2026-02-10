@@ -1,6 +1,7 @@
 MODULE COOLANT_MODULE
    USE constants
-   USE F2PY_CONSTANTS, only: NCOOLANTS, coolantFiles, coolantNames, coolantDataDir
+   USE F2PY_CONSTANTS, only: NCOOLANTS, coolantFiles, coolantNames, coolantDataDir, &
+                              coolantConversionFactors, coolantConversionMode, coolantParentNames
    USE network
    USE defaultparameters, only: freq_rel_tol, pop_rel_tol
    IMPLICIT NONE
@@ -345,6 +346,26 @@ CONTAINS
          ELSE
              coolants(N)%density=abundances(coolantIndices(N))*gasDensity
              !write(*,*) coolantNames(N),abundances(coolantIndices(N))
+         END IF
+
+         ! Sanity check: Validate abundance is physically reasonable
+         ! Abundances should be fractions (0 to ~1), very small values (underflow) are OK
+         ! Check for garbage values: negative, > 1, or extremely large (> 1e10 indicates memory corruption)
+         IF (abundances(coolantIndices(N)) .lt. 0.0D0 .OR. abundances(coolantIndices(N)) .gt. 1.0D+10) THEN
+            WRITE(*,'(A,I3,A,A,A,A,A,1PE12.4)') &
+               "ERROR: Coolant #", N, " ('", TRIM(coolantNames(N)), &
+               "') has unphysical abundance for parent species '", TRIM(coolantParentNames(N)), &
+               "': ", abundances(coolantIndices(N))
+            WRITE(*,'(A,I4,A,I4)') &
+               "  coolantIndices(N)=", coolantIndices(N), " (max allowed=", SIZE(abundances), ")"
+            WRITE(*,*) "  This likely indicates a configuration error (wrong parent_species) or memory corruption."
+            STOP
+         END IF
+
+         ! Info: Warn about very small densities (but don't stop - they'll be skipped by threshold check)
+         IF (coolants(N)%DENSITY .lt. 1.0D-40 .AND. abundances(coolantIndices(N)) .gt. 0.0D0) THEN
+            ! This is normal - species just hasn't formed yet or has negligible abundance
+            ! The coolant will be skipped in MANAGE_COOLANT_POPULATIONS
          END IF
       END DO
    END SUBROUTINE
@@ -1067,43 +1088,6 @@ END FUNCTION CHECK_CONVERGENCE
 
 !=======================================================================
 !
-!  Reset coolant level populations to start fresh.
-!  When use_lte=.TRUE., populations are set to LTE values at the given
-!  temperature. When use_lte=.FALSE., all population is put in ground state.
-!
-!-----------------------------------------------------------------------
-SUBROUTINE RESET_COOLANT_POPULATIONS(gasTemperature, use_lte)
-   IMPLICIT NONE
-   REAL(dp), INTENT(IN) :: gasTemperature
-   LOGICAL, INTENT(IN) :: use_lte
-   INTEGER :: N
-
-   DO N=1,NCOOLANTS
-      IF (use_lte) THEN
-         ! Initialize populations to LTE
-         CALL CALCULATE_LTE_POPULATIONS(coolants(N)%NLEVEL, &
-                                       coolants(N)%ENERGY, &
-                                       coolants(N)%WEIGHT, &
-                                       coolants(N)%DENSITY, &
-                                       gasTemperature, &
-                                       coolants(N)%POPULATION)
-         coolants(N)%PREVIOUS_POPULATION = coolants(N)%POPULATION
-      ELSE
-         ! Put all population in ground state (level 1)
-         coolants(N)%POPULATION = 0.0D0
-         coolants(N)%POPULATION(1) = coolants(N)%DENSITY
-         coolants(N)%PREVIOUS_POPULATION = coolants(N)%POPULATION
-      END IF
-      ! Mark as not converged to trigger recalculation
-      coolants(N)%CONVERGED = .FALSE.
-   END DO
-
-   RETURN
-END SUBROUTINE RESET_COOLANT_POPULATIONS
-
-
-!=======================================================================
-!
 !  Warm restart: rescale existing coolant populations to new densities.
 !  This preserves the population distribution while adjusting to new
 !  total densities. The old populations (which sum to old density) are
@@ -1161,6 +1145,15 @@ SUBROUTINE MANAGE_COOLANT_POPULATIONS(gasTemperature)
    ! Mode 1: FORCE_LTE - always reset to LTE (original behavior)
    IF (coolant_restart_mode .EQ. 1) THEN
       DO N=1,NCOOLANTS
+         ! Skip coolants with negligible density
+         IF (coolants(N)%DENSITY .LT. 1.0D-40) THEN
+            coolants(N)%POPULATION = 0.0D0
+            coolants(N)%PREVIOUS_POPULATION = 0.0D0
+            coolants(N)%EMISSIVITY = 0.0D0
+            coolants(N)%CONVERGED = .TRUE.
+            CYCLE
+         END IF
+
          CALL CALCULATE_LTE_POPULATIONS(coolants(N)%NLEVEL, &
                                        coolants(N)%ENERGY, &
                                        coolants(N)%WEIGHT, &
@@ -1176,6 +1169,15 @@ SUBROUTINE MANAGE_COOLANT_POPULATIONS(gasTemperature)
    ! Mode 2: FORCE_GROUND - always reset to ground state
    IF (coolant_restart_mode .EQ. 2) THEN
       DO N=1,NCOOLANTS
+         ! Skip coolants with negligible density
+         IF (coolants(N)%DENSITY .LT. 1.0D-40) THEN
+            coolants(N)%POPULATION = 0.0D0
+            coolants(N)%PREVIOUS_POPULATION = 0.0D0
+            coolants(N)%EMISSIVITY = 0.0D0
+            coolants(N)%CONVERGED = .TRUE.
+            CYCLE
+         END IF
+
          coolants(N)%POPULATION = 0.0D0
          coolants(N)%POPULATION(1) = coolants(N)%DENSITY
          coolants(N)%PREVIOUS_POPULATION = coolants(N)%POPULATION
@@ -1188,6 +1190,16 @@ SUBROUTINE MANAGE_COOLANT_POPULATIONS(gasTemperature)
    IF (.NOT. coolant_populations_initialized) THEN
       ! First call: Initialize populations to LTE
       DO N=1,NCOOLANTS
+         ! Skip coolants with negligible density (< 1e-40 cm^-3)
+         ! This avoids wasting computation on absent species
+         IF (coolants(N)%DENSITY .LT. 1.0D-40) THEN
+            coolants(N)%POPULATION = 0.0D0
+            coolants(N)%PREVIOUS_POPULATION = 0.0D0
+            coolants(N)%EMISSIVITY = 0.0D0
+            coolants(N)%CONVERGED = .TRUE.  ! Mark as converged to skip SE solver
+            CYCLE
+         END IF
+
          CALL CALCULATE_LTE_POPULATIONS(coolants(N)%NLEVEL, &
                                        coolants(N)%ENERGY, &
                                        coolants(N)%WEIGHT, &
@@ -1201,6 +1213,15 @@ SUBROUTINE MANAGE_COOLANT_POPULATIONS(gasTemperature)
    ELSE
       ! Subsequent calls: Warm restart - rescale if density changed
       DO N=1,NCOOLANTS
+         ! Skip coolants with negligible density (< 1e-40 cm^-3)
+         IF (coolants(N)%DENSITY .LT. 1.0D-40) THEN
+            coolants(N)%POPULATION = 0.0D0
+            coolants(N)%PREVIOUS_POPULATION = 0.0D0
+            coolants(N)%EMISSIVITY = 0.0D0
+            coolants(N)%CONVERGED = .TRUE.
+            CYCLE
+         END IF
+
          old_total = SUM(coolants(N)%POPULATION)
 
          ! Check if density changed significantly (> 0.1% relative change)

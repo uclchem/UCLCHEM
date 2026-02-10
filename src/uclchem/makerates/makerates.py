@@ -136,6 +136,12 @@ def run_makerates(
             coolants_to_write = config.coolants
         elif config.coolants_file:
             coolants_path = config.resolve_path(config.coolants_file)
+            # Defensive check: don't try to read a directory as a YAML file
+            if coolants_path.is_dir():
+                raise ValueError(
+                    f"coolants_file {coolants_path} resolves to a directory; expected a YAML file listing coolants. "
+                    "If you intended to set the collisional rate data directory, use 'coolant_data_dir' in your config."
+                )
             try:
                 _coolants = io.read_coolants_file(coolants_path)
                 logging.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")

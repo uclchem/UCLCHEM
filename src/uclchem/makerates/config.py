@@ -152,12 +152,15 @@ class MakeratesConfig(BaseModel):
     # OPTIONAL PARAMETERS - Cooling / Coolants
     # ============================================================================
 
-    coolants: Optional[List[Dict[str, str]]] = Field(
+    coolants: Optional[List[Dict]] = Field(
         default=None,
         description=(
             "Optional inline list of coolant specifications. "
             "Each entry should be a dict with 'file' (filename) and 'name' (species label) keys. "
-            "Example: [{'file': 'co.dat', 'name': 'CO'}, {'file': 'o-h2.dat', 'name': 'o-H2'}]. "
+            "Optional keys: 'parent_species' (network species name for abundance lookup), "
+            "'conversion_factor' (float, fraction of parent abundance to use). "
+            "Example: [{'file': 'co.dat', 'name': 'CO'}, {'file': 'p-nh3.dat', 'name': 'p-NH3', "
+            "'parent_species': 'NH3', 'conversion_factor': 0.5}]. "
             "If not specified, defaults to the 7 standard UCLCHEM coolants. "
             "Mutually exclusive with coolants_file."
         ),
@@ -266,7 +269,12 @@ class MakeratesConfig(BaseModel):
                 raise ValueError(
                     f"coolants[{i}]['file'] must be a bare filename (no directories). Got: {file_val}"
                 )
-            validated.append({"file": file_val, "name": str(item["name"])})
+            entry = {"file": file_val, "name": str(item["name"])}
+            if "parent_species" in item:
+                entry["parent_species"] = str(item["parent_species"])
+            if "conversion_factor" in item:
+                entry["conversion_factor"] = float(item["conversion_factor"])
+            validated.append(entry)
         return validated
 
     @field_validator("database_reaction_type", "custom_reaction_type", mode="before")

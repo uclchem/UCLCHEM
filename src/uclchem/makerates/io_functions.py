@@ -51,19 +51,26 @@ def get_default_coolants() -> list[dict]:
 
 
 def get_default_coolant_directory(user_specified: str = "") -> str:
-    """Returns the default collisional rates directory path.
+    """Returns the collisional rates directory path for use during makerates.
 
     Args:
         user_specified: Optional user-specified directory from config.
-                       If empty, uses default (set by Python at runtime).
-
-    Returns the path to the bundled collisional rate files that ship with UCLCHEM.
-    Returns empty string by default - will be set by Python at runtime.
+                       If empty, searches standard locations relative to CWD.
 
     Returns:
-        str: Directory path (empty string means runtime detection)
+        str: Absolute directory path to collisional rate data files.
     """
-    return user_specified if user_specified else ""
+    if user_specified:
+        return user_specified
+    # Search standard locations (makerates runs from Makerates/ directory)
+    candidates = [
+        Path.cwd() / "data" / "collisional_rates",       # Makerates/data/collisional_rates
+        Path.cwd().parent / "data" / "collisional_rates", # project_root/data/collisional_rates
+    ]
+    for candidate in candidates:
+        if candidate.is_dir():
+            return str(candidate.resolve())
+    return ""
 
 
 def read_species_file(file_name: Path) -> list[Species]:
@@ -274,7 +281,12 @@ def read_coolants_file(file_name: Path) -> list[dict]:
             raise ValueError(
                 "Coolant 'file' entries in coolants_file must be bare filenames (no directories)"
             )
-        normalized.append({"file": file_val, "name": str(item["name"])})
+        entry = {"file": file_val, "name": str(item["name"])}
+        if "parent_species" in item:
+            entry["parent_species"] = str(item["parent_species"])
+        if "conversion_factor" in item:
+            entry["conversion_factor"] = float(item["conversion_factor"])
+        normalized.append(entry)
     return normalized
 
 
@@ -377,16 +389,85 @@ def write_outputs(
 
     filename = fortran_src_dir / "f2py_constants.f90"
 
+    # Compute energy level counts from coolant data files
+    from uclchem._coolant_utils import get_energy_levels_info
+    coolant_data_directory = get_default_coolant_directory(coolant_data_dir)
+    n_total_levels, n_se_stats_per_coolant = get_energy_levels_info(
+        coolant_names=[c["name"] for c in coolants],
+        coolant_files=[c["file"] for c in coolants],
+        data_dir=coolant_data_directory,
+    )
+
+    # Compute coolant conversion arrays
+    parent_names = []
+    conversion_factors = []
+    conversion_modes = []
+    for c in coolants:
+        name = c["name"]
+        explicit_parent = c.get("parent_species")
+        explicit_factor = c.get("conversion_factor")
+
+        if explicit_parent is not None and explicit_factor is not None:
+            # Fully specified: fixed factor mode
+            parent_names.append(explicit_parent)
+            conversion_factors.append(explicit_factor)
+            conversion_modes.append(0)
+        elif name == "p-H2":
+            parent_names.append(explicit_parent if explicit_parent else "H2")
+            conversion_factors.append(explicit_factor if explicit_factor is not None else 0.0)
+            conversion_modes.append(0 if explicit_factor is not None else 1)
+        elif name == "o-H2":
+            parent_names.append(explicit_parent if explicit_parent else "H2")
+            conversion_factors.append(explicit_factor if explicit_factor is not None else 0.0)
+            conversion_modes.append(0 if explicit_factor is not None else 2)
+        elif name.startswith("o-") or name.startswith("p-"):
+            # Other ortho/para species — require explicit conversion_factor
+            if explicit_factor is None:
+                raise ValueError(
+                    f"Coolant '{name}' appears to be an ortho/para species but has no "
+                    f"'conversion_factor'. Please specify 'conversion_factor' and optionally "
+                    f"'parent_species' in the coolant configuration."
+                )
+            parent = explicit_parent if explicit_parent else name[2:]
+            parent_names.append(parent)
+            conversion_factors.append(explicit_factor)
+            conversion_modes.append(0)
+        else:
+            # Normal species
+            parent_names.append(explicit_parent if explicit_parent else name)
+            conversion_factors.append(explicit_factor if explicit_factor is not None else 1.0)
+            conversion_modes.append(0)
+
+    # Validate that all parent species exist in the network
+    species_dict = network.get_species_dict()
+    missing_parents = []
+    for i, (coolant, parent) in enumerate(zip(coolants, parent_names)):
+        if parent not in species_dict:
+            missing_parents.append((i, coolant["name"], parent))
+
+    if missing_parents:
+        error_msg = "ERROR: The following coolants reference parent species that don't exist in the network:\n"
+        for idx, coolant_name, parent_name in missing_parents:
+            error_msg += f"  - Coolant #{idx+1} '{coolant_name}' → parent species '{parent_name}' not found\n"
+        error_msg += "\nAvailable species: " + ", ".join(sorted(species_dict.keys())[:20]) + ", ...\n"
+        error_msg += "Fix by adding 'parent_species: <existing_species>' in the coolant YAML config."
+        raise ValueError(error_msg)
+
     f2py_constants = {
         "n_species": len(network.get_species_list()),
         "n_reactions": len(network.get_reaction_list()),
         "n_physical_parameters": len(PHYSICAL_PARAMETERS),
         "n_dvode_stats": 18,
         "n_coolants": len(coolants),
-        "n_dvode_stats": 18,
+        "max_coolants": len(coolants),
+        "n_total_levels": n_total_levels,
+        "n_se_stats_per_coolant": n_se_stats_per_coolant,
         "coolant_files": [c["file"] for c in coolants],
         "coolant_names": [c["name"] for c in coolants],
-        "coolant_data_dir": get_default_coolant_directory(coolant_data_dir),
+        "parent_names": parent_names,
+        "conversion_factors": conversion_factors,
+        "conversion_modes": conversion_modes,
+        "coolant_data_dir": coolant_data_dir if coolant_data_dir else "",
     }
     write_f90_constants(f2py_constants, filename)
     # Note: constants.py now reads directly from f2py_constants module,
@@ -432,7 +513,37 @@ def write_f90_constants(
         replace_dict["coolant_name_len"] = max_name_len
         replace_dict["coolant_names"] = "/" + coolant_names_str + "/"
 
+        # Format parent names (same pattern as coolant names)
+        if "parent_names" in replace_dict:
+            parent_names = replace_dict.pop("parent_names")
+            max_parent_len = max(len(n) for n in parent_names)
+            parent_names_str = ",".join(
+                f'"{n.ljust(max_parent_len)}"' for n in parent_names
+            )
+            replace_dict["parent_name_len"] = max_parent_len
+            replace_dict["parent_names"] = "/" + parent_names_str + "/"
+
+    # Extract numeric arrays to be written via array_to_string (handles line limits)
+    conversion_factors = replace_dict.pop("conversion_factors", None)
+    conversion_modes = replace_dict.pop("conversion_modes", None)
+
     constants = constants.format(**replace_dict)
+
+    # Insert array declarations before END MODULE using array_to_string
+    extra_lines = ""
+    if conversion_factors is not None:
+        extra_lines += "    ! Conversion factors for abundance scaling (used when coolantConversionMode=0)\n"
+        extra_lines += "    " + array_to_string(
+            "coolantConversionFactors", np.array(conversion_factors), type="float"
+        )
+    if conversion_modes is not None:
+        extra_lines += "    ! Conversion mode: 0=fixed factor, 1=thermal OPR para, 2=thermal OPR ortho\n"
+        extra_lines += "    " + array_to_string(
+            "coolantConversionMode", np.array(conversion_modes), type="int"
+        )
+    if extra_lines:
+        constants = constants.replace("END MODULE F2PY_CONSTANTS", extra_lines + "END MODULE F2PY_CONSTANTS")
+
     with open(output_file_name, "w") as fh:
         fh.writelines(constants)
 

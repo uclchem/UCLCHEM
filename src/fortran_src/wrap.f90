@@ -16,7 +16,7 @@ MODULE uclchemwrap
 CONTAINS
     SUBROUTINE cloud(dictionary, outSpeciesIn,returnArray,returnRates,&
             &givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
-            &ratesarray, heatarray, statsarray, abundanceStart ,abundance_out,specname_out,successFlag)
+            &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart ,abundance_out,specname_out,successFlag)
         !Subroutine to call a cloud model, used to interface with python
         ! Loads cloud specific subroutines and send to solveAbundances
         !
@@ -38,7 +38,7 @@ CONTAINS
         USE cloud_mod
         USE DEFAULTPARAMETERS
 
-        !f2py integer, intent(aux) :: nspec, n_physics_params, nHeatingTerms, N_DVODE_STATS
+        !f2py integer, intent(aux) :: nspec, n_physics_params, nHeatingTerms, N_DVODE_STATS, N_TOTAL_LEVELS, N_SE_STATS_PER_COOLANT
         !f2py intent(out) abundance_out, specname_out
         CHARACTER(LEN=*), INTENT(IN) :: dictionary, outSpeciesIn
         DOUBLE PRECISION, INTENT(OUT) :: abundance_out(nspec)
@@ -72,15 +72,22 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, N_DVODE_STATS) :: statsarray
         !f2py intent(in,out) statsarray
         !f2py depend(timePoints,gridPoints,N_DVODE_STATS) statsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, N_TOTAL_LEVELS) :: levelpopulationsarray
+        !f2py intent(in,out) levelpopulationsarray
+        !f2py depend(timePoints,gridPoints,N_TOTAL_LEVELS) levelpopulationsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, NCOOLANTS*N_SE_STATS_PER_COOLANT) :: sestatsarray
+        !f2py intent(in,out) sestatsarray
+        !f2py depend(timePoints,gridPoints,NCOOLANTS,N_SE_STATS_PER_COOLANT) sestatsarray
         DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
         !f2py intent(in) abundanceStart
         !f2py depend(gridPoints, nspec) abundanceStart
+
 
         successFlag=0
         specname_out = specName
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray,returnRates,givestartabund,&
-                &timePoints,physicsarray,chemicalabunarray,ratesarray, heatarray, statsarray, abundanceStart)
+                &timePoints,physicsarray,chemicalabunarray,ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart)
         IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
         END IF
@@ -89,7 +96,7 @@ CONTAINS
 
     SUBROUTINE collapse(collapseIn,collapseFileIn,writeOut,dictionary,outSpeciesIn,&
             &returnArray,returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
-            &ratesarray, heatarray, statsarray, abundanceStart, abundance_out,specname_out,successFlag)
+            &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart, abundance_out,specname_out,successFlag)
         !Subroutine to call a collapse model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -113,7 +120,7 @@ CONTAINS
         USE collapse_mod
         USE DEFAULTPARAMETERS
 
-        !f2py integer,parameter intent(aux) nspec, n_physics_params, nHeatingTerms, N_DVODE_STATS
+        !f2py integer,parameter intent(aux) nspec, n_physics_params, nHeatingTerms, N_DVODE_STATS, N_TOTAL_LEVELS, N_SE_STATS_PER_COOLANT
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn, collapseFileIn
         DOUBLE PRECISION :: abundance_out(nspec)
         CHARACTER(LEN=32) :: specname_out(nspec)
@@ -146,6 +153,12 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, N_DVODE_STATS) :: statsarray
         !f2py intent(in,out) statsarray
         !f2py depend(timePoints,gridPoints,N_DVODE_STATS) statsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, N_TOTAL_LEVELS) :: levelpopulationsarray
+        !f2py intent(in,out) levelpopulationsarray
+        !f2py depend(timePoints,gridPoints,N_TOTAL_LEVELS) levelpopulationsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, NCOOLANTS*N_SE_STATS_PER_COOLANT) :: sestatsarray
+        !f2py intent(in,out) sestatsarray
+        !f2py depend(timePoints,gridPoints,NCOOLANTS,N_SE_STATS_PER_COOLANT) sestatsarray
         DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
         !f2py intent(in) abundanceStart
         !f2py depend(gridPoints, nspec) abundanceStart
@@ -157,7 +170,7 @@ CONTAINS
 
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray, returnRates,givestartabund,&
-                &timepoints,physicsarray,chemicalabunarray,ratesarray, heatarray, statsarray, abundanceStart)
+                &timepoints,physicsarray,chemicalabunarray,ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart)
 
         IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
@@ -166,7 +179,7 @@ CONTAINS
 
     SUBROUTINE hot_core(temp_indx,max_temp,dictionary,outSpeciesIn,returnArray,&
             &returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
-            &ratesarray, heatarray, statsarray, abundanceStart, abundance_out,specname_out,successFlag)
+            &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart, abundance_out,specname_out,successFlag)
         !Subroutine to call a hot core model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -219,6 +232,12 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, N_DVODE_STATS) :: statsarray
         !f2py intent(in,out) statsarray
         !f2py depend(timePoints,gridPoints,N_DVODE_STATS) statsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, N_TOTAL_LEVELS) :: levelpopulationsarray
+        !f2py intent(in,out) levelpopulationsarray
+        !f2py depend(timePoints,gridPoints,N_TOTAL_LEVELS) levelpopulationsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, NCOOLANTS*N_SE_STATS_PER_COOLANT) :: sestatsarray
+        !f2py intent(in,out) sestatsarray
+        !f2py depend(timePoints,gridPoints,NCOOLANTS,N_SE_STATS_PER_COOLANT) sestatsarray
         DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
         !f2py intent(in) abundanceStart
         !f2py depend(gridPoints, nspec) abundanceStart
@@ -228,7 +247,7 @@ CONTAINS
 
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
         &updatePhysics,updateTargetTime,sublimation,returnArray, returnRates,givestartabund,&
-        &timepoints,physicsarray,chemicalabunarray,ratesarray, heatarray, statsarray, abundanceStart)
+        &timepoints,physicsarray,chemicalabunarray,ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart)
 
         IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN
             abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
@@ -237,7 +256,7 @@ CONTAINS
 
     SUBROUTINE cshock(shock_vel,timestep_factor,minimum_temperature,dictionary, outSpeciesIn,&
             &returnArray,returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
-            &ratesarray, heatarray, statsarray, abundanceStart, abundance_out,dissipation_time,specname_out,successFlag)
+            &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart, abundance_out,dissipation_time,specname_out,successFlag)
         !Subroutine to call a C-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -295,6 +314,12 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, N_DVODE_STATS) :: statsarray
         !f2py intent(in,out) statsarray
         !f2py depend(timePoints,gridPoints,N_DVODE_STATS) statsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, N_TOTAL_LEVELS) :: levelpopulationsarray
+        !f2py intent(in,out) levelpopulationsarray
+        !f2py depend(timePoints,gridPoints,N_TOTAL_LEVELS) levelpopulationsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, NCOOLANTS*N_SE_STATS_PER_COOLANT) :: sestatsarray
+        !f2py intent(in,out) sestatsarray
+        !f2py depend(timePoints,gridPoints,NCOOLANTS,N_SE_STATS_PER_COOLANT) sestatsarray
         DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
         !f2py intent(in) abundanceStart
         !f2py depend(gridPoints, nspec) abundanceStart
@@ -307,7 +332,7 @@ CONTAINS
         successFlag=0
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray, returnRates,givestartabund,&
-                &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,statsarray,abundanceStart)
+                &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,statsarray,levelpopulationsarray, sestatsarray,abundanceStart)
 
         IF (successFlag .eq. 0) THEN
             IF (ALLOCATED(outIndx)) abundance_out(1:SIZE(outIndx))=abund(outIndx,1)
@@ -317,7 +342,7 @@ CONTAINS
 
     SUBROUTINE jshock(shock_vel,dictionary,outSpeciesIn,returnArray,returnRates,givestartabund,&
             &timePoints,gridPoints,physicsarray,chemicalabunarray,&
-            &ratesarray, heatarray, statsarray, abundanceStart,abundance_out,specname_out,successFlag)
+            &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart,abundance_out,specname_out,successFlag)
         !Subroutine to call a J-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -369,13 +394,19 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, N_DVODE_STATS) :: statsarray
         !f2py intent(in,out) statsarray
         !f2py depend(timePoints,gridPoints,N_DVODE_STATS) statsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, N_TOTAL_LEVELS) :: levelpopulationsarray
+        !f2py intent(in,out) levelpopulationsarray
+        !f2py depend(timePoints,gridPoints,N_TOTAL_LEVELS) levelpopulationsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, NCOOLANTS*N_SE_STATS_PER_COOLANT) :: sestatsarray
+        !f2py intent(in,out) sestatsarray
+        !f2py depend(timePoints,gridPoints,NCOOLANTS,N_SE_STATS_PER_COOLANT) sestatsarray
         DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
         !f2py intent(in) abundanceStart
         !f2py depend(gridPoints, nspec) abundanceStart
         vs=shock_vel
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
         &updatePhysics,updateTargetTime,sublimation,returnArray, returnRates,givestartabund,&
-        &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,statsarray,abundanceStart)
+        &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,statsarray,levelpopulationsarray, sestatsarray,abundanceStart)
 
         specname_out(:nspec) = specName
         IF ((ALLOCATED(outIndx)) .and. (successFlag .eq. 0)) THEN
@@ -385,7 +416,7 @@ CONTAINS
 
     SUBROUTINE postprocess(dictionary,outSpeciesIn,returnArray,returnRates,givestartabund,&
         &timePoints,gridPoints,physicsarray,chemicalabunarray,ratesarray,heatarray,statsarray,&
-        &abundanceStart,timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,useav,avgrid,&
+        &levelpopulationsarray, sestatsarray, abundanceStart,timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,useav,avgrid,&
         &usecoldens,nhgrid,nh2grid,ncogrid,ncgrid,abundance_out,specname_out,successFlag)
         !Subroutine to call a J-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
@@ -442,6 +473,12 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, N_DVODE_STATS) :: statsarray
         !f2py intent(in,out) statsarray
         !f2py depend(timePoints,gridPoints,N_DVODE_STATS) statsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, N_TOTAL_LEVELS) :: levelpopulationsarray
+        !f2py intent(in,out) levelpopulationsarray
+        !f2py depend(timePoints,gridPoints,N_TOTAL_LEVELS) levelpopulationsarray
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(timePoints+1, gridPoints, NCOOLANTS*N_SE_STATS_PER_COOLANT) :: sestatsarray
+        !f2py intent(in,out) sestatsarray
+        !f2py depend(timePoints,gridPoints,NCOOLANTS,N_SE_STATS_PER_COOLANT) sestatsarray
         DOUBLE PRECISION, OPTIONAL, DIMENSION(gridPoints, nspec) :: abundanceStart
         !f2py intent(in) abundanceStart
         !f2py depend(gridPoints, nspec) abundanceStart
@@ -464,13 +501,13 @@ CONTAINS
         if (usecoldens) then
             call solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray,returnRates,givestartabund,&
-                &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,statsarray,abundanceStart,&
+                &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,statsarray,levelpopulationsarray, sestatsarray, abundanceStart,&
                 &timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,useav,avgrid,&
                 &usecoldens,nhgrid,nh2grid,ncogrid,ncgrid)
         else
             call solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray,returnRates,givestartabund,&
-                &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,statsarray,abundanceStart,&
+                &timepoints,physicsarray,chemicalabunarray,ratesarray,heatarray,statsarray,levelpopulationsarray, sestatsarray, abundanceStart,&
                 &timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,useav,avgrid,&
                 &usecoldens)
         end if
@@ -585,7 +622,7 @@ CONTAINS
 
     SUBROUTINE solveAbundances(dictionary,outSpeciesIn,successFlag,modelInitializePhysics,&
             &modelUpdatePhysics,updateTargetTime, sublimation, returnArray, returnRates,givestartabund,&
-            &timePoints, physicsarray, chemicalabunarray,ratesarray,heatarray,statsarray,abundanceStart,&
+            &timePoints, physicsarray, chemicalabunarray,ratesarray,heatarray,statsarray,levelpopulationsarray,sestatsarray,abundanceStart,&
             &timegrid,densgrid,gtempgrid,dtempgrid,radgrid,zetagrid,useav,avgrid,usecoldens,nhgrid,nh2grid,ncogrid,ncgrid)
         ! Core UCLCHEM routine. Solves the chemical equations for a given set of parameters through time
         ! for a specified physical model.
@@ -604,7 +641,7 @@ CONTAINS
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep (optional)
         ! abundanceStart - array containing starting chemical conditions (optional)
         ! USE constants, only : nspec
-        !f2py integer, intent(aux) :: nspec, nHeatingTerms, NCOOLANTS, N_DVODE_STATS
+        !f2py integer, intent(aux) :: nspec, nHeatingTerms, NCOOLANTS, N_DVODE_STATS, N_TOTAL_LEVELS, N_SE_STATS_PER_COOLANT
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         EXTERNAL modelInitializePhysics,updateTargetTime,modelUpdatePhysics,sublimation
         INTEGER, INTENT(OUT) :: successFlag
@@ -616,6 +653,8 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: ratesarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: heatarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: statsarray
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: levelpopulationsarray
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: sestatsarray
         DOUBLE PRECISION, DIMENSION(:, :), OPTIONAL :: abundanceStart
         ! Arrays neede to work with custom density/temperature profiles
         !  &timegrid,densgrid,gastempgrid,dusttempgrid,nhgrid,nh2grid,ncogrodi,ncgrid)
@@ -633,6 +672,7 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: ncogrid
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: ncgrid
         successFlag=0
+        ! Debug: Print array dimensions
         ! Set variables to default values
         ! INCLUDE 'defaultparameters.f90'
         !Read input parameters from the dictionary
@@ -741,7 +781,7 @@ CONTAINS
                 CALL sublimation(abund, points)
                 IF (returnArray) THEN
                     CALL output(returnArray, returnRates, successFlag, physicsarray, chemicalabunarray, ratesarray,&
-                    &heatarray, statsarray, dtime, timepoints)
+                    &heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
                 ELSE
                     CALL output(returnArray, returnRates, successFlag)
                 END IF
