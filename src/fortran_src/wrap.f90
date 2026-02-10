@@ -862,6 +862,8 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) crdesorb
                 CASE('uvdesorb')
                     READ(inputValue,*,iostat=successFlag) uvdesorb
+                CASE('chemdesorb')
+                    READ(inputValue,*,iostat=successFlag) chemdesorb
                 CASE('thermdesorb')
                     READ(inputValue,*,iostat=successFlag) uvdesorb
                 CASE('instantsublimation')

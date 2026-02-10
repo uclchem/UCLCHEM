@@ -110,8 +110,7 @@ def test_collapse_hotcore_disk(test_output_directory):
     max_time = output_df["Time"].max()
     max_density = output_df["Density"].max()
     assert (
-        max_time <= 1.1 * params["finalTime"]
-        or max_density >= 0.9 * params["finalDens"]
+        max_time <= 1.1 * params["finalTime"] or max_density >= 0.9 * params["finalDens"]
     ), f"Collapse should stop at finalTime OR finalDens: time={max_time:.2e}, density={max_density:.2e}"
 
     # Stage 2: Hot core

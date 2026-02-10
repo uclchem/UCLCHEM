@@ -1,6 +1,11 @@
 import logging
 from collections import Counter
+from typing import Any
 from warnings import warn
+
+import pandas as pd
+
+from uclchem.utils import find_number_of_consecutive_digits
 
 elementList = [
     "H",
@@ -49,13 +54,20 @@ elementMass = [
 symbols = ["#", "@", "*", "+", "-", "(", ")"]
 
 species_header = (
-    "name",
-    "mass",
-    "binding_energy",
-    "solid_fraction",
-    "mono_fraction",
-    "volcano_fraction",
-    "enthalpy",
+    "NAME",
+    "MASS",
+    "BINDING_ENERGY",
+    "SOLID_FRACTION",
+    "MONO_FRACTION",
+    "VOLCANO_FRACTION",
+    "ENTHALPY",
+    "DESORPTION_PREF",
+    "DIFFUSION_BARRIER",
+    "DIFFUSION_PREF",
+    "IX",
+    "IY",
+    "IZ",
+    "SYMMETRY_NUMBER",
 )
 
 
@@ -75,7 +87,7 @@ def is_number(s) -> bool:
         return False
 
 
-def sanitize_input_float(row, index, default=0.0) -> float:
+def sanitize_input_float(row: list[str], index: int, default: Any = 0.0) -> float:
     output = default
     if len(row) > index and is_number(row[index]):
         output = float(row[index])
@@ -88,34 +100,64 @@ class Species:
     species and to help compare between species.
     """
 
-    def __init__(self, inputRow):
-        """A class representing chemical species, it reads in rows which are formatted as follows:
-        NAME,MASS,BINDING ENERGY,SOLID FRACTION,MONO FRACTION,VOLCANO FRACTION,ENTHALPY
-        Args:
-            inputRow (list):
+    def __init__(self, inputRow: list[str] | pd.Series):
+        """Simple positional parsing of species rows using the new extended order:
+
+        NAME,MASS,BINDING_ENERGY,SOLID_FRACTION,MONO_FRACTION,VOLCANO_FRACTION,ENTHALPY,
+        DESORPTION_PREF,DIFFUSION_BARRIER,DIFFUSION_PREF,Ix,Iy,Iz,SYMMETRYFACTOR
+
+        Falls back to sensible defaults when fields are missing.
         """
+
+        if isinstance(inputRow, pd.Series):
+            inputRow = [inputRow[field] for field in species_header]
+
         self.name = inputRow[0].upper()
         self.mass = int(inputRow[1])
-        self.binding_energy = 0.0
-        self.solidFraction = 0.0
-        self.monoFraction = 0.0
-        self.volcFraction = 0.0
-        self.enthalpy = 0.0
 
-        if len(inputRow) > 2:
+        # binding energy and refractory handling
+        try:
             self.is_refractory = str(inputRow[2]).lower() == "inf"
             if self.is_refractory:
-                self.set_binding_energy(99.9e9)
+                self.binding_energy = 99.9e9
             else:
-                self.set_binding_energy(inputRow[2])
-        else:
+                self.binding_energy = float(inputRow[2])
+        except (IndexError, ValueError):
             self.is_refractory = False
-            self.set_binding_energy(0.0)
+            self.binding_energy = 0.0
 
-        self.set_solid_fraction(sanitize_input_float(inputRow, 3, 0.0))
-        self.set_mono_fraction(sanitize_input_float(inputRow, 4, 0.0))
-        self.set_volcano_fraction(sanitize_input_float(inputRow, 5, 0.0))
-        self.set_enthalpy(sanitize_input_float(inputRow, 6, 0.0))
+        # core solid/mono/volcano/enthalpy
+        self.solidFraction = sanitize_input_float(inputRow, 3, 0.0)
+        self.monoFraction = sanitize_input_float(inputRow, 4, 0.0)
+        self.volcFraction = sanitize_input_float(inputRow, 5, 0.0)
+        self.enthalpy = sanitize_input_float(inputRow, 6, 0.0)
+
+        # extended Tobias fields after enthalpy
+        # vdes (desorption attempt frequency)
+        self.vdes = sanitize_input_float(inputRow, 7, 0.0)
+
+        self.diffusion_barrier = sanitize_input_float(inputRow, 8, 0.0)
+        # vdiff (diffusion attempt frequency)
+        self.vdiff = sanitize_input_float(inputRow, 9, 0.0)
+
+        # TST prefactors (optional)
+        try:
+            self.Ix = float(inputRow[10])
+        except (IndexError, ValueError):
+            self.Ix = -999.0
+        try:
+            self.Iy = float(inputRow[11])
+        except (IndexError, ValueError):
+            self.Iy = -999.0
+        try:
+            self.Iz = float(inputRow[12])
+        except (IndexError, ValueError):
+            self.Iz = -999.0
+        try:
+            self.symmetry_factor = int(inputRow[13])
+        except (IndexError, ValueError, TypeError):
+            self.symmetry_factor = -1
+
         self.set_n_atoms(0)
 
         # in first instance, assume species freeze/desorb unchanged
@@ -158,14 +200,6 @@ class Species:
             return 1
         elif "-" in self.get_name():
             return -1
-
-    def get_binding_energy(self) -> float:
-        """Get the binding energy of the species in K
-
-        Returns:
-            float: The binding energy in K
-        """
-        return self.binding_energy
 
     def get_solid_fraction(self) -> float:
         """Get the solid fraction of the species
@@ -270,6 +304,8 @@ class Species:
         Returns:
             list[str]: The desorption products
         """
+        if not hasattr(self, "desorb_products"):
+            raise AttributeError(f"Species {self} has no attribute 'desorb_products'")
         return self.desorb_products
 
     def set_freeze_products(self, product_list: list[str], freeze_alpha: float) -> None:
@@ -386,85 +422,79 @@ class Species:
             freeze = ""
         self.set_freeze_products([freeze, "NAN", "NAN", "NAN"], 1.0)
 
-    def find_constituents(self, quiet=False):
+    def find_constituents(self, quiet: bool = False) -> Counter[str, int]:
         """Loop through the species' name and work out what its consituent
         atoms are. Then calculate mass and alert user if it doesn't match
         input mass.
         """
-        speciesName = self.get_name()[:]
-        i = 0
-        atoms = []
-        bracket = False
-        bracketContent = []
-        # loop over characters in species name to work out what it is made of
-        while i < len(speciesName):
-            # if character isn't a #,+ or - then check it otherwise move on
-            if speciesName[i] not in symbols:
-                if i + 1 < len(speciesName):
-                    # if next two characters are (eg) 'MG' then atom is Mg not M and G
-                    if speciesName[i : i + 3] in elementList:
-                        j = i + 3
-                    elif speciesName[i : i + 2] in elementList:
-                        j = i + 2
-                    # otherwise work out which element it is
-                    elif speciesName[i] in elementList:
-                        j = i + 1
+        # Adapted from https://github.com/uclchem/UCLCHEM/blob/main/src/uclchem/makerates/species.py
+        name = self.name
+        if name[0].isdigit():
+            raise ValueError(
+                f"First character of formula {name} was a digit. Please put repeated parts in a bracket with number after, e.g. (CH3)2"
+            )
 
+        char_idx = 0
+        atoms = []
+        currently_in_bracket = False
+        # loop over characters in species name to work out what it is made of
+        while char_idx < len(name):
+            # if character isn't a + or - then check it, otherwise move on
+            if name[char_idx] not in symbols:
+                if (
+                    char_idx + 1 < len(name)
+                    and name[char_idx : char_idx + 2] in elementList
+                ):
+                    # if next two characters are (eg) 'MG' then atom is Mg not M and G
+                    j = char_idx + 2
                 # if there aren't two characters left just try next one
-                elif speciesName[i] in elementList:
-                    j = i + 1
+                elif name[char_idx] in elementList:
+                    j = char_idx + 1
+
                 # if we've found a new element check for numbers otherwise print error
-                if j > i:
-                    if bracket:
-                        bracketContent.append(speciesName[i:j])
-                    else:
-                        atoms.append(speciesName[i:j])  # add element to list
-                    if j < len(speciesName):
-                        if is_number(speciesName[j]):
-                            if int(speciesName[j]) > 1:
-                                for k in range(1, int(speciesName[j])):
-                                    if bracket:
-                                        bracketContent.append(speciesName[i:j])
-                                    else:
-                                        atoms.append(speciesName[i:j])
-                                i = j + 1
-                            else:
-                                i = j
-                        else:
-                            i = j
-                    else:
-                        i = j
-                else:
+                if j <= char_idx:
                     raise ValueError(
-                        f"Contains elements not in element list: {speciesName}"
+                        f"formula {name} contains element(s) not in element list"
                     )
-                    logging.warning(speciesName[i])
-                    logging.warning(
-                        "\t{0} contains elements not in element list:".format(
-                            speciesName
-                        )
-                    )
-                    logging.warning(elementList)
+
+                num_digits = find_number_of_consecutive_digits(name, j)
+                if num_digits == 0:
+                    nrepeat = 1
+                else:
+                    nrepeat = int(name[j : j + num_digits])
+                for _ in range(nrepeat):
+                    if currently_in_bracket:
+                        bracket_content.append(name[char_idx:j])  # noqa: F821
+                    else:
+                        atoms.append(name[char_idx:j])
+                char_idx = j + num_digits
             else:
                 # if symbol is start of a bracketed part of molecule, keep track
-                if speciesName[i] == "(":
-                    bracket = True
-                    bracketContent = []
-                    i += 1
+                if name[char_idx] == "(":
+                    currently_in_bracket = True
+                    bracket_content = []
                 # if it's the end then add bracket contents to list
-                elif speciesName[i] == ")":
-                    if is_number(speciesName[i + 1]):
-                        for k in range(0, int(speciesName[i + 1])):
-                            atoms.extend(bracketContent)
-                        i += 2
+                elif name[char_idx] == ")":
+                    if not currently_in_bracket:
+                        raise ValueError(
+                            f"Found closing bracket before opening bracket in formula {name}"
+                        )
+                    currently_in_bracket = False
+                    num_digits = find_number_of_consecutive_digits(name, char_idx + 1)
+                    if num_digits == 0:
+                        nrepeat = 1
                     else:
-                        atoms.extend(bracketContent)
-                        i += 1
-                # otherwise move on
-                else:
-                    i += 1
+                        nrepeat = int(name[char_idx + 1 : char_idx + 1 + num_digits])
+                    for _ in range(nrepeat):
+                        atoms.extend(bracket_content)
+                    char_idx += num_digits
+                char_idx += 1
+        if currently_in_bracket:
+            raise ValueError(f"Opening bracket was not closed in formula {name}")
+        counter = Counter()
+        for element in elementList:
+            counter[element] = atoms.count(element)
 
-        self.n_atoms = len(atoms)
         mass = 0
         for atom in atoms:
             mass += elementMass[elementList.index(atom)]
@@ -474,9 +504,8 @@ class Species:
                     f"Input mass of {self.get_name()} ({self.get_mass()}) does not match calculated mass of constituents, using calculated mass: {int(mass)}"
                 )
             self.set_mass(int(mass))
-        counter = Counter()
-        for element in elementList:
-            counter[element] = atoms.count(element)
+        self.n_atoms = counter.total()
+
         return counter
 
     def get_n_atoms(self) -> int:
@@ -496,7 +525,95 @@ class Species:
         self.n_atoms = new_n_atoms
 
     def to_UCL_format(self) -> str:
-        return f"{self.get_name()},{self.get_mass()},{self.get_binding_energy()},{self.get_solid_fraction()},{self.get_mono_fraction()},{self.get_volcano_fraction()},{self.get_enthalpy()}"
+        """Serialize to the extended UCLCHEM species CSV order.
+
+        Order: NAME,MASS,BINDING_ENERGY,SOLID_FRACTION,MONO_FRACTION,VOLCANO_FRACTION,ENTHALPY,
+               DESORPTION_PREF,DIFFUSION_BARRIER,DIFFUSION_PREF,Ix,Iy,Iz,SYMMETRYFACTOR
+        """
+        return f"{self.get_name()},{self.get_mass()},{self.get_binding_energy()},{self.get_solid_fraction()},{self.get_mono_fraction()},{self.get_volcano_fraction()},{self.get_enthalpy()},{self.get_vdes()},{self.get_diffusion_barrier()},{self.get_vdiff()},{self.get_Ix()},{self.get_Iy()},{self.get_Iz()},{self.get_symmetry_factor()}"
+
+    def get_binding_energy(self) -> float:
+        """Get the binding energy of the species in K
+
+        Returns:
+            float: The binding energy in K
+        """
+        return self.binding_energy
+
+    def get_vdes(self) -> float:
+        """Get the desorption prefactor (vdes) for the species."""
+        return float(self.vdes)
+
+    def get_desorption_pref(self) -> float:
+        """Alias getter matching CSV column name `desorption_pref`."""
+        return self.get_vdes()
+
+    def get_diffusion_barrier(self) -> float:
+        """Get the diffusion barrier for the species
+
+        Returns:
+            float: The diffusion barrier
+        """
+        return self.diffusion_barrier
+
+    def get_vdiff(self) -> float:
+        """Get the diffusion prefactor (vdiff) for the species."""
+        return float(self.vdiff)
+
+    def get_diffusion_pref(self) -> float:
+        """Alias getter matching CSV column name `diffusion_pref`."""
+        return self.get_vdiff()
+
+    def get_Ix(self) -> float:
+        return self.Ix
+
+    def get_Iy(self) -> float:
+        return self.Iy
+
+    def get_Iz(self) -> float:
+        return self.Iz
+
+    def get_symmetry_factor(self) -> int:
+        return self.symmetry_factor
+
+    def set_vdes(self, vdes: float) -> None:
+        """Set the desorption prefactor (vdes) for the species."""
+        self.vdes = float(vdes)
+
+    def set_desorption_pref(self, v: float) -> None:
+        """Alias setter matching CSV column name `desorption_pref`."""
+        self.set_vdes(v)
+
+    def set_diffusion_barrier(self, barrier: float) -> None:
+        """Set the diffusion barrier for the species
+
+        Args:
+            barrier (float): Diffusion barrier
+        """
+        self.diffusion_barrier = float(barrier)
+
+    def set_vdiff(self, vdiff: float) -> None:
+        """Set the diffusion prefactor (vdiff) for the species."""
+        self.vdiff = float(vdiff)
+
+    def set_diffusion_pref(self, v: float) -> None:
+        """Alias setter matching CSV column name `diffusion_pref`."""
+        self.set_vdiff(v)
+
+    def set_Ix(self, Ix: float) -> None:
+        self.Ix = float(Ix)
+
+    def set_Iy(self, Iy: float) -> None:
+        self.Iy = float(Iy)
+
+    def set_Iz(self, Iz: float) -> None:
+        self.Iz = float(Iz)
+
+    def set_symmetry_factor(self, sym: int) -> None:
+        try:
+            self.symmetry_factor = int(sym)
+        except (ValueError, TypeError):
+            self.symmetry_factor = -1
 
     def __eq__(self, other):
         """Check for equality based on either a string or another Species instance.
@@ -546,3 +663,88 @@ class Species:
 
     def __str__(self) -> str:
         return self.get_name()
+
+    def calculate_rotational_partition_factor(self) -> float:
+        """Calculate 1/sigma*(SQRT(IxIyIz)) for non-linear molecules, and
+        1/sigma*(SQRT(IyIz)) for linear molecules.
+
+        Returns -999.0 if molecular inertia data is not available (backward compatibility).
+        This signals that TST prefactors cannot be used for this species.
+
+        Returns:
+            float: Rotational partition factor scaled by 1e50, or -999.0 if unavailable
+        """
+        if self.n_atoms == 1:
+            # For atoms, this is undefined, just return a value such that
+            # it is clearly an atomic species.
+            return -1.0
+        if self.Ix == -999.0 or self.Iy == -999.0 or self.Iz == -999.0:
+            # For species without custom input Ix, Iy and Iz, we cannot do this,
+            # Return sentinel value for backward compatibility
+            return -999.0
+        if self.symmetry_factor <= 0:
+            # No symmetry factor provided
+            return -999.0
+
+        # Ix, Iy and Iz are in units of amu Angstrom^2,
+        # so need to convert to kg m2
+        import numpy as np
+
+        amu = 1.66053907e-27  # kg/amu
+        scalingFactor = 1e50
+
+        if not self.is_linear():
+            return (
+                (1.0 / self.symmetry_factor)
+                * np.sqrt(self.Ix * self.Iy * self.Iz * amu**3 / 1e60)
+                * scalingFactor
+            )
+        else:
+            return (
+                (1.0 / self.symmetry_factor)
+                * np.sqrt(self.Iy * self.Iz * amu**2 / 1e40)
+                * scalingFactor
+            )
+
+    def is_linear(self) -> bool:
+        """Check if molecule is linear based on moment of inertia.
+
+        For linear molecules, Ix = 0 (rotation axis along molecular axis has no inertia).
+
+        Returns:
+            bool: True if linear, False otherwise
+        """
+        if self.n_atoms == 1:
+            # Atomic species are not linear (doesn't matter, filtered out anyway)
+            return False
+        if self.n_atoms == 2:
+            # Diatomic molecules are always linear
+            return True
+        if self.Ix == -999.0 or self.Iy == -999.0 or self.Iz == -999.0:
+            # No inertia data available
+            return False
+        if not self.is_ice_species():
+            # Only implement for grain species
+            return False
+        return self.Ix == 0.0
+
+    def check_symmetry_factor(self) -> None:
+        if self.n_atoms == 1:  # Nothing to check
+            return
+        if self.n_atoms > 2:  # Can not correctly check everything
+            return
+        constituents = self.find_constituents(quiet=True)
+        if (
+            len(constituents) == 2
+        ):  # Only one constituent, i.e. both atoms are the same element.
+            if self.symmetry_factor == 1:
+                return
+            msg = f"For diatomic molecule consisting of two different atoms (in this case {self.name}), the symmetry factor should be 1, but was given to be {self.symmetry_factor}. Correcting to 1."
+            logging.warning(msg)
+            self.symmetry_factor = 1
+            return
+        if self.symmetry_factor == 2:
+            return
+        msg = f"For diatomic molecule consisting of two of the same atoms (in this case {self.name}), the symmetry factor should be 2, but was given to be {self.symmetry_factor}. Correcting to 2."
+        logging.warning(msg)
+        self.symmetry_factor = 2
