@@ -41,11 +41,26 @@ LOGICAL :: desorb=.True. !Toggles all non-thermal desoprtion processes on or off
 LOGICAL :: h2desorb=.True. !Individually toggle non-thermal desorption due to H2 formation.
 LOGICAL :: crdesorb=.True. !Individually toggle non-thermal desorption due to cosmic rays.
 LOGICAL :: uvdesorb=.True. !Individually toggle non-thermal desorption due to uv photons.
+LOGICAL :: chemdesorb=.True. !Individually toggle non-thermal desorption due to chemical reactions.
 LOGICAL :: thermdesorb=.True. !Toggle continuous thermal desorption.
+
 LOGICAL :: instantSublimation=.False. !Toggle instantaneous sublimation of the ices at t=0
 LOGICAL :: cosmicRayAttenuation=.False. !Use column density to attenuate cosmic ray ionisation rate following [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 CHARACTER :: ionModel='L' !L/H model for cosmic ray attenuation [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 LOGICAL :: improvedH2CRPDissociation=.False. !Use H2 CRP dissociation rate from [Padovani et al. 2018b](https://arxiv.org/abs/1809.04168).
+REAL(dp) :: diffToBindRatio=0.5 !Ratio of diffusion barrier to binding energy of all species
+LOGICAL :: h2EncounterDesorption=.True. !Encounter desorption mechanism of Hincelin et al 2015 (H2 on H2)
+LOGICAL :: hEncounterDesorption=.False. !Encounter desorption mechanism of Hincelin et al 2015 (H on H2)
+REAL(dp) :: EDEndothermicityFactor=0.0 !Account for endothermicity of moving off of H2O onto H2 by fraction of diff in binding energies
+LOGICAL :: h2StickingCoeffByh2Coverage=.False. !Decrease sticking coeff of H2 by H2 coverage of surface
+LOGICAL :: hStickingCoeffByh2Coverage=.False. !Decrease sticking coeff of H by H2 coverage of surface
+REAL(dp) :: HdiffusionBarrier=-1.0 !Diffusion barrier for atomic H on grain surface (K).
+!!This is later corrected to diffToBind*Ebind(#H) if no other value is input
+LOGICAL :: useCustomDiffusionBarriers=.True. !Use custom diffusion barriers, instead of assuming they're a fraction of the binding energy
+LOGICAL :: seperateDiffAndDesorbPrefactor=.True. !Calculate different prefactors for diffusion and desorption
+LOGICAL :: useTSTprefactors=.False. !Calculate diffusion and desorption prefactors using TST. Otherwise, use Hasegawa-Herbst equation.
+LOGICAL :: useCustomPrefactors=.False. !Use custom diffusion and desorption prefactors, instead of TST or Hasegawa-Herbst values.
+LOGICAL :: useMinissaleIceChemdesEfficiency=.False. !Use Minissale 2016 efficiency for chemical desorption on ices. If False, use Fredon 2021
 LOGICAL :: heatingFlag=.false. !If True, heating is applied to the gas parcels.
 LOGICAL :: enforceChargeConservation = .false. ! Enforce the chrage by keeping track of charged ions.
 !

@@ -3,6 +3,7 @@ MODULE CONSTANTS
    REAL(dp), parameter :: C  = 2.99792458D+10 !Speed of light in cgs
    REAL(dp), PARAMETER :: K_BOLTZ = 1.38065040D-16 ! Boltzmann constant cgs
    REAL(dp), PARAMETER :: HP = 6.62606896D-27 !Planck constant in cgs
+   REAL(dp), PARAMETER :: HP_SI = 6.62607015D-34 !Planck constant in SI
    REAL(dp), PARAMETER :: REDUCED_PLANCK=1.054571628d-27
    REAL(dp), PARAMETER :: MH = 1.67262164D-24 !H nucleus mass in cgs
    REAL(dp), PARAMETER :: AMU=1.66053892d-24 !atomic mass unit in cgs
@@ -17,6 +18,8 @@ MODULE CONSTANTS
    REAL(dp), PARAMETER :: GRAV_G = 6.674d-8 !gravitational constant in cgs
    REAL(dp), PARAMETER :: SB_CONST=5.6704d-5 !Stefan Boltzmann constant in cgs
    REAL(dp), PARAMETER :: HABING_TO_DRAINE = 1 / 1.7 !conversion factor from Habing to Draine field
+   REAL(dp), PARAMETER :: N_AVOGADRO=6.022140857d23 !Avogadro constant
+   REAL(dp), PARAMETER :: KCAL_TO_JOULE=4.184d3 !Constant to convert kcal to J
 
    !Error codes for python wrap
    INTEGER, PARAMETER :: PARAMETER_READ_ERROR=-1

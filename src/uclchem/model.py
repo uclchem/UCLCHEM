@@ -124,6 +124,7 @@ from uclchem.constants import (
     n_reactions,
     n_species,
 )
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 # /Multiprocessing imports
 
@@ -154,7 +155,16 @@ def register_model(cls: Type["AbstractModel"]):
 
 
 # Reaction and Species name retrieval classes to reduce file read repetition.
-def reaction_line_formatter(line):
+def reaction_line_formatter(line: list[str]) -> str:
+    """Format a list of strings as a reaction, while filtering out "NAN"s.
+
+    Args:
+        line (list[str]): list of species involved in the reaction
+
+    Returns:
+        str: formatted reaction for printing.
+    """
+
     reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
     products = list(filter(lambda x: not str(x).lower().endswith("nan"), line[3:7]))
     return " + ".join(reactants) + " -> " + " + ".join(products)
@@ -167,11 +177,7 @@ class ReactionNamesStore:
     def __call__(self):
         # Only load the reactions once, after that use the cached version
         if self.reaction_names is None:
-            reactions = pd.read_csv(
-                os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)), "reactions.csv"
-                )
-            )
+            reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
             # format the reactions:
             self.reaction_names = [
                 reaction_line_formatter(line) for idx, line in reactions.iterrows()
@@ -188,9 +194,7 @@ class SpeciesNameStore:
     def __call__(self):
         # Only load the species once, after that use the cached version
         if self.species_names is None:
-            species = pd.read_csv(
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "species.csv")
-            )
+            species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
             self.species_names = species["NAME"].tolist()
         return self.species_names
 
@@ -612,12 +616,10 @@ class AbstractModel(ABC):
         else:
             print("Element conservation report")
             print(
-                check_element_conservation(
-                    self.get_dataframes(0), element_list, percent
-                )
+                check_element_conservation(self.get_dataframes(0), element_list, percent)
             )
 
-    def check_error(self, only_error: bool = False):
+    def check_error(self, only_error: bool = False) -> None:
         """
         Prints the error message of the model based on self.success_flag, this method was originally an uclchem.utils function.
 
@@ -642,7 +644,6 @@ class AbstractModel(ABC):
             print("Model ran successfully.")
         elif self.success_flag is None:
             print("Model has not been run.")
-        return
 
     def create_abundance_plot(
         self,
@@ -650,12 +651,14 @@ class AbstractModel(ABC):
         figsize: tuple[2] = (16, 9),
         point: int = 0,
         plot_file=None,
-    ):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """uclchem.analysis.create_abundance_plot wrapper method
+
         Args:
             element_list (list, optional): List of elements to check conservation for. Defaults to  self.out_species_list.
             figsize (tuple[2], optional): The figure size to use for matplotlib Defaults to (16, 9).
             point (int, optional): Integer referring to which point of the UCLCHEM model to use. Defaults to 0.
+
         Returns:
             fig,ax: matplotlib figure and axis objects
         """
@@ -807,7 +810,7 @@ class AbstractModel(ABC):
         point: int = 0,
         legend: bool = True,
         **plot_kwargs,
-    ):
+    ) -> plt.Axes:
         """uclchem.analysis.plot(species) wrapper method
         Args:
             ax (plt.axes):
@@ -815,6 +818,9 @@ class AbstractModel(ABC):
             point (int, optional):
             legend (bool, optional):
             plot_kwargs (dict, optional):
+
+        Returns:
+            plt.Axes: Modified input axis
         """
         if species is None:
             species = self.out_species_list
@@ -901,9 +907,7 @@ class AbstractModel(ABC):
                 self.legacy_write_starting_chemistry()
                 logging.debug(f"Successfully wrote {self.abundSaveFile}")
             except Exception as e:
-                logging.error(
-                    f"Failed to write {self.abundSaveFile}: {e}", exc_info=True
-                )
+                logging.error(f"Failed to write {self.abundSaveFile}: {e}", exc_info=True)
                 raise
         return
 
@@ -920,7 +924,7 @@ class AbstractModel(ABC):
         name: str = "default",
         engine: str = "h5netcdf",
         overwrite: bool = False,
-    ):
+    ) -> None:
         """
         save_model saves a model to a file on disk. Multiple models can be saved into the same file if different names are used to store them.
 
@@ -967,7 +971,6 @@ class AbstractModel(ABC):
         self._data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
         self._data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
         self._data.to_netcdf(file, group=name, engine=engine, mode="a")
-        return
 
     # /Model saving
 
@@ -1008,10 +1011,7 @@ class AbstractModel(ABC):
                     except Exception:
                         existing_time = None
                     v_arr = np.asarray(v)
-                    if (
-                        existing_time is not None
-                        and existing_time != np.shape(v_arr)[0]
-                    ):
+                    if existing_time is not None and existing_time != np.shape(v_arr)[0]:
                         base_time_dim = f"time_step_{k}"
                         time_dim = base_time_dim
                         i = 1
@@ -1083,8 +1083,8 @@ class AbstractModel(ABC):
         row_count = int(np.shape(array)[0] / self._param_dict["points"])
 
         # Extract physics and species columns from legacy file header
-        physics_cols_from_file = [c for c in columns[:point_index].tolist()]
-        species_cols_from_file = [c for c in columns[point_index + 1 :].tolist()]
+        physics_cols_from_file = list(columns[:point_index].tolist())
+        species_cols_from_file = list(columns[point_index + 1 :].tolist())
 
         # Validate compatibility with current UCLCHEM constants - these are non-negotiable
         # PHYSICAL_PARAMETERS are hard-coded and tied to the Fortran wrapper
@@ -1222,10 +1222,10 @@ class AbstractModel(ABC):
         full_array = np.append(phys, chem, axis=1)
         # TODO Move away from the magic numbers seen here.
         species_names = get_species_names()
-        string_fmt_string = f'{", ".join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {", ".join([SPECNAME_HEADER_FORMAT] * len(species_names))}'
+        string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(species_names))}"
         # Magic numbers here to match/improve the formatting of the classic version
         # TODO Move away from the magic numbers seen here.
-        number_fmt_string = f'{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {", ".join([SPECNAME_VALUE_FORMAT] * len(species_names))}'
+        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(species_names))}"
         columns = np.array([PHYSICAL_PARAMETERS[:-1] + ["point"] + species_names])
         np.savetxt(self.outputFile, columns, fmt=string_fmt_string)
         with open(self.outputFile, "ab") as f:
@@ -1237,7 +1237,7 @@ class AbstractModel(ABC):
         last_timestep_index = self.chemical_abun_array[:, 0, 0].nonzero()[0][-1]
         # TODO Move away from the magic numbers seen here.
         species_names = get_species_names()
-        number_fmt_string = f' {", ".join(["%9.5E"] * len(species_names))}'
+        number_fmt_string = f" {', '.join(['%9.5E'] * len(species_names))}"
         with open(self.abundSaveFile, "wb") as f:
             np.savetxt(
                 f,
@@ -1368,6 +1368,15 @@ class AbstractModel(ABC):
         for k in keys_to_delete:
             del self._param_dict[k]
         if out_species is not None:
+            # Validate out_species: list/tuple of strings and known species
+            if not (
+                isinstance(out_species, (list, tuple))
+                and all(isinstance(s, str) for s in out_species)
+                and all(s.strip() in get_species_names() for s in out_species)
+            ):
+                raise ValueError(
+                    "out_species must be a list/tuple of valid species names; check available species via uclchem.model.get_species_names()"
+                )
             self.n_out = len(out_species)
             self._param_dict["outspecies"] = self.n_out
             self.out_species = " ".join(out_species)
@@ -1638,9 +1647,7 @@ class AbstractModel(ABC):
                     self._shm_desc["starting_chemistry_array"],
                     self.starting_chemistry_array,
                 ) = self._create_shared_memory_allocation(np.shape(starting_chemistry))
-                np.copyto(
-                    self.starting_chemistry_array, starting_chemistry, casting="no"
-                )
+                np.copyto(self.starting_chemistry_array, starting_chemistry, casting="no")
             else:
                 self.starting_chemistry_array = np.asfortranarray(
                     starting_chemistry, dtype=np.float64
@@ -1703,9 +1710,7 @@ class AbstractModel(ABC):
             object.__setattr__(
                 self,
                 k,
-                np.ndarray(
-                    shape=v["shape"], dtype=np.float64, buffer=shm.buf, order="F"
-                ),
+                np.ndarray(shape=v["shape"], dtype=np.float64, buffer=shm.buf, order="F"),
             )
             self._shm_handles[k] = shm
             del shm
@@ -2374,19 +2379,19 @@ class Postprocess(AbstractModel):
             object.__setattr__(
                 self,
                 "postprocess_arrays",
-                dict(
-                    timegrid=time_array,
-                    densgrid=density_array,
-                    gastempgrid=gas_temperature_array,
-                    dusttempgrid=dust_temperature_array,
-                    radfieldgrid=radfield_array,
-                    zetagrid=zeta_array,
-                    avgrid=visual_extinction_array,
-                    nhgrid=coldens_H_array,
-                    nh2grid=coldens_H2_array,
-                    ncogrid=coldens_CO_array,
-                    ncgrid=coldens_C_array,
-                ),
+                {
+                    "timegrid": time_array,
+                    "densgrid": density_array,
+                    "gastempgrid": gas_temperature_array,
+                    "dusttempgrid": dust_temperature_array,
+                    "radfieldgrid": radfield_array,
+                    "zetagrid": zeta_array,
+                    "avgrid": visual_extinction_array,
+                    "nhgrid": coldens_H_array,
+                    "nh2grid": coldens_H2_array,
+                    "ncogrid": coldens_CO_array,
+                    "ncgrid": coldens_C_array,
+                },
             )
             for key, array in self.postprocess_arrays.items():
                 if array is not None:
@@ -2542,14 +2547,14 @@ class Model(AbstractModel):
         )
         if read_file is None and time_array is not None:
             self.time_array = time_array
-            self.postprocess_arrays = dict(
-                timegrid=time_array,
-                densgrid=density_array,
-                gastempgrid=gas_temperature_array,
-                dusttempgrid=dust_temperature_array,
-                radfieldgrid=radfield_array,
-                zetagrid=zeta_array,
-            )
+            self.postprocess_arrays = {
+                "timegrid": time_array,
+                "densgrid": density_array,
+                "gastempgrid": gas_temperature_array,
+                "dusttempgrid": dust_temperature_array,
+                "radfieldgrid": radfield_array,
+                "zetagrid": zeta_array,
+            }
             for key, array in self.postprocess_arrays.items():
                 if array is not None:
                     # Convert single values into arrays that can be used
@@ -2729,7 +2734,7 @@ class SequentialModel:
         for model in self.models:
             model["Model"].save_model(
                 file=file,
-                name=f'{name}_{model["Model_Type"]}_{model["Model_Order"]}',
+                name=f"{name}_{model['Model_Type']}_{model['Model_Order']}",
                 engine=engine,
                 overwrite=overwrite,
             )
@@ -2761,16 +2766,14 @@ class SequentialModel:
                 ]
             conserved = True
             for i in conserve_dicts:
-                conserved = (
-                    True if all([float(x[:1]) < 1 for x in i.values()]) else False
-                )
+                conserved = True if all(float(x[:1]) < 1 for x in i.values()) else False
             model["elements_conserved"] = conserved
 
     def pickle(self):
         if not bool(self._pickle_dict):
             for model in self.models:
                 model["Model"] = model["Model"].pickle()
-                self._pickle_dict[f'{model["Model_Type"]}_{model["Model_Order"]}'] = (
+                self._pickle_dict[f"{model['Model_Type']}_{model['Model_Order']}"] = (
                     model["Model"]._pickle_dict.copy()
                 )
         return
@@ -2779,7 +2782,7 @@ class SequentialModel:
         if bool(self._pickle_dict):
             for model in self.models:
                 model["Model"]._pickle_dict = self._pickle_dict[
-                    f'{model["Model_Type"]}_{model["Model_Order"]}'
+                    f"{model['Model_Type']}_{model['Model_Order']}"
                 ]
                 model["Model"] = model["Model"].un_pickle()
         return
@@ -3017,7 +3020,7 @@ class GridModels:
                 for mt_k, mt_v in self.full_parameters.items():
                     if isinstance(mt_v, dict):
                         tmp_model = self._load_model_data(
-                            model=f'{self.models[model]["Model"]}_{mt_k}_{model_number}'
+                            model=f"{self.models[model]['Model']}_{mt_k}_{model_number}"
                         )
 
                         self.models[model][f"{mt_k}_{model_number}"] = {
@@ -3035,8 +3038,7 @@ class GridModels:
                                 )
                                 for k in list(self.parameters_to_grid.keys())
                                 if mt_k in k
-                                and k.replace(mt_k, "").lower()
-                                in tmp_model._data.keys()
+                                and k.replace(mt_k, "").lower() in tmp_model._data.keys()
                             },
                         }
                         self.models[model][f"{mt_k}_{model_number}"]["Successful"] = (
@@ -3074,9 +3076,7 @@ class GridModels:
             percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
         """
         for model in range(len(self.models)):
-            tmp_model = load_model(
-                file=self.grid_file, name=self.models[model]["Model"]
-            )
+            tmp_model = load_model(file=self.grid_file, name=self.models[model]["Model"])
             conserve_dicts = []
             if tmp_model._param_dict["points"] > 1:
                 for i in range(tmp_model._param_dict["points"]):
@@ -3093,9 +3093,7 @@ class GridModels:
                 ]
             conserved = True
             for i in conserve_dicts:
-                conserved = (
-                    True if all([float(x[:1]) < 1 for x in i.values()]) else False
-                )
+                conserved = True if all(float(x[:1]) < 1 for x in i.values()) else False
             self.models[model]["elements_conserved"] = conserved
         return
 

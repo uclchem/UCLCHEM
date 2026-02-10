@@ -121,9 +121,7 @@ class LoadedNetwork:
         # If objects are provided, ensure both are provided
         if has_objects:
             if species is None or reactions is None:
-                raise ValueError(
-                    "Both species and reactions must be provided together."
-                )
+                raise ValueError("Both species and reactions must be provided together.")
 
             warnings.warn(
                 "LoadedNetwork(species=..., reactions=...) is deprecated. "

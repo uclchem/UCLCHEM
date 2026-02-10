@@ -2,7 +2,6 @@
 
 from uclchem.makerates.io_functions import read_species_file
 
-
 speciesFile = "inputFiles/default_species.csv"
 speciesFile2 = "inputFiles/excited_species.csv"
 

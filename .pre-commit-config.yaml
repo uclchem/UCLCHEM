@@ -6,7 +6,7 @@ repos:
       entry: bash notebooks/notebooks.sh --check
       language: system
       files: \.ipynb$
-      stages: [commit]
+      stages: [pre-commit]
       pass_filenames: false
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.

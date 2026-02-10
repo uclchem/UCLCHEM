@@ -1,5 +1,5 @@
-import logging
 import os
+from pathlib import Path
 from typing import Union
 
 from . import io_functions as io
@@ -57,8 +57,8 @@ def run_makerates(
             os.makedirs(user_output_dir)
     elif config.output_directory:
         user_output_dir = config.resolve_path(config.output_directory)
-        if not os.path.exists(user_output_dir):
-            os.makedirs(user_output_dir)
+        if not user_output_dir.is_dir():
+            user_output_dir.mkdir()
     else:
         user_output_dir = None
 
@@ -169,9 +169,9 @@ def run_makerates(
 
 
 def get_network(
-    path_to_input_file: Union[str, bytes, os.PathLike] = None,
-    path_to_species_file: Union[str, bytes, os.PathLike] = None,
-    path_to_reaction_file: Union[str, bytes, os.PathLike] = None,
+    path_to_input_file: Union[str, bytes, Path] = None,
+    path_to_species_file: Union[str, bytes, Path] = None,
+    path_to_reaction_file: Union[str, bytes, Path] = None,
     verbosity=None,
 ):
     """In memory equivalent of Makerates, can either be used on the original input files
@@ -183,9 +183,9 @@ def get_network(
 
 
     Args:
-        path_to_input_file (Union[str, bytes, os.PathLike], optional): Path to input file. Defaults to None.
-        path_to_species_file (Union[str, bytes, os.PathLike], optional): Path to a species.csv in/from the src directory. Defaults to None.
-        path_to_reaction_file (Union[str, bytes, os.PathLike], optional): Path to a reactions.csv in/from the src directory. Defaults to None.
+        path_to_input_file (Union[str, bytes, Path], optional): Path to input file. Defaults to None.
+        path_to_species_file (Union[str, bytes, Path], optional): Path to a species.csv in/from the src directory. Defaults to None.
+        path_to_reaction_file (Union[str, bytes, Path], optional): Path to a reactions.csv in/from the src directory. Defaults to None.
         verbosity (LEVEL, optional): The verbosity level as specified in logging. Defaults to None.
 
     Raises:
@@ -210,13 +210,13 @@ def get_network(
 
 
 def _get_network_from_files(
-    species_file: Union[str, bytes, os.PathLike],
-    reaction_files: list[Union[str, bytes, os.PathLike]],
+    species_file: Union[str, bytes, Path],
+    reaction_files: list[Union[str, bytes, Path]],
     reaction_types: list[str],
     gas_phase_extrapolation: bool,
     add_crp_photo_to_grain: bool,
     derive_reaction_exothermicity: Union[bool, str, list[str]],
-    database_reaction_exothermicity: list[Union[str, bytes, os.PathLike]] = None,
+    database_reaction_exothermicity: list[Union[str, bytes, Path]] = None,
 ) -> tuple[Network, list[Reaction]]:
     logging.info(
         f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"

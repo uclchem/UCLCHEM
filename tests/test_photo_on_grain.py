@@ -33,9 +33,7 @@ def test_photo_on_grain_memory():
     ), f"Package installation failed:\n{result.stdout}\n{result.stderr}"
 
     # Check if installed
-    pip_packages = subprocess.run(
-        "pip list", shell=True, text=True, capture_output=True
-    )
+    pip_packages = subprocess.run("pip list", shell=True, text=True, capture_output=True)
     assert "uclchem" in pip_packages.stdout, "Package uclchem not found in pip list"
 
     # Copy the default settings file
