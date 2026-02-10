@@ -1,6 +1,5 @@
 import pytest
 
-import uclchem
 from uclchem.model import Cloud
 
 
