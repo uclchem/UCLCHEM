@@ -53,9 +53,7 @@ def test_static_model_return_array(test_output_directory):
             return_rates=True,
         )
     )
-    assert (
-        return_code == 0
-    ), f"Static model returned with nonzero exit code {return_code}"
+    assert return_code == 0, f"Static model returned with nonzero exit code {return_code}"
 
     # Verify finalTime is respected (within 10% tolerance)
     max_time = physics[:, 0].max()  # Time is first column
@@ -85,9 +83,7 @@ def test_static_model_return_dataframe(test_output_directory):
             return_dataframe=True,
         )
     )
-    assert (
-        return_code == 0
-    ), f"Static model returned with nonzero exit code {return_code}"
+    assert return_code == 0, f"Static model returned with nonzero exit code {return_code}"
 
     # Verify finalTime is respected (within 10% tolerance)
     max_time = physics["Time"].max()
@@ -191,8 +187,7 @@ def test_collapse_hotcore_return_dataframe(test_output_directory):
     max_time = physics["Time"].max()
     max_density = physics["Density"].max()
     assert (
-        max_time <= 1.1 * params["finalTime"]
-        or max_density >= 0.9 * params["finalDens"]
+        max_time <= 1.1 * params["finalTime"] or max_density >= 0.9 * params["finalDens"]
     ), f"Collapse should stop at finalTime OR finalDens: time={max_time:.2e}, density={max_density:.2e}"
 
     # Stage 2: Hot core using starting_chemistry

@@ -4,8 +4,9 @@ If you run run_uclchem_tests.py, you'll produce several example model outputs.
 This script then uses those outputs to demonstrate some simple plotting.
 """
 
-import uclchem
 import matplotlib.pyplot as plt
+
+import uclchem
 
 # pick species, any number is fine
 species_list = ["#H2O", "#CO", "#CH3OH", "CO", "CH3OH", "H2O"]

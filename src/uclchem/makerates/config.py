@@ -422,9 +422,7 @@ database_reaction_type: "UMIST12"
             # Determine if required
             is_required = field_info.is_required()
             req_text = (
-                "REQUIRED"
-                if is_required
-                else f"Optional (default: {field_info.default})"
+                "REQUIRED" if is_required else f"Optional (default: {field_info.default})"
             )
 
             # Get type info

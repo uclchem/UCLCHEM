@@ -86,6 +86,7 @@ def __validate_functional_api_params__(
     return_rates: bool,
     return_heating: bool,
     starting_chemistry: np.ndarray,
+    return_stats: bool = False,
 ):
     """
     Validate functional API specific constraints.
@@ -98,6 +99,7 @@ def __validate_functional_api_params__(
         return_rates: Whether rates are being returned
         return_heating: Whether heating arrays are being returned
         starting_chemistry: Starting chemistry array if provided
+        return_stats: Whether DVODE solver statistics are being returned
 
     Raises:
         RuntimeError: If file parameters are mixed with memory return parameters
@@ -109,7 +111,7 @@ def __validate_functional_api_params__(
     """
     # Determine if this is a memory return request (user wants data returned, not written)
     memory_return_requested = (
-        return_array or return_dataframe or return_rates or return_heating
+        return_array or return_dataframe or return_rates or return_heating or return_stats
     )
 
     # Check file parameter mixing with memory return parameters
@@ -130,6 +132,7 @@ def __functional_return__(
     return_dataframe: bool = False,
     return_rates: bool = False,
     return_heating: bool = False,
+    return_stats: bool = False,
 ):
     """
     return function that takes in the object that was modelled and returns the values based on the specified booleans.
@@ -165,64 +168,52 @@ def __functional_return__(
     """
     if return_dataframe:
         result_dfs = model_object.get_dataframes(
-            joined=False, with_rates=return_rates, with_heating=return_heating
+            joined=False,
+            with_rates=return_rates,
+            with_heating=return_heating,
+            with_stats=return_stats,
         )
         phys_df = result_dfs[0]
         chem_df = result_dfs[1]
         rates_df = None
         heating_df = None
+        stats_df = None
 
-        # Extract rates and heating based on what was requested
+        # Extract rates, heating, and stats based on what was requested
         idx = 2
         if return_rates and len(result_dfs) > idx:
             rates_df = result_dfs[idx]
             idx += 1
         if return_heating and len(result_dfs) > idx:
             heating_df = result_dfs[idx]
+            idx += 1
+        if return_stats and len(result_dfs) > idx:
+            stats_df = result_dfs[idx]
 
-        # FIXED format: [phys, chem, rates/None, heating/None, abundances/dissipation, flag]
-        # For models with dissipation_time: [phys, chem, rates/None, heating/None, dissipation, abundances, flag]
+        # Build result tuple - stats only included when requested (for backward compatibility)
+        result = [phys_df, chem_df, rates_df, heating_df]
+        if return_stats:
+            result.append(stats_df)
         if hasattr(model_object, "dissipation_time"):
-            return (
-                phys_df,
-                chem_df,
-                rates_df,
-                heating_df,
-                model_object.dissipation_time,
-                model_object.next_starting_chemistry_array,
-                model_object.success_flag,
-            )
-        else:
-            return (
-                phys_df,
-                chem_df,
-                rates_df,
-                heating_df,
-                model_object.next_starting_chemistry_array,
-                model_object.success_flag,
-            )
+            result.append(model_object.dissipation_time)
+        result.append(model_object.next_starting_chemistry_array)
+        result.append(model_object.success_flag)
+        return tuple(result)
     elif return_array:
-        # FIXED format: [phys, chem, rates/None, heating/None, abundances/dissipation, flag]
-        # For models with dissipation_time: [phys, chem, rates/None, heating/None, dissipation, abundances, flag]
+        # Build result tuple - stats only included when requested (for backward compatibility)
+        result = [
+            model_object.physics_array,
+            model_object.chemical_abun_array,
+            model_object.rates_array if return_rates else None,
+            model_object.heat_array if return_heating else None,
+        ]
+        if return_stats:
+            result.append(model_object.stats_array)
         if hasattr(model_object, "dissipation_time"):
-            return (
-                model_object.physics_array,
-                model_object.chemical_abun_array,
-                model_object.rates_array if return_rates else None,
-                model_object.heat_array if return_heating else None,
-                model_object.dissipation_time,
-                model_object.next_starting_chemistry_array,
-                model_object.success_flag,
-            )
-        else:
-            return (
-                model_object.physics_array,
-                model_object.chemical_abun_array,
-                model_object.rates_array if return_rates else None,
-                model_object.heat_array if return_heating else None,
-                model_object.next_starting_chemistry_array,
-                model_object.success_flag,
-            )
+            result.append(model_object.dissipation_time)
+        result.append(model_object.next_starting_chemistry_array)
+        result.append(model_object.success_flag)
+        return tuple(result)
     else:
         # Disk mode with file output
         # FIXED format: [success_flag, abundances] OR [success_flag, dissipation_time, abundances]
@@ -244,6 +235,7 @@ def __cloud__(
     return_dataframe: bool = False,
     return_rates: bool = False,
     return_heating: bool = False,
+    return_stats: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -284,6 +276,7 @@ def __cloud__(
         return_rates=return_rates,
         return_heating=return_heating,
         starting_chemistry=starting_chemistry,
+        return_stats=return_stats,
     )
 
     model_object = Cloud(
@@ -299,6 +292,7 @@ def __cloud__(
         return_dataframe=return_dataframe,
         return_rates=return_rates,
         return_heating=return_heating,
+        return_stats=return_stats,
     )
 
 
@@ -311,6 +305,7 @@ def __collapse__(
     return_dataframe: bool = False,
     return_rates: bool = False,
     return_heating: bool = False,
+    return_stats: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -353,6 +348,7 @@ def __collapse__(
         return_rates,
         return_heating,
         starting_chemistry,
+        return_stats=return_stats,
     )
 
     model_object = Collapse(
@@ -370,6 +366,7 @@ def __collapse__(
         return_dataframe=return_dataframe,
         return_rates=return_rates,
         return_heating=return_heating,
+        return_stats=return_stats,
     )
 
 
@@ -382,6 +379,7 @@ def __prestellar_core__(
     return_dataframe: bool = False,
     return_rates: bool = False,
     return_heating: bool = False,
+    return_stats: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -424,6 +422,7 @@ def __prestellar_core__(
         return_rates,
         return_heating,
         starting_chemistry,
+        return_stats=return_stats,
     )
 
     model_object = PrestellarCore(
@@ -441,6 +440,7 @@ def __prestellar_core__(
         return_dataframe=return_dataframe,
         return_rates=return_rates,
         return_heating=return_heating,
+        return_stats=return_stats,
     )
 
 
@@ -454,6 +454,7 @@ def __cshock__(
     return_dataframe: bool = False,
     return_rates: bool = False,
     return_heating: bool = False,
+    return_stats: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -500,6 +501,7 @@ def __cshock__(
         return_rates,
         return_heating,
         starting_chemistry,
+        return_stats=return_stats,
     )
 
     model_object = CShock(
@@ -518,6 +520,7 @@ def __cshock__(
         return_dataframe=return_dataframe,
         return_rates=return_rates,
         return_heating=return_heating,
+        return_stats=return_stats,
     )
 
 
@@ -529,6 +532,7 @@ def __jshock__(
     return_dataframe: bool = False,
     return_rates: bool = False,
     return_heating: bool = False,
+    return_stats: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -570,6 +574,7 @@ def __jshock__(
         return_rates,
         return_heating,
         starting_chemistry,
+        return_stats=return_stats,
     )
 
     model_object = JShock(
@@ -586,6 +591,7 @@ def __jshock__(
         return_dataframe=return_dataframe,
         return_rates=return_rates,
         return_heating=return_heating,
+        return_stats=return_stats,
     )
 
 

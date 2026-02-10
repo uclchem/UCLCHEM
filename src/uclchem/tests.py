@@ -1,14 +1,10 @@
-import os
-
 import numpy as np
 from pandas import DataFrame
 from uclchemwrap import uclchemwrap as wrap
 
 import uclchem
-
-from .analysis import total_element_abundance
-
-_ROOT = os.path.dirname(os.path.abspath(__file__))
+from uclchem.analysis import total_element_abundance
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 
 def test_ode_conservation(element_list=["H", "N", "C", "O"]):
@@ -23,7 +19,7 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
         dict: A dictionary of the elements in element list with values representing the total rate of change of each element.
     """
     species_list = np.loadtxt(
-        os.path.join(_ROOT, "species.csv"),
+        UCLCHEM_ROOT_DIR / "species.csv",
         usecols=[0],
         dtype=str,
         skiprows=1,
@@ -41,7 +37,7 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
         "finaltime": 1.0e3,
         "outspecies": len(species_list),
     }
-    _, _, _, _, abundances, specname, success_flag = wrap.cloud(
+    _, _, _, _, _, abundances, specname, success_flag = wrap.cloud(
         dictionary=param_dict,
         outspeciesin=" ".join(species_list),
         timepoints=1,

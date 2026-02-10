@@ -21,9 +21,11 @@ CONTAINS
     SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
         REAL(dp), INTENT(IN) :: abund(:, :), safemantle, h2col, cocol, ccol
         REAL(dp), INTENT(INOUT) :: rate(:)
-        INTEGER:: idx1,idx2
+        INTEGER(dp) :: idx1,idx2
         REAL(dp) :: vA,vB
         INTEGER(dp) :: i,j
+        INTEGER(dp) :: k
+        REAL(dp) :: numMonolayers
         ! REAL(dp) :: vdiff(:)
     
         !Calculate all reaction rates
@@ -79,8 +81,20 @@ CONTAINS
             !freeze out rate uses thermal velocity but mass of E is 0 giving us infinite rates
             !just assume it's same as H
             rate(nR_EFreeze)=rate(nR_HFreeze)
+
             rate(nR_H2Freeze)=stickingCoefficient(h2StickingZero,h2StickingTemp,gasTemp(dstep))*rate(nR_H2Freeze)
+            IF (h2StickingCoeffByh2Coverage) THEN
+                ! If all surface is H2, (i.e. x_#H2 = safeMantle), assume no H2 sticks
+                ! and so set the sticking coeff to 0. Linearly interpolate according to chance it will hit a H2 molecule on surface
+                rate(nR_H2Freeze)=rate(nR_H2Freeze)*(1.0D0-abund(ngh2, dstep)/safeMantle)
+            END IF
+            
             rate(nR_HFreeze)=stickingCoefficient(hStickingZero,hStickingTemp,gasTemp(dstep))*rate(nR_HFreeze)
+            IF (hStickingCoeffByh2Coverage) THEN
+                ! If all surface is H2, (i.e. x_#H2 = safeMantle), assume no H sticks
+                ! and so set the sticking coeff to 0. Linearly interpolate according to chance it will hit a H2 molecule on surface
+                rate(nR_HFreeze)=rate(nR_HFreeze)*(1.0D0-abund(ngh2, dstep)/safeMantle)
+            END IF
         END IF
         ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !The below desorption mechanisms are from Roberts et al. 2007 MNRAS with
@@ -234,6 +248,10 @@ CONTAINS
     !as in Langmuir-Hinshelwood mechanism
     !See work of David Quenard 2017 Arxiv:1711.05184
     !First calculate rate of the diffusion reaction
+    
+    ! Calculate ice coverage in monolayers for chemical desorption
+    numMonolayers = getNumberMonolayers(safeMantle + safeBulk)
+    
     idx1=lhReacs(1)
     idx2=lhReacs(2)
     if (idx1 .ne. idx2) THEN
@@ -241,24 +259,31 @@ CONTAINS
             DO j=idx1,idx2
                 rate(j)=diffusionReactionRate(j,dustTemp(dstep))
             END DO
-            !two routes for every diffusion reaction: products to gas or products remain on surface
-            rate(lhdesReacs(1):lhdesReacs(2))=rate(idx1:idx2)
 
+            IF ((desorb) .and. (chemdesorb)) THEN
+                !two routes for every diffusion reaction: products to gas or products remain on surface
                 !calculate fraction of reaction that goes down desorption route
                 idx1=lhdesReacs(1)
                 idx2=lhdesReacs(2)
-                DO j=idx1,idx2
-                    rate(j)=desorptionFraction(j)*rate(j)
-                IF (ANY(bulkList==re1(j))) rate(j)=0.0 ! Bulk species are not able to chemically desorb
-                    IF (ANY(bulkList==re1(j))) rate(j)=0.0 ! Bulk species are not able to chemically desorb
+                k = 0
+                DO i=idx1, idx2
+                    k = k + 1
+                    rate(i)=desorptionFractionIncludingIce(i, numMonolayers)*rate(LHDEScorrespondingLHreacs(k))
+                    IF (ANY(bulkList==re1(i))) rate(i)=0.0 ! Bulk species are not able to chemically desorb
                 END DO
+                
                 !remove that fraction from total rate of the diffusion route
-                rate(lhReacs(1):lhReacs(2))=rate(lhReacs(1):lhReacs(2))-rate(idx1:idx2)
+                k = 0
+                DO i = idx1, idx2
+                    k = k + 1
+                    rate(LHDEScorrespondingLHreacs(k)) = rate(LHDEScorrespondingLHreacs(k)) - rate(i)
+                END DO
             ELSE
                 rate(idx1:idx2)=0.0
                 rate(lhdesReacs(1):lhdesReacs(2))=0.0
             END IF
         END IF
+    END IF
 
     !Account for Eley-Rideal reactions in a similar way.
     !First calculate overall rate and then split between desorption and sticking
@@ -267,20 +292,32 @@ CONTAINS
     if (idx1 .ne. idx2) THEN
         rate(idx1:idx2)=freezeOutRate(idx1,idx2)
         rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/dustTemp(dstep))
-        rate(erdesReacs(1):erdesReacs(2))=rate(idx1:idx2)
-        !calculate fraction of reaction that goes down desorption route
-        idx1=erdesReacs(1)
-        idx2=erdesReacs(2)
-        DO j=idx1,idx2
-            rate(j)=desorptionFraction(j)*rate(j)
-            IF (ANY(bulkList==re1(j))) rate(j)=0.0 ! Bulk species are not able to chemically desorb
-        END DO
-        !remove that fraction from total rate of the diffusion route
-        rate(erReacs(1):erReacs(2))=rate(erReacs(1):erReacs(2))-rate(idx1:idx2)
+        
+        IF ((desorb) .and. (chemdesorb)) THEN
+            !calculate fraction of reaction that goes down desorption route
+            idx1 = erdesReacs(1)
+            idx2 = erdesReacs(2)
+            k = 0
+                DO i=idx1, idx2
+                    k = k + 1
+                    rate(i)=desorptionFractionIncludingIce(i, numMonolayers)*rate(ERDEScorrespondingERreacs(k))
+                IF (ANY(bulkList==re1(i))) rate(i)=0.0 ! Bulk species are not able to chemically desorb
+            END DO
+            
+            !remove that fraction from total rate of the diffusion route
+            k = 0
+            DO i = idx1, idx2
+                k = k + 1
+                rate(ERDEScorrespondingERreacs(k)) = rate(ERDEScorrespondingERreacs(k)) - rate(i)
+            END DO
+        ELSE
+            rate(idx1:idx2)=0.0
+            rate(erdesReacs(1):erdesReacs(2))=0.0
+        END IF
     END IF
 
     IF (PARAMETERIZE_H2FORM) THEN
-        rate(nR_H2Form_CT)=h2FormEfficiency(dustTemp(dstep),dustTemp(dstep))
+        rate(nR_H2Form_CT)=h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
         !rate(nR_H2Form_LH)=0.0
         rate(nR_H2Form_ER)=0.0
         !rate(nR_H2Form_LHDes)=0.0
@@ -341,6 +378,22 @@ CONTAINS
     rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel)!H2 photodissociation
     rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
     rate(nR_C_hv)=cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),radfield) !C photoionization
+
+    ! Encounter Desorption mechanism (Hincelin et al. 2015)
+    ! Species diffuse onto H2-covered surfaces and can desorb upon encountering H2
+    IF ((h2EncounterDesorption) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
+        rate(nR_H2_ED)=EncounterDesorptionRate(nR_H2_ED, dustTemp(dstep)) !H2 Encounter Desorption
+    ELSE
+        rate(nR_H2_ED)=0.0D0
+    END IF
+
+    IF ((hEncounterDesorption) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
+        ! H atom encounter desorption on H2-covered surfaces
+        rate(nR_H_ED)=EncounterDesorptionRate(nR_H_ED, dustTemp(dstep)) !H Encounter Desorption
+    ELSE
+        rate(nR_H_ED)=0.0D0
+    END IF
+
     END SUBROUTINE calculateReactionRates
 
 
@@ -354,7 +407,7 @@ CONTAINS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
     REAL(dp) :: freezeRates(idx2-idx1+1)
-    INTEGER :: idx1,idx2
+    INTEGER(dp) :: idx1,idx2
     
     !additional factor for ions (beta=0 for neutrals)
     freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))

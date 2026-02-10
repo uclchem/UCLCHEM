@@ -5,10 +5,11 @@ This module loads Fortran parameter classifications from YAML and provides
 them as Python sets for use in GeneralSettings.
 """
 
-import os
 from typing import Set
 
 import yaml
+
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 
 def _load_fortran_metadata() -> tuple[Set[str], Set[str], Set[str]]:
@@ -17,7 +18,7 @@ def _load_fortran_metadata() -> tuple[Set[str], Set[str], Set[str]]:
     Returns:
         Tuple of (fortran_parameters, internal_parameters, file_path_parameters) as lowercase sets
     """
-    yaml_path = os.path.join(os.path.dirname(__file__), "fortran_metadata.yaml")
+    yaml_path = UCLCHEM_ROOT_DIR / "advanced" / "fortran_metadata.yaml"
 
     with open(yaml_path, "r") as f:
         metadata = yaml.safe_load(f)
@@ -26,16 +27,12 @@ def _load_fortran_metadata() -> tuple[Set[str], Set[str], Set[str]]:
     fortran_params = set()
     for module_params in metadata.get("fortran_parameters", {}).values():
         if isinstance(module_params, list):
-            fortran_params.update(
-                p.lower() for p in module_params if isinstance(p, str)
-            )
+            fortran_params.update(p.lower() for p in module_params if isinstance(p, str))
 
     internal_params = set()
     for module_params in metadata.get("internal_parameters", {}).values():
         if isinstance(module_params, list):
-            internal_params.update(
-                p.lower() for p in module_params if isinstance(p, str)
-            )
+            internal_params.update(p.lower() for p in module_params if isinstance(p, str))
 
     file_path_params = set()
     for module_params in metadata.get("file_path_parameters", {}).values():

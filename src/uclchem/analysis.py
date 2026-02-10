@@ -58,8 +58,7 @@ except ImportError as E:
         "Failed to import surfacereactions.f90 from uclchemwrap, did the installation with f2py succeed?"
     )
     raise
-import os
-from typing import List
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -71,8 +70,7 @@ from uclchem.constants import n_reactions, n_species
 from uclchem.makerates import Reaction
 from uclchem.makerates.network import Network
 from uclchem.makerates.species import Species
-
-_ROOT = os.path.dirname(os.path.abspath(__file__))
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 elementList = [
     "H",
@@ -98,7 +96,7 @@ elementList = [
 ]
 
 
-def read_output_file(output_file):
+def read_output_file(output_file: str | Path) -> pd.DataFrame:
     """Read the output of a UCLCHEM run created with the outputFile parameter into a pandas DataFrame
 
     Args:
@@ -113,7 +111,7 @@ def read_output_file(output_file):
     return data
 
 
-def read_rate_file(rate_file):
+def read_rate_file(rate_file: str | Path) -> pd.DataFrame:
     """Read the output of a UCLCHEM run created with the rateConstantFile parameter into a pandas DataFrame
 
     Args:
@@ -363,7 +361,7 @@ def analysis(species_name, rates, output_file, rate_threshold=0.99):
     """
     result_df = read_output_file(output_file)
     species = np.loadtxt(
-        os.path.join(_ROOT, "species.csv"),
+        UCLCHEM_ROOT_DIR / "species.csv",
         usecols=[0],
         dtype=str,
         skiprows=1,
@@ -373,7 +371,7 @@ def analysis(species_name, rates, output_file, rate_threshold=0.99):
     )
     species = list(species)
     reactions = np.loadtxt(
-        os.path.join(_ROOT, "reactions.csv"),
+        UCLCHEM_ROOT_DIR / "reactions.csv",
         dtype=str,
         skiprows=1,
         delimiter=",",
@@ -525,9 +523,7 @@ def _get_species_rates(param_dict, input_abundances, species_index, reac_indxs):
     return rates[: len(reac_indxs)], transfer, swap, bulk_layers
 
 
-def _get_rates_of_change(
-    rates, reactions, speciesList, species, row, swap, bulk_layers
-):
+def _get_rates_of_change(rates, reactions, speciesList, species, row, swap, bulk_layers):
     """Calculate the terms in the rate of equation of a particular species using rates calculated using
     get_species_rates() and a row from the full output of UCLCHEM. See `analysis.py` for intended use.
 
@@ -744,14 +740,14 @@ def check_element_conservation(df, element_list=["H", "N", "C", "O"], percent=Tr
 
 
 def get_total_swap(
-    rates: pd.DataFrame, abundances: pd.DataFrame, reactions: List[Reaction]
+    rates: pd.DataFrame, abundances: pd.DataFrame, reactions: list[Reaction]
 ) -> np.ndarray:
     """Obtain the amount of 'random' swapping per timestep
 
     Args:
         rates (pd.DataFrame): The rates obtained from running an UCLCHEM model
         abundances (pd.DataFrame): The abundances obtained from running an UCLCHEM model
-        reactions (List[Reaction]): The reactions used in UCLCHEM
+        reactions (list[Reaction]): The reactions used in UCLCHEM
 
     Returns:
         np.ndarray: The total swap per timestep
@@ -767,16 +763,14 @@ def get_total_swap(
     return totalSwap
 
 
-def construct_incidence(
-    species: List[Species], reactions: List[Reaction]
-) -> np.ndarray:
+def construct_incidence(species: list[Species], reactions: list[Reaction]) -> np.ndarray:
     """Construct the incidence matrix, a matrix that describes the in and out degree
     for each of the reactions; useful to matrix multiply by the indvidual rates per reaction
     to obtain a rates (dy) per species.
 
     Args:
-        species (List[Species]): A list of species S
-        reactions (List[Reaction]): The list of reactions S
+        species (list[Species]): A list of species S
+        reactions (list[Reaction]): The list of reactions S
 
     Returns:
         np.ndarray: A RxS incidence matrix
@@ -856,19 +850,22 @@ def rate_constants_to_dy_and_rates(
         for reactant in reaction.get_sorted_reactants():
             if reactant in list(abundances.columns):
                 rate *= abundances[reactant]
-        match reaction.get_reaction_type():
-            case x if x in ["LH", "LHDES", "BULKSWAP"]:
-                if reaction.is_bulk_reaction(include_products=False):
-                    rate *= bulkLayersReciprocal
-            case "SURFSWAP":
-                rate *= totalSwap / abundances["SURFACE"]
-            case x if x in ["DESCR", "DEUVCR", "ER", "ERDES"]:
-                rate /= abundances["SURFACE"]
-            case "DESOH2":
-                rate *= abundances["H"] / abundances["SURFACE"]
-            case "H2FORM":
-                # For some reason, H2form only uses the hydrogen density once
-                rate /= abundances["H"]
+
+        reaction_type = reaction.get_reaction_type()
+        if reaction_type in ["LH", "LHDES", "BULKSWAP"]:
+            if reaction.is_bulk_reaction(include_products=False):
+                rate *= bulkLayersReciprocal
+        elif reaction_type == "SURFSWAP":
+            rate *= totalSwap / abundances["SURFACE"]
+        elif reaction_type in ["DESCR", "DEUVCR", "ER", "ERDES"]:
+            rate /= abundances["SURFACE"]
+        elif reaction_type == "DESOH2":
+            rate *= abundances["H"] / abundances["SURFACE"]
+        elif reaction_type == "H2FORM":
+            # For some reason, H2form only uses the hydrogen density once
+            rate /= abundances["H"]
+        else:
+            raise ValueError(f"Unknown reaction type {reaction_type}")
         rate_by_reaction.iloc[:, idx] = rate
 
     # Compute the rate at each timestep, adding the appropriate header
@@ -956,7 +953,7 @@ def rate_constants_to_dy_and_rates(
 def compute_heating_per_reaction(
     rates: pd.DataFrame,
     network: Network = None,
-    reactions: List[Reaction] = None,
+    reactions: list[Reaction] = None,
 ) -> pd.DataFrame:
     """Compute heating/cooling per reaction by multiplying rates by exothermicity.
 
@@ -971,9 +968,7 @@ def compute_heating_per_reaction(
     if network:
         reactions = network.get_reaction_list()
 
-    assert (
-        len(reactions) == rates.shape[1]
-    ), "Number of reactions and rates must be equal"
+    assert len(reactions) == rates.shape[1], "Number of reactions and rates must be equal"
     exothermicities = np.array([r.get_exothermicity() for r in reactions])
     return rates * exothermicities
 
