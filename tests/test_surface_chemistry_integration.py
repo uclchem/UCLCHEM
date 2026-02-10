@@ -75,13 +75,13 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
 
     settings = uclchem.advanced.GeneralSettings()
     num_monolayers_is_surface = list(
-        settings.search("num_monolayers_is_surface", include_parameters=True).values()
+        settings.search("num_monolayers_is_surface", True, True).values()
     )[0].get()
     gas_dust_density_ratio = list(
-        settings.search("gas_dust_density_ratio", include_parameters=True).values()
+        settings.search("gas_dust_density_ratio", True, True).values()
     )[0].get()
     num_sites_per_grain = list(
-        settings.search("num_sites_per_grain", include_parameters=True).values()
+        settings.search("num_sites_per_grain", True, True).values()
     )[0].get()
 
     num_monolayers_in_run = (
