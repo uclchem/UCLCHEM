@@ -229,7 +229,6 @@ class MakeratesConfig(BaseModel):
             return [v]
         return v
 
-
     @field_validator("coolants_file", mode="before")
     @classmethod
     def normalize_coolants_file(cls, v):

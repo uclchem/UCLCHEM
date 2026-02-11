@@ -54,11 +54,13 @@ DVODE_STAT_NAMES = [
 # SE solver statistics names (per coolant: convergence flag, iterations, max relative change)
 SE_STAT_NAMES = []
 for i in range(NCOOLANTS):
-    SE_STAT_NAMES.extend([
-        f"COOLANT_{i:02d}_CONVERGED",
-        f"COOLANT_{i:02d}_ITERATIONS",
-        f"COOLANT_{i:02d}_MAX_REL_CHANGE"
-    ])
+    SE_STAT_NAMES.extend(
+        [
+            f"COOLANT_{i:02d}_CONVERGED",
+            f"COOLANT_{i:02d}_ITERATIONS",
+            f"COOLANT_{i:02d}_MAX_REL_CHANGE",
+        ]
+    )
 
 # Validate consistency
 if len(PHYSICAL_PARAMETERS) != N_PHYSICAL_PARAMETERS:

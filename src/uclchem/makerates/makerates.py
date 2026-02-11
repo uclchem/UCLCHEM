@@ -17,7 +17,7 @@ optional_params = [
 ]
 
 
-from typing import Dict, List, Optional, Union
+from typing import Union
 
 
 def run_makerates(
@@ -163,7 +163,11 @@ def run_makerates(
 
         # Copy coolant data files to package data directory for installation
         # Only pass coolant_data_dir if it's explicitly set and valid
-        source_dir = config.coolant_data_dir if config.coolant_data_dir and config.coolant_data_dir != "." else None
+        source_dir = (
+            config.coolant_data_dir
+            if config.coolant_data_dir and config.coolant_data_dir != "."
+            else None
+        )
         io.copy_coolant_files(source_dir=source_dir)
 
     ngrain = len([x for x in network.get_species_list() if x.is_surface_species()])

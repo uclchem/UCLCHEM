@@ -19,4 +19,5 @@ from . import version as version
 
 # Auto-initialize coolant data directory on module import
 from .advanced.advanced_heating import auto_initialize_coolant_directory
+
 auto_initialize_coolant_directory()

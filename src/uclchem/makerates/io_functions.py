@@ -64,10 +64,15 @@ def get_default_coolant_directory(user_specified: str = "") -> str:
         return user_specified
     # Search standard locations (makerates runs from Makerates/ directory)
     candidates = [
-        Path.cwd() / "data" / "collisional_rates",                    # Makerates/data/collisional_rates
-        Path.cwd().parent / "data" / "collisional_rates",             # project_root/data/collisional_rates
-        Path.cwd() / "Makerates" / "data" / "collisional_rates",      # from project root
-        Path.cwd().parent / "Makerates" / "data" / "collisional_rates", # from subdirectory
+        Path.cwd() / "data" / "collisional_rates",  # Makerates/data/collisional_rates
+        Path.cwd().parent
+        / "data"
+        / "collisional_rates",  # project_root/data/collisional_rates
+        Path.cwd() / "Makerates" / "data" / "collisional_rates",  # from project root
+        Path.cwd().parent
+        / "Makerates"
+        / "data"
+        / "collisional_rates",  # from subdirectory
     ]
     for candidate in candidates:
         # Check if the directory exists and contains coolant data files
@@ -278,11 +283,13 @@ def read_coolants_file(file_name: Path) -> list[dict]:
 
     for item in data:
         if not isinstance(item, dict):
-            raise ValueError("Each coolant entry must be a mapping with 'file' and 'name' keys")
+            raise ValueError(
+                "Each coolant entry must be a mapping with 'file' and 'name' keys"
+            )
         if "file" not in item or "name" not in item:
             raise ValueError("Each coolant mapping must contain 'file' and 'name' keys")
         file_val = str(item["file"])
-        if _Path(file_val).name != file_val or _Path(file_val).parent != _Path('.'):
+        if _Path(file_val).name != file_val or _Path(file_val).parent != _Path("."):
             raise ValueError(
                 "Coolant 'file' entries in coolants_file must be bare filenames (no directories)"
             )
@@ -356,11 +363,12 @@ def write_outputs(
 
     # Validate that coolant 'file' entries are bare filenames (not paths)
     from pathlib import Path as _Path
+
     for c in coolants:
         f = c.get("file")
         if f is None:
             raise ValueError("Each coolant dict must contain a 'file' key")
-        if _Path(f).name != f or _Path(f).parent != _Path('.'):
+        if _Path(f).name != f or _Path(f).parent != _Path("."):
             raise ValueError(
                 "Coolant file names must be bare filenames (no directories). "
                 "Set the coolant directory at runtime via coolantDataDir."
@@ -396,6 +404,7 @@ def write_outputs(
 
     # Compute energy level counts from coolant data files
     from uclchem._coolant_utils import get_energy_levels_info
+
     coolant_data_directory = get_default_coolant_directory(coolant_data_dir)
     n_total_levels, n_se_stats_per_coolant = get_energy_levels_info(
         coolant_names=[c["name"] for c in coolants],
@@ -419,11 +428,15 @@ def write_outputs(
             conversion_modes.append(0)
         elif name == "p-H2":
             parent_names.append(explicit_parent if explicit_parent else "H2")
-            conversion_factors.append(explicit_factor if explicit_factor is not None else 0.0)
+            conversion_factors.append(
+                explicit_factor if explicit_factor is not None else 0.0
+            )
             conversion_modes.append(0 if explicit_factor is not None else 1)
         elif name == "o-H2":
             parent_names.append(explicit_parent if explicit_parent else "H2")
-            conversion_factors.append(explicit_factor if explicit_factor is not None else 0.0)
+            conversion_factors.append(
+                explicit_factor if explicit_factor is not None else 0.0
+            )
             conversion_modes.append(0 if explicit_factor is not None else 2)
         elif name.startswith("o-") or name.startswith("p-"):
             # Other ortho/para species — require explicit conversion_factor
@@ -440,7 +453,9 @@ def write_outputs(
         else:
             # Normal species
             parent_names.append(explicit_parent if explicit_parent else name)
-            conversion_factors.append(explicit_factor if explicit_factor is not None else 1.0)
+            conversion_factors.append(
+                explicit_factor if explicit_factor is not None else 1.0
+            )
             conversion_modes.append(0)
 
     # Validate that all parent species exist in the network
@@ -454,7 +469,11 @@ def write_outputs(
         error_msg = "ERROR: The following coolants reference parent species that don't exist in the network:\n"
         for idx, coolant_name, parent_name in missing_parents:
             error_msg += f"  - Coolant #{idx+1} '{coolant_name}' → parent species '{parent_name}' not found\n"
-        error_msg += "\nAvailable species: " + ", ".join(sorted(species_dict.keys())[:20]) + ", ...\n"
+        error_msg += (
+            "\nAvailable species: "
+            + ", ".join(sorted(species_dict.keys())[:20])
+            + ", ...\n"
+        )
         error_msg += "Fix by adding 'parent_species: <existing_species>' in the coolant YAML config."
         raise ValueError(error_msg)
 
@@ -542,7 +561,9 @@ def write_f90_constants(
             "coolantConversionMode", np.array(conversion_modes), type="int"
         )
     if extra_lines:
-        constants = constants.replace("END MODULE F2PY_CONSTANTS", extra_lines + "END MODULE F2PY_CONSTANTS")
+        constants = constants.replace(
+            "END MODULE F2PY_CONSTANTS", extra_lines + "END MODULE F2PY_CONSTANTS"
+        )
 
     with open(output_file_name, "w") as fh:
         fh.writelines(constants)
@@ -1509,4 +1530,4 @@ def copy_coolant_files(source_dir: str = None) -> None:
         shutil.copy2(dat_file, target_file)
         logging.debug(f"  Copied {dat_file.name}")
 
-    logging.info(f"Successfully copied coolant data files for package installation")
+    logging.info("Successfully copied coolant data files for package installation")
