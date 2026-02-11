@@ -16,3 +16,8 @@ from . import utils as utils
 from . import tests as tests
 from . import version as version
 # isort: off
+
+# Auto-initialize coolant data directory on module import
+from .advanced.advanced_heating import auto_initialize_coolant_directory
+
+auto_initialize_coolant_directory()

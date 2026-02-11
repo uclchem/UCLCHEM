@@ -13,12 +13,24 @@ from typing import Dict
 import numpy as np
 import yaml
 
-from uclchem.constants import PHYSICAL_PARAMETERS
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
 from .network import Network
 from .reaction import Reaction, reaction_types
 from .species import Species, species_header
+
+# Canonical definition of physical parameters
+# This list defines the physical parameter array passed to Fortran
+PHYSICAL_PARAMETERS = [
+    "Time",
+    "Density",
+    "gasTemp",
+    "dustTemp",
+    "Av",
+    "radfield",
+    "zeta",
+    "dstep",
+]
 
 
 def get_default_coolants() -> list[dict]:
@@ -36,6 +48,39 @@ def get_default_coolants() -> list[dict]:
         {"file": "p-h2.dat", "name": "p-H2"},
         {"file": "o-h2.dat", "name": "o-H2"},
     ]
+
+
+def get_default_coolant_directory(user_specified: str = "") -> str:
+    """Returns the collisional rates directory path for use during makerates.
+
+    Args:
+        user_specified: Optional user-specified directory from config.
+                       If empty, searches standard locations relative to CWD.
+
+    Returns:
+        str: Absolute directory path to collisional rate data files.
+    """
+    if user_specified:
+        return user_specified
+    # Search standard locations (makerates runs from Makerates/ directory)
+    candidates = [
+        Path.cwd() / "data" / "collisional_rates",  # Makerates/data/collisional_rates
+        Path.cwd().parent
+        / "data"
+        / "collisional_rates",  # project_root/data/collisional_rates
+        Path.cwd() / "Makerates" / "data" / "collisional_rates",  # from project root
+        Path.cwd().parent
+        / "Makerates"
+        / "data"
+        / "collisional_rates",  # from subdirectory
+    ]
+    for candidate in candidates:
+        # Check if the directory exists and contains coolant data files
+        if candidate.is_dir():
+            # Look for at least one expected file to confirm it's the right directory
+            if list(candidate.glob("*.dat")):  # Has individual .dat files
+                return str(candidate.resolve())
+    return ""
 
 
 def read_species_file(file_name: Path) -> list[Species]:
@@ -214,6 +259,49 @@ def read_grain_assisted_recombination_file(file_name: Path) -> dict:
     return gar_parameters
 
 
+def read_coolants_file(file_name: Path) -> list[dict]:
+    """Read a YAML file specifying coolants.
+
+    The file should contain either a single mapping or a list of mappings where each
+    mapping contains 'file' and 'name' keys. 'file' must be a bare filename (no path).
+
+    Returns:
+        list[dict]: Normalized list of coolant dicts.
+    """
+    with open(file_name, "r") as fh:
+        data = yaml.safe_load(fh)
+
+    if data is None:
+        return []
+    if isinstance(data, dict):
+        data = [data]
+    if not isinstance(data, list):
+        raise ValueError("Coolants file must contain a mapping or list of mappings")
+
+    normalized = []
+    from pathlib import Path as _Path
+
+    for item in data:
+        if not isinstance(item, dict):
+            raise ValueError(
+                "Each coolant entry must be a mapping with 'file' and 'name' keys"
+            )
+        if "file" not in item or "name" not in item:
+            raise ValueError("Each coolant mapping must contain 'file' and 'name' keys")
+        file_val = str(item["file"])
+        if _Path(file_val).name != file_val or _Path(file_val).parent != _Path("."):
+            raise ValueError(
+                "Coolant 'file' entries in coolants_file must be bare filenames (no directories)"
+            )
+        entry = {"file": file_val, "name": str(item["name"])}
+        if "parent_species" in item:
+            entry["parent_species"] = str(item["parent_species"])
+        if "conversion_factor" in item:
+            entry["conversion_factor"] = float(item["conversion_factor"])
+        normalized.append(entry)
+    return normalized
+
+
 def output_drops(
     dropped_reactions: list[Reaction], output_dir: str = None, write_files: bool = True
 ):
@@ -252,6 +340,7 @@ def write_outputs(
     enable_rates_storage: bool = False,
     gar_database: dict[str, np.array] = None,
     coolants: list[dict] = None,
+    coolant_data_dir: str = "",
 ) -> None:
     """Write the ODE and Network fortran source files to the fortran source.
 
@@ -271,6 +360,19 @@ def write_outputs(
     # Use default coolants if none provided
     if coolants is None:
         coolants = get_default_coolants()
+
+    # Validate that coolant 'file' entries are bare filenames (not paths)
+    from pathlib import Path as _Path
+
+    for c in coolants:
+        f = c.get("file")
+        if f is None:
+            raise ValueError("Each coolant dict must contain a 'file' key")
+        if _Path(f).name != f or _Path(f).parent != _Path("."):
+            raise ValueError(
+                "Coolant file names must be bare filenames (no directories). "
+                "Set the coolant directory at runtime via coolantDataDir."
+            )
 
     # Create the species file
     filename = output_dir / "species.csv"
@@ -300,19 +402,101 @@ def write_outputs(
 
     filename = fortran_src_dir / "f2py_constants.f90"
 
+    # Compute energy level counts from coolant data files
+    from uclchem._coolant_utils import get_energy_levels_info
+
+    coolant_data_directory = get_default_coolant_directory(coolant_data_dir)
+    n_total_levels, n_se_stats_per_coolant = get_energy_levels_info(
+        coolant_names=[c["name"] for c in coolants],
+        coolant_files=[c["file"] for c in coolants],
+        data_dir=coolant_data_directory,
+    )
+
+    # Compute coolant conversion arrays
+    parent_names = []
+    conversion_factors = []
+    conversion_modes = []
+    for c in coolants:
+        name = c["name"]
+        explicit_parent = c.get("parent_species")
+        explicit_factor = c.get("conversion_factor")
+
+        if explicit_parent is not None and explicit_factor is not None:
+            # Fully specified: fixed factor mode
+            parent_names.append(explicit_parent)
+            conversion_factors.append(explicit_factor)
+            conversion_modes.append(0)
+        elif name == "p-H2":
+            parent_names.append(explicit_parent if explicit_parent else "H2")
+            conversion_factors.append(
+                explicit_factor if explicit_factor is not None else 0.0
+            )
+            conversion_modes.append(0 if explicit_factor is not None else 1)
+        elif name == "o-H2":
+            parent_names.append(explicit_parent if explicit_parent else "H2")
+            conversion_factors.append(
+                explicit_factor if explicit_factor is not None else 0.0
+            )
+            conversion_modes.append(0 if explicit_factor is not None else 2)
+        elif name.startswith("o-") or name.startswith("p-"):
+            # Other ortho/para species — require explicit conversion_factor
+            if explicit_factor is None:
+                raise ValueError(
+                    f"Coolant '{name}' appears to be an ortho/para species but has no "
+                    f"'conversion_factor'. Please specify 'conversion_factor' and optionally "
+                    f"'parent_species' in the coolant configuration."
+                )
+            parent = explicit_parent if explicit_parent else name[2:]
+            parent_names.append(parent)
+            conversion_factors.append(explicit_factor)
+            conversion_modes.append(0)
+        else:
+            # Normal species
+            parent_names.append(explicit_parent if explicit_parent else name)
+            conversion_factors.append(
+                explicit_factor if explicit_factor is not None else 1.0
+            )
+            conversion_modes.append(0)
+
+    # Validate that all parent species exist in the network
+    species_dict = network.get_species_dict()
+    missing_parents = []
+    for i, (coolant, parent) in enumerate(zip(coolants, parent_names)):
+        if parent not in species_dict:
+            missing_parents.append((i, coolant["name"], parent))
+
+    if missing_parents:
+        error_msg = "ERROR: The following coolants reference parent species that don't exist in the network:\n"
+        for idx, coolant_name, parent_name in missing_parents:
+            error_msg += f"  - Coolant #{idx+1} '{coolant_name}' → parent species '{parent_name}' not found\n"
+        error_msg += (
+            "\nAvailable species: "
+            + ", ".join(sorted(species_dict.keys())[:20])
+            + ", ...\n"
+        )
+        error_msg += "Fix by adding 'parent_species: <existing_species>' in the coolant YAML config."
+        raise ValueError(error_msg)
+
     f2py_constants = {
         "n_species": len(network.get_species_list()),
         "n_reactions": len(network.get_reaction_list()),
         "n_physical_parameters": len(PHYSICAL_PARAMETERS),
         "n_dvode_stats": 18,
         "n_coolants": len(coolants),
+        "max_coolants": len(coolants),
+        "n_total_levels": n_total_levels,
+        "n_se_stats_per_coolant": n_se_stats_per_coolant,
         "coolant_files": [c["file"] for c in coolants],
         "coolant_names": [c["name"] for c in coolants],
+        "parent_names": parent_names,
+        "conversion_factors": conversion_factors,
+        "conversion_modes": conversion_modes,
+        "coolant_data_dir": coolant_data_dir if coolant_data_dir else "",
     }
     write_f90_constants(f2py_constants, filename)
-    # Write some meta information that can be used to read back in the reactions into Python
-    # TODO: we can update this s.t. we can directly access the f90 constants from the f2py wrapped Fortran codes
-    write_python_constants(f2py_constants, "../src/uclchem/constants.py")
+    # Note: constants.py now reads directly from f2py_constants module,
+    # so we no longer need to write it during MakeRates.
+    # After running MakeRates, just reinstall to update the Python constants.
 
 
 def write_f90_constants(
@@ -348,7 +532,39 @@ def write_f90_constants(
         replace_dict["coolant_name_len"] = max_name_len
         replace_dict["coolant_names"] = "/" + coolant_names_str + "/"
 
+        # Format parent names (same pattern as coolant names)
+        if "parent_names" in replace_dict:
+            parent_names = replace_dict.pop("parent_names")
+            max_parent_len = max(len(n) for n in parent_names)
+            parent_names_str = ",".join(
+                f'"{n.ljust(max_parent_len)}"' for n in parent_names
+            )
+            replace_dict["parent_name_len"] = max_parent_len
+            replace_dict["parent_names"] = "/" + parent_names_str + "/"
+
+    # Extract numeric arrays to be written via array_to_string (handles line limits)
+    conversion_factors = replace_dict.pop("conversion_factors", None)
+    conversion_modes = replace_dict.pop("conversion_modes", None)
+
     constants = constants.format(**replace_dict)
+
+    # Insert array declarations before END MODULE using array_to_string
+    extra_lines = ""
+    if conversion_factors is not None:
+        extra_lines += "    ! Conversion factors for abundance scaling (used when coolantConversionMode=0)\n"
+        extra_lines += "    " + array_to_string(
+            "coolantConversionFactors", np.array(conversion_factors), type="float"
+        )
+    if conversion_modes is not None:
+        extra_lines += "    ! Conversion mode: 0=fixed factor, 1=thermal OPR para, 2=thermal OPR ortho\n"
+        extra_lines += "    " + array_to_string(
+            "coolantConversionMode", np.array(conversion_modes), type="int"
+        )
+    if extra_lines:
+        constants = constants.replace(
+            "END MODULE F2PY_CONSTANTS", extra_lines + "END MODULE F2PY_CONSTANTS"
+        )
+
     with open(output_file_name, "w") as fh:
         fh.writelines(constants)
 
@@ -356,13 +572,25 @@ def write_f90_constants(
 def write_python_constants(
     replace_dict: Dict[str, int], python_constants_file: Path
 ) -> None:
-    """Function to write the python constants to the constants.py file after every run,
-    this ensure the Python and Fortran bits are compatible with one another.
+    """DEPRECATED: Function to write the python constants to the constants.py file.
+
+    As of the latest version, constants.py reads directly from the f2py_constants
+    module, so this function is no longer needed. It's kept for backward compatibility
+    but does nothing.
 
     Args:
-        replace_dict (Dict[str, int]]): Dict with keys to replace and their values
-        python_constants_file (Path): Path to the target constant files.
+        replace_dict (Dict[str, int]]): Dict with keys to replace and their values (ignored)
+        python_constants_file (Path): Path to the target constant files (ignored)
     """
+    import warnings
+
+    warnings.warn(
+        "write_python_constants() is deprecated. "
+        "constants.py now reads directly from f2py_constants module.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    # Do nothing - constants.py is now self-updating
     with fileinput.input(python_constants_file, inplace=True, backup=".bak") as file:
         for line in file:
             # Add a timestamp to the file before the old one:
@@ -1254,3 +1482,52 @@ def array_to_string(
         outString = outString[:-1] + "/)\n"
         outString = truncate_line(outString)
         return outString
+
+
+def copy_coolant_files(source_dir: str = None) -> None:
+    """
+    Copy coolant data files to the package data directory for installation.
+
+    This function copies .dat files from the source coolant directory
+    (typically Makerates/data/collisional_rates/) to src/uclchem/data/collisional_rates/
+    so they can be installed with the package via meson.
+
+    Args:
+        source_dir: Optional source directory. If None, uses get_default_coolant_directory().
+
+    Raises:
+        FileNotFoundError: If source directory doesn't exist or contains no .dat files.
+    """
+    import shutil
+
+    # Determine source directory
+    if source_dir is None:
+        source_dir = get_default_coolant_directory()
+
+    source_path = Path(source_dir)
+    if not source_path.is_dir():
+        raise FileNotFoundError(
+            f"Source coolant directory not found: {source_path}\n"
+            f"Expected to find .dat files for coolant data."
+        )
+
+    # Find .dat files in source directory
+    dat_files = list(source_path.glob("*.dat"))
+    if not dat_files:
+        raise FileNotFoundError(
+            f"No .dat files found in source directory: {source_path}\n"
+            f"Cannot copy coolant data files."
+        )
+
+    # Target directory in package structure
+    target_path = UCLCHEM_ROOT_DIR / "data" / "collisional_rates"
+    target_path.mkdir(parents=True, exist_ok=True)
+
+    # Copy each .dat file
+    logging.info(f"Copying {len(dat_files)} coolant data files to {target_path}")
+    for dat_file in dat_files:
+        target_file = target_path / dat_file.name
+        shutil.copy2(dat_file, target_file)
+        logging.debug(f"  Copied {dat_file.name}")
+
+    logging.info("Successfully copied coolant data files for package installation")

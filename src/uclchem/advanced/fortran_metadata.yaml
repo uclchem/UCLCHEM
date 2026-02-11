@@ -174,4 +174,6 @@ file_path_parameters:
     - heatingfile
     - abundsavefile
     - abundloadfile
-    - coolantdatadir
+
+# Note: coolantdatadir was moved from defaultparameters to f2py_constants
+# and is now set via HeatingSettings.set_coolant_directory()

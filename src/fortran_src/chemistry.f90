@@ -258,8 +258,8 @@ CONTAINS
                                 &    colDens(dstep), &                    ! gas column density
                                 &    radfield*EXP(-UV_FAC*av(dstep)), &   ! attenuated radiation field
                                 &    abund(:,dstep), &                    ! full abundance vector
-                                &    h2dis, &                             ! H2 dissociation rate
-                                &    h2form, &                            ! H2 formation rate
+                                &    rate(nR_H2_hv), &                     ! H2 dissociation rate
+                                &    rate(nR_H2Form_CT), &                            ! H2 formation rate
                                 &    zeta, &                              ! cosmic ray ionization rate
                                 &    rate(nR_C_hv), &                     ! C-photo rate
                                 &    1.0/GAS_DUST_DENSITY_RATIO, &        ! dust-to-gas ratio
@@ -419,7 +419,7 @@ CONTAINS
                 gasTemp(dstep)=y(nspec+1)
                 IF (gasTemp(dstep) .lt. 10) gasTemp(dstep)=10.0
                 IF (gasTemp(dstep) .gt. 1.0d4) gasTemp(dstep)=1.0d4
-                h2form= h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))!h2FormRate(gasTemp(dstep),dustTemp(dstep))
+                ! h2form= h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))!h2FormRate(gasTemp(dstep),dustTemp(dstep))
                 tempDot=getTempDot( &
                             &    timeInYears, &                         ! time 
                             &    Y(nspec+1), &                          ! gas temperature
@@ -427,8 +427,8 @@ CONTAINS
                             &    colDens(dstep), &                      ! gas column density
                             &    radfield*EXP(-UV_FAC*av(dstep)), &     ! attenuated radiation field
                             &    Y, &                                   ! all number densities
-                            &    h2dis, &                               ! H2 dissociation rate
-                            &    h2form, &                              ! H2 formation rate
+                            &    rate(nR_H2_hv), &                      ! H2 dissociation rate computed in rates.f90
+                            &    rate(nR_H2Form_CT), &                  ! H2 formation rate computed in rates.f90
                             &    zeta, &                                ! cosmic ray ionization rate
                             &    rate(nR_C_hv), &                       ! C-photo rate
                             &    1.0/GAS_DUST_DENSITY_RATIO, &          ! dust-to-gas ratio

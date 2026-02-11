@@ -61,39 +61,50 @@ IMPLICIT NONE
     INTEGER :: dust_gas_coupling_method = 1
     
     ! LINE_SOLVER_ATTEMPTS: Number of times to solve line cooling and take median, must be <= MAX_LINE_SOLVE_ATTEMPTS
-    INTEGER :: LINE_SOLVER_ATTEMPTS = 5
+    INTEGER :: LINE_SOLVER_ATTEMPTS = 1
     ! Maximum number of line solver attempts (fixed size for arrays)
-    INTEGER, PARAMETER :: MAX_LINE_SOLVE_ATTEMPTS = 5
+    INTEGER, PARAMETER :: MAX_LINE_SOLVE_ATTEMPTS = 3
 
-    ! Maximum number of coolants (fixed size for arrays)
-    ! Leave a bit of headroom in case we add more coolants during runtime
-    INTEGER, PARAMETER :: MAX_COOLANTS = 10
     ! Arrays for the line cooling and median calculation
     REAL(dp) :: lineCoolingArray(MAX_LINE_SOLVE_ATTEMPTS, MAX_COOLANTS)
     INTEGER :: permutationArray(MAX_LINE_SOLVE_ATTEMPTS)
     REAL(dp) :: lineCoolingSum(MAX_LINE_SOLVE_ATTEMPTS)
+    ! Median line index - must be module-level so io.f90 can access it after getCoolingRate returns
+    INTEGER :: median_line_index = 1
 
-    
+    ! SE solver statistics (per-coolant tracking for output arrays)
+    INTEGER, DIMENSION(MAX_COOLANTS) :: se_coolant_iterations
+    REAL(dp), DIMENSION(MAX_COOLANTS) :: se_coolant_max_rel_change
+    REAL(dp) :: se_cpu_start, se_cpu_end
 
  CONTAINS
 
     SUBROUTINE initializeHeating(gasTemperature, gasDensity,abundances,columnDensity,cloudSize)
         REAL(dp), INTENT(in) :: gasTemperature,gasDensity,columnDensity,cloudSize
         REAL(dp), INTENT(in) :: abundances(:)
-        CHARACTER(5) :: coolName
         INTEGER ::i,j
 
         ! write(*,*) "Initializing heating.f90 ..."
         CALL READ_COOLANTS()
+
+        ! Reset population initialization flag for new model run
+        coolant_populations_initialized = .FALSE.
+
         DO i=1,ncoolants
-            coolName=coolantNames(i)
-            if (coolName .eq. "p-H2") coolName="H2"
-            if (coolName .eq. "o-H2") coolName="H2"
-            if (coolName .eq. "p-H2O") coolName="H2O"
-            if (coolName .eq. "o-H2O") coolName="H2O"
             DO j=1,nspec
-                if (coolName .eq. specName(j)) coolantIndices(i)=j
+                if (coolantParentNames(i) .eq. specName(j)) coolantIndices(i)=j
             END DO
+        END DO
+
+        ! Validate that all coolant indices were successfully initialized
+        DO i=1,ncoolants
+            IF (coolantIndices(i) .eq. 0) THEN
+                WRITE(*,'(A,I3,A,A,A,A,A)') &
+                    "ERROR: Coolant #", i, " ('", TRIM(coolantNames(i)), &
+                    "') could not find parent species '", TRIM(coolantParentNames(i)), &
+                    "' in the network. Check your coolant configuration."
+                STOP
+            END IF
         END DO
 
         CLOUD_COLUMN=columnDensity
@@ -165,7 +176,7 @@ IMPLICIT NONE
     REAL(dp) FUNCTION getCoolingRate(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,h2dis,turbVel)
         REAL(dp), INTENT(IN) :: time,gasTemperature,gasDensity,gasCols,dustTemp,h2dis,turbVel
         REAL(dp), INTENT(IN) :: abundances(:)
-        INTEGER :: ti, median_line_index, num_attempts
+        INTEGER :: ti, num_attempts
         coolingValues = 0.0_dp
         lineCoolingArray = 0.0_dp
         lineCoolingSum = 0.0_dp
@@ -182,17 +193,14 @@ IMPLICIT NONE
         IF (cooling_modules(5)) THEN
             ! Use LINE_SOLVER_ATTEMPTS (up to MAX_LINE_SOLVE_ATTEMPTS) for actual number of solves
             num_attempts = MIN(LINE_SOLVER_ATTEMPTS, MAX_LINE_SOLVE_ATTEMPTS)
-            
+
             !We do the line cooling multiple times and take median value since solver will occasionally do something wild
             DO ti=1,num_attempts
-                lineCoolingArray(ti, :NCOOLANTS)=lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
-                lineCoolingSum(ti) = sum(lineCoolingArray(ti, :NCOOLANTS+1))
+                lineCoolingArray(ti, :NCOOLANTS )=lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
+                lineCoolingSum(ti) = sum(lineCoolingArray(ti, :NCOOLANTS))
             END DO
-            
-            ! Sort and reorder using function-local permutationArray
             CALL pair_insertion_sort_with_perm(lineCoolingSum(1:num_attempts), permutationArray(1:num_attempts))
-            lineCoolingArray(1:num_attempts, :NCOOLANTS+1) = lineCoolingArray(permutationArray(1:num_attempts), :NCOOLANTS+1)
-            median_line_index = (num_attempts + 1) / 2
+            median_line_index = permutationArray((num_attempts + 1) / 2)
             coolingValues(5) = lineCoolingSum(median_line_index)
         ELSE
             coolingValues(5) = 0.0_dp
@@ -206,8 +214,8 @@ IMPLICIT NONE
 
     FUNCTION lineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel) RESULT(moleculeCooling)
         REAL(dp), INTENT(IN) :: time,gasTemperature,gasDensity,gasCols,dustTemp,abundances(:),turbVel
-        INTEGER :: N,I!, collisionalIndices(5)=(/nh,nhx,nh2,nhe,nelec/)
-        real(dp)  :: moleculeCooling(NCOOLANTS)
+        INTEGER :: N,I,level!, collisionalIndices(5)=(/nh,nhx,nh2,nhe,nelec/)
+        real(dp)  :: moleculeCooling(NCOOLANTS), rel_change
 
         moleculeCooling = 0.0_dp
 
@@ -218,28 +226,53 @@ IMPLICIT NONE
         CALL UPDATE_COOLANT_LINEWIDTHS(gasTemperature,turbVel)
         CALL UPDATE_COOLANT_ABUNDANCES(gasDensity,gasTemperature,abundances)
 
-        DO N=1,NCOOLANTS
-        CALL CALCULATE_LTE_POPULATIONS(coolants(N)%NLEVEL,coolants(N)%ENERGY,coolants(N)%WEIGHT, &
-                                        & coolants(N)%DENSITY,gasTemperature, &
-                                        & coolants(N)%POPULATION)
-        END DO
-        ! After LTE populations
+        ! Manage coolant populations with automatic initialization and warm restart
+        ! This replaces the forced LTE reset with smart restart logic based on coolant_restart_mode
+        CALL MANAGE_COOLANT_POPULATIONS(gasTemperature)
 
         CALL CALCULATE_LINE_OPACITIES()
         CALL CALCULATE_LAMBDA_OPERATOR()
 
         !!write(*,*)  "lte done"
         !I should then do LVG interactions
+        ! Initialize SE solver statistics
+        se_coolant_iterations(1:NCOOLANTS) = 0
+        se_coolant_max_rel_change(1:NCOOLANTS) = 0.0D0
+        CALL CPU_TIME(se_cpu_start)
+
          DO I=1,500!while not converged and less than 100 tries:
             DO N=1,NCOOLANTS
-            CALL CALCULATE_LEVEL_POPULATIONS(coolants(N),gasTemperature,gasDensity,&
-                &abundances,dustTemp)
+                IF (coolants(N)%CONVERGED) THEN 
+                    IF (se_coolant_iterations(N) .eq. 0) THEN
+                        se_coolant_iterations(N) = I-1  ! Track if converged last iteration
+                    END IF
+                ELSE
+                    CALL CALCULATE_LEVEL_POPULATIONS(coolants(N),gasTemperature,gasDensity,&
+                        &abundances,dustTemp)
+                END IF 
+                ! Calculate max relative change for this coolant (inline)
+                se_coolant_max_rel_change(N) = 0.0D0
+                IF (ALLOCATED(coolants(N)%POPULATION) .AND. ALLOCATED(coolants(N)%PREVIOUS_POPULATION)) THEN
+                    DO level = 1, SIZE(coolants(N)%POPULATION)
+                        IF (coolants(N)%POPULATION(level) > 0.0D0) THEN
+                            rel_change = ABS(coolants(N)%POPULATION(level) - coolants(N)%PREVIOUS_POPULATION(level)) / &
+                                        coolants(N)%POPULATION(level)
+                            se_coolant_max_rel_change(N) = MAX(se_coolant_max_rel_change(N), rel_change)
+                        END IF
+                    END DO
+                END IF
             END DO
             CALL CALCULATE_LINE_OPACITIES()
             CALL CALCULATE_LAMBDA_OPERATOR()
-            IF (CHECK_CONVERGENCE()) EXIT
+            IF (CHECK_CONVERGENCE()) THEN
+                WHERE(se_coolant_iterations .eq. 0) se_coolant_iterations = I  ! Set iteration count for any coolant that converged this round
+                EXIT
+            END IF
+            
+
             !IF (I .eq. 499) write(*,*) "Failed convergence"
-        END DO 
+        END DO
+        CALL CPU_TIME(se_cpu_end) 
 
         !  Calculate the cooling rate due to the Lyman-alpha emission for each particle
         !  using the analytical expression of Spitzer (1978) neglecting photon trapping
@@ -267,7 +300,7 @@ IMPLICIT NONE
             !     coolants(N)%previousCooling=moleculeCooling
             ! END IF
             IF (moleculeCooling(N) .lt. 0.0) moleculeCooling(N)=0.0d0
-            !IF (moleculeCooling(N) .gt. -1.0d-30 .and. abundances(coolantIndices(N)) .gt. 1.0d-20) 
+            !IF (moleculeCooling(N) .gt. -1.0d-30 .and. abundances(coolantIndices(N)) .gt. 1.0d-20)
         END DO
         WHERE(moleculeCooling .lt. 0.0) moleculeCooling=0.0d0
 
@@ -520,6 +553,7 @@ IMPLICIT NONE
         REAL(dp), INTENT(IN) :: zeta,gasDensity,h2Abund
         cosmicRayHeating=(20.0*eV)*(1.3D-17*zeta)*h2Abund*gasDensity
     END FUNCTION cosmicRayHeating
+
 
 
     ! !-----------------------------------------------------------------------

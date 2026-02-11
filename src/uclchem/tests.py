@@ -37,7 +37,7 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
         "finaltime": 1.0e3,
         "outspecies": len(species_list),
     }
-    _, _, _, _, _, abundances, specname, success_flag = wrap.cloud(
+    result = wrap.cloud(
         dictionary=param_dict,
         outspeciesin=" ".join(species_list),
         timepoints=1,
@@ -46,6 +46,9 @@ def test_ode_conservation(element_list=["H", "N", "C", "O"]):
         givestartabund=False,
         returnrates=False,
     )
+    abundances = result[-3]
+    specname = result[-2]
+    success_flag = result[-1]
     abundances = abundances[: param_dict["outspecies"]]
     param_dict.pop("outspecies")
     input_abund = np.zeros(uclchem.constants.n_species, dtype=np.float64, order="F")

@@ -84,12 +84,14 @@ CONTAINS
         END IF
     END SUBROUTINE finalOutput
 
-    SUBROUTINE output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, ratesarray, heatarray, statsarray, dtime, timepoints)
+    SUBROUTINE output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: ratesarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: heatarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: statsarray
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: levelpopulationsarray
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: sestatsarray
         INTEGER, OPTIONAL :: dtime, timepoints
         INTEGER, intent(out) :: successflag
         INTEGER :: i  ! Loop variable for heating array assignment
@@ -119,6 +121,16 @@ CONTAINS
                     statsarray(dtime, dstep, 6:17) = DBLE(dvode_istats(11:22))
                     statsarray(dtime, dstep, 18) = dvode_cpu_time
                 END IF
+
+                ! Level populations (SIZE-based check - don't use PRESENT)
+                IF (SIZE(levelpopulationsarray, 1) >= timePoints .AND. heatingFlag) THEN
+                    CALL WRITE_LEVEL_POPULATIONS(levelpopulationsarray, dtime, dstep)
+                END IF
+
+                ! SE solver statistics (SIZE-based check - don't use PRESENT)
+                IF (SIZE(sestatsarray, 1) >= timePoints .AND. heatingFlag) THEN
+                    CALL WRITE_SE_STATISTICS(sestatsarray, dtime, dstep)
+                END IF
             end if 
         ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
             WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
@@ -134,7 +146,7 @@ CONTAINS
                 IF (SIZE(heatarray, 1) .ge. timePoints .AND. heatingFlag) THEN
                     heatarray(dtime, dstep, 1) = timeInYears
                     heatarray(dtime, dstep, 2:(1+NCOOLING)) = coolingValues(:)
-                    ! Write all NCOOLANTS line cooling terms (currently 7: H, C+, O, C, CO, p-H2, o-H2)
+                    ! Write all NCOOLANTS line cooling terms
                     heatarray(dtime, dstep, (2+NCOOLING):(1+NCOOLING+NCOOLANTS)) = lineCoolingArray(median_line_index, :NCOOLANTS)
 
                     ! Heating terms (NHEATING values)
@@ -154,6 +166,9 @@ CONTAINS
                 END IF
                 IF (heatingOutput) THEN
                     ! Write: time, cooling values (4), line cooling array (NCOOLANTS), heating values (8), chem heating
+                    write(*,'(A,I0,A,I0)') 'DEBUG io.f90: NCOOLANTS=', NCOOLANTS, ' median_line_index=', median_line_index
+                    write(*,'(A,10(1PE14.6))') 'DEBUG io.f90: lineCoolingArray(median,:10)=', lineCoolingArray(median_line_index, 1:10)
+                    write(*,'(A,1PE14.6)') 'DEBUG io.f90: coolingValues(5)=', coolingValues(5)
                     WRITE(heatingId,8023) timeInYears, coolingValues(:), &
                         lineCoolingArray(median_line_index, :NCOOLANTS), &
                         heatingValues(:), chemheating
@@ -223,5 +238,38 @@ CONTAINS
         WRITE(*,*) "coldens",coldens
         WRITE(*,*) "av",av
     END SUBROUTINE simpleDebug
+
+    SUBROUTINE WRITE_LEVEL_POPULATIONS(levelpopulationsarray, dtime, dstep)
+        USE COOLANT_MODULE, ONLY: coolants, NCOOLANTS
+        USE F2PY_CONSTANTS, ONLY: N_TOTAL_LEVELS
+        IMPLICIT NONE
+        DOUBLE PRECISION, DIMENSION(:, :, :), INTENT(INOUT) :: levelpopulationsarray
+        INTEGER, INTENT(IN) :: dtime, dstep
+        INTEGER :: N, level_offset, i
+
+        level_offset = 0
+        DO N = 1, NCOOLANTS
+            DO i = 1, coolants(N)%NLEVEL
+                levelpopulationsarray(dtime, dstep, level_offset + i) = coolants(N)%POPULATION(i)
+            END DO
+            level_offset = level_offset + coolants(N)%NLEVEL
+        END DO
+    END SUBROUTINE WRITE_LEVEL_POPULATIONS
+
+    SUBROUTINE WRITE_SE_STATISTICS(sestatsarray, dtime, dstep)
+        USE heating, ONLY: se_coolant_iterations, se_coolant_max_rel_change
+        USE COOLANT_MODULE, ONLY: coolants, NCOOLANTS
+        IMPLICIT NONE
+        DOUBLE PRECISION, DIMENSION(:, :, :), INTENT(INOUT) :: sestatsarray
+        INTEGER, INTENT(IN) :: dtime, dstep
+        INTEGER :: N, idx
+
+        DO N = 1, NCOOLANTS
+            idx = (N-1) * 3  ! 3 stats per coolant
+            sestatsarray(dtime, dstep, idx + 1) = MERGE(1.0D0, 0.0D0, coolants(N)%CONVERGED)
+            sestatsarray(dtime, dstep, idx + 2) = DBLE(se_coolant_iterations(N))
+            sestatsarray(dtime, dstep, idx + 3) = se_coolant_max_rel_change(N)
+        END DO
+    END SUBROUTINE WRITE_SE_STATISTICS
 
 END MODULE IO

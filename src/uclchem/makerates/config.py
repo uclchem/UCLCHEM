@@ -7,7 +7,7 @@ type checking, and automatic documentation generation.
 
 import logging
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -148,6 +148,43 @@ class MakeratesConfig(BaseModel):
             "If not specified, writes to src/fortran_src/ (default build location)."
         ),
     )
+    # ==========================================================================
+    # OPTIONAL PARAMETERS - Cooling / Coolants
+    # ============================================================================
+
+    coolants: Optional[List[Dict]] = Field(
+        default=None,
+        description=(
+            "Optional inline list of coolant specifications. "
+            "Each entry should be a dict with 'file' (filename) and 'name' (species label) keys. "
+            "Optional keys: 'parent_species' (network species name for abundance lookup), "
+            "'conversion_factor' (float, fraction of parent abundance to use). "
+            "Example: [{'file': 'co.dat', 'name': 'CO'}, {'file': 'p-nh3.dat', 'name': 'p-NH3', "
+            "'parent_species': 'NH3', 'conversion_factor': 0.5}]. "
+            "If not specified, defaults to the 7 standard UCLCHEM coolants. "
+            "Mutually exclusive with coolants_file."
+        ),
+    )
+
+    coolants_file: Optional[Path] = Field(
+        default=None,
+        description=(
+            "Optional path to a YAML file listing coolant specifications. "
+            "Each entry should map 'file' -> filename and 'name' -> species label. "
+            "If provided, this file will be loaded and used to define coolant constants. "
+            "Mutually exclusive with coolants."
+        ),
+    )
+
+    coolant_data_dir: Optional[str] = Field(
+        default="",
+        description=(
+            "Optional directory path for collisional rate data files. "
+            "If specified, this path will be written to f2py_constants.f90 as the default. "
+            "Can be overridden at runtime via HeatingSettings.set_coolant_directory(). "
+            "Default: empty string (path set by Python at runtime)."
+        ),
+    )
 
     # ============================================================================
     # DEPRECATED PARAMETERS
@@ -191,6 +228,53 @@ class MakeratesConfig(BaseModel):
         if isinstance(v, (str, Path)):
             return [v]
         return v
+
+    @field_validator("coolants_file", mode="before")
+    @classmethod
+    def normalize_coolants_file(cls, v):
+        """Normalize a single coolant file path to a Path object."""
+        if v is None:
+            return v
+        from pathlib import Path as _Path
+
+        if isinstance(v, (str, _Path)):
+            return _Path(v)
+        raise ValueError("coolants_file must be a path to a YAML file listing coolants")
+
+    @field_validator("coolants", mode="before")
+    @classmethod
+    def validate_coolants(cls, v):
+        """Validate inline coolants format."""
+        if v is None:
+            return v
+        if not isinstance(v, list):
+            raise ValueError("coolants must be a list of dicts")
+
+        from pathlib import Path as _Path
+
+        validated = []
+        for i, item in enumerate(v):
+            if not isinstance(item, dict):
+                raise ValueError(
+                    f"coolants[{i}] must be a dict with 'file' and 'name' keys"
+                )
+            if "file" not in item or "name" not in item:
+                raise ValueError(
+                    f"coolants[{i}] must contain 'file' and 'name' keys. Got: {list(item.keys())}"
+                )
+            # Validate that file is a bare filename (no path)
+            file_val = str(item["file"])
+            if _Path(file_val).name != file_val or _Path(file_val).parent != _Path("."):
+                raise ValueError(
+                    f"coolants[{i}]['file'] must be a bare filename (no directories). Got: {file_val}"
+                )
+            entry = {"file": file_val, "name": str(item["name"])}
+            if "parent_species" in item:
+                entry["parent_species"] = str(item["parent_species"])
+            if "conversion_factor" in item:
+                entry["conversion_factor"] = float(item["conversion_factor"])
+            validated.append(entry)
+        return validated
 
     @field_validator("database_reaction_type", "custom_reaction_type", mode="before")
     @classmethod
@@ -256,6 +340,16 @@ class MakeratesConfig(BaseModel):
                 self.enable_rates_storage = True
         return self
 
+    @model_validator(mode="after")
+    def validate_coolants_mutual_exclusion(self):
+        """Ensure coolants and coolants_file are mutually exclusive."""
+        if self.coolants is not None and self.coolants_file is not None:
+            raise ValueError(
+                "Cannot specify both 'coolants' and 'coolants_file'. "
+                "Use 'coolants' for inline specification or 'coolants_file' to reference an external file."
+            )
+        return self
+
     # ============================================================================
     # CLASS METHODS
     # ============================================================================
@@ -292,6 +386,10 @@ class MakeratesConfig(BaseModel):
         # Create instance and store config directory for path resolution
         config = cls(**data)
         config._config_dir = yaml_path.parent
+
+        # Coolants are no longer supplied inline via the configuration. To use
+        # custom coolants, supply a `coolants_file` pointing to a YAML file with
+        # mappings of 'file' and 'name' entries. If none is provided defaults will be used.
 
         return config
 
@@ -356,6 +454,28 @@ database_reaction_type: "UMIST12"
 # gas_phase_extrapolation: false
 
 # ============================================================================
+# OPTIONAL PARAMETERS - Cooling / Coolants
+# ============================================================================
+
+# Specify coolants directly inline (recommended):
+# coolants:
+#   - file: "co.dat"
+#     name: "CO"
+#   - file: "o-h2.dat"
+#     name: "o-H2"
+#   - file: "p-h2.dat"
+#     name: "p-H2"
+
+# OR use a separate YAML file (mutually exclusive with inline):
+# coolants_file: "data/my_coolants.yaml"
+
+# Optional: Specify the directory containing collisional rate data files
+# This path will be written to f2py_constants.f90 as the default directory.
+# If not specified (or empty string), the path is set by Python at runtime.
+# coolant_data_dir: "/path/to/lamda/rates/"
+
+
+# ============================================================================
 # OPTIONAL PARAMETERS - Exothermicity & Heating
 # ============================================================================
 
@@ -388,6 +508,13 @@ database_reaction_type: "UMIST12"
 
 # Output directory for generated files (default: src/fortran_src/)
 # output_directory: "output/"
+
+# Optional: provide a custom list of coolant files (each with 'file' and 'name')
+# coolants:
+#   - file: "data/coolants/12co.dat"
+#     name: "CO"
+#   - file: "data/coolants/16o.dat"
+#     name: "O"
 
 # ============================================================================
 # NOTES

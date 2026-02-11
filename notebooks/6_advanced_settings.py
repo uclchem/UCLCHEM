@@ -63,6 +63,17 @@ settings.defaultparameters.endatfinaldensity = False
 # Verify changes
 print(f"New initial density: {settings.defaultparameters.initialdens.get()}")
 
+# ---
+# Example: adjust coolant validation tolerances (frequency/population checks)
+# These settings are exposed from the Fortran DEFAULTPARAMETERS module and can be
+# changed at runtime via GeneralSettings. Set a 10% relative tolerance for frequencies:
+try:
+    settings.defaultparameters.freq_rel_tol = 0.1
+    print(f"Set freq_rel_tol to: {settings.defaultparameters.freq_rel_tol.get()}")
+except Exception:
+    print("Note: freq_rel_tol not available until Fortran modules are rebuilt; see README.")
+# ---
+
 # %% [markdown]
 # ## Running a Model with GeneralSettings
 #
