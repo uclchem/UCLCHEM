@@ -446,3 +446,161 @@ class HeatingSettings:
         restart_name = restart_names.get(restart_mode, "UNKNOWN")
         print(f"  Coolant Restart Mode           : {restart_mode} ({restart_name})")
         print("=" * 60)
+
+
+def initialize_coolant_directory() -> str:
+    """
+    Locate and return the collisional rate data directory.
+
+    This function searches for coolant data files in the following order:
+    1. UCLCHEM_COOLANT_DATA environment variable (if set)
+    2. Installed package data via importlib.resources (normal installation)
+    3. Development mode: Makerates/data/collisional_rates/ (relative to project root)
+
+    Returns:
+        str: Absolute path to the coolant data directory (with trailing slash)
+
+    Raises:
+        RuntimeError: If the Fortran heating module is not available (not compiled)
+        FileNotFoundError: If coolant data directory cannot be found in any location
+
+    Example:
+        >>> from uclchem.advanced import initialize_coolant_directory
+        >>> coolant_dir = initialize_coolant_directory()
+        >>> print(f"Coolant data at: {coolant_dir}")
+    """
+    import logging
+    import os
+    from pathlib import Path
+
+    # Check if heating module is available
+    try:
+        import uclchemwrap
+        from uclchemwrap import f2py_constants
+    except (ImportError, AttributeError) as e:
+        raise RuntimeError(
+            "UCLCHEM heating module not available. "
+            "The Fortran extension may not be compiled. "
+            f"Install UCLCHEM with: pip install . (error: {e})"
+        )
+
+    # Priority 1: Environment variable
+    env_dir = os.environ.get("UCLCHEM_COOLANT_DATA")
+    if env_dir:
+        env_path = Path(env_dir)
+        if env_path.is_dir() and list(env_path.glob("*.dat")):
+            coolant_dir = str(env_path.resolve())
+            if not coolant_dir.endswith("/"):
+                coolant_dir += "/"
+            logging.info(f"Using coolant data from UCLCHEM_COOLANT_DATA: {coolant_dir}")
+            return coolant_dir
+        else:
+            logging.warning(
+                f"UCLCHEM_COOLANT_DATA set to {env_dir}, but directory not found or empty. "
+                "Searching other locations..."
+            )
+
+    # Priority 2: Installed package data (importlib.resources for Python 3.9+)
+    try:
+        # Try new API first (Python 3.9+)
+        try:
+            from importlib.resources import files
+            package_data_path = files("uclchem") / "data" / "collisional_rates"
+            # Convert to Path object
+            if hasattr(package_data_path, "as_posix"):  # Traversable
+                package_data_path = Path(str(package_data_path))
+        except (ImportError, TypeError):
+            # Fallback to older API (Python 3.7-3.8)
+            from importlib.resources import path as resource_path
+            with resource_path("uclchem.data", "collisional_rates") as p:
+                package_data_path = Path(p)
+
+        if package_data_path.is_dir() and list(package_data_path.glob("*.dat")):
+            coolant_dir = str(package_data_path.resolve())
+            if not coolant_dir.endswith("/"):
+                coolant_dir += "/"
+            logging.debug(f"Using installed coolant data: {coolant_dir}")
+            return coolant_dir
+    except (ImportError, FileNotFoundError, AttributeError) as e:
+        logging.debug(f"Installed package data not found: {e}")
+
+    # Priority 3: Development mode - search for Makerates/data/collisional_rates/
+    try:
+        from uclchem.utils import UCLCHEM_ROOT_DIR
+
+        # Try relative to UCLCHEM_ROOT_DIR (src/uclchem/)
+        candidates = [
+            UCLCHEM_ROOT_DIR.parent.parent / "Makerates" / "data" / "collisional_rates",  # from src/uclchem to project root
+            Path.cwd() / "Makerates" / "data" / "collisional_rates",  # from current working directory
+            Path.cwd().parent / "Makerates" / "data" / "collisional_rates",  # one level up
+        ]
+
+        for candidate in candidates:
+            if candidate.is_dir() and list(candidate.glob("*.dat")):
+                coolant_dir = str(candidate.resolve())
+                if not coolant_dir.endswith("/"):
+                    coolant_dir += "/"
+                logging.info(f"Using development mode coolant data: {coolant_dir}")
+                return coolant_dir
+    except Exception as e:
+        logging.debug(f"Development mode search failed: {e}")
+
+    # Not found in any location
+    raise FileNotFoundError(
+        "Could not locate coolant data files (.dat files for collisional rates). "
+        "Searched:\n"
+        "  1. UCLCHEM_COOLANT_DATA environment variable\n"
+        "  2. Installed package data (uclchem/data/collisional_rates/)\n"
+        "  3. Development mode (Makerates/data/collisional_rates/)\n"
+        "\n"
+        "To fix:\n"
+        "  - For installed package: Run 'python makerates.py' then 'pip install .'\n"
+        "  - For development: Ensure Makerates/data/collisional_rates/*.dat files exist\n"
+        "  - Or set UCLCHEM_COOLANT_DATA=/path/to/coolant/data/"
+    )
+
+
+def auto_initialize_coolant_directory() -> bool:
+    """
+    Automatically initialize the coolant data directory for the Fortran module.
+
+    This is a convenience wrapper around initialize_coolant_directory() that:
+    - Attempts to locate coolant data files
+    - Sets the coolant directory in the Fortran module if found
+    - Logs warnings instead of raising exceptions if initialization fails
+
+    This function is called automatically when the uclchem module is imported.
+
+    Returns:
+        bool: True if initialization succeeded, False if it failed
+
+    Example:
+        >>> from uclchem.advanced import auto_initialize_coolant_directory
+        >>> if auto_initialize_coolant_directory():
+        ...     print("Coolant data initialized successfully")
+    """
+    import logging
+
+    try:
+        coolant_dir = initialize_coolant_directory()
+        settings = HeatingSettings()
+        settings.set_coolant_directory(coolant_dir)
+        logging.debug(f"Auto-initialized coolant directory: {coolant_dir}")
+        return True
+    except RuntimeError as e:
+        # Heating module not available - this is expected for makerates-only builds
+        logging.debug(f"Coolant initialization skipped: {e}")
+        return False
+    except FileNotFoundError as e:
+        # Could not find coolant data - warn user
+        logging.warning(
+            f"Could not auto-initialize coolant data directory: {e}\n"
+            "Heating/cooling calculations may fail. "
+            "Run 'python makerates.py' and reinstall if needed."
+        )
+        return False
+    except Exception as e:
+        # Unexpected error - warn but don't crash
+        logging.warning(f"Unexpected error during coolant initialization: {e}" + 
+                        "\nEnabling heating and cooling might cause errors at runtime.")
+        return False

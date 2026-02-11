@@ -64,12 +64,17 @@ def get_default_coolant_directory(user_specified: str = "") -> str:
         return user_specified
     # Search standard locations (makerates runs from Makerates/ directory)
     candidates = [
-        Path.cwd() / "data" / "collisional_rates",       # Makerates/data/collisional_rates
-        Path.cwd().parent / "data" / "collisional_rates", # project_root/data/collisional_rates
+        Path.cwd() / "data" / "collisional_rates",                    # Makerates/data/collisional_rates
+        Path.cwd().parent / "data" / "collisional_rates",             # project_root/data/collisional_rates
+        Path.cwd() / "Makerates" / "data" / "collisional_rates",      # from project root
+        Path.cwd().parent / "Makerates" / "data" / "collisional_rates", # from subdirectory
     ]
     for candidate in candidates:
+        # Check if the directory exists and contains coolant data files
         if candidate.is_dir():
-            return str(candidate.resolve())
+            # Look for at least one expected file to confirm it's the right directory
+            if list(candidate.glob("*.dat")):  # Has individual .dat files
+                return str(candidate.resolve())
     return ""
 
 
@@ -1456,3 +1461,52 @@ def array_to_string(
         outString = outString[:-1] + "/)\n"
         outString = truncate_line(outString)
         return outString
+
+
+def copy_coolant_files(source_dir: str = None) -> None:
+    """
+    Copy coolant data files to the package data directory for installation.
+
+    This function copies .dat files from the source coolant directory
+    (typically Makerates/data/collisional_rates/) to src/uclchem/data/collisional_rates/
+    so they can be installed with the package via meson.
+
+    Args:
+        source_dir: Optional source directory. If None, uses get_default_coolant_directory().
+
+    Raises:
+        FileNotFoundError: If source directory doesn't exist or contains no .dat files.
+    """
+    import shutil
+
+    # Determine source directory
+    if source_dir is None:
+        source_dir = get_default_coolant_directory()
+
+    source_path = Path(source_dir)
+    if not source_path.is_dir():
+        raise FileNotFoundError(
+            f"Source coolant directory not found: {source_path}\n"
+            f"Expected to find .dat files for coolant data."
+        )
+
+    # Find .dat files in source directory
+    dat_files = list(source_path.glob("*.dat"))
+    if not dat_files:
+        raise FileNotFoundError(
+            f"No .dat files found in source directory: {source_path}\n"
+            f"Cannot copy coolant data files."
+        )
+
+    # Target directory in package structure
+    target_path = UCLCHEM_ROOT_DIR / "data" / "collisional_rates"
+    target_path.mkdir(parents=True, exist_ok=True)
+
+    # Copy each .dat file
+    logging.info(f"Copying {len(dat_files)} coolant data files to {target_path}")
+    for dat_file in dat_files:
+        target_file = target_path / dat_file.name
+        shutil.copy2(dat_file, target_file)
+        logging.debug(f"  Copied {dat_file.name}")
+
+    logging.info(f"Successfully copied coolant data files for package installation")

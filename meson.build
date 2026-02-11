@@ -180,6 +180,13 @@ install_subdir(
   install_dir: py.get_install_dir(pure: false) / 'uclchem' ,
 
 )
+# Install coolant data files (copied by makerates)
+# Note: This overlays on top of the 'data' directory installed above,
+# adding the .dat files that were copied by makerates
+install_subdir(
+  usource / 'data',
+  install_dir: py.get_install_dir(pure: false) / 'uclchem',
+)
 # Install nested f2py_constants.f90 template
 py.install_sources([
   usource / 'makerates' / 'fortran_templates' / 'f2py_constants.f90'

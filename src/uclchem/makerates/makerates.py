@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from typing import Union
@@ -92,6 +93,28 @@ def run_makerates(
         database_reaction_exothermicity=database_reaction_exothermicity,
     )
 
+    # Determine which coolants to write. Precedence (highest -> lowest):
+    # 1) inline `coolants` in config, 2) `coolants_file` referenced in config,
+    # 3) defaults used by write_outputs.
+    coolants_to_write = None
+    if config.coolants is not None:
+        logging.info(f"Using {len(config.coolants)} inline coolants from config")
+        coolants_to_write = config.coolants
+    elif config.coolants_file:
+        coolants_path = config.resolve_path(config.coolants_file)
+        # Defensive check: don't try to read a directory as a YAML file
+        if coolants_path.is_dir():
+            raise ValueError(
+                f"coolants_file {coolants_path} resolves to a directory; expected a YAML file listing coolants. "
+                "If you intended to set the collisional rate data directory, use 'coolant_data_dir' in your config."
+            )
+        try:
+            _coolants = io.read_coolants_file(coolants_path)
+            logging.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")
+            coolants_to_write = _coolants
+        except Exception as exc:
+            raise ValueError(f"Error reading coolants_file {coolants_path}: {exc}")
+
     if write_files:
         logging.info(
             "\n################################################\n"
@@ -127,27 +150,6 @@ def run_makerates(
                 )
             # Save the gar parameters in the correct order
             gar_parameters = {ion: _gar_parameters[ion] for ion in gar_ions}
-        # Determine which coolants to write. Precedence (highest -> lowest):
-        # 1) inline `coolants` in config, 2) `coolants_file` referenced in config,
-        # 3) defaults used by write_outputs.
-        coolants_to_write = None
-        if config.coolants is not None:
-            logging.info(f"Using {len(config.coolants)} inline coolants from config")
-            coolants_to_write = config.coolants
-        elif config.coolants_file:
-            coolants_path = config.resolve_path(config.coolants_file)
-            # Defensive check: don't try to read a directory as a YAML file
-            if coolants_path.is_dir():
-                raise ValueError(
-                    f"coolants_file {coolants_path} resolves to a directory; expected a YAML file listing coolants. "
-                    "If you intended to set the collisional rate data directory, use 'coolant_data_dir' in your config."
-                )
-            try:
-                _coolants = io.read_coolants_file(coolants_path)
-                logging.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")
-                coolants_to_write = _coolants
-            except Exception as exc:
-                raise ValueError(f"Error reading coolants_file {coolants_path}: {exc}")
 
         # Pass resolved coolants and coolant_data_dir through to write_outputs
         io.write_outputs(
@@ -158,6 +160,11 @@ def run_makerates(
             coolants=coolants_to_write,
             coolant_data_dir=config.coolant_data_dir,
         )
+
+        # Copy coolant data files to package data directory for installation
+        # Only pass coolant_data_dir if it's explicitly set and valid
+        source_dir = config.coolant_data_dir if config.coolant_data_dir and config.coolant_data_dir != "." else None
+        io.copy_coolant_files(source_dir=source_dir)
 
     ngrain = len([x for x in network.get_species_list() if x.is_surface_species()])
     logging.info(f"Total number of species = {len(network.get_species_list())}")
