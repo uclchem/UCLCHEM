@@ -187,6 +187,7 @@ class ReactionNamesStore:
 
 get_reaction_names = ReactionNamesStore()
 
+
 class SpeciesNameStore:
     def __init__(self):
         self.species_names = None
@@ -1539,7 +1540,11 @@ class AbstractModel(ABC):
                 )
             else:
                 self.level_populations_array = np.zeros(
-                    shape=(self.timepoints + 1, self._param_dict["points"], N_TOTAL_LEVELS),
+                    shape=(
+                        self.timepoints + 1,
+                        self._param_dict["points"],
+                        N_TOTAL_LEVELS,
+                    ),
                     dtype=np.float64,
                     order="F",
                 )
@@ -1601,12 +1606,12 @@ class AbstractModel(ABC):
                     columns.extend(level_names_dict[i])
         except (FileNotFoundError, ValueError, RuntimeError) as e:
             # Fallback to generic names if coolant files can't be loaded
-            logging.warning(f"Could not load coolant level names: {e}. Using generic names.")
+            logging.warning(
+                f"Could not load coolant level names: {e}. Using generic names."
+            )
             columns = [f"LEVEL_{i}" for i in range(N_TOTAL_LEVELS)]
 
-        return pd.DataFrame(
-            self.level_populations_array[:, point, :], columns=columns
-        )
+        return pd.DataFrame(self.level_populations_array[:, point, :], columns=columns)
 
     def get_se_stats_dataframe(self, point=0):
         """Get SE solver statistics as a DataFrame for a specific grid point.
@@ -1617,31 +1622,30 @@ class AbstractModel(ABC):
         Returns:
             DataFrame with per-coolant SE solver statistics using actual coolant names
         """
-        if (
-            self.se_stats_array is None
-            or self.se_stats_array.shape[0] < 3
-        ):
+        if self.se_stats_array is None or self.se_stats_array.shape[0] < 3:
             return None
 
         # Build meaningful column names using actual coolant names
         try:
             from uclchemwrap import f2py_constants
 
-            coolant_names = [str(name.decode()).strip() for name in f2py_constants.coolantnames]
+            coolant_names = [
+                str(name.decode()).strip() for name in f2py_constants.coolantnames
+            ]
             columns = []
             for coolant_name in coolant_names:
-                columns.extend([
-                    f"{coolant_name}_CONVERGED",
-                    f"{coolant_name}_ITERATIONS",
-                    f"{coolant_name}_MAX_REL_CHANGE"
-                ])
+                columns.extend(
+                    [
+                        f"{coolant_name}_CONVERGED",
+                        f"{coolant_name}_ITERATIONS",
+                        f"{coolant_name}_MAX_REL_CHANGE",
+                    ]
+                )
         except Exception:
             # Fallback to generic names
             columns = SE_STAT_NAMES
 
-        return pd.DataFrame(
-            self.se_stats_array[:, point, :], columns=columns
-        )
+        return pd.DataFrame(self.se_stats_array[:, point, :], columns=columns)
 
     def _create_starting_array(self, starting_chemistry):
         if starting_chemistry is None:
@@ -2048,26 +2052,28 @@ class PrestellarCore(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, _, _, _, _, out_species_abundances_array, _, success_flag = wrap.hot_core(
-            temp_indx=self.temp_indx,
-            max_temp=self.max_temperature,
-            dictionary=self._param_dict,
-            outspeciesin=self.out_species,
-            timepoints=self.timepoints,
-            gridpoints=self._param_dict["points"],
-            returnarray=True,
-            returnrates=True,
-            givestartabund=self.give_start_abund,
-            physicsarray=self.physics_array,
-            chemicalabunarray=self.chemical_abun_array,
-            ratesarray=self.rates_array,
-            heatarray=self.heat_array,
-            statsarray=self.stats_array,
-            levelpopulationsarray=self.level_populations_array,
-            sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array
-            if self.starting_chemistry_array is not None
-            else None,
+        _, _, _, _, _, _, _, out_species_abundances_array, _, success_flag = (
+            wrap.hot_core(
+                temp_indx=self.temp_indx,
+                max_temp=self.max_temperature,
+                dictionary=self._param_dict,
+                outspeciesin=self.out_species,
+                timepoints=self.timepoints,
+                gridpoints=self._param_dict["points"],
+                returnarray=True,
+                returnrates=True,
+                givestartabund=self.give_start_abund,
+                physicsarray=self.physics_array,
+                chemicalabunarray=self.chemical_abun_array,
+                ratesarray=self.rates_array,
+                heatarray=self.heat_array,
+                statsarray=self.stats_array,
+                levelpopulationsarray=self.level_populations_array,
+                sestatsarray=self.se_stats_array,
+                abundancestart=self.starting_chemistry_array
+                if self.starting_chemistry_array is not None
+                else None,
+            )
         )
         if success_flag < 0:
             out_species_abundances_array = np.array([])
@@ -2446,9 +2452,7 @@ class Postprocess(AbstractModel):
         """
         # Determine whether an Av grid was provided and set the flag expected by the Fortran wrapper
         # Only pass arrays that are present (not None) to the Fortran wrapper
-        post_kwargs = {
-            k: v for k, v in self.postprocess_arrays.items() if v is not None
-        }
+        post_kwargs = {k: v for k, v in self.postprocess_arrays.items() if v is not None}
         result = wrap.postprocess(
             usecoldens=self.usecoldens,
             useav=self.useav,

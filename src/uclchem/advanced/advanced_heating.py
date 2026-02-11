@@ -369,7 +369,9 @@ class HeatingSettings:
         if mode not in [0, 1, 2]:
             raise ValueError(f"mode must be 0, 1, or 2, got {mode}")
         self._uclchemwrap.uclchemwrap.set_coolant_restart_mode_wrap(mode)
-        assert self.get_coolant_restart_mode() == mode, "Failed to set coolant restart mode"
+        assert (
+            self.get_coolant_restart_mode() == mode
+        ), "Failed to set coolant restart mode"
 
     # TODO: refactor once Fortran is exposed
     def get_coolant_restart_mode(self) -> int:
@@ -379,7 +381,6 @@ class HeatingSettings:
             Current restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND)
         """
         return self._uclchemwrap.uclchemwrap.get_coolant_restart_mode_wrap()
-
 
     def reset_to_defaults(self):
         """Reset all heating and cooling mechanisms to their initial values.
@@ -505,6 +506,7 @@ def initialize_coolant_directory() -> str:
         # Try new API first (Python 3.9+)
         try:
             from importlib.resources import files
+
             package_data_path = files("uclchem") / "data" / "collisional_rates"
             # Convert to Path object
             if hasattr(package_data_path, "as_posix"):  # Traversable
@@ -512,6 +514,7 @@ def initialize_coolant_directory() -> str:
         except (ImportError, TypeError):
             # Fallback to older API (Python 3.7-3.8)
             from importlib.resources import path as resource_path
+
             with resource_path("uclchem.data", "collisional_rates") as p:
                 package_data_path = Path(p)
 
@@ -530,9 +533,18 @@ def initialize_coolant_directory() -> str:
 
         # Try relative to UCLCHEM_ROOT_DIR (src/uclchem/)
         candidates = [
-            UCLCHEM_ROOT_DIR.parent.parent / "Makerates" / "data" / "collisional_rates",  # from src/uclchem to project root
-            Path.cwd() / "Makerates" / "data" / "collisional_rates",  # from current working directory
-            Path.cwd().parent / "Makerates" / "data" / "collisional_rates",  # one level up
+            UCLCHEM_ROOT_DIR.parent.parent
+            / "Makerates"
+            / "data"
+            / "collisional_rates",  # from src/uclchem to project root
+            Path.cwd()
+            / "Makerates"
+            / "data"
+            / "collisional_rates",  # from current working directory
+            Path.cwd().parent
+            / "Makerates"
+            / "data"
+            / "collisional_rates",  # one level up
         ]
 
         for candidate in candidates:
@@ -601,6 +613,8 @@ def auto_initialize_coolant_directory() -> bool:
         return False
     except Exception as e:
         # Unexpected error - warn but don't crash
-        logging.warning(f"Unexpected error during coolant initialization: {e}" + 
-                        "\nEnabling heating and cooling might cause errors at runtime.")
+        logging.warning(
+            f"Unexpected error during coolant initialization: {e}"
+            + "\nEnabling heating and cooling might cause errors at runtime."
+        )
         return False

@@ -98,12 +98,11 @@ def get_energy_levels_info_from_runtime() -> Tuple[int, int]:
         Various exceptions from get_energy_levels_info if data is invalid
     """
     from uclchemwrap import f2py_constants
+
     from uclchem.advanced import HeatingSettings
 
     coolant_names = [str(name.decode()).strip() for name in f2py_constants.coolantnames]
-    coolant_files = [
-        str(fname.decode()).strip() for fname in f2py_constants.coolantfiles
-    ]
+    coolant_files = [str(fname.decode()).strip() for fname in f2py_constants.coolantfiles]
 
     # Get data directory
     heating_settings = HeatingSettings()
@@ -125,12 +124,11 @@ def load_coolant_level_names() -> Dict[int, List[str]]:
         RuntimeError: If parsing fails
     """
     from uclchemwrap import f2py_constants
+
     from uclchem.advanced import HeatingSettings
 
     coolant_names = [str(name.decode()).strip() for name in f2py_constants.coolantnames]
-    coolant_files = [
-        str(fname.decode()).strip() for fname in f2py_constants.coolantfiles
-    ]
+    coolant_files = [str(fname.decode()).strip() for fname in f2py_constants.coolantfiles]
 
     # Get data directory
     heating_settings = HeatingSettings()
