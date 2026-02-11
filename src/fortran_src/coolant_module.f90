@@ -46,10 +46,15 @@ MODULE COOLANT_MODULE
       REAL(dp), ALLOCATABLE :: COLLISIONAL_RATE(:,:) ! Collisional rate coefficients
       INTEGER, ALLOCATABLE :: IPIV(:), INDEX_ROW(:), INDEX_COL(:) ! Gauss-Jordan workspace
 
-      ! Collisional rate cache (temperature-keyed, per species)
-      ! Cache has 10 entries per coolant (configurable via CACHE_RESOLUTION)
-      REAL(dp) :: CACHE_RESOLUTION ! Temperature rounding resolution (K), default 0.01
-      REAL(dp) :: CACHED_TEMPERATURE(10) ! Cached temperature keys (rounded)
+      ! Collisional rate cache (multi-parameter, 1% relative tolerance)
+      ! Cache has 10 entries per coolant, matched by all physical parameters
+      REAL(dp) :: CACHE_TOLERANCE ! Relative tolerance for cache matching, default 0.01 (1%)
+      REAL(dp) :: CACHED_TEMPERATURE(10) ! Cached temperature (K)
+      REAL(dp) :: CACHED_N_H2(10) ! Cached n(H2) = density × abundance(H2)
+      REAL(dp) :: CACHED_N_ELEC(10) ! Cached n(e-) = density × abundance(e-)
+      REAL(dp) :: CACHED_N_H(10) ! Cached n(H) = density × abundance(H)
+      REAL(dp) :: CACHED_N_HE(10) ! Cached n(He) = density × abundance(He)
+      REAL(dp) :: CACHED_N_HPLUS(10) ! Cached n(H+) = density × abundance(H+)
       REAL(dp), ALLOCATABLE :: CACHED_COLLISIONAL_RATE(:,:,:) ! (10, NLEVEL, NLEVEL)
       INTEGER :: CACHE_INDEX ! Current cache position (round-robin)
 
@@ -288,7 +293,12 @@ CONTAINS
          ALLOCATE(coolants(N)%CACHED_COLLISIONAL_RATE(10,1:coolants(N)%NLEVEL,1:coolants(N)%NLEVEL))
          coolants(N)%CACHED_COLLISIONAL_RATE=0.0D0
          coolants(N)%CACHED_TEMPERATURE=-1.0D0  ! -1 indicates empty cache entry
-         coolants(N)%CACHE_RESOLUTION=0.01D0  ! Default resolution: 0.01 K
+         coolants(N)%CACHED_N_H2=-1.0D0
+         coolants(N)%CACHED_N_ELEC=-1.0D0
+         coolants(N)%CACHED_N_H=-1.0D0
+         coolants(N)%CACHED_N_HE=-1.0D0
+         coolants(N)%CACHED_N_HPLUS=-1.0D0
+         coolants(N)%CACHE_TOLERANCE=0.01D0  ! Default tolerance: 1% relative precision
          coolants(N)%CACHE_INDEX=1  ! Start at first cache position
       END DO
 
@@ -744,7 +754,7 @@ SUBROUTINE CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,GasTemperature,
    REAL(dp) :: dustEmissivity
    REAL(dp) :: S_ij,B_ij,B_ij_CMB,B_ij_DUST,BETA_ij
    REAL(dp) :: S_ij_PREVIOUS,LAMBDA_ij,rhoGrain,dustDensity
-   REAL(dp) :: temp_key
+   REAL(dp) :: n_H2,n_elec,n_H,n_He,n_Hplus
    LOGICAL :: found_in_cache
 
    ! Debug: Check for NaN inputs
@@ -784,7 +794,7 @@ SUBROUTINE CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,GasTemperature,
               IF (ISNAN(B_ij_DUST)) B_ij_DUST = 0.0D0
            END IF
 !#else
- !           B_ij_DUST=0.0D0
+ !           B_ij_DUST=0.T
 !#endif
             B_ij=B_ij_CMB+B_ij_DUST
          ELSE
@@ -850,14 +860,25 @@ SUBROUTINE CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,GasTemperature,
    END DO ! End of loop over levels (i)
 
 !  Calculate or retrieve cached collisional rates
-!  Round temperature to cache resolution and check cache
-   temp_key = NINT(GasTemperature / COOLANT%CACHE_RESOLUTION) * COOLANT%CACHE_RESOLUTION
+!  Calculate number densities of collision partners for cache key
+   n_H2 = gasDensity * abundances(nH2)
+   n_elec = gasDensity * abundances(nelec)
+   n_H = gasDensity * abundances(nH)
+   n_He = gasDensity * abundances(nHe)
+   n_Hplus = gasDensity * abundances(nHx)
+
    found_in_cache = .FALSE.
    cache_hit = -1
 
-   ! Search cache for matching temperature
+!  Search cache for matching parameters (within tolerance)
    DO K=1,10
-      IF (ABS(COOLANT%CACHED_TEMPERATURE(K) - temp_key) .LT. 1.0D-10) THEN
+      IF (COOLANT%CACHED_TEMPERATURE(K) .LT. 0.0D0) CYCLE ! Skip empty slots
+      IF (WITHIN_TOLERANCE(COOLANT%CACHED_TEMPERATURE(K), GasTemperature, COOLANT%CACHE_TOLERANCE) .AND. &
+          WITHIN_TOLERANCE(COOLANT%CACHED_N_H2(K), n_H2, COOLANT%CACHE_TOLERANCE) .AND. &
+          WITHIN_TOLERANCE(COOLANT%CACHED_N_ELEC(K), n_elec, COOLANT%CACHE_TOLERANCE) .AND. &
+          WITHIN_TOLERANCE(COOLANT%CACHED_N_H(K), n_H, COOLANT%CACHE_TOLERANCE) .AND. &
+          WITHIN_TOLERANCE(COOLANT%CACHED_N_HE(K), n_He, COOLANT%CACHE_TOLERANCE) .AND. &
+          WITHIN_TOLERANCE(COOLANT%CACHED_N_HPLUS(K), n_Hplus, COOLANT%CACHE_TOLERANCE)) THEN
          found_in_cache = .TRUE.
          cache_hit = K
          EXIT
@@ -873,7 +894,12 @@ SUBROUTINE CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,GasTemperature,
       CALL CALCULATE_COLLISIONAL_RATES(COOLANT,gasDensity,GasTemperature,abundances,COOLANT%COLLISIONAL_RATE)
 
       ! Store in cache (round-robin replacement)
-      COOLANT%CACHED_TEMPERATURE(COOLANT%CACHE_INDEX) = temp_key
+      COOLANT%CACHED_TEMPERATURE(COOLANT%CACHE_INDEX) = GasTemperature
+      COOLANT%CACHED_N_H2(COOLANT%CACHE_INDEX) = n_H2
+      COOLANT%CACHED_N_ELEC(COOLANT%CACHE_INDEX) = n_elec
+      COOLANT%CACHED_N_H(COOLANT%CACHE_INDEX) = n_H
+      COOLANT%CACHED_N_HE(COOLANT%CACHE_INDEX) = n_He
+      COOLANT%CACHED_N_HPLUS(COOLANT%CACHE_INDEX) = n_Hplus
       COOLANT%CACHED_COLLISIONAL_RATE(COOLANT%CACHE_INDEX,:,:) = COOLANT%COLLISIONAL_RATE
 
       ! Advance cache index (circular)
@@ -1371,6 +1397,36 @@ FUNCTION ESCAPE_PROBABILITY(TAU) RESULT(BETA)
    !BETA=0.5*BETA
    RETURN
 END FUNCTION ESCAPE_PROBABILITY
+
+!=======================================================================
+!
+!  Check if two values match within relative tolerance for cache lookup.
+!  Uses symmetric relative difference: 2|a-b|/(|a|+|b|) < tolerance
+!
+!-----------------------------------------------------------------------
+LOGICAL FUNCTION WITHIN_TOLERANCE(cached_val, current_val, tol)
+   IMPLICIT NONE
+   REAL(dp), INTENT(IN) :: cached_val, current_val, tol
+   REAL(dp) :: rel_diff
+
+!  Handle near-zero values (both must be negligible)
+   IF (ABS(cached_val) < 1.0D-30 .AND. ABS(current_val) < 1.0D-30) THEN
+      WITHIN_TOLERANCE = .TRUE.
+      RETURN
+   END IF
+
+!  One value near-zero but not the other - no match
+   IF (ABS(cached_val) < 1.0D-30 .OR. ABS(current_val) < 1.0D-30) THEN
+      WITHIN_TOLERANCE = .FALSE.
+      RETURN
+   END IF
+
+!  Calculate symmetric relative difference
+   rel_diff = 2.0D0 * ABS(cached_val - current_val) / (ABS(cached_val) + ABS(current_val))
+   WITHIN_TOLERANCE = (rel_diff < tol)
+
+   RETURN
+END FUNCTION WITHIN_TOLERANCE
 
 SUBROUTINE writePopulations(fileName,modelNumber)
    CHARACTER(*), INTENT(IN) :: fileName, modelNumber
