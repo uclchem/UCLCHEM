@@ -13,11 +13,24 @@ from typing import Dict
 import numpy as np
 import yaml
 
-from uclchem.constants import PHYSICAL_PARAMETERS
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 from .network import Network
 from .reaction import Reaction, reaction_types
-from .species import Species
+from .species import Species, species_header
+
+# Canonical definition of physical parameters
+# This list defines the physical parameter array passed to Fortran
+PHYSICAL_PARAMETERS = [
+    "Time",
+    "Density",
+    "gasTemp",
+    "dustTemp",
+    "Av",
+    "radfield",
+    "zeta",
+    "dstep",
+]
 
 
 def get_default_coolants() -> list[dict]:
@@ -35,6 +48,39 @@ def get_default_coolants() -> list[dict]:
         {"file": "p-h2.dat", "name": "p-H2"},
         {"file": "o-h2.dat", "name": "o-H2"},
     ]
+
+
+def get_default_coolant_directory(user_specified: str = "") -> str:
+    """Returns the collisional rates directory path for use during makerates.
+
+    Args:
+        user_specified: Optional user-specified directory from config.
+                       If empty, searches standard locations relative to CWD.
+
+    Returns:
+        str: Absolute directory path to collisional rate data files.
+    """
+    if user_specified:
+        return user_specified
+    # Search standard locations (makerates runs from Makerates/ directory)
+    candidates = [
+        Path.cwd() / "data" / "collisional_rates",  # Makerates/data/collisional_rates
+        Path.cwd().parent
+        / "data"
+        / "collisional_rates",  # project_root/data/collisional_rates
+        Path.cwd() / "Makerates" / "data" / "collisional_rates",  # from project root
+        Path.cwd().parent
+        / "Makerates"
+        / "data"
+        / "collisional_rates",  # from subdirectory
+    ]
+    for candidate in candidates:
+        # Check if the directory exists and contains coolant data files
+        if candidate.is_dir():
+            # Look for at least one expected file to confirm it's the right directory
+            if list(candidate.glob("*.dat")):  # Has individual .dat files
+                return str(candidate.resolve())
+    return ""
 
 
 def read_species_file(file_name: Path) -> list[Species]:
@@ -213,6 +259,49 @@ def read_grain_assisted_recombination_file(file_name: Path) -> dict:
     return gar_parameters
 
 
+def read_coolants_file(file_name: Path) -> list[dict]:
+    """Read a YAML file specifying coolants.
+
+    The file should contain either a single mapping or a list of mappings where each
+    mapping contains 'file' and 'name' keys. 'file' must be a bare filename (no path).
+
+    Returns:
+        list[dict]: Normalized list of coolant dicts.
+    """
+    with open(file_name, "r") as fh:
+        data = yaml.safe_load(fh)
+
+    if data is None:
+        return []
+    if isinstance(data, dict):
+        data = [data]
+    if not isinstance(data, list):
+        raise ValueError("Coolants file must contain a mapping or list of mappings")
+
+    normalized = []
+    from pathlib import Path as _Path
+
+    for item in data:
+        if not isinstance(item, dict):
+            raise ValueError(
+                "Each coolant entry must be a mapping with 'file' and 'name' keys"
+            )
+        if "file" not in item or "name" not in item:
+            raise ValueError("Each coolant mapping must contain 'file' and 'name' keys")
+        file_val = str(item["file"])
+        if _Path(file_val).name != file_val or _Path(file_val).parent != _Path("."):
+            raise ValueError(
+                "Coolant 'file' entries in coolants_file must be bare filenames (no directories)"
+            )
+        entry = {"file": file_val, "name": str(item["name"])}
+        if "parent_species" in item:
+            entry["parent_species"] = str(item["parent_species"])
+        if "conversion_factor" in item:
+            entry["conversion_factor"] = float(item["conversion_factor"])
+        normalized.append(entry)
+    return normalized
+
+
 def output_drops(
     dropped_reactions: list[Reaction], output_dir: str = None, write_files: bool = True
 ):
@@ -251,6 +340,7 @@ def write_outputs(
     enable_rates_storage: bool = False,
     gar_database: dict[str, np.array] = None,
     coolants: list[dict] = None,
+    coolant_data_dir: str = "",
 ) -> None:
     """Write the ODE and Network fortran source files to the fortran source.
 
@@ -270,6 +360,19 @@ def write_outputs(
     # Use default coolants if none provided
     if coolants is None:
         coolants = get_default_coolants()
+
+    # Validate that coolant 'file' entries are bare filenames (not paths)
+    from pathlib import Path as _Path
+
+    for c in coolants:
+        f = c.get("file")
+        if f is None:
+            raise ValueError("Each coolant dict must contain a 'file' key")
+        if _Path(f).name != f or _Path(f).parent != _Path("."):
+            raise ValueError(
+                "Coolant file names must be bare filenames (no directories). "
+                "Set the coolant directory at runtime via coolantDataDir."
+            )
 
     # Create the species file
     filename = output_dir / "species.csv"
@@ -299,18 +402,101 @@ def write_outputs(
 
     filename = fortran_src_dir / "f2py_constants.f90"
 
+    # Compute energy level counts from coolant data files
+    from uclchem._coolant_utils import get_energy_levels_info
+
+    coolant_data_directory = get_default_coolant_directory(coolant_data_dir)
+    n_total_levels, n_se_stats_per_coolant = get_energy_levels_info(
+        coolant_names=[c["name"] for c in coolants],
+        coolant_files=[c["file"] for c in coolants],
+        data_dir=coolant_data_directory,
+    )
+
+    # Compute coolant conversion arrays
+    parent_names = []
+    conversion_factors = []
+    conversion_modes = []
+    for c in coolants:
+        name = c["name"]
+        explicit_parent = c.get("parent_species")
+        explicit_factor = c.get("conversion_factor")
+
+        if explicit_parent is not None and explicit_factor is not None:
+            # Fully specified: fixed factor mode
+            parent_names.append(explicit_parent)
+            conversion_factors.append(explicit_factor)
+            conversion_modes.append(0)
+        elif name == "p-H2":
+            parent_names.append(explicit_parent if explicit_parent else "H2")
+            conversion_factors.append(
+                explicit_factor if explicit_factor is not None else 0.0
+            )
+            conversion_modes.append(0 if explicit_factor is not None else 1)
+        elif name == "o-H2":
+            parent_names.append(explicit_parent if explicit_parent else "H2")
+            conversion_factors.append(
+                explicit_factor if explicit_factor is not None else 0.0
+            )
+            conversion_modes.append(0 if explicit_factor is not None else 2)
+        elif name.startswith("o-") or name.startswith("p-"):
+            # Other ortho/para species — require explicit conversion_factor
+            if explicit_factor is None:
+                raise ValueError(
+                    f"Coolant '{name}' appears to be an ortho/para species but has no "
+                    f"'conversion_factor'. Please specify 'conversion_factor' and optionally "
+                    f"'parent_species' in the coolant configuration."
+                )
+            parent = explicit_parent if explicit_parent else name[2:]
+            parent_names.append(parent)
+            conversion_factors.append(explicit_factor)
+            conversion_modes.append(0)
+        else:
+            # Normal species
+            parent_names.append(explicit_parent if explicit_parent else name)
+            conversion_factors.append(
+                explicit_factor if explicit_factor is not None else 1.0
+            )
+            conversion_modes.append(0)
+
+    # Validate that all parent species exist in the network
+    species_dict = network.get_species_dict()
+    missing_parents = []
+    for i, (coolant, parent) in enumerate(zip(coolants, parent_names)):
+        if parent not in species_dict:
+            missing_parents.append((i, coolant["name"], parent))
+
+    if missing_parents:
+        error_msg = "ERROR: The following coolants reference parent species that don't exist in the network:\n"
+        for idx, coolant_name, parent_name in missing_parents:
+            error_msg += f"  - Coolant #{idx+1} '{coolant_name}' → parent species '{parent_name}' not found\n"
+        error_msg += (
+            "\nAvailable species: "
+            + ", ".join(sorted(species_dict.keys())[:20])
+            + ", ...\n"
+        )
+        error_msg += "Fix by adding 'parent_species: <existing_species>' in the coolant YAML config."
+        raise ValueError(error_msg)
+
     f2py_constants = {
         "n_species": len(network.get_species_list()),
         "n_reactions": len(network.get_reaction_list()),
         "n_physical_parameters": len(PHYSICAL_PARAMETERS),
+        "n_dvode_stats": 18,
         "n_coolants": len(coolants),
+        "max_coolants": len(coolants),
+        "n_total_levels": n_total_levels,
+        "n_se_stats_per_coolant": n_se_stats_per_coolant,
         "coolant_files": [c["file"] for c in coolants],
         "coolant_names": [c["name"] for c in coolants],
+        "parent_names": parent_names,
+        "conversion_factors": conversion_factors,
+        "conversion_modes": conversion_modes,
+        "coolant_data_dir": coolant_data_dir if coolant_data_dir else "",
     }
     write_f90_constants(f2py_constants, filename)
-    # Write some meta information that can be used to read back in the reactions into Python
-    # TODO: we can update this s.t. we can directly access the f90 constants from the f2py wrapped Fortran codes
-    write_python_constants(f2py_constants, "../src/uclchem/constants.py")
+    # Note: constants.py now reads directly from f2py_constants module,
+    # so we no longer need to write it during MakeRates.
+    # After running MakeRates, just reinstall to update the Python constants.
 
 
 def write_f90_constants(
@@ -326,8 +512,7 @@ def write_f90_constants(
         output_file_name (Path): The path to target f2py_constants.f90 file
         template_file_path (Path, optional): The file to use as the template.
     """
-    _ROOT = Path(__file__).parent
-    template_file_path = _ROOT / template_file_path
+    template_file_path = UCLCHEM_ROOT_DIR / "makerates" / template_file_path
     with open(template_file_path / "f2py_constants.f90", "r") as fh:
         constants = fh.read()
 
@@ -336,22 +521,50 @@ def write_f90_constants(
         # Format coolant files
         coolant_files = replace_dict.pop("coolant_files")
         max_file_len = max(len(f) for f in coolant_files)
-        coolant_files_str = ",".join(
-            f'"{f.ljust(max_file_len)}"' for f in coolant_files
-        )
+        coolant_files_str = ",".join(f'"{f.ljust(max_file_len)}"' for f in coolant_files)
         replace_dict["coolant_file_len"] = max_file_len
         replace_dict["coolant_files"] = "/" + coolant_files_str + "/"
 
         # Format coolant names
         coolant_names = replace_dict.pop("coolant_names")
         max_name_len = max(len(n) for n in coolant_names)
-        coolant_names_str = ",".join(
-            f'"{n.ljust(max_name_len)}"' for n in coolant_names
-        )
+        coolant_names_str = ",".join(f'"{n.ljust(max_name_len)}"' for n in coolant_names)
         replace_dict["coolant_name_len"] = max_name_len
         replace_dict["coolant_names"] = "/" + coolant_names_str + "/"
 
+        # Format parent names (same pattern as coolant names)
+        if "parent_names" in replace_dict:
+            parent_names = replace_dict.pop("parent_names")
+            max_parent_len = max(len(n) for n in parent_names)
+            parent_names_str = ",".join(
+                f'"{n.ljust(max_parent_len)}"' for n in parent_names
+            )
+            replace_dict["parent_name_len"] = max_parent_len
+            replace_dict["parent_names"] = "/" + parent_names_str + "/"
+
+    # Extract numeric arrays to be written via array_to_string (handles line limits)
+    conversion_factors = replace_dict.pop("conversion_factors", None)
+    conversion_modes = replace_dict.pop("conversion_modes", None)
+
     constants = constants.format(**replace_dict)
+
+    # Insert array declarations before END MODULE using array_to_string
+    extra_lines = ""
+    if conversion_factors is not None:
+        extra_lines += "    ! Conversion factors for abundance scaling (used when coolantConversionMode=0)\n"
+        extra_lines += "    " + array_to_string(
+            "coolantConversionFactors", np.array(conversion_factors), type="float"
+        )
+    if conversion_modes is not None:
+        extra_lines += "    ! Conversion mode: 0=fixed factor, 1=thermal OPR para, 2=thermal OPR ortho\n"
+        extra_lines += "    " + array_to_string(
+            "coolantConversionMode", np.array(conversion_modes), type="int"
+        )
+    if extra_lines:
+        constants = constants.replace(
+            "END MODULE F2PY_CONSTANTS", extra_lines + "END MODULE F2PY_CONSTANTS"
+        )
+
     with open(output_file_name, "w") as fh:
         fh.writelines(constants)
 
@@ -359,13 +572,25 @@ def write_f90_constants(
 def write_python_constants(
     replace_dict: Dict[str, int], python_constants_file: Path
 ) -> None:
-    """Function to write the python constants to the constants.py file after every run,
-    this ensure the Python and Fortran bits are compatible with one another.
+    """DEPRECATED: Function to write the python constants to the constants.py file.
+
+    As of the latest version, constants.py reads directly from the f2py_constants
+    module, so this function is no longer needed. It's kept for backward compatibility
+    but does nothing.
 
     Args:
-        replace_dict (Dict[str, int]]): Dict with keys to replace and their values
-        python_constants_file (Path): Path to the target constant files.
+        replace_dict (Dict[str, int]]): Dict with keys to replace and their values (ignored)
+        python_constants_file (Path): Path to the target constant files (ignored)
     """
+    import warnings
+
+    warnings.warn(
+        "write_python_constants() is deprecated. "
+        "constants.py now reads directly from f2py_constants module.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    # Do nothing - constants.py is now self-updating
     with fileinput.input(python_constants_file, inplace=True, backup=".bak") as file:
         for line in file:
             # Add a timestamp to the file before the old one:
@@ -376,9 +601,7 @@ def write_python_constants(
                     end="\n",
                 )
                 # Don't copy the old timestamp into the new file.
-                if line.startswith(
-                    "# This file was machine generated with Makerates on"
-                ):
+                if line.startswith("# This file was machine generated with Makerates on"):
                     continue
             # For every line, try to find constants, if we find them, replace them,
             # if not, just print the line.
@@ -400,15 +623,6 @@ def write_species(file_name: Path, species_list: list[Species]) -> None:
         fileName (str): path to output file
         species_list (list): List of species objects for network
     """
-    species_columns = [
-        "NAME",
-        "MASS",
-        "BINDING_ENERGY",
-        "SOLID_FRACTION",
-        "MONO_FRACTION",
-        "VOLCANO_FRACTION",
-        "ENTHALPY",
-    ]
     with open(file_name, "w") as f:
         writer = csv.writer(
             f,
@@ -417,8 +631,9 @@ def write_species(file_name: Path, species_list: list[Species]) -> None:
             quoting=csv.QUOTE_MINIMAL,
             lineterminator="\n",
         )
-        writer.writerow(species_columns)
+        writer.writerow(species_header)
         for species in species_list:
+            # Order is the same as in uclchem.species.species_header
             writer.writerow(
                 [
                     species.get_name(),
@@ -428,16 +643,23 @@ def write_species(file_name: Path, species_list: list[Species]) -> None:
                     species.get_mono_fraction(),
                     species.get_volcano_fraction(),
                     species.get_enthalpy(),
+                    species.get_vdes(),
+                    species.get_diffusion_barrier(),
+                    species.get_vdiff(),
+                    species.get_Ix(),
+                    species.get_Iy(),
+                    species.get_Iz(),
+                    species.get_symmetry_factor(),
                 ]
             )
 
 
 # Write the reaction file in the desired format
-def write_reactions(fileName, reaction_list) -> None:
+def write_reactions(file_name: Path, reaction_list: list[Reaction]) -> None:
     """Write the human readable reaction file.
 
     Args:
-        fileName (str): path to output file
+        file_name (Path): path to output file
         reaction_list (list): List of reaction objects for network
     """
     reaction_columns = [
@@ -457,7 +679,7 @@ def write_reactions(fileName, reaction_list) -> None:
         "extrapolate",
         "exothermicity",
     ]
-    with open(fileName, "w") as f:
+    with open(file_name, "w") as f:
         writer = csv.writer(
             f,
             delimiter=",",
@@ -541,9 +763,7 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
             else:
                 # every time an ode bit has our species in it, we remove it (dy/dx=a for y=ax)
                 di_dj = [
-                    f"-{x}".replace(f"*Y({j})", "", 1)
-                    for x in losses
-                    if f"*Y({j})" in x
+                    f"-{x}".replace(f"*Y({j})", "", 1) for x in losses if f"*Y({j})" in x
                 ]
                 di_dj += [
                     f"+{x}".replace(f"*Y({j})", "", 1) for x in gains if f"*Y({j})" in x
@@ -625,9 +845,7 @@ def build_ode_string(
                         species_names.index("#" + species)
                     ].losses += reaction.ode_bit
                 else:
-                    species_list[
-                        species_names.index(species)
-                    ].losses += reaction.ode_bit
+                    species_list[species_names.index(species)].losses += reaction.ode_bit
                 if reaction.get_reaction_type() == "BULKSWAP":
                     total_swap += reaction.ode_bit
         for species in reaction.get_products():
@@ -637,10 +855,11 @@ def build_ode_string(
     ode_string = """MODULE ODES
 USE constants
 USE network
+USE SurfaceReactions, ONLY: useGarrod2011Transfer
 IMPLICIT NONE
 CONTAINS
-SUBROUTINE GETYDOT(RATE, Y, bulkLayersReciprocal, surfaceCoverage, safeMantle, safebulk, D, YDOT)
-REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulkLayersReciprocal, safeMantle, safebulk, D
+SUBROUTINE GETYDOT(RATE, Y, bulklayersreciprocal, ratioSurfaceToBulk, surfaceCoverage, safeMantle, safebulk, D, YDOT)
+REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulklayersreciprocal, ratioSurfaceToBulk, safeMantle, safebulk, D
 REAL(dp), INTENT(INOUT) :: YDOT(:), surfaceCoverage
 REAL(dp) :: totalSwap, LOSS, PROD
     """
@@ -663,12 +882,24 @@ REAL(dp) :: totalSwap, LOSS, PROD
     ode_string += f"    SURFGROWTHUNCORRECTED = YDOT({surface_index + 1})\n"
 
     # now add bulk transfer to rate of change of surface species after they've already been calculated
-    ode_string += "!Update surface species for bulk growth, replace surfaceCoverage with alpha_des\n"
-    ode_string += (
-        "!Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
-    )
+    ode_string += "!Update surface species for bulk growth\n"
 
-    ode_string += f"IF (YDOT({surface_index + 1}) .lt. 0) THEN\n    surfaceCoverage = MIN(1.0,safeBulk/safeMantle)\n"
+    ode_string += f"IF (YDOT({surface_index + 1}) .lt. 0) THEN\n"
+    ode_string += (
+        "    ! Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
+    )
+    ode_string += "    IF (useGarrod2011Transfer) THEN\n"
+    ode_string += "        ! Three-phase treatment of Garrod & Pauly 2011\n"
+    ode_string += "        ! Replace surfaceCoverage with alpha_des\n"
+    ode_string += "        ! Real value of alpha_des: alpha_des = MIN(1.0D0, safeBulk / safeMantle).\n"
+    ode_string += "        ! However, the YDOTs calculated below need to be multiplied with Y(bulkspec)/safeBulk,\n"
+    ode_string += "        ! so we divide by safeBulk here to save time\n"
+    ode_string += "        surfaceCoverage = MIN(1.0D0, safeBulk/safeMantle)/safeBulk\n"
+    ode_string += "    ELSE\n        ! Hasegawa & Herbst 1993\n"
+    ode_string += (
+        "        surfaceCoverage = MIN(1.0D0, surfaceCoverage*safeMantle)/safeBulk\n"
+    )
+    ode_string += "    END IF\n"
 
     surf_species = [
         i
@@ -683,23 +914,38 @@ REAL(dp) :: totalSwap, LOSS, PROD
             j += 1
             bulk_partner = species_names.index(species.get_name().replace("#", "@"))
             if enable_rates_storage:
-                ode_string += f"    REACTIONRATE({i}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})/safeBulk\n"
-                ode_string += f"    REACTIONRATE({j}) = 0.0\n"
+                ode_string += f"    REACTIONRATE({i}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})\n"
+                ode_string += f"    REACTIONRATE({j}) = 0.0D0\n"
             if not species_list[bulk_partner].is_refractory:
-                ode_string += f"    YDOT({n + 1})=YDOT({n + 1})-YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})/safeBulk\n"
+                ode_string += f"    YDOT({n + 1})=YDOT({n + 1})-YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})\n"
         if species.get_name()[0] == "@":
             if not species.is_refractory:
-                ode_string += f"    YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({n + 1})/safeBulk\n"
+                ode_string += f"    YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({n + 1})\n"
     ode_string += "ELSE\n"
+    ode_string += "    ! surfaceCoverage = fractional surface coverage\n"
+    ode_string += "    ! Real value of surfaceCoverage: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
+    ode_string += "    ! However, the YDOTs calculated below need to be multiplied with Y(surfspec)/safeMantle, so we divide by safeMantle here to save time\n"
+    ode_string += "    ! In chemistry.f90: surfaceCoverage = 1/NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
+    ode_string += (
+        "    surfaceCoverage = MIN(1.0D0, surfaceCoverage*safeMantle)/safeMantle\n"
+    )
     i = len(reaction_list)
     j = len(reaction_list) + len(surf_species)
     for n, species in enumerate(species_list):
+        if species.get_name() in [
+            "#H2",
+            "@H2",
+        ]:  # Do not allow H2 to transfer from surface to bulk
+            if species.get_name() == "@H2":
+                i += 1
+                j += 1
+            continue
         if species.get_name()[0] == "@":
             i += 1
             j += 1
             surface_version = species_names.index(species.get_name().replace("@", "#"))
             if enable_rates_storage:
-                ode_string += f"    REACTIONRATE({i}) = 0.0\n"
+                ode_string += f"    REACTIONRATE({i}) = 0.0D0\n"
                 ode_string += f"    REACTIONRATE({j}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({surface_version + 1})\n"
             ode_string += f"    YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({surface_version + 1})\n"
         if species.get_name()[0] == "#":
@@ -764,6 +1010,12 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
     monoList = []
     volcList = []
     binding_energyList = []
+    customVdesList = []
+    diffusion_barriersList = []
+    customVdiffList = []
+    inertiaProducts = []
+    isLinears = []
+
     enthalpyList = []
     bulkList = []
     iceList = []
@@ -775,7 +1027,9 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
             try:
                 j = species_names.index(species.get_desorb_products()[0])
             except ValueError:
-                error = f"{species.get_name()} desorbs as {species.get_desorb_products()[0]}"
+                error = (
+                    f"{species.get_name()} desorbs as {species.get_desorb_products()[0]}"
+                )
                 error += "which is not in species list. This desorption is likely user defined.\n"
                 error += "Please amend the desorption route in your reaction file and re-run Makerates"
                 raise NameError(error)
@@ -787,14 +1041,30 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
             monoList.append(species.get_mono_fraction())
             volcList.append(species.get_volcano_fraction())
             iceList.append(i + 1)
+
             binding_energyList.append(species.get_binding_energy())
+            customVdesList.append(species.get_vdes())
+            diffusion_barriersList.append(species.get_diffusion_barrier())
+            customVdiffList.append(species.get_vdiff())
+
+            isLinears.append(species.is_linear())
+            inertiaProducts.append(species.calculate_rotational_partition_factor())
+
             enthalpyList.append(species.get_enthalpy())
         elif species.get_name()[0] == "@":
             j = species_names.index(species.get_desorb_products()[0])
             gasIceList.append(j + 1)
             bulkList.append(i + 1)
             iceList.append(i + 1)
+
             binding_energyList.append(species.get_binding_energy())
+            customVdesList.append(species.get_vdes())
+            diffusion_barriersList.append(species.get_diffusion_barrier())
+            customVdiffList.append(species.get_vdiff())
+
+            isLinears.append(species.is_linear())
+            inertiaProducts.append(species.calculate_rotational_partition_factor())
+
             enthalpyList.append(species.get_enthalpy())
             if species.is_refractory:
                 refractoryList.append(i + 1)
@@ -816,6 +1086,16 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
             "bindingEnergy", binding_energyList, type="float", parameter=False
         )
     )
+    network_file.write(array_to_string("customVdes", customVdesList, type="float"))
+    network_file.write(
+        array_to_string(
+            "diffusionBarrier", diffusion_barriersList, type="float", parameter=False
+        )
+    )
+    network_file.write(array_to_string("customVdiff", customVdiffList, type="float"))
+
+    network_file.write(array_to_string("moleculeIsLinear", isLinears, type="logical"))
+    network_file.write(array_to_string("inertiaProducts", inertiaProducts, type="float"))
     network_file.write(array_to_string("formationEnthalpy", enthalpyList, type="float"))
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
     return len(iceList)
@@ -977,7 +1257,7 @@ def write_network_file(
     else:
         openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
         openFile.write("    LOGICAL :: storeRatesComputation=.false.\n")
-    if any([exo != 0.0 for exo in exothermicity]):
+    if any(exo != 0.0 for exo in exothermicity):
         assert enable_rates_storage, "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
         openFile.write(
             array_to_string(
@@ -1039,6 +1319,57 @@ def write_network_file(
         openFile.write(
             array_to_string("\t" + list_name, indices, type="int", parameter=True)
         )
+
+    # Write LHDES and ERDES mapping arrays (Feature 3: LH/ER-DES mapping)
+    # These arrays map chemical reactive desorption reactions to their parent reactions
+    LHDEScorrespondingLHreacs = []
+    for reaction in reaction_list:
+        if reaction.get_reaction_type() == "LHDES":
+            if hasattr(reaction, "get_partner") and reaction.get_partner() is not None:
+                partner = reaction.get_partner()
+                reacIndex = reaction_list.index(partner) + 1
+                LHDEScorrespondingLHreacs.append(reacIndex)
+            else:
+                # If no partner set, use dummy index
+                LHDEScorrespondingLHreacs.append(99999)
+
+    # Write array (use dummy if empty for backward compatibility)
+    if len(LHDEScorrespondingLHreacs) == 0:
+        LHDEScorrespondingLHreacs = [99999]
+    openFile.write(
+        array_to_string(
+            "\tLHDEScorrespondingLHreacs",
+            LHDEScorrespondingLHreacs,
+            type="int",
+            parameter=True,
+        )
+    )
+
+    ERDEScorrespondingERreacs = []
+    for reaction in reaction_list:
+        if reaction.get_reaction_type() == "ERDES":
+            if hasattr(reaction, "get_partner") and reaction.get_partner() is not None:
+                partner = reaction.get_partner()
+                reacIndex = reaction_list.index(partner) + 1
+                ERDEScorrespondingERreacs.append(reacIndex)
+            else:
+                # If no partner set, use dummy index
+                ERDEScorrespondingERreacs.append(99999)
+
+    # Write array (use dummy if empty for backward compatibility)
+    if len(ERDEScorrespondingERreacs) == 0:
+        ERDEScorrespondingERreacs = [99999]
+    elif len(ERDEScorrespondingERreacs) == 1:
+        # Fortran needs at least 2 elements for array
+        ERDEScorrespondingERreacs.append(ERDEScorrespondingERreacs[0])
+    openFile.write(
+        array_to_string(
+            "\tERDEScorrespondingERreacs",
+            ERDEScorrespondingERreacs,
+            type="int",
+            parameter=True,
+        )
+    )
     openFile.write("END MODULE network")
     openFile.close()
 
@@ -1151,3 +1482,52 @@ def array_to_string(
         outString = outString[:-1] + "/)\n"
         outString = truncate_line(outString)
         return outString
+
+
+def copy_coolant_files(source_dir: str = None) -> None:
+    """
+    Copy coolant data files to the package data directory for installation.
+
+    This function copies .dat files from the source coolant directory
+    (typically Makerates/data/collisional_rates/) to src/uclchem/data/collisional_rates/
+    so they can be installed with the package via meson.
+
+    Args:
+        source_dir: Optional source directory. If None, uses get_default_coolant_directory().
+
+    Raises:
+        FileNotFoundError: If source directory doesn't exist or contains no .dat files.
+    """
+    import shutil
+
+    # Determine source directory
+    if source_dir is None:
+        source_dir = get_default_coolant_directory()
+
+    source_path = Path(source_dir)
+    if not source_path.is_dir():
+        raise FileNotFoundError(
+            f"Source coolant directory not found: {source_path}\n"
+            f"Expected to find .dat files for coolant data."
+        )
+
+    # Find .dat files in source directory
+    dat_files = list(source_path.glob("*.dat"))
+    if not dat_files:
+        raise FileNotFoundError(
+            f"No .dat files found in source directory: {source_path}\n"
+            f"Cannot copy coolant data files."
+        )
+
+    # Target directory in package structure
+    target_path = UCLCHEM_ROOT_DIR / "data" / "collisional_rates"
+    target_path.mkdir(parents=True, exist_ok=True)
+
+    # Copy each .dat file
+    logging.info(f"Copying {len(dat_files)} coolant data files to {target_path}")
+    for dat_file in dat_files:
+        target_file = target_path / dat_file.name
+        shutil.copy2(dat_file, target_file)
+        logging.debug(f"  Copied {dat_file.name}")
+
+    logging.info("Successfully copied coolant data files for package installation")

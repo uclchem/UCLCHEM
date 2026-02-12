@@ -135,6 +135,10 @@ internal_parameters:
     - median_line_index
     - permutationarray_size
     - line_solver_attempts
+  surfacereactions:
+    - num_monolayers_is_surface
+    - gas_dust_density_ratio
+    - num_sites_per_grain
   
   # io - file unit numbers
   io:
@@ -170,4 +174,6 @@ file_path_parameters:
     - heatingfile
     - abundsavefile
     - abundloadfile
-    - coolantdatadir
+
+# Note: coolantdatadir was moved from defaultparameters to f2py_constants
+# and is now set via HeatingSettings.set_coolant_directory()

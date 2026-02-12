@@ -1,4 +1,13 @@
 repos:
+- repo: local
+  hooks:
+    - id: check-no-ipynb
+      name: Reject .ipynb files (use --fix)
+      entry: bash notebooks/notebooks.sh --check
+      language: system
+      files: \.ipynb$
+      stages: [pre-commit]
+      pass_filenames: false
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
   rev: v0.6.9

@@ -1,7 +1,6 @@
 # enter two reaction files to see all reactions that are one file but not the other
 
-from uclchem.makerates.io_functions import read_species_file, read_reaction_file
-
+from uclchem.makerates.io_functions import read_reaction_file, read_species_file
 
 reactionsFile1 = "inputFiles/default_grain_network.csv"
 # reactionsFile2 = "inputFiles/freeze_only_grain_network.csv"

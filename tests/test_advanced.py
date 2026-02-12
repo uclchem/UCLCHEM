@@ -279,9 +279,7 @@ class TestNetworkState:
         assert len(network.species_list) == original_species_count
         assert len(network.reaction_list) == original_reaction_count
 
-    def test_reset_restores_alpha_beta_gama(
-        self, network: advanced.NetworkState
-    ) -> None:
+    def test_reset_restores_alpha_beta_gama(self, network: advanced.NetworkState) -> None:
         """Test that reset restores alpha, beta, gama correctly.
 
         Fortran side: Tests Fortran array values are restored correctly.
@@ -415,9 +413,7 @@ class TestRuntimeNetwork:
         with pytest.raises(NotImplementedError, match="Cannot add species"):
             network.add_species(test_species)
 
-    def test_add_reactions_not_supported(
-        self, network: advanced.RuntimeNetwork
-    ) -> None:
+    def test_add_reactions_not_supported(self, network: advanced.RuntimeNetwork) -> None:
         """Test that adding reactions raises NotImplementedError."""
         from uclchem.makerates.reaction import Reaction
 
@@ -428,9 +424,7 @@ class TestRuntimeNetwork:
         with pytest.raises(NotImplementedError, match="Cannot add reactions"):
             network.add_reactions(test_reaction)
 
-    def test_remove_species_not_supported(
-        self, network: advanced.RuntimeNetwork
-    ) -> None:
+    def test_remove_species_not_supported(self, network: advanced.RuntimeNetwork) -> None:
         """Test that removing species raises NotImplementedError."""
         if len(network.get_species_list()) == 0:
             pytest.skip("No species to test")
@@ -504,21 +498,15 @@ class TestGeneralSettings:
         Python side: Tests Python error handling for file path parameters.
         """
         # Test outputfile
-        with pytest.raises(
-            RuntimeError, match="file paths should be set via param_dict"
-        ):
+        with pytest.raises(RuntimeError, match="file paths should be set via param_dict"):
             settings.defaultparameters.outputfile.set("test.dat")
 
         # Test abundsavefile
-        with pytest.raises(
-            RuntimeError, match="file paths should be set via param_dict"
-        ):
+        with pytest.raises(RuntimeError, match="file paths should be set via param_dict"):
             settings.defaultparameters.abundsavefile.set("test-abund.dat")
 
         # Test columnfile
-        with pytest.raises(
-            RuntimeError, match="file paths should be set via param_dict"
-        ):
+        with pytest.raises(RuntimeError, match="file paths should be set via param_dict"):
             settings.defaultparameters.columnfile.set("test-column.dat")
 
     def test_parameter_protection(self, settings: advanced.GeneralSettings) -> None:
@@ -636,9 +624,7 @@ class TestGeneralSettings:
         assert not settings.defaultparameters.initialdens.is_edited
         assert not settings.defaultparameters.initialtemp.is_edited
 
-    def test_memory_consistency_warning(
-        self, settings: advanced.GeneralSettings
-    ) -> None:
+    def test_memory_consistency_warning(self, settings: advanced.GeneralSettings) -> None:
         """Test that get() warns if memory value changed externally.
 
         Python-Fortran integration: Tests Python tracking vs Fortran memory state.
@@ -791,9 +777,7 @@ def test_network_reset_preserves_all_parameters():
     reset_alpha = np.array(
         [float(network._network.alpha[i]) for i in range(len(csv_alpha))]
     )
-    reset_beta = np.array(
-        [float(network._network.beta[i]) for i in range(len(csv_beta))]
-    )
+    reset_beta = np.array([float(network._network.beta[i]) for i in range(len(csv_beta))])
     reset_gamma = np.array(
         [float(network._network.gama[i]) for i in range(len(csv_gamma))]
     )

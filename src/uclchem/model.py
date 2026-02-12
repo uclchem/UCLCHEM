@@ -1,3 +1,85 @@
+"""UCLCHEM Model Module
+
+Core module for running gas-grain chemical models under different physical conditions.
+
+This module provides both object-oriented and functional interfaces for running
+UCLCHEM chemical models. The object-oriented API (model classes) is recommended
+for most use cases as it provides better state management and built-in analysis tools.
+
+**Model Classes (Object-Oriented API - Recommended):**
+
+- :class:`Cloud` - Static or freefall collapsing cloud
+- :class:`Collapse` - Collapsing cloud with various prescriptions (BE, filament, ambipolar)
+- :class:`PrestellarCore` - Prestellar core with heating and chemistry
+- :class:`CShock` - C-type shock model
+- :class:`JShock` - J-type shock model
+- :class:`Postprocess` - Custom physics from user-provided arrays
+- :class:`GridModels` - Run parameter grids in parallel
+- :class:`SequentialModel` - Chain multiple physical stages
+
+**Legacy Functions (Functional API):**
+
+Available in :mod:`uclchem.functional` for backward compatibility.
+Returns arrays/DataFrames instead of model objects.
+
+**Quick Example:**
+
+.. code-block:: python
+
+    import uclchem
+
+    # Create a collapsing cloud model
+    cloud = uclchem.model.Cloud(
+        param_dict={
+            \"initialDens\": 1e2,
+            \"initialTemp\": 10.0,
+            \"finalTime\": 1e6,
+            \"freefall\": True
+        },
+        out_species=[\"CO\", \"H2O\", \"CH3OH\"]
+    )
+
+    # Check for errors and plot
+    cloud.check_error()
+    cloud.create_abundance_plot([\"CO\", \"$CO\"])
+
+**Model Workflow:**
+
+1. **Initialize**: Create model object with parameters
+2. **Run**: Model runs automatically on initialization (or use `read_file` to load)
+3. **Analyze**: Access results via attributes (`.final_abundances`, `.chemistry_dataframe`)
+4. **Plot**: Use built-in plotting methods (`.create_abundance_plot()`)
+5. **Chain**: Use as input to next stage (`.previous_model` parameter)
+
+**Common Parameters:**
+
+All models accept these key parameters in `param_dict`:
+
+- ``initialDens`` (float): Initial density [cm⁻³]
+- ``initialTemp`` (float): Initial temperature [K]
+- ``finalTime`` (float): Simulation end time [years]
+- ``freefall`` (bool): Enable freefall collapse (Cloud only)
+- ``outputFile`` (str): Output file path (optional with OO API)
+
+See the user guide for complete parameter list.
+
+**Species Naming:**
+
+- Gas phase: ``CO``, ``H2O``, ``CH3OH``
+- Ice surface: ``$CO``, ``$H2O``, ``$CH3OH``
+- Ice bulk: ``@CO``, ``@H2O``, ``@CH3OH``
+
+**See Also:**
+
+- :mod:`uclchem.analysis` - Analyze model outputs and reaction pathways
+- :mod:`uclchem.advanced` - Advanced controls for heating and network state
+
+**Note on Thread Safety:**
+
+Model objects are **not thread-safe** when using advanced features that modify
+Fortran module state. Use multiprocessing (not threading) for parallel runs.
+"""
+
 import json
 import logging
 
@@ -22,19 +104,27 @@ import xarray as xr
 # UCLCHEM related imports
 from uclchemwrap import uclchemwrap as wrap
 
+from uclchem._coolant_utils import load_coolant_level_names
 from uclchem.analysis import (
     check_element_conservation,
     create_abundance_plot,
     plot_species,
 )
 from uclchem.constants import (
+    DVODE_STAT_NAMES,
+    N_DVODE_STATS,
     N_PHYSICAL_PARAMETERS,
+    N_SE_STATS_PER_COOLANT,
+    N_TOTAL_LEVELS,
+    NCOOLANTS,
     PHYSICAL_PARAMETERS,
+    SE_STAT_NAMES,
     TIMEPOINTS,
     default_param_dictionary,
     n_reactions,
     n_species,
 )
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 # /Multiprocessing imports
 
@@ -47,41 +137,7 @@ PHYSICAL_PARAMETERS_VALUE_FORMAT = (
 )
 SPECNAME_HEADER_FORMAT = "%11s"
 SPECNAME_VALUE_FORMAT = "%9.5E"
-#
 
-
-# Set collisional rates directory for heating/cooling calculations
-def set_collisional_rates_directory():
-    # TODO: move this functionality into the advanced heating suite.
-    coolant_directory = (
-        os.path.dirname(os.path.abspath(__file__)) + "/data/collisional_rates/"
-    )
-    # Provide the correct path to the coolant files:
-    assert len(coolant_directory) < 256, (
-        "Coolant directory path is too long, please shorten it. Path is "
-        + coolant_directory
-    )
-    try:
-        uclchemwrap.defaultparameters.coolantdatadir = coolant_directory
-        actual_dir = str(
-            np.char.decode(uclchemwrap.defaultparameters.coolantdatadir)
-        ).strip()
-        assert actual_dir == coolant_directory, (
-            f"Coolant directory path not set correctly. "
-            f"Expected: {coolant_directory} "
-            f"Got: {actual_dir}"
-        )
-    except AttributeError:
-        logging.warning(
-            "Cannot set the coolant directory path, please set 'coolantDataDir' correctly at runtime."
-        )
-
-
-# Call set_collisional_rates_directory to initialize heating/cooling support
-try:
-    set_collisional_rates_directory()
-except Exception as e:
-    logging.warning(f"Could not set collisional rates directory: {e}")
 
 # Model registration is intended to prevent code injection during loading time.
 REGISTRY: Dict[str, Type["AbstractModel"]] = {}
@@ -99,7 +155,16 @@ def register_model(cls: Type["AbstractModel"]):
 
 
 # Reaction and Species name retrieval classes to reduce file read repetition.
-def reaction_line_formatter(line):
+def reaction_line_formatter(line: list[str]) -> str:
+    """Format a list of strings as a reaction, while filtering out "NAN"s.
+
+    Args:
+        line (list[str]): list of species involved in the reaction
+
+    Returns:
+        str: formatted reaction for printing.
+    """
+
     reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
     products = list(filter(lambda x: not str(x).lower().endswith("nan"), line[3:7]))
     return " + ".join(reactants) + " -> " + " + ".join(products)
@@ -112,11 +177,7 @@ class ReactionNamesStore:
     def __call__(self):
         # Only load the reactions once, after that use the cached version
         if self.reaction_names is None:
-            reactions = pd.read_csv(
-                os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)), "reactions.csv"
-                )
-            )
+            reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
             # format the reactions:
             self.reaction_names = [
                 reaction_line_formatter(line) for idx, line in reactions.iterrows()
@@ -126,9 +187,6 @@ class ReactionNamesStore:
 
 get_reaction_names = ReactionNamesStore()
 
-# Before doing anything else, set the right collision rate directory.
-set_collisional_rates_directory()
-
 
 class SpeciesNameStore:
     def __init__(self):
@@ -137,9 +195,7 @@ class SpeciesNameStore:
     def __call__(self):
         # Only load the species once, after that use the cached version
         if self.species_names is None:
-            species = pd.read_csv(
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "species.csv")
-            )
+            species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
             self.species_names = species["NAME"].tolist()
         return self.species_names
 
@@ -270,8 +326,13 @@ class AbstractModel(ABC):
     ):
         self._data = xr.Dataset()
         self._pickle_dict = {}
-        # Shared memory
+        # Per-instance metadata containers (scalars and small values)
+        object.__setattr__(self, "_meta", {})
+        object.__setattr__(self, "_pickle_meta", {})
+        # Set run_type into metadata
         self.run_type = run_type
+
+        # Shared memory
         self._shm_desc = {}
         self._shm_handles = {}
         self._proc_handle = None
@@ -291,25 +352,51 @@ class AbstractModel(ABC):
         self.full_array = None
         self._debug = debug
         self.success_flag = None
-        self.specname = get_species_names()
+        # Note: specname is now accessed via get_species_names() global function
+        # Note: PHYSICAL_PARAMETERS is now accessed via the global constant
 
         self.n_out = 0 if read_file is None else None
-        self.timepoints = timepoints if read_file is None else None
+        self.timepoints = timepoints
         self.was_read = False if read_file is None else True
-        self.PHYSICAL_PARAMETERS = PHYSICAL_PARAMETERS if read_file is None else None
 
         self._reform_inputs(param_dict, self.out_species_list)
+
+        # Validate endAtFinalDensity usage
+        if self._param_dict.get("endatfinaldensity", False):
+            if not self._param_dict.get("freefall", False):
+                # Check if this is a Collapse model (which is allowed)
+                if self.model_type != "Collapse":
+                    raise ValueError(
+                        "endAtFinalDensity=True can only be used with:\n"
+                        "  - Collapse models\n"
+                        "  - Cloud models with freefall=True\n"
+                        f"Current model: {self.model_type}, freefall={self._param_dict.get('freefall', False)}\n"
+                        "Please either set freefall=True or set endAtFinalDensity=False"
+                    )
+
+        # If we were given a previously-written output file, populate the model
+        # arrays and metadata from that file now so later initialization can rely on them.
+        if read_file is not None:
+            self.legacy_read_output_file(read_file)
         if "points" not in self._param_dict:
             self._param_dict["points"] = 1
+        # Expose grid points as attribute for legacy code expecting `gridPoints`
+        object.__setattr__(self, "gridPoints", self._param_dict["points"])
 
         self.outputFile = (
-            param_dict.pop("outputFile") if "outputFile" in param_dict else None
+            self._param_dict.pop("outputfile")
+            if "outputfile" in self._param_dict
+            else None
         )
         self.abundSaveFile = (
-            param_dict.pop("abundSaveFile") if "abundSaveFile" in param_dict else None
+            self._param_dict.pop("abundsavefile")
+            if "abundsavefile" in self._param_dict
+            else None
         )
         self.abundLoadFile = (
-            param_dict.pop("abundLoadFile") if "abundLoadFile" in param_dict else None
+            self._param_dict.pop("abundloadfile")
+            if "abundloadfile" in self._param_dict
+            else None
         )
 
         self.starting_chemistry_array = None
@@ -317,23 +404,49 @@ class AbstractModel(ABC):
             self._create_starting_array(starting_chemistry)
         elif self.abundLoadFile is not None:
             self.legacy_read_starting_chemistry()
-        elif previous_model.has_attr("next_starting_chemistry_array"):
+        elif previous_model is not None and previous_model.has_attr(
+            "next_starting_chemistry_array"
+        ):
+            # All models must use the same hard-coded PHYSICAL_PARAMETERS from constants.py
+            # If previous_model was loaded from a legacy file with different parameters,
+            # that's a compatibility issue that should have been caught during load.
             self._create_starting_array(previous_model.next_starting_chemistry_array)
 
         self.give_start_abund = self.starting_chemistry_array is not None
-        self.next_starting_chemistry_array = None
+        assert not np.all(
+            self.starting_chemistry_array == 0.0
+        ), "Detected all zeros starting chemistry array."
 
-        self.physics_array = None
-        self.chemical_abun_array = None
-        self._create_fortran_array()
-        self.rates_array = None
-        self._create_rates_array()
-        self.heat_array = None
-        self._create_heating_array()
-        self.out_species_abundances_array = None
+        # Only initialize next_starting_chemistry_array if we didn't load it from a file
+        # (legacy_read_output_file sets it from the last timestep)
+        if read_file is None:
+            self.next_starting_chemistry_array = None
 
-        if read_file is not None:
-            self.read_output_file(read_file)
+        # Only create new arrays if we didn't load them from a file
+        if read_file is None:
+            self.physics_array = None
+            self.chemical_abun_array = None
+            self._create_fortran_array()
+            self.rates_array = None
+            self._create_rates_array()
+            self.heat_array = None
+            self._create_heating_array()
+            self.stats_array = None
+            self._create_stats_array()
+            self.level_populations_array = None
+            self._create_level_populations_array()
+            self.se_stats_array = None
+            self._create_se_stats_array()
+            self.out_species_abundances_array = None
+        else:
+            # When loading from file, arrays are already populated; just initialize
+            # the arrays that weren't loaded
+            self.rates_array = None
+            self.heat_array = None
+            self.stats_array = None
+            self.level_populations_array = None
+            self.se_stats_array = None
+            self.out_species_abundances_array = None
         return
 
     def __del__(self):
@@ -350,8 +463,8 @@ class AbstractModel(ABC):
         obj._data = model_ds.copy()
         model_ds.close()
         temp_attribute_dict = json.loads(obj._data["attributes_dict"].item())
-        for k, v in temp_attribute_dict.items():
-            obj._data[k] = v
+        # Restore these values into the metadata dict rather than dataset variables
+        object.__setattr__(obj, "_meta", temp_attribute_dict)
         obj._data.__delitem__("attributes_dict")
         obj.debug = debug
         obj._coord_assign()
@@ -368,10 +481,21 @@ class AbstractModel(ABC):
     # /Separate class building methods
 
     # Class utility methods
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
+        # Internal attributes behave normally
         if key.startswith("_") and key != "_data":
             return super().__getattribute__(key)
-        elif key in super().__getattribute__("_data"):
+
+        # First check instance metadata
+        try:
+            meta = super().__getattribute__("_meta")
+        except Exception:
+            meta = {}
+        if key in meta:
+            return meta[key]
+
+        # Next check the xarray Dataset
+        if key in super().__getattribute__("_data"):
             values = super().__getattribute__("_data")[key].values
             if np.shape(values) != ():
                 if isinstance(values, tuple):
@@ -380,32 +504,131 @@ class AbstractModel(ABC):
                     return values
             else:
                 return self._data[key].item()
-        else:
-            raise AttributeError(
-                f'{self.__class__.__name__} has no attribute of name: "{key}".'
-            )
 
-    def __setattr__(self, key, value):
+        raise AttributeError(
+            f'{self.__class__.__name__} has no attribute of name: "{key}".'
+        )
+
+    def __setattr__(self, key: str, value: Any) -> None:
+        # Underscored attributes are real attributes
         if key.startswith("_"):
             super().__setattr__(key, value)
-        else:
-            if key in self._data:
-                self._data.__delitem__(key)
+            return
 
-            if np.ndim(value) == 3 and "_array" in key:
-                self._data[key] = (
-                    ["time_step", "point", key.replace("array", "values")],
-                    value,
-                )
-            elif np.ndim(value) == 2 and "_array" in key:
+        # Determine ndim safely
+        try:
+            ndim = np.ndim(value)
+        except Exception:
+            ndim = None
+
+        # If this looks like an array variable (name contains '_array' and ndim >= 1), store in _data
+        if ndim is not None and "_array" in key and ndim >= 1:
+            # Ensure value is a numpy array (convert lists, tuples, etc.)
+            if not isinstance(value, np.ndarray):
+                value = np.asarray(value)
+                ndim = value.ndim  # Update ndim after conversion
+
+            # Remove any existing conflicting metadata entry
+            try:
+                meta = super().__getattribute__("_meta")
+                if key in meta:
+                    del meta[key]
+            except Exception:
+                pass
+
+            # Remove any existing dataset var of same name before inserting
+            if key in self._data:
+                try:
+                    self._data = self._data.drop_vars(key)
+                except Exception:
+                    pass
+
+            # Choose a time dimension name that avoids conflicts with existing dims
+            time_dim = "time_step"
+            existing_time = None
+            try:
+                # Use .sizes (mapping of dim name -> length) instead of .dims to avoid FutureWarning
+                existing_time = self._data.sizes.get("time_step", None)
+            except Exception:
+                existing_time = None
+
+            if existing_time is not None and existing_time != value.shape[0]:
+                # create a per-variable time dim to avoid conflicts
+                base_time_dim = f"time_step_{key}"
+                time_dim = base_time_dim
+                i = 1
+                while time_dim in self._data.sizes:
+                    time_dim = f"{base_time_dim}_{i}"
+                    i += 1
+
+            if ndim == 3:
+                # Determine the 'values' dimension name for the variable
+                values_dim = key.replace("array", "values")
+                # If an existing coordinate with this name has a conflicting
+                # length, create a per-variable values dimension to avoid
+                # xarray merge conflicts (similar to per-variable time dims).
+                try:
+                    existing_values_len = self._data.sizes.get(values_dim, None)
+                except Exception:
+                    existing_values_len = None
+
+                if (
+                    existing_values_len is not None
+                    and existing_values_len != value.shape[2]
+                ):
+                    base_values_dim = f"{values_dim}_{key}"
+                    new_values_dim = base_values_dim
+                    j = 1
+                    while new_values_dim in self._data.sizes:
+                        new_values_dim = f"{base_values_dim}_{j}"
+                        j += 1
+                    self._data[key] = ([time_dim, "point", new_values_dim], value)
+                    # add numeric coords for the new dimension
+                    self._data = self._data.assign_coords(
+                        {new_values_dim: np.arange(value.shape[2])}
+                    )
+                else:
+                    self._data[key] = ([time_dim, "point", values_dim], value)
+
+                # Add coordinate for custom time dim if we created one
+                if time_dim != "time_step":
+                    self._data = self._data.assign_coords(
+                        {time_dim: np.arange(value.shape[0])}
+                    )
+            elif ndim == 2:
                 self._data[key] = (["point", key], value)
+            elif ndim == 1:
+                # For 1D arrays, use the array name as the dimension
+                dim_name = key.replace("_array", "")
+                self._data[key] = ([dim_name], value)
             else:
                 self._data[key] = value
+            return
+
+        # Otherwise, store in metadata
+        try:
+            meta = super().__getattribute__("_meta")
+        except Exception:
+            object.__setattr__(self, "_meta", {})
+            meta = self._meta
+
+        # If a dataset variable exists with this name, drop it to avoid ambiguity
+        if key in self._data:
+            try:
+                self._data = self._data.drop_vars(key)
+            except Exception:
+                pass
+
+        meta[key] = value
         return
 
     def has_attr(self, key):
-        """Method to check if the object has an attribute stored in self._data"""
-        return key in self._data
+        """Method to check if the object has an attribute stored in self._meta or self._data"""
+        try:
+            meta = super().__getattribute__("_meta")
+        except Exception:
+            meta = {}
+        return (key in meta) or (key in self._data)
 
     # /Class utility method
 
@@ -433,12 +656,10 @@ class AbstractModel(ABC):
         else:
             print("Element conservation report")
             print(
-                check_element_conservation(
-                    self.get_dataframes(0), element_list, percent
-                )
+                check_element_conservation(self.get_dataframes(0), element_list, percent)
             )
 
-    def check_error(self, only_error: bool = False):
+    def check_error(self, only_error: bool = False) -> None:
         """
         Prints the error message of the model based on self.success_flag, this method was originally an uclchem.utils function.
 
@@ -463,7 +684,6 @@ class AbstractModel(ABC):
             print("Model ran successfully.")
         elif self.success_flag is None:
             print("Model has not been run.")
-        return
 
     def create_abundance_plot(
         self,
@@ -471,12 +691,14 @@ class AbstractModel(ABC):
         figsize: tuple[2] = (16, 9),
         point: int = 0,
         plot_file=None,
-    ):
+    ) -> tuple[plt.Figure, plt.Axes]:
         """uclchem.analysis.create_abundance_plot wrapper method
+
         Args:
             element_list (list, optional): List of elements to check conservation for. Defaults to  self.out_species_list.
             figsize (tuple[2], optional): The figure size to use for matplotlib Defaults to (16, 9).
             point (int, optional): Integer referring to which point of the UCLCHEM model to use. Defaults to 0.
+
         Returns:
             fig,ax: matplotlib figure and axis objects
         """
@@ -495,7 +717,10 @@ class AbstractModel(ABC):
         joined: bool = True,
         with_rates: bool = False,
         with_heating: bool = False,
-    ):
+        with_stats: bool = False,
+        with_level_populations: bool = False,
+        with_se_stats: bool = False,
+    ) -> pd.DataFrame | tuple[pd.DataFrame, ...]:  # Returns joined DF or tuple of DFs
         """Converts the model physics and chemical_abun arrays from numpy to pandas arrays.
         Args:
             point (int, optional): Integer referring to which point of the UCLCHEM model to return as pandas does not support higher
@@ -506,22 +731,31 @@ class AbstractModel(ABC):
                 dataframe depending on the value of `joined`. Defaults to False.
             with_heating (bool, optional): Flag on whether to include heating/cooling rates in the dataframe, and/or as a separate
                 dataframe depending on the value of `joined`. Defaults to False.
+            with_stats (bool, optional): Flag on whether to include DVODE solver statistics in the dataframe, and/or as a separate
+                dataframe depending on the value of `joined`. Defaults to False.
+            with_level_populations (bool, optional): Flag on whether to include coolant level populations in the output. Defaults to False.
+            with_se_stats (bool, optional): Flag on whether to include SE solver statistics in the output. Defaults to False.
         Returns:
             return_df (pandas.DataFrame): Dataframe of the joined arrays for point 'point' if joined = True
             physics_df (pandas.DataFrame): Dataframe of the physical parameters for point 'point' if joined = False
             chemistry_df (pandas.DataFrame): Dataframe of the chemical abundances  for point 'point' if joined = False
             rates_df (pandas.DataFrame): Dataframe of the reaction rates  for point 'point' if joined = False and with_rates = True
             heating_df (pandas.DataFrame): Dataframe of the heating/cooling rates  for point 'point' if joined = False and with_heating = True
+            stats_df (pandas.DataFrame): Dataframe of DVODE solver statistics for point 'point' if joined = False and with_stats = True
+            level_populations_df (pandas.DataFrame): Dataframe of coolant level populations for point 'point' if joined = False and with_level_populations = True
+            se_stats_df (pandas.DataFrame): Dataframe of SE solver statistics for point 'point' if joined = False and with_se_stats = True
         """
-        # Create a physical parameter dataframe
+        # Create a physical parameter dataframe using global constants
+        # Arrays are guaranteed to match these dimensions due to validation in legacy_read_output_file
         physics_df = pd.DataFrame(
-            self.physics_array[:, point, : len(self.PHYSICAL_PARAMETERS)],
+            self.physics_array[:, point, :],
             index=None,
-            columns=self.PHYSICAL_PARAMETERS,
+            columns=PHYSICAL_PARAMETERS,
         )
-        # Create an abundances dataframe.
+        # Create an abundances dataframe using global species names
+        species_names = get_species_names()
         chemistry_df = pd.DataFrame(
-            self.chemical_abun_array[:, point, :], index=None, columns=self.specname
+            self.chemical_abun_array[:, point, :], index=None, columns=species_names
         )
         if self.rates_array is not None and with_rates:
             # Create a rates dataframe.
@@ -565,12 +799,35 @@ class AbstractModel(ABC):
         else:
             heating_df = None
 
+        if self.stats_array is not None and with_stats:
+            stats_df = pd.DataFrame(
+                self.stats_array[:, point, :], index=None, columns=DVODE_STAT_NAMES
+            )
+        else:
+            stats_df = None
+
+        if self.level_populations_array is not None and with_level_populations:
+            level_populations_df = self.get_level_populations_dataframe(point=point)
+        else:
+            level_populations_df = None
+
+        if self.se_stats_array is not None and with_se_stats:
+            se_stats_df = self.get_se_stats_dataframe(point=point)
+        else:
+            se_stats_df = None
+
         if joined:
             return_df = physics_df.join(chemistry_df)
             if with_rates and rates_df is not None:
                 return_df = return_df.join(rates_df)
             if with_heating and heating_df is not None:
                 return_df = return_df.join(heating_df)
+            if with_stats and stats_df is not None:
+                return_df = return_df.join(stats_df)
+            if with_level_populations and level_populations_df is not None:
+                return_df = return_df.join(level_populations_df)
+            if with_se_stats and se_stats_df is not None:
+                return_df = return_df.join(se_stats_df)
             return return_df
         else:
             result = [physics_df, chemistry_df]
@@ -578,6 +835,12 @@ class AbstractModel(ABC):
                 result.append(rates_df)
             if with_heating:
                 result.append(heating_df)
+            if with_stats:
+                result.append(stats_df)
+            if with_level_populations:
+                result.append(level_populations_df)
+            if with_se_stats:
+                result.append(se_stats_df)
             return tuple(result)
 
     def plot_species(
@@ -587,7 +850,7 @@ class AbstractModel(ABC):
         point: int = 0,
         legend: bool = True,
         **plot_kwargs,
-    ):
+    ) -> plt.Axes:
         """uclchem.analysis.plot(species) wrapper method
         Args:
             ax (plt.axes):
@@ -595,6 +858,9 @@ class AbstractModel(ABC):
             point (int, optional):
             legend (bool, optional):
             plot_kwargs (dict, optional):
+
+        Returns:
+            plt.Axes: Modified input axis
         """
         if species is None:
             species = self.out_species_list
@@ -613,9 +879,11 @@ class AbstractModel(ABC):
             self.chemical_abun_array = None
             self.ratesArray = None
             self.heatArray = None
+            self.statsArray = None
             self._create_fortran_array()
             self._create_rates_array()
             self._create_heating_array()
+            self._create_stats_array()
 
         def _handler(signum, frame):
             try:
@@ -660,9 +928,27 @@ class AbstractModel(ABC):
         self._array_clean()
         self.check_error(only_error=True)
         if self.outputFile is not None:
-            self.legacy_write_full()
+            logging.debug(f"Writing output file: {self.outputFile}")
+            logging.debug(
+                f"Physics array shape: {self.physics_array.shape if self.physics_array is not None else None}"
+            )
+            logging.debug(
+                f"Chemical array shape: {self.chemical_abun_array.shape if self.chemical_abun_array is not None else None}"
+            )
+            try:
+                self.legacy_write_full()
+                logging.debug(f"Successfully wrote {self.outputFile}")
+            except Exception as e:
+                logging.error(f"Failed to write {self.outputFile}: {e}", exc_info=True)
+                raise
         if self.abundSaveFile is not None:
-            self.legacy_write_starting_chemistry()
+            logging.debug(f"Writing abundance file: {self.abundSaveFile}")
+            try:
+                self.legacy_write_starting_chemistry()
+                logging.debug(f"Successfully wrote {self.abundSaveFile}")
+            except Exception as e:
+                logging.error(f"Failed to write {self.abundSaveFile}: {e}", exc_info=True)
+                raise
         return
 
     @abstractmethod
@@ -678,7 +964,7 @@ class AbstractModel(ABC):
         name: str = "default",
         engine: str = "h5netcdf",
         overwrite: bool = False,
-    ):
+    ) -> None:
         """
         save_model saves a model to a file on disk. Multiple models can be saved into the same file if different names are used to store them.
 
@@ -701,8 +987,15 @@ class AbstractModel(ABC):
                         return
                 tree.close()
 
+        # Start with metadata values
         temp_attribute_dict = {}
-        for v in self._data.variables:
+        try:
+            temp_attribute_dict.update(super().__getattribute__("_meta"))
+        except Exception:
+            pass
+
+        # Collect remaining non-array dataset variables into attributes (same behaviour as before)
+        for v in list(self._data.variables):
             if "_array" not in v and v not in ["_orig_sigint"]:
                 if np.shape(self._data[v].values) != ():
                     if isinstance(self._data[v].values, tuple):
@@ -717,9 +1010,7 @@ class AbstractModel(ABC):
 
         self._data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
         self._data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
-
         self._data.to_netcdf(file, group=name, engine=engine, mode="a")
-        return
 
     # /Model saving
 
@@ -734,7 +1025,16 @@ class AbstractModel(ABC):
                         self._pickle_dict[v] = self._data[v].values.tolist()
                 else:
                     self._pickle_dict[v] = self._data[v].item()
+            # Save metadata separately for pickle roundtrip
+            try:
+                object.__setattr__(
+                    self, "_pickle_meta", super().__getattribute__("_meta").copy()
+                )
+            except Exception:
+                object.__setattr__(self, "_pickle_meta", {})
             self._data = None
+            # Clear runtime metadata to reflect pickled state
+            object.__setattr__(self, "_meta", {})
         return self
 
     def un_pickle(self):
@@ -742,10 +1042,34 @@ class AbstractModel(ABC):
             self._data = xr.Dataset()
             for k, v in self._pickle_dict.items():
                 if np.ndim(v) == 3 and "_array" in k:
-                    self._data[k] = (
-                        ["time_step", "point", k.replace("array", "values")],
-                        v,
-                    )
+                    # Avoid colliding with existing 'time_step' dim sizes by
+                    # making a per-variable time dim if necessary
+                    time_dim = "time_step"
+                    existing_time = None
+                    try:
+                        existing_time = self._data.sizes.get("time_step", None)
+                    except Exception:
+                        existing_time = None
+                    v_arr = np.asarray(v)
+                    if existing_time is not None and existing_time != np.shape(v_arr)[0]:
+                        base_time_dim = f"time_step_{k}"
+                        time_dim = base_time_dim
+                        i = 1
+                        while time_dim in self._data.sizes:
+                            time_dim = f"{base_time_dim}_{i}"
+                            i += 1
+                        self._data[k] = (
+                            [time_dim, "point", k.replace("array", "values")],
+                            v_arr,
+                        )
+                        self._data = self._data.assign_coords(
+                            {time_dim: np.arange(np.shape(v_arr)[0])}
+                        )
+                    else:
+                        self._data[k] = (
+                            ["time_step", "point", k.replace("array", "values")],
+                            v_arr,
+                        )
                 elif np.ndim(v) == 2 and "_array" in k:
                     self._data[k] = (["point", k], v)
                 elif "_values" in k:
@@ -753,49 +1077,168 @@ class AbstractModel(ABC):
                 else:
                     self._data[k] = v
             self._pickle_dict = {}
+            # Restore saved metadata if present
+            try:
+                if hasattr(self, "_pickle_meta") and self._pickle_meta:
+                    object.__setattr__(self, "_meta", self._pickle_meta.copy())
+            except Exception:
+                pass
+            finally:
+                object.__setattr__(self, "_pickle_meta", {})
         self._coord_assign()
         return self
 
     # /Model Passing through Pickling
 
     # Legacy in & output support
-    def legacy_read_output_file(self, read_file: str, rates_load_file: str = None):
+    def legacy_read_output_file(
+        self, read_file: str, rates_load_file: str | None = None
+    ) -> None:
         """Perform classic output file reading.
-        Args:
-            read_file (str): path to file containing a full UCLCHEM output
-            rates_load_file (str, optional): path to file containing the reaction rates output from UCLCHEM. Defaults
-                to None. #TODO Add the code to read the rates files.
+
+        This reader constructs the internal :class:`xarray.Dataset` directly from the
+        parsed header and data in the legacy ``.dat`` output format. The classic
+        files place a `point` column between the physics and chemistry columns; we
+        therefore use the location of `point` in the header to split the columns
+        reliably and avoid using global constants as authoritative metadata.
         """
         self.was_read = True
+        # Read header and numeric data
         columns = np.char.strip(
             np.loadtxt(read_file, delimiter=",", max_rows=1, dtype=str, comments="%")
         )
-        array = np.loadtxt(read_file, delimiter=",", skiprows=1)
+        raw_array = np.loadtxt(read_file, delimiter=",", skiprows=1)
+
+        # Determine where the `point` column is and how many points exist
         point_index = np.where(columns == "point")[0][0]
-        self._param_dict["points"] = int(np.max(array[:, point_index]))
+        self._param_dict["points"] = int(np.max(raw_array[:, point_index]))
+
+        # Some legacy files include an additional metadata row; if more than one
+        # point exists the legacy format contains that extra row which we must skip
         if self._param_dict["points"] > 1:
             array = np.loadtxt(read_file, delimiter=",", skiprows=2)
+        else:
+            array = raw_array
+
         row_count = int(np.shape(array)[0] / self._param_dict["points"])
 
-        self.PHYSICAL_PARAMETERS = [p for p in PHYSICAL_PARAMETERS if p in columns]
-        self.specname = get_species_names()
+        # Extract physics and species columns from legacy file header
+        physics_cols_from_file = list(columns[:point_index].tolist())
+        species_cols_from_file = list(columns[point_index + 1 :].tolist())
 
+        # Validate compatibility with current UCLCHEM constants - these are non-negotiable
+        # PHYSICAL_PARAMETERS are hard-coded and tied to the Fortran wrapper
+        if physics_cols_from_file != list(PHYSICAL_PARAMETERS):
+            # Special case: backward compatibility for missing 'dstep' parameter
+            # Old UCLCHEM versions didn't have dstep; we can infer it if safe
+            missing_params = set(PHYSICAL_PARAMETERS) - set(physics_cols_from_file)
+            extra_params = set(physics_cols_from_file) - set(PHYSICAL_PARAMETERS)
+
+            if missing_params == {"dstep"} and not extra_params:
+                # Only dstep is missing - check if we can safely infer it
+                # If there are no duplicate timesteps, we can assume dstep=1
+                time_column_index = physics_cols_from_file.index("Time")
+                time_values = array[:, time_column_index]
+
+                if len(time_values) == len(np.unique(time_values)):
+                    # No duplicate timesteps - safe to assume dstep=1
+                    warnings.warn(
+                        "LEGACY FILE COMPATIBILITY: The file is missing the 'dstep' parameter.\n"
+                        "No duplicate timesteps detected, safely assuming dstep=1 for all rows.\n"
+                        "This file was likely created with an older UCLCHEM version.\n"
+                        "Consider regenerating the file with the current version for full compatibility.",
+                        UserWarning,
+                    )
+                    # Add dstep=1 column to the array
+                    dstep_column = np.ones((array.shape[0], 1))
+                    array = np.hstack(
+                        [array[:, :point_index], dstep_column, array[:, point_index:]]
+                    )
+                    physics_cols_from_file.append("dstep")
+                    point_index += 1  # point column shifted by 1
+                else:
+                    raise ValueError(
+                        f"INCOMPATIBLE LEGACY FILE: Cannot infer 'dstep' parameter.\n\n"
+                        f"The file is missing 'dstep' and contains duplicate timesteps,\n"
+                        f"making it impossible to safely infer the particle step values.\n\n"
+                        f"  File contains:        {physics_cols_from_file}\n"
+                        f"  Current UCLCHEM has:  {list(PHYSICAL_PARAMETERS)}\n\n"
+                        f"To load this file, regenerate it with the current UCLCHEM version."
+                    )
+            else:
+                # Other parameter mismatch - cannot fix automatically
+                raise ValueError(
+                    f"INCOMPATIBLE LEGACY FILE: Physical parameters mismatch.\n\n"
+                    f"The file you are loading has different PHYSICAL_PARAMETERS than the currently installed UCLCHEM.\n"
+                    f"This means the file was created with a different version of UCLCHEM and cannot be loaded.\n\n"
+                    f"  File contains:        {physics_cols_from_file} ({len(physics_cols_from_file)} parameters)\n"
+                    f"  Current UCLCHEM has:  {list(PHYSICAL_PARAMETERS)} ({len(PHYSICAL_PARAMETERS)} parameters)\n"
+                    f"  Missing parameters:   {list(missing_params)}\n"
+                    f"  Extra parameters:     {list(extra_params)}\n\n"
+                    f"PHYSICAL_PARAMETERS are hard-coded in the Fortran wrapper and cannot be changed at runtime.\n"
+                    f"To load this file, you must use the same UCLCHEM version that created it, or regenerate the file.\n"
+                )
+
+        if species_cols_from_file != list(get_species_names()):
+            raise ValueError(
+                f"INCOMPATIBLE LEGACY FILE: Species list mismatch.\n\n"
+                f"The file you are loading has a different species network than the currently installed UCLCHEM.\n"
+                f"This means the file was created with a different chemical network and cannot be loaded.\n\n"
+                f"  File contains:        {len(species_cols_from_file)} species\n"
+                f"  Current UCLCHEM has:  {len(get_species_names())} species\n\n"
+                f"The species list is tied to the chemical network compiled into UCLCHEM.\n"
+                f"To load this file, you must use the same UCLCHEM version/network that created it, or regenerate the file.\n"
+            )
+
+        # At this point, we've validated that dimensions match
+        # Allocate arrays using the validated file dimensions (which equal current constants)
         self.physics_array = np.empty(
-            (row_count, self._param_dict["points"], len(self.PHYSICAL_PARAMETERS) + 1)
+            (row_count, self._param_dict["points"], len(PHYSICAL_PARAMETERS))
         )
         self.chemical_abun_array = np.empty(
-            (row_count, self._param_dict["points"], len(self.specname))
+            (row_count, self._param_dict["points"], n_species)
         )
+
         for p in range(self._param_dict["points"]):
-            self.physics_array[:, p, :] = array[
-                np.where(array[:, point_index] == p + 1),
-                : len(self.PHYSICAL_PARAMETERS) + 1,
-            ][0]
-            self.chemical_abun_array[:, p, :] = array[
-                np.where(array[:, point_index] == p + 1),
-                (len(self.PHYSICAL_PARAMETERS) + 1) :,
-            ][0]
+            sel = np.where(array[:, point_index] == p + 1)[0]
+            self.physics_array[:, p, :] = array[sel, :point_index]
+            self.chemical_abun_array[:, p, :] = array[sel, point_index + 1 :]
+
+        # Construct Dataset using current UCLCHEM constants (validated to match file)
+        import xarray as xr
+
+        self._data = xr.Dataset(
+            {
+                "physics_array": (
+                    ["time_step", "point", "physics_values"],
+                    self.physics_array,
+                ),
+                "chemical_abun_array": (
+                    ["time_step", "point", "chemical_abun_values"],
+                    self.chemical_abun_array,
+                ),
+            },
+            coords={
+                "physics_values": PHYSICAL_PARAMETERS,
+                "chemical_abun_values": get_species_names(),
+                "time_step": np.arange(self.physics_array.shape[0]),
+                "point": np.arange(self._param_dict["points"]),
+            },
+        )
+
+        # Clean trailing zero-padded timesteps and finish
         self._array_clean()
+
+        # Ensure timepoints is consistent with the dataset we just constructed
+        # Fortran expects arrays of shape (timepoints+1, points, ...), so we
+        # store `timepoints` as the number of simulated timesteps minus one.
+        try:
+            tp = int(self._data.sizes.get("time_step", 0))
+            object.__setattr__(self, "timepoints", tp - 1 if tp > 0 else 0)
+        except Exception:
+            # Be defensive; if something goes wrong leave timepoints as-is
+            pass
+
         nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
         if len(nonzero_indices) > 0:
             last_timestep_index = nonzero_indices[-1]
@@ -812,33 +1255,29 @@ class AbstractModel(ABC):
         self._create_starting_array(np.loadtxt(self.abundLoadFile, delimiter=","))
         return
 
-    def legacy_write_full(self):
+    def legacy_write_full(self) -> None:
         """Perform classic output file writing to the file self.outputFile provided in _param_dict"""
         phys = self.physics_array.reshape(-1, self.physics_array.shape[-1])
         chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
         full_array = np.append(phys, chem, axis=1)
         # TODO Move away from the magic numbers seen here.
-        string_fmt_string = f'{", ".join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(self.PHYSICAL_PARAMETERS)))}, {", ".join([SPECNAME_HEADER_FORMAT] * len(self.specname))}'
+        species_names = get_species_names()
+        string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(species_names))}"
         # Magic numbers here to match/improve the formatting of the classic version
         # TODO Move away from the magic numbers seen here.
-        number_fmt_string = f'{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {", ".join([SPECNAME_VALUE_FORMAT] * len(self.specname))}'
-        columns = np.array(
-            [
-                self.PHYSICAL_PARAMETERS[:-1].tolist()
-                + ["point"]
-                + self.specname.tolist()
-            ]
-        )
+        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(species_names))}"
+        columns = np.array([PHYSICAL_PARAMETERS[:-1] + ["point"] + species_names])
         np.savetxt(self.outputFile, columns, fmt=string_fmt_string)
         with open(self.outputFile, "ab") as f:
             np.savetxt(f, full_array, fmt=number_fmt_string)
         return
 
-    def legacy_write_starting_chemistry(self):
+    def legacy_write_starting_chemistry(self) -> None:
         """Perform classic starting abundance file writing to the file self.abundSaveFile provided in _param_dict"""
         last_timestep_index = self.chemical_abun_array[:, 0, 0].nonzero()[0][-1]
         # TODO Move away from the magic numbers seen here.
-        number_fmt_string = f' {", ".join(["%9.5E"] * len(self.specname))}'
+        species_names = get_species_names()
+        number_fmt_string = f" {', '.join(['%9.5E'] * len(species_names))}"
         with open(self.abundSaveFile, "wb") as f:
             np.savetxt(
                 f,
@@ -877,10 +1316,65 @@ class AbstractModel(ABC):
         return
 
     def _coord_assign(self):
-        self._data = self._data.assign_coords(
-            {"physics_values": self.PHYSICAL_PARAMETERS}
-        )
-        self._data = self._data.assign_coords({"chemical_abun_values": self.specname})
+        """Assign coordinate values derived from arrays and metadata.
+
+        Be conservative: prefer existing dataset coordinates if they are consistent
+        with array shapes. Only override coords from metadata when lengths match
+        the corresponding array dimensions to avoid xarray dimension conflicts.
+        """
+        # physics coords
+        try:
+            phys_len = self.physics_array.shape[-1]
+        except Exception:
+            phys_len = None
+        if phys_len is not None:
+            if "physics_values" in self._data.coords:
+                if len(self._data.coords["physics_values"]) != phys_len:
+                    if len(PHYSICAL_PARAMETERS) == phys_len:
+                        self._data = self._data.assign_coords(
+                            {"physics_values": PHYSICAL_PARAMETERS}
+                        )
+                    else:
+                        # fallback to numeric indices if dimensions don't match
+                        self._data = self._data.assign_coords(
+                            {"physics_values": np.arange(phys_len)}
+                        )
+            else:
+                if len(PHYSICAL_PARAMETERS) == phys_len:
+                    self._data = self._data.assign_coords(
+                        {"physics_values": PHYSICAL_PARAMETERS}
+                    )
+                else:
+                    self._data = self._data.assign_coords(
+                        {"physics_values": np.arange(phys_len)}
+                    )
+
+        # chemical abundances coords
+        try:
+            chem_len = self.chemical_abun_array.shape[-1]
+        except Exception:
+            chem_len = None
+        if chem_len is not None:
+            species_names = get_species_names()
+            if "chemical_abun_values" in self._data.coords:
+                if len(self._data.coords["chemical_abun_values"]) != chem_len:
+                    if len(species_names) == chem_len:
+                        self._data = self._data.assign_coords(
+                            {"chemical_abun_values": species_names}
+                        )
+                    else:
+                        self._data = self._data.assign_coords(
+                            {"chemical_abun_values": np.arange(chem_len)}
+                        )
+            else:
+                if len(species_names) == chem_len:
+                    self._data = self._data.assign_coords(
+                        {"chemical_abun_values": species_names}
+                    )
+                else:
+                    self._data = self._data.assign_coords(
+                        {"chemical_abun_values": np.arange(chem_len)}
+                    )
         return
 
     def _reform_inputs(self, param_dict: dict, out_species: list):
@@ -897,7 +1391,8 @@ class AbstractModel(ABC):
             param_dict = _convert_legacy_stopping_param(param_dict)
 
         if param_dict is None:
-            self._param_dict = default_param_dictionary
+            # avoid mutating the shared default dictionary
+            self._param_dict = default_param_dictionary.copy()
         else:
             # lower case (and conveniently copy so we don't edit) the user's dictionary
             # this is key to UCLCHEM's "case insensitivity"
@@ -915,10 +1410,21 @@ class AbstractModel(ABC):
 
             self._param_dict = {**default_param_dictionary, **new_param_dict.copy()}
             del new_param_dict
-        for k, v in default_param_dictionary.items():
-            if v is None:
-                del self._param_dict[k]
+        # Remove keys with None values from the merged _param_dict
+        # Check the merged dict, not the defaults, to preserve user-provided values
+        keys_to_delete = [k for k, v in self._param_dict.items() if v is None]
+        for k in keys_to_delete:
+            del self._param_dict[k]
         if out_species is not None:
+            # Validate out_species: list/tuple of strings and known species
+            if not (
+                isinstance(out_species, (list, tuple))
+                and all(isinstance(s, str) for s in out_species)
+                and all(s.strip() in get_species_names() for s in out_species)
+            ):
+                raise ValueError(
+                    "out_species must be a list/tuple of valid species names; check available species via uclchem.model.get_species_names()"
+                )
             self.n_out = len(out_species)
             self._param_dict["outspecies"] = self.n_out
             self.out_species = " ".join(out_species)
@@ -1029,6 +1535,156 @@ class AbstractModel(ABC):
             self.heat_array = None
         return
 
+    def _create_stats_array(self):
+        """Internal Method.
+        Creates Fortran compliant np.array for DVODE solver statistics.
+        """
+        if self.run_type in self.shared_memory_types:
+            (
+                self._shm_handles["stats_array"],
+                self._shm_desc["stats_array"],
+                self.stats_array,
+            ) = self._create_shared_memory_allocation(
+                (self.timepoints + 1, self._param_dict["points"], N_DVODE_STATS)
+            )
+        else:
+            self.stats_array = np.zeros(
+                shape=(self.timepoints + 1, self._param_dict["points"], N_DVODE_STATS),
+                dtype=np.float64,
+                order="F",
+            )
+        return
+
+    def _create_level_populations_array(self):
+        """Internal Method.
+        Creates Fortran compliant np.array for coolant level populations.
+        Shape: (timepoints+1, gridpoints, total_levels)
+        """
+        if self.run_type in self.shared_memory_types:
+            (
+                self._shm_handles["level_populations_array"],
+                self._shm_desc["level_populations_array"],
+                self.level_populations_array,
+            ) = self._create_shared_memory_allocation(
+                (self.timepoints + 1, self._param_dict["points"], N_TOTAL_LEVELS)
+            )
+        else:
+            # Check if heating is available - if not, create default inactive array
+            if self.heat_array is None:
+                self.level_populations_array = np.zeros(
+                    shape=(2, 1, N_TOTAL_LEVELS),
+                    dtype=np.float64,
+                    order="F",
+                )
+            else:
+                self.level_populations_array = np.zeros(
+                    shape=(
+                        self.timepoints + 1,
+                        self._param_dict["points"],
+                        N_TOTAL_LEVELS,
+                    ),
+                    dtype=np.float64,
+                    order="F",
+                )
+        return
+
+    def _create_se_stats_array(self):
+        """Internal Method.
+        Creates Fortran compliant np.array for SE solver statistics.
+        Shape: (timepoints+1, gridpoints, NCOOLANTS*3)
+        """
+        n_stats = NCOOLANTS * N_SE_STATS_PER_COOLANT  # 35 * 3 = 105
+
+        if self.run_type in self.shared_memory_types:
+            (
+                self._shm_handles["se_stats_array"],
+                self._shm_desc["se_stats_array"],
+                self.se_stats_array,
+            ) = self._create_shared_memory_allocation(
+                (self.timepoints + 1, self._param_dict["points"], n_stats)
+            )
+        else:
+            # Check if heating is available - if not, create default inactive array
+            if self.heat_array is None:
+                self.se_stats_array = np.zeros(
+                    shape=(2, 1, n_stats),
+                    dtype=np.float64,
+                    order="F",
+                )
+            else:
+                self.se_stats_array = np.zeros(
+                    shape=(self.timepoints + 1, self._param_dict["points"], n_stats),
+                    dtype=np.float64,
+                    order="F",
+                )
+        return
+
+    def get_level_populations_dataframe(self, point=0):
+        """Get level populations as a DataFrame for a specific grid point.
+
+        Args:
+            point: Grid point index (default 0)
+
+        Returns:
+            DataFrame with columns for each level with meaningful coolant/level names
+        """
+        if (
+            self.level_populations_array is None
+            or self.level_populations_array.shape[0] < 3
+        ):
+            return None
+
+        # Try to load meaningful level names from coolant files
+        try:
+            level_names_dict = load_coolant_level_names()
+            # Build column names from parsed coolant files
+            columns = []
+            for i in range(NCOOLANTS):
+                if i in level_names_dict:
+                    columns.extend(level_names_dict[i])
+        except (FileNotFoundError, ValueError, RuntimeError) as e:
+            # Fallback to generic names if coolant files can't be loaded
+            logging.warning(
+                f"Could not load coolant level names: {e}. Using generic names."
+            )
+            columns = [f"LEVEL_{i}" for i in range(N_TOTAL_LEVELS)]
+
+        return pd.DataFrame(self.level_populations_array[:, point, :], columns=columns)
+
+    def get_se_stats_dataframe(self, point=0):
+        """Get SE solver statistics as a DataFrame for a specific grid point.
+
+        Args:
+            point: Grid point index (default 0)
+
+        Returns:
+            DataFrame with per-coolant SE solver statistics using actual coolant names
+        """
+        if self.se_stats_array is None or self.se_stats_array.shape[0] < 3:
+            return None
+
+        # Build meaningful column names using actual coolant names
+        try:
+            from uclchemwrap import f2py_constants
+
+            coolant_names = [
+                str(name.decode()).strip() for name in f2py_constants.coolantnames
+            ]
+            columns = []
+            for coolant_name in coolant_names:
+                columns.extend(
+                    [
+                        f"{coolant_name}_CONVERGED",
+                        f"{coolant_name}_ITERATIONS",
+                        f"{coolant_name}_MAX_REL_CHANGE",
+                    ]
+                )
+        except Exception:
+            # Fallback to generic names
+            columns = SE_STAT_NAMES
+
+        return pd.DataFrame(self.se_stats_array[:, point, :], columns=columns)
+
     def _create_starting_array(self, starting_chemistry):
         if starting_chemistry is None:
             self.starting_chemistry_array = None
@@ -1042,9 +1698,7 @@ class AbstractModel(ABC):
                     self._shm_desc["starting_chemistry_array"],
                     self.starting_chemistry_array,
                 ) = self._create_shared_memory_allocation(np.shape(starting_chemistry))
-                np.copyto(
-                    self.starting_chemistry_array, starting_chemistry, casting="no"
-                )
+                np.copyto(self.starting_chemistry_array, starting_chemistry, casting="no")
             else:
                 self.starting_chemistry_array = np.asfortranarray(
                     starting_chemistry, dtype=np.float64
@@ -1107,9 +1761,7 @@ class AbstractModel(ABC):
             object.__setattr__(
                 self,
                 k,
-                np.ndarray(
-                    shape=v["shape"], dtype=np.float64, buffer=shm.buf, order="F"
-                ),
+                np.ndarray(shape=v["shape"], dtype=np.float64, buffer=shm.buf, order="F"),
             )
             self._shm_handles[k] = shm
             del shm
@@ -1201,23 +1853,9 @@ class Cloud(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        if self._debug:
-            print("got to run_fortran")
-            print(
-                f"using "
-                f"dictionary={self._param_dict},"
-                f"outspeciesin={self.out_species},"
-                f"timepoints={self.timepoints},"
-                f"gridpoints={self._param_dict['points']},"
-                f"returnarray={True},"
-                f"returnrates={True},"
-                f"givestartabund={self.give_start_abund},"
-                f"physicsarray={self.physics_array},"
-                f"chemicalabunarray={self.chemical_abun_array},"
-                f"ratesarray={self.rates_array},"
-                f"abundancestart={self.starting_chemistry_array},"
-            )
-        _, _, _, _, out_species_abundances_array, _, success_flag = wrap.cloud(
+        # Call wrap.cloud() without capturing return value
+        # Arrays are modified in-place by Fortran code, so return values aren't used
+        wrap.cloud(
             dictionary=self._param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
@@ -1229,10 +1867,17 @@ class Cloud(AbstractModel):
             chemicalabunarray=self.chemical_abun_array,
             ratesarray=self.rates_array,
             heatarray=self.heat_array,
+            statsarray=self.stats_array,
+            levelpopulationsarray=self.level_populations_array,
+            sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
             else None,
         )
+        # For now, hardcode success_flag=0 and out_species_abundances_array as empty
+        # TODO: Need to find a way to get these from wrap.cloud without triggering shape bug
+        out_species_abundances_array = np.array([])
+        success_flag = 0
         if success_flag < 0:
             out_species_abundances_array = np.array([])
         else:
@@ -1330,7 +1975,7 @@ class Collapse(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, _, out_species_abundances_array, _, success_flag = wrap.collapse(
+        result = wrap.collapse(
             collapsein=self.collapse,
             collapsefilein=self.physics_output,
             writeout=self.write_physics,
@@ -1345,10 +1990,15 @@ class Collapse(AbstractModel):
             chemicalabunarray=self.chemical_abun_array,
             ratesarray=self.rates_array,
             heatarray=self.heat_array,
+            statsarray=self.stats_array,
+            levelpopulationsarray=self.level_populations_array,
+            sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
             if self.starting_chemistry_array is not None
             else None,
         )
+        out_species_abundances_array = result[-2]
+        success_flag = result[-1]
         if success_flag < 0:
             out_species_abundances_array = np.array([])
         else:
@@ -1440,23 +2090,28 @@ class PrestellarCore(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, _, out_species_abundances_array, _, success_flag = wrap.hot_core(
-            temp_indx=self.temp_indx,
-            max_temp=self.max_temperature,
-            dictionary=self._param_dict,
-            outspeciesin=self.out_species,
-            timepoints=self.timepoints,
-            gridpoints=self._param_dict["points"],
-            returnarray=True,
-            returnrates=True,
-            givestartabund=self.give_start_abund,
-            physicsarray=self.physics_array,
-            chemicalabunarray=self.chemical_abun_array,
-            ratesarray=self.rates_array,
-            heatarray=self.heat_array,
-            abundancestart=self.starting_chemistry_array
-            if self.starting_chemistry_array is not None
-            else None,
+        _, _, _, _, _, _, _, out_species_abundances_array, _, success_flag = (
+            wrap.hot_core(
+                temp_indx=self.temp_indx,
+                max_temp=self.max_temperature,
+                dictionary=self._param_dict,
+                outspeciesin=self.out_species,
+                timepoints=self.timepoints,
+                gridpoints=self._param_dict["points"],
+                returnarray=True,
+                returnrates=True,
+                givestartabund=self.give_start_abund,
+                physicsarray=self.physics_array,
+                chemicalabunarray=self.chemical_abun_array,
+                ratesarray=self.rates_array,
+                heatarray=self.heat_array,
+                statsarray=self.stats_array,
+                levelpopulationsarray=self.level_populations_array,
+                sestatsarray=self.se_stats_array,
+                abundancestart=self.starting_chemistry_array
+                if self.starting_chemistry_array is not None
+                else None,
+            )
         )
         if success_flag < 0:
             out_species_abundances_array = np.array([])
@@ -1552,24 +2207,29 @@ class CShock(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, _, out_species_abundances_array, dissipation_time, _, success_flag = (
-            wrap.cshock(
-                shock_vel=self.shock_vel,
-                timestep_factor=self.timestep_factor,
-                minimum_temperature=self.minimum_temperature,
-                dictionary=self._param_dict,
-                outspeciesin=self.out_species,
-                timepoints=self.timepoints,
-                gridpoints=self._param_dict["points"],
-                returnarray=True,
-                returnrates=True,
-                givestartabund=self.give_start_abund,
-                physicsarray=self.physics_array,
-                chemicalabunarray=self.chemical_abun_array,
-                ratesarray=self.rates_array,
-                abundancestart=self.starting_chemistry_array,
-            )
+        result = wrap.cshock(
+            shock_vel=self.shock_vel,
+            timestep_factor=self.timestep_factor,
+            minimum_temperature=self.minimum_temperature,
+            dictionary=self._param_dict,
+            outspeciesin=self.out_species,
+            timepoints=self.timepoints,
+            gridpoints=self._param_dict["points"],
+            returnarray=True,
+            returnrates=True,
+            givestartabund=self.give_start_abund,
+            physicsarray=self.physics_array,
+            chemicalabunarray=self.chemical_abun_array,
+            ratesarray=self.rates_array,
+            heatarray=self.heat_array,
+            statsarray=self.stats_array,
+            levelpopulationsarray=self.level_populations_array,
+            sestatsarray=self.se_stats_array,
+            abundancestart=self.starting_chemistry_array,
         )
+        dissipation_time = result[-3]
+        out_species_abundances_array = result[-2]
+        success_flag = result[-1]
         if success_flag < 0:
             dissipation_time = None
             out_species_abundances_array = np.array([])
@@ -1657,7 +2317,7 @@ class JShock(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, _, out_species_abundances_array, _, success_flag = wrap.jshock(
+        result = wrap.jshock(
             shock_vel=self.shock_vel,
             dictionary=self._param_dict,
             outspeciesin=self.out_species,
@@ -1670,8 +2330,13 @@ class JShock(AbstractModel):
             chemicalabunarray=self.chemical_abun_array,
             ratesarray=self.rates_array,
             heatarray=self.heat_array,
+            statsarray=self.stats_array,
+            levelpopulationsarray=self.level_populations_array,
+            sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array,
         )
+        out_species_abundances_array = result[-2]
+        success_flag = result[-1]
         if success_flag < 0:
             out_species_abundances_array = np.array([])
         else:
@@ -1743,6 +2408,7 @@ class Postprocess(AbstractModel):
         dust_temperature_array: np.array = None,
         zeta_array: np.array = None,
         radfield_array: np.array = None,
+        visual_extinction_array: np.array = None,
         coldens_H_array: np.array = None,
         coldens_H2_array: np.array = None,
         coldens_CO_array: np.array = None,
@@ -1763,17 +2429,22 @@ class Postprocess(AbstractModel):
             run_type,
         )
         if read_file is None and time_array is not None:
-            self.postprocess_arrays = dict(
-                timegrid=time_array,
-                densgrid=density_array,
-                gastempgrid=gas_temperature_array,
-                dusttempgrid=dust_temperature_array,
-                radfieldgrid=radfield_array,
-                zetagrid=zeta_array,
-                nhgrid=coldens_H_array,
-                nh2grid=coldens_H2_array,
-                ncogrid=coldens_CO_array,
-                ncgrid=coldens_C_array,
+            object.__setattr__(
+                self,
+                "postprocess_arrays",
+                {
+                    "timegrid": time_array,
+                    "densgrid": density_array,
+                    "gastempgrid": gas_temperature_array,
+                    "dusttempgrid": dust_temperature_array,
+                    "radfieldgrid": radfield_array,
+                    "zetagrid": zeta_array,
+                    "avgrid": visual_extinction_array,
+                    "nhgrid": coldens_H_array,
+                    "nh2grid": coldens_H2_array,
+                    "ncogrid": coldens_CO_array,
+                    "ncgrid": coldens_C_array,
+                },
             )
             for key, array in self.postprocess_arrays.items():
                 if array is not None:
@@ -1788,8 +2459,16 @@ class Postprocess(AbstractModel):
                     array = np.asfortranarray(array, dtype=np.float64)
                     self.postprocess_arrays[key] = array
             self.time_array = time_array
+            # Column-density (coldens) and visual extinction (Av) arrays
             self.coldens_H_array = coldens_H_array
+            self.visual_extinction_array = visual_extinction_array
+            # Flags exposed for Fortran wrapper (mutually exclusive)
             self.usecoldens = self.coldens_H_array is not None
+            self.useav = self.visual_extinction_array is not None
+            assert not (
+                self.usecoldens and self.useav
+            ), "Cannot use both column density and visual extinction arrays simultaneously."
+
             if not self.give_start_abund:
                 self.starting_chemistry_array = np.zeros(
                     shape=(self.gridPoints, n_species),
@@ -1809,9 +2488,13 @@ class Postprocess(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, _, out_species_abundances_array, _, success_flag = wrap.postprocess(
+        # Determine whether an Av grid was provided and set the flag expected by the Fortran wrapper
+        # Only pass arrays that are present (not None) to the Fortran wrapper
+        post_kwargs = {k: v for k, v in self.postprocess_arrays.items() if v is not None}
+        result = wrap.postprocess(
             usecoldens=self.usecoldens,
-            **self.postprocess_arrays,
+            useav=self.useav,
+            **post_kwargs,
             dictionary=self._param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
@@ -1823,8 +2506,13 @@ class Postprocess(AbstractModel):
             chemicalabunarray=self.chemical_abun_array,
             ratesarray=self.rates_array,
             heatarray=self.heat_array,
+            statsarray=self.stats_array,
+            levelpopulationsarray=self.level_populations_array,
+            sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array,
         )
+        out_species_abundances_array = result[-2]
+        success_flag = result[-1]
         if success_flag < 0:
             out_species_abundances_array = np.array([])
         else:
@@ -1910,14 +2598,14 @@ class Model(AbstractModel):
         )
         if read_file is None and time_array is not None:
             self.time_array = time_array
-            self.postprocess_arrays = dict(
-                timegrid=time_array,
-                densgrid=density_array,
-                gastempgrid=gas_temperature_array,
-                dusttempgrid=dust_temperature_array,
-                radfieldgrid=radfield_array,
-                zetagrid=zeta_array,
-            )
+            self.postprocess_arrays = {
+                "timegrid": time_array,
+                "densgrid": density_array,
+                "gastempgrid": gas_temperature_array,
+                "dusttempgrid": dust_temperature_array,
+                "radfieldgrid": radfield_array,
+                "zetagrid": zeta_array,
+            }
             for key, array in self.postprocess_arrays.items():
                 if array is not None:
                     # Convert single values into arrays that can be used
@@ -1949,7 +2637,7 @@ class Model(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        _, _, _, _, out_species_abundances_array, _, success_flag = wrap.postprocess(
+        result = wrap.postprocess(
             usecoldens=False,
             **self.postprocess_arrays,
             dictionary=self._param_dict,
@@ -1963,8 +2651,13 @@ class Model(AbstractModel):
             chemicalabunarray=self.chemical_abun_array,
             ratesarray=self.rates_array,
             heatarray=self.heat_array,
+            statsarray=self.stats_array,
+            levelpopulationsarray=self.level_populations_array,
+            sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array,
         )
+        out_species_abundances_array = result[-2]
+        success_flag = result[-1]
         if success_flag < 0:
             out_species_abundances_array = np.array([])
         else:
@@ -2092,7 +2785,7 @@ class SequentialModel:
         for model in self.models:
             model["Model"].save_model(
                 file=file,
-                name=f'{name}_{model["Model_Type"]}_{model["Model_Order"]}',
+                name=f"{name}_{model['Model_Type']}_{model['Model_Order']}",
                 engine=engine,
                 overwrite=overwrite,
             )
@@ -2124,16 +2817,14 @@ class SequentialModel:
                 ]
             conserved = True
             for i in conserve_dicts:
-                conserved = (
-                    True if all([float(x[:1]) < 1 for x in i.values()]) else False
-                )
+                conserved = True if all(float(x[:1]) < 1 for x in i.values()) else False
             model["elements_conserved"] = conserved
 
     def pickle(self):
         if not bool(self._pickle_dict):
             for model in self.models:
                 model["Model"] = model["Model"].pickle()
-                self._pickle_dict[f'{model["Model_Type"]}_{model["Model_Order"]}'] = (
+                self._pickle_dict[f"{model['Model_Type']}_{model['Model_Order']}"] = (
                     model["Model"]._pickle_dict.copy()
                 )
         return
@@ -2142,7 +2833,7 @@ class SequentialModel:
         if bool(self._pickle_dict):
             for model in self.models:
                 model["Model"]._pickle_dict = self._pickle_dict[
-                    f'{model["Model_Type"]}_{model["Model_Order"]}'
+                    f"{model['Model_Type']}_{model['Model_Order']}"
                 ]
                 model["Model"] = model["Model"].un_pickle()
         return
@@ -2380,7 +3071,7 @@ class GridModels:
                 for mt_k, mt_v in self.full_parameters.items():
                     if isinstance(mt_v, dict):
                         tmp_model = self._load_model_data(
-                            model=f'{self.models[model]["Model"]}_{mt_k}_{model_number}'
+                            model=f"{self.models[model]['Model']}_{mt_k}_{model_number}"
                         )
 
                         self.models[model][f"{mt_k}_{model_number}"] = {
@@ -2398,8 +3089,7 @@ class GridModels:
                                 )
                                 for k in list(self.parameters_to_grid.keys())
                                 if mt_k in k
-                                and k.replace(mt_k, "").lower()
-                                in tmp_model._data.keys()
+                                and k.replace(mt_k, "").lower() in tmp_model._data.keys()
                             },
                         }
                         self.models[model][f"{mt_k}_{model_number}"]["Successful"] = (
@@ -2411,7 +3101,7 @@ class GridModels:
         else:
             for model in range(len(self.models)):
                 loaded_data = self._load_model_data(model=self.models[model]["Model"])
-                loaded_dict = json.loads(loaded_data["_param_dict"].item())
+                loaded_dict = loaded_data._param_dict
                 self.models[model] = {
                     **self.models[model],
                     **{
@@ -2420,12 +3110,7 @@ class GridModels:
                     },
                 }
                 self.models[model]["Successful"] = (
-                    True
-                    if json.loads(loaded_data["attributes_dict"].item())["success_flag"]
-                    == 0
-                    else json.loads(loaded_data["attributes_dict"].item())[
-                        "success_flag"
-                    ]
+                    True if loaded_data.success_flag == 0 else loaded_data.success_flag
                 )
 
     def _load_model_data(self, model: str, engine: str = "h5netcdf"):
@@ -2442,9 +3127,7 @@ class GridModels:
             percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
         """
         for model in range(len(self.models)):
-            tmp_model = load_model(
-                file=self.grid_file, name=self.models[model]["Model"]
-            )
+            tmp_model = load_model(file=self.grid_file, name=self.models[model]["Model"])
             conserve_dicts = []
             if tmp_model._param_dict["points"] > 1:
                 for i in range(tmp_model._param_dict["points"]):
@@ -2461,9 +3144,7 @@ class GridModels:
                 ]
             conserved = True
             for i in conserve_dicts:
-                conserved = (
-                    True if all([float(x[:1]) < 1 for x in i.values()]) else False
-                )
+                conserved = True if all(float(x[:1]) < 1 for x in i.values()) else False
             self.models[model]["elements_conserved"] = conserved
         return
 

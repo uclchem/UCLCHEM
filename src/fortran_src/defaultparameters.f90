@@ -18,8 +18,8 @@ IMPLICIT NONE
 REAL(dp) :: initialTemp=10.0 !Initial gas temperature in Kelvin for all gas parcels in model.
 REAL(dp) :: initialDens=1.00d2 !Initial gas density in H nuclei per cm$^{-3}$ for all gas parcels in model.
 REAL(dp) :: finalDens=1.00d5 !Final gas density achieved via freefall. 
-REAL(dp) :: currentTime=0.0 !Time at start of model in years.
-REAL(dp) :: finalTime=5.0d6 !Time to stop model in years.
+REAL(dp) :: currentTime=0.0 !Time at start of model in seconds.
+REAL(dp) :: finalTime=5.0d6 !Time to stop model in years, if not using `endAtFinalDensity` below.
 REAL(dp) :: radfield=1.0 !Interstellar radiation field in Habing
 REAL(dp) :: zeta=1.0 !Cosmic ray ionisation rate as multiple of $1.3 10^{-17} s^{-1}$
 REAL(dp) :: rout=0.05 !Outer radius of cloud being modelled in pc.
@@ -40,17 +40,33 @@ REAL(dp) :: temp_star=4.50d4 !unit of K, temperature of the central source
 !|Parameter|Default Value |Description|
 !| ----- | ------| ------ |
 REAL(dp) :: freezeFactor=1.0 !Modify freeze out rate of gas parcels by this factor.
+LOGICAL :: endAtFinalDensity=.False. !Choose to end model at final density, otherwise end at final time.
 LOGICAL :: freefall=.False. !Controls whether models density increaes following freefall equation.
 REAL(dp) :: freefallFactor=1.0 !Modify freefall rate by factor, usually to slow it.
 LOGICAL :: desorb=.True. !Toggles all non-thermal desoprtion processes on or off.
 LOGICAL :: h2desorb=.True. !Individually toggle non-thermal desorption due to H2 formation.
 LOGICAL :: crdesorb=.True. !Individually toggle non-thermal desorption due to cosmic rays.
 LOGICAL :: uvdesorb=.True. !Individually toggle non-thermal desorption due to uv photons.
+LOGICAL :: chemdesorb=.True. !Individually toggle non-thermal desorption due to chemical reactions.
 LOGICAL :: thermdesorb=.True. !Toggle continuous thermal desorption.
+
 LOGICAL :: instantSublimation=.False. !Toggle instantaneous sublimation of the ices at t=0
 LOGICAL :: cosmicRayAttenuation=.False. !Use column density to attenuate cosmic ray ionisation rate following [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 CHARACTER :: ionModel='L' !L/H model for cosmic ray attenuation [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 LOGICAL :: improvedH2CRPDissociation=.False. !Use H2 CRP dissociation rate from [Padovani et al. 2018b](https://arxiv.org/abs/1809.04168).
+REAL(dp) :: diffToBindRatio=0.5 !Ratio of diffusion barrier to binding energy of all species
+LOGICAL :: h2EncounterDesorption=.True. !Encounter desorption mechanism of Hincelin et al 2015 (H2 on H2)
+LOGICAL :: hEncounterDesorption=.False. !Encounter desorption mechanism of Hincelin et al 2015 (H on H2)
+REAL(dp) :: EDEndothermicityFactor=0.0 !Account for endothermicity of moving off of H2O onto H2 by fraction of diff in binding energies
+LOGICAL :: h2StickingCoeffByh2Coverage=.False. !Decrease sticking coeff of H2 by H2 coverage of surface
+LOGICAL :: hStickingCoeffByh2Coverage=.False. !Decrease sticking coeff of H by H2 coverage of surface
+REAL(dp) :: HdiffusionBarrier=-1.0 !Diffusion barrier for atomic H on grain surface (K).
+!!This is later corrected to diffToBind*Ebind(#H) if no other value is input
+LOGICAL :: useCustomDiffusionBarriers=.True. !Use custom diffusion barriers, instead of assuming they're a fraction of the binding energy
+LOGICAL :: seperateDiffAndDesorbPrefactor=.True. !Calculate different prefactors for diffusion and desorption
+LOGICAL :: useTSTprefactors=.False. !Calculate diffusion and desorption prefactors using TST. Otherwise, use Hasegawa-Herbst equation.
+LOGICAL :: useCustomPrefactors=.False. !Use custom diffusion and desorption prefactors, instead of TST or Hasegawa-Herbst values.
+LOGICAL :: useMinissaleIceChemdesEfficiency=.False. !Use Minissale 2016 efficiency for chemical desorption on ices. If False, use Fredon 2021
 LOGICAL :: heatingFlag=.false. !If True, heating is applied to the gas parcels.
 LOGICAL :: enforceChargeConservation = .false. ! Enforce the chrage by keeping track of charged ions.
 LOGICAL :: enable_radiative_transfer=.false. !Enable 1D radiative transfer calculations for spatial models (points>1).
@@ -65,9 +81,16 @@ CHARACTER(256) :: rateConstantFile="" !File to write rate 'constants' at each ti
 CHARACTER(256) :: ratesFile="" !File to write reaction rates (flux) at each timestep. This includes physical parameter values.
 CHARACTER(256) :: heatingFile="" !File to write heating and cooling rates at each timestep.
 INTEGER :: writeStep=1 !Writing to columnFile only happens every writeStep timesteps.
+LOGICAL :: writeTimestepInfo=.False. !If True, print timestep progress (current time, final time, next timestep goal) each time the target time is set.
 CHARACTER(256) :: abundSaveFile="" ! The file to save the abundances to at the end of the model.
 CHARACTER(256) :: abundLoadFile="" ! The file to load the abundances from at the start of the model.
-CHARACTER(256) :: coolantDataDir="" ! Directory where the collisional rate files are stored.
+
+!## Coolant / Validation tolerances
+!|Parameter|Default Value|Description|
+!| ----- | ------| ------ |
+REAL(dp) :: freq_rel_tol = 1.0d-1 ! Relative tolerance (fraction) for comparing file vs calculated frequencies. Can be adjusted at runtime via Generalsettings (tutorial 6).
+REAL(dp) :: pop_rel_tol  = 1.0d-1 ! Relative tolerance (fraction) for checking LTE population consistency. Can be adjusted at runtime via Generalsettings (tutorial 6).
+
 !|abundSaveFile |None| File to store final abundances at the end of the model so future models can use them as the initial abundances. If not provided, no file will be produced.
 !|abundLoadFile |None| File from which to load initial abundances for the model, created through `abundSaveFile`. If not provided, the model starts from elemental gas.
 !|outSpecies|None| A space separated list of species to output to columnFile. Supplied as a separate list argument to most python functions, see python API docs.

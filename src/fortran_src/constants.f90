@@ -3,6 +3,7 @@ MODULE CONSTANTS
    REAL(dp), parameter :: C  = 2.99792458D+10 !Speed of light in cgs
    REAL(dp), PARAMETER :: K_BOLTZ = 1.38065040D-16 ! Boltzmann constant cgs
    REAL(dp), PARAMETER :: HP = 6.62606896D-27 !Planck constant in cgs
+   REAL(dp), PARAMETER :: HP_SI = 6.62607015D-34 !Planck constant in SI
    REAL(dp), PARAMETER :: REDUCED_PLANCK=1.054571628d-27
    REAL(dp), PARAMETER :: MH = 1.67262164D-24 !H nucleus mass in cgs
    REAL(dp), PARAMETER :: AMU=1.66053892d-24 !atomic mass unit in cgs
@@ -19,6 +20,8 @@ MODULE CONSTANTS
    REAL(dp), PARAMETER :: HABING_TO_DRAINE = 1 / 1.7 !conversion factor from Habing to Draine field
    REAL(dp), PARAMETER :: Lsun = 3.828d+33 ! Sun luminosity in cgs
    REAL(dp), PARAMETER :: aunit = 1.495978d13 ! AU in cm
+   REAL(dp), PARAMETER :: N_AVOGADRO=6.022140857d23 !Avogadro constant
+   REAL(dp), PARAMETER :: KCAL_TO_JOULE=4.184d3 !Constant to convert kcal to J
 
    !Error codes for python wrap
    INTEGER, PARAMETER :: PARAMETER_READ_ERROR=-1
@@ -27,6 +30,7 @@ MODULE CONSTANTS
    INTEGER, PARAMETER :: INT_UNRECOVERABLE_ERROR=-4
    INTEGER, PARAMETER :: INT_TOO_MANY_FAILS_ERROR=-5
    INTEGER, PARAMETER :: NOT_ENOUGH_TIMEPOINTS_ERROR=-6
+   INTEGER, PARAMETER :: PHYSICS_UPDATE_ERROR=-7
    
 CONTAINS
 SUBROUTINE DUMMY_THREE(dummy_three_output)

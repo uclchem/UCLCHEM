@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from collections import Counter
 from contextlib import contextmanager
@@ -52,6 +54,7 @@ reaction_types = [
     "EXRELAX",
     "GAR",
     "TWOBODY",
+    "ED",
 ]
 
 tunneling_reaction_types = [
@@ -63,7 +66,7 @@ tunneling_reaction_types = [
 
 
 class Reaction:
-    def __init__(self, inputRow, reaction_source=None):
+    def __init__(self, inputRow: list | Reaction, reaction_source=None):
         """Initialize a Reaction object.
 
         Args:
@@ -120,9 +123,7 @@ class Reaction:
                 self.set_extrapolation(
                     bool(inputRow[13]) if len(inputRow) > 13 else False
                 )
-                self.set_exothermicity(
-                    float(inputRow[14]) if len(inputRow) > 14 else 0.0
-                )
+                self.set_exothermicity(float(inputRow[14]) if len(inputRow) > 14 else 0.0)
 
             except IndexError as error:
                 raise ValueError(
@@ -381,9 +382,7 @@ class Reaction:
                     if total_change < min_total:
                         min_total = total_change
                         min_diff = diff
-                changing_species = Counter(
-                    {k: c for k, c in min_diff.items() if c != 0}
-                )
+                changing_species = Counter({k: c for k, c in min_diff.items() if c != 0})
 
                 items = changing_species.items()
                 if len(items) == 1:
@@ -401,9 +400,9 @@ class Reaction:
                         return
         elif n_reacs == 2 and n_prods == 1:
             # Addition reaction
-            if reac_species[0].get_name().strip("#@") == reac_species[
-                1
-            ].get_name().strip("#@"):
+            if reac_species[0].get_name().strip("#@") == reac_species[1].get_name().strip(
+                "#@"
+            ):
                 # If the two species are the same (e.g. #H+#H-> #H2), set reduced mass to m/2
                 mass = reac_species[0].get_mass()
                 # mass = elementMass[elementList.index(reac_species[0].get_name().strip("#@"))]
@@ -448,7 +447,7 @@ class Reaction:
         """
         return self._reduced_mass
 
-    ## C
+    # C
 
     def NANCheck(self, a):
         """Convert any Falsy statement to a NAN string
@@ -870,15 +869,17 @@ def _generate_reaction_ode_bit(
     for species in reactants:
         if species in species_names:
             ode_bit += f"*Y({species_names.index(species) + 1})"
-
         elif species == "BULKSWAP":
-            ode_bit += "*bulkLayersReciprocal"
+            # ode_bit += "*bulkLayersReciprocal"
+            ode_bit += "*ratioSurfaceToBulk"
         elif species == "SURFSWAP":
             ode_bit += "*totalSwap/safeMantle"
         elif species in ["DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"]:
             ode_bit = ode_bit + "/safeMantle"
             if species == "DESOH2":
                 ode_bit = ode_bit + f"*Y({species_names.index('H') + 1})"
+        elif species in ["ED"]:
+            ode_bit = ode_bit + f"*Y({species_names.index('#H2') + 1})"
 
         if "H2FORM" in reactants:
             # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration

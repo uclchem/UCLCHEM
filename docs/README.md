@@ -1,5 +1,0 @@
-# UCLCHEM
-
-Hello world!
-
-

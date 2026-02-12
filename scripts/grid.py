@@ -69,7 +69,7 @@ def element_check(output_file):
     # get conservation values
     conserves = uclchem.analysis.check_element_conservation(df)
     # check if any error is greater than 1%
-    return all([float(x[:-1]) < 1 for x in conserves.values()])
+    return all(float(x[:-1]) < 1 for x in conserves.values())
 
 
 model_table["run_result"] = results

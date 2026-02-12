@@ -17,12 +17,13 @@ Note: Changes made through NetworkState affect the global Fortran state and pers
 across model runs in the same Python session.
 """
 
-import os
 from typing import List, Optional
 
 import numpy as np
 import pandas as pd
 from uclchemwrap import network as network_module
+
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 from ..makerates.reaction import Reaction
 from ..makerates.species import Species
@@ -339,16 +340,13 @@ class NetworkState:
 
     def _load_csv_files(self):
         """Load species and reaction CSV files from the installed package."""
-        import uclchem
 
-        pkg_dir = os.path.dirname(uclchem.__file__)
+        species_path = UCLCHEM_ROOT_DIR / "species.csv"
+        reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
 
-        species_path = os.path.join(pkg_dir, "species.csv")
-        reactions_path = os.path.join(pkg_dir, "reactions.csv")
-
-        if not os.path.exists(species_path):
+        if not species_path.is_file():
             raise FileNotFoundError(f"Species CSV not found: {species_path}")
-        if not os.path.exists(reactions_path):
+        if not reactions_path.is_file():
             raise FileNotFoundError(f"Reactions CSV not found: {reactions_path}")
 
         self._species_df = pd.read_csv(species_path)
@@ -360,16 +358,16 @@ class NetworkState:
 
         for _, row in self._species_df.iterrows():
             # Create Species object from CSV row
-            species_row = [
-                row["NAME"],
-                int(row["MASS"]),
-                row["BINDING_ENERGY"],
-                row["SOLID_FRACTION"],
-                row["MONO_FRACTION"],
-                row["VOLCANO_FRACTION"],
-                row["ENTHALPY"],
-            ]
-            species = Species(species_row)
+            # species_row = [
+            #     row["name"],
+            #     int(row["mass"]),
+            #     row["binding_energy"],
+            #     row["solid_fraction"],
+            #     row["mono_fraction"],
+            #     row["volcano"],
+            #     row["ENTHALPY"],
+            # ]
+            species = Species(row)
             self.species_list.append(species)
 
     def _parse_reactions(self):

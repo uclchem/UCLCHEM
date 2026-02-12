@@ -229,9 +229,7 @@ class TestCustomExothermicities:
         )
         assert found is None
 
-    def test_set_custom_exothermicities(
-        self, sample_custom_csv, sample_reactions_custom
-    ):
+    def test_set_custom_exothermicities(self, sample_custom_csv, sample_reactions_custom):
         """Test setting custom exothermicities on reactions."""
         reactions = sample_reactions_custom
 

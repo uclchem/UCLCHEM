@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.17.2
+#       jupytext_version: 1.19.0
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -39,17 +39,17 @@ param_dict = {
     "finalTime": 6.0e6,  # final time
     "rout": 0.1,  # radius of cloud in pc
     "baseAv": 1.0,  # visual extinction at cloud edge.
-    "abundSaveFile": "../examples/test-output/startcollapse.dat",  # save final abundances to file
-    "outputFile": "../examples/test-output/phase1-full.dat",
+    "abundSaveFile": "output_2a/startcollapse.dat",  # save final abundances to file
+    "outputFile": "output_2a/phase1.dat",
 }
-if not os.path.exists("../examples/test-output/"):
-    os.makedirs("../examples/test-output/")
+if not os.path.exists("output_2a/"):
+    os.makedirs("output_2a/")
 
 cloud = uclchem.model.Cloud(param_dict=param_dict)
-# Alternatively we could load in a pre-existing version like so
-# cloud = uclchem.model.Cloud(read_file="../examples/test-output/phase1-full.dat")
-# For file reading demonstration purposes, we will now delete the object.
+# The cloud model has completed and saved output to output_2a/phase1.dat
+# We can now load this file directly without the cloud object
 del cloud
+print("Cloud object deleted. Model saved to file for later loading.")
 # -
 
 # With that done, we have run the model and stored the outputs into the object `cloud`, while also storing the final abundances by using: `param_dict["abundSaveFile"]`. We can pass this value our prestellar core model to use those abundances as our initial abundances. Of note, the parameter `abundSaveFile` has been removed from param_dict by creating the `cloud` object.
@@ -75,14 +75,16 @@ param_dict["abstol_factor"] = 1e-18
 param_dict["reltol"] = 1e-12
 
 # pop is dangerous, it removes the original key so you can't rerun this cell.
-param_dict["abundLoadFile"] = "../examples/test-output/startcollapse.dat"
-param_dict["outputFile"] = "../examples/test-output/phase2-full.dat"
+param_dict["abundLoadFile"] = "output_2a/startcollapse.dat"
+param_dict["outputFile"] = "output_2a/phase2.dat"
 
 p_core = uclchem.model.PrestellarCore(
     temp_indx=3, max_temperature=300.0, param_dict=param_dict
 )
-# For file reading demonstration purposes, we will now delete the object.
+# The p_core model has completed and saved output to output_2a/phase2.dat
+# We can now delete the object and load it back from the file
 del p_core
+print("PrestellarCore object deleted. Model saved to file for later loading.")
 # -
 
 # Note that we've made two changes to the parameters here which aren't strictly necessary but can be helpful in certain situations.
@@ -94,12 +96,10 @@ del p_core
 # ### Checking the Result
 # With a successful run, we can check the output. We first load the file and check the abundance conservation, then we can plot it up. To demonstrate how these files can be read in the new class method, we recreate the `p_core` object but instead of passing `param_dict`, we use the argument `read_file` and point it to the full output file we previously wrote to.
 
-phase2_df = uclchem.analysis.read_output_file("../examples/test-output/phase2-full.dat")
+phase2_df = uclchem.analysis.read_output_file("output_2a/phase2.dat")
 uclchem.analysis.check_element_conservation(phase2_df)
 
-p_core = uclchem.model.PrestellarCore(
-    read_file="../examples/test-output/phase2-full.dat"
-)
+p_core = uclchem.model.PrestellarCore(read_file="output_2a/phase2.dat")
 p_core.check_conservation()
 
 # +
@@ -143,12 +143,13 @@ param_dict = {
     "finalTime": 6.0e6,  # final time
     "rout": 0.1,  # radius of cloud in pc
     "baseAv": 1.0,  # visual extinction at cloud edge.
-    "abundSaveFile": "../examples/test-output/shockstart.dat",
+    "freezeFactor": 0.0,
+    "abundSaveFile": "output_2a/shockstart.dat",
 }
 
 shock_start = uclchem.model.Cloud(param_dict=param_dict)
 # Alternatively we could load in a pre-existing version like so
-# shock_start = uclchem.model.Cloud(read_file="../examples/test-output/shockstart.dat")
+# shock_start = uclchem.model.Cloud(read_file="output_2a/shockstart.dat")
 # For file reading demonstration purposes, we will now delete the object.
 del shock_start
 # -
@@ -161,8 +162,8 @@ del shock_start
 # change other bits of input to set up phase 2
 param_dict["initialDens"] = 1e4
 param_dict["finalTime"] = 1e6
-param_dict["abundLoadFile"] = "../examples/test-output/shockstart.dat"
-param_dict["outputFile"] = "../examples/test-output/cshock.dat"
+param_dict["abundLoadFile"] = "output_2a/shockstart.dat"
+param_dict["outputFile"] = "output_2a/cshock.dat"
 
 cshock = uclchem.model.CShock(shock_vel=40, param_dict=param_dict)
 dissipation_time = cshock.dissipation_time
@@ -172,7 +173,7 @@ del cshock
 
 # The code completes fine. We do get a couple of warnings though. First, we're informed that `freefall` must be set to False for the C-shock model. Then we get a few integrator warnings. These are not important and can be ignored as long as the element conservation looks ok. However, it is an indication that the integrator did struggle with these ODEs under these conditions. As we load in this model, we could estimate the dissipation time using `uclchem.utils.cshock_dissipation_time()`, however, for this example we stored it from the object directly.
 
-cshock = uclchem.model.CShock(read_file="../examples/test-output/cshock.dat")
+cshock = uclchem.model.CShock(read_file="output_2a/cshock.dat")
 # dissipation_time = uclchem.utils.cshock_dissipation_time(shock_vel=40, initial_dens=param_dict["initialDens"]) # As an example
 cshock.check_conservation()
 
@@ -213,8 +214,8 @@ param_dict["reltol"] = 1e-12
 
 shock_vel = 10.0
 
-param_dict["abundLoadFile"] = "../examples/test-output/shockstart.dat"
-param_dict["outputFile"] = "../examples/test-output/jshock.dat"
+param_dict["abundLoadFile"] = "output_2a/shockstart.dat"
+param_dict["outputFile"] = "output_2a/jshock.dat"
 
 jshock = uclchem.model.JShock(
     shock_vel=shock_vel, param_dict=param_dict, timepoints=1500
@@ -225,7 +226,7 @@ del jshock
 
 # This time, we've turned off the freefall option and made reltol a little more stringent. The j-shock ends up running a bit slower but we get no warnings on this run.
 
-jshock = uclchem.model.JShock(read_file="../examples/test-output/jshock.dat")
+jshock = uclchem.model.JShock(read_file="output_2a/jshock.dat")
 jshock.check_conservation()
 
 # +

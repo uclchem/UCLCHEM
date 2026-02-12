@@ -1,9 +1,69 @@
-"""
-Functional Submodule.
+"""Functional API for UCLCHEM models.
 
-The following functions are wrappers of the model classes. The format of the wrappers has been chosen such that they follow
-the legacy methods of running UCLCHEM both in inputs and in return values, while depending on the Class objects defined
-in the model module to facilitate ease of maintenance.
+This module provides a functional interface to UCLCHEM's physics models, designed for backward
+compatibility with UCLCHEM v2 while leveraging the modern object-oriented architecture.
+
+The functional API offers convenience functions that wrap the model classes (:mod:`uclchem.model`)
+with a simpler calling convention. Each function follows a consistent pattern:
+
+- **Input**: parameter dictionary, output species list, and return format flags
+- **Output**: Either file output (default) or in-memory arrays/DataFrames
+- **Modes**: Choose between disk I/O or memory-based workflows
+
+Available Models
+----------------
+- :func:`cloud` - Static cloud models
+- :func:`collapse` - Collapsing cloud models (BE, filament, ambipolar)
+- :func:`prestellar_core` (alias :func:`hot_core`) - Prestellar core with temperature evolution
+- :func:`cshock` - C-type shock models
+- :func:`jshock` - J-type shock models
+
+Usage Patterns
+--------------
+
+**Disk mode (default)** - Results written to files::
+
+    import uclchem
+
+    result = uclchem.functional.cloud(
+        param_dict={'initialDens': 1e4, 'outputFile': 'cloud.dat'},
+        out_species=['CO', 'H2O']
+    )
+    # Returns: (success_flag, abundance_CO, abundance_H2O)
+
+**Memory mode** - Results returned as arrays::
+
+    phys, chem, rates, heat, final_abun, flag = uclchem.functional.cloud(
+        param_dict={'initialDens': 1e4},
+        out_species=['CO', 'H2O'],
+        return_array=True,
+        return_rates=True,
+        return_heating=True
+    )
+
+**DataFrame mode** - Results as pandas DataFrames::
+
+    phys_df, chem_df, rates_df, heat_df, final_abun, flag = uclchem.functional.cloud(
+        param_dict={'initialDens': 1e4},
+        out_species=['CO'],
+        return_dataframe=True,
+        return_rates=True
+    )
+
+.. note::
+   You cannot mix file I/O parameters (``outputFile``, ``abundSaveFile``) with memory return
+   modes (``return_array``, ``return_dataframe``). Choose one approach per run.
+
+.. tip::
+   For interactive work and complex analysis, the object-oriented API (:mod:`uclchem.model`)
+   offers more flexibility. Use the functional API when you need backward compatibility or
+   prefer a simpler interface.
+
+See Also
+--------
+- :mod:`uclchem.model` - Object-oriented model classes
+- :mod:`uclchem.utils` - Utility functions including ``check_error()``
+- :doc:`/tutorials/index` - Interactive tutorials for both APIs
 """
 
 import numpy as np
@@ -14,9 +74,9 @@ from uclchem.model import (
     AbstractModel,
     Cloud,
     Collapse,
-    PrestellarCore,
     CShock,
     JShock,
+    PrestellarCore,
 )
 
 
@@ -27,6 +87,7 @@ def __validate_functional_api_params__(
     return_rates: bool,
     return_heating: bool,
     starting_chemistry: np.ndarray,
+    return_stats: bool = False,
 ):
     """
     Validate functional API specific constraints.
@@ -39,6 +100,7 @@ def __validate_functional_api_params__(
         return_rates: Whether rates are being returned
         return_heating: Whether heating arrays are being returned
         starting_chemistry: Starting chemistry array if provided
+        return_stats: Whether DVODE solver statistics are being returned
 
     Raises:
         RuntimeError: If file parameters are mixed with memory return parameters
@@ -50,7 +112,7 @@ def __validate_functional_api_params__(
     """
     # Determine if this is a memory return request (user wants data returned, not written)
     memory_return_requested = (
-        return_array or return_dataframe or return_rates or return_heating
+        return_array or return_dataframe or return_rates or return_heating or return_stats
     )
 
     # Check file parameter mixing with memory return parameters
@@ -71,6 +133,7 @@ def __functional_return__(
     return_dataframe: bool = False,
     return_rates: bool = False,
     return_heating: bool = False,
+    return_stats: bool = False,
 ):
     """
     return function that takes in the object that was modelled and returns the values based on the specified booleans.
@@ -109,18 +172,21 @@ def __functional_return__(
         points = model_object._param_dict.get("points", 1)
         rates_df = None
         heating_df = None
+        stats_df = None
 
         if points > 1:
             physics_list = []
             chemistry_list = []
             rates_list = []
             heating_list = []
+            stats_list = []
             for pt in range(points):
                 res = model_object.get_dataframes(
                     point=pt,
                     joined=False,
                     with_rates=return_rates,
                     with_heating=return_heating,
+                    with_stats=return_stats,
                 )
                 phys = res[0].copy()
                 chem = res[1].copy()
@@ -134,6 +200,9 @@ def __functional_return__(
                     idx += 1
                 if return_heating and len(res) > idx:
                     heating_list.append(res[idx].assign(Point=pt + 1))
+                    idx += 1
+                if return_stats and len(res) > idx:
+                    stats_list.append(res[idx].assign(Point=pt + 1))
 
             phys_df = pd.concat(physics_list, ignore_index=True)
             chem_df = pd.concat(chemistry_list, ignore_index=True)
@@ -144,10 +213,16 @@ def __functional_return__(
             heating_df = (
                 pd.concat(heating_list, ignore_index=True) if heating_list else None
             )
+            stats_df = (
+                pd.concat(stats_list, ignore_index=True) if stats_list else None
+            )
         else:
             # Single point: behave as before but include a Point column
             result_dfs = model_object.get_dataframes(
-                joined=False, with_rates=return_rates, with_heating=return_heating
+                joined=False,
+                with_rates=return_rates,
+                with_heating=return_heating,
+                with_stats=return_stats,
             )
             phys_df = result_dfs[0]
             chem_df = result_dfs[1]
@@ -157,54 +232,39 @@ def __functional_return__(
                 idx += 1
             if return_heating and len(result_dfs) > idx:
                 heating_df = result_dfs[idx]
+                idx += 1
+            if return_stats and len(result_dfs) > idx:
+                stats_df = result_dfs[idx]
             phys_df["Point"] = 1
             chem_df["Point"] = 1
             # Legacy compatibility: include lowercase 'point' for callers relying on the old name
             phys_df["point"] = 1
             chem_df["point"] = 1
 
-        # Return values: phys, chem, rates/None, heating/None, abundances/dissipation or abundances, flag
+        # Build result tuple - stats only included when requested (for backward compatibility)
+        result = [phys_df, chem_df, rates_df, heating_df]
+        if return_stats:
+            result.append(stats_df)
         if hasattr(model_object, "dissipation_time"):
-            return (
-                phys_df,
-                chem_df,
-                rates_df,
-                heating_df,
-                model_object.dissipation_time,
-                model_object.next_starting_chemistry_array,
-                model_object.success_flag,
-            )
-        else:
-            return (
-                phys_df,
-                chem_df,
-                rates_df,
-                heating_df,
-                model_object.next_starting_chemistry_array,
-                model_object.success_flag,
-            )
+            result.append(model_object.dissipation_time)
+        result.append(model_object.next_starting_chemistry_array)
+        result.append(model_object.success_flag)
+        return tuple(result)
     elif return_array:
-        # FIXED format: [phys, chem, rates/None, heating/None, abundances/dissipation, flag]
-        # For models with dissipation_time: [phys, chem, rates/None, heating/None, dissipation, abundances, flag]
+        # Build result tuple - stats only included when requested (for backward compatibility)
+        result = [
+            model_object.physics_array,
+            model_object.chemical_abun_array,
+            model_object.rates_array if return_rates else None,
+            model_object.heat_array if return_heating else None,
+        ]
+        if return_stats:
+            result.append(model_object.stats_array)
         if hasattr(model_object, "dissipation_time"):
-            return (
-                model_object.physics_array,
-                model_object.chemical_abun_array,
-                model_object.rates_array if return_rates else None,
-                model_object.heat_array if return_heating else None,
-                model_object.dissipation_time,
-                model_object.next_starting_chemistry_array,
-                model_object.success_flag,
-            )
-        else:
-            return (
-                model_object.physics_array,
-                model_object.chemical_abun_array,
-                model_object.rates_array if return_rates else None,
-                model_object.heat_array if return_heating else None,
-                model_object.next_starting_chemistry_array,
-                model_object.success_flag,
-            )
+            result.append(model_object.dissipation_time)
+        result.append(model_object.next_starting_chemistry_array)
+        result.append(model_object.success_flag)
+        return tuple(result)
     else:
         # Disk mode with file output
         # FIXED format: [success_flag, abundances] OR [success_flag, dissipation_time, abundances]
@@ -226,6 +286,7 @@ def __cloud__(
     return_dataframe: bool = False,
     return_rates: bool = False,
     return_heating: bool = False,
+    return_stats: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -266,6 +327,7 @@ def __cloud__(
         return_rates=return_rates,
         return_heating=return_heating,
         starting_chemistry=starting_chemistry,
+        return_stats=return_stats,
     )
 
     model_object = Cloud(
@@ -281,6 +343,7 @@ def __cloud__(
         return_dataframe=return_dataframe,
         return_rates=return_rates,
         return_heating=return_heating,
+        return_stats=return_stats,
     )
 
 
@@ -293,6 +356,7 @@ def __collapse__(
     return_dataframe: bool = False,
     return_rates: bool = False,
     return_heating: bool = False,
+    return_stats: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -335,6 +399,7 @@ def __collapse__(
         return_rates,
         return_heating,
         starting_chemistry,
+        return_stats=return_stats,
     )
 
     model_object = Collapse(
@@ -352,6 +417,7 @@ def __collapse__(
         return_dataframe=return_dataframe,
         return_rates=return_rates,
         return_heating=return_heating,
+        return_stats=return_stats,
     )
 
 
@@ -364,6 +430,7 @@ def __prestellar_core__(
     return_dataframe: bool = False,
     return_rates: bool = False,
     return_heating: bool = False,
+    return_stats: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -406,6 +473,7 @@ def __prestellar_core__(
         return_rates,
         return_heating,
         starting_chemistry,
+        return_stats=return_stats,
     )
 
     model_object = PrestellarCore(
@@ -423,6 +491,7 @@ def __prestellar_core__(
         return_dataframe=return_dataframe,
         return_rates=return_rates,
         return_heating=return_heating,
+        return_stats=return_stats,
     )
 
 
@@ -436,6 +505,7 @@ def __cshock__(
     return_dataframe: bool = False,
     return_rates: bool = False,
     return_heating: bool = False,
+    return_stats: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -482,6 +552,7 @@ def __cshock__(
         return_rates,
         return_heating,
         starting_chemistry,
+        return_stats=return_stats,
     )
 
     model_object = CShock(
@@ -500,6 +571,7 @@ def __cshock__(
         return_dataframe=return_dataframe,
         return_rates=return_rates,
         return_heating=return_heating,
+        return_stats=return_stats,
     )
 
 
@@ -511,6 +583,7 @@ def __jshock__(
     return_dataframe: bool = False,
     return_rates: bool = False,
     return_heating: bool = False,
+    return_stats: bool = False,
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
@@ -552,6 +625,7 @@ def __jshock__(
         return_rates,
         return_heating,
         starting_chemistry,
+        return_stats=return_stats,
     )
 
     model_object = JShock(
@@ -568,13 +642,10 @@ def __jshock__(
         return_dataframe=return_dataframe,
         return_rates=return_rates,
         return_heating=return_heating,
+        return_stats=return_stats,
     )
 
 
-# Expose the functional API functions at module level
-cloud = __cloud__
-collapse = __collapse__
-prestellar_core = __prestellar_core__
 # Expose the functional API functions at module level
 cloud = __cloud__
 collapse = __collapse__

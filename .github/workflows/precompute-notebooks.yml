@@ -1,0 +1,179 @@
+name: Precompute Notebooks (UCLCHEM)
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - 'rc*'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Tag or branch to build notebooks for (e.g. v3.5.5 or develop)'
+        required: false
+        default: ''
+      retention_days:
+        description: 'Artifact retention days'
+        required: false
+        default: '365'
+      create_release:
+        description: 'Attach artifact to a release in UCLCHEM (true/false)'
+        required: false
+        default: 'true'
+      release_tag:
+        description: 'Optional explicit release tag name to use when creating or updating a release'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  precompute:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout UCLCHEM repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install notebook tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade jupyter nbformat nbclient jupytext
+
+      - name: Determine ref
+        id: pick-ref
+        run: |
+          # If triggered by a release, extract the intended ref from the release tag
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            echo "Release tag: $TAG"
+            if echo "$TAG" | grep -q '^docs-'; then
+              # docs-<ref>-... -> extract <ref> (stops at next '-')
+              REF=$(echo "$TAG" | sed -E 's/^docs-([^-]+).*/\1/')
+            else
+              REF="$TAG"
+            fi
+            echo "ref=$REF" >> $GITHUB_OUTPUT
+          elif [ -n "${{ github.event.inputs.ref }}" ]; then
+            echo "ref=${{ github.event.inputs.ref }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "ref=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "ref=develop" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare workspace and install UCLCHEM
+        run: |
+          REF=${{ steps.pick-ref.outputs.ref }}
+          echo "Preparing build for $REF"
+          git fetch --tags --prune || true
+          git checkout --force "$REF" || true
+
+          # Install system dependencies required to build UCLCHEM
+          sudo apt-get update
+          sudo apt-get install -y gfortran build-essential
+
+          # Install package normally (no editable installs, no wheel build).
+          python -m pip install --upgrade pip
+          python -m pip install .
+
+          # record commit SHA
+          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Copy notebook sources
+        run: |
+          mkdir -p notebooks
+          # Keep checked-in notebook sources present; do not delete them here
+          # Any conversion is handled in the execution script to avoid duplication
+
+
+      - name: "Debug: list notebooks contents"
+        run: |
+          echo "Listing notebooks directory"
+          ls -la notebooks || true
+
+      - name: Prepare and execute notebooks
+        run: |
+          # Ensure required tools are available
+          python -m pip install --upgrade jupytext nbformat nbclient || true
+          python .github/scripts/execute_notebooks.py
+
+
+      - name: Generate metadata
+        run: |
+          REF=${{ steps.pick-ref.outputs.ref }}
+          export BUILD_DATE=$(date -u +%Y%m%d)
+          export BUILD_TS=$(date -u +%Y%m%dT%H%M%SZ)
+          export COMMIT_SHA=${COMMIT_SHA:-$(git rev-parse --short HEAD)}
+          echo "REF=$REF" >> $GITHUB_ENV
+          echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
+          echo "BUILD_TS=$BUILD_TS" >> $GITHUB_ENV
+          echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
+          python .github/scripts/write_meta.py
+
+      - name: Set executed notebooks zip name
+        run: |
+          REF="${{ steps.pick-ref.outputs.ref }}"
+          if [ -z "$REF" ]; then
+            REF_SAFE="unknown"
+          else
+            REF_SAFE="$REF"
+          fi
+          REF_SAFE=$(echo "$REF_SAFE" | sed -E 's/[^A-Za-z0-9._-]/-/g')
+          ZIP_NAME="executed_notebooks-${REF_SAFE}-${COMMIT_SHA:-none}-${BUILD_DATE}.zip"
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+
+      - name: Zip executed notebooks
+        run: |
+          if [ -z "${ZIP_NAME}" ]; then
+            ZIP_NAME="executed_notebooks.zip"
+          fi
+          if [ -d "executed_notebooks" ]; then
+            cd executed_notebooks && zip -r ../"${ZIP_NAME}" . || true
+          else
+            echo "No executed_notebooks directory found; creating empty zip" && mkdir -p executed_notebooks && cd executed_notebooks && zip -r ../"${ZIP_NAME}" . || true
+          fi
+
+      - name: Upload executed notebooks artifact (non-unique name)
+        uses: actions/upload-artifact@v4
+        with:
+          name: executed-notebooks
+          path: ${{ env.ZIP_NAME }}
+          retention-days: ${{ github.event.inputs.retention_days }}
+
+      - name: Attach executed notebooks to release (when triggered by release)
+        if: ${{ github.event_name == 'release' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          echo "Attaching ${ZIP_NAME:-executed_notebooks.zip} to release $TAG (clobbering existing asset)"
+          gh release upload "$TAG" "${ZIP_NAME:-executed_notebooks.zip}" --clobber || true
+
+      - name: Optionally create a release and attach the artifact
+        if: ${{ github.event_name != 'release' && (github.event.inputs.create_release == 'true' || startsWith(github.ref, 'refs/tags/v') || startsWith(github.event.inputs.ref, 'develop')) }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ steps.pick-ref.outputs.ref }}
+          COMMIT_SHA: ${{ env.COMMIT_SHA }}
+        run: |
+          # Determine release tag to use (explicit input > docs-develop for develop > auto-generated docs-<ref>-<sha>-<date>)
+          if [ -n "${{ github.event.inputs.release_tag }}" ]; then
+            RELEASE_TAG="${{ github.event.inputs.release_tag }}"
+          elif [ "${{ steps.pick-ref.outputs.ref }}" = "develop" ]; then
+            RELEASE_TAG="docs-develop"
+          else
+            RELEASE_TAG="docs-${{ steps.pick-ref.outputs.ref }}-${{ env.COMMIT_SHA }}-$(date -u +%Y%m%d)"
+          fi
+
+          echo "Creating/updating release $RELEASE_TAG and attaching executed_notebooks.zip"
+          gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" --notes "Executed notebooks for $REF (commit $COMMIT_SHA)" || true
+          gh release upload "$RELEASE_TAG" "${ZIP_NAME:-executed_notebooks.zip}" --clobber || true

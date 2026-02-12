@@ -17,13 +17,12 @@ from uclchem.advanced.runtime_network instead.
 import logging
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from os import path
 from pathlib import Path
 from typing import Union
 
 import pandas as pd
 
-from uclchem.utils import _ROOT
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 from .reaction import Reaction, reaction_types
 from .species import Species
@@ -308,10 +307,7 @@ class BaseNetwork(NetworkABC):
             other_reactants = set(other_reaction.get_reactants()) - {"NAN"}
             other_products = set(other_reaction.get_products()) - {"NAN"}
 
-            if (
-                other_reactants == target_reactants
-                and other_products == target_products
-            ):
+            if other_reactants == target_reactants and other_products == target_products:
                 similar[idx] = other_reaction
 
         return similar
@@ -430,9 +426,9 @@ class Network(BaseNetwork, MutableNetworkABC):
         """
         # Use defaults if not provided
         if species_path is None:
-            species_path = path.join(_ROOT, "species.csv")
+            species_path = UCLCHEM_ROOT_DIR / "species.csv"
         if reactions_path is None:
-            reactions_path = path.join(_ROOT, "reactions.csv")
+            reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
 
         logging.debug(f"Loading network from {species_path} and {reactions_path}")
 
@@ -442,13 +438,11 @@ class Network(BaseNetwork, MutableNetworkABC):
 
         # Parse into objects
         species_list = [Species(list(spec)) for idx, spec in species_data.iterrows()]
-        reactions_list = [
-            Reaction(list(reac)) for idx, reac in reactions_data.iterrows()
-        ]
+        reactions_list = [Reaction(list(reac)) for idx, reac in reactions_data.iterrows()]
 
         # Create dictionaries
         species_dict = {s.get_name(): s for s in species_list}
-        reaction_dict = {k: v for k, v in enumerate(reactions_list)}
+        reaction_dict = dict(enumerate(reactions_list))
 
         return cls(species_dict, reaction_dict)
 
@@ -475,7 +469,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             >>> network = Network.from_lists(species_list, reactions_list)
         """
         species_dict = {s.get_name(): s for s in species}
-        reaction_dict = {k: v for k, v in enumerate(reactions)}
+        reaction_dict = dict(enumerate(reactions))
         return cls(species_dict, reaction_dict)
 
     @classmethod
@@ -694,6 +688,25 @@ class Network(BaseNetwork, MutableNetworkABC):
             del self._reactions_dict[reaction_idx]
         else:
             logging.warning(f"Reaction index {reaction_idx} not found in network")
+
+    def get_reactions_by_types(
+        self, reaction_type: Union[str, list[str]]
+    ) -> list[Reaction]:
+        """Get the union of all reactions of a certain type.
+
+        Args:
+            reaction_type (str): The reaction type to filter on
+
+        Returns:
+            list[Reaction]: A list of reactions of the specified type
+        """
+        if isinstance(reaction_type, str):
+            reaction_type = [reaction_type]
+        return [
+            r
+            for r in self.get_reaction_list()
+            if (r.get_reaction_type() in reaction_type)
+        ]
 
     def sort_reactions(self) -> None:
         """Sort reactions by type and first reactant."""

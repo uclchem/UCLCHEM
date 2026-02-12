@@ -20,8 +20,12 @@ description = "A package for the astrochemical modelling of gas-grain chemistrie
 readme = "README.md"
 requires-python = ">=3.9,<3.14"
 dependencies = [
-    "pandas", "numpy", "pyyaml", "charset_normalizer", "matplotlib", "seaborn", "scipy", "tqdm", "joblib", "xarray", "pydantic>=2.0"
+    "h5py", "pandas", "numpy", "pyyaml", "charset_normalizer", "matplotlib", "h5netcdf","seaborn", "scipy", "tqdm", "joblib", "xarray", "pydantic>=2.0"
 ]
+
+[project.urls]
+Repository = "https://github.com/uclchem/UCLCHEM"
+Documentation = "https://uclchem.github.io"
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-xdist", "pytest-github-actions-annotate-failures", "pre-commit", "sphinx"]  # Development dependencies
@@ -30,6 +34,13 @@ docs = ["pydoc-markdown", "jupyter", "jupyter_contrib_nbextensions", "notebook<7
 [tool.ruff]
 # Exclude notebooks directory from most checks since they're generated from .ipynb
 extend-exclude = ["notebooks/*.py"]
+line-length = 90
+
+[tool.ruff.lint]
+select = ["E", "F", "C", "I", "E"]
+extend-ignore = [
+    "E501", "E731", "E741", "E402", "F841", "F811", "C901", "E203", "E402"
+]
 
 [tool.ruff.lint.per-file-ignores]
 # E402: Module level import not at top of file - normal for notebook-derived files

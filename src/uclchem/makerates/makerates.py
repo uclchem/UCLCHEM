@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 from typing import Union
 
 from . import io_functions as io
@@ -7,9 +8,22 @@ from .config import MakeratesConfig
 from .network import Network
 from .reaction import Reaction
 
+# Optional parameters that don't raise errors if missing
+optional_params = [
+    "grain_assisted_recombination_file",
+    "output_directory",
+    "three_phase",
+    "gas_phase_extrapolation",
+]
+
+
+from typing import Union
+
 
 def run_makerates(
-    configuration_file: str = "user_settings.yaml", write_files: bool = True
+    configuration_file: str = "user_settings.yaml",
+    write_files: bool = True,
+    output_directory: Union[str, os.PathLike] | None = None,
 ) -> Network:
     """
     Main run wrapper for makerates. Loads and validates configuration,
@@ -20,6 +34,9 @@ def run_makerates(
             Defaults to "user_settings.yaml".
         write_files: Whether to write fortran files to src/fortran_src.
             Defaults to True.
+        output_directory: Optional override for the output directory where files
+            should be written. If None, uses the 'output_directory' from the config
+            (if present) or the package defaults.
 
     Returns:
         Network: A validated chemical network instance.
@@ -34,11 +51,15 @@ def run_makerates(
     # Log the configuration
     config.log_configuration()
 
-    # Prepare output directory
-    if config.output_directory:
-        user_output_dir = config.resolve_path(config.output_directory)
+    # Prepare output directory (allow caller to override)
+    if output_directory is not None:
+        user_output_dir = output_directory
         if not os.path.exists(user_output_dir):
             os.makedirs(user_output_dir)
+    elif config.output_directory:
+        user_output_dir = config.resolve_path(config.output_directory)
+        if not user_output_dir.is_dir():
+            user_output_dir.mkdir()
     else:
         user_output_dir = None
 
@@ -71,6 +92,28 @@ def run_makerates(
         derive_reaction_exothermicity=config.derive_reaction_exothermicity,
         database_reaction_exothermicity=database_reaction_exothermicity,
     )
+
+    # Determine which coolants to write. Precedence (highest -> lowest):
+    # 1) inline `coolants` in config, 2) `coolants_file` referenced in config,
+    # 3) defaults used by write_outputs.
+    coolants_to_write = None
+    if config.coolants is not None:
+        logging.info(f"Using {len(config.coolants)} inline coolants from config")
+        coolants_to_write = config.coolants
+    elif config.coolants_file:
+        coolants_path = config.resolve_path(config.coolants_file)
+        # Defensive check: don't try to read a directory as a YAML file
+        if coolants_path.is_dir():
+            raise ValueError(
+                f"coolants_file {coolants_path} resolves to a directory; expected a YAML file listing coolants. "
+                "If you intended to set the collisional rate data directory, use 'coolant_data_dir' in your config."
+            )
+        try:
+            _coolants = io.read_coolants_file(coolants_path)
+            logging.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")
+            coolants_to_write = _coolants
+        except Exception as exc:
+            raise ValueError(f"Error reading coolants_file {coolants_path}: {exc}")
 
     if write_files:
         logging.info(
@@ -107,12 +150,25 @@ def run_makerates(
                 )
             # Save the gar parameters in the correct order
             gar_parameters = {ion: _gar_parameters[ion] for ion in gar_ions}
+
+        # Pass resolved coolants and coolant_data_dir through to write_outputs
         io.write_outputs(
             network,
             user_output_dir,
             config.enable_rates_storage,
             gar_parameters,
+            coolants=coolants_to_write,
+            coolant_data_dir=config.coolant_data_dir,
         )
+
+        # Copy coolant data files to package data directory for installation
+        # Only pass coolant_data_dir if it's explicitly set and valid
+        source_dir = (
+            config.coolant_data_dir
+            if config.coolant_data_dir and config.coolant_data_dir != "."
+            else None
+        )
+        io.copy_coolant_files(source_dir=source_dir)
 
     ngrain = len([x for x in network.get_species_list() if x.is_surface_species()])
     logging.info(f"Total number of species = {len(network.get_species_list())}")
@@ -124,9 +180,9 @@ def run_makerates(
 
 
 def get_network(
-    path_to_input_file: Union[str, bytes, os.PathLike] = None,
-    path_to_species_file: Union[str, bytes, os.PathLike] = None,
-    path_to_reaction_file: Union[str, bytes, os.PathLike] = None,
+    path_to_input_file: Union[str, bytes, Path] = None,
+    path_to_species_file: Union[str, bytes, Path] = None,
+    path_to_reaction_file: Union[str, bytes, Path] = None,
     verbosity=None,
 ):
     """In memory equivalent of Makerates, can either be used on the original input files
@@ -138,9 +194,9 @@ def get_network(
 
 
     Args:
-        path_to_input_file (Union[str, bytes, os.PathLike], optional): Path to input file. Defaults to None.
-        path_to_species_file (Union[str, bytes, os.PathLike], optional): Path to a species.csv in/from the src directory. Defaults to None.
-        path_to_reaction_file (Union[str, bytes, os.PathLike], optional): Path to a reactions.csv in/from the src directory. Defaults to None.
+        path_to_input_file (Union[str, bytes, Path], optional): Path to input file. Defaults to None.
+        path_to_species_file (Union[str, bytes, Path], optional): Path to a species.csv in/from the src directory. Defaults to None.
+        path_to_reaction_file (Union[str, bytes, Path], optional): Path to a reactions.csv in/from the src directory. Defaults to None.
         verbosity (LEVEL, optional): The verbosity level as specified in logging. Defaults to None.
 
     Raises:
@@ -165,13 +221,13 @@ def get_network(
 
 
 def _get_network_from_files(
-    species_file: Union[str, bytes, os.PathLike],
-    reaction_files: list[Union[str, bytes, os.PathLike]],
+    species_file: Union[str, bytes, Path],
+    reaction_files: list[Union[str, bytes, Path]],
     reaction_types: list[str],
     gas_phase_extrapolation: bool,
     add_crp_photo_to_grain: bool,
     derive_reaction_exothermicity: Union[bool, str, list[str]],
-    database_reaction_exothermicity: list[Union[str, bytes, os.PathLike]] = None,
+    database_reaction_exothermicity: list[Union[str, bytes, Path]] = None,
 ) -> tuple[Network, list[Reaction]]:
     logging.info(
         f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"
