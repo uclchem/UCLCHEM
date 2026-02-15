@@ -134,9 +134,7 @@ class Test1DCloud:
         assert (
             "Point" in physics_df.columns
         ), "Physics dataframe should have 'Point' column"
-        assert (
-            "Time" in physics_df.columns
-        ), "Physics dataframe should have 'Time' column"
+        assert "Time" in physics_df.columns, "Physics dataframe should have 'Time' column"
         assert (
             "Density" in physics_df.columns
         ), "Physics dataframe should have 'Density' column"
@@ -310,9 +308,7 @@ class Test1DParameterValidation:
 
         # Test shallow profile (low power index)
         params_shallow = base_params.copy()
-        params_shallow.update(
-            {"density_scale_radius": 0.05, "density_power_index": 1.5}
-        )
+        params_shallow.update({"density_scale_radius": 0.05, "density_power_index": 1.5})
 
         physics_shallow, _, _, _, _, code_shallow = uclchem.functional.cloud(
             param_dict=params_shallow,
@@ -405,14 +401,12 @@ class Test1DChemicalEvolution:
         params_phase1 = base_1d_params.copy()
         params_phase1["finalTime"] = 1.0e5
 
-        physics1, chem1, rates1, heating1, abund_start1, code1 = (
-            uclchem.functional.cloud(
-                param_dict=params_phase1,
-                out_species=["CO", "H2O"],
-                return_array=True,
-                return_rates=True,
-                timepoints=2500,
-            )
+        physics1, chem1, rates1, heating1, abund_start1, code1 = uclchem.functional.cloud(
+            param_dict=params_phase1,
+            out_species=["CO", "H2O"],
+            return_array=True,
+            return_rates=True,
+            timepoints=2500,
         )
 
         assert code1 == 0, "Phase 1 should succeed"
@@ -422,15 +416,13 @@ class Test1DChemicalEvolution:
         params_phase2["finalTime"] = 2.0e5
         params_phase2["currentTime"] = 1.0e5
 
-        physics2, chem2, rates2, heating2, abund_start2, code2 = (
-            uclchem.functional.cloud(
-                param_dict=params_phase2,
-                out_species=["CO", "H2O"],
-                return_array=True,
-                return_rates=True,
-                starting_chemistry=abund_start1,
-                timepoints=2500,
-            )
+        physics2, chem2, rates2, heating2, abund_start2, code2 = uclchem.functional.cloud(
+            param_dict=params_phase2,
+            out_species=["CO", "H2O"],
+            return_array=True,
+            return_rates=True,
+            starting_chemistry=abund_start1,
+            timepoints=2500,
         )
 
         assert code2 == 0, "Phase 2 should succeed with starting_chemistry"
@@ -615,9 +607,7 @@ class TestOOCollapse1D:
             )
 
             model.check_error()
-            assert (
-                model.success_flag == 0
-            ), f"parcelStoppingMode={mode} should succeed"
+            assert model.success_flag == 0, f"parcelStoppingMode={mode} should succeed"
 
 
 class TestOOHotcore1D:
@@ -639,9 +629,9 @@ class TestOOHotcore1D:
         # Get final temperatures at each point
         phys_df = model.get_dataframes(joined=False)[0]
         final_time = phys_df["Time"].max()
-        final_temps = phys_df[phys_df["Time"] == final_time].sort_values("Point")[
-            "gasTemp"
-        ].values
+        final_temps = (
+            phys_df[phys_df["Time"] == final_time].sort_values("Point")["gasTemp"].values
+        )
 
         # Temperature should vary spatially
         assert final_temps.std() > 0

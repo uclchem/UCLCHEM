@@ -485,7 +485,13 @@ class AbstractModel(ABC):
         return obj
 
     @classmethod
-    def from_file(cls, file: str, name: str = "default", engine: str = "h5netcdf", debug: bool = False):
+    def from_file(
+        cls,
+        file: str,
+        name: str = "default",
+        engine: str = "h5netcdf",
+        debug: bool = False,
+    ):
         """Load a model from a file.
 
         This is a convenience class method that wraps the module-level load_model function.
@@ -768,10 +774,11 @@ class AbstractModel(ABC):
             level_populations_df (pandas.DataFrame): Dataframe of coolant level populations for point 'point' if joined = False and with_level_populations = True
             se_stats_df (pandas.DataFrame): Dataframe of SE solver statistics for point 'point' if joined = False and with_se_stats = True
         """
+
         # Helper function to add Point column to a dataframe
         def add_point_column(df, point_num):
             if df is not None:
-                df.insert(0, 'Point', point_num)
+                df.insert(0, "Point", point_num)
             return df
 
         # Determine total number of points in model
@@ -783,8 +790,12 @@ class AbstractModel(ABC):
             all_dfs = []
             for pt in range(n_points):
                 dfs = self._get_single_point_dataframes(
-                    pt, with_rates, with_heating, with_stats,
-                    with_level_populations, with_se_stats
+                    pt,
+                    with_rates,
+                    with_heating,
+                    with_stats,
+                    with_level_populations,
+                    with_se_stats,
                 )
                 # Add Point columns to all dataframes (1-indexed)
                 dfs = tuple(add_point_column(df, pt + 1) for df in dfs)
@@ -797,15 +808,22 @@ class AbstractModel(ABC):
             # Concatenate each type vertically
             concatenated = [
                 pd.concat([df for df in collection if df is not None], ignore_index=True)
-                if any(df is not None for df in collection) else None
+                if any(df is not None for df in collection)
+                else None
                 for collection in df_collections
             ]
         else:
             # Single point mode
-            concatenated = list(self._get_single_point_dataframes(
-                point, with_rates, with_heating, with_stats,
-                with_level_populations, with_se_stats
-            ))
+            concatenated = list(
+                self._get_single_point_dataframes(
+                    point,
+                    with_rates,
+                    with_heating,
+                    with_stats,
+                    with_level_populations,
+                    with_se_stats,
+                )
+            )
             # Add Point columns (1-indexed)
             concatenated = [add_point_column(df, point + 1) for df in concatenated]
 
@@ -815,14 +833,19 @@ class AbstractModel(ABC):
             for df in concatenated[1:]:
                 if df is not None:
                     # Drop duplicate Point column from subsequent dataframes
-                    result_df = result_df.join(df.drop(columns=['Point']))
+                    result_df = result_df.join(df.drop(columns=["Point"]))
             return result_df
         else:
             return tuple(concatenated)
 
     def _get_single_point_dataframes(
-        self, point: int, with_rates: bool, with_heating: bool,
-        with_stats: bool, with_level_populations: bool, with_se_stats: bool
+        self,
+        point: int,
+        with_rates: bool,
+        with_heating: bool,
+        with_stats: bool,
+        with_level_populations: bool,
+        with_se_stats: bool,
     ) -> tuple:
         """Helper method to get dataframes for a single point without Point column."""
         # Create a physical parameter dataframe using global constants

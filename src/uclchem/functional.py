@@ -210,9 +210,7 @@ def __functional_return__(
             heating_df = (
                 pd.concat(heating_list, ignore_index=True) if heating_list else None
             )
-            stats_df = (
-                pd.concat(stats_list, ignore_index=True) if stats_list else None
-            )
+            stats_df = pd.concat(stats_list, ignore_index=True) if stats_list else None
         else:
             # Single point: behave as before but include a Point column
             result_dfs = model_object.get_dataframes(
