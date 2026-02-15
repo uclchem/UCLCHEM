@@ -551,7 +551,9 @@ IMPLICIT NONE
     ! !-----------------------------------------------------------------------
     REAL(dp) FUNCTION cosmicRayHeating(zeta,gasDensity,h2Abund)
         REAL(dp), INTENT(IN) :: zeta,gasDensity,h2Abund
-        cosmicRayHeating=(20.0*eV)*(1.3D-17*zeta)*h2Abund*gasDensity
+        ! cosmicRayHeating=(20.0*eV)*(1.3D-17*zeta)*h2Abund*gasDensity
+        ! According to Ivlev et al. 2019
+        cosmicRayHeating=(16.0*eV)*(1.3D-17*zeta)*h2Abund*gasDensity
     END FUNCTION cosmicRayHeating
 
 
