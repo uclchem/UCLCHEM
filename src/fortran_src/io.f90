@@ -66,21 +66,35 @@ CONTAINS
         !read start file if choosing to use abundances from previous run 
         !f2py integer, intent(aux) :: points
         IF (readAbunds) THEN
-            DO l=1,points
-                READ(abundLoadID,*) abund(:nspec,l)
+            IF (enable_radiative_transfer .AND. points.gt.1) THEN
+                print*,'we are reading the initial abundances'
+                DO l=points,1,-1
+                    READ(abundLoadID,*) abund(:nspec,l)
+                END DO
                 REWIND(abundLoadID)
-            END DO
+            ELSE
+                DO l=1,points
+                    READ(abundLoadID,*) abund(:nspec,l)
+                    REWIND(abundLoadID)
+                END DO
+            END IF
         END IF
     END SUBROUTINE readInputAbunds
 
     SUBROUTINE finalOutput
         !f2py integer, intent(aux) :: points
         IF (writeAbunds) THEN
-            DO dstep=1,points
-                ! WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
-                WRITE(abundSaveID,8010) abund(:nspec+2,dstep)
-            8010  FORMAT((999(1pe15.5,:,',')))
-            END DO
+            IF (enable_radiative_transfer .AND. points.gt.1) THEN
+                DO dstep=points,1,-1
+                    ! WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
+                    WRITE(abundSaveID,8010) abund(:nspec+2,dstep)
+                8010  FORMAT((999(1pe15.5,:,',')))
+                END DO
+            ELSE
+                DO dstep=1,points
+                    WRITE(abundSaveID,8010) abund(:nspec+2,dstep)
+                END DO
+            END IF
         END IF
     END SUBROUTINE finalOutput
 
@@ -112,7 +126,6 @@ CONTAINS
                 physicsarray(dtime, dstep, 6) = radfield
                 physicsarray(dtime, dstep, 7) = zeta
                 physicsarray(dtime, dstep, 8) = dstep
-                ! chemicalabunarray(dtime, dstep, :) = abund(:neq-1,dstep)
                 chemicalabunarray(dtime, dstep, :) = abund(1:nspec,dstep)
                 ! DVODE solver statistics
                 IF (PRESENT(statsarray)) THEN
@@ -166,9 +179,6 @@ CONTAINS
                 END IF
                 IF (heatingOutput) THEN
                     ! Write: time, cooling values (4), line cooling array (NCOOLANTS), heating values (8), chem heating
-                    write(*,'(A,I0,A,I0)') 'DEBUG io.f90: NCOOLANTS=', NCOOLANTS, ' median_line_index=', median_line_index
-                    write(*,'(A,10(1PE14.6))') 'DEBUG io.f90: lineCoolingArray(median,:10)=', lineCoolingArray(median_line_index, 1:10)
-                    write(*,'(A,1PE14.6)') 'DEBUG io.f90: coolingValues(5)=', coolingValues(5)
                     WRITE(heatingId,8023) timeInYears, coolingValues(:), &
                         lineCoolingArray(median_line_index, :NCOOLANTS), &
                         heatingValues(:), chemheating
@@ -221,7 +231,6 @@ CONTAINS
     !Argument message is a string to print before the variables
         CHARACTER(LEN=*) :: message
         WRITE(*,*) message
-        WRITE(*,*)"endAtFinalDensity",endAtFinalDensity
         WRITE(*,*)"freefall",freefall
         WRITE(*,*)"initialDens",initialDens
         WRITE(*,*)"finalDens",finalDens

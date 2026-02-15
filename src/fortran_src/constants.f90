@@ -18,6 +18,8 @@ MODULE CONSTANTS
    REAL(dp), PARAMETER :: GRAV_G = 6.674d-8 !gravitational constant in cgs
    REAL(dp), PARAMETER :: SB_CONST=5.6704d-5 !Stefan Boltzmann constant in cgs
    REAL(dp), PARAMETER :: HABING_TO_DRAINE = 1 / 1.7 !conversion factor from Habing to Draine field
+   REAL(dp), PARAMETER :: Lsun = 3.828d+33 ! Sun luminosity in cgs
+   REAL(dp), PARAMETER :: aunit = 1.495978d13 ! AU in cm
    REAL(dp), PARAMETER :: N_AVOGADRO=6.022140857d23 !Avogadro constant
    REAL(dp), PARAMETER :: KCAL_TO_JOULE=4.184d3 !Constant to convert kcal to J
 

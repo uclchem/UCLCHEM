@@ -89,7 +89,7 @@ default_param_dictionary = {
     "points": 1,
     "bm0": 1.0,
     "freezefactor": 1.0,
-    "endatfinaldensity": False,
+    "parcelstoppingmode": 0,  # Default: never stop (0=never, 1=stop all when outermost reaches max, 2=stop each individually)
     "freefall": True,
     "freefallfactor": 1.0,
     "desorb": True,
@@ -105,6 +105,7 @@ default_param_dictionary = {
     "columnfile": None,
     "ratefile": None,
     "fluxfile": None,
+    "heatingFile": None,
     "writestep": 1,
     "abundsavefile": None,
     "abundloadfile": None,
@@ -141,4 +142,10 @@ default_param_dictionary = {
     "phi": 100000.0,
     "uvcreff": 0.001,
     "omega": 0.5,
+    # 1D radiative transfer defaults
+    "enable_radiative_transfer": False,
+    "density_scale_radius": 0.05,
+    "density_power_index": 2.0,
+    "lum_star": 1000000.0,
+    "temp_star": 45000.0,
 }

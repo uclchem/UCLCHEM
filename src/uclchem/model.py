@@ -260,6 +260,43 @@ def _worker_entry(
 # /Worker entry for parallel jobs
 
 
+# Short compatibility helper for legacy parameter `endAtFinalDensity`
+def _convert_legacy_stopping_param(param_dict: dict) -> dict:
+    """Minimal conversion of legacy `endAtFinalDensity` to `parcelStoppingMode`.
+    Rules (short and strict):
+      - If both keys are present: raise RuntimeError
+      - If `endAtFinalDensity` is present and points>1: raise RuntimeError
+      - If `endAtFinalDensity=True` and freefall=False: raise ValueError
+      - Otherwise convert True->1, False->0 and remove the old key
+
+    Note: This function assumes param_dict is already a copy and is case-normalized (lowercase keys).
+    """
+    if param_dict is None:
+        return param_dict
+
+    has_old = "endatfinaldensity" in param_dict
+    has_new = "parcelstoppingmode" in param_dict
+    if has_old and has_new:
+        raise RuntimeError(
+            "Cannot specify both 'endAtFinalDensity' and 'parcelStoppingMode'. Use 'parcelStoppingMode' only."
+        )
+    if has_old:
+        points = param_dict.get("points", 1)
+        if points > 1:
+            raise RuntimeError(
+                "endAtFinalDensity is no longer supported for multi-point models (points > 1). Use 'parcelStoppingMode' instead."
+            )
+        old_val = param_dict.pop("endatfinaldensity")
+        new_val = 1 if old_val else 0
+        param_dict["parcelstoppingmode"] = new_val
+
+        # Check if parcelStoppingMode requires freefall validation
+        # Defer full validation to AbstractModel.__init__() where model_type is known
+        if new_val != 0 and not param_dict.get("freefall", False):
+            param_dict["_needs_freefall_validation"] = True
+    return param_dict
+
+
 # TODO Add catch of ctrl+c or other aborts so that it saves model and a full output to files of year, month, day, time type.
 class AbstractModel(ABC):
     """Base model class used for inheritance only
@@ -331,18 +368,17 @@ class AbstractModel(ABC):
 
         self._reform_inputs(param_dict, self.out_species_list)
 
-        # Validate endAtFinalDensity usage
-        if self._param_dict.get("endatfinaldensity", False):
-            if not self._param_dict.get("freefall", False):
-                # Check if this is a Collapse model (which is allowed)
-                if self.model_type != "Collapse":
-                    raise ValueError(
-                        "endAtFinalDensity=True can only be used with:\n"
-                        "  - Collapse models\n"
-                        "  - Cloud models with freefall=True\n"
-                        f"Current model: {self.model_type}, freefall={self._param_dict.get('freefall', False)}\n"
-                        "Please either set freefall=True or set endAtFinalDensity=False"
-                    )
+        # Validate parcelStoppingMode usage after model_type is known
+        if self._param_dict.get("_needs_freefall_validation", False):
+            if self.model_type not in ["Collapse"]:  # Collapse models imply freefall
+                raise ValueError(
+                    "parcelStoppingMode != 0 can only be used with:\n"
+                    "  - Cloud models with freefall=True\n"
+                    "  - Collapse models (freefall is implied)\n"
+                    f"Current model_type={self.model_type}, freefall={self._param_dict.get('freefall', False)}\n"
+                    "Please either set freefall=True or set parcelStoppingMode=0"
+                )
+            self._param_dict.pop("_needs_freefall_validation", None)  # Clean up flag
 
         # If we were given a previously-written output file, populate the model
         # arrays and metadata from that file now so later initialization can rely on them.
@@ -447,6 +483,29 @@ class AbstractModel(ABC):
             object.__setattr__(obj, k, v)
         obj._reform_array_in_worker(shm_desc)
         return obj
+
+    @classmethod
+    def from_file(
+        cls,
+        file: str,
+        name: str = "default",
+        engine: str = "h5netcdf",
+        debug: bool = False,
+    ):
+        """Load a model from a file.
+
+        This is a convenience class method that wraps the module-level load_model function.
+
+        Args:
+            file (str): Path to a file that contains previously run and stored models.
+            name (str, optional): Name of the stored object. Defaults to 'default'.
+            engine (str, optional): "netcdf4", "h5netcdf" or "zarr". Defaults to "h5netcdf".
+            debug (bool, optional): Flag for extra debug information. Defaults to False.
+
+        Returns:
+            Model object loaded from the file.
+        """
+        return load_model(file, name=name, engine=engine, debug=debug)
 
     # /Separate class building methods
 
@@ -683,7 +742,7 @@ class AbstractModel(ABC):
 
     def get_dataframes(
         self,
-        point: int = 0,
+        point: int | None = None,
         joined: bool = True,
         with_rates: bool = False,
         with_heating: bool = False,
@@ -693,8 +752,8 @@ class AbstractModel(ABC):
     ) -> pd.DataFrame | tuple[pd.DataFrame, ...]:  # Returns joined DF or tuple of DFs
         """Converts the model physics and chemical_abun arrays from numpy to pandas arrays.
         Args:
-            point (int, optional): Integer referring to which point of the UCLCHEM model to return as pandas does not support higher
-                than 2D data structures. Defaults to 0.
+            point (int or None, optional): Integer referring to which point of the UCLCHEM model to return.
+                If None, returns data for all points with a 'Point' column. Defaults to None.
             joined (bool, optional): Flag on whether the returned pandas dataframe should be one, or if two dataframes should be
                 returned. One physical, one chemical_abun dataframe. Defaults to True.
             with_rates (bool, optional): Flag on whether to include reaction rates in the dataframe, and/or as a separate
@@ -715,6 +774,80 @@ class AbstractModel(ABC):
             level_populations_df (pandas.DataFrame): Dataframe of coolant level populations for point 'point' if joined = False and with_level_populations = True
             se_stats_df (pandas.DataFrame): Dataframe of SE solver statistics for point 'point' if joined = False and with_se_stats = True
         """
+
+        # Helper function to add Point column to a dataframe
+        def add_point_column(df, point_num):
+            if df is not None:
+                df.insert(0, "Point", point_num)
+            return df
+
+        # Determine total number of points in model
+        n_points = self._param_dict.get("points", 1)
+
+        # Get dataframes for the requested points
+        if point is None:
+            # Collect dataframes for all points
+            all_dfs = []
+            for pt in range(n_points):
+                dfs = self._get_single_point_dataframes(
+                    pt,
+                    with_rates,
+                    with_heating,
+                    with_stats,
+                    with_level_populations,
+                    with_se_stats,
+                )
+                # Add Point columns to all dataframes (1-indexed)
+                dfs = tuple(add_point_column(df, pt + 1) for df in dfs)
+                all_dfs.append(dfs)
+
+            # Transpose to group by dataframe type instead of by point
+            # e.g., [[phys0, chem0, rates0], [phys1, chem1, rates1]] -> [[phys0, phys1], [chem0, chem1], [rates0, rates1]]
+            df_collections = list(zip(*all_dfs))
+
+            # Concatenate each type vertically
+            concatenated = [
+                pd.concat([df for df in collection if df is not None], ignore_index=True)
+                if any(df is not None for df in collection)
+                else None
+                for collection in df_collections
+            ]
+        else:
+            # Single point mode
+            concatenated = list(
+                self._get_single_point_dataframes(
+                    point,
+                    with_rates,
+                    with_heating,
+                    with_stats,
+                    with_level_populations,
+                    with_se_stats,
+                )
+            )
+            # Add Point columns (1-indexed)
+            concatenated = [add_point_column(df, point + 1) for df in concatenated]
+
+        # Join horizontally if requested
+        if joined:
+            result_df = concatenated[0]  # Start with physics
+            for df in concatenated[1:]:
+                if df is not None:
+                    # Drop duplicate Point column from subsequent dataframes
+                    result_df = result_df.join(df.drop(columns=["Point"]))
+            return result_df
+        else:
+            return tuple(concatenated)
+
+    def _get_single_point_dataframes(
+        self,
+        point: int,
+        with_rates: bool,
+        with_heating: bool,
+        with_stats: bool,
+        with_level_populations: bool,
+        with_se_stats: bool,
+    ) -> tuple:
+        """Helper method to get dataframes for a single point without Point column."""
         # Create a physical parameter dataframe using global constants
         # Arrays are guaranteed to match these dimensions due to validation in legacy_read_output_file
         physics_df = pd.DataFrame(
@@ -786,32 +919,19 @@ class AbstractModel(ABC):
         else:
             se_stats_df = None
 
-        if joined:
-            return_df = physics_df.join(chemistry_df)
-            if with_rates and rates_df is not None:
-                return_df = return_df.join(rates_df)
-            if with_heating and heating_df is not None:
-                return_df = return_df.join(heating_df)
-            if with_stats and stats_df is not None:
-                return_df = return_df.join(stats_df)
-            if with_level_populations and level_populations_df is not None:
-                return_df = return_df.join(level_populations_df)
-            if with_se_stats and se_stats_df is not None:
-                return_df = return_df.join(se_stats_df)
-            return return_df
-        else:
-            result = [physics_df, chemistry_df]
-            if with_rates:
-                result.append(rates_df)
-            if with_heating:
-                result.append(heating_df)
-            if with_stats:
-                result.append(stats_df)
-            if with_level_populations:
-                result.append(level_populations_df)
-            if with_se_stats:
-                result.append(se_stats_df)
-            return tuple(result)
+        # Return tuple of all dataframes (some may be None)
+        result = [physics_df, chemistry_df]
+        if with_rates:
+            result.append(rates_df)
+        if with_heating:
+            result.append(heating_df)
+        if with_stats:
+            result.append(stats_df)
+        if with_level_populations:
+            result.append(level_populations_df)
+        if with_se_stats:
+            result.append(se_stats_df)
+        return tuple(result)
 
     def plot_species(
         self,
@@ -1370,6 +1490,10 @@ class AbstractModel(ABC):
                 if isinstance(v, Path):
                     v = str(v)
                 new_param_dict[k.lower()] = v
+
+            # Handle deprecated endAtFinalDensity parameter (after lowercasing)
+            new_param_dict = _convert_legacy_stopping_param(new_param_dict)
+
             self._param_dict = {**default_param_dictionary, **new_param_dict.copy()}
             del new_param_dict
         # Remove keys with None values from the merged _param_dict

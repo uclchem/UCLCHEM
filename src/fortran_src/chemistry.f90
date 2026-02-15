@@ -10,6 +10,7 @@
 MODULE chemistry
 USE constants
 USE DEFAULTPARAMETERS
+USE rates, only: lastTemp
 !f2py INTEGER, parameter :: dp
 USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
 & zeta, currentTime, targetTime, timeinyears, freefall, density, ion, densdot, gasTemp, dustTemp, av, colDens
@@ -31,7 +32,7 @@ IMPLICIT NONE
 
     !Array to store reaction rates
     REAL(dp) :: rate(nreac)
-    
+
     !DLSODE variables    
     INTEGER :: ITASK,ISTATE,NEQ
     REAL(dp), ALLOCATABLE :: abstol(:)
@@ -157,6 +158,7 @@ CONTAINS
         !use arbitrarily high value to make sure they are calculated at least once.
         lastGasTemp=99.0d99
         lastDustTemp=99.0d99
+        lastTemp=99.0d99  ! Reset rates module lastTemp to force recalculation
 
         ! If the hydrogen diffusion energy is still its default value (-1.0 in default_parameters.f90),
         ! i.e. no custom value was set in the input dictionary, set it to the correct value
@@ -233,7 +235,7 @@ CONTAINS
             !recalculate coefficients for ice processes
             safeMantle=MAX(1d-30,abund(nSurface,dstep))
             safeBulk=MAX(1d-30,abund(nBulk,dstep))
-            
+
             if (refractoryList(1) .gt. 0) safeBulk=safeBulk-SUM(abund(refractoryList,dstep))
 
             ratioSurfaceToBulk=MIN(1.0D0, safeMantle/safeBulk)

@@ -646,6 +646,7 @@ CONTAINS
         EXTERNAL modelInitializePhysics,updateTargetTime,modelUpdatePhysics,sublimation
         INTEGER, INTENT(OUT) :: successFlag
         LOGICAL :: returnArray, givestartabund, returnRates
+        LOGICAL :: allParcelsFinished, parcelFinished
         INTEGER :: dtime, timePoints
         ! Arrays needed to work return physics in memory mode
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
@@ -711,14 +712,20 @@ CONTAINS
             WRITE(*,*) 'Error initializing physics'
             RETURN
         END IF
-        
+
         ! Initialize the chemistry
         CALL initializeChemistry(readAbunds)
         IF (returnArray .AND. givestartabund) THEN
             ! In case we have custom abundances, set them here
-            DO l=1,points
-                abund(:nspec,l) = abundanceStart(l, :nspec)
-            END DO
+            IF (enable_radiative_transfer .AND. points.gt.1) THEN
+                DO l=points,1,-1
+                    abund(:nspec,l) = abundanceStart(l, :nspec)
+                END DO
+            ELSE
+                DO l=1,points
+                    abund(:nspec,l) = abundanceStart(l, :nspec)
+                END DO
+            END IF
         ELSE
             ! Else just use the default readInputAbunds routine:
             CALL readInputAbunds !this won't do anything if no abundLoadFile was in input
@@ -734,12 +741,9 @@ CONTAINS
         
 
         !loop until the end condition of the model is reached
-        ! Loop continues while:
-        ! - If endAtFinalDensity: stop when (density >= finalDens) OR (time >= finalTime)
-        ! - If NOT endAtFinalDensity: stop when (time >= finalTime)
-        ! TODO: Update this logic to for better compatibility with 1D models
-        DO WHILE ((successFlag .eq. 0) .and. (timeInYears < finalTime) .and. &
-            &((.not. endAtFinalDensity) .or. (density(dstep) < finalDens)))
+        ! Main time integration loop
+        ! For 1D radiative transfer models, the loop direction and stopping logic differ
+        DO WHILE ((successFlag .eq. 0) .and. (timeInYears < finalTime))
             dtime = dtime + 1
             currentTimeold=currentTime
             !Each physics module has a subroutine to set the target time from the current time
@@ -748,17 +752,99 @@ CONTAINS
                 WRITE(*,'(A,1X,ES15.6,1X,A,1X,ES15.6,1X,A,1X,ES15.6)') 'Time (yrs):', currentTimeold/SECONDS_PER_YEAR, 'Final (yrs):', finalTime, 'Next goal (yrs):', targetTime/SECONDS_PER_YEAR
             END IF
             ! Exit loop if targetTime would exceed finalTime
-            IF (targetTime/SECONDS_PER_YEAR .ge. finalTime) THEN
+            IF (targetTime/SECONDS_PER_YEAR .gt. finalTime) THEN
                 EXIT
             END IF
-            ! Exit loop if density exceeds finalDens (when using density-based stopping)
-            IF (endAtFinalDensity .and. (density(dstep) .ge. finalDens)) THEN
-                EXIT
-            END IF
-            !loop over parcels, counting from centre out to edge of cloud
-            DO dstep=1,points
-                !reset time if this isn't first depth point
-                currentTime=currentTimeold
+
+            IF (enable_radiative_transfer .AND. points.gt.1) THEN
+                allParcelsFinished = .TRUE.
+
+                DO dstep=points,1,-1
+                    parcelFinished = .FALSE.
+
+                    ! Check stopping condition for this parcel in freefall mode
+                    IF (freefall .AND. density(dstep) .ge. density_max(dstep)) THEN
+                        SELECT CASE (parcelStoppingMode)
+                            CASE (0)
+                                ! Mode 0: Never stop, keep evolving
+                                ! Clamp density at max but continue chemistry
+                                density(dstep) = density_max(dstep)
+
+                            CASE (1)
+                                ! Mode 1: Stop all when outermost parcel reaches max
+                                IF (density(points) .ge. density_max(points)) THEN
+                                    ! Outermost parcel finished, exit entire model
+                                    EXIT
+                                END IF
+                                ! Otherwise continue computing this parcel
+                                density(dstep) = density_max(dstep)
+
+                            CASE (2)
+                                ! Mode 2: Stop each parcel individually when it reaches max
+                                ! This parcel is done, skip computation but write output
+                                parcelFinished = .TRUE.
+
+                            CASE DEFAULT
+                                ! Invalid mode, treat as mode 1 (safest default)
+                                IF (density(points) .ge. density_max(points)) THEN
+                                    EXIT
+                                END IF
+                                density(dstep) = density_max(dstep)
+                        END SELECT
+                    END IF
+
+                    ! Track if any parcel is still computing
+                    IF (.NOT. parcelFinished) allParcelsFinished = .FALSE.
+
+                    ! Compute chemistry and physics for active parcels
+                    IF (.NOT. parcelFinished) THEN
+                        !reset time if this isn't first depth point
+                        currentTime=currentTimeold
+                        !update chemistry from currentTime to targetTime
+                        CALL updateChemistry(successFlag)
+                        IF (successFlag .lt. 0) THEN
+                            write(*,*) 'Error updating chemistry'
+                            RETURN
+                        END IF
+                        !get time in years for output, currentTime is now equal to targetTime
+                        timeInYears= targetTime/SECONDS_PER_YEAR
+
+                        !Update physics so it's correct for new currentTime and start of next time step
+                        call coreUpdatePhysics
+                        call modelUpdatePhysics
+                        ! Fail gracefully if physics module reported an error (e.g., invalid inputs)
+                        IF (postprocess_error .NE. 0) THEN
+                            successFlag = PHYSICS_UPDATE_ERROR
+                            WRITE(*,*) 'ERROR: postprocess physics update failed with code=', postprocess_error
+                            RETURN
+                        END IF
+
+                        !Sublimation checks for UCLCHEM's simple sublimation mode
+                        CALL sublimation(abund, points)
+                    END IF
+
+                    ! Write output for all parcels (active or finished)
+                    IF (returnArray) THEN
+                        CALL output(returnArray, returnRates, successflag, physicsarray, chemicalabunarray, ratesarray,&
+                        &heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
+                    ELSE
+                        CALL output(returnArray, returnRates, successflag)
+                    END IF
+                END DO
+
+                ! Check if we should exit (mode 2 when all parcels finished)
+                IF (parcelStoppingMode .eq. 2 .AND. allParcelsFinished) EXIT
+
+            ELSE
+                ! Non-radiative-transfer path: loop forward through parcels
+                ! Exit loop if density exceeds finalDens (when using density-based stopping)
+                IF (parcelStoppingMode.ne.0 .and. (density(dstep) .ge. finalDens)) THEN
+                    EXIT
+                END IF
+                !loop over parcels, counting from centre out to edge of cloud
+                DO dstep=1,points
+                    !reset time if this isn't first depth point
+                    currentTime=currentTimeold
                 !update chemistry from currentTime to targetTime
                 CALL updateChemistry(successFlag)
                 IF (successFlag .lt. 0) THEN
@@ -786,6 +872,7 @@ CONTAINS
                     CALL output(returnArray, returnRates, successFlag)
                 END IF
             END DO
+            END IF
         END DO
         IF (.NOT. returnArray) THEN
             CALL finalOutput
@@ -873,6 +960,8 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) currentTime
                 CASE('finaltime')
                     READ(inputValue,*,iostat=successFlag) finalTime
+                CASE('enable_radiative_transfer')
+                    READ(inputValue,*,iostat=successFlag) enable_radiative_transfer
                 CASE('radfield')
                     READ(inputValue,*,iostat=successFlag) radfield
                 CASE('zeta')
@@ -889,6 +978,16 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) points
                 CASE('bm0')
                     READ(inputValue,*,iostat=successFlag) bm0
+                CASE('density_scale_radius')
+                    READ(inputValue,*,iostat=successFlag) density_scale_radius
+                CASE('density_power_index')
+                    READ(inputValue,*,iostat=successFlag) density_power_index
+                CASE('lum_star')
+                    READ(inputValue,*,iostat=successFlag) lum_star
+                CASE('temp_star')
+                    READ(inputValue,*,iostat=successFlag) temp_star
+                CASE('parcelstoppingmode')
+                    READ(inputValue,*,iostat=successFlag) parcelStoppingMode
                 CASE('endatfinaldensity')
                     Read(inputValue,*,iostat=successFlag) endAtFinalDensity
                 CASE('freefall')

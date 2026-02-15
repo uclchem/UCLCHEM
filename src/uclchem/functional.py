@@ -67,6 +67,7 @@ See Also
 """
 
 import numpy as np
+import pandas as pd
 
 from uclchem.constants import TIMEPOINTS
 from uclchem.model import (
@@ -167,28 +168,70 @@ def __functional_return__(
 
     """
     if return_dataframe:
-        result_dfs = model_object.get_dataframes(
-            joined=False,
-            with_rates=return_rates,
-            with_heating=return_heating,
-            with_stats=return_stats,
-        )
-        phys_df = result_dfs[0]
-        chem_df = result_dfs[1]
+        # If multiple spatial points are present, return DataFrames concatenated across points
+        points = model_object._param_dict.get("points", 1)
         rates_df = None
         heating_df = None
         stats_df = None
 
-        # Extract rates, heating, and stats based on what was requested
-        idx = 2
-        if return_rates and len(result_dfs) > idx:
-            rates_df = result_dfs[idx]
-            idx += 1
-        if return_heating and len(result_dfs) > idx:
-            heating_df = result_dfs[idx]
-            idx += 1
-        if return_stats and len(result_dfs) > idx:
-            stats_df = result_dfs[idx]
+        if points > 1:
+            physics_list = []
+            chemistry_list = []
+            rates_list = []
+            heating_list = []
+            stats_list = []
+            for pt in range(points):
+                res = model_object.get_dataframes(
+                    point=pt,
+                    joined=False,
+                    with_rates=return_rates,
+                    with_heating=return_heating,
+                    with_stats=return_stats,
+                )
+                phys = res[0].copy()
+                chem = res[1].copy()
+                phys["Point"] = pt + 1
+                chem["Point"] = pt + 1
+                physics_list.append(phys)
+                chemistry_list.append(chem)
+                idx = 2
+                if return_rates and len(res) > idx:
+                    rates_list.append(res[idx].assign(Point=pt + 1))
+                    idx += 1
+                if return_heating and len(res) > idx:
+                    heating_list.append(res[idx].assign(Point=pt + 1))
+                    idx += 1
+                if return_stats and len(res) > idx:
+                    stats_list.append(res[idx].assign(Point=pt + 1))
+
+            phys_df = pd.concat(physics_list, ignore_index=True)
+            chem_df = pd.concat(chemistry_list, ignore_index=True)
+            rates_df = pd.concat(rates_list, ignore_index=True) if rates_list else None
+            heating_df = (
+                pd.concat(heating_list, ignore_index=True) if heating_list else None
+            )
+            stats_df = pd.concat(stats_list, ignore_index=True) if stats_list else None
+        else:
+            # Single point: behave as before but include a Point column
+            result_dfs = model_object.get_dataframes(
+                joined=False,
+                with_rates=return_rates,
+                with_heating=return_heating,
+                with_stats=return_stats,
+            )
+            phys_df = result_dfs[0]
+            chem_df = result_dfs[1]
+            idx = 2
+            if return_rates and len(result_dfs) > idx:
+                rates_df = result_dfs[idx]
+                idx += 1
+            if return_heating and len(result_dfs) > idx:
+                heating_df = result_dfs[idx]
+                idx += 1
+            if return_stats and len(result_dfs) > idx:
+                stats_df = result_dfs[idx]
+            phys_df["Point"] = 1
+            chem_df["Point"] = 1
 
         # Build result tuple - stats only included when requested (for backward compatibility)
         result = [phys_df, chem_df, rates_df, heating_df]
@@ -371,8 +414,8 @@ def __collapse__(
 
 
 def __prestellar_core__(
-    temp_indx: int,
-    max_temperature: float,
+    temp_indx: int = 1,
+    max_temperature: float = 300.0,
     param_dict: dict = None,
     out_species: list = ["H", "N", "C", "O"],
     return_array: bool = False,

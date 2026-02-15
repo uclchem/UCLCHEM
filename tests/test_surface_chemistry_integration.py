@@ -40,6 +40,8 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
         "initialDens": 1.0e4,
         "initialTemp": 10.0,
         "finalTime": 1.0e6,
+        "points": 1,  # Explicitly set to 0D mode to avoid state pollution from 1D tests
+        "enable_radiative_transfer": False,  # Explicitly disable to avoid state pollution from 1D tests
         "desorb": True,
         "chemdesorb": True,
         "outputFile": str(Path(temp_output_dir) / "surface_test.dat"),
