@@ -18,7 +18,7 @@ IMPLICIT NONE
 REAL(dp) :: initialTemp=10.0 !Initial gas temperature in Kelvin for all gas parcels in model.
 REAL(dp) :: initialDens=1.00d2 !Initial gas density in H nuclei per cm$^{-3}$ for all gas parcels in model.
 REAL(dp) :: finalDens=1.00d5 !Final gas density achieved via freefall. 
-REAL(dp) :: currentTime=0.0 !Time at start of model in seconds.
+REAL(dp) :: currentTime=0.0 !Time at start of model in years (matches finalTime units).
 REAL(dp) :: finalTime=5.0d6 !Time to stop model in years, if not using `endAtFinalDensity` below.
 REAL(dp) :: radfield=1.0 !Interstellar radiation field in Habing
 REAL(dp) :: zeta=1.0 !Cosmic ray ionisation rate as multiple of $1.3 10^{-17} s^{-1}$

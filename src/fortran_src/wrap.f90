@@ -712,7 +712,7 @@ CONTAINS
             WRITE(*,*) 'Error initializing physics'
             RETURN
         END IF
-        
+
         ! Initialize the chemistry
         CALL initializeChemistry(readAbunds)
         IF (returnArray .AND. givestartabund) THEN
@@ -752,7 +752,7 @@ CONTAINS
                 WRITE(*,'(A,1X,ES15.6,1X,A,1X,ES15.6,1X,A,1X,ES15.6)') 'Time (yrs):', currentTimeold/SECONDS_PER_YEAR, 'Final (yrs):', finalTime, 'Next goal (yrs):', targetTime/SECONDS_PER_YEAR
             END IF
             ! Exit loop if targetTime would exceed finalTime
-            IF (targetTime/SECONDS_PER_YEAR .ge. finalTime) THEN
+            IF (targetTime/SECONDS_PER_YEAR .gt. finalTime) THEN
                 EXIT
             END IF
 
@@ -838,7 +838,7 @@ CONTAINS
             ELSE
                 ! Non-radiative-transfer path: loop forward through parcels
                 ! Exit loop if density exceeds finalDens (when using density-based stopping)
-                IF (endAtFinalDensity .and. (density(dstep) .ge. finalDens)) THEN
+                IF (parcelStoppingMode.ne.0 .and. (density(dstep) .ge. finalDens)) THEN
                     EXIT
                 END IF
                 !loop over parcels, counting from centre out to edge of cloud

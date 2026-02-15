@@ -333,7 +333,7 @@ def test_endAtFinalDensity_validation(test_output_directory):
     }
 
     # Should raise ValueError for Cloud without freefall
-    with pytest.raises(ValueError, match="endAtFinalDensity=True can only be used"):
+    with pytest.raises(ValueError, match="parcelStoppingMode != 0 can only be used"):
         physics, chemistry, rates, heating, abundances, return_code = (
             uclchem.functional.cloud(
                 param_dict=params,

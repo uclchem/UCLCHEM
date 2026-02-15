@@ -439,3 +439,435 @@ class Test1DChemicalEvolution:
         assert not np.allclose(
             chem1[-1, :, :], chem2[0, :, :]
         ), "Chemistry should continue evolving in phase 2"
+
+
+# ============================================================================
+# Object-Oriented Interface Tests for 1D Models
+# ============================================================================
+
+
+class TestOOCloud1D:
+    """Test Cloud model with 1D radiative transfer using OO interface."""
+
+    def test_oo_cloud_1d_basic_run(self, base_1d_params):
+        """Test basic 1D cloud model run with OO interface."""
+        model = uclchem.model.Cloud(
+            param_dict=base_1d_params,
+            out_species=["CO", "H2O", "CH3OH"],
+            timepoints=2500,
+        )
+
+        # Check model succeeded
+        model.check_error()
+        assert model.success_flag == 0
+
+        # Verify arrays are 3D
+        assert model.physics_array.ndim == 3
+        assert model.chemical_abun_array.ndim == 3
+
+        # Verify number of spatial points
+        assert model.physics_array.shape[1] == base_1d_params["points"]
+
+    def test_oo_cloud_1d_dataframe_output(self, base_1d_params):
+        """Test that get_dataframes works properly for 1D models."""
+        model = uclchem.model.Cloud(
+            param_dict=base_1d_params,
+            out_species=["CO", "H2O"],
+            timepoints=2500,
+        )
+
+        model.check_error()
+
+        # Get DataFrames
+        phys_df, chem_df = model.get_dataframes(joined=False)
+
+        # Check Point column exists
+        assert "Point" in phys_df.columns
+        assert "Point" in chem_df.columns
+
+        # Verify number of unique points
+        n_points = phys_df["Point"].nunique()
+        assert n_points == base_1d_params["points"]
+
+        # Verify spatial variation in density
+        final_time = phys_df["Time"].max()
+        final_densities = phys_df[phys_df["Time"] == final_time]["Density"]
+        assert final_densities.std() > 0, "Density should vary spatially"
+
+    def test_oo_cloud_1d_point_selection(self, base_1d_params):
+        """Test getting DataFrames for individual spatial points."""
+        model = uclchem.model.Cloud(
+            param_dict=base_1d_params,
+            out_species=["CO"],
+            timepoints=2500,
+        )
+
+        model.check_error()
+
+        # Get data for first point only
+        phys_df_pt0, chem_df_pt0 = model.get_dataframes(point=0, joined=False)
+
+        # Should only have data for one point
+        assert phys_df_pt0["Point"].nunique() == 1
+        assert (phys_df_pt0["Point"] == 1).all()  # Point is 1-indexed
+
+        # Get data for last point
+        last_pt = base_1d_params["points"] - 1
+        phys_df_last, chem_df_last = model.get_dataframes(point=last_pt, joined=False)
+
+        assert (phys_df_last["Point"] == base_1d_params["points"]).all()
+
+        # Densities should differ between points
+        density_pt0 = phys_df_pt0["Density"].iloc[-1]
+        density_last = phys_df_last["Density"].iloc[-1]
+        assert density_pt0 != density_last
+
+    def test_oo_cloud_1d_with_stats(self, base_1d_params):
+        """Test that DVODE stats work with 1D models."""
+        model = uclchem.model.Cloud(
+            param_dict=base_1d_params,
+            out_species=["CO"],
+            timepoints=2500,
+        )
+
+        model.check_error()
+
+        # Get DataFrames with stats
+        result = model.get_dataframes(joined=False, with_stats=True)
+
+        # Should return: phys, chem, stats
+        assert len(result) == 3
+        phys_df, chem_df, stats_df = result
+
+        # Stats DataFrame should exist and have Point column
+        assert stats_df is not None
+        assert "Point" in stats_df.columns
+        assert stats_df["Point"].nunique() == base_1d_params["points"]
+
+        # Stats should contain DVODE statistics
+        assert "NFE" in stats_df.columns  # Number of function evaluations
+        assert "NJE" in stats_df.columns  # Number of Jacobian evaluations
+
+
+class TestOOCollapse1D:
+    """Test Collapse model with 1D features using OO interface."""
+
+    def test_oo_collapse_1d_freefall(self):
+        """Test 1D collapse model with freefall."""
+        params = {
+            "parcelStoppingMode": 2,
+            "freefall": True,
+            "initialDens": 1e4,
+            "initialTemp": 10.0,
+            "finalTime": 1.0e5,
+            "finalDens": 1e6,
+            "points": 5,
+            "enable_radiative_transfer": True,
+            "density_scale_radius": 0.05,
+            "density_power_index": 2.0,
+            "rout": 0.1,
+            "reltol": 1e-4,
+            "abstol_factor": 1e-8,
+            "writeStep": 5,
+        }
+
+        model = uclchem.model.Collapse(
+            collapse="BE1.1",
+            physics_output=None,
+            param_dict=params,
+            out_species=["CO", "H2O"],
+            timepoints=2500,
+        )
+
+        model.check_error()
+        assert model.success_flag == 0
+
+        # Verify 3D arrays
+        assert model.physics_array.ndim == 3
+        assert model.physics_array.shape[1] == params["points"]
+
+    def test_oo_collapse_parcel_stopping_modes(self):
+        """Test all parcelStoppingMode values with pure freefall collapse."""
+        base_params = {
+            "freefall": True,
+            "initialDens": 1e4,
+            "initialTemp": 10.0,
+            "finalTime": 1.0e5,
+            "finalDens": 1e6,
+            "points": 3,
+            "enable_radiative_transfer": True,
+            "density_scale_radius": 0.05,
+            "density_power_index": 2.0,
+            "rout": 0.1,
+            "reltol": 1e-4,
+            "abstol_factor": 1e-8,
+        }
+
+        for mode in [0, 1, 2]:
+            params = base_params.copy()
+            params["parcelStoppingMode"] = mode
+
+            # Use pure freefall collapse (no collapse profile)
+            model = uclchem.model.Cloud(
+                param_dict=params,
+                out_species=["CO"],
+                timepoints=2500,
+            )
+
+            model.check_error()
+            assert (
+                model.success_flag == 0
+            ), f"parcelStoppingMode={mode} should succeed"
+
+
+class TestOOHotcore1D:
+    """Test PrestellarCore (hotcore) with 1D stellar heating using OO interface."""
+
+    def test_oo_hotcore_1d_stellar_heating(self, hotcore_1d_params):
+        """Test 1D hotcore with stellar heating parameters."""
+        model = uclchem.model.PrestellarCore(
+            temp_indx=1,
+            max_temperature=300.0,
+            param_dict=hotcore_1d_params,
+            out_species=["CO", "H2O", "CH3OH"],
+            timepoints=2500,
+        )
+
+        model.check_error()
+        assert model.success_flag == 0
+
+        # Get final temperatures at each point
+        phys_df = model.get_dataframes(joined=False)[0]
+        final_time = phys_df["Time"].max()
+        final_temps = phys_df[phys_df["Time"] == final_time].sort_values("Point")[
+            "gasTemp"
+        ].values
+
+        # Temperature should vary spatially
+        assert final_temps.std() > 0
+
+        # Inner regions should be warmer
+        assert final_temps[0] > final_temps[-1]
+
+
+class TestOOModelSavingLoading1D:
+    """Test saving and loading 1D models with OO interface."""
+
+    def test_oo_save_load_1d_model(self, base_1d_params, common_output_directory):
+        """Test that 1D models can be saved and loaded."""
+        save_file = common_output_directory / "test_oo_1d_model.json"
+
+        # Run and save model
+        model1 = uclchem.model.Cloud(
+            param_dict=base_1d_params,
+            out_species=["CO", "H2O"],
+            timepoints=2500,
+        )
+        model1.check_error()
+        model1.save_model(str(save_file))
+
+        assert save_file.exists()
+
+        # Load model
+        model2 = uclchem.model.Cloud.from_file(str(save_file))
+
+        # Verify loaded model has same data
+        assert np.allclose(model1.physics_array, model2.physics_array)
+        assert np.allclose(model1.chemical_abun_array, model2.chemical_abun_array)
+        assert model1._param_dict["points"] == model2._param_dict["points"]
+        assert (
+            model1._param_dict["enable_radiative_transfer"]
+            == model2._param_dict["enable_radiative_transfer"]
+        )
+
+    def test_oo_save_load_preserves_point_column(
+        self, base_1d_params, common_output_directory
+    ):
+        """Test that Point column is preserved after save/load."""
+        save_file = common_output_directory / "test_oo_1d_point_column.json"
+
+        model1 = uclchem.model.Cloud(
+            param_dict=base_1d_params, out_species=["CO"], timepoints=2500
+        )
+        model1.check_error()
+        model1.save_model(str(save_file))
+
+        model2 = uclchem.model.Cloud.from_file(str(save_file))
+
+        # Get DataFrames from loaded model
+        phys_df, chem_df = model2.get_dataframes(joined=False)
+
+        # Point column should exist
+        assert "Point" in phys_df.columns
+        assert phys_df["Point"].nunique() == base_1d_params["points"]
+
+
+class TestOOModelChaining1D:
+    """Test chaining 1D models together with OO interface."""
+
+    def test_oo_chain_1d_models(self, base_1d_params):
+        """Test running sequential 1D models using previous_model."""
+        # Phase 1: Initial evolution
+        params1 = base_1d_params.copy()
+        params1["finalTime"] = 5.0e4
+
+        model1 = uclchem.model.Cloud(
+            param_dict=params1,
+            out_species=["CO", "H2O"],
+            timepoints=2500,
+        )
+        model1.check_error()
+
+        # Phase 2: Continue from phase 1
+        params2 = base_1d_params.copy()
+        params2["finalTime"] = 1.0e5
+        params2["currentTime"] = 5.0e4
+
+        model2 = uclchem.model.Cloud(
+            param_dict=params2,
+            out_species=["CO", "H2O"],
+            previous_model=model1,
+            timepoints=2500,
+        )
+        model2.check_error()
+
+        # Verify time continuity
+        phys_df2 = model2.get_dataframes(joined=False)[0]
+        assert phys_df2["Time"].iloc[-1] >= 5.0e4
+
+        # Verify chemistry evolved
+        assert not np.allclose(
+            model1.chemical_abun_array[-1], model2.chemical_abun_array[0]
+        )
+
+    def test_oo_chain_with_starting_chemistry_array(self, base_1d_params):
+        """Test chaining using next_starting_chemistry_array."""
+        # Run first model
+        model1 = uclchem.model.Cloud(
+            param_dict=base_1d_params,
+            out_species=["CO", "H2O"],
+            timepoints=2500,
+        )
+        model1.check_error()
+
+        # Get starting chemistry for next run
+        starting_chem = model1.next_starting_chemistry_array
+
+        # Verify shape matches multi-point structure
+        # Shape should be (points, nspec)
+        assert starting_chem.shape[0] == base_1d_params["points"]
+
+        # Run second model with this chemistry
+        params2 = base_1d_params.copy()
+        params2["finalTime"] = 2.0e5
+        params2["currentTime"] = 1.0e5
+
+        model2 = uclchem.model.Cloud(
+            param_dict=params2,
+            out_species=["CO", "H2O"],
+            starting_chemistry=starting_chem,
+            timepoints=2500,
+        )
+        model2.check_error()
+
+
+class TestEndAtFinalDensity:
+    """Test the endAtFinalDensity parameter (merged from develop branch)."""
+
+    def test_end_at_final_density_enabled(self):
+        """Test that model stops when density reaches finalDens."""
+        params = {
+            "initialDens": 1e4,
+            "initialTemp": 10.0,
+            "finalTime": 1.0e6,  # Long time
+            "finalDens": 5e4,  # Target density
+            "freefall": True,
+            "endAtFinalDensity": True,  # Stop at density
+            "points": 1,
+            "enable_radiative_transfer": False,
+            "reltol": 1e-4,
+            "abstol_factor": 1e-8,
+        }
+
+        model = uclchem.model.Cloud(
+            param_dict=params, out_species=["CO"], timepoints=2500
+        )
+
+        model.check_error()
+
+        # Get final density
+        phys_df = model.get_dataframes(joined=False)[0]
+        final_density = phys_df["Density"].iloc[-1]
+
+        # Should have stopped at or before finalDens
+        # (might stop slightly before due to timestep control)
+        assert final_density <= params["finalDens"] * 1.1
+
+    def test_end_at_final_density_disabled(self):
+        """Test that model runs to finalTime when endAtFinalDensity=False."""
+        params = {
+            "initialDens": 1e4,
+            "initialTemp": 10.0,
+            "finalTime": 1.0e5,
+            "finalDens": 1e6,  # High target density
+            "freefall": True,
+            "endAtFinalDensity": False,  # Don't stop at density
+            "points": 1,
+            "enable_radiative_transfer": False,
+            "reltol": 1e-4,
+            "abstol_factor": 1e-8,
+        }
+
+        model = uclchem.model.Cloud(
+            param_dict=params, out_species=["CO"], timepoints=2500
+        )
+
+        model.check_error()
+
+        # Get final time
+        phys_df = model.get_dataframes(joined=False)[0]
+        final_time = phys_df["Time"].iloc[-1]
+
+        # Should have run to finalTime
+        assert final_time >= params["finalTime"] * 0.95
+
+
+class TestFunctionalVsOOConsistency:
+    """Test that functional and OO APIs produce consistent results for 1D."""
+
+    def test_functional_vs_oo_1d_cloud(self, base_1d_params):
+        """Test that functional and OO APIs give same results."""
+        # Run with OO interface
+        oo_model = uclchem.model.Cloud(
+            param_dict=base_1d_params,
+            out_species=["CO", "H2O"],
+            timepoints=2500,
+        )
+        oo_model.check_error()
+
+        # Run with functional interface
+        phys_func, chem_func, _, _, _, flag_func = uclchem.functional.cloud(
+            param_dict=base_1d_params,
+            out_species=["CO", "H2O"],
+            return_array=True,
+            timepoints=2500,
+        )
+
+        assert flag_func == 0
+
+        # Arrays should match
+        assert np.allclose(oo_model.physics_array, phys_func)
+        assert np.allclose(oo_model.chemical_abun_array, chem_func)
+
+    def test_functional_dataframe_point_column(self, base_1d_params):
+        """Test that functional API returns DataFrames with Point column."""
+        phys_df, chem_df, _, _, _, flag = uclchem.functional.cloud(
+            param_dict=base_1d_params,
+            out_species=["CO"],
+            return_dataframe=True,
+            timepoints=2500,
+        )
+
+        assert flag == 0
+        assert "Point" in phys_df.columns
+        assert phys_df["Point"].nunique() == base_1d_params["points"]

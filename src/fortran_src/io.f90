@@ -179,9 +179,6 @@ CONTAINS
                 END IF
                 IF (heatingOutput) THEN
                     ! Write: time, cooling values (4), line cooling array (NCOOLANTS), heating values (8), chem heating
-                    write(*,'(A,I0,A,I0)') 'DEBUG io.f90: NCOOLANTS=', NCOOLANTS, ' median_line_index=', median_line_index
-                    write(*,'(A,10(1PE14.6))') 'DEBUG io.f90: lineCoolingArray(median,:10)=', lineCoolingArray(median_line_index, 1:10)
-                    write(*,'(A,1PE14.6)') 'DEBUG io.f90: coolingValues(5)=', coolingValues(5)
                     WRITE(heatingId,8023) timeInYears, coolingValues(:), &
                         lineCoolingArray(median_line_index, :NCOOLANTS), &
                         heatingValues(:), chemheating

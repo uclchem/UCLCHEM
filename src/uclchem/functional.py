@@ -206,9 +206,6 @@ def __functional_return__(
 
             phys_df = pd.concat(physics_list, ignore_index=True)
             chem_df = pd.concat(chemistry_list, ignore_index=True)
-            # Legacy compatibility: add lowercase 'point' column (mirrors 'Point')
-            phys_df["point"] = phys_df["Point"]
-            chem_df["point"] = chem_df["Point"]
             rates_df = pd.concat(rates_list, ignore_index=True) if rates_list else None
             heating_df = (
                 pd.concat(heating_list, ignore_index=True) if heating_list else None
@@ -237,9 +234,6 @@ def __functional_return__(
                 stats_df = result_dfs[idx]
             phys_df["Point"] = 1
             chem_df["Point"] = 1
-            # Legacy compatibility: include lowercase 'point' for callers relying on the old name
-            phys_df["point"] = 1
-            chem_df["point"] = 1
 
         # Build result tuple - stats only included when requested (for backward compatibility)
         result = [phys_df, chem_df, rates_df, heating_df]

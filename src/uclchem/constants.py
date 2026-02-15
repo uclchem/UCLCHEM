@@ -105,6 +105,7 @@ default_param_dictionary = {
     "columnfile": None,
     "ratefile": None,
     "fluxfile": None,
+    "heatingFile": None,
     "writestep": 1,
     "abundsavefile": None,
     "abundloadfile": None,
@@ -141,4 +142,10 @@ default_param_dictionary = {
     "phi": 100000.0,
     "uvcreff": 0.001,
     "omega": 0.5,
+    # 1D radiative transfer defaults
+    "enable_radiative_transfer": False,
+    "density_scale_radius": 0.05,
+    "density_power_index": 2.0,
+    "lum_star": 1000000.0,
+    "temp_star": 45000.0,
 }
