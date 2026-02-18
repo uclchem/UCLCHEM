@@ -749,7 +749,12 @@ CONTAINS
             !Each physics module has a subroutine to set the target time from the current time
             CALL updateTargetTime
             IF (writeTimestepInfo) THEN
-                WRITE(*,'(A,1X,ES15.6,1X,A,1X,ES15.6,1X,A,1X,ES15.6)') 'Time (yrs):', currentTimeold/SECONDS_PER_YEAR, 'Final (yrs):', finalTime, 'Next goal (yrs):', targetTime/SECONDS_PER_YEAR
+                WRITE(*,'(A,ES10.2,A,ES10.2,A,F9.1,A,F9.1,A,ES10.2)') &
+                    't(yr):', currentTimeold/SECONDS_PER_YEAR, &
+                    ' tfin:', finalTime, &
+                    ' Tg:', gasTemp(1), &
+                    ' Td:', dustTemp(1), &
+                    ' n:', density(1)
             END IF
             ! Exit loop if targetTime would exceed finalTime
             IF (targetTime/SECONDS_PER_YEAR .gt. finalTime) THEN
@@ -801,7 +806,7 @@ CONTAINS
                         !reset time if this isn't first depth point
                         currentTime=currentTimeold
                         !update chemistry from currentTime to targetTime
-                        CALL updateChemistry(successFlag)
+                        CALL updateChemistry(successFlag, statsarray, timePoints+1, dtime)
                         IF (successFlag .lt. 0) THEN
                             write(*,*) 'Error updating chemistry'
                             RETURN
@@ -846,7 +851,7 @@ CONTAINS
                     !reset time if this isn't first depth point
                     currentTime=currentTimeold
                 !update chemistry from currentTime to targetTime
-                CALL updateChemistry(successFlag)
+                CALL updateChemistry(successFlag, statsarray, timePoints+1, dtime)
                 IF (successFlag .lt. 0) THEN
                     write(*,*) 'Error updating chemistry'
                     RETURN
@@ -1005,7 +1010,7 @@ CONTAINS
                 CASE('chemdesorb')
                     READ(inputValue,*,iostat=successFlag) chemdesorb
                 CASE('thermdesorb')
-                    READ(inputValue,*,iostat=successFlag) uvdesorb
+                    READ(inputValue,*,iostat=successFlag) thermdesorb
                 CASE('instantsublimation')
                     READ(inputValue,*,iostat=successFlag) instantSublimation
                 CASE('cosmicrayattenuation')
@@ -1102,6 +1107,10 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) metallicity
                 CASE('omega')
                     READ(inputValue,*,iostat=successFlag) omega
+                CASE('difftobindratio')
+                    READ(inputValue,*,iostat=successFlag) diffToBindRatio
+                CASE('enforcechargeconservation')
+                    READ(inputValue,*,iostat=successFlag) enforceChargeConservation
                 CASE('reltol')
                     READ(inputValue,*,iostat=successFlag) reltol
                 CASE('abstol_factor')
@@ -1210,6 +1219,32 @@ CONTAINS
                    READ(inputValue,*,iostat=successFlag) fh
                 CASE('mxstep')
                    READ(inputValue,*,iostat=successFlag) MXSTEP
+                CASE('h2encounterdesorption')
+                   READ(inputValue,*,iostat=successFlag) h2EncounterDesorption
+                CASE('hencounterdesorption')
+                   READ(inputValue,*,iostat=successFlag) hEncounterDesorption
+                CASE('edendothermicityfactor')
+                   READ(inputValue,*,iostat=successFlag) EDEndothermicityFactor
+                CASE('h2stickingcoeffbyh2coverage')
+                   READ(inputValue,*,iostat=successFlag) h2StickingCoeffByh2Coverage
+                CASE('hstickingcoeffbyh2coverage')
+                   READ(inputValue,*,iostat=successFlag) hStickingCoeffByh2Coverage
+                CASE('hdiffusionbarrier')
+                   READ(inputValue,*,iostat=successFlag) HdiffusionBarrier
+                CASE('usecustomdiffusionbarriers')
+                   READ(inputValue,*,iostat=successFlag) useCustomDiffusionBarriers
+                CASE('seperatediffanddesorbprefactor')
+                   READ(inputValue,*,iostat=successFlag) seperateDiffAndDesorbPrefactor
+                CASE('usetstprefactors')
+                   READ(inputValue,*,iostat=successFlag) useTSTprefactors
+                CASE('usecustomprefactors')
+                   READ(inputValue,*,iostat=successFlag) useCustomPrefactors
+                CASE('useminissaleicechemdesefficiency')
+                   READ(inputValue,*,iostat=successFlag) useMinissaleIceChemdesEfficiency
+                CASE('freq_rel_tol')
+                   READ(inputValue,*,iostat=successFlag) freq_rel_tol
+                CASE('pop_rel_tol')
+                   READ(inputValue,*,iostat=successFlag) pop_rel_tol
                 ! CASE('trajecfile')
                 !    READ(inputValue,*,iostat=successFlag) trajecfile
                 CASE DEFAULT

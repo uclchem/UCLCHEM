@@ -39,20 +39,21 @@ def test_stats_array_populated():
     ), f"stats_array should have {N_DVODE_STATS} columns, got {model.stats_array.shape[2]}"
 
     # Check that some stats are non-zero (the solver must have done some work)
-    # NST (number of steps) is column 5 (0-indexed)
-    nst_values = model.stats_array[:, 0, 5]
+    # Note: Column 0 is TRAJECTORY_INDEX, so all other columns shifted by +1
+    # NST (number of steps) is column 6 (0-indexed)
+    nst_values = model.stats_array[:, 0, 6]
     assert np.any(
         nst_values > 0
     ), "NST (number of steps) should be non-zero for at least some timesteps"
 
-    # NFE (number of f evaluations) is column 6 (0-indexed)
-    nfe_values = model.stats_array[:, 0, 6]
+    # NFE (number of f evaluations) is column 7 (0-indexed)
+    nfe_values = model.stats_array[:, 0, 7]
     assert np.any(
         nfe_values > 0
     ), "NFE (number of f evaluations) should be non-zero for at least some timesteps"
 
-    # CPU_TIME is column 17 (0-indexed)
-    cpu_values = model.stats_array[:, 0, 17]
+    # CPU_TIME is column 18 (0-indexed)
+    cpu_values = model.stats_array[:, 0, 18]
     assert np.any(
         cpu_values > 0
     ), "CPU_TIME should be non-zero for at least some timesteps"

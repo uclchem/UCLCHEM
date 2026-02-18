@@ -481,7 +481,7 @@ def write_outputs(
         "n_species": len(network.get_species_list()),
         "n_reactions": len(network.get_reaction_list()),
         "n_physical_parameters": len(PHYSICAL_PARAMETERS),
-        "n_dvode_stats": 18,
+        "n_dvode_stats": 19,
         "n_coolants": len(coolants),
         "max_coolants": len(coolants),
         "n_total_levels": n_total_levels,

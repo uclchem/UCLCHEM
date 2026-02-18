@@ -30,7 +30,10 @@ N_TOTAL_LEVELS = int(f2py_constants.n_total_levels)
 N_SE_STATS_PER_COOLANT = int(f2py_constants.n_se_stats_per_coolant)
 
 # DVODE solver statistics names
+# Note: Stats are now written for EVERY solver attempt (including retries)
+# TRAJECTORY_INDEX links solver stats to trajectory timesteps
 DVODE_STAT_NAMES = [
+    "TRAJECTORY_INDEX",  # Links to trajectory timestep (dtime)
     "ISTATE",
     "HU",
     "HCUR",
@@ -90,21 +93,21 @@ default_param_dictionary = {
     "bm0": 1.0,
     "freezefactor": 1.0,
     "parcelstoppingmode": 0,  # Default: never stop (0=never, 1=stop all when outermost reaches max, 2=stop each individually)
-    "freefall": True,
+    "freefall": False,
     "freefallfactor": 1.0,
     "desorb": True,
     "h2desorb": True,
     "crdesorb": True,
     "uvdesorb": True,
     "thermdesorb": True,
-    "instantsublimation": True,
-    "cosmicrayattenuation": True,
+    "instantsublimation": False,
+    "cosmicrayattenuation": False,
     "ionmodel": "L",
-    "improvedh2crpdissociation": True,
+    "improvedh2crpdissociation": False,
     "outputfile": None,
     "columnfile": None,
-    "ratefile": None,
-    "fluxfile": None,
+    "rateConstantFile": None,
+    "ratesFile": None,
     "heatingFile": None,
     "writestep": 1,
     "abundsavefile": None,
@@ -148,4 +151,19 @@ default_param_dictionary = {
     "density_power_index": 2.0,
     "lum_star": 1000000.0,
     "temp_star": 45000.0,
+    # Advanced surface chemistry parameters
+    "h2encounterdesorption": True,
+    "hencounterdesorption": False,
+    "edendothermicityfactor": 0.0,
+    "h2stickingcoeffbyh2coverage": False,
+    "hstickingcoeffbyh2coverage": False,
+    "hdiffusionbarrier": -1.0,
+    "usecustomdiffusionbarriers": True,
+    "seperatediffanddesorbprefactor": True,
+    "usetstprefactors": False,
+    "usecustomprefactors": False,
+    "useminissaleicechemdesefficiency": False,
+    # Coolant/validation tolerances
+    "freq_rel_tol": 0.1,
+    "pop_rel_tol": 0.1,
 }

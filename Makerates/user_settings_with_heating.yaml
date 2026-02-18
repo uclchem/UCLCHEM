@@ -20,11 +20,11 @@ custom_reaction_type: UCL
 # solver settings that should work for static, stage 1 and stage 2 models.
 add_crp_photo_to_grain: False
 # Enable the writing of the rate constants and rates to the disk
-enable_rates_storage: False
+enable_rates_storage: True
 # Enable the computation of all the enthalpies:
-derive_reaction_exothermicity: False
+derive_reaction_exothermicity: "GAS"
 
-# database_reaction_exothermicity: enthalpy_routines/custom_heating_cooling_reactions.csv
+database_reaction_exothermicity: enthalpy_routines/custom_heating_cooling_reactions.csv
 
 # Optional: Specify custom exothermicity files to override computed values
 # Can be a single file or a list of files. Files are processed in order.

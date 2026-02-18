@@ -127,13 +127,8 @@ CONTAINS
                 physicsarray(dtime, dstep, 7) = zeta
                 physicsarray(dtime, dstep, 8) = dstep
                 chemicalabunarray(dtime, dstep, :) = abund(1:nspec,dstep)
-                ! DVODE solver statistics
-                IF (PRESENT(statsarray)) THEN
-                    statsarray(dtime, dstep, 1) = DBLE(dvode_istate_out)
-                    statsarray(dtime, dstep, 2:5) = dvode_rstats(11:14)
-                    statsarray(dtime, dstep, 6:17) = DBLE(dvode_istats(11:22))
-                    statsarray(dtime, dstep, 18) = dvode_cpu_time
-                END IF
+                ! DVODE solver statistics are now written in chemistry.f90
+                ! after each solver attempt (including retries)
 
                 ! Level populations (SIZE-based check - don't use PRESENT)
                 IF (SIZE(levelpopulationsarray, 1) >= timePoints .AND. heatingFlag) THEN

@@ -57,6 +57,9 @@ IMPLICIT NONE
     INTEGER :: dvode_istate_out
     REAL(dp) :: dvode_cpu_start, dvode_cpu_end, dvode_cpu_time
 
+    !Solver statistics counter - tracks all DVODE calls including retries
+    INTEGER :: solver_stats_counter
+
 CONTAINS
     SUBROUTINE initializeChemistry(readAbunds)
         LOGICAL, INTENT(IN) :: readAbunds
@@ -140,6 +143,7 @@ CONTAINS
         !set integration counts
         loopCounter=0
         failedIntegrationCounter=0
+        solver_stats_counter=0  !Reset solver statistics counter
 
         IF (.NOT. ALLOCATED(abstol)) THEN
             ALLOCATE(abstol(NEQ))
@@ -183,7 +187,7 @@ CONTAINS
         
     END SUBROUTINE initializeChemistry
 
-    SUBROUTINE updateChemistry(successFlag)
+    SUBROUTINE updateChemistry(successFlag, statsarray, statsarray_size, dtime)
     !Updates the abundances for the next time step, first updating chemical variables and reaction rates,
     !then by solving the ODE system to obtain new abundances.
     !Solving ODEs is complex so we have two checks to try to automatically overcome difficulties and end stalled models
@@ -194,6 +198,9 @@ CONTAINS
     !the code integrates to the planned targetTime rather than a reduced one. If the counter reaches maxConsecutiveFailures, we end the code.
         !f2py integer, intent(aux) :: points
         INTEGER, INTENT(OUT) :: successFlag
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(:,:,:) :: statsarray
+        INTEGER, INTENT(IN), OPTIONAL :: statsarray_size
+        INTEGER, INTENT(IN), OPTIONAL :: dtime
         real(dp) :: originalTargetTime !targetTime can be altered by integrator but we'd like to know if it was changed
         real(dp) :: surfaceCoverage
 
@@ -274,7 +281,11 @@ CONTAINS
             end if
                                 
             !Integrate chemistry, and return fail if unrecoverable error was reached
-            CALL integrateODESystem(successFlag)
+            IF (PRESENT(statsarray) .AND. PRESENT(statsarray_size) .AND. PRESENT(dtime)) THEN
+                CALL integrateODESystem(successFlag, statsarray, statsarray_size, dtime)
+            ELSE
+                CALL integrateODESystem(successFlag)
+            END IF
             IF (successFlag .lt. 0) THEN
                 write(*,*) "Integration failed, exiting"
                 RETURN
@@ -312,8 +323,11 @@ CONTAINS
 
     END SUBROUTINE updateChemistry
 
-    SUBROUTINE integrateODESystem(successFlag)
+    SUBROUTINE integrateODESystem(successFlag, statsarray, statsarray_size, dtime)
         INTEGER, INTENT(OUT) :: successFlag
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(:,:,:) :: statsarray
+        INTEGER, INTENT(IN), OPTIONAL :: statsarray_size
+        INTEGER, INTENT(IN), OPTIONAL :: dtime
         TYPE(VODE_OPTS) :: OPTIONS
         successFlag=0
 
@@ -332,6 +346,27 @@ CONTAINS
         dvode_cpu_time = dvode_cpu_end - dvode_cpu_start
         dvode_istate_out = ISTATE
         CALL GET_STATS(dvode_rstats, dvode_istats)
+
+        ! Write solver statistics immediately after EVERY DVODE call (including failures)
+        IF (PRESENT(statsarray) .AND. PRESENT(statsarray_size) .AND. PRESENT(dtime)) THEN
+            solver_stats_counter = solver_stats_counter + 1
+
+            ! Check for array overflow
+            IF (solver_stats_counter > statsarray_size) THEN
+                write(*,*) "ERROR: Solver stats array overflow at counter", solver_stats_counter
+                write(*,*) "       Allocated size:", statsarray_size
+                write(*,*) "       Consider increasing statsarray allocation or reducing finalTime"
+                successFlag = SOLVER_STATS_OVERFLOW_ERROR
+                RETURN
+            END IF
+
+            ! Write stats: column 1 = trajectory index, rest shifted by 1
+            statsarray(solver_stats_counter, dstep, 1) = DBLE(dtime)
+            statsarray(solver_stats_counter, dstep, 2) = DBLE(dvode_istate_out)
+            statsarray(solver_stats_counter, dstep, 3:6) = dvode_rstats(11:14)
+            statsarray(solver_stats_counter, dstep, 7:18) = DBLE(dvode_istats(11:22))
+            statsarray(solver_stats_counter, dstep, 19) = dvode_cpu_time
+        END IF
 
         SELECT CASE(ISTATE)
             CASE(-1)

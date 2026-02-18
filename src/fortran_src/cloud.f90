@@ -13,6 +13,12 @@ MODULE cloud_mod
     IMPLICIT NONE
     REAL(dp), allocatable :: parcelRadius(:)
     REAL(dp), allocatable :: coldens_obs(:)
+
+    ! Time sampling control parameters
+    REAL(dp) :: timestep_multiplier_early = 10.0_dp          ! For t < 10 yr: next timestep dt = multiplier × t
+    REAL(dp) :: timestep_resolution_factor_mid = 1.0_dp      ! For 10 yr < t < 1 Myr: dt = 10^⌊log₁₀(t)⌋ / factor
+    REAL(dp) :: timestep_fixed_late_years = 1.0d5            ! For t > 1 Myr: dt = fixed timestep in years
+
 CONTAINS
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -67,16 +73,22 @@ CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     SUBROUTINE updateTargetTime
-        real(dp) :: orderMagnitude, currentValue
+        real(dp) :: orderMagnitude, stepSize
         IF (timeInYears .ge. 1.0d6) THEN
-            targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
+            ! Beyond 1 Myr: use fixed time step
+            targetTime = (timeInYears + timestep_fixed_late_years) * SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 10.0) THEN
+            ! Between 10 years and 1 Myr: linear steps within each decade
+            ! Step size is one order of magnitude smaller, divided by steps_per_decade
             orderMagnitude = 10.0_dp**(FLOOR(LOG10(timeInYears)))
-            targetTime = ((FLOOR(timeInYears/orderMagnitude) + 1.0_dp) * orderMagnitude)*SECONDS_PER_YEAR
+            stepSize = orderMagnitude / timestep_resolution_factor_mid
+            targetTime = (timeInYears + stepSize) * SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 0.0) THEN
-            targetTime = 10 * timeInYears * SECONDS_PER_YEAR
+            ! Below 10 years: use multiplier
+            targetTime = timestep_multiplier_early * timeInYears * SECONDS_PER_YEAR
         ELSE
-            targetTime=SECONDS_PER_YEAR*1.0d-7
+            ! Initial timestep
+            targetTime = SECONDS_PER_YEAR * 1.0d-7
         ENDIF
     END SUBROUTINE updateTargetTime
 

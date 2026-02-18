@@ -933,6 +933,108 @@ class AbstractModel(ABC):
             result.append(se_stats_df)
         return tuple(result)
 
+    def get_solver_stats_dataframe(self, point: int | None = None):
+        """Get all solver statistics including failed attempts.
+
+        This method returns statistics for EVERY DVODE solver call,
+        including failed attempts that were retried. This is different
+        from the regular stats in get_dataframes() which only shows
+        the final successful attempt per trajectory timestep.
+
+        Args:
+            point: Spatial point index (for multi-point models). If None, uses point 0.
+
+        Returns:
+            DataFrame with columns from DVODE_STAT_NAMES, or None if stats not available.
+            TRAJECTORY_INDEX column links solver attempts to trajectory timesteps.
+            Rows where TRAJECTORY_INDEX=0 are filtered out (unused preallocated space).
+
+        Example:
+            >>> model = uclchem.model.Cloud(param_dict)
+            >>> solver_stats = model.get_solver_stats_dataframe()
+            >>> # Count failed attempts
+            >>> failures = solver_stats[solver_stats['ISTATE'] < 0]
+            >>> print(f"Failed attempts: {len(failures)}")
+        """
+        if self.stats_array is None:
+            return None
+
+        if point is None:
+            point = 0
+
+        # Extract stats for this point and filter out unused rows
+        stats_data = self.stats_array[:, point, :]
+        valid_mask = stats_data[:, 0] > 0  # TRAJECTORY_INDEX > 0
+        stats_data = stats_data[valid_mask]
+
+        if len(stats_data) == 0:
+            return None
+
+        df = pd.DataFrame(stats_data, columns=DVODE_STAT_NAMES)
+        df["TRAJECTORY_INDEX"] = df["TRAJECTORY_INDEX"].astype(int)
+
+        return df
+
+    def get_failed_solver_attempts(self, point: int | None = None):
+        """Get only the failed solver attempts (ISTATE < 0).
+
+        Returns a DataFrame containing only solver attempts that failed
+        and required retry (ISTATE = -1, -2, -4, -5, etc.).
+
+        Args:
+            point: Spatial point index. If None, uses point 0.
+
+        Returns:
+            DataFrame of failed attempts, or None if no failures or stats unavailable.
+
+        Example:
+            >>> failures = model.get_failed_solver_attempts()
+            >>> if failures is not None:
+            >>>     print(f"Total retries needed: {len(failures)}")
+            >>>     print(failures.groupby('ISTATE').size())
+        """
+        df = self.get_solver_stats_dataframe(point)
+        if df is None:
+            return None
+
+        failed = df[df["ISTATE"] < 0]
+        return failed if len(failed) > 0 else None
+
+    def get_solver_efficiency_summary(self, point: int | None = None):
+        """Calculate solver efficiency metrics.
+
+        Returns:
+            dict with keys:
+                - total_attempts: Total DVODE calls
+                - successful_attempts: Calls that advanced the trajectory
+                - failed_attempts: Calls that were retried
+                - efficiency_ratio: successful / total (1.0 = no retries)
+                - total_cpu_time: Sum of all CPU time
+                - wasted_cpu_time: CPU time spent on failed attempts
+        """
+        df = self.get_solver_stats_dataframe(point)
+        if df is None:
+            return None
+
+        total_attempts = len(df)
+        failed_attempts = len(df[df["ISTATE"] < 0])
+        successful_attempts = total_attempts - failed_attempts
+
+        total_cpu = df["CPU_TIME"].sum()
+        wasted_cpu = df[df["ISTATE"] < 0]["CPU_TIME"].sum()
+
+        return {
+            "total_attempts": total_attempts,
+            "successful_attempts": successful_attempts,
+            "failed_attempts": failed_attempts,
+            "efficiency_ratio": successful_attempts / total_attempts
+            if total_attempts > 0
+            else 0.0,
+            "total_cpu_time": total_cpu,
+            "wasted_cpu_time": wasted_cpu,
+            "wasted_fraction": wasted_cpu / total_cpu if total_cpu > 0 else 0.0,
+        }
+
     def plot_species(
         self,
         ax: plt.axes,
