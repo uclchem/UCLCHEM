@@ -208,9 +208,7 @@ get_species_names = SpeciesNameStore()
 
 
 # Universal model loader
-def load_model(
-    file: str, name: str = "default", debug: bool = False
-):
+def load_model(file: str, name: str = "default", debug: bool = False):
     """
     load_model bypasses __init__ in order to load a pre-existing model from a file.
 
@@ -257,6 +255,8 @@ def _read_array(model_group, name):
     dims = list(ds.attrs["_dims"])
     attrs = json.loads(ds.attrs.get("_attrs", "{}"))
     return xr.Variable(dims, data, attrs=attrs)
+
+
 # /Universal model loader
 
 
@@ -1126,6 +1126,7 @@ class AbstractModel(ABC):
             data = data.astype(bytes)
         ds = model_group.create_dataset(name, data=data)
         ds.attrs["_dims"] = list(xr_var.dims)
+
     # /Model saving
 
     # Model Passing through Pickling
@@ -2853,7 +2854,9 @@ class SequentialModel:
                                     f"Parameter '{parameter}' has not been implemented for parameter matching"
                                 )
                     tmp_model = REGISTRY[model_type](
-                        **model_dict, run_type=self.run_type, previous_model=previous_model
+                        **model_dict,
+                        run_type=self.run_type,
+                        previous_model=previous_model,
                     )
                     if self.run_type == "external":
                         tmp_model.run()
@@ -2866,7 +2869,9 @@ class SequentialModel:
                     ]
                 else:
                     tmp_model = REGISTRY[model_type](
-                        **model_dict, run_type=self.run_type, previous_model=previous_model
+                        **model_dict,
+                        run_type=self.run_type,
+                        previous_model=previous_model,
                     )
                     if self.run_type == "external":
                         tmp_model.run()
@@ -2987,9 +2992,9 @@ class GridModels:
         max_workers: int = 8,
         grid_file: str = "./default_grid_out.h5",
         model_name_prefix: str = "",
-        overwrite_models = False,
+        overwrite_models=False,
         delay_run: bool = False,
-        timer: bool = False
+        timer: bool = False,
     ):
         assert model_type in REGISTRY
         self.model_type = model_type
@@ -3017,7 +3022,9 @@ class GridModels:
 
         if self.model_type == "SequentialModel":
             if not isinstance(self.full_parameters, list):
-                throw_error(f"For SequentialModel types, full_parameters must be a list. {type(self.full_parameters)} was passed.")
+                throw_error(
+                    f"For SequentialModel types, full_parameters must be a list. {type(self.full_parameters)} was passed."
+                )
             for base_model_dict in self.full_parameters:
                 for model_type, model_full_params in base_model_dict.items():
                     if isinstance(model_full_params, dict):
@@ -3030,7 +3037,9 @@ class GridModels:
                 grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
         else:
             if not isinstance(self.full_parameters, dict):
-                throw_error(f"For none SequentialModel types, full_parameters must be a dictionary. {type(self.full_parameters)} was passed.")
+                throw_error(
+                    f"For none SequentialModel types, full_parameters must be a dictionary. {type(self.full_parameters)} was passed."
+                )
             for k, v in self.full_parameters.items():
                 if k == "param_dict":
                     for k_p, v_p in v.items():
@@ -3166,9 +3175,7 @@ class GridModels:
             self.models[model]["physics_array"] = loaded_data["physics_array"]
         return
 
-    def load_chem(
-        self, out_specie_list: list = ["H", "N", "C", "O"]
-    ):
+    def load_chem(self, out_specie_list: list = ["H", "N", "C", "O"]):
         if self.model_type == "SequentialModel":
             warnings.warn("Sequantial Model chemistry loading not implemented")
             return
