@@ -102,7 +102,6 @@ import numpy as np
 import pandas as pd
 import uclchemwrap
 import xarray as xr
-from numpy.f2py.auxfuncs import throw_error
 
 # UCLCHEM related imports
 from uclchemwrap import uclchemwrap as wrap
@@ -3017,7 +3016,7 @@ class GridModels:
 
         if self.model_type == "SequentialModel":
             if not isinstance(self.full_parameters, list):
-                throw_error(f"For SequentialModel types, full_parameters must be a list. {type(self.full_parameters)} was passed.")
+                raise(f"For SequentialModel types, full_parameters must be a list. {type(self.full_parameters)} was passed.")
             for base_model_dict in self.full_parameters:
                 for model_type, model_full_params in base_model_dict.items():
                     if isinstance(model_full_params, dict):
@@ -3030,7 +3029,7 @@ class GridModels:
                 grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
         else:
             if not isinstance(self.full_parameters, dict):
-                throw_error(f"For none SequentialModel types, full_parameters must be a dictionary. {type(self.full_parameters)} was passed.")
+                raise(f"For none SequentialModel types, full_parameters must be a dictionary. {type(self.full_parameters)} was passed.")
             for k, v in self.full_parameters.items():
                 if k == "param_dict":
                     for k_p, v_p in v.items():
