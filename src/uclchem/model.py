@@ -88,6 +88,7 @@ import logging
 import multiprocessing as mp
 import os
 import signal
+import time
 import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -95,11 +96,13 @@ from multiprocessing import shared_memory
 from pathlib import Path
 from typing import Any, AnyStr, Dict, Iterator, List, Literal, Type
 
+import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import uclchemwrap
 import xarray as xr
+from numpy.f2py.auxfuncs import throw_error
 
 # UCLCHEM related imports
 from uclchemwrap import uclchemwrap as wrap
@@ -206,7 +209,7 @@ get_species_names = SpeciesNameStore()
 
 # Universal model loader
 def load_model(
-    file: str, name: str = "default", engine: str = "h5netcdf", debug: bool = False
+    file: str, name: str = "default", debug: bool = False
 ):
     """
     load_model bypasses __init__ in order to load a pre-existing model from a file.
@@ -214,22 +217,28 @@ def load_model(
     Args:
         file (str): Path to a file that contains previously run and stored models.
         name (str, optional): Name of the stored object, if none was provided `default` will have been used. Defaults to 'default'
-        engine (str, optional): “netcdf4”, “h5netcdf” or “zarr”, depending on the engine to be used. Defaults to "h5netcdf".
         debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False.
     Returns:
         obj (object): Loaded object that inherited from AbstractModel and has the class of to the model found in the loaded file.
     """
     try:
-        loaded_data = xr.open_dataset(filename_or_obj=file, group=name, engine=engine)
+        with h5py.File(file, "r") as f:
+            if name not in f:
+                raise Exception(f"model {name} was not found in {file}")
+            model_group = f[name]
+            coords = {}
+            if "_coords" in model_group:
+                for name in model_group["_coords"]:
+                    coords[name] = _read_array(model_group["_coords"], name)
+            data_vars = {}
+            for name in model_group:
+                if name == "_coords":
+                    continue
+                data_vars[name] = _read_array(model_group, name)
+            loaded_data = xr.Dataset(data_vars, coords=coords)
     except FileNotFoundError:
         print(f"Unable to find file {file}")
         raise FileNotFoundError
-    except OSError:
-        print(f"Could not find model with name: {name}, in file {file}.")
-        raise OSError
-    except ValueError:
-        print(f"Engine {engine}, is incompatible with xr.open_dataset")
-        raise ValueError
     model_class = json.loads(loaded_data["attributes_dict"].item())["model_type"]
     cls = REGISTRY.get(model_class)
     if cls is None:
@@ -239,6 +248,15 @@ def load_model(
     return cls.load_from_dataset(model_ds=loaded_data, debug=debug)
 
 
+def _read_array(model_group, name):
+    """"""
+    ds = model_group[name]
+    data = ds[()]
+    if data.dtype.kind == "S":
+        data = data.astype(str)
+    dims = list(ds.attrs["_dims"])
+    attrs = json.loads(ds.attrs.get("_attrs", "{}"))
+    return xr.Variable(dims, data, attrs=attrs)
 # /Universal model loader
 
 
@@ -489,7 +507,6 @@ class AbstractModel(ABC):
         cls,
         file: str,
         name: str = "default",
-        engine: str = "h5netcdf",
         debug: bool = False,
     ):
         """Load a model from a file.
@@ -499,13 +516,12 @@ class AbstractModel(ABC):
         Args:
             file (str): Path to a file that contains previously run and stored models.
             name (str, optional): Name of the stored object. Defaults to 'default'.
-            engine (str, optional): "netcdf4", "h5netcdf" or "zarr". Defaults to "h5netcdf".
             debug (bool, optional): Flag for extra debug information. Defaults to False.
 
         Returns:
             Model object loaded from the file.
         """
-        return load_model(file, name=name, engine=engine, debug=debug)
+        return load_model(file, name=name, debug=debug)
 
     # /Separate class building methods
 
@@ -1052,7 +1068,6 @@ class AbstractModel(ABC):
         self,
         file: str,
         name: str = "default",
-        engine: str = "h5netcdf",
         overwrite: bool = False,
     ) -> None:
         """
@@ -1061,29 +1076,25 @@ class AbstractModel(ABC):
         Args:
             file (str): Path to a file to store models.
             name (str, optional): Name to use for the group of the object. Defaults to 'default'
-            engine (str, optional): “netcdf4”, “h5netcdf” or “zarr”, depending on the engine to be used. Defaults to "h5netcdf".
             overwrite (bool, optional): Boolean on whether to overwrite pre-existing models, or error out. Defaults to False
         """
-        # TODO: Allow for toggling of saving float64 or float32 for the arrays
         if os.path.isfile(file):
-            with xr.open_datatree(
-                filename_or_obj=file, engine=engine, phony_dims="sort"
-            ) as tree:
-                if "/" + name in tree.groups:
+            with h5py.File(file, "a") as f:
+                if name in f:
                     if not overwrite:
                         warnings.warn(
                             f"Model with name: `{name}` already exists in `{file}` but overwrite is set to False. Unable to save model."
                         )
                         return
-                tree.close()
-
-        # Start with metadata values
+                    else:
+                        del f[name]
+        # TODO: Allow for toggling of saving float64 or float32 for the arrays
         temp_attribute_dict = {}
         try:
             temp_attribute_dict.update(super().__getattribute__("_meta"))
         except Exception:
             pass
-
+        #
         # Collect remaining non-array dataset variables into attributes (same behaviour as before)
         for v in list(self._data.variables):
             if "_array" not in v and v not in ["_orig_sigint"]:
@@ -1097,11 +1108,24 @@ class AbstractModel(ABC):
                 else:
                     temp_attribute_dict[v] = self._data[v].item()
                     self._data = self._data.drop_vars(v)
-
+        #
         self._data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
         self._data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
-        self._data.to_netcdf(file, group=name, engine=engine, mode="a")
+        with h5py.File(file, "a") as f:
+            model_group = f.create_group(name)
+            coord_grp = model_group.create_group("_coords")
+            for name, coord in self._data.coords.items():
+                self._write_array(coord_grp, name, coord)
+            for name, var in self._data.data_vars.items():
+                self._write_array(model_group, name, var)
 
+    @staticmethod
+    def _write_array(model_group, name, xr_var):
+        data = xr_var.values
+        if data.dtype.kind == "U":
+            data = data.astype(bytes)
+        ds = model_group.create_dataset(name, data=data)
+        ds.attrs["_dims"] = list(xr_var.dims)
     # /Model saving
 
     # Model Passing through Pickling
@@ -2778,20 +2802,20 @@ class SequentialModel:
     for the automatic running of multiple models as well as matching some physical parameters from one model to the next.
 
     Args:
-        sequenced_model_parameters (Dict): The dictionary to pass to SequentialModel takes the format of
-            {"<First Model Class>":{"param_dict":{<parameters>}, <other arguments>}, "<Second Model Class>:{"param_dict":{<parameters>}, <other arguments>}, ...}
+        sequenced_model_parameters (List of Dicts): The List of dictionaries to pass to SequentialModel takes the format of
+            [{"<First Model Class>":{"param_dict":{<parameters>}, <other arguments>}}, {"<Second Model Class>:{"param_dict":{<parameters>}, <other arguments>}}, ...}]
         parameters_to_match (List, optional): The list provided to this argument decides which parameters should be matched from a previous model
             to the next model in the sequence. Currently, supports ["finalDens", "finalTemp"].
     """
 
     def __init__(
         self,
-        sequenced_model_parameters: Dict,
+        sequenced_model_parameters: List,
         parameters_to_match: List = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
-        for model in list(sequenced_model_parameters.keys()):
-            assert model != SequentialModel
+        for model in sequenced_model_parameters:
+            assert model[list(model.keys())[0]] != SequentialModel
         self.models = []
         self.sequenced_model_parameters = sequenced_model_parameters
         self.parameters_to_match = parameters_to_match
@@ -2803,76 +2827,75 @@ class SequentialModel:
 
     def run(self):
         previous_model = None
-        for model_type, model_dict in self.sequenced_model_parameters.items():
-            model_dict["param_dict"] = {
-                k.lower(): v for k, v in model_dict["param_dict"].items()
-            }
-            if self.model_count > 0:
+        for base_model_dict in self.sequenced_model_parameters:
+            for model_type, model_dict in base_model_dict.items():
                 model_dict["param_dict"] = {
-                    **{k.lower(): v for k, v in previous_model._param_dict.items()},
-                    **model_dict["param_dict"],
+                    k.lower(): v for k, v in model_dict["param_dict"].items()
                 }
-                if self.parameters_to_match is not None:
-                    for parameter in self.parameters_to_match:
-                        if parameter == "finalDens":
-                            model_dict["param_dict"]["initialdens"] = (
-                                previous_model.physics_array[-1, 0, 1]
-                            )
-                            continue
-                        elif parameter == "finalTemp":
-                            model_dict["param_dict"]["initialtemp"] = (
-                                previous_model.physics_arrayy[-1, 0, 2]
-                            )
-                        else:
-                            print(
-                                f"Parameter '{parameter}' has not been implemented for parameter matching"
-                            )
-                tmp_model = REGISTRY[model_type](
-                    **model_dict, run_type=self.run_type, previous_model=previous_model
-                )
-                if self.run_type == "external":
-                    tmp_model.run()
-                self.models += [
-                    {
-                        "Model_Type": model_type,
-                        "Model_Order": self.model_count,
-                        "Model": tmp_model,
+                if self.model_count > 0:
+                    model_dict["param_dict"] = {
+                        **{k.lower(): v for k, v in previous_model._param_dict.items()},
+                        **model_dict["param_dict"],
                     }
-                ]
-            else:
-                tmp_model = REGISTRY[model_type](
-                    **model_dict, run_type=self.run_type, previous_model=previous_model
-                )
-                if self.run_type == "external":
-                    tmp_model.run()
-                self.models += [
-                    {
-                        "Model_Type": model_type,
-                        "Model_Order": self.model_count,
-                        "Model": tmp_model,
-                    }
-                ]
-                self.models[self.model_count]["Successful"] = (
-                    True
-                    if self.models[self.model_count]["Model"].success_flag == 0
-                    else False
-                )
-                previous_model = self.models[self.model_count]["Model"]
-            self.model_count += 1
+                    if self.parameters_to_match is not None:
+                        for parameter in self.parameters_to_match:
+                            if parameter == "finalDens":
+                                model_dict["param_dict"]["initialdens"] = (
+                                    previous_model.physics_array[-1, 0, 1]
+                                )
+                                continue
+                            elif parameter == "finalTemp":
+                                model_dict["param_dict"]["initialtemp"] = (
+                                    previous_model.physics_arrayy[-1, 0, 2]
+                                )
+                            else:
+                                print(
+                                    f"Parameter '{parameter}' has not been implemented for parameter matching"
+                                )
+                    tmp_model = REGISTRY[model_type](
+                        **model_dict, run_type=self.run_type, previous_model=previous_model
+                    )
+                    if self.run_type == "external":
+                        tmp_model.run()
+                    self.models += [
+                        {
+                            "Model_Type": model_type,
+                            "Model_Order": self.model_count,
+                            "Model": tmp_model,
+                        }
+                    ]
+                else:
+                    tmp_model = REGISTRY[model_type](
+                        **model_dict, run_type=self.run_type, previous_model=previous_model
+                    )
+                    if self.run_type == "external":
+                        tmp_model.run()
+                    self.models += [
+                        {
+                            "Model_Type": model_type,
+                            "Model_Order": self.model_count,
+                            "Model": tmp_model,
+                        }
+                    ]
+                    self.models[self.model_count]["Successful"] = (
+                        True
+                        if self.models[self.model_count]["Model"].success_flag == 0
+                        else False
+                    )
+                    previous_model = self.models[self.model_count]["Model"]
+                self.model_count += 1
         return
 
     def save_model(
         self,
         file: str,
         name: str = "default",
-        engine: str = "h5netcdf",
         overwrite: bool = False,
     ):
         for model in self.models:
             model["Model"].save_model(
                 file=file,
-                name=f"{name}_{model['Model_Type']}_{model['Model_Order']}",
-                engine=engine,
+                name=f"{name}_{model['Model_Order']}_{model['Model_Type']}",
                 overwrite=overwrite,
             )
         return
@@ -2960,11 +2983,13 @@ class GridModels:
     def __init__(
         self,
         model_type: AnyStr,
-        full_parameters: Dict,
+        full_parameters: Dict | List,
         max_workers: int = 8,
         grid_file: str = "./default_grid_out.h5",
         model_name_prefix: str = "",
+        overwrite_models = False,
         delay_run: bool = False,
+        timer: bool = False
     ):
         assert model_type in REGISTRY
         self.model_type = model_type
@@ -2984,20 +3009,28 @@ class GridModels:
             os.remove(self.grid_file)
         #
         self.model_name_prefix = model_name_prefix
+        self.overwrite_models = overwrite_models
+        self.timer = timer
+        self.save_times = []
         self._orig_sigint = signal.getsignal(signal.SIGINT)
         self.parameters_to_grid = {}
 
         if self.model_type == "SequentialModel":
-            for model_type, model_full_params in self.full_parameters.items():
-                if isinstance(model_full_params, dict):
-                    for k, v in model_full_params.items():
-                        if k == "param_dict":
-                            for k_p, v_p in v.items():
-                                self._grid_def(k_p, v_p, model_type)
-                        else:
-                            self._grid_def(k, v, model_type)
-            grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
+            if not isinstance(self.full_parameters, list):
+                throw_error(f"For SequentialModel types, full_parameters must be a list. {type(self.full_parameters)} was passed.")
+            for base_model_dict in self.full_parameters:
+                for model_type, model_full_params in base_model_dict.items():
+                    if isinstance(model_full_params, dict):
+                        for k, v in model_full_params.items():
+                            if k == "param_dict":
+                                for k_p, v_p in v.items():
+                                    self._grid_def(k_p, v_p, model_type)
+                            else:
+                                self._grid_def(k, v, model_type)
+                grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
         else:
+            if not isinstance(self.full_parameters, dict):
+                throw_error(f"For none SequentialModel types, full_parameters must be a dictionary. {type(self.full_parameters)} was passed.")
             for k, v in self.full_parameters.items():
                 if k == "param_dict":
                     for k_p, v_p in v.items():
@@ -3075,12 +3108,15 @@ class GridModels:
                 try:
                     save_name = f"{self.model_name_prefix}{model_id}"
                     model_object.un_pickle()
+                    if self.timer:
+                        start_time = time.time()
                     model_object.save_model(
                         file=self.grid_file,
                         name=save_name,
-                        engine="h5netcdf",
-                        overwrite=True,
+                        overwrite=self.overwrite_models,
                     )
+                    if self.timer:
+                        self.save_times += [time.time() - start_time]
                     self.model_id_dict[model_id] = save_name
                 except Exception as e:
                     print(f"Error saving model {model_id}: {e}")
@@ -3114,7 +3150,7 @@ class GridModels:
         ]
         self._load_params()
 
-    def load_phys(self, engine: str = "h5netcdf"):
+    def load_phys(self):
         if self.model_type == "SequentialModel":
             warnings.warn("Sequantial Model physics loading not implemented")
             return
@@ -3131,7 +3167,7 @@ class GridModels:
         return
 
     def load_chem(
-        self, out_specie_list: list = ["H", "N", "C", "O"], engine: str = "h5netcdf"
+        self, out_specie_list: list = ["H", "N", "C", "O"]
     ):
         if self.model_type == "SequentialModel":
             warnings.warn("Sequantial Model chemistry loading not implemented")
@@ -3150,7 +3186,7 @@ class GridModels:
             ].sel(chemical_abun_values=out_specie_list)
         return
 
-    def _load_params(self, engine: str = "h5netcdf"):
+    def _load_params(self):
         if self.model_type == "SequentialModel":
             for model in range(len(self.models)):
                 model_number = 0
@@ -3199,8 +3235,8 @@ class GridModels:
                     True if loaded_data.success_flag == 0 else loaded_data.success_flag
                 )
 
-    def _load_model_data(self, model: str, engine: str = "h5netcdf"):
-        tmp_model = load_model(file=self.grid_file, name=model, engine=engine)
+    def _load_model_data(self, model: str):
+        tmp_model = load_model(file=self.grid_file, name=model)
         return tmp_model
 
     def check_conservation(
