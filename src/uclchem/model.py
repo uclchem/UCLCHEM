@@ -2833,8 +2833,11 @@ class SequentialModel:
                     k.lower(): v for k, v in model_dict["param_dict"].items()
                 }
                 if self.model_count > 0:
+                    previous_param_dict = previous_model._param_dict.copy()
+                    # Remove the converted stopping-mode key inherited from the previous stage before merging
+                    previous_param_dict.pop("parcelstoppingmode", None)
                     model_dict["param_dict"] = {
-                        **{k.lower(): v for k, v in previous_model._param_dict.items()},
+                        **previous_param_dict,
                         **model_dict["param_dict"],
                     }
                     if self.parameters_to_match is not None:
@@ -2846,7 +2849,7 @@ class SequentialModel:
                                 continue
                             elif parameter == "finalTemp":
                                 model_dict["param_dict"]["initialtemp"] = (
-                                    previous_model.physics_arrayy[-1, 0, 2]
+                                    previous_model.physics_array[-1, 0, 2]
                                 )
                             else:
                                 print(

@@ -116,28 +116,49 @@ def test_stats_reasonable_values():
 
 def test_stats_with_sequential_model():
     """Test that stats work with SequentialModel (chained stages)."""
-    config = {
-        "Cloud": {
-            "param_dict": {
-                "endAtFinalDensity": True,
-                "freefall": True,
-                "initialDens": 1e2,
-                "finalDens": 1e4,
-                "initialTemp": 10.0,
-                "finalTime": 1.0e7,
-            }
+    config = [
+        {
+            "Cloud": {
+                "param_dict": {
+                    "endAtFinalDensity": True,
+                    "freefall": True,
+                    "initialDens": 1e2,
+                    "finalDens": 1e4,
+                    "initialTemp": 10.0,
+                    "finalTime": 1.0e5,
+                }
+            },
         },
-    }
+        {
+            "Cloud": {
+                "param_dict": {
+                    "endAtFinalDensity": True,
+                    "freefall": True,
+                    "initialDens": 1e4,
+                    "finalDens": 1e4,
+                    "initialTemp": 20.0,
+                    "finalTemp": 20.0,
+                    "finalTime": 1.0e5,
+                }
+            },
+        },
+    ]
 
     seq_model = uclchem.model.SequentialModel(config)
 
-    # Get the first (and only) stage's model
-    cloud_model = seq_model.models[0]["Model"]
+    # Check both stages have valid stats arrays
+    cloud_model_1 = seq_model.models[0]["Model"]
+    cloud_model_2 = seq_model.models[1]["Model"]
 
     assert (
-        cloud_model.stats_array is not None
-    ), "stats_array should exist on chained model"
-    assert cloud_model.stats_array.shape[2] == N_DVODE_STATS
+        cloud_model_1.stats_array is not None
+    ), "stats_array should exist on first chained model"
+    assert cloud_model_1.stats_array.shape[2] == N_DVODE_STATS
+
+    assert (
+        cloud_model_2.stats_array is not None
+    ), "stats_array should exist on second chained model"
+    assert cloud_model_2.stats_array.shape[2] == N_DVODE_STATS
 
 
 def test_functional_api_stats():
