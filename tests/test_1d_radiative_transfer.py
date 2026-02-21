@@ -845,12 +845,10 @@ class TestFunctionalVsOOConsistency:
 
         assert flag_func == 0
 
-        # Arrays should match
+        # Arrays should match exactly after warm-up (both runs are in the
+        # stable Fortran state regime where results are bit-for-bit identical).
         assert np.allclose(oo_model.physics_array, phys_func)
-        # Chemistry arrays may differ at floating-point level due to solver state.
-        assert np.allclose(
-            oo_model.chemical_abun_array, chem_func, rtol=1e-4, atol=1e-15
-        )
+        assert np.allclose(oo_model.chemical_abun_array, chem_func)
 
     def test_functional_dataframe_point_column(self, base_1d_params):
         """Test that functional API returns DataFrames with Point column."""
