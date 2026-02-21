@@ -1094,28 +1094,30 @@ class AbstractModel(ABC):
         except Exception:
             pass
         #
+        # Work on a copy so save_model is non-destructive to self._data
+        save_data = self._data.copy()
         # Collect remaining non-array dataset variables into attributes (same behaviour as before)
-        for v in list(self._data.variables):
+        for v in list(save_data.variables):
             if "_array" not in v and v not in ["_orig_sigint"]:
-                if np.shape(self._data[v].values) != ():
-                    if isinstance(self._data[v].values, tuple):
-                        temp_attribute_dict[v] = self._data[v].values[1].tolist()
-                        self._data = self._data.drop_vars(v)
+                if np.shape(save_data[v].values) != ():
+                    if isinstance(save_data[v].values, tuple):
+                        temp_attribute_dict[v] = save_data[v].values[1].tolist()
+                        save_data = save_data.drop_vars(v)
                     else:
-                        temp_attribute_dict[v] = self._data[v].values.tolist()
-                        self._data = self._data.drop_vars(v)
+                        temp_attribute_dict[v] = save_data[v].values.tolist()
+                        save_data = save_data.drop_vars(v)
                 else:
-                    temp_attribute_dict[v] = self._data[v].item()
-                    self._data = self._data.drop_vars(v)
+                    temp_attribute_dict[v] = save_data[v].item()
+                    save_data = save_data.drop_vars(v)
         #
-        self._data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
-        self._data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
+        save_data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
+        save_data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
         with h5py.File(file, "a") as f:
             model_group = f.create_group(name)
             coord_grp = model_group.create_group("_coords")
-            for name, coord in self._data.coords.items():
+            for name, coord in save_data.coords.items():
                 self._write_array(coord_grp, name, coord)
-            for name, var in self._data.data_vars.items():
+            for name, var in save_data.data_vars.items():
                 self._write_array(model_group, name, var)
 
     @staticmethod
