@@ -37,9 +37,7 @@ except ImportError:
     uclchem_imported = False
 
 
-pytestmark = pytest.mark.skipif(
-    not uclchem_imported, reason="uclchem not installed"
-)
+pytestmark = pytest.mark.skipif(not uclchem_imported, reason="uclchem not installed")
 
 
 # ============================================================================
@@ -127,9 +125,9 @@ class TestSaveLoadRoundtrip:
         fpath, _, _, orig_param_dict, _ = saved_model_file
         loaded = load_model(file=fpath, name="default")
 
-        assert loaded._param_dict == orig_param_dict, (
-            "_param_dict mismatch after save/load"
-        )
+        assert (
+            loaded._param_dict == orig_param_dict
+        ), "_param_dict mismatch after save/load"
 
     def test_roundtrip_preserves_metadata(self, fresh_cloud_model, tmp_path):
         """Custom scalar metadata should survive save/load."""
@@ -167,7 +165,9 @@ class TestMultipleModelsInFile:
 
     def test_two_models_different_names(self, tmp_path):
         """Two models saved under different names should both be loadable."""
-        model_a = Cloud(param_dict=dict(_DEFAULT_PARAMS), out_species=["H", "N", "C", "O"])
+        model_a = Cloud(
+            param_dict=dict(_DEFAULT_PARAMS), out_species=["H", "N", "C", "O"]
+        )
         fpath = str(tmp_path / "multi.h5")
         model_a.save_model(file=fpath, name="model_a", overwrite=True)
 
@@ -183,6 +183,7 @@ class TestMultipleModelsInFile:
         # Both should be loadable and have correct initial temp
         assert loaded_a._param_dict["initialtemp"] == 10.0
         assert loaded_b._param_dict["initialtemp"] == 50.0
+
 
 # ============================================================================
 # Overwrite behaviour
@@ -214,9 +215,7 @@ class TestOverwrite:
 
         # Model should still be loadable (old data intact)
         loaded = load_model(file=fpath, name="dup")
-        np.testing.assert_array_equal(
-            loaded.physics_array, orig_physics
-        )
+        np.testing.assert_array_equal(loaded.physics_array, orig_physics)
 
     def test_overwrite_true_replaces_existing(self, tmp_path):
         """overwrite=True should replace the model data with new data."""
@@ -241,9 +240,9 @@ class TestOverwrite:
 
         loaded = load_model(file=fpath, name="model")
         # The loaded model should have the v2 initial temp
-        assert loaded._param_dict["initialtemp"] == 50.0, (
-            "Overwritten model should have new initialTemp"
-        )
+        assert (
+            loaded._param_dict["initialtemp"] == 50.0
+        ), "Overwritten model should have new initialTemp"
 
 
 # ============================================================================
@@ -291,14 +290,13 @@ class TestHDF5Structure:
                     # Check coord datasets
                     for coord_name in group["_coords"]:
                         ds = group["_coords"][coord_name]
-                        assert "_dims" in ds.attrs, (
-                            f"Coord dataset '{coord_name}' missing _dims attr"
-                        )
+                        assert (
+                            "_dims" in ds.attrs
+                        ), f"Coord dataset '{coord_name}' missing _dims attr"
                 else:
                     ds = group[ds_name]
-                    assert "_dims" in ds.attrs, (
-                        f"Dataset '{ds_name}' missing _dims attr"
-                    )
+                    assert "_dims" in ds.attrs, f"Dataset '{ds_name}' missing _dims attr"
+
 
 # ============================================================================
 # _write_array / _read_array low-level tests
@@ -336,17 +334,13 @@ class TestWriteReadArray:
         # Verify stored as bytes
         with h5py.File(fpath, "r") as f:
             raw = f["test"]["strings"][()]
-            assert raw.dtype.kind == "S", (
-                f"Expected byte string dtype, got {raw.dtype}"
-            )
+            assert raw.dtype.kind == "S", f"Expected byte string dtype, got {raw.dtype}"
 
         # Verify read back as str
         with h5py.File(fpath, "r") as f:
             result = _read_array(f["test"], "strings")
             np.testing.assert_array_equal(result.values, original)
-            assert result.values.dtype.kind == "U", (
-                "Read-back strings should be Unicode"
-            )
+            assert result.values.dtype.kind == "U", "Read-back strings should be Unicode"
 
     def test_scalar_in_1d_array_roundtrip(self, tmp_path):
         """A 1-element array (like JSON blobs) should roundtrip."""
@@ -362,6 +356,7 @@ class TestWriteReadArray:
             result = _read_array(f["test"], "json_blob")
             loaded = json.loads(result.values[0])
             assert loaded == {"key": "value"}
+
 
 # ============================================================================
 # SequentialModel save / load
@@ -537,9 +532,9 @@ class TestCoordinatePreservation:
         loaded = load_model(file=fpath, name="default")
 
         for coord_name, orig_values in orig_coords.items():
-            assert coord_name in loaded._data.coords, (
-                f"Coordinate '{coord_name}' missing after load"
-            )
+            assert (
+                coord_name in loaded._data.coords
+            ), f"Coordinate '{coord_name}' missing after load"
             np.testing.assert_array_equal(
                 orig_values,
                 loaded._data.coords[coord_name].values,
@@ -597,15 +592,14 @@ class TestEngineParameterRemoved:
         """save_model should not accept an 'engine' parameter."""
         fpath = str(tmp_path / "engine.h5")
         with pytest.raises(TypeError):
-            fresh_cloud_model.save_model(
-                file=fpath, name="default", engine="h5netcdf"
-            )
+            fresh_cloud_model.save_model(file=fpath, name="default", engine="h5netcdf")
 
     def test_load_model_rejects_engine_kwarg(self, saved_model_file):
         """load_model should not accept an 'engine' parameter."""
         fpath, _, _, _, _ = saved_model_file
         with pytest.raises(TypeError):
             load_model(file=fpath, name="default", engine="h5netcdf")
+
 
 # ============================================================================
 # Entry point
