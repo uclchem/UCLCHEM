@@ -845,12 +845,136 @@ class TestFunctionalVsOOConsistency:
 
         assert flag_func == 0
 
-        # Arrays should match after warm-up. Use tolerances that accommodate
-        # the huge dynamic range of abundances (1e0 down to 1e-30).
-        assert np.allclose(oo_model.physics_array, phys_func, rtol=1e-4, atol=1e-25)
-        assert np.allclose(
-            oo_model.chemical_abun_array, chem_func, rtol=1e-4, atol=1e-25
-        )
+        # Arrays should match. Use tolerances that accommodate the huge dynamic
+        # range of abundances (1e0 down to 1e-30).
+        rtol, atol = 1e-4, 1e-25
+
+        if not np.allclose(oo_model.physics_array, phys_func, rtol=rtol, atol=atol):
+            diff = np.abs(oo_model.physics_array - phys_func)
+            rel = np.where(
+                np.abs(phys_func) > atol,
+                diff / np.abs(phys_func),
+                0.0,
+            )
+            worst = np.unravel_index(np.argmax(rel), rel.shape)
+            phys_cols = [
+                "time",
+                "density",
+                "gasTemp",
+                "dustTemp",
+                "av",
+                "radfield",
+                "zeta",
+                "point",
+            ]
+            col_name = phys_cols[worst[2]] if worst[2] < len(phys_cols) else f"col{worst[2]}"
+            pytest.fail(
+                f"Physics mismatch: worst relative diff = {rel[worst]:.2e} "
+                f"at (timestep={worst[0]}, point={worst[1]}, {col_name}), "
+                f"OO={oo_model.physics_array[worst]:.6e} vs "
+                f"func={phys_func[worst]:.6e}"
+            )
+
+        if not np.allclose(
+            oo_model.chemical_abun_array, chem_func, rtol=rtol, atol=atol
+        ):
+            oo = oo_model.chemical_abun_array
+            fn = chem_func
+            diff = np.abs(oo - fn)
+            # Relative diff only where values are significant
+            denom = np.maximum(np.abs(oo), np.abs(fn))
+            rel = np.where(denom > atol, diff / denom, 0.0)
+            exceeds = ~np.isclose(oo, fn, rtol=rtol, atol=atol)
+
+            try:
+                from uclchem.model import get_species_names
+                species = get_species_names()
+            except Exception:
+                species = None
+
+            # --- Per-timestep summary: when does deviation start/end? ---
+            n_exceed_per_step = exceeds.sum(axis=(1, 2))  # shape: (timesteps,)
+            deviating_steps = np.where(n_exceed_per_step > 0)[0]
+            first_step = int(deviating_steps[0]) if len(deviating_steps) > 0 else None
+            last_step = int(deviating_steps[-1]) if len(deviating_steps) > 0 else None
+
+            # --- Per-point summary ---
+            n_exceed_per_point = exceeds.sum(axis=(0, 2))  # shape: (points,)
+
+            # --- Per-species summary: which species deviate? ---
+            n_exceed_per_species = exceeds.sum(axis=(0, 1))  # shape: (nspec,)
+            bad_species_idx = np.where(n_exceed_per_species > 0)[0]
+
+            # --- Find N worst mismatches ---
+            flat = rel.ravel()
+            n_bad = min(20, int(np.sum(flat > rtol)))
+            worst_flat = np.argsort(flat)[-max(n_bad, 1):][::-1]
+            worst_idx = [np.unravel_index(f, rel.shape) for f in worst_flat]
+
+            lines = [
+                f"Chemistry mismatch: {exceeds.sum()} elements exceed "
+                f"rtol={rtol}, atol={atol}",
+                f"Max absolute diff: {diff.max():.2e}, "
+                f"Max relative diff: {rel.max():.2e}",
+                f"Array shape: {oo.shape}",
+                "",
+                "=== TEMPORAL PROFILE ===",
+                f"First deviating timestep: {first_step}, "
+                f"Last deviating timestep: {last_step} "
+                f"(of {oo.shape[0]} total)",
+                "Deviations per timestep:",
+            ]
+            for t in range(oo.shape[0]):
+                n = int(n_exceed_per_step[t])
+                if n > 0:
+                    max_rel_t = rel[t].max()
+                    lines.append(
+                        f"  step {t:4d}: {n:5d} elements, "
+                        f"max_rel_diff={max_rel_t:.2e}"
+                    )
+
+            lines.append("")
+            lines.append("=== PER-POINT SUMMARY ===")
+            for p in range(oo.shape[1]):
+                n = int(n_exceed_per_point[p])
+                lines.append(f"  point {p}: {n} deviating elements")
+
+            lines.append("")
+            lines.append(
+                f"=== DEVIATING SPECIES ({len(bad_species_idx)} of "
+                f"{oo.shape[2]}) ==="
+            )
+            for s in bad_species_idx:
+                sp_name = (
+                    species[s].strip()
+                    if species and s < len(species)
+                    else f"sp{s}"
+                )
+                n = int(n_exceed_per_species[s])
+                max_rel_s = rel[:, :, s].max()
+                lines.append(
+                    f"  {sp_name:>12s}: {n:5d} deviations, "
+                    f"max_rel_diff={max_rel_s:.2e}"
+                )
+
+            lines.append("")
+            lines.append("=== TOP 20 WORST MISMATCHES ===")
+            lines.append(
+                f"{'#':>3} {'timestep':>8} {'point':>5} {'species':>12} "
+                f"{'OO':>12} {'func':>12} {'rel_diff':>10}"
+            )
+            for rank, idx in enumerate(worst_idx):
+                t, p, s = idx
+                sp_name = (
+                    species[s].strip()
+                    if species and s < len(species)
+                    else f"sp{s}"
+                )
+                lines.append(
+                    f"{rank+1:3d} {t:8d} {p:5d} {sp_name:>12s} "
+                    f"{oo[idx]:12.4e} {fn[idx]:12.4e} {rel[idx]:10.2e}"
+                )
+            pytest.fail("\n".join(lines))
 
     def test_functional_dataframe_point_column(self, base_1d_params):
         """Test that functional API returns DataFrames with Point column."""
