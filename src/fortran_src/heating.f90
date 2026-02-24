@@ -79,13 +79,15 @@ IMPLICIT NONE
 
  CONTAINS
 
-    SUBROUTINE initializeHeating(gasTemperature, gasDensity,abundances,columnDensity,cloudSize)
+    SUBROUTINE initializeHeating(gasTemperature, gasDensity,abundances,columnDensity,cloudSize,successFlag)
         REAL(dp), INTENT(in) :: gasTemperature,gasDensity,columnDensity,cloudSize
         REAL(dp), INTENT(in) :: abundances(:)
+        INTEGER, INTENT(INOUT) :: successFlag
         INTEGER ::i,j
 
         ! write(*,*) "Initializing heating.f90 ..."
-        CALL READ_COOLANTS()
+        CALL READ_COOLANTS(successFlag)
+        IF (successFlag .lt. 0) RETURN
 
         ! Reset population initialization flag for new model run
         coolant_populations_initialized = .FALSE.
@@ -103,7 +105,8 @@ IMPLICIT NONE
                     "ERROR: Coolant #", i, " ('", TRIM(coolantNames(i)), &
                     "') could not find parent species '", TRIM(coolantParentNames(i)), &
                     "' in the network. Check your coolant configuration."
-                STOP
+                successFlag = COOLANT_CONFIG_ERROR
+                RETURN
             END IF
         END DO
 

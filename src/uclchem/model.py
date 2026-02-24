@@ -688,28 +688,22 @@ class AbstractModel(ABC):
                 check_element_conservation(self.get_dataframes(0), element_list, percent)
             )
 
-    def check_error(self, only_error: bool = False) -> None:
+    def check_error(self, only_error: bool = False, raise_on_error: bool = True) -> None:
         """
-        Prints the error message of the model based on self.success_flag, this method was originally an uclchem.utils function.
+        Checks the model error status and raises RuntimeError on failure.
 
         Args:
-            only_error (bool, optional): Flag to inform check_error to only print a message if self.success_flag was
-                not 0
+            only_error (bool, optional): If True, only act when there was an error (skip success message).
+            raise_on_error (bool, optional): If True (default), raises RuntimeError on failure. If False, prints.
         """
-        if self.success_flag != 0 and self.success_flag is not None:
-            errors = {
-                -1: "Parameter read failed. Likely due to a mispelled parameter name, compare your dictionary to the parameters docs.",
-                -2: "Physics intiialization failed. Often due to user chosing unacceptable parameters such as prestellar core masses or collapse modes that don't exist. Check the docs for your model function.",
-                -3: "Chemistry initialization failed",  # this doesn't exist yet
-                -4: "Unrecoverable integrator error, DVODE failed to integrate the ODEs in a way that UCLCHEM could not fix. Run UCLCHEM tests to check your network works at all then try to see if bad parameter combination is at play.",
-                -5: "Too many integrator fails. DVODE failed to integrate the ODE and UCLCHEM repeatedly altered settings to try to make it pass but tried too many times without success so code aborted to stop infinite loop.",
-                -6: "The model was stopped because there are not enough time points allocated in the time array. Increase the number of time points in the time array in constants.py and try again.",
-                -8: "The model was stopped because there are not enough time points allocated in the time array. Increase the number of time points in the time array in constants.py and try again.",
-            }
-            try:
-                print(f"{errors[self.success_flag]}")
-            except KeyError:
-                raise ValueError(f"Unknown error code: {self.success_flag}")
+        if self.success_flag is not None and self.success_flag < 0:
+            from uclchem.utils import check_error as _check_error
+
+            if raise_on_error:
+                _check_error(self.success_flag, raise_on_error=True)
+            else:
+                msg = _check_error(self.success_flag, raise_on_error=False)
+                print(msg)
         elif self.success_flag == 0 and not only_error:
             print("Model ran successfully.")
         elif self.success_flag is None:
@@ -2042,9 +2036,10 @@ class Cloud(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        # Call wrap.cloud() without capturing return value
-        # Arrays are modified in-place by Fortran code, so return values aren't used
-        wrap.cloud(
+        # f2py returns all non-intent(in) values in Fortran signature order:
+        # [0-6] physicsarray..sestatsarray (in,out, modified in-place),
+        # [7] abundance_out, [8] specname_out, [9] successFlag
+        result = wrap.cloud(
             dictionary=self._param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
@@ -2063,19 +2058,14 @@ class Cloud(AbstractModel):
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
             else None,
         )
-        # For now, hardcode success_flag=0 and out_species_abundances_array as empty
-        # TODO: Need to find a way to get these from wrap.cloud without triggering shape bug
-        out_species_abundances_array = np.array([])
-        success_flag = 0
+        abundance_out, specname_out, success_flag = result[-3], result[-2], result[-1]
         if success_flag < 0:
             out_species_abundances_array = np.array([])
         else:
             out_species_length = (
                 len(self.out_species_list) if self.out_species_list is not None else 0
             )
-            out_species_abundances_array = list(
-                out_species_abundances_array[:out_species_length]
-            )
+            out_species_abundances_array = list(abundance_out[:out_species_length])
         return {
             "success_flag": success_flag,
             "out_species_abundances_array": out_species_abundances_array,

@@ -30,4 +30,9 @@ MODULE F2PY_CONSTANTS
     ! Per-coolant on/off toggle (can be changed at runtime via HeatingSettings)
     LOGICAL :: coolant_active (7)=(/.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.&
     &,.TRUE.,.TRUE./)
+    ! Per-coolant max frequency deviation between energy levels and LAMDA file
+    REAL(dp), PARAMETER :: coolantFreqMaxDeviation (7)=(/1.4549e-10&
+    &,2.2702e-09,3.4275e-07,1.8374e-06,6.9410e-06,7.4067e-04,3.2382e-04/)
+    ! Suggested freq_rel_tol based on max observed deviation (with 10% margin)
+    REAL(dp), PARAMETER :: suggested_freq_rel_tol = 1.000000e-02
 END MODULE F2PY_CONSTANTS

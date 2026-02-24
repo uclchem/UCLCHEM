@@ -61,8 +61,9 @@ IMPLICIT NONE
     INTEGER :: solver_stats_counter
 
 CONTAINS
-    SUBROUTINE initializeChemistry(readAbunds)
+    SUBROUTINE initializeChemistry(readAbunds, successFlag)
         LOGICAL, INTENT(IN) :: readAbunds
+        INTEGER, INTENT(INOUT) :: successFlag
         !f2py integer, intent(aux) :: points
 
         ! Sets variables at the start of every run.
@@ -152,7 +153,8 @@ CONTAINS
         
         IF (heatingFlag) THEN
             !Initializing heating.f90 --> get coolants
-            CALL initializeHeating(gasTemp(dstep),density(dstep),abund(:,1),colDens(dstep),cloudSize)
+            CALL initializeHeating(gasTemp(dstep),density(dstep),abund(:,1),colDens(dstep),cloudSize,successFlag)
+            IF (successFlag .lt. 0) RETURN
         END IF
 
         !Set rates to zero to ensure they don't hold previous values or random ones if we don't set them in calculateReactionRates

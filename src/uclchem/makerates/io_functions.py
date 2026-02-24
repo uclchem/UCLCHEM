@@ -403,7 +403,10 @@ def write_outputs(
     filename = fortran_src_dir / "f2py_constants.f90"
 
     # Compute energy level counts from coolant data files
-    from uclchem._coolant_utils import get_energy_levels_info
+    from uclchem._coolant_utils import (
+        get_energy_levels_info,
+        validate_coolant_frequencies,
+    )
 
     coolant_data_directory = get_default_coolant_directory(coolant_data_dir)
     n_total_levels, n_se_stats_per_coolant = get_energy_levels_info(
@@ -411,6 +414,36 @@ def write_outputs(
         coolant_files=[c["file"] for c in coolants],
         data_dir=coolant_data_directory,
     )
+
+    # Validate frequency consistency and compute suggested tolerance
+    freq_deviations = validate_coolant_frequencies(
+        coolant_names=[c["name"] for c in coolants],
+        coolant_files=[c["file"] for c in coolants],
+        data_dir=coolant_data_directory,
+    )
+    if freq_deviations:
+        max_deviation = max(freq_deviations.values())
+        # Add 10% margin above the largest observed deviation
+        suggested_freq_rel_tol = max_deviation * 1.1
+        # Enforce a minimum tolerance of 0.01 (1%)
+        suggested_freq_rel_tol = max(suggested_freq_rel_tol, 0.01)
+
+        # Log per-coolant frequency deviations (sorted largest first)
+        sorted_devs = sorted(freq_deviations.items(), key=lambda x: -x[1])
+        name_width = max(len(name) for name, _ in sorted_devs)
+        logging.info("Coolant frequency deviations (|E_i-E_j|/h vs LAMDA):")
+        logging.info(f"  {'Coolant':<{name_width}}  {'Deviation':>10}")
+        logging.info(f"  {'-' * name_width}  {'-' * 10}")
+        for name, dev in sorted_devs:
+            marker = " <<<" if dev > 0.01 else ""
+            logging.info(f"  {name:<{name_width}}  {dev*100:9.4f}%{marker}")
+        logging.info(
+            f"  Auto-setting freq_rel_tol = {suggested_freq_rel_tol:.4f} "
+            f"(max deviation {max_deviation*100:.2f}% + 10% margin)"
+        )
+    else:
+        suggested_freq_rel_tol = 0.01
+        max_deviation = 0.0
 
     # Compute coolant conversion arrays
     parent_names = []
@@ -492,6 +525,7 @@ def write_outputs(
         "conversion_factors": conversion_factors,
         "conversion_modes": conversion_modes,
         "coolant_data_dir": coolant_data_dir if coolant_data_dir else "",
+        "suggested_freq_rel_tol": suggested_freq_rel_tol,
     }
     write_f90_constants(f2py_constants, filename)
     # Note: constants.py now reads directly from f2py_constants module,
@@ -545,6 +579,7 @@ def write_f90_constants(
     # Extract numeric arrays to be written via array_to_string (handles line limits)
     conversion_factors = replace_dict.pop("conversion_factors", None)
     conversion_modes = replace_dict.pop("conversion_modes", None)
+    suggested_freq_rel_tol = replace_dict.pop("suggested_freq_rel_tol", None)
 
     constants = constants.format(**replace_dict)
 
@@ -573,6 +608,10 @@ def write_f90_constants(
             extra_lines += "    " + array_to_string(
                 "coolant_active", coolant_active_defaults, type="logical", parameter=False
             )
+    if suggested_freq_rel_tol is not None:
+        extra_lines += "    ! Suggested freq_rel_tol based on max observed deviation (with 10% margin)\n"
+        extra_lines += f"    REAL(dp), PARAMETER :: suggested_freq_rel_tol = {suggested_freq_rel_tol:.6e}\n"
+
     if extra_lines:
         constants = constants.replace(
             "END MODULE F2PY_CONSTANTS", extra_lines + "END MODULE F2PY_CONSTANTS"

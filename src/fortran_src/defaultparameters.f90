@@ -5,6 +5,7 @@
 !!note the resuting md file needs manually adding to the website.
 MODULE DEFAULTPARAMETERS
 USE constants
+USE F2PY_CONSTANTS
 !---  
 !id: parameters
 !title: Model Parameters
@@ -88,7 +89,7 @@ CHARACTER(256) :: abundLoadFile="" ! The file to load the abundances from at the
 !## Coolant / Validation tolerances
 !|Parameter|Default Value|Description|
 !| ----- | ------| ------ |
-REAL(dp) :: freq_rel_tol = 1.0d-1 ! Relative tolerance (fraction) for comparing file vs calculated frequencies. Can be adjusted at runtime via Generalsettings (tutorial 6).
+REAL(dp) :: freq_rel_tol = 1.0d-1 ! Relative tolerance (fraction) for comparing file vs calculated frequencies. Default 10%; overridden by Python layer with makerates-computed value when available.
 REAL(dp) :: pop_rel_tol  = 1.0d-1 ! Relative tolerance (fraction) for checking LTE population consistency. Can be adjusted at runtime via Generalsettings (tutorial 6).
 
 !|abundSaveFile |None| File to store final abundances at the end of the model so future models can use them as the initial abundances. If not provided, no file will be produced.

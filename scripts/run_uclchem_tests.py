@@ -19,13 +19,13 @@ params = {
     "initialDens": 1e4,
     "initialTemp": 10.0,
     "finalDens": 1e5,
-    "finalTime": 5.0e8,
+    "finalTime": 5.0e6,
     "outputFile": "examples/test-output/static-full.dat",
     "abundSaveFile": "examples/test-output/startstatic.dat",
     "reltol": 1e-6,
     "abstol_factor": 1e-12,
     "abstol_min": 1e-20,
-    # "writeTimestepInfo": True,
+    "writeTimestepInfo": True,
 }
 
 start = perf_counter()

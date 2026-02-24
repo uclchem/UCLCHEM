@@ -549,9 +549,9 @@ CONTAINS
             RETURN
         END IF
 
-        CALL initializeChemistry(readAbunds)
+        CALL initializeChemistry(readAbunds, successFlag)
+        IF (successFlag .lt. 0) RETURN
         dstep=1
-        successFlag=0
         abund(:nspec,dstep)=abundancesIn(:nspec)
         abund(neq,dstep)=initialDens
         currentTime=0.0
@@ -608,9 +608,9 @@ CONTAINS
             RETURN
         END IF
 
-        CALL initializeChemistry(readAbunds)
+        CALL initializeChemistry(readAbunds, successFlag)
+        IF (successFlag .lt. 0) RETURN
         dstep=1
-        successFlag=0
         abund(:nspec,dstep)=abundancesIn(:nspec)
         abund(neq,dstep)=initialDens
         currentTime=0.0
@@ -714,7 +714,8 @@ CONTAINS
         END IF
 
         ! Initialize the chemistry
-        CALL initializeChemistry(readAbunds)
+        CALL initializeChemistry(readAbunds, successFlag)
+        IF (successFlag .lt. 0) RETURN
         IF (returnArray .AND. givestartabund) THEN
             ! In case we have custom abundances, set them here
             IF (enable_radiative_transfer .AND. points.gt.1) THEN
@@ -811,6 +812,12 @@ CONTAINS
                             write(*,*) 'Error updating chemistry'
                             RETURN
                         END IF
+                        IF (coolant_error_flag .ne. 0) THEN
+                            WRITE(*,*) 'Coolant error: ', TRIM(coolant_error_message)
+                            successFlag = coolant_error_flag
+                            coolant_error_flag = 0
+                            RETURN
+                        END IF
                         !get time in years for output, currentTime is now equal to targetTime
                         timeInYears= targetTime/SECONDS_PER_YEAR
 
@@ -854,6 +861,12 @@ CONTAINS
                 CALL updateChemistry(successFlag, statsarray, timePoints+1, dtime)
                 IF (successFlag .lt. 0) THEN
                     write(*,*) 'Error updating chemistry'
+                    RETURN
+                END IF
+                IF (coolant_error_flag .ne. 0) THEN
+                    WRITE(*,*) 'Coolant error: ', TRIM(coolant_error_message)
+                    successFlag = coolant_error_flag
+                    coolant_error_flag = 0
                     RETURN
                 END IF
                 !get time in years for output, currentTime is now equal to targetTime

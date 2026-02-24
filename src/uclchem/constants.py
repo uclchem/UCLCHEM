@@ -164,6 +164,7 @@ default_param_dictionary = {
     "usecustomprefactors": False,
     "useminissaleicechemdesefficiency": False,
     # Coolant/validation tolerances
-    "freq_rel_tol": 0.1,
+    # freq_rel_tol default is auto-computed at makerates time from LAMDA file deviations
+    "freq_rel_tol": float(getattr(f2py_constants, "suggested_freq_rel_tol", 0.1)),
     "pop_rel_tol": 0.1,
 }
