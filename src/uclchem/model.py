@@ -704,6 +704,7 @@ class AbstractModel(ABC):
                 -4: "Unrecoverable integrator error, DVODE failed to integrate the ODEs in a way that UCLCHEM could not fix. Run UCLCHEM tests to check your network works at all then try to see if bad parameter combination is at play.",
                 -5: "Too many integrator fails. DVODE failed to integrate the ODE and UCLCHEM repeatedly altered settings to try to make it pass but tried too many times without success so code aborted to stop infinite loop.",
                 -6: "The model was stopped because there are not enough time points allocated in the time array. Increase the number of time points in the time array in constants.py and try again.",
+                -8: "The model was stopped because there are not enough time points allocated in the time array. Increase the number of time points in the time array in constants.py and try again.",
             }
             try:
                 print(f"{errors[self.success_flag]}")
@@ -2606,17 +2607,20 @@ class Postprocess(AbstractModel):
         run_type: Literal["local", "managed", "external"] = "local",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
+        # Allocate 1.5x the input timesteps to give the DVODE solver
+        # headroom for additional internal substeps.
         super().__init__(
             param_dict,
             out_species,
             starting_chemistry,
             previous_model,
-            len(time_array),
+            int(1.5 * len(time_array)),
             debug,
             read_file,
             run_type,
         )
         if read_file is None and time_array is not None:
+            n_input = len(time_array)
             object.__setattr__(
                 self,
                 "postprocess_arrays",
@@ -2636,16 +2640,17 @@ class Postprocess(AbstractModel):
             )
             for key, array in self.postprocess_arrays.items():
                 if array is not None:
-                    # Convert single values into arrays that can be used
                     if isinstance(array, float):
-                        array = np.ones(shape=time_array.shape) * array
-                    # Assure lengths are correct
-                    assert len(array) == len(
-                        time_array
-                    ), "All arrays must be the same length"
-                    # Ensure Fortran memory
-                    array = np.asfortranarray(array, dtype=np.float64)
-                    self.postprocess_arrays[key] = array
+                        array = np.ones(n_input) * array
+                    assert len(array) == n_input, "All arrays must be the same length"
+                    # Pad to self.timepoints so Fortran gets
+                    # correctly sized arrays.
+                    padded = np.zeros(
+                        self.timepoints,
+                        dtype=np.float64,
+                    )
+                    padded[:n_input] = array
+                    self.postprocess_arrays[key] = np.asfortranarray(padded)
             self.time_array = time_array
             # Column-density (coldens) and visual extinction (Av) arrays
             self.coldens_H_array = coldens_H_array
@@ -2774,17 +2779,20 @@ class Model(AbstractModel):
         run_type: Literal["local", "managed", "external"] = "local",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
+        # Allocate 1.5x the input timesteps to give the DVODE solver
+        # headroom for additional internal substeps.
         super().__init__(
             param_dict,
             out_species,
             starting_chemistry,
             previous_model,
-            len(time_array),
+            int(1.5 * len(time_array)),
             debug,
             read_file,
             run_type,
         )
         if read_file is None and time_array is not None:
+            n_input = len(time_array)
             self.time_array = time_array
             self.postprocess_arrays = {
                 "timegrid": time_array,
@@ -2796,16 +2804,17 @@ class Model(AbstractModel):
             }
             for key, array in self.postprocess_arrays.items():
                 if array is not None:
-                    # Convert single values into arrays that can be used
                     if isinstance(array, float):
-                        array = np.ones(shape=time_array.shape) * array
-                    # Assure lengths are correct
-                    assert len(array) == len(
-                        time_array
-                    ), "All arrays must be the same length"
-                    # Ensure Fortran memory
-                    array = np.asfortranarray(array, dtype=np.float64)
-                    self.postprocess_arrays[key] = array
+                        array = np.ones(n_input) * array
+                    assert len(array) == n_input, "All arrays must be the same length"
+                    # Pad to self.timepoints so Fortran gets
+                    # correctly sized arrays.
+                    padded = np.zeros(
+                        self.timepoints,
+                        dtype=np.float64,
+                    )
+                    padded[:n_input] = array
+                    self.postprocess_arrays[key] = np.asfortranarray(padded)
             if not self.give_start_abund:
                 self.starting_chemistry_array = np.zeros(
                     shape=(self.gridPoints, n_species),

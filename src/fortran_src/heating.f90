@@ -242,14 +242,15 @@ IMPLICIT NONE
 
          DO I=1,500!while not converged and less than 100 tries:
             DO N=1,NCOOLANTS
-                IF (coolants(N)%CONVERGED) THEN 
+                IF (.NOT. coolant_active(N)) CYCLE
+                IF (coolants(N)%CONVERGED) THEN
                     IF (se_coolant_iterations(N) .eq. 0) THEN
                         se_coolant_iterations(N) = I-1  ! Track if converged last iteration
                     END IF
                 ELSE
                     CALL CALCULATE_LEVEL_POPULATIONS(coolants(N),gasTemperature,gasDensity,&
                         &abundances,dustTemp)
-                END IF 
+                END IF
                 ! Calculate max relative change for this coolant (inline)
                 se_coolant_max_rel_change(N) = 0.0D0
                 IF (ALLOCATED(coolants(N)%POPULATION) .AND. ALLOCATED(coolants(N)%PREVIOUS_POPULATION)) THEN
@@ -277,6 +278,7 @@ IMPLICIT NONE
         !  Calculate the cooling rate due to the Lyman-alpha emission for each particle
         !  using the analytical expression of Spitzer (1978) neglecting photon trapping
         DO N=1,NCOOLANTS
+            IF (.NOT. coolant_active(N)) CYCLE
             if (.not. allocated(coolants(N)%EMISSIVITY)) then
                 write(*,*) "ERROR: EMISSIVITY not allocated for coolant ", N
             end if
@@ -290,17 +292,13 @@ IMPLICIT NONE
 
         !Calculate the cooling rates
         DO N=1,NCOOLANTS
+            IF (.NOT. coolant_active(N)) THEN
+                moleculeCooling(N) = 0.0_dp
+                CYCLE
+            END IF
             WHERE(coolants(N)%EMISSIVITY .lt. -HUGE(1.0)) coolants(N)%EMISSIVITY = 0.0
             moleculeCooling(N)=SUM(coolants(N)%EMISSIVITY,MASK=.NOT.ISNAN(coolants(N)%EMISSIVITY))
-            ! !we get these wild cha nges in cooling rate so let's force it not to change too much in a timestep
-            ! IF ( (abs(moleculeCooling-coolants(N)%previousCooling)/coolants(N)%previousCooling) .gt. 2.0d0) THEN
-            !     !unless it's step 1, use old cooling for this time step
-            !     IF (coolants(N)%previousCooling .ne. 0.0d0) moleculeCooling=coolants(N)%previousCooling
-            ! ELSE
-            !     coolants(N)%previousCooling=moleculeCooling
-            ! END IF
             IF (moleculeCooling(N) .lt. 0.0) moleculeCooling(N)=0.0d0
-            !IF (moleculeCooling(N) .gt. -1.0d-30 .and. abundances(coolantIndices(N)) .gt. 1.0d-20)
         END DO
         WHERE(moleculeCooling .lt. 0.0) moleculeCooling=0.0d0
 

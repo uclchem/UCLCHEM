@@ -1,0 +1,496 @@
+"""
+Unit tests for the heating and cooling mechanism installation.
+
+Tests that the full LAMDA coolant set can be built via makerates,
+installed via pip, and used at runtime through the HeatingSettings API.
+These tests verify the end-to-end pipeline from user_settings_with_heating.yaml
+through Fortran compilation to Python-level coolant control.
+"""
+
+import subprocess
+import sys
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+# Root of the UCLCHEM repo (tests/ is one level down)
+UCLCHEM_ROOT = Path(__file__).resolve().parent.parent
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _run(
+    cmd: str, cwd: str | Path = UCLCHEM_ROOT, timeout: int = 600
+) -> subprocess.CompletedProcess:
+    """Run a shell command and return the result."""
+    return subprocess.run(
+        cmd,
+        shell=True,
+        text=True,
+        capture_output=True,
+        cwd=str(cwd),
+        timeout=timeout,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 1: MakeRates with user_settings_with_heating.yaml
+# ---------------------------------------------------------------------------
+
+
+class TestMakeRatesWithHeating:
+    """Test that makerates succeeds with the full coolant config."""
+
+    def test_makerates_runs_successfully(self):
+        """Run makerates with user_settings_with_heating.yaml and verify success."""
+        makerates_dir = UCLCHEM_ROOT / "Makerates"
+        result = _run(
+            f"{sys.executable} Makerates.py user_settings_with_heating.yaml",
+            cwd=makerates_dir,
+        )
+        assert (
+            result.returncode == 0
+        ), f"MakeRates failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+
+    def test_generated_f2py_constants_exists(self):
+        """Verify f2py_constants.f90 was regenerated."""
+        f2py_path = UCLCHEM_ROOT / "src" / "fortran_src" / "f2py_constants.f90"
+        assert f2py_path.exists(), f"f2py_constants.f90 not found at {f2py_path}"
+
+    def test_generated_f2py_constants_has_coolant_active(self):
+        """Verify the generated f2py_constants.f90 contains coolant_active array."""
+        f2py_path = UCLCHEM_ROOT / "src" / "fortran_src" / "f2py_constants.f90"
+        content = f2py_path.read_text()
+        assert (
+            "coolant_active" in content
+        ), "coolant_active array missing from generated f2py_constants.f90"
+        assert "LOGICAL" in content, "LOGICAL type declaration missing"
+
+    def test_generated_f2py_constants_has_all_coolants(self):
+        """Verify the generated f2py_constants.f90 has the expected number of coolants."""
+        f2py_path = UCLCHEM_ROOT / "src" / "fortran_src" / "f2py_constants.f90"
+        content = f2py_path.read_text()
+
+        # Extract NCOOLANTS value
+        for line in content.splitlines():
+            if "NCOOLANTS" in line and "PARAMETER" in line:
+                # e.g. "    INTEGER, PARAMETER :: NCOOLANTS = 46"
+                parts = line.split("=")
+                if len(parts) == 2:
+                    n_coolants = int(parts[1].strip())
+                    # The full LAMDA set should have more than the default 7
+                    assert n_coolants > 7, (
+                        f"Expected more than 7 coolants, got {n_coolants}. "
+                        "MakeRates may not have used user_settings_with_heating.yaml."
+                    )
+                    break
+        else:
+            pytest.fail("Could not find NCOOLANTS PARAMETER in f2py_constants.f90")
+
+    def test_generated_f2py_constants_has_conversion_factors(self):
+        """Verify conversion factor arrays are present for ortho/para species."""
+        f2py_path = UCLCHEM_ROOT / "src" / "fortran_src" / "f2py_constants.f90"
+        content = f2py_path.read_text()
+        assert "coolantConversionFactors" in content, "coolantConversionFactors missing"
+        assert "coolantConversionMode" in content, "coolantConversionMode missing"
+
+    def test_generated_f2py_constants_has_parent_names(self):
+        """Verify parent species names are present for abundance mapping."""
+        f2py_path = UCLCHEM_ROOT / "src" / "fortran_src" / "f2py_constants.f90"
+        content = f2py_path.read_text()
+        assert "coolantParentNames" in content, "coolantParentNames missing"
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: pip install after MakeRates
+# ---------------------------------------------------------------------------
+
+
+class TestInstallWithHeating:
+    """Test that pip install succeeds after makerates with full coolant set."""
+
+    def test_pip_install_succeeds(self):
+        """Install UCLCHEM with the regenerated Fortran sources."""
+        result = _run("pip install .", cwd=UCLCHEM_ROOT)
+        assert (
+            result.returncode == 0
+        ), f"pip install failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+
+    def test_import_uclchem(self):
+        """Verify uclchem can be imported after install."""
+        result = _run(f"{sys.executable} -c 'import uclchem; print(uclchem.__file__)'")
+        assert (
+            result.returncode == 0
+        ), f"import uclchem failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+
+    def test_import_uclchemwrap(self):
+        """Verify the Fortran wrapper module can be imported."""
+        result = _run(
+            f"{sys.executable} -c 'import uclchemwrap; print(dir(uclchemwrap))'"
+        )
+        assert (
+            result.returncode == 0
+        ), f"import uclchemwrap failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: Runtime API tests (HeatingSettings + coolant control)
+# ---------------------------------------------------------------------------
+
+
+class TestHeatingSettingsCoolants:
+    """Test the HeatingSettings coolant control API after a full-set install."""
+
+    @pytest.fixture
+    def settings(self):
+        from uclchem import advanced
+
+        return advanced.HeatingSettings()
+
+    @pytest.fixture(autouse=True)
+    def reset_fortran_state(self):
+        """Reset Fortran module state after each test."""
+        yield
+        from uclchem import advanced
+
+        network = advanced.NetworkState()
+        network.reset_state()
+
+    def test_get_coolant_active_returns_dict(self, settings):
+        """get_coolant_active returns a dict of name -> bool."""
+        state = settings.get_coolant_active()
+        assert isinstance(state, dict)
+        assert len(state) > 0
+        for name, enabled in state.items():
+            assert isinstance(name, str)
+            assert isinstance(enabled, bool)
+
+    def test_all_coolants_enabled_by_default(self, settings):
+        """All coolants should be enabled after a fresh install."""
+        state = settings.get_coolant_active()
+        for name, enabled in state.items():
+            assert enabled, f"Coolant '{name}' should be enabled by default"
+
+    def test_coolant_count_matches_config(self, settings):
+        """Number of coolants should match what was configured."""
+        state = settings.get_coolant_active()
+        # Full LAMDA set has more than the default 7
+        assert (
+            len(state) > 7
+        ), f"Expected >7 coolants from full LAMDA config, got {len(state)}: {list(state.keys())}"
+
+    def test_baseline_coolants_present(self, settings):
+        """The 7 baseline coolants must be present in any superset build."""
+        state = settings.get_coolant_active()
+        baseline = ["H", "C+", "O", "C", "CO", "p-H2", "o-H2"]
+        for name in baseline:
+            assert name in state, f"Baseline coolant '{name}' missing from installed set"
+
+    def test_extended_coolants_present(self, settings):
+        """Spot-check that some extended coolants from the LAMDA set are present."""
+        state = settings.get_coolant_active()
+        extended_sample = ["OH", "HCN", "HCO+", "NH", "SO", "CS"]
+        for name in extended_sample:
+            assert name in state, f"Extended coolant '{name}' missing from installed set"
+
+    def test_set_coolant_active_disable(self, settings):
+        """Disabling a coolant should be reflected in get_coolant_active."""
+        settings.set_coolant_active("CO", False)
+        state = settings.get_coolant_active()
+        assert not state[
+            "CO"
+        ], "CO should be disabled after set_coolant_active('CO', False)"
+
+    def test_set_coolant_active_reenable(self, settings):
+        """Re-enabling a coolant should work."""
+        settings.set_coolant_active("CO", False)
+        settings.set_coolant_active("CO", True)
+        state = settings.get_coolant_active()
+        assert state["CO"], "CO should be re-enabled"
+
+    def test_set_coolant_active_invalid_name(self, settings):
+        """Setting an invalid coolant name should raise ValueError."""
+        with pytest.raises(ValueError, match="not found"):
+            settings.set_coolant_active("NONEXISTENT_SPECIES", False)
+
+    def test_disable_multiple_coolants(self, settings):
+        """Disabling multiple coolants should work independently."""
+        settings.set_coolant_active("CO", False)
+        settings.set_coolant_active("OH", False)
+        state = settings.get_coolant_active()
+        assert not state["CO"]
+        assert not state["OH"]
+        # Others should still be enabled
+        assert state["H"]
+        assert state["C+"]
+
+    def test_reset_restores_coolant_active(self, settings):
+        """reset_to_defaults should re-enable all coolants."""
+        settings.set_coolant_active("CO", False)
+        settings.set_coolant_active("OH", False)
+        settings.set_coolant_active("H", False)
+        settings.reset_to_defaults()
+        state = settings.get_coolant_active()
+        for name, enabled in state.items():
+            assert enabled, f"Coolant '{name}' should be enabled after reset_to_defaults"
+
+    def test_disable_all_coolants_and_reset(self, settings):
+        """Disable all coolants then reset - everything should come back."""
+        state = settings.get_coolant_active()
+        for name in state:
+            settings.set_coolant_active(name, False)
+
+        # Verify all disabled
+        state = settings.get_coolant_active()
+        for name, enabled in state.items():
+            assert not enabled, f"Coolant '{name}' should be disabled"
+
+        # Reset
+        settings.reset_to_defaults()
+        state = settings.get_coolant_active()
+        for name, enabled in state.items():
+            assert enabled, f"Coolant '{name}' should be enabled after reset"
+
+    def test_enable_only_baseline_subset(self, settings):
+        """Toggle pattern: disable all, enable only baseline 7."""
+        baseline = ["H", "C+", "O", "C", "CO", "p-H2", "o-H2"]
+        state = settings.get_coolant_active()
+
+        # Disable all
+        for name in state:
+            settings.set_coolant_active(name, False)
+
+        # Enable only baseline
+        for name in baseline:
+            settings.set_coolant_active(name, True)
+
+        state = settings.get_coolant_active()
+        for name, enabled in state.items():
+            if name in baseline:
+                assert enabled, f"Baseline coolant '{name}' should be enabled"
+            else:
+                assert not enabled, f"Non-baseline coolant '{name}' should be disabled"
+
+
+# ---------------------------------------------------------------------------
+# Phase 4: Heating/cooling mechanism toggles
+# ---------------------------------------------------------------------------
+
+
+class TestHeatingCoolingMechanisms:
+    """Test heating and cooling mechanism toggles with the full install."""
+
+    @pytest.fixture
+    def settings(self):
+        from uclchem import advanced
+
+        return advanced.HeatingSettings()
+
+    @pytest.fixture(autouse=True)
+    def reset_fortran_state(self):
+        yield
+        from uclchem import advanced
+
+        network = advanced.NetworkState()
+        network.reset_state()
+
+    def test_heating_modules_accessible(self, settings):
+        """All heating mechanisms should be accessible."""
+        modules = settings.get_heating_modules()
+        assert isinstance(modules, dict)
+        assert len(modules) > 0
+
+    def test_cooling_modules_accessible(self, settings):
+        """All cooling mechanisms should be accessible."""
+        modules = settings.get_cooling_modules()
+        assert isinstance(modules, dict)
+        assert len(modules) > 0
+
+    def test_molecular_line_cooling_enabled(self, settings):
+        """Molecular line cooling (mechanism 5) should be enabled by default."""
+        modules = settings.get_cooling_modules()
+        assert modules[
+            "MolecularLine"
+        ], "MolecularLine cooling should be enabled by default"
+
+    def test_disable_molecular_line_cooling(self, settings):
+        """Disabling molecular line cooling should work."""
+        settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, False)
+        modules = settings.get_cooling_modules()
+        assert not modules["MolecularLine"]
+
+    def test_coolant_toggle_independent_of_mechanism_toggle(self, settings):
+        """Coolant toggle and mechanism toggle are independent settings."""
+        # Disable a coolant
+        settings.set_coolant_active("CO", False)
+        # Mechanism should still be enabled
+        modules = settings.get_cooling_modules()
+        assert modules["MolecularLine"]
+
+        # Disable the mechanism
+        settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, False)
+        # Coolant state should be unchanged
+        state = settings.get_coolant_active()
+        assert not state["CO"]
+
+    def test_print_configuration_runs(self, settings):
+        """print_configuration should complete without errors."""
+        # Just verify it doesn't raise
+        settings.print_configuration()
+
+    def test_print_configuration_shows_coolants(self, settings, capsys):
+        """print_configuration should list individual coolants."""
+        settings.print_configuration()
+        captured = capsys.readouterr()
+        assert "Line Coolants" in captured.out
+        assert "CO" in captured.out
+
+
+# ---------------------------------------------------------------------------
+# Phase 5: Fortran-level consistency checks
+# ---------------------------------------------------------------------------
+
+
+class TestFortranConsistency:
+    """Verify Fortran module state is consistent after install."""
+
+    def test_coolant_active_array_size(self):
+        """coolant_active array size should match NCOOLANTS."""
+        import uclchemwrap
+
+        n_coolants = uclchemwrap.f2py_constants.ncoolants
+        coolant_active = uclchemwrap.f2py_constants.coolant_active
+        assert (
+            len(coolant_active) == n_coolants
+        ), f"coolant_active size ({len(coolant_active)}) != NCOOLANTS ({n_coolants})"
+
+    def test_coolant_names_array_size(self):
+        """coolantNames array size should match NCOOLANTS."""
+        import uclchemwrap
+
+        n_coolants = uclchemwrap.f2py_constants.ncoolants
+        coolant_names = uclchemwrap.f2py_constants.coolantnames
+        assert (
+            len(coolant_names) == n_coolants
+        ), f"coolantNames size ({len(coolant_names)}) != NCOOLANTS ({n_coolants})"
+
+    def test_coolant_files_array_size(self):
+        """coolantFiles array size should match NCOOLANTS."""
+        import uclchemwrap
+
+        n_coolants = uclchemwrap.f2py_constants.ncoolants
+        coolant_files = uclchemwrap.f2py_constants.coolantfiles
+        assert (
+            len(coolant_files) == n_coolants
+        ), f"coolantFiles size ({len(coolant_files)}) != NCOOLANTS ({n_coolants})"
+
+    def test_conversion_factors_array_size(self):
+        """coolantConversionFactors array size should match NCOOLANTS."""
+        import uclchemwrap
+
+        n_coolants = uclchemwrap.f2py_constants.ncoolants
+        factors = uclchemwrap.f2py_constants.coolantconversionfactors
+        assert (
+            len(factors) == n_coolants
+        ), f"coolantConversionFactors size ({len(factors)}) != NCOOLANTS ({n_coolants})"
+
+    def test_conversion_modes_array_size(self):
+        """coolantConversionMode array size should match NCOOLANTS."""
+        import uclchemwrap
+
+        n_coolants = uclchemwrap.f2py_constants.ncoolants
+        modes = uclchemwrap.f2py_constants.coolantconversionmode
+        assert (
+            len(modes) == n_coolants
+        ), f"coolantConversionMode size ({len(modes)}) != NCOOLANTS ({n_coolants})"
+
+    def test_parent_names_array_size(self):
+        """coolantParentNames array size should match NCOOLANTS."""
+        import uclchemwrap
+
+        n_coolants = uclchemwrap.f2py_constants.ncoolants
+        parents = uclchemwrap.f2py_constants.coolantparentnames
+        assert (
+            len(parents) == n_coolants
+        ), f"coolantParentNames size ({len(parents)}) != NCOOLANTS ({n_coolants})"
+
+    def test_coolant_active_all_true_by_default(self):
+        """All coolant_active entries should be True after fresh install."""
+        import uclchemwrap
+
+        coolant_active = uclchemwrap.f2py_constants.coolant_active
+        for i, active in enumerate(coolant_active):
+            assert bool(active), f"coolant_active[{i}] is False, expected True"
+
+    def test_coolant_active_is_mutable(self):
+        """coolant_active should be modifiable at runtime (not PARAMETER)."""
+        import uclchemwrap
+
+        original = bool(uclchemwrap.f2py_constants.coolant_active[0])
+        uclchemwrap.f2py_constants.coolant_active[0] = not original
+        assert bool(uclchemwrap.f2py_constants.coolant_active[0]) != original
+        # Restore
+        uclchemwrap.f2py_constants.coolant_active[0] = original
+
+    def test_ortho_para_h2_thermal_opr_mode(self):
+        """o-H2 and p-H2 should use thermal OPR conversion modes (1 and 2)."""
+        import uclchemwrap
+
+        names = [
+            str(np.char.decode(n)).strip()
+            for n in uclchemwrap.f2py_constants.coolantnames
+        ]
+        modes = uclchemwrap.f2py_constants.coolantconversionmode
+
+        if "p-H2" in names:
+            idx = names.index("p-H2")
+            assert (
+                int(modes[idx]) == 1
+            ), f"p-H2 should have conversion mode 1 (thermal OPR para), got {int(modes[idx])}"
+
+        if "o-H2" in names:
+            idx = names.index("o-H2")
+            assert (
+                int(modes[idx]) == 2
+            ), f"o-H2 should have conversion mode 2 (thermal OPR ortho), got {int(modes[idx])}"
+
+    def test_ortho_para_species_have_correct_parents(self):
+        """Ortho/para species should map to the correct parent species."""
+        import uclchemwrap
+
+        names = [
+            str(np.char.decode(n)).strip()
+            for n in uclchemwrap.f2py_constants.coolantnames
+        ]
+        parents = [
+            str(np.char.decode(n)).strip()
+            for n in uclchemwrap.f2py_constants.coolantparentnames
+        ]
+
+        expected_parents = {
+            "o-H2": "H2",
+            "p-H2": "H2",
+            "o-H3O+": "H3O+",
+            "p-H3O+": "H3O+",
+            "o-NH3": "NH3",
+            "p-NH3": "NH3",
+            "o-CH3CN": "CH3CN",
+            "p-CH3CN": "CH3CN",
+            "o-C3H2": "C3H2",
+            "p-C3H2": "C3H2",
+        }
+        for coolant_name, expected_parent in expected_parents.items():
+            if coolant_name in names:
+                idx = names.index(coolant_name)
+                assert parents[idx] == expected_parent, (
+                    f"Coolant '{coolant_name}' parent should be '{expected_parent}', "
+                    f"got '{parents[idx]}'"
+                )
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

@@ -560,6 +560,19 @@ def write_f90_constants(
         extra_lines += "    " + array_to_string(
             "coolantConversionMode", np.array(conversion_modes), type="int"
         )
+    # Generate coolant_active array: all coolants enabled by default
+    if "n_coolants" in replace_dict or conversion_factors is not None:
+        n_coolants = (
+            len(conversion_factors)
+            if conversion_factors is not None
+            else replace_dict.get("n_coolants", 0)
+        )
+        if n_coolants > 0:
+            coolant_active_defaults = np.ones(n_coolants, dtype=bool)
+            extra_lines += "    ! Per-coolant on/off toggle (can be changed at runtime via HeatingSettings)\n"
+            extra_lines += "    " + array_to_string(
+                "coolant_active", coolant_active_defaults, type="logical", parameter=False
+            )
     if extra_lines:
         constants = constants.replace(
             "END MODULE F2PY_CONSTANTS", extra_lines + "END MODULE F2PY_CONSTANTS"
@@ -1094,9 +1107,15 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
     )
     network_file.write(array_to_string("customVdiff", customVdiffList, type="float"))
 
-    network_file.write(array_to_string("moleculeIsLinear", isLinears, type="logical"))
-    network_file.write(array_to_string("inertiaProducts", inertiaProducts, type="float"))
-    network_file.write(array_to_string("formationEnthalpy", enthalpyList, type="float"))
+    network_file.write(
+        array_to_string("moleculeIsLinear", isLinears, type="logical", parameter=False)
+    )
+    network_file.write(
+        array_to_string("inertiaProducts", inertiaProducts, type="float", parameter=False)
+    )
+    network_file.write(
+        array_to_string("formationEnthalpy", enthalpyList, type="float", parameter=False)
+    )
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
     return len(iceList)
 
@@ -1447,8 +1466,8 @@ def array_to_string(
             dtype = f"CHARACTER(Len={strLength})"
             values = ",".join('"' + str(v).ljust(strLength) + '"' for v in flat)
         elif type == "logical":
-            dtype = "LOGICAL(dp)"
-            values = ",".join(f".{str(v).upper()}." for v in flat)
+            dtype = "LOGICAL"
+            values = ",".join(".TRUE." if v else ".FALSE." for v in flat)
         else:
             raise ValueError("Not a valid type for array to string")
         param_str = ", PARAMETER" if parameter else ""
@@ -1474,9 +1493,10 @@ def array_to_string(
             for value in arr:
                 outString += '"' + value.ljust(strLength) + '",'
         elif type == "logical":
-            outString = "LOGICAL(dp)" + outString
+            outString = "LOGICAL" + outString
             for value in arr:
-                outString += ".{0}.,".format(value)
+                outString += ".TRUE.," if value else ".FALSE.,"
+
         else:
             raise ValueError("Not a valid type for array to string")
         outString = outString[:-1] + "/)\n"

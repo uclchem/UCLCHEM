@@ -48,7 +48,6 @@ MODULE SurfaceReactions
   REAL(dp), PARAMETER :: NUM_MONOLAYERS_IS_SURFACE=2.0D0 ! Number of monolayers to count as surface
   LOGICAL, PARAMETER :: useGarrod2011Transfer=.True. ! Use Garrod 2011 transfer upon net desorption
   LOGICAL, PARAMETER :: useCustomReducedMass=.True. ! Use custom predicted reduced mass for tunneling
-  REAL(dp), PARAMETER :: DIFFUSION_BIND_RATIO=0.5 ! Ratio between diffusion barrier and binding energy of a species
   REAL(dp), PARAMETER :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8! Parameter used to compute the probability for a surface reaction with 
   !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
   REAL(dp), PARAMETER :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]

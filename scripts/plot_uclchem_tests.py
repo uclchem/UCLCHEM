@@ -19,6 +19,20 @@ plot_types = {
         "$CH3OH",
     ],
     "charge": ["E-", "C+", "H2O+", "H+", "HE+", "HCO+"],
+    "Silicon-bearing": [
+        "SI",
+        "$SI",
+        # "SIO",
+        # "$SIO",
+        "SIH",
+        "$SIH",
+        "SIH2",
+        "$SIH2",
+        "SIH3",
+        "$SIH3",
+        "SIH4",
+        "$SIH4",
+    ],
 }
 
 print_elemental_conservation = True
@@ -50,7 +64,8 @@ for plot_type in plot_types:
                 print(f"Testing element conservation for {model}")
                 print("Printing fractional change in total abundance")
                 conservation = uclchem.analysis.check_element_conservation(
-                    model_data[folder + model]
+                    model_data[folder + model],
+                    element_list=["H", "N", "C", "O", "SI", "S"],
                 )
                 print(conservation)
                 # Only plot the elmental conservation once
@@ -164,3 +179,28 @@ for plot_type in plot_types:
     )
 
     fig.savefig(f"examples/comparisons_{plot_type}.png", dpi=300)
+
+# Separate elemental conservation diagnostic plot
+# model_data is populated by the loop above; use test-output for all three models
+fig_ec, axes_ec = plt.subplots(1, 3, figsize=(15, 4), tight_layout=True)
+elements = ["H", "N", "C", "O", "SI", "S"]
+for j, model in enumerate(["phase1", "phase2", "static"]):
+    ax = axes_ec[j]
+    data = model_data["test-output/" + model]
+
+    for element in elements:
+        total = uclchem.analysis.total_element_abundance(element, data)
+        ax.plot(data["Time"], total / total.iloc[0], label=element)
+
+    ax.axhline(1.0, color="black", linewidth=0.8, linestyle="--", alpha=0.5)
+    ax.set_xscale("log")
+    ax.set_xlim(1, 6e6)
+    ax.set_xlabel("Time [yr]")
+    ax.set_ylabel("Total abundance / initial")
+    ax.set_title(model_names[model])
+    ax.grid(True, alpha=0.3)
+    if j == 0:
+        ax.legend(bbox_to_anchor=(-0.25, 0.5), loc="center right")
+
+fig_ec.suptitle("Elemental Conservation (test-output)")
+fig_ec.savefig("examples/elemental_conservation.png", dpi=300)

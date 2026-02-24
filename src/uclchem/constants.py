@@ -160,7 +160,7 @@ default_param_dictionary = {
     "hdiffusionbarrier": -1.0,
     "usecustomdiffusionbarriers": True,
     "seperatediffanddesorbprefactor": True,
-    "usetstprefactors": False,
+    "usetstprefactors": False,  # Set this one to True and add the intertias from dijkhuis25.
     "usecustomprefactors": False,
     "useminissaleicechemdesefficiency": False,
     # Coolant/validation tolerances
