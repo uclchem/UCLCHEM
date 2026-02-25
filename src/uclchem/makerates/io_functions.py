@@ -1224,7 +1224,7 @@ def write_network_file(
     if len(speciesIndices) > 72:
         speciesIndices = truncate_line(speciesIndices)
     speciesIndices = speciesIndices[:-1] + "\n"
-    openFile.write("    INTEGER(dp), PARAMETER ::" + speciesIndices)
+    openFile.write("    INTEGER, PARAMETER ::" + speciesIndices)
     openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
     openFile.write("    REAL(dp) :: SURFGROWTHUNCORRECTED\n")
     openFile.write(array_to_string("    specname", names, type="string"))
@@ -1258,7 +1258,7 @@ def write_network_file(
     for reaction, index in network.important_reactions.items():
         reaction_indices += reaction + f"={index},"
     reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
-    openFile.write("    INTEGER(dp), PARAMETER ::" + reaction_indices)
+    openFile.write("    INTEGER, PARAMETER ::" + reaction_indices)
 
     for i, reaction in enumerate(reaction_list):
         reactant1.append(find_reactant(names, reaction.get_reactants()[0]))
@@ -1495,7 +1495,7 @@ def array_to_string(
         shape = arr.shape
         flat = arr.flatten(order="F")
         if type == "int":
-            dtype = "INTEGER(dp)"
+            dtype = "INTEGER"
             values = ",".join(str(int(v)) for v in flat)
         elif type == "float":
             dtype = "REAL(dp)"
@@ -1519,7 +1519,7 @@ def array_to_string(
         else:
             outString = " :: " + name + " ({0})=(/".format(len(arr))
         if type == "int":
-            outString = "INTEGER(dp)" + outString
+            outString = "INTEGER" + outString
             for value in arr:
                 outString += "{0},".format(value)
         elif type == "float":

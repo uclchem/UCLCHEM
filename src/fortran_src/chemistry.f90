@@ -27,7 +27,7 @@ IMPLICIT NONE
     !f2py integer, intent(aux) :: points
     !These integers store the array index of important species and reactions, x is for ions    
     !loop counters    
-    INTEGER(dp) :: i,j,l,writeCounter=0,loopCounter,failedIntegrationCounter
+    INTEGER :: i,j,l,writeCounter=0,loopCounter,failedIntegrationCounter
     INTEGER, PARAMETER :: maxLoops=10,maxConsecutiveFailures=10
 
     !Array to store reaction rates
@@ -44,7 +44,7 @@ IMPLICIT NONE
     
     REAL(dp) :: MIN_ABUND = 1.0d-30 !Minimum abundance allowed
 
-    INTEGER(dp) :: nion,ionlist(nspec)
+    INTEGER :: nion,ionlist(nspec)
 
     REAL(dp) :: tempDot, oldTemp=0.0d0
     REAL(dp) :: h2form
@@ -419,7 +419,7 @@ CONTAINS
         REAL(dp) :: D,loss,prod
         REAL(dp) :: surfaceCoverage
         REAL(dp) :: phi,cgr(6),grec,denom
-        INTEGER(dp) :: ii
+        INTEGER :: ii
         !Set D to the gas density for use in the ODEs
         D=y(nspec+2)     !Gas density
         ydot=0.0

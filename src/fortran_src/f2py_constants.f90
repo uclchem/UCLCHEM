@@ -26,7 +26,7 @@ MODULE F2PY_CONSTANTS
     REAL(dp), PARAMETER :: coolantConversionFactors (7)=(/1.0000e+00,1.0000e&
     &+00,1.0000e+00,1.0000e+00,1.0000e+00,0.0000e+00,0.0000e+00/)
     ! Conversion mode: 0=fixed factor, 1=thermal OPR para, 2=thermal OPR ortho
-    INTEGER(dp), PARAMETER :: coolantConversionMode (7)=(/0,0,0,0,0,1,2/)
+    INTEGER, PARAMETER :: coolantConversionMode (7)=(/0,0,0,0,0,1,2/)
     ! Per-coolant on/off toggle (can be changed at runtime via HeatingSettings)
     LOGICAL :: coolant_active (7)=(/.TRUE.,.TRUE.,.TRUE.,.TRUE.,.TRUE.&
     &,.TRUE.,.TRUE./)

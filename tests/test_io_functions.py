@@ -6,7 +6,7 @@ from uclchem.makerates.io_functions import array_to_string
 def test_array_to_string_1d_int():
     arr = np.array([1, 2, 3, 4])
     result = array_to_string("arr1", arr, type="int", parameter=True)
-    assert "INTEGER(dp), PARAMETER :: arr1 (4)=(/1,2,3,4/)" in result.replace("\n", "")
+    assert "INTEGER, PARAMETER :: arr1 (4)=(/1,2,3,4/)" in result.replace("\n", "")
 
 
 def test_array_to_string_1d_float():
@@ -21,7 +21,7 @@ def test_array_to_string_1d_float():
 def test_array_to_string_2d_int():
     arr = np.array([[1, 2, 3], [4, 5, 6]])
     result = array_to_string("arr3", arr, type="int", parameter=True)
-    expected = """INTEGER(dp), PARAMETER :: arr3(2,3) = RESHAPE((/ 1,4,2,5,3,6 /), (/ 2&
+    expected = """INTEGER, PARAMETER :: arr3(2,3) = RESHAPE((/ 1,4,2,5,3,6 /), (/ 2&
     &, 3 /))
 """
     assert result == expected
@@ -30,7 +30,7 @@ def test_array_to_string_2d_int():
 def test_array_to_string_2d_ones():
     arr = np.ones((5, 7), dtype=int)
     result = array_to_string("arr_ones", arr, type="int", parameter=True)
-    expected = """INTEGER(dp), PARAMETER :: arr_ones(5,7) = RESHAPE((/ 1,1,1,1,1,1,1,1,1,1&
+    expected = """INTEGER, PARAMETER :: arr_ones(5,7) = RESHAPE((/ 1,1,1,1,1,1,1,1,1,1&
     &,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 /), (/ 5, 7 /))
 """
     assert result == expected

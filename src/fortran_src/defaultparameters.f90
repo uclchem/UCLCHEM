@@ -26,7 +26,7 @@ REAL(dp) :: zeta=1.0 !Cosmic ray ionisation rate as multiple of $1.3 10^{-17} s^
 REAL(dp) :: rout=0.05 !Outer radius of cloud being modelled in pc.
 REAL(dp) :: rin=0.0 !Minimum radial distance from cloud centre to consider.
 REAL(dp) :: baseAv=2.0 !Extinction at cloud edge, Av of a parcel at rout.
-INTEGER(dp) :: points=1 !Number of gas parcels equally spaced between rin to rout to consider
+INTEGER :: points=1 !Number of gas parcels equally spaced between rin to rout to consider
 REAL(dp) :: bm0=1.0 !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
 !Physical profiles for 1D model with pre-described gas density
 REAL(dp) :: density_scale_radius=0.05 !unit of pc, distance below which the gas volume density is constant, and above which the gas density drops as n ~ r^{-a}
@@ -102,7 +102,7 @@ REAL(dp) :: pop_rel_tol  = 1.0d-1 ! Relative tolerance (fraction) for checking L
 !|Parameter|Default Value |Description|
 !| ----- | ------| ------ |
 REAL(dp) :: metallicity=1.0 !Scale the abundances of all elements heavier than He by this factor.
-INTEGER(dp) :: ion=2 !Sets how much elemental C is initially atomic (0= all atomic/1=50:50/2=fully ionized).
+INTEGER :: ion=2 !Sets how much elemental C is initially atomic (0= all atomic/1=50:50/2=fully ionized).
 REAL(dp) :: fh=0.5 !Total elemental abundance of H is always 1 by definition because abundances are relative to number of H nuclei. Use fh to set how much to initially put in atomic H, the rest goes to H2.
 REAL(dp) :: fhe = 0.1 !Total elemental abundance of He.
 REAL(dp) :: fc=1.77d-04 !Total elemental abundance of C.
