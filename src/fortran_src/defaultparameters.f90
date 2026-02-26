@@ -151,6 +151,10 @@ REAL(dp) :: uv_yield=0.03 !Number of molecules desorbed per UV photon. The yield
 REAL(dp) :: phi=1.0d5 !Number of molecules desorbed per cosmic ray ionisation.
 REAL(dp) :: uvcreff=1.0d-3 !Ratio of CR induced UV photons to ISRF UV photons.
 REAL(dp) :: omega=0.5 !Dust grain albedo.
+REAL(dp) :: lower_limit_gastemp=10.0 !Lower limit for gas temperature in K when heating is enabled.
+REAL(dp) :: upper_limit_gastemp=1.0d4 !Upper limit for gas temperature in K when heating is enabled.
+REAL(dp) :: lower_limit_dusttemp=10.0 !Lower limit for dust temperature in K when heating is enabled.
+REAL(dp) :: upper_limit_dusttemp=1.0d3 !Upper limit for dust temperature in K when heating is enabled.
 !|alpha|{1:0.0,2:0.0}| Set alpha coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how alpha is used for each reaction type.|
 !|beta|{1:0.0,2:0.0}| Set beta coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how beta is used for each reaction type.|
 !|gama|{1:0.0,2:0.0}| Set gama coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how gama is used for each reaction type.|

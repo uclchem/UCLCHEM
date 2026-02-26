@@ -105,6 +105,7 @@ import xarray as xr
 from uclchemwrap import uclchemwrap as wrap
 
 from uclchem._coolant_utils import load_coolant_level_names
+from uclchem._fortran_capture import capture_fortran_output
 from uclchem.analysis import (
     check_element_conservation,
     create_abundance_plot,
@@ -3030,13 +3031,18 @@ class SequentialModel:
             model["Model"]._coordinator_unlink_memory()
 
 
-def _run_grid_model(model_id, model_type, pending_model):
+def _run_grid_model(model_id, model_type, pending_model, log_dir=None):
     """
     Internal function to run a single model. This is used by the GridModels class
     """
+    log_file = None
+    if log_dir is not None:
+        log_file = os.path.join(log_dir, f"model_{model_id}.log")
+
     cls = REGISTRY.get(model_type)
     model_obj = cls(**pending_model, run_type="external")
-    model_obj.run()
+    with capture_fortran_output(label=f"model_{model_id}", log_file=log_file):
+        model_obj.run()
     model_obj._coordinator_unlink_memory()
     model_obj.pickle()
     return (model_id, model_obj)
@@ -3066,6 +3072,7 @@ class GridModels:
         grid_file: str = "./default_grid_out.h5",
         model_name_prefix: str = "",
         delay_run: bool = False,
+        log_dir: str = None,
     ):
         assert model_type in REGISTRY
         self.model_type = model_type
@@ -3085,6 +3092,12 @@ class GridModels:
             os.remove(self.grid_file)
         #
         self.model_name_prefix = model_name_prefix
+        self.log_dir = log_dir
+        if self.log_dir is not None:
+            os.makedirs(self.log_dir, exist_ok=True)
+            self._main_log = os.path.join(self.log_dir, "grid.log")
+        else:
+            self._main_log = None
         self._orig_sigint = signal.getsignal(signal.SIGINT)
         self.parameters_to_grid = {}
 
@@ -3132,8 +3145,19 @@ class GridModels:
         elif isinstance(value, (np.ndarray, np.generic)):
             self.parameters_to_grid[model_type + key] = value.astype(dtype=object)
 
+    def _log_main(self, msg):
+        """Append a timestamped line to the main grid log file."""
+        if self._main_log is None:
+            return
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(self._main_log, "a") as f:
+            f.write(f"{ts} {msg}\n")
+
     def run(self):
         signal.signal(signal.SIGINT, self._handler)
+        n_total = np.shape(self.flat_grids)[1]
+        self._log_main(f"Grid started: {n_total} models, {self.max_workers} workers")
+
         pending = self.grid_iter(
             self.full_parameters,
             list(self.parameters_to_grid.keys()),
@@ -3155,10 +3179,11 @@ class GridModels:
                 active += 1
                 submitted += 1
                 model_id = pending_model.pop("id")
+                self._log_main(f"model_{model_id} started")
                 try:
                     pool.apply_async(
                         _run_grid_model,
-                        args=(model_id, self.model_type, pending_model),
+                        args=(model_id, self.model_type, pending_model, self.log_dir),
                         callback=lambda result: on_result(result),
                         error_callback=lambda exc, _model_id=model_id: on_error(
                             exc, model_id
@@ -3173,6 +3198,7 @@ class GridModels:
                 active -= 1
                 completed += 1
                 model_id, model_object = result
+                self._log_main(f"model_{model_id} completed ({completed}/{n_total})")
                 try:
                     save_name = f"{self.model_name_prefix}{model_id}"
                     model_object.un_pickle()
@@ -3195,6 +3221,7 @@ class GridModels:
             def on_error(_exc, _model_id):
                 nonlocal active
                 active -= 1
+                self._log_main(f"model_{_model_id} error: {_exc}")
                 # Optionally record/log the exception here.
                 self.model_id_dict[_model_id]._coordinator_unlink_memory()
                 print(f"error: {_exc}; for model: {_model_id}")
@@ -3209,6 +3236,7 @@ class GridModels:
             pool.close()
             pool.join()
         signal.signal(signal.SIGINT, self._orig_sigint)
+        self._log_main(f"Grid finished: {len(self.model_id_dict)} models completed")
         self.models = [
             {"Model": v}
             for _, v in sorted(self.model_id_dict.items(), key=lambda item: item[1])

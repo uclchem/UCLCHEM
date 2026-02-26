@@ -58,7 +58,7 @@ IMPLICIT NONE
     ! Treatment of the dust-gas temperature coupling
     ! 1 = Simple treatment Hocuk et al. 2017
     ! 2 = Detailed balance method Hollenbach 1991 
-    INTEGER :: dust_gas_coupling_method = 1
+    INTEGER :: dust_gas_coupling_method = 2
     
     ! LINE_SOLVER_ATTEMPTS: Number of times to solve line cooling and take median, must be <= MAX_LINE_SOLVE_ATTEMPTS
     INTEGER :: LINE_SOLVER_ATTEMPTS = 1
@@ -775,14 +775,14 @@ FUNCTION calculateDustTempHollenbach(localField,surfaceField) result(dustTempera
 
     !Impose a lower limit on the dust temperature, since values below 10 K can dramatically
     !limit the rate of H2 formation on grains (the molecule cannot desorb from the surface)
-    IF(dustTemperature.LT.10) THEN
-        dustTemperature=10.0D0
+    IF(dustTemperature.LT.lower_limit_dusttemp) THEN
+        dustTemperature=lower_limit_dusttemp
     END IF
 
     !     Check that the dust temperature is physical
-    IF(dustTemperature.GT.1000) THEN
-        write(*,*) localField, surfaceField!WRITE(6,*) 'ERROR! Calculated dust temperature exceeds 1000 K'
-        dustTemperature=1000.0
+    IF(dustTemperature.GT.upper_limit_dusttemp) THEN
+        write(*,*) localField, surfaceField!WRITE(6,*) 'ERROR! Calculated dust temperature exceeds upper limit'
+        dustTemperature=upper_limit_dusttemp
     END IF
     RETURN
 END FUNCTION calculateDustTempHollenbach
@@ -799,14 +799,14 @@ FUNCTION calculateDustTempHocuk(surfaceField,Av) result(dustTemperature)
 
     !Impose a lower limit on the dust temperature, since values below 10 K can dramatically
     !limit the rate of H2 formation on grains (the molecule cannot desorb from the surface)
-    IF(dustTemperature.LT.2.73) THEN
-        dustTemperature=2.73D0
+    IF(dustTemperature.LT.lower_limit_dusttemp) THEN
+        dustTemperature=lower_limit_dusttemp
     END IF
 
     !     Check that the dust temperature is physical
-    IF(dustTemperature.GT.1000) THEN
-        write(*,*) Av, surfaceField!WRITE(6,*) 'ERROR! Calculated dust temperature exceeds 1000 K'
-        dustTemperature=1000.0
+    IF(dustTemperature.GT.upper_limit_dusttemp) THEN
+        write(*,*) Av, surfaceField!WRITE(6,*) 'ERROR! Calculated dust temperature exceeds upper limit'
+        dustTemperature=upper_limit_dusttemp
     END IF
     RETURN
 END FUNCTION calculateDustTempHocuk

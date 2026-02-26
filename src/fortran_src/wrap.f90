@@ -17,6 +17,7 @@ CONTAINS
     SUBROUTINE cloud(dictionary, outSpeciesIn,returnArray,returnRates,&
             &givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart ,abundance_out,specname_out,successFlag)
+        !f2py threadsafe
         !Subroutine to call a cloud model, used to interface with python
         ! Loads cloud specific subroutines and send to solveAbundances
         !
@@ -97,6 +98,7 @@ CONTAINS
     SUBROUTINE collapse(collapseIn,collapseFileIn,writeOut,dictionary,outSpeciesIn,&
             &returnArray,returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart, abundance_out,specname_out,successFlag)
+        !f2py threadsafe
         !Subroutine to call a collapse model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -180,6 +182,7 @@ CONTAINS
     SUBROUTINE hot_core(temp_indx,max_temp,dictionary,outSpeciesIn,returnArray,&
             &returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart, abundance_out,specname_out,successFlag)
+        !f2py threadsafe
         !Subroutine to call a hot core model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -257,6 +260,7 @@ CONTAINS
     SUBROUTINE cshock(shock_vel,timestep_factor,minimum_temperature,dictionary, outSpeciesIn,&
             &returnArray,returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart, abundance_out,dissipation_time,specname_out,successFlag)
+        !f2py threadsafe
         !Subroutine to call a C-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -343,6 +347,7 @@ CONTAINS
     SUBROUTINE jshock(shock_vel,dictionary,outSpeciesIn,returnArray,returnRates,givestartabund,&
             &timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart,abundance_out,specname_out,successFlag)
+        !f2py threadsafe
         !Subroutine to call a J-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -418,6 +423,7 @@ CONTAINS
         &timePoints,gridPoints,physicsarray,chemicalabunarray,ratesarray,heatarray,statsarray,&
         &levelpopulationsarray, sestatsarray, abundanceStart,timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,useav,avgrid,&
         &usecoldens,nhgrid,nh2grid,ncogrid,ncgrid,abundance_out,specname_out,successFlag)
+        !f2py threadsafe
         !Subroutine to call a J-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -624,6 +630,7 @@ CONTAINS
             &modelUpdatePhysics,updateTargetTime, sublimation, returnArray, returnRates,givestartabund,&
             &timePoints, physicsarray, chemicalabunarray,ratesarray,heatarray,statsarray,levelpopulationsarray,sestatsarray,abundanceStart,&
             &timegrid,densgrid,gtempgrid,dtempgrid,radgrid,zetagrid,useav,avgrid,usecoldens,nhgrid,nh2grid,ncogrid,ncgrid)
+        USE, INTRINSIC :: iso_c_binding, ONLY: C_NULL_PTR, C_INT
         ! Core UCLCHEM routine. Solves the chemical equations for a given set of parameters through time
         ! for a specified physical model.
         ! Change behaviour of physics by sending different subroutine arguments - hence the need for model subroutines above
@@ -672,6 +679,15 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: nh2grid
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: ncogrid
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: ncgrid
+        INTEGER(C_INT) :: flush_rc
+        INTERFACE
+            INTEGER(C_INT) FUNCTION c_fflush(stream) &
+                    BIND(C, name="fflush")
+                USE, INTRINSIC :: iso_c_binding, &
+                    ONLY: C_INT, C_PTR
+                TYPE(C_PTR), VALUE :: stream
+            END FUNCTION c_fflush
+        END INTERFACE
         successFlag=0
         ! Debug: Print array dimensions
         ! Set variables to default values
@@ -750,12 +766,16 @@ CONTAINS
             !Each physics module has a subroutine to set the target time from the current time
             CALL updateTargetTime
             IF (writeTimestepInfo) THEN
-                WRITE(*,'(A,ES10.2,A,ES10.2,A,F9.1,A,F9.1,A,ES10.2)') &
-                    't(yr):', currentTimeold/SECONDS_PER_YEAR, &
-                    ' tfin:', finalTime, &
+                WRITE(*,'(A,ES10.2,A,ES10.2,A,F9.1,A,F9.1,A,ES10.2,A,ES10.2,A,ES10.2)') &
+                    't:', currentTimeold/SECONDS_PER_YEAR, &
+                    ' dT:', dvode_rstats(11)/SECONDS_PER_YEAR, &
                     ' Tg:', gasTemp(1), &
                     ' Td:', dustTemp(1), &
-                    ' n:', density(1)
+                    ' nH:', density(1), &
+                    ' G0:', radfield, &
+                    ' z:', zeta
+                FLUSH(6)
+                flush_rc = c_fflush(C_NULL_PTR) ! TODO: may be redundant with !f2py threadsafe + FLUSH(6)
             END IF
             ! Exit loop if targetTime would exceed finalTime
             IF (targetTime/SECONDS_PER_YEAR .gt. finalTime) THEN

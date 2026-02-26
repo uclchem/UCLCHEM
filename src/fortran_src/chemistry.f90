@@ -299,7 +299,7 @@ CONTAINS
             gasTemp(dstep)=abund(nspec+1,dstep)
             density(dstep)=abund(nspec+2,dstep)
             ! IF (gasTemp(dstep) .lt. 10) gasTemp(dstep)=10.0
-            IF (gasTemp(dstep) .lt. 2.73) gasTemp(dstep)=2.73
+            IF (gasTemp(dstep) .lt. lower_limit_gastemp) gasTemp(dstep)=lower_limit_gastemp
             loopCounter=loopCounter+1
 
             ! For postprocessing, force solver to try and reach original target time
@@ -456,8 +456,8 @@ CONTAINS
             ! IF (ABS(y(nspec+1)-oldTemp)/oldTemp.gt.0.1) THEN
             IF (ABS(y(nspec+1)-oldTemp).gt.0.1) THEN
                 gasTemp(dstep)=y(nspec+1)
-                IF (gasTemp(dstep) .lt. 10) gasTemp(dstep)=10.0
-                IF (gasTemp(dstep) .gt. 1.0d4) gasTemp(dstep)=1.0d4
+                IF (gasTemp(dstep) .lt. lower_limit_gastemp) gasTemp(dstep)=lower_limit_gastemp
+                IF (gasTemp(dstep) .gt. upper_limit_gastemp) gasTemp(dstep)=upper_limit_gastemp
                 ! h2form= h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))!h2FormRate(gasTemp(dstep),dustTemp(dstep))
                 tempDot=getTempDot( &
                             &    timeInYears, &                         ! time 
