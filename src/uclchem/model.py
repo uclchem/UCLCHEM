@@ -245,8 +245,18 @@ def load_model(
 
 # Worker entry for parallel jobs
 def _worker_entry(
-    model_class: str, init_kwargs: dict, shm_descs: dict, result_queue: mp.Queue
+    model_class: str,
+    init_kwargs: dict,
+    shm_descs: dict,
+    result_queue: mp.Queue,
+    advanced_snapshot: dict = None,
 ):
+    # Restore advanced settings captured in the coordinator process.
+    if advanced_snapshot is not None:
+        from uclchem.advanced.worker_state import restore_snapshot
+
+        restore_snapshot(advanced_snapshot)
+
     cls = REGISTRY.get(model_class)
     if cls is None:
         raise ValueError(
@@ -1087,12 +1097,21 @@ class AbstractModel(ABC):
         if self.run_type not in self.separate_worker_types:
             output = self.run_fortran()
         elif self.run_type in self.separate_worker_types:
+            from uclchem.advanced.worker_state import create_snapshot
+
+            snapshot = create_snapshot()
             init_kwargs = self._create_init_dict()
             ctx = mp.get_context("spawn")
             result_queue = ctx.Queue()
             self._proc_handle = ctx.Process(
                 target=_worker_entry,
-                args=(self.model_type, init_kwargs, self._shm_desc, result_queue),
+                args=(
+                    self.model_type,
+                    init_kwargs,
+                    self._shm_desc,
+                    result_queue,
+                    snapshot,
+                ),
                 daemon=False,
             )
             self._proc_handle.start()
@@ -3073,6 +3092,7 @@ class GridModels:
         model_name_prefix: str = "",
         delay_run: bool = False,
         log_dir: str = None,
+        model_ids: list = None,
     ):
         assert model_type in REGISTRY
         self.model_type = model_type
@@ -3128,6 +3148,10 @@ class GridModels:
             ),
         )
 
+        # Optional subset of model indices (0-based column in flat_grids) to run.
+        # None means run all. Accepts any iterable; stored as a frozenset for O(1) lookup.
+        self.model_ids = frozenset(model_ids) if model_ids is not None else None
+
         self.model_id_dict = {}
         self.models = []
         self.physics_values = None
@@ -3158,50 +3182,50 @@ class GridModels:
         n_total = np.shape(self.flat_grids)[1]
         self._log_main(f"Grid started: {n_total} models, {self.max_workers} workers")
 
+        # Capture advanced settings so spawned workers start with the same
+        # Fortran module state as the coordinator process.
+        from uclchem.advanced.worker_state import _pool_initializer, create_snapshot
+
+        snapshot = create_snapshot()
+
         pending = self.grid_iter(
             self.full_parameters,
             list(self.parameters_to_grid.keys()),
             self.flat_grids,
             self.model_type,
         )
-        with mp.Pool(self.max_workers) as pool:
-            active = 0
-            submitted = 0
+        with mp.Pool(
+            self.max_workers,
+            initializer=_pool_initializer,
+            initargs=(snapshot,),
+            maxtasksperchild=1,
+        ) as pool:
             completed = 0
 
-            def submit_next() -> bool:
-                nonlocal active, submitted
-                try:
-                    pending_model = next(pending)
-                except StopIteration:
-                    return False
-
-                active += 1
-                submitted += 1
-                model_id = pending_model.pop("id")
-                self._log_main(f"model_{model_id} started")
-                try:
-                    pool.apply_async(
-                        _run_grid_model,
-                        args=(model_id, self.model_type, pending_model, self.log_dir),
-                        callback=lambda result: on_result(result),
-                        error_callback=lambda exc, _model_id=model_id: on_error(
-                            exc, model_id
-                        ),
-                    )
-                except Exception as e:
-                    print(f"exception found in submit_next: {e}")
-                return True
-
             def on_result(result):
-                nonlocal active, completed
-                active -= 1
+                nonlocal completed
                 completed += 1
                 model_id, model_object = result
-                self._log_main(f"model_{model_id} completed ({completed}/{n_total})")
                 try:
                     save_name = f"{self.model_name_prefix}{model_id}"
                     model_object.un_pickle()
+                    failed = (
+                        model_object.success_flag is not None
+                        and model_object.success_flag < 0
+                    )
+                    if failed:
+                        from uclchem.utils import check_error as _check_error
+
+                        msg = _check_error(
+                            model_object.success_flag, raise_on_error=False
+                        )
+                        self._log_main(
+                            f"model_{model_id} failed ({completed}/{n_total}): {msg}"
+                        )
+                    else:
+                        self._log_main(
+                            f"model_{model_id} completed ({completed}/{n_total})"
+                        )
                     model_object.save_model(
                         file=self.grid_file,
                         name=save_name,
@@ -3215,23 +3239,24 @@ class GridModels:
 
                     traceback.print_exc()
 
-                if not submit_next() and active == 0:
-                    print("No more models to submit")
-
             def on_error(_exc, _model_id):
-                nonlocal active
-                active -= 1
                 self._log_main(f"model_{_model_id} error: {_exc}")
-                # Optionally record/log the exception here.
-                self.model_id_dict[_model_id]._coordinator_unlink_memory()
                 print(f"error: {_exc}; for model: {_model_id}")
-                if not submit_next() and active == 0:
-                    print("No more models to submit")
 
-            # Submit initial batch
-            for _ in range(np.shape(self.flat_grids)[1]):
-                if not submit_next():
-                    break
+            # Submit all tasks upfront; the pool limits actual concurrency to
+            # max_workers. pool.close()/join() are called only after all tasks
+            # have been submitted, so apply_async never races with a closed pool.
+            for pending_model in pending:
+                model_id = pending_model.pop("id")
+                if self.model_ids is not None and model_id not in self.model_ids:
+                    continue
+                self._log_main(f"model_{model_id} started")
+                pool.apply_async(
+                    _run_grid_model,
+                    args=(model_id, self.model_type, pending_model, self.log_dir),
+                    callback=on_result,
+                    error_callback=lambda exc, _mid=model_id: on_error(exc, _mid),
+                )
 
             pool.close()
             pool.join()

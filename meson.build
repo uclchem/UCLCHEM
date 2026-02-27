@@ -174,6 +174,7 @@ py.install_sources([
   usource / 'advanced' / 'advanced_network.py',
   usource / 'advanced' / 'advanced_settings.py',
   usource / 'advanced' / 'runtime_network.py',
+  usource / 'advanced' / 'worker_state.py',
   usource / 'advanced' / 'fortran_metadata.yaml',
 ], subdir: 'uclchem' / 'advanced')
 # Lastly, we also copy the data needed for the cooling module:

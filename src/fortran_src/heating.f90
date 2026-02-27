@@ -83,7 +83,7 @@ IMPLICIT NONE
         REAL(dp), INTENT(in) :: gasTemperature,gasDensity,columnDensity,cloudSize
         REAL(dp), INTENT(in) :: abundances(:)
         INTEGER, INTENT(INOUT) :: successFlag
-        INTEGER ::i,j
+        INTEGER :: i, j
 
         ! write(*,*) "Initializing heating.f90 ..."
         CALL READ_COOLANTS(successFlag)
@@ -113,6 +113,8 @@ IMPLICIT NONE
         CLOUD_COLUMN=columnDensity
         CLOUD_DENSITY=gasDensity
         cloud_size=cloudSize
+
+        WRITE(*,'(A45,*(L1))') "Coolants enabled:", coolant_active
         ! Moved IO handling to io.f90
     END SUBROUTINE initializeHeating
 
@@ -229,15 +231,11 @@ IMPLICIT NONE
         CALL UPDATE_COOLANT_LINEWIDTHS(gasTemperature,turbVel)
         CALL UPDATE_COOLANT_ABUNDANCES(gasDensity,gasTemperature,abundances)
 
-        ! Manage coolant populations with automatic initialization and warm restart
-        ! This replaces the forced LTE reset with smart restart logic based on coolant_restart_mode
         CALL MANAGE_COOLANT_POPULATIONS(gasTemperature)
 
         CALL CALCULATE_LINE_OPACITIES()
         CALL CALCULATE_LAMBDA_OPERATOR()
 
-        !!write(*,*)  "lte done"
-        !I should then do LVG interactions
         ! Initialize SE solver statistics
         se_coolant_iterations(1:NCOOLANTS) = 0
         se_coolant_max_rel_change(1:NCOOLANTS) = 0.0D0
@@ -269,14 +267,14 @@ IMPLICIT NONE
             CALL CALCULATE_LINE_OPACITIES()
             CALL CALCULATE_LAMBDA_OPERATOR()
             IF (CHECK_CONVERGENCE()) THEN
-                WHERE(se_coolant_iterations .eq. 0) se_coolant_iterations = I  ! Set iteration count for any coolant that converged this round
+                WHERE(se_coolant_iterations .eq. 0) se_coolant_iterations = I
                 EXIT
             END IF
             
 
             !IF (I .eq. 499) write(*,*) "Failed convergence"
         END DO
-        CALL CPU_TIME(se_cpu_end) 
+        CALL CPU_TIME(se_cpu_end)
 
         !  Calculate the cooling rate due to the Lyman-alpha emission for each particle
         !  using the analytical expression of Spitzer (1978) neglecting photon trapping

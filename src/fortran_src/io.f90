@@ -253,6 +253,15 @@ CONTAINS
 
         level_offset = 0
         DO N = 1, NCOOLANTS
+            ! Safety net: prevent out-of-bounds write if levels exceed array size
+            IF (level_offset + coolants(N)%NLEVEL > SIZE(levelpopulationsarray, 3)) THEN
+                WRITE(*,'(A,I3,A,A,A,I6,A,I6,A,I6)') &
+                    "[LEVPOP] ERROR coolant ", N, " (", TRIM(coolants(N)%NAME), &
+                    ") would exceed array dim3: offset=", level_offset, &
+                    " nlevel=", coolants(N)%NLEVEL, &
+                    " dim3=", SIZE(levelpopulationsarray, 3)
+                RETURN
+            END IF
             DO i = 1, coolants(N)%NLEVEL
                 levelpopulationsarray(dtime, dstep, level_offset + i) = coolants(N)%POPULATION(i)
             END DO

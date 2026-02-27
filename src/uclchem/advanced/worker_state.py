@@ -1,0 +1,195 @@
+"""
+Snapshot and restore of advanced settings for multiprocessing propagation.
+
+When UCLCHEM runs grid models or managed-mode models, worker processes are
+spawned via ``mp.Pool`` or ``mp.Process`` with the ``spawn`` context.  These
+fresh processes import ``uclchemwrap`` from scratch, losing any runtime
+modifications made through ``GeneralSettings``, ``HeatingSettings``, or
+``NetworkState``.
+
+This module provides :func:`create_snapshot` / :func:`restore_snapshot` to
+capture the current Fortran module state into a picklable dict and re-apply
+it in a worker process before the model runs.
+"""
+
+from typing import Any, Dict
+
+import numpy as np
+import uclchemwrap
+from uclchemwrap import f2py_constants as f2py_constants_module
+from uclchemwrap import heating as heating_module
+from uclchemwrap import network as network_module
+
+from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
+
+# Module names mirroring GeneralSettings._discover_modules()
+_MODULE_NAMES = [
+    "defaultparameters",
+    "network",
+    "heating",
+    "physicscore",
+    "constants",
+    "cloud_mod",
+    "collapse_mod",
+    "cshock_mod",
+    "jshock_mod",
+    "hotcore",
+    "chemistry",
+    "rates",
+    "photoreactions",
+    "surfacereactions",
+    "io",
+    "f2py_constants",
+    "postprocess_mod",
+    "sputtering",
+]
+
+
+def create_snapshot() -> Dict[str, Any]:
+    """Capture the current Fortran module state into a picklable dict.
+
+    Reads directly from Fortran memory (not cached Python values) to ensure
+    accuracy even when settings were modified outside the wrapper classes.
+
+    The returned dict has three sections:
+
+    * ``"general"`` – scalar settings from all uclchemwrap sub-modules
+      (excluding PARAMETERs, INTERNAL, FILE_PATH, and arrays).
+    * ``"heating"`` – heating/cooling boolean arrays, scalars, and coolant
+      configuration.
+    * ``"network"`` – reaction-rate and binding-energy arrays.
+
+    Returns:
+        Fully picklable dict suitable for passing to :func:`restore_snapshot`.
+    """
+    snapshot: Dict[str, Any] = {}
+
+    # --- General settings (scalars only) ---
+    general: Dict[str, Dict[str, Any]] = {}
+    for mod_name in _MODULE_NAMES:
+        if not hasattr(uclchemwrap, mod_name):
+            continue
+        mod = getattr(uclchemwrap, mod_name)
+        mod_snapshot: Dict[str, Any] = {}
+        for attr in dir(mod):
+            if attr.startswith("_"):
+                continue
+            try:
+                value = getattr(mod, attr)
+            except Exception:
+                continue
+            if callable(value):
+                continue
+            # Skip arrays (handled by heating/network sections, or immutable)
+            if isinstance(value, np.ndarray):
+                continue
+            # Skip parameters that cannot or should not be set
+            attr_lower = attr.lower()
+            if attr_lower in FORTRAN_PARAMETERS:
+                continue
+            if attr_lower in INTERNAL_PARAMETERS:
+                continue
+            if attr_lower in FILE_PATH_PARAMETERS:
+                continue
+            mod_snapshot[attr] = value
+        if mod_snapshot:
+            general[mod_name] = mod_snapshot
+    snapshot["general"] = general
+
+    # --- Heating / cooling settings ---
+    heating: Dict[str, Any] = {
+        "heating_modules": np.copy(heating_module.heating_modules),
+        "cooling_modules": np.copy(heating_module.cooling_modules),
+        "dust_gas_coupling_method": int(heating_module.dust_gas_coupling_method),
+        "line_solver_attempts": int(heating_module.line_solver_attempts),
+        "pahabund": float(heating_module.pahabund),
+        "coolantdatadir": np.copy(f2py_constants_module.coolantdatadir),
+        "coolant_active": np.copy(f2py_constants_module.coolant_active),
+    }
+    # Coolant restart mode – accessor pattern varies between builds
+    if hasattr(uclchemwrap, "get_coolant_restart_mode_wrap"):
+        heating["coolant_restart_mode"] = int(uclchemwrap.get_coolant_restart_mode_wrap())
+    elif hasattr(
+        getattr(uclchemwrap, "uclchemwrap", None), "get_coolant_restart_mode_wrap"
+    ):
+        heating["coolant_restart_mode"] = int(
+            uclchemwrap.uclchemwrap.get_coolant_restart_mode_wrap()
+        )
+    snapshot["heating"] = heating
+
+    # --- Network state (rate parameters + binding energies) ---
+    snapshot["network"] = {
+        "alpha": np.copy(network_module.alpha),
+        "beta": np.copy(network_module.beta),
+        "gama": np.copy(network_module.gama),
+        "bindingenergy": np.copy(network_module.bindingenergy),
+    }
+
+    return snapshot
+
+
+def restore_snapshot(snapshot: Dict[str, Any]) -> None:
+    """Apply a previously captured snapshot to the current process.
+
+    Must be called **before** running any model in the worker process.
+
+    Args:
+        snapshot: Dict produced by :func:`create_snapshot`.
+    """
+    # --- General settings ---
+    for mod_name, settings_dict in snapshot.get("general", {}).items():
+        if not hasattr(uclchemwrap, mod_name):
+            continue
+        mod = getattr(uclchemwrap, mod_name)
+        for attr, value in settings_dict.items():
+            try:
+                setattr(mod, attr, value)
+            except (AttributeError, TypeError):
+                pass  # read-only or incompatible – skip silently
+
+    # --- Heating / cooling settings ---
+    heating = snapshot.get("heating", {})
+    if "heating_modules" in heating:
+        heating_module.heating_modules[:] = heating["heating_modules"]
+    if "cooling_modules" in heating:
+        heating_module.cooling_modules[:] = heating["cooling_modules"]
+    if "dust_gas_coupling_method" in heating:
+        heating_module.dust_gas_coupling_method = heating["dust_gas_coupling_method"]
+    if "line_solver_attempts" in heating:
+        heating_module.line_solver_attempts = heating["line_solver_attempts"]
+    if "pahabund" in heating:
+        heating_module.pahabund = heating["pahabund"]
+    if "coolantdatadir" in heating:
+        f2py_constants_module.coolantdatadir = heating["coolantdatadir"]
+    if "coolant_active" in heating:
+        f2py_constants_module.coolant_active[:] = heating["coolant_active"]
+    if "coolant_restart_mode" in heating:
+        mode = heating["coolant_restart_mode"]
+        if hasattr(uclchemwrap, "set_coolant_restart_mode_wrap"):
+            uclchemwrap.set_coolant_restart_mode_wrap(mode)
+        elif hasattr(
+            getattr(uclchemwrap, "uclchemwrap", None), "set_coolant_restart_mode_wrap"
+        ):
+            uclchemwrap.uclchemwrap.set_coolant_restart_mode_wrap(mode)
+
+    # --- Network state ---
+    net = snapshot.get("network", {})
+    if "alpha" in net:
+        np.copyto(network_module.alpha, net["alpha"])
+    if "beta" in net:
+        np.copyto(network_module.beta, net["beta"])
+    if "gama" in net:
+        np.copyto(network_module.gama, net["gama"])
+    if "bindingenergy" in net:
+        np.copyto(network_module.bindingenergy, net["bindingenergy"])
+
+
+def _pool_initializer(snapshot: Dict[str, Any]) -> None:
+    """``mp.Pool`` initializer that restores advanced settings in each worker.
+
+    Usage::
+
+        snapshot = create_snapshot()
+        mp.Pool(N, initializer=_pool_initializer, initargs=(snapshot,))
+    """
+    restore_snapshot(snapshot)

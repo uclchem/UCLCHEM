@@ -1,7 +1,8 @@
 MODULE COOLANT_MODULE
    USE constants
    USE F2PY_CONSTANTS, only: NCOOLANTS, coolantFiles, coolantNames, coolantDataDir, &
-                              coolantConversionFactors, coolantConversionMode, coolantParentNames
+                              coolantConversionFactors, coolantConversionMode, coolantParentNames, &
+                              N_TOTAL_LEVELS
    USE network
    USE defaultparameters, only: freq_rel_tol, pop_rel_tol
    IMPLICIT NONE
@@ -97,6 +98,7 @@ CONTAINS
       INTEGER, INTENT(INOUT) :: successFlag
       INTEGER :: I,J,K,L,M,N,INDEX,IER
       INTEGER :: NLEVEL,NLINE,NTEMP,NPARTNER,NCOLL,PARTNER_ID,MAX_NTEMP
+      INTEGER :: actual_total_levels
       INTEGER :: coolantID = 81
 
 !      WRITE(*,*) 'DEBUG: READ_COOLANTS starting. NCOOLANTS=', NCOOLANTS
@@ -307,8 +309,23 @@ CONTAINS
          coolants(N)%CACHE_INDEX=1  ! Start at first cache position
       END DO
 
+      ! Validate that the actual total levels matches the compile-time constant.
+      ! A mismatch means the coolant data files changed since MakeRates was run.
+      actual_total_levels = 0
+      DO N = 1, NCOOLANTS
+         actual_total_levels = actual_total_levels + coolants(N)%NLEVEL
+      END DO
+      IF (actual_total_levels .NE. N_TOTAL_LEVELS) THEN
+         WRITE(*,*) 'ERROR: Runtime total energy levels (', actual_total_levels, &
+                    ') does not match compile-time N_TOTAL_LEVELS (', N_TOTAL_LEVELS, ').'
+         WRITE(*,*) 'The coolant data files have changed since MakeRates was run.'
+         WRITE(*,*) 'Fix: Re-run MakeRates and reinstall UCLCHEM.'
+         successFlag = COOLANT_DATA_ERROR
+         RETURN
+      END IF
+
       RETURN
-   END SUBROUTINE READ_COOLANTS   
+   END SUBROUTINE READ_COOLANTS
 
    !=======================================================================
    !
