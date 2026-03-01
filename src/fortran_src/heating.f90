@@ -114,7 +114,7 @@ IMPLICIT NONE
         CLOUD_DENSITY=gasDensity
         cloud_size=cloudSize
 
-        WRITE(*,'(A45,*(L1))') "Coolants enabled:", coolant_active
+        ! WRITE(*,'(A45,*(L1))') "Coolants enabled:", coolant_active
         ! Moved IO handling to io.f90
     END SUBROUTINE initializeHeating
 
