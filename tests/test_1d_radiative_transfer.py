@@ -428,7 +428,7 @@ class Test1DChemicalEvolution:
         assert code2 == 0, "Phase 2 should succeed with starting_chemistry"
 
         # Abundances should have evolved from phase 1
-        assert np.allclose(
+        assert not np.allclose(
             chem1[-1, :, :], chem2[0, :, :]
         ), "Chemistry should continue evolving in phase 2"
 
@@ -726,7 +726,7 @@ class TestOOModelChaining1D:
         assert phys_df2["Time"].iloc[-1] >= 5.0e4
 
         # Verify chemistry evolved
-        assert np.allclose(
+        assert not np.allclose(
             model1.chemical_abun_array[-1], model2.chemical_abun_array[0]
         )
 

@@ -356,7 +356,7 @@ class AbstractModel(ABC):
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["managed", "external"] = "managed",
+        run_type: Literal["local", "managed", "external"] = "local",
     ):
         self._data = xr.Dataset()
         self._pickle_dict = {}
@@ -370,6 +370,7 @@ class AbstractModel(ABC):
         self._shm_desc = {}
         self._shm_handles = {}
         self._proc_handle = None
+        self.shared_memory_types = ["managed", "external"]
         self.separate_worker_types = ["managed"]
         # /Shared memory
 
@@ -1104,7 +1105,8 @@ class AbstractModel(ABC):
                 signal.signal(signal.SIGINT, self._orig_sigint)
                 raise KeyboardInterrupt
 
-        signal.signal(signal.SIGINT, _handler)
+        if self.run_type in self.shared_memory_types:
+            signal.signal(signal.SIGINT, _handler)
 
         if self.run_type not in self.separate_worker_types:
             output = self.run_fortran()
@@ -1135,7 +1137,8 @@ class AbstractModel(ABC):
         else:
             raise ValueError(f"run_type of {self.run_type} is not a valid value.")
 
-        signal.signal(signal.SIGINT, self._orig_sigint)
+        if self.run_type in self.shared_memory_types:
+            signal.signal(signal.SIGINT, self._orig_sigint)
 
         if hasattr(self, "_shm_handles"):
             self._coordinator_unlink_memory()
@@ -1665,33 +1668,59 @@ class AbstractModel(ABC):
         """Internal Method.
         Creates Fortran compliant np.arrays that can be passed to the Fortran part of UCLCHEM.
         """
-        (
-            self._shm_handles["physics_array"],
-            self._shm_desc["physics_array"],
-            self.physics_array,
-        ) = self._create_shared_memory_allocation(
-            (self.timepoints + 1, self._param_dict["points"], N_PHYSICAL_PARAMETERS)
-        )
-        (
-            self._shm_handles["chemical_abun_array"],
-            self._shm_desc["chemical_abun_array"],
-            self.chemical_abun_array,
-        ) = self._create_shared_memory_allocation(
-            (self.timepoints + 1, self._param_dict["points"], n_species)
-        )
+        # For shared memory:
+        if self.run_type in self.shared_memory_types:
+            (
+                self._shm_handles["physics_array"],
+                self._shm_desc["physics_array"],
+                self.physics_array,
+            ) = self._create_shared_memory_allocation(
+                (self.timepoints + 1, self._param_dict["points"], N_PHYSICAL_PARAMETERS)
+            )
+            (
+                self._shm_handles["chemical_abun_array"],
+                self._shm_desc["chemical_abun_array"],
+                self.chemical_abun_array,
+            ) = self._create_shared_memory_allocation(
+                (self.timepoints + 1, self._param_dict["points"], n_species)
+            )
+        else:
+            # fencepost problem, need to add 1 to timepoints to account for the 0th timestep
+            self.physics_array = np.zeros(
+                shape=(
+                    self.timepoints + 1,
+                    self._param_dict["points"],
+                    N_PHYSICAL_PARAMETERS,
+                ),
+                dtype=np.float64,
+                order="F",
+            )
+            self.chemical_abun_array = np.zeros(
+                shape=(self.timepoints + 1, self._param_dict["points"], n_species),
+                dtype=np.float64,
+                order="F",
+            )
         return
 
     def _create_rates_array(self):
         """Internal Method.
         Creates Fortran compliant np.array for rates that can be passed to the Fortran part of UCLCHEM.
         """
-        (
-            self._shm_handles["rates_array"],
-            self._shm_desc["rates_array"],
-            self.rates_array,
-        ) = self._create_shared_memory_allocation(
-            (self.timepoints + 1, self._param_dict["points"], n_reactions)
-        )
+        # For shared memory:
+        if self.run_type in self.shared_memory_types:
+            (
+                self._shm_handles["rates_array"],
+                self._shm_desc["rates_array"],
+                self.rates_array,
+            ) = self._create_shared_memory_allocation(
+                (self.timepoints + 1, self._param_dict["points"], n_reactions)
+            )
+        else:
+            self.rates_array = np.zeros(
+                shape=(self.timepoints + 1, self._param_dict["points"], n_reactions),
+                dtype=np.float64,
+                order="F",
+            )
         return
 
     def _create_heating_array(self):
@@ -1705,17 +1734,29 @@ class AbstractModel(ABC):
                 + uclchemwrap.heating.nheating
                 + uclchemwrap.f2py_constants.ncoolants
             )
-            (
-                self._shm_handles["heat_array"],
-                self._shm_desc["heat_array"],
-                self.heat_array,
-            ) = self._create_shared_memory_allocation(
+            # For shared memory:
+            if self.run_type in self.shared_memory_types:
                 (
-                    self.timepoints + 1,
-                    self._param_dict["points"],
-                    heating_array_size,
+                    self._shm_handles["heat_array"],
+                    self._shm_desc["heat_array"],
+                    self.heat_array,
+                ) = self._create_shared_memory_allocation(
+                    (
+                        self.timepoints + 1,
+                        self._param_dict["points"],
+                        heating_array_size,
+                    )
                 )
-            )
+            else:
+                self.heat_array = np.zeros(
+                    shape=(
+                        self.timepoints + 1,
+                        self._param_dict["points"],
+                        heating_array_size,
+                    ),
+                    dtype=np.float64,
+                    order="F",
+                )
         except AttributeError:
             # Heating module not available, likely compiled without heating support
             logging.debug("Heating module not available in uclchemwrap")
@@ -1726,13 +1767,20 @@ class AbstractModel(ABC):
         """Internal Method.
         Creates Fortran compliant np.array for DVODE solver statistics.
         """
-        (
-            self._shm_handles["stats_array"],
-            self._shm_desc["stats_array"],
-            self.stats_array,
-        ) = self._create_shared_memory_allocation(
-            (self.timepoints + 1, self._param_dict["points"], N_DVODE_STATS)
-        )
+        if self.run_type in self.shared_memory_types:
+            (
+                self._shm_handles["stats_array"],
+                self._shm_desc["stats_array"],
+                self.stats_array,
+            ) = self._create_shared_memory_allocation(
+                (self.timepoints + 1, self._param_dict["points"], N_DVODE_STATS)
+            )
+        else:
+            self.stats_array = np.zeros(
+                shape=(self.timepoints + 1, self._param_dict["points"], N_DVODE_STATS),
+                dtype=np.float64,
+                order="F",
+            )
         return
 
     def _create_level_populations_array(self):
@@ -1740,13 +1788,32 @@ class AbstractModel(ABC):
         Creates Fortran compliant np.array for coolant level populations.
         Shape: (timepoints+1, gridpoints, total_levels)
         """
-        (
-            self._shm_handles["level_populations_array"],
-            self._shm_desc["level_populations_array"],
-            self.level_populations_array,
-        ) = self._create_shared_memory_allocation(
-            (self.timepoints + 1, self._param_dict["points"], N_TOTAL_LEVELS)
-        )
+        if self.run_type in self.shared_memory_types:
+            (
+                self._shm_handles["level_populations_array"],
+                self._shm_desc["level_populations_array"],
+                self.level_populations_array,
+            ) = self._create_shared_memory_allocation(
+                (self.timepoints + 1, self._param_dict["points"], N_TOTAL_LEVELS)
+            )
+        else:
+            # Check if heating is available - if not, create default inactive array
+            if self.heat_array is None:
+                self.level_populations_array = np.zeros(
+                    shape=(2, 1, N_TOTAL_LEVELS),
+                    dtype=np.float64,
+                    order="F",
+                )
+            else:
+                self.level_populations_array = np.zeros(
+                    shape=(
+                        self.timepoints + 1,
+                        self._param_dict["points"],
+                        N_TOTAL_LEVELS,
+                    ),
+                    dtype=np.float64,
+                    order="F",
+                )
         return
 
     def _create_se_stats_array(self):
@@ -1756,13 +1823,28 @@ class AbstractModel(ABC):
         """
         n_stats = NCOOLANTS * N_SE_STATS_PER_COOLANT  # 35 * 3 = 105
 
-        (
-            self._shm_handles["se_stats_array"],
-            self._shm_desc["se_stats_array"],
-            self.se_stats_array,
-        ) = self._create_shared_memory_allocation(
-            (self.timepoints + 1, self._param_dict["points"], n_stats)
-        )
+        if self.run_type in self.shared_memory_types:
+            (
+                self._shm_handles["se_stats_array"],
+                self._shm_desc["se_stats_array"],
+                self.se_stats_array,
+            ) = self._create_shared_memory_allocation(
+                (self.timepoints + 1, self._param_dict["points"], n_stats)
+            )
+        else:
+            # Check if heating is available - if not, create default inactive array
+            if self.heat_array is None:
+                self.se_stats_array = np.zeros(
+                    shape=(2, 1, n_stats),
+                    dtype=np.float64,
+                    order="F",
+                )
+            else:
+                self.se_stats_array = np.zeros(
+                    shape=(self.timepoints + 1, self._param_dict["points"], n_stats),
+                    dtype=np.float64,
+                    order="F",
+                )
         return
 
     def get_level_populations_dataframe(self, point=0):
@@ -1837,12 +1919,18 @@ class AbstractModel(ABC):
         else:
             if len(np.shape(starting_chemistry)) == 1:
                 starting_chemistry = starting_chemistry[np.newaxis, :]
-            (
-                self._shm_handles["starting_chemistry_array"],
-                self._shm_desc["starting_chemistry_array"],
-                self.starting_chemistry_array,
-            ) = self._create_shared_memory_allocation(np.shape(starting_chemistry))
-            np.copyto(self.starting_chemistry_array, starting_chemistry, casting="no")
+            # For shared memory:
+            if self.run_type in self.shared_memory_types:
+                (
+                    self._shm_handles["starting_chemistry_array"],
+                    self._shm_desc["starting_chemistry_array"],
+                    self.starting_chemistry_array,
+                ) = self._create_shared_memory_allocation(np.shape(starting_chemistry))
+                np.copyto(self.starting_chemistry_array, starting_chemistry, casting="no")
+            else:
+                self.starting_chemistry_array = np.asfortranarray(
+                    starting_chemistry, dtype=np.float64
+                )
         return
 
     # /Creation of arrays
@@ -1971,7 +2059,7 @@ class Cloud(AbstractModel):
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["managed", "external"] = "managed",
+        run_type: Literal["local", "managed", "external"] = "local",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
@@ -2074,7 +2162,7 @@ class Collapse(AbstractModel):
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["managed", "external"] = "managed",
+        run_type: Literal["local", "managed", "external"] = "local",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         if collapse not in ["filament", "ambipolar"] and physics_output is None:
@@ -2197,7 +2285,7 @@ class PrestellarCore(AbstractModel):
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["managed", "external"] = "managed",
+        run_type: Literal["local", "managed", "external"] = "local",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
@@ -2314,7 +2402,7 @@ class CShock(AbstractModel):
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["managed", "external"] = "managed",
+        run_type: Literal["local", "managed", "external"] = "local",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
@@ -2427,7 +2515,7 @@ class JShock(AbstractModel):
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["managed", "external"] = "managed",
+        run_type: Literal["local", "managed", "external"] = "local",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
@@ -2551,7 +2639,7 @@ class Postprocess(AbstractModel):
         coldens_C_array: np.array = None,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["managed", "external"] = "managed",
+        run_type: Literal["local", "managed", "external"] = "local",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         # Allocate 1.5x the input timesteps to give the DVODE solver
@@ -2723,7 +2811,7 @@ class Model(AbstractModel):
         radfield_array: np.array = None,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["managed", "external"] = "managed",
+        run_type: Literal["local", "managed", "external"] = "local",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         # Allocate 1.5x the input timesteps to give the DVODE solver
