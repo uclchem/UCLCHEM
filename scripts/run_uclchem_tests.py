@@ -22,6 +22,10 @@ params = {
     "finalTime": 5.0e6,
     "outputFile": "examples/test-output/static-full.dat",
     "abundSaveFile": "examples/test-output/startstatic.dat",
+    "reltol": 1e-6,
+    "abstol_factor": 1e-12,
+    "abstol_min": 1e-20,
+    "writeTimestepInfo": True,
 }
 
 start = perf_counter()
@@ -30,6 +34,7 @@ stop = perf_counter()
 print(f"Static model in {stop - start:.1f} seconds")
 
 # change to collapsing phase1 params
+params["finalTime"] = 5e6
 params["freefall"] = True
 params["endAtFinalDensity"] = True
 params["initialDens"] = 1e2
@@ -41,6 +46,7 @@ uclchem.functional.cloud(param_dict=params, out_species=outSpecies)
 stop = perf_counter()
 print(f"Phase 1 in {stop - start:.1f} seconds")
 
+
 # finally, run phase 2 from the phase 1 model.
 params["initialDens"] = 1e5
 params["freezeFactor"] = 0.0
@@ -48,6 +54,10 @@ params["thermdesorb"] = True
 params["endAtFinalDensity"] = False
 params["freefall"] = False
 params["finalTime"] = 1e6
+# Use default parameters to avoid convergence issues
+params["reltol"] = 1e-12
+params["abstol_factor"] = 1e-15
+params["abstol_min"] = 1e-30
 params["abundLoadFile"] = "examples/test-output/startcollapse.dat"
 params["outputFile"] = "examples/test-output/phase2-full.dat"
 params.pop("columnFile")

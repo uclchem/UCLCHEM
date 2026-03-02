@@ -65,6 +65,10 @@ class RuntimeNetwork(BaseNetwork):
         Do not use with multiprocessing or multithreading.
     """
 
+    # Fortran uses 9999 as a sentinel value for reaction type keywords
+    # (GAR, PHOTON, CRP, CRPHOT, etc.) instead of species indices
+    _FORTRAN_KEYWORD_SENTINEL = 9999
+
     def __init__(self):
         """Initialize RuntimeNetwork by loading the compiled Fortran module.
 
@@ -196,12 +200,18 @@ class RuntimeNetwork(BaseNetwork):
     def _load_reactions_from_fortran(self) -> dict[int, Reaction]:
         """Load reactions from Fortran arrays into Python Reaction objects.
 
+        Fortran uses special sentinel values for reactant/product indices:
+        - Valid species: 1 to n_species (1-based indexing)
+        - Empty slot: 0
+        - Reaction keywords (GAR, PHOTON, CRP, etc.): 9999
+
         Returns:
             Dictionary mapping reaction indices to Reaction objects
         """
         reactions_dict = {}
 
         n_reactions = len(self._fortran.alpha)
+        n_species = len(self._fortran.specname)
 
         # Load reactions without validation - the compiled Fortran network
         # may contain modeling simplifications (e.g., pseudo-hydrogenation)
@@ -220,9 +230,11 @@ class RuntimeNetwork(BaseNetwork):
                 p4 = int(self._fortran.p4[i])
 
                 # Convert indices to species names
-                reactant1 = self._get_species_name(re1) if re1 > 0 else "NAN"
-                reactant2 = self._get_species_name(re2) if re2 > 0 else "NAN"
-                reactant3 = self._get_species_name(re3) if re3 > 0 else "NAN"
+                # Valid species indices: 1 to n_species (1-based)
+                # Keyword sentinel (9999): fall back to CSV for GAR, PHOTON, etc.
+                reactant1 = self._get_reactant_name(i, re1, n_species, "Reactant 1")
+                reactant2 = self._get_reactant_name(i, re2, n_species, "Reactant 2")
+                reactant3 = self._get_reactant_name(i, re3, n_species, "Reactant 3")
 
                 product1 = self._get_species_name(p1) if p1 > 0 else "NAN"
                 product2 = self._get_species_name(p2) if p2 > 0 else "NAN"
@@ -299,6 +311,41 @@ class RuntimeNetwork(BaseNetwork):
 
         array_idx = index - 1  # Convert to 0-based
         return str(np.char.decode(self._fortran.specname[array_idx])).strip()
+
+    def _get_reactant_name(
+        self, reaction_idx: int, fortran_idx: int, n_species: int, csv_column: str
+    ) -> str:
+        """Get reactant name from Fortran index, handling keyword sentinels.
+
+        Fortran uses different values for reactant indices:
+        - 1 to n_species: Valid species index (1-based)
+        - 0: Empty reactant slot (returns "NAN")
+        - 9999: Reaction type keyword (GAR, PHOTON, CRP, etc.)
+
+        For the keyword sentinel (9999), we fall back to the CSV file to
+        get the actual keyword string.
+
+        Args:
+            reaction_idx: Index of reaction in reactions list
+            fortran_idx: Fortran array value for this reactant
+            n_species: Total number of species in network
+            csv_column: Column name in reactions CSV ("Reactant 1", etc.)
+
+        Returns:
+            Species name or reaction type keyword
+        """
+        # Check if this is a valid species index (1-based)
+        if 0 < fortran_idx <= n_species:
+            return self._get_species_name(fortran_idx)
+
+        # For sentinel values (0 or 9999), fall back to CSV
+        # Use pd.isna() to properly detect NaN values from pandas
+        csv_val = self._reactions_csv.iloc[reaction_idx][csv_column]
+        if pd.isna(csv_val) or not isinstance(csv_val, str):
+            return "NAN"
+
+        # Return the keyword string (GAR, PHOTON, CRP, etc.)
+        return str(csv_val).strip().upper()
 
     def _cache_initial_state(self):
         """Cache the initial state of all modifiable Fortran parameters.

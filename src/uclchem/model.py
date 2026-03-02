@@ -88,7 +88,6 @@ import logging
 import multiprocessing as mp
 import os
 import signal
-import time
 import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -107,6 +106,7 @@ import xarray as xr
 from uclchemwrap import uclchemwrap as wrap
 
 from uclchem._coolant_utils import load_coolant_level_names
+from uclchem._fortran_capture import capture_fortran_output
 from uclchem.analysis import (
     check_element_conservation,
     create_abundance_plot,
@@ -261,8 +261,18 @@ def _read_array(model_group, name):
 
 # Worker entry for parallel jobs
 def _worker_entry(
-    model_class: str, init_kwargs: dict, shm_descs: dict, result_queue: mp.Queue
+    model_class: str,
+    init_kwargs: dict,
+    shm_descs: dict,
+    result_queue: mp.Queue,
+    advanced_snapshot: dict = None,
 ):
+    # Restore advanced settings captured in the coordinator process.
+    if advanced_snapshot is not None:
+        from uclchem.advanced.worker_state import restore_snapshot
+
+        restore_snapshot(advanced_snapshot)
+
     cls = REGISTRY.get(model_class)
     if cls is None:
         raise ValueError(
@@ -703,27 +713,22 @@ class AbstractModel(ABC):
                 check_element_conservation(self.get_dataframes(0), element_list, percent)
             )
 
-    def check_error(self, only_error: bool = False) -> None:
+    def check_error(self, only_error: bool = False, raise_on_error: bool = True) -> None:
         """
-        Prints the error message of the model based on self.success_flag, this method was originally an uclchem.utils function.
+        Checks the model error status and raises RuntimeError on failure.
 
         Args:
-            only_error (bool, optional): Flag to inform check_error to only print a message if self.success_flag was
-                not 0
+            only_error (bool, optional): If True, only act when there was an error (skip success message).
+            raise_on_error (bool, optional): If True (default), raises RuntimeError on failure. If False, prints.
         """
-        if self.success_flag != 0 and self.success_flag is not None:
-            errors = {
-                -1: "Parameter read failed. Likely due to a mispelled parameter name, compare your dictionary to the parameters docs.",
-                -2: "Physics intiialization failed. Often due to user chosing unacceptable parameters such as prestellar core masses or collapse modes that don't exist. Check the docs for your model function.",
-                -3: "Chemistry initialization failed",  # this doesn't exist yet
-                -4: "Unrecoverable integrator error, DVODE failed to integrate the ODEs in a way that UCLCHEM could not fix. Run UCLCHEM tests to check your network works at all then try to see if bad parameter combination is at play.",
-                -5: "Too many integrator fails. DVODE failed to integrate the ODE and UCLCHEM repeatedly altered settings to try to make it pass but tried too many times without success so code aborted to stop infinite loop.",
-                -6: "The model was stopped because there are not enough time points allocated in the time array. Increase the number of time points in the time array in constants.py and try again.",
-            }
-            try:
-                print(f"{errors[self.success_flag]}")
-            except KeyError:
-                raise ValueError(f"Unknown error code: {self.success_flag}")
+        if self.success_flag is not None and self.success_flag < 0:
+            from uclchem.utils import check_error as _check_error
+
+            if raise_on_error:
+                _check_error(self.success_flag, raise_on_error=True)
+            else:
+                msg = _check_error(self.success_flag, raise_on_error=False)
+                print(msg)
         elif self.success_flag == 0 and not only_error:
             print("Model ran successfully.")
         elif self.success_flag is None:
@@ -948,6 +953,108 @@ class AbstractModel(ABC):
             result.append(se_stats_df)
         return tuple(result)
 
+    def get_solver_stats_dataframe(self, point: int | None = None):
+        """Get all solver statistics including failed attempts.
+
+        This method returns statistics for EVERY DVODE solver call,
+        including failed attempts that were retried. This is different
+        from the regular stats in get_dataframes() which only shows
+        the final successful attempt per trajectory timestep.
+
+        Args:
+            point: Spatial point index (for multi-point models). If None, uses point 0.
+
+        Returns:
+            DataFrame with columns from DVODE_STAT_NAMES, or None if stats not available.
+            TRAJECTORY_INDEX column links solver attempts to trajectory timesteps.
+            Rows where TRAJECTORY_INDEX=0 are filtered out (unused preallocated space).
+
+        Example:
+            >>> model = uclchem.model.Cloud(param_dict)
+            >>> solver_stats = model.get_solver_stats_dataframe()
+            >>> # Count failed attempts
+            >>> failures = solver_stats[solver_stats['ISTATE'] < 0]
+            >>> print(f"Failed attempts: {len(failures)}")
+        """
+        if self.stats_array is None:
+            return None
+
+        if point is None:
+            point = 0
+
+        # Extract stats for this point and filter out unused rows
+        stats_data = self.stats_array[:, point, :]
+        valid_mask = stats_data[:, 0] > 0  # TRAJECTORY_INDEX > 0
+        stats_data = stats_data[valid_mask]
+
+        if len(stats_data) == 0:
+            return None
+
+        df = pd.DataFrame(stats_data, columns=DVODE_STAT_NAMES)
+        df["TRAJECTORY_INDEX"] = df["TRAJECTORY_INDEX"].astype(int)
+
+        return df
+
+    def get_failed_solver_attempts(self, point: int | None = None):
+        """Get only the failed solver attempts (ISTATE < 0).
+
+        Returns a DataFrame containing only solver attempts that failed
+        and required retry (ISTATE = -1, -2, -4, -5, etc.).
+
+        Args:
+            point: Spatial point index. If None, uses point 0.
+
+        Returns:
+            DataFrame of failed attempts, or None if no failures or stats unavailable.
+
+        Example:
+            >>> failures = model.get_failed_solver_attempts()
+            >>> if failures is not None:
+            >>>     print(f"Total retries needed: {len(failures)}")
+            >>>     print(failures.groupby('ISTATE').size())
+        """
+        df = self.get_solver_stats_dataframe(point)
+        if df is None:
+            return None
+
+        failed = df[df["ISTATE"] < 0]
+        return failed if len(failed) > 0 else None
+
+    def get_solver_efficiency_summary(self, point: int | None = None):
+        """Calculate solver efficiency metrics.
+
+        Returns:
+            dict with keys:
+                - total_attempts: Total DVODE calls
+                - successful_attempts: Calls that advanced the trajectory
+                - failed_attempts: Calls that were retried
+                - efficiency_ratio: successful / total (1.0 = no retries)
+                - total_cpu_time: Sum of all CPU time
+                - wasted_cpu_time: CPU time spent on failed attempts
+        """
+        df = self.get_solver_stats_dataframe(point)
+        if df is None:
+            return None
+
+        total_attempts = len(df)
+        failed_attempts = len(df[df["ISTATE"] < 0])
+        successful_attempts = total_attempts - failed_attempts
+
+        total_cpu = df["CPU_TIME"].sum()
+        wasted_cpu = df[df["ISTATE"] < 0]["CPU_TIME"].sum()
+
+        return {
+            "total_attempts": total_attempts,
+            "successful_attempts": successful_attempts,
+            "failed_attempts": failed_attempts,
+            "efficiency_ratio": successful_attempts / total_attempts
+            if total_attempts > 0
+            else 0.0,
+            "total_cpu_time": total_cpu,
+            "wasted_cpu_time": wasted_cpu,
+            "wasted_fraction": wasted_cpu / total_cpu if total_cpu > 0 else 0.0,
+        }
+
     def plot_species(
         self,
         ax: plt.axes,
@@ -1004,12 +1111,21 @@ class AbstractModel(ABC):
         if self.run_type not in self.separate_worker_types:
             output = self.run_fortran()
         elif self.run_type in self.separate_worker_types:
+            from uclchem.advanced.worker_state import create_snapshot
+
+            snapshot = create_snapshot()
             init_kwargs = self._create_init_dict()
             ctx = mp.get_context("spawn")
             result_queue = ctx.Queue()
             self._proc_handle = ctx.Process(
                 target=_worker_entry,
-                args=(self.model_type, init_kwargs, self._shm_desc, result_queue),
+                args=(
+                    self.model_type,
+                    init_kwargs,
+                    self._shm_desc,
+                    result_queue,
+                    snapshot,
+                ),
                 daemon=False,
             )
             self._proc_handle.start()
@@ -1965,9 +2081,10 @@ class Cloud(AbstractModel):
         Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
-        # Call wrap.cloud() without capturing return value
-        # Arrays are modified in-place by Fortran code, so return values aren't used
-        wrap.cloud(
+        # f2py returns all non-intent(in) values in Fortran signature order:
+        # [0-6] physicsarray..sestatsarray (in,out, modified in-place),
+        # [7] abundance_out, [8] specname_out, [9] successFlag
+        result = wrap.cloud(
             dictionary=self._param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
@@ -1986,19 +2103,14 @@ class Cloud(AbstractModel):
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
             else None,
         )
-        # For now, hardcode success_flag=0 and out_species_abundances_array as empty
-        # TODO: Need to find a way to get these from wrap.cloud without triggering shape bug
-        out_species_abundances_array = np.array([])
-        success_flag = 0
+        abundance_out, specname_out, success_flag = result[-3], result[-2], result[-1]
         if success_flag < 0:
             out_species_abundances_array = np.array([])
         else:
             out_species_length = (
                 len(self.out_species_list) if self.out_species_list is not None else 0
             )
-            out_species_abundances_array = list(
-                out_species_abundances_array[:out_species_length]
-            )
+            out_species_abundances_array = list(abundance_out[:out_species_length])
         return {
             "success_flag": success_flag,
             "out_species_abundances_array": out_species_abundances_array,
@@ -2530,17 +2642,20 @@ class Postprocess(AbstractModel):
         run_type: Literal["local", "managed", "external"] = "local",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
+        # Allocate 1.5x the input timesteps to give the DVODE solver
+        # headroom for additional internal substeps.
         super().__init__(
             param_dict,
             out_species,
             starting_chemistry,
             previous_model,
-            len(time_array),
+            int(1.5 * len(time_array)),
             debug,
             read_file,
             run_type,
         )
         if read_file is None and time_array is not None:
+            n_input = len(time_array)
             object.__setattr__(
                 self,
                 "postprocess_arrays",
@@ -2560,16 +2675,17 @@ class Postprocess(AbstractModel):
             )
             for key, array in self.postprocess_arrays.items():
                 if array is not None:
-                    # Convert single values into arrays that can be used
                     if isinstance(array, float):
-                        array = np.ones(shape=time_array.shape) * array
-                    # Assure lengths are correct
-                    assert len(array) == len(
-                        time_array
-                    ), "All arrays must be the same length"
-                    # Ensure Fortran memory
-                    array = np.asfortranarray(array, dtype=np.float64)
-                    self.postprocess_arrays[key] = array
+                        array = np.ones(n_input) * array
+                    assert len(array) == n_input, "All arrays must be the same length"
+                    # Pad to self.timepoints so Fortran gets
+                    # correctly sized arrays.
+                    padded = np.zeros(
+                        self.timepoints,
+                        dtype=np.float64,
+                    )
+                    padded[:n_input] = array
+                    self.postprocess_arrays[key] = np.asfortranarray(padded)
             self.time_array = time_array
             # Column-density (coldens) and visual extinction (Av) arrays
             self.coldens_H_array = coldens_H_array
@@ -2698,17 +2814,20 @@ class Model(AbstractModel):
         run_type: Literal["local", "managed", "external"] = "local",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
+        # Allocate 1.5x the input timesteps to give the DVODE solver
+        # headroom for additional internal substeps.
         super().__init__(
             param_dict,
             out_species,
             starting_chemistry,
             previous_model,
-            len(time_array),
+            int(1.5 * len(time_array)),
             debug,
             read_file,
             run_type,
         )
         if read_file is None and time_array is not None:
+            n_input = len(time_array)
             self.time_array = time_array
             self.postprocess_arrays = {
                 "timegrid": time_array,
@@ -2720,16 +2839,17 @@ class Model(AbstractModel):
             }
             for key, array in self.postprocess_arrays.items():
                 if array is not None:
-                    # Convert single values into arrays that can be used
                     if isinstance(array, float):
-                        array = np.ones(shape=time_array.shape) * array
-                    # Assure lengths are correct
-                    assert len(array) == len(
-                        time_array
-                    ), "All arrays must be the same length"
-                    # Ensure Fortran memory
-                    array = np.asfortranarray(array, dtype=np.float64)
-                    self.postprocess_arrays[key] = array
+                        array = np.ones(n_input) * array
+                    assert len(array) == n_input, "All arrays must be the same length"
+                    # Pad to self.timepoints so Fortran gets
+                    # correctly sized arrays.
+                    padded = np.zeros(
+                        self.timepoints,
+                        dtype=np.float64,
+                    )
+                    padded[:n_input] = array
+                    self.postprocess_arrays[key] = np.asfortranarray(padded)
             if not self.give_start_abund:
                 self.starting_chemistry_array = np.zeros(
                     shape=(self.gridPoints, n_species),
@@ -2961,13 +3081,18 @@ class SequentialModel:
             model["Model"]._coordinator_unlink_memory()
 
 
-def _run_grid_model(model_id, model_type, pending_model):
+def _run_grid_model(model_id, model_type, pending_model, log_dir=None):
     """
     Internal function to run a single model. This is used by the GridModels class
     """
+    log_file = None
+    if log_dir is not None:
+        log_file = os.path.join(log_dir, f"model_{model_id}.log")
+
     cls = REGISTRY.get(model_type)
     model_obj = cls(**pending_model, run_type="external")
-    model_obj.run()
+    with capture_fortran_output(label=f"model_{model_id}", log_file=log_file):
+        model_obj.run()
     model_obj._coordinator_unlink_memory()
     model_obj.pickle()
     return (model_id, model_obj)
@@ -2999,6 +3124,8 @@ class GridModels:
         overwrite_models=False,
         delay_run: bool = False,
         timer: bool = False,
+        log_dir: str = None,
+        model_ids: list = None,
     ):
         assert model_type in REGISTRY
         self.model_type = model_type
@@ -3021,6 +3148,12 @@ class GridModels:
         self.overwrite_models = overwrite_models
         self.timer = timer
         self.save_times = []
+        self.log_dir = log_dir
+        if self.log_dir is not None:
+            os.makedirs(self.log_dir, exist_ok=True)
+            self._main_log = os.path.join(self.log_dir, "grid.log")
+        else:
+            self._main_log = None
         self._orig_sigint = signal.getsignal(signal.SIGINT)
         self.parameters_to_grid = {}
 
@@ -3060,6 +3193,10 @@ class GridModels:
             ),
         )
 
+        # Optional subset of model indices (0-based column in flat_grids) to run.
+        # None means run all. Accepts any iterable; stored as a frozenset for O(1) lookup.
+        self.model_ids = frozenset(model_ids) if model_ids is not None else None
+
         self.model_id_dict = {}
         self.models = []
         self.physics_values = None
@@ -3077,50 +3214,63 @@ class GridModels:
         elif isinstance(value, (np.ndarray, np.generic)):
             self.parameters_to_grid[model_type + key] = value.astype(dtype=object)
 
+    def _log_main(self, msg):
+        """Append a timestamped line to the main grid log file."""
+        if self._main_log is None:
+            return
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(self._main_log, "a") as f:
+            f.write(f"{ts} {msg}\n")
+
     def run(self):
         signal.signal(signal.SIGINT, self._handler)
+        n_total = np.shape(self.flat_grids)[1]
+        self._log_main(f"Grid started: {n_total} models, {self.max_workers} workers")
+
+        # Capture advanced settings so spawned workers start with the same
+        # Fortran module state as the coordinator process.
+        from uclchem.advanced.worker_state import _pool_initializer, create_snapshot
+
+        snapshot = create_snapshot()
+
         pending = self.grid_iter(
             self.full_parameters,
             list(self.parameters_to_grid.keys()),
             self.flat_grids,
             self.model_type,
         )
-        with mp.Pool(self.max_workers) as pool:
-            active = 0
-            submitted = 0
+        with mp.Pool(
+            self.max_workers,
+            initializer=_pool_initializer,
+            initargs=(snapshot,),
+            maxtasksperchild=1,
+        ) as pool:
             completed = 0
 
-            def submit_next() -> bool:
-                nonlocal active, submitted
-                try:
-                    pending_model = next(pending)
-                except StopIteration:
-                    return False
-
-                active += 1
-                submitted += 1
-                model_id = pending_model.pop("id")
-                try:
-                    pool.apply_async(
-                        _run_grid_model,
-                        args=(model_id, self.model_type, pending_model),
-                        callback=lambda result: on_result(result),
-                        error_callback=lambda exc, _model_id=model_id: on_error(
-                            exc, model_id
-                        ),
-                    )
-                except Exception as e:
-                    print(f"exception found in submit_next: {e}")
-                return True
-
             def on_result(result):
-                nonlocal active, completed
-                active -= 1
+                nonlocal completed
                 completed += 1
                 model_id, model_object = result
                 try:
                     save_name = f"{self.model_name_prefix}{model_id}"
                     model_object.un_pickle()
+                    failed = (
+                        model_object.success_flag is not None
+                        and model_object.success_flag < 0
+                    )
+                    if failed:
+                        from uclchem.utils import check_error as _check_error
+
+                        msg = _check_error(
+                            model_object.success_flag, raise_on_error=False
+                        )
+                        self._log_main(
+                            f"model_{model_id} failed ({completed}/{n_total}): {msg}"
+                        )
+                    else:
+                        self._log_main(
+                            f"model_{model_id} completed ({completed}/{n_total})"
+                        )
                     if self.timer:
                         start_time = time.time()
                     model_object.save_model(
@@ -3137,26 +3287,29 @@ class GridModels:
 
                     traceback.print_exc()
 
-                if not submit_next() and active == 0:
-                    print("No more models to submit")
-
             def on_error(_exc, _model_id):
-                nonlocal active
-                active -= 1
-                # Optionally record/log the exception here.
-                self.model_id_dict[_model_id]._coordinator_unlink_memory()
+                self._log_main(f"model_{_model_id} error: {_exc}")
                 print(f"error: {_exc}; for model: {_model_id}")
-                if not submit_next() and active == 0:
-                    print("No more models to submit")
 
-            # Submit initial batch
-            for _ in range(np.shape(self.flat_grids)[1]):
-                if not submit_next():
-                    break
+            # Submit all tasks upfront; the pool limits actual concurrency to
+            # max_workers. pool.close()/join() are called only after all tasks
+            # have been submitted, so apply_async never races with a closed pool.
+            for pending_model in pending:
+                model_id = pending_model.pop("id")
+                if self.model_ids is not None and model_id not in self.model_ids:
+                    continue
+                self._log_main(f"model_{model_id} started")
+                pool.apply_async(
+                    _run_grid_model,
+                    args=(model_id, self.model_type, pending_model, self.log_dir),
+                    callback=on_result,
+                    error_callback=lambda exc, _mid=model_id: on_error(exc, _mid),
+                )
 
             pool.close()
             pool.join()
         signal.signal(signal.SIGINT, self._orig_sigint)
+        self._log_main(f"Grid finished: {len(self.model_id_dict)} models completed")
         self.models = [
             {"Model": v}
             for _, v in sorted(self.model_id_dict.items(), key=lambda item: item[1])

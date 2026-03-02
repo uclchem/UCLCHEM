@@ -1,0 +1,41 @@
+!ATOM
+N+ ground-state (^3P) fine structure line spectrum from NIST
+!ATOMIC WEIGHT
+14.0
+!NUMBER OF ENERGY LEVELS
+3
+!LEVEL + ENERGIES(cm^-1) + WEIGHT + J 
+    1     0.0000        1.0     0
+    2     48.7382       3.0     1
+    3     130.8000      5.0     2 
+!NUMBER OF RADIATIVE TRANSITIONS
+2
+!TRANS + UP + LOW + EINSTEINA(s^-1) + FREQ(GHz) + E_u(K)
+    1     2     1  2.08e-6          1461.1338000     70.10
+    2     3     2  7.46e-6          2459.3740000    188.10
+!NUMBER OF COLL PARTNERS
+2
+!COLLISIONS BETWEEN
+4 e-N+ collisions from Tayal (2011)
+!NUMBER OF COLL TRANS
+3
+!NUMBER OF COLL TEMPS
+11
+!COLL TEMPS
+   0.5e3  1.0e3  2.0e3  4.0e3  6.0e3  8.0e3  1.0e4  2.0e4  4.0e4  6.0e4  1.0e5
+!TRANS + UP + LOW + COLLRATES(cm^-3 s^-1)
+    1     2     1  5.093e-08  3.429e-08  2.289e-08  1.605e-08  1.351e-08  1.202e-08  1.093e-08  8.033e-09  6.025e-09  5.131e-09  4.120e-09
+    2     3     2  9.415e-08  6.658e-08  4.823e-08  3.656e-08  3.119e-08  2.759e-08  2.502e-08  1.818e-08  1.294e-08  1.042e-08  7.858e-09
+    3     3     1  8.412e-09  6.003e-09  4.437e-09  3.629e-09  3.386e-09  3.299e-09  3.244e-09  3.001e-09  2.588e-09  2.240e-09  1.773e-09
+! Collisions between 
+5 N+ + H from Yan & Babb, MNRAS 518 (2023) 6004
+! Number of collisional transitions 
+3 
+! Number of collisional temperatures 
+20 
+! Collisional temperatures 
+10.000      20.000      30.000      40.000      60.000      80.000      110.00      160.00      220.00      320.00      450.00      630.00      890.00      1260.0      1780.0      2510.0      3550.0      5010.0      8000.0    10000 
+! Transition + Up + Low + CollisionRates (cm3 s-1) 
+1 2 1 3.5347e-10 3.3317e-10 3.3081e-10 3.3078e-10 3.2735e-10 3.2071e-10 3.1015e-10 2.9694e-10 2.8813e-10 2.8280e-10 2.8333e-10 2.8921e-10 3.0100e-10 3.1783e-10 3.3754e-10 3.5908e-10 3.8415e-10 4.1550e-10 4.7471e-10 5.1147e-10 
+2 3 1 1.6896e-10 1.5632e-10 1.5823e-10 1.6388e-10 1.7728e-10 1.9009e-10 2.0679e-10 2.2915e-10 2.5014e-10 2.7711e-10 3.0383e-10 3.3239e-10 3.6454e-10 4.0113e-10 4.4376e-10 4.9427e-10 5.5453e-10 6.2394e-10 7.3283e-10 7.8999e-10 
+3 3 2 4.5777e-10 4.6104e-10 4.7821e-10 4.9618e-10 5.2921e-10 5.5797e-10 5.9472e-10 6.4453e-10 6.9289e-10 7.5778e-10 8.2529e-10 9.0094e-10 9.8965e-10 1.0925e-09 1.2113e-09 1.3492e-09 1.5119e-09 1.6993e-09 1.9978e-09 2.1578e-09 

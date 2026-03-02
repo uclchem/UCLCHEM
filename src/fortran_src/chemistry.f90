@@ -27,7 +27,7 @@ IMPLICIT NONE
     !f2py integer, intent(aux) :: points
     !These integers store the array index of important species and reactions, x is for ions    
     !loop counters    
-    INTEGER(dp) :: i,j,l,writeCounter=0,loopCounter,failedIntegrationCounter
+    INTEGER :: i,j,l,writeCounter=0,loopCounter,failedIntegrationCounter
     INTEGER, PARAMETER :: maxLoops=10,maxConsecutiveFailures=10
 
     !Array to store reaction rates
@@ -44,7 +44,7 @@ IMPLICIT NONE
     
     REAL(dp) :: MIN_ABUND = 1.0d-30 !Minimum abundance allowed
 
-    INTEGER(dp) :: nion,ionlist(nspec)
+    INTEGER :: nion,ionlist(nspec)
 
     REAL(dp) :: tempDot, oldTemp=0.0d0
     REAL(dp) :: h2form
@@ -57,9 +57,13 @@ IMPLICIT NONE
     INTEGER :: dvode_istate_out
     REAL(dp) :: dvode_cpu_start, dvode_cpu_end, dvode_cpu_time
 
+    !Solver statistics counter - tracks all DVODE calls including retries
+    INTEGER :: solver_stats_counter
+
 CONTAINS
-    SUBROUTINE initializeChemistry(readAbunds)
+    SUBROUTINE initializeChemistry(readAbunds, successFlag)
         LOGICAL, INTENT(IN) :: readAbunds
+        INTEGER, INTENT(INOUT) :: successFlag
         !f2py integer, intent(aux) :: points
 
         ! Sets variables at the start of every run.
@@ -140,6 +144,7 @@ CONTAINS
         !set integration counts
         loopCounter=0
         failedIntegrationCounter=0
+        solver_stats_counter=0  !Reset solver statistics counter
 
         IF (.NOT. ALLOCATED(abstol)) THEN
             ALLOCATE(abstol(NEQ))
@@ -148,7 +153,8 @@ CONTAINS
         
         IF (heatingFlag) THEN
             !Initializing heating.f90 --> get coolants
-            CALL initializeHeating(gasTemp(dstep),density(dstep),abund(:,1),colDens(dstep),cloudSize)
+            CALL initializeHeating(gasTemp(dstep),density(dstep),abund(:,1),colDens(dstep),cloudSize,successFlag)
+            IF (successFlag .lt. 0) RETURN
         END IF
 
         !Set rates to zero to ensure they don't hold previous values or random ones if we don't set them in calculateReactionRates
@@ -183,7 +189,7 @@ CONTAINS
         
     END SUBROUTINE initializeChemistry
 
-    SUBROUTINE updateChemistry(successFlag)
+    SUBROUTINE updateChemistry(successFlag, statsarray, statsarray_size, dtime)
     !Updates the abundances for the next time step, first updating chemical variables and reaction rates,
     !then by solving the ODE system to obtain new abundances.
     !Solving ODEs is complex so we have two checks to try to automatically overcome difficulties and end stalled models
@@ -194,6 +200,9 @@ CONTAINS
     !the code integrates to the planned targetTime rather than a reduced one. If the counter reaches maxConsecutiveFailures, we end the code.
         !f2py integer, intent(aux) :: points
         INTEGER, INTENT(OUT) :: successFlag
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(:,:,:) :: statsarray
+        INTEGER, INTENT(IN), OPTIONAL :: statsarray_size
+        INTEGER, INTENT(IN), OPTIONAL :: dtime
         real(dp) :: originalTargetTime !targetTime can be altered by integrator but we'd like to know if it was changed
         real(dp) :: surfaceCoverage
 
@@ -272,9 +281,13 @@ CONTAINS
                                 &    turbVel &                            ! turbulence velocity
                                 )
             end if
-                                
+
             !Integrate chemistry, and return fail if unrecoverable error was reached
-            CALL integrateODESystem(successFlag)
+            IF (PRESENT(statsarray) .AND. PRESENT(statsarray_size) .AND. PRESENT(dtime)) THEN
+                CALL integrateODESystem(successFlag, statsarray, statsarray_size, dtime)
+            ELSE
+                CALL integrateODESystem(successFlag)
+            END IF
             IF (successFlag .lt. 0) THEN
                 write(*,*) "Integration failed, exiting"
                 RETURN
@@ -286,7 +299,7 @@ CONTAINS
             gasTemp(dstep)=abund(nspec+1,dstep)
             density(dstep)=abund(nspec+2,dstep)
             ! IF (gasTemp(dstep) .lt. 10) gasTemp(dstep)=10.0
-            IF (gasTemp(dstep) .lt. 2.73) gasTemp(dstep)=2.73
+            IF (gasTemp(dstep) .lt. lower_limit_gastemp) gasTemp(dstep)=lower_limit_gastemp
             loopCounter=loopCounter+1
 
             ! For postprocessing, force solver to try and reach original target time
@@ -312,8 +325,11 @@ CONTAINS
 
     END SUBROUTINE updateChemistry
 
-    SUBROUTINE integrateODESystem(successFlag)
+    SUBROUTINE integrateODESystem(successFlag, statsarray, statsarray_size, dtime)
         INTEGER, INTENT(OUT) :: successFlag
+        DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(:,:,:) :: statsarray
+        INTEGER, INTENT(IN), OPTIONAL :: statsarray_size
+        INTEGER, INTENT(IN), OPTIONAL :: dtime
         TYPE(VODE_OPTS) :: OPTIONS
         successFlag=0
 
@@ -332,6 +348,27 @@ CONTAINS
         dvode_cpu_time = dvode_cpu_end - dvode_cpu_start
         dvode_istate_out = ISTATE
         CALL GET_STATS(dvode_rstats, dvode_istats)
+
+        ! Write solver statistics immediately after EVERY DVODE call (including failures)
+        IF (PRESENT(statsarray) .AND. PRESENT(statsarray_size) .AND. PRESENT(dtime)) THEN
+            solver_stats_counter = solver_stats_counter + 1
+
+            ! Check for array overflow
+            IF (solver_stats_counter > statsarray_size) THEN
+                write(*,*) "ERROR: Solver stats array overflow at counter", solver_stats_counter
+                write(*,*) "       Allocated size:", statsarray_size
+                write(*,*) "       Consider increasing statsarray allocation or reducing finalTime"
+                successFlag = SOLVER_STATS_OVERFLOW_ERROR
+                RETURN
+            END IF
+
+            ! Write stats: column 1 = trajectory index, rest shifted by 1
+            statsarray(solver_stats_counter, dstep, 1) = DBLE(dtime)
+            statsarray(solver_stats_counter, dstep, 2) = DBLE(dvode_istate_out)
+            statsarray(solver_stats_counter, dstep, 3:6) = dvode_rstats(11:14)
+            statsarray(solver_stats_counter, dstep, 7:18) = DBLE(dvode_istats(11:22))
+            statsarray(solver_stats_counter, dstep, 19) = dvode_cpu_time
+        END IF
 
         SELECT CASE(ISTATE)
             CASE(-1)
@@ -382,7 +419,7 @@ CONTAINS
         REAL(dp) :: D,loss,prod
         REAL(dp) :: surfaceCoverage
         REAL(dp) :: phi,cgr(6),grec,denom
-        INTEGER(dp) :: ii
+        INTEGER :: ii
         !Set D to the gas density for use in the ODEs
         D=y(nspec+2)     !Gas density
         ydot=0.0
@@ -419,8 +456,8 @@ CONTAINS
             ! IF (ABS(y(nspec+1)-oldTemp)/oldTemp.gt.0.1) THEN
             IF (ABS(y(nspec+1)-oldTemp).gt.0.1) THEN
                 gasTemp(dstep)=y(nspec+1)
-                IF (gasTemp(dstep) .lt. 10) gasTemp(dstep)=10.0
-                IF (gasTemp(dstep) .gt. 1.0d4) gasTemp(dstep)=1.0d4
+                IF (gasTemp(dstep) .lt. lower_limit_gastemp) gasTemp(dstep)=lower_limit_gastemp
+                IF (gasTemp(dstep) .gt. upper_limit_gastemp) gasTemp(dstep)=upper_limit_gastemp
                 ! h2form= h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))!h2FormRate(gasTemp(dstep),dustTemp(dstep))
                 tempDot=getTempDot( &
                             &    timeInYears, &                         ! time 

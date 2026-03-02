@@ -1,7 +1,8 @@
 MODULE COOLANT_MODULE
    USE constants
    USE F2PY_CONSTANTS, only: NCOOLANTS, coolantFiles, coolantNames, coolantDataDir, &
-                              coolantConversionFactors, coolantConversionMode, coolantParentNames
+                              coolantConversionFactors, coolantConversionMode, coolantParentNames, &
+                              N_TOTAL_LEVELS
    USE network
    USE defaultparameters, only: freq_rel_tol, pop_rel_tol
    IMPLICIT NONE
@@ -78,6 +79,10 @@ MODULE COOLANT_MODULE
    LOGICAL :: coolant_populations_initialized = .FALSE.
    REAL(dp) :: CLOUD_DENSITY,CLOUD_COLUMN,CLOUD_SIZE
 
+   ! Module-level error state for runtime errors (checked in time loop)
+   INTEGER :: coolant_error_flag = 0
+   CHARACTER(LEN=256) :: coolant_error_message = ""
+
 
 CONTAINS
    !=======================================================================
@@ -88,10 +93,12 @@ CONTAINS
    !  to be downloaded directly from the online database.
    !
    !-----------------------------------------------------------------------
-   SUBROUTINE READ_COOLANTS()
+   SUBROUTINE READ_COOLANTS(successFlag)
       IMPLICIT NONE
+      INTEGER, INTENT(INOUT) :: successFlag
       INTEGER :: I,J,K,L,M,N,INDEX,IER
       INTEGER :: NLEVEL,NLINE,NTEMP,NPARTNER,NCOLL,PARTNER_ID,MAX_NTEMP
+      INTEGER :: actual_total_levels
       INTEGER :: coolantID = 81
 
 !      WRITE(*,*) 'DEBUG: READ_COOLANTS starting. NCOOLANTS=', NCOOLANTS
@@ -113,14 +120,9 @@ CONTAINS
    !     Produce an error message if the file does not exist (or cannot be opened for whatever reason)
          IF(IER.NE.0) THEN
             WRITE(*,*) 'ERROR! Cannot open coolant data file ',TRIM(coolants(N)%FILENAME),' for input. I tried to open:', TRIM(coolantDataDir)//coolants(N)%FILENAME
-!            WRITE(*,*) 'DEBUG: IOSTAT after OPEN = ', IER
             CLOSE(coolantID)
-            STOP
-         END IF
-
-         IF (IER /= 0) THEN
-            WRITE(*,*) "READ error after reading ... in file ", TRIM(coolants(N)%FILENAME)
-            STOP
+            successFlag = COOLANT_FILE_ERROR
+            RETURN
          END IF
 
          READ(coolantID,*,IOSTAT=IER) coolants(N)%NAME ! Read the name of the coolant
@@ -143,7 +145,8 @@ CONTAINS
             WRITE(*,*) 'ERROR! Incorrect number of energy levels in coolant data file ',&
                         &TRIM(coolants(N)%FILENAME),' (NLEVEL=',NLEVEL,')'
             CLOSE(coolantID)
-            STOP
+            successFlag = COOLANT_DATA_ERROR
+            RETURN
          END IF
          coolants(N)%NLEVEL=NLEVEL
          ALLOCATE(coolants(N)%ENERGY(1:NLEVEL))
@@ -189,11 +192,13 @@ CONTAINS
                   IF(ABS(coolants(N)%FREQUENCY(I,J)-ABS(coolants(N)%ENERGY(I)-coolants(N)%ENERGY(J))/HP) &
                       & /coolants(N)%FREQUENCY(I,J).GT.freq_rel_tol) THEN
                      WRITE(*,*) 'ERROR! Calculated frequency differs from measured frequency beyond configured tolerance.'
+                     WRITE(*,"('Coolant: ',A)") TRIM(coolants(N)%NAME)
                      WRITE(*,"('Tolerance (fraction)=',F10.6)") freq_rel_tol
                      WRITE(*,"(1PD12.5,'Hz vs',1PD12.5,'Hz')") ABS(coolants(N)%ENERGY(I)-coolants(N)%ENERGY(J))/HP, &
                                                              & coolants(N)%FREQUENCY(I,J)
                      CLOSE(coolantID)
-                     STOP
+                     successFlag = COOLANT_FREQ_TOL_ERROR
+                     RETURN
                   END IF
                ELSE
                   coolants(N)%FREQUENCY(I,J)=ABS(coolants(N)%ENERGY(I)-coolants(N)%ENERGY(J))/HP
@@ -220,7 +225,8 @@ CONTAINS
                WRITE(*,*) 'ERROR! Unrecognized collision partner ID in coolant data file ',&
                            &TRIM(coolants(N)%FILENAME),' (ID=',PARTNER_ID,')'
                CLOSE(coolantID)
-               STOP
+               successFlag = COOLANT_DATA_ERROR
+               RETURN
             END IF
             READ(coolantID,*,IOSTAT=IER)
             READ(coolantID,*,IOSTAT=IER) NCOLL
@@ -230,7 +236,8 @@ CONTAINS
                WRITE(*,*) 'ERROR! Number of temperature values exceeds limit in coolant data file ',&
                            &TRIM(coolants(N)%FILENAME),' (NTEMP=',NTEMP,')'
                CLOSE(coolantID)
-               STOP
+               successFlag = COOLANT_DATA_ERROR
+               RETURN
             END IF
             READ(coolantID,*,IOSTAT=IER)
             READ(coolantID,*,IOSTAT=IER) (coolants(N)%TEMPERATURE(PARTNER_ID,K),K=1,NTEMP)
@@ -302,8 +309,23 @@ CONTAINS
          coolants(N)%CACHE_INDEX=1  ! Start at first cache position
       END DO
 
+      ! Validate that the actual total levels matches the compile-time constant.
+      ! A mismatch means the coolant data files changed since MakeRates was run.
+      actual_total_levels = 0
+      DO N = 1, NCOOLANTS
+         actual_total_levels = actual_total_levels + coolants(N)%NLEVEL
+      END DO
+      IF (actual_total_levels .NE. N_TOTAL_LEVELS) THEN
+         WRITE(*,*) 'ERROR: Runtime total energy levels (', actual_total_levels, &
+                    ') does not match compile-time N_TOTAL_LEVELS (', N_TOTAL_LEVELS, ').'
+         WRITE(*,*) 'The coolant data files have changed since MakeRates was run.'
+         WRITE(*,*) 'Fix: Re-run MakeRates and reinstall UCLCHEM.'
+         successFlag = COOLANT_DATA_ERROR
+         RETURN
+      END IF
+
       RETURN
-   END SUBROUTINE READ_COOLANTS   
+   END SUBROUTINE READ_COOLANTS
 
    !=======================================================================
    !
@@ -369,7 +391,10 @@ CONTAINS
             WRITE(*,'(A,I4,A,I4)') &
                "  coolantIndices(N)=", coolantIndices(N), " (max allowed=", SIZE(abundances), ")"
             WRITE(*,*) "  This likely indicates a configuration error (wrong parent_species) or memory corruption."
-            STOP
+            coolant_error_flag = COOLANT_CONFIG_ERROR
+            WRITE(coolant_error_message, '(A,A,A)') 'Unphysical abundance for coolant ', &
+               TRIM(coolantNames(N)), '. Configuration error or memory corruption.'
+            RETURN
          END IF
 
          ! Info: Warn about very small densities (but don't stop - they'll be skipped by threshold check)
@@ -416,9 +441,13 @@ CONTAINS
       END DO
    !  Check that the sum of the level populations matches the total density within the configured tolerance
       IF(ABS(DENSITY-SUM(POPULATION))/DENSITY.GT.pop_rel_tol) THEN
-         WRITE(*,"('ERROR! Sum of LTE level populations differs from the total density by',F4.1,'%')") &
+         WRITE(*,"('ERROR: Sum of LTE level populations differs from the total density by',F6.2,'%')") &
             & 1.0D2*ABS(SUM(POPULATION)-DENSITY)/DENSITY
-         STOP
+         coolant_error_flag = COOLANT_POP_TOL_ERROR
+         WRITE(coolant_error_message, '(A,F6.2,A)') &
+            'LTE population sum deviates from density by ', &
+            1.0D2*ABS(SUM(POPULATION)-DENSITY)/DENSITY, '%'
+         RETURN
       END IF
 
       RETURN
@@ -567,7 +596,7 @@ SUBROUTINE CALCULATE_LEVEL_POPULATIONS(COOLANT,GasTemperature,gasDensity,abundan
    IMPLICIT NONE
    REAL(dp), INTENT(IN) :: gasDensity,gasTemperature,abundances(:),dustTemp
    TYPE(COOLANT_TYPE),  INTENT(INOUT)    :: COOLANT
-   INTEGER:: I,J,N
+   INTEGER:: I,J,N,ierr
    REAL(dp)     :: SUM
 
 !  Reset the persistent workspace arrays (no allocation needed)
@@ -594,11 +623,14 @@ SUBROUTINE CALCULATE_LEVEL_POPULATIONS(COOLANT,GasTemperature,gasDensity,abundan
       DO J=1,COOLANT%NLEVEL
          IF(J.EQ.I) CYCLE
          IF(ISNAN(COOLANT%R(J,I))) THEN
-            write(*,*) coolant%name
-             DO N=1,COOLANT%NLEVEL
+            write(*,*) 'ERROR: NaN in transition matrix for coolant ', TRIM(coolant%name)
+            DO N=1,COOLANT%NLEVEL
                write(*,*) COOLANT%R(N,:)
             END DO
-            STOP
+            coolant_error_flag = COOLANT_SOLVER_ERROR
+            WRITE(coolant_error_message, '(A,A)') 'NaN in transition matrix for coolant ', &
+               TRIM(coolant%name)
+            RETURN
          END IF
          ! IF (COOLANT%R(J,I) .eq. 0.0) write(*,*) coolant%name,I,J
          COOLANT%A(I,J) = -COOLANT%R(J,I)
@@ -617,7 +649,13 @@ SUBROUTINE CALCULATE_LEVEL_POPULATIONS(COOLANT,GasTemperature,gasDensity,abundan
    COOLANT%B(COOLANT%NLEVEL)=coolant%density
 
 !  Call the Gauss-Jordan solver (the solution is returned in vector b)
-   CALL GAUSS_JORDAN(COOLANT%NLEVEL,COOLANT%A,COOLANT%B,COOLANT%IPIV,COOLANT%INDEX_ROW,COOLANT%INDEX_COL)
+   CALL GAUSS_JORDAN(COOLANT%NLEVEL,COOLANT%A,COOLANT%B,COOLANT%IPIV,COOLANT%INDEX_ROW,COOLANT%INDEX_COL,ierr)
+   IF (ierr .ne. 0) THEN
+      coolant_error_flag = COOLANT_SOLVER_ERROR
+      WRITE(coolant_error_message, '(A,A)') 'Singular matrix in Gauss-Jordan for coolant ', &
+         TRIM(COOLANT%NAME)
+      RETURN
+   END IF
 
 !  Replace negative or NaN values caused by numerical noise around zero
    DO I=1,COOLANT%NLEVEL
@@ -651,7 +689,7 @@ END SUBROUTINE CALCULATE_LEVEL_POPULATIONS
 !  values.
 !
 !-----------------------------------------------------------------------
-SUBROUTINE GAUSS_JORDAN(N,A,B,IPIV,INDEX_ROW,INDEX_COL)
+SUBROUTINE GAUSS_JORDAN(N,A,B,IPIV,INDEX_ROW,INDEX_COL,IERR)
    USE SWAP_FUNCTION
    IMPLICIT NONE
 
@@ -659,11 +697,13 @@ SUBROUTINE GAUSS_JORDAN(N,A,B,IPIV,INDEX_ROW,INDEX_COL)
    REAL(dp),     INTENT(INOUT) :: A(:,:)
    REAL(dp),     INTENT(INOUT) :: B(:)
    INTEGER, INTENT(INOUT) :: IPIV(:),INDEX_ROW(:),INDEX_COL(:)
+   INTEGER, INTENT(OUT)   :: IERR
 
    INTEGER :: I,J,K,L,IROW,ICOL
    REAL(dp) :: MAX,DUMMY,PIVINV
 
 !  Reset the persistent workspace arrays (no allocation needed)
+   IERR=0
    ICOL=0
    IROW=0
    IPIV=0
@@ -683,7 +723,8 @@ SUBROUTINE GAUSS_JORDAN(N,A,B,IPIV,INDEX_ROW,INDEX_COL)
                         WRITE(*,"(100(0PD9.1))") A(L,:)
                      END DO
                      WRITE(*,*)
-                     STOP
+                     IERR = -1
+                     RETURN
                   END IF
                   IF(ABS(A(J,K)).GE.MAX) THEN
                      MAX=ABS(A(J,K))
@@ -694,7 +735,8 @@ SUBROUTINE GAUSS_JORDAN(N,A,B,IPIV,INDEX_ROW,INDEX_COL)
                   WRITE(*,*)
                   WRITE(*,*) 'ERROR! Singular matrix found in Gauss-Jordan routine (#1)'
                   WRITE(*,*)
-                  STOP
+                  IERR = -1
+                  RETURN
                END IF
             END DO
          END IF
@@ -710,7 +752,8 @@ SUBROUTINE GAUSS_JORDAN(N,A,B,IPIV,INDEX_ROW,INDEX_COL)
          WRITE(*,*)
          WRITE(*,*) 'ERROR! Singular matrix found in Gauss-Jordan routine (#2)'
          WRITE(*,*)
-         STOP
+         IERR = -1
+         RETURN
       END IF
       PIVINV=1.0D0/A(ICOL,ICOL)
       A(ICOL,ICOL)=1.0D0

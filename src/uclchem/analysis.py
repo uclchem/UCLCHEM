@@ -822,6 +822,8 @@ def rate_constants_to_dy_and_rates(
     if network:
         species = network.get_species_list()
         reactions = network.get_reaction_list()
+    if "Point" in rate_constants.columns:
+        rate_constants = rate_constants.drop(columns=["Point"])
     # Import all of the constants directly from UCLCHEMWRAP to avoid discrepancies
     GAS_DUST_DENSITY_RATIO = surfacereactions.gas_dust_density_ratio
     NUM_SITES_PER_GRAIN = surfacereactions.num_sites_per_grain
@@ -832,12 +834,19 @@ def rate_constants_to_dy_and_rates(
     totalSwap = bulkLayersReciprocal * get_total_swap(
         rate_constants, abundances, reactions
     )
+    # Calculate safe values to avoid division by zero
+    safeBulk = abundances["BULK"].apply(lambda x: max(1.0e-30, x))
+    safeMantle = abundances["SURFACE"].apply(lambda x: max(1.0e-30, x))
+    ratioSurfaceToBulk = (safeMantle / safeBulk).apply(lambda x: min(1.0, x))
 
     # Create the incidence matrix, we use this to evaluate the rates and
     incidence = construct_incidence(species, reactions)
 
     # Create a copy so we don't overwrite
     rate_by_reaction = rate_constants.copy()
+
+    # Keep track of missing reaction types:
+    missing_reactions = set()
 
     # Iterate over each of the rates and compute the contribution to dy for that reaction.
     for idx, reaction in enumerate(network.get_reaction_list()):
@@ -852,21 +861,57 @@ def rate_constants_to_dy_and_rates(
                 rate *= abundances[reactant]
 
         reaction_type = reaction.get_reaction_type()
-        if reaction_type in ["LH", "LHDES", "BULKSWAP"]:
-            if reaction.is_bulk_reaction(include_products=False):
-                rate *= bulkLayersReciprocal
+        reactants = reaction.get_sorted_reactants()
+
+        # GAR needs an additional factor of density
+        if reaction_type == "GAR":
+            rate *= physics["Density"]
+        # BULKSWAP reactions use ratioSurfaceToBulk
+        elif reaction_type == "BULKSWAP":
+            rate *= ratioSurfaceToBulk
+        # LH/LHDES bulk reactions
+        elif reaction_type in ["LH", "LHDES"]:
+            if len(reactants) >= 3 and reactants[2] in ["LH", "LHDES"]:
+                if "@" in reactants[0]:
+                    rate *= bulkLayersReciprocal
+        # ED reactions multiply by #H2 abundance
+        elif reaction_type == "ED":
+            rate *= abundances["#H2"]
         elif reaction_type == "SURFSWAP":
-            rate *= totalSwap / abundances["SURFACE"]
+            rate *= totalSwap / safeMantle
         elif reaction_type in ["DESCR", "DEUVCR", "ER", "ERDES"]:
-            rate /= abundances["SURFACE"]
+            rate /= safeMantle
         elif reaction_type == "DESOH2":
-            rate *= abundances["H"] / abundances["SURFACE"]
+            rate *= abundances["H"] / safeMantle
         elif reaction_type == "H2FORM":
-            # For some reason, H2form only uses the hydrogen density once
+            # H2FORM only uses 1 factor of H abundance (Cazaux & Tielens 2004)
             rate /= abundances["H"]
+        elif reaction_type in [
+            "PHOTON",
+            "CRP",
+            "CRPHOT",
+            "FREEZE",
+            "DESORB",
+            "THERM",
+            "TWOBODY",
+            "IONOPOL1",
+            "IONOPOL2",
+            "CRS",
+            "EXSOLID",
+            "EXRELAX",
+        ]:
+            # Standard reactions that require no additional prefactors
+            pass
         else:
-            raise ValueError(f"Unknown reaction type {reaction_type}")
+            missing_reactions.add(reaction_type)
+            # Short circuit error:
+            # raise ValueError(f"Unknown reaction type {reaction_type}")
         rate_by_reaction.iloc[:, idx] = rate
+
+    if missing_reactions:
+        raise ValueError(
+            f"Missing reaction types in rate processing: {missing_reactions}"
+        )
 
     # Compute the rate at each timestep, adding the appropriate header
     dy = rate_by_reaction @ incidence

@@ -8,8 +8,12 @@ database_reaction_type: UMIST
 # database_reaction_type : KIDA
 
 #set of additional reactions: eg grain network
-custom_reaction_file: data/default/default_grain_network.csv
-custom_reaction_type: UCL
+custom_reaction_file:
+  - data/default/default_grain_network.csv
+  - data/grain_assisted_recombination/grain_assisted_recombination.csv
+custom_reaction_type:
+  - UCL
+  - UCL
 
 # Directory in which to store output. If not included we automatically move
 # the files to the uclchem src folder. This is the default behaviour.
@@ -24,6 +28,8 @@ enable_rates_storage: False
 # Enable the computation of all the enthalpies:
 derive_reaction_exothermicity: False
 
+# database_reaction_exothermicity: enthalpy_routines/custom_heating_cooling_reactions.csv
+
 # Optional: Specify custom exothermicity files to override computed values
 # Can be a single file or a list of files. Files are processed in order.
 # Example single file:
@@ -32,3 +38,6 @@ derive_reaction_exothermicity: False
 # database_reaction_exothermicity:
 #   - enthalpy_routines/custom_heating_cooling_reactions.csv
 #   - enthalpy_routines/additional_reactions.csv
+
+# Add the parameterization for the grain-assisted recombination reactions from Weingartner & Draine (2001)
+grain_assisted_recombination_file: data/databases/weingartner01_grain_assisted_recombination.yaml

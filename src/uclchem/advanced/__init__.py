@@ -19,10 +19,13 @@ from .advanced_heating import HeatingSettings
 from .advanced_network import NetworkState, RuntimeReaction, RuntimeSpecies
 from .advanced_settings import GeneralSettings, ModuleSettings, Setting
 from .runtime_network import RuntimeNetwork
+from .worker_state import create_snapshot, restore_snapshot
 
 __all__ = [
     "HeatingSettings",
     "NetworkState",
     "GeneralSettings",
     "RuntimeNetwork",
+    "create_snapshot",
+    "restore_snapshot",
 ]

@@ -403,7 +403,10 @@ def write_outputs(
     filename = fortran_src_dir / "f2py_constants.f90"
 
     # Compute energy level counts from coolant data files
-    from uclchem._coolant_utils import get_energy_levels_info
+    from uclchem._coolant_utils import (
+        get_energy_levels_info,
+        validate_coolant_frequencies,
+    )
 
     coolant_data_directory = get_default_coolant_directory(coolant_data_dir)
     n_total_levels, n_se_stats_per_coolant = get_energy_levels_info(
@@ -411,6 +414,36 @@ def write_outputs(
         coolant_files=[c["file"] for c in coolants],
         data_dir=coolant_data_directory,
     )
+
+    # Validate frequency consistency and compute suggested tolerance
+    freq_deviations = validate_coolant_frequencies(
+        coolant_names=[c["name"] for c in coolants],
+        coolant_files=[c["file"] for c in coolants],
+        data_dir=coolant_data_directory,
+    )
+    if freq_deviations:
+        max_deviation = max(freq_deviations.values())
+        # Add 10% margin above the largest observed deviation
+        suggested_freq_rel_tol = max_deviation * 1.1
+        # Enforce a minimum tolerance of 0.01 (1%)
+        suggested_freq_rel_tol = max(suggested_freq_rel_tol, 0.01)
+
+        # Log per-coolant frequency deviations (sorted largest first)
+        sorted_devs = sorted(freq_deviations.items(), key=lambda x: -x[1])
+        name_width = max(len(name) for name, _ in sorted_devs)
+        logging.info("Coolant frequency deviations (|E_i-E_j|/h vs LAMDA):")
+        logging.info(f"  {'Coolant':<{name_width}}  {'Deviation':>10}")
+        logging.info(f"  {'-' * name_width}  {'-' * 10}")
+        for name, dev in sorted_devs:
+            marker = " <<<" if dev > 0.01 else ""
+            logging.info(f"  {name:<{name_width}}  {dev*100:9.4f}%{marker}")
+        logging.info(
+            f"  Auto-setting freq_rel_tol = {suggested_freq_rel_tol:.4f} "
+            f"(max deviation {max_deviation*100:.2f}% + 10% margin)"
+        )
+    else:
+        suggested_freq_rel_tol = 0.01
+        max_deviation = 0.0
 
     # Compute coolant conversion arrays
     parent_names = []
@@ -481,7 +514,7 @@ def write_outputs(
         "n_species": len(network.get_species_list()),
         "n_reactions": len(network.get_reaction_list()),
         "n_physical_parameters": len(PHYSICAL_PARAMETERS),
-        "n_dvode_stats": 18,
+        "n_dvode_stats": 19,
         "n_coolants": len(coolants),
         "max_coolants": len(coolants),
         "n_total_levels": n_total_levels,
@@ -492,6 +525,7 @@ def write_outputs(
         "conversion_factors": conversion_factors,
         "conversion_modes": conversion_modes,
         "coolant_data_dir": coolant_data_dir if coolant_data_dir else "",
+        "suggested_freq_rel_tol": suggested_freq_rel_tol,
     }
     write_f90_constants(f2py_constants, filename)
     # Note: constants.py now reads directly from f2py_constants module,
@@ -545,6 +579,7 @@ def write_f90_constants(
     # Extract numeric arrays to be written via array_to_string (handles line limits)
     conversion_factors = replace_dict.pop("conversion_factors", None)
     conversion_modes = replace_dict.pop("conversion_modes", None)
+    suggested_freq_rel_tol = replace_dict.pop("suggested_freq_rel_tol", None)
 
     constants = constants.format(**replace_dict)
 
@@ -560,6 +595,23 @@ def write_f90_constants(
         extra_lines += "    " + array_to_string(
             "coolantConversionMode", np.array(conversion_modes), type="int"
         )
+    # Generate coolant_active array: all coolants enabled by default
+    if "n_coolants" in replace_dict or conversion_factors is not None:
+        n_coolants = (
+            len(conversion_factors)
+            if conversion_factors is not None
+            else replace_dict.get("n_coolants", 0)
+        )
+        if n_coolants > 0:
+            coolant_active_defaults = np.ones(n_coolants, dtype=bool)
+            extra_lines += "    ! Per-coolant on/off toggle (can be changed at runtime via HeatingSettings)\n"
+            extra_lines += "    " + array_to_string(
+                "coolant_active", coolant_active_defaults, type="logical", parameter=False
+            )
+    if suggested_freq_rel_tol is not None:
+        extra_lines += "    ! Suggested freq_rel_tol based on max observed deviation (with 10% margin)\n"
+        extra_lines += f"    REAL(dp), PARAMETER :: suggested_freq_rel_tol = {suggested_freq_rel_tol:.6e}\n"
+
     if extra_lines:
         constants = constants.replace(
             "END MODULE F2PY_CONSTANTS", extra_lines + "END MODULE F2PY_CONSTANTS"
@@ -1094,9 +1146,15 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
     )
     network_file.write(array_to_string("customVdiff", customVdiffList, type="float"))
 
-    network_file.write(array_to_string("moleculeIsLinear", isLinears, type="logical"))
-    network_file.write(array_to_string("inertiaProducts", inertiaProducts, type="float"))
-    network_file.write(array_to_string("formationEnthalpy", enthalpyList, type="float"))
+    network_file.write(
+        array_to_string("moleculeIsLinear", isLinears, type="logical", parameter=False)
+    )
+    network_file.write(
+        array_to_string("inertiaProducts", inertiaProducts, type="float", parameter=False)
+    )
+    network_file.write(
+        array_to_string("formationEnthalpy", enthalpyList, type="float", parameter=False)
+    )
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
     return len(iceList)
 
@@ -1166,7 +1224,7 @@ def write_network_file(
     if len(speciesIndices) > 72:
         speciesIndices = truncate_line(speciesIndices)
     speciesIndices = speciesIndices[:-1] + "\n"
-    openFile.write("    INTEGER(dp), PARAMETER ::" + speciesIndices)
+    openFile.write("    INTEGER, PARAMETER ::" + speciesIndices)
     openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
     openFile.write("    REAL(dp) :: SURFGROWTHUNCORRECTED\n")
     openFile.write(array_to_string("    specname", names, type="string"))
@@ -1200,7 +1258,7 @@ def write_network_file(
     for reaction, index in network.important_reactions.items():
         reaction_indices += reaction + f"={index},"
     reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
-    openFile.write("    INTEGER(dp), PARAMETER ::" + reaction_indices)
+    openFile.write("    INTEGER, PARAMETER ::" + reaction_indices)
 
     for i, reaction in enumerate(reaction_list):
         reactant1.append(find_reactant(names, reaction.get_reactants()[0]))
@@ -1437,7 +1495,7 @@ def array_to_string(
         shape = arr.shape
         flat = arr.flatten(order="F")
         if type == "int":
-            dtype = "INTEGER(dp)"
+            dtype = "INTEGER"
             values = ",".join(str(int(v)) for v in flat)
         elif type == "float":
             dtype = "REAL(dp)"
@@ -1447,8 +1505,8 @@ def array_to_string(
             dtype = f"CHARACTER(Len={strLength})"
             values = ",".join('"' + str(v).ljust(strLength) + '"' for v in flat)
         elif type == "logical":
-            dtype = "LOGICAL(dp)"
-            values = ",".join(f".{str(v).upper()}." for v in flat)
+            dtype = "LOGICAL"
+            values = ",".join(".TRUE." if v else ".FALSE." for v in flat)
         else:
             raise ValueError("Not a valid type for array to string")
         param_str = ", PARAMETER" if parameter else ""
@@ -1461,7 +1519,7 @@ def array_to_string(
         else:
             outString = " :: " + name + " ({0})=(/".format(len(arr))
         if type == "int":
-            outString = "INTEGER(dp)" + outString
+            outString = "INTEGER" + outString
             for value in arr:
                 outString += "{0},".format(value)
         elif type == "float":
@@ -1474,9 +1532,10 @@ def array_to_string(
             for value in arr:
                 outString += '"' + value.ljust(strLength) + '",'
         elif type == "logical":
-            outString = "LOGICAL(dp)" + outString
+            outString = "LOGICAL" + outString
             for value in arr:
-                outString += ".{0}.,".format(value)
+                outString += ".TRUE.," if value else ".FALSE.,"
+
         else:
             raise ValueError("Not a valid type for array to string")
         outString = outString[:-1] + "/)\n"

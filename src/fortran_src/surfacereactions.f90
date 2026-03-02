@@ -48,7 +48,6 @@ MODULE SurfaceReactions
   REAL(dp), PARAMETER :: NUM_MONOLAYERS_IS_SURFACE=2.0D0 ! Number of monolayers to count as surface
   LOGICAL, PARAMETER :: useGarrod2011Transfer=.True. ! Use Garrod 2011 transfer upon net desorption
   LOGICAL, PARAMETER :: useCustomReducedMass=.True. ! Use custom predicted reduced mass for tunneling
-  REAL(dp), PARAMETER :: DIFFUSION_BIND_RATIO=0.5 ! Ratio between diffusion barrier and binding energy of a species
   REAL(dp), PARAMETER :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8! Parameter used to compute the probability for a surface reaction with 
   !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
   REAL(dp), PARAMETER :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
@@ -153,7 +152,7 @@ CONTAINS
   SUBROUTINE bulkToSurfaceSwappingRates(rate,idx1,idx2,dustTemperature)
     REAL(dp), INTENT(INOUT) :: rate(*)
     REAL(dp) :: dustTemperature
-    INTEGER(dp) :: idx1,idx2,i,j
+    INTEGER :: idx1,idx2,i,j
     IF ((dustTemperature .gt. MAX_GRAIN_TEMP) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
         rate(idx1:idx2) = 0.0
     ELSE
@@ -177,7 +176,7 @@ FUNCTION getDiffusionBarrier(iceListIndex)
     !! Calculate the diffusion barrier of a species in ice.
     ! For all species, except hydrogen, this is assumed to be a fraction of the binding energy.
     ! For hydrogen, it is this by default, but can be set differently by an option in the input
-    INTEGER(dp) :: iceListIndex
+    INTEGER :: iceListIndex
     REAL(dp) :: getDiffusionBarrier
     IF ((useCustomDiffusionBarriers) .and. &
         (diffusionBarrier(iceListIndex) .ne. 0.0)) THEN
@@ -190,7 +189,7 @@ FUNCTION getDiffusionBarrier(iceListIndex)
 END FUNCTION getDiffusionBarrier
 
 FUNCTION reacProb(reacIndx, index1, index2, dustTemperature)
-    INTEGER(dp) :: reacIndx, index1, index2
+    INTEGER :: reacIndx, index1, index2
     REAL(dp) :: dustTemperature, reducedMass
     REAL(dp) :: reacProb, tunnelProb
     !Calculate classical activation energy barrier exponent
@@ -216,7 +215,7 @@ END FUNCTION reacProb
 REAL(dp) FUNCTION diffusionReactionRate(reacIndx,dustTemperature)
     REAL(dp) :: reducedMass,tunnelProb,dustTemperature
     REAL(dp) :: diffuseProb,desorbProb,reactionProb,n_dust
-    INTEGER(dp) :: index1,index2,reacIndx,i
+    INTEGER :: index1,index2,reacIndx,i
 
 
     !want position of species in the grain array but gas phase species aren't in there
@@ -272,8 +271,8 @@ END FUNCTION diffusionReactionRate
 ! Get bare grain desorption fraction (Minissale+ 2016)
 ! ---------------------------------------------------------------------
 REAL(dp) FUNCTION getDesorptionFractionBare(reacIndx, LHDESindex) RESULT(desorptionFractionBare)
-    INTEGER(dp) :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom,i,j
-    INTEGER(dp) :: productIndex(4)
+    INTEGER :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom,i,j
+    INTEGER :: productIndex(4)
 
     REAL(dp) :: deltaEnthalpy,maxBindingEnergy,epsilonCd,productEnthalpy
     REAL(dp), PARAMETER :: EFFECTIVE_SURFACE_MASS = 120.0
@@ -281,7 +280,7 @@ REAL(dp) FUNCTION getDesorptionFractionBare(reacIndx, LHDESindex) RESULT(desorpt
     LOGICAL :: twoProductReaction
     
 
-    INTEGER(dp) :: desorbingIndex, desorbingOnGrainIndex, LHDESindex, desorbingIceListIndex
+    INTEGER :: desorbingIndex, desorbingOnGrainIndex, LHDESindex, desorbingIceListIndex
 
      IF (.NOT.(ANY(iceList .eq. re1(reacIndx)) .OR. (ANY(iceList .eq. re2(reacIndx))))) THEN
         ! Gasphase reactions do not need to be calculated, should be 0
@@ -426,13 +425,13 @@ END FUNCTION getDesorptionFractionBare
 ! Get full ice coverage desorption fraction (Fredon+ 2021, Furuya+ 2022)
 ! ---------------------------------------------------------------------
 FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorptionFractionFullCoverage)
-    INTEGER(dp) :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom,i,j
-    INTEGER(dp) :: productIndex(4)
+    INTEGER :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom,i,j
+    INTEGER :: productIndex(4)
 
     REAL(dp) :: deltaEnthalpy,maxBindingEnergy,epsilonCd,productEnthalpy
     REAL(dp), PARAMETER :: EFFECTIVE_SURFACE_MASS = 120.0
     REAL(dp) :: bindingEnergyDesorbingSpec, chi
-    INTEGER(dp) :: desorbingIndex, desorbingOnGrainIndex, LHDESindex, desorbingIceListIndex
+    INTEGER :: desorbingIndex, desorbingOnGrainIndex, LHDESindex, desorbingIceListIndex
     LOGICAL :: twoProductReaction
 
     REAL(dp) :: desorptionFractionFullCoverage
@@ -603,7 +602,7 @@ END FUNCTION getDesorptionFractionFullCoverage
 ! Interpolates between bare grain and full ice coverage
 ! ---------------------------------------------------------------------
 REAL(dp) FUNCTION desorptionFractionIncludingIce(reacIndx, numMonolayers)
-    INTEGER(dp) :: reacIndx
+    INTEGER :: reacIndx
     REAL(dp) :: numMonolayers
 
     REAL(dp) :: desorptionFractionBare
@@ -651,7 +650,7 @@ SUBROUTINE updateVdiffAndVdes(gasTemp, dustTemp, nIce, vdiff, vdes)
     REAL(dp), PARAMETER :: scaleFactor = 1d-50
 
     REAL(dp) :: estimatedInertiaProduct
-    INTEGER(dp) :: i, j
+    INTEGER :: i, j
 
     IF (.NOT. useTSTprefactors) THEN
         DO i=1,nIce
@@ -723,7 +722,7 @@ REAL(dp) FUNCTION EncounterDesorptionRate(reacIndx,dustTemperature)
     REAL(dp) :: dustTemperature
     REAL(dp) :: meetProb,desorbProb,diffuseProb
 
-    INTEGER(dp) :: index1,index2,reacIndx,i
+    INTEGER :: index1,index2,reacIndx,i
 
     ! Get position of reactant in grain array
     index1=re1(reacIndx)

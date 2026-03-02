@@ -21,10 +21,10 @@ CONTAINS
     SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
         REAL(dp), INTENT(IN) :: abund(:, :), safemantle, h2col, cocol, ccol
         REAL(dp), INTENT(INOUT) :: rate(:)
-        INTEGER(dp) :: idx1,idx2
+        INTEGER :: idx1,idx2
         REAL(dp) :: vA,vB
-        INTEGER(dp) :: i,j
-        INTEGER(dp) :: k
+        INTEGER :: i,j
+        INTEGER :: k
         REAL(dp) :: numMonolayers
         ! REAL(dp) :: vdiff(:)
     
@@ -407,7 +407,7 @@ CONTAINS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
     REAL(dp) :: freezeRates(idx2-idx1+1)
-    INTEGER(dp) :: idx1,idx2
+    INTEGER :: idx1,idx2
     
     !additional factor for ions (beta=0 for neutrals)
     freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))

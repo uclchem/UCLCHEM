@@ -17,6 +17,7 @@ CONTAINS
     SUBROUTINE cloud(dictionary, outSpeciesIn,returnArray,returnRates,&
             &givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart ,abundance_out,specname_out,successFlag)
+        !f2py threadsafe
         !Subroutine to call a cloud model, used to interface with python
         ! Loads cloud specific subroutines and send to solveAbundances
         !
@@ -97,6 +98,7 @@ CONTAINS
     SUBROUTINE collapse(collapseIn,collapseFileIn,writeOut,dictionary,outSpeciesIn,&
             &returnArray,returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart, abundance_out,specname_out,successFlag)
+        !f2py threadsafe
         !Subroutine to call a collapse model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -180,6 +182,7 @@ CONTAINS
     SUBROUTINE hot_core(temp_indx,max_temp,dictionary,outSpeciesIn,returnArray,&
             &returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart, abundance_out,specname_out,successFlag)
+        !f2py threadsafe
         !Subroutine to call a hot core model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -257,6 +260,7 @@ CONTAINS
     SUBROUTINE cshock(shock_vel,timestep_factor,minimum_temperature,dictionary, outSpeciesIn,&
             &returnArray,returnRates,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart, abundance_out,dissipation_time,specname_out,successFlag)
+        !f2py threadsafe
         !Subroutine to call a C-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -343,6 +347,7 @@ CONTAINS
     SUBROUTINE jshock(shock_vel,dictionary,outSpeciesIn,returnArray,returnRates,givestartabund,&
             &timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart,abundance_out,specname_out,successFlag)
+        !f2py threadsafe
         !Subroutine to call a J-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -418,6 +423,7 @@ CONTAINS
         &timePoints,gridPoints,physicsarray,chemicalabunarray,ratesarray,heatarray,statsarray,&
         &levelpopulationsarray, sestatsarray, abundanceStart,timegrid,densgrid,gastempgrid,dusttempgrid,radfieldgrid,zetagrid,useav,avgrid,&
         &usecoldens,nhgrid,nh2grid,ncogrid,ncgrid,abundance_out,specname_out,successFlag)
+        !f2py threadsafe
         !Subroutine to call a J-shock model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
         !
@@ -549,9 +555,9 @@ CONTAINS
             RETURN
         END IF
 
-        CALL initializeChemistry(readAbunds)
+        CALL initializeChemistry(readAbunds, successFlag)
+        IF (successFlag .lt. 0) RETURN
         dstep=1
-        successFlag=0
         abund(:nspec,dstep)=abundancesIn(:nspec)
         abund(neq,dstep)=initialDens
         currentTime=0.0
@@ -608,9 +614,9 @@ CONTAINS
             RETURN
         END IF
 
-        CALL initializeChemistry(readAbunds)
+        CALL initializeChemistry(readAbunds, successFlag)
+        IF (successFlag .lt. 0) RETURN
         dstep=1
-        successFlag=0
         abund(:nspec,dstep)=abundancesIn(:nspec)
         abund(neq,dstep)=initialDens
         currentTime=0.0
@@ -624,6 +630,7 @@ CONTAINS
             &modelUpdatePhysics,updateTargetTime, sublimation, returnArray, returnRates,givestartabund,&
             &timePoints, physicsarray, chemicalabunarray,ratesarray,heatarray,statsarray,levelpopulationsarray,sestatsarray,abundanceStart,&
             &timegrid,densgrid,gtempgrid,dtempgrid,radgrid,zetagrid,useav,avgrid,usecoldens,nhgrid,nh2grid,ncogrid,ncgrid)
+        USE, INTRINSIC :: iso_c_binding, ONLY: C_NULL_PTR, C_INT
         ! Core UCLCHEM routine. Solves the chemical equations for a given set of parameters through time
         ! for a specified physical model.
         ! Change behaviour of physics by sending different subroutine arguments - hence the need for model subroutines above
@@ -672,6 +679,15 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: nh2grid
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: ncogrid
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: ncgrid
+        INTEGER(C_INT) :: flush_rc
+        INTERFACE
+            INTEGER(C_INT) FUNCTION c_fflush(stream) &
+                    BIND(C, name="fflush")
+                USE, INTRINSIC :: iso_c_binding, &
+                    ONLY: C_INT, C_PTR
+                TYPE(C_PTR), VALUE :: stream
+            END FUNCTION c_fflush
+        END INTERFACE
         successFlag=0
         ! Debug: Print array dimensions
         ! Set variables to default values
@@ -714,7 +730,8 @@ CONTAINS
         END IF
 
         ! Initialize the chemistry
-        CALL initializeChemistry(readAbunds)
+        CALL initializeChemistry(readAbunds, successFlag)
+        IF (successFlag .lt. 0) RETURN
         IF (returnArray .AND. givestartabund) THEN
             ! In case we have custom abundances, set them here
             IF (enable_radiative_transfer .AND. points.gt.1) THEN
@@ -749,7 +766,16 @@ CONTAINS
             !Each physics module has a subroutine to set the target time from the current time
             CALL updateTargetTime
             IF (writeTimestepInfo) THEN
-                WRITE(*,'(A,1X,ES15.6,1X,A,1X,ES15.6,1X,A,1X,ES15.6)') 'Time (yrs):', currentTimeold/SECONDS_PER_YEAR, 'Final (yrs):', finalTime, 'Next goal (yrs):', targetTime/SECONDS_PER_YEAR
+                WRITE(*,'(A,ES10.2,A,ES10.2,A,F9.1,A,F9.1,A,ES10.2,A,ES10.2,A,ES10.2)') &
+                    't:', currentTimeold/SECONDS_PER_YEAR, &
+                    ' dT:', dvode_rstats(11)/SECONDS_PER_YEAR, &
+                    ' Tg:', gasTemp(1), &
+                    ' Td:', dustTemp(1), &
+                    ' nH:', density(1), &
+                    ' G0:', radfield, &
+                    ' z:', zeta
+                FLUSH(6)
+                flush_rc = c_fflush(C_NULL_PTR) ! TODO: may be redundant with !f2py threadsafe + FLUSH(6)
             END IF
             ! Exit loop if targetTime would exceed finalTime
             IF (targetTime/SECONDS_PER_YEAR .gt. finalTime) THEN
@@ -801,9 +827,15 @@ CONTAINS
                         !reset time if this isn't first depth point
                         currentTime=currentTimeold
                         !update chemistry from currentTime to targetTime
-                        CALL updateChemistry(successFlag)
+                        CALL updateChemistry(successFlag, statsarray, timePoints+1, dtime)
                         IF (successFlag .lt. 0) THEN
                             write(*,*) 'Error updating chemistry'
+                            RETURN
+                        END IF
+                        IF (coolant_error_flag .ne. 0) THEN
+                            WRITE(*,*) 'Coolant error: ', TRIM(coolant_error_message)
+                            successFlag = coolant_error_flag
+                            coolant_error_flag = 0
                             RETURN
                         END IF
                         !get time in years for output, currentTime is now equal to targetTime
@@ -846,9 +878,15 @@ CONTAINS
                     !reset time if this isn't first depth point
                     currentTime=currentTimeold
                 !update chemistry from currentTime to targetTime
-                CALL updateChemistry(successFlag)
+                CALL updateChemistry(successFlag, statsarray, timePoints+1, dtime)
                 IF (successFlag .lt. 0) THEN
                     write(*,*) 'Error updating chemistry'
+                    RETURN
+                END IF
+                IF (coolant_error_flag .ne. 0) THEN
+                    WRITE(*,*) 'Coolant error: ', TRIM(coolant_error_message)
+                    successFlag = coolant_error_flag
+                    coolant_error_flag = 0
                     RETURN
                 END IF
                 !get time in years for output, currentTime is now equal to targetTime
@@ -1005,7 +1043,7 @@ CONTAINS
                 CASE('chemdesorb')
                     READ(inputValue,*,iostat=successFlag) chemdesorb
                 CASE('thermdesorb')
-                    READ(inputValue,*,iostat=successFlag) uvdesorb
+                    READ(inputValue,*,iostat=successFlag) thermdesorb
                 CASE('instantsublimation')
                     READ(inputValue,*,iostat=successFlag) instantSublimation
                 CASE('cosmicrayattenuation')
@@ -1102,6 +1140,10 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) metallicity
                 CASE('omega')
                     READ(inputValue,*,iostat=successFlag) omega
+                CASE('difftobindratio')
+                    READ(inputValue,*,iostat=successFlag) diffToBindRatio
+                CASE('enforcechargeconservation')
+                    READ(inputValue,*,iostat=successFlag) enforceChargeConservation
                 CASE('reltol')
                     READ(inputValue,*,iostat=successFlag) reltol
                 CASE('abstol_factor')
@@ -1210,6 +1252,32 @@ CONTAINS
                    READ(inputValue,*,iostat=successFlag) fh
                 CASE('mxstep')
                    READ(inputValue,*,iostat=successFlag) MXSTEP
+                CASE('h2encounterdesorption')
+                   READ(inputValue,*,iostat=successFlag) h2EncounterDesorption
+                CASE('hencounterdesorption')
+                   READ(inputValue,*,iostat=successFlag) hEncounterDesorption
+                CASE('edendothermicityfactor')
+                   READ(inputValue,*,iostat=successFlag) EDEndothermicityFactor
+                CASE('h2stickingcoeffbyh2coverage')
+                   READ(inputValue,*,iostat=successFlag) h2StickingCoeffByh2Coverage
+                CASE('hstickingcoeffbyh2coverage')
+                   READ(inputValue,*,iostat=successFlag) hStickingCoeffByh2Coverage
+                CASE('hdiffusionbarrier')
+                   READ(inputValue,*,iostat=successFlag) HdiffusionBarrier
+                CASE('usecustomdiffusionbarriers')
+                   READ(inputValue,*,iostat=successFlag) useCustomDiffusionBarriers
+                CASE('seperatediffanddesorbprefactor')
+                   READ(inputValue,*,iostat=successFlag) seperateDiffAndDesorbPrefactor
+                CASE('usetstprefactors')
+                   READ(inputValue,*,iostat=successFlag) useTSTprefactors
+                CASE('usecustomprefactors')
+                   READ(inputValue,*,iostat=successFlag) useCustomPrefactors
+                CASE('useminissaleicechemdesefficiency')
+                   READ(inputValue,*,iostat=successFlag) useMinissaleIceChemdesEfficiency
+                CASE('freq_rel_tol')
+                   READ(inputValue,*,iostat=successFlag) freq_rel_tol
+                CASE('pop_rel_tol')
+                   READ(inputValue,*,iostat=successFlag) pop_rel_tol
                 ! CASE('trajecfile')
                 !    READ(inputValue,*,iostat=successFlag) trajecfile
                 CASE DEFAULT

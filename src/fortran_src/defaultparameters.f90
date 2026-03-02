@@ -5,6 +5,7 @@
 !!note the resuting md file needs manually adding to the website.
 MODULE DEFAULTPARAMETERS
 USE constants
+USE F2PY_CONSTANTS
 !---  
 !id: parameters
 !title: Model Parameters
@@ -25,7 +26,7 @@ REAL(dp) :: zeta=1.0 !Cosmic ray ionisation rate as multiple of $1.3 10^{-17} s^
 REAL(dp) :: rout=0.05 !Outer radius of cloud being modelled in pc.
 REAL(dp) :: rin=0.0 !Minimum radial distance from cloud centre to consider.
 REAL(dp) :: baseAv=2.0 !Extinction at cloud edge, Av of a parcel at rout.
-INTEGER(dp) :: points=1 !Number of gas parcels equally spaced between rin to rout to consider
+INTEGER :: points=1 !Number of gas parcels equally spaced between rin to rout to consider
 REAL(dp) :: bm0=1.0 !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
 !Physical profiles for 1D model with pre-described gas density
 REAL(dp) :: density_scale_radius=0.05 !unit of pc, distance below which the gas volume density is constant, and above which the gas density drops as n ~ r^{-a}
@@ -88,7 +89,7 @@ CHARACTER(256) :: abundLoadFile="" ! The file to load the abundances from at the
 !## Coolant / Validation tolerances
 !|Parameter|Default Value|Description|
 !| ----- | ------| ------ |
-REAL(dp) :: freq_rel_tol = 1.0d-1 ! Relative tolerance (fraction) for comparing file vs calculated frequencies. Can be adjusted at runtime via Generalsettings (tutorial 6).
+REAL(dp) :: freq_rel_tol = 1.0d-1 ! Relative tolerance (fraction) for comparing file vs calculated frequencies. Default 10%; overridden by Python layer with makerates-computed value when available.
 REAL(dp) :: pop_rel_tol  = 1.0d-1 ! Relative tolerance (fraction) for checking LTE population consistency. Can be adjusted at runtime via Generalsettings (tutorial 6).
 
 !|abundSaveFile |None| File to store final abundances at the end of the model so future models can use them as the initial abundances. If not provided, no file will be produced.
@@ -101,7 +102,7 @@ REAL(dp) :: pop_rel_tol  = 1.0d-1 ! Relative tolerance (fraction) for checking L
 !|Parameter|Default Value |Description|
 !| ----- | ------| ------ |
 REAL(dp) :: metallicity=1.0 !Scale the abundances of all elements heavier than He by this factor.
-INTEGER(dp) :: ion=2 !Sets how much elemental C is initially atomic (0= all atomic/1=50:50/2=fully ionized).
+INTEGER :: ion=2 !Sets how much elemental C is initially atomic (0= all atomic/1=50:50/2=fully ionized).
 REAL(dp) :: fh=0.5 !Total elemental abundance of H is always 1 by definition because abundances are relative to number of H nuclei. Use fh to set how much to initially put in atomic H, the rest goes to H2.
 REAL(dp) :: fhe = 0.1 !Total elemental abundance of He.
 REAL(dp) :: fc=1.77d-04 !Total elemental abundance of C.
@@ -150,6 +151,10 @@ REAL(dp) :: uv_yield=0.03 !Number of molecules desorbed per UV photon. The yield
 REAL(dp) :: phi=1.0d5 !Number of molecules desorbed per cosmic ray ionisation.
 REAL(dp) :: uvcreff=1.0d-3 !Ratio of CR induced UV photons to ISRF UV photons.
 REAL(dp) :: omega=0.5 !Dust grain albedo.
+REAL(dp) :: lower_limit_gastemp=10.0 !Lower limit for gas temperature in K when heating is enabled.
+REAL(dp) :: upper_limit_gastemp=1.0d4 !Upper limit for gas temperature in K when heating is enabled.
+REAL(dp) :: lower_limit_dusttemp=10.0 !Lower limit for dust temperature in K when heating is enabled.
+REAL(dp) :: upper_limit_dusttemp=1.0d3 !Upper limit for dust temperature in K when heating is enabled.
 !|alpha|{1:0.0,2:0.0}| Set alpha coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how alpha is used for each reaction type.|
 !|beta|{1:0.0,2:0.0}| Set beta coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how beta is used for each reaction type.|
 !|gama|{1:0.0,2:0.0}| Set gama coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how gama is used for each reaction type.|

@@ -124,6 +124,7 @@ class HeatingSettings:
         self._default_line_solver_attempts = self._heating_module.line_solver_attempts
         self._default_pahabund = self._heating_module.pahabund
         self._default_coolant_data_dir = self._f2py_constants_module.coolantdatadir
+        self._default_coolant_active = self._f2py_constants_module.coolant_active.copy()
 
         # Check if coolant restart mode functions are available
         self._coolant_functions_available = hasattr(
@@ -170,6 +171,60 @@ class HeatingSettings:
 
         # Now set the requested mechanism
         self._heating_module.heating_modules[mechanism_id - 1] = enabled
+
+    def set_coolant_active(self, coolant_name: str, enabled: bool = True):
+        """Enable or disable a specific line coolant species.
+
+        This controls individual coolant species within the molecular
+        line cooling mechanism (cooling_modules index 5). When a coolant
+        is disabled, its level population calculation is skipped entirely
+        and its cooling contribution is set to zero.
+
+        Args:
+            coolant_name: Name of the coolant species (e.g. "CO", "C+",
+                "p-H2"). Use get_coolant_active() to see available names.
+            enabled: True to enable, False to disable. Default: True
+
+        Raises:
+            ValueError: If coolant_name is not found in the network.
+
+        Example:
+            >>> settings = HeatingSettings()
+            >>> settings.set_coolant_active("CO", False)
+            >>> settings.set_coolant_active("p-H2", False)
+        """
+        names = [
+            str(np.char.decode(name)).strip()
+            for name in self._f2py_constants_module.coolantnames
+        ]
+        try:
+            idx = names.index(coolant_name)
+        except ValueError:
+            raise ValueError(
+                f"Coolant '{coolant_name}' not found. " f"Available coolants: {names}"
+            )
+        self._f2py_constants_module.coolant_active[idx] = enabled
+
+    def get_coolant_active(self) -> Dict[str, bool]:
+        """Get the active state of all line coolant species.
+
+        Returns:
+            Dictionary mapping coolant names to their enabled state
+
+        Example:
+            >>> settings = HeatingSettings()
+            >>> state = settings.get_coolant_active()
+            >>> print(state)
+            {'H': True, 'C+': True, 'O': True, ...}
+        """
+        names = [
+            str(np.char.decode(name)).strip()
+            for name in self._f2py_constants_module.coolantnames
+        ]
+        return {
+            name: bool(self._f2py_constants_module.coolant_active[i])
+            for i, name in enumerate(names)
+        }
 
     def set_cooling_mechanism(self, mechanism_id: int, enabled: bool = True):
         """Enable or disable a specific cooling mechanism.
@@ -403,6 +458,7 @@ class HeatingSettings:
         self._heating_module.line_solver_attempts = self._default_line_solver_attempts
         self._heating_module.pahabund = self._default_pahabund
         self._f2py_constants_module.coolantdatadir = self._default_coolant_data_dir
+        self._f2py_constants_module.coolant_active[:] = self._default_coolant_active
         if self._coolant_functions_available:
             self._uclchemwrap.set_coolant_restart_mode_wrap(
                 self._default_coolant_restart_mode
@@ -430,6 +486,13 @@ class HeatingSettings:
         print("-" * 40)
         cooling_state = self.get_cooling_modules()
         for name, enabled in cooling_state.items():
+            status = "ENABLED " if enabled else "DISABLED"
+            print(f"  {name:30s} : {status}")
+
+        print("\nLine Coolants (individual species):")
+        print("-" * 40)
+        coolant_state = self.get_coolant_active()
+        for name, enabled in coolant_state.items():
             status = "ENABLED " if enabled else "DISABLED"
             print(f"  {name:30s} : {status}")
 
@@ -470,19 +533,17 @@ def initialize_coolant_directory() -> str:
         >>> coolant_dir = initialize_coolant_directory()
         >>> print(f"Coolant data at: {coolant_dir}")
     """
+    # Check if heating module is available
+    import importlib.util
     import logging
     import os
     from pathlib import Path
 
-    # Check if heating module is available
-    try:
-        import uclchemwrap
-        from uclchemwrap import f2py_constants
-    except (ImportError, AttributeError) as e:
+    if importlib.util.find_spec("uclchemwrap") is None:
         raise RuntimeError(
             "UCLCHEM heating module not available. "
             "The Fortran extension may not be compiled. "
-            f"Install UCLCHEM with: pip install . (error: {e})"
+            "Install UCLCHEM with: pip install ."
         )
 
     # Priority 1: Environment variable

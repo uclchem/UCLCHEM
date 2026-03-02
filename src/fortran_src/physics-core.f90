@@ -122,7 +122,7 @@ CONTAINS
     REAL(dp), INTENT(IN) :: density
     REAL(dp) :: densdot
     !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
-    IF ((density .lt. finalDens) .and. (freefall)) THEN
+    IF ((density .lt. finalDens) .and. (freefall) .and. (density .gt. initialDens)) THEN
         densdot=freefallFactor*(density**4./initialDens)**0.33*&
         &(8.4d-30*initialDens*((density/initialDens)**0.33-1.))**0.5
     ELSE

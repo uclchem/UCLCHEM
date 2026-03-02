@@ -127,13 +127,8 @@ CONTAINS
                 physicsarray(dtime, dstep, 7) = zeta
                 physicsarray(dtime, dstep, 8) = dstep
                 chemicalabunarray(dtime, dstep, :) = abund(1:nspec,dstep)
-                ! DVODE solver statistics
-                IF (PRESENT(statsarray)) THEN
-                    statsarray(dtime, dstep, 1) = DBLE(dvode_istate_out)
-                    statsarray(dtime, dstep, 2:5) = dvode_rstats(11:14)
-                    statsarray(dtime, dstep, 6:17) = DBLE(dvode_istats(11:22))
-                    statsarray(dtime, dstep, 18) = dvode_cpu_time
-                END IF
+                ! DVODE solver statistics are now written in chemistry.f90
+                ! after each solver attempt (including retries)
 
                 ! Level populations (SIZE-based check - don't use PRESENT)
                 IF (SIZE(levelpopulationsarray, 1) >= timePoints .AND. heatingFlag) THEN
@@ -258,6 +253,15 @@ CONTAINS
 
         level_offset = 0
         DO N = 1, NCOOLANTS
+            ! Safety net: prevent out-of-bounds write if levels exceed array size
+            IF (level_offset + coolants(N)%NLEVEL > SIZE(levelpopulationsarray, 3)) THEN
+                WRITE(*,'(A,I3,A,A,A,I6,A,I6,A,I6)') &
+                    "[LEVPOP] ERROR coolant ", N, " (", TRIM(coolants(N)%NAME), &
+                    ") would exceed array dim3: offset=", level_offset, &
+                    " nlevel=", coolants(N)%NLEVEL, &
+                    " dim3=", SIZE(levelpopulationsarray, 3)
+                RETURN
+            END IF
             DO i = 1, coolants(N)%NLEVEL
                 levelpopulationsarray(dtime, dstep, level_offset + i) = coolants(N)%POPULATION(i)
             END DO

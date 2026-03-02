@@ -58,7 +58,7 @@ IMPLICIT NONE
     ! Treatment of the dust-gas temperature coupling
     ! 1 = Simple treatment Hocuk et al. 2017
     ! 2 = Detailed balance method Hollenbach 1991 
-    INTEGER :: dust_gas_coupling_method = 1
+    INTEGER :: dust_gas_coupling_method = 2
     
     ! LINE_SOLVER_ATTEMPTS: Number of times to solve line cooling and take median, must be <= MAX_LINE_SOLVE_ATTEMPTS
     INTEGER :: LINE_SOLVER_ATTEMPTS = 1
@@ -79,13 +79,15 @@ IMPLICIT NONE
 
  CONTAINS
 
-    SUBROUTINE initializeHeating(gasTemperature, gasDensity,abundances,columnDensity,cloudSize)
+    SUBROUTINE initializeHeating(gasTemperature, gasDensity,abundances,columnDensity,cloudSize,successFlag)
         REAL(dp), INTENT(in) :: gasTemperature,gasDensity,columnDensity,cloudSize
         REAL(dp), INTENT(in) :: abundances(:)
-        INTEGER ::i,j
+        INTEGER, INTENT(INOUT) :: successFlag
+        INTEGER :: i, j
 
         ! write(*,*) "Initializing heating.f90 ..."
-        CALL READ_COOLANTS()
+        CALL READ_COOLANTS(successFlag)
+        IF (successFlag .lt. 0) RETURN
 
         ! Reset population initialization flag for new model run
         coolant_populations_initialized = .FALSE.
@@ -103,13 +105,16 @@ IMPLICIT NONE
                     "ERROR: Coolant #", i, " ('", TRIM(coolantNames(i)), &
                     "') could not find parent species '", TRIM(coolantParentNames(i)), &
                     "' in the network. Check your coolant configuration."
-                STOP
+                successFlag = COOLANT_CONFIG_ERROR
+                RETURN
             END IF
         END DO
 
         CLOUD_COLUMN=columnDensity
         CLOUD_DENSITY=gasDensity
         cloud_size=cloudSize
+
+        ! WRITE(*,'(A45,*(L1))') "Coolants enabled:", coolant_active
         ! Moved IO handling to io.f90
     END SUBROUTINE initializeHeating
 
@@ -226,15 +231,11 @@ IMPLICIT NONE
         CALL UPDATE_COOLANT_LINEWIDTHS(gasTemperature,turbVel)
         CALL UPDATE_COOLANT_ABUNDANCES(gasDensity,gasTemperature,abundances)
 
-        ! Manage coolant populations with automatic initialization and warm restart
-        ! This replaces the forced LTE reset with smart restart logic based on coolant_restart_mode
         CALL MANAGE_COOLANT_POPULATIONS(gasTemperature)
 
         CALL CALCULATE_LINE_OPACITIES()
         CALL CALCULATE_LAMBDA_OPERATOR()
 
-        !!write(*,*)  "lte done"
-        !I should then do LVG interactions
         ! Initialize SE solver statistics
         se_coolant_iterations(1:NCOOLANTS) = 0
         se_coolant_max_rel_change(1:NCOOLANTS) = 0.0D0
@@ -242,14 +243,15 @@ IMPLICIT NONE
 
          DO I=1,500!while not converged and less than 100 tries:
             DO N=1,NCOOLANTS
-                IF (coolants(N)%CONVERGED) THEN 
+                IF (.NOT. coolant_active(N)) CYCLE
+                IF (coolants(N)%CONVERGED) THEN
                     IF (se_coolant_iterations(N) .eq. 0) THEN
                         se_coolant_iterations(N) = I-1  ! Track if converged last iteration
                     END IF
                 ELSE
                     CALL CALCULATE_LEVEL_POPULATIONS(coolants(N),gasTemperature,gasDensity,&
                         &abundances,dustTemp)
-                END IF 
+                END IF
                 ! Calculate max relative change for this coolant (inline)
                 se_coolant_max_rel_change(N) = 0.0D0
                 IF (ALLOCATED(coolants(N)%POPULATION) .AND. ALLOCATED(coolants(N)%PREVIOUS_POPULATION)) THEN
@@ -265,18 +267,19 @@ IMPLICIT NONE
             CALL CALCULATE_LINE_OPACITIES()
             CALL CALCULATE_LAMBDA_OPERATOR()
             IF (CHECK_CONVERGENCE()) THEN
-                WHERE(se_coolant_iterations .eq. 0) se_coolant_iterations = I  ! Set iteration count for any coolant that converged this round
+                WHERE(se_coolant_iterations .eq. 0) se_coolant_iterations = I
                 EXIT
             END IF
             
 
             !IF (I .eq. 499) write(*,*) "Failed convergence"
         END DO
-        CALL CPU_TIME(se_cpu_end) 
+        CALL CPU_TIME(se_cpu_end)
 
         !  Calculate the cooling rate due to the Lyman-alpha emission for each particle
         !  using the analytical expression of Spitzer (1978) neglecting photon trapping
         DO N=1,NCOOLANTS
+            IF (.NOT. coolant_active(N)) CYCLE
             if (.not. allocated(coolants(N)%EMISSIVITY)) then
                 write(*,*) "ERROR: EMISSIVITY not allocated for coolant ", N
             end if
@@ -290,17 +293,13 @@ IMPLICIT NONE
 
         !Calculate the cooling rates
         DO N=1,NCOOLANTS
+            IF (.NOT. coolant_active(N)) THEN
+                moleculeCooling(N) = 0.0_dp
+                CYCLE
+            END IF
             WHERE(coolants(N)%EMISSIVITY .lt. -HUGE(1.0)) coolants(N)%EMISSIVITY = 0.0
             moleculeCooling(N)=SUM(coolants(N)%EMISSIVITY,MASK=.NOT.ISNAN(coolants(N)%EMISSIVITY))
-            ! !we get these wild cha nges in cooling rate so let's force it not to change too much in a timestep
-            ! IF ( (abs(moleculeCooling-coolants(N)%previousCooling)/coolants(N)%previousCooling) .gt. 2.0d0) THEN
-            !     !unless it's step 1, use old cooling for this time step
-            !     IF (coolants(N)%previousCooling .ne. 0.0d0) moleculeCooling=coolants(N)%previousCooling
-            ! ELSE
-            !     coolants(N)%previousCooling=moleculeCooling
-            ! END IF
             IF (moleculeCooling(N) .lt. 0.0) moleculeCooling(N)=0.0d0
-            !IF (moleculeCooling(N) .gt. -1.0d-30 .and. abundances(coolantIndices(N)) .gt. 1.0d-20)
         END DO
         WHERE(moleculeCooling .lt. 0.0) moleculeCooling=0.0d0
 
@@ -774,14 +773,14 @@ FUNCTION calculateDustTempHollenbach(localField,surfaceField) result(dustTempera
 
     !Impose a lower limit on the dust temperature, since values below 10 K can dramatically
     !limit the rate of H2 formation on grains (the molecule cannot desorb from the surface)
-    IF(dustTemperature.LT.10) THEN
-        dustTemperature=10.0D0
+    IF(dustTemperature.LT.lower_limit_dusttemp) THEN
+        dustTemperature=lower_limit_dusttemp
     END IF
 
     !     Check that the dust temperature is physical
-    IF(dustTemperature.GT.1000) THEN
-        write(*,*) localField, surfaceField!WRITE(6,*) 'ERROR! Calculated dust temperature exceeds 1000 K'
-        dustTemperature=1000.0
+    IF(dustTemperature.GT.upper_limit_dusttemp) THEN
+        write(*,*) localField, surfaceField!WRITE(6,*) 'ERROR! Calculated dust temperature exceeds upper limit'
+        dustTemperature=upper_limit_dusttemp
     END IF
     RETURN
 END FUNCTION calculateDustTempHollenbach
@@ -798,14 +797,14 @@ FUNCTION calculateDustTempHocuk(surfaceField,Av) result(dustTemperature)
 
     !Impose a lower limit on the dust temperature, since values below 10 K can dramatically
     !limit the rate of H2 formation on grains (the molecule cannot desorb from the surface)
-    IF(dustTemperature.LT.2.73) THEN
-        dustTemperature=2.73D0
+    IF(dustTemperature.LT.lower_limit_dusttemp) THEN
+        dustTemperature=lower_limit_dusttemp
     END IF
 
     !     Check that the dust temperature is physical
-    IF(dustTemperature.GT.1000) THEN
-        write(*,*) Av, surfaceField!WRITE(6,*) 'ERROR! Calculated dust temperature exceeds 1000 K'
-        dustTemperature=1000.0
+    IF(dustTemperature.GT.upper_limit_dusttemp) THEN
+        write(*,*) Av, surfaceField!WRITE(6,*) 'ERROR! Calculated dust temperature exceeds upper limit'
+        dustTemperature=upper_limit_dusttemp
     END IF
     RETURN
 END FUNCTION calculateDustTempHocuk

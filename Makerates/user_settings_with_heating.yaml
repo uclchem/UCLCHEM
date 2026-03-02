@@ -1,0 +1,180 @@
+#Your list of all species
+species_file: data/default/default_species.csv
+
+#core reactions from gas phase database
+database_reaction_file: data/databases/umist22.csv
+database_reaction_type: UMIST
+# database_reaction_file : data/databases/gas_reactions_kida.uva.2024.in
+# database_reaction_type : KIDA
+
+#set of additional reactions: eg grain network
+custom_reaction_file: data/default/default_grain_network.csv
+custom_reaction_type: UCL
+
+# Directory in which to store output. If not included we automatically move
+# the files to the uclchem src folder. This is the default behaviour.
+# output_directory : "outputFiles"
+
+# Enable to add gas-phase CRP, CRPHOT and PHOTON reactions to grains as well
+# Be aware that this will cause stiffness, see tests/test_photo_on_grains.py for 
+# solver settings that should work for static, stage 1 and stage 2 models.
+add_crp_photo_to_grain: False
+# Enable the writing of the rate constants and rates to the disk
+enable_rates_storage: True
+# Enable the computation of all the enthalpies:
+derive_reaction_exothermicity: "GAS"
+
+database_reaction_exothermicity: enthalpy_routines/custom_heating_cooling_reactions.csv
+
+# Optional: Specify custom exothermicity files to override computed values
+# Can be a single file or a list of files. Files are processed in order.
+# Example single file:
+# database_reaction_exothermicity: enthalpy_routines/custom_heating_cooling_reactions.csv
+# Example multiple files:
+# database_reaction_exothermicity:
+#   - enthalpy_routines/custom_heating_cooling_reactions.csv
+#   - enthalpy_routines/additional_reactions.csv
+
+# Add the parameterization for the grain-assisted recombination reactions from Weingartner & Draine (2001)
+grain_assisted_recombination_file: data/databases/weingartner01_grain_assisted_recombination.yaml
+
+# Full LAMDA inventory with ortho/para conversion
+# Ortho/para conversion factors:
+# - H2 species: thermal OPR (temperature-dependent, 3:1 at high T)
+# - H3 species (NH3, H3O+, CH3CN): 1:1 ratio → 0.5 for both ortho and para
+# - C3H2 (2 equivalent H): 3:1 ratio → ortho 0.75, para 0.25
+coolants:
+  # Atomic species
+  - file: ly-a.dat
+    name: H
+  - file: c+.dat
+    name: C+
+  - file: catom.dat
+    name: C
+  - file: oatom.dat
+    name: O
+  - file: n+.dat
+    name: N+
+  - file: s-h.dat
+    name: S
+  - file: si-h.dat
+    name: SI
+
+  # H2 (thermal OPR - temperature dependent)
+  - file: o-h2.dat
+    name: o-H2
+    parent_species: H2
+  - file: p-h2.dat
+    name: p-H2
+    parent_species: H2
+
+  # Simple diatomic molecules
+  - file: co.dat
+    name: CO
+  - file: cn.dat
+    name: CN
+  - file: cs.dat
+    name: CS
+  - file: oh.dat
+    name: OH
+  - file: no.dat
+    name: "NO"
+  - file: o2.dat
+    name: O2
+
+  # Ions
+  - file: ch+.dat
+    name: CH+
+  - file: hco+.dat
+    name: HCO+
+  - file: hcs+@xpol.dat
+    name: HCS+
+  - file: n2h+@xpol.dat
+    name: N2H+
+  - file: no+.dat
+    name: NO+
+  - file: ns+.dat
+    name: NS+
+  - file: oh+.dat
+    name: OH+
+
+  # Radicals
+  - file: nh.dat
+    name: NH
+
+  # Triatomic and larger molecules
+  - file: hcl.dat
+    name: HCL
+  - file: hcn.dat
+    name: HCN
+  - file: hnc.dat
+    name: HNC
+  - file: hnco.dat
+    name: HNCO
+  - file: hc3n.dat
+    name: HC3N
+  - file: sio.dat
+    name: SIO
+  - file: sis.dat
+    name: SIS
+  - file: so@lique.dat
+    name: SO
+  - file: so2.dat
+    name: SO2
+  - file: ocs@xpol.dat
+    name: OCS
+
+  # H3O+ (3 equivalent H → 1:1 ortho:para)
+  - file: o-h3o+.dat
+    name: o-H3O+
+    parent_species: H3O+
+    conversion_factor: 0.5
+  - file: p-h3o+.dat
+    name: p-H3O+
+    parent_species: H3O+
+    conversion_factor: 0.5
+
+  # NH3 (3 equivalent H → 1:1 ortho:para)
+  - file: o-nh3.dat
+    name: o-NH3
+    parent_species: NH3
+    conversion_factor: 0.5
+  - file: p-nh3.dat
+    name: p-NH3
+    parent_species: NH3
+    conversion_factor: 0.5
+
+  # CH3CN (3 equivalent H in CH3 group → 1:1 ortho:para)
+  - file: o-ch3cn.dat
+    name: o-CH3CN
+    parent_species: CH3CN
+    conversion_factor: 0.5
+  - file: p-ch3cn.dat
+    name: p-CH3CN
+    parent_species: CH3CN
+    conversion_factor: 0.5
+
+  # C3H2 (2 equivalent H → 3:1 ortho:para)
+  - file: o-c3h2.dat
+    name: o-C3H2
+    parent_species: C3H2
+    conversion_factor: 0.75
+  - file: p-c3h2.dat
+    name: p-C3H2
+    parent_species: C3H2
+    conversion_factor: 0.25
+
+  # Single ortho forms (no para available, treat as full species)
+  - file: o-sic2.dat
+    name: SIC2
+
+  # Additional molecules (no ortho/para)
+  - file: ch3cn.dat
+    name: CH3CN_fullH2
+    parent_species: CH3CN
+    # Note: This is CH3CN with H2 collision partner (not ortho/para specific)
+    # We also have o-CH3CN and p-CH3CN above for explicit ortho/para treatment
+
+  # Methanol (A-type)
+  - file: ch3oh_a.dat
+    name: CH3OH

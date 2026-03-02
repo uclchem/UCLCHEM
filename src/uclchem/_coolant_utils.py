@@ -111,6 +111,116 @@ def get_energy_levels_info_from_runtime() -> Tuple[int, int]:
     return get_energy_levels_info(coolant_names, coolant_files, data_dir)
 
 
+def validate_coolant_frequencies(
+    coolant_names: List[str],
+    coolant_files: List[str],
+    data_dir: str,
+) -> Dict[str, float]:
+    """Validate frequency consistency in LAMDA files at makerates time.
+
+    For each coolant, computes freq = |E_i - E_j| / h from energy levels and
+    compares to the frequency stored in the LAMDA file. Returns per-coolant
+    maximum relative deviation.
+
+    Args:
+        coolant_names: List of coolant species names
+        coolant_files: List of coolant data file names
+        data_dir: Directory containing the coolant data files
+
+    Returns:
+        Dict mapping coolant name to max relative frequency deviation
+    """
+    # Physical constants (must match Fortran constants.f90)
+    C_CGS = 2.99792458e10  # speed of light cm/s
+    HP_CGS = 6.62606896e-27  # Planck constant erg*s
+
+    data_path = Path(data_dir)
+    level_marker = _normalize_for_comparison("NUMBER OF ENERGY LEVELS")
+    trans_marker = _normalize_for_comparison("NUMBER OF RADIATIVE TRANSITIONS")
+
+    max_deviations = {}
+
+    for coolant_name, coolant_file in zip(coolant_names, coolant_files):
+        filepath = data_path / coolant_file
+        if not filepath.exists():
+            continue
+
+        with open(filepath, "r") as f:
+            lines = f.readlines()
+
+        # Parse energy levels
+        energies = {}  # level_index -> energy in erg
+        nlevel = 0
+        level_start = -1
+        for j, line in enumerate(lines):
+            if level_marker in _normalize_for_comparison(line):
+                nlevel = int(lines[j + 1].strip())
+                level_start = j + 2  # skip the comment line after count
+                break
+
+        if nlevel == 0:
+            continue
+
+        # Read energy levels (format: index energy_cm-1 weight [qnum])
+        count = 0
+        for k in range(level_start, len(lines)):
+            line = lines[k].strip()
+            if not line or line.startswith("!"):
+                if count >= nlevel:
+                    break
+                continue
+            parts = line.split()
+            if len(parts) >= 3:
+                idx = int(parts[0])
+                energy_cm = float(parts[1])
+                energies[idx] = energy_cm * C_CGS * HP_CGS  # cm^-1 -> erg
+                count += 1
+                if count >= nlevel:
+                    break
+
+        # Parse radiative transitions
+        max_dev = 0.0
+        worst_transition = ""
+        for j, line in enumerate(lines):
+            if trans_marker in _normalize_for_comparison(line):
+                ntrans = int(lines[j + 1].strip())
+                trans_start = j + 2  # skip comment line
+                count = 0
+                for k in range(trans_start, len(lines)):
+                    line = lines[k].strip()
+                    if not line or line.startswith("!"):
+                        if count >= ntrans:
+                            break
+                        continue
+                    parts = line.split()
+                    if len(parts) >= 5:
+                        up = int(parts[1])
+                        low = int(parts[2])
+                        freq_ghz = float(parts[4])
+                        freq_file = freq_ghz * 1.0e9  # GHz -> Hz
+
+                        if up in energies and low in energies and freq_file > 0:
+                            freq_calc = abs(energies[up] - energies[low]) / HP_CGS
+                            rel_dev = abs(freq_calc - freq_file) / freq_file
+                            if rel_dev > max_dev:
+                                max_dev = rel_dev
+                                worst_transition = f"{up}->{low}"
+                        count += 1
+                        if count >= ntrans:
+                            break
+                break
+
+        max_deviations[coolant_name] = max_dev
+
+        if max_dev > 0.01:  # Warn for > 1% deviation
+            logger.warning(
+                f"Coolant '{coolant_name}' ({coolant_file}): max frequency deviation "
+                f"{max_dev:.4f} ({max_dev*100:.2f}%) at transition {worst_transition}"
+            )
+
+    return max_deviations
+
+
 def load_coolant_level_names() -> Dict[int, List[str]]:
     """Load coolant level information from disk for meaningful column names.
 
