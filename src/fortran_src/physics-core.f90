@@ -18,6 +18,9 @@ MODULE physicscore
     REAL(dp) :: timeInYears,targetTime,currentTimeold
     REAL(dp) ::  cloudSize
     REAL(dp), allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:),density_max(:)
+    ! Per-point initial density used by densdot for multi-point radial profile models.
+    ! Defaults to global initialDens; overridden by cloud.f90 when enable_radiative_transfer=T.
+    REAL(dp), allocatable :: initialDens_array(:)
 
     !Arrays for calculating rates
     !if ionModel = L use the L model coefficients, if = H use the H model
@@ -72,6 +75,9 @@ CONTAINS
         ! Modules not restarted in python wraps so best to reset everything manually.
         IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,dustTemp,density,density_max)
         ALLOCATE(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points),density_max(points))
+        IF (ALLOCATED(initialDens_array)) DEALLOCATE(initialDens_array)
+        ALLOCATE(initialDens_array(points))
+        initialDens_array = initialDens   ! default: same for all points (single-point / no radial profile)
 
         cloudSize = (rout-rin)*pc
         gasTemp=initialTemp
@@ -115,16 +121,21 @@ CONTAINS
         IF (cosmicRayAttenuation) CALL ionizationDependency
     END SUBROUTINE coreUpdatePhysics
 
-    pure FUNCTION densdot(density)
-    ! Returns the time derivative of the density.                                     
-    ! Analytical function taken from Rawlings et al. 1992                             
+    FUNCTION densdot(density)
+    ! Returns the time derivative of the density.
+    ! Analytical function taken from Rawlings et al. 1992
     ! Called from chemistry.f90, density integrated with abundances so this gives ydot
+    ! Uses initialDens_array(dstep) as the per-point reference density so that
+    ! multi-point radial-profile models (enable_radiative_transfer=T) undergo
+    ! freefall correctly from each parcel's own starting density.
     REAL(dp), INTENT(IN) :: density
     REAL(dp) :: densdot
+    REAL(dp) :: n0_pt   ! per-point initial density for this dstep
+    n0_pt = initialDens_array(dstep)
     !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
-    IF ((density .lt. finalDens) .and. (freefall) .and. (density .gt. initialDens)) THEN
-        densdot=freefallFactor*(density**4./initialDens)**0.33*&
-        &(8.4d-30*initialDens*((density/initialDens)**0.33-1.))**0.5
+    IF ((density .lt. finalDens) .and. (freefall) .and. (density .gt. n0_pt)) THEN
+        densdot=freefallFactor*(density**4./n0_pt)**0.33*&
+        &(8.4d-30*n0_pt*((density/n0_pt)**0.33-1.))**0.5
     ELSE
         densdot=0.0
     ENDIF

@@ -7,7 +7,7 @@ MODULE cloud_mod
     !f2py INTEGER, parameter :: dp
     USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens, density_max, ngas_r, initialDens_r, findcoldens_edge2core
+    &coldens, density_max, ngas_r, initialDens_r, findcoldens_edge2core, initialDens_array
     USE network
     use f2py_constants
     IMPLICIT NONE
@@ -50,7 +50,10 @@ CONTAINS
         ! Set up densities (use radial profile if 1D radiative transfer enabled)
         DO dstep=1,points
             IF (enable_radiative_transfer .AND. points.gt.1) THEN
-                density(dstep)=1.001*initialDens_r(parcelRadius(dstep)*pc,density_power_index)
+                ! Store the raw profile density (without 1.001 bump) so densdot
+                ! sees density(dstep) > initialDens_array(dstep) and freefall fires.
+                initialDens_array(dstep)=ngas_r(parcelRadius(dstep),initialDens,density_scale_radius,density_power_index)
+                density(dstep)=1.001*initialDens_array(dstep)
             ELSE
                 density(dstep)=1.001*initialDens
             END IF
@@ -58,7 +61,7 @@ CONTAINS
         
         DO dstep=1,points
             IF (enable_radiative_transfer .AND. points.gt.1) THEN
-                coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens_r(parcelRadius(dstep)*pc,density_power_index)
+                coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*ngas_r(parcelRadius(dstep),initialDens,density_scale_radius,density_power_index)
             ELSE
                 coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
             END IF
