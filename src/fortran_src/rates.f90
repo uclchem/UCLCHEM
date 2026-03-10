@@ -9,7 +9,6 @@ MODULE RATES
     IMPLICIT NONE
 
     !Variables controlling chemistry:
-    LOGICAL :: PARAMETERIZE_H2FORM=.True.
     REAL(dp) :: grainArea,cion,h2dis,lastTemp=0.0
 
     ! Controlling ice chemistry
@@ -255,7 +254,7 @@ CONTAINS
     idx1=lhReacs(1)
     idx2=lhReacs(2)
     if (idx1 .ne. idx2) THEN
-        if ((dustTemp(dstep) .lt. MAX_GRAIN_TEMP) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
+        if ((dustTemp(dstep) .lt. maxGrainTemp) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
             DO j=idx1,idx2
                 rate(j)=diffusionReactionRate(j,dustTemp(dstep))
             END DO
@@ -316,15 +315,22 @@ CONTAINS
         END IF
     END IF
 
-    IF (PARAMETERIZE_H2FORM) THEN
-        rate(nR_H2Form_CT)=h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
-        !rate(nR_H2Form_LH)=0.0
-        rate(nR_H2Form_ER)=0.0
-        !rate(nR_H2Form_LHDes)=0.0
-        rate(nR_H2Form_ERDes)=0.0
-    ELSE
-        rate(nR_H2Form_CT)= 0.0
-    END IF
+    SELECT CASE (parameterizeH2Form)
+    CASE (0) ! Always disable parameterized H2 formation
+        rate(nR_H2Form_CT) = 0.0
+    CASE (1) ! Always enable parameterized H2 formation
+        rate(nR_H2Form_CT) = h2FormEfficiency(gasTemp(dstep), dustTemp(dstep))
+        rate(nR_H2Form_ER) = 0.0
+        rate(nR_H2Form_ERDes) = 0.0
+    CASE (2) ! Temperature-dependent: explicit LH/ER below maxGrainTemp, parameterized above
+        IF (dustTemp(dstep) .ge. maxGrainTemp) THEN
+            rate(nR_H2Form_CT) = h2FormEfficiency(gasTemp(dstep), dustTemp(dstep))
+            rate(nR_H2Form_ER) = 0.0
+            rate(nR_H2Form_ERDes) = 0.0
+        ELSE
+            rate(nR_H2Form_CT) = 0.0
+        END IF
+    END SELECT
 
     CALL bulkSurfaceExchangeReactions(rate,dustTemp(dstep))
     
@@ -411,7 +417,7 @@ FUNCTION freezeOutRate(idx1,idx2) RESULT(freezeRates)
     
     !additional factor for ions (beta=0 for neutrals)
     freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
-    IF ((freezeFactor .eq. 0.0) .or. (dustTemp(dstep) .gt. MAX_GRAIN_TEMP)) then
+    IF ((freezeFactor .eq. 0.0) .or. (dustTemp(dstep) .gt. maxGrainTemp)) then
         freezeRates=0.0
     ELSE
         freezeRates=freezeRates*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL&

@@ -45,7 +45,7 @@ LOGICAL :: endAtFinalDensity=.False. !Choose to end model at final density, othe
 LOGICAL :: freefall=.False. !Controls whether models density increaes following freefall equation.
 REAL(dp) :: freefallFactor=1.0 !Modify freefall rate by factor, usually to slow it.
 LOGICAL :: desorb=.True. !Toggles all non-thermal desoprtion processes on or off.
-LOGICAL :: h2desorb=.True. !Individually toggle non-thermal desorption due to H2 formation.
+LOGICAL :: h2desorb=.False. !Individually toggle non-thermal desorption due to H2 formation.
 LOGICAL :: crdesorb=.True. !Individually toggle non-thermal desorption due to cosmic rays.
 LOGICAL :: uvdesorb=.True. !Individually toggle non-thermal desorption due to uv photons.
 LOGICAL :: chemdesorb=.True. !Individually toggle non-thermal desorption due to chemical reactions.
@@ -155,6 +155,8 @@ REAL(dp) :: lower_limit_gastemp=10.0 !Lower limit for gas temperature in K when 
 REAL(dp) :: upper_limit_gastemp=1.0d4 !Upper limit for gas temperature in K when heating is enabled.
 REAL(dp) :: lower_limit_dusttemp=10.0 !Lower limit for dust temperature in K when heating is enabled.
 REAL(dp) :: upper_limit_dusttemp=1.0d3 !Upper limit for dust temperature in K when heating is enabled.
+REAL(dp) :: maxGrainTemp=150.0 !Dust temperature (K) above which grain surface chemistry is disabled and H2 formation is parameterized.
+INTEGER :: parameterizeH2Form=2 !H2 formation mode: 0=always off, 1=always on (parameterized), 2=explicit LH/ER below maxGrainTemp, parameterized above (default).
 !|alpha|{1:0.0,2:0.0}| Set alpha coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how alpha is used for each reaction type.|
 !|beta|{1:0.0,2:0.0}| Set beta coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how beta is used for each reaction type.|
 !|gama|{1:0.0,2:0.0}| Set gama coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how gama is used for each reaction type.|

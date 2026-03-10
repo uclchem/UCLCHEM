@@ -63,7 +63,7 @@ MODULE SurfaceReactions
   REAL(dp), PARAMETER :: H2_ON_H2_BINDING_ENERGY=23.0D0 ! K
   REAL(dp), PARAMETER :: H_ON_H2_BINDING_ENERGY=45.0D0  ! K
 
-  REAL(dp), PARAMETER :: MAX_GRAIN_TEMP=150.0, MIN_SURFACE_ABUND=1.0d-20
+  REAL(dp), PARAMETER :: MIN_SURFACE_ABUND=1.0d-20
 
   ! Desorption fraction arrays for LHDES/ERDES reactions (pre-calculated at initialization)
   REAL(dp), DIMENSION(nReac) :: desorptionFractionsBare, desorptionFractionsFullCoverage
@@ -141,7 +141,7 @@ CONTAINS
 
   FUNCTION surfaceToBulkSwappingRates(dustTemperature) RESULT(rate)
     REAL(dp) ::rate,dustTemperature
-    IF ((dustTemperature .gt. MAX_GRAIN_TEMP) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
+    IF ((dustTemperature .gt. maxGrainTemp) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
               rate = 0.0
     ELSE
         rate = 1.0
@@ -153,7 +153,7 @@ CONTAINS
     REAL(dp), INTENT(INOUT) :: rate(*)
     REAL(dp) :: dustTemperature
     INTEGER :: idx1,idx2,i,j
-    IF ((dustTemperature .gt. MAX_GRAIN_TEMP) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
+    IF ((dustTemperature .gt. maxGrainTemp) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
         rate(idx1:idx2) = 0.0
     ELSE
         DO i=idx1,idx2

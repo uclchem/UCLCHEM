@@ -1278,6 +1278,10 @@ CONTAINS
                    READ(inputValue,*,iostat=successFlag) freq_rel_tol
                 CASE('pop_rel_tol')
                    READ(inputValue,*,iostat=successFlag) pop_rel_tol
+                CASE('maxgraintemp')
+                   READ(inputValue,*,iostat=successFlag) maxGrainTemp
+                CASE('parameterizeh2form')
+                   READ(inputValue,*,iostat=successFlag) parameterizeH2Form
                 ! CASE('trajecfile')
                 !    READ(inputValue,*,iostat=successFlag) trajecfile
                 CASE DEFAULT

@@ -96,7 +96,7 @@ default_param_dictionary = {
     "freefall": False,
     "freefallfactor": 1.0,
     "desorb": True,
-    "h2desorb": True,
+    "h2desorb": False,
     "crdesorb": True,
     "uvdesorb": True,
     "thermdesorb": True,
@@ -163,6 +163,8 @@ default_param_dictionary = {
     "usetstprefactors": False,  # Set this one to True and add the intertias from dijkhuis25.
     "usecustomprefactors": False,
     "useminissaleicechemdesefficiency": False,
+    "maxgraintemp": 150.0,
+    "parameterizeh2form": 2,
     # Coolant/validation tolerances
     # freq_rel_tol default is auto-computed at makerates time from LAMDA file deviations
     "freq_rel_tol": float(getattr(f2py_constants, "suggested_freq_rel_tol", 0.1)),

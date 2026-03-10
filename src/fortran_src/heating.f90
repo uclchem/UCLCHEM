@@ -57,8 +57,9 @@ IMPLICIT NONE
     
     ! Treatment of the dust-gas temperature coupling
     ! 1 = Simple treatment Hocuk et al. 2017
-    ! 2 = Detailed balance method Hollenbach 1991 
-    INTEGER :: dust_gas_coupling_method = 2
+    ! 2 = Detailed balance method Hollenbach 1991
+    ! 3 = Ivlev et al. 2019 (Hocuk + CR heating correction)
+    INTEGER :: dust_gas_coupling_method = 3
     
     ! LINE_SOLVER_ATTEMPTS: Number of times to solve line cooling and take median, must be <= MAX_LINE_SOLVE_ATTEMPTS
     INTEGER :: LINE_SOLVER_ATTEMPTS = 1
@@ -669,9 +670,10 @@ FUNCTION gasGrainCollisions(gasTemperature,gasDensity,dustAbundance,dustRadius,d
                        & *accommodation*(2.0*K_BOLTZ*dustTemp-2.0*K_BOLTZ*gasTemperature)
 END FUNCTION gasGrainCollisions
 
-FUNCTION calculateDustTemp(localField,surfaceField,Av) result(dustTemperature)
+FUNCTION calculateDustTemp(localField,surfaceField,Av,zeta) result(dustTemperature)
     IMPLICIT NONE
     REAL(dp), INTENT(IN) :: localField,surfaceField,Av
+    REAL(dp), INTENT(IN), OPTIONAL :: zeta
     REAL(dp) :: dustTemperature
 
     !Choose which dust temperature calculation to use
@@ -680,10 +682,16 @@ FUNCTION calculateDustTemp(localField,surfaceField,Av) result(dustTemperature)
         dustTemperature=calculateDustTempHollenbach(localField,surfaceField)
     case (2)
         dustTemperature=calculateDustTempHocuk(surfaceField,Av)
+    case (3)
+        ! Ivlev et al. 2019: CR heating correction on top of Hocuk base temperature
+        dustTemperature=calculateDustTempHocuk(surfaceField,Av)
+        if (present(zeta)) then
+            dustTemperature=calculateDustTempIvlev(dustTemperature,zeta)
+        end if
     case default
-        write(*,*) 'Unimplemented dust temperature calculation method choose 1 or 2. Exiting.'
+        write(*,*) 'Unimplemented dust temperature calculation method choose 1, 2, or 3. Exiting.'
         stop
-    end select 
+    end select
     RETURN
 END FUNCTION calculateDustTemp
 
@@ -808,6 +816,30 @@ FUNCTION calculateDustTempHocuk(surfaceField,Av) result(dustTemperature)
     END IF
     RETURN
 END FUNCTION calculateDustTempHocuk
+
+! Ivlev et al. 2019 cosmic-ray dust heating correction
+! Equation 30: T_d,eff = T_d0 * [1 + 0.202 * (zeta_ion/1e-16)*(T_d0/6)^(-6)]^(1/6)
+! where T_d0 is the base dust temperature (e.g. from Hocuk 2017)
+! and zeta_ion is the cosmic ray ionization rate in s^-1 (= 1.3D-17 * zeta)
+FUNCTION calculateDustTempIvlev(Td0, zeta) result(dustTemperature)
+    IMPLICIT NONE
+    REAL(dp), INTENT(IN) :: Td0   ! Base dust temperature from Hocuk
+    REAL(dp), INTENT(IN) :: zeta  ! Dimensionless CR ionization rate scaling factor
+    REAL(dp) :: dustTemperature
+    REAL(dp) :: zeta_ion  ! CR ionization rate in s^-1
+
+    zeta_ion = 1.3D-17 * zeta
+    dustTemperature = Td0 * (1.0D0 + 0.202D0 * (zeta_ion / 1.0D-16) * (Td0 / 6.0D0)**(-6))**(1.0D0/6.0D0)
+
+    ! Apply dust temperature limits
+    IF (dustTemperature.LT.lower_limit_dusttemp) THEN
+        dustTemperature = lower_limit_dusttemp
+    END IF
+    IF (dustTemperature.GT.upper_limit_dusttemp) THEN
+        dustTemperature = upper_limit_dusttemp
+    END IF
+    RETURN
+END FUNCTION calculateDustTempIvlev
 !=======================================================================
 
 

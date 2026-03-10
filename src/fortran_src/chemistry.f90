@@ -259,7 +259,7 @@ CONTAINS
             CALL calculateReactionRates(abund,safeMantle, h2col, cocol, ccol, rate)
             if (heatingFlag) then
                 ! TODO: check that the local and global radiation fields are correct.
-                dustTemp(dstep)=calculateDustTemp(radfield*EXP(-UV_FAC*av(dstep)),radfield,av(dstep))
+                dustTemp(dstep)=calculateDustTemp(radfield*EXP(-UV_FAC*av(dstep)),radfield,av(dstep),zeta)
 
 
                 tempDot= getTempDot(&

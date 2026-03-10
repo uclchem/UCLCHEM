@@ -22,7 +22,7 @@ custom_reaction_type:
 # Enable to add gas-phase CRP, CRPHOT and PHOTON reactions to grains as well
 # Be aware that this will cause stiffness, see tests/test_photo_on_grains.py for 
 # solver settings that should work for static, stage 1 and stage 2 models.
-add_crp_photo_to_grain: False
+add_crp_photo_to_grain: True
 # Enable the writing of the rate constants and rates to the disk
 enable_rates_storage: False
 # Enable the computation of all the enthalpies:
