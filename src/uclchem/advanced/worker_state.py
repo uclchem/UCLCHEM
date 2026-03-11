@@ -80,8 +80,9 @@ def create_snapshot() -> Dict[str, Any]:
                 continue
             if callable(value):
                 continue
-            # Skip arrays (handled by heating/network sections, or immutable)
-            if isinstance(value, np.ndarray):
+            # Skip arrays (handled by heating/network sections, or immutable),
+            # but keep 0-d arrays (f2py scalar wrappers like cloud_mod scalars).
+            if isinstance(value, np.ndarray) and value.ndim > 0:
                 continue
             # Skip parameters that cannot or should not be set
             attr_lower = attr.lower()
@@ -91,6 +92,9 @@ def create_snapshot() -> Dict[str, Any]:
                 continue
             if attr_lower in FILE_PATH_PARAMETERS:
                 continue
+            # Convert 0-d numpy arrays to Python scalars for clean pickling
+            if isinstance(value, np.ndarray) and value.ndim == 0:
+                value = value.item()
             mod_snapshot[attr] = value
         if mod_snapshot:
             general[mod_name] = mod_snapshot

@@ -34,7 +34,7 @@ CONTAINS
         ! CRP
         idx1=crpReacs(1)
         idx2=crpReacs(2)
-        IF (idx1 .ne. idx2) THEN 
+        IF (idx1 .ne. REAC_NOT_PRESENT) THEN 
             rate(idx1:idx2) = alpha(idx1:idx2)*zeta
         END IF
         IF (improvedH2CRPDissociation) THEN
@@ -43,7 +43,7 @@ CONTAINS
 
         idx1=photonReacs(1)
         idx2=photonReacs(2)
-        IF (idx1 .ne. idx2) THEN
+        IF (idx1 .ne. REAC_NOT_PRESENT) THEN
             rate(idx1:idx2) = alpha(idx1:idx2)*dexp(-gama(idx1:idx2)*av(dstep))*radfield/1.7
             ! For all solid species, decrease rate by 0.3 (Kalvans 2018)
             ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
@@ -59,7 +59,7 @@ CONTAINS
         !Reactions involving cosmic ray induced photon
         idx1=crphotReacs(1)
         idx2=crphotReacs(2)
-        IF (idx1 .ne. idx2) THEN
+        IF (idx1 .ne. REAC_NOT_PRESENT) THEN
             rate(idx1:idx2)=alpha(idx1:idx2)*gama(idx1:idx2)*1.0/(1.0-omega)*zeta*(gasTemp(dstep)/300)**beta(idx1:idx2)
             ! For all solid species, decrease rate by 0.3 (Kalvans 2018)
             ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
@@ -75,7 +75,7 @@ CONTAINS
         !freeze out only happens if freezeFactor>0 and depending on evap choice 
         idx1=freezeReacs(1)
         idx2=freezeReacs(2)
-        IF (idx1 .ne. idx2) THEN
+        IF (idx1 .ne. REAC_NOT_PRESENT) THEN
             rate(idx1:idx2)=freezeOutRate(idx1,idx2)
             !freeze out rate uses thermal velocity but mass of E is 0 giving us infinite rates
             !just assume it's same as H
@@ -103,7 +103,7 @@ CONTAINS
         !Desorption due to energy released by H2 Formations
         idx1=desoh2Reacs(1)
         idx2=desoh2Reacs(2)
-        IF (idx1 .ne. idx2) THEN
+        IF (idx1 .ne. REAC_NOT_PRESENT) THEN
             IF ((desorb) .and. (h2desorb) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
                 !Epsilon is efficieny of this process, number of molecules removed per event
                 !h2form is formation rate of h2, dependent on hydrogen abundance. 
@@ -122,7 +122,7 @@ CONTAINS
         !Desorption due to energy from cosmic rays
         idx1=descrReacs(1)
         idx2=descrReacs(2)
-        IF (idx1 .ne. idx2) THEN
+        IF (idx1 .ne. REAC_NOT_PRESENT) THEN
             IF ((desorb) .and. (crdesorb) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
                 !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
                 !as iron nuclei are main cause of CR heating.
@@ -144,7 +144,7 @@ CONTAINS
         !Desorption due to UV, partially from ISRF and partially from CR creating photons
         idx1=deuvcrReacs(1)
         idx2=deuvcrReacs(2)
-        IF (idx1 .ne. idx2) THEN
+        IF (idx1 .ne. REAC_NOT_PRESENT) THEN
             IF ((desorb) .and. (uvdesorb) .and. (safeMantle .gt. MIN_SURFACE_ABUND)&
                     &.and.(zeta .gt. 0)) THEN
                 !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
@@ -168,7 +168,7 @@ CONTAINS
         !rate equations from Shingledecker et. al. 2018
         idx1=crsReacs(1)
         idx2=crsReacs(2)
-        IF (idx1 .ne. idx2) THEN
+        IF (idx1 .ne. REAC_NOT_PRESENT) THEN
             !8.6 is the Spitzer-Tomasko cosmic ray flux in cm^-2 s^-1
             !1.3 converts to: ionisation rate/10^-17
             rate(idx1:idx2)=alpha(idx1:idx2)*(beta(idx1:idx2)*(gama(idx1:idx2)/100)*(8.6*zeta*1.3))
@@ -177,7 +177,7 @@ CONTAINS
         !EXRELAX, relaxation reactions for each excited species
         idx1=exrelaxReacs(1)
         idx2=exrelaxReacs(2)
-        IF (idx1 .ne. idx2) THEN
+        IF (idx1 .ne. REAC_NOT_PRESENT) THEN
             DO j=idx1,idx2
                 DO i=lbound(iceList,1),ubound(iceList,1)
                     IF (iceList(i) .eq. re1(j)) THEN
@@ -192,7 +192,7 @@ CONTAINS
         idx1=exsolidReacs(1)
         idx2=exsolidReacs(2)
 
-        IF (idx1 .ne. idx2) THEN
+        IF (idx1 .ne. REAC_NOT_PRESENT) THEN
             !reaction rates calculated outside of UCLCHEM as per Shingledecker et al. 2018 and included in grain network
             !alpha are branching ratios and beta is reaction rate
             DO j=idx1,idx2
@@ -214,7 +214,7 @@ CONTAINS
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         idx1=thermReacs(1)
         idx2=thermReacs(2)
-        IF (idx1 .ne. idx2) THEN
+        IF (idx1 .ne. REAC_NOT_PRESENT) THEN
             IF (thermdesorb) THEN
                 DO j=idx1,idx2
                     !then try to overwrite with position in grain array
@@ -253,7 +253,7 @@ CONTAINS
     
     idx1=lhReacs(1)
     idx2=lhReacs(2)
-    if (idx1 .ne. idx2) THEN
+    if (idx1 .ne. REAC_NOT_PRESENT) THEN
         if ((dustTemp(dstep) .lt. maxGrainTemp) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
             DO j=idx1,idx2
                 rate(j)=diffusionReactionRate(j,dustTemp(dstep))
@@ -288,7 +288,7 @@ CONTAINS
     !First calculate overall rate and then split between desorption and sticking
     idx1=erReacs(1)
     idx2=erReacs(2)
-    if (idx1 .ne. idx2) THEN
+    if (idx1 .ne. REAC_NOT_PRESENT) THEN
         rate(idx1:idx2)=freezeOutRate(idx1,idx2)
         rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/dustTemp(dstep))
         
@@ -344,13 +344,13 @@ CONTAINS
 
     idx1=ionopol1Reacs(1)
     idx2=ionopol1Reacs(2)
-    IF (idx1 .ne. idx2)&
+    IF (idx1 .ne. REAC_NOT_PRESENT)&
     !This formula including the magic numbers come from KIDA help page.
     &rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(0.62d0+0.4767d0*gama(idx1:idx2)*dsqrt(300.0d0/gasTemp(dstep)))
 
     idx1=ionopol2Reacs(1)
     idx2=ionopol2Reacs(2)
-    IF (idx1 .ne. idx2) THEN
+    IF (idx1 .ne. REAC_NOT_PRESENT) THEN
         !This formula including the magic numbers come from KIDA help page.
         rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(1.0d0+0.0967d0*gama(idx1:idx2)&
         &*dsqrt(300.0d0/gasTemp(dstep))+gama(idx1:idx2)*gama(idx1:idx2)*300.0/(10.526*gasTemp(dstep)))
@@ -369,7 +369,7 @@ CONTAINS
     ! Ensure phi is within the 1e2 to 1e6 range from the paper:
     phi = min(max(phi,1e2), 1e6)
     
-    IF (idx1 .ne. idx2) THEN
+    IF (idx1 .ne. REAC_NOT_PRESENT) THEN
         rate(idx1:idx2)= 0.6 * alpha(idx1:idx2) * garParams(:,1) / (1. + garParams(:,2) *&  
         &phi**garParams(:,3) * (1. + garParams(:,4) * gasTemp(dstep)**garParams(:,5) *&
         &phi**(-garParams(:,6)-garParams(:,7)*log(gasTemp(dstep)))))

@@ -36,6 +36,7 @@ IMPLICIT NONE
     !DLSODE variables    
     INTEGER :: ITASK,ISTATE,NEQ
     REAL(dp), ALLOCATABLE :: abstol(:)
+    REAL(dp), ALLOCATABLE :: reltol_vec(:)
     ! TYPE(VODE_OPTS) :: OPTIONS
     !initial fractional elemental abudances and arrays to store abundances
     REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
@@ -60,6 +61,9 @@ IMPLICIT NONE
     !Solver statistics counter - tracks all DVODE calls including retries
     INTEGER :: solver_stats_counter
 
+    ! Error code set inside the F callback; cannot use successFlag directly due to fixed DVODE signature.
+    INTEGER :: f_callback_error = 0
+
 CONTAINS
     SUBROUTINE initializeChemistry(readAbunds, successFlag)
         LOGICAL, INTENT(IN) :: readAbunds
@@ -71,6 +75,7 @@ CONTAINS
         ! values in module definitions above. Reset here.
         NEQ=nspec+2
         IF (ALLOCATED(abund)) DEALLOCATE(abund,vdiff,vdes)
+        IF (ALLOCATED(reltol_vec)) DEALLOCATE(reltol_vec)
         ALLOCATE(abund(NEQ,points),vdiff(SIZE(iceList)),vdes(SIZE(iceList)))
         !Set abundances to initial elemental if not reading them in.
         IF (.NOT. readAbunds) THEN
@@ -149,6 +154,9 @@ CONTAINS
         IF (.NOT. ALLOCATED(abstol)) THEN
             ALLOCATE(abstol(NEQ))
         END IF
+        IF (.NOT. ALLOCATED(reltol_vec)) THEN
+            ALLOCATE(reltol_vec(NEQ))
+        END IF
         !OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.FALSE.)
         
         IF (heatingFlag) THEN
@@ -205,6 +213,9 @@ CONTAINS
         INTEGER, INTENT(IN), OPTIONAL :: dtime
         real(dp) :: originalTargetTime !targetTime can be altered by integrator but we'd like to know if it was changed
         real(dp) :: surfaceCoverage
+        real(dp) :: h2form_CT_vol, h2form_LH_vol, h2form_ER_vol  ! per-mechanism volumetric H2 formation rates [cm^-3 s^-1]
+        real(dp) :: h2form_heat  ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
+        real(dp) :: h2heatfac, h2_denom  ! H&M79 eq. 6.45 thermalization efficiency factor
 
         ! write(*,*) "update Chemistry ..."
         !Integration can fail in a way that we can manage. Allow maxLoops tries before giving up.
@@ -262,15 +273,37 @@ CONTAINS
                 dustTemp(dstep)=calculateDustTemp(radfield*EXP(-UV_FAC*av(dstep)),radfield,av(dstep),zeta)
 
 
+                ! Per-mechanism volumetric H2 formation rates [cm^-3 s^-1] 
+                ! Only accounting for H2 ending up in the gas phase.
+                h2form_CT_vol = rate(nR_H2Form_CT) * abund(nspec+2,dstep)**2 * abund(nh,dstep)
+                h2form_LH_vol = (rate(nR_H2Form_LHDes)) &
+                              &  * abund(ngh,dstep)**2 * abund(nspec+2,dstep)
+                h2form_ER_vol = (rate(nR_H2Form_ERDes)) &
+                              &  * abund(nspec+2,dstep)**2 * abund(nh,dstep) * abund(ngh,dstep) / safeMantle
+                ! H&M79 eq. 6.45: critical density for H2 thermalization
+                ! (18100 coefficient for consistency with h2FUVPumpHeating in heating.f90)
+                h2_denom = 1.6d0*abund(nh,dstep)*EXP(-((400.0d0/gasTemp(dstep))**2)) &
+                         &+ 1.4d0*abund(nh2,dstep)*EXP(-(18100.0d0/(gasTemp(dstep)+1200.0d0)))
+                IF (h2_denom > 0.0d0) THEN
+                    h2heatfac = 1.0d0 / (1.0d0 + 1.0d6/(SQRT(gasTemp(dstep))*h2_denom*abund(nspec+2,dstep)))
+                ELSE
+                    h2heatfac = 0.0d0
+                END IF
+                ! H&M79 eq. 6.43: LH gives 0.1 eV kinetic + 4.2 eV vibrational (fraction h2heatfac goes to gas)
+                ! ER: 0.6 eV (Bourlot et al. 2012), thermalization-corrected
+                ! CT: 1.5 eV (Hollenbach & Tielens 1999), no thermalization correction
+                h2form_heat = eV * (1.5d0*h2form_CT_vol &
+                            &+ (0.1d0 + 4.2d0*h2heatfac)*h2form_LH_vol &
+                            &+ 0.6d0*h2heatfac*h2form_ER_vol)
                 tempDot= getTempDot(&
-                                &    timeinyears, &                       ! time 
+                                &    timeinyears, &                       ! time
                                 &    abund(nspec+1,dstep), &              ! gas temperature
                                 &    abund(nspec+2,dstep), &              ! gas density
                                 &    colDens(dstep), &                    ! gas column density
                                 &    radfield*EXP(-UV_FAC*av(dstep)), &   ! attenuated radiation field
                                 &    abund(:,dstep), &                    ! full abundance vector
                                 &    rate(nR_H2_hv), &                     ! H2 dissociation rate
-                                &    rate(nR_H2Form_CT), &                            ! H2 formation rate
+                                &    h2form_heat, &                       ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
                                 &    zeta, &                              ! cosmic ray ionization rate
                                 &    rate(nR_C_hv), &                     ! C-photo rate
                                 &    1.0/GAS_DUST_DENSITY_RATIO, &        ! dust-to-gas ratio
@@ -332,16 +365,26 @@ CONTAINS
         INTEGER, INTENT(IN), OPTIONAL :: dtime
         TYPE(VODE_OPTS) :: OPTIONS
         successFlag=0
+        f_callback_error=0
 
     !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
         !reset parameters for DVODE
         ITASK=1 !try to integrate to targetTime
         ISTATE=1 !pretend every step is the first
         !Alternative: if (ISTATE .lt. 0) ISTATE=1  !only reset on error, allows Jacobian reuse
-        abstol=abstol_factor*abund(:,dstep) !absolute tolerances depend on value of abundance
-        WHERE(abstol<abstol_min) abstol=abstol_min ! to a minimum degree
-        !Call the integrator.
-        OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
+        !Chemistry species: absolute tolerances scaled by abundance
+        abstol=abstol_factor*abund(:,dstep)
+        WHERE(abstol<abstol_min) abstol=abstol_min
+        !Physical variables: separate tolerance heuristic (T and nH need looser tolerances)
+        abstol(nspec+1) = MAX(abstol_phys_factor * ABS(abund(nspec+1,dstep)), abstol_T_min)
+        abstol(nspec+2) = MAX(abstol_phys_factor * ABS(abund(nspec+2,dstep)), abstol_nH_min)
+        !Per-component relative tolerances: tight for chemistry, relaxed for physics
+        reltol_vec(1:nspec) = reltol
+        reltol_vec(nspec+1) = reltol_phys
+        reltol_vec(nspec+2) = reltol_phys
+        !Call the integrator with ITOL=4 (vector reltol + vector abstol).
+        OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR_VECTOR=reltol_vec, &
+                           USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
         CALL CPU_TIME(dvode_cpu_start)
         CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
         CALL CPU_TIME(dvode_cpu_end)
@@ -370,6 +413,11 @@ CONTAINS
             statsarray(solver_stats_counter, dstep, 19) = dvode_cpu_time
         END IF
 
+        IF (f_callback_error .lt. 0) THEN
+            successFlag = f_callback_error
+            RETURN
+        END IF
+
         SELECT CASE(ISTATE)
             CASE(-1)
                 !ISTATE -1 means the integrator can't break the problem into small enough steps
@@ -384,6 +432,7 @@ CONTAINS
                 write(*,*) "ISTATE -2: Tolerances too small"
                 !Tolerances are too small for machine but succesful to current currentTime
                 abstol_factor=abstol_factor*10.0
+                reltol_phys=MIN(reltol_phys*10.0, 1.0d-1)
             CASE(-3)
                 !ISTATE -3 is unrecoverable so just bail on intergration
                 write(*,*) "DVODE found invalid inputs"
@@ -419,6 +468,7 @@ CONTAINS
         REAL(dp) :: D,loss,prod
         REAL(dp) :: surfaceCoverage
         REAL(dp) :: phi,cgr(6),grec,denom
+        REAL(dp) :: h2heatfac, h2_denom  ! H&M79 eq. 6.45 thermalization efficiency factor
         INTEGER :: ii
         !Set D to the gas density for use in the ODEs
         D=y(nspec+2)     !Gas density
@@ -452,22 +502,50 @@ CONTAINS
         ydot(nspec+2) = densdot(Y(nspec+2))     !Gas density ODE
 
         IF (heatingFlag) THEN
+            ! Check for diverging negative abundances (beyond tolerance).
+            ! Values in (-negative_abundance_tol, 0) are solver noise and handled downstream.
+            IF (ANY(Y(1:nspec) < -negative_abundance_tol)) THEN
+                WRITE(*,'(A,ES12.4,A,I4)') "ERROR: negative abundance(s) entering heating at t=", &
+                    timeInYears, " yr, dstep=", dstep
+                DO ii = 1, nspec
+                    IF (Y(ii) < -negative_abundance_tol) WRITE(*,'(4X,A,A,ES12.4)') &
+                        TRIM(specname(ii)), ": ", Y(ii)
+                END DO
+                f_callback_error = NEGATIVE_ABUNDANCE_ERROR
+                RETURN
+            END IF
             ! Write(*,*) "Updating heating and cooling rates"
-            ! IF (ABS(y(nspec+1)-oldTemp)/oldTemp.gt.0.1) THEN
-            IF (ABS(y(nspec+1)-oldTemp).gt.0.1) THEN
+            IF (ABS(y(nspec+1)-oldTemp).gt.MIN(heating_temp_abstol, heating_temp_reltol*oldTemp)) THEN
                 gasTemp(dstep)=y(nspec+1)
                 IF (gasTemp(dstep) .lt. lower_limit_gastemp) gasTemp(dstep)=lower_limit_gastemp
                 IF (gasTemp(dstep) .gt. upper_limit_gastemp) gasTemp(dstep)=upper_limit_gastemp
-                ! h2form= h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))!h2FormRate(gasTemp(dstep),dustTemp(dstep))
+                ! H&M79 eq. 6.45: critical density for H2 thermalization
+                ! (18100 coefficient for consistency with h2FUVPumpHeating in heating.f90)
+                h2_denom = 1.6d0*Y(nh)*EXP(-((400.0d0/Y(nspec+1))**2)) &
+                         &+ 1.4d0*Y(nh2)*EXP(-(18100.0d0/(Y(nspec+1)+1200.0d0)))
+                IF (h2_denom > 0.0d0) THEN
+                    h2heatfac = 1.0d0 / (1.0d0 + 1.0d6/(SQRT(Y(nspec+1))*h2_denom*Y(nspec+2)))
+                ELSE
+                    h2heatfac = 0.0d0
+                END IF
+                ! Only desorbing products contribute to gas heating; LH/ER remain on grain.
+                ! H&M79 eq. 6.43: LHDes gives 0.1 eV kinetic + 4.2 eV vibrational (fraction h2heatfac to gas)
+                ! ERDes: 0.6 eV (Bourlot et al. 2012), thermalization-corrected
+                ! CT: 1.5 eV (Hollenbach & Tielens 1999), no thermalization correction
+                h2form = eV * ( &
+                    &  1.5d0 * rate(nR_H2Form_CT) * Y(nspec+2)**2 * Y(nh) &
+                    &+ (0.1d0 + 4.2d0*h2heatfac) * rate(nR_H2Form_LHDes) * Y(ngh)**2 * Y(nspec+2) &
+                    &+ 0.6d0 * h2heatfac * rate(nR_H2Form_ERDes) * Y(nspec+2)**2 * Y(nh) * Y(ngh) &
+                    &  / max(safeMantle, MIN_SURFACE_ABUND) )
                 tempDot=getTempDot( &
-                            &    timeInYears, &                         ! time 
+                            &    timeInYears, &                         ! time
                             &    Y(nspec+1), &                          ! gas temperature
                             &    Y(nspec+2), &                          ! gas density
                             &    colDens(dstep), &                      ! gas column density
                             &    radfield*EXP(-UV_FAC*av(dstep)), &     ! attenuated radiation field
                             &    Y, &                                   ! all number densities
                             &    rate(nR_H2_hv), &                      ! H2 dissociation rate computed in rates.f90
-                            &    rate(nR_H2Form_CT), &                  ! H2 formation rate computed in rates.f90
+                            &    h2form, &                              ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
                             &    zeta, &                                ! cosmic ray ionization rate
                             &    rate(nR_C_hv), &                       ! C-photo rate
                             &    1.0/GAS_DUST_DENSITY_RATIO, &          ! dust-to-gas ratio

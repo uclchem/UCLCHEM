@@ -166,7 +166,7 @@ IMPLICIT NONE
         heatingValues = 0.0D0
         heatingValues(1) = photoelectricHeatingBakes(gasTemperature,gasDensity,habingField,abundances(nelec),metallicity)
         heatingValues(2) = photoelectricHeatingWeingartner(gasTemperature,gasDensity,habingField,abundances(nelec),metallicity)
-        heatingValues(3) = H2FormationHeating(gasTemperature,gasDensity,abundances(nh),h2form)
+        heatingValues(3) = H2FormationHeating(h2form)
         heatingValues(4) = H2PhotodisHeating(gasDensity,abundances(nh2),h2dis)
         heatingValues(5) = h2FUVPumpHeating(abundances(nh),abundances(nh2),gasTemperature,gasDensity,h2dis)
         heatingValues(6) = CarbonIonizationHeating(cIonRate,abundances(nc),gasDensity)
@@ -476,17 +476,23 @@ IMPLICIT NONE
     ! !-----------------------------------------------------------------------
     ! !  H2 formation heating
     ! !
-    ! !  Assume that 1.5 eV is liberated as heat during H2 formation
+    ! !  Energy released to gas depends on formation mechanism and thermalization efficiency.
+    ! !  Only H2 that desorbs to the gas phase contributes; LH/ER products remain on grain.
+    ! !  Pre-computed in chemistry.f90 using Hollenbach & McKee (1979) eq. 6.43:
     ! !
-    ! !  See: Hollenbach & Tielens (Review of Modern Physics, 1999, 71, 173)
-    ! !  Use the H2 formation rate determined by subroutine H2_FORMATION_RATE
-    ! !  and stored as REACTION_RATE(nRGR) (cm^3 s^-1)
-    !! JH: I replaced REACTION_RATE(nRGR) with chemistry.f90's h2form=1.0d-17*dsqrt(Y(NEQ-1))
-
+    ! !    CT    = 1.5 eV (Hollenbach & Tielens 1999), no thermalization correction
+    ! !    LHDes = (0.1 + 4.2 * h2heatfac) eV  (H&M79 eq. 6.43)
+    ! !              0.1 eV kinetic, 4.2 eV vibrational thermalized at fraction h2heatfac
+    ! !    ERDes = 0.6 eV * h2heatfac  (Bourlot et al. 2012)
+    ! !
+    ! !  where h2heatfac = 1/(1 + n_cr/n), n_cr from H&M79 eq. 6.45:
+    ! !    n_cr = 10^6 T^{-1/2} / (1.6*x_H*exp(-(400/T)^2) + 1.4*x_H2*exp(-18100/(T+1200)))
+    ! !
+    ! !  This function receives the already-computed heating rate [erg cm^-3 s^-1].
     ! !-----------------------------------------------------------------------
-    REAL(dp) FUNCTION H2FormationHeating(gasTemperature,gasDensity,hAbund,h2form)
-        REAL(dp), INTENT(IN) :: gasTemperature,gasDensity,hAbund,h2form
-        H2FormationHeating=(1.5*eV)*h2form*hAbund*gasDensity*gasDensity
+    REAL(dp) FUNCTION H2FormationHeating(h2formHeat)
+        REAL(dp), INTENT(IN) :: h2formHeat  ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
+        H2FormationHeating = h2formHeat
     END FUNCTION H2FormationHeating
 
 

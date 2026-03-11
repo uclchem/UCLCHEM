@@ -4,7 +4,7 @@ MODULE COOLANT_MODULE
                               coolantConversionFactors, coolantConversionMode, coolantParentNames, &
                               N_TOTAL_LEVELS
    USE network
-   USE defaultparameters, only: freq_rel_tol, pop_rel_tol
+   USE defaultparameters, only: freq_rel_tol, pop_rel_tol, negative_abundance_tol
    IMPLICIT NONE
 
    ! Tolerances are provided via the DEFAULTPARAMETERS module (freq_rel_tol, pop_rel_tol).
@@ -380,10 +380,13 @@ CONTAINS
              !write(*,*) coolantNames(N),abundances(coolantIndices(N))
          END IF
 
+         ! Clamp tiny negative densities (solver noise) to 1e-30 floor
+         IF (coolants(N)%density .lt. 1.0D-30) coolants(N)%density = 1.0D-30
+
          ! Sanity check: Validate abundance is physically reasonable
-         ! Abundances should be fractions (0 to ~1), very small values (underflow) are OK
-         ! Check for garbage values: negative, > 1, or extremely large (> 1e10 indicates memory corruption)
-         IF (abundances(coolantIndices(N)) .lt. 0.0D0 .OR. abundances(coolantIndices(N)) .gt. 1.0D+10) THEN
+         ! Tolerates tiny negative values (solver noise within negative_abundance_tol).
+         ! Errors on genuinely negative, > 1e10 (memory corruption), etc.
+         IF (abundances(coolantIndices(N)) .lt. -negative_abundance_tol .OR. abundances(coolantIndices(N)) .gt. 1.0D+10) THEN
             WRITE(*,'(A,I3,A,A,A,A,A,1PE12.4)') &
                "ERROR: Coolant #", N, " ('", TRIM(coolantNames(N)), &
                "') has unphysical abundance for parent species '", TRIM(coolantParentNames(N)), &

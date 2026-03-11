@@ -136,6 +136,11 @@ REAL(dp) :: f18O=0.0 !Total initial abundance of 18O.
 REAL(dp) :: reltol=1d-8 !Relative tolerance for integration, see [integration docs](/docs/trouble-integration) for advice.
 REAL(dp) :: abstol_factor=1.0d-14 !Absolute tolerance for integration is calculated by multiplying species abundance by this factor.
 REAL(dp) :: abstol_min=1.0d-25 !Minimum value absolute tolerances can take.
+REAL(dp) :: negative_abundance_tol=1.0d-15 !Abundances in (-negative_abundance_tol, 0) are clamped to 1e-30; more negative triggers NEGATIVE_ABUNDANCE_ERROR.
+REAL(dp) :: reltol_phys=1.0d-4 !Relative tolerance for physical variables (temperature, density) in integration.
+REAL(dp) :: abstol_phys_factor=1.0d-4 !Absolute tolerance factor for physical variables (temperature, density).
+REAL(dp) :: abstol_T_min=1.0d-2 !Minimum absolute tolerance for gas temperature (K).
+REAL(dp) :: abstol_nH_min=1.0d0 !Minimum absolute tolerance for gas density (cm^-3).
 INTEGER :: MXSTEP=10000 !Maximum steps allowed in integration before warning is thrown. ! HAS TO BE INT4 instead of INT8
 !
 !## Here be Dragons
@@ -153,6 +158,8 @@ REAL(dp) :: uvcreff=1.0d-3 !Ratio of CR induced UV photons to ISRF UV photons.
 REAL(dp) :: omega=0.5 !Dust grain albedo.
 REAL(dp) :: lower_limit_gastemp=10.0 !Lower limit for gas temperature in K when heating is enabled.
 REAL(dp) :: upper_limit_gastemp=1.0d4 !Upper limit for gas temperature in K when heating is enabled.
+REAL(dp) :: heating_temp_abstol=1.0d0 !Absolute temperature change threshold (K) for recalculating heating/cooling in ODE function.
+REAL(dp) :: heating_temp_reltol=1.0d-2 !Relative temperature change threshold for recalculating heating/cooling in ODE function.
 REAL(dp) :: lower_limit_dusttemp=10.0 !Lower limit for dust temperature in K when heating is enabled.
 REAL(dp) :: upper_limit_dusttemp=1.0d3 !Upper limit for dust temperature in K when heating is enabled.
 REAL(dp) :: maxGrainTemp=150.0 !Dust temperature (K) above which grain surface chemistry is disabled and H2 formation is parameterized.

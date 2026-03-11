@@ -1375,7 +1375,9 @@ def write_network_file(
             # We still want a dummy array if the reaction type isn't in network
             indices = [99999, 99999]
         openFile.write(
-            array_to_string("\t" + list_name, indices, type="int", parameter=True)
+            array_to_string(
+                "\t" + list_name, indices, type="int", parameter=True
+            ).replace("99999", "REAC_NOT_PRESENT")
         )
 
     # Write LHDES and ERDES mapping arrays (Feature 3: LH/ER-DES mapping)
@@ -1400,7 +1402,7 @@ def write_network_file(
             LHDEScorrespondingLHreacs,
             type="int",
             parameter=True,
-        )
+        ).replace("99999", "REAC_NOT_PRESENT")
     )
 
     ERDEScorrespondingERreacs = []
@@ -1426,7 +1428,7 @@ def write_network_file(
             ERDEScorrespondingERreacs,
             type="int",
             parameter=True,
-        )
+        ).replace("99999", "REAC_NOT_PRESENT")
     )
     openFile.write("END MODULE network")
     openFile.close()

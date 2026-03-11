@@ -1150,6 +1150,16 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) abstol_factor
                 CASE('abstol_min')
                     READ(inputValue,*,iostat=successFlag) abstol_min
+                CASE('negative_abundance_tol')
+                    READ(inputValue,*,iostat=successFlag) negative_abundance_tol
+                CASE('reltol_phys')
+                    READ(inputValue,*,iostat=successFlag) reltol_phys
+                CASE('abstol_phys_factor')
+                    READ(inputValue,*,iostat=successFlag) abstol_phys_factor
+                CASE('abstol_t_min')
+                    READ(inputValue,*,iostat=successFlag) abstol_T_min
+                CASE('abstol_nh_min')
+                    READ(inputValue,*,iostat=successFlag) abstol_nH_min
                 ! CASE('jacobian')
                 !     READ(inputValue,*) jacobian
                 CASE('abundsavefile')
@@ -1282,6 +1292,10 @@ CONTAINS
                    READ(inputValue,*,iostat=successFlag) maxGrainTemp
                 CASE('parameterizeh2form')
                    READ(inputValue,*,iostat=successFlag) parameterizeH2Form
+                CASE('heating_temp_abstol')
+                   READ(inputValue,*,iostat=successFlag) heating_temp_abstol
+                CASE('heating_temp_reltol')
+                   READ(inputValue,*,iostat=successFlag) heating_temp_reltol
                 ! CASE('trajecfile')
                 !    READ(inputValue,*,iostat=successFlag) trajecfile
                 CASE DEFAULT

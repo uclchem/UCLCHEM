@@ -136,6 +136,10 @@ default_param_dictionary = {
     "reltol": 1e-08,
     "abstol_factor": 1e-14,
     "abstol_min": 1e-25,
+    "reltol_phys": 1e-4,
+    "abstol_phys_factor": 1e-4,
+    "abstol_t_min": 0.01,
+    "abstol_nh_min": 1.0,
     "mxstep": 10000,
     "ebmaxh2": 1210.0,
     "ebmaxcr": 1210.0,
@@ -165,6 +169,10 @@ default_param_dictionary = {
     "useminissaleicechemdesefficiency": False,
     "maxgraintemp": 150.0,
     "parameterizeh2form": 2,
+    # Heating/cooling ODE cache tolerances
+    # tempDot is recomputed only when |ΔT| > min(abstol, reltol * T)
+    "heating_temp_abstol": 1.0,
+    "heating_temp_reltol": 1.0e-2,
     # Coolant/validation tolerances
     # freq_rel_tol default is auto-computed at makerates time from LAMDA file deviations
     "freq_rel_tol": float(getattr(f2py_constants, "suggested_freq_rel_tol", 0.1)),
