@@ -44,6 +44,19 @@ _MODULE_NAMES = [
     "sputtering",
 ]
 
+# Modules where *all* 0-d array attributes are Fortran PARAMETERs (compile-time
+# constants compiled into read-only pages).  Their runtime state is either
+# handled by dedicated snapshot sections (e.g. f2py_constants → heating section)
+# or never needs propagation to workers.  Attempting setattr on these in a
+# freshly-spawned worker causes SIGBUS on macOS.
+_MODULES_SKIP_0D = frozenset(
+    {
+        "constants",  # physical constants (c, k_boltz, …) – all PARAMETERs
+        "f2py_constants",  # build-time counts (nspec, nReac, …) – all PARAMETERs
+        "surfacereactions",  # grain/surface constants – all PARAMETERs
+    }
+)
+
 
 def create_snapshot() -> Dict[str, Any]:
     """Capture the current Fortran module state into a picklable dict.
@@ -83,6 +96,14 @@ def create_snapshot() -> Dict[str, Any]:
             # Skip arrays (handled by heating/network sections, or immutable),
             # but keep 0-d arrays (f2py scalar wrappers like cloud_mod scalars).
             if isinstance(value, np.ndarray) and value.ndim > 0:
+                continue
+            # Skip 0-d arrays for modules that are entirely Fortran PARAMETERs —
+            # these are read-only in spawned workers and cause SIGBUS on macOS.
+            if (
+                isinstance(value, np.ndarray)
+                and value.ndim == 0
+                and mod_name in _MODULES_SKIP_0D
+            ):
                 continue
             # Skip parameters that cannot or should not be set
             attr_lower = attr.lower()

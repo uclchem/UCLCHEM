@@ -5,6 +5,11 @@
 # Variables not listed here are considered user-facing modifiable parameters.
 
 fortran_parameters:
+  # Attributes present as Fortran KIND parameters across virtually every module.
+  # Listed here so they are added to the global skip set regardless of module.
+  global:
+    - dp
+
   # network.f90 - species/reaction data arrays (compile-time constants)
   network:
     - mintemps
@@ -55,6 +60,9 @@ fortran_parameters:
     - twobodyreacs
     - garreacs
     - freezepartners
+    # network.f90 - build-time flags (read-only in spawned workers)
+    - enablechemicalheating
+    - three_phase
     # network.f90 - species indices (compile-time lookups)
     - n13c
     - n15n
@@ -102,6 +110,8 @@ fortran_parameters:
     - nr_efreeze
     - nr_h2_crp
     - nr_h2_hv
+    - nr_h2_ed
+    - nr_h_ed
     - nr_h2form_ct
     - nr_h2form_er
     - nr_h2form_erdes
@@ -109,6 +119,57 @@ fortran_parameters:
     - nr_h2form_lhdes
     - nr_h2freeze
     - nr_hfreeze
+
+  # heating.f90 - compile-time array dimension PARAMETERs
+  heating:
+    - max_line_solve_attempts
+    - ncooling
+    - nheating
+    - nheatingterms
+
+  # cshock.f90 - grain/shock PARAMETERs
+  cshock_mod:
+    - bt
+    - grainradius
+    - nu0
+
+  # hotcore.f90 - mass grid size PARAMETER
+  hotcore:
+    - nmasses
+
+  # chemistry.f90 - solver limit PARAMETERs
+  chemistry:
+    - maxconsecutivefailures
+    - maxloops
+
+  # rates.f90 - H sticking curve PARAMETERs
+  rates:
+    - h2stickingtemp
+    - h2stickingzero
+    - hstickingtemp
+    - hstickingzero
+
+  # photoreactions.f90 - table dimension PARAMETERs
+  photoreactions:
+    - dimco
+    - dimh2
+
+  # sputtering.f90 - vaporization speed PARAMETER
+  sputtering:
+    - vaporize_speed
+
+  # io.f90 - file unit ID PARAMETERs
+  io:
+    - abundloadid
+    - abundsaveid
+    - columnid
+    - debugid
+    - heatingid
+    - inputid
+    - outid
+    - outputid
+    - rateconstantid
+    - ratesid
 
 internal_parameters:
   # physicscore - ODE solver internals
