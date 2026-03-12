@@ -79,6 +79,13 @@ MODULE COOLANT_MODULE
    LOGICAL :: coolant_populations_initialized = .FALSE.
    REAL(dp) :: CLOUD_DENSITY,CLOUD_COLUMN,CLOUD_SIZE
 
+   ! Temperature at which level populations were last (re)solved (mode 0 only)
+   REAL(dp) :: last_levpop_temperature = -1.0D0
+   ! Relative temperature change threshold to trigger a re-solve in mode 0 (default 1%)
+   REAL(dp) :: coolant_temp_recompute_threshold = 0.01D0
+   ! Flag: when .TRUE., the next call to MANAGE_COOLANT_POPULATIONS forces a re-solve
+   LOGICAL :: coolant_levpop_force_recompute = .FALSE.
+
    ! Module-level error state for runtime errors (checked in time loop)
    INTEGER :: coolant_error_flag = 0
    CHARACTER(LEN=256) :: coolant_error_message = ""
@@ -1282,6 +1289,7 @@ SUBROUTINE MANAGE_COOLANT_POPULATIONS(gasTemperature)
          coolants(N)%CONVERGED = .FALSE.
       END DO
       coolant_populations_initialized = .TRUE.
+      last_levpop_temperature = gasTemperature
    ELSE
       ! Subsequent calls: Warm restart - rescale if density changed
       DO N=1,NCOOLANTS
@@ -1313,6 +1321,17 @@ SUBROUTINE MANAGE_COOLANT_POPULATIONS(gasTemperature)
             coolants(N)%CONVERGED = .FALSE.
          END IF
       END DO
+
+      ! Also reset convergence if temperature changed significantly or a recompute was forced
+      IF (coolant_levpop_force_recompute .OR. &
+          ABS(gasTemperature - last_levpop_temperature) / MAX(last_levpop_temperature, 1.0D0) &
+              .GT. coolant_temp_recompute_threshold) THEN
+         DO N = 1, NCOOLANTS
+            IF (coolants(N)%DENSITY .GE. 1.0D-40) coolants(N)%CONVERGED = .FALSE.
+         END DO
+         last_levpop_temperature = gasTemperature
+         coolant_levpop_force_recompute = .FALSE.
+      END IF
    END IF
 
    RETURN

@@ -765,6 +765,7 @@ CONTAINS
             currentTimeold=currentTime
             !Each physics module has a subroutine to set the target time from the current time
             CALL updateTargetTime
+            coolant_levpop_force_recompute = .TRUE.
             IF (writeTimestepInfo) THEN
                 WRITE(*,'(A,ES10.2,A,ES10.2,A,F9.1,A,F9.1,A,ES10.2,A,ES10.2,A,ES10.2)') &
                     't:', currentTimeold/SECONDS_PER_YEAR, &
