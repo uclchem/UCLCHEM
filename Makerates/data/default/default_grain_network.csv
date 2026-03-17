@@ -15,6 +15,9 @@ H,#H,ER,#H2,,,,1,0,0,,,
 H2,PHOTON,,H,H,,,1,1,0,,,
 #H2,ED,,H2,,,,1,1,0,,,
 #H,ED,,H,,,,1,1,0,,,
+! Use the default H2 unshielded photodissociation rate from photoreacions.f90.
+#H2,PHOTON,,H,H,,,5.18e-11,0,2.5,,,
+@H2,PHOTON,,H,H,,,5.18e-11,0,2.5,,,
 !
 !
 !

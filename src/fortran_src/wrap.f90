@@ -1151,6 +1151,10 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) abstol_factor
                 CASE('abstol_min')
                     READ(inputValue,*,iostat=successFlag) abstol_min
+                CASE('abstol_ice_factor')
+                    READ(inputValue,*,iostat=successFlag) abstol_ice_factor
+                CASE('abstol_ice_min')
+                    READ(inputValue,*,iostat=successFlag) abstol_ice_min
                 CASE('negative_abundance_tol')
                     READ(inputValue,*,iostat=successFlag) negative_abundance_tol
                 CASE('reltol_phys')

@@ -136,6 +136,8 @@ default_param_dictionary = {
     "reltol": 1e-08,
     "abstol_factor": 1e-14,
     "abstol_min": 1e-25,
+    "abstol_ice_factor": 1e-10,
+    "abstol_ice_min": 1e-20,
     "reltol_phys": 1e-4,
     "abstol_phys_factor": 1e-4,
     "abstol_t_min": 0.01,

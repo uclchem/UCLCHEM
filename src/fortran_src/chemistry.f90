@@ -372,9 +372,12 @@ CONTAINS
         ITASK=1 !try to integrate to targetTime
         ISTATE=1 !pretend every step is the first
         !Alternative: if (ISTATE .lt. 0) ISTATE=1  !only reset on error, allows Jacobian reuse
-        !Chemistry species: absolute tolerances scaled by abundance
+        !Gas-phase species: absolute tolerances scaled by abundance
         abstol=abstol_factor*abund(:,dstep)
         WHERE(abstol<abstol_min) abstol=abstol_min
+        !Ice species (surface + bulk): separate, looser absolute tolerances
+        abstol(iceList) = abstol_ice_factor*abund(iceList,dstep)
+        WHERE(abstol(iceList)<abstol_ice_min) abstol(iceList)=abstol_ice_min
         !Physical variables: separate tolerance heuristic (T and nH need looser tolerances)
         abstol(nspec+1) = MAX(abstol_phys_factor * ABS(abund(nspec+1,dstep)), abstol_T_min)
         abstol(nspec+2) = MAX(abstol_phys_factor * ABS(abund(nspec+2,dstep)), abstol_nH_min)
@@ -432,6 +435,7 @@ CONTAINS
                 write(*,*) "ISTATE -2: Tolerances too small"
                 !Tolerances are too small for machine but succesful to current currentTime
                 abstol_factor=abstol_factor*10.0
+                abstol_ice_factor=abstol_ice_factor*10.0
                 reltol_phys=MIN(reltol_phys*10.0, 1.0d-1)
             CASE(-3)
                 !ISTATE -3 is unrecoverable so just bail on intergration
