@@ -88,6 +88,7 @@ import logging
 import multiprocessing as mp
 import os
 import signal
+import time
 import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -1178,7 +1179,8 @@ class AbstractModel(ABC):
     # Model saving
     def save_model(
         self,
-        file: str,
+        file_obj: h5py.File = None,
+        file: str = None,
         name: str = "default",
         overwrite: bool = False,
     ) -> None:
@@ -1186,20 +1188,25 @@ class AbstractModel(ABC):
         save_model saves a model to a file on disk. Multiple models can be saved into the same file if different names are used to store them.
 
         Args:
+            file_obj (h5py.File): open file object
             file (str): Path to a file to store models.
             name (str, optional): Name to use for the group of the object. Defaults to 'default'
             overwrite (bool, optional): Boolean on whether to overwrite pre-existing models, or error out. Defaults to False
         """
-        if os.path.isfile(file):
-            with h5py.File(file, "a") as f:
-                if name in f:
-                    if not overwrite:
-                        warnings.warn(
-                            f"Model with name: `{name}` already exists in `{file}` but overwrite is set to False. Unable to save model."
-                        )
-                        return
-                    else:
-                        del f[name]
+        opened_file = False
+        if file_obj is None and file is None:
+            raise ValueError("file_obj or file must be passed.")
+        elif file_obj is None:
+            file_obj = h5py.File(file, "a")
+            opened_file = True
+        if name in file_obj:
+            if not overwrite:
+                warnings.warn(
+                    f"Model with name: `{name}` already exists in `{file}` but overwrite is set to False. Unable to save model."
+                )
+                return
+            else:
+                del file_obj[name]
         # TODO: Allow for toggling of saving float64 or float32 for the arrays
         temp_attribute_dict = {}
         try:
@@ -1225,13 +1232,15 @@ class AbstractModel(ABC):
         #
         save_data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
         save_data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
-        with h5py.File(file, "a") as f:
-            model_group = f.create_group(name)
-            coord_grp = model_group.create_group("_coords")
-            for name, coord in save_data.coords.items():
-                self._write_array(coord_grp, name, coord)
-            for name, var in save_data.data_vars.items():
-                self._write_array(model_group, name, var)
+        model_group = file_obj.create_group(name)
+        coord_grp = model_group.create_group("_coords")
+        for name, coord in save_data.coords.items():
+            self._write_array(coord_grp, name, coord)
+        for name, var in save_data.data_vars.items():
+            self._write_array(model_group, name, var)
+        if opened_file:
+            file_obj.flush()
+            file_obj.close()
 
     @staticmethod
     def _write_array(model_group, name, xr_var):
@@ -3039,7 +3048,6 @@ class GridModels:
         model_name_prefix: str = "",
         overwrite_models=False,
         delay_run: bool = False,
-        timer: bool = False,
         log_dir: str = None,
         model_ids: list = None,
     ):
@@ -3062,8 +3070,6 @@ class GridModels:
         #
         self.model_name_prefix = model_name_prefix
         self.overwrite_models = overwrite_models
-        self.timer = timer
-        self.save_times = []
         self.log_dir = log_dir
         if self.log_dir is not None:
             os.makedirs(self.log_dir, exist_ok=True)
@@ -3155,6 +3161,8 @@ class GridModels:
             self.flat_grids,
             self.model_type,
         )
+        file_obj = h5py.File(self.grid_file, "a")
+
         with mp.Pool(
             self.max_workers,
             initializer=_pool_initializer,
@@ -3167,6 +3175,7 @@ class GridModels:
                 nonlocal completed
                 completed += 1
                 model_id, model_object = result
+                print(f"process {os.getpid()} saving model {model_id}")
                 try:
                     save_name = f"{self.model_name_prefix}{model_id}"
                     model_object.un_pickle()
@@ -3187,20 +3196,16 @@ class GridModels:
                         self._log_main(
                             f"model_{model_id} completed ({completed}/{n_total})"
                         )
-                    if self.timer:
-                        start_time = time.time()
                     model_object.save_model(
-                        file=self.grid_file,
+                        file_obj=file_obj,
                         name=save_name,
                         overwrite=self.overwrite_models,
                     )
-                    if self.timer:
-                        self.save_times += [time.time() - start_time]
                     self.model_id_dict[model_id] = save_name
+                    file_obj.flush()
                 except Exception as e:
                     print(f"Error saving model {model_id}: {e}")
                     import traceback
-
                     traceback.print_exc()
 
             def on_error(_exc, _model_id):
@@ -3221,9 +3226,10 @@ class GridModels:
                     callback=on_result,
                     error_callback=lambda exc, _mid=model_id: on_error(exc, _mid),
                 )
-
             pool.close()
             pool.join()
+            file_obj.close()
+
         signal.signal(signal.SIGINT, self._orig_sigint)
         self._log_main(f"Grid finished: {len(self.model_id_dict)} models completed")
         self.models = [
