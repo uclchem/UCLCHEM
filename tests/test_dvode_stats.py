@@ -121,7 +121,7 @@ def test_stats_with_sequential_model():
         {
             "Cloud": {
                 "param_dict": {
-                    "endAtFinalDensity": True,
+                    "parcelStoppingMode": 1,
                     "freefall": True,
                     "initialDens": 1e2,
                     "finalDens": 1e4,
@@ -133,7 +133,7 @@ def test_stats_with_sequential_model():
         {
             "Cloud": {
                 "param_dict": {
-                    "endAtFinalDensity": True,
+                    "parcelStoppingMode": 1,
                     "freefall": True,
                     "initialDens": 1e4,
                     "finalDens": 1e4,

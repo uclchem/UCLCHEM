@@ -47,7 +47,7 @@ pytestmark = pytest.mark.skipif(not uclchem_imported, reason="uclchem not instal
 
 # Default params used across fixtures
 _DEFAULT_PARAMS = {
-    "endAtFinalDensity": False,
+    "parcelStoppingMode": 0,
     "freefall": False,
     "writeStep": 1,
     "initialDens": 1e4,
@@ -220,7 +220,7 @@ class TestOverwrite:
     def test_overwrite_true_replaces_existing(self, tmp_path):
         """overwrite=True should replace the model data with new data."""
         params_v1 = {
-            "endAtFinalDensity": False,
+            "parcelStoppingMode": 0,
             "freefall": False,
             "writeStep": 1,
             "initialDens": 1e4,
@@ -373,7 +373,7 @@ class TestSequentialModel:
             {
                 "Cloud": {
                     "param_dict": {
-                        "endAtFinalDensity": True,
+                        "parcelStoppingMode": 1,
                         "freefall": True,
                         "initialDens": 1e2,
                         "finalDens": 1e4,
@@ -385,7 +385,7 @@ class TestSequentialModel:
             {
                 "Cloud": {
                     "param_dict": {
-                        "endAtFinalDensity": False,
+                        "parcelStoppingMode": 0,
                         "freefall": False,
                         "initialDens": 1e4,
                         "finalDens": 1e4,
@@ -437,7 +437,7 @@ class TestSequentialModel:
             {
                 "Cloud": {
                     "param_dict": {
-                        "endAtFinalDensity": True,
+                        "parcelStoppingMode": 1,
                         "freefall": True,
                         "initialDens": 1e2,
                         "finalDens": 1e4,
@@ -449,7 +449,7 @@ class TestSequentialModel:
             {
                 "Cloud": {
                     "param_dict": {
-                        "endAtFinalDensity": False,
+                        "parcelStoppingMode": 0,
                         "freefall": False,
                         "initialDens": 1e4,
                         "finalDens": 1e4,
