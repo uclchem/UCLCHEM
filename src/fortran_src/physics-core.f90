@@ -5,6 +5,7 @@
 MODULE physicscore
     USE constants
     USE DEFAULTPARAMETERS
+    USE extinction_module
     !f2py INTEGER, parameter :: dp
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
@@ -292,7 +293,7 @@ CONTAINS
         implicit none
         real(dp) :: Lstar, Tstar, Rstar, r
         real(dp), intent(out) :: U
-        real(dp), intent(out), dimension(:), allocatable :: uwave_red
+        real(dp), intent(out) :: uwave_red(:)
         integer :: i
         real(dp), dimension(:), allocatable :: wave, wave_cm, Istar, uwave_star, tau_wave
         real(dp) :: ZZ, Avs, rsub!, urad_red!, tau_wave, wave1, wave2
@@ -320,9 +321,6 @@ CONTAINS
         ! convert wave from micron to cm
         wave_cm = wave*1.d-4 !in cm
 
-        ! Allocate the array inside the subroutine
-        allocate(uwave_red(size(wave)))
-
         ! Call the function from the module
         call extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
     
@@ -334,12 +332,10 @@ CONTAINS
         
         ! Initialize the integral value
         urad_red = 0.0d0
-        urad_red_lambda=0.0d0
 
         ! Apply trapezoidal rule for numerical integration
         do i = 1, 129-1
             urad_red = urad_red + 0.5d0 * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
-            urad_red_lambda= urad_red_lambda + 0.5d0 * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1)*wave_cm(i+1) + uwave_red(i)*wave_cm(i))
         end do
         ! Outputs
         
@@ -354,7 +350,7 @@ CONTAINS
         implicit none
         real(dp) :: Lstar, Tstar, r
         real(dp), intent(out) :: U
-        real(dp), intent(out), dimension(:), allocatable :: uwave_red
+        real(dp), intent(out) :: uwave_red(:)
         integer :: i
         real(dp), dimension(:), allocatable :: wave, wave_cm, Istar, uwave_star, tau_wave !uwave_red
         real(dp) :: ZZ, Avs, rsub!, urad_red!, tau_wave, wave1, wave2
@@ -384,9 +380,6 @@ CONTAINS
         ! convert wave from micron to cm
         wave_cm = wave*1.d-4 !in cm
 
-        ! Allocate the array inside the subroutine
-        allocate(uwave_red(size(wave)))
-
         ! Call the function from the module
         call extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
 
@@ -398,12 +391,10 @@ CONTAINS
         
         ! Initialize the integral value
         urad_red = 0.0d0
-        urad_red_lambda=0.0d0
 
         ! Apply trapezoidal rule for numerical integration
         do i = 1, 129-1
             urad_red = urad_red + 0.5d0 * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
-            urad_red_lambda= urad_red_lambda + 0.5d0 * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1)*wave_cm(i+1) + uwave_red(i)*wave_cm(i))
         end do
         ! Outputs
         U = urad_red / uISRF * (r / rsub)**(-2.0)

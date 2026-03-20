@@ -10,7 +10,6 @@ MODULE hotcore
     &coldens, density_max, ngas_r, findcoldens_core2edge, radiation
     USE network
     USE f2py_constants
-    USE extinction_module
     IMPLICIT NONE
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
     INTEGER :: solidflag,volcflag,coflag
