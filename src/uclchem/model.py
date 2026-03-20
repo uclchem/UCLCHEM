@@ -88,7 +88,6 @@ import logging
 import multiprocessing as mp
 import os
 import signal
-import time
 import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -3206,6 +3205,7 @@ class GridModels:
                 except Exception as e:
                     print(f"Error saving model {model_id}: {e}")
                     import traceback
+
                     traceback.print_exc()
 
             def on_error(_exc, _model_id):
