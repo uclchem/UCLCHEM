@@ -366,7 +366,7 @@ class AbstractModel(ABC):
         object.__setattr__(self, "_pickle_meta", {})
         # Set run_type into metadata
         self.run_type = run_type
-
+        self.separate_worker_types = ["managed"]
         # Shared memory
         self._shm_desc = {}
         self._shm_handles = {}
@@ -1105,29 +1105,34 @@ class AbstractModel(ABC):
                 raise KeyboardInterrupt
 
         signal.signal(signal.SIGINT, _handler)
-        from uclchem.advanced.worker_state import create_snapshot
+        if self.run_type not in self.separate_worker_types:
+            output = self.run_fortran()
+        elif self.run_type in self.separate_worker_types:
+            from uclchem.advanced.worker_state import create_snapshot
 
-        snapshot = create_snapshot()
-        init_kwargs = self._create_init_dict()
-        ctx = mp.get_context("spawn")
-        result_queue = ctx.Queue()
-        self._proc_handle = ctx.Process(
-            target=_worker_entry,
-            args=(
-                self.model_type,
-                init_kwargs,
-                self._shm_desc,
-                result_queue,
-                snapshot,
-            ),
-            daemon=False,
-        )
-        self._proc_handle.start()
-        output = result_queue.get()
-        result_queue.close()
-        self._proc_handle.join()
-        self._proc_handle.close()
-        self._proc_handle = None
+            snapshot = create_snapshot()
+            init_kwargs = self._create_init_dict()
+            ctx = mp.get_context("spawn")
+            result_queue = ctx.Queue()
+            self._proc_handle = ctx.Process(
+                target=_worker_entry,
+                args=(
+                    self.model_type,
+                    init_kwargs,
+                    self._shm_desc,
+                    result_queue,
+                    snapshot,
+                ),
+                daemon=False,
+            )
+            self._proc_handle.start()
+            output = result_queue.get()
+            result_queue.close()
+            self._proc_handle.join()
+            self._proc_handle.close()
+            self._proc_handle = None
+        else:
+            raise ValueError(f"run_type of {self.run_type} is not a valid value.")
 
         signal.signal(signal.SIGINT, self._orig_sigint)
 
