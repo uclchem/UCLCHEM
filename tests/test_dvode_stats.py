@@ -138,7 +138,6 @@ def test_stats_with_sequential_model():
                     "initialDens": 1e4,
                     "finalDens": 1e4,
                     "initialTemp": 20.0,
-                    "finalTemp": 20.0,
                     "finalTime": 1.0e5,
                 }
             },

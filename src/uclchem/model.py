@@ -279,7 +279,8 @@ def _worker_entry(
             f"Unrecognized model type '{model_class}'. Not in trusted registry."
         )
     model = cls.worker_build(init_kwargs=init_kwargs, shm_desc=shm_descs)
-    output = model.run_fortran()
+    with capture_fortran_output(label="last_model", log_file="./last_model_fortran.log"):
+        output = model.run_fortran()
     result_queue.put(output)
     return
 
@@ -370,7 +371,6 @@ class AbstractModel(ABC):
         self._shm_desc = {}
         self._shm_handles = {}
         self._proc_handle = None
-        self.separate_worker_types = ["managed"]
         # /Shared memory
 
         # Signal Interrupt
@@ -1105,35 +1105,29 @@ class AbstractModel(ABC):
                 raise KeyboardInterrupt
 
         signal.signal(signal.SIGINT, _handler)
+        from uclchem.advanced.worker_state import create_snapshot
 
-        if self.run_type not in self.separate_worker_types:
-            output = self.run_fortran()
-        elif self.run_type in self.separate_worker_types:
-            from uclchem.advanced.worker_state import create_snapshot
-
-            snapshot = create_snapshot()
-            init_kwargs = self._create_init_dict()
-            ctx = mp.get_context("spawn")
-            result_queue = ctx.Queue()
-            self._proc_handle = ctx.Process(
-                target=_worker_entry,
-                args=(
-                    self.model_type,
-                    init_kwargs,
-                    self._shm_desc,
-                    result_queue,
-                    snapshot,
-                ),
-                daemon=False,
-            )
-            self._proc_handle.start()
-            output = result_queue.get()
-            result_queue.close()
-            self._proc_handle.join()
-            self._proc_handle.close()
-            self._proc_handle = None
-        else:
-            raise ValueError(f"run_type of {self.run_type} is not a valid value.")
+        snapshot = create_snapshot()
+        init_kwargs = self._create_init_dict()
+        ctx = mp.get_context("spawn")
+        result_queue = ctx.Queue()
+        self._proc_handle = ctx.Process(
+            target=_worker_entry,
+            args=(
+                self.model_type,
+                init_kwargs,
+                self._shm_desc,
+                result_queue,
+                snapshot,
+            ),
+            daemon=False,
+        )
+        self._proc_handle.start()
+        output = result_queue.get()
+        result_queue.close()
+        self._proc_handle.join()
+        self._proc_handle.close()
+        self._proc_handle = None
 
         signal.signal(signal.SIGINT, self._orig_sigint)
 
@@ -1198,10 +1192,11 @@ class AbstractModel(ABC):
         elif file_obj is None:
             file_obj = h5py.File(file, "a")
             opened_file = True
+
         if name in file_obj:
             if not overwrite:
                 warnings.warn(
-                    f"Model with name: `{name}` already exists in `{file}` but overwrite is set to False. Unable to save model."
+                    f"Model with name: `{name}` already exists in save file but overwrite is set to False. Unable to save model."
                 )
                 return
             else:
@@ -2142,7 +2137,7 @@ class Collapse(AbstractModel):
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
-            if self.starting_chemistry_array is not None
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
             else None,
         )
         out_species_abundances_array = result[-2]
@@ -2257,7 +2252,7 @@ class PrestellarCore(AbstractModel):
                 levelpopulationsarray=self.level_populations_array,
                 sestatsarray=self.se_stats_array,
                 abundancestart=self.starting_chemistry_array
-                if self.starting_chemistry_array is not None
+                if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
                 else None,
             )
         )
@@ -2373,7 +2368,10 @@ class CShock(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array,
+            abundancestart=self.starting_chemistry_array
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            else None
+            ,
         )
         dissipation_time = result[-3]
         out_species_abundances_array = result[-2]
@@ -2481,7 +2479,10 @@ class JShock(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array,
+            abundancestart=self.starting_chemistry_array
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            else None
+            ,
         )
         out_species_abundances_array = result[-2]
         success_flag = result[-1]
@@ -2661,7 +2662,10 @@ class Postprocess(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array,
+            abundancestart=self.starting_chemistry_array
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            else None
+            ,
         )
         out_species_abundances_array = result[-2]
         success_flag = result[-1]
@@ -2810,7 +2814,10 @@ class Model(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array,
+            abundancestart=self.starting_chemistry_array
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            else None
+            ,
         )
         out_species_abundances_array = result[-2]
         success_flag = result[-1]
@@ -3174,7 +3181,6 @@ class GridModels:
                 nonlocal completed
                 completed += 1
                 model_id, model_object = result
-                print(f"process {os.getpid()} saving model {model_id}")
                 try:
                     save_name = f"{self.model_name_prefix}{model_id}"
                     model_object.un_pickle()
