@@ -95,6 +95,7 @@ from multiprocessing import shared_memory
 from pathlib import Path
 from typing import Any, AnyStr, Dict, Iterator, List, Literal, Type
 
+import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -206,31 +207,35 @@ get_species_names = SpeciesNameStore()
 
 
 # Universal model loader
-def load_model(
-    file: str, name: str = "default", engine: str = "h5netcdf", debug: bool = False
-):
+def load_model(file: str, name: str = "default", debug: bool = False):
     """
     load_model bypasses __init__ in order to load a pre-existing model from a file.
 
     Args:
         file (str): Path to a file that contains previously run and stored models.
         name (str, optional): Name of the stored object, if none was provided `default` will have been used. Defaults to 'default'
-        engine (str, optional): “netcdf4”, “h5netcdf” or “zarr”, depending on the engine to be used. Defaults to "h5netcdf".
         debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False.
     Returns:
         obj (object): Loaded object that inherited from AbstractModel and has the class of to the model found in the loaded file.
     """
     try:
-        loaded_data = xr.open_dataset(filename_or_obj=file, group=name, engine=engine)
+        with h5py.File(file, "r") as f:
+            if name not in f:
+                raise Exception(f"model {name} was not found in {file}")
+            model_group = f[name]
+            coords = {}
+            if "_coords" in model_group:
+                for name in model_group["_coords"]:
+                    coords[name] = _read_array(model_group["_coords"], name)
+            data_vars = {}
+            for name in model_group:
+                if name == "_coords":
+                    continue
+                data_vars[name] = _read_array(model_group, name)
+            loaded_data = xr.Dataset(data_vars, coords=coords)
     except FileNotFoundError:
         print(f"Unable to find file {file}")
         raise FileNotFoundError
-    except OSError:
-        print(f"Could not find model with name: {name}, in file {file}.")
-        raise OSError
-    except ValueError:
-        print(f"Engine {engine}, is incompatible with xr.open_dataset")
-        raise ValueError
     model_class = json.loads(loaded_data["attributes_dict"].item())["model_type"]
     cls = REGISTRY.get(model_class)
     if cls is None:
@@ -238,6 +243,17 @@ def load_model(
             f"Unrecognized model type '{model_class}'. Not in trusted registry."
         )
     return cls.load_from_dataset(model_ds=loaded_data, debug=debug)
+
+
+def _read_array(model_group, name):
+    """"""
+    ds = model_group[name]
+    data = ds[()]
+    if data.dtype.kind == "S":
+        data = data.astype(str)
+    dims = list(ds.attrs["_dims"])
+    attrs = json.loads(ds.attrs.get("_attrs", "{}"))
+    return xr.Variable(dims, data, attrs=attrs)
 
 
 # /Universal model loader
@@ -263,7 +279,8 @@ def _worker_entry(
             f"Unrecognized model type '{model_class}'. Not in trusted registry."
         )
     model = cls.worker_build(init_kwargs=init_kwargs, shm_desc=shm_descs)
-    output = model.run_fortran()
+    with capture_fortran_output(label="last_model", log_file="./last_model_fortran.log"):
+        output = model.run_fortran()
     result_queue.put(output)
     return
 
@@ -340,7 +357,7 @@ class AbstractModel(ABC):
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["local", "managed", "external"] = "local",
+        run_type: Literal["managed", "external"] = "managed",
     ):
         self._data = xr.Dataset()
         self._pickle_dict = {}
@@ -349,13 +366,11 @@ class AbstractModel(ABC):
         object.__setattr__(self, "_pickle_meta", {})
         # Set run_type into metadata
         self.run_type = run_type
-
+        self.separate_worker_types = ["managed"]
         # Shared memory
         self._shm_desc = {}
         self._shm_handles = {}
         self._proc_handle = None
-        self.shared_memory_types = ["managed", "external"]
-        self.separate_worker_types = ["managed"]
         # /Shared memory
 
         # Signal Interrupt
@@ -500,7 +515,6 @@ class AbstractModel(ABC):
         cls,
         file: str,
         name: str = "default",
-        engine: str = "h5netcdf",
         debug: bool = False,
     ):
         """Load a model from a file.
@@ -510,13 +524,12 @@ class AbstractModel(ABC):
         Args:
             file (str): Path to a file that contains previously run and stored models.
             name (str, optional): Name of the stored object. Defaults to 'default'.
-            engine (str, optional): "netcdf4", "h5netcdf" or "zarr". Defaults to "h5netcdf".
             debug (bool, optional): Flag for extra debug information. Defaults to False.
 
         Returns:
             Model object loaded from the file.
         """
-        return load_model(file, name=name, engine=engine, debug=debug)
+        return load_model(file, name=name, debug=debug)
 
     # /Separate class building methods
 
@@ -1091,9 +1104,7 @@ class AbstractModel(ABC):
                 signal.signal(signal.SIGINT, self._orig_sigint)
                 raise KeyboardInterrupt
 
-        if self.run_type in self.shared_memory_types:
-            signal.signal(signal.SIGINT, _handler)
-
+        signal.signal(signal.SIGINT, _handler)
         if self.run_type not in self.separate_worker_types:
             output = self.run_fortran()
         elif self.run_type in self.separate_worker_types:
@@ -1123,8 +1134,7 @@ class AbstractModel(ABC):
         else:
             raise ValueError(f"run_type of {self.run_type} is not a valid value.")
 
-        if self.run_type in self.shared_memory_types:
-            signal.signal(signal.SIGINT, self._orig_sigint)
+        signal.signal(signal.SIGINT, self._orig_sigint)
 
         if hasattr(self, "_shm_handles"):
             self._coordinator_unlink_memory()
@@ -1167,57 +1177,77 @@ class AbstractModel(ABC):
     # Model saving
     def save_model(
         self,
-        file: str,
+        file_obj: h5py.File = None,
+        file: str = None,
         name: str = "default",
-        engine: str = "h5netcdf",
         overwrite: bool = False,
     ) -> None:
         """
         save_model saves a model to a file on disk. Multiple models can be saved into the same file if different names are used to store them.
 
         Args:
+            file_obj (h5py.File): open file object
             file (str): Path to a file to store models.
             name (str, optional): Name to use for the group of the object. Defaults to 'default'
-            engine (str, optional): “netcdf4”, “h5netcdf” or “zarr”, depending on the engine to be used. Defaults to "h5netcdf".
             overwrite (bool, optional): Boolean on whether to overwrite pre-existing models, or error out. Defaults to False
         """
-        # TODO: Allow for toggling of saving float64 or float32 for the arrays
-        if os.path.isfile(file):
-            with xr.open_datatree(
-                filename_or_obj=file, engine=engine, phony_dims="sort"
-            ) as tree:
-                if "/" + name in tree.groups:
-                    if not overwrite:
-                        warnings.warn(
-                            f"Model with name: `{name}` already exists in `{file}` but overwrite is set to False. Unable to save model."
-                        )
-                        return
-                tree.close()
+        opened_file = False
+        if file_obj is None and file is None:
+            raise ValueError("file_obj or file must be passed.")
+        elif file_obj is None:
+            file_obj = h5py.File(file, "a")
+            opened_file = True
 
-        # Start with metadata values
+        if name in file_obj:
+            if not overwrite:
+                warnings.warn(
+                    f"Model with name: `{name}` already exists in save file but overwrite is set to False. Unable to save model."
+                )
+                return
+            else:
+                del file_obj[name]
+        # TODO: Allow for toggling of saving float64 or float32 for the arrays
         temp_attribute_dict = {}
         try:
             temp_attribute_dict.update(super().__getattribute__("_meta"))
         except Exception:
             pass
-
+        #
+        # Work on a copy so save_model is non-destructive to self._data
+        save_data = self._data.copy()
         # Collect remaining non-array dataset variables into attributes (same behaviour as before)
-        for v in list(self._data.variables):
+        for v in list(save_data.variables):
             if "_array" not in v and v not in ["_orig_sigint"]:
-                if np.shape(self._data[v].values) != ():
-                    if isinstance(self._data[v].values, tuple):
-                        temp_attribute_dict[v] = self._data[v].values[1].tolist()
-                        self._data = self._data.drop_vars(v)
+                if np.shape(save_data[v].values) != ():
+                    if isinstance(save_data[v].values, tuple):
+                        temp_attribute_dict[v] = save_data[v].values[1].tolist()
+                        save_data = save_data.drop_vars(v)
                     else:
-                        temp_attribute_dict[v] = self._data[v].values.tolist()
-                        self._data = self._data.drop_vars(v)
+                        temp_attribute_dict[v] = save_data[v].values.tolist()
+                        save_data = save_data.drop_vars(v)
                 else:
-                    temp_attribute_dict[v] = self._data[v].item()
-                    self._data = self._data.drop_vars(v)
+                    temp_attribute_dict[v] = save_data[v].item()
+                    save_data = save_data.drop_vars(v)
+        #
+        save_data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
+        save_data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
+        model_group = file_obj.create_group(name)
+        coord_grp = model_group.create_group("_coords")
+        for name, coord in save_data.coords.items():
+            self._write_array(coord_grp, name, coord)
+        for name, var in save_data.data_vars.items():
+            self._write_array(model_group, name, var)
+        if opened_file:
+            file_obj.flush()
+            file_obj.close()
 
-        self._data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
-        self._data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
-        self._data.to_netcdf(file, group=name, engine=engine, mode="a")
+    @staticmethod
+    def _write_array(model_group, name, xr_var):
+        data = xr_var.values
+        if data.dtype.kind == "U":
+            data = data.astype(bytes)
+        ds = model_group.create_dataset(name, data=data)
+        ds.attrs["_dims"] = list(xr_var.dims)
 
     # /Model saving
 
@@ -1644,37 +1674,20 @@ class AbstractModel(ABC):
         Creates Fortran compliant np.arrays that can be passed to the Fortran part of UCLCHEM.
         """
         # For shared memory:
-        if self.run_type in self.shared_memory_types:
-            (
-                self._shm_handles["physics_array"],
-                self._shm_desc["physics_array"],
-                self.physics_array,
-            ) = self._create_shared_memory_allocation(
-                (self.timepoints + 1, self._param_dict["points"], N_PHYSICAL_PARAMETERS)
-            )
-            (
-                self._shm_handles["chemical_abun_array"],
-                self._shm_desc["chemical_abun_array"],
-                self.chemical_abun_array,
-            ) = self._create_shared_memory_allocation(
-                (self.timepoints + 1, self._param_dict["points"], n_species)
-            )
-        else:
-            # fencepost problem, need to add 1 to timepoints to account for the 0th timestep
-            self.physics_array = np.zeros(
-                shape=(
-                    self.timepoints + 1,
-                    self._param_dict["points"],
-                    N_PHYSICAL_PARAMETERS,
-                ),
-                dtype=np.float64,
-                order="F",
-            )
-            self.chemical_abun_array = np.zeros(
-                shape=(self.timepoints + 1, self._param_dict["points"], n_species),
-                dtype=np.float64,
-                order="F",
-            )
+        (
+            self._shm_handles["physics_array"],
+            self._shm_desc["physics_array"],
+            self.physics_array,
+        ) = self._create_shared_memory_allocation(
+            (self.timepoints + 1, self._param_dict["points"], N_PHYSICAL_PARAMETERS)
+        )
+        (
+            self._shm_handles["chemical_abun_array"],
+            self._shm_desc["chemical_abun_array"],
+            self.chemical_abun_array,
+        ) = self._create_shared_memory_allocation(
+            (self.timepoints + 1, self._param_dict["points"], n_species)
+        )
         return
 
     def _create_rates_array(self):
@@ -1682,20 +1695,13 @@ class AbstractModel(ABC):
         Creates Fortran compliant np.array for rates that can be passed to the Fortran part of UCLCHEM.
         """
         # For shared memory:
-        if self.run_type in self.shared_memory_types:
-            (
-                self._shm_handles["rates_array"],
-                self._shm_desc["rates_array"],
-                self.rates_array,
-            ) = self._create_shared_memory_allocation(
-                (self.timepoints + 1, self._param_dict["points"], n_reactions)
-            )
-        else:
-            self.rates_array = np.zeros(
-                shape=(self.timepoints + 1, self._param_dict["points"], n_reactions),
-                dtype=np.float64,
-                order="F",
-            )
+        (
+            self._shm_handles["rates_array"],
+            self._shm_desc["rates_array"],
+            self.rates_array,
+        ) = self._create_shared_memory_allocation(
+            (self.timepoints + 1, self._param_dict["points"], n_reactions)
+        )
         return
 
     def _create_heating_array(self):
@@ -1710,28 +1716,17 @@ class AbstractModel(ABC):
                 + uclchemwrap.f2py_constants.ncoolants
             )
             # For shared memory:
-            if self.run_type in self.shared_memory_types:
+            (
+                self._shm_handles["heat_array"],
+                self._shm_desc["heat_array"],
+                self.heat_array,
+            ) = self._create_shared_memory_allocation(
                 (
-                    self._shm_handles["heat_array"],
-                    self._shm_desc["heat_array"],
-                    self.heat_array,
-                ) = self._create_shared_memory_allocation(
-                    (
-                        self.timepoints + 1,
-                        self._param_dict["points"],
-                        heating_array_size,
-                    )
+                    self.timepoints + 1,
+                    self._param_dict["points"],
+                    heating_array_size,
                 )
-            else:
-                self.heat_array = np.zeros(
-                    shape=(
-                        self.timepoints + 1,
-                        self._param_dict["points"],
-                        heating_array_size,
-                    ),
-                    dtype=np.float64,
-                    order="F",
-                )
+            )
         except AttributeError:
             # Heating module not available, likely compiled without heating support
             logging.debug("Heating module not available in uclchemwrap")
@@ -1742,20 +1737,13 @@ class AbstractModel(ABC):
         """Internal Method.
         Creates Fortran compliant np.array for DVODE solver statistics.
         """
-        if self.run_type in self.shared_memory_types:
-            (
-                self._shm_handles["stats_array"],
-                self._shm_desc["stats_array"],
-                self.stats_array,
-            ) = self._create_shared_memory_allocation(
-                (self.timepoints + 1, self._param_dict["points"], N_DVODE_STATS)
-            )
-        else:
-            self.stats_array = np.zeros(
-                shape=(self.timepoints + 1, self._param_dict["points"], N_DVODE_STATS),
-                dtype=np.float64,
-                order="F",
-            )
+        (
+            self._shm_handles["stats_array"],
+            self._shm_desc["stats_array"],
+            self.stats_array,
+        ) = self._create_shared_memory_allocation(
+            (self.timepoints + 1, self._param_dict["points"], N_DVODE_STATS)
+        )
         return
 
     def _create_level_populations_array(self):
@@ -1763,32 +1751,13 @@ class AbstractModel(ABC):
         Creates Fortran compliant np.array for coolant level populations.
         Shape: (timepoints+1, gridpoints, total_levels)
         """
-        if self.run_type in self.shared_memory_types:
-            (
-                self._shm_handles["level_populations_array"],
-                self._shm_desc["level_populations_array"],
-                self.level_populations_array,
-            ) = self._create_shared_memory_allocation(
-                (self.timepoints + 1, self._param_dict["points"], N_TOTAL_LEVELS)
-            )
-        else:
-            # Check if heating is available - if not, create default inactive array
-            if self.heat_array is None:
-                self.level_populations_array = np.zeros(
-                    shape=(2, 1, N_TOTAL_LEVELS),
-                    dtype=np.float64,
-                    order="F",
-                )
-            else:
-                self.level_populations_array = np.zeros(
-                    shape=(
-                        self.timepoints + 1,
-                        self._param_dict["points"],
-                        N_TOTAL_LEVELS,
-                    ),
-                    dtype=np.float64,
-                    order="F",
-                )
+        (
+            self._shm_handles["level_populations_array"],
+            self._shm_desc["level_populations_array"],
+            self.level_populations_array,
+        ) = self._create_shared_memory_allocation(
+            (self.timepoints + 1, self._param_dict["points"], N_TOTAL_LEVELS)
+        )
         return
 
     def _create_se_stats_array(self):
@@ -1798,28 +1767,13 @@ class AbstractModel(ABC):
         """
         n_stats = NCOOLANTS * N_SE_STATS_PER_COOLANT  # 35 * 3 = 105
 
-        if self.run_type in self.shared_memory_types:
-            (
-                self._shm_handles["se_stats_array"],
-                self._shm_desc["se_stats_array"],
-                self.se_stats_array,
-            ) = self._create_shared_memory_allocation(
-                (self.timepoints + 1, self._param_dict["points"], n_stats)
-            )
-        else:
-            # Check if heating is available - if not, create default inactive array
-            if self.heat_array is None:
-                self.se_stats_array = np.zeros(
-                    shape=(2, 1, n_stats),
-                    dtype=np.float64,
-                    order="F",
-                )
-            else:
-                self.se_stats_array = np.zeros(
-                    shape=(self.timepoints + 1, self._param_dict["points"], n_stats),
-                    dtype=np.float64,
-                    order="F",
-                )
+        (
+            self._shm_handles["se_stats_array"],
+            self._shm_desc["se_stats_array"],
+            self.se_stats_array,
+        ) = self._create_shared_memory_allocation(
+            (self.timepoints + 1, self._param_dict["points"], n_stats)
+        )
         return
 
     def get_level_populations_dataframe(self, point=0):
@@ -1895,17 +1849,12 @@ class AbstractModel(ABC):
             if len(np.shape(starting_chemistry)) == 1:
                 starting_chemistry = starting_chemistry[np.newaxis, :]
             # For shared memory:
-            if self.run_type in self.shared_memory_types:
-                (
-                    self._shm_handles["starting_chemistry_array"],
-                    self._shm_desc["starting_chemistry_array"],
-                    self.starting_chemistry_array,
-                ) = self._create_shared_memory_allocation(np.shape(starting_chemistry))
-                np.copyto(self.starting_chemistry_array, starting_chemistry, casting="no")
-            else:
-                self.starting_chemistry_array = np.asfortranarray(
-                    starting_chemistry, dtype=np.float64
-                )
+            (
+                self._shm_handles["starting_chemistry_array"],
+                self._shm_desc["starting_chemistry_array"],
+                self.starting_chemistry_array,
+            ) = self._create_shared_memory_allocation(np.shape(starting_chemistry))
+            np.copyto(self.starting_chemistry_array, starting_chemistry, casting="no")
         return
 
     # /Creation of arrays
@@ -2034,7 +1983,7 @@ class Cloud(AbstractModel):
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["local", "managed", "external"] = "local",
+        run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
@@ -2137,7 +2086,7 @@ class Collapse(AbstractModel):
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["local", "managed", "external"] = "local",
+        run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         if collapse not in ["filament", "ambipolar"] and physics_output is None:
@@ -2193,7 +2142,7 @@ class Collapse(AbstractModel):
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
-            if self.starting_chemistry_array is not None
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
             else None,
         )
         out_species_abundances_array = result[-2]
@@ -2260,7 +2209,7 @@ class PrestellarCore(AbstractModel):
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["local", "managed", "external"] = "local",
+        run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
@@ -2308,7 +2257,7 @@ class PrestellarCore(AbstractModel):
                 levelpopulationsarray=self.level_populations_array,
                 sestatsarray=self.se_stats_array,
                 abundancestart=self.starting_chemistry_array
-                if self.starting_chemistry_array is not None
+                if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
                 else None,
             )
         )
@@ -2377,7 +2326,7 @@ class CShock(AbstractModel):
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["local", "managed", "external"] = "local",
+        run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
@@ -2424,7 +2373,9 @@ class CShock(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array,
+            abundancestart=self.starting_chemistry_array
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            else None,
         )
         dissipation_time = result[-3]
         out_species_abundances_array = result[-2]
@@ -2490,7 +2441,7 @@ class JShock(AbstractModel):
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["local", "managed", "external"] = "local",
+        run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         super().__init__(
@@ -2532,7 +2483,9 @@ class JShock(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array,
+            abundancestart=self.starting_chemistry_array
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            else None,
         )
         out_species_abundances_array = result[-2]
         success_flag = result[-1]
@@ -2614,7 +2567,7 @@ class Postprocess(AbstractModel):
         coldens_C_array: np.array = None,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["local", "managed", "external"] = "local",
+        run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         # Allocate 1.5x the input timesteps to give the DVODE solver
@@ -2712,7 +2665,9 @@ class Postprocess(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array,
+            abundancestart=self.starting_chemistry_array
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            else None,
         )
         out_species_abundances_array = result[-2]
         success_flag = result[-1]
@@ -2786,7 +2741,7 @@ class Model(AbstractModel):
         radfield_array: np.array = None,
         debug: bool = False,
         read_file: str = None,
-        run_type: Literal["local", "managed", "external"] = "local",
+        run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         # Allocate 1.5x the input timesteps to give the DVODE solver
@@ -2861,7 +2816,9 @@ class Model(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array,
+            abundancestart=self.starting_chemistry_array
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            else None,
         )
         out_species_abundances_array = result[-2]
         success_flag = result[-1]
@@ -2899,20 +2856,20 @@ class SequentialModel:
     for the automatic running of multiple models as well as matching some physical parameters from one model to the next.
 
     Args:
-        sequenced_model_parameters (Dict): The dictionary to pass to SequentialModel takes the format of
-            {"<First Model Class>":{"param_dict":{<parameters>}, <other arguments>}, "<Second Model Class>:{"param_dict":{<parameters>}, <other arguments>}, ...}
+        sequenced_model_parameters (List of Dicts): The List of dictionaries to pass to SequentialModel takes the format of
+            [{"<First Model Class>":{"param_dict":{<parameters>}, <other arguments>}}, {"<Second Model Class>:{"param_dict":{<parameters>}, <other arguments>}}, ...}]
         parameters_to_match (List, optional): The list provided to this argument decides which parameters should be matched from a previous model
             to the next model in the sequence. Currently, supports ["finalDens", "finalTemp"].
     """
 
     def __init__(
         self,
-        sequenced_model_parameters: Dict,
+        sequenced_model_parameters: List,
         parameters_to_match: List = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
-        for model in list(sequenced_model_parameters.keys()):
-            assert model != SequentialModel
+        for model in sequenced_model_parameters:
+            assert model[list(model.keys())[0]] != SequentialModel
         self.models = []
         self.sequenced_model_parameters = sequenced_model_parameters
         self.parameters_to_match = parameters_to_match
@@ -2924,76 +2881,82 @@ class SequentialModel:
 
     def run(self):
         previous_model = None
-        for model_type, model_dict in self.sequenced_model_parameters.items():
-            model_dict["param_dict"] = {
-                k.lower(): v for k, v in model_dict["param_dict"].items()
-            }
-            if self.model_count > 0:
+        for base_model_dict in self.sequenced_model_parameters:
+            for model_type, model_dict in base_model_dict.items():
                 model_dict["param_dict"] = {
-                    **{k.lower(): v for k, v in previous_model._param_dict.items()},
-                    **model_dict["param_dict"],
+                    k.lower(): v for k, v in model_dict["param_dict"].items()
                 }
-                if self.parameters_to_match is not None:
-                    for parameter in self.parameters_to_match:
-                        if parameter == "finalDens":
-                            model_dict["param_dict"]["initialdens"] = (
-                                previous_model.physics_array[-1, 0, 1]
-                            )
-                            continue
-                        elif parameter == "finalTemp":
-                            model_dict["param_dict"]["initialtemp"] = (
-                                previous_model.physics_arrayy[-1, 0, 2]
-                            )
-                        else:
-                            print(
-                                f"Parameter '{parameter}' has not been implemented for parameter matching"
-                            )
-                tmp_model = REGISTRY[model_type](
-                    **model_dict, run_type=self.run_type, previous_model=previous_model
-                )
-                if self.run_type == "external":
-                    tmp_model.run()
-                self.models += [
-                    {
-                        "Model_Type": model_type,
-                        "Model_Order": self.model_count,
-                        "Model": tmp_model,
+                if self.model_count > 0:
+                    previous_param_dict = previous_model._param_dict.copy()
+                    # Remove the converted stopping-mode key inherited from the previous stage before merging
+                    previous_param_dict.pop("parcelstoppingmode", None)
+                    model_dict["param_dict"] = {
+                        **previous_param_dict,
+                        **model_dict["param_dict"],
                     }
-                ]
-            else:
-                tmp_model = REGISTRY[model_type](
-                    **model_dict, run_type=self.run_type, previous_model=previous_model
-                )
-                if self.run_type == "external":
-                    tmp_model.run()
-                self.models += [
-                    {
-                        "Model_Type": model_type,
-                        "Model_Order": self.model_count,
-                        "Model": tmp_model,
-                    }
-                ]
-                self.models[self.model_count]["Successful"] = (
-                    True
-                    if self.models[self.model_count]["Model"].success_flag == 0
-                    else False
-                )
-                previous_model = self.models[self.model_count]["Model"]
-            self.model_count += 1
+                    if self.parameters_to_match is not None:
+                        for parameter in self.parameters_to_match:
+                            if parameter == "finalDens":
+                                model_dict["param_dict"]["initialdens"] = (
+                                    previous_model.physics_array[-1, 0, 1]
+                                )
+                                continue
+                            elif parameter == "finalTemp":
+                                model_dict["param_dict"]["initialtemp"] = (
+                                    previous_model.physics_array[-1, 0, 2]
+                                )
+                            else:
+                                print(
+                                    f"Parameter '{parameter}' has not been implemented for parameter matching"
+                                )
+                    tmp_model = REGISTRY[model_type](
+                        **model_dict,
+                        run_type=self.run_type,
+                        previous_model=previous_model,
+                    )
+                    if self.run_type == "external":
+                        tmp_model.run()
+                    self.models += [
+                        {
+                            "Model_Type": model_type,
+                            "Model_Order": self.model_count,
+                            "Model": tmp_model,
+                        }
+                    ]
+                else:
+                    tmp_model = REGISTRY[model_type](
+                        **model_dict,
+                        run_type=self.run_type,
+                        previous_model=previous_model,
+                    )
+                    if self.run_type == "external":
+                        tmp_model.run()
+                    self.models += [
+                        {
+                            "Model_Type": model_type,
+                            "Model_Order": self.model_count,
+                            "Model": tmp_model,
+                        }
+                    ]
+                    self.models[self.model_count]["Successful"] = (
+                        True
+                        if self.models[self.model_count]["Model"].success_flag == 0
+                        else False
+                    )
+                    previous_model = self.models[self.model_count]["Model"]
+                self.model_count += 1
         return
 
     def save_model(
         self,
         file: str,
         name: str = "default",
-        engine: str = "h5netcdf",
         overwrite: bool = False,
     ):
         for model in self.models:
             model["Model"].save_model(
                 file=file,
-                name=f"{name}_{model['Model_Type']}_{model['Model_Order']}",
-                engine=engine,
+                name=f"{name}_{model['Model_Order']}_{model['Model_Type']}",
                 overwrite=overwrite,
             )
         return
@@ -3086,10 +3049,11 @@ class GridModels:
     def __init__(
         self,
         model_type: AnyStr,
-        full_parameters: Dict,
+        full_parameters: Dict | List,
         max_workers: int = 8,
         grid_file: str = "./default_grid_out.h5",
         model_name_prefix: str = "",
+        overwrite_models=False,
         delay_run: bool = False,
         log_dir: str = None,
         model_ids: list = None,
@@ -3112,6 +3076,7 @@ class GridModels:
             os.remove(self.grid_file)
         #
         self.model_name_prefix = model_name_prefix
+        self.overwrite_models = overwrite_models
         self.log_dir = log_dir
         if self.log_dir is not None:
             os.makedirs(self.log_dir, exist_ok=True)
@@ -3122,16 +3087,25 @@ class GridModels:
         self.parameters_to_grid = {}
 
         if self.model_type == "SequentialModel":
-            for model_type, model_full_params in self.full_parameters.items():
-                if isinstance(model_full_params, dict):
-                    for k, v in model_full_params.items():
-                        if k == "param_dict":
-                            for k_p, v_p in v.items():
-                                self._grid_def(k_p, v_p, model_type)
-                        else:
-                            self._grid_def(k, v, model_type)
-            grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
+            if not isinstance(self.full_parameters, list):
+                raise (
+                    f"For SequentialModel types, full_parameters must be a list. {type(self.full_parameters)} was passed."
+                )
+            for base_model_dict in self.full_parameters:
+                for model_type, model_full_params in base_model_dict.items():
+                    if isinstance(model_full_params, dict):
+                        for k, v in model_full_params.items():
+                            if k == "param_dict":
+                                for k_p, v_p in v.items():
+                                    self._grid_def(k_p, v_p, model_type)
+                            else:
+                                self._grid_def(k, v, model_type)
+                grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
         else:
+            if not isinstance(self.full_parameters, dict):
+                raise (
+                    f"For none SequentialModel types, full_parameters must be a dictionary. {type(self.full_parameters)} was passed."
+                )
             for k, v in self.full_parameters.items():
                 if k == "param_dict":
                     for k_p, v_p in v.items():
@@ -3194,6 +3168,8 @@ class GridModels:
             self.flat_grids,
             self.model_type,
         )
+        file_obj = h5py.File(self.grid_file, "a")
+
         with mp.Pool(
             self.max_workers,
             initializer=_pool_initializer,
@@ -3227,12 +3203,12 @@ class GridModels:
                             f"model_{model_id} completed ({completed}/{n_total})"
                         )
                     model_object.save_model(
-                        file=self.grid_file,
+                        file_obj=file_obj,
                         name=save_name,
-                        engine="h5netcdf",
-                        overwrite=True,
+                        overwrite=self.overwrite_models,
                     )
                     self.model_id_dict[model_id] = save_name
+                    file_obj.flush()
                 except Exception as e:
                     print(f"Error saving model {model_id}: {e}")
                     import traceback
@@ -3257,9 +3233,10 @@ class GridModels:
                     callback=on_result,
                     error_callback=lambda exc, _mid=model_id: on_error(exc, _mid),
                 )
-
             pool.close()
             pool.join()
+            file_obj.close()
+
         signal.signal(signal.SIGINT, self._orig_sigint)
         self._log_main(f"Grid finished: {len(self.model_id_dict)} models completed")
         self.models = [
@@ -3268,7 +3245,7 @@ class GridModels:
         ]
         self._load_params()
 
-    def load_phys(self, engine: str = "h5netcdf"):
+    def load_phys(self):
         if self.model_type == "SequentialModel":
             warnings.warn("Sequantial Model physics loading not implemented")
             return
@@ -3284,9 +3261,7 @@ class GridModels:
             self.models[model]["physics_array"] = loaded_data["physics_array"]
         return
 
-    def load_chem(
-        self, out_specie_list: list = ["H", "N", "C", "O"], engine: str = "h5netcdf"
-    ):
+    def load_chem(self, out_specie_list: list = ["H", "N", "C", "O"]):
         if self.model_type == "SequentialModel":
             warnings.warn("Sequantial Model chemistry loading not implemented")
             return
@@ -3304,7 +3279,7 @@ class GridModels:
             ].sel(chemical_abun_values=out_specie_list)
         return
 
-    def _load_params(self, engine: str = "h5netcdf"):
+    def _load_params(self):
         if self.model_type == "SequentialModel":
             for model in range(len(self.models)):
                 model_number = 0
@@ -3353,8 +3328,8 @@ class GridModels:
                     True if loaded_data.success_flag == 0 else loaded_data.success_flag
                 )
 
-    def _load_model_data(self, model: str, engine: str = "h5netcdf"):
-        tmp_model = load_model(file=self.grid_file, name=model, engine=engine)
+    def _load_model_data(self, model: str):
+        tmp_model = load_model(file=self.grid_file, name=model)
         return tmp_model
 
     def check_conservation(
