@@ -2370,8 +2370,7 @@ class CShock(AbstractModel):
             sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
-            else None
-            ,
+            else None,
         )
         dissipation_time = result[-3]
         out_species_abundances_array = result[-2]
@@ -2481,8 +2480,7 @@ class JShock(AbstractModel):
             sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
-            else None
-            ,
+            else None,
         )
         out_species_abundances_array = result[-2]
         success_flag = result[-1]
@@ -2664,8 +2662,7 @@ class Postprocess(AbstractModel):
             sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
-            else None
-            ,
+            else None,
         )
         out_species_abundances_array = result[-2]
         success_flag = result[-1]
@@ -2816,8 +2813,7 @@ class Model(AbstractModel):
             sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
-            else None
-            ,
+            else None,
         )
         out_species_abundances_array = result[-2]
         success_flag = result[-1]

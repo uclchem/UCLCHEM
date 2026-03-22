@@ -726,9 +726,7 @@ class TestOOModelChaining1D:
         assert phys_df2["Time"].iloc[-1] >= 5.0e4
 
         # Verify chemistry evolved
-        assert np.allclose(
-            model1.chemical_abun_array[-1], model2.chemical_abun_array[0]
-        )
+        assert np.allclose(model1.chemical_abun_array[-1], model2.chemical_abun_array[0])
 
     def test_oo_chain_with_starting_chemistry_array(self, base_1d_params):
         """Test chaining using next_starting_chemistry_array."""
