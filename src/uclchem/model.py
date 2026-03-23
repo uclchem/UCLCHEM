@@ -207,7 +207,12 @@ get_species_names = SpeciesNameStore()
 
 
 # Universal model loader
-def load_model(file_obj: h5py.File = None, file: str = None, name: str = "default", debug: bool = False):
+def load_model(
+    file_obj: h5py.File = None,
+    file: str = None,
+    name: str = "default",
+    debug: bool = False,
+):
     """
     load_model bypasses __init__ in order to load a pre-existing model from a file.
 
@@ -2931,7 +2936,7 @@ class SequentialModel:
                             "Model_Type": model_type,
                             "Model_Order": self.model_count,
                             "Model": tmp_model,
-                            "Success": tmp_model.success_flag
+                            "Success": tmp_model.success_flag,
                         }
                     ]
                 else:
@@ -2947,7 +2952,7 @@ class SequentialModel:
                             "Model_Type": model_type,
                             "Model_Order": self.model_count,
                             "Model": tmp_model,
-                            "Success": tmp_model.success_flag
+                            "Success": tmp_model.success_flag,
                         }
                     ]
                     self.models[self.model_count]["Successful"] = (
@@ -3321,7 +3326,8 @@ class GridModels:
                                     ]
                                     for k in list(self.parameters_to_grid.keys())
                                     if mt_k in k
-                                    and k.replace(mt_k, "").lower() in tmp_model._param_dict
+                                    and k.replace(mt_k, "").lower()
+                                    in tmp_model._param_dict
                                 },
                                 **{
                                     k.replace(mt_k, ""): tmp_model.__getattr__(
@@ -3329,7 +3335,8 @@ class GridModels:
                                     )
                                     for k in list(self.parameters_to_grid.keys())
                                     if mt_k in k
-                                    and k.replace(mt_k, "").lower() in tmp_model._data.keys()
+                                    and k.replace(mt_k, "").lower()
+                                    in tmp_model._data.keys()
                                 },
                             }
                             self.models[model][f"{model_number}_{mt_k}"]["Successful"] = (
@@ -3421,17 +3428,19 @@ class GridModels:
                                 k.replace(model_type, ""): v
                                 for k, v in zip(param_keys, combo)
                                 if k.replace(model_type, "")
-                                   in model_full_parameters["param_dict"]
+                                in model_full_parameters["param_dict"]
                             }
                             grid_dict = {
                                 k.replace(model_type, ""): v
                                 for k, v in zip(param_keys, combo)
                                 if k.replace(model_type, "")
-                                   not in model_full_parameters["param_dict"]
-                                   and (
-                                           not any(mt in k for mt in list(base_model_dict.keys()))
-                                           or model_type in k
-                                   )
+                                not in model_full_parameters["param_dict"]
+                                and (
+                                    not any(
+                                        mt in k for mt in list(base_model_dict.keys())
+                                    )
+                                    or model_type in k
+                                )
                             }
                             run_dict[model_type] = {
                                 **model_full_parameters,
@@ -3441,7 +3450,7 @@ class GridModels:
                                 },
                                 **grid_dict,
                             }
-                            run_list+=[run_dict]
+                            run_list += [run_dict]
                         else:
                             yield_dict[model_type] = model_full_parameters
                 yield {**yield_dict, **{"sequenced_model_parameters": run_list}}
