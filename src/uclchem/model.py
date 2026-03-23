@@ -2962,6 +2962,7 @@ class SequentialModel:
     def load_model_data(
             self,
     ):
+        return
 
     def save_model(
         self,
