@@ -222,28 +222,29 @@ def load_model(file_obj: h5py.File = None, file: str = None, name: str = "defaul
     if file_obj is None and file is None:
         raise ValueError("file_obj or file must be passed.")
     elif file_obj is None:
-        file_obj = h5py.File(file, "a")
+        try:
+            file_obj = h5py.File(file, "r")
+        except:
+            raise FileNotFoundError
         opened_file = True
-    try:
-        if name not in file_obj:
-            raise Exception(f"model {name} was not found in the save file that was passed.")
-        model_group = file_obj[name]
-        coords = {}
-        if "_coords" in model_group:
-            for name in model_group["_coords"]:
-                coords[name] = _read_array(model_group["_coords"], name)
-        data_vars = {}
-        for name in model_group:
-            if name == "_coords":
-                continue
-            data_vars[name] = _read_array(model_group, name)
-        loaded_data = xr.Dataset(data_vars, coords=coords)
-    except FileNotFoundError:
-        print(f"Unable to find save file.")
-        raise FileNotFoundError
-    finally:
-        if opened_file:
-            file_obj.close()
+
+    if name not in file_obj:
+        raise Exception(f"model {name} was not found in the save file that was passed.")
+    model_group = file_obj[name]
+    coords = {}
+    if "_coords" in model_group:
+        for name in model_group["_coords"]:
+            coords[name] = _read_array(model_group["_coords"], name)
+    data_vars = {}
+    for name in model_group:
+        if name == "_coords":
+            continue
+        data_vars[name] = _read_array(model_group, name)
+    loaded_data = xr.Dataset(data_vars, coords=coords)
+
+    if opened_file:
+        file_obj.close()
+
     model_class = json.loads(loaded_data["attributes_dict"].item())["model_type"]
     cls = REGISTRY.get(model_class)
     if cls is None:
@@ -537,7 +538,7 @@ class AbstractModel(ABC):
         Returns:
             Model object loaded from the file.
         """
-        return load_model(file, name=name, debug=debug)
+        return load_model(file=file, name=name, debug=debug)
 
     # /Separate class building methods
 
