@@ -207,7 +207,7 @@ get_species_names = SpeciesNameStore()
 
 
 # Universal model loader
-def load_model(file: str, name: str = "default", debug: bool = False):
+def load_model(file_obj: h5py.File = None, file: str = None, name: str = "default", debug: bool = False):
     """
     load_model bypasses __init__ in order to load a pre-existing model from a file.
 
@@ -218,24 +218,32 @@ def load_model(file: str, name: str = "default", debug: bool = False):
     Returns:
         obj (object): Loaded object that inherited from AbstractModel and has the class of to the model found in the loaded file.
     """
+    opened_file = False
+    if file_obj is None and file is None:
+        raise ValueError("file_obj or file must be passed.")
+    elif file_obj is None:
+        file_obj = h5py.File(file, "a")
+        opened_file = True
     try:
-        with h5py.File(file, "r") as f:
-            if name not in f:
-                raise Exception(f"model {name} was not found in {file}")
-            model_group = f[name]
-            coords = {}
-            if "_coords" in model_group:
-                for name in model_group["_coords"]:
-                    coords[name] = _read_array(model_group["_coords"], name)
-            data_vars = {}
-            for name in model_group:
-                if name == "_coords":
-                    continue
-                data_vars[name] = _read_array(model_group, name)
-            loaded_data = xr.Dataset(data_vars, coords=coords)
+        if name not in file_obj:
+            raise Exception(f"model {name} was not found in the save file that was passed.")
+        model_group = file_obj[name]
+        coords = {}
+        if "_coords" in model_group:
+            for name in model_group["_coords"]:
+                coords[name] = _read_array(model_group["_coords"], name)
+        data_vars = {}
+        for name in model_group:
+            if name == "_coords":
+                continue
+            data_vars[name] = _read_array(model_group, name)
+        loaded_data = xr.Dataset(data_vars, coords=coords)
     except FileNotFoundError:
-        print(f"Unable to find file {file}")
+        print(f"Unable to find save file.")
         raise FileNotFoundError
+    finally:
+        if opened_file:
+            file_obj.close()
     model_class = json.loads(loaded_data["attributes_dict"].item())["model_type"]
     cls = REGISTRY.get(model_class)
     if cls is None:
@@ -2876,6 +2884,7 @@ class SequentialModel:
         self.run_type = run_type
         self.model_count = 0
         self._pickle_dict = {}
+        self.success_flag = None
         if self.run_type == "managed":
             self.run()
 
@@ -2921,6 +2930,7 @@ class SequentialModel:
                             "Model_Type": model_type,
                             "Model_Order": self.model_count,
                             "Model": tmp_model,
+                            "Success": tmp_model.success_flag
                         }
                     ]
                 else:
@@ -2936,6 +2946,7 @@ class SequentialModel:
                             "Model_Type": model_type,
                             "Model_Order": self.model_count,
                             "Model": tmp_model,
+                            "Success": tmp_model.success_flag
                         }
                     ]
                     self.models[self.model_count]["Successful"] = (
@@ -2945,20 +2956,37 @@ class SequentialModel:
                     )
                     previous_model = self.models[self.model_count]["Model"]
                 self.model_count += 1
+        self.success_flag = all(d["Success"] for d in self.models)
+        return
+
+    def load_model_data(
+            self,
+    ):
         return
 
     def save_model(
         self,
-        file: str,
-        name: str = "default",
+        file_obj: h5py.File = None,
+        file: str = None,
+        name: str = "",
         overwrite: bool = False,
     ):
+        opened_file = False
+        if file_obj is None and file is None:
+            raise ValueError("file_obj or file must be passed.")
+        elif file_obj is None:
+            file_obj = h5py.File(file, "a")
+            opened_file = True
+
         for model in self.models:
             model["Model"].save_model(
-                file=file,
+                file_obj=file_obj,
                 name=f"{name}_{model['Model_Order']}_{model['Model_Type']}",
                 overwrite=overwrite,
             )
+
+        if opened_file:
+            file_obj.close()
         return
 
     def check_conservation(
@@ -3282,37 +3310,39 @@ class GridModels:
     def _load_params(self):
         if self.model_type == "SequentialModel":
             for model in range(len(self.models)):
+                print(f"full_parameters in _load_params: {self.full_parameters}")
                 model_number = 0
-                for mt_k, mt_v in self.full_parameters.items():
-                    if isinstance(mt_v, dict):
-                        tmp_model = self._load_model_data(
-                            model=f"{self.models[model]['Model']}_{mt_k}_{model_number}"
-                        )
+                for base_model_dict in self.full_parameters:
+                    for mt_k, mt_v in base_model_dict.items():
+                        if isinstance(mt_v, dict):
+                            tmp_model = self._load_model_data(
+                                model=f"{self.models[model]['Model']}_{mt_k}_{model_number}"
+                            )
 
-                        self.models[model][f"{mt_k}_{model_number}"] = {
-                            **{
-                                k.replace(mt_k, ""): tmp_model._param_dict[
-                                    k.replace(mt_k, "").lower()
-                                ]
-                                for k in list(self.parameters_to_grid.keys())
-                                if mt_k in k
-                                and k.replace(mt_k, "").lower() in tmp_model._param_dict
-                            },
-                            **{
-                                k.replace(mt_k, ""): tmp_model.__getattr__(
-                                    k.replace(mt_k, "")
-                                )
-                                for k in list(self.parameters_to_grid.keys())
-                                if mt_k in k
-                                and k.replace(mt_k, "").lower() in tmp_model._data.keys()
-                            },
-                        }
-                        self.models[model][f"{mt_k}_{model_number}"]["Successful"] = (
-                            True
-                            if tmp_model.success_flag == 0
-                            else tmp_model.success_flag
-                        )
-                        model_number += 1
+                            self.models[model][f"{mt_k}_{model_number}"] = {
+                                **{
+                                    k.replace(mt_k, ""): tmp_model._param_dict[
+                                        k.replace(mt_k, "").lower()
+                                    ]
+                                    for k in list(self.parameters_to_grid.keys())
+                                    if mt_k in k
+                                    and k.replace(mt_k, "").lower() in tmp_model._param_dict
+                                },
+                                **{
+                                    k.replace(mt_k, ""): tmp_model.__getattr__(
+                                        k.replace(mt_k, "")
+                                    )
+                                    for k in list(self.parameters_to_grid.keys())
+                                    if mt_k in k
+                                    and k.replace(mt_k, "").lower() in tmp_model._data.keys()
+                                },
+                            }
+                            self.models[model][f"{mt_k}_{model_number}"]["Successful"] = (
+                                True
+                                if tmp_model.success_flag == 0
+                                else tmp_model.success_flag
+                            )
+                            model_number += 1
         else:
             for model in range(len(self.models)):
                 loaded_data = self._load_model_data(model=self.models[model]["Model"])
@@ -3387,36 +3417,39 @@ class GridModels:
                 for j in range(np.shape(flattened_grids)[0]):
                     combo += (flattened_grids[j][i],)
                 yield_dict = {"id": i}
-                run_dict = {}
-                for model_type, model_full_parameters in full_parameters.items():
-                    if isinstance(model_full_parameters, dict):
-                        grid_param_dict = {
-                            k.replace(model_type, ""): v
-                            for k, v in zip(param_keys, combo)
-                            if k.replace(model_type, "")
-                            in model_full_parameters["param_dict"]
-                        }
-                        grid_dict = {
-                            k.replace(model_type, ""): v
-                            for k, v in zip(param_keys, combo)
-                            if k.replace(model_type, "")
-                            not in model_full_parameters["param_dict"]
-                            and (
-                                not any(mt in k for mt in list(full_parameters.keys()))
-                                or model_type in k
-                            )
-                        }
-                        run_dict[model_type] = {
-                            **model_full_parameters,
-                            "param_dict": {
-                                **model_full_parameters["param_dict"],
-                                **grid_param_dict,
-                            },
-                            **grid_dict,
-                        }
-                    else:
-                        yield_dict[model_type] = model_full_parameters
-                yield {**yield_dict, **{"sequenced_model_parameters": {**run_dict}}}
+                run_list = []
+                for base_model_dict in full_parameters:
+                    run_dict = {}
+                    for model_type, model_full_parameters in base_model_dict.items():
+                        if isinstance(model_full_parameters, dict):
+                            grid_param_dict = {
+                                k.replace(model_type, ""): v
+                                for k, v in zip(param_keys, combo)
+                                if k.replace(model_type, "")
+                                   in model_full_parameters["param_dict"]
+                            }
+                            grid_dict = {
+                                k.replace(model_type, ""): v
+                                for k, v in zip(param_keys, combo)
+                                if k.replace(model_type, "")
+                                   not in model_full_parameters["param_dict"]
+                                   and (
+                                           not any(mt in k for mt in list(base_model_dict.keys()))
+                                           or model_type in k
+                                   )
+                            }
+                            run_dict[model_type] = {
+                                **model_full_parameters,
+                                "param_dict": {
+                                    **model_full_parameters["param_dict"],
+                                    **grid_param_dict,
+                                },
+                                **grid_dict,
+                            }
+                            run_list+=[run_dict]
+                        else:
+                            yield_dict[model_type] = model_full_parameters
+                yield {**yield_dict, **{"sequenced_model_parameters": run_list}}
         else:
             for i in range(len(flattened_grids[0])):
                 combo = ()
