@@ -2959,11 +2959,6 @@ class SequentialModel:
         self.success_flag = all(d["Success"] for d in self.models)
         return
 
-    def load_model_data(
-            self,
-    ):
-        return
-
     def save_model(
         self,
         file_obj: h5py.File = None,
@@ -3022,7 +3017,7 @@ class SequentialModel:
         if not bool(self._pickle_dict):
             for model in self.models:
                 model["Model"] = model["Model"].pickle()
-                self._pickle_dict[f"{model['Model_Type']}_{model['Model_Order']}"] = (
+                self._pickle_dict[f"{model['Model_Order']}_{model['Model_Type']}"] = (
                     model["Model"]._pickle_dict.copy()
                 )
         return
@@ -3031,7 +3026,7 @@ class SequentialModel:
         if bool(self._pickle_dict):
             for model in self.models:
                 model["Model"]._pickle_dict = self._pickle_dict[
-                    f"{model['Model_Type']}_{model['Model_Order']}"
+                    f"{model['Model_Order']}_{model['Model_Type']}"
                 ]
                 model["Model"] = model["Model"].un_pickle()
         return
@@ -3310,16 +3305,15 @@ class GridModels:
     def _load_params(self):
         if self.model_type == "SequentialModel":
             for model in range(len(self.models)):
-                print(f"full_parameters in _load_params: {self.full_parameters}")
                 model_number = 0
                 for base_model_dict in self.full_parameters:
                     for mt_k, mt_v in base_model_dict.items():
                         if isinstance(mt_v, dict):
                             tmp_model = self._load_model_data(
-                                model=f"{self.models[model]['Model']}_{mt_k}_{model_number}"
+                                model=f"{self.models[model]['Model']}_{model_number}_{mt_k}"
                             )
 
-                            self.models[model][f"{mt_k}_{model_number}"] = {
+                            self.models[model][f"{model_number}_{mt_k}"] = {
                                 **{
                                     k.replace(mt_k, ""): tmp_model._param_dict[
                                         k.replace(mt_k, "").lower()
@@ -3337,7 +3331,7 @@ class GridModels:
                                     and k.replace(mt_k, "").lower() in tmp_model._data.keys()
                                 },
                             }
-                            self.models[model][f"{mt_k}_{model_number}"]["Successful"] = (
+                            self.models[model][f"{model_number}_{mt_k}"]["Successful"] = (
                                 True
                                 if tmp_model.success_flag == 0
                                 else tmp_model.success_flag
