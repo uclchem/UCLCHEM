@@ -2702,12 +2702,14 @@ class Postprocess(AbstractModel):
     def _create_init_dict(self):
         return {
             "usecoldens": self.coldens_H_array is not None,
+            "useav": self.useav,
             "_param_dict": self._param_dict,
             "out_species_list": self.out_species_list,
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
             "_debug": self._debug,
+            "postprocess_arrays": self.postprocess_arrays,
             **self.postprocess_arrays,
         }
 

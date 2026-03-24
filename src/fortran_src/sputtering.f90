@@ -103,11 +103,15 @@ CONTAINS
       !write(87,*) timeInYears,shockVel,abundChangeFrac,timeDelta/SECONDS_PER_YEAR
       !multiply M/N by x and add to gas phase
       if (shockVel .ge. VAPORIZE_SPEED) THEN
-        abund(gasIceList)=abund(gasIceList)+abundChangeFrac*abund(iceList)
-        abund(iceList)=abund(iceList)-abundChangeFrac*abund(iceList)
+        DO iSpec = 1, SIZE(iceList)
+          abund(gasIceList(iSpec)) = abund(gasIceList(iSpec)) + abundChangeFrac * abund(iceList(iSpec))
+          abund(iceList(iSpec))    = abund(iceList(iSpec))    * (1.0d0 - abundChangeFrac)
+        END DO
       ELSE
-        abund(gasSputters)=abund(gasSputters)+abundChangeFrac*abund(sputters)
-        abund(sputters)=abund(sputters)-abundChangeFrac*abund(sputters)
+        DO iSpec = 1, SIZE(sputters)
+          abund(gasSputters(iSpec)) = abund(gasSputters(iSpec)) + abundChangeFrac * abund(sputters(iSpec))
+          abund(sputters(iSpec))    = abund(sputters(iSpec))    * (1.0d0 - abundChangeFrac)
+        END DO
       END IF
   END SUBROUTINE
 
