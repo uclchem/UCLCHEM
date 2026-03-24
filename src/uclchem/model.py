@@ -3120,15 +3120,16 @@ class GridModels:
                 raise (
                     f"For SequentialModel types, full_parameters must be a list. {type(self.full_parameters)} was passed."
                 )
-            for base_model_dict in self.full_parameters:
-                for model_type, model_full_params in base_model_dict.items():
-                    if isinstance(model_full_params, dict):
-                        for k, v in model_full_params.items():
-                            if k == "param_dict":
-                                for k_p, v_p in v.items():
-                                    self._grid_def(k_p, v_p, model_type)
-                            else:
-                                self._grid_def(k, v, model_type)
+            for model_count in range(len(self.full_parameters)):
+                for model_type, model_full_params in self.full_parameters[model_count].items():
+                    if not isinstance(model_full_params, dict):
+                        raise ValueError(f"Model number {model_count}, did not have a dictionary parameter in full_parameters list")
+                    for k, v in model_full_params.items():
+                        if k == "param_dict":
+                            for k_p, v_p in v.items():
+                                self._grid_def(k_p, v_p, model_count)
+                        else:
+                            self._grid_def(k, v, model_count)
                 grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
         else:
             if not isinstance(self.full_parameters, dict):
@@ -3163,14 +3164,16 @@ class GridModels:
             self.run()
         return
 
-    def _grid_def(self, key, value, model_type=None):
-        if model_type is None:
-            model_type = ""
+    def _grid_def(self, key, value, model_count=None):
+        if model_count is None:
+            model_count = ""
+        else:
+            model_count = f"{str(model_count)}_"
         if isinstance(value, list):
-            self.parameters_to_grid[model_type + key] = value
-            self.parameters_to_grid[model_type + key] = np.array(value, dtype=object)
+            self.parameters_to_grid[model_count + key] = value
+            self.parameters_to_grid[model_count + key] = np.array(value, dtype=object)
         elif isinstance(value, (np.ndarray, np.generic)):
-            self.parameters_to_grid[model_type + key] = value.astype(dtype=object)
+            self.parameters_to_grid[model_count + key] = value.astype(dtype=object)
 
     def _log_main(self, msg):
         """Append a timestamped line to the main grid log file."""
@@ -3309,42 +3312,56 @@ class GridModels:
         return
 
     def _load_params(self):
+        """
+        _load_params, loops through the models present in the grid models self.models attribute in order
+        to load the changing physical parameters of the models.
+        The method splits the loops into two cases. SequentialModel, and other model cases.
+        In both instances, the for loop loads the model data using the _load_model_data() method. Then, it
+        matches the given parameters, with the changing parameters in order to populate the dictionary attribute
+        self.models for users to view the models run for the given GridModels object. T
+        The Differentiation of SequentialModels stems from SequentialModels being nested models, resulting in an
+        additional required loop to take into account the additional nesting.
+        Returns:
+            No explicit returns, self.models attribute is populated/expanded on.
+        """
+        # The following loops perform the same actions, but for the different model types
         if self.model_type == "SequentialModel":
             for model in range(len(self.models)):
                 model_number = 0
                 for base_model_dict in self.full_parameters:
                     for mt_k, mt_v in base_model_dict.items():
-                        if isinstance(mt_v, dict):
-                            tmp_model = self._load_model_data(
-                                model=f"{self.models[model]['Model']}_{model_number}_{mt_k}"
-                            )
+                        if not isinstance(mt_v, dict):
+                            raise ValueError(f"full_parameters List did not contain dictionaries, entry {model} was {mt_v}")
+                        tmp_model = self._load_model_data(
+                            model=f"{self.models[model]['Model']}_{model_number}_{mt_k}"
+                        )
 
-                            self.models[model][f"{model_number}_{mt_k}"] = {
-                                **{
-                                    k.replace(mt_k, ""): tmp_model._param_dict[
-                                        k.replace(mt_k, "").lower()
-                                    ]
-                                    for k in list(self.parameters_to_grid.keys())
-                                    if mt_k in k
-                                    and k.replace(mt_k, "").lower()
-                                    in tmp_model._param_dict
-                                },
-                                **{
-                                    k.replace(mt_k, ""): tmp_model.__getattr__(
-                                        k.replace(mt_k, "")
-                                    )
-                                    for k in list(self.parameters_to_grid.keys())
-                                    if mt_k in k
-                                    and k.replace(mt_k, "").lower()
-                                    in tmp_model._data.keys()
-                                },
-                            }
-                            self.models[model][f"{model_number}_{mt_k}"]["Successful"] = (
-                                True
-                                if tmp_model.success_flag == 0
-                                else tmp_model.success_flag
-                            )
-                            model_number += 1
+                        self.models[model][f"{model_number}_{mt_k}"] = {
+                            **{
+                                k.replace(mt_k, ""): tmp_model._param_dict[
+                                    k.replace(mt_k, "").lower()
+                                ]
+                                for k in list(self.parameters_to_grid.keys())
+                                if mt_k in k
+                                and k.replace(mt_k, "").lower()
+                                in tmp_model._param_dict
+                            },
+                            **{
+                                k.replace(mt_k, ""): tmp_model.__getattr__(
+                                    k.replace(mt_k, "")
+                                )
+                                for k in list(self.parameters_to_grid.keys())
+                                if mt_k in k
+                                and k.replace(mt_k, "").lower()
+                                in tmp_model._data.keys()
+                            },
+                        }
+                        self.models[model][f"{model_number}_{mt_k}"]["Successful"] = (
+                            True
+                            if tmp_model.success_flag == 0
+                            else tmp_model.success_flag
+                        )
+                        model_number += 1
         else:
             for model in range(len(self.models)):
                 loaded_data = self._load_model_data(model=self.models[model]["Model"])
@@ -3408,38 +3425,59 @@ class GridModels:
 
     @staticmethod
     def grid_iter(
-        full_parameters: dict,
+        full_parameters: dict | list,
         param_keys: list,
         flattened_grids: np.ndarray,
         model_type: str,
     ) -> Iterator[Dict[str, Any]]:
+        """
+        grid_iter is a staticmethod that provides an iterable dictionary of parameters that can be used with the
+        grid based multiprocessing worker distribution.
+        Args:
+            full_parameters: dictionary or list (if model_type == SequentialModel) of the full parameters that will
+                be used for the model
+            param_keys: list of strings for the parameters that are changing in this GridModels object
+            flattened_grids: list of all the values for the changing parameters for this GridModels object
+            model_type: String of the type of model to use. 'SequentialModel' results in alternative way of executing this
+            phase as each SequentialModel represents multiple models to be run in series.
+
+        Yields:
+            Next dictionary containing the parameter values for the model to run in the grid of models. Only offers
+                one model per request.
+        """
         if model_type == "SequentialModel":
+            # As SequentialModel types contain multiple models, sometimes of the same type, we split this type out to
+            # follow altered logic to arrive at equivalently expected outputs.
             for i in range(len(flattened_grids[0])):
                 combo = ()
                 for j in range(np.shape(flattened_grids)[0]):
                     combo += (flattened_grids[j][i],)
                 yield_dict = {"id": i}
+                # run_list contains the dictionaries of each model to be run in the sequence of models.
+                # This is the SequentialModel sequenced_model_parameters input.
                 run_list = []
-                for base_model_dict in full_parameters:
+                for model_count in range(len(full_parameters)):
+                    # run_dict contains all input parameters for a model, not just param_dict, for an individual model
+                    # that is part of the SequentialModel.
                     run_dict = {}
-                    for model_type, model_full_parameters in base_model_dict.items():
+                    for model_type, model_full_parameters in full_parameters[model_count].items():
                         if isinstance(model_full_parameters, dict):
+                            # grid_param_dict is filled with the param_dict values of a model.
                             grid_param_dict = {
-                                k.replace(model_type, ""): v
+                                k.replace(f"{model_count}_", ""): v
                                 for k, v in zip(param_keys, combo)
-                                if k.replace(model_type, "")
+                                if k.replace(f"{model_count}_", "")
                                 in model_full_parameters["param_dict"]
+                                and k[:len(str(model_count))] == str(model_count)
                             }
+                            # grid_dict is filled with the input parameters of a value, not part of param_dict
                             grid_dict = {
-                                k.replace(model_type, ""): v
+                                k.replace(f"{model_count}_", ""): v
                                 for k, v in zip(param_keys, combo)
-                                if k.replace(model_type, "")
+                                if k.replace(f"{model_count}_", "")
                                 not in model_full_parameters["param_dict"]
                                 and (
-                                    not any(
-                                        mt in k for mt in list(base_model_dict.keys())
-                                    )
-                                    or model_type in k
+                                    k[:len(str(model_count))] == str(model_count) if k[:len(str(model_count))].isdigit() else False
                                 )
                             }
                             run_dict[model_type] = {
@@ -3453,17 +3491,20 @@ class GridModels:
                             run_list += [run_dict]
                         else:
                             yield_dict[model_type] = model_full_parameters
-                yield {**yield_dict, **{"sequenced_model_parameters": run_list}}
+                yield {"parameters_to_match":["finalDens"], **yield_dict, **{"sequenced_model_parameters": run_list}}
         else:
             for i in range(len(flattened_grids[0])):
                 combo = ()
                 for j in range(np.shape(flattened_grids)[0]):
                     combo += (flattened_grids[j][i],)
+
+                # grid_param_dict contains the param_dict values of the next model to run.
                 grid_param_dict = {
                     k: v
                     for k, v in zip(param_keys, combo)
                     if k in full_parameters["param_dict"]
                 }
+                # grid_dict is filled with the input parameters of a value, not part of param_dict, for the next model to run
                 grid_dict = {
                     k: v
                     for k, v in zip(param_keys, combo)
