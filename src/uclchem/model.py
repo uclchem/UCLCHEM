@@ -208,6 +208,7 @@ get_species_names = SpeciesNameStore()
 
 # Universal model loader
 def load_model(
+    *,
     file_obj: h5py.File = None,
     file: str = None,
     name: str = "default",
@@ -1191,6 +1192,7 @@ class AbstractModel(ABC):
     # Model saving
     def save_model(
         self,
+        *,
         file_obj: h5py.File = None,
         file: str = None,
         name: str = "default",
@@ -2969,6 +2971,7 @@ class SequentialModel:
 
     def save_model(
         self,
+        *,
         file_obj: h5py.File = None,
         file: str = None,
         name: str = "",
