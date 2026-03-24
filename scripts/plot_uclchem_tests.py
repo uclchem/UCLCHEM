@@ -86,7 +86,9 @@ if __name__ == "__main__":
                         legend=False,
                     )
                 if plot_type == "charge":
-                    ions = [s for s in list(model_data[folder + model].columns) if "+" in s]
+                    ions = [
+                        s for s in list(model_data[folder + model].columns) if "+" in s
+                    ]
                     charge_conservation = model_data[folder + model].loc[
                         :, "E-"
                     ] - model_data[folder + model].loc[:, ions].sum(axis=1)
@@ -108,7 +110,9 @@ if __name__ == "__main__":
                 if plot_type == "charge":
                     axis.set_title(
                         axis.get_title()
-                        + " (Charge conservation: {:.2e})".format(charge_conservation.mean())
+                        + " (Charge conservation: {:.2e})".format(
+                            charge_conservation.mean()
+                        )
                     )
                 i = i + 1
         axes[0].text(

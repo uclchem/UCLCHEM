@@ -23,12 +23,17 @@ if __name__ == "__main__":
     zetas = np.logspace(1, 3, 3)
 
     # meshgrid will give all combinations, then we shape into columns and put into a table
-    parameterSpace = np.asarray(np.meshgrid(temperatures, densities, zetas)).reshape(3, -1)
-    model_table = pd.DataFrame(parameterSpace.T, columns=["temperature", "density", "zeta"])
+    parameterSpace = np.asarray(np.meshgrid(temperatures, densities, zetas)).reshape(
+        3, -1
+    )
+    model_table = pd.DataFrame(
+        parameterSpace.T, columns=["temperature", "density", "zeta"]
+    )
 
     # keep track of where each model output will be saved and make sure that folder exists
     model_table["outputFile"] = model_table.apply(
-        lambda row: f"../grid_folder/{row.temperature}_{row.density}_{row.zeta}.csv", axis=1
+        lambda row: f"../grid_folder/{row.temperature}_{row.density}_{row.zeta}.csv",
+        axis=1,
     )
     print(f"{model_table.shape[0]} models to run")
     if not os.path.exists("../grid_folder"):
@@ -37,7 +42,6 @@ if __name__ == "__main__":
     # %% [markdown]
     # ### Set up the model
     # Next, we need a function that will run our model. We write a quick function that takes a row from our dataframe and uses it to populate a parameter dictionary for UCLCHEM and then run a cloud model. We can then map our dataframe to that function.
-
 
     # %%
     def run_model(row):
@@ -56,13 +60,11 @@ if __name__ == "__main__":
         result = uclchem.functional.cloud(param_dict=ParameterDictionary)
         return result
 
-
     with Pool(processes=6) as pool:
         results = pool.map(run_model, model_table.iterrows())
 
     # ## Checking Your Grid
     # After running, we should do two things. First, let's add `results` to our dataframe as a new column. Positive results mean a successful UCLCHEM run and negative ones are unsuccessful. Then we can run each model through `check_element_conservation` to check the integration was successful. We'll use both these things to flag models that failed in some way.
-
 
     # %%
     def element_check(output_file):
@@ -71,7 +73,6 @@ if __name__ == "__main__":
         conserves = uclchem.analysis.check_element_conservation(df)
         # check if any error is greater than 1%
         return all(float(x[:-1]) < 1 for x in conserves.values())
-
 
     model_table["run_result"] = results
     model_table["elements_conserved"] = model_table["outputFile"].map(element_check)

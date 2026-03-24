@@ -47,7 +47,6 @@ if __name__ == "__main__":
     stop = perf_counter()
     print(f"Phase 1 in {stop - start:.1f} seconds")
 
-
     # finally, run phase 2 from the phase 1 model.
     params["initialDens"] = 1e5
     params["freezeFactor"] = 0.0
@@ -60,6 +59,8 @@ if __name__ == "__main__":
     params["outputFile"] = "examples/test-output/phase2-full.dat"
     params.pop("columnFile")
     start = perf_counter()
-    uclchem.functional.prestellar_core(3, 300.0, param_dict=params, out_species=outSpecies)
+    uclchem.functional.prestellar_core(
+        3, 300.0, param_dict=params, out_species=outSpecies
+    )
     stop = perf_counter()
     print(f"Phase 2 in {stop - start:.1f} seconds")
