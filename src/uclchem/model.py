@@ -3121,9 +3121,13 @@ class GridModels:
                     f"For SequentialModel types, full_parameters must be a list. {type(self.full_parameters)} was passed."
                 )
             for model_count in range(len(self.full_parameters)):
-                for model_type, model_full_params in self.full_parameters[model_count].items():
+                for model_type, model_full_params in self.full_parameters[
+                    model_count
+                ].items():
                     if not isinstance(model_full_params, dict):
-                        raise ValueError(f"Model number {model_count}, did not have a dictionary parameter in full_parameters list")
+                        raise ValueError(
+                            f"Model number {model_count}, did not have a dictionary parameter in full_parameters list"
+                        )
                     for k, v in model_full_params.items():
                         if k == "param_dict":
                             for k_p, v_p in v.items():
@@ -3331,7 +3335,9 @@ class GridModels:
                 for base_model_dict in self.full_parameters:
                     for mt_k, mt_v in base_model_dict.items():
                         if not isinstance(mt_v, dict):
-                            raise ValueError(f"full_parameters List did not contain dictionaries, entry {model} was {mt_v}")
+                            raise ValueError(
+                                f"full_parameters List did not contain dictionaries, entry {model} was {mt_v}"
+                            )
                         tmp_model = self._load_model_data(
                             model=f"{self.models[model]['Model']}_{model_number}_{mt_k}"
                         )
@@ -3343,8 +3349,7 @@ class GridModels:
                                 ]
                                 for k in list(self.parameters_to_grid.keys())
                                 if mt_k in k
-                                and k.replace(mt_k, "").lower()
-                                in tmp_model._param_dict
+                                and k.replace(mt_k, "").lower() in tmp_model._param_dict
                             },
                             **{
                                 k.replace(mt_k, ""): tmp_model.__getattr__(
@@ -3352,8 +3357,7 @@ class GridModels:
                                 )
                                 for k in list(self.parameters_to_grid.keys())
                                 if mt_k in k
-                                and k.replace(mt_k, "").lower()
-                                in tmp_model._data.keys()
+                                and k.replace(mt_k, "").lower() in tmp_model._data.keys()
                             },
                         }
                         self.models[model][f"{model_number}_{mt_k}"]["Successful"] = (
@@ -3460,7 +3464,9 @@ class GridModels:
                     # run_dict contains all input parameters for a model, not just param_dict, for an individual model
                     # that is part of the SequentialModel.
                     run_dict = {}
-                    for model_type, model_full_parameters in full_parameters[model_count].items():
+                    for model_type, model_full_parameters in full_parameters[
+                        model_count
+                    ].items():
                         if isinstance(model_full_parameters, dict):
                             # grid_param_dict is filled with the param_dict values of a model.
                             grid_param_dict = {
@@ -3468,7 +3474,7 @@ class GridModels:
                                 for k, v in zip(param_keys, combo)
                                 if k.replace(f"{model_count}_", "")
                                 in model_full_parameters["param_dict"]
-                                and k[:len(str(model_count))] == str(model_count)
+                                and k[: len(str(model_count))] == str(model_count)
                             }
                             # grid_dict is filled with the input parameters of a value, not part of param_dict
                             grid_dict = {
@@ -3477,7 +3483,9 @@ class GridModels:
                                 if k.replace(f"{model_count}_", "")
                                 not in model_full_parameters["param_dict"]
                                 and (
-                                    k[:len(str(model_count))] == str(model_count) if k[:len(str(model_count))].isdigit() else False
+                                    k[: len(str(model_count))] == str(model_count)
+                                    if k[: len(str(model_count))].isdigit()
+                                    else False
                                 )
                             }
                             run_dict[model_type] = {
@@ -3491,7 +3499,11 @@ class GridModels:
                             run_list += [run_dict]
                         else:
                             yield_dict[model_type] = model_full_parameters
-                yield {"parameters_to_match":["finalDens"], **yield_dict, **{"sequenced_model_parameters": run_list}}
+                yield {
+                    "parameters_to_match": ["finalDens"],
+                    **yield_dict,
+                    **{"sequenced_model_parameters": run_list},
+                }
         else:
             for i in range(len(flattened_grids[0])):
                 combo = ()
