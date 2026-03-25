@@ -3054,6 +3054,25 @@ def _run_grid_model(model_id, model_type, pending_model, log_dir=None):
     model_obj.pickle()
     return (model_id, model_obj)
 
+# The following parameters from various chemical models, cannot be used as grid parameters.
+NoGridParameters = [
+    "out_species",
+    "starting_chemistry",
+    "time_array",
+    "density_array",
+    "gas_temperature_array",
+    "dust_temperature_array",
+    "zeta_array",
+    "radfield_array"
+    "visual_extinction_array",
+    "coldens_H_array",
+    "coldens_H2_array",
+    "coldens_CO_array",
+    "coldens_C_array",
+    "debug",
+    "read_file",
+    "run_type"
+]
 
 class GridRunner:
     """GridRunner, like SequentialRunner is not an actual uclchem model, instead it allows running multiple models on a grid of parameter space.
@@ -3184,10 +3203,10 @@ class GridRunner:
             model_count = ""
         else:
             model_count = f"{str(model_count)}_"
-        if isinstance(value, list):
+        if isinstance(value, list) and key not in NoGridParameters:
             self.parameters_to_grid[model_count + key] = value
             self.parameters_to_grid[model_count + key] = np.array(value, dtype=object)
-        elif isinstance(value, (np.ndarray, np.generic)):
+        elif isinstance(value, (np.ndarray, np.generic)) and key not in NoGridParameters:
             self.parameters_to_grid[model_count + key] = value.astype(dtype=object)
 
     def _log_main(self, msg):
