@@ -2917,12 +2917,12 @@ class SequentialRunner:
                         for parameter in self.parameters_to_match:
                             if parameter == "finalDens":
                                 model_dict["param_dict"]["initialdens"] = (
-                                    previous_model.physics_array[-1, 0, 1]
+                                    previous_model.physics_array[-1, 0, 1].item()
                                 )
                                 continue
                             elif parameter == "finalTemp":
                                 model_dict["param_dict"]["initialtemp"] = (
-                                    previous_model.physics_array[-1, 0, 2]
+                                    previous_model.physics_array[-1, 0, 2].item()
                                 )
                             else:
                                 print(
@@ -3354,9 +3354,7 @@ class GridRunner:
                 for model_count in range(len(self.full_parameters)):
                     for mt_k, mt_v in self.full_parameters[model_count].items():
                         if not isinstance(mt_v, dict):
-                            raise ValueError(
-                                f"full_parameters List did not contain dictionaries, entry {model} was {mt_v}"
-                            )
+                            continue
                         tmp_model = self._load_model_data(
                             model=f"{self.models[model]['Model']}_{model_count}_{mt_k}"
                         )
@@ -3546,7 +3544,3 @@ class GridRunner:
                     **grid_dict,
                     "id": i,
                 }
-
-
-#class ProbabilityRunner:
-#    import pythonradex
