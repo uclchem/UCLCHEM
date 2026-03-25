@@ -258,28 +258,21 @@ CONTAINS
         implicit none
         real(dp) :: Lstar, Tstar, Avs, r, U_star, U_shell
         real(dp), intent(out) :: Temp_dust, U
-        integer :: i
-        real(dp), dimension(:), allocatable :: wave, wave_cm, uwave_red_star, uwave_red_shell, uwave_red
-        real(8)  :: urad_red, urad_red_lambda, rsub
+        real(8)  :: rsub
         integer, Parameter :: nw=129
 
         ! sublimation distance
         rsub = get_rsub(Lstar)
 
-        ! logspace for wave in cm
-        call logspace(log10(wave1), log10(wave2), nw, wave)
-        wave_cm = wave*1.d-4 !in cm
-
         ! radiation from the star
-        call radiation_star(r, Lstar, Tstar, Avs, U_star, uwave_red_star)
+        call radiation_star(r, Lstar, Tstar, Avs, U_star)
 
         ! radiation from the shell
         if (r.lt.rsub) then
-            U_shell =0.0d0
-            uwave_red_shell=0.0d0
+            U_shell = 0.0d0
         else
-            call radiation_shell(r, Lstar, Tstar, Avs, U_shell, uwave_red_shell)
-        endif 
+            call radiation_shell(r, Lstar, Tstar, Avs, U_shell)
+        endif
 
         ! total radiation field
         U = U_star + U_shell
@@ -289,83 +282,74 @@ CONTAINS
 
     END SUBROUTINE radiation
 
-    SUBROUTINE radiation_star(r, Lstar, Tstar, Avs, U, uwave_red)
+    SUBROUTINE radiation_star(r, Lstar, Tstar, Avs, U)
         implicit none
         real(dp) :: Lstar, Tstar, Rstar, r
         real(dp), intent(out) :: U
-        real(dp), intent(out) :: uwave_red(:)
         integer :: i
-        real(dp), dimension(:), allocatable :: wave, wave_cm, Istar, uwave_star, tau_wave
-        real(dp) :: ZZ, Avs, rsub!, urad_red!, tau_wave, wave1, wave2
-        real(dp) :: NH_EBV, RV ! Tdsub, uISRF 
-        real(8)  ::  urad_red, urad_red_lambda
+        real(dp), dimension(:), allocatable :: wave, wave_cm, Istar, uwave_star, tau_wave, uwave_red
+        real(dp) :: ZZ, Avs, rsub
+        real(dp) :: NH_EBV, RV
+        real(8)  :: urad_red
         integer, Parameter :: nw=129
         real(dp), dimension(2, nw) :: ext_curves
         character(len=10) :: model
 
-        ! uISRF = 8.64d-13 !erg cm-3
-        ! Tdsub= 1500. !2300.d0 !K
         RV = 4.0d0
         NH_EBV = 5.8d21
-        
+
         ! sublimation distance
-        rsub=get_rsub(Lstar)!rsub = 155.3d0*(Lstar/1.0d6/Lsun)**(0.5) * (Tdsub/1500.d0)**(-5.6/2.0) * aunit !in cm
-        ! print *,'rsub=',rsub !good
+        rsub=get_rsub(Lstar)
 
         ZZ = HP * C / (K_BOLTZ * Tstar)
 
         !logspace for wave in micron
+        ALLOCATE(wave(nw))
         call logspace(log10(wave1), log10(wave2), nw, wave)
-        ! print *,'wave=',wave !good
 
         ! convert wave from micron to cm
         wave_cm = wave*1.d-4 !in cm
 
         ! Call the function from the module
         call extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
-    
-        Istar	= (2.d0*HP*C**2.0/wave_cm**5.0)*(1.d0/(exp(ZZ/wave_cm)-1.0d0)) !an array
-	    uwave_star = (4.d0*PI*wave_cm/C)*(Istar)/wave_cm !an array
 
-        tau_wave = Avs * ext_curves(1,:)/1.086d0 !an array
-        uwave_red = uwave_star*exp(-tau_wave) !an array
-        
-        ! Initialize the integral value
-        urad_red = 0.0d0
+        Istar     = (2.d0*HP*C**2.0/wave_cm**5.0)*(1.d0/(exp(ZZ/wave_cm)-1.0d0))
+        uwave_star = (4.d0*PI*wave_cm/C)*(Istar)/wave_cm
+
+        tau_wave = Avs * ext_curves(1,:)/1.086d0
+        uwave_red = uwave_star*exp(-tau_wave)
 
         ! Apply trapezoidal rule for numerical integration
-        do i = 1, 129-1
+        urad_red = 0.0d0
+        do i = 1, nw-1
             urad_red = urad_red + 0.5d0 * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
         end do
-        ! Outputs
-        
+
         ! The stellar radius
         Rstar=Rstar_rsub(Tstar,Tdsub)*rsub
 
-        ! The total radiaiton field (dimensionless)
+        ! The total radiation field (dimensionless)
         U = urad_red / uISRF * (r / Rstar)**(-2.0)
     END SUBROUTINE radiation_star
 
-    SUBROUTINE radiation_shell(r, Lstar, Tstar, Avs, U, uwave_red)
+    SUBROUTINE radiation_shell(r, Lstar, Tstar, Avs, U)
         implicit none
         real(dp) :: Lstar, Tstar, r
         real(dp), intent(out) :: U
-        real(dp), intent(out) :: uwave_red(:)
         integer :: i
-        real(dp), dimension(:), allocatable :: wave, wave_cm, Istar, uwave_star, tau_wave !uwave_red
-        real(dp) :: ZZ, Avs, rsub!, urad_red!, tau_wave, wave1, wave2
-        real(dp) :: NH_EBV, RV !Tdsub, uISRF 
-        real(8)  :: urad_red, urad_red_lambda, Tshell
+        real(dp), dimension(:), allocatable :: wave, wave_cm, Istar, uwave_star, tau_wave, uwave_red
+        real(dp) :: ZZ, Avs, rsub
+        real(dp) :: NH_EBV, RV
+        real(8)  :: urad_red, Tshell
         integer, Parameter :: nw=129
         real(dp), dimension(2, nw) :: ext_curves
         character(len=10) :: model
 
         RV = 4.0d0
         NH_EBV = 5.8d21
-        
+
         ! sublimation distance
-        rsub=get_rsub(Lstar)!rsub = 155.3d0*(Lstar/1.0d6/Lsun)**(0.5) * (Tdsub/1500.d0)**(-5.6/2.0) * aunit !in cm
-        ! print *,'rsub=',rsub !good
+        rsub=get_rsub(Lstar)
 
         ! calculate Tshell
         Tshell = get_Tshell(Tstar)
@@ -374,8 +358,8 @@ CONTAINS
         ZZ = HP * C / (K_BOLTZ * Tshell)
 
         !logspace for wave in micron
+        ALLOCATE(wave(nw))
         call logspace(log10(wave1), log10(wave2), nw, wave)
-        ! print *,'wave=',wave !good
 
         ! convert wave from micron to cm
         wave_cm = wave*1.d-4 !in cm
@@ -383,20 +367,17 @@ CONTAINS
         ! Call the function from the module
         call extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
 
-        Istar	= (2.d0*HP*C**2.0/wave_cm**5.0)*(1.d0/(exp(ZZ/wave_cm)-1.0d0)) !an array
-	    uwave_star = (4.d0*PI*wave_cm/C)*(Istar)/wave_cm !an array
+        Istar     = (2.d0*HP*C**2.0/wave_cm**5.0)*(1.d0/(exp(ZZ/wave_cm)-1.0d0))
+        uwave_star = (4.d0*PI*wave_cm/C)*(Istar)/wave_cm
 
-        tau_wave = Avs * ext_curves(1,:)/1.086d0 !an array
-        uwave_red = uwave_star*exp(-tau_wave) !an array
-        
-        ! Initialize the integral value
-        urad_red = 0.0d0
+        tau_wave = Avs * ext_curves(1,:)/1.086d0
+        uwave_red = uwave_star*exp(-tau_wave)
 
         ! Apply trapezoidal rule for numerical integration
-        do i = 1, 129-1
+        urad_red = 0.0d0
+        do i = 1, nw-1
             urad_red = urad_red + 0.5d0 * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
         end do
-        ! Outputs
         U = urad_red / uISRF * (r / rsub)**(-2.0)
     END SUBROUTINE radiation_shell
 
