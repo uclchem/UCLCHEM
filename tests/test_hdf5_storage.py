@@ -10,7 +10,7 @@ Tests cover:
 - Error handling (missing file, missing model name)
 - HDF5 file structure verification
 - String/numeric dtype roundtrip
-- SequentialModel save/load with new List[Dict] format
+- SequentialRunner save/load with new List[Dict] format
 - _write_array / _read_array low-level helpers
 - from_file classmethod
 """
@@ -27,7 +27,7 @@ try:
     from uclchem.model import (
         AbstractModel,
         Cloud,
-        SequentialModel,
+        SequentialRunner,
         _read_array,
         load_model,
     )
@@ -359,12 +359,12 @@ class TestWriteReadArray:
 
 
 # ============================================================================
-# SequentialModel save / load
+# SequentialRunner save / load
 # ============================================================================
 
 
-class TestSequentialModel:
-    """Test SequentialModel with the new List[Dict] format."""
+class TestSequentialRunner:
+    """Test SequentialRunner with the new List[Dict] format."""
 
     @pytest.fixture
     def sequential_model(self):
@@ -395,14 +395,14 @@ class TestSequentialModel:
                 },
             },
         ]
-        return SequentialModel(config)
+        return SequentialRunner(config)
 
     def test_sequential_model_creates_multiple_stages(self, sequential_model):
-        """SequentialModel with two stages should produce two model entries."""
+        """SequentialRunner with two stages should produce two model entries."""
         assert len(sequential_model.models) == 2
 
     def test_sequential_model_save_load(self, sequential_model, tmp_path):
-        """SequentialModel save/load roundtrip should preserve all stages."""
+        """SequentialRunner save/load roundtrip should preserve all stages."""
         fpath = str(tmp_path / "sequential.h5")
         sequential_model.save_model(file=fpath, name="seq")
 
@@ -459,7 +459,7 @@ class TestSequentialModel:
                 },
             },
         ]
-        seq = SequentialModel(config)
+        seq = SequentialRunner(config)
         # Both stages should be Cloud
         assert seq.models[0]["Model_Type"] == "Cloud"
         assert seq.models[1]["Model_Type"] == "Cloud"

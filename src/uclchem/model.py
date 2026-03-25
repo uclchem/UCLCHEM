@@ -86,6 +86,7 @@ import logging
 # /UCLCHEM related imports
 # Multiprocessing imports
 import multiprocessing as mp
+from multiprocessing import pool
 import os
 import signal
 import warnings
@@ -3047,9 +3048,10 @@ def _run_grid_model(model_id, model_type, pending_model, log_dir=None):
         log_file = os.path.join(log_dir, f"model_{model_id}.log")
 
     cls = REGISTRY.get(model_type)
-    model_obj = cls(**pending_model, run_type="external")
     with capture_fortran_output(label=f"model_{model_id}", log_file=log_file):
-        model_obj.run()
+        model_obj = cls(**pending_model, run_type=("managed" if model_type == "SequentialRunner" else "external"))
+        if model_type != "SequentialRunner":
+            model_obj.run()
     model_obj._coordinator_unlink_memory()
     model_obj.pickle()
     return (model_id, model_obj)
@@ -3073,6 +3075,21 @@ NoGridParameters = [
     "read_file",
     "run_type"
 ]
+
+class _NoDaemonProcess(mp.Process):
+    @property
+    def daemon(self):
+        return False
+
+    @daemon.setter
+    def daemon(self, value):
+        pass
+
+
+class NoDaemonPool(pool.Pool):
+    @staticmethod
+    def Process(ctx, *args, **kwargs):
+        return _NoDaemonProcess(*args, **kwargs)
 
 class GridRunner:
     """GridRunner, like SequentialRunner is not an actual uclchem model, instead it allows running multiple models on a grid of parameter space.
@@ -3236,7 +3253,9 @@ class GridRunner:
         )
         file_obj = h5py.File(self.grid_file, "a")
 
-        with mp.Pool(
+        PoolClass = NoDaemonPool if self.model_type == "SequentialRunner" else mp.Pool
+
+        with PoolClass(
             self.max_workers,
             initializer=_pool_initializer,
             initargs=(snapshot,),
