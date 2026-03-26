@@ -1,5 +1,4 @@
-"""
-NetworkBuilder - Handles complex network construction logic.
+"""NetworkBuilder - Handles complex network construction logic.
 
 This module extracts the build-time complexity from the Network class,
 providing a clean separation between:
@@ -21,6 +20,7 @@ from .species import Species, elementList
 
 
 class NetworkBuilder:
+
     """Builder for constructing complex chemical networks.
 
     Handles all build-time operations:
@@ -44,6 +44,7 @@ class NetworkBuilder:
         ...     add_crp_photo_to_grain=True
         ... )
         >>> network = builder.build()
+
     """
 
     def __init__(
@@ -69,6 +70,7 @@ class NetworkBuilder:
 
         Raises:
             AssertionError: If duplicate species are provided
+
         """
         # Validate inputs
         assert len({s.get_name() for s in species}) == len(
@@ -105,6 +107,7 @@ class NetworkBuilder:
 
         Returns:
             Network: Fully built and validated network
+
         """
         # Import here to avoid circular dependency
         from .network import Network
@@ -203,6 +206,7 @@ class NetworkBuilder:
 
         Returns:
             bool: True if any species name contains '*'
+
         """
         return any(
             "*" in species.get_name() for species in self.network.get_species_list()
@@ -799,6 +803,7 @@ class NetworkBuilder:
 
         Args:
             enthalpy_reaction_types: List of reaction types or "ALL" or "GAS"
+
         """
         exclude_ices = True
         if not isinstance(enthalpy_reaction_types, list):
@@ -831,6 +836,7 @@ class NetworkBuilder:
 
         Args:
             database_reaction_exothermicity (list): List of paths to custom exothermicity CSV files.
+
         """
         from .heating import set_custom_exothermicities
 
@@ -848,8 +854,10 @@ class NetworkBuilder:
 
         Args:
             reaction (Reaction): The reaction to compute the enthalpy for.
+
         Returns:
             float: The reaction enthalpy in kcal/mol.
+
         """
         reactants = reaction.get_pure_reactants()
         products = reaction.get_pure_products()
@@ -914,8 +922,7 @@ class NetworkBuilder:
                 logging.info(f"\t{spec.get_name()} does not freeze out")
 
     def _duplicate_checks(self) -> None:
-        """
-        Check reaction network to make sure no reaction appears twice unless
+        """Check reaction network to make sure no reaction appears twice unless
         they have different temperature ranges.
         """
         logging.info("\tPossible duplicate reactions for manual removal:")
@@ -962,7 +969,6 @@ class NetworkBuilder:
         """We have a whole bunch of important reactions and we want to store
         their indices. We find them all here.
         """
-
         # Any None values in dictionary will raise an error
         # therefore these reactions are mandatory and makerates will not complete if the user doesn't supply them.
         self.network.important_reactions = {

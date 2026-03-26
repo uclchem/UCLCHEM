@@ -1,5 +1,4 @@
-"""
-Heating and cooling calculations for UCLCHEM reactions.
+"""Heating and cooling calculations for UCLCHEM reactions.
 
 Provides functions to set reaction exothermicities from thermochemical
 databases or custom CSV files with various units.
@@ -55,6 +54,7 @@ def parse_species_from_row(row: pd.Series, prefix: str) -> List[str]:
 
     Returns:
         List of species names (uppercase, NAN for missing)
+
     """
     species = []
     idx = 1
@@ -78,6 +78,7 @@ def _parse_unit(unit: str) -> float:
 
     Returns:
         Conversion factor to erg per reaction
+
     """
     unit_lower = unit.strip().lower()
 
@@ -125,12 +126,14 @@ def _parse_unit(unit: str) -> float:
 
 def convert_to_erg(value: float, unit: str) -> float:
     """Convert exothermicity to erg per reaction.
+
     Args:
         value: Exothermicity value
         unit: Unit string (case-insensitive)
 
     Returns:
         Value in erg per reaction
+
     """
     factor = _parse_unit(unit)
     return value * factor
@@ -148,6 +151,7 @@ def match_reaction(
 
     Returns:
         Matching Reaction or None
+
     """
     sorted_r = sorted(reactants)
     sorted_p = sorted(products)
@@ -171,6 +175,7 @@ def load_custom_exothermicities(csv_path: str) -> pd.DataFrame:
 
     Returns:
         DataFrame with custom exothermicities
+
     """
     df = pd.read_csv(csv_path, comment="#")
 
@@ -200,6 +205,7 @@ def set_custom_exothermicities(
 
     Returns:
         tuple: (num_matched, num_unmatched)
+
     """
     df = load_custom_exothermicities(csv_path)
     matched = 0

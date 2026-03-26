@@ -1,6 +1,5 @@
 ##########################################################################################
-"""
-Functions to read in the species and reaction files and write output files
+"""Functions to read in the species and reaction files and write output files
 """
 
 import csv
@@ -38,6 +37,7 @@ def get_default_coolants() -> list[dict]:
 
     Returns:
         list[dict]: List of coolant dictionaries with 'file' and 'name' keys.
+
     """
     return [
         {"file": "ly-a.dat", "name": "H"},
@@ -59,6 +59,7 @@ def get_default_coolant_directory(user_specified: str = "") -> str:
 
     Returns:
         str: Absolute directory path to collisional rate data files.
+
     """
     if user_specified:
         return user_specified
@@ -91,6 +92,7 @@ def read_species_file(file_name: Path) -> list[Species]:
 
     Returns:
         list: List of Species objects
+
     """
     species_list = []
     # list to hold user defined bulk species (for adjusting binding energy)
@@ -124,6 +126,7 @@ def read_reaction_file(
 
     Returns:
         list,list: Lists of kept and dropped reactions.
+
     """
     reactions = []
     dropped_reactions = []
@@ -173,6 +176,7 @@ def check_reaction(reaction_row, keep_list) -> bool:
 
     Returns:
         bool: Whether the row contains acceptable entries.
+
     """
     if all(x.upper() in keep_list for x in reaction_row[0:7]):
         if reaction_row[10] == "":
@@ -190,8 +194,7 @@ def check_reaction(reaction_row, keep_list) -> bool:
 
 
 def kida_parser(kida_file):
-    """
-    KIDA used a fixed format file so we read each line in the chunks they specify
+    """KIDA used a fixed format file so we read each line in the chunks they specify
     and use python built in classes to convert to the necessary types.
     NOTE KIDA defines some of the same reaction types to UMIST but with different names
     and coefficients. We fix that by converting them here.
@@ -267,6 +270,7 @@ def read_coolants_file(file_name: Path) -> list[dict]:
 
     Returns:
         list[dict]: Normalized list of coolant dicts.
+
     """
     with open(file_name, "r") as fh:
         data = yaml.safe_load(fh)
@@ -311,6 +315,7 @@ def output_drops(
         dropped_reactions (list[Reaction]): The reactions that were dropped
         output_dir (str): The directory that dropped_reactions.csv will be written to.
         write_files (bool, optional): Whether or not to write the file. Defaults to True.
+
     """
     if output_dir is None:
         output_dir = "."
@@ -349,6 +354,7 @@ def write_outputs(
         output_dir (bool): The directory to write to.
         coolants (list[dict]): List of coolant dictionaries with 'file' and 'name' keys.
                                If None, uses default coolants.
+
     """
     if output_dir is None:
         output_dir = Path("../src/uclchem")
@@ -436,10 +442,10 @@ def write_outputs(
         logging.info(f"  {'-' * name_width}  {'-' * 10}")
         for name, dev in sorted_devs:
             marker = " <<<" if dev > 0.01 else ""
-            logging.info(f"  {name:<{name_width}}  {dev*100:9.4f}%{marker}")
+            logging.info(f"  {name:<{name_width}}  {dev * 100:9.4f}%{marker}")
         logging.info(
             f"  Auto-setting freq_rel_tol = {suggested_freq_rel_tol:.4f} "
-            f"(max deviation {max_deviation*100:.2f}% + 10% margin)"
+            f"(max deviation {max_deviation * 100:.2f}% + 10% margin)"
         )
     else:
         suggested_freq_rel_tol = 0.01
@@ -501,7 +507,7 @@ def write_outputs(
     if missing_parents:
         error_msg = "ERROR: The following coolants reference parent species that don't exist in the network:\n"
         for idx, coolant_name, parent_name in missing_parents:
-            error_msg += f"  - Coolant #{idx+1} '{coolant_name}' → parent species '{parent_name}' not found\n"
+            error_msg += f"  - Coolant #{idx + 1} '{coolant_name}' → parent species '{parent_name}' not found\n"
         error_msg += (
             "\nAvailable species: "
             + ", ".join(sorted(species_dict.keys())[:20])
@@ -545,6 +551,7 @@ def write_f90_constants(
         replace_dict (Dict[str, int]): The dictionary with keys to replace
         output_file_name (Path): The path to target f2py_constants.f90 file
         template_file_path (Path, optional): The file to use as the template.
+
     """
     template_file_path = UCLCHEM_ROOT_DIR / "makerates" / template_file_path
     with open(template_file_path / "f2py_constants.f90", "r") as fh:
@@ -633,6 +640,7 @@ def write_python_constants(
     Args:
         replace_dict (Dict[str, int]]): Dict with keys to replace and their values (ignored)
         python_constants_file (Path): Path to the target constant files (ignored)
+
     """
     import warnings
 
@@ -674,6 +682,7 @@ def write_species(file_name: Path, species_list: list[Species]) -> None:
     Args:
         fileName (str): path to output file
         species_list (list): List of species objects for network
+
     """
     with open(file_name, "w") as f:
         writer = csv.writer(
@@ -713,6 +722,7 @@ def write_reactions(file_name: Path, reaction_list: list[Reaction]) -> None:
     Args:
         file_name (Path): path to output file
         reaction_list (list): List of reaction objects for network
+
     """
     reaction_columns = [
         "Reactant 1",
@@ -769,6 +779,7 @@ def write_odes_f90(
         file_name (str): Path to file where code will be written
         species_list (list): List of species describing network
         reaction_list (list): List of reactions describing network
+
     """
     # First generate ODE contributions for all reactions
     species_names = [spec.get_name() for spec in species_list]
@@ -797,6 +808,7 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
     Args:
         file_name (str): Path to jacobian file
         species_list (species_list): List of species AFTER being processed by build_ode_string
+
     """
     output = open(file_name, "w")
     species_names = ""
@@ -872,8 +884,8 @@ def build_ode_string(
 
     Returns:
         str: One long string containing the entire ODE fortran code.
-    """
 
+    """
     # We create a string of losses and gains for each species so initialize them all as ""
     species_names = []
     for i, species in enumerate(species_list):
@@ -1023,6 +1035,7 @@ def species_ode_string(n: int, species: Species) -> str:
 
     Returns:
         str: the fortran code for the rate of change of the species
+
     """
     ydot_string = ""
     if species.losses != "":
@@ -1055,6 +1068,7 @@ def write_evap_lists(network_file, species_list: list[Species]) -> int:
     Args:
         network_file (file): Open file object to which the network code is being written
         species_list (list[Species]): List of species in network
+
     """
     gasIceList = []
     surfacelist = []
@@ -1170,6 +1184,7 @@ def truncate_line(input_string: str, lineLength: int = 72) -> str:
 
     Returns:
         str: Code string with line endings at regular intervals
+
     """
     result = ""
     i = 0
@@ -1203,6 +1218,7 @@ def write_network_file(
     Args:
         file_name (str): The file name where the code will be written.
         network (Network): A Network object built from lists of species and reactions.
+
     """
     species_list = network.get_species_list()
     reaction_list = network.get_reaction_list()
@@ -1443,6 +1459,7 @@ def find_reactant(species_list: list[str], reactant: str) -> int:
 
     Returns:
         int: The index of the reactant, if it is not found, 9999
+
     """
     try:
         return species_list.index(reactant) + 1
@@ -1460,6 +1477,7 @@ def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[Reacti
 
     Returns:
         list: list of indices of freeze out reactions matching order of desorptions.
+
     """
     freeze_species = [
         x.get_products()[0] for x in reaction_list if x.get_reactants()[1] == "DESCR"
@@ -1490,6 +1508,7 @@ def array_to_string(
 
     Returns:
         str: String containing the Fortran code to declare this array.
+
     """
     # Check for 2D array
     arr = np.array(array)
@@ -1546,8 +1565,7 @@ def array_to_string(
 
 
 def copy_coolant_files(source_dir: str = None) -> None:
-    """
-    Copy coolant data files to the package data directory for installation.
+    """Copy coolant data files to the package data directory for installation.
 
     This function copies .dat files from the source coolant directory
     (typically Makerates/data/collisional_rates/) to src/uclchem/data/collisional_rates/
@@ -1558,6 +1576,7 @@ def copy_coolant_files(source_dir: str = None) -> None:
 
     Raises:
         FileNotFoundError: If source directory doesn't exist or contains no .dat files.
+
     """
     import shutil
 

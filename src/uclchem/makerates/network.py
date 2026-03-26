@@ -1,5 +1,4 @@
-"""
-Unified Network implementation for UCLCHEM.
+"""Unified Network implementation for UCLCHEM.
 
 This module provides the Network class and factory functions for creating networks
 in different contexts:
@@ -33,6 +32,7 @@ from .species import Species
 
 
 class NetworkABC(ABC):
+
     """Base abstract class defining the read-only network interface.
 
     Defines operations common to ALL network types: reading data, querying,
@@ -128,6 +128,7 @@ class NetworkABC(ABC):
 
 
 class MutableNetworkABC(NetworkABC):
+
     """Extended interface for networks that support full CRUD operations.
 
     Adds add/remove/set operations for species and reactions on top of the
@@ -203,6 +204,7 @@ class MutableNetworkABC(NetworkABC):
 
 
 class BaseNetwork(NetworkABC):
+
     """Base implementation providing common network operations.
 
     Implements all read and query operations that are common between
@@ -279,6 +281,7 @@ class BaseNetwork(NetworkABC):
 
         Returns:
             List of reactions matching the type(s)
+
         """
         if isinstance(reaction_type, str):
             reaction_type = [reaction_type]
@@ -297,6 +300,7 @@ class BaseNetwork(NetworkABC):
 
         Returns:
             Dictionary of {index: Reaction} for matching reactions
+
         """
         similar = {}
 
@@ -323,6 +327,7 @@ class BaseNetwork(NetworkABC):
 
         Raises:
             ValueError: If reaction not found or multiple matches exist
+
         """
         similar = self.find_similar_reactions(reaction)
 
@@ -343,6 +348,7 @@ class BaseNetwork(NetworkABC):
 
 
 class Network(BaseNetwork, MutableNetworkABC):
+
     """Universal network representation for build and analysis contexts.
 
     A single Network class that serves all use cases:
@@ -370,6 +376,7 @@ class Network(BaseNetwork, MutableNetworkABC):
     Attributes:
         _species_dict: Internal species storage {name: Species}
         _reactions_dict: Internal reaction storage {index: Reaction}
+
     """
 
     def __init__(
@@ -390,6 +397,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         Args:
             species_dict: Species dictionary {name: Species}
             reaction_dict: Reaction dictionary {index: Reaction}
+
         """
         self._species_dict = species_dict
         self._reactions_dict = reaction_dict
@@ -423,6 +431,7 @@ class Network(BaseNetwork, MutableNetworkABC):
 
             >>> # Load old/custom network for analysis
             >>> network = Network.from_csv('old/species.csv', 'old/reactions.csv')
+
         """
         # Use defaults if not provided
         if species_path is None:
@@ -467,6 +476,7 @@ class Network(BaseNetwork, MutableNetworkABC):
 
         Example:
             >>> network = Network.from_lists(species_list, reactions_list)
+
         """
         species_dict = {s.get_name(): s for s in species}
         reaction_dict = dict(enumerate(reactions))
@@ -502,6 +512,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             ...     gas_phase_extrapolation=True,
             ...     add_crp_photo_to_grain=True
             ... )
+
         """
         from .network_builder import NetworkBuilder
 
@@ -539,6 +550,7 @@ class Network(BaseNetwork, MutableNetworkABC):
 
         Args:
             species: Species object, list of Species, or CSV-style entries
+
         """
         # Convert to list of Species objects
         if isinstance(species, list):
@@ -636,6 +648,7 @@ class Network(BaseNetwork, MutableNetworkABC):
 
         Args:
             reactions: Reaction object, list of Reactions, or CSV-style entries
+
         """
         # Convert to list of Reaction objects
         if isinstance(reactions, list):
@@ -699,6 +712,7 @@ class Network(BaseNetwork, MutableNetworkABC):
 
         Returns:
             list[Reaction]: A list of reactions of the specified type
+
         """
         if isinstance(reaction_type, str):
             reaction_type = [reaction_type]
@@ -820,6 +834,7 @@ def load_network_from_csv(
         ...     'archive/v3.0/reactions.csv'
         ... )
         >>> print(f"Species added: {len(network.get_species_list()) - len(old_network.get_species_list())}")
+
     """
     return Network.from_csv(species_path, reactions_path)
 
@@ -875,6 +890,7 @@ def build_network(
         ...     derive_reaction_exothermicity=['PHOTON', 'CRP'],
         ...     database_reaction_exothermicity=['custom_heating.csv']
         ... )
+
     """
     return Network.build(
         species=species,
@@ -910,5 +926,6 @@ def create_network(
     Example:
         >>> network = create_network(species_list, reactions_list)
         >>> network.add_reactions(additional_reactions)
+
     """
     return Network.from_lists(species, reactions)

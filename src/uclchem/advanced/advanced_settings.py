@@ -1,5 +1,4 @@
-"""
-General settings interface for UCLCHEM Fortran modules.
+"""General settings interface for UCLCHEM Fortran modules.
 
 This module provides class-based interfaces for accessing and modifying runtime
 settings across all UCLCHEM Fortran modules:
@@ -30,6 +29,7 @@ from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAME
 
 
 class Setting:
+
     """Represents a single runtime setting from a Fortran module.
 
     Tracks the current value, edit status, default value, and metadata
@@ -46,6 +46,7 @@ class Setting:
         is_internal: True if this is an internal solver parameter
         is_file_path: True if this is a file path (should use param_dict)
         shape: Array shape (None for scalars)
+
     """
 
     def __init__(
@@ -66,6 +67,7 @@ class Setting:
             is_parameter: Whether this is a PARAMETER (read-only)
             is_internal: Whether this is an internal solver parameter
             is_file_path: Whether this is a file path parameter (should use param_dict)
+
         """
         self.name = name
         self.module_name = module_name
@@ -104,6 +106,7 @@ class Setting:
 
         Returns:
             Current value from Fortran memory
+
         """
         memory_value = getattr(self._fortran_module, self.name)
 
@@ -138,6 +141,7 @@ class Setting:
 
         Raises:
             RuntimeError: If attempting to modify a PARAMETER or file path parameter
+
         """
         if self.is_parameter:
             raise RuntimeError(
@@ -204,6 +208,7 @@ class Setting:
 
 
 class ModuleSettings:
+
     """Container for all settings from a single Fortran module.
 
     Provides dict-like access to Setting objects with attribute-style syntax.
@@ -225,6 +230,7 @@ class ModuleSettings:
             parameter_names: Set of names that are PARAMETERs
             internal_names: Set of names that are internal solver parameters
             file_path_names: Set of names that are file paths (should use param_dict)
+
         """
         self.module_name = module_name
         self._fortran_module = fortran_module
@@ -300,6 +306,7 @@ class ModuleSettings:
 
         Returns:
             Dict mapping setting names to Setting objects
+
         """
         result = {}
         for name, setting in self._settings.items():
@@ -345,6 +352,7 @@ class ModuleSettings:
 
 
 class GeneralSettings:
+
     """General interface to all UCLCHEM settings across all Fortran modules.
 
     Provides dynamic access to modifiable parameters in any uclchemwrap module,
@@ -481,6 +489,7 @@ class GeneralSettings:
 
         Returns:
             Dict mapping "module.setting" to Setting objects
+
         """
         pattern = pattern.lower()
         results = {}
@@ -535,6 +544,7 @@ class GeneralSettings:
 
         Args:
             confirm: If True, require user confirmation
+
         """
         if confirm:
             response = input("Reset ALL settings to defaults? (yes/no): ")
@@ -574,6 +584,7 @@ class GeneralSettings:
 
         Yields:
             self: The GeneralSettings instance for chaining
+
         """
         # Save all current values (not just edited ones)
         # Skip PARAMETERs (compile-time constants), INTERNAL_PARAMETERS (solver state), and arrays

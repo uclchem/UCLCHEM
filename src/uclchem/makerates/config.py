@@ -1,5 +1,4 @@
-"""
-Pydantic-based configuration system for UCLCHEM Makerates.
+"""Pydantic-based configuration system for UCLCHEM Makerates.
 
 This module provides validated configuration handling with clear defaults,
 type checking, and automatic documentation generation.
@@ -14,8 +13,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class MakeratesConfig(BaseModel):
-    """
-    Configuration for UCLCHEM Makerates chemical network generation.
+
+    """Configuration for UCLCHEM Makerates chemical network generation.
 
     This class validates all configuration parameters and provides sensible
     defaults where appropriate. All file paths are resolved relative to the
@@ -24,6 +23,7 @@ class MakeratesConfig(BaseModel):
     Example:
         >>> config = MakeratesConfig.from_yaml("user_settings.yaml")
         >>> print(config.species_file)
+
     """
 
     # ============================================================================
@@ -356,8 +356,7 @@ class MakeratesConfig(BaseModel):
 
     @classmethod
     def from_yaml(cls, yaml_path: Union[str, Path]) -> "MakeratesConfig":
-        """
-        Load and validate configuration from a YAML file.
+        """Load and validate configuration from a YAML file.
 
         All relative paths in the config file are resolved relative to the
         directory containing the YAML file.
@@ -371,6 +370,7 @@ class MakeratesConfig(BaseModel):
         Raises:
             ValidationError: If configuration is invalid
             FileNotFoundError: If config file doesn't exist
+
         """
         yaml_path = Path(yaml_path).resolve()
 
@@ -397,11 +397,11 @@ class MakeratesConfig(BaseModel):
     def generate_template(
         cls, output_path: Union[str, Path] = "user_settings_template.yaml"
     ):
-        """
-        Generate a template configuration file with all parameters documented.
+        """Generate a template configuration file with all parameters documented.
 
         Args:
             output_path: Where to write the template file
+
         """
         output_path = Path(output_path)
 
@@ -573,14 +573,14 @@ database_reaction_type: "UMIST12"
     # ============================================================================
 
     def resolve_path(self, path: Union[str, Path]) -> Path:
-        """
-        Resolve a path relative to the configuration file directory.
+        """Resolve a path relative to the configuration file directory.
 
         Args:
             path: Path to resolve (can be absolute or relative)
 
         Returns:
             Resolved absolute Path
+
         """
         path = Path(path)
         if path.is_absolute():
@@ -591,11 +591,11 @@ database_reaction_type: "UMIST12"
             return path.resolve()
 
     def get_all_reaction_files(self) -> List[Path]:
-        """
-        Get all reaction files (database + custom) as resolved paths.
+        """Get all reaction files (database + custom) as resolved paths.
 
         Returns:
             List of absolute paths to all reaction files
+
         """
         files = []
 
@@ -615,11 +615,11 @@ database_reaction_type: "UMIST12"
         return files
 
     def get_all_reaction_types(self) -> List[str]:
-        """
-        Get all reaction types (database + custom) in correct order.
+        """Get all reaction types (database + custom) in correct order.
 
         Returns:
             List of reaction type strings
+
         """
         types = []
 

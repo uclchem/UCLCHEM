@@ -79,6 +79,7 @@ def is_number(s) -> bool:
 
     Returns:
         bool: True if a number, False if not.
+
     """
     try:
         float(s)
@@ -95,6 +96,7 @@ def sanitize_input_float(row: list[str], index: int, default: Any = 0.0) -> floa
 
 
 class Species:
+
     """Species is a class that holds all the information about an individual species in the
     network. It also has convenience functions to check whether the species is a gas or grain
     species and to help compare between species.
@@ -108,7 +110,6 @@ class Species:
 
         Falls back to sensible defaults when fields are missing.
         """
-
         if isinstance(inputRow, pd.Series):
             inputRow = [inputRow[field] for field in species_header]
 
@@ -176,6 +177,7 @@ class Species:
 
         Returns:
             str: The name
+
         """
         return self.name
 
@@ -184,6 +186,7 @@ class Species:
 
         Returns:
             int: The molecular mass
+
         """
         return self.mass
 
@@ -193,6 +196,7 @@ class Species:
 
         Returns:
             int: The charge of the species
+
         """
         if not self.is_ion():
             return 0
@@ -206,6 +210,7 @@ class Species:
 
         Returns:
             float: The solid fraction
+
         """
         return self.solidFraction
 
@@ -214,6 +219,7 @@ class Species:
 
         Returns:
             float: The monolayer fraction
+
         """
         return self.monoFraction
 
@@ -222,6 +228,7 @@ class Species:
 
         Returns:
             float: The volcano fraction
+
         """
         return self.volcFraction
 
@@ -230,6 +237,7 @@ class Species:
 
         Returns:
             float: The ice enthalpy
+
         """
         return self.enthalpy
 
@@ -238,6 +246,7 @@ class Species:
 
         Args:
             name (str): The new name for the species
+
         """
         self.name = name.upper()
 
@@ -246,6 +255,7 @@ class Species:
 
         Args:
             mass (int): The new molecular mass
+
         """
         self.mass = int(mass)
 
@@ -254,6 +264,7 @@ class Species:
 
         Args:
             binding_energy (float): The new binding energy in K
+
         """
         self.binding_energy = float(binding_energy)
 
@@ -262,6 +273,7 @@ class Species:
 
         Args:
             solid_fraction (float): The new solid fraction
+
         """
         self.solidFraction = float(solid_fraction)
 
@@ -270,6 +282,7 @@ class Species:
 
         Args:
             mono_fraction (float): The new monolayer fraction
+
         """
         self.monoFraction = float(mono_fraction)
 
@@ -278,6 +291,7 @@ class Species:
 
         Args:
             volcano_fraction (float): The new volcano fraction
+
         """
         self.volcFraction = float(volcano_fraction)
 
@@ -286,6 +300,7 @@ class Species:
 
         Args:
             enthalpy (float): The new ice enthalpy
+
         """
         self.enthalpy = float(enthalpy)
 
@@ -295,6 +310,7 @@ class Species:
 
         Args:
             new_desorbs (list[str]): The new desorption products
+
         """
         self.desorb_products = new_desorbs
 
@@ -303,6 +319,7 @@ class Species:
 
         Returns:
             list[str]: The desorption products
+
         """
         if not hasattr(self, "desorb_products"):
             raise AttributeError(f"Species {self} has no attribute 'desorb_products'")
@@ -317,8 +334,8 @@ class Species:
 
         It is called alpha, since it is derived from the alpha column in the UCLCHEM reaction format:
         https://github.com/uclchem/UCLCHEM/blob/08d37f8c3063f8ff8a9a7aa16d9eff0ed4f99538/Makerates/src/network.py#L160
-        """
 
+        """
         self.freeze_products[",".join(product_list)] = freeze_alpha
 
     def get_freeze_products(self) -> dict[list[str], float]:
@@ -329,6 +346,7 @@ class Species:
 
         Yields:
             Iterator[dict[str, float]]: Iterator that returns all of the freeze out reactions with ratios
+
         """
         keys = self.freeze_products.keys()
         values = self.freeze_products.values()
@@ -341,6 +359,7 @@ class Species:
 
         Returns:
             list[list[str]]: List of freeze products
+
         """
         # TODO: Write an unit test for get_freeze_product_behaviour
         return [key.split(",") for key in self.freeze_products.keys()]
@@ -353,6 +372,7 @@ class Species:
 
         Returns:
             float: The freezeout ratio
+
         """
         return self.freeze_products[",".join(product_list)]
 
@@ -361,6 +381,7 @@ class Species:
 
         Returns:
             bool: True if it is a grain species.
+
         """
         warn(
             "This method is deprecated in favour of is_ice_species.",
@@ -380,6 +401,7 @@ class Species:
 
         Returns:
             bool: True if it is an ice species.
+
         """
         return (
             self.get_name() in ["BULK", "SURFACE"]
@@ -394,6 +416,7 @@ class Species:
 
         Returns:
             bool: True if a surface species
+
         """
         return self.get_name().startswith("#")
 
@@ -402,6 +425,7 @@ class Species:
 
         Returns:
             bool: True if a bulk species
+
         """
         return self.get_name().startswith("@")
 
@@ -410,6 +434,7 @@ class Species:
 
         Returns:
             bool: True if it is an ionized
+
         """
         return self.get_name().endswith("+") or self.get_name().endswith("-")
 
@@ -513,6 +538,7 @@ class Species:
 
         Returns:
             int: The number of atoms
+
         """
         return self.n_atoms
 
@@ -521,6 +547,7 @@ class Species:
 
         Args:
             new_n_atoms (int): The new number of atoms
+
         """
         self.n_atoms = new_n_atoms
 
@@ -537,6 +564,7 @@ class Species:
 
         Returns:
             float: The binding energy in K
+
         """
         return self.binding_energy
 
@@ -553,6 +581,7 @@ class Species:
 
         Returns:
             float: The diffusion barrier
+
         """
         return self.diffusion_barrier
 
@@ -589,6 +618,7 @@ class Species:
 
         Args:
             barrier (float): Diffusion barrier
+
         """
         self.diffusion_barrier = float(barrier)
 
@@ -626,6 +656,7 @@ class Species:
 
         Returns:
             bool: True if two species are identical.
+
         """
         if isinstance(other, Species):
             return self.get_name() == other.get_name()
@@ -644,6 +675,7 @@ class Species:
 
         Returns:
             bool: True if less than the other species
+
         """
         return self.get_mass() < other.get_mass()
 
@@ -655,6 +687,7 @@ class Species:
 
         Returns:
             bool: True if larger than than the other species
+
         """
         return self.get_mass() > other.get_mass()
 
@@ -673,6 +706,7 @@ class Species:
 
         Returns:
             float: Rotational partition factor scaled by 1e50, or -999.0 if unavailable
+
         """
         if self.n_atoms == 1:
             # For atoms, this is undefined, just return a value such that
@@ -713,6 +747,7 @@ class Species:
 
         Returns:
             bool: True if linear, False otherwise
+
         """
         if self.n_atoms == 1:
             # Atomic species are not linear (doesn't matter, filtered out anyway)

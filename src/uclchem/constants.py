@@ -1,5 +1,4 @@
-"""
-UCLCHEM Constants Module
+"""UCLCHEM Constants Module
 
 This module provides access to canonical constants defined in the Fortran backend.
 Values are read directly from the compiled f2py_constants module to ensure

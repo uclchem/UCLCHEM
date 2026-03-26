@@ -1,5 +1,4 @@
-"""
-Unit tests for the heating and cooling mechanism installation.
+"""Unit tests for the heating and cooling mechanism installation.
 
 Tests that the full LAMDA coolant set can be built via makerates,
 installed via pip, and used at runtime through the HeatingSettings API.
@@ -43,6 +42,7 @@ def _run(
 
 
 class TestMakeRatesWithHeating:
+
     """Test that makerates succeeds with the full coolant config."""
 
     def test_makerates_runs_successfully(self):
@@ -113,6 +113,7 @@ class TestMakeRatesWithHeating:
 
 
 class TestInstallWithHeating:
+
     """Test that pip install succeeds after makerates with full coolant set."""
 
     def test_pip_install_succeeds(self):
@@ -145,6 +146,7 @@ class TestInstallWithHeating:
 
 
 class TestHeatingSettingsCoolants:
+
     """Test the HeatingSettings coolant control API after a full-set install."""
 
     @pytest.fixture
@@ -287,6 +289,7 @@ class TestHeatingSettingsCoolants:
 
 
 class TestHeatingCoolingMechanisms:
+
     """Test heating and cooling mechanism toggles with the full install."""
 
     @pytest.fixture
@@ -364,6 +367,7 @@ class TestHeatingCoolingMechanisms:
 
 
 class TestFortranConsistency:
+
     """Verify Fortran module state is consistent after install."""
 
     def test_coolant_active_array_size(self):
@@ -377,7 +381,7 @@ class TestFortranConsistency:
         ), f"coolant_active size ({len(coolant_active)}) != NCOOLANTS ({n_coolants})"
 
     def test_coolant_names_array_size(self):
-        """coolantNames array size should match NCOOLANTS."""
+        """CoolantNames array size should match NCOOLANTS."""
         import uclchemwrap
 
         n_coolants = uclchemwrap.f2py_constants.ncoolants
@@ -387,7 +391,7 @@ class TestFortranConsistency:
         ), f"coolantNames size ({len(coolant_names)}) != NCOOLANTS ({n_coolants})"
 
     def test_coolant_files_array_size(self):
-        """coolantFiles array size should match NCOOLANTS."""
+        """CoolantFiles array size should match NCOOLANTS."""
         import uclchemwrap
 
         n_coolants = uclchemwrap.f2py_constants.ncoolants
@@ -397,7 +401,7 @@ class TestFortranConsistency:
         ), f"coolantFiles size ({len(coolant_files)}) != NCOOLANTS ({n_coolants})"
 
     def test_conversion_factors_array_size(self):
-        """coolantConversionFactors array size should match NCOOLANTS."""
+        """CoolantConversionFactors array size should match NCOOLANTS."""
         import uclchemwrap
 
         n_coolants = uclchemwrap.f2py_constants.ncoolants
@@ -407,7 +411,7 @@ class TestFortranConsistency:
         ), f"coolantConversionFactors size ({len(factors)}) != NCOOLANTS ({n_coolants})"
 
     def test_conversion_modes_array_size(self):
-        """coolantConversionMode array size should match NCOOLANTS."""
+        """CoolantConversionMode array size should match NCOOLANTS."""
         import uclchemwrap
 
         n_coolants = uclchemwrap.f2py_constants.ncoolants
@@ -417,7 +421,7 @@ class TestFortranConsistency:
         ), f"coolantConversionMode size ({len(modes)}) != NCOOLANTS ({n_coolants})"
 
     def test_parent_names_array_size(self):
-        """coolantParentNames array size should match NCOOLANTS."""
+        """CoolantParentNames array size should match NCOOLANTS."""
         import uclchemwrap
 
         n_coolants = uclchemwrap.f2py_constants.ncoolants

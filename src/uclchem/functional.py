@@ -64,20 +64,14 @@ See Also
 - :mod:`uclchem.model` - Object-oriented model classes
 - :mod:`uclchem.utils` - Utility functions including ``check_error()``
 - :doc:`/tutorials/index` - Interactive tutorials for both APIs
+
 """
 
 import numpy as np
 import pandas as pd
 
 from uclchem.constants import TIMEPOINTS
-from uclchem.model import (
-    AbstractModel,
-    Cloud,
-    Collapse,
-    CShock,
-    JShock,
-    PrestellarCore,
-)
+from uclchem.model import AbstractModel, Cloud, Collapse, CShock, JShock, PrestellarCore
 
 
 def __validate_functional_api_params__(
@@ -88,9 +82,8 @@ def __validate_functional_api_params__(
     return_heating: bool,
     starting_chemistry: np.ndarray,
     return_stats: bool = False,
-):
-    """
-    Validate functional API specific constraints.
+) -> None:
+    """Validate functional API specific constraints.
     Checks that return_* parameters are not mixed with file parameters.
 
     Args:
@@ -109,6 +102,7 @@ def __validate_functional_api_params__(
         The system always uses the memory interface internally. File writing
         is controlled by the presence of outputFile, abundSaveFile, etc.
         This validation ensures users don't request both data return AND file writing.
+
     """
     # Determine if this is a memory return request (user wants data returned, not written)
     memory_return_requested = (
@@ -135,8 +129,7 @@ def __functional_return__(
     return_heating: bool = False,
     return_stats: bool = False,
 ):
-    """
-    return function that takes in the object that was modelled and returns the values based on the specified booleans.
+    """Return function that takes in the object that was modelled and returns the values based on the specified booleans.
 
     Args:
         model_object: model_object of a class that inherited from AbstractModel, from which the results should be returned.
@@ -146,6 +139,7 @@ def __functional_return__(
             the success_flag, dissipation_time if the model_object has that attribute, and the final abundances of the out_species.
         return_rates (bool, optional): A boolean on whether the reaction rates should be returned to a user.
         return_heating (bool, optional): A boolean on whether the heating/cooling rates should be returned to a user.
+
     Returns:
         if return_array and return_dataframe are False:
             - A list where the first element is always an integer which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details. If the model succeeded, and the model_object has the dissipation_time attribute the second element is the dissipation time. Further elements are the abundances of all species in `out_species`.
@@ -310,6 +304,7 @@ def __cloud__(
             - heatingDF (pandas.DataFrame or None): DataFrame containing heating/cooling terms for each timestep (if return_heating=True)
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
+
     """
     # Validate functional API constraints
     __validate_functional_api_params__(
@@ -383,6 +378,7 @@ def __collapse__(
             - heatingDF (pandas.DataFrame or None): DataFrame containing heating/cooling terms for each timestep (if return_heating=True)
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
+
     """
     __validate_functional_api_params__(
         param_dict,
@@ -457,6 +453,7 @@ def __prestellar_core__(
             - heatingDF (pandas.DataFrame or None): DataFrame containing heating/cooling terms for each timestep (if return_heating=True)
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
+
     """
     __validate_functional_api_params__(
         param_dict,
@@ -536,6 +533,7 @@ def __cshock__(
             - disspation_time (float): dissipation time in years
             - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
+
     """
     __validate_functional_api_params__(
         param_dict,

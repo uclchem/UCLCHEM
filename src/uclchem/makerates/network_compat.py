@@ -1,6 +1,5 @@
 # TODO v4.0: Remove this module and all its usages.
-"""
-Compatibility layer for old Network and LoadedNetwork APIs.
+"""Compatibility layer for old Network and LoadedNetwork APIs.
 
 This module provides backward compatibility wrappers for the old Network
 and LoadedNetwork classes. It's kept separate and NOT imported by default
@@ -45,6 +44,7 @@ def Network(species: list[Species] = None, reactions: list[Reaction] = None, **k
         >>> network = Network.build(species, reactions, gas_phase_extrapolation=True)
         >>> # or
         >>> network = build_network(species, reactions, gas_phase_extrapolation=True)
+
     """
     if species is None or reactions is None:
         raise ValueError(
@@ -64,6 +64,7 @@ def Network(species: list[Species] = None, reactions: list[Reaction] = None, **k
 
 
 class LoadedNetwork:
+
     """Backward compatible LoadedNetwork class.
 
     This class provides compatibility with the old LoadedNetwork API.
@@ -106,6 +107,7 @@ class LoadedNetwork:
             >>> # or use module-level functions
             >>> network = load_network_from_csv()
             >>> network = create_network(sp_list, rx_list)
+
         """
         # Check for invalid combinations
         has_objects = species is not None or reactions is not None
@@ -148,6 +150,7 @@ class LoadedNetwork:
 
 
 class NetworkState:
+
     """Backward compatible NetworkState class.
 
     This class provides compatibility with the old NetworkState API from
@@ -177,6 +180,7 @@ class NetworkState:
             >>> network.fortran.raw.alpha[0] = 999.0
             >>> # or use module-level function
             >>> network = load_network_from_fortran()
+
         """
         warnings.warn(
             "NetworkState is deprecated. "

@@ -1,3 +1,12 @@
+"""Collection of useful functions to run a set of notebooks in a directory.
+
+Example:
+    `python3 run_notebooks.py directory`
+
+    will run all the notebooks in `"directory"`.
+
+"""
+
 import argparse
 import os
 import shutil
@@ -8,8 +17,13 @@ import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
 
 
-def get_python_executable():
-    """Get a valid Python executable path."""
+def get_python_executable() -> str:
+    """Get a valid Python executable path.
+
+    Returns:
+        str: Path to python executable
+
+    """
     # Try sys.executable first
     if os.path.exists(sys.executable):
         return sys.executable
@@ -27,8 +41,18 @@ def get_python_executable():
     raise RuntimeError("Could not find a valid Python executable")
 
 
-def ensure_ipykernel_installed(python_exec):
-    """Ensure ipykernel is installed in the current environment."""
+def ensure_ipykernel_installed(python_exec: str) -> bool:
+    """Ensure ipykernel is installed in the current environment.
+
+    If it is not installed, tries to install it using `pip`.
+
+    Args:
+        python_exec (str): Path to python executable
+
+    Returns:
+        bool: Whether ipykernel is installed
+
+    """
     try:
         # Check if ipykernel is already installed
         result = subprocess.run(
@@ -59,8 +83,13 @@ def ensure_ipykernel_installed(python_exec):
         return False
 
 
-def find_existing_kernel_spec(python_exec):
-    """Check if a kernel spec already exists for this Python executable."""
+def find_existing_kernel_spec(python_exec: str) -> None:
+    """Check if a kernel spec already exists for this Python executable.
+
+    Args:
+        python_exec (str): Path to python executable
+
+    """
     try:
         # List all available kernel specs
         result = subprocess.run(
@@ -83,7 +112,7 @@ def find_existing_kernel_spec(python_exec):
                             # Check if argv[0] (Python executable) matches ours
                             argv = kernel_config.get("argv", [])
                             if argv and os.path.samefile(argv[0], python_exec):
-                                print(f"Found existing kernel spec: " f"{kernel_name}")
+                                print(f"Found existing kernel spec: {kernel_name}")
                                 return kernel_name
                     except (json.JSONDecodeError, OSError, FileNotFoundError):
                         continue
@@ -92,8 +121,16 @@ def find_existing_kernel_spec(python_exec):
     return None
 
 
-def create_kernel_spec(python_exec):
-    """Create a kernel spec for the current Python executable."""
+def create_kernel_spec(python_exec: str) -> str | None:
+    """Create a kernel spec for the current Python executable.
+
+    Args:
+        python_exec (str): Path to python executable
+
+    Returns:
+        str | None: name of the kernel, or None if it failed to create kernel
+
+    """
     # Get the current working directory name for a human-readable kernel name
     cwd = os.getcwd()
     dir_name = os.path.basename(cwd)
@@ -133,8 +170,13 @@ def create_kernel_spec(python_exec):
         return None
 
 
-def cleanup_kernel_spec(kernel_name):
-    """Remove the temporary kernel spec."""
+def cleanup_kernel_spec(kernel_name: str) -> None:
+    """Remove the temporary kernel spec.
+
+    Args:
+        kernel_name (str): name of the kernel to clean up
+
+    """
     if kernel_name:
         try:
             subprocess.run(
@@ -146,7 +188,13 @@ def cleanup_kernel_spec(kernel_name):
             pass  # Ignore cleanup errors
 
 
-def run_all_notebooks(notebooks_dir):
+def run_all_notebooks(notebooks_dir: str) -> None:
+    """Run all jupyter notebooks in a directory.
+
+    Args:
+        notebooks_dir (str): directory with notebooks.
+
+    """
     python_exec = get_python_executable()
     print(f"Using Python executable: {python_exec}")
 

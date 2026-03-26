@@ -1,5 +1,4 @@
-"""
-Constants and metadata for UCLCHEM advanced module.
+"""Constants and metadata for UCLCHEM advanced module.
 
 This module loads Fortran parameter classifications from YAML and provides
 them as Python sets for use in GeneralSettings.
@@ -17,6 +16,7 @@ def _load_fortran_metadata() -> tuple[Set[str], Set[str], Set[str]]:
 
     Returns:
         Tuple of (fortran_parameters, internal_parameters, file_path_parameters) as lowercase sets
+
     """
     yaml_path = UCLCHEM_ROOT_DIR / "advanced" / "fortran_metadata.yaml"
 

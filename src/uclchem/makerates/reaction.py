@@ -20,6 +20,7 @@ def skip_reaction_validation():
     Example:
         >>> with skip_validation():
         ...     reaction = Reaction(["C2N", "FREEZE", "NAN", "#CH3CNH", ...])
+
     """
     global _skip_reaction_validation
     old_value = _skip_reaction_validation
@@ -77,6 +78,7 @@ class Reaction:
             Validation can be disabled using the skip_validation() context manager.
             This is useful when loading pre-validated networks from Fortran where
             validation would fail due to modeling simplifications.
+
         """
         if isinstance(inputRow, Reaction):
             self.set_reactants(inputRow.get_reactants())
@@ -162,6 +164,7 @@ class Reaction:
 
         Returns:
             list[str]: The four reactants names
+
         """
         return self._reactants[:]
 
@@ -170,6 +173,7 @@ class Reaction:
 
         Returns:
             list[str]: The list of reacting species.
+
         """
         return [
             r
@@ -186,6 +190,7 @@ class Reaction:
 
         Args:
             reactants (list[str]): The four sorted reactant names
+
         """
         return self._sorted_reactants
 
@@ -194,6 +199,7 @@ class Reaction:
 
         Args:
             reactants (list[str]): The four reactants names
+
         """
         self._reactants = reactants
         # Store a sorted version for comparisons
@@ -204,6 +210,7 @@ class Reaction:
 
         Args:
             reactants (list[str]): The four products names
+
         """
         return self._products[:]
 
@@ -212,6 +219,7 @@ class Reaction:
 
         Returns:
             list[str]: The list of produced species.
+
         """
         return [
             r
@@ -228,6 +236,7 @@ class Reaction:
 
         Args:
             products (list[str]): The four sorted products names
+
         """
         return self._sorted_products
 
@@ -236,6 +245,7 @@ class Reaction:
 
         Args:
             products (list[str]): The four products names
+
         """
         self._products = products
         # Store a sorted version for comparisons
@@ -246,6 +256,7 @@ class Reaction:
 
         Returns:
             float: the alpha parameter of the reaction
+
         """
         return self._alpha
 
@@ -254,6 +265,7 @@ class Reaction:
 
         Args:
             alpha (float): the alpha parameter of the reaction
+
         """
         self._alpha = alpha
 
@@ -262,6 +274,7 @@ class Reaction:
 
         Returns:
             float: the beta parameter of the reaction
+
         """
         return self._beta
 
@@ -270,6 +283,7 @@ class Reaction:
 
         Args:
             beta (float): the beta parameter of the reaction
+
         """
         self._beta = beta
 
@@ -278,6 +292,7 @@ class Reaction:
 
         Args:
             gamma (float): the gamma parameter of the reaction
+
         """
         self._gamma = gamma
 
@@ -286,6 +301,7 @@ class Reaction:
 
         Returns:
             float: the gamma parameter of the reaction
+
         """
         return self._gamma
 
@@ -294,6 +310,7 @@ class Reaction:
 
         Args:
             templow (float): the lower temperature boundary
+
         """
         self._templow = templow
 
@@ -302,6 +319,7 @@ class Reaction:
 
         Returns:
             float: the lower temperature boundary
+
         """
         return self._templow
 
@@ -310,6 +328,7 @@ class Reaction:
 
         Args:
             templow (float): the higher temperature boundary
+
         """
         self._temphigh = temphigh
 
@@ -318,6 +337,7 @@ class Reaction:
 
         Returns:
             float: the higher temperature boundary
+
         """
         return self._temphigh
 
@@ -326,6 +346,7 @@ class Reaction:
 
         Args:
             delta_h (float): the reaction enthalpy change
+
         """
         self._exothermicity = rate
 
@@ -334,6 +355,7 @@ class Reaction:
 
         Returns:
             float: the reaction enthalpy change
+
         """
         return self._exothermicity
 
@@ -436,6 +458,7 @@ class Reaction:
 
         Args:
             reduced_mass (float): reduced mass of moving atoms
+
         """
         self._reduced_mass = reduced_mass
 
@@ -444,6 +467,7 @@ class Reaction:
 
         Returns:
             float: reduced mass of moving atoms
+
         """
         return self._reduced_mass
 
@@ -457,6 +481,7 @@ class Reaction:
 
         Returns:
             bool: input a if truthy, otherwise NAN
+
         """
         return a if a else "NAN"
 
@@ -467,6 +492,7 @@ class Reaction:
 
         Returns:
             str:
+
         """
         if self.get_reactants()[2] in reaction_types:
             return self.get_reactants()[2]
@@ -480,6 +506,7 @@ class Reaction:
 
         Returns:
             str: The source of the reaction
+
         """
         return self.source
 
@@ -488,6 +515,7 @@ class Reaction:
 
         Args:
             source (str): The source of the reaction
+
         """
         self.source = source
 
@@ -567,7 +595,8 @@ class Reaction:
     def convert_gas_to_surf(self) -> None:
         """Convert the gas-phase species to surface species in place for this reaction.
         If any ions are produced, the ion is assumed to become neutral because it is on the surface.
-        If any electrons are produced, they are assumed to be absorbed by the grain."""
+        If any electrons are produced, they are assumed to be absorbed by the grain.
+        """
         do_not_convert = reaction_types + ["E-", "NAN"]
         self.set_reactants(
             [
@@ -594,6 +623,7 @@ class Reaction:
 
         Returns:
             bool: equality
+
         """
         if not isinstance(other, Reaction) and not isinstance(other, CoupledReaction):
             raise NotImplementedError(
@@ -615,6 +645,7 @@ class Reaction:
 
         Returns:
             bool: Whether there is a collision (True), or not (False)
+
         """
         if not isinstance(other, Reaction) and not isinstance(other, CoupledReaction):
             raise NotImplementedError(
@@ -631,8 +662,7 @@ class Reaction:
         return False
 
     def changes_surface_count(self):
-        """
-        This checks whether a grain reaction changes number of particles on the surface
+        """This checks whether a grain reaction changes number of particles on the surface
         2 reactants to 2 products won't but two reactants combining to one will.
         """
         if len([x for x in self.get_reactants() if "#" in x]) != len(
@@ -726,6 +756,7 @@ class Reaction:
 
         Returns:
             bool: Is it a gas phase reaction?
+
         """
         checklist = [
             not (s.startswith("#") or s.startswith("@"))
@@ -748,6 +779,7 @@ class Reaction:
 
         Returns:
             bool: Is it an ice phase reaction?
+
         """
         checklist = [
             (s.startswith("#") or s.startswith("@"))
@@ -771,6 +803,7 @@ class Reaction:
 
         Returns:
             bool: Is it a surface reaction?
+
         """
         checklist = [
             s.startswith("#")
@@ -794,6 +827,7 @@ class Reaction:
 
         Returns:
             bool: Is it a bulk reaction?
+
         """
         checklist = [
             s.startswith("@")
@@ -855,6 +889,7 @@ def _generate_reaction_ode_bit(
         species_names (list): List of species names so we can find index of reactants in species list
         body_count (bool): Number of bodies in the reaction, used to determine how many factors of density to include
         reactants (list[str]): The reactants of the reaction
+
     """
     ode_bit = f"+RATE({i + 1})"
     # every body after the first requires a factor of density

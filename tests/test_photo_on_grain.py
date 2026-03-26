@@ -1,5 +1,4 @@
-"""
-Test photo_on_grain network with IN-MEMORY return modes only.
+"""Test photo_on_grain network with IN-MEMORY return modes only.
 
 This test uses return_array and return_dataframe with starting_chemistry
 to ensure the photo_on_grain network works with Python in-memory arrays.

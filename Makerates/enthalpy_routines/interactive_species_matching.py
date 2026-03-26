@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-ATCT-UCLCHEM Interactive Species Matcher
+"""ATCT-UCLCHEM Interactive Species Matcher
 
 Interactive tool for matching UCLCHEM species with ATCT thermochemical data.
 Handles exact matches, isomer detection, and user selection for ambiguous cases.
@@ -34,6 +33,7 @@ def clean_numeric_value(value: Any) -> Optional[float]:
 
     Returns:
         Clean Python float or None if the value is NaN/missing
+
     """
     if pd.isna(value):
         return None
@@ -49,6 +49,7 @@ def clean_numeric_value(value: Any) -> Optional[float]:
 
 
 class FormulaParser:
+
     """Chemical formula parsing utilities for UCLCHEM and ATCT formats."""
 
     @staticmethod
@@ -141,6 +142,7 @@ class FormulaParser:
 
 
 class SpeciesMatcher:
+
     """Interactive species matching between UCLCHEM and ATCT databases."""
 
     def __init__(self, atct_csv_path: str):
@@ -148,6 +150,7 @@ class SpeciesMatcher:
 
         Args:
             atct_csv_path: Path to cleaned ATCT CSV file
+
         """
         self.atct_data = pd.read_csv(atct_csv_path)
         self.atct_gas = self.atct_data[
@@ -169,6 +172,7 @@ class SpeciesMatcher:
 
         Returns:
             Dictionary mapping UCLCHEM species to ATCT matches
+
         """
         # Filter valid species
         target_species = [
@@ -463,6 +467,7 @@ class SpeciesMatcher:
         Args:
             mapping: Species mapping dictionary
             output_path: Output YAML file path
+
         """
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -478,6 +483,7 @@ class SpeciesMatcher:
         Args:
             mapping: Species mapping dictionary
             output_path: Output CSV file path
+
         """
         self.export_mapping_csv(mapping, output_path)
 
@@ -489,6 +495,7 @@ class SpeciesMatcher:
 
         Returns:
             Species mapping dictionary
+
         """
         with open(mapping_path, "r") as f:
             mapping = yaml.safe_load(f)
@@ -504,6 +511,7 @@ class SpeciesMatcher:
         Args:
             mapping: Species mapping dictionary
             output_path: Output CSV file path
+
         """
         mapping_data = []
         for species, match_info in mapping.items():
@@ -544,6 +552,7 @@ class SpeciesMatcher:
             species_df: Original UCLCHEM species DataFrame
             mapping: Species mapping dictionary from match_species()
             original_csv_path: Path to the original species CSV file
+
         """
         import shutil
         from pathlib import Path

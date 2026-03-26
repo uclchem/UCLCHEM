@@ -1,6 +1,4 @@
-"""UCLCHEM Plotting Module
-
-Visualization utilities for UCLCHEM model outputs.
+"""Visualization utilities for UCLCHEM model outputs.
 
 This module provides specialized plotting functions for visualizing
 chemical abundances and reaction rates from UCLCHEM models.
@@ -35,14 +33,38 @@ via methods like :meth:`~uclchem.model.AbstractModel.create_abundance_plot`.
 """
 
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
-def plot_rate_summary(prod, dest, step, xlabel="rate", top_k_rates=5):
-    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(7, top_k_rates))
-    prod.iloc[step].sort_values(ascending=False)[:top_k_rates].plot.barh(
-        ax=ax[0], title="production", logx=True
+def plot_rate_summary(
+    production_df: pd.DataFrame,
+    destruction_df: pd.DataFrame,
+    step: int,
+    xlabel: str = "Reaction rate (abundance wrt H / s)",
+    top_k_rates: int = 5,
+) -> list[plt.Axes]:
+    """Create a summary of the top k production and destruction reactions.
+
+    Args:
+        production_df (pd.DataFrame): dataframe with reaction rates of
+            formation reactions of species of interest
+        destruction_df (pd.DataFrame): dataframe with reaction rates of
+            destruction reactions of species of interest
+        step (int): time index of dataframes to plot.
+        xlabel (str): xlabel. Default: "Reaction rate (abundance wrt H / s)"
+        top_k_rates (int): Plot top k formation and destruction reactions.
+            Default: 5
+
+    Returns:
+        axs (list[plt.Axes]): axes of the plot
+
+    """
+    fig, axs = plt.subplots(2, 1, sharex=True, figsize=(7, top_k_rates))
+    production_df.iloc[step].sort_values(ascending=False)[:top_k_rates].plot.barh(
+        ax=axs[0], title="Production", logx=True
     )
-    dest.iloc[step].sort_values(ascending=False)[:top_k_rates].plot.barh(
-        ax=ax[1], title="destruction"
+    destruction_df.iloc[step].sort_values(ascending=False)[:top_k_rates].plot.barh(
+        ax=axs[1], title="Destruction"
     )
-    ax[1].set_xlabel(xlabel)
+    axs[1].set_xlabel(xlabel)
+    return axs

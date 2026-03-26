@@ -1,5 +1,4 @@
-"""
-Unit tests to verify that users cannot mix in-memory and write-to-disk modes.
+"""Unit tests to verify that users cannot mix in-memory and write-to-disk modes.
 
 Core principle: Never cross-pollinate between Fortran-based disk I/O
 and Python in-memory arrays/dataframes.
@@ -116,7 +115,8 @@ def test_return_rates_with_file_raises_error(basic_params, temp_output_directory
 
 
 # Test 5: Cannot run memory mode after disk mode
-# TODO: DEPRECATED - Mode mixing checks no longer needed since IO is handled by model objects directly, not in Fortran
+# TODO: DEPRECATED - Mode mixing checks no longer needed since
+# IO is handled by model objects directly, not in Fortran
 # def test_disk_then_memory_mode_raises_error(
 #     basic_params, temp_output_directory, reset_output_mode
 # ):
@@ -137,7 +137,8 @@ def test_return_rates_with_file_raises_error(basic_params, temp_output_directory
 
 
 # Test 6: Cannot run disk mode after memory mode
-# TODO: DEPRECATED - Mode mixing checks no longer needed since IO is handled by model objects directly, not in Fortran
+# TODO: DEPRECATED - Mode mixing checks no longer needed since
+# IO is handled by model objects directly, not in Fortran
 # def test_memory_then_disk_mode_raises_error(
 #     basic_params, temp_output_directory, reset_output_mode
 # ):
@@ -232,11 +233,13 @@ def test_chained_models_in_memory(basic_params):
 
 
 # Test 10: Cannot mix disk and memory in chained models
-# TODO: DEPRECATED - Mode mixing checks no longer needed since IO is handled by model objects directly, not in Fortran
+# TODO: DEPRECATED - Mode mixing checks no longer needed since
+# IO is handled by model objects directly, not in Fortran
 # def test_cannot_mix_disk_and_memory_in_chain(
 #     basic_params, temp_output_directory, reset_output_mode
 # ):
-#     """Test that you cannot start with disk mode then switch to memory mode in a chain"""
+#     """Test that you cannot start with disk mode then switch
+#     to memory mode in a chain"""
 #     # Stage 1: Cloud collapse (disk mode)
 #     params_stage1 = {
 #         "endAtFinalDensity": False,

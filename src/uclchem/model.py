@@ -165,8 +165,8 @@ def reaction_line_formatter(line: list[str]) -> str:
 
     Returns:
         str: formatted reaction for printing.
-    """
 
+    """
     reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
     products = list(filter(lambda x: not str(x).lower().endswith("nan"), line[3:7]))
     return " + ".join(reactants) + " -> " + " + ".join(products)
@@ -214,15 +214,16 @@ def load_model(
     name: str = "default",
     debug: bool = False,
 ):
-    """
-    load_model bypasses __init__ in order to load a pre-existing model from a file.
+    """load_model bypasses __init__ in order to load a pre-existing model from a file.
 
     Args:
         file (str): Path to a file that contains previously run and stored models.
         name (str, optional): Name of the stored object, if none was provided `default` will have been used. Defaults to 'default'
         debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False.
+
     Returns:
         obj (object): Loaded object that inherited from AbstractModel and has the class of to the model found in the loaded file.
+
     """
     opened_file = False
     if file_obj is None and file is None:
@@ -361,6 +362,7 @@ class AbstractModel(ABC):
         debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False.
         read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
+
     """
 
     def __init__(
@@ -460,9 +462,9 @@ class AbstractModel(ABC):
             self._create_starting_array(previous_model.next_starting_chemistry_array)
 
         self.give_start_abund = self.starting_chemistry_array is not None
-        assert not np.all(
-            self.starting_chemistry_array == 0.0
-        ), "Detected all zeros starting chemistry array."
+        assert not np.all(self.starting_chemistry_array == 0.0), (
+            "Detected all zeros starting chemistry array."
+        )
 
         # Only initialize next_starting_chemistry_array if we didn't load it from a file
         # (legacy_read_output_file sets it from the last timestep)
@@ -543,6 +545,7 @@ class AbstractModel(ABC):
 
         Returns:
             Model object loaded from the file.
+
         """
         return load_model(file=file, name=name, debug=debug)
 
@@ -707,6 +710,7 @@ class AbstractModel(ABC):
         Args:
             element_list (list, optional): List of elements to check conservation for. Defaults to self.out_species_lists.
             percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
+
         """
         if element_list is None:
             element_list = self.out_species_list
@@ -728,12 +732,12 @@ class AbstractModel(ABC):
             )
 
     def check_error(self, only_error: bool = False, raise_on_error: bool = True) -> None:
-        """
-        Checks the model error status and raises RuntimeError on failure.
+        """Checks the model error status and raises RuntimeError on failure.
 
         Args:
             only_error (bool, optional): If True, only act when there was an error (skip success message).
             raise_on_error (bool, optional): If True (default), raises RuntimeError on failure. If False, prints.
+
         """
         if self.success_flag is not None and self.success_flag < 0:
             from uclchem.utils import check_error as _check_error
@@ -764,6 +768,7 @@ class AbstractModel(ABC):
 
         Returns:
             fig,ax: matplotlib figure and axis objects
+
         """
         if species is None:
             species = self.out_species_list
@@ -785,6 +790,7 @@ class AbstractModel(ABC):
         with_se_stats: bool = False,
     ) -> pd.DataFrame | tuple[pd.DataFrame, ...]:  # Returns joined DF or tuple of DFs
         """Converts the model physics and chemical_abun arrays from numpy to pandas arrays.
+
         Args:
             point (int or None, optional): Integer referring to which point of the UCLCHEM model to return.
                 If None, returns data for all points with a 'Point' column. Defaults to None.
@@ -798,6 +804,7 @@ class AbstractModel(ABC):
                 dataframe depending on the value of `joined`. Defaults to False.
             with_level_populations (bool, optional): Flag on whether to include coolant level populations in the output. Defaults to False.
             with_se_stats (bool, optional): Flag on whether to include SE solver statistics in the output. Defaults to False.
+
         Returns:
             return_df (pandas.DataFrame): Dataframe of the joined arrays for point 'point' if joined = True
             physics_df (pandas.DataFrame): Dataframe of the physical parameters for point 'point' if joined = False
@@ -807,6 +814,7 @@ class AbstractModel(ABC):
             stats_df (pandas.DataFrame): Dataframe of DVODE solver statistics for point 'point' if joined = False and with_stats = True
             level_populations_df (pandas.DataFrame): Dataframe of coolant level populations for point 'point' if joined = False and with_level_populations = True
             se_stats_df (pandas.DataFrame): Dataframe of SE solver statistics for point 'point' if joined = False and with_se_stats = True
+
         """
 
         # Helper function to add Point column to a dataframe
@@ -989,6 +997,7 @@ class AbstractModel(ABC):
             >>> # Count failed attempts
             >>> failures = solver_stats[solver_stats['ISTATE'] < 0]
             >>> print(f"Failed attempts: {len(failures)}")
+
         """
         if self.stats_array is None:
             return None
@@ -1026,6 +1035,7 @@ class AbstractModel(ABC):
             >>> if failures is not None:
             >>>     print(f"Total retries needed: {len(failures)}")
             >>>     print(failures.groupby('ISTATE').size())
+
         """
         df = self.get_solver_stats_dataframe(point)
         if df is None:
@@ -1045,6 +1055,7 @@ class AbstractModel(ABC):
                 - efficiency_ratio: successful / total (1.0 = no retries)
                 - total_cpu_time: Sum of all CPU time
                 - wasted_cpu_time: CPU time spent on failed attempts
+
         """
         df = self.get_solver_stats_dataframe(point)
         if df is None:
@@ -1087,6 +1098,7 @@ class AbstractModel(ABC):
 
         Returns:
             plt.Axes: Modified input axis
+
         """
         if species is None:
             species = self.out_species_list
@@ -1198,14 +1210,14 @@ class AbstractModel(ABC):
         name: str = "default",
         overwrite: bool = False,
     ) -> None:
-        """
-        save_model saves a model to a file on disk. Multiple models can be saved into the same file if different names are used to store them.
+        """save_model saves a model to a file on disk. Multiple models can be saved into the same file if different names are used to store them.
 
         Args:
             file_obj (h5py.File): open file object
             file (str): Path to a file to store models.
             name (str, optional): Name to use for the group of the object. Defaults to 'default'
             overwrite (bool, optional): Boolean on whether to overwrite pre-existing models, or error out. Defaults to False
+
         """
         opened_file = False
         if file_obj is None and file is None:
@@ -1638,6 +1650,7 @@ class AbstractModel(ABC):
         Args:
             param_dict (dict): Parameter dictionary passed by the user to the model.
             out_species (list): List of output species that are considered important for this model.
+
         """
         if param_dict is None:
             # avoid mutating the shared default dictionary
@@ -1647,9 +1660,9 @@ class AbstractModel(ABC):
             # this is key to UCLCHEM's "case insensitivity"
             new_param_dict = {}
             for k, v in param_dict.items():
-                assert (
-                    k.lower() not in new_param_dict
-                ), f"Lower case key {k} is already in the dict, stopping"
+                assert k.lower() not in new_param_dict, (
+                    f"Lower case key {k} is already in the dict, stopping"
+                )
                 if isinstance(v, Path):
                     v = str(v)
                 new_param_dict[k.lower()] = v
@@ -1800,6 +1813,7 @@ class AbstractModel(ABC):
 
         Returns:
             DataFrame with columns for each level with meaningful coolant/level names
+
         """
         if (
             self.level_populations_array is None
@@ -1832,6 +1846,7 @@ class AbstractModel(ABC):
 
         Returns:
             DataFrame with per-coolant SE solver statistics using actual coolant names
+
         """
         if self.se_stats_array is None or self.se_stats_array.shape[0] < 3:
             return None
@@ -1988,6 +2003,7 @@ class Cloud(AbstractModel):
         debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
         read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
+
     """
 
     def __init__(
@@ -2017,8 +2033,7 @@ class Cloud(AbstractModel):
         return
 
     def run_fortran(self):
-        """
-        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
+        """Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
         # f2py returns all non-intent(in) values in Fortran signature order:
@@ -2089,6 +2104,7 @@ class Collapse(AbstractModel):
         debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
         read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
+
     """
 
     def __init__(
@@ -2135,8 +2151,7 @@ class Collapse(AbstractModel):
         return
 
     def run_fortran(self):
-        """
-        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
+        """Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
         result = wrap.collapse(
@@ -2212,6 +2227,7 @@ class PrestellarCore(AbstractModel):
         debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
         read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
+
     """
 
     def __init__(
@@ -2250,8 +2266,7 @@ class PrestellarCore(AbstractModel):
         return
 
     def run_fortran(self):
-        """
-        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
+        """Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
         _, _, _, _, _, _, _, out_species_abundances_array, _, success_flag = (
@@ -2328,6 +2343,7 @@ class CShock(AbstractModel):
         debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
         read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
+
     """
 
     def __init__(
@@ -2367,8 +2383,7 @@ class CShock(AbstractModel):
         return
 
     def run_fortran(self):
-        """
-        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
+        """Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
         result = wrap.cshock(
@@ -2445,6 +2460,7 @@ class JShock(AbstractModel):
         debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
         read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
+
     """
 
     def __init__(
@@ -2479,8 +2495,7 @@ class JShock(AbstractModel):
         return
 
     def run_fortran(self):
-        """
-        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
+        """Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
         result = wrap.jshock(
@@ -2562,6 +2577,7 @@ class Postprocess(AbstractModel):
         debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
         read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
+
     """
 
     def __init__(
@@ -2637,9 +2653,9 @@ class Postprocess(AbstractModel):
             # Flags exposed for Fortran wrapper (mutually exclusive)
             self.usecoldens = self.coldens_H_array is not None
             self.useav = self.visual_extinction_array is not None
-            assert not (
-                self.usecoldens and self.useav
-            ), "Cannot use both column density and visual extinction arrays simultaneously."
+            assert not (self.usecoldens and self.useav), (
+                "Cannot use both column density and visual extinction arrays simultaneously."
+            )
 
             if not self.give_start_abund:
                 self.starting_chemistry_array = np.zeros(
@@ -2656,8 +2672,7 @@ class Postprocess(AbstractModel):
         return
 
     def run_fortran(self):
-        """
-        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
+        """Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
         # Determine whether an Av grid was provided and set the flag expected by the Fortran wrapper
@@ -2743,6 +2758,7 @@ class Model(AbstractModel):
         debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
         read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
+
     """
 
     def __init__(
@@ -2813,8 +2829,7 @@ class Model(AbstractModel):
         return
 
     def run_fortran(self):
-        """
-        Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
+        """Runs the UCLCHEM model, first by resetting the np.arrays by using AbstractModel.run(), then running the model.
         check_error, and array_clean are automatically called post model run.
         """
         result = wrap.postprocess(
@@ -2878,6 +2893,7 @@ class SequentialModel:
             [{"<First Model Class>":{"param_dict":{<parameters>}, <other arguments>}}, {"<Second Model Class>:{"param_dict":{<parameters>}, <other arguments>}}, ...}]
         parameters_to_match (List, optional): The list provided to this argument decides which parameters should be matched from a previous model
             to the next model in the sequence. Currently, supports ["finalDens", "finalTemp"].
+
     """
 
     def __init__(
@@ -3003,6 +3019,7 @@ class SequentialModel:
         Args:
             element_list (list, optional): List of elements to check conservation for. Defaults to self.out_species_lists.
             percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
+
         """
         for model in self.models:
             conserve_dicts = []
@@ -3048,9 +3065,7 @@ class SequentialModel:
 
 
 def _run_grid_model(model_id, model_type, pending_model, log_dir=None):
-    """
-    Internal function to run a single model. This is used by the GridModels class
-    """
+    """Internal function to run a single model. This is used by the GridModels class"""
     log_file = None
     if log_dir is not None:
         log_file = os.path.join(log_dir, f"model_{model_id}.log")
@@ -3067,7 +3082,7 @@ def _run_grid_model(model_id, model_type, pending_model, log_dir=None):
 class GridModels:
     """GridModels, like SequentialModel is not an actual uclchem model, instead it allows running multiple models on a grid of parameter space.
 
-    Args
+    Args:
         model_type (str of model class to run):
         full_parameters (Dict): The dictionary passed to GridModels should nest into it, the param_dict argument that would
             be passed to any other model, with the addition of extra keys for the none param_dict variables of a model.
@@ -3078,6 +3093,7 @@ class GridModels:
         model_name_prefix (str, optional): Name prefix convention to use. The fifth model in the grid would have the name
             "<model_name_prefix>5>" assigned to it. Defaults to "" which would make the fifth model have the name "5".
         delay_run (bool, optional): Defaults to False.
+
     """
 
     def __init__(
@@ -3321,8 +3337,7 @@ class GridModels:
         return
 
     def _load_params(self):
-        """
-        _load_params, loops through the models present in the grid models self.models attribute in order
+        """_load_params, loops through the models present in the grid models self.models attribute in order
         to load the changing physical parameters of the models.
         The method splits the loops into two cases. SequentialModel, and other model cases.
         In both instances, the for loop loads the model data using the _load_model_data() method. Then, it
@@ -3330,8 +3345,10 @@ class GridModels:
         self.models for users to view the models run for the given GridModels object. T
         The Differentiation of SequentialModels stems from SequentialModels being nested models, resulting in an
         additional required loop to take into account the additional nesting.
+
         Returns:
             No explicit returns, self.models attribute is populated/expanded on.
+
         """
         # The following loops perform the same actions, but for the different model types
         if self.model_type == "SequentialModel":
@@ -3398,6 +3415,7 @@ class GridModels:
         Args:
             element_list (list, optional): List of elements to check conservation for. Defaults to self.out_species_lists.
             percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
+
         """
         for model in range(len(self.models)):
             tmp_model = load_model(file=self.grid_file, name=self.models[model]["Model"])
@@ -3421,7 +3439,7 @@ class GridModels:
             self.models[model]["elements_conserved"] = conserved
         return
 
-    def _handler(self, signum, frame):
+    def _handler(self, signum: Any, frame: Any) -> None:
         try:
             self.on_interrupt()  # your “final steps”
         finally:
@@ -3429,7 +3447,7 @@ class GridModels:
             signal.signal(signal.SIGINT, self._orig_sigint)
             raise KeyboardInterrupt
 
-    def on_interrupt(self):
+    def on_interrupt(self) -> None:  # noqa: D102
         return
 
     @staticmethod
@@ -3439,35 +3457,43 @@ class GridModels:
         flattened_grids: np.ndarray,
         model_type: str,
     ) -> Iterator[Dict[str, Any]]:
-        """
-        grid_iter is a staticmethod that provides an iterable dictionary of parameters that can be used with the
-        grid based multiprocessing worker distribution.
+        """Provide an iterable dictionary of parameters that can be used with the
+        grid-based multiprocessing worker distribution.
+
         Args:
-            full_parameters: dictionary or list (if model_type == SequentialModel) of the full parameters that will
-                be used for the model
-            param_keys: list of strings for the parameters that are changing in this GridModels object
-            flattened_grids: list of all the values for the changing parameters for this GridModels object
-            model_type: String of the type of model to use. 'SequentialModel' results in alternative way of executing this
-            phase as each SequentialModel represents multiple models to be run in series.
+            full_parameters (dict | list): dictionary or list
+                (if model_type == SequentialModel)
+                of the full parameters that will be used for the model
+            param_keys (list[str]): list of parameters that are changing in
+                this GridModels object
+            flattened_grids (np.ndarray): list of all the values for the changing parameters
+                for this GridModels object
+            model_type (str): Type of model to use. 'SequentialModel' results in
+                alternative way of executing this phase as each SequentialModel
+                represents multiple models to be run in series.
 
         Yields:
-            Next dictionary containing the parameter values for the model to run in the grid of models. Only offers
-                one model per request.
+            Next dictionary containing the parameter values for the model to run
+                in the grid of models. Only offers one model per request.
+
         """
         if model_type == "SequentialModel":
-            # As SequentialModel types contain multiple models, sometimes of the same type, we split this type out to
-            # follow altered logic to arrive at equivalently expected outputs.
+            # As SequentialModel types contain multiple models,
+            # sometimes of the same type, we split this type out to follow altered
+            # logic to arrive at equivalently expected outputs.
             for i in range(len(flattened_grids[0])):
                 combo = ()
                 for j in range(np.shape(flattened_grids)[0]):
                     combo += (flattened_grids[j][i],)
                 yield_dict = {"id": i}
-                # run_list contains the dictionaries of each model to be run in the sequence of models.
-                # This is the SequentialModel sequenced_model_parameters input.
+                # run_list contains the dictionaries of each model to be run
+                # in the sequence of models. This is the SequentialModel
+                # sequenced_model_parameters input.
                 run_list = []
                 for model_count in range(len(full_parameters)):
-                    # run_dict contains all input parameters for a model, not just param_dict, for an individual model
-                    # that is part of the SequentialModel.
+                    # run_dict contains all input parameters for a model,
+                    # not just param_dict, for an individual model that is
+                    # part of the SequentialModel.
                     run_dict = {}
                     for model_type, model_full_parameters in full_parameters[
                         model_count
@@ -3481,7 +3507,8 @@ class GridModels:
                                 in model_full_parameters["param_dict"]
                                 and k[: len(str(model_count))] == str(model_count)
                             }
-                            # grid_dict is filled with the input parameters of a value, not part of param_dict
+                            # grid_dict is filled with the input parameters of a value,
+                            # not part of param_dict
                             grid_dict = {
                                 k.replace(f"{model_count}_", ""): v
                                 for k, v in zip(param_keys, combo)
@@ -3521,7 +3548,8 @@ class GridModels:
                     for k, v in zip(param_keys, combo)
                     if k in full_parameters["param_dict"]
                 }
-                # grid_dict is filled with the input parameters of a value, not part of param_dict, for the next model to run
+                # grid_dict is filled with the input parameters of a value,
+                # not part of param_dict, for the next model to run
                 grid_dict = {
                     k: v
                     for k, v in zip(param_keys, combo)

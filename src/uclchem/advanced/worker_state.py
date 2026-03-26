@@ -1,5 +1,4 @@
-"""
-Snapshot and restore of advanced settings for multiprocessing propagation.
+"""Snapshot and restore of advanced settings for multiprocessing propagation.
 
 When UCLCHEM runs grid models or managed-mode models, worker processes are
 spawned via ``mp.Pool`` or ``mp.Process`` with the ``spawn`` context.  These
@@ -74,6 +73,7 @@ def create_snapshot() -> Dict[str, Any]:
 
     Returns:
         Fully picklable dict suitable for passing to :func:`restore_snapshot`.
+
     """
     snapshot: Dict[str, Any] = {}
 
@@ -160,6 +160,7 @@ def restore_snapshot(snapshot: Dict[str, Any]) -> None:
 
     Args:
         snapshot: Dict produced by :func:`create_snapshot`.
+
     """
     # --- General settings ---
     for mod_name, settings_dict in snapshot.get("general", {}).items():

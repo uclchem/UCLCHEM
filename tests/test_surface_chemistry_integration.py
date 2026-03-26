@@ -1,5 +1,4 @@
-"""
-Integration test for new surface chemistry features.
+"""Integration test for new surface chemistry features.
 
 Runs a cloud model and verifies the new physics produces different/better results.
 """
@@ -25,8 +24,7 @@ def temp_output_dir():
 
 
 def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
-    """
-    Test that ice-coverage-dependent desorption actually affects chemistry.
+    """Test that ice-coverage-dependent desorption actually affects chemistry.
 
     Verifies:
     - Model runs successfully with new features

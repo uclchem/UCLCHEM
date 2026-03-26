@@ -7,16 +7,21 @@ from uclchem.analysis import total_element_abundance
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
 
-def test_ode_conservation(element_list=["H", "N", "C", "O"]):
+def test_ode_conservation(
+    element_list: list[str] = ["H", "N", "C", "O"],
+) -> dict[str, float]:
     """Test whether the ODEs conserve elements. Useful to run each time you change network.
     Integrator errors may still cause elements not to be conserved but they cannot be conserved
     if the ODEs are not correct.
 
     Args:
-        element_list (list, optional): A list of elements for which to check the conservation. Defaults to ["H", "N", "C", "O"].
+        element_list (list[str]): A list of elements for which to check the conservation.
+            Defaults to ["H", "N", "C", "O"].
 
     Returns:
-        dict: A dictionary of the elements in element list with values representing the total rate of change of each element.
+        result (dict[str, float]): A dictionary of the elements in element list with values
+            representing the total rate of change of each element.
+
     """
     species_list = np.loadtxt(
         UCLCHEM_ROOT_DIR / "species.csv",

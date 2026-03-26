@@ -1,5 +1,4 @@
-"""
-Unit tests for heating module.
+"""Unit tests for heating module.
 
 Tests conversion constants and exothermicity functions.
 """
@@ -13,6 +12,7 @@ from uclchem.makerates import heating
 
 
 class TestConversionConstants:
+
     """Test conversion constants."""
 
     def test_avogadro_number(self):
@@ -30,6 +30,7 @@ class TestConversionConstants:
 
 
 class TestHeatingFunctions:
+
     """Test heating module functions."""
 
     @pytest.fixture

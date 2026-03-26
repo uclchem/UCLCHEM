@@ -1,5 +1,4 @@
-"""
-Runtime access to UCLCHEM's compiled chemical network state.
+"""Runtime access to UCLCHEM's compiled chemical network state.
 
 This module provides a class-based interface for accessing and modifying the chemical
 network that is compiled into the Fortran code. Unlike the Network class in makerates
@@ -30,6 +29,7 @@ from ..makerates.species import Species
 
 
 class RuntimeSpecies:
+
     """Wrapper for a species in the compiled network.
 
     Provides a similar API to makerates.Species but accesses the compiled Fortran data.
@@ -41,6 +41,7 @@ class RuntimeSpecies:
         Args:
             index: 1-based species index in Fortran arrays
             network_ref: Reference to the network module
+
         """
         self._index = index
         self._network = network_ref
@@ -51,6 +52,7 @@ class RuntimeSpecies:
 
         Returns:
             Species name
+
         """
         return str(np.char.decode(self._network.specname[self._array_idx])).strip()
 
@@ -59,6 +61,7 @@ class RuntimeSpecies:
 
         Returns:
             Mass in atomic mass units
+
         """
         return float(self._network.mass[self._array_idx])
 
@@ -67,6 +70,7 @@ class RuntimeSpecies:
 
         Returns:
             Binding energy in Kelvin (or None if not available)
+
         """
         if self._array_idx < len(self._network.bindingenergy):
             return float(self._network.bindingenergy[self._array_idx])
@@ -77,6 +81,7 @@ class RuntimeSpecies:
 
         Returns:
             Formation enthalpy in kJ/mol (or None if not available)
+
         """
         if self._array_idx < len(self._network.formationenthalpy):
             return float(self._network.formationenthalpy[self._array_idx])
@@ -87,6 +92,7 @@ class RuntimeSpecies:
 
         Returns:
             bool: True if it is an ice species.
+
         """
         return (
             self.get_name() in ["BULK", "SURFACE"]
@@ -101,6 +107,7 @@ class RuntimeSpecies:
 
         Returns:
             True if species name contains + or -
+
         """
         name = self.get_name()
         return "+" in name or "-" in name
@@ -110,6 +117,7 @@ class RuntimeSpecies:
 
         Returns:
             Charge (+1, -1, or 0)
+
         """
         name = self.get_name()
         if "+" in name:
@@ -126,6 +134,7 @@ class RuntimeSpecies:
 
 
 class RuntimeReaction:
+
     """Wrapper for a reaction in the compiled network.
 
     Provides a similar API to makerates.Reaction but accesses the compiled Fortran data.
@@ -137,6 +146,7 @@ class RuntimeReaction:
         Args:
             index: 1-based reaction index in Fortran arrays
             network_ref: Reference to the network module
+
         """
         self._index = index
         self._network = network_ref
@@ -147,6 +157,7 @@ class RuntimeReaction:
 
         Returns:
             List of species indices (1-based, 0 for NAN)
+
         """
         return [
             int(self._network.re1[self._array_idx]),
@@ -159,6 +170,7 @@ class RuntimeReaction:
 
         Returns:
             List of species indices (1-based, 0 for NAN)
+
         """
         return [
             int(self._network.p1[self._array_idx]),
@@ -172,6 +184,7 @@ class RuntimeReaction:
 
         Returns:
             List of reactant names (NAN for empty slots)
+
         """
         names = []
         for idx in self.get_reactants():
@@ -187,6 +200,7 @@ class RuntimeReaction:
 
         Returns:
             List of product names (NAN for empty slots)
+
         """
         names = []
         for idx in self.get_products():
@@ -202,6 +216,7 @@ class RuntimeReaction:
 
         Returns:
             Alpha parameter
+
         """
         return float(self._network.alpha[self._array_idx])
 
@@ -210,6 +225,7 @@ class RuntimeReaction:
 
         Returns:
             Beta parameter
+
         """
         return float(self._network.beta[self._array_idx])
 
@@ -218,6 +234,7 @@ class RuntimeReaction:
 
         Returns:
             Gamma parameter in Kelvin
+
         """
         return float(self._network.gama[self._array_idx])
 
@@ -226,6 +243,7 @@ class RuntimeReaction:
 
         Returns:
             Minimum temperature in Kelvin
+
         """
         return float(self._network.mintemps[self._array_idx])
 
@@ -234,6 +252,7 @@ class RuntimeReaction:
 
         Returns:
             Maximum temperature in Kelvin
+
         """
         return float(self._network.maxtemps[self._array_idx])
 
@@ -242,6 +261,7 @@ class RuntimeReaction:
 
         Returns:
             Exothermicity in erg
+
         """
         return float(self._network.exothermicities[self._array_idx])
 
@@ -250,6 +270,7 @@ class RuntimeReaction:
 
         Returns:
             Reduced mass in AMU (or None if not available)
+
         """
         if self._array_idx < len(self._network.reducedmasses):
             return float(self._network.reducedmasses[self._array_idx])
@@ -260,6 +281,7 @@ class RuntimeReaction:
 
         Returns:
             Computed rate (only meaningful after running a model)
+
         """
         if self._array_idx < len(self._network.reactionrate):
             return float(self._network.reactionrate[self._array_idx])
@@ -270,6 +292,7 @@ class RuntimeReaction:
 
         Args:
             value: New alpha value
+
         """
         self._network.alpha[self._array_idx] = float(value)
 
@@ -278,6 +301,7 @@ class RuntimeReaction:
 
         Args:
             value: New beta value
+
         """
         self._network.beta[self._array_idx] = float(value)
 
@@ -286,6 +310,7 @@ class RuntimeReaction:
 
         Args:
             value: New gamma value
+
         """
         self._network.gama[self._array_idx] = float(value)
 
@@ -299,6 +324,7 @@ class RuntimeReaction:
 
 
 class NetworkState:
+
     """Runtime interface to UCLCHEM's compiled chemical network.
 
     Loads the network from CSV files (on-disk version) and compares with
@@ -314,6 +340,7 @@ class NetworkState:
         >>> network.validate()  # Check on-disk matches in-memory
         >>> print(f"Species: {len(network.species_list)}")
         >>> print(f"Reactions: {len(network.reaction_list)}")
+
     """
 
     def __init__(self):
@@ -340,7 +367,6 @@ class NetworkState:
 
     def _load_csv_files(self):
         """Load species and reaction CSV files from the installed package."""
-
         species_path = UCLCHEM_ROOT_DIR / "species.csv"
         reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
 
@@ -501,6 +527,7 @@ class NetworkState:
             >>> network._network.alpha[0] = 999.0
             >>> # Restore to initial state
             >>> network.reset_state()
+
         """
         # Restore reaction rate parameters from cache
         np.copyto(self._network.alpha, self._initial_alpha)
@@ -533,6 +560,7 @@ class NetworkState:
             >>> network._network.alpha[0] = 999.0
             >>> # Reset back to initial values
             >>> network.reset_state()
+
         """
         # Use the cached reset method
         self.reset_state()

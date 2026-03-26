@@ -25,8 +25,7 @@ def run_makerates(
     write_files: bool = True,
     output_directory: Union[str, os.PathLike] | None = None,
 ) -> Network:
-    """
-    Main run wrapper for makerates. Loads and validates configuration,
+    """Main run wrapper for makerates. Loads and validates configuration,
     generates chemical network, and optionally writes output files.
 
     Args:
@@ -44,6 +43,7 @@ def run_makerates(
     Raises:
         ValidationError: If configuration is invalid
         FileNotFoundError: If required files are missing
+
     """
     # Load and validate configuration using Pydantic
     config = MakeratesConfig.from_yaml(configuration_file)
@@ -204,6 +204,7 @@ def get_network(
 
     Returns:
         Network: A chemical reaction network.
+
     """
     if verbosity:
         logging.basicConfig(format="%(levelname)s: %(message)s", level=verbosity)

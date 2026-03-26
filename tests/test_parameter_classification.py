@@ -1,5 +1,4 @@
-"""
-Validation CI Check for Fortran Parameter Classification
+"""Validation CI Check for Fortran Parameter Classification
 
 This module provides a test that ensures all Fortran variables are properly
 classified in GeneralSettings.FORTRAN_PARAMETERS or INTERNAL_PARAMETERS.

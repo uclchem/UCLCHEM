@@ -1,5 +1,4 @@
-"""
-Tests for heating array functionality in UCLCHEM.
+"""Tests for heating array functionality in UCLCHEM.
 """
 
 import numpy as np
@@ -10,6 +9,7 @@ import uclchem
 
 
 class TestHeatingArrays:
+
     """Test class for heating array functionality."""
 
     @pytest.fixture
@@ -115,7 +115,6 @@ class TestHeatingArrays:
         self, param_dict, expected_heating_columns
     ):
         """Test cloud function with return_dataframe=True."""
-
         result = uclchem.functional.cloud(
             param_dict=param_dict,
             out_species=["OH", "CO", "H2O"],

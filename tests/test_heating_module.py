@@ -1,5 +1,4 @@
-"""
-Tests for the heating module.
+"""Tests for the heating module.
 
 Tests custom reaction exothermicity loading from CSV files with
 various unit formats.
@@ -17,6 +16,7 @@ from uclchem.makerates.reaction import Reaction
 
 
 class TestCustomExothermicities:
+
     """Test custom exothermicity loading from CSV."""
 
     @pytest.fixture

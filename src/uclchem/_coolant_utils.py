@@ -22,6 +22,7 @@ def _normalize_for_comparison(text: str) -> str:
 
     Returns:
         Normalized text with only alphanumeric characters
+
     """
     return re.sub(r"[^a-z0-9]", "", text.strip().lower())
 
@@ -51,6 +52,7 @@ def get_energy_levels_info(
         FileNotFoundError: If data directory or any coolant file doesn't exist
         ValueError: If coolant file format is invalid or energy levels not found
         RuntimeError: If any parsing error occurs
+
     """
     data_path = Path(data_dir)
     if not data_path.exists():
@@ -96,6 +98,7 @@ def get_energy_levels_info_from_runtime() -> Tuple[int, int]:
     Raises:
         ImportError: If uclchemwrap is not available
         Various exceptions from get_energy_levels_info if data is invalid
+
     """
     from uclchemwrap import f2py_constants
 
@@ -129,6 +132,7 @@ def validate_coolant_frequencies(
 
     Returns:
         Dict mapping coolant name to max relative frequency deviation
+
     """
     # Physical constants (must match Fortran constants.f90)
     C_CGS = 2.99792458e10  # speed of light cm/s
@@ -215,7 +219,7 @@ def validate_coolant_frequencies(
         if max_dev > 0.01:  # Warn for > 1% deviation
             logger.warning(
                 f"Coolant '{coolant_name}' ({coolant_file}): max frequency deviation "
-                f"{max_dev:.4f} ({max_dev*100:.2f}%) at transition {worst_transition}"
+                f"{max_dev:.4f} ({max_dev * 100:.2f}%) at transition {worst_transition}"
             )
 
     return max_deviations
@@ -232,6 +236,7 @@ def load_coolant_level_names() -> Dict[int, List[str]]:
         FileNotFoundError: If data directory or coolant files don't exist
         ValueError: If coolant file format is invalid
         RuntimeError: If parsing fails
+
     """
     from uclchemwrap import f2py_constants
 

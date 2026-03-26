@@ -104,6 +104,7 @@ def read_output_file(output_file: str | Path) -> pd.DataFrame:
 
     Returns:
         pandas.DataFrame: A dataframe containing the abundances and physical parameters of the model at every time step.
+
     """
     f = open(output_file)
     data = read_csv(f)
@@ -119,6 +120,7 @@ def read_rate_file(rate_file: str | Path) -> pd.DataFrame:
 
     Returns:
         pandas.DataFrame: A dataframe containing the physical parameters, and reaction rates (s-1) at each timestep.
+
     """
     f = open(rate_file)
     data = read_csv(f)
@@ -135,6 +137,7 @@ def _reactant_count(species: str, reaction_string: str) -> int:
 
     Returns:
         int: amount of times species is consumed in reaction
+
     """
     split_str = reaction_string.split("->")[0].strip()
     if " " not in split_str:
@@ -151,6 +154,7 @@ def _product_count(species: str, reaction_string: str) -> int:
 
     Returns:
         int: amount of times species is produced by reaction
+
     """
     split_str = reaction_string.split("->")[1].strip()
     if " " not in split_str:
@@ -190,6 +194,7 @@ def get_change_df(
 
     Returns:
         change_df (pd.DataFrame): change of species over time due to each reaction the species is involved in
+
     """
     if "#" in species or "@" in species:
         msg = "WARNING: get_change_df IS ONLY FOR ANALYSING ALL OF THE GAS PHASE AND ALL OF THE ICE. "
@@ -231,6 +236,7 @@ def create_abundance_plot(df, species, figsize=(16, 9), plot_file=None):
 
     Returns:
         fig,ax: matplotlib figure and axis objects
+
     """
     fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
 
@@ -256,6 +262,7 @@ def plot_species(ax, df, species, legend=True, **plot_kwargs):
 
     Returns:
         pyplot.axis: Modified input axis is returned
+
     """
     color_palette(n_colors=len(species))
     for specIndx, specName in enumerate(species):
@@ -358,6 +365,7 @@ def analysis(species_name, rates, output_file, rate_threshold=0.99):
         result_file (str): The path to the file containing the UCLCHEM output
         output_file (str): The path to the file where the analysis output will be written
         rate_threshold (float,optional): Analysis output will contain the only the most efficient reactions that are responsible for rate_threshold of the total production and destruction rate. Defaults to 0.99.
+
     """
     result_df = read_output_file(output_file)
     species = np.loadtxt(
@@ -482,8 +490,7 @@ def analysis(species_name, rates, output_file, rate_threshold=0.99):
 
 
 def _param_dict_from_output(output_line):
-    """
-    Generate a parameter dictionary from a UCLCHEM timestep that contains enough of
+    """Generate a parameter dictionary from a UCLCHEM timestep that contains enough of
     the physical variables to recreate the parameter dictionary used to run UCLCHEM.
 
     :param output_line: (pandas series) any row from the relevant UCLCHEM output
@@ -499,8 +506,7 @@ def _param_dict_from_output(output_line):
 
 
 def _get_species_rates(param_dict, input_abundances, species_index, reac_indxs):
-    """
-    Get the rate of up to 500 reactions from UCLCHEM for a given set of parameters and abundances.
+    """Get the rate of up to 500 reactions from UCLCHEM for a given set of parameters and abundances.
     Intended for use within the analysis script.
     :param param_dict:  A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
     :param input_abundances: Abundance of every species in network
@@ -538,6 +544,7 @@ def _get_rates_of_change(rates, reactions, speciesList, species, row, swap, bulk
 
     Returns:
         _type_: _description_
+
     """
     raise DeprecationWarning(
         "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
@@ -605,6 +612,7 @@ def _remove_slow_reactions(changes, change_reacs, rate_threshold=0.99):
 
     Returns:
         Total production and destruction rates as a well as list of reactions and rates of change for top rate_threshold reactiosn_
+
     """
     totalDestruct = sum(changes[np.where(changes < 0)])
     totalProd = sum(changes[np.where(changes > 0)])
@@ -638,6 +646,7 @@ def _write_analysis(
         total_destruction (float): Total negative rate of change
         key_reactions (list): A list of all reactions that contribute to the total rate of change
         key_changes (list): A list of rates of change contributing to total
+
     """
     output_file.write(
         "\n\n***************************\nNew Important Reactions At: {0:.2e} years\n".format(
@@ -666,6 +675,7 @@ def _format_reactions(reactions):
 
     Returns:
         list: list of string, each reaction in readable string form
+
     """
     formatted_reactions = []
     for reaction in reactions:
@@ -678,8 +688,7 @@ def _format_reactions(reactions):
 
 
 def _count_element(species_list, element):
-    """
-    Count the number of atoms of an element that appear in each of a list of species,
+    """Count the number of atoms of an element that appear in each of a list of species,
     return the array of counts
 
     :param  species_list: (iterable, str), list of species names
@@ -710,6 +719,7 @@ def total_element_abundance(element, df):
 
     Returns:
         pandas.Series: Total abundance of element for all time steps in df.
+
     """
     sums = _count_element(df.columns, element)
     for variable in ["Time", "Density", "gasTemp", "av", "point", "SURFACE", "BULK"]:
@@ -726,6 +736,7 @@ def check_element_conservation(df, element_list=["H", "N", "C", "O"], percent=Tr
 
     Returns:
         dict: Dictionary containing the change in the total abundance of each element as a fraction of initial value
+
     """
     result = {}
     for element in element_list:
@@ -751,6 +762,7 @@ def get_total_swap(
 
     Returns:
         np.ndarray: The total swap per timestep
+
     """
     assert len(rates) == len(abundances), "Rates and abundances must be the same length"
     assert rates.shape[1] == len(
@@ -774,6 +786,7 @@ def construct_incidence(species: list[Species], reactions: list[Reaction]) -> np
 
     Returns:
         np.ndarray: A RxS incidence matrix
+
     """
     incidence = np.zeros(
         dtype=np.int8,
@@ -812,6 +825,7 @@ def rate_constants_to_dy_and_rates(
 
     Returns:
         tuple[pd.DataFrame, pd.DataFrame]: dy, rate_by_reaction.
+
     """
     assert bool(species) == bool(
         reactions
@@ -1009,6 +1023,7 @@ def compute_heating_per_reaction(
 
     Returns:
         DataFrame (time x n_reactions) of heating rates in erg/s
+
     """
     if network:
         reactions = network.get_reaction_list()
@@ -1020,12 +1035,14 @@ def compute_heating_per_reaction(
 
 def get_production_and_destruction(species: str, dataframe: pd.DataFrame):
     """Function to split the rate constants or rates into production and destruction parts for a given species.
+
     Args:
         species (str): Name of species to split rates for
         dataframe (pd.DataFrame): DataFrame of rates
 
     Returns:
         tuple[pd.DataFrame, pd.DataFrame]: production rates, destruction rates
+
     """
     reactions = [r.strip() for r in list(dataframe.columns)]
     reactions = [r.strip() for r in list(dataframe.columns)]
@@ -1054,6 +1071,7 @@ def analyze_element_per_phase(element, df):
 
     Returns:
         pandas.Series: Total abundance of element for all time steps in df.
+
     """
     content = pd.DataFrame()
     # Split the columns into ionized, gas, surface and bulk:

@@ -24,8 +24,7 @@ from argparse import ArgumentParser
 
 
 def get_args():
-    """
-    Allows for interacting with MakeRates.py via the command line.
+    """Allows for interacting with MakeRates.py via the command line.
 
     Examples:
         python3 MakeRates.py custom_settings.yaml --verbosity DEBUG
@@ -34,6 +33,7 @@ def get_args():
 
     Returns:
         Namespace: Arguments passed via the CLI or their defaults
+
     """
     parser = ArgumentParser(
         description="UCLCHEM Makerates: Generate chemical network files"

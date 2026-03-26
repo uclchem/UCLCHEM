@@ -86,6 +86,7 @@ def capture_fortran_output(label="", log_file=None):
             log_file="logs/model_3.log",
         ):
             result = wrap.cloud(...)
+
     """
     # Flush Python buffers before redirecting
     sys.stdout.flush()

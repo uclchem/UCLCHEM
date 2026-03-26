@@ -25,7 +25,7 @@ NEATH_COLUMNS = [
 if __name__ == "__main__":
     df = pd.read_csv(
         "examples/fortran_cli/neath_small_data.out",
-        sep="\s+",
+        sep=r"\s+",
         header=None,
         dtype=np.float64,
     )
