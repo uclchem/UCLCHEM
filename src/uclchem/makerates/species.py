@@ -678,8 +678,8 @@ class Species:
         """
         return self.get_mass() < other.get_mass()
 
-    def __gt__(self, other) -> bool:
-        """Compare the mass of the species
+    def __gt__(self, other: Species) -> bool:
+        """Compare the mass of the species.
 
         Args:
             other (Species): Another species instance
