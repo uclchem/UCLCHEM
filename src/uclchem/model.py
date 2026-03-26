@@ -2593,8 +2593,8 @@ class Shock(AbstractModel):
             ###
 
             ###
-            if self.run_type != "external":
-                self.run()
+            #if self.run_type != "external":
+            #    self.run()
 
 
 
