@@ -86,13 +86,12 @@ import logging
 # /UCLCHEM related imports
 # Multiprocessing imports
 import multiprocessing as mp
-from multiprocessing import pool
 import os
 import signal
 import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
-from multiprocessing import shared_memory
+from multiprocessing import pool, shared_memory
 from pathlib import Path
 from typing import Any, AnyStr, Dict, Iterator, List, Literal, Type
 
@@ -3049,12 +3048,16 @@ def _run_grid_model(model_id, model_type, pending_model, log_dir=None):
 
     cls = REGISTRY.get(model_type)
     with capture_fortran_output(label=f"model_{model_id}", log_file=log_file):
-        model_obj = cls(**pending_model, run_type=("managed" if model_type == "SequentialRunner" else "external"))
+        model_obj = cls(
+            **pending_model,
+            run_type=("managed" if model_type == "SequentialRunner" else "external"),
+        )
         if model_type != "SequentialRunner":
             model_obj.run()
     model_obj._coordinator_unlink_memory()
     model_obj.pickle()
     return (model_id, model_obj)
+
 
 # The following parameters from various chemical models, cannot be used as grid parameters.
 NoGridParameters = [
@@ -3065,16 +3068,16 @@ NoGridParameters = [
     "gas_temperature_array",
     "dust_temperature_array",
     "zeta_array",
-    "radfield_array"
-    "visual_extinction_array",
+    "radfield_array" "visual_extinction_array",
     "coldens_H_array",
     "coldens_H2_array",
     "coldens_CO_array",
     "coldens_C_array",
     "debug",
     "read_file",
-    "run_type"
+    "run_type",
 ]
+
 
 class _NoDaemonProcess(mp.Process):
     @property
@@ -3090,6 +3093,7 @@ class NoDaemonPool(pool.Pool):
     @staticmethod
     def Process(ctx, *args, **kwargs):
         return _NoDaemonProcess(*args, **kwargs)
+
 
 class GridRunner:
     """GridRunner, like SequentialRunner is not an actual uclchem model, instead it allows running multiple models on a grid of parameter space.
@@ -3171,7 +3175,7 @@ class GridRunner:
                         else:
                             self._grid_def(k, v, model_count)
 
- #               grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
+        #               grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
         else:
             if not isinstance(self.full_parameters, dict):
                 raise (
@@ -3193,12 +3197,10 @@ class GridRunner:
                 ),
             )
         else:
-            assert (len(set(len(v) for v in self.parameters_to_grid.values())) == 1)
+            assert len(set(len(v) for v in self.parameters_to_grid.values())) == 1
             self.flat_grids = np.array(
                 [
-                    [
-                        p[i] for p in self.parameters_to_grid.values()
-                    ]
+                    [p[i] for p in self.parameters_to_grid.values()]
                     for i in range(len(next(iter(self.parameters_to_grid.values()))))
                 ]
             ).T
@@ -3395,7 +3397,8 @@ class GridRunner:
                                 ]
                                 for k in list(self.parameters_to_grid.keys())
                                 if k[: len(str(model_count))] == str(model_count)
-                                and k.replace(f"{model_count}_", "").lower() in tmp_model._param_dict
+                                and k.replace(f"{model_count}_", "").lower()
+                                in tmp_model._param_dict
                             },
                             **{
                                 k.replace(f"{model_count}_", ""): tmp_model.__getattr__(
@@ -3403,7 +3406,9 @@ class GridRunner:
                                 )
                                 for k in list(self.parameters_to_grid.keys())
                                 if k[: len(str(model_count))] == str(model_count)
-                                and tmp_model.has_attr(k.replace(f"{model_count}_", "").lower())
+                                and tmp_model.has_attr(
+                                    k.replace(f"{model_count}_", "").lower()
+                                )
                             },
                         }
                         self.models[model][f"{model_count}_{mt_k}"]["Successful"] = (
