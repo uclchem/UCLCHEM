@@ -71,7 +71,8 @@ import numpy as np
 import pandas as pd
 
 from uclchem.constants import TIMEPOINTS
-from uclchem.model import AbstractModel, Cloud, Collapse, CShock, JShock, PrestellarCore
+from uclchem.model import (AbstractModel, Cloud, Collapse, CShock, JShock,
+                           PrestellarCore)
 
 
 def __validate_functional_api_params__(
@@ -568,7 +569,7 @@ def __cshock__(
 def __jshock__(
     shock_vel: float,
     param_dict: dict = None,
-    out_species: list = ["H", "N", "C", "O"],
+    out_species: list[str] = ["H", "N", "C", "O"],
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rates: bool = False,
@@ -591,21 +592,39 @@ def __jshock__(
         timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model. Defaults to uclchem.constants.TIMEPOINTS
 
     Returns:if return_array and return_dataframe are False:
-            - A list where the first element is always an integer which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details. If the model succeeded, the second element is the dissipation time and further elements are the abundances of all species in `out_species`.
+            - A list where the first element is always an integer which is negative
+                if the model failed to run. Can be passed to `uclchem.utils.check_error()`
+                to see more details. If the model succeeded, the second element
+                is the dissipation time and further elements are the abundances
+                of all species in `out_species`.
         if return_array is True:
-            - physicsArray (array): array containing the physical outputs for each written timestep
-            - chemicalAbunArray (array): array containing the chemical abundances for each written timestep
-            - ratesArray (array or None): array containing reaction rates for each timestep (if return_rates=True)
-            - heatArray (array or None): array containing heating/cooling terms for each timestep (if return_heating=True)
-            - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
-            - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
+            - physicsArray (array): array containing the physical outputs
+                for each written timestep
+            - chemicalAbunArray (array): array containing the chemical abundances
+                for each written timestep
+            - ratesArray (array or None): array containing reaction rates
+                for each timestep (if return_rates=True)
+            - heatArray (array or None): array containing heating/cooling terms for
+                each timestep (if return_heating=True)
+            - abundanceStart (array): array containing the chemical abundances of
+                the last timestep in the format uclchem needs in order to perform
+                an additional run after the initial model
+            - success_flag (integer): which is negative if the model failed to run.
+                Can be passed to `uclchem.utils.check_error()` to see more details.
         if return_dataframe is True:
-            - physicsDF (pandas.DataFrame): DataFrame containing the physical outputs for each written timestep
-            - chemicalDF (pandas.DataFrame): DataFrame containing the chemical abundances for each written timestep
-            - ratesDF (pandas.DataFrame or None): DataFrame containing reaction rates for each timestep (if return_rates=True)
-            - heatingDF (pandas.DataFrame or None): DataFrame containing heating/cooling terms for each timestep (if return_heating=True)
-            - abundanceStart (array): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
-            - success_flag (integer): which is negative if the model failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
+            - physicsDF (pandas.DataFrame): DataFrame containing the physical outputs for
+                each written timestep
+            - chemicalDF (pandas.DataFrame): DataFrame containing the chemical abundances
+                for each written timestep
+            - ratesDF (pandas.DataFrame or None): DataFrame containing reaction rates
+                for each timestep (if return_rates=True)
+            - heatingDF (pandas.DataFrame or None): DataFrame containing heating/cooling
+                terms for each timestep (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of
+                the last timestep in the format uclchem needs in order to perform
+                an additional run after the initial model
+            - success_flag (int): which is negative if the model failed to run.
+                Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
     __validate_functional_api_params__(
