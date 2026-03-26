@@ -203,7 +203,18 @@ class SpeciesNameStore:
         return self.species_names
 
 
+class SpeciesMassStore:
+    def __init__(self):
+        self.species_mass = None
+
+    def __call__(self):
+        if self.species_mass is None:
+            species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
+            self.species_mass = species["MASS"].tolist()
+        return self.species_mass
+
 get_species_names = SpeciesNameStore()
+get_species_mass = SpeciesMassStore()
 # /Reaction and Species name retrieval classes to reduce file read repetition.
 
 
@@ -2426,7 +2437,6 @@ class CShock(AbstractModel):
             "_debug": self._debug,
         }
 
-
 @register_model
 class JShock(AbstractModel):
     """J-Shock model class inheriting from AbstractModel.
@@ -2530,6 +2540,63 @@ class JShock(AbstractModel):
             "give_start_abund": self.give_start_abund,
             "_debug": self._debug,
         }
+
+class Shock(AbstractModel):
+    def __init__(
+        self,
+        previous_model: AbstractModel,
+        shock_vel: float = 10.0,
+        timestep_factor: float = 0.01,
+        minimum_temperature: float = 0.0,
+        param_dict: dict = None,
+        out_species: list = ["H", "N", "C", "O"],
+        starting_chemistry: np.ndarray = None,
+        timepoints: int = TIMEPOINTS,
+        debug: bool = False,
+        read_file: str = None,
+        run_type: Literal["managed", "external"] = "managed",
+    ):
+        super().__init__(
+            param_dict,
+            out_species,
+            starting_chemistry,
+            previous_model,
+            timepoints,
+            debug,
+            read_file,
+            run_type,
+        )
+        if read_file is None:
+            if shock_vel is None:
+                raise ("shock_vel must be specified if not reading from file.")
+            self.shock_vel = shock_vel
+            self.timestep_factor = timestep_factor
+            self.minimum_temperature = minimum_temperature
+            self.dissipation_time = -1
+            # Get the list of species as array
+            species = np.array(get_species_names())
+            # Get the Atomic mass of each species as array
+            species_am = np.array(get_species_mass())
+            # lambda function in order to filter out Surface (#) and Bulk species (@) and to then find all ions
+            ion_filter = np.frompyfunc(lambda x: ('#' not in x) and ('@' not in x) and (('+' in x) or ('-' in x)), 1, 1)
+            # Find the fractional abundance of each gas phase ion species from the previous model
+            ion_species_frac_abun = previous_model.next_starting_chemistry_array[0][np.where(ion_filter(species))[0]]
+            # Get the atomic mass of each gas phase ion species
+            ion_species_am = species_am[np.where(ion_filter(species))[0]]
+            # Multiply the fractional abundance with the atomic mass of each gas phase ion species
+            ion_species_am_frac = np.multiply(ion_species_frac_abun, ion_species_am)
+            # Sum the fractional abundances in order to understand what fraction of the density is a gas phased ion species
+            ion_full_am_abun = sum(ion_species_am_frac).item()
+            density_am_cmcub = previous_model.physics_array[-1, 0, 1].item() * ion_full_am_abun
+            # FROM HERE, Convert to the needed units and perform needed calculations to determine if shock type is J or C
+            # Based on the input velocity
+            ###
+
+            ###
+            if self.run_type != "external":
+                self.run()
+
+
 
 
 @register_model
@@ -2867,6 +2934,17 @@ class Model(AbstractModel):
         }
 
 
+class ExtractedModel:
+    def __init__(
+            self,
+            model_object: Type["AbstractModel"]
+    ):
+        assert(model_object.model_type in REGISTRY)
+        self._param_dict = model_object._param_dict.copy()
+        self.next_starting_chemistry_array = model_object.next_starting_chemistry_array
+        self.physics_array = model_object.physics_array[-2:, 0, :3]
+
+
 @register_model
 class SequentialRunner:
     """The SequentialRunner class allows for multiple models to be run back to back.
@@ -2888,7 +2966,10 @@ class SequentialRunner:
         run_type: Literal["managed", "external"] = "managed",
     ):
         for model in sequenced_model_parameters:
-            assert model[list(model.keys())[0]] != SequentialRunner
+            if isinstance(model, dict):
+                assert(model[list(model.keys())[0]] != "SequentialRunner")
+            elif hasattr(model, "model_type"):
+                assert(model.model_type != "SequentialRunner" )
         self.models = []
         self.sequenced_model_parameters = sequenced_model_parameters
         self.parameters_to_match = parameters_to_match
@@ -2901,7 +2982,14 @@ class SequentialRunner:
 
     def run(self):
         previous_model = None
+        extractable = True
         for base_model_dict in self.sequenced_model_parameters:
+            if not isinstance(base_model_dict, dict) and extractable:
+                if hasattr(base_model_dict, "model_type"):
+                    previous_model = ExtractedModel(base_model_dict)
+                    extractable = False
+                    continue
+            assert(isinstance(base_model_dict, dict))
             for model_type, model_dict in base_model_dict.items():
                 model_dict["param_dict"] = {
                     k.lower(): v for k, v in model_dict["param_dict"].items()
@@ -2929,17 +3017,12 @@ class SequentialRunner:
                                 print(
                                     f"Parameter '{parameter}' has not been implemented for parameter matching"
                                 )
-                    tmp_model = REGISTRY[model_type](
-                        **model_dict,
-                        run_type=self.run_type,
-                        previous_model=previous_model,
-                    )
-                else:
-                    tmp_model = REGISTRY[model_type](
-                        **model_dict,
-                        run_type=self.run_type,
-                        previous_model=previous_model,
-                    )
+
+                tmp_model = REGISTRY[model_type](
+                    **model_dict,
+                    run_type=self.run_type,
+                    previous_model=previous_model,
+                )
 
                 if self.run_type == "external":
                     tmp_model.run()
@@ -2957,6 +3040,7 @@ class SequentialRunner:
                     }
                 ]
                 previous_model = self.models[self.model_count]["Model"]
+                extractable = False
                 self.model_count += 1
         self.success_flag = all(d["Successful"] for d in self.models)
         return
