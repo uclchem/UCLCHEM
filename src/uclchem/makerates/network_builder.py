@@ -512,7 +512,7 @@ class NetworkBuilder:
                         prod.startswith("#") or prod.startswith("@")
                         for prod in new_products
                     ) != len(new_products):
-                        logging.warning(
+                        raise ValueError(
                             "All Langmuir-Hinshelwood and Eley-Rideal reactions should be input with products on grains only.\n"
                             + "The fraction of products that enter the gas is dealt with by Makerates and UCLCHEM.\n"
                             + "the following reaction caused this warning\t"
