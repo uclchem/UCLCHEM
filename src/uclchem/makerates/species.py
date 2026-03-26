@@ -96,7 +96,6 @@ def sanitize_input_float(row: list[str], index: int, default: Any = 0.0) -> floa
 
 
 class Species:
-
     """Species is a class that holds all the information about an individual species in the
     network. It also has convenience functions to check whether the species is a gas or grain
     species and to help compare between species.
@@ -764,6 +763,12 @@ class Species:
         return self.Ix == 0.0
 
     def check_symmetry_factor(self) -> None:
+        """Check the symmetry factor provided by the user.
+
+        Checks if n_atoms == 2, that if its homoatomic (e.g. H2), that
+        sigma == 2, and if it is heteroatomic, (e.g. OH), sigma == 1
+
+        """
         if self.n_atoms == 1:  # Nothing to check
             return
         if self.n_atoms > 2:  # Can not correctly check everything

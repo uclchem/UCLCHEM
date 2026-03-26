@@ -1,3 +1,8 @@
+"""Collection of tests for UCLCHEM.
+
+Deprecated
+"""
+
 import numpy as np
 from pandas import DataFrame
 from uclchemwrap import uclchemwrap as wrap

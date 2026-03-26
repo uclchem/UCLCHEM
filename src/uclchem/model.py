@@ -343,6 +343,7 @@ def _convert_legacy_stopping_param(param_dict: dict) -> dict:
 
 # TODO Add catch of ctrl+c or other aborts so that it saves model and a full output to files of year, month, day, time type.
 class AbstractModel(ABC):
+
     """Base model class used for inheritance only
 
     The AbstractModel class serves as an abstract class from which other model classes can be built. It is not intended
@@ -1987,6 +1988,7 @@ class AbstractModel(ABC):
 
 @register_model
 class Cloud(AbstractModel):
+
     """Cloud model class inheriting from AbstractModel.
 
     Args:
@@ -2084,6 +2086,7 @@ class Cloud(AbstractModel):
 
 @register_model
 class Collapse(AbstractModel):
+
     """Collapse model class inheriting from AbstractModel.
 
     Args:
@@ -2208,6 +2211,7 @@ class Collapse(AbstractModel):
 
 @register_model
 class PrestellarCore(AbstractModel):
+
     """PrestellarCore model class inheriting from AbstractModel. This model type was previously known as hot core.
 
     Args:
@@ -2321,6 +2325,7 @@ class PrestellarCore(AbstractModel):
 
 @register_model
 class CShock(AbstractModel):
+
     """C-Shock model class inheriting from AbstractModel.
 
     Args:
@@ -2443,6 +2448,7 @@ class CShock(AbstractModel):
 
 @register_model
 class JShock(AbstractModel):
+
     """J-Shock model class inheriting from AbstractModel.
 
     Args:
@@ -2548,6 +2554,7 @@ class JShock(AbstractModel):
 
 @register_model
 class Postprocess(AbstractModel):
+
     """Postprocess represents a model class with additional controls. It inherits from AbstractModel.
 
     Postprocess allows for additional controls of the time, density, gas temperature, radiation field, cosmic ray
@@ -2733,6 +2740,7 @@ class Postprocess(AbstractModel):
 
 @register_model
 class Model(AbstractModel):
+
     """Model, like Postprocess, represents a model class with additional controls. It inherits from AbstractModel.
 
     Model follows the same logic as Postprocess but without the coldens Arguments. It allows for additional controls of
@@ -2883,6 +2891,7 @@ class Model(AbstractModel):
 
 @register_model
 class SequentialModel:
+
     """The SequentialModel class allows for multiple models to be run back to back.
 
     By defining a specific dictionary to hold the information of each model class to run in sequence, SewuentialModel allows
@@ -3080,6 +3089,7 @@ def _run_grid_model(model_id, model_type, pending_model, log_dir=None):
 
 
 class GridModels:
+
     """GridModels, like SequentialModel is not an actual uclchem model, instead it allows running multiple models on a grid of parameter space.
 
     Args:
@@ -3302,7 +3312,7 @@ class GridModels:
         ]
         self._load_params()
 
-    def load_phys(self):
+    def load_phys(self) -> None:
         if self.model_type == "SequentialModel":
             warnings.warn("Sequantial Model physics loading not implemented")
             return
@@ -3316,9 +3326,8 @@ class GridModels:
                 {"physics_values": self.physics_values}
             )
             self.models[model]["physics_array"] = loaded_data["physics_array"]
-        return
 
-    def load_chem(self, out_specie_list: list = ["H", "N", "C", "O"]):
+    def load_chem(self, out_specie_list: list[str] = ["H", "N", "C", "O"]) -> None:
         if self.model_type == "SequentialModel":
             warnings.warn("Sequantial Model chemistry loading not implemented")
             return
@@ -3334,20 +3343,18 @@ class GridModels:
             self.models[model]["out_species_abundances_array"] = loaded_data[
                 "chemical_abun_array"
             ].sel(chemical_abun_values=out_specie_list)
-        return
 
-    def _load_params(self):
-        """_load_params, loops through the models present in the grid models self.models attribute in order
-        to load the changing physical parameters of the models.
+    def _load_params(self) -> None:
+        """Loop through the models present in the grid models self.models
+        attribute in order to load the changing physical parameters of the models.
         The method splits the loops into two cases. SequentialModel, and other model cases.
-        In both instances, the for loop loads the model data using the _load_model_data() method. Then, it
-        matches the given parameters, with the changing parameters in order to populate the dictionary attribute
-        self.models for users to view the models run for the given GridModels object. T
-        The Differentiation of SequentialModels stems from SequentialModels being nested models, resulting in an
-        additional required loop to take into account the additional nesting.
-
-        Returns:
-            No explicit returns, self.models attribute is populated/expanded on.
+        In both instances, the for loop loads the model data using the _load_model_data()
+        method. Then, it matches the given parameters, with the changing parameters in
+        order to populate the dictionary attribute self.models for users to view the
+        models run for the given GridModels object. The Differentiation of
+        SequentialModels stems from SequentialModels being nested models,
+        resulting in an additional required loop to take into account the
+        additional nesting.
 
         """
         # The following loops perform the same actions, but for the different model types
@@ -3408,13 +3415,15 @@ class GridModels:
         return tmp_model
 
     def check_conservation(
-        self, element_list: list = ["H", "N", "C", "O"], percent: bool = True
-    ):
-        """Utility method to check conservation of the chemical abundances
+        self, element_list: list[str] = ["H", "N", "C", "O"], percent: bool = True
+    ) -> None:
+        """Check conservation of the chemical abundances.
 
         Args:
-            element_list (list, optional): List of elements to check conservation for. Defaults to self.out_species_lists.
-            percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
+            element_list (list[str]): List of elements to check conservation for.
+                Defaults to self.out_species_lists.
+            percent (bool): Flag on if percentage values should be used.
+                Defaults to True.
 
         """
         for model in range(len(self.models)):
@@ -3437,7 +3446,6 @@ class GridModels:
             for i in conserve_dicts:
                 conserved = True if all(float(x[:1]) < 1 for x in i.values()) else False
             self.models[model]["elements_conserved"] = conserved
-        return
 
     def _handler(self, signum: Any, frame: Any) -> None:
         try:
