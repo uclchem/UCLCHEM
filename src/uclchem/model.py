@@ -3557,10 +3557,11 @@ class GridRunner:
 
                 # grid_param_dict contains the param_dict values of the next model to run.
                 grid_param_dict = {
-                    k: v
+                    k: v if type(v) != np.float64 else v.item()
                     for k, v in zip(param_keys, combo)
                     if k in full_parameters["param_dict"]
                 }
+                print(grid_param_dict)
                 # grid_dict is filled with the input parameters of a value, not part of param_dict, for the next model to run
                 grid_dict = {
                     k: v
