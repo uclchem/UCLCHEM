@@ -120,6 +120,8 @@ class Reaction:
                 self.set_temphigh(float(inputRow[11]))
                 if len(inputRow) > 12:
                     self.set_reduced_mass(float(inputRow[12]))
+                else:
+                    self.set_reduced_mass(0.0)
                 self.set_extrapolation(
                     bool(inputRow[13]) if len(inputRow) > 13 else False
                 )

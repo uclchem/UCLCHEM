@@ -62,7 +62,7 @@ class NetworkBuilder:
             species: List of chemical species
             reactions: List of chemical reactions
             user_defined_bulk: User-specified bulk species (optional)
-            gas_phase_extrapolation: Extrapolate gas-phase to grain (default: False)
+            gas_phase_extrapolation: Extrapolate gas-phase temperature (default: False)
             add_crp_photo_to_grain: Add CRP/PHOTON to grain (default: False)
             derive_reaction_exothermicity: Reaction types to calculate exothermicity for
             database_reaction_exothermicity: Custom exothermicity database files

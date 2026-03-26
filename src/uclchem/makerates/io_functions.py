@@ -178,8 +178,10 @@ def check_reaction(reaction_row, keep_list) -> bool:
         if reaction_row[10] == "":
             reaction_row[10] = 0.0
             reaction_row[11] = 10000.0
-        if reaction_row[12] == "":
+        if len(reaction_row) >= 13 and reaction_row[12] == "":
             reaction_row[12] = 0.0
+        if len(reaction_row) >= 14 and reaction_row[13] == "":
+            reaction_row[13] = False
         return True
     else:
         if reaction_row[1] in ["DESORB", "FREEZE"]:
@@ -189,7 +191,7 @@ def check_reaction(reaction_row, keep_list) -> bool:
         return False
 
 
-def kida_parser(kida_file):
+def kida_parser(kida_file: str | Path) -> list[list[str | float | int]]:
     """
     KIDA used a fixed format file so we read each line in the chunks they specify
     and use python built in classes to convert to the necessary types.
@@ -436,10 +438,10 @@ def write_outputs(
         logging.info(f"  {'-' * name_width}  {'-' * 10}")
         for name, dev in sorted_devs:
             marker = " <<<" if dev > 0.01 else ""
-            logging.info(f"  {name:<{name_width}}  {dev*100:9.4f}%{marker}")
+            logging.info(f"  {name:<{name_width}}  {dev * 100:9.4f}%{marker}")
         logging.info(
             f"  Auto-setting freq_rel_tol = {suggested_freq_rel_tol:.4f} "
-            f"(max deviation {max_deviation*100:.2f}% + 10% margin)"
+            f"(max deviation {max_deviation * 100:.2f}% + 10% margin)"
         )
     else:
         suggested_freq_rel_tol = 0.01
@@ -501,7 +503,7 @@ def write_outputs(
     if missing_parents:
         error_msg = "ERROR: The following coolants reference parent species that don't exist in the network:\n"
         for idx, coolant_name, parent_name in missing_parents:
-            error_msg += f"  - Coolant #{idx+1} '{coolant_name}' → parent species '{parent_name}' not found\n"
+            error_msg += f"  - Coolant #{idx + 1} '{coolant_name}' → parent species '{parent_name}' not found\n"
         error_msg += (
             "\nAvailable species: "
             + ", ".join(sorted(species_dict.keys())[:20])
