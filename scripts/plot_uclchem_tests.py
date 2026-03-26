@@ -1,5 +1,8 @@
-# demonstration of plotfunctions. called from main UCLCHEM directory
-# it reads full UCLCHEM output and saves a plot of the abudances of select species
+"""Plot the UCLCHEM tests ran by `run_uclchem_tests.py`.
+
+Demonstration of plotfunctions. called from main UCLCHEM directory.
+It reads full UCLCHEM output and saves a plot of the abudances of select species.
+"""
 
 import matplotlib.pyplot as plt
 

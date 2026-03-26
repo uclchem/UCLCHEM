@@ -1,5 +1,4 @@
-#! /usr/bin/python
-#
+# noqa: D100
 ####################################################################################################
 # 				MakeRates
 # 		Current version by Jonathan Holdship & Antonios Makrymallis. Original by Tom Bell.
@@ -8,7 +7,6 @@
 #
 ####################################################################################################
 # All code that is run by this script resides in src/uclchem/makerates/makerates.py
-
 try:
     from uclchem.makerates import run_makerates
     from uclchem.makerates.config import MakeratesConfig
@@ -23,8 +21,9 @@ import pathlib
 from argparse import ArgumentParser
 
 
-def get_args():
-    """Allows for interacting with MakeRates.py via the command line.
+def get_args():  # noqa: ANN201
+    """Get the parsed arguments.
+    Allows for interacting with MakeRates.py via the command line.
 
     Examples:
         python3 MakeRates.py custom_settings.yaml --verbosity DEBUG
@@ -78,9 +77,10 @@ def get_args():
     return parser.parse_args()
 
 
-def get_logger(verbosity_stdout: str, debug: bool):
-    """Define a logger that logs both to file and stdout"""
-    # TODO: fix that both verbosity for file and stdout are the same type, but it works for now.
+def get_logger(verbosity_stdout: str, debug: bool) -> None:
+    """Define a logger that logs both to file and stdout."""
+    # TODO: fix that both verbosity for file and stdout
+    # are the same type, but it works for now.
     if debug:
         verbosity_file = logging.DEBUG
         verbosity_stdout = "DEBUG"

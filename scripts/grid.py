@@ -1,7 +1,10 @@
+"""Run a simple grid."""
+
 # %% [markdown]
 # # Running a Grid
 #
-# A common task is to run UCLCHEM over a grid of parameter combinations. This notebook sets up a simple approach to doing so for regular grids.
+# A common task is to run UCLCHEM over a grid of parameter combinations.
+# This notebook sets up a simple approach to doing so for regular grids.
 
 # %%
 import os
@@ -15,7 +18,9 @@ import uclchem
 if __name__ == "__main__":
     # ## A Simple Grid
     # ### Define Parameter Space
-    # First, we define our parameter space. We do this by using numpy and pandas to produce a table of all possible combinations of some parameters of interest.
+    # First, we define our parameter space.
+    # We do this by using numpy and pandas to produce a table of all possible
+    # combinations of some parameters of interest.
     # This part can be substituted with any choice of grid
     # here we just vary the density, temperature and zeta
     temperatures = np.linspace(10, 50, 3)
@@ -41,11 +46,24 @@ if __name__ == "__main__":
 
     # %% [markdown]
     # ### Set up the model
-    # Next, we need a function that will run our model. We write a quick function that takes a row from our dataframe and uses it to populate a parameter dictionary for UCLCHEM and then run a cloud model. We can then map our dataframe to that function.
+    # Next, we need a function that will run our model.
+    # We write a quick function that takes a row from our dataframe and uses it
+    # to populate a parameter dictionary for UCLCHEM and then run a cloud model.
+    # We can then map our dataframe to that function.
 
     # %%
-    def run_model(row):
-        i, row = row  # pandas iterrows actually come as tuples with the row number
+    def run_model(row: tuple[int, pd.Series]) -> int:
+        """Run a model row with certain physical conditions.
+
+        Args:
+            row (tuple[int, pd.Series]): tuple of row number (not used) and row
+                containing temperature, density, zeta and outputFile.
+
+        Returns:
+            result (int): result success code.
+
+        """
+        _, row = row  # pandas iterrows actually come as tuples with the row number
         # basic set of parameters we'll use for this grid.
         ParameterDictionary = {
             "endatfinaldensity": False,
@@ -64,10 +82,24 @@ if __name__ == "__main__":
         results = pool.map(run_model, model_table.iterrows())
 
     # ## Checking Your Grid
-    # After running, we should do two things. First, let's add `results` to our dataframe as a new column. Positive results mean a successful UCLCHEM run and negative ones are unsuccessful. Then we can run each model through `check_element_conservation` to check the integration was successful. We'll use both these things to flag models that failed in some way.
+    # After running, we should do two things.
+    # First, let's add `results` to our dataframe as a new column.
+    # Positive results mean a successful UCLCHEM run and negative ones are unsuccessful.
+    # Then we can run each model through `check_element_conservation` to check
+    # the integration was successful. We'll use both these things to flag models
+    # that failed in some way.
 
     # %%
-    def element_check(output_file):
+    def element_check(output_file: str) -> bool:
+        """Check conservation of elemental abundances.
+
+        Args:
+            output_file (str): path to output file
+
+        Returns:
+            bool: whether any error is greater than 1%
+
+        """
         df = uclchem.analysis.read_output_file(output_file)
         # get conservation values
         conserves = uclchem.analysis.check_element_conservation(df)

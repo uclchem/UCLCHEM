@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ATCT Web Database Parser
+"""ATCT Web Database Parser.
 
 Converts ATCT HTML database files to clean CSV format for thermochemical
 analysis. Extracts species names, formulas, phases, and enthalpy of formation
@@ -32,6 +32,7 @@ class ATCTParser:
     """Efficient ATCT HTML database parser with robust error handling."""
 
     def __init__(self):
+        """Create an ATCTParser."""
         self.columns = [
             "Species_Name",
             "Species_formula",
@@ -225,7 +226,7 @@ class ATCTParser:
         )
 
 
-def main():
+def main() -> None:
     """Command-line interface for ATCT parser."""
     import sys
 

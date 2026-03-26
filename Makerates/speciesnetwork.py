@@ -1,4 +1,7 @@
-# simple python script that reads a Makerates produced reaction file and prints every reaction that forms or destroys a chosen species.
+"""Simple python script that reads a Makerates produced reaction file
+and prints every reaction that forms or destroys a chosen species.
+"""
+
 from __future__ import print_function
 
 import csv

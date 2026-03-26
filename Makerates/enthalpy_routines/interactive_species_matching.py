@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ATCT-UCLCHEM Interactive Species Matcher
+"""ATCT-UCLCHEM Interactive Species Matcher.
 
 Interactive tool for matching UCLCHEM species with ATCT thermochemical data.
 Handles exact matches, isomer detection, and user selection for ambiguous cases.
@@ -629,7 +629,7 @@ class SpeciesMatcher:
                 logging.warning(f"Restore failed: {restore_error}")
 
 
-def main():
+def main() -> None:
     """Command-line interface for species matcher."""
     import argparse
     import sys
@@ -645,13 +645,13 @@ def main():
     parser.add_argument(
         "--atct_csv",
         required=True,
-        help=("Path to the cleaned ATCT CSV file containing " "thermochemical data"),
+        help=("Path to the cleaned ATCT CSV file containing thermochemical data"),
     )
 
     parser.add_argument(
         "--uclchem_species_csv",
         required=True,
-        help=("Path to CSV file containing UCLCHEM species " "(must have 'NAME' column)"),
+        help=("Path to CSV file containing UCLCHEM species (must have 'NAME' column)"),
     )
 
     parser.add_argument(
