@@ -310,7 +310,7 @@ class Reaction:
         self._gamma = gamma
 
     def get_gamma(self) -> float:
-        """Get the gamma  parameter from the Kooij-Arrhenius equation.
+        """Get the gamma parameter from the Kooij-Arrhenius equation.
 
         Returns:
             float: the gamma parameter of the reaction
@@ -358,7 +358,7 @@ class Reaction:
         """Set the cooling/heating for the reaction in erg s^-1.
 
         Args:
-            delta_h (float): the reaction enthalpy change
+            rate (float): the reaction enthalpy change
 
         """
         self._exothermicity = rate
@@ -670,7 +670,7 @@ class Reaction:
             bool: equality
 
         """
-        if not isinstance(other, Reaction) and not isinstance(other, CoupledReaction):
+        if not isinstance(other, (Reaction, CoupledReaction)):
             raise NotImplementedError(
                 "Equality is not implemented for anything but comparing to other reactions."
             )

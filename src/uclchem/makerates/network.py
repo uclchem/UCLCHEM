@@ -47,13 +47,13 @@ class NetworkABC(ABC):
     # Core Properties
     @property
     @abstractmethod
-    def species(self):
+    def species(self) -> dict[str, Reaction]:
         """Get the species collection."""
         pass
 
     @property
     @abstractmethod
-    def reactions(self):
+    def reactions(self) -> dict[int, Reaction]:
         """Get the reactions collection."""
         pass
 
@@ -119,7 +119,7 @@ class NetworkABC(ABC):
         pass
 
     def __repr__(self) -> str:
-        """String representation of the network."""
+        """String representation of the network."""  # noqa: D401
         n_species = len(self.get_species_list())
         n_reactions = len(self.get_reaction_list())
         return (
@@ -226,12 +226,12 @@ class BaseNetwork(NetworkABC):
     # ========================================================================
 
     @property
-    def species(self):
+    def species(self) -> dict[str, Species]:
         """Get species dictionary."""
         return self._species_dict
 
     @property
-    def reactions(self):
+    def reactions(self) -> dict[int, Reaction]:
         """Get reactions dictionary."""
         return self._reactions_dict
 
@@ -271,16 +271,14 @@ class BaseNetwork(NetworkABC):
     # Query Methods (NetworkABC Implementation)
     # ========================================================================
 
-    def get_reactions_by_types(
-        self, reaction_type: Union[str, list[str]]
-    ) -> list[Reaction]:
+    def get_reactions_by_types(self, reaction_type: str | list[str]) -> list[Reaction]:
         """Get all reactions of specific type(s).
 
         Args:
-            reaction_type: Single type or list of types to filter by
+            reaction_type (list[str]): Single type or list of types to filter by
 
         Returns:
-            List of reactions matching the type(s)
+            list[Reaction]: List of reactions matching the type(s)
 
         """
         if isinstance(reaction_type, str):
@@ -289,7 +287,7 @@ class BaseNetwork(NetworkABC):
         return [
             reaction
             for reaction in self._reactions_dict.values()
-            if reaction.get_type() in reaction_type
+            if reaction.get_reaction_type() in reaction_type
         ]
 
     def find_similar_reactions(self, reaction: Reaction) -> dict[int, Reaction]:
@@ -524,7 +522,7 @@ class Network(BaseNetwork, MutableNetworkABC):
     # ========================================================================
 
     @property
-    def species(self):
+    def species(self) -> dict[str, Species]:
         """Get species dictionary."""
         return self._species_dict
 
@@ -633,9 +631,9 @@ class Network(BaseNetwork, MutableNetworkABC):
         """Set/update a reaction at specific index."""
         old_length = len(self._reactions_dict)
         self._reactions_dict[reaction_idx] = reaction
-        assert old_length == len(
-            self._reactions_dict
-        ), "Setting the reaction caused a change in the number of reactions"
+        assert old_length == len(self._reactions_dict), (
+            "Setting the reaction caused a change in the number of reactions"
+        )
 
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
         """Replace entire reaction dictionary."""
@@ -737,9 +735,9 @@ class Network(BaseNetwork, MutableNetworkABC):
                 )
             )
         )
-        assert len(reaction_dict) == len(
-            self.get_reaction_dict()
-        ), "Sorting the species caused a difference in the number of species"
+        assert len(reaction_dict) == len(self.get_reaction_dict()), (
+            "Sorting the species caused a difference in the number of species"
+        )
 
     # Note: Query methods (find_similar_reactions, get_reaction_index, etc.)
     # are inherited from BaseNetwork
@@ -835,7 +833,7 @@ def load_network_from_csv(
         ... )
         >>> print(f"Species added: {len(network.get_species_list()) - len(old_network.get_species_list())}")
 
-    """
+    """  # noqa: W505
     return Network.from_csv(species_path, reactions_path)
 
 

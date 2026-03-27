@@ -216,7 +216,7 @@ class Species:
             int: The charge of the species
 
         """
-        if not self.is_ion():
+        if self.is_ion():
             return 0
         elif "+" in self.get_name():
             return 1

@@ -19,7 +19,9 @@ from .reaction import Reaction
 from .species import Species
 
 
-def Network(species: list[Species] = None, reactions: list[Reaction] = None, **kwargs):
+def Network(
+    species: list[Species] = None, reactions: list[Reaction] = None, **kwargs
+) -> NewNetwork:
     """Backward compatible Network constructor.
 
     This function provides compatibility with the old Network class constructor.
@@ -29,12 +31,12 @@ def Network(species: list[Species] = None, reactions: list[Reaction] = None, **k
         Use Network.build() or build_network() instead for new code.
 
     Args:
-        species: List of Species objects
-        reactions: List of Reaction objects
+        species (list[Species] | None): List of Species objects
+        reactions (list[Reaction] | None): List of Reaction objects
         **kwargs: Build options (gas_phase_extrapolation, etc.)
 
     Returns:
-        Network: Network instance created via build()
+        Network: Network instance created via build_network()
 
     Examples:
         >>> # Old style (deprecated)
@@ -195,7 +197,7 @@ class NetworkState:
 
 # Compatibility exports for when this module is used
 __all__ = [
-    "Network",
     "LoadedNetwork",
+    "Network",
     "NetworkState",
 ]

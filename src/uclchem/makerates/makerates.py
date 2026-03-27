@@ -1,12 +1,12 @@
 import logging
 import os
 from pathlib import Path
-from typing import Union
+from typing import Literal
 
-from . import io_functions as io
-from .config import MakeratesConfig
-from .network import Network
-from .reaction import Reaction
+from uclchem.makerates import io_functions as io
+from uclchem.makerates.config import MakeratesConfig
+from uclchem.makerates.network import Network
+from uclchem.makerates.reaction import Reaction
 
 # Optional parameters that don't raise errors if missing
 optional_params = [
@@ -17,28 +17,27 @@ optional_params = [
 ]
 
 
-from typing import Union
-
-
 def run_makerates(
-    configuration_file: str = "user_settings.yaml",
+    configuration_file: str | Path = "user_settings.yaml",
     write_files: bool = True,
-    output_directory: Union[str, os.PathLike] | None = None,
+    output_directory: str | os.PathLike | None = None,
 ) -> Network:
-    """Main run wrapper for makerates. Loads and validates configuration,
+    """Run makerates.
+
+    Main run wrapper for makerates. Loads and validates configuration,
     generates chemical network, and optionally writes output files.
 
     Args:
-        configuration_file: Path to YAML configuration file.
+        configuration_file (str | Path): Path to YAML configuration file.
             Defaults to "user_settings.yaml".
-        write_files: Whether to write fortran files to src/fortran_src.
+        write_files (bool): Whether to write fortran files to src/fortran_src.
             Defaults to True.
-        output_directory: Optional override for the output directory where files
-            should be written. If None, uses the 'output_directory' from the config
-            (if present) or the package defaults.
+        output_directory (str | os.PathLike): Optional override for the output directory
+            where files should be written. If None, uses the 'output_directory'
+            from the config (if present) or the package defaults.
 
     Returns:
-        Network: A validated chemical network instance.
+        network (Network): A validated chemical network instance.
 
     Raises:
         ValidationError: If configuration is invalid
@@ -180,24 +179,32 @@ def run_makerates(
 
 
 def get_network(
-    path_to_input_file: Union[str, bytes, Path] = None,
-    path_to_species_file: Union[str, bytes, Path] = None,
-    path_to_reaction_file: Union[str, bytes, Path] = None,
-    verbosity=None,
-):
-    """In memory equivalent of Makerates, can either be used on the original input files
+    path_to_input_file: str | bytes | Path | None = None,
+    path_to_species_file: str | bytes | Path | None = None,
+    path_to_reaction_file: str | bytes | Path | None = None,
+    verbosity: Literal[
+        logging.DEBUG, logging.INFO, logging.WARNING, logging.CRITICAL, logging.ERROR
+    ] = None,
+) -> Network:
+    """Get a network into memory.
+
+    In memory equivalent of Makerates, can either be used on the original input files
     for makerates, or on the output files that makerates generates. So either specify:
 
     `path_to_input_file ` exclusive OR (`path_to_species_file` and `path_to_reaction_file`)
 
-    The latter scenario allows you to reload a reaction network from a network already written by Makerates.
+    The latter scenario allows you to reload a reaction network from
+    a network already written by Makerates.
 
 
     Args:
-        path_to_input_file (Union[str, bytes, Path], optional): Path to input file. Defaults to None.
-        path_to_species_file (Union[str, bytes, Path], optional): Path to a species.csv in/from the src directory. Defaults to None.
-        path_to_reaction_file (Union[str, bytes, Path], optional): Path to a reactions.csv in/from the src directory. Defaults to None.
-        verbosity (LEVEL, optional): The verbosity level as specified in logging. Defaults to None.
+        path_to_input_file (str | bytes | Path | None): Path to input file. Defaults to None.
+        path_to_species_file (str bytes | Path | None): Path to a species.csv
+            in/from the src directory. Defaults to None.
+        path_to_reaction_file (str | bytes | Path | None): Path to a reactions.csv in/from
+            the src directory. Defaults to None.
+        verbosity (LEVEL | None): The verbosity level as specified in logging.
+            Defaults to None.
 
     Raises:
         ValueError: You cannot specify both an input configuration and species+reaction.
@@ -222,13 +229,13 @@ def get_network(
 
 
 def _get_network_from_files(
-    species_file: Union[str, bytes, Path],
-    reaction_files: list[Union[str, bytes, Path]],
+    species_file: str | bytes | Path,
+    reaction_files: list[str | bytes | Path],
     reaction_types: list[str],
     gas_phase_extrapolation: bool,
     add_crp_photo_to_grain: bool,
-    derive_reaction_exothermicity: Union[bool, str, list[str]],
-    database_reaction_exothermicity: list[Union[str, bytes, Path]] = None,
+    derive_reaction_exothermicity: bool | str | list[str],
+    database_reaction_exothermicity: list[str | bytes | Path] | None = None,
 ) -> tuple[Network, list[Reaction]]:
     logging.info(
         f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"
@@ -268,5 +275,6 @@ def _get_network_from_files(
         + "################################################\n"
     )
 
-    # Network checking is now done automatically during build in NetworkBuilder._check_network()
+    # Network checking is now done automatically during build
+    # in NetworkBuilder._check_network()
     return network, dropped_reactions
