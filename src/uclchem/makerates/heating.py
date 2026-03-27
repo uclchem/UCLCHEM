@@ -6,7 +6,6 @@ databases or custom CSV files with various units.
 
 import logging
 import re
-from typing import List, Optional, Tuple
 
 import pandas as pd
 
@@ -45,7 +44,7 @@ _DENOMINATORS = {
 }
 
 
-def parse_species_from_row(row: pd.Series, prefix: str) -> List[str]:
+def parse_species_from_row(row: pd.Series, prefix: str) -> list[str]:
     """Parse species list from CSV row.
 
     Args:
@@ -140,8 +139,8 @@ def convert_to_erg(value: float, unit: str) -> float:
 
 
 def match_reaction(
-    reactants: List[str], products: List[str], reactions: List[Reaction]
-) -> Optional[Reaction]:
+    reactants: list[str], products: list[str], reactions: list[Reaction]
+) -> Reaction | None:
     """Find matching reaction in list.
 
     Args:
@@ -194,8 +193,8 @@ def load_custom_exothermicities(csv_path: str) -> pd.DataFrame:
 
 
 def set_custom_exothermicities(
-    reactions: List[Reaction], csv_path: str, overwrite: bool = True
-) -> Tuple[int, int]:
+    reactions: list[Reaction], csv_path: str, overwrite: bool = True
+) -> tuple[int, int]:
     """Set reaction exothermicities from custom CSV.
 
     Args:

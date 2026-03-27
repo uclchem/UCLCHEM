@@ -90,10 +90,11 @@ import os
 import signal
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from datetime import datetime
 from multiprocessing import shared_memory
 from pathlib import Path
-from typing import Any, AnyStr, Dict, Iterator, List, Literal, Type
+from typing import Any, AnyStr, Literal
 
 import h5py
 import matplotlib.pyplot as plt
@@ -142,10 +143,10 @@ SPECNAME_VALUE_FORMAT = "%9.5E"
 
 
 # Model registration is intended to prevent code injection during loading time.
-REGISTRY: Dict[str, Type["AbstractModel"]] = {}
+REGISTRY: dict[str, type["AbstractModel"]] = {}
 
 
-def register_model(cls: Type["AbstractModel"]):
+def register_model(cls: type["AbstractModel"]):
     name = getattr(cls, "MODEL_NAME", cls.__name__)
     if name in REGISTRY and REGISTRY[name] is not cls:
         raise ValueError(f"Duplicate model registration for {name}")
@@ -2907,8 +2908,8 @@ class SequentialModel:
 
     def __init__(
         self,
-        sequenced_model_parameters: List,
-        parameters_to_match: List = None,
+        sequenced_model_parameters: list,
+        parameters_to_match: list = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
         for model in sequenced_model_parameters:
@@ -3109,7 +3110,7 @@ class GridModels:
     def __init__(
         self,
         model_type: AnyStr,
-        full_parameters: Dict | List,
+        full_parameters: dict | list,
         max_workers: int = 8,
         grid_file: str = "./default_grid_out.h5",
         model_name_prefix: str = "",
@@ -3464,7 +3465,7 @@ class GridModels:
         param_keys: list,
         flattened_grids: np.ndarray,
         model_type: str,
-    ) -> Iterator[Dict[str, Any]]:
+    ) -> Iterator[dict[str, Any]]:
         """Provide an iterable dictionary of parameters that can be used with the
         grid-based multiprocessing worker distribution.
 

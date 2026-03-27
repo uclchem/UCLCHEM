@@ -17,7 +17,6 @@ import logging
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from pathlib import Path
-from typing import Union
 
 import pandas as pd
 
@@ -92,7 +91,7 @@ class NetworkABC(ABC):
     # Query Methods
     @abstractmethod
     def get_reactions_by_types(
-        self, reaction_type: Union[str, list[str]]
+        self, reaction_type: str | list[str]
     ) -> list[Reaction]:
         """Get all reactions of specific type(s)."""
         pass
@@ -142,7 +141,7 @@ class MutableNetworkABC(NetworkABC):
 
     # Species Modification Interface
     @abstractmethod
-    def add_species(self, species: Union[Species, list[Species]]) -> None:
+    def add_species(self, species: Species | list[Species]) -> None:
         """Add one or more species to the network."""
         pass
 
@@ -168,7 +167,7 @@ class MutableNetworkABC(NetworkABC):
 
     # Reaction Modification Interface
     @abstractmethod
-    def add_reactions(self, reactions: Union[Reaction, list[Reaction]]) -> None:
+    def add_reactions(self, reactions: Reaction | list[Reaction]) -> None:
         """Add one or more reactions to the network."""
         pass
 
@@ -407,8 +406,8 @@ class Network(BaseNetwork, MutableNetworkABC):
     @classmethod
     def from_csv(
         cls,
-        species_path: Union[str, Path, None] = None,
-        reactions_path: Union[str, Path, None] = None,
+        species_path: str | Path | None = None,
+        reactions_path: str | Path | None = None,
     ) -> "Network":
         """Load network from CSV files.
 
@@ -542,7 +541,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         self._species_dict = new_species_dict
 
     def add_species(
-        self, species: Union[Union[Species, list], list[Union[Species, list]]]
+        self, species: Species | list | list[Species | list]
     ) -> None:
         """Add species to network.
 
@@ -640,7 +639,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         self._reactions_dict = new_dict
 
     def add_reactions(
-        self, reactions: Union[Union[Reaction, list], list[Union[Reaction, list]]]
+        self, reactions: Reaction | list | list[Reaction | list]
     ) -> None:
         """Add reactions to network.
 
@@ -701,7 +700,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             logging.warning(f"Reaction index {reaction_idx} not found in network")
 
     def get_reactions_by_types(
-        self, reaction_type: Union[str, list[str]]
+        self, reaction_type: str | list[str]
     ) -> list[Reaction]:
         """Get the union of all reactions of a certain type.
 
@@ -804,8 +803,8 @@ class Network(BaseNetwork, MutableNetworkABC):
 
 
 def load_network_from_csv(
-    species_path: Union[str, Path, None] = None,
-    reactions_path: Union[str, Path, None] = None,
+    species_path: str | Path | None = None,
+    reactions_path: str | Path | None = None,
 ) -> Network:
     """Load a network from CSV files for analysis.
 
@@ -844,7 +843,7 @@ def build_network(
     gas_phase_extrapolation: bool = False,
     add_crp_photo_to_grain: bool = False,
     derive_reaction_exothermicity: list[str] = None,
-    database_reaction_exothermicity: list[Union[str, Path]] = None,
+    database_reaction_exothermicity: list[str | Path] = None,
 ) -> Network:
     """Build a new network with full validation and automatic generation.
 

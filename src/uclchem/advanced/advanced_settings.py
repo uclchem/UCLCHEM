@@ -18,7 +18,7 @@ across model runs in the same Python session.
 
 import warnings
 from contextlib import contextmanager
-from typing import Any, Dict, Set, Union
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -97,7 +97,7 @@ class Setting:
         else:
             return value
 
-    def get(self, check_memory: bool = True) -> Union[float, int, npt.NDArray]:
+    def get(self, check_memory: bool = True) -> float | int | npt.NDArray:
         """Get the current value of the setting.
 
         Args:
@@ -133,7 +133,7 @@ class Setting:
         self.current_value = self._copy_value(memory_value)
         return memory_value
 
-    def set(self, value: Union[float, int, npt.NDArray]) -> None:
+    def set(self, value: float | int | npt.NDArray) -> None:
         """Set the value of the setting.
 
         Args:
@@ -218,9 +218,9 @@ class ModuleSettings:
         self,
         module_name: str,
         fortran_module,
-        parameter_names: Set[str],
-        internal_names: Set[str],
-        file_path_names: Set[str],
+        parameter_names: set[str],
+        internal_names: set[str],
+        file_path_names: set[str],
     ):
         """Initialize settings for a module.
 
@@ -297,7 +297,7 @@ class ModuleSettings:
 
     def list_settings(
         self, include_internal: bool = False, include_parameters: bool = False
-    ) -> Dict[str, "Setting"]:
+    ) -> dict[str, "Setting"]:
         """List settings with their current values.
 
         Args:
@@ -479,7 +479,7 @@ class GeneralSettings:
         pattern: str,
         include_internal: bool = False,
         include_parameters: bool = False,
-    ) -> Dict[str, Setting]:
+    ) -> dict[str, Setting]:
         """Search for settings matching a pattern across all modules.
 
         Args:
@@ -588,7 +588,7 @@ class GeneralSettings:
         """
         # Save all current values (not just edited ones)
         # Skip PARAMETERs (compile-time constants), INTERNAL_PARAMETERS (solver state), and arrays
-        saved_states: Dict[str, Dict[str, Any]] = {}
+        saved_states: dict[str, dict[str, Any]] = {}
         for module_name, mod_settings in self._modules.items():
             saved_states[module_name] = {}
             for setting_name, setting in mod_settings._settings.items():

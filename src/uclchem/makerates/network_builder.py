@@ -9,7 +9,7 @@ providing a clean separation between:
 import logging
 from copy import deepcopy
 from pathlib import Path
-from typing import TypeVar, Union
+from typing import TypeVar
 
 from numpy import any as np_any
 
@@ -55,7 +55,7 @@ class NetworkBuilder:
         gas_phase_extrapolation: bool = False,
         add_crp_photo_to_grain: bool = False,
         derive_reaction_exothermicity: list[str] = None,
-        database_reaction_exothermicity: list[Union[str, Path]] = None,
+        database_reaction_exothermicity: list[str | Path] = None,
     ):
         """Initialize the network builder.
 

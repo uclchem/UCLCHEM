@@ -12,7 +12,6 @@ Note: Changes made through HeatingSettings affect the global Fortran state and p
 across model runs in the same Python session.
 """
 
-from typing import Dict
 
 import numpy as np
 import uclchemwrap
@@ -208,7 +207,7 @@ class HeatingSettings:
             )
         self._f2py_constants_module.coolant_active[idx] = enabled
 
-    def get_coolant_active(self) -> Dict[str, bool]:
+    def get_coolant_active(self) -> dict[str, bool]:
         """Get the active state of all line coolant species.
 
         Returns:
@@ -249,7 +248,7 @@ class HeatingSettings:
             )
         self._heating_module.cooling_modules[mechanism_id - 1] = enabled
 
-    def get_heating_modules(self) -> Dict[str, bool]:
+    def get_heating_modules(self) -> dict[str, bool]:
         """Obtain the state (on/off) of all heating mechanisms.
 
         Returns:
@@ -271,7 +270,7 @@ class HeatingSettings:
             for i, label in enumerate(labels)
         }
 
-    def get_cooling_modules(self) -> Dict[str, bool]:
+    def get_cooling_modules(self) -> dict[str, bool]:
         """Obtain the state (on/off) of all cooling mechanisms.
 
         Returns:

@@ -16,7 +16,6 @@ Note: Changes made through NetworkState affect the global Fortran state and pers
 across model runs in the same Python session.
 """
 
-from typing import List, Optional
 
 import numpy as np
 import pandas as pd
@@ -65,7 +64,7 @@ class RuntimeSpecies:
         """
         return float(self._network.mass[self._array_idx])
 
-    def get_binding_energy(self) -> Optional[float]:
+    def get_binding_energy(self) -> float | None:
         """Get the binding energy.
 
         Returns:
@@ -76,7 +75,7 @@ class RuntimeSpecies:
             return float(self._network.bindingenergy[self._array_idx])
         return None
 
-    def get_enthalpy(self) -> Optional[float]:
+    def get_enthalpy(self) -> float | None:
         """Get the formation enthalpy.
 
         Returns:
@@ -152,7 +151,7 @@ class RuntimeReaction:
         self._network = network_ref
         self._array_idx = index - 1  # 0-based for array access
 
-    def get_reactants(self) -> List[int]:
+    def get_reactants(self) -> list[int]:
         """Get the reactant species indices.
 
         Returns:
@@ -165,7 +164,7 @@ class RuntimeReaction:
             int(self._network.re3[self._array_idx]),
         ]
 
-    def get_products(self) -> List[int]:
+    def get_products(self) -> list[int]:
         """Get the product species indices.
 
         Returns:
@@ -179,7 +178,7 @@ class RuntimeReaction:
             int(self._network.p4[self._array_idx]),
         ]
 
-    def get_reactant_names(self) -> List[str]:
+    def get_reactant_names(self) -> list[str]:
         """Get the names of reactant species.
 
         Returns:
@@ -195,7 +194,7 @@ class RuntimeReaction:
                 names.append("NAN")
         return names
 
-    def get_product_names(self) -> List[str]:
+    def get_product_names(self) -> list[str]:
         """Get the names of product species.
 
         Returns:
@@ -265,7 +264,7 @@ class RuntimeReaction:
         """
         return float(self._network.exothermicities[self._array_idx])
 
-    def get_reduced_mass(self) -> Optional[float]:
+    def get_reduced_mass(self) -> float | None:
         """Get the reduced mass for tunneling reactions.
 
         Returns:
@@ -276,7 +275,7 @@ class RuntimeReaction:
             return float(self._network.reducedmasses[self._array_idx])
         return None
 
-    def get_rate(self) -> Optional[float]:
+    def get_rate(self) -> float | None:
         """Get the computed reaction rate from the last model run.
 
         Returns:

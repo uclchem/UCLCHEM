@@ -96,7 +96,7 @@ def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Specie
     species_list = []
     # list to hold user defined bulk species (for adjusting binding energy)
     user_defined_bulk = []
-    with open(file_name, "r") as f:
+    with open(file_name) as f:
         reader = csv.reader(f, delimiter=",", quotechar="|")
         for idx, row in enumerate(reader):
             try:
@@ -138,7 +138,7 @@ def read_reaction_file(
         keep_list.append(species.get_name())
 
     if ftype == "UMIST":
-        with open(file_name, "r") as f:
+        with open(file_name) as f:
             reader = csv.reader(f, delimiter=":", quotechar="|")
             for row in reader:
                 if row[0].startswith("#") or row[0].startswith("!"):
@@ -147,7 +147,7 @@ def read_reaction_file(
                 if check_reaction(reaction_row, keep_list):
                     reactions.append(Reaction(reaction_row, reaction_source="UMIST"))
     elif ftype == "UCL":
-        with open(file_name, "r") as f:
+        with open(file_name) as f:
             reader = csv.reader(f, delimiter=",", quotechar="|")
             for row in reader:
                 if (len(row) > 1) and (row[0][0] != "!"):
@@ -227,7 +227,7 @@ def kida_parser(kida_file: str | Path) -> list[list[Any]]:
         [1, {"skip": 11}],
     ]
     rows = []
-    with open(kida_file, "r") as f:
+    with open(kida_file) as f:
         f.readline()  # throw away header
         for line in f:  # then iterate over file
             if line.startswith("!"):
@@ -279,7 +279,7 @@ def read_grain_assisted_recombination_file(file_name: str | Path) -> dict[str, n
             reactions.
 
     """
-    with open(file_name, "r") as fh:
+    with open(file_name) as fh:
         gar_parameters = yaml.safe_load(fh)
     return gar_parameters
 
@@ -294,7 +294,7 @@ def read_coolants_file(file_name: Path) -> list[dict]:
         list[dict]: Normalized list of coolant dicts.
 
     """
-    with open(file_name, "r") as fh:
+    with open(file_name) as fh:
         data = yaml.safe_load(fh)
 
     if data is None:
@@ -584,7 +584,7 @@ def write_f90_constants(
 
     """
     template_file_path = UCLCHEM_ROOT_DIR / "makerates" / template_file_path
-    with open(template_file_path / "f2py_constants.f90", "r") as fh:
+    with open(template_file_path / "f2py_constants.f90") as fh:
         constants = fh.read()
 
     # Handle string arrays separately for coolants
@@ -1286,7 +1286,7 @@ def write_network_file(
 
     speciesIndices = ""
     for name, species_index in network.species_indices.items():
-        speciesIndices += "{0}={1},".format(name, species_index)
+        speciesIndices += f"{name}={species_index},"
     if len(speciesIndices) > 72:
         speciesIndices = truncate_line(speciesIndices)
     speciesIndices = speciesIndices[:-1] + "\n"
@@ -1575,7 +1575,7 @@ def array_to_string(
             values = ",".join(str(int(v)) for v in flat)
         elif type == "float":
             dtype = "REAL(dp)"
-            values = ",".join("{0:.4e}".format(float(v)) for v in flat)
+            values = ",".join(f"{float(v):.4e}" for v in flat)
         elif type == "string":
             strLength = len(max(flat, key=len))
             dtype = f"CHARACTER(Len={strLength})"
@@ -1591,20 +1591,20 @@ def array_to_string(
         return outString
     else:
         if parameter:
-            outString = ", PARAMETER :: " + name + " ({0})=(/".format(len(arr))
+            outString = ", PARAMETER :: " + name + f" ({len(arr)})=(/"
         else:
-            outString = " :: " + name + " ({0})=(/".format(len(arr))
+            outString = " :: " + name + f" ({len(arr)})=(/"
         if type == "int":
             outString = "INTEGER" + outString
             for value in arr:
-                outString += "{0},".format(value)
+                outString += f"{value},"
         elif type == "float":
             outString = "REAL(dp)" + outString
             for value in arr:
-                outString += "{0:.4e},".format(value)
+                outString += f"{value:.4e},"
         elif type == "string":
             strLength = len(max(arr, key=len))
-            outString = "CHARACTER(Len={0:.0f})".format(strLength) + outString
+            outString = f"CHARACTER(Len={strLength:.0f})" + outString
             for value in arr:
                 outString += '"' + value.ljust(strLength) + '",'
         elif type == "logical":

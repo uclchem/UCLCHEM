@@ -3,7 +3,6 @@
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +27,10 @@ def _normalize_for_comparison(text: str) -> str:
 
 
 def get_energy_levels_info(
-    coolant_names: List[str],
-    coolant_files: List[str],
+    coolant_names: list[str],
+    coolant_files: list[str],
     data_dir: str,
-) -> Tuple[int, int]:
+) -> tuple[int, int]:
     """Compute energy level information from coolant data files.
 
     This is the core function that works both at makerates time (without uclchemwrap)
@@ -67,7 +66,7 @@ def get_energy_levels_info(
         if not filepath.exists():
             raise FileNotFoundError(f"Coolant file not found: {filepath}")
 
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             lines = f.readlines()
 
         # Find NUMBER OF ENERGY LEVELS line (robust search)
@@ -89,7 +88,7 @@ def get_energy_levels_info(
     return n_total_levels, N_SE_STATS_PER_COOLANT
 
 
-def get_energy_levels_info_from_runtime() -> Tuple[int, int]:
+def get_energy_levels_info_from_runtime() -> tuple[int, int]:
     """Runtime wrapper that fetches parameters from uclchemwrap.
 
     Returns:
@@ -115,10 +114,10 @@ def get_energy_levels_info_from_runtime() -> Tuple[int, int]:
 
 
 def validate_coolant_frequencies(
-    coolant_names: List[str],
-    coolant_files: List[str],
+    coolant_names: list[str],
+    coolant_files: list[str],
     data_dir: str,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Validate frequency consistency in LAMDA files at makerates time.
 
     For each coolant, computes freq = |E_i - E_j| / h from energy levels and
@@ -149,7 +148,7 @@ def validate_coolant_frequencies(
         if not filepath.exists():
             continue
 
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             lines = f.readlines()
 
         # Parse energy levels
@@ -225,7 +224,7 @@ def validate_coolant_frequencies(
     return max_deviations
 
 
-def load_coolant_level_names() -> Dict[int, List[str]]:
+def load_coolant_level_names() -> dict[int, list[str]]:
     """Load coolant level information from disk for meaningful column names.
 
     Returns:
@@ -264,7 +263,7 @@ def load_coolant_level_names() -> Dict[int, List[str]]:
             raise FileNotFoundError(f"Coolant file not found: {filepath}")
 
         level_names[i] = []
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             lines = f.readlines()
 
         # Find NUMBER OF ENERGY LEVELS line (robust search)

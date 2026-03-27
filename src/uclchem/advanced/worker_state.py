@@ -11,7 +11,7 @@ capture the current Fortran module state into a picklable dict and re-apply
 it in a worker process before the model runs.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 import uclchemwrap
@@ -57,7 +57,7 @@ _MODULES_SKIP_0D = frozenset(
 )
 
 
-def create_snapshot() -> Dict[str, Any]:
+def create_snapshot() -> dict[str, Any]:
     """Capture the current Fortran module state into a picklable dict.
 
     Reads directly from Fortran memory (not cached Python values) to ensure
@@ -75,15 +75,15 @@ def create_snapshot() -> Dict[str, Any]:
         Fully picklable dict suitable for passing to :func:`restore_snapshot`.
 
     """
-    snapshot: Dict[str, Any] = {}
+    snapshot: dict[str, Any] = {}
 
     # --- General settings (scalars only) ---
-    general: Dict[str, Dict[str, Any]] = {}
+    general: dict[str, dict[str, Any]] = {}
     for mod_name in _MODULE_NAMES:
         if not hasattr(uclchemwrap, mod_name):
             continue
         mod = getattr(uclchemwrap, mod_name)
-        mod_snapshot: Dict[str, Any] = {}
+        mod_snapshot: dict[str, Any] = {}
         for attr in dir(mod):
             if attr.startswith("_"):
                 continue
@@ -122,7 +122,7 @@ def create_snapshot() -> Dict[str, Any]:
     snapshot["general"] = general
 
     # --- Heating / cooling settings ---
-    heating: Dict[str, Any] = {
+    heating: dict[str, Any] = {
         "heating_modules": np.copy(heating_module.heating_modules),
         "cooling_modules": np.copy(heating_module.cooling_modules),
         "dust_gas_coupling_method": int(heating_module.dust_gas_coupling_method),
@@ -153,7 +153,7 @@ def create_snapshot() -> Dict[str, Any]:
     return snapshot
 
 
-def restore_snapshot(snapshot: Dict[str, Any]) -> None:
+def restore_snapshot(snapshot: dict[str, Any]) -> None:
     """Apply a previously captured snapshot to the current process.
 
     Must be called **before** running any model in the worker process.
@@ -210,7 +210,7 @@ def restore_snapshot(snapshot: Dict[str, Any]) -> None:
         np.copyto(network_module.bindingenergy, net["bindingenergy"])
 
 
-def _pool_initializer(snapshot: Dict[str, Any]) -> None:
+def _pool_initializer(snapshot: dict[str, Any]) -> None:
     """``mp.Pool`` initializer that restores advanced settings in each worker.
 
     Usage::

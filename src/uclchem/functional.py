@@ -71,8 +71,7 @@ import numpy as np
 import pandas as pd
 
 from uclchem.constants import TIMEPOINTS
-from uclchem.model import (AbstractModel, Cloud, Collapse, CShock, JShock,
-                           PrestellarCore)
+from uclchem.model import AbstractModel, Cloud, Collapse, CShock, JShock, PrestellarCore
 
 
 def __validate_functional_api_params__(

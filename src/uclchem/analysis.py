@@ -296,7 +296,7 @@ def plot_species(ax, df, species, legend=True, **plot_kwargs):
 
 
 def read_analysis(filepath, species):
-    with open(filepath, "r") as file:
+    with open(filepath) as file:
         lines = file.readlines()
     for i, line in enumerate(lines):
         if "All Reactions" in line:
@@ -649,18 +649,16 @@ def _write_analysis(
 
     """
     output_file.write(
-        "\n\n***************************\nNew Important Reactions At: {0:.2e} years\n".format(
-            time
-        )
+        f"\n\n***************************\nNew Important Reactions At: {time:.2e} years\n"
     )
     # Formation and destruction writing is disabled since the absolute numbers do not appear to be correct.
-    output_file.write("Formation = {0:.8e} from:".format(total_production))
+    output_file.write(f"Formation = {total_production:.8e} from:")
     for k, reaction in enumerate(key_reactions):
         if key_changes[k] > 0:
             outString = f"\n{reaction} : {float(key_changes[k])} = {float(key_changes[k] / total_production):.2%}"
             output_file.write(outString)
 
-    output_file.write("\n\nDestruction = {0:.8e} from:".format(total_destruction))
+    output_file.write(f"\n\nDestruction = {total_destruction:.8e} from:")
     for k, reaction in enumerate(key_reactions):
         if key_changes[k] < 0:
             outString = f"\n{reaction} : {float(key_changes[k])} = {float(key_changes[k] / total_destruction):.2%}"
@@ -679,9 +677,7 @@ def _format_reactions(reactions):
     """
     formatted_reactions = []
     for reaction in reactions:
-        outString = "{x[0]} + {x[1]} + {x[2]} -> {x[3]} + {x[4]} + {x[5]}".format(
-            x=reaction
-        )
+        outString = f"{reaction[0]} + {reaction[1]} + {reaction[2]} -> {reaction[3]} + {reaction[4]} + {reaction[5]}"
         outString = outString.replace(" + NAN", "")
         formatted_reactions.append(outString)
     return formatted_reactions

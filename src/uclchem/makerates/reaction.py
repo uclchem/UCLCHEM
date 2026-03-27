@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
+from collections.abc import Iterator
 from contextlib import contextmanager
 from copy import deepcopy
-from typing import Any, Iterator
+from typing import Any
 
 from uclchem.makerates.species import Species, elementList, elementMass, species_header
 
@@ -670,7 +671,7 @@ class Reaction:
             bool: equality
 
         """
-        if not isinstance(other, (Reaction, CoupledReaction)):
+        if not isinstance(other, Reaction | CoupledReaction):
             raise NotImplementedError(
                 "Equality is not implemented for anything but comparing to other reactions."
             )

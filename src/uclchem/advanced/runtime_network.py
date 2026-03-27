@@ -20,7 +20,6 @@ Thread Safety Warning:
 """
 
 import warnings
-from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -382,7 +381,7 @@ class RuntimeNetwork(BaseNetwork):
     # Species Interface - Unsupported Operations
     # ========================================================================
 
-    def add_species(self, species: Union[Species, List[Species]]) -> None:
+    def add_species(self, species: Species | list[Species]) -> None:
         """NOT SUPPORTED: Cannot add species to compiled Fortran network.
 
         Raises:
@@ -443,7 +442,7 @@ class RuntimeNetwork(BaseNetwork):
     # Reaction Interface - Unsupported Operations
     # ========================================================================
 
-    def add_reactions(self, reactions: Union[Reaction, List[Reaction]]) -> None:
+    def add_reactions(self, reactions: Reaction | list[Reaction]) -> None:
         """NOT SUPPORTED: Cannot add reactions to compiled Fortran network.
 
         Raises:
@@ -573,9 +572,9 @@ class RuntimeNetwork(BaseNetwork):
     def modify_reaction_parameters(
         self,
         reaction_idx: int,
-        alpha: Optional[float] = None,
-        beta: Optional[float] = None,
-        gamma: Optional[float] = None,
+        alpha: float | None = None,
+        beta: float | None = None,
+        gamma: float | None = None,
     ) -> None:
         """Modify reaction rate parameters in Fortran arrays.
 

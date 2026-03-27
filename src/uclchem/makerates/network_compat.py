@@ -11,7 +11,6 @@ warnings and migration paths.
 
 import warnings
 from pathlib import Path
-from typing import Union
 
 from .network import Network as NewNetwork
 from .network import build_network
@@ -82,8 +81,8 @@ class LoadedNetwork:
         *,
         species: list[Species] = None,
         reactions: list[Reaction] = None,
-        species_filepath: Union[str, Path] = None,
-        reactions_filepath: Union[str, Path] = None,
+        species_filepath: str | Path = None,
+        reactions_filepath: str | Path = None,
     ):
         """Create a network using old LoadedNetwork API.
 
