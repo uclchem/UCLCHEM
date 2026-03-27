@@ -18,7 +18,7 @@ maintainers = [
 license = {text = "MIT License"}
 description = "A package for the astrochemical modelling of gas-grain chemistries."
 readme = "README.md"
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "h5py", "pandas", "numpy", "pyyaml", "charset_normalizer", "matplotlib", "seaborn", "scipy", "tqdm", "joblib", "xarray", "pydantic>=2.0"
 ]
@@ -37,7 +37,7 @@ extend-exclude = ["notebooks/*.py"]
 line-length = 90
 
 [tool.ruff.lint]
-select = ["E", "F", "C", "I", "W", "D", "ANN001", "ANN201", "B006", "ARG", "RUF100"]
+select = ["E", "F", "C", "I", "W", "D", "ANN001", "ANN201", "B006", "ARG", "RUF100", "UP"]
 extend-ignore = [
     "E501", "E731", "E741", "E402", "F841", "F811", "C901", "E203", "E402", "D211", "D213", "D205", "D105", "D107", "D301"
 ]

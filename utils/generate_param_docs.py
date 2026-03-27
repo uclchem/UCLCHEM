@@ -13,7 +13,7 @@ output_file = argv[2]
 constants_file = argv[3]
 default_param_dictionary = {}
 
-with open(param_file, "r") as f:
+with open(param_file) as f:
     with open(output_file, "w") as output:
         for line in f.readlines():
             if line.startswith("!"):
@@ -58,7 +58,7 @@ with open(param_file, "r") as f:
                         default_param_dictionary[key.lower()] = int(value)
 
     # Read constants and potentially modify them to update default_para_dictionary
-    with open(constants_file, "r") as constants_r:
+    with open(constants_file) as constants_r:
         lines = constants_r.readlines()
 
     default_dict_found = False

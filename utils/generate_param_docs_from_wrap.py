@@ -10,12 +10,12 @@ Usage:
 """
 
 import sys
-from typing import Any, Dict, Tuple
+from typing import Any
 
 import numpy as np
 
 
-def get_parameter_info() -> Dict[str, Tuple[Any, str, str]]:
+def get_parameter_info() -> dict[str, tuple[Any, str, str]]:
     """Extract all parameters from uclchemwrap.defaultparameters.
 
     Returns:
@@ -160,7 +160,7 @@ def get_parameter_info() -> Dict[str, Tuple[Any, str, str]]:
     return params
 
 
-def categorize_parameters(params: Dict[str, Tuple[Any, str, str]]) -> Dict[str, list]:
+def categorize_parameters(params: dict[str, tuple[Any, str, str]]) -> dict[str, list]:
     """Organize parameters into logical categories.
 
     Args:
@@ -286,7 +286,7 @@ def format_value(value: Any) -> str:
         return str(value)
 
 
-def generate_markdown(params: Dict[str, Tuple[Any, str, str]], output_file: str) -> None:
+def generate_markdown(params: dict[str, tuple[Any, str, str]], output_file: str) -> None:
     """Generate markdown documentation from parameter information.
 
     Args:

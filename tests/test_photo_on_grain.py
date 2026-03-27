@@ -43,7 +43,7 @@ def test_photo_on_grain_memory():
     # Update add_crp_photo_to_grain to True in the settings file
     import re
 
-    with open(test_settings_path, "r") as file:
+    with open(test_settings_path) as file:
         content = file.read()
 
     # Find and replace the line with add_crp_photo_to_grain
@@ -57,7 +57,7 @@ def test_photo_on_grain_memory():
         file.write(content)
 
     # Verify the change was made
-    with open(test_settings_path, "r") as file:
+    with open(test_settings_path) as file:
         verify_content = file.read()
     assert (
         "add_crp_photo_to_grain: True" in verify_content
@@ -84,7 +84,7 @@ def test_photo_on_grain_memory():
 
     # Import the package and test if it can be imported
     try:
-        import uclchem  # noqa: F401
+        import uclchem
     except ImportError:
         assert False, (
             "Failed to import the installed package after running Makerates "

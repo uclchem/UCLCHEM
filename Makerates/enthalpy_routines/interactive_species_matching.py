@@ -18,14 +18,14 @@ Usage:
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import yaml
 
 
-def clean_numeric_value(value: Any) -> Optional[float]:
+def clean_numeric_value(value: Any) -> float | None:
     """Convert numpy scalars and other numeric types to clean Python floats.
 
     Args:
@@ -53,7 +53,7 @@ class FormulaParser:
     """Chemical formula parsing utilities for UCLCHEM and ATCT formats."""
 
     @staticmethod
-    def parse_uclchem_formula(formula: str) -> Dict[str, int]:
+    def parse_uclchem_formula(formula: str) -> dict[str, int]:
         """Parse UCLCHEM all-caps formulas (e.g., 'SIC2+', 'HE+')."""
         if not isinstance(formula, str):
             return {}
@@ -110,7 +110,7 @@ class FormulaParser:
         return elements
 
     @staticmethod
-    def parse_atct_formula(formula: str) -> Dict[str, int]:
+    def parse_atct_formula(formula: str) -> dict[str, int]:
         """Parse ATCT proper-case formulas (e.g., 'SiC2+', 'He+')."""
         if not isinstance(formula, str):
             return {}
@@ -162,8 +162,8 @@ class SpeciesMatcher:
         print(f"Loaded ATCT: {len(self.atct_gas)} gas-phase species")
 
     def match_species(
-        self, uclchem_species: List[str], resume_file: Optional[str] = None
-    ) -> Dict[str, Dict[str, Any]]:
+        self, uclchem_species: list[str], resume_file: str | None = None
+    ) -> dict[str, dict[str, Any]]:
         """Match UCLCHEM species with ATCT data.
 
         Args:
@@ -208,7 +208,7 @@ class SpeciesMatcher:
 
         return canonical_matches
 
-    def _find_exact_matches(self, species_list: List[str]) -> Dict[str, Dict[str, Any]]:
+    def _find_exact_matches(self, species_list: list[str]) -> dict[str, dict[str, Any]]:
         """Find exact formula matches between UCLCHEM and ATCT."""
         exact_matches = {}
 
@@ -231,8 +231,8 @@ class SpeciesMatcher:
         return exact_matches
 
     def _find_isomer_matches(
-        self, species_list: List[str]
-    ) -> Dict[str, List[Dict[str, Any]]]:
+        self, species_list: list[str]
+    ) -> dict[str, list[dict[str, Any]]]:
         """Find formula-based isomer matches."""
         isomer_matches = {}
 
@@ -272,9 +272,9 @@ class SpeciesMatcher:
 
     def _interactive_selection(
         self,
-        isomer_matches: Dict[str, List[Dict[str, Any]]],
-        session_file: Optional[str] = None,
-    ) -> Dict[str, Dict[str, Any]]:
+        isomer_matches: dict[str, list[dict[str, Any]]],
+        session_file: str | None = None,
+    ) -> dict[str, dict[str, Any]]:
         """Interactive selection for species with multiple matches."""
         canonical_matches = {}
 
@@ -320,7 +320,7 @@ class SpeciesMatcher:
                     elif continue_choice == "c":
                         # Load previous session
                         try:
-                            with open(session_file, "r") as f:
+                            with open(session_file) as f:
                                 previous_session = yaml.safe_load(f)
                             prev = previous_session.get("completed", {})
                             canonical_matches.update(prev)
@@ -430,7 +430,7 @@ class SpeciesMatcher:
             logging.warning(f"Could not backup session file: {e}")
             return f"backup_failed{extension}"
 
-    def _save_session(self, session_data: Dict, session_file: str) -> None:
+    def _save_session(self, session_data: dict, session_file: str) -> None:
         """Save current matching session."""
         try:
             with open(session_file, "w") as f:
@@ -443,10 +443,10 @@ class SpeciesMatcher:
             logging.warning(f"Warning: Could not save session: {e}")
 
     def _resume_matching(
-        self, target_species: List[str], resume_file: str
-    ) -> Dict[str, Dict[str, Any]]:
+        self, target_species: list[str], resume_file: str
+    ) -> dict[str, dict[str, Any]]:
         """Resume matching from saved session."""
-        with open(resume_file, "r") as f:
+        with open(resume_file) as f:
             session_data = yaml.safe_load(f)
 
         completed = session_data.get("completed", {})
@@ -460,7 +460,7 @@ class SpeciesMatcher:
         return completed
 
     def save_mapping_yaml(
-        self, mapping: Dict[str, Dict[str, Any]], output_path: str
+        self, mapping: dict[str, dict[str, Any]], output_path: str
     ) -> None:
         """Save species mapping to YAML file.
 
@@ -477,7 +477,7 @@ class SpeciesMatcher:
 
         print(f"Saved YAML: {len(mapping)} species → {output_path}")
 
-    def save_mapping(self, mapping: Dict[str, Dict[str, Any]], output_path: str) -> None:
+    def save_mapping(self, mapping: dict[str, dict[str, Any]], output_path: str) -> None:
         """Save species mapping to CSV file (default format).
 
         Args:
@@ -487,7 +487,7 @@ class SpeciesMatcher:
         """
         self.export_mapping_csv(mapping, output_path)
 
-    def load_mapping(self, mapping_path: str) -> Dict[str, Dict[str, Any]]:
+    def load_mapping(self, mapping_path: str) -> dict[str, dict[str, Any]]:
         """Load species mapping from YAML file.
 
         Args:
@@ -497,14 +497,14 @@ class SpeciesMatcher:
             Species mapping dictionary
 
         """
-        with open(mapping_path, "r") as f:
+        with open(mapping_path) as f:
             mapping = yaml.safe_load(f)
 
         print(f"Loaded: {len(mapping)} species from {mapping_path}")
         return mapping
 
     def export_mapping_csv(
-        self, mapping: Dict[str, Dict[str, Any]], output_path: str
+        self, mapping: dict[str, dict[str, Any]], output_path: str
     ) -> None:
         """Export mapping to CSV for easy review.
 
@@ -539,7 +539,7 @@ class SpeciesMatcher:
     def write_back_to_file(
         self,
         species_df: pd.DataFrame,
-        mapping: Dict[str, Dict[str, Any]],
+        mapping: dict[str, dict[str, Any]],
         original_csv_path: str,
     ) -> None:
         """Write back the original species DataFrame with enthalpy data.

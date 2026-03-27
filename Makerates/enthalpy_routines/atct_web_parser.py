@@ -15,7 +15,7 @@ Usage:
 
 import re
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -46,7 +46,7 @@ class ATCTParser:
             "ATcT_ID",
         ]
 
-    def parse_html_file(self, html_file_path: str) -> Optional[pd.DataFrame]:
+    def parse_html_file(self, html_file_path: str) -> pd.DataFrame | None:
         """Parse ATCT HTML file and return cleaned DataFrame.
 
         Args:
@@ -61,7 +61,7 @@ class ATCTParser:
             raise FileNotFoundError(f"ATCT HTML file not found: {html_file_path}")
 
         try:
-            with open(html_path, "r", encoding="utf-8") as f:
+            with open(html_path, encoding="utf-8") as f:
                 html_content = f.read()
 
             soup = BeautifulSoup(html_content, "html.parser")
@@ -83,7 +83,7 @@ class ATCTParser:
         except Exception as e:
             raise RuntimeError(f"Failed to parse ATCT HTML file: {e}") from e
 
-    def _find_data_table(self, soup: BeautifulSoup) -> Optional[Any]:
+    def _find_data_table(self, soup: BeautifulSoup) -> Any | None:
         """Find the main thermochemical data table in HTML."""
         tables = soup.find_all("table")
 
@@ -179,7 +179,7 @@ class ATCTParser:
         data.to_csv(output_file, index=False)
         print(f"✓ Saved {len(data)} species to {output_path}")
 
-    def get_summary_stats(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def get_summary_stats(self, data: pd.DataFrame) -> dict[str, Any]:
         """Get summary statistics for parsed data.
 
         Args:

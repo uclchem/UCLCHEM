@@ -22,7 +22,7 @@ def test_package_installation():
 
     # Import the package and test if it can be imported
     try:
-        import uclchem  # noqa: F401
+        import uclchem
     except ImportError as e:
         assert False, f"Failed to import the installed package, with ImportError: {e}"
     result = subprocess.run(

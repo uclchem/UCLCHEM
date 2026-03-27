@@ -107,7 +107,7 @@ def find_existing_kernel_spec(python_exec: str) -> None:
                 spec_file = os.path.join(spec_info["resource_dir"], "kernel.json")
                 if os.path.exists(spec_file):
                     try:
-                        with open(spec_file, "r") as f:
+                        with open(spec_file) as f:
                             kernel_config = json.load(f)
                             # Check if argv[0] (Python executable) matches ours
                             argv = kernel_config.get("argv", [])

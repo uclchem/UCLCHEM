@@ -113,9 +113,7 @@ if __name__ == "__main__":
                 if plot_type == "charge":
                     axis.set_title(
                         axis.get_title()
-                        + " (Charge conservation: {:.2e})".format(
-                            charge_conservation.mean()
-                        )
+                        + f" (Charge conservation: {charge_conservation.mean():.2e})"
                     )
                 i = i + 1
         axes[0].text(

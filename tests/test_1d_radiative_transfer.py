@@ -168,7 +168,7 @@ class Test1DCloud:
         assert output_file.exists(), "Output file was not created"
 
         # Verify file contains data for multiple points
-        with open(output_file, "r") as f:
+        with open(output_file) as f:
             lines = f.readlines()
 
         # File should have header + data for multiple timepoints * multiple points

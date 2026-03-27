@@ -10,7 +10,7 @@ from sys import argv
 for mdx_file in argv[1:]:
     lines = []
     ignore_lines = False
-    with open(mdx_file, "r") as f:
+    with open(mdx_file) as f:
         for line in f.readlines():
             # if a line has style in it, change the flag
             # this way, <style> makes the code start ignoring lines until </style>
