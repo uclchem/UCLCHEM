@@ -11,7 +11,7 @@ MODULE collapse_mod
    !f2py INTEGER, parameter :: dp
    USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av, &
-   &coldens
+   &coldens, parcel_radius
    USE network
    USE F2PY_CONSTANTS
    IMPLICIT NONE
@@ -21,7 +21,7 @@ MODULE collapse_mod
    REAL(dp), allocatable :: massInRadius(:),parcelRadius(:)
    REAL(dp) :: dt,drad
    CHARACTER (LEN=100) :: collapseFile
-   LOGICAL :: writePhysics
+   ! LOGICAL :: writePhysics
 CONTAINS
    
     SUBROUTINE initializePhysics(successFlag)
@@ -33,13 +33,17 @@ CONTAINS
       
          SELECT CASE(collapse_mode)
             CASE(1)
-                maxTime=1.175d6
+                maxTime=1.173387d6
                 finalTime=0.97*maxTime
             CASE(2) 
-                maxTime=1.855d5
+                maxTime=1.84265d5
                 finalTime=0.97*maxTime
             CASE(3)
+                maxTime=1.393761d6
+                finalTime=0.97*maxTime
             CASE(4)
+                maxTime=1.6132984d7
+                finalTime=0.97*maxTime
             CASE DEFAULT
                 write(*,*) "unacceptable collapse mode"
                 successFlag=-1
@@ -48,25 +52,30 @@ CONTAINS
 
          DO dstep=1,points
                parcelRadius(dstep)=dstep*rout/float(points)
+               parcel_radius(dstep)=parcelRadius(dstep)
          END DO
          
-         IF (writePhysics) OPEN(unit=66,file=collapseFile,status='unknown',err=99)
-         IF (successFlag .lt. 0) THEN
-            99 write(*,*) "could not open physics output file",collapseFile
-            successFlag=-1
-            RETURN
-         END IF
-         density=rhofit(rin,rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
+         ! IF (writePhysics) OPEN(unit=66,file=collapseFile,status='unknown',err=99)
+         ! IF (successFlag .lt. 0) THEN
+         !    99 write(*,*) "could not open physics output file",collapseFile
+         !    successFlag=-1
+         !    RETURN
+         ! END IF
+         density=rhofit(parcelRadius(dstep),rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
          IF (collapse_mode .le. 2) CALL findmassInRadius
     END SUBROUTINE initializePhysics
 
     SUBROUTINE updateTargetTime
-        IF (timeInYears .gt. 10000) THEN
-            targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
+        IF (timeInYears .gt. 1.0d6) THEN
+            targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR    ! 100 kyr steps beyond 1 Myr
+        ELSE IF (timeInYears .gt. 1.0d5) THEN
+            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR    ! 10 kyr steps beyond 100 kyr
+        ELSE IF (timeInYears .gt. 10000) THEN
+            targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR   ! 1 kyr steps beyond 10 kyr
         ELSE IF (timeInYears .gt. 1000) THEN
-            targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
+            targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR    ! 100 yr steps beyond 1 kyr
         ELSE IF (timeInYears .gt. 0.0) THEN
-            targetTime=(timeInYears*10)*SECONDS_PER_YEAR
+            targetTime=(timeInYears*10)*SECONDS_PER_YEAR       ! ×10 exponential early on
         ELSE
             targetTime=3.16d7*10.d-8
         ENDIF
@@ -93,13 +102,14 @@ CONTAINS
             dt = targetTime - currentTime
             drad = vrfit(parcelRadius(dstep),rminfit(timeInYears),vminfit(timeInYears),avfit(timeInYears))*dt/pc
             parcelRadius(dstep) = parcelRadius(dstep) + drad
-            IF (writePhysics) THEN
-               write(66,*) timeInYears,parcelRadius(dstep),rhofit(parcelRadius(dstep),&
-                        &rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears)),&
-                        &vrfit(parcelRadius(dstep),rminfit(timeInYears),&
-                        &vminfit(timeInYears),avfit(timeInYears))
-            END IF
+            ! IF (writePhysics) THEN
+            !    write(66,*) timeInYears,parcelRadius(dstep),rhofit(parcelRadius(dstep),&
+            !             &rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears)),&
+            !             &vrfit(parcelRadius(dstep),rminfit(timeInYears),&
+            !             &vminfit(timeInYears),avfit(timeInYears))
+            ! END IF
         END IF
+        parcel_radius(dstep) = parcelRadius(dstep)
         density(dstep)=rhofit(parcelRadius(dstep),rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))        
     END SUBROUTINE updatePhysics
 
@@ -149,7 +159,7 @@ CONTAINS
          newRadius = i*dr
          i=i+1
       END DO
-      IF (writePhysics) write(66,*) timeInYears,newRadius,rhofit(newRadius,rho0,r0,a),m1
+      ! IF (writePhysics) write(66,*) timeInYears,newRadius,rhofit(newRadius,rho0,r0,a),m1
 
     END SUBROUTINE findNewRadius
 

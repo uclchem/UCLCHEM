@@ -167,7 +167,7 @@ CONTAINS
         successFlag=0
         specname_out(:nspec) = specName
         collapse_mode=collapseIn
-        writePhysics = writeOut
+        ! writePhysics = writeOutx
         collapseFile = collapseFileIn
 
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
