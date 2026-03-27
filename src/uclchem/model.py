@@ -2541,8 +2541,9 @@ class JShock(AbstractModel):
             "_debug": self._debug,
         }
 
-class Shock(AbstractModel):
-    def __init__(
+@register_model
+class Shock:
+    def __new__(
         self,
         previous_model: AbstractModel,
         shock_vel: float = 10.0,
@@ -2550,51 +2551,84 @@ class Shock(AbstractModel):
         minimum_temperature: float = 0.0,
         param_dict: dict = None,
         out_species: list = ["H", "N", "C", "O"],
-        starting_chemistry: np.ndarray = None,
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
-        read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
-        super().__init__(
-            param_dict,
-            out_species,
-            starting_chemistry,
-            previous_model,
-            timepoints,
-            debug,
-            read_file,
-            run_type,
-        )
-        if read_file is None:
-            if shock_vel is None:
-                raise ("shock_vel must be specified if not reading from file.")
-            self.shock_vel = shock_vel
-            self.timestep_factor = timestep_factor
-            self.minimum_temperature = minimum_temperature
-            self.dissipation_time = -1
-            # Get the list of species as array
-            species = np.array(get_species_names())
-            # Get the Atomic mass of each species as array
-            species_am = np.array(get_species_mass())
-            # lambda function in order to filter out Surface (#) and Bulk species (@) and to then find all ions
-            ion_filter = np.frompyfunc(lambda x: ('#' not in x) and ('@' not in x) and (('+' in x) or ('-' in x)), 1, 1)
-            # Find the fractional abundance of each gas phase ion species from the previous model
-            ion_species_frac_abun = previous_model.next_starting_chemistry_array[0][np.where(ion_filter(species))[0]]
-            # Get the atomic mass of each gas phase ion species
-            ion_species_am = species_am[np.where(ion_filter(species))[0]]
-            # Multiply the fractional abundance with the atomic mass of each gas phase ion species
-            ion_species_am_frac = np.multiply(ion_species_frac_abun, ion_species_am)
-            # Sum the fractional abundances in order to understand what fraction of the density is a gas phased ion species
-            ion_full_am_abun = sum(ion_species_am_frac).item()
-            density_am_cmcub = previous_model.physics_array[-1, 0, 1].item() * ion_full_am_abun
-            # FROM HERE, Convert to the needed units and perform needed calculations to determine if shock type is J or C
-            # Based on the input velocity
-            ###
+        # Get the list of species as array
+        species = np.array(get_species_names())
+        # Get the Atomic mass of each species as array
+        species_am = np.array(get_species_mass())
 
-            ###
-            #if self.run_type != "external":
-            #    self.run()
+        # To calculate the density of ions in grams per cubic cm, in our previous chemical model we do the following calculations
+        # lambda function in order to filter out Surface (#) and Bulk species (@) and to then find all ions
+        ion_filter = np.frompyfunc(lambda x: ('#' not in x) and ('@' not in x) and (('+' in x) or ('-' in x)), 1, 1)
+        # Find the fractional abundance of each gas phase ion species from the previous model
+        ion_species_frac_abun = previous_model.next_starting_chemistry_array[0][np.where(ion_filter(species))[0]]
+        # Get the atomic mass of each gas phase ion species
+        ion_species_am = species_am[np.where(ion_filter(species))[0]]
+        # Multiply the fractional abundance with the atomic mass of each gas phase ion species and
+        # sum the fractional abundances in order to understand what fraction of the density is a gas phased ion species
+        ion_full_am_abun = sum(np.multiply(ion_species_frac_abun, ion_species_am)).item()
+        # Calculate the density of ions in grams/cm^3
+        ion_density_g_cmcub = previous_model.physics_array[-1, 0, 1].item() * ion_full_am_abun * 1.6605402e-24
+
+        # To calculate the density of all neutral gas
+        # like before, we create a filter, and calculate the gas bound neutral species fractional abundances before calculating
+        # the density in grams/cm^3 of the neutral gas species
+        neutral_filter = np.frompyfunc(lambda x: ('#' not in x) and ('@' not in x) and ('+' not in x) and ('-' not in x), 1, 1)
+        neutral_species_frac_abun = previous_model.next_starting_chemistry_array[0][np.where(neutral_filter(species))[0]]
+        neutral_species_am = species_am[np.where(neutral_filter(species))[0]]
+        neutral_full_am_abun = sum(np.multiply(neutral_species_frac_abun, neutral_species_am)).item()
+        neutral_density_g_cmcub = previous_model.physics_array[-1, 0, 1].item() * neutral_full_am_abun * 1.6605402e-24
+
+        # number density of neutral gas
+        boltzman_cgs = 1.3806e-16
+        pressure_of_neutral_gas = np.sum(neutral_species_frac_abun).item()*previous_model.physics_array[-1, 0, 1].item()*boltzman_cgs*previous_model.physics_array[-1, 0, 2].item()
+
+        speed_of_sound_cm_s = np.sqrt(((5/3) * pressure_of_neutral_gas)/neutral_density_g_cmcub)
+        if speed_of_sound_cm_s*1e-5 > shock_vel:
+            warnings.warn("Your shock_vel is lower than the speed of sound for the neutral gas. You may not want to run a shock model.")
+        # Now we need v_ac which is calculated by v_ac = B / ( root(4 * pi * rho_c ) ) where rho_c is ion_density_g_cmcub
+        # and B = bm0 * 1e-12 * root(n_H) where bm0 is a default parameter in uclchem and n_H is the final number density from the previous model
+        # previous_model.physics_array[-1, 0, 1].item() and we use 1e-12 to convert to Gauss
+        v_ac = (
+            (
+                default_param_dictionary["bm0"] * 1e-12 * np.sqrt(previous_model.physics_array[-1, 0, 1].item())
+            ) / (
+                np.sqrt(4* np.pi * ion_density_g_cmcub)
+            )
+        )
+        # Calculate v_m = root(c_s ^2 + v_ac^2) where c_s is the speed of sound of the medium. As our c_s and v_ac are
+        # in cm/s we convert to km/s by multiplying by 1e-5
+        v_m = np.sqrt(np.pow(speed_of_sound_cm_s, 2) + np.pow(v_ac, 2)) * 1e-5
+        if debug:
+            print(f"v_m had value of {v_m}")
+        # This returns and runs the J or C shock model based on the condition of our choosing.
+        #TODO modify the condition, it should not be just ion_density_g_cmcub > 1
+        if shock_vel > v_m:
+            return JShock(
+                shock_vel=shock_vel,
+                param_dict=param_dict,
+                out_species=out_species,
+                previous_model=previous_model,
+                timepoints=timepoints,
+                debug=debug,
+                run_type=run_type
+            )
+        else:
+            return CShock(
+                shock_vel=shock_vel,
+                timestep_factor=timestep_factor,
+                minimum_temperature=minimum_temperature,
+                param_dict=param_dict,
+                out_species=out_species,
+                previous_model=previous_model,
+                timepoints=timepoints,
+                debug=debug,
+                run_type=run_type
+            )
+        ###
 
 
 
@@ -2944,6 +2978,9 @@ class ExtractedModel:
         self.next_starting_chemistry_array = model_object.next_starting_chemistry_array
         self.physics_array = model_object.physics_array[-2:, 0, :3]
 
+    def has_attr(self, key):
+        return hasattr(self, key)
+
 
 @register_model
 class SequentialRunner:
@@ -2967,9 +3004,10 @@ class SequentialRunner:
     ):
         for model in sequenced_model_parameters:
             if isinstance(model, dict):
-                assert(model[list(model.keys())[0]] != "SequentialRunner")
+                if model[list(model.keys())[0]] == "SequentialRunner": raise ValueError("'SequentialRunner' should not be used as a class for a Sequential model")
             elif hasattr(model, "model_type"):
-                assert(model.model_type != "SequentialRunner" )
+                if model.model_type != "SequentialRunner": raise ValueError(
+                    "'SequentialRunner' should not be used as a class for a Sequential model")
         self.models = []
         self.sequenced_model_parameters = sequenced_model_parameters
         self.parameters_to_match = parameters_to_match
@@ -2984,11 +3022,13 @@ class SequentialRunner:
         previous_model = None
         extractable = True
         for base_model_dict in self.sequenced_model_parameters:
-            if not isinstance(base_model_dict, dict) and extractable:
-                if hasattr(base_model_dict, "model_type"):
-                    previous_model = ExtractedModel(base_model_dict)
-                    extractable = False
-                    continue
+            if not isinstance(base_model_dict, dict):
+                if not extractable: raise ValueError("Only the first entry to sequence_model_parameters is.")
+                if not hasattr(base_model_dict, "model_type"): raise ValueError("Only uclchem models can be used as previous models")
+                previous_model = ExtractedModel(base_model_dict)
+                extractable = False
+                continue
+
             assert(isinstance(base_model_dict, dict))
             for model_type, model_dict in base_model_dict.items():
                 model_dict["param_dict"] = {
@@ -3174,6 +3214,7 @@ class NoDaemonPool(pool.Pool):
     @staticmethod
     def Process(ctx, *args, **kwargs):
         return _NoDaemonProcess(*args, **kwargs)
+
 
 class GridRunner:
     """GridRunner, like SequentialRunner is not an actual uclchem model, instead it allows running multiple models on a grid of parameter space.

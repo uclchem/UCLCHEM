@@ -265,6 +265,63 @@ class TestErrorHandling:
         with pytest.raises(Exception, match="was not found"):
             load_model(file=fpath, name="nonexistent_name")
 
+    def test_sequential_passing_multiple_model_object(self):
+        param_dict = {
+            "parcelStoppingMode": 1,
+            "freefall": True,
+            "initialDens": 1e2,
+            "finalDens": 1e4,
+            "initialTemp": 10.0,
+            "finalTime": 1.0e5,
+        }
+        cloud = Cloud(param_dict=param_dict)
+        config = [
+            cloud,
+            cloud,
+            {
+                "Cloud": {
+                    "param_dict": {
+                        "parcelStoppingMode": 0,
+                        "freefall": False,
+                        "initialDens": 1e4,
+                        "finalDens": 1e4,
+                        "initialTemp": 10.0,
+                        "finalTime": 1.0e5,
+                    }
+                },
+            },
+        ]
+        with pytest.raises(ValueError):
+            seq = SequentialRunner(config)
+
+    def test_sequential_passing_model_object_wrong_order(self):
+        param_dict = {
+            "parcelStoppingMode": 1,
+            "freefall": True,
+            "initialDens": 1e2,
+            "finalDens": 1e4,
+            "initialTemp": 10.0,
+            "finalTime": 1.0e5,
+        }
+        cloud = Cloud(param_dict=param_dict)
+        config = [
+            {
+                "Cloud": {
+                    "param_dict": {
+                        "parcelStoppingMode": 0,
+                        "freefall": False,
+                        "initialDens": 1e4,
+                        "finalDens": 1e4,
+                        "initialTemp": 10.0,
+                        "finalTime": 1.0e5,
+                    }
+                },
+            },
+            cloud,
+        ]
+        with pytest.raises(ValueError):
+            seq = SequentialRunner(config)
+
 
 # ============================================================================
 # HDF5 file structure verification
@@ -365,7 +422,6 @@ class TestWriteReadArray:
 
 class TestSequentialRunner:
     """Test SequentialRunner with the new List[Dict] format."""
-
     @pytest.fixture
     def sequential_model(self):
         """Build a two-stage sequential model (Cloud -> Cloud)."""
@@ -463,6 +519,34 @@ class TestSequentialRunner:
         # Both stages should be Cloud
         assert seq.models[0]["Model_Type"] == "Cloud"
         assert seq.models[1]["Model_Type"] == "Cloud"
+
+    def test_sequential_allows_passing_model_object(self):
+        param_dict = {
+            "parcelStoppingMode": 1,
+            "freefall": True,
+            "initialDens": 1e2,
+            "finalDens": 1e4,
+            "initialTemp": 10.0,
+            "finalTime": 1.0e5,
+        }
+        cloud = Cloud(param_dict=param_dict)
+        config = [
+            cloud,
+            {
+                "Cloud": {
+                    "param_dict": {
+                        "parcelStoppingMode": 0,
+                        "freefall": False,
+                        "initialDens": 1e4,
+                        "finalDens": 1e4,
+                        "initialTemp": 10.0,
+                        "finalTime": 1.0e5,
+                    }
+                },
+            },
+        ]
+        seq = SequentialRunner(config)
+        assert seq.models[0]["Model_Type"] == "Cloud"
 
 
 # ============================================================================
