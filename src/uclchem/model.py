@@ -14,8 +14,8 @@ for most use cases as it provides better state management and built-in analysis 
 - :class:`CShock` - C-type shock model
 - :class:`JShock` - J-type shock model
 - :class:`Postprocess` - Custom physics from user-provided arrays
-- :class:`GridModels` - Run parameter grids in parallel
-- :class:`SequentialModel` - Chain multiple physical stages
+- :class:`SequentialRunner` - Chain multiple physical stages
+- :class:`GridRunner` - Run parameter grids in parallel
 
 **Legacy Functions (Functional API):**
 
@@ -91,7 +91,7 @@ import signal
 import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
-from multiprocessing import shared_memory
+from multiprocessing import pool, shared_memory
 from pathlib import Path
 from typing import Any, AnyStr, Dict, Iterator, List, Literal, Type
 
@@ -2867,14 +2867,14 @@ class Model(AbstractModel):
 
 
 @register_model
-class SequentialModel:
-    """The SequentialModel class allows for multiple models to be run back to back.
+class SequentialRunner:
+    """The SequentialRunner class allows for multiple models to be run back to back.
 
     By defining a specific dictionary to hold the information of each model class to run in sequence, SewuentialModel allows
     for the automatic running of multiple models as well as matching some physical parameters from one model to the next.
 
     Args:
-        sequenced_model_parameters (List of Dicts): The List of dictionaries to pass to SequentialModel takes the format of
+        sequenced_model_parameters (List of Dicts): The List of dictionaries to pass to SequentialRunner takes the format of
             [{"<First Model Class>":{"param_dict":{<parameters>}, <other arguments>}}, {"<Second Model Class>:{"param_dict":{<parameters>}, <other arguments>}}, ...}]
         parameters_to_match (List, optional): The list provided to this argument decides which parameters should be matched from a previous model
             to the next model in the sequence. Currently, supports ["finalDens", "finalTemp"].
@@ -2887,7 +2887,7 @@ class SequentialModel:
         run_type: Literal["managed", "external"] = "managed",
     ):
         for model in sequenced_model_parameters:
-            assert model[list(model.keys())[0]] != SequentialModel
+            assert model[list(model.keys())[0]] != SequentialRunner
         self.models = []
         self.sequenced_model_parameters = sequenced_model_parameters
         self.parameters_to_match = parameters_to_match
@@ -2917,12 +2917,12 @@ class SequentialModel:
                         for parameter in self.parameters_to_match:
                             if parameter == "finalDens":
                                 model_dict["param_dict"]["initialdens"] = (
-                                    previous_model.physics_array[-1, 0, 1]
+                                    previous_model.physics_array[-1, 0, 1].item()
                                 )
                                 continue
                             elif parameter == "finalTemp":
                                 model_dict["param_dict"]["initialtemp"] = (
-                                    previous_model.physics_array[-1, 0, 2]
+                                    previous_model.physics_array[-1, 0, 2].item()
                                 )
                             else:
                                 print(
@@ -2933,40 +2933,31 @@ class SequentialModel:
                         run_type=self.run_type,
                         previous_model=previous_model,
                     )
-                    if self.run_type == "external":
-                        tmp_model.run()
-                    self.models += [
-                        {
-                            "Model_Type": model_type,
-                            "Model_Order": self.model_count,
-                            "Model": tmp_model,
-                            "Success": tmp_model.success_flag,
-                        }
-                    ]
                 else:
                     tmp_model = REGISTRY[model_type](
                         **model_dict,
                         run_type=self.run_type,
                         previous_model=previous_model,
                     )
-                    if self.run_type == "external":
-                        tmp_model.run()
-                    self.models += [
-                        {
-                            "Model_Type": model_type,
-                            "Model_Order": self.model_count,
-                            "Model": tmp_model,
-                            "Success": tmp_model.success_flag,
-                        }
-                    ]
-                    self.models[self.model_count]["Successful"] = (
-                        True
-                        if self.models[self.model_count]["Model"].success_flag == 0
-                        else False
-                    )
-                    previous_model = self.models[self.model_count]["Model"]
+
+                if self.run_type == "external":
+                    tmp_model.run()
+
+                self.models += [
+                    {
+                        "Model_Type": model_type,
+                        "Model_Order": self.model_count,
+                        "Model": tmp_model,
+                        "Successful": (
+                            True
+                            if tmp_model.success_flag == 0
+                            else tmp_model.success_flag
+                        ),
+                    }
+                ]
+                previous_model = self.models[self.model_count]["Model"]
                 self.model_count += 1
-        self.success_flag = all(d["Success"] for d in self.models)
+        self.success_flag = all(d["Successful"] for d in self.models)
         return
 
     def save_model(
@@ -3049,27 +3040,67 @@ class SequentialModel:
 
 def _run_grid_model(model_id, model_type, pending_model, log_dir=None):
     """
-    Internal function to run a single model. This is used by the GridModels class
+    Internal function to run a single model. This is used by the GridRunner class
     """
     log_file = None
     if log_dir is not None:
         log_file = os.path.join(log_dir, f"model_{model_id}.log")
 
     cls = REGISTRY.get(model_type)
-    model_obj = cls(**pending_model, run_type="external")
     with capture_fortran_output(label=f"model_{model_id}", log_file=log_file):
-        model_obj.run()
+        model_obj = cls(
+            **pending_model,
+            run_type=("managed" if model_type == "SequentialRunner" else "external"),
+        )
+        if model_type != "SequentialRunner":
+            model_obj.run()
     model_obj._coordinator_unlink_memory()
     model_obj.pickle()
     return (model_id, model_obj)
 
 
-class GridModels:
-    """GridModels, like SequentialModel is not an actual uclchem model, instead it allows running multiple models on a grid of parameter space.
+# The following parameters from various chemical models, cannot be used as grid parameters.
+NoGridParameters = [
+    "out_species",
+    "starting_chemistry",
+    "time_array",
+    "density_array",
+    "gas_temperature_array",
+    "dust_temperature_array",
+    "zeta_array",
+    "radfield_array" "visual_extinction_array",
+    "coldens_H_array",
+    "coldens_H2_array",
+    "coldens_CO_array",
+    "coldens_C_array",
+    "debug",
+    "read_file",
+    "run_type",
+]
+
+
+class _NoDaemonProcess(mp.Process):
+    @property
+    def daemon(self):
+        return False
+
+    @daemon.setter
+    def daemon(self, value):
+        pass
+
+
+class NoDaemonPool(pool.Pool):
+    @staticmethod
+    def Process(ctx, *args, **kwargs):
+        return _NoDaemonProcess(*args, **kwargs)
+
+
+class GridRunner:
+    """GridRunner, like SequentialRunner is not an actual uclchem model, instead it allows running multiple models on a grid of parameter space.
 
     Args
         model_type (str of model class to run):
-        full_parameters (Dict): The dictionary passed to GridModels should nest into it, the param_dict argument that would
+        full_parameters (Dict): The dictionary passed to GridRunner should nest into it, the param_dict argument that would
             be passed to any other model, with the addition of extra keys for the none param_dict variables of a model.
             Any variables that are turned into lists or arrays, will automatically be assumed to be used for the gridding.
         max_workers (int, optional): Maximum number of workers to use in parallel for the grid run. Defaults to 8.
@@ -3077,7 +3108,12 @@ class GridModels:
             Defaults to "./default_grid_out.h5".
         model_name_prefix (str, optional): Name prefix convention to use. The fifth model in the grid would have the name
             "<model_name_prefix>5>" assigned to it. Defaults to "" which would make the fifth model have the name "5".
+        overwrite_models (bool, optional): Defaults to False
         delay_run (bool, optional): Defaults to False.
+        log_dir (str, optional): Path to file for output logs from FORTRAN
+        model_ids (list, optional): model_ids to run, intended for rerunning parts of a grid that failed in previous run
+        create_grid (bool, optional): Boolean to determine if a grid of all possible parameter combinations should be created,
+            or if the passed lists of parameters are already an existing grid.
     """
 
     def __init__(
@@ -3091,6 +3127,7 @@ class GridModels:
         delay_run: bool = False,
         log_dir: str = None,
         model_ids: list = None,
+        create_grid: bool = True,
     ):
         assert model_type in REGISTRY
         self.model_type = model_type
@@ -3120,30 +3157,29 @@ class GridModels:
         self._orig_sigint = signal.getsignal(signal.SIGINT)
         self.parameters_to_grid = {}
 
-        if self.model_type == "SequentialModel":
+        if self.model_type == "SequentialRunner":
             if not isinstance(self.full_parameters, list):
                 raise (
-                    f"For SequentialModel types, full_parameters must be a list. {type(self.full_parameters)} was passed."
+                    f"For SequentialRunner types, full_parameters must be a list. {type(self.full_parameters)} was passed."
                 )
             for model_count in range(len(self.full_parameters)):
                 for model_type, model_full_params in self.full_parameters[
                     model_count
                 ].items():
                     if not isinstance(model_full_params, dict):
-                        raise ValueError(
-                            f"Model number {model_count}, did not have a dictionary parameter in full_parameters list"
-                        )
+                        continue
                     for k, v in model_full_params.items():
                         if k == "param_dict":
                             for k_p, v_p in v.items():
                                 self._grid_def(k_p, v_p, model_count)
                         else:
                             self._grid_def(k, v, model_count)
-                grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
+
+        #               grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
         else:
             if not isinstance(self.full_parameters, dict):
                 raise (
-                    f"For none SequentialModel types, full_parameters must be a dictionary. {type(self.full_parameters)} was passed."
+                    f"For none SequentialRunner types, full_parameters must be a dictionary. {type(self.full_parameters)} was passed."
                 )
             for k, v in self.full_parameters.items():
                 if k == "param_dict":
@@ -3151,15 +3187,23 @@ class GridModels:
                         self._grid_def(k_p, v_p)
                 else:
                     self._grid_def(k, v)
+        if create_grid:
             grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
-
-        self.flat_grids = np.reshape(
-            grids,
-            (
-                len(self.parameters_to_grid),
-                int(np.prod(np.shape(grids)) / len(self.parameters_to_grid)),
-            ),
-        )
+            self.flat_grids = np.reshape(
+                grids,
+                (
+                    len(self.parameters_to_grid),
+                    int(np.prod(np.shape(grids)) / len(self.parameters_to_grid)),
+                ),
+            )
+        else:
+            assert len(set(len(v) for v in self.parameters_to_grid.values())) == 1
+            self.flat_grids = np.array(
+                [
+                    [p[i] for p in self.parameters_to_grid.values()]
+                    for i in range(len(next(iter(self.parameters_to_grid.values()))))
+                ]
+            ).T
 
         # Optional subset of model indices (0-based column in flat_grids) to run.
         # None means run all. Accepts any iterable; stored as a frozenset for O(1) lookup.
@@ -3178,10 +3222,10 @@ class GridModels:
             model_count = ""
         else:
             model_count = f"{str(model_count)}_"
-        if isinstance(value, list):
+        if isinstance(value, list) and key not in NoGridParameters:
             self.parameters_to_grid[model_count + key] = value
             self.parameters_to_grid[model_count + key] = np.array(value, dtype=object)
-        elif isinstance(value, (np.ndarray, np.generic)):
+        elif isinstance(value, (np.ndarray, np.generic)) and key not in NoGridParameters:
             self.parameters_to_grid[model_count + key] = value.astype(dtype=object)
 
     def _log_main(self, msg):
@@ -3211,7 +3255,9 @@ class GridModels:
         )
         file_obj = h5py.File(self.grid_file, "a")
 
-        with mp.Pool(
+        PoolClass = NoDaemonPool if self.model_type == "SequentialRunner" else mp.Pool
+
+        with PoolClass(
             self.max_workers,
             initializer=_pool_initializer,
             initargs=(snapshot,),
@@ -3287,7 +3333,7 @@ class GridModels:
         self._load_params()
 
     def load_phys(self):
-        if self.model_type == "SequentialModel":
+        if self.model_type == "SequentialRunner":
             warnings.warn("Sequantial Model physics loading not implemented")
             return
         for model in range(len(self.models)):
@@ -3303,7 +3349,7 @@ class GridModels:
         return
 
     def load_chem(self, out_specie_list: list = ["H", "N", "C", "O"]):
-        if self.model_type == "SequentialModel":
+        if self.model_type == "SequentialRunner":
             warnings.warn("Sequantial Model chemistry loading not implemented")
             return
         for model in range(len(self.models)):
@@ -3324,53 +3370,52 @@ class GridModels:
         """
         _load_params, loops through the models present in the grid models self.models attribute in order
         to load the changing physical parameters of the models.
-        The method splits the loops into two cases. SequentialModel, and other model cases.
+        The method splits the loops into two cases. SequentialRunner, and other model cases.
         In both instances, the for loop loads the model data using the _load_model_data() method. Then, it
         matches the given parameters, with the changing parameters in order to populate the dictionary attribute
-        self.models for users to view the models run for the given GridModels object. T
-        The Differentiation of SequentialModels stems from SequentialModels being nested models, resulting in an
+        self.models for users to view the models run for the given GridRunner object. T
+        The Differentiation of SequentialRunners stems from SequentialRunners being nested models, resulting in an
         additional required loop to take into account the additional nesting.
         Returns:
             No explicit returns, self.models attribute is populated/expanded on.
         """
         # The following loops perform the same actions, but for the different model types
-        if self.model_type == "SequentialModel":
+        if self.model_type == "SequentialRunner":
             for model in range(len(self.models)):
-                model_number = 0
-                for base_model_dict in self.full_parameters:
-                    for mt_k, mt_v in base_model_dict.items():
+                for model_count in range(len(self.full_parameters)):
+                    for mt_k, mt_v in self.full_parameters[model_count].items():
                         if not isinstance(mt_v, dict):
-                            raise ValueError(
-                                f"full_parameters List did not contain dictionaries, entry {model} was {mt_v}"
-                            )
+                            continue
                         tmp_model = self._load_model_data(
-                            model=f"{self.models[model]['Model']}_{model_number}_{mt_k}"
+                            model=f"{self.models[model]['Model']}_{model_count}_{mt_k}"
                         )
 
-                        self.models[model][f"{model_number}_{mt_k}"] = {
+                        self.models[model][f"{model_count}_{mt_k}"] = {
                             **{
-                                k.replace(mt_k, ""): tmp_model._param_dict[
-                                    k.replace(mt_k, "").lower()
+                                k.replace(f"{model_count}_", ""): tmp_model._param_dict[
+                                    k.replace(f"{model_count}_", "").lower()
                                 ]
                                 for k in list(self.parameters_to_grid.keys())
-                                if mt_k in k
-                                and k.replace(mt_k, "").lower() in tmp_model._param_dict
+                                if k[: len(str(model_count))] == str(model_count)
+                                and k.replace(f"{model_count}_", "").lower()
+                                in tmp_model._param_dict
                             },
                             **{
-                                k.replace(mt_k, ""): tmp_model.__getattr__(
-                                    k.replace(mt_k, "")
+                                k.replace(f"{model_count}_", ""): tmp_model.__getattr__(
+                                    k.replace(f"{model_count}_", "")
                                 )
                                 for k in list(self.parameters_to_grid.keys())
-                                if mt_k in k
-                                and k.replace(mt_k, "").lower() in tmp_model._data.keys()
+                                if k[: len(str(model_count))] == str(model_count)
+                                and tmp_model.has_attr(
+                                    k.replace(f"{model_count}_", "").lower()
+                                )
                             },
                         }
-                        self.models[model][f"{model_number}_{mt_k}"]["Successful"] = (
+                        self.models[model][f"{model_count}_{mt_k}"]["Successful"] = (
                             True
                             if tmp_model.success_flag == 0
                             else tmp_model.success_flag
                         )
-                        model_number += 1
         else:
             for model in range(len(self.models)):
                 loaded_data = self._load_model_data(model=self.models[model]["Model"])
@@ -3443,19 +3488,19 @@ class GridModels:
         grid_iter is a staticmethod that provides an iterable dictionary of parameters that can be used with the
         grid based multiprocessing worker distribution.
         Args:
-            full_parameters: dictionary or list (if model_type == SequentialModel) of the full parameters that will
+            full_parameters: dictionary or list (if model_type == SequentialRunner) of the full parameters that will
                 be used for the model
-            param_keys: list of strings for the parameters that are changing in this GridModels object
-            flattened_grids: list of all the values for the changing parameters for this GridModels object
-            model_type: String of the type of model to use. 'SequentialModel' results in alternative way of executing this
-            phase as each SequentialModel represents multiple models to be run in series.
+            param_keys: list of strings for the parameters that are changing in this GridRunner object
+            flattened_grids: list of all the values for the changing parameters for this GridRunner object
+            model_type: String of the type of model to use. 'SequentialRunner' results in alternative way of executing this
+            phase as each SequentialRunner represents multiple models to be run in series.
 
         Yields:
             Next dictionary containing the parameter values for the model to run in the grid of models. Only offers
                 one model per request.
         """
-        if model_type == "SequentialModel":
-            # As SequentialModel types contain multiple models, sometimes of the same type, we split this type out to
+        if model_type == "SequentialRunner":
+            # As SequentialRunner types contain multiple models, sometimes of the same type, we split this type out to
             # follow altered logic to arrive at equivalently expected outputs.
             for i in range(len(flattened_grids[0])):
                 combo = ()
@@ -3463,11 +3508,11 @@ class GridModels:
                     combo += (flattened_grids[j][i],)
                 yield_dict = {"id": i}
                 # run_list contains the dictionaries of each model to be run in the sequence of models.
-                # This is the SequentialModel sequenced_model_parameters input.
+                # This is the SequentialRunner sequenced_model_parameters input.
                 run_list = []
                 for model_count in range(len(full_parameters)):
                     # run_dict contains all input parameters for a model, not just param_dict, for an individual model
-                    # that is part of the SequentialModel.
+                    # that is part of the SequentialRunner.
                     run_dict = {}
                     for model_type, model_full_parameters in full_parameters[
                         model_count
@@ -3517,10 +3562,11 @@ class GridModels:
 
                 # grid_param_dict contains the param_dict values of the next model to run.
                 grid_param_dict = {
-                    k: v
+                    k: v if type(v) != np.float64 else v.item()
                     for k, v in zip(param_keys, combo)
                     if k in full_parameters["param_dict"]
                 }
+                print(grid_param_dict)
                 # grid_dict is filled with the input parameters of a value, not part of param_dict, for the next model to run
                 grid_dict = {
                     k: v

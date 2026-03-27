@@ -116,7 +116,7 @@ def test_stats_reasonable_values():
 
 
 def test_stats_with_sequential_model():
-    """Test that stats work with SequentialModel (chained stages)."""
+    """Test that stats work with SequentialRunner (chained stages)."""
     config = [
         {
             "Cloud": {
@@ -144,7 +144,7 @@ def test_stats_with_sequential_model():
         },
     ]
 
-    seq_model = uclchem.model.SequentialModel(config)
+    seq_model = uclchem.model.SequentialRunner(config)
 
     # Check both stages have valid stats arrays
     cloud_model_1 = seq_model.models[0]["Model"]
