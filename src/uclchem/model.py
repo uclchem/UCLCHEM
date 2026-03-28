@@ -219,8 +219,8 @@ def load_model(
 
     Args:
         file (str): Path to a file that contains previously run and stored models.
-        name (str, optional): Name of the stored object, if none was provided `default` will have been used. Defaults to 'default'
-        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False.
+        name (str): Name of the stored object, if none was provided `default` will have been used. Defaults to 'default'
+        debug (bool): Flag if extra debug information should be printed to the terminal. Defaults to False.
 
     Returns:
         obj (object): Loaded object that inherited from AbstractModel and has the class of to the model found in the loaded file.
@@ -344,7 +344,6 @@ def _convert_legacy_stopping_param(param_dict: dict) -> dict:
 
 # TODO Add catch of ctrl+c or other aborts so that it saves model and a full output to files of year, month, day, time type.
 class AbstractModel(ABC):
-
     """Base model class used for inheritance only
 
     The AbstractModel class serves as an abstract class from which other model classes can be built. It is not intended
@@ -1989,7 +1988,6 @@ class AbstractModel(ABC):
 
 @register_model
 class Cloud(AbstractModel):
-
     """Cloud model class inheriting from AbstractModel.
 
     Args:
@@ -2087,7 +2085,6 @@ class Cloud(AbstractModel):
 
 @register_model
 class Collapse(AbstractModel):
-
     """Collapse model class inheriting from AbstractModel.
 
     Args:
@@ -2212,7 +2209,6 @@ class Collapse(AbstractModel):
 
 @register_model
 class PrestellarCore(AbstractModel):
-
     """PrestellarCore model class inheriting from AbstractModel. This model type was previously known as hot core.
 
     Args:
@@ -2326,7 +2322,6 @@ class PrestellarCore(AbstractModel):
 
 @register_model
 class CShock(AbstractModel):
-
     """C-Shock model class inheriting from AbstractModel.
 
     Args:
@@ -2449,7 +2444,6 @@ class CShock(AbstractModel):
 
 @register_model
 class JShock(AbstractModel):
-
     """J-Shock model class inheriting from AbstractModel.
 
     Args:
@@ -2555,7 +2549,6 @@ class JShock(AbstractModel):
 
 @register_model
 class Postprocess(AbstractModel):
-
     """Postprocess represents a model class with additional controls. It inherits from AbstractModel.
 
     Postprocess allows for additional controls of the time, density, gas temperature, radiation field, cosmic ray
@@ -2741,7 +2734,6 @@ class Postprocess(AbstractModel):
 
 @register_model
 class Model(AbstractModel):
-
     """Model, like Postprocess, represents a model class with additional controls. It inherits from AbstractModel.
 
     Model follows the same logic as Postprocess but without the coldens Arguments. It allows for additional controls of
@@ -2892,7 +2884,6 @@ class Model(AbstractModel):
 
 @register_model
 class SequentialModel:
-
     """The SequentialModel class allows for multiple models to be run back to back.
 
     By defining a specific dictionary to hold the information of each model class to run in sequence, SewuentialModel allows
@@ -3090,7 +3081,6 @@ def _run_grid_model(model_id, model_type, pending_model, log_dir=None):
 
 
 class GridModels:
-
     """GridModels, like SequentialModel is not an actual uclchem model, instead it allows running multiple models on a grid of parameter space.
 
     Args:

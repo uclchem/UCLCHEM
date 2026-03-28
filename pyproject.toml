@@ -47,4 +47,4 @@ pycodestyle.max-doc-length = 100
 # E402: Module level import not at top of file - normal for notebook-derived files
 "notebooks/*.py" = ["E402"]
 "*/__init__.py" = ["F401"]
-"tests/*" = ["ANN001", "ANN201", "D"]
+"tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002"]
