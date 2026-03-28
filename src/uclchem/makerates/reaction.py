@@ -7,7 +7,8 @@ from contextlib import contextmanager
 from copy import deepcopy
 from typing import Any
 
-from uclchem.makerates.species import Species, elementList, elementMass, species_header
+from uclchem.makerates.species import (Species, elementList, elementMass,
+                                       species_header)
 
 # Global flag for validation control
 _skip_reaction_validation = False
@@ -68,6 +69,19 @@ tunneling_reaction_types = [
 ]
 
 
+def convert_falsy_to_nan_string(a: Any) -> Any | str:
+    """Convert any Falsy statement to a NAN string.
+
+    Args:
+        a: thing to check for falsiness
+
+    Returns:
+        Any | str: input a if truthy, otherwise "NAN"
+
+    """
+    return a if a else "NAN"
+
+
 class Reaction:
     def __init__(
         self, inputRow: list[str] | Reaction, reaction_source: str | None = None
@@ -105,15 +119,15 @@ class Reaction:
                     [
                         str(inputRow[0]).upper(),
                         str(inputRow[1]).upper(),
-                        self.NANCheck(str(inputRow[2])).upper(),
+                        convert_falsy_to_nan_string(str(inputRow[2])).upper(),
                     ]
                 )
                 self.set_products(
                     [
-                        self.NANCheck(str(inputRow[3])).upper(),
-                        self.NANCheck(str(inputRow[4])).upper(),
-                        self.NANCheck(str(inputRow[5])).upper(),
-                        self.NANCheck(str(inputRow[6])).upper(),
+                        convert_falsy_to_nan_string(str(inputRow[3])).upper(),
+                        convert_falsy_to_nan_string(str(inputRow[4])).upper(),
+                        convert_falsy_to_nan_string(str(inputRow[5])).upper(),
+                        convert_falsy_to_nan_string(str(inputRow[6])).upper(),
                     ]
                 )
                 if not _skip_reaction_validation:
@@ -490,18 +504,6 @@ class Reaction:
         return self._reduced_mass
 
     # C
-
-    def NANCheck(self, a: Any) -> Any | str:
-        """Convert any Falsy statement to a NAN string.
-
-        Args:
-            a: thing to check for falsiness
-
-        Returns:
-            Any | str: input a if truthy, otherwise "NAN"
-
-        """
-        return a if a else "NAN"
 
     def get_reaction_type(self) -> str:
         """Get the type of a reaction from the reactants.
