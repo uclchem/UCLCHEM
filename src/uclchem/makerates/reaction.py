@@ -7,8 +7,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from typing import Any
 
-from uclchem.makerates.species import (Species, elementList, elementMass,
-                                       species_header)
+from uclchem.makerates.species import Species, elementList, elementMass, species_header
 
 # Global flag for validation control
 _skip_reaction_validation = False
