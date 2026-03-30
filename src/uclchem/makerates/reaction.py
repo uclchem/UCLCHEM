@@ -1,3 +1,5 @@
+"""UCLCHEM Reaction."""
+
 from __future__ import annotations
 
 import logging
@@ -82,6 +84,8 @@ def convert_falsy_to_nan_string(a: Any) -> Any | str:
 
 
 class Reaction:
+    """Representation of reactions."""
+
     def __init__(
         self, inputRow: list[str] | Reaction, reaction_source: str | None = None
     ):
@@ -90,7 +94,11 @@ class Reaction:
         Args:
             inputRow (list[str] | Reaction): Either a Reaction object to copy,
                 or a list/array with reaction data
-            reaction_source (str | None): Optional source identifier for the reaction
+            reaction_source (str | None): Optional source identifier for the reaction.
+                Default = None.
+
+        Raises:
+            ValueError: If the length of `inputRow` is not long enough.
 
         Note:
             Validation can be disabled using the skip_validation() context manager.
@@ -210,8 +218,8 @@ class Reaction:
         """Get the four reactants present in the reaction,
         sorted for fast comparisons.
 
-        Args:
-            reactants (list[str]): The four sorted reactant names
+        Returns:
+            list[str]: The four sorted reactant names
 
         """
         return self._sorted_reactants
@@ -232,8 +240,8 @@ class Reaction:
         """Get the four products present in the reaction,
         padded with NAN for nonexistent entries.
 
-        Args:
-            reactants (list[str]): The four products names
+        Returns:
+            list[str]: The four products names
 
         """
         return self._products[:]
@@ -260,8 +268,8 @@ class Reaction:
         """Get the four products present in the reaction,
         sorted for fast comparisons.
 
-        Args:
-            products (list[str]): The four sorted products names
+        Returns:
+            list[str]: The four sorted products names
 
         """
         return self._sorted_products
@@ -567,7 +575,7 @@ class Reaction:
         """Check the conservation of elements.
 
         Raises:
-            ValueError if the elements are not conserved by the reaction.
+            ValueError: If the elements are not conserved by the reaction.
 
         """
         if self.get_reaction_type() in ["FREEZE", "DESORB"]:
@@ -606,7 +614,7 @@ class Reaction:
         absorb/release electrons, so they are ignored.
 
         Raises:
-            ValueError if charge is not conserved by the reaction.
+            ValueError: If charge is not conserved by the reaction.
 
         """
         # Grain reactions don't need to conserve charge (grains can absorb/release electrons)
@@ -952,6 +960,12 @@ class Reaction:
 
 
 class CoupledReaction(Reaction):
+    """Representation of reactions that are coupled to another Reaction instance.
+    This means that if a reaction has a parameter changed by, for example,
+    `network.change_binding_energy()`, every CoupledReaction that has that instance
+    as its partner also has its binding energy changed to that value.
+    """
+
     def __init__(self, input: list[str] | Reaction):
         super().__init__(input)
         self.partner = None
@@ -962,7 +976,14 @@ class CoupledReaction(Reaction):
         Args:
             partner (Reaction): partner of this reaction.
 
+        Raises:
+            TypeError: if `parter` is not an instance of a `Reaction`.
+
         """
+        if not isinstance(partner, Reaction):
+            raise TypeError(
+                f"partner should be of type Reaction, but got type {type(partner)}"
+            )
         self.partner = partner
 
     def get_partner(self) -> Reaction:

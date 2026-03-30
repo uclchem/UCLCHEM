@@ -1,3 +1,5 @@
+"""UCLCHEM MakeRates."""
+
 import logging
 import os
 from pathlib import Path
@@ -40,8 +42,7 @@ def run_makerates(
         network (Network): A validated chemical network instance.
 
     Raises:
-        ValidationError: If configuration is invalid
-        FileNotFoundError: If required files are missing
+        ValueError: If `coolants_file` is a directory, and not a path to a file.
 
     """
     # Load and validate configuration using Pydantic

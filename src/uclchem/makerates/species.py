@@ -1,3 +1,5 @@
+"""UCLCHEM Species."""
+
 from __future__ import annotations
 
 import logging
@@ -112,7 +114,6 @@ def sanitize_input_float(row: list[Any], index: int, default: Any = 0.0) -> floa
 
 
 class Species:
-
     """Species is a class that holds all the information about an individual species in the
     network. It also has convenience functions to check whether the species is a gas or grain
     species and to help compare between species.
@@ -339,6 +340,10 @@ class Species:
         Returns:
             list[str]: The desorption products
 
+        Raises:
+            AttributeError: If the species has no attribute `desorb_products`.
+                This can occur if the species is a gas-phase species.
+
         """
         if not hasattr(self, "desorb_products"):
             raise AttributeError(f"Species {self} has no attribute 'desorb_products'")
@@ -361,9 +366,6 @@ class Species:
 
     def get_freeze_products(self) -> Iterator[dict[list[str], float]]:
         """Obtain the product to which the species freeze out.
-
-        Returns:
-            dict[str, float]: Reactions and their respective freeze out ratios.
 
         Yields:
             Iterator[dict[str, float]]: Iterator that returns all of the
@@ -475,6 +477,13 @@ class Species:
         """Loop through the species' name and work out what its consituent
         atoms are. Then calculate mass and alert user if it doesn't match
         input mass.
+
+        Returns:
+            counter (Counter): Counter of how many times each element is in the molecule.
+
+        Raises:
+            ValueError: If the molecular formula is not valid, for example it has an
+                element not in the element list, has no closing bracket, or starts with a digit.
         """
         # Adapted from https://github.com/uclchem/UCLCHEM/blob/main/src/uclchem/makerates/species.py
         name = self.name
@@ -580,6 +589,10 @@ class Species:
 
         Order: NAME,MASS,BINDING_ENERGY,SOLID_FRACTION,MONO_FRACTION,VOLCANO_FRACTION,ENTHALPY,
                DESORPTION_PREF,DIFFUSION_BARRIER,DIFFUSION_PREF,Ix,Iy,Iz,SYMMETRYFACTOR
+
+        Returns:
+            str: String with species values shown in format shown above.
+
         """
         return f"{self.get_name()},{self.get_mass()},{self.get_binding_energy()},{self.get_solid_fraction()},{self.get_mono_fraction()},{self.get_volcano_fraction()},{self.get_enthalpy()},{self.get_vdes()},{self.get_diffusion_barrier()},{self.get_vdiff()},{self.get_Ix()},{self.get_Iy()},{self.get_Iz()},{self.get_symmetry_factor()}"
 
@@ -595,7 +608,7 @@ class Species:
     def get_vdes(self) -> float:
         """Get the desorption prefactor.
 
-        Args:
+        Returns:
             float: The desorption prefactor in s-1
 
         """
@@ -606,7 +619,7 @@ class Species:
 
         Alias getter matching CSV column name `desorption_pref`.
 
-        Args:
+        Returns:
             float: The desorption prefactor in s-1
 
         """
@@ -624,7 +637,7 @@ class Species:
     def get_vdiff(self) -> float:
         """Get the diffusion prefactor.
 
-        Args:
+        Returns:
             float: The diffusion prefactor in s-1
 
         """
@@ -635,7 +648,7 @@ class Species:
 
         Alias getter matching CSV column name `diffusion_pref`.
 
-        Args:
+        Returns:
             float: The diffusion prefactor in s-1
 
         """
@@ -644,7 +657,7 @@ class Species:
     def get_Ix(self) -> float:
         """Set the moment of inertia along the first principal axis.
 
-        Args:
+        Returns:
             float: moment of inertia in amu/Angstrom^2
 
         """
@@ -653,7 +666,7 @@ class Species:
     def get_Iy(self) -> float:
         """Set the moment of inertia along the second principal axis.
 
-        Args:
+        Returns:
             float: moment of inertia in amu/Angstrom^2
 
         """
@@ -662,7 +675,7 @@ class Species:
     def get_Iz(self) -> float:
         """Set the moment of inertia along the third principal axis.
 
-        Args:
+        Returns:
             float: moment of inertia in amu/Angstrom^2
 
         """
@@ -671,7 +684,7 @@ class Species:
     def get_symmetry_factor(self) -> int:
         """Get the symmetry factor of the species.
 
-        Args:
+        Returns:
             int: Symmetry factor
 
         """

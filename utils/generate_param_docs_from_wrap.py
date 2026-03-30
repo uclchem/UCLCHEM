@@ -160,7 +160,7 @@ def get_parameter_info() -> dict[str, tuple[Any, str, str]]:
     return params
 
 
-def categorize_parameters(params: dict[str, tuple[Any, str, str]]) -> dict[str, list]:
+def categorize_parameters(params: dict[str, tuple[Any, str, str]]) -> dict[str, list]:  # noqa: ARG001
     """Organize parameters into logical categories.
 
     Args:

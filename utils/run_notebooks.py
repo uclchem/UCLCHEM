@@ -23,6 +23,9 @@ def get_python_executable() -> str:
     Returns:
         str: Path to python executable
 
+    Raises:
+        RuntimeError: If no valid python executable can be found.
+
     """
     # Try sys.executable first
     if os.path.exists(sys.executable):
@@ -193,6 +196,10 @@ def run_all_notebooks(notebooks_dir: str) -> None:
 
     Args:
         notebooks_dir (str): directory with notebooks.
+
+    Raises:
+        RuntimeError: If the ipykernel cannot be installed.
+        KeyboardInterrupt: If the user presses Ctrl+c to interrupt the notebooks.
 
     """
     python_exec = get_python_executable()

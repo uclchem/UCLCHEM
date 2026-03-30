@@ -6,7 +6,7 @@ import fileinput
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import yaml
@@ -92,6 +92,9 @@ def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Specie
         species_list (list[Species]): List of Species objects
         user_defined_bulk (list[Species]): List of user defined bulk species
 
+    Raises:
+        IndexError: If there is an error parsing a line in the file.
+
     """
     species_list = []
     # list to hold user defined bulk species (for adjusting binding energy)
@@ -113,9 +116,9 @@ def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Specie
 
 
 def read_reaction_file(
-    file_name: Path, species_list: list[Species], ftype: str
+    file_name: Path, species_list: list[Species], ftype: Literal["UMIST", "KIDA", "UCL"]
 ) -> tuple[list[Reaction], list[Reaction]]:
-    """Read in a reaction file of any kind (user, UMIST, KIDA), and
+    """Read in a reaction file of any kind (UCL, UMIST, KIDA), and
     produces a list of reactions for the network, filtered by species_list.
 
     Args:
@@ -126,6 +129,9 @@ def read_reaction_file(
     Returns:
         reactions (list[Reaction]): List of kept reactions.
         dropped_reactions (list[Reaction]): List of dropped reactions.
+
+    Raises:
+        ValueError: If reaction file type is not one of ["UMIST", "UCL", "KIDA"].
 
     """
     reactions = []
@@ -179,6 +185,10 @@ def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
 
     Returns:
         bool: Whether the row contains acceptable entries.
+
+    Raises:
+        ValueError: If custom desorb or freeze reactions contain species not in the
+            species list.
 
     """
     if all(x.upper() in keep_list for x in reaction_row[0:7]):
@@ -284,14 +294,21 @@ def read_grain_assisted_recombination_file(file_name: str | Path) -> dict[str, n
     return gar_parameters
 
 
-def read_coolants_file(file_name: Path) -> list[dict]:
+def read_coolants_file(file_name: str | Path) -> list[dict]:
     """Read a YAML file specifying coolants.
 
     The file should contain either a single mapping or a list of mappings where each
     mapping contains 'file' and 'name' keys. 'file' must be a bare filename (no path).
 
+    Args:
+        file_name (str | Path): Path to coolants file.
+
     Returns:
         list[dict]: Normalized list of coolant dicts.
+
+    Raises:
+        ValueError: If the yaml-parsed data is not a dictionary, or list of dictionaries.
+        ValueError: If the "file" entries in coolants_file are not bare filenames.
 
     """
     with open(file_name) as fh:
@@ -384,6 +401,13 @@ def write_outputs(
             use default list of coolants. See `get_default_coolants().`
         coolant_data_dir (str | Path): User-specified directory from config.
             If empty, searches standard locations relative to CWD.
+
+    Raises:
+        ValueError: If coolants entries do not have a key "file" or the file names are
+            not bare file names.
+        ValueError: If coolants start with "o-" or "p-" for ortho and para, but no
+            `conversion_factor` is given in the dictionary.
+        ValueError: If coolants have parent species specified that are not in the network.
 
     """
     if output_dir is None:
@@ -1111,6 +1135,13 @@ def write_evap_lists(network_file: str | Path, species_list: list[Species]) -> i
     Args:
         network_file (file): Open file object to which the network code is being written
         species_list (list[Species]): List of species in network
+
+    Returns:
+        int: number of ice species
+
+    Raises:
+        NameError: If a species desorbs as another species that is not in the species
+            list.
 
     """
     gasIceList = []

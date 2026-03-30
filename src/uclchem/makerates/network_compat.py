@@ -37,6 +37,9 @@ def Network(
     Returns:
         Network: Network instance created via build_network()
 
+    Raises:
+        ValueError: If `species` or `reactions` is None.
+
     Examples:
         >>> # Old style (deprecated)
         >>> network = Network(species, reactions, gas_phase_extrapolation=True)
@@ -65,7 +68,6 @@ def Network(
 
 
 class LoadedNetwork:
-
     """Backward compatible LoadedNetwork class.
 
     This class provides compatibility with the old LoadedNetwork API.
@@ -91,6 +93,10 @@ class LoadedNetwork:
             reactions: List of Reaction objects (use with species)
             species_filepath: Path to species CSV (use with reactions_filepath)
             reactions_filepath: Path to reactions CSV (use with species_filepath)
+
+        Raises:
+            ValueError: If both `species` and `reactions` and file paths are specified,
+                or if only species or reactions is provided.
 
         Returns:
             Network: Network instance created via appropriate factory method
@@ -151,7 +157,6 @@ class LoadedNetwork:
 
 
 class NetworkState:
-
     """Backward compatible NetworkState class.
 
     This class provides compatibility with the old NetworkState API from

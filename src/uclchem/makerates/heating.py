@@ -6,6 +6,7 @@ databases or custom CSV files with various units.
 
 import logging
 import re
+from pathlib import Path
 
 import pandas as pd
 
@@ -78,6 +79,9 @@ def _parse_unit(unit: str) -> float:
     Returns:
         Conversion factor to erg per reaction
 
+    Raises:
+        ValueError: If there is an unknown unit, or it cannot be parsed.
+
     """
     unit_lower = unit.strip().lower()
 
@@ -144,12 +148,12 @@ def match_reaction(
     """Find matching reaction in list.
 
     Args:
-        reactants: List of reactant names
-        products: List of product names
-        reactions: List to search
+        reactants (list[str]): List of reactant names
+        products (list[str]): List of product names
+        reactions (list[Reaction]): List to search
 
     Returns:
-        Matching Reaction or None
+        Reaction | None: Matching Reaction or None
 
     """
     sorted_r = sorted(reactants)
@@ -164,16 +168,19 @@ def match_reaction(
     return None
 
 
-def load_custom_exothermicities(csv_path: str) -> pd.DataFrame:
+def load_custom_exothermicities(csv_path: str | Path) -> pd.DataFrame:
     """Load custom exothermicities from CSV.
 
     Expected columns: reactant1-3, product1-4, exothermicity, unit
 
     Args:
-        csv_path: Path to CSV file
+        csv_path (str | Path): Path to CSV file
 
     Returns:
-        DataFrame with custom exothermicities
+        df (pd.DataFrame): DataFrame with custom exothermicities
+
+    Raises:
+        ValueError: If the csv is missing certain columns.
 
     """
     df = pd.read_csv(csv_path, comment="#")

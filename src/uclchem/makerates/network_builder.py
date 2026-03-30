@@ -20,7 +20,6 @@ from .species import Species, elementList
 
 
 class NetworkBuilder:
-
     """Builder for constructing complex chemical networks.
 
     Handles all build-time operations:
@@ -69,13 +68,12 @@ class NetworkBuilder:
             database_reaction_exothermicity: Custom exothermicity database files
 
         Raises:
-            AssertionError: If duplicate species are provided
+            ValueError: If duplicate species are provided.
 
         """
         # Validate inputs
-        assert len({s.get_name() for s in species}) == len(species), (
-            "Cannot have duplicate species in the species list."
-        )
+        if not len({s.get_name() for s in species}) == len(species):
+            raise ValueError("Cannot have duplicate species in the species list.")
 
         # Store inputs
         self.input_species = species
@@ -365,6 +363,9 @@ class NetworkBuilder:
         """Copy all surface species to the bulk. Their binding energies and diffusion barriers
         are set to those of H2O, to mimic Ghesquire et al, 2015
         (https://doi.org/10.1039/C5CP00558B).
+
+        Raises:
+            RuntimeError: If #H2O is not in the network.
         """
         logging.debug("Adding bulk species")
         speciesNames = [species.get_name() for species in self.network.get_species_list()]
@@ -894,7 +895,12 @@ class NetworkBuilder:
         )
 
     def _get_reactions_on_grain(self) -> list[Reaction]:
-        """Get all reactions that occur on grain surfaces (# prefix) or in bulk (@prefix)."""
+        """Get all reactions that occur on grain surfaces (# prefix) or in bulk (@prefix).
+
+        Returns:
+            reactions_on_grain (list[Reaction]): All reactions occuring on the grain.
+
+        """
         reactions_on_grain = []
         for reaction in self.network.get_reaction_list():
             reactants = reaction.get_reactants()
@@ -996,6 +1002,10 @@ class NetworkBuilder:
     def _index_important_reactions(self) -> None:
         """We have a whole bunch of important reactions and we want to store
         their indices. We find them all here.
+
+        Raises:
+            RuntimeError: If an important reaction is found twice, or one of the important reactions
+                is not found.
         """
         # Any None values in dictionary will raise an error
         # therefore these reactions are mandatory and

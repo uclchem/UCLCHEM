@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class MakeratesConfig(BaseModel):
-
     """Configuration for UCLCHEM Makerates chemical network generation.
 
     This class validates all configuration parameters and provides sensible
@@ -223,7 +222,15 @@ class MakeratesConfig(BaseModel):
     )
     @classmethod
     def normalize_to_list(cls, v: str | Path | list | None) -> list[str | Path] | None:
-        """Convert single values to lists for consistent handling."""
+        """Convert single values to lists for consistent handling.
+
+        Args:
+            v (str | Path | list | None): variable to make consistent.
+
+        Returns:
+            list[str | Path] | None: list of strings or paths, or None if v is None
+
+        """
         if v is None:
             return v
         if isinstance(v, str | Path):
@@ -233,34 +240,59 @@ class MakeratesConfig(BaseModel):
     @field_validator("coolants_file", mode="before")
     @classmethod
     def normalize_coolants_file(cls, v: str | Path | None) -> Path | None:
-        """Normalize a single coolant file path to a Path object."""
+        """Normalize a single coolant file path to a Path object.
+
+        Args:
+            v (str | Path | None): string to normalize
+
+        Returns:
+            Path | None: Path instance, or None if v is None
+
+        Raises:
+            TypeError: If coolants_file is not a string or Path instance.
+
+        """
         if v is None:
             return v
-        from pathlib import Path as _Path
 
-        if isinstance(v, str | _Path):
-            return _Path(v)
-        raise ValueError("coolants_file must be a path to a YAML file listing coolants")
+        if not isinstance(v, str | Path):
+            raise TypeError(
+                "coolants_file must be a path to a YAML file listing coolants"
+            )
+        return Path(v)
 
     @field_validator("coolants", mode="before")
     @classmethod
     def validate_coolants(cls, v: list[dict[str, str]] | None) -> list[dict[str, str]]:
-        """Validate inline coolants format."""
+        """Validate inline coolants format.
+
+        Args:
+            v (list[dict[str,str]] | None): variable to make consistent
+
+        Returns:
+            validated (list[dict[str,str]]): list of validated coolant dictionaries
+
+        Raises:
+            TypeError: If v is not a list of dictionaries.
+            KeyError: If entries in v do not contain keys 'file' and 'name'
+            ValueError: If entries in v with keys 'file' are not bare file names.
+
+        """
         if v is None:
             return v
         if not isinstance(v, list):
-            raise ValueError("coolants must be a list of dicts")
+            raise TypeError("coolants must be a list of dicts")
 
         from pathlib import Path as _Path
 
         validated = []
         for i, item in enumerate(v):
             if not isinstance(item, dict):
-                raise ValueError(
+                raise TypeError(
                     f"coolants[{i}] must be a dict with 'file' and 'name' keys"
                 )
             if "file" not in item or "name" not in item:
-                raise ValueError(
+                raise KeyError(
                     f"coolants[{i}] must contain 'file' and 'name' keys. Got: {list(item.keys())}"
                 )
             # Validate that file is a bare filename (no path)
@@ -297,7 +329,17 @@ class MakeratesConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_reaction_files_and_types(self) -> MakeratesConfig:
-        """Ensure reaction files and types are consistent."""
+        """Ensure reaction files and types are consistent.
+
+        Raises:
+            ValueError: If the length of reaction files and reaction file types is
+                not the same
+            ValueError: If `custom_reaction_type` is not specified but
+                `custom_reaction_file` is.
+
+        Returns:
+            MakeRatesConfig: validated MakeRatesConfig.
+        """
         # Check database files and types match
         db_files = self.database_reaction_file
         db_types = self.database_reaction_type
@@ -327,7 +369,15 @@ class MakeratesConfig(BaseModel):
 
     @model_validator(mode="after")
     def check_three_phase_deprecation(self) -> MakeratesConfig:
-        """Raise error if three_phase is explicitly set to False."""
+        """Raise error if three_phase is explicitly set to False.
+
+        Returns:
+            MakeRatesConfig: validated MakeRatesConfig.
+
+        Raises:
+            ValueError: If three_phase is False.
+
+        """
         if self.three_phase is False:
             raise ValueError(
                 "three_phase=False is deprecated as of UCLCHEM v3.5.0. "
@@ -338,7 +388,11 @@ class MakeratesConfig(BaseModel):
 
     @model_validator(mode="after")
     def auto_enable_rates_storage(self) -> MakeratesConfig:
-        """Automatically enable rates storage if needed for exothermicity."""
+        """Automatically enable rates storage if needed for exothermicity.
+
+        Returns:
+            MakeRatesConfig: validated MakeRatesConfig.
+        """
         if self.database_reaction_exothermicity or self.derive_reaction_exothermicity:
             if not self.enable_rates_storage:
                 logging.warning(
@@ -351,7 +405,15 @@ class MakeratesConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_coolants_mutual_exclusion(self) -> MakeratesConfig:
-        """Ensure coolants and coolants_file are mutually exclusive."""
+        """Ensure coolants and coolants_file are mutually exclusive.
+
+        Returns:
+            MakeRatesConfig: validated MakeRatesConfig.
+
+        Raises:
+            ValueError: If both `coolants` and `coolants_file` are specified.
+
+        """
         if self.coolants is not None and self.coolants_file is not None:
             raise ValueError(
                 "Cannot specify both 'coolants' and 'coolants_file'. "
@@ -377,7 +439,6 @@ class MakeratesConfig(BaseModel):
             Validated MakeratesConfig instance
 
         Raises:
-            ValidationError: If configuration is invalid
             FileNotFoundError: If config file doesn't exist
 
         """
