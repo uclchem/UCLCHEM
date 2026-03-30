@@ -1,4 +1,4 @@
-"""UCLCHEM Advanced Module
+"""UCLCHEM Advanced Module.
 
 Runtime configuration and introspection for UCLCHEM's Fortran modules.
 

@@ -9,11 +9,12 @@ from uclchemwrap import uclchemwrap as wrap
 
 import uclchem
 from uclchem.analysis import total_element_abundance
+from uclchem.constants import default_elements_to_check
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
 
 def test_ode_conservation(
-    element_list: list[str] = ["H", "N", "C", "O"],
+    element_list: list[str] | None = None,
 ) -> dict[str, float]:
     """Test whether the ODEs conserve elements. Useful to run each time you change network.
     Integrator errors may still cause elements not to be conserved but they cannot be conserved
@@ -21,13 +22,16 @@ def test_ode_conservation(
 
     Args:
         element_list (list[str]): A list of elements for which to check the conservation.
-            Defaults to ["H", "N", "C", "O"].
+            If None, use `uclchem.constants.default_elements_to_check`. Default = None.
 
     Returns:
         result (dict[str, float]): A dictionary of the elements in element list with values
             representing the total rate of change of each element.
 
     """
+    if element_list is None:
+        element_list = default_elements_to_check
+
     species_list = np.loadtxt(
         UCLCHEM_ROOT_DIR / "species.csv",
         usecols=[0],

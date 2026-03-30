@@ -10,11 +10,14 @@ and optionally to a per-model log file on disk in real time.
 import os
 import sys
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
 
-def _reader_thread(read_fd, saved_stdout_fd, prefix, log_file):
+def _reader_thread(
+    read_fd: int, saved_stdout_fd: int, prefix: str, log_file: str | Path | None
+):
     """Read from pipe and stream each line to terminal and log.
 
     Uses raw os.read() to bypass all Python IO buffering.
@@ -67,7 +70,9 @@ def _reader_thread(read_fd, saved_stdout_fd, prefix, log_file):
 
 
 @contextmanager
-def capture_fortran_output(label="", log_file=None):
+def capture_fortran_output(
+    label: str = "", log_file: str | Path | None = None
+) -> Iterator[None]:
     """Capture Fortran output, stream to terminal and file.
 
     Redirects OS-level file descriptors 1 and 2 to a pipe.
@@ -75,17 +80,18 @@ def capture_fortran_output(label="", log_file=None):
     in real time and optionally writes to a per-model log file.
 
     Args:
-        label: Identifier prepended to terminal lines.
-        log_file: Per-model log file path. Only created
-            if there is at least one line of output.
+        label (str): Identifier prepended to terminal lines.
+        log_file (str | Path | None): Per-model log file path.
+            Only created if there is at least one line of output. Default = None.
 
-    Usage::
+    Yields: None
 
-        with capture_fortran_output(
-            label="model_3",
-            log_file="logs/model_3.log",
-        ):
-            result = wrap.cloud(...)
+    Example:
+        >>> with capture_fortran_output(
+        >>>     label="model_3",
+        >>>     log_file="logs/model_3.log",
+        >>> ):
+        >>>     result = wrap.cloud(...)
 
     """
     # Flush Python buffers before redirecting

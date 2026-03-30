@@ -179,3 +179,5 @@ default_param_dictionary = {
     "freq_rel_tol": float(getattr(f2py_constants, "suggested_freq_rel_tol", 0.1)),
     "pop_rel_tol": 0.1,
 }
+
+default_elements_to_check: list[str] = ["H", "N", "C", "O"]

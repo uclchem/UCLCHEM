@@ -12,6 +12,7 @@ Note: Changes made through HeatingSettings affect the global Fortran state and p
 across model runs in the same Python session.
 """
 
+from pathlib import Path
 
 import numpy as np
 import uclchemwrap
@@ -20,7 +21,6 @@ from uclchemwrap import heating as heating_module
 
 
 class HeatingSettings:
-
     """Class-based wrapper for UCLCHEM heating and cooling configuration.
 
     This class provides access to the heating and cooling mechanism controls,
@@ -138,7 +138,7 @@ class HeatingSettings:
             # Functions not yet exposed, use default value
             self._default_coolant_restart_mode = 0  # WARM mode
 
-    def set_heating_mechanism(self, mechanism_id: int, enabled: bool = True):
+    def set_heating_mechanism(self, mechanism_id: int, enabled: bool = True) -> None:
         """Enable or disable a specific heating mechanism.
 
         For mechanisms with multiple implementations (like PHOTOELECTRIC),
@@ -148,6 +148,10 @@ class HeatingSettings:
             mechanism_id: Index of the heating mechanism (1-9). Use class
                 constants (e.g., self.PHOTOELECTRIC['BAKES'], self.H2_FORMATION)
             enabled: True to enable, False to disable. Default: True
+
+        Raises:
+            ValueError: If mechanism_id is not between 1 and the number of heating
+                mechanisms.
 
         Example:
             >>> settings = HeatingSettings()
@@ -173,7 +177,7 @@ class HeatingSettings:
         # Now set the requested mechanism
         self._heating_module.heating_modules[mechanism_id - 1] = enabled
 
-    def set_coolant_active(self, coolant_name: str, enabled: bool = True):
+    def set_coolant_active(self, coolant_name: str, enabled: bool = True) -> None:
         """Enable or disable a specific line coolant species.
 
         This controls individual coolant species within the molecular
@@ -182,9 +186,9 @@ class HeatingSettings:
         and its cooling contribution is set to zero.
 
         Args:
-            coolant_name: Name of the coolant species (e.g. "CO", "C+",
+            coolant_name (str): Name of the coolant species (e.g. "CO", "C+",
                 "p-H2"). Use get_coolant_active() to see available names.
-            enabled: True to enable, False to disable. Default: True
+            enabled (bool): True to enable, False to disable. Default: True
 
         Raises:
             ValueError: If coolant_name is not found in the network.
@@ -203,7 +207,7 @@ class HeatingSettings:
             idx = names.index(coolant_name)
         except ValueError:
             raise ValueError(
-                f"Coolant '{coolant_name}' not found. " f"Available coolants: {names}"
+                f"Coolant '{coolant_name}' not found. Available coolants: {names}"
             )
         self._f2py_constants_module.coolant_active[idx] = enabled
 
@@ -229,13 +233,17 @@ class HeatingSettings:
             for i, name in enumerate(names)
         }
 
-    def set_cooling_mechanism(self, mechanism_id: int, enabled: bool = True):
+    def set_cooling_mechanism(self, mechanism_id: int, enabled: bool = True) -> None:
         """Enable or disable a specific cooling mechanism.
 
         Args:
-            mechanism_id: Index of the cooling mechanism (1-5). Use class
+            mechanism_id (int): Index of the cooling mechanism (1-5). Use class
                 constants (e.g., self.ATOMIC_LINE_COOLING)
-            enabled: True to enable, False to disable. Default: True
+            enabled (bool): True to enable, False to disable. Default: True
+
+        Raises:
+            ValueError: If mechanism_id is not between 1 and the number of cooling
+                mechanisms.
 
         Example:
             >>> settings = HeatingSettings()
@@ -292,13 +300,16 @@ class HeatingSettings:
             for i, label in enumerate(labels)
         }
 
-    def set_dust_gas_coupling_method(self, method: int):
+    def set_dust_gas_coupling_method(self, method: int) -> None:
         """Set the dust-gas temperature coupling method.
 
         Args:
             method: Coupling method to use:
                 - 1 (DUST_TEMP_HOCUK): Hocuk et al. 2017
                 - 2 (DUST_TEMP_HOLLENBACH): Hollenbach 1991
+
+        Raises:
+            ValueError: If method is not one of `[1, 2]`.
 
         Example:
             >>> settings = HeatingSettings()
@@ -318,14 +329,17 @@ class HeatingSettings:
         """
         return self._heating_module.dust_gas_coupling_method
 
-    def set_line_solver_attempts(self, attempts: int):
+    def set_line_solver_attempts(self, attempts: int) -> None:
         """Set the number of line cooling solver iterations.
 
         The line cooling is computed multiple times and the median is used.
 
         Args:
-            attempts: Number of solver attempts (odd number recommended).
+            attempts (int): Number of solver attempts (odd number recommended).
                 Default is 5. Recommended range: 3-11.
+
+        Raises:
+            ValueError: If attempts is less than 1.
 
         Example:
             >>> settings = HeatingSettings()
@@ -352,11 +366,14 @@ class HeatingSettings:
         """
         return self._heating_module.line_solver_attempts
 
-    def set_pah_abundance(self, abundance: float):
+    def set_pah_abundance(self, abundance: float) -> None:
         """Set the PAH (Polycyclic Aromatic Hydrocarbon) abundance.
 
         Args:
             abundance: PAH abundance relative to hydrogen. Default: 6e-7
+
+        Raises:
+            ValueError: if abundance is smaller than 0
 
         Example:
             >>> settings = HeatingSettings()
@@ -376,14 +393,14 @@ class HeatingSettings:
         """
         return self._heating_module.pahabund
 
-    def set_coolant_directory(self, directory: str):
+    def set_coolant_directory(self, directory: str | Path) -> None:
         """Set the directory containing collisional rate data files.
 
         This directory must contain the LAMDA-format collisional rate files
         (e.g., co.dat, o-h2.dat, etc.) used for molecular line cooling calculations.
 
         Args:
-            directory: Path to directory containing LAMDA-format rate files.
+            directory (str | Path): Path to directory containing LAMDA-format rate files.
                       Must end with '/'. Max 255 characters.
 
         Raises:
@@ -425,11 +442,14 @@ class HeatingSettings:
         return str(np.char.decode(self._f2py_constants_module.coolantdatadir)).strip()
 
     # TODO: refactor once Fortran is exposed
-    def set_coolant_restart_mode(self, mode: int):
+    def set_coolant_restart_mode(self, mode: int) -> None:
         """Set the coolant population restart mode.
 
         Args:
             mode: Restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND)
+
+        Raises:
+            ValueError: If mode is not one of `[0, 1, 2]`.
 
         Example:
             >>> settings = HeatingSettings()
@@ -439,9 +459,9 @@ class HeatingSettings:
         if mode not in [0, 1, 2]:
             raise ValueError(f"mode must be 0, 1, or 2, got {mode}")
         self._uclchemwrap.uclchemwrap.set_coolant_restart_mode_wrap(mode)
-        assert (
-            self.get_coolant_restart_mode() == mode
-        ), "Failed to set coolant restart mode"
+        assert self.get_coolant_restart_mode() == mode, (
+            "Failed to set coolant restart mode"
+        )
 
     # TODO: refactor once Fortran is exposed
     def get_coolant_restart_mode(self) -> int:
@@ -453,7 +473,7 @@ class HeatingSettings:
         """
         return self._uclchemwrap.uclchemwrap.get_coolant_restart_mode_wrap()
 
-    def reset_to_defaults(self):
+    def reset_to_defaults(self) -> None:
         """Reset all heating and cooling mechanisms to their initial values.
 
         Restores the configuration that was present when this HeatingSettings
@@ -481,7 +501,7 @@ class HeatingSettings:
                 self._default_coolant_restart_mode
             )
 
-    def print_configuration(self):
+    def print_configuration(self) -> None:
         """Print the current heating and cooling configuration.
 
         Example:

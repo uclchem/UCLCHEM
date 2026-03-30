@@ -1,14 +1,18 @@
 """The UCLCHEM python module is divided into several parts.
 `model` contains the functions for running chemical models under different physics.
-`analysis` contains functions for reading and plotting output files as well as investigating the chemistry.
-`advanced` provides access to Fortran modules, parameters, heating/cooling controls and advanced solver parameters.
+`analysis` contains functions for reading output files as well
+    as investigating the chemistry.
+`plot` contains functions for plotting output files.
+`advanced` provides access to Fortran modules, parameters, heating/cooling controls
+    and advanced solver parameters.
 """
 
 from . import advanced as advanced
 from . import analysis as analysis
 
 # isort: off
-# The following contains the virtual submodule `functional`, which allows for calling the new API in the legacy format.
+# The following contains the virtual submodule `functional`,
+# which allows for calling the new API in the legacy format.
 from . import model as model
 from . import functional as functional
 from . import plot as plot

@@ -50,7 +50,6 @@ def get_energy_levels_info(
     Raises:
         FileNotFoundError: If data directory or any coolant file doesn't exist
         ValueError: If coolant file format is invalid or energy levels not found
-        RuntimeError: If any parsing error occurs
 
     """
     data_path = Path(data_dir)
@@ -93,10 +92,6 @@ def get_energy_levels_info_from_runtime() -> tuple[int, int]:
 
     Returns:
         Tuple of (n_total_levels, n_se_stats_per_coolant)
-
-    Raises:
-        ImportError: If uclchemwrap is not available
-        Various exceptions from get_energy_levels_info if data is invalid
 
     """
     from uclchemwrap import f2py_constants

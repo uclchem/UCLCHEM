@@ -20,20 +20,19 @@ Thread Safety Warning:
 """
 
 import warnings
+from types import ModuleType
 
 import numpy as np
 import pandas as pd
 
-from uclchem.utils import UCLCHEM_ROOT_DIR
-
 # Import the base network implementation from makerates
-from ..makerates.network import BaseNetwork
-from ..makerates.reaction import Reaction, skip_reaction_validation
-from ..makerates.species import Species
+from uclchem.makerates.network import BaseNetwork
+from uclchem.makerates.reaction import Reaction, skip_reaction_validation
+from uclchem.makerates.species import Species
+from uclchem.utils import UCLCHEM_ROOT_DIR
 
 
 class RuntimeNetwork(BaseNetwork):
-
     """Runtime interface to UCLCHEM's compiled Fortran network.
 
     Provides read access and parameter modification for the compiled chemical
@@ -77,7 +76,6 @@ class RuntimeNetwork(BaseNetwork):
 
         Raises:
             ImportError: If uclchemwrap.network cannot be imported
-            ValueError: If CSV data doesn't match Fortran network dimensions
 
         """
         # Import the compiled Fortran network module
@@ -108,6 +106,10 @@ class RuntimeNetwork(BaseNetwork):
         """Load species and reactions CSV files from installation directory.
 
         These provide better indexing and validation against the Fortran network.
+
+        Raises:
+            FileNotFoundError: If `"UCLCHEM_ROOT_DIR/species.csv"` or
+                `"UCLCHEM_ROOT_DIR/reactions.csv"` are not valid files.
         """
         species_path = UCLCHEM_ROOT_DIR / "species.csv"
         reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
@@ -124,7 +126,7 @@ class RuntimeNetwork(BaseNetwork):
         """Validate that CSV data matches Fortran network dimensions.
 
         Raises:
-            ValueError: If dimensions don't match
+            RuntimeError: If dimensions don't match
 
         """
         n_species_csv = len(self._species_csv)
@@ -192,7 +194,10 @@ class RuntimeNetwork(BaseNetwork):
             )
 
             # Create Species object (CSV-style row format)
-            # [NAME, MASS, BINDING_ENERGY, SOLID_FRACTION, MONO_FRACTION, VOLCANO_FRACTION, ENTHALPY]
+            # [
+            #    NAME, MASS, BINDING_ENERGY, SOLID_FRACTION,
+            #    MONO_FRACTION, VOLCANO_FRACTION, ENTHALPY,
+            # ]
             species_row = [name, mass, binding_energy, 1.0, 1.0, 0.0, enthalpy]
             species = Species(species_row)
 
@@ -277,7 +282,10 @@ class RuntimeNetwork(BaseNetwork):
                 )
 
                 # Create Reaction object (CSV-style row format)
-                # [R1, R2, R3, P1, P2, P3, P4, alpha, beta, gamma, Tmin, Tmax, reduced_mass, extrapolate, exothermicity]
+                # [
+                #    R1, R2, R3, P1, P2, P3, P4, alpha, beta, gamma,
+                #    Tmin, Tmax, reduced_mass, extrapolate, exothermicity,
+                # ]
                 reaction_row = [
                     reactant1,
                     reactant2,
@@ -370,7 +378,7 @@ class RuntimeNetwork(BaseNetwork):
     # ========================================================================
 
     @property
-    def species(self):
+    def species(self) -> dict[str, Species]:
         """Get species dictionary."""
         return self._species_dict
 
@@ -554,14 +562,15 @@ class RuntimeNetwork(BaseNetwork):
         """Change activation barrier of a reaction (modifies Fortran gamma).
 
         Args:
-            reaction: Reaction to modify
-            barrier: New activation barrier in Kelvin
+            reaction (Reaction): Reaction to modify
+            barrier (float): New activation barrier in Kelvin
 
         Raises:
-            ValueError: If reaction not found or multiple matches
+            RuntimeError: If reaction is not a reaction on the ices.
 
         """
-        assert reaction.is_ice_reaction(), "Only ice reactions have modifiable barriers."
+        if not reaction.is_ice_reaction():
+            raise RuntimeError("Only ice reactions have modifiable barriers.")
         reaction_idx = self.get_reaction_index(reaction)
         self.modify_reaction_parameters(reaction_idx, gamma=barrier)
 
@@ -647,7 +656,7 @@ class RuntimeNetwork(BaseNetwork):
         self._reactions_dict = self._load_reactions_from_fortran()
 
     @property
-    def fortran_module(self):
+    def fortran_module(self) -> ModuleType:
         """Direct access to Fortran module for advanced users.
 
         Warning: Use with caution. Direct modification bypasses safety checks.

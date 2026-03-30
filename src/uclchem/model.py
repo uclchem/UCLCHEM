@@ -88,6 +88,7 @@ import logging
 import multiprocessing as mp
 import os
 import signal
+import typing
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
@@ -121,6 +122,7 @@ from uclchem.constants import (
     PHYSICAL_PARAMETERS,
     SE_STAT_NAMES,
     TIMEPOINTS,
+    default_elements_to_check,
     default_param_dictionary,
     n_reactions,
     n_species,
@@ -367,13 +369,13 @@ class AbstractModel(ABC):
 
     def __init__(
         self,
-        param_dict: dict = None,
-        out_specie_list: list = ["H", "N", "C", "O"],
-        starting_chemistry: np.ndarray = None,
-        previous_model: object = None,
+        param_dict: dict | None = None,
+        out_specie_list: list[str] = ["H", "N", "C", "O"],
+        starting_chemistry: np.ndarray | None = None,
+        previous_model: object | None = None,
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
-        read_file: str = None,
+        read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
         self._data = xr.Dataset()
@@ -704,7 +706,9 @@ class AbstractModel(ABC):
     # /Class utility method
 
     # UCLCHEM utility and analysis wrappers
-    def check_conservation(self, element_list: list = None, percent: bool = True):
+    def check_conservation(
+        self, element_list: list[str] | None = None, percent: bool = True
+    ):
         """Utility method to check conservation of the chemical abundances
 
         Args:
@@ -754,27 +758,32 @@ class AbstractModel(ABC):
 
     def create_abundance_plot(
         self,
-        species: list = None,
+        species: list[str] | None = None,
         figsize: tuple[2] = (16, 9),
         point: int = 0,
-        plot_file=None,
+        plot_file: str | Path | None = None,
     ) -> tuple[plt.Figure, plt.Axes]:
-        """uclchem.plot.create_abundance_plot wrapper method
+        """`uclchem.plot.create_abundance_plot` wrapper method
 
         Args:
-            element_list (list, optional): List of elements to check conservation for. Defaults to  self.out_species_list.
-            figsize (tuple[2], optional): The figure size to use for matplotlib Defaults to (16, 9).
-            point (int, optional): Integer referring to which point of the UCLCHEM model to use. Defaults to 0.
+            species (list[str] | None): List of species to plot. If None, uses self.out_species_list.
+                Default = None.
+            figsize (tuple[2]): The figure size to use for matplotlib Defaults to (16, 9).
+            point (int): Integer referring to which point of the UCLCHEM model to use. Defaults to 0.
+            plot_file (str | Path | None): if not None, save to a path. Default = None.
 
         Returns:
-            fig,ax: matplotlib figure and axis objects
+            tuple[fig, ax]: matplotlib figure and axis objects
+
+        Raises:
+            ValueError: If `point` is larger than the number of points in the model run.
 
         """
         if species is None:
             species = self.out_species_list
 
         if point > self._param_dict["points"]:
-            raise Exception("'point' must be less than number of modelled points.")
+            raise ValueError("'point' must be less than number of modelled points.")
         return create_abundance_plot(
             self.get_dataframes(point), species, figsize, plot_file
         )
@@ -3014,15 +3023,19 @@ class SequentialModel:
         return
 
     def check_conservation(
-        self, element_list: list = ["H", "N", "C", "O"], percent: bool = True
+        self, element_list: list[str] | None = None, percent: bool = True
     ):
         """Utility method to check conservation of the chemical abundances
 
         Args:
-            element_list (list, optional): List of elements to check conservation for. Defaults to self.out_species_lists.
+            element_list (list[str] | None): List of elements to check conservation for.
+                If None, use `uclchem.constants.default_elements_to_check`. Default = None.
             percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
 
         """
+        if element_list is None:
+            element_list = default_elements_to_check
+
         for model in self.models:
             conserve_dicts = []
             if model["Model"]._param_dict["points"] > 1:
@@ -3105,7 +3118,7 @@ class GridModels:
         max_workers: int = 8,
         grid_file: str = "./default_grid_out.h5",
         model_name_prefix: str = "",
-        overwrite_models=False,
+        overwrite_models: bool = False,
         delay_run: bool = False,
         log_dir: str = None,
         model_ids: list = None,
@@ -3191,7 +3204,7 @@ class GridModels:
             self.run()
         return
 
-    def _grid_def(self, key, value, model_count=None):
+    def _grid_def(self, key: str, value: Any, model_count: int | None = None) -> None:
         if model_count is None:
             model_count = ""
         else:
@@ -3202,7 +3215,7 @@ class GridModels:
         elif isinstance(value, (np.ndarray, np.generic)):
             self.parameters_to_grid[model_count + key] = value.astype(dtype=object)
 
-    def _log_main(self, msg):
+    def _log_main(self, msg: str) -> None:
         """Append a timestamped line to the main grid log file."""
         if self._main_log is None:
             return
@@ -3210,7 +3223,7 @@ class GridModels:
         with open(self._main_log, "a") as f:
             f.write(f"{ts} {msg}\n")
 
-    def run(self):
+    def run(self) -> None:
         signal.signal(signal.SIGINT, self._handler)
         n_total = np.shape(self.flat_grids)[1]
         self._log_main(f"Grid started: {n_total} models, {self.max_workers} workers")
@@ -3237,7 +3250,7 @@ class GridModels:
         ) as pool:
             completed = 0
 
-            def on_result(result):
+            def on_result(result: tuple[int, object]) -> None:
                 nonlocal completed
                 completed += 1
                 model_id, model_object = result
@@ -3274,7 +3287,7 @@ class GridModels:
 
                     traceback.print_exc()
 
-            def on_error(_exc, _model_id):
+            def on_error(_exc: Any, _model_id: int) -> None:
                 self._log_main(f"model_{_model_id} error: {_exc}")
                 print(f"error: {_exc}; for model: {_model_id}")
 
@@ -3305,9 +3318,14 @@ class GridModels:
         self._load_params()
 
     def load_phys(self) -> None:
+        """Load the physics.
+
+        Raises:
+            NotImplementedError: If the model type is `SequentialModel`.
+
+        """
         if self.model_type == "SequentialModel":
-            warnings.warn("Sequantial Model physics loading not implemented")
-            return
+            raise NotImplementedError("Sequential Model physics loading not implemented")
         for model in range(len(self.models)):
             loaded_data = self._load_model_data(model=self.models[model]["Model"])
             if self.physics_values is None:
@@ -3319,10 +3337,19 @@ class GridModels:
             )
             self.models[model]["physics_array"] = loaded_data["physics_array"]
 
-    def load_chem(self, out_specie_list: list[str] = ["H", "N", "C", "O"]) -> None:
+    def load_chem(self, out_specie_list: list[str]) -> None:
+        """Load the chemistry.
+
+        Args:
+            out_specie_list (list[str]): list of species to load abundances for.
+
+        Raises:
+            NotImplementedError: If the model type is `SequentialModel`.
+        """
         if self.model_type == "SequentialModel":
-            warnings.warn("Sequantial Model chemistry loading not implemented")
-            return
+            raise NotImplementedError(
+                "Sequential Model chemistry loading not implemented"
+            )
         for model in range(len(self.models)):
             loaded_data = self._load_model_data(model=self.models[model]["Model"])
             if self.chemical_abun_values is None:
@@ -3347,6 +3374,9 @@ class GridModels:
         SequentialModels stems from SequentialModels being nested models,
         resulting in an additional required loop to take into account the
         additional nesting.
+
+        Raises:
+            ValueError: If `full_parameters` list does not contain dictionaries.
 
         """
         # The following loops perform the same actions, but for the different model types
@@ -3407,17 +3437,19 @@ class GridModels:
         return tmp_model
 
     def check_conservation(
-        self, element_list: list[str] = ["H", "N", "C", "O"], percent: bool = True
+        self, element_list: list[str] | None = None, percent: bool = True
     ) -> None:
         """Check conservation of the chemical abundances.
 
         Args:
-            element_list (list[str]): List of elements to check conservation for.
-                Defaults to self.out_species_lists.
+            element_list (list[str] | None): List of elements to check conservation for.
+                If None, use `uclchem.constants.default_elements_to_check`. Default = None.
             percent (bool): Flag on if percentage values should be used.
                 Defaults to True.
 
         """
+        if element_list is None:
+            element_list = default_elements_to_check
         for model in range(len(self.models)):
             tmp_model = load_model(file=self.grid_file, name=self.models[model]["Model"])
             conserve_dicts = []
@@ -3439,7 +3471,7 @@ class GridModels:
                 conserved = True if all(float(x[:1]) < 1 for x in i.values()) else False
             self.models[model]["elements_conserved"] = conserved
 
-    def _handler(self, signum: Any, frame: Any) -> None:
+    def _handler(self, signum: Any, frame: Any) -> None:  # noqa: ARG002
         try:
             self.on_interrupt()  # your “final steps”
         finally:
@@ -3447,7 +3479,8 @@ class GridModels:
             signal.signal(signal.SIGINT, self._orig_sigint)
             raise KeyboardInterrupt
 
-    def on_interrupt(self) -> None:  # noqa: D102
+    @typing.overload
+    def on_interrupt(self) -> None:
         return
 
     @staticmethod

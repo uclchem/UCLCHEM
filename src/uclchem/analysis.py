@@ -1,4 +1,4 @@
-"""UCLCHEM Analysis Module
+"""UCLCHEM Analysis Module.
 
 Tools for analyzing chemical model outputs and reaction pathways.
 
@@ -57,13 +57,13 @@ except ImportError as E:
     )
     raise
 from pathlib import Path
-from typing import TextIO
+from typing import Any, TextIO
 
 import numpy as np
 import pandas as pd
 from pandas import Series, read_csv
 
-from uclchem.constants import n_reactions, n_species
+from uclchem.constants import default_elements_to_check, n_reactions, n_species
 from uclchem.makerates import Reaction
 from uclchem.makerates.network import Network
 from uclchem.makerates.species import Species, elementList
@@ -192,14 +192,24 @@ def get_change_df(
     due to each reaction.
 
     Args:
-        rate_df (pd.DataFrame): dataframe containing physical parameters and reaction rates over time
+        rate_df (pd.DataFrame): dataframe containing physical parameters and
+            reaction rate constants over time
         species (str): species to get the change over time
         on_grain (bool): whether to analyse the ice phase of this species
 
     Returns:
-        change_df (pd.DataFrame): change of species over time due to each reaction the species is involved in
+        change_df (pd.DataFrame): change of species over time due to each reaction
+            the species is involved in
+
+    Raises:
+        DeprecationWarning: Deprecated in UCLCHEM 4.0
+        ValueError: If "#" or "@" is in `species`.
 
     """
+    raise DeprecationWarning(
+        "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
+    )
+
     if "#" in species or "@" in species:
         msg = "WARNING: get_change_df IS ONLY FOR ANALYSING ALL OF THE GAS PHASE AND ALL OF THE ICE. "
         msg += "USE on_grain PARAMETER TO INDICATE THIS. IF YOU WANT TO ANALYSE ONLY SURFACE OR ONLY BULK, "
@@ -218,18 +228,37 @@ def get_change_df(
             )  # Drop the physical parameters from bulk column so we do not have them twice in the final df
             continue
         if column in bulk_columns:
-            # If the same reaction is in both dfs, that means that both surf and bulk version of the species is involved in the reaction
-            # which means that either surface is lost and bulk forms, or the other way, and so we drop this column
+            # If the same reaction is in both dfs, that means that both surf and bulk version
+            # of the species is involved in the reaction, which means that either surface is lost
+            # and bulk forms, or the other way, and so we drop this column
             # from both dfs since it has no effect on the ice overall.
             df_surf.drop(columns=column, inplace=True)
             df_bulk.drop(columns=column, inplace=True)
     # Maybe TODO:
-    # Make it such that the columns of the same reactions (but surf and bulk versions) are added
-    # such that we have a single reaction rate in the ice, and not seperate surf and bulk reaction rates.
+    # Make it such that the columns of the same reactions (but surf and bulk versions)
+    # are added such that we have a single reaction rate in the ice,
+    # and not seperate surf and bulk reaction rates.
     return pd.concat([df_surf, df_bulk], axis=1)
 
 
 def read_analysis(filepath: str | Path, species: str) -> tuple[pd.DataFrame, list[str]]:
+    """Read the analysis output.
+
+    Args:
+        filepath (str | Path): path to analysis output.
+        species (str): Species of interest.
+
+    Returns:
+        df (pd.DataFrame): dataframe with rates and time.
+        all_reactions (list[str]): list of all reactions that the species is involved in.
+
+    Raises:
+        DeprecationWarning: Deprecated in UCLCHEM 4.0
+
+    """
+    raise DeprecationWarning(
+        "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
+    )
     with open(filepath) as file:
         lines = file.readlines()
     for i, line in enumerate(lines):
@@ -337,9 +366,9 @@ def analysis(
     ]
     reac_indxs = [i for i, reaction in enumerate(reactions) if species_name in reaction]
     species_index = species.index(species_name) + 1  # fortran index of species
-    # old_key_reactions = []
-    # old_total_destruct = 0.0
-    # old_total_form = 0.0
+    old_key_reactions = []
+    old_total_destruct = 0.0
+    old_total_form = 0.0
     formatted_reacs = _format_reactions(reactions[reac_indxs])
 
     if species_name[0] == "#":
@@ -368,7 +397,8 @@ def analysis(
                 param_dict, row[species], species_index, fortran_reac_indxs
             )
 
-            # convert reaction rates to total rates of change, this needs manually updating when you add new reaction types!
+            # convert reaction rates to total rates of change.
+            # this needs manually updating when you add new reaction types!
             change_reacs, changes = _get_rates_of_change(
                 rates,
                 reactions[reac_indxs],
@@ -381,8 +411,9 @@ def analysis(
 
             change_reacs = _format_reactions(change_reacs)
 
-            # This whole block adds the transfer of material from surface to bulk as surface grows (or vice versa)
-            # it's not a reaction in the network so won't get picked up any other way. We manually add it.
+            # This whole block adds transfer of material from surface to bulk as surface grows
+            # (or vice versa). It's not a reaction in the network so won't get picked up otherwise.
+            # We manually add it.
             if transfer <= 0:
                 if species_name[0] == "#":
                     change_reacs.append(surftransfer_reacs[0])
@@ -400,45 +431,52 @@ def analysis(
 
             # Then we remove the reactions that are not important enough to be printed by finding
             # which of the top reactions we need to reach rate_threshold*total_rate
-            # (
-            #     total_formation,
-            #     total_destruct,
-            #     key_reactions,
-            #     key_changes,
-            # ) = _remove_slow_reactions(
-            #     changes, change_reacs, rate_threshold=rate_threshold
-            # )
+            (
+                total_formation,
+                total_destruct,
+                key_reactions,
+                key_changes,
+            ) = _remove_slow_reactions(
+                changes, change_reacs, rate_threshold=rate_threshold
+            )
 
             # only update if list of reactions change or rates change by factor of 10
-            # if (
-            #     (old_key_reactions != key_reactions)
-            #     or (
-            #         np.abs(
-            #             np.log10(np.abs(old_total_destruct))
-            #             - np.log10(np.abs(total_destruct))
-            #         )
-            #         > 0
-            #     )
-            #     or (np.abs(np.log10(old_total_form) - np.log10(total_formation)) > 0)
-            # ):
-            # old_key_reactions = key_reactions[:]
-            # old_total_form = total_formation
-            # old_total_destruct = total_destruct
-            # _write_analysis(
-            #     f,
-            #     row["Time"],
-            #     total_formation,
-            #     total_destruct,
-            #     change_reacs,
-            #     changes,
-            # )
+            if (
+                (old_key_reactions != key_reactions)
+                or (
+                    np.abs(
+                        np.log10(np.abs(old_total_destruct))
+                        - np.log10(np.abs(total_destruct))
+                    )
+                    > 0
+                )
+                or (np.abs(np.log10(old_total_form) - np.log10(total_formation)) > 0)
+            ):
+                old_key_reactions = key_reactions[:]
+                old_total_form = total_formation
+                old_total_destruct = total_destruct
+                _write_analysis(
+                    f,
+                    row["Time"],
+                    total_formation,
+                    total_destruct,
+                    change_reacs,
+                    changes,
+                )
 
 
-def _param_dict_from_output(output_line):
+def _param_dict_from_output(
+    output_line: dict[str, float] | pd.Series,
+) -> dict[str, float]:
     """Generate a parameter dictionary from a UCLCHEM timestep that contains enough of
     the physical variables to recreate the parameter dictionary used to run UCLCHEM.
 
-    :param output_line: (pandas series) any row from the relevant UCLCHEM output
+    Args:
+        output_line (dict[str, float] | pd.Series): any row from the relevant UCLCHEM output
+
+    Returns:
+        dict[str, float]: dictionary with physical conditions from output.
+
     """
     param_dict = {
         "initialdens": output_line["Density"],
@@ -450,17 +488,33 @@ def _param_dict_from_output(output_line):
     return param_dict
 
 
-def _get_species_rates(param_dict, input_abundances, species_index, reac_indxs):
-    """Get the rate of up to 500 reactions from UCLCHEM for a given set of parameters and abundances.
+def _get_species_rates(
+    param_dict: dict[str, Any],
+    input_abundances: list[float],
+    species_index: int,
+    reac_indxs: list[int],
+) -> tuple[np.ndarray[float], float, float, float]:
+    """Get the rate of up to 500 reactions from UCLCHEM for a given
+    set of parameters and abundances.
     Intended for use within the analysis script.
 
     Args:
-        param_dict:  A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
-        input_abundances: Abundance of every species in network
-        reac_indxs: Index of reactions of interest in the network's reaction list.
+        param_dict (dict[str, Any]): A dictionary of parameters where keys are
+            any of the variables in defaultparameters.f90 and values are value for current run.
+        input_abundances (list[float]): Abundance of every species in network
+        species_index (int): Index of the species of interest.
+        reac_indxs (list[int]): Indices of reactions of interest in the network's reaction list.
 
     Returns:
-        (ndarray) Array containing the rate of every reaction specified by reac_indxs
+        np.ndarray: Array containing the rate of every reaction specified by reac_indxs
+        transfer:
+        swap:
+        bulk_layers: number of monolayers of bulk ice
+
+    Raises:
+        DeprecationWarning: Deprecated in UCLCHEM 4.0
+        RuntimeError: If UCLCHEM failed to return the rates for these parameters
+
     """
     raise DeprecationWarning(
         "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
@@ -477,9 +531,18 @@ def _get_species_rates(param_dict, input_abundances, species_index, reac_indxs):
     return rates[: len(reac_indxs)], transfer, swap, bulk_layers
 
 
-def _get_rates_of_change(rates, reactions, speciesList, species, row, swap, bulk_layers):
-    """Calculate the terms in the rate of equation of a particular species using rates calculated using
-    get_species_rates() and a row from the full output of UCLCHEM. See `analysis.py` for intended use.
+def _get_rates_of_change(
+    rates: np.ndarray,
+    reactions: list[str],
+    speciesList: list[str],
+    species: str,
+    row: pd.Series,
+    swap: float,
+    bulk_layers: float,
+):
+    """Calculate the terms in the rate of equation of a particular species using rates
+    calculated using `get_species_rates()` and a row from the full output of UCLCHEM.
+    See `analysis.py` for intended use.
 
     Args:
         rates (float, array): Rates of all reactions the species is involved in
@@ -492,6 +555,9 @@ def _get_rates_of_change(rates, reactions, speciesList, species, row, swap, bulk
 
     Returns:
         _type_: _description_
+
+    Raises:
+        DeprecationWarning: Deprecated in UCLCHEM 4.0
 
     """
     raise DeprecationWarning(
@@ -630,11 +696,11 @@ def _write_analysis(
             output_file.write(outString)
 
 
-def _format_reactions(reactions: str) -> list[str]:
+def _format_reactions(reactions: list[list[str]]) -> list[str]:
     """Turn a row of the reaction file into a string.
 
     Args:
-        reactions (list): list of lists, each reaction read from reaction.csv is a list.
+        reactions (list[list[str]]): list of lists, each reaction read from reaction.csv is a list.
 
     Returns:
         list[str]: list of string, each reaction in readable string form
@@ -653,8 +719,8 @@ def _count_element(species_list: list[str], element: str) -> np.ndarray:
     """Count the number of atoms of an element that appear in each species of a list of species.
 
     Args:
-        species_list: (iterable, str), list of species names
-        element: (str), element
+        species_list (list[str]): list of species names
+        element (str): element
 
     Returns:
         sums (np.ndarray): array where each element represents the number of atoms
@@ -694,14 +760,15 @@ def total_element_abundance(element: str, df: pd.DataFrame) -> pd.Series:
 
 
 def check_element_conservation(
-    df: pd.DataFrame, element_list: list[str] = ["H", "N", "C", "O"], percent: bool = True
+    df: pd.DataFrame, element_list: list[str] | None = None, percent: bool = True
 ) -> dict[str, str]:
     """Check the conservation of elements by comparing their total
     abundance at start and end of model.
 
     Args:
         df (pd.DataFrame): UCLCHEM output in format from `read_output_file`
-        element_list (list[str]): List of elements to check. Default = ["H", "N", "C", "O"].
+        element_list (list[str] | None): List of elements to check. If None,
+            defaults to `uclchem.constants.default_elements_to_check`.
         percent (bool): Whether to return the change formatted as a percentage. Default = False.
 
     Returns:
@@ -709,6 +776,8 @@ def check_element_conservation(
             as a fraction of initial value
 
     """
+    if element_list is None:
+        element_list = default_elements_to_check
     result = {}
     for element in element_list:
         discrep = total_element_abundance(element, df).values
@@ -800,14 +869,20 @@ def rate_constants_to_dy_and_rates(
         rate_by_reaction (pd.DataFrame): the individual terms that result in ydot when multiplied
             by the incidence matrix.
 
-    """
-    assert bool(species) == bool(reactions), (
-        "If species is specified, reactions also must be and vice versa"
-    )
+    Raises:
+        ValueError: If `species` is specified, but `reactions` is not, or vice versa
+        ValueError: If `species`, `reactions` and `network` are all specified,
+            or all not specified.
+        ValueError: If there are any reaction types not processed.
 
-    assert (network is None) != (species is None and reactions is None), (
-        "Choose between providing a network OR (species AND reactions). A network can be obtained using `uclchem.makerates.network.Network.from_csv()`"
-    )
+    """
+    if not bool(species) == bool(reactions):
+        raise ValueError("If species is specified, reactions also must be and vice versa")
+
+    if (network is None) != (species is None and reactions is None):
+        raise ValueError(
+            "Choose between providing a network OR (species AND reactions). A network can be obtained using `uclchem.makerates.network.Network.from_csv()`"
+        )
 
     if network:
         species = network.get_species_list()
@@ -1003,11 +1078,16 @@ def compute_heating_per_reaction(
     Returns:
         pd.DataFrame: (time x n_reactions) of heating rates in erg/s
 
+    Raises:
+        ValueError: If the number of reactions and rates are not the same.
+
     """
     if network is not None:
         reactions = network.get_reaction_list()
 
-    assert len(reactions) == rates.shape[1], "Number of reactions and rates must be equal"
+    if len(reactions) != rates.shape[1]:
+        raise ValueError("Number of reactions and rates must be equal")
+
     exothermicities = np.array([r.get_exothermicity() for r in reactions])
     return rates * exothermicities
 
@@ -1037,6 +1117,14 @@ def get_production_and_destruction(
 
 
 def derive_phase_from_name(name: str) -> str:
+    """Derive the phase of the species from its name.
+
+    Args:
+        name (str): name of the species.
+
+    Returns:
+        str: Phase. One of `["gas", "surface", "bulk", "ion"]`.
+    """
     if name.startswith("@"):
         return "bulk"
     elif name.startswith("#"):

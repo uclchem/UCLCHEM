@@ -134,6 +134,9 @@ def plot_species(
     Returns:
         ax (plt.Axes): Modified input axis is returned
 
+    Raises:
+        KeyError: if no "Time" column is present in `df`.
+
     """
     color_palette(n_colors=len(species))
     for specIndx, specName in enumerate(species):
@@ -153,7 +156,7 @@ def plot_species(
         elif "Time" in df.columns:
             timecolumn = "Time"
         else:
-            raise ValueError("No time variable in dataframe")
+            raise KeyError("No time variable in dataframe")
         ax.plot(
             df[timecolumn],
             abundances,
