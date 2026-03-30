@@ -118,7 +118,7 @@ class NetworkABC(ABC):
         pass
 
     def __repr__(self) -> str:
-        """String representation of the network."""  # noqa: D401
+        """String representation of the network."""
         n_species = len(self.get_species_list())
         n_reactions = len(self.get_reaction_list())
         return (

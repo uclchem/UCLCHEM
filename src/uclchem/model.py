@@ -111,7 +111,6 @@ from uclchem._fortran_capture import capture_fortran_output
 from uclchem.analysis import (
     check_element_conservation,
 )
-from uclchem.plot import plot_species, create_abundance_plot
 from uclchem.constants import (
     DVODE_STAT_NAMES,
     N_DVODE_STATS,
@@ -126,6 +125,7 @@ from uclchem.constants import (
     n_reactions,
     n_species,
 )
+from uclchem.plot import create_abundance_plot, plot_species
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
 # /Multiprocessing imports

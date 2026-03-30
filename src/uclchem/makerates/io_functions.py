@@ -671,7 +671,7 @@ def write_python_constants(
         replace_dict (dict[str, int]]): Dict with keys to replace and their values (ignored)
         python_constants_file (Path): Path to the target constant files (ignored)
 
-    """  # noqa: D401
+    """
     import warnings
 
     warnings.warn(

@@ -37,15 +37,16 @@ extend-exclude = ["notebooks/*.py"]
 line-length = 90
 
 [tool.ruff.lint]
-select = ["E", "F", "C", "I", "W", "D", "ANN001", "ANN201", "B006", "ARG", "RUF100", "UP", "PLR6301"]
+select = ["E", "F", "C", "I", "W", "D", "E", "ANN001", "ANN201", "B006", "ARG", "RUF100", "UP", "PLR6301", "DOC"]
 extend-ignore = [
     "E501", "E731", "E741", "E402", "F841", "F811", "C901", "E203", "E402", "D211", "D213", "D205", "D105", "D107", "D301"
 ]
 pycodestyle.max-doc-length = 100
 pydocstyle.convention = 'google'
+preview = true
 
 [tool.ruff.lint.per-file-ignores]
 # E402: Module level import not at top of file - normal for notebook-derived files
 "notebooks/*.py" = ["E402"]
 "*/__init__.py" = ["F401"]
-"tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002"]
+"tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002", "DOC"]
