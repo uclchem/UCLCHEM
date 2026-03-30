@@ -144,9 +144,9 @@ def test_network_with_custom_exothermicity(config_file_with_exothermicity):
             break
 
     assert ch_recomb is not None, "CH+ + E- -> C + H reaction not found"
-    assert (
-        ch_recomb.get_exothermicity() is not None
-    ), "CH+ recombination has no exothermicity"
+    assert ch_recomb.get_exothermicity() is not None, (
+        "CH+ recombination has no exothermicity"
+    )
 
     # Convert from erg to eV for comparison (1 eV = 1.602176634e-12 erg)
     EV_TO_ERG = 1.602176634e-12
@@ -185,9 +185,9 @@ def test_network_with_multiple_database_reaction_exothermicity(
     exo_ev = ch_recomb.get_exothermicity() / EV_TO_ERG
 
     # Should be -100.0 eV (from second file, overriding -1.0 from first)
-    assert (
-        abs(exo_ev - (-100.0)) < 0.01
-    ), f"Expected -100.0 eV (override), got {exo_ev} eV"
+    assert abs(exo_ev - (-100.0)) < 0.01, (
+        f"Expected -100.0 eV (override), got {exo_ev} eV"
+    )
 
     print(f"\n✓ CH+ + E- -> C + H has overridden exothermicity: {exo_ev:.2f} eV")
 
@@ -206,9 +206,9 @@ def test_network_with_multiple_database_reaction_exothermicity(
     exo_ev_h3 = h3_recomb.get_exothermicity() / EV_TO_ERG
 
     # Should be -200.0 eV (from second file, overriding -2.0 from first)
-    assert (
-        abs(exo_ev_h3 - (-200.0)) < 0.01
-    ), f"Expected -200.0 eV (override), got {exo_ev_h3} eV"
+    assert abs(exo_ev_h3 - (-200.0)) < 0.01, (
+        f"Expected -200.0 eV (override), got {exo_ev_h3} eV"
+    )
 
     print(f"✓ H3+ + E- -> H2 + H has overridden exothermicity: {exo_ev_h3:.2f} eV")
 
@@ -277,9 +277,9 @@ def test_exothermicity_unit_conversion(config_file_with_exothermicity):
                 reaction_found = reaction
                 break
 
-        assert (
-            reaction_found is not None
-        ), f"{reactant1} + {reactant2} -> {product1} + {product2} not found"
+        assert reaction_found is not None, (
+            f"{reactant1} + {reactant2} -> {product1} + {product2} not found"
+        )
 
         if reaction_found.get_exothermicity() is not None:
             exo_ev = reaction_found.get_exothermicity() / EV_TO_ERG

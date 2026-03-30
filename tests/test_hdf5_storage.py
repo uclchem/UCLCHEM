@@ -125,9 +125,9 @@ class TestSaveLoadRoundtrip:
         fpath, _, _, orig_param_dict, _ = saved_model_file
         loaded = load_model(file=fpath, name="default")
 
-        assert (
-            loaded._param_dict == orig_param_dict
-        ), "_param_dict mismatch after save/load"
+        assert loaded._param_dict == orig_param_dict, (
+            "_param_dict mismatch after save/load"
+        )
 
     def test_roundtrip_preserves_metadata(self, fresh_cloud_model, tmp_path):
         """Custom scalar metadata should survive save/load."""
@@ -209,9 +209,9 @@ class TestOverwrite:
             model2.save_model(file=fpath, name="dup", overwrite=False)
 
         # Should have issued a warning
-        assert any(
-            "already exists" in str(w.message) for w in caught
-        ), "Expected warning about existing model when overwrite=False"
+        assert any("already exists" in str(w.message) for w in caught), (
+            "Expected warning about existing model when overwrite=False"
+        )
 
         # Model should still be loadable (old data intact)
         loaded = load_model(file=fpath, name="dup")
@@ -240,9 +240,9 @@ class TestOverwrite:
 
         loaded = load_model(file=fpath, name="model")
         # The loaded model should have the v2 initial temp
-        assert (
-            loaded._param_dict["initialtemp"] == 50.0
-        ), "Overwritten model should have new initialTemp"
+        assert loaded._param_dict["initialtemp"] == 50.0, (
+            "Overwritten model should have new initialTemp"
+        )
 
 
 # ============================================================================
@@ -290,9 +290,9 @@ class TestHDF5Structure:
                     # Check coord datasets
                     for coord_name in group["_coords"]:
                         ds = group["_coords"][coord_name]
-                        assert (
-                            "_dims" in ds.attrs
-                        ), f"Coord dataset '{coord_name}' missing _dims attr"
+                        assert "_dims" in ds.attrs, (
+                            f"Coord dataset '{coord_name}' missing _dims attr"
+                        )
                 else:
                     ds = group[ds_name]
                     assert "_dims" in ds.attrs, f"Dataset '{ds_name}' missing _dims attr"
@@ -532,9 +532,9 @@ class TestCoordinatePreservation:
         loaded = load_model(file=fpath, name="default")
 
         for coord_name, orig_values in orig_coords.items():
-            assert (
-                coord_name in loaded._data.coords
-            ), f"Coordinate '{coord_name}' missing after load"
+            assert coord_name in loaded._data.coords, (
+                f"Coordinate '{coord_name}' missing after load"
+            )
             np.testing.assert_array_equal(
                 orig_values,
                 loaded._data.coords[coord_name].values,

@@ -129,9 +129,9 @@ def test_internal_parameters_exist():
             module = getattr(settings, module_name)
             if hasattr(module, param_name):
                 setting = getattr(module, param_name)
-                assert (
-                    setting.is_internal
-                ), f"{module_name}.{param_name} should be marked as INTERNAL"
+                assert setting.is_internal, (
+                    f"{module_name}.{param_name} should be marked as INTERNAL"
+                )
 
 
 def test_user_parameters_modifiable():
@@ -154,12 +154,12 @@ def test_user_parameters_modifiable():
         setting = getattr(module, param_name)
 
         # Should not be PARAMETER or INTERNAL
-        assert (
-            not setting.is_parameter
-        ), f"{module_name}.{param_name} should not be PARAMETER"
-        assert (
-            not setting.is_internal
-        ), f"{module_name}.{param_name} should not be INTERNAL"
+        assert not setting.is_parameter, (
+            f"{module_name}.{param_name} should not be PARAMETER"
+        )
+        assert not setting.is_internal, (
+            f"{module_name}.{param_name} should not be INTERNAL"
+        )
 
         # Should be modifiable
         original = float(setting.get())

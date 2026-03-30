@@ -134,11 +134,11 @@ def get_parameter_info() -> dict[str, tuple[Any, str, str]]:
             # Get type information
             if isinstance(value, np.ndarray):
                 type_str = f"array[{value.dtype}]"
-            elif isinstance(value, (bool, np.bool_)):
+            elif isinstance(value, bool | np.bool_):
                 type_str = "bool"
-            elif isinstance(value, (int, np.integer)):
+            elif isinstance(value, int | np.integer):
                 type_str = "int"
-            elif isinstance(value, (float, np.floating)):
+            elif isinstance(value, float | np.floating):
                 type_str = "float"
             elif isinstance(value, str):
                 type_str = "str"
@@ -263,20 +263,20 @@ def format_value(value: Any) -> str:
         str: formatted string for printing
 
     """
-    if isinstance(value, (bool, np.bool_)):
+    if isinstance(value, bool | np.bool_):
         return ".True." if value else ".False."
-    elif isinstance(value, (int, np.integer)):
+    elif isinstance(value, int | np.integer):
         # Check if it's a boolean disguised as int (Fortran LOGICAL)
         if value in (0, 1):
             return ".True." if value == 1 else ".False."
         return str(value)
-    elif isinstance(value, (float, np.floating)):
+    elif isinstance(value, float | np.floating):
         # Use scientific notation for very small/large numbers
         if abs(value) < 0.001 or abs(value) > 10000:
             return f"{value:.2e}"
         else:
             return f"{value:.3g}"
-    elif isinstance(value, (bytes, np.bytes_)):
+    elif isinstance(value, bytes | np.bytes_):
         # Handle Fortran strings (bytes)
         decoded = value.decode("utf-8").strip()
         return '""' if not decoded else f'"{decoded}"'

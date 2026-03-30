@@ -766,9 +766,9 @@ def test_network_reset_preserves_all_parameters():
         network._network.bindingenergy[i] *= 1.5
 
     # Verify modifications took effect
-    assert not np.allclose(
-        network._network.alpha[:10], csv_alpha[:10]
-    ), "Alpha modification didn't work"
+    assert not np.allclose(network._network.alpha[:10], csv_alpha[:10]), (
+        "Alpha modification didn't work"
+    )
 
     # Reset network to initial state
     network.reset_state()
@@ -786,18 +786,18 @@ def test_network_reset_preserves_all_parameters():
     )
 
     # Check exact matches - arrays should be identical element-wise
-    assert np.allclose(
-        csv_alpha, reset_alpha
-    ), "Alpha values not exactly matching CSV after reset"
-    assert np.allclose(
-        csv_beta, reset_beta
-    ), "Beta values not exactly matching CSV after reset"
-    assert np.allclose(
-        csv_gamma, reset_gamma
-    ), "Gamma values not exactly matching CSV after reset"
-    assert np.allclose(
-        csv_binding, reset_binding
-    ), "Binding energies not exactly matching CSV after reset"
+    assert np.allclose(csv_alpha, reset_alpha), (
+        "Alpha values not exactly matching CSV after reset"
+    )
+    assert np.allclose(csv_beta, reset_beta), (
+        "Beta values not exactly matching CSV after reset"
+    )
+    assert np.allclose(csv_gamma, reset_gamma), (
+        "Gamma values not exactly matching CSV after reset"
+    )
+    assert np.allclose(csv_binding, reset_binding), (
+        "Binding energies not exactly matching CSV after reset"
+    )
 
 
 def test_network_reset_isolated():

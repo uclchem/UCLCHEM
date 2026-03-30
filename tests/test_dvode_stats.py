@@ -32,29 +32,29 @@ def test_stats_array_populated():
     model = uclchem.model.Cloud(param_dict=params)
 
     assert model.stats_array is not None, "stats_array should not be None"
-    assert (
-        model.stats_array.shape[2] == N_DVODE_STATS
-    ), f"stats_array should have {N_DVODE_STATS} columns, got {model.stats_array.shape[2]}"
+    assert model.stats_array.shape[2] == N_DVODE_STATS, (
+        f"stats_array should have {N_DVODE_STATS} columns, got {model.stats_array.shape[2]}"
+    )
 
     # Check that some stats are non-zero (the solver must have done some work)
     # Note: Column 0 is TRAJECTORY_INDEX, so all other columns shifted by +1
     # NST (number of steps) is column 6 (0-indexed)
     nst_values = model.stats_array[:, 0, 6]
-    assert np.any(
-        nst_values > 0
-    ), "NST (number of steps) should be non-zero for at least some timesteps"
+    assert np.any(nst_values > 0), (
+        "NST (number of steps) should be non-zero for at least some timesteps"
+    )
 
     # NFE (number of f evaluations) is column 7 (0-indexed)
     nfe_values = model.stats_array[:, 0, 7]
-    assert np.any(
-        nfe_values > 0
-    ), "NFE (number of f evaluations) should be non-zero for at least some timesteps"
+    assert np.any(nfe_values > 0), (
+        "NFE (number of f evaluations) should be non-zero for at least some timesteps"
+    )
 
     # CPU_TIME is column 18 (0-indexed)
     cpu_values = model.stats_array[:, 0, 18]
-    assert np.any(
-        cpu_values > 0
-    ), "CPU_TIME should be non-zero for at least some timesteps"
+    assert np.any(cpu_values > 0), (
+        "CPU_TIME should be non-zero for at least some timesteps"
+    )
 
 
 def test_stats_dataframe_columns():
@@ -71,17 +71,17 @@ def test_stats_dataframe_columns():
     # Test joined DataFrame
     df = model.get_dataframes(with_stats=True)
     for stat_name in DVODE_STAT_NAMES:
-        assert (
-            stat_name in df.columns
-        ), f"Column {stat_name} should be in joined DataFrame"
+        assert stat_name in df.columns, (
+            f"Column {stat_name} should be in joined DataFrame"
+        )
 
     # Test separate DataFrames
     result = model.get_dataframes(joined=False, with_stats=True)
     stats_df = result[-1]  # stats_df is the last element when with_stats=True
     expected_columns = ["Point"] + DVODE_STAT_NAMES
-    assert (
-        list(stats_df.columns) == expected_columns
-    ), f"stats_df columns should be ['Point'] + DVODE_STAT_NAMES, got {list(stats_df.columns)}"
+    assert list(stats_df.columns) == expected_columns, (
+        f"stats_df columns should be ['Point'] + DVODE_STAT_NAMES, got {list(stats_df.columns)}"
+    )
 
 
 def test_stats_reasonable_values():
@@ -148,14 +148,14 @@ def test_stats_with_sequential_model():
     cloud_model_1 = seq_model.models[0]["Model"]
     cloud_model_2 = seq_model.models[1]["Model"]
 
-    assert (
-        cloud_model_1.stats_array is not None
-    ), "stats_array should exist on first chained model"
+    assert cloud_model_1.stats_array is not None, (
+        "stats_array should exist on first chained model"
+    )
     assert cloud_model_1.stats_array.shape[2] == N_DVODE_STATS
 
-    assert (
-        cloud_model_2.stats_array is not None
-    ), "stats_array should exist on second chained model"
+    assert cloud_model_2.stats_array is not None, (
+        "stats_array should exist on second chained model"
+    )
     assert cloud_model_2.stats_array.shape[2] == N_DVODE_STATS
 
 

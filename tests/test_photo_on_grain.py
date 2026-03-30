@@ -17,9 +17,9 @@ def test_photo_on_grain_memory():
     result = subprocess.run(
         "gfortran --version", shell=True, text=True, capture_output=True
     )
-    assert (
-        result.returncode == 0
-    ), f"gfortran not available:\n{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"gfortran not available:\n{result.stdout}\n{result.stderr}"
+    )
 
     TEST_DIR = Path("tests/photo_on_grain_test_output/")
     TEST_DIR.mkdir(parents=True, exist_ok=True)
@@ -27,9 +27,9 @@ def test_photo_on_grain_memory():
     # Install the package using pip
     install_command = "pip install ."
     result = subprocess.run(install_command, shell=True, text=True, capture_output=True)
-    assert (
-        result.returncode == 0
-    ), f"Package installation failed:\n{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"Package installation failed:\n{result.stdout}\n{result.stderr}"
+    )
 
     # Check if installed
     pip_packages = subprocess.run("pip list", shell=True, text=True, capture_output=True)
@@ -59,9 +59,9 @@ def test_photo_on_grain_memory():
     # Verify the change was made
     with open(test_settings_path) as file:
         verify_content = file.read()
-    assert (
-        "add_crp_photo_to_grain: True" in verify_content
-    ), f"Failed to update add_crp_photo_to_grain in {test_settings_path}"
+    assert "add_crp_photo_to_grain: True" in verify_content, (
+        f"Failed to update add_crp_photo_to_grain in {test_settings_path}"
+    )
 
     # Run Makerates with the modified config
     result = subprocess.run(
@@ -105,9 +105,9 @@ def test_photo_on_grain_memory():
         "reltol": 1e-5,
     }
     cloud = uclchem.model.Cloud(param_dict=params, out_species=outSpecies)
-    assert (
-        cloud.success_flag == 0
-    ), f"Static model failed with result code {cloud.success_flag}"
+    assert cloud.success_flag == 0, (
+        f"Static model failed with result code {cloud.success_flag}"
+    )
 
     # Test Stage 1: Collapse with IN-MEMORY return_dataframe
     params["freefall"] = True
@@ -118,9 +118,9 @@ def test_photo_on_grain_memory():
     params["columnFile"] = f"{TEST_DIR}/stage1-column.dat"
     cloud = uclchem.model.Cloud(param_dict=params, out_species=outSpecies)
 
-    assert (
-        cloud.success_flag == 0
-    ), f"stage 1 model failed with result code {cloud.success_flag}]"
+    assert cloud.success_flag == 0, (
+        f"stage 1 model failed with result code {cloud.success_flag}]"
+    )
 
     # finally, run stage 2 from the stage 1 model.
     params["initialDens"] = 1e5
@@ -137,9 +137,9 @@ def test_photo_on_grain_memory():
         3, 300.0, param_dict=params, out_species=outSpecies
     )
 
-    assert (
-        p_core.success_flag == 0
-    ), f"stage 2 model failed with result code {p_core.success_flag}"
+    assert p_core.success_flag == 0, (
+        f"stage 2 model failed with result code {p_core.success_flag}"
+    )
 
 
 if __name__ == "__main__":

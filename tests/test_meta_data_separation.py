@@ -75,12 +75,12 @@ def test_meta_survives_dataset_replace():
     # Simulate dataset replacement (as happens on load/pickle)
     object.__setattr__(m, "_data", xr.Dataset())
 
-    assert (
-        m.run_type == "local"
-    ), "string metadata 'run_type' not preserved after _data replace"
-    assert (
-        m.custom_flag == 42
-    ), "Scalar metadata 'custom_flag' not preserved after _data replace"
+    assert m.run_type == "local", (
+        "string metadata 'run_type' not preserved after _data replace"
+    )
+    assert m.custom_flag == 42, (
+        "Scalar metadata 'custom_flag' not preserved after _data replace"
+    )
 
 
 def test_save_load_restores_meta(tmp_path):
@@ -97,12 +97,12 @@ def test_save_load_restores_meta(tmp_path):
     loaded = load_model(file=str(fname), name="default")
 
     # Metadata should be restored on load
-    assert (
-        loaded.some_meta == "xyz"
-    ), "String metadata 'some_meta' not preserved after load"
-    assert (
-        loaded.custom_value == 123
-    ), "Integer metadata 'custom_value' not preserved after load"
+    assert loaded.some_meta == "xyz", (
+        "String metadata 'some_meta' not preserved after load"
+    )
+    assert loaded.custom_value == 123, (
+        "Integer metadata 'custom_value' not preserved after load"
+    )
 
 
 def test_pickle_roundtrip_preserves_meta_and_arrays():
@@ -117,12 +117,12 @@ def test_pickle_roundtrip_preserves_meta_and_arrays():
     m.un_pickle()
 
     # metadata and arrays should be restored
-    assert (
-        m.some_meta == "meta"
-    ), "String metadata 'some_meta' not preserved after pickle/unpickle"
-    assert (
-        "example_array" in m._data
-    ), "Array attribute 'example_array' not preserved after pickle/unpickle"
+    assert m.some_meta == "meta", (
+        "String metadata 'some_meta' not preserved after pickle/unpickle"
+    )
+    assert "example_array" in m._data, (
+        "Array attribute 'example_array' not preserved after pickle/unpickle"
+    )
     np.testing.assert_array_equal(m._data["example_array"].values, arr)
 
 
@@ -140,25 +140,25 @@ def test_legacy_read_infers_dstep_and_uses_global_constants(legacy_file_without_
 
     # Model should load successfully with arrays populated
     assert model.physics_array is not None, "physics_array not loaded successfully"
-    assert (
-        model.chemical_abun_array is not None
-    ), "chemical_abun_array not loaded successfully"
+    assert model.chemical_abun_array is not None, (
+        "chemical_abun_array not loaded successfully"
+    )
 
     # Arrays should have the correct dimensions after inferring dstep
-    assert model.physics_array.shape[-1] == len(
-        PHYSICAL_PARAMETERS
-    ), "physics_array dimension mismatch after inferring dstep"
-    assert (
-        model.chemical_abun_array.shape[-1] == n_species
-    ), "chemical_abun_array dimension mismatch after inferring dstep"
+    assert model.physics_array.shape[-1] == len(PHYSICAL_PARAMETERS), (
+        "physics_array dimension mismatch after inferring dstep"
+    )
+    assert model.chemical_abun_array.shape[-1] == n_species, (
+        "chemical_abun_array dimension mismatch after inferring dstep"
+    )
 
     # Coordinates should match global constants
     assert list(model._data.coords["physics_values"].values) == list(
         PHYSICAL_PARAMETERS
     ), "physics_values coordinate mismatch after inferring dstep"
-    assert (
-        len(model._data.coords["chemical_abun_values"]) == n_species
-    ), "chemical_abun_values coordinate length mismatch after inferring dstep"
+    assert len(model._data.coords["chemical_abun_values"]) == n_species, (
+        "chemical_abun_values coordinate length mismatch after inferring dstep"
+    )
 
 
 # ============================================================================
@@ -182,9 +182,9 @@ def test_physical_parameters_always_from_global():
         "dstep",
     ], "PHYSICAL_PARAMETERS constant has been modified!"
     assert list(PHYSICAL_PARAMETERS) == list(CONST), "PHYSICAL_PARAMETERS mismatch"
-    assert (
-        len(PHYSICAL_PARAMETERS) >= 8
-    ), "UCLCHEM having less than 8 physical parameters is suspicious"
+    assert len(PHYSICAL_PARAMETERS) >= 8, (
+        "UCLCHEM having less than 8 physical parameters is suspicious"
+    )
 
 
 def test_species_names_always_from_global():
@@ -231,6 +231,6 @@ def test_dstep_inference_validation(legacy_file_without_dstep):
         model = PrestellarCore(read_file=legacy_file_without_dstep)
 
     # Verify dstep was properly added
-    assert (
-        "dstep" in model._data.coords["physics_values"].values
-    ), "dstep coordinate not found in physics_values"
+    assert "dstep" in model._data.coords["physics_values"].values, (
+        "dstep coordinate not found in physics_values"
+    )
