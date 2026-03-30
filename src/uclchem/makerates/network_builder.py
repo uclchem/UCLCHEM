@@ -381,23 +381,25 @@ class NetworkBuilder:
             error += "\nThis is likely an error so Makerates will not complete. Try adding #H2O"
             raise RuntimeError(error)
         for species in self.network.get_species_list():
-            if species.is_surface_species():
-                if species.get_name().replace("#", "@") not in speciesNames:
-                    new_spec = deepcopy(species)
-                    new_spec.set_name(new_spec.get_name().replace("#", "@"))
-                    if new_spec.get_name() in userSpecies:
-                        definedBinding = [
-                            userSpec.get_binding_energy()
-                            for userSpec in self.user_defined_bulk
-                            if userSpec.get_name() == new_spec.get_name()
-                        ]
-                        new_spec.set_binding_energy(definedBinding[0])
-                    else:
-                        new_spec.set_binding_energy(h2o_binding_energy)
-                    new_species.append(new_spec)
-                    logging.debug(
-                        f"Adding a bulk partner species for {species}, new {new_spec}"
-                    )
+            if (
+                species.is_surface_species()
+                and species.get_name().replace("#", "@") not in speciesNames
+            ):
+                new_spec = deepcopy(species)
+                new_spec.set_name(new_spec.get_name().replace("#", "@"))
+                if new_spec.get_name() in userSpecies:
+                    definedBinding = [
+                        userSpec.get_binding_energy()
+                        for userSpec in self.user_defined_bulk
+                        if userSpec.get_name() == new_spec.get_name()
+                    ]
+                    new_spec.set_binding_energy(definedBinding[0])
+                else:
+                    new_spec.set_binding_energy(h2o_binding_energy)
+                new_species.append(new_spec)
+                logging.debug(
+                    f"Adding a bulk partner species for {species}, new {new_spec}"
+                )
         self.network.add_species(new_species)
 
     def _add_bulk_reactions(self) -> None:
@@ -759,7 +761,7 @@ class NetworkBuilder:
                     branching_reactions[reactant_string] += reaction.get_alpha()
                 else:
                     branching_reactions[reactant_string] = reaction.get_alpha()
-        if not all(branching_reactions.values()) == 1.0:
+        if any(branching_reactions.values() != 1.0):
             logging.warning(
                 "Some of the branching ratios do not sum to 1.0, correcting those that do not"
             )
@@ -965,37 +967,39 @@ class NetworkBuilder:
             if not reaction1.duplicate:
                 for j, reaction2 in enumerate(self.network.get_reaction_list()):
                     # Save half the checks by only doing half the comparisons
-                    if j > i:
-                        if reaction1 == reaction2:
-                            if not (
-                                (reaction1.get_templow() >= reaction2.get_temphigh())
-                                or (reaction1.get_temphigh() <= reaction2.get_templow())
-                            ):
-                                if (
-                                    reaction1.get_source() == reaction2.get_source()
-                                    and reaction1.get_source() == "UMIST"
-                                ):
-                                    logging.info(
-                                        f"Detected overlapping UMIST reactions {reaction1} wit indices {i + 1} {j + 1}, this is done in UMIST to provide better rates. "
-                                    )
-                                else:
-                                    logging.warning(
-                                        f"\tReactions with indices {i + 1} and {j + 1} are possible duplicates\n\t\t"
-                                        + str(reaction1)
-                                        + f" with temperature range [{reaction1.get_templow()}, {reaction1.get_temphigh()}] and source {reaction1.get_source()}"
-                                        + "\n\t\t"
-                                        + str(reaction2)
-                                        + f" with temperature range [{reaction2.get_templow()}, {reaction2.get_temphigh()}] and source {reaction2.get_source()}"
-                                    )
-                                duplicates = True
-                                # adjust temperatures so temperature ranges are adjacent
-                                if reaction1.get_temphigh() > reaction2.get_temphigh():
-                                    if reaction1.get_templow() < reaction2.get_temphigh():
-                                        logging.warning(
-                                            f"\tReactions {reaction1} and {reaction2} have non-adjacent temperature ranges"
-                                        )
-                                reaction1.duplicate = True
-                                reaction2.duplicate = True
+                    if j > i and reaction1 == reaction2:
+                        if (reaction1.get_templow() >= reaction2.get_temphigh()) or (
+                            reaction1.get_temphigh() <= reaction2.get_templow()
+                        ):
+                            continue
+
+                        if (
+                            reaction1.get_source() == reaction2.get_source()
+                            and reaction1.get_source() == "UMIST"
+                        ):
+                            logging.info(
+                                f"Detected overlapping UMIST reactions {reaction1} wit indices {i + 1} {j + 1}, this is done in UMIST to provide better rates. "
+                            )
+                        else:
+                            logging.warning(
+                                f"\tReactions with indices {i + 1} and {j + 1} are possible duplicates\n\t\t"
+                                + str(reaction1)
+                                + f" with temperature range [{reaction1.get_templow()}, {reaction1.get_temphigh()}] and source {reaction1.get_source()}"
+                                + "\n\t\t"
+                                + str(reaction2)
+                                + f" with temperature range [{reaction2.get_templow()}, {reaction2.get_temphigh()}] and source {reaction2.get_source()}"
+                            )
+                        duplicates = True
+                        # adjust temperatures so temperature ranges are adjacent
+                        if (
+                            reaction1.get_temphigh() > reaction2.get_temphigh()
+                            and reaction1.get_templow() < reaction2.get_temphigh()
+                        ):
+                            logging.warning(
+                                f"\tReactions {reaction1} and {reaction2} have non-adjacent temperature ranges"
+                            )
+                        reaction1.duplicate = True
+                        reaction2.duplicate = True
         if not duplicates:
             logging.info("\tNone")
 

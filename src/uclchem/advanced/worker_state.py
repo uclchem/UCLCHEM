@@ -11,6 +11,7 @@ capture the current Fortran module state into a picklable dict and re-apply
 it in a worker process before the model runs.
 """
 
+import contextlib
 from typing import Any
 
 import numpy as np
@@ -168,10 +169,9 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
             continue
         mod = getattr(uclchemwrap, mod_name)
         for attr, value in settings_dict.items():
-            try:
+            with contextlib.supress(AttributeError, TypeError):
+                # read-only or incompatible – skip silently
                 setattr(mod, attr, value)
-            except (AttributeError, TypeError):
-                pass  # read-only or incompatible – skip silently
 
     # --- Heating / cooling settings ---
     heating = snapshot.get("heating", {})

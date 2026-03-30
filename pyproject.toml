@@ -37,11 +37,11 @@ extend-exclude = ["notebooks/*.py"]
 line-length = 90
 
 [tool.ruff.lint]
-select = ["E", "F", "C", "I", "W", "D", "E", "ANN001", "ANN201", "B006", "ARG", "RUF100", "UP", "PLR6301", "DOC"]
+select = ["E", "F", "C", "I", "W", "D", "E", "ANN001", "ANN201", "B006", "ARG", "RUF100", "UP", "PLR6301", "DOC", "SIM"]
 extend-ignore = [
-    "E501", "E731", "E741", "E402", "F841", "F811", "C901", "E203", "E402", "D211", "D213", "D205", "D105", "D107", "D301"
+    "E501", "E731", "E741", "E402", "F841", "F811", "C901", "E203", "E402", "D211", "D213", "D205", "D105", "D107", "D301", "SIM108", "SIM102"
 ]
-pycodestyle.max-doc-length = 100
+pycodestyle.max-doc-length = 105
 pydocstyle.convention = 'google'
 preview = true
 

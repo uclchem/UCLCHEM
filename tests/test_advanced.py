@@ -596,7 +596,7 @@ class TestGeneralSettings:
 
         assert isinstance(results, dict)
         assert len(results) > 0
-        assert any("initial" in key.lower() for key in results.keys())
+        assert any("initial" in key.lower() for key in results)
 
     def test_module_list_settings(self, settings: advanced.GeneralSettings) -> None:
         """Test listing settings in a module.

@@ -144,7 +144,7 @@ def test_option3_load_from_default_installation():
     assert len(network.get_reaction_dict()) > 10
     # Check for common UCLCHEM species
     species_dict = network.get_species_dict()
-    assert any("H" in name for name in species_dict.keys())
+    assert any("H" in name for name in species_dict)
 
 
 def test_different_factory_methods_produce_networks(sample_species, sample_reactions):

@@ -867,13 +867,49 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
         species_list (species_list): List of species AFTER being processed by build_ode_string
 
     """
-    output = open(file_name, "w")
     species_names = ""
-    for i, species in enumerate(species_list):
-        species_names += species.get_name()
-        losses = species.losses.split("+")
-        gains = species.gains.split("+")
-        for j in range(1, len(species_list) + 1):
+    with open(file_name, "w") as output:
+        for i, species in enumerate(species_list):
+            species_names += species.get_name()
+            losses = species.losses.split("+")
+            gains = species.gains.split("+")
+            for j in range(1, len(species_list) + 1):
+                if species.get_name() == "SURFACE":
+                    di_dj = f"J({i + 1},{j})=SUM(J(surfaceList,{j}))\n"
+                    output.write(di_dj)
+                elif species.get_name() == "BULK":
+                    if species_names.count("@") > 0:
+                        di_dj = f"J({i + 1},{j})=SUM(J(bulkList,{j}))\n"
+                        output.write(di_dj)
+                else:
+                    # every time an ode bit has our species in it, we remove it (dy/dx=a for y=ax)
+                    di_dj = [
+                        f"-{x}".replace(f"*Y({j})", "", 1)
+                        for x in losses
+                        if f"*Y({j})" in x
+                    ]
+                    di_dj += [
+                        f"+{x}".replace(f"*Y({j})", "", 1)
+                        for x in gains
+                        if f"*Y({j})" in x
+                    ]
+                    # of course there might be y=a*x*x so we only replace first instance and if
+                    # there's still an instance we put a factor of two in since
+                    # dy/dx=2ax for y=a*x*x
+                    di_dj = [x + "*2" if f"*Y({j})" in x else x for x in di_dj]
+
+                    # safeMantle is a stand in for the surface so do it manually here
+                    # since it's divided by safemantle, derivative is negative so sign flips
+                    # and we get another factor of 1/safeMantle
+                    if species_list[j - 1].get_name() == "SURFACE":
+                        di_dj = [f"+{x}/safeMantle" for x in losses if "/safeMantle" in x]
+                        di_dj += [f"-{x}/safeMantle" for x in gains if "/safeMantle" in x]
+                    if len(di_dj) > 0:
+                        di_dj = f"J({i + 1},{j})=" + "".join(di_dj) + "\n"
+                        output.write(di_dj)
+
+            # tackle density separately.handled
+            j = j + 1
             if species.get_name() == "SURFACE":
                 di_dj = f"J({i + 1},{j})=SUM(J(surfaceList,{j}))\n"
                 output.write(di_dj)
@@ -882,49 +918,15 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
                     di_dj = f"J({i + 1},{j})=SUM(J(bulkList,{j}))\n"
                     output.write(di_dj)
             else:
-                # every time an ode bit has our species in it, we remove it (dy/dx=a for y=ax)
-                di_dj = [
-                    f"-{x}".replace(f"*Y({j})", "", 1) for x in losses if f"*Y({j})" in x
-                ]
-                di_dj += [
-                    f"+{x}".replace(f"*Y({j})", "", 1) for x in gains if f"*Y({j})" in x
-                ]
-                # of course there might be y=a*x*x so we only replace first instance and if
-                # there's still an instance we put a factor of two in since
-                # dy/dx=2ax for y=a*x*x
-                di_dj = [x + "*2" if f"*Y({j})" in x else x for x in di_dj]
-
-                # safeMantle is a stand in for the surface so do it manually here
-                # since it's divided by safemantle, derivative is negative so sign flips
-                # and we get another factor of 1/safeMantle
-                if species_list[j - 1].get_name() == "SURFACE":
-                    di_dj = [f"+{x}/safeMantle" for x in losses if "/safeMantle" in x]
-                    di_dj += [f"-{x}/safeMantle" for x in gains if "/safeMantle" in x]
+                di_dj = [f"-{x}".replace("*D", "", 1) for x in losses if "*D" in x]
+                di_dj += [f"+{x}".replace("*D", "", 1) for x in gains if "*D" in x]
+                di_dj = [x + "*2" if "*D" in x else x for x in di_dj]
                 if len(di_dj) > 0:
-                    di_dj = f"J({i + 1},{j})=" + "".join(di_dj) + "\n"
+                    di_dj = f"J({i + 1},{j})=" + ("".join(di_dj)) + "\n"
                     output.write(di_dj)
-
-        # tackle density separately.handled
-        j = j + 1
-        if species.get_name() == "SURFACE":
-            di_dj = f"J({i + 1},{j})=SUM(J(surfaceList,{j}))\n"
-            output.write(di_dj)
-        elif species.get_name() == "BULK":
-            if species_names.count("@") > 0:
-                di_dj = f"J({i + 1},{j})=SUM(J(bulkList,{j}))\n"
-                output.write(di_dj)
-        else:
-            di_dj = [f"-{x}".replace("*D", "", 1) for x in losses if "*D" in x]
-            di_dj += [f"+{x}".replace("*D", "", 1) for x in gains if "*D" in x]
-            di_dj = [x + "*2" if "*D" in x else x for x in di_dj]
-            if len(di_dj) > 0:
-                di_dj = f"J({i + 1},{j})=" + ("".join(di_dj)) + "\n"
-                output.write(di_dj)
-    i = i + 2
-    di_dj = f"J({i},{i})=ddensdensdot(D)\n"
-    output.write(di_dj)
-
-    output.close()
+        i = i + 2
+        di_dj = f"J({i},{i})=ddensdensdot(D)\n"
+        output.write(di_dj)
 
 
 def build_ode_string(
@@ -1046,9 +1048,8 @@ REAL(dp) :: totalSwap, LOSS, PROD
                 ode_string += f"    REACTIONRATE({j}) = 0.0D0\n"
             if not species_list[bulk_partner].is_refractory:
                 ode_string += f"    YDOT({n + 1})=YDOT({n + 1})-YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})\n"
-        if species.get_name()[0] == "@":
-            if not species.is_refractory:
-                ode_string += f"    YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({n + 1})\n"
+        if species.get_name()[0] == "@" and not species.is_refractory:
+            ode_string += f"    YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({n + 1})\n"
     ode_string += "ELSE\n"
     ode_string += "    ! surfaceCoverage = fractional surface coverage\n"
     ode_string += "    ! Real value of surfaceCoverage: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
@@ -1303,234 +1304,244 @@ def write_network_file(
     """
     species_list = network.get_species_list()
     reaction_list = network.get_reaction_list()
-    openFile = open(file_name, "w")
-    openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
 
-    # write arrays of all species stuff
-    names = []
-    atoms = []
-    masses = []
-    for species in species_list:
-        names.append(species.get_name())
-        masses.append(float(species.mass))
-        atoms.append(species.n_atoms)
+    with open(file_name, "w") as openFile:
+        openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
 
-    speciesIndices = ""
-    for name, species_index in network.species_indices.items():
-        speciesIndices += f"{name}={species_index},"
-    if len(speciesIndices) > 72:
-        speciesIndices = truncate_line(speciesIndices)
-    speciesIndices = speciesIndices[:-1] + "\n"
-    openFile.write("    INTEGER, PARAMETER ::" + speciesIndices)
-    openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
-    openFile.write("    REAL(dp) :: SURFGROWTHUNCORRECTED\n")
-    openFile.write(array_to_string("    specname", names, type="string"))
-    openFile.write(array_to_string("    mass", masses, type="float"))
-    openFile.write(array_to_string("    atomCounts", atoms, type="int"))
+        # write arrays of all species stuff
+        names = []
+        atoms = []
+        masses = []
+        for species in species_list:
+            names.append(species.get_name())
+            masses.append(float(species.mass))
+            atoms.append(species.n_atoms)
 
-    # then write evaporation stuff
-    n_ice_species = write_evap_lists(openFile, species_list)
+        speciesIndices = ""
+        for name, species_index in network.species_indices.items():
+            speciesIndices += f"{name}={species_index},"
+        if len(speciesIndices) > 72:
+            speciesIndices = truncate_line(speciesIndices)
+        speciesIndices = speciesIndices[:-1] + "\n"
+        openFile.write("    INTEGER, PARAMETER ::" + speciesIndices)
+        openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
+        openFile.write("    REAL(dp) :: SURFGROWTHUNCORRECTED\n")
+        openFile.write(array_to_string("    specname", names, type="string"))
+        openFile.write(array_to_string("    mass", masses, type="float"))
+        openFile.write(array_to_string("    atomCounts", atoms, type="int"))
 
-    # finally all reactions
-    reactant1 = []
-    reactant2 = []
-    reactant3 = []
-    prod1 = []
-    prod2 = []
-    prod3 = []
-    prod4 = []
-    alpha = []
-    beta = []
-    gama = []
-    reacTypes = []
-    # duplicates = []
-    tmins = []
-    tmaxs = []
-    reduced_masses = []
-    extrapolations = []
-    exothermicity = []
+        # then write evaporation stuff
+        n_ice_species = write_evap_lists(openFile, species_list)
 
-    # store important reactions
-    reaction_indices = ""
-    for reaction, index in network.important_reactions.items():
-        reaction_indices += reaction + f"={index},"
-    reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
-    openFile.write("    INTEGER, PARAMETER ::" + reaction_indices)
+        # finally all reactions
+        reactant1 = []
+        reactant2 = []
+        reactant3 = []
+        prod1 = []
+        prod2 = []
+        prod3 = []
+        prod4 = []
+        alpha = []
+        beta = []
+        gama = []
+        reacTypes = []
+        # duplicates = []
+        tmins = []
+        tmaxs = []
+        reduced_masses = []
+        extrapolations = []
+        exothermicity = []
 
-    for i, reaction in enumerate(reaction_list):
-        reactant1.append(find_reactant(names, reaction.get_reactants()[0]))
-        reactant2.append(find_reactant(names, reaction.get_reactants()[1]))
-        reactant3.append(find_reactant(names, reaction.get_reactants()[2]))
-        prod1.append(find_reactant(names, reaction.get_products()[0]))
-        prod2.append(find_reactant(names, reaction.get_products()[1]))
-        prod3.append(find_reactant(names, reaction.get_products()[2]))
-        prod4.append(find_reactant(names, reaction.get_products()[3]))
-        alpha.append(reaction.get_alpha())
-        beta.append(reaction.get_beta())
-        gama.append(reaction.get_gamma())
-        # if reaction.duplicate:
-        #     duplicates.append(i + 1)
-        tmaxs.append(reaction.get_temphigh())
-        tmins.append(reaction.get_templow())
-        reduced_masses.append(reaction.get_reduced_mass())
-        reacTypes.append(reaction.get_reaction_type())
-        extrapolations.append(reaction.get_extrapolation())
-        exothermicity.append(reaction.get_exothermicity())
-    # if len(duplicates) == 0:
-    #     duplicates = [9999]
-    #     tmaxs = [0]
-    #     tmins = [0]
+        # store important reactions
+        reaction_indices = ""
+        for reaction, index in network.important_reactions.items():
+            reaction_indices += reaction + f"={index},"
+        reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
+        openFile.write("    INTEGER, PARAMETER ::" + reaction_indices)
 
-    reaction_names = []
-    for n, reaction in enumerate(reaction_list):
-        reaction_names.append(str(reaction))
-    for n, species in enumerate(species_list):
-        if species.is_surface_species() and species.get_name() not in [
-            "SURFACE",
-            "BULK",
-        ]:
-            reaction_name = (
-                f"{species.get_name()} + SURFACETRANSFER -> @{species.get_name()[1:]}"
+        for i, reaction in enumerate(reaction_list):
+            reactant1.append(find_reactant(names, reaction.get_reactants()[0]))
+            reactant2.append(find_reactant(names, reaction.get_reactants()[1]))
+            reactant3.append(find_reactant(names, reaction.get_reactants()[2]))
+            prod1.append(find_reactant(names, reaction.get_products()[0]))
+            prod2.append(find_reactant(names, reaction.get_products()[1]))
+            prod3.append(find_reactant(names, reaction.get_products()[2]))
+            prod4.append(find_reactant(names, reaction.get_products()[3]))
+            alpha.append(reaction.get_alpha())
+            beta.append(reaction.get_beta())
+            gama.append(reaction.get_gamma())
+            # if reaction.duplicate:
+            #     duplicates.append(i + 1)
+            tmaxs.append(reaction.get_temphigh())
+            tmins.append(reaction.get_templow())
+            reduced_masses.append(reaction.get_reduced_mass())
+            reacTypes.append(reaction.get_reaction_type())
+            extrapolations.append(reaction.get_extrapolation())
+            exothermicity.append(reaction.get_exothermicity())
+        # if len(duplicates) == 0:
+        #     duplicates = [9999]
+        #     tmaxs = [0]
+        #     tmins = [0]
+
+        reaction_names = []
+        for n, reaction in enumerate(reaction_list):
+            reaction_names.append(str(reaction))
+        for n, species in enumerate(species_list):
+            if species.is_surface_species() and species.get_name() not in [
+                "SURFACE",
+                "BULK",
+            ]:
+                reaction_name = (
+                    f"{species.get_name()} + SURFACETRANSFER -> @{species.get_name()[1:]}"
+                )
+                reaction_names.append(reaction_name)
+        for n, species in enumerate(species_list):
+            if species.is_surface_species() and species.get_name() not in [
+                "SURFACE",
+                "BULK",
+            ]:
+                reaction_name = (
+                    f"@{species.get_name()[1:]} + SURFACETRANSFER -> {species.get_name()}"
+                )
+                reaction_names.append(reaction_name)
+
+        # Save some memory by only allocating things we actually want to use:
+        if enable_rates_storage:
+            openFile.write(
+                f"    REAL(dp) :: REACTIONRATE({len(reactant1) + n_ice_species})\n"
             )
-            reaction_names.append(reaction_name)
-    for n, species in enumerate(species_list):
-        if species.is_surface_species() and species.get_name() not in [
-            "SURFACE",
-            "BULK",
-        ]:
-            reaction_name = (
-                f"@{species.get_name()[1:]} + SURFACETRANSFER -> {species.get_name()}"
-            )
-            reaction_names.append(reaction_name)
-
-    # Save some memory by only allocating things we actually want to use:
-    if enable_rates_storage:
-        openFile.write(
-            f"    REAL(dp) :: REACTIONRATE({len(reactant1) + n_ice_species})\n"
-        )
-        openFile.write("     LOGICAL :: storeRatesComputation=.true.\n")
-    else:
-        openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
-        openFile.write("    LOGICAL :: storeRatesComputation=.false.\n")
-    if any(exo != 0.0 for exo in exothermicity):
-        assert enable_rates_storage, (
-            "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
-        )
-        openFile.write(
-            array_to_string(
-                "\texothermicities", exothermicity, type="float", parameter=True
-            )
-        )
-        openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .TRUE.\n")
-    else:
-        openFile.write(
-            "    REAL(dp) :: \texothermicities(" + str(len(exothermicity)) + ")\n"
-        )
-        openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .FALSE.\n")
-
-    openFile.write(array_to_string("\tre1", reactant1, type="int"))
-    openFile.write(array_to_string("\tre2", reactant2, type="int"))
-    openFile.write(array_to_string("\tre3", reactant3, type="int"))
-    openFile.write(array_to_string("\tp1", prod1, type="int"))
-    openFile.write(array_to_string("\tp2", prod2, type="int"))
-    openFile.write(array_to_string("\tp3", prod3, type="int"))
-    openFile.write(array_to_string("\tp4", prod4, type="int"))
-    openFile.write(array_to_string("\talpha", alpha, type="float", parameter=False))
-    openFile.write(array_to_string("\tbeta", beta, type="float", parameter=False))
-    openFile.write(array_to_string("\tgama", gama, type="float", parameter=False))
-    # openFile.write(array_to_string("\tduplicates", duplicates, type="int", parameter=True))
-    openFile.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
-    openFile.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
-    openFile.write(
-        array_to_string("\treducedMasses", reduced_masses, type="float", parameter=True)
-    )
-    openFile.write(
-        array_to_string(
-            "\tExtrapolateRates", extrapolations, type="logical", parameter=True
-        )
-    )
-    reacTypes = np.asarray(reacTypes)
-
-    partners = get_desorption_freeze_partners(reaction_list)
-    openFile.write(
-        array_to_string("\tfreezePartners", partners, type="int", parameter=True)
-    )
-
-    openFile.write(
-        array_to_string(
-            "\t garParams",
-            np.array(list(gar_database.values())) if gar_database else np.zeros((1, 7)),
-            type="float",
-            parameter=True,
-        )
-    )
-
-    for reaction_type in reaction_types:
-        list_name = reaction_type.lower() + "Reacs"
-        indices = np.where(reacTypes == reaction_type)[0]
-        if len(indices > 1):
-            indices = [indices[0] + 1, indices[-1] + 1]
+            openFile.write("     LOGICAL :: storeRatesComputation=.true.\n")
         else:
-            # We still want a dummy array if the reaction type isn't in network
-            indices = [99999, 99999]
+            openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
+            openFile.write("    LOGICAL :: storeRatesComputation=.false.\n")
+        if any(exo != 0.0 for exo in exothermicity):
+            assert enable_rates_storage, (
+                "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
+            )
+            openFile.write(
+                array_to_string(
+                    "\texothermicities", exothermicity, type="float", parameter=True
+                )
+            )
+            openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .TRUE.\n")
+        else:
+            openFile.write(
+                "    REAL(dp) :: \texothermicities(" + str(len(exothermicity)) + ")\n"
+            )
+            openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .FALSE.\n")
+
+        openFile.write(array_to_string("\tre1", reactant1, type="int"))
+        openFile.write(array_to_string("\tre2", reactant2, type="int"))
+        openFile.write(array_to_string("\tre3", reactant3, type="int"))
+        openFile.write(array_to_string("\tp1", prod1, type="int"))
+        openFile.write(array_to_string("\tp2", prod2, type="int"))
+        openFile.write(array_to_string("\tp3", prod3, type="int"))
+        openFile.write(array_to_string("\tp4", prod4, type="int"))
+        openFile.write(array_to_string("\talpha", alpha, type="float", parameter=False))
+        openFile.write(array_to_string("\tbeta", beta, type="float", parameter=False))
+        openFile.write(array_to_string("\tgama", gama, type="float", parameter=False))
+        # openFile.write(array_to_string("\tduplicates", duplicates, type="int", parameter=True))
+        openFile.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
+        openFile.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
         openFile.write(
             array_to_string(
-                "\t" + list_name, indices, type="int", parameter=True
+                "\treducedMasses", reduced_masses, type="float", parameter=True
+            )
+        )
+        openFile.write(
+            array_to_string(
+                "\tExtrapolateRates", extrapolations, type="logical", parameter=True
+            )
+        )
+        reacTypes = np.asarray(reacTypes)
+
+        partners = get_desorption_freeze_partners(reaction_list)
+        openFile.write(
+            array_to_string("\tfreezePartners", partners, type="int", parameter=True)
+        )
+
+        openFile.write(
+            array_to_string(
+                "\t garParams",
+                np.array(list(gar_database.values()))
+                if gar_database
+                else np.zeros((1, 7)),
+                type="float",
+                parameter=True,
+            )
+        )
+
+        for reaction_type in reaction_types:
+            list_name = reaction_type.lower() + "Reacs"
+            indices = np.where(reacTypes == reaction_type)[0]
+            if len(indices > 1):
+                indices = [indices[0] + 1, indices[-1] + 1]
+            else:
+                # We still want a dummy array if the reaction type isn't in network
+                indices = [99999, 99999]
+            openFile.write(
+                array_to_string(
+                    "\t" + list_name, indices, type="int", parameter=True
+                ).replace("99999", "REAC_NOT_PRESENT")
+            )
+
+        # Write LHDES and ERDES mapping arrays (Feature 3: LH/ER-DES mapping)
+        # These arrays map chemical reactive desorption reactions to their parent reactions
+        LHDEScorrespondingLHreacs = []
+        for reaction in reaction_list:
+            if reaction.get_reaction_type() == "LHDES":
+                if (
+                    hasattr(reaction, "get_partner")
+                    and reaction.get_partner() is not None
+                ):
+                    partner = reaction.get_partner()
+                    reacIndex = reaction_list.index(partner) + 1
+                    LHDEScorrespondingLHreacs.append(reacIndex)
+                else:
+                    # If no partner set, use dummy index
+                    LHDEScorrespondingLHreacs.append(99999)
+
+        # Write array (use dummy if empty for backward compatibility)
+        if len(LHDEScorrespondingLHreacs) == 0:
+            LHDEScorrespondingLHreacs = [99999]
+        openFile.write(
+            array_to_string(
+                "\tLHDEScorrespondingLHreacs",
+                LHDEScorrespondingLHreacs,
+                type="int",
+                parameter=True,
             ).replace("99999", "REAC_NOT_PRESENT")
         )
 
-    # Write LHDES and ERDES mapping arrays (Feature 3: LH/ER-DES mapping)
-    # These arrays map chemical reactive desorption reactions to their parent reactions
-    LHDEScorrespondingLHreacs = []
-    for reaction in reaction_list:
-        if reaction.get_reaction_type() == "LHDES":
-            if hasattr(reaction, "get_partner") and reaction.get_partner() is not None:
-                partner = reaction.get_partner()
-                reacIndex = reaction_list.index(partner) + 1
-                LHDEScorrespondingLHreacs.append(reacIndex)
-            else:
-                # If no partner set, use dummy index
-                LHDEScorrespondingLHreacs.append(99999)
+        ERDEScorrespondingERreacs = []
+        for reaction in reaction_list:
+            if reaction.get_reaction_type() == "ERDES":
+                if (
+                    hasattr(reaction, "get_partner")
+                    and reaction.get_partner() is not None
+                ):
+                    partner = reaction.get_partner()
+                    reacIndex = reaction_list.index(partner) + 1
+                    ERDEScorrespondingERreacs.append(reacIndex)
+                else:
+                    # If no partner set, use dummy index
+                    ERDEScorrespondingERreacs.append(99999)
 
-    # Write array (use dummy if empty for backward compatibility)
-    if len(LHDEScorrespondingLHreacs) == 0:
-        LHDEScorrespondingLHreacs = [99999]
-    openFile.write(
-        array_to_string(
-            "\tLHDEScorrespondingLHreacs",
-            LHDEScorrespondingLHreacs,
-            type="int",
-            parameter=True,
-        ).replace("99999", "REAC_NOT_PRESENT")
-    )
-
-    ERDEScorrespondingERreacs = []
-    for reaction in reaction_list:
-        if reaction.get_reaction_type() == "ERDES":
-            if hasattr(reaction, "get_partner") and reaction.get_partner() is not None:
-                partner = reaction.get_partner()
-                reacIndex = reaction_list.index(partner) + 1
-                ERDEScorrespondingERreacs.append(reacIndex)
-            else:
-                # If no partner set, use dummy index
-                ERDEScorrespondingERreacs.append(99999)
-
-    # Write array (use dummy if empty for backward compatibility)
-    if len(ERDEScorrespondingERreacs) == 0:
-        ERDEScorrespondingERreacs = [99999]
-    elif len(ERDEScorrespondingERreacs) == 1:
-        # Fortran needs at least 2 elements for array
-        ERDEScorrespondingERreacs.append(ERDEScorrespondingERreacs[0])
-    openFile.write(
-        array_to_string(
-            "\tERDEScorrespondingERreacs",
-            ERDEScorrespondingERreacs,
-            type="int",
-            parameter=True,
-        ).replace("99999", "REAC_NOT_PRESENT")
-    )
-    openFile.write("END MODULE network")
-    openFile.close()
+        # Write array (use dummy if empty for backward compatibility)
+        if len(ERDEScorrespondingERreacs) == 0:
+            ERDEScorrespondingERreacs = [99999]
+        elif len(ERDEScorrespondingERreacs) == 1:
+            # Fortran needs at least 2 elements for array
+            ERDEScorrespondingERreacs.append(ERDEScorrespondingERreacs[0])
+        openFile.write(
+            array_to_string(
+                "\tERDEScorrespondingERreacs",
+                ERDEScorrespondingERreacs,
+                type="int",
+                parameter=True,
+            ).replace("99999", "REAC_NOT_PRESENT")
+        )
+        openFile.write("END MODULE network")
 
 
 def find_reactant(species_list: list[str], reactant: str) -> int:
@@ -1569,10 +1580,12 @@ def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[Reacti
     partners = []
     for spec in freeze_species:
         for i, reaction in enumerate(reaction_list):
-            if reaction.get_reaction_type() == "FREEZE":
-                if reaction.get_reactants()[0] == spec:
-                    partners.append(i + 1)
-                    break
+            if (
+                reaction.get_reaction_type() == "FREEZE"
+                and reaction.get_reactants()[0] == spec
+            ):
+                partners.append(i + 1)
+                break
     return partners
 
 

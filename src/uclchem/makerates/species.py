@@ -387,7 +387,7 @@ class Species:
 
         """
         # TODO: Write an unit test for get_freeze_product_behaviour
-        return [key.split(",") for key in self.freeze_products.keys()]
+        return [key.split(",") for key in self.freeze_products]
 
     def get_freeze_alpha(self, product_list: list[str]) -> float:
         """Obtain the freeze out ratio of a species for a certain reaction.

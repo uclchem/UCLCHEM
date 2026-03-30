@@ -33,7 +33,7 @@ def test_all_fortran_variables_classified():
     unclassified = []
     misclassified = []
 
-    for module_name in settings._modules.keys():
+    for module_name in settings._modules:
         mod_settings = settings._modules[module_name]
 
         for name, setting in mod_settings._settings.items():
@@ -99,7 +99,7 @@ def test_parameter_immutability():
     """
     settings = advanced.GeneralSettings()
 
-    for module_name in settings._modules.keys():
+    for module_name in settings._modules:
         mod_settings = settings._modules[module_name]
 
         for name, setting in mod_settings._settings.items():

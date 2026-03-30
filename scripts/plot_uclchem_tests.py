@@ -76,12 +76,12 @@ if __name__ == "__main__":
                         print_elemental_conservation = False
 
                 # plot species and save to test.png, alternatively send dens instead of time.
-                axis = uclchem.analysis.plot_species(
+                axis = uclchem.plot.plot_species(
                     axis, model_data[folder + model], speciesNames, legend=False
                 )
                 if folder == "test-output/":
                     axis.set_prop_cycle(None)
-                    axis = uclchem.analysis.plot_species(
+                    axis = uclchem.plot.plot_species(
                         axis,
                         model_data["example-output/" + model],
                         speciesNames,

@@ -105,8 +105,8 @@ def read_output_file(output_file: str | Path) -> pd.DataFrame:
             physical parameters of the model at every time step.
 
     """
-    f = open(output_file)
-    data = read_csv(f)
+    with open(output_file) as f:
+        data = read_csv(f)
     data.columns = data.columns.str.strip()
     return data
 
@@ -123,8 +123,8 @@ def read_rate_file(rate_file: str | Path) -> pd.DataFrame:
             and reaction rates (s-1) at each timestep.
 
     """
-    f = open(rate_file)
-    data = read_csv(f)
+    with open(rate_file) as f:
+        data = read_csv(f)
     data.columns = data.columns.str.strip()
     return data
 

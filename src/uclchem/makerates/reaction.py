@@ -684,10 +684,10 @@ class Reaction:
             raise NotImplementedError(
                 "Equality is not implemented for anything but comparing to other reactions."
             )
-        if self.get_sorted_reactants() == other.get_sorted_reactants():
-            if self.get_sorted_products() == other.get_sorted_products():
-                return True
-        return False
+        return (
+            self.get_sorted_reactants() == other.get_sorted_reactants()
+            and self.get_sorted_products() == other.get_sorted_products()
+        )
 
     def check_temperature_collision(self, other: Reaction) -> bool:
         """Check if two reactions have overlapping temperature ranges.
@@ -712,11 +712,9 @@ class Reaction:
             other.get_templow() < self.get_temphigh()
         ):
             return True
-        if (other.get_temphigh() > self.get_templow()) and (
+        return (other.get_temphigh() > self.get_templow()) and (
             other.get_temphigh() < self.get_temphigh()
-        ):
-            return True
-        return False
+        )
 
     def changes_surface_count(self) -> bool:
         """Check whether a grain reaction changes number of particles on the surface.
@@ -730,11 +728,9 @@ class Reaction:
             [x for x in self.get_products() if "#" in x]
         ):
             return True
-        if len([x for x in self.get_reactants() if "@" in x]) != len(
+        return len([x for x in self.get_reactants() if "@" in x]) != len(
             [x for x in self.get_products() if "@" in x]
-        ):
-            return True
-        return False
+        )
 
     def changes_total_mantle(self) -> bool:
         """Check if the total grains on the mantle are changed by the reaction.
@@ -748,10 +744,7 @@ class Reaction:
             "SWAP" not in self.get_reactants()[1]
         ):
             # if the number of ice species changes
-            if self.changes_surface_count():
-                return True
-            else:
-                return False
+            return self.changes_surface_count()
         else:
             return False
 
@@ -1050,7 +1043,6 @@ def _generate_reaction_ode_bit(
             # so stop looping after first iteration
             break
 
-    if "LH" in reactants[2]:
-        if "@" in reactants[0]:
-            ode_bit += "*bulkLayersReciprocal"
+    if "LH" in reactants[2] and "@" in reactants[0]:
+        ode_bit += "*bulkLayersReciprocal"
     return ode_bit
