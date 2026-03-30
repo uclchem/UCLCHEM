@@ -80,7 +80,7 @@ def __validate_functional_api_params__(
     return_dataframe: bool,
     return_rate_constants: bool,
     return_heating: bool,
-    starting_chemistry: np.ndarray,
+    starting_chemistry: np.ndarray,  # noqa: ARG001
     return_stats: bool = False,
 ) -> None:
     """Validate functional API specific constraints.
@@ -132,17 +132,25 @@ def __functional_return__(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-):
-    """Return function that takes in the object that was modelled and returns the values based on the specified booleans.
+) -> tuple:
+    """Return function that takes in the object that was modelled and returns the values
+    based on the specified booleans.
 
     Args:
-        model_object (AbstractModel): model_object of a class that inherited from AbstractModel, from which the results should be returned.
-        return_array (bool): A boolean on whether a np.array should be returned to a user, if both return_array and return_dataframe are false, the function will return
-            the success_flag, dissipation_time if the model_object has that attribute, and the final abundances of the out_species.
-        return_dataframe (bool): Whether a pd.DataFrame should be returned to a user, if both return_array and return_dataframe are false, the function will return
-            the success_flag, dissipation_time if the model_object has that attribute, and the final abundances of the out_species.
-        return_rate_constants (bool): A boolean on whether the reaction rate constants should be returned to a user.
-        return_heating (bool): A boolean on whether the heating/cooling rates should be returned to a user.
+        model_object (AbstractModel): model_object of a class that inherited from AbstractModel,
+            from which the results should be returned.
+        return_array (bool): A boolean on whether a np.array should be returned to a user.
+            If both return_array and return_dataframe are false, the function will return
+            the success_flag, dissipation_time if the model_object has that attribute,
+            and the final abundances of the out_species.
+        return_dataframe (bool): Whether a pd.DataFrame should be returned to a user.
+            If both return_array and return_dataframe are false, the function will return
+            the success_flag, dissipation_time if the model_object has that attribute,
+            and the final abundances of the out_species.
+        return_rate_constants (bool): A boolean on whether the reaction rate constants
+            should be returned to a user.
+        return_heating (bool): A boolean on whether the heating/cooling rates
+            should be returned to a user.
         return_stats (bool): Whether DVODE statistics should be returned. Default = False.
 
     Returns:
@@ -153,21 +161,34 @@ def __functional_return__(
                 the second element is the dissipation time.
                 Further elements are the abundances of all species in `out_species`.
         if return_array is True:
-            - physicsArray (np.ndarray): array containing the physical outputs for each written timestep
-            - chemicalAbunArray (np.ndarray): array containing the chemical abundances for each written timestep
-            - rateConstantsArray (np.ndarray): array containing reaction rate constants (if return_rate_constants=True)
-            - heatArray (np.ndarray): array containing heating/cooling rates (if return_heating=True)
-            - dissipation_time (float): dissipation time in years (if model_object contains the dissipation_time attribute)
-            - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
+            - physicsArray (np.ndarray): array containing the physical outputs
+                for each written timestep
+            - chemicalAbunArray (np.ndarray): array containing the chemical abundances
+                for each written timestep
+            - rateConstantsArray (np.ndarray): array containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatArray (np.ndarray): array containing heating/cooling rates
+                (if return_heating=True)
+            - dissipation_time (float): dissipation time in years
+                (if model_object contains the dissipation_time attribute)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional
+                run after the initial model
             - success_flag (int): which is negative if the model failed to run.
                 Can be passed to `uclchem.utils.check_error()` to see more details.
         if return_dataframe is True:
-            - physicsDF (pd.DataFrame): DataFrame containing the physical outputs for each written timestep
-            - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances for each written timestep
-            - rate_constants_df (pd.DataFrame): DataFrame containing reaction rate constants (if return_rate_constants=True)
-            - heatingDF (pd.DataFrame): DataFrame containing heating/cooling rates (if return_heating=True)
-            - dissipation_time (float): dissipation time in years (if model_object contains the dissipation_time attribute)
-            - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep in the format uclchem needs in order to perform an additional run after the initial model
+            - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
+                for each written timestep
+            - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances
+                for each written timestep
+            - rate_constants_df (pd.DataFrame): DataFrame containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatingDF (pd.DataFrame): DataFrame containing heating/cooling rates
+                (if return_heating=True)
+            - dissipation_time (float): dissipation time in years
+                (if model_object contains the dissipation_time attribute)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
+                in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 

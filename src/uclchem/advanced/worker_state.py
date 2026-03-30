@@ -169,7 +169,7 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
             continue
         mod = getattr(uclchemwrap, mod_name)
         for attr, value in settings_dict.items():
-            with contextlib.supress(AttributeError, TypeError):
+            with contextlib.suppress(AttributeError, TypeError):
                 # read-only or incompatible – skip silently
                 setattr(mod, attr, value)
 
