@@ -186,13 +186,13 @@ class SpeciesMatcher:
         print(f"Loaded ATCT: {len(self.atct_gas)} gas-phase species")
 
     def match_species(
-        self, uclchem_species: list[str], resume_file: str | None = None
+        self, uclchem_species: list[str], resume_file: str | Path | None = None
     ) -> dict[str, dict[str, Any]]:
         """Match UCLCHEM species with ATCT data.
 
         Args:
             uclchem_species (list[str]): List of UCLCHEM species names
-            resume_file (str | None): Optional path to resume from previous session
+            resume_file (str | Path | None): Optional path to resume from previous session
 
         Returns:
             dict[str, dict[str, Any]]: Dictionary mapping UCLCHEM species to ATCT matches
@@ -507,13 +507,10 @@ class SpeciesMatcher:
         except Exception as e:
             logging.warning(f"Warning: Could not save session: {e}")
 
-    def _resume_matching(
-        self, target_species: list[str], resume_file: str | Path
-    ) -> dict[str, dict[str, Any]]:
+    def _resume_matching(self, resume_file: str | Path) -> dict[str, dict[str, Any]]:
         """Resume matching from saved session.
 
         Args:
-            target_species (list[str]): list of target species
             resume_file (str | Path): Path to saved session file.
 
         Returns:
