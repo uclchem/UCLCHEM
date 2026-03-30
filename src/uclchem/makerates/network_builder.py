@@ -761,7 +761,8 @@ class NetworkBuilder:
                     branching_reactions[reactant_string] += reaction.get_alpha()
                 else:
                     branching_reactions[reactant_string] = reaction.get_alpha()
-        if any(branching_reactions.values() != 1.0):
+        print(branching_reactions.values())
+        if any(val != 1.0 for val in branching_reactions.values()):
             logging.warning(
                 "Some of the branching ratios do not sum to 1.0, correcting those that do not"
             )
