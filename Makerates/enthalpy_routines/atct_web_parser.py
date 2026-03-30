@@ -28,7 +28,6 @@ except ImportError:
 
 
 class ATCTParser:
-
     """Efficient ATCT HTML database parser with robust error handling."""
 
     def __init__(self):

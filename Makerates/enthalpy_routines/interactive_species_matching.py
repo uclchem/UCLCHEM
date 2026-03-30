@@ -49,7 +49,6 @@ def clean_numeric_value(value: Any) -> float | None:
 
 
 class FormulaParser:
-
     """Chemical formula parsing utilities for UCLCHEM and ATCT formats."""
 
     @staticmethod
@@ -142,7 +141,6 @@ class FormulaParser:
 
 
 class SpeciesMatcher:
-
     """Interactive species matching between UCLCHEM and ATCT databases."""
 
     def __init__(self, atct_csv_path: str):

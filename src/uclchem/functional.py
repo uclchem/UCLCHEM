@@ -282,7 +282,7 @@ def __functional_return__(
 
 def __cloud__(
     param_dict: dict = None,
-    out_species: list = ["H", "N", "C", "O"],
+    out_species: list = None,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
@@ -291,11 +291,11 @@ def __cloud__(
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
-    """Run cloud model from UCLCHEM
+    """Run cloud model from UCLCHEM.
 
     Args:
         param_dict (dict): A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
-        out_species (list): A list of species for which final abundance will be returned. If None, no abundances will be returned. Defaults to ["H", "N", "C", "O"].
+        out_species (list): A list of species for which final abundance will be returned. If None, no abundances will be returned. Defaults to `uclchem.constants.default_elements_to_check`.
         return_array (bool): A boolean on whether a np.array should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file.
         return_dataframe (bool): A boolean on whether a pd.DataFrame should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file.
         return_rate_constants (bool): A boolean on whether the reaction rate constants should be returned to a user.
@@ -326,6 +326,8 @@ def __cloud__(
 
     """
     # Validate functional API constraints
+    if out_species is None:
+        out_species = ["H", "N", "C", "O"]
     __validate_functional_api_params__(
         param_dict=param_dict,
         return_array=return_array,
@@ -357,7 +359,7 @@ def __collapse__(
     collapse: str,
     physics_output: str,
     param_dict: dict = None,
-    out_species: list = ["H", "N", "C", "O"],
+    out_species: list = None,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
@@ -366,13 +368,13 @@ def __collapse__(
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
-    """Run collapse model from UCLCHEM based on Priestley et al 2018 AJ 156 51 (https://ui.adsabs.harvard.edu/abs/2018AJ....156...51P/abstract)
+    """Run collapse model from UCLCHEM based on Priestley et al 2018 AJ 156 51 (https://ui.adsabs.harvard.edu/abs/2018AJ....156...51P/abstract).
 
     Args:
         collapse (str): A string containing the collapse type, options are 'BE1.1', 'BE4', 'filament', or 'ambipolar'
         physics_output(str): Filename to store physics output, only relevant for 'filament' and 'ambipolar' collapses. If None, no physics output will be saved.
         param_dict (dict): A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
-        out_species (list): A list of species for which final abundance will be returned. If None, no abundances will be returned. Defaults to ["H", "N", "C", "O"].
+        out_species (list): A list of species for which final abundance will be returned. If None, no abundances will be returned. Defaults to `uclchem.constants.default_elements_to_check`.
         return_array (bool): A boolean on whether a np.array should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
         return_dataframe (bool): A boolean on whether a pd.DataFrame should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
         return_rate_constants (bool): A boolean on whether the reaction rate constants should be returned to a user.
@@ -402,6 +404,8 @@ def __collapse__(
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
+    if out_species is None:
+        out_species = ["H", "N", "C", "O"]
     __validate_functional_api_params__(
         param_dict,
         return_array,
@@ -435,7 +439,7 @@ def __prestellar_core__(
     temp_indx: int = 1,
     max_temperature: float = 300.0,
     param_dict: dict = None,
-    out_species: list = ["H", "N", "C", "O"],
+    out_species: list = None,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
@@ -444,13 +448,13 @@ def __prestellar_core__(
     starting_chemistry: np.array = None,
     timepoints: int = TIMEPOINTS,
 ):
-    """Run prestellar core model from UCLCHEM, based on Viti et al. 2004 and Collings et al. 2004. This model type was previously known as hot core
+    """Run prestellar core model from UCLCHEM, based on Viti et al. 2004 and Collings et al. 2004. This model type was previously known as hot core.
 
     Args:
         temp_indx (int): Used to select the mass of prestellar core. 1=1Msun,2=5, 3=10, 4=15, 5=25,6=60]
         max_temperature (float): Value at which gas temperature will stop increasing.
         param_dict (dict): A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
-        out_species (list): A list of species for which final abundance will be returned. If None, no abundances will be returned. Defaults to ["H", "N", "C", "O"].
+        out_species (list): A list of species for which final abundance will be returned. If None, no abundances will be returned. Defaults to `uclchem.constants.default_elements_to_check`.
         return_array (bool): A boolean on whether a np.array should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
         return_dataframe (bool): A boolean on whether a pd.DataFrame should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
         return_rate_constants (bool): A boolean on whether the reaction rate constants should be returned to a user.

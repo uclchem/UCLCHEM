@@ -813,9 +813,9 @@ class Reaction:
     def _is_reaction_wrap(
         self, include_reactants: bool = True, include_products: bool = True
     ) -> list[str]:
-        assert include_reactants or include_products, (
-            "Either include reactants or products"
-        )
+        assert (
+            include_reactants or include_products
+        ), "Either include reactants or products"
         species_to_check = []
         if include_reactants:
             species_to_check += self.get_pure_reactants()

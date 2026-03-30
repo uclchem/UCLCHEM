@@ -12,7 +12,6 @@ from uclchem.makerates import heating
 
 
 class TestConversionConstants:
-
     """Test conversion constants."""
 
     def test_avogadro_number(self):
@@ -30,7 +29,6 @@ class TestConversionConstants:
 
 
 class TestHeatingFunctions:
-
     """Test heating module functions."""
 
     @pytest.fixture

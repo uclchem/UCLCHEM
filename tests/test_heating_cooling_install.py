@@ -42,7 +42,6 @@ def _run(
 
 
 class TestMakeRatesWithHeating:
-
     """Test that makerates succeeds with the full coolant config."""
 
     def test_makerates_runs_successfully(self):
@@ -113,7 +112,6 @@ class TestMakeRatesWithHeating:
 
 
 class TestInstallWithHeating:
-
     """Test that pip install succeeds after makerates with full coolant set."""
 
     def test_pip_install_succeeds(self):
@@ -146,7 +144,6 @@ class TestInstallWithHeating:
 
 
 class TestHeatingSettingsCoolants:
-
     """Test the HeatingSettings coolant control API after a full-set install."""
 
     @pytest.fixture
@@ -289,7 +286,6 @@ class TestHeatingSettingsCoolants:
 
 
 class TestHeatingCoolingMechanisms:
-
     """Test heating and cooling mechanism toggles with the full install."""
 
     @pytest.fixture
@@ -367,7 +363,6 @@ class TestHeatingCoolingMechanisms:
 
 
 class TestFortranConsistency:
-
     """Verify Fortran module state is consistent after install."""
 
     def test_coolant_active_array_size(self):

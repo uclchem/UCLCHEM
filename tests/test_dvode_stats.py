@@ -1,5 +1,4 @@
-"""Test DVODE solver statistics collection and exposure through the Python API.
-"""
+"""Test DVODE solver statistics collection and exposure through the Python API."""
 
 import numpy as np
 import pytest

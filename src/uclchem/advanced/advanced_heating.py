@@ -459,9 +459,9 @@ class HeatingSettings:
         if mode not in [0, 1, 2]:
             raise ValueError(f"mode must be 0, 1, or 2, got {mode}")
         self._uclchemwrap.uclchemwrap.set_coolant_restart_mode_wrap(mode)
-        assert self.get_coolant_restart_mode() == mode, (
-            "Failed to set coolant restart mode"
-        )
+        assert (
+            self.get_coolant_restart_mode() == mode
+        ), "Failed to set coolant restart mode"
 
     # TODO: refactor once Fortran is exposed
     def get_coolant_restart_mode(self) -> int:

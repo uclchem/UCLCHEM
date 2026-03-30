@@ -805,9 +805,9 @@ def get_total_swap(
 
     """
     assert len(rates) == len(abundances), "Rates and abundances must be the same length"
-    assert rates.shape[1] == len(reactions), (
-        "The number of rates and reactions must be equal"
-    )
+    assert rates.shape[1] == len(
+        reactions
+    ), "The number of rates and reactions must be equal"
     totalSwap = np.zeros(abundances.shape[0])
     for idx, reac in enumerate(reactions):
         if reac.get_reaction_type() == "BULKSWAP":

@@ -4,7 +4,6 @@ This module loads Fortran parameter classifications from YAML and provides
 them as Python sets for use in GeneralSettings.
 """
 
-
 import yaml
 
 from uclchem.utils import UCLCHEM_ROOT_DIR

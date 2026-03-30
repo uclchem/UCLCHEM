@@ -1,4 +1,4 @@
-"""UCLCHEM Model Module
+"""UCLCHEM Model Module.
 
 Core module for running gas-grain chemical models under different physical conditions.
 
@@ -313,7 +313,7 @@ def _convert_legacy_stopping_param(param_dict: dict) -> dict:
       - If both keys are present: raise RuntimeError
       - If `endAtFinalDensity` is present and points>1: raise RuntimeError
       - If `endAtFinalDensity=True` and freefall=False: raise ValueError
-      - Otherwise convert True->1, False->0 and remove the old key
+      - Otherwise convert True->1, False->0 and remove the old key.
 
     Note: This function assumes param_dict is already a copy and is case-normalized (lowercase keys).
     """
@@ -345,24 +345,24 @@ def _convert_legacy_stopping_param(param_dict: dict) -> dict:
 
 # TODO Add catch of ctrl+c or other aborts so that it saves model and a full output to files of year, month, day, time type.
 class AbstractModel(ABC):
-    """Base model class used for inheritance only
+    """Base model class used for inheritance only.
 
     The AbstractModel class serves as an abstract class from which other model classes can be built. It is not intended
     to be used as a standalone class for running UCLCHEM.
 
     Args:
-        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+        param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
             default values if not provided.
-        out_specie_list (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
-            provided. Defaults to ["H", "N", "C", "O"].
-        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+        out_specie_list (list): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to `uclchem.constants.default_elements_to_check`.
+        starting_chemistry (np.ndarray): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
             Defaults to None.
-        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+        previous_model (object): Model object, a class that inherited from AbstractModel, to use for the starting abundances
             of the new UCLCHEM model that will be run. Defaults to None
-        timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
+        timepoints (int): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
             Defaults to uclchem.constants.TIMEPOINTS
-        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False.
-        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+        debug (bool): Flag if extra debug information should be printed to the terminal. Defaults to False.
+        read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
     """
@@ -370,7 +370,7 @@ class AbstractModel(ABC):
     def __init__(
         self,
         param_dict: dict | None = None,
-        out_specie_list: list[str] = ["H", "N", "C", "O"],
+        out_specie_list: list[str] = None,
         starting_chemistry: np.ndarray | None = None,
         previous_model: object | None = None,
         timepoints: int = TIMEPOINTS,
@@ -378,6 +378,8 @@ class AbstractModel(ABC):
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
+        if out_specie_list is None:
+            out_specie_list = default_elements_to_check
         self._data = xr.Dataset()
         self._pickle_dict = {}
         # Per-instance metadata containers (scalars and small values)
@@ -542,8 +544,8 @@ class AbstractModel(ABC):
 
         Args:
             file (str): Path to a file that contains previously run and stored models.
-            name (str, optional): Name of the stored object. Defaults to 'default'.
-            debug (bool, optional): Flag for extra debug information. Defaults to False.
+            name (str): Name of the stored object. Defaults to 'default'.
+            debug (bool): Flag for extra debug information. Defaults to False.
 
         Returns:
             Model object loaded from the file.
@@ -696,7 +698,7 @@ class AbstractModel(ABC):
         return
 
     def has_attr(self, key):
-        """Method to check if the object has an attribute stored in self._meta or self._data"""
+        """Method to check if the object has an attribute stored in self._meta or self._data."""
         try:
             meta = super().__getattribute__("_meta")
         except Exception:
@@ -708,12 +710,12 @@ class AbstractModel(ABC):
     # UCLCHEM utility and analysis wrappers
     def check_conservation(
         self, element_list: list[str] | None = None, percent: bool = True
-    ):
-        """Utility method to check conservation of the chemical abundances
+    ) -> None:
+        """Utility method to check conservation of the chemical abundances.
 
         Args:
-            element_list (list, optional): List of elements to check conservation for. Defaults to self.out_species_lists.
-            percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
+            element_list (list): List of elements to check conservation for. Defaults to self.out_species_lists.
+            percent (bool): Flag on if percentage values should be used. Defaults to True.
 
         """
         if element_list is None:
@@ -739,8 +741,8 @@ class AbstractModel(ABC):
         """Checks the model error status and raises RuntimeError on failure.
 
         Args:
-            only_error (bool, optional): If True, only act when there was an error (skip success message).
-            raise_on_error (bool, optional): If True (default), raises RuntimeError on failure. If False, prints.
+            only_error (bool): If True, only act when there was an error (skip success message).
+            raise_on_error (bool): If True (default), raises RuntimeError on failure. If False, prints.
 
         """
         if self.success_flag is not None and self.success_flag < 0:
@@ -763,7 +765,7 @@ class AbstractModel(ABC):
         point: int = 0,
         plot_file: str | Path | None = None,
     ) -> tuple[plt.Figure, plt.Axes]:
-        """`uclchem.plot.create_abundance_plot` wrapper method
+        """`uclchem.plot.create_abundance_plot` wrapper method.
 
         Args:
             species (list[str] | None): List of species to plot. If None, uses self.out_species_list.
@@ -801,18 +803,18 @@ class AbstractModel(ABC):
         """Converts the model physics and chemical_abun arrays from numpy to pandas arrays.
 
         Args:
-            point (int or None, optional): Integer referring to which point of the UCLCHEM model to return.
+            point (int or None): Integer referring to which point of the UCLCHEM model to return.
                 If None, returns data for all points with a 'Point' column. Defaults to None.
-            joined (bool, optional): Flag on whether the returned pandas dataframe should be one, or if two dataframes should be
+            joined (bool): Flag on whether the returned pandas dataframe should be one, or if two dataframes should be
                 returned. One physical, one chemical_abun dataframe. Defaults to True.
-            with_rate_constants (bool, optional): Flag on whether to include reaction rate constants in the dataframe, and/or as a separate
+            with_rate_constants (bool): Flag on whether to include reaction rate constants in the dataframe, and/or as a separate
                 dataframe depending on the value of `joined`. Defaults to False.
-            with_heating (bool, optional): Flag on whether to include heating/cooling rates in the dataframe, and/or as a separate
+            with_heating (bool): Flag on whether to include heating/cooling rates in the dataframe, and/or as a separate
                 dataframe depending on the value of `joined`. Defaults to False.
-            with_stats (bool, optional): Flag on whether to include DVODE solver statistics in the dataframe, and/or as a separate
+            with_stats (bool): Flag on whether to include DVODE solver statistics in the dataframe, and/or as a separate
                 dataframe depending on the value of `joined`. Defaults to False.
-            with_level_populations (bool, optional): Flag on whether to include coolant level populations in the output. Defaults to False.
-            with_se_stats (bool, optional): Flag on whether to include SE solver statistics in the output. Defaults to False.
+            with_level_populations (bool): Flag on whether to include coolant level populations in the output. Defaults to False.
+            with_se_stats (bool): Flag on whether to include SE solver statistics in the output. Defaults to False.
 
         Returns:
             return_df (pandas.DataFrame): Dataframe of the joined arrays for point 'point' if joined = True
@@ -1102,10 +1104,10 @@ class AbstractModel(ABC):
         """uclchem.plot.plot(species) wrapper method
         Args:
             ax (plt.axes):
-            species (list, optional):
-            point (int, optional):
-            legend (bool, optional):
-            plot_kwargs (dict, optional):
+            species (list):
+            point (int):
+            legend (bool):
+            plot_kwargs (dict):
 
         Returns:
             plt.Axes: Modified input axis
@@ -1120,7 +1122,7 @@ class AbstractModel(ABC):
     # /UCLCHEM utility and analysis wrappers
 
     # Methods to start run of model
-    def run(self):
+    def run(self) -> None:
         """__run__ resets the Fortran arrays if the model was not read, allowing the arrays to be reused for new runs."""
         if self.was_read:
             raise RuntimeError("This model was read. It can not be run. ")
@@ -1226,8 +1228,8 @@ class AbstractModel(ABC):
         Args:
             file_obj (h5py.File): open file object
             file (str): Path to a file to store models.
-            name (str, optional): Name to use for the group of the object. Defaults to 'default'
-            overwrite (bool, optional): Boolean on whether to overwrite pre-existing models, or error out. Defaults to False
+            name (str): Name to use for the group of the object. Defaults to 'default'
+            overwrite (bool): Boolean on whether to overwrite pre-existing models, or error out. Defaults to False
 
         """
         opened_file = False
@@ -1526,13 +1528,13 @@ class AbstractModel(ABC):
             self.next_starting_chemistry_array = None
         return
 
-    def legacy_read_starting_chemistry(self):
-        """Method to read the starting chemistry from the self.abundLoadFile provided in _param_dict"""
+    def legacy_read_starting_chemistry(self) -> None:
+        """Method to read the starting chemistry from the self.abundLoadFile provided in _param_dict."""
         self._create_starting_array(np.loadtxt(self.abundLoadFile, delimiter=","))
         return
 
     def legacy_write_full(self) -> None:
-        """Perform classic output file writing to the file self.outputFile provided in _param_dict"""
+        """Perform classic output file writing to the file self.outputFile provided in _param_dict."""
         phys = self.physics_array.reshape(-1, self.physics_array.shape[-1])
         chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
         full_array = np.append(phys, chem, axis=1)
@@ -1549,7 +1551,7 @@ class AbstractModel(ABC):
         return
 
     def legacy_write_starting_chemistry(self) -> None:
-        """Perform classic starting abundance file writing to the file self.abundSaveFile provided in _param_dict"""
+        """Perform classic starting abundance file writing to the file self.abundSaveFile provided in _param_dict."""
         last_timestep_index = self.chemical_abun_array[:, 0, 0].nonzero()[0][-1]
         # TODO Move away from the magic numbers seen here.
         species_names = get_species_names()
@@ -1789,7 +1791,7 @@ class AbstractModel(ABC):
     def _create_level_populations_array(self):
         """Internal Method.
         Creates Fortran compliant np.array for coolant level populations.
-        Shape: (timepoints+1, gridpoints, total_levels)
+        Shape: (timepoints+1, gridpoints, total_levels).
         """
         (
             self._shm_handles["level_populations_array"],
@@ -1803,7 +1805,7 @@ class AbstractModel(ABC):
     def _create_se_stats_array(self):
         """Internal Method.
         Creates Fortran compliant np.array for SE solver statistics.
-        Shape: (timepoints+1, gridpoints, NCOOLANTS*3)
+        Shape: (timepoints+1, gridpoints, NCOOLANTS*3).
         """
         n_stats = NCOOLANTS * N_SE_STATS_PER_COOLANT  # 35 * 3 = 105
 
@@ -1902,7 +1904,7 @@ class AbstractModel(ABC):
     # /Creation of arrays
 
     # Signal Interrupt Catch
-    def on_interrupt(self, grid=False, model_name=None):
+    def on_interrupt(self, grid=False, model_name=None) -> None:
         if self._proc_handle is not None:
             self._proc_handle.terminate()
             self._proc_handle.join()
@@ -2001,18 +2003,18 @@ class Cloud(AbstractModel):
     """Cloud model class inheriting from AbstractModel.
 
     Args:
-        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+        param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
             default values found in defaultparameters.f90.
-        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
-            provided. Defaults to ["H", "N", "C", "O"].
-        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+        out_species (list): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to `uclchem.constants.default_elements_to_check`.
+        starting_chemistry (np.ndarray): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
             Defaults to None.
-        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+        previous_model (object): Model object, a class that inherited from AbstractModel, to use for the starting abundances
             of the new UCLCHEM model that will be run. Defaults to None
-        timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
+        timepoints (int): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
             Defaults to uclchem.constants.TIMEPOINTS
-        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
-        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+        debug (bool): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
     """
@@ -2020,7 +2022,7 @@ class Cloud(AbstractModel):
     def __init__(
         self,
         param_dict: dict = None,
-        out_species: list = ["H", "N", "C", "O"],
+        out_species: list = None,
         starting_chemistry: np.ndarray = None,
         previous_model: AbstractModel = None,
         timepoints: int = TIMEPOINTS,
@@ -2029,6 +2031,8 @@ class Cloud(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
+        if out_species is None:
+            out_species = default_elements_to_check
         super().__init__(
             param_dict,
             out_species,
@@ -2098,22 +2102,22 @@ class Collapse(AbstractModel):
     """Collapse model class inheriting from AbstractModel.
 
     Args:
-        collapse (str, optional):A string containing the collapse type, options are 'BE1.1', 'BE4', 'filament', or 'ambipolar'.
+        collapse (str):A string containing the collapse type, options are 'BE1.1', 'BE4', 'filament', or 'ambipolar'.
             Defaults to 'BE1.1'.
-        physics_output (str, optional): Filename to store physics output, only relevant for 'filament' and 'ambipolar' collapses.
+        physics_output (str): Filename to store physics output, only relevant for 'filament' and 'ambipolar' collapses.
             If None, no physics output will be saved.
-        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+        param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
             default values found in defaultparameters.f90.
-        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
-            provided. Defaults to ["H", "N", "C", "O"].
-        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+        out_species (list): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to `uclchem.constants.default_elements_to_check`.
+        starting_chemistry (np.ndarray): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
             Defaults to None.
-        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+        previous_model (object): Model object, a class that inherited from AbstractModel, to use for the starting abundances
             of the new UCLCHEM model that will be run. Defaults to None
-        timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
+        timepoints (int): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
             Defaults to uclchem.constants.TIMEPOINTS
-        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
-        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+        debug (bool): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
     """
@@ -2123,7 +2127,7 @@ class Collapse(AbstractModel):
         collapse: str = "BE1.1",
         physics_output: str = None,
         param_dict: dict = None,
-        out_species: list = ["H", "N", "C", "O"],
+        out_species: list = None,
         starting_chemistry: np.ndarray = None,
         previous_model: AbstractModel = None,
         timepoints: int = TIMEPOINTS,
@@ -2132,6 +2136,8 @@ class Collapse(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
+        if out_species is None:
+            out_species = default_elements_to_check
         if collapse not in ["filament", "ambipolar"] and physics_output is None:
             warnings.warn(
                 "`physics_output` was None but `collapse` was `filament` or `ambipolar`. No output file will be created.",
@@ -2222,21 +2228,21 @@ class PrestellarCore(AbstractModel):
     """PrestellarCore model class inheriting from AbstractModel. This model type was previously known as hot core.
 
     Args:
-        temp_indx (int, optional): Used to select the mass of the prestellar core from the following selection
+        temp_indx (int): Used to select the mass of the prestellar core from the following selection
             [1=1Msun, 2=5, 3=10, 4=15, 5=25,6=60]. Defaults to 1, which is 1 Msun
-        max_temperature (float, optional): Value at which gas temperature will stop increasing. Defaults to 300.0.
-        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+        max_temperature (float): Value at which gas temperature will stop increasing. Defaults to 300.0.
+        param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
             default values found in defaultparameters.f90.
-        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
-            provided. Defaults to ["H", "N", "C", "O"].
-        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+        out_species (list): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to `uclchem.constants.default_elements_to_check`.
+        starting_chemistry (np.ndarray): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
             Defaults to None.
-        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+        previous_model (object): Model object, a class that inherited from AbstractModel, to use for the starting abundances
             of the new UCLCHEM model that will be run. Defaults to None
-        timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
+        timepoints (int): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
             Defaults to uclchem.constants.TIMEPOINTS
-        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
-        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+        debug (bool): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
     """
@@ -2246,7 +2252,7 @@ class PrestellarCore(AbstractModel):
         temp_indx: int = 1,
         max_temperature: float = 300.0,
         param_dict: dict = None,
-        out_species: list = ["H", "N", "C", "O"],
+        out_species: list = None,
         starting_chemistry: np.ndarray = None,
         previous_model: AbstractModel = None,
         timepoints: int = TIMEPOINTS,
@@ -2255,6 +2261,8 @@ class PrestellarCore(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
+        if out_species is None:
+            out_species = default_elements_to_check
         super().__init__(
             param_dict,
             out_species,
@@ -2335,24 +2343,24 @@ class CShock(AbstractModel):
     """C-Shock model class inheriting from AbstractModel.
 
     Args:
-        shock_vel (float, optional): Velocity of the shock in km/s. Defaults to 10.0.
-        timestep_factor (float, optional): Whilst the time is less than 2 times the dissipation time of shock,
+        shock_vel (float): Velocity of the shock in km/s. Defaults to 10.0.
+        timestep_factor (float): Whilst the time is less than 2 times the dissipation time of shock,
             timestep is timestep_factor*dissipation time. Essentially controls how well resolved the shock is
             in your model. Defaults to 0.01.
-        minimum_temperature (float, optional): Minimum post-shock temperature. Defaults to 0.0 (no minimum). The
+        minimum_temperature (float): Minimum post-shock temperature. Defaults to 0.0 (no minimum). The
             shocked gas typically cools to `initialTemp` if this is not set.
-        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+        param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
             default values found in defaultparameters.f90.
-        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
-            provided. Defaults to ["H", "N", "C", "O"].
-        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+        out_species (list): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to `uclchem.constants.default_elements_to_check`.
+        starting_chemistry (np.ndarray): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
             Defaults to None.
-        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+        previous_model (object): Model object, a class that inherited from AbstractModel, to use for the starting abundances
             of the new UCLCHEM model that will be run. Defaults to None
-        timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
+        timepoints (int): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
             Defaults to uclchem.constants.TIMEPOINTS
-        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
-        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+        debug (bool): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
     """
@@ -2363,7 +2371,7 @@ class CShock(AbstractModel):
         timestep_factor: float = 0.01,
         minimum_temperature: float = 0.0,
         param_dict: dict = None,
-        out_species: list = ["H", "N", "C", "O"],
+        out_species: list = None,
         starting_chemistry: np.ndarray = None,
         previous_model: AbstractModel = None,
         timepoints: int = TIMEPOINTS,
@@ -2372,6 +2380,8 @@ class CShock(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
+        if out_species is None:
+            out_species = default_elements_to_check
         super().__init__(
             param_dict,
             out_species,
@@ -2458,18 +2468,18 @@ class JShock(AbstractModel):
 
     Args:
         shock_vel (float): Velocity of the shock. Defaults to 10.0.
-        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+        param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
             default values found in defaultparameters.f90.
-        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
-            provided. Defaults to ["H", "N", "C", "O"].
-        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+        out_species (list): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to `uclchem.constants.default_elements_to_check`.
+        starting_chemistry (np.ndarray): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
             Defaults to None.
-        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+        previous_model (object): Model object, a class that inherited from AbstractModel, to use for the starting abundances
             of the new UCLCHEM model that will be run. Defaults to None
-        timepoints (int, optional): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
+        timepoints (int): Integer value of how many timesteps should be calculated before aborting the UCLCHEM model.
             Defaults to uclchem.constants.TIMEPOINTS
-        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
-        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+        debug (bool): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
     """
@@ -2478,7 +2488,7 @@ class JShock(AbstractModel):
         self,
         shock_vel: float = 10.0,
         param_dict: dict = None,
-        out_species: list = ["H", "N", "C", "O"],
+        out_species: list = None,
         starting_chemistry: np.ndarray = None,
         previous_model: AbstractModel = None,
         timepoints: int = TIMEPOINTS,
@@ -2487,6 +2497,8 @@ class JShock(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
+        if out_species is None:
+            out_species = default_elements_to_check
         super().__init__(
             param_dict,
             out_species,
@@ -2566,48 +2578,48 @@ class Postprocess(AbstractModel):
     arrays allows for experimental model crafting beyond the standard models in other model classes.
 
     Args:
-        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+        param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
             default values found in defaultparameters.f90.
-        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
-            provided. Defaults to ["H", "N", "C", "O"].
-        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+        out_species (list): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to `uclchem.constants.default_elements_to_check`.
+        starting_chemistry (np.ndarray): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
             Defaults to None.
-        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+        previous_model (object): Model object, a class that inherited from AbstractModel, to use for the starting abundances
             of the new UCLCHEM model that will be run. Defaults to None
-        time_array (np.array, optional): Represents the time grid to be used for the model. This sets the target timesteps for
+        time_array (np.ndarray): Represents the time grid to be used for the model. This sets the target timesteps for
             which outputs will be stored.
-        density_array (np.array, optional): Represents the value of the density at different timepoints found in time_array.
-        gas_temperature_array (np.array, optional): Represents the value of the gas temperature at different timepoints found in time_array.
-        dust_temperature_array (np.array, optional):Represents the value of the dust temperature at different timepoints found in time_array.
-        zeta_array (np.array, optional): Represents the value of the cosmic ray ionisation rate at different timepoints found in time_array.
-        radfield_array (np.array, optional): Represents the value of the UV radiation field at different timepoints found in time_array.
-        coldens_H_array (np.array, optional): Represents the value of the column density of H at different timepoints found in time_array.
-        coldens_H2_array (np.array, optional): Represents the value of the column density of H2 at different timepoints found in time_array.
-        coldens_CO_array (np.array, optional): Represents the value of the column density of CO at different timepoints found in time_array.
-        coldens_C_array (np.array, optional): Represents the value of the column density of C at different timepoints found in time_array.
-        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
-        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+        density_array (np.ndarray): Represents the value of the density at different timepoints found in time_array.
+        gas_temperature_array (np.ndarray): Represents the value of the gas temperature at different timepoints found in time_array.
+        dust_temperature_array (np.ndarray):Represents the value of the dust temperature at different timepoints found in time_array.
+        zeta_array (np.ndarray): Represents the value of the cosmic ray ionisation rate at different timepoints found in time_array.
+        radfield_array (np.ndarray): Represents the value of the UV radiation field at different timepoints found in time_array.
+        coldens_H_array (np.ndarray): Represents the value of the column density of H at different timepoints found in time_array.
+        coldens_H2_array (np.ndarray): Represents the value of the column density of H2 at different timepoints found in time_array.
+        coldens_CO_array (np.ndarray): Represents the value of the column density of CO at different timepoints found in time_array.
+        coldens_C_array (np.ndarray): Represents the value of the column density of C at different timepoints found in time_array.
+        debug (bool): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
     """
 
     def __init__(
         self,
-        param_dict: dict = None,
-        out_species: list = ["H", "N", "C", "O"],
-        starting_chemistry: np.ndarray = None,
+        param_dict: dict | None = None,
+        out_species: list[str] | None = None,
+        starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel = None,
-        time_array: np.array = None,
-        density_array: np.array = None,
-        gas_temperature_array: np.array = None,
-        dust_temperature_array: np.array = None,
-        zeta_array: np.array = None,
-        radfield_array: np.array = None,
-        visual_extinction_array: np.array = None,
-        coldens_H_array: np.array = None,
-        coldens_H2_array: np.array = None,
-        coldens_CO_array: np.array = None,
-        coldens_C_array: np.array = None,
+        time_array: np.ndarray | None = None,
+        density_array: np.ndarray | None = None,
+        gas_temperature_array: np.ndarray | None = None,
+        dust_temperature_array: np.ndarray | None = None,
+        zeta_array: np.ndarray | None = None,
+        radfield_array: np.ndarray | None = None,
+        visual_extinction_array: np.ndarray | None = None,
+        coldens_H_array: np.ndarray | None = None,
+        coldens_H2_array: np.ndarray | None = None,
+        coldens_CO_array: np.ndarray | None = None,
+        coldens_C_array: np.ndarray | None = None,
         debug: bool = False,
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
@@ -2615,6 +2627,8 @@ class Postprocess(AbstractModel):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         # Allocate 1.5x the input timesteps to give the DVODE solver
         # headroom for additional internal substeps.
+        if out_species is None:
+            out_species = default_elements_to_check
         super().__init__(
             param_dict,
             out_species,
@@ -2751,39 +2765,39 @@ class Model(AbstractModel):
     Using these arrays allows for experimental model crafting beyond the standard models in other model classes.
 
     Args:
-        param_dict (dict, optional): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
+        param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model. Uses UCLCHEM
             default values found in defaultparameters.f90.
-        out_species (list, optional): List of chemicals to focus on for outputs such as conservation check, if no other values are
-            provided. Defaults to ["H", "N", "C", "O"].
-        starting_chemistry (np.ndarray, optional): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
+        out_species (list): List of chemicals to focus on for outputs such as conservation check, if no other values are
+            provided. Defaults to `uclchem.constants.default_elements_to_check`.
+        starting_chemistry (np.ndarray): Numpy ndarray containing the starting abundances to use for the UCLCHEM model.
             Defaults to None.
-        previous_model (object, optional): Model object, a class that inherited from AbstractModel, to use for the starting abundances
+        previous_model (object): Model object, a class that inherited from AbstractModel, to use for the starting abundances
             of the new UCLCHEM model that will be run. Defaults to None
-        time_array (np.array, optional): Represents the time grid to be used for the model. This sets the target timesteps for
+        time_array (np.array): Represents the time grid to be used for the model. This sets the target timesteps for
             which outputs will be stored. While listed as optional, this is only done to allow
-        density_array (np.array, optional): Represents the value of the density at different timepoints found in time_array.
-        gas_temperature_array (np.array, optional): Represents the value of the gas temperature at different timepoints found in time_array.
-        dust_temperature_array (np.array, optional):Represents the value of the dust temperature at different timepoints found in time_array.
-        zeta_array (np.array, optional): Represents the value of the cosmic ray ionisation rate at different timepoints found in time_array.
-        radfield_array (np.array, optional): Represents the value of the UV radiation field at different timepoints found in time_array.
-        debug (bool, optional): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
-        read_file (str, optional): Path to the file to be read. Reading a file to a model object, prevents it from
+        density_array (np.array): Represents the value of the density at different timepoints found in time_array.
+        gas_temperature_array (np.array): Represents the value of the gas temperature at different timepoints found in time_array.
+        dust_temperature_array (np.array):Represents the value of the dust temperature at different timepoints found in time_array.
+        zeta_array (np.array): Represents the value of the cosmic ray ionisation rate at different timepoints found in time_array.
+        radfield_array (np.array): Represents the value of the UV radiation field at different timepoints found in time_array.
+        debug (bool): Flag if extra debug information should be printed to the terminal. Defaults to False. #TODO Add debug features
+        read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
     """
 
     def __init__(
         self,
-        param_dict: dict = None,
-        out_species: list = ["H", "N", "C", "O"],
-        starting_chemistry: np.ndarray = None,
-        previous_model: AbstractModel = None,
-        time_array: np.array = None,
-        density_array: np.array = None,
-        gas_temperature_array: np.array = None,
-        dust_temperature_array: np.array = None,
-        zeta_array: np.array = None,
-        radfield_array: np.array = None,
+        param_dict: dict | None = None,
+        out_species: list[str] | None = None,
+        starting_chemistry: np.ndarray | None = None,
+        previous_model: AbstractModel | None = None,
+        time_array: np.ndarray | None = None,
+        density_array: np.ndarray | None = None,
+        gas_temperature_array: np.ndarray | None = None,
+        dust_temperature_array: np.ndarray | None = None,
+        zeta_array: np.ndarray | None = None,
+        radfield_array: np.ndarray | None = None,
         debug: bool = False,
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
@@ -2791,15 +2805,17 @@ class Model(AbstractModel):
         """Initiates the model first with AbstractModel.__init__(), then with any additional commands needed for the model."""
         # Allocate 1.5x the input timesteps to give the DVODE solver
         # headroom for additional internal substeps.
+        if out_species is None:
+            out_species = default_elements_to_check
         super().__init__(
-            param_dict,
-            out_species,
-            starting_chemistry,
-            previous_model,
-            int(1.5 * len(time_array)),
-            debug,
-            read_file,
-            run_type,
+            param_dict=param_dict,
+            out_specie_list=out_species,
+            starting_chemistry=starting_chemistry,
+            previous_model=previous_model,
+            timepoints=int(1.5 * len(time_array)),
+            debug=debug,
+            read_file=read_file,
+            run_type=run_type,
         )
         if read_file is None and time_array is not None:
             n_input = len(time_array)
@@ -2902,7 +2918,7 @@ class SequentialModel:
     Args:
         sequenced_model_parameters (List of Dicts): The List of dictionaries to pass to SequentialModel takes the format of
             [{"<First Model Class>":{"param_dict":{<parameters>}, <other arguments>}}, {"<Second Model Class>:{"param_dict":{<parameters>}, <other arguments>}}, ...}]
-        parameters_to_match (List, optional): The list provided to this argument decides which parameters should be matched from a previous model
+        parameters_to_match (List): The list provided to this argument decides which parameters should be matched from a previous model
             to the next model in the sequence. Currently, supports ["finalDens", "finalTemp"].
 
     """
@@ -2925,7 +2941,7 @@ class SequentialModel:
         if self.run_type == "managed":
             self.run()
 
-    def run(self):
+    def run(self) -> None:
         previous_model = None
         for base_model_dict in self.sequenced_model_parameters:
             for model_type, model_dict in base_model_dict.items():
@@ -3003,7 +3019,7 @@ class SequentialModel:
         file: str = None,
         name: str = "",
         overwrite: bool = False,
-    ):
+    ) -> None:
         opened_file = False
         if file_obj is None and file is None:
             raise ValueError("file_obj or file must be passed.")
@@ -3024,13 +3040,13 @@ class SequentialModel:
 
     def check_conservation(
         self, element_list: list[str] | None = None, percent: bool = True
-    ):
-        """Utility method to check conservation of the chemical abundances
+    ) -> None:
+        """Utility method to check conservation of the chemical abundances.
 
         Args:
             element_list (list[str] | None): List of elements to check conservation for.
                 If None, use `uclchem.constants.default_elements_to_check`. Default = None.
-            percent (bool, optional): Flag on if percentage values should be used. Defaults to True.
+            percent (bool): Flag on if percentage values should be used. Defaults to True.
 
         """
         if element_list is None:
@@ -3056,7 +3072,7 @@ class SequentialModel:
                 conserved = True if all(float(x[:1]) < 1 for x in i.values()) else False
             model["elements_conserved"] = conserved
 
-    def pickle(self):
+    def pickle(self) -> None:
         if not bool(self._pickle_dict):
             for model in self.models:
                 model["Model"] = model["Model"].pickle()
@@ -3065,7 +3081,7 @@ class SequentialModel:
                 )
         return
 
-    def un_pickle(self):
+    def un_pickle(self) -> None:
         if bool(self._pickle_dict):
             for model in self.models:
                 model["Model"]._pickle_dict = self._pickle_dict[
@@ -3080,7 +3096,7 @@ class SequentialModel:
 
 
 def _run_grid_model(model_id, model_type, pending_model, log_dir=None):
-    """Internal function to run a single model. This is used by the GridModels class"""
+    """Internal function to run a single model. This is used by the GridModels class."""
     log_file = None
     if log_dir is not None:
         log_file = os.path.join(log_dir, f"model_{model_id}.log")
@@ -3102,12 +3118,12 @@ class GridModels:
         full_parameters (Dict): The dictionary passed to GridModels should nest into it, the param_dict argument that would
             be passed to any other model, with the addition of extra keys for the none param_dict variables of a model.
             Any variables that are turned into lists or arrays, will automatically be assumed to be used for the gridding.
-        max_workers (int, optional): Maximum number of workers to use in parallel for the grid run. Defaults to 8.
-        grid_file (str, optional): Name and path of the output file to which the models should be saved.
+        max_workers (int): Maximum number of workers to use in parallel for the grid run. Defaults to 8.
+        grid_file (str): Name and path of the output file to which the models should be saved.
             Defaults to "./default_grid_out.h5".
-        model_name_prefix (str, optional): Name prefix convention to use. The fifth model in the grid would have the name
+        model_name_prefix (str): Name prefix convention to use. The fifth model in the grid would have the name
             "<model_name_prefix>5>" assigned to it. Defaults to "" which would make the fifth model have the name "5".
-        delay_run (bool, optional): Defaults to False.
+        delay_run (bool): Defaults to False.
 
     """
 

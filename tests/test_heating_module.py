@@ -16,7 +16,6 @@ from uclchem.makerates.reaction import Reaction
 
 
 class TestCustomExothermicities:
-
     """Test custom exothermicity loading from CSV."""
 
     @pytest.fixture
