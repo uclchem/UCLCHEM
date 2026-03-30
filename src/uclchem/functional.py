@@ -182,7 +182,7 @@ def __functional_return__(
                 res = model_object.get_dataframes(
                     point=pt,
                     joined=False,
-                    with_rates=return_rate_constants,
+                    with_rate_constants=return_rate_constants,
                     with_heating=return_heating,
                     with_stats=return_stats,
                 )
@@ -217,7 +217,7 @@ def __functional_return__(
             # Single point: behave as before but include a Point column
             result_dfs = model_object.get_dataframes(
                 joined=False,
-                with_rates=return_rate_constants,
+                with_rate_constants=return_rate_constants,
                 with_heating=return_heating,
                 with_stats=return_stats,
             )
@@ -249,7 +249,7 @@ def __functional_return__(
         result = [
             model_object.physics_array,
             model_object.chemical_abun_array,
-            model_object.rates_array if return_rate_constants else None,
+            model_object.rate_constants_array if return_rate_constants else None,
             model_object.heat_array if return_heating else None,
         ]
         if return_stats:

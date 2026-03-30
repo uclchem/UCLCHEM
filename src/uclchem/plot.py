@@ -115,7 +115,7 @@ def create_abundance_plot(
 
 def plot_species(
     ax: plt.Axes,
-    df: plt.DataFrame,
+    df: pd.DataFrame,
     species: list[str],
     legend: bool = True,
     **plot_kwargs: dict[str, Any],

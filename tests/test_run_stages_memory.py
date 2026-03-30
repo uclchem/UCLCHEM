@@ -49,7 +49,7 @@ def test_static_model_return_array(test_output_directory):
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
         )
     )
     assert return_code == 0, f"Static model returned with nonzero exit code {return_code}"
@@ -104,14 +104,14 @@ def test_collapse_hotcore_return_array(test_output_directory):
         "finalDens": 1e6,
         "finalTime": 1e5,
     }
-    # return_array with return_rates=True returns 6 values:
+    # return_array with return_rate_constants=True returns 6 values:
     # physics, chemistry, rates, heating(None), abundances, flag
     physics, chemistry, rates, heating, abundances_start, return_code = (
         uclchem.functional.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
         )
     )
     assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"

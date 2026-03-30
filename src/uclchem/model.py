@@ -110,9 +110,8 @@ from uclchem._coolant_utils import load_coolant_level_names
 from uclchem._fortran_capture import capture_fortran_output
 from uclchem.analysis import (
     check_element_conservation,
-    create_abundance_plot,
-    plot_species,
 )
+from uclchem.plot import plot_species, create_abundance_plot
 from uclchem.constants import (
     DVODE_STAT_NAMES,
     N_DVODE_STATS,
@@ -344,7 +343,6 @@ def _convert_legacy_stopping_param(param_dict: dict) -> dict:
 
 # TODO Add catch of ctrl+c or other aborts so that it saves model and a full output to files of year, month, day, time type.
 class AbstractModel(ABC):
-
     """Base model class used for inheritance only
 
     The AbstractModel class serves as an abstract class from which other model classes can be built. It is not intended
@@ -478,8 +476,8 @@ class AbstractModel(ABC):
             self.physics_array = None
             self.chemical_abun_array = None
             self._create_fortran_array()
-            self.rates_array = None
-            self._create_rates_array()
+            self.rate_constants_array = None
+            self._create_rate_constants_array()
             self.heat_array = None
             self._create_heating_array()
             self.stats_array = None
@@ -492,7 +490,7 @@ class AbstractModel(ABC):
         else:
             # When loading from file, arrays are already populated; just initialize
             # the arrays that weren't loaded
-            self.rates_array = None
+            self.rate_constants_array = None
             self.heat_array = None
             self.stats_array = None
             self.level_populations_array = None
@@ -761,7 +759,7 @@ class AbstractModel(ABC):
         point: int = 0,
         plot_file=None,
     ) -> tuple[plt.Figure, plt.Axes]:
-        """uclchem.analysis.create_abundance_plot wrapper method
+        """uclchem.plot.create_abundance_plot wrapper method
 
         Args:
             element_list (list, optional): List of elements to check conservation for. Defaults to  self.out_species_list.
@@ -785,7 +783,7 @@ class AbstractModel(ABC):
         self,
         point: int | None = None,
         joined: bool = True,
-        with_rates: bool = False,
+        with_rate_constants: bool = False,
         with_heating: bool = False,
         with_stats: bool = False,
         with_level_populations: bool = False,
@@ -798,7 +796,7 @@ class AbstractModel(ABC):
                 If None, returns data for all points with a 'Point' column. Defaults to None.
             joined (bool, optional): Flag on whether the returned pandas dataframe should be one, or if two dataframes should be
                 returned. One physical, one chemical_abun dataframe. Defaults to True.
-            with_rates (bool, optional): Flag on whether to include reaction rates in the dataframe, and/or as a separate
+            with_rate_constants (bool, optional): Flag on whether to include reaction rate constants in the dataframe, and/or as a separate
                 dataframe depending on the value of `joined`. Defaults to False.
             with_heating (bool, optional): Flag on whether to include heating/cooling rates in the dataframe, and/or as a separate
                 dataframe depending on the value of `joined`. Defaults to False.
@@ -811,7 +809,7 @@ class AbstractModel(ABC):
             return_df (pandas.DataFrame): Dataframe of the joined arrays for point 'point' if joined = True
             physics_df (pandas.DataFrame): Dataframe of the physical parameters for point 'point' if joined = False
             chemistry_df (pandas.DataFrame): Dataframe of the chemical abundances  for point 'point' if joined = False
-            rates_df (pandas.DataFrame): Dataframe of the reaction rates  for point 'point' if joined = False and with_rates = True
+            rate_constants_df (pandas.DataFrame): Dataframe of the reaction rate constants for point 'point' if joined = False and with_rate_constants = True
             heating_df (pandas.DataFrame): Dataframe of the heating/cooling rates  for point 'point' if joined = False and with_heating = True
             stats_df (pandas.DataFrame): Dataframe of DVODE solver statistics for point 'point' if joined = False and with_stats = True
             level_populations_df (pandas.DataFrame): Dataframe of coolant level populations for point 'point' if joined = False and with_level_populations = True
@@ -835,7 +833,7 @@ class AbstractModel(ABC):
             for pt in range(n_points):
                 dfs = self._get_single_point_dataframes(
                     pt,
-                    with_rates,
+                    with_rate_constants,
                     with_heating,
                     with_stats,
                     with_level_populations,
@@ -861,7 +859,7 @@ class AbstractModel(ABC):
             concatenated = list(
                 self._get_single_point_dataframes(
                     point,
-                    with_rates,
+                    with_rate_constants,
                     with_heating,
                     with_stats,
                     with_level_populations,
@@ -885,7 +883,7 @@ class AbstractModel(ABC):
     def _get_single_point_dataframes(
         self,
         point: int,
-        with_rates: bool,
+        with_rate_constants: bool,
         with_heating: bool,
         with_stats: bool,
         with_level_populations: bool,
@@ -904,13 +902,15 @@ class AbstractModel(ABC):
         chemistry_df = pd.DataFrame(
             self.chemical_abun_array[:, point, :], index=None, columns=species_names
         )
-        if self.rates_array is not None and with_rates:
-            # Create a rates dataframe.
-            rates_df = pd.DataFrame(
-                self.rates_array[:, point, :], index=None, columns=get_reaction_names()
+        if self.rate_constants_array is not None and with_rate_constants:
+            # Create a rate constants dataframe.
+            rate_constants_df = pd.DataFrame(
+                self.rate_constants_array[:, point, :],
+                index=None,
+                columns=get_reaction_names(),
             )
         else:
-            rates_df = None
+            rate_constants_df = None
 
         if self.heat_array is not None and with_heating:
             # Create a heating dataframe dynamically using labels from heating.f90
@@ -965,8 +965,8 @@ class AbstractModel(ABC):
 
         # Return tuple of all dataframes (some may be None)
         result = [physics_df, chemistry_df]
-        if with_rates:
-            result.append(rates_df)
+        if with_rate_constants:
+            result.append(rate_constants_df)
         if with_heating:
             result.append(heating_df)
         if with_stats:
@@ -1090,7 +1090,7 @@ class AbstractModel(ABC):
         legend: bool = True,
         **plot_kwargs,
     ) -> plt.Axes:
-        """uclchem.analysis.plot(species) wrapper method
+        """uclchem.plot.plot(species) wrapper method
         Args:
             ax (plt.axes):
             species (list, optional):
@@ -1117,11 +1117,11 @@ class AbstractModel(ABC):
             raise RuntimeError("This model was read. It can not be run. ")
             self.physics_array = None
             self.chemical_abun_array = None
-            self.ratesArray = None
+            self.rateConstantsArray = None
             self.heatArray = None
             self.statsArray = None
             self._create_fortran_array()
-            self._create_rates_array()
+            self._create_rate_constants_array()
             self._create_heating_array()
             self._create_stats_array()
 
@@ -1359,7 +1359,7 @@ class AbstractModel(ABC):
 
     # Legacy in & output support
     def legacy_read_output_file(
-        self, read_file: str, rates_load_file: str | None = None
+        self, read_file: str, rate_constants_load_file: str | None = None
     ) -> None:
         """Perform classic output file reading.
 
@@ -1721,15 +1721,15 @@ class AbstractModel(ABC):
         )
         return
 
-    def _create_rates_array(self):
+    def _create_rate_constants_array(self):
         """Internal Method.
-        Creates Fortran compliant np.array for rates that can be passed to the Fortran part of UCLCHEM.
+        Creates Fortran compliant np.array for rate constants that can be passed to the Fortran part of UCLCHEM.
         """
         # For shared memory:
         (
-            self._shm_handles["rates_array"],
-            self._shm_desc["rates_array"],
-            self.rates_array,
+            self._shm_handles["rate_constants_array"],
+            self._shm_desc["rate_constants_array"],
+            self.rate_constants_array,
         ) = self._create_shared_memory_allocation(
             (self.timepoints + 1, self._param_dict["points"], n_reactions)
         )
@@ -1989,7 +1989,6 @@ class AbstractModel(ABC):
 
 @register_model
 class Cloud(AbstractModel):
-
     """Cloud model class inheriting from AbstractModel.
 
     Args:
@@ -2048,11 +2047,11 @@ class Cloud(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self._param_dict["points"],
             returnarray=True,
-            returnrates=True,
+            returnrateconstants=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
             chemicalabunarray=self.chemical_abun_array,
-            ratesarray=self.rates_array,
+            rateconstantsarray=self.rate_constants_array,
             heatarray=self.heat_array,
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
@@ -2087,7 +2086,6 @@ class Cloud(AbstractModel):
 
 @register_model
 class Collapse(AbstractModel):
-
     """Collapse model class inheriting from AbstractModel.
 
     Args:
@@ -2167,11 +2165,11 @@ class Collapse(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self._param_dict["points"],
             returnarray=True,
-            returnrates=True,
+            returnrateconstants=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
             chemicalabunarray=self.chemical_abun_array,
-            ratesarray=self.rates_array,
+            rateconstantsarray=self.rate_constants_array,
             heatarray=self.heat_array,
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
@@ -2212,7 +2210,6 @@ class Collapse(AbstractModel):
 
 @register_model
 class PrestellarCore(AbstractModel):
-
     """PrestellarCore model class inheriting from AbstractModel. This model type was previously known as hot core.
 
     Args:
@@ -2283,11 +2280,11 @@ class PrestellarCore(AbstractModel):
                 timepoints=self.timepoints,
                 gridpoints=self._param_dict["points"],
                 returnarray=True,
-                returnrates=True,
+                returnrateconstants=True,
                 givestartabund=self.give_start_abund,
                 physicsarray=self.physics_array,
                 chemicalabunarray=self.chemical_abun_array,
-                ratesarray=self.rates_array,
+                rateconstantsarray=self.rate_constants_array,
                 heatarray=self.heat_array,
                 statsarray=self.stats_array,
                 levelpopulationsarray=self.level_populations_array,
@@ -2326,7 +2323,6 @@ class PrestellarCore(AbstractModel):
 
 @register_model
 class CShock(AbstractModel):
-
     """C-Shock model class inheriting from AbstractModel.
 
     Args:
@@ -2401,11 +2397,11 @@ class CShock(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self._param_dict["points"],
             returnarray=True,
-            returnrates=True,
+            returnrateconstants=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
             chemicalabunarray=self.chemical_abun_array,
-            ratesarray=self.rates_array,
+            rateconstantsarray=self.rate_constants_array,
             heatarray=self.heat_array,
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
@@ -2449,7 +2445,6 @@ class CShock(AbstractModel):
 
 @register_model
 class JShock(AbstractModel):
-
     """J-Shock model class inheriting from AbstractModel.
 
     Args:
@@ -2512,11 +2507,11 @@ class JShock(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self._param_dict["points"],
             returnarray=True,
-            returnrates=True,
+            returnrateconstants=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
             chemicalabunarray=self.chemical_abun_array,
-            ratesarray=self.rates_array,
+            rateconstantsarray=self.rate_constants_array,
             heatarray=self.heat_array,
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
@@ -2555,7 +2550,6 @@ class JShock(AbstractModel):
 
 @register_model
 class Postprocess(AbstractModel):
-
     """Postprocess represents a model class with additional controls. It inherits from AbstractModel.
 
     Postprocess allows for additional controls of the time, density, gas temperature, radiation field, cosmic ray
@@ -2695,11 +2689,11 @@ class Postprocess(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self._param_dict["points"],
             returnarray=True,
-            returnrates=True,
+            returnrateconstants=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
             chemicalabunarray=self.chemical_abun_array,
-            ratesarray=self.rates_array,
+            rateconstantsarray=self.rate_constants_array,
             heatarray=self.heat_array,
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
@@ -2741,7 +2735,6 @@ class Postprocess(AbstractModel):
 
 @register_model
 class Model(AbstractModel):
-
     """Model, like Postprocess, represents a model class with additional controls. It inherits from AbstractModel.
 
     Model follows the same logic as Postprocess but without the coldens Arguments. It allows for additional controls of
@@ -2849,11 +2842,11 @@ class Model(AbstractModel):
             timepoints=self.timepoints,
             gridpoints=self._param_dict["points"],
             returnarray=True,
-            returnrates=True,
+            returnrateconstants=True,
             givestartabund=self.give_start_abund,
             physicsarray=self.physics_array,
             chemicalabunarray=self.chemical_abun_array,
-            ratesarray=self.rates_array,
+            rateconstantsarray=self.rate_constants_array,
             heatarray=self.heat_array,
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
@@ -2892,7 +2885,6 @@ class Model(AbstractModel):
 
 @register_model
 class SequentialModel:
-
     """The SequentialModel class allows for multiple models to be run back to back.
 
     By defining a specific dictionary to hold the information of each model class to run in sequence, SewuentialModel allows
@@ -3090,7 +3082,6 @@ def _run_grid_model(model_id, model_type, pending_model, log_dir=None):
 
 
 class GridModels:
-
     """GridModels, like SequentialModel is not an actual uclchem model, instead it allows running multiple models on a grid of parameter space.
 
     Args:

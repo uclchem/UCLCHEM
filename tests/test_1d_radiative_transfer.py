@@ -85,7 +85,7 @@ class Test1DCloud:
                 param_dict=base_1d_params,
                 out_species=["CO", "H2O", "CH3OH"],
                 return_array=True,
-                return_rates=True,
+                return_rate_constants=True,
                 timepoints=2500,
             )
         )
@@ -185,7 +185,7 @@ class Test1DHotcore:
                 param_dict=hotcore_1d_params,
                 out_species=["CO", "H2O", "CH3OH", "H2CO"],
                 return_array=True,
-                return_rates=True,
+                return_rate_constants=True,
                 timepoints=2500,
             )
         )
@@ -225,7 +225,7 @@ class Test1DHotcore:
             param_dict=params_low,
             out_species=["CO"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             timepoints=2500,
         )
 
@@ -237,7 +237,7 @@ class Test1DHotcore:
             param_dict=params_high,
             out_species=["CO"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             timepoints=2500,
         )
 
@@ -273,7 +273,7 @@ class Test1DParameterValidation:
             param_dict=params,
             out_species=["CO"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             timepoints=2500,
         )
 
@@ -302,7 +302,7 @@ class Test1DParameterValidation:
             param_dict=params_steep,
             out_species=["CO"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             timepoints=2500,
         )
 
@@ -314,7 +314,7 @@ class Test1DParameterValidation:
             param_dict=params_shallow,
             out_species=["CO"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             timepoints=2500,
         )
 
@@ -349,7 +349,7 @@ class Test1DParameterValidation:
                 param_dict=params,
                 out_species=["CO", "H2O"],
                 return_array=True,
-                return_rates=True,
+                return_rate_constants=True,
                 timepoints=2500,
             )
         )
@@ -370,7 +370,7 @@ class Test1DChemicalEvolution:
                 param_dict=base_1d_params,
                 out_species=["CO", "H2O", "CH3OH"],
                 return_array=True,
-                return_rates=True,
+                return_rate_constants=True,
                 timepoints=2500,
             )
         )
@@ -405,7 +405,7 @@ class Test1DChemicalEvolution:
             param_dict=params_phase1,
             out_species=["CO", "H2O"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             timepoints=2500,
         )
 
@@ -420,7 +420,7 @@ class Test1DChemicalEvolution:
             param_dict=params_phase2,
             out_species=["CO", "H2O"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             starting_chemistry=abund_start1,
             timepoints=2500,
         )

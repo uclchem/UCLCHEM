@@ -550,7 +550,7 @@ def _get_rates_of_change(rates, reactions, speciesList, species, row, swap, bulk
 
 
 def _remove_slow_reactions(
-    changes: np.array[float], change_reacs: list[str], rate_threshold: float = 0.99
+    changes: np.ndarray[float], change_reacs: list[str], rate_threshold: float = 0.99
 ) -> tuple[float, float, list[str], list[float]]:
     """Iterate through a list of reactions adding the fastest reactions to a list until some
     threshold fraction of the total rate of change is reached. This list is returned so that
@@ -558,7 +558,7 @@ def _remove_slow_reactions(
     formation of a species.
 
     Args:
-        changes (np.array[float]): List of rates of change due to each reaction
+        changes (np.ndarray[float]): List of rates of change due to each reaction
             a species is involved in.
         change_reacs (list[str]): List of corresponding rates of change
         rate_threshold (float): Percentage of overall rate of change to consider before ignoring
@@ -649,7 +649,7 @@ def _format_reactions(reactions: str) -> list[str]:
     return formatted_reactions
 
 
-def _count_element(species_list: list[str], element: str) -> np.array:
+def _count_element(species_list: list[str], element: str) -> np.ndarray:
     """Count the number of atoms of an element that appear in each species of a list of species.
 
     Args:
@@ -657,7 +657,7 @@ def _count_element(species_list: list[str], element: str) -> np.array:
         element: (str), element
 
     Returns:
-        sums (np.array): array where each element represents the number of atoms
+        sums (np.ndarray): array where each element represents the number of atoms
             of the chemical element in the corresponding element of species_list
 
     """

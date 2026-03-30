@@ -101,9 +101,11 @@ def test_starting_chemistry_with_memory_mode(basic_params):
     assert result[-1] == 0  # success_flag should be 0
 
 
-# Test 4: return_rates requires memory mode
-def test_return_rates_with_file_raises_error(basic_params, temp_output_directory):
-    """Test that return_rates with file output raises error"""
+# Test 4: return_rate_constants requires memory mode
+def test_return_rate_constants_with_file_raises_error(
+    basic_params, temp_output_directory
+):
+    """Test that return_rate_constants with file output raises error"""
     params = basic_params.copy()
     params["outputFile"] = temp_output_directory / "test_output.dat"
 
@@ -111,7 +113,7 @@ def test_return_rates_with_file_raises_error(basic_params, temp_output_directory
         RuntimeError,
         match="return_array or return_dataframe cannot be used if any output or input file is specified",
     ):
-        uclchem.functional.cloud(param_dict=params, return_rates=True)
+        uclchem.functional.cloud(param_dict=params, return_rate_constants=True)
 
 
 # Test 5: Cannot run memory mode after disk mode
@@ -147,7 +149,7 @@ def test_return_rates_with_file_raises_error(basic_params, temp_output_directory
 #     params_memory = basic_params.copy()
 #     physics, chemistry, rates, heating, abundances, return_code = (
 #         uclchem.functional.cloud(
-#             param_dict=params_memory, return_array=True, return_rates=True
+#             param_dict=params_memory, return_array=True, return_rate_constants=True
 #         )
 #     )
 #     assert return_code == 0
@@ -169,7 +171,9 @@ def test_multiple_memory_models_succeed(basic_params):
 
     # Run first in-memory model
     physics1, chemistry1, rates1, heating1, abundances1, return_code1 = (
-        uclchem.functional.cloud(param_dict=params, return_array=True, return_rates=True)
+        uclchem.functional.cloud(
+            param_dict=params, return_array=True, return_rate_constants=True
+        )
     )
     assert return_code1 == 0
 
