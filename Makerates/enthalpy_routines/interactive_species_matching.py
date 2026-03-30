@@ -17,6 +17,7 @@ Usage:
 
 import logging
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -29,10 +30,10 @@ def clean_numeric_value(value: Any) -> float | None:
     """Convert numpy scalars and other numeric types to clean Python floats.
 
     Args:
-        value: Numeric value that might be a numpy scalar, pandas Series, etc.
+        value (Any): Numeric value that might be a numpy scalar, pandas Series, etc.
 
     Returns:
-        Clean Python float or None if the value is NaN/missing
+        float | None: Clean Python float or None if the value is NaN/missing
 
     """
     if pd.isna(value):
@@ -53,7 +54,15 @@ class FormulaParser:
 
     @staticmethod
     def parse_uclchem_formula(formula: str) -> dict[str, int]:
-        """Parse UCLCHEM all-caps formulas (e.g., 'SIC2+', 'HE+')."""
+        """Parse UCLCHEM all-caps formulas (e.g., 'SIC2+', 'HE+').
+
+        Args:
+            formula (str): UCLCHEM-type formula
+
+        Returns:
+            elements (dict[str, int]): Dictionary with counter of elements
+
+        """
         if not isinstance(formula, str):
             return {}
 
@@ -110,7 +119,15 @@ class FormulaParser:
 
     @staticmethod
     def parse_atct_formula(formula: str) -> dict[str, int]:
-        """Parse ATCT proper-case formulas (e.g., 'SiC2+', 'He+')."""
+        """Parse ATCT proper-case formulas (e.g., 'SiC2+', 'He+').
+
+        Args:
+            formula (str): ATCT formula
+
+        Returns:
+            element_counts (dict[str, int]): Count of number of elements
+
+        """
         if not isinstance(formula, str):
             return {}
 
@@ -134,7 +151,16 @@ class FormulaParser:
 
     @classmethod
     def formulas_match(cls, uclchem_formula: str, atct_formula: str) -> bool:
-        """Check if UCLCHEM and ATCT formulas represent the same species."""
+        """Check if UCLCHEM and ATCT formulas represent the same species.
+
+        Args:
+            uclchem_formula (str): UCLCHEM formula
+            atct_formula (str): ATCT formula
+
+        Returns:
+            whether the elemental composition of the two formulas is the same.
+
+        """
         uclchem_parsed = cls.parse_uclchem_formula(uclchem_formula)
         atct_parsed = cls.parse_atct_formula(atct_formula)
         return uclchem_parsed == atct_parsed
@@ -165,11 +191,11 @@ class SpeciesMatcher:
         """Match UCLCHEM species with ATCT data.
 
         Args:
-            uclchem_species: List of UCLCHEM species names
-            resume_file: Optional path to resume from previous session
+            uclchem_species (list[str]): List of UCLCHEM species names
+            resume_file (str | None): Optional path to resume from previous session
 
         Returns:
-            Dictionary mapping UCLCHEM species to ATCT matches
+            dict[str, dict[str, Any]]: Dictionary mapping UCLCHEM species to ATCT matches
 
         """
         # Filter valid species
@@ -207,7 +233,16 @@ class SpeciesMatcher:
         return canonical_matches
 
     def _find_exact_matches(self, species_list: list[str]) -> dict[str, dict[str, Any]]:
-        """Find exact formula matches between UCLCHEM and ATCT."""
+        """Find exact formula matches between UCLCHEM and ATCT.
+
+        Args:
+            species_list (list[str]): list of UCLCHEM species
+
+        Returns:
+            exact_matches (dict[str, dict[str, Any]]): mapping from UCLCHEM species
+                to exact matches in ATCT.
+
+        """
         exact_matches = {}
 
         for species in species_list:
@@ -231,7 +266,16 @@ class SpeciesMatcher:
     def _find_isomer_matches(
         self, species_list: list[str]
     ) -> dict[str, list[dict[str, Any]]]:
-        """Find formula-based isomer matches."""
+        """Find formula-based isomer matches.
+
+        Args:
+            species_list (list[str]): list of species to find all ATcT entries for.
+
+        Returns:
+            isomer_matches (dict[str, list[dict[str, Any]]]): mapping from UCLCHEM species
+                to list of ATcT matches.
+
+        """
         isomer_matches = {}
 
         for species in species_list:
@@ -271,9 +315,20 @@ class SpeciesMatcher:
     def _interactive_selection(
         self,
         isomer_matches: dict[str, list[dict[str, Any]]],
-        session_file: str | None = None,
+        session_file: str | Path | None = None,
     ) -> dict[str, dict[str, Any]]:
-        """Interactive selection for species with multiple matches."""
+        """Interactive selection for species with multiple matches.
+
+        Args:
+            isomer_matches (dict[str, list[dict[str, Any]]]): mapping from UCLCHEM species
+                to list of ATcT matches.
+            session_file (str | Path | None): path to session file.
+
+        Returns:
+            canonical_matches (dict[str, dict[str, Any]]): mapping from UCLCHEM species
+                to selection of the isomer matches.
+
+        """
         canonical_matches = {}
 
         # Auto-select species with only one option
@@ -413,8 +468,19 @@ class SpeciesMatcher:
 
         return canonical_matches
 
-    def _backup_session_file(self, session_file: str) -> str:
-        """Create a simple backup of existing session file."""
+    @staticmethod
+    def _backup_session_file(session_file: str | Path) -> str:
+        """Create a simple backup of existing session file.
+
+        Args:
+            session_file (str | Path): path to session file to back up.
+
+        Returns:
+            str: String representing backup. If the backup failed,
+                is "backup_failed{extension}", otherwise is
+                "{basename}_backup{extension}".
+
+        """
         import shutil
 
         base_name = Path(session_file).stem
@@ -428,7 +494,8 @@ class SpeciesMatcher:
             logging.warning(f"Could not backup session file: {e}")
             return f"backup_failed{extension}"
 
-    def _save_session(self, session_data: dict, session_file: str) -> None:
+    @staticmethod
+    def _save_session(session_data: dict, session_file: str) -> None:
         """Save current matching session."""
         try:
             with open(session_file, "w") as f:
@@ -441,9 +508,18 @@ class SpeciesMatcher:
             logging.warning(f"Warning: Could not save session: {e}")
 
     def _resume_matching(
-        self, target_species: list[str], resume_file: str
+        self, target_species: list[str], resume_file: str | Path
     ) -> dict[str, dict[str, Any]]:
-        """Resume matching from saved session."""
+        """Resume matching from saved session.
+
+        Args:
+            target_species (list[str]): list of target species
+            resume_file (str | Path): Path to saved session file.
+
+        Returns:
+            completed (dict[str, dict[str, Any]]): species mapping dictionary.
+
+        """
         with open(resume_file) as f:
             session_data = yaml.safe_load(f)
 
@@ -457,14 +533,15 @@ class SpeciesMatcher:
 
         return completed
 
+    @staticmethod
     def save_mapping_yaml(
-        self, mapping: dict[str, dict[str, Any]], output_path: str
+        mapping: dict[str, dict[str, Any]], output_path: str | Path
     ) -> None:
         """Save species mapping to YAML file.
 
         Args:
-            mapping: Species mapping dictionary
-            output_path: Output YAML file path
+            mapping (dict[str, dict[str, Any]]): Species mapping dictionary
+            output_path (str | Path): Output YAML file path
 
         """
         output_file = Path(output_path)
@@ -475,17 +552,20 @@ class SpeciesMatcher:
 
         print(f"Saved YAML: {len(mapping)} species → {output_path}")
 
-    def save_mapping(self, mapping: dict[str, dict[str, Any]], output_path: str) -> None:
+    def save_mapping(
+        self, mapping: dict[str, dict[str, Any]], output_path: str | Path
+    ) -> None:
         """Save species mapping to CSV file (default format).
 
         Args:
-            mapping: Species mapping dictionary
-            output_path: Output CSV file path
+            mapping (dict[str, dict[str, Any]]): Species mapping dictionary
+            output_path (str | Path): Output CSV file path
 
         """
         self.export_mapping_csv(mapping, output_path)
 
-    def load_mapping(self, mapping_path: str) -> dict[str, dict[str, Any]]:
+    @staticmethod
+    def load_mapping(mapping_path: str | Path) -> dict[str, dict[str, Any]]:
         """Load species mapping from YAML file.
 
         Args:
@@ -501,14 +581,15 @@ class SpeciesMatcher:
         print(f"Loaded: {len(mapping)} species from {mapping_path}")
         return mapping
 
+    @staticmethod
     def export_mapping_csv(
-        self, mapping: dict[str, dict[str, Any]], output_path: str
+        mapping: dict[str, dict[str, Any]], output_path: str | Path
     ) -> None:
         """Export mapping to CSV for easy review.
 
         Args:
-            mapping: Species mapping dictionary
-            output_path: Output CSV file path
+            mapping (dict[str, dict[str, Any]]): Species mapping dictionary
+            output_path (str | Path): Output CSV file path
 
         """
         mapping_data = []
@@ -534,11 +615,11 @@ class SpeciesMatcher:
         has_enthalpy = len(df[df["has_enthalpy"] == "YES"])
         print(f"Exported CSV: {len(df)} species ({has_enthalpy} with data)")
 
+    @staticmethod
     def write_back_to_file(
-        self,
         species_df: pd.DataFrame,
         mapping: dict[str, dict[str, Any]],
-        original_csv_path: str,
+        original_csv_path: str | Path,
     ) -> None:
         """Write back the original species DataFrame with enthalpy data.
 
@@ -547,14 +628,11 @@ class SpeciesMatcher:
         original file as NAME_backup.csv.
 
         Args:
-            species_df: Original UCLCHEM species DataFrame
-            mapping: Species mapping dictionary from match_species()
-            original_csv_path: Path to the original species CSV file
+            species_df (pd.DataFrame): Original UCLCHEM species DataFrame
+            mapping (dict[str, dict[str, Any]]): Species mapping dictionary from match_species()
+            original_csv_path (str | Path): Path to the original species CSV file
 
         """
-        import shutil
-        from pathlib import Path
-
         # Create backup file path
         original_path = Path(original_csv_path)
         backup_path = original_path.with_name(

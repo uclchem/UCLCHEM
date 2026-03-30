@@ -45,14 +45,20 @@ class ATCTParser:
             "ATcT_ID",
         ]
 
-    def parse_html_file(self, html_file_path: str) -> pd.DataFrame | None:
+    def parse_html_file(self, html_file_path: str | Path) -> pd.DataFrame | None:
         """Parse ATCT HTML file and return cleaned DataFrame.
 
         Args:
-            html_file_path: Path to ATCT HTML database file
+            html_file_path (str | Path): Path to ATCT HTML database file
 
         Returns:
-            DataFrame with parsed thermochemical data or None if parsing fails
+            pd.DataFrame with parsed thermochemical data or None if parsing fails
+
+        Raises:
+            FileNotFoundError: If the ATcT HTML file could not be found.
+            ValueError: If the main data table could not be located,
+                or no data was found in the table.
+            RuntimeError: If the parsing of the ATcT failed.
 
         """
         html_path = Path(html_file_path)
@@ -82,8 +88,17 @@ class ATCTParser:
         except Exception as e:
             raise RuntimeError(f"Failed to parse ATCT HTML file: {e}") from e
 
-    def _find_data_table(self, soup: BeautifulSoup) -> Any | None:
-        """Find the main thermochemical data table in HTML."""
+    @staticmethod
+    def _find_data_table(soup: BeautifulSoup) -> Any | None:
+        """Find the main thermochemical data table in HTML.
+
+        Args:
+            soup (BeautifulSoup): soup instance to scrape ATcT.
+
+        Returns:
+            Any | None: Table if it could be found, else None.
+
+        """
         tables = soup.find_all("table")
 
         for table in tables:
@@ -97,8 +112,17 @@ class ATCTParser:
                     return table
         return None
 
-    def _extract_table_data(self, table: Any) -> list:
-        """Extract raw data from HTML table."""
+    @staticmethod
+    def _extract_table_data(table: Any) -> list:
+        """Extract raw data from HTML table.
+
+        Args:
+            table (Any): HTML table to extract data from
+
+        Returns:
+            list: extracted data.
+
+        """
         rows = table.find_all("tr")
         data = []
 
@@ -128,7 +152,15 @@ class ATCTParser:
         return data
 
     def _clean_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Clean and standardize the parsed DataFrame."""
+        """Clean and standardize the parsed DataFrame.
+
+        Args:
+            df (pd.DataFrame): dataframe to clean
+
+        Returns:
+            pd.DataFrame: DataFrame with unnecessary columns removed, and cleaned
+                column names.
+        """
         # Clean Unicode issues
         for col in df.columns:
             df[col] = df[col].apply(self._clean_unicode_string)
@@ -148,8 +180,17 @@ class ATCTParser:
 
         return df.reset_index(drop=True)
 
-    def _clean_unicode_string(self, text: Any) -> str:
-        """Clean problematic Unicode characters from text."""
+    @staticmethod
+    def _clean_unicode_string(text: Any) -> str:
+        """Clean problematic Unicode characters from text.
+
+        Args:
+            text (Any): object
+
+        Returns:
+            cleaned (str): string with problematic Unicode characters removed.
+
+        """
         if pd.isna(text) or text is None:
             return ""
 
@@ -164,12 +205,13 @@ class ATCTParser:
 
         return cleaned
 
-    def save_to_csv(self, data: pd.DataFrame, output_path: str) -> None:
+    @staticmethod
+    def save_to_csv(data: pd.DataFrame, output_path: str | Path) -> None:
         """Save parsed data to CSV file.
 
         Args:
-            data: Parsed ATCT data
-            output_path: Output CSV file path
+            data (pd.DataFrame): Parsed ATCT data
+            output_path (str | Path): Output CSV file path
 
         """
         output_file = Path(output_path)
@@ -178,14 +220,15 @@ class ATCTParser:
         data.to_csv(output_file, index=False)
         print(f"✓ Saved {len(data)} species to {output_path}")
 
-    def get_summary_stats(self, data: pd.DataFrame) -> dict[str, Any]:
+    @staticmethod
+    def get_summary_stats(data: pd.DataFrame) -> dict[str, int]:
         """Get summary statistics for parsed data.
 
         Args:
-            data: Parsed ATCT data
+            data (pd.DataFrame): Parsed ATCT data
 
         Returns:
-            Dictionary with summary statistics
+            dict[str, int]: Dictionary with summary statistics
 
         """
         stats = {

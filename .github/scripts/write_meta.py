@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Write executed_notebooks/meta.json based on environment variables and installed package version."""
+"""Write executed_notebooks/meta.json based on environment variables
+and installed package version."""
 
 import json
 import os
