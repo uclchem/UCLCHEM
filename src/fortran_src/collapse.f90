@@ -80,28 +80,33 @@ CONTAINS
             targetTime=3.16d7*10.d-8
         ENDIF
 
-       !IF (targetTime .gt. finalTime*SECONDS_PER_YEAR) targetTime=finalTime*SECONDS_PER_YEAR
+       ! IF (targetTime .gt. finalTime*SECONDS_PER_YEAR) targetTime=finalTime*SECONDS_PER_YEAR
     END SUBROUTINE updateTargetTime
 
     !This routine is formed for every parcel at every time step.
     !update any physics here. For example, set density
     SUBROUTINE updatePhysics
          !f2py integer, intent(aux) :: points
+        REAL(dp) :: effectiveTime
+        !Freeze density and parcel radius at finalTime; chemistry continues beyond
+        effectiveTime = MIN(timeInYears, finalTime)
         !calculate column density. Remember dstep counts from core to edge
         !and coldens should be amount of gas from edge to parcel.
-        call findcoldens(coldens(dstep),rin,rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears),rout)
+        call findcoldens(coldens(dstep),rin,rho0fit(effectiveTime),r0fit(effectiveTime),afit(effectiveTime),rout)
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= baseAv +coldens(dstep)/1.6d21
         !If collapse is one of the parameterized modes, find new density and radius
-        
+
         IF ((collapse_mode .le. 2)) THEN
             !I changed rin to rout
-            CALL findNewRadius(massInRadius(dstep),rout,rho0fit(timeInYears),&
-                &r0fit(timeInYears),afit(timeInYears),parcelRadius(dstep))
+            CALL findNewRadius(massInRadius(dstep),rout,rho0fit(effectiveTime),&
+                &r0fit(effectiveTime),afit(effectiveTime),parcelRadius(dstep))
         ELSE
             dt = targetTime - currentTime
-            drad = vrfit(parcelRadius(dstep),rminfit(timeInYears),vminfit(timeInYears),avfit(timeInYears))*dt/pc
-            parcelRadius(dstep) = parcelRadius(dstep) + drad
+            IF (timeInYears .lt. finalTime) THEN
+                drad = vrfit(parcelRadius(dstep),rminfit(effectiveTime),vminfit(effectiveTime),avfit(effectiveTime))*dt/pc
+                parcelRadius(dstep) = parcelRadius(dstep) + drad
+            END IF
             ! IF (writePhysics) THEN
             !    write(66,*) timeInYears,parcelRadius(dstep),rhofit(parcelRadius(dstep),&
             !             &rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears)),&
@@ -110,7 +115,7 @@ CONTAINS
             ! END IF
         END IF
         parcel_radius(dstep) = parcelRadius(dstep)
-        density(dstep)=rhofit(parcelRadius(dstep),rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))        
+        density(dstep)=rhofit(parcelRadius(dstep),rho0fit(effectiveTime),r0fit(effectiveTime),afit(effectiveTime))
     END SUBROUTINE updatePhysics
 
     !This module is isothermal and as such, no sublimation occurs.
