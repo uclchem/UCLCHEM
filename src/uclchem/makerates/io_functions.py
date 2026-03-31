@@ -195,8 +195,10 @@ def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
         if reaction_row[10] == "":
             reaction_row[10] = 0.0
             reaction_row[11] = 10000.0
-        if reaction_row[12] == "":
+        if len(reaction_row) >= 13 and reaction_row[12] == "":
             reaction_row[12] = 0.0
+        if len(reaction_row) >= 14 and reaction_row[13] == "":
+            reaction_row[13] = False
         return True
     else:
         if reaction_row[1] in ["DESORB", "FREEZE"]:
@@ -206,7 +208,7 @@ def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
         return False
 
 
-def kida_parser(kida_file: str | Path) -> list[list[Any]]:
+def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
     """Parse rows of a KIDA file.
 
     KIDA used a fixed format file so we read each line in the chunks they specify

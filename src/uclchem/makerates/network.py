@@ -548,7 +548,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             ... )
 
         """
-        from .network_builder import NetworkBuilder
+        from uclchem.makerates.network_builder import NetworkBuilder
 
         builder = NetworkBuilder(species, reactions, **build_options)
         return builder.build()
@@ -930,7 +930,7 @@ def build_network(
         species: List of Species objects
         reactions: List of Reaction objects
         user_defined_bulk: User-specified bulk species (optional)
-        gas_phase_extrapolation: Extrapolate gas-phase reactions to grain
+        gas_phase_extrapolation: Extrapolate gas-phase reactions temperatures
         add_crp_photo_to_grain: Add CRP/PHOTON reactions to grain surface
         derive_reaction_exothermicity: Reaction types to calculate exothermicity for
         database_reaction_exothermicity: Custom exothermicity database files
