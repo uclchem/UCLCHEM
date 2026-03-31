@@ -96,7 +96,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from datetime import datetime
-from multiprocessing import pool, shared_memory
+from multiprocessing import shared_memory
 from pathlib import Path
 from typing import Any, AnyStr, Literal
 
@@ -3462,6 +3462,42 @@ def _run_grid_model(
     return model_id, model_obj
 
 
+# The following parameters from various chemical models, cannot be used as grid parameters.
+NoGridParameters = [
+    "out_species",
+    "starting_chemistry",
+    "time_array",
+    "density_array",
+    "gas_temperature_array",
+    "dust_temperature_array",
+    "zeta_array",
+    "radfield_arrayvisual_extinction_array",
+    "coldens_H_array",
+    "coldens_H2_array",
+    "coldens_CO_array",
+    "coldens_C_array",
+    "debug",
+    "read_file",
+    "run_type",
+]
+
+
+class _NoDaemonProcess(mp.Process):
+    @property
+    def daemon(self):
+        return False
+
+    @daemon.setter
+    def daemon(self, value):  # noqa :ANN001
+        pass
+
+
+class NoDaemonPool(pool.Pool):  # noqa
+    @staticmethod
+    def Process(ctx, *args, **kwargs):  # noqa
+        return _NoDaemonProcess(*args, **kwargs)
+
+
 class GridRunner:
     """GridRunner, like SequentialRunner is not an actual uclchem model,
     instead it allows running multiple models on a grid of parameter space.
@@ -3568,7 +3604,7 @@ class GridRunner:
                 ),
             )
         else:
-            assert len(set(len(v) for v in self.parameters_to_grid.values())) == 1
+            assert len({len(v) for v in self.parameters_to_grid.values()}) == 1
             self.flat_grids = np.array(
                 [
                     [p[i] for p in self.parameters_to_grid.values()]
@@ -3760,9 +3796,6 @@ class GridRunner:
         SequentialRunner stems from SequentialRunner instances being nested models,
         resulting in an additional required loop to take into account the
         additional nesting.
-
-        Raises:
-            ValueError: If `full_parameters` list does not contain dictionaries.
 
         """
         # The following loops perform the same actions, but for the different model types
@@ -3960,7 +3993,7 @@ class GridRunner:
 
                 # grid_param_dict contains the param_dict values of the next model to run.
                 grid_param_dict = {
-                    k: v if type(v) != np.float64 else v.item()
+                    k: v if not isinstance(v, float) else v.item()
                     for k, v in zip(param_keys, combo)
                     if k in full_parameters["param_dict"]
                 }

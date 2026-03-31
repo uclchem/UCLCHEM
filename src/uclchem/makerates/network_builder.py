@@ -500,6 +500,10 @@ class NetworkBuilder:
         """We have the user list all Langmuir-Hinshelwood and Eley-Rideal
         reactions once. Then we duplicate so that the reaction branches
         with products on grain and products desorbing.
+
+        Raises:
+            ValueError: If not all products of the LH and ER reactions are on the
+                grain. For example: `#H + #H -> H2` should be `#H + #H -> #H2`.
         """
         logging.debug("Adding chemical desorption reactions for LH and ER mechanisms")
         new_reactions = []
