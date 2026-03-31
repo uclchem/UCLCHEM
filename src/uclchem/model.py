@@ -96,7 +96,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from datetime import datetime
-from multiprocessing import pool, shared_memory
+from multiprocessing import shared_memory
 from pathlib import Path
 from typing import Any, AnyStr, Literal
 
