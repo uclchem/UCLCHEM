@@ -3311,20 +3311,24 @@ class SequentialRunner:
                         run_type=self.run_type,
                         previous_model=previous_model,
                     )
-                    if self.run_type == "external":
-                        tmp_model.run()
-                    self.models += [
-                        {
-                            "Model_Type": model_type,
-                            "Model_Order": self.model_count,
-                            "Model": tmp_model,
-                            "Success": tmp_model.success_flag,
-                        }
-                    ]
-                    self.models[self.model_count]["Successful"] = (
-                        self.models[self.model_count]["Model"].success_flag == 0
-                    )
-                    previous_model = self.models[self.model_count]["Model"]
+
+                if self.run_type == "external":
+                    tmp_model.run()
+
+                self.models += [
+                    {
+                        "Model_Type": model_type,
+                        "Model_Order": self.model_count,
+                        "Model": tmp_model,
+                        "Success": tmp_model.success_flag,
+                    }
+                ]
+
+                self.models[self.model_count]["Successful"] = (
+                    self.models[self.model_count]["Model"].success_flag == 0
+                )
+
+                previous_model = self.models[self.model_count]["Model"]
                 self.model_count += 1
         self.success_flag = all(d["Successful"] for d in self.models)
         return
