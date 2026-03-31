@@ -58,7 +58,7 @@ def test_ode_conservation(
         gridpoints=1,
         returnarray=False,
         givestartabund=False,
-        returnrates=False,
+        returnrateconstants=False,
     )
     abundances = result[-3]
     specname = result[-2]
