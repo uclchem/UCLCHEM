@@ -485,7 +485,7 @@ class NetworkState:
         if errors:
             import warnings
 
-            warnings.warn("Network validation failed:" + errors, RuntimeWarning)
+            warnings.warn("Network validation failed:" + str(errors), RuntimeWarning)
             raise RuntimeError("Network validation failed")
 
     def validate(self) -> None:

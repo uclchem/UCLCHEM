@@ -203,12 +203,11 @@ class HeatingSettings:
             str(np.char.decode(name)).strip()
             for name in self._f2py_constants_module.coolantnames
         ]
-        try:
-            idx = names.index(coolant_name)
-        except ValueError:
+        if coolant_name not in names:
             raise ValueError(
                 f"Coolant '{coolant_name}' not found. Available coolants: {names}"
             )
+        idx = names.index(coolant_name)
         self._f2py_constants_module.coolant_active[idx] = enabled
 
     def get_coolant_active(self) -> dict[str, bool]:
