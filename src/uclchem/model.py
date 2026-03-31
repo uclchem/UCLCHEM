@@ -113,6 +113,8 @@ from uclchem.analysis import (
     create_abundance_plot,
     plot_species,
 )
+from uclchem.advanced.advanced_settings import GeneralSettings
+
 from uclchem.constants import (
     DVODE_STAT_NAMES,
     N_DVODE_STATS,
@@ -127,6 +129,7 @@ from uclchem.constants import (
     n_reactions,
     n_species,
 )
+from uclchem.advanced.constants import FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
 # /Multiprocessing imports
@@ -341,22 +344,18 @@ def _convert_legacy_stopping_param(param_dict: dict) -> dict:
     return param_dict
 
 
-class DecreasingEnum(enum.Enum):
-    @staticmethod
-    def _generate_next_value_(name, start, count, last_values):
-        return last_values[-1] - 1
+settings = GeneralSettings()
+error_flags_dict = settings.search(
+    "_ERROR", include_internal=True, include_parameters=False
+)
+error_flags_dict = {
+    k.upper().split(".")[1]: int(val.get())
+    for k, val in error_flags_dict.items()
+    if "constants" in k
+}
+error_flags_dict["SUCCESS"] = 0
 
-
-@enum.verify(enum.UNIQUE)
-class SuccessFlag(DecreasingEnum):
-    SUCCESS = 0
-    PARAMETER_READ_FAILED = enum.auto()
-    FAILURE = enum.auto()
-
-    def check_error(self) -> None:
-        if self == SuccessFlag.SUCCESS:
-            return
-        print(f"ERROR!: {self}")
+SuccessFlag = enum.Enum("SuccessFlag", error_flags_dict)
 
 
 # TODO Add catch of ctrl+c or other aborts so that it saves model and a full output to files of year, month, day, time type.
