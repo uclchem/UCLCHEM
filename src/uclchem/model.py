@@ -460,9 +460,9 @@ class AbstractModel(ABC):
             self._create_starting_array(previous_model.next_starting_chemistry_array)
 
         self.give_start_abund = self.starting_chemistry_array is not None
-        assert not np.all(self.starting_chemistry_array == 0.0), (
-            "Detected all zeros starting chemistry array."
-        )
+        assert not np.all(
+            self.starting_chemistry_array == 0.0
+        ), "Detected all zeros starting chemistry array."
 
         # Only initialize next_starting_chemistry_array if we didn't load it from a file
         # (legacy_read_output_file sets it from the last timestep)
@@ -1633,9 +1633,9 @@ class AbstractModel(ABC):
             # this is key to UCLCHEM's "case insensitivity"
             new_param_dict = {}
             for k, v in param_dict.items():
-                assert k.lower() not in new_param_dict, (
-                    f"Lower case key {k} is already in the dict, stopping"
-                )
+                assert (
+                    k.lower() not in new_param_dict
+                ), f"Lower case key {k} is already in the dict, stopping"
                 if isinstance(v, Path):
                     v = str(v)
                 new_param_dict[k.lower()] = v
@@ -2623,9 +2623,9 @@ class Postprocess(AbstractModel):
             # Flags exposed for Fortran wrapper (mutually exclusive)
             self.usecoldens = self.coldens_H_array is not None
             self.useav = self.visual_extinction_array is not None
-            assert not (self.usecoldens and self.useav), (
-                "Cannot use both column density and visual extinction arrays simultaneously."
-            )
+            assert not (
+                self.usecoldens and self.useav
+            ), "Cannot use both column density and visual extinction arrays simultaneously."
 
             if not self.give_start_abund:
                 self.starting_chemistry_array = np.zeros(
