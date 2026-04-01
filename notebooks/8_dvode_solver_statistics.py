@@ -21,9 +21,9 @@
 # convergence issues.
 
 # %%
-import uclchem
 import matplotlib.pyplot as plt
-import numpy as np
+
+import uclchem
 
 # %% [markdown]
 # ## Running a Model and Accessing Stats

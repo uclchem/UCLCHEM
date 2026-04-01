@@ -41,8 +41,9 @@
 # By default, heating is enabled (`heatingFlag=True`), but you can turn it off or customize which processes are included.
 
 # %%
-import uclchem
 import matplotlib.pyplot as plt
+
+import uclchem
 
 # %% [markdown]
 # ## Example 1: Basic Model with Heating Enabled
@@ -73,7 +74,7 @@ flag = 0 if cloud.has_attr("_data") else -1
 
 print(f"Model completed with flag: {flag}")
 if flag < 0:
-    print(f"Error: Model failed to complete")
+    print("Error: Model failed to complete")
 else:
     print("Success! Model completed.")
     print(

@@ -23,8 +23,9 @@
 # we calculate the exact same models, but take advantage of the model objects in order to perform all calculations in
 # memory, bypassing the file system entirely.
 
-import uclchem
 import matplotlib.pyplot as plt
+
+import uclchem
 
 # ## The Prestellar Core
 #

@@ -17,9 +17,11 @@
 #
 # A common task is to run UCLCHEM over a grid of parameter combinations. This notebook shows how to use the built-in GridModels class to doing so for regular grids.
 
-import uclchem
-import numpy as np
 import os
+
+import numpy as np
+
+import uclchem
 
 # Ensure output directory exists
 if not os.path.exists("./output_3"):

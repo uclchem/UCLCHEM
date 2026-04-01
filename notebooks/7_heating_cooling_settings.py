@@ -25,10 +25,12 @@
 # This is useful for understanding which physical processes drive the thermal evolution in your model.
 
 # %%
+import os
+
 import matplotlib.pyplot as plt
+
 import uclchem
 from uclchem import advanced
-import os
 
 # Ensure output directory exists
 os.makedirs("../examples/test-output", exist_ok=True)
@@ -68,7 +70,7 @@ if flag_full == 0:
     )
     print(f"Final temperature: {physics_full['gasTemp'].iloc[-1]:.2f} K")
 else:
-    print(f"Error: Model failed to complete")
+    print("Error: Model failed to complete")
 
 # %% [markdown]
 # ## Step 2: Identify the Most Important Heating and Cooling Processes
@@ -246,7 +248,7 @@ if flag_limited == 0:
     )
     print(f"Final temperature: {physics_limited['gasTemp'].iloc[-1]:.2f} K")
 else:
-    print(f"Error: Model failed to complete")
+    print("Error: Model failed to complete")
 
 # Reset settings for future runs
 settings.reset_to_defaults()

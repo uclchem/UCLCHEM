@@ -18,9 +18,10 @@
 # This notebook demonstrates how to use the `advanced.GeneralSettings` class to modify UCLCHEM parameters instead of using parameter dictionaries. This provides a more object-oriented interface with better autocomplete, type checking, and state management.
 
 # %%
+import os
+
 import uclchem
 from uclchem import advanced
-import os
 
 # Ensure output directory exists
 if not os.path.exists("output_6"):
@@ -93,7 +94,7 @@ param_dict = {
 # Run model with param_dict for file I/O, but using GeneralSettings for other parameters
 out_species = ["SO", "CO"]
 cloud = uclchem.model.Cloud(param_dict=param_dict, out_species=out_species)
-print(f"Model completed successfully")
+print("Model completed successfully")
 
 # %% [markdown]
 # ## Viewing Modified Settings
@@ -124,7 +125,7 @@ with settings.temporary_changes():
     cloud_high = uclchem.model.Cloud(
         param_dict=param_dict_high, out_species=out_species
     )
-    print(f"High density model completed successfully")
+    print("High density model completed successfully")
 
 # Settings automatically restored
 print(f"After context: {settings.defaultparameters.initialdens.get()}")
