@@ -80,7 +80,6 @@ Model objects are **not thread-safe** when using advanced features that modify
 Fortran module state. Use multiprocessing (not threading) for parallel runs.
 """
 
-import enum
 import json
 import logging
 
@@ -113,8 +112,6 @@ from uclchem.analysis import (
     create_abundance_plot,
     plot_species,
 )
-from uclchem.advanced.advanced_settings import GeneralSettings
-
 from uclchem.constants import (
     DVODE_STAT_NAMES,
     N_DVODE_STATS,
@@ -129,8 +126,7 @@ from uclchem.constants import (
     n_reactions,
     n_species,
 )
-from uclchem.advanced.constants import FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
-from uclchem.utils import UCLCHEM_ROOT_DIR
+from uclchem.utils import UCLCHEM_ROOT_DIR, SuccessFlag
 
 # /Multiprocessing imports
 
@@ -344,20 +340,6 @@ def _convert_legacy_stopping_param(param_dict: dict) -> dict:
     return param_dict
 
 
-settings = GeneralSettings()
-error_flags_dict = settings.search(
-    "_ERROR", include_internal=True, include_parameters=False
-)
-error_flags_dict = {
-    k.upper().split(".")[1]: int(val.get())
-    for k, val in error_flags_dict.items()
-    if "constants" in k
-}
-error_flags_dict["SUCCESS"] = 0
-
-SuccessFlag = enum.Enum("SuccessFlag", error_flags_dict)
-
-
 # TODO Add catch of ctrl+c or other aborts so that it saves model and a full output to files of year, month, day, time type.
 class AbstractModel(ABC):
     """Base model class used for inheritance only
@@ -417,7 +399,7 @@ class AbstractModel(ABC):
         self.out_species = ""
         self.full_array = None
         self._debug = debug
-        self.success_flag = None
+        self.success_flag: None | SuccessFlag = None
         # Note: specname is now accessed via get_species_names() global function
         # Note: PHYSICAL_PARAMETERS is now accessed via the global constant
 
@@ -706,7 +688,6 @@ class AbstractModel(ABC):
                 pass
 
         meta[key] = value
-        return
 
     def has_attr(self, key):
         """Method to check if the object has an attribute stored in self._meta or self._data"""
@@ -753,18 +734,24 @@ class AbstractModel(ABC):
             only_error (bool, optional): If True, only act when there was an error (skip success message).
             raise_on_error (bool, optional): If True (default), raises RuntimeError on failure. If False, prints.
         """
-        if self.success_flag is not None and self.success_flag < 0:
-            from uclchem.utils import check_error as _check_error
 
-            if raise_on_error:
-                _check_error(self.success_flag, raise_on_error=True)
-            else:
-                msg = _check_error(self.success_flag, raise_on_error=False)
-                print(msg)
-        elif self.success_flag == 0 and not only_error:
-            print("Model ran successfully.")
-        elif self.success_flag is None:
+        if self.success_flag is None:
             print("Model has not been run.")
+        msg = self.success_flag.check_error(
+            only_error=only_error, raise_on_error=raise_on_error
+        )
+        print(msg)
+
+        # if self.success_flag is not None and self.success_flag < 0:
+        #     if raise_on_error:
+        #         _check_error(self.success_flag, raise_on_error=True)
+        #     else:
+        #         msg = _check_error(self.success_flag, raise_on_error=False)
+        #         print(msg)
+        # elif self.success_flag == 0 and not only_error:
+        #     print("Model ran successfully.")
+        # elif self.success_flag is None:
+        #     print("Model has not been run.")
 
     def create_abundance_plot(
         self,
@@ -1119,15 +1106,16 @@ class AbstractModel(ABC):
         """__run__ resets the Fortran arrays if the model was not read, allowing the arrays to be reused for new runs."""
         if self.was_read:
             raise RuntimeError("This model was read. It can not be run. ")
-            self.physics_array = None
-            self.chemical_abun_array = None
-            self.ratesArray = None
-            self.heatArray = None
-            self.statsArray = None
-            self._create_fortran_array()
-            self._create_rates_array()
-            self._create_heating_array()
-            self._create_stats_array()
+
+        self.physics_array = None
+        self.chemical_abun_array = None
+        self.ratesArray = None
+        self.heatArray = None
+        self.statsArray = None
+        self._create_fortran_array()
+        self._create_rates_array()
+        self._create_heating_array()
+        self._create_stats_array()
 
         def _handler(signum, frame):
             try:
@@ -1172,6 +1160,7 @@ class AbstractModel(ABC):
         if hasattr(self, "_shm_handles"):
             self._coordinator_unlink_memory()
 
+        output["success_flag"] = SuccessFlag(output["success_flag"])
         for k, v in output.items():
             self.__setattr__(k, v)
 

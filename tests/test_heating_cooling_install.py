@@ -52,9 +52,9 @@ class TestMakeRatesWithHeating:
             f"{sys.executable} MakeRates.py user_settings_with_heating.yaml",
             cwd=makerates_dir,
         )
-        assert (
-            result.returncode == 0
-        ), f"MakeRates failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        assert result.returncode == 0, (
+            f"MakeRates failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        )
 
     def test_generated_f2py_constants_exists(self):
         """Verify f2py_constants.f90 was regenerated."""
@@ -65,9 +65,9 @@ class TestMakeRatesWithHeating:
         """Verify the generated f2py_constants.f90 contains coolant_active array."""
         f2py_path = UCLCHEM_ROOT / "src" / "fortran_src" / "f2py_constants.f90"
         content = f2py_path.read_text()
-        assert (
-            "coolant_active" in content
-        ), "coolant_active array missing from generated f2py_constants.f90"
+        assert "coolant_active" in content, (
+            "coolant_active array missing from generated f2py_constants.f90"
+        )
         assert "LOGICAL" in content, "LOGICAL type declaration missing"
 
     def test_generated_f2py_constants_has_all_coolants(self):
@@ -118,25 +118,25 @@ class TestInstallWithHeating:
     def test_pip_install_succeeds(self):
         """Install UCLCHEM with the regenerated Fortran sources."""
         result = _run("pip install .", cwd=UCLCHEM_ROOT)
-        assert (
-            result.returncode == 0
-        ), f"pip install failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        assert result.returncode == 0, (
+            f"pip install failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        )
 
     def test_import_uclchem(self):
         """Verify uclchem can be imported after install."""
         result = _run(f"{sys.executable} -c 'import uclchem; print(uclchem.__file__)'")
-        assert (
-            result.returncode == 0
-        ), f"import uclchem failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        assert result.returncode == 0, (
+            f"import uclchem failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        )
 
     def test_import_uclchemwrap(self):
         """Verify the Fortran wrapper module can be imported."""
         result = _run(
             f"{sys.executable} -c 'import uclchemwrap; print(dir(uclchemwrap))'"
         )
-        assert (
-            result.returncode == 0
-        ), f"import uclchemwrap failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        assert result.returncode == 0, (
+            f"import uclchemwrap failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -184,9 +184,9 @@ class TestHeatingSettingsCoolants:
         """Number of coolants should match what was configured."""
         state = settings.get_coolant_active()
         # Full LAMDA set has more than the default 7
-        assert (
-            len(state) >= 7
-        ), f"Expected >7 coolants from full LAMDA config, got {len(state)}: {list(state.keys())}"
+        assert len(state) >= 7, (
+            f"Expected >7 coolants from full LAMDA config, got {len(state)}: {list(state.keys())}"
+        )
 
     def test_baseline_coolants_present(self, settings):
         """The 7 baseline coolants must be present in any superset build."""
@@ -206,9 +206,9 @@ class TestHeatingSettingsCoolants:
         """Disabling a coolant should be reflected in get_coolant_active."""
         settings.set_coolant_active("CO", False)
         state = settings.get_coolant_active()
-        assert not state[
-            "CO"
-        ], "CO should be disabled after set_coolant_active('CO', False)"
+        assert not state["CO"], (
+            "CO should be disabled after set_coolant_active('CO', False)"
+        )
 
     def test_set_coolant_active_reenable(self, settings):
         """Re-enabling a coolant should work."""
@@ -321,9 +321,9 @@ class TestHeatingCoolingMechanisms:
     def test_molecular_line_cooling_enabled(self, settings):
         """Molecular line cooling (mechanism 5) should be enabled by default."""
         modules = settings.get_cooling_modules()
-        assert modules[
-            "MolecularLine"
-        ], "MolecularLine cooling should be enabled by default"
+        assert modules["MolecularLine"], (
+            "MolecularLine cooling should be enabled by default"
+        )
 
     def test_disable_molecular_line_cooling(self, settings):
         """Disabling molecular line cooling should work."""
@@ -372,9 +372,9 @@ class TestFortranConsistency:
 
         n_coolants = uclchemwrap.f2py_constants.ncoolants
         coolant_active = uclchemwrap.f2py_constants.coolant_active
-        assert (
-            len(coolant_active) == n_coolants
-        ), f"coolant_active size ({len(coolant_active)}) != NCOOLANTS ({n_coolants})"
+        assert len(coolant_active) == n_coolants, (
+            f"coolant_active size ({len(coolant_active)}) != NCOOLANTS ({n_coolants})"
+        )
 
     def test_coolant_names_array_size(self):
         """coolantNames array size should match NCOOLANTS."""
@@ -382,9 +382,9 @@ class TestFortranConsistency:
 
         n_coolants = uclchemwrap.f2py_constants.ncoolants
         coolant_names = uclchemwrap.f2py_constants.coolantnames
-        assert (
-            len(coolant_names) == n_coolants
-        ), f"coolantNames size ({len(coolant_names)}) != NCOOLANTS ({n_coolants})"
+        assert len(coolant_names) == n_coolants, (
+            f"coolantNames size ({len(coolant_names)}) != NCOOLANTS ({n_coolants})"
+        )
 
     def test_coolant_files_array_size(self):
         """coolantFiles array size should match NCOOLANTS."""
@@ -392,9 +392,9 @@ class TestFortranConsistency:
 
         n_coolants = uclchemwrap.f2py_constants.ncoolants
         coolant_files = uclchemwrap.f2py_constants.coolantfiles
-        assert (
-            len(coolant_files) == n_coolants
-        ), f"coolantFiles size ({len(coolant_files)}) != NCOOLANTS ({n_coolants})"
+        assert len(coolant_files) == n_coolants, (
+            f"coolantFiles size ({len(coolant_files)}) != NCOOLANTS ({n_coolants})"
+        )
 
     def test_conversion_factors_array_size(self):
         """coolantConversionFactors array size should match NCOOLANTS."""
@@ -402,9 +402,9 @@ class TestFortranConsistency:
 
         n_coolants = uclchemwrap.f2py_constants.ncoolants
         factors = uclchemwrap.f2py_constants.coolantconversionfactors
-        assert (
-            len(factors) == n_coolants
-        ), f"coolantConversionFactors size ({len(factors)}) != NCOOLANTS ({n_coolants})"
+        assert len(factors) == n_coolants, (
+            f"coolantConversionFactors size ({len(factors)}) != NCOOLANTS ({n_coolants})"
+        )
 
     def test_conversion_modes_array_size(self):
         """coolantConversionMode array size should match NCOOLANTS."""
@@ -412,9 +412,9 @@ class TestFortranConsistency:
 
         n_coolants = uclchemwrap.f2py_constants.ncoolants
         modes = uclchemwrap.f2py_constants.coolantconversionmode
-        assert (
-            len(modes) == n_coolants
-        ), f"coolantConversionMode size ({len(modes)}) != NCOOLANTS ({n_coolants})"
+        assert len(modes) == n_coolants, (
+            f"coolantConversionMode size ({len(modes)}) != NCOOLANTS ({n_coolants})"
+        )
 
     def test_parent_names_array_size(self):
         """coolantParentNames array size should match NCOOLANTS."""
@@ -422,9 +422,9 @@ class TestFortranConsistency:
 
         n_coolants = uclchemwrap.f2py_constants.ncoolants
         parents = uclchemwrap.f2py_constants.coolantparentnames
-        assert (
-            len(parents) == n_coolants
-        ), f"coolantParentNames size ({len(parents)}) != NCOOLANTS ({n_coolants})"
+        assert len(parents) == n_coolants, (
+            f"coolantParentNames size ({len(parents)}) != NCOOLANTS ({n_coolants})"
+        )
 
     def test_coolant_active_all_true_by_default(self):
         """All coolant_active entries should be True after fresh install."""
@@ -456,15 +456,15 @@ class TestFortranConsistency:
 
         if "p-H2" in names:
             idx = names.index("p-H2")
-            assert (
-                int(modes[idx]) == 1
-            ), f"p-H2 should have conversion mode 1 (thermal OPR para), got {int(modes[idx])}"
+            assert int(modes[idx]) == 1, (
+                f"p-H2 should have conversion mode 1 (thermal OPR para), got {int(modes[idx])}"
+            )
 
         if "o-H2" in names:
             idx = names.index("o-H2")
-            assert (
-                int(modes[idx]) == 2
-            ), f"o-H2 should have conversion mode 2 (thermal OPR ortho), got {int(modes[idx])}"
+            assert int(modes[idx]) == 2, (
+                f"o-H2 should have conversion mode 2 (thermal OPR ortho), got {int(modes[idx])}"
+            )
 
     def test_ortho_para_species_have_correct_parents(self):
         """Ortho/para species should map to the correct parent species."""

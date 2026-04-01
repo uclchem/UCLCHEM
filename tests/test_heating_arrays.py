@@ -75,9 +75,9 @@ class TestHeatingArrays:
         assert heatArray is not None, "Heat array should be returned"
         assert isinstance(heatArray, np.ndarray), "Heat array should be numpy array"
         # Check that we have a reasonable number of heating terms (at least 12)
-        assert (
-            heatArray.shape[2] >= 12
-        ), f"Expected at least 12 heating terms, got {heatArray.shape[2]}"
+        assert heatArray.shape[2] >= 12, (
+            f"Expected at least 12 heating terms, got {heatArray.shape[2]}"
+        )
         # Verify heating array has correct dimensions: (timepoints+1, points, n_heating_terms)
         assert heatArray.shape[0] > 10  # check there are at least 10 timepoints
         assert heatArray.shape[1] == 1  # points
@@ -104,12 +104,14 @@ class TestHeatingArrays:
             timepoints=50,  # Reduced from 500 for faster tests
         )
 
-        assert success_flag == 0, "Model run should be successful"
+        assert success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+            "Model run should be successful"
+        )
         assert heatArray is not None, "Heat array should be returned"
         assert isinstance(heatArray, np.ndarray), "Heat array should be numpy array"
-        assert (
-            heatArray.shape[2] >= 12
-        ), f"Heat array should have at least 12 columns per particle, got {heatArray.shape[2]}"
+        assert heatArray.shape[2] >= 12, (
+            f"Heat array should have at least 12 columns per particle, got {heatArray.shape[2]}"
+        )
 
     def test_cloud_function_with_return_dataframe(
         self, param_dict, expected_heating_columns
@@ -134,14 +136,16 @@ class TestHeatingArrays:
             success_flag,
         ) = result
 
-        assert success_flag == 0, "Model run should be successful"
+        assert success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+            "Model run should be successful"
+        )
         assert heating_df is not None, "Heating DataFrame should be returned"
         assert isinstance(heating_df, pd.DataFrame), "Heating data should be DataFrame"
 
         # Check DataFrame structure - should have at least the essential columns
-        assert (
-            len(heating_df.columns) >= 12
-        ), f"Expected at least 12 heating columns, got {len(heating_df.columns)}"
+        assert len(heating_df.columns) >= 12, (
+            f"Expected at least 12 heating columns, got {len(heating_df.columns)}"
+        )
 
         print(heating_df.columns.tolist())
         # Check that essential columns are present (allow extra columns for extensibility)
@@ -154,9 +158,9 @@ class TestHeatingArrays:
         actual_columns = list(heating_df.columns)
         missing_columns = set(essential_columns) - set(actual_columns)
 
-        assert (
-            not missing_columns
-        ), f"Missing essential heating columns: {missing_columns}"
+        assert not missing_columns, (
+            f"Missing essential heating columns: {missing_columns}"
+        )
 
     @pytest.mark.parametrize(
         "model_function",
@@ -211,13 +215,11 @@ class TestHeatingArrays:
                         heating_df = item
                         break
 
-            assert isinstance(
-                heating_df, pd.DataFrame
-            ), "The output should be a DataFrame"
+            assert isinstance(heating_df, pd.DataFrame), (
+                "The output should be a DataFrame"
+            )
             assert "Time" in heating_df.columns, "Time should be returned"
-            assert (
-                heating_df.values[:, 1:] != 0.0
-            ).any(), (
+            assert (heating_df.values[:, 1:] != 0.0).any(), (
                 f"Some terms should have non-zero values, head is {heating_df.head()}"
             )
 
@@ -253,9 +255,9 @@ class TestHeatingArrays:
             timepoints=50,  # Reduced from 1000 for faster tests
         )
 
-        assert (
-            success_flag == 0
-        ), f"Model run should be successful, or run out of points, instead it was {success_flag}"
+        assert success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"Model run should be successful, or run out of points, instead it was {success_flag}"
+        )
         assert heating_df is not None, "Heating DataFrame should be returned"
 
         # Check that we have finite values (no NaN or inf)
@@ -273,9 +275,9 @@ class TestHeatingArrays:
                 has_nonzero = True
                 break
 
-        assert (
-            has_nonzero
-        ), "At least some heating/cooling terms should have non-zero values"
+        assert has_nonzero, (
+            "At least some heating/cooling terms should have non-zero values"
+        )
 
     # This test will only work if during compile time the writerates
     # def test_heating_array_to_disk(self, param_dict):
@@ -291,7 +293,7 @@ class TestHeatingArrays:
     #         return_rates=True,
     #         return_heating=True,
     #     )
-    #     assert result[0] == 0, "Model run should be successful"
+    #     assert result[0] == uclchem.utils.SuccessFlag.SUCCESS, "Model run should be successful"
     #     assert TEST_FILE.exists(), "Heating file should be created on disk"
     #     heating_df = pd.read_csv(TEST_FILE, index_col=None)
     #     assert not heating_df.empty, "Heating DataFrame should not be empty"
