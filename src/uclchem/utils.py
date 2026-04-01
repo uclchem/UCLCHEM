@@ -74,41 +74,6 @@ def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
     return (dlength * 1.0e-5 / shock_vel) / SECONDS_PER_YEAR
 
 
-def check_error(error_code: int, raise_on_error: bool = True) -> str:
-    """Converts the UCLCHEM integer result flag to a message explaining what went wrong.
-
-    Args:
-        error_code (int): Error code returned by UCLCHEM models, the first element of the results list.
-        raise_on_error (bool): If True (default), raises RuntimeError. If False, returns the message string.
-
-    Returns:
-        str: Error message
-
-    Raises:
-        RuntimeError: If raise_on_error is True and error_code is recognized.
-    """
-    errors = {
-        -1: "Parameter read failed. Likely due to a misspelled parameter name, compare your dictionary to the parameters docs.",
-        -2: "Physics initialization failed. Often due to user choosing unacceptable parameters such as hot core masses or collapse modes that don't exist. Check the docs for your model function.",
-        -3: "Chemistry initialization failed.",
-        -4: "Unrecoverable integrator error, DVODE failed to integrate the ODEs in a way that UCLCHEM could not fix. Run UCLCHEM tests to check your network works at all then try to see if bad parameter combination is at play.",
-        -5: "Too many integrator fails. DVODE failed to integrate the ODE and UCLCHEM repeatedly altered settings to try to make it pass but tried too many times without success so code aborted to stop infinite loop.",
-        -6: "The model was stopped because there are not enough time points allocated in the time array. Increase the number of time points in the time array in constants.py and try again.",
-        -7: "Physics update error during integration.",
-        -8: "Solver statistics array overflow.",
-        -9: "Coolant data file could not be opened. Check that coolant data files exist in the expected directory.",
-        -10: "Coolant data file has invalid format (bad NLEVEL, invalid partner ID, or too many temperature values).",
-        -11: "Frequency tolerance exceeded: the deviation between energy-level-computed and LAMDA-file frequencies exceeds freq_rel_tol. Increase freq_rel_tol or check your coolant data files.",
-        -12: "LTE population sum tolerance exceeded: level populations do not sum to total density within pop_rel_tol.",
-        -13: "Coolant solver numerical error (NaN in matrix, singular matrix, or negative populations). The statistical equilibrium solver failed for a coolant species.",
-        -14: "Coolant configuration error: parent species not found in network, or unphysical abundance detected.",
-    }
-    msg = errors.get(error_code, f"Unknown error code: {error_code}")
-    if raise_on_error:
-        raise RuntimeError(f"UCLCHEM error (code {error_code}): {msg}")
-    return msg
-
-
 def get_species_table() -> pd.DataFrame:
     """A simple function to load the list of species in the UCLCHEM network into a pandas dataframe.
 
@@ -168,7 +133,7 @@ def find_number_of_consecutive_digits(string: str, start: int) -> int:
 
 
 @enum.verify(enum.UNIQUE)
-class SuccessFlag(enum.Enum):
+class SuccessFlag(enum.IntEnum):
     @staticmethod
     def _generate_next_value_(
         name: str, start: int, count: int, last_values: list[int]
