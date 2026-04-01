@@ -197,5 +197,5 @@ class SuccessFlag(enum.IntEnum):
         }
         msg = error_msg_dict[self]
         if raise_on_error:
-            raise RuntimeError(f"UCLCHEM error (code {self}): {msg}")
+            raise RuntimeError(f"UCLCHEM error (code {self.name}, {self.value}): {msg}")
         return msg
