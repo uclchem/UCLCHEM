@@ -1096,16 +1096,6 @@ class AbstractModel(ABC):
         if self.was_read:
             raise RuntimeError("This model was read. It can not be run. ")
 
-        self.physics_array = None
-        self.chemical_abun_array = None
-        self.ratesArray = None
-        self.heatArray = None
-        self.statsArray = None
-        self._create_fortran_array()
-        self._create_rates_array()
-        self._create_heating_array()
-        self._create_stats_array()
-
         def _handler(signum, frame):
             try:
                 self.on_interrupt()  # your “final steps”
