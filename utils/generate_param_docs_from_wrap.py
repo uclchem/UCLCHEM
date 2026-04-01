@@ -10,17 +10,19 @@ Usage:
 """
 
 import sys
-from typing import Any, Dict, Tuple
+from typing import Any
 
 import numpy as np
 
 
-def get_parameter_info() -> Dict[str, Tuple[Any, str, str]]:
+def get_parameter_info() -> dict[str, tuple[Any, str, str]]:
     """Extract all parameters from uclchemwrap.defaultparameters.
 
     Returns:
-        Dictionary mapping parameter names to tuples of (value, type_str, description)
-        The description is extracted from Fortran comments when available.
+        params (dict[str, tuple[Any, str, str]]): Dictionary mapping parameter
+            names to tuples of (value, type_str, description)
+            The description is extracted from Fortran comments when available.
+
     """
     try:
         import uclchemwrap
@@ -132,11 +134,11 @@ def get_parameter_info() -> Dict[str, Tuple[Any, str, str]]:
             # Get type information
             if isinstance(value, np.ndarray):
                 type_str = f"array[{value.dtype}]"
-            elif isinstance(value, (bool, np.bool_)):
+            elif isinstance(value, bool | np.bool_):
                 type_str = "bool"
-            elif isinstance(value, (int, np.integer)):
+            elif isinstance(value, int | np.integer):
                 type_str = "int"
-            elif isinstance(value, (float, np.floating)):
+            elif isinstance(value, float | np.floating):
                 type_str = "float"
             elif isinstance(value, str):
                 type_str = "str"
@@ -158,14 +160,16 @@ def get_parameter_info() -> Dict[str, Tuple[Any, str, str]]:
     return params
 
 
-def categorize_parameters(params: Dict[str, Tuple[Any, str, str]]) -> Dict[str, list]:
+def categorize_parameters(params: dict[str, tuple[Any, str, str]]) -> dict[str, list]:  # noqa: ARG001
     """Organize parameters into logical categories.
 
     Args:
-        params: Dictionary of parameter info
+        params (dict[str, tuple[Any, str, str]]): Dictionary of parameter info
 
     Returns:
-        Dictionary mapping category names to lists of parameter names
+        categories (dict[str, list]): Dictionary mapping category names
+            to lists of parameter names
+
     """
     categories = {
         "Physical Variables": [
@@ -250,21 +254,29 @@ def categorize_parameters(params: Dict[str, Tuple[Any, str, str]]) -> Dict[str, 
 
 
 def format_value(value: Any) -> str:
-    """Format a parameter value for display."""
-    if isinstance(value, (bool, np.bool_)):
+    """Format a parameter value for display.
+
+    Args:
+        value (Any): value to be printed
+
+    Returns:
+        str: formatted string for printing
+
+    """
+    if isinstance(value, bool | np.bool_):
         return ".True." if value else ".False."
-    elif isinstance(value, (int, np.integer)):
+    elif isinstance(value, int | np.integer):
         # Check if it's a boolean disguised as int (Fortran LOGICAL)
         if value in (0, 1):
             return ".True." if value == 1 else ".False."
         return str(value)
-    elif isinstance(value, (float, np.floating)):
+    elif isinstance(value, float | np.floating):
         # Use scientific notation for very small/large numbers
         if abs(value) < 0.001 or abs(value) > 10000:
             return f"{value:.2e}"
         else:
             return f"{value:.3g}"
-    elif isinstance(value, (bytes, np.bytes_)):
+    elif isinstance(value, bytes | np.bytes_):
         # Handle Fortran strings (bytes)
         decoded = value.decode("utf-8").strip()
         return '""' if not decoded else f'"{decoded}"'
@@ -274,12 +286,13 @@ def format_value(value: Any) -> str:
         return str(value)
 
 
-def generate_markdown(params: Dict[str, Tuple[Any, str, str]], output_file: str):
+def generate_markdown(params: dict[str, tuple[Any, str, str]], output_file: str) -> None:
     """Generate markdown documentation from parameter information.
 
     Args:
-        params: Dictionary of parameter info
-        output_file: Path to output markdown file
+        params (dict[str, tuple[Any, str, str]]): Dictionary of parameter info
+        output_file (str): Path to output markdown file
+
     """
     categories = categorize_parameters(params)
 
@@ -334,7 +347,7 @@ def generate_markdown(params: Dict[str, Tuple[Any, str, str]], output_file: str)
         )
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} <output_markdown_file>")

@@ -7,7 +7,7 @@ MODULE IO
     USE heating
     
     ! CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile
-    LOGICAL :: columnOutput=.False.,fullOutput=.False.,rateOutput=.False.,fluxOutput=.False.,&
+    LOGICAL :: columnOutput=.False.,fullOutput=.False.,rateConstantsOutput=.False.,fluxOutput=.False.,&
     &readAbunds=.False.,writeAbunds=.False.,heatingOutput=.False.
     CHARACTER (LEN=15),ALLOCATABLE :: outSpecies(:)
     INTEGER :: nout
@@ -29,7 +29,7 @@ CONTAINS
         END IF
         335 FORMAT("Time,Density,gasTemp,dustTemp,Av,radfield,zeta,point,",(999(A,:,',')))
         
-        INQUIRE(UNIT=rateConstantId, OPENED=rateOutput)
+        INQUIRE(UNIT=rateConstantId, OPENED=rateConstantsOutput)
         INQUIRE(UNIT=ratesId, OPENED=fluxOutput)
         INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
         INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
@@ -98,10 +98,10 @@ CONTAINS
         END IF
     END SUBROUTINE finalOutput
 
-    SUBROUTINE output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, ratesarray, heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
+    SUBROUTINE output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, rateConstantsArray, heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
-        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: ratesarray
+        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: rateConstantsArray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: heatarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: statsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: levelpopulationsarray
@@ -148,8 +148,10 @@ CONTAINS
         END IF
         IF (writerates) THEN
             IF (returnArray) THEN
-                ! If returnArray is true, we write the rates to the rates array, we compute the flux in Python.
-                ratesarray(dtime, dstep, :) = rate(:nreac)
+                ! If returnArray is true, we write the rate constants to the rate constants array
+                ! The rate constants are still called "rates" within Fortran
+                ! We compute the flux in Python.
+                rateConstantsArray(dtime, dstep, :) = rate(:nreac)
                 ! Only populate the heating array if it is present, properly sized, AND heating is enabled
                 IF (SIZE(heatarray, 1) .ge. timePoints .AND. heatingFlag) THEN
                     heatarray(dtime, dstep, 1) = timeInYears
@@ -164,7 +166,7 @@ CONTAINS
                 END IF
             ELSE 
                 ! Else, we write the rate constants and rates to the file.
-                IF (rateOutput) THEN
+                IF (rateConstantsOutput) THEN
                     WRITE(rateConstantId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,RATE
                     8021 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
                 END IF

@@ -1,3 +1,5 @@
+# noqa: D100
+
 # This is a backup of the version.py file in the uclchem package.
 # If everything goes right, meson will actually use version.py.in to automatically
 # generate the file in the build directory from the git tags and commits.

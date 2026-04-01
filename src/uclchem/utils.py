@@ -1,6 +1,4 @@
-"""UCLCHEM Utility Functions
-
-Helper functions and utilities for UCLCHEM operations.
+"""Helper functions and utilities for UCLCHEM operations.
 
 This module provides utility functions for:
 - Error handling and reporting
@@ -56,9 +54,10 @@ UCLCHEM_ROOT_DIR: Path = Path(__file__).parent.resolve().absolute()
 
 
 def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
-    """A simple function used to calculate the dissipation time of a C-type shock.
-    Use to obtain a useful timescale for your C-shock model runs. Velocity of
-    ions and neutrals equalizes at dissipation time and full cooling takes a few dissipation times.
+    """Calculate the dissipation time of a C-type shock.
+    Use to obtain a useful timescale for your C-shock model runs.
+    Velocity of ions and neutrals equalizes at dissipation time and
+    full cooling takes a few dissipation times.
 
     Args:
         shock_vel (float): Velocity of the shock in km/s
@@ -66,6 +65,7 @@ def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
 
     Returns:
         float: The dissipation time of the shock in years
+
     """
     pc = 3.086e18  # parsec in cgs
     SECONDS_PER_YEAR = 3.15569e7
@@ -74,17 +74,20 @@ def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
 
 
 def check_error(error_code: int, raise_on_error: bool = True) -> str:
-    """Converts the UCLCHEM integer result flag to a message explaining what went wrong.
+    """Convert the UCLCHEM integer result flag to a message explaining what went wrong.
 
     Args:
-        error_code (int): Error code returned by UCLCHEM models, the first element of the results list.
-        raise_on_error (bool): If True (default), raises RuntimeError. If False, returns the message string.
+        error_code (int): Error code returned by UCLCHEM models,
+            the first element of the results list.
+        raise_on_error (bool): If True (default), raises RuntimeError.
+            If False, returns the message string.
 
     Returns:
-        str: Error message
+        msg (str): Error message
 
     Raises:
         RuntimeError: If raise_on_error is True and error_code is recognized.
+
     """
     errors = {
         -1: "Parameter read failed. Likely due to a misspelled parameter name, compare your dictionary to the parameters docs.",
@@ -109,34 +112,34 @@ def check_error(error_code: int, raise_on_error: bool = True) -> str:
 
 
 def get_species_table() -> pd.DataFrame:
-    """A simple function to load the list of species in the UCLCHEM network into a pandas dataframe.
+    """Load the list of species in the UCLCHEM network into a pandas dataframe.
 
     Returns:
         pandas.DataFrame: A dataframe containing the species names and their details
-    """
 
+    """
     species_list = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
     return species_list
 
 
 def get_species() -> list[str]:
-    """A simple function to load the list of species present in the UCLCHEM network
+    """Load the list of species present in the UCLCHEM network.
 
     Returns:
         list[str] : A list of species names
-    """
 
+    """
     species_list = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv").iloc[:, 0].tolist()
     return species_list
 
 
 def get_reaction_table() -> pd.DataFrame:
-    """A function to load the reaction table from the UCLCHEM network into a pandas dataframe.
+    """Load the reaction table from the UCLCHEM network into a pandas dataframe.
 
     Returns:
         pandas.DataFrame: A dataframe containing the reactions and their rates
-    """
 
+    """
     reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
     return reactions
 
