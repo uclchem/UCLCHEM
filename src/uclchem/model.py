@@ -40,7 +40,7 @@ Returns arrays/DataFrames instead of model objects.
     )
 
     # Check for errors and plot
-    cloud.check_error()
+    cloud.nheck_error()
     cloud.create_abundance_plot([\"CO\", \"$CO\"])
 
 **Model Workflow:**
@@ -741,17 +741,6 @@ class AbstractModel(ABC):
             only_error=only_error, raise_on_error=raise_on_error
         )
         print(msg)
-
-        # if self.success_flag is not None and self.success_flag < 0:
-        #     if raise_on_error:
-        #         _check_error(self.success_flag, raise_on_error=True)
-        #     else:
-        #         msg = _check_error(self.success_flag, raise_on_error=False)
-        #         print(msg)
-        # elif self.success_flag == 0 and not only_error:
-        #     print("Model ran successfully.")
-        # elif self.success_flag is None:
-        #     print("Model has not been run.")
 
     def create_abundance_plot(
         self,
