@@ -64,7 +64,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pandas import Series, read_csv
-from seaborn import color_palette
 
 from uclchem.constants import n_reactions, n_species
 from uclchem.makerates import Reaction
@@ -257,7 +256,7 @@ def plot_species(ax, df, species, legend=True, **plot_kwargs):
     Returns:
         pyplot.axis: Modified input axis is returned
     """
-    color_palette(n_colors=len(species))
+
     for specIndx, specName in enumerate(species):
         linestyle = "solid"
         if specName[0] == "$":
