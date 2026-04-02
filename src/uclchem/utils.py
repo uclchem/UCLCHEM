@@ -101,6 +101,8 @@ def check_error(error_code: int, raise_on_error: bool = True) -> str:
         -12: "LTE population sum tolerance exceeded: level populations do not sum to total density within pop_rel_tol.",
         -13: "Coolant solver numerical error (NaN in matrix, singular matrix, or negative populations). The statistical equilibrium solver failed for a coolant species.",
         -14: "Coolant configuration error: parent species not found in network, or unphysical abundance detected.",
+        -15: "Negative species abundance(s) detected entering the heating/cooling calculation. "
+             "This indicates a chemistry integration failure. Check network and initial conditions.",
     }
     msg = errors.get(error_code, f"Unknown error code: {error_code}")
     if raise_on_error:

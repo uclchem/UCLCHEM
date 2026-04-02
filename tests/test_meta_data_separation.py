@@ -11,7 +11,7 @@ import pytest
 import xarray as xr
 
 from uclchem.constants import PHYSICAL_PARAMETERS, n_species
-from uclchem.model import PrestellarCore, get_species_names, load_model
+from uclchem.model import Cloud, get_species_names, load_model
 
 # ============================================================================
 # Test Fixtures
@@ -57,7 +57,7 @@ def legacy_file_without_dstep(tmp_path):
 
 def test_assignment_array_goes_to_dataset():
     """Array variables with _array suffix should be stored in the xarray Dataset."""
-    m = PrestellarCore()
+    m = Cloud()
     arr = np.zeros((3, 1, 4))
     m.test_array = arr
     assert "test_array" in m._data, "Array attribute not stored in _data Dataset"
@@ -67,7 +67,7 @@ def test_assignment_array_goes_to_dataset():
 
 def test_meta_survives_dataset_replace():
     """Scalar metadata should survive when _data Dataset is replaced."""
-    m = PrestellarCore()
+    m = Cloud()
     # public scalar attributes (not PHYSICAL_PARAMETERS or specname which are global)
     m.run_type = "local"
     m.custom_flag = 42
@@ -85,7 +85,7 @@ def test_meta_survives_dataset_replace():
 
 def test_save_load_restores_meta(tmp_path):
     """Metadata should be preserved through save/load cycle."""
-    m = PrestellarCore()
+    m = Cloud()
     m.some_meta = "xyz"
     m.custom_value = 123
 
@@ -107,7 +107,7 @@ def test_save_load_restores_meta(tmp_path):
 
 def test_pickle_roundtrip_preserves_meta_and_arrays():
     """Both metadata and arrays should be preserved through pickle/unpickle."""
-    m = PrestellarCore()
+    m = Cloud()
     m.some_meta = "meta"
     arr = np.ones((2, 1, 3))
     m.example_array = arr
@@ -135,7 +135,7 @@ def test_legacy_read_infers_dstep_and_uses_global_constants(legacy_file_without_
     """Loading a legacy file missing 'dstep' should warn, infer dstep safely, and use global constants."""
     # Expect a warning about missing/inferred dstep
     with pytest.warns(UserWarning, match="dstep"):
-        model = PrestellarCore(read_file=legacy_file_without_dstep)
+        model = Cloud(read_file=legacy_file_without_dstep)
 
     # Model should load successfully with arrays populated
     assert model.physics_array is not None, "physics_array not loaded successfully"
@@ -197,14 +197,14 @@ def test_species_names_always_from_global():
 
 def test_getattr_raises_on_missing_attribute():
     """__getattr__ should raise AttributeError for non-existent attributes."""
-    m = PrestellarCore()
+    m = Cloud()
     with pytest.raises(AttributeError, match="no attribute"):
         _ = m.nonexistent_attribute
 
 
 def test_setattr_preserves_underscored_attributes():
     """Attributes starting with underscore should be set as real attributes."""
-    m = PrestellarCore()
+    m = Cloud()
     m._custom_internal = "value"
     assert m._custom_internal == "value", "Underscored attribute value mismatch"
     assert "_custom_internal" in m.__dict__, "Underscored attribute not set in __dict__"
@@ -212,7 +212,7 @@ def test_setattr_preserves_underscored_attributes():
 
 def test_scalar_meta_not_stored_in_dataset():
     """Non-array scalar values should be stored in _meta, not in xarray Dataset."""
-    m = PrestellarCore()
+    m = Cloud()
     m.scalar_value = 42.5
     m.string_value = "test"
 
@@ -228,7 +228,7 @@ def test_dstep_inference_validation(legacy_file_without_dstep):
     # This test verifies the validation logic works correctly
     # The fixture creates a legacy file without dstep that can be safely inferred
     with pytest.warns(UserWarning, match="missing the 'dstep' parameter"):
-        model = PrestellarCore(read_file=legacy_file_without_dstep)
+        model = Cloud(read_file=legacy_file_without_dstep)
 
     # Verify dstep was properly added
     assert (

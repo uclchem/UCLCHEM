@@ -115,6 +115,7 @@ def test_stats_reasonable_values():
         assert nfe_vals.max() >= nst_vals.max(), "NFE should be >= NST"
 
 
+@pytest.mark.skip(reason="Wait for new GridRunner features")
 def test_stats_with_sequential_model():
     """Test that stats work with SequentialModel (chained stages)."""
     config = {

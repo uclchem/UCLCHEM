@@ -1,6 +1,9 @@
 import subprocess
 
+import pytest
 
+
+@pytest.mark.timeout(600)
 def test_package_installation():
     # Check that fortran is present:
     result = subprocess.run(

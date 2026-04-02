@@ -2047,7 +2047,7 @@ class Cloud(AbstractModel):
             read_file,
             run_type,
         )
-        if self.run_type != "external":
+        if self.run_type != "external" and not self.was_read:
             self.run()
         return
 
