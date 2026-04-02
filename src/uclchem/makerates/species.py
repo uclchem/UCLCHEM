@@ -10,7 +10,7 @@ from warnings import warn
 
 import pandas as pd
 
-from uclchem.utils import find_number_of_consecutive_digits
+from uclchem.utils import find_number_of_consecutive_digits, MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER
 
 elementList = [
     "H",
@@ -164,19 +164,19 @@ class Species:
         try:
             self.Ix = float(inputRow[10])
         except (IndexError, ValueError):
-            self.Ix = -999.0
+            self.Ix = MISSING_VALUE_FLOAT
         try:
             self.Iy = float(inputRow[11])
         except (IndexError, ValueError):
-            self.Iy = -999.0
+            self.Iy = MISSING_VALUE_FLOAT
         try:
             self.Iz = float(inputRow[12])
         except (IndexError, ValueError):
-            self.Iz = -999.0
+            self.Iz = MISSING_VALUE_FLOAT
         try:
             self.symmetry_factor = int(inputRow[13])
         except (IndexError, ValueError, TypeError):
-            self.symmetry_factor = -1
+            self.symmetry_factor = MISSING_VALUE_INTEGER
 
         self.set_n_atoms(0)
 
@@ -780,7 +780,7 @@ class Species:
         try:
             self.symmetry_factor = int(sym)
         except (ValueError, TypeError):
-            self.symmetry_factor = -1
+            self.symmetry_factor = MISSING_VALUE_INTEGER
 
     def __eq__(self, other: str | Species) -> bool:
         """Check for equality based on either a string or another Species instance.
@@ -849,13 +849,13 @@ class Species:
             # For atoms, this is undefined, just return a value such that
             # it is clearly an atomic species.
             return -1.0
-        if self.Ix == -999.0 or self.Iy == -999.0 or self.Iz == -999.0:
+        if self.Ix == MISSING_VALUE_FLOAT or self.Iy == MISSING_VALUE_FLOAT or self.Iz == MISSING_VALUE_FLOAT:
             # For species without custom input Ix, Iy and Iz, we cannot do this,
             # Return sentinel value for backward compatibility
-            return -999.0
-        if self.symmetry_factor <= 0:
+            return MISSING_VALUE_FLOAT
+        if self.symmetry_factor == MISSING_VALUE_INTEGER:
             # No symmetry factor provided
-            return -999.0
+            return MISSING_VALUE_FLOAT
 
         # Ix, Iy and Iz are in units of amu Angstrom^2,
         # so need to convert to kg m2
@@ -892,7 +892,7 @@ class Species:
         if self.n_atoms == 2:
             # Diatomic molecules are always linear
             return True
-        if self.Ix == -999.0 or self.Iy == -999.0 or self.Iz == -999.0:
+        if self.Ix == MISSING_VALUE_FLOAT or self.Iy == MISSING_VALUE_FLOAT or self.Iz == MISSING_VALUE_FLOAT:
             # No inertia data available
             return False
         if not self.is_ice_species():
