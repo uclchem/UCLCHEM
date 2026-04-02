@@ -1,5 +1,4 @@
-"""
-Integration test for new surface chemistry features.
+"""Integration test for new surface chemistry features.
 
 Runs a cloud model and verifies the new physics produces different/better results.
 """
@@ -25,8 +24,7 @@ def temp_output_dir():
 
 
 def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
-    """
-    Test that ice-coverage-dependent desorption actually affects chemistry.
+    """Test that ice-coverage-dependent desorption actually affects chemistry.
 
     Verifies:
     - Model runs successfully with new features
@@ -62,9 +60,9 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     # Verify ice buildup (SURFACE + BULK = total ice)
     early_ice = df["SURFACE"].iloc[2] + df["BULK"].iloc[2]
     late_ice = df["SURFACE"].iloc[-1] + df["BULK"].iloc[-1]
-    assert (
-        late_ice > early_ice * 10
-    ), f"Ice should build up significantly: {early_ice:.2e} → {late_ice:.2e}"
+    assert late_ice > early_ice * 10, (
+        f"Ice should build up significantly: {early_ice:.2e} → {late_ice:.2e}"
+    )
 
     # Verify chemistry evolves
     early_co = df["#CO"].iloc[2]
@@ -91,9 +89,9 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     )
 
     tol = 5e-2
-    assert (
-        num_monolayers_in_run <= num_monolayers_is_surface + tol
-    ), f"Number of monolayers of surface should be less than {num_monolayers_is_surface}, but was {num_monolayers_in_run:.2f} at most"
+    assert num_monolayers_in_run <= num_monolayers_is_surface + tol, (
+        f"Number of monolayers of surface should be less than {num_monolayers_is_surface}, but was {num_monolayers_in_run:.2f} at most"
+    )
 
 
 if __name__ == "__main__":

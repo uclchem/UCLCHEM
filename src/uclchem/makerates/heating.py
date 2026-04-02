@@ -1,5 +1,4 @@
-"""
-Heating and cooling calculations for UCLCHEM reactions.
+"""Heating and cooling calculations for UCLCHEM reactions.
 
 Provides functions to set reaction exothermicities from thermochemical
 databases or custom CSV files with various units.
@@ -7,7 +6,7 @@ databases or custom CSV files with various units.
 
 import logging
 import re
-from typing import List, Optional, Tuple
+from pathlib import Path
 
 import pandas as pd
 
@@ -46,7 +45,7 @@ _DENOMINATORS = {
 }
 
 
-def parse_species_from_row(row: pd.Series, prefix: str) -> List[str]:
+def parse_species_from_row(row: pd.Series, prefix: str) -> list[str]:
     """Parse species list from CSV row.
 
     Args:
@@ -55,6 +54,7 @@ def parse_species_from_row(row: pd.Series, prefix: str) -> List[str]:
 
     Returns:
         List of species names (uppercase, NAN for missing)
+
     """
     species = []
     idx = 1
@@ -78,6 +78,10 @@ def _parse_unit(unit: str) -> float:
 
     Returns:
         Conversion factor to erg per reaction
+
+    Raises:
+        ValueError: If there is an unknown unit, or it cannot be parsed.
+
     """
     unit_lower = unit.strip().lower()
 
@@ -125,29 +129,32 @@ def _parse_unit(unit: str) -> float:
 
 def convert_to_erg(value: float, unit: str) -> float:
     """Convert exothermicity to erg per reaction.
+
     Args:
         value: Exothermicity value
         unit: Unit string (case-insensitive)
 
     Returns:
         Value in erg per reaction
+
     """
     factor = _parse_unit(unit)
     return value * factor
 
 
 def match_reaction(
-    reactants: List[str], products: List[str], reactions: List[Reaction]
-) -> Optional[Reaction]:
+    reactants: list[str], products: list[str], reactions: list[Reaction]
+) -> Reaction | None:
     """Find matching reaction in list.
 
     Args:
-        reactants: List of reactant names
-        products: List of product names
-        reactions: List to search
+        reactants (list[str]): List of reactant names
+        products (list[str]): List of product names
+        reactions (list[Reaction]): List to search
 
     Returns:
-        Matching Reaction or None
+        Reaction | None: Matching Reaction or None
+
     """
     sorted_r = sorted(reactants)
     sorted_p = sorted(products)
@@ -161,16 +168,20 @@ def match_reaction(
     return None
 
 
-def load_custom_exothermicities(csv_path: str) -> pd.DataFrame:
+def load_custom_exothermicities(csv_path: str | Path) -> pd.DataFrame:
     """Load custom exothermicities from CSV.
 
     Expected columns: reactant1-3, product1-4, exothermicity, unit
 
     Args:
-        csv_path: Path to CSV file
+        csv_path (str | Path): Path to CSV file
 
     Returns:
-        DataFrame with custom exothermicities
+        df (pd.DataFrame): DataFrame with custom exothermicities
+
+    Raises:
+        ValueError: If the csv is missing certain columns.
+
     """
     df = pd.read_csv(csv_path, comment="#")
 
@@ -189,8 +200,8 @@ def load_custom_exothermicities(csv_path: str) -> pd.DataFrame:
 
 
 def set_custom_exothermicities(
-    reactions: List[Reaction], csv_path: str, overwrite: bool = True
-) -> Tuple[int, int]:
+    reactions: list[Reaction], csv_path: str, overwrite: bool = True
+) -> tuple[int, int]:
     """Set reaction exothermicities from custom CSV.
 
     Args:
@@ -200,6 +211,7 @@ def set_custom_exothermicities(
 
     Returns:
         tuple: (num_matched, num_unmatched)
+
     """
     df = load_custom_exothermicities(csv_path)
     matched = 0

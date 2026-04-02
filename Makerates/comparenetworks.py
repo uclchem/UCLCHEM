@@ -1,4 +1,8 @@
-# enter two reaction files to see all reactions that are one file but not the other
+"""Compare two reaction files.
+
+Helper functions to enter two reaction files to see
+all reactions that are in one file but not the other
+"""
 
 from uclchem.makerates.io_functions import read_reaction_file, read_species_file
 

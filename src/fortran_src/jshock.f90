@@ -138,7 +138,7 @@ CONTAINS
     ! In hot core that means following thermalEvaporation subroutine.                 !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE sublimation(abund, lpoints)
-        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
+        REAL(dp), INTENT(INOUT) :: abund(nspec+2,lpoints)
         INTEGER, INTENT(IN) :: lpoints
         REAL(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)

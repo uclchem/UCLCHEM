@@ -1,5 +1,4 @@
-"""
-Test multi-stage model runs with IN-MEMORY return modes only.
+"""Test multi-stage model runs with IN-MEMORY return modes only.
 
 This test uses return_array and return_dataframe with starting_chemistry
 to ensure all model stages work with Python in-memory arrays.
@@ -50,19 +49,21 @@ def test_static_model_return_array(test_output_directory):
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
         )
     )
-    assert return_code == 0, f"Static model returned with nonzero exit code {return_code}"
+    assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+        f"Static model returned with nonzero exit code {return_code}"
+    )
 
     # Verify finalTime is respected (within 10% tolerance)
     max_time = physics[:, 0].max()  # Time is first column
-    assert (
-        max_time <= 1.1 * params["finalTime"]
-    ), f"Model exceeded finalTime tolerance: {max_time:.2e} > {1.1 * params['finalTime']:.2e}"
-    assert (
-        max_time >= 0.9 * params["finalTime"]
-    ), f"Model stopped too early: {max_time:.2e} < {0.9 * params['finalTime']:.2e}"
+    assert max_time <= 1.1 * params["finalTime"], (
+        f"Model exceeded finalTime tolerance: {max_time:.2e} > {1.1 * params['finalTime']:.2e}"
+    )
+    assert max_time >= 0.9 * params["finalTime"], (
+        f"Model stopped too early: {max_time:.2e} < {0.9 * params['finalTime']:.2e}"
+    )
 
 
 def test_static_model_return_dataframe(test_output_directory):
@@ -83,16 +84,18 @@ def test_static_model_return_dataframe(test_output_directory):
             return_dataframe=True,
         )
     )
-    assert return_code == 0, f"Static model returned with nonzero exit code {return_code}"
+    assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+        f"Static model returned with nonzero exit code {return_code}"
+    )
 
     # Verify finalTime is respected (within 10% tolerance)
     max_time = physics["Time"].max()
-    assert (
-        max_time <= 1.1 * params["finalTime"]
-    ), f"Model exceeded finalTime tolerance: {max_time:.2e} > {1.1 * params['finalTime']:.2e}"
-    assert (
-        max_time >= 0.9 * params["finalTime"]
-    ), f"Model stopped too early: {max_time:.2e} < {0.9 * params['finalTime']:.2e}"
+    assert max_time <= 1.1 * params["finalTime"], (
+        f"Model exceeded finalTime tolerance: {max_time:.2e} > {1.1 * params['finalTime']:.2e}"
+    )
+    assert max_time >= 0.9 * params["finalTime"], (
+        f"Model stopped too early: {max_time:.2e} < {0.9 * params['finalTime']:.2e}"
+    )
 
 
 def test_collapse_hotcore_return_array(test_output_directory):
@@ -105,31 +108,37 @@ def test_collapse_hotcore_return_array(test_output_directory):
         "finalDens": 1e6,
         "finalTime": 1e5,
     }
-    # return_array with return_rates=True returns 6 values: physics, chemistry, rates, heating(None), abundances, flag
+    # return_array with return_rate_constants=True returns 6 values:
+    # physics, chemistry, rates, heating(None), abundances, flag
     physics, chemistry, rates, heating, abundances_start, return_code = (
         uclchem.functional.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
         )
     )
-    assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
+    assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+        f"Stage 1 returned with nonzero exit code {return_code}"
+    )
 
     # Verify endAtFinalDensity=True behavior: stops at finalTime OR finalDens
     max_time = physics[:, 0].max()
-    # Check if physics array has density column (some models may not output it in all modes)
+    # Check if physics array has density column
+    # (some models may not output it in all modes)
     if physics.shape[1] > 1:
         max_density = physics[:, 1].max()
         assert (
             max_time <= 1.1 * params["finalTime"]
             or max_density >= 0.9 * params["finalDens"]
-        ), f"Collapse should stop at finalTime OR finalDens: time={max_time:.2e}, density={max_density:.2e}"
+        ), (
+            f"Collapse should stop at finalTime OR finalDens: time={max_time:.2e}, density={max_density:.2e}"
+        )
     else:
         # If no density column, just check time
-        assert (
-            max_time <= 1.1 * params["finalTime"]
-        ), f"Collapse should stop at or before finalTime: time={max_time:.2e}, finalTime={params['finalTime']:.2e}"
+        assert max_time <= 1.1 * params["finalTime"], (
+            f"Collapse should stop at or before finalTime: time={max_time:.2e}, finalTime={params['finalTime']:.2e}"
+        )
 
     # Stage 2: Hot core using starting_chemistry
     params = {
@@ -151,16 +160,18 @@ def test_collapse_hotcore_return_array(test_output_directory):
             starting_chemistry=abundances_start,
         )
     )
-    assert return_code == 0, f"Stage 2 returned with nonzero exit code {return_code}"
+    assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+        f"Stage 2 returned with nonzero exit code {return_code}"
+    )
 
     # Verify finalTime is respected (within 10% tolerance)
     max_time = physics[:, 0].max()
-    assert (
-        max_time <= 1.1 * params["finalTime"]
-    ), f"Hot core exceeded finalTime tolerance: {max_time:.2e} > {1.1 * params['finalTime']:.2e}"
-    assert (
-        max_time >= 0.9 * params["finalTime"]
-    ), f"Hot core stopped too early: {max_time:.2e} < {0.9 * params['finalTime']:.2e}"
+    assert max_time <= 1.1 * params["finalTime"], (
+        f"Hot core exceeded finalTime tolerance: {max_time:.2e} > {1.1 * params['finalTime']:.2e}"
+    )
+    assert max_time >= 0.9 * params["finalTime"], (
+        f"Hot core stopped too early: {max_time:.2e} < {0.9 * params['finalTime']:.2e}"
+    )
 
 
 def test_collapse_hotcore_return_dataframe(test_output_directory):
@@ -173,7 +184,8 @@ def test_collapse_hotcore_return_dataframe(test_output_directory):
         "finalDens": 1e6,
         "finalTime": 1e5,
     }
-    # return_dataframe returns 6 values: physics, chemistry, rates(None), heating(None), abundances, flag
+    # return_dataframe returns 6 values:
+    # physics, chemistry, rates(None), heating(None), abundances, flag
     physics, chemistry, rates, heating, abundances_start, return_code = (
         uclchem.functional.cloud(
             param_dict=params,
@@ -181,14 +193,18 @@ def test_collapse_hotcore_return_dataframe(test_output_directory):
             return_dataframe=True,
         )
     )
-    assert return_code == 0, f"Stage 1 returned with nonzero exit code {return_code}"
+    assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+        f"Stage 1 returned with nonzero exit code {return_code}"
+    )
 
     # Verify endAtFinalDensity=True behavior: stops at finalTime OR finalDens
     max_time = physics["Time"].max()
     max_density = physics["Density"].max()
     assert (
         max_time <= 1.1 * params["finalTime"] or max_density >= 0.9 * params["finalDens"]
-    ), f"Collapse should stop at finalTime OR finalDens: time={max_time:.2e}, density={max_density:.2e}"
+    ), (
+        f"Collapse should stop at finalTime OR finalDens: time={max_time:.2e}, density={max_density:.2e}"
+    )
 
     # Stage 2: Hot core using starting_chemistry
     params = {
@@ -210,16 +226,18 @@ def test_collapse_hotcore_return_dataframe(test_output_directory):
             starting_chemistry=abundances_start,
         )
     )
-    assert return_code == 0, f"Stage 2 returned with nonzero exit code {return_code}"
+    assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+        f"Stage 2 returned with nonzero exit code {return_code}"
+    )
 
     # Verify finalTime is respected (within 10% tolerance)
     max_time = physics["Time"].max()
-    assert (
-        max_time <= 1.1 * params["finalTime"]
-    ), f"Hot core exceeded finalTime tolerance: {max_time:.2e} > {1.1 * params['finalTime']:.2e}"
-    assert (
-        max_time >= 0.9 * params["finalTime"]
-    ), f"Hot core stopped too early: {max_time:.2e} < {0.9 * params['finalTime']:.2e}"
+    assert max_time <= 1.1 * params["finalTime"], (
+        f"Hot core exceeded finalTime tolerance: {max_time:.2e} > {1.1 * params['finalTime']:.2e}"
+    )
+    assert max_time >= 0.9 * params["finalTime"], (
+        f"Hot core stopped too early: {max_time:.2e} < {0.9 * params['finalTime']:.2e}"
+    )
 
 
 def test_cshock_return_dataframe(test_output_directory):
@@ -235,7 +253,8 @@ def test_cshock_return_dataframe(test_output_directory):
         "rout": 0.1,
         "baseAv": 1.0,
     }
-    # return_dataframe returns 6 values: physics, chemistry, rates(None), heating(None), abundances, flag
+    # return_dataframe returns 6 values:
+    # physics, chemistry, rates(None), heating(None), abundances, flag
     (
         df_stage1_physics,
         df_stage1_chemistry,
@@ -244,20 +263,21 @@ def test_cshock_return_dataframe(test_output_directory):
         final_abundances,
         return_code,
     ) = uclchem.functional.cloud(param_dict=param_dict, return_dataframe=True)
-    assert (
-        return_code == 0
-    ), f"Pre-cshock cloud returned with nonzero exit code {return_code}"
+    assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+        f"Pre-cshock cloud returned with nonzero exit code {return_code}"
+    )
 
     # Verify finalTime is respected (within 10% tolerance)
     max_time_stage1 = df_stage1_physics["Time"].max()
-    assert (
-        max_time_stage1 <= 1.1 * param_dict["finalTime"]
-    ), f"Pre-shock cloud exceeded finalTime: {max_time_stage1:.2e} > {1.1 * param_dict['finalTime']:.2e}"
+    assert max_time_stage1 <= 1.1 * param_dict["finalTime"], (
+        f"Pre-shock cloud exceeded finalTime: {max_time_stage1:.2e} > {1.1 * param_dict['finalTime']:.2e}"
+    )
 
     # C-shock with starting_chemistry
     param_dict["initialDens"] = 1e4
     param_dict["finalTime"] = 1e6
-    # CShock returns 7 values: physics, chemistry, rates(None), heating(None), dissipation_time, abundances, flag
+    # CShock returns 7 values:
+    # physics, chemistry, rates(None), heating(None), dissipation_time, abundances, flag
     (
         df_stage2_physics,
         df_stage2_chemistry,
@@ -272,13 +292,15 @@ def test_cshock_return_dataframe(test_output_directory):
         return_dataframe=True,
         starting_chemistry=final_abundances,
     )
-    assert return_code == 0, f"C-shock returned with nonzero exit code {return_code}"
+    assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+        f"C-shock returned with nonzero exit code {return_code}"
+    )
 
     # Verify finalTime is respected (shock models may stop early)
     max_time_stage2 = df_stage2_physics["Time"].max()
-    assert (
-        max_time_stage2 <= 1.1 * param_dict["finalTime"]
-    ), f"C-shock exceeded finalTime: {max_time_stage2:.2e} > {1.1 * param_dict['finalTime']:.2e}"
+    assert max_time_stage2 <= 1.1 * param_dict["finalTime"], (
+        f"C-shock exceeded finalTime: {max_time_stage2:.2e} > {1.1 * param_dict['finalTime']:.2e}"
+    )
 
 
 def test_endAtFinalDensity_with_collapse(test_output_directory):
@@ -303,24 +325,27 @@ def test_endAtFinalDensity_with_collapse(test_output_directory):
             return_array=True,
         )
     )
-    assert (
-        return_code == 0
-    ), f"Collapse model returned with nonzero exit code {return_code}"
+    assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+        f"Collapse model returned with nonzero exit code {return_code}"
+    )
 
     # Should stop at finalTime OR finalDens (whichever comes first)
     max_time = physics[:, 0].max()
-    # Only check density if physics array has multiple columns (when physics_output is provided)
+    # Only check density if physics array has multiple columns
+    # (when physics_output is provided)
     if physics.shape[1] > 1:
         max_density = physics[:, 1].max()
         assert (
             max_time <= 1.1 * params["finalTime"]
             or max_density >= 0.9 * params["finalDens"]
-        ), f"Collapse should stop at finalTime OR finalDens: time={max_time:.2e}, density={max_density:.2e}"
+        ), (
+            f"Collapse should stop at finalTime OR finalDens: time={max_time:.2e}, density={max_density:.2e}"
+        )
     else:
         # When only time is output, just verify model ran successfully
-        assert (
-            max_time > 0
-        ), f"Collapse model did not produce valid output: time={max_time:.2e}"
+        assert max_time > 0, (
+            f"Collapse model did not produce valid output: time={max_time:.2e}"
+        )
 
 
 def test_endAtFinalDensity_validation(test_output_directory):

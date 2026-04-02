@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-ATCT Web Database Parser
+"""ATCT Web Database Parser.
 
 Converts ATCT HTML database files to clean CSV format for thermochemical
 analysis. Extracts species names, formulas, phases, and enthalpy of formation
@@ -16,7 +15,7 @@ Usage:
 
 import re
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -32,6 +31,7 @@ class ATCTParser:
     """Efficient ATCT HTML database parser with robust error handling."""
 
     def __init__(self):
+        """Create an ATCTParser."""
         self.columns = [
             "Species_Name",
             "Species_formula",
@@ -45,21 +45,28 @@ class ATCTParser:
             "ATcT_ID",
         ]
 
-    def parse_html_file(self, html_file_path: str) -> Optional[pd.DataFrame]:
+    def parse_html_file(self, html_file_path: str | Path) -> pd.DataFrame | None:
         """Parse ATCT HTML file and return cleaned DataFrame.
 
         Args:
-            html_file_path: Path to ATCT HTML database file
+            html_file_path (str | Path): Path to ATCT HTML database file
 
         Returns:
-            DataFrame with parsed thermochemical data or None if parsing fails
+            pd.DataFrame with parsed thermochemical data or None if parsing fails
+
+        Raises:
+            FileNotFoundError: If the ATcT HTML file could not be found.
+            ValueError: If the main data table could not be located,
+                or no data was found in the table.
+            RuntimeError: If the parsing of the ATcT failed.
+
         """
         html_path = Path(html_file_path)
         if not html_path.exists():
             raise FileNotFoundError(f"ATCT HTML file not found: {html_file_path}")
 
         try:
-            with open(html_path, "r", encoding="utf-8") as f:
+            with open(html_path, encoding="utf-8") as f:
                 html_content = f.read()
 
             soup = BeautifulSoup(html_content, "html.parser")
@@ -81,8 +88,17 @@ class ATCTParser:
         except Exception as e:
             raise RuntimeError(f"Failed to parse ATCT HTML file: {e}") from e
 
-    def _find_data_table(self, soup: BeautifulSoup) -> Optional[Any]:
-        """Find the main thermochemical data table in HTML."""
+    @staticmethod
+    def _find_data_table(soup: BeautifulSoup) -> Any | None:
+        """Find the main thermochemical data table in HTML.
+
+        Args:
+            soup (BeautifulSoup): soup instance to scrape ATcT.
+
+        Returns:
+            Any | None: Table if it could be found, else None.
+
+        """
         tables = soup.find_all("table")
 
         for table in tables:
@@ -96,8 +112,17 @@ class ATCTParser:
                     return table
         return None
 
-    def _extract_table_data(self, table: Any) -> list:
-        """Extract raw data from HTML table."""
+    @staticmethod
+    def _extract_table_data(table: Any) -> list:
+        """Extract raw data from HTML table.
+
+        Args:
+            table (Any): HTML table to extract data from
+
+        Returns:
+            list: extracted data.
+
+        """
         rows = table.find_all("tr")
         data = []
 
@@ -127,7 +152,15 @@ class ATCTParser:
         return data
 
     def _clean_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Clean and standardize the parsed DataFrame."""
+        """Clean and standardize the parsed DataFrame.
+
+        Args:
+            df (pd.DataFrame): dataframe to clean
+
+        Returns:
+            pd.DataFrame: DataFrame with unnecessary columns removed, and cleaned
+                column names.
+        """
         # Clean Unicode issues
         for col in df.columns:
             df[col] = df[col].apply(self._clean_unicode_string)
@@ -147,8 +180,17 @@ class ATCTParser:
 
         return df.reset_index(drop=True)
 
-    def _clean_unicode_string(self, text: Any) -> str:
-        """Clean problematic Unicode characters from text."""
+    @staticmethod
+    def _clean_unicode_string(text: Any) -> str:
+        """Clean problematic Unicode characters from text.
+
+        Args:
+            text (Any): object
+
+        Returns:
+            cleaned (str): string with problematic Unicode characters removed.
+
+        """
         if pd.isna(text) or text is None:
             return ""
 
@@ -163,12 +205,14 @@ class ATCTParser:
 
         return cleaned
 
-    def save_to_csv(self, data: pd.DataFrame, output_path: str) -> None:
+    @staticmethod
+    def save_to_csv(data: pd.DataFrame, output_path: str | Path) -> None:
         """Save parsed data to CSV file.
 
         Args:
-            data: Parsed ATCT data
-            output_path: Output CSV file path
+            data (pd.DataFrame): Parsed ATCT data
+            output_path (str | Path): Output CSV file path
+
         """
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -176,14 +220,16 @@ class ATCTParser:
         data.to_csv(output_file, index=False)
         print(f"✓ Saved {len(data)} species to {output_path}")
 
-    def get_summary_stats(self, data: pd.DataFrame) -> Dict[str, Any]:
+    @staticmethod
+    def get_summary_stats(data: pd.DataFrame) -> dict[str, int]:
         """Get summary statistics for parsed data.
 
         Args:
-            data: Parsed ATCT data
+            data (pd.DataFrame): Parsed ATCT data
 
         Returns:
-            Dictionary with summary statistics
+            dict[str, int]: Dictionary with summary statistics
+
         """
         stats = {
             "total_species": len(data),
@@ -203,6 +249,7 @@ class ATCTParser:
 
         Raises:
             ValueError: If data doesn't meet validation criteria
+
         """
         stats = self.get_summary_stats(data)
 
@@ -221,7 +268,7 @@ class ATCTParser:
         )
 
 
-def main():
+def main() -> None:
     """Command-line interface for ATCT parser."""
     import sys
 

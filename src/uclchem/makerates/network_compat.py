@@ -1,6 +1,5 @@
 # TODO v4.0: Remove this module and all its usages.
-"""
-Compatibility layer for old Network and LoadedNetwork APIs.
+"""Compatibility layer for old Network and LoadedNetwork APIs.
 
 This module provides backward compatibility wrappers for the old Network
 and LoadedNetwork classes. It's kept separate and NOT imported by default
@@ -12,7 +11,6 @@ warnings and migration paths.
 
 import warnings
 from pathlib import Path
-from typing import Union
 
 from .network import Network as NewNetwork
 from .network import build_network
@@ -20,7 +18,9 @@ from .reaction import Reaction
 from .species import Species
 
 
-def Network(species: list[Species] = None, reactions: list[Reaction] = None, **kwargs):
+def Network(
+    species: list[Species] = None, reactions: list[Reaction] = None, **kwargs
+) -> NewNetwork:
     """Backward compatible Network constructor.
 
     This function provides compatibility with the old Network class constructor.
@@ -30,12 +30,15 @@ def Network(species: list[Species] = None, reactions: list[Reaction] = None, **k
         Use Network.build() or build_network() instead for new code.
 
     Args:
-        species: List of Species objects
-        reactions: List of Reaction objects
+        species (list[Species] | None): List of Species objects
+        reactions (list[Reaction] | None): List of Reaction objects
         **kwargs: Build options (gas_phase_extrapolation, etc.)
 
     Returns:
-        Network: Network instance created via build()
+        Network: Network instance created via build_network()
+
+    Raises:
+        ValueError: If `species` or `reactions` is None.
 
     Examples:
         >>> # Old style (deprecated)
@@ -45,6 +48,7 @@ def Network(species: list[Species] = None, reactions: list[Reaction] = None, **k
         >>> network = Network.build(species, reactions, gas_phase_extrapolation=True)
         >>> # or
         >>> network = build_network(species, reactions, gas_phase_extrapolation=True)
+
     """
     if species is None or reactions is None:
         raise ValueError(
@@ -79,8 +83,8 @@ class LoadedNetwork:
         *,
         species: list[Species] = None,
         reactions: list[Reaction] = None,
-        species_filepath: Union[str, Path] = None,
-        reactions_filepath: Union[str, Path] = None,
+        species_filepath: str | Path = None,
+        reactions_filepath: str | Path = None,
     ):
         """Create a network using old LoadedNetwork API.
 
@@ -92,6 +96,10 @@ class LoadedNetwork:
 
         Returns:
             Network: Network instance created via appropriate factory method
+
+        Raises:
+            ValueError: If both `species` and `reactions` and file paths are specified,
+                or if only species or reactions is provided.
 
         Examples:
             >>> # Old style (deprecated)
@@ -106,6 +114,7 @@ class LoadedNetwork:
             >>> # or use module-level functions
             >>> network = load_network_from_csv()
             >>> network = create_network(sp_list, rx_list)
+
         """
         # Check for invalid combinations
         has_objects = species is not None or reactions is not None
@@ -177,6 +186,7 @@ class NetworkState:
             >>> network.fortran.raw.alpha[0] = 999.0
             >>> # or use module-level function
             >>> network = load_network_from_fortran()
+
         """
         warnings.warn(
             "NetworkState is deprecated. "
@@ -191,7 +201,7 @@ class NetworkState:
 
 # Compatibility exports for when this module is used
 __all__ = [
-    "Network",
     "LoadedNetwork",
+    "Network",
     "NetworkState",
 ]
