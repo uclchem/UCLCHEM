@@ -48,6 +48,7 @@ Use :func:`check_error` to get human-readable error messages.
 
 import enum
 from pathlib import Path
+from typing import Self
 
 import pandas as pd
 
@@ -134,28 +135,44 @@ def find_number_of_consecutive_digits(string: str, start: int) -> int:
 
 @enum.verify(enum.UNIQUE)
 class SuccessFlag(enum.IntEnum):
+    """SuccessFlag indicates whether the model failed or ran successfully,
+    and if it failed how.
+
+    """
+
     @staticmethod
     def _generate_next_value_(
-        name: str, start: int, count: int, last_values: list[int]
+            name: str, start: int, count: int, last_values: list[int | tuple[int, str]]  # noqa: ARG004
     ) -> int:
-        return last_values[-1] - 1
+        last_value = last_values[-1]
+        if isinstance(last_value, tuple):
+            return last_value[0] - 1
+        return last_value - 1
 
-    SUCCESS = 0
-    PARAMETER_READ_ERROR = enum.auto()
-    PHYSICS_INIT_ERROR = enum.auto()
-    CHEM_INIT_ERROR = enum.auto()
-    INT_UNRECOVERABLE_ERROR = enum.auto()
-    INT_TOO_MANY_FAILS_ERROR = enum.auto()
-    NOT_ENOUGH_TIMEPOINTS_ERROR = enum.auto()
-    PHYSICS_UPDATE_ERROR = enum.auto()
-    SOLVER_STATS_OVERFLOW_ERROR = enum.auto()
-    COOLANT_FILE_ERROR = enum.auto()
-    COOLANT_DATA_ERROR = enum.auto()
-    COOLANT_FREQ_TOL_ERROR = enum.auto()
-    COOLANT_POP_TOL_ERROR = enum.auto()
-    COOLANT_SOLVER_ERROR = enum.auto()
-    COOLANT_CONFIG_ERROR = enum.auto()
-    NEGATIVE_ABUNDANCE_ERROR = enum.auto()
+    def __new__(cls, value: int, docstring: str) -> Self:  # noqa: D102
+        member = int.__new__(cls, value)
+
+        member._value_ = value
+        member.__doc__ = docstring
+
+        return member
+
+    SUCCESS = 0, "Model ran successfully"
+    PARAMETER_READ_ERROR = enum.auto(), "Parameter read failed."
+    PHYSICS_INIT_ERROR = enum.auto(), "Physics initialization failed."
+    CHEM_INIT_ERROR = enum.auto(), "Chemistry initialization failed."
+    INT_UNRECOVERABLE_ERROR = enum.auto(), "Unrecoverable integrator error occured."
+    INT_TOO_MANY_FAILS_ERROR = enum.auto(), "Too many integrator fails occured."
+    NOT_ENOUGH_TIMEPOINTS_ERROR = enum.auto(), "Not enough time points allocated in the time array."
+    PHYSICS_UPDATE_ERROR = enum.auto(), "Error updating physics during integration."
+    SOLVER_STATS_OVERFLOW_ERROR = enum.auto(), "Solver statistics array overflowed."
+    COOLANT_FILE_ERROR = enum.auto(), "Coolant data file could not be openend."
+    COOLANT_DATA_ERROR = enum.auto(), "Coolant data file has invalid format."
+    COOLANT_FREQ_TOL_ERROR = enum.auto(), "Coolant frequency tolerance exceeded."
+    COOLANT_POP_TOL_ERROR = enum.auto(), "LTE population sum tolerance exceeded."
+    COOLANT_SOLVER_ERROR = enum.auto(), "Coolant solver numerical error occured."
+    COOLANT_CONFIG_ERROR = enum.auto(), "Coolant configuration error occured."
+    NEGATIVE_ABUNDANCE_ERROR = enum.auto(), "A negative abundance was detected."
 
     def check_error(self, only_error: bool = False, raise_on_error: bool = True) -> str:
         """Converts the UCLCHEM integer result flag to a message explaining what went wrong.
@@ -177,7 +194,6 @@ class SuccessFlag(enum.IntEnum):
             if only_error:
                 return None
             return "Model ran successfully"
-
         error_msg_dict = {
             SuccessFlag.PARAMETER_READ_ERROR: "Parameter read failed. Likely due to a misspelled parameter name, compare your dictionary to the parameters docs.",
             SuccessFlag.PHYSICS_INIT_ERROR: "Physics initialization failed. Often due to user choosing unacceptable parameters such as hot core masses or collapse modes that don't exist. Check the docs for your model function.",
@@ -195,6 +211,7 @@ class SuccessFlag(enum.IntEnum):
             SuccessFlag.COOLANT_CONFIG_ERROR: "Coolant configuration error: parent species not found in network, or unphysical abundance detected.",
             SuccessFlag.NEGATIVE_ABUNDANCE_ERROR: "Negative abundance detected.",
         }
+
         msg = error_msg_dict[self]
         if raise_on_error:
             raise RuntimeError(f"UCLCHEM error (code {self.name}, {self.value}): {msg}")

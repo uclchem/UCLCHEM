@@ -130,8 +130,8 @@ from uclchem.constants import (
     n_reactions,
     n_species,
 )
-from uclchem.utils import UCLCHEM_ROOT_DIR, SuccessFlag
 from uclchem.plot import create_abundance_plot, plot_species
+from uclchem.utils import UCLCHEM_ROOT_DIR, SuccessFlag
 
 # /Multiprocessing imports
 
@@ -822,7 +822,6 @@ class AbstractModel(ABC):
             raise_on_error (bool): If True (default), raises RuntimeError on failure. If False, prints.
 
         """
-
         if self.success_flag is None:
             print("Model has not been run.")
         msg = self.success_flag.check_error(
