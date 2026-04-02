@@ -183,16 +183,9 @@ class TestHeatingSettingsCoolants:
     def test_coolant_count_matches_config(self, settings):
         """Number of coolants should be at least the 7 core coolants."""
         state = settings.get_coolant_active()
-<<<<<<< HEAD
-        assert (
-            len(state) >= 7
-        ), f"Expected at least 7 coolants, got {len(state)}: {list(state.keys())}"
-=======
-        # Full LAMDA set has more than the default 7
         assert len(state) >= 7, (
-            f"Expected >7 coolants from full LAMDA config, got {len(state)}: {list(state.keys())}"
+            f"Expected at least 7 coolants, got {len(state)}: {list(state.keys())}"
         )
->>>>>>> origin/develop
 
     def test_baseline_coolants_present(self, settings):
         """The 7 baseline coolants must be present in any build."""
