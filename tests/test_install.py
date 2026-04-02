@@ -26,7 +26,7 @@ def test_package_installation():
     except ImportError as e:
         assert False, f"Failed to import the installed package, with ImportError: {e}"
     result = subprocess.run(
-        "cd Makerates; python Makerates.py data/small_chemistry/user_settings.yaml; cd ../ ",
+        "python Makerates/Makerates.py tests/networks/small_chemistry/user_settings.yaml",
         shell=True,
         text=True,
         capture_output=True,

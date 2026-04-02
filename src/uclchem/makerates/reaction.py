@@ -5,7 +5,7 @@ from collections import Counter
 from contextlib import contextmanager
 from copy import deepcopy
 
-from uclchem.makerates.species import Species, elementList, elementMass, species_header
+from uclchem.makerates.species import Species, elementList, elementMass, normalize_species_name, species_header
 
 # Global flag for validation control
 _skip_reaction_validation = False
@@ -96,17 +96,17 @@ class Reaction:
             try:
                 self.set_reactants(
                     [
-                        str(inputRow[0]).upper(),
-                        str(inputRow[1]).upper(),
-                        self.NANCheck(str(inputRow[2])).upper(),
+                        normalize_species_name(str(inputRow[0])),
+                        normalize_species_name(str(inputRow[1])),
+                        normalize_species_name(self.NANCheck(str(inputRow[2]))),
                     ]
                 )
                 self.set_products(
                     [
-                        self.NANCheck(str(inputRow[3])).upper(),
-                        self.NANCheck(str(inputRow[4])).upper(),
-                        self.NANCheck(str(inputRow[5])).upper(),
-                        self.NANCheck(str(inputRow[6])).upper(),
+                        normalize_species_name(self.NANCheck(str(inputRow[3]))),
+                        normalize_species_name(self.NANCheck(str(inputRow[4]))),
+                        normalize_species_name(self.NANCheck(str(inputRow[5]))),
+                        normalize_species_name(self.NANCheck(str(inputRow[6]))),
                     ]
                 )
                 if not _skip_reaction_validation:

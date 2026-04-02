@@ -108,9 +108,11 @@ CONTAINS
                 !Epsilon is efficieny of this process, number of molecules removed per event
                 !h2form is formation rate of h2, dependent on hydrogen abundance. 
                 rate(idx1:idx2) = epsilon*h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
+                !alpha is a branching ratio (default 1.0; use <1.0 for isomer desorption channels)
+                rate(idx1:idx2) = alpha(idx1:idx2)*rate(idx1:idx2)
 
                 !Don't remove species with binding energy > max BE removed by this process
-                WHERE(gama(idx1:idx2) .gt. ebmaxh2) rate(idx1:idx2)=0.0 
+                WHERE(gama(idx1:idx2) .gt. ebmaxh2) rate(idx1:idx2)=0.0
             ELSE
                 rate(idx1:idx2) = 0.0
             ENDIF
@@ -129,9 +131,11 @@ CONTAINS
                 !GRAIN_SURFACEAREA_PER_H is the total surface area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
                 !phi is efficieny of this reaction, number of molecules removed per event.
                 rate(idx1:idx2) = 4.0*pi*zeta*1.64d-4*(GRAIN_SURFACEAREA_PER_H)*phi
+                !alpha is a branching ratio (default 1.0; use <1.0 for isomer desorption channels)
+                rate(idx1:idx2) = alpha(idx1:idx2)*rate(idx1:idx2)
 
                 !Don't remove species with binding energy > max BE removed by this process
-                WHERE(gama(idx1:idx2) .gt. ebmaxcr) rate(idx1:idx2)=0.0 
+                WHERE(gama(idx1:idx2) .gt. ebmaxcr) rate(idx1:idx2)=0.0
 
             ELSE
                 rate(idx1:idx2) = 0.0
@@ -153,9 +157,11 @@ CONTAINS
                 !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
                 !CR induced UV to ISRF UV.
                 rate(idx1:idx2) = rate(idx1:idx2) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
+                !alpha is a branching ratio (default 1.0; use <1.0 for isomer desorption channels)
+                rate(idx1:idx2) = alpha(idx1:idx2)*rate(idx1:idx2)
 
                 !Don't remove species with binding energy > max BE removed by this process
-                WHERE(gama(idx1:idx2) .gt. ebmaxuvcr) rate(idx1:idx2)=0.0 
+                WHERE(gama(idx1:idx2) .gt. ebmaxuvcr) rate(idx1:idx2)=0.0
             ELSE
                 rate(idx1:idx2) = 0.0
             ENDIF
@@ -223,7 +229,8 @@ CONTAINS
                         IF (iceList(i) .eq. re1(j)) THEN
                             !Basic rate at which thermal desorption occurs
                             rate(j)=vdiff(i)*exp(-gama(j)/dustTemp(dstep))
-                            rate(j)=vdiff(i)*exp(-gama(j)/dustTemp(dstep))
+                            !alpha is a branching ratio (default 1.0; use <1.0 for isomer channels)
+                            rate(j)=alpha(j)*rate(j)
                             !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
                             !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                             !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
