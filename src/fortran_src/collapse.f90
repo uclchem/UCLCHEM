@@ -133,6 +133,8 @@ CONTAINS
         END IF
         parcel_radius(dstep) = parcelRadius(dstep)
         density(dstep)=rhofit(parcelRadius(dstep),rho0fit(effectiveTime),r0fit(effectiveTime),afit(effectiveTime))
+        ! Apply hard density of n_H=1e8 limit to prevent unphysical behavior
+        density(dstep) = MIN(density(dstep), 1e8)
     END SUBROUTINE updatePhysics
 
     !This module is isothermal and as such, no sublimation occurs.

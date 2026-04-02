@@ -2133,44 +2133,51 @@ class Collapse(AbstractModel):
                 "Either set points > 1 or remove rin from param_dict."
             )
 
-        # Resolve finalTime relative to the physics endpoint for this collapse mode.
+        # For collapse models, endAtFinalDensity controls finalTime behavior.
+        # Reject parcelStoppingMode since collapse models don't use density-based stopping.
         _param = param_dict or {}
+        if "parcelStoppingMode" in _param:
+            raise ValueError(
+                "parcelStoppingMode is not supported for collapse models. "
+                "Use endAtFinalDensity instead: True (default) to stop at collapse endpoint, "
+                "False to extend chemistry until a custom finalTime with frozen density."
+            )
+
+        # endAtFinalDensity controls finalTime for collapse models:
+        # - True (default): finalTime = collapseFinalTime (self-consistent density evolution until collapse)
+        # - False: user must set finalTime > collapseFinalTime (density frozen, chemistry continues)
         user_final_time = _param.get("finalTime", None)
+        end_at_final_density = _param.get("endAtFinalDensity", True)  # Default True for collapse
 
-        # Raise early if both legacy and new stopping parameters are given together.
-        if "endAtFinalDensity" in _param and "parcelStoppingMode" in _param:
-            raise RuntimeError(
-                "Cannot specify both endAtFinalDensity and parcelStoppingMode. "
-                "Use parcelStoppingMode only."
-            )
-
-        if user_final_time is None:
-            # Default (scenario 1): run exactly to the collapse physics endpoint.
-            param_dict = {**_param, "finalTime": collapse_final_time}
-        elif user_final_time < collapse_final_time:
-            warnings.warn(
-                f"finalTime ({user_final_time:.3e} yr) is less than collapseFinalTime "
-                f"({collapse_final_time:.3e} yr) for the {collapse!r} collapse mode; "
-                "the collapse will not fully complete.",
-                UserWarning,
-                stacklevel=2,
-            )
-        else:
-            # Scenario 2: finalTime > collapseFinalTime — chemistry continues with frozen density.
-            if "endAtFinalDensity" in _param and not _param["endAtFinalDensity"]:
+        if end_at_final_density:
+            # Scenario 1 (default): stop at collapse endpoint.
+            if user_final_time is not None and user_final_time != collapse_final_time:
                 raise ValueError(
-                    f"finalTime ({user_final_time:.3e} yr) > collapseFinalTime "
-                    f"({collapse_final_time:.3e} yr) for the {collapse!r} collapse mode, "
-                    "but endAtFinalDensity=False. "
-                    "Set endAtFinalDensity=True to allow chemistry to evolve beyond the collapse "
-                    "endpoint with density frozen at its final value."
+                    f"For {collapse!r} collapse with endAtFinalDensity=True, finalTime is fixed at "
+                    f"collapseFinalTime={collapse_final_time:.3e} yr. "
+                    f"To use a custom finalTime, set endAtFinalDensity=False."
                 )
-            if _param.get("endAtFinalDensity", False):
-                # endAtFinalDensity=True in scenario 2: enforce time-based stopping so the model
-                # runs to finalTime rather than stopping at a density threshold.
-                # Strip endAtFinalDensity so _convert_legacy_stopping_param doesn't set parcelStoppingMode=1.
-                param_dict = {**_param, "parcelStoppingMode": 0}
-                param_dict.pop("endAtFinalDensity", None)
+            param_dict = {**_param, "finalTime": collapse_final_time}
+            # Remove endAtFinalDensity so _convert_legacy_stopping_param doesn't affect it.
+            param_dict.pop("endAtFinalDensity", None)
+        else:
+            # Scenario 2: user extends chemistry past collapse endpoint with frozen density.
+            if user_final_time is None:
+                raise ValueError(
+                    f"endAtFinalDensity=False requires setting finalTime > collapseFinalTime "
+                    f"({collapse_final_time:.3e} yr) to extend chemistry beyond the collapse endpoint."
+                )
+            if user_final_time < collapse_final_time:
+                raise ValueError(
+                    f"endAtFinalDensity=False with finalTime={user_final_time:.3e} yr < "
+                    f"collapseFinalTime={collapse_final_time:.3e} yr is invalid. "
+                    f"Either set endAtFinalDensity=True (use default finalTime) or "
+                    f"set finalTime > collapseFinalTime for extended chemistry."
+                )
+            # finalTime > collapseFinalTime is valid; density will freeze at collapseFinalTime.
+            # Remove endAtFinalDensity so _convert_legacy_stopping_param doesn't affect it.
+            param_dict = {**_param, "parcelStoppingMode": 0}
+            param_dict.pop("endAtFinalDensity", None)
 
         super().__init__(
             param_dict,
