@@ -51,6 +51,14 @@ from pathlib import Path
 import pandas as pd
 
 UCLCHEM_ROOT_DIR: Path = Path(__file__).parent.resolve().absolute()
+"""UCLCHEM root directory"""
+
+
+MISSING_VALUE_INTEGER: int = -1
+"""Integer to indicate a missing value"""
+
+MISSING_VALUE_FLOAT: float = -1.0
+"""Float to indicate a missing value"""
 
 
 def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:

@@ -8,6 +8,9 @@ MODULE F2PY_CONSTANTS
     INTEGER, PARAMETER :: N_TOTAL_LEVELS={n_total_levels} !Total energy levels across all coolants
     INTEGER, PARAMETER :: N_SE_STATS_PER_COOLANT={n_se_stats_per_coolant} !SE solver stats per coolant
 
+    INTEGER, PARAMETER :: MISSING_VALUE_INTEGER={missing_value_integer} !Integer to indicate missing value
+    REAL(dp), PARAMETER :: MISSING_VALUE_FLOAT={missing_value_float} !Float to indicate missing value
+
     ! Coolant file names and species names
     CHARACTER(LEN={coolant_file_len}), PARAMETER :: coolantFiles(NCOOLANTS)=({coolant_files})
     CHARACTER(LEN={coolant_name_len}), PARAMETER :: coolantNames(NCOOLANTS)=({coolant_names})

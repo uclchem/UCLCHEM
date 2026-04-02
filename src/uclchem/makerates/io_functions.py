@@ -14,7 +14,7 @@ import yaml
 from uclchem.makerates.network import Network
 from uclchem.makerates.reaction import Reaction, reaction_types
 from uclchem.makerates.species import Species, species_header
-from uclchem.utils import UCLCHEM_ROOT_DIR
+from uclchem.utils import UCLCHEM_ROOT_DIR, MISSING_VALUE_INTEGER, MISSING_VALUE_FLOAT
 
 # Canonical definition of physical parameters
 # This list defines the physical parameter array passed to Fortran
@@ -588,6 +588,8 @@ def write_outputs(
         "conversion_modes": conversion_modes,
         "coolant_data_dir": coolant_data_dir if coolant_data_dir else "",
         "suggested_freq_rel_tol": suggested_freq_rel_tol,
+        "missing_value_integer": MISSING_VALUE_INTEGER,
+        "missing_value_float": MISSING_VALUE_FLOAT,
     }
     write_f90_constants(f2py_constants, filename)
     # Note: constants.py now reads directly from f2py_constants module,
