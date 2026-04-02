@@ -331,14 +331,15 @@ class MakeratesConfig(BaseModel):
     def validate_reaction_files_and_types(self) -> MakeratesConfig:
         """Ensure reaction files and types are consistent.
 
+        Returns:
+            MakeRatesConfig: validated MakeRatesConfig.
+
         Raises:
             ValueError: If the length of reaction files and reaction file types is
                 not the same
             ValueError: If `custom_reaction_type` is not specified but
                 `custom_reaction_file` is.
 
-        Returns:
-            MakeRatesConfig: validated MakeRatesConfig.
         """
         # Check database files and types match
         db_files = self.database_reaction_file

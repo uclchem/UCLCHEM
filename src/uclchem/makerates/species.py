@@ -788,11 +788,11 @@ class Species:
         Args:
             other (str, Species): Another species
 
-        Raises:
-            NotImplementedError: We can only compare between species or strings of species.
-
         Returns:
             bool: True if two species are identical.
+
+        Raises:
+            NotImplementedError: We can only compare between species or strings of species.
 
         """
         if isinstance(other, Species):

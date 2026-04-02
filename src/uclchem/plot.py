@@ -38,7 +38,6 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from seaborn import color_palette
 
 
 def plot_rate_summary(
@@ -123,7 +122,7 @@ def plot_species(
     """Plot the abundance of a list of species through time directly onto an axis.
 
     Args:
-        ax (pyplot.axis): An axis object to plot on
+        ax (plt.Axes): An axis object to plot on
         df (pd.DataFrame): A dataframe created by `read_output_file`
         species (list[str]): A list of species names to be plotted.
             If species name starts with "$" instead of "#" or "@",
@@ -138,7 +137,6 @@ def plot_species(
         KeyError: if no "Time" column is present in `df`.
 
     """
-    color_palette(n_colors=len(species))
     for specIndx, specName in enumerate(species):
         linestyle = "solid"
         if specName[0] == "$":

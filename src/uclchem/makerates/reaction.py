@@ -698,12 +698,12 @@ class Reaction:
         Args:
             other (Reaction): Another reaction
 
-        Raises:
-            NotImplementedError: Currently we can only compare against
-                instantiated Reaction objects.
-
         Returns:
             bool: Whether there is a collision (True), or not (False)
+
+        Raises:
+            NotImplementedError: If `other` is not a `Reaction` instance.
+                Currently we can only compare against instantiated Reaction objects.
 
         """
         if not isinstance(other, Reaction) and not isinstance(other, CoupledReaction):

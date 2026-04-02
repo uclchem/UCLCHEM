@@ -1604,11 +1604,11 @@ def array_to_string(
         parameter (bool): Whether the array is a Fortran PARAMETER (constant).
             Defaults to True.
 
-    Raises:
-        ValueError: Raises an error if type isn't "int","float", or "string"
-
     Returns:
         outString (str): String containing the Fortran code to declare this array.
+
+    Raises:
+        ValueError: Raises an error if type isn't "int","float", or "string"
 
     """
     # Check for 2D array

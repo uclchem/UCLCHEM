@@ -94,12 +94,12 @@ class LoadedNetwork:
             species_filepath: Path to species CSV (use with reactions_filepath)
             reactions_filepath: Path to reactions CSV (use with species_filepath)
 
+        Returns:
+            Network: Network instance created via appropriate factory method
+
         Raises:
             ValueError: If both `species` and `reactions` and file paths are specified,
                 or if only species or reactions is provided.
-
-        Returns:
-            Network: Network instance created via appropriate factory method
 
         Examples:
             >>> # Old style (deprecated)
