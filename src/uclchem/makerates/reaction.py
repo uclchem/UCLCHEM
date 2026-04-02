@@ -1,9 +1,13 @@
+"""UCLCHEM Reaction."""
+
 from __future__ import annotations
 
 import logging
 from collections import Counter
+from collections.abc import Iterator
 from contextlib import contextmanager
 from copy import deepcopy
+from typing import Any
 
 from uclchem.makerates.species import Species, elementList, elementMass, species_header
 
@@ -12,7 +16,7 @@ _skip_reaction_validation = False
 
 
 @contextmanager
-def skip_reaction_validation():
+def skip_reaction_validation() -> Iterator[None]:
     """Context manager to temporarily disable reaction validation.
 
     This is useful when loading pre-validated networks where you do not want any checks.
@@ -20,6 +24,7 @@ def skip_reaction_validation():
     Example:
         >>> with skip_validation():
         ...     reaction = Reaction(["C2N", "FREEZE", "NAN", "#CH3CNH", ...])
+
     """
     global _skip_reaction_validation
     old_value = _skip_reaction_validation
@@ -65,18 +70,41 @@ tunneling_reaction_types = [
 ]
 
 
+def convert_falsy_to_nan_string(a: Any) -> Any | str:
+    """Convert any Falsy statement to a NAN string.
+
+    Args:
+        a: thing to check for falsiness
+
+    Returns:
+        Any | str: input a if truthy, otherwise "NAN"
+
+    """
+    return a if a else "NAN"
+
+
 class Reaction:
-    def __init__(self, inputRow: list | Reaction, reaction_source=None):
+    """Representation of reactions."""
+
+    def __init__(
+        self, inputRow: list[str] | Reaction, reaction_source: str | None = None
+    ):
         """Initialize a Reaction object.
 
         Args:
-            inputRow: Either a Reaction object to copy, or a list/array with reaction data
-            reaction_source: Optional source identifier for the reaction
+            inputRow (list[str] | Reaction): Either a Reaction object to copy,
+                or a list/array with reaction data
+            reaction_source (str | None): Optional source identifier for the reaction.
+                Default = None.
+
+        Raises:
+            ValueError: If the length of `inputRow` is not long enough.
 
         Note:
             Validation can be disabled using the skip_validation() context manager.
             This is useful when loading pre-validated networks from Fortran where
             validation would fail due to modeling simplifications.
+
         """
         if isinstance(inputRow, Reaction):
             self.set_reactants(inputRow.get_reactants())
@@ -98,15 +126,15 @@ class Reaction:
                     [
                         str(inputRow[0]).upper(),
                         str(inputRow[1]).upper(),
-                        self.NANCheck(str(inputRow[2])).upper(),
+                        convert_falsy_to_nan_string(str(inputRow[2])).upper(),
                     ]
                 )
                 self.set_products(
                     [
-                        self.NANCheck(str(inputRow[3])).upper(),
-                        self.NANCheck(str(inputRow[4])).upper(),
-                        self.NANCheck(str(inputRow[5])).upper(),
-                        self.NANCheck(str(inputRow[6])).upper(),
+                        convert_falsy_to_nan_string(str(inputRow[3])).upper(),
+                        convert_falsy_to_nan_string(str(inputRow[4])).upper(),
+                        convert_falsy_to_nan_string(str(inputRow[5])).upper(),
+                        convert_falsy_to_nan_string(str(inputRow[6])).upper(),
                     ]
                 )
                 if not _skip_reaction_validation:
@@ -120,6 +148,8 @@ class Reaction:
                 self.set_temphigh(float(inputRow[11]))
                 if len(inputRow) > 12:
                     self.set_reduced_mass(float(inputRow[12]))
+                else:
+                    self.set_reduced_mass(0.0)
                 self.set_extrapolation(
                     bool(inputRow[13]) if len(inputRow) > 13 else False
                 )
@@ -134,7 +164,8 @@ class Reaction:
 
         # body_count is the number of factors of density to include in ODE
         # we drop a factor of density from both the LHS and RHS of ODES
-        # So reactions with 1 body have no factors of density which we manage by counting from -1
+        # So reactions with 1 body have no factors of density
+        # which we manage by counting from -1
         self.body_count = -1
         for reactant in self.get_reactants():
             if (reactant not in reaction_types) and reactant != "NAN":
@@ -153,23 +184,27 @@ class Reaction:
             self.get_reaction_type() in tunneling_reaction_types
             and self._reduced_mass == 0.0
         ):
-            # If the reaction is tunneling based, and no reduced mass was supplied, try to predict it.
+            # If the reaction is tunneling based, and no reduced mass was supplied,
+            # try to predict it.
             self.predict_reduced_mass()
 
     # Simple getters and setters for parsing the inputrow or changing parameters
     def get_reactants(self) -> list[str]:
-        """Get the four reactants present in the reaction, padded with NAN for nonexistent
+        """Get the four reactants present in the reaction,
+        padded with NAN for nonexistent entries.
 
         Returns:
             list[str]: The four reactants names
+
         """
         return self._reactants[:]
 
     def get_pure_reactants(self) -> list[str]:
-        """Get only the pure species, no reaction types and NAN entries
+        """Get only the pure species, no reaction types and NAN entries.
 
         Returns:
             list[str]: The list of reacting species.
+
         """
         return [
             r
@@ -182,36 +217,44 @@ class Reaction:
         ]
 
     def get_sorted_reactants(self) -> list[str]:
-        """Get the four reactants present in the reaction, sorted for fast comparisons
+        """Get the four reactants present in the reaction,
+        sorted for fast comparisons.
 
-        Args:
-            reactants (list[str]): The four sorted reactant names
+        Returns:
+            list[str]: The four sorted reactant names
+
         """
         return self._sorted_reactants
 
     def set_reactants(self, reactants: list[str]) -> None:
-        """Set the four reactants present in the reaction, padded with NAN for nonexistent
+        """Set the four reactants present in the reaction,
+        padded with NAN for nonexistent entries.
 
         Args:
             reactants (list[str]): The four reactants names
+
         """
         self._reactants = reactants
         # Store a sorted version for comparisons
         self._sorted_reactants = sorted(self._reactants)
 
     def get_products(self) -> list[str]:
-        """Get the four products present in the reaction, padded with NAN for nonexistent
+        """Get the four products present in the reaction,
+        padded with NAN for nonexistent entries.
 
-        Args:
-            reactants (list[str]): The four products names
+        Returns:
+            list[str]: The four products names
+
         """
         return self._products[:]
 
     def get_pure_products(self) -> list[str]:
-        """Get only the pure species that are products, no reaction types and NAN entries
+        """Get only the pure species that are products,
+        no reaction types and NAN entries.
 
         Returns:
             list[str]: The list of produced species.
+
         """
         return [
             r
@@ -224,116 +267,132 @@ class Reaction:
         ]
 
     def get_sorted_products(self) -> list[str]:
-        """Get the four products present in the reaction, sorted for fast comparisons
+        """Get the four products present in the reaction,
+        sorted for fast comparisons.
 
-        Args:
-            products (list[str]): The four sorted products names
+        Returns:
+            list[str]: The four sorted products names
+
         """
         return self._sorted_products
 
     def set_products(self, products: list[str]) -> None:
-        """Set the four products present in the reaction, padded with NAN for nonexistent
+        """Set the four products present in the reaction,
+        padded with NAN for nonexistent entries.
 
         Args:
             products (list[str]): The four products names
+
         """
         self._products = products
         # Store a sorted version for comparisons
         self._sorted_products = sorted(self._products)
 
     def get_alpha(self) -> float:
-        """Get the alpha parameter from the Kooij-Arrhenius equation
+        """Get the alpha parameter from the Kooij-Arrhenius equation.
 
         Returns:
             float: the alpha parameter of the reaction
+
         """
         return self._alpha
 
     def set_alpha(self, alpha: float) -> None:
-        """Set the alpha parameter from the Kooij-Arrhenius equation
+        """Set the alpha parameter from the Kooij-Arrhenius equation.
 
         Args:
             alpha (float): the alpha parameter of the reaction
+
         """
         self._alpha = alpha
 
     def get_beta(self) -> float:
-        """Get the beta parameter from the Kooij-Arrhenius equation
+        """Get the beta parameter from the Kooij-Arrhenius equation.
 
         Returns:
             float: the beta parameter of the reaction
+
         """
         return self._beta
 
     def set_beta(self, beta: float) -> None:
-        """Set the beta parameter from the Kooij-Arrhenius equation
+        """Set the beta parameter from the Kooij-Arrhenius equation.
 
         Args:
             beta (float): the beta parameter of the reaction
+
         """
         self._beta = beta
 
     def set_gamma(self, gamma: float) -> None:
-        """Set the gamma parameter from the Kooij-Arrhenius equation
+        """Set the gamma parameter from the Kooij-Arrhenius equation.
 
         Args:
             gamma (float): the gamma parameter of the reaction
+
         """
         self._gamma = gamma
 
     def get_gamma(self) -> float:
-        """Get the gamma  parameter from the Kooij-Arrhenius equation
+        """Get the gamma parameter from the Kooij-Arrhenius equation.
 
         Returns:
             float: the gamma parameter of the reaction
+
         """
         return self._gamma
 
     def set_templow(self, templow: float) -> None:
-        """Set the lower temperature boundary of the reaction in Kelvin
+        """Set the lower temperature boundary of the reaction in Kelvin.
 
         Args:
             templow (float): the lower temperature boundary
+
         """
         self._templow = templow
 
     def get_templow(self) -> float:
-        """Get the lower temperature boundary of the reaction in Kelvin
+        """Get the lower temperature boundary of the reaction in Kelvin.
 
         Returns:
             float: the lower temperature boundary
+
         """
         return self._templow
 
     def set_temphigh(self, temphigh: float) -> None:
-        """Set the higher temperature boundary of the reaction in Kelvin
+        """Set the higher temperature boundary of the reaction in Kelvin.
 
         Args:
-            templow (float): the higher temperature boundary
+            temphigh (float): the higher temperature boundary
+
         """
         self._temphigh = temphigh
 
     def get_temphigh(self) -> float:
-        """Get the higher temperature boundary of the reaction in Kelvin
+        """Get the higher temperature boundary of the reaction in Kelvin.
 
         Returns:
             float: the higher temperature boundary
+
         """
         return self._temphigh
 
     def set_exothermicity(self, rate: float) -> None:
-        """Set the cooling/heating for the reaction in erg s^-1
+        """Set the cooling/heating for the reaction in erg s^-1.
 
         Args:
-            delta_h (float): the reaction enthalpy change
+            rate (float): the reaction enthalpy change
+
         """
         self._exothermicity = rate
 
     def get_exothermicity(self) -> float:
-        """Get the cooling/heating for the reaction in erg s^-1
+        """Get the cooling/heating for the reaction in erg s^-1.
 
         Returns:
             float: the reaction enthalpy change
+
         """
         return self._exothermicity
 
@@ -370,7 +429,8 @@ class Reaction:
         n_prods = len(prod_constituents)
         if n_reacs == n_prods:
             for i, reac_constituent in enumerate(reac_constituents):
-                # For each reactant, find which product is closest (most similar in buildup) to it.
+                # For each reactant, find which product is
+                # closest (most similar in buildup) to it.
                 min_total = int(1e10)
                 min_diff = None
                 for j, prod_constituent in enumerate(prod_constituents):
@@ -422,7 +482,8 @@ class Reaction:
             else:
                 pass
         elif n_reacs == 1 and n_prods == 2:
-            # Splitting reaction. Not in network (also not LH or ER type, so would never get here)
+            # Splitting reaction. Not in network
+            # (also not LH or ER type, so would never get here)
             pass
         msg = f"Could not predict reduced mass of '{self}' cleverly.\n"
         msg += f"Instead, using regular definition with masses of two reactants (mu={naive_reduced_mass:.3})."
@@ -432,41 +493,35 @@ class Reaction:
         self.set_reduced_mass(naive_reduced_mass)
 
     def set_reduced_mass(self, reduced_mass: float) -> None:
-        """Set the reduced mass to be used to calculate tunneling rate in AMU
+        """Set the reduced mass to be used to calculate tunneling rate in
+        atomic mass units.
 
         Args:
             reduced_mass (float): reduced mass of moving atoms
+
         """
         self._reduced_mass = reduced_mass
 
     def get_reduced_mass(self) -> float:
-        """Get the reduced mass to be used to calculate tunneling rate in AMU
+        """Get the reduced mass to be used to calculate tunneling rate in
+        atomic mass units.
 
         Returns:
             float: reduced mass of moving atoms
+
         """
         return self._reduced_mass
 
     # C
 
-    def NANCheck(self, a):
-        """Convert any Falsy statement to a NAN string
-
-        Args:
-            a: thing to check for falsiness
-
-        Returns:
-            bool: input a if truthy, otherwise NAN
-        """
-        return a if a else "NAN"
-
     def get_reaction_type(self) -> str:
-        """Get the type of a reaction from the reactants
+        """Get the type of a reaction from the reactants.
         First check the third reactant for a reaction type, then the second. If there are none
         in there, it will be regarded as a two body reaction.
 
         Returns:
-            str:
+            str: reaction type
+
         """
         if self.get_reactants()[2] in reaction_types:
             return self.get_reactants()[2]
@@ -476,27 +531,41 @@ class Reaction:
             return "TWOBODY"
 
     def get_source(self) -> str:
-        """Get the source of the reaction
+        """Get the source of the reaction.
 
         Returns:
             str: The source of the reaction
+
         """
         return self.source
 
     def set_source(self, source: str) -> None:
-        """Set the source of the reaction
+        """Set the source of the reaction.
 
         Args:
             source (str): The source of the reaction
+
         """
         self.source = source
 
     def set_extrapolation(self, flag: bool) -> None:
+        """Set whether extrapolation is applied for this reaction.
+
+        Args:
+            flag (bool): whether extrapolation is applied.
+
+        """
         logging.info(f"Setting for {self} extrapolation to {flag}")
         assert isinstance(flag, bool)
         self.extrapolate = flag
 
     def get_extrapolation(self) -> bool:
+        """Get whether extrapolation is applied for this reaction.
+
+        Returns:
+            bool: whether extrapolation is applied.
+
+        """
         return self.extrapolate
 
     def convert_surf_to_bulk(self) -> None:
@@ -505,6 +574,12 @@ class Reaction:
         self.set_products([prod.replace("#", "@") for prod in self.get_products()])
 
     def check_element_conservation(self) -> None:
+        """Check the conservation of elements.
+
+        Raises:
+            ValueError: If the elements are not conserved by the reaction.
+
+        """
         if self.get_reaction_type() in ["FREEZE", "DESORB"]:
             return
 
@@ -535,6 +610,15 @@ class Reaction:
             raise ValueError(msg)
 
     def check_charge_conservation(self) -> None:
+        """Check that the charge is conserved by this reaction.
+
+        Grain reactions don't need to conserve charge, because grains can
+        absorb/release electrons, so they are ignored.
+
+        Raises:
+            ValueError: If charge is not conserved by the reaction.
+
+        """
         # Grain reactions don't need to conserve charge (grains can absorb/release electrons)
         if self.is_ice_reaction(
             include_reactants=True, include_products=True, strict=False
@@ -566,8 +650,10 @@ class Reaction:
 
     def convert_gas_to_surf(self) -> None:
         """Convert the gas-phase species to surface species in place for this reaction.
-        If any ions are produced, the ion is assumed to become neutral because it is on the surface.
-        If any electrons are produced, they are assumed to be absorbed by the grain."""
+        If any ions are produced, the ion is assumed to become neutral because it is
+        on the surface. If any electrons are produced, they are assumed to be
+        absorbed by the grain.
+        """
         do_not_convert = reaction_types + ["E-", "NAN"]
         self.set_reactants(
             [
@@ -584,37 +670,41 @@ class Reaction:
             ]
         )
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Reaction) -> bool:
         """Check for equality against another reaction based on the products and reactants.
         Note that it does not check for the temperature ranges that the reactions might have!
         The Reaction.check_temperature_collision can be used for this purpose.
 
         Args:
-            other: Another reaction set.
+            other (Reaction): Another reaction.
 
         Returns:
             bool: equality
+
         """
-        if not isinstance(other, Reaction) and not isinstance(other, CoupledReaction):
+        if not isinstance(other, Reaction | CoupledReaction):
             raise NotImplementedError(
                 "Equality is not implemented for anything but comparing to other reactions."
             )
-        if self.get_sorted_reactants() == other.get_sorted_reactants():
-            if self.get_sorted_products() == other.get_sorted_products():
-                return True
-        return False
+        return (
+            self.get_sorted_reactants() == other.get_sorted_reactants()
+            and self.get_sorted_products() == other.get_sorted_products()
+        )
 
-    def check_temperature_collision(self, other) -> bool:
-        """Check if two reactions have overlapping temperature ranges, returning True means there is a collision.
+    def check_temperature_collision(self, other: Reaction) -> bool:
+        """Check if two reactions have overlapping temperature ranges.
+        Returning True means there is a collision.
 
         Args:
-            other: Another reaction
-
-        Raises:
-            NotImplementedError: Currently we can only compare against instantiated Reaction objects.
+            other (Reaction): Another reaction
 
         Returns:
             bool: Whether there is a collision (True), or not (False)
+
+        Raises:
+            NotImplementedError: If `other` is not a `Reaction` instance.
+                Currently we can only compare against instantiated Reaction objects.
+
         """
         if not isinstance(other, Reaction) and not isinstance(other, CoupledReaction):
             raise NotImplementedError(
@@ -624,42 +714,51 @@ class Reaction:
             other.get_templow() < self.get_temphigh()
         ):
             return True
-        if (other.get_temphigh() > self.get_templow()) and (
+        return (other.get_temphigh() > self.get_templow()) and (
             other.get_temphigh() < self.get_temphigh()
-        ):
-            return True
-        return False
+        )
 
-    def changes_surface_count(self):
-        """
-        This checks whether a grain reaction changes number of particles on the surface
+    def changes_surface_count(self) -> bool:
+        """Check whether a grain reaction changes number of particles on the surface.
         2 reactants to 2 products won't but two reactants combining to one will.
+
+        Returns:
+            bool: whether the number of ice molecules changes by this reaction.
+
         """
         if len([x for x in self.get_reactants() if "#" in x]) != len(
             [x for x in self.get_products() if "#" in x]
         ):
             return True
-        if len([x for x in self.get_reactants() if "@" in x]) != len(
+        return len([x for x in self.get_reactants() if "@" in x]) != len(
             [x for x in self.get_products() if "@" in x]
-        ):
-            return True
-        return False
+        )
 
-    def changes_total_mantle(self):
-        """Check if the total grains on the mantle are changed by the reaction."""
+    def changes_total_mantle(self) -> bool:
+        """Check if the total grains on the mantle are changed by the reaction.
+
+        Returns:
+            bool: Whether the total ice abundance is affected by this reaction.
+
+        """
         # If it's not just a movement between ice phases
         if ("BULK" not in self.get_reactants()[1]) and (
             "SWAP" not in self.get_reactants()[1]
         ):
             # if the number of ice species changes
-            if self.changes_surface_count():
-                return True
-            else:
-                return False
+            return self.changes_surface_count()
         else:
             return False
 
-    def generate_ode_bit(self, i: int, species_names: list):
+    def generate_ode_bit(self, i: int, species_names: list[str]) -> None:
+        """Generate the ODE string of this reaction.
+
+        Args:
+            i (int): index of reaction in network in python format (counting from 0)
+            species_names (list[str]): List of species names so we can find index
+                of reactants in species list
+
+        """
         self.ode_bit = _generate_reaction_ode_bit(
             i,
             species_names,
@@ -668,8 +767,13 @@ class Reaction:
             self.get_reaction_type(),
         )
 
-    def to_UCL_format(self):
-        """Convert a reaction to UCLCHEM reaction file format"""
+    def to_UCL_format(self) -> str:
+        """Convert a reaction to UCLCHEM reaction file format.
+
+        Returns:
+            str: string representing species
+
+        """
         reactants = self.get_reactants()
         joined_reactants = ",".join(
             [reactant if reactant != "NAN" else "" for reactant in reactants]
@@ -701,10 +805,12 @@ class Reaction:
         formatted_reaction += str(int(self.get_extrapolation()))
         return formatted_reaction
 
-    def _is_reaction_wrap(self, include_reactants=True, include_products=True):
-        assert (
-            include_reactants or include_products
-        ), "Either include reactants or products"
+    def _is_reaction_wrap(
+        self, include_reactants: bool = True, include_products: bool = True
+    ) -> list[str]:
+        assert include_reactants or include_products, (
+            "Either include reactants or products"
+        )
         species_to_check = []
         if include_reactants:
             species_to_check += self.get_pure_reactants()
@@ -713,19 +819,24 @@ class Reaction:
         return species_to_check
 
     def is_gas_reaction(
-        self, include_reactants=True, include_products=True, strict=True
+        self,
+        include_reactants: bool = True,
+        include_products: bool = True,
+        strict: bool = True,
     ) -> bool:
-        """Check whether it is a gas reaction, by default it is strict - all
+        """Check whether it is a gas reaction. By default it is strict - all
         reactions must be in the gas-phase - if strict=False; any reaction in
         the gas-phase returns true.
 
         Args:
-            include_reactants (bool, optional): Include the reactants. Defaults to True.
-            include_products (bool, optional): Include the products. Defaults to True.
-            strict (bool, optional): Choose between all (true) or any (false) must be gas phase . Defaults to True.
+            include_reactants (bool): Include the reactants. Defaults to True.
+            include_products (bool): Include the products. Defaults to True.
+            strict (bool): Choose between all (true) or any (false) must be gas phase.
+                Defaults to True.
 
         Returns:
             bool: Is it a gas phase reaction?
+
         """
         checklist = [
             not (s.startswith("#") or s.startswith("@"))
@@ -734,20 +845,25 @@ class Reaction:
         return all(checklist) if strict else any(checklist)
 
     def is_ice_reaction(
-        self, include_reactants=True, include_products=True, strict=True
+        self,
+        include_reactants: bool = True,
+        include_products: bool = True,
+        strict: bool = True,
     ) -> bool:
-        """Check whether it is an ice (surface OR bulk) reaction
+        """Check whether it is an ice (surface OR bulk) reaction.
 
         By default it is strict (strict=True); all species must be in the ice phase
         If strict=False; any species in ice phase returns True
 
         Args:
-            include_reactants (bool, optional): Include the reactants. Defaults to True.
-            include_products (bool, optional): Include the products. Defaults to True.
-            strict (bool, optional): Choose between all (true) or any (false) must be ice phase . Defaults to True.
+            include_reactants (bool): Include the reactants. Defaults to True.
+            include_products (bool): Include the products. Defaults to True.
+            strict (bool): Choose between all (true) or any (false) must be ice phase.
+                Defaults to True.
 
         Returns:
             bool: Is it an ice phase reaction?
+
         """
         checklist = [
             (s.startswith("#") or s.startswith("@"))
@@ -756,21 +872,26 @@ class Reaction:
         return all(checklist) if strict else any(checklist)
 
     def is_surface_reaction(
-        self, include_reactants=True, include_products=True, strict=False
+        self,
+        include_reactants: bool = True,
+        include_products: bool = True,
+        strict: bool = False,
     ) -> bool:
-        """Check whether it is a surface reaction, defaults to non-strict since many
+        """Check whether it is a surface reaction. Defaults to non-strict since many
         important surface reactions can lead to desorption in some way.
 
         By default it is NOT strict (strict=False); any species on the surface returns true
         If strict=True; all species must be on the ice phase
 
         Args:
-            include_reactants (bool, optional): Include the reactants. Defaults to True.
-            include_products (bool, optional): Include the products. Defaults to True.
-            strict (bool, optional): Choose between all (true) or any (false) must be on the surface . Defaults to False.
+            include_reactants (bool): Include the reactants. Defaults to True.
+            include_products (bool): Include the products. Defaults to True.
+            strict (bool): Choose between all (true) or any (false) must be on the surface.
+                Defaults to False.
 
         Returns:
             bool: Is it a surface reaction?
+
         """
         checklist = [
             s.startswith("#")
@@ -779,21 +900,26 @@ class Reaction:
         return all(checklist) if strict else any(checklist)
 
     def is_bulk_reaction(
-        self, include_reactants=True, include_products=True, strict=False
+        self,
+        include_reactants: bool = True,
+        include_products: bool = True,
+        strict: bool = False,
     ) -> bool:
-        """Check whether it is a bulk reaction, defaults to non-strict since many
+        """Check whether it is a bulk reaction. Defaults to non-strict since many
         important bulk reactions interact with the surface.
 
         By default it is NOT strict (strict=False); any species in the bulk returns true
         If strict=True; all species must be on the ice phase
 
         Args:
-            include_reactants (bool, optional): Include the reactants. Defaults to True.
-            include_products (bool, optional): Include the products. Defaults to True.
-            strict (bool, optional): Choose between all (true) or any (false) must in the bulk . Defaults to False.
+            include_reactants (bool): Include the reactants. Defaults to True.
+            include_products (bool): Include the products. Defaults to True.
+            strict (bool): Choose between all (true) or any (false) must in the bulk.
+                Defaults to False.
 
         Returns:
             bool: Is it a bulk reaction?
+
         """
         checklist = [
             s.startswith("@")
@@ -829,32 +955,65 @@ class Reaction:
 
 
 class CoupledReaction(Reaction):
-    def __init__(self, input):
+    """Representation of reactions that are coupled to another Reaction instance.
+    This means that if a reaction has a parameter changed by, for example,
+    `network.change_binding_energy()`, every CoupledReaction that has that instance
+    as its partner also has its binding energy changed to that value.
+    """
+
+    def __init__(self, input: list[str] | Reaction):
         super().__init__(input)
         self.partner = None
 
-    def set_partner(self, partner: Reaction):
+    def set_partner(self, partner: Reaction) -> None:
+        """Set the partner.
+
+        Args:
+            partner (Reaction): partner of this reaction.
+
+        Raises:
+            TypeError: if `parter` is not an instance of a `Reaction`.
+
+        """
+        if not isinstance(partner, Reaction):
+            raise TypeError(
+                f"partner should be of type Reaction, but got type {type(partner)}"
+            )
         self.partner = partner
 
-    def get_partner(self):
+    def get_partner(self) -> Reaction:
+        """Get the partner.
+
+        Returns:
+            Reaction: partner of this reaction.
+
+        """
         return self.partner
 
 
 def _generate_reaction_ode_bit(
     i: int,
-    species_names: list,
+    species_names: list[str],
     body_count: int,
     reactants: list[str],
     reaction_type: str = None,
-):
+) -> str:
     """Every reaction contributes a fixed rate of change to whatever species it
     affects. We create the string of fortran code describing that change here.
 
     Args:
         i (int): index of reaction in network in python format (counting from 0)
-        species_names (list): List of species names so we can find index of reactants in species list
-        body_count (bool): Number of bodies in the reaction, used to determine how many factors of density to include
+        species_names (list[str]): List of species names so we can find index
+            of reactants in species list
+        body_count (bool): Number of bodies in the reaction.
+            Used to determine how many factors of density to include
         reactants (list[str]): The reactants of the reaction
+        reaction_type (str | None): reaction type. Only important if
+            it is GAR or not. Default = None.
+
+    Returns:
+        ode_bit (str):
+
     """
     ode_bit = f"+RATE({i + 1})"
     # every body after the first requires a factor of density
@@ -882,10 +1041,10 @@ def _generate_reaction_ode_bit(
             ode_bit = ode_bit + f"*Y({species_names.index('#H2') + 1})"
 
         if "H2FORM" in reactants:
-            # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation so stop looping after first iteration
+            # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation
+            # so stop looping after first iteration
             break
 
-    if "LH" in reactants[2]:
-        if "@" in reactants[0]:
-            ode_bit += "*bulkLayersReciprocal"
+    if "LH" in reactants[2] and "@" in reactants[0]:
+        ode_bit += "*bulkLayersReciprocal"
     return ode_bit

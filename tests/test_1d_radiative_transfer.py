@@ -1,5 +1,4 @@
-"""
-Test 1D radiative transfer functionality.
+"""Test 1D radiative transfer functionality.
 
 This test suite verifies the one-dimensional radiative transfer features
 merged from the 1D_model branch, including:
@@ -86,12 +85,14 @@ class Test1DCloud:
                 param_dict=base_1d_params,
                 out_species=["CO", "H2O", "CH3OH"],
                 return_array=True,
-                return_rates=True,
+                return_rate_constants=True,
                 timepoints=2500,
             )
         )
 
-        assert return_code == 0, f"1D cloud model failed with code {return_code}"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"1D cloud model failed with code {return_code}"
+        )
 
         # Verify array shapes for 1D model
         # Shape should be (timepoints+1, points, n_columns)
@@ -101,9 +102,9 @@ class Test1DCloud:
         n_timepoints = physics.shape[0]
         n_points = physics.shape[1]
 
-        assert (
-            n_points == base_1d_params["points"]
-        ), f"Expected {base_1d_params['points']} spatial points, got {n_points}"
+        assert n_points == base_1d_params["points"], (
+            f"Expected {base_1d_params['points']} spatial points, got {n_points}"
+        )
 
         # Verify spatial variation (density should vary with radius)
         # Extract density column (first column after time)
@@ -111,9 +112,9 @@ class Test1DCloud:
         densities = physics[final_time_idx, :, 1]  # Column 1 is density
 
         # Densities should not all be identical for 1D model
-        assert not np.allclose(
-            densities, densities[0]
-        ), "1D model should produce spatial density variation"
+        assert not np.allclose(densities, densities[0]), (
+            "1D model should produce spatial density variation"
+        )
 
     def test_1d_cloud_return_dataframe(self, base_1d_params):
         """Test 1D cloud model with return_dataframe mode."""
@@ -126,31 +127,31 @@ class Test1DCloud:
             )
         )
 
-        assert (
-            return_code == 0
-        ), f"1D cloud model (dataframe) failed with code {return_code}"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"1D cloud model (dataframe) failed with code {return_code}"
+        )
 
         # Verify dataframe structure
-        assert (
-            "Point" in physics_df.columns
-        ), "Physics dataframe should have 'Point' column"
+        assert "Point" in physics_df.columns, (
+            "Physics dataframe should have 'Point' column"
+        )
         assert "Time" in physics_df.columns, "Physics dataframe should have 'Time' column"
-        assert (
-            "Density" in physics_df.columns
-        ), "Physics dataframe should have 'Density' column"
+        assert "Density" in physics_df.columns, (
+            "Physics dataframe should have 'Density' column"
+        )
 
         # Verify multiple spatial points
         unique_points = physics_df["Point"].unique()
-        assert (
-            len(unique_points) == base_1d_params["points"]
-        ), f"Expected {base_1d_params['points']} spatial points, got {len(unique_points)}"
+        assert len(unique_points) == base_1d_params["points"], (
+            f"Expected {base_1d_params['points']} spatial points, got {len(unique_points)}"
+        )
 
         # Verify spatial variation
         final_time = physics_df["Time"].max()
         final_densities = physics_df[physics_df["Time"] == final_time]["Density"].values
-        assert not np.allclose(
-            final_densities, final_densities[0]
-        ), "1D model should produce spatial density variation"
+        assert not np.allclose(final_densities, final_densities[0]), (
+            "1D model should produce spatial density variation"
+        )
 
     def test_1d_cloud_disk_output(self, base_1d_params, common_output_directory):
         """Test 1D cloud model writing to disk."""
@@ -165,11 +166,13 @@ class Test1DCloud:
         )
 
         return_code = result[0]
-        assert return_code == 0, f"1D cloud disk output failed with code {return_code}"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"1D cloud disk output failed with code {return_code}"
+        )
         assert output_file.exists(), "Output file was not created"
 
         # Verify file contains data for multiple points
-        with open(output_file, "r") as f:
+        with open(output_file) as f:
             lines = f.readlines()
 
         # File should have header + data for multiple timepoints * multiple points
@@ -186,35 +189,37 @@ class Test1DHotcore:
                 param_dict=hotcore_1d_params,
                 out_species=["CO", "H2O", "CH3OH", "H2CO"],
                 return_array=True,
-                return_rates=True,
+                return_rate_constants=True,
                 timepoints=2500,
             )
         )
 
-        assert return_code == 0, f"1D hotcore model failed with code {return_code}"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"1D hotcore model failed with code {return_code}"
+        )
 
         # Verify 3D array structure
         assert physics.ndim == 3, "Physics array should be 3-dimensional for 1D model"
         assert chemistry.ndim == 3, "Chemistry array should be 3-dimensional"
 
         n_points = physics.shape[1]
-        assert (
-            n_points == hotcore_1d_params["points"]
-        ), f"Expected {hotcore_1d_params['points']} spatial points, got {n_points}"
+        assert n_points == hotcore_1d_params["points"], (
+            f"Expected {hotcore_1d_params['points']} spatial points, got {n_points}"
+        )
 
         # Verify temperature variation (stellar heating should create gradient)
         final_time_idx = -1
         temperatures = physics[final_time_idx, :, 2]  # Column 2 is temperature
 
         # Temperatures should vary spatially due to stellar heating
-        assert not np.allclose(
-            temperatures, temperatures[0]
-        ), "1D hotcore should produce spatial temperature variation from stellar heating"
+        assert not np.allclose(temperatures, temperatures[0]), (
+            "1D hotcore should produce spatial temperature variation from stellar heating"
+        )
 
         # Inner regions should be warmer than outer regions
-        assert (
-            temperatures[0] > temperatures[-1]
-        ), "Inner temperature should exceed outer temperature with stellar heating"
+        assert temperatures[0] > temperatures[-1], (
+            "Inner temperature should exceed outer temperature with stellar heating"
+        )
 
     def test_1d_hotcore_stellar_parameters(self, base_1d_params):
         """Test that stellar heating parameters (lum_star, temp_star) affect results."""
@@ -226,7 +231,7 @@ class Test1DHotcore:
             param_dict=params_low,
             out_species=["CO"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             timepoints=2500,
         )
 
@@ -238,20 +243,23 @@ class Test1DHotcore:
             param_dict=params_high,
             out_species=["CO"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             timepoints=2500,
         )
 
-        assert code_low == 0 and code_high == 0, "Both models should succeed"
+        assert (
+            code_low == uclchem.utils.SuccessFlag.SUCCESS
+            and code_high == uclchem.utils.SuccessFlag.SUCCESS
+        ), "Both models should succeed"
 
         # Extract final temperatures
         temps_low = physics_low[-1, :, 2]
         temps_high = physics_high[-1, :, 2]
 
         # Higher luminosity should produce higher temperatures
-        assert np.mean(temps_high) > np.mean(
-            temps_low
-        ), "Higher stellar luminosity should produce higher temperatures"
+        assert np.mean(temps_high) > np.mean(temps_low), (
+            "Higher stellar luminosity should produce higher temperatures"
+        )
 
 
 class Test1DParameterValidation:
@@ -274,15 +282,16 @@ class Test1DParameterValidation:
             param_dict=params,
             out_species=["CO"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             timepoints=2500,
         )
 
         # Should succeed (code will handle gracefully)
-        assert return_code == 0
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS
 
     def test_1d_density_profile_parameters(self):
-        """Test density_scale_radius and density_power_index parameters control density profile."""
+        """Test density_scale_radius and density_power_index parameters
+        control density profile."""
         base_params = {
             "parcelStoppingMode": 2,
             "freefall": False,
@@ -302,7 +311,7 @@ class Test1DParameterValidation:
             param_dict=params_steep,
             out_species=["CO"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             timepoints=2500,
         )
 
@@ -314,11 +323,14 @@ class Test1DParameterValidation:
             param_dict=params_shallow,
             out_species=["CO"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             timepoints=2500,
         )
 
-        assert code_steep == 0 and code_shallow == 0, "Both profiles should succeed"
+        assert (
+            code_steep == uclchem.utils.SuccessFlag.SUCCESS
+            and code_shallow == uclchem.utils.SuccessFlag.SUCCESS
+        ), "Both profiles should succeed"
 
         # Extract final densities
         dens_steep = physics_steep[-1, :, 1]
@@ -328,9 +340,9 @@ class Test1DParameterValidation:
         contrast_steep = dens_steep.max() / dens_steep.min()
         contrast_shallow = dens_shallow.max() / dens_shallow.min()
 
-        assert (
-            contrast_steep > contrast_shallow
-        ), "Steeper profile (higher a) should produce larger density contrast"
+        assert contrast_steep > contrast_shallow, (
+            "Steeper profile (higher a) should produce larger density contrast"
+        )
 
     def test_0d_mode_still_works(self):
         """Verify that 0D mode (enable_radiative_transfer=False) still works."""
@@ -349,12 +361,14 @@ class Test1DParameterValidation:
                 param_dict=params,
                 out_species=["CO", "H2O"],
                 return_array=True,
-                return_rates=True,
+                return_rate_constants=True,
                 timepoints=2500,
             )
         )
 
-        assert return_code == 0, "0D mode should still work"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            "0D mode should still work"
+        )
 
         # For 0D with points=1, arrays should still be 3D but with single point
         assert physics.shape[1] == 1, "0D mode should have 1 spatial point"
@@ -370,12 +384,12 @@ class Test1DChemicalEvolution:
                 param_dict=base_1d_params,
                 out_species=["CO", "H2O", "CH3OH"],
                 return_array=True,
-                return_rates=True,
+                return_rate_constants=True,
                 timepoints=2500,
             )
         )
 
-        assert return_code == 0, "1D model should succeed"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, "1D model should succeed"
 
         # Extract final abundances for each species
         final_time_idx = -1
@@ -391,9 +405,9 @@ class Test1DChemicalEvolution:
                 variation = np.std(abundances) / (np.mean(abundances) + 1e-30)
 
                 # Some variation expected (not strict requirement as chemistry is complex)
-                assert variation >= 0 or np.allclose(
-                    abundances, abundances[0]
-                ), f"Species {species_idx} abundances: {abundances}"
+                assert variation >= 0 or np.allclose(abundances, abundances[0]), (
+                    f"Species {species_idx} abundances: {abundances}"
+                )
 
     def test_1d_chained_models(self, base_1d_params):
         """Test chaining 1D models using starting_chemistry."""
@@ -405,11 +419,11 @@ class Test1DChemicalEvolution:
             param_dict=params_phase1,
             out_species=["CO", "H2O"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             timepoints=2500,
         )
 
-        assert code1 == 0, "Phase 1 should succeed"
+        assert code1 == uclchem.utils.SuccessFlag.SUCCESS, "Phase 1 should succeed"
 
         # Run second phase starting from phase 1 final state
         params_phase2 = base_1d_params.copy()
@@ -420,17 +434,19 @@ class Test1DChemicalEvolution:
             param_dict=params_phase2,
             out_species=["CO", "H2O"],
             return_array=True,
-            return_rates=True,
+            return_rate_constants=True,
             starting_chemistry=abund_start1,
             timepoints=2500,
         )
 
-        assert code2 == 0, "Phase 2 should succeed with starting_chemistry"
+        assert code2 == uclchem.utils.SuccessFlag.SUCCESS, (
+            "Phase 2 should succeed with starting_chemistry"
+        )
 
         # Abundances should have evolved from phase 1
-        assert np.allclose(
-            chem1[-1, :, :], chem2[0, :, :]
-        ), "Chemistry should continue evolving in phase 2"
+        assert np.allclose(chem1[-1, :, :], chem2[0, :, :]), (
+            "Chemistry should continue evolving in phase 2"
+        )
 
 
 # ============================================================================
@@ -451,7 +467,7 @@ class TestOOCloud1D:
 
         # Check model succeeded
         model.check_error()
-        assert model.success_flag == 0
+        assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS
 
         # Verify arrays are 3D
         assert model.physics_array.ndim == 3
@@ -571,7 +587,7 @@ class TestOOCollapse1D:
         )
 
         model.check_error()
-        assert model.success_flag == 0
+        assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS
 
         # Verify 3D arrays
         assert model.physics_array.ndim == 3
@@ -606,7 +622,9 @@ class TestOOCollapse1D:
             )
 
             model.check_error()
-            assert model.success_flag == 0, f"parcelStoppingMode={mode} should succeed"
+            assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+                f"parcelStoppingMode={mode} should succeed"
+            )
 
 
 class TestOOHotcore1D:
@@ -623,7 +641,7 @@ class TestOOHotcore1D:
         )
 
         model.check_error()
-        assert model.success_flag == 0
+        assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS
 
         # Get final temperatures at each point
         phys_df = model.get_dataframes(joined=False)[0]
@@ -840,7 +858,7 @@ class TestFunctionalVsOOConsistency:
             timepoints=2500,
         )
 
-        assert flag_func == 0
+        assert flag_func == uclchem.utils.SuccessFlag.SUCCESS
 
         # Arrays should match after warm-up. Use tolerances that accommodate
         # the huge dynamic range of abundances (1e0 down to 1e-30).
@@ -856,6 +874,6 @@ class TestFunctionalVsOOConsistency:
             timepoints=2500,
         )
 
-        assert flag == 0
+        assert flag == uclchem.utils.SuccessFlag.SUCCESS
         assert "Point" in phys_df.columns
         assert phys_df["Point"].nunique() == base_1d_params["points"]

@@ -17,9 +17,11 @@
 #
 # A common task is to run UCLCHEM over a grid of parameter combinations. This notebook shows how to use the built-in GridModels class to doing so for regular grids.
 
-import uclchem
-import numpy as np
 import os
+
+import numpy as np
+
+import uclchem
 
 # Ensure output directory exists
 if not os.path.exists("./output_3"):
@@ -63,7 +65,6 @@ grid.run()
 
 grid.check_conservation()
 grid.models
-
 
 
 # Each model is stored in the "./output_3/grid_basic.h5" under the name listed in the key 'Model' for each of the entries of ```grid.models```. Each of these models can be loaded individually using the ```load_model``` function. If we wanted to load the model '9' with initialDens=10000, initialTemp=30 and zeta=10 we could do the following.

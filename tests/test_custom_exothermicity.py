@@ -1,5 +1,4 @@
-"""
-Unit tests for heating module.
+"""Unit tests for heating module.
 
 Tests conversion constants and exothermicity functions.
 """

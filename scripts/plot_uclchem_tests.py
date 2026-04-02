@@ -1,5 +1,8 @@
-# demonstration of plotfunctions. called from main UCLCHEM directory
-# it reads full UCLCHEM output and saves a plot of the abudances of select species
+"""Plot the UCLCHEM tests ran by `run_uclchem_tests.py`.
+
+Demonstration of plotfunctions. called from main UCLCHEM directory.
+It reads full UCLCHEM output and saves a plot of the abudances of select species.
+"""
 
 import matplotlib.pyplot as plt
 
@@ -73,12 +76,12 @@ if __name__ == "__main__":
                         print_elemental_conservation = False
 
                 # plot species and save to test.png, alternatively send dens instead of time.
-                axis = uclchem.analysis.plot_species(
+                axis = uclchem.plot.plot_species(
                     axis, model_data[folder + model], speciesNames, legend=False
                 )
                 if folder == "test-output/":
                     axis.set_prop_cycle(None)
-                    axis = uclchem.analysis.plot_species(
+                    axis = uclchem.plot.plot_species(
                         axis,
                         model_data["example-output/" + model],
                         speciesNames,
@@ -110,9 +113,7 @@ if __name__ == "__main__":
                 if plot_type == "charge":
                     axis.set_title(
                         axis.get_title()
-                        + " (Charge conservation: {:.2e})".format(
-                            charge_conservation.mean()
-                        )
+                        + f" (Charge conservation: {charge_conservation.mean():.2e})"
                     )
                 i = i + 1
         axes[0].text(
