@@ -105,9 +105,9 @@ def test_photo_on_grain_memory():
         "reltol": 1e-5,
     }
     cloud = uclchem.model.Cloud(param_dict=params, out_species=outSpecies)
-    assert (
-        cloud.success_flag == uclchem.utils.SuccessFlag.SUCCESS
-    ), f"Static model failed with result code {cloud.success_flag}"
+    assert cloud.success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+        f"Static model failed with result code {cloud.success_flag}"
+    )
 
     # Test Stage 1: Collapse with IN-MEMORY return_dataframe
     params["freefall"] = True
@@ -118,9 +118,9 @@ def test_photo_on_grain_memory():
     params["columnFile"] = f"{TEST_DIR}/stage1-column.dat"
     cloud = uclchem.model.Cloud(param_dict=params, out_species=outSpecies)
 
-    assert (
-        cloud.success_flag == uclchem.utils.SuccessFlag.SUCCESS
-    ), f"stage 1 model failed with result code {cloud.success_flag}]"
+    assert cloud.success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+        f"stage 1 model failed with result code {cloud.success_flag}]"
+    )
 
     # finally, run stage 2 from the stage 1 model.
     params["initialDens"] = 1e5
@@ -137,9 +137,9 @@ def test_photo_on_grain_memory():
         3, 300.0, param_dict=params, out_species=outSpecies
     )
 
-    assert (
-        p_core.success_flag == uclchem.utils.SuccessFlag.SUCCESS
-    ), f"stage 2 model failed with result code {p_core.success_flag}"
+    assert p_core.success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+        f"stage 2 model failed with result code {p_core.success_flag}"
+    )
 
 
 if __name__ == "__main__":

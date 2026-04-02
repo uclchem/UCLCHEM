@@ -90,9 +90,9 @@ class Test1DCloud:
             )
         )
 
-        assert (
-            return_code == uclchem.utils.SuccessFlag.SUCCESS
-        ), f"1D cloud model failed with code {return_code}"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"1D cloud model failed with code {return_code}"
+        )
 
         # Verify array shapes for 1D model
         # Shape should be (timepoints+1, points, n_columns)
@@ -127,9 +127,9 @@ class Test1DCloud:
             )
         )
 
-        assert (
-            return_code == uclchem.utils.SuccessFlag.SUCCESS
-        ), f"1D cloud model (dataframe) failed with code {return_code}"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"1D cloud model (dataframe) failed with code {return_code}"
+        )
 
         # Verify dataframe structure
         assert "Point" in physics_df.columns, (
@@ -166,9 +166,9 @@ class Test1DCloud:
         )
 
         return_code = result[0]
-        assert (
-            return_code == uclchem.utils.SuccessFlag.SUCCESS
-        ), f"1D cloud disk output failed with code {return_code}"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"1D cloud disk output failed with code {return_code}"
+        )
         assert output_file.exists(), "Output file was not created"
 
         # Verify file contains data for multiple points
@@ -194,9 +194,9 @@ class Test1DHotcore:
             )
         )
 
-        assert (
-            return_code == uclchem.utils.SuccessFlag.SUCCESS
-        ), f"1D hotcore model failed with code {return_code}"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"1D hotcore model failed with code {return_code}"
+        )
 
         # Verify 3D array structure
         assert physics.ndim == 3, "Physics array should be 3-dimensional for 1D model"
@@ -366,9 +366,9 @@ class Test1DParameterValidation:
             )
         )
 
-        assert (
-            return_code == uclchem.utils.SuccessFlag.SUCCESS
-        ), "0D mode should still work"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            "0D mode should still work"
+        )
 
         # For 0D with points=1, arrays should still be 3D but with single point
         assert physics.shape[1] == 1, "0D mode should have 1 spatial point"
@@ -439,9 +439,9 @@ class Test1DChemicalEvolution:
             timepoints=2500,
         )
 
-        assert (
-            code2 == uclchem.utils.SuccessFlag.SUCCESS
-        ), "Phase 2 should succeed with starting_chemistry"
+        assert code2 == uclchem.utils.SuccessFlag.SUCCESS, (
+            "Phase 2 should succeed with starting_chemistry"
+        )
 
         # Abundances should have evolved from phase 1
         assert np.allclose(chem1[-1, :, :], chem2[0, :, :]), (
@@ -623,9 +623,9 @@ class TestOOCollapse1D:
             )
 
             model.check_error()
-            assert (
-                model.success_flag == uclchem.utils.SuccessFlag.SUCCESS
-            ), f"parcelStoppingMode={mode} should succeed"
+            assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+                f"parcelStoppingMode={mode} should succeed"
+            )
 
 
 class TestOOHotcore1D:

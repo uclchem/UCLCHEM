@@ -102,9 +102,9 @@ class TestHeatingArrays:
             timepoints=50,  # Reduced from 500 for faster tests
         )
 
-        assert (
-            success_flag == uclchem.utils.SuccessFlag.SUCCESS
-        ), "Model run should be successful"
+        assert success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+            "Model run should be successful"
+        )
         assert heatArray is not None, "Heat array should be returned"
         assert isinstance(heatArray, np.ndarray), "Heat array should be numpy array"
         assert heatArray.shape[2] >= 12, (
@@ -133,9 +133,9 @@ class TestHeatingArrays:
             success_flag,
         ) = result
 
-        assert (
-            success_flag == uclchem.utils.SuccessFlag.SUCCESS
-        ), "Model run should be successful"
+        assert success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+            "Model run should be successful"
+        )
         assert heating_df is not None, "Heating DataFrame should be returned"
         assert isinstance(heating_df, pd.DataFrame), "Heating data should be DataFrame"
 
@@ -252,9 +252,9 @@ class TestHeatingArrays:
             timepoints=50,  # Reduced from 1000 for faster tests
         )
 
-        assert (
-            success_flag == uclchem.utils.SuccessFlag.SUCCESS
-        ), f"Model run should be successful, or run out of points, instead it was {success_flag}"
+        assert success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"Model run should be successful, or run out of points, instead it was {success_flag}"
+        )
         assert heating_df is not None, "Heating DataFrame should be returned"
 
         # Check that we have finite values (no NaN or inf)

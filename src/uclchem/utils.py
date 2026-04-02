@@ -142,7 +142,10 @@ class SuccessFlag(enum.IntEnum):
 
     @staticmethod
     def _generate_next_value_(
-            name: str, start: int, count: int, last_values: list[int | tuple[int, str]]  # noqa: ARG004
+        name: str,  # noqa: ARG004
+        start: int,  # noqa: ARG004
+        count: int,  # noqa: ARG004
+        last_values: list[int | tuple[int, str]],
     ) -> int:
         last_value = last_values[-1]
         if isinstance(last_value, tuple):
@@ -163,7 +166,10 @@ class SuccessFlag(enum.IntEnum):
     CHEM_INIT_ERROR = enum.auto(), "Chemistry initialization failed."
     INT_UNRECOVERABLE_ERROR = enum.auto(), "Unrecoverable integrator error occured."
     INT_TOO_MANY_FAILS_ERROR = enum.auto(), "Too many integrator fails occured."
-    NOT_ENOUGH_TIMEPOINTS_ERROR = enum.auto(), "Not enough time points allocated in the time array."
+    NOT_ENOUGH_TIMEPOINTS_ERROR = (
+        enum.auto(),
+        "Not enough time points allocated in the time array.",
+    )
     PHYSICS_UPDATE_ERROR = enum.auto(), "Error updating physics during integration."
     SOLVER_STATS_OVERFLOW_ERROR = enum.auto(), "Solver statistics array overflowed."
     COOLANT_FILE_ERROR = enum.auto(), "Coolant data file could not be openend."
