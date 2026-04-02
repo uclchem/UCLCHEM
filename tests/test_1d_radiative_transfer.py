@@ -565,7 +565,6 @@ class TestOOCollapse1D:
 
         model = uclchem.model.Collapse(
             collapse="BE1.1",
-            physics_output=None,
             param_dict=params,
             out_species=["CO", "H2O"],
             timepoints=2500,

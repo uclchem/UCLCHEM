@@ -176,7 +176,6 @@ class TestHeatingArrays:
             if model_function == "collapse":
                 result = func(
                     collapse="ambipolar",
-                    physics_output=None,
                     param_dict=test_params,
                     out_species=["OH", "CO"],
                     return_dataframe=True,

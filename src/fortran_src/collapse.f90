@@ -18,10 +18,9 @@ MODULE collapse_mod
    
    INTEGER :: collapse_mode
    REAL(dp) :: maxTime
+   REAL(dp) :: collapseFinalTime
    REAL(dp), allocatable :: massInRadius(:),parcelRadius(:)
    REAL(dp) :: dt,drad
-   CHARACTER (LEN=100) :: collapseFile
-   ! LOGICAL :: writePhysics
 CONTAINS
    
     SUBROUTINE initializePhysics(successFlag)
@@ -33,40 +32,62 @@ CONTAINS
       
          SELECT CASE(collapse_mode)
             CASE(1)
-                maxTime=1.173387d6
-                finalTime=0.97*maxTime
-            CASE(2) 
-                maxTime=1.84265d5
-                finalTime=0.97*maxTime
+                maxTime=1.175d6
+                collapseFinalTime=1.173387d6
+            CASE(2)
+                maxTime=1.855d5
+                collapseFinalTime=1.84265d5
             CASE(3)
-                maxTime=1.393761d6
-                finalTime=0.97*maxTime
+                collapseFinalTime=1.393761d6
             CASE(4)
-                maxTime=1.6132984d7
-                finalTime=0.97*maxTime
+                collapseFinalTime=1.6132984d7
             CASE DEFAULT
                 write(*,*) "unacceptable collapse mode"
                 successFlag=-1
                 RETURN
          END SELECT
 
-         DO dstep=1,points
-               parcelRadius(dstep)=dstep*rout/float(points)
-               parcel_radius(dstep)=parcelRadius(dstep)
-         END DO
+         IF (points .eq. 1) THEN
+               parcelRadius(1)=rout
+               parcel_radius(1)=rout
+         ELSE
+            DO dstep=1,points
+                  parcelRadius(dstep)=rin*(rout/rin)**((float(dstep)-1.0d0)/(float(points)-1.0d0))
+                  parcel_radius(dstep)=parcelRadius(dstep)
+            END DO
+         END IF
          
-         ! IF (writePhysics) OPEN(unit=66,file=collapseFile,status='unknown',err=99)
-         ! IF (successFlag .lt. 0) THEN
-         !    99 write(*,*) "could not open physics output file",collapseFile
-         !    successFlag=-1
-         !    RETURN
-         ! END IF
          density=rhofit(parcelRadius(dstep),rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
          IF (collapse_mode .le. 2) CALL findmassInRadius
     END SUBROUTINE initializePhysics
 
     SUBROUTINE updateTargetTime
-        IF (timeInYears .gt. 1.0d6) THEN
+        REAL(dp) :: remaining
+        remaining = collapseFinalTime - timeInYears
+
+        ! ===== REGIME 1: POST-COLLAPSE (timeInYears > collapseFinalTime) =====
+        ! After the collapse endpoint, density is frozen. Use coarse timesteps to advance to finalTime.
+        IF (timeInYears .gt. collapseFinalTime) THEN
+            IF (timeInYears .gt. 1.0d6) THEN
+                targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR    ! 100 kyr steps beyond 1 Myr
+            ELSE
+                targetTime=(timeInYears+2.5d4)*SECONDS_PER_YEAR    ! 25 kyr steps below 1 Myr
+            END IF
+            RETURN
+        END IF
+
+        ! ===== REGIME 2: ENDING (remaining time approaching collapseFinalTime) =====
+        ! Fine adaptive steps near the singularity to capture rapid density evolution.
+        ! The collapse accelerates strongly in the final approach to the singularity,
+        ! so step size is reduced as remaining time shrinks.
+        IF (remaining .gt. 0.0d0 .AND. remaining .lt. 1.0d3) THEN
+            targetTime=(timeInYears+1.0d2)*SECONDS_PER_YEAR    ! 100 yr steps in final 1 kyr
+        ELSE IF (remaining .gt. 0.0d0 .AND. remaining .lt. 1.0d4) THEN
+            targetTime=(timeInYears+1.0d3)*SECONDS_PER_YEAR    ! 1 kyr steps in final 10 kyr
+        ELSE IF (remaining .gt. 0.0d0 .AND. remaining .lt. 1.0d5) THEN
+            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR    ! 10 kyr steps in final 100 kyr
+        ! ===== REGIME 3: STARTING (early times before ending phase) =====
+        ELSE IF (timeInYears .gt. 1.0d6) THEN
             targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR    ! 100 kyr steps beyond 1 Myr
         ELSE IF (timeInYears .gt. 1.0d5) THEN
             targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR    ! 10 kyr steps beyond 100 kyr
@@ -78,9 +99,11 @@ CONTAINS
             targetTime=(timeInYears*10)*SECONDS_PER_YEAR       ! ×10 exponential early on
         ELSE
             targetTime=3.16d7*10.d-8
-        ENDIF
+        END IF
 
-       ! IF (targetTime .gt. finalTime*SECONDS_PER_YEAR) targetTime=finalTime*SECONDS_PER_YEAR
+        ! Cap at collapseFinalTime to avoid overshooting the singularity during collapse phase.
+        IF (remaining .gt. 0.0d0 .AND. targetTime .gt. collapseFinalTime*SECONDS_PER_YEAR) &
+            targetTime=collapseFinalTime*SECONDS_PER_YEAR
     END SUBROUTINE updateTargetTime
 
     !This routine is formed for every parcel at every time step.
@@ -88,8 +111,8 @@ CONTAINS
     SUBROUTINE updatePhysics
          !f2py integer, intent(aux) :: points
         REAL(dp) :: effectiveTime
-        !Freeze density and parcel radius at finalTime; chemistry continues beyond
-        effectiveTime = MIN(timeInYears, finalTime)
+        !Freeze density and parcel radius at collapseFinalTime; chemistry continues beyond
+        effectiveTime = MIN(timeInYears, collapseFinalTime)
         !calculate column density. Remember dstep counts from core to edge
         !and coldens should be amount of gas from edge to parcel.
         call findcoldens(coldens(dstep),rin,rho0fit(effectiveTime),r0fit(effectiveTime),afit(effectiveTime),rout)
@@ -103,16 +126,10 @@ CONTAINS
                 &r0fit(effectiveTime),afit(effectiveTime),parcelRadius(dstep))
         ELSE
             dt = targetTime - currentTime
-            IF (timeInYears .lt. finalTime) THEN
+            IF (timeInYears .lt. collapseFinalTime) THEN
                 drad = vrfit(parcelRadius(dstep),rminfit(effectiveTime),vminfit(effectiveTime),avfit(effectiveTime))*dt/pc
                 parcelRadius(dstep) = parcelRadius(dstep) + drad
             END IF
-            ! IF (writePhysics) THEN
-            !    write(66,*) timeInYears,parcelRadius(dstep),rhofit(parcelRadius(dstep),&
-            !             &rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears)),&
-            !             &vrfit(parcelRadius(dstep),rminfit(timeInYears),&
-            !             &vminfit(timeInYears),avfit(timeInYears))
-            ! END IF
         END IF
         parcel_radius(dstep) = parcelRadius(dstep)
         density(dstep)=rhofit(parcelRadius(dstep),rho0fit(effectiveTime),r0fit(effectiveTime),afit(effectiveTime))
@@ -164,7 +181,6 @@ CONTAINS
          newRadius = i*dr
          i=i+1
       END DO
-      ! IF (writePhysics) write(66,*) timeInYears,newRadius,rhofit(newRadius,rho0,r0,a),m1
 
     END SUBROUTINE findNewRadius
 

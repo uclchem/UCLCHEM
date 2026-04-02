@@ -341,7 +341,6 @@ def __cloud__(
 
 def __collapse__(
     collapse: str,
-    physics_output: str,
     param_dict: dict = None,
     out_species: list = ["H", "N", "C", "O"],
     return_array: bool = False,
@@ -356,7 +355,6 @@ def __collapse__(
 
     Args:
         collapse (str): A string containing the collapse type, options are 'BE1.1', 'BE4', 'filament', or 'ambipolar'
-        physics_output(str): Filename to store physics output, only relevant for 'filament' and 'ambipolar' collapses. If None, no physics output will be saved.
         param_dict (dict,optional): A dictionary of parameters where keys are any of the variables in defaultparameters.f90 and values are value for current run.
         out_species (list, optional): A list of species for which final abundance will be returned. If None, no abundances will be returned. Defaults to ["H", "N", "C", "O"].
         return_array (bool, optional): A boolean on whether a np.array should be returned to a user, if both return_array and return_dataframe are false, this function will default to writing outputs to a file
@@ -396,7 +394,6 @@ def __collapse__(
 
     model_object = Collapse(
         collapse=collapse,
-        physics_output=physics_output,
         param_dict=param_dict,
         out_species=out_species,
         starting_chemistry=starting_chemistry,

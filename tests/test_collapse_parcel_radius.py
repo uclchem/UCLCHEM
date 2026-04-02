@@ -34,7 +34,6 @@ def test_parcel_radius_in_collapse_physics(collapse_mode):
     physics, chemistry, rates, heating, abundances, return_code = (
         uclchem.functional.collapse(
             collapse=collapse_mode,
-            physics_output=None,
             param_dict=COLLAPSE_PARAMS,
             out_species=["CO", "OH"],
             return_dataframe=True,
@@ -57,7 +56,6 @@ def test_parcel_radius_decreases_during_collapse():
     physics, chemistry, rates, heating, abundances, return_code = (
         uclchem.functional.collapse(
             collapse="BE4",
-            physics_output=None,
             param_dict=COLLAPSE_PARAMS,
             out_species=["CO"],
             return_dataframe=True,
@@ -102,7 +100,6 @@ def test_parcel_radius_initial_value_matches_rout():
     physics, chemistry, rates, heating, abundances, return_code = (
         uclchem.functional.collapse(
             collapse="BE4",
-            physics_output=None,
             param_dict=params,
             out_species=["CO"],
             return_dataframe=True,
