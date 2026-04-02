@@ -67,7 +67,6 @@ grid.check_conservation()
 grid.models
 
 
-
 # Each model is stored in the "./output_3/grid_basic.h5" under the name listed in the key 'Model' for each of the entries of ```grid.models```. Each of these models can be loaded individually using the ```load_model``` function. If we wanted to load the model '9' with initialDens=10000, initialTemp=30 and zeta=10 we could do the following.
 
 cloud = uclchem.model.load_model("./output_3/grid_basic.h5", "9")

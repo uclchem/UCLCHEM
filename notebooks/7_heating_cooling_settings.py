@@ -57,8 +57,8 @@ print("Running baseline model with all heating/cooling mechanisms enabled...")
 cloud_full = uclchem.model.Cloud(param_dict=param_dict)
 
 # Extract all data from the model object in one call
-physics_full, abundances_full, rates_full, heating_full = cloud_full.get_dataframes(
-    joined=False, with_rates=True, with_heating=True
+physics_full, abundances_full, rate_constants_full, heating_full = cloud_full.get_dataframes(
+    joined=False, with_rate_constants=True, with_heating=True
 )
 start_abund = cloud_full.next_starting_chemistry_array
 flag_full = 0 if cloud_full.has_attr("_data") else -1
@@ -75,7 +75,7 @@ else:
 # %% [markdown]
 # ## Step 2: Identify the Most Important Heating and Cooling Processes
 #
-# Let's analyze the rates DataFrame to determine which heating and cooling mechanisms contribute the most.
+# Let's analyze the heating DataFrame to determine which heating and cooling mechanisms contribute the most.
 
 # %%
 # Extract heating and cooling columns
@@ -236,8 +236,8 @@ print("Running model with key mechanisms disabled...")
 cloud_limited = uclchem.model.Cloud(param_dict=param_dict)
 
 # Extract all data in one call
-physics_limited, abundances_limited, rates_limited, heating_limited = (
-    cloud_limited.get_dataframes(joined=False, with_rates=True, with_heating=True)
+physics_limited, abundances_limited, rate_constants_limited, heating_limited = (
+    cloud_limited.get_dataframes(joined=False, with_rate_constants=True, with_heating=True)
 )
 flag_limited = 0 if cloud_limited.has_attr("_data") else -1
 

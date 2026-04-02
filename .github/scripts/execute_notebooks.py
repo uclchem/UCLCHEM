@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Execute notebooks: convert .py sources (jupytext), copy ipynb to executed_notebooks, execute them in place, and continue on errors.
+"""Execute notebooks: convert .py sources (jupytext), copy ipynb to executed_notebooks,
+execute them in place, and continue on errors.
 
-Exit code: 0 even if some notebooks failed (mirrors previous behavior). Writes a simple log file executed_notebooks/run.log.
+Exit code: 0 even if some notebooks failed (mirrors previous behavior).
+Writes a simple log file executed_notebooks/run.log.
 """
 
 import glob

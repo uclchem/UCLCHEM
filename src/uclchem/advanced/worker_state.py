@@ -1,5 +1,4 @@
-"""
-Snapshot and restore of advanced settings for multiprocessing propagation.
+"""Snapshot and restore of advanced settings for multiprocessing propagation.
 
 When UCLCHEM runs grid models or managed-mode models, worker processes are
 spawned via ``mp.Pool`` or ``mp.Process`` with the ``spawn`` context.  These
@@ -12,7 +11,8 @@ capture the current Fortran module state into a picklable dict and re-apply
 it in a worker process before the model runs.
 """
 
-from typing import Any, Dict
+import contextlib
+from typing import Any
 
 import numpy as np
 import uclchemwrap
@@ -58,7 +58,7 @@ _MODULES_SKIP_0D = frozenset(
 )
 
 
-def create_snapshot() -> Dict[str, Any]:
+def create_snapshot() -> dict[str, Any]:
     """Capture the current Fortran module state into a picklable dict.
 
     Reads directly from Fortran memory (not cached Python values) to ensure
@@ -74,16 +74,17 @@ def create_snapshot() -> Dict[str, Any]:
 
     Returns:
         Fully picklable dict suitable for passing to :func:`restore_snapshot`.
+
     """
-    snapshot: Dict[str, Any] = {}
+    snapshot: dict[str, Any] = {}
 
     # --- General settings (scalars only) ---
-    general: Dict[str, Dict[str, Any]] = {}
+    general: dict[str, dict[str, Any]] = {}
     for mod_name in _MODULE_NAMES:
         if not hasattr(uclchemwrap, mod_name):
             continue
         mod = getattr(uclchemwrap, mod_name)
-        mod_snapshot: Dict[str, Any] = {}
+        mod_snapshot: dict[str, Any] = {}
         for attr in dir(mod):
             if attr.startswith("_"):
                 continue
@@ -122,7 +123,7 @@ def create_snapshot() -> Dict[str, Any]:
     snapshot["general"] = general
 
     # --- Heating / cooling settings ---
-    heating: Dict[str, Any] = {
+    heating: dict[str, Any] = {
         "heating_modules": np.copy(heating_module.heating_modules),
         "cooling_modules": np.copy(heating_module.cooling_modules),
         "dust_gas_coupling_method": int(heating_module.dust_gas_coupling_method),
@@ -153,13 +154,14 @@ def create_snapshot() -> Dict[str, Any]:
     return snapshot
 
 
-def restore_snapshot(snapshot: Dict[str, Any]) -> None:
+def restore_snapshot(snapshot: dict[str, Any]) -> None:
     """Apply a previously captured snapshot to the current process.
 
     Must be called **before** running any model in the worker process.
 
     Args:
         snapshot: Dict produced by :func:`create_snapshot`.
+
     """
     # --- General settings ---
     for mod_name, settings_dict in snapshot.get("general", {}).items():
@@ -167,10 +169,9 @@ def restore_snapshot(snapshot: Dict[str, Any]) -> None:
             continue
         mod = getattr(uclchemwrap, mod_name)
         for attr, value in settings_dict.items():
-            try:
+            with contextlib.suppress(AttributeError, TypeError):
+                # read-only or incompatible – skip silently
                 setattr(mod, attr, value)
-            except (AttributeError, TypeError):
-                pass  # read-only or incompatible – skip silently
 
     # --- Heating / cooling settings ---
     heating = snapshot.get("heating", {})
@@ -209,7 +210,7 @@ def restore_snapshot(snapshot: Dict[str, Any]) -> None:
         np.copyto(network_module.bindingenergy, net["bindingenergy"])
 
 
-def _pool_initializer(snapshot: Dict[str, Any]) -> None:
+def _pool_initializer(snapshot: dict[str, Any]) -> None:
     """``mp.Pool`` initializer that restores advanced settings in each worker.
 
     Usage::

@@ -1,3 +1,8 @@
+"""Analyse the formation and destruction reactions of a species.
+
+Deprecated.
+"""
+
 import uclchem
 
 ################################################

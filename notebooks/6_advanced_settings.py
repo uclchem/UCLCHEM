@@ -193,7 +193,7 @@ for name, setting in list(temp_settings.items())[:5]:
 #
 # - Direct access to all Fortran module variables
 # - Edit tracking and reset capabilities
-# - Context managers for temporary changes  
+# - Context managers for temporary changes
 # - Search functionality across all settings
 # - Better IDE autocomplete support
 #

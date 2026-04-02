@@ -20,13 +20,16 @@
 # - [Understanding molecular abundances in star-forming regions using interpretable machine learning Open Access](https://ui.adsabs.harvard.edu/abs/2023MNRAS.526..404H/abstract) Heyl, J., Butterworth, J., & Viti, S. 2023, MNRAS, 526, 404
 # - [A statistical and machine learning approach to the study of astrochemistry](https://ui.adsabs.harvard.edu/abs/2023FaDi..245..569H/abstract) Heyl, J., Viti, S., & Vermariën, G. 2023, Faraday Discussions, 245,
 # 569
-# - [Understanding molecular ratios in the carbon and oxygen poor outer Milky Way with interpretable machine learning](https://ui.adsabs.harvard.edu/abs/2025arXiv250508410V/abstract) Vermariën, G., Viti, S., Heyl, J., Fontani, F., 2025, A&A, 699, A18  
+# - [Understanding molecular ratios in the carbon and oxygen poor outer Milky Way with interpretable machine learning](https://ui.adsabs.harvard.edu/abs/2025arXiv250508410V/abstract) Vermariën, G., Viti, S., Heyl, J., Fontani, F., 2025, A&A, 699, A18
 #
 # We'll use an example from work that was published in 2022 [Energizing Star Formation: The Cosmic-Ray Ionization Rate in NGC 253 Derived from ALCHEMI Measurements of H3O+ and SO](https://ui.adsabs.harvard.edu/abs/2022ApJ...931...89H/abstract) to demonstrate the use of the rates coming out of UCLCHEM and how it can be used to draw conclusions about the most important reactions in a network for a given species/behaviour.
 
 import os
 
 import pandas as pd
+from joblib import Parallel, delayed
+
+import uclchem
 
 import uclchem
 
@@ -36,7 +39,7 @@ if not os.path.exists("./output_4"):
 
 # ## H3O+ and SO
 #
-# In a piece of inference work in which we measured the cosmic ray ionization rate (CRIR) in NGC 253 [(Holdship et al. 2022)](https://ui.adsabs.harvard.edu/abs/2022arXiv220403668H/abstract). We found that both H3O+ and SO were sensitive to the ionization rate. Furthermore, since H3O+ was increased in abundance by increasing CRIR and SO was destroyed, their ratio was extremely sensitive to the rate. 
+# In a piece of inference work in which we measured the cosmic ray ionization rate (CRIR) in NGC 253 [(Holdship et al. 2022)](https://ui.adsabs.harvard.edu/abs/2022arXiv220403668H/abstract). We found that both H3O+ and SO were sensitive to the ionization rate. Furthermore, since H3O+ was increased in abundance by increasing CRIR and SO was destroyed, their ratio was extremely sensitive to the rate.
 #
 # In the work, we present the plot below which shows how the equilibrium abundance of each species changes with the CRIR as well as the ratio. We plot this for a range of temperatures to show that this behaviour is not particularly sensitive to the gas temperature.
 #
@@ -53,14 +56,14 @@ if not os.path.exists("./output_4"):
 # Let's run a simple grid with all possible combinations of the following:
 # - A low CRIR (zeta=1) and high CRIR (zeta=1e4)
 # - A typical cloud density (n=1e4) and high density (n=1e6)
-# - The lower temperature bound of NGC 253 CMZ (75 K)* and a high temperature (250 K) 
+# - The lower temperature bound of NGC 253 CMZ (75 K)* and a high temperature (250 K)
 # * The lower boundary is a bit lower, but the computational time of 50K models is a lot longer than 75K so we stick with a bit higher values for speed
 #
 # and that will give us enough to work with for our analysis.
 #
-# When we run the model and want to interact with the rates directly after running, UCLCHEM must be told to return it to the user. This 
-# can be done using both `return_dataframe=True` and `return_rates=True`. The model will then return the
-# physics (temperature, density etc), abundances and rates as a function of time.
+# When we run the model and want to interact with the rate constants directly after running, UCLCHEM must be told to return it to the user. This
+# can be done using both `return_dataframe=True` and `return_rate_constants=True`. The model will then return the
+# physics (temperature, density etc), abundances and rate constants as a function of time.
 
 # +
 temperatures = [50, 250]
@@ -99,7 +102,7 @@ for model in grid_runner.models:
     results[name] = (phys, abun, rates, final_abundances, success_flag)
 
 
-phys, abun, rates, final_abundances, success_flag = results["model_5"]
+phys, abun, rate_constanst, final_abundances, success_flag = results["model_5"]
 
 # +
 from uclchem.analysis import analyze_element_per_phase, check_element_conservation
@@ -112,7 +115,7 @@ check_element_conservation(abun, ["H", "N", "C", "O", "S", "SI"])
 analyze_element_per_phase("SI", abun).plot(logy=True)
 
 # ### 2. Analyze the rates
-# UCLCHEM will compute and save the rates of each of your reactions during the simulation. It is then returned to the user to be inspected. 
+# UCLCHEM will compute and save the rate constants of each of your reactions during the simulation. It is then returned to the user to be inspected.
 #
 #
 # For example, if we care about $\text{H}_3\text{O}^+$ and find that it is created by $\text{H}_2{O}$ + $\text{H}^+$, then UCLCHEM is called to get $k$, the rate of that reaction and then analysis calculates
@@ -132,10 +135,10 @@ analyze_element_per_phase("SI", abun).plot(logy=True)
 
 # +
 # Retrieve the outputs from the grid:
-physics, abundances, rates, final_abundances, successflag = results["model_2"]
+physics, abundances, rate_constants, final_abundances, successflag = results["model_2"]
 
 # Add everything together into one large dataframe
-super_df = pd.concat((physics, abundances, rates), axis=1)
+super_df = pd.concat((physics, abundances, rate_constants), axis=1)
 
 # Plot the evolution of $\text{H}_3\text{O}^+$:
 super_df.plot("Time", "H3O+", logx=True, logy=True)
@@ -148,7 +151,7 @@ super_df.plot("Time", "H3O+", logx=True, logy=True)
 # +
 from uclchem.analysis import get_production_and_destruction
 
-production, destruction = get_production_and_destruction("H3O+", rates)
+production, destruction = get_production_and_destruction("H3O+", rate_constants)
 
 production.tail()
 
@@ -158,8 +161,8 @@ from uclchem.plot import plot_rate_summary
 plot_rate_summary(production, destruction, 10)
 # -
 
-# We can then also effectively convert from rates constants k, to the actual RHS
-# elements that contribute to each reaction; We can then get fluxes rather than rates:
+# We can then also effectively convert from rates constants $k$, to the actual RHS
+# elements that contribute to each reaction; We can then get fluxes rather than rate constants:
 #
 
 # +
@@ -167,7 +170,7 @@ from uclchem.analysis import rate_constants_to_dy_and_rates
 from uclchem.makerates.network import Network
 
 network = Network.from_csv()
-dy, flux = rate_constants_to_dy_and_rates(physics, abundances, rates, network=network) 
+dy, flux = rate_constants_to_dy_and_rates(physics, abundances, rate_constants, network=network)
 # -
 
 # We can then inspect the RHS of the differential equation per reaction. This informs us that the only relevant term is actually the destruction of the molecule via its reaction with HCS and $\text{H}_2\text{S}$. Explaining the small decrease at 1 million years.
@@ -179,7 +182,7 @@ plot_rate_summary(production, destruction, -10, "flux")
 #
 
 #
-#  
+#
 # We can then delve into specifically the low temperature, low density, low zeta case:
 #
 # ```
@@ -238,7 +241,7 @@ plot_rate_summary(production, destruction, -10, "flux")
 # HCO+ + SO -> HSO+ + CO : 20.97%
 # ```
 #
-# An interesting point here is that equilbrium is reached at around $1.31 \times 10^4$ yr in this model. Since `analysis()` only prints a time step when the most important reactions are different to the last one, this time step is the last output from the analysis. We can see that we broadly reach an equilibrium between thermal desorption and freeze out of SO, with some formation and destruction via ions. 
+# An interesting point here is that equilbrium is reached at around $1.31 \times 10^4$ yr in this model. Since `analysis()` only prints a time step when the most important reactions are different to the last one, this time step is the last output from the analysis. We can see that we broadly reach an equilibrium between thermal desorption and freeze out of SO, with some formation and destruction via ions.
 #
 # This doesn't hold up at lower densities or higher temperatures, looking at the high temperature, low density, low zeta case, we see a second pattern of reactions:
 #
