@@ -40,7 +40,7 @@ Returns arrays/DataFrames instead of model objects.
     )
 
     # Check for errors and plot
-    cloud.nheck_error()
+    cloud.check_error()
     cloud.create_abundance_plot([\"CO\", \"$CO\"])
 
 **Model Workflow:**
