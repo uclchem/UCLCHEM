@@ -69,29 +69,6 @@ from uclchem.makerates.network import Network
 from uclchem.makerates.species import Species, elementList
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
-# elementList = [
-#     "H",
-#     "D",
-#     "HE",
-#     "C",
-#     "N",
-#     "O",
-#     "F",
-#     "P",
-#     "S",
-#     "CL",
-#     "LI",
-#     "NA",
-#     "MG",
-#     "SI",
-#     "PAH",
-#     "15N",
-#     "13C",
-#     "18O",
-#     "SURFACE",
-#     "BULK",
-# ]
-
 
 def read_output_file(output_file: str | Path) -> pd.DataFrame:
     """Read the output of a UCLCHEM run created with the outputFile parameter

@@ -207,11 +207,12 @@ def get_network(
         verbosity (LEVEL | None): The verbosity level as specified in logging.
             Defaults to None.
 
+    Returns:
+        Network: A chemical reaction network.
+
     Raises:
         ValueError: You cannot specify both an input configuration and species+reaction.
 
-    Returns:
-        Network: A chemical reaction network.
 
     """
     if verbosity:

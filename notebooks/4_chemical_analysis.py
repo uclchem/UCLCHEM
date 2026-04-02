@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.19.0
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -24,11 +24,18 @@
 #
 # We'll use an example from work that was published in 2022 [Energizing Star Formation: The Cosmic-Ray Ionization Rate in NGC 253 Derived from ALCHEMI Measurements of H3O+ and SO](https://ui.adsabs.harvard.edu/abs/2022ApJ...931...89H/abstract) to demonstrate the use of the rates coming out of UCLCHEM and how it can be used to draw conclusions about the most important reactions in a network for a given species/behaviour.
 
-import numpy as np
+import os
+
 import pandas as pd
 from joblib import Parallel, delayed
 
 import uclchem
+
+import uclchem
+
+# Ensure output directory exists
+if not os.path.exists("./output_4"):
+    os.makedirs("./output_4")
 
 # ## H3O+ and SO
 #
@@ -63,43 +70,37 @@ temperatures = [50, 250]
 densities = [1e4, 1e6]
 zetas = [1e1, 1e4]
 
-parameterSpace = np.asarray(np.meshgrid(temperatures, densities, zetas)).reshape(3, -1)
-model_table = pd.DataFrame(parameterSpace.T, columns=["temperature", "density", "zeta"])
-model_names = [f"model_{i}" for i in range(len(model_table))]
-model_table.index = model_names
-print(f"{model_table.shape[0]} models to run")
-
-
-def run_model(row):
-    # basic set of parameters we'll use for this grid.
-    ParameterDictionary = {
-        "baseAv": 10,  # UV shielded gas in our model
-        "freefall": False,
-        "finalTime": 1e6,
-        "initialtemp": float(row["temperature"]),
-        "initialdens": float(row["density"]),
-        "zeta": float(row["zeta"]),
+grid_runner = uclchem.model.GridRunner("Cloud", full_parameters = {
+    "param_dict": {
+        "baseAv": 10,
+        "freefall": False, 
+        "finalTime": 1e6, 
+        "initialTemp": temperatures,
+        "initialDens": densities,
+        "zeta": zetas, 
         # Specify some custom tolerance since Silicon chemistry at 50K is tough to solve
-        "abstol_factor": 1e-7,
+        "abstol_factor": 1e-6,
         "reltol": 1e-6,
         "abstol_min": 5e-20,
-    }
-    # Create Cloud model and extract data
-    cloud = uclchem.model.Cloud(param_dict=ParameterDictionary)
-    phys, abun, rate_constants = cloud.get_dataframes(joined=False, with_rate_constants=True)
+    }},
+    grid_file ="output_4/analysis.h5",
+    model_name_prefix="model_",
+    max_workers = 10,
+)
+
+# -
+# We can extract all the data from the models in the grid by using `uclchem.model.load_model`.
+
+# +
+results = {}
+for model in grid_runner.models:
+    name = model["Model"]
+    cloud =  uclchem.model.load_model(file="output_4/analysis.h5", name=name)
+    phys, abun, rates = cloud.get_dataframes(joined=False, with_rates=True)
     final_abundances = cloud.next_starting_chemistry_array
     success_flag = 0 if cloud.has_attr("_data") else -1
-    return (phys, abun, rate_constants, final_abundances, success_flag)
+    results[name] = (phys, abun, rates, final_abundances, success_flag)
 
-
-model_table
-# -
-
-# Each result contains: physics, abundances, rate constants, final_abundances and succesflag
-results = Parallel(n_jobs=10, verbose=100)(
-    delayed(run_model)(row) for idx, row in model_table.iterrows()
-)
-results = {k: v for k, v in zip(model_names, results)}
 
 phys, abun, rate_constanst, final_abundances, success_flag = results["model_5"]
 
@@ -117,20 +118,20 @@ analyze_element_per_phase("SI", abun).plot(logy=True)
 # UCLCHEM will compute and save the rate constants of each of your reactions during the simulation. It is then returned to the user to be inspected.
 #
 #
-# For example, if we care about H3O+ and find that it is created by $H_2O$ + $H^+$, then UCLCHEM is called to get the rate constant $k$, the rate of that reaction and then analysis calculates
+# For example, if we care about $\text{H}_3\text{O}^+$ and find that it is created by $\text{H}_2{O}$ + $\text{H}^+$, then UCLCHEM is called to get $k$, the rate of that reaction and then analysis calculates
 # $$
-# \dot{Y(H_3O^+)} = k Y(H_2O) Y(H^+) n_H
+# \dot{Y(\text{H}_3\text{O}^+)} = k Y(\text{H}_2\text{O}) Y(\text{H}^+) n_{\text{H}}
 # $$
 #
-# where $\dot{Y(H_3O^+)}$ is the rate of change of the $H_3O+$ abundance due to the reaction. The $\dot{Y}$ s of each reaction involving the $H_3O^+$ are then compared to see which reactions contribute the most to the destruction and formation of $H_3O+$.
+# where $\dot{Y(\text{H}_3\text{O}^+)}$ is the rate of change of the $\text{H}_3\text{O}^+$ abundance due to the reaction. The $\dot{Y}$ s of each reaction involving the $\text{H}_3\text{O}^+$ are then compared to see which reactions contribute the most to the destruction and formation of $\text{H}_3\text{O}^+$.
 #
-# Our plan then is to do this for the low zeta case and the high zeta case. Hopefully, we'll see the same reactions are most important to the abundance of $H_3O^+$ and SO at all densities and tempertures. If we don't find that that's the case, then the chemistry is these species is fairly complex and perhaps trying to present a simple cause for the CRIR dependence is not a good idea.
+# Our plan then is to do this for the low zeta case and the high zeta case. Hopefully, we'll see the same reactions are most important to the abundance of $\text{H}_3\text{O}^+$ and SO at all densities and tempertures. If we don't find that that's the case, then the chemistry is these species is fairly complex and perhaps trying to present a simple cause for the CRIR dependence is not a good idea.
 #
 # So, let's analyse the outputs!
 #
-# #### 2.1 $H_3O^+$
+# #### 2.1 $\text{H}_3\text{O}^+$
 #
-# Let's inspect the reaction file of H3O+ for a high temperature, low density and low radiation field model (model 2)
+# Let's inspect the reaction file of $\text{H}_3\text{O}^+$ for a high temperature, low density and low radiation field model (model 2)
 
 # +
 # Retrieve the outputs from the grid:
@@ -139,11 +140,11 @@ physics, abundances, rate_constants, final_abundances, successflag = results["mo
 # Add everything together into one large dataframe
 super_df = pd.concat((physics, abundances, rate_constants), axis=1)
 
-# Plot the evolution of H3O+:
+# Plot the evolution of $\text{H}_3\text{O}^+$:
 super_df.plot("Time", "H3O+", logx=True, logy=True)
 # -
 
-# Above, we can see that the H3O+ is being formed effectively. If we then want to better understand which reactions are responsible for this formation process, we can easily obtain the production and destruction routes using:
+# Above, we can see that the $\text{H}3\text{O}^+$ is being formed effectively. If we then want to better understand which reactions are responsible for this formation process, we can easily obtain the production and struction routes using:
 #
 #
 
@@ -172,7 +173,7 @@ network = Network.from_csv()
 dy, flux = rate_constants_to_dy_and_rates(physics, abundances, rate_constants, network=network)
 # -
 
-# We can then inspect the RHS of the differential equation per reaction. This informs us that the only relevant term is actually the destruction of the molecule via its reaction with HCS and H2S. Explaining the small decrease at 1 million years.
+# We can then inspect the RHS of the differential equation per reaction. This informs us that the only relevant term is actually the destruction of the molecule via its reaction with HCS and $\text{H}_2\text{S}$. Explaining the small decrease at 1 million years.
 
 plot_rate_summary(production, destruction, -10, "flux")
 
@@ -201,9 +202,9 @@ plot_rate_summary(production, destruction, -10, "flux")
 # H3O+ + SIO -> SIOH+ + H2O : 0.33%
 # ```
 #
-# What this shows is the reactions that cause 99.9% of the formation and 99.9% of the destruction of $H_3O^+$ at a time step. The total rate of formation and destruction in units of $s^{-1}$ is  given as well the percentage of the total that each reaction contributes.
+# What this shows is the reactions that cause 99.9% of the formation and 99.9% of the destruction of $\text{H}_3\text{O}^+$ at a time step. The total rate of formation and destruction in units of $\text{s}^{-1}$ is  given as well the percentage of the total that each reaction contributes. 
 #
-# What we need to find is a pattern in these reactions which holds across time and across different densities and temperatures. It actually turns out that the reactions printed above are the dominate formation and destruction routes of $H_3O^+$ for all parameters for all times. For example, at high temperature, high density and high zeta, we get:
+# What we need to find is a pattern in these reactions which holds across time and across different densities and temperatures. It actually turns out that the reactions printed above are the dominate formation and destruction routes of $\text{H}_3\text{O}^+$ for all parameters for all times. For example, at high temperature, high density and high zeta, we get:
 #
 # ```
 # New Important Reactions At: 1.00e+04 years
@@ -218,13 +219,13 @@ plot_rate_summary(production, destruction, -10, "flux")
 # H3O+ + E- -> OH + H2 : 12.29%
 # H3O+ + E- -> O + H2 + H : 1.28%
 # ```
-# The sole difference being that the formation rate is much higher. Since equilibrium is reached, the destruction rate is also higher and so we need to use the fact we know the $H_3O^+$ abundance increases with CRIR to infer that the destruction rate is only faster because there is more $H_3O^+$ to destroy.
+# The sole difference being that the formation rate is much higher. Since equilibrium is reached, the destruction rate is also higher and so we need to use the fact we know the $\text{H}_3\text{O}^+$ abundance increases with CRIR to infer that the destruction rate is only faster because there is more $\text{H}_3\text{O}^+$ to destroy.
 #
-# However, there are some problems here! Why does $H_2$ + $H_2O^+$ become so efficient at high CRIR? We know the rate of a two body reaction does not depend on CRIR ([see the chemistry docs](/docs/gas)) so it must be that $H_2O^+$ is increasing in abundance. We can run analysis on $H_2O^+$ to see what is driving that. In fact, as we report in the paper, following this thread we find that a chain of hydrogenations starting from $OH^+$ is the overall route of $H_3O^+$ formation and that this chain starts with small ions that are primarly formed through cosmic ray reactions. *It will very often be the case that analysing one species requires you to run analysis on another.*
+# However, there are some problems here! Why does $\text{H}_2$ + $\text{H}_2\text{O}^+$ become so efficient at high CRIR? We know the rate of a two body reaction does not depend on CRIR ([see the chemistry docs](/docs/gas)) so it must be that $\text{H}_2\text{O}^+$ is increasing in abundance. We can run analysis on $\text{H}_2\text{O}^+$ to see what is driving that. In fact, as we report in the paper, following this thread we find that a chain of hydrogenations starting from $\text{OH}^+$ is the overall route of $\text{H}_3\text{O}^+$ formation and that this chain starts with small ions that are primarly formed through cosmic ray reactions. *It will very often be the case that analysing one species requires you to run analysis on another.*
 
 # #### 2.2 SO
 #
-# With a strong explanation for $H_3O^+$, we can now look at SO. We start by running analysis again and then by looking at the reactions as before.
+# With a strong explanation for $\text{H}_3\text{O}^+$, we can now look at SO. We start by running analysis again and then by looking at the reactions as before.
 
 # Again, let's start by looking at the low temperature, high density, low zeta case:
 #
@@ -260,7 +261,7 @@ plot_rate_summary(production, destruction, -10, "flux")
 # N + SO -> S + NO : 3.46%
 # H+ + SO -> SO+ + H : 0.28%
 # ```
-# However, it's not so complex. All the low zeta outputs show one of these two sets of reactions. Essentially, higher temperatures are opening up gas phase reaction routes which form and destroy SO. These new routes are not particularly quick with a total rate of change of $10^{-20} s^{-1}$. Note that quite a lot of these are due to reactions with ions.
+# However, it's not so complex. All the low zeta outputs show one of these two sets of reactions. Essentially, higher temperatures are opening up gas phase reaction routes which form and destroy SO. These new routes are not particularly quick with a total rate of change of $10^{-20} \text{s}^{-1}$. Note that quite a lot of these are due to reactions with ions.
 #
 # Finally, we look at the high zeta cases and find that no matter the temperature or density, we see the same reactions:
 #
@@ -294,14 +295,16 @@ plot_rate_summary(production, destruction, -10, "flux")
 
 # ## Summary Notes
 #
-# In this notebook, we've run some representative models to look at why the SO and $H_3O^+$ abundances seem to so heavily depend on the CRIR. We find that a chain of very efficient reactions starting with simple ions comprise the primary formation route of $H_3O^+$ so that the total production of this species depends entirely on the abundance of those ions. With high CRIR, those ions become very abundant and we get a lot of $H_3O^+$ formation.
+# In this notebook, we've run some representative models to look at why the SO and $\text{H}_3\text{O}^+$ abundances seem to so heavily depend on the CRIR. We find that a chain of very efficient reactions starting with simple ions comprise the primary formation route of $\text{H}_3\text{O}^+$ so that the total production of this species depends entirely on the abundance of those ions. With high CRIR, those ions become very abundant and we get a lot of $\text{H}_3\text{O}^+$ formation.
 #
 # SO is complex at first glance since the formation routes vary by parameter. However, looking at the destruction routes we can see that it's simply that SO can be easily destroyed by simple ions and, again, these are very abundant in gas exposed to a high CRIR.
 #
-# An interesting note about SO is that we could potentially say that destruction via C$^+$ is the dominant destruction route. However, we would caution users to be careful with that kind of statement. Reactions with H$^+$, HE$^+$ and other also destroy SO. It could be that if we turned off the C$^+$ reactions, the SO chemistry would be unchanged as other ions take up the slack. Therefore, unless a single reaction is clearly dominant (as in $H_3O^+$ formation), it is best to test the importance of a reaction by removing it before concluding it is the single most important reaction.
+# An interesting note about SO is that we could potentially say that destruction via $\text{C}^+$ is the dominant destruction route. However, we would caution users to be careful with that kind of statement. Reactions with $\text{H}^+$, $\text{HE}^+$ and other also destroy SO. It could be that if we turned off the $\text{C}^+$ reactions, the SO chemistry would be unchanged as other ions take up the slack. Therefore, unless a single reaction is clearly dominant (as in $\text{H}_3\text{O}^+$ formation), it is best to test the importance of a reaction by removing it before concluding it is the single most important reaction.
 #
 # ## Considerations
 #
 # `uclchem.analysis.analysis()` looks at a snapshot of the gas and calculates the instantaneous rate of change of important reactions. However, over the course of a time step, abundances change and reactions rise and fall in importance. More importantly, complex interplay between reactions can contribute to an outcome. This is ultimately a simple, first order look at what is happening in the network but in many cases, a deeper view will be required.
 #
 # If you struggle to find an explanation that fits all time steps in your outputs and is true across a range of parameters, then it is best not to report simple conclusions about the chemistry and to look for other ways to understand the network.
+
+#

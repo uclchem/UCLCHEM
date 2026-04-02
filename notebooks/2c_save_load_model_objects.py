@@ -125,7 +125,7 @@ import matplotlib.pyplot as plt
 
 import uclchem
 
-save_file = "../examples/test-models/models.h5"
+save_file = "../../examples/test-models/models.h5"
 
 # %% [markdown]
 # We begin by loading the prestellar core model. We will check the conservation of elements, as well as the success flag and plot it as was done in tutorial 2b.
