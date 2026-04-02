@@ -44,5 +44,5 @@ jobs:
 
     - name: Run all test suite
       run: |
-        pytest -n auto tests/ --ignore=tests/test_install.py --ignore=tests/test_photo_on_grain.py --ignore=tests/test_heating_cooling_install.py
+        pytest -n auto tests/ -k "not install"
 
