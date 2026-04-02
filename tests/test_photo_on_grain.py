@@ -105,7 +105,7 @@ def test_photo_on_grain_memory():
         "reltol": 1e-5,
     }
     cloud = uclchem.model.Cloud(param_dict=params, out_species=outSpecies)
-    assert cloud.success_flag == 0, (
+    assert cloud.success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
         f"Static model failed with result code {cloud.success_flag}"
     )
 
@@ -118,7 +118,7 @@ def test_photo_on_grain_memory():
     params["columnFile"] = f"{TEST_DIR}/stage1-column.dat"
     cloud = uclchem.model.Cloud(param_dict=params, out_species=outSpecies)
 
-    assert cloud.success_flag == 0, (
+    assert cloud.success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
         f"stage 1 model failed with result code {cloud.success_flag}]"
     )
 
@@ -137,7 +137,7 @@ def test_photo_on_grain_memory():
         3, 300.0, param_dict=params, out_species=outSpecies
     )
 
-    assert p_core.success_flag == 0, (
+    assert p_core.success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
         f"stage 2 model failed with result code {p_core.success_flag}"
     )
 

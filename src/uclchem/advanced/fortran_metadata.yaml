@@ -224,6 +224,23 @@ internal_parameters:
     - inrad
     - tempindx
 
+  constants:
+    - parameter_read_error
+    - physics_init_error
+    - chem_init_error
+    - int_unrecoverable_error
+    - int_too_many_fails_error
+    - not_enough_timepoints_error
+    - physics_update_error
+    - solver_stats_overflow_error
+    - coolant_file_error
+    - coolant_data_error
+    - coolant_freq_tol_error
+    - coolant_pop_tol_error
+    - coolant_solver_error
+    - coolant_config_error          
+    - negative_abundance_error
+
 file_path_parameters:
   # File paths that should only be set via param_dict, not GeneralSettings
   # These are handled specially by logic inside wrap.f90 (opening and closing of files)

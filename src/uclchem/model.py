@@ -131,7 +131,7 @@ from uclchem.constants import (
     n_species,
 )
 from uclchem.plot import create_abundance_plot, plot_species
-from uclchem.utils import UCLCHEM_ROOT_DIR
+from uclchem.utils import UCLCHEM_ROOT_DIR, SuccessFlag
 
 # /Multiprocessing imports
 
@@ -466,7 +466,7 @@ class AbstractModel(ABC):
         self.out_species = ""
         self.full_array = None
         self._debug = debug
-        self.success_flag = None
+        self.success_flag: None | SuccessFlag = None
         # Note: specname is now accessed via get_species_names() global function
         # Note: PHYSICAL_PARAMETERS is now accessed via the global constant
 
@@ -764,7 +764,6 @@ class AbstractModel(ABC):
                 self._data = self._data.drop_vars(key)
 
         meta[key] = value
-        return
 
     def has_attr(self, key: str) -> bool:
         """Method to check if the object has an attribute stored in self._meta or self._data.
@@ -823,18 +822,12 @@ class AbstractModel(ABC):
             raise_on_error (bool): If True (default), raises RuntimeError on failure. If False, prints.
 
         """
-        if self.success_flag is not None and self.success_flag < 0:
-            from uclchem.utils import check_error as _check_error
-
-            if raise_on_error:
-                _check_error(self.success_flag, raise_on_error=True)
-            else:
-                msg = _check_error(self.success_flag, raise_on_error=False)
-                print(msg)
-        elif self.success_flag == 0 and not only_error:
-            print("Model ran successfully.")
-        elif self.success_flag is None:
+        if self.success_flag is None:
             print("Model has not been run.")
+        msg = self.success_flag.check_error(
+            only_error=only_error, raise_on_error=raise_on_error
+        )
+        print(msg)
 
     def create_abundance_plot(
         self,
@@ -1250,15 +1243,6 @@ class AbstractModel(ABC):
         """
         if self.was_read:
             raise RuntimeError("This model was read. It can not be run. ")
-            self.physics_array = None
-            self.chemical_abun_array = None
-            self.rateConstantsArray = None
-            self.heatArray = None
-            self.statsArray = None
-            self._create_fortran_array()
-            self._create_rate_constants_array()
-            self._create_heating_array()
-            self._create_stats_array()
 
         def _handler(signum, frame):  # noqa: ARG001, ANN001
             try:
@@ -1303,6 +1287,7 @@ class AbstractModel(ABC):
         if hasattr(self, "_shm_handles"):
             self._coordinator_unlink_memory()
 
+        output["success_flag"] = SuccessFlag(output["success_flag"])
         for k, v in output.items():
             self.__setattr__(k, v)
 

@@ -50,7 +50,7 @@ def test_static_model_disk(test_output_directory):
     return_code = uclchem.functional.cloud(
         param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
-    assert return_code[0] == 0, (
+    assert return_code[0] == uclchem.utils.SuccessFlag.SUCCESS, (
         f"Static model returned with nonzero exit code {return_code[0]}"
     )
 
@@ -89,7 +89,7 @@ def test_collapse_hotcore_disk(test_output_directory):
     return_code = uclchem.functional.cloud(
         param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
-    assert return_code[0] == 0, (
+    assert return_code[0] == uclchem.utils.SuccessFlag.SUCCESS, (
         f"Stage 1 returned with nonzero exit code {return_code[0]}"
     )
 
@@ -128,7 +128,7 @@ def test_collapse_hotcore_disk(test_output_directory):
     return_code = uclchem.functional.prestellar_core(
         3, 300.0, param_dict=params, out_species=["OH", "OCS", "CO", "CS", "CH3OH"]
     )
-    assert return_code[0] == 0, (
+    assert return_code[0] == uclchem.utils.SuccessFlag.SUCCESS, (
         f"Stage 2 returned with nonzero exit code {return_code[0]}"
     )
 
@@ -167,7 +167,7 @@ def test_cshock_disk(test_output_directory):
         "outputFile": str(test_output_directory / "pre_cshock.dat"),
     }
     return_code = uclchem.functional.cloud(param_dict=param_dict)
-    assert return_code[0] == 0, (
+    assert return_code[0] == uclchem.utils.SuccessFlag.SUCCESS, (
         f"Pre-cshock cloud returned with nonzero exit code {return_code[0]}"
     )
 
@@ -193,7 +193,7 @@ def test_cshock_disk(test_output_directory):
     param_dict["outputFile"] = str(test_output_directory / "cshock.dat")
     param_dict.pop("abundSaveFile", None)  # Remove abundSaveFile for second stage
     return_code = uclchem.functional.cshock(shock_vel=40, param_dict=param_dict)
-    assert return_code[0] == 0, (
+    assert return_code[0] == uclchem.utils.SuccessFlag.SUCCESS, (
         f"C-shock returned with nonzero exit code {return_code[0]}"
     )
 

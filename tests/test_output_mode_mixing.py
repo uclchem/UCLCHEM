@@ -98,7 +98,7 @@ def test_starting_chemistry_with_memory_mode(basic_params):
     result = uclchem.functional.cloud(
         param_dict=params, starting_chemistry=dummy_abundances, return_array=True
     )
-    assert result[-1] == 0  # success_flag should be 0
+    assert result[-1] == uclchem.utils.SuccessFlag.SUCCESS  # success_flag should be 0
 
 
 # Test 4: return_rate_constants requires memory mode
@@ -127,7 +127,7 @@ def test_return_rate_constants_with_file_raises_error(
 #     params_disk = basic_params.copy()
 #     params_disk["outputFile"] = temp_output_directory / "test1.dat"
 #     result = uclchem.functional.cloud(param_dict=params_disk)
-#     assert result[0] == 0
+#     assert result[0] == uclchem.utils.SuccessFlag.SUCCESS
 #
 #     # Now try to run an in-memory model - should fail
 #     params_memory = basic_params.copy()
@@ -152,7 +152,7 @@ def test_return_rate_constants_with_file_raises_error(
 #             param_dict=params_memory, return_array=True, return_rate_constants=True
 #         )
 #     )
-#     assert return_code == 0
+#     assert return_code == uclchem.utils.SuccessFlag.SUCCESS
 #
 #     # Now try to run a disk-based model - should fail
 #     params_disk = basic_params.copy()
@@ -175,13 +175,13 @@ def test_multiple_memory_models_succeed(basic_params):
             param_dict=params, return_array=True, return_rate_constants=True
         )
     )
-    assert return_code1 == 0
+    assert return_code1 == uclchem.utils.SuccessFlag.SUCCESS
 
     # Run second in-memory model - should succeed
     physics2, chemistry2, rates2, heating2, abundances2, return_code2 = (
         uclchem.functional.cloud(param_dict=params, return_dataframe=True)
     )
-    assert return_code2 == 0
+    assert return_code2 == uclchem.utils.SuccessFlag.SUCCESS
 
 
 # Test 8: Multiple disk models succeed
@@ -191,13 +191,13 @@ def test_multiple_disk_models_succeed(basic_params, temp_output_directory):
     params1 = basic_params.copy()
     params1["outputFile"] = temp_output_directory / "test1.dat"
     result1 = uclchem.functional.cloud(param_dict=params1)
-    assert result1[0] == 0
+    assert result1[0] == uclchem.utils.SuccessFlag.SUCCESS
 
     # Run second disk-based model - should succeed
     params2 = basic_params.copy()
     params2["outputFile"] = temp_output_directory / "test2.dat"
     result2 = uclchem.functional.cloud(param_dict=params2)
-    assert result2[0] == 0
+    assert result2[0] == uclchem.utils.SuccessFlag.SUCCESS
 
 
 # Test 9: Chained models work with starting_chemistry in memory
@@ -217,7 +217,7 @@ def test_chained_models_in_memory(basic_params):
     _, _, _, _, final_abundances, result1 = uclchem.functional.cloud(
         param_dict=params_stage1, return_dataframe=True
     )
-    assert result1 == 0
+    assert result1 == uclchem.utils.SuccessFlag.SUCCESS
 
     # Stage 2: Hot core using starting_chemistry
     params_stage2 = {
@@ -233,7 +233,7 @@ def test_chained_models_in_memory(basic_params):
         return_dataframe=True,
         starting_chemistry=final_abundances,
     )
-    assert result2 == 0
+    assert result2 == uclchem.utils.SuccessFlag.SUCCESS
 
 
 # Test 10: Cannot mix disk and memory in chained models
@@ -257,7 +257,7 @@ def test_chained_models_in_memory(basic_params):
 #         "outputFile": temp_output_directory / "stage1-full.dat",
 #     }
 #     result1 = uclchem.functional.cloud(param_dict=params_stage1)
-#     assert result1[0] == 0
+#     assert result1[0] == uclchem.utils.SuccessFlag.SUCCESS
 #
 #     # Stage 2: Try to use memory mode - should fail
 #     params_stage2 = {

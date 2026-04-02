@@ -102,7 +102,9 @@ class TestHeatingArrays:
             timepoints=50,  # Reduced from 500 for faster tests
         )
 
-        assert success_flag == 0, "Model run should be successful"
+        assert success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+            "Model run should be successful"
+        )
         assert heatArray is not None, "Heat array should be returned"
         assert isinstance(heatArray, np.ndarray), "Heat array should be numpy array"
         assert heatArray.shape[2] >= 12, (
@@ -131,7 +133,9 @@ class TestHeatingArrays:
             success_flag,
         ) = result
 
-        assert success_flag == 0, "Model run should be successful"
+        assert success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+            "Model run should be successful"
+        )
         assert heating_df is not None, "Heating DataFrame should be returned"
         assert isinstance(heating_df, pd.DataFrame), "Heating data should be DataFrame"
 
@@ -248,7 +252,7 @@ class TestHeatingArrays:
             timepoints=50,  # Reduced from 1000 for faster tests
         )
 
-        assert success_flag == 0, (
+        assert success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
             f"Model run should be successful, or run out of points, instead it was {success_flag}"
         )
         assert heating_df is not None, "Heating DataFrame should be returned"
@@ -286,7 +290,7 @@ class TestHeatingArrays:
     #         return_rate_constants=True,
     #         return_heating=True,
     #     )
-    #     assert result[0] == 0, "Model run should be successful"
+    #     assert result[0] == uclchem.utils.SuccessFlag.SUCCESS, "Model run should be successful"
     #     assert TEST_FILE.exists(), "Heating file should be created on disk"
     #     heating_df = pd.read_csv(TEST_FILE, index_col=None)
     #     assert not heating_df.empty, "Heating DataFrame should not be empty"

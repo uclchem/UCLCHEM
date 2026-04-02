@@ -90,7 +90,9 @@ class Test1DCloud:
             )
         )
 
-        assert return_code == 0, f"1D cloud model failed with code {return_code}"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"1D cloud model failed with code {return_code}"
+        )
 
         # Verify array shapes for 1D model
         # Shape should be (timepoints+1, points, n_columns)
@@ -125,7 +127,7 @@ class Test1DCloud:
             )
         )
 
-        assert return_code == 0, (
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
             f"1D cloud model (dataframe) failed with code {return_code}"
         )
 
@@ -164,7 +166,9 @@ class Test1DCloud:
         )
 
         return_code = result[0]
-        assert return_code == 0, f"1D cloud disk output failed with code {return_code}"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"1D cloud disk output failed with code {return_code}"
+        )
         assert output_file.exists(), "Output file was not created"
 
         # Verify file contains data for multiple points
@@ -190,7 +194,9 @@ class Test1DHotcore:
             )
         )
 
-        assert return_code == 0, f"1D hotcore model failed with code {return_code}"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            f"1D hotcore model failed with code {return_code}"
+        )
 
         # Verify 3D array structure
         assert physics.ndim == 3, "Physics array should be 3-dimensional for 1D model"
@@ -241,7 +247,10 @@ class Test1DHotcore:
             timepoints=2500,
         )
 
-        assert code_low == 0 and code_high == 0, "Both models should succeed"
+        assert (
+            code_low == uclchem.utils.SuccessFlag.SUCCESS
+            and code_high == uclchem.utils.SuccessFlag.SUCCESS
+        ), "Both models should succeed"
 
         # Extract final temperatures
         temps_low = physics_low[-1, :, 2]
@@ -278,7 +287,7 @@ class Test1DParameterValidation:
         )
 
         # Should succeed (code will handle gracefully)
-        assert return_code == 0
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS
 
     def test_1d_density_profile_parameters(self):
         """Test density_scale_radius and density_power_index parameters
@@ -318,7 +327,10 @@ class Test1DParameterValidation:
             timepoints=2500,
         )
 
-        assert code_steep == 0 and code_shallow == 0, "Both profiles should succeed"
+        assert (
+            code_steep == uclchem.utils.SuccessFlag.SUCCESS
+            and code_shallow == uclchem.utils.SuccessFlag.SUCCESS
+        ), "Both profiles should succeed"
 
         # Extract final densities
         dens_steep = physics_steep[-1, :, 1]
@@ -354,7 +366,9 @@ class Test1DParameterValidation:
             )
         )
 
-        assert return_code == 0, "0D mode should still work"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
+            "0D mode should still work"
+        )
 
         # For 0D with points=1, arrays should still be 3D but with single point
         assert physics.shape[1] == 1, "0D mode should have 1 spatial point"
@@ -375,7 +389,7 @@ class Test1DChemicalEvolution:
             )
         )
 
-        assert return_code == 0, "1D model should succeed"
+        assert return_code == uclchem.utils.SuccessFlag.SUCCESS, "1D model should succeed"
 
         # Extract final abundances for each species
         final_time_idx = -1
@@ -409,7 +423,7 @@ class Test1DChemicalEvolution:
             timepoints=2500,
         )
 
-        assert code1 == 0, "Phase 1 should succeed"
+        assert code1 == uclchem.utils.SuccessFlag.SUCCESS, "Phase 1 should succeed"
 
         # Run second phase starting from phase 1 final state
         params_phase2 = base_1d_params.copy()
@@ -425,7 +439,9 @@ class Test1DChemicalEvolution:
             timepoints=2500,
         )
 
-        assert code2 == 0, "Phase 2 should succeed with starting_chemistry"
+        assert code2 == uclchem.utils.SuccessFlag.SUCCESS, (
+            "Phase 2 should succeed with starting_chemistry"
+        )
 
         # Abundances should have evolved from phase 1
         assert np.allclose(chem1[-1, :, :], chem2[0, :, :]), (
@@ -451,7 +467,7 @@ class TestOOCloud1D:
 
         # Check model succeeded
         model.check_error()
-        assert model.success_flag == 0
+        assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS
 
         # Verify arrays are 3D
         assert model.physics_array.ndim == 3
@@ -572,7 +588,7 @@ class TestOOCollapse1D:
         )
 
         model.check_error()
-        assert model.success_flag == 0
+        assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS
 
         # Verify 3D arrays
         assert model.physics_array.ndim == 3
@@ -607,7 +623,9 @@ class TestOOCollapse1D:
             )
 
             model.check_error()
-            assert model.success_flag == 0, f"parcelStoppingMode={mode} should succeed"
+            assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
+                f"parcelStoppingMode={mode} should succeed"
+            )
 
 
 class TestOOHotcore1D:
@@ -624,7 +642,7 @@ class TestOOHotcore1D:
         )
 
         model.check_error()
-        assert model.success_flag == 0
+        assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS
 
         # Get final temperatures at each point
         phys_df = model.get_dataframes(joined=False)[0]
@@ -841,7 +859,7 @@ class TestFunctionalVsOOConsistency:
             timepoints=2500,
         )
 
-        assert flag_func == 0
+        assert flag_func == uclchem.utils.SuccessFlag.SUCCESS
 
         # Arrays should match after warm-up. Use tolerances that accommodate
         # the huge dynamic range of abundances (1e0 down to 1e-30).
@@ -857,6 +875,6 @@ class TestFunctionalVsOOConsistency:
             timepoints=2500,
         )
 
-        assert flag == 0
+        assert flag == uclchem.utils.SuccessFlag.SUCCESS
         assert "Point" in phys_df.columns
         assert phys_df["Point"].nunique() == base_1d_params["points"]
