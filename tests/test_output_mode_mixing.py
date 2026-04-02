@@ -1,5 +1,4 @@
-"""
-Unit tests to verify that users cannot mix in-memory and write-to-disk modes.
+"""Unit tests to verify that users cannot mix in-memory and write-to-disk modes.
 
 Core principle: Never cross-pollinate between Fortran-based disk I/O
 and Python in-memory arrays/dataframes.
@@ -102,9 +101,11 @@ def test_starting_chemistry_with_memory_mode(basic_params):
     assert result[-1] == uclchem.utils.SuccessFlag.SUCCESS  # success_flag should be 0
 
 
-# Test 4: return_rates requires memory mode
-def test_return_rates_with_file_raises_error(basic_params, temp_output_directory):
-    """Test that return_rates with file output raises error"""
+# Test 4: return_rate_constants requires memory mode
+def test_return_rate_constants_with_file_raises_error(
+    basic_params, temp_output_directory
+):
+    """Test that return_rate_constants with file output raises error"""
     params = basic_params.copy()
     params["outputFile"] = temp_output_directory / "test_output.dat"
 
@@ -112,11 +113,12 @@ def test_return_rates_with_file_raises_error(basic_params, temp_output_directory
         RuntimeError,
         match="return_array or return_dataframe cannot be used if any output or input file is specified",
     ):
-        uclchem.functional.cloud(param_dict=params, return_rates=True)
+        uclchem.functional.cloud(param_dict=params, return_rate_constants=True)
 
 
 # Test 5: Cannot run memory mode after disk mode
-# TODO: DEPRECATED - Mode mixing checks no longer needed since IO is handled by model objects directly, not in Fortran
+# TODO: DEPRECATED - Mode mixing checks no longer needed since
+# IO is handled by model objects directly, not in Fortran
 # def test_disk_then_memory_mode_raises_error(
 #     basic_params, temp_output_directory, reset_output_mode
 # ):
@@ -137,7 +139,8 @@ def test_return_rates_with_file_raises_error(basic_params, temp_output_directory
 
 
 # Test 6: Cannot run disk mode after memory mode
-# TODO: DEPRECATED - Mode mixing checks no longer needed since IO is handled by model objects directly, not in Fortran
+# TODO: DEPRECATED - Mode mixing checks no longer needed since
+# IO is handled by model objects directly, not in Fortran
 # def test_memory_then_disk_mode_raises_error(
 #     basic_params, temp_output_directory, reset_output_mode
 # ):
@@ -146,7 +149,7 @@ def test_return_rates_with_file_raises_error(basic_params, temp_output_directory
 #     params_memory = basic_params.copy()
 #     physics, chemistry, rates, heating, abundances, return_code = (
 #         uclchem.functional.cloud(
-#             param_dict=params_memory, return_array=True, return_rates=True
+#             param_dict=params_memory, return_array=True, return_rate_constants=True
 #         )
 #     )
 #     assert return_code == uclchem.utils.SuccessFlag.SUCCESS
@@ -168,7 +171,9 @@ def test_multiple_memory_models_succeed(basic_params):
 
     # Run first in-memory model
     physics1, chemistry1, rates1, heating1, abundances1, return_code1 = (
-        uclchem.functional.cloud(param_dict=params, return_array=True, return_rates=True)
+        uclchem.functional.cloud(
+            param_dict=params, return_array=True, return_rate_constants=True
+        )
     )
     assert return_code1 == uclchem.utils.SuccessFlag.SUCCESS
 
@@ -232,11 +237,13 @@ def test_chained_models_in_memory(basic_params):
 
 
 # Test 10: Cannot mix disk and memory in chained models
-# TODO: DEPRECATED - Mode mixing checks no longer needed since IO is handled by model objects directly, not in Fortran
+# TODO: DEPRECATED - Mode mixing checks no longer needed since
+# IO is handled by model objects directly, not in Fortran
 # def test_cannot_mix_disk_and_memory_in_chain(
 #     basic_params, temp_output_directory, reset_output_mode
 # ):
-#     """Test that you cannot start with disk mode then switch to memory mode in a chain"""
+#     """Test that you cannot start with disk mode then switch
+#     to memory mode in a chain"""
 #     # Stage 1: Cloud collapse (disk mode)
 #     params_stage1 = {
 #         "endAtFinalDensity": False,

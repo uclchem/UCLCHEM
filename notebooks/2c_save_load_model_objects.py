@@ -16,8 +16,9 @@
 
 # %%
 import os
-import uclchem
 from pathlib import Path
+
+import uclchem
 
 # %% [markdown]
 # # The Prestellar Core
@@ -120,10 +121,11 @@ del jshock
 # If this notebook has been run on your machine before, and the `"../examples/test-models/models.h5"` still contains the models from this tutorial, the notebook could be started from this point onward.
 
 # %%
-import uclchem
 import matplotlib.pyplot as plt
 
-save_file = "../../examples/test-models/models.h5"
+import uclchem
+
+save_file = "../examples/test-models/models.h5"
 
 # %% [markdown]
 # We begin by loading the prestellar core model. We will check the conservation of elements, as well as the success flag and plot it as was done in tutorial 2b.

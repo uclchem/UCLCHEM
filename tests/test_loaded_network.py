@@ -1,5 +1,4 @@
-"""
-Unit tests for Network class to verify different loading options.
+"""Unit tests for Network class to verify different loading options.
 
 The Network class supports multiple loading modes:
 1. Load from species and reactions objects directly (Network.from_lists)
@@ -100,8 +99,7 @@ def temp_reactions_file(tmp_path):
 
 
 def test_option1_load_from_objects(sample_species, sample_reactions):
-    """
-    Test Option 1: Loading with species and reactions objects directly.
+    """Test Option 1: Loading with species and reactions objects directly.
 
     This verifies that users can pass pre-constructed Species and Reaction
     objects directly to Network using from_lists factory method.
@@ -116,8 +114,7 @@ def test_option1_load_from_objects(sample_species, sample_reactions):
 
 
 def test_option2_load_from_custom_filepaths(temp_species_file, temp_reactions_file):
-    """
-    Test Option 2: Loading from custom file paths.
+    """Test Option 2: Loading from custom file paths.
 
     This verifies that users can provide paths to their own species.csv and
     reactions.csv files to load a custom network.
@@ -133,8 +130,7 @@ def test_option2_load_from_custom_filepaths(temp_species_file, temp_reactions_fi
 
 
 def test_option3_load_from_default_installation():
-    """
-    Test Option 3: Loading from UCLCHEM's default installation files.
+    """Test Option 3: Loading from UCLCHEM's default installation files.
 
     This verifies that when no arguments are provided, LoadedNetwork automatically
     loads the default species.csv and reactions.csv from the UCLCHEM installation.
@@ -148,12 +144,11 @@ def test_option3_load_from_default_installation():
     assert len(network.get_reaction_dict()) > 10
     # Check for common UCLCHEM species
     species_dict = network.get_species_dict()
-    assert any("H" in name for name in species_dict.keys())
+    assert any("H" in name for name in species_dict)
 
 
 def test_different_factory_methods_produce_networks(sample_species, sample_reactions):
-    """
-    Test that different factory methods all produce valid Network objects.
+    """Test that different factory methods all produce valid Network objects.
 
     This verifies that Network supports multiple creation patterns:
     - from_csv() for loading from files
@@ -172,8 +167,7 @@ def test_different_factory_methods_produce_networks(sample_species, sample_react
 
 
 def test_network_supports_crud_operations():
-    """
-    Test that Network supports full CRUD operations.
+    """Test that Network supports full CRUD operations.
 
     Network inherits from MutableNetworkABC so should support adding,
     removing, and modifying species and reactions.

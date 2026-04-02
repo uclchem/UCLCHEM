@@ -1,5 +1,4 @@
-"""
-Tests for the HDF5 storage backend (h5py-based save/load).
+"""Tests for the HDF5 storage backend (h5py-based save/load).
 
 This branch replaces the xarray-based netCDF storage with direct h5py read/write.
 Tests cover:
@@ -10,7 +9,7 @@ Tests cover:
 - Error handling (missing file, missing model name)
 - HDF5 file structure verification
 - String/numeric dtype roundtrip
-- SequentialModel save/load with new List[Dict] format
+- SequentialRunner save/load with new List[Dict] format
 - _write_array / _read_array low-level helpers
 - from_file classmethod
 """
@@ -27,7 +26,7 @@ try:
     from uclchem.model import (
         AbstractModel,
         Cloud,
-        SequentialModel,
+        SequentialRunner,
         _read_array,
         load_model,
     )
@@ -73,7 +72,8 @@ def cloud_model():
 
 @pytest.fixture(scope="module")
 def saved_model_file(cloud_model, tmp_path_factory):
-    """Save the module-scoped cloud model to a temp file ONCE and return (path, original arrays).
+    """Save the module-scoped cloud model to a temp file ONCE and
+    return (path, original arrays).
 
     Because save_model is destructive (drops vars from _data), we snapshot the
     arrays before saving so tests can compare against the originals.
@@ -125,9 +125,9 @@ class TestSaveLoadRoundtrip:
         fpath, _, _, orig_param_dict, _ = saved_model_file
         loaded = load_model(file=fpath, name="default")
 
-        assert (
-            loaded._param_dict == orig_param_dict
-        ), "_param_dict mismatch after save/load"
+        assert loaded._param_dict == orig_param_dict, (
+            "_param_dict mismatch after save/load"
+        )
 
     def test_roundtrip_preserves_metadata(self, fresh_cloud_model, tmp_path):
         """Custom scalar metadata should survive save/load."""
@@ -209,9 +209,9 @@ class TestOverwrite:
             model2.save_model(file=fpath, name="dup", overwrite=False)
 
         # Should have issued a warning
-        assert any(
-            "already exists" in str(w.message) for w in caught
-        ), "Expected warning about existing model when overwrite=False"
+        assert any("already exists" in str(w.message) for w in caught), (
+            "Expected warning about existing model when overwrite=False"
+        )
 
         # Model should still be loadable (old data intact)
         loaded = load_model(file=fpath, name="dup")
@@ -240,9 +240,9 @@ class TestOverwrite:
 
         loaded = load_model(file=fpath, name="model")
         # The loaded model should have the v2 initial temp
-        assert (
-            loaded._param_dict["initialtemp"] == 50.0
-        ), "Overwritten model should have new initialTemp"
+        assert loaded._param_dict["initialtemp"] == 50.0, (
+            "Overwritten model should have new initialTemp"
+        )
 
 
 # ============================================================================
@@ -290,9 +290,9 @@ class TestHDF5Structure:
                     # Check coord datasets
                     for coord_name in group["_coords"]:
                         ds = group["_coords"][coord_name]
-                        assert (
-                            "_dims" in ds.attrs
-                        ), f"Coord dataset '{coord_name}' missing _dims attr"
+                        assert "_dims" in ds.attrs, (
+                            f"Coord dataset '{coord_name}' missing _dims attr"
+                        )
                 else:
                     ds = group[ds_name]
                     assert "_dims" in ds.attrs, f"Dataset '{ds_name}' missing _dims attr"
@@ -359,12 +359,12 @@ class TestWriteReadArray:
 
 
 # ============================================================================
-# SequentialModel save / load
+# SequentialRunner save / load
 # ============================================================================
 
 
-class TestSequentialModel:
-    """Test SequentialModel with the new List[Dict] format."""
+class TestSequentialRunner:
+    """Test SequentialRunner with the new List[Dict] format."""
 
     @pytest.fixture
     def sequential_model(self):
@@ -395,14 +395,14 @@ class TestSequentialModel:
                 },
             },
         ]
-        return SequentialModel(config)
+        return SequentialRunner(config)
 
     def test_sequential_model_creates_multiple_stages(self, sequential_model):
-        """SequentialModel with two stages should produce two model entries."""
+        """SequentialRunner with two stages should produce two model entries."""
         assert len(sequential_model.models) == 2
 
     def test_sequential_model_save_load(self, sequential_model, tmp_path):
-        """SequentialModel save/load roundtrip should preserve all stages."""
+        """SequentialRunner save/load roundtrip should preserve all stages."""
         fpath = str(tmp_path / "sequential.h5")
         sequential_model.save_model(file=fpath, name="seq")
 
@@ -459,7 +459,7 @@ class TestSequentialModel:
                 },
             },
         ]
-        seq = SequentialModel(config)
+        seq = SequentialRunner(config)
         # Both stages should be Cloud
         assert seq.models[0]["Model_Type"] == "Cloud"
         assert seq.models[1]["Model_Type"] == "Cloud"
@@ -532,9 +532,9 @@ class TestCoordinatePreservation:
         loaded = load_model(file=fpath, name="default")
 
         for coord_name, orig_values in orig_coords.items():
-            assert (
-                coord_name in loaded._data.coords
-            ), f"Coordinate '{coord_name}' missing after load"
+            assert coord_name in loaded._data.coords, (
+                f"Coordinate '{coord_name}' missing after load"
+            )
             np.testing.assert_array_equal(
                 orig_values,
                 loaded._data.coords[coord_name].values,
