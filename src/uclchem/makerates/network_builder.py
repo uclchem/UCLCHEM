@@ -36,6 +36,17 @@ class NetworkBuilder:
     making the code more maintainable and testable.
 
     Example:
+        >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+        >>>
+        >>> species_list, user_defined_bulk = read_species_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+        ... )
+        >>> reactions_list, dropped_reactions = read_reaction_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+        ...     species_list,
+        ...     "UCL",
+        ... )
         >>> builder = NetworkBuilder(
         ...     species=species_list,
         ...     reactions=reactions_list,
@@ -562,6 +573,13 @@ class NetworkBuilder:
                         raise NotImplementedError()
 
                     new_reaction.set_products(new_products)
+
+                    if new_reaction in self.network.get_reaction_list():
+                        logging.warning(
+                            f"Custom chemical desorption reaction {new_reaction} was added, not adding the default generated one to the network. The custom chemical desorption reaction is not made a CoupledReaction"
+                        )
+                        break
+
                     logging.debug(
                         f"Adding chemical desorption reaction for {reaction}, new reaction {new_reaction}"
                     )
@@ -765,7 +783,7 @@ class NetworkBuilder:
                     branching_reactions[reactant_string] += reaction.get_alpha()
                 else:
                     branching_reactions[reactant_string] = reaction.get_alpha()
-        print(branching_reactions.values())
+
         if any(val != 1.0 for val in branching_reactions.values()):
             logging.warning(
                 "Some of the branching ratios do not sum to 1.0, correcting those that do not"
@@ -780,26 +798,7 @@ class NetworkBuilder:
                         and branching_reactions[reactant_string] != 1.0
                     ):
                         # new_reaction = deepcopy(reaction)  # Unused variable
-                        if branching_reactions[reactant_string] != 0.0:
-                            if branching_reactions[reactant_string] < 0.99:
-                                logging.warning(
-                                    f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string]} we are assuming you set this lower on purpose."
-                                )
-                                continue
-                            new_alpha = (
-                                reaction.get_alpha()
-                                / branching_reactions[reactant_string]
-                            )
-                            logging.warning(
-                                f"Grain reaction {reaction} has a branching ratio of {reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
-                            )
-                            # TODO: apply to all partners of the reaction
-                            reaction_index = self.network.get_reaction_index(reaction)
-                            reaction.set_alpha(new_alpha)
-                            self.network.set_reaction(
-                                reaction_idx=reaction_index, reaction=reaction
-                            )
-                        else:
+                        if branching_reactions[reactant_string] == 0.0:
                             if isinstance(reaction, CoupledReaction) and (
                                 reaction not in self.network.get_reaction_list()
                             ):
@@ -811,6 +810,26 @@ class NetworkBuilder:
                                     f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
                                 )
                                 self.network.remove_reaction(reaction)
+                            continue
+
+                        if branching_reactions[reactant_string] < 0.99:
+                            logging.warning(
+                                f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string]} we are assuming you set this lower on purpose."
+                            )
+                            continue
+
+                        new_alpha = (
+                            reaction.get_alpha() / branching_reactions[reactant_string]
+                        )
+                        logging.warning(
+                            f"Grain reaction {reaction} has a branching ratio of {reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
+                        )
+                        # TODO: apply to all partners of the reaction
+                        reaction_index = self.network.get_reaction_index(reaction)
+                        reaction.set_alpha(new_alpha)
+                        self.network.set_reaction(
+                            reaction_idx=reaction_index, reaction=reaction
+                        )
 
     def _add_gas_phase_extrapolation(self) -> None:
         """Enable extrapolation for gas-phase reactions that

@@ -95,7 +95,7 @@ CONTAINS
 
     END SUBROUTINE cloud
 
-    SUBROUTINE collapse(collapseIn,collapseFileIn,writeOut,dictionary,outSpeciesIn,&
+    SUBROUTINE collapse(collapseIn,dictionary,outSpeciesIn,&
             &returnArray,returnRateConstants,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &rateConstantsArray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart, abundance_out,specname_out,successFlag)
         !f2py threadsafe
@@ -104,8 +104,6 @@ CONTAINS
         !
         !Args:
         ! collapseIn - integer indicating which collapse mode to run
-        ! collapseFileIn - string indicating file to write collapse data to
-        ! writeOut - flag indicating whether to write to collapseFileIn
         ! dictionary - python parameter dictionary
         ! outSpeciesIn - list of species to output as a space separated string
         ! returnArray - boolean on whether arrays will be returned
@@ -123,12 +121,11 @@ CONTAINS
         USE DEFAULTPARAMETERS
 
         !f2py integer,parameter intent(aux) nspec, n_physics_params, nHeatingTerms, N_DVODE_STATS, N_TOTAL_LEVELS, N_SE_STATS_PER_COOLANT
-        CHARACTER(LEN=*) :: dictionary, outSpeciesIn, collapseFileIn
+        CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         DOUBLE PRECISION :: abundance_out(nspec)
         CHARACTER(LEN=32) :: specname_out(nspec)
         INTEGER :: successFlag,collapseIn
-        LOGICAL :: writeOut
-        !f2py intent(in) collapseIn,dictionary,outSpeciesIn,collapseFileIn,writeOut
+        !f2py intent(in) collapseIn,dictionary,outSpeciesIn
         !f2py intent(out) abundance_out,specname_out,successFlag
         LOGICAL, INTENT(IN) :: returnArray
         !f2py intent(in) returnArray
@@ -167,8 +164,6 @@ CONTAINS
         successFlag=0
         specname_out(:nspec) = specName
         collapse_mode=collapseIn
-        writePhysics = writeOut
-        collapseFile = collapseFileIn
 
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
                 &updatePhysics,updateTargetTime,sublimation,returnArray, returnRateConstants,givestartabund,&

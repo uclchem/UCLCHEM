@@ -21,34 +21,43 @@ Available Models
 Usage Patterns
 --------------
 
-**Disk mode (default)** - Results written to files::
+**Disk mode (default)** - Results written to files:
 
-    import uclchem
+    >>> import uclchem
+    >>>
+    >>> success_flag, abundance_CO, abundance_H2O = uclchem.functional.cloud(
+    ...     param_dict={'initialDens': 1e4, 'outputFile': 'cloud.dat'},
+    ...     out_species=['CO', 'H2O']
+    ... )
+    >>>
+    >>> success_flag.check_error()
+    Model ran successfully
 
-    result = uclchem.functional.cloud(
-        param_dict={'initialDens': 1e4, 'outputFile': 'cloud.dat'},
-        out_species=['CO', 'H2O']
-    )
-    # Returns: (success_flag, abundance_CO, abundance_H2O)
+**Memory mode** - Results returned as arrays:
 
-**Memory mode** - Results returned as arrays::
+    >>> phys, chem, rate_constants, heat, final_abun, success_flag = uclchem.functional.cloud(
+    ...     param_dict={'initialDens': 1e4},
+    ...     out_species=['CO', 'H2O'],
+    ...     return_array=True,
+    ...     return_rate_constants=True,
+    ...     return_heating=True
+    ... )
 
-    phys, chem, rate_constants, heat, final_abun, flag = uclchem.functional.cloud(
-        param_dict={'initialDens': 1e4},
-        out_species=['CO', 'H2O'],
-        return_array=True,
-        return_rate_constants=True,
-        return_heating=True
-    )
+**DataFrame mode** - Results as pd.DataFrames:
 
-**DataFrame mode** - Results as pd.DataFrames::
-
-    phys_df, chem_df, rate_constants_df, heat_df, final_abun, flag = uclchem.functional.cloud(
-        param_dict={'initialDens': 1e4},
-        out_species=['CO'],
-        return_dataframe=True,
-        return_rate_contants=True
-    )
+    >>> (
+    ...     phys_df,
+    ...     chem_df,
+    ...     rate_constants_df,
+    ...     heat_df,
+    ...     final_abun,
+    ...     success_flag,
+    ... ) = uclchem.functional.cloud(
+    ...     param_dict={'initialDens': 1e4},
+    ...     out_species=['CO'],
+    ...     return_dataframe=True,
+    ...     return_rate_constants=True
+    ... )
 
 .. note::
    You cannot mix file I/O parameters (``outputFile``, ``abundSaveFile``) with memory return
@@ -403,7 +412,6 @@ def __cloud__(
 
 def __collapse__(
     collapse: str,
-    physics_output: str,
     param_dict: dict | None = None,
     out_species: list[str] | None = None,
     return_array: bool = False,
@@ -419,8 +427,6 @@ def __collapse__(
     Args:
         collapse (str): A string containing the collapse type, options are
             'BE1.1', 'BE4', 'filament', or 'ambipolar'
-        physics_output (str): Filename to store physics output, only relevant for
-            'filament' and 'ambipolar' collapses. If None, no physics output will be saved.
         param_dict (dict): A dictionary of parameters where keys are any of the variables in
             `defaultparameters.f90` and values are value for current run.
         out_species (list): A list of species for which final abundance will be returned.
@@ -490,7 +496,6 @@ def __collapse__(
 
     model_object = Collapse(
         collapse=collapse,
-        physics_output=physics_output,
         param_dict=param_dict,
         out_species=out_species,
         starting_chemistry=starting_chemistry,

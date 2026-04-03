@@ -856,7 +856,7 @@ def rate_constants_to_dy_and_rates(
     if not bool(species) == bool(reactions):
         raise ValueError("If species is specified, reactions also must be and vice versa")
 
-    if (network is None) != (species is None and reactions is None):
+    if (network is None) == (species is None and reactions is None):
         raise ValueError(
             "Choose between providing a network OR (species AND reactions). A network can be obtained using `uclchem.makerates.network.Network.from_csv()`"
         )

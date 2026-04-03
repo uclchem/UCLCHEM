@@ -563,12 +563,8 @@ class TestOOCollapse1D:
     def test_oo_collapse_1d_freefall(self):
         """Test 1D collapse model with freefall."""
         params = {
-            "parcelStoppingMode": 2,
             "freefall": True,
-            "initialDens": 1e4,
             "initialTemp": 10.0,
-            "finalTime": 1.0e5,
-            "finalDens": 1e6,
             "points": 5,
             "enable_radiative_transfer": True,
             "density_scale_radius": 0.05,
@@ -581,7 +577,6 @@ class TestOOCollapse1D:
 
         model = uclchem.model.Collapse(
             collapse="BE1.1",
-            physics_output=None,
             param_dict=params,
             out_species=["CO", "H2O"],
             timepoints=2500,

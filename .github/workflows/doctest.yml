@@ -1,0 +1,48 @@
+name: Test install and doctests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop  # Add the 'develop' branch here
+  workflow_run:
+    workflows: ["Doctest"]
+    types:
+      - completed
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.12"  
+        
+    - name: Install gfortran
+      run: |
+        sudo apt-get -y update
+        sudo apt-get -y install gfortran
+
+    - name: Install dependencies # meson-python necessary to install package as editable
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-xdist pytest-github-actions-annotate-failures meson-python
+      
+    - name: Install package
+      run: |
+        pip install .
+
+    - name: Install package in editable mode # (necessary for doctest)
+      run: |
+        pip install --no-build-isolation -e .
+
+    - name: Run all test suite
+      run: |
+        pytest --doctest-modules --ignore=notebooks/ --ignore=src/uclchem/version.py --ignore=tests/ --ignore=Makerates/enthalpy_routines/ --ignore=utils/run_notebooks.py
+

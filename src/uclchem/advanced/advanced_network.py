@@ -335,7 +335,9 @@ class NetworkState:
         >>> network = NetworkState()
         >>> network.validate()  # Check on-disk matches in-memory
         >>> print(f"Species: {len(network.species_list)}")
+        Species: ...
         >>> print(f"Reactions: {len(network.reaction_list)}")
+        Reactions: ...
 
     """
 

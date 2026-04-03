@@ -22,6 +22,8 @@ MODULE physicscore
     ! Per-point initial density used by densdot for multi-point radial profile models.
     ! Defaults to global initialDens; overridden by cloud.f90 when enable_radiative_transfer=T.
     REAL(dp), allocatable :: initialDens_array(:)
+    ! Radial position of each parcel (pc). Set by collapse/cloud/hotcore for 1D models; 0 otherwise.
+    REAL(dp), allocatable :: parcel_radius(:)
 
     !Arrays for calculating rates
     !if ionModel = L use the L model coefficients, if = H use the H model
@@ -85,6 +87,9 @@ CONTAINS
         IF (ALLOCATED(initialDens_array)) DEALLOCATE(initialDens_array)
         ALLOCATE(initialDens_array(points))
         initialDens_array = initialDens   ! default: same for all points (single-point / no radial profile)
+        IF (ALLOCATED(parcel_radius)) DEALLOCATE(parcel_radius)
+        ALLOCATE(parcel_radius(points))
+        parcel_radius = 0.0_dp
 
         cloudSize = (rout-rin)*pc
         gasTemp=initialTemp

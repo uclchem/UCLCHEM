@@ -482,6 +482,26 @@ class Species:
         Returns:
             counter (Counter): Counter of how many times each element is in the molecule.
 
+        Examples:
+            >>> species = Species(['H2'] + [0] * 10)
+            >>> constituents = species.find_constituents()
+            >>> # Has the right number of H atoms
+            >>> constituents['H']
+            2
+            >>> # And 0 of the other atoms
+            >>> constituents['O']
+            0
+
+            >>> species = Species(['(CH3)2'] + [0] * 10)
+            >>> constituents = species.find_constituents()
+            >>> constituents['C'], constituents["H"]
+            (2, 6)
+
+            >>> species = Species(['C60'] + [0] * 10)
+            >>> constituents = species.find_constituents()
+            >>> constituents['C']
+            60
+
         Raises:
             ValueError: If the molecular formula is not valid, for example it has an
                 element not in the element list, has no closing bracket, or starts with a digit.
@@ -496,6 +516,7 @@ class Species:
         char_idx = 0
         atoms = []
         currently_in_bracket = False
+        j = None
         # loop over characters in species name to work out what it is made of
         while char_idx < len(name):
             # if character isn't a + or - then check it, otherwise move on
@@ -511,7 +532,7 @@ class Species:
                     j = char_idx + 1
 
                 # if we've found a new element check for numbers otherwise print error
-                if j <= char_idx:
+                if j is None or j <= char_idx:
                     raise ValueError(
                         f"formula {name} contains element(s) not in element list"
                     )
