@@ -412,7 +412,9 @@ class Network(BaseNetwork, MutableNetworkABC):
         ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
         ... )
         >>> reactions_list, dropped_reactions = read_reaction_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv", species_list, "UCL"
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+        ...     species_list,
+        ...     "UCL",
         ... )
         >>> network = Network.build(species_list, reactions_list, gas_phase_extrapolation=True)
 
@@ -525,7 +527,9 @@ class Network(BaseNetwork, MutableNetworkABC):
             ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
             ... )
             >>> reactions_list, dropped_reactions = read_reaction_file(
-            ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv", species_list, "UCL"
+            ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+            ...     species_list,
+            ...     "UCL",
             ... )
             >>> network = Network.from_lists(species_list, reactions_list)
 
@@ -565,7 +569,9 @@ class Network(BaseNetwork, MutableNetworkABC):
             ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
             ... )
             >>> reactions_list, dropped_reactions = read_reaction_file(
-            ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv", species_list, "UCL"
+            ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+            ...     species_list,
+            ...     "UCL",
             ... )
             >>> network = Network.build(
             ...     species=species_list,
@@ -973,7 +979,9 @@ def build_network(
         ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
         ... )
         >>> reactions_list, dropped_reactions = read_reaction_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv", species_list, "UCL"
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+        ...     species_list,
+        ...     "UCL",
         ... )
 
         >>> # Build network with standard options
@@ -1031,7 +1039,9 @@ def create_network(
         ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
         ... )
         >>> reactions_list, dropped_reactions = read_reaction_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv", species_list, "UCL"
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+        ...     species_list,
+        ...     "UCL",
         ... )
         >>>
         >>> network = create_network(species_list, reactions_list)

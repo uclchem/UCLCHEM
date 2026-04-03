@@ -45,8 +45,14 @@ def Network(
         >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
         >>> from uclchem.utils import UCLCHEM_ROOT_DIR
         >>>
-        >>> species_list, user_defined_bulk = read_species_file(UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv")
-        >>> reactions_list, dropped_reactions = read_reaction_file(UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv", species_list, "UCL")
+        >>> species_list, user_defined_bulk = read_species_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+        ... )
+        >>> reactions_list, dropped_reactions = read_reaction_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+        ...     species_list,
+        ...     "UCL",
+        ... )
 
         >>> # Old style (deprecated)
         >>> network = Network(species_list, reactions_list, gas_phase_extrapolation=True)
@@ -118,11 +124,16 @@ class LoadedNetwork:
             >>> reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
 
             >>> species_list, user_defined_bulk = read_species_file(species_path)
-            >>> reactions_list, dropped_reactions = read_reaction_file(reactions_path, species_list, "UCL")
+            >>> reactions_list, dropped_reactions = read_reaction_file(
+            ...     reactions_path, species_list, "UCL"
+            ... )
 
             >>> # Old style (deprecated)
             >>> network = LoadedNetwork()
-            >>> network = LoadedNetwork(species_filepath=species_path, reactions_filepath=reactions_path)
+            >>> network = LoadedNetwork(
+            ...     species_filepath=species_path,
+            ...     reactions_filepath=reactions_path
+            ... )
             >>> network = LoadedNetwork(species=species_list, reactions=reactions_list)
 
             >>> # New style (recommended)

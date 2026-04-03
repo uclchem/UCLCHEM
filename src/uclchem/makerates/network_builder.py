@@ -43,7 +43,9 @@ class NetworkBuilder:
         ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
         ... )
         >>> reactions_list, dropped_reactions = read_reaction_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv", species_list, "UCL"
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+        ...     species_list,
+        ...     "UCL",
         ... )
         >>> builder = NetworkBuilder(
         ...     species=species_list,
