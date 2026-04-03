@@ -19,11 +19,18 @@ _skip_reaction_validation = False
 def skip_reaction_validation() -> Iterator[None]:
     """Context manager to temporarily disable reaction validation.
 
-    This is useful when loading pre-validated networks where you do not want any checks.
+    This is useful when loading pre-validated networks where you do not necessarily
+    want to check element and charge conservation.
 
     Example:
-        >>> with skip_validation():
-        ...     reaction = Reaction(["C2N", "FREEZE", "NAN", "#CH3CNH", ...])
+        >>> with skip_reaction_validation():
+        ...     reaction = Reaction(["#C2N", "LH", "NAN", "#CH3CNH", "NAN", "NAN", "NAN"]+ [0] * 10)
+        >>> reaction = Reaction(["#C2N", "LH", "NAN", "#CH3CNH", "NAN", "NAN", "NAN"] + [0] * 10)
+        Traceback (most recent call last):
+        ...
+        ValueError: Elements not conserved in a reaction.
+        The following reaction caused this error: #C2N + LH -> #CH3CNH.
+        ...
 
     """
     global _skip_reaction_validation
@@ -277,8 +284,7 @@ class Reaction:
         return self._sorted_products
 
     def set_products(self, products: list[str]) -> None:
-        """Set the four products present in the reaction,
-        padded with NAN for nonexistent entries.
+        """Set the four products present in the reaction, padded with NAN for nonexistent entries.
 
         Args:
             products (list[str]): The four products names
@@ -399,6 +405,24 @@ class Reaction:
     def predict_reduced_mass(self) -> None:
         """Predict the reduced mass of the tunneling particle in this reaction.
         This is used in the calculation of the tunneling rates.
+
+        Examples:
+            >>> reaction = Reaction(["#CH3OH", "#H", "LH", "#CH3O", "#H2", "NAN", "NAN"] + [0] * 10)
+            >>> # Setting a custom reduced mass
+            >>> reaction.set_reduced_mass(20.0)
+            >>>
+            >>> # The custom reduced mass that we set.
+            >>> reaction.get_reduced_mass()
+            20.0
+            >>> # Predicting the reduced mass of the reaction
+            >>> reaction.predict_reduced_mass()
+            >>> reaction.get_reduced_mass()
+            1.0
+
+            >>> # It is called upon Reaction instantiation
+            >>> reaction = Reaction(["#CH3OH", "#OH", "LH", "#CH3O", "#H2O", "NAN", "NAN"] + [0] * 10)
+            >>> reaction.get_reduced_mass() # mass of atomic hydrogen
+            1.0
         """
         reac_constituents = []
         reac_species = []

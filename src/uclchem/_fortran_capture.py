@@ -87,11 +87,12 @@ def capture_fortran_output(
     Yields: None
 
     Example:
+        >>> from uclchem.model import Cloud
         >>> with capture_fortran_output(
-        >>>     label="model_3",
-        >>>     log_file="logs/model_3.log",
-        >>> ):
-        >>>     result = wrap.cloud(...)
+        ...     label="model_3",
+        ...     log_file="logs/model_3.log",
+        ... ):
+        ...    result = Cloud({})
 
     """
     # Flush Python buffers before redirecting

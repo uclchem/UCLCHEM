@@ -44,9 +44,11 @@ class RuntimeNetwork(BaseNetwork):
 
     Examples:
         >>> # Load runtime network
-        >>> network = RuntimeNetwork.from_fortran()
+        >>> network = RuntimeNetwork()
         >>> print(f"Species: {len(network.get_species_list())}")
+        Species: ...
         >>> print(f"Reactions: {len(network.get_reaction_list())}")
+        Reactions: ...
 
         >>> # Modify parameters
         >>> network.modify_reaction_parameters(0, alpha=1e-10, beta=2.0)
@@ -597,7 +599,9 @@ class RuntimeNetwork(BaseNetwork):
             IndexError: If reaction_idx out of range
 
         Example:
+            >>> network = RuntimeNetwork()
             >>> network.modify_reaction_parameters(0, alpha=1e-10, beta=2.0)
+            >>> network.reset_to_initial_state()
 
         """
         if reaction_idx < 0 or reaction_idx >= len(self._fortran.alpha):
@@ -629,7 +633,9 @@ class RuntimeNetwork(BaseNetwork):
             reaction_idx: Index of reaction to disable (0-based)
 
         Example:
+            >>> network = RuntimeNetwork()
             >>> network.disable_reaction(5)
+            >>> network.reset_to_initial_state()
 
         """
         self.modify_reaction_parameters(reaction_idx, alpha=0.0)
@@ -642,6 +648,7 @@ class RuntimeNetwork(BaseNetwork):
         - All species binding energies
 
         Example:
+            >>> network = RuntimeNetwork()
             >>> network.modify_reaction_parameters(0, alpha=999.0)
             >>> network.reset_to_initial_state()  # Restores original alpha
 

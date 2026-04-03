@@ -21,8 +21,10 @@ class MakeratesConfig(BaseModel):
     configuration file location.
 
     Example:
-        >>> config = MakeratesConfig.from_yaml("user_settings.yaml")
+        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+        >>> config = MakeratesConfig.from_yaml(UCLCHEM_ROOT_DIR/ "../../Makerates/user_settings.yaml")
         >>> print(config.species_file)
+        data/default/default_species.csv
 
     """
 

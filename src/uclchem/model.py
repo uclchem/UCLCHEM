@@ -23,25 +23,23 @@ Available in :mod:`uclchem.functional` for backward compatibility.
 Returns arrays/DataFrames instead of model objects.
 
 **Quick Example:**
-
-.. code-block:: python
-
-    import uclchem
-
-    # Create a collapsing cloud model
-    cloud = uclchem.model.Cloud(
-        param_dict={
-            \"initialDens\": 1e2,
-            \"initialTemp\": 10.0,
-            \"finalTime\": 1e6,
-            \"freefall\": True
-        },
-        out_species=[\"CO\", \"H2O\", \"CH3OH\"]
-    )
-
-    # Check for errors and plot
-    cloud.check_error()
-    cloud.create_abundance_plot([\"CO\", \"$CO\"])
+    >>> import uclchem
+    >>>
+    >>> # Create a collapsing cloud model
+    >>> cloud = uclchem.model.Cloud(
+    ...     param_dict={
+    ...         "initialDens": 1e2,
+    ...         "initialTemp": 10.0,
+    ...         "finalTime": 1e6,
+    ...         "freefall": True
+    ...     },
+    ...     out_species=["CO", "H2O", "CH3OH"]
+    ... )
+    >>>
+    >>> # Check for errors and plot
+    >>> cloud.check_error()
+    Model ran successfully
+    >>> cloud.create_abundance_plot(["CO", "$CO"]) #doctest: +SKIP
 
 **Model Workflow:**
 
@@ -183,6 +181,12 @@ def reaction_line_formatter(line: list[str]) -> str:
 
     Returns:
         str: formatted reaction for printing.
+
+    Examples:
+        >>> print(reaction_line_formatter(["#OH", "#H", "LH", "#H2O", "NAN", "NAN", "NAN"]))
+        #OH + #H + LH -> #H2O
+        >>> print(reaction_line_formatter(["H2", "PHOTON", "NAN", "H", "H", "NAN", "NAN"]))
+        H2 + PHOTON -> H + H
 
     """
     reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
@@ -828,7 +832,8 @@ class AbstractModel(ABC):
         msg = self.success_flag.check_error(
             only_error=only_error, raise_on_error=raise_on_error
         )
-        print(msg)
+        if msg is not None:
+            print(msg)
 
     def create_abundance_plot(
         self,
@@ -1105,11 +1110,14 @@ class AbstractModel(ABC):
                 Rows where TRAJECTORY_INDEX=0 are filtered out (unused preallocated space).
 
         Example:
+            >>> import uclchem
+            >>> param_dict = {}
             >>> model = uclchem.model.Cloud(param_dict)
             >>> solver_stats = model.get_solver_stats_dataframe()
             >>> # Count failed attempts
             >>> failures = solver_stats[solver_stats['ISTATE'] < 0]
-            >>> print(f"Failed attempts: {len(failures)}")
+            >>> print(f"Failed attempts: {len(failures)}") # doctest: +ELLIPSIS
+            Failed attempts: ...
 
         """
         if self.stats_array is None:
@@ -1145,10 +1153,17 @@ class AbstractModel(ABC):
                 or None if no failures or stats unavailable.
 
         Example:
+            >>> import uclchem
+            >>> param_dict = {}
+            >>> model = uclchem.model.Cloud(param_dict)
             >>> failures = model.get_failed_solver_attempts()
             >>> if failures is not None:
-            >>>     print(f"Total retries needed: {len(failures)}")
-            >>>     print(failures.groupby('ISTATE').size())
+            ...     print(f"Total retries needed: {len(failures)}")
+            ...     print(failures.groupby('ISTATE').size())
+            ... else:
+            ...     print("No failures occured.")
+            ...
+            No failures occured.
 
         """
         df = self.get_solver_stats_dataframe(point)

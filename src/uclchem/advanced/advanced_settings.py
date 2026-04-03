@@ -102,7 +102,7 @@ class Setting:
         self.is_edited = False
 
         # Store metadata
-        if isinstance(value, np.ndarray):
+        if isinstance(value, np.ndarray) and value.shape:
             self.dtype = value.dtype
             self.shape = value.shape
         else:
@@ -124,7 +124,7 @@ class Setting:
 
         if check_memory:
             # Compare with cached value
-            if isinstance(memory_value, np.ndarray):
+            if isinstance(memory_value, np.ndarray) and memory_value.shape:
                 if not np.array_equal(memory_value, self.current_value):
                     warnings.warn(
                         f"{self.module_name}.{self.name} has been modified "
@@ -418,27 +418,44 @@ class GeneralSettings:
         only be modified during initialization, before running models.
 
     Usage:
-        >>> from uclchem.advanced import GeneralSettings
+        >>> from uclchem.advanced.advanced_settings import GeneralSettings
         >>> settings = GeneralSettings()
         >>>
         >>> # Access a setting
         >>> setting = settings.defaultparameters.initialdens
         >>> print(setting.get())
+        100.0
         >>>
         >>> # Modify a setting
         >>> setting.set(500.0)
+        >>>
+        >>> # Get the modified value
+        >>> print(setting.get())
+        500.0
         >>>
         >>> # Or use attribute-style syntax
         >>> settings.defaultparameters.initialdens = 500.0
         >>>
         >>> # List all settings in a module
-        >>> settings.defaultparameters.print_settings()
+        >>> settings.defaultparameters.print_settings() # doctest: +SKIP
+        ...
         >>>
         >>> # Use context manager for temporary changes
         >>> with settings.temporary_changes():
         ...     settings.defaultparameters.initialdens = 1000.0
+        ...     print(setting.get())
         ...     # Run model with modified settings
+        ...
+        1000.0
         >>> # Settings automatically restored after context
+        >>> print(setting.get())
+        500.0
+        >>> # As well as in the GeneralSettings instance
+        >>> print(settings.defaultparameters.initialdens)
+        Setting(defaultparameters.initialdens = 500.0 [EDITED])
+        >>>
+        >>> # Reset to the original value
+        >>> setting.set(100.0)
     """
 
     def __init__(self):
@@ -636,15 +653,19 @@ class GeneralSettings:
 
         Example:
             >>> settings = GeneralSettings()
-            >>> settings.defaultparameters.initialdens = 1000.0
-            >>> print(settings.defaultparameters.initialdens.get())  # 1000.0
+            >>> settings.defaultparameters.initialdens = 100.0
+            >>> print(settings.defaultparameters.initialdens.get())
+            100.0
             >>>
             >>> with settings.temporary_changes():
             ...     settings.defaultparameters.initialdens = 5000.0
-            ...     print(settings.defaultparameters.initialdens.get())  # 5000.0
+            ...     print(settings.defaultparameters.initialdens.get())
             ...     # Run model here
+            ...
+            5000.0
             >>>
-            >>> print(settings.defaultparameters.initialdens.get())  # 1000.0 (restored)
+            >>> print(settings.defaultparameters.initialdens.get())
+            100.0
 
         Yields:
             self: The GeneralSettings instance for chaining
@@ -666,7 +687,7 @@ class GeneralSettings:
                     continue
                 try:
                     saved_states[module_name][setting_name] = {
-                        "value": setting._copy_value(setting.get(check_memory=False)),
+                        "value": _copy_value(setting.get(check_memory=False)),
                         "is_edited": setting.is_edited,
                     }
                 except Exception as e:
@@ -685,6 +706,10 @@ class GeneralSettings:
                 mod_settings = self._modules[module_name]
                 for setting_name, state in settings_dict.items():
                     setting = mod_settings._settings[setting_name]
+                    if setting.get() == state["value"]:
+                        # Setting was not edited, no need to reset it.
+                        continue
+
                     try:
                         setting.set(state["value"])
                         setting.is_edited = state["is_edited"]
