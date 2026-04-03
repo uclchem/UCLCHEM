@@ -18,17 +18,20 @@ maintainers = [
 license = {text = "MIT License"}
 description = "A package for the astrochemical modelling of gas-grain chemistries."
 readme = "README.md"
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.11,<3.14"
 dependencies = [
-    "h5py", "pandas", "numpy", "pyyaml", "charset_normalizer", "matplotlib", "seaborn", "scipy", "tqdm", "joblib", "xarray", "pydantic>=2.0"
+    "h5py", "pandas", "numpy", "pyyaml", "matplotlib", "xarray", "pydantic>=2.0"
 ]
 
 [project.urls]
 Repository = "https://github.com/uclchem/UCLCHEM"
 Documentation = "https://uclchem.github.io"
 
+[project.scripts]
+uclchem-generate-metadata = "uclchem.advanced.generate_metadata:main"
+
 [project.optional-dependencies]
-dev = ["pytest", "pytest-xdist", "pytest-github-actions-annotate-failures", "pre-commit", "sphinx"]  # Development dependencies
+dev = ["pytest", "pytest-timeout", "pytest-xdist", "pytest-github-actions-annotate-failures", "pre-commit", "sphinx", "ruff"]  # Development dependencies
 docs = ["pydoc-markdown", "jupyter", "jupyter_contrib_nbextensions", "notebook<7"]
 
 [tool.ruff]
@@ -37,12 +40,16 @@ extend-exclude = ["notebooks/*.py"]
 line-length = 90
 
 [tool.ruff.lint]
-select = ["E", "F", "C", "I", "E"]
+select = ["E", "F", "C", "I", "W", "D", "E", "ANN001", "ANN201", "B006", "ARG", "RUF100", "UP", "PLR6301", "DOC", "SIM"]
 extend-ignore = [
-    "E501", "E731", "E741", "E402", "F841", "F811", "C901", "E203", "E402"
+    "E501", "E731", "E741", "E402", "F841", "F811", "C901", "E203", "E402", "D211", "D213", "D205", "D105", "D107", "D301", "SIM108", "SIM102"
 ]
+pycodestyle.max-doc-length = 105
+pydocstyle.convention = 'google'
+preview = true
 
 [tool.ruff.lint.per-file-ignores]
 # E402: Module level import not at top of file - normal for notebook-derived files
 "notebooks/*.py" = ["E402"]
 "*/__init__.py" = ["F401"]
+"tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002", "DOC"]

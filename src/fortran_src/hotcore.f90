@@ -7,10 +7,9 @@ MODULE hotcore
     !f2py INTEGER, parameter :: dp    
     USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens, density_max, ngas_r, findcoldens_core2edge
+    &coldens, density_max, ngas_r, findcoldens_core2edge, parcel_radius, radiation
     USE network
     USE f2py_constants
-    USE extinction_module
     IMPLICIT NONE
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
     INTEGER :: solidflag,volcflag,coflag
@@ -62,6 +61,7 @@ contains
 
             DO dstep=1,points
                 parcelRadius(dstep)=dstep*rout/float(points) !unit of parsec -- note: parcelRadius is from core to edge
+                parcel_radius(dstep)=parcelRadius(dstep)
             END DO
         END IF
 
@@ -246,73 +246,4 @@ contains
         END DO
     END SUBROUTINE bindingEnergyEvap
 
-    ! 1D Radiative transfer subroutines
-    SUBROUTINE radiation(r, Lstar, Tstar, Avs, temperatures, U)
-        IMPLICIT NONE
-        REAL(dp) :: Lstar, Tstar, r
-        REAL(dp), INTENT(OUT) :: temperatures, U
-        INTEGER :: i
-        REAL(dp), DIMENSION(:), ALLOCATABLE :: wave, wave_cm, Istar, uwave_star, uwave_red, tau_wave
-        REAL(dp) :: ZZ, wave1, Avs, wave2, rsub
-        REAL(dp) :: h, sum_odd, sum_even
-        REAL(dp) :: uISRF, NH_EBV, RV, Tdsub
-        REAL(8)  ::  urad_red
-        INTEGER, PARAMETER :: nw=129
-        REAL(dp), DIMENSION(2, nw) :: ext_curves
-        CHARACTER(LEN=10) :: model
-
-        uISRF = 8.64d-13 !erg cm-3
-        Tdsub=2300.d0 !K
-        RV = 4.0d0
-        NH_EBV = 5.8d21
-        
-        ! sublimation distance
-        rsub = 155.3d0*(Lstar/1.0d6/Lsun)**(0.5) * (Tdsub/1500.d0)**(-5.6/2.0) * aunit !in cm
-
-        ZZ = HP * C / (K_BOLTZ * Tstar)
-
-        ! wavelength range from 13.6eV to 20microns
-        wave1 = HP * C * 1.d4 / (13.6d0 * EV) ! in micron
-        wave2 = 20.0d0                        ! in micron
-
-        !logspace for wave in micron
-        ALLOCATE(wave(nw))
-        CALL logspace(LOG10(wave1), LOG10(wave2), nw, wave)
-
-        ! Call the function of the extinction curve from the module
-        CALL extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
-
-        wave_cm = wave*1.d-4 !in cm
-
-        ! Intensity of the star
-        Istar   = (2.d0*HP*C**2.0/wave_cm**5.0)*(1.d0/(EXP(ZZ/wave_cm)-1.0d0)) !an array
-        uwave_star = (4.d0*PI*wave_cm/C)*(Istar)/wave_cm !an array
-
-        ! Optical depth and reddening of the star's intensity
-        tau_wave = Avs * ext_curves(1,:)/1.086d0 !an array
-        uwave_red = uwave_star*EXP(-tau_wave)    !an array
-        
-        ! Initialize the integral intensity value
-        urad_red = 0.0d0
-
-        ! Apply trapezoidal rule for numerical integration
-        DO i = 1, 129-1
-            urad_red = urad_red + 0.5d0 * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
-        END DO
-        ! Outputs
-        U = urad_red / uISRF * (r / rsub)**(-2.0)
-        temperatures = 16.4d0 * U**(1.0/6.0)  ! For silicate grains
-    END SUBROUTINE radiation
-
-    SUBROUTINE logspace(start, stop, num, result)
-        IMPLICIT NONE
-        REAL(dp), INTENT(IN) :: start, stop
-        INTEGER, INTENT(IN) :: num
-        REAL(dp), DIMENSION(num), INTENT(OUT) :: result
-        INTEGER :: i
-
-        DO i = 1, num
-            result(i) = 10.0d0**(start + (i-1)*(stop-start)/DBLE(num-1))
-        END DO
-    END SUBROUTINE logspace
 END MODULE hotcore 

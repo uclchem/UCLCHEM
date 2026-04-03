@@ -1,12 +1,18 @@
+"""Analyse the formation and destruction reactions of a species.
+
+Deprecated.
+"""
+
 import uclchem
 
-################################################
-# User Inputs Go Here
-################################################
+if __name__ == "__main__":
+    ################################################
+    # User Inputs Go Here
+    ################################################
 
-species_name = "#CO"
-result_file = "examples/test-output/phase1-full.dat"
-output = "analysis.dat"
+    species_name = "#CO"
+    result_file = "examples/test-output/phase1-full.dat"
+    output = "analysis.dat"
 
-################################################
-uclchem.analysis.analysis(species_name, result_file, output)
+    ################################################
+    uclchem.analysis.analysis(species_name, result_file, output)

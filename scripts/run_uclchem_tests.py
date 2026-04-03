@@ -1,7 +1,16 @@
+"""Test some basic UCLCHEM models.
+
+This should be run from the UCLCHEM root directory.
+"""
+
+import logging
 import os
 from time import perf_counter
 
 import uclchem
+
+logging.basicConfig(level=logging.DEBUG)
+
 
 if __name__ == "__main__":
     settings = uclchem.advanced.GeneralSettings()

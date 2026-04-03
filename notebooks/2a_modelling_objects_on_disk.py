@@ -17,9 +17,11 @@
 #
 # In the previous tutorial, we simply modelled the chemistry of a static cloud for 1 Myr. This is unlikely to meet everybody's modelling needs and UCLCHEM is capable of modelling much more complex environments such as prestellar cores and shocks. In this tutorial, we model both a prestellar core and a shock to explore how these models work and to demonstrate the workflow that the UCLCHEM team normally follow. In tutorial 2a, we approach the modeling in a more classic approach, by writing the outputs to files, before passing them to the subsequent model class. In tutorial 2b, we calculate the exact same models, but take advantage of the model objects in order to perform all calculations in memory, bypassing the file system entirely.
 
-import uclchem
-import matplotlib.pyplot as plt
 import os
+
+import matplotlib.pyplot as plt
+
+import uclchem
 
 # ## The Prestellar Core
 #

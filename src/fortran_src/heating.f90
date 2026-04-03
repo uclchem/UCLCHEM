@@ -1041,7 +1041,7 @@ END MODULE heating
 !     JH: Alternative photoelectric heating rates. The correct one depends on dust distribution
 !     The one coded as photoelectricHeating() is the current one in ucl in UCLPDR
 !-----------------------------------------------------------------------
-!  Grain photoelectric heating (large grains only; r ~ 100 Å)
+!  Grain photoelectric heating (large grains only; r approx 100 Angstrom)
 !
 !  Use the treatment of 
 
@@ -1111,7 +1111,7 @@ END MODULE heating
 !    END FUNCTION deltaGrainChargeFunc
 
 ! !-----------------------------------------------------------------------
-! !  Grain + PAH photoelectric heating (MRN size distribution; r = 3-100 Å)
+! !  Grain + PAH photoelectric heating (MRN size distribution; r = 3-100 Angstrom)
 ! !
 ! !  Use the treatment of Bakes & Tielens (1994, ApJ, 427, 822) with the
 ! !  modifications suggested by Wolfire et al. (2003, ApJ, 587, 278) to

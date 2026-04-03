@@ -1,5 +1,4 @@
-"""
-Unit tests for advanced module classes.
+"""Unit tests for advanced module classes.
 
 Tests the runtime interfaces for:
 - HeatingSettings: Controlling heating and cooling mechanisms
@@ -169,7 +168,8 @@ class TestHeatingSettings:
     def test_invalid_mechanism_index(self, settings: advanced.HeatingSettings) -> None:
         """Test that invalid mechanism indices raise errors.
 
-        Python-Fortran integration: Tests error handling when accessing invalid Fortran array index.
+        Python-Fortran integration: Tests error handling when accessing
+        invalid Fortran array index.
         """
         with pytest.raises((IndexError, ValueError, RuntimeError)):
             settings.set_heating_mechanism(999, True)
@@ -596,7 +596,7 @@ class TestGeneralSettings:
 
         assert isinstance(results, dict)
         assert len(results) > 0
-        assert any("initial" in key.lower() for key in results.keys())
+        assert any("initial" in key.lower() for key in results)
 
     def test_module_list_settings(self, settings: advanced.GeneralSettings) -> None:
         """Test listing settings in a module.
@@ -766,9 +766,9 @@ def test_network_reset_preserves_all_parameters():
         network._network.bindingenergy[i] *= 1.5
 
     # Verify modifications took effect
-    assert not np.allclose(
-        network._network.alpha[:10], csv_alpha[:10]
-    ), "Alpha modification didn't work"
+    assert not np.allclose(network._network.alpha[:10], csv_alpha[:10]), (
+        "Alpha modification didn't work"
+    )
 
     # Reset network to initial state
     network.reset_state()
@@ -786,18 +786,18 @@ def test_network_reset_preserves_all_parameters():
     )
 
     # Check exact matches - arrays should be identical element-wise
-    assert np.allclose(
-        csv_alpha, reset_alpha
-    ), "Alpha values not exactly matching CSV after reset"
-    assert np.allclose(
-        csv_beta, reset_beta
-    ), "Beta values not exactly matching CSV after reset"
-    assert np.allclose(
-        csv_gamma, reset_gamma
-    ), "Gamma values not exactly matching CSV after reset"
-    assert np.allclose(
-        csv_binding, reset_binding
-    ), "Binding energies not exactly matching CSV after reset"
+    assert np.allclose(csv_alpha, reset_alpha), (
+        "Alpha values not exactly matching CSV after reset"
+    )
+    assert np.allclose(csv_beta, reset_beta), (
+        "Beta values not exactly matching CSV after reset"
+    )
+    assert np.allclose(csv_gamma, reset_gamma), (
+        "Gamma values not exactly matching CSV after reset"
+    )
+    assert np.allclose(csv_binding, reset_binding), (
+        "Binding energies not exactly matching CSV after reset"
+    )
 
 
 def test_network_reset_isolated():

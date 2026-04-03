@@ -14,20 +14,20 @@
 
 # %% [markdown]
 # # DVODE Solver Statistics
-# 
+#
 # UCLCHEM uses the DVODE ODE integrator to solve the chemical network at each timestep.
 # This notebook demonstrates how to access per-timestep solver diagnostics, which are
 # useful for understanding solver performance, identifying stiff timesteps, and diagnosing
 # convergence issues.
 
 # %%
-import uclchem
 import matplotlib.pyplot as plt
-import numpy as np
+
+import uclchem
 
 # %% [markdown]
 # ## Running a Model and Accessing Stats
-# 
+#
 # Every model automatically collects solver statistics. Access them via `stats_array`
 # (raw numpy array) or `get_dataframes(with_stats=True)` (pandas DataFrame).
 
@@ -47,7 +47,7 @@ print(f"Model completed with flag: {model.success_flag}")
 
 # %% [markdown]
 # ## Viewing Stats as a DataFrame
-# 
+#
 # The `get_dataframes` method supports a `with_stats` flag. When joined, the solver
 # statistics are appended as extra columns alongside the physics and chemistry data.
 
@@ -59,7 +59,7 @@ df[["Time"] + uclchem.constants.DVODE_STAT_NAMES].head(10)
 
 # %% [markdown]
 # ## Plotting Solver Effort Over Time
-# 
+#
 # The number of function evaluations (NFE) and steps (NST) per timestep show
 # how hard the solver works at each point in the simulation. Spikes indicate
 # chemically stiff regions.
@@ -98,7 +98,7 @@ plt.show()
 
 # %% [markdown]
 # ## Convergence Diagnostics
-# 
+#
 # NCFN (convergence failures) and NETF (error test failures) indicate solver
 # difficulties. Non-zero values suggest the chemistry is particularly stiff.
 
@@ -116,7 +116,7 @@ plt.show()
 
 # %% [markdown]
 # ## Accessing Stats via the Raw Array
-# 
+#
 # The raw stats array has shape `(timesteps, points, 18)` and is available
 # directly on the model object.
 

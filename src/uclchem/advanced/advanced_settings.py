@@ -1,5 +1,4 @@
-"""
-General settings interface for UCLCHEM Fortran modules.
+"""General settings interface for UCLCHEM Fortran modules.
 
 This module provides class-based interfaces for accessing and modifying runtime
 settings across all UCLCHEM Fortran modules:
@@ -17,9 +16,13 @@ Note: Changes made through these classes affect the global Fortran state and per
 across model runs in the same Python session.
 """
 
+from __future__ import annotations
+
 import warnings
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Dict, Set, Union
+from types import ModuleType
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -27,6 +30,21 @@ import uclchemwrap
 
 # Import parameter classifications from constants module
 from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
+
+
+def _copy_value(value: Any) -> Any:
+    """Make a copy of a value (handle arrays and scalars).
+
+    Args:
+        value (Any): value to be copied.
+
+    Returns:
+        Any: copy of the original object
+    """
+    if isinstance(value, np.ndarray):
+        return value.copy()
+    else:
+        return value
 
 
 class Setting:
@@ -46,13 +64,14 @@ class Setting:
         is_internal: True if this is an internal solver parameter
         is_file_path: True if this is a file path (should use param_dict)
         shape: Array shape (None for scalars)
+
     """
 
     def __init__(
         self,
         name: str,
         module_name: str,
-        fortran_module,
+        fortran_module: ModuleType,
         is_parameter: bool = False,
         is_internal: bool = False,
         is_file_path: bool = False,
@@ -60,12 +79,14 @@ class Setting:
         """Initialize a Setting object.
 
         Args:
-            name: Setting name
-            module_name: Parent module name
-            fortran_module: Reference to the Fortran module
-            is_parameter: Whether this is a PARAMETER (read-only)
-            is_internal: Whether this is an internal solver parameter
-            is_file_path: Whether this is a file path parameter (should use param_dict)
+            name (str): Setting name
+            module_name (str): Parent module name
+            fortran_module (ModuleType): Reference to the Fortran module
+            is_parameter (bool): Whether this is a PARAMETER (read-only). Default = False.
+            is_internal (bool): Whether this is an internal solver parameter. Default = False.
+            is_file_path (bool): Whether this is a file path parameter (should use param_dict).
+                Default = False.
+
         """
         self.name = name
         self.module_name = module_name
@@ -76,26 +97,19 @@ class Setting:
 
         # Read initial state
         value = getattr(fortran_module, name)
-        self.default_value = self._copy_value(value)
-        self.current_value = self._copy_value(value)
+        self.default_value = _copy_value(value)
+        self.current_value = _copy_value(value)
         self.is_edited = False
 
         # Store metadata
-        if isinstance(value, np.ndarray):
+        if isinstance(value, np.ndarray) and value.shape:
             self.dtype = value.dtype
             self.shape = value.shape
         else:
             self.dtype = type(value)
             self.shape = None
 
-    def _copy_value(self, value):
-        """Make a copy of a value (handle arrays and scalars)."""
-        if isinstance(value, np.ndarray):
-            return value.copy()
-        else:
-            return value
-
-    def get(self, check_memory: bool = True) -> Union[float, int, npt.NDArray]:
+    def get(self, check_memory: bool = True) -> float | int | npt.NDArray:
         """Get the current value of the setting.
 
         Args:
@@ -104,12 +118,13 @@ class Setting:
 
         Returns:
             Current value from Fortran memory
+
         """
         memory_value = getattr(self._fortran_module, self.name)
 
         if check_memory:
             # Compare with cached value
-            if isinstance(memory_value, np.ndarray):
+            if isinstance(memory_value, np.ndarray) and memory_value.shape:
                 if not np.array_equal(memory_value, self.current_value):
                     warnings.warn(
                         f"{self.module_name}.{self.name} has been modified "
@@ -127,10 +142,10 @@ class Setting:
                     )
 
         # Update cache
-        self.current_value = self._copy_value(memory_value)
+        self.current_value = _copy_value(memory_value)
         return memory_value
 
-    def set(self, value: Union[float, int, npt.NDArray]) -> None:
+    def set(self, value: float | int | npt.NDArray) -> None:
         """Set the value of the setting.
 
         Args:
@@ -138,6 +153,7 @@ class Setting:
 
         Raises:
             RuntimeError: If attempting to modify a PARAMETER or file path parameter
+
         """
         if self.is_parameter:
             raise RuntimeError(
@@ -159,15 +175,19 @@ class Setting:
         setattr(self._fortran_module, self.name, value)
 
         # Update cache and edit status
-        self.current_value = self._copy_value(value)
+        self.current_value = _copy_value(value)
         self.is_edited = (
             not np.array_equal(self.current_value, self.default_value)
             if isinstance(self.current_value, np.ndarray)
             else (self.current_value != self.default_value)
         )
 
-    def reset(self):
-        """Reset the setting to its default value."""
+    def reset(self) -> None:
+        """Reset the setting to its default value.
+
+        Raises:
+            RuntimeError: If the setting is a Fortran parameter
+        """
         if self.is_parameter:
             raise RuntimeError(
                 f"Cannot reset {self.module_name}.{self.name}: "
@@ -178,7 +198,12 @@ class Setting:
         self.is_edited = False
 
     def __repr__(self) -> str:
-        """String representation of the setting."""
+        """String representation of the setting.
+
+        Returns:
+            str: String representation of the setting.
+
+        """
         status = []
         if self.is_parameter:
             status.append("PARAMETER")
@@ -212,19 +237,20 @@ class ModuleSettings:
     def __init__(
         self,
         module_name: str,
-        fortran_module,
-        parameter_names: Set[str],
-        internal_names: Set[str],
-        file_path_names: Set[str],
+        fortran_module: ModuleType,
+        parameter_names: set[str],
+        internal_names: set[str],
+        file_path_names: set[str],
     ):
         """Initialize settings for a module.
 
         Args:
-            module_name: Name of the Fortran module
-            fortran_module: Reference to the actual Fortran module
-            parameter_names: Set of names that are PARAMETERs
-            internal_names: Set of names that are internal solver parameters
-            file_path_names: Set of names that are file paths (should use param_dict)
+            module_name (str): Name of the Fortran module
+            fortran_module (ModuleType): Reference to the actual Fortran module
+            parameter_names (set[str]): Set of names that are PARAMETERs
+            internal_names (set[str]): Set of names that are internal solver parameters
+            file_path_names (set[str]): Set of names that are file paths (should use param_dict)
+
         """
         self.module_name = module_name
         self._fortran_module = fortran_module
@@ -259,8 +285,18 @@ class ModuleSettings:
                 # Skip attributes that can't be accessed
                 pass
 
-    def __getattr__(self, name):
-        """Get a Setting object by name."""
+    def __getattr__(self, name: str) -> Setting:
+        """Get a Setting object by name.
+
+        Args:
+            name: name of setting.
+
+        Returns:
+            Setting: setting
+
+        Raises:
+            AttributeError: if no setting with `name` is available.
+        """
         if name.startswith("_"):
             return object.__getattribute__(self, name)
 
@@ -273,8 +309,17 @@ class ModuleSettings:
             f"Available: {', '.join(list(self._settings.keys())[:10])}..."
         )
 
-    def __setattr__(self, name, value):
-        """Set a setting value."""
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Set a setting value.
+
+        Args:
+            name (str): name of setting.
+            value (Any): value to set setting to.
+
+        Raises:
+            AttributeError: if no setting with `name` is available.
+
+        """
         if name.startswith("_") or name in ["module_name"]:
             object.__setattr__(self, name, value)
             return
@@ -285,21 +330,27 @@ class ModuleSettings:
         else:
             raise AttributeError(f"Module '{self.module_name}' has no setting '{name}'")
 
-    def __dir__(self):
-        """List all settings."""
+    def __dir__(self) -> list[str]:
+        """List all settings.
+
+        Returns:
+            list[str]: List of all settings.
+
+        """
         return list(self._settings.keys())
 
     def list_settings(
         self, include_internal: bool = False, include_parameters: bool = False
-    ) -> Dict[str, "Setting"]:
+    ) -> dict[str, Setting]:
         """List settings with their current values.
 
         Args:
-            include_internal: Include internal solver parameters
-            include_parameters: Include read-only PARAMETERs
+            include_internal (bool): Include internal solver parameters. Default = False.
+            include_parameters (bool): Include read-only PARAMETERs. Default = False.
 
         Returns:
-            Dict mapping setting names to Setting objects
+            dict[str, Setting]: Dict mapping setting names to Setting objects
+
         """
         result = {}
         for name, setting in self._settings.items():
@@ -312,8 +363,13 @@ class ModuleSettings:
 
     def print_settings(
         self, include_internal: bool = False, include_parameters: bool = False
-    ):
-        """Print all settings in a readable format."""
+    ) -> None:
+        """Print all settings in a readable format.
+
+        Args:
+            include_internal (bool): Include internal solver parameters. Default = False.
+            include_parameters (bool): Include read-only PARAMETERs. Default = False.
+        """
         print(f"\n{'=' * 70}")
         print(f"Module: {self.module_name}")
         print(f"{'=' * 70}\n")
@@ -362,27 +418,44 @@ class GeneralSettings:
         only be modified during initialization, before running models.
 
     Usage:
-        >>> from uclchem.advanced import GeneralSettings
+        >>> from uclchem.advanced.advanced_settings import GeneralSettings
         >>> settings = GeneralSettings()
         >>>
         >>> # Access a setting
         >>> setting = settings.defaultparameters.initialdens
         >>> print(setting.get())
+        100.0
         >>>
         >>> # Modify a setting
         >>> setting.set(500.0)
+        >>>
+        >>> # Get the modified value
+        >>> print(setting.get())
+        500.0
         >>>
         >>> # Or use attribute-style syntax
         >>> settings.defaultparameters.initialdens = 500.0
         >>>
         >>> # List all settings in a module
-        >>> settings.defaultparameters.print_settings()
+        >>> settings.defaultparameters.print_settings() # doctest: +SKIP
+        ...
         >>>
         >>> # Use context manager for temporary changes
         >>> with settings.temporary_changes():
         ...     settings.defaultparameters.initialdens = 1000.0
+        ...     print(setting.get())
         ...     # Run model with modified settings
+        ...
+        1000.0
         >>> # Settings automatically restored after context
+        >>> print(setting.get())
+        500.0
+        >>> # As well as in the GeneralSettings instance
+        >>> print(settings.defaultparameters.initialdens)
+        Setting(defaultparameters.initialdens = 500.0 [EDITED])
+        >>>
+        >>> # Reset to the original value
+        >>> setting.set(100.0)
     """
 
     def __init__(self):
@@ -425,8 +498,19 @@ class GeneralSettings:
                     FILE_PATH_PARAMETERS,
                 )
 
-    def __getattr__(self, name):
-        """Access modules as attributes."""
+    def __getattr__(self, name: str) -> ModuleType:
+        """Access modules as attributes.
+
+        Args:
+            name (str): Module name
+
+        Returns:
+            ModuleType: module with name `name`.
+
+        Raises:
+            AttributeError: If no module with name `name` available.
+
+        """
         if name.startswith("_"):
             return object.__getattribute__(self, name)
 
@@ -438,11 +522,16 @@ class GeneralSettings:
             f"Available modules: {', '.join(sorted(self._modules.keys()))}"
         )
 
-    def __dir__(self):
-        """List all available modules."""
+    def __dir__(self) -> list[str]:
+        """List all available modules.
+
+        Returns:
+            list[str]: List of all available modules.
+
+        """
         return list(self._modules.keys())
 
-    def list_modules(self):
+    def list_modules(self) -> None:
         """List all available modules with statistics."""
         print(f"\n{'=' * 70}")
         print("Available UCLCHEM Modules")
@@ -471,16 +560,17 @@ class GeneralSettings:
         pattern: str,
         include_internal: bool = False,
         include_parameters: bool = False,
-    ) -> Dict[str, Setting]:
+    ) -> dict[str, Setting]:
         """Search for settings matching a pattern across all modules.
 
         Args:
-            pattern: String pattern to search for (case-insensitive)
-            include_internal: Include internal solver parameters
-            include_parameters: Include read-only PARAMETERs
+            pattern (str): String pattern to search for (case-insensitive).
+            include_internal (bool): Include internal solver parameters. Default = False.
+            include_parameters (bool): Include read-only PARAMETERs. Default = False.
 
         Returns:
-            Dict mapping "module.setting" to Setting objects
+            dict[str, Setting]: Dict mapping "module.setting" to Setting objects
+
         """
         pattern = pattern.lower()
         results = {}
@@ -498,7 +588,7 @@ class GeneralSettings:
 
         return results
 
-    def print_all_edited(self):
+    def print_all_edited(self) -> None:
         """Print all settings that have been modified from defaults."""
         print(f"\n{'=' * 70}")
         print("Modified Settings")
@@ -524,17 +614,18 @@ class GeneralSettings:
             print("  No settings have been modified")
         print()
 
-    def print_all_settings(self):
+    def print_all_settings(self) -> None:
         """Print all settings across all modules."""
         for module_name in sorted(self._modules.keys()):
             mod_settings = self._modules[module_name]
             mod_settings.print_settings(include_internal=True, include_parameters=True)
 
-    def reset_all(self, confirm: bool = True):
+    def reset_all(self, confirm: bool = True) -> None:
         """Reset all settings to their default values.
 
         Args:
-            confirm: If True, require user confirmation
+            confirm (bool): If True, require user confirmation. Default = True.
+
         """
         if confirm:
             response = input("Reset ALL settings to defaults? (yes/no): ")
@@ -553,7 +644,7 @@ class GeneralSettings:
         print("✓ All settings reset to defaults")
 
     @contextmanager
-    def temporary_changes(self):
+    def temporary_changes(self) -> Iterator[GeneralSettings]:
         """Context manager for temporary setting modifications.
 
         Saves current state on entry and restores it on exit, even if an
@@ -562,22 +653,27 @@ class GeneralSettings:
 
         Example:
             >>> settings = GeneralSettings()
-            >>> settings.defaultparameters.initialdens = 1000.0
-            >>> print(settings.defaultparameters.initialdens.get())  # 1000.0
+            >>> settings.defaultparameters.initialdens = 100.0
+            >>> print(settings.defaultparameters.initialdens.get())
+            100.0
             >>>
             >>> with settings.temporary_changes():
             ...     settings.defaultparameters.initialdens = 5000.0
-            ...     print(settings.defaultparameters.initialdens.get())  # 5000.0
+            ...     print(settings.defaultparameters.initialdens.get())
             ...     # Run model here
+            ...
+            5000.0
             >>>
-            >>> print(settings.defaultparameters.initialdens.get())  # 1000.0 (restored)
+            >>> print(settings.defaultparameters.initialdens.get())
+            100.0
 
         Yields:
             self: The GeneralSettings instance for chaining
+
         """
         # Save all current values (not just edited ones)
         # Skip PARAMETERs (compile-time constants), INTERNAL_PARAMETERS (solver state), and arrays
-        saved_states: Dict[str, Dict[str, Any]] = {}
+        saved_states: dict[str, dict[str, Any]] = {}
         for module_name, mod_settings in self._modules.items():
             saved_states[module_name] = {}
             for setting_name, setting in mod_settings._settings.items():
@@ -591,7 +687,7 @@ class GeneralSettings:
                     continue
                 try:
                     saved_states[module_name][setting_name] = {
-                        "value": setting._copy_value(setting.get(check_memory=False)),
+                        "value": _copy_value(setting.get(check_memory=False)),
                         "is_edited": setting.is_edited,
                     }
                 except Exception as e:
@@ -610,6 +706,10 @@ class GeneralSettings:
                 mod_settings = self._modules[module_name]
                 for setting_name, state in settings_dict.items():
                     setting = mod_settings._settings[setting_name]
+                    if setting.get() == state["value"]:
+                        # Setting was not edited, no need to reset it.
+                        continue
+
                     try:
                         setting.set(state["value"])
                         setting.is_edited = state["is_edited"]

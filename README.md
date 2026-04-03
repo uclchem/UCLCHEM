@@ -55,7 +55,7 @@ This will automatically run linting and formatting checks before each commit.
 - Releases will be coordinated by the core developers, this will consitute a push to main and creating a release.
 
 ### Python
-- Use [Black](https://github.com/psf/black) to format your code.
+- Use [Ruff](https://docs.astral.sh/ruff/) to format your code.
 - snake_case variables and functions with self-explanatory names
 - Docstrings for all functions, they're used to produce the online docs!
 
@@ -92,6 +92,10 @@ archivePrefix = {arXiv},
 
 
 # Developers
+## Developer tools
+
+After adding or renaming Fortran `PARAMETER` declarations, regenerate `src/uclchem/advanced/fortran_metadata.yaml` by running `uclchem-generate-metadata` (or `--dry-run` to preview changes). The CI workflow `check-fortran-metadata.yml` will fail on pull requests if the file is out of date.
+
 ## Makerates only install instruction 
 
 

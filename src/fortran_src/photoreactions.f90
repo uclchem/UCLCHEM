@@ -199,22 +199,22 @@ END FUNCTION scatter
 !=======================================================================
 !
 !  Determine the ratio of the optical depth at a given wavelength to
-!  that at visual wavelength (λ=5500Å) using the extinction curve of
+!  that at visual wavelength (lambda=5500 Angstrom) using the extinction curve of
 !  Savage & Mathis (1979, ARA&A, 17, 73, Table 2)
 !
 !-----------------------------------------------------------------------
 !
 !  Input parameters:
-!  LAMBDA  = wavelength (in Å)
+!  LAMBDA  = wavelength (in Angstrom)
 !
 !  Program variables:
-!  XLAMBDA       = Ratio of tau(λ)/tau(V) at the desired wavelength
+!  XLAMBDA       = Ratio of tau(wavelength)/tau(V) at the desired wavelength
 !                  by 1D spline interpolation over the grid values
-!  XLAMBDA_GRID  = tau(λ)/tau(V) values, determined by dividing the
-!                  Aλ/E(B-V) values from Savage & Mathis (1979) by
+!  XLAMBDA_GRID  = tau(wavelength)/tau(V) values, determined by dividing the
+!                  A_wavelength/E(B-V) values from Savage & Mathis (1979) by
 !                  an assumed reddening of R=AV/E(B-V)=3.1
 !  XLAMBDA_DERIV = 2nd derivative of XLAMBDA_GRID values from SPLINE
-!  LAMBDA_GRID   = wavelengths (in Å) listed in Table 2
+!  LAMBDA_GRID   = wavelengths (in Angstrom) listed in Table 2
 !  NUM_LAMBDA    = number of wavelengths
 !  START         = .TRUE. when XLAMBDA is first called
 !
