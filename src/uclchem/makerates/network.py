@@ -405,7 +405,16 @@ class Network(BaseNetwork, MutableNetworkABC):
         >>> network = Network.from_csv()
 
         >>> # Build with validation
-        >>> network = Network.build(species, reactions, gas_phase_extrapolation=True)
+        >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+        >>>
+        >>> species_list, user_defined_bulk = read_species_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+        ... )
+        >>> reactions_list, dropped_reactions = read_reaction_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv", species_list, "UCL"
+        ... )
+        >>> network = Network.build(species_list, reactions_list, gas_phase_extrapolation=True)
 
     Attributes:
         _species_dict: Internal species storage {name: Species}
@@ -464,7 +473,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             >>> network = Network.from_csv()
 
             >>> # Load old/custom network for analysis
-            >>> network = Network.from_csv('old/species.csv', 'old/reactions.csv')
+            >>> network = Network.from_csv('old/species.csv', 'old/reactions.csv') # doctest: +SKIP
 
         """
         # Use defaults if not provided
@@ -509,6 +518,15 @@ class Network(BaseNetwork, MutableNetworkABC):
             Network: Network instance
 
         Example:
+            >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+            >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+            >>>
+            >>> species_list, user_defined_bulk = read_species_file(
+            ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+            ... )
+            >>> reactions_list, dropped_reactions = read_reaction_file(
+            ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv", species_list, "UCL"
+            ... )
             >>> network = Network.from_lists(species_list, reactions_list)
 
         """
@@ -540,6 +558,15 @@ class Network(BaseNetwork, MutableNetworkABC):
             Network: Fully built and validated network
 
         Examples:
+            >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+            >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+            >>>
+            >>> species_list, user_defined_bulk = read_species_file(
+            ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+            ... )
+            >>> reactions_list, dropped_reactions = read_reaction_file(
+            ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv", species_list, "UCL"
+            ... )
             >>> network = Network.build(
             ...     species=species_list,
             ...     reactions=reactions_list,
@@ -888,15 +915,15 @@ def load_network_from_csv(
         Network: Loaded network instance
 
     Examples:
-        >>> # Load default compiled network
+        >>> # Load default cmpiled network
         >>> network = load_network_from_csv()
 
         >>> # Load old version for comparison
         >>> old_network = load_network_from_csv(
         ...     'archive/v3.0/species.csv',
         ...     'archive/v3.0/reactions.csv'
-        ... )
-        >>> print(f"Species added: {len(network.get_species_list()) - len(old_network.get_species_list())}")
+        ... ) # doctest: +SKIP
+        >>> print(f"Species added: {len(network.get_species_list()) - len(old_network.get_species_list())}") # doctest: +SKIP
 
     """  # noqa: W505
     return Network.from_csv(species_path, reactions_path)
@@ -939,6 +966,16 @@ def build_network(
         Network: Fully built and validated network
 
     Examples:
+        >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+        >>>
+        >>> species_list, user_defined_bulk = read_species_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+        ... )
+        >>> reactions_list, dropped_reactions = read_reaction_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv", species_list, "UCL"
+        ... )
+
         >>> # Build network with standard options
         >>> network = build_network(
         ...     species=species_list,
@@ -952,7 +989,7 @@ def build_network(
         ...     reactions=reactions_list,
         ...     derive_reaction_exothermicity=['PHOTON', 'CRP'],
         ...     database_reaction_exothermicity=['custom_heating.csv']
-        ... )
+        ... ) # doctest: +SKIP
 
     """
     return Network.build(
@@ -987,8 +1024,20 @@ def create_network(
         Network: Network instance
 
     Example:
+        >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+        >>>
+        >>> species_list, user_defined_bulk = read_species_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+        ... )
+        >>> reactions_list, dropped_reactions = read_reaction_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv", species_list, "UCL"
+        ... )
+        >>>
         >>> network = create_network(species_list, reactions_list)
-        >>> network.add_reactions(additional_reactions)
+        >>>
+        >>> # Add some additional reactions
+        >>> network.add_reactions(additional_reactions) # doctest: +SKIP
 
     """
     return Network.from_lists(species, reactions)

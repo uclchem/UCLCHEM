@@ -827,7 +827,8 @@ class AbstractModel(ABC):
         msg = self.success_flag.check_error(
             only_error=only_error, raise_on_error=raise_on_error
         )
-        print(msg)
+        if msg is not None:
+            print(msg)
 
     def create_abundance_plot(
         self,
@@ -1104,11 +1105,14 @@ class AbstractModel(ABC):
                 Rows where TRAJECTORY_INDEX=0 are filtered out (unused preallocated space).
 
         Example:
+            >>> import uclchem
+            >>> param_dict = {}
             >>> model = uclchem.model.Cloud(param_dict)
             >>> solver_stats = model.get_solver_stats_dataframe()
             >>> # Count failed attempts
             >>> failures = solver_stats[solver_stats['ISTATE'] < 0]
-            >>> print(f"Failed attempts: {len(failures)}")
+            >>> print(f"Failed attempts: {len(failures)}") # doctest: +ELLIPSIS
+            Failed attempts: ...
 
         """
         if self.stats_array is None:
@@ -1144,10 +1148,17 @@ class AbstractModel(ABC):
                 or None if no failures or stats unavailable.
 
         Example:
+            >>> import uclchem
+            >>> param_dict = {}
+            >>> model = uclchem.model.Cloud(param_dict)
             >>> failures = model.get_failed_solver_attempts()
             >>> if failures is not None:
-            >>>     print(f"Total retries needed: {len(failures)}")
-            >>>     print(failures.groupby('ISTATE').size())
+            ...     print(f"Total retries needed: {len(failures)}")
+            ...     print(failures.groupby('ISTATE').size())
+            ... else:
+            ...     print("No failures occured.")
+            ...
+            No failures occured.
 
         """
         df = self.get_solver_stats_dataframe(point)

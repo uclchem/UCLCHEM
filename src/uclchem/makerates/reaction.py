@@ -22,8 +22,8 @@ def skip_reaction_validation() -> Iterator[None]:
     This is useful when loading pre-validated networks where you do not want any checks.
 
     Example:
-        >>> with skip_validation():
-        ...     reaction = Reaction(["C2N", "FREEZE", "NAN", "#CH3CNH", ...])
+        >>> with skip_reaction_validation():
+        ...     reaction = Reaction(["C2N", "FREEZE", "NAN", "#CH3CNH"]+ [0] * 10)
 
     """
     global _skip_reaction_validation

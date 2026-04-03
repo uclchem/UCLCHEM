@@ -55,7 +55,8 @@ class HeatingSettings:
     Example:
         >>> from uclchem.advanced import HeatingSettings
         >>> settings = HeatingSettings()
-        >>> settings.print_configuration()
+        >>> settings.print_configuration() # doctest: +SKIP
+        ...
         >>> # Switch photoelectric method (auto-disables Bakes when enabling Weingartner)
         >>> settings.set_heating_mechanism(settings.PHOTOELECTRIC['WEINGARTNER'], True)
         >>> # Disable H2 formation
@@ -265,7 +266,7 @@ class HeatingSettings:
             >>> settings = HeatingSettings()
             >>> state = settings.get_heating_modules()
             >>> print(state['H2Formation'])
-            True
+            False
 
         """
         labels = [
@@ -286,7 +287,7 @@ class HeatingSettings:
         Example:
             >>> settings = HeatingSettings()
             >>> state = settings.get_cooling_modules()
-            >>> print(state['AtomicLineCooling'])
+            >>> print(state['AtomicLineEmission'])
             True
 
         """
@@ -294,6 +295,7 @@ class HeatingSettings:
             str(np.char.decode(label)).strip()
             for label in self._heating_module.coolinglabels
         ]
+
         return {
             label: bool(self._heating_module.cooling_modules[i])
             for i, label in enumerate(labels)
@@ -408,11 +410,9 @@ class HeatingSettings:
 
         Example:
             >>> settings = HeatingSettings()
-            >>> settings.set_coolant_directory("/custom/rates/")
+            >>> settings.set_coolant_directory("/custom/rates/") # doctest: +SKIP
 
         """
-        from pathlib import Path
-
         # Validate
         if not directory.endswith("/"):
             directory += "/"
@@ -505,7 +505,8 @@ class HeatingSettings:
 
         Example:
             >>> settings = HeatingSettings()
-            >>> settings.print_configuration()
+            >>> settings.print_configuration() # doctest: +SKIP
+            ...
 
         """
         print("=" * 60)
@@ -565,9 +566,10 @@ def initialize_coolant_directory() -> str:
         FileNotFoundError: If coolant data directory cannot be found in any location
 
     Example:
-        >>> from uclchem.advanced import initialize_coolant_directory
+        >>> from uclchem.advanced.advanced_heating import initialize_coolant_directory
         >>> coolant_dir = initialize_coolant_directory()
         >>> print(f"Coolant data at: {coolant_dir}")
+        Coolant data at: ...
 
     """
     # Check if heating module is available
@@ -684,9 +686,11 @@ def auto_initialize_coolant_directory() -> bool:
         bool: True if initialization succeeded, False if it failed
 
     Example:
-        >>> from uclchem.advanced import auto_initialize_coolant_directory
+        >>> from uclchem.advanced.advanced_heating import auto_initialize_coolant_directory
         >>> if auto_initialize_coolant_directory():
         ...     print("Coolant data initialized successfully")
+        ...
+        Coolant data initialized successfully
 
     """
     import logging

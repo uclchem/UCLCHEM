@@ -496,6 +496,7 @@ class Species:
         char_idx = 0
         atoms = []
         currently_in_bracket = False
+        j = None
         # loop over characters in species name to work out what it is made of
         while char_idx < len(name):
             # if character isn't a + or - then check it, otherwise move on
@@ -511,7 +512,7 @@ class Species:
                     j = char_idx + 1
 
                 # if we've found a new element check for numbers otherwise print error
-                if j <= char_idx:
+                if j is None or j <= char_idx:
                     raise ValueError(
                         f"formula {name} contains element(s) not in element list"
                     )
