@@ -1,6 +1,9 @@
 import subprocess
+from pathlib import Path
 
 import pytest
+
+from uclchem.makerates import run_makerates
 
 
 @pytest.mark.timeout(600)
@@ -28,16 +31,15 @@ def test_package_installation():
         import uclchem
     except ImportError as e:
         assert False, f"Failed to import the installed package, with ImportError: {e}"
-    result = subprocess.run(
-        "python Makerates/Makerates.py tests/networks/small_chemistry/user_settings.yaml",
-        shell=True,
-        text=True,
-        capture_output=True,
-    )
 
-    assert result.returncode == 0, (
-        f"Installing an alternative network failed: \n{result.stdout}\n{result.stderr}"
-    )
+    # Test generating a network with the small_chemistry configuration
+    try:
+        settings_path = Path(__file__).parent / "networks" / "small_chemistry" / "user_settings.yaml"
+        run_makerates(str(settings_path), write_files=True)
+    except Exception as e:
+        assert False, (
+            f"Installing an alternative network failed: {e}"
+        )
 
     result = subprocess.run(install_command, shell=True, text=True, capture_output=True)
 
