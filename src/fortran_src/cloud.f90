@@ -7,7 +7,7 @@ MODULE cloud_mod
     !f2py INTEGER, parameter :: dp
     USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens, density_max, ngas_r, initialDens_r, findcoldens_edge2core, initialDens_array
+    &coldens, density_max, ngas_r, initialDens_r, findcoldens_edge2core, initialDens_array, parcel_radius
     USE network
     use f2py_constants
     IMPLICIT NONE
@@ -42,6 +42,7 @@ CONTAINS
 
             DO dstep=1,points
                 parcelRadius(dstep)=dstep*rout/float(points) !unit of parsec -- Note: from core to edge
+                parcel_radius(dstep)=parcelRadius(dstep)
             END DO
             
             density_max=ngas_r(rin,finalDens,density_scale_radius,density_power_index)

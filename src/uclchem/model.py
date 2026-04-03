@@ -138,9 +138,10 @@ from uclchem.utils import UCLCHEM_ROOT_DIR, SuccessFlag
 # Global variables determining formats of write files
 PHYSICAL_PARAMETERS_HEADER_FORMAT = "%10s"
 # in the below variable, the outputs were chosen according to the spacing needed for
-# "      Time,    Density,    gasTemp,   dustTemp,         Av,   radfield,       zeta,      point,"
+# "      Time,    Density,    gasTemp,   dustTemp,         Av,   radfield,       zeta,
+#       point,    parcel_radius"
 PHYSICAL_PARAMETERS_VALUE_FORMAT = (
-    "%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i"
+    "%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i, %10.4E"
 )
 SPECNAME_HEADER_FORMAT = "%11s"
 SPECNAME_VALUE_FORMAT = "%9.5E"
@@ -1545,8 +1546,8 @@ class AbstractModel(ABC):
             missing_params = set(PHYSICAL_PARAMETERS) - set(physics_cols_from_file)
             extra_params = set(physics_cols_from_file) - set(PHYSICAL_PARAMETERS)
 
-            if missing_params == {"dstep"} and not extra_params:
-                # Only dstep is missing - check if we can safely infer it
+            if missing_params <= {"dstep", "parcel_radius"} and not extra_params:
+                # dstep and/or parcel_radius missing — check if we can safely infer
                 # If there are no duplicate timesteps, we can assume dstep=1
                 time_column_index = physics_cols_from_file.index("Time")
                 time_values = array[:, time_column_index]
@@ -1560,13 +1561,26 @@ class AbstractModel(ABC):
                         "Consider regenerating the file with the current version for full compatibility.",
                         UserWarning,
                     )
-                    # Add dstep=1 column to the array
-                    dstep_column = np.ones((array.shape[0], 1))
-                    array = np.hstack(
-                        [array[:, :point_index], dstep_column, array[:, point_index:]]
-                    )
-                    physics_cols_from_file.append("dstep")
-                    point_index += 1  # point column shifted by 1
+                    if "dstep" in missing_params:
+                        # Add dstep=1 column before point
+                        dstep_column = np.ones((array.shape[0], 1))
+                        array = np.hstack(
+                            [array[:, :point_index], dstep_column, array[:, point_index:]]
+                        )
+                        physics_cols_from_file.append("dstep")
+                        point_index += 1  # point column shifted by 1
+                    if "parcel_radius" in missing_params:
+                        # Add parcel_radius=0 column before point (collapse files only)
+                        parcel_radius_column = np.zeros((array.shape[0], 1))
+                        array = np.hstack(
+                            [
+                                array[:, :point_index],
+                                parcel_radius_column,
+                                array[:, point_index:],
+                            ]
+                        )
+                        physics_cols_from_file.append("parcel_radius")
+                        point_index += 1  # point column shifted by 1
                 else:
                     raise ValueError(
                         f"INCOMPATIBLE LEGACY FILE: Cannot infer 'dstep' parameter.\n\n"
@@ -2269,8 +2283,6 @@ class Collapse(AbstractModel):
     Args:
         collapse (str): A string containing the collapse type.
             Options are 'BE1.1', 'BE4', 'filament', or 'ambipolar'. Defaults to 'BE1.1'.
-        physics_output (str): Filename to store physics output, only relevant for
-            'filament' and 'ambipolar' collapses. If None, no physics output will be saved.
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in `defaultparameters.f90`.
         out_species (list | None): List of species whose abundances at the end of the model are
@@ -2290,10 +2302,18 @@ class Collapse(AbstractModel):
 
     """
 
+    # Time (years) at which each collapse mode's density evolution ends and the fitting
+    # functions become singular.
+    _COLLAPSE_FINAL_TIMES = {
+        "BE1.1": 1.173387e6,
+        "BE4": 1.84265e5,
+        "filament": 1.393761e6,
+        "ambipolar": 1.6132984e7,
+    }
+
     def __init__(
         self,
         collapse: Literal["BE1.1", "BE4", "filament", "ambipolar"] = "BE1.1",
-        physics_output: str = None,
         param_dict: dict | None = None,
         out_species: list[str] | None = None,
         starting_chemistry: np.ndarray | None = None,
@@ -2310,13 +2330,82 @@ class Collapse(AbstractModel):
             ValueError: If `collapse` is not one of `["BE1.1", "BE4", "filament", "ambipolar"]`.
 
         """
+        collapse_dict = {"BE1.1": 1, "BE4": 2, "filament": 3, "ambipolar": 4}
+        if collapse not in collapse_dict:
+            raise ValueError(f"collapse must be in {collapse_dict.keys()}")
+
+        collapse_final_time = self._COLLAPSE_FINAL_TIMES[collapse]
+
         if out_species is None:
             out_species = default_elements_to_check
-        if collapse not in ["filament", "ambipolar"] and physics_output is None:
+
+        if param_dict is not None and "initialDens" in param_dict:
             warnings.warn(
-                "`physics_output` was None but `collapse` was `filament` or `ambipolar`. No output file will be created.",
+                "initialDens is ignored for collapse models: the initial density is determined "
+                "with fit functions, not the initialDens parameter.",
                 UserWarning,
+                stacklevel=2,
             )
+        if (
+            param_dict is not None
+            and param_dict.get("points", 1) == 1
+            and param_dict.get("rin", 0.0) != 0.0
+        ):
+            raise ValueError(
+                "rin has no effect when points=1: the single parcel is placed at rout. "
+                "Either set points > 1 or remove rin from param_dict."
+            )
+
+        # For collapse models, endAtFinalDensity controls finalTime behavior.
+        # Reject parcelStoppingMode since collapse models don't use density-based stopping.
+        _param = param_dict or {}
+        if "parcelStoppingMode" in _param:
+            raise ValueError(
+                "parcelStoppingMode is not supported for collapse models. "
+                "Use endAtFinalDensity instead: True (default) to stop at collapse endpoint, "
+                "False to extend chemistry until a custom finalTime with frozen density."
+            )
+
+        # endAtFinalDensity controls finalTime for collapse models:
+        # - True (default): finalTime = collapseFinalTime (self-consistent density
+        #   evolution until collapse)
+        # - False: user must set finalTime > collapseFinalTime (density frozen,
+        #   chemistry continues)
+        user_final_time = _param.get("finalTime", None)
+        end_at_final_density = _param.get(
+            "endAtFinalDensity", True
+        )  # Default True for collapse
+
+        if end_at_final_density:
+            # Scenario 1 (default): stop at collapse endpoint.
+            if user_final_time is not None and user_final_time != collapse_final_time:
+                raise ValueError(
+                    f"For {collapse!r} collapse with endAtFinalDensity=True, finalTime is fixed at "
+                    f"collapseFinalTime={collapse_final_time:.3e} yr. "
+                    f"To use a custom finalTime, set endAtFinalDensity=False."
+                )
+            param_dict = {**_param, "finalTime": collapse_final_time}
+            # Remove endAtFinalDensity so _convert_legacy_stopping_param doesn't affect it.
+            param_dict.pop("endAtFinalDensity", None)
+        else:
+            # Scenario 2: user extends chemistry past collapse endpoint with frozen density.
+            if user_final_time is None:
+                raise ValueError(
+                    f"endAtFinalDensity=False requires setting finalTime > collapseFinalTime "
+                    f"({collapse_final_time:.3e} yr) to extend chemistry beyond the collapse endpoint."
+                )
+            if user_final_time < collapse_final_time:
+                raise ValueError(
+                    f"endAtFinalDensity=False with finalTime={user_final_time:.3e} yr < "
+                    f"collapseFinalTime={collapse_final_time:.3e} yr is invalid. "
+                    f"Either set endAtFinalDensity=True (use default finalTime) or "
+                    f"set finalTime > collapseFinalTime for extended chemistry."
+                )
+            # finalTime > collapseFinalTime is valid; density will freeze at collapseFinalTime.
+            # Remove endAtFinalDensity so _convert_legacy_stopping_param doesn't affect it.
+            param_dict = {**_param, "parcelStoppingMode": 0}
+            param_dict.pop("endAtFinalDensity", None)
+
         super().__init__(
             param_dict=param_dict,
             out_species_list=out_species,
@@ -2327,16 +2416,9 @@ class Collapse(AbstractModel):
             read_file=read_file,
             run_type=run_type,
         )
+        self.collapse_final_time = collapse_final_time
         if read_file is None:
-            collapse_dict = {"BE1.1": 1, "BE4": 2, "filament": 3, "ambipolar": 4}
-            try:
-                self.collapse = collapse_dict[collapse]
-            except KeyError:
-                raise ValueError(f"collapse must be in {collapse_dict.keys()}")
-            self.physics_output = physics_output
-            self.write_physics = self.physics_output is not None
-            if not self.write_physics:
-                self.physics_output = ""
+            self.collapse = collapse_dict[collapse]
             if self.run_type != "external":
                 self.run()
         return
@@ -2355,8 +2437,6 @@ class Collapse(AbstractModel):
         """
         result = wrap.collapse(
             collapsein=self.collapse,
-            collapsefilein=self.physics_output,
-            writeout=self.write_physics,
             dictionary=self._param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
@@ -2394,8 +2474,6 @@ class Collapse(AbstractModel):
     def _create_init_dict(self):
         return {
             "collapse": self.collapse,
-            "physics_output": self.physics_output,
-            "write_physics": self.write_physics,
             "_param_dict": self._param_dict,
             "out_species_list": self.out_species_list,
             "out_species": self.out_species,

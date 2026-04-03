@@ -303,15 +303,9 @@ def test_cshock_return_dataframe(test_output_directory):
     )
 
 
-def test_endAtFinalDensity_with_collapse(test_output_directory):
+def test_endAtFinalDensity_with_collapse():
     """Test that endAtFinalDensity=True works correctly with Collapse models"""
-    # Test Collapse model which should allow endAtFinalDensity without freefall
-    # Create a unique output file for this test to avoid file conflicts
-    output_file = str(test_output_directory / "collapse_test.dat")
     params = {
-        "initialDens": 1e4,
-        "finalDens": 1e6,
-        "finalTime": 1e6,  # Longer finalTime for collapse models
         "initialTemp": 10.0,
         "endAtFinalDensity": True,
     }
@@ -319,7 +313,6 @@ def test_endAtFinalDensity_with_collapse(test_output_directory):
     physics, chemistry, rates, heating, abundances, return_code = (
         uclchem.functional.collapse(
             collapse="BE4",  # BE collapse mode
-            physics_output=output_file,
             param_dict=params,
             out_species=["OH", "CO"],
             return_array=True,
@@ -329,23 +322,12 @@ def test_endAtFinalDensity_with_collapse(test_output_directory):
         f"Collapse model returned with nonzero exit code {return_code}"
     )
 
-    # Should stop at finalTime OR finalDens (whichever comes first)
-    max_time = physics[:, 0].max()
-    # Only check density if physics array has multiple columns
-    # (when physics_output is provided)
-    if physics.shape[1] > 1:
-        max_density = physics[:, 1].max()
-        assert (
-            max_time <= 1.1 * params["finalTime"]
-            or max_density >= 0.9 * params["finalDens"]
-        ), (
-            f"Collapse should stop at finalTime OR finalDens: time={max_time:.2e}, density={max_density:.2e}"
-        )
-    else:
-        # When only time is output, just verify model ran successfully
-        assert max_time > 0, (
-            f"Collapse model did not produce valid output: time={max_time:.2e}"
-        )
+    # endAtFinalDensity=True runs to collapseFinalTime; density should reach finalDens
+    max_time = physics[:, 0, 0].max()
+    max_density = physics[:, 0, 1].max()
+    assert max_density >= 1e5, (
+        f"Collapse should reach at least finalDens={params['finalDens']:.2e}: max density={max_density:.2e}, max time={max_time:.2e}"
+    )
 
 
 def test_endAtFinalDensity_validation(test_output_directory):
