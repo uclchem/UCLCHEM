@@ -175,14 +175,18 @@ class TestHeatingArrays:
 
         try:
             if model_function == "collapse":
+                collapse_params = {
+                    k: v for k, v in test_params.items()
+                    if k not in {"endAtFinalDensity", "finalTime", "freefall", "initialDens", "finalDens"}
+                }
                 result = func(
-                    collapse="ambipolar",
-                    param_dict=test_params,
+                    collapse="BE4",
+                    param_dict=collapse_params,
                     out_species=["OH", "CO"],
                     return_dataframe=True,
                     return_rate_constants=True,
                     return_heating=True,
-                    timepoints=50,  # Reduced from 500 for faster tests
+                    timepoints=500,  # Reduced from 500 for faster tests
                 )
             elif model_function == "cloud":
                 result = func(
@@ -191,7 +195,7 @@ class TestHeatingArrays:
                     return_dataframe=True,
                     return_rate_constants=True,
                     return_heating=True,
-                    timepoints=50,  # Reduced from 500 for faster tests
+                    timepoints=500,
                 )
             else:
                 raise ValueError(f"Unknown model function: {model_function}")

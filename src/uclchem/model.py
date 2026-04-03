@@ -1546,8 +1546,8 @@ class AbstractModel(ABC):
             missing_params = set(PHYSICAL_PARAMETERS) - set(physics_cols_from_file)
             extra_params = set(physics_cols_from_file) - set(PHYSICAL_PARAMETERS)
 
-            if missing_params == {"dstep"} and not extra_params:
-                # Only dstep is missing - check if we can safely infer it
+            if missing_params <= {"dstep", "parcel_radius"} and not extra_params:
+                # dstep and/or parcel_radius missing — check if we can safely infer
                 # If there are no duplicate timesteps, we can assume dstep=1
                 time_column_index = physics_cols_from_file.index("Time")
                 time_values = array[:, time_column_index]
@@ -1561,13 +1561,22 @@ class AbstractModel(ABC):
                         "Consider regenerating the file with the current version for full compatibility.",
                         UserWarning,
                     )
-                    # Add dstep=1 column to the array
-                    dstep_column = np.ones((array.shape[0], 1))
-                    array = np.hstack(
-                        [array[:, :point_index], dstep_column, array[:, point_index:]]
-                    )
-                    physics_cols_from_file.append("dstep")
-                    point_index += 1  # point column shifted by 1
+                    if "dstep" in missing_params:
+                        # Add dstep=1 column before point
+                        dstep_column = np.ones((array.shape[0], 1))
+                        array = np.hstack(
+                            [array[:, :point_index], dstep_column, array[:, point_index:]]
+                        )
+                        physics_cols_from_file.append("dstep")
+                        point_index += 1  # point column shifted by 1
+                    if "parcel_radius" in missing_params:
+                        # Add parcel_radius=0 column before point (collapse files only)
+                        parcel_radius_column = np.zeros((array.shape[0], 1))
+                        array = np.hstack(
+                            [array[:, :point_index], parcel_radius_column, array[:, point_index:]]
+                        )
+                        physics_cols_from_file.append("parcel_radius")
+                        point_index += 1  # point column shifted by 1
                 else:
                     raise ValueError(
                         f"INCOMPATIBLE LEGACY FILE: Cannot infer 'dstep' parameter.\n\n"

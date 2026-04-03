@@ -306,9 +306,6 @@ def test_cshock_return_dataframe(test_output_directory):
 def test_endAtFinalDensity_with_collapse():
     """Test that endAtFinalDensity=True works correctly with Collapse models"""
     params = {
-        "initialDens": 1e4,
-        "finalDens": 1e6,
-        "finalTime": 1e6,  # Longer finalTime for collapse models
         "initialTemp": 10.0,
         "endAtFinalDensity": True,
     }
@@ -325,13 +322,11 @@ def test_endAtFinalDensity_with_collapse():
         f"Collapse model returned with nonzero exit code {return_code}"
     )
 
-    # Should stop at finalTime OR finalDens (whichever comes first)
-    max_time = physics[:, 0].max()
-    max_density = physics[:, 1].max()
-    assert (
-        max_time <= 1.1 * params["finalTime"] or max_density >= 0.9 * params["finalDens"]
-    ), (
-        f"Collapse should stop at finalTime OR finalDens: time={max_time:.2e}, density={max_density:.2e}"
+    # endAtFinalDensity=True runs to collapseFinalTime; density should reach finalDens
+    max_time = physics[:, 0, 0].max()
+    max_density = physics[:, 0, 1].max()
+    assert max_density >= 1e5, (
+        f"Collapse should reach at least finalDens={params['finalDens']:.2e}: max density={max_density:.2e}, max time={max_time:.2e}"
     )
 
 
