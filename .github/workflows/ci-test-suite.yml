@@ -24,6 +24,8 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
 
     steps:
+      - uses: actions/checkout@v6
+
       - uses: ./.github/actions/setup-uclchem
         with:
           install-package: "false"
@@ -48,6 +50,8 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
 
     steps:
+      - uses: actions/checkout@v6
+
       - uses: ./.github/actions/setup-uclchem
 
       - name: "[test:functional] Run core test suite (parallel)"
@@ -60,6 +64,8 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
 
     steps:
+      - uses: actions/checkout@v6
+
       - uses: ./.github/actions/setup-uclchem
 
       - name: "[setup:deps] Install meson-python (for editable install)"
@@ -84,6 +90,8 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
 
     steps:
+      - uses: actions/checkout@v6
+
       - uses: ./.github/actions/setup-uclchem
 
       - name: "[test:feature] Run heating/cooling feature tests"
@@ -99,6 +107,8 @@ jobs:
       github.ref_name == 'main'
 
     steps:
+      - uses: actions/checkout@v6
+
       - uses: ./.github/actions/setup-uclchem
 
       - name: "[setup:deps] Install notebook tools"
@@ -121,6 +131,8 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
 
     steps:
+      - uses: actions/checkout@v6
+
       - uses: ./.github/actions/setup-uclchem
 
       - name: "[test:networks] Test custom network installation"
