@@ -31,7 +31,7 @@ Documentation = "https://uclchem.github.io"
 uclchem-generate-metadata = "uclchem.advanced.generate_metadata:main"
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-xdist", "pytest-github-actions-annotate-failures", "pre-commit", "sphinx", "ruff"]  # Development dependencies
+dev = ["pytest", "pytest-timeout", "pytest-xdist", "pytest-github-actions-annotate-failures", "pre-commit", "sphinx", "ruff"]  # Development dependencies
 docs = ["pydoc-markdown", "jupyter", "jupyter_contrib_nbextensions", "notebook<7"]
 
 [tool.ruff]
