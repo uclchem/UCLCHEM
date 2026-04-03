@@ -34,12 +34,12 @@ def test_package_installation():
 
     # Test generating a network with the small_chemistry configuration
     try:
-        settings_path = Path(__file__).parent / "networks" / "small_chemistry" / "user_settings.yaml"
+        settings_path = (
+            Path(__file__).parent / "networks" / "small_chemistry" / "user_settings.yaml"
+        )
         run_makerates(str(settings_path), write_files=True)
     except Exception as e:
-        assert False, (
-            f"Installing an alternative network failed: {e}"
-        )
+        assert False, f"Installing an alternative network failed: {e}"
 
     result = subprocess.run(install_command, shell=True, text=True, capture_output=True)
 

@@ -83,7 +83,9 @@ def test_small_chemistry_prefix_has_species(small_chemistry_prefix_network):
 
 def test_small_chemistry_prefix_has_prefix_species(small_chemistry_prefix_network):
     """Test that small_chemistry_prefix has all expected prefix species."""
-    species_names = {s.get_name() for s in small_chemistry_prefix_network.get_species_list()}
+    species_names = {
+        s.get_name() for s in small_chemistry_prefix_network.get_species_list()
+    }
 
     # Check CH4 isomers
     assert "a-CH4" in species_names
@@ -99,7 +101,9 @@ def test_small_chemistry_prefix_has_prefix_species(small_chemistry_prefix_networ
 
 def test_small_chemistry_prefix_species_properties(small_chemistry_prefix_network):
     """Test that prefix species have correct properties."""
-    species_dict = {s.get_name(): s for s in small_chemistry_prefix_network.get_species_list()}
+    species_dict = {
+        s.get_name(): s for s in small_chemistry_prefix_network.get_species_list()
+    }
 
     # Check a-CH4 and b-CH4 have correct mass
     assert species_dict["a-CH4"].get_mass() == 16
@@ -113,7 +117,8 @@ def test_small_chemistry_prefix_species_properties(small_chemistry_prefix_networ
 def test_small_chemistry_prefix_freeze_reactions(small_chemistry_prefix_network):
     """Test that freeze reactions exist for prefix species."""
     freeze_rxns = [
-        r for r in small_chemistry_prefix_network.get_reaction_list()
+        r
+        for r in small_chemistry_prefix_network.get_reaction_list()
         if r.get_reaction_type() == "FREEZE"
     ]
     freeze_reactants = [r.get_reactants()[0] for r in freeze_rxns]
@@ -131,15 +136,13 @@ def test_small_chemistry_prefix_desorb_reactions(small_chemistry_prefix_network)
     """Test that desorption reactions exist for prefix species."""
     desorb_types = {"DESORB", "DESOH2", "DESCR", "DEUVCR", "THERM"}
     desorb_rxns = [
-        r for r in small_chemistry_prefix_network.get_reaction_list()
+        r
+        for r in small_chemistry_prefix_network.get_reaction_list()
         if r.get_reaction_type() in desorb_types
     ]
 
     # #CH4 should have desorption reactions
-    ch4_desorbs = [
-        r for r in desorb_rxns
-        if r.get_reactants()[0] == "#CH4"
-    ]
+    ch4_desorbs = [r for r in desorb_rxns if r.get_reactants()[0] == "#CH4"]
     assert len(ch4_desorbs) > 0
 
     # Check that both a-CH4 and b-CH4 appear as products

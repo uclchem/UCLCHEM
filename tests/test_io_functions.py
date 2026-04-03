@@ -61,36 +61,40 @@ def test_array_to_string_2d_string():
 # normalize_species_name
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("raw, expected", [
-    # plain species – uppercased
-    ("H2O",       "H2O"),
-    ("ch3oh",     "CH3OH"),
-    # chemical isomer prefix – prefix lowercased, formula uppercased
-    ("o-H2",      "o-H2"),
-    ("p-H2",      "p-H2"),
-    ("a-CH3OH",   "a-CH3OH"),
-    ("l-C3H2",    "l-C3H2"),
-    # prefix case-normalisation (user typed uppercase prefix letter)
-    ("O-H2",      "o-H2"),
-    ("P-H2",      "p-H2"),
-    # grain prefix preserved; chemical prefix lowercased
-    ("#o-H2",     "#o-H2"),
-    ("@a-CH3OH",  "@a-CH3OH"),
-    ("#O-H2",     "#o-H2"),
-    # negative ions (len==2 after stripping grain prefix -> NOT a chem prefix)
-    ("C-",        "C-"),
-    ("OH-",       "OH-"),
-    ("E-",        "E-"),
-    ("e-",        "E-"),
-    # positive ions
-    ("H+",        "H+"),
-    ("C+",        "C+"),
-    # reaction-type tokens and sentinels pass through unchanged
-    ("NAN",       "NAN"),
-    ("PHOTON",    "PHOTON"),
-    ("FREEZE",    "FREEZE"),
-    ("",          ""),
-])
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        # plain species – uppercased
+        ("H2O", "H2O"),
+        ("ch3oh", "CH3OH"),
+        # chemical isomer prefix – prefix lowercased, formula uppercased
+        ("o-H2", "o-H2"),
+        ("p-H2", "p-H2"),
+        ("a-CH3OH", "a-CH3OH"),
+        ("l-C3H2", "l-C3H2"),
+        # prefix case-normalisation (user typed uppercase prefix letter)
+        ("O-H2", "o-H2"),
+        ("P-H2", "p-H2"),
+        # grain prefix preserved; chemical prefix lowercased
+        ("#o-H2", "#o-H2"),
+        ("@a-CH3OH", "@a-CH3OH"),
+        ("#O-H2", "#o-H2"),
+        # negative ions (len==2 after stripping grain prefix -> NOT a chem prefix)
+        ("C-", "C-"),
+        ("OH-", "OH-"),
+        ("E-", "E-"),
+        ("e-", "E-"),
+        # positive ions
+        ("H+", "H+"),
+        ("C+", "C+"),
+        # reaction-type tokens and sentinels pass through unchanged
+        ("NAN", "NAN"),
+        ("PHOTON", "PHOTON"),
+        ("FREEZE", "FREEZE"),
+        ("", ""),
+    ],
+)
 def test_normalize_species_name(raw, expected):
     assert normalize_species_name(raw) == expected
 
@@ -98,6 +102,7 @@ def test_normalize_species_name(raw, expected):
 # ---------------------------------------------------------------------------
 # Species with chemical prefix
 # ---------------------------------------------------------------------------
+
 
 def _make(name, mass=0, be=0.0):
     """Convenience: build a Species from minimal data."""
@@ -134,6 +139,7 @@ def test_no_prefix_species_has_empty_prefix():
 # find_constituents with chemical prefix
 # ---------------------------------------------------------------------------
 
+
 def test_find_constituents_ortho_h2():
     s = _make("o-H2", mass=2)
     counter = s.find_constituents(quiet=True)
@@ -168,6 +174,7 @@ def test_find_constituents_surface_prefix_species():
 # get_charge / is_ion with chemical prefix
 # ---------------------------------------------------------------------------
 
+
 def test_prefix_species_not_ion():
     assert not _make("o-H2").is_ion()
     assert not _make("p-H2").is_ion()
@@ -193,6 +200,7 @@ def test_positive_ion_charge_unchanged():
 # ---------------------------------------------------------------------------
 # Reaction normalisation with chemical prefix
 # ---------------------------------------------------------------------------
+
 
 def _reac(r1, r2, r3, p1, p2, p3, p4):
     """Build a minimal Reaction (alpha=1, beta=0, gamma=0, T 0–1e9)."""
@@ -228,26 +236,56 @@ def test_reaction_charge_conservation_prefix_neutral():
 # check_reaction with chemical prefix (case-insensitive keep_list matching)
 # ---------------------------------------------------------------------------
 
+
 def _keep_list(*names):
     from uclchem.makerates.reaction import reaction_types
+
     return ["", "NAN", "E-", "e-", "PHOTON", "CRP"] + list(reaction_types) + list(names)
 
 
 def test_check_reaction_accepts_prefix_species():
-    row = ["o-H2", "CRP", "NAN", "p-H2", "NAN", "NAN", "NAN", 1.0, 0.0, 0.0, 0.0, 1e9, 0.0]
+    row = [
+        "o-H2",
+        "CRP",
+        "NAN",
+        "p-H2",
+        "NAN",
+        "NAN",
+        "NAN",
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1e9,
+        0.0,
+    ]
     keep = _keep_list("o-H2", "p-H2")
     assert check_reaction(row, keep)
 
 
 def test_check_reaction_accepts_uppercase_prefix_input():
     """Reaction file may use uppercase prefix; check_reaction normalises before lookup."""
-    row = ["O-H2", "CRP", "NAN", "P-H2", "NAN", "NAN", "NAN", 1.0, 0.0, 0.0, 0.0, 1e9, 0.0]
-    keep = _keep_list("o-H2", "p-H2")   # keep_list uses canonical form
+    row = [
+        "O-H2",
+        "CRP",
+        "NAN",
+        "P-H2",
+        "NAN",
+        "NAN",
+        "NAN",
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1e9,
+        0.0,
+    ]
+    keep = _keep_list("o-H2", "p-H2")  # keep_list uses canonical form
     assert check_reaction(row, keep)
 
 
 def test_check_reaction_drops_unknown_prefix_species():
     """A prefixed species not in the network should cause the reaction to be dropped."""
     row = ["x-H2", "CRP", "NAN", "H2", "NAN", "NAN", "NAN", 1.0, 0.0, 0.0, 0.0, 1e9, 0.0]
-    keep = _keep_list("H2")   # x-H2 is not in the network
+    keep = _keep_list("H2")  # x-H2 is not in the network
     assert not check_reaction(row, keep)
