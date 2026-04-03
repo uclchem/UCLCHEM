@@ -320,18 +320,6 @@ class SuccessFlag(enum.IntEnum):
 
     """
 
-    @staticmethod
-    def _generate_next_value_(
-        name: str,  # noqa: ARG004
-        start: int,  # noqa: ARG004
-        count: int,  # noqa: ARG004
-        last_values: list[int | tuple[int, str]],
-    ) -> int:
-        last_value = last_values[-1]
-        if isinstance(last_value, tuple):
-            return last_value[0] - 1
-        return last_value - 1
-
     def __new__(cls, value: int, docstring: str) -> Self:  # noqa: D102
         member = int.__new__(cls, value)
 
@@ -340,25 +328,26 @@ class SuccessFlag(enum.IntEnum):
 
         return member
 
+    # Zen line two: Explicit is better than implicit.
     SUCCESS = 0, "Model ran successfully"
-    PARAMETER_READ_ERROR = enum.auto(), "Parameter read failed."
-    PHYSICS_INIT_ERROR = enum.auto(), "Physics initialization failed."
-    CHEM_INIT_ERROR = enum.auto(), "Chemistry initialization failed."
-    INT_UNRECOVERABLE_ERROR = enum.auto(), "Unrecoverable integrator error occured."
-    INT_TOO_MANY_FAILS_ERROR = enum.auto(), "Too many integrator fails occured."
+    PARAMETER_READ_ERROR = -1, "Parameter read failed."
+    PHYSICS_INIT_ERROR = -2, "Physics initialization failed."
+    CHEM_INIT_ERROR = -3, "Chemistry initialization failed."
+    INT_UNRECOVERABLE_ERROR = -4, "Unrecoverable integrator error occured."
+    INT_TOO_MANY_FAILS_ERROR = -5, "Too many integrator fails occured."
     NOT_ENOUGH_TIMEPOINTS_ERROR = (
-        enum.auto(),
+        -6,
         "Not enough time points allocated in the time array.",
     )
-    PHYSICS_UPDATE_ERROR = enum.auto(), "Error updating physics during integration."
-    SOLVER_STATS_OVERFLOW_ERROR = enum.auto(), "Solver statistics array overflowed."
-    COOLANT_FILE_ERROR = enum.auto(), "Coolant data file could not be openend."
-    COOLANT_DATA_ERROR = enum.auto(), "Coolant data file has invalid format."
-    COOLANT_FREQ_TOL_ERROR = enum.auto(), "Coolant frequency tolerance exceeded."
-    COOLANT_POP_TOL_ERROR = enum.auto(), "LTE population sum tolerance exceeded."
-    COOLANT_SOLVER_ERROR = enum.auto(), "Coolant solver numerical error occured."
-    COOLANT_CONFIG_ERROR = enum.auto(), "Coolant configuration error occured."
-    NEGATIVE_ABUNDANCE_ERROR = enum.auto(), "A negative abundance was detected."
+    PHYSICS_UPDATE_ERROR = -7, "Error updating physics during integration."
+    SOLVER_STATS_OVERFLOW_ERROR = -8, "Solver statistics array overflowed."
+    COOLANT_FILE_ERROR = -9, "Coolant data file could not be openend."
+    COOLANT_DATA_ERROR = -10, "Coolant data file has invalid format."
+    COOLANT_FREQ_TOL_ERROR = -11, "Coolant frequency tolerance exceeded."
+    COOLANT_POP_TOL_ERROR = -12, "LTE population sum tolerance exceeded."
+    COOLANT_SOLVER_ERROR = -13, "Coolant solver numerical error occured."
+    COOLANT_CONFIG_ERROR = -14, "Coolant configuration error occured."
+    NEGATIVE_ABUNDANCE_ERROR = -15, "A negative abundance was detected."
 
     def check_error(self, only_error: bool = False, raise_on_error: bool = True) -> str:
         """Converts the UCLCHEM integer result flag to a message explaining what went wrong.
@@ -388,14 +377,14 @@ class SuccessFlag(enum.IntEnum):
             SuccessFlag.INT_TOO_MANY_FAILS_ERROR: "Too many integrator fails. DVODE failed to integrate the ODE and UCLCHEM repeatedly altered settings to try to make it pass but tried too many times without success so code aborted to stop infinite loop.",
             SuccessFlag.NOT_ENOUGH_TIMEPOINTS_ERROR: "The model was stopped because there are not enough time points allocated in the time array. Increase the number of time points in the time array in constants.py and try again.",
             SuccessFlag.PHYSICS_UPDATE_ERROR: "Physics update error during integration.",
-            SuccessFlag.SOLVER_STATS_OVERFLOW_ERROR: "Solver statistics array overflow.",
+            SuccessFlag.SOLVER_STATS_OVERFLOW_ERROR: "Solver statistics array overflows, add more timepoints",
             SuccessFlag.COOLANT_FILE_ERROR: "Coolant data file could not be opened. Check that coolant data files exist in the expected directory.",
             SuccessFlag.COOLANT_DATA_ERROR: "Coolant data file has invalid format (bad NLEVEL, invalid partner ID, or too many temperature values).",
             SuccessFlag.COOLANT_FREQ_TOL_ERROR: "Frequency tolerance exceeded: the deviation between energy-level-computed and LAMDA-file frequencies exceeds freq_rel_tol. Increase freq_rel_tol or check your coolant data files.",
             SuccessFlag.COOLANT_POP_TOL_ERROR: "LTE population sum tolerance exceeded: level populations do not sum to total density within pop_rel_tol.",
             SuccessFlag.COOLANT_SOLVER_ERROR: "Coolant solver numerical error (NaN in matrix, singular matrix, or negative populations). The statistical equilibrium solver failed for a coolant species.",
             SuccessFlag.COOLANT_CONFIG_ERROR: "Coolant configuration error: parent species not found in network, or unphysical abundance detected.",
-            SuccessFlag.NEGATIVE_ABUNDANCE_ERROR: "Negative abundance detected.",
+            SuccessFlag.NEGATIVE_ABUNDANCE_ERROR: "Negative abundance detected. That exceeds solver tolerances, consider adjusting the negative_abundance_tol parameter in param_dict to a larger magnitude",
         }
 
         msg = error_msg_dict[self]

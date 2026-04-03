@@ -5,6 +5,7 @@
 MODULE physicscore
     USE constants
     USE DEFAULTPARAMETERS
+    USE extinction_module
     !f2py INTEGER, parameter :: dp
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
@@ -66,6 +67,12 @@ MODULE physicscore
     REAL(dp), PARAMETER :: ckHDiss(10)=(/1.217227462831d7,-4.989649250304d6, 9.079152156645d5, -9.624890825395d4, &
         6.551161486120d3, -2.968976216187d2, 8.959037875226d0, -1.735757324445d-1, &
         1.959267277734d-3, -9.816996707980d-6/)
+    
+    ! parameters for 1D radiation field calculation
+    REAL(dp), PARAMETER :: Tdsub = 1500.d0 !sublimation/melted temperature for dust grains
+    ! ! range of wavelength for integration
+    REAL(dp), PARAMETER :: wave1 = HP * C * 1.d4 / (13.6d0 * EV) !in micron
+    REAL(dp), PARAMETER :: wave2 = 20.d0 ! in micron 
 
 CONTAINS
     !basic initialization of physics. All physics modules should call this and then
@@ -251,5 +258,174 @@ CONTAINS
         initialDens_r=1.0+(r/r0_init)**p
         initialDens_r = n0_init/initialDens_r
     END FUNCTION initialDens_r
+
+    SUBROUTINE radiation(r, Lstar, Tstar, Avs, Temp_dust, U)
+        implicit none
+        real(dp) :: Lstar, Tstar, Avs, r, U_star, U_shell
+        real(dp), intent(out) :: Temp_dust, U
+        real(8)  :: rsub
+        integer, Parameter :: nw=129
+
+        ! sublimation distance
+        rsub = get_rsub(Lstar)
+
+        ! radiation from the star
+        call radiation_star(r, Lstar, Tstar, Avs, U_star)
+
+        ! radiation from the shell
+        if (r.lt.rsub) then
+            U_shell = 0.0d0
+        else
+            call radiation_shell(r, Lstar, Tstar, Avs, U_shell)
+        endif
+
+        ! total radiation field
+        U = U_star + U_shell
+
+        ! dust temperature at equilibrium with the radiation field
+        Temp_dust=Temp_average(U)
+
+    END SUBROUTINE radiation
+
+    SUBROUTINE radiation_star(r, Lstar, Tstar, Avs, U)
+        implicit none
+        real(dp) :: Lstar, Tstar, Rstar, r
+        real(dp), intent(out) :: U
+        integer :: i
+        real(dp), dimension(:), allocatable :: wave, wave_cm, Istar, uwave_star, tau_wave, uwave_red
+        real(dp) :: ZZ, Avs, rsub
+        real(dp) :: NH_EBV, RV
+        real(8)  :: urad_red
+        integer, Parameter :: nw=129
+        real(dp), dimension(2, nw) :: ext_curves
+        character(len=10) :: model
+
+        RV = 4.0d0
+        NH_EBV = 5.8d21
+
+        ! sublimation distance
+        rsub=get_rsub(Lstar)
+
+        ZZ = HP * C / (K_BOLTZ * Tstar)
+
+        !logspace for wave in micron
+        ALLOCATE(wave(nw))
+        call logspace(log10(wave1), log10(wave2), nw, wave)
+
+        ! convert wave from micron to cm
+        wave_cm = wave*1.d-4 !in cm
+
+        ! Call the function from the module
+        call extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
+
+        Istar     = (2.d0*HP*C**2.0/wave_cm**5.0)*(1.d0/(exp(ZZ/wave_cm)-1.0d0))
+        uwave_star = (4.d0*PI*wave_cm/C)*(Istar)/wave_cm
+
+        tau_wave = Avs * ext_curves(1,:)/1.086d0
+        uwave_red = uwave_star*exp(-tau_wave)
+
+        ! Apply trapezoidal rule for numerical integration
+        urad_red = 0.0d0
+        do i = 1, nw-1
+            urad_red = urad_red + 0.5d0 * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
+        end do
+
+        ! The stellar radius
+        Rstar=Rstar_rsub(Tstar,Tdsub)*rsub
+
+        ! The total radiation field (dimensionless)
+        U = urad_red / uISRF * (r / Rstar)**(-2.0)
+    END SUBROUTINE radiation_star
+
+    SUBROUTINE radiation_shell(r, Lstar, Tstar, Avs, U)
+        implicit none
+        real(dp) :: Lstar, Tstar, r
+        real(dp), intent(out) :: U
+        integer :: i
+        real(dp), dimension(:), allocatable :: wave, wave_cm, Istar, uwave_star, tau_wave, uwave_red
+        real(dp) :: ZZ, Avs, rsub
+        real(dp) :: NH_EBV, RV
+        real(8)  :: urad_red, Tshell
+        integer, Parameter :: nw=129
+        real(dp), dimension(2, nw) :: ext_curves
+        character(len=10) :: model
+
+        RV = 4.0d0
+        NH_EBV = 5.8d21
+
+        ! sublimation distance
+        rsub=get_rsub(Lstar)
+
+        ! calculate Tshell
+        Tshell = get_Tshell(Tstar)
+
+        ! parameters for Planck function
+        ZZ = HP * C / (K_BOLTZ * Tshell)
+
+        !logspace for wave in micron
+        ALLOCATE(wave(nw))
+        call logspace(log10(wave1), log10(wave2), nw, wave)
+
+        ! convert wave from micron to cm
+        wave_cm = wave*1.d-4 !in cm
+
+        ! Call the function from the module
+        call extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
+
+        Istar     = (2.d0*HP*C**2.0/wave_cm**5.0)*(1.d0/(exp(ZZ/wave_cm)-1.0d0))
+        uwave_star = (4.d0*PI*wave_cm/C)*(Istar)/wave_cm
+
+        tau_wave = Avs * ext_curves(1,:)/1.086d0
+        uwave_red = uwave_star*exp(-tau_wave)
+
+        ! Apply trapezoidal rule for numerical integration
+        urad_red = 0.0d0
+        do i = 1, nw-1
+            urad_red = urad_red + 0.5d0 * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
+        end do
+        U = urad_red / uISRF * (r / rsub)**(-2.0)
+    END SUBROUTINE radiation_shell
+
+    SUBROUTINE logspace(start, stop, num, result)
+        IMPLICIT NONE
+        REAL(dp), INTENT(IN) :: start, stop
+        INTEGER, INTENT(IN) :: num
+        REAL(dp), DIMENSION(num), INTENT(OUT) :: result
+        INTEGER :: i
+
+        DO i = 1, num
+            result(i) = 10.0d0**(start + (i-1)*(stop-start)/DBLE(num-1))
+        END DO
+    END SUBROUTINE logspace
+
+    REAL(dp) FUNCTION Rstar_rsub(Tstar,Tdmax)
+        REAL(dp) :: Tstar,Tdmax
+        REAL(dp) :: f1,f2
+
+        f1 = sqrt(1.0d6 * Lsun)
+        f2 = 155.3d0 * aunit * (Tdmax/1500.)**(-5.6/2) * sqrt(4*PI*SB_CONST) * Tstar**(2.0)
+        Rstar_rsub= f1/f2
+    END FUNCTION Rstar_rsub
+
+    REAL(dp) FUNCTION Temp_average(U)
+        REAL(dp) :: U
+        REAL(dp) :: Td_sil,Td_car
+        Td_sil = 16.4d0 * U**(1.0/6.0)  ! For silicate grains
+        Td_car = 19.5d0 * U**(1.0/5.6)  ! For carbon grains
+        Temp_average = Td_sil**(4.0) + Td_car**(4.0)
+        Temp_average = (0.5*Temp_average)**(1.0/4.0)
+    END FUNCTION Temp_average
+
+    REAL(dp) FUNCTION get_Tshell(Tstar)
+        REAL(dp) :: Tstar
+
+        get_Tshell = Rstar_rsub(Tstar,Tdsub)
+        get_Tshell = get_Tshell**(0.5) * Tstar
+    END FUNCTION get_Tshell
+
+    REAL(dp) FUNCTION get_rsub(Lstar)
+        REAL(dp) :: Lstar
+        get_rsub = 155.3d0*(Lstar/1.0d6/Lsun)**(0.5) * (Tdsub/1500.d0)**(-5.6/2.0) * aunit !in cm
+    END FUNCTION get_rsub
 
 END MODULE physicscore

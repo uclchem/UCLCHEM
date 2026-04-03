@@ -7,7 +7,7 @@ from uclchem.utils import SuccessFlag
 def test_match_fortran_python_success_flags_match():
     settings = GeneralSettings()
     error_flags_dict = settings.search(
-        "_ERROR", include_internal=True, include_parameters=False
+        "_ERROR", include_internal=True, include_parameters=True
     )
     error_flags_dict = {
         k.upper().split(".")[1]: int(val.get())
