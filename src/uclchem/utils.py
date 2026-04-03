@@ -8,38 +8,42 @@ This module provides utility functions for:
 
 **Key Functions:**
 
-- :func:`check_error` - Convert UCLCHEM error codes to messages
+- :meth:`SuccessFlag.check_error` - Convert UCLCHEM error codes to messages
 - :func:`cshock_dissipation_time` - Calculate C-shock dissipation timescale
 
 **Example Usage:**
+    >>> import uclchem
+    >>>
+    >>> model = uclchem.model.Cloud({})
+    >>> success_flag = model.success_flag
+    >>>
+    >>> # Check error from model run
+    >>> success_flag.check_error()
+    Model ran successfully
+    >>>
+    >>> # Only print if an error occured
+    >>> success_flag.check_error(only_error=True)
 
-.. code-block:: python
-
-    import uclchem.utils as utils
-
-    # Check error from model run
-    success_flag = cloud.success_flag
-    if success_flag < 0:
-        error_msg = utils.check_error(success_flag)
-        print(f"Model failed: {error_msg}")
-
-    # Calculate shock timescale
-    t_diss = utils.cshock_dissipation_time(
-        shock_vel=50.0,  # km/s
-        initial_dens=1e4  # cm^-3
-    )
-    print(f"Dissipation time: {t_diss:.1e} years")
+    >>> # Calculate shock timescale
+    >>> t_diss = utils.cshock_dissipation_time(
+    ...     shock_vel=50.0,  # km/s
+    ...     initial_dens=1e4  # cm^-3
+    ... ) # doctest: +SKIP
+    >>> print(f"Dissipation time: {t_diss:.1e} years") # doctest: +SKIP
+    ...
 
 **Error Codes:**
 
-UCLCHEM model functions return negative integer error codes on failure:
+UCLCHEM model functions return :class:`SuccessFlag` instances:
 
 - ``-1``: Parameter read failed (misspelled parameter)
 - ``-2``: Physics initialization failed (invalid parameters)
 - ``-3``: Chemistry initialization failed
 - ``-4``: Integrator error (DVODE failed)
 
-Use :func:`check_error` to get human-readable error messages.
+and more...
+
+Use :meth:`SuccessFlag.check_error` to get human-readable error messages.
 
 **See Also:**
 
@@ -79,18 +83,18 @@ def get_species_table() -> pd.DataFrame:
     """Load the list of species in the UCLCHEM network into a pandas dataframe.
 
     Returns:
-        pandas.DataFrame: A dataframe containing the species names and their details
+        species (pd.DataFrame): A dataframe containing the species names and their details
 
     """
-    species_list = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
-    return species_list
+    species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
+    return species
 
 
 def get_species() -> list[str]:
     """Load the list of species present in the UCLCHEM network.
 
     Returns:
-        list[str] : A list of species names
+        species_list (list[str]): A list of species names
 
     """
     species_list = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv").iloc[:, 0].tolist()
@@ -101,7 +105,7 @@ def get_reaction_table() -> pd.DataFrame:
     """Load the reaction table from the UCLCHEM network into a pandas dataframe.
 
     Returns:
-        pandas.DataFrame: A dataframe containing the reactions and their rates
+        reactions (pd.DataFrame): A dataframe containing the reactions and their rates
 
     """
     reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
@@ -121,10 +125,14 @@ def find_number_of_consecutive_digits(string: str, start: int) -> int:
             starting from "start".
 
     Examples:
-        >> find_number_of_consecutive_digits("Hello123", 0) -> 0,
-        >> find_number_of_consecutive_digits("Hello123", 5) -> 3,
-        >> find_number_of_consecutive_digits("Hello123", 6) -> 2,
-        >> find_number_of_consecutive_digits("He1llo23", 2) -> 1,
+        >>> find_number_of_consecutive_digits("Hello123", 0)
+        0
+        >>> find_number_of_consecutive_digits("Hello123", 5)
+        3
+        >>> find_number_of_consecutive_digits("Hello123", 6)
+        2
+        >>> find_number_of_consecutive_digits("He1llo23", 2)
+        1
 
     """
     num_digits = 0

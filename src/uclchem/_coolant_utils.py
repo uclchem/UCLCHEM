@@ -110,8 +110,8 @@ def get_energy_levels_info_from_runtime() -> tuple[int, int]:
 
 def validate_coolant_frequencies(
     coolant_names: list[str],
-    coolant_files: list[str],
-    data_dir: str,
+    coolant_files: list[str | Path],
+    data_dir: str | Path,
 ) -> dict[str, float]:
     """Validate frequency consistency in LAMDA files at makerates time.
 
@@ -120,12 +120,12 @@ def validate_coolant_frequencies(
     maximum relative deviation.
 
     Args:
-        coolant_names: List of coolant species names
-        coolant_files: List of coolant data file names
-        data_dir: Directory containing the coolant data files
+        coolant_names (list[str]): List of coolant species names
+        coolant_files (list[str | Path]): List of coolant data file names
+        data_dir (str | Path): Directory containing the coolant data files
 
     Returns:
-        Dict mapping coolant name to max relative frequency deviation
+        max_deviations (dict[str, float]): Dict mapping coolant name to max relative frequency deviation
 
     """
     # Physical constants (must match Fortran constants.f90)
@@ -223,8 +223,8 @@ def load_coolant_level_names() -> dict[int, list[str]]:
     """Load coolant level information from disk for meaningful column names.
 
     Returns:
-        Dict mapping coolant index to list of level names
-        (e.g., {0: ['H_2_S_1/2', 'H_2_P_1/2'], 1: ['C+_2_P_1/2', ...]})
+        level_names (dict[int, list[str]]): Dict mapping coolant index to list of level names
+            (e.g., {0: ['H_2_S_1/2', 'H_2_P_1/2'], 1: ['C+_2_P_1/2', ...]})
 
     Raises:
         FileNotFoundError: If data directory or coolant files don't exist
