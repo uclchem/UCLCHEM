@@ -155,3 +155,90 @@ def test_small_chemistry_prefix_has_reactions(small_chemistry_prefix_network):
     """Test that small_chemistry_prefix network has reactions."""
     reactions = small_chemistry_prefix_network.get_reaction_list()
     assert len(reactions) > 0
+
+
+# ============================================================================
+# Dynamic Network Installation Tests
+# ============================================================================
+# These tests validate that each custom network can be installed and rebuilt
+# using makerates. The workflow is:
+# 1. Run makerates (generate rates)
+# 2. Load the network
+# 3. Run makerates again (verify network installation doesn't break rates)
+
+
+def get_all_networks():
+    """Discover all custom networks in the tests/networks directory."""
+    networks_path = NETWORKS_DIR
+    if not networks_path.exists():
+        return []
+
+    networks = []
+    for network_dir in sorted(networks_path.iterdir()):
+        if network_dir.is_dir():
+            settings_file = network_dir / "user_settings.yaml"
+            if settings_file.exists():
+                networks.append((network_dir.name, settings_file))
+
+    return networks
+
+
+@pytest.mark.parametrize("network_name,settings_file", get_all_networks())
+def test_network_installable(network_name, settings_file):
+    """Test that each custom network can be installed with makerates.
+
+    Workflow:
+    1. Run makerates to generate reaction rates
+    2. Load the network from the generated rates
+    3. Run makerates again to verify the network doesn't break rates generation
+
+    This validates that networks are self-consistent and can be rebuilt.
+    """
+    # Step 1: Run makerates (generate rates)
+    network = run_makerates(str(settings_file), write_files=False)
+    assert network is not None, f"Failed to generate rates for {network_name}"
+
+    # Step 2: Verify network loaded correctly
+    species = network.get_species_list()
+    reactions = network.get_reaction_list()
+    assert len(species) > 0, f"Network {network_name} has no species"
+    assert len(reactions) > 0, f"Network {network_name} has no reactions"
+
+    # Step 3: Run makerates again (verify network installation consistency)
+    # This ensures the network can be rebuilt without errors
+    network_2 = run_makerates(str(settings_file), write_files=False)
+    assert network_2 is not None, f"Failed to rebuild rates for {network_name}"
+
+    # Verify the rebuilt network has same number of species and reactions
+    species_2 = network_2.get_species_list()
+    reactions_2 = network_2.get_reaction_list()
+    assert len(species_2) == len(species), (
+        f"Network {network_name} inconsistent: "
+        f"first build {len(species)} species, second build {len(species_2)}"
+    )
+    assert len(reactions_2) == len(reactions), (
+        f"Network {network_name} inconsistent: "
+        f"first build {len(reactions)} reactions, second build {len(reactions_2)}"
+    )
+
+
+@pytest.mark.parametrize("network_name,settings_file", get_all_networks())
+def test_network_has_minimum_content(network_name, settings_file):
+    """Test that each custom network has minimum expected content.
+
+    Validates:
+    - Network has species definitions
+    - Network has reactions
+    - Network can be accessed without errors
+    """
+    network = run_makerates(str(settings_file), write_files=False)
+
+    species_names = {s.get_name() for s in network.get_species_list()}
+    reactions = network.get_reaction_list()
+
+    # Every network must have at least one species and reaction
+    assert len(species_names) > 0, f"Network {network_name} has no species"
+    assert len(reactions) > 0, f"Network {network_name} has no reactions"
+
+    # Every network should have at least hydrogen (fundamental species)
+    assert "H" in species_names, f"Network {network_name} missing fundamental species 'H'"

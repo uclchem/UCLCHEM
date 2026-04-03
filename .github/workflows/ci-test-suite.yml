@@ -1,0 +1,128 @@
+name: Test Suite (All Tests in Parallel)
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_run:
+    workflows: ["Lint (Code Style & Format)"]
+    types:
+      - completed
+
+concurrency:
+  group: test-suite-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # TIER 1: FOUNDATION - Installation (must pass before all other tests)
+  # ============================================================================
+  install:
+    name: Install (Foundation)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+
+    steps:
+      - uses: ./.github/actions/setup-uclchem
+        with:
+          install-package: "false"
+
+      - name: "[build:package] Install UCLCHEM package"
+        run: pip install .
+
+      - name: "[test:install] Run installation tests"
+        run: pytest tests/test_install.py -v
+
+      - name: "[report:success] Installation successful - tests can proceed"
+        run: echo "✓ Package installed and ready for testing"
+
+  # ============================================================================
+  # TIER 2: PARALLEL TESTS - All depend on successful install
+  # ============================================================================
+
+  test-functional:
+    name: Test (Core Functionality)
+    runs-on: ubuntu-latest
+    needs: install
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+
+    steps:
+      - uses: ./.github/actions/setup-uclchem
+
+      - name: "[test:functional] Run core test suite (parallel)"
+        run: pytest -n auto tests/ -k "not install and not heating_cooling"
+
+  test-doctests:
+    name: Test (Doctests)
+    runs-on: ubuntu-latest
+    needs: install
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+
+    steps:
+      - uses: ./.github/actions/setup-uclchem
+
+      - name: "[setup:deps] Install meson-python (for editable install)"
+        run: pip install meson-python
+
+      - name: "[build:package] Install UCLCHEM in editable mode"
+        run: pip install --no-build-isolation -e .
+
+      - name: "[test:doctest] Run doctests from docstrings"
+        run: |
+          pytest --doctest-modules \
+            --ignore=notebooks/ \
+            --ignore=src/uclchem/version.py \
+            --ignore=tests/ \
+            --ignore=Makerates/enthalpy_routines/ \
+            --ignore=utils/run_notebooks.py
+
+  test-heating-cooling:
+    name: Test (Heating/Cooling Features)
+    runs-on: ubuntu-latest
+    needs: install
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+
+    steps:
+      - uses: ./.github/actions/setup-uclchem
+
+      - name: "[test:feature] Run heating/cooling feature tests"
+        run: pytest tests/test_heating_cooling_install.py -v
+
+  test-notebooks:
+    name: Test (Notebooks)
+    runs-on: ubuntu-latest
+    needs: install
+    # Only run on main branch (expensive operation)
+    if: |
+      (github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request') &&
+      github.ref_name == 'main'
+
+    steps:
+      - uses: ./.github/actions/setup-uclchem
+
+      - name: "[setup:deps] Install notebook tools"
+        run: |
+          pip install nbmake jupyter jupytext
+
+      - name: "[build:notebooks] Generate notebooks from .py files"
+        run: |
+          cd notebooks
+          bash notebooks.sh --generate
+
+      - name: "[test:notebooks] Execute all notebooks"
+        run: |
+          pytest -n auto --nbmake --nbmake-timeout=2400 --nbmake-kernel=python3 notebooks
+
+  test-networks:
+    name: Test (Custom Networks)
+    runs-on: ubuntu-latest
+    needs: install
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+
+    steps:
+      - uses: ./.github/actions/setup-uclchem
+
+      - name: "[test:networks] Test custom network installation"
+        run: |
+          pytest -v tests/test_custom_networks.py -k "installable or minimum_content"
