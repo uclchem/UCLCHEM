@@ -1,257 +1,342 @@
-# Fortran Parameter Classification
-# This file defines which Fortran variables are compile-time constants (PARAMETER)
-# and which are internal solver/computation variables (INTERNAL).
-#
-# Variables not listed here are considered user-facing modifiable parameters.
-
 fortran_parameters:
-  # Attributes present as Fortran KIND parameters across virtually every module.
-  # Listed here so they are added to the global skip set regardless of module.
   global:
-    - dp
-
-  # network.f90 - species/reaction data arrays (compile-time constants)
-  network:
-    - mintemps
-    - maxtemps
-    - exothermicities
-    - reducedmasses
-    - mass
-    - atomcounts
-    - surfacelist
-    - bulklist
-    - icelist
-    - gasicelist
-    - solidfractions
-    - monofractions
-    - volcanicfractions
-    - formationenthalpy
-    - refractorylist
-    - re1
-    - re2
-    - re3
-    - p1
-    - p2
-    - p3
-    - p4
-    - extrapolaterates
-    # network.f90 - reaction range arrays
-    - photonreacs
-    - crpreacs
-    - crphotreacs
-    - freezereacs
-    - desorbreacs
-    - thermreacs
-    - desoh2reacs
-    - descrreacs
-    - deuvcrreacs
-    - h2formreacs
-    - erreacs
-    - erdesreacs
-    - lhreacs
-    - lhdesreacs
-    - bulkswapreacs
-    - surfswapreacs
-    - ionopol1reacs
-    - ionopol2reacs
-    - crsreacs
-    - exsolidreacs
-    - exrelaxreacs
-    - twobodyreacs
-    - garreacs
-    - freezepartners
-    # network.f90 - build-time flags (read-only in spawned workers)
-    - enablechemicalheating
-    - three_phase
-    # network.f90 - species indices (compile-time lookups)
-    - n13c
-    - n15n
-    - n18o
-    - nbulk
-    - nc
-    - nch3oh
-    - ncl
-    - nclx
-    - nco
-    - ncx
-    - nd
-    - nelec
-    - nf
-    - nfe
-    - ngh
-    - ngh2
-    - ngn
-    - ngo
-    - ngoh
-    - nh
-    - nh2
-    - nh2o
-    - nhe
-    - nhex
-    - nhx
-    - nli
-    - nmg
-    - nmgx
-    - nn
-    - nna
-    - nnx
-    - "no"
-    - nox
-    - np
-    - npah
-    - nsurface
-    - ns
-    - nsi
-    - nsix
-    - nsx
-    # network.f90 - reaction indices
-    - nr_c_hv
-    - nr_co_hv
-    - nr_efreeze
-    - nr_h2_crp
-    - nr_h2_hv
-    - nr_h2_ed
-    - nr_h_ed
-    - nr_h2form_ct
-    - nr_h2form_er
-    - nr_h2form_erdes
-    - nr_h2form_lh
-    - nr_h2form_lhdes
-    - nr_h2freeze
-    - nr_hfreeze
-
-  # heating.f90 - compile-time array dimension PARAMETERs
-  heating:
-    - max_line_solve_attempts
-    - ncooling
-    - nheating
-    - nheatingterms
-
-  # cshock.f90 - grain/shock PARAMETERs
-  cshock_mod:
-    - bt
-    - grainradius
-    - nu0
-
-  # hotcore.f90 - mass grid size PARAMETER
-  hotcore:
-    - nmasses
-
-  # chemistry.f90 - solver limit PARAMETERs
-  chemistry:
-    - maxconsecutivefailures
-    - maxloops
-
-  # rates.f90 - H sticking curve PARAMETERs
-  rates:
-    - h2stickingtemp
-    - h2stickingzero
-    - hstickingtemp
-    - hstickingzero
-
-  # photoreactions.f90 - table dimension PARAMETERs
-  photoreactions:
-    - dimco
-    - dimh2
-
-  # sputtering.f90 - vaporization speed PARAMETER
-  sputtering:
-    - vaporize_speed
-
-  # io.f90 - file unit ID PARAMETERs
-  io:
-    - abundloadid
-    - abundsaveid
-    - columnid
-    - debugid
-    - heatingid
-    - inputid
-    - outid
-    - outputid
-    - rateconstantid
-    - ratesid
-
-internal_parameters:
-  # physicscore - ODE solver internals
+  - dp
   physicscore:
-    - currenttimeold
-    - dstep
-    - ckhdiss
-    - ckhion
-    - ckldiss
-    - cklion
-  
-  # network - reaction computation internals
+  - ckhdiss
+  - ckhion
+  - ckldiss
+  - cklion
+  - tdsub
+  - wave1
+  - wave2
   network:
-    - reactionrate
-    - storeratescomputation
-  
-  # heating - internal computation arrays
+  - atomcounts
+  - bulklist
+  - bulkswapreacs
+  - crphotreacs
+  - crpreacs
+  - crsreacs
+  - customvdes
+  - customvdiff
+  - descrreacs
+  - desoh2reacs
+  - desorbreacs
+  - deuvcrreacs
+  - edreacs
+  - enablechemicalheating
+  - erdescorrespondingerreacs
+  - erdesreacs
+  - erreacs
+  - exrelaxreacs
+  - exsolidreacs
+  - extrapolaterates
+  - freezepartners
+  - freezereacs
+  - garparams
+  - garreacs
+  - gasicelist
+  - h2formreacs
+  - icelist
+  - ionopol1reacs
+  - ionopol2reacs
+  - lhdescorrespondinglhreacs
+  - lhdesreacs
+  - lhreacs
+  - mass
+  - maxtemps
+  - mintemps
+  - monofractions
+  - n13c
+  - n15n
+  - n18o
+  - nbulk
+  - nc
+  - nch3oh
+  - ncl
+  - nclx
+  - nco
+  - ncx
+  - nd
+  - nelec
+  - nf
+  - nfe
+  - ngh
+  - ngh2
+  - ngn
+  - ngo
+  - ngoh
+  - nh
+  - nh2
+  - nh2o
+  - nhe
+  - nhex
+  - nhx
+  - nli
+  - nmg
+  - nmgx
+  - nn
+  - nna
+  - nnx
+  - 'no'
+  - nox
+  - np
+  - npah
+  - nr_c_hv
+  - nr_co_hv
+  - nr_efreeze
+  - nr_h2_crp
+  - nr_h2_ed
+  - nr_h2_hv
+  - nr_h2form_ct
+  - nr_h2form_er
+  - nr_h2form_erdes
+  - nr_h2form_lh
+  - nr_h2form_lhdes
+  - nr_h2freeze
+  - nr_h_ed
+  - nr_hfreeze
+  - ns
+  - nsi
+  - nsix
+  - nsurface
+  - nsx
+  - p1
+  - p2
+  - p3
+  - p4
+  - photonreacs
+  - re1
+  - re2
+  - re3
+  - reducedmasses
+  - refractorylist
+  - solidfractions
+  - specname
+  - surfacelist
+  - surfswapreacs
+  - thermreacs
+  - three_phase
+  - twobodyreacs
+  - volcanicfractions
   heating:
-    - chemheating
-    - coolingvalues
-    - heatingvalues
-    - linecoolingarray_size
-    - linecoolinglabels
-    - median_line_index
-    - permutationarray_size
-    - line_solver_attempts
-  surfacereactions:
-    - num_monolayers_is_surface
-    - gas_dust_density_ratio
-    - num_sites_per_grain
-  
-  # io - file unit numbers
-  io:
-    - columnfunit
-    - filenum
-    - heatfunit
-    - logfunit
-    - outputfunit
-    - rateconstantfunit
-    - ratesfunit
-    - readabundfunit
-    - rout_funit
-    - saveabundfunit
-  
-  # cshock/jshock - internal iteration variables
+  - aconsts
+  - alpha
+  - bconsts
+  - c
+  - c0
+  - c1
+  - c2
+  - c3
+  - c4
+  - c5
+  - c6
+  - cmbtemp
+  - coolinglabels
+  - d
+  - heatinglabels
+  - max_line_solve_attempts
+  - ncooling
+  - nheating
+  - nheatingterms
+  - phi_pah
   cshock_mod:
-    - postshock
-    - inrad
-    - tempindx
-  jshock_mod:
-    - postshock
-    - inrad
-    - tempindx
-
+  - bt
+  - grainradius
+  - nu0
+  hotcore:
+  - codestemp
+  - nmasses
+  - solidtemp
+  - tempa
+  - tempb
+  - volctemp
+  chemistry:
+  - maxconsecutivefailures
+  - maxloops
+  rates:
+  - h2stickingtemp
+  - h2stickingzero
+  - hstickingtemp
+  - hstickingzero
+  photoreactions:
+  - dimco
+  - dimh2
+  - fosc
+  - fpara
+  sputtering:
+  - vaporize_speed
+  io:
+  - abundloadid
+  - abundsaveid
+  - columnid
+  - debugid
+  - heatingid
+  - inputid
+  - outid
+  - outputid
+  - rateconstantid
+  - ratesid
   constants:
-    - parameter_read_error
-    - physics_init_error
-    - chem_init_error
-    - int_unrecoverable_error
-    - int_too_many_fails_error
-    - not_enough_timepoints_error
-    - physics_update_error
-    - solver_stats_overflow_error
-    - coolant_file_error
-    - coolant_data_error
-    - coolant_freq_tol_error
-    - coolant_pop_tol_error
-    - coolant_solver_error
-    - coolant_config_error          
-    - negative_abundance_error
-
+  - amu
+  - au
+  - aunit
+  - c
+  - chem_init_error
+  - coolant_config_error
+  - coolant_data_error
+  - coolant_file_error
+  - coolant_freq_tol_error
+  - coolant_pop_tol_error
+  - coolant_solver_error
+  - dp
+  - ev
+  - grav_g
+  - habing_to_draine
+  - hp
+  - hp_si
+  - int_too_many_fails_error
+  - int_unrecoverable_error
+  - k_boltz
+  - k_boltz_si
+  - kcal_to_joule
+  - km
+  - lsun
+  - mh
+  - n_avogadro
+  - negative_abundance_error
+  - not_enough_timepoints_error
+  - parameter_read_error
+  - pc
+  - physics_init_error
+  - physics_update_error
+  - pi
+  - reac_not_present
+  - reduced_planck
+  - sb_const
+  - seconds_per_year
+  - solver_stats_overflow_error
+  - t_cmb
+  - uisrf
+  - uisrf_uv
+  f2py_constants:
+  - coolantconversionfactors
+  - coolantconversionmode
+  - coolantfiles
+  - coolantnames
+  - coolantparentnames
+  - max_coolants
+  - n_dvode_stats
+  - n_physics_params
+  - n_se_stats_per_coolant
+  - n_total_levels
+  - ncoolants
+  - nreac
+  - nspec
+  - suggested_freq_rel_tol
+  surfacereactions:
+  - chemical_barrier_thickness
+  - diffuse_react_competition
+  - effective_surface_mass
+  - gas_dust_density_ratio
+  - gas_dust_mass_ratio
+  - grain_crosssection_per_h
+  - grain_density
+  - grain_radius
+  - grain_surfacearea_per_h
+  - grains_have_ice
+  - graphite_cross_section
+  - graphite_e_h2
+  - graphite_e_hc
+  - graphite_e_hp
+  - graphite_e_s
+  - graphite_mu
+  - graphite_nu_h2
+  - graphite_nu_hc
+  - h2_on_h2_binding_energy
+  - h_on_h2_binding_energy
+  - hh_vdes_prefactor
+  - min_surface_abund
+  - num_monolayers_is_surface
+  - num_sites_per_grain
+  - silicate_cross_section
+  - silicate_e_h2
+  - silicate_e_hc
+  - silicate_e_hp
+  - silicate_e_s
+  - silicate_mu
+  - silicate_nu_h2
+  - silicate_nu_hc
+  - surface_site_density
+  - thermal_vel
+  - tst_vdes_prefactor
+  - usecustomreducedmass
+  - usegarrod2011transfer
+  - vdiff_prefactor
+internal_parameters:
+  physicscore:
+  - currenttimeold
+  - dstep
+  - ckhdiss
+  - ckhion
+  - ckldiss
+  - cklion
+  network:
+  - reactionrate
+  - storeratescomputation
+  heating:
+  - chemheating
+  - coolingvalues
+  - heatingvalues
+  - linecoolingarray_size
+  - linecoolinglabels
+  - median_line_index
+  - permutationarray_size
+  - line_solver_attempts
+  surfacereactions:
+  - num_monolayers_is_surface
+  - gas_dust_density_ratio
+  - num_sites_per_grain
+  io:
+  - columnfunit
+  - filenum
+  - heatfunit
+  - logfunit
+  - outputfunit
+  - rateconstantfunit
+  - ratesfunit
+  - readabundfunit
+  - rout_funit
+  - saveabundfunit
+  cshock_mod:
+  - postshock
+  - inrad
+  - tempindx
+  jshock_mod:
+  - postshock
+  - inrad
+  - tempindx
+  constants:
+  - parameter_read_error
+  - physics_init_error
+  - chem_init_error
+  - int_unrecoverable_error
+  - int_too_many_fails_error
+  - not_enough_timepoints_error
+  - physics_update_error
+  - solver_stats_overflow_error
+  - coolant_file_error
+  - coolant_data_error
+  - coolant_freq_tol_error
+  - coolant_pop_tol_error
+  - coolant_solver_error
+  - coolant_config_error
+  - negative_abundance_error
 file_path_parameters:
-  # File paths that should only be set via param_dict, not GeneralSettings
-  # These are handled specially by logic inside wrap.f90 (opening and closing of files)
   defaultparameters:
-    - outputfile
-    - columnfile
-    - rateconstantfile
-    - ratesfile
-    - heatingfile
-    - abundsavefile
-    - abundloadfile
-
-# Note: coolantdatadir was moved from defaultparameters to f2py_constants
-# and is now set via HeatingSettings.set_coolant_directory()
+  - outputfile
+  - columnfile
+  - rateconstantfile
+  - ratesfile
+  - heatingfile
+  - abundsavefile
+  - abundloadfile

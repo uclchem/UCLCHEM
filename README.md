@@ -92,6 +92,10 @@ archivePrefix = {arXiv},
 
 
 # Developers
+## Developer tools
+
+After adding or renaming Fortran `PARAMETER` declarations, regenerate `src/uclchem/advanced/fortran_metadata.yaml` by running `uclchem-generate-metadata` (or `--dry-run` to preview changes). The CI workflow `check-fortran-metadata.yml` will fail on pull requests if the file is out of date.
+
 ## Makerates only install instruction 
 
 
