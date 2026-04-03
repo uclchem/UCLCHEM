@@ -1,6 +1,7 @@
 name: Check Fortran Metadata
 
 on:
+  push:
   pull_request:
     branches:
       - main
@@ -10,14 +11,18 @@ on:
       - 'src/uclchem/advanced/fortran_metadata.yaml'
       - 'src/uclchem/advanced/generate_metadata.py'
 
+concurrency:
+  group: check-fortran-metadata-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 

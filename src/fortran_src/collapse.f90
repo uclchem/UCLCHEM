@@ -96,7 +96,7 @@ CONTAINS
         ELSE IF (timeInYears .gt. 1000) THEN
             targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR    ! 100 yr steps beyond 1 kyr
         ELSE IF (timeInYears .gt. 0.0) THEN
-            targetTime=(timeInYears*10)*SECONDS_PER_YEAR       ! ×10 exponential early on
+            targetTime=(timeInYears*10)*SECONDS_PER_YEAR       ! *10 exponential early on
         ELSE
             targetTime=3.16d7*10.d-8
         END IF
