@@ -1573,7 +1573,11 @@ class AbstractModel(ABC):
                         # Add parcel_radius=0 column before point (collapse files only)
                         parcel_radius_column = np.zeros((array.shape[0], 1))
                         array = np.hstack(
-                            [array[:, :point_index], parcel_radius_column, array[:, point_index:]]
+                            [
+                                array[:, :point_index],
+                                parcel_radius_column,
+                                array[:, point_index:],
+                            ]
                         )
                         physics_cols_from_file.append("parcel_radius")
                         point_index += 1  # point column shifted by 1

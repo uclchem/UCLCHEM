@@ -176,8 +176,16 @@ class TestHeatingArrays:
         try:
             if model_function == "collapse":
                 collapse_params = {
-                    k: v for k, v in test_params.items()
-                    if k not in {"endAtFinalDensity", "finalTime", "freefall", "initialDens", "finalDens"}
+                    k: v
+                    for k, v in test_params.items()
+                    if k
+                    not in {
+                        "endAtFinalDensity",
+                        "finalTime",
+                        "freefall",
+                        "initialDens",
+                        "finalDens",
+                    }
                 }
                 result = func(
                     collapse="BE4",
