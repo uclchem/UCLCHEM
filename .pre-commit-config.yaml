@@ -8,6 +8,12 @@ repos:
       files: \.ipynb$
       stages: [pre-commit]
       pass_filenames: false
+    - id: check-fortran-ascii
+      name: Check Fortran files for non-ASCII characters
+      entry: python .github/scripts/check_fortran_ascii.py
+      language: system
+      files: \.(f90|f|f95|f03|f08|f15|f18)$
+      stages: [pre-commit]
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
   rev: v0.15.0
