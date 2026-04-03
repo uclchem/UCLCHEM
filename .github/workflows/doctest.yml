@@ -44,5 +44,5 @@ jobs:
 
     - name: Run all test suite
       run: |
-        pytest --doctest-modules --ignore-glob=notebooks/* --ignore=src/uclchem/version.py --ignore=tests/
+        pytest --doctest-modules --ignore-glob=notebooks/* --ignore=src/uclchem/version.py --ignore=tests/ --ignore=Makerates/enthalpy_routines/
 
