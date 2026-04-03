@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 from uclchem.makerates import io_functions as io
+from uclchem.makerates._output_resolver import resolve_output_dirs
 from uclchem.makerates.config import MakeratesConfig
 from uclchem.makerates.network import Network
 from uclchem.makerates.reaction import Reaction
@@ -51,17 +52,19 @@ def run_makerates(
     # Log the configuration
     config.log_configuration()
 
-    # Prepare output directory (allow caller to override)
-    if output_directory is not None:
-        user_output_dir = output_directory
-        if not os.path.exists(user_output_dir):
-            os.makedirs(user_output_dir)
-    elif config.output_directory:
-        user_output_dir = config.resolve_path(config.output_directory)
-        if not user_output_dir.is_dir():
-            user_output_dir.mkdir()
-    else:
-        user_output_dir = None
+    # Resolve output directories using tiered priority:
+    # 1) explicit kwarg, 2) config field, 3) stored project root, 4) legacy relative paths
+    explicit_dir = output_directory or config.output_directory
+    if explicit_dir:
+        # Ensure the directory exists
+        explicit_dir = Path(explicit_dir)
+        if not explicit_dir.is_dir():
+            explicit_dir.mkdir(parents=True)
+
+    output_dir, fortran_src_dir = resolve_output_dirs(
+        explicit_dir,
+        use_legacy_relative=True,
+    )
 
     # Get all reaction files and types
     reaction_files = config.get_all_reaction_files()
@@ -124,7 +127,7 @@ def run_makerates(
         # Write dropped reactions
         io.output_drops(
             dropped_reactions=dropped_reactions,
-            output_dir=user_output_dir,
+            output_dir=output_dir,
             write_files=write_files,
         )
         logging.info(f"There are {len(dropped_reactions)} dropped reactions")
@@ -151,12 +154,13 @@ def run_makerates(
             # Save the gar parameters in the correct order
             gar_parameters = {ion: _gar_parameters[ion] for ion in gar_ions}
 
-        # Pass resolved coolants and coolant_data_dir through to write_outputs
+        # Pass resolved output directories and other parameters to write_outputs
         io.write_outputs(
             network,
-            user_output_dir,
-            config.enable_rates_storage,
-            gar_parameters,
+            output_dir,
+            fortran_src_dir,
+            enable_rates_storage=config.enable_rates_storage,
+            gar_database=gar_parameters,
             coolants=coolants_to_write,
             coolant_data_dir=config.coolant_data_dir,
         )

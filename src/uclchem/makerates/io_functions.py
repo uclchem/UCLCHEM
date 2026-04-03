@@ -387,7 +387,8 @@ def output_drops(
 
 def write_outputs(
     network: Network,
-    output_dir: str = None,
+    python_src_dir: Path,
+    fortran_src_dir: Path,
     enable_rates_storage: bool = False,
     gar_database: dict[str, np.array] | None = None,
     coolants: list[dict] | None = None,
@@ -397,9 +398,10 @@ def write_outputs(
 
     Args:
         network (network): The makerates Network class
-        output_dir (bool): The directory to write to.
-        coolants (list[dict]): List of coolant dictionaries with 'file' and 'name' keys.
-                               If None, uses default coolants.
+        python_src_dir (Path): Directory to write Python source files
+            (species.csv, reactions.csv).
+        fortran_src_dir (Path): Directory to write Fortran source files
+            (odes.f90, network.f90, f2py_constants.f90).
         enable_rates_storage (bool): Enable storage of writing rates to files.
             Default = False.
         gar_database (dict[str, np.array] | None): Database for grain-activated recombination
@@ -417,13 +419,6 @@ def write_outputs(
         ValueError: If coolants have parent species specified that are not in the network.
 
     """
-    if output_dir is None:
-        output_dir = Path("../src/uclchem")
-        fortran_src_dir = Path("../src/fortran_src")
-    else:
-        output_dir = Path(output_dir)
-        fortran_src_dir = Path(output_dir)
-
     # Use default coolants if none provided
     if coolants is None:
         coolants = get_default_coolants()
@@ -442,10 +437,10 @@ def write_outputs(
             )
 
     # Create the species file
-    filename = output_dir / "species.csv"
+    filename = python_src_dir / "species.csv"
     write_species(filename, network.get_species_list())
 
-    filename = output_dir / "reactions.csv"
+    filename = python_src_dir / "reactions.csv"
     write_reactions(filename, network.get_reaction_list())
 
     # Write the ODEs in the appropriate language format

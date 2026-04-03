@@ -37,6 +37,7 @@ def test_package_installation():
         settings_path = (
             Path(__file__).parent / "networks" / "small_chemistry" / "user_settings.yaml"
         )
+        # run_makerates will automatically find the project src/ directory
         run_makerates(str(settings_path), write_files=True)
     except Exception as e:
         assert False, f"Installing an alternative network failed: {e}"
