@@ -16,7 +16,7 @@ MODULE cloud_mod
 
     ! Time sampling control parameters
     REAL(dp) :: timestep_multiplier_early = 10.0_dp          ! For t < 10 yr: next timestep dt = multiplier × t
-    REAL(dp) :: timestep_resolution_factor_mid = 1.0_dp      ! For 10 yr < t < 1 Myr: dt = 10^⌊log₁₀(t)⌋ / factor
+    REAL(dp) :: timestep_resolution_factor_mid = 1.0_dp      ! For 10 yr < t < 1 Myr: dt = 10^⌊log_10(t)⌋ / factor
     REAL(dp) :: timestep_fixed_late_years = 1.0d5            ! For t > 1 Myr: dt = fixed timestep in years
 
 CONTAINS
