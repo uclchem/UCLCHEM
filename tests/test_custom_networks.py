@@ -4,6 +4,8 @@ Checks that small_chemistry and small_chemistry_prefix networks
 can be loaded and have expected properties.
 """
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -242,3 +244,73 @@ def test_network_has_minimum_content(network_name, settings_file):
 
     # Every network should have at least hydrogen (fundamental species)
     assert "H" in species_names, f"Network {network_name} missing fundamental species 'H'"
+
+
+# ============================================================================
+# Integration Tests - Makerates → Install → Cloud Model
+# ============================================================================
+# These tests run a complete workflow: generate network files with makerates,
+# reinstall the package to recompile Fortran, and run a minimal cloud model.
+# This validates that networks are not only internally consistent, but also
+# work end-to-end with the compiled binary.
+
+
+@pytest.mark.timeout(600)
+@pytest.mark.parametrize("network_name,settings_file", get_all_networks())
+def test_network_cloud_model_runs(network_name, settings_file):
+    """Full integration test: makerates → pip install → run Cloud model.
+
+    Workflow:
+    1. Run makerates writing Fortran source files to src/
+    2. Reinstall the package to recompile the extension with the new network
+    3. Run a minimal cloud model (1e4 yr) in a fresh subprocess
+       (to load the newly compiled binary, not the stale in-process one)
+
+    This validates that networks can be fully installed and used in simulation.
+    """
+    UCLCHEM_ROOT = Path(__file__).resolve().parent.parent
+
+    # Step 1: Run makerates and write Fortran source files
+    run_makerates(str(settings_file), write_files=True)
+
+    # Step 2: Reinstall to recompile the Fortran extension
+    result = subprocess.run(
+        "pip install .",
+        shell=True,
+        text=True,
+        capture_output=True,
+        cwd=str(UCLCHEM_ROOT),
+        timeout=300,
+    )
+    assert result.returncode == 0, (
+        f"pip install failed for {network_name}:\nSTDOUT:\n{result.stdout}\n"
+        f"STDERR:\n{result.stderr}"
+    )
+
+    # Step 3: Run a minimal cloud model in a fresh subprocess
+    # (avoids stale .so binary locked in memory by the test process)
+    script = """
+import uclchem
+cloud = uclchem.model.Cloud(
+    param_dict={
+        "finalTime": 1e4,
+        "initialDens": 1e4,
+        "initialTemp": 10.0,
+        "freefall": False,
+        "endAtFinalDensity": False,
+    },
+    out_species=["H", "H2", "CO"]
+)
+cloud.check_error()
+print("OK")
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, (
+        f"Cloud model failed for {network_name}:\nSTDOUT:\n{result.stdout}\n"
+        f"STDERR:\n{result.stderr}"
+    )

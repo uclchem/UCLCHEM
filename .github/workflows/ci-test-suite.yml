@@ -135,6 +135,6 @@ jobs:
 
       - uses: ./.github/actions/setup-uclchem
 
-      - name: "[test:networks] Test custom network installation"
+      - name: "[test:networks] Test custom network installation and simulation"
         run: |
-          pytest -v tests/test_custom_networks.py -k "installable or minimum_content"
+          pytest -v tests/test_custom_networks.py -k "installable or minimum_content or cloud_model"
