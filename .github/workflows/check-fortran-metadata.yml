@@ -1,0 +1,82 @@
+name: Check Fortran Metadata
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'src/fortran_src/**/*.f90'
+      - 'src/uclchem/advanced/fortran_metadata.yaml'
+      - 'src/uclchem/advanced/generate_metadata.py'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pyyaml
+        run: pip install pyyaml
+
+      - name: Check metadata is up to date
+        # generate_metadata.py only needs two values from the package:
+        #   - UCLCHEM_ROOT_DIR  (a Path, from uclchem.utils)
+        #   - _MODULE_NAMES     (a list, from uclchem.advanced.worker_state)
+        # Importing either normally pulls in uclchemwrap (compiled Fortran) and
+        # pandas.  Instead we extract _MODULE_NAMES from source via AST and
+        # stub both into sys.modules, then load generate_metadata.py directly.
+        run: |
+          python - <<'EOF'
+          import ast, importlib.util, pathlib, sys, types
+
+          # Extract _MODULE_NAMES from worker_state.py source — no import needed.
+          ws_src = pathlib.Path("src/uclchem/advanced/worker_state.py").read_text()
+          for node in ast.walk(ast.parse(ws_src)):
+              if (
+                  isinstance(node, ast.Assign)
+                  and any(
+                      isinstance(t, ast.Name) and t.id == "_MODULE_NAMES"
+                      for t in node.targets
+                  )
+              ):
+                  _MODULE_NAMES = ast.literal_eval(node.value)
+                  break
+
+          # Stub uclchem.utils (provides UCLCHEM_ROOT_DIR)
+          uclchem_mod = types.ModuleType("uclchem")
+          utils_mod = types.ModuleType("uclchem.utils")
+          utils_mod.UCLCHEM_ROOT_DIR = pathlib.Path("src/uclchem").resolve()
+          uclchem_mod.utils = utils_mod
+          sys.modules["uclchem"] = uclchem_mod
+          sys.modules["uclchem.utils"] = utils_mod
+
+          # Stub uclchem.advanced.worker_state (provides _MODULE_NAMES)
+          adv_mod = types.ModuleType("uclchem.advanced")
+          ws_mod = types.ModuleType("uclchem.advanced.worker_state")
+          ws_mod._MODULE_NAMES = _MODULE_NAMES
+          adv_mod.worker_state = ws_mod
+          uclchem_mod.advanced = adv_mod
+          sys.modules["uclchem.advanced"] = adv_mod
+          sys.modules["uclchem.advanced.worker_state"] = ws_mod
+
+          # Load and run generate_metadata without going through uclchem.__init__
+          spec = importlib.util.spec_from_file_location(
+              "uclchem.advanced.generate_metadata",
+              "src/uclchem/advanced/generate_metadata.py",
+          )
+          gen = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(gen)
+          gen.main(["--check"])
+          EOF
+
+      - name: Report
+        if: failure()
+        run: |
+          echo "fortran_metadata.yaml is out of date."
+          echo "Run 'uclchem-generate-metadata' and commit the result."

@@ -164,11 +164,16 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
 
     """
     # --- General settings ---
+    # If uclchem hangs here, the last debug line printed shows which Fortran
+    # PARAMETER is blocking. Add it to src/uclchem/advanced/fortran_metadata.yaml
+    # and regenerate with: uclchem-generate-metadata
     for mod_name, settings_dict in snapshot.get("general", {}).items():
         if not hasattr(uclchemwrap, mod_name):
             continue
         mod = getattr(uclchemwrap, mod_name)
         for attr, value in settings_dict.items():
+            # Uncomment next line to debug hangs (last printed line is the blocker):
+            # print(f"[DEBUG] setattr({mod_name}, {attr}, {value!r})", flush=True, file=sys.stderr)
             with contextlib.suppress(AttributeError, TypeError):
                 # read-only or incompatible – skip silently
                 setattr(mod, attr, value)

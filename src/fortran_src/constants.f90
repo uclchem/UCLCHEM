@@ -22,6 +22,8 @@ MODULE CONSTANTS
    REAL(dp), PARAMETER :: aunit = 1.495978d13 ! AU in cm
    REAL(dp), PARAMETER :: N_AVOGADRO=6.022140857d23 !Avogadro constant
    REAL(dp), PARAMETER :: KCAL_TO_JOULE=4.184d3 !Constant to convert kcal to J
+   REAL(dp), PARAMETER :: uISRF = 8.64d-13 !Energy density of the interstellar radiation field in cgs
+   REAL(dp), PARAMETER :: uISRF_UV = 5.29e-14 !Energy density of the UV interstellar radiation field in cgs
 
    !Sentinel value used in network.f90 for absent reaction types
    INTEGER, PARAMETER :: REAC_NOT_PRESENT = 99999
