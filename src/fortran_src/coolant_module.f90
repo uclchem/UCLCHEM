@@ -51,11 +51,11 @@ MODULE COOLANT_MODULE
       ! Cache has 10 entries per coolant, matched by all physical parameters
       REAL(dp) :: CACHE_TOLERANCE ! Relative tolerance for cache matching, default 0.01 (1%)
       REAL(dp) :: CACHED_TEMPERATURE(10) ! Cached temperature (K)
-      REAL(dp) :: CACHED_N_H2(10) ! Cached n(H2) = density × abundance(H2)
-      REAL(dp) :: CACHED_N_ELEC(10) ! Cached n(e-) = density × abundance(e-)
-      REAL(dp) :: CACHED_N_H(10) ! Cached n(H) = density × abundance(H)
-      REAL(dp) :: CACHED_N_HE(10) ! Cached n(He) = density × abundance(He)
-      REAL(dp) :: CACHED_N_HPLUS(10) ! Cached n(H+) = density × abundance(H+)
+      REAL(dp) :: CACHED_N_H2(10) ! Cached n(H2) = density * abundance(H2)
+      REAL(dp) :: CACHED_N_ELEC(10) ! Cached n(e-) = density * abundance(e-)
+      REAL(dp) :: CACHED_N_H(10) ! Cached n(H) = density * abundance(H)
+      REAL(dp) :: CACHED_N_HE(10) ! Cached n(He) = density * abundance(He)
+      REAL(dp) :: CACHED_N_HPLUS(10) ! Cached n(H+) = density * abundance(H+)
       REAL(dp), ALLOCATABLE :: CACHED_COLLISIONAL_RATE(:,:,:) ! (10, NLEVEL, NLEVEL)
       INTEGER :: CACHE_INDEX ! Current cache position (round-robin)
 
@@ -486,7 +486,7 @@ CONTAINS
          DO ILEVEL=1,coolants(N)%NLEVEL ! Loop over levels (i)
             DO JLEVEL=1,coolants(N)%NLEVEL ! Loop over levels (j)
                IF(coolants(N)%A_COEFF(ILEVEL,JLEVEL).EQ.0) CYCLE
-               !Factor 1 combines constants: = A_ij.c^3/8π.nu_ij^3
+               !Factor 1 combines constants: = A_ij*c^3/8*pi*nu_ij^3
                FACTOR1 = (coolants(N)%A_COEFF(ILEVEL,JLEVEL)*C**3)/(8*PI*coolants(N)%FREQUENCY(ILEVEL,JLEVEL)**3) 
                
                
@@ -517,7 +517,7 @@ CONTAINS
                ! IF (TRIM(coolants(N)%NAME) == "C+") THEN
                   ! write(*,*) "            ---->>>> [2]opacities = ", coolants(N)%OPACITY(ILEVEL,JLEVEL)
                ! END IF 
-               ! dtau_ij = A_ij.c^3/8π.nu_ij^3 * 1/δv_D * n_i.(n_j.g_i/n_i.g_j - 1) * dr
+               ! dtau_ij = A_ij*c^3/8*pi*nu_ij^3 * 1/(delta)v_D * n_i.(n_j.g_i/n_i.g_j - 1) * dr
             END DO ! End of loop over levels (j)
          END DO ! End of loop over levels (i)
       END DO ! End of loop over coolants
@@ -571,9 +571,9 @@ END SUBROUTINE CALCULATE_LAMBDA_OPERATOR
 !  assuming statistical equilibrium. The resulting set of statistical
 !  equilibrium equations take the form:
 !
-!     n_i.∑_j R_ij = ∑_j n_j.R_ji
+!     n_i.sum_j R_ij = sum_j n_j.R_ji
 !  or:
-!     n_i.∑_j R_ij - ∑_j n_j.R_ji = 0
+!     n_i.sum_j R_ij - sum_j n_j.R_ji = 0
 !
 !  where n_i is the population density (cm^-3) of level i and R_ij is
 !  the transition rate (s^-1) from level i to level j. By rearranging
@@ -584,13 +584,13 @@ END SUBROUTINE CALCULATE_LAMBDA_OPERATOR
 !
 !  The elements of the coefficient matrix A are specified as follows:
 !
-!     A_ij = -R_ji    (j≠i)
-!     A_ii = ∑_j R_ij (j≠i)
+!     A_ij = -R_ji    (j==i)
+!     A_ii = sum_j R_ij (j!=i)
 !
 !  Since this set of equilibrium equations is not independent, one of
 !  the equations has to be replaced by the conservation equation:
 !
-!     ∑_j n_j = n_tot
+!     sum_j n_j = n_tot
 !
 !  where n_tot is the density of the coolant species in all levels.
 !
@@ -655,7 +655,7 @@ SUBROUTINE CALCULATE_LEVEL_POPULATIONS(COOLANT,GasTemperature,gasDensity,abundan
 !  the conservation equation (i.e. the sum of the population densities
 !  over all levels), and replace the last entry in the right-hand-side
 !  vector with the total density of the coolant species.
-   COOLANT%A(COOLANT%NLEVEL,:)=1 ! Sum over all levels, ∑_j n_j
+   COOLANT%A(COOLANT%NLEVEL,:)=1 ! Sum over all levels, sum_j n_j
    COOLANT%B(COOLANT%NLEVEL)=coolant%density
 
 !  Call the Gauss-Jordan solver (the solution is returned in vector b)
@@ -1454,9 +1454,9 @@ FUNCTION ESCAPE_PROBABILITY(TAU) RESULT(BETA)
 
 !  The total escape probability must be divided by the number of rays to
 !  account for the fraction of the total solid angle covered by each ray
-!  (assuming that each ray covers the same fraction of the total 4π sr).
+!  (assuming that each ray covers the same fraction of the total 4*pi sr).
 !  In the case of only 1 ray (i.e., semi-infinite slab geometry) the ray
-!  subtends a solid angle of 2π sr, since the photons escape through the
+!  subtends a solid angle of 2*pi sr, since the photons escape through the
 !  hemisphere in the outward direction, so its escape probability should
 !  be divided by two.
    !BETA=0.5*BETA
