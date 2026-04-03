@@ -197,9 +197,9 @@ class SuccessFlag(enum.IntEnum):
 
         """
         if self == SuccessFlag.SUCCESS:
-            if only_error:
-                return None
-            return "Model ran successfully"
+            if not only_error:
+                print("Model ran successfully")
+            return None
         error_msg_dict = {
             SuccessFlag.PARAMETER_READ_ERROR: "Parameter read failed. Likely due to a misspelled parameter name, compare your dictionary to the parameters docs.",
             SuccessFlag.PHYSICS_INIT_ERROR: "Physics initialization failed. Often due to user choosing unacceptable parameters such as hot core masses or collapse modes that don't exist. Check the docs for your model function.",

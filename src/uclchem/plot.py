@@ -10,18 +10,43 @@ chemical abundances and reaction rates from UCLCHEM models.
 - :func:`create_abundance_plot` - Create publication-ready abundance plots
 
 **Example Usage:**
-
-.. code-block:: python
-
-    from uclchem import plot
-
-    # Plot top 5 reactions at a specific timestep
-    plot.plot_rate_summary(
-        production_df,
-        destruction_df,
-        step=50,
-        top_k_rates=5
-    )
+    >>> import uclchem
+    >>>
+    >>> model = uclchem.model.Cloud({})
+    >>> model.check_error()
+    Model ran successfully
+    >>>
+    >>> physics_df, chemistry_df, rate_constants_df = model.get_dataframes(
+    ...     with_rate_constants=True,
+    ...     joined=False,
+    ... )
+    >>> # Making a plot of the abundances over time
+    >>> fig, ax = uclchem.plot.create_abundance_plot(
+    ...     model.get_dataframes(joined=True), # need both "Time" and abundance columns in one dataframe
+    ...     ["H", "$H", "H2O", "$H2O", "CH3OH", "$CH3OH"],
+    ... )
+    >>>
+    >>> # Making a plot of the main formation and destruction reactions
+    >>> # at a specific timepoint
+    >>> network = uclchem.makerates.network.Network.from_csv()
+    >>> dy, reaction_rates = uclchem.analysis.rate_constants_to_dy_and_rates(
+    ...     physics_df,
+    ...     chemistry_df,
+    ...     rate_constants_df,
+    ...     network=network,
+    ... )
+    >>> production_df, destruction_df = uclchem.analysis.get_production_and_destruction(
+    ...     "H2O",
+    ...     reaction_rates,
+    ... )
+    >>>
+    >>> # Plot top 5 reactions at a specific timestep
+    >>> uclchem.plot.plot_rate_summary(
+    ...      production_df,
+    ...      destruction_df,
+    ...      step=50,
+    ...      top_k_rates=5
+    ...  ) # doctest: +SKIP
 
 **Note:**
 
