@@ -11,6 +11,10 @@ on:
       - 'src/uclchem/advanced/fortran_metadata.yaml'
       - 'src/uclchem/advanced/generate_metadata.py'
 
+concurrency:
+  group: check-fortran-metadata-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest

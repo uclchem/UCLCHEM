@@ -6,7 +6,7 @@ on:
       - main
       - develop  # Add the 'develop' branch here
   workflow_run:
-    workflows: ["Doctest"]
+    workflows: ["Lint"]
     types:
       - completed
 
