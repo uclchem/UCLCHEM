@@ -619,7 +619,7 @@ class NetworkBuilder:
                 # Bulk species may have custom desorb_products set from FREEZE/DESORB
                 # reactions (e.g., @HSIO -> SIOH+ for ion freeze-out). Use the custom
                 # pathway if available, otherwise use standard gas desorption (strip @).
-                if hasattr(species, 'desorb_products'):
+                if hasattr(species, "desorb_products"):
                     desorb_prods = species.get_desorb_products()
                 else:
                     desorb_prods = species.get_standard_desorb_products()
