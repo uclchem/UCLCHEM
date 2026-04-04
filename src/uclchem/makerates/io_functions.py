@@ -196,6 +196,11 @@ def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
             species list.
 
     """
+    # Convert empty strings in species slots to "NAN" for placeholder slots
+    for i in range(7):
+        if reaction_row[i] == "":
+            reaction_row[i] = "NAN"
+
     if all(normalize_species_name(x) in keep_list for x in reaction_row[0:7]):
         if reaction_row[10] == "":
             reaction_row[10] = 0.0
