@@ -62,7 +62,8 @@ symbols = ["#", "@", "*", "+", "-", "(", ")"]
 def normalize_species_name(name: str) -> str:
     """Normalize a species name to a canonical form.
 
-    Falsy values are converted to "NAN". Grain prefixes (#/@) are preserved as-is.
+    Empty strings are preserved as empty strings. Other falsy values (like None)
+    are converted to "NAN". Grain prefixes (#/@) are preserved as-is.
     A chemical isomer prefix — a single alphabetic character followed by a hyphen
     (e.g. 'o-', 'p-', 'a-', 'l-') — is lowercased so that input is case-insensitive.
     The chemical formula part is uppercased. All other names are simply uppercased.
@@ -74,13 +75,15 @@ def normalize_species_name(name: str) -> str:
         'C-'     -> 'C-'     (negative ion: len==2, not a prefix)
         'E-'     -> 'E-'     (electron: same rule)
         'H2O'    -> 'H2O'
-        ''       -> 'NAN'    (falsy value)
-        None     -> 'NAN'    (falsy value)
+        ''       -> ''       (empty string)
+        None     -> 'NAN'    (falsy non-string value)
 
     Returns:
         str: Normalized species name
     """
-    # Convert falsy values to "NAN" string
+    # Preserve empty strings; convert other falsy values to "NAN"
+    if name == "":
+        return ""
     if not name:
         return "NAN"
     grain_prefix = ""
