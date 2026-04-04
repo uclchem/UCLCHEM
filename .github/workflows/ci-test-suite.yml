@@ -55,7 +55,7 @@ jobs:
       - uses: ./.github/actions/setup-uclchem
 
       - name: "[test:functional] Run core test suite (parallel)"
-        run: pytest -n auto tests/ -k "not install and not heating_cooling"
+        run: pytest -n auto tests/ --ignore=tests/test_install_custom_networks.py -k "not install and not heating_cooling"
 
   test-doctests:
     name: Test (Doctests)
@@ -67,12 +67,6 @@ jobs:
       - uses: actions/checkout@v6
 
       - uses: ./.github/actions/setup-uclchem
-
-      - name: "[setup:deps] Install meson-python (for editable install)"
-        run: pip install meson-python
-
-      - name: "[build:package] Install UCLCHEM in editable mode"
-        run: pip install --no-build-isolation -e .
 
       - name: "[test:doctest] Run doctests from docstrings"
         run: |
@@ -137,4 +131,4 @@ jobs:
 
       - name: "[test:networks] Test custom network installation and simulation"
         run: |
-          pytest -v tests/test_custom_networks.py -k "installable or minimum_content or cloud_model"
+          pytest -v tests/test_install_custom_networks.py -k "installable or minimum_content or cloud_model"

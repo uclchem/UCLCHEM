@@ -197,7 +197,7 @@ HNS+,FREEZE,,#NS,H,,,1,1,0,,,,
 C3+,FREEZE,,#C2,C,,,1,1,0,,,,
 HOSO+,FREEZE,,#SO2,H,,,1,1,0,,,,
 SIOH+,FREEZE,,#HSIO,,,,1,1,0,,,,
-#HSIO,DESORB,,SIOH+,,,,1,1,0,,,,
+#HSIO,DESORB,,SIOH+,,,,1,0,3600,,,,
 HOC+,FREEZE,,#HCO,,,,1.0,1,0,,,,
 !
 C2N,FREEZE,,#CH3CNH,,,,1,0,0,,,,

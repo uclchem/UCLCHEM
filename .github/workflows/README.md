@@ -158,10 +158,10 @@ Run tests locally to match CI behavior:
 
 ```bash
 # All custom network tests
-pytest tests/test_custom_networks.py -v
+pytest tests/test_install_custom_networks.py -v
 
 # Specific network
-pytest tests/test_custom_networks.py -k "small_chemistry" -v
+pytest tests/test_install_custom_networks.py -k "small_chemistry" -v
 
 # Core tests
 pytest tests/ -k "not install and not heating_cooling"

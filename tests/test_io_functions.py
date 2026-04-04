@@ -289,3 +289,66 @@ def test_check_reaction_drops_unknown_prefix_species():
     row = ["x-H2", "CRP", "NAN", "H2", "NAN", "NAN", "NAN", 1.0, 0.0, 0.0, 0.0, 1e9, 0.0]
     keep = _keep_list("H2")  # x-H2 is not in the network
     assert not check_reaction(row, keep)
+
+
+# ---------------------------------------------------------------------------
+# desorb_products (custom FREEZE/DESORB pathways)
+# ---------------------------------------------------------------------------
+
+
+def test_surface_species_standard_desorb_products():
+    """Surface species by default use standard desorb: strip # prefix."""
+    s = _make("#H2O", mass=18, be=5000)
+    assert s.is_surface_species()
+    prods = s.get_standard_desorb_products()
+    assert prods == ["H2O", "NAN", "NAN", "NAN"]
+
+
+def test_surface_species_custom_desorb_products():
+    """Surface species can have custom desorb_products set (e.g., from FREEZE reactions)."""
+    s = _make("#HSIO", mass=45, be=3600)
+    assert s.is_surface_species()
+
+    # Initially, standard desorb just strips prefix
+    assert s.get_standard_desorb_products() == ["HSIO", "NAN", "NAN", "NAN"]
+
+    # After setting custom desorb products (e.g., from FREEZE/DESORB reaction)
+    s.set_desorb_products(["SIOH+", "NAN", "NAN", "NAN"])
+    assert s.get_desorb_products() == ["SIOH+", "NAN", "NAN", "NAN"]
+
+    # Standard desorb is still unchanged
+    assert s.get_standard_desorb_products() == ["HSIO", "NAN", "NAN", "NAN"]
+
+
+def test_bulk_species_desorb_products():
+    """Bulk species can also have custom desorb_products."""
+    s = _make("@HSIO", mass=45, be=5600)
+    assert s.is_bulk_species()
+
+    # Before setting custom products, standard desorb strips @ prefix
+    assert s.get_standard_desorb_products() == ["HSIO", "NAN", "NAN", "NAN"]
+
+    # Bulk species may have custom desorb_products from FREEZE/DESORB definitions
+    # (e.g., @HSIO -> SIOH+ for ion freeze-out pathway)
+    s.set_desorb_products(["SIOH+", "NAN", "NAN", "NAN"])
+    assert s.get_desorb_products() == ["SIOH+", "NAN", "NAN", "NAN"]
+
+
+def test_hsio_sioh_plus_freeze_desorb_pathway():
+    """Test the #HSIO <-> SIOH+ freeze/desorb pathway.
+
+    FREEZE reaction: SIOH+ + FREEZE -> #HSIO
+    DESORB reaction: #HSIO + DESORB -> SIOH+
+
+    Both surface and bulk HSIO should desorb to SIOH+ (not HSIO).
+    This is a non-standard pathway used to handle ion freeze-out.
+    """
+    # Surface HSIO
+    s_surface = _make("#HSIO", mass=45, be=3600)
+    s_surface.set_desorb_products(["SIOH+", "NAN", "NAN", "NAN"])
+    assert s_surface.get_desorb_products() == ["SIOH+", "NAN", "NAN", "NAN"]
+
+    # Bulk HSIO should use the same custom desorb pathway
+    s_bulk = _make("@HSIO", mass=45, be=5600)
+    s_bulk.set_desorb_products(["SIOH+", "NAN", "NAN", "NAN"])
+    assert s_bulk.get_desorb_products() == ["SIOH+", "NAN", "NAN", "NAN"]

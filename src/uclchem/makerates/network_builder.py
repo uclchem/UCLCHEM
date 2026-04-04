@@ -616,10 +616,17 @@ class NetworkBuilder:
                         )
                     )
             if species.is_bulk_species() and not species.is_refractory:
+                # Bulk species may have custom desorb_products set from FREEZE/DESORB
+                # reactions (e.g., @HSIO -> SIOH+ for ion freeze-out). Use the custom
+                # pathway if available, otherwise use standard gas desorption (strip @).
+                if hasattr(species, 'desorb_products'):
+                    desorb_prods = species.get_desorb_products()
+                else:
+                    desorb_prods = species.get_standard_desorb_products()
                 new_reactions.append(
                     Reaction(
                         [species.get_name(), "THERM", "NAN"]
-                        + species.get_standard_desorb_products()
+                        + desorb_prods
                         + [1, 0, species.get_binding_energy(), 0.0, 10000.0, 0.0]
                     )
                 )
@@ -674,10 +681,27 @@ class NetworkBuilder:
                             + str(reaction)
                         )
 
-                    # Replace all grain or bulk products with gas phase counterparts
-                    desorbProducts = species_list[
-                        species_names.index(new_products[i])
-                    ].get_desorb_products()
+                    # Replace all grain or bulk products with gas phase counterparts.
+                    # CRITICAL: Distinguish between chemical and physical desorption pathways.
+                    #
+                    # LHDES/ERDES (chemical desorption): Always use standard gas desorption
+                    # (strip # or @ prefix). Chemical desorption via reaction exothermicity
+                    # produces neutral species only, without ionization.
+                    # Example: #HSIO + H (chemical) -> HSIO (gas, neutral)
+                    #
+                    # THERM/DESOH2/DESCR/DEUVCR (physical desorption): Use custom DESORB
+                    # pathway if defined (set via FREEZE/DESORB reactions). This allows
+                    # non-standard products (e.g., ionization during freeze-out).
+                    # Example: #HSIO -> SIOH+ (via custom FREEZE/DESORB definition)
+                    if new_reaction.get_reaction_type() in ["LHDES", "ERDES"]:
+                        # Chemical desorption: strip grain/bulk prefix for standard gas product
+                        gas_product = new_products[i][1:]  # Remove # or @ prefix
+                        desorbProducts = [gas_product, "NAN", "NAN", "NAN"]
+                    else:
+                        # Physical desorption: use custom desorb pathway
+                        desorbProducts = species_list[
+                            species_names.index(new_products[i])
+                        ].get_desorb_products()
 
                     if desorbProducts[1] == "NAN":
                         new_products[i] = desorbProducts[0]
