@@ -58,6 +58,45 @@ elementMass = [
 ]
 symbols = ["#", "@", "*", "+", "-", "(", ")"]
 
+
+def normalize_species_name(name: str) -> str:
+    """Normalize a species name to a canonical form.
+
+    Empty strings are preserved as empty strings. Other falsy values (like None)
+    are converted to "NAN". Grain prefixes (#/@) are preserved as-is.
+    A chemical isomer prefix — a single alphabetic character followed by a hyphen
+    (e.g. 'o-', 'p-', 'a-', 'l-') — is lowercased so that input is case-insensitive.
+    The chemical formula part is uppercased. All other names are simply uppercased.
+
+    Examples:
+        'o-H2'   -> 'o-H2'
+        'O-H2'   -> 'o-H2'   (case-normalised prefix)
+        '#o-H2'  -> '#o-H2'
+        'C-'     -> 'C-'     (negative ion: len==2, not a prefix)
+        'E-'     -> 'E-'     (electron: same rule)
+        'H2O'    -> 'H2O'
+        ''       -> ''       (empty string)
+        None     -> 'NAN'    (falsy non-string value)
+
+    Returns:
+        str: Normalized species name
+    """
+    # Preserve empty strings; convert other falsy values to "NAN"
+    if name == "":
+        return ""
+    if not name:
+        return "NAN"
+    grain_prefix = ""
+    rest = name
+    if rest[0] in ("#", "@"):
+        grain_prefix = rest[0]
+        rest = rest[1:]
+    # A chemical prefix is exactly one alpha char + '-' with more formula after it.
+    if len(rest) > 2 and rest[1] == "-" and rest[0].isalpha():
+        return grain_prefix + rest[0].lower() + "-" + rest[2:].upper()
+    return grain_prefix + rest.upper()
+
+
 species_header = (
     "NAME",
     "MASS",
@@ -132,7 +171,14 @@ class Species:
         if isinstance(inputRow, pd.Series):
             inputRow = [inputRow[field] for field in species_header]
 
-        self.name = inputRow[0].upper()
+        self.name = normalize_species_name(str(inputRow[0]))
+        # Detect chemical isomer prefix (e.g. 'o' from 'o-H2' or '#o-H2').
+        _rest = self.name[1:] if self.name and self.name[0] in ("#", "@") else self.name
+        self.prefix = (
+            _rest[0]
+            if (len(_rest) > 2 and _rest[1] == "-" and _rest[0].islower())
+            else ""
+        )
         self.mass = int(inputRow[1])
 
         # binding energy and refractory handling
@@ -223,7 +269,7 @@ class Species:
 
         if "+" in self.get_name():
             return 1
-        elif "-" in self.get_name():
+        elif self.get_name().endswith("-"):
             return -1
 
     def get_solid_fraction(self) -> float:
@@ -269,7 +315,7 @@ class Species:
             name (str): The new name for the species
 
         """
-        self.name = name.upper()
+        self.name = normalize_species_name(name)
 
     def set_mass(self, mass: int) -> None:
         """Set the molecular mass of the chemical species in atomic mass units.
@@ -334,6 +380,18 @@ class Species:
 
         """
         self.desorb_products = new_desorbs
+
+    def get_standard_desorb_products(self) -> list[str]:
+        """Return the 1:1 gas-phase counterpart by stripping the grain prefix.
+
+        For #CH4 returns [CH4, NAN, NAN, NAN]. Always a single product — used
+        for gasIceList construction and auto-generated THERM/DESOH2/DESCR/DEUVCR
+        reactions when the user has not provided explicit ones.
+
+        Returns:
+            list[str]: [base_gas_species, NAN, NAN, NAN]
+        """
+        return [self.get_name()[1:], "NAN", "NAN", "NAN"]
 
     def get_desorb_products(self) -> list[str]:
         """Obtain the desorbtion products of ice species.
@@ -508,6 +566,14 @@ class Species:
         """
         # Adapted from https://github.com/uclchem/UCLCHEM/blob/main/src/uclchem/makerates/species.py
         name = self.name
+        # Strip chemical isomer prefix (e.g. 'o-' from 'o-H2' or '#o-H2') so the
+        # element parser only sees the plain formula.
+        if self.prefix:
+            if name and name[0] in ("#", "@"):
+                # keep the grain prefix, remove 'x-' immediately after it
+                name = name[0] + name[len(self.prefix) + 2 :]
+            else:
+                name = name[len(self.prefix) + 1 :]
         if name[0].isdigit():
             raise ValueError(
                 f"First character of formula {name} was a digit. Please put repeated parts in a bracket with number after, e.g. (CH3)2"

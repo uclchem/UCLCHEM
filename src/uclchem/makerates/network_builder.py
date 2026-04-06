@@ -315,8 +315,17 @@ class NetworkBuilder:
                 specie.add_default_freeze()
                 self.network.set_specie(species_name, specie)
 
-        # Here we filter all the freeze and desorb reactions in order to avoid duplicates
-        [self.network.remove_reaction(reaction) for reaction in desorbs + freezes]
+        # Here we filter all the freeze and desorb reactions in order to avoid duplicates.
+        # DESORB reactions whose reactant starts with '#' are DESORB shorthand reactions
+        # (expand to THERM/DESOH2/DESCR/DEUVCR in _add_desorb_reactions). Keep those
+        # in the list so _add_desorb_reactions() can expand and then remove them.
+        desorbs_to_remove = [
+            d for d in desorbs if not d.get_reactants()[0].startswith("#")
+        ]
+        [
+            self.network.remove_reaction(reaction)
+            for reaction in desorbs_to_remove + freezes
+        ]
 
     def _add_freeze_reactions(self) -> None:
         """Add freeze-out reactions for all species.
@@ -479,29 +488,145 @@ class NetworkBuilder:
         self.network.add_reactions(new_reactions)
 
     def _add_desorb_reactions(self) -> None:
-        """Add desorption reactions to the network.
+        """Save the user effort by automatically generating desorption reactions.
 
-        Adds H2-formation-induced desorption, cosmic-ray induced desorption,
-        cosmic-ray induced photodesorption and thermal desorption.
+        A DESORB reaction in the user input is a shorthand that expands to all four
+        physical desorption mechanisms: THERM, DESOH2, DESCR, DEUVCR. After expansion
+        the original DESORB reactions are removed from the network.
+
+        If a surface species already has any explicit THERM/DESOH2/DESCR/DEUVCR
+        (thermal / h2formation desorption / crir desorption / crir induced photodesorption)
+        reaction defined in the network, auto-generation is skipped for that species.
+        The user is then responsible for providing all desorption pathways, and the
+        alpha values for each mechanism must sum to 1.0.
+
+        Raises:
+            ValueError: If a species has both a DESORB shorthand and explicit desorption reactions.
+            ValueError: If alpha values for explicit desorption reactions do not sum to 1.0.
         """
         desorb_reacs = ["DESOH2", "DESCR", "DEUVCR", "THERM"]
         logging.debug("Adding desorption reactions!")
+
+        # Expand DESORB shorthand into all four physical desorption mechanisms.
+        desorb_shorthand = [
+            r
+            for r in self.network.get_reaction_list()
+            if r.get_reaction_type() == "DESORB" and r.get_reactants()[0].startswith("#")
+        ]
+        if desorb_shorthand:
+            # Check for conflicts: if any explicit THERM/DESOH2/DESCR/DEUVCR reaction
+            # already exists for a species that also has a DESORB shorthand, raise an
+            # error so the user doesn't accidentally have both.
+            shorthand_species = {r.get_reactants()[0] for r in desorb_shorthand}
+            for r in self.network.get_reaction_list():
+                if (
+                    r.get_reaction_type() in desorb_reacs
+                    and r.get_reactants()[0] in shorthand_species
+                ):
+                    raise ValueError(
+                        f"{r.get_reactants()[0]} has both a DESORB shorthand reaction and an "
+                        f"explicit {r.get_reaction_type()} reaction. Use DESORB (which expands "
+                        f"to all four mechanisms) or define each mechanism explicitly — not both."
+                    )
+            expanded = []
+            for r in desorb_shorthand:
+                reac, _, third = r.get_reactants()
+                prods = r.get_products()
+                for mech in desorb_reacs:
+                    expanded.append(
+                        Reaction(
+                            [reac, mech, third]
+                            + prods
+                            + [
+                                r.get_alpha(),
+                                r.get_beta(),
+                                r.get_gamma(),
+                                r.get_templow(),
+                                r.get_temphigh(),
+                                r.get_reduced_mass(),
+                            ]
+                        )
+                    )
+                self.network.remove_reaction(r)
+            self.network.add_reactions(expanded)
+
+        # Species that already have at least one explicit desorption reaction
+        existing_desorbs = {
+            r.get_reactants()[0]
+            for r in self.network.get_reaction_list()
+            if r.get_reaction_type() in desorb_reacs
+        }
+
+        # For species with explicit desorption reactions, update their desorb_products
+        # to the first product of the first explicit reaction so that gasIceList can
+        # resolve them even when the standard gas counterpart is not in the species list.
+        species_dict = {s.get_name(): s for s in self.network.get_species_list()}
+        for species_name in existing_desorbs:
+            first_rxn = next(
+                r
+                for r in self.network.get_reaction_list()
+                if r.get_reactants()[0] == species_name
+                and r.get_reaction_type() in desorb_reacs
+            )
+            first_product = first_rxn.get_products()[0]
+            if species_name in species_dict and first_product not in ("NAN", ""):
+                species_dict[species_name].set_desorb_products(
+                    [first_product, "NAN", "NAN", "NAN"]
+                )
+                # Also update the bulk (@) counterpart if it exists
+                bulk_name = "@" + species_name[1:]
+                if bulk_name in species_dict:
+                    species_dict[bulk_name].set_desorb_products(
+                        [first_product, "NAN", "NAN", "NAN"]
+                    )
+
+        # Validate that alpha sums to 1.0 per species per mechanism
+        for species_name in existing_desorbs:
+            for rtype in desorb_reacs:
+                rxns = [
+                    r
+                    for r in self.network.get_reaction_list()
+                    if r.get_reactants()[0] == species_name
+                    and r.get_reaction_type() == rtype
+                ]
+                if rxns:
+                    total_alpha = sum(r.get_alpha() for r in rxns)
+                    if abs(total_alpha - 1.0) > 1e-6:
+                        raise ValueError(
+                            f"{species_name} has {rtype} reactions with alpha summing to "
+                            f"{total_alpha:.6f}, expected 1.0. "
+                            f"Branching ratios for each desorption mechanism must sum to 1."
+                        )
+
         new_reactions = []
         for species in self.network.get_species_list():
             if species.is_surface_species():
+                if species.get_name() in existing_desorbs:
+                    logging.debug(
+                        f"Skipping auto-generation of desorption reactions for "
+                        f"{species.get_name()} — user-defined explicit reactions found."
+                    )
+                    continue
                 for reacType in desorb_reacs:
                     new_reactions.append(
                         Reaction(
                             [species.get_name(), reacType, "NAN"]
-                            + species.get_desorb_products()
+                            + species.get_standard_desorb_products()
                             + [1, 0, species.get_binding_energy(), 0.0, 10000.0, 0.0]
                         )
                     )
             if species.is_bulk_species() and not species.is_refractory:
+                # Bulk species may have custom desorb_products set from FREEZE/DESORB
+                # reactions (e.g., @HSIO -> SIOH+ for ion freeze-out). Use the custom
+                # pathway if available, otherwise use standard gas desorption (strip @).
+                if hasattr(species, "desorb_products"):
+                    desorb_prods = species.get_desorb_products()
+                else:
+                    desorb_prods = species.get_standard_desorb_products()
                 new_reactions.append(
                     Reaction(
                         [species.get_name(), "THERM", "NAN"]
-                        + species.get_desorb_products()
+                        + desorb_prods
                         + [1, 0, species.get_binding_energy(), 0.0, 10000.0, 0.0]
                     )
                 )
@@ -556,10 +681,27 @@ class NetworkBuilder:
                             + str(reaction)
                         )
 
-                    # Replace all grain or bulk products with gas phase counterparts
-                    desorbProducts = species_list[
-                        species_names.index(new_products[i])
-                    ].get_desorb_products()
+                    # Replace all grain or bulk products with gas phase counterparts.
+                    # CRITICAL: Distinguish between chemical and physical desorption pathways.
+                    #
+                    # LHDES/ERDES (chemical desorption): Always use standard gas desorption
+                    # (strip # or @ prefix). Chemical desorption via reaction exothermicity
+                    # produces neutral species only, without ionization.
+                    # Example: #HSIO + H (chemical) -> HSIO (gas, neutral)
+                    #
+                    # THERM/DESOH2/DESCR/DEUVCR (physical desorption): Use custom DESORB
+                    # pathway if defined (set via FREEZE/DESORB reactions). This allows
+                    # non-standard products (e.g., ionization during freeze-out).
+                    # Example: #HSIO -> SIOH+ (via custom FREEZE/DESORB definition)
+                    if new_reaction.get_reaction_type() in ["LHDES", "ERDES"]:
+                        # Chemical desorption: strip grain/bulk prefix for standard gas product
+                        gas_product = new_products[i][1:]  # Remove # or @ prefix
+                        desorbProducts = [gas_product, "NAN", "NAN", "NAN"]
+                    else:
+                        # Physical desorption: use custom desorb pathway
+                        desorbProducts = species_list[
+                            species_names.index(new_products[i])
+                        ].get_desorb_products()
 
                     if desorbProducts[1] == "NAN":
                         new_products[i] = desorbProducts[0]

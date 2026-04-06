@@ -1,0 +1,28 @@
+H,H,H2FORM,H2,NAN,NAN,NAN,1,0,0,,,,
+H,#H,ER,#H2,NAN,NAN,NAN,1,0,0,,,,
+#H,#H,LH,#H2,NAN,NAN,NAN,1,0,0,,,,
+#H2,ED,NAN,H2,NAN,NAN,NAN,1,1,0,,,,
+#H,ED,NAN,H,NAN,NAN,NAN,1,0,0,,,,
+H2,PHOTON,NAN,H,H,NAN,NAN,1,1,0,,,,
+! Super simple ice chemistry, hydrogenation up to methane
+#H,#C,LH,#CH,,,,1,0,0,,,,
+#H,#CH,LH,#CH2,,,,1,0,0,,,,
+#H,#CH2,LH,#CH3,,,,1,0,0,,,,
+#H,#CH3,LH,#CH4,,,,1,0,0,,,,
+! Prefix isomer freeze-out: both a-CH4 and b-CH4 freeze to #CH4
+a-CH4,FREEZE,NAN,#CH4,NAN,NAN,NAN,1,0,0,,,,
+b-CH4,FREEZE,NAN,#CH4,NAN,NAN,NAN,1,0,0,,,,
+! Prefix isomer desorption: #CH4 desorbs to a-CH4 and b-CH4 in equal fractions (alpha=0.5 each)
+! DESORB expands to THERM, DESOH2, DESCR, DEUVCR automatically
+#CH4,DESORB,NAN,a-CH4,NAN,NAN,NAN,0.5,0,960,,,,
+#CH4,DESORB,NAN,b-CH4,NAN,NAN,NAN,0.5,0,960,,,,
+! NH3 hydrogenation chain
+#H,#N,LH,#NH,,,,1,0,0,,,,
+#H,#NH,LH,#NH2,,,,1,0,0,,,,
+#H,#NH2,LH,#NH3,,,,1,0,0,,,,
+! #NH3 desorbs to both isomers equally (DESORB expands to all four mechanisms)
+#NH3,DESORB,NAN,a-NH3,NAN,NAN,NAN,0.5,0,5500,,,,
+#NH3,DESORB,NAN,b-NH3,NAN,NAN,NAN,0.5,0,5500,,,,
+! Each isomer freezes to its own grain counterpart; #a-NH3/#b-NH3 auto-desorb
+a-NH3,FREEZE,NAN,#a-NH3,NAN,NAN,NAN,1,0,0,,,,
+b-NH3,FREEZE,NAN,#b-NH3,NAN,NAN,NAN,1,0,0,,,,

@@ -40,6 +40,19 @@ version_file = vcs_tag(
 ).stdout().strip(),
 )
 
+# Generate _project_root.py containing the source directory baked in at install time.
+# This lets makerates find src/uclchem and src/fortran_src at runtime for local installs.
+_root_conf = configuration_data()
+_root_conf.set('MESON_SOURCE_ROOT', meson.source_root())
+
+_project_root_file = configure_file(
+  input  : 'src/uclchem/_project_root.py.in',
+  output : '_project_root.py',
+  configuration : _root_conf,
+  install       : true,
+  install_dir   : py.get_install_dir() / 'uclchem',
+)
+
 # Only compile Fortran extension if not makerates_only build
 if not makerates_only
 
@@ -131,6 +144,7 @@ usource = 'src' / 'uclchem'
 # Always install makerates/ subpackage (core functionality)
 py.install_sources([
   usource / 'makerates' / '__init__.py',
+  usource / 'makerates' / 'cli.py',
   usource / 'makerates' / 'config.py',
   usource / 'makerates' / 'io_functions.py',
   usource / 'makerates' / 'makerates.py',
@@ -140,6 +154,7 @@ py.install_sources([
   usource / 'makerates' / 'reaction.py',
   usource / 'makerates' / 'species.py',
   usource / 'makerates' / 'heating.py',
+  usource / 'makerates' / '_output_resolver.py',
 ], subdir: 'uclchem' / 'makerates')
 
 # Always install nested f2py_constants.f90 template

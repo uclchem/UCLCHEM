@@ -1,8 +1,15 @@
-name: Check Fortran Metadata
+name: Check (Fortran Metadata)
 
 on:
-  push:
   pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'src/fortran_src/**/*.f90'
+      - 'src/uclchem/advanced/fortran_metadata.yaml'
+      - 'src/uclchem/advanced/generate_metadata.py'
+  push:
     branches:
       - main
       - develop
@@ -20,16 +27,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: "[setup:vcs] Checkout code"
+        uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v6
+      - name: "[setup:env] Set up Python"
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - name: Install pyyaml
+      - name: "[setup:deps] Install pyyaml"
         run: pip install pyyaml
 
-      - name: Check metadata is up to date
+      - name: "[check:fortran] Validate Fortran metadata is up to date"
         # generate_metadata.py only needs two values from the package:
         #   - UCLCHEM_ROOT_DIR  (a Path, from uclchem.utils)
         #   - _MODULE_NAMES     (a list, from uclchem.advanced.worker_state)

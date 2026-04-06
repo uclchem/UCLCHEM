@@ -16,6 +16,10 @@ from uclchem.makerates.reaction import Reaction, reaction_types
 from uclchem.makerates.species import Species, species_header
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
+from .network import Network
+from .reaction import Reaction, reaction_types
+from .species import Species, normalize_species_name, species_header
+
 # Canonical definition of physical parameters
 # This list defines the physical parameter array passed to Fortran
 PHYSICAL_PARAMETERS = [
@@ -192,7 +196,12 @@ def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
             species list.
 
     """
-    if all(x.upper() in keep_list for x in reaction_row[0:7]):
+    # Convert empty strings in species slots to "NAN" for placeholder slots
+    for i in range(7):
+        if reaction_row[i] == "":
+            reaction_row[i] = "NAN"
+
+    if all(normalize_species_name(x) in keep_list for x in reaction_row[0:7]):
         if reaction_row[10] == "":
             reaction_row[10] = 0.0
             reaction_row[11] = 10000.0
@@ -383,7 +392,8 @@ def output_drops(
 
 def write_outputs(
     network: Network,
-    output_dir: str = None,
+    python_src_dir: Path,
+    fortran_src_dir: Path,
     enable_rates_storage: bool = False,
     gar_database: dict[str, np.array] | None = None,
     coolants: list[dict] | None = None,
@@ -393,9 +403,10 @@ def write_outputs(
 
     Args:
         network (network): The makerates Network class
-        output_dir (bool): The directory to write to.
-        coolants (list[dict]): List of coolant dictionaries with 'file' and 'name' keys.
-                               If None, uses default coolants.
+        python_src_dir (Path): Directory to write Python source files
+            (species.csv, reactions.csv).
+        fortran_src_dir (Path): Directory to write Fortran source files
+            (odes.f90, network.f90, f2py_constants.f90).
         enable_rates_storage (bool): Enable storage of writing rates to files.
             Default = False.
         gar_database (dict[str, np.array] | None): Database for grain-activated recombination
@@ -413,13 +424,6 @@ def write_outputs(
         ValueError: If coolants have parent species specified that are not in the network.
 
     """
-    if output_dir is None:
-        output_dir = Path("../src/uclchem")
-        fortran_src_dir = Path("../src/fortran_src")
-    else:
-        output_dir = Path(output_dir)
-        fortran_src_dir = Path(output_dir)
-
     # Use default coolants if none provided
     if coolants is None:
         coolants = get_default_coolants()
@@ -438,10 +442,10 @@ def write_outputs(
             )
 
     # Create the species file
-    filename = output_dir / "species.csv"
+    filename = python_src_dir / "species.csv"
     write_species(filename, network.get_species_list())
 
-    filename = output_dir / "reactions.csv"
+    filename = python_src_dir / "reactions.csv"
     write_reactions(filename, network.get_reaction_list())
 
     # Write the ODEs in the appropriate language format
@@ -1171,14 +1175,25 @@ def write_evap_lists(network_file: str | Path, species_list: list[Species]) -> i
             # For #CO it looks for first species in list with just CO
             # and then finds the index of that
             try:
-                j = species_names.index(species.get_desorb_products()[0])
+                j = species_names.index(species.get_standard_desorb_products()[0])
             except ValueError:
-                error = (
-                    f"{species.get_name()} desorbs as {species.get_desorb_products()[0]}"
-                )
-                error += "which is not in species list. This desorption is likely user defined.\n"
-                error += "Please amend the desorption route in your reaction file and re-run Makerates"
-                raise NameError(error)
+                # Standard gas counterpart not in species list (e.g. isomer-only networks).
+                # Fall back to the user-defined DESORB product if one was supplied.
+                desorb_fallback = species.get_desorb_products()[0]
+                if (
+                    desorb_fallback not in ("NAN", "")
+                    and desorb_fallback in species_names
+                ):
+                    j = species_names.index(desorb_fallback)
+                else:
+                    error = (
+                        f"{species.get_name()} standard desorb product is "
+                        f"{species.get_standard_desorb_products()[0]}"
+                    )
+                    error += " which is not in species list.\n"
+                    error += "If this species desorbs to a non-standard gas product, add a single-product DESORB\n"
+                    error += "reaction in your reaction file to specify the gasIceList entry, then re-run Makerates."
+                    raise NameError(error)
 
             # plus ones as fortran and python label arrays differently
             surfacelist.append(i + 1)
@@ -1198,7 +1213,24 @@ def write_evap_lists(network_file: str | Path, species_list: list[Species]) -> i
 
             enthalpyList.append(species.get_enthalpy())
         elif species.get_name()[0] == "@":
-            j = species_names.index(species.get_desorb_products()[0])
+            try:
+                j = species_names.index(species.get_standard_desorb_products()[0])
+            except ValueError:
+                desorb_fallback = species.get_desorb_products()[0]
+                if (
+                    desorb_fallback not in ("NAN", "")
+                    and desorb_fallback in species_names
+                ):
+                    j = species_names.index(desorb_fallback)
+                else:
+                    error = (
+                        f"{species.get_name()} standard desorb product is "
+                        f"{species.get_standard_desorb_products()[0]}"
+                    )
+                    error += " which is not in species list.\n"
+                    error += "If this species desorbs to a non-standard gas product, add a single-product DESORB\n"
+                    error += "reaction in your reaction file to specify the gasIceList entry, then re-run Makerates."
+                    raise NameError(error)
             gasIceList.append(j + 1)
             bulkList.append(i + 1)
             iceList.append(i + 1)

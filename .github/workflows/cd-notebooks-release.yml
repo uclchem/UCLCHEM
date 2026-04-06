@@ -1,4 +1,4 @@
-name: Precompute Notebooks (UCLCHEM)
+name: Build & Release (Executed Notebooks)
 
 on:
   push:
@@ -33,22 +33,22 @@ jobs:
   precompute:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout UCLCHEM repo
+      - name: "[setup:vcs] Checkout UCLCHEM repo"
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Setup Python
+      - name: "[setup:env] Set up Python"
         uses: actions/setup-python@v6
         with:
           python-version: '3.13'
 
-      - name: Install notebook tools
+      - name: "[setup:deps] Install notebook tools"
         run: |
           python -m pip install --upgrade pip
           pip install --upgrade jupyter nbformat nbclient jupytext
 
-      - name: Determine ref
+      - name: "[check:ref] Determine ref to build"
         id: pick-ref
         run: |
           # If triggered by a release, extract the intended ref from the release tag
@@ -70,7 +70,7 @@ jobs:
             echo "ref=develop" >> $GITHUB_OUTPUT
           fi
 
-      - name: Prepare workspace and install UCLCHEM
+      - name: "[setup:build] Prepare workspace and install UCLCHEM"
         run: |
           REF=${{ steps.pick-ref.outputs.ref }}
           echo "Preparing build for $REF"
@@ -88,26 +88,19 @@ jobs:
           # record commit SHA
           echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-      - name: Copy notebook sources
+      - name: "[build:notebooks] Prepare notebook sources"
         run: |
           mkdir -p notebooks
           # Keep checked-in notebook sources present; do not delete them here
           # Any conversion is handled in the execution script to avoid duplication
 
-
-      - name: "Debug: list notebooks contents"
-        run: |
-          echo "Listing notebooks directory"
-          ls -la notebooks || true
-
-      - name: Prepare and execute notebooks
+      - name: "[build:notebooks] Execute all notebooks"
         run: |
           # Ensure required tools are available
           python -m pip install --upgrade jupytext nbformat nbclient || true
           python .github/scripts/execute_notebooks.py
 
-
-      - name: Generate metadata
+      - name: "[build:metadata] Generate build metadata"
         run: |
           REF=${{ steps.pick-ref.outputs.ref }}
           export BUILD_DATE=$(date -u +%Y%m%d)
@@ -119,7 +112,7 @@ jobs:
           echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
           python .github/scripts/write_meta.py
 
-      - name: Set executed notebooks zip name
+      - name: "[build:artifact] Set executed notebooks zip name"
         run: |
           REF="${{ steps.pick-ref.outputs.ref }}"
           if [ -z "$REF" ]; then
@@ -131,7 +124,7 @@ jobs:
           ZIP_NAME="executed_notebooks-${REF_SAFE}-${COMMIT_SHA:-none}-${BUILD_DATE}.zip"
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
 
-      - name: Zip executed notebooks
+      - name: "[build:artifact] Create notebooks artifact zip"
         run: |
           if [ -z "${ZIP_NAME}" ]; then
             ZIP_NAME="executed_notebooks.zip"
@@ -142,14 +135,14 @@ jobs:
             echo "No executed_notebooks directory found; creating empty zip" && mkdir -p executed_notebooks && cd executed_notebooks && zip -r ../"${ZIP_NAME}" . || true
           fi
 
-      - name: Upload executed notebooks artifact (non-unique name)
+      - name: "[deploy:artifact] Upload executed notebooks artifact"
         uses: actions/upload-artifact@v6
         with:
           name: executed-notebooks
           path: ${{ env.ZIP_NAME }}
           retention-days: ${{ github.event.inputs.retention_days }}
 
-      - name: Attach executed notebooks to release (when triggered by release)
+      - name: "[deploy:release] Attach notebooks to release"
         if: ${{ github.event_name == 'release' }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -158,7 +151,7 @@ jobs:
           echo "Attaching ${ZIP_NAME:-executed_notebooks.zip} to release $TAG (clobbering existing asset)"
           gh release upload "$TAG" "${ZIP_NAME:-executed_notebooks.zip}" --clobber || true
 
-      - name: Optionally create a release and attach the artifact
+      - name: "[deploy:release] Create or update release (when needed)"
         if: ${{ github.event_name != 'release' && (github.event.inputs.create_release == 'true' || startsWith(github.ref, 'refs/tags/v') || startsWith(github.event.inputs.ref, 'develop')) }}
         env:
           GH_TOKEN: ${{ github.token }}

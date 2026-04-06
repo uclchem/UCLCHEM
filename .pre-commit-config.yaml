@@ -1,35 +1,66 @@
+# Pre-commit hooks organized by tier: correctness → style → quality → assets
+# See PRECOMMIT_LINTING_ANALYSIS.md for detailed rule descriptions
+# Ruff configuration details: pyproject.toml [tool.ruff.lint]
+
 repos:
-- repo: local
-  hooks:
-    - id: check-no-ipynb
-      name: Reject .ipynb files (use --fix)
-      entry: bash notebooks/notebooks.sh --check
-      language: system
-      files: \.ipynb$
-      stages: [pre-commit]
-      pass_filenames: false
-    - id: check-fortran-ascii
-      name: Check Fortran files for non-ASCII characters
-      entry: python .github/scripts/check_fortran_ascii.py
-      language: system
-      files: \.(f90|f|f95|f03|f08|f15|f18)$
-      stages: [pre-commit]
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  # Ruff version.
-  rev: v0.15.0
-  hooks:
-    # Run the linter.
-    - id: ruff
-      args: [ --fix ]
-    # Run the formatter.
-    - id: ruff-format
-- repo: https://github.com/kynan/nbstripout
-  rev: 0.7.1
-  hooks:
-    - id: nbstripout
-- repo: https://github.com/PyCQA/flake8
-  rev: 7.1.1
-  hooks:
-    - id: flake8
-      args: ['--select=F821,E999', '--per-file-ignores=*/__init__.py:F401 notebooks/*.py:E402']
-      files: ^src/uclchem/
+  # ============================================================================
+  # TIER 1: CORRECTNESS (Must-pass checks)
+  # Purpose: Catch breaking issues that prevent code from running
+  # ============================================================================
+  - repo: local
+    hooks:
+      - id: check-fortran-encoding
+        name: "[correctness] Fortran ASCII encoding"
+        description: "Ensure Fortran source files use ASCII-only characters"
+        entry: python .github/scripts/check_fortran_ascii.py
+        language: system
+        files: \.(f90|f|f95|f03|f08|f15|f18)$
+        stages: [pre-commit]
+
+      - id: reject-ipynb-commits
+        name: "[correctness] Reject committed .ipynb files"
+        description: "Prevent .ipynb files from being committed (use .py source)"
+        entry: bash notebooks/notebooks.sh --check
+        language: system
+        files: \.ipynb$
+        stages: [pre-commit]
+        pass_filenames: false
+
+  # Ruff: Undefined names and syntax errors (F, E999)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.9
+    hooks:
+      - id: ruff
+        name: "[correctness] Ruff linter"
+        description: "Check for undefined names (F821) and syntax errors (E999)"
+        args: [--fix, --select=F821,E999]
+
+  # ============================================================================
+  # TIER 2: STYLE (Auto-fixable formatting and imports)
+  # Purpose: Enforce consistent code style
+  # ============================================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.9
+    hooks:
+      - id: ruff-format
+        name: "[style] Ruff formatter"
+        description: "Format code consistently (indentation, quotes, whitespace)"
+
+  # ============================================================================
+  # TIER 3: QUALITY (Docstrings, type hints, simplifications)
+  # Purpose: Encourage best practices (feedback, not blocking)
+  # Configuration in pyproject.toml [tool.ruff.lint] with extended rules
+  # ============================================================================
+  # Note: Additional quality checks (D, ANN, SIM, UP) configured in pyproject.toml
+  # and run as part of the main ruff linter with selective ignores per file
+
+  # ============================================================================
+  # TIER 4: ASSETS (Generated file management)
+  # Purpose: Manage generated files and infrastructure
+  # ============================================================================
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.9.1
+    hooks:
+      - id: nbstripout
+        name: "[assets] Strip notebook outputs"
+        description: "Remove cell outputs and metadata from .ipynb files (legacy support)"

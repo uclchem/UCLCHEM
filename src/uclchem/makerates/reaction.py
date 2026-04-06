@@ -7,9 +7,14 @@ from collections import Counter
 from collections.abc import Iterator
 from contextlib import contextmanager
 from copy import deepcopy
-from typing import Any
 
-from uclchem.makerates.species import Species, elementList, elementMass, species_header
+from uclchem.makerates.species import (
+    Species,
+    elementList,
+    elementMass,
+    normalize_species_name,
+    species_header,
+)
 
 # Global flag for validation control
 _skip_reaction_validation = False
@@ -77,19 +82,6 @@ tunneling_reaction_types = [
 ]
 
 
-def convert_falsy_to_nan_string(a: Any) -> Any | str:
-    """Convert any Falsy statement to a NAN string.
-
-    Args:
-        a: thing to check for falsiness
-
-    Returns:
-        Any | str: input a if truthy, otherwise "NAN"
-
-    """
-    return a if a else "NAN"
-
-
 class Reaction:
     """Representation of reactions."""
 
@@ -131,17 +123,17 @@ class Reaction:
             try:
                 self.set_reactants(
                     [
-                        str(inputRow[0]).upper(),
-                        str(inputRow[1]).upper(),
-                        convert_falsy_to_nan_string(str(inputRow[2])).upper(),
+                        normalize_species_name(str(inputRow[0])),
+                        normalize_species_name(str(inputRow[1])),
+                        normalize_species_name(str(inputRow[2])),
                     ]
                 )
                 self.set_products(
                     [
-                        convert_falsy_to_nan_string(str(inputRow[3])).upper(),
-                        convert_falsy_to_nan_string(str(inputRow[4])).upper(),
-                        convert_falsy_to_nan_string(str(inputRow[5])).upper(),
-                        convert_falsy_to_nan_string(str(inputRow[6])).upper(),
+                        normalize_species_name(str(inputRow[3])),
+                        normalize_species_name(str(inputRow[4])),
+                        normalize_species_name(str(inputRow[5])),
+                        normalize_species_name(str(inputRow[6])),
                     ]
                 )
                 if not _skip_reaction_validation:
