@@ -15,8 +15,8 @@ from uclchem.makerates.species import (
     normalize_species_name,
     species_header,
 )
-
 from uclchem.utils import check_expected_type
+
 # Global flag for validation control
 _skip_reaction_validation = False
 
@@ -724,10 +724,6 @@ class Reaction:
         Returns:
             bool: Whether there is a collision (True), or not (False)
 
-        Raises:
-            NotImplementedError: If `other` is not a `Reaction` instance.
-                Currently we can only compare against instantiated Reaction objects.
-
         """
         check_expected_type(other, Reaction)
 
@@ -954,9 +950,6 @@ class CoupledReaction(Reaction):
 
         Args:
             partner (Reaction): partner of this reaction.
-
-        Raises:
-            TypeError: if `parter` is not an instance of a `Reaction`.
 
         """
         check_expected_type(partner, Reaction)

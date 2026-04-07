@@ -53,7 +53,7 @@ Use :meth:`SuccessFlag.check_error` to get human-readable error messages.
 
 import enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Self, Type, Any
+from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
     from uclchem.model import Collapse
@@ -403,7 +403,10 @@ class SuccessFlag(enum.IntEnum):
             raise RuntimeError(msg)
         return msg
 
-def check_expected_type(variable: Any, expected_type: Type[Any], name: str | None = None) -> None:
+
+def check_expected_type(
+    variable: Any, expected_type: type[Any], name: str | None = None
+) -> None:
     """Check that the type of a variable matches the expected type.
 
     Args:
@@ -414,8 +417,8 @@ def check_expected_type(variable: Any, expected_type: Type[Any], name: str | Non
 
     Raises:
         TypeError: If ``variable`` is not an instance of ``expected_type``.
-    """
 
+    """
     if isinstance(variable, expected_type):
         return
 

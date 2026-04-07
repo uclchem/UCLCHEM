@@ -10,7 +10,7 @@ from warnings import warn
 
 import pandas as pd
 
-from uclchem.utils import find_number_of_consecutive_digits, check_expected_type
+from uclchem.utils import check_expected_type, find_number_of_consecutive_digits
 
 element_list = [
     "H",
