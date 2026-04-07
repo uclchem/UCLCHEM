@@ -8,7 +8,6 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from time import sleep
 from typing import Any, Literal, TextIO
 
 import numpy as np
@@ -439,11 +438,19 @@ def write_outputs(
             )
 
     with (
-        NamedTemporaryFile(mode='w', dir=python_src_dir, prefix='species.csv') as species_file,
-        NamedTemporaryFile(mode='w', dir=python_src_dir, prefix="reactions.csv") as reactions_file,
-        NamedTemporaryFile(mode='w', dir=fortran_src_dir, prefix="odes.f90") as odes_file,
-        NamedTemporaryFile(mode='w', dir=fortran_src_dir, prefix="network.f90") as network_file,
-        NamedTemporaryFile(mode='w', dir=fortran_src_dir, prefix="f2py_constants.f90") as f2py_constants_file,
+        NamedTemporaryFile(
+            mode="w", dir=python_src_dir, prefix="species.csv"
+        ) as species_file,
+        NamedTemporaryFile(
+            mode="w", dir=python_src_dir, prefix="reactions.csv"
+        ) as reactions_file,
+        NamedTemporaryFile(mode="w", dir=fortran_src_dir, prefix="odes.f90") as odes_file,
+        NamedTemporaryFile(
+            mode="w", dir=fortran_src_dir, prefix="network.f90"
+        ) as network_file,
+        NamedTemporaryFile(
+            mode="w", dir=fortran_src_dir, prefix="f2py_constants.f90"
+        ) as f2py_constants_file,
     ):
         # Create the species file
         write_species(species_file, network.get_species_list())
@@ -1425,9 +1432,7 @@ def write_network_file(
 
     # Save some memory by only allocating things we actually want to use:
     if enable_rates_storage:
-        file.write(
-            f"    REAL(dp) :: REACTIONRATE({len(reactant1) + n_ice_species})\n"
-        )
+        file.write(f"    REAL(dp) :: REACTIONRATE({len(reactant1) + n_ice_species})\n")
         file.write("     LOGICAL :: storeRatesComputation=.true.\n")
     else:
         file.write("    REAL(dp) :: REACTIONRATE(1)\n")
@@ -1443,9 +1448,7 @@ def write_network_file(
         )
         file.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .TRUE.\n")
     else:
-        file.write(
-            "    REAL(dp) :: \texothermicities(" + str(len(exothermicity)) + ")\n"
-        )
+        file.write("    REAL(dp) :: \texothermicities(" + str(len(exothermicity)) + ")\n")
         file.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .FALSE.\n")
 
     file.write(array_to_string("\tre1", reactant1, type="int"))
@@ -1462,9 +1465,7 @@ def write_network_file(
     file.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
     file.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
     file.write(
-        array_to_string(
-            "\treducedMasses", reduced_masses, type="float", parameter=True
-        )
+        array_to_string("\treducedMasses", reduced_masses, type="float", parameter=True)
     )
     file.write(
         array_to_string(
@@ -1474,16 +1475,12 @@ def write_network_file(
     reacTypes = np.asarray(reacTypes)
 
     partners = get_desorption_freeze_partners(reaction_list)
-    file.write(
-        array_to_string("\tfreezePartners", partners, type="int", parameter=True)
-    )
+    file.write(array_to_string("\tfreezePartners", partners, type="int", parameter=True))
 
     file.write(
         array_to_string(
             "\t garParams",
-            np.array(list(gar_database.values()))
-            if gar_database
-            else np.zeros((1, 7)),
+            np.array(list(gar_database.values())) if gar_database else np.zeros((1, 7)),
             type="float",
             parameter=True,
         )
@@ -1508,10 +1505,7 @@ def write_network_file(
     LHDEScorrespondingLHreacs = []
     for reaction in reaction_list:
         if reaction.get_reaction_type() == "LHDES":
-            if (
-                hasattr(reaction, "get_partner")
-                and reaction.get_partner() is not None
-            ):
+            if hasattr(reaction, "get_partner") and reaction.get_partner() is not None:
                 partner = reaction.get_partner()
                 reacIndex = reaction_list.index(partner) + 1
                 LHDEScorrespondingLHreacs.append(reacIndex)
@@ -1534,10 +1528,7 @@ def write_network_file(
     ERDEScorrespondingERreacs = []
     for reaction in reaction_list:
         if reaction.get_reaction_type() == "ERDES":
-            if (
-                hasattr(reaction, "get_partner")
-                and reaction.get_partner() is not None
-            ):
+            if hasattr(reaction, "get_partner") and reaction.get_partner() is not None:
                 partner = reaction.get_partner()
                 reacIndex = reaction_list.index(partner) + 1
                 ERDEScorrespondingERreacs.append(reacIndex)
