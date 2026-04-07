@@ -17,22 +17,34 @@ This module provides functions to:
 
 **Example Usage:**
 
-    >>> import uclchem.analysis as analysis
-
-    >>> # Read model output
-    >>> df = analysis.read_output_file("output.dat")
-
-    >>> # Analyze CO chemistry
-    >>> analysis.analysis(
-    >>>     "CO",
-    >>>     "output.dat",
-    >>>     "co_reactions.dat"
-    >>> )
-
-    >>> # Check conservation
-    >>> conservation = analysis.check_element_conservation(
-    >>>     df, ["C", "O", "N"]
-    >>> )
+    >>> import uclchem
+    >>>
+    >>> model = uclchem.model.Cloud({})
+    >>> model.check_error()
+    Model ran successfully
+    >>>
+    >>> physics_df, chemistry_df, rate_constants_df = model.get_dataframes(
+    ...     with_rate_constants=True,
+    ...     joined=False,
+    ... )
+    >>>
+    >>> uclchem.analysis.check_element_conservation(chemistry_df)
+    {'H': ..., 'N': ..., 'C': ..., 'O': ...}
+    >>>
+    >>> # Making a plot of the main formation and destruction reactions
+    >>> # at a specific timepoint
+    >>> network = uclchem.makerates.network.Network.from_csv()
+    >>> dy, reaction_rates = uclchem.analysis.rate_constants_to_dy_and_rates(
+    ...     physics_df,
+    ...     chemistry_df,
+    ...     rate_constants_df,
+    ...     network=network,
+    ... )
+    >>> production_df, destruction_df = uclchem.analysis.get_production_and_destruction(
+    ...     "H2O",
+    ...     reaction_rates,
+    ... )
+    >>>
 
 **See Also:**
 
