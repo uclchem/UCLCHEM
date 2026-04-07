@@ -97,9 +97,8 @@ def _parse_unit(unit: str) -> float:
         # Just a base unit (e.g., "ev", "joule")
         base = parts[0].strip()
         if base not in _BASE_UNITS:
-            raise ValueError(
-                f"Unknown unit '{unit}'. Available: {list(_BASE_UNITS.keys())}"
-            )
+            msg = f"Unknown unit '{unit}'. Available: {list(_BASE_UNITS.keys())}"
+            raise ValueError(msg)
         factor = _BASE_UNITS[base]
         # Default to per reaction
         factor *= _DENOMINATORS["reaction"]
@@ -108,20 +107,21 @@ def _parse_unit(unit: str) -> float:
         base = parts[0].strip()
         denom = parts[1].strip()
         if base not in _BASE_UNITS:
-            raise ValueError(
+            msg = (
                 f"Unknown base unit '{base}' in '{unit}'. "
                 f"Available: {list(_BASE_UNITS.keys())}"
             )
+            raise ValueError(msg)
         if denom not in _DENOMINATORS:
-            raise ValueError(
+            msg = (
                 f"Unknown denominator '{denom}' in '{unit}'. "
                 f"Available: {list(_DENOMINATORS.keys())}"
             )
+            raise ValueError(msg)
         factor = _BASE_UNITS[base] * _DENOMINATORS[denom]
     else:
-        raise ValueError(
-            f"Cannot parse unit '{unit}'. Format: <unit> or <unit>/<denominator> or <unit>_per_<denominator>"
-        )
+        msg = f"Cannot parse unit '{unit}'. Format: <unit> or <unit>/<denominator> or <unit>_per_<denominator>"
+        raise ValueError(msg)
     # Cache the result
     _UNIT_CACHE[unit_lower] = factor
     return factor
@@ -188,13 +188,15 @@ def load_custom_exothermicities(csv_path: str | Path) -> pd.DataFrame:
     required = ["exothermicity", "unit"]
     missing = [c for c in required if c not in df.columns]
     if missing:
-        raise ValueError(f"CSV missing columns: {missing}")
+        msg = f"CSV missing columns: {missing}"
+        raise ValueError(msg)
 
     has_reactants = any(c.startswith("reactant") for c in df.columns)
     has_products = any(c.startswith("product") for c in df.columns)
 
     if not has_reactants or not has_products:
-        raise ValueError("CSV must have reactant and product columns")
+        msg = "CSV must have reactant and product columns"
+        raise ValueError(msg)
 
     return df
 

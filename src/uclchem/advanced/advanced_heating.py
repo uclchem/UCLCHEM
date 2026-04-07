@@ -163,9 +163,8 @@ class HeatingSettings:
 
         """
         if not 1 <= mechanism_id <= self._heating_module.nheating:
-            raise ValueError(
-                f"mechanism_id must be between 1 and {self._heating_module.nheating}"
-            )
+            msg = f"mechanism_id must be between 1 and {self._heating_module.nheating}"
+            raise ValueError(msg)
 
         # If this mechanism is part of a mutually exclusive group and we're enabling it,
         # disable all others in the group first
@@ -205,9 +204,8 @@ class HeatingSettings:
             for name in self._f2py_constants_module.coolantnames
         ]
         if coolant_name not in names:
-            raise ValueError(
-                f"Coolant '{coolant_name}' not found. Available coolants: {names}"
-            )
+            msg = f"Coolant '{coolant_name}' not found. Available coolants: {names}"
+            raise ValueError(msg)
         idx = names.index(coolant_name)
         self._f2py_constants_module.coolant_active[idx] = enabled
 
@@ -251,9 +249,8 @@ class HeatingSettings:
 
         """
         if not 1 <= mechanism_id <= self._heating_module.ncooling:
-            raise ValueError(
-                f"mechanism_id must be between 1 and {self._heating_module.ncooling}"
-            )
+            msg = f"mechanism_id must be between 1 and {self._heating_module.ncooling}"
+            raise ValueError(msg)
         self._heating_module.cooling_modules[mechanism_id - 1] = enabled
 
     def get_heating_modules(self) -> dict[str, bool]:
@@ -318,7 +315,8 @@ class HeatingSettings:
 
         """
         if method not in [1, 2]:
-            raise ValueError("method must be 1 (Hocuk) or 2 (Hollenbach)")
+            msg = "method must be 1 (Hocuk) or 2 (Hollenbach)"
+            raise ValueError(msg)
         self._heating_module.dust_gas_coupling_method = method
 
     def get_dust_gas_coupling_method(self) -> int:
@@ -348,7 +346,8 @@ class HeatingSettings:
 
         """
         if attempts < 1:
-            raise ValueError("attempts must be at least 1")
+            msg = "attempts must be at least 1"
+            raise ValueError(msg)
         if attempts % 2 == 0:
             import warnings
 
@@ -382,7 +381,8 @@ class HeatingSettings:
 
         """
         if abundance < 0:
-            raise ValueError("abundance must be non-negative")
+            msg = "abundance must be non-negative"
+            raise ValueError(msg)
         self._heating_module.pahabund = abundance
 
     def get_pah_abundance(self) -> float:
@@ -419,11 +419,14 @@ class HeatingSettings:
 
         dir_path = Path(directory)
         if not dir_path.exists():
-            raise FileNotFoundError(f"Directory not found: {directory}")
+            msg = f"Directory not found: {directory}"
+            raise FileNotFoundError(msg)
         if not dir_path.is_dir():
-            raise ValueError(f"Not a directory: {directory}")
+            msg = f"Not a directory: {directory}"
+            raise ValueError(msg)
         if len(directory) > 255:
-            raise ValueError(f"Path too long (max 255): {directory}")
+            msg = f"Path too long (max 255): {directory}"
+            raise ValueError(msg)
 
         # Pad and set
         current = self._f2py_constants_module.coolantdatadir
@@ -448,19 +451,25 @@ class HeatingSettings:
             mode: Restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND)
 
         Raises:
-            ValueError: If mode is not one of `[0, 1, 2]`.
+            ValueError: If ``mode`` is not one of ``[0, 1, 2]``.
 
         Example:
             >>> settings = HeatingSettings()
             >>> settings.set_coolant_restart_mode(settings.COOLANT_WARM)
 
+        Raises:
+            ValueError: If ``mode`` is not one of ``[0, 1, 2]``.
+            RuntimeError: If the coolant restart mode is not ``mode`` after we
+                attempted to set it.
+
         """
         if mode not in [0, 1, 2]:
-            raise ValueError(f"mode must be 0, 1, or 2, got {mode}")
+            msg = f"mode must be 0, 1, or 2, got {mode}"
+            raise ValueError(msg)
         self._uclchemwrap.uclchemwrap.set_coolant_restart_mode_wrap(mode)
-        assert self.get_coolant_restart_mode() == mode, (
-            "Failed to set coolant restart mode"
-        )
+        if self.get_coolant_restart_mode() != mode:
+            msg = "Failed to set coolant restart mode"
+            raise RuntimeError(msg)
 
     # TODO: refactor once Fortran is exposed
     def get_coolant_restart_mode(self) -> int:
@@ -579,11 +588,12 @@ def initialize_coolant_directory() -> str:
     from pathlib import Path
 
     if importlib.util.find_spec("uclchemwrap") is None:
-        raise RuntimeError(
+        msg = (
             "UCLCHEM heating module not available. "
             "The Fortran extension may not be compiled. "
             "Install UCLCHEM with: pip install ."
         )
+        raise RuntimeError(msg)
 
     # Priority 1: Environment variable
     env_dir = os.environ.get("UCLCHEM_COOLANT_DATA")
@@ -658,7 +668,7 @@ def initialize_coolant_directory() -> str:
         logging.debug(f"Development mode search failed: {e}")
 
     # Not found in any location
-    raise FileNotFoundError(
+    msg = (
         "Could not locate coolant data files (.dat files for collisional rates). "
         "Searched:\n"
         "  1. UCLCHEM_COOLANT_DATA environment variable\n"
@@ -670,6 +680,7 @@ def initialize_coolant_directory() -> str:
         "  - For development: Ensure Makerates/data/collisional_rates/*.dat files exist\n"
         "  - Or set UCLCHEM_COOLANT_DATA=/path/to/coolant/data/"
     )
+    raise FileNotFoundError(msg)
 
 
 def auto_initialize_coolant_directory() -> bool:

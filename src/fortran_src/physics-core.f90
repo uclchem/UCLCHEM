@@ -91,7 +91,7 @@ CONTAINS
         ALLOCATE(parcel_radius(points))
         parcel_radius = 0.0_dp
 
-        cloudSize = (rout-rin)*pc
+        cloudSize = (r_out-r_in)*pc
         gasTemp=initialTemp
         dustTemp=gasTemp
         density=initialDens
@@ -207,21 +207,21 @@ CONTAINS
     END SUBROUTINE ionizationDependency
 
     ! Estimate the column density
-    SUBROUTINE findcoldens_core2edge(coldens,rin,rho0,density_scale_radius,density_power_index,r)
-      REAL(dp),intent(in) :: rin,r,rho0,density_scale_radius,density_power_index
+    SUBROUTINE findcoldens_core2edge(coldens,r_in,rho0,density_scale_radius,density_power_index,r)
+      REAL(dp),intent(in) :: r_in,r,rho0,density_scale_radius,density_power_index
       REAL(dp),intent(out) :: coldens
       INTEGER :: i,np
       REAL(dp) :: dr,drho,size,r1,r2
 
       np = 10000
-      size = r-rin ![size] in pc
+      size = r-r_in ![size] in pc
       dr = size/np ![dr] in pc
       coldens = 0.0d0
       IF (size .le. 0.0d0) return
 
       DO i=1,np
-         r1 = rin + (i-1)*dr ![r1] in pc
-         r2 = rin + i*dr ![r2] in pc
+         r1 = r_in + (i-1)*dr ![r1] in pc
+         r2 = r_in + i*dr ![r2] in pc
          drho = 0.5d0*(ngas_r(r2,rho0,density_scale_radius,density_power_index)+ngas_r(r1,rho0,density_scale_radius,density_power_index))
          coldens = coldens + drho*dr*pc
       END DO
@@ -238,7 +238,7 @@ CONTAINS
         end if
     END SUBROUTINE findcoldens_edge2core
 
-    ! The profile of the gas volumn density
+    ! The profile of the gas column density
     ! REAL(dp) FUNCTION rhofit(r,rho0,r0,a)
     REAL(dp) FUNCTION ngas_r(r,rho0,density_scale_radius,density_power_index)
       REAL(dp) :: r,rho0,density_scale_radius,density_power_index

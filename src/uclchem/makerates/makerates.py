@@ -107,16 +107,18 @@ def run_makerates(
         coolants_path = config.resolve_path(config.coolants_file)
         # Defensive check: don't try to read a directory as a YAML file
         if coolants_path.is_dir():
-            raise ValueError(
+            msg = (
                 f"coolants_file {coolants_path} resolves to a directory; expected a YAML file listing coolants. "
                 "If you intended to set the collisional rate data directory, use 'coolant_data_dir' in your config."
             )
+            raise ValueError(msg)
         try:
             _coolants = io.read_coolants_file(coolants_path)
             logging.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")
             coolants_to_write = _coolants
         except Exception as exc:
-            raise ValueError(f"Error reading coolants_file {coolants_path}: {exc}")
+            msg = f"Error reading coolants_file {coolants_path}: {exc}"
+            raise ValueError(msg)
 
     if write_files:
         logging.info(
@@ -137,20 +139,22 @@ def run_makerates(
         gar_parameters = None
         if len(gar_reactions) > 0:
             if gar_file is None:
-                raise ValueError(
+                msg = (
                     "You have GAR reactions in your network, but you did "
                     "not specify a grain_assisted_recombination_file in "
                     "your configuration. Refer to makerates documentation."
                 )
+                raise ValueError(msg)
             # Get all the individual ions that can recombine
             gar_ions = [gar.get_reactants()[0] for gar in gar_reactions]
             _gar_parameters = io.read_grain_assisted_recombination_file(gar_file)
             if not set(gar_ions).issubset(set(_gar_parameters.keys())):
                 missing_ions = set(gar_ions) - set(_gar_parameters.keys())
-                raise ValueError(
+                msg = (
                     f"You have GAR reactions for ions {missing_ions} but "
                     f"they are not defined in your gar_file {gar_file}"
                 )
+                raise ValueError(msg)
             # Save the gar parameters in the correct order
             gar_parameters = {ion: _gar_parameters[ion] for ion in gar_ions}
 
@@ -223,9 +227,8 @@ def get_network(
         logging.basicConfig(format="%(levelname)s: %(message)s", level=verbosity)
 
     if bool(path_to_input_file) and bool(path_to_species_file or path_to_reaction_file):
-        raise ValueError(
-            "Cannot have both an input Makerates config file and explicit paths to species + reaction files"
-        )
+        msg = "Cannot have both an input Makerates config file and explicit paths to species + reaction files"
+        raise ValueError(msg)
 
     if path_to_input_file:
         return run_makerates(path_to_input_file, write_files=False)

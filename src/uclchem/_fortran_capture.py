@@ -61,7 +61,7 @@ def _reader_thread(
                 )
                 if log_handle is not None:
                     log_handle.write(f"{line}\n")
-    except Exception:
+    except Exception:  # noqa: S110
         pass
     finally:
         os.close(read_fd)

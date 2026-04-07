@@ -4,6 +4,8 @@ import logging
 import re
 from pathlib import Path
 
+from uclchem.constants import PLANCK_CONSTANT_CGS, SPEED_OF_LIGHT_CGS
+
 logger = logging.getLogger(__name__)
 
 # Number of statistical evolution statistics per coolant
@@ -54,7 +56,8 @@ def get_energy_levels_info(
     """
     data_path = Path(data_dir)
     if not data_path.exists():
-        raise FileNotFoundError(f"Coolant data directory not found: {data_dir}")
+        msg = f"Coolant data directory not found: {data_dir}"
+        raise FileNotFoundError(msg)
 
     n_total_levels = 0
     target_marker = _normalize_for_comparison("NUMBER OF ENERGY LEVELS")
@@ -63,7 +66,8 @@ def get_energy_levels_info(
         filepath = data_path / coolant_file
 
         if not filepath.exists():
-            raise FileNotFoundError(f"Coolant file not found: {filepath}")
+            msg = f"Coolant file not found: {filepath}"
+            raise FileNotFoundError(msg)
 
         with open(filepath) as f:
             lines = f.readlines()
@@ -79,7 +83,8 @@ def get_energy_levels_info(
                 break
 
         if not found_levels:
-            raise ValueError(f"No 'NUMBER OF ENERGY LEVELS' marker found in {filepath}")
+            msg = f"No 'NUMBER OF ENERGY LEVELS' marker found in {filepath}"
+            raise ValueError(msg)
 
     logger.info(
         f"Total energy levels across {len(coolant_names)} coolants: {n_total_levels}"
@@ -128,10 +133,6 @@ def validate_coolant_frequencies(
         max_deviations (dict[str, float]): Dict mapping coolant name to max relative frequency deviation
 
     """
-    # Physical constants (must match Fortran constants.f90)
-    C_CGS = 2.99792458e10  # speed of light cm/s
-    HP_CGS = 6.62606896e-27  # Planck constant erg*s
-
     data_path = Path(data_dir)
     level_marker = _normalize_for_comparison("NUMBER OF ENERGY LEVELS")
     trans_marker = _normalize_for_comparison("NUMBER OF RADIATIVE TRANSITIONS")
@@ -171,7 +172,9 @@ def validate_coolant_frequencies(
             if len(parts) >= 3:
                 idx = int(parts[0])
                 energy_cm = float(parts[1])
-                energies[idx] = energy_cm * C_CGS * HP_CGS  # cm^-1 -> erg
+                energies[idx] = (
+                    energy_cm * SPEED_OF_LIGHT_CGS * PLANCK_CONSTANT_CGS
+                )  # cm^-1 -> erg
                 count += 1
                 if count >= nlevel:
                     break
@@ -198,7 +201,9 @@ def validate_coolant_frequencies(
                         freq_file = freq_ghz * 1.0e9  # GHz -> Hz
 
                         if up in energies and low in energies and freq_file > 0:
-                            freq_calc = abs(energies[up] - energies[low]) / HP_CGS
+                            freq_calc = (
+                                abs(energies[up] - energies[low]) / PLANCK_CONSTANT_CGS
+                            )
                             rel_dev = abs(freq_calc - freq_file) / freq_file
                             if rel_dev > max_dev:
                                 max_dev = rel_dev
@@ -246,7 +251,8 @@ def load_coolant_level_names() -> dict[int, list[str]]:
     # Verify directory exists
     data_path = Path(data_dir)
     if not data_path.exists():
-        raise FileNotFoundError(f"Coolant data directory not found: {data_dir}")
+        msg = f"Coolant data directory not found: {data_dir}"
+        raise FileNotFoundError(msg)
 
     level_names = {}
     target_marker = _normalize_for_comparison("NUMBER OF ENERGY LEVELS")
@@ -255,7 +261,8 @@ def load_coolant_level_names() -> dict[int, list[str]]:
         filepath = data_path / coolant_file
 
         if not filepath.exists():
-            raise FileNotFoundError(f"Coolant file not found: {filepath}")
+            msg = f"Coolant file not found: {filepath}"
+            raise FileNotFoundError(msg)
 
         level_names[i] = []
         with open(filepath) as f:
@@ -286,13 +293,13 @@ def load_coolant_level_names() -> dict[int, list[str]]:
                 break
 
         if not found_levels:
-            raise ValueError(f"No energy levels found in {filepath}")
+            msg = f"No energy levels found in {filepath}"
+            raise ValueError(msg)
 
     # Validate all coolants were parsed
     if any(not names for names in level_names.values()):
-        raise RuntimeError(
-            "Some coolants have no parsed levels. Check coolant file format."
-        )
+        msg = "Some coolants have no parsed levels. Check coolant file format."
+        raise RuntimeError(msg)
 
     logger.debug(f"Loaded level names for {len(level_names)} coolants")
     return level_names

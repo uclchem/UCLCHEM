@@ -17,7 +17,7 @@ if __name__ == "__main__":
                 # this way, <style> makes the code start ignoring lines until </style>
                 if "style" in line:
                     ignore_lines = not ignore_lines
-                    # exception are styles embeded in other tags.
+                    # exception are styles embedded in other tags.
                     # Just keep the flag and don't ignore later lines
                     if "<tr" in line:
                         lines.append("<tr>\n")

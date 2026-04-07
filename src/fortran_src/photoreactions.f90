@@ -94,7 +94,7 @@ REAL(dp) FUNCTION H2SelfShielding(NH2,dopplerWidth,radWidth)
     REAL(dp) ::  r, sj, sr, t, u, taud
     REAL(dp), PARAMETER :: FPARA=0.5,FOSC  = 1.0d-2
     !--------------------------------------------------------------
-    !taud = opt. depth at line centre (assum. ortho:parah2=1)
+    !taud = opt. depth at line centre (assuming ortho:para h2=1)
     !pi**0.5 * e2 / (m(electr) * c) = 1.5e-2 cm2/s
 
     taud  = FPARA * NH2 * 1.5e-2 * FOSC / dopplerWidth

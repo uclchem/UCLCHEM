@@ -1,7 +1,7 @@
 """Plot the UCLCHEM tests ran by `run_uclchem_tests.py`.
 
 Demonstration of plotfunctions. called from main UCLCHEM directory.
-It reads full UCLCHEM output and saves a plot of the abudances of select species.
+It reads full UCLCHEM output and saves a plot of the abundances of select species.
 """
 
 import matplotlib.pyplot as plt
@@ -51,7 +51,7 @@ if __name__ == "__main__":
             "static": "Static Cloud",
         }
         model_data = {}
-        speciesNames = plot_types[plot_type]
+        species_names = plot_types[plot_type]
         for folder in ["example-output/", "test-output/"]:
             for model in ["phase1", "phase2", "static"]:
                 axis = axes[i]
@@ -77,14 +77,14 @@ if __name__ == "__main__":
 
                 # plot species and save to test.png, alternatively send dens instead of time.
                 axis = uclchem.plot.plot_species(
-                    axis, model_data[folder + model], speciesNames, legend=False
+                    axis, model_data[folder + model], species_names, legend=False
                 )
                 if folder == "test-output/":
                     axis.set_prop_cycle(None)
                     axis = uclchem.plot.plot_species(
                         axis,
                         model_data["example-output/" + model],
-                        speciesNames,
+                        species_names,
                         alpha=0.5,
                         legend=False,
                     )

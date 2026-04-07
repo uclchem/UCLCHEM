@@ -186,8 +186,7 @@ def _merge(existing: dict, detected: dict[str, list[str]]) -> dict:
     merged = dict(existing)
     fp: dict = dict(merged.get("fortran_parameters", {}))
 
-    for mod_name, names in detected.items():
-        fp[mod_name] = names
+    fp.update(detected)
 
     merged["fortran_parameters"] = fp
     return merged

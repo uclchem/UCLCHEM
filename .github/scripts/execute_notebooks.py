@@ -99,5 +99,5 @@ with open(LOG, "a") as lf:
 with open(LOG) as lf:
     sys.stdout.write(lf.read())
 
-# Always exit 0 to mirror previous behaviour (continue on notebook failures)
+# Always exit 0 to mirror previous behavior (continue on notebook failures)
 sys.exit(0)

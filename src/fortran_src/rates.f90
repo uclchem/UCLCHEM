@@ -232,7 +232,7 @@ CONTAINS
                             !alpha is a branching ratio (default 1.0; use <1.0 for isomer channels)
                             rate(j)=alpha(j)*rate(j)
                             !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
-                            !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
+                            !because GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                             !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
                             !area seems more correct for this process.
                             IF (.NOT. THREE_PHASE) rate(j)=rate(j)*2.0*SURFACE_SITE_DENSITY*GRAIN_SURFACEAREA_PER_H

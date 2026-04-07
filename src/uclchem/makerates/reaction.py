@@ -10,8 +10,8 @@ from copy import deepcopy
 
 from uclchem.makerates.species import (
     Species,
-    elementList,
-    elementMass,
+    element_list,
+    element_mass,
     normalize_species_name,
     species_header,
 )
@@ -86,78 +86,79 @@ class Reaction:
     """Representation of reactions."""
 
     def __init__(
-        self, inputRow: list[str] | Reaction, reaction_source: str | None = None
+        self, input_row: list[str] | Reaction, reaction_source: str | None = None
     ):
         """Initialize a Reaction object.
 
         Args:
-            inputRow (list[str] | Reaction): Either a Reaction object to copy,
+            input_row (list[str] | Reaction): Either a Reaction object to copy,
                 or a list/array with reaction data
             reaction_source (str | None): Optional source identifier for the reaction.
                 Default = None.
 
         Raises:
-            ValueError: If the length of `inputRow` is not long enough.
+            ValueError: If the length of ``input_row`` is not long enough.
 
         Note:
-            Validation can be disabled using the skip_validation() context manager.
-            This is useful when loading pre-validated networks from Fortran where
-            validation would fail due to modeling simplifications.
+            Validation can be disabled using the ``uclchem.makerates.reaction.skip_validation()`` context manager.
+                This is useful when loading pre-validated networks from Fortran where
+                validation would fail due to modeling simplifications.
 
         """
-        if isinstance(inputRow, Reaction):
-            self.set_reactants(inputRow.get_reactants())
-            self.set_products(inputRow.get_products())
+        if isinstance(input_row, Reaction):
+            self.set_reactants(input_row.get_reactants())
+            self.set_products(input_row.get_products())
             if not _skip_reaction_validation:
                 self.check_element_conservation()
                 self.check_charge_conservation()
-            self.set_alpha(inputRow.get_alpha())
-            self.set_beta(inputRow.get_beta())
-            self.set_gamma(inputRow.get_gamma())
-            self.set_templow(inputRow.get_templow())
-            self.set_temphigh(inputRow.get_temphigh())
-            self.set_reduced_mass(inputRow.get_reduced_mass())
-            self.set_extrapolation(inputRow.get_extrapolation())
-            self.set_exothermicity(inputRow.get_exothermicity())
+            self.set_alpha(input_row.get_alpha())
+            self.set_beta(input_row.get_beta())
+            self.set_gamma(input_row.get_gamma())
+            self.set_templow(input_row.get_templow())
+            self.set_temphigh(input_row.get_temphigh())
+            self.set_reduced_mass(input_row.get_reduced_mass())
+            self.set_extrapolation(input_row.get_extrapolation())
+            self.set_exothermicity(input_row.get_exothermicity())
         else:
             try:
                 self.set_reactants(
                     [
-                        normalize_species_name(str(inputRow[0])),
-                        normalize_species_name(str(inputRow[1])),
-                        normalize_species_name(str(inputRow[2])),
+                        normalize_species_name(str(input_row[0])),
+                        normalize_species_name(str(input_row[1])),
+                        normalize_species_name(str(input_row[2])),
                     ]
                 )
                 self.set_products(
                     [
-                        normalize_species_name(str(inputRow[3])),
-                        normalize_species_name(str(inputRow[4])),
-                        normalize_species_name(str(inputRow[5])),
-                        normalize_species_name(str(inputRow[6])),
+                        normalize_species_name(str(input_row[3])),
+                        normalize_species_name(str(input_row[4])),
+                        normalize_species_name(str(input_row[5])),
+                        normalize_species_name(str(input_row[6])),
                     ]
                 )
                 if not _skip_reaction_validation:
                     self.check_element_conservation()
                     self.check_charge_conservation()
 
-                self.set_alpha(float(inputRow[7]))
-                self.set_beta(float(inputRow[8]))
-                self.set_gamma(float(inputRow[9]))
-                self.set_templow(float(inputRow[10]))
-                self.set_temphigh(float(inputRow[11]))
-                if len(inputRow) > 12:
-                    self.set_reduced_mass(float(inputRow[12]))
+                self.set_alpha(float(input_row[7]))
+                self.set_beta(float(input_row[8]))
+                self.set_gamma(float(input_row[9]))
+                self.set_templow(float(input_row[10]))
+                self.set_temphigh(float(input_row[11]))
+                if len(input_row) > 12:
+                    self.set_reduced_mass(float(input_row[12]))
                 else:
                     self.set_reduced_mass(0.0)
                 self.set_extrapolation(
-                    bool(inputRow[13]) if len(inputRow) > 13 else False
+                    bool(input_row[13]) if len(input_row) > 13 else False
                 )
-                self.set_exothermicity(float(inputRow[14]) if len(inputRow) > 14 else 0.0)
+                self.set_exothermicity(
+                    float(input_row[14]) if len(input_row) > 14 else 0.0
+                )
 
             except IndexError as error:
-                raise ValueError(
-                    "Input for Reaction should be a list of length 12 with optional 13th entry for reduced mass and 14th for extrapolation flag."
-                ) from error
+                msg = "Input for Reaction should be a list of length 12 with optional 13th entry for reduced mass and 14th for extrapolation flag."
+                raise ValueError(msg) from error
         self.duplicate = False
         self.source = reaction_source  # The source of the reaction, e.g. UMIST, KIDA or user defined
 
@@ -453,7 +454,7 @@ class Reaction:
                     diff = deepcopy(reac_constituent)
                     diff.subtract(prod_constituent)
                     total_change = 0
-                    for element in elementList:
+                    for element in element_list:
                         total_change += abs(diff[element])
                     if total_change < min_total:
                         min_total = total_change
@@ -466,9 +467,9 @@ class Reaction:
                     tuple_items = tuple(items)[0]
                     if abs(tuple_items[1]) == 1:
                         # One element is switched
-                        element_index = elementList.index(tuple_items[0])
+                        element_index = element_list.index(tuple_items[0])
                         # Set reduced mass to mass of switched element
-                        reduced_mass = elementMass[element_index]
+                        reduced_mass = element_mass[element_index]
                         self.set_reduced_mass(float(reduced_mass))
                         logging.debug(
                             f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
@@ -481,7 +482,6 @@ class Reaction:
             ):
                 # If the two species are the same (e.g. #H+#H-> #H2), set reduced mass to m/2
                 mass = reac_species[0].get_mass()
-                # mass = elementMass[elementList.index(reac_species[0].get_name().strip("#@"))]
                 reduced_mass = float(mass) / 2.0
                 self.set_reduced_mass(reduced_mass)
                 logging.debug(
@@ -570,9 +570,14 @@ class Reaction:
         Args:
             flag (bool): whether extrapolation is applied.
 
+        Raises:
+            TypeError: If ``flag`` is not of type ``bool``.
+
         """
         logging.info(f"Setting for {self} extrapolation to {flag}")
-        assert isinstance(flag, bool)
+        if not isinstance(flag, bool):
+            msg = f"Expected flag to be type bool, but flag was type {type(flag)}"
+            raise TypeError(msg)
         self.extrapolate = flag
 
     def get_extrapolation(self) -> bool:
@@ -699,9 +704,8 @@ class Reaction:
 
         """
         if not isinstance(other, Reaction | CoupledReaction):
-            raise NotImplementedError(
-                "Equality is not implemented for anything but comparing to other reactions."
-            )
+            msg = "Equality is not implemented for anything but comparing to other reactions."
+            raise NotImplementedError(msg)
         return (
             self.get_sorted_reactants() == other.get_sorted_reactants()
             and self.get_sorted_products() == other.get_sorted_products()
@@ -723,9 +727,8 @@ class Reaction:
 
         """
         if not isinstance(other, Reaction) and not isinstance(other, CoupledReaction):
-            raise NotImplementedError(
-                "Equality is not implemented for anything but comparing to other reactions."
-            )
+            msg = "Equality is not implemented for anything but comparing to other reactions."
+            raise NotImplementedError(msg)
         if (other.get_templow() > self.get_templow()) and (
             other.get_templow() < self.get_temphigh()
         ):
@@ -783,50 +786,13 @@ class Reaction:
             self.get_reaction_type(),
         )
 
-    def to_UCL_format(self) -> str:
-        """Convert a reaction to UCLCHEM reaction file format.
-
-        Returns:
-            str: string representing species
-
-        """
-        reactants = self.get_reactants()
-        joined_reactants = ",".join(
-            [reactant if reactant != "NAN" else "" for reactant in reactants]
-        )
-
-        products = self.get_products()
-        joined_products = ",".join(
-            [product if product != "NAN" else "" for product in products]
-        )
-        reactants_products = joined_reactants + "," + joined_products
-        alpha, beta, gamma = (
-            self.get_alpha(),
-            self.get_beta(),
-            self.get_gamma(),
-        )
-        str_alpha, str_beta, str_gamma = (
-            str(alpha).replace("e", "E"),
-            str(beta).replace("e", "E"),
-            str(gamma).replace("e", "E"),
-        )
-        if alpha == 0:
-            str_alpha = "0"
-        if beta == 0:
-            str_beta = "0"
-        if gamma == 0:
-            str_gamma = "0"
-        reaction_parameters = f"{str_alpha},{str_beta},{str_gamma}"
-        formatted_reaction = reactants_products + "," + reaction_parameters + ",,,,,"
-        formatted_reaction += str(int(self.get_extrapolation()))
-        return formatted_reaction
-
     def _is_reaction_wrap(
         self, include_reactants: bool = True, include_products: bool = True
     ) -> list[str]:
-        assert include_reactants or include_products, (
-            "Either include reactants or products"
-        )
+        if not (include_reactants or include_products):
+            msg = "Either include reactants or products"
+            raise ValueError(msg)
+
         species_to_check = []
         if include_reactants:
             species_to_check += self.get_pure_reactants()
@@ -992,9 +958,8 @@ class CoupledReaction(Reaction):
 
         """
         if not isinstance(partner, Reaction):
-            raise TypeError(
-                f"partner should be of type Reaction, but got type {type(partner)}"
-            )
+            msg = f"partner should be of type Reaction, but got type {type(partner)}"
+            raise TypeError(msg)
         self.partner = partner
 
     def get_partner(self) -> Reaction:
@@ -1045,7 +1010,6 @@ def _generate_reaction_ode_bit(
         if species in species_names:
             ode_bit += f"*Y({species_names.index(species) + 1})"
         elif species == "BULKSWAP":
-            # ode_bit += "*bulkLayersReciprocal"
             ode_bit += "*ratioSurfaceToBulk"
         elif species == "SURFSWAP":
             ode_bit += "*totalSwap/safeMantle"

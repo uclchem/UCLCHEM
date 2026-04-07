@@ -22,9 +22,8 @@ import pandas as pd
 try:
     from bs4 import BeautifulSoup
 except ImportError:
-    raise ImportError(
-        "BeautifulSoup4 is required. Install with `pip install beautifulsoup4`."
-    )
+    msg = "BeautifulSoup4 is required. Install with `pip install beautifulsoup4`."
+    raise ImportError(msg)
 
 
 class ATCTParser:
@@ -63,7 +62,8 @@ class ATCTParser:
         """
         html_path = Path(html_file_path)
         if not html_path.exists():
-            raise FileNotFoundError(f"ATCT HTML file not found: {html_file_path}")
+            msg = f"ATCT HTML file not found: {html_file_path}"
+            raise FileNotFoundError(msg)
 
         try:
             with open(html_path, encoding="utf-8") as f:
@@ -74,19 +74,22 @@ class ATCTParser:
             # Find main data table
             data_table = self._find_data_table(soup)
             if data_table is None:
-                raise ValueError("Could not locate main data table in HTML file")
+                msg = "Could not locate main data table in HTML file"
+                raise ValueError(msg)
 
             # Extract and clean data
             raw_data = self._extract_table_data(data_table)
             if not raw_data:
-                raise ValueError("No data rows found in table")
+                msg = "No data rows found in table"
+                raise ValueError(msg)
 
             # Create DataFrame and clean
             df = pd.DataFrame(raw_data, columns=self.columns[: len(raw_data[0])])
             return self._clean_dataframe(df)
 
         except Exception as e:
-            raise RuntimeError(f"Failed to parse ATCT HTML file: {e}") from e
+            msg = f"Failed to parse ATCT HTML file: {e}"
+            raise RuntimeError(msg) from e
 
     @staticmethod
     def _find_data_table(soup: BeautifulSoup) -> Any | None:
@@ -254,14 +257,12 @@ class ATCTParser:
         stats = self.get_summary_stats(data)
 
         if stats["total_species"] < min_species:
-            raise ValueError(
-                f"Expected ≥{min_species} species, got {stats['total_species']}"
-            )
+            msg = f"Expected ≥{min_species} species, got {stats['total_species']}"
+            raise ValueError(msg)
 
         if stats["species_with_298k"] < min_species:
-            raise ValueError(
-                f"Expected ≥{min_species} species with 298K data, got {stats['species_with_298k']}"
-            )
+            msg = f"Expected ≥{min_species} species with 298K data, got {stats['species_with_298k']}"
+            raise ValueError(msg)
 
         print(
             f"✓ Validation passed: {stats['total_species']} species with {stats['species_with_298k']} having 298K data"

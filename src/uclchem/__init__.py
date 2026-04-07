@@ -11,7 +11,7 @@ from . import advanced as advanced
 from . import analysis as analysis
 
 # isort: off
-# The following contains the virtual submodule `functional`,
+# The following contains the virtual submodule ``functional``,
 # which allows for calling the new API in the legacy format.
 from . import model as model
 from . import functional as functional

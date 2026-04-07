@@ -41,7 +41,8 @@ def get_python_executable() -> str:
     if python_path and os.path.exists(python_path):
         return python_path
 
-    raise RuntimeError("Could not find a valid Python executable")
+    msg = "Could not find a valid python executable"
+    raise RuntimeError(msg)
 
 
 def ensure_ipykernel_installed(python_exec: str) -> bool:
@@ -65,7 +66,9 @@ def ensure_ipykernel_installed(python_exec: str) -> bool:
             print("ipykernel is already installed")
             return True
     except Exception:
-        pass
+        print(
+            f"Could not determine whether ipykernel is installed for python executable {python_exec}"
+        )
 
     # Install ipykernel if not present
     print("Installing ipykernel...")
@@ -187,8 +190,10 @@ def cleanup_kernel_spec(kernel_name: str) -> None:
                 capture_output=True,
             )
             print(f"Cleaned up kernel spec: {kernel_name}")
-        except Exception:
-            pass  # Ignore cleanup errors
+        except Exception as e:
+            print(
+                f"Exception occurred while cleaning up kernel spec: {kernel_name}. Exception: {e}"
+            )
 
 
 def run_all_notebooks(notebooks_dir: str) -> None:
@@ -224,7 +229,8 @@ def run_all_notebooks(notebooks_dir: str) -> None:
 
     # Ensure ipykernel is installed
     if not ensure_ipykernel_installed(python_exec):
-        raise RuntimeError("Failed to install ipykernel")
+        msg = "Failed to install ipykernel"
+        raise RuntimeError(msg)
 
     # Check if a kernel spec already exists for this environment
     existing_kernel = find_existing_kernel_spec(python_exec)
@@ -235,7 +241,8 @@ def run_all_notebooks(notebooks_dir: str) -> None:
         # Create a kernel spec for this environment
         kernel_name = create_kernel_spec(python_exec)
         if not kernel_name:
-            raise RuntimeError("Failed to create kernel spec")
+            msg = "Failed to create kernel spec"
+            raise RuntimeError(msg)
         print(f"Created new kernel: {kernel_name}")
 
     try:

@@ -21,7 +21,7 @@ NEATH_COLUMNS = [
     "N_H",
     "N_H2",
     "N_CO",
-    # "Tdust",  # Not present in the sample file
+    # "Tdust",  # noqa: ERA001, Not present in the sample file
 ]
 
 if __name__ == "__main__":
@@ -36,9 +36,9 @@ if __name__ == "__main__":
     for particle_id in df["particle_id"].unique():
         particle_df = df.query(f"particle_id == {particle_id}")
         (
-            physicsArray,
-            chemicalAbunArray,
-            abundanceStart,
+            physics_array,
+            chemical_abun_array,
+            abundance_start,
             success_flag,
         ) = uclchem.model.postprocess(
             param_dict={},
@@ -56,23 +56,23 @@ if __name__ == "__main__":
             coldens_C_array=None,
         )
         pd.DataFrame(
-            physicsArray[:, 0, :],
+            physics_array[:, 0, :],
             columns=uclchem.constants.PHYSICAL_PARAMETERS,
         ).to_csv(
             "physics_nocoldens.csv",
             index=False,
         )
-        pd.DataFrame(chemicalAbunArray[:, 0, :], columns=get_species()).to_csv(
+        pd.DataFrame(chemical_abun_array[:, 0, :], columns=get_species()).to_csv(
             "abunds_nocoldens.csv", index=False
         )
         (
-            physicsArray,
-            chemicalAbunArray,
-            abundanceStart,
+            physics_array,
+            chemical_abun_array,
+            abundance_start,
             success_flag,
         ) = uclchem.model.postprocess(
             param_dict={
-                #     outputfile="postprocess.dat",
+                #     outputfile="postprocess.dat", # noqa: ERA001
             },
             out_species=["H2"],
             return_array=True,
@@ -88,14 +88,14 @@ if __name__ == "__main__":
             coldens_C_array=0.0,
         )
         pd.DataFrame(
-            physicsArray[:, 0, :],
+            physics_array[:, 0, :],
             columns=uclchem.constants.PHYSICAL_PARAMETERS,
         ).to_csv(
             "physics_coldens.csv",
             index=False,
         )
 
-        pd.DataFrame(chemicalAbunArray[:, 0, :], columns=get_species()).to_csv(
+        pd.DataFrame(chemical_abun_array[:, 0, :], columns=get_species()).to_csv(
             "abunds_coldens.csv", index=False
         )
         break

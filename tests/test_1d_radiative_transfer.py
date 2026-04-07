@@ -54,7 +54,7 @@ def base_1d_params():
         "enable_radiative_transfer": True,  # Enable 1D radiative transfer
         "density_scale_radius": 0.05,  # Distance scale in pc
         "density_power_index": 2.0,  # Density profile power law index
-        "rout": 0.1,  # Outer radius in pc
+        "r_out": 0.1,  # Outer radius in pc
         # Relax solver tolerances to avoid integrator taking excessive sub-steps
         # which can exceed the Fortran-allocated time array (compiled with smaller TIMEPOINTS).
         "reltol": 1e-4,
@@ -300,7 +300,7 @@ class Test1DParameterValidation:
             "finalTime": 1.0e5,
             "points": 5,
             "enable_radiative_transfer": True,
-            "rout": 0.1,
+            "r_out": 0.1,
         }
 
         # Test steep profile (high power index)
@@ -569,7 +569,7 @@ class TestOOCollapse1D:
             "enable_radiative_transfer": True,
             "density_scale_radius": 0.05,
             "density_power_index": 2.0,
-            "rout": 0.1,
+            "r_out": 0.1,
             "reltol": 1e-4,
             "abstol_factor": 1e-8,
             "writeStep": 5,
@@ -601,7 +601,7 @@ class TestOOCollapse1D:
             "enable_radiative_transfer": True,
             "density_scale_radius": 0.05,
             "density_power_index": 2.0,
-            "rout": 0.1,
+            "r_out": 0.1,
             "reltol": 1e-4,
             "abstol_factor": 1e-8,
         }
@@ -629,7 +629,7 @@ class TestOOHotcore1D:
     def test_oo_hotcore_1d_stellar_heating(self, hotcore_1d_params):
         """Test 1D hotcore with stellar heating parameters."""
         model = uclchem.model.PrestellarCore(
-            temp_indx=1,
+            temp_index=1,
             max_temperature=300.0,
             param_dict=hotcore_1d_params,
             out_species=["CO", "H2O", "CH3OH"],

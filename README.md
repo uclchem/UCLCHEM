@@ -52,7 +52,7 @@ This will automatically run linting and formatting checks before each commit.
 - Make sure you base your new work on the develop branch.
 - Pull requests should be opened with the `develop` branch as target.
 - In principle, squash and merge is preferred over keeping the entire git commit history when merging into develop.
-- Releases will be coordinated by the core developers, this will consitute a push to main and creating a release.
+- Releases will be coordinated by the core developers, this will constitute a push to main and creating a release.
 
 ### Python
 - Use [Ruff](https://docs.astral.sh/ruff/) to format your code.

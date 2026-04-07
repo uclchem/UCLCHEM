@@ -13,8 +13,6 @@ import pytest
 import uclchem
 
 COLLAPSE_PARAMS = {
-    # "initialDens": 1e4,
-    # "finalDens": 1e6,
     "initialTemp": 10.0,
     "endAtFinalDensity": True,
 }

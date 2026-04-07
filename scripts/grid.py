@@ -28,11 +28,11 @@ if __name__ == "__main__":
     zetas = np.logspace(1, 3, 3)
 
     # meshgrid will give all combinations, then we shape into columns and put into a table
-    parameterSpace = np.asarray(np.meshgrid(temperatures, densities, zetas)).reshape(
+    parameter_space = np.asarray(np.meshgrid(temperatures, densities, zetas)).reshape(
         3, -1
     )
     model_table = pd.DataFrame(
-        parameterSpace.T, columns=["temperature", "density", "zeta"]
+        parameter_space.T, columns=["temperature", "density", "zeta"]
     )
 
     # keep track of where each model output will be saved and make sure that folder exists
@@ -65,7 +65,7 @@ if __name__ == "__main__":
         """
         _, row = row  # pandas iterrows actually come as tuples with the row number
         # basic set of parameters we'll use for this grid.
-        ParameterDictionary = {
+        param_dict = {
             "endatfinaldensity": False,
             "freefall": False,
             "initialDens": row.density,
@@ -75,7 +75,7 @@ if __name__ == "__main__":
             "finalTime": 1.0e6,
             "baseAv": 10,
         }
-        result = uclchem.functional.cloud(param_dict=ParameterDictionary)
+        result = uclchem.functional.cloud(param_dict=param_dict)
         return result
 
     with Pool(processes=6) as pool:

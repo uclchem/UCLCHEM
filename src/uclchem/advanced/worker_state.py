@@ -12,6 +12,7 @@ it in a worker process before the model runs.
 """
 
 import contextlib
+import logging
 from typing import Any
 
 import numpy as np
@@ -90,7 +91,11 @@ def create_snapshot() -> dict[str, Any]:
                 continue
             try:
                 value = getattr(mod, attr)
-            except Exception:
+            except Exception as e:
+                logging.exception(
+                    f"Exception occurred when trying to get attribute {attr} from module {mod_name}:\n",
+                    e,
+                )
                 continue
             if callable(value):
                 continue
@@ -173,7 +178,7 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
         mod = getattr(uclchemwrap, mod_name)
         for attr, value in settings_dict.items():
             # Uncomment next line to debug hangs (last printed line is the blocker):
-            # print(f"[DEBUG] setattr({mod_name}, {attr}, {value!r})", flush=True, file=sys.stderr)
+            # print(f"[DEBUG] setattr({mod_name}, {attr}, {value!r})", flush=True, file=sys.stderr) # noqa: ERA001, W505
             with contextlib.suppress(AttributeError, TypeError):
                 # read-only or incompatible – skip silently
                 setattr(mod, attr, value)

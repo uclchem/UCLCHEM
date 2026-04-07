@@ -83,7 +83,7 @@ from uclchem.constants import TIMEPOINTS, default_elements_to_check
 from uclchem.model import AbstractModel, Cloud, Collapse, CShock, JShock, PrestellarCore
 
 
-def __validate_functional_api_params__(
+def _validate_functional_api_params_(
     param_dict: dict,
     return_array: bool,
     return_dataframe: bool,
@@ -127,14 +127,15 @@ def __validate_functional_api_params__(
     if memory_return_requested:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile", "columnFile"]
         if param_dict is not None and any(k in param_dict for k in file_params):
-            raise RuntimeError(
+            msg = (
                 "return_array or return_dataframe cannot be used if any output or input file is specified. "
                 "These parameters are mutually exclusive: use either file I/O (outputFile, abundSaveFile, etc.) "
                 "OR in-memory returns (return_array, return_dataframe), but not both."
             )
+            raise RuntimeError(msg)
 
 
-def __functional_return__(
+def _functional_return_(
     model_object: AbstractModel,
     return_array: bool = False,
     return_dataframe: bool = False,
@@ -142,7 +143,7 @@ def __functional_return__(
     return_heating: bool = False,
     return_stats: bool = False,
 ) -> tuple:
-    """Return function that takes in the object that was modelled and returns the values
+    """Return function that takes in the object that was modeled and returns the values
     based on the specified booleans.
 
     Args:
@@ -165,10 +166,10 @@ def __functional_return__(
     Returns:
         if return_array and return_dataframe are False:
             - A list where the first element is always an integer which is negative if the model
-                failed to run. Can be passed to `uclchem.utils.check_error()` to see more details.
+                failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
                 If the model succeeded, and the model_object has the dissipation_time attribute
                 the second element is the dissipation time.
-                Further elements are the abundances of all species in `out_species`.
+                Further elements are the abundances of all species in ``out_species``.
         if return_array is True:
             - physicsArray (np.ndarray): array containing the physical outputs
                 for each written timestep
@@ -184,7 +185,7 @@ def __functional_return__(
                 timestep in the format uclchem needs in order to perform an additional
                 run after the initial model
             - success_flag (int): which is negative if the model failed to run.
-                Can be passed to `uclchem.utils.check_error()` to see more details.
+                Can be passed to ``uclchem.utils.check_error()`` to see more details.
         if return_dataframe is True:
             - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
                 for each written timestep
@@ -199,7 +200,7 @@ def __functional_return__(
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
                 in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
-                Can be passed to `uclchem.utils.check_error()` to see more details.
+                Can be passed to ``uclchem.utils.check_error()`` to see more details.
 
     """
     if return_dataframe:
@@ -310,7 +311,7 @@ def __functional_return__(
             )
 
 
-def __cloud__(
+def _cloud_(
     param_dict: dict | None = None,
     out_species: list[str] | None = None,
     return_array: bool = False,
@@ -325,10 +326,10 @@ def __cloud__(
 
     Args:
         param_dict (dict): A dictionary of parameters where keys are any of the variables in
-            `defaultparameters.f90` and values are value for current run.
+            ``defaultparameters.f90`` and values are value for current run.
         out_species (list): A list of species for which final abundance will be returned.
             If None, no abundances will be returned.
-            Defaults to `uclchem.constants.default_elements_to_check`.
+            Defaults to ``uclchem.constants.default_elements_to_check``.
         return_array (bool): A boolean on whether a np.array should be returned to a user.
             If both return_array and return_dataframe are false,
             this function will default to writing outputs to a file. Default = False.
@@ -343,13 +344,13 @@ def __cloud__(
         starting_chemistry (np.ndarray): Array containing the starting chemical abundances
             needed by uclchem.
         timepoints (int): Integer value of how many timesteps should be calculated before
-            aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
+            aborting the UCLCHEM model. Defaults to ``uclchem.constants.TIMEPOINTS``.
 
     Returns:
         if return_array and return_dataframe are False:
             - A list where the first element is always an integer which is negative if the model failed
-                to run. Can be passed to `uclchem.utils.check_error()` to see more details.
-                If the `out_species` parameter is provided, the remaining elements of this list
+                to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
+                If the ``out_species`` parameter is provided, the remaining elements of this list
                 will be the final abundances of the species in out_species.
         if return_array is True:
             - physicsArray (np.ndarray): array containing the physical outputs for each written timestep
@@ -362,7 +363,7 @@ def __cloud__(
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
                 in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
-                Can be passed to `uclchem.utils.check_error()` to see more details.
+                Can be passed to ``uclchem.utils.check_error()`` to see more details.
         if return_dataframe is True:
             - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
                 for each written timestep
@@ -376,14 +377,14 @@ def __cloud__(
                 of the last timestep in the format uclchem needs in order to perform an additional
                 run after the initial model
             - success_flag (int): which is negative if the model failed to run.
-                Can be passed to `uclchem.utils.check_error()` to see more details.
+                Can be passed to ``uclchem.utils.check_error()`` to see more details.
 
     """
     if out_species is None:
         out_species = default_elements_to_check
 
     # Validate functional API constraints
-    __validate_functional_api_params__(
+    _validate_functional_api_params_(
         param_dict=param_dict,
         return_array=return_array,
         return_dataframe=return_dataframe,
@@ -400,7 +401,7 @@ def __cloud__(
         timepoints=timepoints,
     )
 
-    return __functional_return__(
+    return _functional_return_(
         model_object=model_object,
         return_array=return_array,
         return_dataframe=return_dataframe,
@@ -410,7 +411,7 @@ def __cloud__(
     )
 
 
-def __collapse__(
+def _collapse_(
     collapse: str,
     param_dict: dict | None = None,
     out_species: list[str] | None = None,
@@ -428,10 +429,10 @@ def __collapse__(
         collapse (str): A string containing the collapse type, options are
             'BE1.1', 'BE4', 'filament', or 'ambipolar'
         param_dict (dict): A dictionary of parameters where keys are any of the variables in
-            `defaultparameters.f90` and values are value for current run.
+            ``defaultparameters.f90`` and values are value for current run.
         out_species (list): A list of species for which final abundance will be returned.
             If None, no abundances will be returned.
-            Defaults to `uclchem.constants.default_elements_to_check`.
+            Defaults to ``uclchem.constants.default_elements_to_check``.
         return_array (bool): A boolean on whether a np.array should be returned to a user.
             If both return_array and return_dataframe are false,
             this function will default to writing outputs to a file. Default = False.
@@ -446,13 +447,13 @@ def __collapse__(
         starting_chemistry (np.ndarray): Array containing the starting chemical abundances
             needed by UCLCHEM.
         timepoints (int): Integer value of how many timesteps should be calculated before aborting
-            the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`
+            the UCLCHEM model. Defaults to ``uclchem.constants.TIMEPOINTS``
 
     Returns:
         if return_array and return_dataframe are False:
             - A list where the first element is always an integer which is negative if the model
-                failed to run. Can be passed to `uclchem.utils.check_error()` to see more details.
-                If the `out_species` parameter is provided, the remaining elements of this list
+                failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
+                If the ``out_species`` parameter is provided, the remaining elements of this list
                 will be the final abundances of the species in out_species.
         if return_array is True:
             - physicsArray (np.ndarray): array containing the physical outputs for each written timestep
@@ -465,7 +466,7 @@ def __collapse__(
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
                 in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
-                Can be passed to `uclchem.utils.check_error()` to see more details.
+                Can be passed to ``uclchem.utils.check_error()`` to see more details.
         if return_dataframe is True:
             - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
                 for each written timestep
@@ -478,13 +479,13 @@ def __collapse__(
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
                 in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
-                Can be passed to `uclchem.utils.check_error()` to see more details.
+                Can be passed to ``uclchem.utils.check_error()`` to see more details.
 
     """
     if out_species is None:
         out_species = default_elements_to_check
 
-    __validate_functional_api_params__(
+    _validate_functional_api_params_(
         param_dict,
         return_array,
         return_dataframe,
@@ -502,7 +503,7 @@ def __collapse__(
         timepoints=timepoints,
     )
 
-    return __functional_return__(
+    return _functional_return_(
         model_object=model_object,
         return_array=return_array,
         return_dataframe=return_dataframe,
@@ -512,8 +513,8 @@ def __collapse__(
     )
 
 
-def __prestellar_core__(
-    temp_indx: int = 1,
+def _prestellar_core_(
+    temp_index: int = 1,
     max_temperature: float = 300.0,
     param_dict: dict | None = None,
     out_species: list[str] | None = None,
@@ -529,13 +530,13 @@ def __prestellar_core__(
     This model type was previously known as hot core.
 
     Args:
-        temp_indx (int): Used to select the mass of prestellar core. 1=1Msun,2=5, 3=10, 4=15, 5=25,6=60]
+        temp_index (int): Used to select the mass of prestellar core. 1=1Msun,2=5, 3=10, 4=15, 5=25,6=60]
         max_temperature (float): Value at which gas temperature will stop increasing.
         param_dict (dict): A dictionary of parameters where keys are any of the variables
-            in `defaultparameters.f90` and values are value for current run.
+            in ``defaultparameters.f90`` and values are value for current run.
         out_species (list): A list of species for which final abundance will be returned.
             If None, no abundances will be returned.
-            Defaults to `uclchem.constants.default_elements_to_check`.
+            Defaults to ``uclchem.constants.default_elements_to_check``.
         return_array (bool): A boolean on whether a np.array should be returned to a user.
             If both return_array and return_dataframe are false,
             this function will default to writing outputs to a file
@@ -550,13 +551,13 @@ def __prestellar_core__(
         starting_chemistry (np.ndarray): Array containing the starting chemical abundances
             needed by uclchem
         timepoints (int): Integer value of how many timesteps should be calculated before aborting
-            the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
+            the UCLCHEM model. Defaults to ``uclchem.constants.TIMEPOINTS``.
 
     Returns:
         if return_array and return_dataframe are False:
             - A list where the first element is always an integer which is negative if the model failed
-                to run and can be sent to `uclchem.utils.check_error()` to see more details.
-                If the `out_species` parametere is provided, the remaining elements of this list
+                to run and can be sent to ``uclchem.utils.check_error()`` to see more details.
+                If the ``out_species`` parameter is provided, the remaining elements of this list
                 will be the final abundances of the species in out_species.
         if return_array is True:
             - physicsArray (np.ndarray): array containing the physical outputs for each written timestep
@@ -569,7 +570,7 @@ def __prestellar_core__(
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
                 in the format uclchem needs in order to perform an additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
-                Can be passed to `uclchem.utils.check_error()` to see more details.
+                Can be passed to ``uclchem.utils.check_error()`` to see more details.
         if return_dataframe is True:
             - physicsDF (pd.DataFrame): DataFrame containing the physical outputs for each
                 written timestep
@@ -583,13 +584,13 @@ def __prestellar_core__(
                 in the format uclchem needs in order to perform an additional run
                 after the initial model
             - success_flag (int): which is negative if the model failed to run.
-                Can be passed to `uclchem.utils.check_error()` to see more details.
+                Can be passed to ``uclchem.utils.check_error()`` to see more details.
 
     """
     if out_species is None:
         out_species = default_elements_to_check
 
-    __validate_functional_api_params__(
+    _validate_functional_api_params_(
         param_dict,
         return_array,
         return_dataframe,
@@ -600,7 +601,7 @@ def __prestellar_core__(
     )
 
     model_object = PrestellarCore(
-        temp_indx=temp_indx,
+        temp_index=temp_index,
         max_temperature=max_temperature,
         param_dict=param_dict,
         out_species=out_species,
@@ -608,7 +609,7 @@ def __prestellar_core__(
         timepoints=timepoints,
     )
 
-    return __functional_return__(
+    return _functional_return_(
         model_object=model_object,
         return_array=return_array,
         return_dataframe=return_dataframe,
@@ -618,7 +619,7 @@ def __prestellar_core__(
     )
 
 
-def __cshock__(
+def _cshock_(
     shock_vel: float,
     timestep_factor: float = 0.01,
     minimum_temperature: float = 0.0,
@@ -640,12 +641,12 @@ def __cshock__(
             timestep is timestep_factor*dissipation time. Essentially controls
             how well resolved the shock is in your model. Defaults to 0.01.
         minimum_temperature (float): Minimum post-shock temperature. Defaults to 0.0 (no minimum).
-            The shocked gas typically cools to `initialTemp` if this is not set.
+            The shocked gas typically cools to ``initialTemp`` if this is not set.
         param_dict (dict): A dictionary of parameters where keys are any of the variables
-            in `defaultparameters.f90` and values are value for current run.
+            in ``defaultparameters.f90`` and values are value for current run.
         out_species (list[str | None]): A list of species for which final
             abundance will be returned. If None, no abundances will be returned.
-            Default = `uclchem.constants.default_elements_to_check`.
+            Default = ``uclchem.constants.default_elements_to_check``.
         return_array (bool): Whether a np.array should be returned.
             If both return_array and return_dataframe are false,
             this function will default to writing outputs to a file. Default = False.
@@ -658,14 +659,14 @@ def __cshock__(
         starting_chemistry (np.ndarray): np.array containing the starting chemical abundances needed
             by UCLCHEM.
         timepoints (int): Integer value of how many timesteps should be calculated before
-            aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
+            aborting the UCLCHEM model. Defaults to ``uclchem.constants.TIMEPOINTS``.
 
     Returns:
         if return_array and return_dataframe are False:
             - A list where the first element is always an integer which is negative if the model
-                failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
+                failed to run and can be sent to ``uclchem.utils.check_error()`` to see more details.
                 If the model succeeded, the second element is the dissipation time and further
-                elements are the abundances of all species in `out_species`.
+                elements are the abundances of all species in ``out_species``.
         if return_array is True:
             - physicsArray (np.ndarray): array containing the physical outputs for each written
                 timestep
@@ -680,7 +681,7 @@ def __cshock__(
                 in the format uclchem needs in order to perform an additional run
                 after the initial model
             - success_flag (integer): which is negative if the model failed to run.
-                Can be passed to `uclchem.utils.check_error()` to see more details.
+                Can be passed to ``uclchem.utils.check_error()`` to see more details.
         if return_dataframe is True:
             - physicsDF (pd.DataFrame): DataFrame containing the physical outputs for
                 each written timestep
@@ -695,13 +696,13 @@ def __cshock__(
                 timestep in the format uclchem needs in order to perform an additional run
                 after the initial model
             - success_flag (int): which is negative if the model failed to run.
-                Can be passed to `uclchem.utils.check_error()` to see more details.
+                Can be passed to ``uclchem.utils.check_error()`` to see more details.
 
     """
     if out_species is None:
         out_species = default_elements_to_check
 
-    __validate_functional_api_params__(
+    _validate_functional_api_params_(
         param_dict,
         return_array,
         return_dataframe,
@@ -721,7 +722,7 @@ def __cshock__(
         timepoints=timepoints,
     )
 
-    return __functional_return__(
+    return _functional_return_(
         model_object=model_object,
         return_array=return_array,
         return_dataframe=return_dataframe,
@@ -731,7 +732,7 @@ def __cshock__(
     )
 
 
-def __jshock__(
+def _jshock_(
     shock_vel: float,
     param_dict: dict | None = None,
     out_species: list[str] | None = default_elements_to_check,
@@ -748,10 +749,10 @@ def __jshock__(
     Args:
         shock_vel (float): Velocity of the shock
         param_dict (dict | None): A dictionary of parameters where keys are any of the variables in
-            `defaultparameters.f90` and values are value for current run.
+            ``defaultparameters.f90`` and values are value for current run.
         out_species (list | None): A list of species for which final abundance will be returned.
             If None, no abundances will be returned.
-            Defaults to `uclchem.constants.default_elements_to_check`.
+            Defaults to ``uclchem.constants.default_elements_to_check``.
         return_array (bool): A boolean on whether a np.array should be returned to a user.
             If both return_array and return_dataframe are false, this function will default
             to writing outputs to a file
@@ -771,10 +772,10 @@ def __jshock__(
     Returns:
         if return_array and return_dataframe are False:
             - A list where the first element is always an integer which is negative
-                if the model failed to run. Can be passed to `uclchem.utils.check_error()`
+                if the model failed to run. Can be passed to ``uclchem.utils.check_error()``
                 to see more details. If the model succeeded, the second element
                 is the dissipation time and further elements are the abundances
-                of all species in `out_species`.
+                of all species in ``out_species``.
         if return_array is True:
             - physicsArray (np.ndarray): array containing the physical outputs
                 for each written timestep
@@ -788,7 +789,7 @@ def __jshock__(
                 the last timestep in the format uclchem needs in order to perform
                 an additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run.
-                Can be passed to `uclchem.utils.check_error()` to see more details.
+                Can be passed to ``uclchem.utils.check_error()`` to see more details.
         if return_dataframe is True:
             - physicsDF (pd.DataFrame): DataFrame containing the physical outputs for
                 each written timestep
@@ -802,13 +803,13 @@ def __jshock__(
                 the last timestep in the format uclchem needs in order to perform
                 an additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
-                Can be passed to `uclchem.utils.check_error()` to see more details.
+                Can be passed to ``uclchem.utils.check_error()`` to see more details.
 
     """
     if out_species is None:
         out_species = default_elements_to_check
 
-    __validate_functional_api_params__(
+    _validate_functional_api_params_(
         param_dict,
         return_array,
         return_dataframe,
@@ -826,7 +827,7 @@ def __jshock__(
         timepoints=timepoints,
     )
 
-    return __functional_return__(
+    return _functional_return_(
         model_object=model_object,
         return_array=return_array,
         return_dataframe=return_dataframe,
@@ -837,9 +838,9 @@ def __jshock__(
 
 
 # Expose the functional API functions at module level
-cloud = __cloud__
-collapse = __collapse__
-prestellar_core = __prestellar_core__
-hot_core = __prestellar_core__  # Alias for backward compatibility
-cshock = __cshock__
-jshock = __jshock__
+cloud = _cloud_
+collapse = _collapse_
+prestellar_core = _prestellar_core_
+hot_core = _prestellar_core_  # Alias for backward compatibility
+cshock = _cshock_
+jshock = _jshock_

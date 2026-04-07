@@ -2,9 +2,9 @@
 
 This module provides the Network class and factory functions for creating networks
 in different contexts:
-- load_network_from_csv(): Load compiled networks for analysis
-- build_network(): Build new networks with full validation
-- create_network(): Direct instantiation from objects
+- ``load_network_from_csv()``: Load compiled networks for analysis
+- ``build_network()``: Build new networks with full validation
+- ``create_network()``: Direct instantiation from objects
 
 The Network class implements a complete interface for accessing and modifying
 chemical reaction networks, suitable for build-time and analysis-time use.
@@ -367,12 +367,14 @@ class BaseNetwork(NetworkABC):
         similar = self.find_similar_reactions(reaction)
 
         if len(similar) == 0:
-            raise ValueError(f"Reaction {reaction} not found in network")
+            msg = f"Reaction {reaction} not found in network"
+            raise ValueError(msg)
         elif len(similar) > 1:
-            raise ValueError(
+            msg = (
                 f"Multiple reactions match {reaction}. "
                 f"Found indices: {list(similar.keys())}"
             )
+            raise ValueError(msg)
 
         return list(similar.keys())[0]
 
@@ -634,15 +636,13 @@ class Network(BaseNetwork, MutableNetworkABC):
                 try:
                     species = [Species(spec) for spec in species]
                 except ValueError as error:
-                    raise ValueError(
-                        "Failed to convert CSV entries to Species objects"
-                    ) from error
+                    msg = "Failed to convert CSV entries to Species objects"
+                    raise ValueError(msg) from error
         elif isinstance(species, Species):
             species = [species]
         else:
-            raise TypeError(
-                "Input must be Species object, list of Species, or CSV entries"
-            )
+            msg = "Input must be Species object, list of Species, or CSV entries"
+            raise TypeError(msg)
 
         # Add to dictionary
         for specie in species:
@@ -701,12 +701,20 @@ class Network(BaseNetwork, MutableNetworkABC):
     # ========================================================================
 
     def set_reaction(self, reaction_idx: int, reaction: Reaction) -> None:
-        """Set/update a reaction at specific index."""
+        """Set/update a reaction at specific index.
+
+        Args:
+            reaction_idx (int): index of reaction to set.
+            reaction (Reaction): new reaction instance.
+
+        Raises:
+            RuntimeError: If the number of reactions changes.
+        """
         old_length = len(self._reactions_dict)
         self._reactions_dict[reaction_idx] = reaction
-        assert old_length == len(self._reactions_dict), (
-            "Setting the reaction caused a change in the number of reactions"
-        )
+        if old_length != len(self._reactions_dict):
+            msg = "Setting the reaction caused a change in the number of reactions"
+            raise RuntimeError(msg)
 
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
         """Replace entire reaction dictionary."""
@@ -736,15 +744,13 @@ class Network(BaseNetwork, MutableNetworkABC):
                 try:
                     reactions = [Reaction(reac) for reac in reactions]
                 except ValueError as error:
-                    raise ValueError(
-                        "Failed to convert CSV entries to Reaction objects"
-                    ) from error
+                    msg = "Failed to convert CSV entries to Reaction objects"
+                    raise ValueError(msg) from error
         elif isinstance(reactions, Reaction):
             reactions = [reactions]
         else:
-            raise TypeError(
-                "Input must be Reaction object, list of Reactions, or CSV entries"
-            )
+            msg = "Input must be Reaction object, list of Reactions, or CSV entries"
+            raise TypeError(msg)
 
         # Add to dictionary
         for reaction in reactions:
@@ -773,10 +779,11 @@ class Network(BaseNetwork, MutableNetworkABC):
         elif len(similar_reactions) == 0:
             logging.warning(f"Reaction {reaction} not found in network")
         else:
-            raise RuntimeError(
+            msg = (
                 f"Found {len(similar_reactions)} reactions matching {reaction}. "
                 "Use remove_reaction_by_index for piecewise reactions."
             )
+            raise RuntimeError(msg)
 
     def remove_reaction_by_index(self, reaction_idx: int) -> None:
         """Remove a reaction by its index."""
@@ -804,7 +811,12 @@ class Network(BaseNetwork, MutableNetworkABC):
         ]
 
     def sort_reactions(self) -> None:
-        """Sort reactions by type and first reactant."""
+        """Sort reactions by type and first reactant.
+
+        Raises:
+            RuntimeError: If the sorting of species causes the number of species
+                in the network to change.
+        """
         reaction_dict = self.get_reaction_dict()
 
         self.set_reaction_dict(
@@ -818,9 +830,9 @@ class Network(BaseNetwork, MutableNetworkABC):
                 )
             )
         )
-        assert len(reaction_dict) == len(self.get_reaction_dict()), (
-            "Sorting the species caused a difference in the number of species"
-        )
+        if len(reaction_dict) != len(self.get_reaction_dict()):
+            msg = "Sorting the species caused a difference in the number of species"
+            raise RuntimeError(msg)
 
     # Note: Query methods (find_similar_reactions, get_reaction_index, etc.)
     # are inherited from BaseNetwork
@@ -845,7 +857,8 @@ class Network(BaseNetwork, MutableNetworkABC):
         all_species_names = [s.get_name() for s in all_species]
 
         if specie not in all_species_names:
-            raise ValueError(f"Species {specie} not found in network")
+            msg = f"Species {specie} not found in network"
+            raise ValueError(msg)
 
         # Special handling for @H2O (affects all bulk species)
         if specie == "@H2O":
@@ -890,10 +903,11 @@ class Network(BaseNetwork, MutableNetworkABC):
         elif len(similar_reactions) == 0:
             logging.warning(f"Reaction {reaction} not found in network")
         else:
-            raise RuntimeError(
+            msg = (
                 f"Found {len(similar_reactions)} reactions matching {reaction}. "
                 "Cannot uniquely identify which barrier to change."
             )
+            raise RuntimeError(msg)
 
 
 # ============================================================================

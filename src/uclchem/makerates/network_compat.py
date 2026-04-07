@@ -18,7 +18,7 @@ from uclchem.makerates.reaction import Reaction
 from uclchem.makerates.species import Species
 
 
-def Network(
+def Network(  # noqa: N802
     species: list[Species] = None, reactions: list[Reaction] = None, **kwargs
 ) -> NewNetwork:
     """Backward compatible Network constructor.
@@ -65,10 +65,11 @@ def Network(
 
     """
     if species is None or reactions is None:
-        raise ValueError(
+        msg = (
             "Network() requires species and reactions. "
             "For loading from CSV, use Network.from_csv() or load_network_from_csv() instead."
         )
+        raise ValueError(msg)
 
     warnings.warn(
         "Calling Network(species, reactions, ...) is deprecated. "
@@ -152,16 +153,18 @@ class LoadedNetwork:
         has_filepaths = species_filepath is not None or reactions_filepath is not None
 
         if has_objects and has_filepaths:
-            raise ValueError(
+            msg = (
                 "Cannot provide both species/reactions objects and file paths. "
                 "Use either (species=..., reactions=...) OR "
                 "(species_filepath=..., reactions_filepath=...)"
             )
+            raise ValueError(msg)
 
         # If objects are provided, ensure both are provided
         if has_objects:
             if species is None or reactions is None:
-                raise ValueError("Both species and reactions must be provided together.")
+                msg = "Both species and reactions must be provided together."
+                raise ValueError(msg)
 
             warnings.warn(
                 "LoadedNetwork(species=..., reactions=...) is deprecated. "

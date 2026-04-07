@@ -258,9 +258,8 @@ class MakeratesConfig(BaseModel):
             return v
 
         if not isinstance(v, str | Path):
-            raise TypeError(
-                "coolants_file must be a path to a YAML file listing coolants"
-            )
+            msg = "coolants_file must be a path to a YAML file listing coolants"
+            raise TypeError(msg)
         return Path(v)
 
     @field_validator("coolants", mode="before")
@@ -283,26 +282,24 @@ class MakeratesConfig(BaseModel):
         if v is None:
             return v
         if not isinstance(v, list):
-            raise TypeError("coolants must be a list of dicts")
+            msg = "coolants must be a list of dicts"
+            raise TypeError(msg)
 
         from pathlib import Path as _Path
 
         validated = []
         for i, item in enumerate(v):
             if not isinstance(item, dict):
-                raise TypeError(
-                    f"coolants[{i}] must be a dict with 'file' and 'name' keys"
-                )
+                msg = f"coolants[{i}] must be a dict with 'file' and 'name' keys"
+                raise TypeError(msg)
             if "file" not in item or "name" not in item:
-                raise KeyError(
-                    f"coolants[{i}] must contain 'file' and 'name' keys. Got: {list(item.keys())}"
-                )
+                msg = f"coolants[{i}] must contain 'file' and 'name' keys. Got: {list(item.keys())}"
+                raise KeyError(msg)
             # Validate that file is a bare filename (no path)
             file_val = str(item["file"])
             if _Path(file_val).name != file_val or _Path(file_val).parent != _Path("."):
-                raise ValueError(
-                    f"coolants[{i}]['file'] must be a bare filename (no directories). Got: {file_val}"
-                )
+                msg = f"coolants[{i}]['file'] must be a bare filename (no directories). Got: {file_val}"
+                raise ValueError(msg)
             entry = {"file": file_val, "name": str(item["name"])}
             if "parent_species" in item:
                 entry["parent_species"] = str(item["parent_species"])
@@ -348,25 +345,26 @@ class MakeratesConfig(BaseModel):
         db_types = self.database_reaction_type
         if isinstance(db_files, list) and isinstance(db_types, list):
             if len(db_files) != len(db_types):
-                raise ValueError(
+                msg = (
                     f"database_reaction_file has {len(db_files)} entries but "
                     f"database_reaction_type has {len(db_types)} entries. They must match."
                 )
+                raise ValueError(msg)
 
         # Check custom files and types match
         if self.custom_reaction_file is not None:
             if self.custom_reaction_type is None:
-                raise ValueError(
-                    "custom_reaction_type must be provided when custom_reaction_file is specified"
-                )
+                msg = "custom_reaction_type must be provided when custom_reaction_file is specified"
+                raise ValueError(msg)
             if isinstance(self.custom_reaction_file, list) and isinstance(
                 self.custom_reaction_type, list
             ):
                 if len(self.custom_reaction_file) != len(self.custom_reaction_type):
-                    raise ValueError(
+                    msg = (
                         f"custom_reaction_file has {len(self.custom_reaction_file)} entries but "
                         f"custom_reaction_type has {len(self.custom_reaction_type)} entries. They must match."
                     )
+                    raise ValueError(msg)
 
         return self
 
@@ -382,11 +380,12 @@ class MakeratesConfig(BaseModel):
 
         """
         if self.three_phase is False:
-            raise ValueError(
+            msg = (
                 "three_phase=False is deprecated as of UCLCHEM v3.5.0. "
                 "Three-phase chemistry is now always enabled. "
                 "Please remove 'three_phase: false' from your configuration."
             )
+            raise ValueError(msg)
         return self
 
     @model_validator(mode="after")
@@ -418,10 +417,11 @@ class MakeratesConfig(BaseModel):
 
         """
         if self.coolants is not None and self.coolants_file is not None:
-            raise ValueError(
+            msg = (
                 "Cannot specify both 'coolants' and 'coolants_file'. "
                 "Use 'coolants' for inline specification or 'coolants_file' to reference an external file."
             )
+            raise ValueError(msg)
         return self
 
     # ============================================================================
@@ -448,7 +448,8 @@ class MakeratesConfig(BaseModel):
         yaml_path = Path(yaml_path).resolve()
 
         if not yaml_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {yaml_path}")
+            msg = f"Configuration file not found: {yaml_path}"
+            raise FileNotFoundError(msg)
 
         logging.info(f"Reading configuration from: {yaml_path}")
         logging.info(f"Configuration directory: {yaml_path.parent}")

@@ -14,14 +14,13 @@ logging.basicConfig(level=logging.DEBUG)
 
 if __name__ == "__main__":
     settings = uclchem.advanced.GeneralSettings()
-    # settings.defaultparameters.heatingFlag.set(False)
 
     if not os.path.exists("examples/test-output/"):
         os.makedirs("examples/test-output/")
 
     print("Running test models...")
     # set a parameter dictionary for static model
-    outSpecies = ["OH", "OCS", "CO", "CS", "CH3OH"]
+    out_species = ["OH", "OCS", "CO", "CS", "CH3OH"]
     params = {
         "endAtFinalDensity": False,
         "freefall": False,
@@ -39,7 +38,7 @@ if __name__ == "__main__":
     }
 
     start = perf_counter()
-    uclchem.functional.cloud(param_dict=params, out_species=outSpecies)
+    uclchem.functional.cloud(param_dict=params, out_species=out_species)
     stop = perf_counter()
     print(f"Static model in {stop - start:.1f} seconds")
 
@@ -52,7 +51,7 @@ if __name__ == "__main__":
     params["outputFile"] = "examples/test-output/phase1-full.dat"
     params["columnFile"] = "examples/test-output/phase1-column.dat"
     start = perf_counter()
-    uclchem.functional.cloud(param_dict=params, out_species=outSpecies)
+    uclchem.functional.cloud(param_dict=params, out_species=out_species)
     stop = perf_counter()
     print(f"Phase 1 in {stop - start:.1f} seconds")
 
@@ -69,7 +68,7 @@ if __name__ == "__main__":
     params.pop("columnFile")
     start = perf_counter()
     uclchem.functional.prestellar_core(
-        3, 300.0, param_dict=params, out_species=outSpecies
+        3, 300.0, param_dict=params, out_species=out_species
     )
     stop = perf_counter()
     print(f"Phase 2 in {stop - start:.1f} seconds")

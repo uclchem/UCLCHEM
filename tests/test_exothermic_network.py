@@ -149,8 +149,8 @@ def test_network_with_custom_exothermicity(config_file_with_exothermicity):
     )
 
     # Convert from erg to eV for comparison (1 eV = 1.602176634e-12 erg)
-    EV_TO_ERG = 1.602176634e-12
-    exo_ev = ch_recomb.get_exothermicity() / EV_TO_ERG
+    ev_to_erg = 1.602176634e-12
+    exo_ev = ch_recomb.get_exothermicity() / ev_to_erg
 
     # Should be approximately -1.0 eV (dummy test data)
     assert abs(exo_ev - (-1.0)) < 0.01, f"Expected -1.0 eV, got {exo_ev} eV"
@@ -181,8 +181,8 @@ def test_network_with_multiple_database_reaction_exothermicity(
     assert ch_recomb.get_exothermicity() is not None
 
     # Convert from erg to eV
-    EV_TO_ERG = 1.602176634e-12
-    exo_ev = ch_recomb.get_exothermicity() / EV_TO_ERG
+    ev_to_erg = 1.602176634e-12
+    exo_ev = ch_recomb.get_exothermicity() / ev_to_erg
 
     # Should be -100.0 eV (from second file, overriding -1.0 from first)
     assert abs(exo_ev - (-100.0)) < 0.01, (
@@ -203,7 +203,7 @@ def test_network_with_multiple_database_reaction_exothermicity(
     assert h3_recomb is not None, "H3+ + E- -> H2 + H reaction not found"
     assert h3_recomb.get_exothermicity() is not None
 
-    exo_ev_h3 = h3_recomb.get_exothermicity() / EV_TO_ERG
+    exo_ev_h3 = h3_recomb.get_exothermicity() / ev_to_erg
 
     # Should be -200.0 eV (from second file, overriding -2.0 from first)
     assert abs(exo_ev_h3 - (-200.0)) < 0.01, (
@@ -261,7 +261,7 @@ def test_exothermicity_unit_conversion(config_file_with_exothermicity):
         ("C2H+", "E-", "C2", "H", -4.0),  # eV (note: -3.0 is C10H+ which may not exist)
     ]
 
-    EV_TO_ERG = 1.602176634e-12
+    ev_to_erg = 1.602176634e-12
 
     for reactant1, reactant2, product1, product2, expected_ev in test_cases:
         reaction_found = None
@@ -282,7 +282,7 @@ def test_exothermicity_unit_conversion(config_file_with_exothermicity):
         )
 
         if reaction_found.get_exothermicity() is not None:
-            exo_ev = reaction_found.get_exothermicity() / EV_TO_ERG
+            exo_ev = reaction_found.get_exothermicity() / ev_to_erg
             assert abs(exo_ev - expected_ev) < 0.01, (
                 f"{reactant1} + {reactant2} -> {product1} + {product2}: "
                 f"Expected {expected_ev} eV, got {exo_ev} eV"

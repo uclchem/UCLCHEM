@@ -23,10 +23,10 @@ REAL(dp) :: currentTime=0.0 !Time at start of model in years (matches finalTime 
 REAL(dp) :: finalTime=5.0d6 !Time to stop model in years, if not using `endAtFinalDensity` below.
 REAL(dp) :: radfield=1.0 !Interstellar radiation field in Habing
 REAL(dp) :: zeta=1.0 !Cosmic ray ionisation rate as multiple of $1.3 10^{-17} s^{-1}$
-REAL(dp) :: rout=0.05 !Outer radius of cloud being modelled in pc.
-REAL(dp) :: rin=0.0 !Minimum radial distance from cloud centre to consider.
+REAL(dp) :: r_out=0.05 !Outer radius of cloud being modeled in pc.
+REAL(dp) :: r_in=0.0 !Minimum radial distance from cloud centre to consider.
 REAL(dp) :: baseAv=2.0 !Extinction at cloud edge, Av of a parcel at rout.
-INTEGER :: points=1 !Number of gas parcels equally spaced between rin to rout to consider
+INTEGER :: points=1 !Number of gas parcels equally spaced between r_in to rout to consider
 REAL(dp) :: bm0=1.0 !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
 !Physical profiles for 1D model with pre-described gas density
 REAL(dp) :: density_scale_radius=0.05 !unit of pc, distance below which the gas volume density is constant, and above which the gas density drops as n ~ r^{-a}
@@ -35,7 +35,7 @@ REAL(dp) :: density_power_index=2.0 !Power-law index for density profile: n(r) =
 REAL(dp) :: lum_star=1.00d6 !unit of Lsun, bolometric luminosity of the central source
 REAL(dp) :: temp_star=4.50d4 !unit of K, temperature of the central source
 !
-!## Behavioural Controls
+!## Behavioral Controls
 !*The following parameters generally turn on or off features of the model. If a parameter is set to `True`, then it is turned on. If it is set to `False`, then it is turned off.*
 !
 !|Parameter|Default Value |Description|

@@ -21,7 +21,7 @@ This module provides utility functions for:
     >>> success_flag.check_error()
     Model ran successfully
     >>>
-    >>> # Only print if an error occured
+    >>> # Only print if an error occurred
     >>> success_flag.check_error(only_error=True)
 
     >>> # Calculate shock timescale
@@ -60,6 +60,8 @@ if TYPE_CHECKING:
 import numpy as np
 import pandas as pd
 
+from uclchem.constants import CENTIMETERS_PER_PARSEC, SECONDS_PER_YEAR
+
 UCLCHEM_ROOT_DIR: Path = Path(__file__).parent.resolve().absolute()
 
 
@@ -77,9 +79,7 @@ def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
         float: The dissipation time of the shock in years
 
     """
-    pc = 3.086e18  # parsec in cgs
-    SECONDS_PER_YEAR = 3.15569e7
-    dlength = 12.0 * pc * shock_vel / initial_dens
+    dlength = 12.0 * CENTIMETERS_PER_PARSEC * shock_vel / initial_dens
     return (dlength * 1.0e-5 / shock_vel) / SECONDS_PER_YEAR
 
 
@@ -118,7 +118,7 @@ def get_reaction_table() -> pd.DataFrame:
 
 def find_number_of_consecutive_digits(string: str, start: int) -> int:
     """Determine the number of consecutive digits in a string, starting
-    from some index `start`.
+    from some index ``start``.
 
     Args:
         string (str): the string
@@ -126,7 +126,7 @@ def find_number_of_consecutive_digits(string: str, start: int) -> int:
 
     Returns:
         num_digits (int): the number of consecutive digits in the string
-            starting from "start".
+            starting from ``start``.
 
     Examples:
         >>> find_number_of_consecutive_digits("Hello123", 0)
@@ -297,7 +297,8 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
     from uclchem.model import Collapse
 
     if not isinstance(model, Collapse):
-        raise TypeError(f"model must be a Collapse instance, got {type(model).__name__}")
+        msg = f"model must be a Collapse instance, got {type(model).__name__}"
+        raise TypeError(msg)
 
     df = model.get_dataframes(point=point)
     t_yr = df["Time"].values
@@ -341,20 +342,20 @@ class SuccessFlag(enum.IntEnum):
     PARAMETER_READ_ERROR = -1, "Parameter read failed."
     PHYSICS_INIT_ERROR = -2, "Physics initialization failed."
     CHEM_INIT_ERROR = -3, "Chemistry initialization failed."
-    INT_UNRECOVERABLE_ERROR = -4, "Unrecoverable integrator error occured."
-    INT_TOO_MANY_FAILS_ERROR = -5, "Too many integrator fails occured."
+    INT_UNRECOVERABLE_ERROR = -4, "Unrecoverable integrator error occurred."
+    INT_TOO_MANY_FAILS_ERROR = -5, "Too many integrator fails occurred."
     NOT_ENOUGH_TIMEPOINTS_ERROR = (
         -6,
         "Not enough time points allocated in the time array.",
     )
     PHYSICS_UPDATE_ERROR = -7, "Error updating physics during integration."
     SOLVER_STATS_OVERFLOW_ERROR = -8, "Solver statistics array overflowed."
-    COOLANT_FILE_ERROR = -9, "Coolant data file could not be openend."
+    COOLANT_FILE_ERROR = -9, "Coolant data file could not be opened."
     COOLANT_DATA_ERROR = -10, "Coolant data file has invalid format."
     COOLANT_FREQ_TOL_ERROR = -11, "Coolant frequency tolerance exceeded."
     COOLANT_POP_TOL_ERROR = -12, "LTE population sum tolerance exceeded."
-    COOLANT_SOLVER_ERROR = -13, "Coolant solver numerical error occured."
-    COOLANT_CONFIG_ERROR = -14, "Coolant configuration error occured."
+    COOLANT_SOLVER_ERROR = -13, "Coolant solver numerical error occurred."
+    COOLANT_CONFIG_ERROR = -14, "Coolant configuration error occurred."
     NEGATIVE_ABUNDANCE_ERROR = -15, "A negative abundance was detected."
 
     def check_error(self, only_error: bool = False, raise_on_error: bool = True) -> str:
@@ -363,14 +364,14 @@ class SuccessFlag(enum.IntEnum):
         Args:
             only_error (bool): If True, skip printing if the model ran successfully, and only
                 error out if it did not. Default = False.
-            raise_on_error (bool): If True, raises RuntimeError if the `self` is not
-                `SuccessFlag.SUCCESS`. If False, returns the message string. Default = True.
+            raise_on_error (bool): If True, raises RuntimeError if the ``self`` is not
+                ``SuccessFlag.SUCCESS``. If False, returns the message string. Default = True.
 
         Returns:
             str: Error message | None
 
         Raises:
-            RuntimeError: If `raise_on_error` is True.
+            RuntimeError: If ``raise_on_error`` is True.
 
         """
         if self == SuccessFlag.SUCCESS:
@@ -397,5 +398,6 @@ class SuccessFlag(enum.IntEnum):
 
         msg = error_msg_dict[self]
         if raise_on_error:
-            raise RuntimeError(f"UCLCHEM error (code {self.name}, {self.value}): {msg}")
+            msg = f"UCLCHEM error (code {self.name}, {self.value}): {msg}"
+            raise RuntimeError(msg)
         return msg

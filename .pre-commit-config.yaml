@@ -26,6 +26,15 @@ repos:
         stages: [pre-commit]
         pass_filenames: false
 
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.45.0
+    hooks:
+      - id: typos
+        name: "[correctness] Check spelling errors"
+        description: "Check for spelling errors in files"
+        args: [--config=pyproject.toml]
+        pass_filenames: false
+
   # Ruff: Undefined names and syntax errors (F, E999)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.9

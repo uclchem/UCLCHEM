@@ -1,6 +1,6 @@
 ! Chemistry module of UCL_CHEM.                                                               !
 ! Contains all the core machinery of the code, not really intended to be altered in standard  !
-! use. Use a (custom) physics module to alter temp/density behaviour etc.                     !
+! use. Use a (custom) physics module to alter temp/density behavior etc.                      !
 !                                                                                             !
 ! chemistry module contains rates.f90, a series of subroutines to calculate all reaction rates!
 ! when updateChemistry is called from main, these rates are calculated, the ODEs are solved   !

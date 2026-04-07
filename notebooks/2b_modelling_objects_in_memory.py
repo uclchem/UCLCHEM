@@ -15,7 +15,7 @@
 
 # # Advanced Physical Modelling
 #
-# In the previous tutorial, we simply modelled the chemistry of a static cloud for 1 Myr. This is unlikely to meet
+# In the previous tutorial, we simply modeled the chemistry of a static cloud for 1 Myr. This is unlikely to meet
 # everybody's modelling needs and UCLCHEM is capable of modelling much more complex environments such as prestellar
 # cores and shocks. In this tutorial, we model both a prestellar core and a shock to explore how these models work and
 # to demonstrate the workflow that the UCLCHEM team normally follow. In tutorial 2a, we approach the modeling in a more

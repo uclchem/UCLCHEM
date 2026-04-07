@@ -22,7 +22,7 @@ def test_ode_conservation(
 
     Args:
         element_list (list[str]): A list of elements for which to check the conservation.
-            If None, use `uclchem.constants.default_elements_to_check`. Default = None.
+            If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
 
     Returns:
         result (dict[str, float]): A dictionary of the elements in element list with values
@@ -68,7 +68,7 @@ def test_ode_conservation(
     input_abund = np.zeros(uclchem.constants.n_species, dtype=np.float64, order="F")
     input_abund[: len(abundances)] = abundances
     rates = wrap.get_odes(param_dict, input_abund)
-    # Explicitely clean off the last element, for some reason the shape
+    # Explicitly clean off the last element, for some reason the shape
     # of the ODE is n_species + 1, and we don't need the last one.
     rates = rates[: len(species_list)]
     df = DataFrame(rates.reshape(1, -1), columns=species_list)

@@ -18,6 +18,7 @@ across model runs in the same Python session.
 
 from __future__ import annotations
 
+import logging
 import warnings
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -156,20 +157,22 @@ class Setting:
 
         """
         if self.is_parameter:
-            raise RuntimeError(
+            msg = (
                 f"Cannot modify {self.module_name}.{self.name}: "
                 f"it is a Fortran PARAMETER (compile-time constant). "
                 f"To change this value, you must edit the Fortran source, "
                 f"regenerate with MakeRates, and rebuild."
             )
+            raise RuntimeError(msg)
 
         if self.is_file_path:
-            raise RuntimeError(
+            msg = (
                 f"Cannot modify {self.module_name}.{self.name}: "
                 f"file paths should be set via param_dict when calling model functions "
                 f"(e.g., uclchem.model.cloud(param_dict={{'outputFile': '...'}})). "
                 f"File I/O paths are handled specially by the model wrapper and parsers."
             )
+            raise RuntimeError(msg)
 
         # Set the value in Fortran memory
         setattr(self._fortran_module, self.name, value)
@@ -189,10 +192,11 @@ class Setting:
             RuntimeError: If the setting is a Fortran parameter
         """
         if self.is_parameter:
-            raise RuntimeError(
+            msg = (
                 f"Cannot reset {self.module_name}.{self.name}: "
                 f"it is a Fortran PARAMETER (compile-time constant)"
             )
+            raise RuntimeError(msg)
 
         self.set(self.default_value)
         self.is_edited = False
@@ -281,9 +285,12 @@ class ModuleSettings:
                 )
                 self._settings[attr.lower()] = setting
 
-            except Exception:
+            except Exception as e:
                 # Skip attributes that can't be accessed
-                pass
+                logging.exception(
+                    "Exception occurred when accessing attribute {value} from module {module_name}:\n",
+                    e,
+                )
 
     def __getattr__(self, name: str) -> Setting:
         """Get a Setting object by name.
@@ -304,10 +311,11 @@ class ModuleSettings:
         if name_lower in self._settings:
             return self._settings[name_lower]
 
-        raise AttributeError(
+        msg = (
             f"Module '{self.module_name}' has no setting '{name}'. "
             f"Available: {', '.join(list(self._settings.keys())[:10])}..."
         )
+        raise AttributeError(msg)
 
     def __setattr__(self, name: str, value: Any) -> None:
         """Set a setting value.
@@ -328,7 +336,8 @@ class ModuleSettings:
         if name_lower in self._settings:
             self._settings[name_lower].set(value)
         else:
-            raise AttributeError(f"Module '{self.module_name}' has no setting '{name}'")
+            msg = f"Module '{self.module_name}' has no setting '{name}'"
+            raise AttributeError(msg)
 
     def __dir__(self) -> list[str]:
         """List all settings.
@@ -517,10 +526,11 @@ class GeneralSettings:
         if name in self._modules:
             return self._modules[name]
 
-        raise AttributeError(
+        msg = (
             f"No module '{name}' available.\n"
             f"Available modules: {', '.join(sorted(self._modules.keys()))}"
         )
+        raise AttributeError(msg)
 
     def __dir__(self) -> list[str]:
         """List all available modules.

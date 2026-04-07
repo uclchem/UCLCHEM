@@ -213,7 +213,7 @@ def test_cshock_disk(test_output_directory):
     )
 
 
-def test_endAtFinalDensity_validation_disk(test_output_directory):
+def test_endAtFinalDensity_validation_disk(test_output_directory):  # noqa: N802
     """Test that endAtFinalDensity=True raises error without freefall
     for Cloud with disk I/O"""
     params = {

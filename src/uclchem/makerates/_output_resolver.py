@@ -77,7 +77,7 @@ def resolve_output_dirs(
         if _is_valid_project_root(stored_root):
             return stored_root / "src" / "uclchem", stored_root / "src" / "fortran_src"
         else:
-            raise ProjectRootError(
+            msg = (
                 f"UCLCHEM was installed with project root '{stored_root}', "
                 "but that directory no longer has the expected src/uclchem and "
                 "src/fortran_src structure. This happens when the project was "
@@ -85,16 +85,18 @@ def resolve_output_dirs(
                 "local source tree exists). "
                 "Pass --output-dir <project-root> to specify where to write files."
             )
+            raise ProjectRootError(msg)
 
     # --- Tier 3: legacy relative paths (programmatic / Makerates/ usage) -----------
     if use_legacy_relative:
         return Path("../src/uclchem"), Path("../src/fortran_src")
 
     # --- Tier 4: nothing worked ----------------------------------------------------
-    raise ProjectRootError(
+    msg = (
         "makerates could not determine an output directory. "
         "No --output-dir was given, no stored project root is available, "
         "and legacy relative-path mode was not requested. "
         "Run uclchem-makerates with --output-dir pointing to your project root, "
         "or re-install from source."
     )
+    raise ProjectRootError(msg)

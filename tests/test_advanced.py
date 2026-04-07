@@ -703,7 +703,8 @@ class TestGeneralSettings:
         try:
             with settings.temporary_changes():
                 settings.defaultparameters.initialdens.set(5000.0)
-                raise ValueError("Test exception")
+                msg = "Test exception"
+                raise ValueError(msg)
         except ValueError:
             pass
 

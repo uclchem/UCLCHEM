@@ -62,8 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: install
     # disable doctest for rc4 for now
-    if: false
-    # if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
 
     steps:
       - uses: actions/checkout@v6
@@ -72,8 +71,11 @@ jobs:
         with:
           install-package: "false"
 
-      - name: "[build:package] Install UCLCHEM package"
-        run: pip install .
+      - name: "[build:package] Install UCLCHEM package, and meson-python"
+        run: pip install . meson-python
+
+      - name: "[build:package] Install UCLCHEM package in editable mode"
+        run: pip install --no-build-isolation -e .
 
       - name: "[test:doctest] Run doctests from docstrings"
         run: |

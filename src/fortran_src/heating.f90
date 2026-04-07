@@ -501,7 +501,7 @@ IMPLICIT NONE
     !
     !  Treat the vibrationally excited levels of H2 as a single pseudo level
     !  with effective rates of spontaneous emission, collisional excitation,
-    !  FUV pumping and photodissociation that describe the behaviour of all
+    !  FUV pumping and photodissociation that describe the behavior of all
     !  the vibrational levels combined.
     !
     !  Use the treatment of Rollig et al. (2006, A&A, 451, 917)

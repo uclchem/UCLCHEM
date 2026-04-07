@@ -30,7 +30,7 @@ if not os.path.exists("output_6"):
 # %% [markdown]
 # ## Using GeneralSettings Instead of param_dict
 #
-# The traditional way to configure UCLCHEM models is with parameter dictionaries that are passed when running the UCLCHEM model. The `GeneralSettings` class provides an alternative that directly modifies the Fortran module state before running a model. This has the benefit that you can change things globally, and access things that are not exposted through parameter dictionaries.
+# The traditional way to configure UCLCHEM models is with parameter dictionaries that are passed when running the UCLCHEM model. The `GeneralSettings` class provides an alternative that directly modifies the Fortran module state before running a model. This has the benefit that you can change things globally, and access things that are not exposed through parameter dictionaries.
 #
 # **Key differences:**
 # - Direct access to Fortran variables with autocomplete support

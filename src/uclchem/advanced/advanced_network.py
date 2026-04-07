@@ -375,9 +375,11 @@ class NetworkState:
         reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
 
         if not species_path.is_file():
-            raise FileNotFoundError(f"Species CSV not found: {species_path}")
+            msg = f"Species CSV not found: {species_path}"
+            raise FileNotFoundError(msg)
         if not reactions_path.is_file():
-            raise FileNotFoundError(f"Reactions CSV not found: {reactions_path}")
+            msg = f"Reactions CSV not found: {reactions_path}"
+            raise FileNotFoundError(msg)
 
         self._species_df = pd.read_csv(species_path)
         self._reactions_df = pd.read_csv(reactions_path)
@@ -388,15 +390,6 @@ class NetworkState:
 
         for _, row in self._species_df.iterrows():
             # Create Species object from CSV row
-            # species_row = [
-            #     row["name"],
-            #     int(row["mass"]),
-            #     row["binding_energy"],
-            #     row["solid_fraction"],
-            #     row["mono_fraction"],
-            #     row["volcano"],
-            #     row["ENTHALPY"],
-            # ]
             species = Species(row)
             self.species_list.append(species)
 
@@ -488,7 +481,8 @@ class NetworkState:
             import warnings
 
             warnings.warn("Network validation failed:" + str(errors), RuntimeWarning)
-            raise RuntimeError("Network validation failed")
+            msg = "Network validation failed"
+            raise RuntimeError(msg)
 
     def validate(self) -> None:
         """Re-run validation to check on-disk matches in-memory.

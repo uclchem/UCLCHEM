@@ -73,26 +73,30 @@ Species defined in CSV with:
 
 **Example - Adding Custom Reactions:**
 
-.. code-block:: python
+    >>> from uclchem.makerates.network import Network, load_network_from_csv
+    >>> from uclchem.makerates.reaction import Reaction
+    >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+    >>>
+    >>> # Load existing network
+    >>> network = load_network_from_csv(
+    ...     UCLCHEM_ROOT_DIR / "species.csv",
+    ...     UCLCHEM_ROOT_DIR / "reactions.csv",
+    ... )
+    >>>
 
-    from uclchem.makerates import Network, Reaction
-
-    # Load existing network
-    network = load_network_from_csv(\"reactions.csv\", \"species.csv\")
-
-    # Add custom reaction
-    custom_rxn = Reaction(
-        reactants=[\"H\", \"CO\"],
-        products=[\"HCO\"],
-        alpha=1.0e-10,
-        beta=0.0,
-        gamma=0.0,
-        reaction_type=1
-    )
-    network.add_reaction(custom_rxn)
-
-    # Export modified network
-    network.to_csv(\"custom_network.csv\")
+    >>> # Add custom reaction
+    >>> alpha = 1.0e-10
+    >>> beta = 0.0
+    >>> gamma = 0.0
+    >>> templow = 0.0
+    >>> temphigh = 10000.0
+    >>> custom_reaction = Reaction(
+    ...     ["H", "CO", "NAN", "HCO", "NAN", "NAN", "NAN", alpha, beta, gamma, templow, temphigh],
+    ... )
+    >>> network.add_reactions(custom_reaction)
+    >>>
+    >>> # Export modified network
+    >>> io_functions.write_reactions("custom_reactions.csv", network.get_reaction_list())
 
 **Configuration Files:**
 

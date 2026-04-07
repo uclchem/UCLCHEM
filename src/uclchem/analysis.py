@@ -66,7 +66,7 @@ from pandas import Series, read_csv
 from uclchem.constants import default_elements_to_check, n_reactions, n_species
 from uclchem.makerates import Reaction
 from uclchem.makerates.network import Network
-from uclchem.makerates.species import Species, elementList
+from uclchem.makerates.species import Species, element_list
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
 
@@ -180,16 +180,15 @@ def get_change_df(
 
     Raises:
         DeprecationWarning: Deprecated in UCLCHEM 4.0
-        ValueError: If "#" or "@" is in `species`.
+        ValueError: If "#" or "@" is in ``species``.
 
     """
-    raise DeprecationWarning(
-        "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
-    )
+    msg = "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
+    raise DeprecationWarning(msg)
 
     if "#" in species or "@" in species:
-        msg = "WARNING: get_change_df IS ONLY FOR ANALYSING ALL OF THE GAS PHASE AND ALL OF THE ICE. "
-        msg += "USE on_grain PARAMETER TO INDICATE THIS. IF YOU WANT TO ANALYSE ONLY SURFACE OR ONLY BULK, "
+        msg = "WARNING: get_change_df IS ONLY FOR ANALYZING ALL OF THE GAS PHASE AND ALL OF THE ICE. "
+        msg += "USE on_grain PARAMETER TO INDICATE THIS. IF YOU WANT TO ANALYZE ONLY SURFACE OR ONLY BULK, "
         msg += "USE FUNCTION _get_rates_change WITH SPECIES CONTAINING # OR @ TO INDICATE SURFACE OF BULK."
         raise ValueError(msg)
     if not on_grain:
@@ -214,7 +213,7 @@ def get_change_df(
     # Maybe TODO:
     # Make it such that the columns of the same reactions (but surf and bulk versions)
     # are added such that we have a single reaction rate in the ice,
-    # and not seperate surf and bulk reaction rates.
+    # and not separate surf and bulk reaction rates.
     return pd.concat([df_surf, df_bulk], axis=1)
 
 
@@ -233,9 +232,8 @@ def read_analysis(filepath: str | Path, species: str) -> tuple[pd.DataFrame, lis
         DeprecationWarning: Deprecated in UCLCHEM 4.0
 
     """
-    raise DeprecationWarning(
-        "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
-    )
+    msg = "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
+    raise DeprecationWarning(msg)
     with open(filepath) as file:
         lines = file.readlines()
     for i, line in enumerate(lines):
@@ -305,7 +303,7 @@ def analysis(
     """Loop over every time step in an output file and finds the rate of change
     of a species at that time due to each of the reactions it is involved in.
     From this, the most important reactions are identified and printed to file.
-    This can be used to understand the chemical reason behind a species' behaviour.
+    This can be used to understand the chemical reason behind a species' behavior.
 
     DEPRECATED
 
@@ -493,9 +491,8 @@ def _get_species_rates(
         RuntimeError: If UCLCHEM failed to return the rates for these parameters
 
     """
-    raise DeprecationWarning(
-        "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
-    )
+    msg = "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
+    raise DeprecationWarning(msg)
     input_abund = np.zeros(n_species)
     input_abund[: len(input_abundances)] = input_abundances
     rate_indxs = np.ones(n_reactions)
@@ -504,27 +501,28 @@ def _get_species_rates(
         param_dict, input_abund, species_index, rate_indxs
     )
     if success_flag < 0:
-        raise RuntimeError("UCLCHEM failed to return rates for these parameters")
+        msg = "UCLCHEM failed to return rates for these parameters"
+        raise RuntimeError(msg)
     return rates[: len(reac_indxs)], transfer, swap, bulk_layers
 
 
 def _get_rates_of_change(
     rates: np.ndarray,
     reactions: list[str],
-    speciesList: list[str],
+    species_list: list[str],
     species: str,
     row: pd.Series,
     swap: float,
     bulk_layers: float,
 ):
     """Calculate the terms in the rate of equation of a particular species using rates
-    calculated using `get_species_rates()` and a row from the full output of UCLCHEM.
-    See `analysis.py` for intended use.
+    calculated using ``get_species_rates()`` and a row from the full output of UCLCHEM.
+    See ``analysis.py`` for intended use.
 
     Args:
         rates (float, array): Rates of all reactions the species is involved in
         reactions (array): List of all reactions the species is involved in as a list of strings
-        speciesList (array): List of species names from network
+        species_list (array): List of species names from network
         species (string): name of species to be analyseds
         row (pd.Series): row from output dataframe
         swap (float): Total swap rate for individual swapping between bulk and surface
@@ -537,12 +535,11 @@ def _get_rates_of_change(
         DeprecationWarning: Deprecated in UCLCHEM 4.0
 
     """
-    raise DeprecationWarning(
-        "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
-    )
+    msg = "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
+    raise DeprecationWarning(msg)
     changes = []
     reactionList = []
-    three_phase = "@" in "".join(speciesList)
+    three_phase = "@" in "".join(species_list)
     safeMantle = np.max([1.0e-30, row["SURFACE"]])
     for i, reaction in enumerate(reactions):
         reaction_instance = Reaction([*reaction, 0, 0, 0, 0, 0])
@@ -555,7 +552,7 @@ def _get_rates_of_change(
 
         change = change * (row["Density"] ** (reactant_count))
         for reactant in reactants:
-            if reactant in speciesList:
+            if reactant in species_list:
                 change = change * row[reactant]
 
             elif reactant == "BULKSWAP":
@@ -707,7 +704,7 @@ def _count_element(species_list: list[str], element: str) -> np.ndarray:
     species_list = Series(species_list)
     # confuse list contains elements whose symbols contain the target eg CL for C
     # We count both sets of species and remove the confuse list counts.
-    confuse_list = [x for x in elementList if element in x]
+    confuse_list = [x for x in element_list if element in x]
     confuse_list = sorted(confuse_list, key=lambda x: len(x), reverse=True)
     confuse_list.remove(element)
     sums = species_list.str.count(element)
@@ -724,7 +721,7 @@ def total_element_abundance(element: str, df: pd.DataFrame) -> pd.Series:
 
     Args:
         element (str): Name of element
-        df (pd.DataFrame): DataFrame from `read_output_file()`
+        df (pd.DataFrame): DataFrame from ``read_output_file()``
 
     Returns:
         pd.Series: Total abundance of element for all time steps in df.
@@ -743,9 +740,9 @@ def check_element_conservation(
     abundance at start and end of model.
 
     Args:
-        df (pd.DataFrame): UCLCHEM output in format from `read_output_file`
+        df (pd.DataFrame): UCLCHEM output in format from ``read_output_file``
         element_list (list[str] | None): List of elements to check. If None,
-            defaults to `uclchem.constants.default_elements_to_check`.
+            defaults to ``uclchem.constants.default_elements_to_check``.
         percent (bool): Whether to return the change formatted as a percentage. Default = False.
 
     Returns:
@@ -780,11 +777,16 @@ def get_total_swap(
     Returns:
         totalSwap (np.ndarray): The total swap per timestep
 
+    Raises:
+        ValueError: If ``rates`` and ``abundances`` do not have the same number of timepoints (rows),
+            or ``rates`` and ``reactions`` do not have the same number of reactions (columns).
     """
-    assert len(rates) == len(abundances), "Rates and abundances must be the same length"
-    assert rates.shape[1] == len(reactions), (
-        "The number of rates and reactions must be equal"
-    )
+    if len(rates) != len(abundances):
+        msg = "Rates and abundances must be the same length"
+        raise ValueError(msg)
+    if rates.shape[1] != len(reactions):
+        msg = "The number of rates and reactions must be equal"
+        raise ValueError(msg)
     totalSwap = np.zeros(abundances.shape[0])
     for idx, reac in enumerate(reactions):
         if reac.get_reaction_type() == "BULKSWAP":
@@ -794,7 +796,7 @@ def get_total_swap(
 
 def construct_incidence(species: list[Species], reactions: list[Reaction]) -> np.ndarray:
     """Construct the incidence matrix, a matrix that describes the in and out degree
-    for each of the reactions; useful to matrix multiply by the indvidual rates per reaction
+    for each of the reactions; useful to matrix multiply by the individual rates per reaction
     to obtain a rates (dy) per species.
 
     Args:
@@ -847,19 +849,19 @@ def rate_constants_to_dy_and_rates(
             by the incidence matrix.
 
     Raises:
-        ValueError: If `species` is specified, but `reactions` is not, or vice versa
-        ValueError: If `species`, `reactions` and `network` are all specified,
+        ValueError: If ``species`` is specified, but ``reactions`` is not, or vice versa
+        ValueError: If ``species``, ``reactions`` and ``network`` are all specified,
             or all not specified.
         ValueError: If there are any reaction types not processed.
 
     """
-    if not bool(species) == bool(reactions):
-        raise ValueError("If species is specified, reactions also must be and vice versa")
+    if bool(species) != bool(reactions):
+        msg = "If species is specified, reactions also must be and vice versa"
+        raise ValueError(msg)
 
     if (network is None) == (species is None and reactions is None):
-        raise ValueError(
-            "Choose between providing a network OR (species AND reactions). A network can be obtained using `uclchem.makerates.network.Network.from_csv()`"
-        )
+        msg = "Choose between providing a network OR (species AND reactions). A network can be obtained using ``uclchem.makerates.network.Network.from_csv()``"
+        raise ValueError(msg)
 
     if network:
         species = network.get_species_list()
@@ -868,6 +870,7 @@ def rate_constants_to_dy_and_rates(
         rate_constants = rate_constants.drop(columns=["Point"])
 
     # Import all of the constants directly from UCLCHEMWRAP to avoid discrepancies
+    # ruff: noqa: N806
     GAS_DUST_DENSITY_RATIO = surfacereactions.gas_dust_density_ratio
     NUM_SITES_PER_GRAIN = surfacereactions.num_sites_per_grain
 
@@ -882,6 +885,7 @@ def rate_constants_to_dy_and_rates(
     safeBulk = abundances["BULK"].apply(lambda x: max(1.0e-30, x))
     safeMantle = abundances["SURFACE"].apply(lambda x: max(1.0e-30, x))
     ratioSurfaceToBulk = (safeMantle / safeBulk).apply(lambda x: min(1.0, x))
+    # ruff: noqa: N806
 
     # Create the incidence matrix, we use this to evaluate the rates and
     incidence = construct_incidence(species, reactions)
@@ -948,14 +952,11 @@ def rate_constants_to_dy_and_rates(
             pass
         else:
             missing_reactions.add(reaction_type)
-            # Short circuit error:
-            # raise ValueError(f"Unknown reaction type {reaction_type}")
         rate_by_reaction.iloc[:, idx] = rate
 
     if missing_reactions:
-        raise ValueError(
-            f"Missing reaction types in rate processing: {missing_reactions}"
-        )
+        msg = f"Missing reaction types in rate processing: {missing_reactions}"
+        raise ValueError(msg)
 
     # Compute the rate at each timestep, adding the appropriate header
     dy = rate_by_reaction @ incidence
@@ -986,13 +987,13 @@ def rate_constants_to_dy_and_rates(
         _bswap_rates = {}
         # TODO: vectorize this, because this is slower than it has to be.
         for r_bswap, r_sswap in zip(bulkswap_reactions, surfswap_reactions):
-            surfaceCoverage = min(1.0, abunds_row["BULK"] / abunds_row["SURFACE"])
+            surface_coverage = min(1.0, abunds_row["BULK"] / abunds_row["SURFACE"])
             if dy.iloc[idx_j]["SURFACE"] < 0.0:
-                surfaceCoverage = min(1.0, abunds_row["BULK"] / abunds_row["SURFACE"])
+                surface_coverage = min(1.0, abunds_row["BULK"] / abunds_row["SURFACE"])
                 # SURFACE is shrinking, so bulk must be growing
                 bswap = (
                     dy.iloc[idx_j]["SURFACE"]
-                    * surfaceCoverage
+                    * surface_coverage
                     * abunds_row[r_bswap.get_reactants()[0]]
                     / abunds_row["BULK"]
                 )
@@ -1005,10 +1006,10 @@ def rate_constants_to_dy_and_rates(
                 dy.loc[idx_j, r_bswap.get_reactants()[0]] -= bswap
                 dy.loc[idx_j, r_bswap.get_products()[0]] += bswap
             else:
-                surfaceCoverage = 0.5 * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN
+                surface_coverage = 0.5 * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN
                 sswap = (
                     dy.iloc[idx_j]["SURFACE"]
-                    * surfaceCoverage
+                    * surface_coverage
                     * abunds_row[r_sswap.get_reactants()[0]]
                 )
                 _bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
@@ -1063,7 +1064,8 @@ def compute_heating_per_reaction(
         reactions = network.get_reaction_list()
 
     if len(reactions) != rates.shape[1]:
-        raise ValueError("Number of reactions and rates must be equal")
+        msg = "Number of reactions and rates must be equal"
+        raise ValueError(msg)
 
     exothermicities = np.array([r.get_exothermicity() for r in reactions])
     return rates * exothermicities
@@ -1119,7 +1121,7 @@ def analyze_element_per_phase(element: str, df: pd.DataFrame) -> pd.Series:
 
     Args:
         element (str): Name of element
-        df (pd.DataFrame): DataFrame from `read_output_file()`
+        df (pd.DataFrame): DataFrame from ``read_output_file()``
 
     Returns:
         content (pd.Series): Total abundance of element for all time steps in df.

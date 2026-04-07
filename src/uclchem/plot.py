@@ -109,14 +109,16 @@ def create_abundance_plot(
     """Create a plot of the abundance of a list of species through time.
 
     Args:
-        df (pd.DataFrame): Pandas dataframe containing the UCLCHEM output, see `read_output_file`
+        df (pd.DataFrame): Pandas dataframe containing the UCLCHEM output, see
+            ``uclchem.analysis.read_output_file``, ``uclchem.model.load_model`` or
+            ``uclchem.model.Model.get_dataframes``.
         species (list[str]): list of strings containing species names.
             Using a $ instead of # or @ will plot the sum of surface and bulk abundances.
         figsize (tuple[int | float]): Size of figure, width by height in inches.
             Defaults to (16, 9).
         plot_file (str | None): Path to file where figure will be saved.
             If None, figure is not saved. Defaults to None.
-        plot_kwargs (dict[str, Any]): keyword arguments passed to `ax.plot`.
+        plot_kwargs (dict[str, Any]): keyword arguments passed to ``ax.plot``.
 
     Returns:
         fig (plt.Figure): created Figure object
@@ -148,38 +150,41 @@ def plot_species(
 
     Args:
         ax (plt.Axes): An axis object to plot on
-        df (pd.DataFrame): A dataframe created by `read_output_file`
+        df (pd.DataFrame): A dataframe created by
+            ``uclchem.analysis.read_output_file``, ``uclchem.model.load_model`` or
+            ``uclchem.model.Model.get_dataframes``.
         species (list[str]): A list of species names to be plotted.
             If species name starts with "$" instead of "#" or "@",
             plots the sum of surface and bulk abundances
         legend (bool): Whether to add a legend to the plot. Default = True.
-        plot_kwargs (dict[str, Any]): keyword arguments passed to `ax.plot`.
+        plot_kwargs (dict[str, Any]): keyword arguments passed to ``ax.plot``.
 
     Returns:
         ax (plt.Axes): Modified input axis is returned
 
     Raises:
-        KeyError: if no "Time" column is present in `df`.
+        KeyError: if no ``"Time"`` column is present in ``df``.
 
     """
-    for specIndx, specName in enumerate(species):
+    for species_index, species_name in enumerate(species):
         linestyle = "solid"
-        if specName[0] == "$":
-            abundances = df[specName.replace("$", "#")]
+        if species_name[0] == "$":
+            abundances = df[species_name.replace("$", "#")]
             linestyle = "dashed"
-            if specName.replace("$", "@") in df.columns:
-                abundances = abundances + df[specName.replace("$", "@")]
+            if species_name.replace("$", "@") in df.columns:
+                abundances = abundances + df[species_name.replace("$", "@")]
         else:
-            abundances = df[specName]
+            abundances = df[species_name]
         plot_kwargs["linestyle"] = linestyle
-        plot_kwargs["label"] = specName
+        plot_kwargs["label"] = species_name
         # Support legacy code that use either "age" or "Time" as the time variable
         if "age" in df.columns:
             timecolumn = "age"
         elif "Time" in df.columns:
             timecolumn = "Time"
         else:
-            raise KeyError("No time variable in dataframe")
+            msg = "No time variable in dataframe"
+            raise KeyError(msg)
         ax.plot(
             df[timecolumn],
             abundances,

@@ -11,11 +11,12 @@ try:
     from uclchem.makerates import run_makerates
     from uclchem.makerates.config import MakeratesConfig
 except ModuleNotFoundError as err:
-    raise ModuleNotFoundError(
+    msg = (
         "The uclchem module could not be found, please make sure it is "
         "installed\nPlease refer to uclchem.github.io for installation "
         "instructions."
-    ) from err
+    )
+    raise ModuleNotFoundError(msg) from err
 import logging
 import pathlib
 from argparse import ArgumentParser

@@ -12,7 +12,7 @@ import pandas as pd
 
 from uclchem.utils import find_number_of_consecutive_digits
 
-elementList = [
+element_list = [
     "H",
     "D",
     "HE",
@@ -34,7 +34,7 @@ elementList = [
     "E-",
     "FE",
 ]
-elementMass = [
+element_mass = [
     1,
     2,
     4,
@@ -68,18 +68,30 @@ def normalize_species_name(name: str) -> str:
     (e.g. 'o-', 'p-', 'a-', 'l-') — is lowercased so that input is case-insensitive.
     The chemical formula part is uppercased. All other names are simply uppercased.
 
-    Examples:
-        'o-H2'   -> 'o-H2'
-        'O-H2'   -> 'o-H2'   (case-normalised prefix)
-        '#o-H2'  -> '#o-H2'
-        'C-'     -> 'C-'     (negative ion: len==2, not a prefix)
-        'E-'     -> 'E-'     (electron: same rule)
-        'H2O'    -> 'H2O'
-        ''       -> ''       (empty string)
-        None     -> 'NAN'    (falsy non-string value)
+    Args:
+        name (str): name to normalize.
 
     Returns:
         str: Normalized species name
+
+    Examples:
+        >>> normalize_species_name("o-H2")
+        'o-H2'
+        >>> normalize_species_name("O-H2") # case-normalised prefix
+        'o-H2'
+        >>> normalize_species_name("#o-H2")
+        '#o-H2'
+        >>> normalize_species_name("C-") # negative ion: len == 2, not a prefix
+        'C-'
+        >>> normalize_species_name("E-") # electron: same rule
+        'E-'
+        >>> normalize_species_name("H2O")
+        'H2O'
+        >>> normalize_species_name("") # empty string
+        ''
+        >>> normalize_species_name(None) # falsy non-string value
+        'NAN'
+
     """
     # Preserve empty strings; convert other falsy values to "NAN"
     if name == "":
@@ -134,7 +146,7 @@ def is_number(s: Any) -> bool:
 
 def sanitize_input_float(row: list[Any], index: int, default: Any = 0.0) -> float:
     """Sanitize the input. If the index is out of bounds of the row or the value
-    from the row cannot be turned into a float, use the `default` value.
+    from the row cannot be turned into a float, use the ``default`` value.
     Otherwise, just gets the value from the row.
 
     Args:
@@ -158,7 +170,7 @@ class Species:
     species and to help compare between species.
     """
 
-    def __init__(self, inputRow: list[str] | pd.Series):
+    def __init__(self, input_row: list[str] | pd.Series):
         """Parse a species row.
 
         Uses the new extended order:
@@ -168,10 +180,10 @@ class Species:
 
         Falls back to sensible defaults when fields are missing.
         """
-        if isinstance(inputRow, pd.Series):
-            inputRow = [inputRow[field] for field in species_header]
+        if isinstance(input_row, pd.Series):
+            input_row = [input_row[field] for field in species_header]
 
-        self.name = normalize_species_name(str(inputRow[0]))
+        self.name = normalize_species_name(str(input_row[0]))
         # Detect chemical isomer prefix (e.g. 'o' from 'o-H2' or '#o-H2').
         _rest = self.name[1:] if self.name and self.name[0] in ("#", "@") else self.name
         self.prefix = (
@@ -179,55 +191,55 @@ class Species:
             if (len(_rest) > 2 and _rest[1] == "-" and _rest[0].islower())
             else ""
         )
-        self.mass = int(inputRow[1])
+        self.mass = int(input_row[1])
 
         # binding energy and refractory handling
         try:
-            self.is_refractory = str(inputRow[2]).lower() == "inf"
+            self.is_refractory = str(input_row[2]).lower() == "inf"
             if self.is_refractory:
                 self.binding_energy = 99.9e9
             else:
-                self.binding_energy = float(inputRow[2])
+                self.binding_energy = float(input_row[2])
         except (IndexError, ValueError):
             self.is_refractory = False
             self.binding_energy = 0.0
 
         # core solid/mono/volcano/enthalpy
-        self.solidFraction = sanitize_input_float(inputRow, 3, 0.0)
-        self.monoFraction = sanitize_input_float(inputRow, 4, 0.0)
-        self.volcFraction = sanitize_input_float(inputRow, 5, 0.0)
-        self.enthalpy = sanitize_input_float(inputRow, 6, 0.0)
+        self.solidFraction = sanitize_input_float(input_row, 3, 0.0)
+        self.monoFraction = sanitize_input_float(input_row, 4, 0.0)
+        self.volcFraction = sanitize_input_float(input_row, 5, 0.0)
+        self.enthalpy = sanitize_input_float(input_row, 6, 0.0)
 
         # extended Tobias fields after enthalpy
         # vdes (desorption attempt frequency)
-        self.vdes = sanitize_input_float(inputRow, 7, 0.0)
+        self.vdes = sanitize_input_float(input_row, 7, 0.0)
 
-        self.diffusion_barrier = sanitize_input_float(inputRow, 8, 0.0)
+        self.diffusion_barrier = sanitize_input_float(input_row, 8, 0.0)
         # vdiff (diffusion attempt frequency)
-        self.vdiff = sanitize_input_float(inputRow, 9, 0.0)
+        self.vdiff = sanitize_input_float(input_row, 9, 0.0)
 
         # TST prefactors (optional)
         try:
-            self.Ix = float(inputRow[10])
+            self.Ix = float(input_row[10])
         except (IndexError, ValueError):
             self.Ix = -999.0
         try:
-            self.Iy = float(inputRow[11])
+            self.Iy = float(input_row[11])
         except (IndexError, ValueError):
             self.Iy = -999.0
         try:
-            self.Iz = float(inputRow[12])
+            self.Iz = float(input_row[12])
         except (IndexError, ValueError):
             self.Iz = -999.0
         try:
-            self.symmetry_factor = int(inputRow[13])
+            self.symmetry_factor = int(input_row[13])
         except (IndexError, ValueError, TypeError):
             self.symmetry_factor = -1
 
         self.set_n_atoms(0)
 
         # in first instance, assume species freeze/desorb unchanged
-        # this is updated by `check_freeze_desorbs()` later.
+        # this is updated by ``check_freeze_desorbs()`` later.
         if self.is_ice_species():
             # this will make any excited species desorb as their base counterparts
             if "*" in self.get_name():
@@ -400,12 +412,13 @@ class Species:
             list[str]: The desorption products
 
         Raises:
-            AttributeError: If the species has no attribute `desorb_products`.
+            AttributeError: If the species has no attribute ``desorb_products``.
                 This can occur if the species is a gas-phase species.
 
         """
         if not hasattr(self, "desorb_products"):
-            raise AttributeError(f"Species {self} has no attribute 'desorb_products'")
+            msg = f"Species {self} has no attribute 'desorb_products'"
+            raise AttributeError(msg)
         return self.desorb_products
 
     def set_freeze_products(self, product_list: list[str], freeze_alpha: float) -> None:
@@ -513,7 +526,7 @@ class Species:
         return self.get_name().startswith("@")
 
     def is_ion(self) -> bool:
-        """Check if the species is ionized, either postively or negatively.
+        """Check if the species is ionized, either positively or negatively.
 
         Returns:
             bool: True if it is ionized
@@ -575,9 +588,8 @@ class Species:
             else:
                 name = name[len(self.prefix) + 1 :]
         if name[0].isdigit():
-            raise ValueError(
-                f"First character of formula {name} was a digit. Please put repeated parts in a bracket with number after, e.g. (CH3)2"
-            )
+            msg = f"First character of formula {name} was a digit. Please put repeated parts in a bracket with number after, e.g. (CH3)2"
+            raise ValueError(msg)
 
         char_idx = 0
         atoms = []
@@ -589,19 +601,18 @@ class Species:
             if name[char_idx] not in symbols:
                 if (
                     char_idx + 1 < len(name)
-                    and name[char_idx : char_idx + 2] in elementList
+                    and name[char_idx : char_idx + 2] in element_list
                 ):
                     # if next two characters are (eg) 'MG' then atom is Mg not M and G
                     j = char_idx + 2
                 # if there aren't two characters left just try next one
-                elif name[char_idx] in elementList:
+                elif name[char_idx] in element_list:
                     j = char_idx + 1
 
                 # if we've found a new element check for numbers otherwise print error
                 if j is None or j <= char_idx:
-                    raise ValueError(
-                        f"formula {name} contains element(s) not in element list"
-                    )
+                    msg = f"formula {name} contains element(s) not in element list"
+                    raise ValueError(msg)
 
                 num_digits = find_number_of_consecutive_digits(name, j)
                 if num_digits == 0:
@@ -622,9 +633,8 @@ class Species:
                 # if it's the end then add bracket contents to list
                 elif name[char_idx] == ")":
                     if not currently_in_bracket:
-                        raise ValueError(
-                            f"Found closing bracket before opening bracket in formula {name}"
-                        )
+                        msg = f"Found closing bracket before opening bracket in formula {name}"
+                        raise ValueError(msg)
                     currently_in_bracket = False
                     num_digits = find_number_of_consecutive_digits(name, char_idx + 1)
                     if num_digits == 0:
@@ -636,14 +646,15 @@ class Species:
                     char_idx += num_digits
                 char_idx += 1
         if currently_in_bracket:
-            raise ValueError(f"Opening bracket was not closed in formula {name}")
+            msg = f"Opening bracket was not closed in formula {name}"
+            raise ValueError(msg)
         counter = Counter()
-        for element in elementList:
+        for element in element_list:
             counter[element] = atoms.count(element)
 
         mass = 0
         for atom in atoms:
-            mass += elementMass[elementList.index(atom)]
+            mass += element_mass[element_list.index(atom)]
         if mass != int(self.get_mass()):
             if not quiet:
                 logging.warning(
@@ -672,18 +683,6 @@ class Species:
         """
         self.n_atoms = new_n_atoms
 
-    def to_UCL_format(self) -> str:
-        """Serialize to the extended UCLCHEM species CSV order.
-
-        Order: NAME,MASS,BINDING_ENERGY,SOLID_FRACTION,MONO_FRACTION,VOLCANO_FRACTION,ENTHALPY,
-               DESORPTION_PREF,DIFFUSION_BARRIER,DIFFUSION_PREF,Ix,Iy,Iz,SYMMETRYFACTOR
-
-        Returns:
-            str: String with species values shown in format shown above.
-
-        """
-        return f"{self.get_name()},{self.get_mass()},{self.get_binding_energy()},{self.get_solid_fraction()},{self.get_mono_fraction()},{self.get_volcano_fraction()},{self.get_enthalpy()},{self.get_vdes()},{self.get_diffusion_barrier()},{self.get_vdiff()},{self.get_Ix()},{self.get_Iy()},{self.get_Iz()},{self.get_symmetry_factor()}"
-
     def get_binding_energy(self) -> float:
         """Get the binding energy of the species in K.
 
@@ -705,7 +704,7 @@ class Species:
     def get_desorption_pref(self) -> float:
         """Get the desorption prefactor.
 
-        Alias getter matching CSV column name `desorption_pref`.
+        Alias getter matching CSV column name ``desorption_pref``.
 
         Returns:
             float: The desorption prefactor in s-1
@@ -734,7 +733,7 @@ class Species:
     def get_diffusion_pref(self) -> float:
         """Set the diffusion prefactor.
 
-        Alias getter matching CSV column name `diffusion_pref`.
+        Alias getter matching CSV column name ``diffusion_pref``.
 
         Returns:
             float: The diffusion prefactor in s-1
@@ -742,7 +741,7 @@ class Species:
         """
         return self.get_vdiff()
 
-    def get_Ix(self) -> float:
+    def get_Ix(self) -> float:  # noqa: N802
         """Set the moment of inertia along the first principal axis.
 
         Returns:
@@ -751,7 +750,7 @@ class Species:
         """
         return self.Ix
 
-    def get_Iy(self) -> float:
+    def get_Iy(self) -> float:  # noqa: N802
         """Set the moment of inertia along the second principal axis.
 
         Returns:
@@ -760,7 +759,7 @@ class Species:
         """
         return self.Iy
 
-    def get_Iz(self) -> float:
+    def get_Iz(self) -> float:  # noqa: N802
         """Set the moment of inertia along the third principal axis.
 
         Returns:
@@ -790,7 +789,7 @@ class Species:
     def set_desorption_pref(self, vdes: float) -> None:
         """Set the desorption prefactor.
 
-        Alias setter matching CSV column name `desorption_pref`.
+        Alias setter matching CSV column name ``desorption_pref``.
 
         Args:
             vdes (float): The desorption prefactor in s-1
@@ -819,7 +818,7 @@ class Species:
     def set_diffusion_pref(self, vdiff: float) -> None:
         """Set the diffusion prefactor.
 
-        Alias setter matching CSV column name `diffusion_pref`.
+        Alias setter matching CSV column name ``diffusion_pref``.
 
         Args:
             vdiff (float): The diffusion prefactor in s-1
@@ -827,7 +826,7 @@ class Species:
         """
         self.set_vdiff(vdiff)
 
-    def set_Ix(self, Ix: float) -> None:
+    def set_Ix(self, Ix: float) -> None:  # noqa: N802, N803
         """Set the moment of inertia along the first principal axis.
 
         Args:
@@ -836,7 +835,7 @@ class Species:
         """
         self.Ix = float(Ix)
 
-    def set_Iy(self, Iy: float) -> None:
+    def set_Iy(self, Iy: float) -> None:  # noqa: N802, N803
         """Set the moment of inertia along the second principal axis.
 
         Args:
@@ -845,7 +844,7 @@ class Species:
         """
         self.Iy = float(Iy)
 
-    def set_Iz(self, Iz: float) -> None:
+    def set_Iz(self, Iz: float) -> None:  # noqa: N802, N803
         """Set the moment of inertia along the third principal axis.
 
         Args:
@@ -857,7 +856,7 @@ class Species:
     def set_symmetry_factor(self, sym: int | str) -> None:
         """Set the symmetry factor of the species.
 
-        Sets the symmetry factor to -1 if `sym` cannot be turned into an
+        Sets the symmetry factor to -1 if ``sym`` cannot be turned into an
         integer.
 
         Args:
@@ -887,9 +886,8 @@ class Species:
         elif isinstance(other, str):
             return self.get_name() == other
         else:
-            raise NotImplementedError(
-                "We can only compare between species or strings of species"
-            )
+            msg = "We can only compare between species or strings of species"
+            raise NotImplementedError(msg)
 
     def __lt__(self, other: Species) -> bool:
         """Compare the mass of the species.
@@ -949,7 +947,7 @@ class Species:
         import numpy as np
 
         amu = 1.66053907e-27  # kg/amu
-        scalingFactor = 1e50
+        scalingFactor = 1e50  # noqa: N806
 
         if not self.is_linear():
             return (

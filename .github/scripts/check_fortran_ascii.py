@@ -49,7 +49,7 @@ def main() -> int:
     """Function to check for non-ascii characters.
 
     Returns:
-        int: succes flag (0 if no violations, 1 if violations found)
+        int: success flag (0 if no violations, 1 if violations found)
     """
     parser = argparse.ArgumentParser(
         description="Check Fortran source files for non-ASCII characters"
