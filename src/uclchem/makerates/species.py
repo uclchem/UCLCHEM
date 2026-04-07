@@ -10,7 +10,7 @@ from warnings import warn
 
 import pandas as pd
 
-from uclchem.utils import find_number_of_consecutive_digits
+from uclchem.utils import find_number_of_consecutive_digits, check_expected_type
 
 element_list = [
     "H",
@@ -98,6 +98,7 @@ def normalize_species_name(name: str) -> str:
         return ""
     if not name:
         return "NAN"
+
     grain_prefix = ""
     rest = name
     if rest[0] in ("#", "@"):
@@ -559,7 +560,7 @@ class Species:
             >>> # Has the right number of H atoms
             >>> constituents['H']
             2
-            >>> # And 0 of the other atoms
+            >>> # And 0 of any other atoms
             >>> constituents['O']
             0
 
@@ -681,6 +682,7 @@ class Species:
             new_n_atoms (int): The new number of atoms
 
         """
+        check_expected_type(new_n_atoms, int)
         self.n_atoms = new_n_atoms
 
     def get_binding_energy(self) -> float:
@@ -899,6 +901,7 @@ class Species:
             bool: True if less than the other species
 
         """
+        check_expected_type(other, Species)
         return self.get_mass() < other.get_mass()
 
     def __gt__(self, other: Species) -> bool:
@@ -911,6 +914,7 @@ class Species:
             bool: True if larger than than the other species
 
         """
+        check_expected_type(other, Species)
         return self.get_mass() > other.get_mass()
 
     def __repr__(self) -> str:

@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from uclchem.utils import UCLCHEM_ROOT_DIR
+from uclchem.utils import UCLCHEM_ROOT_DIR, check_expected_type
 
 from .reaction import Reaction, reaction_types
 from .species import Species
@@ -337,6 +337,8 @@ class BaseNetwork(NetworkABC):
             Dictionary of {index: Reaction} for matching reactions
 
         """
+        check_expected_type(reaction, Reaction)
+
         similar = {}
 
         target_reactants = set(reaction.get_reactants()) - {"NAN"}
@@ -667,11 +669,29 @@ class Network(BaseNetwork, MutableNetworkABC):
             self._species_dict[specie.get_name()] = specie
 
     def remove_species(self, specie_name: str) -> None:
-        """Remove a species from network."""
-        if specie_name in self._species_dict:
-            del self._species_dict[specie_name]
-        else:
-            logging.warning(f"Species {specie_name} not found in network")
+        """Remove a species from network.
+
+        Args:
+            specie_name (str): name of species to be deleted.
+
+        Raises:
+            ValueError: If no species called ``specie_name`` is in the Network.
+
+        Examples:
+            >>> network = Network.from_csv()
+            >>>
+            >>> network.remove_species("CO2")
+            >>> # CO2 is now no longer in our network
+            >>> # If we try to remove it again, we will get an error
+            >>> network.remove_species("CO2")
+            Traceback
+        """
+        check_expected_type(specie_name, str)
+        if specie_name not in self._species_dict:
+            msg = f"Species {specie_name} not found in network."
+            raise ValueError(msg)
+
+        del self._species_dict[specie_name]
 
     def sort_species(self) -> None:
         """Sort species by type and mass, with electron last."""
@@ -710,6 +730,8 @@ class Network(BaseNetwork, MutableNetworkABC):
         Raises:
             RuntimeError: If the number of reactions changes.
         """
+        check_expected_type(reaction, Reaction)
+
         old_length = len(self._reactions_dict)
         self._reactions_dict[reaction_idx] = reaction
         if old_length != len(self._reactions_dict):
@@ -718,6 +740,9 @@ class Network(BaseNetwork, MutableNetworkABC):
 
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
         """Replace entire reaction dictionary."""
+        check_expected_type(new_dict, dict)
+        [check_expected_type(reaction) for reaction in new_dict.values()]
+
         self._reactions_dict = new_dict
 
     def add_reactions(self, reactions: Reaction | list[list | Reaction]) -> None:
@@ -768,6 +793,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             reaction (Reaction): Reaction to remove from the network.
 
         Raises:
+            ValueError: If no matching reaction ``reaction`` is found in the network.
             RuntimeError: If multiple matching reactions are found in the network.
 
         """
@@ -777,7 +803,8 @@ class Network(BaseNetwork, MutableNetworkABC):
             reaction_idx, _ = similar_reactions[0]
             del self._reactions_dict[reaction_idx]
         elif len(similar_reactions) == 0:
-            logging.warning(f"Reaction {reaction} not found in network")
+            msg = f"Reaction {reaction} not found in network"
+            raise ValueError(msg)
         else:
             msg = (
                 f"Found {len(similar_reactions)} reactions matching {reaction}. "

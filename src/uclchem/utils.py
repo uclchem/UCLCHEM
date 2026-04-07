@@ -29,7 +29,7 @@ This module provides utility functions for:
     >>> t_diss = utils.cshock_dissipation_time(
     ...     shock_vel=50.0,  # km/s
     ...     initial_dens=1e4  # cm^-3
-    ... ) # doctest: +SKIP
+    ... )
     >>> print(f"Dissipation time: {t_diss:.1e} years") # doctest: +SKIP
     ...
 
@@ -53,7 +53,7 @@ Use :meth:`SuccessFlag.check_error` to get human-readable error messages.
 
 import enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Self, Type, Any
 
 if TYPE_CHECKING:
     from uclchem.model import Collapse
@@ -402,3 +402,25 @@ class SuccessFlag(enum.IntEnum):
             msg = f"UCLCHEM error (code {self.name}, {self.value}): {msg}"
             raise RuntimeError(msg)
         return msg
+
+def check_expected_type(variable: Any, expected_type: Type[Any], name: str | None = None) -> None:
+    """Check that the type of a variable matches the expected type.
+
+    Args:
+        variable (Any): variable to check type of.
+        expected_type (Type[Any]): expected type.
+        name (str | None): Name of variable. If None, no name information will be printed.
+            Defaults to None.
+
+    Raises:
+        TypeError: If ``variable`` is not an instance of ``expected_type``.
+    """
+
+    if isinstance(variable, expected_type):
+        return
+
+    if name is not None:
+        msg = f"{name} was supposed to be type {expected_type} but got type {type(variable)}"
+    else:
+        msg = f"Expected type {expected_type} but got type {type(variable)}"
+    raise TypeError(msg)

@@ -1735,6 +1735,8 @@ def copy_coolant_files(source_dir: str | None = None) -> None:
     logging.info(f"Copying {len(dat_files)} coolant data files to {target_path}")
     for dat_file in dat_files:
         target_file = target_path / dat_file.name
+        if target_path.samefile(dat_file):
+            logging.debug(f"{target_file} has the same path as {dat_file.name}, not copying")
         shutil.copy2(dat_file, target_file)
         logging.debug(f"  Copied {dat_file.name}")
 

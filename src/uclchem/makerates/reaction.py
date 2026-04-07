@@ -16,6 +16,7 @@ from uclchem.makerates.species import (
     species_header,
 )
 
+from uclchem.utils import check_expected_type
 # Global flag for validation control
 _skip_reaction_validation = False
 
@@ -29,7 +30,10 @@ def skip_reaction_validation() -> Iterator[None]:
 
     Example:
         >>> with skip_reaction_validation():
+        ...     # No error here!
         ...     reaction = Reaction(["#C2N", "LH", "NAN", "#CH3CNH", "NAN", "NAN", "NAN"]+ [0] * 10)
+        >>>
+        >>> # This will error out because the reaction does not conserve elements
         >>> reaction = Reaction(["#C2N", "LH", "NAN", "#CH3CNH", "NAN", "NAN", "NAN"] + [0] * 10)
         Traceback (most recent call last):
         ...
@@ -703,9 +707,8 @@ class Reaction:
             bool: equality
 
         """
-        if not isinstance(other, Reaction | CoupledReaction):
-            msg = "Equality is not implemented for anything but comparing to other reactions."
-            raise NotImplementedError(msg)
+        check_expected_type(other, Reaction)
+
         return (
             self.get_sorted_reactants() == other.get_sorted_reactants()
             and self.get_sorted_products() == other.get_sorted_products()
@@ -726,9 +729,8 @@ class Reaction:
                 Currently we can only compare against instantiated Reaction objects.
 
         """
-        if not isinstance(other, Reaction) and not isinstance(other, CoupledReaction):
-            msg = "Equality is not implemented for anything but comparing to other reactions."
-            raise NotImplementedError(msg)
+        check_expected_type(other, Reaction)
+
         if (other.get_templow() > self.get_templow()) and (
             other.get_templow() < self.get_temphigh()
         ):
@@ -957,9 +959,8 @@ class CoupledReaction(Reaction):
             TypeError: if `parter` is not an instance of a `Reaction`.
 
         """
-        if not isinstance(partner, Reaction):
-            msg = f"partner should be of type Reaction, but got type {type(partner)}"
-            raise TypeError(msg)
+        check_expected_type(partner, Reaction)
+
         self.partner = partner
 
     def get_partner(self) -> Reaction:
@@ -977,7 +978,7 @@ def _generate_reaction_ode_bit(
     species_names: list[str],
     body_count: int,
     reactants: list[str],
-    reaction_type: str = None,
+    reaction_type: str | None = None,
 ) -> str:
     """Every reaction contributes a fixed rate of change to whatever species it
     affects. We create the string of fortran code describing that change here.
@@ -993,7 +994,7 @@ def _generate_reaction_ode_bit(
             it is GAR or not. Default = None.
 
     Returns:
-        ode_bit (str):
+        ode_bit (str): string representing this reaction for ``odes.f90``.
 
     """
     ode_bit = f"+RATE({i + 1})"
