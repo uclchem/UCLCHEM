@@ -4,21 +4,21 @@
 import csv
 import fileinput
 import logging
+import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal
+from tempfile import NamedTemporaryFile
+from time import sleep
+from typing import Any, Literal, TextIO
 
 import numpy as np
 import yaml
 
+from uclchem._coolant_utils import get_energy_levels_info, validate_coolant_frequencies
 from uclchem.makerates.network import Network
-from uclchem.makerates.reaction import Reaction, reaction_types
-from uclchem.makerates.species import Species, species_header
+from uclchem.makerates.reaction import Reaction, reaction_header, reaction_types
+from uclchem.makerates.species import Species, normalize_species_name, species_header
 from uclchem.utils import UCLCHEM_ROOT_DIR
-
-from .network import Network
-from .reaction import Reaction, reaction_types
-from .species import Species, normalize_species_name, species_header
 
 # Canonical definition of physical parameters
 # This list defines the physical parameter array passed to Fortran
@@ -334,7 +334,6 @@ def read_coolants_file(file_name: str | Path) -> list[dict]:
         raise ValueError("Coolants file must contain a mapping or list of mappings")
 
     normalized = []
-    from pathlib import Path as _Path
 
     for item in data:
         if not isinstance(item, dict):
@@ -344,7 +343,7 @@ def read_coolants_file(file_name: str | Path) -> list[dict]:
         if "file" not in item or "name" not in item:
             raise ValueError("Each coolant mapping must contain 'file' and 'name' keys")
         file_val = str(item["file"])
-        if _Path(file_val).name != file_val or _Path(file_val).parent != _Path("."):
+        if Path(file_val).name != file_val or Path(file_val).parent != Path("."):
             raise ValueError(
                 "Coolant 'file' entries in coolants_file must be bare filenames (no directories)"
             )
@@ -429,180 +428,180 @@ def write_outputs(
         coolants = get_default_coolants()
 
     # Validate that coolant 'file' entries are bare filenames (not paths)
-    from pathlib import Path as _Path
-
     for c in coolants:
         f = c.get("file")
         if f is None:
             raise ValueError("Each coolant dict must contain a 'file' key")
-        if _Path(f).name != f or _Path(f).parent != _Path("."):
+        if Path(f).name != f or Path(f).parent != Path("."):
             raise ValueError(
                 "Coolant file names must be bare filenames (no directories). "
                 "Set the coolant directory at runtime via coolantDataDir."
             )
 
-    # Create the species file
-    filename = python_src_dir / "species.csv"
-    write_species(filename, network.get_species_list())
+    with (
+        NamedTemporaryFile(mode='w', dir=python_src_dir, prefix='species.csv') as species_file,
+        NamedTemporaryFile(mode='w', dir=python_src_dir, prefix="reactions.csv") as reactions_file,
+        NamedTemporaryFile(mode='w', dir=fortran_src_dir, prefix="odes.f90") as odes_file,
+        NamedTemporaryFile(mode='w', dir=fortran_src_dir, prefix="network.f90") as network_file,
+        NamedTemporaryFile(mode='w', dir=fortran_src_dir, prefix="f2py_constants.f90") as f2py_constants_file,
+    ):
+        # Create the species file
+        write_species(species_file, network.get_species_list())
 
-    filename = python_src_dir / "reactions.csv"
-    write_reactions(filename, network.get_reaction_list())
+        # Create the reactions file
+        write_reactions(reactions_file, network.get_reaction_list())
 
-    # Write the ODEs in the appropriate language format
-    filename = fortran_src_dir / "odes.f90"
-    write_odes_f90(
-        filename,
-        network.get_species_list(),
-        network.get_reaction_list(),
-        enable_rates_storage=enable_rates_storage,
-    )
-
-    # Write the network files
-    filename = fortran_src_dir / "network.f90"
-    write_network_file(
-        filename,
-        network,
-        enable_rates_storage=enable_rates_storage,
-        gar_database=gar_database,
-    )
-    # write the constants needed for wrap.f90
-
-    filename = fortran_src_dir / "f2py_constants.f90"
-
-    # Compute energy level counts from coolant data files
-    from uclchem._coolant_utils import (
-        get_energy_levels_info,
-        validate_coolant_frequencies,
-    )
-
-    coolant_data_directory = get_default_coolant_directory(coolant_data_dir)
-    n_total_levels, n_se_stats_per_coolant = get_energy_levels_info(
-        coolant_names=[c["name"] for c in coolants],
-        coolant_files=[c["file"] for c in coolants],
-        data_dir=coolant_data_directory,
-    )
-
-    # Validate frequency consistency and compute suggested tolerance
-    freq_deviations = validate_coolant_frequencies(
-        coolant_names=[c["name"] for c in coolants],
-        coolant_files=[c["file"] for c in coolants],
-        data_dir=coolant_data_directory,
-    )
-    if freq_deviations:
-        max_deviation = max(freq_deviations.values())
-        # Add 10% margin above the largest observed deviation
-        suggested_freq_rel_tol = max_deviation * 1.1
-        # Enforce a minimum tolerance of 0.01 (1%)
-        suggested_freq_rel_tol = max(suggested_freq_rel_tol, 0.01)
-
-        # Log per-coolant frequency deviations (sorted largest first)
-        sorted_devs = sorted(freq_deviations.items(), key=lambda x: -x[1])
-        name_width = max(len(name) for name, _ in sorted_devs)
-        logging.info("Coolant frequency deviations (|E_i-E_j|/h vs LAMDA):")
-        logging.info(f"  {'Coolant':<{name_width}}  {'Deviation':>10}")
-        logging.info(f"  {'-' * name_width}  {'-' * 10}")
-        for name, dev in sorted_devs:
-            marker = " <<<" if dev > 0.01 else ""
-            logging.info(f"  {name:<{name_width}}  {dev * 100:9.4f}%{marker}")
-        logging.info(
-            f"  Auto-setting freq_rel_tol = {suggested_freq_rel_tol:.4f} "
-            f"(max deviation {max_deviation * 100:.2f}% + 10% margin)"
+        # Write the ODEs in the appropriate language format
+        write_odes_f90(
+            odes_file,
+            network.get_species_list(),
+            network.get_reaction_list(),
+            enable_rates_storage=enable_rates_storage,
         )
-    else:
-        suggested_freq_rel_tol = 0.01
-        max_deviation = 0.0
 
-    # Compute coolant conversion arrays
-    parent_names = []
-    conversion_factors = []
-    conversion_modes = []
-    for c in coolants:
-        name = c["name"]
-        explicit_parent = c.get("parent_species")
-        explicit_factor = c.get("conversion_factor")
+        # Write the network files
+        write_network_file(
+            network_file,
+            network,
+            enable_rates_storage=enable_rates_storage,
+            gar_database=gar_database,
+        )
 
-        if explicit_parent is not None and explicit_factor is not None:
-            # Fully specified: fixed factor mode
-            parent_names.append(explicit_parent)
-            conversion_factors.append(explicit_factor)
-            conversion_modes.append(0)
-        elif name == "p-H2":
-            parent_names.append(explicit_parent if explicit_parent else "H2")
-            conversion_factors.append(
-                explicit_factor if explicit_factor is not None else 0.0
+        # write the constants needed for wrap.f90
+        coolant_data_directory = get_default_coolant_directory(coolant_data_dir)
+        n_total_levels, n_se_stats_per_coolant = get_energy_levels_info(
+            coolant_names=[c["name"] for c in coolants],
+            coolant_files=[c["file"] for c in coolants],
+            data_dir=coolant_data_directory,
+        )
+
+        # Validate frequency consistency and compute suggested tolerance
+        freq_deviations = validate_coolant_frequencies(
+            coolant_names=[c["name"] for c in coolants],
+            coolant_files=[c["file"] for c in coolants],
+            data_dir=coolant_data_directory,
+        )
+        if freq_deviations:
+            max_deviation = max(freq_deviations.values())
+            # Add 10% margin above the largest observed deviation
+            suggested_freq_rel_tol = max_deviation * 1.1
+            # Enforce a minimum tolerance of 0.01 (1%)
+            suggested_freq_rel_tol = max(suggested_freq_rel_tol, 0.01)
+
+            # Log per-coolant frequency deviations (sorted largest first)
+            sorted_devs = sorted(freq_deviations.items(), key=lambda x: -x[1])
+            name_width = max(len(name) for name, _ in sorted_devs)
+            logging.info("Coolant frequency deviations (|E_i-E_j|/h vs LAMDA):")
+            logging.info(f"  {'Coolant':<{name_width}}  {'Deviation':>10}")
+            logging.info(f"  {'-' * name_width}  {'-' * 10}")
+            for name, dev in sorted_devs:
+                marker = " <<<" if dev > 0.01 else ""
+                logging.info(f"  {name:<{name_width}}  {dev * 100:9.4f}%{marker}")
+            logging.info(
+                f"  Auto-setting freq_rel_tol = {suggested_freq_rel_tol:.4f} "
+                f"(max deviation {max_deviation * 100:.2f}% + 10% margin)"
             )
-            conversion_modes.append(0 if explicit_factor is not None else 1)
-        elif name == "o-H2":
-            parent_names.append(explicit_parent if explicit_parent else "H2")
-            conversion_factors.append(
-                explicit_factor if explicit_factor is not None else 0.0
-            )
-            conversion_modes.append(0 if explicit_factor is not None else 2)
-        elif name.startswith("o-") or name.startswith("p-"):
-            # Other ortho/para species — require explicit conversion_factor
-            if explicit_factor is None:
-                raise ValueError(
-                    f"Coolant '{name}' appears to be an ortho/para species but has no "
-                    f"'conversion_factor'. Please specify 'conversion_factor' and optionally "
-                    f"'parent_species' in the coolant configuration."
-                )
-            parent = explicit_parent if explicit_parent else name[2:]
-            parent_names.append(parent)
-            conversion_factors.append(explicit_factor)
-            conversion_modes.append(0)
         else:
-            # Normal species
-            parent_names.append(explicit_parent if explicit_parent else name)
-            conversion_factors.append(
-                explicit_factor if explicit_factor is not None else 1.0
+            suggested_freq_rel_tol = 0.01
+            max_deviation = 0.0
+
+        # Compute coolant conversion arrays
+        parent_names = []
+        conversion_factors = []
+        conversion_modes = []
+        for c in coolants:
+            name = c["name"]
+            explicit_parent = c.get("parent_species")
+            explicit_factor = c.get("conversion_factor")
+
+            if explicit_parent is not None and explicit_factor is not None:
+                # Fully specified: fixed factor mode
+                parent_names.append(explicit_parent)
+                conversion_factors.append(explicit_factor)
+                conversion_modes.append(0)
+            elif name == "p-H2":
+                parent_names.append(explicit_parent if explicit_parent else "H2")
+                conversion_factors.append(
+                    explicit_factor if explicit_factor is not None else 0.0
+                )
+                conversion_modes.append(0 if explicit_factor is not None else 1)
+            elif name == "o-H2":
+                parent_names.append(explicit_parent if explicit_parent else "H2")
+                conversion_factors.append(
+                    explicit_factor if explicit_factor is not None else 0.0
+                )
+                conversion_modes.append(0 if explicit_factor is not None else 2)
+            elif name.startswith("o-") or name.startswith("p-"):
+                # Other ortho/para species — require explicit conversion_factor
+                if explicit_factor is None:
+                    raise ValueError(
+                        f"Coolant '{name}' appears to be an ortho/para species but has no "
+                        f"'conversion_factor'. Please specify 'conversion_factor' and optionally "
+                        f"'parent_species' in the coolant configuration."
+                    )
+                parent = explicit_parent if explicit_parent else name[2:]
+                parent_names.append(parent)
+                conversion_factors.append(explicit_factor)
+                conversion_modes.append(0)
+            else:
+                # Normal species
+                parent_names.append(explicit_parent if explicit_parent else name)
+                conversion_factors.append(
+                    explicit_factor if explicit_factor is not None else 1.0
+                )
+                conversion_modes.append(0)
+
+        # Validate that all parent species exist in the network
+        species_dict = network.get_species_dict()
+        missing_parents = []
+        for i, (coolant, parent) in enumerate(zip(coolants, parent_names)):
+            if parent not in species_dict:
+                missing_parents.append((i, coolant["name"], parent))
+
+        if missing_parents:
+            error_msg = "ERROR: The following coolants reference parent species that don't exist in the network:\n"
+            for idx, coolant_name, parent_name in missing_parents:
+                error_msg += f"  - Coolant #{idx + 1} '{coolant_name}' → parent species '{parent_name}' not found\n"
+            error_msg += (
+                "\nAvailable species: "
+                + ", ".join(sorted(species_dict.keys())[:20])
+                + ", ...\n"
             )
-            conversion_modes.append(0)
+            error_msg += "Fix by adding 'parent_species: <existing_species>' in the coolant YAML config."
+            raise ValueError(error_msg)
 
-    # Validate that all parent species exist in the network
-    species_dict = network.get_species_dict()
-    missing_parents = []
-    for i, (coolant, parent) in enumerate(zip(coolants, parent_names)):
-        if parent not in species_dict:
-            missing_parents.append((i, coolant["name"], parent))
+        f2py_constants = {
+            "n_species": len(network.get_species_list()),
+            "n_reactions": len(network.get_reaction_list()),
+            "n_physical_parameters": len(PHYSICAL_PARAMETERS),
+            "n_dvode_stats": 19,
+            "n_coolants": len(coolants),
+            "max_coolants": len(coolants),
+            "n_total_levels": n_total_levels,
+            "n_se_stats_per_coolant": n_se_stats_per_coolant,
+            "coolant_files": [c["file"] for c in coolants],
+            "coolant_names": [c["name"] for c in coolants],
+            "parent_names": parent_names,
+            "conversion_factors": conversion_factors,
+            "conversion_modes": conversion_modes,
+            "coolant_data_dir": coolant_data_dir if coolant_data_dir else "",
+            "suggested_freq_rel_tol": suggested_freq_rel_tol,
+        }
+        write_f90_constants(f2py_constants, f2py_constants_file)
+        # Note: constants.py now reads directly from f2py_constants module,
+        # so we no longer need to write it during MakeRates.
+        # After running MakeRates, just reinstall to update the Python constants.
 
-    if missing_parents:
-        error_msg = "ERROR: The following coolants reference parent species that don't exist in the network:\n"
-        for idx, coolant_name, parent_name in missing_parents:
-            error_msg += f"  - Coolant #{idx + 1} '{coolant_name}' → parent species '{parent_name}' not found\n"
-        error_msg += (
-            "\nAvailable species: "
-            + ", ".join(sorted(species_dict.keys())[:20])
-            + ", ...\n"
-        )
-        error_msg += "Fix by adding 'parent_species: <existing_species>' in the coolant YAML config."
-        raise ValueError(error_msg)
-
-    f2py_constants = {
-        "n_species": len(network.get_species_list()),
-        "n_reactions": len(network.get_reaction_list()),
-        "n_physical_parameters": len(PHYSICAL_PARAMETERS),
-        "n_dvode_stats": 19,
-        "n_coolants": len(coolants),
-        "max_coolants": len(coolants),
-        "n_total_levels": n_total_levels,
-        "n_se_stats_per_coolant": n_se_stats_per_coolant,
-        "coolant_files": [c["file"] for c in coolants],
-        "coolant_names": [c["name"] for c in coolants],
-        "parent_names": parent_names,
-        "conversion_factors": conversion_factors,
-        "conversion_modes": conversion_modes,
-        "coolant_data_dir": coolant_data_dir if coolant_data_dir else "",
-        "suggested_freq_rel_tol": suggested_freq_rel_tol,
-    }
-    write_f90_constants(f2py_constants, filename)
-    # Note: constants.py now reads directly from f2py_constants module,
-    # so we no longer need to write it during MakeRates.
-    # After running MakeRates, just reinstall to update the Python constants.
+        shutil.copyfile(species_file.name, python_src_dir / "species.csv")
+        shutil.copyfile(reactions_file.name, python_src_dir / "reactions.csv")
+        shutil.copyfile(odes_file.name, fortran_src_dir / "odes.f90")
+        shutil.copyfile(network_file.name, fortran_src_dir / "network.f90")
+        shutil.copyfile(f2py_constants_file.name, fortran_src_dir / "f2py_constants.f90")
 
 
 def write_f90_constants(
     replace_dict: dict[str, int],
-    output_file_name: Path,
+    file: TextIO,
     template_file_path: Path = "fortran_templates",
 ) -> None:
     """Write the physical reactions to the f2py_constants.f90 file after every
@@ -610,8 +609,9 @@ def write_f90_constants(
 
     Args:
         replace_dict (dict[str, int]): The dictionary with keys to replace
-        output_file_name (Path): The path to target f2py_constants.f90 file
-        template_file_path (Path, optional): The file to use as the template.
+        file (TextIO): The path to target f2py_constants.f90 file
+        template_file_path (Path): The file to use as the template.
+            Default = "fortran_templates".
 
     """
     template_file_path = UCLCHEM_ROOT_DIR / "makerates" / template_file_path
@@ -685,8 +685,8 @@ def write_f90_constants(
             "END MODULE F2PY_CONSTANTS", extra_lines + "END MODULE F2PY_CONSTANTS"
         )
 
-    with open(output_file_name, "w") as fh:
-        fh.writelines(constants)
+    file.writelines(constants)
+    file.flush()
 
 
 def write_python_constants(
@@ -737,99 +737,82 @@ def write_python_constants(
                 print(line, end="")
 
 
-def write_species(file_name: str | Path, species_list: list[Species]) -> None:
+def write_species(file: TextIO, species_list: list[Species]) -> None:
     """Write the human readable species file. Note UCLCHEM doesn't use this file.
 
     Args:
-        file_name (str | Path): path to output file
+        file (TextIO): Open file object
         species_list (list[Species]): List of species objects for network
 
     """
-    with open(file_name, "w") as f:
-        writer = csv.writer(
-            f,
-            delimiter=",",
-            quotechar="|",
-            quoting=csv.QUOTE_MINIMAL,
-            lineterminator="\n",
+    writer = csv.writer(
+        file,
+        delimiter=",",
+        quotechar="|",
+        quoting=csv.QUOTE_MINIMAL,
+        lineterminator="\n",
+    )
+    writer.writerow(species_header)
+    for species in species_list:
+        # Order is the same as in uclchem.species.species_header
+        writer.writerow(
+            [
+                species.get_name(),
+                species.get_mass(),
+                species.get_binding_energy(),
+                species.get_solid_fraction(),
+                species.get_mono_fraction(),
+                species.get_volcano_fraction(),
+                species.get_enthalpy(),
+                species.get_vdes(),
+                species.get_diffusion_barrier(),
+                species.get_vdiff(),
+                species.get_Ix(),
+                species.get_Iy(),
+                species.get_Iz(),
+                species.get_symmetry_factor(),
+            ]
         )
-        writer.writerow(species_header)
-        for species in species_list:
-            # Order is the same as in uclchem.species.species_header
-            writer.writerow(
-                [
-                    species.get_name(),
-                    species.get_mass(),
-                    species.get_binding_energy(),
-                    species.get_solid_fraction(),
-                    species.get_mono_fraction(),
-                    species.get_volcano_fraction(),
-                    species.get_enthalpy(),
-                    species.get_vdes(),
-                    species.get_diffusion_barrier(),
-                    species.get_vdiff(),
-                    species.get_Ix(),
-                    species.get_Iy(),
-                    species.get_Iz(),
-                    species.get_symmetry_factor(),
-                ]
-            )
+    file.flush()
 
 
 # Write the reaction file in the desired format
-def write_reactions(file_name: Path, reaction_list: list[Reaction]) -> None:
+def write_reactions(file: TextIO, reaction_list: list[Reaction]) -> None:
     """Write the human readable reaction file.
 
     Args:
-        file_name (Path): path to output file
-        reaction_list (list): List of reaction objects for network
+        file (TextIO): Open file object
+        reaction_list (list[Reaction]): List of reaction objects for network
 
     """
-    reaction_columns = [
-        "Reactant 1",
-        "Reactant 2",
-        "Reactant 3",
-        "Product 1",
-        "Product 2",
-        "Product 3",
-        "Product 4",
-        "Alpha",
-        "Beta",
-        "Gamma",
-        "T_min",
-        "T_max",
-        "reduced_mass",
-        "extrapolate",
-        "exothermicity",
-    ]
-    with open(file_name, "w") as f:
-        writer = csv.writer(
-            f,
-            delimiter=",",
-            quotechar="|",
-            quoting=csv.QUOTE_MINIMAL,
-            lineterminator="\n",
+    writer = csv.writer(
+        file,
+        delimiter=",",
+        quotechar="|",
+        quoting=csv.QUOTE_MINIMAL,
+        lineterminator="\n",
+    )
+    writer.writerow(reaction_header)
+    for reaction in reaction_list:
+        writer.writerow(
+            reaction.get_reactants()
+            + reaction.get_products()
+            + [
+                reaction.get_alpha(),
+                reaction.get_beta(),
+                reaction.get_gamma(),
+                reaction.get_templow(),
+                reaction.get_temphigh(),
+                reaction.get_reduced_mass(),
+                reaction.get_extrapolation(),
+                reaction.get_exothermicity(),
+            ]
         )
-        writer.writerow(reaction_columns)
-        for reaction in reaction_list:
-            writer.writerow(
-                reaction.get_reactants()
-                + reaction.get_products()
-                + [
-                    reaction.get_alpha(),
-                    reaction.get_beta(),
-                    reaction.get_gamma(),
-                    reaction.get_templow(),
-                    reaction.get_temphigh(),
-                    reaction.get_reduced_mass(),
-                    reaction.get_extrapolation(),
-                    reaction.get_exothermicity(),
-                ]
-            )
+    file.flush()
 
 
 def write_odes_f90(
-    file_name: Path,
+    file: TextIO,
     species_list: list[Species],
     reaction_list: list[Reaction],
     enable_rates_storage: bool = False,
@@ -837,7 +820,7 @@ def write_odes_f90(
     """Write the ODEs in Modern Fortran. This is an actual code file.
 
     Args:
-        file_name (str): Path to file where code will be written
+        file (TextIO): Open file object of file where code will be written.
         species_list (list): List of species describing network
         reaction_list (list): List of reactions describing network
         enable_rates_storage (bool): Enable storage of writing rates to files.
@@ -857,11 +840,11 @@ def write_odes_f90(
         reaction.generate_ode_bit(i, species_names)
 
     # then create ODE code and write to file.
-    with open(file_name, mode="w") as output:
-        # go through every species and build two strings,
-        # one with eq for all destruction routes and one for all formation
-        ydotString = build_ode_string(species_list, reaction_list, enable_rates_storage)
-        output.write(ydotString)
+    # go through every species and build two strings,
+    # one with eq for all destruction routes and one for all formation
+    ydotString = build_ode_string(species_list, reaction_list, enable_rates_storage)
+    file.write(ydotString)
+    file.flush()
 
 
 def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
@@ -1131,7 +1114,7 @@ def species_ode_string(n: int, species: Species) -> str:
     return ydot_string
 
 
-def write_evap_lists(network_file: str | Path, species_list: list[Species]) -> int:
+def write_evap_lists(network_file: TextIO, species_list: list[Species]) -> int:
     """Write evaporation list to network file.
 
     Two phase networks mimic episodic thermal desorption seen in lab (see Viti et al. 2004)
@@ -1141,7 +1124,7 @@ def write_evap_lists(network_file: str | Path, species_list: list[Species]) -> i
     the network file so these processes work.
 
     Args:
-        network_file (file): Open file object to which the network code is being written
+        network_file (TextIO): Open file object to which the network code is being written
         species_list (list[Species]): List of species in network
 
     Returns:
@@ -1282,6 +1265,7 @@ def write_evap_lists(network_file: str | Path, species_list: list[Species]) -> i
         array_to_string("formationEnthalpy", enthalpyList, type="float", parameter=False)
     )
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
+    network_file.flush()
     return len(iceList)
 
 
@@ -1319,7 +1303,7 @@ def truncate_line(input_string: str, line_length: int = 72) -> str:
 
 
 def write_network_file(
-    file_name: Path,
+    file: TextIO,
     network: Network,
     enable_rates_storage: bool = False,
     gar_database: dict[str, np.array] | None = None,
@@ -1329,7 +1313,7 @@ def write_network_file(
     and so on.
 
     Args:
-        file_name (str): The file name where the code will be written.
+        file (TextIO): The open file object where the code will be written.
         network (Network): A Network object built from lists of species and reactions.
         enable_rates_storage (bool): Enable storage of writing rates to files.
             Default = False.
@@ -1340,243 +1324,243 @@ def write_network_file(
     species_list = network.get_species_list()
     reaction_list = network.get_reaction_list()
 
-    with open(file_name, "w") as openFile:
-        openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
+    file.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
 
-        # write arrays of all species stuff
-        names = []
-        atoms = []
-        masses = []
-        for species in species_list:
-            names.append(species.get_name())
-            masses.append(float(species.mass))
-            atoms.append(species.n_atoms)
+    # write arrays of all species stuff
+    names = []
+    atoms = []
+    masses = []
+    for species in species_list:
+        names.append(species.get_name())
+        masses.append(float(species.mass))
+        atoms.append(species.n_atoms)
 
-        speciesIndices = ""
-        for name, species_index in network.species_indices.items():
-            speciesIndices += f"{name}={species_index},"
-        if len(speciesIndices) > 72:
-            speciesIndices = truncate_line(speciesIndices)
-        speciesIndices = speciesIndices[:-1] + "\n"
-        openFile.write("    INTEGER, PARAMETER ::" + speciesIndices)
-        openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
-        openFile.write("    REAL(dp) :: SURFGROWTHUNCORRECTED\n")
-        openFile.write(array_to_string("    specname", names, type="string"))
-        openFile.write(array_to_string("    mass", masses, type="float"))
-        openFile.write(array_to_string("    atomCounts", atoms, type="int"))
+    speciesIndices = ""
+    for name, species_index in network.species_indices.items():
+        speciesIndices += f"{name}={species_index},"
+    if len(speciesIndices) > 72:
+        speciesIndices = truncate_line(speciesIndices)
+    speciesIndices = speciesIndices[:-1] + "\n"
+    file.write("    INTEGER, PARAMETER ::" + speciesIndices)
+    file.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
+    file.write("    REAL(dp) :: SURFGROWTHUNCORRECTED\n")
+    file.write(array_to_string("    specname", names, type="string"))
+    file.write(array_to_string("    mass", masses, type="float"))
+    file.write(array_to_string("    atomCounts", atoms, type="int"))
 
-        # then write evaporation stuff
-        n_ice_species = write_evap_lists(openFile, species_list)
+    # then write evaporation stuff
+    n_ice_species = write_evap_lists(file, species_list)
 
-        # finally all reactions
-        reactant1 = []
-        reactant2 = []
-        reactant3 = []
-        prod1 = []
-        prod2 = []
-        prod3 = []
-        prod4 = []
-        alpha = []
-        beta = []
-        gama = []
-        reacTypes = []
-        # duplicates = []
-        tmins = []
-        tmaxs = []
-        reduced_masses = []
-        extrapolations = []
-        exothermicity = []
+    # finally all reactions
+    reactant1 = []
+    reactant2 = []
+    reactant3 = []
+    prod1 = []
+    prod2 = []
+    prod3 = []
+    prod4 = []
+    alpha = []
+    beta = []
+    gama = []
+    reacTypes = []
+    # duplicates = []
+    tmins = []
+    tmaxs = []
+    reduced_masses = []
+    extrapolations = []
+    exothermicity = []
 
-        # store important reactions
-        reaction_indices = ""
-        for reaction, index in network.important_reactions.items():
-            reaction_indices += reaction + f"={index},"
-        reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
-        openFile.write("    INTEGER, PARAMETER ::" + reaction_indices)
+    # store important reactions
+    reaction_indices = ""
+    for reaction, index in network.important_reactions.items():
+        reaction_indices += reaction + f"={index},"
+    reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
+    file.write("    INTEGER, PARAMETER ::" + reaction_indices)
 
-        for i, reaction in enumerate(reaction_list):
-            reactant1.append(find_reactant(names, reaction.get_reactants()[0]))
-            reactant2.append(find_reactant(names, reaction.get_reactants()[1]))
-            reactant3.append(find_reactant(names, reaction.get_reactants()[2]))
-            prod1.append(find_reactant(names, reaction.get_products()[0]))
-            prod2.append(find_reactant(names, reaction.get_products()[1]))
-            prod3.append(find_reactant(names, reaction.get_products()[2]))
-            prod4.append(find_reactant(names, reaction.get_products()[3]))
-            alpha.append(reaction.get_alpha())
-            beta.append(reaction.get_beta())
-            gama.append(reaction.get_gamma())
-            # if reaction.duplicate:
-            #     duplicates.append(i + 1)
-            tmaxs.append(reaction.get_temphigh())
-            tmins.append(reaction.get_templow())
-            reduced_masses.append(reaction.get_reduced_mass())
-            reacTypes.append(reaction.get_reaction_type())
-            extrapolations.append(reaction.get_extrapolation())
-            exothermicity.append(reaction.get_exothermicity())
-        # if len(duplicates) == 0:
-        #     duplicates = [9999]
-        #     tmaxs = [0]
-        #     tmins = [0]
+    for i, reaction in enumerate(reaction_list):
+        reactant1.append(find_reactant(names, reaction.get_reactants()[0]))
+        reactant2.append(find_reactant(names, reaction.get_reactants()[1]))
+        reactant3.append(find_reactant(names, reaction.get_reactants()[2]))
+        prod1.append(find_reactant(names, reaction.get_products()[0]))
+        prod2.append(find_reactant(names, reaction.get_products()[1]))
+        prod3.append(find_reactant(names, reaction.get_products()[2]))
+        prod4.append(find_reactant(names, reaction.get_products()[3]))
+        alpha.append(reaction.get_alpha())
+        beta.append(reaction.get_beta())
+        gama.append(reaction.get_gamma())
+        # if reaction.duplicate:
+        #     duplicates.append(i + 1)
+        tmaxs.append(reaction.get_temphigh())
+        tmins.append(reaction.get_templow())
+        reduced_masses.append(reaction.get_reduced_mass())
+        reacTypes.append(reaction.get_reaction_type())
+        extrapolations.append(reaction.get_extrapolation())
+        exothermicity.append(reaction.get_exothermicity())
+    # if len(duplicates) == 0:
+    #     duplicates = [9999]
+    #     tmaxs = [0]
+    #     tmins = [0]
 
-        reaction_names = []
-        for n, reaction in enumerate(reaction_list):
-            reaction_names.append(str(reaction))
-        for n, species in enumerate(species_list):
-            if species.is_surface_species() and species.get_name() not in [
-                "SURFACE",
-                "BULK",
-            ]:
-                reaction_name = (
-                    f"{species.get_name()} + SURFACETRANSFER -> @{species.get_name()[1:]}"
-                )
-                reaction_names.append(reaction_name)
-        for n, species in enumerate(species_list):
-            if species.is_surface_species() and species.get_name() not in [
-                "SURFACE",
-                "BULK",
-            ]:
-                reaction_name = (
-                    f"@{species.get_name()[1:]} + SURFACETRANSFER -> {species.get_name()}"
-                )
-                reaction_names.append(reaction_name)
-
-        # Save some memory by only allocating things we actually want to use:
-        if enable_rates_storage:
-            openFile.write(
-                f"    REAL(dp) :: REACTIONRATE({len(reactant1) + n_ice_species})\n"
+    reaction_names = []
+    for n, reaction in enumerate(reaction_list):
+        reaction_names.append(str(reaction))
+    for n, species in enumerate(species_list):
+        if species.is_surface_species() and species.get_name() not in [
+            "SURFACE",
+            "BULK",
+        ]:
+            reaction_name = (
+                f"{species.get_name()} + SURFACETRANSFER -> @{species.get_name()[1:]}"
             )
-            openFile.write("     LOGICAL :: storeRatesComputation=.true.\n")
+            reaction_names.append(reaction_name)
+    for n, species in enumerate(species_list):
+        if species.is_surface_species() and species.get_name() not in [
+            "SURFACE",
+            "BULK",
+        ]:
+            reaction_name = (
+                f"@{species.get_name()[1:]} + SURFACETRANSFER -> {species.get_name()}"
+            )
+            reaction_names.append(reaction_name)
+
+    # Save some memory by only allocating things we actually want to use:
+    if enable_rates_storage:
+        file.write(
+            f"    REAL(dp) :: REACTIONRATE({len(reactant1) + n_ice_species})\n"
+        )
+        file.write("     LOGICAL :: storeRatesComputation=.true.\n")
+    else:
+        file.write("    REAL(dp) :: REACTIONRATE(1)\n")
+        file.write("    LOGICAL :: storeRatesComputation=.false.\n")
+    if any(exo != 0.0 for exo in exothermicity):
+        assert enable_rates_storage, (
+            "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
+        )
+        file.write(
+            array_to_string(
+                "\texothermicities", exothermicity, type="float", parameter=True
+            )
+        )
+        file.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .TRUE.\n")
+    else:
+        file.write(
+            "    REAL(dp) :: \texothermicities(" + str(len(exothermicity)) + ")\n"
+        )
+        file.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .FALSE.\n")
+
+    file.write(array_to_string("\tre1", reactant1, type="int"))
+    file.write(array_to_string("\tre2", reactant2, type="int"))
+    file.write(array_to_string("\tre3", reactant3, type="int"))
+    file.write(array_to_string("\tp1", prod1, type="int"))
+    file.write(array_to_string("\tp2", prod2, type="int"))
+    file.write(array_to_string("\tp3", prod3, type="int"))
+    file.write(array_to_string("\tp4", prod4, type="int"))
+    file.write(array_to_string("\talpha", alpha, type="float", parameter=False))
+    file.write(array_to_string("\tbeta", beta, type="float", parameter=False))
+    file.write(array_to_string("\tgama", gama, type="float", parameter=False))
+    # file.write(array_to_string("\tduplicates", duplicates, type="int", parameter=True))
+    file.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
+    file.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
+    file.write(
+        array_to_string(
+            "\treducedMasses", reduced_masses, type="float", parameter=True
+        )
+    )
+    file.write(
+        array_to_string(
+            "\tExtrapolateRates", extrapolations, type="logical", parameter=True
+        )
+    )
+    reacTypes = np.asarray(reacTypes)
+
+    partners = get_desorption_freeze_partners(reaction_list)
+    file.write(
+        array_to_string("\tfreezePartners", partners, type="int", parameter=True)
+    )
+
+    file.write(
+        array_to_string(
+            "\t garParams",
+            np.array(list(gar_database.values()))
+            if gar_database
+            else np.zeros((1, 7)),
+            type="float",
+            parameter=True,
+        )
+    )
+
+    for reaction_type in reaction_types:
+        list_name = reaction_type.lower() + "Reacs"
+        indices = np.where(reacTypes == reaction_type)[0]
+        if len(indices > 1):
+            indices = [indices[0] + 1, indices[-1] + 1]
         else:
-            openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
-            openFile.write("    LOGICAL :: storeRatesComputation=.false.\n")
-        if any(exo != 0.0 for exo in exothermicity):
-            assert enable_rates_storage, (
-                "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
-            )
-            openFile.write(
-                array_to_string(
-                    "\texothermicities", exothermicity, type="float", parameter=True
-                )
-            )
-            openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .TRUE.\n")
-        else:
-            openFile.write(
-                "    REAL(dp) :: \texothermicities(" + str(len(exothermicity)) + ")\n"
-            )
-            openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .FALSE.\n")
-
-        openFile.write(array_to_string("\tre1", reactant1, type="int"))
-        openFile.write(array_to_string("\tre2", reactant2, type="int"))
-        openFile.write(array_to_string("\tre3", reactant3, type="int"))
-        openFile.write(array_to_string("\tp1", prod1, type="int"))
-        openFile.write(array_to_string("\tp2", prod2, type="int"))
-        openFile.write(array_to_string("\tp3", prod3, type="int"))
-        openFile.write(array_to_string("\tp4", prod4, type="int"))
-        openFile.write(array_to_string("\talpha", alpha, type="float", parameter=False))
-        openFile.write(array_to_string("\tbeta", beta, type="float", parameter=False))
-        openFile.write(array_to_string("\tgama", gama, type="float", parameter=False))
-        # openFile.write(array_to_string("\tduplicates", duplicates, type="int", parameter=True))
-        openFile.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
-        openFile.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
-        openFile.write(
+            # We still want a dummy array if the reaction type isn't in network
+            indices = [99999, 99999]
+        file.write(
             array_to_string(
-                "\treducedMasses", reduced_masses, type="float", parameter=True
-            )
-        )
-        openFile.write(
-            array_to_string(
-                "\tExtrapolateRates", extrapolations, type="logical", parameter=True
-            )
-        )
-        reacTypes = np.asarray(reacTypes)
-
-        partners = get_desorption_freeze_partners(reaction_list)
-        openFile.write(
-            array_to_string("\tfreezePartners", partners, type="int", parameter=True)
+                "\t" + list_name, indices, type="int", parameter=True
+            ).replace("99999", "REAC_NOT_PRESENT")
         )
 
-        openFile.write(
-            array_to_string(
-                "\t garParams",
-                np.array(list(gar_database.values()))
-                if gar_database
-                else np.zeros((1, 7)),
-                type="float",
-                parameter=True,
-            )
-        )
-
-        for reaction_type in reaction_types:
-            list_name = reaction_type.lower() + "Reacs"
-            indices = np.where(reacTypes == reaction_type)[0]
-            if len(indices > 1):
-                indices = [indices[0] + 1, indices[-1] + 1]
+    # Write LHDES and ERDES mapping arrays (Feature 3: LH/ER-DES mapping)
+    # These arrays map chemical reactive desorption reactions to their parent reactions
+    LHDEScorrespondingLHreacs = []
+    for reaction in reaction_list:
+        if reaction.get_reaction_type() == "LHDES":
+            if (
+                hasattr(reaction, "get_partner")
+                and reaction.get_partner() is not None
+            ):
+                partner = reaction.get_partner()
+                reacIndex = reaction_list.index(partner) + 1
+                LHDEScorrespondingLHreacs.append(reacIndex)
             else:
-                # We still want a dummy array if the reaction type isn't in network
-                indices = [99999, 99999]
-            openFile.write(
-                array_to_string(
-                    "\t" + list_name, indices, type="int", parameter=True
-                ).replace("99999", "REAC_NOT_PRESENT")
-            )
+                # If no partner set, use dummy index
+                LHDEScorrespondingLHreacs.append(99999)
 
-        # Write LHDES and ERDES mapping arrays (Feature 3: LH/ER-DES mapping)
-        # These arrays map chemical reactive desorption reactions to their parent reactions
-        LHDEScorrespondingLHreacs = []
-        for reaction in reaction_list:
-            if reaction.get_reaction_type() == "LHDES":
-                if (
-                    hasattr(reaction, "get_partner")
-                    and reaction.get_partner() is not None
-                ):
-                    partner = reaction.get_partner()
-                    reacIndex = reaction_list.index(partner) + 1
-                    LHDEScorrespondingLHreacs.append(reacIndex)
-                else:
-                    # If no partner set, use dummy index
-                    LHDEScorrespondingLHreacs.append(99999)
+    # Write array (use dummy if empty for backward compatibility)
+    if len(LHDEScorrespondingLHreacs) == 0:
+        LHDEScorrespondingLHreacs = [99999]
+    file.write(
+        array_to_string(
+            "\tLHDEScorrespondingLHreacs",
+            LHDEScorrespondingLHreacs,
+            type="int",
+            parameter=True,
+        ).replace("99999", "REAC_NOT_PRESENT")
+    )
 
-        # Write array (use dummy if empty for backward compatibility)
-        if len(LHDEScorrespondingLHreacs) == 0:
-            LHDEScorrespondingLHreacs = [99999]
-        openFile.write(
-            array_to_string(
-                "\tLHDEScorrespondingLHreacs",
-                LHDEScorrespondingLHreacs,
-                type="int",
-                parameter=True,
-            ).replace("99999", "REAC_NOT_PRESENT")
-        )
+    ERDEScorrespondingERreacs = []
+    for reaction in reaction_list:
+        if reaction.get_reaction_type() == "ERDES":
+            if (
+                hasattr(reaction, "get_partner")
+                and reaction.get_partner() is not None
+            ):
+                partner = reaction.get_partner()
+                reacIndex = reaction_list.index(partner) + 1
+                ERDEScorrespondingERreacs.append(reacIndex)
+            else:
+                # If no partner set, use dummy index
+                ERDEScorrespondingERreacs.append(99999)
 
-        ERDEScorrespondingERreacs = []
-        for reaction in reaction_list:
-            if reaction.get_reaction_type() == "ERDES":
-                if (
-                    hasattr(reaction, "get_partner")
-                    and reaction.get_partner() is not None
-                ):
-                    partner = reaction.get_partner()
-                    reacIndex = reaction_list.index(partner) + 1
-                    ERDEScorrespondingERreacs.append(reacIndex)
-                else:
-                    # If no partner set, use dummy index
-                    ERDEScorrespondingERreacs.append(99999)
-
-        # Write array (use dummy if empty for backward compatibility)
-        if len(ERDEScorrespondingERreacs) == 0:
-            ERDEScorrespondingERreacs = [99999]
-        elif len(ERDEScorrespondingERreacs) == 1:
-            # Fortran needs at least 2 elements for array
-            ERDEScorrespondingERreacs.append(ERDEScorrespondingERreacs[0])
-        openFile.write(
-            array_to_string(
-                "\tERDEScorrespondingERreacs",
-                ERDEScorrespondingERreacs,
-                type="int",
-                parameter=True,
-            ).replace("99999", "REAC_NOT_PRESENT")
-        )
-        openFile.write("END MODULE network")
+    # Write array (use dummy if empty for backward compatibility)
+    if len(ERDEScorrespondingERreacs) == 0:
+        ERDEScorrespondingERreacs = [99999]
+    elif len(ERDEScorrespondingERreacs) == 1:
+        # Fortran needs at least 2 elements for array
+        ERDEScorrespondingERreacs.append(ERDEScorrespondingERreacs[0])
+    file.write(
+        array_to_string(
+            "\tERDEScorrespondingERreacs",
+            ERDEScorrespondingERreacs,
+            type="int",
+            parameter=True,
+        ).replace("99999", "REAC_NOT_PRESENT")
+    )
+    file.write("END MODULE network")
+    file.flush()
 
 
 def find_reactant(species_list: list[str], reactant: str) -> int:

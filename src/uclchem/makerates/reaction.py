@@ -82,6 +82,25 @@ tunneling_reaction_types = [
 ]
 
 
+reaction_header = [
+    "REACTANT 1",
+    "REACTANT 2",
+    "REACTANT 3",
+    "PRODUCT 1",
+    "PRODUCT 2",
+    "PRODUCT 3",
+    "PRODUCT 4",
+    "ALPHA",
+    "BETA",
+    "GAMMA",
+    "T_MIN",
+    "T_MAX",
+    "REDUCED_MASS",
+    "EXTRAPOLATE",
+    "EXOTHERMICITY",
+]
+
+
 class Reaction:
     """Representation of reactions."""
 
