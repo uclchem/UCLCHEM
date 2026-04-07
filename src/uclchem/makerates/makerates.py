@@ -21,7 +21,7 @@ optional_params = [
 
 
 def run_makerates(
-    configuration_file: str | Path = "user_settings.yaml",
+    configuration: str | Path | MakeratesConfig = "user_settings.yaml",
     write_files: bool = True,
     output_directory: str | os.PathLike | None = None,
 ) -> Network:
@@ -31,8 +31,8 @@ def run_makerates(
     generates chemical network, and optionally writes output files.
 
     Args:
-        configuration_file (str | Path): Path to YAML configuration file.
-            Defaults to "user_settings.yaml".
+        configuration (str | Path | MakeratesConfig): Path to YAML configuration file,
+            or ``MakeratesConfig`` instance. Defaults to "user_settings.yaml"
         write_files (bool): Whether to write fortran files to src/fortran_src.
             Defaults to True.
         output_directory (str | os.PathLike): Optional override for the output directory
@@ -46,8 +46,11 @@ def run_makerates(
         ValueError: If `coolants_file` is a directory, and not a path to a file.
 
     """
-    # Load and validate configuration using Pydantic
-    config = MakeratesConfig.from_yaml(configuration_file)
+    if not isinstance(configuration, MakeratesConfig):
+        # Load and validate configuration using Pydantic
+        config = MakeratesConfig.from_yaml(configuration)
+    else:
+        config = configuration
 
     # Log the configuration
     config.log_configuration()

@@ -17,18 +17,26 @@ all files needed to compile UCLCHEM with your network.
 
 **Quick Example:**
 
-.. code-block:: python
-
-    from uclchem.makerates import MakeratesConfig, run_makerates
-
-    # Configure network builder
-    config = MakeratesConfig()
-    config.reaction_files = [\"umist_reactions.csv\"]
-    config.species_file = \"species.csv\"
-    config.output_dir = \"./network_files\"
-
-    # Generate network
-    run_makerates(config)
+    >>> from uclchem.makerates.config import MakeratesConfig
+    >>> from uclchem.makerates import run_makerates
+    >>>
+    >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+    >>> makerates_dir = UCLCHEM_ROOT_DIR / "../../Makerates/data"
+    >>>
+    >>> # Configure network builder
+    >>> config = MakeratesConfig(
+    ...     species_file = makerates_dir / "default/default_species.csv",
+    ...     database_reaction_file = makerates_dir / "databases/umist22.csv",
+    ...     database_reaction_type = "UMIST",
+    ...     custom_reaction_file = makerates_dir/"default/default_grain_network.csv",
+    ...     custom_reaction_type = "UCL",
+    ...     output_directory = "./network_files/",
+    ... )
+    >>>
+    >>> # Generate network, write all necessary Fortran files
+    >>> network = run_makerates(config)
+    >>> print(f"Reactions: {len(network.get_reaction_list())}")
+    Reactions: ...
 
 **Workflow:**
 

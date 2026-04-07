@@ -12,6 +12,7 @@ This module provides utility functions for:
 - :func:`cshock_dissipation_time` - Calculate C-shock dissipation timescale
 
 **Example Usage:**
+
     >>> import uclchem
     >>>
     >>> model = uclchem.model.Cloud({})

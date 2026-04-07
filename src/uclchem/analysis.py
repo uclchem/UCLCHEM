@@ -17,24 +17,22 @@ This module provides functions to:
 
 **Example Usage:**
 
-.. code-block:: python
+    >>> import uclchem.analysis as analysis
 
-    import uclchem.analysis as analysis
+    >>> # Read model output
+    >>> df = analysis.read_output_file("output.dat")
 
-    # Read model output
-    df = analysis.read_output_file("output.dat")
+    >>> # Analyze CO chemistry
+    >>> analysis.analysis(
+    >>>     "CO",
+    >>>     "output.dat",
+    >>>     "co_reactions.dat"
+    >>> )
 
-    # Analyze CO chemistry
-    analysis.analysis(
-        "CO",
-        "output.dat",
-        "co_reactions.dat"
-    )
-
-    # Check conservation
-    conservation = analysis.check_element_conservation(
-        df, ["C", "O", "N"]
-    )
+    >>> # Check conservation
+    >>> conservation = analysis.check_element_conservation(
+    >>>     df, ["C", "O", "N"]
+    >>> )
 
 **See Also:**
 
