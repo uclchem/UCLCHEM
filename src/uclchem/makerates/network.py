@@ -684,7 +684,10 @@ class Network(BaseNetwork, MutableNetworkABC):
             >>> # CO2 is now no longer in our network
             >>> # If we try to remove it again, we will get an error
             >>> network.remove_species("CO2")
-            Traceback
+            Traceback (most recent call last):
+            ...
+            ValueError: Species CO2 not found in network.
+
         """
         check_expected_type(specie_name, str)
         if specie_name not in self._species_dict:
