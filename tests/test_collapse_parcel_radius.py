@@ -89,10 +89,10 @@ def test_parcel_radius_zero_for_cloud():
     )
 
 
-def test_parcel_radius_initial_value_matches_rout():
-    """Initial parcel radius should be approximately rout (outermost shell = rout)."""
-    rout = 0.05  # default rout in parsec
-    params = {**COLLAPSE_PARAMS, "rout": rout}
+def test_parcel_radius_initial_value_matches_r_out():
+    """Initial parcel radius should be approximately r_out (outermost shell = r_out)."""
+    r_out = 0.05  # default r_out in parsec
+    params = {**COLLAPSE_PARAMS, "r_out": r_out}
 
     physics, chemistry, rates, heating, abundances, return_code = (
         uclchem.functional.collapse(
@@ -105,8 +105,8 @@ def test_parcel_radius_initial_value_matches_rout():
 
     assert return_code == 0, f"Collapse failed with code {return_code}"
     initial_radius = physics["parcel_radius"].iloc[0]
-    assert abs(initial_radius - rout) < 0.1 * rout, (
-        f"Initial parcel_radius {initial_radius:.4f} deviates more than 10% from rout={rout}"
+    assert abs(initial_radius - r_out) < 0.1 * r_out, (
+        f"Initial parcel_radius {initial_radius:.4f} deviates more than 10% from r_out={r_out}"
     )
 
 

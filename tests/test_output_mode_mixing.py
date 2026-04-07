@@ -163,7 +163,7 @@ def test_chained_models_in_memory(basic_params):
         "finalDens": 1e6,
         "initialTemp": 10.0,
         "finalTime": 6.0e5,
-        "rout": 0.1,
+        "r_out": 0.1,
         "baseAv": 1.0,
     }
     _, _, _, _, final_abundances, result1 = uclchem.functional.cloud(
