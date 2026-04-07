@@ -100,9 +100,9 @@ class Reaction:
             ValueError: If the length of ``input_row`` is not long enough.
 
         Note:
-            Validation can be disabled using the ``uclchem.makerates.reaction.skip_validation()`` context manager.
-                This is useful when loading pre-validated networks from Fortran where
-                validation would fail due to modeling simplifications.
+            Validation can be disabled using the ``uclchem.makerates.reaction.skip_validation()``
+                context manager. This is useful when loading pre-validated networks from Fortran
+                where validation would fail due to modeling simplifications.
 
         """
         if isinstance(input_row, Reaction):

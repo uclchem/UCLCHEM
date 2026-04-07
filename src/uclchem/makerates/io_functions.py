@@ -1313,7 +1313,7 @@ def truncate_line(input_string: str, line_length: int = 72) -> str:
 
 
 def write_network_file(
-    file_name: Path,
+    file_name: str | Path,
     network: Network,
     enable_rates_storage: bool = False,
     gar_database: dict[str, np.array] | None = None,
@@ -1323,7 +1323,7 @@ def write_network_file(
     and so on.
 
     Args:
-        file_name (str): The file name where the code will be written.
+        file_name (str | Path): The file name where the code will be written.
         network (Network): A Network object built from lists of species and reactions.
         enable_rates_storage (bool): Enable storage of writing rates to files.
             Default = False.
@@ -1376,7 +1376,7 @@ def write_network_file(
         alpha = []
         beta = []
         gama = []
-        reaction_types = []
+        reactionTypes = []
         tmins = []
         tmaxs = []
         reduced_masses = []
@@ -1404,7 +1404,7 @@ def write_network_file(
             tmaxs.append(reaction.get_temphigh())
             tmins.append(reaction.get_templow())
             reduced_masses.append(reaction.get_reduced_mass())
-            reaction_types.append(reaction.get_reaction_type())
+            reactionTypes.append(reaction.get_reaction_type())
             extrapolations.append(reaction.get_extrapolation())
             exothermicity.append(reaction.get_exothermicity())
 
@@ -1445,48 +1445,48 @@ def write_network_file(
                 raise ValueError(msg)
             file.write(
                 array_to_string(
-                    "\texothermicities", exothermicity, type="float", parameter=True
+                    "    exothermicities", exothermicity, type="float", parameter=True
                 )
             )
             file.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .TRUE.\n")
         else:
             file.write(
-                "    REAL(dp) :: \texothermicities(" + str(len(exothermicity)) + ")\n"
+                "    REAL(dp) ::   exothermicities(" + str(len(exothermicity)) + ")\n"
             )
             file.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .FALSE.\n")
 
-        file.write(array_to_string("\tre1", reactant1, type="int"))
-        file.write(array_to_string("\tre2", reactant2, type="int"))
-        file.write(array_to_string("\tre3", reactant3, type="int"))
-        file.write(array_to_string("\tp1", prod1, type="int"))
-        file.write(array_to_string("\tp2", prod2, type="int"))
-        file.write(array_to_string("\tp3", prod3, type="int"))
-        file.write(array_to_string("\tp4", prod4, type="int"))
-        file.write(array_to_string("\talpha", alpha, type="float", parameter=False))
-        file.write(array_to_string("\tbeta", beta, type="float", parameter=False))
-        file.write(array_to_string("\tgama", gama, type="float", parameter=False))
-        file.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
-        file.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
+        file.write(array_to_string("   re1", reactant1, type="int"))
+        file.write(array_to_string("   re2", reactant2, type="int"))
+        file.write(array_to_string("   re3", reactant3, type="int"))
+        file.write(array_to_string("   p1", prod1, type="int"))
+        file.write(array_to_string("   p2", prod2, type="int"))
+        file.write(array_to_string("   p3", prod3, type="int"))
+        file.write(array_to_string("   p4", prod4, type="int"))
+        file.write(array_to_string("   alpha", alpha, type="float", parameter=False))
+        file.write(array_to_string("   beta", beta, type="float", parameter=False))
+        file.write(array_to_string("   gama", gama, type="float", parameter=False))
+        file.write(array_to_string("   minTemps", tmins, type="float", parameter=True))
+        file.write(array_to_string("   maxTemps", tmaxs, type="float", parameter=True))
         file.write(
             array_to_string(
-                "\treducedMasses", reduced_masses, type="float", parameter=True
+                "   reducedMasses", reduced_masses, type="float", parameter=True
             )
         )
         file.write(
             array_to_string(
-                "\tExtrapolateRates", extrapolations, type="logical", parameter=True
+                "   ExtrapolateRates", extrapolations, type="logical", parameter=True
             )
         )
-        reaction_types = np.asarray(reaction_types)
+        reactionTypes = np.asarray(reactionTypes)
 
         partners = get_desorption_freeze_partners(reaction_list)
         file.write(
-            array_to_string("\tfreezePartners", partners, type="int", parameter=True)
+            array_to_string("   freezePartners", partners, type="int", parameter=True)
         )
 
         file.write(
             array_to_string(
-                "\t garParams",
+                "    garParams",
                 np.array(list(gar_database.values()))
                 if gar_database
                 else np.zeros((1, 7)),
@@ -1497,7 +1497,7 @@ def write_network_file(
 
         for reaction_type in reaction_types:
             list_name = reaction_type.lower() + "Reacs"
-            indices = np.where(reaction_types == reaction_type)[0]
+            indices = np.where(reactionTypes == reaction_type)[0]
             if len(indices > 1):
                 indices = [indices[0] + 1, indices[-1] + 1]
             else:
@@ -1505,7 +1505,7 @@ def write_network_file(
                 indices = [99999, 99999]
             file.write(
                 array_to_string(
-                    "\t" + list_name, indices, type="int", parameter=True
+                    "   " + list_name, indices, type="int", parameter=True
                 ).replace("99999", "REAC_NOT_PRESENT")
             )
 
@@ -1530,7 +1530,7 @@ def write_network_file(
             LHDEScorrespondingLHreacs = [99999]
         file.write(
             array_to_string(
-                "\tLHDEScorrespondingLHreacs",
+                "    LHDEScorrespondingLHreacs",
                 LHDEScorrespondingLHreacs,
                 type="int",
                 parameter=True,
@@ -1559,7 +1559,7 @@ def write_network_file(
             ERDEScorrespondingERreacs.append(ERDEScorrespondingERreacs[0])
         file.write(
             array_to_string(
-                "\tERDEScorrespondingERreacs",
+                "    ERDEScorrespondingERreacs",
                 ERDEScorrespondingERreacs,
                 type="int",
                 parameter=True,
