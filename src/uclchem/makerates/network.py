@@ -741,7 +741,7 @@ class Network(BaseNetwork, MutableNetworkABC):
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
         """Replace entire reaction dictionary."""
         check_expected_type(new_dict, dict)
-        [check_expected_type(reaction) for reaction in new_dict.values()]
+        [check_expected_type(reaction, Reaction) for reaction in new_dict.values()]
 
         self._reactions_dict = new_dict
 
