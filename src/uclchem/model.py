@@ -64,7 +64,7 @@ See the user guide for complete parameter list.
 **Species Naming:**
 
 - Gas phase: ``CO``, ``H2O``, ``CH3OH``
-- Ice surface: ``$CO``, ``$H2O``, ``$CH3OH``
+- Ice surface: ``#CO``, ``#H2O``, ``#CH3OH``
 - Ice bulk: ``@CO``, ``@H2O``, ``@CH3OH``
 
 **See Also:**
