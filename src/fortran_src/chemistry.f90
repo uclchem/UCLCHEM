@@ -364,6 +364,11 @@ CONTAINS
         INTEGER, INTENT(IN), OPTIONAL :: statsarray_size
         INTEGER, INTENT(IN), OPTIONAL :: dtime
         TYPE(VODE_OPTS) :: OPTIONS
+        ! Non-negativity constraints for all chemical species: DVODE predictor/Jacobian
+        ! steps can push species (especially surface ones starting at 1e-30) to small
+        ! negative values at high densities, causing /safeMantle explosions in F.
+        INTEGER :: species_indices(nspec)
+        REAL(dp) :: species_clower(nspec), species_cupper(nspec)
         successFlag=0
         f_callback_error=0
 
@@ -386,8 +391,12 @@ CONTAINS
         reltol_vec(nspec+1) = reltol_phys
         reltol_vec(nspec+2) = reltol_phys
         !Call the integrator with ITOL=4 (vector reltol + vector abstol).
+        species_indices = [(i, i=1, nspec)]
+        species_clower  = 0.0_dp
+        species_cupper  = HUGE(1.0_dp)
         OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR_VECTOR=reltol_vec, &
-                           USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
+                           USER_SUPPLIED_JACOBIAN=.False., MXSTEP=MXSTEP, &
+                           CONSTRAINED=species_indices, CLOWER=species_clower, CUPPER=species_cupper)
         CALL CPU_TIME(dvode_cpu_start)
         CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
         CALL CPU_TIME(dvode_cpu_end)
