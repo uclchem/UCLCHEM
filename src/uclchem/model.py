@@ -4075,7 +4075,7 @@ class GridRunner:
 
                 # grid_param_dict contains the param_dict values of the next model to run.
                 grid_param_dict = {
-                    k: v if not isinstance(v, float) else v.item()
+                    k: v if not isinstance(v, float) else (v.item() if hasattr(v, 'item') else v)
                     for k, v in zip(param_keys, combo)
                     if k in full_parameters["param_dict"]
                 }
