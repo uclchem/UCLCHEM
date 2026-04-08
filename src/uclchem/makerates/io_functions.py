@@ -439,17 +439,19 @@ def write_outputs(
 
     with (
         NamedTemporaryFile(
-            mode="w", dir=python_src_dir, prefix="species.csv"
+            mode="w", dir=python_src_dir, prefix="species.csv", suffix=".tmp"
         ) as species_file,
         NamedTemporaryFile(
-            mode="w", dir=python_src_dir, prefix="reactions.csv"
+            mode="w", dir=python_src_dir, prefix="reactions.csv", suffix=".tmp"
         ) as reactions_file,
-        NamedTemporaryFile(mode="w", dir=fortran_src_dir, prefix="odes.f90") as odes_file,
         NamedTemporaryFile(
-            mode="w", dir=fortran_src_dir, prefix="network.f90"
+            mode="w", dir=fortran_src_dir, prefix="odes.f90", suffix=".tmp"
+        ) as odes_file,
+        NamedTemporaryFile(
+            mode="w", dir=fortran_src_dir, prefix="network.f90", suffix=".tmp"
         ) as network_file,
         NamedTemporaryFile(
-            mode="w", dir=fortran_src_dir, prefix="f2py_constants.f90"
+            mode="w", dir=fortran_src_dir, prefix="f2py_constants.f90", suffix=".tmp"
         ) as f2py_constants_file,
     ):
         # Create the species file
