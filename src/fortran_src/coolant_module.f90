@@ -8,6 +8,18 @@ MODULE COOLANT_MODULE
    IMPLICIT NONE
 
    ! Tolerances are provided via the DEFAULTPARAMETERS module (freq_rel_tol, pop_rel_tol).
+
+   !  Sparse per-partner collisional rate storage (replaces dense C_COEFF(7,NLEVEL,NLEVEL,1000))
+   TYPE partner_data_t
+      INTEGER  :: partner_id           ! original 1-7 LAMDA partner identifier
+      INTEGER  :: ntemp                ! actual number of temperatures from file
+      INTEGER  :: ncoll                ! number of stored transitions (forward + reverse)
+      REAL(dp), ALLOCATABLE :: temperature(:)   ! (ntemp)
+      INTEGER,  ALLOCATABLE :: i_idx(:)         ! (ncoll) upper level index
+      INTEGER,  ALLOCATABLE :: j_idx(:)         ! (ncoll) lower level index
+      REAL(dp), ALLOCATABLE :: c_coeff(:,:)     ! (ncoll, ntemp) rate coefficients
+   END TYPE partner_data_t
+
 !  Specify the properties that define each coolant species
    TYPE COOLANT_TYPE
 
@@ -16,15 +28,15 @@ MODULE COOLANT_MODULE
 
       INTEGER :: INDEX  ! Index number of the coolant species
       INTEGER :: NLEVEL ! Number of levels in the system
-      INTEGER :: NTEMP  ! Number of temperatures for which collisional rates are available
+      INTEGER :: NPARTNER ! Number of collision partners present in file
+      INTEGER :: partner_map(7) ! partner_map(id) -> index in partners(:); 0 if absent
 
       REAL(dp) :: MOLECULAR_MASS, previousCooling ! Molecular mass of the coolant species
 
       REAL(dp), ALLOCATABLE :: ENERGY(:),WEIGHT(:) ! Energy (K) and statistical weight of each level
       REAL(dp), ALLOCATABLE :: A_COEFF(:,:),B_COEFF(:,:) ! Einstein A and B coefficients for each transition between levels
       REAL(dp), ALLOCATABLE :: FREQUENCY(:,:) ! Frequency (Hz) of each transition between levels
-      REAL(dp), ALLOCATABLE :: TEMPERATURE(:,:) ! Temperatures (K) at which collisional rates are available for each collision partner
-      REAL(dp), ALLOCATABLE :: C_COEFF(:,:,:,:) ! Collisional rate coefficient (cm^3 s^-1) for each transition at each specified temperature for each collision partner
+      TYPE(partner_data_t), ALLOCATABLE :: partners(:) ! (npartner) sparse per-partner collisional data
 
       LOGICAL :: CONVERGED ! Flag indicating whether the level populations of all particles have converged
 
@@ -104,7 +116,9 @@ CONTAINS
       IMPLICIT NONE
       INTEGER, INTENT(INOUT) :: successFlag
       INTEGER :: I,J,K,L,M,N,INDEX,IER
-      INTEGER :: NLEVEL,NLINE,NTEMP,NPARTNER,NCOLL,PARTNER_ID,MAX_NTEMP
+      INTEGER :: NLEVEL,NLINE,NTEMP,NPARTNER,NCOLL,PARTNER_ID,NCNT
+      REAL(dp), ALLOCATABLE :: RATE_BUF(:)
+      LOGICAL,  ALLOCATABLE :: SEEN(:,:)
       INTEGER :: actual_total_levels
       INTEGER :: coolantID = 81
 
@@ -213,20 +227,15 @@ CONTAINS
             END DO
          END DO
 
-   !     Allocate and initialize the collisional rate coefficient arrays
-   !     allowing a maximum of 1000 temperature values per collision partner
-         MAX_NTEMP=1000
-         coolants(N)%NTEMP=MAX_NTEMP
-         ALLOCATE(coolants(N)%TEMPERATURE(1:7,1:MAX_NTEMP))
-         ALLOCATE(coolants(N)%C_COEFF(1:7,1:NLEVEL,1:NLEVEL,1:MAX_NTEMP))
-         coolants(N)%TEMPERATURE=0.0D0
-         coolants(N)%C_COEFF=0.0D0
-
    !     Read the collisional rate coefficients (cm^3 s^-1) for each collision partner
-         MAX_NTEMP=0
+   !     Sparse storage: only actual transitions and temperature points are allocated
          READ(coolantID,*,IOSTAT=IER) NPARTNER
+         coolants(N)%NPARTNER = NPARTNER
+         ALLOCATE(coolants(N)%partners(NPARTNER))
+         coolants(N)%partner_map = 0
+
          DO L=1,NPARTNER ! Loop over collision partners
-            READ(coolantID,*,IOSTAT=IER)
+            READ(coolantID,*,IOSTAT=IER)           ! skip comment
             READ(coolantID,*,IOSTAT=IER) PARTNER_ID
             IF(PARTNER_ID.LT.1 .OR. PARTNER_ID.GT.7) THEN
                WRITE(*,*) 'ERROR! Unrecognized collision partner ID in coolant data file ',&
@@ -235,37 +244,63 @@ CONTAINS
                successFlag = COOLANT_DATA_ERROR
                RETURN
             END IF
-            READ(coolantID,*,IOSTAT=IER)
+            READ(coolantID,*,IOSTAT=IER)           ! skip comment
             READ(coolantID,*,IOSTAT=IER) NCOLL
-            READ(coolantID,*,IOSTAT=IER)
-            READ(coolantID,*,IOSTAT=IER) NTEMP ; MAX_NTEMP=MAX(MAX_NTEMP,NTEMP)
-            IF(NTEMP.GT.1000) THEN
-               WRITE(*,*) 'ERROR! Number of temperature values exceeds limit in coolant data file ',&
-                           &TRIM(coolants(N)%FILENAME),' (NTEMP=',NTEMP,')'
-               CLOSE(coolantID)
-               successFlag = COOLANT_DATA_ERROR
-               RETURN
-            END IF
-            READ(coolantID,*,IOSTAT=IER)
-            READ(coolantID,*,IOSTAT=IER) (coolants(N)%TEMPERATURE(PARTNER_ID,K),K=1,NTEMP)
-            READ(coolantID,*,IOSTAT=IER)
-            DO M=1,NCOLL ! Loop over collisional transitions
-               READ(coolantId,*,IOSTAT=IER) INDEX,I,J,(coolants(N)%C_COEFF(PARTNER_ID,I,J,K),K=1,NTEMP)
-   !           Calculate the reverse (excitation) rate coefficients from
-   !           detailed balance: C_ji = C_ij*gi/gj*exp(-(Ei-Ej)/kT)
-               DO K=1,NTEMP ! Loop over temperatures
-                  IF(coolants(N)%C_COEFF(PARTNER_ID,I,J,K).NE.0.0D0 .AND. &
-                   & coolants(N)%C_COEFF(PARTNER_ID,J,I,K).EQ.0.0D0) THEN
-                     coolants(N)%C_COEFF(PARTNER_ID,J,I,K)=coolants(N)%C_COEFF(PARTNER_ID,I,J,K) &
-                                                       & *(coolants(N)%WEIGHT(I)/coolants(N)%WEIGHT(J)) &
-                                                       & *EXP(-(coolants(N)%ENERGY(I)-coolants(N)%ENERGY(J)) &
-                                                       &      /(K_BOLTZ*coolants(N)%TEMPERATURE(PARTNER_ID,K)))
-                  END IF
-               END DO ! End of loop over temperatures
-            END DO ! End of loop over collisional transitions
-         END DO ! End of loop over collision partners
+            READ(coolantID,*,IOSTAT=IER)           ! skip comment
+            READ(coolantID,*,IOSTAT=IER) NTEMP
+            READ(coolantID,*,IOSTAT=IER)           ! skip temperature comment
 
-         coolants(N)%NTEMP=MAX_NTEMP
+            coolants(N)%partners(L)%partner_id = PARTNER_ID
+            coolants(N)%partners(L)%ntemp      = NTEMP
+            coolants(N)%partner_map(PARTNER_ID) = L
+
+            ALLOCATE(coolants(N)%partners(L)%temperature(NTEMP))
+            ! Allocate for up to 2*NCOLL transitions (forward + detailed-balance reverse)
+            ALLOCATE(coolants(N)%partners(L)%i_idx(2*NCOLL))
+            ALLOCATE(coolants(N)%partners(L)%j_idx(2*NCOLL))
+            ALLOCATE(coolants(N)%partners(L)%c_coeff(2*NCOLL, NTEMP))
+            coolants(N)%partners(L)%c_coeff = 0.0D0
+
+            READ(coolantID,*,IOSTAT=IER) (coolants(N)%partners(L)%temperature(K),K=1,NTEMP)
+            READ(coolantID,*,IOSTAT=IER)           ! skip collisions comment
+
+            ALLOCATE(RATE_BUF(NTEMP))
+            ALLOCATE(SEEN(NLEVEL, NLEVEL))
+            SEEN = .FALSE.
+            NCNT = 0
+
+            DO M=1,NCOLL ! Loop over collisional transitions
+               READ(coolantID,*,IOSTAT=IER) INDEX,I,J,(RATE_BUF(K),K=1,NTEMP)
+   !           Store forward transition (I->J) if not already present
+               IF (.NOT. SEEN(I,J)) THEN
+                  NCNT = NCNT + 1
+                  coolants(N)%partners(L)%i_idx(NCNT) = I
+                  coolants(N)%partners(L)%j_idx(NCNT) = J
+                  coolants(N)%partners(L)%c_coeff(NCNT,1:NTEMP) = RATE_BUF(1:NTEMP)
+                  SEEN(I,J) = .TRUE.
+               END IF
+   !           Compute reverse (J->I) via detailed balance if not already present
+               IF (.NOT. SEEN(J,I)) THEN
+                  SEEN(J,I) = .TRUE.
+                  NCNT = NCNT + 1
+                  coolants(N)%partners(L)%i_idx(NCNT) = J
+                  coolants(N)%partners(L)%j_idx(NCNT) = I
+                  DO K=1,NTEMP
+                     IF (RATE_BUF(K).NE.0.0D0) THEN
+                        coolants(N)%partners(L)%c_coeff(NCNT,K) = RATE_BUF(K) &
+                           * (coolants(N)%WEIGHT(I) / coolants(N)%WEIGHT(J)) &
+                           * EXP(-(coolants(N)%ENERGY(I) - coolants(N)%ENERGY(J)) &
+                                  / (K_BOLTZ * coolants(N)%partners(L)%temperature(K)))
+                     END IF
+                  END DO
+               END IF
+            END DO ! End of loop over collisional transitions
+
+            coolants(N)%partners(L)%ncoll = NCNT
+            DEALLOCATE(RATE_BUF)
+            DEALLOCATE(SEEN)
+
+         END DO ! End of loop over collision partners
          coolants(N)%previousCooling=0.0d0
          CLOSE(coolantID)
 
@@ -1003,9 +1038,9 @@ SUBROUTINE CALCULATE_COLLISIONAL_RATES(COOLANT,DENSITY,TEMPERATURE, &
    REAL(dp),      INTENT(IN)  :: ABUNDANCE(:)
    REAL(dp),      INTENT(OUT) :: COLLISIONAL_RATE(:,:)
 
-   INTEGER:: I,J,K,KLO,KHI,PARTNER_ID
+   INTEGER:: I,J,K,L,M,KLO,KHI,PARTNER_ID,NTEMP_P
    REAL(dp) :: PARA_FRACTION,ORTHO_FRACTION
-   REAL(dp) :: STEP,C_COEFF
+   REAL(dp) :: STEP,C_COEFF,ABUND_FACTOR
 
 !  Initialize the collisional rates
    COLLISIONAL_RATE=0.0D0
@@ -1015,110 +1050,62 @@ SUBROUTINE CALCULATE_COLLISIONAL_RATES(COOLANT,DENSITY,TEMPERATURE, &
    PARA_FRACTION=1.0D0/(1.0D0+ORTHO_PARA_RATIO(TEMPERATURE))
    ORTHO_FRACTION=1.0D0-PARA_FRACTION
 
+   DO L=1,COOLANT%NPARTNER ! Loop over collision partners (sparse)
+      PARTNER_ID = COOLANT%partners(L)%partner_id
+      NTEMP_P    = COOLANT%partners(L)%ntemp
 
-   DO PARTNER_ID=1,7 ! Loop over collision partners
-!     Skip the collision partner if no rates are available
-      IF(COOLANT%TEMPERATURE(PARTNER_ID,1).EQ.0.0D0) CYCLE
+!     Determine the abundance factor for this collision partner
+      IF(PARTNER_ID.EQ.1) THEN
+         ABUND_FACTOR = DENSITY * ABUNDANCE(nH2)
+      ELSE IF(PARTNER_ID.EQ.2) THEN
+         ABUND_FACTOR = DENSITY * ABUNDANCE(nH2) * PARA_FRACTION
+      ELSE IF(PARTNER_ID.EQ.3) THEN
+         ABUND_FACTOR = DENSITY * ABUNDANCE(nH2) * ORTHO_FRACTION
+      ELSE IF(PARTNER_ID.EQ.4) THEN
+         ABUND_FACTOR = DENSITY * ABUNDANCE(nelec)
+      ELSE IF(PARTNER_ID.EQ.5) THEN
+         ABUND_FACTOR = DENSITY * ABUNDANCE(nH)
+      ELSE IF(PARTNER_ID.EQ.6) THEN
+         ABUND_FACTOR = DENSITY * ABUNDANCE(nHe)
+      ELSE ! PARTNER_ID.EQ.7: protons
+         ABUND_FACTOR = DENSITY * ABUNDANCE(nHx)
+      END IF
 
-!     Determine the two nearest temperature values
-!     present within the list of collisional rates
+!     Determine the two nearest temperature values in the partner's temperature grid
       KLO=0; KHI=0
-      DO K=1,COOLANT%NTEMP ! Loop over temperatures
-         IF(COOLANT%TEMPERATURE(PARTNER_ID,K).GT.TEMPERATURE) THEN
+      DO K=1,NTEMP_P
+         IF(COOLANT%partners(L)%temperature(K).GT.TEMPERATURE) THEN
             KLO=K-1
             KHI=K
-            EXIT
-         ELSE IF(COOLANT%TEMPERATURE(PARTNER_ID,K).EQ.0.0D0) THEN
-            KLO=K-1
-            KHI=K-1
             EXIT
          END IF
       END DO
 
-!     If the required temperature is above or below the range of available
-!     temperature values then use the highest or lowest value in the range
+!     Clamp to valid range
       IF(KHI.EQ.0) THEN
-         KLO=COOLANT%NTEMP
-         KHI=COOLANT%NTEMP
+         KLO=NTEMP_P
+         KHI=NTEMP_P
       ELSE IF(KHI.EQ.1) THEN
          KLO=1
          KHI=1
       END IF
 
-!     Calculate the "distance" between the two temperature
-!     values, to be used in the linear interpolation below
+!     Linear interpolation step fraction
       IF(KLO.EQ.KHI) THEN
          STEP=0.0D0
       ELSE
-         STEP=(TEMPERATURE-COOLANT%TEMPERATURE(PARTNER_ID,KLO)) &
-           & /(COOLANT%TEMPERATURE(PARTNER_ID,KHI)-COOLANT%TEMPERATURE(PARTNER_ID,KLO))
+         STEP=(TEMPERATURE-COOLANT%partners(L)%temperature(KLO)) &
+           & /(COOLANT%partners(L)%temperature(KHI)-COOLANT%partners(L)%temperature(KLO))
       END IF
 
-!     Linearly interpolate the collisional rate coefficients
-!     for each collision partner at the required temperature
-      IF(PARTNER_ID.EQ.1) THEN ! Collisions with H2
-         DO I=1,COOLANT%NLEVEL
-            DO J=1,COOLANT%NLEVEL
-               C_COEFF=COOLANT%C_COEFF(PARTNER_ID,I,J,KLO) + & 
-                        (COOLANT%C_COEFF(PARTNER_ID,I,J,KHI)-COOLANT%C_COEFF(PARTNER_ID,I,J,KLO))*STEP
-               COLLISIONAL_RATE(I,J)=COLLISIONAL_RATE(I,J)+C_COEFF*DENSITY*ABUNDANCE(nH2)
-            END DO
-         END DO
-      END IF
-      IF(PARTNER_ID.EQ.2) THEN ! Collisions with para-H2
-         DO I=1,COOLANT%NLEVEL
-            DO J=1,COOLANT%NLEVEL
-               C_COEFF=COOLANT%C_COEFF(PARTNER_ID,I,J,KLO) + & 
-                     (COOLANT%C_COEFF(PARTNER_ID,I,J,KHI)-COOLANT%C_COEFF(PARTNER_ID,I,J,KLO))*STEP
-               COLLISIONAL_RATE(I,J)=COLLISIONAL_RATE(I,J)+C_COEFF*DENSITY*ABUNDANCE(nH2)*PARA_FRACTION
-            END DO
-         END DO
-      END IF
-      IF(PARTNER_ID.EQ.3) THEN ! Collisions with ortho-H2
-         DO I=1,COOLANT%NLEVEL
-            DO J=1,COOLANT%NLEVEL
-               C_COEFF=COOLANT%C_COEFF(PARTNER_ID,I,J,KLO) + &
-                        (COOLANT%C_COEFF(PARTNER_ID,I,J,KHI)-COOLANT%C_COEFF(PARTNER_ID,I,J,KLO))*STEP
-               COLLISIONAL_RATE(I,J)=COLLISIONAL_RATE(I,J)+C_COEFF*DENSITY*ABUNDANCE(nH2)*ORTHO_FRACTION
-            END DO
-         END DO
-      END IF
-      IF(PARTNER_ID.EQ.4) THEN ! Collisions with electrons
-         DO I=1,COOLANT%NLEVEL
-            DO J=1,COOLANT%NLEVEL
-               C_COEFF=COOLANT%C_COEFF(PARTNER_ID,I,J,KLO) + &
-                        (COOLANT%C_COEFF(PARTNER_ID,I,J,KHI)-COOLANT%C_COEFF(PARTNER_ID,I,J,KLO))*STEP
-               COLLISIONAL_RATE(I,J)=COLLISIONAL_RATE(I,J)+C_COEFF*DENSITY*ABUNDANCE(nelec)
-            END DO
-         END DO
-      END IF
-      IF(PARTNER_ID.EQ.5) THEN ! Collisions with H
-         DO I=1,COOLANT%NLEVEL
-            DO J=1,COOLANT%NLEVEL
-               C_COEFF=COOLANT%C_COEFF(PARTNER_ID,I,J,KLO) + &
-                        (COOLANT%C_COEFF(PARTNER_ID,I,J,KHI)-COOLANT%C_COEFF(PARTNER_ID,I,J,KLO))*STEP
-               COLLISIONAL_RATE(I,J)=COLLISIONAL_RATE(I,J)+C_COEFF*DENSITY*ABUNDANCE(nH)
-            END DO
-         END DO
-      END IF
-      IF(PARTNER_ID.EQ.6) THEN ! Collisions with He
-         DO I=1,COOLANT%NLEVEL
-            DO J=1,COOLANT%NLEVEL
-               C_COEFF=COOLANT%C_COEFF(PARTNER_ID,I,J,KLO) + & 
-                        (COOLANT%C_COEFF(PARTNER_ID,I,J,KHI)-COOLANT%C_COEFF(PARTNER_ID,I,J,KLO))*STEP
-               COLLISIONAL_RATE(I,J)=COLLISIONAL_RATE(I,J)+C_COEFF*DENSITY*ABUNDANCE(nHe)
-            END DO
-         END DO
-      END IF
-      IF(PARTNER_ID.EQ.7) THEN ! Collisions with protons
-         DO I=1,COOLANT%NLEVEL
-            DO J=1,COOLANT%NLEVEL
-               C_COEFF=COOLANT%C_COEFF(PARTNER_ID,I,J,KLO) + &
-                        (COOLANT%C_COEFF(PARTNER_ID,I,J,KHI)-COOLANT%C_COEFF(PARTNER_ID,I,J,KLO))*STEP
-               COLLISIONAL_RATE(I,J)=COLLISIONAL_RATE(I,J)+C_COEFF*DENSITY*ABUNDANCE(nHx)
-            END DO
-         END DO
-      END IF
+!     Accumulate rates over stored (I,J) pairs only (sparse iteration)
+      DO M=1,COOLANT%partners(L)%ncoll
+         I = COOLANT%partners(L)%i_idx(M)
+         J = COOLANT%partners(L)%j_idx(M)
+         C_COEFF = COOLANT%partners(L)%c_coeff(M,KLO) &
+                 + (COOLANT%partners(L)%c_coeff(M,KHI) - COOLANT%partners(L)%c_coeff(M,KLO)) * STEP
+         COLLISIONAL_RATE(I,J) = COLLISIONAL_RATE(I,J) + C_COEFF * ABUND_FACTOR
+      END DO
 
    END DO ! End of loop over collision partners
 
