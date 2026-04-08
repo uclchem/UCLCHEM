@@ -4,6 +4,8 @@ This module loads Fortran parameter classifications from YAML and provides
 them as Python sets for use in GeneralSettings.
 """
 
+import pathlib
+
 import yaml
 
 from uclchem.utils import UCLCHEM_ROOT_DIR
@@ -18,7 +20,7 @@ def _load_fortran_metadata() -> tuple[set[str], set[str], set[str]]:
     """
     yaml_path = UCLCHEM_ROOT_DIR / "advanced" / "fortran_metadata.yaml"
 
-    with open(yaml_path) as f:
+    with pathlib.Path(yaml_path).open() as f:
         metadata = yaml.safe_load(f)
 
     # Flatten nested structure and convert to lowercase sets

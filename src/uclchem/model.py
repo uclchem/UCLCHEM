@@ -1715,7 +1715,7 @@ class AbstractModel(ABC):
         number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(species_names))}"
         columns = np.array([PHYSICAL_PARAMETERS[:-1] + ["point"] + species_names])
         np.savetxt(self.outputFile, columns, fmt=string_fmt_string)
-        with open(self.outputFile, "ab") as f:
+        with Path(self.outputFile).open("ab") as f:
             np.savetxt(f, full_array, fmt=number_fmt_string)
         return
 
@@ -1727,7 +1727,7 @@ class AbstractModel(ABC):
         # TODO Move away from the magic numbers seen here.
         species_names = get_species_names()
         number_fmt_string = f" {', '.join(['%9.5E'] * len(species_names))}"
-        with open(self.abundSaveFile, "wb") as f:
+        with Path(self.abundSaveFile).open("wb") as f:
             np.savetxt(
                 f,
                 self.chemical_abun_array[last_timestep_index, :, :],
@@ -3543,7 +3543,7 @@ def _run_grid_model(
     """
     log_file = None
     if log_dir is not None:
-        log_file = os.path.join(log_dir, f"model_{model_id}.log")
+        log_file = Path(log_dir) / f"model_{model_id}.log"
 
     cls = REGISTRY.get(model_type)
     with capture_fortran_output(label=f"model_{model_id}", log_file=log_file):
@@ -3613,7 +3613,7 @@ class GridRunner:
             which would make the fifth model have the name "5", for example.
         delay_run (bool): Whether to immediately start the models upon initialization,
             or delay until the user calls ``self.run()``. Defaults to False (start immediately).
-        log_dir (str | None): Where to write logs. If None, do not write logs. Default = None.
+        log_dir (str | Path | None): Where to write logs. If None, do not write logs. Default = None.
         model_ids (list | None): Optional subset of model indices (0-based column in flat_grids)
             to run. None means run all models in the grid. Default = None.
 
@@ -3628,7 +3628,7 @@ class GridRunner:
         model_name_prefix: str = "",
         overwrite_models: bool = False,
         delay_run: bool = False,
-        log_dir: str | None = None,
+        log_dir: str | Path | None = None,
         model_ids: list = None,
         create_grid: bool = True,
     ):
@@ -3648,15 +3648,15 @@ class GridRunner:
         # TODO: Implement model appending to grid file
         # TODO: Implement option to append or overwrite grid file.
         # Initial placeholder statement to remove pre-existing grid files
-        if os.path.isfile(self.grid_file):
-            os.remove(self.grid_file)
+        if Path(self.grid_file).is_file():
+            Path(self.grid_file).unlink()
         #
         self.model_name_prefix = model_name_prefix
         self.overwrite_models = overwrite_models
         self.log_dir = log_dir
         if self.log_dir is not None:
-            os.makedirs(self.log_dir, exist_ok=True)
-            self._main_log = os.path.join(self.log_dir, "grid.log")
+            Path(self.log_dir).mkdir(exist_ok=True, parents=True)
+            self._main_log = Path(self.log_dir) / "grid.log"
         else:
             self._main_log = None
         self._orig_sigint = signal.getsignal(signal.SIGINT)
@@ -3735,7 +3735,7 @@ class GridRunner:
         if self._main_log is None:
             return
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with open(self._main_log, "a") as f:
+        with self._main_log.open("a") as f:
             f.write(f"{ts} {msg}\n")
 
     def run(self) -> None:

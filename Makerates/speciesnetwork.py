@@ -3,11 +3,12 @@ and prints every reaction that forms or destroys a chosen species.
 """
 
 import csv
+import pathlib
 
 if __name__ == "__main__":
     species = "HCN"
 
-    with open("../src/uclchem/reactions.csv") as f:
+    with pathlib.Path("../src/uclchem/reactions.csv").open() as f:
         reader = csv.reader(f, delimiter=",", quotechar="|")
 
         forms = "Species Formed in: \n"

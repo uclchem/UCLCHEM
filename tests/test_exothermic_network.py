@@ -1,5 +1,7 @@
 """Test building a network with both computed enthalpies and custom exothermicity files."""
 
+from pathlib import Path
+
 import pytest
 import yaml
 
@@ -37,11 +39,9 @@ OH+,E-,NAN,O,H,NAN,NAN,-13.0,eV,Test
 
 
 @pytest.fixture
-def config_file_with_exothermicity(tmp_path, custom_exothermicity_file):
+def config_file_with_exothermicity(tmp_path, custom_exothermicity_file) -> Path:
     """Create a complete configuration file with exothermicity settings."""
-    import os
-
-    workspace_root = os.getcwd()
+    workspace_root = Path.cwd()
 
     config = {
         "species_file": f"{workspace_root}/Makerates/data/default/default_species.csv",
@@ -59,18 +59,16 @@ def config_file_with_exothermicity(tmp_path, custom_exothermicity_file):
     }
 
     config_path = tmp_path / "test_config.yaml"
-    with open(config_path, "w") as f:
+    with config_path.open("w") as f:
         yaml.dump(config, f)
 
     return config_path
 
 
 @pytest.fixture
-def config_file_multiple_exo_files(tmp_path, custom_exothermicity_file):
+def config_file_multiple_exo_files(tmp_path, custom_exothermicity_file) -> Path:
     """Create a configuration file with multiple exothermicity files."""
-    import os
-
-    workspace_root = os.getcwd()
+    workspace_root = Path.cwd()
 
     # Create a second exothermicity file that overrides some values
     exo_csv_2 = tmp_path / "custom_exothermicities_2.csv"
@@ -99,7 +97,7 @@ H3+,E-,NAN,H2,H,NAN,NAN,-200.0,ev,Override Test Data
     }
 
     config_path = tmp_path / "test_config_multi.yaml"
-    with open(config_path, "w") as f:
+    with config_path.open("w") as f:
         yaml.dump(config, f)
 
     return config_path
@@ -110,7 +108,7 @@ def test_network_with_custom_exothermicity(config_file_with_exothermicity):
     # Debug: Print config file content
     import yaml
 
-    with open(config_file_with_exothermicity) as f:
+    with config_file_with_exothermicity.open() as f:
         config = yaml.safe_load(f)
     print(
         f"\n=== Config database_reaction_exothermicity: {config.get('database_reaction_exothermicity')} ==="
@@ -215,9 +213,7 @@ def test_network_with_multiple_database_reaction_exothermicity(
 
 def test_network_exothermicity_without_custom_file(tmp_path):
     """Test that network works with derive_reaction_exothermicity but no custom files."""
-    import os
-
-    workspace_root = os.getcwd()
+    workspace_root = Path.cwd()
 
     config = {
         "species_file": f"{workspace_root}/Makerates/data/default/default_species.csv",
@@ -234,7 +230,7 @@ def test_network_exothermicity_without_custom_file(tmp_path):
     }
 
     config_path = tmp_path / "test_config_no_custom.yaml"
-    with open(config_path, "w") as f:
+    with config_path.open("w") as f:
         yaml.dump(config, f)
 
     # This should work without errors (computed enthalpies only)

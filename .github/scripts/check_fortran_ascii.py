@@ -28,7 +28,7 @@ def check_file_for_non_ascii(filepath: Path | str) -> list[tuple[int, str]] | No
     violations = []
 
     try:
-        with open(filepath, "rb") as f:
+        with Path(filepath).open("rb") as f:
             for line_num, line_bytes in enumerate(f, 1):
                 try:
                     line_bytes.decode("ascii")

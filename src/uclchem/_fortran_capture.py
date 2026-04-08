@@ -48,7 +48,7 @@ def _reader_thread(
                             parents=True,
                             exist_ok=True,
                         )
-                        log_handle = open(log_path, "w")  # noqa: SIM115
+                        log_handle = log_path.open("w")
                     log_handle.write(f"{line}\n")
                     log_handle.flush()
         # Flush any trailing data without a final newline

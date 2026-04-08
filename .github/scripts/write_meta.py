@@ -6,6 +6,7 @@ and installed package version.
 import json
 import os
 from datetime import datetime
+from pathlib import Path
 
 REF = os.environ.get("REF") or os.environ.get("INPUT_REF") or ""
 COMMIT_SHA = os.environ.get("COMMIT_SHA") or os.environ.get("GITHUB_SHA") or ""
@@ -30,8 +31,8 @@ meta = {
     "built_by": GITHUB_ACTOR,
 }
 
-os.makedirs("executed_notebooks", exist_ok=True)
-with open("executed_notebooks/meta.json", "w") as fh:
+Path("executed_notebooks").mkdir(exist_ok=True, parents=True)
+with Path("executed_notebooks/meta.json").open("w") as fh:
     json.dump(meta, fh, indent=2)
 
 print(json.dumps(meta, indent=2))

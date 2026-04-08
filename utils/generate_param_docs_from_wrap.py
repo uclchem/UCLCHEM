@@ -10,6 +10,7 @@ Usage:
 """
 
 import sys
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -286,17 +287,19 @@ def format_value(value: Any) -> str:
         return str(value)
 
 
-def generate_markdown(params: dict[str, tuple[Any, str, str]], output_file: str) -> None:
+def generate_markdown(
+    params: dict[str, tuple[Any, str, str]], output_file: str | Path
+) -> None:
     """Generate markdown documentation from parameter information.
 
     Args:
         params (dict[str, tuple[Any, str, str]]): Dictionary of parameter info
-        output_file (str): Path to output markdown file
+        output_file (str | Path): Path to output markdown file
 
     """
     categories = categorize_parameters(params)
 
-    with open(output_file, "w") as f:
+    with Path(output_file).open("w") as f:
         f.write("# UCLCHEM Parameters\n\n")
         f.write("*Auto-generated from compiled uclchemwrap.defaultparameters module*\n\n")
         f.write(

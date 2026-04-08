@@ -6,6 +6,7 @@ python generate_param_docs.py default_parameter_fortran_file output_markdown_fil
 """
 
 import ast
+from pathlib import Path
 from sys import argv
 
 if __name__ == "__main__":
@@ -14,8 +15,8 @@ if __name__ == "__main__":
     constants_file = argv[3]
     default_param_dictionary = {}
 
-    with open(param_file) as f:
-        with open(output_file, "w") as output:
+    with Path(param_file).open() as f:
+        with Path(output_file).open("w") as output:
             for line in f.readlines():
                 if line.startswith("!"):
                     if not line.startswith("!!"):
@@ -65,7 +66,7 @@ if __name__ == "__main__":
                             default_param_dictionary[key.lower()] = int(value)
 
         # Read constants and potentially modify them to update default_para_dictionary
-        with open(constants_file) as constants_r:
+        with Path(constants_file).open() as constants_r:
             lines = constants_r.readlines()
 
         default_dict_found = False
@@ -81,5 +82,5 @@ if __name__ == "__main__":
         if not default_dict_found:
             lines += [f"default_param_dictionary = {default_param_dictionary}\n"]
 
-        with open(constants_file, "w") as constants_w:
+        with Path(constants_file).open("w") as constants_w:
             constants_w.writelines(lines)

@@ -7,8 +7,8 @@
 # This notebook sets up a simple approach to doing so for regular grids.
 
 # %%
-import os
 from multiprocessing import Pool
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -41,8 +41,8 @@ if __name__ == "__main__":
         axis=1,
     )
     print(f"{model_table.shape[0]} models to run")
-    if not os.path.exists("../grid_folder"):
-        os.makedirs("../grid_folder")
+    if not Path("../grid_folder").exists():
+        Path("../grid_folder").mkdir(parents=True)
 
     # %% [markdown]
     # ### Set up the model

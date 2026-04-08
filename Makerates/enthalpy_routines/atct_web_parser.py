@@ -66,7 +66,7 @@ class ATCTParser:
             raise FileNotFoundError(msg)
 
         try:
-            with open(html_path, encoding="utf-8") as f:
+            with html_path.open(encoding="utf-8") as f:
                 html_content = f.read()
 
             soup = BeautifulSoup(html_content, "html.parser")

@@ -69,7 +69,7 @@ def get_energy_levels_info(
             msg = f"Coolant file not found: {filepath}"
             raise FileNotFoundError(msg)
 
-        with open(filepath) as f:
+        with filepath.open() as f:
             lines = f.readlines()
 
         # Find NUMBER OF ENERGY LEVELS line (robust search)
@@ -144,7 +144,7 @@ def validate_coolant_frequencies(
         if not filepath.exists():
             continue
 
-        with open(filepath) as f:
+        with filepath.open() as f:
             lines = f.readlines()
 
         # Parse energy levels
@@ -265,7 +265,7 @@ def load_coolant_level_names() -> dict[int, list[str]]:
             raise FileNotFoundError(msg)
 
         level_names[i] = []
-        with open(filepath) as f:
+        with filepath.open() as f:
             lines = f.readlines()
 
         # Find NUMBER OF ENERGY LEVELS line (robust search)

@@ -297,7 +297,7 @@ class MakeratesConfig(BaseModel):
                 raise KeyError(msg)
             # Validate that file is a bare filename (no path)
             file_val = str(item["file"])
-            if _Path(file_val).name != file_val or _Path(file_val).parent != _Path("."):
+            if _Path(file_val).name != file_val or _Path(file_val).parent != _Path():
                 msg = f"coolants[{i}]['file'] must be a bare filename (no directories). Got: {file_val}"
                 raise ValueError(msg)
             entry = {"file": file_val, "name": str(item["name"])}
@@ -454,7 +454,7 @@ class MakeratesConfig(BaseModel):
         logging.info(f"Reading configuration from: {yaml_path}")
         logging.info(f"Configuration directory: {yaml_path.parent}")
 
-        with open(yaml_path) as f:
+        with Path(yaml_path).open() as f:
             data = yaml.safe_load(f)
 
         # Create instance and store config directory for path resolution
@@ -597,7 +597,7 @@ database_reaction_type: "UMIST12"
 # - Then reinstall: pip install .
 """
 
-        with open(output_path, "w") as f:
+        with Path(output_path).open("w") as f:
             f.write(template)
 
         print(f"✓ Template configuration written to: {output_path}")

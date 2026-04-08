@@ -1,5 +1,7 @@
 """Functions to help debugging UCLCHEM."""
 
+from pathlib import Path
+
 from uclchemwrap import uclchemwrap as wrap
 
 
@@ -15,6 +17,6 @@ def get_f2py_signature(write: bool = False) -> str:
     """
     signature = wrap.__doc__
     if write:
-        with open("signature_file.txt", "w") as fh:
+        with Path("signature_file.txt").open("w") as fh:
             fh.write(signature)
     return signature

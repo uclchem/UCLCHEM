@@ -92,7 +92,7 @@ def read_output_file(output_file: str | Path) -> pd.DataFrame:
             physical parameters of the model at every time step.
 
     """
-    with open(output_file) as f:
+    with Path(output_file).open() as f:
         data = read_csv(f)
     data.columns = data.columns.str.strip()
     return data
@@ -110,7 +110,7 @@ def read_rate_file(rate_file: str | Path) -> pd.DataFrame:
             and reaction rates (s-1) at each timestep.
 
     """
-    with open(rate_file) as f:
+    with Path(rate_file).open() as f:
         data = read_csv(f)
     data.columns = data.columns.str.strip()
     return data
@@ -244,7 +244,7 @@ def read_analysis(filepath: str | Path, species: str) -> tuple[pd.DataFrame, lis
     """
     msg = "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
     raise DeprecationWarning(msg)
-    with open(filepath) as file:
+    with Path(filepath).open() as file:
         lines = file.readlines()
     for i, line in enumerate(lines):
         if "All Reactions" in line:
@@ -369,7 +369,7 @@ def analysis(
         ]
         formatted_reacs.extend(surftransfer_reacs)
 
-    with open(analysis_file, "w") as f:
+    with Path(analysis_file).open("w") as f:
         f.write("All Reactions\n************************\n")
         for reaction in formatted_reacs:
             f.write(reaction + "\n")
@@ -1084,25 +1084,46 @@ def compute_heating_per_reaction(
 def get_production_and_destruction(
     species: str, dataframe: pd.DataFrame
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Split the rate constants or rates into production and destruction parts for a given species.
-
-    TODO: Currently does not take into account whether species are produced or destroyed twice by a
-    reaction. For example, H + H -> H2, the destruction rate should be twice as large for H
-    than the rate at which H2 is formed.
+    """Split the reaction rates into production and destruction parts for a given species.
 
     Args:
         species (str): Name of species to split rates for
-        dataframe (pd.DataFrame): DataFrame of rates
+        dataframe (pd.DataFrame): DataFrame of reaction rates
 
     Returns:
         tuple[pd.DataFrame, pd.DataFrame]: production rates, destruction rates
 
+    Raises:
+        RuntimeError: If no production or destruction reactions of ``species`` are found.
+
     """
     reactions = [r.strip() for r in list(dataframe.columns)]
-    reactions = [r.strip() for r in list(dataframe.columns)]
+
     destruction = [r for r in reactions if species in r.split(" -> ")[0].split(" + ")]
     production = [r for r in reactions if species in r.split(" -> ")[-1].split(" + ")]
-    return dataframe.loc[:, production], dataframe.loc[:, destruction]
+
+    if not destruction and not production:
+        msg = f"No production or destruction reactions found for species {species}"
+        raise RuntimeError(msg)
+
+    production_df = dataframe.loc[:, production]
+    destruction_df = dataframe.loc[:, destruction]
+
+    # Take into account that some reactions destroy or form a species twice as fast as
+    # the rate of that reaction itself. For example: H + H -> H2, where H is destroyed
+    # at double the rate. If we do not take this into account, the rates are wrong,
+    # and do not sum to the correct gradient in abundances (dy).
+    destruction_count = [
+        r.split(" -> ")[0].split(" + ").count(species) for r in destruction
+    ]
+    production_count = [
+        r.split(" -> ")[-1].split(" + ").count(species) for r in production
+    ]
+
+    print('len destruction', len(destruction))
+    print('shape destruction_df', destruction_df.shape())
+
+    return production_df.mul(production_count), destruction_df.mul(destruction_count)
 
 
 def derive_phase_from_name(name: str) -> str:

@@ -351,7 +351,7 @@ class SpeciesMatcher:
         print("=" * 60)
 
         # Check if user wants to continue from previous session or start fresh
-        if session_file and Path(session_file).exists():
+        if session_file is not None and Path(session_file).exists():
             while True:
                 try:
                     continue_choice = (
@@ -373,7 +373,7 @@ class SpeciesMatcher:
                     elif continue_choice == "c":
                         # Load previous session
                         try:
-                            with open(session_file) as f:
+                            with Path(session_file).open() as f:
                                 previous_session = yaml.safe_load(f)
                             prev = previous_session.get("completed", {})
                             canonical_matches.update(prev)
@@ -498,7 +498,7 @@ class SpeciesMatcher:
     def _save_session(session_data: dict, session_file: str) -> None:
         """Save current matching session."""
         try:
-            with open(session_file, "w") as f:
+            with Path(session_file).open("w") as f:
                 yaml.dump(session_data, f, indent=2, default_flow_style=False)
 
             completed = len(session_data.get("completed", {}))
@@ -517,7 +517,7 @@ class SpeciesMatcher:
             completed (dict[str, dict[str, Any]]): species mapping dictionary.
 
         """
-        with open(resume_file) as f:
+        with Path(resume_file).open() as f:
             session_data = yaml.safe_load(f)
 
         completed = session_data.get("completed", {})
@@ -541,10 +541,10 @@ class SpeciesMatcher:
             output_path (str | Path): Output YAML file path
 
         """
-        output_file = Path(output_path)
-        output_file.parent.mkdir(parents=True, exist_ok=True)
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_file, "w") as f:
+        with output_path.open("w") as f:
             yaml.dump(mapping, f, indent=2, default_flow_style=False)
 
         print(f"Saved YAML: {len(mapping)} species → {output_path}")
@@ -566,13 +566,13 @@ class SpeciesMatcher:
         """Load species mapping from YAML file.
 
         Args:
-            mapping_path: Path to mapping YAML file
+            mapping_path (str | Path): Path to mapping YAML file
 
         Returns:
             Species mapping dictionary
 
         """
-        with open(mapping_path) as f:
+        with Path(mapping_path).open() as f:
             mapping = yaml.safe_load(f)
 
         print(f"Loaded: {len(mapping)} species from {mapping_path}")

@@ -87,7 +87,7 @@ def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Specie
     species_list = []
     # list to hold user defined bulk species (for adjusting binding energy)
     user_defined_bulk = []
-    with open(file_name) as f:
+    with Path(file_name).open() as f:
         reader = csv.reader(f, delimiter=",", quotechar="|")
         for idx, row in enumerate(reader):
             try:
@@ -132,7 +132,7 @@ def read_reaction_file(
     keep_list.extend(species.get_name() for species in species_list)
 
     if ftype == "UMIST":
-        with open(file_name) as f:
+        with Path(file_name).open() as f:
             reader = csv.reader(f, delimiter=":", quotechar="|")
             for row in reader:
                 if row[0].startswith("#") or row[0].startswith("!"):
@@ -141,7 +141,7 @@ def read_reaction_file(
                 if check_reaction(reaction_row, keep_list):
                     reactions.append(Reaction(reaction_row, reaction_source="UMIST"))
     elif ftype == "UCL":
-        with open(file_name) as f:
+        with Path(file_name).open() as f:
             reader = csv.reader(f, delimiter=",", quotechar="|")
             for row in reader:
                 if (len(row) > 1) and (row[0][0] != "!"):
@@ -235,7 +235,7 @@ def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
         [1, {"skip": 11}],
     ]
     rows = []
-    with open(kida_file) as f:
+    with Path(kida_file).open() as f:
         f.readline()  # throw away header
         for line in f:  # then iterate over file
             if line.startswith("!"):
@@ -287,7 +287,7 @@ def read_grain_assisted_recombination_file(file_name: str | Path) -> dict[str, n
             reactions.
 
     """
-    with open(file_name) as fh:
+    with Path(file_name).open() as fh:
         gar_parameters = yaml.safe_load(fh)
     return gar_parameters
 
@@ -309,7 +309,7 @@ def read_coolants_file(file_name: str | Path) -> list[dict]:
         ValueError: If the "file" entries in coolants_file are not bare filenames.
 
     """
-    with open(file_name) as fh:
+    with Path(file_name).open() as fh:
         data = yaml.safe_load(fh)
 
     if data is None:
@@ -321,7 +321,6 @@ def read_coolants_file(file_name: str | Path) -> list[dict]:
         raise ValueError(msg)
 
     normalized = []
-    from pathlib import Path as _Path
 
     for item in data:
         if not isinstance(item, dict):
@@ -331,7 +330,7 @@ def read_coolants_file(file_name: str | Path) -> list[dict]:
             msg = "Each coolant mapping must contain 'file' and 'name' keys"
             raise ValueError(msg)
         file_val = str(item["file"])
-        if _Path(file_val).name != file_val or _Path(file_val).parent != _Path("."):
+        if Path(file_val).name != file_val or Path(file_val).parent != Path():
             msg = "Coolant 'file' entries in coolants_file must be bare filenames (no directories)"
             raise ValueError(msg)
         entry = {"file": file_val, "name": str(item["name"])}
@@ -360,7 +359,7 @@ def output_drops(
     # Print dropped reactions from grain file or write if many
     if write_files and dropped_reactions:
         logging.info(f"\nReactions dropped from grain file written to {outputFile}\n")
-        with open(outputFile, "w") as f:
+        with Path(outputFile).open("w") as f:
             writer = csv.writer(
                 f,
                 delimiter=",",
@@ -415,14 +414,13 @@ def write_outputs(
         coolants = get_default_coolants()
 
     # Validate that coolant 'file' entries are bare filenames (not paths)
-    from pathlib import Path as _Path
 
     for c in coolants:
         f = c.get("file")
         if f is None:
             msg = "Each coolant dict must contain a 'file' key"
             raise ValueError(msg)
-        if _Path(f).name != f or _Path(f).parent != _Path("."):
+        if Path(f).name != f or Path(f).parent != Path():
             msg = (
                 "Coolant file names must be bare filenames (no directories). "
                 "Set the coolant directory at runtime via coolantDataDir."
@@ -604,7 +602,7 @@ def write_f90_constants(
 
     """
     template_file_path = UCLCHEM_ROOT_DIR / "makerates" / template_file_path
-    with open(template_file_path / "f2py_constants.f90") as fh:
+    with Path(template_file_path / "f2py_constants.f90").open() as fh:
         constants = fh.read()
 
     # Handle string arrays separately for coolants
@@ -674,7 +672,7 @@ def write_f90_constants(
             "END MODULE F2PY_CONSTANTS", extra_lines + "END MODULE F2PY_CONSTANTS"
         )
 
-    with open(output_file_name, "w") as fh:
+    with Path(output_file_name).open("w") as fh:
         fh.writelines(constants)
 
 
@@ -734,7 +732,7 @@ def write_species(file_name: str | Path, species_list: list[Species]) -> None:
         species_list (list[Species]): List of species objects for network
 
     """
-    with open(file_name, "w") as f:
+    with Path(file_name).open("w") as f:
         writer = csv.writer(
             f,
             delimiter=",",
@@ -791,7 +789,7 @@ def write_reactions(file_name: Path, reaction_list: list[Reaction]) -> None:
         "extrapolate",
         "exothermicity",
     ]
-    with open(file_name, "w") as f:
+    with Path(file_name).open("w") as f:
         writer = csv.writer(
             f,
             delimiter=",",
@@ -846,7 +844,7 @@ def write_odes_f90(
         reaction.generate_ode_bit(i, species_names)
 
     # then create ODE code and write to file.
-    with open(file_name, mode="w") as output:
+    with Path(file_name).open(mode="w") as output:
         # go through every species and build two strings,
         # one with eq for all destruction routes and one for all formation
         ydotString = build_ode_string(species_list, reaction_list, enable_rates_storage)
@@ -864,7 +862,7 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
 
     """
     species_names = ""
-    with open(file_name, "w") as output:
+    with Path(file_name).open("w") as output:
         for i, species in enumerate(species_list):
             species_names += species.get_name()
             losses = species.losses.split("+")
@@ -1337,7 +1335,7 @@ def write_network_file(
     species_list = network.get_species_list()
     reaction_list = network.get_reaction_list()
 
-    with open(file_name, "w") as file:
+    with Path(file_name).open("w") as file:
         file.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
 
         # write arrays of all species stuff
