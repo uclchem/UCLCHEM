@@ -66,6 +66,7 @@ except ImportError as E:
         "Failed to import surfacereactions.f90 from uclchemwrap, did the installation with f2py succeed?"
     )
     raise
+import warnings
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -876,7 +877,11 @@ def rate_constants_to_dy_and_rates(
     if network:
         species = network.get_species_list()
         reactions = network.get_reaction_list()
+
     if "Point" in rate_constants.columns:
+        warnings.warn(
+            "Found column `Point` in columns of `rate_constants`. uclchem.analysis.rate_constants_to_dy_and_rates is not designed for multiple points, dropping the column."
+        )
         rate_constants = rate_constants.drop(columns=["Point"])
 
     if "@" not in "".join(spec.get_name() for spec in species):
