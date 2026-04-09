@@ -598,6 +598,7 @@ class AbstractModel(ABC):
         obj._data.__delitem__("attributes_dict")
         obj.debug = debug
         obj._coord_assign()
+        obj.success_flag = SuccessFlag(obj.success_flag)
         return obj
 
     @classmethod

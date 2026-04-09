@@ -354,7 +354,7 @@ CONTAINS
         END IF
         IF (failedIntegrationCounter .gt. maxConsecutiveFailures)&
              &successFlag=INT_TOO_MANY_FAILS_ERROR
-        end if
+        END IF
 
     END SUBROUTINE updateChemistry
 
@@ -494,6 +494,7 @@ CONTAINS
         safeBulk=MAX(1d-30,Y(nBulk))
         bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
         surfaceCoverage=bulkGainFromMantleBuildUp()
+        ratioSurfaceToBulk=MIN(1.0D0, safeMantle/safeBulk)
 
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.

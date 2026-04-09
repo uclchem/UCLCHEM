@@ -285,7 +285,6 @@ CONTAINS
                     rate(LHDEScorrespondingLHreacs(k)) = rate(LHDEScorrespondingLHreacs(k)) - rate(i)
                 END DO
             ELSE
-                rate(idx1:idx2)=0.0
                 rate(lhdesReacs(1):lhdesReacs(2))=0.0
             END IF
         END IF
@@ -317,7 +316,6 @@ CONTAINS
                 rate(ERDEScorrespondingERreacs(k)) = rate(ERDEScorrespondingERreacs(k)) - rate(i)
             END DO
         ELSE
-            rate(idx1:idx2)=0.0
             rate(erdesReacs(1):erdesReacs(2))=0.0
         END IF
     END IF

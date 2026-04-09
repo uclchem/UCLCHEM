@@ -78,6 +78,7 @@ from uclchem.makerates import Reaction
 from uclchem.makerates.network import Network
 from uclchem.makerates.species import Species, element_list
 from uclchem.utils import UCLCHEM_ROOT_DIR
+from uclchem.advanced.advanced_settings import GeneralSettings
 
 
 def read_output_file(output_file: str | Path) -> pd.DataFrame:
@@ -873,28 +874,35 @@ def rate_constants_to_dy_and_rates(
         msg = "Choose between providing a network OR (species AND reactions). A network can be obtained using ``uclchem.makerates.network.Network.from_csv()``"
         raise ValueError(msg)
 
+
     if network:
         species = network.get_species_list()
         reactions = network.get_reaction_list()
     if "Point" in rate_constants.columns:
         rate_constants = rate_constants.drop(columns=["Point"])
 
+    if not "@" in "".join(spec.get_name() for spec in species):
+        msg = "uclchem.analysis.rate_constants_to_dy_and_rates is only implemented for three-phase networks,"
+        msg += " but no bulk species are in the network."
+        raise NotImplementedError(msg)
+
     # Import all of the constants directly from UCLCHEMWRAP to avoid discrepancies
     # ruff: noqa: N806
     GAS_DUST_DENSITY_RATIO = surfacereactions.gas_dust_density_ratio
     NUM_SITES_PER_GRAIN = surfacereactions.num_sites_per_grain
+    NUM_MONOLAYERS_IS_SURFACE = surfacereactions.num_monolayers_is_surface
+
+    # Calculate safe values to avoid division by zero
+    safeBulk = abundances["BULK"].apply(lambda x: max(1.0e-30, x)).copy()
+    safeMantle = abundances["SURFACE"].apply(lambda x: max(1.0e-30, x)).copy()
+    ratioSurfaceToBulk = (safeMantle / safeBulk).apply(lambda x: min(1.0, x)).copy()
 
     # Compute dynamic quantities that can be precomputed
     bulkLayersReciprocal = (
-        NUM_SITES_PER_GRAIN / (GAS_DUST_DENSITY_RATIO * abundances["BULK"])
+        NUM_SITES_PER_GRAIN / (GAS_DUST_DENSITY_RATIO * safeBulk)
     ).apply(lambda x: min(1.0, x))
-    totalSwap = bulkLayersReciprocal * get_total_swap(
-        rate_constants, abundances, reactions
-    )
-    # Calculate safe values to avoid division by zero
-    safeBulk = abundances["BULK"].apply(lambda x: max(1.0e-30, x))
-    safeMantle = abundances["SURFACE"].apply(lambda x: max(1.0e-30, x))
-    ratioSurfaceToBulk = (safeMantle / safeBulk).apply(lambda x: min(1.0, x))
+
+    totalSwap = ratioSurfaceToBulk * get_total_swap(rate_constants, abundances, reactions)
     # ruff: noqa: N806
 
     # Create the incidence matrix, we use this to evaluate the rates and
@@ -907,9 +915,9 @@ def rate_constants_to_dy_and_rates(
     missing_reactions = set()
 
     # Iterate over each of the rates and compute the contribution to dy for that reaction.
-    for idx, reaction in enumerate(network.get_reaction_list()):
+    for reaction_idx, reaction in enumerate(network.get_reaction_list()):
         density_multiplier_factor = reaction.body_count
-        rate = rate_by_reaction.iloc[:, idx]
+        rate = rate_by_reaction.iloc[:, reaction_idx]
         # Multiply by density the right number of times:
         for iiii in range(int(density_multiplier_factor)):
             rate *= physics["Density"]
@@ -922,16 +930,15 @@ def rate_constants_to_dy_and_rates(
         reactants = reaction.get_sorted_reactants()
 
         # GAR needs an additional factor of density
-        if reaction_type == "GAR":
+        if reaction_type in ["GAR"]:
             rate *= physics["Density"]
         # BULKSWAP reactions use ratioSurfaceToBulk
         elif reaction_type == "BULKSWAP":
             rate *= ratioSurfaceToBulk
         # LH/LHDES bulk reactions
         elif reaction_type in ["LH", "LHDES"]:
-            if len(reactants) >= 3 and reactants[2] in ["LH", "LHDES"]:
-                if "@" in reactants[0]:
-                    rate *= bulkLayersReciprocal
+            if "@" in reactants[0]:
+                rate *= bulkLayersReciprocal
         # ED reactions multiply by #H2 abundance
         elif reaction_type == "ED":
             rate *= abundances["#H2"]
@@ -944,12 +951,12 @@ def rate_constants_to_dy_and_rates(
         elif reaction_type == "H2FORM":
             # H2FORM only uses 1 factor of H abundance (Cazaux & Tielens 2004)
             rate /= abundances["H"]
-        elif reaction_type in [
+        elif reaction_type not in [
+            # Standard reactions that require no additional prefactors
             "PHOTON",
             "CRP",
             "CRPHOT",
             "FREEZE",
-            "DESORB",
             "THERM",
             "TWOBODY",
             "IONOPOL1",
@@ -958,11 +965,9 @@ def rate_constants_to_dy_and_rates(
             "EXSOLID",
             "EXRELAX",
         ]:
-            # Standard reactions that require no additional prefactors
-            pass
-        else:
             missing_reactions.add(reaction_type)
-        rate_by_reaction.iloc[:, idx] = rate
+
+        rate_by_reaction.iloc[:, reaction_idx] = rate
 
     if missing_reactions:
         msg = f"Missing reaction types in rate processing: {missing_reactions}"
@@ -970,7 +975,7 @@ def rate_constants_to_dy_and_rates(
 
     # Compute the rate at each timestep, adding the appropriate header
     dy = rate_by_reaction @ incidence
-    dy.columns = [str(s) for s in species]
+    dy.columns = [s.get_name() for s in species]
     # Compute the SURFACE and BULK:
     dy.loc[:, "SURFACE"] = dy.loc[:, dy.columns.str.startswith("#")].sum(axis=1)
     dy.loc[:, "BULK"] = dy.loc[:, dy.columns.str.startswith("@")].sum(axis=1)
@@ -985,48 +990,77 @@ def rate_constants_to_dy_and_rates(
         surfswap_reactions,
         key=lambda x: species.index(x.get_reactants()[0]),
     )
+
     bulkswap_reactions = sorted(
         bulkswap_reactions,
         key=lambda x: species.index(x.get_reactants()[0]),
     )
-    for (idx_j, rate_row), (idx_i, abunds_row) in zip(
-        rate_constants.iterrows(), abundances.iterrows()
-    ):
-        # Walk through the bulkswap and reactionswap pathways:
+
+    H2_bulkswap_index = None
+    for i,reaction in enumerate(bulkswap_reactions):
+        if reaction.get_reactants()[0] == "@H2":
+            H2_bulkswap_index = i
+            break
+    if H2_bulkswap_index is None:
+        raise RuntimeError
+    surfswap_reactions.insert(H2_bulkswap_index, Reaction(["#H2", "SURFSWAP", "NAN", "@H2", "NAN", "NAN", "NAN"] + [0] * 5))
+
+    for surfswap_reaction, bulkswap_reaction in zip(surfswap_reactions, bulkswap_reactions):
+        if surfswap_reaction.get_reactants()[0] != bulkswap_reaction.get_products()[0]:
+            print("MISMATCH FOR SURFSWAP AND BULKSWAP REACTIONS")
+            print("\tSurfswap:", surfswap_reaction)
+            print("\tBulkswap:", bulkswap_reaction)
+            raise ValueError
+
+    if not surfacereactions.usegarrod2011transfer:
+        msg = f"Can only calculate transfer reactions for Garrod 2011 transfer."
+        msg += " HH transfer is not implemented yet in uclchem.analysis.rate_constants_to_dy_and_rates"
+        raise NotImplementedError(msg)
+
+    surfGrowthUncorrected = dy["SURFACE"].copy()
+    for time_idx, abunds_row in abundances.iterrows():
+        if surfGrowthUncorrected[time_idx] < 0.0:
+            surface_coverage = (
+                min(1.0, safeBulk[time_idx] / safeMantle[time_idx])
+            ) / safeBulk[time_idx]
+        else:
+            surface_coverage = GAS_DUST_DENSITY_RATIO / (NUM_SITES_PER_GRAIN * NUM_MONOLAYERS_IS_SURFACE)
+            surface_coverage = min(1.0, 4 * surface_coverage * safeMantle[time_idx]) / safeMantle[time_idx]
+
+        # Walk through the bulkswap and reactionswap pathways
         _sswap_rates = {}
         _bswap_rates = {}
         # TODO: vectorize this, because this is slower than it has to be.
-        for r_bswap, r_sswap in zip(bulkswap_reactions, surfswap_reactions):
-            surface_coverage = min(1.0, abunds_row["BULK"] / abunds_row["SURFACE"])
-            if dy.iloc[idx_j]["SURFACE"] < 0.0:
-                surface_coverage = min(1.0, abunds_row["BULK"] / abunds_row["SURFACE"])
-                # SURFACE is shrinking, so bulk must be growing
+        for r_bswap, r_sswap in zip(bulkswap_reactions, surfswap_reactions, strict=True):
+            surface_species = r_sswap.get_reactants()[0]
+            bulk_species = r_bswap.get_reactants()[0]
+            if surfGrowthUncorrected[time_idx] < 0.0:
+                # SURFACE is shrinking, so bulk must be shrinking too
                 bswap = (
-                    dy.iloc[idx_j]["SURFACE"]
+                    -surfGrowthUncorrected[time_idx]
                     * surface_coverage
-                    * abunds_row[r_bswap.get_reactants()[0]]
-                    / abunds_row["BULK"]
+                    * abunds_row[bulk_species]
                 )
-                # Call it SWAP_GEOMETRIC since it is due to the swap induced by the effect
-                # of the surface layers growing, this is a geometric bookkeeping thing,
-                # So the name geometric makes the most sense.
-                _bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = bswap
-                _sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
-                # Immedidiately correct dy:
-                dy.loc[idx_j, r_bswap.get_reactants()[0]] -= bswap
-                dy.loc[idx_j, r_bswap.get_products()[0]] += bswap
+                sswap = 0.0
             else:
-                surface_coverage = 0.5 * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN
+                # SURFACE is growing, so bulk must grow as well
                 sswap = (
-                    dy.iloc[idx_j]["SURFACE"]
+                    surfGrowthUncorrected[time_idx]
                     * surface_coverage
-                    * abunds_row[r_sswap.get_reactants()[0]]
+                    * abunds_row[surface_species]
                 )
-                _bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
-                _sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = sswap
-                # Immedidiately correct dy:
-                dy.loc[idx_j, r_sswap.get_products()[0]] -= sswap
-                dy.loc[idx_j, r_sswap.get_reactants()[0]] += sswap
+                bswap = 0.0
+
+            # Call it SWAP_GEOMETRIC since it is due to the swap induced by the effect
+            # of the surface layers growing, this is a geometric bookkeeping thing,
+            # So the name geometric makes the most sense.
+            _bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = bswap
+            _sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = sswap
+
+            # Immediately correct dy
+            dy.loc[time_idx, bulk_species] += sswap - bswap
+            dy.loc[time_idx, surface_species] += bswap - sswap
+
         swap_rate_correction = pd.concat(
             (
                 swap_rate_correction,
@@ -1040,10 +1074,11 @@ def rate_constants_to_dy_and_rates(
         )
     swap_rate_correction = swap_rate_correction.reset_index(drop=True)
     rate_by_reaction = pd.concat((rate_by_reaction, swap_rate_correction), axis=1)
+
     # Correct the change in surface and bulk by summing the constituents:
     dy.loc[:, "SURFACE"] = dy.loc[:, dy.columns.str.startswith("#")].sum(axis=1)
     dy.loc[:, "BULK"] = dy.loc[:, dy.columns.str.startswith("@")].sum(axis=1)
-    # Apply the new ratees to the ydots and compute a new ydot for surface and bulk:
+
     return (
         dy,
         rate_by_reaction,
@@ -1097,6 +1132,12 @@ def get_production_and_destruction(
         RuntimeError: If no production or destruction reactions of ``species`` are found.
 
     """
+
+    if not dataframe.columns.is_unique:
+        # Duplicate column names, can happen with for example UMIST
+        # reactions with two temperature ranges.
+        dataframe = dataframe.T.groupby(by=dataframe.columns).sum().T
+
     reactions = [r.strip() for r in list(dataframe.columns)]
 
     destruction = [r for r in reactions if species in r.split(" -> ")[0].split(" + ")]
@@ -1119,9 +1160,6 @@ def get_production_and_destruction(
     production_count = [
         r.split(" -> ")[-1].split(" + ").count(species) for r in production
     ]
-
-    print('len destruction', len(destruction))
-    print('shape destruction_df', destruction_df.shape())
 
     return production_df.mul(production_count), destruction_df.mul(destruction_count)
 
