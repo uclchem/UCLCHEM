@@ -1,5 +1,5 @@
 [build-system]
-requires = ["numpy", "wheel", "meson-python", "charset_normalizer", "meson>=1.7.0"]
+requires = ["numpy", "wheel", "meson-python", "meson>=1.7.0"]
 build-backend = "mesonpy"
 
 [project]
@@ -55,6 +55,7 @@ preview = true
 "*/__init__.py" = ["F401"]
 "tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002", "DOC", "S101"]
 
+
 [tool.typos.files]
 extend-exclude = [
     # Do not bother checking DVODE
@@ -98,4 +99,8 @@ extend-ignore-identifiers-re = [
     "n{1,2}",
 ]
 
+
+[[tool.mypy.overrides]]
+module = ["yaml", "uclchemwrap", "h5py"]
+ignore_missing_imports = true
 
