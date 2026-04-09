@@ -35,14 +35,14 @@ repos:
         args: [--config=pyproject.toml]
         pass_filenames: false
 
-  # Ruff: Undefined names and syntax errors (F, E999)
+  # Ruff: Code style, docstrings, etc
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.9
     hooks:
       - id: ruff
         name: "[correctness] Ruff linter"
-        description: "Check for undefined names (F821) and syntax errors (E999)"
-        args: [--fix, --select=F821,E999]
+        description: "Check for linting errors"
+        args: [--fix]
 
   # ============================================================================
   # TIER 2: STYLE (Auto-fixable formatting and imports)

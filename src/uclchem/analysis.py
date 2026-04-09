@@ -864,6 +864,13 @@ def rate_constants_to_dy_and_rates(
         ValueError: If ``species``, ``reactions`` and ``network`` are all specified,
             or all not specified.
         ValueError: If there are any reaction types not processed.
+        ValueError: If there is a mismatch between ``SURFSWAP`` and ``BULKSWAP`` reactions, i.e.
+            the reactions with the same indices do not have their products as the others reactants.
+        NotImplementedError: If no bulk species are detected in the network.
+        NotImplementedError: If UCLCHEM was compiled with
+            ``surfacereactions.usegarrod2011transfer = .FALSE.``. Only Garrod 2011 geometric transfer
+            is currently implemented in this function.
+        RuntimeError: If there is no reaction ``@H2 + BULKSWAP -> #H2`` in the network.
 
     """
     if bool(species) != bool(reactions):
@@ -1002,7 +1009,9 @@ def rate_constants_to_dy_and_rates(
             H2_bulkswap_index = i
             break
     if H2_bulkswap_index is None:
-        raise RuntimeError
+        msg = "Did not find a BULKSWAP reaction of @H2 + BULKSWAP -> #H2"
+        raise RuntimeError(msg)
+
     surfswap_reactions.insert(
         H2_bulkswap_index,
         Reaction(["#H2", "SURFSWAP", "NAN", "@H2", "NAN", "NAN", "NAN"] + [0] * 5),
@@ -1012,10 +1021,10 @@ def rate_constants_to_dy_and_rates(
         surfswap_reactions, bulkswap_reactions
     ):
         if surfswap_reaction.get_reactants()[0] != bulkswap_reaction.get_products()[0]:
-            print("MISMATCH FOR SURFSWAP AND BULKSWAP REACTIONS")
-            print("\tSurfswap:", surfswap_reaction)
-            print("\tBulkswap:", bulkswap_reaction)
-            raise ValueError
+            msg = "Mismatch for bulkswap and surfswap reactions.\n"
+            msg += "\tSurfswap: {surfswap_reaction}\n"
+            msg += "\tBulkswap: {bulkswap_reaction}"
+            raise ValueError(msg)
 
     if not surfacereactions.usegarrod2011transfer:
         msg = "Can only calculate transfer reactions for Garrod 2011 transfer."

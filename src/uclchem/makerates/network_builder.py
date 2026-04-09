@@ -1000,7 +1000,7 @@ class NetworkBuilder:
                 if all(
                     (reaction.get_templow() == v.get_templow())
                     and (reaction.get_temphigh() == v.get_temphigh())
-                    for k, v in similar_reactions.items()
+                    for v in similar_reactions.values()
                 ):
                     reaction.set_extrapolation(True)
 
