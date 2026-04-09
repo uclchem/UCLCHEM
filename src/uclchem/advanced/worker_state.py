@@ -178,7 +178,7 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
         mod = getattr(uclchemwrap, mod_name)
         for attr, value in settings_dict.items():
             # Uncomment next line to debug hangs (last printed line is the blocker):
-            # print(f"[DEBUG] setattr({mod_name}, {attr}, {value!r})", flush=True, file=sys.stderr) # noqa: ERA001, W505
+            # print(f"[DEBUG] setattr({mod_name}, {attr}, {value!r})", flush=True, file=sys.stderr) # noqa: ERA001
             with contextlib.suppress(AttributeError, TypeError):
                 # read-only or incompatible – skip silently
                 setattr(mod, attr, value)

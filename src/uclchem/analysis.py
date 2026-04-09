@@ -78,7 +78,6 @@ from uclchem.makerates import Reaction
 from uclchem.makerates.network import Network
 from uclchem.makerates.species import Species, element_list
 from uclchem.utils import UCLCHEM_ROOT_DIR
-from uclchem.advanced.advanced_settings import GeneralSettings
 
 
 def read_output_file(output_file: str | Path) -> pd.DataFrame:
@@ -822,13 +821,13 @@ def construct_incidence(species: list[Species], reactions: list[Reaction]) -> np
         dtype=np.int8,
         shape=(len(reactions), len(species)),
     )
-    for idx, reaction in enumerate(reactions):
+    for reaction_idx, reaction in enumerate(reactions):
         products = reaction.get_pure_products()
         for prod in products:
-            incidence[idx, species.index(prod)] += 1
+            incidence[reaction_idx, species.index(prod)] += 1
         reactants = reaction.get_pure_reactants()
         for reac in reactants:
-            incidence[idx, species.index(reac)] -= 1
+            incidence[reaction_idx, species.index(reac)] -= 1
     return incidence
 
 
@@ -874,16 +873,15 @@ def rate_constants_to_dy_and_rates(
         msg = "Choose between providing a network OR (species AND reactions). A network can be obtained using ``uclchem.makerates.network.Network.from_csv()``"
         raise ValueError(msg)
 
-
     if network:
         species = network.get_species_list()
         reactions = network.get_reaction_list()
     if "Point" in rate_constants.columns:
         rate_constants = rate_constants.drop(columns=["Point"])
 
-    if not "@" in "".join(spec.get_name() for spec in species):
+    if "@" not in "".join(spec.get_name() for spec in species):
         msg = "uclchem.analysis.rate_constants_to_dy_and_rates is only implemented for three-phase networks,"
-        msg += " but no bulk species are in the network."
+        msg += " but no bulk species were found in the network."
         raise NotImplementedError(msg)
 
     # Import all of the constants directly from UCLCHEMWRAP to avoid discrepancies
@@ -916,18 +914,15 @@ def rate_constants_to_dy_and_rates(
 
     # Iterate over each of the rates and compute the contribution to dy for that reaction.
     for reaction_idx, reaction in enumerate(network.get_reaction_list()):
-        density_multiplier_factor = reaction.body_count
         rate = rate_by_reaction.iloc[:, reaction_idx]
         # Multiply by density the right number of times:
-        for iiii in range(int(density_multiplier_factor)):
-            rate *= physics["Density"]
+        rate *= physics["Density"] ** reaction.body_count
         # Multiply by the abundances:
         for reactant in reaction.get_sorted_reactants():
             if reactant in list(abundances.columns):
                 rate *= abundances[reactant]
 
         reaction_type = reaction.get_reaction_type()
-        reactants = reaction.get_sorted_reactants()
 
         # GAR needs an additional factor of density
         if reaction_type in ["GAR"]:
@@ -937,7 +932,7 @@ def rate_constants_to_dy_and_rates(
             rate *= ratioSurfaceToBulk
         # LH/LHDES bulk reactions
         elif reaction_type in ["LH", "LHDES"]:
-            if "@" in reactants[0]:
+            if "@" in reaction.get_sorted_reactants()[0]:
                 rate *= bulkLayersReciprocal
         # ED reactions multiply by #H2 abundance
         elif reaction_type == "ED":
@@ -997,15 +992,20 @@ def rate_constants_to_dy_and_rates(
     )
 
     H2_bulkswap_index = None
-    for i,reaction in enumerate(bulkswap_reactions):
+    for i, reaction in enumerate(bulkswap_reactions):
         if reaction.get_reactants()[0] == "@H2":
             H2_bulkswap_index = i
             break
     if H2_bulkswap_index is None:
         raise RuntimeError
-    surfswap_reactions.insert(H2_bulkswap_index, Reaction(["#H2", "SURFSWAP", "NAN", "@H2", "NAN", "NAN", "NAN"] + [0] * 5))
+    surfswap_reactions.insert(
+        H2_bulkswap_index,
+        Reaction(["#H2", "SURFSWAP", "NAN", "@H2", "NAN", "NAN", "NAN"] + [0] * 5),
+    )
 
-    for surfswap_reaction, bulkswap_reaction in zip(surfswap_reactions, bulkswap_reactions):
+    for surfswap_reaction, bulkswap_reaction in zip(
+        surfswap_reactions, bulkswap_reactions
+    ):
         if surfswap_reaction.get_reactants()[0] != bulkswap_reaction.get_products()[0]:
             print("MISMATCH FOR SURFSWAP AND BULKSWAP REACTIONS")
             print("\tSurfswap:", surfswap_reaction)
@@ -1013,7 +1013,7 @@ def rate_constants_to_dy_and_rates(
             raise ValueError
 
     if not surfacereactions.usegarrod2011transfer:
-        msg = f"Can only calculate transfer reactions for Garrod 2011 transfer."
+        msg = "Can only calculate transfer reactions for Garrod 2011 transfer."
         msg += " HH transfer is not implemented yet in uclchem.analysis.rate_constants_to_dy_and_rates"
         raise NotImplementedError(msg)
 
@@ -1024,8 +1024,12 @@ def rate_constants_to_dy_and_rates(
                 min(1.0, safeBulk[time_idx] / safeMantle[time_idx])
             ) / safeBulk[time_idx]
         else:
-            surface_coverage = GAS_DUST_DENSITY_RATIO / (NUM_SITES_PER_GRAIN * NUM_MONOLAYERS_IS_SURFACE)
-            surface_coverage = min(1.0, 4 * surface_coverage * safeMantle[time_idx]) / safeMantle[time_idx]
+            surface_coverage = GAS_DUST_DENSITY_RATIO / (
+                NUM_SITES_PER_GRAIN * NUM_MONOLAYERS_IS_SURFACE
+            )
+            surface_coverage = (
+                min(1.0, surface_coverage * safeMantle[time_idx]) / safeMantle[time_idx]
+            )
 
         # Walk through the bulkswap and reactionswap pathways
         _sswap_rates = {}
@@ -1132,7 +1136,6 @@ def get_production_and_destruction(
         RuntimeError: If no production or destruction reactions of ``species`` are found.
 
     """
-
     if not dataframe.columns.is_unique:
         # Duplicate column names, can happen with for example UMIST
         # reactions with two temperature ranges.

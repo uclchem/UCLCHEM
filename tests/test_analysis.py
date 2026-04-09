@@ -56,7 +56,10 @@ def test_analysis_matches(temp_output_dir):
     )
     network = uclchem.makerates.network.Network.from_csv()
     dy, reaction_rates_df = uclchem.analysis.rate_constants_to_dy_and_rates(
-        abundances=abundances_df, rate_constants=rate_constants_df, physics=physics_df, network=network
+        abundances=abundances_df,
+        rate_constants=rate_constants_df,
+        physics=physics_df,
+        network=network,
     )
     print(dy)
 
