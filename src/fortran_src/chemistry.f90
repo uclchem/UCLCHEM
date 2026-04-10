@@ -365,6 +365,7 @@ CONTAINS
         INTEGER, INTENT(IN), OPTIONAL :: dtime
         TYPE(VODE_OPTS) :: OPTIONS
         INTEGER :: ii
+        LOGICAL :: species_check_mask(nspec)
         successFlag=0
         f_callback_error=0
 
@@ -426,11 +427,20 @@ CONTAINS
         ! species has a genuinely diverging negative abundance. Tiny negatives from
         ! solver numerics are expected and will be clamped by the WHERE below; we
         ! only abort if a species is significantly negative (beyond negative_abundance_tol).
+        ! nBulk and nSurface are pseudo-species (aggregates of @xxx and #xxx) whose DVODE
+        ! derivative is set to the sum of component derivatives BEFORE the mantle-retreat
+        ! block updates those components. Their values therefore drift from the true component
+        ! sum and can go slightly negative. Exclude them from the divergence check and
+        ! recompute them from their components after clamping the real species.
         IF (ISTATE .ge. 2) THEN
-            IF (ANY(abund(1:nspec,dstep) < -negative_abundance_tol)) THEN
+            species_check_mask = .TRUE.
+            species_check_mask(nBulk) = .FALSE.
+            species_check_mask(nSurface) = .FALSE.
+            IF (ANY(abund(1:nspec,dstep) < -negative_abundance_tol .AND. species_check_mask)) THEN
                 WRITE(*,'(A,ES12.4,A,I4)') "ERROR: negative abundance(s) after integration at t=", &
                     timeInYears, " yr, dstep=", dstep
                 DO ii = 1, nspec
+                    IF (ii == nBulk .OR. ii == nSurface) CYCLE
                     IF (abund(ii,dstep) < -negative_abundance_tol) WRITE(*,'(4X,A,A,ES12.4)') &
                         TRIM(specname(ii)), ": ", abund(ii,dstep)
                 END DO
@@ -438,6 +448,9 @@ CONTAINS
                 RETURN
             END IF
             WHERE(abund(1:nspec,dstep) < MIN_ABUND) abund(1:nspec,dstep) = MIN_ABUND
+            ! Recompute aggregates from their now-clamped components
+            abund(nBulk,dstep) = SUM(abund(bulkList,dstep))
+            abund(nSurface,dstep) = SUM(abund(surfaceList,dstep))
         END IF
 
         SELECT CASE(ISTATE)
@@ -493,30 +506,38 @@ CONTAINS
         REAL(dp) :: phi,cgr(6),grec,denom
         REAL(dp) :: h2heatfac, h2_denom  ! H&M79 eq. 6.45 thermalization efficiency factor
         INTEGER :: ii
+        ! Y_safe clamps species abundances to MIN_ABUND during ODE evaluation.
+        ! DVODE predictor steps can drive species to small negatives; feeding those
+        ! negative values back into destruction terms compounds the overshoot.
+        ! Clamping here keeps the RHS physical without altering the accepted step.
+        REAL(WP), DIMENSION(NEQUATIONS) :: Y_safe
         !Set D to the gas density for use in the ODEs
         D=y(nspec+2)     !Gas density
         ydot=0.0
+
+        Y_safe = Y
+        WHERE(Y_safe(1:nspec) < MIN_ABUND) Y_safe(1:nspec) = MIN_ABUND
 
         ! Column densities are fixed for postprocessing data, so don't do this bit
         if (.not. lusecoldens) then
         !changing abundances of H2 and CO can causes oscillation since their rates depend on their abundances
         !recalculating rates as abundances are updated prevents that.
         !thus these are the only rates calculated each time the ODE system is called.
-        cocol=coColToCell+0.5*Y(nco)*D*(cloudSize/real(points))
-        h2col=h2ColToCell+0.5*Y(nh2)*D*(cloudSize/real(points))
+        cocol=coColToCell+0.5*Y_safe(nco)*D*(cloudSize/real(points))
+        h2col=h2ColToCell+0.5*Y_safe(nh2)*D*(cloudSize/real(points))
         rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel) !H2 photodissociation
         rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
         end if
 
         !recalculate coefficients for ice processes
-        safeMantle=MAX(1d-30,Y(nSurface))
-        safeBulk=MAX(1d-30,Y(nBulk))
+        safeMantle=MAX(1d-30,Y_safe(nSurface))
+        safeBulk=MAX(1d-30,Y_safe(nBulk))
         bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
         surfaceCoverage=bulkGainFromMantleBuildUp()
 
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
-        CALL GETYDOT(RATE, Y, bulkLayersReciprocal, ratioSurfaceToBulk, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
+        CALL GETYDOT(RATE, Y_safe, bulkLayersReciprocal, ratioSurfaceToBulk, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
         ! get density change from physics module to send to DLSODE
         if (enforceChargeConservation) then 
             ydot(nelec) = sum(ydot(ionlist(1:nion)))
@@ -525,10 +546,8 @@ CONTAINS
         ydot(nspec+2) = densdot(Y(nspec+2))     !Gas density ODE
 
         IF (heatingFlag) THEN
-            ! Note: negative abundances during solver steps are tolerated here.
-            ! DVODE predictor/Jacobian evaluations can produce small negatives for
-            ! surface species (which start at MIN_ABUND=1e-30). Physical divergence
-            ! is caught between solver steps in integrateODESystem.
+            ! Species abundances in Y_safe are already clamped; Y used below only
+            ! for temperature (nspec+1) and density (nspec+2), which are never negative.
             ! Write(*,*) "Updating heating and cooling rates"
             IF (ABS(y(nspec+1)-oldTemp).gt.MIN(heating_temp_abstol, heating_temp_reltol*oldTemp)) THEN
                 gasTemp(dstep)=y(nspec+1)
