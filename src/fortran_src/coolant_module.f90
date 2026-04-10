@@ -425,10 +425,10 @@ CONTAINS
          ! Clamp tiny negative densities (solver noise) to 1e-30 floor
          IF (coolants(N)%density .lt. 1.0D-30) coolants(N)%density = 1.0D-30
 
-         ! Sanity check: Validate abundance is physically reasonable
-         ! Tolerates tiny negative values (solver noise within negative_abundance_tol).
-         ! Errors on genuinely negative, > 1e10 (memory corruption), etc.
-         IF (abundances(coolantIndices(N)) .lt. -negative_abundance_tol .OR. abundances(coolantIndices(N)) .gt. 1.0D+10) THEN
+         ! Sanity check: only error on clearly unphysical values (memory corruption, etc.).
+         ! Negative abundances during solver steps are normal solver noise; physical
+         ! divergence is caught between solver steps in integrateODESystem.
+         IF (abundances(coolantIndices(N)) .gt. 1.0D+10) THEN
             WRITE(*,'(A,I3,A,A,A,A,A,1PE12.4)') &
                "ERROR: Coolant #", N, " ('", TRIM(coolantNames(N)), &
                "') has unphysical abundance for parent species '", TRIM(coolantParentNames(N)), &

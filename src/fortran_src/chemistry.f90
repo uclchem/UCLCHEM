@@ -364,11 +364,7 @@ CONTAINS
         INTEGER, INTENT(IN), OPTIONAL :: statsarray_size
         INTEGER, INTENT(IN), OPTIONAL :: dtime
         TYPE(VODE_OPTS) :: OPTIONS
-        ! Non-negativity constraints for all chemical species: DVODE predictor/Jacobian
-        ! steps can push species (especially surface ones starting at 1e-30) to small
-        ! negative values at high densities, causing /safeMantle explosions in F.
-        INTEGER :: species_indices(nspec)
-        REAL(dp) :: species_clower(nspec), species_cupper(nspec)
+        INTEGER :: ii
         successFlag=0
         f_callback_error=0
 
@@ -391,12 +387,8 @@ CONTAINS
         reltol_vec(nspec+1) = reltol_phys
         reltol_vec(nspec+2) = reltol_phys
         !Call the integrator with ITOL=4 (vector reltol + vector abstol).
-        species_indices = [(i, i=1, nspec)]
-        species_clower  = 0.0_dp
-        species_cupper  = HUGE(1.0_dp)
         OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR_VECTOR=reltol_vec, &
-                           USER_SUPPLIED_JACOBIAN=.False., MXSTEP=MXSTEP, &
-                           CONSTRAINED=species_indices, CLOWER=species_clower, CUPPER=species_cupper)
+                           USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
         CALL CPU_TIME(dvode_cpu_start)
         CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
         CALL CPU_TIME(dvode_cpu_end)
@@ -428,6 +420,24 @@ CONTAINS
         IF (f_callback_error .lt. 0) THEN
             successFlag = f_callback_error
             RETURN
+        END IF
+
+        ! Between-step physical sanity check: after DVODE returns, verify that no
+        ! species has a genuinely diverging negative abundance. Tiny negatives from
+        ! solver numerics are expected and will be clamped by the WHERE below; we
+        ! only abort if a species is significantly negative (beyond negative_abundance_tol).
+        IF (ISTATE .ge. 2) THEN
+            IF (ANY(abund(1:nspec,dstep) < -negative_abundance_tol)) THEN
+                WRITE(*,'(A,ES12.4,A,I4)') "ERROR: negative abundance(s) after integration at t=", &
+                    timeInYears, " yr, dstep=", dstep
+                DO ii = 1, nspec
+                    IF (abund(ii,dstep) < -negative_abundance_tol) WRITE(*,'(4X,A,A,ES12.4)') &
+                        TRIM(specname(ii)), ": ", abund(ii,dstep)
+                END DO
+                successFlag = NEGATIVE_ABUNDANCE_ERROR
+                RETURN
+            END IF
+            WHERE(abund(1:nspec,dstep) < MIN_ABUND) abund(1:nspec,dstep) = MIN_ABUND
         END IF
 
         SELECT CASE(ISTATE)
@@ -515,18 +525,10 @@ CONTAINS
         ydot(nspec+2) = densdot(Y(nspec+2))     !Gas density ODE
 
         IF (heatingFlag) THEN
-            ! Check for diverging negative abundances (beyond tolerance).
-            ! Values in (-negative_abundance_tol, 0) are solver noise and handled downstream.
-            IF (ANY(Y(1:nspec) < -negative_abundance_tol)) THEN
-                WRITE(*,'(A,ES12.4,A,I4)') "ERROR: negative abundance(s) entering heating at t=", &
-                    timeInYears, " yr, dstep=", dstep
-                DO ii = 1, nspec
-                    IF (Y(ii) < -negative_abundance_tol) WRITE(*,'(4X,A,A,ES12.4)') &
-                        TRIM(specname(ii)), ": ", Y(ii)
-                END DO
-                f_callback_error = NEGATIVE_ABUNDANCE_ERROR
-                RETURN
-            END IF
+            ! Note: negative abundances during solver steps are tolerated here.
+            ! DVODE predictor/Jacobian evaluations can produce small negatives for
+            ! surface species (which start at MIN_ABUND=1e-30). Physical divergence
+            ! is caught between solver steps in integrateODESystem.
             ! Write(*,*) "Updating heating and cooling rates"
             IF (ABS(y(nspec+1)-oldTemp).gt.MIN(heating_temp_abstol, heating_temp_reltol*oldTemp)) THEN
                 gasTemp(dstep)=y(nspec+1)

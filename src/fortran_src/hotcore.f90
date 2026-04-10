@@ -91,9 +91,10 @@ contains
         IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
             targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
         ELSE  IF (timeInYears .gt. 1.0d5) THEN
-            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
+            ! Refined due to conservation at higher densities.
+            targetTime=(timeInYears+5.0d3)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 1.0d4) THEN
-            targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
+            targetTime=(timeInYears+500.0)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 1000) THEN
             targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 100) THEN
