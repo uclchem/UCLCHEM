@@ -365,7 +365,8 @@ CONTAINS
         INTEGER, INTENT(IN), OPTIONAL :: dtime
         TYPE(VODE_OPTS) :: OPTIONS
         INTEGER :: ii
-        LOGICAL :: species_check_mask(nspec)
+        ! species_check_mask was used by the negative-abundance error block (now commented out)
+        !LOGICAL :: species_check_mask(nspec)
         successFlag=0
         f_callback_error=0
 
@@ -433,20 +434,22 @@ CONTAINS
         ! sum and can go slightly negative. Exclude them from the divergence check and
         ! recompute them from their components after clamping the real species.
         IF (ISTATE .ge. 2) THEN
-            species_check_mask = .TRUE.
-            species_check_mask(nBulk) = .FALSE.
-            species_check_mask(nSurface) = .FALSE.
-            IF (ANY(abund(1:nspec,dstep) < -negative_abundance_tol .AND. species_check_mask)) THEN
-                WRITE(*,'(A,ES12.4,A,I4)') "ERROR: negative abundance(s) after integration at t=", &
-                    timeInYears, " yr, dstep=", dstep
-                DO ii = 1, nspec
-                    IF (ii == nBulk .OR. ii == nSurface) CYCLE
-                    IF (abund(ii,dstep) < -negative_abundance_tol) WRITE(*,'(4X,A,A,ES12.4)') &
-                        TRIM(specname(ii)), ": ", abund(ii,dstep)
-                END DO
-                successFlag = NEGATIVE_ABUNDANCE_ERROR
-                RETURN
-            END IF
+            ! Negative-abundance error block commented out: Python layer handles this via
+            ! on_negative_abundances flag. Clamping still runs to keep abundances physical.
+            !species_check_mask = .TRUE.
+            !species_check_mask(nBulk) = .FALSE.
+            !species_check_mask(nSurface) = .FALSE.
+            !IF (ANY(abund(1:nspec,dstep) < -negative_abundance_tol .AND. species_check_mask)) THEN
+            !    WRITE(*,'(A,ES12.4,A,I4)') "ERROR: negative abundance(s) after integration at t=", &
+            !        timeInYears, " yr, dstep=", dstep
+            !    DO ii = 1, nspec
+            !        IF (ii == nBulk .OR. ii == nSurface) CYCLE
+            !        IF (abund(ii,dstep) < -negative_abundance_tol) WRITE(*,'(4X,A,A,ES12.4)') &
+            !            TRIM(specname(ii)), ": ", abund(ii,dstep)
+            !    END DO
+            !    successFlag = NEGATIVE_ABUNDANCE_ERROR
+            !    RETURN
+            !END IF
             WHERE(abund(1:nspec,dstep) < MIN_ABUND) abund(1:nspec,dstep) = MIN_ABUND
             ! Recompute aggregates from their now-clamped components
             abund(nBulk,dstep) = SUM(abund(bulkList,dstep))

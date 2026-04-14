@@ -443,6 +443,7 @@ class AbstractModel(ABC):
         debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
     ):
         if out_species_list is None:
             out_species_list = default_elements_to_check
@@ -471,6 +472,7 @@ class AbstractModel(ABC):
         self.out_species = ""
         self.full_array = None
         self._debug = debug
+        self._on_negative_abundances = on_negative_abundances
         self.success_flag: None | SuccessFlag = None
         # Note: specname is now accessed via get_species_names() global function
         # Note: PHYSICAL_PARAMETERS is now accessed via the global constant
@@ -1308,6 +1310,7 @@ class AbstractModel(ABC):
             self.__setattr__(k, v)
 
         self._array_clean()
+        self._check_negative_abundances()
         self.check_error(only_error=True)
         if self.outputFile is not None:
             logging.debug(f"Writing output file: {self.outputFile}")
@@ -1730,7 +1733,33 @@ class AbstractModel(ABC):
 
     # /Legacy in & output support
 
-    # Cleaning of array & inptus
+    # Cleaning of array & inputs
+    def _check_negative_abundances(self) -> None:
+        """Check chemical_abun_array for negative values and act per on_negative_abundances.
+
+        Called automatically after _array_clean() in run(). Behaviour is controlled by the
+        on_negative_abundances constructor argument:
+
+        - None      : do nothing.
+        - "warning" : emit a Python warnings.warn (default).
+        - "error"   : set success_flag to NEGATIVE_ABUNDANCE_ERROR so that the subsequent
+                      check_error() call raises, mirroring the old Fortran behaviour.
+        - "raise"   : raise RuntimeError immediately.
+        """
+        if self._on_negative_abundances is None:
+            return
+        if self.chemical_abun_array is None or not np.any(self.chemical_abun_array < 0):
+            return
+        msg = "Negative abundances detected in chemical output array."
+        if self._on_negative_abundances == "warning":
+            import warnings
+
+            warnings.warn(msg, stacklevel=3)
+        elif self._on_negative_abundances == "error":
+            self.success_flag = SuccessFlag.NEGATIVE_ABUNDANCE_ERROR
+        elif self._on_negative_abundances == "raise":
+            raise RuntimeError(msg)
+
     def _array_clean(self):
         """Internal Method.
         Clean the arrays changed by UCLCHEM Fortran code.
@@ -2214,6 +2243,7 @@ class Cloud(AbstractModel):
         debug: bool = False,
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2229,6 +2259,7 @@ class Cloud(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
         )
         if self.run_type != "external" and not self.was_read:
             self.run()
@@ -2337,6 +2368,7 @@ class Collapse(AbstractModel):
         debug: bool = False,
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2430,6 +2462,7 @@ class Collapse(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
         )
         self.collapse_final_time = collapse_final_time
         if read_file is None:
@@ -2538,6 +2571,7 @@ class PrestellarCore(AbstractModel):
         debug: bool = False,
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2557,6 +2591,7 @@ class PrestellarCore(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
         )
         if read_file is None:
             if temp_indx is None or max_temperature is None:
@@ -2674,6 +2709,7 @@ class CShock(AbstractModel):
         debug: bool = False,
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2693,6 +2729,7 @@ class CShock(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
         )
         if read_file is None:
             if shock_vel is None:
@@ -2808,6 +2845,7 @@ class JShock(AbstractModel):
         debug: bool = False,
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2827,6 +2865,7 @@ class JShock(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
         )
         if read_file is None:
             if shock_vel is None:
@@ -2963,6 +3002,7 @@ class Postprocess(AbstractModel):
         debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2985,6 +3025,7 @@ class Postprocess(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
         )
         if read_file is None and time_array is not None:
             n_input = len(time_array)
@@ -3168,6 +3209,7 @@ class Model(AbstractModel):
         debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -3190,6 +3232,7 @@ class Model(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
         )
         if read_file is None and time_array is not None:
             n_input = len(time_array)

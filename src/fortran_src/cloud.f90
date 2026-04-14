@@ -15,7 +15,7 @@ MODULE cloud_mod
     REAL(dp), allocatable :: coldens_obs(:)
 
     ! Time sampling control parameters
-    REAL(dp) :: timestep_multiplier_early = 10.0_dp          ! For t < 10 yr: next timestep dt = multiplier * t
+    REAL(dp) :: timestep_resolution_factor_early = 0.5_dp   ! For 0 < t < 10 yr: samples per decade (snapped to k*10^n grid)
     REAL(dp) :: timestep_resolution_factor_mid = 1.0_dp      ! For 10 yr < t < 1 Myr: dt = 10^floor(log_10(t)) / factor
     REAL(dp) :: timestep_fixed_late_years = 1.0d5            ! For t > 1 Myr: dt = fixed timestep in years
 
@@ -88,10 +88,17 @@ CONTAINS
             stepSize = orderMagnitude / timestep_resolution_factor_mid
             targetTime = (timeInYears + stepSize) * SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 0.0) THEN
-            ! Below 10 years: use multiplier
-            targetTime = timestep_multiplier_early * timeInYears * SECONDS_PER_YEAR
+            ! Below 10 years: logarithmic sampling snapped to a k*10^n grid.
+            ! orderMagnitude is the decade floor (e.g. 1e-3 when t is in [1e-3, 1e-2)).
+            ! stepSize = orderMagnitude / factor gives exactly `factor` steps per decade.
+            ! Snapping with FLOOR(t/stepSize)+1 ensures targets land on exact multiples
+            ! of stepSize, so decade boundaries (1, 10, 100 ...) are always hit cleanly.
+            ! The 1e-10 epsilon guards against floating-point when t is already on a grid point.
+            orderMagnitude = 10.0_dp**(FLOOR(LOG10(timeInYears)))
+            stepSize = orderMagnitude / timestep_resolution_factor_early
+            targetTime = (FLOOR(timeInYears / stepSize + 1.0d-10) + 1.0_dp) * stepSize * SECONDS_PER_YEAR
         ELSE
-            ! Initial timestep
+            ! Initial timestep: start at the bottom of the first sampled decade
             targetTime = SECONDS_PER_YEAR * 1.0d-7
         ENDIF
     END SUBROUTINE updateTargetTime
