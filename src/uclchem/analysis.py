@@ -894,8 +894,8 @@ def rate_constants_to_dy_and_rates(
     species_list: list[Species]
     reactions_list: list[Reaction]
     if network is not None:
-        species = network.get_species_list()
-        reactions = network.get_reaction_list()
+        species_list = network.get_species_list()
+        reactions_list = network.get_reaction_list()
     else:
         species_list = species  # type: ignore[assignment]
         reactions_list = reactions  # type: ignore[assignment]

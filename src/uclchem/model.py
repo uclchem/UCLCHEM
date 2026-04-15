@@ -3589,7 +3589,7 @@ class SequentialRunner:
         """
         if isinstance(file, str | Path):
             opened_file = True
-            file_obj = h5py.File(file, "r")
+            file_obj = h5py.File(file, "a")
         elif isinstance(file, h5py.File):
             opened_file = False
             file_obj = file
