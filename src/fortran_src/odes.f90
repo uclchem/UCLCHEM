@@ -1,13 +1,19 @@
 MODULE ODES
 USE constants
 USE network
-USE SurfaceReactions, ONLY: useGarrod2011Transfer
+USE SurfaceReactions, ONLY: useGarrod2011Transfer, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO
 IMPLICIT NONE
 CONTAINS
-SUBROUTINE GETYDOT(RATE, Y, bulklayersreciprocal, ratioSurfaceToBulk, surfaceCoverage, safeMantle, safebulk, D, YDOT)
-REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulklayersreciprocal, ratioSurfaceToBulk, safeMantle, safebulk, D
+SUBROUTINE GETYDOT(RATE, Y, surfaceCoverage, D, YDOT)
+REAL(dp), INTENT(IN) :: RATE(:), Y(:), D
 REAL(dp), INTENT(INOUT) :: YDOT(:), surfaceCoverage
 REAL(dp) :: totalSwap, LOSS, PROD
+REAL(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
+    safeMantle = MAX(1.0d-30, SUM(Y(surfaceList)))
+    safeBulk   = MAX(1.0d-30, SUM(Y(bulkList)))
+    IF (refractoryList(1) .gt. 0) safeBulk = MAX(1.0d-30, safeBulk - SUM(Y(refractoryList)))
+    ratioSurfaceToBulk   = MIN(1.0D0, safeMantle/safeBulk)
+    bulklayersreciprocal = MIN(1.0D0, NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
     totalSwap=RATE(1)*Y(253)*ratioSurfaceToBulk+RATE(2)*Y(265)&
     &*ratioSurfaceToBulk+RATE(3)*Y(267)*ratioSurfaceToBulk+RATE(4)*Y(268)&
     &*ratioSurfaceToBulk+RATE(5)*Y(272)*ratioSurfaceToBulk+RATE(6)*Y(276)&

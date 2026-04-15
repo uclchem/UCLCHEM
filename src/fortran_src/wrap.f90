@@ -761,18 +761,6 @@ CONTAINS
             !Each physics module has a subroutine to set the target time from the current time
             CALL updateTargetTime
             coolant_levpop_force_recompute = .TRUE.
-            IF (writeTimestepInfo) THEN
-                WRITE(*,'(A,ES10.2,A,ES10.2,A,F9.1,A,F9.1,A,ES10.2,A,ES10.2,A,ES10.2)') &
-                    't:', currentTimeold/SECONDS_PER_YEAR, &
-                    ' dT:', dvode_rstats(11)/SECONDS_PER_YEAR, &
-                    ' Tg:', gasTemp(1), &
-                    ' Td:', dustTemp(1), &
-                    ' nH:', density(1), &
-                    ' G0:', radfield, &
-                    ' z:', zeta
-                FLUSH(6)
-                flush_rc = c_fflush(C_NULL_PTR) ! TODO: may be redundant with !f2py threadsafe + FLUSH(6)
-            END IF
             ! Exit loop if targetTime would exceed finalTime
             IF (targetTime/SECONDS_PER_YEAR .gt. finalTime) THEN
                 EXIT
@@ -783,6 +771,9 @@ CONTAINS
 
                 DO dstep=points,1,-1
                     parcelFinished = .FALSE.
+
+                    
+
 
                     ! Check stopping condition for this parcel in freefall mode
                     IF (freefall .AND. density(dstep) .ge. density_max(dstep)) THEN
@@ -817,6 +808,20 @@ CONTAINS
 
                     ! Track if any parcel is still computing
                     IF (.NOT. parcelFinished) allParcelsFinished = .FALSE.
+                    
+                    IF (writeTimestepInfo) THEN
+                        WRITE(*,'(A,I3,A,ES10.2,A,ES10.2,A,F9.1,A,F9.1,A,ES10.2,A,ES10.2,A,ES10.2)') &
+                            'p:', dstep, &
+                            't:', currentTimeold/SECONDS_PER_YEAR, &
+                            ' dT:', dvode_rstats(11)/SECONDS_PER_YEAR, &
+                            ' Tg:', gasTemp(dstep), &
+                            ' Td:', dustTemp(dstep), &
+                            ' nH:', density(dstep), &
+                            ' G0:', radfield, &
+                            ' z:', zeta
+                        FLUSH(6)
+                        flush_rc = c_fflush(C_NULL_PTR) ! TODO: may be redundant with !f2py threadsafe + FLUSH(6)
+                    END IF
 
                     ! Compute chemistry and physics for active parcels
                     IF (.NOT. parcelFinished) THEN
@@ -873,39 +878,52 @@ CONTAINS
                 DO dstep=1,points
                     !reset time if this isn't first depth point
                     currentTime=currentTimeold
-                !update chemistry from currentTime to targetTime
-                CALL updateChemistry(successFlag, statsarray, timePoints+1, dtime)
-                IF (successFlag .lt. 0) THEN
-                    write(*,*) 'Error updating chemistry'
-                    RETURN
-                END IF
-                IF (coolant_error_flag .ne. 0) THEN
-                    WRITE(*,*) 'Coolant error: ', TRIM(coolant_error_message)
-                    successFlag = coolant_error_flag
-                    coolant_error_flag = 0
-                    RETURN
-                END IF
-                !get time in years for output, currentTime is now equal to targetTime
-                timeInYears= targetTime/SECONDS_PER_YEAR
 
-                !Update physics so it's correct for new currentTime and start of next time step
-                call coreUpdatePhysics
-                call modelUpdatePhysics
-                ! Fail gracefully if physics module reported an error (e.g., invalid inputs)
-                IF (postprocess_error .NE. 0) THEN
-                    successFlag = PHYSICS_UPDATE_ERROR
-                    WRITE(*,*) 'ERROR: postprocess physics update failed with code=', postprocess_error
-                    RETURN
-                END IF
-                !Sublimation checks if Sublimation should happen this time step and does it
-                CALL sublimation(abund, points)
-                IF (returnArray) THEN
-                    CALL output(returnArray, returnRateConstants, successFlag, physicsarray, chemicalabunarray, rateConstantsArray,&
-                    &heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
-                ELSE
-                    CALL output(returnArray, returnRateConstants, successFlag)
-                END IF
-            END DO
+                    IF (writeTimestepInfo) THEN
+                        WRITE(*,'(A,ES10.2,A,ES10.2,A,F9.1,A,F9.1,A,ES10.2,A,ES10.2,A,ES10.2)') &
+                            't:', currentTimeold/SECONDS_PER_YEAR, &
+                            ' dT:', dvode_rstats(11)/SECONDS_PER_YEAR, &
+                            ' Tg:', gasTemp(1), &
+                            ' Td:', dustTemp(1), &
+                            ' nH:', density(1), &
+                            ' G0:', radfield, &
+                            ' z:', zeta
+                        FLUSH(6)
+                        flush_rc = c_fflush(C_NULL_PTR) ! TODO: may be redundant with !f2py threadsafe + FLUSH(6)
+                    END IF
+                    !update chemistry from currentTime to targetTime
+                    CALL updateChemistry(successFlag, statsarray, timePoints+1, dtime)
+                    IF (successFlag .lt. 0) THEN
+                        write(*,*) 'Error updating chemistry'
+                        RETURN
+                    END IF
+                    IF (coolant_error_flag .ne. 0) THEN
+                        WRITE(*,*) 'Coolant error: ', TRIM(coolant_error_message)
+                        successFlag = coolant_error_flag
+                        coolant_error_flag = 0
+                        RETURN
+                    END IF
+                    !get time in years for output, currentTime is now equal to targetTime
+                    timeInYears= targetTime/SECONDS_PER_YEAR
+
+                    !Update physics so it's correct for new currentTime and start of next time step
+                    call coreUpdatePhysics
+                    call modelUpdatePhysics
+                    ! Fail gracefully if physics module reported an error (e.g., invalid inputs)
+                    IF (postprocess_error .NE. 0) THEN
+                        successFlag = PHYSICS_UPDATE_ERROR
+                        WRITE(*,*) 'ERROR: postprocess physics update failed with code=', postprocess_error
+                        RETURN
+                    END IF
+                    !Sublimation checks if Sublimation should happen this time step and does it
+                    CALL sublimation(abund, points)
+                    IF (returnArray) THEN
+                        CALL output(returnArray, returnRateConstants, successFlag, physicsarray, chemicalabunarray, rateConstantsArray,&
+                        &heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
+                    ELSE
+                        CALL output(returnArray, returnRateConstants, successFlag)
+                    END IF
+                END DO
             END IF
         END DO
         IF (.NOT. returnArray) THEN
@@ -1152,6 +1170,8 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) abstol_ice_min
                 CASE('negative_abundance_tol')
                     READ(inputValue,*,iostat=successFlag) negative_abundance_tol
+                CASE('runtime_conservation_tolerance')
+                    READ(inputValue,*,iostat=successFlag) runtime_conservation_tolerance
                 CASE('reltol_phys')
                     READ(inputValue,*,iostat=successFlag) reltol_phys
                 CASE('abstol_phys_factor')

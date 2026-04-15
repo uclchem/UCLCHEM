@@ -139,6 +139,7 @@ REAL(dp) :: abstol_min=1.0d-25 !Minimum value absolute tolerances can take.
 REAL(dp) :: abstol_ice_factor=1.0d-10 !Absolute tolerance factor for ice (grain surface + bulk) species; looser than gas to reduce stiffness from ice intermediates.
 REAL(dp) :: abstol_ice_min=1.0d-20 !Minimum absolute tolerance for ice species.
 REAL(dp) :: negative_abundance_tol=1.0d-10 !Abundances in (-negative_abundance_tol, 0) are solver noise clamped to 1e-30 after integration; more negative triggers NEGATIVE_ABUNDANCE_ERROR.
+REAL(dp) :: runtime_conservation_tolerance=0.01 !Fractional tolerance for runtime element conservation check (1% by default). Set negative to disable.
 REAL(dp) :: reltol_phys=1.0d-4 !Relative tolerance for physical variables (temperature, density) in integration.
 REAL(dp) :: abstol_phys_factor=1.0d-4 !Absolute tolerance factor for physical variables (temperature, density).
 REAL(dp) :: abstol_T_min=1.0d-2 !Minimum absolute tolerance for gas temperature (K).

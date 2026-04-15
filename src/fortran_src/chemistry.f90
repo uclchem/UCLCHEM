@@ -64,6 +64,10 @@ IMPLICIT NONE
     ! Error code set inside the F callback; cannot use successFlag directly due to fixed DVODE signature.
     INTEGER :: f_callback_error = 0
 
+    ! Initial elemental abundances per parcel, used for runtime conservation check.
+    ! Shape: (n_elem_tracked, points) - allocated in initializeChemistry.
+    REAL(dp), ALLOCATABLE :: initial_elem_abund(:,:)
+
 CONTAINS
     SUBROUTINE initializeChemistry(readAbunds, successFlag)
         LOGICAL, INTENT(IN) :: readAbunds
@@ -132,6 +136,15 @@ CONTAINS
         !Initial calculations of diffusion and desorption frequencies
         !Uses updateVdiffAndVdes which supports both HH1992 and TST treatments
         CALL updateVdiffAndVdes(gasTemp(1), dustTemp(1), SIZE(iceList), vdiff, vdes)
+
+        ! Store initial elemental abundances per parcel for runtime conservation check.
+        IF (ALLOCATED(initial_elem_abund)) DEALLOCATE(initial_elem_abund)
+        ALLOCATE(initial_elem_abund(n_elem_tracked, points))
+        DO i = 1, points
+            DO j = 1, n_elem_tracked
+                initial_elem_abund(j, i) = SUM(REAL(elem_count(1:nspec, j), dp) * abund(1:nspec, i))
+            END DO
+        END DO
 
         ! get list of positive-charged species to conserve charge later
         nion = 0
@@ -212,6 +225,8 @@ CONTAINS
         INTEGER, INTENT(IN), OPTIONAL :: statsarray_size
         INTEGER, INTENT(IN), OPTIONAL :: dtime
         real(dp) :: originalTargetTime !targetTime can be altered by integrator but we'd like to know if it was changed
+        INTEGER :: ie
+        REAL(dp) :: total_elem_ie, rel_err
         real(dp) :: surfaceCoverage
         real(dp) :: h2form_CT_vol, h2form_LH_vol, h2form_ER_vol  ! per-mechanism volumetric H2 formation rates [cm^-3 s^-1]
         real(dp) :: h2form_heat  ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
@@ -355,6 +370,25 @@ CONTAINS
         IF (failedIntegrationCounter .gt. maxConsecutiveFailures)&
              &successFlag=INT_TOO_MANY_FAILS_ERROR
         end if
+
+        ! Runtime element conservation check (every iteration, not inside F)
+        IF (runtime_conservation_tolerance .ge. 0.0d0 .AND. successFlag .eq. 0) THEN
+            DO ie = 1, n_elem_tracked
+                total_elem_ie = SUM(REAL(elem_count(1:nspec, ie), dp) * abund(1:nspec, dstep))
+                IF (initial_elem_abund(ie, dstep) .gt. 0.0d0) THEN
+                    rel_err = ABS(total_elem_ie - initial_elem_abund(ie, dstep)) &
+                            & / initial_elem_abund(ie, dstep)
+                    IF (rel_err .gt. runtime_conservation_tolerance) THEN
+                        WRITE(*,'(A,A2,A,ES10.3,A,ES12.4,A)') &
+                            'CONSERVATION ERROR: element ', TRIM(elem_names(ie)), &
+                            ' changed by ', rel_err*100.0d0, '% at t=', &
+                            currentTime/SECONDS_PER_YEAR, ' yr'
+                        successFlag = CONSERVATION_ERROR
+                        RETURN
+                    END IF
+                END IF
+            END DO
+        END IF
 
     END SUBROUTINE updateChemistry
 
@@ -540,7 +574,7 @@ CONTAINS
 
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
-        CALL GETYDOT(RATE, Y_safe, bulkLayersReciprocal, ratioSurfaceToBulk, surfaceCoverage, safeMantle,safeBulk, D, YDOT)
+        CALL GETYDOT(RATE, Y_safe, surfaceCoverage, D, YDOT)
         ! get density change from physics module to send to DLSODE
         if (enforceChargeConservation) then 
             ydot(nelec) = sum(ydot(ionlist(1:nion)))

@@ -356,6 +356,7 @@ class SuccessFlag(enum.IntEnum):
     COOLANT_SOLVER_ERROR = -13, "Coolant solver numerical error occured."
     COOLANT_CONFIG_ERROR = -14, "Coolant configuration error occured."
     NEGATIVE_ABUNDANCE_ERROR = -15, "A negative abundance was detected."
+    CONSERVATION_ERROR = -16, "Runtime element conservation tolerance exceeded."
 
     def check_error(self, only_error: bool = False, raise_on_error: bool = True) -> str:
         """Converts the UCLCHEM integer result flag to a message explaining what went wrong.
@@ -393,6 +394,7 @@ class SuccessFlag(enum.IntEnum):
             SuccessFlag.COOLANT_SOLVER_ERROR: "Coolant solver numerical error (NaN in matrix, singular matrix, or negative populations). The statistical equilibrium solver failed for a coolant species.",
             SuccessFlag.COOLANT_CONFIG_ERROR: "Coolant configuration error: parent species not found in network, or unphysical abundance detected.",
             SuccessFlag.NEGATIVE_ABUNDANCE_ERROR: "Negative abundance detected. That exceeds solver tolerances, consider adjusting the negative_abundance_tol parameter in param_dict to a larger magnitude",
+            SuccessFlag.CONSERVATION_ERROR: "Runtime conservation check failed: an element changed by more than runtime_conservation_tolerance. This usually indicates a severe integrator error or network bug. Set runtime_conservation_tolerance to a negative value to disable the check.",
         }
 
         msg = error_msg_dict[self]
