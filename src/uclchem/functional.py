@@ -76,6 +76,8 @@ See Also:
 
 """
 
+from typing import Any, Literal
+
 import numpy as np
 import pandas as pd
 
@@ -84,12 +86,12 @@ from uclchem.model import AbstractModel, Cloud, Collapse, CShock, JShock, Preste
 
 
 def _validate_functional_api_params_(
-    param_dict: dict,
+    param_dict: dict | None,
     return_array: bool,
     return_dataframe: bool,
     return_rate_constants: bool,
     return_heating: bool,
-    starting_chemistry: np.ndarray,  # noqa: ARG001
+    starting_chemistry: np.ndarray | None,  # noqa: ARG001
     return_stats: bool = False,
 ) -> None:
     """Validate functional API specific constraints.
@@ -203,6 +205,7 @@ def _functional_return_(
                 Can be passed to ``uclchem.utils.check_error()`` to see more details.
 
     """
+    result: list[Any]
     if return_dataframe:
         # If multiple spatial points are present, return DataFrames concatenated across points
         points = model_object._param_dict.get("points", 1)
@@ -219,7 +222,6 @@ def _functional_return_(
             for pt in range(points):
                 res = model_object.get_dataframes(
                     point=pt,
-                    joined=False,
                     with_rate_constants=return_rate_constants,
                     with_heating=return_heating,
                     with_stats=return_stats,
@@ -254,22 +256,21 @@ def _functional_return_(
         else:
             # Single point: behave as before but include a Point column
             result_dfs = model_object.get_dataframes(
-                joined=False,
                 with_rate_constants=return_rate_constants,
                 with_heating=return_heating,
                 with_stats=return_stats,
             )
-            phys_df = result_dfs[0]
-            chem_df = result_dfs[1]
+            phys_df = result_dfs[0]  # type: ignore[assignment]
+            chem_df = result_dfs[1]  # type: ignore[assignment]
             idx = 2
             if return_rate_constants and len(result_dfs) > idx:
-                rate_constants_df = result_dfs[idx]
+                rate_constants_df = result_dfs[idx]  # type: ignore[assignment]
                 idx += 1
             if return_heating and len(result_dfs) > idx:
-                heating_df = result_dfs[idx]
+                heating_df = result_dfs[idx]  # type: ignore[assignment]
                 idx += 1
             if return_stats and len(result_dfs) > idx:
-                stats_df = result_dfs[idx]
+                stats_df = result_dfs[idx]  # type: ignore[assignment]
             phys_df["Point"] = 1
             chem_df["Point"] = 1
 
@@ -301,14 +302,15 @@ def _functional_return_(
         # Disk mode with file output
         # FIXED format: [success_flag, abundances] OR [success_flag, dissipation_time, abundances]
         if hasattr(model_object, "dissipation_time"):
-            return (
+            return_value: tuple[Any, ...] = (
                 model_object.success_flag,
                 model_object.dissipation_time,
-            ) + tuple(model_object.out_species_abundances_array)
-        else:
-            return (model_object.success_flag,) + tuple(
-                model_object.out_species_abundances_array
             )
+
+            return return_value + (model_object.out_species_abundances_array,)
+        else:
+            return_value = (model_object.success_flag,)
+            return return_value + (model_object.out_species_abundances_array,)
 
 
 def _cloud_(
@@ -412,7 +414,7 @@ def _cloud_(
 
 
 def _collapse_(
-    collapse: str,
+    collapse: Literal["BE1.1", "BE4", "filament", "ambipolar"],
     param_dict: dict | None = None,
     out_species: list[str] | None = None,
     return_array: bool = False,
@@ -623,14 +625,14 @@ def _cshock_(
     shock_vel: float,
     timestep_factor: float = 0.01,
     minimum_temperature: float = 0.0,
-    param_dict: dict = None,
+    param_dict: dict | None = None,
     out_species: list[str] | None = default_elements_to_check,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.array = None,
+    starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
 ):
     """Run C-type shock model from UCLCHEM.
@@ -656,7 +658,7 @@ def _cshock_(
         return_rate_constants (bool): Whether the reaction rate constants should be returned.
         return_heating (bool): Whether the heating/cooling arrays should be returned to a user.
         return_stats (bool): Whether DVODE statistics should be returned. Default = False.
-        starting_chemistry (np.ndarray): np.array containing the starting chemical abundances needed
+        starting_chemistry (np.ndarray): np.ndarray containing the starting chemical abundances needed
             by UCLCHEM.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to ``uclchem.constants.TIMEPOINTS``.
@@ -692,7 +694,7 @@ def _cshock_(
             - heatingDF (pd.DataFrame or None): DataFrame containing heating/cooling terms
                 for each timestep (if return_heating=True)
             - disspation_time (float): dissipation time in years
-            - abundanceStart (np.array): array containing the chemical abundances of the last
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
                 timestep in the format uclchem needs in order to perform an additional run
                 after the initial model
             - success_flag (int): which is negative if the model failed to run.
@@ -735,13 +737,13 @@ def _cshock_(
 def _jshock_(
     shock_vel: float,
     param_dict: dict | None = None,
-    out_species: list[str] | None = default_elements_to_check,
+    out_species: list[str] | None = None,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.ndarray = None,
+    starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
 ):
     """Run J-type shock model from UCLCHEM.

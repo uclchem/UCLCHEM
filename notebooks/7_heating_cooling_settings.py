@@ -47,7 +47,7 @@ param_dict = {
     "initialTemp": 10.0,  # Initial temperature (K)
     "finalTime": 1.0e6,  # Final time (years)
     "baseAv": 10.0,  # Visual extinction
-    "rout": 0.1,  # Outer radius (pc)
+    "r_out": 0.1,  # Outer radius (pc)
     "freefall": False,  # Keep constant density
     "heatingFlag": True,  # Enable heating (default)
 }
@@ -58,7 +58,7 @@ cloud_full = uclchem.model.Cloud(param_dict=param_dict)
 
 # Extract all data from the model object in one call
 physics_full, abundances_full, rate_constants_full, heating_full = cloud_full.get_dataframes(
-    joined=False, with_rate_constants=True, with_heating=True
+    with_rate_constants=True, with_heating=True
 )
 start_abund = cloud_full.next_starting_chemistry_array
 flag_full = 0 if cloud_full.has_attr("_data") else -1
@@ -237,7 +237,7 @@ cloud_limited = uclchem.model.Cloud(param_dict=param_dict)
 
 # Extract all data in one call
 physics_limited, abundances_limited, rate_constants_limited, heating_limited = (
-    cloud_limited.get_dataframes(joined=False, with_rate_constants=True, with_heating=True)
+    cloud_limited.get_dataframes(with_rate_constants=True, with_heating=True)
 )
 flag_limited = 0 if cloud_limited.has_attr("_data") else -1
 

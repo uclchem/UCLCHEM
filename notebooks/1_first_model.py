@@ -47,9 +47,14 @@ cloud.check_error()
 #
 # If `abundSaveFile` was added to the `param_dict`, then the final abundances of all species would be written to the file  listed in `abundSaveFile`. If `outputFile` is added, then all abundances and physical parameters for all time steps will be written to the file `outputFile`.
 #
-# The UCLCHEM model classes have methods to reformat the output arrays into pandas dataframes, as well as having the option to read previously run model output files. To retrieve a pandas dataframe of a model we can call `cloud.get_dataframes(point = 0)` where the point optional input allows us to choose which point we wish to retrieve the dataframe for, if we ran a multipoint model. This method defaults the `point` value to 0 to retrieve the central point.
+# The UCLCHEM model classes have methods to reformat the output arrays into pandas dataframes, as well as having the option to read previously run model output files. To retrieve a pandas dataframe of a model we can call `cloud.get_joined_dataframes(point = 0)` where the point optional input allows us to choose which point we wish to retrieve the dataframe for, if we ran a multipoint model. This method defaults the `point` value to 0 to retrieve the central point.
 
-cloud.get_dataframes().head()
+cloud.get_joined_dataframes().head()
+
+# Alternatively, we can get each dataframe type (i.e. physical parameters, chemical parameters, rate constants etc) separately.
+
+for dataframe in cloud.get_dataframes():
+    dataframe.head()
 
 # We can also test whether the model run went well by checking for element conservation. We do this because integrator errors often show up as a failure to conserve elemental abundances.
 #
@@ -66,6 +71,6 @@ fig, ax = cloud.create_abundance_plot(
     species=["H", "H2", "$H", "$H2", "H2O", "$H2O", "CO", "$CO", "$CH3OH", "CH3OH"],
     figsize=(10, 7),
 )
-ax = ax.set(xscale="log", ylim=(1e-15, 1), xlim=(1e3, 1e6))
+ax.set(xscale="log", ylim=(1e-15, 1), xlim=(1e3, 1e6))
 
 # and that's it! You've run your first UCLCHEM model, checked that the element conservation is correct, and plotted the abundances.

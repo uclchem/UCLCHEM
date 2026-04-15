@@ -33,36 +33,35 @@ def get_python_executable() -> Path:
         return Path(sys.executable)
 
     # Fall back to finding python3 in PATH
-    python3_path = Path(shutil.which("python3"))
-    if python3_path and python3_path.exists():
-        return python3_path
+    python3_path = shutil.which("python3")
+    if python3_path is not None and Path(python3_path).exists():
+        return Path(python3_path)
 
     # Fall back to finding python in PATH
-    python_path = Path(shutil.which("python"))
-    if python_path and python_path.exists():
-        return python_path
+    python_path = shutil.which("python")
+    if python_path is not None and Path(python_path).exists():
+        return Path(python_path)
 
     msg = "Could not find a valid python executable"
     raise RuntimeError(msg)
 
 
-def ensure_ipykernel_installed(python_exec: Path) -> bool:
+def ensure_ipykernel_installed(python_exec: str | Path) -> bool:
     """Ensure ipykernel is installed in the current environment.
 
     If it is not installed, tries to install it using `pip`.
 
     Args:
-        python_exec (Path): Path to python executable
+        python_exec (str | Path): Path to python executable
 
     Returns:
         bool: Whether ipykernel is installed
 
     """
-    python_exec = str(python_exec)
     try:
         # Check if ipykernel is already installed
         result = subprocess.run(
-            [python_exec, "-c", "import ipykernel"], capture_output=True, text=True
+            [str(python_exec), "-c", "import ipykernel"], capture_output=True, text=True
         )
         if result.returncode == 0:
             print("ipykernel is already installed")
@@ -76,7 +75,7 @@ def ensure_ipykernel_installed(python_exec: Path) -> bool:
     print("Installing ipykernel...")
     try:
         result = subprocess.run(
-            [python_exec, "-m", "pip", "install", "ipykernel"],
+            [str(python_exec), "-m", "pip", "install", "ipykernel"],
             capture_output=True,
             text=True,
         )
@@ -91,11 +90,15 @@ def ensure_ipykernel_installed(python_exec: Path) -> bool:
         return False
 
 
-def find_existing_kernel_spec(python_exec: Path) -> None:
+def find_existing_kernel_spec(python_exec: Path) -> str | None:
     """Check if a kernel spec already exists for this Python executable.
 
     Args:
         python_exec (Path): Path to python executable
+
+    Returns:
+        str | None: kernel name, or None if no kernel matching ``python_exec`` was
+            found.
 
     """
     try:
@@ -197,11 +200,11 @@ def cleanup_kernel_spec(kernel_name: str) -> None:
             )
 
 
-def run_all_notebooks(notebooks_dir: Path) -> None:
+def run_all_notebooks(notebooks_dir: str | Path) -> None:
     """Run all jupyter notebooks in a directory.
 
     Args:
-        notebooks_dir (Path): directory with notebooks.
+        notebooks_dir (str | Path): directory with notebooks.
 
     Raises:
         RuntimeError: If the ipykernel cannot be installed.
@@ -217,7 +220,7 @@ def run_all_notebooks(notebooks_dir: Path) -> None:
         print("Generating .ipynb from .py files...")
         try:
             subprocess.run(
-                ["bash", str(notebooks_script), "--generate"],
+                ["bash", str(notebooks_script.absolute()), "--generate"],
                 cwd=notebooks_dir,
                 check=True,
                 capture_output=True,
@@ -235,15 +238,17 @@ def run_all_notebooks(notebooks_dir: Path) -> None:
 
     # Check if a kernel spec already exists for this environment
     existing_kernel = find_existing_kernel_spec(python_exec)
-    if existing_kernel:
+    kernel_name: str
+    if existing_kernel is not None:
         kernel_name = existing_kernel
         print(f"Using existing kernel: {kernel_name}")
     else:
         # Create a kernel spec for this environment
-        kernel_name = create_kernel_spec(python_exec)
-        if not kernel_name:
+        created_kernel_spec = create_kernel_spec(python_exec)
+        if created_kernel_spec is None:
             msg = "Failed to create kernel spec"
             raise RuntimeError(msg)
+        kernel_name = created_kernel_spec
         print(f"Created new kernel: {kernel_name}")
 
     try:

@@ -19,7 +19,9 @@ from uclchem.makerates.species import Species
 
 
 def Network(  # noqa: N802
-    species: list[Species] = None, reactions: list[Reaction] = None, **kwargs
+    species: list[Species] | None = None,
+    reactions: list[Reaction] | None = None,
+    **kwargs,
 ) -> NewNetwork:
     """Backward compatible Network constructor.
 
@@ -96,10 +98,10 @@ class LoadedNetwork:
     def __new__(
         cls,
         *,
-        species: list[Species] = None,
-        reactions: list[Reaction] = None,
-        species_filepath: str | Path = None,
-        reactions_filepath: str | Path = None,
+        species: list[Species] | None = None,
+        reactions: list[Reaction] | None = None,
+        species_filepath: str | Path | None = None,
+        reactions_filepath: str | Path | None = None,
     ):
         """Create a network using old LoadedNetwork API.
 

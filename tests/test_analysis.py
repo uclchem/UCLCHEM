@@ -48,7 +48,7 @@ def test_analysis_matches(temp_output_dir):
 
     # Get dataframe
     physics_df, abundances_df, rate_constants_df = result.get_dataframes(
-        joined=False, with_rate_constants=True
+        with_rate_constants=True
     )
     network = uclchem.makerates.network.Network.from_csv()
     dy, reaction_rates_df = uclchem.analysis.rate_constants_to_dy_and_rates(

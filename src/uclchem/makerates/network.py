@@ -13,17 +13,19 @@ For runtime parameter modification during model execution, use RuntimeNetwork
 from uclchem.advanced.runtime_network instead.
 """
 
+from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
 
 import pandas as pd
 
+from uclchem.makerates.reaction import Reaction, reaction_types
+from uclchem.makerates.species import Species
 from uclchem.utils import UCLCHEM_ROOT_DIR, check_expected_type
-
-from .reaction import Reaction, reaction_types
-from .species import Species
 
 # ============================================================================
 # Abstract Base Classes
@@ -45,7 +47,7 @@ class NetworkABC(ABC):
     # Core Properties
     @property
     @abstractmethod
-    def species(self) -> dict[str, Reaction]:
+    def species(self) -> dict[str, Species]:
         """Get the species collection."""
         pass
 
@@ -142,12 +144,12 @@ class MutableNetworkABC(NetworkABC):
 
     # Species Modification Interface
     @abstractmethod
-    def add_species(self, species: Species | list[Species]) -> None:
+    def add_species(self, species: Species | Sequence[Species | list]) -> None:
         """Add one or more species to the network."""
         pass
 
     @abstractmethod
-    def remove_species(self, specie_name: str) -> None:
+    def remove_species(self, specie_name: str | Species) -> None:
         """Remove a species from the network."""
         pass
 
@@ -168,7 +170,7 @@ class MutableNetworkABC(NetworkABC):
 
     # Reaction Modification Interface
     @abstractmethod
-    def add_reactions(self, reactions: Reaction | list[Reaction]) -> None:
+    def add_reactions(self, reactions: Reaction | Sequence[Reaction | list]) -> None:
         """Add one or more reactions to the network."""
         pass
 
@@ -460,7 +462,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         cls,
         species_path: str | Path | None = None,
         reactions_path: str | Path | None = None,
-    ) -> "Network":
+    ) -> Network:
         """Load network from CSV files.
 
         Loads a pre-compiled network from CSV files without any validation
@@ -509,7 +511,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         cls,
         species: list[Species],
         reactions: list[Reaction],
-    ) -> "Network":
+    ) -> Network:
         """Create network directly from lists.
 
         Direct instantiation from species and reaction lists without any
@@ -545,7 +547,7 @@ class Network(BaseNetwork, MutableNetworkABC):
     @classmethod
     def build(
         cls, species: list[Species], reactions: list[Reaction], **build_options
-    ) -> "Network":
+    ) -> Network:
         """Build network with full validation and automatic generation.
 
         This is the primary method for building new networks with full validation,
@@ -607,14 +609,20 @@ class Network(BaseNetwork, MutableNetworkABC):
     # ========================================================================
 
     def set_specie(self, species_name: str, species: Species) -> None:
-        """Set/update a species."""
+        """Set/update a species.
+
+        Args:
+            species_name (str): Name of species
+            species (Species): Species to replace the old Species with
+
+        """
         self._species_dict[species_name] = species
 
     def set_species_dict(self, new_species_dict: dict[str, Species]) -> None:
         """Replace entire species dictionary."""
         self._species_dict = new_species_dict
 
-    def add_species(self, species: Species | list[Species | list]) -> None:
+    def add_species(self, species: Species | Sequence[Species | list]) -> None:
         """Add species to network.
 
         Args:
@@ -627,27 +635,28 @@ class Network(BaseNetwork, MutableNetworkABC):
                 CSV-style entries.
 
         """
+        species_list: list[Species]
         # Convert to list of Species objects
         if isinstance(species, list):
             if len(species) == 0:
                 logging.warning("Tried to add empty species list, ignoring.")
                 return
             elif isinstance(species[0], Species):
-                pass  # Already Species objects
+                species_list = species  # type: ignore
             elif isinstance(species[0], list):
                 try:
-                    species = [Species(spec) for spec in species]
+                    species_list = [Species(spec) for spec in species]  # type: ignore
                 except ValueError as error:
                     msg = "Failed to convert CSV entries to Species objects"
                     raise ValueError(msg) from error
         elif isinstance(species, Species):
-            species = [species]
+            species_list = [species]
         else:
             msg = "Input must be Species object, list of Species, or CSV entries"
             raise TypeError(msg)
 
         # Add to dictionary
-        for specie in species:
+        for specie in species_list:
             # Filter out reaction types
             if specie.get_name() in reaction_types:
                 logging.info(
@@ -668,14 +677,14 @@ class Network(BaseNetwork, MutableNetworkABC):
 
             self._species_dict[specie.get_name()] = specie
 
-    def remove_species(self, specie_name: str) -> None:
+    def remove_species(self, species: str | Species) -> None:
         """Remove a species from network.
 
         Args:
-            specie_name (str): name of species to be deleted.
+            species (str | Species): name of species to be deleted, or the Species instance
 
         Raises:
-            ValueError: If no species called ``specie_name`` is in the Network.
+            ValueError: If no species ``species`` is in the Network.
 
         Examples:
             >>> network = Network.from_csv()
@@ -689,12 +698,15 @@ class Network(BaseNetwork, MutableNetworkABC):
             ValueError: Species CO2 not found in network.
 
         """
-        check_expected_type(specie_name, str)
-        if specie_name not in self._species_dict:
-            msg = f"Species {specie_name} not found in network."
+        if isinstance(species, Species):
+            species = species.get_name()
+        check_expected_type(species, str)
+
+        if species not in self._species_dict:
+            msg = f"Species {species} not found in network."
             raise ValueError(msg)
 
-        del self._species_dict[specie_name]
+        del self._species_dict[species]
 
     def sort_species(self) -> None:
         """Sort species by type and mass, with electron last."""
@@ -744,11 +756,12 @@ class Network(BaseNetwork, MutableNetworkABC):
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
         """Replace entire reaction dictionary."""
         check_expected_type(new_dict, dict)
-        [check_expected_type(reaction, Reaction) for reaction in new_dict.values()]
+        for reaction in new_dict.values():
+            check_expected_type(reaction, Reaction)
 
         self._reactions_dict = new_dict
 
-    def add_reactions(self, reactions: Reaction | list[list | Reaction]) -> None:
+    def add_reactions(self, reactions: Reaction | Sequence[list | Reaction]) -> None:
         """Add reactions to network.
 
         Args:
@@ -762,26 +775,27 @@ class Network(BaseNetwork, MutableNetworkABC):
                 CSV-style entries.
         """
         # Convert to list of Reaction objects
+        reactions_list: list[Reaction]
         if isinstance(reactions, list):
             if len(reactions) == 0:
                 logging.warning("Tried to add empty reactions list, ignoring.")
                 return
             elif isinstance(reactions[0], Reaction):
-                pass  # Already Reaction objects
+                reactions_list = reactions  # type: ignore
             elif isinstance(reactions[0], list):
                 try:
-                    reactions = [Reaction(reac) for reac in reactions]
+                    reactions_list = [Reaction(reac) for reac in reactions]
                 except ValueError as error:
                     msg = "Failed to convert CSV entries to Reaction objects"
                     raise ValueError(msg) from error
         elif isinstance(reactions, Reaction):
-            reactions = [reactions]
+            reactions_list = [reactions]
         else:
             msg = "Input must be Reaction object, list of Reactions, or CSV entries"
             raise TypeError(msg)
 
         # Add to dictionary
-        for reaction in reactions:
+        for reaction in reactions_list:
             if len(self._reactions_dict) == 0:
                 new_idx = 0
             else:
@@ -939,6 +953,43 @@ class Network(BaseNetwork, MutableNetworkABC):
             )
             raise RuntimeError(msg)
 
+    def set_important_reaction_indices(self, indices: Mapping[str, int | None]) -> None:
+        """Set the indices of important reactions that are treated differently in UCLCHEM,
+        like H2 photodissociation.
+
+        Not to be called by the user, but by ``uclchem.makerates.network_builder.NetworkBuilder```
+
+        Args:
+            indices (Mapping[str, int | None]): mapping from string representing the
+                reaction to the index of that reaction in the network.
+
+        Raises:
+            ValueError: If any of the values in ``indices`` are None.
+
+        """
+        if any(index is None for index in indices.values()):
+            msg = "Important reaction had index None"
+            raise ValueError(msg)
+        self.important_reactions = indices
+
+    def set_important_species_indices(self, indices: Mapping[str, int | None]) -> None:
+        """Set the indices of important species, like H2.
+
+        Not to be called by the user, but by ``uclchem.makerates.network_builder.NetworkBuilder```
+
+        Args:
+            indices (Mapping[str, int | None]): mapping from name of the species to the
+                index of that species in the network.
+
+        Raises:
+            ValueError: If any of the values in ``indices`` are None.
+
+        """
+        if any(index is None for index in indices.values()):
+            msg = "Important species had index None"
+            raise ValueError(msg)
+        self.important_species = indices
+
 
 # ============================================================================
 # Factory Functions (Module-Level)
@@ -982,11 +1033,11 @@ def load_network_from_csv(
 def build_network(
     species: list[Species],
     reactions: list[Reaction],
-    user_defined_bulk: list = None,
+    user_defined_bulk: list | None = None,
     gas_phase_extrapolation: bool = False,
     add_crp_photo_to_grain: bool = False,
-    derive_reaction_exothermicity: list[str] = None,
-    database_reaction_exothermicity: list[str | Path] = None,
+    derive_reaction_exothermicity: list[str] | None = None,
+    database_reaction_exothermicity: list[str | Path] | None = None,
 ) -> Network:
     """Build a new network with full validation and automatic generation.
 

@@ -13,7 +13,7 @@ if __name__ == "__main__":
     param_file = argv[1]
     output_file = argv[2]
     constants_file = argv[3]
-    default_param_dictionary = {}
+    default_param_dictionary: dict[str, str | float | int | None] = {}
 
     with Path(param_file).open() as f:
         with Path(output_file).open("w") as output:
@@ -35,6 +35,7 @@ if __name__ == "__main__":
                         key = temp_line[-1].strip()
                         type_of_value = temp_line[0].strip()
                         new_line = new_line[1].split("!")
+                        value: str | float | None | list
                         value = new_line[0]
                         description = new_line[1]
                         line = (

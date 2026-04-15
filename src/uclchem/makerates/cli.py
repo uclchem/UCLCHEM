@@ -84,7 +84,7 @@ def main(argv: list[str] | None = None) -> None:
     try:
         config_path = Path(args.config)
         network = run_makerates(
-            configuration_file=config_path,
+            configuration=config_path,
             write_files=not args.no_write,
             output_directory=output_directory,
         )

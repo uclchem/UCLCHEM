@@ -89,9 +89,7 @@ tunneling_reaction_types = [
 class Reaction:
     """Representation of reactions."""
 
-    def __init__(
-        self, input_row: list[str] | Reaction, reaction_source: str | None = None
-    ):
+    def __init__(self, input_row: list | Reaction, reaction_source: str | None = None):
         """Initialize a Reaction object.
 
         Args:
@@ -420,6 +418,10 @@ class Reaction:
             >>> reaction = Reaction(["#CH3OH", "#OH", "LH", "#CH3O", "#H2O", "NAN", "NAN"] + [0] * 10)
             >>> reaction.get_reduced_mass() # mass of atomic hydrogen
             1.0
+
+        Raises:
+            RuntimeError: If an error occurred while trying to determine the differences
+                in elements between reagents and products.
         """
         reac_constituents = []
         reac_species = []
@@ -463,6 +465,10 @@ class Reaction:
                     if total_change < min_total:
                         min_total = total_change
                         min_diff = diff
+                if min_diff is None:
+                    msg = "Could not determine the minimum difference between reactants and products"
+                    msg += f" of reaction {self}"
+                    raise RuntimeError(msg)
                 changing_species = Counter({k: c for k, c in min_diff.items() if c != 0})
 
                 items = changing_species.items()
@@ -473,8 +479,8 @@ class Reaction:
                         # One element is switched
                         element_index = element_list.index(tuple_items[0])
                         # Set reduced mass to mass of switched element
-                        reduced_mass = element_mass[element_index]
-                        self.set_reduced_mass(float(reduced_mass))
+                        reduced_mass = float(element_mass[element_index])
+                        self.set_reduced_mass(reduced_mass)
                         logging.debug(
                             f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                         )
@@ -512,15 +518,15 @@ class Reaction:
         logging.warning(msg)
         self.set_reduced_mass(naive_reduced_mass)
 
-    def set_reduced_mass(self, reduced_mass: float) -> None:
+    def set_reduced_mass(self, reduced_mass: int | float) -> None:
         """Set the reduced mass to be used to calculate tunneling rate in
         atomic mass units.
 
         Args:
-            reduced_mass (float): reduced mass of moving atoms
+            reduced_mass (int | float): reduced mass of moving atoms
 
         """
-        self._reduced_mass = reduced_mass
+        self._reduced_mass = float(reduced_mass)
 
     def get_reduced_mass(self) -> float:
         """Get the reduced mass to be used to calculate tunneling rate in
@@ -550,11 +556,11 @@ class Reaction:
         else:
             return "TWOBODY"
 
-    def get_source(self) -> str:
+    def get_source(self) -> str | None:
         """Get the source of the reaction.
 
         Returns:
-            str: The source of the reaction
+            str | None: The source of the reaction
 
         """
         return self.source
@@ -608,7 +614,7 @@ class Reaction:
         if self.get_reaction_type() in ["FREEZE", "DESORB"]:
             return
 
-        counter_reactants = Counter()
+        counter_reactants: Counter[str] = Counter()
         for reac in self._reactants:
             if reac in reaction_types:
                 continue
@@ -618,7 +624,7 @@ class Reaction:
             atoms_counter_specie = specie.find_constituents(quiet=True)
             counter_reactants += atoms_counter_specie
 
-        counter_products = Counter()
+        counter_products: Counter[str] = Counter()
         for prod in self._products:
             if prod in reaction_types:
                 continue
@@ -695,19 +701,21 @@ class Reaction:
             ]
         )
 
-    def __eq__(self, other: Reaction) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Check for equality against another reaction based on the products and reactants.
         Note that it does not check for the temperature ranges that the reactions might have!
         The Reaction.check_temperature_collision can be used for this purpose.
 
         Args:
-            other (Reaction): Another reaction.
+            other (object): Another reaction.
 
         Returns:
             bool: equality
 
         """
-        check_expected_type(other, Reaction)
+        if not isinstance(other, Reaction):
+            msg = f"Can only compare Reaction instances, but tried to compare Reaction and {type(other)}"
+            raise NotImplementedError(msg)
 
         return (
             self.get_sorted_reactants() == other.get_sorted_reactants()
@@ -941,9 +949,9 @@ class CoupledReaction(Reaction):
     as its partner also has its binding energy changed to that value.
     """
 
-    def __init__(self, input: list[str] | Reaction):
+    def __init__(self, input: list[str] | Reaction, partner: Reaction | None = None):
         super().__init__(input)
-        self.partner = None
+        self.partner = partner
 
     def set_partner(self, partner: Reaction) -> None:
         """Set the partner.
@@ -956,11 +964,12 @@ class CoupledReaction(Reaction):
 
         self.partner = partner
 
-    def get_partner(self) -> Reaction:
+    def get_partner(self) -> Reaction | None:
         """Get the partner.
 
         Returns:
-            Reaction: partner of this reaction.
+            Reaction | None: partner of this reaction, or None if the partner
+                has not been set.
 
         """
         return self.partner

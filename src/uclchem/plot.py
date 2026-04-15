@@ -59,6 +59,7 @@ via methods like :meth:`~uclchem.model.AbstractModel.create_abundance_plot`.
 - :mod:`uclchem.model` - Model classes with built-in plotting methods
 """
 
+from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -102,9 +103,9 @@ def plot_rate_summary(
 def create_abundance_plot(
     df: pd.DataFrame,
     species: list[str],
-    figsize: tuple[int | float] = (16, 9),
-    plot_file: str | None = None,
-    **plot_kwargs: dict[str, Any],
+    figsize: tuple[int | float, int | float] = (16, 9),
+    plot_file: str | Path | None = None,
+    plot_kwargs: dict[str, Any] | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Create a plot of the abundance of a list of species through time.
 
@@ -116,15 +117,18 @@ def create_abundance_plot(
             Using a $ instead of # or @ will plot the sum of surface and bulk abundances.
         figsize (tuple[int | float]): Size of figure, width by height in inches.
             Defaults to (16, 9).
-        plot_file (str | None): Path to file where figure will be saved.
+        plot_file (str | Path | None): Path to file where figure will be saved.
             If None, figure is not saved. Defaults to None.
-        plot_kwargs (dict[str, Any]): keyword arguments passed to ``ax.plot``.
+        plot_kwargs (dict[str, Any] | None): keyword arguments passed to ``ax.plot``.
 
     Returns:
         fig (plt.Figure): created Figure object
         ax (plt.Axes): created axis object
 
     """
+    if plot_kwargs is None:
+        plot_kwargs = {}
+
     fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
 
     ax = plot_species(ax, df, species, legend=False, **plot_kwargs)
@@ -144,7 +148,7 @@ def plot_species(
     df: pd.DataFrame,
     species: list[str],
     legend: bool = True,
-    **plot_kwargs: dict[str, Any],
+    plot_kwargs: dict[str, Any] | None = None,
 ) -> plt.Axes:
     """Plot the abundance of a list of species through time directly onto an axis.
 
@@ -157,7 +161,7 @@ def plot_species(
             If species name starts with "$" instead of "#" or "@",
             plots the sum of surface and bulk abundances
         legend (bool): Whether to add a legend to the plot. Default = True.
-        plot_kwargs (dict[str, Any]): keyword arguments passed to ``ax.plot``.
+        plot_kwargs (dict[str, Any] | None): keyword arguments passed to ``ax.plot``.
 
     Returns:
         ax (plt.Axes): Modified input axis is returned
@@ -166,6 +170,8 @@ def plot_species(
         KeyError: if no ``"Time"`` column is present in ``df``.
 
     """
+    if plot_kwargs is None:
+        plot_kwargs = {}
     for species_index, species_name in enumerate(species):
         linestyle = "solid"
         if species_name[0] == "$":

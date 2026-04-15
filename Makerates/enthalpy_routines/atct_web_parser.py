@@ -270,7 +270,12 @@ class ATCTParser:
 
 
 def main() -> None:
-    """Command-line interface for ATCT parser."""
+    """Command-line interface for ATCT parser.
+
+    Raises:
+        RuntimeError: If parsing of input file failed.
+
+    """
     import sys
 
     if len(sys.argv) != 3:
@@ -284,6 +289,10 @@ def main() -> None:
         print(f"Parsing {input_file}...")
 
         data = parser.parse_html_file(input_file)
+        if data is None:
+            msg = f"Parsing of {input_file} failed"
+            raise RuntimeError(msg)
+
         parser.validate_data(data)
 
         stats = parser.get_summary_stats(data)

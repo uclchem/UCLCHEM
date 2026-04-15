@@ -171,7 +171,7 @@ class Species:
     species and to help compare between species.
     """
 
-    def __init__(self, input_row: list[str] | pd.Series):
+    def __init__(self, input_row: list | pd.Series):
         """Parse a species row.
 
         Uses the new extended order:
@@ -248,7 +248,7 @@ class Species:
             else:
                 self.desorb_products = [self.get_name()[1:], "NAN", "NAN", "NAN"]
         else:
-            self.freeze_products = {}
+            self.freeze_products: dict[str, float] = {}
 
     def get_name(self) -> str:
         """Get the name of the chemical species.
@@ -277,13 +277,11 @@ class Species:
             int: The charge of the species
 
         """
-        if not self.is_ion():
-            return 0
-
-        if "+" in self.get_name():
+        if self.get_name().endswith("+"):
             return 1
         elif self.get_name().endswith("-"):
             return -1
+        return 0
 
     def get_solid_fraction(self) -> float:
         """Get the solid fraction of the species.
@@ -437,11 +435,11 @@ class Species:
         """
         self.freeze_products[",".join(product_list)] = freeze_alpha
 
-    def get_freeze_products(self) -> Iterator[dict[list[str], float]]:
+    def get_freeze_products(self) -> Iterator[tuple[list[str], float]]:
         """Obtain the product to which the species freeze out.
 
         Yields:
-            Iterator[dict[str, float]]: Iterator that returns all of the
+            Iterator[tuple[list[str], float]]: Iterator that returns all of the
                 freeze out reactions with ratios
 
         """
@@ -546,13 +544,13 @@ class Species:
             freeze = ""
         self.set_freeze_products([freeze, "NAN", "NAN", "NAN"], 1.0)
 
-    def find_constituents(self, quiet: bool = False) -> Counter[str, int]:
+    def find_constituents(self, quiet: bool = False) -> Counter[str]:
         """Loop through the species' name and work out what its consituent
         atoms are. Then calculate mass and alert user if it doesn't match
         input mass.
 
         Returns:
-            counter (Counter): Counter of how many times each element is in the molecule.
+            counter (Counter[str]): Counter of how many times each element is in the molecule.
 
         Examples:
             >>> species = Species(['H2'] + [0] * 10)
@@ -630,7 +628,7 @@ class Species:
                 # if symbol is start of a bracketed part of molecule, keep track
                 if name[char_idx] == "(":
                     currently_in_bracket = True
-                    bracket_content = []
+                    bracket_content: list[str] = []
                 # if it's the end then add bracket contents to list
                 elif name[char_idx] == ")":
                     if not currently_in_bracket:
@@ -649,7 +647,7 @@ class Species:
         if currently_in_bracket:
             msg = f"Opening bracket was not closed in formula {name}"
             raise ValueError(msg)
-        counter = Counter()
+        counter: Counter[str] = Counter()
         for element in element_list:
             counter[element] = atoms.count(element)
 
@@ -870,14 +868,14 @@ class Species:
         except (ValueError, TypeError):
             self.symmetry_factor = -1
 
-    def __eq__(self, other: str | Species) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Check for equality based on either a string or another Species instance.
 
         Args:
-            other (str, Species): Another species
+            other (object): Another Species instance or string corresponding to its name.
 
         Returns:
-            bool: True if two species are identical.
+            bool: True if two species have the same name
 
         Raises:
             NotImplementedError: We can only compare between species or strings of species.
@@ -1015,3 +1013,12 @@ class Species:
         msg = f"For diatomic molecule consisting of two of the same atoms (in this case {self.name}), the symmetry factor should be 2, but was given to be {self.symmetry_factor}. Correcting to 2."
         logging.warning(msg)
         self.symmetry_factor = 2
+
+    def initialize_losses_and_gains(self) -> None:
+        """Initialize losses and gains strings.
+
+        Not to be called by the user, but by ``uclchem.makerates.network_builder.NetworkBuilder```
+
+        """
+        self.losses = ""
+        self.gains = ""

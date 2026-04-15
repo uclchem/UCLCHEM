@@ -2,14 +2,13 @@
 
 import logging
 import os
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Literal
 
 from uclchem.makerates import io_functions as io
 from uclchem.makerates._output_resolver import resolve_output_dirs
-from uclchem.makerates.config import MakeratesConfig
+from uclchem.makerates.config import MakeratesConfig, ReactionFileTypes
 from uclchem.makerates.network import Network
-from uclchem.makerates.reaction import Reaction
 
 # Optional parameters that don't raise errors if missing
 optional_params = [
@@ -191,12 +190,10 @@ def run_makerates(
 
 
 def get_network(
-    path_to_input_file: str | bytes | Path | None = None,
-    path_to_species_file: str | bytes | Path | None = None,
-    path_to_reaction_file: str | bytes | Path | None = None,
-    verbosity: Literal[
-        logging.DEBUG, logging.INFO, logging.WARNING, logging.CRITICAL, logging.ERROR
-    ] = None,
+    path_to_input_file: str | Path | None = None,
+    path_to_species_file: str | Path | None = None,
+    path_to_reaction_file: str | Path | None = None,
+    verbosity: str | None = None,
 ) -> Network:
     """Get a network into memory.
 
@@ -215,7 +212,7 @@ def get_network(
             in/from the src directory. Defaults to None.
         path_to_reaction_file (str | bytes | Path | None): Path to a reactions.csv in/from
             the src directory. Defaults to None.
-        verbosity (LEVEL | None): The verbosity level as specified in logging.
+        verbosity (str | None): The verbosity level as specified in logging.
             Defaults to None.
 
     Returns:
@@ -226,8 +223,8 @@ def get_network(
 
 
     """
-    if verbosity:
-        logging.basicConfig(format="%(levelname)s: %(message)s", level=verbosity)
+    if verbosity is not None:
+        logging.basicConfig(format="%(levelname)s: %(message)s", level=verbosity.upper())
 
     if bool(path_to_input_file) and bool(path_to_species_file or path_to_reaction_file):
         msg = "Cannot have both an input Makerates config file and explicit paths to species + reaction files"
@@ -241,21 +238,21 @@ def get_network(
 
 
 def _get_network_from_files(
-    species_file: str | bytes | Path,
-    reaction_files: list[str | bytes | Path],
-    reaction_types: list[str],
+    species_file: str | Path,
+    reaction_files: Sequence[str | Path],
+    reaction_types: list[ReactionFileTypes],
     gas_phase_extrapolation: bool,
     add_crp_photo_to_grain: bool,
     derive_reaction_exothermicity: bool | str | list[str],
-    database_reaction_exothermicity: list[str | bytes | Path] | None = None,
-) -> tuple[Network, list[Reaction]]:
+    database_reaction_exothermicity: Sequence[str | Path] | None = None,
+) -> tuple[Network, list[list]]:
     logging.info(
         f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"
     )
     species_list, user_defined_bulk = io.read_species_file(species_file)
     # Check if reaction and type files are lists, if not, make them lists
     if not isinstance(reaction_files, list):
-        reaction_files = [reaction_files]
+        reaction_files = [reaction_files]  # type: ignore
     if not isinstance(reaction_types, list):
         reaction_types = [reaction_types]
     reactions = []

@@ -72,13 +72,12 @@ from typing import Any, TextIO
 
 import numpy as np
 import pandas as pd
-from pandas import Series, read_csv
 
 from uclchem.constants import default_elements_to_check, n_reactions, n_species
 from uclchem.makerates import Reaction
 from uclchem.makerates.network import Network
 from uclchem.makerates.species import Species, element_list
-from uclchem.utils import UCLCHEM_ROOT_DIR
+from uclchem.utils import UCLCHEM_ROOT_DIR, ArrayLike
 
 
 def read_output_file(output_file: str | Path) -> pd.DataFrame:
@@ -94,7 +93,7 @@ def read_output_file(output_file: str | Path) -> pd.DataFrame:
 
     """
     with Path(output_file).open() as f:
-        data = read_csv(f)
+        data = pd.read_csv(f)
     data.columns = data.columns.str.strip()
     return data
 
@@ -112,7 +111,7 @@ def read_rate_file(rate_file: str | Path) -> pd.DataFrame:
 
     """
     with Path(rate_file).open() as f:
-        data = read_csv(f)
+        data = pd.read_csv(f)
     data.columns = data.columns.str.strip()
     return data
 
@@ -328,7 +327,7 @@ def analysis(
 
     """
     result_df = read_output_file(output_file)
-    species = np.loadtxt(
+    species_array = np.loadtxt(
         UCLCHEM_ROOT_DIR / "species.csv",
         usecols=[0],
         dtype=str,
@@ -337,7 +336,7 @@ def analysis(
         delimiter=",",
         comments="%",
     )
-    species = list(species)
+    species = list(species_array)
     reactions = np.loadtxt(
         UCLCHEM_ROOT_DIR / "reactions.csv",
         dtype=str,
@@ -352,10 +351,10 @@ def analysis(
     ]
     reac_indxs = [i for i, reaction in enumerate(reactions) if species_name in reaction]
     species_index = species.index(species_name) + 1  # fortran index of species
-    old_key_reactions = []
+    old_key_reactions: list[str] = []
     old_total_destruct = 0.0
     old_total_form = 0.0
-    formatted_reacs = _format_reactions(reactions[reac_indxs])
+    formatted_reacs = _format_reactions(list(reactions[reac_indxs]))
 
     if species_name[0] == "#":
         surftransfer_reacs = [
@@ -476,10 +475,10 @@ def _param_dict_from_output(
 
 def _get_species_rates(
     param_dict: dict[str, Any],
-    input_abundances: list[float],
+    input_abundances: ArrayLike,
     species_index: int,
     reac_indxs: list[int],
-) -> tuple[np.ndarray[float], float, float, float]:
+) -> tuple[np.ndarray, float, float, float]:
     """Get the rate of up to 500 reactions from UCLCHEM for a given
     set of parameters and abundances.
     Intended for use within the analysis script.
@@ -487,15 +486,15 @@ def _get_species_rates(
     Args:
         param_dict (dict[str, Any]): A dictionary of parameters where keys are
             any of the variables in defaultparameters.f90 and values are value for current run.
-        input_abundances (list[float]): Abundance of every species in network
+        input_abundances (ArrayLike): Abundance of every species in network
         species_index (int): Index of the species of interest.
         reac_indxs (list[int]): Indices of reactions of interest in the network's reaction list.
 
     Returns:
-        np.ndarray: Array containing the rate of every reaction specified by reac_indxs
-        transfer:
-        swap:
-        bulk_layers: number of monolayers of bulk ice
+        rates (np.ndarray): Array containing the rate of every reaction specified by reac_indxs
+        transfer (float):
+        swap (float):
+        bulk_layers (float): number of monolayers of bulk ice
 
     Raises:
         DeprecationWarning: Deprecated in UCLCHEM 4.0
@@ -519,7 +518,7 @@ def _get_species_rates(
 
 def _get_rates_of_change(
     rates: np.ndarray,
-    reactions: list[str],
+    reactions: list[list] | np.ndarray,
     species_list: list[str],
     species: str,
     row: pd.Series,
@@ -531,8 +530,8 @@ def _get_rates_of_change(
     See ``analysis.py`` for intended use.
 
     Args:
-        rates (float, array): Rates of all reactions the species is involved in
-        reactions (array): List of all reactions the species is involved in as a list of strings
+        rates (np.ndarray): Rates of all reactions the species is involved in
+        reactions (list[list] | np.ndarray): List of all reactions the species is involved in.
         species_list (array): List of species names from network
         species (string): name of species to be analyseds
         row (pd.Series): row from output dataframe
@@ -601,7 +600,7 @@ def _get_rates_of_change(
 
 
 def _remove_slow_reactions(
-    changes: np.ndarray[float], change_reacs: list[str], rate_threshold: float = 0.99
+    changes: np.ndarray, change_reacs: list[str], rate_threshold: float = 0.99
 ) -> tuple[float, float, list[str], list[float]]:
     """Iterate through a list of reactions adding the fastest reactions to a list until some
     threshold fraction of the total rate of change is reached. This list is returned so that
@@ -609,7 +608,7 @@ def _remove_slow_reactions(
     formation of a species.
 
     Args:
-        changes (np.ndarray[float]): List of rates of change due to each reaction
+        changes (np.ndarray): List of rates of change due to each reaction
             a species is involved in.
         change_reacs (list[str]): List of corresponding rates of change
         rate_threshold (float): Percentage of overall rate of change to consider before ignoring
@@ -649,7 +648,7 @@ def _write_analysis(
     total_production: float,
     total_destruction: float,
     key_reactions: list[str],
-    key_changes: list[str],
+    key_changes: list[float],
 ) -> None:
     """Print key reactions to a file.
 
@@ -700,7 +699,7 @@ def _format_reactions(reactions: list[list[str]]) -> list[str]:
     return formatted_reactions
 
 
-def _count_element(species_list: list[str], element: str) -> np.ndarray:
+def _count_element(species_list: list[str], element: str) -> pd.Series:
     """Count the number of atoms of an element that appear in each species of a list of species.
 
     Args:
@@ -708,21 +707,21 @@ def _count_element(species_list: list[str], element: str) -> np.ndarray:
         element (str): element
 
     Returns:
-        sums (np.ndarray): array where each element represents the number of atoms
+        sums (pd.Series): array where each element represents the number of atoms
             of the chemical element in the corresponding element of species_list
 
     """
-    species_list = Series(species_list)
+    species = pd.Series(species_list)
     # confuse list contains elements whose symbols contain the target eg CL for C
     # We count both sets of species and remove the confuse list counts.
     confuse_list = [x for x in element_list if element in x]
     confuse_list = sorted(confuse_list, key=lambda x: len(x), reverse=True)
     confuse_list.remove(element)
-    sums = species_list.str.count(element)
+    sums = species.str.count(element)
     for i in range(2, 10):
-        sums += np.where(species_list.str.contains(element + f"{i:.0f}"), i - 1, 0)
+        sums += np.where(species.str.contains(element + f"{i:.0f}"), i - 1, 0)
     for spec in confuse_list:
-        sums += np.where(species_list.str.contains(spec), -1, 0)
+        sums += np.where(species.str.contains(spec), -1, 0)
     return sums
 
 
@@ -738,10 +737,10 @@ def total_element_abundance(element: str, df: pd.DataFrame) -> pd.Series:
         pd.Series: Total abundance of element for all time steps in df.
 
     """
-    sums = _count_element(df.columns, element)
+    sums_array = _count_element(list(df.columns), element).to_numpy()
     for variable in ["Time", "Density", "gasTemp", "av", "point", "SURFACE", "BULK"]:
-        sums = np.where(df.columns == variable, 0, sums)
-    return df.mul(sums, axis=1).sum(axis=1)
+        sums_array = np.where(df.columns == variable, 0, sums_array)
+    return df.mul(sums_array, axis=1).sum(axis=1)
 
 
 def check_element_conservation(
@@ -805,30 +804,41 @@ def get_total_swap(
     return totalSwap
 
 
-def construct_incidence(species: list[Species], reactions: list[Reaction]) -> np.ndarray:
+def construct_incidence(
+    species: list[str] | list[Species], reactions: list[Reaction]
+) -> np.ndarray:
     """Construct the incidence matrix, a matrix that describes the in and out degree
     for each of the reactions; useful to matrix multiply by the individual rates per reaction
     to obtain a rates (dy) per species.
 
     Args:
-        species (list[Species]): A list of S species
+        species (list[str]): A list of S species names
         reactions (list[Reaction]): The list of R reactions
 
     Returns:
         incidence (np.ndarray): An RxS incidence matrix
 
+    Raises:
+        ValueError: If a reactant or product of a reaction is not in the ``species``.
+
     """
     incidence = np.zeros(
-        dtype=np.int8,
+        dtype=int,
         shape=(len(reactions), len(species)),
     )
     for reaction_idx, reaction in enumerate(reactions):
         products = reaction.get_pure_products()
         for prod in products:
-            incidence[reaction_idx, species.index(prod)] += 1
+            if prod not in species:
+                msg = f"Product {prod} of reaction {reaction} not in species list"
+                raise ValueError(msg)
+            incidence[reaction_idx, species.index(prod)] += 1  # type: ignore
         reactants = reaction.get_pure_reactants()
         for reac in reactants:
-            incidence[reaction_idx, species.index(reac)] -= 1
+            if reac not in species:
+                msg = f"Reactant {prod} of reaction {reaction} not in species list"
+                raise ValueError(msg)
+            incidence[reaction_idx, species.index(reac)] -= 1  # type: ignore
     return incidence
 
 
@@ -873,7 +883,7 @@ def rate_constants_to_dy_and_rates(
         RuntimeError: If there is no reaction ``@H2 + BULKSWAP -> #H2`` in the network.
 
     """
-    if bool(species) != bool(reactions):
+    if (species is None) != (reactions is None):
         msg = "If species is specified, reactions also must be and vice versa"
         raise ValueError(msg)
 
@@ -881,9 +891,14 @@ def rate_constants_to_dy_and_rates(
         msg = "Choose between providing a network OR (species AND reactions). A network can be obtained using ``uclchem.makerates.network.Network.from_csv()``"
         raise ValueError(msg)
 
-    if network:
+    species_list: list[Species]
+    reactions_list: list[Reaction]
+    if network is not None:
         species = network.get_species_list()
         reactions = network.get_reaction_list()
+    else:
+        species_list = species  # type: ignore[assignment]
+        reactions_list = reactions  # type: ignore[assignment]
 
     if "Point" in rate_constants.columns:
         warnings.warn(
@@ -891,7 +906,7 @@ def rate_constants_to_dy_and_rates(
         )
         rate_constants = rate_constants.drop(columns=["Point"])
 
-    if "@" not in "".join(spec.get_name() for spec in species):
+    if "@" not in "".join(spec.get_name() for spec in species_list):
         msg = "uclchem.analysis.rate_constants_to_dy_and_rates is only implemented for three-phase networks,"
         msg += " but no bulk species were found in the network."
         raise NotImplementedError(msg)
@@ -912,11 +927,13 @@ def rate_constants_to_dy_and_rates(
         NUM_SITES_PER_GRAIN / (GAS_DUST_DENSITY_RATIO * safeBulk)
     ).apply(lambda x: min(1.0, x))
 
-    totalSwap = ratioSurfaceToBulk * get_total_swap(rate_constants, abundances, reactions)
+    totalSwap = ratioSurfaceToBulk * get_total_swap(
+        rate_constants, abundances, reactions_list
+    )
     # ruff: noqa: N806
 
     # Create the incidence matrix, we use this to evaluate the rates and
-    incidence = construct_incidence(species, reactions)
+    incidence = construct_incidence(species_list, reactions_list)
 
     # Create a copy so we don't overwrite
     rate_by_reaction = rate_constants.copy()
@@ -925,7 +942,7 @@ def rate_constants_to_dy_and_rates(
     missing_reactions = set()
 
     # Iterate over each of the rates and compute the contribution to dy for that reaction.
-    for reaction_idx, reaction in enumerate(network.get_reaction_list()):
+    for reaction_idx, reaction in enumerate(reactions_list):
         rate = rate_by_reaction.iloc[:, reaction_idx]
         # Multiply by density the right number of times:
         rate *= physics["Density"] ** reaction.body_count
@@ -982,7 +999,7 @@ def rate_constants_to_dy_and_rates(
 
     # Compute the rate at each timestep, adding the appropriate header
     dy = rate_by_reaction @ incidence
-    dy.columns = [s.get_name() for s in species]
+    dy.columns = [s.get_name() for s in species_list]
     # Compute the SURFACE and BULK:
     dy.loc[:, "SURFACE"] = dy.loc[:, dy.columns.str.startswith("#")].sum(axis=1)
     dy.loc[:, "BULK"] = dy.loc[:, dy.columns.str.startswith("@")].sum(axis=1)
@@ -990,17 +1007,21 @@ def rate_constants_to_dy_and_rates(
     # Compute the corrections to account for the transport between SURFACE and BULK
     swap_rate_correction = pd.DataFrame()
     # Then correct for the addition or subtraction of material to/from the bulk:
-    surfswap_reactions = [r for r in reactions if r.get_reaction_type() == "SURFSWAP"]
-    bulkswap_reactions = [r for r in reactions if r.get_reaction_type() == "BULKSWAP"]
+    surfswap_reactions = [
+        r for r in reactions_list if r.get_reaction_type() == "SURFSWAP"
+    ]
+    bulkswap_reactions = [
+        r for r in reactions_list if r.get_reaction_type() == "BULKSWAP"
+    ]
     # Sort them in the correct order, s.t. it matches the saving to disk format.
     surfswap_reactions = sorted(
         surfswap_reactions,
-        key=lambda x: species.index(x.get_reactants()[0]),
+        key=lambda x: species_list.index(x.get_reactants()[0]),  # type: ignore
     )
 
     bulkswap_reactions = sorted(
         bulkswap_reactions,
-        key=lambda x: species.index(x.get_reactants()[0]),
+        key=lambda x: species_list.index(x.get_reactants()[0]),  # type: ignore
     )
 
     H2_bulkswap_index = None
@@ -1031,8 +1052,9 @@ def rate_constants_to_dy_and_rates(
         msg += " HH transfer is not implemented yet in uclchem.analysis.rate_constants_to_dy_and_rates"
         raise NotImplementedError(msg)
 
-    surfGrowthUncorrected = dy["SURFACE"].copy()
+    surfGrowthUncorrected = dy["SURFACE"].copy().values
     for time_idx, abunds_row in abundances.iterrows():
+        time_idx = int(time_idx)  # type: ignore[call-overload] # just to make mypy happy
         if surfGrowthUncorrected[time_idx] < 0.0:
             surface_coverage = (
                 min(1.0, safeBulk[time_idx] / safeMantle[time_idx])
@@ -1105,8 +1127,8 @@ def rate_constants_to_dy_and_rates(
 
 def compute_heating_per_reaction(
     rates: pd.DataFrame,
-    network: Network = None,
-    reactions: list[Reaction] = None,
+    network: Network | None = None,
+    reactions: list[Reaction] | None = None,
 ) -> pd.DataFrame:
     """Compute heating/cooling per reaction by multiplying rates by exothermicity.
 
@@ -1120,17 +1142,25 @@ def compute_heating_per_reaction(
         pd.DataFrame: (time x n_reactions) of heating rates in erg/s
 
     Raises:
+        ValueError: If ``network`` and ``reactions`` are both None or both not None.
         ValueError: If the number of reactions and rates are not the same.
 
     """
-    if network is not None:
-        reactions = network.get_reaction_list()
+    if (network is None) == (reactions is None):
+        msg = "Choose between passing either network OR reactions."
+        raise ValueError(msg)
 
-    if len(reactions) != rates.shape[1]:
+    reactions_list: list[Reaction]
+    if network is not None:
+        reactions_list = network.get_reaction_list()
+    else:
+        reactions_list = reactions  # type: ignore[assignment]
+
+    if len(reactions_list) != rates.shape[1]:
         msg = "Number of reactions and rates must be equal"
         raise ValueError(msg)
 
-    exothermicities = np.array([r.get_exothermicity() for r in reactions])
+    exothermicities = np.array([r.get_exothermicity() for r in reactions_list])
     return rates * exothermicities
 
 
@@ -1200,7 +1230,7 @@ def derive_phase_from_name(name: str) -> str:
         return "gas"
 
 
-def analyze_element_per_phase(element: str, df: pd.DataFrame) -> pd.Series:
+def analyze_element_per_phase(element: str, df: pd.DataFrame) -> pd.DataFrame:
     """Calculate the total elemental abundance of a species as a function of time
     within each phase (gas, surface, bulk and ion). Allows you to check conservation
     of elements.
@@ -1210,7 +1240,7 @@ def analyze_element_per_phase(element: str, df: pd.DataFrame) -> pd.Series:
         df (pd.DataFrame): DataFrame from ``read_output_file()``
 
     Returns:
-        content (pd.Series): Total abundance of element for all time steps in df.
+        content (pd.DataFrame): Total abundance of element for all time steps in df.
 
     """
     content = pd.DataFrame()

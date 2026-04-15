@@ -207,7 +207,7 @@ class SpeciesMatcher:
 
         # Resume from previous session if requested
         if resume_file and Path(resume_file).exists():
-            return self._resume_matching(target_species, resume_file)
+            return self._resume_matching(resume_file)
 
         # Stage 1: Find exact matches
         exact_matches = self._find_exact_matches(target_species)
@@ -352,6 +352,7 @@ class SpeciesMatcher:
 
         # Check if user wants to continue from previous session or start fresh
         if session_file is not None and Path(session_file).exists():
+            session_file = Path(session_file)
             while True:
                 try:
                     continue_choice = (
@@ -373,7 +374,7 @@ class SpeciesMatcher:
                     elif continue_choice == "c":
                         # Load previous session
                         try:
-                            with Path(session_file).open() as f:
+                            with session_file.open() as f:
                                 previous_session = yaml.safe_load(f)
                             prev = previous_session.get("completed", {})
                             canonical_matches.update(prev)
@@ -426,9 +427,10 @@ class SpeciesMatcher:
                     )
 
                     if user_input == "q":
-                        print("Session saved")
+                        print("Quitting")
                         if session_file:
                             self._save_session(session_data, session_file)
+                            print("Session saved")
                         return canonical_matches
 
                     if user_input == "s":
@@ -495,7 +497,7 @@ class SpeciesMatcher:
             return f"backup_failed{extension}"
 
     @staticmethod
-    def _save_session(session_data: dict, session_file: str) -> None:
+    def _save_session(session_data: dict, session_file: str | Path) -> None:
         """Save current matching session."""
         try:
             with Path(session_file).open("w") as f:

@@ -24,17 +24,17 @@ def _load_fortran_metadata() -> tuple[set[str], set[str], set[str]]:
         metadata = yaml.safe_load(f)
 
     # Flatten nested structure and convert to lowercase sets
-    fortran_params = set()
+    fortran_params: set[str] = set()
     for module_params in metadata.get("fortran_parameters", {}).values():
         if isinstance(module_params, list):
             fortran_params.update(p.lower() for p in module_params if isinstance(p, str))
 
-    internal_params = set()
+    internal_params: set[str] = set()
     for module_params in metadata.get("internal_parameters", {}).values():
         if isinstance(module_params, list):
             internal_params.update(p.lower() for p in module_params if isinstance(p, str))
 
-    file_path_params = set()
+    file_path_params: set[str] = set()
     for module_params in metadata.get("file_path_parameters", {}).values():
         if isinstance(module_params, list):
             file_path_params.update(

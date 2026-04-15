@@ -155,7 +155,6 @@ _PC = 3.086e18  # parsec in cm
 _MH = 1.6736e-24  # hydrogen mass in g
 _KB = 1.38e-16  # Boltzmann constant in erg/K
 _G = 6.67e-8  # gravitational constant in cgs
-_SECONDS_PER_YEAR = 3.15569e7
 _RHO0_FILAMENT = 2.2e4  # reference density for filament/ambipolar (cm^-3)
 _TWO_PI_G = 2.0 * np.pi * _G
 
@@ -165,7 +164,7 @@ def _filament_units():
     two_pi_g_rho0_mh = _TWO_PI_G * _RHO0_FILAMENT * _MH
     cs = np.sqrt(_KB * 10.0 / (2.0 * _MH))  # sound speed at 10 K
     unitr = cs * two_pi_g_rho0_mh ** (-0.5) / _PC  # in pc
-    unitt = two_pi_g_rho0_mh ** (-0.5) / _SECONDS_PER_YEAR  # in yr
+    unitt = two_pi_g_rho0_mh ** (-0.5) / SECONDS_PER_YEAR  # in yr
     return unitr, unitt
 
 
@@ -301,9 +300,9 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
         msg = f"model must be a Collapse instance, got {type(model).__name__}"
         raise TypeError(msg)
 
-    df = model.get_dataframes(point=point)
-    t_yr = df["Time"].values
-    r_pc = df["parcel_radius"].values
+    df: pd.DataFrame = model.get_dataframes(point=point)  # type: ignore[assignment]
+    t_yr = df["Time"]
+    r_pc = df["parcel_radius"]
     mode = model.collapse  # integer 1-4
 
     if mode in (3, 4):
@@ -316,7 +315,7 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
     else:
         # BE-sphere modes: approximate via finite differences of parcel_radius.
         # This is NOT the relationship used to generate the model.
-        t_s = t_yr * _SECONDS_PER_YEAR
+        t_s = t_yr * SECONDS_PER_YEAR
         r_cm = r_pc * _PC
         vr = np.gradient(r_cm, t_s)
 
@@ -330,7 +329,7 @@ class SuccessFlag(enum.IntEnum):
 
     """
 
-    def __new__(cls, value: int, docstring: str) -> Self:  # noqa: D102
+    def __new__(cls, value: int, docstring: str = "") -> Self:  # noqa: D102
         member = int.__new__(cls, value)
 
         member._value_ = value
@@ -359,7 +358,9 @@ class SuccessFlag(enum.IntEnum):
     COOLANT_CONFIG_ERROR = -14, "Coolant configuration error occurred."
     NEGATIVE_ABUNDANCE_ERROR = -15, "A negative abundance was detected."
 
-    def check_error(self, only_error: bool = False, raise_on_error: bool = True) -> str:
+    def check_error(
+        self, only_error: bool = False, raise_on_error: bool = True
+    ) -> str | None:
         """Converts the UCLCHEM integer result flag to a message explaining what went wrong.
 
         Args:
@@ -369,7 +370,7 @@ class SuccessFlag(enum.IntEnum):
                 ``SuccessFlag.SUCCESS``. If False, returns the message string. Default = True.
 
         Returns:
-            str: Error message | None
+            str | None: Error message. Returns None if no error was found.
 
         Raises:
             RuntimeError: If ``raise_on_error`` is True.
@@ -427,3 +428,6 @@ def check_expected_type(
     else:
         msg = f"Expected type {expected_type} but got type {type(variable)}"
     raise TypeError(msg)
+
+
+ArrayLike = list | pd.Series | np.ndarray

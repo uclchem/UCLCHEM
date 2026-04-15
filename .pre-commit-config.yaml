@@ -44,6 +44,14 @@ repos:
         description: "Check for linting errors"
         args: [--fix]
 
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.20.0
+    hooks:
+      - id: mypy
+        name: "[correctness] Mypy type checking"
+        description: "Check for type errors"
+        args: [--install-types, --non-interactive]
+
   # ============================================================================
   # TIER 2: STYLE (Auto-fixable formatting and imports)
   # Purpose: Enforce consistent code style

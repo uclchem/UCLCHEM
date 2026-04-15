@@ -53,10 +53,16 @@ if __name__ == "__main__":
             if reaction1 == reaction2:
                 if reaction1.get_alpha() != reaction2.get_alpha():
                     print(reaction1)
-                    print(f"alpha 1 = {reaction1.alpha}, alpha 2 = {reaction2.alpha}")
+                    print(
+                        f"alpha 1 = {reaction1.get_alpha()}, alpha 2 = {reaction2.get_alpha()}"
+                    )
                 if reaction1.get_beta() != reaction2.get_beta():
                     print(reaction1)
-                    print(f"beta 1 = {reaction1.beta}, beta 2 = {reaction2.beta}")
+                    print(
+                        f"beta 1 = {reaction1.get_beta()}, beta 2 = {reaction2.get_beta()}"
+                    )
                 if reaction1.get_gamma() != reaction2.get_gamma():
                     print(reaction1)
-                    print(f"gamma 1 = {reaction1.gamma}, gamma 2 = {reaction2.gamma}")
+                    print(
+                        f"gamma 1 = {reaction1.get_gamma()}, gamma 2 = {reaction2.get_gamma()}"
+                    )

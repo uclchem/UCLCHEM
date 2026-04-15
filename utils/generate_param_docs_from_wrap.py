@@ -254,7 +254,7 @@ def categorize_parameters(params: dict[str, tuple[Any, str, str]]) -> dict[str, 
     return categories
 
 
-def format_value(value: Any) -> str:
+def format_value(value: str | bool | int | bytes | float) -> str:
     """Format a parameter value for display.
 
     Args:

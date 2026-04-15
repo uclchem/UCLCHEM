@@ -25,7 +25,7 @@ KCAL_TO_ERG = CALORIE_TO_JOULE * 1000.0 / ERG_TO_JOULE
 ERG_TO_ERG = 1.0
 
 # Cache for parsed unit conversions
-_UNIT_CACHE = {}
+_UNIT_CACHE: dict[str, float] = {}
 
 # Base unit mappings
 _BASE_UNITS = {
@@ -202,14 +202,14 @@ def load_custom_exothermicities(csv_path: str | Path) -> pd.DataFrame:
 
 
 def set_custom_exothermicities(
-    reactions: list[Reaction], csv_path: str, overwrite: bool = True
+    reactions: list[Reaction], csv_path: str | Path, overwrite: bool = True
 ) -> tuple[int, int]:
     """Set reaction exothermicities from custom CSV.
 
     Args:
-        reactions: List of Reaction objects to modify
-        csv_path: Path to CSV with custom exothermicities
-        overwrite: If False, only set reactions with zero exothermicity
+        reactions (list[Reaction]): List of Reaction objects to modify
+        csv_path (str | Path): Path to CSV with custom exothermicities
+        overwrite (bool): If False, only set reactions with zero exothermicity
 
     Returns:
         tuple: (num_matched, num_unmatched)

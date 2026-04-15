@@ -81,7 +81,7 @@ param_dict["abundLoadFile"] = "output_2a/startcollapse.dat"
 param_dict["outputFile"] = "output_2a/phase2.dat"
 
 p_core = uclchem.model.PrestellarCore(
-    temp_indx=3, max_temperature=300.0, param_dict=param_dict
+    temp_index=3, max_temperature=300.0, param_dict=param_dict
 )
 # The p_core model has completed and saved output to output_2a/phase2.dat
 # We can now delete the object and load it back from the file
@@ -105,7 +105,7 @@ p_core = uclchem.model.PrestellarCore(read_file="output_2a/phase2.dat")
 p_core.check_conservation()
 
 # +
-df_p_core = p_core.get_dataframes()
+df_p_core = p_core.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "#CO", "#H2O", "#CH3OH", "@H2O", "@CO", "@CH3OH"]
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
 ax = p_core.plot_species(ax, species)
@@ -180,7 +180,7 @@ cshock = uclchem.model.CShock(read_file="output_2a/cshock.dat")
 cshock.check_conservation()
 
 # +
-df_cshock = cshock.get_dataframes()
+df_cshock = cshock.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
@@ -232,7 +232,7 @@ jshock = uclchem.model.JShock(read_file="output_2a/jshock.dat")
 jshock.check_conservation()
 
 # +
-df_jshock = jshock.get_dataframes()
+df_jshock = jshock.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))

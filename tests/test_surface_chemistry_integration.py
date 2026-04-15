@@ -54,7 +54,7 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     result.check_error()
 
     # Get dataframe
-    df = result.get_dataframes()
+    df = result.get_joined_dataframes()
     assert len(df) > 0, "No output produced"
 
     # Verify ice buildup (SURFACE + BULK = total ice)

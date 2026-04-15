@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+ReactionFileTypes = Literal["UMIST", "KIDA", "UCL"]
 
 
 class MakeratesConfig(BaseModel):
@@ -45,7 +48,7 @@ class MakeratesConfig(BaseModel):
         ),
     )
 
-    database_reaction_type: str | list[str] = Field(
+    database_reaction_type: ReactionFileTypes | list[ReactionFileTypes] = Field(
         ...,
         description=(
             "Type(s) of reaction database corresponding to database_reaction_file. "
@@ -66,7 +69,7 @@ class MakeratesConfig(BaseModel):
         ),
     )
 
-    custom_reaction_type: str | list[str] | None = Field(
+    custom_reaction_type: ReactionFileTypes | list[ReactionFileTypes] | None = Field(
         default=None,
         description=(
             "Type(s) of custom reaction files. Must be provided if custom_reaction_file is set. "
@@ -108,7 +111,7 @@ class MakeratesConfig(BaseModel):
         ),
     )
 
-    database_reaction_exothermicity: Path | list[Path] | None = Field(
+    database_reaction_exothermicity: list[Path] | None = Field(
         default=None,
         description=(
             "Path(s) to files containing pre-calculated reaction exothermicity data. "
@@ -178,8 +181,8 @@ class MakeratesConfig(BaseModel):
         ),
     )
 
-    coolant_data_dir: str | None = Field(
-        default="",
+    coolant_data_dir: Path | None = Field(
+        default=None,
         description=(
             "Optional directory path for collisional rate data files. "
             "If specified, this path will be written to f2py_constants.f90 as the default. "
@@ -239,7 +242,7 @@ class MakeratesConfig(BaseModel):
             return [v]
         return v
 
-    @field_validator("coolants_file", mode="before")
+    @field_validator("coolants_file", "coolant_data_dir", mode="before")
     @classmethod
     def normalize_coolants_file(cls, v: str | Path | None) -> Path | None:
         """Normalize a single coolant file path to a Path object.
@@ -264,7 +267,9 @@ class MakeratesConfig(BaseModel):
 
     @field_validator("coolants", mode="before")
     @classmethod
-    def validate_coolants(cls, v: list[dict[str, str]] | None) -> list[dict[str, str]]:
+    def validate_coolants(
+        cls, v: list[dict[str, str]] | None
+    ) -> list[dict[str, str | float]] | None:
         """Validate inline coolants format.
 
         Args:
@@ -300,7 +305,7 @@ class MakeratesConfig(BaseModel):
             if _Path(file_val).name != file_val or _Path(file_val).parent != _Path():
                 msg = f"coolants[{i}]['file'] must be a bare filename (no directories). Got: {file_val}"
                 raise ValueError(msg)
-            entry = {"file": file_val, "name": str(item["name"])}
+            entry: dict[str, str | float] = {"file": file_val, "name": str(item["name"])}
             if "parent_species" in item:
                 entry["parent_species"] = str(item["parent_species"])
             if "conversion_factor" in item:
@@ -454,7 +459,7 @@ class MakeratesConfig(BaseModel):
         logging.info(f"Reading configuration from: {yaml_path}")
         logging.info(f"Configuration directory: {yaml_path.parent}")
 
-        with Path(yaml_path).open() as f:
+        with yaml_path.open() as f:
             data = yaml.safe_load(f)
 
         # Create instance and store config directory for path resolution
@@ -686,7 +691,7 @@ database_reaction_type: "UMIST12"
 
         return files
 
-    def get_all_reaction_types(self) -> list[str]:
+    def get_all_reaction_types(self) -> list[ReactionFileTypes]:
         """Get all reaction types (database + custom) in correct order.
 
         Returns:

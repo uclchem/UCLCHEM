@@ -52,18 +52,20 @@ if __name__ == "__main__":
     # We can then map our dataframe to that function.
 
     # %%
-    def run_model(row: tuple[int, pd.Series]) -> int:
+    def run_model(index_and_row: tuple[int, pd.Series]) -> int:
         """Run a model row with certain physical conditions.
 
         Args:
-            row (tuple[int, pd.Series]): tuple of row number (not used) and row
+            index_and_row (tuple[int, pd.Series]): tuple of row number (not used) and row
                 containing temperature, density, zeta and outputFile.
 
         Returns:
             result (int): result success code.
 
         """
-        _, row = row  # pandas iterrows actually come as tuples with the row number
+        row_index, row = (
+            index_and_row  # pandas iterrows actually come as tuples with the row number
+        )
         # basic set of parameters we'll use for this grid.
         param_dict = {
             "endatfinaldensity": False,
@@ -79,7 +81,7 @@ if __name__ == "__main__":
         return result
 
     with Pool(processes=6) as pool:
-        results = pool.map(run_model, model_table.iterrows())
+        results = pool.map(run_model, model_table.iterrows())  # type: ignore[arg-type]
 
     # ## Checking Your Grid
     # After running, we should do two things.

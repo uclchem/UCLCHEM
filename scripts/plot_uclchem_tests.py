@@ -85,8 +85,8 @@ if __name__ == "__main__":
                         axis,
                         model_data["example-output/" + model],
                         species_names,
-                        alpha=0.5,
                         legend=False,
+                        plot_kwargs={"alpha": 0.5},
                     )
                 if plot_type == "charge":
                     ions = [

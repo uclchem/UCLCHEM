@@ -101,6 +101,6 @@ extend-ignore-identifiers-re = [
 
 
 [[tool.mypy.overrides]]
-module = ["yaml", "uclchemwrap", "h5py"]
+module = ["yaml", "uclchemwrap", "h5py", "nbconvert.*", "nbformat", "pytest", "matplotlib", "matplotlib.*", "xarray", "bs4", "pydantic"]
 ignore_missing_imports = true
 

@@ -27,7 +27,6 @@
 import os
 
 import pandas as pd
-from joblib import Parallel, delayed
 
 import uclchem
 
@@ -96,13 +95,13 @@ results = {}
 for model in grid_runner.models:
     name = model["Model"]
     cloud =  uclchem.model.load_model(file="output_4/analysis.h5", name=name)
-    phys, abun, rates = cloud.get_dataframes(joined=False, with_rates=True)
+    phys, abun, rates = cloud.get_dataframes(with_rate_constants=True)
     final_abundances = cloud.next_starting_chemistry_array
     success_flag = 0 if cloud.has_attr("_data") else -1
     results[name] = (phys, abun, rates, final_abundances, success_flag)
 
 
-phys, abun, rate_constanst, final_abundances, success_flag = results["model_5"]
+phys, abun, rate_constants, final_abundances, success_flag = results["model_5"]
 
 # +
 from uclchem.analysis import analyze_element_per_phase, check_element_conservation
@@ -141,7 +140,7 @@ physics, abundances, rate_constants, final_abundances, successflag = results["mo
 super_df = pd.concat((physics, abundances, rate_constants), axis=1)
 
 # Plot the evolution of $\text{H}_3\text{O}^+$:
-super_df.plot("Time", "H3O+", logx=True, logy=True)
+super_df.plot(x="Time", y="H3O+", logx=True, logy=True)
 # -
 
 # Above, we can see that the $\text{H}3\text{O}^+$ is being formed effectively. If we then want to better understand which reactions are responsible for this formation process, we can easily obtain the production and struction routes using:

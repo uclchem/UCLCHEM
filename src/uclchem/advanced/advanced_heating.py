@@ -413,25 +413,21 @@ class HeatingSettings:
             >>> settings.set_coolant_directory("/custom/rates/") # doctest: +SKIP
 
         """
-        # Validate
-        if not directory.endswith("/"):
-            directory += "/"
-
-        dir_path = Path(directory)
-        if not dir_path.exists():
+        directory = Path(directory)
+        if not directory.exists():
             msg = f"Directory not found: {directory}"
             raise FileNotFoundError(msg)
-        if not dir_path.is_dir():
+        if not directory.is_dir():
             msg = f"Not a directory: {directory}"
             raise ValueError(msg)
-        if len(directory) > 255:
+        if len(str(directory)) > 255:
             msg = f"Path too long (max 255): {directory}"
             raise ValueError(msg)
 
         # Pad and set
         current = self._f2py_constants_module.coolantdatadir
         max_len = int(current.dtype.itemsize)
-        padded = directory.ljust(max_len)
+        padded = str(directory).ljust(max_len)
         self._f2py_constants_module.coolantdatadir = padded
 
     def get_coolant_directory(self) -> str:
@@ -617,10 +613,7 @@ def initialize_coolant_directory() -> str:
         try:
             from importlib.resources import files
 
-            package_data_path = files("uclchem") / "data" / "collisional_rates"
-            # Convert to Path object
-            if hasattr(package_data_path, "as_posix"):  # Traversable
-                package_data_path = Path(str(package_data_path))
+            package_data_path = Path(str(files("uclchem") / "data" / "collisional_rates"))
         except (ImportError, TypeError):
             # Fallback to older API (Python 3.7-3.8)
             from importlib.resources import path as resource_path

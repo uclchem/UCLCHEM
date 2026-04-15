@@ -4,14 +4,16 @@
 import csv
 import fileinput
 import logging
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, TextIO
 
 import numpy as np
 import yaml
 
 from uclchem.constants import PHYSICAL_PARAMETERS
+from uclchem.makerates.config import ReactionFileTypes
 from uclchem.makerates.network import Network
 from uclchem.makerates.reaction import Reaction, reaction_types
 from uclchem.makerates.species import Species, normalize_species_name, species_header
@@ -36,7 +38,9 @@ def get_default_coolants() -> list[dict[str, str]]:
     ]
 
 
-def get_default_coolant_directory(user_specified: str | Path = "") -> str:
+def get_default_coolant_directory(
+    user_specified: str | Path | None = None,
+) -> Path | None:
     """Get the collisional rates directory path for use during makerates.
 
     Args:
@@ -44,11 +48,12 @@ def get_default_coolant_directory(user_specified: str | Path = "") -> str:
             If empty, searches standard locations relative to CWD.
 
     Returns:
-        str: Absolute directory path to collisional rate data files.
+        Path | None: Absolute directory path to collisional rate data files, or None
+            if none of the possible directories exist and have ``*.dat`` files in them.
 
     """
-    if user_specified:
-        return user_specified
+    if user_specified is not None:
+        return Path(user_specified)
     # Search standard locations (makerates runs from Makerates/ directory)
     candidates = [
         Path.cwd() / "data" / "collisional_rates",  # Makerates/data/collisional_rates
@@ -66,8 +71,8 @@ def get_default_coolant_directory(user_specified: str | Path = "") -> str:
         if candidate.is_dir():
             # Look for at least one expected file to confirm it's the right directory
             if list(candidate.glob("*.dat")):  # Has individual .dat files
-                return str(candidate.resolve())
-    return ""
+                return candidate.resolve().absolute()
+    return None
 
 
 def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Species]]:
@@ -104,8 +109,8 @@ def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Specie
 
 
 def read_reaction_file(
-    file_name: Path, species_list: list[Species], ftype: Literal["UMIST", "KIDA", "UCL"]
-) -> tuple[list[Reaction], list[Reaction]]:
+    file_name: str | Path, species_list: list[Species], ftype: ReactionFileTypes
+) -> tuple[list[Reaction], list[list]]:
     """Read in a reaction file of any kind (UCL, UMIST, KIDA), and
     produces a list of reactions for the network, filtered by species_list.
 
@@ -116,7 +121,7 @@ def read_reaction_file(
 
     Returns:
         reactions (list[Reaction]): List of kept reactions.
-        dropped_reactions (list[Reaction]): List of dropped reactions.
+        dropped_reactions (list[list]): List of dropped reactions.
 
     Raises:
         ValueError: If reaction file type is not one of ["UMIST", "UCL", "KIDA"].
@@ -223,16 +228,16 @@ def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
     def str_parse(x: Any) -> str:
         return str(x).strip().upper()
 
-    kida_contents = [
-        [3, {str_parse: 11}],
-        [1, {"skip": 1}],
-        [5, {str_parse: 11}],
-        [1, {"skip": 1}],
-        [3, {float: 10, "skip": 1}],
-        [1, {"skip": 27}],
-        [2, {int: 6, "skip": 1}],
-        [1, {int: 2}],
-        [1, {"skip": 11}],
+    kida_contents: list[tuple[int, dict[str | Callable, int]]] = [
+        (3, {str_parse: 11}),
+        (1, {"skip": 1}),
+        (5, {str_parse: 11}),
+        (1, {"skip": 1}),
+        (3, {float: 10, "skip": 1}),
+        (1, {"skip": 27}),
+        (2, {int: 6, "skip": 1}),
+        (1, {int: 2}),
+        (1, {"skip": 11}),
     ]
     rows = []
     with Path(kida_file).open() as f:
@@ -246,7 +251,7 @@ def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
                     for func, count in item[1].items():
                         if func != "skip":
                             a = line[:count]
-                            row.append(func(a))
+                            row.append(func(a))  # type: ignore[operator]
                         line = line[count:]
 
             # Some reformatting required
@@ -276,14 +281,16 @@ def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
     return rows
 
 
-def read_grain_assisted_recombination_file(file_name: str | Path) -> dict[str, np.array]:
+def read_grain_assisted_recombination_file(
+    file_name: str | Path,
+) -> dict[str, np.ndarray]:
     """Read a grain assisted recombination file.
 
     Args:
         file_name (str | Path): file path of grain assisted recombination data
 
     Returns:
-        gar_parameters (dict[str, np.array] | None): Database for grain-activated recombination
+        gar_parameters (dict[str, np.ndarray]): Database for grain-activated recombination
             reactions.
 
     """
@@ -333,7 +340,10 @@ def read_coolants_file(file_name: str | Path) -> list[dict]:
         if Path(file_val).name != file_val or Path(file_val).parent != Path():
             msg = "Coolant 'file' entries in coolants_file must be bare filenames (no directories)"
             raise ValueError(msg)
-        entry = {"file": file_val, "name": str(item["name"])}
+        entry: dict[str, str | Path | float] = {
+            "file": file_val,
+            "name": str(item["name"]),
+        }
         if "parent_species" in item:
             entry["parent_species"] = str(item["parent_species"])
         if "conversion_factor" in item:
@@ -343,14 +353,17 @@ def read_coolants_file(file_name: str | Path) -> list[dict]:
 
 
 def output_drops(
-    dropped_reactions: list[Reaction], output_dir: str = None, write_files: bool = True
+    dropped_reactions: list[list],
+    output_dir: str | Path | None = None,
+    write_files: bool = True,
 ) -> None:
     """Write the reactions that are dropped to disk/logs.
 
     Args:
-        dropped_reactions (list[Reaction]): The reactions that were dropped
-        output_dir (str): The directory that dropped_reactions.csv will be written to.
-        write_files (bool, optional): Whether or not to write the file. Defaults to True.
+        dropped_reactions (list[list]): The reactions that were dropped
+        output_dir (str | Path | None): The directory that dropped_reactions.csv will be written to.
+            If None, write to CWD.
+        write_files (bool): Whether or not to write the file. Defaults to True.
 
     """
     if output_dir is None:
@@ -380,9 +393,9 @@ def write_outputs(
     python_src_dir: Path,
     fortran_src_dir: Path,
     enable_rates_storage: bool = False,
-    gar_database: dict[str, np.array] | None = None,
+    gar_database: dict[str, np.ndarray] | None = None,
     coolants: list[dict] | None = None,
-    coolant_data_dir: str | Path = "",
+    coolant_data_dir: str | Path | None = None,
 ) -> None:
     """Write the ODE and Network fortran source files to the fortran source.
 
@@ -398,8 +411,8 @@ def write_outputs(
             reactions. Default = None.
         coolants (list[dict] | None): List of coolants or None. If None,
             use default list of coolants. See `get_default_coolants().`
-        coolant_data_dir (str | Path): User-specified directory from config.
-            If empty, searches standard locations relative to CWD.
+        coolant_data_dir (str | Path | None): User-specified directory from config.
+            If None, searches standard locations relative to CWD.
 
     Raises:
         ValueError: If coolants entries do not have a key "file" or the file names are
@@ -407,6 +420,8 @@ def write_outputs(
         ValueError: If coolants start with "o-" or "p-" for ortho and para, but no
             `conversion_factor` is given in the dictionary.
         ValueError: If coolants have parent species specified that are not in the network.
+        RuntimeError: If ``get_default_coolant_directory()`` cannot find a valid coolant
+            directory.
 
     """
     # Use default coolants if none provided
@@ -462,6 +477,10 @@ def write_outputs(
     )
 
     coolant_data_directory = get_default_coolant_directory(coolant_data_dir)
+    if coolant_data_directory is None:
+        msg = "Could not find a coolant data directory that contains coolant data files. Pass the path directly"
+        raise RuntimeError(msg)
+
     n_total_levels, n_se_stats_per_coolant = get_energy_levels_info(
         coolant_names=[c["name"] for c in coolants],
         coolant_files=[c["file"] for c in coolants],
@@ -578,7 +597,7 @@ def write_outputs(
         "parent_names": parent_names,
         "conversion_factors": conversion_factors,
         "conversion_modes": conversion_modes,
-        "coolant_data_dir": coolant_data_dir if coolant_data_dir else "",
+        "coolant_data_dir": coolant_data_directory if coolant_data_directory else "",
         "suggested_freq_rel_tol": suggested_freq_rel_tol,
     }
     write_f90_constants(f2py_constants, filename)
@@ -588,9 +607,9 @@ def write_outputs(
 
 
 def write_f90_constants(
-    replace_dict: dict[str, int],
-    output_file_name: Path,
-    template_file_path: Path = "fortran_templates",
+    replace_dict: dict[str, Any],
+    output_file_name: str | Path,
+    template_file_path: str | Path = "fortran_templates",
 ) -> None:
     """Write the physical reactions to the f2py_constants.f90 file after every
     run of makerates, this ensures the Fortran and Python bits are compatible.
@@ -834,10 +853,8 @@ def write_odes_f90(
     # First generate ODE contributions for all reactions
     species_names = [spec.get_name() for spec in species_list]
 
-    [
-        logging.debug(f"{species_names.index(specie) + 1}:{specie}")
-        for specie in species_list
-    ]
+    for specie in species_list:
+        logging.debug(f"{species_names.index(str(specie)) + 1}:{str(specie)}")
 
     for i, reaction in enumerate(reaction_list):
         logging.debug(f"RATE({i + 1}):{reaction}")
@@ -869,12 +886,12 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
             gains = species.gains.split("+")
             for j in range(1, len(species_list) + 1):
                 if species.get_name() == "SURFACE":
-                    di_dj = f"J({i + 1},{j})=SUM(J(surfaceList,{j}))\n"
-                    output.write(di_dj)
+                    di_dj_final = f"J({i + 1},{j})=SUM(J(surfaceList,{j}))\n"
+                    output.write(di_dj_final)
                 elif species.get_name() == "BULK":
                     if species_names.count("@") > 0:
-                        di_dj = f"J({i + 1},{j})=SUM(J(bulkList,{j}))\n"
-                        output.write(di_dj)
+                        di_dj_final = f"J({i + 1},{j})=SUM(J(bulkList,{j}))\n"
+                        output.write(di_dj_final)
                 else:
                     # every time an ode bit has our species in it, we remove it (dy/dx=a for y=ax)
                     di_dj = [
@@ -899,28 +916,28 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
                         di_dj = [f"+{x}/safeMantle" for x in losses if "/safeMantle" in x]
                         di_dj += [f"-{x}/safeMantle" for x in gains if "/safeMantle" in x]
                     if len(di_dj) > 0:
-                        di_dj = f"J({i + 1},{j})=" + "".join(di_dj) + "\n"
-                        output.write(di_dj)
+                        di_dj_final = f"J({i + 1},{j})=" + "".join(di_dj) + "\n"
+                        output.write(di_dj_final)
 
             # tackle density separately.handled
             j = j + 1
             if species.get_name() == "SURFACE":
-                di_dj = f"J({i + 1},{j})=SUM(J(surfaceList,{j}))\n"
-                output.write(di_dj)
+                di_dj_final = f"J({i + 1},{j})=SUM(J(surfaceList,{j}))\n"
+                output.write(di_dj_final)
             elif species.get_name() == "BULK":
                 if species_names.count("@") > 0:
-                    di_dj = f"J({i + 1},{j})=SUM(J(bulkList,{j}))\n"
-                    output.write(di_dj)
+                    di_dj_final = f"J({i + 1},{j})=SUM(J(bulkList,{j}))\n"
+                    output.write(di_dj_final)
             else:
                 di_dj = [f"-{x}".replace("*D", "", 1) for x in losses if "*D" in x]
                 di_dj += [f"+{x}".replace("*D", "", 1) for x in gains if "*D" in x]
                 di_dj = [x + "*2" if "*D" in x else x for x in di_dj]
                 if len(di_dj) > 0:
-                    di_dj = f"J({i + 1},{j})=" + ("".join(di_dj)) + "\n"
-                    output.write(di_dj)
+                    di_dj_final = f"J({i + 1},{j})=" + ("".join(di_dj)) + "\n"
+                    output.write(di_dj_final)
         i = i + 2
-        di_dj = f"J({i},{i})=ddensdensdot(D)\n"
-        output.write(di_dj)
+        di_dj_final = f"J({i},{i})=ddensdensdot(D)\n"
+        output.write(di_dj_final)
 
 
 def build_ode_string(
@@ -948,32 +965,31 @@ def build_ode_string(
     species_names = []
     for i, species in enumerate(species_list):
         species_names.append(species.get_name())
-        species.losses = ""
-        species.gains = ""
+        species.initialize_losses_and_gains()
 
     bulk_index = species_names.index("BULK")
     surface_index = species_names.index("SURFACE")
     total_swap = ""
 
     for i, reaction in enumerate(reaction_list):
-        for species in reaction.get_reactants():
-            if species in species_names:
+        for reactant in reaction.get_reactants():
+            if reactant in species_names:
                 # Eley-Rideal reactions take a share of total freeze out rate
                 # which is already accounted for so we add as a loss term to the
                 # frozen version of the species rather than the gas version
                 if (reaction.get_reaction_type() == "ER") and (
-                    not species_list[species_names.index(species)].is_surface_species()
+                    not species_list[species_names.index(reactant)].is_surface_species()
                 ):
                     species_list[
-                        species_names.index("#" + species)
+                        species_names.index("#" + reactant)
                     ].losses += reaction.ode_bit
                 else:
-                    species_list[species_names.index(species)].losses += reaction.ode_bit
+                    species_list[species_names.index(reactant)].losses += reaction.ode_bit
                 if reaction.get_reaction_type() == "BULKSWAP":
                     total_swap += reaction.ode_bit
-        for species in reaction.get_products():
-            if species in species_names:
-                species_list[species_names.index(species)].gains += reaction.ode_bit
+        for product in reaction.get_products():
+            if product in species_names:
+                species_list[species_names.index(product)].gains += reaction.ode_bit
 
     ode_string = """MODULE ODES
 USE constants
@@ -1118,7 +1134,7 @@ def species_ode_string(n: int, species: Species) -> str:
     return ydot_string
 
 
-def write_evap_lists(network_file: str | Path, species_list: list[Species]) -> int:
+def write_evap_lists(network_file: TextIO, species_list: list[Species]) -> int:
     """Write evaporation list to network file.
 
     Two phase networks mimic episodic thermal desorption seen in lab (see Viti et al. 2004)
@@ -1128,7 +1144,7 @@ def write_evap_lists(network_file: str | Path, species_list: list[Species]) -> i
     the network file so these processes work.
 
     Args:
-        network_file (file): Open file object to which the network code is being written
+        network_file (TextIO): Open file object to which the network code is being written
         species_list (list[Species]): List of species in network
 
     Returns:
@@ -1314,7 +1330,7 @@ def write_network_file(
     file_name: str | Path,
     network: Network,
     enable_rates_storage: bool = False,
-    gar_database: dict[str, np.array] | None = None,
+    gar_database: dict[str, np.ndarray] | None = None,
 ) -> None:
     """Write the Fortran code file that contains all network information for UCLCHEM.
     This includes lists of reactants, products, binding energies, formationEnthalpies
@@ -1325,7 +1341,7 @@ def write_network_file(
         network (Network): A Network object built from lists of species and reactions.
         enable_rates_storage (bool): Enable storage of writing rates to files.
             Default = False.
-        gar_database (dict[str, np.array] | None): Database for grain-activated recombination
+        gar_database (dict[str, np.ndarray] | None): Database for grain-activated recombination
             reactions. Default = None.
 
     Raises:
@@ -1348,7 +1364,7 @@ def write_network_file(
             atoms.append(species.n_atoms)
 
         species_indices = ""
-        for name, species_index in network.species_indices.items():
+        for name, species_index in network.important_species.items():
             species_indices += f"{name}={species_index},"
         if len(species_indices) > 72:
             species_indices = truncate_line(species_indices)
@@ -1374,7 +1390,7 @@ def write_network_file(
         alpha = []
         beta = []
         gama = []
-        reactionTypes = []
+        reactionTypes = np.empty(len(reaction_list), dtype=np.dtypes.StringDType())
         tmins = []
         tmaxs = []
         reduced_masses = []
@@ -1383,8 +1399,8 @@ def write_network_file(
 
         # store important reactions
         reaction_indices = ""
-        for reaction, index in network.important_reactions.items():
-            reaction_indices += reaction + f"={index},"
+        for reaction_str, index in network.important_reactions.items():
+            reaction_indices += reaction_str + f"={index},"
         reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
         file.write("    INTEGER, PARAMETER ::" + reaction_indices)
 
@@ -1402,7 +1418,7 @@ def write_network_file(
             tmaxs.append(reaction.get_temphigh())
             tmins.append(reaction.get_templow())
             reduced_masses.append(reaction.get_reduced_mass())
-            reactionTypes.append(reaction.get_reaction_type())
+            reactionTypes[i] = reaction.get_reaction_type()
             extrapolations.append(reaction.get_extrapolation())
             exothermicity.append(reaction.get_exothermicity())
 
@@ -1475,7 +1491,6 @@ def write_network_file(
                 "   ExtrapolateRates", extrapolations, type="logical", parameter=True
             )
         )
-        reactionTypes = np.asarray(reactionTypes)
 
         partners = get_desorption_freeze_partners(reaction_list)
         file.write(
@@ -1495,9 +1510,10 @@ def write_network_file(
 
         for reaction_type in reaction_types:
             list_name = reaction_type.lower() + "Reacs"
-            indices = np.where(reactionTypes == reaction_type)[0]
-            if len(indices > 1):
-                indices = [indices[0] + 1, indices[-1] + 1]
+            reactions_match_type = np.where(reactionTypes == reaction_type)[0]
+            print(list_name, reactions_match_type)
+            if len(reactions_match_type) >= 1:
+                indices = [reactions_match_type[0] + 1, reactions_match_type[-1] + 1]
             else:
                 # We still want a dummy array if the reaction type isn't in network
                 indices = [99999, 99999]
@@ -1583,16 +1599,16 @@ def find_reactant(species_list: list[str], reactant: str) -> int:
         return 9999
 
 
-def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[Reaction]:
+def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[int]:
     """Every desorption has a corresponding freeze out eg desorption of #CO and freeze of CO.
     This find the corresponding freeze out for every desorb so that when desorb>>freeze
     we can turn off freeze out in UCLCHEM.
 
     Args:
-        reaction_list (list): Reactions in network
+        reaction_list (list[Reaction]): Reactions in network
 
     Returns:
-        partners (list): list of indices of freeze out reactions
+        partners (list[int]): list of indices of freeze out reactions
             matching order of desorptions.
 
     """
@@ -1687,7 +1703,7 @@ def array_to_string(
         return out_string
 
 
-def copy_coolant_files(source_dir: str | None = None) -> None:
+def copy_coolant_files(source_dir: str | Path | None = None) -> None:
     """Copy coolant data files to the package data directory for installation.
 
     This function copies .dat files from the source coolant directory
@@ -1695,11 +1711,13 @@ def copy_coolant_files(source_dir: str | None = None) -> None:
     so they can be installed with the package via meson.
 
     Args:
-        source_dir (str | None): Optional source directory.
-            If None, uses get_default_coolant_directory(). Default = None.
+        source_dir (str | Path | None): Optional source directory.
+            If None, uses ``get_default_coolant_directory()``. Default = None.
 
     Raises:
-        FileNotFoundError: If source directory doesn't exist or contains no .dat files.
+        RuntimeError: If ``get_default_coolant_directory()`` could not find a
+            valid coolant directory.
+        FileNotFoundError: If source directory doesn't exist or contains no ``*.dat`` files.
 
     """
     import shutil
@@ -1707,13 +1725,15 @@ def copy_coolant_files(source_dir: str | None = None) -> None:
     # Determine source directory
     if source_dir is None:
         source_dir = get_default_coolant_directory()
+        if source_dir is None:
+            msg = "Could not determine coolant directory. Pass directly instead."
+            raise RuntimeError(msg)
+        source_path = source_dir
+    else:
+        source_path = Path(source_dir)
 
-    source_path = Path(source_dir)
     if not source_path.is_dir():
-        msg = (
-            f"Source coolant directory not found: {source_path}\n"
-            f"Expected to find .dat files for coolant data."
-        )
+        msg = f"Source coolant directory not found: {source_path}\n"
         raise FileNotFoundError(msg)
 
     # Find .dat files in source directory

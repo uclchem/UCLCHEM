@@ -66,9 +66,9 @@ param_dict_heating = {
 cloud = uclchem.model.Cloud(param_dict=param_dict_heating)
 
 # Extract data from the model object
-physics, abundances = cloud.get_dataframes(joined=False)
-_, _, rate_constants = cloud.get_dataframes(joined=False, with_rate_constants=True)
-_, _, heating = cloud.get_dataframes(joined=False, with_heating=True)
+physics, abundances = cloud.get_dataframes()
+_, _, rate_constants = cloud.get_dataframes(with_rate_constants=True)
+_, _, heating = cloud.get_dataframes(with_heating=True)
 start_abund = cloud.next_starting_chemistry_array
 flag = 0 if cloud.has_attr("_data") else -1
 
@@ -114,9 +114,9 @@ param_dict_no_heating["heatingFlag"] = False
 cloud_no_heat = uclchem.model.Cloud(param_dict=param_dict_no_heating)
 
 # Extract data
-physics_no_heat, abundances_no_heat = cloud_no_heat.get_dataframes(joined=False)
-_, _, rate_constants_no_heat = cloud_no_heat.get_dataframes(joined=False, with_rate_constants=True)
-_, _, heating_no_heat = cloud_no_heat.get_dataframes(joined=False, with_heating=True)
+physics_no_heat, abundances_no_heat = cloud_no_heat.get_dataframes()
+_, _, rate_constants_no_heat = cloud_no_heat.get_dataframes(with_rate_constants=True)
+_, _, heating_no_heat = cloud_no_heat.get_dataframes(with_heating=True)
 flag_no_heat = 0 if cloud_no_heat.has_attr("_data") else -1
 
 print(f"No heating model completed with flag: {flag_no_heat}")
@@ -295,16 +295,16 @@ param_warm_cloud = {
 # Run both models
 print("Running cold core model...")
 cloud_cold = uclchem.model.Cloud(param_dict=param_cold_core)
-phys_cold, abund_cold = cloud_cold.get_dataframes(joined=False)
-_, _, rate_constants_cold = cloud_cold.get_dataframes(joined=False, with_rate_constants=True)
-_, _, heating_cold = cloud_cold.get_dataframes(joined=False, with_heating=True)
+phys_cold, abund_cold = cloud_cold.get_dataframes()
+_, _, rate_constants_cold = cloud_cold.get_dataframes(with_rate_constants=True)
+_, _, heating_cold = cloud_cold.get_dataframes(with_heating=True)
 flag_cold = 0 if cloud_cold.has_attr("_data") else -1
 
 print("Running warm cloud model...")
 cloud_warm = uclchem.model.Cloud(param_dict=param_warm_cloud)
-phys_warm, abund_warm = cloud_warm.get_dataframes(joined=False)
-_, _, rate_constants_warm = cloud_warm.get_dataframes(joined=False, with_rate_constants=True)
-_, _, heating_warm = cloud_warm.get_dataframes(joined=False, with_heating=True)
+phys_warm, abund_warm = cloud_warm.get_dataframes()
+_, _, rate_constants_warm = cloud_warm.get_dataframes(with_rate_constants=True)
+_, _, heating_warm = cloud_warm.get_dataframes(with_heating=True)
 flag_warm = 0 if cloud_warm.has_attr("_data") else -1
 
 print(f"\nCold core flag: {flag_cold}, Warm cloud flag: {flag_warm}")

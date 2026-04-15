@@ -78,7 +78,7 @@ param_dict["abstol_factor"] = 1e-18
 param_dict["reltol"] = 1e-12
 
 p_core = uclchem.model.PrestellarCore(
-    temp_indx=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
+    temp_index=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
 )
 p_core.check_conservation()
 # -
@@ -100,7 +100,7 @@ p_core.check_conservation()
 # version of it, then we can plot it up.
 
 # +
-df_p_core = p_core.get_dataframes()
+df_p_core = p_core.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "#CO", "#H2O", "#CH3OH", "@H2O", "@CO", "@CH3OH"]
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
 ax = p_core.plot_species(ax, species)
@@ -168,7 +168,7 @@ cshock = uclchem.model.CShock(
 cshock.check_conservation()
 
 # +
-df_cshock = cshock.get_dataframes()
+df_cshock = cshock.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
 ax = cshock.plot_species(ax, species)
@@ -214,7 +214,7 @@ jshock = uclchem.model.JShock(
 # bit slower but we get no warnings on this run.
 
 # +
-df_jshock = jshock.get_dataframes()
+df_jshock = jshock.get_joined_dataframes()
 jshock.check_conservation()
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 

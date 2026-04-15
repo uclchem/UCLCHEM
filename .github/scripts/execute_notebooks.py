@@ -24,7 +24,7 @@ with LOG.open("a") as lf:
     lf.write(f"Run started: {datetime.utcnow().isoformat()}Z\n")
 
 # Convert .py to .ipynb if any
-py_files = SRC_DIR.glob("*.py")
+py_files = [str(path) for path in SRC_DIR.glob("*.py")]
 if py_files:
     try:
         subprocess.check_call(
@@ -50,7 +50,7 @@ with LOG.open("a") as lf:
     lf.write(f"Using EXEC_TIMEOUT={timeout_val}\n")
 
 # Copy ipynb sources into executed_notebooks
-ipynbs = SRC_DIR.glob("*.ipynb")
+ipynbs = [str(path) for path in SRC_DIR.glob("*.ipynb")]
 if ipynbs:
     for p in ipynbs:
         try:
@@ -63,7 +63,7 @@ else:
         lf.write("No ipynb sources found in notebooks/\n")
 
 # Execute notebooks in executed_notebooks
-exec_ipynbs = OUT_DIR.glob("*.ipynb")
+exec_ipynbs = [str(path) for path in OUT_DIR.glob("*.ipynb")]
 for nb in exec_ipynbs:
     with LOG.open("a") as lf:
         lf.write(f"Executing: {nb}\n")

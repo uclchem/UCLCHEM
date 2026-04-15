@@ -31,7 +31,7 @@ def _normalize_for_comparison(text: str) -> str:
 def get_energy_levels_info(
     coolant_names: list[str],
     coolant_files: list[str],
-    data_dir: str,
+    data_dir: str | Path,
 ) -> tuple[int, int]:
     """Compute energy level information from coolant data files.
 
@@ -40,9 +40,9 @@ def get_energy_levels_info(
     goes wrong.
 
     Args:
-        coolant_names: List of coolant species names (e.g., ['H', 'C+', 'O', ...])
-        coolant_files: List of coolant data file names (e.g., ['ly-a.dat', ...])
-        data_dir: Directory containing the coolant data files
+        coolant_names (list[str]): List of coolant species names (e.g., ['H', 'C+', 'O', ...])
+        coolant_files (list[str]): List of coolant data file names (e.g., ['ly-a.dat', ...])
+        data_dir (str | path): Directory containing the coolant data files
 
     Returns:
         Tuple of (n_total_levels, n_se_stats_per_coolant)
@@ -55,7 +55,7 @@ def get_energy_levels_info(
 
     """
     data_path = Path(data_dir)
-    if not data_path.exists():
+    if not data_path.is_dir():
         msg = f"Coolant data directory not found: {data_dir}"
         raise FileNotFoundError(msg)
 
@@ -254,7 +254,7 @@ def load_coolant_level_names() -> dict[int, list[str]]:
         msg = f"Coolant data directory not found: {data_dir}"
         raise FileNotFoundError(msg)
 
-    level_names = {}
+    level_names: dict[int, list[str]] = {}
     target_marker = _normalize_for_comparison("NUMBER OF ENERGY LEVELS")
 
     for i, (coolant_name, coolant_file) in enumerate(zip(coolant_names, coolant_files)):

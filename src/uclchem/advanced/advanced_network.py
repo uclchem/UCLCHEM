@@ -508,7 +508,9 @@ class NetworkState:
 
         # Cache formation enthalpies if available (for heating/cooling)
         if hasattr(self._network, "formationenthalpy"):
-            self._initial_formationenthalpy = np.copy(self._network.formationenthalpy)
+            self._initial_formationenthalpy: np.ndarray | None = np.copy(
+                self._network.formationenthalpy
+            )
         else:
             self._initial_formationenthalpy = None
 
