@@ -18,11 +18,10 @@ chemical abundances and reaction rates from UCLCHEM models.
     >>>
     >>> physics_df, chemistry_df, rate_constants_df = model.get_dataframes(
     ...     with_rate_constants=True,
-    ...     joined=False,
     ... )
     >>> # Making a plot of the abundances over time
     >>> fig, ax = uclchem.plot.create_abundance_plot(
-    ...     model.get_dataframes(joined=True), # need both "Time" and abundance columns in one dataframe
+    ...     model.get_joined_dataframes(), # need both "Time" and abundance columns in one dataframe
     ...     ["H", "$H", "H2O", "$H2O", "CH3OH", "$CH3OH"],
     ... )
     >>>

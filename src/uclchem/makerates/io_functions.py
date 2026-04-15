@@ -1514,7 +1514,6 @@ def write_network_file(
         for reaction_type in reaction_types:
             list_name = reaction_type.lower() + "Reacs"
             reactions_match_type = np.where(reactionTypes == reaction_type)[0]
-            print(list_name, reactions_match_type)
             if len(reactions_match_type) >= 1:
                 indices = [reactions_match_type[0] + 1, reactions_match_type[-1] + 1]
             else:

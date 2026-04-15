@@ -25,7 +25,6 @@ This module provides functions to:
     >>>
     >>> physics_df, chemistry_df, rate_constants_df = model.get_dataframes(
     ...     with_rate_constants=True,
-    ...     joined=False,
     ... )
     >>>
     >>> uclchem.analysis.check_element_conservation(chemistry_df)

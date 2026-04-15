@@ -25,13 +25,17 @@ Usage Patterns
 
     >>> import uclchem
     >>>
-    >>> success_flag, abundance_CO, abundance_H2O = uclchem.functional.cloud(
+    >>> success_flag, out_species_abundances = uclchem.functional.cloud(
     ...     param_dict={'initialDens': 1e4, 'outputFile': 'cloud.dat'},
     ...     out_species=['CO', 'H2O']
     ... )
     >>>
     >>> success_flag.check_error()
     Model ran successfully
+    >>>
+    >>> # Print abundances of CO and H2O at the end of the model
+    >>> print(out_species_abundances)
+    [...]
 
 **Memory mode** - Results returned as arrays:
 
@@ -186,8 +190,8 @@ def _functional_return_(
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last
                 timestep in the format uclchem needs in order to perform an additional
                 run after the initial model
-            - success_flag (int): which is negative if the model failed to run.
-                Can be passed to ``uclchem.utils.check_error()`` to see more details.
+            - success_flag (SuccessFlag): which is negative if the model failed to run.
+                Can run ``success_flag.check_error()`` to see more details.
         if return_dataframe is True:
             - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
                 for each written timestep
@@ -201,8 +205,8 @@ def _functional_return_(
                 (if model_object contains the dissipation_time attribute)
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
                 in the format uclchem needs in order to perform an additional run after the initial model
-            - success_flag (int): which is negative if the model failed to run.
-                Can be passed to ``uclchem.utils.check_error()`` to see more details.
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
 
     """
     result: list[Any]
@@ -364,8 +368,8 @@ def _cloud_(
                 (if return_heating=True)
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
                 in the format uclchem needs in order to perform an additional run after the initial model
-            - success_flag (int): which is negative if the model failed to run.
-                Can be passed to ``uclchem.utils.check_error()`` to see more details.
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
         if return_dataframe is True:
             - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
                 for each written timestep
@@ -378,8 +382,8 @@ def _cloud_(
             - abundanceStart (np.ndarray): array containing the chemical abundances
                 of the last timestep in the format uclchem needs in order to perform an additional
                 run after the initial model
-            - success_flag (int): which is negative if the model failed to run.
-                Can be passed to ``uclchem.utils.check_error()`` to see more details.
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
 
     """
     if out_species is None:
@@ -467,8 +471,8 @@ def _collapse_(
                 (if return_heating=True)
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
                 in the format uclchem needs in order to perform an additional run after the initial model
-            - success_flag (int): which is negative if the model failed to run.
-                Can be passed to ``uclchem.utils.check_error()`` to see more details.
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
         if return_dataframe is True:
             - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
                 for each written timestep
@@ -480,8 +484,8 @@ def _collapse_(
                 for each timestep (if return_heating=True)
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
                 in the format uclchem needs in order to perform an additional run after the initial model
-            - success_flag (int): which is negative if the model failed to run.
-                Can be passed to ``uclchem.utils.check_error()`` to see more details.
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
 
     """
     if out_species is None:
@@ -571,8 +575,8 @@ def _prestellar_core_(
                 (if return_heating=True)
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
                 in the format uclchem needs in order to perform an additional run after the initial model
-            - success_flag (int): which is negative if the model failed to run.
-                Can be passed to ``uclchem.utils.check_error()`` to see more details.
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
         if return_dataframe is True:
             - physicsDF (pd.DataFrame): DataFrame containing the physical outputs for each
                 written timestep
@@ -585,8 +589,8 @@ def _prestellar_core_(
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
                 in the format uclchem needs in order to perform an additional run
                 after the initial model
-            - success_flag (int): which is negative if the model failed to run.
-                Can be passed to ``uclchem.utils.check_error()`` to see more details.
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
 
     """
     if out_species is None:
@@ -682,8 +686,8 @@ def _cshock_(
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
                 in the format uclchem needs in order to perform an additional run
                 after the initial model
-            - success_flag (integer): which is negative if the model failed to run.
-                Can be passed to ``uclchem.utils.check_error()`` to see more details.
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
         if return_dataframe is True:
             - physicsDF (pd.DataFrame): DataFrame containing the physical outputs for
                 each written timestep
@@ -697,8 +701,8 @@ def _cshock_(
             - abundanceStart (np.ndarray): array containing the chemical abundances of the last
                 timestep in the format uclchem needs in order to perform an additional run
                 after the initial model
-            - success_flag (int): which is negative if the model failed to run.
-                Can be passed to ``uclchem.utils.check_error()`` to see more details.
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
 
     """
     if out_species is None:
@@ -790,8 +794,8 @@ def _jshock_(
             - abundanceStart (np.ndarray): array containing the chemical abundances of
                 the last timestep in the format uclchem needs in order to perform
                 an additional run after the initial model
-            - success_flag (integer): which is negative if the model failed to run.
-                Can be passed to ``uclchem.utils.check_error()`` to see more details.
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
         if return_dataframe is True:
             - physicsDF (pd.DataFrame): DataFrame containing the physical outputs for
                 each written timestep
@@ -804,8 +808,8 @@ def _jshock_(
             - abundanceStart (np.ndarray): array containing the chemical abundances of
                 the last timestep in the format uclchem needs in order to perform
                 an additional run after the initial model
-            - success_flag (int): which is negative if the model failed to run.
-                Can be passed to ``uclchem.utils.check_error()`` to see more details.
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
 
     """
     if out_species is None:
