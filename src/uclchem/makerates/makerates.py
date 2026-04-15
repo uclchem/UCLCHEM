@@ -1,7 +1,6 @@
 """UCLCHEM MakeRates."""
 
 import logging
-import os
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -22,7 +21,7 @@ optional_params = [
 def run_makerates(
     configuration: str | Path | MakeratesConfig = "user_settings.yaml",
     write_files: bool = True,
-    output_directory: str | os.PathLike | None = None,
+    output_directory: str | Path | None = None,
 ) -> Network:
     """Run makerates.
 
@@ -34,7 +33,7 @@ def run_makerates(
             or ``MakeratesConfig`` instance. Defaults to "user_settings.yaml"
         write_files (bool): Whether to write fortran files to src/fortran_src.
             Defaults to True.
-        output_directory (str | os.PathLike): Optional override for the output directory
+        output_directory (str | Path): Optional override for the output directory
             where files should be written. If None, uses the 'output_directory'
             from the config (if present) or the package defaults.
 
@@ -42,7 +41,7 @@ def run_makerates(
         network (Network): A validated chemical network instance.
 
     Raises:
-        ValueError: If `coolants_file` is a directory, and not a path to a file.
+        ValueError: If ``coolants_file`` is a directory, and not a path to a file.
 
     """
     if not isinstance(configuration, MakeratesConfig):
@@ -175,7 +174,7 @@ def run_makerates(
         # Only pass coolant_data_dir if it's explicitly set and valid
         source_dir = (
             config.coolant_data_dir
-            if config.coolant_data_dir and config.coolant_data_dir != "."
+            if config.coolant_data_dir is not None and str(config.coolant_data_dir) != "."
             else None
         )
         io.copy_coolant_files(source_dir=source_dir)

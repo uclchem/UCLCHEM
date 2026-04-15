@@ -427,7 +427,7 @@ class HeatingSettings:
         # Pad and set
         current = self._f2py_constants_module.coolantdatadir
         max_len = int(current.dtype.itemsize)
-        padded = str(directory).ljust(max_len)
+        padded = (str(directory) + "/").ljust(max_len)
         self._f2py_constants_module.coolantdatadir = padded
 
     def get_coolant_directory(self) -> str:

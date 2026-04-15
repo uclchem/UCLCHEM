@@ -40,19 +40,19 @@ def get_default_coolants() -> list[dict[str, str]]:
 
 def get_default_coolant_directory(
     user_specified: str | Path | None = None,
-) -> Path | None:
+) -> Path | str:
     """Get the collisional rates directory path for use during makerates.
 
     Args:
-        user_specified (str | Path): User-specified directory from config.
+        user_specified (str | Path | None): User-specified directory from config.
             If empty, searches standard locations relative to CWD.
 
     Returns:
-        Path | None: Absolute directory path to collisional rate data files, or None
+        Path | str: Path to collisional rate data files, or an empty string ``""``
             if none of the possible directories exist and have ``*.dat`` files in them.
 
     """
-    if user_specified is not None:
+    if user_specified is not None and user_specified:
         return Path(user_specified)
     # Search standard locations (makerates runs from Makerates/ directory)
     candidates = [
@@ -71,8 +71,8 @@ def get_default_coolant_directory(
         if candidate.is_dir():
             # Look for at least one expected file to confirm it's the right directory
             if list(candidate.glob("*.dat")):  # Has individual .dat files
-                return candidate.resolve().absolute()
-    return None
+                return candidate.resolve()
+    return ""
 
 
 def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Species]]:
@@ -597,7 +597,7 @@ def write_outputs(
         "parent_names": parent_names,
         "conversion_factors": conversion_factors,
         "conversion_modes": conversion_modes,
-        "coolant_data_dir": coolant_data_directory if coolant_data_directory else "",
+        "coolant_data_dir": str(coolant_data_dir) if coolant_data_dir is not None else "",
         "suggested_freq_rel_tol": suggested_freq_rel_tol,
     }
     write_f90_constants(f2py_constants, filename)
@@ -641,7 +641,7 @@ def write_f90_constants(
         replace_dict["coolant_names"] = "/" + coolant_names_str + "/"
 
         coolant_data_directory = replace_dict.pop("coolant_data_dir")
-        replace_dict["coolant_data_dir"] = str(coolant_data_directory) + "/"
+        replace_dict["coolant_data_dir"] = str(coolant_data_directory)
 
         # Format parent names (same pattern as coolant names)
         if "parent_names" in replace_dict:
@@ -1730,7 +1730,7 @@ def copy_coolant_files(source_dir: str | Path | None = None) -> None:
         if source_dir is None:
             msg = "Could not determine coolant directory. Pass directly instead."
             raise RuntimeError(msg)
-        source_path = source_dir
+        source_path = Path(source_dir)
     else:
         source_path = Path(source_dir)
 

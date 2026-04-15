@@ -1444,8 +1444,8 @@ class AbstractModel(ABC):
             file (h5py.File | str | Path): open h5py file object, or Path to a file that contains
                 previously run and stored models.
             name (str): Name to use for the group of the object. Defaults to 'default'
-            overwrite (bool): Boolean on whether to overwrite pre-existing models, or error out.
-                Defaults to False
+            overwrite (bool): Whether to overwrite pre-existing models, or error out if there
+                is another model with name ``name`` in the file. Defaults to False
 
         Raises:
             TypeError: if ``file`` is not a string, Path or ``h5py.File`` instance.

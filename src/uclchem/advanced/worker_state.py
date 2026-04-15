@@ -137,6 +137,7 @@ def create_snapshot() -> dict[str, Any]:
         "coolantdatadir": np.copy(f2py_constants_module.coolantdatadir),
         "coolant_active": np.copy(f2py_constants_module.coolant_active),
     }
+
     # Coolant restart mode – accessor pattern varies between builds
     if hasattr(uclchemwrap, "get_coolant_restart_mode_wrap"):
         heating["coolant_restart_mode"] = int(uclchemwrap.get_coolant_restart_mode_wrap())
