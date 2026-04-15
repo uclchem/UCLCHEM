@@ -119,6 +119,9 @@ def test_pickle_roundtrip_preserves_meta_and_arrays():
     m.un_pickle()
 
     # metadata and arrays should be restored
+    assert hasattr(m, "some_meta"), (
+        "model object has no attribute 'some_meta' after pickle/unpickle"
+    )
     assert m.some_meta == "meta", (
         "String metadata 'some_meta' not preserved after pickle/unpickle"
     )

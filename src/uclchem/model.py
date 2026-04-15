@@ -1551,7 +1551,7 @@ class AbstractModel(ABC):
             AbstractModel
 
         """
-        if self._data is None and bool(self._pickle_dict):
+        if (self._data is None or len(self._data.dims) == 0) and bool(self._pickle_dict):
             self._data = xr.Dataset()
             for k, v in self._pickle_dict.items():
                 if np.ndim(v) == 3 and "_array" in k:
@@ -1599,6 +1599,8 @@ class AbstractModel(ABC):
                 pass
             finally:
                 object.__setattr__(self, "_pickle_meta", {})
+        else:
+            warnings.warn("Un-pickling an object that was not pickled.")
         self._coord_assign()
         return self
 
