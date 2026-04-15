@@ -640,6 +640,9 @@ def write_f90_constants(
         replace_dict["coolant_name_len"] = max_name_len
         replace_dict["coolant_names"] = "/" + coolant_names_str + "/"
 
+        coolant_data_directory = replace_dict.pop("coolant_data_dir")
+        replace_dict["coolant_data_dir"] = str(coolant_data_directory) + "/"
+
         # Format parent names (same pattern as coolant names)
         if "parent_names" in replace_dict:
             parent_names = replace_dict.pop("parent_names")
