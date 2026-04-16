@@ -38,7 +38,7 @@ IMPLICIT NONE
     REAL(dp), ALLOCATABLE :: abstol(:)
     REAL(dp), ALLOCATABLE :: reltol_vec(:)
     ! TYPE(VODE_OPTS) :: OPTIONS
-    !initial fractional elemental abudances and arrays to store abundances
+    !initial fractional elemental abundances and arrays to store abundances
     REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
     REAL(dp), ALLOCATABLE :: abund(:,:)
     REAL(dp) :: numMonolayers,ratioSurfaceToBulk
@@ -98,7 +98,7 @@ CONTAINS
             abund(nsx,:) = fs
             abund(nsix,:) = fsi                
             abund(nclx,:) = fcl 
-            !Decide how much carbon is initiall ionized using parameters.f90
+            !Decide how much carbon is initially ionized using parameters.f90
             SELECT CASE (ion)
                 CASE(0)
                     abund(nc,:)=fc
@@ -433,12 +433,12 @@ CONTAINS
             CASE(-2)
                 !ISTATE -2 just needs an absol change so let's do that and try again
                 write(*,*) "ISTATE -2: Tolerances too small"
-                !Tolerances are too small for machine but succesful to current currentTime
+                !Tolerances are too small for machine but successful to current currentTime
                 abstol_factor=abstol_factor*10.0
                 abstol_ice_factor=abstol_ice_factor*10.0
                 reltol_phys=MIN(reltol_phys*10.0, 1.0d-1)
             CASE(-3)
-                !ISTATE -3 is unrecoverable so just bail on intergration
+                !ISTATE -3 is unrecoverable so just bail on integration
                 write(*,*) "DVODE found invalid inputs"
                 write(*,*) "abstol:"
                 write(*,*) abstol

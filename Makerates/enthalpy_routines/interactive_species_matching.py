@@ -739,7 +739,7 @@ def main() -> None:
         "--overwrite_uclchem_species_csv",
         action="store_true",
         help=(
-            "If set, enchance the original UCLCHEM species CSV with "
+            "If set, enhance the original UCLCHEM species CSV with "
             "enthalpy data based on the matching."
         ),
     )

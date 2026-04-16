@@ -54,7 +54,7 @@ IMPLICIT NONE
     CASE("POSTPROCESS")
        CALL postprocess(paramDict,"",.false.,.false.,abundances,success)
     CASE default
-        write(*,*) 'Model type not recognised'
+        write(*,*) 'Model type not recognized'
         WRITE(*,*) 'Supported models are: CLOUD, CSHOCK, HOTCORE and POSTPROCESS'
         STOP
     END SELECT

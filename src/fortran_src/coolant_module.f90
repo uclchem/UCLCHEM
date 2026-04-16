@@ -1549,7 +1549,7 @@ SUBROUTINE writeOpacities(fileName,modelNumber)
                   LINE_LABELS(P)=TRIM(ADJUSTL(LINE_LABELS(P)))//'um'
                END IF
 
-!              Handle labelling of both neutral and ionized atomic species
+!              Handle labeling of both neutral and ionized atomic species
                LINE_LABELS(P)='['//coolants(N)%NAME(1:VERIFY(coolants(N)%NAME,'+ ',.TRUE.))  &
                                & //REPEAT('I',COUNT_SUBSTRING(coolants(N)%NAME,'+'))//'I] ' &
                                & //TRIM(ADJUSTL(LINE_LABELS(P)))

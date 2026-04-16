@@ -13,9 +13,9 @@
 #     name: python3
 # ---
 
-# # Advanced Physical Modelling on Disk using Objects
+# # Advanced Physical Modeling on Disk using Objects
 #
-# In the previous tutorial, we simply modeled the chemistry of a static cloud for 1 Myr. This is unlikely to meet everybody's modelling needs and UCLCHEM is capable of modelling much more complex environments such as prestellar cores and shocks. In this tutorial, we model both a prestellar core and a shock to explore how these models work and to demonstrate the workflow that the UCLCHEM team normally follow. In tutorial 2a, we approach the modeling in a more classic approach, by writing the outputs to files, before passing them to the subsequent model class. In tutorial 2b, we calculate the exact same models, but take advantage of the model objects in order to perform all calculations in memory, bypassing the file system entirely.
+# In the previous tutorial, we simply modeled the chemistry of a static cloud for 1 Myr. This is unlikely to meet everybody's modeling needs and UCLCHEM is capable of modeling much more complex environments such as prestellar cores and shocks. In this tutorial, we model both a prestellar core and a shock to explore how these models work and to demonstrate the workflow that the UCLCHEM team normally follow. In tutorial 2a, we approach the modeling in a more classic approach, by writing the outputs to files, before passing them to the subsequent model class. In tutorial 2b, we calculate the exact same models, but take advantage of the model objects in order to perform all calculations in memory, bypassing the file system entirely.
 
 import os
 
@@ -26,7 +26,7 @@ import uclchem
 # ## The Prestellar Core
 #
 # ### Initial Conditions (Phase 1)
-# UCLCHEM typically starts with the gas in atomic/ionic form with no molecules. However, this clearly is not appropriate when modelling an object such as a prestellar core. In these objects, the gas is already evolved and there should be molecules in the gas phase as well as ice mantles on the dust. To allow for this, one must provide some initial abundances to the model. There are many ways to do this, but we typically chose to run a preliminary model to produce our abundances. In many UCLCHEM papers, we refer to the preliminary model as *phase 1* and the science model as *phase 2*. Phase 1 simply models a collapsing cloud and phase 2 models the object in question.
+# UCLCHEM typically starts with the gas in atomic/ionic form with no molecules. However, this clearly is not appropriate when modeling an object such as a prestellar core. In these objects, the gas is already evolved and there should be molecules in the gas phase as well as ice mantles on the dust. To allow for this, one must provide some initial abundances to the model. There are many ways to do this, but we typically chose to run a preliminary model to produce our abundances. In many UCLCHEM papers, we refer to the preliminary model as *phase 1* and the science model as *phase 2*. Phase 1 simply models a collapsing cloud and phase 2 models the object in question.
 #
 # To do this, we will use `uclchem.model.Cloud()` to run a model where a cloud of gas collapses from a density of $10^2 cm^{-3}$ to our prestellar core density of $10^6 cm^{-3}$, keeping all other parameters constant. During this collapse, chemistry will occur, and we can assume the final abundances of this model will be reasonable starting abundances for the prestellar core.
 

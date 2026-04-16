@@ -582,7 +582,7 @@ def _prestellar_core_(
                 written timestep
             - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances for each
                 written timestep
-            - rateConsantsDF (pd.DataFrame or None): DataFrame containing reaction rate constants
+            - rateConstantsDF (pd.DataFrame or None): DataFrame containing reaction rate constants
                 for each timestep (if return_rate_constants=True)
             - heatingDF (pd.DataFrame | None): DataFrame containing heating/cooling terms for
                 each timestep (if return_heating=True)

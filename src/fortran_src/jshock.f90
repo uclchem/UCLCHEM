@@ -1,5 +1,5 @@
 
-!J-shock paramterization
+!J-shock parametrization
 !Based on James et al. 2019 A&A 634
 !https://ui.adsabs.harvard.edu/abs/2020A%26A...634A..17J/abstract
 MODULE jshock_mod
@@ -25,7 +25,7 @@ MODULE jshock_mod
 CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Checks inputs make sense and then calculates a few constants and!
-    ! sets up variables for the shock paramterization that follows    !
+    ! sets up variables for the shock parametrization that follows    !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics(successFlag)
         !f2py integer, intent(aux) :: points

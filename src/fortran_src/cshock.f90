@@ -1,5 +1,5 @@
 
-!Cshock paramterization
+!Cshock parametrization
 !Based on Jimenez-Serra et al. 2008 A&A 482
 !http://adsabs.harvard.edu/abs/2008A&A...482..549J
 MODULE cshock_mod
@@ -33,7 +33,7 @@ MODULE cshock_mod
 CONTAINS
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Checks inputs make sense and then calculates a few constants and!
-    ! sets up variables for the shock paramterization that follows    !
+    ! sets up variables for the shock parametrization that follows    !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE initializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
@@ -48,7 +48,7 @@ CONTAINS
         ! Set cooling variables to off by default (change if reqd)
         postShock = .False.
 
-        !check input sanity and set inital values
+        !check input sanity and set initial values
         cloudSize=(r_out-r_in)*pc
         IF (freefall) THEN
             write(*,*) "Cannot have freefall on during cshock"

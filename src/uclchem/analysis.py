@@ -181,7 +181,7 @@ def get_change_df(
         rate_df (pd.DataFrame): dataframe containing physical parameters and
             reaction rate constants over time
         species (str): species to get the change over time
-        on_grain (bool): whether to analyse the ice phase of this species
+        on_grain (bool): whether to analyze the ice phase of this species
 
     Returns:
         change_df (pd.DataFrame): change of species over time due to each reaction
@@ -317,7 +317,7 @@ def analysis(
     DEPRECATED
 
     Args:
-        species_name (str): Name of species to be analysed
+        species_name (str): Name of species to be analyzed
         output_file (str | Path): The path to the file where the analysis output will be written
         analysis_file (str): The path to the file containing the UCLCHEM output
         rate_threshold (float): Analysis output will contain the only the most efficient

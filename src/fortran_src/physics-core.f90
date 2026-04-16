@@ -12,7 +12,7 @@ MODULE physicscore
     INTEGER :: dstep
 
     
-    !Optional CR attentuation with column density and better H2 dissociation rates
+    !Optional CR attenuation with column density and better H2 dissociation rates
     REAL(dp) :: h2CRPRate,zetaScale
 
     !variables either controlled by physics or that user may wish to change
@@ -103,7 +103,7 @@ CONTAINS
         END IF
         IF ((improvedH2CRPDissociation) .and. (.not. cosmicRayAttenuation)) THEN
             successFlag=-1
-            write(*,*) "Error: improvedH2CRPDissociation requires cosmicRayAttentuation to also be True"
+            write(*,*) "Error: improvedH2CRPDissociation requires cosmicRayAttenuation to also be True"
             RETURN
         END IF
 
@@ -117,7 +117,7 @@ CONTAINS
     END SUBROUTINE coreInitializePhysics
 
     SUBROUTINE coreUpdatePhysics
-        !calculate column density. Remember dstep counts from core centre to edge
+        !calculate column density. Remember dstep counts from core center to edge
         !and coldens should be amount of gas from edge to parcel.
         coldens(dstep)=cloudSize/real(points)*density(dstep)
 

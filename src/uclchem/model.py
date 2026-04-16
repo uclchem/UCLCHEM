@@ -3043,7 +3043,7 @@ class Postprocess(AbstractModel):
     """Postprocess represents a model class with additional controls. It inherits from AbstractModel.
 
     Postprocess allows for additional controls of the time, density, gas temperature, radiation field,
-    cosmic ray ionisation rate, atomic and molecular Hydrogen, CO and C column densities through the
+    cosmic ray ionization rate, atomic and molecular Hydrogen, CO and C column densities through the
     use of arrays. Using these arrays allows for experimental model crafting beyond the standard models
     in other model classes.
 
@@ -3071,7 +3071,7 @@ class Postprocess(AbstractModel):
             at different timepoints found in time_array.
         dust_temperature_array (np.ndarray | None): Represents the value of the dust temperature
             at different timepoints found in time_array.
-        zeta_array (np.ndarray | None): Represents the value of the cosmic ray ionisation rate
+        zeta_array (np.ndarray | None): Represents the value of the cosmic ray ionization rate
             at different timepoints found in time_array.
         radfield_array (np.ndarray | None): Represents the value of the UV radiation field
             at different timepoints found in time_array.
@@ -3271,7 +3271,7 @@ class Model(AbstractModel):
 
     Model follows the same logic as Postprocess but without the coldens Arguments.
     It allows for additional controls of the time, density, gas temperature, radiation field,
-    and cosmic ray ionisation rate through the use of arrays. Using these arrays allows for
+    and cosmic ray ionization rate through the use of arrays. Using these arrays allows for
     experimental model crafting beyond the standard models in other model classes.
 
     Args:
@@ -3293,7 +3293,7 @@ class Model(AbstractModel):
             at different timepoints found in time_array.
         dust_temperature_array (np.ndarray | None):Represents the value of the dust temperature
             at different timepoints found in time_array.
-        zeta_array (np.ndarray | None): Represents the value of the cosmic ray ionisation rate
+        zeta_array (np.ndarray | None): Represents the value of the cosmic ray ionization rate
             at different timepoints found in time_array.
         radfield_array (np.ndarray | None): Represents the value of the UV radiation field at
             different timepoints found in time_array.

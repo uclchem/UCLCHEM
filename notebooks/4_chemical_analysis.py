@@ -14,7 +14,7 @@
 # ---
 
 # # Chemical Analysis
-# Chemical networks are complex systems where the interplay between many elements often means that small changes in one aspect of the network can greatly effect the outcome in unexpected ways. Nevertheless, there are cases where a simple chemical explanation can be found for some observed behavior in the model outputs. This tutorial demonstrates how to use some of the functionality of the UCLCHEM library to analyse model outputs and discover these explanations.
+# Chemical networks are complex systems where the interplay between many elements often means that small changes in one aspect of the network can greatly effect the outcome in unexpected ways. Nevertheless, there are cases where a simple chemical explanation can be found for some observed behavior in the model outputs. This tutorial demonstrates how to use some of the functionality of the UCLCHEM library to analyze model outputs and discover these explanations.
 #
 # We do recommend caution when following the approach laid out in this tutorial. There are many pitfalls which we will try to point out as we go. Ultimately, a comprehensive view of how important a reaction is to the outcome of your model requires detailed statistical calculations such as the use of [SHAP values](https://github.com/slundberg/shap) to assign meaningful scores to how much various reactions in a network contribute to a species' abundance. Therefore, care must be taken by the user to ensure that the conclusions they draw from a simpler approach are sound. Examples of papers doing this for UCLCHEM include:
 # - [Understanding molecular abundances in star-forming regions using interpretable machine learning Open Access](https://ui.adsabs.harvard.edu/abs/2023MNRAS.526..404H/abstract) Heyl, J., Butterworth, J., & Viti, S. 2023, MNRAS, 526, 404
@@ -126,7 +126,7 @@ analyze_element_per_phase("SI", abun).plot(logy=True)
 #
 # Our plan then is to do this for the low zeta case and the high zeta case. Hopefully, we'll see the same reactions are most important to the abundance of $\text{H}_3\text{O}^+$ and SO at all densities and temperatures. If we don't find that that's the case, then the chemistry is these species is fairly complex and perhaps trying to present a simple cause for the CRIR dependence is not a good idea.
 #
-# So, let's analyse the outputs!
+# So, let's analyze the outputs!
 #
 # #### 2.1 $\text{H}_3\text{O}^+$
 #

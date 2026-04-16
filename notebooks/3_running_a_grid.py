@@ -76,7 +76,7 @@ cloud = uclchem.model.load_model("./output_3/grid_basic.h5", "9")
 # Now ```cloud``` behaves as any model object should, allowing us to perform the same analyses and plotting as done in previous notebooks.
 
 # # Complex Grid
-# The above was straightforward enough but what about a modelling a grid of shocks? Not only do we want to loop over relevant parameters, we also need to run preliminary models to give ourselves starting abundances. We can do this by taking advantage of the ```SequentialRunner``` class.
+# The above was straightforward enough but what about a modeling a grid of shocks? Not only do we want to loop over relevant parameters, we also need to run preliminary models to give ourselves starting abundances. We can do this by taking advantage of the ```SequentialRunner``` class.
 #
 # This class can be used in isolation, in the following way.
 

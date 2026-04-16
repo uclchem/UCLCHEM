@@ -32,7 +32,7 @@ repos:
       - id: typos
         name: "[correctness] Check spelling errors"
         description: "Check for spelling errors in files"
-        args: [--config=pyproject.toml]
+        args: []
         pass_filenames: false
 
   # Ruff: Code style, docstrings, etc

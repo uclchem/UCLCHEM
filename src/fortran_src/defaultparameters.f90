@@ -2,7 +2,7 @@
 !!Double !! lines do not show up in docs, single ones do. 
 !!If you add a parameter, please take the time to add a useful descriptor comment on the same line
 !!and then re-run utils/generate_param_docs.py to update the docs.
-!!note the resuting md file needs manually adding to the website.
+!!note the resulting md file needs manually adding to the website.
 MODULE DEFAULTPARAMETERS
 USE constants
 USE F2PY_CONSTANTS
@@ -22,9 +22,9 @@ REAL(dp) :: finalDens=1.00d5 !Final gas density achieved via freefall.
 REAL(dp) :: currentTime=0.0 !Time at start of model in years (matches finalTime units).
 REAL(dp) :: finalTime=5.0d6 !Time to stop model in years, if not using `endAtFinalDensity` below.
 REAL(dp) :: radfield=1.0 !Interstellar radiation field in Habing
-REAL(dp) :: zeta=1.0 !Cosmic ray ionisation rate as multiple of $1.3 10^{-17} s^{-1}$
+REAL(dp) :: zeta=1.0 !Cosmic ray ionization rate as multiple of $1.3 10^{-17} s^{-1}$
 REAL(dp) :: r_out=0.05 !Outer radius of cloud being modeled in pc.
-REAL(dp) :: r_in=0.0 !Minimum radial distance from cloud centre to consider.
+REAL(dp) :: r_in=0.0 !Minimum radial distance from cloud center to consider.
 REAL(dp) :: baseAv=2.0 !Extinction at cloud edge, Av of a parcel at rout.
 INTEGER :: points=1 !Number of gas parcels equally spaced between r_in to rout to consider
 REAL(dp) :: bm0=1.0 !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
@@ -42,7 +42,7 @@ REAL(dp) :: temp_star=4.50d4 !unit of K, temperature of the central source
 !| ----- | ------| ------ |
 REAL(dp) :: freezeFactor=1.0 !Modify freeze out rate of gas parcels by this factor.
 LOGICAL :: endAtFinalDensity=.False. !Choose to end model at final density, otherwise end at final time.
-LOGICAL :: freefall=.False. !Controls whether models density increaes following freefall equation.
+LOGICAL :: freefall=.False. !Controls whether models density increases following the freefall equation.
 REAL(dp) :: freefallFactor=1.0 !Modify freefall rate by factor, usually to slow it.
 LOGICAL :: desorb=.True. !Toggles all non-thermal desoprtion processes on or off.
 LOGICAL :: h2desorb=.False. !Individually toggle non-thermal desorption due to H2 formation.
@@ -52,7 +52,7 @@ LOGICAL :: chemdesorb=.True. !Individually toggle non-thermal desorption due to 
 LOGICAL :: thermdesorb=.True. !Toggle continuous thermal desorption.
 
 LOGICAL :: instantSublimation=.False. !Toggle instantaneous sublimation of the ices at t=0
-LOGICAL :: cosmicRayAttenuation=.False. !Use column density to attenuate cosmic ray ionisation rate following [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
+LOGICAL :: cosmicRayAttenuation=.False. !Use column density to attenuate cosmic ray ionization rate following [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 CHARACTER :: ionModel='L' !L/H model for cosmic ray attenuation [Padovani et al. 2018](https://arxiv.org/abs/1803.09348).
 LOGICAL :: improvedH2CRPDissociation=.False. !Use H2 CRP dissociation rate from [Padovani et al. 2018b](https://arxiv.org/abs/1809.04168).
 REAL(dp) :: diffToBindRatio=0.5 !Ratio of diffusion barrier to binding energy of all species
@@ -64,7 +64,7 @@ LOGICAL :: hStickingCoeffByh2Coverage=.False. !Decrease sticking coeff of H by H
 REAL(dp) :: HdiffusionBarrier=-1.0 !Diffusion barrier for atomic H on grain surface (K).
 !!This is later corrected to diffToBind*Ebind(#H) if no other value is input
 LOGICAL :: useCustomDiffusionBarriers=.True. !Use custom diffusion barriers, instead of assuming they're a fraction of the binding energy
-LOGICAL :: seperateDiffAndDesorbPrefactor=.True. !Calculate different prefactors for diffusion and desorption
+LOGICAL :: separateDiffAndDesorbPrefactor=.True. !Calculate different prefactors for diffusion and desorption
 LOGICAL :: useTSTprefactors=.False. !Calculate diffusion and desorption prefactors using TST. Otherwise, use Hasegawa-Herbst equation.
 LOGICAL :: useCustomPrefactors=.False. !Use custom diffusion and desorption prefactors, instead of TST or Hasegawa-Herbst values.
 LOGICAL :: useMinissaleIceChemdesEfficiency=.False. !Use Minissale 2016 efficiency for chemical desorption on ices. If False, use Fredon 2021
@@ -151,11 +151,11 @@ INTEGER :: MXSTEP=10000 !Maximum steps allowed in integration before warning is 
 !|Parameter|Default Value |Description|
 !| ----- | ------| ------ |
 REAL(dp) :: ebmaxh2=1.21d3 ! Maximum binding energy of species desorbed by H2 formation.
-REAL(dp) :: ebmaxcr=1.21d3 ! Maximum binding energy of species desorbed by cosmic ray ionisation.
+REAL(dp) :: ebmaxcr=1.21d3 ! Maximum binding energy of species desorbed by cosmic ray ionization.
 REAL(dp) :: ebmaxuvcr=1.0d4 ! Maximum binding energy of species desorbed by UV photons.
 REAL(dp) :: epsilon=0.01 !Number of molecules desorbed per H2 formation.
 REAL(dp) :: uv_yield=0.03 !Number of molecules desorbed per UV photon. The yield is extrapolated from Oberg et al. 2009
-REAL(dp) :: phi=1.0d5 !Number of molecules desorbed per cosmic ray ionisation.
+REAL(dp) :: phi=1.0d5 !Number of molecules desorbed per cosmic ray ionization.
 REAL(dp) :: uvcreff=1.0d-3 !Ratio of CR induced UV photons to ISRF UV photons.
 REAL(dp) :: omega=0.5 !Dust grain albedo.
 REAL(dp) :: lower_limit_gastemp=10.0 !Lower limit for gas temperature in K when heating is enabled.
@@ -166,9 +166,9 @@ REAL(dp) :: lower_limit_dusttemp=10.0 !Lower limit for dust temperature in K whe
 REAL(dp) :: upper_limit_dusttemp=1.0d3 !Upper limit for dust temperature in K when heating is enabled.
 REAL(dp) :: maxGrainTemp=150.0 !Dust temperature (K) above which grain surface chemistry is disabled and H2 formation is parameterized.
 INTEGER :: parameterizeH2Form=2 !H2 formation mode: 0=always off, 1=always on (parameterized), 2=explicit LH/ER below maxGrainTemp, parameterized above (default).
-!|alpha|{1:0.0,2:0.0}| Set alpha coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how alpha is used for each reaction type.|
-!|beta|{1:0.0,2:0.0}| Set beta coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how beta is used for each reaction type.|
-!|gama|{1:0.0,2:0.0}| Set gama coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how gama is used for each reaction type.|
+!|alpha|{1:0.0,2:0.0}| Set alpha coefficients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how alpha is used for each reaction type.|
+!|beta|{1:0.0,2:0.0}| Set beta coefficients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how beta is used for each reaction type.|
+!|gama|{1:0.0,2:0.0}| Set gama coefficients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how gama is used for each reaction type.|
 CONTAINS
 ! Add a dummy subroutine to help f2py compile: https://github.com/numpy/numpy/issues/27167
 SUBROUTINE DUMMY_TWO(dummy_two_output)

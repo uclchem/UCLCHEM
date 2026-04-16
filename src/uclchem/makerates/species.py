@@ -77,7 +77,7 @@ def normalize_species_name(name: str) -> str:
     Examples:
         >>> normalize_species_name("o-H2")
         'o-H2'
-        >>> normalize_species_name("O-H2") # case-normalised prefix
+        >>> normalize_species_name("O-H2") # case-normalized prefix
         'o-H2'
         >>> normalize_species_name("#o-H2")
         '#o-H2'
@@ -456,7 +456,7 @@ class Species:
             list[list[str]]: List of freeze products
 
         """
-        # TODO: Write an unit test for get_freeze_product_behaviour
+        # TODO: Write an unit test for get_freeze_product_behavior
         return [key.split(",") for key in self.freeze_products]
 
     def get_freeze_alpha(self, product_list: list[str]) -> float:
@@ -479,7 +479,7 @@ class Species:
 
         """
         warn(
-            "This method is deprecated in favour of is_ice_species.",
+            "This method is deprecated in favor of is_ice_species.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -545,7 +545,7 @@ class Species:
         self.set_freeze_products([freeze, "NAN", "NAN", "NAN"], 1.0)
 
     def find_constituents(self, quiet: bool = False) -> Counter[str]:
-        """Loop through the species' name and work out what its consituent
+        """Loop through the species' name and work out what its constituent
         atoms are. Then calculate mass and alert user if it doesn't match
         input mass.
 

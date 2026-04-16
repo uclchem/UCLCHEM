@@ -629,7 +629,7 @@ CONTAINS
         ! Core UCLCHEM routine. Solves the chemical equations for a given set of parameters through time
         ! for a specified physical model.
         ! Change behavior of physics by sending different subroutine arguments - hence the need for model subroutines above
-        ! dictionary - the parameter dictionary string reprenting a python dictionary
+        ! dictionary - the parameter dictionary string representing a python dictionary
         ! outSpeciesIn - the species to output to separate file
         ! successFlag - Integer to indicate whether code completed successfully
         ! modelInitializePhysics - subroutine to initialize physics from a physics module
@@ -869,7 +869,7 @@ CONTAINS
                 IF (parcelStoppingMode.ne.0 .and. (density(dstep) .ge. finalDens)) THEN
                     EXIT
                 END IF
-                !loop over parcels, counting from centre out to edge of cloud
+                !loop over parcels, counting from center out to edge of cloud
                 DO dstep=1,points
                     !reset time if this isn't first depth point
                     currentTime=currentTimeold
@@ -1276,8 +1276,8 @@ CONTAINS
                    READ(inputValue,*,iostat=successFlag) HdiffusionBarrier
                 CASE('usecustomdiffusionbarriers')
                    READ(inputValue,*,iostat=successFlag) useCustomDiffusionBarriers
-                CASE('seperatediffanddesorbprefactor')
-                   READ(inputValue,*,iostat=successFlag) seperateDiffAndDesorbPrefactor
+                CASE('separatediffanddesorbprefactor')
+                   READ(inputValue,*,iostat=successFlag) separateDiffAndDesorbPrefactor
                 CASE('usetstprefactors')
                    READ(inputValue,*,iostat=successFlag) useTSTprefactors
                 CASE('usecustomprefactors')

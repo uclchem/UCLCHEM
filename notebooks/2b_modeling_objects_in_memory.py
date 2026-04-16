@@ -13,10 +13,10 @@
 #     name: python3
 # ---
 
-# # Advanced Physical Modelling
+# # Advanced Physical Modeling
 #
 # In the previous tutorial, we simply modeled the chemistry of a static cloud for 1 Myr. This is unlikely to meet
-# everybody's modelling needs and UCLCHEM is capable of modelling much more complex environments such as prestellar
+# everybody's modeling needs and UCLCHEM is capable of modeling much more complex environments such as prestellar
 # cores and shocks. In this tutorial, we model both a prestellar core and a shock to explore how these models work and
 # to demonstrate the workflow that the UCLCHEM team normally follow. In tutorial 2a, we approach the modeling in a more
 # classic approach, by writing the outputs to files, before passing them to the subsequent model class. In tutorial 2b,
@@ -31,7 +31,7 @@ import uclchem
 #
 # ### Initial Conditions (Phase 1)
 # UCLCHEM typically starts with the gas in atomic/ionic form with no molecules. However, this clearly is not appropriate
-# when modelling an object such as a prestellar core. In these objects, the gas is already evolved and there should be
+# when modeling an object such as a prestellar core. In these objects, the gas is already evolved and there should be
 # molecules in the gas phase as well as ice mantles on the dust. To allow for this, one must provide some initial
 # abundances to the model. There are many ways to do this, but we typically chose to run a preliminary model to produce
 # our abundances. In many UCLCHEM papers, we refer to the preliminary model as *phase 1* and the science model as

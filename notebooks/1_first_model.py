@@ -65,7 +65,7 @@ for dataframe in cloud.get_dataframes():
 cloud.check_conservation(element_list=["H", "N", "C", "O", "S"])
 
 # ## Plotting Results
-# Finally, you will want to plot your results. This can be done with any plotting library but UCLCHEM does provide a few functions to make quick plots. Note the use of $ symbols in the species list below, this gets the total ice abundance of a species. For two phase models, this is just the surface abudance but for three phase it is the sum of surface and bulk.
+# Finally, you will want to plot your results. This can be done with any plotting library but UCLCHEM does provide a few functions to make quick plots. Note the use of $ symbols in the species list below, this gets the total ice abundance of a species. For two phase models, this is just the surface abundance but for three phase it is the sum of surface and bulk.
 
 fig, ax = cloud.create_abundance_plot(
     species=["H", "H2", "$H", "$H2", "H2O", "$H2O", "CO", "$CO", "$CH3OH", "CH3OH"],

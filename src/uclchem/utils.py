@@ -172,7 +172,7 @@ def _rminfit(t_yr: float, mode: int) -> float:
     """Fit to time evolution of the radius of minimum velocity.
 
     Returns:
-        Radius of minimum velocity (pc for mode 3, normalised units for mode 4).
+        Radius of minimum velocity (pc for mode 3, normalized units for mode 4).
     """
     if mode == 3:
         _, unitt = _filament_units()
