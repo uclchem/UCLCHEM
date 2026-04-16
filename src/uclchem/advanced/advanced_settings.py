@@ -32,6 +32,8 @@ import uclchemwrap
 # Import parameter classifications from constants module
 from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
 
+logger = logging.getLogger(__name__)
+
 
 def _copy_value(value: Any) -> Any:
     """Make a copy of a value (handle arrays and scalars).
@@ -287,7 +289,7 @@ class ModuleSettings:
 
             except Exception as e:
                 # Skip attributes that can't be accessed
-                logging.exception(
+                logger.exception(
                     "Exception occurred when accessing attribute {value} from module {module_name}:\n",
                     e,
                 )

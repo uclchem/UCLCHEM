@@ -23,6 +23,8 @@ from uclchemwrap import network as network_module
 
 from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
 
+logger = logging.getLogger(__name__)
+
 # Module names mirroring GeneralSettings._discover_modules()
 _MODULE_NAMES = [
     "defaultparameters",
@@ -92,7 +94,7 @@ def create_snapshot() -> dict[str, Any]:
             try:
                 value = getattr(mod, attr)
             except Exception as e:
-                logging.exception(
+                logger.exception(
                     f"Exception occurred when trying to get attribute {attr} from module {mod_name}:\n",
                     e,
                 )

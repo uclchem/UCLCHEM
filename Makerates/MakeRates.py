@@ -91,6 +91,7 @@ def get_logger(verbosity_stdout: str, debug: bool) -> None:
     # Make sure the verbosity to the file is always smaller than stdout to avoid confusion
     if verbosity_stdout.upper() == "DEBUG":
         verbosity_file = logging.DEBUG
+
     logging.basicConfig(
         level=verbosity_file,
         format="%(asctime)s %(levelname)s: %(message)s",
@@ -98,6 +99,10 @@ def get_logger(verbosity_stdout: str, debug: bool) -> None:
         filename="makerates.log",
         filemode="w",
     )
+
+    logger = logging.getLogger("uclchem")
+    logger.setLevel(verbosity_file)
+
     # define a Handler which writes INFO messages or higher to the sys.stderr
     console = logging.StreamHandler()
     console.setLevel(verbosity_stdout)
@@ -106,11 +111,11 @@ def get_logger(verbosity_stdout: str, debug: bool) -> None:
     # tell the handler to use this format
     console.setFormatter(formatter)
     # add the handler to the root logger
-    logging.getLogger("").addHandler(console)
+    logger.addHandler(console)
 
     # Now, we can log to the root logger, or any other logger. First the root...
-    logging.info(
-        f"Configured the logging. Files verbosity is {logging.getLevelName(verbosity_file)} and stdout verbosity is {verbosity_stdout}"
+    logger.info(
+        f"Configured the logging. Files verbosity is {logging.getLevelName(verbosity_file)} and stdout verbosity is {logging.getLevelName(logger.getEffectiveLevel())}"
     )
 
 

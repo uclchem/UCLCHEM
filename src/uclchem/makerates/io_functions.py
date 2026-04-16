@@ -19,6 +19,8 @@ from uclchem.makerates.reaction import Reaction, reaction_types
 from uclchem.makerates.species import Species, normalize_species_name, species_header
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
+logger = logging.getLogger(__name__)
+
 
 def get_default_coolants() -> list[dict[str, str]]:
     """Get the default coolant configuration for UCLCHEM.
@@ -371,7 +373,7 @@ def output_drops(
     outputFile = Path(output_dir) / "dropped_reactions.csv"
     # Print dropped reactions from grain file or write if many
     if write_files and dropped_reactions:
-        logging.info(f"\nReactions dropped from grain file written to {outputFile}\n")
+        logger.info(f"\nReactions dropped from grain file written to {outputFile}\n")
         with Path(outputFile).open("w") as f:
             writer = csv.writer(
                 f,
@@ -383,9 +385,9 @@ def output_drops(
             for reaction in dropped_reactions:
                 writer.writerow(reaction)
     else:
-        logging.info("Reactions dropped from grain file:\n")
+        logger.info("Reactions dropped from grain file:\n")
         for reaction in dropped_reactions:
-            logging.info(reaction)
+            logger.info(reaction)
 
 
 def write_outputs(
@@ -503,13 +505,13 @@ def write_outputs(
         # Log per-coolant frequency deviations (sorted largest first)
         sorted_devs = sorted(freq_deviations.items(), key=lambda x: -x[1])
         name_width = max(len(name) for name, _ in sorted_devs)
-        logging.info("Coolant frequency deviations (|E_i-E_j|/h vs LAMDA):")
-        logging.info(f"  {'Coolant':<{name_width}}  {'Deviation':>10}")
-        logging.info(f"  {'-' * name_width}  {'-' * 10}")
+        logger.info("Coolant frequency deviations (|E_i-E_j|/h vs LAMDA):")
+        logger.info(f"  {'Coolant':<{name_width}}  {'Deviation':>10}")
+        logger.info(f"  {'-' * name_width}  {'-' * 10}")
         for name, dev in sorted_devs:
             marker = " <<<" if dev > 0.01 else ""
-            logging.info(f"  {name:<{name_width}}  {dev * 100:9.4f}%{marker}")
-        logging.info(
+            logger.info(f"  {name:<{name_width}}  {dev * 100:9.4f}%{marker}")
+        logger.info(
             f"  Auto-setting freq_rel_tol = {suggested_freq_rel_tol:.4f} "
             f"(max deviation {max_deviation * 100:.2f}% + 10% margin)"
         )
@@ -857,10 +859,10 @@ def write_odes_f90(
     species_names = [spec.get_name() for spec in species_list]
 
     for specie in species_list:
-        logging.debug(f"{species_names.index(str(specie)) + 1}:{str(specie)}")
+        logger.debug(f"{species_names.index(str(specie)) + 1}:{str(specie)}")
 
     for i, reaction in enumerate(reaction_list):
-        logging.debug(f"RATE({i + 1}):{reaction}")
+        logger.debug(f"RATE({i + 1}):{reaction}")
         reaction.generate_ode_bit(i, species_names)
 
     # then create ODE code and write to file.
@@ -1752,14 +1754,14 @@ def copy_coolant_files(source_dir: str | Path | None = None) -> None:
     target_path.mkdir(parents=True, exist_ok=True)
 
     # Copy each .dat file
-    logging.info(f"Copying {len(dat_files)} coolant data files to {target_path}")
+    logger.info(f"Copying {len(dat_files)} coolant data files to {target_path}")
     for dat_file in dat_files:
         target_file = target_path / dat_file.name
         if target_path.samefile(dat_file):
-            logging.debug(
+            logger.debug(
                 f"{target_file} has the same path as {dat_file.name}, not copying"
             )
         shutil.copy2(dat_file, target_file)
-        logging.debug(f"  Copied {dat_file.name}")
+        logger.debug(f"  Copied {dat_file.name}")
 
-    logging.info("Successfully copied coolant data files for package installation")
+    logger.info("Successfully copied coolant data files for package installation")

@@ -20,6 +20,8 @@ from uclchem.utils import check_expected_type
 # Global flag for validation control
 _skip_reaction_validation = False
 
+logger = logging.getLogger(__name__)
+
 
 @contextmanager
 def skip_reaction_validation() -> Iterator[None]:
@@ -481,7 +483,7 @@ class Reaction:
                         # Set reduced mass to mass of switched element
                         reduced_mass = float(element_mass[element_index])
                         self.set_reduced_mass(reduced_mass)
-                        logging.debug(
+                        logger.debug(
                             f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                         )
                         return
@@ -494,14 +496,14 @@ class Reaction:
                 mass = reac_species[0].get_mass()
                 reduced_mass = float(mass) / 2.0
                 self.set_reduced_mass(reduced_mass)
-                logging.debug(
+                logger.debug(
                     f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                 )
                 return
             elif any(species == Counter({"H": 1}) for species in reac_constituents):
                 # If one of the species is #H, set reduced mass to 1
                 self.set_reduced_mass(1.0)
-                logging.debug(
+                logger.debug(
                     f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                 )
                 return
@@ -515,7 +517,7 @@ class Reaction:
         msg += f"Instead, using regular definition with masses of two reactants (mu={naive_reduced_mass:.3})."
         if self._gamma == 0.0:
             msg += " (Reaction is barrierless anyway)"
-        logging.warning(msg)
+        logger.warning(msg)
         self.set_reduced_mass(naive_reduced_mass)
 
     def set_reduced_mass(self, reduced_mass: int | float) -> None:
@@ -584,7 +586,7 @@ class Reaction:
             TypeError: If ``flag`` is not of type ``bool``.
 
         """
-        logging.info(f"Setting for {self} extrapolation to {flag}")
+        logger.info(f"Setting for {self} extrapolation to {flag}")
         if not isinstance(flag, bool):
             msg = f"Expected flag to be type bool, but flag was type {type(flag)}"
             raise TypeError(msg)

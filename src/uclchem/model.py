@@ -148,6 +148,9 @@ SPECNAME_VALUE_FORMAT = "%9.5E"
 REGISTRY: dict[str, type[AbstractModel]] = {}
 
 
+logger = logging.getLogger(__name__)
+
+
 def register_model(
     cls: type[AbstractModel],
 ) -> type[AbstractModel]:
@@ -1401,26 +1404,26 @@ class AbstractModel(ABC):
         self._array_clean()
         self.check_error(only_error=True)
         if self.outputFile is not None:
-            logging.debug(f"Writing output file: {self.outputFile}")
-            logging.debug(
+            logger.debug(f"Writing output file: {self.outputFile}")
+            logger.debug(
                 f"Physics array shape: {self.physics_array.shape if self.physics_array is not None else None}"
             )
-            logging.debug(
+            logger.debug(
                 f"Chemical array shape: {self.chemical_abun_array.shape if self.chemical_abun_array is not None else None}"
             )
             try:
                 self.legacy_write_full()
-                logging.debug(f"Successfully wrote {self.outputFile}")
+                logger.debug(f"Successfully wrote {self.outputFile}")
             except Exception as e:
-                logging.error(f"Failed to write {self.outputFile}: {e}", exc_info=True)
+                logger.error(f"Failed to write {self.outputFile}: {e}", exc_info=True)
                 raise
         if self.abundSaveFile is not None:
-            logging.debug(f"Writing abundance file: {self.abundSaveFile}")
+            logger.debug(f"Writing abundance file: {self.abundSaveFile}")
             try:
                 self.legacy_write_starting_chemistry()
-                logging.debug(f"Successfully wrote {self.abundSaveFile}")
+                logger.debug(f"Successfully wrote {self.abundSaveFile}")
             except Exception as e:
-                logging.error(f"Failed to write {self.abundSaveFile}: {e}", exc_info=True)
+                logger.error(f"Failed to write {self.abundSaveFile}: {e}", exc_info=True)
                 raise
         return
 
@@ -1595,7 +1598,7 @@ class AbstractModel(ABC):
                 if hasattr(self, "_pickle_meta") and self._pickle_meta:
                     object.__setattr__(self, "_meta", self._pickle_meta.copy())
             except Exception as e:
-                logging.exception("Exception occurred while restoring metadata:", e)
+                logger.exception("Exception occurred while restoring metadata:", e)
                 pass
             finally:
                 object.__setattr__(self, "_pickle_meta", {})
@@ -1779,7 +1782,7 @@ class AbstractModel(ABC):
             object.__setattr__(self, "timepoints", tp - 1 if tp > 0 else 0)
         except Exception:
             # Be defensive; if something goes wrong leave timepoints as-is
-            logging.debug("Could not set timepoints. Leave them unchanged.")
+            logger.debug("Could not set timepoints. Leave them unchanged.")
 
         nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
         if len(nonzero_indices) > 0:
@@ -2075,7 +2078,7 @@ class AbstractModel(ABC):
             )
         except AttributeError:
             # Heating module not available, likely compiled without heating support
-            logging.debug("Heating module not available in uclchemwrap")
+            logger.debug("Heating module not available in uclchemwrap")
             self.heat_array = None
         return
 
@@ -2149,7 +2152,7 @@ class AbstractModel(ABC):
                     columns.extend(level_names_dict[i])
         except (FileNotFoundError, ValueError, RuntimeError) as e:
             # Fallback to generic names if coolant files can't be loaded
-            logging.warning(
+            logger.warning(
                 f"Could not load coolant level names: {e}. Using generic names."
             )
             columns = [f"LEVEL_{i}" for i in range(N_TOTAL_LEVELS)]

@@ -12,12 +12,15 @@ Note: Changes made through HeatingSettings affect the global Fortran state and p
 across model runs in the same Python session.
 """
 
+import logging
 from pathlib import Path
 
 import numpy as np
 import uclchemwrap
 from uclchemwrap import f2py_constants as f2py_constants_module
 from uclchemwrap import heating as heating_module
+
+logger = logging.getLogger(__name__)
 
 
 class HeatingSettings:
@@ -579,7 +582,6 @@ def initialize_coolant_directory() -> str:
     """
     # Check if heating module is available
     import importlib.util
-    import logging
     import os
     from pathlib import Path
 
@@ -599,10 +601,10 @@ def initialize_coolant_directory() -> str:
             coolant_dir = str(env_path.resolve())
             if not coolant_dir.endswith("/"):
                 coolant_dir += "/"
-            logging.info(f"Using coolant data from UCLCHEM_COOLANT_DATA: {coolant_dir}")
+            logger.info(f"Using coolant data from UCLCHEM_COOLANT_DATA: {coolant_dir}")
             return coolant_dir
         else:
-            logging.warning(
+            logger.warning(
                 f"UCLCHEM_COOLANT_DATA set to {env_dir}, but directory not found or empty. "
                 "Searching other locations..."
             )
@@ -625,10 +627,10 @@ def initialize_coolant_directory() -> str:
             coolant_dir = str(package_data_path.resolve())
             if not coolant_dir.endswith("/"):
                 coolant_dir += "/"
-            logging.debug(f"Using installed coolant data: {coolant_dir}")
+            logger.debug(f"Using installed coolant data: {coolant_dir}")
             return coolant_dir
     except (ImportError, FileNotFoundError, AttributeError) as e:
-        logging.debug(f"Installed package data not found: {e}")
+        logger.debug(f"Installed package data not found: {e}")
 
     # Priority 3: Development mode - search for Makerates/data/collisional_rates/
     try:
@@ -655,10 +657,10 @@ def initialize_coolant_directory() -> str:
                 coolant_dir = str(candidate.resolve())
                 if not coolant_dir.endswith("/"):
                     coolant_dir += "/"
-                logging.info(f"Using development mode coolant data: {coolant_dir}")
+                logger.info(f"Using development mode coolant data: {coolant_dir}")
                 return coolant_dir
     except Exception as e:
-        logging.debug(f"Development mode search failed: {e}")
+        logger.debug(f"Development mode search failed: {e}")
 
     # Not found in any location
     msg = (
@@ -697,21 +699,19 @@ def auto_initialize_coolant_directory() -> bool:
         Coolant data initialized successfully
 
     """
-    import logging
-
     try:
         coolant_dir = initialize_coolant_directory()
         settings = HeatingSettings()
         settings.set_coolant_directory(coolant_dir)
-        logging.debug(f"Auto-initialized coolant directory: {coolant_dir}")
+        logger.debug(f"Auto-initialized coolant directory: {coolant_dir}")
         return True
     except RuntimeError as e:
         # Heating module not available - this is expected for makerates-only builds
-        logging.debug(f"Coolant initialization skipped: {e}")
+        logger.debug(f"Coolant initialization skipped: {e}")
         return False
     except FileNotFoundError as e:
         # Could not find coolant data - warn user
-        logging.warning(
+        logger.warning(
             f"Could not auto-initialize coolant data directory: {e}\n"
             "Heating/cooling calculations may fail. "
             "Run 'python makerates.py' and reinstall if needed."
@@ -719,7 +719,7 @@ def auto_initialize_coolant_directory() -> bool:
         return False
     except Exception as e:
         # Unexpected error - warn but don't crash
-        logging.warning(
+        logger.warning(
             f"Unexpected error during coolant initialization: {e}"
             + "\nEnabling heating and cooling might cause errors at runtime."
         )

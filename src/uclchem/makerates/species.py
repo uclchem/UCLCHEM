@@ -58,6 +58,8 @@ element_mass = [
 ]
 symbols = ["#", "@", "*", "+", "-", "(", ")"]
 
+logger = logging.getLogger(__name__)
+
 
 def normalize_species_name(name: str) -> str:
     """Normalize a species name to a canonical form.
@@ -445,7 +447,7 @@ class Species:
         """
         keys = self.freeze_products.keys()
         values = self.freeze_products.values()
-        logging.debug(f"freeze keys: {keys}, products {values}")
+        logger.debug(f"freeze keys: {keys}, products {values}")
         for key, value in zip(keys, values):
             yield key.split(","), value
 
@@ -656,7 +658,7 @@ class Species:
             mass += element_mass[element_list.index(atom)]
         if mass != int(self.get_mass()):
             if not quiet:
-                logging.warning(
+                logger.warning(
                     f"Input mass of {self.get_name()} ({self.get_mass()}) does not match calculated mass of constituents, using calculated mass: {int(mass)}"
                 )
             self.set_mass(int(mass))
@@ -1005,13 +1007,13 @@ class Species:
             if self.symmetry_factor == 1:
                 return
             msg = f"For diatomic molecule consisting of two different atoms (in this case {self.name}), the symmetry factor should be 1, but was given to be {self.symmetry_factor}. Correcting to 1."
-            logging.warning(msg)
+            logger.warning(msg)
             self.symmetry_factor = 1
             return
         if self.symmetry_factor == 2:
             return
         msg = f"For diatomic molecule consisting of two of the same atoms (in this case {self.name}), the symmetry factor should be 2, but was given to be {self.symmetry_factor}. Correcting to 2."
-        logging.warning(msg)
+        logger.warning(msg)
         self.symmetry_factor = 2
 
     def initialize_losses_and_gains(self) -> None:

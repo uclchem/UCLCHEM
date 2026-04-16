@@ -25,6 +25,8 @@ import numpy as np
 import pandas as pd
 import yaml
 
+logger = logging.getLogger(__name__)
+
 
 def clean_numeric_value(value: Any) -> float | None:
     """Convert numpy scalars and other numeric types to clean Python floats.
@@ -387,7 +389,7 @@ class SpeciesMatcher:
                                 return canonical_matches
                             break
                         except Exception as e:
-                            logging.warning(f"Error loading session: {e}")
+                            logger.warning(f"Error loading session: {e}")
                             break
                     elif continue_choice == "n":
                         # Backup existing session instead of deleting it
@@ -493,7 +495,7 @@ class SpeciesMatcher:
             shutil.copy2(session_file, backup_name)
             return backup_name
         except Exception as e:
-            logging.warning(f"Could not backup session file: {e}")
+            logger.warning(f"Could not backup session file: {e}")
             return f"backup_failed{extension}"
 
     @staticmethod
@@ -507,7 +509,7 @@ class SpeciesMatcher:
             remaining = len(session_data.get("remaining", {}))
             print(f"Progress: {completed} done, {remaining} left")
         except Exception as e:
-            logging.warning(f"Warning: Could not save session: {e}")
+            logger.warning(f"Warning: Could not save session: {e}")
 
     def _resume_matching(self, resume_file: str | Path) -> dict[str, dict[str, Any]]:
         """Resume matching from saved session.
@@ -642,7 +644,7 @@ class SpeciesMatcher:
         try:
             shutil.copy2(original_csv_path, backup_path)
         except Exception as e:
-            logging.warning(f"Backup failed: {e}")
+            logger.warning(f"Backup failed: {e}")
 
         # Create a copy of the DataFrame to avoid modifying the original
         updated_df = species_df.copy()
@@ -695,13 +697,13 @@ class SpeciesMatcher:
                 f"{total_with_enthalpy}/{len(updated_df)} total"
             )
         except Exception as e:
-            logging.warning(f"Write failed: {e}")
+            logger.warning(f"Write failed: {e}")
             # Restore backup if write failed
             try:
                 shutil.copy2(backup_path, original_csv_path)
                 print("Restored from backup")
             except Exception as restore_error:
-                logging.warning(f"Restore failed: {restore_error}")
+                logger.warning(f"Restore failed: {restore_error}")
 
 
 def main() -> None:
@@ -764,7 +766,7 @@ def main() -> None:
         print(f"Complete: {len(mapping)} species mapped")
 
     except Exception as e:
-        logging.error(f"Error: {e}")
+        logger.error(f"Error: {e}")
         sys.exit(1)
 
 

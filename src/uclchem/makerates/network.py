@@ -27,6 +27,8 @@ from uclchem.makerates.reaction import Reaction, reaction_types
 from uclchem.makerates.species import Species
 from uclchem.utils import UCLCHEM_ROOT_DIR, check_expected_type
 
+logger = logging.getLogger(__name__)
+
 # ============================================================================
 # Abstract Base Classes
 # ============================================================================
@@ -490,7 +492,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         if reactions_path is None:
             reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
 
-        logging.debug(f"Loading network from {species_path} and {reactions_path}")
+        logger.debug(f"Loading network from {species_path} and {reactions_path}")
 
         # Load CSVs
         species_data = pd.read_csv(species_path)
@@ -639,7 +641,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         # Convert to list of Species objects
         if isinstance(species, list):
             if len(species) == 0:
-                logging.warning("Tried to add empty species list, ignoring.")
+                logger.warning("Tried to add empty species list, ignoring.")
                 return
             elif isinstance(species[0], Species):
                 species_list = species  # type: ignore
@@ -659,14 +661,12 @@ class Network(BaseNetwork, MutableNetworkABC):
         for specie in species_list:
             # Filter out reaction types
             if specie.get_name() in reaction_types:
-                logging.info(
-                    f"Ignoring reaction type {specie.get_name()} in species list"
-                )
+                logger.info(f"Ignoring reaction type {specie.get_name()} in species list")
                 continue
 
             # Warn on duplicates
             if specie.get_name() in self._species_dict:
-                logging.warning(
+                logger.warning(
                     f"Species {specie.get_name()} already exists, keeping old definition"
                 )
                 continue
@@ -778,7 +778,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         reactions_list: list[Reaction]
         if isinstance(reactions, list):
             if len(reactions) == 0:
-                logging.warning("Tried to add empty reactions list, ignoring.")
+                logger.warning("Tried to add empty reactions list, ignoring.")
                 return
             elif isinstance(reactions[0], Reaction):
                 reactions_list = reactions  # type: ignore
@@ -834,7 +834,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         if reaction_idx in self._reactions_dict:
             del self._reactions_dict[reaction_idx]
         else:
-            logging.warning(f"Reaction index {reaction_idx} not found in network")
+            logger.warning(f"Reaction index {reaction_idx} not found in network")
 
     def get_reactions_by_types(self, reaction_type: str | list[str]) -> list[Reaction]:
         """Get the union of all reactions of a certain type.
@@ -918,7 +918,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             if "@" in specie and "@H2O" in self._species_dict:
                 h2o_be = self._species_dict["@H2O"].get_binding_energy()
                 if self._species_dict[specie].get_binding_energy() == h2o_be:
-                    logging.warning(
+                    logger.warning(
                         f"Changing binding energy of bulk species {specie} "
                         "that was previously @H2O binding energy limited"
                     )
@@ -945,7 +945,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             self._reactions_dict[reaction_idx].set_gamma(barrier)
 
         elif len(similar_reactions) == 0:
-            logging.warning(f"Reaction {reaction} not found in network")
+            logger.warning(f"Reaction {reaction} not found in network")
         else:
             msg = (
                 f"Found {len(similar_reactions)} reactions matching {reaction}. "
