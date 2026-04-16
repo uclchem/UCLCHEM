@@ -21,12 +21,11 @@ import warnings
 from types import ModuleType
 
 import numpy as np
-import pandas as pd
 from uclchemwrap import network as network_module
 
 from uclchem.makerates.reaction import Reaction, reaction_header
 from uclchem.makerates.species import Species
-from uclchem.utils import UCLCHEM_ROOT_DIR
+from uclchem.utils import UCLCHEM_ROOT_DIR, get_reaction_table, get_species_table
 
 
 class RuntimeSpecies:
@@ -471,8 +470,8 @@ class NetworkState:
             msg = f"Reactions CSV not found: {reactions_path}"
             raise FileNotFoundError(msg)
 
-        self._species_df = pd.read_csv(species_path)
-        self._reactions_df = pd.read_csv(reactions_path)
+        self._species_df = get_species_table(species_path)
+        self._reactions_df = get_reaction_table(reactions_path)
 
     def _parse_species(self):
         """Parse species DataFrame into Species objects."""

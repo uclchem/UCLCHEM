@@ -1,9 +1,31 @@
+import tempfile
 from collections import Counter
 
 import pandas as pd
 import pytest
 
 from uclchem.makerates.species import Species
+from uclchem.utils import get_species_table
+
+test_sodium_norway_problem_data = [
+    pd.Series({"NAME": "NA", "MASS": 14}),  # Usually taken as NaN by pandas
+    pd.Series(
+        {"NAME": "NAN", "MASS": 14}
+    ),  # Not taken as NaN by pandas (because we also capitalize the "a")
+]
+
+
+@pytest.mark.parametrize("series", test_sodium_norway_problem_data)
+def test_sodium_norway_problem(series):
+    series = add_dummy_values(series)
+    df = pd.DataFrame([series])
+    with tempfile.NamedTemporaryFile("w", dir=".") as file:
+        df.to_csv(file, index=False)
+        file.flush()
+        read_df = get_species_table(file=file.name)
+        assert all(read_df.notna())
+    assert df.equals(read_df)
+
 
 test_data = [
     (
@@ -42,7 +64,9 @@ def add_dummy_values(series: pd.Series) -> pd.Series:
 @pytest.mark.parametrize(
     "series, expected_constituents, expected_mass, expected_linear", test_data
 )
-def test_species_parsing(series, expected_constituents, expected_mass, expected_linear):
+def test_species_class_parsing(
+    series, expected_constituents, expected_mass, expected_linear
+):
     spec = Species(add_dummy_values(series))
 
     assert series["NAME"] == spec.name

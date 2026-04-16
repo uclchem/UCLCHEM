@@ -225,7 +225,7 @@ class ReactionNamesStore:  # noqa: D101
 
         """
         if self.reaction_names is None:
-            reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
+            reactions = get_reaction_table()
             # format the reactions:
             self.reaction_names = [
                 reaction_line_formatter(line) for idx, line in reactions.iterrows()
@@ -252,8 +252,7 @@ class SpeciesNameStore:  # noqa: D101
 
         """
         if self.species_names is None:
-            species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
-            self.species_names = species["NAME"].tolist()
+            self.species_names = get_species()
         return self.species_names
 
 
