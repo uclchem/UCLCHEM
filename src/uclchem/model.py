@@ -129,7 +129,7 @@ from uclchem.constants import (
     n_species,
 )
 from uclchem.plot import create_abundance_plot, plot_species
-from uclchem.utils import UCLCHEM_ROOT_DIR, SuccessFlag
+from uclchem.utils import SuccessFlag, get_reaction_table, get_species
 
 # /Multiprocessing imports
 
@@ -208,7 +208,7 @@ class ReactionNamesStore:  # noqa: D101
 
         """
         if self.reaction_names is None:
-            reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
+            reactions = get_reaction_table()
             # format the reactions:
             self.reaction_names = [
                 reaction_line_formatter(line) for idx, line in reactions.iterrows()
@@ -232,8 +232,7 @@ class SpeciesNameStore:  # noqa: D101
             list[str]: List of species names
         """
         if self.species_names is None:
-            species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
-            self.species_names = species["NAME"].tolist()
+            self.species_names = get_species()
         return self.species_names
 
 
@@ -4075,7 +4074,9 @@ class GridRunner:
 
                 # grid_param_dict contains the param_dict values of the next model to run.
                 grid_param_dict = {
-                    k: v if not isinstance(v, float) else (v.item() if hasattr(v, 'item') else v)
+                    k: v
+                    if not isinstance(v, float)
+                    else (v.item() if hasattr(v, "item") else v)
                     for k, v in zip(param_keys, combo)
                     if k in full_parameters["param_dict"]
                 }
