@@ -3,6 +3,7 @@ MODULE RATES
     USE DEFAULTPARAMETERS
     !f2py INTEGER, parameter :: dp
     USE network
+    USE f2py_constants
     USE physicscore
     USE SurfaceReactions
     use photoreactions, only: H2PhotoDissRate, COPhotoDissRate, cIonizationRate, ICE_GAS_PHOTO_CROSSSECTION_RATIO
@@ -16,6 +17,12 @@ MODULE RATES
     !Flags to control desorption processes
     REAL(dp) :: turbVel=1.0 !unit? km/s or cm/s
     ! TODO: integrate into makerates and put it in network.f90
+
+    ! Pre-split LH and ER base rates, saved in calculateReactionRates and used
+    ! by the F callback to re-apply the chemdes split at the current ice thickness.
+    REAL(dp) :: rate_lh_unsplit(nreac) = 0.0d0
+    REAL(dp) :: rate_er_unsplit(nreac) = 0.0d0
+
 CONTAINS
     SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
         REAL(dp), INTENT(IN) :: abund(:, :), safemantle, h2col, cocol, ccol
@@ -241,8 +248,11 @@ CONTAINS
                 END DO
                 !At some point, rate is so fast that there's no point freezing out any more
                 !Save the integrator some trouble and turn freeze out off
+                ! Compare against surface thermal desorption only (first SIZE(freezePartners)
+                ! reactions of thermReacs). 
+                ! (surface # first, then bulk @); freeze-out competes with surface only.
                 WHERE(rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep)&
-                &<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
+                &<MIN_SURFACE_ABUND*rate(idx1:idx1+SIZE(freezePartners)-1)) rate(freezePartners)=0.0
                 IF (safeMantle .lt. MIN_SURFACE_ABUND) rate(idx1:idx2)=0.0
             ELSE
                 rate(idx1:idx2)=0.0
@@ -265,6 +275,9 @@ CONTAINS
             DO j=idx1,idx2
                 rate(j)=diffusionReactionRate(j,dustTemp(dstep))
             END DO
+
+            ! Save unsplit LH rates for dynamic re-split inside the F callback
+            rate_lh_unsplit(lhReacs(1):lhReacs(2)) = rate(lhReacs(1):lhReacs(2))
 
             IF ((desorb) .and. (chemdesorb)) THEN
                 !two routes for every diffusion reaction: products to gas or products remain on surface
@@ -298,7 +311,10 @@ CONTAINS
     if (idx1 .ne. REAC_NOT_PRESENT) THEN
         rate(idx1:idx2)=freezeOutRate(idx1,idx2)
         rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/dustTemp(dstep))
-        
+
+        ! Save unsplit ER rates for dynamic re-split inside the F callback
+        rate_er_unsplit(erReacs(1):erReacs(2)) = rate(erReacs(1):erReacs(2))
+
         IF ((desorb) .and. (chemdesorb)) THEN
             !calculate fraction of reaction that goes down desorption route
             idx1 = erdesReacs(1)

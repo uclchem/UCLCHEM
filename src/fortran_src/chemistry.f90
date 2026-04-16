@@ -542,7 +542,7 @@ CONTAINS
         REAL(dp) :: surfaceCoverage
         REAL(dp) :: phi,cgr(6),grec,denom
         REAL(dp) :: h2heatfac, h2_denom  ! H&M79 eq. 6.45 thermalization efficiency factor
-        INTEGER :: ii
+        INTEGER :: ii, k
         ! Y_safe clamps species abundances to MIN_ABUND during ODE evaluation.
         ! DVODE predictor steps can drive species to small negatives; feeding those
         ! negative values back into destruction terms compounds the overshoot.
@@ -572,6 +572,48 @@ CONTAINS
         bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
         surfaceCoverage=bulkGainFromMantleBuildUp()
 
+        ! Fix 3: refresh surface-to-bulk swap rate from current safeMantle
+        ! (safeMantle was just updated from Y_safe above, but rate(surfSwapReacs) is still
+        ! set from the start-of-step call to calculateReactionRates)
+        IF (THREE_PHASE) rate(surfSwapReacs(1):surfSwapReacs(2)) = surfaceToBulkSwappingRates(dustTemp(dstep))
+
+        ! Fix 1: re-split LH/LHDES and ER/ERDES using the current ice thickness.
+        ! desorptionFractionIncludingIce depends on numMonolayers which changes as ice builds up
+        ! during DVODE integration. Without this, the fraction is frozen at the start-of-step value.
+        numMonolayers = getNumberMonolayers(safeMantle + safeBulk)
+        IF (lhdesReacs(1) .ne. REAC_NOT_PRESENT .AND. desorb .AND. chemdesorb &
+            .AND. dustTemp(dstep) .lt. maxGrainTemp                            &
+            .AND. safeMantle .gt. MIN_SURFACE_ABUND) THEN
+            k = 0
+            DO i = lhdesReacs(1), lhdesReacs(2)
+                k = k + 1
+                rate(i) = desorptionFractionIncludingIce(i, numMonolayers) &
+                          * rate_lh_unsplit(LHDEScorrespondingLHreacs(k))
+                IF (ANY(bulkList==re1(i))) rate(i) = 0.0
+            END DO
+            k = 0
+            DO i = lhdesReacs(1), lhdesReacs(2)
+                k = k + 1
+                rate(LHDEScorrespondingLHreacs(k)) = rate_lh_unsplit(LHDEScorrespondingLHreacs(k)) - rate(i)
+            END DO
+        END IF
+        IF (erdesReacs(1) .ne. REAC_NOT_PRESENT .AND. desorb .AND. chemdesorb &
+            .AND. dustTemp(dstep) .lt. maxGrainTemp                            &
+            .AND. safeMantle .gt. MIN_SURFACE_ABUND) THEN
+            k = 0
+            DO i = erdesReacs(1), erdesReacs(2)
+                k = k + 1
+                rate(i) = desorptionFractionIncludingIce(i, numMonolayers) &
+                          * rate_er_unsplit(ERDEScorrespondingERreacs(k))
+                IF (ANY(bulkList==re1(i))) rate(i) = 0.0
+            END DO
+            k = 0
+            DO i = erdesReacs(1), erdesReacs(2)
+                k = k + 1
+                rate(ERDEScorrespondingERreacs(k)) = rate_er_unsplit(ERDEScorrespondingERreacs(k)) - rate(i)
+            END DO
+        END IF
+
         !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
         CALL GETYDOT(RATE, Y_safe, surfaceCoverage, D, YDOT)
@@ -590,6 +632,12 @@ CONTAINS
                 gasTemp(dstep)=y(nspec+1)
                 IF (gasTemp(dstep) .lt. lower_limit_gastemp) gasTemp(dstep)=lower_limit_gastemp
                 IF (gasTemp(dstep) .gt. upper_limit_gastemp) gasTemp(dstep)=upper_limit_gastemp
+                ! Fix 2: update gas-phase two-body rates for the new temperature.
+                ! These rates are frozen at start-of-step in calculateReactionRates.
+                rate(twobodyReacs(1):twobodyReacs(2)) = &
+                    alpha(twobodyReacs(1):twobodyReacs(2)) * &
+                    ((gasTemp(dstep)/300.0d0)**beta(twobodyReacs(1):twobodyReacs(2))) * &
+                    dexp(-gama(twobodyReacs(1):twobodyReacs(2))/gasTemp(dstep))
                 ! H&M79 eq. 6.45: critical density for H2 thermalization
                 ! (18100 coefficient for consistency with h2FUVPumpHeating in heating.f90)
                 h2_denom = 1.6d0*Y(nh)*EXP(-((400.0d0/Y(nspec+1))**2)) &
