@@ -180,7 +180,7 @@ default_param_dictionary = {
     "hstickingcoeffbyh2coverage": False,
     "hdiffusionbarrier": -1.0,
     "usecustomdiffusionbarriers": True,
-    "seperatediffanddesorbprefactor": True,
+    "separatediffanddesorbprefactor": True,
     "usetstprefactors": False,  # Set this one to True and add the intertias from dijkhuis25.
     "usecustomprefactors": False,
     "useminissaleicechemdesefficiency": False,
