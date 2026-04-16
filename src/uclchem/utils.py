@@ -100,9 +100,7 @@ def get_species_table(file: str | Path | None = None) -> pd.DataFrame:
     if file is None:
         file = UCLCHEM_ROOT_DIR / "species.csv"
 
-    species = pd.read_csv(
-        file, na_values=_NAN_STRINGS, keep_default_na=False, comment="#"
-    )
+    species = pd.read_csv(file, na_values=_NAN_STRINGS, keep_default_na=False)
     return species
 
 
@@ -135,9 +133,7 @@ def get_reaction_table(file: str | Path | None = None) -> pd.DataFrame:
     if file is None:
         file = UCLCHEM_ROOT_DIR / "reactions.csv"
 
-    reactions = pd.read_csv(
-        file, na_values=_NAN_STRINGS, keep_default_na=False, comment="#"
-    )
+    reactions = pd.read_csv(file, na_values=_NAN_STRINGS, keep_default_na=False)
     return reactions
 
 
