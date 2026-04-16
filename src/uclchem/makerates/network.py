@@ -18,9 +18,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from pathlib import Path
 
-import pandas as pd
-
-from uclchem.utils import UCLCHEM_ROOT_DIR
+from uclchem.utils import UCLCHEM_ROOT_DIR, get_reaction_table, get_species_table
 
 from .reaction import Reaction, reaction_types
 from .species import Species
@@ -487,8 +485,8 @@ class Network(BaseNetwork, MutableNetworkABC):
         logging.debug(f"Loading network from {species_path} and {reactions_path}")
 
         # Load CSVs
-        species_data = pd.read_csv(species_path)
-        reactions_data = pd.read_csv(reactions_path)
+        species_data = get_species_table(species_path)
+        reactions_data = get_reaction_table(reactions_path)
 
         # Parse into objects
         species_list = [Species(list(spec)) for idx, spec in species_data.iterrows()]

@@ -29,7 +29,7 @@ import pandas as pd
 from uclchem.makerates.network import BaseNetwork
 from uclchem.makerates.reaction import Reaction, skip_reaction_validation
 from uclchem.makerates.species import Species
-from uclchem.utils import UCLCHEM_ROOT_DIR
+from uclchem.utils import UCLCHEM_ROOT_DIR, get_reaction_table, get_species_table
 
 
 class RuntimeNetwork(BaseNetwork):
@@ -110,8 +110,8 @@ class RuntimeNetwork(BaseNetwork):
         These provide better indexing and validation against the Fortran network.
 
         Raises:
-            FileNotFoundError: If `"UCLCHEM_ROOT_DIR/species.csv"` or
-                `"UCLCHEM_ROOT_DIR/reactions.csv"` are not valid files.
+            FileNotFoundError: If ``UCLCHEM_ROOT_DIR / "species.csv"`` or
+                ``UCLCHEM_ROOT_DIR / "reactions.csv"`` are not valid files.
         """
         species_path = UCLCHEM_ROOT_DIR / "species.csv"
         reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
@@ -121,8 +121,8 @@ class RuntimeNetwork(BaseNetwork):
         if not reactions_path.is_file():
             raise FileNotFoundError(f"Reactions CSV not found: {reactions_path}")
 
-        self._species_csv = pd.read_csv(species_path)
-        self._reactions_csv = pd.read_csv(reactions_path)
+        self._species_csv = get_species_table(species_path)
+        self._reactions_csv = get_reaction_table(reactions_path)
 
     def _validate_dimensions(self):
         """Validate that CSV data matches Fortran network dimensions.

@@ -19,12 +19,11 @@ across model runs in the same Python session.
 from types import ModuleType
 
 import numpy as np
-import pandas as pd
 from uclchemwrap import network as network_module
 
 from uclchem.makerates.reaction import Reaction
 from uclchem.makerates.species import Species
-from uclchem.utils import UCLCHEM_ROOT_DIR
+from uclchem.utils import UCLCHEM_ROOT_DIR, get_reaction_table, get_species_table
 
 
 class RuntimeSpecies:
@@ -379,8 +378,8 @@ class NetworkState:
         if not reactions_path.is_file():
             raise FileNotFoundError(f"Reactions CSV not found: {reactions_path}")
 
-        self._species_df = pd.read_csv(species_path)
-        self._reactions_df = pd.read_csv(reactions_path)
+        self._species_df = get_species_table(species_path)
+        self._reactions_df = get_reaction_table(reactions_path)
 
     def _parse_species(self):
         """Parse species DataFrame into Species objects."""
