@@ -19,9 +19,9 @@ Thread Safety Warning:
     Do not use with multiprocessing, multithreading, or concurrent model runs.
 """
 
+import logging
 import warnings
 from types import ModuleType
-import logging
 
 import numpy as np
 import pandas as pd
@@ -695,7 +695,7 @@ class RuntimeNetwork(BaseNetwork):
             >>> network.reset_to_initial_state()  # Restores original alpha
 
         """
-        logger.debug(f"Resetting RuntimeNetwork to initial state")
+        logger.debug("Resetting RuntimeNetwork to initial state")
         np.copyto(self._fortran.alpha, self._initial_alpha)
         np.copyto(self._fortran.beta, self._initial_beta)
         np.copyto(self._fortran.gama, self._initial_gama)

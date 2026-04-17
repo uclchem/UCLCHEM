@@ -616,7 +616,7 @@ class Reaction:
         """
         logger.debug(f"Checking elemental conservation of reaction {self}")
         if self.get_reaction_type() in ["FREEZE", "DESORB"]:
-            logger.debug(f"Reaction is freeze-out or desorption reaction, skipping")
+            logger.debug("Reaction is freeze-out or desorption reaction, skipping")
             return
 
         counter_reactants: Counter[str] = Counter()
@@ -644,7 +644,7 @@ class Reaction:
             msg += f"The following reaction caused this error: {self}.\n"
             msg += f"Reactants: {counter_reactants}. Products: {counter_products}"
             raise ValueError(msg)
-        logger.debug(f"Ok!")
+        logger.debug("Ok!")
 
     def check_charge_conservation(self) -> None:
         """Check that the charge is conserved by this reaction.

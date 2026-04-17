@@ -442,7 +442,7 @@ class HeatingSettings:
         logger.debug("Current coolantDataDir is {current}")
         max_len = int(current.dtype.itemsize)
         padded = (str(directory) + "/").ljust(max_len)
-        logger.debug(f"Set f2py_consants coolantDataDir to {padded}")
+        logger.debug(f"Set f2py_constants coolantDataDir to {padded}")
         self._f2py_constants_module.coolantdatadir = padded
 
     def get_coolant_directory(self) -> str:
