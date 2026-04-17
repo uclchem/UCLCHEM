@@ -587,7 +587,7 @@ class Reaction:
             TypeError: If ``flag`` is not of type ``bool``.
 
         """
-        logger.debug(f"Setting for {self} extrapolation to {flag}")
+        logger.debug(f"Setting extrapolation of {self} to {flag}")
         if not isinstance(flag, bool):
             msg = f"Expected flag to be type bool, but flag was type {type(flag)}"
             raise TypeError(msg)

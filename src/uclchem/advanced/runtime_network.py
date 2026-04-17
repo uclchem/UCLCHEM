@@ -240,7 +240,7 @@ class RuntimeNetwork(BaseNetwork):
 
         n_reactions = len(self._fortran.alpha)
         n_species = len(self._fortran.specname)
-        logger.debug(f"Loading {n_reactions} reactions")
+        logger.debug(f"Loading {n_reactions} reactions from Fortran")
 
         # Load reactions without validation - the compiled Fortran network
         # may contain modeling simplifications (e.g., pseudo-hydrogenation)
