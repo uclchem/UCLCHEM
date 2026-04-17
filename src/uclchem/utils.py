@@ -52,8 +52,11 @@ Use :meth:`SuccessFlag.check_error` to get human-readable error messages.
 """
 
 import enum
+import logging
+import sys
+from io import TextIOWrapper
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Literal, Self, TypeAlias
 
 if TYPE_CHECKING:
     from uclchem.model import Collapse
@@ -430,4 +433,44 @@ def check_expected_type(
     raise TypeError(msg)
 
 
-ArrayLike = list | pd.Series | np.ndarray
+ArrayLike: TypeAlias = list | pd.Series | np.ndarray
+
+
+def configure_logging(
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] | int = "INFO",
+    stream: TextIOWrapper | str | Path | None = sys.stdout,
+) -> None:
+    """Configure logging of UCLCHEM.
+
+    Args:
+        level (Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] | int): Level of logs to be
+            logged. Case insensitive. Default = "INFO".
+        stream (TextIOWrapper | str | Path | None): stream to write to. If string or Path, write to file
+            in append mode. If None, do not write logs at all. Default = sys.stdout (write to stdout).
+
+    Raises:
+        TypeError: If stream is not an instance of TextIOWrapper, str, Path, or None.
+
+    """
+    if isinstance(level, str):
+        level = level.upper()
+
+    handler: logging.Handler
+    if stream is None:
+        handler = logging.NullHandler()
+    elif isinstance(stream, TextIOWrapper):
+        handler = logging.StreamHandler(stream=stream)
+    elif isinstance(stream, str | Path):
+        handler = logging.FileHandler(filename=stream)
+    else:
+        msg = f"stream should be type None, TextIOWrapper (such as sys.stdout), or string or Path, but got type {type(stream)}"
+        raise TypeError(msg)
+    handler.setLevel(level)
+
+    logger = logging.getLogger("uclchem")
+    logger.addHandler(handler)
+    logger.setLevel(level)
+
+    logger.debug(
+        f"Logging configured with level {logging.getLevelName(logger.getEffectiveLevel())}, with handler {handler}"
+    )

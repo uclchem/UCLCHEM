@@ -1301,7 +1301,7 @@ class AbstractModel(ABC):
         """``uclchem.plot.plot_species`` wrapper method.
 
         Args:
-            ax (pyplot.axis): An axis object to plot on
+            ax (plt.Axes): An axis object to plot on
             species (list[str] | None): A list of species names to be plotted.
                 If species name starts with "$" instead of "#" or "@",
                 plots the sum of surface and bulk abundances. If None, default to
