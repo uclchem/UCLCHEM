@@ -2232,12 +2232,14 @@ class AbstractModel(ABC):
                 If None, name is set to "interrupted".
 
         """
+        logger.info("Model was interrupted")
+
         if self._proc_handle is not None:
+            logger.debug("Terminating process")
             self._proc_handle.terminate()
             self._proc_handle.join()
             self._proc_handle = None
 
-        logger.info("Model was interrupted")
         if bool(self._shm_desc):
             self._coordinator_unlink_memory()
 
@@ -2315,7 +2317,7 @@ class AbstractModel(ABC):
                     self._shm_handles[k].close()
                     self._shm_handles[k].unlink()
                 except Exception:
-                    print(f"Warning, unable to close and unlike {k}")
+                    print(f"Warning, unable to close and unlink {k}")
                     pass
                 finally:
                     del self._shm_handles[k]

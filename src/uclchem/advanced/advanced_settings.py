@@ -330,6 +330,8 @@ class ModuleSettings:
             AttributeError: if no setting with `name` is available.
 
         """
+        logger.debug(f"Trying to set setting '{name}' to {value}")
+
         if name.startswith("_") or name in ["module_name"]:
             object.__setattr__(self, name, value)
             return
@@ -501,6 +503,7 @@ class GeneralSettings:
         for name in module_names:
             if hasattr(uclchemwrap, name):
                 module = getattr(uclchemwrap, name)
+                logger.debug(f"Creating ModuleSettings for module '{name}'")
                 self._modules[name] = ModuleSettings(
                     name,
                     module,
@@ -641,10 +644,12 @@ class GeneralSettings:
         """
         if confirm:
             response = input("Reset ALL settings to defaults? (yes/no): ")
+            logger.debug(f"Response: {response}")
             if response.lower() != "yes":
                 print("Reset cancelled")
                 return
 
+        logger.debug("Resetting all settings to their default values")
         for mod_settings in self._modules.values():
             for setting in mod_settings._settings.values():
                 if not setting.is_parameter and setting.is_edited:
@@ -653,7 +658,7 @@ class GeneralSettings:
                     except Exception as e:
                         print(f"Warning: Could not reset {setting.name}: {e}")
 
-        print("✓ All settings reset to defaults")
+        logger.debug("All settings reset to defaults")
 
     @contextmanager
     def temporary_changes(self) -> Iterator[GeneralSettings]:

@@ -21,6 +21,7 @@ Thread Safety Warning:
 
 import warnings
 from types import ModuleType
+import logging
 
 import numpy as np
 import pandas as pd
@@ -30,6 +31,8 @@ from uclchem.makerates.network import BaseNetwork
 from uclchem.makerates.reaction import Reaction, skip_reaction_validation
 from uclchem.makerates.species import Species
 from uclchem.utils import UCLCHEM_ROOT_DIR
+
+logger = logging.getLogger(__name__)
 
 
 class RuntimeNetwork(BaseNetwork):
@@ -134,6 +137,8 @@ class RuntimeNetwork(BaseNetwork):
             RuntimeError: If dimensions don't match
 
         """
+        logger.debug("Validating dimensions of species in csv and in Fortran")
+
         n_species_csv = len(self._species_csv)
         n_species_fortran = len(self._fortran.specname)
 
@@ -144,7 +149,9 @@ class RuntimeNetwork(BaseNetwork):
                 "The installation may be corrupted or out of sync."
             )
             raise RuntimeError(msg)
+        logger.debug("Ok!")
 
+        logger.debug("Validating dimensions of reactions in csv and in Fortran")
         n_reactions_csv = len(self._reactions_csv)
         n_reactions_fortran = len(self._fortran.alpha)
 
@@ -155,8 +162,11 @@ class RuntimeNetwork(BaseNetwork):
                 "The installation may be corrupted or out of sync."
             )
             raise RuntimeError(msg)
+        logger.debug("Ok!")
 
-        # Additional validation: check species names match
+        logger.debug(
+            "Validating that the species names of the first couple of species match"
+        )
         for i in range(min(10, n_species_csv)):  # Check first 10 for quick validation
             csv_name = self._species_csv.iloc[i]["NAME"]
             fortran_name = str(np.char.decode(self._fortran.specname[i])).strip()
@@ -168,6 +178,7 @@ class RuntimeNetwork(BaseNetwork):
                     RuntimeWarning,
                 )
                 break
+        logger.debug("Ok!")
 
     def _load_species_from_fortran(self) -> dict[str, Species]:
         """Load species from Fortran arrays into Python Species objects.
@@ -179,6 +190,7 @@ class RuntimeNetwork(BaseNetwork):
         species_dict = {}
 
         n_species = len(self._fortran.specname)
+        logger.debug(f"Loading {n_species} species from Fortran")
 
         for i in range(n_species):
             # Extract data from Fortran arrays
@@ -228,6 +240,7 @@ class RuntimeNetwork(BaseNetwork):
 
         n_reactions = len(self._fortran.alpha)
         n_species = len(self._fortran.specname)
+        logger.debug(f"Loading {n_reactions} reactions")
 
         # Load reactions without validation - the compiled Fortran network
         # may contain modeling simplifications (e.g., pseudo-hydrogenation)
@@ -377,6 +390,7 @@ class RuntimeNetwork(BaseNetwork):
         - Reaction parameters: alpha, beta, gama
         - Species parameters: bindingenergy
         """
+        logger.debug("Caching initial state of RuntimeNetwork")
         self._initial_alpha = np.copy(self._fortran.alpha)
         self._initial_beta = np.copy(self._fortran.beta)
         self._initial_gama = np.copy(self._fortran.gama)
@@ -546,12 +560,12 @@ class RuntimeNetwork(BaseNetwork):
     # Parameter Modification Methods (NetworkABC Implementation)
     # ========================================================================
 
-    def change_binding_energy(self, specie: str, new_binding_energy: float) -> None:
+    def change_binding_energy(self, specie: str, new_binding_energy: int | float) -> None:
         """Change binding energy of a species (modifies Fortran array).
 
         Args:
-            specie: Name of the species
-            new_binding_energy: New binding energy in Kelvin
+            specie (str): Name of the species
+            new_binding_energy (int | float): New binding energy in Kelvin
 
         Raises:
             KeyError: If species not found
@@ -568,6 +582,9 @@ class RuntimeNetwork(BaseNetwork):
             msg = f"Species '{specie}' not found in network"
             raise KeyError(msg)
 
+        logger.debug(
+            f"Changing the binding energy of species {specie} to {new_binding_energy}"
+        )
         # Modify Fortran array (0-based)
         self._fortran.bindingenergy[species_idx] = float(new_binding_energy)
 
@@ -625,16 +642,23 @@ class RuntimeNetwork(BaseNetwork):
             raise IndexError(msg)
 
         if alpha is not None:
+            logger.debug(
+                f"Setting alpha of reaction with index {reaction_idx} to {alpha}"
+            )
             self._fortran.alpha[reaction_idx] = float(alpha)
             if reaction_idx in self._reactions_dict:
                 self._reactions_dict[reaction_idx].set_alpha(float(alpha))
 
         if beta is not None:
+            logger.debug(f"Setting beta of reaction with index {reaction_idx} to {alpha}")
             self._fortran.beta[reaction_idx] = float(beta)
             if reaction_idx in self._reactions_dict:
                 self._reactions_dict[reaction_idx].set_beta(float(beta))
 
         if gamma is not None:
+            logger.debug(
+                f"Setting gamma of reaction with index {reaction_idx} to {alpha}"
+            )
             self._fortran.gama[reaction_idx] = float(gamma)
             if reaction_idx in self._reactions_dict:
                 self._reactions_dict[reaction_idx].set_gamma(float(gamma))
@@ -655,6 +679,7 @@ class RuntimeNetwork(BaseNetwork):
             >>> network.reset_to_initial_state()
 
         """
+        logger.debug(f"Disabling reaction with index {reaction_idx}")
         self.modify_reaction_parameters(reaction_idx, alpha=0.0)
 
     def reset_to_initial_state(self) -> None:
@@ -670,6 +695,7 @@ class RuntimeNetwork(BaseNetwork):
             >>> network.reset_to_initial_state()  # Restores original alpha
 
         """
+        logger.debug(f"Resetting RuntimeNetwork to initial state")
         np.copyto(self._fortran.alpha, self._initial_alpha)
         np.copyto(self._fortran.beta, self._initial_beta)
         np.copyto(self._fortran.gama, self._initial_gama)
@@ -687,6 +713,6 @@ class RuntimeNetwork(BaseNetwork):
         """
         warnings.warn(
             "Direct access to Fortran module is discouraged, this can break ungracefully. "
-            "Use GeneralSettings and instead"
+            "Use GeneralSettings instead"
         )
         return self._fortran

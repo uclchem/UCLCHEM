@@ -336,7 +336,7 @@ class NetworkBuilder:
         species freeze out their neutral counterparts, i.e. `H+ + FREEZE -> #H`
 
         """
-        logger.debug("Adding the freeze out reactions!")
+        logger.debug("Adding the freeze-out reactions")
         new_reactions = []
         new_species = []
         for species in self.network.get_species_list():
@@ -520,7 +520,7 @@ class NetworkBuilder:
             ValueError: If alpha values for explicit desorption reactions do not sum to 1.0.
         """
         desorb_reacs = ["DESOH2", "DESCR", "DEUVCR", "THERM"]
-        logger.debug("Adding desorption reactions!")
+        logger.debug("Adding desorption reactions")
 
         # Expand DESORB shorthand into all four physical desorption mechanisms.
         desorb_shorthand = [
@@ -1047,10 +1047,10 @@ class NetworkBuilder:
                     continue
                 delta_h = self._compute_exothermicity(reaction)
                 # TODO: add a heating efficiency factor in here:
-                reaction.set_exothermicity(convert_to_erg(-delta_h, "kcal/mol"))
                 logger.debug(
                     f"Setting reaction enthalpy of {reaction} to {delta_h} kcal/mol"
                 )
+                reaction.set_exothermicity(convert_to_erg(-delta_h, "kcal/mol"))
 
     def _apply_custom_exothermicities(
         self, database_reaction_exothermicity: list[str | Path]

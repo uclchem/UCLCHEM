@@ -150,11 +150,11 @@ class HeatingSettings:
 
         Args:
             mechanism_id: Index of the heating mechanism (1-9). Use class
-                constants (e.g., self.PHOTOELECTRIC['BAKES'], self.H2_FORMATION)
+                constants (e.g., ``self.PHOTOELECTRIC['BAKES']``, ``self.H2_FORMATION``)
             enabled: True to enable, False to disable. Default: True
 
         Raises:
-            ValueError: If mechanism_id is not between 1 and the number of heating
+            ValueError: If ``mechanism_id`` is not between 1 and the number of heating
                 mechanisms.
 
         Example:
@@ -171,10 +171,16 @@ class HeatingSettings:
 
         # If this mechanism is part of a mutually exclusive group and we're enabling it,
         # disable all others in the group first
+        logger.debug(
+            f"Setting heating module with index {mechanism_id} to enabled={enabled}"
+        )
         if enabled and mechanism_id in self._heating_groups:
             group = self._heating_groups[mechanism_id]
             for other_id in group:
                 if other_id != mechanism_id:
+                    logger.debug(
+                        "Disabling mutually exclusive mechanism with id other_id"
+                    )
                     self._heating_module.heating_modules[other_id - 1] = False
 
         # Now set the requested mechanism
@@ -210,6 +216,7 @@ class HeatingSettings:
             msg = f"Coolant '{coolant_name}' not found. Available coolants: {names}"
             raise ValueError(msg)
         idx = names.index(coolant_name)
+        logger.debug(f"Setting coolant with name {coolant_name} to enabled={enabled}")
         self._f2py_constants_module.coolant_active[idx] = enabled
 
     def get_coolant_active(self) -> dict[str, bool]:
@@ -239,7 +246,7 @@ class HeatingSettings:
 
         Args:
             mechanism_id (int): Index of the cooling mechanism (1-5). Use class
-                constants (e.g., self.ATOMIC_LINE_COOLING)
+                constants (e.g., ``self.ATOMIC_LINE_COOLING``)
             enabled (bool): True to enable, False to disable. Default: True
 
         Raises:
@@ -254,6 +261,9 @@ class HeatingSettings:
         if not 1 <= mechanism_id <= self._heating_module.ncooling:
             msg = f"mechanism_id must be between 1 and {self._heating_module.ncooling}"
             raise ValueError(msg)
+        logger.debug(
+            f"Setting cooling mechanism with mechanism id {mechanism_id} to enabled={enabled}"
+        )
         self._heating_module.cooling_modules[mechanism_id - 1] = enabled
 
     def get_heating_modules(self) -> dict[str, bool]:
@@ -429,8 +439,10 @@ class HeatingSettings:
 
         # Pad and set
         current = self._f2py_constants_module.coolantdatadir
+        logger.debug("Current coolantDataDir is {current}")
         max_len = int(current.dtype.itemsize)
         padded = (str(directory) + "/").ljust(max_len)
+        logger.debug(f"Set f2py_consants coolantDataDir to {padded}")
         self._f2py_constants_module.coolantdatadir = padded
 
     def get_coolant_directory(self) -> str:
@@ -562,7 +574,7 @@ def initialize_coolant_directory() -> str:
     """Locate and return the collisional rate data directory.
 
     This function searches for coolant data files in the following order:
-    1. UCLCHEM_COOLANT_DATA environment variable (if set)
+    1. ``UCLCHEM_COOLANT_DATA`` environment variable (if set)
     2. Installed package data via importlib.resources (normal installation)
     3. Development mode: Makerates/data/collisional_rates/ (relative to project root)
 
@@ -671,7 +683,7 @@ def initialize_coolant_directory() -> str:
         "  3. Development mode (Makerates/data/collisional_rates/)\n"
         "\n"
         "To fix:\n"
-        "  - For installed package: Run 'python makerates.py' then 'pip install .'\n"
+        "  - For installed package: Run 'python MakeRates.py' then 'pip install .'\n"
         "  - For development: Ensure Makerates/data/collisional_rates/*.dat files exist\n"
         "  - Or set UCLCHEM_COOLANT_DATA=/path/to/coolant/data/"
     )

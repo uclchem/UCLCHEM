@@ -79,6 +79,8 @@ def create_snapshot() -> dict[str, Any]:
         Fully picklable dict suitable for passing to :func:`restore_snapshot`.
 
     """
+    logger.debug("Creating snapshot")
+
     snapshot: dict[str, Any] = {}
 
     # --- General settings (scalars only) ---
@@ -171,6 +173,7 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
         snapshot: Dict produced by :func:`create_snapshot`.
 
     """
+    logger.debug("Regenerating snapshot")
     # --- General settings ---
     # If uclchem hangs here, the last debug line printed shows which Fortran
     # PARAMETER is blocking. Add it to src/uclchem/advanced/fortran_metadata.yaml

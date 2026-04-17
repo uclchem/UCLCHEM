@@ -425,6 +425,7 @@ class Reaction:
             RuntimeError: If an error occurred while trying to determine the differences
                 in elements between reagents and products.
         """
+        logger.debug(f"Trying to predict reduced mass of species {self}")
         reac_constituents = []
         reac_species = []
         # Get all reactant species and their elemental buildup
@@ -586,7 +587,7 @@ class Reaction:
             TypeError: If ``flag`` is not of type ``bool``.
 
         """
-        logger.info(f"Setting for {self} extrapolation to {flag}")
+        logger.debug(f"Setting for {self} extrapolation to {flag}")
         if not isinstance(flag, bool):
             msg = f"Expected flag to be type bool, but flag was type {type(flag)}"
             raise TypeError(msg)
@@ -613,7 +614,9 @@ class Reaction:
             ValueError: If the elements are not conserved by the reaction.
 
         """
+        logger.debug(f"Checking elemental conservation of reaction {self}")
         if self.get_reaction_type() in ["FREEZE", "DESORB"]:
+            logger.debug(f"Reaction is freeze-out or desorption reaction, skipping")
             return
 
         counter_reactants: Counter[str] = Counter()
@@ -641,6 +644,7 @@ class Reaction:
             msg += f"The following reaction caused this error: {self}.\n"
             msg += f"Reactants: {counter_reactants}. Products: {counter_products}"
             raise ValueError(msg)
+        logger.debug(f"Ok!")
 
     def check_charge_conservation(self) -> None:
         """Check that the charge is conserved by this reaction.
@@ -652,10 +656,14 @@ class Reaction:
             ValueError: If charge is not conserved by the reaction.
 
         """
-        # Grain reactions don't need to conserve charge (grains can absorb/release electrons)
+        logger.debug(f"Checking charge conservation of reaction {self}")
         if self.is_ice_reaction(
             include_reactants=True, include_products=True, strict=False
         ):
+            # Grain reactions don't need to conserve charge (grains can absorb/release electrons)
+            logger.debug(
+                "Reaction is ice reaction, grains can absorb/release charge, skipping"
+            )
             return
         charge_reactants = 0
         for reac in self._reactants:
@@ -680,6 +688,7 @@ class Reaction:
             msg += f"The following reaction caused this error: {self}.\n"
             msg += f"Reactants: {charge_reactants}. Products: {charge_products}"
             raise ValueError(msg)
+        logger.debug("Ok!")
 
     def convert_gas_to_surf(self) -> None:
         """Convert the gas-phase species to surface species in place for this reaction.
