@@ -95,6 +95,7 @@ from collections.abc import Iterator
 from datetime import datetime
 from multiprocessing import pool, shared_memory
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Literal
 
 import h5py
@@ -1342,8 +1343,6 @@ class AbstractModel(ABC):
             msg = "This model was read. It can not be run. "
             raise RuntimeError(msg)
 
-        logger.debug("Running model")
-
         def _handler(signum, frame):  # noqa: ARG001, ANN001
             try:
                 self.on_interrupt()  # your “final steps”
@@ -1352,6 +1351,8 @@ class AbstractModel(ABC):
                 signal.signal(signal.SIGINT, self._orig_sigint)
                 raise KeyboardInterrupt
 
+        logger.debug("Running model")
+        start = perf_counter()
         signal.signal(signal.SIGINT, _handler)
         if self.run_type not in self.separate_worker_types:
             output = self.run_fortran()
@@ -1383,7 +1384,7 @@ class AbstractModel(ABC):
             msg = f"run_type of {self.run_type} is not a valid value."
             raise ValueError(msg)
 
-        logger.debug("Model finished")
+        logger.debug(f"Model finished. Took {perf_counter() - start:.2f} seconds.")
 
         signal.signal(signal.SIGINT, self._orig_sigint)
 
@@ -1753,8 +1754,6 @@ class AbstractModel(ABC):
             self.chemical_abun_array[:, p, :] = array[sel, point_index + 1 :]
 
         # Construct Dataset using current UCLCHEM constants (validated to match file)
-        import xarray as xr
-
         self._data = xr.Dataset(
             {
                 "physics_array": (
@@ -1818,6 +1817,7 @@ class AbstractModel(ABC):
                 have not yet been initialized.
             ValueError: If ``self.outputFile`` is None.
         """
+        logger.debug(f"Writing output to {self.outputFile}")
         if self.physics_array is None or self.chemical_abun_array is None:
             msg = "Model arrays have not yet been initialized."
             raise RuntimeError(msg)
@@ -1849,6 +1849,7 @@ class AbstractModel(ABC):
             ValueError: If ``self.abundSaveFile`` is None.
 
         """
+        logger.debug(f"Writing starting chemistry to {self.abundSaveFile}")
         if self.chemical_abun_array is None:
             msg = "Chemical abundance array is None, so cannot write starting chemistry."
             raise RuntimeError(msg)
@@ -1858,7 +1859,7 @@ class AbstractModel(ABC):
         number_fmt_string = f" {', '.join(['%9.5E'] * len(species_names))}"
 
         if self.abundSaveFile is None:
-            msg = "outputFile was None, so cannot write the output."
+            msg = "abundSaveFile was None, so cannot write the output."
             raise ValueError(msg)
         with self.abundSaveFile.open("wb") as f:
             np.savetxt(
@@ -1876,10 +1877,8 @@ class AbstractModel(ABC):
         Clean the arrays changed by UCLCHEM Fortran code.
         """
         logger.debug("Cleaning Fortran arrays")
-        # Find the first element with all the zeros
-        logger.debug(f"in _array_clean: physics_array = {self.physics_array}")
-        logger.debug(f"in _array_clean: physics_array type = {type(self.physics_array)}")
 
+        # Find the first element with all the zeros
         nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
         if len(nonzero_indices) == 0:
             # Model failed immediately, keep only the first row to indicate failure
@@ -3840,7 +3839,7 @@ class GridRunner:
                             self._grid_def(k, v, model_count)
         else:
             if not isinstance(self.full_parameters, dict):
-                msg = f"For none SequentialRunner types, full_parameters must be a dictionary. {type(self.full_parameters)} was passed."
+                msg = f"For non-SequentialRunner types, full_parameters must be a dictionary. {type(self.full_parameters)} was passed."
                 raise TypeError(msg)
             for k, v in self.full_parameters.items():
                 if k == "param_dict":
@@ -3867,6 +3866,7 @@ class GridRunner:
                     for i in range(len(next(iter(self.parameters_to_grid.values()))))
                 ]
             ).T
+        logger.debug(f"Created grid with {len(self.flat_grids)} gridpoints")
 
         # Optional subset of model indices (0-based column in flat_grids) to run.
         # None means run all. Accepts any iterable; stored as a frozenset for O(1) lookup.
@@ -3975,6 +3975,7 @@ class GridRunner:
             for pending_model in pending:
                 model_id = pending_model.pop("id")
                 if self.model_ids is not None and model_id not in self.model_ids:
+                    logger.debug(f"Skipping model id {model_id}, not in self.model_ids")
                     continue
                 self._log_main(f"model_{model_id} started")
                 pool.apply_async(
@@ -4011,6 +4012,7 @@ class GridRunner:
             raise RuntimeError(msg)
 
         for model_idx in range(len(self.models)):
+            logger.debug(f"Loading physics of model with index {model_idx}")
             loaded_data = self._load_model_data(model=self.models[model_idx]["Model"])
             if self.physics_values is None:
                 self.physics_values = json.loads(loaded_data["attributes_dict"].item())[
@@ -4021,7 +4023,7 @@ class GridRunner:
             )
             self.models[model_idx]["physics_array"] = loaded_data["physics_array"]
 
-    def load_chem(self, out_species_list: list[str]) -> None:
+    def load_chemistry(self, out_species_list: list[str]) -> None:
         """Load the chemistry.
 
         Args:
@@ -4038,8 +4040,9 @@ class GridRunner:
             mgs = "No models were run yet, so cannot load their chemistry arrays."
             raise RuntimeError(msg)
 
-        for model in range(len(self.models)):
-            loaded_data = self._load_model_data(model=self.models[model]["Model"])
+        for model_idx in range(len(self.models)):
+            logger.debug(f"Loading chemistry of model with index {model_idx}")
+            loaded_data = self._load_model_data(model=self.models[model_idx]["Model"])
             if self.chemical_abun_values is None:
                 self.chemical_abun_values = json.loads(
                     loaded_data["attributes_dict"].item()
@@ -4047,35 +4050,36 @@ class GridRunner:
             loaded_data = loaded_data.assign_coords(
                 {"chemical_abun_values": self.chemical_abun_values}
             )
-            self.models[model]["out_species_abundances_array"] = loaded_data[
+            self.models[model_idx]["out_species_abundances_array"] = loaded_data[
                 "chemical_abun_array"
             ].sel(chemical_abun_values=out_species_list)
 
     def _load_params(self) -> None:
-        """Loop through the models present in the grid models self.models
-        attribute in order to load the changing physical parameters of the models.
-        The method splits the loops into two cases. SequentialRunner, and other model cases.
-        In both instances, the for loop loads the model data using the _load_model_data()
+        """Loop through the models present in ``self.models``
+        in order to load the changing physical parameters of the models.
+        The method splits the loops into two cases: ``SequentialRunner``, and other model cases.
+        In both instances, the for loop loads the model data using the ``_load_model``
         method. Then, it matches the given parameters, with the changing parameters in
-        order to populate the dictionary attribute self.models for users to view the
-        models run for the given GridRunner object. The Differentiation of
-        SequentialRunner stems from SequentialRunner instances being nested models,
-        resulting in an additional required loop to take into account the
-        additional nesting.
+        order to populate the dictionary attribute ``self.models`` for users to view the
+        models that were run for the given ``GridRunner`` object.
+
+        The differentiation of ``SequentialRunner`` stems from ``SequentialRunner``
+        instances being nested models, resulting in an additional required loop to take into
+        account the additional nesting.
 
         """
         # The following loops perform the same actions, but for the different model types
         if self.model_type == "SequentialRunner":
-            for model in range(len(self.models)):
+            for model_idx in range(len(self.models)):
                 for model_count in range(len(self.full_parameters)):
                     for mt_k, mt_v in self.full_parameters[model_count].items():
                         if not isinstance(mt_v, dict):
                             continue
-                        tmp_model = self._load_model_data(
-                            model=f"{self.models[model]['Model']}_{model_count}_{mt_k}"
+                        tmp_model = self._load_model(
+                            model=f"{self.models[model_idx]['Model']}_{model_count}_{mt_k}"
                         )
 
-                        self.models[model][f"{model_count}_{mt_k}"] = {
+                        self.models[model_idx][f"{model_count}_{mt_k}"] = {
                             **{
                                 k.replace(f"{model_count}_", ""): tmp_model._param_dict[
                                     k.replace(f"{model_count}_", "").lower()
@@ -4094,29 +4098,51 @@ class GridRunner:
                                 and k.replace(mt_k, "").lower() in tmp_model._data
                             },
                         }
-                        self.models[model][f"{model_count}_{mt_k}"]["Successful"] = (
+                        self.models[model_idx][f"{model_count}_{mt_k}"]["Successful"] = (
                             True
                             if tmp_model.success_flag == 0
                             else tmp_model.success_flag
                         )
         else:
-            for model in range(len(self.models)):
-                loaded_data = self._load_model_data(model=self.models[model]["Model"])
+            for model_idx in range(len(self.models)):
+                loaded_data = self._load_model(model=self.models[model_idx]["Model"])
                 loaded_dict = loaded_data._param_dict
-                self.models[model] = {
-                    **self.models[model],
+                self.models[model_idx] = {
+                    **self.models[model_idx],
                     **{
                         k: loaded_dict[k.lower()]
                         for k in list(self.parameters_to_grid.keys())
                     },
                 }
-                self.models[model]["Successful"] = (
+                self.models[model_idx]["Successful"] = (
                     True if loaded_data.success_flag == 0 else loaded_data.success_flag
                 )
 
-    def _load_model_data(self, model: str):
-        tmp_model = load_model(file=self.grid_file, name=model)
-        return tmp_model
+    def _load_model(self, model: str) -> AbstractModel:
+        """Load an entire model from a file within the grid file.
+
+        Args:
+            model (str): Name of the model in ``self.grid_file``.
+
+        Returns:
+            model_object (AbstractModel): Loaded model.
+
+        """
+        logger.debug(f"Loading model in file {self.grid_file} with name {model}")
+        model_object = load_model(file=self.grid_file, name=model)
+        return model_object
+
+    def _load_model_data(self, model: str) -> xr.Dataset:
+        """Load the ``_data`` attribute of a model, and get a copy.
+
+        Args:
+            model (str): Name of the model in ``self.grid_file``.
+
+        Returns:
+            xr.Dataset: Copy of loaded model's ``_data`` attribute.
+
+        """
+        return self._load_model(model)._data.copy()
 
     def check_conservation(
         self, element_list: list[str] | None = None, percent: bool = True
