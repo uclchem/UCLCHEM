@@ -291,11 +291,11 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
         point: Parcel index (0-based). Defaults to 0.
 
     Returns:
-        pd.Series: Radial velocity in cm s⁻¹, indexed by time in years.
+        pd.Series: Radial velocity in cm/s, indexed by time in years.
                    Negative values indicate infall.
 
     Raises:
-        TypeError: If *model* is not a Collapse model instance.
+        TypeError: If ``model`` is not a Collapse model instance.
     """
     from uclchem.model import Collapse
 
@@ -458,8 +458,11 @@ def configure_logging(
         >>> # Also get DEBUG messages in stdout
         >>> configure_logging(level="DEBUG")
 
-        >>> # Write only WARNING or higher messages to "uclchem.log"
+        >>> # Write WARNING or higher messages to "uclchem.log"
         >>> configure_logging(level="WARNING", stream="uclchem.log")
+
+        >>> # Suppress all logging messages
+        >>> configure_logging(stream = None)
 
     """
     if isinstance(level, str):
@@ -477,7 +480,7 @@ def configure_logging(
         raise TypeError(msg)
 
     logger = logging.getLogger("uclchem")
-    logger.propagate = False
+    logger.propagate = False  # Do not propagate to the root logger
     logger.setLevel(level)
 
     handler.setLevel(level)

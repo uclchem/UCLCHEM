@@ -213,7 +213,7 @@ class ReactionNamesStore:  # noqa: D101
 
         """
         if self.reaction_names is None:
-            logger.debug("Reading UCLCHEM_ROOT_DIR / 'reactions.csv' file")
+            logger.debug(f"Reading reaction file {UCLCHEM_ROOT_DIR / 'reactions.csv'}")
             reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
             # format the reactions:
             self.reaction_names = [
@@ -238,7 +238,7 @@ class SpeciesNameStore:  # noqa: D101
             list[str]: List of species names
         """
         if self.species_names is None:
-            logger.debug("Reading UCLCHEM_ROOT_DIR / 'species.csv' file")
+            logger.debug(f"Reading file {UCLCHEM_ROOT_DIR / 'species.csv'}")
             species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
             self.species_names = species["NAME"].tolist()
         return self.species_names
@@ -434,6 +434,10 @@ class AbstractModel(ABC):
             prevents it from being run. Defaults to None.
         run_type (Literal["managed", "external"]): Run type. "external" means that the model is not
             run directly after instantiation, but can instead be run as ``model.run()``.
+            Default = "managed".
+
+    Raises:
+        ValueError: If ``run_type`` is not one of ``["managed", "external"]``.
 
     """
 
@@ -449,6 +453,12 @@ class AbstractModel(ABC):
     ):
         if out_species_list is None:
             out_species_list = default_elements_to_check
+        if run_type not in ["managed", "external"]:
+            msg = (
+                f"run_type should be one of ['managed', 'external'], but got '{run_type}'"
+            )
+            raise ValueError(msg)
+
         self._data = xr.Dataset()
         self._pickle_dict: dict[str, Any] = {}
         # Per-instance metadata containers (scalars and small values)
@@ -472,7 +482,6 @@ class AbstractModel(ABC):
         self._param_dict: dict[str, Any] = {}
         self.out_species_list = out_species_list
         self.out_species = ""
-        self.full_array = None
         self.success_flag: None | SuccessFlag = None
         # Note: specname is now accessed via get_species_names() global function
         # Note: PHYSICAL_PARAMETERS is now accessed via the global constant
@@ -573,7 +582,7 @@ class AbstractModel(ABC):
         return
 
     def __del__(self):
-        if hasattr(self, "_shm_desc"):
+        if hasattr(self, "_shm_desc") and bool(self._shm_desc):
             self._coordinator_unlink_memory()
 
     # Separate class building method(s)
@@ -1866,6 +1875,7 @@ class AbstractModel(ABC):
         """Internal Method.
         Clean the arrays changed by UCLCHEM Fortran code.
         """
+        logger.debug("Cleaning Fortran arrays")
         # Find the first element with all the zeros
         logger.debug(f"in _array_clean: physics_array = {self.physics_array}")
         logger.debug(f"in _array_clean: physics_array type = {type(self.physics_array)}")
@@ -2013,6 +2023,7 @@ class AbstractModel(ABC):
         """Internal Method.
         Creates Fortran compliant np.arrays that can be passed to the Fortran part of UCLCHEM.
         """
+        logger.debug("Creating fortran arrays for physics and abundances")
         # For shared memory:
         (
             self._shm_handles["physics_array"],
@@ -2028,13 +2039,13 @@ class AbstractModel(ABC):
         ) = self._create_shared_memory_allocation(
             (self.timepoints + 1, self._param_dict["points"], n_species)
         )
-        return
 
     def _create_rate_constants_array(self):
         """Internal Method.
         Creates Fortran compliant np.array for rate constants that can
         be passed to the Fortran part of UCLCHEM.
         """
+        logger.debug("Creating fortran arrays for reaction rate constants")
         # For shared memory:
         (
             self._shm_handles["rate_constants_array"],
@@ -2050,6 +2061,7 @@ class AbstractModel(ABC):
         Creates Fortran compliant np.array for heating/cooling rates that can
         be passed to the Fortran part of UCLCHEM.
         """
+        logger.debug("Creating fortran arrays for heating")
         try:
             heating_array_size = (
                 2
@@ -2079,6 +2091,7 @@ class AbstractModel(ABC):
         """Internal Method.
         Creates Fortran compliant np.array for DVODE solver statistics.
         """
+        logger.debug("Creating fortran arrays for DVODE solver statistics")
         (
             self._shm_handles["stats_array"],
             self._shm_desc["stats_array"],
@@ -2093,6 +2106,7 @@ class AbstractModel(ABC):
         Creates Fortran compliant np.array for coolant level populations.
         Shape: (timepoints+1, gridpoints, total_levels).
         """
+        logger.debug("Creating fortran arrays for coolant level populations")
         (
             self._shm_handles["level_populations_array"],
             self._shm_desc["level_populations_array"],
@@ -2107,6 +2121,8 @@ class AbstractModel(ABC):
         Creates Fortran compliant np.array for SE solver statistics.
         Shape: (timepoints+1, gridpoints, NCOOLANTS*3).
         """
+        logger.debug("Creating fortran arrays for SE solver statistics")
+
         n_stats = NCOOLANTS * N_SE_STATS_PER_COOLANT  # 35 * 3 = 105
 
         (
@@ -2192,6 +2208,7 @@ class AbstractModel(ABC):
         if starting_chemistry is None:
             self.starting_chemistry_array = None
         else:
+            logger.debug("Creating starting chemistry array")
             starting_chemistry = np.asarray(starting_chemistry)
             if len(np.shape(starting_chemistry)) == 1:
                 starting_chemistry = starting_chemistry[np.newaxis, :]
@@ -2220,8 +2237,10 @@ class AbstractModel(ABC):
             self._proc_handle.join()
             self._proc_handle = None
 
+        logger.info("Model was interrupted")
         if bool(self._shm_desc):
             self._coordinator_unlink_memory()
+
         self._array_clean()
 
         error_time = datetime.now().strftime("%y_%m_%d_%H_%M")
@@ -2256,6 +2275,7 @@ class AbstractModel(ABC):
     def _create_shared_memory_allocation(
         shape: tuple,
     ) -> tuple[shared_memory.SharedMemory, dict, np.ndarray]:
+        logger.debug(f"Creating shared memory allocation with shape {shape}")
         nbytes = int(np.prod(shape) * np.dtype(np.float64).itemsize)
         shm = shared_memory.SharedMemory(create=True, size=nbytes)
         array = np.ndarray(shape, dtype=np.float64, buffer=shm.buf, order="F")
@@ -2287,6 +2307,7 @@ class AbstractModel(ABC):
         return
 
     def _coordinator_unlink_memory(self):
+        logger.debug("Unlinking shared memory")
         if bool(self._shm_desc):
             for k in self._shm_desc:
                 try:
@@ -2302,7 +2323,6 @@ class AbstractModel(ABC):
             self._shm_desc = {}
             del self._shm_handles
             self._shm_handles = {}
-        return
 
     # /Shared memory handlers
 
