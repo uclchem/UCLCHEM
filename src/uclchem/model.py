@@ -213,6 +213,7 @@ class ReactionNamesStore:  # noqa: D101
 
         """
         if self.reaction_names is None:
+            logger.debug("Reading UCLCHEM_ROOT_DIR / 'reactions.csv' file")
             reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
             # format the reactions:
             self.reaction_names = [
@@ -237,6 +238,7 @@ class SpeciesNameStore:  # noqa: D101
             list[str]: List of species names
         """
         if self.species_names is None:
+            logger.debug("Reading UCLCHEM_ROOT_DIR / 'species.csv' file")
             species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
             self.species_names = species["NAME"].tolist()
         return self.species_names

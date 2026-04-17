@@ -12,7 +12,7 @@ def get_f2py_signature(write: bool = False) -> str:
         write (bool): Write to disk. Defaults to False.
 
     Returns:
-        str: Signature of the UCLCHEM fortran code from the f2py wrapper
+        signature (str): Signature of the UCLCHEM fortran code from the f2py wrapper
 
     """
     signature = wrap.__doc__

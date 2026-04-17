@@ -28,16 +28,20 @@ def test_configure_suppress_logging(caplog):
 
     with caplog.at_level("DEBUG", logger="uclchem"):
         uclchem_logger.critical("Testing")
+
     assert not caplog.text
 
 
-def test_configure_stdout_logging(caplog):
+def test_configure_stdout_logging(caplog, capsys):
     uclchem.utils.configure_logging(level="DEBUG", stream=sys.stdout)
     uclchem_logger = logging.getLogger("uclchem")
     uclchem_logger.propagate = True  # Have to set to True for caplog handler to find it
 
     with caplog.at_level("DEBUG", logger="uclchem"):
         uclchem_logger.critical("Testing")
+
+    captured = capsys.readouterr()
+    assert "Testing\n" in captured.out
     assert caplog.text, "Expected output, but did not get anything in caplog"
 
 

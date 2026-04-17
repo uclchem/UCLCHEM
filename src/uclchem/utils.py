@@ -451,6 +451,16 @@ def configure_logging(
     Raises:
         TypeError: If stream is not an instance of TextIOWrapper, str, Path, or None.
 
+    Examples:
+        >>> # Get INFO or higher messages in stdout.
+        >>> configure_logging()
+
+        >>> # Also get DEBUG messages in stdout
+        >>> configure_logging(level="DEBUG")
+
+        >>> # Write only WARNING or higher messages to "uclchem.log"
+        >>> configure_logging(level="WARNING", stream="uclchem.log")
+
     """
     if isinstance(level, str):
         level = level.upper()  # type: ignore[assignment]
