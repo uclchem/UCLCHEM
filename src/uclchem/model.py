@@ -250,7 +250,6 @@ get_species_names = SpeciesNameStore()
 def load_model(
     file: h5py.File | str | Path,
     name: str = "default",
-    debug: bool = False,
 ) -> AbstractModel:
     """Load a pre-existing model from a file. Bypasses ``__init__``.
 
@@ -259,8 +258,6 @@ def load_model(
             previously run and stored models.
         name (str): Name of the stored object, if none was provided ``default`` will have been used.
             Defaults to 'default'
-        debug (bool): Flag if extra debug information should be printed to the terminal.
-            Defaults to False. #TODO Add debug features
 
     Returns:
         obj (object): Loaded object that inherited from AbstractModel and has the class
@@ -306,7 +303,7 @@ def load_model(
     if cls is None:
         msg = f"Unrecognized model type '{model_class}'. Not in trusted registry."
         raise ValueError(msg)
-    return cls.load_from_dataset(model_ds=loaded_data, debug=debug)
+    return cls.load_from_dataset(model_ds=loaded_data)
 
 
 def _read_array(model_group: dict[str, xr.Dataset], name: str) -> xr.Variable:
@@ -431,8 +428,6 @@ class AbstractModel(ABC):
             Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to ``uclchem.constants.TIMEPOINTS``.
-        debug (bool): Flag if extra debug information should be printed to the terminal.
-            Defaults to False. #TODO Add debug features
         read_file (str | Path | None): Path to the file to be read. Reading a file to a model object
             prevents it from being run. Defaults to None.
         run_type (Literal["managed", "external"]): Run type. "external" means that the model is not
@@ -447,7 +442,6 @@ class AbstractModel(ABC):
         starting_chemistry: ArrayLike | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
-        debug: bool = False,
         read_file: str | Path | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
@@ -477,7 +471,6 @@ class AbstractModel(ABC):
         self.out_species_list = out_species_list
         self.out_species = ""
         self.full_array = None
-        self._debug = debug
         self.success_flag: None | SuccessFlag = None
         # Note: specname is now accessed via get_species_names() global function
         # Note: PHYSICAL_PARAMETERS is now accessed via the global constant
@@ -583,14 +576,11 @@ class AbstractModel(ABC):
 
     # Separate class building method(s)
     @classmethod
-    def load_from_dataset(
-        cls, model_ds: xr.Dataset, debug: bool = False
-    ) -> AbstractModel:
+    def load_from_dataset(cls, model_ds: xr.Dataset) -> AbstractModel:
         """Load an abstract model from an xr Dataset.
 
         Args:
             model_ds (xr.Dataset): Dataset to load
-            debug (bool): Flag to set
 
         Returns:
             obj (AbstractModel): instantiated model
@@ -605,7 +595,6 @@ class AbstractModel(ABC):
         # Restore these values into the metadata dict rather than dataset variables
         object.__setattr__(obj, "_meta", temp_attribute_dict)
         obj._data.__delitem__("attributes_dict")
-        obj.debug = debug
         obj._coord_assign()
         if obj.success_flag is not None:
             obj.success_flag = SuccessFlag(obj.success_flag)
@@ -624,7 +613,6 @@ class AbstractModel(ABC):
         cls,
         file: str | Path | h5py.File,
         name: str = "default",
-        debug: bool = False,
     ):
         """Load a model from a file.
 
@@ -634,14 +622,12 @@ class AbstractModel(ABC):
             file (str | Path | h5py.File): Path to a file that contains previously run
                 and stored models, or open ``h5py.File object``.
             name (str): Name of the stored object. Defaults to 'default'.
-            debug (bool): Flag if extra debug information should be printed to the terminal.
-                Defaults to False. #TODO Add debug features
 
         Returns:
             Model object loaded from the file.
 
         """
-        return load_model(file, name=name, debug=debug)
+        return load_model(file, name=name)
 
     # /Separate class building methods
 
@@ -1345,6 +1331,8 @@ class AbstractModel(ABC):
             msg = "This model was read. It can not be run. "
             raise RuntimeError(msg)
 
+        logger.debug("Running model")
+
         def _handler(signum, frame):  # noqa: ARG001, ANN001
             try:
                 self.on_interrupt()  # your “final steps”
@@ -1383,6 +1371,8 @@ class AbstractModel(ABC):
         else:
             msg = f"run_type of {self.run_type} is not a valid value."
             raise ValueError(msg)
+
+        logger.debug("Model finished")
 
         signal.signal(signal.SIGINT, self._orig_sigint)
 
@@ -1471,6 +1461,7 @@ class AbstractModel(ABC):
                 )
                 return
             else:
+                logger.debug(f"Deleting group {name} in file {file_obj.name}")
                 del file_obj[name]
         # TODO: Allow for toggling of saving float64 or float32 for the arrays
         temp_attribute_dict = {}
@@ -1505,6 +1496,7 @@ class AbstractModel(ABC):
             self._write_array(model_group, name, var)
         if opened_file:
             file_obj.flush()
+            logger.debug(f"Closing file {file_obj.name}")
             file_obj.close()
 
     @staticmethod
@@ -1873,9 +1865,8 @@ class AbstractModel(ABC):
         Clean the arrays changed by UCLCHEM Fortran code.
         """
         # Find the first element with all the zeros
-        if self._debug:
-            print(f"in _array_clean: physics_array = {self.physics_array}")
-            print(f"in _array_clean: physics_array type = {type(self.physics_array)}")
+        logger.debug(f"in _array_clean: physics_array = {self.physics_array}")
+        logger.debug(f"in _array_clean: physics_array type = {type(self.physics_array)}")
 
         nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
         if len(nonzero_indices) == 0:
@@ -2335,8 +2326,6 @@ class Cloud(AbstractModel):
             Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to ``uclchem.constants.TIMEPOINTS``.
-        debug (bool): Flag if extra debug information should be printed to the terminal.
-            Defaults to False. #TODO Add debug features
         read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
@@ -2349,7 +2338,6 @@ class Cloud(AbstractModel):
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
@@ -2364,7 +2352,6 @@ class Cloud(AbstractModel):
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
         )
@@ -2425,7 +2412,6 @@ class Cloud(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
         }
 
 
@@ -2448,8 +2434,6 @@ class Collapse(AbstractModel):
             Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to ``uclchem.constants.TIMEPOINTS``.
-        debug (bool): Flag if extra debug information should be printed to the terminal.
-            Defaults to False. #TODO Add debug features
         read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
@@ -2472,7 +2456,6 @@ class Collapse(AbstractModel):
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
@@ -2571,7 +2554,6 @@ class Collapse(AbstractModel):
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
         )
@@ -2638,7 +2620,6 @@ class Collapse(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
         }
 
 
@@ -2663,8 +2644,6 @@ class PrestellarCore(AbstractModel):
             Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to ``uclchem.constants.TIMEPOINTS``.
-        debug (bool): Flag if extra debug information should be printed to the terminal.
-            Defaults to False. #TODO Add debug features
         read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
@@ -2679,7 +2658,6 @@ class PrestellarCore(AbstractModel):
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
@@ -2698,7 +2676,6 @@ class PrestellarCore(AbstractModel):
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
         )
@@ -2770,7 +2747,6 @@ class PrestellarCore(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
         }
 
 
@@ -2797,8 +2773,6 @@ class CShock(AbstractModel):
             Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to ``uclchem.constants.TIMEPOINTS``.
-        debug (bool): Flag if extra debug information should be printed to the terminal.
-            Defaults to False. #TODO Add debug features
         read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
@@ -2814,7 +2788,6 @@ class CShock(AbstractModel):
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
@@ -2833,7 +2806,6 @@ class CShock(AbstractModel):
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
         )
@@ -2912,7 +2884,6 @@ class CShock(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
         }
 
 
@@ -2934,8 +2905,6 @@ class JShock(AbstractModel):
             Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to ``uclchem.constants.TIMEPOINTS``.
-        debug (bool): Flag if extra debug information should be printed to the terminal.
-            Defaults to False. #TODO Add debug features
         read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
@@ -2949,7 +2918,6 @@ class JShock(AbstractModel):
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
@@ -2968,7 +2936,6 @@ class JShock(AbstractModel):
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
         )
@@ -3037,7 +3004,6 @@ class JShock(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
         }
 
 
@@ -3086,8 +3052,6 @@ class Postprocess(AbstractModel):
             at different timepoints found in time_array.
         coldens_C_array (np.ndarray | None): Represents the value of the column density of C
             at different timepoints found in time_array.
-        debug (bool): Flag if extra debug information should be printed to the terminal.
-            Defaults to False. #TODO Add debug features
         read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
             being run. Defaults to None.
 
@@ -3110,7 +3074,6 @@ class Postprocess(AbstractModel):
         coldens_H2_array: ArrayLike | int | float | None = None,  # noqa: N803
         coldens_CO_array: ArrayLike | int | float | None = None,  # noqa: N803
         coldens_C_array: ArrayLike | int | float | None = None,  # noqa: N803
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
@@ -3139,7 +3102,6 @@ class Postprocess(AbstractModel):
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=int(n_input * 1.5),
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
         )
@@ -3261,7 +3223,6 @@ class Postprocess(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
             "postprocess_arrays": self.postprocess_arrays,
             **self.postprocess_arrays,
         }
@@ -3300,8 +3261,6 @@ class Model(AbstractModel):
             at different timepoints found in time_array.
         radfield_array (np.ndarray | None): Represents the value of the UV radiation field at
             different timepoints found in time_array.
-        debug (bool): Flag if extra debug information should be printed to the terminal.
-            Defaults to False. #TODO Add debug features
         read_file (str | None): Path to the file to be read. Reading a file to a model object,
             prevents it from being run. Defaults to None.
 
@@ -3319,7 +3278,6 @@ class Model(AbstractModel):
         dust_temperature_array: np.ndarray | None = None,
         zeta_array: np.ndarray | None = None,
         radfield_array: np.ndarray | None = None,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
@@ -3347,7 +3305,6 @@ class Model(AbstractModel):
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=int(n_input * 1.5),
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
         )
@@ -3444,7 +3401,6 @@ class Model(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
             **self.postprocess_arrays,
         }
 
@@ -3614,7 +3570,7 @@ class SequentialRunner:
 
     @classmethod
     def load_from_dataset(  # noqa: D102
-        cls, model_ds: xr.Dataset, debug: bool = False
+        cls, model_ds: xr.Dataset
     ) -> SequentialRunner:
         msg = "Loading a SequentialRunner from a dataset has not been implemented yet."
         raise NotImplementedError(msg)
@@ -3742,7 +3698,6 @@ NoGridParameters = [
     "coldens_H2_array",
     "coldens_CO_array",
     "coldens_C_array",
-    "debug",
     "read_file",
     "run_type",
 ]

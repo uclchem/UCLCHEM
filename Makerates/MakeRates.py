@@ -107,7 +107,7 @@ def get_logger(verbosity_stdout: str, debug: bool) -> None:
     console = logging.StreamHandler()
     console.setLevel(verbosity_stdout)
     # set a format which is simpler for console use
-    formatter = logging.Formatter(" %(levelname)-8s %(message)s")
+    formatter = logging.Formatter("%(levelname)-8s %(message)s")
     # tell the handler to use this format
     console.setFormatter(formatter)
     # add the handler to the root logger

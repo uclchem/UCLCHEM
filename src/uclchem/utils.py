@@ -438,7 +438,7 @@ ArrayLike: TypeAlias = list | pd.Series | np.ndarray
 
 def configure_logging(
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] | int = "INFO",
-    stream: TextIOWrapper | str | Path | None = sys.stdout,
+    stream: TextIOWrapper | str | Path | None = sys.stdout,  # type: ignore[assignment]
 ) -> None:
     """Configure logging of UCLCHEM.
 
@@ -453,7 +453,7 @@ def configure_logging(
 
     """
     if isinstance(level, str):
-        level = level.upper()
+        level = level.upper()  # type: ignore[assignment]
 
     handler: logging.Handler
     if stream is None:
@@ -463,13 +463,18 @@ def configure_logging(
     elif isinstance(stream, str | Path):
         handler = logging.FileHandler(filename=stream)
     else:
-        msg = f"stream should be type None, TextIOWrapper (such as sys.stdout), or string or Path, but got type {type(stream)}"
+        msg = f"stream should be None, or type TextIOWrapper (such as sys.stdout), string or Path, but got type {type(stream)}"
         raise TypeError(msg)
-    handler.setLevel(level)
 
     logger = logging.getLogger("uclchem")
-    logger.addHandler(handler)
+    logger.propagate = False
     logger.setLevel(level)
+
+    handler.setLevel(level)
+    formatter = logging.Formatter(fmt="%(levelname)-8s %(message)s")
+    handler.setFormatter(formatter)
+
+    logger.addHandler(handler)
 
     logger.debug(
         f"Logging configured with level {logging.getLevelName(logger.getEffectiveLevel())}, with handler {handler}"
