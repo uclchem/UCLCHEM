@@ -64,7 +64,13 @@ if TYPE_CHECKING:
 import numpy as np
 import pandas as pd
 
-from uclchem.constants import CENTIMETERS_PER_PARSEC, SECONDS_PER_YEAR
+from uclchem.constants import (
+    BOLTZMANN_CONSTANT_CGS,
+    CENTIMETERS_PER_PARSEC,
+    GRAVITATIONAL_CONSTANT_CGS,
+    HYDROGEN_MASS_CGS,
+    SECONDS_PER_YEAR,
+)
 
 UCLCHEM_ROOT_DIR: Path = Path(__file__).parent.resolve().absolute()
 
@@ -153,20 +159,17 @@ def find_number_of_consecutive_digits(string: str, start: int) -> int:
 # Collapse radial velocity — Priestley et al. 2018
 # ---------------------------------------------------------------------------
 
-# Physical constants matching collapse.f90
-_PC = 3.086e18  # parsec in cm
-_MH = 1.6736e-24  # hydrogen mass in g
-_KB = 1.38e-16  # Boltzmann constant in erg/K
-_G = 6.67e-8  # gravitational constant in cgs
-_RHO0_FILAMENT = 2.2e4  # reference density for filament/ambipolar (cm^-3)
-_TWO_PI_G = 2.0 * np.pi * _G
-
 
 def _filament_units():
     """Return (unitr_pc, unitt_yr) for filament (mode 3) collapse."""
-    two_pi_g_rho0_mh = _TWO_PI_G * _RHO0_FILAMENT * _MH
-    cs = np.sqrt(_KB * 10.0 / (2.0 * _MH))  # sound speed at 10 K
-    unitr = cs * two_pi_g_rho0_mh ** (-0.5) / _PC  # in pc
+    _rho0_filament = 2.2e4  # reference density for filament/ambipolar (cm^-3)
+    two_pi_g_rho0_mh = (
+        2.0 * np.pi * GRAVITATIONAL_CONSTANT_CGS * _rho0_filament * HYDROGEN_MASS_CGS
+    )
+    cs = np.sqrt(
+        BOLTZMANN_CONSTANT_CGS * 10.0 / (2.0 * HYDROGEN_MASS_CGS)
+    )  # sound speed at 10 K
+    unitr = cs * two_pi_g_rho0_mh ** (-0.5) / CENTIMETERS_PER_PARSEC  # in pc
     unitt = two_pi_g_rho0_mh ** (-0.5) / SECONDS_PER_YEAR  # in yr
     return unitr, unitt
 
@@ -255,7 +258,7 @@ def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: int) -> float
     """
     if mode == 3:
         unitr, _ = _filament_units()
-        cs = np.sqrt(_KB * 10.0 / (2.0 * _MH))
+        cs = np.sqrt(BOLTZMANN_CONSTANT_CGS * 10.0 / (2.0 * HYDROGEN_MASS_CGS))
         new_r = r_pc / unitr - rmin
         if new_r < 0.0:
             vr = vmin * ((new_r / rmin) ** 2 - 1.0)
@@ -319,7 +322,7 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
         # BE-sphere modes: approximate via finite differences of parcel_radius.
         # This is NOT the relationship used to generate the model.
         t_s = t_yr * SECONDS_PER_YEAR
-        r_cm = r_pc * _PC
+        r_cm = r_pc * CENTIMETERS_PER_PARSEC
         vr = np.gradient(r_cm, t_s)
 
     return pd.Series(vr, index=t_yr, name="radial_velocity_cm_s")

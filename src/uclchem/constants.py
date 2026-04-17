@@ -91,6 +91,11 @@ SECONDS_PER_YEAR = 3.15569e7
 SPEED_OF_LIGHT_CGS = 2.99792458e10  # speed of light cm/s
 PLANCK_CONSTANT_CGS = 6.62606896e-27  # Planck constant erg*s
 
+# Physical constants matching collapse.f90
+HYDROGEN_MASS_CGS = 1.6736e-24  # hydrogen mass in g
+BOLTZMANN_CONSTANT_CGS = 1.38e-16  # Boltzmann constant in erg/K
+GRAVITATIONAL_CONSTANT_CGS = 6.67e-8  # gravitational constant in cgs
+
 # Default parameter dictionary
 # These are default values for model parameters, not network structure constants
 default_param_dictionary = {
