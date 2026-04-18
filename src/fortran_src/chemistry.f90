@@ -47,7 +47,7 @@ IMPLICIT NONE
 
     INTEGER :: nion,ionlist(nspec)
 
-    REAL(dp) :: tempDot, oldTemp=0.0d0
+    REAL(dp) :: tempDot, oldTemp=0.0d0, prevIntegrationTemp=0.0d0
     REAL(dp) :: h2form
 
     REAL(dp)::lastGasTemp,lastDustTemp
@@ -265,8 +265,12 @@ CONTAINS
             end if
 
             !Reset surface and bulk values in case of integration error or sputtering
-            abund(nBulk,dstep)=sum(abund(bulkList,dstep))
-            abund(nSurface,dstep)=sum(abund(surfaceList,dstep))
+            ! Skip when continuing DVODE (ISTATE=2): recomputing from clamped individual
+            ! species (each at MIN_ABUND) gives SUM >> DVODE's nBulk, breaking continuation.
+            IF (ISTATE .ne. 2) THEN
+                abund(nBulk,dstep)=sum(abund(bulkList,dstep))
+                abund(nSurface,dstep)=sum(abund(surfaceList,dstep))
+            END IF
             !recalculate coefficients for ice processes
             safeMantle=MAX(1d-30,abund(nSurface,dstep))
             safeBulk=MAX(1d-30,abund(nBulk,dstep))
@@ -397,7 +401,10 @@ CONTAINS
         DOUBLE PRECISION, INTENT(INOUT), OPTIONAL, DIMENSION(:,:,:) :: statsarray
         INTEGER, INTENT(IN), OPTIONAL :: statsarray_size
         INTEGER, INTENT(IN), OPTIONAL :: dtime
-        TYPE(VODE_OPTS) :: OPTIONS
+        TYPE(VODE_OPTS), SAVE :: OPTIONS  ! SAVE: persists across ISTATE=2 continuation calls
+        REAL(dp), SAVE :: prevAbund(nspec)  ! end-state snapshot of last ISTATE=1 step; safe: only read when ISTATE=2, which requires a prior successful call that sets this array
+        REAL(dp) :: maxLogChange
+        LOGICAL :: was_fresh_restart       ! whether this call entered DVODE with ISTATE=1
         INTEGER :: ii
         ! species_check_mask was used by the negative-abundance error block (now commented out)
         !LOGICAL :: species_check_mask(nspec)
@@ -407,24 +414,54 @@ CONTAINS
     !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
         !reset parameters for DVODE
         ITASK=1 !try to integrate to targetTime
-        ISTATE=1 !pretend every step is the first
-        !Alternative: if (ISTATE .lt. 0) ISTATE=1  !only reset on error, allows Jacobian reuse
-        !Gas-phase species: absolute tolerances scaled by abundance
-        abstol=abstol_factor*abund(:,dstep)
-        WHERE(abstol<abstol_min) abstol=abstol_min
-        !Ice species (surface + bulk): separate, looser absolute tolerances
-        abstol(iceList) = abstol_ice_factor*abund(iceList,dstep)
-        WHERE(abstol(iceList)<abstol_ice_min) abstol(iceList)=abstol_ice_min
-        !Physical variables: separate tolerance heuristic (T and nH need looser tolerances)
-        abstol(nspec+1) = MAX(abstol_phys_factor * ABS(abund(nspec+1,dstep)), abstol_T_min)
-        abstol(nspec+2) = MAX(abstol_phys_factor * ABS(abund(nspec+2,dstep)), abstol_nH_min)
-        !Per-component relative tolerances: tight for chemistry, relaxed for physics
-        reltol_vec(1:nspec) = reltol
-        reltol_vec(nspec+1) = reltol_phys
-        reltol_vec(nspec+2) = reltol_phys
-        !Call the integrator with ITOL=4 (vector reltol + vector abstol).
-        OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR_VECTOR=reltol_vec, &
-                           USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
+        IF (solverMode .eq. 0) THEN
+            ISTATE = 1                   ! mode 0: always restart fresh
+        ELSE
+            IF (ISTATE .lt. 0) ISTATE = 1  ! reset on solver error; ISTATE=2 carries BDF history forward
+            ! Temperature guard: restart if temperature changed significantly at output step boundary
+            IF (ISTATE .eq. 2) THEN
+                IF (ABS(gasTemp(dstep) - prevIntegrationTemp) .gt. 1.0d0) ISTATE = 1
+            END IF
+            ! Abundance-change guard (mode 2 only): restart if chemistry evolved rapidly since last call.
+            ! Large per-step changes mean the frozen abstol and BDF Jacobian are stale.
+            IF (solverMode .eq. 2 .AND. ISTATE .eq. 2) THEN
+                maxLogChange = MAXVAL( &
+                    ABS(LOG10(MAX(abund(1:nspec,dstep), MIN_ABUND)) - &
+                        LOG10(MAX(prevAbund,            MIN_ABUND))), &
+                    MASK = abund(1:nspec,dstep) > MIN_ABUND .AND. &
+                           prevAbund            > MIN_ABUND )
+                IF (maxLogChange > logChangeThreshold) THEN
+                    ISTATE = 1
+                END IF
+            END IF
+        END IF
+        ! Setup tolerances and options only on fresh start or error recovery
+        IF (ISTATE .le. 1) THEN
+            !Gas-phase species: absolute tolerances scaled by abundance
+            abstol=abstol_factor*abund(:,dstep)
+            WHERE(abstol<abstol_min) abstol=abstol_min
+            !Ice species (surface + bulk): separate, looser absolute tolerances
+            abstol(iceList) = abstol_ice_factor*abund(iceList,dstep)
+            WHERE(abstol(iceList)<abstol_ice_min) abstol(iceList)=abstol_ice_min
+            !Physical variables: separate tolerance heuristic (T and nH need looser tolerances)
+            abstol(nspec+1) = MAX(abstol_phys_factor * ABS(abund(nspec+1,dstep)), abstol_T_min)
+            abstol(nspec+2) = MAX(abstol_phys_factor * ABS(abund(nspec+2,dstep)), abstol_nH_min)
+            !Per-component relative tolerances: tight for chemistry, relaxed for physics
+            reltol_vec(1:nspec) = reltol
+            reltol_vec(nspec+1) = reltol_phys
+            reltol_vec(nspec+2) = reltol_phys
+            !Call the integrator with ITOL=4 (vector reltol + vector abstol).
+            OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR_VECTOR=reltol_vec, &
+                               USER_SUPPLIED_JACOBIAN=.False.,MXSTEP=MXSTEP)
+        END IF
+        ! Track whether this call enters DVODE as a fresh restart (ISTATE=1).
+        ! prevAbund is saved AFTER DVODE succeeds (see success block below), so the guard
+        ! compares against the END-state of the last ISTATE=1 step, not the start-state.
+        ! This guarantees the first ISTATE=2 step after any ISTATE=1 always sees
+        ! maxLogChange=0 (free pass), preventing the immediate re-fire that occurred when
+        ! prevAbund was saved before DVODE (change DURING the restart was measured instead
+        ! of cumulative drift SINCE the restart).
+        was_fresh_restart = (ISTATE .eq. 1)
         CALL CPU_TIME(dvode_cpu_start)
         CALL DVODE_F90(F,NEQ,abund(:,dstep),currentTime,targetTime,ITASK,ISTATE,OPTIONS)
         CALL CPU_TIME(dvode_cpu_end)
@@ -485,9 +522,15 @@ CONTAINS
             !    RETURN
             !END IF
             WHERE(abund(1:nspec,dstep) < MIN_ABUND) abund(1:nspec,dstep) = MIN_ABUND
-            ! Recompute aggregates from their now-clamped components
-            abund(nBulk,dstep) = SUM(abund(bulkList,dstep))
-            abund(nSurface,dstep) = SUM(abund(surfaceList,dstep))
+            ! Do NOT recompute nBulk/nSurface from sum(clamped bulkList):
+            ! at early times that jumps nBulk by ~N_species orders of magnitude,
+            ! breaking DVODE's BDF history. Direct clamp is within abstol_ice_min=1e-20.
+            ! Save end-state of fresh restarts for the abundance-change guard.
+            ! Using the end-state (not start-state) means the first ISTATE=2 step after
+            ! any ISTATE=1 always sees maxLogChange=0, measuring real cumulative drift
+            ! from this point onward.
+            IF (was_fresh_restart) prevAbund = abund(1:nspec, dstep)
+            prevIntegrationTemp = gasTemp(dstep)
         END IF
 
         SELECT CASE(ISTATE)

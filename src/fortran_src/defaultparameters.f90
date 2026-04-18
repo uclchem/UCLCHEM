@@ -92,6 +92,12 @@ CHARACTER(256) :: abundLoadFile="" ! The file to load the abundances from at the
 REAL(dp) :: freq_rel_tol = 1.0d-1 ! Relative tolerance (fraction) for comparing file vs calculated frequencies. Default 10%; overridden by Python layer with makerates-computed value when available.
 REAL(dp) :: pop_rel_tol  = 1.0d-1 ! Relative tolerance (fraction) for checking LTE population consistency. Can be adjusted at runtime via Generalsettings (tutorial 6).
 
+!## DVODE Solver Mode
+!|Parameter|Default Value|Description|
+!| ----- | ------| ------ |
+INTEGER  :: solverMode         = 2      !DVODE ISTATE strategy: 0=always restart (ISTATE=1), 1=always continue (ISTATE=2), 2=adaptive (default)
+REAL(dp) :: logChangeThreshold = 1.0d0 !log10 per-step abundance change that triggers forced ISTATE=1 restart in adaptive mode (solver_mode=2)
+
 !|abundSaveFile |None| File to store final abundances at the end of the model so future models can use them as the initial abundances. If not provided, no file will be produced.
 !|abundLoadFile |None| File from which to load initial abundances for the model, created through `abundSaveFile`. If not provided, the model starts from elemental gas.
 !|outSpecies|None| A space separated list of species to output to columnFile. Supplied as a separate list argument to most python functions, see python API docs.

@@ -1316,6 +1316,10 @@ CONTAINS
                    READ(inputValue,*,iostat=successFlag) heating_temp_abstol
                 CASE('heating_temp_reltol')
                    READ(inputValue,*,iostat=successFlag) heating_temp_reltol
+                CASE('solver_mode')
+                   READ(inputValue,*,iostat=successFlag) solverMode
+                CASE('log_change_threshold')
+                   READ(inputValue,*,iostat=successFlag) logChangeThreshold
                 ! CASE('trajecfile')
                 !    READ(inputValue,*,iostat=successFlag) trajecfile
                 CASE DEFAULT

@@ -125,8 +125,10 @@ CONTAINS
             ENDIF
             !turn off freeze out if desorption due to H2 formation is much faster
             !both rates combine with density to get rate of change so drop that factor
-            WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep))<&
-            &MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
+            ! Commented out: let DVODE handle the stiff competition rather than zeroing at step boundaries,
+            ! which makes the solution step-count-dependent.
+            ! WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep))<&
+            ! &MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
         END IF
         !Desorption due to energy from cosmic rays
         idx1=descrReacs(1)
@@ -148,8 +150,8 @@ CONTAINS
                 rate(idx1:idx2) = 0.0
             ENDIF
             !turn off freeze out if desorption due to CR formation is much faster
-            WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep))&
-            <MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
+            ! WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep))&
+            ! <MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
         END IF
         
         !Desorption due to UV, partially from ISRF and partially from CR creating photons
@@ -173,8 +175,8 @@ CONTAINS
                 rate(idx1:idx2) = 0.0
             ENDIF
             !turn off freeze out if desorption due to UV is much faster
-            WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep))&
-            &<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
+            ! WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep))&
+            ! &<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
         END IF
 
         !CRS reactions represent the production of excited species from cosmic ray bombardment
@@ -249,10 +251,10 @@ CONTAINS
                 !At some point, rate is so fast that there's no point freezing out any more
                 !Save the integrator some trouble and turn freeze out off
                 ! Compare against surface thermal desorption only (first SIZE(freezePartners)
-                ! reactions of thermReacs). 
+                ! reactions of thermReacs).
                 ! (surface # first, then bulk @); freeze-out competes with surface only.
-                WHERE(rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep)&
-                &<MIN_SURFACE_ABUND*rate(idx1:idx1+SIZE(freezePartners)-1)) rate(freezePartners)=0.0
+                ! WHERE(rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep)&
+                ! &<MIN_SURFACE_ABUND*rate(idx1:idx1+SIZE(freezePartners)-1)) rate(freezePartners)=0.0
                 IF (safeMantle .lt. MIN_SURFACE_ABUND) rate(idx1:idx2)=0.0
             ELSE
                 rate(idx1:idx2)=0.0
