@@ -32,6 +32,7 @@ CONTAINS
         INTEGER :: i,j
         INTEGER :: k
         REAL(dp) :: numMonolayers
+        REAL(dp) :: dynamic_cap, effective_cap, min_cap_s, max_cap_s
         ! REAL(dp) :: vdiff(:)
     
         !Calculate all reaction rates
@@ -423,6 +424,50 @@ CONTAINS
         rate(nR_H_ED)=EncounterDesorptionRate(nR_H_ED, dustTemp(dstep)) !H Encounter Desorption
     ELSE
         rate(nR_H_ED)=0.0D0
+    END IF
+
+    ! Min floor: zero desorption rate constants k below numerical threshold to eliminate
+    ! near-zero Arrhenius terms (e.g. strongly-bound species at low T) that waste solver work.
+    IF (min_desorption_rate > 0.0d0) THEN
+        IF (thermReacs(1)  .ne. REAC_NOT_PRESENT) &
+            WHERE(rate(thermReacs(1):thermReacs(2)) > 0.0d0 .AND. &
+                  rate(thermReacs(1):thermReacs(2)) < min_desorption_rate) &
+                rate(thermReacs(1):thermReacs(2)) = 0.0d0
+        IF (desoh2Reacs(1) .ne. REAC_NOT_PRESENT) &
+            WHERE(rate(desoh2Reacs(1):desoh2Reacs(2)) > 0.0d0 .AND. &
+                  rate(desoh2Reacs(1):desoh2Reacs(2)) < min_desorption_rate) &
+                rate(desoh2Reacs(1):desoh2Reacs(2)) = 0.0d0
+        IF (descrReacs(1)  .ne. REAC_NOT_PRESENT) &
+            WHERE(rate(descrReacs(1):descrReacs(2)) > 0.0d0 .AND. &
+                  rate(descrReacs(1):descrReacs(2)) < min_desorption_rate) &
+                rate(descrReacs(1):descrReacs(2)) = 0.0d0
+        IF (deuvcrReacs(1) .ne. REAC_NOT_PRESENT) &
+            WHERE(rate(deuvcrReacs(1):deuvcrReacs(2)) > 0.0d0 .AND. &
+                  rate(deuvcrReacs(1):deuvcrReacs(2)) < min_desorption_rate) &
+                rate(deuvcrReacs(1):deuvcrReacs(2)) = 0.0d0
+        IF (lhdesReacs(1)  .ne. REAC_NOT_PRESENT) &
+            WHERE(rate(lhdesReacs(1):lhdesReacs(2)) > 0.0d0 .AND. &
+                  rate(lhdesReacs(1):lhdesReacs(2)) < min_desorption_rate) &
+                rate(lhdesReacs(1):lhdesReacs(2)) = 0.0d0
+        IF (erdesReacs(1)  .ne. REAC_NOT_PRESENT) &
+            WHERE(rate(erdesReacs(1):erdesReacs(2)) > 0.0d0 .AND. &
+                  rate(erdesReacs(1):erdesReacs(2)) < min_desorption_rate) &
+                rate(erdesReacs(1):erdesReacs(2)) = 0.0d0
+        IF (rate(nR_H2_ED) > 0.0d0 .AND. rate(nR_H2_ED) < min_desorption_rate) rate(nR_H2_ED) = 0.0d0
+        IF (rate(nR_H_ED)  > 0.0d0 .AND. rate(nR_H_ED)  < min_desorption_rate) rate(nR_H_ED)  = 0.0d0
+    END IF
+
+    ! Dynamic max cap: clamp thermal desorption k to prevent DVODE stiffness.
+    ! Three-regime: effective_cap = clamp(factor/Dt_outer, min_cap, max_cap)
+    !   k < min_cap_s -> always kept;  k > max_cap_s -> always capped;  in between -> dynamic.
+    ! Cap bounds in yr^-1 are converted to s^-1; targetTime and currentTime are in seconds.
+    IF (max_desorption_rate_factor > 0.0d0 .AND. thermReacs(1) .ne. REAC_NOT_PRESENT) THEN
+        min_cap_s   = min_desorption_rate_cap / SECONDS_PER_YEAR
+        max_cap_s   = max_desorption_rate_cap / SECONDS_PER_YEAR
+        dynamic_cap = max_desorption_rate_factor / MAX(1.0d-300, targetTime - currentTime)
+        effective_cap = MIN(MAX(dynamic_cap, min_cap_s), max_cap_s)
+        WHERE(rate(thermReacs(1):thermReacs(2)) > effective_cap) &
+            rate(thermReacs(1):thermReacs(2)) = effective_cap
     END IF
 
     END SUBROUTINE calculateReactionRates

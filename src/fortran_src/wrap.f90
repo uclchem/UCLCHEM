@@ -1156,6 +1156,14 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) omega
                 CASE('difftobindratio')
                     READ(inputValue,*,iostat=successFlag) diffToBindRatio
+                CASE('min_desorption_rate')
+                    READ(inputValue,*,iostat=successFlag) min_desorption_rate
+                CASE('max_desorption_rate_factor')
+                    READ(inputValue,*,iostat=successFlag) max_desorption_rate_factor
+                CASE('min_desorption_rate_cap')
+                    READ(inputValue,*,iostat=successFlag) min_desorption_rate_cap
+                CASE('max_desorption_rate_cap')
+                    READ(inputValue,*,iostat=successFlag) max_desorption_rate_cap
                 CASE('enforcechargeconservation')
                     READ(inputValue,*,iostat=successFlag) enforceChargeConservation
                 CASE('reltol')

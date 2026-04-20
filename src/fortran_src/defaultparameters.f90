@@ -173,6 +173,10 @@ REAL(dp) :: lower_limit_dusttemp=10.0 !Lower limit for dust temperature in K whe
 REAL(dp) :: upper_limit_dusttemp=1.0d3 !Upper limit for dust temperature in K when heating is enabled.
 REAL(dp) :: maxGrainTemp=150.0 !Dust temperature (K) above which grain surface chemistry is disabled and H2 formation is parameterized.
 INTEGER :: parameterizeH2Form=2 !H2 formation mode: 0=always off, 1=always on (parameterized), 2=explicit LH/ER below maxGrainTemp, parameterized above (default).
+REAL(dp) :: min_desorption_rate = 1.0d-60 ! Floor on desorption rate constants k (s^-1): k in (0, min_desorption_rate) are zeroed to avoid underflow. 0 disables.
+REAL(dp) :: max_desorption_rate_factor = 10.0d0 ! Dynamic cap on thermal desorption: effective cap = clamp(factor/(targetTime-currentTime), min_cap, max_cap) [s^-1]. 0 disables.
+REAL(dp) :: min_desorption_rate_cap = 1.0d0 ! Lower bound on the dynamic cap, in yr^-1 (timescale 1 yr): k slower than this are never capped.
+REAL(dp) :: max_desorption_rate_cap = 3.16d7 ! Upper bound on the dynamic cap, in yr^-1 (= 1 s^-1): k faster than 1 s are always capped regardless of timestep.
 !|alpha|{1:0.0,2:0.0}| Set alpha coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how alpha is used for each reaction type.|
 !|beta|{1:0.0,2:0.0}| Set beta coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how beta is used for each reaction type.|
 !|gama|{1:0.0,2:0.0}| Set gama coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how gama is used for each reaction type.|

@@ -565,7 +565,7 @@ CONTAINS
                 write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
                 targetTime=currentTime+(targetTime-currentTime)*0.1
             CASE default
-                MXSTEP=10000    
+                ! Success: MXSTEP stays at whatever param_dict set (do not reset to hardcoded 10000)
         END SELECT
     if (enforceChargeConservation) then
         ! REALLY ensure charge is always conserved (also after integrating)
