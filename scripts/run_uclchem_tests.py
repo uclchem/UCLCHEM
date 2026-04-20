@@ -4,7 +4,7 @@ This should be run from the UCLCHEM root directory.
 """
 
 import logging
-import os
+from pathlib import Path
 from time import perf_counter
 
 import uclchem
@@ -13,63 +13,75 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 if __name__ == "__main__":
-    settings = uclchem.advanced.GeneralSettings()
-    # settings.defaultparameters.heatingFlag.set(False)
+    out_dir = Path("examples/test-output")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    save_file = out_dir / "models.h5"
+    if save_file.exists():
+        save_file.unlink()
 
-    if not os.path.exists("examples/test-output/"):
-        os.makedirs("examples/test-output/")
+    out_species = ["OH", "OCS", "CO", "CS", "CH3OH"]
 
     print("Running test models...")
-    # set a parameter dictionary for static model
-    outSpecies = ["OH", "OCS", "CO", "CS", "CH3OH"]
+
+    # Static cloud model (no collapse)
     params = {
         "endAtFinalDensity": False,
         "freefall": False,
-        "writeStep": 1,
         "initialDens": 1e4,
         "initialTemp": 10.0,
         "finalDens": 1e5,
         "finalTime": 5.0e6,
-        "outputFile": "examples/test-output/static-full.dat",
-        "abundSaveFile": "examples/test-output/startstatic.dat",
-        "reltol": 1e-6,
-        "abstol_factor": 1e-12,
-        "abstol_min": 1e-20,
-        "writeTimestepInfo": True,
+        "outputFile": str(out_dir / "static-full.dat"),
     }
 
     start = perf_counter()
-    uclchem.functional.cloud(param_dict=params, out_species=outSpecies)
+    static_model = uclchem.model.Cloud(param_dict=params, out_species=out_species)
     stop = perf_counter()
     print(f"Static model in {stop - start:.1f} seconds")
+    static_model.save_model(file=str(save_file), name="static", overwrite=True)
 
-    # change to collapsing phase1 params
-    params["finalTime"] = 5e6
-    params["freefall"] = True
-    params["endAtFinalDensity"] = True
-    params["initialDens"] = 1e2
-    params["abundSaveFile"] = "examples/test-output/startcollapse.dat"
-    params["outputFile"] = "examples/test-output/phase1-full.dat"
-    params["columnFile"] = "examples/test-output/phase1-column.dat"
+    # Phase 1: collapsing cloud to build up initial abundances
+    params = {
+        "endAtFinalDensity": True,
+        "freefall": True,
+        "initialDens": 1e2,
+        "initialTemp": 10.0,
+        "finalDens": 1e5,
+        "finalTime": 5e6,
+        "outputFile": str(out_dir / "phase1-full.dat"),
+    }
+
     start = perf_counter()
-    uclchem.functional.cloud(param_dict=params, out_species=outSpecies)
+    phase1_model = uclchem.model.Cloud(param_dict=params, out_species=out_species)
     stop = perf_counter()
     print(f"Phase 1 in {stop - start:.1f} seconds")
+    phase1_model.save_model(file=str(save_file), name="phase1", overwrite=True)
 
-    # finally, run phase 2 from the phase 1 model.
-    params["initialDens"] = 1e5
-    params["freezeFactor"] = 0.0
-    params["thermdesorb"] = True
-    params["endAtFinalDensity"] = False
-    params["freefall"] = False
-    params["finalTime"] = 1e6
-    # Use default parameters to avoid convergence issues
-    params["abundLoadFile"] = "examples/test-output/startcollapse.dat"
-    params["outputFile"] = "examples/test-output/phase2-full.dat"
-    params.pop("columnFile")
+    # Phase 2: prestellar core warm-up using phase 1 abundances in memory
+    params = {
+        "initialDens": 1e5,
+        "freezeFactor": 0.0,
+        "endAtFinalDensity": False,
+        "freefall": False,
+        "finalTime": 1e6,
+        "outputFile": str(out_dir / "phase2-full.dat"),
+        "reltol": 1e-4,
+        "abstol_factor": 1e-6,
+        "abstol_ice_factor": 1e-6,  # MUST match gas — freeze-out moves species between phases
+        "abstol_min": 1e-20,
+        "abstol_ice_min": 1e-25,
+        "mxstep": 100_000,
+        "writeTimeStepInfo": True,
+    }
+
     start = perf_counter()
-    uclchem.functional.prestellar_core(
-        3, 300.0, param_dict=params, out_species=outSpecies
+    phase2_model = uclchem.model.PrestellarCore(
+        temp_indx=3,
+        max_temperature=300.0,
+        param_dict=params,
+        out_species=out_species,
+        previous_model=phase1_model,
     )
     stop = perf_counter()
     print(f"Phase 2 in {stop - start:.1f} seconds")
+    phase2_model.save_model(file=str(save_file), name="phase2", overwrite=True)
