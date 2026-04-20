@@ -354,7 +354,6 @@ def _worker_entry(
     with capture_fortran_output(label="last_model", log_file="./last_model_fortran.log"):
         output = model.run_fortran()
     result_queue.put(output)
-    return
 
 
 # /Worker entry for parallel jobs
@@ -546,7 +545,7 @@ class AbstractModel(ABC):
 
         self.give_start_abund = self.starting_chemistry_array is not None
         if np.all(self.starting_chemistry_array == 0.0):
-            msg = "Detected all zeros starting chemistry array."
+            msg = "Detected all zeros in the starting chemistry array."
             raise ValueError(msg)
 
         # Only initialize next_starting_chemistry_array if we didn't load it from a file
@@ -804,7 +803,8 @@ class AbstractModel(ABC):
         Args:
             element_list (list): List of elements to check conservation for.
                 Defaults to ``self.out_species_lists``.
-            percent (bool): Flag on if percentage values should be used. Defaults to True.
+            percent (bool): Flag on if whether changes should be printed in percentages.
+                Defaults to True.
 
         """
         if element_list is None:
@@ -818,8 +818,8 @@ class AbstractModel(ABC):
                 print(
                     check_element_conservation(
                         self.get_joined_dataframes(i),
-                        element_list,
-                        percent,
+                        element_list=element_list,
+                        percent=percent,
                     )
                 )
         else:
@@ -827,8 +827,8 @@ class AbstractModel(ABC):
             print(
                 check_element_conservation(
                     self.get_joined_dataframes(0),
-                    element_list,
-                    percent,
+                    element_list=element_list,
+                    percent=percent,
                 )
             )
 
@@ -914,9 +914,9 @@ class AbstractModel(ABC):
             physics_df (pd.DataFrame): Dataframe of the physical parameters for point ``point``
             chemistry_df (pd.DataFrame): Dataframe of the chemical abundances  for point ``point``
             rate_constants_df (pd.DataFrame): Dataframe of the reaction rate constants for point
-                ``point`` if  with_rate_constants = True
+                ``point`` if with_rate_constants = True
             heating_df (pd.DataFrame): Dataframe of the heating/cooling rates  for point ``point``
-                with_heating = True
+                if with_heating = True
             stats_df (pd.DataFrame): Dataframe of DVODE solver statistics for point ``point``
                 if with_stats = True
             level_populations_df (pd.DataFrame): Dataframe of coolant level populations for point
@@ -925,7 +925,7 @@ class AbstractModel(ABC):
                 with_se_stats = True
 
         Notes:
-            Always returns at a tuple of at least 2 pandas DataFrames
+            Returns a tuple of at least 2 pandas DataFrames
                 (``physics_df`` and ``chemistry_df``), or 3 or more, depending on how many
                 ``with_...`` are True.
 
@@ -2339,7 +2339,7 @@ class Cloud(AbstractModel):
     Args:
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in ``defaultparameters.f90``.
-        out_species (list | None): List of species whose abundances at the end of the model are
+        out_species (list[str] | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to ``uclchem.constants.default_elements_to_check``.
             Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
@@ -2447,7 +2447,7 @@ class Collapse(AbstractModel):
             Options are 'BE1.1', 'BE4', 'filament', or 'ambipolar'. Defaults to 'BE1.1'.
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in ``defaultparameters.f90``.
-        out_species (list | None): List of species whose abundances at the end of the model are
+        out_species (list[str] | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to ``uclchem.constants.default_elements_to_check``.
             Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
@@ -2657,7 +2657,7 @@ class PrestellarCore(AbstractModel):
         max_temperature (float): Value at which gas temperature will stop increasing. Defaults to 300.0.
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in ``defaultparameters.f90``.
-        out_species (list | None): List of species whose abundances at the end of the model are
+        out_species (list[str] | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to ``uclchem.constants.default_elements_to_check``.
             Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
@@ -2786,7 +2786,7 @@ class CShock(AbstractModel):
             shocked gas typically cools to ``initialTemp`` if this is not set.
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in ``defaultparameters.f90``.
-        out_species (list | None): List of species whose abundances at the end of the model are
+        out_species (lis[str] | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to ``uclchem.constants.default_elements_to_check``.
             Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
@@ -2918,7 +2918,7 @@ class JShock(AbstractModel):
         shock_vel (float): Velocity of the shock. Defaults to 10.0.
         param_dict (dict | None): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in ``defaultparameters.f90``.
-        out_species (list | None): List of species whose abundances at the end of the model are
+        out_species (lis[str] | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to ``uclchem.constants.default_elements_to_check``.
             Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
@@ -3047,7 +3047,7 @@ class Postprocess(AbstractModel):
     Args:
         param_dict (dict | None): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in ``defaultparameters.f90``.
-        out_species (list | None): List of species whose abundances at the end of the model are
+        out_species (lis[str] | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to ``uclchem.constants.default_elements_to_check``.
             Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances
@@ -3055,28 +3055,28 @@ class Postprocess(AbstractModel):
         previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
             to use for the starting abundances of the new UCLCHEM model that will be run.
             Defaults to None.
-        time_array (np.ndarray | None): Represents the time grid to be used for the model.
+        time_array (ArrayLike | None): Represents the time grid to be used for the model.
             This sets the target timesteps for which outputs will be stored.
-        density_array (np.ndarray | None): Represents the value of the density at different
+        density_array (ArrayLike | int | float | None): Represents the value of the density at different
             timepoints found in time_array.
-        gas_temperature_array (np.ndarray | None): Represents the value of the gas temperature
+        gas_temperature_array (ArrayLike | int | float | None): Represents the value of the gas
+            temperature at different timepoints found in time_array.
+        dust_temperature_array (ArrayLike | int | float | None): Represents the value of the dust
+            temperature at different timepoints found in time_array.
+        zeta_array (ArrayLike | int | float | None): Represents the value of the cosmic ray ionization
+            rate at different timepoints found in time_array.
+        radfield_array (ArrayLike | int | float | None): Represents the value of the UV radiation field
             at different timepoints found in time_array.
-        dust_temperature_array (np.ndarray | None): Represents the value of the dust temperature
+        coldens_H_array (ArrayLike | int | float | None): Represents the value of the column density of
+            H at different timepoints found in time_array.
+        coldens_H2_array (ArrayLike | int | float | None): Represents the value of the column density of
+            H2 at different timepoints found in time_array.
+        coldens_CO_array (ArrayLike | int | float | None): Represents the value of the column density of
+            CO at different timepoints found in time_array.
+        coldens_C_array (ArrayLike | int | float | None): Represents the value of the column density of C
             at different timepoints found in time_array.
-        zeta_array (np.ndarray | None): Represents the value of the cosmic ray ionization rate
-            at different timepoints found in time_array.
-        radfield_array (np.ndarray | None): Represents the value of the UV radiation field
-            at different timepoints found in time_array.
-        coldens_H_array (np.ndarray | None): Represents the value of the column density of H
-            at different timepoints found in time_array.
-        coldens_H2_array (np.ndarray | None): Represents the value of the column density of H2
-            at different timepoints found in time_array.
-        coldens_CO_array (np.ndarray | None): Represents the value of the column density of CO
-            at different timepoints found in time_array.
-        coldens_C_array (np.ndarray | None): Represents the value of the column density of C
-            at different timepoints found in time_array.
-        read_file (str): Path to the file to be read. Reading a file to a model object, prevents it from
-            being run. Defaults to None.
+        read_file (str | Path | None): Path to the file to be read. Reading a file to a model object,
+            prevents it from being run. Defaults to None.
 
     """
 
@@ -3097,7 +3097,7 @@ class Postprocess(AbstractModel):
         coldens_H2_array: ArrayLike | int | float | None = None,  # noqa: N803
         coldens_CO_array: ArrayLike | int | float | None = None,  # noqa: N803
         coldens_C_array: ArrayLike | int | float | None = None,  # noqa: N803
-        read_file: str | None = None,
+        read_file: str | Path | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with ``AbstractModel.__init__()``,
@@ -3150,7 +3150,7 @@ class Postprocess(AbstractModel):
         )
         for key, array in self.postprocess_arrays.items():
             if array is not None:
-                if isinstance(array, float):
+                if isinstance(array, int | float):
                     array = np.ones(n_input) * array
                 if len(array) != n_input:
                     msg = "All arrays must be the same length"
@@ -3264,7 +3264,7 @@ class Model(AbstractModel):
     Args:
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in ``defaultparameters.f90``.
-        out_species (list | None): List of species whose abundances at the end of the model are
+        out_species (lis[str] | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to ``uclchem.constants.default_elements_to_check``.
             Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
@@ -3272,19 +3272,19 @@ class Model(AbstractModel):
         previous_model (AbstractModel | None): Model object, a class that inherited from
             AbstractModel, to use for the starting abundances of the new UCLCHEM model
             that will be run. Defaults to None.
-        time_array (np.ndarray | None): Represents the time grid to be used for the model.
+        time_array (ArrayLike | None): Represents the time grid to be used for the model.
             This sets the target timesteps for which outputs will be stored.
-        density_array (np.ndarray | None): Represents the value of the density at different
-            timepoints found in time_array.
-        gas_temperature_array (np.ndarray | None): Represents the value of the gas temperature
-            at different timepoints found in time_array.
-        dust_temperature_array (np.ndarray | None):Represents the value of the dust temperature
-            at different timepoints found in time_array.
-        zeta_array (np.ndarray | None): Represents the value of the cosmic ray ionization rate
-            at different timepoints found in time_array.
-        radfield_array (np.ndarray | None): Represents the value of the UV radiation field at
+        density_array (ArrayLike | int | float | None): Represents the value of the density at
             different timepoints found in time_array.
-        read_file (str | None): Path to the file to be read. Reading a file to a model object,
+        gas_temperature_array (ArrayLike | int | float | None): Represents the value of the gas
+            temperature at different timepoints found in time_array.
+        dust_temperature_array (ArrayLike | int | float | None): Represents the value of the dust
+            temperature at different timepoints found in time_array.
+        zeta_array (ArrayLike | int | float | None): Represents the value of the cosmic ray ionization
+            rate at different timepoints found in time_array.
+        radfield_array (ArrayLike | int | float | None): Represents the value of the UV radiation field
+            at different timepoints found in time_array.
+        read_file (str | Path | None): Path to the file to be read. Reading a file to a model object,
             prevents it from being run. Defaults to None.
 
     """
@@ -3295,13 +3295,13 @@ class Model(AbstractModel):
         out_species: list[str] | None = None,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
-        time_array: np.ndarray | None = None,
-        density_array: np.ndarray | None = None,
-        gas_temperature_array: np.ndarray | None = None,
-        dust_temperature_array: np.ndarray | None = None,
-        zeta_array: np.ndarray | None = None,
-        radfield_array: np.ndarray | None = None,
-        read_file: str | None = None,
+        time_array: ArrayLike | None = None,
+        density_array: ArrayLike | int | float | None = None,
+        gas_temperature_array: ArrayLike | int | float | None = None,
+        dust_temperature_array: ArrayLike | int | float | None = None,
+        zeta_array: ArrayLike | int | float | None = None,
+        radfield_array: ArrayLike | int | float | None = None,
+        read_file: str | Path | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
         """Initiates the model first with AbstractModel.__init__(),
@@ -3312,8 +3312,6 @@ class Model(AbstractModel):
             ValueError: If ``read_file`` is None, but ``time_array`` is not an array.
 
         """
-        # Allocate 1.5x the input timesteps to give the DVODE solver
-        # headroom for additional internal substeps.
         if out_species is None:
             out_species = default_elements_to_check
 
@@ -3321,6 +3319,8 @@ class Model(AbstractModel):
             msg = f"time_array must be an array if read_file is None. A value of {time_array} with type {type(time_array)} was given."
             raise ValueError(msg)
 
+        # Allocate 1.5x the input timesteps to give the DVODE solver
+        # headroom for additional internal substeps.
         n_input = len(time_array) if time_array is not None else 1
         super().__init__(
             param_dict=param_dict,
@@ -3346,11 +3346,12 @@ class Model(AbstractModel):
         }
         for key, array in self.postprocess_arrays.items():
             if array is not None:
-                if isinstance(array, float):
+                if isinstance(array, int | float):
                     array = np.ones(n_input) * array
                 if len(array) != n_input:
                     msg = "All arrays must be the same length"
                     raise ValueError(msg)
+
                 # Pad to self.timepoints so Fortran gets
                 # correctly sized arrays.
                 padded = np.zeros(
@@ -3446,7 +3447,7 @@ class SequentialRunner:
 
     Raises:
         NotImplementedError: If a parameter in ``parameters_to_match`` is not one of
-            `["finalDens", "finalTemp"]`.
+            ``["finalDens", "finalTemp"]``.
 
     """  # noqa: W505
 
@@ -3484,7 +3485,7 @@ class SequentialRunner:
         Raises:
             RuntimeError: If ``previous_model`` is None, after the first model has been run.
             NotImplementedError: If a parameter in ``parameters_to_match`` is not one of
-                `["finalDens", "finalTemp"]`.
+                ``["finalDens", "finalTemp"]``.
 
         """
         previous_model: AbstractModel | None = None
@@ -3603,15 +3604,16 @@ class SequentialRunner:
         msg = "SequentialRunner.worker_build has not been implemented yet."
         raise NotImplementedError(msg)
 
-    def check_conservation(
-        self, element_list: list[str] | None = None, percent: bool = True
-    ) -> None:
+    def check_conservation(self, element_list: list[str] | None = None) -> None:
         """Check conservation of the chemical abundances.
+
+        Adds an entry in the self.models[model] dictionary with key
+            ``"elements_conserved"``, which indicates whether all the points in model with
+            index ``model_idx`` had changes in elemental abundances below 1%.
 
         Args:
             element_list (list[str] | None): List of elements to check conservation for.
                 If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
-            percent (bool): Flag on if percentage values should be used. Defaults to True.
 
         """
         if element_list is None:
@@ -3623,13 +3625,17 @@ class SequentialRunner:
                 for point in range(model["Model"]._param_dict["points"]):
                     conserve_dicts += [
                         check_element_conservation(
-                            model["Model"].get_dataframes(point), element_list, percent
+                            model["Model"].get_dataframes(point),
+                            element_list=element_list,
+                            percent=True,
                         )
                     ]
             else:
                 conserve_dicts += [
                     check_element_conservation(
-                        model["Model"].get_dataframes(0), element_list, percent
+                        model["Model"].get_dataframes(0),
+                        element_list=element_list,
+                        percent=True,
                     )
                 ]
             conserved = True
@@ -3743,12 +3749,11 @@ class NoDaemonPool(pool.Pool):  # noqa
 
 
 class GridRunner:
-    """GridRunner, like SequentialRunner is not an actual uclchem model,
-    instead it allows running multiple models on a grid of parameter space.
+    """Allows running multiple models on a grid of parameter space.
 
     Args:
-        model_type (str of model class to run):
-        full_parameters (Dict): The dictionary passed to GridRunner should nest into it,
+        model_type (str): Type of model class to run
+        full_parameters (dict | list): The dictionary passed to GridRunner should nest into it,
             the param_dict argument that would be passed to any other model, with the addition
             of extra keys for the none param_dict variables of a model. Any variables that are
             turned into lists or arrays, will automatically be assumed to be used for the gridding.
@@ -3772,7 +3777,7 @@ class GridRunner:
         model_type: str,
         full_parameters: dict | list,
         max_workers: int = 8,
-        grid_file: str = "./default_grid_out.h5",
+        grid_file: str | Path = "./default_grid_out.h5",
         model_name_prefix: str = "",
         overwrite_models: bool = False,
         delay_run: bool = False,
@@ -3801,7 +3806,7 @@ class GridRunner:
                 else int(os_cpu_count / 2) - 1
             )
         self.grid_file = (
-            Path(grid_file) if ".h5" in grid_file else Path(grid_file + ".h5")
+            Path(grid_file) if ".h5" in str(grid_file) else Path(str(grid_file) + ".h5")
         )
         # TODO: Implement model appending to grid file
         # TODO: Implement option to append or overwrite grid file.
@@ -4005,7 +4010,7 @@ class GridRunner:
 
         """
         if self.model_type == "SequentialRunner":
-            msg = "Sequential Runner physics loading not implemented"
+            msg = "SequentialRunner physics loading not implemented"
             raise NotImplementedError(msg)
         if not self.models:
             mgs = "No models were run yet, so cannot load their physics arrays."
@@ -4034,7 +4039,7 @@ class GridRunner:
             RuntimeError: If no models were run yet.
         """
         if self.model_type == "SequentialRunner":
-            msg = "Sequential Runner chemistry loading not implemented"
+            msg = "SequentialRunner chemistry loading not implemented"
             raise NotImplementedError(msg)
         if not self.models:
             mgs = "No models were run yet, so cannot load their chemistry arrays."
@@ -4144,40 +4149,38 @@ class GridRunner:
         """
         return self._load_model(model)._data.copy()
 
-    def check_conservation(
-        self, element_list: list[str] | None = None, percent: bool = True
-    ) -> None:
+    def check_conservation(self, element_list: list[str] | None = None) -> None:
         """Check conservation of the chemical abundances.
+
+        Adds an entry in the self.models[model_idx] dictionary with key
+            ``"elements_conserved"``, which indicates whether all the points in model with
+            index ``model_idx`` had changes in elemental abundances below 1%.
 
         Args:
             element_list (list[str] | None): List of elements to check conservation for.
                 If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
-            percent (bool): Flag on if percentage values should be used.
-                Defaults to True.
 
         """
         if element_list is None:
             element_list = default_elements_to_check
         for model_idx in range(len(self.models)):
-            tmp_model = load_model(
-                file=self.grid_file, name=self.models[model_idx]["Model"]
-            )
+            tmp_model = self._load_model(self.models[model_idx]["Model"])
             conserve_dicts = []
             if tmp_model._param_dict["points"] > 1:
                 for i in range(tmp_model._param_dict["points"]):
                     conserve_dicts += [
                         check_element_conservation(
                             tmp_model.get_dataframes(i)[1],
-                            element_list,
-                            percent,
+                            element_list=element_list,
+                            percent=True,
                         )
                     ]
             else:
                 conserve_dicts += [
                     check_element_conservation(
                         tmp_model.get_dataframes(0)[1],
-                        element_list,
-                        percent,
+                        element_list=element_list,
+                        percent=True,
                     )
                 ]
             conserved = True
