@@ -103,9 +103,9 @@ def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Specie
                         user_defined_bulk.append(Species(row))
                     else:
                         species_list.append(Species(row))
-            except IndexError as exc:
-                print(f"Error reading species file {file_name} at line {idx}")
-                raise exc
+            except IndexError as e:
+                msg = f"Error reading species file {file_name} at line {idx}"
+                raise IndexError(msg) from e
 
     return species_list, user_defined_bulk
 
@@ -249,7 +249,7 @@ def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
                 continue
             row = []
             for item in kida_contents:
-                for i in range(item[0]):
+                for _i in range(item[0]):
                     for func, count in item[1].items():
                         if func != "skip":
                             a = line[:count]
@@ -569,7 +569,7 @@ def write_outputs(
     # Validate that all parent species exist in the network
     species_dict = network.get_species_dict()
     missing_parents = []
-    for i, (coolant, parent) in enumerate(zip(coolants, parent_names)):
+    for i, (coolant, parent) in enumerate(zip(coolants, parent_names, strict=True)):
         if parent not in species_dict:
             missing_parents.append((i, coolant["name"], parent))
 
@@ -968,7 +968,7 @@ def build_ode_string(
     """
     # We create a string of losses and gains for each species so initialize them all as ""
     species_names = []
-    for i, species in enumerate(species_list):
+    for species in species_list:
         species_names.append(species.get_name())
         species.initialize_losses_and_gains()
 
@@ -976,7 +976,7 @@ def build_ode_string(
     surface_index = species_names.index("SURFACE")
     total_swap = ""
 
-    for i, reaction in enumerate(reaction_list):
+    for reaction in reaction_list:
         for reactant in reaction.get_reactants():
             if reactant in species_names:
                 # Eley-Rideal reactions take a share of total freeze out rate
@@ -1187,7 +1187,7 @@ def write_evap_lists(network_file: TextIO, species_list: list[Species]) -> int:
             # and then finds the index of that
             try:
                 j = species_names.index(species.get_standard_desorb_products()[0])
-            except ValueError:
+            except ValueError as e:
                 # Standard gas counterpart not in species list (e.g. isomer-only networks).
                 # Fall back to the user-defined DESORB product if one was supplied.
                 desorb_fallback = species.get_desorb_products()[0]
@@ -1204,7 +1204,7 @@ def write_evap_lists(network_file: TextIO, species_list: list[Species]) -> int:
                     error += " which is not in species list.\n"
                     error += "If this species desorbs to a non-standard gas product, add a single-product DESORB\n"
                     error += "reaction in your reaction file to specify the gasIceList entry, then re-run Makerates."
-                    raise NameError(error)
+                    raise NameError(error) from e
 
             # plus ones as fortran and python label arrays differently
             surfacelist.append(i + 1)
@@ -1226,7 +1226,7 @@ def write_evap_lists(network_file: TextIO, species_list: list[Species]) -> int:
         elif species.get_name()[0] == "@":
             try:
                 j = species_names.index(species.get_standard_desorb_products()[0])
-            except ValueError:
+            except ValueError as e:
                 desorb_fallback = species.get_desorb_products()[0]
                 if (
                     desorb_fallback not in ("NAN", "")
@@ -1234,14 +1234,14 @@ def write_evap_lists(network_file: TextIO, species_list: list[Species]) -> int:
                 ):
                     j = species_names.index(desorb_fallback)
                 else:
-                    error = (
+                    msg = (
                         f"{species.get_name()} standard desorb product is "
                         f"{species.get_standard_desorb_products()[0]}"
                     )
-                    error += " which is not in species list.\n"
-                    error += "If this species desorbs to a non-standard gas product, add a single-product DESORB\n"
-                    error += "reaction in your reaction file to specify the gasIceList entry, then re-run Makerates."
-                    raise NameError(error)
+                    msg += " which is not in species list.\n"
+                    msg += "If this species desorbs to a non-standard gas product, add a single-product DESORB\n"
+                    msg += "reaction in your reaction file to specify the gasIceList entry, then re-run Makerates."
+                    raise NameError(msg) from e
             gasIceList.append(j + 1)
             bulkList.append(i + 1)
             iceList.append(i + 1)
@@ -1427,10 +1427,9 @@ def write_network_file(
             extrapolations.append(reaction.get_extrapolation())
             exothermicity.append(reaction.get_exothermicity())
 
-        reaction_names = []
-        for n, reaction in enumerate(reaction_list):
-            reaction_names.append(str(reaction))
-        for n, species in enumerate(species_list):
+        reaction_names = [str(reaction) for reaction in reaction_list]
+
+        for species in species_list:
             if species.is_surface_species() and species.get_name() not in [
                 "SURFACE",
                 "BULK",
@@ -1439,7 +1438,7 @@ def write_network_file(
                     f"{species.get_name()} + SURFACETRANSFER -> @{species.get_name()[1:]}"
                 )
                 reaction_names.append(reaction_name)
-        for n, species in enumerate(species_list):
+        for species in species_list:
             if species.is_surface_species() and species.get_name() not in [
                 "SURFACE",
                 "BULK",

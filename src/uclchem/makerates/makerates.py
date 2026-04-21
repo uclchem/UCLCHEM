@@ -120,8 +120,8 @@ def run_makerates(
             logger.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")
             coolants_to_write = _coolants
         except Exception as exc:
-            msg = f"Error reading coolants_file {coolants_path}: {exc}"
-            raise ValueError(msg)
+            msg = f"Error reading coolants_file {coolants_path}"
+            raise ValueError(msg) from exc
 
     if write_files:
         logger.info(
@@ -259,7 +259,7 @@ def _get_network_from_files(
     reactions = []
     dropped_reactions = []
     # Support an arbitrary amount of different reaction files and append then in the end.
-    for reaction_file, reaction_type in zip(reaction_files, reaction_types):
+    for reaction_file, reaction_type in zip(reaction_files, reaction_types, strict=True):
         temp_reactions, temp_dropped_reactions = io.read_reaction_file(
             reaction_file, species_list, reaction_type
         )

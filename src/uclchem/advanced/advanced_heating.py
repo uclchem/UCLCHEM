@@ -12,7 +12,10 @@ Note: Changes made through HeatingSettings affect the global Fortran state and p
 across model runs in the same Python session.
 """
 
+import importlib.util
 import logging
+import os
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -362,11 +365,10 @@ class HeatingSettings:
             msg = "attempts must be at least 1"
             raise ValueError(msg)
         if attempts % 2 == 0:
-            import warnings
-
             warnings.warn(
                 "Even number of attempts may not produce proper median. "
-                "Consider using an odd number."
+                "Consider using an odd number.",
+                stacklevel=2,
             )
         self._heating_module.line_solver_attempts = attempts
 
@@ -593,9 +595,6 @@ def initialize_coolant_directory() -> str:
 
     """
     # Check if heating module is available
-    import importlib.util
-    import os
-    from pathlib import Path
 
     if importlib.util.find_spec("uclchemwrap") is None:
         msg = (

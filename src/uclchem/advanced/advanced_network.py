@@ -16,6 +16,7 @@ Note: Changes made through NetworkState affect the global Fortran state and pers
 across model runs in the same Python session.
 """
 
+import warnings
 from types import ModuleType
 
 import numpy as np
@@ -478,9 +479,9 @@ class NetworkState:
                     break
 
         if errors:
-            import warnings
-
-            warnings.warn("Network validation failed:" + str(errors), RuntimeWarning)
+            warnings.warn(
+                "Network validation failed:" + str(errors), RuntimeWarning, stacklevel=2
+            )
             msg = "Network validation failed"
             raise RuntimeError(msg)
 

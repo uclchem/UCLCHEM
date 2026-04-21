@@ -403,10 +403,10 @@ class NetworkBuilder:
             h2o_binding_energy = self.network.get_species_list()[
                 h2o_index
             ].get_binding_energy()
-        except ValueError:
-            error = "You are trying to create a three phase model but #H2O is not in your network"
-            error += "\nThis is likely an error so Makerates will not complete. Try adding #H2O"
-            raise RuntimeError(error)
+        except ValueError as e:
+            msg = "You are trying to create a three phase model but #H2O is not in your network"
+            msg += "\nThis is likely an error so Makerates will not complete. Try adding #H2O"
+            raise RuntimeError(msg) from e
         for species in self.network.get_species_list():
             if (
                 species.is_surface_species()
@@ -661,9 +661,14 @@ class NetworkBuilder:
         with products on grain and products desorbing.
 
         Raises:
-            ValueError: If not all products of the LH and ER reactions are on the
-                grain. For example: `#H + #H -> H2` should be `#H + #H -> #H2`.
-            RuntimeError: If a `CoupledReaction`` instance had ``None`` for a partner.
+            ValueError: If not all products of the LH and ER reactions are on the grain.
+                For example, ``#H + #H -> H2`` should be ``#H + #H -> #H2``.
+            RuntimeError: If a ``CoupledReaction`` instance had ``None`` for a partner.
+            NotImplementedError: If one of the products desorbs as three gas-phase species,
+                for example ``#CH3OH + THERM -> C + H2 + OH`` (nonsense reaction, just as an example).
+                This would be impossible to add chemical desorption reactions for, because we then
+                could possibly have 5 products, which UCLCHEM cannot handle.
+
         """
         logger.debug("Adding chemical desorption reactions for LH and ER mechanisms")
         new_reactions = []
@@ -740,7 +745,9 @@ class NetworkBuilder:
                         new_products[i + 1] = desorb_products[1]
                         new_products[i] = desorb_products[0]
                     else:
-                        raise NotImplementedError()
+                        msg = "Chemical desorption of a species that desorbs as three species is not implemented."
+                        msg += f" Species {new_products[i]} desorbs as {desorb_products}"
+                        raise NotImplementedError(msg)
 
                     new_reaction.set_products(new_products)
 
@@ -946,7 +953,7 @@ class NetworkBuilder:
         separately since we already added the desorption to the network.
         """
         branching_reactions: dict[str, float] = {}
-        for i, reaction in enumerate(self.network.get_reaction_list()):
+        for reaction in self.network.get_reaction_list():
             if reaction.get_reaction_type() in ["LH", "LHDES"]:
                 reactant_string = ",".join(reaction.get_reactants())
                 if reactant_string in branching_reactions:
@@ -958,7 +965,7 @@ class NetworkBuilder:
             logger.warning(
                 "Some of the branching ratios do not sum to 1.0, correcting those that do not"
             )
-            for i, reaction in enumerate(self.network.get_reaction_list()):
+            for reaction in self.network.get_reaction_list():
                 if reaction.get_reaction_type() in ["LH", "LHDES"]:
                     reactant_string = ",".join(reaction.get_reactants())
                     # Check if we need to correct the branching ratio

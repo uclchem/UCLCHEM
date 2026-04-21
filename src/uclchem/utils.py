@@ -315,7 +315,7 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
         vr = np.array(
             [
                 _vrfit(r, _rminfit(t, mode), _vminfit(t, mode), _avfit(t, mode), mode)
-                for t, r in zip(t_yr, r_pc)
+                for t, r in zip(t_yr, r_pc, strict=True)
             ]
         )
     else:

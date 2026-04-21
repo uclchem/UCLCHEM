@@ -86,12 +86,12 @@ class RuntimeNetwork(BaseNetwork):
         # Import the compiled Fortran network module
         try:
             from uclchemwrap import network as network_module
-        except ImportError:
+        except ImportError as e:
             msg = (
                 "Cannot import Fortran network module. "
                 "Ensure UCLCHEM is properly compiled and installed."
             )
-            raise ImportError(msg)
+            raise ImportError(msg) from e
 
         self._fortran = network_module
 
@@ -176,6 +176,7 @@ class RuntimeNetwork(BaseNetwork):
                     f"Species name mismatch at index {i}: '{csv_name}' in CSV vs "
                     f"'{fortran_name}' in Fortran. Network may be out of sync.",
                     RuntimeWarning,
+                    stacklevel=2,
                 )
                 break
         logger.debug("Ok!")
@@ -578,9 +579,9 @@ class RuntimeNetwork(BaseNetwork):
 
         try:
             species_idx = species_names.index(specie)
-        except ValueError:
+        except ValueError as e:
             msg = f"Species '{specie}' not found in network"
-            raise KeyError(msg)
+            raise KeyError(msg) from e
 
         logger.debug(
             f"Changing the binding energy of species {specie} to {new_binding_energy}"
@@ -713,6 +714,7 @@ class RuntimeNetwork(BaseNetwork):
         """
         warnings.warn(
             "Direct access to Fortran module is discouraged, this can break ungracefully. "
-            "Use GeneralSettings instead"
+            "Use GeneralSettings instead",
+            stacklevel=2,
         )
         return self._fortran

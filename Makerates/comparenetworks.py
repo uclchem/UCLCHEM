@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     print("Reactions with different coefficients")
     for reaction1 in reactions1:
-        for reation2 in reactions2:
+        for reaction2 in reactions2:
             if reaction1 == reaction2:
                 if reaction1.get_alpha() != reaction2.get_alpha():
                     print(reaction1)

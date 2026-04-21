@@ -159,7 +159,7 @@ def _get_rates_change(rate_df: pd.DataFrame, species: str) -> pd.DataFrame:
         if "->" in column:  # Assume reactions come after all the physical parameters
             break
     change_df = rate_df.iloc[:, phys_param_columns]
-    for i, column in enumerate(rate_df.columns):
+    for column in rate_df.columns:
         if "->" not in column:  # It is not a reaction, but a physical parameter
             continue
         rcount = _reactant_count(species, column)
@@ -293,7 +293,7 @@ def read_analysis(filepath: str | Path, species: str) -> tuple[pd.DataFrame, lis
                 _product_count(species, reaction) + _reactant_count(species, reaction)
             )
 
-        new_row_dict = dict(zip(columns, new_row))
+        new_row_dict = dict(zip(columns, new_row, strict=True))
         new_row_df = pd.DataFrame(new_row_dict, index=[0])
         df = pd.concat(
             [df, new_row_df],
@@ -372,7 +372,7 @@ def analysis(
         f.write("All Reactions\n************************\n")
         for reaction in formatted_reacs:
             f.write(reaction + "\n")
-        for i, row in result_df.iterrows():
+        for _i, row in result_df.iterrows():
             # recreate the parameter dictionary needed to get accurate rates
             param_dict = _param_dict_from_output(row)
 
@@ -591,9 +591,9 @@ def _get_rates_of_change(
             changes.append(change)
             reactionList.append(reaction)
 
-    A = zip(changes, reactionList)
+    A = zip(changes, reactionList, strict=True)
     A = sorted(A, key=lambda x: np.abs(x[0]), reverse=True)
-    changes, reactionList = zip(*A)
+    changes, reactionList = zip(*A, strict=True)
     changes = np.asarray(changes)
     return reactionList, changes
 
@@ -901,7 +901,8 @@ def rate_constants_to_dy_and_rates(
 
     if "Point" in rate_constants.columns:
         warnings.warn(
-            "Found column `Point` in columns of `rate_constants`. uclchem.analysis.rate_constants_to_dy_and_rates is not designed for multiple points, dropping the column."
+            "Found column `Point` in columns of `rate_constants`. uclchem.analysis.rate_constants_to_dy_and_rates is not designed for multiple points, dropping the column.",
+            stacklevel=2,
         )
         rate_constants = rate_constants.drop(columns=["Point"])
 
@@ -1038,7 +1039,7 @@ def rate_constants_to_dy_and_rates(
     )
 
     for surfswap_reaction, bulkswap_reaction in zip(
-        surfswap_reactions, bulkswap_reactions
+        surfswap_reactions, bulkswap_reactions, strict=False
     ):
         if surfswap_reaction.get_reactants()[0] != bulkswap_reaction.get_products()[0]:
             msg = "Mismatch for bulkswap and surfswap reactions.\n"

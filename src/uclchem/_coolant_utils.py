@@ -62,7 +62,7 @@ def get_energy_levels_info(
     n_total_levels = 0
     target_marker = _normalize_for_comparison("NUMBER OF ENERGY LEVELS")
 
-    for coolant_name, coolant_file in zip(coolant_names, coolant_files):
+    for coolant_name, coolant_file in zip(coolant_names, coolant_files, strict=True):
         filepath = data_path / coolant_file
 
         if not filepath.exists():
@@ -139,7 +139,7 @@ def validate_coolant_frequencies(
 
     max_deviations = {}
 
-    for coolant_name, coolant_file in zip(coolant_names, coolant_files):
+    for coolant_name, coolant_file in zip(coolant_names, coolant_files, strict=True):
         filepath = data_path / coolant_file
         if not filepath.exists():
             continue
@@ -257,7 +257,9 @@ def load_coolant_level_names() -> dict[int, list[str]]:
     level_names: dict[int, list[str]] = {}
     target_marker = _normalize_for_comparison("NUMBER OF ENERGY LEVELS")
 
-    for i, (coolant_name, coolant_file) in enumerate(zip(coolant_names, coolant_files)):
+    for i, (coolant_name, coolant_file) in enumerate(
+        zip(coolant_names, coolant_files, strict=True)
+    ):
         filepath = data_path / coolant_file
 
         if not filepath.exists():

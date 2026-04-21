@@ -448,7 +448,7 @@ class Species:
         keys = self.freeze_products.keys()
         values = self.freeze_products.values()
         logger.debug(f"freeze keys: {keys}, products {values}")
-        for key, value in zip(keys, values):
+        for key, value in zip(keys, values, strict=True):
             yield key.split(","), value
 
     def get_freeze_products_list(self) -> list[list[str]]:

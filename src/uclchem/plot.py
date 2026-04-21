@@ -171,7 +171,7 @@ def plot_species(
     """
     if plot_kwargs is None:
         plot_kwargs = {}
-    for species_index, species_name in enumerate(species):
+    for species_name in species:
         linestyle = "solid"
         if species_name[0] == "$":
             abundances = df[species_name.replace("$", "#")]

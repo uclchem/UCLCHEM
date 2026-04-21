@@ -454,12 +454,12 @@ class Reaction:
         n_reacs = len(reac_constituents)
         n_prods = len(prod_constituents)
         if n_reacs == n_prods:
-            for i, reac_constituent in enumerate(reac_constituents):
+            for reac_constituent in reac_constituents:
                 # For each reactant, find which product is
                 # closest (most similar in buildup) to it.
                 min_total = int(1e10)
                 min_diff = None
-                for j, prod_constituent in enumerate(prod_constituents):
+                for prod_constituent in prod_constituents:
                     diff = deepcopy(reac_constituent)
                     diff.subtract(prod_constituent)
                     total_change = 0
@@ -1012,7 +1012,7 @@ def _generate_reaction_ode_bit(
     """
     ode_bit = f"+RATE({i + 1})"
     # every body after the first requires a factor of density
-    for body in range(body_count):
+    for _body in range(body_count):
         ode_bit = ode_bit + "*D"
 
     # GAR needs an additional factor of density:

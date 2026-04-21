@@ -329,7 +329,7 @@ def generate_markdown(
             f.write("| --------- | ------------- | ----------- |\n")
 
             # Write parameters
-            for name, (value, type_str, description) in available_params:
+            for name, (value, _type_str, description) in available_params:
                 value_str = format_value(value)
                 f.write(f"| `{name}` | {value_str} | {description} |\n")
 

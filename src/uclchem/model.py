@@ -110,9 +110,7 @@ from uclchemwrap import uclchemwrap as wrap
 
 from uclchem._coolant_utils import load_coolant_level_names
 from uclchem._fortran_capture import capture_fortran_output
-from uclchem.analysis import (
-    check_element_conservation,
-)
+from uclchem.analysis import check_element_conservation
 from uclchem.constants import (
     DVODE_STAT_NAMES,
     N_DVODE_STATS,
@@ -959,7 +957,7 @@ class AbstractModel(ABC):
 
             # Transpose to group by dataframe type instead of by point
             # e.g., [[phys0, chem0, rates0], [phys1, chem1, rates1]] -> [[phys0, phys1], [chem0, chem1], [rates0, rates1]] # noqa: W505
-            df_collections = list(zip(*all_dfs))
+            df_collections = list(zip(*all_dfs, strict=True))
 
             # Concatenate each type vertically
             concatenated: tuple[pd.DataFrame, ...] = tuple(
@@ -1454,6 +1452,8 @@ class AbstractModel(ABC):
 
         Raises:
             TypeError: if ``file`` is not a string, Path or ``h5py.File`` instance.
+            RuntimeError: If ``overwrite`` is False, but another model with name ``name``
+                is found in the file.
 
         """
         if isinstance(file, str | Path):
@@ -1468,10 +1468,8 @@ class AbstractModel(ABC):
 
         if name in file_obj:
             if not overwrite:
-                warnings.warn(
-                    f"Model with name: `{name}` already exists in save file but overwrite is set to False. Unable to save model."
-                )
-                return
+                msg = f"Model with name '{name}' already exists in save file but overwrite is set to False. Unable to save model."
+                raise RuntimeError(msg)
             else:
                 logger.debug(f"Deleting group {name} in file {file_obj.name}")
                 del file_obj[name]
@@ -1607,7 +1605,7 @@ class AbstractModel(ABC):
             finally:
                 object.__setattr__(self, "_pickle_meta", {})
         else:
-            warnings.warn("Un-pickling an object that was not pickled.")
+            warnings.warn("Un-pickling an object that was not pickled.", stacklevel=2)
         self._coord_assign()
         return self
 
@@ -1681,6 +1679,7 @@ class AbstractModel(ABC):
                         "This file was likely created with an older UCLCHEM version.\n"
                         "Consider regenerating the file with the current version for full compatibility.",
                         UserWarning,
+                        stacklevel=2,
                     )
                     if "dstep" in missing_params:
                         # Add dstep=1 column before point
@@ -3794,7 +3793,8 @@ class GridRunner:
         os_cpu_count = os.cpu_count()
         if os_cpu_count is None:
             warnings.warn(
-                f"Could not determine number of physical CPU cores. Cannot determine whether the number of workers `max_workers` ({max_workers}) is larger than that or not. Using it directly"
+                f"Could not determine number of physical CPU cores. Cannot determine whether the number of workers `max_workers` ({max_workers}) is larger than that or not. Using it directly",
+                stacklevel=2,
             )
             self.max_workers = max_workers - 1
         else:
@@ -3831,9 +3831,7 @@ class GridRunner:
                 msg = f"For SequentialRunner types, full_parameters must be a list. {type(self.full_parameters)} was passed."
                 raise TypeError(msg)
             for model_count in range(len(self.full_parameters)):
-                for model_type, model_full_params in self.full_parameters[
-                    model_count
-                ].items():
+                for model_full_params in self.full_parameters[model_count].values():
                     if not isinstance(model_full_params, dict):
                         continue
                     for k, v in model_full_params.items():
@@ -4259,7 +4257,7 @@ class GridRunner:
                             # grid_param_dict is filled with the param_dict values of a model.
                             grid_param_dict = {
                                 k.replace(f"{model_count}_", ""): v
-                                for k, v in zip(param_keys, combo)
+                                for k, v in zip(param_keys, combo, strict=True)
                                 if k.replace(f"{model_count}_", "")
                                 in model_full_parameters["param_dict"]
                                 and k[: len(str(model_count))] == str(model_count)
@@ -4268,7 +4266,7 @@ class GridRunner:
                             # not part of param_dict
                             grid_dict = {
                                 k.replace(f"{model_count}_", ""): v
-                                for k, v in zip(param_keys, combo)
+                                for k, v in zip(param_keys, combo, strict=True)
                                 if k.replace(f"{model_count}_", "")
                                 not in model_full_parameters["param_dict"]
                                 and (
@@ -4308,14 +4306,14 @@ class GridRunner:
                     k: v
                     if not isinstance(v, float)
                     else (v.item() if hasattr(v, "item") else v)
-                    for k, v in zip(param_keys, combo)
+                    for k, v in zip(param_keys, combo, strict=True)
                     if k in full_parameters["param_dict"]
                 }
                 # grid_dict is filled with the input parameters of a value,
                 # not part of param_dict, for the next model to run
                 grid_dict = {
                     k: v
-                    for k, v in zip(param_keys, combo)
+                    for k, v in zip(param_keys, combo, strict=True)
                     if k not in full_parameters["param_dict"]
                 }
                 yield {
