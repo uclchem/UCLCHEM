@@ -494,7 +494,7 @@ class NetworkBuilder:
                 new_reactions.append(Reaction(new_reac_list))
 
             # and the reverse, going from surface to bulk
-            if species not in {
+            if species.get_name() not in {
                 "@H2"
             }:  # If species is H2, do not allow it to go from surface to bulk
                 new_reac_list[0] = species.get_name().replace("@", "#")
