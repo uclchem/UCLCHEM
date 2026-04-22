@@ -1,10 +1,12 @@
-"""The UCLCHEM python module is divided into several parts.
-`model` contains the functions for running chemical models under different physics.
-`analysis` contains functions for reading output files as well
-    as investigating the chemistry.
-`plot` contains functions for plotting output files.
-`advanced` provides access to Fortran modules, parameters, heating/cooling controls
-    and advanced solver parameters.
+"""UCLCHEM project entry.
+
+The UCLCHEM python module is divided into several parts:
+ - :mod:`model` contains the functions for running chemical models under different physics.
+ - :mod:`analysis` contains functions for reading output files as well
+      as investigating the chemistry.
+ - :mod:`plot` contains functions for plotting output files.
+ - :mod:`advanced` provides access to Fortran modules, parameters, heating/cooling controls
+      and advanced solver parameters.
 """
 
 from . import advanced as advanced

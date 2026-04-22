@@ -4,6 +4,9 @@ import logging
 import re
 from pathlib import Path
 
+from uclchemwrap import f2py_constants
+
+from uclchem.advanced import HeatingSettings
 from uclchem.constants import PLANCK_CONSTANT_CGS, SPEED_OF_LIGHT_CGS
 
 logger = logging.getLogger(__name__)
@@ -19,10 +22,10 @@ def _normalize_for_comparison(text: str) -> str:
     Strips whitespace, converts to lowercase, removes special characters.
 
     Args:
-        text: Text to normalize
+        text (str): Text to normalize
 
     Returns:
-        Normalized text with only alphanumeric characters
+        str: Normalized text with only alphanumeric characters
 
     """
     return re.sub(r"[^a-z0-9]", "", text.strip().lower())
@@ -42,12 +45,12 @@ def get_energy_levels_info(
     Args:
         coolant_names (list[str]): List of coolant species names (e.g., ['H', 'C+', 'O', ...])
         coolant_files (list[str]): List of coolant data file names (e.g., ['ly-a.dat', ...])
-        data_dir (str | path): Directory containing the coolant data files
+        data_dir (str | Path): Directory containing the coolant data files
 
     Returns:
-        Tuple of (n_total_levels, n_se_stats_per_coolant)
-        where n_total_levels is the sum of all energy levels across all coolants
-        and n_se_stats_per_coolant is always 3 (converged, iterations, max_rel_change)
+        tuple[int, int]: Tuple of (n_total_levels, n_se_stats_per_coolant)
+            where n_total_levels is the sum of all energy levels across all coolants
+            and n_se_stats_per_coolant is always 3 (converged, iterations, max_rel_change)
 
     Raises:
         FileNotFoundError: If data directory or any coolant file doesn't exist
@@ -96,13 +99,9 @@ def get_energy_levels_info_from_runtime() -> tuple[int, int]:
     """Runtime wrapper that fetches parameters from uclchemwrap.
 
     Returns:
-        Tuple of (n_total_levels, n_se_stats_per_coolant)
+        tuple[int, int]: Tuple of (n_total_levels, n_se_stats_per_coolant)
 
     """
-    from uclchemwrap import f2py_constants
-
-    from uclchem.advanced import HeatingSettings
-
     coolant_names = [str(name.decode()).strip() for name in f2py_constants.coolantnames]
     coolant_files = [str(fname.decode()).strip() for fname in f2py_constants.coolantfiles]
 
@@ -237,10 +236,6 @@ def load_coolant_level_names() -> dict[int, list[str]]:
         RuntimeError: If parsing fails
 
     """
-    from uclchemwrap import f2py_constants
-
-    from uclchem.advanced import HeatingSettings
-
     coolant_names = [str(name.decode()).strip() for name in f2py_constants.coolantnames]
     coolant_files = [str(fname.decode()).strip() for fname in f2py_constants.coolantfiles]
 

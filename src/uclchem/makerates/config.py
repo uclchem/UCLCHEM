@@ -292,8 +292,6 @@ class MakeratesConfig(BaseModel):
             msg = "coolants must be a list of dicts"
             raise TypeError(msg)
 
-        from pathlib import Path as _Path
-
         validated = []
         for i, item in enumerate(v):
             if not isinstance(item, dict):
@@ -304,7 +302,7 @@ class MakeratesConfig(BaseModel):
                 raise KeyError(msg)
             # Validate that file is a bare filename (no path)
             file_val = str(item["file"])
-            if _Path(file_val).name != file_val or _Path(file_val).parent != _Path():
+            if Path(file_val).name != file_val or Path(file_val).parent != Path():
                 msg = f"coolants[{i}]['file'] must be a bare filename (no directories). Got: {file_val}"
                 raise ValueError(msg)
             entry: dict[str, str | float] = {"file": file_val, "name": str(item["name"])}

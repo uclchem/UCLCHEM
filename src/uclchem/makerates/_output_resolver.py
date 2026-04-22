@@ -27,7 +27,9 @@ class ProjectRootError(RuntimeError):
 def _stored_project_root() -> Path | None:
     """Return the project root recorded at install time, or None if unavailable."""
     try:
-        from uclchem._project_root import _PROJECT_ROOT  # type: ignore[import]
+        from uclchem._project_root import (  # noqa: PLC0415 # type: ignore[import]
+            _PROJECT_ROOT,
+        )
 
         return Path(_PROJECT_ROOT)
     except ImportError:

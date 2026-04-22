@@ -19,6 +19,7 @@ except ModuleNotFoundError as err:
     raise ModuleNotFoundError(msg) from err
 import logging
 import pathlib
+import sys
 from argparse import ArgumentParser
 
 
@@ -125,12 +126,12 @@ if __name__ == "__main__":
     # Handle helper commands that exit immediately
     if args.help_config:
         MakeratesConfig.print_help()
-        exit(0)
+        sys.exit(0)
 
     if args.generate_template:
         output_file = "user_settings_template.yaml"
         MakeratesConfig.generate_template(output_file)
-        exit(0)
+        sys.exit(0)
 
     # Set up logging
     get_logger(args.verbosity_stdout, args.debug)

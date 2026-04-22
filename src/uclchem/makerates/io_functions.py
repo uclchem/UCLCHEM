@@ -4,20 +4,28 @@
 import csv
 import fileinput
 import logging
-from collections.abc import Callable
+import shutil
+import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TextIO
+from typing import TYPE_CHECKING, Any, TextIO
 
 import numpy as np
 import yaml
 
+from uclchem._coolant_utils import (
+    get_energy_levels_info,
+    validate_coolant_frequencies,
+)
 from uclchem.constants import PHYSICAL_PARAMETERS
 from uclchem.makerates.config import ReactionFileTypes
 from uclchem.makerates.network import Network
 from uclchem.makerates.reaction import Reaction, reaction_types
 from uclchem.makerates.species import Species, normalize_species_name, species_header
 from uclchem.utils import UCLCHEM_ROOT_DIR
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -191,20 +199,20 @@ def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
     """
     # Convert empty strings in species slots to "NAN" for placeholder slots
     for i in range(7):
-        if reaction_row[i] == "":
+        if not reaction_row[i]:
             reaction_row[i] = "NAN"
 
     if all(normalize_species_name(x) in keep_list for x in reaction_row[0:7]):
-        if reaction_row[10] == "":
+        if not reaction_row[10]:
             reaction_row[10] = 0.0
             reaction_row[11] = 10000.0
-        if len(reaction_row) >= 13 and reaction_row[12] == "":
+        if len(reaction_row) >= 13 and not reaction_row[12]:
             reaction_row[12] = 0.0
-        if len(reaction_row) >= 14 and reaction_row[13] == "":
+        if len(reaction_row) >= 14 and not reaction_row[13]:
             reaction_row[13] = False
         return True
     else:
-        if reaction_row[1] in ["DESORB", "FREEZE"]:
+        if reaction_row[1] in {"DESORB", "FREEZE"}:
             reac_error = "Desorb or freeze reaction in custom input contains species not in species list"
             reac_error += f"\nReaction was {reaction_row}"
             raise ValueError(reac_error)
@@ -270,9 +278,9 @@ def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
                     row[1] = "CRP"
                 # UMIST alpha includes zeta_0 but KIDA doesn't. Since UCLCHEM
                 # rate calculation follows UMIST, we convert.
-                row[8] = row[8] * 1.36e-17
+                row[8] *= 1.36e-17
                 rows.append(row[:7] + row[8:-1])
-            elif row[-1] in [2, 3]:
+            elif row[-1] in {2, 3}:
                 rows.append(row[:7] + row[8:-1])
             elif row[-1] == 4:
                 row[2] = "IONOPOL1"
@@ -473,10 +481,6 @@ def write_outputs(
     filename = fortran_src_dir / "f2py_constants.f90"
 
     # Compute energy level counts from coolant data files
-    from uclchem._coolant_utils import (
-        get_energy_levels_info,
-        validate_coolant_frequencies,
-    )
 
     coolant_data_directory = get_default_coolant_directory(coolant_data_dir)
     if coolant_data_directory is None:
@@ -714,8 +718,6 @@ def write_python_constants(
         python_constants_file (Path): Path to the target constant files (ignored)
 
     """
-    import warnings
-
     warnings.warn(
         "write_python_constants() is deprecated. "
         "constants.py now reads directly from f2py_constants module.",
@@ -925,7 +927,7 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
                         output.write(di_dj_final)
 
             # tackle density separately.handled
-            j = j + 1
+            j += 1
             if species.get_name() == "SURFACE":
                 di_dj_final = f"J({i + 1},{j})=SUM(J(surfaceList,{j}))\n"
                 output.write(di_dj_final)
@@ -940,7 +942,7 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
                 if len(di_dj) > 0:
                     di_dj_final = f"J({i + 1},{j})=" + ("".join(di_dj)) + "\n"
                     output.write(di_dj_final)
-        i = i + 2
+        i += 2
         di_dj_final = f"J({i},{i})=ddensdensdot(D)\n"
         output.write(di_dj_final)
 
@@ -1049,7 +1051,7 @@ REAL(dp) :: totalSwap, LOSS, PROD
     surf_species = [
         i
         for i in species_list
-        if i.get_name() not in ["SURFACE", "BULK"] and i.is_surface_species()
+        if i.get_name() not in {"SURFACE", "BULK"} and i.is_surface_species()
     ]
     i = len(reaction_list)
     j = len(reaction_list) + len(surf_species)
@@ -1076,10 +1078,10 @@ REAL(dp) :: totalSwap, LOSS, PROD
     i = len(reaction_list)
     j = len(reaction_list) + len(surf_species)
     for n, species in enumerate(species_list):
-        if species.get_name() in [
+        if species.get_name() in {
             "#H2",
             "@H2",
-        ]:  # Do not allow H2 to transfer from surface to bulk
+        }:  # Do not allow H2 to transfer from surface to bulk
             if species.get_name() == "@H2":
                 i += 1
                 j += 1
@@ -1118,19 +1120,19 @@ def species_ode_string(n: int, species: Species) -> str:
 
     """
     ydot_string = ""
-    if species.losses != "":
+    if species.losses:
         loss_string = "    LOSS = " + species.losses[1:] + "\n"
         ydot_string += loss_string
-    if species.gains != "":
+    if species.gains:
         prod_string = "    PROD = " + species.gains[1:] + "\n"
         ydot_string += prod_string
 
-    if ydot_string != "":
+    if ydot_string:
         ydot_string += f"    YDOT({n + 1}) = "
         # start with empty string and add production and loss terms if they exists
-        if species.gains != "":
+        if species.gains:
             ydot_string += "PROD"
-        if species.losses != "":
+        if species.losses:
             ydot_string += "-LOSS"
         ydot_string += "\n"
     else:
@@ -1192,7 +1194,7 @@ def write_evap_lists(network_file: TextIO, species_list: list[Species]) -> int:
                 # Fall back to the user-defined DESORB product if one was supplied.
                 desorb_fallback = species.get_desorb_products()[0]
                 if (
-                    desorb_fallback not in ("NAN", "")
+                    desorb_fallback not in {"NAN", ""}
                     and desorb_fallback in species_names
                 ):
                     j = species_names.index(desorb_fallback)
@@ -1229,7 +1231,7 @@ def write_evap_lists(network_file: TextIO, species_list: list[Species]) -> int:
             except ValueError as e:
                 desorb_fallback = species.get_desorb_products()[0]
                 if (
-                    desorb_fallback not in ("NAN", "")
+                    desorb_fallback not in {"NAN", ""}
                     and desorb_fallback in species_names
                 ):
                     j = species_names.index(desorb_fallback)
@@ -1324,7 +1326,7 @@ def truncate_line(input_string: str, line_length: int = 72) -> str:
             result += input_string[i:j]
         else:
             while input_string[j] not in splits:
-                j = j - 1
+                j -= 1
             result += input_string[i:j] + "&\n    &"
         i = j
     result += input_string[i:]
@@ -1430,19 +1432,19 @@ def write_network_file(
         reaction_names = [str(reaction) for reaction in reaction_list]
 
         for species in species_list:
-            if species.is_surface_species() and species.get_name() not in [
+            if species.is_surface_species() and species.get_name() not in {
                 "SURFACE",
                 "BULK",
-            ]:
+            }:
                 reaction_name = (
                     f"{species.get_name()} + SURFACETRANSFER -> @{species.get_name()[1:]}"
                 )
                 reaction_names.append(reaction_name)
         for species in species_list:
-            if species.is_surface_species() and species.get_name() not in [
+            if species.is_surface_species() and species.get_name() not in {
                 "SURFACE",
                 "BULK",
-            ]:
+            }:
                 reaction_name = (
                     f"@{species.get_name()[1:]} + SURFACETRANSFER -> {species.get_name()}"
                 )
@@ -1723,8 +1725,6 @@ def copy_coolant_files(source_dir: str | Path | None = None) -> None:
         FileNotFoundError: If source directory doesn't exist or contains no ``*.dat`` files.
 
     """
-    import shutil
-
     # Determine source directory
     if source_dir is None:
         source_dir = get_default_coolant_directory()

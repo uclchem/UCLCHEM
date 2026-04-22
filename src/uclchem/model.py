@@ -89,27 +89,31 @@ import logging
 import multiprocessing as mp
 import os
 import signal
+import traceback
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
 from datetime import datetime
 from multiprocessing import pool, shared_memory
 from pathlib import Path
 from time import perf_counter
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import h5py
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import uclchemwrap
-import xarray as xr
 
 # UCLCHEM related imports
+import uclchemwrap
+import xarray as xr
 from uclchemwrap import uclchemwrap as wrap
 
 from uclchem._coolant_utils import load_coolant_level_names
 from uclchem._fortran_capture import capture_fortran_output
+from uclchem.advanced.worker_state import (
+    _pool_initializer,
+    create_snapshot,
+    restore_snapshot,
+)
 from uclchem.analysis import check_element_conservation
 from uclchem.constants import (
     DVODE_STAT_NAMES,
@@ -129,7 +133,11 @@ from uclchem.constants import (
 from uclchem.plot import create_abundance_plot, plot_species
 from uclchem.utils import UCLCHEM_ROOT_DIR, ArrayLike, SuccessFlag
 
-# /Multiprocessing imports
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    import matplotlib.pyplot as plt
+
 
 # Global variables determining formats of write files
 PHYSICAL_PARAMETERS_HEADER_FORMAT = "%10s"
@@ -261,7 +269,7 @@ def load_model(
             Defaults to 'default'
 
     Returns:
-        obj (object): Loaded object that inherited from AbstractModel and has the class
+        obj (AbstractModel): Loaded object that inherited from AbstractModel and has the class
             of to the model found in the loaded file.
 
     Raises:
@@ -287,13 +295,13 @@ def load_model(
     model_group = file_obj[name]
     coords = {}
     if "_coords" in model_group:
-        for name in model_group["_coords"]:
-            coords[name] = _read_array(model_group["_coords"], name)
+        for coord_name in model_group["_coords"]:
+            coords[coord_name] = _read_array(model_group["_coords"], coord_name)
     data_vars = {}
-    for name in model_group:
-        if name == "_coords":
+    for coord_name in model_group:
+        if coord_name == "_coords":
             continue
-        data_vars[name] = _read_array(model_group, name)
+        data_vars[coord_name] = _read_array(model_group, coord_name)
     loaded_data = xr.Dataset(data_vars, coords=coords)
 
     if opened_file:
@@ -311,7 +319,7 @@ def _read_array(model_group: dict[str, xr.Dataset], name: str) -> xr.Variable:
     """Read an array from a model group.
 
     Args:
-        model_group (dict[str, Dataset]): model group.
+        model_group (dict[str, xr.Dataset]): model group.
         name (str): key in model_group
 
     Returns:
@@ -340,8 +348,6 @@ def _worker_entry(
 ):
     # Restore advanced settings captured in the coordinator process.
     if advanced_snapshot is not None:
-        from uclchem.advanced.worker_state import restore_snapshot
-
         restore_snapshot(advanced_snapshot)
 
     cls = REGISTRY.get(model_class)
@@ -451,7 +457,7 @@ class AbstractModel(ABC):
     ):
         if out_species_list is None:
             out_species_list = default_elements_to_check
-        if run_type not in ["managed", "external"]:
+        if run_type not in {"managed", "external"}:
             msg = (
                 f"run_type should be one of ['managed', 'external'], but got '{run_type}'"
             )
@@ -492,7 +498,7 @@ class AbstractModel(ABC):
 
         # Validate parcelStoppingMode usage after model_type is known
         if self._param_dict.get("_needs_freefall_validation", False):
-            if self.model_type not in ["Collapse"]:  # Collapse models imply freefall
+            if self.model_type != "Collapse":  # Collapse models imply freefall
                 msg = (
                     "parcelStoppingMode != 0 can only be used with:\n"
                     "  - Cloud models with freefall=True\n"
@@ -577,7 +583,6 @@ class AbstractModel(ABC):
             self.level_populations_array = None
             self.se_stats_array = None
             self.out_species_abundances_array = None
-        return
 
     def __del__(self):
         if hasattr(self, "_shm_desc") and bool(self._shm_desc):
@@ -596,24 +601,24 @@ class AbstractModel(ABC):
         """
         obj = cls.__new__(cls)
         obj._param_dict = json.loads(model_ds["_param_dict"].item())
-        model_ds.__delitem__("_param_dict")
+        del model_ds["_param_dict"]
         obj._data = xr.Dataset()
         obj._data = model_ds.copy()
         model_ds.close()
         temp_attribute_dict = json.loads(obj._data["attributes_dict"].item())
         # Restore these values into the metadata dict rather than dataset variables
-        object.__setattr__(obj, "_meta", temp_attribute_dict)
-        obj._data.__delitem__("attributes_dict")
+        object.__setattr__(obj, "_meta", temp_attribute_dict)  # noqa: PLC2801
+        del obj._data["attributes_dict"]
         obj._coord_assign()
         if obj.success_flag is not None:
             obj.success_flag = SuccessFlag(obj.success_flag)
         return obj
 
     @classmethod
-    def worker_build(cls, init_kwargs, shm_desc):  # noqa: ANN001, D102
+    def worker_build(cls, init_kwargs, shm_desc) -> AbstractModel:  # noqa: ANN001, D102
         obj = cls.__new__(cls)
         for k, v in init_kwargs.items():
-            object.__setattr__(obj, k, v)
+            object.__setattr__(obj, k, v)  # noqa: PLC2801
         obj._reform_array_in_worker(shm_desc)
         return obj
 
@@ -622,18 +627,18 @@ class AbstractModel(ABC):
         cls,
         file: str | Path | h5py.File,
         name: str = "default",
-    ):
+    ) -> AbstractModel:
         """Load a model from a file.
 
         This is a convenience class method that wraps the module-level load_model function.
 
         Args:
             file (str | Path | h5py.File): Path to a file that contains previously run
-                and stored models, or open ``h5py.File object``.
-            name (str): Name of the stored object. Defaults to 'default'.
+                and stored models, or open ``h5py.File`` object.
+            name (str): Name of the stored object. Default = 'default'.
 
         Returns:
-            Model object loaded from the file.
+            AbstractModel: Model object loaded from the file.
 
         """
         return load_model(file, name=name)
@@ -799,8 +804,8 @@ class AbstractModel(ABC):
         """Utility method to check conservation of the chemical abundances.
 
         Args:
-            element_list (list): List of elements to check conservation for.
-                Defaults to ``self.out_species_lists``.
+            element_list (list[str] | None): List of elements to check conservation for.
+                If None, uses ``self.out_species_lists``. Default = None.
             percent (bool): Flag on if whether changes should be printed in percentages.
                 Defaults to True.
 
@@ -835,7 +840,9 @@ class AbstractModel(ABC):
 
         Args:
             only_error (bool): If True, only act when there was an error (skip success message).
+                Default = False.
             raise_on_error (bool): If True (default), raises RuntimeError on failure. If False, prints.
+                Default = True.
 
         """
         if self.success_flag is None:
@@ -850,7 +857,7 @@ class AbstractModel(ABC):
     def create_abundance_plot(
         self,
         species: list[str] | None = None,
-        figsize: tuple[int | float, int | float] = (16, 9),
+        figsize: tuple[float, float] = (16, 9),
         point: int = 0,
         plot_file: str | Path | None = None,
     ) -> tuple[plt.Figure, plt.Axes]:
@@ -859,12 +866,15 @@ class AbstractModel(ABC):
         Args:
             species (list[str] | None): List of species to plot. If None, uses self.out_species_list.
                 Default = None.
-            figsize (tuple[2]): The figure size to use for matplotlib Defaults to (16, 9).
-            point (int): Integer referring to which point of the UCLCHEM model to use. Defaults to 0.
-            plot_file (str | Path | None): if not None, save to a path. Default = None.
+            figsize (tuple[float, float]): The figure size to use for matplotlib.
+                Default = (16, 9).
+            point (int): Integer referring to which point of the UCLCHEM model to use.
+                Default = 0.
+            plot_file (str | Path | None): if not None, save to a path.
+                Default = None.
 
         Returns:
-            tuple[fig, ax]: matplotlib figure and axis objects
+            tuple[plt.Figure, plt.Axes]: matplotlib figure and axis objects
 
         Raises:
             ValueError: If ``point`` is larger than the number of points in the model run.
@@ -1035,7 +1045,7 @@ class AbstractModel(ABC):
         with_stats: bool,
         with_level_populations: bool,
         with_se_stats: bool,
-    ) -> tuple[pd.DataFrame]:
+    ) -> tuple[pd.DataFrame, ...]:
         """Helper method to get dataframes for a single point without Point column.
 
         Args:
@@ -1050,7 +1060,7 @@ class AbstractModel(ABC):
                 in the tuple
 
         Returns:
-            tuple[pd.DataFrames]: a tuple of pd.DataFrame with physics_df, chemistry_df, and all
+            tuple[pd.DataFrame, ...]: a tuple of pd.DataFrame with physics_df, chemistry_df, and all
                 additional information based off whether the flags were True.
 
         Raises:
@@ -1162,7 +1172,7 @@ class AbstractModel(ABC):
             result.append(level_populations_df)
         if with_se_stats:
             result.append(se_stats_df)
-        return tuple(result)  # type: ignore[return-value]
+        return tuple(result)  # type: ignore[arg-type]
 
     def get_solver_stats_dataframe(self, point: int | None = None) -> pd.DataFrame | None:
         """Get all solver statistics including failed attempts.
@@ -1173,7 +1183,8 @@ class AbstractModel(ABC):
         the final successful attempt per trajectory timestep.
 
         Args:
-            point (int | None): Spatial point index (for multi-point models). If None, uses point 0.
+            point (int | None): Spatial point index (for multi-point models).
+                If None, uses point 0. Default = None.
 
         Returns:
             pd.DataFrame | None: DataFrame with columns from DVODE_STAT_NAMES,
@@ -1218,7 +1229,8 @@ class AbstractModel(ABC):
         and required retry (ISTATE = -1, -2, -4, -5, etc.).
 
         Args:
-            point (int | None): Spatial point index (for multi-point models). If None, uses point 0.
+            point (int | None): Spatial point index (for multi-point models).
+                If None, uses point 0. Default = None.
 
         Returns:
             pd.DataFrame | None: DataFrame of failed attempts,
@@ -1251,7 +1263,8 @@ class AbstractModel(ABC):
         """Calculate solver efficiency metrics.
 
         Args:
-            point (int | None): Spatial point index (for multi-point models). If None, uses point 0.
+            point (int | None): Spatial point index (for multi-point models).
+                If None, uses point 0. Default = None.
 
         Returns:
             dict[str, int | float] | None: dict with keys:
@@ -1301,11 +1314,11 @@ class AbstractModel(ABC):
             species (list[str] | None): A list of species names to be plotted.
                 If species name starts with "$" instead of "#" or "@",
                 plots the sum of surface and bulk abundances. If None, default to
-                ``self.out_species_list``.
+                ``self.out_species_list``. Default = None.
             point (int): Grid point index. Default = 0.
             legend (bool): Whether to add a legend to the plot. Default = True.
-            plot_kwargs (dict[str, Any]): keyword arguments passed to ``ax.plot``.
-                Defaults to None.
+            plot_kwargs (dict[str, Any] | None): keyword arguments passed to ``ax.plot``.
+                Default = None.
 
         Returns:
             plt.Axes: Modified input axis is returned
@@ -1325,8 +1338,10 @@ class AbstractModel(ABC):
 
     # Methods to start run of model
     def run(self) -> None:
-        """Reset the Fortran arrays if the model was not read,
-        allowing the arrays to be reused for new runs.
+        """Run the model.
+
+        Reset the Fortran arrays if the model was not read, allowing the arrays to be reused
+        for new runs.
 
         Raises:
             RuntimeError: If the model was read.
@@ -1355,8 +1370,6 @@ class AbstractModel(ABC):
         if self.run_type not in self.separate_worker_types:
             output = self.run_fortran()
         elif self.run_type in self.separate_worker_types:
-            from uclchem.advanced.worker_state import create_snapshot
-
             snapshot = create_snapshot()
             init_kwargs = self._create_init_dict()
             ctx = mp.get_context("spawn")
@@ -1399,7 +1412,7 @@ class AbstractModel(ABC):
 
         output["success_flag"] = SuccessFlag(output["success_flag"])
         for k, v in output.items():
-            self.__setattr__(k, v)
+            self.__setattr__(k, v)  # noqa: PLC2801
 
         self._array_clean()
         self.check_error(only_error=True)
@@ -1425,7 +1438,6 @@ class AbstractModel(ABC):
             except Exception as e:
                 logger.error(f"Failed to write {self.abundSaveFile}: {e}", exc_info=True)
                 raise
-        return
 
     @abstractmethod
     def run_fortran(self) -> dict[str, int | list]:  # noqa: D102
@@ -1440,15 +1452,17 @@ class AbstractModel(ABC):
         name: str = "default",
         overwrite: bool = False,
     ) -> None:
-        """Save a model to file on disk. Multiple models can be saved into the same file
-        if different names are used to store them.
+        """Save a model to file on disk.
+
+        Multiple models can be saved into the same file if different names ``name``
+        are used to store them.
 
         Args:
-            file (h5py.File | str | Path): open h5py file object, or Path to a file that contains
+            file (h5py.File | str | Path): Open h5py file object, or Path to a file that contains
                 previously run and stored models.
-            name (str): Name to use for the group of the object. Defaults to 'default'
+            name (str): Name to use for the group of the object. Default = "default".
             overwrite (bool): Whether to overwrite pre-existing models, or error out if there
-                is another model with name ``name`` in the file. Defaults to False
+                is another model with name ``name`` in the file. Default = False.
 
         Raises:
             TypeError: if ``file`` is not a string, Path or ``h5py.File`` instance.
@@ -1459,6 +1473,7 @@ class AbstractModel(ABC):
         if isinstance(file, str | Path):
             opened_file = True
             file_obj = h5py.File(file, "a")
+            logger.debug(f"Opened file {file}")
         elif isinstance(file, h5py.File):
             opened_file = False
             file_obj = file
@@ -1471,7 +1486,7 @@ class AbstractModel(ABC):
                 msg = f"Model with name '{name}' already exists in save file but overwrite is set to False. Unable to save model."
                 raise RuntimeError(msg)
             else:
-                logger.debug(f"Deleting group {name} in file {file_obj.name}")
+                logger.debug(f"Deleting group {name} in file {file_obj.filename}")
                 del file_obj[name]
         # TODO: Allow for toggling of saving float64 or float32 for the arrays
         temp_attribute_dict = {}
@@ -1487,26 +1502,27 @@ class AbstractModel(ABC):
                 if np.shape(save_data[v].values) != ():
                     if isinstance(save_data[v].values, tuple):
                         temp_attribute_dict[v] = save_data[v].values[1].tolist()
-                        save_data = save_data.drop_vars(v)
                     else:
                         temp_attribute_dict[v] = save_data[v].values.tolist()
-                        save_data = save_data.drop_vars(v)
                 else:
                     temp_attribute_dict[v] = save_data[v].item()
-                    save_data = save_data.drop_vars(v)
-        #
+                save_data = save_data.drop_vars(v)
+        for key, value in temp_attribute_dict.items():
+            if isinstance(value, Path):
+                temp_attribute_dict[key] = str(value)
+
         save_data["attributes_dict"] = xr.DataArray([json.dumps(temp_attribute_dict)])
         save_data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
         model_group = file_obj.create_group(name)
         coord_grp = model_group.create_group("_coords")
-        name: str  # type: ignore[no-redef]
-        for name, coord in save_data.coords.items():  # type: ignore[assignment]
-            self._write_array(coord_grp, name, coord)
-        for name, var in save_data.data_vars.items():  # type: ignore[assignment]
-            self._write_array(model_group, name, var)
+        save_name: str
+        for save_name, coord in save_data.coords.items():  # type: ignore[assignment]
+            self._write_array(coord_grp, save_name, coord)
+        for save_name, var in save_data.data_vars.items():  # type: ignore[assignment]
+            self._write_array(model_group, save_name, var)
         if opened_file:
             file_obj.flush()
-            logger.debug(f"Closing file {file_obj.name}")
+            logger.debug(f"Closing file {file_obj.filename}")
             file_obj.close()
 
     @staticmethod
@@ -1524,7 +1540,7 @@ class AbstractModel(ABC):
         """Pickle the model.
 
         Returns:
-            AbstractModel
+            AbstractModel: Pickled model
 
         """
         v: str
@@ -1539,21 +1555,21 @@ class AbstractModel(ABC):
                     self._pickle_dict[v] = self._data[v].item()
             # Save metadata separately for pickle roundtrip
             try:
-                object.__setattr__(
+                object.__setattr__(  # noqa: PLC2801
                     self, "_pickle_meta", super().__getattribute__("_meta").copy()
                 )
             except Exception:
-                object.__setattr__(self, "_pickle_meta", {})
+                object.__setattr__(self, "_pickle_meta", {})  # noqa: PLC2801
             self._data = xr.Dataset()
             # Clear runtime metadata to reflect pickled state
-            object.__setattr__(self, "_meta", {})
+            object.__setattr__(self, "_meta", {})  # noqa: PLC2801
         return self
 
     def un_pickle(self) -> AbstractModel:
         """Un-pickle the model.
 
         Returns:
-            AbstractModel
+            AbstractModel: Unpickled model.
 
         """
         if (self._data is None or len(self._data.dims) == 0) and bool(self._pickle_dict):
@@ -1598,12 +1614,11 @@ class AbstractModel(ABC):
             # Restore saved metadata if present
             try:
                 if hasattr(self, "_pickle_meta") and self._pickle_meta:
-                    object.__setattr__(self, "_meta", self._pickle_meta.copy())
+                    object.__setattr__(self, "_meta", self._pickle_meta.copy())  # noqa: PLC2801
             except Exception as e:
-                logger.exception("Exception occurred while restoring metadata:", e)
-                pass
+                logger.exception(f"Exception occurred while restoring metadata: {e}")
             finally:
-                object.__setattr__(self, "_pickle_meta", {})
+                object.__setattr__(self, "_pickle_meta", {})  # noqa: PLC2801
         else:
             warnings.warn("Un-pickling an object that was not pickled.", stacklevel=2)
         self._coord_assign()
@@ -1627,7 +1642,7 @@ class AbstractModel(ABC):
 
         Args:
             read_file (str | Path): path to file
-            rate_constants_load_file (str | Path | None): Not used
+            rate_constants_load_file (str | Path | None): Not used. Default = None.
 
         Raises:
             ValueError: If there is any incompatibility error.
@@ -1780,7 +1795,7 @@ class AbstractModel(ABC):
         # store ``timepoints`` as the number of simulated timesteps minus one.
         try:
             tp = int(self._data.sizes.get("time_step", 0))
-            object.__setattr__(self, "timepoints", tp - 1 if tp > 0 else 0)
+            object.__setattr__(self, "timepoints", tp - 1 if tp > 0 else 0)  # noqa: PLC2801
         except Exception:
             # Be defensive; if something goes wrong leave timepoints as-is
             logger.debug("Could not set timepoints. Leave them unchanged.")
@@ -1808,13 +1823,13 @@ class AbstractModel(ABC):
         self._create_starting_array(np.loadtxt(self.abundLoadFile, delimiter=","))
 
     def legacy_write_full(self) -> None:
-        """Perform classic output file writing to the file ``self.outputFile`` provided in
-            ``_param_dict``.
+        """Perform classic output writing to file ``self.outputFile`` provided in ``_param_dict``.
 
         Raises:
             RuntimeError: If ``self.physics_array`` and ``self.chemical_abun_array``
                 have not yet been initialized.
             ValueError: If ``self.outputFile`` is None.
+
         """
         logger.debug(f"Writing output to {self.outputFile}")
         if self.physics_array is None or self.chemical_abun_array is None:
@@ -1840,8 +1855,7 @@ class AbstractModel(ABC):
             np.savetxt(f, full_array, fmt=number_fmt_string)
 
     def legacy_write_starting_chemistry(self) -> None:
-        """Perform classic starting abundance file writing to the file ``self.abundSaveFile``
-        provided in ``_param_dict``.
+        """Perform classic starting abundance writing to file ``self.abundSaveFile``.
 
         Raises:
             RuntimeError: If ``self.chemical_abun_array`` is None.
@@ -1866,21 +1880,19 @@ class AbstractModel(ABC):
                 self.chemical_abun_array[last_timestep_index, :, :],
                 fmt=number_fmt_string,
             )
-        return
 
     # /Legacy in & output support
 
     # Cleaning of array & inptus
     def _array_clean(self):
-        """Internal Method.
-        Clean the arrays changed by UCLCHEM Fortran code.
-        """
+        """Clean the arrays changed by UCLCHEM Fortran code."""
         logger.debug("Cleaning Fortran arrays")
 
         # Find the first element with all the zeros
         nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
         if len(nonzero_indices) == 0:
             # Model failed immediately, keep only the first row to indicate failure
+            logger.debug("Found 0 non-zero indices in physics_array")
             self._data = self._data.isel(time_step=slice(0, 1))
             self._coord_assign()
             self.next_starting_chemistry_array = self.chemical_abun_array[0, :, :]
@@ -1919,15 +1931,14 @@ class AbstractModel(ABC):
                         self._data = self._data.assign_coords(
                             {"physics_values": np.arange(phys_len)}
                         )
+            elif len(PHYSICAL_PARAMETERS) == phys_len:
+                self._data = self._data.assign_coords(
+                    {"physics_values": PHYSICAL_PARAMETERS}
+                )
             else:
-                if len(PHYSICAL_PARAMETERS) == phys_len:
-                    self._data = self._data.assign_coords(
-                        {"physics_values": PHYSICAL_PARAMETERS}
-                    )
-                else:
-                    self._data = self._data.assign_coords(
-                        {"physics_values": np.arange(phys_len)}
-                    )
+                self._data = self._data.assign_coords(
+                    {"physics_values": np.arange(phys_len)}
+                )
 
         # chemical abundances coords
         try:
@@ -1946,19 +1957,18 @@ class AbstractModel(ABC):
                         self._data = self._data.assign_coords(
                             {"chemical_abun_values": np.arange(chem_len)}
                         )
+            elif len(species_names) == chem_len:
+                self._data = self._data.assign_coords(
+                    {"chemical_abun_values": species_names}
+                )
             else:
-                if len(species_names) == chem_len:
-                    self._data = self._data.assign_coords(
-                        {"chemical_abun_values": species_names}
-                    )
-                else:
-                    self._data = self._data.assign_coords(
-                        {"chemical_abun_values": np.arange(chem_len)}
-                    )
-        return
+                self._data = self._data.assign_coords(
+                    {"chemical_abun_values": np.arange(chem_len)}
+                )
 
     def _reform_inputs(self, param_dict: dict | None, out_species: list[str]) -> None:
-        """Internal Method.
+        """Reformat the input parameter dictionary.
+
         Copies param_dict so as not to modify user's dictionary.
         Then reformats out_species from pythonic list
         to a string of space separated names for Fortran.
@@ -2012,15 +2022,12 @@ class AbstractModel(ABC):
         else:
             self.out_species = ""
             self.n_out = 0
-        return
 
     # /Cleaning of array & inptus
 
     # Creation of arrays
     def _create_fortran_array(self):
-        """Internal Method.
-        Creates Fortran compliant np.arrays that can be passed to the Fortran part of UCLCHEM.
-        """
+        """Create Fortran compliant np.arrays for physics and chemical abundances."""
         logger.debug("Creating fortran arrays for physics and abundances")
         # For shared memory:
         (
@@ -2039,10 +2046,7 @@ class AbstractModel(ABC):
         )
 
     def _create_rate_constants_array(self):
-        """Internal Method.
-        Creates Fortran compliant np.array for rate constants that can
-        be passed to the Fortran part of UCLCHEM.
-        """
+        """Create Fortran compliant np.array for rate constants."""
         logger.debug("Creating fortran arrays for reaction rate constants")
         # For shared memory:
         (
@@ -2052,43 +2056,37 @@ class AbstractModel(ABC):
         ) = self._create_shared_memory_allocation(
             (self.timepoints + 1, self._param_dict["points"], n_reactions)
         )
-        return
 
     def _create_heating_array(self):
-        """Internal Method.
-        Creates Fortran compliant np.array for heating/cooling rates that can
-        be passed to the Fortran part of UCLCHEM.
-        """
+        """Create Fortran compliant np.array for heating/cooling rates."""
         logger.debug("Creating fortran arrays for heating")
-        try:
-            heating_array_size = (
-                2
-                + uclchemwrap.heating.ncooling
-                + uclchemwrap.heating.nheating
-                + uclchemwrap.f2py_constants.ncoolants
-            )
-            # For shared memory:
-            (
-                self._shm_handles["heat_array"],
-                self._shm_desc["heat_array"],
-                self.heat_array,
-            ) = self._create_shared_memory_allocation(
-                (
-                    self.timepoints + 1,
-                    self._param_dict["points"],
-                    heating_array_size,
-                )
-            )
-        except AttributeError:
+        if not hasattr(uclchemwrap, "heating"):
             # Heating module not available, likely compiled without heating support
-            logger.debug("Heating module not available in uclchemwrap")
+            logger.warning("Heating module not available in uclchemwrap")
             self.heat_array = None
-        return
+            return
+
+        heating_array_size = (
+            2
+            + uclchemwrap.heating.ncooling
+            + uclchemwrap.heating.nheating
+            + uclchemwrap.f2py_constants.ncoolants
+        )
+        # For shared memory:
+        (
+            self._shm_handles["heat_array"],
+            self._shm_desc["heat_array"],
+            self.heat_array,
+        ) = self._create_shared_memory_allocation(
+            (
+                self.timepoints + 1,
+                self._param_dict["points"],
+                heating_array_size,
+            )
+        )
 
     def _create_stats_array(self):
-        """Internal Method.
-        Creates Fortran compliant np.array for DVODE solver statistics.
-        """
+        """Creates Fortran compliant np.array for DVODE solver statistics."""
         logger.debug("Creating fortran arrays for DVODE solver statistics")
         (
             self._shm_handles["stats_array"],
@@ -2097,11 +2095,10 @@ class AbstractModel(ABC):
         ) = self._create_shared_memory_allocation(
             (self.timepoints + 1, self._param_dict["points"], N_DVODE_STATS)
         )
-        return
 
     def _create_level_populations_array(self):
-        """Internal Method.
-        Creates Fortran compliant np.array for coolant level populations.
+        """Create Fortran compliant np.array for coolant level populations.
+
         Shape: (timepoints+1, gridpoints, total_levels).
         """
         logger.debug("Creating fortran arrays for coolant level populations")
@@ -2112,11 +2109,10 @@ class AbstractModel(ABC):
         ) = self._create_shared_memory_allocation(
             (self.timepoints + 1, self._param_dict["points"], N_TOTAL_LEVELS)
         )
-        return
 
     def _create_se_stats_array(self):
-        """Internal Method.
-        Creates Fortran compliant np.array for SE solver statistics.
+        """Create Fortran compliant np.array for SE solver statistics.
+
         Shape: (timepoints+1, gridpoints, NCOOLANTS*3).
         """
         logger.debug("Creating fortran arrays for SE solver statistics")
@@ -2130,13 +2126,12 @@ class AbstractModel(ABC):
         ) = self._create_shared_memory_allocation(
             (self.timepoints + 1, self._param_dict["points"], n_stats)
         )
-        return
 
     def get_level_populations_dataframe(self, point: int = 0) -> pd.DataFrame | None:
         """Get level populations as a DataFrame for a specific grid point.
 
         Args:
-            point: Grid point index (default 0)
+            point (int): Grid point index. Default = 0.
 
         Returns:
             pd.DataFrame | None: DataFrame with columns for each level with meaningful
@@ -2182,10 +2177,9 @@ class AbstractModel(ABC):
 
         # Build meaningful column names using actual coolant names
         try:
-            from uclchemwrap import f2py_constants
-
             coolant_names = [
-                str(name.decode()).strip() for name in f2py_constants.coolantnames
+                str(name.decode()).strip()
+                for name in uclchemwrap.f2py_constants.coolantnames
             ]
             columns = []
             for coolant_name in coolant_names:
@@ -2225,9 +2219,9 @@ class AbstractModel(ABC):
         """Catch interruption. Save model to file.
 
         Args:
-            grid (bool): whether the model was part of a grid
+            grid (bool): whether the model was part of a grid. Default = False
             model_name (str | None): the name of the model to save it under.
-                If None, name is set to "interrupted".
+                If None, name is set to "interrupted". Default = None.
 
         """
         logger.info("Model was interrupted")
@@ -2266,7 +2260,6 @@ class AbstractModel(ABC):
             name=model_name if model_name is not None else "interrupted",
             overwrite=True,
         )
-        return
 
     # /Signal Interrupt Catch
 
@@ -2284,17 +2277,16 @@ class AbstractModel(ABC):
         return shm, spec, array
 
     def _reform_array_in_worker(self, shm_desc: dict[str, dict]) -> None:
-        object.__setattr__(self, "_shm_handles", {})
+        object.__setattr__(self, "_shm_handles", {})  # noqa: PLC2801
         for k, v in shm_desc.items():
             shm = shared_memory.SharedMemory(name=v["name"], create=False)
-            object.__setattr__(
+            object.__setattr__(  # noqa: PLC2801
                 self,
                 k,
                 np.ndarray(shape=v["shape"], dtype=np.float64, buffer=shm.buf, order="F"),
             )
             self._shm_handles[k] = shm
             del shm
-        return
 
     def _worker_close_memory(self):
         for k in self._shm_desc:
@@ -2304,14 +2296,13 @@ class AbstractModel(ABC):
                 pass
             finally:
                 del self._shm_handles[k]
-        return
 
     def _coordinator_unlink_memory(self):
         logger.debug("Unlinking shared memory")
         if bool(self._shm_desc):
             for k in self._shm_desc:
                 try:
-                    self.__setattr__(k, self.__getattr__(k).copy())
+                    self.__setattr__(k, self.__getattr__(k).copy())  # noqa: PLC2801
                     self._shm_handles[k].close()
                     self._shm_handles[k].unlink()
                 except Exception:
@@ -2381,9 +2372,7 @@ class Cloud(AbstractModel):
             self.run()
 
     def run_fortran(self) -> dict[str, int | list]:
-        """Runs the UCLCHEM model, first by resetting the numpy arrays by using
-        ``AbstractModel.run()``, then running the model. ``check_error`` and ``array_clean``
-        are automatically called after the model run.
+        """Runs the fortran side of the UCLCHEM model.
 
         Returns:
             dict[str, int | list]: Dictionary with two keys:
@@ -2411,7 +2400,7 @@ class Cloud(AbstractModel):
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
-            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")  # noqa: PLC2801
             else None,
         )
         abundance_out, specname_out, success_flag = result[-3], result[-2], result[-1]
@@ -2584,18 +2573,14 @@ class Collapse(AbstractModel):
             self.collapse = collapse_dict[collapse]
             if self.run_type != "external":
                 self.run()
-        return
 
     def run_fortran(self) -> dict[str, int | list]:
-        """Runs the UCLCHEM model, first by resetting the numpy arrays by using
-        ``AbstractModel.run()``, then running the model. ``check_error`` and ``array_clean``
-        are automatically called after the model run.
+        """Runs the fortran side of the UCLCHEM model.
 
         Returns:
             dict[str, int | list]: Dictionary with two keys:
                 "success_flag" with value the success flag
                 "out_species_abundances_array" with value a list of the outspecies abundances.
-
 
         """
         result = wrap.collapse(
@@ -2615,7 +2600,7 @@ class Collapse(AbstractModel):
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
-            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")  # noqa: PLC2801
             else None,
         )
         out_species_abundances_array = result[-2]
@@ -2648,6 +2633,7 @@ class Collapse(AbstractModel):
 @register_model
 class PrestellarCore(AbstractModel):
     """PrestellarCore model class inheriting from AbstractModel.
+
     This model type was previously known as hot core.
 
     Args:
@@ -2709,12 +2695,9 @@ class PrestellarCore(AbstractModel):
             self.max_temperature = max_temperature
             if self.run_type != "external":
                 self.run()
-        return
 
     def run_fortran(self) -> dict[str, int | list]:
-        """Runs the UCLCHEM model, first by resetting the numpy arrays by using
-        ``AbstractModel.run()``, then running the model. ``check_error`` and ``array_clean``
-        are automatically called after the model run.
+        """Runs the fortran side of the UCLCHEM model.
 
         Returns:
             dict[str, int | list]: Dictionary with two keys:
@@ -2742,7 +2725,7 @@ class PrestellarCore(AbstractModel):
                 levelpopulationsarray=self.level_populations_array,
                 sestatsarray=self.se_stats_array,
                 abundancestart=self.starting_chemistry_array
-                if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+                if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")  # noqa: PLC2801
                 else None,
             )
         )
@@ -2841,18 +2824,14 @@ class CShock(AbstractModel):
             self.dissipation_time = -1
             if self.run_type != "external":
                 self.run()
-        return
 
     def run_fortran(self) -> dict[str, int | list]:
-        """Runs the UCLCHEM model, first by resetting the numpy arrays by using
-        ``AbstractModel.run()``, then running the model. ``check_error`` and ``array_clean``
-        are automatically called after the model run.
+        """Runs the fortran side of the UCLCHEM model.
 
         Returns:
             dict[str, int | list]: Dictionary with two keys:
                 "success_flag" with value the success flag
                 "out_species_abundances_array" with value a list of the outspecies abundances.
-
 
         """
         result = wrap.cshock(
@@ -2874,7 +2853,7 @@ class CShock(AbstractModel):
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
-            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")  # noqa: PLC2801
             else None,
         )
         dissipation_time = result[-3]
@@ -2968,18 +2947,14 @@ class JShock(AbstractModel):
             self.shock_vel = shock_vel
             if self.run_type != "external":
                 self.run()
-        return
 
     def run_fortran(self) -> dict[str, int | list]:
-        """Runs the UCLCHEM model, first by resetting the numpy arrays by using
-        ``AbstractModel.run()``, then running the model. ``check_error`` and ``array_clean``
-        are automatically called after the model run.
+        """Runs the fortran side of the UCLCHEM model.
 
         Returns:
             dict[str, int | list]: Dictionary with two keys:
                 "success_flag" with value the success flag
                 "out_species_abundances_array" with value a list of the outspecies abundances.
-
 
         """
         result = wrap.jshock(
@@ -2999,7 +2974,7 @@ class JShock(AbstractModel):
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
-            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")  # noqa: PLC2801
             else None,
         )
         out_species_abundances_array = result[-2]
@@ -3184,15 +3159,12 @@ class Postprocess(AbstractModel):
             self.run()
 
     def run_fortran(self) -> dict[str, int | list]:
-        """Runs the UCLCHEM model, first by resetting the numpy arrays by using
-        ``AbstractModel.run()``, then running the model. ``check_error`` and ``array_clean``
-        are automatically called after the model run.
+        """Runs the fortran side of the UCLCHEM model.
 
         Returns:
             dict[str, int | list]: Dictionary with two keys:
                 "success_flag" with value the success flag
                 "out_species_abundances_array" with value a list of the outspecies abundances.
-
 
         """
         # Determine whether an Av grid was provided and set the flag expected by the Fortran wrapper
@@ -3217,7 +3189,7 @@ class Postprocess(AbstractModel):
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
-            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")  # noqa: PLC2801
             else None,
         )
         out_species_abundances_array = result[-2]
@@ -3253,7 +3225,6 @@ class Postprocess(AbstractModel):
 @register_model
 class Model(AbstractModel):
     """Model, like Postprocess, represents a model class with additional controls.
-    It inherits from AbstractModel.
 
     Model follows the same logic as Postprocess but without the coldens Arguments.
     It allows for additional controls of the time, density, gas temperature, radiation field,
@@ -3369,15 +3340,12 @@ class Model(AbstractModel):
             self.run()
 
     def run_fortran(self) -> dict[str, int | list]:
-        """Runs the UCLCHEM model, first by resetting the numpy arrays by using
-        ``AbstractModel.run()``, then running the model. ``check_error`` and ``array_clean``
-        are automatically called after the model run.
+        """Runs the fortran side of the UCLCHEM model.
 
         Returns:
             dict[str, int | list]: Dictionary with two keys:
                 "success_flag" with value the success flag
                 "out_species_abundances_array" with value a list of the outspecies abundances.
-
 
         """
         result = wrap.postprocess(
@@ -3398,7 +3366,7 @@ class Model(AbstractModel):
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
             abundancestart=self.starting_chemistry_array
-            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
+            if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")  # noqa: PLC2801
             else None,
         )
         out_species_abundances_array = result[-2]
@@ -3467,7 +3435,7 @@ class SequentialRunner:
 
         if self.parameters_to_match is not None:
             for parameter in self.parameters_to_match:
-                if parameter not in ["finalTemp", "finalDens"]:
+                if parameter not in {"finalTemp", "finalDens"}:
                     msg = f"Parameter '{parameter}' has not been implemented for parameter matching"
                     raise NotImplementedError(msg)
 
@@ -3550,7 +3518,6 @@ class SequentialRunner:
                 previous_model = self.models[self.model_count]["Model"]
                 self.model_count += 1
         self.success_flag = all(d["Successful"] for d in self.models)
-        return
 
     def save_model(
         self,
@@ -3563,9 +3530,9 @@ class SequentialRunner:
         Args:
             file (h5py.File | str | Path): open h5py file object, or Path to a file that contains
                 previously run and stored models.
-            name (str): name to save model under.
+            name (str): name to save model under. Default = "".
             overwrite (bool): Boolean on whether to overwrite pre-existing models, or error out.
-                Defaults to False
+                Default = False
 
         Raises:
             TypeError: if ``file`` is not a string, Path or ``h5py.File`` instance.
@@ -3813,7 +3780,6 @@ class GridRunner:
         # Initial placeholder statement to remove pre-existing grid files
         if self.grid_file.is_file():
             self.grid_file.unlink()
-        #
         self.model_name_prefix = model_name_prefix
         self.overwrite_models = overwrite_models
         if log_dir is not None:
@@ -3895,7 +3861,12 @@ class GridRunner:
             self.parameters_to_grid[model_count_string + key] = value.astype(dtype=object)
 
     def _log_main(self, msg: str) -> None:
-        """Append a timestamped line to the main grid log file."""
+        """Append a timestamped line to the main grid log file.
+
+        Args:
+            msg (str): message to log
+
+        """
         if self._main_log is None:
             return
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -3910,7 +3881,6 @@ class GridRunner:
 
         # Capture advanced settings so spawned workers start with the same
         # Fortran module state as the coordinator process.
-        from uclchem.advanced.worker_state import _pool_initializer, create_snapshot
 
         snapshot = create_snapshot()
 
@@ -3964,7 +3934,6 @@ class GridRunner:
                     file_obj.flush()
                 except Exception as e:
                     print(f"Error saving model {model_id}: {e}")
-                    import traceback
 
                     traceback.print_exc()
 
@@ -4058,8 +4027,8 @@ class GridRunner:
             ].sel(chemical_abun_values=out_species_list)
 
     def _load_params(self) -> None:
-        """Loop through the models present in ``self.models``
-        in order to load the changing physical parameters of the models.
+        """Loop through the models present in ``self.models`` to load the changing physical parameters.
+
         The method splits the loops into two cases: ``SequentialRunner``, and other model cases.
         In both instances, the for loop loads the model data using the ``_load_model``
         method. Then, it matches the given parameters, with the changing parameters in
@@ -4093,7 +4062,7 @@ class GridRunner:
                                 in tmp_model._param_dict
                             },
                             **{
-                                k.replace(f"{model_count}_", ""): tmp_model.__getattr__(
+                                k.replace(f"{model_count}_", ""): tmp_model.__getattr__(  # noqa: PLC2801
                                     k.replace(f"{model_count}_", "")
                                 )
                                 for k in list(self.parameters_to_grid.keys())
@@ -4200,15 +4169,17 @@ class GridRunner:
     @staticmethod
     def grid_iter(
         full_parameters: dict | list[dict],
-        param_keys: list,
+        param_keys: list[str],
         flattened_grids: np.ndarray,
         model_type: str,
     ) -> Iterator[dict[str, Any]]:
-        """Provide an iterable dictionary of parameters that can be used with the
+        """Iterate over dictionaries of parameters for each model in the grid.
+
+        Provide an iterable dictionary of parameters that can be used with the
         grid-based multiprocessing worker distribution.
 
         Args:
-            full_parameters (dict | list): dictionary or list
+            full_parameters (dict | list[dict]): dictionary or list
                 (if model_type == SequentialRunner)
                 of the full parameters that will be used for the model
             param_keys (list[str]): list of parameters that are changing in
@@ -4220,7 +4191,7 @@ class GridRunner:
                 represents multiple models to be run in series.
 
         Yields:
-            Next dictionary containing the parameter values for the model to run
+            dict[str, Any]: Next dictionary containing the parameter values for the model to run
                 in the grid of models. Only offers one model per request.
 
         Raises:
@@ -4250,7 +4221,7 @@ class GridRunner:
                     # not just param_dict, for an individual model that is
                     # part of the SequentialRunner.
                     run_dict = {}
-                    for model_type, model_full_parameters in full_parameters[
+                    for current_model_type, model_full_parameters in full_parameters[
                         model_count
                     ].items():
                         if isinstance(model_full_parameters, dict):
@@ -4275,7 +4246,7 @@ class GridRunner:
                                     else False
                                 )
                             }
-                            run_dict[model_type] = {
+                            run_dict[current_model_type] = {
                                 **model_full_parameters,
                                 "param_dict": {
                                     **model_full_parameters["param_dict"],
@@ -4285,7 +4256,7 @@ class GridRunner:
                             }
                             run_list += [run_dict]
                         else:
-                            yield_dict[model_type] = model_full_parameters
+                            yield_dict[current_model_type] = model_full_parameters
                 yield {
                     "parameters_to_match": ["finalDens"],
                     **yield_dict,

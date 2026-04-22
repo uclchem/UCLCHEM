@@ -102,7 +102,7 @@ def plot_rate_summary(
 def create_abundance_plot(
     df: pd.DataFrame,
     species: list[str],
-    figsize: tuple[int | float, int | float] = (16, 9),
+    figsize: tuple[float, float] = (16, 9),
     plot_file: str | Path | None = None,
     plot_kwargs: dict[str, Any] | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
@@ -114,11 +114,12 @@ def create_abundance_plot(
             ``uclchem.model.Model.get_dataframes``.
         species (list[str]): list of strings containing species names.
             Using a $ instead of # or @ will plot the sum of surface and bulk abundances.
-        figsize (tuple[int | float]): Size of figure, width by height in inches.
+        figsize (tuple[float, float]): Size of figure, width by height in inches.
             Defaults to (16, 9).
         plot_file (str | Path | None): Path to file where figure will be saved.
             If None, figure is not saved. Defaults to None.
         plot_kwargs (dict[str, Any] | None): keyword arguments passed to ``ax.plot``.
+            Default = None.
 
     Returns:
         fig (plt.Figure): created Figure object
@@ -161,6 +162,7 @@ def plot_species(
             plots the sum of surface and bulk abundances
         legend (bool): Whether to add a legend to the plot. Default = True.
         plot_kwargs (dict[str, Any] | None): keyword arguments passed to ``ax.plot``.
+            Default = None.
 
     Returns:
         ax (plt.Axes): Modified input axis is returned
@@ -177,7 +179,7 @@ def plot_species(
             abundances = df[species_name.replace("$", "#")]
             linestyle = "dashed"
             if species_name.replace("$", "@") in df.columns:
-                abundances = abundances + df[species_name.replace("$", "@")]
+                abundances += df[species_name.replace("$", "@")]
         else:
             abundances = df[species_name]
         plot_kwargs["linestyle"] = linestyle

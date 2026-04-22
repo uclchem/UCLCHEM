@@ -28,43 +28,36 @@ if __name__ == "__main__":
                     continue
                 elif line.startswith("CONTAINS"):
                     break
-                else:
-                    if "=" in line:
-                        new_line = line.split("=")
-                        temp_line = new_line[0].split("::")
-                        key = temp_line[-1].strip()
-                        type_of_value = temp_line[0].strip()
-                        new_line = new_line[1].split("!")
-                        value: str | float | None | list
-                        value = new_line[0]
-                        description = new_line[1]
-                        line = (
-                            "|"
-                            + key
-                            + "|"
-                            + new_line[0]
-                            + "|"
-                            + new_line[1].strip()
-                            + "|\n"
+                elif "=" in line:
+                    new_line = line.split("=")
+                    temp_line = new_line[0].split("::")
+                    key = temp_line[-1].strip()
+                    type_of_value = temp_line[0].strip()
+                    new_line = new_line[1].split("!")
+                    value: str | float | None | list
+                    value = new_line[0]
+                    description = new_line[1]
+                    line = (
+                        "|" + key + "|" + new_line[0] + "|" + new_line[1].strip() + "|\n"
+                    )
+                    output.write(line)
+                    if "REAL" in type_of_value:
+                        default_param_dictionary[key.lower()] = float(
+                            value.replace("d", "e").strip()
                         )
-                        output.write(line)
-                        if "REAL" in type_of_value:
-                            default_param_dictionary[key.lower()] = float(
-                                value.replace("d", "e").strip()
-                            )
-                        elif "LOGICAL" in type_of_value:
-                            default_param_dictionary[key.lower()] = bool(value[1:-1])
-                        elif "CHARACTER" in type_of_value:
-                            if '"' in value:
-                                value = value[value.find('"') + 1 : value.rfind('"')]
-                            elif "'" in value:
-                                value = value[value.find("'") + 1 : value.rfind("'")]
-                            if value == "":
-                                value = None
+                    elif "LOGICAL" in type_of_value:
+                        default_param_dictionary[key.lower()] = bool(value[1:-1])
+                    elif "CHARACTER" in type_of_value:
+                        if '"' in value:
+                            value = value[value.find('"') + 1 : value.rfind('"')]
+                        elif "'" in value:
+                            value = value[value.find("'") + 1 : value.rfind("'")]
+                        if not value:
+                            value = None
 
-                            default_param_dictionary[key.lower()] = value
-                        elif "INTEGER" in type_of_value:
-                            default_param_dictionary[key.lower()] = int(value)
+                        default_param_dictionary[key.lower()] = value
+                    elif "INTEGER" in type_of_value:
+                        default_param_dictionary[key.lower()] = int(value)
 
         # Read constants and potentially modify them to update default_para_dictionary
         with Path(constants_file).open() as constants_r:

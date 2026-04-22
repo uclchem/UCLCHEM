@@ -27,3 +27,6 @@ conda*
 
 # Notebooks - only version control .py files
 notebooks/*.ipynb
+
+# pymend docstring changes
+*.patch

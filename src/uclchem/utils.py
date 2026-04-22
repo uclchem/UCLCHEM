@@ -51,15 +51,14 @@ Use :meth:`SuccessFlag.check_error` to get human-readable error messages.
 - :mod:`uclchem.model` - Model classes that use these utilities
 """
 
+from __future__ import annotations
+
 import enum
 import logging
 import sys
 from io import TextIOWrapper
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, Self, TypeAlias
-
-if TYPE_CHECKING:
-    from uclchem.model import Collapse
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 import numpy as np
 import pandas as pd
@@ -74,9 +73,13 @@ from uclchem.constants import (
 
 UCLCHEM_ROOT_DIR: Path = Path(__file__).parent.resolve().absolute()
 
+if TYPE_CHECKING:
+    from uclchem.model import Collapse
+
 
 def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
     """Calculate the dissipation time of a C-type shock.
+
     Use to obtain a useful timescale for your C-shock model runs.
     Velocity of ions and neutrals equalizes at dissipation time and
     full cooling takes a few dissipation times.
@@ -127,8 +130,7 @@ def get_reaction_table() -> pd.DataFrame:
 
 
 def find_number_of_consecutive_digits(string: str, start: int) -> int:
-    """Determine the number of consecutive digits in a string, starting
-    from some index ``start``.
+    """Determine the number of consecutive digits in a string, starting from some index ``start``.
 
     Args:
         string (str): the string
@@ -161,7 +163,13 @@ def find_number_of_consecutive_digits(string: str, start: int) -> int:
 
 
 def _filament_units():
-    """Return (unitr_pc, unitt_yr) for filament (mode 3) collapse."""
+    """Return (unitr_pc, unitt_yr) for filament (mode 3) collapse.
+
+    Returns:
+        unitr (float): filament units for radius
+        unitt (float): filament units for time
+
+    """
     _rho0_filament = 2.2e4  # reference density for filament/ambipolar (cm^-3)
     two_pi_g_rho0_mh = (
         2.0 * np.pi * GRAVITATIONAL_CONSTANT_CGS * _rho0_filament * HYDROGEN_MASS_CGS
@@ -177,8 +185,12 @@ def _filament_units():
 def _rminfit(t_yr: float, mode: int) -> float:
     """Fit to time evolution of the radius of minimum velocity.
 
+    Args:
+        t_yr (float): Time in years
+        mode (int): One of {3, 4}, indicating the collapse mode
+
     Returns:
-        Radius of minimum velocity (pc for mode 3, normalized units for mode 4).
+        float: Radius of minimum velocity (pc for mode 3, normalized units for mode 4).
     """
     if mode == 3:
         _, unitt = _filament_units()
@@ -204,8 +216,13 @@ def _rminfit(t_yr: float, mode: int) -> float:
 def _vminfit(t_yr: float, mode: int) -> float:
     """Fit to time evolution of minimum velocity (dimensionless units).
 
+    Args:
+        t_yr (float): Time in years
+        mode (int): One of {3, 4}, indicating the collapse mode.
+
     Returns:
-        Minimum velocity in dimensionless units.
+        float: Minimum velocity in dimensionless units.
+
     """
     if mode == 3:
         _, unitt = _filament_units()
@@ -226,8 +243,12 @@ def _vminfit(t_yr: float, mode: int) -> float:
 def _avfit(t_yr: float, mode: int) -> float:
     """Fit to velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
 
+    Args:
+        t_yr (float): Time in years
+        mode (int): One of {3, 4}, indicating the collapse mode.
+
     Returns:
-        Velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
+        float: Velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
     """
     if mode == 3:
         _, unitt = _filament_units()
@@ -253,8 +274,15 @@ def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: int) -> float
 
     Modes 3 (filament) and 4 (ambipolar) only.
 
+    Args:
+        r_pc (float): radius in parsec
+        rmin (float): minimum radius in dimensionless units
+        vmin (float): minimum velocity in dimensionless units
+        av (float): Av
+        mode (int): One of {3, 4}, indicating the collapse mode.
+
     Returns:
-        Radial velocity in cm/s.
+        float: Radial velocity in cm/s.
     """
     if mode == 3:
         unitr, _ = _filament_units()
@@ -278,7 +306,7 @@ def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: int) -> float
         return 1e3 * vr  # convert from 1e-2 km/s to cm/s
 
 
-def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
+def collapse_radial_velocity(model: Collapse, point: int = 0) -> pd.Series:
     """Return the radial velocity (cm/s) for a parcel of a Collapse model.
 
     For filament (mode 3) and ambipolar (mode 4) collapse modes, uses the
@@ -290,8 +318,8 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
     used to generate the model and should be treated as an estimate only.
 
     Args:
-        model: A successfully run :class:`~uclchem.model.Collapse` instance.
-        point: Parcel index (0-based). Defaults to 0.
+        model (Collapse): A successfully run :class:`~uclchem.model.Collapse` instance.
+        point (int): Parcel index (0-based). Defaults to 0.
 
     Returns:
         pd.Series: Radial velocity in cm/s, indexed by time in years.
@@ -300,7 +328,7 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
     Raises:
         TypeError: If ``model`` is not a Collapse model instance.
     """
-    from uclchem.model import Collapse
+    from uclchem.model import Collapse  # noqa: PLC0415
 
     if not isinstance(model, Collapse):
         msg = f"model must be a Collapse instance, got {type(model).__name__}"
@@ -311,7 +339,7 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
     r_pc = df["parcel_radius"]
     mode = model.collapse  # integer 1-4
 
-    if mode in (3, 4):
+    if mode in {3, 4}:
         vr = np.array(
             [
                 _vrfit(r, _rminfit(t, mode), _vminfit(t, mode), _avfit(t, mode), mode)
@@ -330,16 +358,38 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
 
 @enum.verify(enum.UNIQUE)
 class SuccessFlag(enum.IntEnum):
-    """SuccessFlag indicates whether the model failed or ran successfully,
-    and if it failed how.
+    """SuccessFlag indicates whether the model failed or ran successfully, and if it failed how."""
 
-    """
+    def __new__(cls, value: int, _docstring: str = "") -> SuccessFlag:
+        """Generate a new instance of SuccessFlag.
 
-    def __new__(cls, value: int, docstring: str = "") -> Self:  # noqa: D102
+        Args:
+            cls (SuccessFlag): SuccessFlag
+            value (int): Value of the flag
+            _docstring (str): Docstring to attach to it. No need to input this
+                if you create a new instance after running a model. Default = "".
+
+        Returns:
+            SuccessFlag: New SuccessFlag instance
+
+        Notes:
+            This custom __new__ was written to be able to attach short help messages to
+                the SuccessFlag instances. See the example below.
+
+        Examples:
+            >>> success_flag = SuccessFlag.SUCCESS
+            >>> print(success_flag.__doc__)
+            Model ran successfully
+
+            >>> success_flag = SuccessFlag.INT_TOO_MANY_FAILS_ERROR
+            >>> print(success_flag.__doc__)
+            Too many integrator fails occurred.
+
+        """
         member = int.__new__(cls, value)
 
         member._value_ = value
-        member.__doc__ = docstring
+        member.__doc__ = _docstring
 
         return member
 
@@ -418,7 +468,7 @@ def check_expected_type(
 
     Args:
         variable (Any): variable to check type of.
-        expected_type (Type[Any]): expected type.
+        expected_type (type[Any]): expected type.
         name (str | None): Name of variable. If None, no name information will be printed.
             Defaults to None.
 

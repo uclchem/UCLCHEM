@@ -78,7 +78,7 @@ if __name__ == "__main__":
             "baseAv": 10,
         }
         result = uclchem.functional.cloud(param_dict=param_dict)
-        return result
+        return result[0]
 
     with Pool(processes=6) as pool:
         results = pool.map(run_model, model_table.iterrows())  # type: ignore[arg-type]

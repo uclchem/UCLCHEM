@@ -94,7 +94,7 @@ class RuntimeSpecies:
 
         """
         return (
-            self.get_name() in ["BULK", "SURFACE"]
+            self.get_name() in {"BULK", "SURFACE"}
             or self.get_name().startswith(
                 "#",
             )

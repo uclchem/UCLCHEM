@@ -8,6 +8,7 @@ Example:
 """
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -108,8 +109,6 @@ def find_existing_kernel_spec(python_exec: Path) -> str | None:
         )
 
         if result.returncode == 0:
-            import json
-
             kernel_specs = json.loads(result.stdout)
 
             # Check each kernel spec to see if it uses our Python executable

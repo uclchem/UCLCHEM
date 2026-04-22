@@ -56,12 +56,11 @@ def _strip_comment(line: str) -> str:
         if in_str:
             if ch == quote:
                 in_str = False
-        else:
-            if ch in ("'", '"'):
-                in_str = True
-                quote = ch
-            elif ch == "!":
-                return line[:i]
+        elif ch in {"'", '"'}:
+            in_str = True
+            quote = ch
+        elif ch == "!":
+            return line[:i]
     return line
 
 

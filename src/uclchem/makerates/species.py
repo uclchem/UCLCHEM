@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
-from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from warnings import warn
 
+import numpy as np
 import pandas as pd
 
 from uclchem.utils import check_expected_type, find_number_of_consecutive_digits
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 element_list = [
     "H",
@@ -96,14 +99,14 @@ def normalize_species_name(name: str) -> str:
 
     """
     # Preserve empty strings; convert other falsy values to "NAN"
-    if name == "":
+    if name == "":  # noqa: PLC1901
         return ""
     if not name:
         return "NAN"
 
     grain_prefix = ""
     rest = name
-    if rest[0] in ("#", "@"):
+    if rest[0] in {"#", "@"}:
         grain_prefix = rest[0]
         rest = rest[1:]
     # A chemical prefix is exactly one alpha char + '-' with more formula after it.
@@ -148,9 +151,10 @@ def is_number(s: Any) -> bool:
 
 
 def sanitize_input_float(row: list[Any], index: int, default: Any = 0.0) -> float:
-    """Sanitize the input. If the index is out of bounds of the row or the value
-    from the row cannot be turned into a float, use the ``default`` value.
-    Otherwise, just gets the value from the row.
+    """Sanitize the input.
+
+    If the index is out of bounds of the row or the value from the row cannot be turned into a float,
+    use the ``default`` value. Otherwise, just gets the value from the row.
 
     Args:
         row (list[Any]): list of objects
@@ -168,8 +172,9 @@ def sanitize_input_float(row: list[Any], index: int, default: Any = 0.0) -> floa
 
 
 class Species:
-    """Species is a class that holds all the information about an individual species in the
-    network. It also has convenience functions to check whether the species is a gas or grain
+    """Class that holds all the information about an individual species in the network.
+
+    It also has convenience functions to check whether the species is a gas or grain
     species and to help compare between species.
     """
 
@@ -188,7 +193,7 @@ class Species:
 
         self.name = normalize_species_name(str(input_row[0]))
         # Detect chemical isomer prefix (e.g. 'o' from 'o-H2' or '#o-H2').
-        _rest = self.name[1:] if self.name and self.name[0] in ("#", "@") else self.name
+        _rest = self.name[1:] if self.name and self.name[0] in {"#", "@"} else self.name
         self.prefix = (
             _rest[0]
             if (len(_rest) > 2 and _rest[1] == "-" and _rest[0].islower())
@@ -272,6 +277,7 @@ class Species:
 
     def get_charge(self) -> int:
         """Get the charge of the chemical species in e.
+
         Positive integer indicates positive ion, negative indicates negative ion.
         Assumes species are at most charged +1 or -1.
 
@@ -386,6 +392,7 @@ class Species:
 
     def set_desorb_products(self, new_desorbs: list[str]) -> None:
         """Set the desorption products for species on the surface or in the bulk.
+
         It is assumed that there is only one desorption pathway.
 
         Args:
@@ -423,16 +430,17 @@ class Species:
         return self.desorb_products
 
     def set_freeze_products(self, product_list: list[str], freeze_alpha: float) -> None:
-        """Add the freeze products of the species, one species can have
-        several freeze products.
+        """Add the freeze products of the species.
 
-        Args:
-            product_list (list[str]): The list of freeze out products
-            freeze_alpha (float): The freeze out ratio.
+        One species can have several freeze products.
 
         It is called alpha, since it is derived from the alpha column
         in the UCLCHEM reaction format:
         https://github.com/uclchem/UCLCHEM/blob/08d37f8c3063f8ff8a9a7aa16d9eff0ed4f99538/Makerates/src/network.py#L160
+
+        Args:
+            product_list (list[str]): The list of freeze out products
+            freeze_alpha (float): The freeze out ratio.
 
         """
         self.freeze_products[",".join(product_list)] = freeze_alpha
@@ -441,7 +449,7 @@ class Species:
         """Obtain the product to which the species freeze out.
 
         Yields:
-            Iterator[tuple[list[str], float]]: Iterator that returns all of the
+            tuple[list[str], float]: Iterator that returns all of the
                 freeze out reactions with ratios
 
         """
@@ -486,7 +494,7 @@ class Species:
             stacklevel=2,
         )
         return (
-            self.get_name() in ["BULK", "SURFACE"]
+            self.get_name() in {"BULK", "SURFACE"}
             or self.get_name().startswith(
                 "#",
             )
@@ -501,7 +509,7 @@ class Species:
 
         """
         return (
-            self.get_name() in ["BULK", "SURFACE"]
+            self.get_name() in {"BULK", "SURFACE"}
             or self.get_name().startswith(
                 "#",
             )
@@ -536,20 +544,22 @@ class Species:
         return self.get_name().endswith("+") or self.get_name().endswith("-")
 
     def add_default_freeze(self) -> None:
-        """Add a default freezeout, which is freezing out to the species itself,
-        but with no ionization.
-        """
+        """Add a default freezeout, which is freezing out to the species itself, but with no ionization."""
         freeze = "#" + self.get_name()
-        if freeze[-1] in ["+", "-"]:
+        if freeze[-1] in {"+", "-"}:
             freeze = freeze[:-1]
         if self.get_name() == "E-":
             freeze = ""
         self.set_freeze_products([freeze, "NAN", "NAN", "NAN"], 1.0)
 
     def find_constituents(self, quiet: bool = False) -> Counter[str]:
-        """Loop through the species' name and work out what its constituent
-        atoms are. Then calculate mass and alert user if it doesn't match
-        input mass.
+        """Find the constituent elements from a species' name.
+
+        Also calculate mass and alert user if it doesn't match input mass.
+
+        Args:
+            quiet (bool): Whether to suppress the warning if the input mass does not match
+                the calculated mass. Default = False.
 
         Returns:
             counter (Counter[str]): Counter of how many times each element is in the molecule.
@@ -583,7 +593,7 @@ class Species:
         # Strip chemical isomer prefix (e.g. 'o-' from 'o-H2' or '#o-H2') so the
         # element parser only sees the plain formula.
         if self.prefix:
-            if name and name[0] in ("#", "@"):
+            if name and name[0] in {"#", "@"}:
                 # keep the grain prefix, remove 'x-' immediately after it
                 name = name[0] + name[len(self.prefix) + 2 :]
             else:
@@ -924,14 +934,16 @@ class Species:
         return self.get_name()
 
     def calculate_rotational_partition_factor(self) -> float:
-        """Calculate 1/sigma*(SQRT(IxIyIz)) for non-linear molecules, and
-        1/sigma*(SQRT(IyIz)) for linear molecules.
+        """Calculate the rotational partition factor of the species.
 
-        Returns -999.0 if molecular inertia data is not available (backward compatibility).
+        The "rotational partition factor" corresponds to
+        1/sigma*(SQRT(IxIyIz)) for non-linear species, and 1/sigma*(SQRT(IyIz)) for linear ones.
+
+        Returns -999.0 if molecular inertia data is not available (for backward compatibility).
         This signals that TST prefactors cannot be used for this species.
 
         Returns:
-            float: Rotational partition factor scaled by 1e50, or -999.0 if unavailable
+            float: Rotational partition factor scaled up by 1e50, or -999.0 if unavailable
 
         """
         if self.n_atoms == 1:
@@ -948,7 +960,6 @@ class Species:
 
         # Ix, Iy and Iz are in units of amu Angstrom^2,
         # so need to convert to kg m2
-        import numpy as np
 
         amu = 1.66053907e-27  # kg/amu
         scalingFactor = 1e50  # noqa: N806

@@ -26,7 +26,7 @@ def get_parameter_info() -> dict[str, tuple[Any, str, str]]:
 
     """
     try:
-        import uclchemwrap
+        import uclchemwrap  # noqa: PLC0415
 
         dp = uclchemwrap.defaultparameters
     except ImportError:
@@ -268,7 +268,7 @@ def format_value(value: str | bool | int | bytes | float) -> str:
         return ".True." if value else ".False."
     elif isinstance(value, int | np.integer):
         # Check if it's a boolean disguised as int (Fortran LOGICAL)
-        if value in (0, 1):
+        if value in {0, 1}:
             return ".True." if value == 1 else ".False."
         return str(value)
     elif isinstance(value, float | np.floating):

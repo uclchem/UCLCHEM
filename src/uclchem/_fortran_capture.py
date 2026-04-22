@@ -22,6 +22,14 @@ def _reader_thread(
 
     Uses raw os.read() to bypass all Python IO buffering.
     The log file is lazily created on first non-empty line.
+
+    Args:
+        read_fd (int): file descriptor of where fortran puts output
+        saved_stdout_fd (int): file descriptor of where to log output
+        prefix (str): prefix of what to add in front of the log
+        log_file (str | Path | None): path to write logs to.
+            If None, do not write to file, only to stdout.
+
     """
     log_handle = None
     buf = b""
@@ -80,11 +88,12 @@ def capture_fortran_output(
     in real time and optionally writes to a per-model log file.
 
     Args:
-        label (str): Identifier prepended to terminal lines.
+        label (str): Identifier prepended to terminal lines. Default = "".
         log_file (str | Path | None): Per-model log file path.
             Only created if there is at least one line of output. Default = None.
 
-    Yields: None
+    Yields:
+        None: nothing
 
     Example:
         >>> from uclchem.model import Cloud

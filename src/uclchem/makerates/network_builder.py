@@ -10,14 +10,18 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from numpy import any as np_any
 
-from uclchem.makerates.heating import convert_to_erg
-from uclchem.makerates.network import Network
+from uclchem.makerates.heating import convert_to_erg, set_custom_exothermicities
 from uclchem.makerates.reaction import CoupledReaction, Reaction, reaction_types
 from uclchem.makerates.species import Species, element_list
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from uclchem.makerates.network import Network
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +127,7 @@ class NetworkBuilder:
 
         """
         # Import here to avoid circular dependency
-        from .network import Network
+        from .network import Network  # noqa: PLC0415
 
         # Create initial network from inputs
         logger.info(
@@ -476,7 +480,7 @@ class NetworkBuilder:
                     "NAN",
                     species.get_name().replace("@", "#"),
                 ]
-                new_reac_list = new_reac_list + [
+                new_reac_list += [
                     "NAN",
                     "NAN",
                     "NAN",
@@ -490,9 +494,9 @@ class NetworkBuilder:
                 new_reactions.append(Reaction(new_reac_list))
 
             # and the reverse, going from surface to bulk
-            if species not in [
+            if species not in {
                 "@H2"
-            ]:  # If species is H2, do not allow it to go from surface to bulk
+            }:  # If species is H2, do not allow it to go from surface to bulk
                 new_reac_list[0] = species.get_name().replace("@", "#")
                 new_reac_list[1] = "SURFSWAP"
                 new_reac_list[3] = species.get_name()
@@ -588,7 +592,7 @@ class NetworkBuilder:
                 and r.get_reaction_type() in desorb_reacs
             )
             first_product = first_rxn.get_products()[0]
-            if species_name in species_dict and first_product not in ("NAN", ""):
+            if species_name in species_dict and first_product not in {"NAN", ""}:
                 species_dict[species_name].set_desorb_products(
                     [first_product, "NAN", "NAN", "NAN"]
                 )
@@ -678,7 +682,7 @@ class NetworkBuilder:
             reactants = reaction.get_reactants()
             if reactants[0][0] == "@" or reactants[1][0] == "@":
                 continue
-            if reaction.get_reaction_type() in ["LH", "ER"]:
+            if reaction.get_reaction_type() in {"LH", "ER"}:
                 n_products = sum(prod != "NAN" for prod in reaction.get_products())
 
                 reaction_partner = deepcopy(reaction)
@@ -726,7 +730,7 @@ class NetworkBuilder:
                     # pathway if defined (set via FREEZE/DESORB reactions). This allows
                     # non-standard products (e.g., ionization during freeze-out).
                     # Example: #HSIO -> SIOH+ (via custom FREEZE/DESORB definition)
-                    if new_reaction.get_reaction_type() in ["LHDES", "ERDES"]:
+                    if new_reaction.get_reaction_type() in {"LHDES", "ERDES"}:
                         # Chemical desorption: strip grain/bulk prefix for standard gas product
                         gas_product = new_products[i][1:]  # Remove # or @ prefix
                         desorb_products = [gas_product, "NAN", "NAN", "NAN"]
@@ -892,11 +896,11 @@ class NetworkBuilder:
         reactions_on_grain_filtered = [
             reaction
             for reaction in reactions_on_grain
-            if reaction.get_reaction_type() in ["CRP", "CRPHOT", "PHOTON"]
+            if reaction.get_reaction_type() in {"CRP", "CRPHOT", "PHOTON"}
         ]
         new_reactions = []
         for reaction in self.network.get_reaction_list():
-            if reaction.get_reaction_type() not in ["CRP", "CRPHOT", "PHOTON"]:
+            if reaction.get_reaction_type() not in {"CRP", "CRPHOT", "PHOTON"}:
                 continue
             if reaction in reactions_on_grain_filtered:
                 continue
@@ -933,7 +937,7 @@ class NetworkBuilder:
                 continue
             if not all(
                 species in self.network.get_species_list()
-                or species in ["NAN", "CRP", "CRPHOT", "PHOTON"]
+                or species in {"NAN", "CRP", "CRPHOT", "PHOTON"}
                 for species in reactants + products
             ):
                 # Reaction contains species that were not defined on grain surface.
@@ -954,7 +958,7 @@ class NetworkBuilder:
         """
         branching_reactions: dict[str, float] = {}
         for reaction in self.network.get_reaction_list():
-            if reaction.get_reaction_type() in ["LH", "LHDES"]:
+            if reaction.get_reaction_type() in {"LH", "LHDES"}:
                 reactant_string = ",".join(reaction.get_reactants())
                 if reactant_string in branching_reactions:
                     branching_reactions[reactant_string] += reaction.get_alpha()
@@ -966,7 +970,7 @@ class NetworkBuilder:
                 "Some of the branching ratios do not sum to 1.0, correcting those that do not"
             )
             for reaction in self.network.get_reaction_list():
-                if reaction.get_reaction_type() in ["LH", "LHDES"]:
+                if reaction.get_reaction_type() in {"LH", "LHDES"}:
                     reactant_string = ",".join(reaction.get_reactants())
                     # Check if we need to correct the branching ratio
                     # (smaller than 0.98 is allowed)
@@ -1013,7 +1017,7 @@ class NetworkBuilder:
         """
         for reaction in self.network._reactions_dict.values():
             if reaction.is_gas_reaction() and (
-                reaction.get_reaction_type() in ["TWOBODY", "PHOTON", "CRP", "CRPHOT"]
+                reaction.get_reaction_type() in {"TWOBODY", "PHOTON", "CRP", "CRPHOT"}
             ):
                 similar_reactions = self.network.find_similar_reactions(reaction)
                 # Only enable extrapolation if we have one or overlapping reactions
@@ -1069,8 +1073,6 @@ class NetworkBuilder:
                 to custom exothermicity CSV files.
 
         """
-        from .heating import set_custom_exothermicities
-
         for csv_path in database_reaction_exothermicity:
             logger.info(f"Applying custom exothermicities from {csv_path}")
             set_custom_exothermicities(
@@ -1130,7 +1132,7 @@ class NetworkBuilder:
             "\tCheck that species have surface counterparts or if they have multiple freeze outs/check alphas:\n"
         )
         for spec in self.network.get_species_list():
-            if not spec.is_ice_species() and spec.get_name()[-1] not in ["+", "-"]:
+            if not spec.is_ice_species() and spec.get_name()[-1] not in {"+", "-"}:
                 exist_check = 0
                 for check_species in self.network.get_species_list():
                     if check_species.get_name() == "#" + spec.get_name():

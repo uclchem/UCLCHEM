@@ -85,7 +85,7 @@ class RuntimeNetwork(BaseNetwork):
         """
         # Import the compiled Fortran network module
         try:
-            from uclchemwrap import network as network_module
+            from uclchemwrap import network as network_module  # noqa: PLC0415
         except ImportError as e:
             msg = (
                 "Cannot import Fortran network module. "

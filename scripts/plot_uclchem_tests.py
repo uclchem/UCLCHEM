@@ -40,7 +40,7 @@ plot_types = {
 
 print_elemental_conservation = True
 if __name__ == "__main__":
-    for plot_type in plot_types:
+    for plot_type, species_names in plot_types.items():
         fig, axes = plt.subplots(3, 3, figsize=(16, 12), tight_layout=True)
         axes = axes.flatten()
         i = 0
@@ -51,7 +51,6 @@ if __name__ == "__main__":
             "static": "Static Cloud",
         }
         model_data = {}
-        species_names = plot_types[plot_type]
         for folder in ["example-output/", "test-output/"]:
             for model in ["phase1", "phase2", "static"]:
                 axis = axes[i]
@@ -115,7 +114,7 @@ if __name__ == "__main__":
                         axis.get_title()
                         + f" (Charge conservation: {charge_conservation.mean():.2e})"
                     )
-                i = i + 1
+                i += 1
         axes[0].text(
             0.02,
             0.98,

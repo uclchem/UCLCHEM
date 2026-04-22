@@ -20,10 +20,8 @@ from __future__ import annotations
 
 import logging
 import warnings
-from collections.abc import Iterator
 from contextlib import contextmanager
-from types import ModuleType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -31,6 +29,10 @@ import uclchemwrap
 
 # Import parameter classifications from constants module
 from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from types import ModuleType
 
 logger = logging.getLogger(__name__)
 
@@ -135,14 +137,13 @@ class Setting:
                         UserWarning,
                         stacklevel=2,
                     )
-            else:
-                if memory_value != self.current_value:
-                    warnings.warn(
-                        f"{self.module_name}.{self.name} has been modified "
-                        f"outside of GeneralSettings (cache out of sync)",
-                        UserWarning,
-                        stacklevel=2,
-                    )
+            elif memory_value != self.current_value:
+                warnings.warn(
+                    f"{self.module_name}.{self.name} has been modified "
+                    f"outside of GeneralSettings (cache out of sync)",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
         # Update cache
         self.current_value = _copy_value(memory_value)
@@ -290,7 +291,7 @@ class ModuleSettings:
             except Exception as e:
                 # Skip attributes that can't be accessed
                 logger.exception(
-                    "Exception occurred when accessing attribute {value} from module {module_name}:\n",
+                    f"Exception occurred when accessing attribute '{attr}' from module '{module_name}':\n",
                     e,
                 )
 
@@ -332,7 +333,7 @@ class ModuleSettings:
         """
         logger.debug(f"Trying to set setting '{name}' to {value}")
 
-        if name.startswith("_") or name in ["module_name"]:
+        if name.startswith("_") or name == "module_name":
             object.__setattr__(self, name, value)
             return
 

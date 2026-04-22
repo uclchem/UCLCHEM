@@ -15,9 +15,11 @@ Usage:
     matcher.save_mapping_yaml(mapping, "species_mapping_v1.220.yaml")  # Optional YAML
 """
 
+import argparse
 import logging
 import re
 import shutil
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -204,7 +206,7 @@ class SpeciesMatcher:
         target_species = [
             s
             for s in uclchem_species
-            if pd.notna(s) and s not in ["NAN", ""] and not s.startswith(("#", "@"))
+            if pd.notna(s) and s not in {"NAN", ""} and not s.startswith(("#", "@"))
         ]
 
         # Resume from previous session if requested
@@ -485,8 +487,6 @@ class SpeciesMatcher:
                 "{basename}_backup{extension}".
 
         """
-        import shutil
-
         base_name = Path(session_file).stem
         extension = Path(session_file).suffix
         backup_name = f"{base_name}_backup{extension}"
@@ -708,9 +708,6 @@ class SpeciesMatcher:
 
 def main() -> None:
     """Command-line interface for species matcher."""
-    import argparse
-    import sys
-
     # Configure logging
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 

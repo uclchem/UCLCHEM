@@ -24,8 +24,7 @@ if __name__ == "__main__":
                         lines.append("<tr>\n")
                         ignore_lines = False
                 # if no style, just add the line
-                else:
-                    if not ignore_lines:
-                        lines.append(line)
+                elif not ignore_lines:
+                    lines.append(line)
         with Path(mdx_file).open("w") as f:
             f.writelines(lines)

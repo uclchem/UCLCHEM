@@ -23,6 +23,8 @@ import uclchemwrap
 from uclchemwrap import f2py_constants as f2py_constants_module
 from uclchemwrap import heating as heating_module
 
+from uclchem.utils import UCLCHEM_ROOT_DIR
+
 logger = logging.getLogger(__name__)
 
 
@@ -330,7 +332,7 @@ class HeatingSettings:
             >>> settings.set_dust_gas_coupling_method(settings.DUST_TEMP_HOLLENBACH)
 
         """
-        if method not in [1, 2]:
+        if method not in {1, 2}:
             msg = "method must be 1 (Hocuk) or 2 (Hollenbach)"
             raise ValueError(msg)
         self._heating_module.dust_gas_coupling_method = method
@@ -476,7 +478,7 @@ class HeatingSettings:
                 attempted to set it.
 
         """
-        if mode not in [0, 1, 2]:
+        if mode not in {0, 1, 2}:
             msg = f"mode must be 0, 1, or 2, got {mode}"
             raise ValueError(msg)
         self._uclchemwrap.uclchemwrap.set_coolant_restart_mode_wrap(mode)
@@ -624,14 +626,12 @@ def initialize_coolant_directory() -> str:
     try:
         # Try new API first (Python 3.9+)
         try:
-            from importlib.resources import files
-
-            package_data_path = Path(str(files("uclchem") / "data" / "collisional_rates"))
+            package_data_path = Path(
+                str(importlib.resources.files("uclchem") / "data" / "collisional_rates")
+            )
         except (ImportError, TypeError):
             # Fallback to older API (Python 3.7-3.8)
-            from importlib.resources import path as resource_path
-
-            with resource_path("uclchem.data", "collisional_rates") as p:
+            with importlib.resources.path("uclchem.data", "collisional_rates") as p:
                 package_data_path = Path(p)
 
         if package_data_path.is_dir() and list(package_data_path.glob("*.dat")):
@@ -645,8 +645,6 @@ def initialize_coolant_directory() -> str:
 
     # Priority 3: Development mode - search for Makerates/data/collisional_rates/
     try:
-        from uclchem.utils import UCLCHEM_ROOT_DIR
-
         # Try relative to UCLCHEM_ROOT_DIR (src/uclchem/)
         candidates = [
             UCLCHEM_ROOT_DIR.parent.parent

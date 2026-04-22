@@ -62,7 +62,7 @@ def parse_species_from_row(row: pd.Series, prefix: str) -> list[str]:
     idx = 1
     while f"{prefix}{idx}" in row.index:
         val = row[f"{prefix}{idx}"]
-        if pd.isna(val) or val == "" or str(val).upper().strip() == "NAN":
+        if pd.isna(val) or not val or str(val).upper().strip() == "NAN":
             species.append("NAN")
         else:
             species.append(str(val).strip().upper())

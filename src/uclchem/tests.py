@@ -13,12 +13,13 @@ from uclchem.utils import UCLCHEM_ROOT_DIR
 def test_ode_conservation(
     element_list: list[str] | None = None,
 ) -> dict[str, float]:
-    """Test whether the ODEs conserve elements. Useful to run each time you change network.
-    Integrator errors may still cause elements not to be conserved but they cannot be conserved
-    if the ODEs are not correct.
+    """Test whether the ODEs conserve elements.
+
+    Useful to run each time you change network. Integrator errors may still cause
+    elements not to be conserved but they cannot be conserved if the ODEs are not correct.
 
     Args:
-        element_list (list[str]): A list of elements for which to check the conservation.
+        element_list (list[str] | None): A list of elements for which to check the conservation.
             If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
 
     Returns:

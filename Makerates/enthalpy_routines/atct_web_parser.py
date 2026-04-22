@@ -14,6 +14,7 @@ Usage:
 """
 
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -276,8 +277,6 @@ def main() -> None:
         RuntimeError: If parsing of input file failed.
 
     """
-    import sys
-
     if len(sys.argv) != 3:
         print("Usage: python atct_web_parser.py <input_html> <output_csv>")
         sys.exit(1)

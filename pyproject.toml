@@ -41,9 +41,32 @@ extend-exclude = ["notebooks/*.py"]
 line-length = 90
 
 [tool.ruff.lint]
-select = ["E", "F", "C", "I", "W", "D", "E", "B", "ANN001", "ANN201", "B006", "ARG", "RUF100", "UP", "PLR6301", "DOC", "SIM", "S", "EM", "ERA", "N", "PERF", "ICN", "TID", "PTH", "LOG"]
+select = ["E", "F", "C", "I", "W", "D", "E", "B", 
+    "ANN001", "ANN201", 
+    "ARG", 
+    "RUF100", 
+    "UP", 
+    "DOC", "D",
+    "SIM", "S", 
+    "EM", 
+    "ERA", 
+    "N", 
+    "PERF", 
+    "ICN", 
+    "TID", 
+    "PTH", 
+    "LOG", 
+    "TC", 
+    "PLC", "PLR", "PLE"
+]
 extend-ignore = [
-    "E501", "E731", "E741", "E402", "F841", "F811", "C901", "E203", "E402", "D211", "D213", "D205", "D105", "D107", "D301", "SIM108", "SIM102", "S603", "S607", "S404", "S602"
+    "E501", "E731", "E741", "E402", "E203", "E204",
+    "F841", "F811", 
+    "C901", 
+    "D211", "D213", "D205", "D105", "D107", "D301", 
+    "SIM108", "SIM102", 
+    "S603", "S607", "S404", "S602", 
+    "PLR2004", "PLR0911", "PLR1702", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR0914", "PLR0904"
 ]
 pycodestyle.max-doc-length = 105
 pydocstyle.convention = 'google'
@@ -53,7 +76,7 @@ preview = true
 # E402: Module level import not at top of file - normal for notebook-derived files
 "notebooks/*.py" = ["E402"]
 "*/__init__.py" = ["F401"]
-"tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002", "DOC", "S101", "B011"]
+"tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002", "DOC", "S101", "B011", "PLC", "PLR"]
 
 
 [tool.typos.files]
@@ -108,6 +131,6 @@ ATcT = "ATcT"
 
 
 [[tool.mypy.overrides]]
-module = ["yaml", "uclchemwrap", "h5py", "nbconvert.*", "nbformat", "pytest", "matplotlib", "matplotlib.*", "xarray", "bs4", "pydantic"]
+module = ["yaml", "uclchemwrap", "h5py", "nbconvert.*", "nbformat", "pytest", "matplotlib", "matplotlib.*", "xarray", "bs4", "pydantic", "uclchem._project_root"]
 ignore_missing_imports = true
 
