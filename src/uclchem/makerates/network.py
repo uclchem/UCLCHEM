@@ -236,7 +236,8 @@ class BaseNetwork(NetworkABC):
         """Get species dictionary.
 
         Returns:
-            dict[str, Species]: species dictionary"""
+            dict[str, Species]: species dictionary
+        """
         return self._species_dict
 
     @property
@@ -433,8 +434,8 @@ class Network(BaseNetwork, MutableNetworkABC):
         >>> network = Network.build(species_list, reactions_list, gas_phase_extrapolation=True)
 
     Attributes:
-        _species_dict: Internal species storage {name: Species}
-        _reactions_dict: Internal reaction storage {index: Reaction}
+        _species_dict (dict[str, Species]): Internal species storage {name: Species}
+        _reactions_dict (dict[int, Reaction]): Internal reaction storage {index: Reaction}
 
     """
 
@@ -454,8 +455,8 @@ class Network(BaseNetwork, MutableNetworkABC):
         uclchem.advanced.runtime_network instead.
 
         Args:
-            species_dict: Species dictionary {name: Species}
-            reaction_dict: Reaction dictionary {index: Reaction}
+            species_dict (dict[str, Species]): Species dictionary {name: Species}
+            reaction_dict (dict[int, Reaction]): Reaction dictionary {index: Reaction}
 
         """
         self._species_dict = species_dict
@@ -478,8 +479,10 @@ class Network(BaseNetwork, MutableNetworkABC):
         networks for analysis purposes.
 
         Args:
-            species_path: Path to species CSV (None = use default installation)
-            reactions_path: Path to reactions CSV (None = use default installation)
+            species_path (str | Path | None): Path to species CSV (None = use default installation).
+                Default = None.
+            reactions_path (str | Path | None): Path to reactions CSV (None = use default installation).
+                Default = None.
 
         Returns:
             Network: Loaded network instance
@@ -527,8 +530,8 @@ class Network(BaseNetwork, MutableNetworkABC):
         construction or as a base for NetworkBuilder.
 
         Args:
-            species: List of Species objects
-            reactions: List of Reaction objects
+            species (list[Species]): List of Species objects
+            reactions (list[Reaction]): List of Reaction objects
 
         Returns:
             Network: Network instance
@@ -563,8 +566,8 @@ class Network(BaseNetwork, MutableNetworkABC):
         ratio checks, and all build-time operations. Delegates to NetworkBuilder.
 
         Args:
-            species: List of Species objects
-            reactions: List of Reaction objects
+            species (list[Species]): List of Species objects
+            reactions (list[Reaction]): List of Reaction objects
             **build_options: Options passed to NetworkBuilder:
                 - user_defined_bulk: List of user-defined bulk species
                 - gas_phase_extrapolation: bool (default False)

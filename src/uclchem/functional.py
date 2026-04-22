@@ -689,8 +689,8 @@ def cshock(
         return_heating (bool): Whether the heating/cooling arrays should be returned to a user.
             Default = False.
         return_stats (bool): Whether DVODE statistics should be returned. Default = False.
-        starting_chemistry (np.ndarray | None): np.ndarray containing the starting chemical abundances needed
-            by UCLCHEM. If None, use default initial abundances. Default = None.
+        starting_chemistry (np.ndarray | None): np.ndarray containing the starting chemical abundances
+            needed by UCLCHEM. If None, use default initial abundances. Default = None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to ``uclchem.constants.TIMEPOINTS``.
 

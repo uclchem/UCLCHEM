@@ -544,7 +544,7 @@ class Species:
         return self.get_name().endswith("+") or self.get_name().endswith("-")
 
     def add_default_freeze(self) -> None:
-        """Add a default freezeout, which is freezing out to the species itself, but with no ionization."""
+        """Add a default freezeout, which is freezing out to the species itself, but without charge."""
         freeze = "#" + self.get_name()
         if freeze[-1] in {"+", "-"}:
             freeze = freeze[:-1]
