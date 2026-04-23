@@ -245,6 +245,7 @@ def _pool_initializer(snapshot: dict[str, Any]) -> None:
         >>> # A pool can then be initialized as
         >>> n_workers = 2
         >>> mp.Pool(n_workers, initializer=_pool_initializer, initargs=(snapshot,))
+        <multiprocessing.pool.Pool state=RUN pool_size=2>
 
     """
     restore_snapshot(snapshot)
