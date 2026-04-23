@@ -32,12 +32,12 @@ def run_makerates(
 
     Args:
         configuration (str | Path | MakeratesConfig): Path to YAML configuration file,
-            or ``MakeratesConfig`` instance. Defaults to "user_settings.yaml"
+            or ``MakeratesConfig`` instance. Defaults to "user_settings.yaml".
         write_files (bool): Whether to write fortran files to src/fortran_src.
             Defaults to True.
-        output_directory (str | Path): Optional override for the output directory
+        output_directory (str | Path | None): Optional override for the output directory
             where files should be written. If None, uses the 'output_directory'
-            from the config (if present) or the package defaults.
+            from the config (if present) or the package defaults. Default = None.
 
     Returns:
         network (Network): A validated chemical network instance.
@@ -208,10 +208,10 @@ def get_network(
 
 
     Args:
-        path_to_input_file (str | bytes | Path | None): Path to input file. Defaults to None.
-        path_to_species_file (str bytes | Path | None): Path to a species.csv
+        path_to_input_file (str | Path | None): Path to input file. Defaults to None.
+        path_to_species_file (str | Path | None): Path to a species.csv
             in/from the src directory. Defaults to None.
-        path_to_reaction_file (str | bytes | Path | None): Path to a reactions.csv in/from
+        path_to_reaction_file (str | Path | None): Path to a reactions.csv in/from
             the src directory. Defaults to None.
         verbosity (str | None): The verbosity level as specified in logger.
             Defaults to None.
@@ -240,13 +240,32 @@ def get_network(
 
 def _get_network_from_files(
     species_file: str | Path,
-    reaction_files: Sequence[str | Path],
-    reaction_types: list[ReactionFileTypes],
+    reaction_files: str | Path | Sequence[str | Path],
+    reaction_types: ReactionFileTypes | list[ReactionFileTypes],
     gas_phase_extrapolation: bool,
     add_crp_photo_to_grain: bool,
     derive_reaction_exothermicity: bool | str | list[str],
     database_reaction_exothermicity: Sequence[str | Path] | None = None,
 ) -> tuple[Network, list[list]]:
+    """Get a network from files.
+
+    Args:
+        species_file (str | Path): path to a species file
+        reaction_files (str | Path | Sequence[str | Path]): path to reaction files
+        reaction_types (ReactionFileTypes | list[ReactionFileTypes]): list of reaction
+            file types corresponding to each file in ``reaction_files``.
+        gas_phase_extrapolation (bool): Extrapolate gas-phase temperature.
+        add_crp_photo_to_grain (bool): Add CRP/PHOTON to grain.
+        derive_reaction_exothermicity (bool | str | list[str]): Reaction types to calculate
+            exothermicity for.
+        database_reaction_exothermicity (Sequence[str | Path] | None): Custom exothermicity database
+            files. Default = None.
+
+    Returns:
+        network (Network): Instanciated Network.
+        dropped_reactions (list[list]): list of dropped reactions.
+
+    """
     logger.info(
         f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"
     )

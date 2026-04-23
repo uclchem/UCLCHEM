@@ -59,16 +59,16 @@ class Setting:
     for a Fortran module variable.
 
     Attributes:
-        name: Setting name
-        module_name: Parent Fortran module name
-        current_value: Current value (cached on last read)
-        is_edited: Whether value has been modified from default
-        default_value: Original default value at initialization
-        dtype: NumPy dtype or Python type
-        is_parameter: True if this is a compile-time constant (read-only)
-        is_internal: True if this is an internal solver parameter
-        is_file_path: True if this is a file path (should use param_dict)
-        shape: Array shape (None for scalars)
+        name (str): Setting name
+        module_name (str): Parent Fortran module name
+        current_value (Any): Current value (cached on last read)
+        is_edited (bool): Whether value has been modified from default
+        default_value (bool): Original default value at initialization
+        dtype (npt.DTypeLike): NumPy dtype or Python type
+        is_parameter (bool): True if this is a compile-time constant (read-only)
+        is_internal (bool): True if this is an internal solver parameter
+        is_file_path (bool): True if this is a file path (should use param_dict)
+        shape (tuple[int, int] | None): Array shape (None for scalars)
 
     """
 
@@ -114,15 +114,15 @@ class Setting:
             self.dtype = type(value)
             self.shape = None
 
-    def get(self, check_memory: bool = True) -> float | int | npt.NDArray:
+    def get(self, check_memory: bool = True) -> float | int | np.ndarray:
         """Get the current value of the setting.
 
         Args:
-            check_memory: If True, compare cached value with actual Fortran memory
-                         and warn if they differ
+            check_memory (bool): If True, compare cached value with actual Fortran memory
+                and warn if they differ. Default = True.
 
         Returns:
-            Current value from Fortran memory
+            float | int | np.ndarray: Current value from Fortran memory
 
         """
         memory_value = getattr(self._fortran_module, self.name)
@@ -149,11 +149,11 @@ class Setting:
         self.current_value = _copy_value(memory_value)
         return memory_value
 
-    def set(self, value: float | int | npt.NDArray) -> None:
+    def set(self, value: float | int | np.ndarray) -> None:
         """Set the value of the setting.
 
         Args:
-            value: New value to set
+            value (float | int | np.ndarray): New value to set
 
         Raises:
             RuntimeError: If attempting to modify a PARAMETER or file path parameter
@@ -299,7 +299,7 @@ class ModuleSettings:
         """Get a Setting object by name.
 
         Args:
-            name: name of setting.
+            name (str): name of setting.
 
         Returns:
             Setting: setting
@@ -686,7 +686,7 @@ class GeneralSettings:
             100.0
 
         Yields:
-            self: The GeneralSettings instance for chaining
+            self (GeneralSettings): The GeneralSettings instance for chaining
 
         """
         # Save all current values (not just edited ones)

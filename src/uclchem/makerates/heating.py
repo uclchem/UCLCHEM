@@ -51,11 +51,11 @@ def parse_species_from_row(row: pd.Series, prefix: str) -> list[str]:
     """Parse species list from CSV row.
 
     Args:
-        row: DataFrame row
-        prefix: 'reactant' or 'product'
+        row (pd.Series): DataFrame row
+        prefix (str): 'reactant' or 'product'
 
     Returns:
-        List of species names (uppercase, NAN for missing)
+        list[str]: List of species names (uppercase, NAN for missing)
 
     """
     species = []
@@ -76,10 +76,10 @@ def _parse_unit(unit: str) -> float:
     Parses units like: ev, ev_per_reaction, ev/mol, joule_per_mol, etc.
 
     Args:
-        unit: Unit string (case-insensitive)
+        unit (str): Unit string (case-insensitive)
 
     Returns:
-        Conversion factor to erg per reaction
+        factor (float): Conversion factor to erg per reaction
 
     Raises:
         ValueError: If there is an unknown unit, or it cannot be parsed.
@@ -133,11 +133,11 @@ def convert_to_erg(value: float, unit: str) -> float:
     """Convert exothermicity to erg per reaction.
 
     Args:
-        value: Exothermicity value
-        unit: Unit string (case-insensitive)
+        value (float): Exothermicity value
+        unit (str): Unit string (case-insensitive)
 
     Returns:
-        Value in erg per reaction
+        float: Value in erg per reaction
 
     """
     factor = _parse_unit(unit)
@@ -211,10 +211,12 @@ def set_custom_exothermicities(
     Args:
         reactions (list[Reaction]): List of Reaction objects to modify
         csv_path (str | Path): Path to CSV with custom exothermicities
-        overwrite (bool): If False, only set reactions with zero exothermicity
+        overwrite (bool): If False, only set reactions with zero exothermicity.
+            Default = True.
 
     Returns:
-        tuple: (num_matched, num_unmatched)
+        matched (int): number of matched reactions
+        unmatched (int): number of unmatched reactions
 
     """
     df = load_custom_exothermicities(csv_path)

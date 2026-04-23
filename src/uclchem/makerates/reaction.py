@@ -952,14 +952,26 @@ class Reaction:
         ]
         return all(checklist) if strict else any(checklist)
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Get the string representation of the reaction.
+
+        Returns:
+            str: Reaction with NANs removed.
+
+        """
         return (
             " + ".join(filter(lambda r: r != "NAN", self.get_reactants()))
             + " -> "
             + " + ".join(filter(lambda p: p != "NAN", self.get_products()))
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Get the printable string of the reaction.
+
+        Returns:
+            str: Printable string
+
+        """
         return (
             self.get_reaction_type()
             + " reaction: "
@@ -974,6 +986,12 @@ class Reaction:
         )
 
     def __hash__(self):
+        """Hash the reaction based on its parameters.
+
+        Returns:
+            int: Hashed reaction integer.
+
+        """
         return hash(
             f"{self.get_alpha(), self.get_beta(), self.get_gamma(), self.get_reactants(), self.get_products(), self.get_templow(), self.get_temphigh()}"
         )
@@ -987,7 +1005,14 @@ class CoupledReaction(Reaction):
     as its partner also has its binding energy changed to that value.
     """
 
-    def __init__(self, input: list[str] | Reaction, partner: Reaction | None = None):
+    def __init__(self, input: list | Reaction, partner: Reaction | None = None):
+        """Create CoupledReaction instance.
+
+        Args:
+            input (list | Reaction): input to create the Reaction instance.
+            partner (Reaction | None): partner of the reaction. Default = None.
+
+        """
         super().__init__(input)
         self.partner = partner
 

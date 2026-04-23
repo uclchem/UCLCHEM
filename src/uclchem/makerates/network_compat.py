@@ -11,6 +11,7 @@ warnings and migration paths.
 
 import warnings
 from pathlib import Path
+from typing import Any
 
 from uclchem.makerates.network import Network as NewNetwork
 from uclchem.makerates.network import build_network
@@ -21,7 +22,7 @@ from uclchem.makerates.species import Species
 def Network(  # noqa: N802
     species: list[Species] | None = None,
     reactions: list[Reaction] | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> NewNetwork:
     """Backward compatible Network constructor.
 
@@ -32,12 +33,12 @@ def Network(  # noqa: N802
         Use Network.build() or build_network() instead for new code.
 
     Args:
-        species (list[Species] | None): List of Species objects
-        reactions (list[Reaction] | None): List of Reaction objects
-        **kwargs: Build options (gas_phase_extrapolation, etc.)
+        species (list[Species] | None): List of Species objects. Default = None.
+        reactions (list[Reaction] | None): List of Reaction objects. Default = None.
+        **kwargs (Any): Build options (gas_phase_extrapolation, etc.)
 
     Returns:
-        Network: Network instance created via build_network()
+        NewNetwork: Network instance created via build_network()
 
     Raises:
         ValueError: If `species` or `reactions` is None.
@@ -102,17 +103,22 @@ class LoadedNetwork:
         reactions: list[Reaction] | None = None,
         species_filepath: str | Path | None = None,
         reactions_filepath: str | Path | None = None,
-    ):
+    ) -> NewNetwork:
         """Create a network using old LoadedNetwork API.
 
         Args:
-            species: List of Species objects (use with reactions)
-            reactions: List of Reaction objects (use with species)
-            species_filepath: Path to species CSV (use with reactions_filepath)
-            reactions_filepath: Path to reactions CSV (use with species_filepath)
+            cls (Any): Not used
+            species (list[Species] | None): List of Species objects (use with reactions).
+                Default = None.
+            reactions (list[Reaction] | None): List of Reaction objects (use with species).
+                Default = None.
+            species_filepath (str | Path | None): Path to species CSV (use with reactions_filepath).
+                Default = None.
+            reactions_filepath (str | Path | None): Path to reactions CSV (use with species_filepath).
+                Default = None.
 
         Returns:
-            Network: Network instance created via appropriate factory method
+            NewNetwork: Network instance created via appropriate factory method
 
         Raises:
             ValueError: If both `species` and `reactions` and file paths are specified,
@@ -204,6 +210,9 @@ class NetworkState:
 
     def __new__(cls):
         """Create a network with Fortran interface using old NetworkState API.
+
+        Args:
+            cls (Any): Not used
 
         Returns:
             Network: Network instance with Fortran interface

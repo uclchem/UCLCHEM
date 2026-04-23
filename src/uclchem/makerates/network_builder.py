@@ -79,9 +79,12 @@ class NetworkBuilder:
         Args:
             species (list[Species]): List of chemical species
             reactions (list[Reaction]): List of chemical reactions
-            user_defined_bulk (list[Species] | None): User-specified bulk species (optional)
-            gas_phase_extrapolation (bool): Extrapolate gas-phase temperature (default: False)
-            add_crp_photo_to_grain (bool): Add CRP/PHOTON to grain (default: False)
+            user_defined_bulk (list[Species] | None): User-specified bulk species.
+                Default = None.
+            gas_phase_extrapolation (bool): Extrapolate gas-phase temperature.
+                Default = False.
+            add_crp_photo_to_grain (bool): Add CRP/PHOTON to grain.
+                Default = False.
             derive_reaction_exothermicity (list[str] | None): Reaction types to calculate
                 exothermicity for. Default = None.
             database_reaction_exothermicity (list[str | Path] | None): Custom exothermicity database
@@ -231,7 +234,9 @@ class NetworkBuilder:
 
     def _check_and_filter_species(self) -> None:
         """Check every species in network appears in at least one reaction.
+
         Remove any that do not and alert user.
+
         """
         # check for species not involved in any reactions
         lost_species = []
@@ -386,12 +391,14 @@ class NetworkBuilder:
             self.network.add_species(new_species)
 
     def _add_bulk_species(self) -> None:
-        """Copy all surface species to the bulk. Their binding energies and diffusion barriers
-        are set to those of H2O, to mimic Ghesquire et al, 2015
-        (https://doi.org/10.1039/C5CP00558B).
+        """Copy all surface species to the bulk.
+
+        Their binding energies and diffusion barriers are set to those of H2O,
+        to mimic Ghesquire et al, 2015 (https://doi.org/10.1039/C5CP00558B).
 
         Raises:
             RuntimeError: If #H2O is not in the network.
+
         """
         logger.debug("Adding bulk species")
         species_names = [
@@ -434,12 +441,15 @@ class NetworkBuilder:
         self.network.add_species(new_species)
 
     def _add_bulk_reactions(self) -> None:
-        """We assume any reaction that happens on the surface of grains can also happen
+        """Copy all surface reactions to the bulk.
+
+        We assume any reaction that happens on the surface of grains can also happen
         in the bulk (just more slowly due to binding energy). The user therefore only
         lists surface reactions in their input reaction file and we duplicate here.
 
         Raises:
-            RuntimeError: If a `CoupledReaction`` instance had ``None`` for a partner.
+            RuntimeError: If a ``CoupledReaction`` instance had ``None`` for a partner.
+
         """
         logger.debug("Adding bulk reactions")
         surface_reactions = self._get_reactions_on_grain()
@@ -660,9 +670,14 @@ class NetworkBuilder:
         self.network.add_reactions(new_reactions)
 
     def _add_chemdes_reactions(self) -> None:
-        """We have the user list all Langmuir-Hinshelwood and Eley-Rideal
+        """Add chemical desorption reactions from LH and ER reactions.
+
+        We have the user list all Langmuir-Hinshelwood and Eley-Rideal
         reactions once. Then we duplicate so that the reaction branches
         with products on grain and products desorbing.
+
+        The Fortran side deals with the chemical desorption probability,
+        since it depends on the coverage of the grain surface by ices.
 
         Raises:
             ValueError: If not all products of the LH and ER reactions are on the grain.
@@ -772,14 +787,19 @@ class NetworkBuilder:
         self.network.add_reactions(new_reactions)
 
     def _add_excited_surface_reactions(self) -> None:
-        """All excited species will relax to the ground state if they do not react
-        the vibrational frequency of the species is used as a pseudo approximation
+        """Add electronically excited state surface reactions.
+
+        All excited species will relax to the ground state if they do not react.
+        The vibrational frequency of the species is used as a pseudo approximation
         of the rate coefficient. We assume all grain reactions have an excited variant.
+
         For example:
-        #A, #B LH #C will have the variants:
-        #A*, #B EXSOLID #C  and  #A, #B* EXSOLID #C
+        ``#A + #B + LH -> #C`` will have the variants:
+        ``#A* + #B + EXSOLID -> #C``  and  ``#A + #B* + EXSOLID -> #C``
+
         If only one of the reactants in the base reaction has an excited counterpart then
         only one excited version of that reaction is created.
+
         """
         logger.debug("Adding excited surface reactions")
         excited_species = [
@@ -888,9 +908,7 @@ class NetworkBuilder:
         self.network.add_reactions(new_reactions)
 
     def _add_CRP_and_PHOTO_reactions_to_grain(self) -> None:  # noqa: N802
-        """Add all the gas-phase reactions with CRP, CRPHOT or PHOTON
-        to the grain surface too.
-        """
+        """Add all the gas-phase reactions with CRP, CRPHOT or PHOTON to the grain surface too."""
         logger.info("Adding gas-phase reactions with CRP, CRPHOT or PHOTON to grain")
         reactions_on_grain = self._get_reactions_on_grain()
         reactions_on_grain_filtered = [
@@ -952,9 +970,15 @@ class NetworkBuilder:
         logger.info(f"Added {len(new_reactions)} reactions to grain")
 
     def _branching_ratios_checks(self) -> None:
-        """Check that the branching ratios for the ice reactions sum to 1.0.
+        """Check that LH and LHDES reactions branching ratios sum to 1.0.
+
         If they do not, correct them. This needs to be done for LH and LHDES
         separately since we already added the desorption to the network.
+
+        Assumes that sums of branching ratios below 0.99 are set lower on purpose
+        (so leaves those unchanged), because for example some orientations of the
+        reactants on the surface do not lead to a reaction.
+
         """
         branching_reactions: dict[str, float] = {}
         for reaction in self.network.get_reaction_list():
@@ -965,56 +989,54 @@ class NetworkBuilder:
                 else:
                     branching_reactions[reactant_string] = reaction.get_alpha()
 
-        if any(val != 1.0 for val in branching_reactions.values()):
-            logger.warning(
-                "Some of the branching ratios do not sum to 1.0, correcting those that do not"
-            )
-            for reaction in self.network.get_reaction_list():
-                if reaction.get_reaction_type() in {"LH", "LHDES"}:
-                    reactant_string = ",".join(reaction.get_reactants())
-                    # Check if we need to correct the branching ratio
-                    # (smaller than 0.98 is allowed)
-                    if (
-                        reactant_string in branching_reactions
-                        and branching_reactions[reactant_string] != 1.0
+        if not any(val != 1.0 for val in branching_reactions.values()):
+            return
+
+        logger.warning(
+            "Some of the branching ratios do not sum to 1.0, correcting those that do not"
+        )
+        for reaction in self.network.get_reaction_list():
+            if reaction.get_reaction_type() not in {"LH", "LHDES"}:
+                continue
+
+            reactant_string = ",".join(reaction.get_reactants())
+            # Check if we need to correct the branching ratio
+            # (smaller than 0.98 is allowed)
+            if (
+                reactant_string in branching_reactions
+                and branching_reactions[reactant_string] != 1.0
+            ):
+                if branching_reactions[reactant_string] == 0.0:
+                    if isinstance(reaction, CoupledReaction) and (
+                        reaction not in self.network.get_reaction_list()
                     ):
-                        if branching_reactions[reactant_string] == 0.0:
-                            if isinstance(reaction, CoupledReaction) and (
-                                reaction not in self.network.get_reaction_list()
-                            ):
-                                logger.info(
-                                    f"Tried to remove a coupled reaction {reaction}, but it was already removed by one of its partners."
-                                )
-                            else:
-                                logger.warning(
-                                    f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
-                                )
-                                self.network.remove_reaction(reaction)
-                            continue
-
-                        if branching_reactions[reactant_string] < 0.99:
-                            logger.warning(
-                                f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string]} we are assuming you set this lower on purpose."
-                            )
-                            continue
-
-                        new_alpha = (
-                            reaction.get_alpha() / branching_reactions[reactant_string]
+                        logger.info(
+                            f"Tried to remove a coupled reaction {reaction}, but it was already removed by one of its partners."
                         )
+                    else:
                         logger.warning(
-                            f"Grain reaction {reaction} has a branching ratio of {reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
+                            f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
                         )
-                        # TODO: apply to all partners of the reaction
-                        reaction_index = self.network.get_reaction_index(reaction)
-                        reaction.set_alpha(new_alpha)
-                        self.network.set_reaction(
-                            reaction_idx=reaction_index, reaction=reaction
-                        )
+                        self.network.remove_reaction(reaction)
+                    continue
+
+                if branching_reactions[reactant_string] < 0.99:
+                    logger.warning(
+                        f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string]} we are assuming you set this lower on purpose."
+                    )
+                    continue
+
+                new_alpha = reaction.get_alpha() / branching_reactions[reactant_string]
+                logger.warning(
+                    f"Grain reaction {reaction} has a branching ratio of {reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
+                )
+                # TODO: apply to all partners of the reaction
+                reaction_index = self.network.get_reaction_index(reaction)
+                reaction.set_alpha(new_alpha)
+                self.network.set_reaction(reaction_idx=reaction_index, reaction=reaction)
 
     def _add_gas_phase_extrapolation(self) -> None:
-        """Enable extrapolation for gas-phase reactions that
-        have unique or overlapping temperature ranges.
-        """
+        """Enable extrapolation for gas-phase reactions that have unique or overlapping temperatures."""
         for reaction in self.network._reactions_dict.values():
             if reaction.is_gas_reaction() and (
                 reaction.get_reaction_type() in {"TWOBODY", "PHOTON", "CRP", "CRPHOT"}
@@ -1030,8 +1052,7 @@ class NetworkBuilder:
                     reaction.set_extrapolation(True)
 
     def _add_reaction_enthalpies(self, enthalpy_reaction_types: list[str]) -> None:
-        """Add reaction enthalpies (exothermicity) to reactions
-        for heating/cooling calculations.
+        """Add reaction enthalpies (exothermicity) to reactions for heating/cooling calculations.
 
         Args:
             enthalpy_reaction_types (list[str]): List of reaction types or "ALL" or "GAS"
@@ -1082,8 +1103,7 @@ class NetworkBuilder:
             )
 
     def _compute_exothermicity(self, reaction: Reaction) -> float:
-        """Compute the reaction enthalpy in eV for a given reaction based on the
-        species enthalpies.
+        """Compute the reaction enthalpy in eV for a given reaction based on the species enthalpies.
 
         Args:
             reaction (Reaction): The reaction to compute the enthalpy for.
@@ -1124,9 +1144,11 @@ class NetworkBuilder:
         self._index_important_species()
 
     def _freeze_checks(self) -> None:
-        """Check that every species freezes out and alert the user if a
-        species freezes out via multiple routes. This isn't necessarily an
-        error so best just print.
+        """Check that every species freezes out through one route.
+
+        Alert the user if a species freezes out via multiple routes.
+        This isn't necessarily an error so best just print.
+
         """
         logger.info(
             "\tCheck that species have surface counterparts or if they have multiple freeze outs/check alphas:\n"
@@ -1160,8 +1182,11 @@ class NetworkBuilder:
                 logger.info(f"\t{spec.get_name()} does not freeze out")
 
     def _duplicate_checks(self) -> None:
-        """Check reaction network to make sure no reaction appears twice unless
-        they have different temperature ranges.
+        """Check reaction network to make sure no reaction appears twice.
+
+        Reactions appearing twice is okay if they have different temperature ranges.
+        This is sometimes done by UMIST to improve the reaction rate calculation.
+
         """
         logger.info("\tPossible duplicate reactions for manual removal:")
         duplicates = False
@@ -1206,8 +1231,10 @@ class NetworkBuilder:
             logger.info("\tNone")
 
     def _index_important_reactions(self) -> None:
-        """We have a whole bunch of important reactions and we want to store
-        their indices. We find them all here.
+        """Find all important reactions and store their indices in the ``Network``.
+
+        We have a whole bunch of important reactions and we want to store their indices.
+        We find them all here.
 
         Raises:
             RuntimeError: If an important reaction is found twice, or one of the important reactions

@@ -683,7 +683,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         cls,
         species: list[Species],
         reactions: list[Reaction],
-        **build_options: dict[str, Any],
+        **build_options: Any,
     ) -> Network:
         """Build network with full validation and automatic generation.
 
@@ -694,7 +694,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         Args:
             species (list[Species]): List of Species objects
             reactions (list[Reaction]): List of Reaction objects
-            **build_options (dict[str, Any]): Options passed to NetworkBuilder:
+            **build_options (Any): Options passed to NetworkBuilder:
                 - user_defined_bulk: List of user-defined bulk species
                 - gas_phase_extrapolation: bool (default False)
                 - add_crp_photo_to_grain: bool (default False)

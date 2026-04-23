@@ -275,10 +275,10 @@ class MakeratesConfig(BaseModel):
         """Validate inline coolants format.
 
         Args:
-            v (list[dict[str,str]] | None): variable to make consistent
+            v (list[dict[str, str]] | None): variable to make consistent
 
         Returns:
-            validated (list[dict[str,str]]): list of validated coolant dictionaries
+            validated (list[dict[str, str | float]] | None): list of validated coolant dictionaries
 
         Raises:
             TypeError: If v is not a list of dictionaries.
@@ -336,7 +336,7 @@ class MakeratesConfig(BaseModel):
         """Ensure reaction files and types are consistent.
 
         Returns:
-            MakeRatesConfig: validated MakeRatesConfig.
+            MakeratesConfig: validated MakeratesConfig.
 
         Raises:
             ValueError: If the length of reaction files and reaction file types is
@@ -375,16 +375,16 @@ class MakeratesConfig(BaseModel):
 
     @model_validator(mode="after")
     def check_three_phase_deprecation(self) -> MakeratesConfig:
-        """Raise error if three_phase is explicitly set to False.
+        """Raise error if ``three_phase`` is explicitly set to False.
 
         Returns:
-            MakeRatesConfig: validated MakeRatesConfig.
+            MakeratesConfig: validated MakeratesConfig.
 
         Raises:
-            ValueError: If three_phase is False.
+            ValueError: If ``three_phase`` is False.
 
         """
-        if self.three_phase is False:
+        if not self.three_phase:
             msg = (
                 "three_phase=False is deprecated as of UCLCHEM v3.5.0. "
                 "Three-phase chemistry is now always enabled. "
@@ -398,7 +398,8 @@ class MakeratesConfig(BaseModel):
         """Automatically enable rates storage if needed for exothermicity.
 
         Returns:
-            MakeRatesConfig: validated MakeRatesConfig.
+            MakeratesConfig: validated MakeratesConfig.
+
         """
         if self.database_reaction_exothermicity or self.derive_reaction_exothermicity:
             if not self.enable_rates_storage:
@@ -415,7 +416,7 @@ class MakeratesConfig(BaseModel):
         """Ensure coolants and coolants_file are mutually exclusive.
 
         Returns:
-            MakeRatesConfig: validated MakeRatesConfig.
+            MakeratesConfig: validated MakeratesConfig.
 
         Raises:
             ValueError: If both `coolants` and `coolants_file` are specified.
@@ -444,7 +445,7 @@ class MakeratesConfig(BaseModel):
             yaml_path (str | Path): Path to the YAML configuration file
 
         Returns:
-            Validated MakeratesConfig instance
+            MakeratesConfig: Validated MakeratesConfig instance
 
         Raises:
             FileNotFoundError: If config file doesn't exist
@@ -477,7 +478,8 @@ class MakeratesConfig(BaseModel):
         """Generate a template configuration file with all parameters documented.
 
         Args:
-            output_path (str | Path): Where to write the template file
+            output_path (str | Path): Where to write the template file.
+                Default = "user_settings_template.yaml"
 
         """
         output_path = Path(output_path)
@@ -656,7 +658,7 @@ database_reaction_type: "UMIST12"
             path (str | Path): Path to resolve (can be absolute or relative)
 
         Returns:
-            Resolved absolute Path
+            Path: Resolved absolute Path
 
         """
         path = Path(path)
@@ -671,7 +673,7 @@ database_reaction_type: "UMIST12"
         """Get all reaction files (database + custom) as resolved paths.
 
         Returns:
-            list[Path]: List of absolute paths to all reaction files
+            files (list[Path]): List of absolute paths to all reaction files
 
         """
         files = []
@@ -695,7 +697,7 @@ database_reaction_type: "UMIST12"
         """Get all reaction types (database + custom) in correct order.
 
         Returns:
-            list[str]: list of reaction type strings
+            types (list[ReactionFileTypes]): list of reaction type strings
 
         """
         types = []
