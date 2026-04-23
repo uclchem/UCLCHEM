@@ -1,6 +1,4 @@
-"""Simple python script that reads a Makerates produced reaction file
-and prints every reaction that forms or destroys a chosen species.
-"""
+"""Read a Makerates produced reaction file and prints every reaction that forms or destroys a species."""
 
 import csv
 import pathlib

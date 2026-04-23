@@ -41,7 +41,7 @@ extend-exclude = ["notebooks/*.py"]
 line-length = 90
 
 [tool.ruff.lint]
-select = ["E", "F", "C", "I", "W", "D", "E", "B", 
+select = ["E", "F", "I", "W", "D", "E", "B", 
     "ANN001", "ANN201", 
     "ARG", 
     "RUF100", 
@@ -61,9 +61,6 @@ select = ["E", "F", "C", "I", "W", "D", "E", "B",
 ]
 extend-ignore = [
     "E501", "E731", "E741", "E402", "E203", "E204",
-    "F841", "F811", 
-    "C901", 
-    "D211", "D213", "D205", "D105", "D107", "D301", 
     "SIM108", "SIM102", 
     "S603", "S607", "S404", "S602", 
     "PLR2004", "PLR0911", "PLR1702", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR0914", "PLR0904"

@@ -25,6 +25,7 @@ from argparse import ArgumentParser
 
 def get_args():  # noqa: ANN201
     """Get the parsed arguments.
+
     Allows for interacting with MakeRates.py via the command line.
 
     Examples:

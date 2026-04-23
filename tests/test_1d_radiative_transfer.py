@@ -99,7 +99,6 @@ class Test1DCloud:
         assert physics.ndim == 3, "Physics array should be 3-dimensional for 1D model"
         assert chemistry.ndim == 3, "Chemistry array should be 3-dimensional"
 
-        n_timepoints = physics.shape[0]
         n_points = physics.shape[1]
 
         assert n_points == base_1d_params["points"], (

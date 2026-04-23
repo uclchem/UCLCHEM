@@ -210,6 +210,7 @@ class ReactionNamesStore:
     """Way to only read reaction file once, and keep them loaded after."""
 
     def __init__(self):
+        """Initialize the ReactionNamesStore."""
         self.reaction_names = None
 
     def __call__(self) -> list[str]:
@@ -234,10 +235,11 @@ class ReactionNamesStore:
 get_reaction_names = ReactionNamesStore()
 
 
-class SpeciesNameStore:
+class SpeciesNamesStore:
     """Way to only read species file once, and keep them loaded after."""
 
     def __init__(self):
+        """Initialize the SpeciesNamesStore."""
         self.species_names = None
 
     def __call__(self) -> list[str]:
@@ -255,7 +257,7 @@ class SpeciesNameStore:
         return self.species_names
 
 
-get_species_names = SpeciesNameStore()
+get_species_names = SpeciesNamesStore()
 # /Reaction and Species name retrieval classes to reduce file read repetition.
 
 
@@ -608,6 +610,10 @@ class AbstractModel(ABC):
             self.out_species_abundances_array = None
 
     def __del__(self):
+        """Unlink all shared memory objects.
+
+        If the AbstractModel object goes out of scope, ensure that no shared memory objects stick around.
+        """
         if hasattr(self, "_shm_desc") and bool(self._shm_desc):
             self._coordinator_unlink_memory()
 
@@ -670,6 +676,22 @@ class AbstractModel(ABC):
 
     # Class utility methods
     def __getattr__(self, key: str) -> Any:
+        """Get attribute ``key``.
+
+        Searches both ``self._meta`` and ``self._data``. If ``key`` starts with ``"_"``,
+        just return the attribute.
+
+        Args:
+            key (str): name of attribute
+
+        Returns:
+            Any: Attribute value
+
+        Raises:
+            AttributeError: If no attribute ``key`` can be found in ``self._meta``,
+                ``self._data``.
+
+        """
         # Internal attributes behave normally
         if key.startswith("_") and key != "_data":
             return super().__getattribute__(key)
@@ -697,6 +719,13 @@ class AbstractModel(ABC):
         raise AttributeError(msg)
 
     def __setattr__(self, key: str, value: Any) -> None:
+        """Set attribute ``key`` to ``value``.
+
+        Args:
+            key (str): attribute to set
+            value (Any): value to set attribute ``key`` to
+
+        """
         # Underscored attributes are real attributes
         if key.startswith("_"):
             super().__setattr__(key, value)
@@ -2462,7 +2491,7 @@ class Cloud(AbstractModel):
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")  # noqa: PLC2801
             else None,
         )
-        abundance_out, specname_out, success_flag = result[-3], result[-2], result[-1]
+        abundance_out, _specname_out, success_flag = result[-3], result[-2], result[-1]
         if success_flag < 0:
             out_species_abundances_array = []
         else:
@@ -3109,7 +3138,7 @@ class Postprocess(AbstractModel):
         read_file: str | Path | None = None,
         run_type: Literal["managed", "external"] = "managed",
     ):
-        """Initiate the postprocessing model.
+        r"""Initiate the postprocessing model.
 
         Initiates the model first with ``AbstractModel.__init__()``,
         then with any additional commands needed for the model.
@@ -4132,7 +4161,7 @@ class GridRunner:
             msg = "SequentialRunner physics loading not implemented"
             raise NotImplementedError(msg)
         if not self.models:
-            mgs = "No models were run yet, so cannot load their physics arrays."
+            msg = "No models were run yet, so cannot load their physics arrays."
             raise RuntimeError(msg)
 
         for model_idx in range(len(self.models)):
@@ -4161,7 +4190,7 @@ class GridRunner:
             msg = "SequentialRunner chemistry loading not implemented"
             raise NotImplementedError(msg)
         if not self.models:
-            mgs = "No models were run yet, so cannot load their chemistry arrays."
+            msg = "No models were run yet, so cannot load their chemistry arrays."
             raise RuntimeError(msg)
 
         for model_idx in range(len(self.models)):
