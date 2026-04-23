@@ -238,8 +238,13 @@ def _pool_initializer(snapshot: dict[str, Any]) -> None:
 
     Example:
         >>> import multiprocessing as mp
+        >>>
+        >>> # Take a snapshot of the current Fortran module
         >>> snapshot = create_snapshot()
-        >>> mp.Pool(N, initializer=_pool_initializer, initargs=(snapshot,))
+        >>>
+        >>> # A pool can then be initialized as
+        >>> n_workers = 2
+        >>> mp.Pool(n_workers, initializer=_pool_initializer, initargs=(snapshot,))
 
     """
     restore_snapshot(snapshot)
