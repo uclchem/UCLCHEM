@@ -52,7 +52,8 @@ class ATCTParser:
             html_file_path (str | Path): Path to ATCT HTML database file
 
         Returns:
-            pd.DataFrame with parsed thermochemical data or None if parsing fails
+            pd.DataFrame | None: dataFrame with parsed thermochemical data.
+                None if parsing fails
 
         Raises:
             FileNotFoundError: If the ATcT HTML file could not be found.
@@ -248,8 +249,8 @@ class ATCTParser:
         """Validate parsed data meets expected criteria.
 
         Args:
-            data: Parsed ATCT data
-            min_species: Minimum expected number of species
+            data (pd.DataFrame): Parsed ATCT data
+            min_species (int): Minimum expected number of species. Default = 3000.
 
         Raises:
             ValueError: If data doesn't meet validation criteria

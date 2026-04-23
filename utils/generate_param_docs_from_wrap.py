@@ -258,7 +258,7 @@ def format_value(value: str | bool | int | bytes | float) -> str:
     """Format a parameter value for display.
 
     Args:
-        value (Any): value to be printed
+        value (str | bool | int | bytes | float): value to be printed
 
     Returns:
         str: formatted string for printing

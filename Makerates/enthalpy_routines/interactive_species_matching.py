@@ -162,7 +162,7 @@ class FormulaParser:
             atct_formula (str): ATCT formula
 
         Returns:
-            whether the elemental composition of the two formulas is the same.
+            bool: whether the elemental composition of the two formulas is the same.
 
         """
         uclchem_parsed = cls.parse_uclchem_formula(uclchem_formula)
@@ -177,7 +177,7 @@ class SpeciesMatcher:
         """Initialize matcher with ATCT data.
 
         Args:
-            atct_csv_path: Path to cleaned ATCT CSV file
+            atct_csv_path (str): Path to cleaned ATCT CSV file
 
         """
         self.atct_data = pd.read_csv(atct_csv_path)
@@ -196,7 +196,8 @@ class SpeciesMatcher:
 
         Args:
             uclchem_species (list[str]): List of UCLCHEM species names
-            resume_file (str | Path | None): Optional path to resume from previous session
+            resume_file (str | Path | None): Optional path to resume from previous session.
+                Default = None.
 
         Returns:
             dict[str, dict[str, Any]]: Dictionary mapping UCLCHEM species to ATCT matches
@@ -326,7 +327,7 @@ class SpeciesMatcher:
         Args:
             isomer_matches (dict[str, list[dict[str, Any]]]): mapping from UCLCHEM species
                 to list of ATcT matches.
-            session_file (str | Path | None): path to session file.
+            session_file (str | Path | None): path to session file. Default = None.
 
         Returns:
             canonical_matches (dict[str, dict[str, Any]]): mapping from UCLCHEM species
@@ -500,7 +501,13 @@ class SpeciesMatcher:
 
     @staticmethod
     def _save_session(session_data: dict, session_file: str | Path) -> None:
-        """Save current matching session."""
+        """Save current matching session.
+
+        Args:
+            session_data (dict): data of the current session
+            session_file (str | Path): where to save the current session
+
+        """
         try:
             with Path(session_file).open("w") as f:
                 yaml.dump(session_data, f, indent=2, default_flow_style=False)
@@ -573,7 +580,7 @@ class SpeciesMatcher:
             mapping_path (str | Path): Path to mapping YAML file
 
         Returns:
-            Species mapping dictionary
+            mapping (dict[str, dict[str, Any]]): Species mapping dictionary
 
         """
         with Path(mapping_path).open() as f:

@@ -81,7 +81,13 @@ def get_args():  # noqa: ANN201
 
 
 def get_logger(verbosity_stdout: str, debug: bool) -> None:
-    """Define a logger that logs both to file and stdout."""
+    """Define a logger that logs both to file and stdout.
+
+    Args:
+        verbosity_stdout (str): stdout verbosity
+        debug (bool): whether to write debug information to ``makerates.log``.
+
+    """
     # TODO: fix that both verbosity for file and stdout
     # are the same type, but it works for now.
     if debug:
