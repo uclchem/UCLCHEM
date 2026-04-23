@@ -96,7 +96,7 @@ class LoadedNetwork:
         factory functions instead.
     """
 
-    def __new__(
+    def __new__(  # type: ignore[misc]
         cls,
         *,
         species: list[Species] | None = None,

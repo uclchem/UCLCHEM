@@ -154,9 +154,9 @@ class HeatingSettings:
         enabling one automatically disables others in the same group.
 
         Args:
-            mechanism_id: Index of the heating mechanism (1-9). Use class
+            mechanism_id (int): Index of the heating mechanism (1-9). Use class
                 constants (e.g., ``self.PHOTOELECTRIC['BAKES']``, ``self.H2_FORMATION``)
-            enabled: True to enable, False to disable. Default: True
+            enabled (bool): True to enable, False to disable. Default = True
 
         Raises:
             ValueError: If ``mechanism_id`` is not between 1 and the number of heating
@@ -228,7 +228,7 @@ class HeatingSettings:
         """Get the active state of all line coolant species.
 
         Returns:
-            Dictionary mapping coolant names to their enabled state
+            dict[str, bool]: Dictionary mapping coolant names to their enabled state
 
         Example:
             >>> settings = HeatingSettings()
@@ -275,7 +275,7 @@ class HeatingSettings:
         """Obtain the state (on/off) of all heating mechanisms.
 
         Returns:
-            Dictionary mapping mechanism names to their enabled state
+            dict[str, bool]: Dictionary mapping mechanism names to their enabled state
 
         Example:
             >>> settings = HeatingSettings()
@@ -297,7 +297,7 @@ class HeatingSettings:
         """Obtain the state (on/off) of all cooling mechanisms.
 
         Returns:
-            Dictionary mapping mechanism names to their enabled state
+            dict[str, bool]: Dictionary mapping mechanism names to their enabled state
 
         Example:
             >>> settings = HeatingSettings()
@@ -320,7 +320,7 @@ class HeatingSettings:
         """Set the dust-gas temperature coupling method.
 
         Args:
-            method: Coupling method to use:
+            method (int): Coupling method to use:
                 - 1 (DUST_TEMP_HOCUK): Hocuk et al. 2017
                 - 2 (DUST_TEMP_HOLLENBACH): Hollenbach 1991
 
@@ -341,7 +341,7 @@ class HeatingSettings:
         """Get the current dust-gas temperature coupling method.
 
         Returns:
-            Current method (1=Hocuk, 2=Hollenbach)
+            int: Current method (1=Hocuk, 2=Hollenbach)
 
         """
         return self._heating_module.dust_gas_coupling_method
@@ -378,7 +378,7 @@ class HeatingSettings:
         """Get the current number of line cooling solver attempts.
 
         Returns:
-            Number of solver attempts
+            int: Number of solver attempts
 
         """
         return self._heating_module.line_solver_attempts
@@ -387,14 +387,18 @@ class HeatingSettings:
         """Set the PAH (Polycyclic Aromatic Hydrocarbon) abundance.
 
         Args:
-            abundance: PAH abundance relative to hydrogen. Default: 6e-7
+            abundance (float): PAH abundance relative to hydrogen.
 
         Raises:
             ValueError: if abundance is smaller than 0
 
         Example:
             >>> settings = HeatingSettings()
+            >>> # Set a different value
             >>> settings.set_pah_abundance(1e-6)
+            >>> # Get the adjusted value
+            >>> settings.get_pah_abundance()
+            1e-6
 
         """
         if abundance < 0:
@@ -406,7 +410,7 @@ class HeatingSettings:
         """Get the current PAH abundance.
 
         Returns:
-            PAH abundance
+            float: PAH abundance
 
         """
         return self._heating_module.pahabund
@@ -453,20 +457,16 @@ class HeatingSettings:
         """Get the current collisional rate data directory.
 
         Returns:
-            Directory path as string (stripped of trailing spaces)
+            str: Directory path as string (stripped of trailing spaces)
 
         """
         return str(np.char.decode(self._f2py_constants_module.coolantdatadir)).strip()
 
-    # TODO: refactor once Fortran is exposed
     def set_coolant_restart_mode(self, mode: int) -> None:
         """Set the coolant population restart mode.
 
         Args:
-            mode: Restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND)
-
-        Raises:
-            ValueError: If ``mode`` is not one of ``[0, 1, 2]``.
+            mode (int): Restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND).
 
         Example:
             >>> settings = HeatingSettings()
@@ -478,6 +478,7 @@ class HeatingSettings:
                 attempted to set it.
 
         """
+        # TODO: refactor once Fortran is exposed
         if mode not in {0, 1, 2}:
             msg = f"mode must be 0, 1, or 2, got {mode}"
             raise ValueError(msg)
@@ -491,7 +492,7 @@ class HeatingSettings:
         """Get the current coolant population restart mode.
 
         Returns:
-            Current restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND)
+            int: Current restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND)
 
         """
         return self._uclchemwrap.uclchemwrap.get_coolant_restart_mode_wrap()

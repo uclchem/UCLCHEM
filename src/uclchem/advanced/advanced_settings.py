@@ -24,7 +24,6 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import numpy.typing as npt
 import uclchemwrap
 
 # Import parameter classifications from constants module

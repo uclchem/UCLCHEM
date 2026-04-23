@@ -21,7 +21,11 @@ from uclchemwrap import f2py_constants as f2py_constants_module
 from uclchemwrap import heating as heating_module
 from uclchemwrap import network as network_module
 
-from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
+from uclchem.advanced.constants import (
+    FILE_PATH_PARAMETERS,
+    FORTRAN_PARAMETERS,
+    INTERNAL_PARAMETERS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +80,7 @@ def create_snapshot() -> dict[str, Any]:
     * ``"network"`` – reaction-rate and binding-energy arrays.
 
     Returns:
-        Fully picklable dict suitable for passing to :func:`restore_snapshot`.
+        dict[str, Any]: Fully picklable dict suitable for passing to :func:`restore_snapshot`.
 
     """
     logger.debug("Creating snapshot")
@@ -170,7 +174,7 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
     Must be called **before** running any model in the worker process.
 
     Args:
-        snapshot: Dict produced by :func:`create_snapshot`.
+        snapshot (dict[str, Any]): Dict produced by :func:`create_snapshot`.
 
     """
     logger.debug("Regenerating snapshot")
@@ -229,9 +233,12 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
 def _pool_initializer(snapshot: dict[str, Any]) -> None:
     """``mp.Pool`` initializer that restores advanced settings in each worker.
 
-    Usage::
+    Args:
+        snapshot (dict[str, Any]): Snapshot created by func:`create_snapshot`.
 
-        snapshot = create_snapshot()
-        mp.Pool(N, initializer=_pool_initializer, initargs=(snapshot,))
+    Example:
+        >>> snapshot = create_snapshot()
+        >>> mp.Pool(N, initializer=_pool_initializer, initargs=(snapshot,))
+
     """
     restore_snapshot(snapshot)

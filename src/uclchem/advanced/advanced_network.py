@@ -38,8 +38,8 @@ class RuntimeSpecies:
         """Initialize a runtime species wrapper.
 
         Args:
-            index: 1-based species index in Fortran arrays
-            network_ref: Reference to the network module
+            index (int): 1-based species index in Fortran arrays
+            network_ref (ModuleType): Reference to the network module
 
         """
         self._index = index
@@ -105,7 +105,7 @@ class RuntimeSpecies:
         """Check if this is an ion.
 
         Returns:
-            True if species name contains + or -
+            bool: True if species name contains + or -
 
         """
         name = self.get_name()
@@ -115,7 +115,7 @@ class RuntimeSpecies:
         """Get the charge of the species.
 
         Returns:
-            Charge (+1, -1, or 0)
+            int: Charge (+1, -1, or 0)
 
         """
         name = self.get_name()
@@ -125,10 +125,22 @@ class RuntimeSpecies:
             return -1
         return 0
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Get name of species.
+
+        Returns:
+            str: Name of species
+
+        """
         return self.get_name()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Get printable representation of RuntimeSpecies.
+
+        Returns:
+            str: Printable representation of RuntimeSpecies
+
+        """
         return f"RuntimeSpecies({self._index}, '{self.get_name()}')"
 
 
@@ -154,7 +166,7 @@ class RuntimeReaction:
         """Get the reactant species indices.
 
         Returns:
-            List of species indices (1-based, 0 for NAN)
+            list[int]: List of species indices (1-based, 0 for NAN)
 
         """
         return [
@@ -167,7 +179,7 @@ class RuntimeReaction:
         """Get the product species indices.
 
         Returns:
-            List of species indices (1-based, 0 for NAN)
+            list[int]: List of species indices (1-based, 0 for NAN)
 
         """
         return [
@@ -181,7 +193,7 @@ class RuntimeReaction:
         """Get the names of reactant species.
 
         Returns:
-            List of reactant names (NAN for empty slots)
+            list[str]: List of reactant names (NAN for empty slots)
 
         """
         names = []
@@ -197,7 +209,7 @@ class RuntimeReaction:
         """Get the names of product species.
 
         Returns:
-            List of product names (NAN for empty slots)
+            list[str]: List of product names (NAN for empty slots)
 
         """
         names = []
@@ -213,7 +225,7 @@ class RuntimeReaction:
         """Get the alpha parameter (pre-exponential factor).
 
         Returns:
-            Alpha parameter
+            float: Alpha parameter
 
         """
         return float(self._network.alpha[self._array_idx])
@@ -222,7 +234,7 @@ class RuntimeReaction:
         """Get the beta parameter (temperature exponent).
 
         Returns:
-            Beta parameter
+            float: Beta parameter
 
         """
         return float(self._network.beta[self._array_idx])
@@ -231,7 +243,7 @@ class RuntimeReaction:
         """Get the gamma parameter (activation energy).
 
         Returns:
-            Gamma parameter in Kelvin
+            float: Gamma parameter in Kelvin
 
         """
         return float(self._network.gama[self._array_idx])
@@ -240,7 +252,7 @@ class RuntimeReaction:
         """Get the minimum valid temperature.
 
         Returns:
-            Minimum temperature in Kelvin
+            float: Minimum temperature in Kelvin
 
         """
         return float(self._network.mintemps[self._array_idx])
@@ -249,7 +261,7 @@ class RuntimeReaction:
         """Get the maximum valid temperature.
 
         Returns:
-            Maximum temperature in Kelvin
+            float: Maximum temperature in Kelvin
 
         """
         return float(self._network.maxtemps[self._array_idx])
@@ -258,7 +270,7 @@ class RuntimeReaction:
         """Get the reaction exothermicity.
 
         Returns:
-            Exothermicity in erg
+            float: Exothermicity in erg
 
         """
         return float(self._network.exothermicities[self._array_idx])
@@ -313,11 +325,23 @@ class RuntimeReaction:
         self._network.gama[self._array_idx] = float(value)
 
     def __str__(self) -> str:
+        """Get string representation of reaction.
+
+        Returns:
+            str: Reaction with NAN removed.
+
+        """
         reactants = " + ".join([r for r in self.get_reactant_names() if r != "NAN"])
         products = " + ".join([p for p in self.get_product_names() if p != "NAN"])
         return f"{reactants} -> {products}"
 
     def __repr__(self) -> str:
+        """Get printable string representation of reaction.
+
+        Returns:
+            str: Printable string.
+
+        """
         return f"RuntimeReaction({self._index}, '{self}')"
 
 

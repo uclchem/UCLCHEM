@@ -262,7 +262,7 @@ def _get_network_from_files(
             files. Default = None.
 
     Returns:
-        network (Network): Instanciated Network.
+        network (Network): Instantiated Network.
         dropped_reactions (list[list]): list of dropped reactions.
 
     """
