@@ -1528,8 +1528,6 @@ class AbstractModel(ABC):
 
         Raises:
             TypeError: if ``file`` is not a string, Path or ``h5py.File`` instance.
-            RuntimeError: If ``overwrite`` is False, but another model with name ``name``
-                is found in the file.
 
         """
         if isinstance(file, str | Path):
