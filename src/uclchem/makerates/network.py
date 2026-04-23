@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
@@ -75,7 +75,15 @@ class NetworkABC(ABC):
 
     @abstractmethod
     def get_specie(self, specie_name: str) -> Species:
-        """Get a specific species by name."""
+        """Get a species by name (copy).
+
+        Args:
+            specie_name (str): species name
+
+        Returns:
+            Species: copy of Species instance.
+
+        """
         pass
 
     # Reaction Read Interface
@@ -91,34 +99,77 @@ class NetworkABC(ABC):
 
     @abstractmethod
     def get_reaction(self, reaction_idx: int) -> Reaction:
-        """Get a specific reaction by index."""
+        """Get a reaction by index (copy).
+
+        Args:
+            reaction_idx (int): Index of the reaction
+
+        Returns:
+            Reaction: copy of reaction with index reaction_idx.
+
+        """
         pass
 
     # Query Methods
     @abstractmethod
     def get_reactions_by_types(self, reaction_type: str | list[str]) -> list[Reaction]:
-        """Get all reactions of specific type(s)."""
+        """Get all reactions of specific type(s).
+
+        Args:
+            reaction_type (str | list[str]): Single type or list of types to filter by
+
+        Returns:
+            list[Reaction]: List of reactions matching the type(s)
+        """
         pass
 
     @abstractmethod
     def find_similar_reactions(self, reaction: Reaction) -> dict[int, Reaction]:
-        """Find reactions with same reactants/products."""
+        """Find reactions with same reactants and products.
+
+        Args:
+            reaction (Reaction): Reaction to find similar reactions for
+
+        Returns:
+            similar (dict[int, Reaction]): Dictionary of {index: Reaction}
+                for matching reactions
+        """
         pass
 
     @abstractmethod
     def get_reaction_index(self, reaction: Reaction) -> int:
-        """Get the unique index of a reaction."""
+        """Get the index of a reaction in the network.
+
+        Args:
+            reaction (Reaction): Reaction to find
+
+        Returns:
+            int: Index of the reaction
+
+        """
         pass
 
     # Parameter Modification Methods (modify existing, don't add/remove)
     @abstractmethod
     def change_binding_energy(self, specie: str, new_binding_energy: float) -> None:
-        """Change binding energy of an existing species."""
+        """Change binding energy of a species.
+
+        Args:
+            specie (str): string representation of species
+            new_binding_energy (float): new binding energy in K
+
+        """
         pass
 
     @abstractmethod
     def change_reaction_barrier(self, reaction: Reaction, barrier: float) -> None:
-        """Change activation barrier of an existing reaction."""
+        """Change activation barrier of a reaction.
+
+        Args:
+            reaction (Reaction): Reaction to change.
+            barrier (float): New reaction barrier in K
+
+        """
         pass
 
     def __repr__(self) -> str:
@@ -150,22 +201,48 @@ class MutableNetworkABC(NetworkABC):
     # Species Modification Interface
     @abstractmethod
     def add_species(self, species: Species | Sequence[Species | list]) -> None:
-        """Add one or more species to the network."""
+        """Add species to network.
+
+        Args:
+            species (Species | Sequence[Species | list]): Species object, list of Species,
+                or CSV-style entries
+
+        """
         pass
 
     @abstractmethod
-    def remove_species(self, specie_name: str | Species) -> None:
-        """Remove a species from the network."""
+    def remove_species(self, species: str | Species) -> None:
+        """Remove a species from network.
+
+        Args:
+            species (str | Species): name of species to be deleted, or the Species instance
+
+        Raises:
+            ValueError: If no species ``species`` is in the Network.
+
+        """
         pass
 
     @abstractmethod
     def set_specie(self, species_name: str, species: Species) -> None:
-        """Set/update a species in the network."""
+        """Set/update a species.
+
+        Args:
+            species_name (str): Name of species
+            species (Species): Species to replace the old Species with
+
+        """
         pass
 
     @abstractmethod
     def set_species_dict(self, new_species_dict: dict[str, Species]) -> None:
-        """Replace the entire species dictionary."""
+        """Replace entire species dictionary.
+
+        Args:
+            new_species_dict (dict[str, Species]): dictionary with keys the
+                names of the species and values the Species instances.
+
+        """
         pass
 
     @abstractmethod
@@ -175,28 +252,68 @@ class MutableNetworkABC(NetworkABC):
 
     # Reaction Modification Interface
     @abstractmethod
-    def add_reactions(self, reactions: Reaction | Sequence[Reaction | list]) -> None:
-        """Add one or more reactions to the network."""
+    def add_reactions(self, reactions: Reaction | Sequence[list | Reaction]) -> None:
+        """Add reactions to network.
+
+        Args:
+            reactions (Reaction | Sequence[list | Reaction]): Reaction object, list of Reactions,
+                or CSV-style entries
+
+        Raises:
+            ValueError: If there is an error when converting the CSV-style entries to
+                Reaction instances
+            TypeError: If input was not a Reaction, list of Reaction instances, or
+                CSV-style entries.
+        """
         pass
 
     @abstractmethod
     def remove_reaction(self, reaction: Reaction) -> None:
-        """Remove a reaction from the network."""
+        """Remove a reaction from network.
+
+        Args:
+            reaction (Reaction): Reaction to remove from the network.
+
+        Raises:
+            ValueError: If no matching reaction ``reaction`` is found in the network.
+            RuntimeError: If multiple matching reactions are found in the network.
+
+        """
         pass
 
     @abstractmethod
     def remove_reaction_by_index(self, reaction_idx: int) -> None:
-        """Remove a reaction by its index."""
+        """Remove a reaction by its index.
+
+        Args:
+            reaction_idx (int): Index of reaction to remove.
+
+        """
         pass
 
     @abstractmethod
     def set_reaction(self, reaction_idx: int, reaction: Reaction) -> None:
-        """Set/update a reaction at a specific index."""
+        """Set/update a reaction at specific index.
+
+        Args:
+            reaction_idx (int): index of reaction to set.
+            reaction (Reaction): new reaction instance.
+
+        Raises:
+            RuntimeError: If the number of reactions changes.
+
+        """
         pass
 
     @abstractmethod
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
-        """Replace the entire reaction dictionary."""
+        """Replace the entire reaction dictionary.
+
+        Args:
+            new_dict (dict[int, Reaction]): Dictionary with keys indices and values
+                Reaction instances.
+
+        """
         pass
 
     @abstractmethod
@@ -242,7 +359,12 @@ class BaseNetwork(NetworkABC):
 
     @property
     def reactions(self) -> dict[int, Reaction]:
-        """Get reactions dictionary."""
+        """Get reactions dictionary.
+
+        Returns:
+            dict[int, Reaction]: Reaction dictionary
+
+        """
         return self._reactions_dict
 
     # ========================================================================
@@ -342,10 +464,11 @@ class BaseNetwork(NetworkABC):
         """Find reactions with same reactants and products.
 
         Args:
-            reaction: Reaction to find similar reactions for
+            reaction (Reaction): Reaction to find similar reactions for
 
         Returns:
-            Dictionary of {index: Reaction} for matching reactions
+            similar (dict[int, Reaction]): Dictionary of {index: Reaction}
+                for matching reactions
 
         """
         check_expected_type(reaction, Reaction)
@@ -368,10 +491,10 @@ class BaseNetwork(NetworkABC):
         """Get the index of a reaction in the network.
 
         Args:
-            reaction: Reaction to find
+            reaction (Reaction): Reaction to find
 
         Returns:
-            Index of the reaction
+            int: Index of the reaction
 
         Raises:
             ValueError: If reaction not found or multiple matches exist
@@ -557,7 +680,10 @@ class Network(BaseNetwork, MutableNetworkABC):
 
     @classmethod
     def build(
-        cls, species: list[Species], reactions: list[Reaction], **build_options
+        cls,
+        species: list[Species],
+        reactions: list[Reaction],
+        **build_options: dict[str, Any],
     ) -> Network:
         """Build network with full validation and automatic generation.
 
@@ -568,7 +694,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         Args:
             species (list[Species]): List of Species objects
             reactions (list[Reaction]): List of Reaction objects
-            **build_options: Options passed to NetworkBuilder:
+            **build_options (dict[str, Any]): Options passed to NetworkBuilder:
                 - user_defined_bulk: List of user-defined bulk species
                 - gas_phase_extrapolation: bool (default False)
                 - add_crp_photo_to_grain: bool (default False)
@@ -775,7 +901,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             raise RuntimeError(msg)
 
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
-        """Replace entire reaction dictionary.
+        """Replace the entire reaction dictionary.
 
         Args:
             new_dict (dict[int, Reaction]): Dictionary with keys indices and values

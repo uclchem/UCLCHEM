@@ -187,6 +187,10 @@ class Species:
         DESORPTION_PREF,DIFFUSION_BARRIER,DIFFUSION_PREF,Ix,Iy,Iz,SYMMETRYFACTOR
 
         Falls back to sensible defaults when fields are missing.
+
+        Args:
+            input_row (list | pd.Series): list of input fields, or pandas Series.
+
         """
         if isinstance(input_row, pd.Series):
             input_row = [input_row[field] for field in species_header]
@@ -928,9 +932,21 @@ class Species:
         return self.get_mass() > other.get_mass()
 
     def __repr__(self) -> str:
+        """Get the string representation of the species.
+
+        Returns:
+            str: Printable string
+
+        """
         return f"Specie: {self.get_name()}"
 
     def __str__(self) -> str:
+        """Get the name of the species.
+
+        Returns:
+            str: Name of the species
+
+        """
         return self.get_name()
 
     def calculate_rotational_partition_factor(self) -> float:

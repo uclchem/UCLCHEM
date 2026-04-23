@@ -101,7 +101,7 @@ class Reaction:
         """Initialize a Reaction object.
 
         Args:
-            input_row (list[str] | Reaction): Either a Reaction object to copy,
+            input_row (list | Reaction): Either a Reaction object to copy,
                 or a list/array with reaction data
             reaction_source (str | None): Optional source identifier for the reaction.
                 Default = None.
@@ -815,6 +815,19 @@ class Reaction:
     def _is_reaction_wrap(
         self, include_reactants: bool = True, include_products: bool = True
     ) -> list[str]:
+        """Get a list of species to check depending on whether to include reactants and/or products.
+
+        Args:
+            include_reactants (bool): whether to include reactants. Default = True
+            include_products (bool): whether to include products. Default = True.
+
+        Returns:
+            species_to_check (list[str]): List of species names to check.
+
+        Raises:
+            ValueError: If both ``include_reactants`` and ``include_products`` are False.
+
+        """
         if not (include_reactants or include_products):
             msg = "Either include reactants or products"
             raise ValueError(msg)

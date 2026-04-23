@@ -55,7 +55,7 @@ def get_default_coolant_directory(
 
     Args:
         user_specified (str | Path | None): User-specified directory from config.
-            If empty, searches standard locations relative to CWD.
+            If empty, searches standard locations relative to CWD. Default = None.
 
     Returns:
         Path | str: Path to collisional rate data files, or an empty string ``""``
@@ -121,13 +121,15 @@ def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Specie
 def read_reaction_file(
     file_name: str | Path, species_list: list[Species], ftype: ReactionFileTypes
 ) -> tuple[list[Reaction], list[list]]:
-    """Read in a reaction file of any kind (UCL, UMIST, KIDA), and
-    produces a list of reactions for the network, filtered by species_list.
+    """Read a reaction file of any kind (UCL, UMIST, KIDA), and make a list of reactions.
+
+    The list of Reaction instances is filtered by ``species_list``, such that it does not
+    contain species that are not in ``species_list``.
 
     Args:
-        file_name (str): A file name for the reaction file to read.
+        file_name (str | Path): A file name for the reaction file to read.
         species_list (list[Species]): A list of chemical species to be used in the reading.
-        ftype (str): 'UMIST','UCL', or 'KIDA' to describe format of file_name
+        ftype (ReactionFileTypes): 'UMIST','UCL', or 'KIDA' to describe format of file_name
 
     Returns:
         reactions (list[Reaction]): List of kept reactions.
@@ -180,6 +182,7 @@ def read_reaction_file(
 
 def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
     """Check a row parsed from a reaction file and checks it only contains acceptable things.
+
     It checks if all species in the reaction are present,
     and adds the temperature range is none is specified.
 
@@ -231,11 +234,23 @@ def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
         kida_file (str | Path): path to KIDA file
 
     Returns:
-        rows (list[list[Any]])
+        rows (list[list[str | int | float]]): parsed rows that can be turned into
+            Reaction instances
 
     """
 
     def str_parse(x: Any) -> str:
+        """Parse a string.
+
+        Removes any whitespace, and uppercases it.
+
+        Args:
+            x (Any): object to parse
+
+        Returns:
+            str: parsed object.
+
+        """
         return str(x).strip().upper()
 
     kida_contents: list[tuple[int, dict[str | Callable, int]]] = [
@@ -372,8 +387,8 @@ def output_drops(
     Args:
         dropped_reactions (list[list]): The reactions that were dropped
         output_dir (str | Path | None): The directory that dropped_reactions.csv will be written to.
-            If None, write to CWD.
-        write_files (bool): Whether or not to write the file. Defaults to True.
+            If None, write to CWD. Default = None.
+        write_files (bool): Whether or not to write the file. Default = True.
 
     """
     if output_dir is None:
@@ -400,8 +415,8 @@ def output_drops(
 
 def write_outputs(
     network: Network,
-    python_src_dir: Path,
-    fortran_src_dir: Path,
+    python_src_dir: str | Path,
+    fortran_src_dir: str | Path,
     enable_rates_storage: bool = False,
     gar_database: dict[str, np.ndarray] | None = None,
     coolants: list[dict] | None = None,
@@ -410,19 +425,21 @@ def write_outputs(
     """Write the ODE and Network fortran source files to the fortran source.
 
     Args:
-        network (network): The makerates Network class
-        python_src_dir (Path): Directory to write Python source files
+        network (Network): The makerates Network class
+        python_src_dir (str | Path): Directory to write Python source files
             (species.csv, reactions.csv).
-        fortran_src_dir (Path): Directory to write Fortran source files
+        fortran_src_dir (str | Path): Directory to write Fortran source files
             (odes.f90, network.f90, f2py_constants.f90).
         enable_rates_storage (bool): Enable storage of writing rates to files.
             Default = False.
-        gar_database (dict[str, np.array] | None): Database for grain-activated recombination
+        gar_database (dict[str, np.ndarray] | None): Database for grain-activated recombination
             reactions. Default = None.
         coolants (list[dict] | None): List of coolants or None. If None,
             use default list of coolants. See `get_default_coolants().`
+            Default = None.
         coolant_data_dir (str | Path | None): User-specified directory from config.
             If None, searches standard locations relative to CWD.
+            Default = None
 
     Raises:
         ValueError: If coolants entries do not have a key "file" or the file names are
@@ -434,6 +451,9 @@ def write_outputs(
             directory.
 
     """
+    python_src_dir = Path(python_src_dir)
+    fortran_src_dir = Path(fortran_src_dir)
+
     # Use default coolants if none provided
     if coolants is None:
         coolants = get_default_coolants()
@@ -617,13 +637,16 @@ def write_f90_constants(
     output_file_name: str | Path,
     template_file_path: str | Path = "fortran_templates",
 ) -> None:
-    """Write the physical reactions to the f2py_constants.f90 file after every
-    run of makerates, this ensures the Fortran and Python bits are compatible.
+    """Write the constants about the network to ``f2py_constants.f90`` file after every run of MakeRates.
+
+    This writes things like the number of species, number of reactions, etc.
+    This ensures the Fortran and Python bits are compatible.
 
     Args:
-        replace_dict (dict[str, int]): The dictionary with keys to replace
-        output_file_name (Path): The path to target f2py_constants.f90 file
-        template_file_path (Path, optional): The file to use as the template.
+        replace_dict (dict[str, Any]): The dictionary with keys to replace
+        output_file_name (str | Path): The path to target ``f2py_constants.f90`` file
+        template_file_path (str | Path): The directory to the file to use as the template.
+            Default = "fortran_templates".
 
     """
     template_file_path = UCLCHEM_ROOT_DIR / "makerates" / template_file_path
@@ -705,7 +728,7 @@ def write_f90_constants(
 
 
 def write_python_constants(
-    replace_dict: dict[str, int], python_constants_file: Path
+    replace_dict: dict[str, int], python_constants_file: str | Path
 ) -> None:
     """DEPRECATED: Write the python constants to the constants.py file.
 
@@ -714,8 +737,8 @@ def write_python_constants(
     but does nothing.
 
     Args:
-        replace_dict (dict[str, int]]): Dict with keys to replace and their values (ignored)
-        python_constants_file (Path): Path to the target constant files (ignored)
+        replace_dict (dict[str, int]): Dict with keys to replace and their values (ignored)
+        python_constants_file (str | Path): Path to the target constant files (ignored)
 
     """
     warnings.warn(
@@ -725,6 +748,7 @@ def write_python_constants(
         stacklevel=2,
     )
     # Do nothing - constants.py is now self-updating
+    python_constants_file = Path(python_constants_file)
     with fileinput.input(python_constants_file, inplace=True, backup=".bak") as file:
         for line in file:
             # Add a timestamp to the file before the old one:
@@ -790,12 +814,12 @@ def write_species(file_name: str | Path, species_list: list[Species]) -> None:
 
 
 # Write the reaction file in the desired format
-def write_reactions(file_name: Path, reaction_list: list[Reaction]) -> None:
+def write_reactions(file_name: str | Path, reaction_list: list[Reaction]) -> None:
     """Write the human readable reaction file.
 
     Args:
-        file_name (Path): path to output file
-        reaction_list (list): List of reaction objects for network
+        file_name (str | Path): path to output file
+        reaction_list (list[Reaction]): List of reaction objects for network
 
     """
     reaction_columns = [
@@ -842,7 +866,7 @@ def write_reactions(file_name: Path, reaction_list: list[Reaction]) -> None:
 
 
 def write_odes_f90(
-    file_name: Path,
+    file_name: str | Path,
     species_list: list[Species],
     reaction_list: list[Reaction],
     enable_rates_storage: bool = False,
@@ -850,9 +874,9 @@ def write_odes_f90(
     """Write the ODEs in Modern Fortran. This is an actual code file.
 
     Args:
-        file_name (str): Path to file where code will be written
-        species_list (list): List of species describing network
-        reaction_list (list): List of reactions describing network
+        file_name (str | Path): Path to file where code will be written
+        species_list (list[Species]): List of species describing network
+        reaction_list (list[Reaction]): List of reactions describing network
         enable_rates_storage (bool): Enable storage of writing rates to files.
             Default = False.
 
@@ -875,14 +899,15 @@ def write_odes_f90(
         output.write(ydotString)
 
 
-def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
-    """Write jacobian in Modern Fortran. This has never improved UCLCHEM's speed
-    and so is not used in the code as it stands.
+def write_jacobian(file_name: str | Path, species_list: list[Species]) -> None:
+    """Write the jacobian in Modern Fortran.
+
+    This has never improved UCLCHEM's speed and so is not used in the code as it stands.
     Current only works for three phase model.
 
     Args:
-        file_name (str): Path to jacobian file
-        species_list (species_list): List of species AFTER being processed by build_ode_string
+        file_name (str | Path): Path to jacobian file
+        species_list (list[Species]): List of species AFTER being processed by build_ode_string
 
     """
     species_names = ""
@@ -959,8 +984,8 @@ def build_ode_string(
     thoroughly because ODE mistakes are very hard to spot.
 
     Args:
-        species_list (list): List of species in network
-        reaction_list (list): List of reactions in network
+        species_list (list[Species]): List of species in network
+        reaction_list (list[Reaction]): List of reactions in network
         enable_rates_storage (bool): Enable the writing of the rates to the disk.
             Default = False.
 
@@ -1108,8 +1133,7 @@ END MODULE ODES"""
 
 
 def species_ode_string(n: int, species: Species) -> str:
-    """Build the string of Fortran code for a species once it's loss and gains
-    strings have been produced.
+    """Build the string of Fortran code for a species once its loss and gains strings have been produced.
 
     Args:
         n (int): Index of species in python format
@@ -1339,7 +1363,9 @@ def write_network_file(
     enable_rates_storage: bool = False,
     gar_database: dict[str, np.ndarray] | None = None,
 ) -> None:
-    """Write the Fortran code file that contains all network information for UCLCHEM.
+    """Write the network file.
+
+    Write the Fortran code file that contains all network information for UCLCHEM.
     This includes lists of reactants, products, binding energies, formationEnthalpies
     and so on.
 
@@ -1605,7 +1631,9 @@ def find_reactant(species_list: list[str], reactant: str) -> int:
 
 
 def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[int]:
-    """Every desorption has a corresponding freeze out eg desorption of #CO and freeze of CO.
+    """Find the freeze-out and desorption matching partners.
+
+    Every desorption has a corresponding freeze out eg desorption of #CO and freeze of CO.
     This find the corresponding freeze out for every desorb so that when desorb>>freeze
     we can turn off freeze out in UCLCHEM.
 
