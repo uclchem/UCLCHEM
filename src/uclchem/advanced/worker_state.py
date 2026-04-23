@@ -237,6 +237,7 @@ def _pool_initializer(snapshot: dict[str, Any]) -> None:
         snapshot (dict[str, Any]): Snapshot created by func:`create_snapshot`.
 
     Example:
+        >>> import multiprocessing as mp
         >>> snapshot = create_snapshot()
         >>> mp.Pool(N, initializer=_pool_initializer, initargs=(snapshot,))
 

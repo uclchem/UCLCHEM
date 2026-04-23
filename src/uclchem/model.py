@@ -1546,7 +1546,7 @@ class AbstractModel(ABC):
         if name in file_obj:
             if not overwrite:
                 msg = f"Model with name '{name}' already exists in save file but overwrite is set to False. Unable to save model."
-                raise RuntimeError(msg)
+                warnings.warn(msg, stacklevel=2)
             else:
                 logger.debug(f"Deleting group {name} in file {file_obj.filename}")
                 del file_obj[name]

@@ -81,7 +81,7 @@ def _extract_param_names(rhs: str) -> list[str]:
     Examples:
         >>> param_names = _extract_param_names("a = 1.0, b(10) = (/.../)")
         >>> print(param_names)
-        ["a", "b"]
+        ['a', 'b']
 
     """
     names: list[str] = []

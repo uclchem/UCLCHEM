@@ -394,11 +394,19 @@ class HeatingSettings:
 
         Example:
             >>> settings = HeatingSettings()
+            >>> default_pah_abundance = settings.get_pah_abundance()
+            >>> print(default_pah_abundance)
+            6.000...e-07
+            >>>
             >>> # Set a different value
             >>> settings.set_pah_abundance(1e-6)
-            >>> # Get the adjusted value
-            >>> settings.get_pah_abundance()
-            1e-6
+            >>>
+            >>> # Print the adjusted value
+            >>> print(settings.get_pah_abundance())
+            1e-06
+            >>>
+            >>> # Set the original value back
+            >>> settings.set_pah_abundance(default_pah_abundance)
 
         """
         if abundance < 0:
