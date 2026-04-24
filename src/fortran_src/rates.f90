@@ -3,6 +3,7 @@ MODULE RATES
     USE DEFAULTPARAMETERS
     !f2py INTEGER, parameter :: dp
     USE network
+    USE f2py_constants
     USE physicscore
     USE SurfaceReactions
     use photoreactions, only: H2PhotoDissRate, COPhotoDissRate, cIonizationRate, ICE_GAS_PHOTO_CROSSSECTION_RATIO
@@ -16,6 +17,12 @@ MODULE RATES
     !Flags to control desorption processes
     REAL(dp) :: turbVel=1.0 !unit? km/s or cm/s
     ! TODO: integrate into makerates and put it in network.f90
+
+    ! Pre-split LH and ER base rates, saved in calculateReactionRates and used
+    ! by the F callback to re-apply the chemdes split at the current ice thickness.
+    REAL(dp) :: rate_lh_unsplit(nreac) = 0.0d0
+    REAL(dp) :: rate_er_unsplit(nreac) = 0.0d0
+
 CONTAINS
     SUBROUTINE calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
         REAL(dp), INTENT(IN) :: abund(:, :), safemantle, h2col, cocol, ccol
@@ -25,6 +32,7 @@ CONTAINS
         INTEGER :: i,j
         INTEGER :: k
         REAL(dp) :: numMonolayers
+        REAL(dp) :: dynamic_cap, effective_cap, min_cap_s, max_cap_s
         ! REAL(dp) :: vdiff(:)
     
         !Calculate all reaction rates
@@ -118,8 +126,10 @@ CONTAINS
             ENDIF
             !turn off freeze out if desorption due to H2 formation is much faster
             !both rates combine with density to get rate of change so drop that factor
-            WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep))<&
-            &MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
+            ! Commented out: let DVODE handle the stiff competition rather than zeroing at step boundaries,
+            ! which makes the solution step-count-dependent.
+            ! WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep))<&
+            ! &MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
         END IF
         !Desorption due to energy from cosmic rays
         idx1=descrReacs(1)
@@ -141,8 +151,8 @@ CONTAINS
                 rate(idx1:idx2) = 0.0
             ENDIF
             !turn off freeze out if desorption due to CR formation is much faster
-            WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep))&
-            <MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
+            ! WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep))&
+            ! <MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
         END IF
         
         !Desorption due to UV, partially from ISRF and partially from CR creating photons
@@ -166,8 +176,8 @@ CONTAINS
                 rate(idx1:idx2) = 0.0
             ENDIF
             !turn off freeze out if desorption due to UV is much faster
-            WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep))&
-            &<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
+            ! WHERE((rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep))&
+            ! &<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
         END IF
 
         !CRS reactions represent the production of excited species from cosmic ray bombardment
@@ -241,8 +251,11 @@ CONTAINS
                 END DO
                 !At some point, rate is so fast that there's no point freezing out any more
                 !Save the integrator some trouble and turn freeze out off
-                WHERE(rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep)&
-                &<MIN_SURFACE_ABUND*rate(idx1:idx2)) rate(freezePartners)=0.0
+                ! Compare against surface thermal desorption only (first SIZE(freezePartners)
+                ! reactions of thermReacs).
+                ! (surface # first, then bulk @); freeze-out competes with surface only.
+                ! WHERE(rate(freezePartners)*abund(re1(freezePartners),dstep)*density(dstep)&
+                ! &<MIN_SURFACE_ABUND*rate(idx1:idx1+SIZE(freezePartners)-1)) rate(freezePartners)=0.0
                 IF (safeMantle .lt. MIN_SURFACE_ABUND) rate(idx1:idx2)=0.0
             ELSE
                 rate(idx1:idx2)=0.0
@@ -265,6 +278,9 @@ CONTAINS
             DO j=idx1,idx2
                 rate(j)=diffusionReactionRate(j,dustTemp(dstep))
             END DO
+
+            ! Save unsplit LH rates for dynamic re-split inside the F callback
+            rate_lh_unsplit(lhReacs(1):lhReacs(2)) = rate(lhReacs(1):lhReacs(2))
 
             IF ((desorb) .and. (chemdesorb)) THEN
                 !two routes for every diffusion reaction: products to gas or products remain on surface
@@ -298,7 +314,10 @@ CONTAINS
     if (idx1 .ne. REAC_NOT_PRESENT) THEN
         rate(idx1:idx2)=freezeOutRate(idx1,idx2)
         rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/dustTemp(dstep))
-        
+
+        ! Save unsplit ER rates for dynamic re-split inside the F callback
+        rate_er_unsplit(erReacs(1):erReacs(2)) = rate(erReacs(1):erReacs(2))
+
         IF ((desorb) .and. (chemdesorb)) THEN
             !calculate fraction of reaction that goes down desorption route
             idx1 = erdesReacs(1)
@@ -405,6 +424,50 @@ CONTAINS
         rate(nR_H_ED)=EncounterDesorptionRate(nR_H_ED, dustTemp(dstep)) !H Encounter Desorption
     ELSE
         rate(nR_H_ED)=0.0D0
+    END IF
+
+    ! Min floor: zero desorption rate constants k below numerical threshold to eliminate
+    ! near-zero Arrhenius terms (e.g. strongly-bound species at low T) that waste solver work.
+    IF (min_desorption_rate > 0.0d0) THEN
+        IF (thermReacs(1)  .ne. REAC_NOT_PRESENT) &
+            WHERE(rate(thermReacs(1):thermReacs(2)) > 0.0d0 .AND. &
+                  rate(thermReacs(1):thermReacs(2)) < min_desorption_rate) &
+                rate(thermReacs(1):thermReacs(2)) = 0.0d0
+        IF (desoh2Reacs(1) .ne. REAC_NOT_PRESENT) &
+            WHERE(rate(desoh2Reacs(1):desoh2Reacs(2)) > 0.0d0 .AND. &
+                  rate(desoh2Reacs(1):desoh2Reacs(2)) < min_desorption_rate) &
+                rate(desoh2Reacs(1):desoh2Reacs(2)) = 0.0d0
+        IF (descrReacs(1)  .ne. REAC_NOT_PRESENT) &
+            WHERE(rate(descrReacs(1):descrReacs(2)) > 0.0d0 .AND. &
+                  rate(descrReacs(1):descrReacs(2)) < min_desorption_rate) &
+                rate(descrReacs(1):descrReacs(2)) = 0.0d0
+        IF (deuvcrReacs(1) .ne. REAC_NOT_PRESENT) &
+            WHERE(rate(deuvcrReacs(1):deuvcrReacs(2)) > 0.0d0 .AND. &
+                  rate(deuvcrReacs(1):deuvcrReacs(2)) < min_desorption_rate) &
+                rate(deuvcrReacs(1):deuvcrReacs(2)) = 0.0d0
+        IF (lhdesReacs(1)  .ne. REAC_NOT_PRESENT) &
+            WHERE(rate(lhdesReacs(1):lhdesReacs(2)) > 0.0d0 .AND. &
+                  rate(lhdesReacs(1):lhdesReacs(2)) < min_desorption_rate) &
+                rate(lhdesReacs(1):lhdesReacs(2)) = 0.0d0
+        IF (erdesReacs(1)  .ne. REAC_NOT_PRESENT) &
+            WHERE(rate(erdesReacs(1):erdesReacs(2)) > 0.0d0 .AND. &
+                  rate(erdesReacs(1):erdesReacs(2)) < min_desorption_rate) &
+                rate(erdesReacs(1):erdesReacs(2)) = 0.0d0
+        IF (rate(nR_H2_ED) > 0.0d0 .AND. rate(nR_H2_ED) < min_desorption_rate) rate(nR_H2_ED) = 0.0d0
+        IF (rate(nR_H_ED)  > 0.0d0 .AND. rate(nR_H_ED)  < min_desorption_rate) rate(nR_H_ED)  = 0.0d0
+    END IF
+
+    ! Dynamic max cap: clamp thermal desorption k to prevent DVODE stiffness.
+    ! Three-regime: effective_cap = clamp(factor/Dt_outer, min_cap, max_cap)
+    !   k < min_cap_s -> always kept;  k > max_cap_s -> always capped;  in between -> dynamic.
+    ! Cap bounds in yr^-1 are converted to s^-1; targetTime and currentTime are in seconds.
+    IF (max_desorption_rate_factor > 0.0d0 .AND. thermReacs(1) .ne. REAC_NOT_PRESENT) THEN
+        min_cap_s   = min_desorption_rate_cap / SECONDS_PER_YEAR
+        max_cap_s   = max_desorption_rate_cap / SECONDS_PER_YEAR
+        dynamic_cap = max_desorption_rate_factor / MAX(1.0d-300, targetTime - currentTime)
+        effective_cap = MIN(MAX(dynamic_cap, min_cap_s), max_cap_s)
+        WHERE(rate(thermReacs(1):thermReacs(2)) > effective_cap) &
+            rate(thermReacs(1):thermReacs(2)) = effective_cap
     END IF
 
     END SUBROUTINE calculateReactionRates

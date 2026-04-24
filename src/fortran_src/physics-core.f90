@@ -24,6 +24,13 @@ MODULE physicscore
     REAL(dp), allocatable :: initialDens_array(:)
     ! Radial position of each parcel (pc). Set by collapse/cloud/hotcore for 1D models; 0 otherwise.
     REAL(dp), allocatable :: parcel_radius(:)
+    ! coldens time series of the last-processed outer shell; used in (points,time) loop order
+    ! so inner shells can look up coldens(dstep+1, dtime) exactly. Allocated in wrap.f90.
+    REAL(dp), allocatable :: coldens_history(:)
+    ! Set by wrap.f90 before each modelUpdatePhysics call. Holds coldens(dstep+1) at the
+    ! current timestep (from coldens_history), so the exact edge-to-core accumulation is
+    ! preserved without accessing a live coldens(dstep+1) that may not yet be computed.
+    REAL(dp) :: outer_coldens_for_current_step = 0.0_dp
 
     !Arrays for calculating rates
     !if ionModel = L use the L model coefficients, if = H use the H model
@@ -89,6 +96,8 @@ CONTAINS
         initialDens_array = initialDens   ! default: same for all points (single-point / no radial profile)
         IF (ALLOCATED(parcel_radius)) DEALLOCATE(parcel_radius)
         ALLOCATE(parcel_radius(points))
+        IF (ALLOCATED(coldens_history)) DEALLOCATE(coldens_history)
+        ! coldens_history is allocated in wrap.f90 where timePoints is known
         parcel_radius = 0.0_dp
 
         cloudSize = (rout-rin)*pc
@@ -117,16 +126,21 @@ CONTAINS
     END SUBROUTINE coreInitializePhysics
 
     SUBROUTINE coreUpdatePhysics
-        !calculate column density. Remember dstep counts from core centre to edge
-        !and coldens should be amount of gas from edge to parcel.
-        coldens(dstep)=cloudSize/real(points)*density(dstep)
+        ! In the 1D RT (points,time) loop, modelUpdatePhysics (cloud.f90) owns
+        ! coldens and av using the edge-to-core accumulation with coldens_history.
+        ! Skip the centre-to-edge accumulation here to avoid clobbering those values.
+        IF (.NOT. (enable_radiative_transfer .AND. points.gt.1)) THEN
+            !calculate column density. Remember dstep counts from core centre to edge
+            !and coldens should be amount of gas from edge to parcel.
+            coldens(dstep)=cloudSize/real(points)*density(dstep)
 
-        ! add previous column densities to current as we move into cloud to get total
-        IF (dstep .lt. points) coldens(dstep)=coldens(dstep)+coldens(dstep-1)
+            ! add previous column densities to current as we move into cloud to get total
+            IF (dstep .lt. points) coldens(dstep)=coldens(dstep)+coldens(dstep-1)
 
-        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av(dstep)= baseAv + coldens(dstep)/1.6d21
-        if (.not. heatingFlag) then 
+            !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
+            av(dstep)= baseAv + coldens(dstep)/1.6d21
+        END IF
+        if (.not. heatingFlag) then
             dustTemp(dstep)=gasTemp(dstep)
         end if
 

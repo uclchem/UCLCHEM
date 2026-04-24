@@ -991,13 +991,19 @@ def build_ode_string(
     ode_string = """MODULE ODES
 USE constants
 USE network
-USE SurfaceReactions, ONLY: useGarrod2011Transfer
+USE SurfaceReactions, ONLY: useGarrod2011Transfer, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO
 IMPLICIT NONE
 CONTAINS
-SUBROUTINE GETYDOT(RATE, Y, bulklayersreciprocal, ratioSurfaceToBulk, surfaceCoverage, safeMantle, safebulk, D, YDOT)
-REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulklayersreciprocal, ratioSurfaceToBulk, safeMantle, safebulk, D
+SUBROUTINE GETYDOT(RATE, Y, surfaceCoverage, D, YDOT)
+REAL(dp), INTENT(IN) :: RATE(:), Y(:), D
 REAL(dp), INTENT(INOUT) :: YDOT(:), surfaceCoverage
 REAL(dp) :: totalSwap, LOSS, PROD
+REAL(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
+    safeMantle = MAX(1.0d-30, SUM(Y(surfaceList)))
+    safeBulk   = MAX(1.0d-30, SUM(Y(bulkList)))
+    IF (refractoryList(1) .gt. 0) safeBulk = MAX(1.0d-30, safeBulk - SUM(Y(refractoryList)))
+    ratioSurfaceToBulk   = MIN(1.0D0, safeMantle/safeBulk)
+    bulklayersreciprocal = MIN(1.0D0, NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
     """
     # Add a logical to determine whether we can write the reaction rates in realtime
     ode_string += truncate_line(f"totalSwap={total_swap[1:]}\n\n")
@@ -1364,6 +1370,37 @@ def write_network_file(
         openFile.write(array_to_string("    specname", names, type="string"))
         openFile.write(array_to_string("    mass", masses, type="float"))
         openFile.write(array_to_string("    atomCounts", atoms, type="int"))
+
+        # Generic element-count 2D array for runtime conservation checking.
+        # Covers every element that appears at least once across all species.
+        all_constituents = []
+        unique_elements = []
+        for species in species_list:
+            try:
+                constituents = species.find_constituents(quiet=True)
+                all_constituents.append(dict(constituents))
+                for elem, count in constituents.items():
+                    if count > 0 and elem not in unique_elements:
+                        unique_elements.append(elem)
+            except (ValueError, Exception):
+                all_constituents.append({})
+
+        unique_elements = sorted(
+            e for e in unique_elements if e.upper() not in ("E", "E-")
+        )
+        n_elems = len(unique_elements)
+
+        elem_count_2d = np.zeros((len(species_list), n_elems), dtype=int)
+        for si, constituents in enumerate(all_constituents):
+            for ei, elem in enumerate(unique_elements):
+                elem_count_2d[si, ei] = int(constituents.get(elem, 0))
+
+        max_elem_len = max(len(e) for e in unique_elements)
+        padded_elems = [e.ljust(max_elem_len) for e in unique_elements]
+
+        openFile.write(f"INTEGER, PARAMETER :: n_elem_tracked = {n_elems}\n")
+        openFile.write(array_to_string("    elem_names", padded_elems, type="string"))
+        openFile.write(array_to_string("    elem_count", elem_count_2d, type="int"))
 
         # then write evaporation stuff
         n_ice_species = write_evap_lists(openFile, species_list)

@@ -178,6 +178,14 @@ default_param_dictionary = {
     # freq_rel_tol default is auto-computed at makerates time from LAMDA file deviations
     "freq_rel_tol": float(getattr(f2py_constants, "suggested_freq_rel_tol", 0.1)),
     "pop_rel_tol": 0.1,
+    # DVODE solver mode:
+    #   0 = ISTATE=1 always (original behaviour, fresh restart every output step)
+    #   1 = ISTATE=2 always (BDF history always continued, no guard)
+    #   2 = Hybrid/adaptive (default): ISTATE=2 unless abundance or temperature changed significantly
+    "solver_mode": 2,
+    # log₁₀ of per-step abundance change that triggers a forced ISTATE=1 restart in hybrid mode.
+    # Smaller = more frequent restarts (safer but less smooth); larger = fewer restarts (smoother but riskier).
+    "log_change_threshold": 1.0,
 }
 
 default_elements_to_check: list[str] = ["H", "N", "C", "O"]

@@ -648,8 +648,9 @@ CONTAINS
         EXTERNAL modelInitializePhysics,updateTargetTime,modelUpdatePhysics,sublimation
         INTEGER, INTENT(OUT) :: successFlag
         LOGICAL :: returnArray, givestartabund, returnRateConstants
-        LOGICAL :: allParcelsFinished, parcelFinished
-        INTEGER :: dtime, timePoints
+        INTEGER :: dtime, timePoints, dtime_local
+        REAL(dp) :: initialTime, outermost_stop_time
+        LOGICAL :: parcelDone, outermost_stopped
         ! Arrays needed to work return physics in memory mode
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
@@ -750,82 +751,103 @@ CONTAINS
         timeInYears = currentTime / SECONDS_PER_YEAR
         ! Don't call output here - let the first loop iteration handle it
         ! This avoids duplicate output at t=0
-        
 
-        !loop until the end condition of the model is reached
-        ! Main time integration loop
-        ! For 1D radiative transfer models, the loop direction and stopping logic differ
-        DO WHILE ((successFlag .eq. 0) .and. (timeInYears < finalTime))
-            dtime = dtime + 1
-            currentTimeold=currentTime
-            !Each physics module has a subroutine to set the target time from the current time
-            CALL updateTargetTime
-            coolant_levpop_force_recompute = .TRUE.
-            IF (writeTimestepInfo) THEN
-                WRITE(*,'(A,ES10.2,A,ES10.2,A,F9.1,A,F9.1,A,ES10.2,A,ES10.2,A,ES10.2)') &
-                    't:', currentTimeold/SECONDS_PER_YEAR, &
-                    ' dT:', dvode_rstats(11)/SECONDS_PER_YEAR, &
-                    ' Tg:', gasTemp(1), &
-                    ' Td:', dustTemp(1), &
-                    ' nH:', density(1), &
-                    ' G0:', radfield, &
-                    ' z:', zeta
-                FLUSH(6)
-                flush_rc = c_fflush(C_NULL_PTR) ! TODO: may be redundant with !f2py threadsafe + FLUSH(6)
-            END IF
-            ! Exit loop if targetTime would exceed finalTime
-            IF (targetTime/SECONDS_PER_YEAR .gt. finalTime) THEN
-                EXIT
-            END IF
+        ! One-time setup for the (points, time) loop order used in 1D RT models
+        IF (enable_radiative_transfer .AND. points.gt.1) THEN
+            IF (ALLOCATED(coldens_history)) DEALLOCATE(coldens_history)
+            ALLOCATE(coldens_history(timepoints+1))
+            coldens_history = 0.0_dp
+            initialTime = currentTime
+            outermost_stop_time = finalTime * SECONDS_PER_YEAR
+            outermost_stopped = .FALSE.
+        END IF
 
-            IF (enable_radiative_transfer .AND. points.gt.1) THEN
-                allParcelsFinished = .TRUE.
+        IF (enable_radiative_transfer .AND. points.gt.1) THEN
+            ! -- (points outer, time inner) loop -------------------------------------
+            ! Processes each spatial parcel through its full time evolution before
+            ! moving inward. DVODE retains BDF history (ISTATE=2) across all timesteps
+            ! for a given parcel. coldens_history stores coldens(dstep+1, dtime) so the
+            ! edge-to-core AV accumulation is reproduced exactly without approximation.
+            DO dstep=points,1,-1
 
-                DO dstep=points,1,-1
-                    parcelFinished = .FALSE.
+                ! -- per-parcel reset ------------------------------------------------
+                currentTime  = initialTime
+                timeInYears  = initialTime / SECONDS_PER_YEAR
+                dtime_local  = 0
+                parcelDone   = .FALSE.
+                coolant_levpop_force_recompute = .TRUE.
 
-                    ! Check stopping condition for this parcel in freefall mode
+                IF (givestartabund) abund(:nspec, dstep) = abundanceStart(dstep, :nspec)
+                CALL resetDVODEForNewPoint()
+
+                ! Outermost shell has no outer neighbour; initialise to zero
+                IF (dstep .eq. points) outer_coldens_for_current_step = 0.0_dp
+
+                ! -- time integration for this parcel --------------------------------
+                DO WHILE ((successFlag .eq. 0) .AND. (timeInYears < finalTime) .AND. (.NOT. parcelDone))
+
+                    ! Modes 1 & 2: stop inner parcels when the outermost parcel stopped
+                    IF ((parcelStoppingMode .eq. 1 .OR. parcelStoppingMode .eq. 2) &
+                            .AND. outermost_stopped .AND. dstep .lt. points) THEN
+                        IF (currentTime .ge. outermost_stop_time) EXIT
+                    END IF
+
+                    dtime_local    = dtime_local + 1
+                    currentTimeold = currentTime
+                    CALL updateTargetTime
+                    coolant_levpop_force_recompute = .TRUE.
+                    IF (targetTime/SECONDS_PER_YEAR .gt. finalTime) EXIT
+
+                    ! Freefall stopping logic
                     IF (freefall .AND. density(dstep) .ge. density_max(dstep)) THEN
                         SELECT CASE (parcelStoppingMode)
                             CASE (0)
-                                ! Mode 0: Never stop, keep evolving
-                                ! Clamp density at max but continue chemistry
                                 density(dstep) = density_max(dstep)
-
                             CASE (1)
-                                ! Mode 1: Stop all when outermost parcel reaches max
-                                IF (density(points) .ge. density_max(points)) THEN
-                                    ! Outermost parcel finished, exit entire model
-                                    EXIT
+                                IF (dstep .eq. points) THEN
+                                    outermost_stop_time = currentTime
+                                    outermost_stopped   = .TRUE.
                                 END IF
-                                ! Otherwise continue computing this parcel
                                 density(dstep) = density_max(dstep)
-
                             CASE (2)
-                                ! Mode 2: Stop each parcel individually when it reaches max
-                                ! This parcel is done, skip computation but write output
-                                parcelFinished = .TRUE.
-
+                                IF (dstep .eq. points) THEN
+                                    outermost_stop_time = currentTime
+                                    outermost_stopped   = .TRUE.
+                                    parcelDone = .TRUE.    ! outermost exits at its own freefall time
+                                ELSE
+                                    density(dstep) = density_max(dstep)  ! inner: cap density, keep running
+                                END IF
                             CASE DEFAULT
-                                ! Invalid mode, treat as mode 1 (safest default)
-                                IF (density(points) .ge. density_max(points)) THEN
-                                    EXIT
+                                IF (dstep .eq. points) THEN
+                                    outermost_stop_time = currentTime
+                                    outermost_stopped   = .TRUE.
                                 END IF
                                 density(dstep) = density_max(dstep)
                         END SELECT
                     END IF
 
-                    ! Track if any parcel is still computing
-                    IF (.NOT. parcelFinished) allParcelsFinished = .FALSE.
+                    IF (writeTimestepInfo) THEN
+                        WRITE(*,'(A,I3,A,ES10.2,A,ES10.2,A,F9.1,A,F9.1,A,ES10.2,A,ES10.2,A,ES10.2)') &
+                            'p:', dstep, &
+                            't:', currentTimeold/SECONDS_PER_YEAR, &
+                            ' dT:', dvode_rstats(11)/SECONDS_PER_YEAR, &
+                            ' Tg:', gasTemp(dstep), &
+                            ' Td:', dustTemp(dstep), &
+                            ' nH:', density(dstep), &
+                            ' G0:', radfield, &
+                            ' z:', zeta
+                        FLUSH(6)
+                        flush_rc = c_fflush(C_NULL_PTR)
+                    END IF
 
-                    ! Compute chemistry and physics for active parcels
-                    IF (.NOT. parcelFinished) THEN
-                        !reset time if this isn't first depth point
-                        currentTime=currentTimeold
-                        !update chemistry from currentTime to targetTime
-                        CALL updateChemistry(successFlag, statsarray, timePoints+1, dtime)
+                    IF (.NOT. parcelDone) THEN
+                        ! Load outer neighbour's coldens at this timestep for the AV accumulation
+                        IF (dstep .lt. points) &
+                            outer_coldens_for_current_step = coldens_history(dtime_local)
+
+                        CALL updateChemistry(successFlag, statsarray, timePoints+1, dtime_local)
                         IF (successFlag .lt. 0) THEN
-                            write(*,*) 'Error updating chemistry'
+                            WRITE(*,*) 'Error updating chemistry'
                             RETURN
                         END IF
                         IF (coolant_error_flag .ne. 0) THEN
@@ -834,37 +856,47 @@ CONTAINS
                             coolant_error_flag = 0
                             RETURN
                         END IF
-                        !get time in years for output, currentTime is now equal to targetTime
-                        timeInYears= targetTime/SECONDS_PER_YEAR
+                        timeInYears = targetTime / SECONDS_PER_YEAR
 
-                        !Update physics so it's correct for new currentTime and start of next time step
-                        call coreUpdatePhysics
-                        call modelUpdatePhysics
-                        ! Fail gracefully if physics module reported an error (e.g., invalid inputs)
+                        CALL coreUpdatePhysics
+                        CALL modelUpdatePhysics
                         IF (postprocess_error .NE. 0) THEN
                             successFlag = PHYSICS_UPDATE_ERROR
                             WRITE(*,*) 'ERROR: postprocess physics update failed with code=', postprocess_error
                             RETURN
                         END IF
 
-                        !Sublimation checks for UCLCHEM's simple sublimation mode
+                        ! Store this parcel's coldens for the next inner parcel to use
+                        coldens_history(dtime_local) = coldens(dstep)
+
                         CALL sublimation(abund, points)
                     END IF
 
-                    ! Write output for all parcels (active or finished)
                     IF (returnArray) THEN
-                        CALL output(returnArray, returnRateConstants, successflag, physicsarray, chemicalabunarray, rateConstantsArray,&
-                        &heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
+                        CALL output(returnArray, returnRateConstants, successflag, physicsarray, &
+                            chemicalabunarray, rateConstantsArray, heatarray, statsarray, &
+                            levelpopulationsarray, sestatsarray, dtime_local, timepoints)
                     ELSE
                         CALL output(returnArray, returnRateConstants, successflag)
                     END IF
-                END DO
 
-                ! Check if we should exit (mode 2 when all parcels finished)
-                IF (parcelStoppingMode .eq. 2 .AND. allParcelsFinished) EXIT
+                    IF (parcelDone) EXIT
 
-            ELSE
-                ! Non-radiative-transfer path: loop forward through parcels
+                END DO  ! inner time loop
+
+            END DO  ! outer parcel loop
+
+        ELSE
+            ! -- non-RT path: original (time outer, points inner) loop ----------------
+            DO WHILE ((successFlag .eq. 0) .and. (timeInYears < finalTime))
+                dtime = dtime + 1
+                currentTimeold=currentTime
+                CALL updateTargetTime
+                coolant_levpop_force_recompute = .TRUE.
+                IF (targetTime/SECONDS_PER_YEAR .gt. finalTime) THEN
+                    EXIT
+                END IF
+
                 ! Exit loop if density exceeds finalDens (when using density-based stopping)
                 IF (parcelStoppingMode.ne.0 .and. (density(dstep) .ge. finalDens)) THEN
                     EXIT
@@ -873,41 +905,49 @@ CONTAINS
                 DO dstep=1,points
                     !reset time if this isn't first depth point
                     currentTime=currentTimeold
-                !update chemistry from currentTime to targetTime
-                CALL updateChemistry(successFlag, statsarray, timePoints+1, dtime)
-                IF (successFlag .lt. 0) THEN
-                    write(*,*) 'Error updating chemistry'
-                    RETURN
-                END IF
-                IF (coolant_error_flag .ne. 0) THEN
-                    WRITE(*,*) 'Coolant error: ', TRIM(coolant_error_message)
-                    successFlag = coolant_error_flag
-                    coolant_error_flag = 0
-                    RETURN
-                END IF
-                !get time in years for output, currentTime is now equal to targetTime
-                timeInYears= targetTime/SECONDS_PER_YEAR
 
-                !Update physics so it's correct for new currentTime and start of next time step
-                call coreUpdatePhysics
-                call modelUpdatePhysics
-                ! Fail gracefully if physics module reported an error (e.g., invalid inputs)
-                IF (postprocess_error .NE. 0) THEN
-                    successFlag = PHYSICS_UPDATE_ERROR
-                    WRITE(*,*) 'ERROR: postprocess physics update failed with code=', postprocess_error
-                    RETURN
-                END IF
-                !Sublimation checks if Sublimation should happen this time step and does it
-                CALL sublimation(abund, points)
-                IF (returnArray) THEN
-                    CALL output(returnArray, returnRateConstants, successFlag, physicsarray, chemicalabunarray, rateConstantsArray,&
-                    &heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
-                ELSE
-                    CALL output(returnArray, returnRateConstants, successFlag)
-                END IF
+                    IF (writeTimestepInfo) THEN
+                        WRITE(*,'(A,ES10.2,A,ES10.2,A,F9.1,A,F9.1,A,ES10.2,A,ES10.2,A,ES10.2)') &
+                            't:', currentTimeold/SECONDS_PER_YEAR, &
+                            ' dT:', dvode_rstats(11)/SECONDS_PER_YEAR, &
+                            ' Tg:', gasTemp(1), &
+                            ' Td:', dustTemp(1), &
+                            ' nH:', density(1), &
+                            ' G0:', radfield, &
+                            ' z:', zeta
+                        FLUSH(6)
+                        flush_rc = c_fflush(C_NULL_PTR)
+                    END IF
+                    CALL updateChemistry(successFlag, statsarray, timePoints+1, dtime)
+                    IF (successFlag .lt. 0) THEN
+                        write(*,*) 'Error updating chemistry'
+                        RETURN
+                    END IF
+                    IF (coolant_error_flag .ne. 0) THEN
+                        WRITE(*,*) 'Coolant error: ', TRIM(coolant_error_message)
+                        successFlag = coolant_error_flag
+                        coolant_error_flag = 0
+                        RETURN
+                    END IF
+                    timeInYears= targetTime/SECONDS_PER_YEAR
+
+                    call coreUpdatePhysics
+                    call modelUpdatePhysics
+                    IF (postprocess_error .NE. 0) THEN
+                        successFlag = PHYSICS_UPDATE_ERROR
+                        WRITE(*,*) 'ERROR: postprocess physics update failed with code=', postprocess_error
+                        RETURN
+                    END IF
+                    CALL sublimation(abund, points)
+                    IF (returnArray) THEN
+                        CALL output(returnArray, returnRateConstants, successFlag, physicsarray, chemicalabunarray, rateConstantsArray,&
+                        &heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
+                    ELSE
+                        CALL output(returnArray, returnRateConstants, successFlag)
+                    END IF
+                END DO
             END DO
-            END IF
-        END DO
+        END IF
         IF (.NOT. returnArray) THEN
             CALL finalOutput
             CALL closeFiles
@@ -1138,6 +1178,14 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) omega
                 CASE('difftobindratio')
                     READ(inputValue,*,iostat=successFlag) diffToBindRatio
+                CASE('min_desorption_rate')
+                    READ(inputValue,*,iostat=successFlag) min_desorption_rate
+                CASE('max_desorption_rate_factor')
+                    READ(inputValue,*,iostat=successFlag) max_desorption_rate_factor
+                CASE('min_desorption_rate_cap')
+                    READ(inputValue,*,iostat=successFlag) min_desorption_rate_cap
+                CASE('max_desorption_rate_cap')
+                    READ(inputValue,*,iostat=successFlag) max_desorption_rate_cap
                 CASE('enforcechargeconservation')
                     READ(inputValue,*,iostat=successFlag) enforceChargeConservation
                 CASE('reltol')
@@ -1152,6 +1200,8 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) abstol_ice_min
                 CASE('negative_abundance_tol')
                     READ(inputValue,*,iostat=successFlag) negative_abundance_tol
+                CASE('runtime_conservation_tolerance')
+                    READ(inputValue,*,iostat=successFlag) runtime_conservation_tolerance
                 CASE('reltol_phys')
                     READ(inputValue,*,iostat=successFlag) reltol_phys
                 CASE('abstol_phys_factor')
@@ -1296,6 +1346,10 @@ CONTAINS
                    READ(inputValue,*,iostat=successFlag) heating_temp_abstol
                 CASE('heating_temp_reltol')
                    READ(inputValue,*,iostat=successFlag) heating_temp_reltol
+                CASE('solver_mode')
+                   READ(inputValue,*,iostat=successFlag) solverMode
+                CASE('log_change_threshold')
+                   READ(inputValue,*,iostat=successFlag) logChangeThreshold
                 ! CASE('trajecfile')
                 !    READ(inputValue,*,iostat=successFlag) trajecfile
                 CASE DEFAULT

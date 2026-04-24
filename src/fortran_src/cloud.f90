@@ -7,7 +7,8 @@ MODULE cloud_mod
     !f2py INTEGER, parameter :: dp
     USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens, density_max, ngas_r, initialDens_r, findcoldens_edge2core, initialDens_array, parcel_radius
+    &coldens, density_max, ngas_r, initialDens_r, findcoldens_edge2core, initialDens_array, parcel_radius, &
+    &outer_coldens_for_current_step
     USE network
     use f2py_constants
     IMPLICIT NONE
@@ -15,7 +16,7 @@ MODULE cloud_mod
     REAL(dp), allocatable :: coldens_obs(:)
 
     ! Time sampling control parameters
-    REAL(dp) :: timestep_multiplier_early = 10.0_dp          ! For t < 10 yr: next timestep dt = multiplier * t
+    REAL(dp) :: timestep_resolution_factor_early = 0.5_dp   ! For 0 < t < 10 yr: samples per decade (snapped to k*10^n grid)
     REAL(dp) :: timestep_resolution_factor_mid = 1.0_dp      ! For 10 yr < t < 1 Myr: dt = 10^floor(log_10(t)) / factor
     REAL(dp) :: timestep_fixed_late_years = 1.0d5            ! For t > 1 Myr: dt = fixed timestep in years
 
@@ -43,9 +44,8 @@ CONTAINS
             DO dstep=1,points
                 parcelRadius(dstep)=dstep*rout/float(points) !unit of parsec -- Note: from core to edge
                 parcel_radius(dstep)=parcelRadius(dstep)
+                density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
             END DO
-            
-            density_max=ngas_r(rin,finalDens,density_scale_radius,density_power_index)
         END IF
 
         ! Set up densities (use radial profile if 1D radiative transfer enabled)
@@ -53,7 +53,7 @@ CONTAINS
             IF (enable_radiative_transfer .AND. points.gt.1) THEN
                 ! Store the raw profile density (without 1.001 bump) so densdot
                 ! sees density(dstep) > initialDens_array(dstep) and freefall fires.
-                initialDens_array(dstep)=ngas_r(parcelRadius(dstep),initialDens,density_scale_radius,density_power_index)
+                initialDens_array(dstep)=initialDens_r(parcelRadius(dstep)*pc,density_power_index)
                 density(dstep)=1.001*initialDens_array(dstep)
             ELSE
                 density(dstep)=1.001*initialDens
@@ -62,7 +62,7 @@ CONTAINS
         
         DO dstep=1,points
             IF (enable_radiative_transfer .AND. points.gt.1) THEN
-                coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*ngas_r(parcelRadius(dstep),initialDens,density_scale_radius,density_power_index)
+                coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens_r(parcelRadius(dstep)*pc,density_power_index)
             ELSE
                 coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
             END IF
@@ -88,10 +88,17 @@ CONTAINS
             stepSize = orderMagnitude / timestep_resolution_factor_mid
             targetTime = (timeInYears + stepSize) * SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 0.0) THEN
-            ! Below 10 years: use multiplier
-            targetTime = timestep_multiplier_early * timeInYears * SECONDS_PER_YEAR
+            ! Below 10 years: logarithmic sampling snapped to a k*10^n grid.
+            ! orderMagnitude is the decade floor (e.g. 1e-3 when t is in [1e-3, 1e-2)).
+            ! stepSize = orderMagnitude / factor gives exactly `factor` steps per decade.
+            ! Snapping with FLOOR(t/stepSize)+1 ensures targets land on exact multiples
+            ! of stepSize, so decade boundaries (1, 10, 100 ...) are always hit cleanly.
+            ! The 1e-10 epsilon guards against floating-point when t is already on a grid point.
+            orderMagnitude = 10.0_dp**(FLOOR(LOG10(timeInYears)))
+            stepSize = orderMagnitude / timestep_resolution_factor_early
+            targetTime = (FLOOR(timeInYears / stepSize + 1.0d-10) + 1.0_dp) * stepSize * SECONDS_PER_YEAR
         ELSE
-            ! Initial timestep
+            ! Initial timestep: start at the bottom of the first sampled decade
             targetTime = SECONDS_PER_YEAR * 1.0d-7
         ENDIF
     END SUBROUTINE updateTargetTime
@@ -114,9 +121,11 @@ CONTAINS
             ! coldens should be amount of gas from edge to parcel
             coldens(dstep)=cloudSize/real(points)*density(dstep)
             
-            ! Add previous column densities to current as we move into cloud to get total
-            IF (dstep .lt. points) THEN 
-                coldens(dstep)=coldens(dstep)+coldens(dstep+1)
+            ! Add previous column densities to current as we move into cloud to get total.
+            ! outer_coldens_for_current_step is set by wrap.f90 from coldens_history(dtime)
+            ! before this subroutine is called, so the value is exact (no approximation).
+            IF (dstep .lt. points) THEN
+                coldens(dstep)=coldens(dstep)+outer_coldens_for_current_step
             END IF
 
             ! Calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density

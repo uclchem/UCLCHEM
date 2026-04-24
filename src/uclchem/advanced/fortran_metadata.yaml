@@ -23,6 +23,8 @@ fortran_parameters:
   - desorbreacs
   - deuvcrreacs
   - edreacs
+  - elem_count
+  - elem_names
   - enablechemicalheating
   - erdescorrespondingerreacs
   - erdesreacs
@@ -49,6 +51,7 @@ fortran_parameters:
   - n13c
   - n15n
   - n18o
+  - n_elem_tracked
   - nbulk
   - nc
   - nch3oh
@@ -182,6 +185,7 @@ fortran_parameters:
   - aunit
   - c
   - chem_init_error
+  - conservation_error
   - coolant_config_error
   - coolant_data_error
   - coolant_file_error
@@ -331,6 +335,11 @@ internal_parameters:
   - coolant_solver_error
   - coolant_config_error
   - negative_abundance_error
+  - conservation_error
+  network:
+  - elem_count
+  - elem_names
+  - n_elem_tracked
 file_path_parameters:
   defaultparameters:
   - outputfile
