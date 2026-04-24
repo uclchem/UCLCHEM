@@ -1880,6 +1880,7 @@ class AbstractModel(ABC):
         if self.abundLoadFile is None:
             msg = "abundLoadFile was None, so cannot read the starting chemistry."
             raise ValueError(msg)
+        logger.debug(f"Loading starting chemistry from file {self.abundLoadFile}")
         self._create_starting_array(np.loadtxt(self.abundLoadFile, delimiter=","))
 
     def legacy_write_full(self) -> None:
@@ -2263,12 +2264,21 @@ class AbstractModel(ABC):
 
     def _create_starting_array(self, starting_chemistry: ArrayLike | None) -> None:
         if starting_chemistry is None:
+            logger.debug(
+                "starting_chemistry is None, so not creating starting_chemistry_array"
+            )
             self.starting_chemistry_array = None
         else:
             logger.debug("Creating starting chemistry array")
             starting_chemistry = np.asarray(starting_chemistry)
             if len(np.shape(starting_chemistry)) == 1:
                 starting_chemistry = starting_chemistry[np.newaxis, :]
+
+            if np.shape(starting_chemistry)[1] != n_species:
+                msg = f"Mismatch between number of species in the network ({n_species}) and number of entries in starting_chemistry ({np.shape(starting_chemistry)[1]})."
+                msg += " The first model was possibly run with a different network."
+                raise RuntimeError(msg)
+
             # For shared memory:
             (
                 self._shm_handles["starting_chemistry_array"],
