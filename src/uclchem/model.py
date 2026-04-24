@@ -45,9 +45,9 @@ Returns arrays/DataFrames instead of model objects.
 
 1. **Initialize**: Create model object with parameters
 2. **Run**: Model runs automatically on initialization (or use `read_file` to load)
-3. **Analyze**: Access results via attributes (`.final_abundances`, `.chemistry_dataframe`)
+3. **Analyze**: Access results via attributes (`.next_starting_chemistry_array`, `.get_dataframes()`)
 4. **Plot**: Use built-in plotting methods (`.create_abundance_plot()`)
-5. **Chain**: Use as input to next stage (`.previous_model` parameter)
+5. **Chain**: Use as input to next stage (`starting_chemistry` parameter)
 
 **Common Parameters:**
 
@@ -64,7 +64,7 @@ See the user guide for complete parameter list.
 **Species Naming:**
 
 - Gas phase: ``CO``, ``H2O``, ``CH3OH``
-- Ice surface: ``$CO``, ``$H2O``, ``$CH3OH``
+- Ice surface: ``#CO``, ``#H2O``, ``#CH3OH``
 - Ice bulk: ``@CO``, ``@H2O``, ``@CH3OH``
 
 **See Also:**
@@ -515,11 +515,11 @@ class AbstractModel(ABC):
             else None
         )
 
-        self.starting_chemistry_array = None
         if self.abundLoadFile is not None and starting_chemistry is not None:
             msg = "Both abundLoadFile and starting_chemistry were passed, but can only take one."
             raise ValueError(msg)
 
+        self.starting_chemistry_array = None
         if self.abundLoadFile is not None:
             self.legacy_read_starting_chemistry()
         else:
