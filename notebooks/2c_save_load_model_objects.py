@@ -63,7 +63,7 @@ param_dict["abstol_factor"] = 1e-18
 param_dict["reltol"] = 1e-12
 
 p_core = uclchem.model.PrestellarCore(
-    temp_indx=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
+    temp_indx=3, max_temperature=300.0, param_dict=param_dict, starting_chemistry==cloud
 )
 p_core.save_model(file=save_file, name="prestellar_core", overwrite=True)
 
@@ -96,7 +96,7 @@ param_dict["initialDens"] = 1e4
 param_dict["finalTime"] = 1e6
 
 cshock = uclchem.model.CShock(
-    shock_vel=40, param_dict=param_dict, previous_model=shock_start
+    shock_vel=40, param_dict=param_dict, starting_chemistry=shock_start
 )
 cshock.save_model(file=save_file, name="cshock", overwrite=True)
 
@@ -105,7 +105,7 @@ param_dict["freefall"] = False  # lets remember to turn it off this time
 param_dict["reltol"] = 1e-12
 
 jshock = uclchem.model.JShock(
-    shock_vel=10.0, param_dict=param_dict, previous_model=shock_start, timepoints=1500
+    shock_vel=10.0, param_dict=param_dict, starting_chemistry=shock_start, timepoints=1500
 )
 jshock.save_model(file=save_file, name="jshock", overwrite=True)
 

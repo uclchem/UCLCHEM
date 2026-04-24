@@ -417,11 +417,9 @@ class AbstractModel(ABC):
             Uses UCLCHEM default values if not provided.
         out_species_list (list[str] | None): List of species to focus on for outputs.
             If None, defaults to `uclchem.constants.default_elements_to_check`.
-        starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
-            the UCLCHEM model. Defaults to None.
-        previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
-            to use for the starting abundances of the new UCLCHEM model that will be run.
-            Defaults to None.
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
         debug (bool): Flag if extra debug information should be printed to the terminal.
@@ -437,8 +435,7 @@ class AbstractModel(ABC):
         self,
         param_dict: dict | None = None,
         out_species_list: list[str] | None = None,
-        starting_chemistry: np.ndarray | None = None,
-        previous_model: object | None = None,
+        starting_chemistry: np.ndarray | AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str | None = None,
@@ -519,17 +516,14 @@ class AbstractModel(ABC):
         )
 
         self.starting_chemistry_array = None
-        if previous_model is None and self.abundLoadFile is None:
-            self._create_starting_array(starting_chemistry)
-        elif self.abundLoadFile is not None:
+        if self.abundLoadFile is not None and starting_chemistry is not None:
+            msg = "Both abundLoadFile and starting_chemistry were passed, but can only take one."
+            raise ValueError(msg)
+
+        if self.abundLoadFile is not None:
             self.legacy_read_starting_chemistry()
-        elif previous_model is not None and previous_model.has_attr(
-            "next_starting_chemistry_array"
-        ):
-            # All models must use the same hard-coded PHYSICAL_PARAMETERS from constants.py
-            # If previous_model was loaded from a legacy file with different parameters,
-            # that's a compatibility issue that should have been caught during load.
-            self._create_starting_array(previous_model.next_starting_chemistry_array)
+        else:
+            self._create_starting_array(starting_chemistry)
 
         self.give_start_abund = self.starting_chemistry_array is not None
         assert not np.all(self.starting_chemistry_array == 0.0), (
@@ -2060,19 +2054,29 @@ class AbstractModel(ABC):
 
         return pd.DataFrame(self.se_stats_array[:, point, :], columns=columns)
 
-    def _create_starting_array(self, starting_chemistry: np.ndarray | None) -> None:
+    def _create_starting_array(
+        self, starting_chemistry: np.ndarray | AbstractModel | None
+    ) -> None:
         if starting_chemistry is None:
             self.starting_chemistry_array = None
-        else:
-            if len(np.shape(starting_chemistry)) == 1:
-                starting_chemistry = starting_chemistry[np.newaxis, :]
-            # For shared memory:
-            (
-                self._shm_handles["starting_chemistry_array"],
-                self._shm_desc["starting_chemistry_array"],
-                self.starting_chemistry_array,
-            ) = self._create_shared_memory_allocation(np.shape(starting_chemistry))
-            np.copyto(self.starting_chemistry_array, starting_chemistry, casting="no")
+            return
+
+        if isinstance(starting_chemistry, AbstractModel) and hasattr(
+            starting_chemistry, "next_starting_chemistry_array"
+        ):
+            starting_chemistry = np.asarray(
+                starting_chemistry.next_starting_chemistry_array
+            )
+
+        if len(np.shape(starting_chemistry)) == 1:
+            starting_chemistry = starting_chemistry[np.newaxis, :]
+        # For shared memory:
+        (
+            self._shm_handles["starting_chemistry_array"],
+            self._shm_desc["starting_chemistry_array"],
+            self.starting_chemistry_array,
+        ) = self._create_shared_memory_allocation(np.shape(starting_chemistry))
+        np.copyto(self.starting_chemistry_array, starting_chemistry, casting="no")
         return
 
     # /Creation of arrays
@@ -2190,11 +2194,9 @@ class Cloud(AbstractModel):
         out_species (list | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
             Default = None.
-        starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
-            the UCLCHEM model. Defaults to None.
-        previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
-            to use for the starting abundances of the new UCLCHEM model that will be run.
-            Defaults to None.
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
         debug (bool): Flag if extra debug information should be printed to the terminal.
@@ -2208,8 +2210,7 @@ class Cloud(AbstractModel):
         self,
         param_dict: dict | None = None,
         out_species: list[str] | None = None,
-        starting_chemistry: np.ndarray | None = None,
-        previous_model: AbstractModel | None = None,
+        starting_chemistry: np.ndarray | AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
@@ -2224,7 +2225,6 @@ class Cloud(AbstractModel):
             param_dict=param_dict,
             out_species_list=out_species,
             starting_chemistry=starting_chemistry,
-            previous_model=previous_model,
             timepoints=timepoints,
             debug=debug,
             read_file=read_file,
@@ -2303,11 +2303,9 @@ class Collapse(AbstractModel):
         out_species (list | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
             Default = None.
-        starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
-            the UCLCHEM model. Defaults to None.
-        previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
-            to use for the starting abundances of the new UCLCHEM model that will be run.
-            Defaults to None.
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
         debug (bool): Flag if extra debug information should be printed to the terminal.
@@ -2331,8 +2329,7 @@ class Collapse(AbstractModel):
         collapse: Literal["BE1.1", "BE4", "filament", "ambipolar"] = "BE1.1",
         param_dict: dict | None = None,
         out_species: list[str] | None = None,
-        starting_chemistry: np.ndarray | None = None,
-        previous_model: AbstractModel | None = None,
+        starting_chemistry: np.ndarray | AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
@@ -2425,7 +2422,6 @@ class Collapse(AbstractModel):
             param_dict=param_dict,
             out_species_list=out_species,
             starting_chemistry=starting_chemistry,
-            previous_model=previous_model,
             timepoints=timepoints,
             debug=debug,
             read_file=read_file,
@@ -2512,11 +2508,9 @@ class PrestellarCore(AbstractModel):
         out_species (list | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
             Default = None.
-        starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
-            the UCLCHEM model. Defaults to None.
-        previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
-            to use for the starting abundances of the new UCLCHEM model that will be run.
-            Defaults to None.
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
         debug (bool): Flag if extra debug information should be printed to the terminal.
@@ -2532,8 +2526,7 @@ class PrestellarCore(AbstractModel):
         max_temperature: float = 300.0,
         param_dict: dict | None = None,
         out_species: list[str] | None = None,
-        starting_chemistry: np.ndarray | None = None,
-        previous_model: AbstractModel | None = None,
+        starting_chemistry: np.ndarray | AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
@@ -2552,7 +2545,6 @@ class PrestellarCore(AbstractModel):
             param_dict=param_dict,
             out_species_list=out_species,
             starting_chemistry=starting_chemistry,
-            previous_model=previous_model,
             timepoints=timepoints,
             debug=debug,
             read_file=read_file,
@@ -2647,11 +2639,9 @@ class CShock(AbstractModel):
         out_species (list | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
             Default = None.
-        starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
-            the UCLCHEM model. Defaults to None.
-        previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
-            to use for the starting abundances of the new UCLCHEM model that will be run.
-            Defaults to None.
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
         debug (bool): Flag if extra debug information should be printed to the terminal.
@@ -2668,8 +2658,7 @@ class CShock(AbstractModel):
         minimum_temperature: float = 0.0,
         param_dict: dict | None = None,
         out_species: list[str] | None = None,
-        starting_chemistry: np.ndarray | None = None,
-        previous_model: AbstractModel | None = None,
+        starting_chemistry: np.ndarray | AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
@@ -2688,7 +2677,6 @@ class CShock(AbstractModel):
             param_dict=param_dict,
             out_species_list=out_species,
             starting_chemistry=starting_chemistry,
-            previous_model=previous_model,
             timepoints=timepoints,
             debug=debug,
             read_file=read_file,
@@ -2783,11 +2771,9 @@ class JShock(AbstractModel):
         out_species (list | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
             Default = None.
-        starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
-            the UCLCHEM model. Defaults to None.
-        previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
-            to use for the starting abundances of the new UCLCHEM model that will be run.
-            Defaults to None.
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
         debug (bool): Flag if extra debug information should be printed to the terminal.
@@ -2802,8 +2788,7 @@ class JShock(AbstractModel):
         shock_vel: float = 10.0,
         param_dict: dict | None = None,
         out_species: list[str] | None = None,
-        starting_chemistry: np.ndarray | None = None,
-        previous_model: AbstractModel | None = None,
+        starting_chemistry: np.ndarray | AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
         debug: bool = False,
         read_file: str = None,
@@ -2822,7 +2807,6 @@ class JShock(AbstractModel):
             param_dict=param_dict,
             out_species_list=out_species,
             starting_chemistry=starting_chemistry,
-            previous_model=previous_model,
             timepoints=timepoints,
             debug=debug,
             read_file=read_file,
@@ -2911,11 +2895,9 @@ class Postprocess(AbstractModel):
         out_species (list | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
             Default = None.
-        starting_chemistry (np.ndarray | None): Array containing the starting abundances
-            to use for the UCLCHEM model. Defaults to None.
-        previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
-            to use for the starting abundances of the new UCLCHEM model that will be run.
-            Defaults to None.
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         time_array (np.ndarray | None): Represents the time grid to be used for the model.
             This sets the target timesteps for which outputs will be stored.
         density_array (np.ndarray | None): Represents the value of the density at different
@@ -2947,8 +2929,7 @@ class Postprocess(AbstractModel):
         self,
         param_dict: dict | None = None,
         out_species: list[str] | None = None,
-        starting_chemistry: np.ndarray | None = None,
-        previous_model: AbstractModel | None = None,
+        starting_chemistry: np.ndarray | AbstractModel | None = None,
         time_array: np.ndarray | None = None,
         density_array: np.ndarray | None = None,
         gas_temperature_array: np.ndarray | None = None,
@@ -2980,7 +2961,6 @@ class Postprocess(AbstractModel):
             param_dict=param_dict,
             out_species_list=out_species,
             starting_chemistry=starting_chemistry,
-            previous_model=previous_model,
             timepoints=int(1.5 * len(time_array)),
             debug=debug,
             read_file=read_file,
@@ -3129,11 +3109,9 @@ class Model(AbstractModel):
         out_species (list | None): List of species whose abundances at the end of the model are
             returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
             Default = None.
-        starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
-            the UCLCHEM model. Defaults to None.
-        previous_model (AbstractModel | None): Model object, a class that inherited from
-            AbstractModel, to use for the starting abundances of the new UCLCHEM model
-            that will be run. Defaults to None.
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         time_array (np.ndarray | None): Represents the time grid to be used for the model.
             This sets the target timesteps for which outputs will be stored.
         density_array (np.ndarray | None): Represents the value of the density at different
@@ -3157,8 +3135,7 @@ class Model(AbstractModel):
         self,
         param_dict: dict | None = None,
         out_species: list[str] | None = None,
-        starting_chemistry: np.ndarray | None = None,
-        previous_model: AbstractModel | None = None,
+        starting_chemistry: np.ndarray | AbstractModel | None = None,
         time_array: np.ndarray | None = None,
         density_array: np.ndarray | None = None,
         gas_temperature_array: np.ndarray | None = None,
@@ -3185,7 +3162,6 @@ class Model(AbstractModel):
             param_dict=param_dict,
             out_species_list=out_species,
             starting_chemistry=starting_chemistry,
-            previous_model=previous_model,
             timepoints=int(1.5 * len(time_array)),
             debug=debug,
             read_file=read_file,
@@ -3381,13 +3357,13 @@ class SequentialRunner:
                     tmp_model = REGISTRY[model_type](
                         **model_dict,
                         run_type=self.run_type,
-                        previous_model=previous_model,
+                        starting_chemistry=previous_model,
                     )
                 else:
                     tmp_model = REGISTRY[model_type](
                         **model_dict,
                         run_type=self.run_type,
-                        previous_model=previous_model,
+                        starting_chemistry=previous_model,
                     )
 
                 if self.run_type == "external":
@@ -4075,7 +4051,9 @@ class GridRunner:
 
                 # grid_param_dict contains the param_dict values of the next model to run.
                 grid_param_dict = {
-                    k: v if not isinstance(v, float) else (v.item() if hasattr(v, 'item') else v)
+                    k: v
+                    if not isinstance(v, float)
+                    else (v.item() if hasattr(v, "item") else v)
                     for k, v in zip(param_keys, combo)
                     if k in full_parameters["param_dict"]
                 }

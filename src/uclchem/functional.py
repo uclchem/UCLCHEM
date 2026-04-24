@@ -89,7 +89,7 @@ def __validate_functional_api_params__(
     return_dataframe: bool,
     return_rate_constants: bool,
     return_heating: bool,
-    starting_chemistry: np.ndarray,  # noqa: ARG001
+    starting_chemistry: np.ndarray | AbstractModel,  # noqa: ARG001
     return_stats: bool = False,
 ) -> None:
     """Validate functional API specific constraints.
@@ -318,7 +318,7 @@ def __cloud__(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.ndarray | None = None,
+    starting_chemistry: np.ndarray | AbstractModel | None = None,
     timepoints: int = TIMEPOINTS,
 ):
     """Run cloud model from UCLCHEM.
@@ -340,8 +340,9 @@ def __cloud__(
         return_heating (bool): A boolean on whether the heating/cooling arrays should
             be returned to a user.
         return_stats (bool): Whether DVODE statistics should be returned. Default = False.
-        starting_chemistry (np.ndarray): Array containing the starting chemical abundances
-            needed by uclchem.
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
 
@@ -419,7 +420,7 @@ def __collapse__(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.ndarray | None = None,
+    starting_chemistry: np.ndarray | AbstractModel | None = None,
     timepoints: int = TIMEPOINTS,
 ):
     """Run collapse model from UCLCHEM based on Priestley et al 2018 AJ 156 51 (https://ui.adsabs.harvard.edu/abs/2018AJ....156...51P/abstract).
@@ -443,8 +444,9 @@ def __collapse__(
         return_heating (bool): A boolean on whether the heating/cooling arrays should be
             returned to a user. Default = False.
         return_stats (bool): Whether DVODE statistics should be returned. Default = False.
-        starting_chemistry (np.ndarray): Array containing the starting chemical abundances
-            needed by UCLCHEM.
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before aborting
             the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`
 
@@ -522,7 +524,7 @@ def __prestellar_core__(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.ndarray | None = None,
+    starting_chemistry: np.ndarray | AbstractModel | None = None,
     timepoints: int = TIMEPOINTS,
 ):
     """Run prestellar core model from UCLCHEM, based on Viti et al. 2004 and Collings et al. 2004.
@@ -547,8 +549,9 @@ def __prestellar_core__(
         return_heating (bool): A boolean on whether the heating/cooling arrays should be
             returned to a user.
         return_stats (bool): Whether DVODE statistics should be returned. Default = False.
-        starting_chemistry (np.ndarray): Array containing the starting chemical abundances
-            needed by uclchem
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before aborting
             the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
 
@@ -629,7 +632,7 @@ def __cshock__(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.array = None,
+    starting_chemistry: np.ndarray | AbstractModel | None = None,
     timepoints: int = TIMEPOINTS,
 ):
     """Run C-type shock model from UCLCHEM.
@@ -655,8 +658,9 @@ def __cshock__(
         return_rate_constants (bool): Whether the reaction rate constants should be returned.
         return_heating (bool): Whether the heating/cooling arrays should be returned to a user.
         return_stats (bool): Whether DVODE statistics should be returned. Default = False.
-        starting_chemistry (np.ndarray): np.array containing the starting chemical abundances needed
-            by UCLCHEM.
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated before
             aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
 
@@ -740,7 +744,7 @@ def __jshock__(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.ndarray = None,
+    starting_chemistry: np.ndarray | AbstractModel | None = None,
     timepoints: int = TIMEPOINTS,
 ):
     """Run J-type shock model from UCLCHEM.
@@ -763,8 +767,9 @@ def __jshock__(
         return_heating (bool): A boolean on whether the heating/cooling arrays
             should be returned to a user. Default = False.
         return_stats (bool): Whether to return DVODE stats. Default = False.
-        starting_chemistry (np.ndarray | None): np.ndarray containing the starting
-            chemical abundances needed by UCLCHEM. Default = None.
+        starting_chemistry (np.ndarray | AbstractModel | None): Array containing the starting abundances
+            to use for the UCLCHEM model or :class:`AbstractModel` instance to take final
+            abundances from. Defaults to None.
         timepoints (int): Integer value of how many timesteps should be calculated
             before aborting the UCLCHEM model. Defaults to uclchem.constants.TIMEPOINTS
 

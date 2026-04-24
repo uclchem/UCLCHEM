@@ -709,7 +709,7 @@ class TestOOModelChaining1D:
     """Test chaining 1D models together with OO interface."""
 
     def test_oo_chain_1d_models(self, base_1d_params):
-        """Test running sequential 1D models using previous_model."""
+        """Test running sequential 1D models using starting_chemistry AbstractModel."""
         # Phase 1: Initial evolution
         params1 = base_1d_params.copy()
         params1["finalTime"] = 5.0e4
@@ -729,7 +729,7 @@ class TestOOModelChaining1D:
         model2 = uclchem.model.Cloud(
             param_dict=params2,
             out_species=["CO", "H2O"],
-            previous_model=model1,
+            starting_chemistry=model1,
             timepoints=2500,
         )
         model2.check_error()
