@@ -175,7 +175,7 @@ def _functional_return_(
     Notes:
         Return value:
             if return_array and return_dataframe are False:
-                - A list where the first element is always an integer which is negative if the model
+                - A tuple where the first element is a ``SuccessFlag``, which is negative if the model
                     failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
                     If the model succeeded, and the model_object has the dissipation_time attribute
                     the second element is the dissipation time.
@@ -362,7 +362,7 @@ def cloud(
     Notes:
         Return value:
             if return_array and return_dataframe are False:
-                - A list where the first element is always an integer which is negative if the model
+                - A tuple where the first element is a ``SuccessFlag``, which is negative if the model
                     failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
                     Further elements are the abundances of all species in ``out_species``.
             if return_array is True:
@@ -470,7 +470,7 @@ def collapse(
     Notes:
         Return value:
             if return_array and return_dataframe are False:
-                - A list where the first element is always an integer which is negative if the model
+                - A tuple where the first element is a ``SuccessFlag``, which is negative if the model
                     failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
                     Further elements are the abundances of all species in ``out_species``.
             if return_array is True:
@@ -584,7 +584,7 @@ def prestellar_core(
     Notes:
         Return value:
             if return_array and return_dataframe are False:
-                - A list where the first element is always an integer which is negative if the model
+                - A tuple where the first element is a ``SuccessFlag``, which is negative if the model
                     failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
                     Further elements are the abundances of all species in ``out_species``.
             if return_array is True:
@@ -700,7 +700,7 @@ def cshock(
     Notes:
         Return value:
             if return_array and return_dataframe are False:
-                - A list where the first element is always an integer which is negative if the model
+                - A tuple where the first element is a ``SuccessFlag``, which is negative if the model
                     failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
                     If the model succeeded, the second element is the dissipation time.
                     Further elements are the abundances of all species in ``out_species``.
@@ -812,7 +812,7 @@ def jshock(
     Notes:
         Return value:
             if return_array and return_dataframe are False:
-                - A list where the first element is always an integer which is negative if the model
+                - A tuple where the first element is a ``SuccessFlag``, which is negative if the model
                     failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
                     If the model succeeded, the second element is the dissipation time.
                     Further elements are the abundances of all species in ``out_species``.
