@@ -78,7 +78,7 @@ param_dict["abstol_factor"] = 1e-18
 param_dict["reltol"] = 1e-12
 
 p_core = uclchem.model.PrestellarCore(
-    temp_indx=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
+    temp_indx=3, max_temperature=300.0, param_dict=param_dict, starting_chemistry=cloud
 )
 p_core.check_conservation()
 # -
@@ -163,7 +163,7 @@ shock_start.check_conservation()
 param_dict["initialDens"] = 1e4
 param_dict["finalTime"] = 1e6
 cshock = uclchem.model.CShock(
-    shock_vel=40, param_dict=param_dict, previous_model=shock_start
+    shock_vel=40, param_dict=param_dict, starting_chemistry=shock_start
 )
 cshock.check_conservation()
 
@@ -206,7 +206,7 @@ shock_vel = 10.0
 jshock = uclchem.model.JShock(
     shock_vel=shock_vel,
     param_dict=param_dict,
-    previous_model=shock_start,
+    starting_chemistry=shock_start,
     timepoints=1500,
 )
 
@@ -248,6 +248,6 @@ ax3.tick_params(axis="y", colors="red")
 # a real cloud. Testing whether your results are sensitive to things like the time you run the preliminary for or the
 # exact density is a good way to make sure these approximations are not problematic.
 #
-# Bear in mind that all model objects can be passed as inputs to `previous_model`. This lets you chain model runs
+# Bear in mind that all model objects can be passed as inputs to `starting_chemistry`. This lets you chain model runs
 # together. For example, you could run a c-shock from a cloud model as we did here and then a j-shock with the c-shock
 # object as the previous model.
