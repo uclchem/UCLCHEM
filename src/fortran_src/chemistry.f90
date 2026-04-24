@@ -210,6 +210,17 @@ CONTAINS
         
     END SUBROUTINE initializeChemistry
 
+    SUBROUTINE resetDVODEForNewPoint()
+        ! Called at the start of each spatial point's time loop in the (points,time)
+        ! loop order. Forces a fresh DVODE BDF restart and resets per-point counters.
+        ! Setting ISTATE=1 is sufficient: the prevAbund abundance-change guard
+        ! (integrateODESystem lines 427-436) is only evaluated when ISTATE=2.
+        ISTATE = 1
+        prevIntegrationTemp = 0.0d0
+        failedIntegrationCounter = 0
+        solver_stats_counter = 0
+    END SUBROUTINE resetDVODEForNewPoint
+
     SUBROUTINE updateChemistry(successFlag, statsarray, statsarray_size, dtime)
     !Updates the abundances for the next time step, first updating chemical variables and reaction rates,
     !then by solving the ODE system to obtain new abundances.

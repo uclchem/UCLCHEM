@@ -7,7 +7,8 @@ MODULE hotcore
     !f2py INTEGER, parameter :: dp    
     USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens, density_max, ngas_r, findcoldens_core2edge, parcel_radius, radiation
+    &coldens, density_max, ngas_r, findcoldens_core2edge, parcel_radius, radiation, &
+    &outer_coldens_for_current_step
     USE network
     USE f2py_constants
     IMPLICIT NONE
@@ -123,7 +124,7 @@ contains
 
             coldens(dstep)=cloudSize/real(points)*density(dstep) !Note: Ngas from edge to core
             ! add previous column densities to current as we move into cloud to get total
-            IF (dstep .lt. points) coldens(dstep)=coldens(dstep)+coldens(dstep+1)
+            IF (dstep .lt. points) coldens(dstep)=coldens(dstep)+outer_coldens_for_current_step
 
             !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
             av(dstep)= baseAv +coldens(dstep)/1.6d21
