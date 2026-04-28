@@ -104,8 +104,6 @@ default_param_dictionary = {
     "finaldens": 100000.0,
     "currenttime": 0.0,
     "finaltime": 5000000.0,
-    "endatfinaldensity": False,
-    "writetimestepinfo": False,
     "radfield": 1.0,
     "zeta": 1.0,
     "r_out": 0.05,
