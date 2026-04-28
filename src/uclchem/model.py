@@ -3612,9 +3612,9 @@ class SequentialRunner:
         previous_model: AbstractModel | None = None
         for base_model_dict in self.sequenced_model_parameters:
             for model_type, model_dict in base_model_dict.items():
-                model_dict["param_dict"] = {
-                    k.lower(): v for k, v in model_dict["param_dict"].items()
-                }
+                model_dict["param_dict"] = convert_keys_to_lowercase(
+                    model_dict["param_dict"]
+                )
                 if self.model_count > 0:
                     if previous_model is None:
                         msg = "previous_model is still None, but expected it to be an AbstractModel"
