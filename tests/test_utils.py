@@ -1,5 +1,6 @@
-import pytest
 import numpy as np
+import pytest
+
 from uclchem.utils import get_dtype
 
 get_dtypes_data = [
