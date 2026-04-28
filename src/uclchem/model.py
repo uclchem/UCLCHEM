@@ -2079,7 +2079,7 @@ class AbstractModel(ABC):
             # lower case (and conveniently copy so we don't edit) the user's dictionary
             # this is key to UCLCHEM's "case insensitivity"
             new_param_dict = convert_keys_to_lowercase(param_dict)
-            for key, value in param_dict.items():
+            for key, value in new_param_dict.items():
                 if isinstance(value, Path):
                     new_param_dict[key] = str(value)
 
@@ -3641,17 +3641,12 @@ class SequentialRunner:
                             else:
                                 msg = f"Parameter '{parameter}' has not been implemented for parameter matching"
                                 raise NotImplementedError(msg)
-                    tmp_model = REGISTRY[model_type](
-                        **model_dict,
-                        run_type=self.run_type,
-                        previous_model=previous_model,
-                    )
-                else:
-                    tmp_model = REGISTRY[model_type](
-                        **model_dict,
-                        run_type=self.run_type,
-                        previous_model=previous_model,
-                    )
+
+                tmp_model = REGISTRY[model_type](
+                    **model_dict,
+                    run_type=self.run_type,
+                    previous_model=previous_model,
+                )
 
                 if self.run_type == "external":
                     tmp_model.run()
