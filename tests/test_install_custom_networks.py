@@ -299,7 +299,6 @@ cloud = uclchem.model.Cloud(
         "freefall": False,
         "endAtFinalDensity": False,
     },
-    out_species=["H", "H2", "CO"]
 )
 cloud.check_error()
 print("OK")

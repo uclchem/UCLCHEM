@@ -461,7 +461,6 @@ class TestOOCloud1D:
         """Test basic 1D cloud model run with OO interface."""
         model = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO", "H2O", "CH3OH"],
             timepoints=2500,
         )
 
@@ -480,7 +479,6 @@ class TestOOCloud1D:
         """Test that get_dataframes works properly for 1D models."""
         model = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO", "H2O"],
             timepoints=2500,
         )
 
@@ -506,7 +504,6 @@ class TestOOCloud1D:
         """Test getting DataFrames for individual spatial points."""
         model = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO"],
             timepoints=2500,
         )
 
@@ -534,7 +531,6 @@ class TestOOCloud1D:
         """Test that DVODE stats work with 1D models."""
         model = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO"],
             timepoints=2500,
         )
 
@@ -578,7 +574,6 @@ class TestOOCollapse1D:
         model = uclchem.model.Collapse(
             collapse="BE1.1",
             param_dict=params,
-            out_species=["CO", "H2O"],
             timepoints=2500,
         )
 
@@ -613,7 +608,6 @@ class TestOOCollapse1D:
             # Use pure freefall collapse (no collapse profile)
             model = uclchem.model.Cloud(
                 param_dict=params,
-                out_species=["CO"],
                 timepoints=2500,
             )
 
@@ -632,7 +626,6 @@ class TestOOHotcore1D:
             temp_indx=1,
             max_temperature=300.0,
             param_dict=hotcore_1d_params,
-            out_species=["CO", "H2O", "CH3OH"],
             timepoints=2500,
         )
 
@@ -663,7 +656,6 @@ class TestOOModelSavingLoading1D:
         # Run and save model
         model1 = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO", "H2O"],
             timepoints=2500,
         )
         model1.check_error()
@@ -689,9 +681,7 @@ class TestOOModelSavingLoading1D:
         """Test that Point column is preserved after save/load."""
         save_file = common_output_directory / "test_oo_1d_point_column.h5"
 
-        model1 = uclchem.model.Cloud(
-            param_dict=base_1d_params, out_species=["CO"], timepoints=2500
-        )
+        model1 = uclchem.model.Cloud(param_dict=base_1d_params, timepoints=2500)
         model1.check_error()
         model1.save_model(file=str(save_file))
 
@@ -716,7 +706,6 @@ class TestOOModelChaining1D:
 
         model1 = uclchem.model.Cloud(
             param_dict=params1,
-            out_species=["CO", "H2O"],
             timepoints=2500,
         )
         model1.check_error()
@@ -728,7 +717,6 @@ class TestOOModelChaining1D:
 
         model2 = uclchem.model.Cloud(
             param_dict=params2,
-            out_species=["CO", "H2O"],
             previous_model=model1,
             timepoints=2500,
         )
@@ -746,7 +734,6 @@ class TestOOModelChaining1D:
         # Run first model
         model1 = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO", "H2O"],
             timepoints=2500,
         )
         model1.check_error()
@@ -765,7 +752,6 @@ class TestOOModelChaining1D:
 
         model2 = uclchem.model.Cloud(
             param_dict=params2,
-            out_species=["CO", "H2O"],
             starting_chemistry=starting_chem,
             timepoints=2500,
         )
@@ -790,9 +776,7 @@ class TestEndAtFinalDensity:
             "abstol_factor": 1e-8,
         }
 
-        model = uclchem.model.Cloud(
-            param_dict=params, out_species=["CO"], timepoints=2500
-        )
+        model = uclchem.model.Cloud(param_dict=params, timepoints=2500)
 
         model.check_error()
 
@@ -819,9 +803,7 @@ class TestEndAtFinalDensity:
             "abstol_factor": 1e-8,
         }
 
-        model = uclchem.model.Cloud(
-            param_dict=params, out_species=["CO"], timepoints=2500
-        )
+        model = uclchem.model.Cloud(param_dict=params, timepoints=2500)
 
         model.check_error()
 
@@ -841,7 +823,6 @@ class TestFunctionalVsOOConsistency:
         # Run with OO interface
         oo_model = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO", "H2O"],
             timepoints=2500,
         )
         oo_model.check_error()
@@ -849,7 +830,6 @@ class TestFunctionalVsOOConsistency:
         # Run with functional interface
         phys_func, chem_func, _, _, _, flag_func = uclchem.functional.cloud(
             param_dict=base_1d_params,
-            out_species=["CO", "H2O"],
             return_array=True,
             timepoints=2500,
         )
@@ -865,7 +845,6 @@ class TestFunctionalVsOOConsistency:
         """Test that functional API returns DataFrames with Point column."""
         phys_df, chem_df, _, _, _, flag = uclchem.functional.cloud(
             param_dict=base_1d_params,
-            out_species=["CO"],
             return_dataframe=True,
             timepoints=2500,
         )

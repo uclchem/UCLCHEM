@@ -141,6 +141,7 @@ def __functional_return__(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
+    out_species: list[str] | None = None,
 ) -> tuple:
     """Return function that takes in the object that was modelled and returns the values
     based on the specified booleans.
@@ -161,6 +162,7 @@ def __functional_return__(
         return_heating (bool): A boolean on whether the heating/cooling rates
             should be returned to a user.
         return_stats (bool): Whether DVODE statistics should be returned. Default = False.
+        out_species (list[str] | None): List of species names to return abundances for.
 
     Returns:
         if return_array and return_dataframe are False:
@@ -202,6 +204,9 @@ def __functional_return__(
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
+    out_species_abundances_array = model_object.get_final_abundances_of_species(
+        out_species
+    )
     if return_dataframe:
         # If multiple spatial points are present, return DataFrames concatenated across points
         points = model_object._param_dict.get("points", 1)
@@ -303,11 +308,9 @@ def __functional_return__(
             return (
                 model_object.success_flag,
                 model_object.dissipation_time,
-            ) + tuple(model_object.out_species_abundances_array)
+            ) + tuple(out_species_abundances_array)
         else:
-            return (model_object.success_flag,) + tuple(
-                model_object.out_species_abundances_array
-            )
+            return (model_object.success_flag,) + tuple(out_species_abundances_array)
 
 
 def __cloud__(
@@ -395,7 +398,6 @@ def __cloud__(
 
     model_object = Cloud(
         param_dict=param_dict,
-        out_species=out_species,
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
@@ -407,6 +409,7 @@ def __cloud__(
         return_rate_constants=return_rate_constants,
         return_heating=return_heating,
         return_stats=return_stats,
+        out_species=out_species,
     )
 
 
@@ -497,7 +500,6 @@ def __collapse__(
     model_object = Collapse(
         collapse=collapse,
         param_dict=param_dict,
-        out_species=out_species,
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
@@ -509,6 +511,7 @@ def __collapse__(
         return_rate_constants=return_rate_constants,
         return_heating=return_heating,
         return_stats=return_stats,
+        out_species=out_species,
     )
 
 
@@ -603,7 +606,6 @@ def __prestellar_core__(
         temp_indx=temp_indx,
         max_temperature=max_temperature,
         param_dict=param_dict,
-        out_species=out_species,
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
@@ -615,6 +617,7 @@ def __prestellar_core__(
         return_rate_constants=return_rate_constants,
         return_heating=return_heating,
         return_stats=return_stats,
+        out_species=out_species,
     )
 
 
@@ -716,7 +719,6 @@ def __cshock__(
         timestep_factor=timestep_factor,
         minimum_temperature=minimum_temperature,
         param_dict=param_dict,
-        out_species=out_species,
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
@@ -728,6 +730,7 @@ def __cshock__(
         return_rate_constants=return_rate_constants,
         return_heating=return_heating,
         return_stats=return_stats,
+        out_species=out_species,
     )
 
 
@@ -821,7 +824,6 @@ def __jshock__(
     model_object = JShock(
         shock_vel=shock_vel,
         param_dict=param_dict,
-        out_species=out_species,
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
@@ -833,6 +835,7 @@ def __jshock__(
         return_rate_constants=return_rate_constants,
         return_heating=return_heating,
         return_stats=return_stats,
+        out_species=out_species,
     )
 
 

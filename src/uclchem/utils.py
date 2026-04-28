@@ -27,10 +27,10 @@ This module provides utility functions for:
     >>> # Calculate shock timescale
     >>> t_diss = utils.cshock_dissipation_time(
     ...     shock_vel=50.0,  # km/s
-    ...     initial_dens=1e4  # cm^-3
-    ... ) # doctest: +SKIP
-    >>> print(f"Dissipation time: {t_diss:.1e} years") # doctest: +SKIP
-    ...
+    ...     initial_dens=1e4,  # cm^-3
+    ... )
+    >>> print(f"Dissipation time: {t_diss:.1e} years")
+    Dissipation time: ... years
 
 **Error Codes:**
 
