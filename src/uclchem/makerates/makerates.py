@@ -206,7 +206,6 @@ def get_network(
     The latter scenario allows you to reload a reaction network from
     a network already written by Makerates.
 
-
     Args:
         path_to_input_file (str | Path | None): Path to input file. Defaults to None.
         path_to_species_file (str | Path | None): Path to a species.csv

@@ -131,7 +131,7 @@ from uclchem.constants import (
     n_species,
 )
 from uclchem.plot import create_abundance_plot, plot_species
-from uclchem.utils import UCLCHEM_ROOT_DIR, ArrayLike, SuccessFlag
+from uclchem.utils import UCLCHEM_ROOT_DIR, ArrayLike, SuccessFlag, get_dtype
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -442,7 +442,6 @@ class AbstractModel(ABC):
 
     The AbstractModel class serves as an abstract class from which other model classes can be built.
     It is not intended to be used as a standalone class for running UCLCHEM.
-
 
     """
 
@@ -1513,6 +1512,7 @@ class AbstractModel(ABC):
         file: h5py.File | str | Path,
         name: str = "default",
         overwrite: bool = False,
+        array_dtype: np.typing.DTypeLike | np.dtype | str | None = None,
     ) -> None:
         """Save a model to file on disk.
 
@@ -1523,8 +1523,11 @@ class AbstractModel(ABC):
             file (h5py.File | str | Path): Open h5py file object, or Path to a file that contains
                 previously run and stored models.
             name (str): Name to use for the group of the object. Default = "default".
-            overwrite (bool): Whether to overwrite pre-existing models, or error out if there
-                is another model with name ``name`` in the file. Default = False.
+            overwrite (bool): Whether to overwrite pre-existing models, or just warn and
+                not write if a dataset with ``name`` is already in the file. Default = False.
+            array_dtype (np.typing.DTypeLike | np.dtype | str | None): Precision to save arrays such
+                as chemical abundances and physical conditions in. Can be used to save some storage.
+                Default = None (infer dtype from arrays themselves).
 
         Raises:
             TypeError: if ``file`` is not a string, Path or ``h5py.File`` instance.
@@ -1548,7 +1551,7 @@ class AbstractModel(ABC):
             else:
                 logger.debug(f"Deleting group {name} in file {file_obj.filename}")
                 del file_obj[name]
-        # TODO: Allow for toggling of saving float64 or float32 for the arrays
+
         temp_attribute_dict = {}
         with contextlib.suppress(Exception):
             temp_attribute_dict.update(super().__getattribute__("_meta"))
@@ -1575,22 +1578,34 @@ class AbstractModel(ABC):
         save_data["_param_dict"] = xr.DataArray([json.dumps(self._param_dict)])
         model_group = file_obj.create_group(name)
         coord_grp = model_group.create_group("_coords")
+
         save_name: str
         for save_name, coord in save_data.coords.items():  # type: ignore[assignment]
-            self._write_array(coord_grp, save_name, coord)
+            self._write_array(coord_grp, save_name, coord, array_dtype=array_dtype)
         for save_name, var in save_data.data_vars.items():  # type: ignore[assignment]
-            self._write_array(model_group, save_name, var)
+            self._write_array(model_group, save_name, var, array_dtype=array_dtype)
         if opened_file:
             file_obj.flush()
             logger.debug(f"Closing file {file_obj.filename}")
             file_obj.close()
 
     @staticmethod
-    def _write_array(model_group: h5py.Group, name: str, xr_var: xr.DataArray) -> None:
+    def _write_array(
+        model_group: h5py.Group,
+        name: str,
+        xr_var: xr.DataArray,
+        array_dtype: np.typing.DTypeLike | np.dtype | str | None = None,
+    ) -> None:
         data = xr_var.values
         if data.dtype.kind == "U":
             data = data.astype(bytes)
-        ds = model_group.create_dataset(name, data=data)
+
+        dataset_kwargs = {}
+        if array_dtype is not None and "_array" in name:
+            dtype = get_dtype(array_dtype)
+            dataset_kwargs["dtype"] = dtype
+
+        ds = model_group.create_dataset(name, data=data, **dataset_kwargs)
         ds.attrs["_dims"] = list(xr_var.dims)
 
     # /Model saving
@@ -3658,6 +3673,7 @@ class SequentialRunner:
         file: h5py.File | str | Path,
         name: str = "",
         overwrite: bool = False,
+        array_dtype: np.typing.DTypeLike | np.dtype | str | None = None,
     ) -> None:
         """Save a model to an open file object or to a file.
 
@@ -3667,6 +3683,9 @@ class SequentialRunner:
             name (str): name to save model under. Default = "".
             overwrite (bool): Boolean on whether to overwrite pre-existing models, or error out.
                 Default = False
+            array_dtype (np.typing.DTypeLike | np.dtype | str | None): Precision to save arrays such
+                as chemical abundances and physical conditions in. Can be used to save some storage.
+                Default = None (infer dtype from arrays themselves).
 
         Raises:
             TypeError: if ``file`` is not a string, Path or ``h5py.File`` instance.
@@ -3687,6 +3706,7 @@ class SequentialRunner:
                 file=file_obj,
                 name=f"{name}_{model['Model_Order']}_{model['Model_Type']}",
                 overwrite=overwrite,
+                array_dtype=array_dtype,
             )
 
         if opened_file:
@@ -3859,6 +3879,7 @@ class GridRunner:
         grid_file: str | Path = "./default_grid_out.h5",
         model_name_prefix: str = "",
         overwrite_models: bool = False,
+        array_dtype: np.typing.DTypeLike | np.dtype | str | None = None,
         delay_run: bool = False,
         log_dir: str | Path | None = None,
         model_ids: list[int] | None = None,
@@ -3881,6 +3902,9 @@ class GridRunner:
                 which would make the fifth model have the name "5", for example.
             overwrite_models (bool): Whether to overwrite the models in ``grid_file`` if they have
                 the same name. Default = False.
+            array_dtype (np.typing.DTypeLike | np.dtype | str | None): Precision to save arrays such
+                as chemical abundances and physical conditions in. Can be used to save some storage.
+                Default = None (infer dtype from arrays themselves).
             delay_run (bool): Whether to immediately start the models upon initialization,
                 or delay until the user calls ``self.run()``. Defaults to False (start immediately).
             log_dir (str | Path | None): Where to write logs. If None, do not write logs. Default = None.
@@ -3928,6 +3952,7 @@ class GridRunner:
             self.grid_file.unlink()
         self.model_name_prefix = model_name_prefix
         self.overwrite_models = overwrite_models
+        self.array_dtype = array_dtype
         if log_dir is not None:
             self.log_dir: Path | None = Path(log_dir)
             self.log_dir.mkdir(exist_ok=True, parents=True)
@@ -4111,6 +4136,7 @@ class GridRunner:
                         file=file_obj,
                         name=save_name,
                         overwrite=self.overwrite_models,
+                        array_dtype=self.array_dtype,
                     )
                     self.model_id_dict[model_id] = save_name
                     file_obj.flush()

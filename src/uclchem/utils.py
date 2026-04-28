@@ -545,3 +545,46 @@ def configure_logging(
     logger.debug(
         f"Logging configured with level {logging.getLevelName(logger.getEffectiveLevel())}, with handler {handler}"
     )
+
+
+def get_dtype(
+    dtype: np.typing.DTypeLike | np.dtype | str,
+) -> np.typing.DTypeLike | np.dtype:
+    """Convert a string or dtype to a numpy dtype.
+
+    Args:
+        dtype (np.typing.DTypeLike | np.dtype | str): dtype
+
+    Returns:
+        np.typing.DTypeLike | np.dtype: Unchanged ``dtype`` if ``dtype`` is an instance of
+            np.dtype. Otherwise, checks the string for ``fp64``, ``fp32``, or ``fp16``,
+            or whether ``dtype`` has an attribute called ``dtype``, which could be for example
+            for ``np.float64``.
+
+    Raises:
+        TypeError: If ``dtype`` is not an instance of ``np.dtype`` or a string.
+        ValueError: If ``dtype`` is a string but is not one of ``["fp64", "fp32", "fp16"]``.
+
+    """
+    if hasattr(dtype, "dtype"):
+        # Things like 'np.float64'
+        return dtype
+
+    if isinstance(dtype, np.dtype):
+        return dtype
+
+    if not isinstance(dtype, str):
+        msg = f"Expected numpy dtype or string, but got type {type(dtype)}"
+        raise TypeError(msg)
+
+    dtype = dtype.lower()
+
+    if dtype == "fp64":
+        return np.float64
+    elif dtype == "fp32":
+        return np.float32
+    elif dtype == "fp16":
+        return np.float16
+    else:
+        msg = f"Unknown dtype '{dtype}'"
+        raise ValueError(msg)
