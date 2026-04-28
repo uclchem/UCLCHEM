@@ -588,6 +588,9 @@ class TestDataIntegrity:
 
         model.save_model(fp64_path, array_dtype=np.float64)
         model.save_model(fp32_path, array_dtype=np.float32)
+
+        # This will cause a warning because it overflows,
+        # but still include it to demonstrate.
         model.save_model(fp16_path, array_dtype=np.float16)
 
         fp64_size = fp64_path.stat().st_size

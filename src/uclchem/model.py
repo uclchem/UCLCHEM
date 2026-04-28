@@ -1532,6 +1532,11 @@ class AbstractModel(ABC):
         Raises:
             TypeError: if ``file`` is not a string, Path or ``h5py.File`` instance.
 
+        Notes:
+            Saving arrays as ``np.float16`` is technically possible, but strongly discouraged.
+                The maximum value that can be saved in a ``np.float16`` is less than $10^5$, so
+                even densities of $10^6$ cm$^{-3}$ would cause it to overflow.
+
         """
         if isinstance(file, str | Path):
             opened_file = True
