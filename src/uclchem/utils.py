@@ -588,3 +588,34 @@ def get_dtype(
     else:
         msg = f"Unknown dtype '{dtype}'"
         raise ValueError(msg)
+
+
+def convert_keys_to_lowercase(dct: dict[str, Any]) -> dict[str, Any]:
+    """Convert the key of a dictionary to lowercase.
+
+    Args:
+        dct (dict[str, Any]): dictionary to convert to lowercase.
+
+    Returns:
+        lowercase_dct (dict[str, Any]): Dictionary with its keys lowercased.
+
+    Examples:
+        >>> # Keys are converted to lowercase.
+        >>> convert_keys_to_lowercase({"initialDens": 1e4})
+        {'initialdens': 10000.0}
+
+        >>> # Values are left unchanged
+        >>> convert_keys_to_lowercase({"Uppercase Key": "Uppercase Value"})
+        {'uppercase key': 'Uppercase Value'}
+
+    Raises:
+        ValueError: If a duplicate key is encountered in ``dct`` (after lowercasing it).
+
+    """
+    lowercase_dct: dict[str, Any] = {}
+    for key, value in dct.items():
+        if key.lower() in lowercase_dct:
+            msg = f"Duplicate lower case key {key} is already in the dictionary"
+            raise ValueError(msg)
+        lowercase_dct[key.lower()] = value
+    return lowercase_dct

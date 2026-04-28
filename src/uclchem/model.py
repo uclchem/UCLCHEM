@@ -131,7 +131,13 @@ from uclchem.constants import (
     n_species,
 )
 from uclchem.plot import create_abundance_plot, plot_species
-from uclchem.utils import UCLCHEM_ROOT_DIR, ArrayLike, SuccessFlag, get_dtype
+from uclchem.utils import (
+    UCLCHEM_ROOT_DIR,
+    ArrayLike,
+    SuccessFlag,
+    convert_keys_to_lowercase,
+    get_dtype,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -2072,17 +2078,10 @@ class AbstractModel(ABC):
         else:
             # lower case (and conveniently copy so we don't edit) the user's dictionary
             # this is key to UCLCHEM's "case insensitivity"
-            new_param_dict: dict[str, Any] = {}
-            for k, v in param_dict.items():
-                if k.lower() in new_param_dict:
-                    msg = f"Duplicate lower case key {k} is already in the dict, stopping"
-                    raise ValueError(msg)
-                if k.lower() not in default_param_dictionary:
-                    msg = f"Field {k.lower()} not in default_param_dictionary. Perhaps invalid name?"
-                    raise ValueError(msg)
-                if isinstance(v, Path):
-                    v = str(v)
-                new_param_dict[k.lower()] = v
+            new_param_dict = convert_keys_to_lowercase(param_dict)
+            for key, value in param_dict.items():
+                if isinstance(value, Path):
+                    new_param_dict[key] = str(value)
 
             # Handle deprecated endAtFinalDensity parameter (after lowercasing)
             new_param_dict = _convert_legacy_stopping_param(new_param_dict)  # type: ignore[assignment]
