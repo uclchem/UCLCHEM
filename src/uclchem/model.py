@@ -470,6 +470,11 @@ class AbstractModel(ABC):
         self.was_read = read_file is not None
 
         self._reform_inputs(param_dict)
+        if "columnfile" in self._param_dict:
+            warnings.warn(
+                "Dropping columnfile key from parameter dictionary. Use 'AbstractModel.legacy_write_columnfile' instead."
+            )
+            del self._param_dict["columnfile"]
 
         # Validate parcelStoppingMode usage after model_type is known
         if self._param_dict.get("_needs_freefall_validation", False):
@@ -1723,6 +1728,36 @@ class AbstractModel(ABC):
                 fmt=number_fmt_string,
             )
         return
+
+    def legacy_write_columnfile(
+        self, column_file: str | Path, species: list[str]
+    ) -> None:
+        """Write a classic ``columnFile`` file, similar to full output but with a subset of species.
+
+        Since ``out_species`` was removed from the object-oriented API, it has to be passed here.
+
+        Args:
+            column_file (str | Path): path to write to
+            species (list[str]): List of species names to write
+
+        """
+        phys = self.physics_array.reshape(-1, self.physics_array.shape[-1])
+        chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
+
+        species_names = get_species_names()
+        species_indices = [species_names.index(spec) for spec in species]
+
+        chem_species = chem[:, species_indices]
+        full_array = np.append(phys, chem_species, axis=1)
+
+        string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(species))}"
+        # Magic numbers here to match/improve the formatting of the classic version
+        # TODO Move away from the magic numbers seen here.
+        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(species))}"
+        columns = np.array([PHYSICAL_PARAMETERS[:-1] + ["point"] + species])
+        np.savetxt(column_file, columns, fmt=string_fmt_string)
+        with open(column_file, "ab") as f:
+            np.savetxt(f, full_array, fmt=number_fmt_string)
 
     # /Legacy in & output support
 

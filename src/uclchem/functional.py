@@ -80,7 +80,14 @@ import numpy as np
 import pandas as pd
 
 from uclchem.constants import TIMEPOINTS, default_elements_to_check
-from uclchem.model import AbstractModel, Cloud, Collapse, CShock, JShock, PrestellarCore
+from uclchem.model import (
+    AbstractModel,
+    Cloud,
+    Collapse,
+    CShock,
+    JShock,
+    PrestellarCore,
+)
 
 
 def __validate_functional_api_params__(
@@ -132,6 +139,25 @@ def __validate_functional_api_params__(
                 "These parameters are mutually exclusive: use either file I/O (outputFile, abundSaveFile, etc.) "
                 "OR in-memory returns (return_array, return_dataframe), but not both."
             )
+
+
+def _write_column_file(
+    model_object: AbstractModel, original_param_dict: dict, out_species: list[str] | None
+) -> None:
+
+    write_column_file = False
+    for key in original_param_dict:
+        if key.lower() == "columnfile":
+            write_column_file = True
+            columnfile = original_param_dict[key]
+    if not write_column_file:
+        return
+
+    if out_species is None:
+        msg = "columnFile was given in the parameter dictionary, but no out_species were given."
+        raise ValueError(msg)
+
+    model_object.legacy_write_columnfile(columnfile, out_species)
 
 
 def __functional_return__(
@@ -402,6 +428,8 @@ def __cloud__(
         timepoints=timepoints,
     )
 
+    _write_column_file(model_object, param_dict, out_species)
+
     return __functional_return__(
         model_object=model_object,
         return_array=return_array,
@@ -503,6 +531,8 @@ def __collapse__(
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
+
+    _write_column_file(model_object, param_dict, out_species)
 
     return __functional_return__(
         model_object=model_object,
@@ -609,6 +639,8 @@ def __prestellar_core__(
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
+
+    _write_column_file(model_object, param_dict, out_species)
 
     return __functional_return__(
         model_object=model_object,
@@ -723,6 +755,8 @@ def __cshock__(
         timepoints=timepoints,
     )
 
+    _write_column_file(model_object, param_dict, out_species)
+
     return __functional_return__(
         model_object=model_object,
         return_array=return_array,
@@ -827,6 +861,8 @@ def __jshock__(
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
+
+    _write_column_file(model_object, param_dict, out_species)
 
     return __functional_return__(
         model_object=model_object,
