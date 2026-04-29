@@ -55,13 +55,16 @@ if __name__ == "__main__":
     def run_model(index_and_row: tuple[int, pd.Series]) -> int:
         """Run a model row with certain physical conditions.
 
-        Args:
-            index_and_row (tuple[int, pd.Series]): tuple of row number (not used) and row
-                containing temperature, density, zeta and outputFile.
+        Parameters
+        ----------
+        index_and_row : tuple[int, pd.Series]
+            tuple of row number (not used) and row
+            containing temperature, density, zeta and outputFile.
 
-        Returns:
-            result (int): result success code.
-
+        Returns
+        -------
+        result : int
+            result success code.
         """
         row_index, row = (
             index_and_row  # pandas iterrows actually come as tuples with the row number
@@ -95,12 +98,15 @@ if __name__ == "__main__":
     def element_check(output_file: str) -> bool:
         """Check conservation of elemental abundances.
 
-        Args:
-            output_file (str): path to output file
+        Parameters
+        ----------
+        output_file : str
+            path to output file
 
-        Returns:
-            bool: whether any error is greater than 1%
-
+        Returns
+        -------
+        bool
+            whether any error is greater than 1%
         """
         df = uclchem.analysis.read_output_file(output_file)
         # get conservation values

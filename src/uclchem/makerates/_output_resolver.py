@@ -27,9 +27,10 @@ class ProjectRootError(RuntimeError):
 def _stored_project_root() -> Path | None:
     """Return the project root recorded at install time, or None if unavailable.
 
-    Returns:
-        Path | None: project root, or None if it could not be found.
-
+    Returns
+    -------
+    Path | None
+        project root, or None if it could not be found.
     """
     try:
         from uclchem._project_root import (  # noqa: PLC0415 # type: ignore[import]
@@ -44,12 +45,15 @@ def _stored_project_root() -> Path | None:
 def _is_valid_project_root(root: Path) -> bool:
     """Determine whether ``root`` has the expected ``src/`` layout.
 
-    Args:
-        root (Path): Path to project root
+    Parameters
+    ----------
+    root : Path
+        Path to project root
 
-    Returns:
-        bool: whether ``root`` has the expected project structure.
-
+    Returns
+    -------
+    bool
+        whether ``root`` has the expected project structure.
     """
     return (root / "src" / "uclchem").is_dir() and (root / "src" / "fortran_src").is_dir()
 
@@ -60,18 +64,25 @@ def resolve_output_dirs(
 ) -> tuple[Path, Path]:
     """Return ``(output_dir, fortran_src_dir)`` following the documented priority.
 
-    Args:
-        explicit_dir (str | Path | None): Directory explicitly supplied by the user / CLI.
-        use_legacy_relative (bool): If True, fall through to the legacy ``../src/``
-            relative-path tier instead of raising.  Pass True only from
-            ``run_makerates()`` when called with no output_directory and no
-            CLI involvement (programmatic / legacy Makerates/ usage). Default = False.
+    Parameters
+    ----------
+    explicit_dir : str | Path | None
+        Directory explicitly supplied by the user / CLI.
+    use_legacy_relative : bool
+        If True, fall through to the legacy ``../src/``
+        relative-path tier instead of raising.  Pass True only from
+        ``run_makerates()`` when called with no output_directory and no
+        CLI involvement (programmatic / legacy Makerates/ usage). Default = False.
 
-    Returns:
-        tuple[Path, Path]: Tuple ``(output_dir, fortran_src_dir)`` both as resolved ``Path``s.
+    Returns
+    -------
+    tuple[Path, Path]
+        Tuple ``(output_dir, fortran_src_dir)`` both as resolved ``Path``s.
 
-    Raises:
-        ProjectRootError: When no valid output location can be determined.
+    Raises
+    ------
+    ProjectRootError
+        When no valid output location can be determined.
     """
     # --- Tier 1: explicit directory ------------------------------------------------
     if explicit_dir is not None:

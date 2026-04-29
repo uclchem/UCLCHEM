@@ -14,11 +14,14 @@ from uclchem.utils import UCLCHEM_ROOT_DIR
 def _load_fortran_metadata() -> tuple[set[str], set[str], set[str]]:
     """Load Fortran parameter classifications from YAML file.
 
-    Returns:
-        fortran_params (set[str]): lowercase fortran parameters
-        internal_params (set[str]): lowercase internal parameters
-        file_path_params (set[str]): lowercase filepath parameters
-
+    Returns
+    -------
+    fortran_params : set[str]
+        lowercase fortran parameters
+    internal_params : set[str]
+        lowercase internal parameters
+    file_path_params : set[str]
+        lowercase filepath parameters
     """
     yaml_path = UCLCHEM_ROOT_DIR / "advanced" / "fortran_metadata.yaml"
 

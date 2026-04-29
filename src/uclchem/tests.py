@@ -22,7 +22,8 @@ def test_ode_conservation(
         element_list (list[str] | None): A list of elements for which to check the conservation.
             If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
 
-    Returns:
+    Returns
+    -------
         result (dict[str, float]): A dictionary of the elements in element list with values
             representing the total change of each element.
 

@@ -50,13 +50,17 @@ _DENOMINATORS = {
 def parse_species_from_row(row: pd.Series, prefix: str) -> list[str]:
     """Parse species list from CSV row.
 
-    Args:
-        row (pd.Series): DataFrame row
-        prefix (str): 'reactant' or 'product'
+    Parameters
+    ----------
+    row : pd.Series
+        DataFrame row
+    prefix : str
+        'reactant' or 'product'
 
-    Returns:
-        list[str]: List of species names (uppercase, NAN for missing)
-
+    Returns
+    -------
+    list[str]
+        List of species names (uppercase, NAN for missing)
     """
     species = []
     idx = 1
@@ -75,15 +79,20 @@ def _parse_unit(unit: str) -> float:
 
     Parses units like: ev, ev_per_reaction, ev/mol, joule_per_mol, etc.
 
-    Args:
-        unit (str): Unit string (case-insensitive)
+    Parameters
+    ----------
+    unit : str
+        Unit string (case-insensitive)
 
-    Returns:
-        factor (float): Conversion factor to erg per reaction
+    Returns
+    -------
+    factor : float
+        Conversion factor to erg per reaction
 
-    Raises:
-        ValueError: If there is an unknown unit, or it cannot be parsed.
-
+    Raises
+    ------
+    ValueError
+        If there is an unknown unit, or it cannot be parsed.
     """
     unit_lower = unit.strip().lower()
 
@@ -132,13 +141,17 @@ def _parse_unit(unit: str) -> float:
 def convert_to_erg(value: float, unit: str) -> float:
     """Convert exothermicity to erg per reaction.
 
-    Args:
-        value (float): Exothermicity value
-        unit (str): Unit string (case-insensitive)
+    Parameters
+    ----------
+    value : float
+        Exothermicity value
+    unit : str
+        Unit string (case-insensitive)
 
-    Returns:
-        float: Value in erg per reaction
-
+    Returns
+    -------
+    float
+        Value in erg per reaction
     """
     factor = _parse_unit(unit)
     return value * factor
@@ -149,14 +162,19 @@ def match_reaction(
 ) -> Reaction | None:
     """Find matching reaction in list.
 
-    Args:
-        reactants (list[str]): List of reactant names
-        products (list[str]): List of product names
-        reactions (list[Reaction]): List to search
+    Parameters
+    ----------
+    reactants : list[str]
+        List of reactant names
+    products : list[str]
+        List of product names
+    reactions : list[Reaction]
+        List to search
 
-    Returns:
-        Reaction | None: Matching Reaction or None
-
+    Returns
+    -------
+    Reaction | None
+        Matching Reaction or None
     """
     sorted_r = sorted(reactants)
     sorted_p = sorted(products)
@@ -175,15 +193,20 @@ def load_custom_exothermicities(csv_path: str | Path) -> pd.DataFrame:
 
     Expected columns: reactant1-3, product1-4, exothermicity, unit
 
-    Args:
-        csv_path (str | Path): Path to CSV file
+    Parameters
+    ----------
+    csv_path : str | Path
+        Path to CSV file
 
-    Returns:
-        df (pd.DataFrame): DataFrame with custom exothermicities
+    Returns
+    -------
+    df : pd.DataFrame
+        DataFrame with custom exothermicities
 
-    Raises:
-        ValueError: If the csv is missing certain columns.
-
+    Raises
+    ------
+    ValueError
+        If the csv is missing certain columns.
     """
     df = pd.read_csv(csv_path, comment="#")
 
@@ -208,16 +231,22 @@ def set_custom_exothermicities(
 ) -> tuple[int, int]:
     """Set reaction exothermicities from custom CSV.
 
-    Args:
-        reactions (list[Reaction]): List of Reaction objects to modify
-        csv_path (str | Path): Path to CSV with custom exothermicities
-        overwrite (bool): If False, only set reactions with zero exothermicity.
-            Default = True.
+    Parameters
+    ----------
+    reactions : list[Reaction]
+        List of Reaction objects to modify
+    csv_path : str | Path
+        Path to CSV with custom exothermicities
+    overwrite : bool
+        If False, only set reactions with zero exothermicity.
+        Default = True.
 
-    Returns:
-        matched (int): number of matched reactions
-        unmatched (int): number of unmatched reactions
-
+    Returns
+    -------
+    matched : int
+        number of matched reactions
+    unmatched : int
+        number of unmatched reactions
     """
     df = load_custom_exothermicities(csv_path)
     matched = 0

@@ -19,11 +19,12 @@ import numpy as np
 def get_parameter_info() -> dict[str, tuple[Any, str, str]]:
     """Extract all parameters from uclchemwrap.defaultparameters.
 
-    Returns:
-        params (dict[str, tuple[Any, str, str]]): Dictionary mapping parameter
-            names to tuples of (value, type_str, description)
-            The description is extracted from Fortran comments when available.
-
+    Returns
+    -------
+    params : dict[str, tuple[Any, str, str]]
+        Dictionary mapping parameter
+        names to tuples of (value, type_str, description)
+        The description is extracted from Fortran comments when available.
     """
     try:
         import uclchemwrap  # noqa: PLC0415
@@ -164,13 +165,16 @@ def get_parameter_info() -> dict[str, tuple[Any, str, str]]:
 def categorize_parameters(params: dict[str, tuple[Any, str, str]]) -> dict[str, list]:  # noqa: ARG001
     """Organize parameters into logical categories.
 
-    Args:
-        params (dict[str, tuple[Any, str, str]]): Dictionary of parameter info
+    Parameters
+    ----------
+    params : dict[str, tuple[Any, str, str]]
+        Dictionary of parameter info
 
-    Returns:
-        categories (dict[str, list]): Dictionary mapping category names
-            to lists of parameter names
-
+    Returns
+    -------
+    categories : dict[str, list]
+        Dictionary mapping category names
+        to lists of parameter names
     """
     categories = {
         "Physical Variables": [
@@ -257,12 +261,15 @@ def categorize_parameters(params: dict[str, tuple[Any, str, str]]) -> dict[str, 
 def format_value(value: str | bool | int | bytes | float) -> str:
     """Format a parameter value for display.
 
-    Args:
-        value (str | bool | int | bytes | float): value to be printed
+    Parameters
+    ----------
+    value : str | bool | int | bytes | float
+        value to be printed
 
-    Returns:
-        str: formatted string for printing
-
+    Returns
+    -------
+    str
+        formatted string for printing
     """
     if isinstance(value, bool | np.bool_):
         return ".True." if value else ".False."
@@ -292,10 +299,12 @@ def generate_markdown(
 ) -> None:
     """Generate markdown documentation from parameter information.
 
-    Args:
-        params (dict[str, tuple[Any, str, str]]): Dictionary of parameter info
-        output_file (str | Path): Path to output markdown file
-
+    Parameters
+    ----------
+    params : dict[str, tuple[Any, str, str]]
+        Dictionary of parameter info
+    output_file : str | Path
+        Path to output markdown file
     """
     categories = categorize_parameters(params)
 
@@ -351,7 +360,7 @@ def generate_markdown(
 
 
 def main() -> None:
-    """Main entry point."""
+    """Generate the parmeter docs."""
     if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} <output_markdown_file>")
         sys.exit(1)

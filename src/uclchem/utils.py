@@ -84,13 +84,17 @@ def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
     Velocity of ions and neutrals equalizes at dissipation time and
     full cooling takes a few dissipation times.
 
-    Args:
-        shock_vel (float): Velocity of the shock in km/s
-        initial_dens (float): Preshock density of the gas in cm$^{-3}$
+    Parameters
+    ----------
+    shock_vel : float
+        Velocity of the shock in km/s
+    initial_dens : float
+        Preshock density of the gas in cm$^{-3}$
 
-    Returns:
-        float: The dissipation time of the shock in years
-
+    Returns
+    -------
+    float
+        The dissipation time of the shock in years
     """
     dlength = 12.0 * CENTIMETERS_PER_PARSEC * shock_vel / initial_dens
     return (dlength * 1.0e-5 / shock_vel) / SECONDS_PER_YEAR
@@ -99,9 +103,10 @@ def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
 def get_species_table() -> pd.DataFrame:
     """Load the list of species in the UCLCHEM network into a pandas dataframe.
 
-    Returns:
-        species (pd.DataFrame): A dataframe containing the species names and their details
-
+    Returns
+    -------
+    species : pd.DataFrame
+        A dataframe containing the species names and their details
     """
     species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
     return species
@@ -110,9 +115,10 @@ def get_species_table() -> pd.DataFrame:
 def get_species() -> list[str]:
     """Load the list of species present in the UCLCHEM network.
 
-    Returns:
-        species_list (list[str]): A list of species names
-
+    Returns
+    -------
+    species_list : list[str]
+        A list of species names
     """
     species_list = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv").iloc[:, 0].tolist()
     return species_list
@@ -121,9 +127,10 @@ def get_species() -> list[str]:
 def get_reaction_table() -> pd.DataFrame:
     """Load the reaction table from the UCLCHEM network into a pandas dataframe.
 
-    Returns:
-        reactions (pd.DataFrame): A dataframe containing the reactions and their rates
-
+    Returns
+    -------
+    reactions : pd.DataFrame
+        A dataframe containing the reactions and their rates
     """
     reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
     return reactions
@@ -132,24 +139,29 @@ def get_reaction_table() -> pd.DataFrame:
 def find_number_of_consecutive_digits(string: str, start: int) -> int:
     """Determine the number of consecutive digits in a string, starting from some index ``start``.
 
-    Args:
-        string (str): the string
-        start (int): the starting index
+    Parameters
+    ----------
+    string : str
+        the string
+    start : int
+        the starting index
 
-    Returns:
-        num_digits (int): the number of consecutive digits in the string
-            starting from ``start``.
+    Returns
+    -------
+    num_digits : int
+        the number of consecutive digits in the string
+        starting from ``start``.
 
-    Examples:
-        >>> find_number_of_consecutive_digits("Hello123", 0)
-        0
-        >>> find_number_of_consecutive_digits("Hello123", 5)
-        3
-        >>> find_number_of_consecutive_digits("Hello123", 6)
-        2
-        >>> find_number_of_consecutive_digits("He1llo23", 2)
-        1
-
+    Examples
+    --------
+    >>> find_number_of_consecutive_digits("Hello123", 0)
+    0
+    >>> find_number_of_consecutive_digits("Hello123", 5)
+    3
+    >>> find_number_of_consecutive_digits("Hello123", 6)
+    2
+    >>> find_number_of_consecutive_digits("He1llo23", 2)
+    1
     """
     num_digits = 0
     while start + num_digits < len(string) and string[start + num_digits].isdigit():
@@ -165,10 +177,12 @@ def find_number_of_consecutive_digits(string: str, start: int) -> int:
 def _filament_units():
     """Return (unitr_pc, unitt_yr) for filament (mode 3) collapse.
 
-    Returns:
-        unitr (float): filament units for radius
-        unitt (float): filament units for time
-
+    Returns
+    -------
+    unitr : float
+        filament units for radius
+    unitt : float
+        filament units for time
     """
     _rho0_filament = 2.2e4  # reference density for filament/ambipolar (cm^-3)
     two_pi_g_rho0_mh = (
@@ -185,12 +199,17 @@ def _filament_units():
 def _rminfit(t_yr: float, mode: int) -> float:
     """Fit to time evolution of the radius of minimum velocity.
 
-    Args:
-        t_yr (float): Time in years
-        mode (int): One of {3, 4}, indicating the collapse mode
+    Parameters
+    ----------
+    t_yr : float
+        Time in years
+    mode : int
+        One of {3, 4}, indicating the collapse mode
 
-    Returns:
-        float: Radius of minimum velocity (pc for mode 3, normalized units for mode 4).
+    Returns
+    -------
+    float
+        Radius of minimum velocity (pc for mode 3, normalized units for mode 4).
     """
     if mode == 3:
         _, unitt = _filament_units()
@@ -216,13 +235,17 @@ def _rminfit(t_yr: float, mode: int) -> float:
 def _vminfit(t_yr: float, mode: int) -> float:
     """Fit to time evolution of minimum velocity (dimensionless units).
 
-    Args:
-        t_yr (float): Time in years
-        mode (int): One of {3, 4}, indicating the collapse mode.
+    Parameters
+    ----------
+    t_yr : float
+        Time in years
+    mode : int
+        One of {3, 4}, indicating the collapse mode.
 
-    Returns:
-        float: Minimum velocity in dimensionless units.
-
+    Returns
+    -------
+    float
+        Minimum velocity in dimensionless units.
     """
     if mode == 3:
         _, unitt = _filament_units()
@@ -243,12 +266,17 @@ def _vminfit(t_yr: float, mode: int) -> float:
 def _avfit(t_yr: float, mode: int) -> float:
     """Fit to velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
 
-    Args:
-        t_yr (float): Time in years
-        mode (int): One of {3, 4}, indicating the collapse mode.
+    Parameters
+    ----------
+    t_yr : float
+        Time in years
+    mode : int
+        One of {3, 4}, indicating the collapse mode.
 
-    Returns:
-        float: Velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
+    Returns
+    -------
+    float
+        Velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
     """
     if mode == 3:
         _, unitt = _filament_units()
@@ -274,15 +302,23 @@ def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: int) -> float
 
     Modes 3 (filament) and 4 (ambipolar) only.
 
-    Args:
-        r_pc (float): radius in parsec
-        rmin (float): minimum radius in dimensionless units
-        vmin (float): minimum velocity in dimensionless units
-        av (float): Av
-        mode (int): One of {3, 4}, indicating the collapse mode.
+    Parameters
+    ----------
+    r_pc : float
+        radius in parsec
+    rmin : float
+        minimum radius in dimensionless units
+    vmin : float
+        minimum velocity in dimensionless units
+    av : float
+        Av
+    mode : int
+        One of {3, 4}, indicating the collapse mode.
 
-    Returns:
-        float: Radial velocity in cm/s.
+    Returns
+    -------
+    float
+        Radial velocity in cm/s.
     """
     if mode == 3:
         unitr, _ = _filament_units()
@@ -317,16 +353,23 @@ def collapse_radial_velocity(model: Collapse, point: int = 0) -> pd.Series:
     a finite-difference approximation of parcel_radius — it is NOT the relationship
     used to generate the model and should be treated as an estimate only.
 
-    Args:
-        model (Collapse): A successfully run :class:`~uclchem.model.Collapse` instance.
-        point (int): Parcel index (0-based). Defaults to 0.
+    Parameters
+    ----------
+    model : Collapse
+        A successfully run :class:`~uclchem.model.Collapse` instance.
+    point : int
+        Parcel index (0-based). Defaults to 0.
 
-    Returns:
-        pd.Series: Radial velocity in cm/s, indexed by time in years.
-                   Negative values indicate infall.
+    Returns
+    -------
+    pd.Series
+        Radial velocity in cm/s, indexed by time in years.
+        Negative values indicate infall.
 
-    Raises:
-        TypeError: If ``model`` is not a Collapse model instance.
+    Raises
+    ------
+    TypeError
+        If ``model`` is not a Collapse model instance.
     """
     from uclchem.model import Collapse  # noqa: PLC0415
 
@@ -363,28 +406,30 @@ class SuccessFlag(enum.IntEnum):
     def __new__(cls, value: int, _docstring: str = "") -> SuccessFlag:
         """Generate a new instance of SuccessFlag.
 
-        Args:
-            cls (SuccessFlag): SuccessFlag
-            value (int): Value of the flag
-            _docstring (str): Docstring to attach to it. No need to input this
-                if you create a new instance after running a model. Default = "".
+        Parameters
+        ----------
+        cls : SuccessFlag
+            SuccessFlag
+        value : int
+            Value of the flag
+        _docstring : str
+            Docstring to attach to it. No need to input this
+            if you create a new instance after running a model. Default = "".
 
-        Returns:
-            SuccessFlag: New SuccessFlag instance
+        Returns
+        -------
+        SuccessFlag
+            New SuccessFlag instance
 
-        Notes:
-            This custom __new__ was written to be able to attach short help messages to
-                the SuccessFlag instances. See the example below.
+        Examples
+        --------
+        >>> success_flag = SuccessFlag.SUCCESS
+        >>> print(success_flag.__doc__)
+        Model ran successfully
 
-        Examples:
-            >>> success_flag = SuccessFlag.SUCCESS
-            >>> print(success_flag.__doc__)
-            Model ran successfully
-
-            >>> success_flag = SuccessFlag.INT_TOO_MANY_FAILS_ERROR
-            >>> print(success_flag.__doc__)
-            Too many integrator fails occurred.
-
+        >>> success_flag = SuccessFlag.INT_TOO_MANY_FAILS_ERROR
+        >>> print(success_flag.__doc__)
+        Too many integrator fails occurred.
         """
         member = int.__new__(cls, value)
 
@@ -417,20 +462,26 @@ class SuccessFlag(enum.IntEnum):
     def check_error(
         self, only_error: bool = False, raise_on_error: bool = True
     ) -> str | None:
-        """Converts the UCLCHEM integer result flag to a message explaining what went wrong.
+        """Check the error, and print a message explaining what went wrong.
 
-        Args:
-            only_error (bool): If True, skip printing if the model ran successfully, and only
-                error out if it did not. Default = False.
-            raise_on_error (bool): If True, raises RuntimeError if the ``self`` is not
-                ``SuccessFlag.SUCCESS``. If False, returns the message string. Default = True.
+        Parameters
+        ----------
+        only_error : bool
+            If True, skip printing if the model ran successfully, and only
+            error out if it did not. Default = False.
+        raise_on_error : bool
+            If True, raises RuntimeError if the ``self`` is not
+            ``SuccessFlag.SUCCESS``. If False, returns the message string. Default = True.
 
-        Returns:
-            str | None: Error message. Returns None if no error was found.
+        Returns
+        -------
+        str | None
+            Error message. Returns None if no error was found.
 
-        Raises:
-            RuntimeError: If ``raise_on_error`` is True.
-
+        Raises
+        ------
+        RuntimeError
+            If ``raise_on_error`` is True.
         """
         if self == SuccessFlag.SUCCESS:
             if not only_error:
@@ -466,15 +517,20 @@ def check_expected_type(
 ) -> None:
     """Check that the type of a variable matches the expected type.
 
-    Args:
-        variable (Any): variable to check type of.
-        expected_type (type[Any]): expected type.
-        name (str | None): Name of variable. If None, no name information will be printed.
-            Defaults to None.
+    Parameters
+    ----------
+    variable : Any
+        variable to check type of.
+    expected_type : type[Any]
+        expected type.
+    name : str | None
+        Name of variable. If None, no name information will be printed.
+        Defaults to None.
 
-    Raises:
-        TypeError: If ``variable`` is not an instance of ``expected_type``.
-
+    Raises
+    ------
+    TypeError
+        If ``variable`` is not an instance of ``expected_type``.
     """
     if isinstance(variable, expected_type):
         return
@@ -495,28 +551,33 @@ def configure_logging(
 ) -> None:
     """Configure logging of UCLCHEM.
 
-    Args:
-        level (Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] | int): Level of logs to be
-            logged. Case insensitive. Default = "INFO".
-        stream (TextIOWrapper | str | Path | None): stream to write to. If string or Path, write to file
-            in append mode. If None, do not write logs at all. Default = sys.stdout (write to stdout).
+    Parameters
+    ----------
+    level : Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] | int
+        Level of logs to be
+        logged. Case insensitive. Default = "INFO".
+    stream : TextIOWrapper | str | Path | None
+        stream to write to. If string or Path, write to file
+        in append mode. If None, do not write logs at all. Default = sys.stdout (write to stdout).
 
-    Raises:
-        TypeError: If stream is not an instance of TextIOWrapper, str, Path, or None.
+    Raises
+    ------
+    TypeError
+        If stream is not an instance of TextIOWrapper, str, Path, or None.
 
-    Examples:
-        >>> # Get INFO or higher messages in stdout.
-        >>> configure_logging()
+    Examples
+    --------
+    >>> # Get INFO or higher messages in stdout.
+    >>> configure_logging()
 
-        >>> # Also get DEBUG messages in stdout
-        >>> configure_logging(level="DEBUG")
+    >>> # Also get DEBUG messages in stdout
+    >>> configure_logging(level="DEBUG")
 
-        >>> # Write WARNING or higher messages to "uclchem.log"
-        >>> configure_logging(level="WARNING", stream="uclchem.log")
+    >>> # Write WARNING or higher messages to "uclchem.log"
+    >>> configure_logging(level="WARNING", stream="uclchem.log")
 
-        >>> # Suppress all logging messages
-        >>> configure_logging(stream = None)
-
+    >>> # Suppress all logging messages
+    >>> configure_logging(stream = None)
     """
     if isinstance(level, str):
         level = level.upper()  # type: ignore[assignment]
@@ -552,19 +613,25 @@ def get_dtype(
 ) -> np.typing.DTypeLike | np.dtype:
     """Convert a string or dtype to a numpy dtype.
 
-    Args:
-        dtype (np.typing.DTypeLike | np.dtype | str): dtype
+    Parameters
+    ----------
+    dtype : np.typing.DTypeLike | np.dtype | str
+        dtype
 
-    Returns:
-        np.typing.DTypeLike | np.dtype: Unchanged ``dtype`` if ``dtype`` is an instance of
-            np.dtype. Otherwise, checks the string for ``fp64``, ``fp32``, or ``fp16``,
-            or whether ``dtype`` has an attribute called ``dtype``, which could be for example
-            for ``np.float64``.
+    Returns
+    -------
+    np.typing.DTypeLike | np.dtype
+        Unchanged ``dtype`` if ``dtype`` is an instance of
+        np.dtype. Otherwise, checks the string for ``fp64``, ``fp32``, or ``fp16``,
+        or whether ``dtype`` has an attribute called ``dtype``, which could be for example
+        for ``np.float64``.
 
-    Raises:
-        TypeError: If ``dtype`` is not an instance of ``np.dtype`` or a string.
-        ValueError: If ``dtype`` is a string but is not one of ``["fp64", "fp32", "fp16"]``.
-
+    Raises
+    ------
+    TypeError
+        If ``dtype`` is not an instance of ``np.dtype`` or a string.
+    ValueError
+        If ``dtype`` is a string but is not one of ``["fp64", "fp32", "fp16"]``.
     """
     if hasattr(dtype, "dtype"):
         # Things like 'np.float64'
@@ -593,24 +660,30 @@ def get_dtype(
 def convert_keys_to_lowercase(dct: dict[str, Any]) -> dict[str, Any]:
     """Convert the key of a dictionary to lowercase.
 
-    Args:
-        dct (dict[str, Any]): dictionary to convert to lowercase.
+    Parameters
+    ----------
+    dct : dict[str, Any]
+        dictionary to convert to lowercase.
 
-    Returns:
-        lowercase_dct (dict[str, Any]): Dictionary with its keys lowercased.
+    Returns
+    -------
+    lowercase_dct : dict[str, Any]
+        Dictionary with its keys lowercased.
 
-    Examples:
-        >>> # Keys are converted to lowercase.
-        >>> convert_keys_to_lowercase({"initialDens": 1e4})
-        {'initialdens': 10000.0}
+    Raises
+    ------
+    ValueError
+        If a duplicate key is encountered in ``dct`` (after lowercasing it).
 
-        >>> # Values are left unchanged
-        >>> convert_keys_to_lowercase({"Uppercase Key": "Uppercase Value"})
-        {'uppercase key': 'Uppercase Value'}
+    Examples
+    --------
+    >>> # Keys are converted to lowercase.
+    >>> convert_keys_to_lowercase({"initialDens": 1e4})
+    {'initialdens': 10000.0}
 
-    Raises:
-        ValueError: If a duplicate key is encountered in ``dct`` (after lowercasing it).
-
+    >>> # Values are left unchanged
+    >>> convert_keys_to_lowercase({"Uppercase Key": "Uppercase Value"})
+    {'uppercase key': 'Uppercase Value'}
     """
     lowercase_dct: dict[str, Any] = {}
     for key, value in dct.items():

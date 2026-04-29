@@ -39,11 +39,15 @@ logger = logging.getLogger(__name__)
 def _copy_value(value: Any) -> Any:
     """Make a copy of a value (handle arrays and scalars).
 
-    Args:
-        value (Any): value to be copied.
+    Parameters
+    ----------
+    value : Any
+        value to be copied.
 
-    Returns:
-        Any: copy of the original object
+    Returns
+    -------
+    Any
+        copy of the original object
     """
     if isinstance(value, np.ndarray):
         return value.copy()
@@ -57,18 +61,28 @@ class Setting:
     Tracks the current value, edit status, default value, and metadata
     for a Fortran module variable.
 
-    Attributes:
-        name (str): Setting name
-        module_name (str): Parent Fortran module name
-        current_value (Any): Current value (cached on last read)
-        is_edited (bool): Whether value has been modified from default
-        default_value (bool): Original default value at initialization
-        dtype (npt.DTypeLike): NumPy dtype or Python type
-        is_parameter (bool): True if this is a compile-time constant (read-only)
-        is_internal (bool): True if this is an internal solver parameter
-        is_file_path (bool): True if this is a file path (should use param_dict)
-        shape (tuple[int, int] | None): Array shape (None for scalars)
-
+    Attributes
+    ----------
+    name : str
+        Setting name
+    module_name : str
+        Parent Fortran module name
+    current_value : Any
+        Current value (cached on last read)
+    is_edited : bool
+        Whether value has been modified from default
+    default_value : bool
+        Original default value at initialization
+    dtype : npt.DTypeLike
+        NumPy dtype or Python type
+    is_parameter : bool
+        True if this is a compile-time constant (read-only)
+    is_internal : bool
+        True if this is an internal solver parameter
+    is_file_path : bool
+        True if this is a file path (should use param_dict)
+    shape : tuple[int, int] | None
+        Array shape (None for scalars)
     """
 
     def __init__(
@@ -82,15 +96,21 @@ class Setting:
     ):
         """Initialize a Setting object.
 
-        Args:
-            name (str): Setting name
-            module_name (str): Parent module name
-            fortran_module (ModuleType): Reference to the Fortran module
-            is_parameter (bool): Whether this is a PARAMETER (read-only). Default = False.
-            is_internal (bool): Whether this is an internal solver parameter. Default = False.
-            is_file_path (bool): Whether this is a file path parameter (should use param_dict).
-                Default = False.
-
+        Parameters
+        ----------
+        name : str
+            Setting name
+        module_name : str
+            Parent module name
+        fortran_module : ModuleType
+            Reference to the Fortran module
+        is_parameter : bool
+            Whether this is a PARAMETER (read-only). Default = False.
+        is_internal : bool
+            Whether this is an internal solver parameter. Default = False.
+        is_file_path : bool
+            Whether this is a file path parameter (should use param_dict).
+            Default = False.
         """
         self.name = name
         self.module_name = module_name
@@ -116,13 +136,16 @@ class Setting:
     def get(self, check_memory: bool = True) -> float | int | np.ndarray:
         """Get the current value of the setting.
 
-        Args:
-            check_memory (bool): If True, compare cached value with actual Fortran memory
-                and warn if they differ. Default = True.
+        Parameters
+        ----------
+        check_memory : bool
+            If True, compare cached value with actual Fortran memory
+            and warn if they differ. Default = True.
 
-        Returns:
-            float | int | np.ndarray: Current value from Fortran memory
-
+        Returns
+        -------
+        float | int | np.ndarray
+            Current value from Fortran memory
         """
         memory_value = getattr(self._fortran_module, self.name)
 
@@ -151,12 +174,15 @@ class Setting:
     def set(self, value: float | int | np.ndarray) -> None:
         """Set the value of the setting.
 
-        Args:
-            value (float | int | np.ndarray): New value to set
+        Parameters
+        ----------
+        value : float | int | np.ndarray
+            New value to set
 
-        Raises:
-            RuntimeError: If attempting to modify a PARAMETER or file path parameter
-
+        Raises
+        ------
+        RuntimeError
+            If attempting to modify a PARAMETER or file path parameter
         """
         if self.is_parameter:
             msg = (
@@ -190,8 +216,10 @@ class Setting:
     def reset(self) -> None:
         """Reset the setting to its default value.
 
-        Raises:
-            RuntimeError: If the setting is a Fortran parameter
+        Raises
+        ------
+        RuntimeError
+            If the setting is a Fortran parameter
         """
         if self.is_parameter:
             msg = (
@@ -204,11 +232,12 @@ class Setting:
         self.is_edited = False
 
     def __repr__(self) -> str:
-        """String representation of the setting.
+        """Get a string representation of the setting.
 
-        Returns:
-            str: String representation of the setting.
-
+        Returns
+        -------
+        str
+            String representation of the setting.
         """
         status = []
         if self.is_parameter:
@@ -250,13 +279,18 @@ class ModuleSettings:
     ):
         """Initialize settings for a module.
 
-        Args:
-            module_name (str): Name of the Fortran module
-            fortran_module (ModuleType): Reference to the actual Fortran module
-            parameter_names (set[str]): Set of names that are PARAMETERs
-            internal_names (set[str]): Set of names that are internal solver parameters
-            file_path_names (set[str]): Set of names that are file paths (should use param_dict)
-
+        Parameters
+        ----------
+        module_name : str
+            Name of the Fortran module
+        fortran_module : ModuleType
+            Reference to the actual Fortran module
+        parameter_names : set[str]
+            Set of names that are PARAMETERs
+        internal_names : set[str]
+            Set of names that are internal solver parameters
+        file_path_names : set[str]
+            Set of names that are file paths (should use param_dict)
         """
         self.module_name = module_name
         self._fortran_module = fortran_module
@@ -297,14 +331,20 @@ class ModuleSettings:
     def __getattr__(self, name: str) -> Setting:
         """Get a Setting object by name.
 
-        Args:
-            name (str): name of setting.
+        Parameters
+        ----------
+        name : str
+            name of setting.
 
-        Returns:
-            Setting: setting
+        Returns
+        -------
+        Setting
+            setting
 
-        Raises:
-            AttributeError: if no setting with `name` is available.
+        Raises
+        ------
+        AttributeError
+            if no setting with `name` is available.
         """
         if name.startswith("_"):
             return object.__getattribute__(self, name)
@@ -322,13 +362,17 @@ class ModuleSettings:
     def __setattr__(self, name: str, value: Any) -> None:
         """Set a setting value.
 
-        Args:
-            name (str): name of setting.
-            value (Any): value to set setting to.
+        Parameters
+        ----------
+        name : str
+            name of setting.
+        value : Any
+            value to set setting to.
 
-        Raises:
-            AttributeError: if no setting with `name` is available.
-
+        Raises
+        ------
+        AttributeError
+            if no setting with `name` is available.
         """
         logger.debug(f"Trying to set setting '{name}' to {value}")
 
@@ -346,9 +390,10 @@ class ModuleSettings:
     def __dir__(self) -> list[str]:
         """List all settings.
 
-        Returns:
-            list[str]: List of all settings.
-
+        Returns
+        -------
+        list[str]
+            List of all settings.
         """
         return list(self._settings.keys())
 
@@ -357,13 +402,17 @@ class ModuleSettings:
     ) -> dict[str, Setting]:
         """List settings with their current values.
 
-        Args:
-            include_internal (bool): Include internal solver parameters. Default = False.
-            include_parameters (bool): Include read-only PARAMETERs. Default = False.
+        Parameters
+        ----------
+        include_internal : bool
+            Include internal solver parameters. Default = False.
+        include_parameters : bool
+            Include read-only PARAMETERs. Default = False.
 
-        Returns:
-            dict[str, Setting]: Dict mapping setting names to Setting objects
-
+        Returns
+        -------
+        dict[str, Setting]
+            Dict mapping setting names to Setting objects
         """
         result = {}
         for name, setting in self._settings.items():
@@ -379,9 +428,12 @@ class ModuleSettings:
     ) -> None:
         """Print all settings in a readable format.
 
-        Args:
-            include_internal (bool): Include internal solver parameters. Default = False.
-            include_parameters (bool): Include read-only PARAMETERs. Default = False.
+        Parameters
+        ----------
+        include_internal : bool
+            Include internal solver parameters. Default = False.
+        include_parameters : bool
+            Include read-only PARAMETERs. Default = False.
         """
         print(f"\n{'=' * 70}")
         print(f"Module: {self.module_name}")
@@ -515,15 +567,20 @@ class GeneralSettings:
     def __getattr__(self, name: str) -> ModuleType:
         """Access modules as attributes.
 
-        Args:
-            name (str): Module name
+        Parameters
+        ----------
+        name : str
+            Module name
 
-        Returns:
-            ModuleType: module with name `name`.
+        Returns
+        -------
+        ModuleType
+            module with name `name`.
 
-        Raises:
-            AttributeError: If no module with name `name` available.
-
+        Raises
+        ------
+        AttributeError
+            If no module with name `name` available.
         """
         if name.startswith("_"):
             return object.__getattribute__(self, name)
@@ -540,9 +597,10 @@ class GeneralSettings:
     def __dir__(self) -> list[str]:
         """List all available modules.
 
-        Returns:
-            list[str]: List of all available modules.
-
+        Returns
+        -------
+        list[str]
+            List of all available modules.
         """
         return list(self._modules.keys())
 
@@ -578,14 +636,19 @@ class GeneralSettings:
     ) -> dict[str, Setting]:
         """Search for settings matching a pattern across all modules.
 
-        Args:
-            pattern (str): String pattern to search for (case-insensitive).
-            include_internal (bool): Include internal solver parameters. Default = False.
-            include_parameters (bool): Include read-only PARAMETERs. Default = False.
+        Parameters
+        ----------
+        pattern : str
+            String pattern to search for (case-insensitive).
+        include_internal : bool
+            Include internal solver parameters. Default = False.
+        include_parameters : bool
+            Include read-only PARAMETERs. Default = False.
 
-        Returns:
-            dict[str, Setting]: Dict mapping "module.setting" to Setting objects
-
+        Returns
+        -------
+        dict[str, Setting]
+            Dict mapping "module.setting" to Setting objects
         """
         pattern = pattern.lower()
         results = {}
@@ -638,9 +701,10 @@ class GeneralSettings:
     def reset_all(self, confirm: bool = True) -> None:
         """Reset all settings to their default values.
 
-        Args:
-            confirm (bool): If True, require user confirmation. Default = True.
-
+        Parameters
+        ----------
+        confirm : bool
+            If True, require user confirmation. Default = True.
         """
         if confirm:
             response = input("Reset ALL settings to defaults? (yes/no): ")
@@ -668,25 +732,27 @@ class GeneralSettings:
         exception occurs. Useful for running models with temporary parameter
         changes without affecting the global state.
 
-        Example:
-            >>> settings = GeneralSettings()
-            >>> settings.defaultparameters.initialdens = 100.0
-            >>> print(settings.defaultparameters.initialdens.get())
-            100.0
-            >>>
-            >>> with settings.temporary_changes():
-            ...     settings.defaultparameters.initialdens = 5000.0
-            ...     print(settings.defaultparameters.initialdens.get())
-            ...     # Run model here
-            ...
-            5000.0
-            >>>
-            >>> print(settings.defaultparameters.initialdens.get())
-            100.0
+        Yields
+        ------
+        self : GeneralSettings
+            The GeneralSettings instance for chaining
 
-        Yields:
-            self (GeneralSettings): The GeneralSettings instance for chaining
-
+        Examples
+        --------
+        >>> settings = GeneralSettings()
+        >>> settings.defaultparameters.initialdens = 100.0
+        >>> print(settings.defaultparameters.initialdens.get())
+        100.0
+        >>>
+        >>> with settings.temporary_changes():
+        ...     settings.defaultparameters.initialdens = 5000.0
+        ...     print(settings.defaultparameters.initialdens.get())
+        ...     # Run model here
+        ...
+        5000.0
+        >>>
+        >>> print(settings.defaultparameters.initialdens.get())
+        100.0
         """
         # Save all current values (not just edited ones)
         # Skip PARAMETERs (compile-time constants), INTERNAL_PARAMETERS (solver state), and arrays

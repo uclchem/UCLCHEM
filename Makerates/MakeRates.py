@@ -28,14 +28,16 @@ def get_args():  # noqa: ANN201
 
     Allows for interacting with MakeRates.py via the command line.
 
-    Examples:
-        python3 MakeRates.py custom_settings.yaml --verbosity DEBUG
-        python3 MakeRates.py --generate-template
-        python3 MakeRates.py --help-config
+    Returns
+    -------
+    Namespace
+        Arguments passed via the CLI or their defaults
 
-    Returns:
-        Namespace: Arguments passed via the CLI or their defaults
-
+    Examples
+    --------
+    python3 MakeRates.py custom_settings.yaml --verbosity DEBUG
+    python3 MakeRates.py --generate-template
+    python3 MakeRates.py --help-config
     """
     parser = ArgumentParser(
         description="UCLCHEM Makerates: Generate chemical network files"
@@ -83,10 +85,12 @@ def get_args():  # noqa: ANN201
 def get_logger(verbosity_stdout: str, debug: bool) -> None:
     """Define a logger that logs both to file and stdout.
 
-    Args:
-        verbosity_stdout (str): stdout verbosity
-        debug (bool): whether to write debug information to ``makerates.log``.
-
+    Parameters
+    ----------
+    verbosity_stdout : str
+        stdout verbosity
+    debug : bool
+        whether to write debug information to ``makerates.log``.
     """
     # TODO: fix that both verbosity for file and stdout
     # are the same type, but it works for now.

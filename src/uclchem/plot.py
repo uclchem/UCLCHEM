@@ -74,19 +74,26 @@ def plot_rate_summary(
 ) -> list[plt.Axes]:
     """Create a summary of the top k production and destruction reactions.
 
-    Args:
-        production_df (pd.DataFrame): dataframe with reaction rates of
-            formation reactions of species of interest
-        destruction_df (pd.DataFrame): dataframe with reaction rates of
-            destruction reactions of species of interest
-        step (int): time index of dataframes to plot.
-        xlabel (str): xlabel. Default: "Reaction rate (abundance wrt H / s)"
-        top_k_rates (int): Plot top k formation and destruction reactions.
-            Default: 5
+    Parameters
+    ----------
+    production_df : pd.DataFrame
+        dataframe with reaction rates of
+        formation reactions of species of interest
+    destruction_df : pd.DataFrame
+        dataframe with reaction rates of
+        destruction reactions of species of interest
+    step : int
+        time index of dataframes to plot.
+    xlabel : str
+        xlabel. Default: "Reaction rate (abundance wrt H / s)"
+    top_k_rates : int
+        Plot top k formation and destruction reactions.
+        Default: 5
 
-    Returns:
-        axs (list[plt.Axes]): axes of the plot
-
+    Returns
+    -------
+    axs : list[plt.Axes]
+        axes of the plot
     """
     fig, axs = plt.subplots(2, 1, sharex=True, figsize=(7, top_k_rates))
     production_df.iloc[step].sort_values(ascending=False)[:top_k_rates].plot.barh(
@@ -108,23 +115,31 @@ def create_abundance_plot(
 ) -> tuple[plt.Figure, plt.Axes]:
     """Create a plot of the abundance of a list of species through time.
 
-    Args:
-        df (pd.DataFrame): Pandas dataframe containing the UCLCHEM output, see
-            ``uclchem.analysis.read_output_file``, ``uclchem.model.load_model`` or
-            ``uclchem.model.Model.get_dataframes``.
-        species (list[str]): list of strings containing species names.
-            Using a $ instead of # or @ will plot the sum of surface and bulk abundances.
-        figsize (tuple[float, float]): Size of figure, width by height in inches.
-            Defaults to (16, 9).
-        plot_file (str | Path | None): Path to file where figure will be saved.
-            If None, figure is not saved. Defaults to None.
-        plot_kwargs (dict[str, Any] | None): keyword arguments passed to ``ax.plot``.
-            Default = None.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Pandas dataframe containing the UCLCHEM output, see
+        ``uclchem.analysis.read_output_file``, ``uclchem.model.load_model`` or
+        ``uclchem.model.Model.get_dataframes``.
+    species : list[str]
+        list of strings containing species names.
+        Using a $ instead of # or @ will plot the sum of surface and bulk abundances.
+    figsize : tuple[float, float]
+        Size of figure, width by height in inches.
+        Defaults to (16, 9).
+    plot_file : str | Path | None
+        Path to file where figure will be saved.
+        If None, figure is not saved. Defaults to None.
+    plot_kwargs : dict[str, Any] | None
+        keyword arguments passed to ``ax.plot``.
+        Default = None.
 
-    Returns:
-        fig (plt.Figure): created Figure object
-        ax (plt.Axes): created axis object
-
+    Returns
+    -------
+    fig : plt.Figure
+        created Figure object
+    ax : plt.Axes
+        created axis object
     """
     if plot_kwargs is None:
         plot_kwargs = {}
@@ -152,24 +167,33 @@ def plot_species(
 ) -> plt.Axes:
     """Plot the abundance of a list of species through time directly onto an axis.
 
-    Args:
-        ax (plt.Axes): An axis object to plot on
-        df (pd.DataFrame): A dataframe created by
-            ``uclchem.analysis.read_output_file``, ``uclchem.model.load_model`` or
-            ``uclchem.model.Model.get_dataframes``.
-        species (list[str]): A list of species names to be plotted.
-            If species name starts with "$" instead of "#" or "@",
-            plots the sum of surface and bulk abundances
-        legend (bool): Whether to add a legend to the plot. Default = True.
-        plot_kwargs (dict[str, Any] | None): keyword arguments passed to ``ax.plot``.
-            Default = None.
+    Parameters
+    ----------
+    ax : plt.Axes
+        An axis object to plot on
+    df : pd.DataFrame
+        A dataframe created by
+        ``uclchem.analysis.read_output_file``, ``uclchem.model.load_model`` or
+        ``uclchem.model.Model.get_dataframes``.
+    species : list[str]
+        A list of species names to be plotted.
+        If species name starts with "$" instead of "#" or "@",
+        plots the sum of surface and bulk abundances
+    legend : bool
+        Whether to add a legend to the plot. Default = True.
+    plot_kwargs : dict[str, Any] | None
+        keyword arguments passed to ``ax.plot``.
+        Default = None.
 
-    Returns:
-        ax (plt.Axes): Modified input axis is returned
+    Returns
+    -------
+    ax : plt.Axes
+        Modified input axis is returned
 
-    Raises:
-        KeyError: if no ``"Time"`` column is present in ``df``.
-
+    Raises
+    ------
+    KeyError
+        if no ``"Time"`` column is present in ``df``.
     """
     if plot_kwargs is None:
         plot_kwargs = {}

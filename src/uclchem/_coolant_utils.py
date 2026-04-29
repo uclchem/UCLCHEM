@@ -21,12 +21,15 @@ def _normalize_for_comparison(text: str) -> str:
 
     Strips whitespace, converts to lowercase, removes special characters.
 
-    Args:
-        text (str): Text to normalize
+    Parameters
+    ----------
+    text : str
+        Text to normalize
 
-    Returns:
-        str: Normalized text with only alphanumeric characters
-
+    Returns
+    -------
+    str
+        Normalized text with only alphanumeric characters
     """
     return re.sub(r"[^a-z0-9]", "", text.strip().lower())
 
@@ -42,20 +45,28 @@ def get_energy_levels_info(
     and at runtime (via wrapper function). No fail-safes - raises errors if anything
     goes wrong.
 
-    Args:
-        coolant_names (list[str]): List of coolant species names (e.g., ['H', 'C+', 'O', ...])
-        coolant_files (list[str]): List of coolant data file names (e.g., ['ly-a.dat', ...])
-        data_dir (str | Path): Directory containing the coolant data files
+    Parameters
+    ----------
+    coolant_names : list[str]
+        List of coolant species names (e.g., ['H', 'C+', 'O', ...])
+    coolant_files : list[str]
+        List of coolant data file names (e.g., ['ly-a.dat', ...])
+    data_dir : str | Path
+        Directory containing the coolant data files
 
-    Returns:
-        tuple[int, int]: Tuple of (n_total_levels, n_se_stats_per_coolant)
-            where n_total_levels is the sum of all energy levels across all coolants
-            and n_se_stats_per_coolant is always 3 (converged, iterations, max_rel_change)
+    Returns
+    -------
+    tuple[int, int]
+        Tuple of (n_total_levels, n_se_stats_per_coolant)
+        where n_total_levels is the sum of all energy levels across all coolants
+        and n_se_stats_per_coolant is always 3 (converged, iterations, max_rel_change)
 
-    Raises:
-        FileNotFoundError: If data directory or any coolant file doesn't exist
-        ValueError: If coolant file format is invalid or energy levels not found
-
+    Raises
+    ------
+    FileNotFoundError
+        If data directory or any coolant file doesn't exist
+    ValueError
+        If coolant file format is invalid or energy levels not found
     """
     data_path = Path(data_dir)
     if not data_path.is_dir():
@@ -98,9 +109,10 @@ def get_energy_levels_info(
 def get_energy_levels_info_from_runtime() -> tuple[int, int]:
     """Runtime wrapper that fetches parameters from uclchemwrap.
 
-    Returns:
-        tuple[int, int]: Tuple of (n_total_levels, n_se_stats_per_coolant)
-
+    Returns
+    -------
+    tuple[int, int]
+        Tuple of (n_total_levels, n_se_stats_per_coolant)
     """
     coolant_names = [str(name.decode()).strip() for name in f2py_constants.coolantnames]
     coolant_files = [str(fname.decode()).strip() for fname in f2py_constants.coolantfiles]
@@ -123,14 +135,19 @@ def validate_coolant_frequencies(
     compares to the frequency stored in the LAMDA file. Returns per-coolant
     maximum relative deviation.
 
-    Args:
-        coolant_names (list[str]): List of coolant species names
-        coolant_files (list[str | Path]): List of coolant data file names
-        data_dir (str | Path): Directory containing the coolant data files
+    Parameters
+    ----------
+    coolant_names : list[str]
+        List of coolant species names
+    coolant_files : list[str | Path]
+        List of coolant data file names
+    data_dir : str | Path
+        Directory containing the coolant data files
 
-    Returns:
-        max_deviations (dict[str, float]): Dict mapping coolant name to max relative frequency deviation
-
+    Returns
+    -------
+    max_deviations : dict[str, float]
+        Dict mapping coolant name to max relative frequency deviation
     """
     data_path = Path(data_dir)
     level_marker = _normalize_for_comparison("NUMBER OF ENERGY LEVELS")
@@ -226,15 +243,20 @@ def validate_coolant_frequencies(
 def load_coolant_level_names() -> dict[int, list[str]]:
     """Load coolant level information from disk for meaningful column names.
 
-    Returns:
-        level_names (dict[int, list[str]]): Dict mapping coolant index to list of level names
-            (e.g., {0: ['H_2_S_1/2', 'H_2_P_1/2'], 1: ['C+_2_P_1/2', ...]})
+    Returns
+    -------
+    level_names : dict[int, list[str]]
+        Dict mapping coolant index to list of level names
+        (e.g., {0: ['H_2_S_1/2', 'H_2_P_1/2'], 1: ['C+_2_P_1/2', ...]})
 
-    Raises:
-        FileNotFoundError: If data directory or coolant files don't exist
-        ValueError: If coolant file format is invalid
-        RuntimeError: If parsing fails
-
+    Raises
+    ------
+    FileNotFoundError
+        If data directory or coolant files don't exist
+    ValueError
+        If coolant file format is invalid
+    RuntimeError
+        If parsing fails
     """
     coolant_names = [str(name.decode()).strip() for name in f2py_constants.coolantnames]
     coolant_files = [str(fname.decode()).strip() for fname in f2py_constants.coolantfiles]

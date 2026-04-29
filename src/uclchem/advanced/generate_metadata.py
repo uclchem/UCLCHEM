@@ -46,11 +46,15 @@ _MODULE_RE = re.compile(r"^\s*MODULE\s+(\w+)\s*$", re.IGNORECASE)
 def _strip_comment(line: str) -> str:
     """Remove Fortran inline comment (everything from ``!`` onward).
 
-    Args:
-        line (str): line to remove comment of
+    Parameters
+    ----------
+    line : str
+        line to remove comment of
 
-    Returns:
-        line (str): Line with comments stripped, respecting character literals.
+    Returns
+    -------
+    line : str
+        Line with comments stripped, respecting character literals.
     """
     # Respect character literals by scanning manually
     in_str = False
@@ -72,17 +76,21 @@ def _extract_param_names(rhs: str) -> list[str]:
 
     Handles comma-separated names with optional array dimensions and initializers::
 
-    Args:
-        rhs (str): right hand side of ``PARAMETER ::`` declaration.
+    Parameters
+    ----------
+    rhs : str
+        right hand side of ``PARAMETER ::`` declaration.
 
-    Returns:
-        result (list[str]): List of parameter names in lowercase.
+    Returns
+    -------
+    result : list[str]
+        List of parameter names in lowercase.
 
-    Examples:
-        >>> param_names = _extract_param_names("a = 1.0, b(10) = (/.../)")
-        >>> print(param_names)
-        ['a', 'b']
-
+    Examples
+    --------
+    >>> param_names = _extract_param_names("a = 1.0, b(10) = (/.../)")
+    >>> print(param_names)
+    ['a', 'b']
     """
     names: list[str] = []
     # Split on commas that are not inside parentheses
@@ -117,13 +125,16 @@ def parse_fortran_parameters(src_dir: str | Path) -> dict[str, list[str]]:
 
     Handles Fortran continuation lines (ending with ``&`` and starting next line with ``&``).
 
-    Args:
-        src_dir (str | Path): path to fortran source directory.
+    Parameters
+    ----------
+    src_dir : str | Path
+        path to fortran source directory.
 
-    Returns:
-        result (dict[str, list[str]]): Mapping of f2py module name (lowercase)
-            to sorted list of PARAMETER names.
-
+    Returns
+    -------
+    result : dict[str, list[str]]
+        Mapping of f2py module name (lowercase)
+        to sorted list of PARAMETER names.
     """
     src_dir = Path(src_dir)
     known_modules = set(_MODULE_NAMES)
@@ -183,12 +194,15 @@ def parse_fortran_parameters(src_dir: str | Path) -> dict[str, list[str]]:
 def _load_yaml(path: str | Path) -> dict:
     """Load a yaml file to a dictionary.
 
-    Args:
-        path (str | Path): Path to yaml file.
+    Parameters
+    ----------
+    path : str | Path
+        Path to yaml file.
 
-    Returns:
-        dict: loaded dictionary.
-
+    Returns
+    -------
+    dict
+        loaded dictionary.
     """
     with Path(path).open() as f:
         return yaml.safe_load(f) or {}
@@ -197,12 +211,15 @@ def _load_yaml(path: str | Path) -> dict:
 def _dump_yaml(data: dict) -> str:
     """Dump yaml.
 
-    Args:
-        data (dict): Data to dump.
+    Parameters
+    ----------
+    data : dict
+        Data to dump.
 
-    Returns:
-        str: Dumped dictionary.
-
+    Returns
+    -------
+    str
+        Dumped dictionary.
     """
     return yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
@@ -213,13 +230,18 @@ def _merge(existing: dict, detected: dict[str, list[str]]) -> dict:
     The ``global`` key and any other hand-maintained keys not present in
     *detected* are left untouched.  Auto-detected module keys are replaced.
 
-    Args:
-        existing (dict): Existing dictionary
-        detected (dict[str, list[str]]): dictionary with key ``fortran_parameters`` to
-            merge into ``existing``.
+    Parameters
+    ----------
+    existing : dict
+        Existing dictionary
+    detected : dict[str, list[str]]
+        dictionary with key ``fortran_parameters`` to
+        merge into ``existing``.
 
-    Returns:
-        merged (dict): New merged dictionary.
+    Returns
+    -------
+    merged : dict
+        New merged dictionary.
     """
     merged = dict(existing)
     fp: dict = dict(merged.get("fortran_parameters", {}))

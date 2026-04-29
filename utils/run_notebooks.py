@@ -1,10 +1,10 @@
 """Collection of useful functions to run a set of notebooks in a directory.
 
-Example:
-    `python3 run_notebooks.py directory`
+Examples
+--------
+`python3 run_notebooks.py directory`
 
-    will run all the notebooks in `"directory"`.
-
+will run all the notebooks in `"directory"`.
 """
 
 import argparse
@@ -22,12 +22,15 @@ from nbconvert.preprocessors import ExecutePreprocessor
 def get_python_executable() -> Path:
     """Get a valid Python executable path.
 
-    Returns:
-        Path: Path to python executable
+    Returns
+    -------
+    Path
+        Path to python executable
 
-    Raises:
-        RuntimeError: If no valid python executable can be found.
-
+    Raises
+    ------
+    RuntimeError
+        If no valid python executable can be found.
     """
     # Try sys.executable first
     if Path(sys.executable).exists():
@@ -52,12 +55,15 @@ def ensure_ipykernel_installed(python_exec: str | Path) -> bool:
 
     If it is not installed, tries to install it using `pip`.
 
-    Args:
-        python_exec (str | Path): Path to python executable
+    Parameters
+    ----------
+    python_exec : str | Path
+        Path to python executable
 
-    Returns:
-        bool: Whether ipykernel is installed
-
+    Returns
+    -------
+    bool
+        Whether ipykernel is installed
     """
     try:
         # Check if ipykernel is already installed
@@ -94,13 +100,16 @@ def ensure_ipykernel_installed(python_exec: str | Path) -> bool:
 def find_existing_kernel_spec(python_exec: Path) -> str | None:
     """Check if a kernel spec already exists for this Python executable.
 
-    Args:
-        python_exec (Path): Path to python executable
+    Parameters
+    ----------
+    python_exec : Path
+        Path to python executable
 
-    Returns:
-        str | None: kernel name, or None if no kernel matching ``python_exec`` was
-            found.
-
+    Returns
+    -------
+    str | None
+        kernel name, or None if no kernel matching ``python_exec`` was
+        found.
     """
     try:
         # List all available kernel specs
@@ -134,12 +143,15 @@ def find_existing_kernel_spec(python_exec: Path) -> str | None:
 def create_kernel_spec(python_exec: Path) -> str | None:
     """Create a kernel spec for the current Python executable.
 
-    Args:
-        python_exec (Path): Path to python executable
+    Parameters
+    ----------
+    python_exec : Path
+        Path to python executable
 
-    Returns:
-        str | None: name of the kernel, or None if it failed to create kernel
-
+    Returns
+    -------
+    str | None
+        name of the kernel, or None if it failed to create kernel
     """
     # Get the current working directory name for a human-readable kernel name
     dir_name = Path.cwd().name
@@ -182,9 +194,10 @@ def create_kernel_spec(python_exec: Path) -> str | None:
 def cleanup_kernel_spec(kernel_name: str) -> None:
     """Remove the temporary kernel spec.
 
-    Args:
-        kernel_name (str): name of the kernel to clean up
-
+    Parameters
+    ----------
+    kernel_name : str
+        name of the kernel to clean up
     """
     if kernel_name:
         try:
@@ -202,13 +215,17 @@ def cleanup_kernel_spec(kernel_name: str) -> None:
 def run_all_notebooks(notebooks_dir: str | Path) -> None:
     """Run all jupyter notebooks in a directory.
 
-    Args:
-        notebooks_dir (str | Path): directory with notebooks.
+    Parameters
+    ----------
+    notebooks_dir : str | Path
+        directory with notebooks.
 
-    Raises:
-        RuntimeError: If the ipykernel cannot be installed.
-        KeyboardInterrupt: If the user presses Ctrl+c to interrupt the notebooks.
-
+    Raises
+    ------
+    RuntimeError
+        If the ipykernel cannot be installed.
+    KeyboardInterrupt
+        If the user presses Ctrl+c to interrupt the notebooks.
     """
     python_exec = get_python_executable()
     print(f"Using Python executable: {python_exec}")

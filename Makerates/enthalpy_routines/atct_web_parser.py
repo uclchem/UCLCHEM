@@ -48,19 +48,26 @@ class ATCTParser:
     def parse_html_file(self, html_file_path: str | Path) -> pd.DataFrame | None:
         """Parse ATCT HTML file and return cleaned DataFrame.
 
-        Args:
-            html_file_path (str | Path): Path to ATCT HTML database file
+        Parameters
+        ----------
+        html_file_path : str | Path
+            Path to ATCT HTML database file
 
-        Returns:
-            pd.DataFrame | None: dataFrame with parsed thermochemical data.
-                None if parsing fails
+        Returns
+        -------
+        pd.DataFrame | None
+            dataFrame with parsed thermochemical data.
+            None if parsing fails
 
-        Raises:
-            FileNotFoundError: If the ATcT HTML file could not be found.
-            ValueError: If the main data table could not be located,
-                or no data was found in the table.
-            RuntimeError: If the parsing of the ATcT failed.
-
+        Raises
+        ------
+        FileNotFoundError
+            If the ATcT HTML file could not be found.
+        ValueError
+            If the main data table could not be located,
+            or no data was found in the table.
+        RuntimeError
+            If the parsing of the ATcT failed.
         """
         html_path = Path(html_file_path)
         if not html_path.exists():
@@ -97,12 +104,15 @@ class ATCTParser:
     def _find_data_table(soup: BeautifulSoup) -> Any | None:
         """Find the main thermochemical data table in HTML.
 
-        Args:
-            soup (BeautifulSoup): soup instance to scrape ATcT.
+        Parameters
+        ----------
+        soup : BeautifulSoup
+            soup instance to scrape ATcT.
 
-        Returns:
-            Any | None: Table if it could be found, else None.
-
+        Returns
+        -------
+        Any | None
+            Table if it could be found, else None.
         """
         tables = soup.find_all("table")
 
@@ -121,12 +131,15 @@ class ATCTParser:
     def _extract_table_data(table: Any) -> list:
         """Extract raw data from HTML table.
 
-        Args:
-            table (Any): HTML table to extract data from
+        Parameters
+        ----------
+        table : Any
+            HTML table to extract data from
 
-        Returns:
-            list: extracted data.
-
+        Returns
+        -------
+        list
+            extracted data.
         """
         rows = table.find_all("tr")
         data = []
@@ -159,12 +172,16 @@ class ATCTParser:
     def _clean_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """Clean and standardize the parsed DataFrame.
 
-        Args:
-            df (pd.DataFrame): dataframe to clean
+        Parameters
+        ----------
+        df : pd.DataFrame
+            dataframe to clean
 
-        Returns:
-            pd.DataFrame: DataFrame with unnecessary columns removed, and cleaned
-                column names.
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with unnecessary columns removed, and cleaned
+            column names.
         """
         # Clean Unicode issues
         for col in df.columns:
@@ -189,12 +206,15 @@ class ATCTParser:
     def _clean_unicode_string(text: Any) -> str:
         """Clean problematic Unicode characters from text.
 
-        Args:
-            text (Any): object
+        Parameters
+        ----------
+        text : Any
+            object
 
-        Returns:
-            cleaned (str): string with problematic Unicode characters removed.
-
+        Returns
+        -------
+        cleaned : str
+            string with problematic Unicode characters removed.
         """
         if pd.isna(text) or text is None:
             return ""
@@ -214,10 +234,12 @@ class ATCTParser:
     def save_to_csv(data: pd.DataFrame, output_path: str | Path) -> None:
         """Save parsed data to CSV file.
 
-        Args:
-            data (pd.DataFrame): Parsed ATCT data
-            output_path (str | Path): Output CSV file path
-
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Parsed ATCT data
+        output_path : str | Path
+            Output CSV file path
         """
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -229,12 +251,15 @@ class ATCTParser:
     def get_summary_stats(data: pd.DataFrame) -> dict[str, int]:
         """Get summary statistics for parsed data.
 
-        Args:
-            data (pd.DataFrame): Parsed ATCT data
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Parsed ATCT data
 
-        Returns:
-            dict[str, int]: Dictionary with summary statistics
-
+        Returns
+        -------
+        dict[str, int]
+            Dictionary with summary statistics
         """
         stats = {
             "total_species": len(data),
@@ -248,13 +273,17 @@ class ATCTParser:
     def validate_data(self, data: pd.DataFrame, min_species: int = 3000) -> None:
         """Validate parsed data meets expected criteria.
 
-        Args:
-            data (pd.DataFrame): Parsed ATCT data
-            min_species (int): Minimum expected number of species. Default = 3000.
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Parsed ATCT data
+        min_species : int
+            Minimum expected number of species. Default = 3000.
 
-        Raises:
-            ValueError: If data doesn't meet validation criteria
-
+        Raises
+        ------
+        ValueError
+            If data doesn't meet validation criteria
         """
         stats = self.get_summary_stats(data)
 
@@ -272,10 +301,14 @@ class ATCTParser:
 
 
 def main() -> None:
-    """Command-line interface for ATCT parser.
+    """Parse the ATcT database.
 
-    Raises:
-        RuntimeError: If parsing of input file failed.
+    Command-line interface for ATCT parser.
+
+    Raises
+    ------
+    RuntimeError
+        If parsing of input file failed.
 
     """
     if len(sys.argv) != 3:

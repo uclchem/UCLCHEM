@@ -34,42 +34,58 @@ class HeatingSettings:
     This class provides access to the heating and cooling mechanism controls,
     solver parameters, and computed values from heating.f90.
 
-    Attributes:
-        PHOTOELECTRIC (dict): Photoelectric heating implementations
-            - 'BAKES': Bakes & Tielens method (index 1)
-            - 'WEINGARTNER': Weingartner method (index 2)
-            (Only one can be enabled at a time)
-        H2_FORMATION (int): Index for H2 formation heating (3)
-        H2_PHOTODISSOCIATION (int): Index for H2 photodissociation heating (4)
-        H2_FUV_PUMPING (int): Index for H2 FUV pumping heating (5)
-        CARBON_IONIZATION (int): Index for carbon ionization heating (6)
-        COSMIC_RAY (int): Index for cosmic ray heating (7)
-        TURBULENT (int): Index for turbulent heating (8)
-        GAS_GRAIN_COLLISIONS (int): Index for gas-grain collisional heating/cooling (9)
+    Attributes
+    ----------
+    PHOTOELECTRIC : dict
+        Photoelectric heating implementations
+        - 'BAKES': Bakes & Tielens method (index 1)
+        - 'WEINGARTNER': Weingartner method (index 2)
+        (Only one can be enabled at a time)
+    H2_FORMATION : int
+        Index for H2 formation heating (3)
+    H2_PHOTODISSOCIATION : int
+        Index for H2 photodissociation heating (4)
+    H2_FUV_PUMPING : int
+        Index for H2 FUV pumping heating (5)
+    CARBON_IONIZATION : int
+        Index for carbon ionization heating (6)
+    COSMIC_RAY : int
+        Index for cosmic ray heating (7)
+    TURBULENT : int
+        Index for turbulent heating (8)
+    GAS_GRAIN_COLLISIONS : int
+        Index for gas-grain collisional heating/cooling (9)
+    ATOMIC_LINE_COOLING : int
+        Index for atomic line cooling
+    H2_COLLISIONALLY_INDUCED : int
+        Index for H2 collisionally induced emission
+    COMPTON_COOLING : int
+        Index for Compton cooling
+    CONTINUUM_EMISSION : int
+        Index for continuum emission cooling
+    MOLECULAR_LINE_COOLING : int
+        Index for molecular line cooling
+    DUST_TEMP_HOCUK : int
+        Hocuk et al. 2017 dust temperature method
+    DUST_TEMP_HOLLENBACH : int
+        Hollenbach 1991 dust temperature method
+    COOLANT_WARM : int
+        Warm restart mode - initialize LTE, rescale on density change (default)
+    COOLANT_FORCE_LTE : int
+        Always reset to LTE before SE iteration (original behavior)
+    COOLANT_FORCE_GROUND : int
+        Always reset to ground state before SE iteration
 
-        ATOMIC_LINE_COOLING (int): Index for atomic line cooling
-        H2_COLLISIONALLY_INDUCED (int): Index for H2 collisionally induced emission
-        COMPTON_COOLING (int): Index for Compton cooling
-        CONTINUUM_EMISSION (int): Index for continuum emission cooling
-        MOLECULAR_LINE_COOLING (int): Index for molecular line cooling
-
-        DUST_TEMP_HOCUK (int): Hocuk et al. 2017 dust temperature method
-        DUST_TEMP_HOLLENBACH (int): Hollenbach 1991 dust temperature method
-
-        COOLANT_WARM (int): Warm restart mode - initialize LTE, rescale on density change (default)
-        COOLANT_FORCE_LTE (int): Always reset to LTE before SE iteration (original behavior)
-        COOLANT_FORCE_GROUND (int): Always reset to ground state before SE iteration
-
-    Example:
-        >>> from uclchem.advanced import HeatingSettings
-        >>> settings = HeatingSettings()
-        >>> settings.print_configuration() # doctest: +SKIP
-        ...
-        >>> # Switch photoelectric method (auto-disables Bakes when enabling Weingartner)
-        >>> settings.set_heating_mechanism(settings.PHOTOELECTRIC['WEINGARTNER'], True)
-        >>> # Disable H2 formation
-        >>> settings.set_heating_mechanism(settings.H2_FORMATION, False)
-
+    Examples
+    --------
+    >>> from uclchem.advanced import HeatingSettings
+    >>> settings = HeatingSettings()
+    >>> settings.print_configuration() # doctest: +SKIP
+    ...
+    >>> # Switch photoelectric method (auto-disables Bakes when enabling Weingartner)
+    >>> settings.set_heating_mechanism(settings.PHOTOELECTRIC['WEINGARTNER'], True)
+    >>> # Disable H2 formation
+    >>> settings.set_heating_mechanism(settings.H2_FORMATION, False)
     """
 
     # Heating mechanism indices (matching heating.f90)
@@ -153,22 +169,27 @@ class HeatingSettings:
         For mechanisms with multiple implementations (like PHOTOELECTRIC),
         enabling one automatically disables others in the same group.
 
-        Args:
-            mechanism_id (int): Index of the heating mechanism (1-9). Use class
-                constants (e.g., ``self.PHOTOELECTRIC['BAKES']``, ``self.H2_FORMATION``)
-            enabled (bool): True to enable, False to disable. Default = True
+        Parameters
+        ----------
+        mechanism_id : int
+            Index of the heating mechanism (1-9). Use class
+            constants (e.g., ``self.PHOTOELECTRIC['BAKES']``, ``self.H2_FORMATION``)
+        enabled : bool
+            True to enable, False to disable. Default = True
 
-        Raises:
-            ValueError: If ``mechanism_id`` is not between 1 and the number of heating
-                mechanisms.
+        Raises
+        ------
+        ValueError
+            If ``mechanism_id`` is not between 1 and the number of heating
+            mechanisms.
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> # Enable Weingartner photoelectric (auto-disables Bakes)
-            >>> settings.set_heating_mechanism(settings.PHOTOELECTRIC['WEINGARTNER'], True)
-            >>> # Or disable H2 formation
-            >>> settings.set_heating_mechanism(settings.H2_FORMATION, False)
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> # Enable Weingartner photoelectric (auto-disables Bakes)
+        >>> settings.set_heating_mechanism(settings.PHOTOELECTRIC['WEINGARTNER'], True)
+        >>> # Or disable H2 formation
+        >>> settings.set_heating_mechanism(settings.H2_FORMATION, False)
         """
         if not 1 <= mechanism_id <= self._heating_module.nheating:
             msg = f"mechanism_id must be between 1 and {self._heating_module.nheating}"
@@ -199,19 +220,24 @@ class HeatingSettings:
         is disabled, its level population calculation is skipped entirely
         and its cooling contribution is set to zero.
 
-        Args:
-            coolant_name (str): Name of the coolant species (e.g. "CO", "C+",
-                "p-H2"). Use get_coolant_active() to see available names.
-            enabled (bool): True to enable, False to disable. Default: True
+        Parameters
+        ----------
+        coolant_name : str
+            Name of the coolant species (e.g. "CO", "C+",
+            "p-H2"). Use get_coolant_active() to see available names.
+        enabled : bool
+            True to enable, False to disable. Default: True
 
-        Raises:
-            ValueError: If coolant_name is not found in the network.
+        Raises
+        ------
+        ValueError
+            If coolant_name is not found in the network.
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> settings.set_coolant_active("CO", False)
-            >>> settings.set_coolant_active("p-H2", False)
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> settings.set_coolant_active("CO", False)
+        >>> settings.set_coolant_active("p-H2", False)
         """
         names = [
             str(np.char.decode(name)).strip()
@@ -227,15 +253,17 @@ class HeatingSettings:
     def get_coolant_active(self) -> dict[str, bool]:
         """Get the active state of all line coolant species.
 
-        Returns:
-            dict[str, bool]: Dictionary mapping coolant names to their enabled state
+        Returns
+        -------
+        dict[str, bool]
+            Dictionary mapping coolant names to their enabled state
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> state = settings.get_coolant_active()
-            >>> print(state)
-            {'H': True, 'C+': True, 'O': True, ...}
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> state = settings.get_coolant_active()
+        >>> print(state)
+        {'H': True, 'C+': True, 'O': True, ...}
         """
         names = [
             str(np.char.decode(name)).strip()
@@ -249,19 +277,24 @@ class HeatingSettings:
     def set_cooling_mechanism(self, mechanism_id: int, enabled: bool = True) -> None:
         """Enable or disable a specific cooling mechanism.
 
-        Args:
-            mechanism_id (int): Index of the cooling mechanism (1-5). Use class
-                constants (e.g., ``self.ATOMIC_LINE_COOLING``)
-            enabled (bool): True to enable, False to disable. Default: True
+        Parameters
+        ----------
+        mechanism_id : int
+            Index of the cooling mechanism (1-5). Use class
+            constants (e.g., ``self.ATOMIC_LINE_COOLING``)
+        enabled : bool
+            True to enable, False to disable. Default: True
 
-        Raises:
-            ValueError: If mechanism_id is not between 1 and the number of cooling
-                mechanisms.
+        Raises
+        ------
+        ValueError
+            If mechanism_id is not between 1 and the number of cooling
+            mechanisms.
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, False)
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, False)
         """
         if not 1 <= mechanism_id <= self._heating_module.ncooling:
             msg = f"mechanism_id must be between 1 and {self._heating_module.ncooling}"
@@ -274,15 +307,17 @@ class HeatingSettings:
     def get_heating_modules(self) -> dict[str, bool]:
         """Obtain the state (on/off) of all heating mechanisms.
 
-        Returns:
-            dict[str, bool]: Dictionary mapping mechanism names to their enabled state
+        Returns
+        -------
+        dict[str, bool]
+            Dictionary mapping mechanism names to their enabled state
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> state = settings.get_heating_modules()
-            >>> print(state['H2Formation'])
-            False
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> state = settings.get_heating_modules()
+        >>> print(state['H2Formation'])
+        False
         """
         labels = [
             str(np.char.decode(label)).strip()
@@ -296,15 +331,17 @@ class HeatingSettings:
     def get_cooling_modules(self) -> dict[str, bool]:
         """Obtain the state (on/off) of all cooling mechanisms.
 
-        Returns:
-            dict[str, bool]: Dictionary mapping mechanism names to their enabled state
+        Returns
+        -------
+        dict[str, bool]
+            Dictionary mapping mechanism names to their enabled state
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> state = settings.get_cooling_modules()
-            >>> print(state['AtomicLineEmission'])
-            True
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> state = settings.get_cooling_modules()
+        >>> print(state['AtomicLineEmission'])
+        True
         """
         labels = [
             str(np.char.decode(label)).strip()
@@ -319,18 +356,22 @@ class HeatingSettings:
     def set_dust_gas_coupling_method(self, method: int) -> None:
         """Set the dust-gas temperature coupling method.
 
-        Args:
-            method (int): Coupling method to use:
-                - 1 (DUST_TEMP_HOCUK): Hocuk et al. 2017
-                - 2 (DUST_TEMP_HOLLENBACH): Hollenbach 1991
+        Parameters
+        ----------
+        method : int
+            Coupling method to use:
+            - 1 (DUST_TEMP_HOCUK): Hocuk et al. 2017
+            - 2 (DUST_TEMP_HOLLENBACH): Hollenbach 1991
 
-        Raises:
-            ValueError: If method is not one of `[1, 2]`.
+        Raises
+        ------
+        ValueError
+            If method is not one of `[1, 2]`.
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> settings.set_dust_gas_coupling_method(settings.DUST_TEMP_HOLLENBACH)
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> settings.set_dust_gas_coupling_method(settings.DUST_TEMP_HOLLENBACH)
         """
         if method not in {1, 2}:
             msg = "method must be 1 (Hocuk) or 2 (Hollenbach)"
@@ -340,9 +381,10 @@ class HeatingSettings:
     def get_dust_gas_coupling_method(self) -> int:
         """Get the current dust-gas temperature coupling method.
 
-        Returns:
-            int: Current method (1=Hocuk, 2=Hollenbach)
-
+        Returns
+        -------
+        int
+            Current method (1=Hocuk, 2=Hollenbach)
         """
         return self._heating_module.dust_gas_coupling_method
 
@@ -351,17 +393,21 @@ class HeatingSettings:
 
         The line cooling is computed multiple times and the median is used.
 
-        Args:
-            attempts (int): Number of solver attempts (odd number recommended).
-                Default is 5. Recommended range: 3-11.
+        Parameters
+        ----------
+        attempts : int
+            Number of solver attempts (odd number recommended).
+            Default is 5. Recommended range: 3-11.
 
-        Raises:
-            ValueError: If attempts is less than 1.
+        Raises
+        ------
+        ValueError
+            If attempts is less than 1.
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> settings.set_line_solver_attempts(7)
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> settings.set_line_solver_attempts(7)
         """
         if attempts < 1:
             msg = "attempts must be at least 1"
@@ -377,37 +423,42 @@ class HeatingSettings:
     def get_line_solver_attempts(self) -> int:
         """Get the current number of line cooling solver attempts.
 
-        Returns:
-            int: Number of solver attempts
-
+        Returns
+        -------
+        int
+            Number of solver attempts
         """
         return self._heating_module.line_solver_attempts
 
     def set_pah_abundance(self, abundance: float) -> None:
         """Set the PAH (Polycyclic Aromatic Hydrocarbon) abundance.
 
-        Args:
-            abundance (float): PAH abundance relative to hydrogen.
+        Parameters
+        ----------
+        abundance : float
+            PAH abundance relative to hydrogen.
 
-        Raises:
-            ValueError: if abundance is smaller than 0
+        Raises
+        ------
+        ValueError
+            if abundance is smaller than 0
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> default_pah_abundance = settings.get_pah_abundance()
-            >>> print(default_pah_abundance)
-            6.000...e-07
-            >>>
-            >>> # Set a different value
-            >>> settings.set_pah_abundance(1e-6)
-            >>>
-            >>> # Print the adjusted value
-            >>> print(settings.get_pah_abundance())
-            1e-06
-            >>>
-            >>> # Set the original value back
-            >>> settings.set_pah_abundance(default_pah_abundance)
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> default_pah_abundance = settings.get_pah_abundance()
+        >>> print(default_pah_abundance)
+        6.000...e-07
+        >>>
+        >>> # Set a different value
+        >>> settings.set_pah_abundance(1e-6)
+        >>>
+        >>> # Print the adjusted value
+        >>> print(settings.get_pah_abundance())
+        1e-06
+        >>>
+        >>> # Set the original value back
+        >>> settings.set_pah_abundance(default_pah_abundance)
         """
         if abundance < 0:
             msg = "abundance must be non-negative"
@@ -417,9 +468,10 @@ class HeatingSettings:
     def get_pah_abundance(self) -> float:
         """Get the current PAH abundance.
 
-        Returns:
-            float: PAH abundance
-
+        Returns
+        -------
+        float
+            PAH abundance
         """
         return self._heating_module.pahabund
 
@@ -429,18 +481,23 @@ class HeatingSettings:
         This directory must contain the LAMDA-format collisional rate files
         (e.g., co.dat, o-h2.dat, etc.) used for molecular line cooling calculations.
 
-        Args:
-            directory (str | Path): Path to directory containing LAMDA-format rate files.
-                      Must end with '/'. Max 255 characters.
+        Parameters
+        ----------
+        directory : str | Path
+            Path to directory containing LAMDA-format rate files.
+            Must end with '/'. Max 255 characters.
 
-        Raises:
-            ValueError: If path is too long or doesn't end with '/'
-            FileNotFoundError: If directory doesn't exist
+        Raises
+        ------
+        ValueError
+            If path is too long or doesn't end with '/'
+        FileNotFoundError
+            If directory doesn't exist
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> settings.set_coolant_directory("/custom/rates/") # doctest: +SKIP
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> settings.set_coolant_directory("/custom/rates/") # doctest: +SKIP
         """
         directory = Path(directory)
         if not directory.exists():
@@ -464,27 +521,33 @@ class HeatingSettings:
     def get_coolant_directory(self) -> str:
         """Get the current collisional rate data directory.
 
-        Returns:
-            str: Directory path as string (stripped of trailing spaces)
-
+        Returns
+        -------
+        str
+            Directory path as string (stripped of trailing spaces)
         """
         return str(np.char.decode(self._f2py_constants_module.coolantdatadir)).strip()
 
     def set_coolant_restart_mode(self, mode: int) -> None:
         """Set the coolant population restart mode.
 
-        Args:
-            mode (int): Restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND).
+        Parameters
+        ----------
+        mode : int
+            Restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND).
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> settings.set_coolant_restart_mode(settings.COOLANT_WARM)
+        Raises
+        ------
+        ValueError
+            If ``mode`` is not one of ``[0, 1, 2]``.
+        RuntimeError
+            If the coolant restart mode is not ``mode`` after we
+            attempted to set it.
 
-        Raises:
-            ValueError: If ``mode`` is not one of ``[0, 1, 2]``.
-            RuntimeError: If the coolant restart mode is not ``mode`` after we
-                attempted to set it.
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> settings.set_coolant_restart_mode(settings.COOLANT_WARM)
         """
         # TODO: refactor once Fortran is exposed
         if mode not in {0, 1, 2}:
@@ -499,9 +562,10 @@ class HeatingSettings:
     def get_coolant_restart_mode(self) -> int:
         """Get the current coolant population restart mode.
 
-        Returns:
-            int: Current restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND)
-
+        Returns
+        -------
+        int
+            Current restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND)
         """
         return self._uclchemwrap.uclchemwrap.get_coolant_restart_mode_wrap()
 
@@ -512,11 +576,11 @@ class HeatingSettings:
         instance was first initialized. This allows reverting any changes made
         during the session back to the starting state.
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> settings.set_heating_mechanism(settings.H2_FORMATION, False)
-            >>> settings.reset_to_defaults()  # Restores original state
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> settings.set_heating_mechanism(settings.H2_FORMATION, False)
+        >>> settings.reset_to_defaults()  # Restores original state
         """
         # Restore backed-up initial state
         self._heating_module.heating_modules[:] = self._default_heating_modules
@@ -536,11 +600,11 @@ class HeatingSettings:
     def print_configuration(self) -> None:
         """Print the current heating and cooling configuration.
 
-        Example:
-            >>> settings = HeatingSettings()
-            >>> settings.print_configuration() # doctest: +SKIP
-            ...
-
+        Examples
+        --------
+        >>> settings = HeatingSettings()
+        >>> settings.print_configuration() # doctest: +SKIP
+        ...
         """
         print("=" * 60)
         print("UCLCHEM Heating & Cooling Configuration")
@@ -591,19 +655,24 @@ def initialize_coolant_directory() -> str:
     2. Installed package data via importlib.resources (normal installation)
     3. Development mode: Makerates/data/collisional_rates/ (relative to project root)
 
-    Returns:
-        str: Absolute path to the coolant data directory (with trailing slash)
+    Returns
+    -------
+    str
+        Absolute path to the coolant data directory (with trailing slash)
 
-    Raises:
-        RuntimeError: If the Fortran heating module is not available (not compiled)
-        FileNotFoundError: If coolant data directory cannot be found in any location
+    Raises
+    ------
+    RuntimeError
+        If the Fortran heating module is not available (not compiled)
+    FileNotFoundError
+        If coolant data directory cannot be found in any location
 
-    Example:
-        >>> from uclchem.advanced.advanced_heating import initialize_coolant_directory
-        >>> coolant_dir = initialize_coolant_directory()
-        >>> print(f"Coolant data at: {coolant_dir}")
-        Coolant data at: ...
-
+    Examples
+    --------
+    >>> from uclchem.advanced.advanced_heating import initialize_coolant_directory
+    >>> coolant_dir = initialize_coolant_directory()
+    >>> print(f"Coolant data at: {coolant_dir}")
+    Coolant data at: ...
     """
     # Check if heating module is available
 
@@ -706,16 +775,18 @@ def auto_initialize_coolant_directory() -> bool:
 
     This function is called automatically when the uclchem module is imported.
 
-    Returns:
-        bool: True if initialization succeeded, False if it failed
+    Returns
+    -------
+    bool
+        True if initialization succeeded, False if it failed
 
-    Example:
-        >>> from uclchem.advanced.advanced_heating import auto_initialize_coolant_directory
-        >>> if auto_initialize_coolant_directory():
-        ...     print("Coolant data initialized successfully")
-        ...
-        Coolant data initialized successfully
-
+    Examples
+    --------
+    >>> from uclchem.advanced.advanced_heating import auto_initialize_coolant_directory
+    >>> if auto_initialize_coolant_directory():
+    ...     print("Coolant data initialized successfully")
+    ...
+    Coolant data initialized successfully
     """
     try:
         coolant_dir = initialize_coolant_directory()

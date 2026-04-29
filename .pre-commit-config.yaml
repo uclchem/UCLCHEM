@@ -52,6 +52,7 @@ repos:
         description: "Check for type errors"
         args: [--install-types, --non-interactive]
 
+
   # ============================================================================
   # TIER 2: STYLE (Auto-fixable formatting and imports)
   # Purpose: Enforce consistent code style
@@ -62,6 +63,17 @@ repos:
       - id: ruff-format
         name: "[style] Ruff formatter"
         description: "Format code consistently (indentation, quotes, whitespace)"
+
+  - repo: https://github.com/JanEricNitschke/pymend
+    rev: v3.0.0
+    hooks:
+      - id: pymend
+        name: "[style] Check docstrings with pymend"
+        description: "Make sure that all docstrings are correct"
+        # For now include '--noforce-raises', because otherwise it will force us to match
+        # the exact number of times an exception can be raised, instead of only the types of
+        # exceptions that can be raised at least once.
+        args: ["--output-style", "numpydoc", "--noforce-raises", "--noforce-docstrings", "--exclude", "tests/"]
 
   # ============================================================================
   # TIER 3: QUALITY (Docstrings, type hints, simplifications)

@@ -32,40 +32,48 @@ def Network(  # noqa: N802
     Deprecated:
         Use Network.build() or build_network() instead for new code.
 
-    Args:
-        species (list[Species] | None): List of Species objects. Default = None.
-        reactions (list[Reaction] | None): List of Reaction objects. Default = None.
-        **kwargs (Any): Build options (gas_phase_extrapolation, etc.)
+    Parameters
+    ----------
+    species : list[Species] | None
+        List of Species objects. Default = None.
+    reactions : list[Reaction] | None
+        List of Reaction objects. Default = None.
+    **kwargs : Any
+        Build options (gas_phase_extrapolation, etc.)
 
-    Returns:
-        NewNetwork: Network instance created via build_network()
+    Returns
+    -------
+    NewNetwork
+        Network instance created via build_network()
 
-    Raises:
-        ValueError: If `species` or `reactions` is None.
+    Raises
+    ------
+    ValueError
+        If `species` or `reactions` is None.
 
-    Examples:
-        >>> # Build with validation
-        >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
-        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
-        >>>
-        >>> species_list, user_defined_bulk = read_species_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
-        ... )
-        >>> reactions_list, dropped_reactions = read_reaction_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
-        ...     species_list,
-        ...     "UCL",
-        ... )
+    Examples
+    --------
+    >>> # Build with validation
+    >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+    >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+    >>>
+    >>> species_list, user_defined_bulk = read_species_file(
+    ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+    ... )
+    >>> reactions_list, dropped_reactions = read_reaction_file(
+    ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+    ...     species_list,
+    ...     "UCL",
+    ... )
 
-        >>> # Old style (deprecated)
-        >>> network = Network(species_list, reactions_list, gas_phase_extrapolation=True)
+    >>> # Old style (deprecated)
+    >>> network = Network(species_list, reactions_list, gas_phase_extrapolation=True)
 
-        >>> # New style (recommended)
-        >>> from uclchem.makerates.network import Network, build_network
-        >>> network = Network.build(species_list, reactions_list, gas_phase_extrapolation=True)
-        >>> # or
-        >>> network = build_network(species_list, reactions_list, gas_phase_extrapolation=True)
-
+    >>> # New style (recommended)
+    >>> from uclchem.makerates.network import Network, build_network
+    >>> network = Network.build(species_list, reactions_list, gas_phase_extrapolation=True)
+    >>> # or
+    >>> network = build_network(species_list, reactions_list, gas_phase_extrapolation=True)
     """
     if species is None or reactions is None:
         msg = (
@@ -106,55 +114,65 @@ class LoadedNetwork:
     ) -> NewNetwork:
         """Create a network using old LoadedNetwork API.
 
-        Args:
-            cls (Any): Not used
-            species (list[Species] | None): List of Species objects (use with reactions).
-                Default = None.
-            reactions (list[Reaction] | None): List of Reaction objects (use with species).
-                Default = None.
-            species_filepath (str | Path | None): Path to species CSV (use with reactions_filepath).
-                Default = None.
-            reactions_filepath (str | Path | None): Path to reactions CSV (use with species_filepath).
-                Default = None.
+        Parameters
+        ----------
+        cls : Any
+            Not used
+        species : list[Species] | None
+            List of Species objects (use with reactions).
+            Default = None.
+        reactions : list[Reaction] | None
+            List of Reaction objects (use with species).
+            Default = None.
+        species_filepath : str | Path | None
+            Path to species CSV (use with reactions_filepath).
+            Default = None.
+        reactions_filepath : str | Path | None
+            Path to reactions CSV (use with species_filepath).
+            Default = None.
 
-        Returns:
-            NewNetwork: Network instance created via appropriate factory method
+        Returns
+        -------
+        NewNetwork
+            Network instance created via appropriate factory method
 
-        Raises:
-            ValueError: If both `species` and `reactions` and file paths are specified,
-                or if only species or reactions is provided.
+        Raises
+        ------
+        ValueError
+            If both `species` and `reactions` and file paths are specified,
+            or if only species or reactions is provided.
 
-        Examples:
-            >>> # Build with validation
-            >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
-            >>> from uclchem.utils import UCLCHEM_ROOT_DIR
-            >>>
-            >>> species_path = UCLCHEM_ROOT_DIR / "species.csv"
-            >>> reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
+        Examples
+        --------
+        >>> # Build with validation
+        >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+        >>>
+        >>> species_path = UCLCHEM_ROOT_DIR / "species.csv"
+        >>> reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
 
-            >>> species_list, user_defined_bulk = read_species_file(species_path)
-            >>> reactions_list, dropped_reactions = read_reaction_file(
-            ...     reactions_path, species_list, "UCL"
-            ... )
+        >>> species_list, user_defined_bulk = read_species_file(species_path)
+        >>> reactions_list, dropped_reactions = read_reaction_file(
+        ...     reactions_path, species_list, "UCL"
+        ... )
 
-            >>> # Old style (deprecated)
-            >>> network = LoadedNetwork()
-            >>> network = LoadedNetwork(
-            ...     species_filepath=species_path,
-            ...     reactions_filepath=reactions_path
-            ... )
-            >>> network = LoadedNetwork(species=species_list, reactions=reactions_list)
+        >>> # Old style (deprecated)
+        >>> network = LoadedNetwork()
+        >>> network = LoadedNetwork(
+        ...     species_filepath=species_path,
+        ...     reactions_filepath=reactions_path
+        ... )
+        >>> network = LoadedNetwork(species=species_list, reactions=reactions_list)
 
-            >>> # New style (recommended)
-            >>> from uclchem.makerates.network import Network
-            >>> network = Network.from_csv()
-            >>> network = Network.from_csv(species_path, reactions_path)
-            >>> network = Network.from_lists(species_list, reactions_list)
-            >>> # or use module-level functions
-            >>> from uclchem.makerates.network import load_network_from_csv, create_network
-            >>> network = load_network_from_csv()
-            >>> network = create_network(species_list, reactions_list)
-
+        >>> # New style (recommended)
+        >>> from uclchem.makerates.network import Network
+        >>> network = Network.from_csv()
+        >>> network = Network.from_csv(species_path, reactions_path)
+        >>> network = Network.from_lists(species_list, reactions_list)
+        >>> # or use module-level functions
+        >>> from uclchem.makerates.network import load_network_from_csv, create_network
+        >>> network = load_network_from_csv()
+        >>> network = create_network(species_list, reactions_list)
         """
         # Check for invalid combinations
         has_objects = species is not None or reactions is not None
@@ -211,27 +229,31 @@ class NetworkState:
     def __new__(cls):
         """Create a network with Fortran interface using old NetworkState API.
 
-        Args:
-            cls (Any): Not used
+        Parameters
+        ----------
+        cls : Any
+            Not used
 
-        Returns:
-            Network: Network instance with Fortran interface
+        Returns
+        -------
+        Network
+            Network instance with Fortran interface
 
-        Examples:
-            >>> # Old style (deprecated)
-            >>> from uclchem.advanced import NetworkState
-            >>> network = NetworkState()
-            >>> network._network.alpha[0] = 999.0
+        Examples
+        --------
+        >>> # Old style (deprecated)
+        >>> from uclchem.advanced import NetworkState
+        >>> network = NetworkState()
+        >>> network._network.alpha[0] = 999.0
 
-            >>> # New style (recommended)
-            >>> from uclchem.advanced.runtime_network import RuntimeNetwork
-            >>>
-            >>> network = RuntimeNetwork()
-            >>> network.modify_reaction_parameters(0, alpha=999.0)
-            >>> # or for direct access
-            >>> network._fortran.alpha[0] = 999.0
-            >>>
-
+        >>> # New style (recommended)
+        >>> from uclchem.advanced.runtime_network import RuntimeNetwork
+        >>>
+        >>> network = RuntimeNetwork()
+        >>> network.modify_reaction_parameters(0, alpha=999.0)
+        >>> # or for direct access
+        >>> network._fortran.alpha[0] = 999.0
+        >>>
         """
         warnings.warn(
             "NetworkState is deprecated. "

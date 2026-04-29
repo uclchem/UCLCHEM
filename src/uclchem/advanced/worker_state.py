@@ -79,9 +79,10 @@ def create_snapshot() -> dict[str, Any]:
       configuration.
     * ``"network"`` – reaction-rate and binding-energy arrays.
 
-    Returns:
-        dict[str, Any]: Fully picklable dict suitable for passing to :func:`restore_snapshot`.
-
+    Returns
+    -------
+    dict[str, Any]
+        Fully picklable dict suitable for passing to :func:`restore_snapshot`.
     """
     logger.debug("Creating snapshot")
 
@@ -173,9 +174,10 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
 
     Must be called **before** running any model in the worker process.
 
-    Args:
-        snapshot (dict[str, Any]): Dict produced by :func:`create_snapshot`.
-
+    Parameters
+    ----------
+    snapshot : dict[str, Any]
+        Dict produced by :func:`create_snapshot`.
     """
     logger.debug("Regenerating snapshot")
     # --- General settings ---
@@ -233,19 +235,21 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
 def _pool_initializer(snapshot: dict[str, Any]) -> None:
     """``mp.Pool`` initializer that restores advanced settings in each worker.
 
-    Args:
-        snapshot (dict[str, Any]): Snapshot created by func:`create_snapshot`.
+    Parameters
+    ----------
+    snapshot : dict[str, Any]
+        Snapshot created by func:`create_snapshot`.
 
-    Example:
-        >>> import multiprocessing as mp
-        >>>
-        >>> # Take a snapshot of the current Fortran module
-        >>> snapshot = create_snapshot()
-        >>>
-        >>> # A pool can then be initialized as
-        >>> n_workers = 2
-        >>> mp.Pool(n_workers, initializer=_pool_initializer, initargs=(snapshot,))
-        <multiprocessing.pool.Pool state=RUN pool_size=2>
-
+    Examples
+    --------
+    >>> import multiprocessing as mp
+    >>>
+    >>> # Take a snapshot of the current Fortran module
+    >>> snapshot = create_snapshot()
+    >>>
+    >>> # A pool can then be initialized as
+    >>> n_workers = 2
+    >>> mp.Pool(n_workers, initializer=_pool_initializer, initargs=(snapshot,))
+    <multiprocessing.pool.Pool state=RUN pool_size=2>
     """
     restore_snapshot(snapshot)

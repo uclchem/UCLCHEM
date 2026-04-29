@@ -42,26 +42,26 @@ class NetworkBuilder:
     This class separates the complex build logic from the Network data container,
     making the code more maintainable and testable.
 
-    Example:
-        >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
-        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
-        >>>
-        >>> species_list, user_defined_bulk = read_species_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
-        ... )
-        >>> reactions_list, dropped_reactions = read_reaction_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
-        ...     species_list,
-        ...     "UCL",
-        ... )
-        >>> builder = NetworkBuilder(
-        ...     species=species_list,
-        ...     reactions=reactions_list,
-        ...     gas_phase_extrapolation=True,
-        ...     add_crp_photo_to_grain=True
-        ... )
-        >>> network = builder.build()
-
+    Examples
+    --------
+    >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+    >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+    >>>
+    >>> species_list, user_defined_bulk = read_species_file(
+    ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+    ... )
+    >>> reactions_list, dropped_reactions = read_reaction_file(
+    ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+    ...     species_list,
+    ...     "UCL",
+    ... )
+    >>> builder = NetworkBuilder(
+    ...     species=species_list,
+    ...     reactions=reactions_list,
+    ...     gas_phase_extrapolation=True,
+    ...     add_crp_photo_to_grain=True
+    ... )
+    >>> network = builder.build()
     """
 
     def __init__(
@@ -76,23 +76,32 @@ class NetworkBuilder:
     ):
         """Initialize the network builder.
 
-        Args:
-            species (list[Species]): List of chemical species
-            reactions (list[Reaction]): List of chemical reactions
-            user_defined_bulk (list[Species] | None): User-specified bulk species.
-                Default = None.
-            gas_phase_extrapolation (bool): Extrapolate gas-phase temperature.
-                Default = False.
-            add_crp_photo_to_grain (bool): Add CRP/PHOTON to grain.
-                Default = False.
-            derive_reaction_exothermicity (list[str] | None): Reaction types to calculate
-                exothermicity for. Default = None.
-            database_reaction_exothermicity (list[str | Path] | None): Custom exothermicity database
-                files. Default = None.
+        Parameters
+        ----------
+        species : list[Species]
+            List of chemical species
+        reactions : list[Reaction]
+            List of chemical reactions
+        user_defined_bulk : list[Species] | None
+            User-specified bulk species.
+            Default = None.
+        gas_phase_extrapolation : bool
+            Extrapolate gas-phase temperature.
+            Default = False.
+        add_crp_photo_to_grain : bool
+            Add CRP/PHOTON to grain.
+            Default = False.
+        derive_reaction_exothermicity : list[str] | None
+            Reaction types to calculate
+            exothermicity for. Default = None.
+        database_reaction_exothermicity : list[str | Path] | None
+            Custom exothermicity database
+            files. Default = None.
 
-        Raises:
-            ValueError: If duplicate species are provided.
-
+        Raises
+        ------
+        ValueError
+            If duplicate species are provided.
         """
         # Validate inputs
         if len({s.get_name() for s in species}) != len(species):
@@ -125,9 +134,10 @@ class NetworkBuilder:
         6. Apply optional features (extrapolation, exothermicity)
         7. Sort and filter final network
 
-        Returns:
-            Network: Fully built and validated network
-
+        Returns
+        -------
+        Network
+            Fully built and validated network
         """
         # Import here to avoid circular dependency
         from .network import Network  # noqa: PLC0415
@@ -224,9 +234,10 @@ class NetworkBuilder:
     def _check_for_excited_species(self) -> bool:
         """Check if there are any excited species in the network.
 
-        Returns:
-            bool: True if any species name contains '*'
-
+        Returns
+        -------
+        bool
+            True if any species name contains '*'
         """
         return any(
             "*" in species.get_name() for species in self.network.get_species_list()
@@ -236,7 +247,6 @@ class NetworkBuilder:
         """Check every species in network appears in at least one reaction.
 
         Remove any that do not and alert user.
-
         """
         # check for species not involved in any reactions
         lost_species = []
@@ -291,7 +301,6 @@ class NetworkBuilder:
         species on freeze out eg C+ becomes #C rather than #C+.
         This function checks for that and updates species so they'll
         freeze or desorb correctly when reactions are generated.
-
         """
         desorbs = [
             x
@@ -343,7 +352,6 @@ class NetworkBuilder:
 
         Takes into account custom defined freeze-out reactions. Otherwise,
         species freeze out their neutral counterparts, i.e. `H+ + FREEZE -> #H`
-
         """
         logger.debug("Adding the freeze-out reactions")
         new_reactions = []
@@ -396,9 +404,10 @@ class NetworkBuilder:
         Their binding energies and diffusion barriers are set to those of H2O,
         to mimic Ghesquire et al, 2015 (https://doi.org/10.1039/C5CP00558B).
 
-        Raises:
-            RuntimeError: If #H2O is not in the network.
-
+        Raises
+        ------
+        RuntimeError
+            If #H2O is not in the network.
         """
         logger.debug("Adding bulk species")
         species_names = [
@@ -447,9 +456,10 @@ class NetworkBuilder:
         in the bulk (just more slowly due to binding energy). The user therefore only
         lists surface reactions in their input reaction file and we duplicate here.
 
-        Raises:
-            RuntimeError: If a ``CoupledReaction`` instance had ``None`` for a partner.
-
+        Raises
+        ------
+        RuntimeError
+            If a ``CoupledReaction`` instance had ``None`` for a partner.
         """
         logger.debug("Adding bulk reactions")
         surface_reactions = self._get_reactions_on_grain()
@@ -529,9 +539,12 @@ class NetworkBuilder:
         The user is then responsible for providing all desorption pathways, and the
         alpha values for each mechanism must sum to 1.0.
 
-        Raises:
-            ValueError: If a species has both a DESORB shorthand and explicit desorption reactions.
-            ValueError: If alpha values for explicit desorption reactions do not sum to 1.0.
+        Raises
+        ------
+        ValueError
+            If a species has both a DESORB shorthand and explicit desorption reactions.
+        ValueError
+            If alpha values for explicit desorption reactions do not sum to 1.0.
         """
         desorb_reacs = ["DESOH2", "DESCR", "DEUVCR", "THERM"]
         logger.debug("Adding desorption reactions")
@@ -679,15 +692,18 @@ class NetworkBuilder:
         The Fortran side deals with the chemical desorption probability,
         since it depends on the coverage of the grain surface by ices.
 
-        Raises:
-            ValueError: If not all products of the LH and ER reactions are on the grain.
-                For example, ``#H + #H -> H2`` should be ``#H + #H -> #H2``.
-            RuntimeError: If a ``CoupledReaction`` instance had ``None`` for a partner.
-            NotImplementedError: If one of the products desorbs as three gas-phase species,
-                for example ``#CH3OH + THERM -> C + H2 + OH`` (nonsense reaction, just as an example).
-                This would be impossible to add chemical desorption reactions for, because we then
-                could possibly have 5 products, which UCLCHEM cannot handle.
-
+        Raises
+        ------
+        ValueError
+            If not all products of the LH and ER reactions are on the grain.
+            For example, ``#H + #H -> H2`` should be ``#H + #H -> #H2``.
+        RuntimeError
+            If a ``CoupledReaction`` instance had ``None`` for a partner.
+        NotImplementedError
+            If one of the products desorbs as three gas-phase species,
+            for example ``#CH3OH + THERM -> C + H2 + OH`` (nonsense reaction, just as an example).
+            This would be impossible to add chemical desorption reactions for, because we then
+            could possibly have 5 products, which UCLCHEM cannot handle.
         """
         logger.debug("Adding chemical desorption reactions for LH and ER mechanisms")
         new_reactions = []
@@ -799,7 +815,6 @@ class NetworkBuilder:
 
         If only one of the reactants in the base reaction has an excited counterpart then
         only one excited version of that reaction is created.
-
         """
         logger.debug("Adding excited surface reactions")
         excited_species = [
@@ -978,7 +993,6 @@ class NetworkBuilder:
         Assumes that sums of branching ratios below 0.99 are set lower on purpose
         (so leaves those unchanged), because for example some orientations of the
         reactants on the surface do not lead to a reaction.
-
         """
         branching_reactions: dict[str, float] = {}
         for reaction in self.network.get_reaction_list():
@@ -1054,9 +1068,10 @@ class NetworkBuilder:
     def _add_reaction_enthalpies(self, enthalpy_reaction_types: list[str]) -> None:
         """Add reaction enthalpies (exothermicity) to reactions for heating/cooling calculations.
 
-        Args:
-            enthalpy_reaction_types (list[str]): List of reaction types or "ALL" or "GAS"
-
+        Parameters
+        ----------
+        enthalpy_reaction_types : list[str]
+            List of reaction types or "ALL" or "GAS"
         """
         exclude_ices = True
         if not isinstance(enthalpy_reaction_types, list):
@@ -1089,10 +1104,11 @@ class NetworkBuilder:
     ) -> None:
         """Apply custom exothermicity values from CSV files to the network reactions.
 
-        Args:
-            database_reaction_exothermicity (list[str | Path]): List of paths
-                to custom exothermicity CSV files.
-
+        Parameters
+        ----------
+        database_reaction_exothermicity : list[str | Path]
+            List of paths
+            to custom exothermicity CSV files.
         """
         for csv_path in database_reaction_exothermicity:
             logger.info(f"Applying custom exothermicities from {csv_path}")
@@ -1105,12 +1121,15 @@ class NetworkBuilder:
     def _compute_exothermicity(self, reaction: Reaction) -> float:
         """Compute the reaction enthalpy in eV for a given reaction based on the species enthalpies.
 
-        Args:
-            reaction (Reaction): The reaction to compute the enthalpy for.
+        Parameters
+        ----------
+        reaction : Reaction
+            The reaction to compute the enthalpy for.
 
-        Returns:
-            float: The reaction enthalpy in kcal/mol.
-
+        Returns
+        -------
+        float
+            The reaction enthalpy in kcal/mol.
         """
         reactants = reaction.get_pure_reactants()
         products = reaction.get_pure_products()
@@ -1121,9 +1140,10 @@ class NetworkBuilder:
     def _get_reactions_on_grain(self) -> list[Reaction]:
         """Get all reactions that occur on grain surfaces (# prefix) or in bulk (@prefix).
 
-        Returns:
-            reactions_on_grain (list[Reaction]): All reactions occurring on the grain.
-
+        Returns
+        -------
+        reactions_on_grain : list[Reaction]
+            All reactions occurring on the grain.
         """
         reactions_on_grain = []
         for reaction in self.network.get_reaction_list():
@@ -1148,7 +1168,6 @@ class NetworkBuilder:
 
         Alert the user if a species freezes out via multiple routes.
         This isn't necessarily an error so best just print.
-
         """
         logger.info(
             "\tCheck that species have surface counterparts or if they have multiple freeze outs/check alphas:\n"
@@ -1186,7 +1205,6 @@ class NetworkBuilder:
 
         Reactions appearing twice is okay if they have different temperature ranges.
         This is sometimes done by UMIST to improve the reaction rate calculation.
-
         """
         logger.info("\tPossible duplicate reactions for manual removal:")
         duplicates = False
@@ -1236,9 +1254,11 @@ class NetworkBuilder:
         We have a whole bunch of important reactions and we want to store their indices.
         We find them all here.
 
-        Raises:
-            RuntimeError: If an important reaction is found twice, or one of the important reactions
-                is not found.
+        Raises
+        ------
+        RuntimeError
+            If an important reaction is found twice, or one of the important reactions
+            is not found.
         """
         # Any None values in dictionary will raise an error
         # therefore these reactions are mandatory and
