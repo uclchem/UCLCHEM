@@ -19,13 +19,15 @@ from pathlib import Path
 def check_file_for_non_ascii(filepath: str | Path) -> list[tuple[int, str]] | None:
     """Check a single file for non-ASCII characters.
 
-    Args:
-        filepath (str | Path): Path to the file to check
+    Parameters
+    ----------
+    filepath : str | Path
+        Path to the file to check
 
     Returns
     -------
-        list[tuple[int, str]] | None: List of tuples (line_number, line_content)
-            with non-ASCII characters
+    list[tuple[int, str]] | None
+        List of tuples (line_number, line_content) with non-ASCII characters
     """
     violations = []
 
@@ -103,7 +105,7 @@ def main() -> int:
                 print(f"  Line {line_num}: {line_content}")
 
     if found_violations:
-        print("\n❌ Non-ASCII characters found in Fortran source files", file=sys.stderr)
+        print("\nNon-ASCII characters found in Fortran source files", file=sys.stderr)
         return 1
 
     return 0

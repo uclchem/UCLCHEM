@@ -360,7 +360,7 @@ def generate_markdown(
 
 
 def main() -> None:
-    """Generate the parmeter docs."""
+    """Generate the parameter docs."""
     if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} <output_markdown_file>")
         sys.exit(1)

@@ -18,15 +18,17 @@ def test_ode_conservation(
     Useful to run each time you change network. Integrator errors may still cause
     elements not to be conserved but they cannot be conserved if the ODEs are not correct.
 
-    Args:
-        element_list (list[str] | None): A list of elements for which to check the conservation.
-            If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
+    Parameters
+    ----------
+    element_list : list[str] | None
+        A list of elements for which to check the conservation.
+        If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
 
     Returns
     -------
-        result (dict[str, float]): A dictionary of the elements in element list with values
-            representing the total change of each element.
-
+    result : dict[str, float]
+        A dictionary of the elements in element list with values
+        representing the total change of each element.
     """
     if element_list is None:
         element_list = default_elements_to_check

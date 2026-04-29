@@ -789,7 +789,7 @@ def write_python_constants(
 ) -> None:
     """Write the python constants to the constants.py file.
 
-    DEPCRECATED: As of the latest version, constants.py reads directly from the f2py_constants
+    DEPRECATED: As of the latest version, constants.py reads directly from the f2py_constants
     module, so this function is no longer needed. It's kept for backward compatibility
     but does nothing.
 
