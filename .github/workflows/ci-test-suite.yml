@@ -53,10 +53,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-uclchem
       - name: "[test:functional] Run core test suite (parallel)"
-        run: |
-          pytest -n auto tests/ \ 
-            --ignore=tests/test_install_custom_networks.py \
-            -k "not install and not heating_cooling"
+        run: pytest -n auto tests/ --ignore=tests/test_install_custom_networks.py -k "not install and not heating_cooling"
 
   test-doctests:
     name: Test (Doctests)
