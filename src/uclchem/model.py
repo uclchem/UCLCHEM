@@ -536,7 +536,6 @@ class AbstractModel(ABC):
         object.__setattr__(self, "_pickle_meta", {})
         # Set run_type into metadata
         self.run_type = run_type
-        self.separate_worker_types = ["managed"]
         # Shared memory
         self._shm_desc: dict[str, dict] = {}
         self._shm_handles: dict[str, shared_memory.SharedMemory] = {}
@@ -1516,8 +1515,6 @@ class AbstractModel(ABC):
         ------
         RuntimeError
             If the model was read.
-        ValueError
-            If the model's ``run_type`` is invalid.
         RuntimeError
             If the dictionary returned by ``self.run_fortran()``
             does not contain a key ``"success_flag"``.
@@ -1554,9 +1551,7 @@ class AbstractModel(ABC):
         logger.debug("Running model")
         start = perf_counter()
         signal.signal(signal.SIGINT, _handler)
-        if self.run_type not in self.separate_worker_types:
-            output = self.run_fortran()
-        elif self.run_type in self.separate_worker_types:
+        if self.run_type == "managed":
             snapshot = create_snapshot()
             init_kwargs = self._create_init_dict()
             ctx = mp.get_context("spawn")
@@ -1579,8 +1574,7 @@ class AbstractModel(ABC):
             self._proc_handle.close()
             self._proc_handle = None
         else:
-            msg = f"run_type of {self.run_type} is not a valid value."
-            raise ValueError(msg)
+            output = self.run_fortran()
 
         logger.debug(f"Model finished. Took {perf_counter() - start:.2f} seconds.")
 
