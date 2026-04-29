@@ -57,7 +57,7 @@ This will automatically run linting and formatting checks before each commit.
 ### Python
 - Use [Ruff](https://docs.astral.sh/ruff/) to format your code.
 - snake_case variables and functions with self-explanatory names
-- Docstrings for all functions, they're used to produce the online docs!
+- Docstrings for all functions (verified using [pymend](https://github.com/JanEricNitschke/pymend), they're used to produce the online docs!
 
 ### Fortran
 - camelCase variable and subroutines names that are self-explanatory where possible 
