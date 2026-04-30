@@ -2,6 +2,7 @@
 
 Helper functions to enter two species files to see
 all species that are in one file but not the other
+
 """
 
 from uclchem.makerates.io_functions import read_species_file

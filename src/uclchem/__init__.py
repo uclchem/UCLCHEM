@@ -7,6 +7,7 @@ The UCLCHEM python module is divided into several parts:
  - :mod:`plot` contains functions for plotting output files.
  - :mod:`advanced` provides access to Fortran modules, parameters, heating/cooling controls
       and advanced solver parameters.
+
 """
 
 from . import advanced as advanced

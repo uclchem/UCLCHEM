@@ -10,6 +10,7 @@ reinstall UCLCHEM for these constants to update:
     1. Run makerates: python -m uclchem.makerates.makerates user_settings.yaml
     2. Reinstall: pip install . --force-reinstall --no-deps
     3. Verify: python -c "from uclchem import constants; print(constants.n_species)"
+
 """
 
 # Import canonical values from compiled Fortran module

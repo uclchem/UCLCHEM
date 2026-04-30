@@ -5,6 +5,7 @@ and 2 (stderr), bypassing Python's sys.stdout/sys.stderr. This module
 provides a context manager that redirects those file descriptors to a pipe,
 reads the output in a background thread, and streams it to the terminal
 and optionally to a per-model log file on disk in real time.
+
 """
 
 import os
@@ -34,6 +35,7 @@ def _reader_thread(
     log_file : str | Path | None
         path to write logs to.
         If None, do not write to file, only to stdout.
+
     """
     log_handle = None
     buf = b""
@@ -113,6 +115,7 @@ def capture_fortran_output(
     ...     log_file="logs/model_3.log",
     ... ):
     ...    result = Cloud({})
+
     """
     # Flush Python buffers before redirecting
     sys.stdout.flush()

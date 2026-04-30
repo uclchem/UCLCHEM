@@ -2,6 +2,7 @@
 
 For some reason nbconvert to markdown produces style tags
 that cannot be compiled by mdx. So we just remove them.
+
 """
 
 from pathlib import Path

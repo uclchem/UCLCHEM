@@ -30,6 +30,7 @@ def _normalize_for_comparison(text: str) -> str:
     -------
     str
         Normalized text with only alphanumeric characters
+
     """
     return re.sub(r"[^a-z0-9]", "", text.strip().lower())
 
@@ -67,6 +68,7 @@ def get_energy_levels_info(
         If data directory or any coolant file doesn't exist
     ValueError
         If coolant file format is invalid or energy levels not found
+
     """
     data_path = Path(data_dir)
     if not data_path.is_dir():
@@ -113,6 +115,7 @@ def get_energy_levels_info_from_runtime() -> tuple[int, int]:
     -------
     tuple[int, int]
         Tuple of (n_total_levels, n_se_stats_per_coolant)
+
     """
     coolant_names = [str(name.decode()).strip() for name in f2py_constants.coolantnames]
     coolant_files = [str(fname.decode()).strip() for fname in f2py_constants.coolantfiles]
@@ -148,6 +151,7 @@ def validate_coolant_frequencies(
     -------
     max_deviations : dict[str, float]
         Dict mapping coolant name to max relative frequency deviation
+
     """
     data_path = Path(data_dir)
     level_marker = _normalize_for_comparison("NUMBER OF ENERGY LEVELS")
@@ -257,6 +261,7 @@ def load_coolant_level_names() -> dict[int, list[str]]:
         If coolant file format is invalid
     RuntimeError
         If parsing fails
+
     """
     coolant_names = [str(name.decode()).strip() for name in f2py_constants.coolantnames]
     coolant_files = [str(fname.decode()).strip() for fname in f2py_constants.coolantfiles]

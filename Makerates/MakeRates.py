@@ -38,6 +38,7 @@ def get_args():  # noqa: ANN201
     python3 MakeRates.py custom_settings.yaml --verbosity DEBUG
     python3 MakeRates.py --generate-template
     python3 MakeRates.py --help-config
+
     """
     parser = ArgumentParser(
         description="UCLCHEM Makerates: Generate chemical network files"
@@ -91,6 +92,7 @@ def get_logger(verbosity_stdout: str, debug: bool) -> None:
         stdout verbosity
     debug : bool
         whether to write debug information to ``makerates.log``.
+
     """
     # TODO: fix that both verbosity for file and stdout
     # are the same type, but it works for now.

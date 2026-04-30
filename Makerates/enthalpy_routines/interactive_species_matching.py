@@ -13,6 +13,7 @@ Usage:
     mapping = matcher.match_species(uclchem_species_list)
     matcher.save_mapping(mapping, "species_mapping_v1.220.csv")  # Default CSV output
     matcher.save_mapping_yaml(mapping, "species_mapping_v1.220.yaml")  # Optional YAML
+
 """
 
 import argparse
@@ -42,6 +43,7 @@ def clean_numeric_value(value: Any) -> float | None:
     -------
     float | None
         Clean Python float or None if the value is NaN/missing
+
     """
     if pd.isna(value):
         return None
@@ -72,6 +74,7 @@ class FormulaParser:
         -------
         elements : dict[str, int]
             Dictionary with counter of elements
+
         """
         if not isinstance(formula, str):
             return {}
@@ -140,6 +143,7 @@ class FormulaParser:
         -------
         element_counts : dict[str, int]
             Count of number of elements
+
         """
         if not isinstance(formula, str):
             return {}
@@ -177,6 +181,7 @@ class FormulaParser:
         -------
         bool
             whether the elemental composition of the two formulas is the same.
+
         """
         uclchem_parsed = cls.parse_uclchem_formula(uclchem_formula)
         atct_parsed = cls.parse_atct_formula(atct_formula)
@@ -193,6 +198,7 @@ class SpeciesMatcher:
         ----------
         atct_csv_path : str
             Path to cleaned ATCT CSV file
+
         """
         self.atct_data = pd.read_csv(atct_csv_path)
         self.atct_gas = self.atct_data[
@@ -220,6 +226,7 @@ class SpeciesMatcher:
         -------
         dict[str, dict[str, Any]]
             Dictionary mapping UCLCHEM species to ATCT matches
+
         """
         # Filter valid species
         target_species = [
@@ -268,6 +275,7 @@ class SpeciesMatcher:
         exact_matches : dict[str, dict[str, Any]]
             mapping from UCLCHEM species
             to exact matches in ATCT.
+
         """
         exact_matches = {}
 
@@ -304,6 +312,7 @@ class SpeciesMatcher:
         isomer_matches : dict[str, list[dict[str, Any]]]
             mapping from UCLCHEM species
             to list of ATcT matches.
+
         """
         isomer_matches = {}
 
@@ -361,6 +370,7 @@ class SpeciesMatcher:
         canonical_matches : dict[str, dict[str, Any]]
             mapping from UCLCHEM species
             to selection of the isomer matches.
+
         """
         canonical_matches = {}
 
@@ -518,6 +528,7 @@ class SpeciesMatcher:
             String representing backup. If the backup failed,
             is "backup_failed{extension}", otherwise is
             "{basename}_backup{extension}".
+
         """
         base_name = Path(session_file).stem
         extension = Path(session_file).suffix
@@ -540,6 +551,7 @@ class SpeciesMatcher:
             data of the current session
         session_file : str | Path
             where to save the current session
+
         """
         try:
             with Path(session_file).open("w") as f:
@@ -563,6 +575,7 @@ class SpeciesMatcher:
         -------
         completed : dict[str, dict[str, Any]]
             species mapping dictionary.
+
         """
         with Path(resume_file).open() as f:
             session_data = yaml.safe_load(f)
@@ -589,6 +602,7 @@ class SpeciesMatcher:
             Species mapping dictionary
         output_path : str | Path
             Output YAML file path
+
         """
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -609,6 +623,7 @@ class SpeciesMatcher:
             Species mapping dictionary
         output_path : str | Path
             Output CSV file path
+
         """
         self.export_mapping_csv(mapping, output_path)
 
@@ -625,6 +640,7 @@ class SpeciesMatcher:
         -------
         mapping : dict[str, dict[str, Any]]
             Species mapping dictionary
+
         """
         with Path(mapping_path).open() as f:
             mapping = yaml.safe_load(f)
@@ -644,6 +660,7 @@ class SpeciesMatcher:
             Species mapping dictionary
         output_path : str | Path
             Output CSV file path
+
         """
         mapping_data = []
         for species, match_info in mapping.items():
@@ -688,6 +705,7 @@ class SpeciesMatcher:
             Species mapping dictionary from match_species()
         original_csv_path : str | Path
             Path to the original species CSV file
+
         """
         # Create backup file path
         original_path = Path(original_csv_path)

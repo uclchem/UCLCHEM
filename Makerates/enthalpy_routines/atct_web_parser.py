@@ -11,6 +11,7 @@ Usage:
     parser = ATCTParser()
     data = parser.parse_html_file("ATCTDatabase_v1.220.html")
     parser.save_to_csv(data, "atct_cleaned_v1.220.csv")
+
 """
 
 import re
@@ -68,6 +69,7 @@ class ATCTParser:
             or no data was found in the table.
         RuntimeError
             If the parsing of the ATcT failed.
+
         """
         html_path = Path(html_file_path)
         if not html_path.exists():
@@ -113,6 +115,7 @@ class ATCTParser:
         -------
         Any | None
             Table if it could be found, else None.
+
         """
         tables = soup.find_all("table")
 
@@ -140,6 +143,7 @@ class ATCTParser:
         -------
         list
             extracted data.
+
         """
         rows = table.find_all("tr")
         data = []
@@ -182,6 +186,7 @@ class ATCTParser:
         pd.DataFrame
             DataFrame with unnecessary columns removed, and cleaned
             column names.
+
         """
         # Clean Unicode issues
         for col in df.columns:
@@ -215,6 +220,7 @@ class ATCTParser:
         -------
         cleaned : str
             string with problematic Unicode characters removed.
+
         """
         if pd.isna(text) or text is None:
             return ""
@@ -240,6 +246,7 @@ class ATCTParser:
             Parsed ATCT data
         output_path : str | Path
             Output CSV file path
+
         """
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -260,6 +267,7 @@ class ATCTParser:
         -------
         dict[str, int]
             Dictionary with summary statistics
+
         """
         stats = {
             "total_species": len(data),
@@ -284,6 +292,7 @@ class ATCTParser:
         ------
         ValueError
             If data doesn't meet validation criteria
+
         """
         stats = self.get_summary_stats(data)
 

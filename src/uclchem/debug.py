@@ -17,6 +17,7 @@ def get_f2py_signature(write: bool = False) -> str:
     -------
     signature : str
         Signature of the UCLCHEM fortran code from the f2py wrapper
+
     """
     signature = wrap.__doc__
     if write:

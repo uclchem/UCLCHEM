@@ -115,6 +115,12 @@ class Reaction:
         ------
         ValueError
             If the length of ``input_row`` is not long enough.
+
+        Notes
+        -----
+        Validation can be disabled using the ``uclchem.makerates.reaction.skip_validation()``
+            context manager. This is useful when loading pre-validated networks from Fortran
+            where validation would fail due to modeling simplifications.
         """
         if isinstance(input_row, Reaction):
             self.set_reactants(input_row.get_reactants())
@@ -647,6 +653,12 @@ class Reaction:
         ------
         ValueError
             If the elements are not conserved by the reaction.
+
+        Notes
+        -----
+        Skips checking freeze-out or desorb reactions, since the user might want to
+            define a freeze-out reaction that causes the species to immediately react with,
+            for example, water ice.
         """
         logger.debug(f"Checking elemental conservation of reaction {self}")
         if self.get_reaction_type() in {"FREEZE", "DESORB"}:

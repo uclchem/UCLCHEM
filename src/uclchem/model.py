@@ -76,6 +76,7 @@ See the user guide for complete parameter list.
 
 Model objects are **not thread-safe** when using advanced features that modify
 Fortran module state. Use multiprocessing (not threading) for parallel runs.
+
 """
 
 from __future__ import annotations
@@ -144,6 +145,7 @@ if TYPE_CHECKING:
 
     import matplotlib.pyplot as plt
 
+logger = logging.getLogger(__name__)
 
 # Global variables determining formats of write files
 PHYSICAL_PARAMETERS_HEADER_FORMAT = "%10s"
@@ -159,9 +161,6 @@ SPECNAME_VALUE_FORMAT = "%9.5E"
 
 # Model registration is intended to prevent code injection during loading time.
 REGISTRY: dict[str, type[AbstractModel]] = {}
-
-
-logger = logging.getLogger(__name__)
 
 
 def register_model(
@@ -183,6 +182,7 @@ def register_model(
     ------
     ValueError
         If a model with the same name as cls is already in the registry.
+
     """
     name = getattr(cls, "MODEL_NAME", cls.__name__)
     if name in REGISTRY and REGISTRY[name] is not cls:
@@ -215,6 +215,7 @@ def reaction_line_formatter(line: list[str] | pd.Series) -> str:
     #OH + #H + LH -> #H2O
     >>> print(reaction_line_formatter(["H2", "PHOTON", "NAN", "H", "H", "NAN", "NAN"]))
     H2 + PHOTON -> H + H
+
     """
     reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
     products = list(filter(lambda x: not str(x).lower().endswith("nan"), line[3:7]))
@@ -237,6 +238,7 @@ class ReactionNamesStore:
         -------
         list[str]
             List of formatted reactions.
+
         """
         if self.reaction_names is None:
             logger.debug(f"Reading reaction file {UCLCHEM_ROOT_DIR / 'reactions.csv'}")
@@ -267,6 +269,7 @@ class SpeciesNamesStore:
         -------
         list[str]
             List of species names
+
         """
         if self.species_names is None:
             logger.debug(f"Reading file {UCLCHEM_ROOT_DIR / 'species.csv'}")
@@ -292,13 +295,12 @@ def load_model(
         open h5py file object, or Path to a file that contains
         previously run and stored models.
     name : str
-        Name of the stored object, if none was provided ``default`` will have been used.
-        Defaults to 'default'
+        Name of the stored object. Defaults = "default".
 
     Returns
     -------
     obj : AbstractModel
-        Loaded object that inherited from AbstractModel and has the class
+        Loaded object that inherits from AbstractModel and has the class
         of to the model found in the loaded file.
 
     Raises
@@ -309,6 +311,7 @@ def load_model(
         if ``file`` is not a string, Path or ``h5py.File`` instance.
     ValueError
         If the model type is not in the model registry.
+
     """
     if isinstance(file, str | Path):
         opened_file = True
@@ -361,6 +364,7 @@ def _read_array(model_group: dict[str, xr.Dataset], name: str) -> xr.Variable:
     -------
     xr.Variable
         xr array
+
     """
     ds = model_group[name]
     data = ds[()]
@@ -372,6 +376,54 @@ def _read_array(model_group: dict[str, xr.Dataset], name: str) -> xr.Variable:
 
 
 # /Universal model loader
+
+
+def _write_array(
+    model_group: h5py.Group,
+    name: str,
+    xr_var: xr.DataArray,
+    array_dtype: np.typing.DTypeLike | np.dtype | str | None = None,
+) -> None:
+    data = xr_var.values
+    if data.dtype.kind == "U":
+        data = data.astype(bytes)
+
+    dataset_kwargs = {}
+    if array_dtype is not None and "_array" in name:
+        dtype = get_dtype(array_dtype)
+        dataset_kwargs["dtype"] = dtype
+
+    ds = model_group.create_dataset(name, data=data, **dataset_kwargs)
+    ds.attrs["_dims"] = list(xr_var.dims)
+
+
+def _create_shared_memory_allocation(
+    shape: tuple[int, ...],
+) -> tuple[shared_memory.SharedMemory, dict, np.ndarray]:
+    """Create a shared memory object.
+
+    Parameters
+    ----------
+    shape : tuple[int, ...]
+        shape of new array
+
+    Returns
+    -------
+    shm : shared_memory.SharedMemory
+        SharedMemory object.
+    spec : dict
+        Description of shared memory objects name and shape.
+    array : np.ndarray
+        Created numpy array (filled with zeros), with dtype ``np.float64``.
+
+    """
+    logger.debug(f"Creating shared memory allocation with shape {shape}")
+    nbytes = int(np.prod(shape) * np.dtype(np.float64).itemsize)
+    shm = shared_memory.SharedMemory(create=True, size=nbytes)
+    array = np.ndarray(shape, dtype=np.float64, buffer=shm.buf, order="F")
+    array.fill(0.0)
+    spec = {"name": shm.name, "shape": shape}
+    return shm, spec, array
 
 
 # Worker entry for parallel jobs
@@ -403,6 +455,7 @@ def _worker_entry(
     ------
     ValueError
         If ``model_class`` is not in the registry of models.
+
     """
     # Restore advanced settings captured in the coordinator process.
     if advanced_snapshot is not None:
@@ -444,6 +497,11 @@ def _convert_legacy_stopping_param(
         in ``param_dict``.
     RuntimeError
         If ``endAtFinalDensity`` is being used with a multi-point model.
+
+    Notes
+    -----
+    This function assumes param_dict is already a copy and is case-normalized (lowercase keys).
+
     """
     if param_dict is None:
         return param_dict
@@ -476,6 +534,7 @@ class AbstractModel(ABC):
 
     The AbstractModel class serves as an abstract class from which other model classes can be built.
     It is not intended to be used as a standalone class for running UCLCHEM.
+
     """
 
     def __init__(
@@ -520,6 +579,7 @@ class AbstractModel(ABC):
         ------
         ValueError
             If ``run_type`` is not one of ``["managed", "external"]``.
+
         """
         if out_species_list is None:
             out_species_list = default_elements_to_check
@@ -653,6 +713,7 @@ class AbstractModel(ABC):
         """Unlink all shared memory objects.
 
         If the AbstractModel object goes out of scope, ensure that no shared memory objects stick around.
+
         """
         if hasattr(self, "_shm_desc") and bool(self._shm_desc):
             self._coordinator_unlink_memory()
@@ -671,6 +732,7 @@ class AbstractModel(ABC):
         -------
         obj : AbstractModel
             instantiated model
+
         """
         obj = cls.__new__(cls)
         obj._param_dict = json.loads(model_ds["_param_dict"].item())
@@ -717,6 +779,7 @@ class AbstractModel(ABC):
         -------
         AbstractModel
             Model object loaded from the file.
+
         """
         return load_model(file, name=name)
 
@@ -744,6 +807,7 @@ class AbstractModel(ABC):
         AttributeError
             If no attribute ``key`` can be found in ``self._meta``,
             ``self._data``.
+
         """
         # Internal attributes behave normally
         if key.startswith("_") and key != "_data":
@@ -780,6 +844,7 @@ class AbstractModel(ABC):
             attribute to set
         value : Any
             value to set attribute ``key`` to
+
         """
         # Underscored attributes are real attributes
         if key.startswith("_"):
@@ -898,6 +963,7 @@ class AbstractModel(ABC):
         -------
         bool
             whether the object has the attribute.
+
         """
         try:
             meta = super().__getattribute__("_meta")
@@ -921,6 +987,7 @@ class AbstractModel(ABC):
         percent : bool
             Flag on if whether changes should be printed in percentages.
             Defaults to True.
+
         """
         if element_list is None:
             element_list = self.out_species_list
@@ -958,6 +1025,7 @@ class AbstractModel(ABC):
         raise_on_error : bool
             If True (default), raises RuntimeError on failure. If False, prints.
             Default = True.
+
         """
         if self.success_flag is None:
             print("Model has not been run.")
@@ -1001,6 +1069,7 @@ class AbstractModel(ABC):
         ------
         ValueError
             If ``point`` is larger than the number of points in the model run.
+
         """
         if species is None:
             species = self.out_species_list
@@ -1068,6 +1137,13 @@ class AbstractModel(ABC):
         se_stats_df : pd.DataFrame
             Dataframe of SE solver statistics for point ``point``
             with_se_stats = True
+
+        Notes
+        -----
+        Returns a tuple of at least 2 pandas DataFrames:
+            (``physics_df`` and ``chemistry_df``), or 3 or more, depending on how many
+            ``with_...`` are True.
+
         """
 
         # Helper function to add Point column to a dataframe
@@ -1159,6 +1235,7 @@ class AbstractModel(ABC):
         -------
         result_df : pd.DataFrame
             Dataframe of the joined arrays for point ``point``
+
         """
         result_dfs = self.get_dataframes(
             point=point,
@@ -1218,6 +1295,7 @@ class AbstractModel(ABC):
             that were run in the model.
         ValueError
             If ``self.physics_array`` or ``self.chemical_abun_array`` is None.
+
         """
         # Determine total number of points in model
         n_points = self._param_dict.get("points", 1)
@@ -1356,6 +1434,7 @@ class AbstractModel(ABC):
         >>> failures = solver_stats[solver_stats['ISTATE'] < 0]
         >>> print(f"Failed attempts: {len(failures)}") # doctest: +ELLIPSIS
         Failed attempts: ...
+
         """
         if self.stats_array is None:
             return None
@@ -1407,6 +1486,7 @@ class AbstractModel(ABC):
         ...     print("No failures occurred.")
         ...
         No failures occurred.
+
         """
         df = self.get_solver_stats_dataframe(point)
         if df is None:
@@ -1436,6 +1516,7 @@ class AbstractModel(ABC):
             - efficiency_ratio: successful / total (1.0 = no retries)
             - total_cpu_time: Sum of all CPU time
             - wasted_cpu_time: CPU time spent on failed attempts
+
         """
         df = self.get_solver_stats_dataframe(point)
         if df is None:
@@ -1491,6 +1572,7 @@ class AbstractModel(ABC):
         -------
         plt.Axes
             Modified input axis is returned
+
         """
         if species is None:
             species = self.out_species_list
@@ -1521,6 +1603,7 @@ class AbstractModel(ABC):
         TypeError
             If the dictionary returned by ``self.run_fortran()`` does not have
             a valid SuccessFlag type (integer)
+
         """
         if self.was_read:
             msg = "This model was read. It can not be run. "
@@ -1540,6 +1623,7 @@ class AbstractModel(ABC):
             ------
             KeyboardInterrupt
                 Always.
+
             """
             try:
                 self.on_interrupt()  # your “final steps”
@@ -1658,6 +1742,13 @@ class AbstractModel(ABC):
         ------
         TypeError
             if ``file`` is not a string, Path or ``h5py.File`` instance.
+
+        Notes
+        -----
+        Saving arrays as ``np.float16`` is technically possible, but strongly discouraged.
+            The maximum value that can be saved in a ``np.float16`` is less than $10^5$, so
+            even densities of $10^6$ cm$^{-3}$ would cause it to overflow.
+
         """
         if isinstance(file, str | Path):
             opened_file = True
@@ -1708,32 +1799,13 @@ class AbstractModel(ABC):
 
         save_name: str
         for save_name, coord in save_data.coords.items():  # type: ignore[assignment]
-            self._write_array(coord_grp, save_name, coord, array_dtype=array_dtype)
+            _write_array(coord_grp, save_name, coord, array_dtype=array_dtype)
         for save_name, var in save_data.data_vars.items():  # type: ignore[assignment]
-            self._write_array(model_group, save_name, var, array_dtype=array_dtype)
+            _write_array(model_group, save_name, var, array_dtype=array_dtype)
         if opened_file:
             file_obj.flush()
             logger.debug(f"Closing file {file_obj.filename}")
             file_obj.close()
-
-    @staticmethod
-    def _write_array(
-        model_group: h5py.Group,
-        name: str,
-        xr_var: xr.DataArray,
-        array_dtype: np.typing.DTypeLike | np.dtype | str | None = None,
-    ) -> None:
-        data = xr_var.values
-        if data.dtype.kind == "U":
-            data = data.astype(bytes)
-
-        dataset_kwargs = {}
-        if array_dtype is not None and "_array" in name:
-            dtype = get_dtype(array_dtype)
-            dataset_kwargs["dtype"] = dtype
-
-        ds = model_group.create_dataset(name, data=data, **dataset_kwargs)
-        ds.attrs["_dims"] = list(xr_var.dims)
 
     # /Model saving
 
@@ -1745,6 +1817,7 @@ class AbstractModel(ABC):
         -------
         AbstractModel
             Pickled model
+
         """
         v: str
         if self._data is not None and not bool(self._pickle_dict):
@@ -1775,6 +1848,7 @@ class AbstractModel(ABC):
         -------
         AbstractModel
             Unpickled model.
+
         """
         if (self._data is None or len(self._data.dims) == 0) and bool(self._pickle_dict):
             self._data = xr.Dataset()
@@ -1855,6 +1929,7 @@ class AbstractModel(ABC):
         ------
         ValueError
             If there is any incompatibility error.
+
         """
         self.was_read = True
         # Read header and numeric data
@@ -2025,6 +2100,7 @@ class AbstractModel(ABC):
         ------
         ValueError
             If ``self.abundLoadFile`` is None.
+
         """
         if self.abundLoadFile is None:
             msg = "abundLoadFile was None, so cannot read the starting chemistry."
@@ -2042,6 +2118,7 @@ class AbstractModel(ABC):
             have not yet been initialized.
         ValueError
             If ``self.outputFile`` is None.
+
         """
         logger.debug(f"Writing output to {self.outputFile}")
         if self.physics_array is None or self.chemical_abun_array is None:
@@ -2075,6 +2152,7 @@ class AbstractModel(ABC):
             If ``self.chemical_abun_array`` is None.
         ValueError
             If ``self.abundSaveFile`` is None.
+
         """
         logger.debug(f"Writing starting chemistry to {self.abundSaveFile}")
         if self.chemical_abun_array is None:
@@ -2127,6 +2205,7 @@ class AbstractModel(ABC):
         Be conservative: prefer existing dataset coordinates if they are consistent
         with array shapes. Only override coords from metadata when lengths match
         the corresponding array dimensions to avoid xarray dimension conflicts.
+
         """
         # physics coords
         try:
@@ -2203,6 +2282,7 @@ class AbstractModel(ABC):
             ``uclchem.constants.default_param_dictionary``.
         ValueError
             If an entry in ``out_species`` is not a valid species name.
+
         """
         if param_dict is None:
             # avoid mutating the shared default dictionary
@@ -2252,14 +2332,14 @@ class AbstractModel(ABC):
             self._shm_handles["physics_array"],
             self._shm_desc["physics_array"],
             self.physics_array,
-        ) = self._create_shared_memory_allocation(
+        ) = _create_shared_memory_allocation(
             (self.timepoints + 1, self._param_dict["points"], N_PHYSICAL_PARAMETERS)
         )
         (
             self._shm_handles["chemical_abun_array"],
             self._shm_desc["chemical_abun_array"],
             self.chemical_abun_array,
-        ) = self._create_shared_memory_allocation(
+        ) = _create_shared_memory_allocation(
             (self.timepoints + 1, self._param_dict["points"], n_species)
         )
 
@@ -2271,7 +2351,7 @@ class AbstractModel(ABC):
             self._shm_handles["rate_constants_array"],
             self._shm_desc["rate_constants_array"],
             self.rate_constants_array,
-        ) = self._create_shared_memory_allocation(
+        ) = _create_shared_memory_allocation(
             (self.timepoints + 1, self._param_dict["points"], n_reactions)
         )
 
@@ -2295,7 +2375,7 @@ class AbstractModel(ABC):
             self._shm_handles["heat_array"],
             self._shm_desc["heat_array"],
             self.heat_array,
-        ) = self._create_shared_memory_allocation(
+        ) = _create_shared_memory_allocation(
             (
                 self.timepoints + 1,
                 self._param_dict["points"],
@@ -2310,7 +2390,7 @@ class AbstractModel(ABC):
             self._shm_handles["stats_array"],
             self._shm_desc["stats_array"],
             self.stats_array,
-        ) = self._create_shared_memory_allocation(
+        ) = _create_shared_memory_allocation(
             (self.timepoints + 1, self._param_dict["points"], N_DVODE_STATS)
         )
 
@@ -2318,13 +2398,14 @@ class AbstractModel(ABC):
         """Create Fortran compliant np.array for coolant level populations.
 
         Shape: (timepoints+1, gridpoints, total_levels).
+
         """
         logger.debug("Creating fortran arrays for coolant level populations")
         (
             self._shm_handles["level_populations_array"],
             self._shm_desc["level_populations_array"],
             self.level_populations_array,
-        ) = self._create_shared_memory_allocation(
+        ) = _create_shared_memory_allocation(
             (self.timepoints + 1, self._param_dict["points"], N_TOTAL_LEVELS)
         )
 
@@ -2332,6 +2413,7 @@ class AbstractModel(ABC):
         """Create Fortran compliant np.array for SE solver statistics.
 
         Shape: (timepoints+1, gridpoints, NCOOLANTS*3).
+
         """
         logger.debug("Creating fortran arrays for SE solver statistics")
 
@@ -2341,7 +2423,7 @@ class AbstractModel(ABC):
             self._shm_handles["se_stats_array"],
             self._shm_desc["se_stats_array"],
             self.se_stats_array,
-        ) = self._create_shared_memory_allocation(
+        ) = _create_shared_memory_allocation(
             (self.timepoints + 1, self._param_dict["points"], n_stats)
         )
 
@@ -2358,6 +2440,7 @@ class AbstractModel(ABC):
         pd.DataFrame | None
             DataFrame with columns for each level with meaningful
             coolant/level names
+
         """
         if (
             self.level_populations_array is None
@@ -2395,6 +2478,7 @@ class AbstractModel(ABC):
         pd.DataFrame | None
             DataFrame with per-coolant SE solver statistics using
             actual coolant names
+
         """
         if self.se_stats_array is None or self.se_stats_array.shape[0] < 3:
             return None
@@ -2442,7 +2526,7 @@ class AbstractModel(ABC):
                 self._shm_handles["starting_chemistry_array"],
                 self._shm_desc["starting_chemistry_array"],
                 self.starting_chemistry_array,
-            ) = self._create_shared_memory_allocation(np.shape(starting_chemistry))
+            ) = _create_shared_memory_allocation(np.shape(starting_chemistry))
             np.copyto(self.starting_chemistry_array, starting_chemistry, casting="no")
 
     # /Creation of arrays
@@ -2458,6 +2542,7 @@ class AbstractModel(ABC):
         model_name : str | None
             the name of the model to save it under.
             If None, name is set to "interrupted". Default = None.
+
         """
         logger.info("Model was interrupted")
 
@@ -2499,33 +2584,6 @@ class AbstractModel(ABC):
     # /Signal Interrupt Catch
 
     # Shared memory handlers
-    @staticmethod
-    def _create_shared_memory_allocation(
-        shape: tuple[int, ...],
-    ) -> tuple[shared_memory.SharedMemory, dict, np.ndarray]:
-        """Create a shared memory object.
-
-        Parameters
-        ----------
-        shape : tuple[int, ...]
-            shape of new array
-
-        Returns
-        -------
-        shm : shared_memory.SharedMemory
-            SharedMemory object.
-        spec : dict
-            Description of shared memory objects name and shape.
-        array : np.ndarray
-            Created numpy array (filled with zeros)
-        """
-        logger.debug(f"Creating shared memory allocation with shape {shape}")
-        nbytes = int(np.prod(shape) * np.dtype(np.float64).itemsize)
-        shm = shared_memory.SharedMemory(create=True, size=nbytes)
-        array = np.ndarray(shape, dtype=np.float64, buffer=shm.buf, order="F")
-        array.fill(0.0)
-        spec = {"name": shm.name, "shape": shape}
-        return shm, spec, array
 
     def _reform_array_in_worker(self, shm_desc: dict[str, dict]) -> None:
         """Reform SharedMemory objects to allocate during the model.
@@ -2534,6 +2592,7 @@ class AbstractModel(ABC):
         ----------
         shm_desc : dict[str, dict]
             Description of shared memory.
+
         """
         object.__setattr__(self, "_shm_handles", {})  # noqa: PLC2801
         for k, v in shm_desc.items():
@@ -2625,6 +2684,7 @@ class Cloud(AbstractModel):
             Run type. "external" means that the model is not
             run directly after instantiation, but can instead be run as ``model.run()``.
             Default = "managed".
+
         """
         if out_species is None:
             out_species = default_elements_to_check
@@ -2649,6 +2709,7 @@ class Cloud(AbstractModel):
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
+
         """
         # f2py returns all non-intent(in) values in Fortran signature order:
         # [0-6] physicsarray..sestatsarray (in,out, modified in-place),
@@ -2758,6 +2819,7 @@ class Collapse(AbstractModel):
         ------
         ValueError
             If ``collapse`` is not one of `["BE1.1", "BE4", "filament", "ambipolar"]`.
+
         """
         collapse_dict = {"BE1.1": 1, "BE4": 2, "filament": 3, "ambipolar": 4}
         if collapse not in collapse_dict:
@@ -2865,6 +2927,7 @@ class Collapse(AbstractModel):
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
+
         """
         result = wrap.collapse(
             collapsein=self.collapse,
@@ -2918,6 +2981,7 @@ class PrestellarCore(AbstractModel):
     """PrestellarCore model class inheriting from AbstractModel.
 
     This model type was previously known as hot core.
+
     """
 
     def __init__(
@@ -2974,6 +3038,7 @@ class PrestellarCore(AbstractModel):
         ------
         ValueError
             If ``read_file`` is None, but ``temp_idx`` or ``max_temperature`` is also None.
+
         """
         if out_species is None:
             out_species = default_elements_to_check
@@ -3004,6 +3069,7 @@ class PrestellarCore(AbstractModel):
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
+
         """
         _, _, _, _, _, _, _, out_species_abundances_array, _, success_flag = (
             wrap.hot_core(
@@ -3116,6 +3182,7 @@ class CShock(AbstractModel):
         ------
         ValueError
             If ``read_file`` is None, but ``shock_vel`` is also not set.
+
         """
         if out_species is None:
             out_species = default_elements_to_check
@@ -3148,6 +3215,7 @@ class CShock(AbstractModel):
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
+
         """
         result = wrap.cshock(
             shock_vel=self.shock_vel,
@@ -3256,6 +3324,7 @@ class JShock(AbstractModel):
         ------
         ValueError
             If ``read_file`` is None, but ``shock_vel`` is also not set.
+
         """
         if out_species is None:
             out_species = default_elements_to_check
@@ -3285,6 +3354,7 @@ class JShock(AbstractModel):
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
+
         """
         result = wrap.jshock(
             shock_vel=self.shock_vel,
@@ -3341,6 +3411,7 @@ class Postprocess(AbstractModel):
     cosmic ray ionization rate, atomic and molecular Hydrogen, CO and C column densities through the
     use of arrays. Using these arrays allows for experimental model crafting beyond the standard models
     in other model classes.
+
     """
 
     def __init__(
@@ -3436,6 +3507,7 @@ class Postprocess(AbstractModel):
             If not all arrays have the same length as ``time_array``.
         ValueError
             If ``read_file`` is None, but ``time_array`` is not an array.
+
         """
         # Allocate 1.5x the input timesteps to give the DVODE solver
         # headroom for additional internal substeps.
@@ -3521,6 +3593,7 @@ class Postprocess(AbstractModel):
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
+
         """
         # Determine whether an Av grid was provided and set the flag expected by the Fortran wrapper
         # Only pass arrays that are present (not None) to the Fortran wrapper
@@ -3585,6 +3658,7 @@ class Model(AbstractModel):
     It allows for additional controls of the time, density, gas temperature, radiation field,
     and cosmic ray ionization rate through the use of arrays. Using these arrays allows for
     experimental model crafting beyond the standard models in other model classes.
+
     """
 
     def __init__(
@@ -3655,6 +3729,7 @@ class Model(AbstractModel):
             If not all arrays have the same length.
         ValueError
             If ``read_file`` is None, but ``time_array`` is not an array.
+
         """
         if out_species is None:
             out_species = default_elements_to_check
@@ -3722,6 +3797,7 @@ class Model(AbstractModel):
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
+
         """
         result = wrap.postprocess(
             usecoldens=False,
@@ -3777,6 +3853,7 @@ class SequentialRunner:
     By defining a specific dictionary to hold the information of each model class to run in sequence,
     SequentialModel allows for the automatic running of multiple models as well as matching some
     physical parameters from one model to the next.
+
     """
 
     def __init__(
@@ -3813,6 +3890,7 @@ class SequentialRunner:
         NotImplementedError
             If a parameter in ``parameters_to_match`` is not one of
             ``["finalDens", "finalTemp"]``.
+
         """
         for model in sequenced_model_parameters:
             if model[list(model.keys())[0]] == "SequentialRunner":
@@ -3846,6 +3924,7 @@ class SequentialRunner:
         NotImplementedError
             If a parameter in ``parameters_to_match`` is not one of
             ``["finalDens", "finalTemp"]``.
+
         """
         previous_model: AbstractModel | None = None
         for base_model_dict in self.sequenced_model_parameters:
@@ -3934,6 +4013,7 @@ class SequentialRunner:
         ------
         TypeError
             if ``file`` is not a string, Path or ``h5py.File`` instance.
+
         """
         if isinstance(file, str | Path):
             opened_file = True
@@ -3980,6 +4060,7 @@ class SequentialRunner:
         element_list : list[str] | None
             List of elements to check conservation for.
             If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
+
         """
         if element_list is None:
             element_list = default_elements_to_check
@@ -4065,6 +4146,7 @@ def _run_grid_model(
     ------
     ValueError
         If no model called ``model_type`` is in the model registry.
+
     """
     log_file = None
     if log_dir is not None:
@@ -4189,6 +4271,7 @@ class GridRunner:
         TypeError
             If ``model_type`` is not ``"SequentialRunner"``, but ``full_parameters``
             is not a dictionary.
+
         """
         if model_type not in REGISTRY:
             msg = f"Model type {model_type} not in model registry. Available model types: {REGISTRY.keys()}"
@@ -4301,6 +4384,7 @@ class GridRunner:
             count of model. If not None,
             prepend the key ``key`` in ``self.parameters_to_grid`` with ``str(model_count)_``.
             Default = None.
+
         """
         if model_count is None:
             model_count_string = ""
@@ -4320,6 +4404,7 @@ class GridRunner:
         ----------
         msg : str
             message to log
+
         """
         if self._main_log is None:
             return
@@ -4344,6 +4429,7 @@ class GridRunner:
             ------
             KeyboardInterrupt
                 Always.
+
             """
             try:
                 self.on_interrupt()  # your “final steps”
@@ -4387,6 +4473,7 @@ class GridRunner:
                 result : tuple[int, AbstractModel]
                     tuple of model index
                     and the AbstractModel object.
+
                 """
                 nonlocal completed
                 completed += 1
@@ -4432,6 +4519,7 @@ class GridRunner:
                     Error
                 _model_id : int
                     Model index
+
                 """
                 self._log_main(f"model_{_model_id} error: {_exc}")
                 print(f"error: {_exc}; for model: {_model_id}")
@@ -4472,6 +4560,7 @@ class GridRunner:
             If the model type is ``SequentialRunner``.
         RuntimeError
             If no models were run yet.
+
         """
         if self.model_type == "SequentialRunner":
             msg = "SequentialRunner physics loading not implemented"
@@ -4506,6 +4595,7 @@ class GridRunner:
             If the model type is ``SequentialRunner``.
         RuntimeError
             If no models were run yet.
+
         """
         if self.model_type == "SequentialRunner":
             msg = "SequentialRunner chemistry loading not implemented"
@@ -4540,6 +4630,7 @@ class GridRunner:
         The differentiation of ``SequentialRunner`` stems from ``SequentialRunner``
         instances being nested models, resulting in an additional required loop to take into
         account the additional nesting.
+
         """
         # The following loops perform the same actions, but for the different model types
         if self.model_type == "SequentialRunner":
@@ -4603,6 +4694,7 @@ class GridRunner:
         -------
         model_object : AbstractModel
             Loaded model.
+
         """
         logger.debug(f"Loading model in file {self.grid_file} with name {model}")
         model_object = load_model(file=self.grid_file, name=model)
@@ -4620,6 +4712,7 @@ class GridRunner:
         -------
         xr.Dataset
             Copy of loaded model's ``_data`` attribute.
+
         """
         return self._load_model(model)._data.copy()
 
@@ -4635,6 +4728,7 @@ class GridRunner:
         element_list : list[str] | None
             List of elements to check conservation for.
             If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
+
         """
         if element_list is None:
             element_list = default_elements_to_check
@@ -4707,6 +4801,7 @@ class GridRunner:
         TypeError
             If ``model_type`` is ``"SequentialRunner"``, but ``full_parameters``
             is not a list of dictionaries.
+
         """
         if model_type == "SequentialRunner":
             if not isinstance(full_parameters, list):

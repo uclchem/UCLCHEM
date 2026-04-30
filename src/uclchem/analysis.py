@@ -49,6 +49,7 @@ This module provides functions to:
 
 - :mod:`uclchem.plot` - Dedicated plotting utilities
 - :mod:`uclchem.model` - Run chemical models
+
 """
 
 try:
@@ -92,6 +93,7 @@ def read_output_file(output_file: str | Path) -> pd.DataFrame:
     data : pd.DataFrame
         A dataframe containing the abundances and
         physical parameters of the model at every time step.
+
     """
     with Path(output_file).open() as f:
         data = pd.read_csv(f)
@@ -112,6 +114,7 @@ def read_rate_file(rate_file: str | Path) -> pd.DataFrame:
     data : pd.DataFrame
         A dataframe containing the physical parameters,
         and reaction rates (s-1) at each timestep.
+
     """
     with Path(rate_file).open() as f:
         data = pd.read_csv(f)
@@ -133,6 +136,7 @@ def _reactant_count(species: str, reaction_string: str) -> int:
     -------
     int
         number of times species is consumed in reaction
+
     """
     # TODO: Put in Reaction
     split_str = reaction_string.split("->", maxsplit=1)[0].strip()
@@ -155,6 +159,7 @@ def _product_count(species: str, reaction_string: str) -> int:
     -------
     int
         amount of times species is produced by reaction
+
     """
     # TODO: Put in Reaction
     split_str = reaction_string.split("->")[1].strip()
@@ -177,6 +182,7 @@ def _get_rates_change(rate_df: pd.DataFrame, species: str) -> pd.DataFrame:
     -------
     change_df : pd.DataFrame
         dataframe with rates of change.
+
     """
     phys_param_columns = []
     for i, column in enumerate(rate_df.columns):
@@ -224,6 +230,7 @@ def get_change_df(
         Deprecated in UCLCHEM 4.0
     ValueError
         If "#" or "@" is in ``species``.
+
     """
     msg = "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
     raise DeprecationWarning(msg)
@@ -280,6 +287,7 @@ def read_analysis(filepath: str | Path, species: str) -> tuple[pd.DataFrame, lis
     ------
     DeprecationWarning
         Deprecated in UCLCHEM 4.0
+
     """
     msg = "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
     raise DeprecationWarning(msg)
@@ -370,6 +378,7 @@ def analysis(
         Analysis output will contain the only the most efficient
         reactions that are responsible for rate_threshold of the total
         production and destruction rate. Default = 0.99.
+
     """
     result_df = read_output_file(output_file)
     species_array = np.loadtxt(
@@ -510,6 +519,7 @@ def _param_dict_from_output(
     -------
     dict[str, float]
         dictionary with physical conditions from output.
+
     """
     param_dict = {
         "initialdens": output_line["Density"],
@@ -560,6 +570,7 @@ def _get_species_rates(
         Deprecated in UCLCHEM 4.0
     RuntimeError
         If UCLCHEM failed to return the rates for these parameters
+
     """
     msg = "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
     raise DeprecationWarning(msg)
@@ -618,6 +629,7 @@ def _get_rates_of_change(
     ------
     DeprecationWarning
         Deprecated in UCLCHEM 4.0
+
     """
     msg = "This function will be deprecated in UCLCHEM 4.0 and is no longer actively maintained"
     raise DeprecationWarning(msg)
@@ -704,6 +716,7 @@ def _remove_slow_reactions(
         List of key reactions
     key_changes : list[float]
         List of reaction rates of key reactions
+
     """
     totalDestruct = sum(changes[np.where(changes < 0)])
     totalProd = sum(changes[np.where(changes > 0)])
@@ -751,6 +764,7 @@ def _write_analysis(
         to the total rate of change
     key_changes : list[float]
         A list of rates of change contributing to total
+
     """
     output_file.write(
         f"\n\n***************************\nNew Important Reactions At: {time:.2e} years\n"
@@ -782,6 +796,7 @@ def _format_reactions(reactions: list[list[str]]) -> list[str]:
     -------
     list[str]
         list of string, each reaction in readable string form
+
     """
     # TODO: Replace with str(Reaction()).
     formatted_reactions = []
@@ -807,6 +822,7 @@ def _count_element(species_list: list[str], element: str) -> pd.Series:
     sums : pd.Series
         array where each element represents the number of atoms
         of the chemical element in the corresponding element of species_list
+
     """
     species = pd.Series(species_list)
     # confuse list contains elements whose symbols contain the target eg CL for C
@@ -836,6 +852,7 @@ def total_element_abundance(element: str, df: pd.DataFrame) -> pd.Series:
     -------
     pd.Series
         Total abundance of element for all time steps in df.
+
     """
     sums_array = _count_element(list(df.columns), element).to_numpy()
     for variable in ["Time", "Density", "gasTemp", "av", "point", "SURFACE", "BULK"]:
@@ -863,6 +880,7 @@ def check_element_conservation(
     dict[str, str]
         Dictionary containing the change in the total abundance of each element
         as a fraction of initial value
+
     """
     if element_list is None:
         element_list = default_elements_to_check
@@ -902,6 +920,7 @@ def get_total_swap(
     ValueError
         If ``rates`` and ``abundances`` do not have the same number of timepoints (rows),
         or ``rates`` and ``reactions`` do not have the same number of reactions (columns).
+
     """
     if len(rates) != len(abundances):
         msg = "Rates and abundances must be the same length"
@@ -941,6 +960,7 @@ def construct_incidence(
     ------
     ValueError
         If a reactant or product of a reaction is not in ``species``.
+
     """
     incidence = np.zeros(
         dtype=int,
@@ -1021,6 +1041,7 @@ def rate_constants_to_dy_and_rates(
         is currently implemented in this function.
     RuntimeError
         If there is no reaction ``@H2 + BULKSWAP -> #H2`` in the network.
+
     """
     if (species is None) != (reactions is None):
         msg = "If species is specified, reactions also must be and vice versa"
@@ -1293,6 +1314,7 @@ def compute_heating_per_reaction(
         If ``network`` and ``reactions`` are both None or both not None.
     ValueError
         If the number of reactions and rates are not the same.
+
     """
     if (network is None) == (reactions is None):
         msg = "Choose between passing either network OR reactions."
@@ -1333,6 +1355,7 @@ def get_production_and_destruction(
     ------
     RuntimeError
         If no production or destruction reactions of ``species`` are found.
+
     """
     if not dataframe.columns.is_unique:
         # Duplicate column names, can happen with for example UMIST
@@ -1377,6 +1400,7 @@ def derive_phase_from_name(name: str) -> str:
     -------
     str
         Phase. One of ``["gas", "surface", "bulk", "ion"]``.
+
     """
     if name.startswith("@"):
         return "bulk"
@@ -1404,6 +1428,7 @@ def analyze_element_per_phase(element: str, df: pd.DataFrame) -> pd.DataFrame:
     -------
     content : pd.DataFrame
         Total abundance of element for all time steps in df.
+
     """
     content = pd.DataFrame()
     # Split the columns into ionized, gas, surface and bulk:

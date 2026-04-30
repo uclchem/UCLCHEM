@@ -64,16 +64,17 @@ repos:
         name: "[style] Ruff formatter"
         description: "Format code consistently (indentation, quotes, whitespace)"
 
-  - repo: https://github.com/JanEricNitschke/pymend
-    rev: v3.0.0
-    hooks:
-      - id: pymend
-        name: "[style] Check docstrings with pymend"
-        description: "Make sure that all docstrings are correct"
-        # For now include '--noforce-raises', because otherwise it will force us to match
-        # the exact number of times an exception can be raised, instead of only the types of
-        # exceptions that can be raised at least once.
-        args: ["--output-style", "numpydoc", "--noforce-raises", "--noforce-docstrings", "--exclude", "tests/"]
+  # Comment this out for now, but soon there will be an option to force 
+  # docstrings that span multiple lines to end with a blank line.
+  # - repo: https://github.com/JanEricNitschke/pymend
+  #   rev: v3.2.0
+  #   hooks:
+  #     - id: pymend
+  #       name: "[style] Check docstrings with pymend"
+  #       description: "Make sure that all docstrings are correct"
+  #       # For now include '--noforce-raises', because pymend's exception checking
+  #       # is not as good as ruffs.
+  #       args: ["--output-style", "numpydoc", "--noforce-raises", "--noforce-docstrings", "--force-multiline-docs-end-with-blank", "--exclude", "tests/"]
 
   # ============================================================================
   # TIER 3: QUALITY (Docstrings, type hints, simplifications)

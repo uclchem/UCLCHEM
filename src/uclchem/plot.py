@@ -56,6 +56,7 @@ via methods like :meth:`~uclchem.model.AbstractModel.create_abundance_plot`.
 
 - :mod:`uclchem.analysis` - Analysis tools that include plotting functions
 - :mod:`uclchem.model` - Model classes with built-in plotting methods
+
 """
 
 from pathlib import Path
@@ -94,6 +95,7 @@ def plot_rate_summary(
     -------
     axs : list[plt.Axes]
         axes of the plot
+
     """
     fig, axs = plt.subplots(2, 1, sharex=True, figsize=(7, top_k_rates))
     production_df.iloc[step].sort_values(ascending=False)[:top_k_rates].plot.barh(
@@ -140,6 +142,7 @@ def create_abundance_plot(
         created Figure object
     ax : plt.Axes
         created axis object
+
     """
     if plot_kwargs is None:
         plot_kwargs = {}
@@ -194,6 +197,7 @@ def plot_species(
     ------
     KeyError
         if no ``"Time"`` column is present in ``df``.
+
     """
     if plot_kwargs is None:
         plot_kwargs = {}

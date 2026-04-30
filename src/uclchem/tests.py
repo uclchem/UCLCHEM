@@ -1,6 +1,7 @@
 """Collection of tests for UCLCHEM.
 
 Deprecated
+
 """
 
 import numpy as np
@@ -29,6 +30,7 @@ def test_ode_conservation(
     result : dict[str, float]
         A dictionary of the elements in element list with values
         representing the total change of each element.
+
     """
     if element_list is None:
         element_list = default_elements_to_check

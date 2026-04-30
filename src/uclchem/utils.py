@@ -49,6 +49,7 @@ Use :meth:`SuccessFlag.check_error` to get human-readable error messages.
 **See Also:**
 
 - :mod:`uclchem.model` - Model classes that use these utilities
+
 """
 
 from __future__ import annotations
@@ -95,6 +96,7 @@ def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
     -------
     float
         The dissipation time of the shock in years
+
     """
     dlength = 12.0 * CENTIMETERS_PER_PARSEC * shock_vel / initial_dens
     return (dlength * 1.0e-5 / shock_vel) / SECONDS_PER_YEAR
@@ -107,6 +109,7 @@ def get_species_table() -> pd.DataFrame:
     -------
     species : pd.DataFrame
         A dataframe containing the species names and their details
+
     """
     species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
     return species
@@ -119,6 +122,7 @@ def get_species() -> list[str]:
     -------
     species_list : list[str]
         A list of species names
+
     """
     species_list = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv").iloc[:, 0].tolist()
     return species_list
@@ -131,6 +135,7 @@ def get_reaction_table() -> pd.DataFrame:
     -------
     reactions : pd.DataFrame
         A dataframe containing the reactions and their rates
+
     """
     reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
     return reactions
@@ -162,6 +167,7 @@ def find_number_of_consecutive_digits(string: str, start: int) -> int:
     2
     >>> find_number_of_consecutive_digits("He1llo23", 2)
     1
+
     """
     num_digits = 0
     while start + num_digits < len(string) and string[start + num_digits].isdigit():
@@ -183,6 +189,7 @@ def _filament_units():
         filament units for radius
     unitt : float
         filament units for time
+
     """
     _rho0_filament = 2.2e4  # reference density for filament/ambipolar (cm^-3)
     two_pi_g_rho0_mh = (
@@ -210,6 +217,7 @@ def _rminfit(t_yr: float, mode: int) -> float:
     -------
     float
         Radius of minimum velocity (pc for mode 3, normalized units for mode 4).
+
     """
     if mode == 3:
         _, unitt = _filament_units()
@@ -246,6 +254,7 @@ def _vminfit(t_yr: float, mode: int) -> float:
     -------
     float
         Minimum velocity in dimensionless units.
+
     """
     if mode == 3:
         _, unitt = _filament_units()
@@ -277,6 +286,7 @@ def _avfit(t_yr: float, mode: int) -> float:
     -------
     float
         Velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
+
     """
     if mode == 3:
         _, unitt = _filament_units()
@@ -319,6 +329,7 @@ def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: int) -> float
     -------
     float
         Radial velocity in cm/s.
+
     """
     if mode == 3:
         unitr, _ = _filament_units()
@@ -370,6 +381,7 @@ def collapse_radial_velocity(model: Collapse, point: int = 0) -> pd.Series:
     ------
     TypeError
         If ``model`` is not a Collapse model instance.
+
     """
     from uclchem.model import Collapse  # noqa: PLC0415
 
@@ -421,6 +433,11 @@ class SuccessFlag(enum.IntEnum):
         SuccessFlag
             New SuccessFlag instance
 
+        Notes
+        -----
+        This custom __new__ was written to be able to attach short help messages to
+           the SuccessFlag instances. See the examples below.
+
         Examples
         --------
         >>> success_flag = SuccessFlag.SUCCESS
@@ -430,6 +447,7 @@ class SuccessFlag(enum.IntEnum):
         >>> success_flag = SuccessFlag.INT_TOO_MANY_FAILS_ERROR
         >>> print(success_flag.__doc__)
         Too many integrator fails occurred.
+
         """
         member = int.__new__(cls, value)
 
@@ -482,6 +500,7 @@ class SuccessFlag(enum.IntEnum):
         ------
         RuntimeError
             If ``raise_on_error`` is True.
+
         """
         if self == SuccessFlag.SUCCESS:
             if not only_error:
@@ -531,6 +550,7 @@ def check_expected_type(
     ------
     TypeError
         If ``variable`` is not an instance of ``expected_type``.
+
     """
     if isinstance(variable, expected_type):
         return
@@ -578,6 +598,7 @@ def configure_logging(
 
     >>> # Suppress all logging messages
     >>> configure_logging(stream = None)
+
     """
     if isinstance(level, str):
         level = level.upper()  # type: ignore[assignment]
@@ -632,6 +653,7 @@ def get_dtype(
         If ``dtype`` is not an instance of ``np.dtype`` or a string.
     ValueError
         If ``dtype`` is a string but is not one of ``["fp64", "fp32", "fp16"]``.
+
     """
     if hasattr(dtype, "dtype"):
         # Things like 'np.float64'
@@ -684,6 +706,7 @@ def convert_keys_to_lowercase(dct: dict[str, Any]) -> dict[str, Any]:
     >>> # Values are left unchanged
     >>> convert_keys_to_lowercase({"Uppercase Key": "Uppercase Value"})
     {'uppercase key': 'Uppercase Value'}
+
     """
     lowercase_dct: dict[str, Any] = {}
     for key, value in dct.items():

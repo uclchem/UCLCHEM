@@ -7,6 +7,7 @@ wrapper, ensuring documentation stays in sync with the actual compiled code.
 
 Usage:
     python generate_param_docs_from_wrap.py <output_markdown_file>
+
 """
 
 import sys
@@ -25,6 +26,7 @@ def get_parameter_info() -> dict[str, tuple[Any, str, str]]:
         Dictionary mapping parameter
         names to tuples of (value, type_str, description)
         The description is extracted from Fortran comments when available.
+
     """
     try:
         import uclchemwrap  # noqa: PLC0415
@@ -175,6 +177,7 @@ def categorize_parameters(params: dict[str, tuple[Any, str, str]]) -> dict[str, 
     categories : dict[str, list]
         Dictionary mapping category names
         to lists of parameter names
+
     """
     categories = {
         "Physical Variables": [
@@ -270,6 +273,7 @@ def format_value(value: str | bool | int | bytes | float) -> str:
     -------
     str
         formatted string for printing
+
     """
     if isinstance(value, bool | np.bool_):
         return ".True." if value else ".False."
@@ -305,6 +309,7 @@ def generate_markdown(
         Dictionary of parameter info
     output_file : str | Path
         Path to output markdown file
+
     """
     categories = categorize_parameters(params)
 

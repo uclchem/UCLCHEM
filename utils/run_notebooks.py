@@ -5,6 +5,7 @@ Examples
 `python3 run_notebooks.py directory`
 
 will run all the notebooks in `"directory"`.
+
 """
 
 import argparse
@@ -31,6 +32,7 @@ def get_python_executable() -> Path:
     ------
     RuntimeError
         If no valid python executable can be found.
+
     """
     # Try sys.executable first
     if Path(sys.executable).exists():
@@ -64,6 +66,7 @@ def ensure_ipykernel_installed(python_exec: str | Path) -> bool:
     -------
     bool
         Whether ipykernel is installed
+
     """
     try:
         # Check if ipykernel is already installed
@@ -110,6 +113,7 @@ def find_existing_kernel_spec(python_exec: Path) -> str | None:
     str | None
         kernel name, or None if no kernel matching ``python_exec`` was
         found.
+
     """
     try:
         # List all available kernel specs
@@ -152,6 +156,7 @@ def create_kernel_spec(python_exec: Path) -> str | None:
     -------
     str | None
         name of the kernel, or None if it failed to create kernel
+
     """
     # Get the current working directory name for a human-readable kernel name
     dir_name = Path.cwd().name
@@ -198,6 +203,7 @@ def cleanup_kernel_spec(kernel_name: str) -> None:
     ----------
     kernel_name : str
         name of the kernel to clean up
+
     """
     if kernel_name:
         try:
@@ -226,6 +232,7 @@ def run_all_notebooks(notebooks_dir: str | Path) -> None:
         If the ipykernel cannot be installed.
     KeyboardInterrupt
         If the user presses Ctrl+c to interrupt the notebooks.
+
     """
     python_exec = get_python_executable()
     print(f"Using Python executable: {python_exec}")

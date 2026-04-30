@@ -77,6 +77,7 @@ Seealso
 - :mod:`uclchem.model` - Object-oriented model classes
 - :mod:`uclchem.utils` - Utility functions including ``check_error()``
 - :doc:`/tutorials/index` - Interactive tutorials for both APIs
+
 """
 
 from typing import Any, Literal
@@ -121,7 +122,14 @@ def _validate_functional_api_params_(
     Raises
     ------
     RuntimeError
-        If file parameters are mixed with memory return parameters
+        If file parameters are mixed with memory return parameter
+
+    Notes
+    -----
+    The system always uses the memory interface internally. File writing
+        is controlled by the presence of outputFile, abundSaveFile, etc.
+        This validation ensures users don't request both data return AND file writing.
+
     """
     # Determine if this is a memory return request (user wants data returned, not written)
     memory_return_requested = (
@@ -183,6 +191,49 @@ def _functional_return_(
     -------
     tuple[Any, ...]
         tuple with entries depending on which bools are True.
+
+    Notes
+    -----
+    Return value:
+        if return_array and return_dataframe are False:
+            - A tuple where the first element is a ``SuccessFlag``, which is negative if the model
+                failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
+                If the model succeeded, and the model_object has the dissipation_time attribute
+                the second element is the dissipation time.
+                Further elements are the abundances of all species in ``out_species``.
+        if return_array is True:
+            - physicsArray (np.ndarray): array containing the physical outputs
+                for each written timestep
+            - chemicalAbunArray (np.ndarray): array containing the chemical abundances
+                for each written timestep
+            - rateConstantsArray (np.ndarray): array containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatArray (np.ndarray): array containing heating/cooling rates
+                (if return_heating=True)
+            - dissipation_time (float): dissipation time in years
+                (if model_object contains the dissipation_time attribute)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional
+                run after the initial model
+            - success_flag (SuccessFlag): which is negative if the model failed to run.
+                Can run ``success_flag.check_error()`` to see more details.
+        if return_dataframe is True:
+            - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
+                for each written timestep
+            - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances
+                for each written timestep
+            - rate_constants_df (pd.DataFrame): DataFrame containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatingDF (pd.DataFrame): DataFrame containing heating/cooling rates
+                (if return_heating=True)
+            - dissipation_time (float): dissipation time in years
+                (if model_object contains the dissipation_time attribute)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional run after the
+                initial model
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
+
     """
     result: list[Any]
     if return_dataframe:
@@ -340,6 +391,43 @@ def cloud(
     -------
     tuple[Any, ...]
         tuple with entries depending on which bools are True.
+
+    Notes
+    -----
+    Return value:
+        if return_array and return_dataframe are False:
+            - A tuple where the first element is a ``SuccessFlag``, which is negative if the model
+                failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
+                Further elements are the abundances of all species in ``out_species``.
+        if return_array is True:
+            - physicsArray (np.ndarray): array containing the physical outputs
+                for each written timestep
+            - chemicalAbunArray (np.ndarray): array containing the chemical abundances
+                for each written timestep
+            - rateConstantsArray (np.ndarray): array containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatArray (np.ndarray): array containing heating/cooling rates
+                (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional
+                run after the initial model
+            - success_flag (SuccessFlag): which is negative if the model failed to run.
+                Can run ``success_flag.check_error()`` to see more details.
+        if return_dataframe is True:
+            - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
+                for each written timestep
+            - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances
+                for each written timestep
+            - rate_constants_df (pd.DataFrame): DataFrame containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatingDF (pd.DataFrame): DataFrame containing heating/cooling rates
+                (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional run after the
+                initial model
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details. -----
+
     """
     if out_species is None:
         out_species = default_elements_to_check
@@ -425,6 +513,43 @@ def collapse(
     -------
     tuple[Any, ...]
         tuple with entries depending on which bools are True.
+
+    Notes
+    -----
+    Return value:
+        if return_array and return_dataframe are False:
+            - A tuple where the first element is a ``SuccessFlag``, which is negative if the model
+                failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
+                Further elements are the abundances of all species in ``out_species``.
+        if return_array is True:
+            - physicsArray (np.ndarray): array containing the physical outputs
+                for each written timestep
+            - chemicalAbunArray (np.ndarray): array containing the chemical abundances
+                for each written timestep
+            - rateConstantsArray (np.ndarray): array containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatArray (np.ndarray): array containing heating/cooling rates
+                (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional
+                run after the initial model
+            - success_flag (SuccessFlag): which is negative if the model failed to run.
+                Can run ``success_flag.check_error()`` to see more details.
+        if return_dataframe is True:
+            - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
+                for each written timestep
+            - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances
+                for each written timestep
+            - rate_constants_df (pd.DataFrame): DataFrame containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatingDF (pd.DataFrame): DataFrame containing heating/cooling rates
+                (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional run after the
+                initial model
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
+
     """
     if out_species is None:
         out_species = default_elements_to_check
@@ -516,7 +641,44 @@ def prestellar_core(
     Returns
     -------
     tuple[Any, ...]
-        tuple with entries depending on which bools are True.
+        tuple with entries depending on which bools are Truea
+
+    Notes
+    -----
+    Return value:
+        if return_array and return_dataframe are False:
+            - A tuple where the first element is a ``SuccessFlag``, which is negative if the model
+                failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
+                Further elements are the abundances of all species in ``out_species``.
+        if return_array is True:
+            - physicsArray (np.ndarray): array containing the physical outputs
+                for each written timestep
+            - chemicalAbunArray (np.ndarray): array containing the chemical abundances
+                for each written timestep
+            - rateConstantsArray (np.ndarray): array containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatArray (np.ndarray): array containing heating/cooling rates
+                (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional
+                run after the initial model
+            - success_flag (SuccessFlag): which is negative if the model failed to run.
+                Can run ``success_flag.check_error()`` to see more details.
+        if return_dataframe is True:
+            - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
+                for each written timestep
+            - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances
+                for each written timestep
+            - rate_constants_df (pd.DataFrame): DataFrame containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatingDF (pd.DataFrame): DataFrame containing heating/cooling rates
+                (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional run after the
+                initial model
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
+
     """
     if out_species is None:
         out_species = default_elements_to_check
@@ -612,6 +774,46 @@ def cshock(
     -------
     tuple[Any, ...]
         tuple with entries depending on which bools are True.
+
+    Notes
+    -----
+    Return value:
+        if return_array and return_dataframe are False:
+            - A tuple where the first element is a ``SuccessFlag``, which is negative if the model
+                failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
+                If the model succeeded, the second element is the dissipation time.
+                Further elements are the abundances of all species in ``out_species``.
+        if return_array is True:
+            - physicsArray (np.ndarray): array containing the physical outputs
+                for each written timestep
+            - chemicalAbunArray (np.ndarray): array containing the chemical abundances
+                for each written timestep
+            - rateConstantsArray (np.ndarray): array containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatArray (np.ndarray): array containing heating/cooling rates
+                (if return_heating=True)
+            - dissipation_time (float): dissipation time in years
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional
+                run after the initial model
+            - success_flag (SuccessFlag): which is negative if the model failed to run.
+                Can run ``success_flag.check_error()`` to see more details.
+        if return_dataframe is True:
+            - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
+                for each written timestep
+            - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances
+                for each written timestep
+            - rate_constants_df (pd.DataFrame): DataFrame containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatingDF (pd.DataFrame): DataFrame containing heating/cooling rates
+                (if return_heating=True)
+            - dissipation_time (float): dissipation time in years
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional run after the
+                initial model
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
+
     """
     if out_species is None:
         out_species = default_elements_to_check
@@ -698,6 +900,44 @@ def jshock(
     -------
     tuple[Any, ...]
         tuple with entries depending on which bools are True.
+
+    Notes
+    -----
+    Return value:
+        if return_array and return_dataframe are False:
+            - A tuple where the first element is a ``SuccessFlag``, which is negative if the model
+                failed to run. Can be passed to ``uclchem.utils.check_error()`` to see more details.
+                If the model succeeded, the second element is the dissipation time.
+                Further elements are the abundances of all species in ``out_species``.
+        if return_array is True:
+            - physicsArray (np.ndarray): array containing the physical outputs
+                for each written timestep
+            - chemicalAbunArray (np.ndarray): array containing the chemical abundances
+                for each written timestep
+            - rateConstantsArray (np.ndarray): array containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatArray (np.ndarray): array containing heating/cooling rates
+                (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional
+                run after the initial model
+            - success_flag (SuccessFlag): which is negative if the model failed to run.
+                Can run ``success_flag.check_error()`` to see more details.
+        if return_dataframe is True:
+            - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
+                for each written timestep
+            - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances
+                for each written timestep
+            - rate_constants_df (pd.DataFrame): DataFrame containing reaction rate constants
+                (if return_rate_constants=True)
+            - heatingDF (pd.DataFrame): DataFrame containing heating/cooling rates
+                (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of the last
+                timestep in the format uclchem needs in order to perform an additional run after the
+                initial model
+            - success_flag (SuccessFlag): SuccessFlag indicating whether the model succeeded or not.
+                Can run ``success_flag.check_error()`` to see more details.
+
     """
     if out_species is None:
         out_species = default_elements_to_check
