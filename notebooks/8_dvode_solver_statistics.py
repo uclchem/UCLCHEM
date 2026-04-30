@@ -29,7 +29,7 @@ import uclchem
 # ## Running a Model and Accessing Stats
 #
 # Every model automatically collects solver statistics. Access them via `stats_array`
-# (raw numpy array) or `get_dataframes(with_stats=True)` (pandas DataFrame).
+# (raw numpy array) or `get_joined_dataframes(with_stats=True)` (pandas DataFrame).
 
 # %%
 params = {
@@ -48,11 +48,11 @@ print(f"Model completed with flag: {model.success_flag}")
 # %% [markdown]
 # ## Viewing Stats as a DataFrame
 #
-# The `get_dataframes` method supports a `with_stats` flag. When joined, the solver
+# The `get_joined_dataframes` method supports a `with_stats` flag. When joined, the solver
 # statistics are appended as extra columns alongside the physics and chemistry data.
 
 # %%
-df = model.get_dataframes(with_stats=True)
+df = model.get_joined_dataframes(with_stats=True)
 print(f"DataFrame shape: {df.shape}")
 print(f"\nSolver stat columns: {uclchem.constants.DVODE_STAT_NAMES}")
 df[["Time"] + uclchem.constants.DVODE_STAT_NAMES].head(10)
@@ -121,6 +121,9 @@ plt.show()
 # directly on the model object.
 
 # %%
+if model.stats_array is None:
+    msg = f"Statistics array of model is None"
+    raise ValueError(msg)
 print(f"Stats array shape: {model.stats_array.shape}")
 print(f"Total function evaluations: {model.stats_array[:, 0, 6].sum():.0f}")
 print(f"Total CPU time: {model.stats_array[:, 0, 17].sum():.3f} s")
@@ -134,7 +137,7 @@ print(f"Total CPU time: {model.stats_array[:, 0, 17].sum():.3f} s")
 params["initialTemp"] = 50.0
 
 model_50k = uclchem.model.Cloud(param_dict=params)
-df_50k = model_50k.get_dataframes(with_stats=True)
+df_50k = model_50k.get_joined_dataframes(with_stats=True)
 
 fig, ax = plt.subplots(figsize=(10, 4))
 ax.plot(active["Time"], active["NFE"], label="10K Static")

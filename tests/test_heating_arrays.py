@@ -55,11 +55,11 @@ class TestHeatingArrays:
         # Test that heating arrays are created with correct dimensions
         # by running a simple model and checking the output
         (
-            physicsArray,
-            chemicalAbunArray,
-            ratesArray,
-            heatArray,
-            abundanceStart,
+            physics_array,
+            chemical_abun_array,
+            rate_constants_rray,
+            heat_array,
+            abundance_start,
             success_flag,
         ) = uclchem.functional.cloud(
             param_dict=param_dict,
@@ -70,15 +70,15 @@ class TestHeatingArrays:
             timepoints=50,
         )
 
-        assert heatArray is not None, "Heat array should be returned"
-        assert isinstance(heatArray, np.ndarray), "Heat array should be numpy array"
+        assert heat_array is not None, "Heat array should be returned"
+        assert isinstance(heat_array, np.ndarray), "Heat array should be numpy array"
         # Check that we have a reasonable number of heating terms (at least 12)
-        assert heatArray.shape[2] >= 12, (
-            f"Expected at least 12 heating terms, got {heatArray.shape[2]}"
+        assert heat_array.shape[2] >= 12, (
+            f"Expected at least 12 heating terms, got {heat_array.shape[2]}"
         )
         # Verify heating array has correct dimensions: (timepoints+1, points, n_heating_terms)
-        assert heatArray.shape[0] > 10  # check there are at least 10 timepoints
-        assert heatArray.shape[1] == 1  # points
+        assert heat_array.shape[0] > 10  # check there are at least 10 timepoints
+        assert heat_array.shape[1] == 1  # points
 
     def test_cloud_function_with_return_array(self, param_dict):
         """Test cloud function with return_array=True."""
@@ -87,11 +87,11 @@ class TestHeatingArrays:
         GeneralSettings().print_all_settings()
 
         (
-            physicsArray,
-            chemicalAbunArray,
-            ratesArray,
-            heatArray,
-            abundanceStart,
+            physics_array,
+            chemical_abun_array,
+            rate_constants_array,
+            heat_array,
+            abundance_start,
             success_flag,
         ) = uclchem.functional.cloud(
             param_dict=param_dict,
@@ -105,10 +105,10 @@ class TestHeatingArrays:
         assert success_flag == uclchem.utils.SuccessFlag.SUCCESS, (
             "Model run should be successful"
         )
-        assert heatArray is not None, "Heat array should be returned"
-        assert isinstance(heatArray, np.ndarray), "Heat array should be numpy array"
-        assert heatArray.shape[2] >= 12, (
-            f"Heat array should have at least 12 columns per particle, got {heatArray.shape[2]}"
+        assert heat_array is not None, "Heat array should be returned"
+        assert isinstance(heat_array, np.ndarray), "Heat array should be numpy array"
+        assert heat_array.shape[2] >= 12, (
+            f"Heat array should have at least 12 columns per particle, got {heat_array.shape[2]}"
         )
 
     def test_cloud_function_with_return_dataframe(
@@ -129,7 +129,7 @@ class TestHeatingArrays:
             chemistry_df,
             rates_df,
             heating_df,
-            abundanceStart,
+            abundance_start,
             success_flag,
         ) = result
 
@@ -206,7 +206,8 @@ class TestHeatingArrays:
                     timepoints=500,
                 )
             else:
-                raise ValueError(f"Unknown model function: {model_function}")
+                msg = f"Unknown model function: {model_function}"
+                raise ValueError(msg)
 
             # Check that we get the expected number of return values
             assert len(result) >= 5, f"{model_function} should return at least 5 values"
@@ -252,7 +253,7 @@ class TestHeatingArrays:
             chemistry_df,
             rates_df,
             heating_df,
-            abundanceStart,
+            abundance_start,
             success_flag,
         ) = uclchem.functional.cloud(
             param_dict=param_dict,
@@ -287,6 +288,7 @@ class TestHeatingArrays:
             "At least some heating/cooling terms should have non-zero values"
         )
 
+    # ruff: noqa: ERA001
     # This test will only work if during compile time the writerates
     # def test_heating_array_to_disk(self, param_dict):
     #     """Test that heating arrays can be saved to disk."""
@@ -308,3 +310,4 @@ class TestHeatingArrays:
     #     assert (
     #         heating_df.values[:, 1:] != 0.0
     #     ).any(), "Heating DataFrame should have some non-zero values"
+    # ruff: noqa: ERA001

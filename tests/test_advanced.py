@@ -6,6 +6,8 @@ Tests the runtime interfaces for:
 - GeneralSettings: Accessing and modifying UCLCHEM settings
 """
 
+from collections.abc import Generator
+
 import numpy as np
 import pytest
 import uclchemwrap
@@ -14,7 +16,7 @@ from uclchem import advanced
 
 
 @pytest.fixture(autouse=True)
-def reset_fortran_state() -> None:
+def reset_fortran_state() -> Generator:
     """Reset Fortran module state after each test to ensure test isolation.
 
     This prevents state leakage between tests when they modify global Fortran values.
@@ -703,7 +705,8 @@ class TestGeneralSettings:
         try:
             with settings.temporary_changes():
                 settings.defaultparameters.initialdens.set(5000.0)
-                raise ValueError("Test exception")
+                msg = "Test exception"
+                raise ValueError(msg)
         except ValueError:
             pass
 

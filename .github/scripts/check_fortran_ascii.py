@@ -16,19 +16,23 @@ import sys
 from pathlib import Path
 
 
-def check_file_for_non_ascii(filepath: Path | str) -> list[tuple[int, str]] | None:
+def check_file_for_non_ascii(filepath: str | Path) -> list[tuple[int, str]] | None:
     """Check a single file for non-ASCII characters.
 
-    Args:
-        filepath: Path to the file to check
+    Parameters
+    ----------
+    filepath : str | Path
+        Path to the file to check
 
-    Returns:
-        list: List of tuples (line_number, line_content) with non-ASCII characters
+    Returns
+    -------
+    list[tuple[int, str]] | None
+        List of tuples (line_number, line_content) with non-ASCII characters
     """
     violations = []
 
     try:
-        with open(filepath, "rb") as f:
+        with Path(filepath).open("rb") as f:
             for line_num, line_bytes in enumerate(f, 1):
                 try:
                     line_bytes.decode("ascii")
@@ -46,10 +50,11 @@ def check_file_for_non_ascii(filepath: Path | str) -> list[tuple[int, str]] | No
 
 
 def main() -> int:
-    """Function to check for non-ascii characters.
+    """Check multiple files for non-ascii characters.
 
-    Returns:
-        int: succes flag (0 if no violations, 1 if violations found)
+    Returns
+    -------
+        int: success flag (0 if no violations, 1 if violations found)
     """
     parser = argparse.ArgumentParser(
         description="Check Fortran source files for non-ASCII characters"
@@ -100,7 +105,7 @@ def main() -> int:
                 print(f"  Line {line_num}: {line_content}")
 
     if found_violations:
-        print("\n❌ Non-ASCII characters found in Fortran source files", file=sys.stderr)
+        print("\nNon-ASCII characters found in Fortran source files", file=sys.stderr)
         return 1
 
     return 0

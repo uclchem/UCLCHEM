@@ -94,7 +94,7 @@ REAL(dp) FUNCTION H2SelfShielding(NH2,dopplerWidth,radWidth)
     REAL(dp) ::  r, sj, sr, t, u, taud
     REAL(dp), PARAMETER :: FPARA=0.5,FOSC  = 1.0d-2
     !--------------------------------------------------------------
-    !taud = opt. depth at line centre (assum. ortho:parah2=1)
+    !taud = opt. depth at line center (assuming ortho:para h2=1)
     !pi**0.5 * e2 / (m(electr) * c) = 1.5e-2 cm2/s
 
     taud  = FPARA * NH2 * 1.5e-2 * FOSC / dopplerWidth
@@ -345,7 +345,7 @@ SUBROUTINE spline(x,y,n,yp1,ypn,y2)
 !routine returns an array y2 of length n which contains the
 !second derivatives of the interpolating function at the
 !tabulated points x(i). if yp1 and/or ypn are equal to 1.0e+30
-!or larger, the routine is signalled to set the corresponding
+!or larger, the routine is signaled to set the corresponding
 !boundary condition for a natural spline, with zero second
 !derivative on that boundary.
 

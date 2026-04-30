@@ -1,5 +1,5 @@
 [build-system]
-requires = ["numpy", "wheel", "meson-python", "charset_normalizer", "meson>=1.7.0"]
+requires = ["numpy", "wheel", "meson-python", "meson>=1.7.0"]
 build-backend = "mesonpy"
 
 [project]
@@ -32,7 +32,7 @@ uclchem-generate-metadata = "uclchem.advanced.generate_metadata:main"
 uclchem-makerates = "uclchem.makerates.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-timeout", "pytest-xdist", "pytest-github-actions-annotate-failures", "pre-commit", "sphinx", "ruff"]  # Development dependencies
+dev = ["pytest", "pytest-timeout", "pytest-xdist", "pytest-github-actions-annotate-failures", "pre-commit", "sphinx", "ruff", "pymend"]  # Development dependencies
 docs = ["pydoc-markdown", "jupyter", "jupyter_contrib_nbextensions", "notebook<7"]
 
 [tool.ruff]
@@ -41,16 +41,93 @@ extend-exclude = ["notebooks/*.py"]
 line-length = 90
 
 [tool.ruff.lint]
-select = ["E", "F", "C", "I", "W", "D", "E", "ANN001", "ANN201", "B006", "ARG", "RUF100", "UP", "PLR6301", "DOC", "SIM"]
+select = ["E", "F", "I", "W", "D", "E", "B", 
+    "ANN001", "ANN201", 
+    "ARG", 
+    "RUF100", 
+    "UP", 
+    "DOC", "D",
+    "SIM", "S", 
+    "EM", 
+    "ERA", 
+    "N", 
+    "PERF", 
+    "ICN", 
+    "TID", 
+    "PTH", 
+    "LOG", 
+    "TC", 
+    "PLC", "PLR", "PLE"
+]
 extend-ignore = [
-    "E501", "E731", "E741", "E402", "F841", "F811", "C901", "E203", "E402", "D211", "D213", "D205", "D105", "D107", "D301", "SIM108", "SIM102"
+    "E501", "E731", "E741", "E402", "E203", "E204",
+    "SIM108", "SIM102", 
+    "S603", "S607", "S404", "S602", 
+    "PLR2004", "PLR0911", "PLR1702", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR0914", "PLR0904"
 ]
 pycodestyle.max-doc-length = 105
-pydocstyle.convention = 'google'
+pydocstyle.convention = 'numpy'
 preview = true
 
 [tool.ruff.lint.per-file-ignores]
 # E402: Module level import not at top of file - normal for notebook-derived files
 "notebooks/*.py" = ["E402"]
 "*/__init__.py" = ["F401"]
-"tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002", "DOC"]
+"tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002", "DOC", "S101", "B011", "PLC", "PLR"]
+
+
+[tool.typos.files]
+extend-exclude = [
+    # Do not bother checking DVODE
+    "**/dvode.f90", 
+
+    # Do not check databases
+    "**/*.dat", 
+    "**/*.csv", 
+    "**/*.html", 
+    "**/*.in", 
+
+    # Do not check fortran metadata
+    "**/fortran_metadata.yaml", 
+
+    # This file contains species names that might be picked up as typos
+    "Makerates/enthalpy_routines/species_matching_session.yaml"]
+
+[tool.typos.default]
+locale = "en-us"
+extend-ignore-re = [
+    # Ignore lines that end with `# spellchecker:disable-line`
+    "(?Rm)^.*(#|//)\\s*spellchecker:disable-line$",
+    # Ignore the line after `# spellchecker:ignore-next-line`:
+    "(#|//)\\s*spellchecker:ignore-next-line\\n.*",
+    # Ignore blocks between `# spellchecker:off` and `# spellchecker:on`
+    "(?s)(#|//)\\s*spellchecker:off.*?\\n\\s*(#|//)\\s*spellchecker:on",
+]
+extend-ignore-identifiers-re = [
+    "I[xyzXYZ]$",
+    "Indx$",
+    "indx$",
+
+    # Multiple Fortran "PARAMETER"s
+    "^PARAMETERs$",
+
+    # np.arange
+    "^arange$",
+
+    # Ignore f then one or two chars indicating elemental abundances, e.g. fO.
+    "^f.{1,2}$",
+    
+    # Ignore n and then one or two chars indicating index or density
+    "^n.{1,2}$",
+]
+
+[tool.typos.default.extend-words]
+LAMDA = "LAMDA"
+atct = "atct"
+ATcT = "ATcT"
+
+
+[[tool.mypy.overrides]]
+module = ["yaml", "uclchemwrap", "h5py", "nbconvert.*", "nbformat", "pytest", "matplotlib", "matplotlib.*", "xarray", "bs4", "pydantic", "uclchem._project_root"]
+ignore_missing_imports = true
+

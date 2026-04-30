@@ -1,15 +1,15 @@
 """UCLCHEM MakeRates."""
 
 import logging
-import os
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Literal
 
 from uclchem.makerates import io_functions as io
 from uclchem.makerates._output_resolver import resolve_output_dirs
-from uclchem.makerates.config import MakeratesConfig
+from uclchem.makerates.config import MakeratesConfig, ReactionFileTypes
 from uclchem.makerates.network import Network
-from uclchem.makerates.reaction import Reaction
+
+logger = logging.getLogger(__name__)
 
 # Optional parameters that don't raise errors if missing
 optional_params = [
@@ -21,33 +21,44 @@ optional_params = [
 
 
 def run_makerates(
-    configuration_file: str | Path = "user_settings.yaml",
+    configuration: str | Path | MakeratesConfig = "user_settings.yaml",
     write_files: bool = True,
-    output_directory: str | os.PathLike | None = None,
+    output_directory: str | Path | None = None,
 ) -> Network:
     """Run makerates.
 
     Main run wrapper for makerates. Loads and validates configuration,
     generates chemical network, and optionally writes output files.
 
-    Args:
-        configuration_file (str | Path): Path to YAML configuration file.
-            Defaults to "user_settings.yaml".
-        write_files (bool): Whether to write fortran files to src/fortran_src.
-            Defaults to True.
-        output_directory (str | os.PathLike): Optional override for the output directory
-            where files should be written. If None, uses the 'output_directory'
-            from the config (if present) or the package defaults.
+    Parameters
+    ----------
+    configuration : str | Path | MakeratesConfig
+        Path to YAML configuration file,
+        or ``MakeratesConfig`` instance. Defaults to "user_settings.yaml".
+    write_files : bool
+        Whether to write fortran files to src/fortran_src.
+        Defaults to True.
+    output_directory : str | Path | None
+        Optional override for the output directory
+        where files should be written. If None, uses the 'output_directory'
+        from the config (if present) or the package defaults. Default = None.
 
-    Returns:
-        network (Network): A validated chemical network instance.
+    Returns
+    -------
+    network : Network
+        A validated chemical network instance.
 
-    Raises:
-        ValueError: If `coolants_file` is a directory, and not a path to a file.
+    Raises
+    ------
+    ValueError
+        If ``coolants_file`` is a directory, and not a path to a file.
 
     """
-    # Load and validate configuration using Pydantic
-    config = MakeratesConfig.from_yaml(configuration_file)
+    if not isinstance(configuration, MakeratesConfig):
+        # Load and validate configuration using Pydantic
+        config = MakeratesConfig.from_yaml(configuration)
+    else:
+        config = configuration
 
     # Log the configuration
     config.log_configuration()
@@ -101,25 +112,27 @@ def run_makerates(
     # 3) defaults used by write_outputs.
     coolants_to_write = None
     if config.coolants is not None:
-        logging.info(f"Using {len(config.coolants)} inline coolants from config")
+        logger.info(f"Using {len(config.coolants)} inline coolants from config")
         coolants_to_write = config.coolants
     elif config.coolants_file:
         coolants_path = config.resolve_path(config.coolants_file)
         # Defensive check: don't try to read a directory as a YAML file
         if coolants_path.is_dir():
-            raise ValueError(
+            msg = (
                 f"coolants_file {coolants_path} resolves to a directory; expected a YAML file listing coolants. "
                 "If you intended to set the collisional rate data directory, use 'coolant_data_dir' in your config."
             )
+            raise ValueError(msg)
         try:
             _coolants = io.read_coolants_file(coolants_path)
-            logging.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")
+            logger.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")
             coolants_to_write = _coolants
         except Exception as exc:
-            raise ValueError(f"Error reading coolants_file {coolants_path}: {exc}")
+            msg = f"Error reading coolants_file {coolants_path}"
+            raise ValueError(msg) from exc
 
     if write_files:
-        logging.info(
+        logger.info(
             "\n################################################\n"
             + "Checks complete, writing output files\n"
             + "################################################\n"
@@ -130,27 +143,29 @@ def run_makerates(
             output_dir=output_dir,
             write_files=write_files,
         )
-        logging.info(f"There are {len(dropped_reactions)} dropped reactions")
+        logger.info(f"There are {len(dropped_reactions)} dropped reactions")
 
         # Check for GAR reactions and validate parameters
         gar_reactions = network.get_reactions_by_types("GAR")
         gar_parameters = None
         if len(gar_reactions) > 0:
             if gar_file is None:
-                raise ValueError(
+                msg = (
                     "You have GAR reactions in your network, but you did "
                     "not specify a grain_assisted_recombination_file in "
                     "your configuration. Refer to makerates documentation."
                 )
+                raise ValueError(msg)
             # Get all the individual ions that can recombine
             gar_ions = [gar.get_reactants()[0] for gar in gar_reactions]
             _gar_parameters = io.read_grain_assisted_recombination_file(gar_file)
             if not set(gar_ions).issubset(set(_gar_parameters.keys())):
                 missing_ions = set(gar_ions) - set(_gar_parameters.keys())
-                raise ValueError(
+                msg = (
                     f"You have GAR reactions for ions {missing_ions} but "
                     f"they are not defined in your gar_file {gar_file}"
                 )
+                raise ValueError(msg)
             # Save the gar parameters in the correct order
             gar_parameters = {ion: _gar_parameters[ion] for ion in gar_ions}
 
@@ -169,27 +184,25 @@ def run_makerates(
         # Only pass coolant_data_dir if it's explicitly set and valid
         source_dir = (
             config.coolant_data_dir
-            if config.coolant_data_dir and config.coolant_data_dir != "."
+            if config.coolant_data_dir is not None and str(config.coolant_data_dir) != "."
             else None
         )
         io.copy_coolant_files(source_dir=source_dir)
 
     ngrain = len([x for x in network.get_species_list() if x.is_surface_species()])
-    logging.info(f"Total number of species = {len(network.get_species_list())}")
-    logging.info(f"Number of surface species = {ngrain}")
-    logging.info(f"Number of reactions = {len(network.get_reaction_list())}")
+    logger.info(f"Total number of species = {len(network.get_species_list())}")
+    logger.info(f"Number of surface species = {ngrain}")
+    logger.info(f"Number of reactions = {len(network.get_reaction_list())}")
 
     # Return the network for reuse in code/notebooks
     return network
 
 
 def get_network(
-    path_to_input_file: str | bytes | Path | None = None,
-    path_to_species_file: str | bytes | Path | None = None,
-    path_to_reaction_file: str | bytes | Path | None = None,
-    verbosity: Literal[
-        logging.DEBUG, logging.INFO, logging.WARNING, logging.CRITICAL, logging.ERROR
-    ] = None,
+    path_to_input_file: str | Path | None = None,
+    path_to_species_file: str | Path | None = None,
+    path_to_reaction_file: str | Path | None = None,
+    verbosity: str | None = None,
 ) -> Network:
     """Get a network into memory.
 
@@ -201,31 +214,37 @@ def get_network(
     The latter scenario allows you to reload a reaction network from
     a network already written by Makerates.
 
+    Parameters
+    ----------
+    path_to_input_file : str | Path | None
+        Path to input file. Defaults to None.
+    path_to_species_file : str | Path | None
+        Path to a species.csv
+        in/from the src directory. Defaults to None.
+    path_to_reaction_file : str | Path | None
+        Path to a reactions.csv in/from
+        the src directory. Defaults to None.
+    verbosity : str | None
+        The verbosity level as specified in logger.
+        Defaults to None.
 
-    Args:
-        path_to_input_file (str | bytes | Path | None): Path to input file. Defaults to None.
-        path_to_species_file (str bytes | Path | None): Path to a species.csv
-            in/from the src directory. Defaults to None.
-        path_to_reaction_file (str | bytes | Path | None): Path to a reactions.csv in/from
-            the src directory. Defaults to None.
-        verbosity (LEVEL | None): The verbosity level as specified in logging.
-            Defaults to None.
+    Returns
+    -------
+    Network
+        A chemical reaction network.
 
-    Returns:
-        Network: A chemical reaction network.
-
-    Raises:
-        ValueError: You cannot specify both an input configuration and species+reaction.
-
+    Raises
+    ------
+    ValueError
+        You cannot specify both an input configuration and species+reaction.
 
     """
-    if verbosity:
-        logging.basicConfig(format="%(levelname)s: %(message)s", level=verbosity)
+    if verbosity is not None:
+        logging.basicConfig(format="%(levelname)s: %(message)s", level=verbosity.upper())
 
     if bool(path_to_input_file) and bool(path_to_species_file or path_to_reaction_file):
-        raise ValueError(
-            "Cannot have both an input Makerates config file and explicit paths to species + reaction files"
-        )
+        msg = "Cannot have both an input Makerates config file and explicit paths to species + reaction files"
+        raise ValueError(msg)
 
     if path_to_input_file:
         return run_makerates(path_to_input_file, write_files=False)
@@ -235,27 +254,57 @@ def get_network(
 
 
 def _get_network_from_files(
-    species_file: str | bytes | Path,
-    reaction_files: list[str | bytes | Path],
-    reaction_types: list[str],
+    species_file: str | Path,
+    reaction_files: str | Path | Sequence[str | Path],
+    reaction_types: ReactionFileTypes | list[ReactionFileTypes],
     gas_phase_extrapolation: bool,
     add_crp_photo_to_grain: bool,
     derive_reaction_exothermicity: bool | str | list[str],
-    database_reaction_exothermicity: list[str | bytes | Path] | None = None,
-) -> tuple[Network, list[Reaction]]:
-    logging.info(
+    database_reaction_exothermicity: Sequence[str | Path] | None = None,
+) -> tuple[Network, list[list]]:
+    """Get a network from files.
+
+    Parameters
+    ----------
+    species_file : str | Path
+        path to a species file
+    reaction_files : str | Path | Sequence[str | Path]
+        path to reaction files
+    reaction_types : ReactionFileTypes | list[ReactionFileTypes]
+        list of reaction
+        file types corresponding to each file in ``reaction_files``.
+    gas_phase_extrapolation : bool
+        Extrapolate gas-phase temperature.
+    add_crp_photo_to_grain : bool
+        Add CRP/PHOTON to grain.
+    derive_reaction_exothermicity : bool | str | list[str]
+        Reaction types to calculate
+        exothermicity for.
+    database_reaction_exothermicity : Sequence[str | Path] | None
+        Custom exothermicity database
+        files. Default = None.
+
+    Returns
+    -------
+    network : Network
+        Instantiated Network.
+    dropped_reactions : list[list]
+        list of dropped reactions.
+
+    """
+    logger.info(
         f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"
     )
     species_list, user_defined_bulk = io.read_species_file(species_file)
     # Check if reaction and type files are lists, if not, make them lists
     if not isinstance(reaction_files, list):
-        reaction_files = [reaction_files]
+        reaction_files = [reaction_files]  # type: ignore
     if not isinstance(reaction_types, list):
         reaction_types = [reaction_types]
     reactions = []
     dropped_reactions = []
     # Support an arbitrary amount of different reaction files and append then in the end.
-    for reaction_file, reaction_type in zip(reaction_files, reaction_types):
+    for reaction_file, reaction_type in zip(reaction_files, reaction_types, strict=True):
         temp_reactions, temp_dropped_reactions = io.read_reaction_file(
             reaction_file, species_list, reaction_type
         )
@@ -275,7 +324,7 @@ def _get_network_from_files(
 
     #################################################################################################
 
-    logging.info(
+    logger.info(
         "\n################################################\n"
         + "Reading and checking input\n"
         + "################################################\n"

@@ -13,9 +13,9 @@
 #     name: python3
 # ---
 
-# # Advanced Physical Modelling on Disk using Objects
+# # Advanced Physical Modeling on Disk using Objects
 #
-# In the previous tutorial, we simply modelled the chemistry of a static cloud for 1 Myr. This is unlikely to meet everybody's modelling needs and UCLCHEM is capable of modelling much more complex environments such as prestellar cores and shocks. In this tutorial, we model both a prestellar core and a shock to explore how these models work and to demonstrate the workflow that the UCLCHEM team normally follow. In tutorial 2a, we approach the modeling in a more classic approach, by writing the outputs to files, before passing them to the subsequent model class. In tutorial 2b, we calculate the exact same models, but take advantage of the model objects in order to perform all calculations in memory, bypassing the file system entirely.
+# In the previous tutorial, we simply modeled the chemistry of a static cloud for 1 Myr. This is unlikely to meet everybody's modeling needs and UCLCHEM is capable of modeling much more complex environments such as prestellar cores and shocks. In this tutorial, we model both a prestellar core and a shock to explore how these models work and to demonstrate the workflow that the UCLCHEM team normally follow. In tutorial 2a, we approach the modeling in a more classic approach, by writing the outputs to files, before passing them to the subsequent model class. In tutorial 2b, we calculate the exact same models, but take advantage of the model objects in order to perform all calculations in memory, bypassing the file system entirely.
 
 import os
 
@@ -26,7 +26,7 @@ import uclchem
 # ## The Prestellar Core
 #
 # ### Initial Conditions (Phase 1)
-# UCLCHEM typically starts with the gas in atomic/ionic form with no molecules. However, this clearly is not appropriate when modelling an object such as a prestellar core. In these objects, the gas is already evolved and there should be molecules in the gas phase as well as ice mantles on the dust. To allow for this, one must provide some initial abundances to the model. There are many ways to do this, but we typically chose to run a preliminary model to produce our abundances. In many UCLCHEM papers, we refer to the preliminary model as *phase 1* and the science model as *phase 2*. Phase 1 simply models a collapsing cloud and phase 2 models the object in question.
+# UCLCHEM typically starts with the gas in atomic/ionic form with no molecules. However, this clearly is not appropriate when modeling an object such as a prestellar core. In these objects, the gas is already evolved and there should be molecules in the gas phase as well as ice mantles on the dust. To allow for this, one must provide some initial abundances to the model. There are many ways to do this, but we typically chose to run a preliminary model to produce our abundances. In many UCLCHEM papers, we refer to the preliminary model as *phase 1* and the science model as *phase 2*. Phase 1 simply models a collapsing cloud and phase 2 models the object in question.
 #
 # To do this, we will use `uclchem.model.Cloud()` to run a model where a cloud of gas collapses from a density of $10^2 cm^{-3}$ to our prestellar core density of $10^6 cm^{-3}$, keeping all other parameters constant. During this collapse, chemistry will occur, and we can assume the final abundances of this model will be reasonable starting abundances for the prestellar core.
 
@@ -81,7 +81,7 @@ param_dict["abundLoadFile"] = "output_2a/startcollapse.dat"
 param_dict["outputFile"] = "output_2a/phase2.dat"
 
 p_core = uclchem.model.PrestellarCore(
-    temp_indx=3, max_temperature=300.0, param_dict=param_dict
+    temp_index=3, max_temperature=300.0, param_dict=param_dict
 )
 # The p_core model has completed and saved output to output_2a/phase2.dat
 # We can now delete the object and load it back from the file
@@ -105,7 +105,7 @@ p_core = uclchem.model.PrestellarCore(read_file="output_2a/phase2.dat")
 p_core.check_conservation()
 
 # +
-df_p_core = p_core.get_dataframes()
+df_p_core = p_core.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "#CO", "#H2O", "#CH3OH", "@H2O", "@CO", "@CH3OH"]
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
 ax = p_core.plot_species(ax, species)
@@ -180,7 +180,7 @@ cshock = uclchem.model.CShock(read_file="output_2a/cshock.dat")
 cshock.check_conservation()
 
 # +
-df_cshock = cshock.get_dataframes()
+df_cshock = cshock.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
@@ -232,7 +232,7 @@ jshock = uclchem.model.JShock(read_file="output_2a/jshock.dat")
 jshock.check_conservation()
 
 # +
-df_jshock = jshock.get_dataframes()
+df_jshock = jshock.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))

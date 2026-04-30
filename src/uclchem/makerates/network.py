@@ -2,28 +2,36 @@
 
 This module provides the Network class and factory functions for creating networks
 in different contexts:
-- load_network_from_csv(): Load compiled networks for analysis
-- build_network(): Build new networks with full validation
-- create_network(): Direct instantiation from objects
+- ``load_network_from_csv()``: Load compiled networks for analysis
+- ``build_network()``: Build new networks with full validation
+- ``create_network()``: Direct instantiation from objects
 
 The Network class implements a complete interface for accessing and modifying
 chemical reaction networks, suitable for build-time and analysis-time use.
 
 For runtime parameter modification during model execution, use RuntimeNetwork
 from uclchem.advanced.runtime_network instead.
+
 """
+
+from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from uclchem.utils import UCLCHEM_ROOT_DIR
+from uclchem.makerates.reaction import Reaction, reaction_types
+from uclchem.makerates.species import Species
+from uclchem.utils import UCLCHEM_ROOT_DIR, check_expected_type
 
-from .reaction import Reaction, reaction_types
-from .species import Species
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+    from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # Abstract Base Classes
@@ -40,12 +48,13 @@ class NetworkABC(ABC):
     This interface is implemented by:
     - Network: Full interactive network (via MutableNetworkABC)
     - RuntimeNetwork: Fortran-backed runtime network (read + parameter modification only)
+
     """
 
     # Core Properties
     @property
     @abstractmethod
-    def species(self) -> dict[str, Reaction]:
+    def species(self) -> dict[str, Species]:
         """Get the species collection."""
         pass
 
@@ -68,7 +77,19 @@ class NetworkABC(ABC):
 
     @abstractmethod
     def get_specie(self, specie_name: str) -> Species:
-        """Get a specific species by name."""
+        """Get a species by name (copy).
+
+        Parameters
+        ----------
+        specie_name : str
+            species name
+
+        Returns
+        -------
+        Species
+            copy of Species instance.
+
+        """
         pass
 
     # Reaction Read Interface
@@ -84,41 +105,110 @@ class NetworkABC(ABC):
 
     @abstractmethod
     def get_reaction(self, reaction_idx: int) -> Reaction:
-        """Get a specific reaction by index."""
+        """Get a reaction by index (copy).
+
+        Parameters
+        ----------
+        reaction_idx : int
+            Index of the reaction
+
+        Returns
+        -------
+        Reaction
+            copy of reaction with index reaction_idx.
+
+        """
         pass
 
     # Query Methods
     @abstractmethod
     def get_reactions_by_types(self, reaction_type: str | list[str]) -> list[Reaction]:
-        """Get all reactions of specific type(s)."""
+        """Get all reactions of specific type(s).
+
+        Parameters
+        ----------
+        reaction_type : str | list[str]
+            Single type or list of types to filter by
+
+        Returns
+        -------
+        list[Reaction]
+            List of reactions matching the type(s)
+
+        """
         pass
 
     @abstractmethod
     def find_similar_reactions(self, reaction: Reaction) -> dict[int, Reaction]:
-        """Find reactions with same reactants/products."""
+        """Find reactions with same reactants and products.
+
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to find similar reactions for
+
+        Returns
+        -------
+        similar : dict[int, Reaction]
+            Dictionary of {index: Reaction}
+            for matching reactions
+
+        """
         pass
 
     @abstractmethod
     def get_reaction_index(self, reaction: Reaction) -> int:
-        """Get the unique index of a reaction."""
+        """Get the index of a reaction in the network.
+
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to find
+
+        Returns
+        -------
+        int
+            Index of the reaction
+
+        """
         pass
 
     # Parameter Modification Methods (modify existing, don't add/remove)
     @abstractmethod
     def change_binding_energy(self, specie: str, new_binding_energy: float) -> None:
-        """Change binding energy of an existing species."""
+        """Change binding energy of a species.
+
+        Parameters
+        ----------
+        specie : str
+            string representation of species
+        new_binding_energy : float
+            new binding energy in K
+
+        """
         pass
 
     @abstractmethod
     def change_reaction_barrier(self, reaction: Reaction, barrier: float) -> None:
-        """Change activation barrier of an existing reaction."""
+        """Change activation barrier of a reaction.
+
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to change.
+        barrier : float
+            New reaction barrier in K
+
+        """
         pass
 
     def __repr__(self) -> str:
-        """String representation of the network.
+        """Get a string representation of the network.
 
-        Returns:
-            str: string representation of network.
+        Returns
+        -------
+        str
+            string representation of network.
 
         """
         n_species = len(self.get_species_list())
@@ -138,27 +228,65 @@ class MutableNetworkABC(NetworkABC):
     NOT implemented by RuntimeNetwork since the Fortran-backed network is read
     directly from the fortran files, only allowing for the editing of existing reaction
     and species parameters.
+
     """
 
     # Species Modification Interface
     @abstractmethod
-    def add_species(self, species: Species | list[Species]) -> None:
-        """Add one or more species to the network."""
+    def add_species(self, species: Species | Sequence[Species | list]) -> None:
+        """Add species to network.
+
+        Parameters
+        ----------
+        species : Species | Sequence[Species | list]
+            Species object, list of Species,
+            or CSV-style entries
+
+        """
         pass
 
     @abstractmethod
-    def remove_species(self, specie_name: str) -> None:
-        """Remove a species from the network."""
+    def remove_species(self, species: str | Species) -> None:
+        """Remove a species from network.
+
+        Parameters
+        ----------
+        species : str | Species
+            name of species to be deleted, or the Species instance
+
+        Raises
+        ------
+        ValueError
+            If no species ``species`` is in the Network.
+
+        """
         pass
 
     @abstractmethod
     def set_specie(self, species_name: str, species: Species) -> None:
-        """Set/update a species in the network."""
+        """Set/update a species.
+
+        Parameters
+        ----------
+        species_name : str
+            Name of species
+        species : Species
+            Species to replace the old Species with
+
+        """
         pass
 
     @abstractmethod
     def set_species_dict(self, new_species_dict: dict[str, Species]) -> None:
-        """Replace the entire species dictionary."""
+        """Replace entire species dictionary.
+
+        Parameters
+        ----------
+        new_species_dict : dict[str, Species]
+            dictionary with keys the
+            names of the species and values the Species instances.
+
+        """
         pass
 
     @abstractmethod
@@ -168,28 +296,88 @@ class MutableNetworkABC(NetworkABC):
 
     # Reaction Modification Interface
     @abstractmethod
-    def add_reactions(self, reactions: Reaction | list[Reaction]) -> None:
-        """Add one or more reactions to the network."""
+    def add_reactions(self, reactions: Reaction | Sequence[list | Reaction]) -> None:
+        """Add reactions to network.
+
+        Parameters
+        ----------
+        reactions : Reaction | Sequence[list | Reaction]
+            Reaction object, list of Reactions,
+            or CSV-style entries
+
+        Raises
+        ------
+        ValueError
+            If there is an error when converting the CSV-style entries to
+            Reaction instances
+        TypeError
+            If input was not a Reaction, list of Reaction instances, or
+            CSV-style entries.
+
+        """
         pass
 
     @abstractmethod
     def remove_reaction(self, reaction: Reaction) -> None:
-        """Remove a reaction from the network."""
+        """Remove a reaction from network.
+
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to remove from the network.
+
+        Raises
+        ------
+        ValueError
+            If no matching reaction ``reaction`` is found in the network.
+        RuntimeError
+            If multiple matching reactions are found in the network.
+
+        """
         pass
 
     @abstractmethod
     def remove_reaction_by_index(self, reaction_idx: int) -> None:
-        """Remove a reaction by its index."""
+        """Remove a reaction by its index.
+
+        Parameters
+        ----------
+        reaction_idx : int
+            Index of reaction to remove.
+
+        """
         pass
 
     @abstractmethod
     def set_reaction(self, reaction_idx: int, reaction: Reaction) -> None:
-        """Set/update a reaction at a specific index."""
+        """Set/update a reaction at specific index.
+
+        Parameters
+        ----------
+        reaction_idx : int
+            index of reaction to set.
+        reaction : Reaction
+            new reaction instance.
+
+        Raises
+        ------
+        RuntimeError
+            If the number of reactions changes.
+
+        """
         pass
 
     @abstractmethod
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
-        """Replace the entire reaction dictionary."""
+        """Replace the entire reaction dictionary.
+
+        Parameters
+        ----------
+        new_dict : dict[int, Reaction]
+            Dictionary with keys indices and values
+            Reaction instances.
+
+        """
         pass
 
     @abstractmethod
@@ -214,6 +402,7 @@ class BaseNetwork(NetworkABC):
     1. Initialize _species_dict and _reactions_dict
     2. Implement modification methods (change_binding_energy, change_reaction_barrier)
     3. Optionally implement add/remove operations (MutableNetworkABC)
+
     """
 
     # Subclasses must define these
@@ -226,12 +415,26 @@ class BaseNetwork(NetworkABC):
 
     @property
     def species(self) -> dict[str, Species]:
-        """Get species dictionary."""
+        """Get species dictionary.
+
+        Returns
+        -------
+        dict[str, Species]
+            species dictionary
+
+        """
         return self._species_dict
 
     @property
     def reactions(self) -> dict[int, Reaction]:
-        """Get reactions dictionary."""
+        """Get reactions dictionary.
+
+        Returns
+        -------
+        dict[int, Reaction]
+            Reaction dictionary
+
+        """
         return self._reactions_dict
 
     # ========================================================================
@@ -241,8 +444,10 @@ class BaseNetwork(NetworkABC):
     def get_species_list(self) -> list[Species]:
         """Get all species as a list.
 
-        Returns:
-            list[Species]: list of all species in the Network.
+        Returns
+        -------
+        list[Species]
+            list of all species in the Network.
 
         """
         return list(self._species_dict.values())
@@ -250,9 +455,11 @@ class BaseNetwork(NetworkABC):
     def get_species_dict(self) -> dict[str, Species]:
         """Get species dictionary (copy).
 
-        Returns:
-            dict[str, Species]: copy of species dictionary, with keys of the names
-                of the species, and values their Species instances.
+        Returns
+        -------
+        dict[str, Species]
+            copy of species dictionary, with keys of the names
+            of the species, and values their Species instances.
 
         """
         return deepcopy(self._species_dict)
@@ -260,11 +467,15 @@ class BaseNetwork(NetworkABC):
     def get_specie(self, specie_name: str) -> Species:
         """Get a species by name (copy).
 
-        Args:
-            specie_name (str): species name
+        Parameters
+        ----------
+        specie_name : str
+            species name
 
-        Returns:
-            Species: copy of Species instance.
+        Returns
+        -------
+        Species
+            copy of Species instance.
 
         """
         return deepcopy(self._species_dict[specie_name])
@@ -276,8 +487,10 @@ class BaseNetwork(NetworkABC):
     def get_reaction_list(self) -> list[Reaction]:
         """Get all reactions as a list.
 
-        Returns:
-            list[Reaction]: list of all reactions in the Network.
+        Returns
+        -------
+        list[Reaction]
+            list of all reactions in the Network.
 
         """
         return list(self._reactions_dict.values())
@@ -285,9 +498,11 @@ class BaseNetwork(NetworkABC):
     def get_reaction_dict(self) -> dict[int, Reaction]:
         """Get reactions dictionary (copy).
 
-        Returns:
-            dict[int, Reaction]: copy of reaction dictionary, with keys of the
-                indices and values of the reactions.
+        Returns
+        -------
+        dict[int, Reaction]
+            copy of reaction dictionary, with keys of the
+            indices and values of the reactions.
 
         """
         return deepcopy(self._reactions_dict)
@@ -295,11 +510,15 @@ class BaseNetwork(NetworkABC):
     def get_reaction(self, reaction_idx: int) -> Reaction:
         """Get a reaction by index (copy).
 
-        Args:
-            reaction_idx (int): Index of the reaction
+        Parameters
+        ----------
+        reaction_idx : int
+            Index of the reaction
 
-        Returns:
-            Reaction: copy of reaction with index reaction_idx.
+        Returns
+        -------
+        Reaction
+            copy of reaction with index reaction_idx.
 
         """
         return deepcopy(self._reactions_dict[reaction_idx])
@@ -311,11 +530,15 @@ class BaseNetwork(NetworkABC):
     def get_reactions_by_types(self, reaction_type: str | list[str]) -> list[Reaction]:
         """Get all reactions of specific type(s).
 
-        Args:
-            reaction_type (list[str]): Single type or list of types to filter by
+        Parameters
+        ----------
+        reaction_type : str | list[str]
+            Single type or list of types to filter by
 
-        Returns:
-            list[Reaction]: List of reactions matching the type(s)
+        Returns
+        -------
+        list[Reaction]
+            List of reactions matching the type(s)
 
         """
         if isinstance(reaction_type, str):
@@ -330,13 +553,20 @@ class BaseNetwork(NetworkABC):
     def find_similar_reactions(self, reaction: Reaction) -> dict[int, Reaction]:
         """Find reactions with same reactants and products.
 
-        Args:
-            reaction: Reaction to find similar reactions for
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to find similar reactions for
 
-        Returns:
-            Dictionary of {index: Reaction} for matching reactions
+        Returns
+        -------
+        similar : dict[int, Reaction]
+            Dictionary of {index: Reaction}
+            for matching reactions
 
         """
+        check_expected_type(reaction, Reaction)
+
         similar = {}
 
         target_reactants = set(reaction.get_reactants()) - {"NAN"}
@@ -354,25 +584,33 @@ class BaseNetwork(NetworkABC):
     def get_reaction_index(self, reaction: Reaction) -> int:
         """Get the index of a reaction in the network.
 
-        Args:
-            reaction: Reaction to find
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to find
 
-        Returns:
+        Returns
+        -------
+        int
             Index of the reaction
 
-        Raises:
-            ValueError: If reaction not found or multiple matches exist
+        Raises
+        ------
+        ValueError
+            If reaction not found or multiple matches exist
 
         """
         similar = self.find_similar_reactions(reaction)
 
         if len(similar) == 0:
-            raise ValueError(f"Reaction {reaction} not found in network")
+            msg = f"Reaction {reaction} not found in network"
+            raise ValueError(msg)
         elif len(similar) > 1:
-            raise ValueError(
+            msg = (
                 f"Multiple reactions match {reaction}. "
                 f"Found indices: {list(similar.keys())}"
             )
+            raise ValueError(msg)
 
         return list(similar.keys())[0]
 
@@ -400,27 +638,31 @@ class Network(BaseNetwork, MutableNetworkABC):
     For runtime parameter modification during model execution, use RuntimeNetwork
     from uclchem.advanced.runtime_network instead.
 
-    Examples:
-        >>> # Load for analysis
-        >>> network = Network.from_csv()
+    Attributes
+    ----------
+    _species_dict : dict[str, Species]
+        Internal species storage {name: Species}
+    _reactions_dict : dict[int, Reaction]
+        Internal reaction storage {index: Reaction}
 
-        >>> # Build with validation
-        >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
-        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
-        >>>
-        >>> species_list, user_defined_bulk = read_species_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
-        ... )
-        >>> reactions_list, dropped_reactions = read_reaction_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
-        ...     species_list,
-        ...     "UCL",
-        ... )
-        >>> network = Network.build(species_list, reactions_list, gas_phase_extrapolation=True)
+    Examples
+    --------
+    >>> # Load for analysis
+    >>> network = Network.from_csv()
 
-    Attributes:
-        _species_dict: Internal species storage {name: Species}
-        _reactions_dict: Internal reaction storage {index: Reaction}
+    >>> # Build with validation
+    >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+    >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+    >>>
+    >>> species_list, user_defined_bulk = read_species_file(
+    ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+    ... )
+    >>> reactions_list, dropped_reactions = read_reaction_file(
+    ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+    ...     species_list,
+    ...     "UCL",
+    ... )
+    >>> network = Network.build(species_list, reactions_list, gas_phase_extrapolation=True)
 
     """
 
@@ -439,9 +681,12 @@ class Network(BaseNetwork, MutableNetworkABC):
         For runtime parameter modification, use RuntimeNetwork from
         uclchem.advanced.runtime_network instead.
 
-        Args:
-            species_dict: Species dictionary {name: Species}
-            reaction_dict: Reaction dictionary {index: Reaction}
+        Parameters
+        ----------
+        species_dict : dict[str, Species]
+            Species dictionary {name: Species}
+        reaction_dict : dict[int, Reaction]
+            Reaction dictionary {index: Reaction}
 
         """
         self._species_dict = species_dict
@@ -456,26 +701,34 @@ class Network(BaseNetwork, MutableNetworkABC):
         cls,
         species_path: str | Path | None = None,
         reactions_path: str | Path | None = None,
-    ) -> "Network":
+    ) -> Network:
         """Load network from CSV files.
 
         Loads a pre-compiled network from CSV files without any validation
         or automatic generation. This is the primary method for loading
         networks for analysis purposes.
 
-        Args:
-            species_path: Path to species CSV (None = use default installation)
-            reactions_path: Path to reactions CSV (None = use default installation)
+        Parameters
+        ----------
+        species_path : str | Path | None
+            Path to species CSV (None = use default installation).
+            Default = None.
+        reactions_path : str | Path | None
+            Path to reactions CSV (None = use default installation).
+            Default = None.
 
-        Returns:
-            Network: Loaded network instance
+        Returns
+        -------
+        Network
+            Loaded network instance
 
-        Examples:
-            >>> # Load default compiled network
-            >>> network = Network.from_csv()
+        Examples
+        --------
+        >>> # Load default compiled network
+        >>> network = Network.from_csv()
 
-            >>> # Load old/custom network for analysis
-            >>> network = Network.from_csv('old/species.csv', 'old/reactions.csv') # doctest: +SKIP
+        >>> # Load old/custom network for analysis
+        >>> network = Network.from_csv('old/species.csv', 'old/reactions.csv') # doctest: +SKIP
 
         """
         # Use defaults if not provided
@@ -484,7 +737,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         if reactions_path is None:
             reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
 
-        logging.debug(f"Loading network from {species_path} and {reactions_path}")
+        logger.debug(f"Loading network from {species_path} and {reactions_path}")
 
         # Load CSVs
         species_data = pd.read_csv(species_path)
@@ -505,33 +758,39 @@ class Network(BaseNetwork, MutableNetworkABC):
         cls,
         species: list[Species],
         reactions: list[Reaction],
-    ) -> "Network":
+    ) -> Network:
         """Create network directly from lists.
 
         Direct instantiation from species and reaction lists without any
         validation or automatic generation. Useful for programmatic network
         construction or as a base for NetworkBuilder.
 
-        Args:
-            species: List of Species objects
-            reactions: List of Reaction objects
+        Parameters
+        ----------
+        species : list[Species]
+            List of Species objects
+        reactions : list[Reaction]
+            List of Reaction objects
 
-        Returns:
-            Network: Network instance
+        Returns
+        -------
+        Network
+            Network instance
 
-        Example:
-            >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
-            >>> from uclchem.utils import UCLCHEM_ROOT_DIR
-            >>>
-            >>> species_list, user_defined_bulk = read_species_file(
-            ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
-            ... )
-            >>> reactions_list, dropped_reactions = read_reaction_file(
-            ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
-            ...     species_list,
-            ...     "UCL",
-            ... )
-            >>> network = Network.from_lists(species_list, reactions_list)
+        Examples
+        --------
+        >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+        >>>
+        >>> species_list, user_defined_bulk = read_species_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+        ... )
+        >>> reactions_list, dropped_reactions = read_reaction_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+        ...     species_list,
+        ...     "UCL",
+        ... )
+        >>> network = Network.from_lists(species_list, reactions_list)
 
         """
         species_dict = {s.get_name(): s for s in species}
@@ -540,48 +799,58 @@ class Network(BaseNetwork, MutableNetworkABC):
 
     @classmethod
     def build(
-        cls, species: list[Species], reactions: list[Reaction], **build_options
-    ) -> "Network":
+        cls,
+        species: list[Species],
+        reactions: list[Reaction],
+        **build_options: Any,
+    ) -> Network:
         """Build network with full validation and automatic generation.
 
         This is the primary method for building new networks with full validation,
         automatic reaction generation (freeze-out, desorption, bulk), branching
         ratio checks, and all build-time operations. Delegates to NetworkBuilder.
 
-        Args:
-            species: List of Species objects
-            reactions: List of Reaction objects
-            **build_options: Options passed to NetworkBuilder:
-                - user_defined_bulk: List of user-defined bulk species
-                - gas_phase_extrapolation: bool (default False)
-                - add_crp_photo_to_grain: bool (default False)
-                - derive_reaction_exothermicity: list[str] or None
-                - database_reaction_exothermicity: list[Union[str, Path]] or None
+        Parameters
+        ----------
+        species : list[Species]
+            List of Species objects
+        reactions : list[Reaction]
+            List of Reaction objects
+        **build_options : Any
+            Options passed to NetworkBuilder:
+            - user_defined_bulk: List of user-defined bulk species
+            - gas_phase_extrapolation: bool (default False)
+            - add_crp_photo_to_grain: bool (default False)
+            - derive_reaction_exothermicity: list[str] or None
+            - database_reaction_exothermicity: list[Union[str, Path]] or None
 
-        Returns:
-            Network: Fully built and validated network
+        Returns
+        -------
+        Network
+            Fully built and validated network
 
-        Examples:
-            >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
-            >>> from uclchem.utils import UCLCHEM_ROOT_DIR
-            >>>
-            >>> species_list, user_defined_bulk = read_species_file(
-            ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
-            ... )
-            >>> reactions_list, dropped_reactions = read_reaction_file(
-            ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
-            ...     species_list,
-            ...     "UCL",
-            ... )
-            >>> network = Network.build(
-            ...     species=species_list,
-            ...     reactions=reactions_list,
-            ...     gas_phase_extrapolation=True,
-            ...     add_crp_photo_to_grain=True
-            ... )
+        Examples
+        --------
+        >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+        >>>
+        >>> species_list, user_defined_bulk = read_species_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+        ... )
+        >>> reactions_list, dropped_reactions = read_reaction_file(
+        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+        ...     species_list,
+        ...     "UCL",
+        ... )
+        >>> network = Network.build(
+        ...     species=species_list,
+        ...     reactions=reactions_list,
+        ...     gas_phase_extrapolation=True,
+        ...     add_crp_photo_to_grain=True
+        ... )
 
         """
-        from uclchem.makerates.network_builder import NetworkBuilder
+        from uclchem.makerates.network_builder import NetworkBuilder  # noqa: PLC0415
 
         builder = NetworkBuilder(species, reactions, **build_options)
         return builder.build()
@@ -592,7 +861,14 @@ class Network(BaseNetwork, MutableNetworkABC):
 
     @property
     def species(self) -> dict[str, Species]:
-        """Get species dictionary."""
+        """Get species dictionary.
+
+        Returns
+        -------
+        dict[str, Species]
+            species dictionary
+
+        """
         return self._species_dict
 
     # Note: Read operations (get_species_list, get_reaction_list, etc.)
@@ -603,75 +879,124 @@ class Network(BaseNetwork, MutableNetworkABC):
     # ========================================================================
 
     def set_specie(self, species_name: str, species: Species) -> None:
-        """Set/update a species."""
+        """Set/update a species.
+
+        Parameters
+        ----------
+        species_name : str
+            Name of species
+        species : Species
+            Species to replace the old Species with
+
+        """
         self._species_dict[species_name] = species
 
     def set_species_dict(self, new_species_dict: dict[str, Species]) -> None:
-        """Replace entire species dictionary."""
-        self._species_dict = new_species_dict
+        """Replace entire species dictionary.
 
-    def add_species(self, species: Species | list[Species | list]) -> None:
-        """Add species to network.
-
-        Args:
-            species: Species object, list of Species, or CSV-style entries
-
-        Raises:
-            ValueError: If there is an error when converting the CSV-style entries to
-                Species instances
-            TypeError: If input was not a Species, list of Species instances, or
-                CSV-style entries.
+        Parameters
+        ----------
+        new_species_dict : dict[str, Species]
+            dictionary with keys the
+            names of the species and values the Species instances.
 
         """
+        self._species_dict = new_species_dict
+
+    def add_species(self, species: Species | Sequence[Species | list]) -> None:
+        """Add species to network.
+
+        Parameters
+        ----------
+        species : Species | Sequence[Species | list]
+            Species object, list of Species,
+            or CSV-style entries
+
+        Raises
+        ------
+        ValueError
+            If there is an error when converting the CSV-style entries to
+            Species instances
+        TypeError
+            If input was not a Species, list of Species instances, or
+            CSV-style entries.
+
+        """
+        species_list: list[Species]
         # Convert to list of Species objects
         if isinstance(species, list):
             if len(species) == 0:
-                logging.warning("Tried to add empty species list, ignoring.")
+                logger.warning("Tried to add empty species list, ignoring.")
                 return
             elif isinstance(species[0], Species):
-                pass  # Already Species objects
+                species_list = species  # type: ignore
             elif isinstance(species[0], list):
                 try:
-                    species = [Species(spec) for spec in species]
+                    species_list = [Species(spec) for spec in species]  # type: ignore
                 except ValueError as error:
-                    raise ValueError(
-                        "Failed to convert CSV entries to Species objects"
-                    ) from error
+                    msg = "Failed to convert CSV entries to Species objects"
+                    raise ValueError(msg) from error
         elif isinstance(species, Species):
-            species = [species]
+            species_list = [species]
         else:
-            raise TypeError(
-                "Input must be Species object, list of Species, or CSV entries"
-            )
+            msg = "Input must be Species object, list of Species, or CSV entries"
+            raise TypeError(msg)
 
         # Add to dictionary
-        for specie in species:
+        for specie in species_list:
             # Filter out reaction types
             if specie.get_name() in reaction_types:
-                logging.info(
-                    f"Ignoring reaction type {specie.get_name()} in species list"
-                )
+                logger.info(f"Ignoring reaction type {specie.get_name()} in species list")
                 continue
 
             # Warn on duplicates
             if specie.get_name() in self._species_dict:
-                logging.warning(
+                logger.warning(
                     f"Species {specie.get_name()} already exists, keeping old definition"
                 )
                 continue
 
             # Filter out empty species
-            if specie.get_name() in ["", "NAN"]:
+            if specie.get_name() in {"", "NAN"}:
                 continue
 
             self._species_dict[specie.get_name()] = specie
 
-    def remove_species(self, specie_name: str) -> None:
-        """Remove a species from network."""
-        if specie_name in self._species_dict:
-            del self._species_dict[specie_name]
-        else:
-            logging.warning(f"Species {specie_name} not found in network")
+    def remove_species(self, species: str | Species) -> None:
+        """Remove a species from network.
+
+        Parameters
+        ----------
+        species : str | Species
+            name of species to be deleted, or the Species instance
+
+        Raises
+        ------
+        ValueError
+            If no species ``species`` is in the Network.
+
+        Examples
+        --------
+        >>> network = Network.from_csv()
+        >>>
+        >>> network.remove_species("CO2")
+        >>> # CO2 is now no longer in our network
+        >>> # If we try to remove it again, we will get an error
+        >>> network.remove_species("CO2")
+        Traceback (most recent call last):
+        ...
+        ValueError: Species CO2 not found in network.
+
+        """
+        if isinstance(species, Species):
+            species = species.get_name()
+        check_expected_type(species, str)
+
+        if species not in self._species_dict:
+            msg = f"Species {species} not found in network."
+            raise ValueError(msg)
+
+        del self._species_dict[species]
 
     def sort_species(self) -> None:
         """Sort species by type and mass, with electron last."""
@@ -701,53 +1026,86 @@ class Network(BaseNetwork, MutableNetworkABC):
     # ========================================================================
 
     def set_reaction(self, reaction_idx: int, reaction: Reaction) -> None:
-        """Set/update a reaction at specific index."""
+        """Set/update a reaction at specific index.
+
+        Parameters
+        ----------
+        reaction_idx : int
+            index of reaction to set.
+        reaction : Reaction
+            new reaction instance.
+
+        Raises
+        ------
+        RuntimeError
+            If the number of reactions changes.
+
+        """
+        check_expected_type(reaction, Reaction)
+
         old_length = len(self._reactions_dict)
         self._reactions_dict[reaction_idx] = reaction
-        assert old_length == len(self._reactions_dict), (
-            "Setting the reaction caused a change in the number of reactions"
-        )
+        if old_length != len(self._reactions_dict):
+            msg = "Setting the reaction caused a change in the number of reactions"
+            raise RuntimeError(msg)
 
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
-        """Replace entire reaction dictionary."""
+        """Replace the entire reaction dictionary.
+
+        Parameters
+        ----------
+        new_dict : dict[int, Reaction]
+            Dictionary with keys indices and values
+            Reaction instances.
+
+        """
+        check_expected_type(new_dict, dict)
+        for reaction in new_dict.values():
+            check_expected_type(reaction, Reaction)
+
         self._reactions_dict = new_dict
 
-    def add_reactions(self, reactions: Reaction | list[list | Reaction]) -> None:
+    def add_reactions(self, reactions: Reaction | Sequence[list | Reaction]) -> None:
         """Add reactions to network.
 
-        Args:
-            reactions (Reaction | list[list | Reaction]): Reaction object, list of Reactions,
-                or CSV-style entries
+        Parameters
+        ----------
+        reactions : Reaction | Sequence[list | Reaction]
+            Reaction object, list of Reactions,
+            or CSV-style entries
 
-        Raises:
-            ValueError: If there is an error when converting the CSV-style entries to
-                Reaction instances
-            TypeError: If input was not a Reaction, list of Reaction instances, or
-                CSV-style entries.
+        Raises
+        ------
+        ValueError
+            If there is an error when converting the CSV-style entries to
+            Reaction instances
+        TypeError
+            If input was not a Reaction, list of Reaction instances, or
+            CSV-style entries.
+
         """
         # Convert to list of Reaction objects
+        reactions_list: list[Reaction]
         if isinstance(reactions, list):
             if len(reactions) == 0:
-                logging.warning("Tried to add empty reactions list, ignoring.")
+                logger.warning("Tried to add empty reactions list, ignoring.")
                 return
             elif isinstance(reactions[0], Reaction):
-                pass  # Already Reaction objects
+                reactions_list = reactions  # type: ignore
             elif isinstance(reactions[0], list):
                 try:
-                    reactions = [Reaction(reac) for reac in reactions]
+                    reactions_list = [Reaction(reac) for reac in reactions]
                 except ValueError as error:
-                    raise ValueError(
-                        "Failed to convert CSV entries to Reaction objects"
-                    ) from error
+                    msg = "Failed to convert CSV entries to Reaction objects"
+                    raise ValueError(msg) from error
         elif isinstance(reactions, Reaction):
-            reactions = [reactions]
+            reactions_list = [reactions]
         else:
-            raise TypeError(
-                "Input must be Reaction object, list of Reactions, or CSV entries"
-            )
+            msg = "Input must be Reaction object, list of Reactions, or CSV entries"
+            raise TypeError(msg)
 
         # Add to dictionary
-        for reaction in reactions:
+        for reaction in reactions_list:
             if len(self._reactions_dict) == 0:
                 new_idx = 0
             else:
@@ -758,11 +1116,17 @@ class Network(BaseNetwork, MutableNetworkABC):
     def remove_reaction(self, reaction: Reaction) -> None:
         """Remove a reaction from network.
 
-        Args:
-            reaction (Reaction): Reaction to remove from the network.
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to remove from the network.
 
-        Raises:
-            RuntimeError: If multiple matching reactions are found in the network.
+        Raises
+        ------
+        ValueError
+            If no matching reaction ``reaction`` is found in the network.
+        RuntimeError
+            If multiple matching reactions are found in the network.
 
         """
         similar_reactions = list(self.find_similar_reactions(reaction).items())
@@ -771,28 +1135,41 @@ class Network(BaseNetwork, MutableNetworkABC):
             reaction_idx, _ = similar_reactions[0]
             del self._reactions_dict[reaction_idx]
         elif len(similar_reactions) == 0:
-            logging.warning(f"Reaction {reaction} not found in network")
+            msg = f"Reaction {reaction} not found in network"
+            raise ValueError(msg)
         else:
-            raise RuntimeError(
+            msg = (
                 f"Found {len(similar_reactions)} reactions matching {reaction}. "
                 "Use remove_reaction_by_index for piecewise reactions."
             )
+            raise RuntimeError(msg)
 
     def remove_reaction_by_index(self, reaction_idx: int) -> None:
-        """Remove a reaction by its index."""
+        """Remove a reaction by its index.
+
+        Parameters
+        ----------
+        reaction_idx : int
+            Index of reaction to remove.
+
+        """
         if reaction_idx in self._reactions_dict:
             del self._reactions_dict[reaction_idx]
         else:
-            logging.warning(f"Reaction index {reaction_idx} not found in network")
+            logger.warning(f"Reaction index {reaction_idx} not found in network")
 
     def get_reactions_by_types(self, reaction_type: str | list[str]) -> list[Reaction]:
         """Get the union of all reactions of a certain type.
 
-        Args:
-            reaction_type (str): The reaction type to filter on
+        Parameters
+        ----------
+        reaction_type : str | list[str]
+            The reaction type to filter on
 
-        Returns:
-            list[Reaction]: A list of reactions of the specified type
+        Returns
+        -------
+        list[Reaction]
+            A list of reactions of the specified type
 
         """
         if isinstance(reaction_type, str):
@@ -804,7 +1181,15 @@ class Network(BaseNetwork, MutableNetworkABC):
         ]
 
     def sort_reactions(self) -> None:
-        """Sort reactions by type and first reactant."""
+        """Sort reactions by type and first reactant.
+
+        Raises
+        ------
+        RuntimeError
+            If the sorting of species causes the number of species
+            in the network to change.
+
+        """
         reaction_dict = self.get_reaction_dict()
 
         self.set_reaction_dict(
@@ -818,9 +1203,9 @@ class Network(BaseNetwork, MutableNetworkABC):
                 )
             )
         )
-        assert len(reaction_dict) == len(self.get_reaction_dict()), (
-            "Sorting the species caused a difference in the number of species"
-        )
+        if len(reaction_dict) != len(self.get_reaction_dict()):
+            msg = "Sorting the species caused a difference in the number of species"
+            raise RuntimeError(msg)
 
     # Note: Query methods (find_similar_reactions, get_reaction_index, etc.)
     # are inherited from BaseNetwork
@@ -834,18 +1219,25 @@ class Network(BaseNetwork, MutableNetworkABC):
 
         Handles special case of @H2O which affects other bulk species.
 
-        Args:
-            specie (str): string representation of species
-            new_binding_energy (float): new binding energy in K
+        Parameters
+        ----------
+        specie : str
+            string representation of species
+        new_binding_energy : float
+            new binding energy in K
 
-        Raises:
-            ValueError: If `specie` is not in the network.
+        Raises
+        ------
+        ValueError
+            If `specie` is not in the network.
+
         """
         all_species = self.get_species_list()
         all_species_names = [s.get_name() for s in all_species]
 
         if specie not in all_species_names:
-            raise ValueError(f"Species {specie} not found in network")
+            msg = f"Species {specie} not found in network"
+            raise ValueError(msg)
 
         # Special handling for @H2O (affects all bulk species)
         if specie == "@H2O":
@@ -861,7 +1253,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             if "@" in specie and "@H2O" in self._species_dict:
                 h2o_be = self._species_dict["@H2O"].get_binding_energy()
                 if self._species_dict[specie].get_binding_energy() == h2o_be:
-                    logging.warning(
+                    logger.warning(
                         f"Changing binding energy of bulk species {specie} "
                         "that was previously @H2O binding energy limited"
                     )
@@ -874,12 +1266,18 @@ class Network(BaseNetwork, MutableNetworkABC):
         Looks up reaction in Network by its reactants and products.
         If Fortran interface is available, also updates Fortran.
 
-        Args:
-            reaction (Reaction): Reaction to change.
-            barrier (float): New reaction barrier in K
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to change.
+        barrier : float
+            New reaction barrier in K
 
-        Raises:
-            RuntimeError: If multiple matching reactions are found in the network.
+        Raises
+        ------
+        RuntimeError
+            If multiple matching reactions are found in the network.
+
         """
         similar_reactions = list(self.find_similar_reactions(reaction).items())
 
@@ -888,12 +1286,59 @@ class Network(BaseNetwork, MutableNetworkABC):
             self._reactions_dict[reaction_idx].set_gamma(barrier)
 
         elif len(similar_reactions) == 0:
-            logging.warning(f"Reaction {reaction} not found in network")
+            logger.warning(f"Reaction {reaction} not found in network")
         else:
-            raise RuntimeError(
+            msg = (
                 f"Found {len(similar_reactions)} reactions matching {reaction}. "
                 "Cannot uniquely identify which barrier to change."
             )
+            raise RuntimeError(msg)
+
+    def set_important_reaction_indices(self, indices: Mapping[str, int | None]) -> None:
+        """Set the indices of important reactions that are treated differently in UCLCHEM.
+
+        For example, H2 photodissociation has its own treatment in UCLCHEM.
+
+        Not to be called by the user, but by ``uclchem.makerates.network_builder.NetworkBuilder```
+
+        Parameters
+        ----------
+        indices : Mapping[str, int | None]
+            mapping from string representing the
+            reaction to the index of that reaction in the network.
+
+        Raises
+        ------
+        ValueError
+            If any of the values in ``indices`` are None.
+
+        """
+        if any(index is None for index in indices.values()):
+            msg = "Important reaction had index None"
+            raise ValueError(msg)
+        self.important_reactions = indices
+
+    def set_important_species_indices(self, indices: Mapping[str, int | None]) -> None:
+        """Set the indices of important species, like H2.
+
+        Not to be called by the user, but by ``uclchem.makerates.network_builder.NetworkBuilder```
+
+        Parameters
+        ----------
+        indices : Mapping[str, int | None]
+            mapping from name of the species to the
+            index of that species in the network.
+
+        Raises
+        ------
+        ValueError
+            If any of the values in ``indices`` are None.
+
+        """
+        if any(index is None for index in indices.values()):
+            msg = "Important species had index None"
+            raise ValueError(msg)
+        self.important_species = indices
 
 
 # ============================================================================
@@ -913,23 +1358,31 @@ def load_network_from_csv(
     Use this when analyzing pre-compiled networks, comparing network versions,
     or loading old networks for analysis.
 
-    Args:
-        species_path: Path to species CSV (None = use default installation)
-        reactions_path: Path to reactions CSV (None = use default installation)
+    Parameters
+    ----------
+    species_path : str | Path | None
+        Path to species CSV (None = use default installation).
+        Default = None.
+    reactions_path : str | Path | None
+        Path to reactions CSV (None = use default installation).
+        Default = None.
 
-    Returns:
-        Network: Loaded network instance
+    Returns
+    -------
+    Network
+        Loaded network instance
 
-    Examples:
-        >>> # Load default cmpiled network
-        >>> network = load_network_from_csv()
+    Examples
+    --------
+    >>> # Load default cmpiled network
+    >>> network = load_network_from_csv()
 
-        >>> # Load old version for comparison
-        >>> old_network = load_network_from_csv(
-        ...     'archive/v3.0/species.csv',
-        ...     'archive/v3.0/reactions.csv'
-        ... ) # doctest: +SKIP
-        >>> print(f"Species added: {len(network.get_species_list()) - len(old_network.get_species_list())}") # doctest: +SKIP
+    >>> # Load old version for comparison
+    >>> old_network = load_network_from_csv(
+    ...     'archive/v3.0/species.csv',
+    ...     'archive/v3.0/reactions.csv'
+    ... ) # doctest: +SKIP
+    >>> print(f"Species added: {len(network.get_species_list()) - len(old_network.get_species_list())}") # doctest: +SKIP
 
     """  # noqa: W505
     return Network.from_csv(species_path, reactions_path)
@@ -938,11 +1391,11 @@ def load_network_from_csv(
 def build_network(
     species: list[Species],
     reactions: list[Reaction],
-    user_defined_bulk: list = None,
+    user_defined_bulk: list | None = None,
     gas_phase_extrapolation: bool = False,
     add_crp_photo_to_grain: bool = False,
-    derive_reaction_exothermicity: list[str] = None,
-    database_reaction_exothermicity: list[str | Path] = None,
+    derive_reaction_exothermicity: list[str] | None = None,
+    database_reaction_exothermicity: list[str | Path] | None = None,
 ) -> Network:
     """Build a new network with full validation and automatic generation.
 
@@ -959,45 +1412,60 @@ def build_network(
     - Optional gas-phase extrapolation
     - Optional reaction exothermicity calculation
 
-    Args:
-        species: List of Species objects
-        reactions: List of Reaction objects
-        user_defined_bulk: User-specified bulk species (optional)
-        gas_phase_extrapolation: Extrapolate gas-phase reactions temperatures
-        add_crp_photo_to_grain: Add CRP/PHOTON reactions to grain surface
-        derive_reaction_exothermicity: Reaction types to calculate exothermicity for
-        database_reaction_exothermicity: Custom exothermicity database files
+    Parameters
+    ----------
+    species : list[Species]
+        List of Species objects
+    reactions : list[Reaction]
+        List of Reaction objects
+    user_defined_bulk : list | None
+        User-specified bulk species. Default = None.
+    gas_phase_extrapolation : bool
+        Extrapolate gas-phase reactions temperatures.
+        Default = False.
+    add_crp_photo_to_grain : bool
+        Add CRP/PHOTON reactions to grain surface.
+        Default = False.
+    derive_reaction_exothermicity : list[str] | None
+        Reaction types to calculate exothermicity for.
+        Default = None.
+    database_reaction_exothermicity : list[str | Path] | None
+        Custom exothermicity database files.
+        Default = None.
 
-    Returns:
-        Network: Fully built and validated network
+    Returns
+    -------
+    Network
+        Fully built and validated network
 
-    Examples:
-        >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
-        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
-        >>>
-        >>> species_list, user_defined_bulk = read_species_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
-        ... )
-        >>> reactions_list, dropped_reactions = read_reaction_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
-        ...     species_list,
-        ...     "UCL",
-        ... )
+    Examples
+    --------
+    >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+    >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+    >>>
+    >>> species_list, user_defined_bulk = read_species_file(
+    ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+    ... )
+    >>> reactions_list, dropped_reactions = read_reaction_file(
+    ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+    ...     species_list,
+    ...     "UCL",
+    ... )
 
-        >>> # Build network with standard options
-        >>> network = build_network(
-        ...     species=species_list,
-        ...     reactions=reactions_list,
-        ...     gas_phase_extrapolation=True
-        ... )
+    >>> # Build network with standard options
+    >>> network = build_network(
+    ...     species=species_list,
+    ...     reactions=reactions_list,
+    ...     gas_phase_extrapolation=True
+    ... )
 
-        >>> # Build with custom exothermicity
-        >>> network = build_network(
-        ...     species=species_list,
-        ...     reactions=reactions_list,
-        ...     derive_reaction_exothermicity=['PHOTON', 'CRP'],
-        ...     database_reaction_exothermicity=['custom_heating.csv']
-        ... ) # doctest: +SKIP
+    >>> # Build with custom exothermicity
+    >>> network = build_network(
+    ...     species=species_list,
+    ...     reactions=reactions_list,
+    ...     derive_reaction_exothermicity=['PHOTON', 'CRP'],
+    ...     database_reaction_exothermicity=['custom_heating.csv']
+    ... ) # doctest: +SKIP
 
     """
     return Network.build(
@@ -1024,30 +1492,36 @@ def create_network(
     automatic generation. Suitable for programmatic network construction
     or when you already have a fully prepared network.
 
-    Args:
-        species: List of Species objects
-        reactions: List of Reaction objects
+    Parameters
+    ----------
+    species : list[Species]
+        List of Species objects
+    reactions : list[Reaction]
+        List of Reaction objects
 
-    Returns:
-        Network: Network instance
+    Returns
+    -------
+    Network
+        Network instance
 
-    Example:
-        >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
-        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
-        >>>
-        >>> species_list, user_defined_bulk = read_species_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
-        ... )
-        >>> reactions_list, dropped_reactions = read_reaction_file(
-        ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
-        ...     species_list,
-        ...     "UCL",
-        ... )
-        >>>
-        >>> network = create_network(species_list, reactions_list)
-        >>>
-        >>> # Add some additional reactions
-        >>> network.add_reactions(additional_reactions) # doctest: +SKIP
+    Examples
+    --------
+    >>> from uclchem.makerates.io_functions import read_species_file, read_reaction_file
+    >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+    >>>
+    >>> species_list, user_defined_bulk = read_species_file(
+    ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_species.csv"
+    ... )
+    >>> reactions_list, dropped_reactions = read_reaction_file(
+    ...     UCLCHEM_ROOT_DIR / "../../Makerates/data/default/default_grain_network.csv",
+    ...     species_list,
+    ...     "UCL",
+    ... )
+    >>>
+    >>> network = create_network(species_list, reactions_list)
+    >>>
+    >>> # Add some additional reactions
+    >>> network.add_reactions(additional_reactions) # doctest: +SKIP
 
     """
     return Network.from_lists(species, reactions)

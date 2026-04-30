@@ -1,14 +1,12 @@
 """Collection of tests for UCLCHEM.
 
 Deprecated
+
 """
 
 import numpy as np
-from pandas import DataFrame
-from uclchemwrap import uclchemwrap as wrap
 
 import uclchem
-from uclchem.analysis import total_element_abundance
 from uclchem.constants import default_elements_to_check
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
@@ -16,23 +14,28 @@ from uclchem.utils import UCLCHEM_ROOT_DIR
 def test_ode_conservation(
     element_list: list[str] | None = None,
 ) -> dict[str, float]:
-    """Test whether the ODEs conserve elements. Useful to run each time you change network.
-    Integrator errors may still cause elements not to be conserved but they cannot be conserved
-    if the ODEs are not correct.
+    """Test whether the ODEs conserve elements.
 
-    Args:
-        element_list (list[str]): A list of elements for which to check the conservation.
-            If None, use `uclchem.constants.default_elements_to_check`. Default = None.
+    Useful to run each time you change network. Integrator errors may still cause
+    elements not to be conserved but they cannot be conserved if the ODEs are not correct.
 
-    Returns:
-        result (dict[str, float]): A dictionary of the elements in element list with values
-            representing the total rate of change of each element.
+    Parameters
+    ----------
+    element_list : list[str] | None
+        A list of elements for which to check the conservation.
+        If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
+
+    Returns
+    -------
+    result : dict[str, float]
+        A dictionary of the elements in element list with values
+        representing the total change of each element.
 
     """
     if element_list is None:
         element_list = default_elements_to_check
 
-    species_list = np.loadtxt(
+    species_array = np.loadtxt(
         UCLCHEM_ROOT_DIR / "species.csv",
         usecols=[0],
         dtype=str,
@@ -41,7 +44,7 @@ def test_ode_conservation(
         delimiter=",",
         comments="%",
     )
-    species_list = list(species_list)
+    species_list = list(species_array)
     param_dict = {
         "endatfinaldensity": False,
         "freefall": True,
@@ -51,29 +54,16 @@ def test_ode_conservation(
         "finaltime": 1.0e3,
         "outspecies": len(species_list),
     }
-    result = wrap.cloud(
-        dictionary=param_dict,
-        outspeciesin=" ".join(species_list),
-        timepoints=1,
-        gridpoints=1,
-        returnarray=False,
-        givestartabund=False,
-        returnrateconstants=False,
+    model = uclchem.model.Cloud(param_dict, out_species=species_list)
+    model.check_error()
+
+    physics_df, abundances_df = model.get_dataframes()
+    result = uclchem.analysis.check_element_conservation(
+        abundances_df,
+        element_list=element_list,
+        percent=False,
     )
-    abundances = result[-3]
-    specname = result[-2]
-    success_flag = result[-1]
-    abundances = abundances[: param_dict["outspecies"]]
-    param_dict.pop("outspecies")
-    input_abund = np.zeros(uclchem.constants.n_species, dtype=np.float64, order="F")
-    input_abund[: len(abundances)] = abundances
-    rates = wrap.get_odes(param_dict, input_abund)
-    # Explicitely clean off the last element, for some reason the shape
-    # of the ODE is n_species + 1, and we don't need the last one.
-    rates = rates[: len(species_list)]
-    df = DataFrame(rates.reshape(1, -1), columns=species_list)
-    result = {}
-    for element in element_list:
-        discrep = total_element_abundance(element, df).values
-        result[element] = discrep[0]
-    return result
+    result_floats = {
+        element: float(discrepancy) for element, discrepancy in result.items()
+    }
+    return result_floats

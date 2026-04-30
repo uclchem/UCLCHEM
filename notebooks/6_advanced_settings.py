@@ -30,7 +30,7 @@ if not os.path.exists("output_6"):
 # %% [markdown]
 # ## Using GeneralSettings Instead of param_dict
 #
-# The traditional way to configure UCLCHEM models is with parameter dictionaries that are passed when running the UCLCHEM model. The `GeneralSettings` class provides an alternative that directly modifies the Fortran module state before running a model. This has the benefit that you can change things globally, and access things that are not exposted through parameter dictionaries.
+# The traditional way to configure UCLCHEM models is with parameter dictionaries that are passed when running the UCLCHEM model. The `GeneralSettings` class provides an alternative that directly modifies the Fortran module state before running a model. This has the benefit that you can change things globally, and access things that are not exposed through parameter dictionaries.
 #
 # **Key differences:**
 # - Direct access to Fortran variables with autocomplete support
@@ -53,13 +53,13 @@ print(f"Current initial temperature: {settings.defaultparameters.initialtemp.get
 
 # %%
 # Set model parameters
-settings.defaultparameters.initialdens = 1e4
-settings.defaultparameters.initialtemp = 10.0
-settings.defaultparameters.finaltime = 1.0e6
-settings.defaultparameters.rout = 0.1
-settings.defaultparameters.baseav = 1.0
-settings.defaultparameters.freefall = False
-settings.defaultparameters.endatfinaldensity = False
+settings.defaultparameters.initialdens = 1e4  # type: ignore[attr-defined]
+settings.defaultparameters.initialtemp = 10.0  # type: ignore[attr-defined]
+settings.defaultparameters.finaltime = 1.0e6 # type: ignore[attr-defined]
+settings.defaultparameters.rout = 0.1  # type: ignore[attr-defined]
+settings.defaultparameters.baseav = 1.0  # type: ignore[attr-defined]
+settings.defaultparameters.freefall = False  # type: ignore[attr-defined]
+settings.defaultparameters.endatfinaldensity = False  # type: ignore[attr-defined]
 
 # Verify changes
 print(f"New initial density: {settings.defaultparameters.initialdens.get()}")
@@ -69,7 +69,7 @@ print(f"New initial density: {settings.defaultparameters.initialdens.get()}")
 # These settings are exposed from the Fortran DEFAULTPARAMETERS module and can be
 # changed at runtime via GeneralSettings. Set a 10% relative tolerance for frequencies:
 try:
-    settings.defaultparameters.freq_rel_tol = 0.1
+    settings.defaultparameters.freq_rel_tol = 0.1 # type: ignore[attr-defined]
     print(f"Set freq_rel_tol to: {settings.defaultparameters.freq_rel_tol.get()}")
 except Exception:
     print("Note: freq_rel_tol not available until Fortran modules are rebuilt; see README.")
@@ -112,12 +112,12 @@ settings.print_all_edited()
 
 # %%
 # Set a baseline density
-settings.defaultparameters.initialdens = 1e4
+settings.defaultparameters.initialdens = 1e4 # type: ignore[attr-defined]
 print(f"Baseline density: {settings.defaultparameters.initialdens.get()}")
 
 # Run model with temporary higher density
 with settings.temporary_changes():
-    settings.defaultparameters.initialdens = 1e5
+    settings.defaultparameters.initialdens = 1e5 # type: ignore[attr-defined]
     print(f"Inside context: {settings.defaultparameters.initialdens.get()}")
 
     # Use param_dict for file paths

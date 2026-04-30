@@ -10,6 +10,7 @@ Usage::
     uclchem-generate-metadata            # update YAML in-place
     uclchem-generate-metadata --dry-run  # print diff, do not write
     uclchem-generate-metadata --check    # exit 1 if YAML would change (CI use)
+
 """
 
 from __future__ import annotations
@@ -46,8 +47,16 @@ _MODULE_RE = re.compile(r"^\s*MODULE\s+(\w+)\s*$", re.IGNORECASE)
 def _strip_comment(line: str) -> str:
     """Remove Fortran inline comment (everything from ``!`` onward).
 
-    Returns:
+    Parameters
+    ----------
+    line : str
+        line to remove comment of
+
+    Returns
+    -------
+    line : str
         Line with comments stripped, respecting character literals.
+
     """
     # Respect character literals by scanning manually
     in_str = False
@@ -56,12 +65,11 @@ def _strip_comment(line: str) -> str:
         if in_str:
             if ch == quote:
                 in_str = False
-        else:
-            if ch in ("'", '"'):
-                in_str = True
-                quote = ch
-            elif ch == "!":
-                return line[:i]
+        elif ch in {"'", '"'}:
+            in_str = True
+            quote = ch
+        elif ch == "!":
+            return line[:i]
     return line
 
 
@@ -70,10 +78,22 @@ def _extract_param_names(rhs: str) -> list[str]:
 
     Handles comma-separated names with optional array dimensions and initializers::
 
-        a = 1.0, b(10) = (/.../)  ->  ["a", "b"]
+    Parameters
+    ----------
+    rhs : str
+        right hand side of ``PARAMETER ::`` declaration.
 
-    Returns:
+    Returns
+    -------
+    result : list[str]
         List of parameter names in lowercase.
+
+    Examples
+    --------
+    >>> param_names = _extract_param_names("a = 1.0, b(10) = (/.../)")
+    >>> print(param_names)
+    ['a', 'b']
+
     """
     names: list[str] = []
     # Split on commas that are not inside parentheses
@@ -103,14 +123,24 @@ def _extract_param_names(rhs: str) -> list[str]:
     return result
 
 
-def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
-    """Parse all ``.f90`` files in *src_dir* and return module-scope PARAMETERs.
+def parse_fortran_parameters(src_dir: str | Path) -> dict[str, list[str]]:
+    """Parse all ``.f90`` files in ``src_dir`` and return module-scope PARAMETERs.
 
     Handles Fortran continuation lines (ending with ``&`` and starting next line with ``&``).
 
-    Returns:
-        Mapping of f2py module name (lowercase) to sorted list of PARAMETER names.
+    Parameters
+    ----------
+    src_dir : str | Path
+        path to fortran source directory.
+
+    Returns
+    -------
+    result : dict[str, list[str]]
+        Mapping of f2py module name (lowercase)
+        to sorted list of PARAMETER names.
+
     """
+    src_dir = Path(src_dir)
     known_modules = set(_MODULE_NAMES)
     result: dict[str, list[str]] = {}
 
@@ -120,7 +150,7 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
         depth = 0  # nesting level; 0 = module scope
         continuation = ""  # accumulated continuation lines
 
-        with open(f90, encoding="utf-8", errors="replace") as fh:
+        with Path(f90).open(encoding="utf-8", errors="replace") as fh:
             for raw in fh:
                 line = _strip_comment(raw).rstrip()
 
@@ -165,29 +195,65 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
     return result
 
 
-def _load_yaml(path: Path) -> dict:
-    with open(path) as f:
+def _load_yaml(path: str | Path) -> dict:
+    """Load a yaml file to a dictionary.
+
+    Parameters
+    ----------
+    path : str | Path
+        Path to yaml file.
+
+    Returns
+    -------
+    dict
+        loaded dictionary.
+
+    """
+    with Path(path).open() as f:
         return yaml.safe_load(f) or {}
 
 
 def _dump_yaml(data: dict) -> str:
+    """Dump yaml.
+
+    Parameters
+    ----------
+    data : dict
+        Data to dump.
+
+    Returns
+    -------
+    str
+        Dumped dictionary.
+
+    """
     return yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
 
 def _merge(existing: dict, detected: dict[str, list[str]]) -> dict:
-    """Merge *detected* into the ``fortran_parameters`` section of *existing*.
+    """Merge ``detected`` into the ``fortran_parameters`` section of ``existing``.
 
     The ``global`` key and any other hand-maintained keys not present in
     *detected* are left untouched.  Auto-detected module keys are replaced.
 
-    Returns:
+    Parameters
+    ----------
+    existing : dict
+        Existing dictionary
+    detected : dict[str, list[str]]
+        dictionary with key ``fortran_parameters`` to
+        merge into ``existing``.
+
+    Returns
+    -------
+    merged : dict
         New merged dictionary.
+
     """
     merged = dict(existing)
     fp: dict = dict(merged.get("fortran_parameters", {}))
 
-    for mod_name, names in detected.items():
-        fp[mod_name] = names
+    fp.update(detected)
 
     merged["fortran_parameters"] = fp
     return merged
@@ -235,7 +301,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(1)
         return
 
-    with open(_METADATA_PATH, "w") as f:
+    with Path(_METADATA_PATH).open("w") as f:
         f.write(new_text)
     print(f"Updated {_METADATA_PATH}")
     for mod, names in sorted(detected.items()):

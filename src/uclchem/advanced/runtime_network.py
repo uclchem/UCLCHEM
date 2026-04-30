@@ -17,8 +17,10 @@ Key capabilities:
 Thread Safety Warning:
     RuntimeNetwork modifies global Fortran module state and is NOT thread-safe.
     Do not use with multiprocessing, multithreading, or concurrent model runs.
+
 """
 
+import logging
 import warnings
 from types import ModuleType
 
@@ -31,6 +33,8 @@ from uclchem.makerates.reaction import Reaction, skip_reaction_validation
 from uclchem.makerates.species import Species
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
+logger = logging.getLogger(__name__)
+
 
 class RuntimeNetwork(BaseNetwork):
     """Runtime interface to UCLCHEM's compiled Fortran network.
@@ -42,27 +46,24 @@ class RuntimeNetwork(BaseNetwork):
     To "remove" a reaction: set its alpha parameter to 0.0 using disable_reaction().
     To reset changes: call reset_to_initial_state().
 
-    Examples:
-        >>> # Load runtime network
-        >>> network = RuntimeNetwork()
-        >>> print(f"Species: {len(network.get_species_list())}")
-        Species: ...
-        >>> print(f"Reactions: {len(network.get_reaction_list())}")
-        Reactions: ...
+    Examples
+    --------
+    >>> # Load runtime network
+    >>> network = RuntimeNetwork()
+    >>> print(f"Species: {len(network.get_species_list())}")
+    Species: ...
+    >>> print(f"Reactions: {len(network.get_reaction_list())}")
+    Reactions: ...
 
-        >>> # Modify parameters
-        >>> network.modify_reaction_parameters(0, alpha=1e-10, beta=2.0)
-        >>> network.change_binding_energy("H2O", 5773.0)
+    >>> # Modify parameters
+    >>> network.modify_reaction_parameters(0, alpha=1e-10, beta=2.0)
+    >>> network.change_binding_energy("H2O", 5773.0)
 
-        >>> # Disable a reaction
-        >>> network.disable_reaction(5)
+    >>> # Disable a reaction
+    >>> network.disable_reaction(5)
 
-        >>> # Reset when done
-        >>> network.reset_to_initial_state()
-
-    Thread Safety Warning:
-        Modifies global Fortran module state. NOT thread-safe.
-        Do not use with multiprocessing or multithreading.
+    >>> # Reset when done
+    >>> network.reset_to_initial_state()
 
     """
 
@@ -76,18 +77,21 @@ class RuntimeNetwork(BaseNetwork):
         Automatically imports uclchemwrap.network and validates against
         species.csv and reactions.csv from the installation directory.
 
-        Raises:
-            ImportError: If uclchemwrap.network cannot be imported
+        Raises
+        ------
+        ImportError
+            If uclchemwrap.network cannot be imported
 
         """
         # Import the compiled Fortran network module
         try:
-            from uclchemwrap import network as network_module
-        except ImportError:
-            raise ImportError(
+            from uclchemwrap import network as network_module  # noqa: PLC0415
+        except ImportError as e:
+            msg = (
                 "Cannot import Fortran network module. "
                 "Ensure UCLCHEM is properly compiled and installed."
             )
+            raise ImportError(msg) from e
 
         self._fortran = network_module
 
@@ -109,17 +113,22 @@ class RuntimeNetwork(BaseNetwork):
 
         These provide better indexing and validation against the Fortran network.
 
-        Raises:
-            FileNotFoundError: If `"UCLCHEM_ROOT_DIR/species.csv"` or
-                `"UCLCHEM_ROOT_DIR/reactions.csv"` are not valid files.
+        Raises
+        ------
+        FileNotFoundError
+            If `"UCLCHEM_ROOT_DIR/species.csv"` or
+            `"UCLCHEM_ROOT_DIR/reactions.csv"` are not valid files.
+
         """
         species_path = UCLCHEM_ROOT_DIR / "species.csv"
         reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
 
         if not species_path.is_file():
-            raise FileNotFoundError(f"Species CSV not found: {species_path}")
+            msg = f"Species CSV not found: {species_path}"
+            raise FileNotFoundError(msg)
         if not reactions_path.is_file():
-            raise FileNotFoundError(f"Reactions CSV not found: {reactions_path}")
+            msg = f"Reactions CSV not found: {reactions_path}"
+            raise FileNotFoundError(msg)
 
         self._species_csv = pd.read_csv(species_path)
         self._reactions_csv = pd.read_csv(reactions_path)
@@ -127,31 +136,42 @@ class RuntimeNetwork(BaseNetwork):
     def _validate_dimensions(self):
         """Validate that CSV data matches Fortran network dimensions.
 
-        Raises:
-            RuntimeError: If dimensions don't match
+        Raises
+        ------
+        RuntimeError
+            If dimensions don't match
 
         """
+        logger.debug("Validating dimensions of species in csv and in Fortran")
+
         n_species_csv = len(self._species_csv)
         n_species_fortran = len(self._fortran.specname)
 
         if n_species_csv != n_species_fortran:
-            raise RuntimeError(
+            msg = (
                 f"Species count mismatch: {n_species_csv} in CSV vs "
                 f"{n_species_fortran} in compiled Fortran network. "
                 "The installation may be corrupted or out of sync."
             )
+            raise RuntimeError(msg)
+        logger.debug("Ok!")
 
+        logger.debug("Validating dimensions of reactions in csv and in Fortran")
         n_reactions_csv = len(self._reactions_csv)
         n_reactions_fortran = len(self._fortran.alpha)
 
         if n_reactions_csv != n_reactions_fortran:
-            raise RuntimeError(
+            msg = (
                 f"Reaction count mismatch: {n_reactions_csv} in CSV vs "
                 f"{n_reactions_fortran} in compiled Fortran network. "
                 "The installation may be corrupted or out of sync."
             )
+            raise RuntimeError(msg)
+        logger.debug("Ok!")
 
-        # Additional validation: check species names match
+        logger.debug(
+            "Validating that the species names of the first couple of species match"
+        )
         for i in range(min(10, n_species_csv)):  # Check first 10 for quick validation
             csv_name = self._species_csv.iloc[i]["NAME"]
             fortran_name = str(np.char.decode(self._fortran.specname[i])).strip()
@@ -161,19 +181,24 @@ class RuntimeNetwork(BaseNetwork):
                     f"Species name mismatch at index {i}: '{csv_name}' in CSV vs "
                     f"'{fortran_name}' in Fortran. Network may be out of sync.",
                     RuntimeWarning,
+                    stacklevel=2,
                 )
                 break
+        logger.debug("Ok!")
 
     def _load_species_from_fortran(self) -> dict[str, Species]:
         """Load species from Fortran arrays into Python Species objects.
 
-        Returns:
+        Returns
+        -------
+        species_dict : dict[str, Species]
             Dictionary mapping species names to Species objects
 
         """
         species_dict = {}
 
         n_species = len(self._fortran.specname)
+        logger.debug(f"Loading {n_species} species from Fortran")
 
         for i in range(n_species):
             # Extract data from Fortran arrays
@@ -215,14 +240,18 @@ class RuntimeNetwork(BaseNetwork):
         - Empty slot: 0
         - Reaction keywords (GAR, PHOTON, CRP, etc.): 9999
 
-        Returns:
-            Dictionary mapping reaction indices to Reaction objects
+        Returns
+        -------
+        reactions_dict : dict[int, Reaction]
+            Dictionary mapping reaction indices to
+            Reaction objects
 
         """
         reactions_dict = {}
 
         n_reactions = len(self._fortran.alpha)
         n_species = len(self._fortran.specname)
+        logger.debug(f"Loading {n_reactions} reactions from Fortran")
 
         # Load reactions without validation - the compiled Fortran network
         # may contain modeling simplifications (e.g., pseudo-hydrogenation)
@@ -284,10 +313,12 @@ class RuntimeNetwork(BaseNetwork):
                 )
 
                 # Create Reaction object (CSV-style row format)
+                # ruff: noqa: ERA001
                 # [
                 #    R1, R2, R3, P1, P2, P3, P4, alpha, beta, gamma,
                 #    Tmin, Tmax, reduced_mass, extrapolate, exothermicity,
                 # ]
+                # ruff: noqa: ERA001
                 reaction_row = [
                     reactant1,
                     reactant2,
@@ -314,10 +345,14 @@ class RuntimeNetwork(BaseNetwork):
     def _get_species_name(self, index: int) -> str:
         """Get species name from 1-based Fortran index.
 
-        Args:
-            index: 1-based species index in Fortran
+        Parameters
+        ----------
+        index : int
+            1-based species index in Fortran
 
-        Returns:
+        Returns
+        -------
+        str
             Species name
 
         """
@@ -340,13 +375,20 @@ class RuntimeNetwork(BaseNetwork):
         For the keyword sentinel (9999), we fall back to the CSV file to
         get the actual keyword string.
 
-        Args:
-            reaction_idx: Index of reaction in reactions list
-            fortran_idx: Fortran array value for this reactant
-            n_species: Total number of species in network
-            csv_column: Column name in reactions CSV ("Reactant 1", etc.)
+        Parameters
+        ----------
+        reaction_idx : int
+            Index of reaction in reactions list
+        fortran_idx : int
+            Fortran array value for this reactant
+        n_species : int
+            Total number of species in network
+        csv_column : str
+            Column name in reactions CSV ("Reactant 1", etc.)
 
-        Returns:
+        Returns
+        -------
+        str
             Species name or reaction type keyword
 
         """
@@ -369,7 +411,9 @@ class RuntimeNetwork(BaseNetwork):
         Allows fast reset without re-reading CSV files. Caches:
         - Reaction parameters: alpha, beta, gama
         - Species parameters: bindingenergy
+
         """
+        logger.debug("Caching initial state of RuntimeNetwork")
         self._initial_alpha = np.copy(self._fortran.alpha)
         self._initial_beta = np.copy(self._fortran.beta)
         self._initial_gama = np.copy(self._fortran.gama)
@@ -381,7 +425,14 @@ class RuntimeNetwork(BaseNetwork):
 
     @property
     def species(self) -> dict[str, Species]:
-        """Get species dictionary."""
+        """Get species dictionary.
+
+        Returns
+        -------
+        dict[str, Species]
+            Species dictionary
+
+        """
         return self._species_dict
 
     # Note: Read operations (get_species_list, get_species_dict, get_specie,
@@ -394,59 +445,94 @@ class RuntimeNetwork(BaseNetwork):
     def add_species(self, species: Species | list[Species]) -> None:
         """NOT SUPPORTED: Cannot add species to compiled Fortran network.
 
-        Raises:
-            NotImplementedError: Always - Fortran arrays have fixed size
+        Parameters
+        ----------
+        species : Species | list[Species]
+            Species or list of Species to add
+
+        Raises
+        ------
+        NotImplementedError
+            Always - Fortran arrays have fixed size
 
         """
-        raise NotImplementedError(
+        msg = (
             "Cannot add species to RuntimeNetwork. "
             "The compiled Fortran network has fixed structure. "
             "Use Network class (from makerates) for building new networks."
         )
+        raise NotImplementedError(msg)
 
-    def remove_species(self, specie_name: str) -> None:
+    def remove_species(self, species_name: str) -> None:
         """NOT SUPPORTED: Cannot remove species from compiled Fortran network.
 
-        Raises:
-            NotImplementedError: Always - Fortran arrays have fixed size
+        Parameters
+        ----------
+        species_name : str
+            Name of Species to remove.
+
+        Raises
+        ------
+        NotImplementedError
+            Always - Fortran arrays have fixed size
 
         """
-        raise NotImplementedError(
+        msg = (
             "Cannot remove species from RuntimeNetwork. "
             "The compiled Fortran network has fixed structure."
         )
+        raise NotImplementedError(msg)
 
     def set_specie(self, species_name: str, species: Species) -> None:
         """NOT SUPPORTED: Cannot replace species in compiled Fortran network.
 
-        Raises:
-            NotImplementedError: Always - Fortran arrays have fixed size
+        Parameters
+        ----------
+        species_name : str
+            name of Species to adjust
+        species : Species
+            new Species
+
+        Raises
+        ------
+        NotImplementedError
+            Always - Fortran arrays have fixed size
 
         """
-        raise NotImplementedError(
+        msg = (
             "Cannot set species in RuntimeNetwork. "
             "Use change_binding_energy() to modify species parameters."
         )
+        raise NotImplementedError(msg)
 
     def set_species_dict(self, new_species_dict: dict[str, Species]) -> None:
         """NOT SUPPORTED: Cannot replace species dictionary.
 
-        Raises:
-            NotImplementedError: Always - Fortran arrays have fixed size
+        Parameters
+        ----------
+        new_species_dict : dict[str, Species]
+            new species dictionary
+
+        Raises
+        ------
+        NotImplementedError
+            Always - Fortran arrays have fixed size
 
         """
-        raise NotImplementedError("Cannot replace species dictionary in RuntimeNetwork.")
+        msg = "Cannot replace species dictionary in RuntimeNetwork."
+        raise NotImplementedError(msg)
 
     def sort_species(self) -> None:
         """NOT SUPPORTED: Species order is fixed in compiled network.
 
-        Raises:
-            NotImplementedError: Always - species order is fixed
+        Raises
+        ------
+        NotImplementedError
+            Always - species order is fixed
 
         """
-        raise NotImplementedError(
-            "Cannot sort species in RuntimeNetwork. Species order is fixed."
-        )
+        msg = "Cannot sort species in RuntimeNetwork. Species order is fixed."
+        raise NotImplementedError(msg)
 
     # ========================================================================
     # Reaction Interface - Unsupported Operations
@@ -455,75 +541,119 @@ class RuntimeNetwork(BaseNetwork):
     def add_reactions(self, reactions: Reaction | list[Reaction]) -> None:
         """NOT SUPPORTED: Cannot add reactions to compiled Fortran network.
 
-        Raises:
-            NotImplementedError: Always - Fortran arrays have fixed size
+        Parameters
+        ----------
+        reactions : Reaction | list[Reaction]
+            Reaction or list of Reaction instances
+            to add.
+
+        Raises
+        ------
+        NotImplementedError
+            Always - Fortran arrays have fixed size
 
         """
-        raise NotImplementedError(
+        msg = (
             "Cannot add reactions to RuntimeNetwork. "
             "The compiled Fortran network has fixed structure. "
             "Use Network class (from makerates) for building new networks."
         )
+        raise NotImplementedError(msg)
 
     def remove_reaction(self, reaction: Reaction) -> None:
         """NOT SUPPORTED: Cannot remove reactions from compiled Fortran network.
 
         Use disable_reaction() to set alpha=0 instead.
 
-        Raises:
-            NotImplementedError: Always - Fortran arrays have fixed size
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to remove.
+
+        Raises
+        ------
+        NotImplementedError
+            Always - Fortran arrays have fixed size
 
         """
-        raise NotImplementedError(
+        msg = (
             "Cannot remove reactions from RuntimeNetwork. "
             "Use disable_reaction() to set alpha=0 to effectively disable a reaction."
         )
+        raise NotImplementedError(msg)
 
     def remove_reaction_by_index(self, reaction_idx: int) -> None:
         """NOT SUPPORTED: Cannot remove reactions from compiled Fortran network.
 
         Use disable_reaction() to set alpha=0 instead.
 
-        Raises:
-            NotImplementedError: Always - Fortran arrays have fixed size
+        Parameters
+        ----------
+        reaction_idx : int
+            Index of reaction.
+
+        Raises
+        ------
+        NotImplementedError
+            Always - Fortran arrays have fixed size
 
         """
-        raise NotImplementedError(
+        msg = (
             "Cannot remove reactions from RuntimeNetwork. "
             "Use disable_reaction() to set alpha=0 to effectively disable a reaction."
         )
+        raise NotImplementedError(msg)
 
     def set_reaction(self, reaction_idx: int, reaction: Reaction) -> None:
         """NOT SUPPORTED: Cannot replace reactions in compiled Fortran network.
 
-        Raises:
-            NotImplementedError: Always - Fortran arrays have fixed size
+        Parameters
+        ----------
+        reaction_idx : int
+            Index of reaction to change.
+        reaction : Reaction
+            New reaction at index ``reaction_idx``.
+
+        Raises
+        ------
+        NotImplementedError
+            Always - Fortran arrays have fixed size
 
         """
-        raise NotImplementedError(
+        msg = (
             "Cannot replace reactions in RuntimeNetwork. "
             "Use modify_reaction_parameters() to modify reaction parameters."
         )
+        raise NotImplementedError(msg)
 
     def set_reaction_dict(self, new_dict: dict[int, Reaction]) -> None:
         """NOT SUPPORTED: Cannot replace reaction dictionary.
 
-        Raises:
-            NotImplementedError: Always - Fortran arrays have fixed size
+        Parameters
+        ----------
+        new_dict : dict[int, Reaction]
+            New reaction dictionary.
+
+        Raises
+        ------
+        NotImplementedError
+            Always - Fortran arrays have fixed size
 
         """
-        raise NotImplementedError("Cannot replace reaction dictionary in RuntimeNetwork.")
+        msg = "Cannot replace reaction dictionary in RuntimeNetwork."
+        raise NotImplementedError(msg)
 
     def sort_reactions(self) -> None:
         """NOT SUPPORTED: Reaction order is fixed in compiled network.
 
-        Raises:
-            NotImplementedError: Always - reaction order is fixed
+        Raises
+        ------
+        NotImplementedError
+            Always - reaction order is fixed
 
         """
-        raise NotImplementedError(
-            "Cannot sort reactions in RuntimeNetwork. Reaction order is fixed."
-        )
+        msg = "Cannot sort reactions in RuntimeNetwork. Reaction order is fixed."
+        raise NotImplementedError(msg)
 
     # Note: Query methods (get_reactions_by_types, find_similar_reactions,
     # get_reaction_index) are inherited from BaseNetwork
@@ -532,15 +662,20 @@ class RuntimeNetwork(BaseNetwork):
     # Parameter Modification Methods (NetworkABC Implementation)
     # ========================================================================
 
-    def change_binding_energy(self, specie: str, new_binding_energy: float) -> None:
+    def change_binding_energy(self, specie: str, new_binding_energy: int | float) -> None:
         """Change binding energy of a species (modifies Fortran array).
 
-        Args:
-            specie: Name of the species
-            new_binding_energy: New binding energy in Kelvin
+        Parameters
+        ----------
+        specie : str
+            Name of the species
+        new_binding_energy : int | float
+            New binding energy in Kelvin
 
-        Raises:
-            KeyError: If species not found
+        Raises
+        ------
+        KeyError
+            If species not found
 
         """
         # Find species index (1-based)
@@ -550,9 +685,13 @@ class RuntimeNetwork(BaseNetwork):
 
         try:
             species_idx = species_names.index(specie)
-        except ValueError:
-            raise KeyError(f"Species '{specie}' not found in network")
+        except ValueError as e:
+            msg = f"Species '{specie}' not found in network"
+            raise KeyError(msg) from e
 
+        logger.debug(
+            f"Changing the binding energy of species {specie} to {new_binding_energy}"
+        )
         # Modify Fortran array (0-based)
         self._fortran.bindingenergy[species_idx] = float(new_binding_energy)
 
@@ -563,16 +702,22 @@ class RuntimeNetwork(BaseNetwork):
     def change_reaction_barrier(self, reaction: Reaction, barrier: float) -> None:
         """Change activation barrier of a reaction (modifies Fortran gamma).
 
-        Args:
-            reaction (Reaction): Reaction to modify
-            barrier (float): New activation barrier in Kelvin
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to modify
+        barrier : float
+            New activation barrier in Kelvin
 
-        Raises:
-            RuntimeError: If reaction is not a reaction on the ices.
+        Raises
+        ------
+        RuntimeError
+            If reaction is not a reaction on the ices.
 
         """
         if not reaction.is_ice_reaction():
-            raise RuntimeError("Only ice reactions have modifiable barriers.")
+            msg = "Only ice reactions have modifiable barriers."
+            raise RuntimeError(msg)
         reaction_idx = self.get_reaction_index(reaction)
         self.modify_reaction_parameters(reaction_idx, gamma=barrier)
 
@@ -589,35 +734,56 @@ class RuntimeNetwork(BaseNetwork):
     ) -> None:
         """Modify reaction rate parameters in Fortran arrays.
 
-        Args:
-            reaction_idx: Index of reaction to modify (0-based)
-            alpha: New alpha value (pre-exponential factor)
-            beta: New beta value (temperature exponent)
-            gamma: New gamma value (activation energy in K)
+        Only changes parameters that are not None.
 
-        Raises:
-            IndexError: If reaction_idx out of range
+        Parameters
+        ----------
+        reaction_idx : int
+            Index of reaction to modify (0-based)
+        alpha : float | None
+            New alpha value (pre-exponential factor).
+            Default = None.
+        beta : float | None
+            New beta value (temperature exponent).
+            Default = None.
+        gamma : float | None
+            New gamma value (activation energy in K).
+            Default = None.
 
-        Example:
-            >>> network = RuntimeNetwork()
-            >>> network.modify_reaction_parameters(0, alpha=1e-10, beta=2.0)
-            >>> network.reset_to_initial_state()
+        Raises
+        ------
+        IndexError
+            If reaction_idx out of range
+
+        Examples
+        --------
+        >>> network = RuntimeNetwork()
+        >>> network.modify_reaction_parameters(0, alpha=1e-10, beta=2.0)
+        >>> network.reset_to_initial_state()
 
         """
         if reaction_idx < 0 or reaction_idx >= len(self._fortran.alpha):
-            raise IndexError(f"Reaction index {reaction_idx} out of range")
+            msg = f"Reaction index {reaction_idx} out of range"
+            raise IndexError(msg)
 
         if alpha is not None:
+            logger.debug(
+                f"Setting alpha of reaction with index {reaction_idx} to {alpha}"
+            )
             self._fortran.alpha[reaction_idx] = float(alpha)
             if reaction_idx in self._reactions_dict:
                 self._reactions_dict[reaction_idx].set_alpha(float(alpha))
 
         if beta is not None:
+            logger.debug(f"Setting beta of reaction with index {reaction_idx} to {alpha}")
             self._fortran.beta[reaction_idx] = float(beta)
             if reaction_idx in self._reactions_dict:
                 self._reactions_dict[reaction_idx].set_beta(float(beta))
 
         if gamma is not None:
+            logger.debug(
+                f"Setting gamma of reaction with index {reaction_idx} to {alpha}"
+            )
             self._fortran.gama[reaction_idx] = float(gamma)
             if reaction_idx in self._reactions_dict:
                 self._reactions_dict[reaction_idx].set_gamma(float(gamma))
@@ -629,15 +795,19 @@ class RuntimeNetwork(BaseNetwork):
         the Fortran network has fixed structure. Setting alpha=0 makes
         the reaction have zero rate.
 
-        Args:
-            reaction_idx: Index of reaction to disable (0-based)
+        Parameters
+        ----------
+        reaction_idx : int
+            Index of reaction to disable (0-based)
 
-        Example:
-            >>> network = RuntimeNetwork()
-            >>> network.disable_reaction(5)
-            >>> network.reset_to_initial_state()
+        Examples
+        --------
+        >>> network = RuntimeNetwork()
+        >>> network.disable_reaction(5)
+        >>> network.reset_to_initial_state()
 
         """
+        logger.debug(f"Disabling reaction with index {reaction_idx}")
         self.modify_reaction_parameters(reaction_idx, alpha=0.0)
 
     def reset_to_initial_state(self) -> None:
@@ -647,12 +817,14 @@ class RuntimeNetwork(BaseNetwork):
         - All reaction parameters (alpha, beta, gamma)
         - All species binding energies
 
-        Example:
-            >>> network = RuntimeNetwork()
-            >>> network.modify_reaction_parameters(0, alpha=999.0)
-            >>> network.reset_to_initial_state()  # Restores original alpha
+        Examples
+        --------
+        >>> network = RuntimeNetwork()
+        >>> network.modify_reaction_parameters(0, alpha=999.0)
+        >>> network.reset_to_initial_state()  # Restores original alpha
 
         """
+        logger.debug("Resetting RuntimeNetwork to initial state")
         np.copyto(self._fortran.alpha, self._initial_alpha)
         np.copyto(self._fortran.beta, self._initial_beta)
         np.copyto(self._fortran.gama, self._initial_gama)
@@ -667,9 +839,16 @@ class RuntimeNetwork(BaseNetwork):
         """Direct access to Fortran module for advanced users.
 
         Warning: Use with caution. Direct modification bypasses safety checks.
+
+        Returns
+        -------
+        ModuleType
+            Fortran module
+
         """
         warnings.warn(
             "Direct access to Fortran module is discouraged, this can break ungracefully. "
-            "Use GeneralSettings and instead"
+            "Use GeneralSettings instead",
+            stacklevel=2,
         )
         return self._fortran

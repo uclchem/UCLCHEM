@@ -186,7 +186,7 @@ class TestMultipleModelsInFile:
 
 
 # ============================================================================
-# Overwrite behaviour
+# Overwrite behavior
 # ============================================================================
 
 
@@ -578,6 +578,39 @@ class TestDataIntegrity:
             params = json.loads(raw[0] if raw.ndim > 0 else raw)
             assert isinstance(params, dict)
             assert "initialdens" in params or "initialDens" in params
+
+    def test_array_precision(self, tmp_path):
+        model = Cloud(param_dict=_DEFAULT_PARAMS)
+
+        fp64_path = tmp_path / "fp64_precision.h5"
+        fp32_path = tmp_path / "fp32_precision.h5"
+        fp16_path = tmp_path / "fp16_precision.h5"
+
+        model.save_model(fp64_path, array_dtype=np.float64)
+        model.save_model(fp32_path, array_dtype=np.float32)
+
+        # This will cause a warning because it overflows,
+        # but still include it to demonstrate.
+        model.save_model(fp16_path, array_dtype=np.float16)
+
+        fp64_size = fp64_path.stat().st_size
+        fp32_size = fp32_path.stat().st_size
+        fp16_size = fp16_path.stat().st_size
+        assert fp32_size < fp64_size and fp16_size < fp32_size, (
+            f"Expected smaller file size when saving arrays at half precision, but got sizes {fp64_size} (full), {fp32_size} (half), and {fp16_size} (quarter) in Bytes"
+        )
+
+        fp64_model = load_model(fp64_path)
+        assert fp64_model.chemical_abun_array.dtype == np.float64
+
+        fp32_model = load_model(fp32_path)
+        assert fp32_model.chemical_abun_array.dtype == np.float32
+
+        assert np.allclose(
+            fp64_model.chemical_abun_array,
+            fp32_model.chemical_abun_array,
+            atol=0,
+        )
 
 
 # ============================================================================

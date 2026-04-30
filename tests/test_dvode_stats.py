@@ -69,14 +69,14 @@ def test_stats_dataframe_columns():
     model = uclchem.model.Cloud(param_dict=params)
 
     # Test joined DataFrame
-    df = model.get_dataframes(with_stats=True)
+    df = model.get_joined_dataframes(with_stats=True)
     for stat_name in DVODE_STAT_NAMES:
         assert stat_name in df.columns, (
             f"Column {stat_name} should be in joined DataFrame"
         )
 
     # Test separate DataFrames
-    result = model.get_dataframes(joined=False, with_stats=True)
+    result = model.get_dataframes(with_stats=True)
     stats_df = result[-1]  # stats_df is the last element when with_stats=True
     expected_columns = ["Point"] + DVODE_STAT_NAMES
     assert list(stats_df.columns) == expected_columns, (
@@ -94,7 +94,7 @@ def test_stats_reasonable_values():
         "finalTime": 1.0e5,
     }
     model = uclchem.model.Cloud(param_dict=params)
-    df = model.get_dataframes(with_stats=True)
+    df = model.get_joined_dataframes(with_stats=True)
 
     # Filter to rows where the solver actually ran (non-zero timesteps)
     active_rows = df[df["Time"] > 0]

@@ -491,7 +491,7 @@ CONTAINS
                
                
                !want to divide populations in factor3 by density of current and multiply by density of cloud 
-               !averaged over the column to surface then multply by distance to cloud surface
+               !averaged over the column to surface then multiply by distance to cloud surface
                !that is (size*average_density/density) or column_density/density
                STEP_SIZE = CLOUD_COLUMN/CLOUD_DENSITY
                !STEP_SIZE = CLOUD_SIZE!
@@ -1549,7 +1549,7 @@ SUBROUTINE writeOpacities(fileName,modelNumber)
                   LINE_LABELS(P)=TRIM(ADJUSTL(LINE_LABELS(P)))//'um'
                END IF
 
-!              Handle labelling of both neutral and ionized atomic species
+!              Handle labeling of both neutral and ionized atomic species
                LINE_LABELS(P)='['//coolants(N)%NAME(1:VERIFY(coolants(N)%NAME,'+ ',.TRUE.))  &
                                & //REPEAT('I',COUNT_SUBSTRING(coolants(N)%NAME,'+'))//'I] ' &
                                & //TRIM(ADJUSTL(LINE_LABELS(P)))

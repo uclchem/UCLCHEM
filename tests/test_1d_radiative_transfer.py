@@ -54,7 +54,7 @@ def base_1d_params():
         "enable_radiative_transfer": True,  # Enable 1D radiative transfer
         "density_scale_radius": 0.05,  # Distance scale in pc
         "density_power_index": 2.0,  # Density profile power law index
-        "rout": 0.1,  # Outer radius in pc
+        "r_out": 0.1,  # Outer radius in pc
         # Relax solver tolerances to avoid integrator taking excessive sub-steps
         # which can exceed the Fortran-allocated time array (compiled with smaller TIMEPOINTS).
         "reltol": 1e-4,
@@ -99,7 +99,6 @@ class Test1DCloud:
         assert physics.ndim == 3, "Physics array should be 3-dimensional for 1D model"
         assert chemistry.ndim == 3, "Chemistry array should be 3-dimensional"
 
-        n_timepoints = physics.shape[0]
         n_points = physics.shape[1]
 
         assert n_points == base_1d_params["points"], (
@@ -172,7 +171,7 @@ class Test1DCloud:
         assert output_file.exists(), "Output file was not created"
 
         # Verify file contains data for multiple points
-        with open(output_file) as f:
+        with Path(output_file).open() as f:
             lines = f.readlines()
 
         # File should have header + data for multiple timepoints * multiple points
@@ -300,7 +299,7 @@ class Test1DParameterValidation:
             "finalTime": 1.0e5,
             "points": 5,
             "enable_radiative_transfer": True,
-            "rout": 0.1,
+            "r_out": 0.1,
         }
 
         # Test steep profile (high power index)
@@ -487,7 +486,7 @@ class TestOOCloud1D:
         model.check_error()
 
         # Get DataFrames
-        phys_df, chem_df = model.get_dataframes(joined=False)
+        phys_df, chem_df = model.get_dataframes()
 
         # Check Point column exists
         assert "Point" in phys_df.columns
@@ -513,7 +512,7 @@ class TestOOCloud1D:
         model.check_error()
 
         # Get data for first point only
-        phys_df_pt0, chem_df_pt0 = model.get_dataframes(point=0, joined=False)
+        phys_df_pt0, chem_df_pt0 = model.get_dataframes(point=0)
 
         # Should only have data for one point
         assert phys_df_pt0["Point"].nunique() == 1
@@ -521,7 +520,7 @@ class TestOOCloud1D:
 
         # Get data for last point
         last_pt = base_1d_params["points"] - 1
-        phys_df_last, chem_df_last = model.get_dataframes(point=last_pt, joined=False)
+        phys_df_last, chem_df_last = model.get_dataframes(point=last_pt)
 
         assert (phys_df_last["Point"] == base_1d_params["points"]).all()
 
@@ -541,7 +540,7 @@ class TestOOCloud1D:
         model.check_error()
 
         # Get DataFrames with stats
-        result = model.get_dataframes(joined=False, with_stats=True)
+        result = model.get_dataframes(with_stats=True)
 
         # Should return: phys, chem, stats
         assert len(result) == 3
@@ -569,7 +568,7 @@ class TestOOCollapse1D:
             "enable_radiative_transfer": True,
             "density_scale_radius": 0.05,
             "density_power_index": 2.0,
-            "rout": 0.1,
+            "r_out": 0.1,
             "reltol": 1e-4,
             "abstol_factor": 1e-8,
             "writeStep": 5,
@@ -601,7 +600,7 @@ class TestOOCollapse1D:
             "enable_radiative_transfer": True,
             "density_scale_radius": 0.05,
             "density_power_index": 2.0,
-            "rout": 0.1,
+            "r_out": 0.1,
             "reltol": 1e-4,
             "abstol_factor": 1e-8,
         }
@@ -629,7 +628,7 @@ class TestOOHotcore1D:
     def test_oo_hotcore_1d_stellar_heating(self, hotcore_1d_params):
         """Test 1D hotcore with stellar heating parameters."""
         model = uclchem.model.PrestellarCore(
-            temp_indx=1,
+            temp_index=1,
             max_temperature=300.0,
             param_dict=hotcore_1d_params,
             out_species=["CO", "H2O", "CH3OH"],
@@ -640,7 +639,7 @@ class TestOOHotcore1D:
         assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS
 
         # Get final temperatures at each point
-        phys_df = model.get_dataframes(joined=False)[0]
+        phys_df = model.get_dataframes()[0]
         final_time = phys_df["Time"].max()
         final_temps = (
             phys_df[phys_df["Time"] == final_time].sort_values("Point")["gasTemp"].values
@@ -698,7 +697,7 @@ class TestOOModelSavingLoading1D:
         model2 = uclchem.model.Cloud.from_file(str(save_file))
 
         # Get DataFrames from loaded model
-        phys_df, chem_df = model2.get_dataframes(joined=False)
+        phys_df, chem_df = model2.get_dataframes()
 
         # Point column should exist
         assert "Point" in phys_df.columns
@@ -735,7 +734,7 @@ class TestOOModelChaining1D:
         model2.check_error()
 
         # Verify time continuity
-        phys_df2 = model2.get_dataframes(joined=False)[0]
+        phys_df2 = model2.get_dataframes()[0]
         assert phys_df2["Time"].iloc[-1] >= 5.0e4
 
         # Verify chemistry evolved
@@ -797,7 +796,7 @@ class TestEndAtFinalDensity:
         model.check_error()
 
         # Get final density
-        phys_df = model.get_dataframes(joined=False)[0]
+        phys_df = model.get_dataframes()[0]
         final_density = phys_df["Density"].iloc[-1]
 
         # Should have stopped at or before finalDens
@@ -826,7 +825,7 @@ class TestEndAtFinalDensity:
         model.check_error()
 
         # Get final time
-        phys_df = model.get_dataframes(joined=False)[0]
+        phys_df = model.get_dataframes()[0]
         final_time = phys_df["Time"].iloc[-1]
 
         # Should have run to finalTime

@@ -1,7 +1,8 @@
 """Plot the UCLCHEM tests ran by `run_uclchem_tests.py`.
 
 Demonstration of plotfunctions. called from main UCLCHEM directory.
-It reads full UCLCHEM output and saves a plot of the abudances of select species.
+It reads full UCLCHEM output and saves a plot of the abundances of select species.
+
 """
 
 import matplotlib.pyplot as plt
@@ -40,7 +41,7 @@ plot_types = {
 
 print_elemental_conservation = True
 if __name__ == "__main__":
-    for plot_type in plot_types:
+    for plot_type, species_names in plot_types.items():
         fig, axes = plt.subplots(3, 3, figsize=(16, 12), tight_layout=True)
         axes = axes.flatten()
         i = 0
@@ -51,7 +52,6 @@ if __name__ == "__main__":
             "static": "Static Cloud",
         }
         model_data = {}
-        speciesNames = plot_types[plot_type]
         for folder in ["example-output/", "test-output/"]:
             for model in ["phase1", "phase2", "static"]:
                 axis = axes[i]
@@ -77,16 +77,16 @@ if __name__ == "__main__":
 
                 # plot species and save to test.png, alternatively send dens instead of time.
                 axis = uclchem.plot.plot_species(
-                    axis, model_data[folder + model], speciesNames, legend=False
+                    axis, model_data[folder + model], species_names, legend=False
                 )
                 if folder == "test-output/":
                     axis.set_prop_cycle(None)
                     axis = uclchem.plot.plot_species(
                         axis,
                         model_data["example-output/" + model],
-                        speciesNames,
-                        alpha=0.5,
+                        species_names,
                         legend=False,
+                        plot_kwargs={"alpha": 0.5},
                     )
                 if plot_type == "charge":
                     ions = [
@@ -115,7 +115,7 @@ if __name__ == "__main__":
                         axis.get_title()
                         + f" (Charge conservation: {charge_conservation.mean():.2e})"
                     )
-                i = i + 1
+                i += 1
         axes[0].text(
             0.02,
             0.98,

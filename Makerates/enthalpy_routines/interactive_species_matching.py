@@ -13,11 +13,14 @@ Usage:
     mapping = matcher.match_species(uclchem_species_list)
     matcher.save_mapping(mapping, "species_mapping_v1.220.csv")  # Default CSV output
     matcher.save_mapping_yaml(mapping, "species_mapping_v1.220.yaml")  # Optional YAML
+
 """
 
+import argparse
 import logging
 import re
 import shutil
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -25,15 +28,21 @@ import numpy as np
 import pandas as pd
 import yaml
 
+logger = logging.getLogger(__name__)
+
 
 def clean_numeric_value(value: Any) -> float | None:
     """Convert numpy scalars and other numeric types to clean Python floats.
 
-    Args:
-        value (Any): Numeric value that might be a numpy scalar, pandas Series, etc.
+    Parameters
+    ----------
+    value : Any
+        Numeric value that might be a numpy scalar, pandas Series, etc.
 
-    Returns:
-        float | None: Clean Python float or None if the value is NaN/missing
+    Returns
+    -------
+    float | None
+        Clean Python float or None if the value is NaN/missing
 
     """
     if pd.isna(value):
@@ -56,11 +65,15 @@ class FormulaParser:
     def parse_uclchem_formula(formula: str) -> dict[str, int]:
         """Parse UCLCHEM all-caps formulas (e.g., 'SIC2+', 'HE+').
 
-        Args:
-            formula (str): UCLCHEM-type formula
+        Parameters
+        ----------
+        formula : str
+            UCLCHEM-type formula
 
-        Returns:
-            elements (dict[str, int]): Dictionary with counter of elements
+        Returns
+        -------
+        elements : dict[str, int]
+            Dictionary with counter of elements
 
         """
         if not isinstance(formula, str):
@@ -121,11 +134,15 @@ class FormulaParser:
     def parse_atct_formula(formula: str) -> dict[str, int]:
         """Parse ATCT proper-case formulas (e.g., 'SiC2+', 'He+').
 
-        Args:
-            formula (str): ATCT formula
+        Parameters
+        ----------
+        formula : str
+            ATCT formula
 
-        Returns:
-            element_counts (dict[str, int]): Count of number of elements
+        Returns
+        -------
+        element_counts : dict[str, int]
+            Count of number of elements
 
         """
         if not isinstance(formula, str):
@@ -153,11 +170,16 @@ class FormulaParser:
     def formulas_match(cls, uclchem_formula: str, atct_formula: str) -> bool:
         """Check if UCLCHEM and ATCT formulas represent the same species.
 
-        Args:
-            uclchem_formula (str): UCLCHEM formula
-            atct_formula (str): ATCT formula
+        Parameters
+        ----------
+        uclchem_formula : str
+            UCLCHEM formula
+        atct_formula : str
+            ATCT formula
 
-        Returns:
+        Returns
+        -------
+        bool
             whether the elemental composition of the two formulas is the same.
 
         """
@@ -172,8 +194,10 @@ class SpeciesMatcher:
     def __init__(self, atct_csv_path: str):
         """Initialize matcher with ATCT data.
 
-        Args:
-            atct_csv_path: Path to cleaned ATCT CSV file
+        Parameters
+        ----------
+        atct_csv_path : str
+            Path to cleaned ATCT CSV file
 
         """
         self.atct_data = pd.read_csv(atct_csv_path)
@@ -190,24 +214,30 @@ class SpeciesMatcher:
     ) -> dict[str, dict[str, Any]]:
         """Match UCLCHEM species with ATCT data.
 
-        Args:
-            uclchem_species (list[str]): List of UCLCHEM species names
-            resume_file (str | Path | None): Optional path to resume from previous session
+        Parameters
+        ----------
+        uclchem_species : list[str]
+            List of UCLCHEM species names
+        resume_file : str | Path | None
+            Optional path to resume from previous session.
+            Default = None.
 
-        Returns:
-            dict[str, dict[str, Any]]: Dictionary mapping UCLCHEM species to ATCT matches
+        Returns
+        -------
+        dict[str, dict[str, Any]]
+            Dictionary mapping UCLCHEM species to ATCT matches
 
         """
         # Filter valid species
         target_species = [
             s
             for s in uclchem_species
-            if pd.notna(s) and s not in ["NAN", ""] and not s.startswith(("#", "@"))
+            if pd.notna(s) and s not in {"NAN", ""} and not s.startswith(("#", "@"))
         ]
 
         # Resume from previous session if requested
         if resume_file and Path(resume_file).exists():
-            return self._resume_matching(target_species, resume_file)
+            return self._resume_matching(resume_file)
 
         # Stage 1: Find exact matches
         exact_matches = self._find_exact_matches(target_species)
@@ -235,12 +265,16 @@ class SpeciesMatcher:
     def _find_exact_matches(self, species_list: list[str]) -> dict[str, dict[str, Any]]:
         """Find exact formula matches between UCLCHEM and ATCT.
 
-        Args:
-            species_list (list[str]): list of UCLCHEM species
+        Parameters
+        ----------
+        species_list : list[str]
+            list of UCLCHEM species
 
-        Returns:
-            exact_matches (dict[str, dict[str, Any]]): mapping from UCLCHEM species
-                to exact matches in ATCT.
+        Returns
+        -------
+        exact_matches : dict[str, dict[str, Any]]
+            mapping from UCLCHEM species
+            to exact matches in ATCT.
 
         """
         exact_matches = {}
@@ -268,12 +302,16 @@ class SpeciesMatcher:
     ) -> dict[str, list[dict[str, Any]]]:
         """Find formula-based isomer matches.
 
-        Args:
-            species_list (list[str]): list of species to find all ATcT entries for.
+        Parameters
+        ----------
+        species_list : list[str]
+            list of species to find all ATcT entries for.
 
-        Returns:
-            isomer_matches (dict[str, list[dict[str, Any]]]): mapping from UCLCHEM species
-                to list of ATcT matches.
+        Returns
+        -------
+        isomer_matches : dict[str, list[dict[str, Any]]]
+            mapping from UCLCHEM species
+            to list of ATcT matches.
 
         """
         isomer_matches = {}
@@ -319,14 +357,19 @@ class SpeciesMatcher:
     ) -> dict[str, dict[str, Any]]:
         """Interactive selection for species with multiple matches.
 
-        Args:
-            isomer_matches (dict[str, list[dict[str, Any]]]): mapping from UCLCHEM species
-                to list of ATcT matches.
-            session_file (str | Path | None): path to session file.
+        Parameters
+        ----------
+        isomer_matches : dict[str, list[dict[str, Any]]]
+            mapping from UCLCHEM species
+            to list of ATcT matches.
+        session_file : str | Path | None
+            path to session file. Default = None.
 
-        Returns:
-            canonical_matches (dict[str, dict[str, Any]]): mapping from UCLCHEM species
-                to selection of the isomer matches.
+        Returns
+        -------
+        canonical_matches : dict[str, dict[str, Any]]
+            mapping from UCLCHEM species
+            to selection of the isomer matches.
 
         """
         canonical_matches = {}
@@ -351,7 +394,8 @@ class SpeciesMatcher:
         print("=" * 60)
 
         # Check if user wants to continue from previous session or start fresh
-        if session_file and Path(session_file).exists():
+        if session_file is not None and Path(session_file).exists():
+            session_file = Path(session_file)
             while True:
                 try:
                     continue_choice = (
@@ -373,7 +417,7 @@ class SpeciesMatcher:
                     elif continue_choice == "c":
                         # Load previous session
                         try:
-                            with open(session_file) as f:
+                            with session_file.open() as f:
                                 previous_session = yaml.safe_load(f)
                             prev = previous_session.get("completed", {})
                             canonical_matches.update(prev)
@@ -386,7 +430,7 @@ class SpeciesMatcher:
                                 return canonical_matches
                             break
                         except Exception as e:
-                            logging.warning(f"Error loading session: {e}")
+                            logger.warning(f"Error loading session: {e}")
                             break
                     elif continue_choice == "n":
                         # Backup existing session instead of deleting it
@@ -426,9 +470,10 @@ class SpeciesMatcher:
                     )
 
                     if user_input == "q":
-                        print("Session saved")
+                        print("Quitting")
                         if session_file:
                             self._save_session(session_data, session_file)
+                            print("Session saved")
                         return canonical_matches
 
                     if user_input == "s":
@@ -472,17 +517,19 @@ class SpeciesMatcher:
     def _backup_session_file(session_file: str | Path) -> str:
         """Create a simple backup of existing session file.
 
-        Args:
-            session_file (str | Path): path to session file to back up.
+        Parameters
+        ----------
+        session_file : str | Path
+            path to session file to back up.
 
-        Returns:
-            str: String representing backup. If the backup failed,
-                is "backup_failed{extension}", otherwise is
-                "{basename}_backup{extension}".
+        Returns
+        -------
+        str
+            String representing backup. If the backup failed,
+            is "backup_failed{extension}", otherwise is
+            "{basename}_backup{extension}".
 
         """
-        import shutil
-
         base_name = Path(session_file).stem
         extension = Path(session_file).suffix
         backup_name = f"{base_name}_backup{extension}"
@@ -491,33 +538,46 @@ class SpeciesMatcher:
             shutil.copy2(session_file, backup_name)
             return backup_name
         except Exception as e:
-            logging.warning(f"Could not backup session file: {e}")
+            logger.warning(f"Could not backup session file: {e}")
             return f"backup_failed{extension}"
 
     @staticmethod
-    def _save_session(session_data: dict, session_file: str) -> None:
-        """Save current matching session."""
+    def _save_session(session_data: dict, session_file: str | Path) -> None:
+        """Save current matching session.
+
+        Parameters
+        ----------
+        session_data : dict
+            data of the current session
+        session_file : str | Path
+            where to save the current session
+
+        """
         try:
-            with open(session_file, "w") as f:
+            with Path(session_file).open("w") as f:
                 yaml.dump(session_data, f, indent=2, default_flow_style=False)
 
             completed = len(session_data.get("completed", {}))
             remaining = len(session_data.get("remaining", {}))
             print(f"Progress: {completed} done, {remaining} left")
         except Exception as e:
-            logging.warning(f"Warning: Could not save session: {e}")
+            logger.warning(f"Warning: Could not save session: {e}")
 
     def _resume_matching(self, resume_file: str | Path) -> dict[str, dict[str, Any]]:
         """Resume matching from saved session.
 
-        Args:
-            resume_file (str | Path): Path to saved session file.
+        Parameters
+        ----------
+        resume_file : str | Path
+            Path to saved session file.
 
-        Returns:
-            completed (dict[str, dict[str, Any]]): species mapping dictionary.
+        Returns
+        -------
+        completed : dict[str, dict[str, Any]]
+            species mapping dictionary.
 
         """
-        with open(resume_file) as f:
+        with Path(resume_file).open() as f:
             session_data = yaml.safe_load(f)
 
         completed = session_data.get("completed", {})
@@ -536,15 +596,18 @@ class SpeciesMatcher:
     ) -> None:
         """Save species mapping to YAML file.
 
-        Args:
-            mapping (dict[str, dict[str, Any]]): Species mapping dictionary
-            output_path (str | Path): Output YAML file path
+        Parameters
+        ----------
+        mapping : dict[str, dict[str, Any]]
+            Species mapping dictionary
+        output_path : str | Path
+            Output YAML file path
 
         """
-        output_file = Path(output_path)
-        output_file.parent.mkdir(parents=True, exist_ok=True)
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_file, "w") as f:
+        with output_path.open("w") as f:
             yaml.dump(mapping, f, indent=2, default_flow_style=False)
 
         print(f"Saved YAML: {len(mapping)} species → {output_path}")
@@ -554,9 +617,12 @@ class SpeciesMatcher:
     ) -> None:
         """Save species mapping to CSV file (default format).
 
-        Args:
-            mapping (dict[str, dict[str, Any]]): Species mapping dictionary
-            output_path (str | Path): Output CSV file path
+        Parameters
+        ----------
+        mapping : dict[str, dict[str, Any]]
+            Species mapping dictionary
+        output_path : str | Path
+            Output CSV file path
 
         """
         self.export_mapping_csv(mapping, output_path)
@@ -565,14 +631,18 @@ class SpeciesMatcher:
     def load_mapping(mapping_path: str | Path) -> dict[str, dict[str, Any]]:
         """Load species mapping from YAML file.
 
-        Args:
-            mapping_path: Path to mapping YAML file
+        Parameters
+        ----------
+        mapping_path : str | Path
+            Path to mapping YAML file
 
-        Returns:
+        Returns
+        -------
+        mapping : dict[str, dict[str, Any]]
             Species mapping dictionary
 
         """
-        with open(mapping_path) as f:
+        with Path(mapping_path).open() as f:
             mapping = yaml.safe_load(f)
 
         print(f"Loaded: {len(mapping)} species from {mapping_path}")
@@ -584,9 +654,12 @@ class SpeciesMatcher:
     ) -> None:
         """Export mapping to CSV for easy review.
 
-        Args:
-            mapping (dict[str, dict[str, Any]]): Species mapping dictionary
-            output_path (str | Path): Output CSV file path
+        Parameters
+        ----------
+        mapping : dict[str, dict[str, Any]]
+            Species mapping dictionary
+        output_path : str | Path
+            Output CSV file path
 
         """
         mapping_data = []
@@ -624,10 +697,14 @@ class SpeciesMatcher:
         overwriting any existing non-zero values. Creates a backup of the
         original file as NAME_backup.csv.
 
-        Args:
-            species_df (pd.DataFrame): Original UCLCHEM species DataFrame
-            mapping (dict[str, dict[str, Any]]): Species mapping dictionary from match_species()
-            original_csv_path (str | Path): Path to the original species CSV file
+        Parameters
+        ----------
+        species_df : pd.DataFrame
+            Original UCLCHEM species DataFrame
+        mapping : dict[str, dict[str, Any]]
+            Species mapping dictionary from match_species()
+        original_csv_path : str | Path
+            Path to the original species CSV file
 
         """
         # Create backup file path
@@ -640,7 +717,7 @@ class SpeciesMatcher:
         try:
             shutil.copy2(original_csv_path, backup_path)
         except Exception as e:
-            logging.warning(f"Backup failed: {e}")
+            logger.warning(f"Backup failed: {e}")
 
         # Create a copy of the DataFrame to avoid modifying the original
         updated_df = species_df.copy()
@@ -693,20 +770,17 @@ class SpeciesMatcher:
                 f"{total_with_enthalpy}/{len(updated_df)} total"
             )
         except Exception as e:
-            logging.warning(f"Write failed: {e}")
+            logger.warning(f"Write failed: {e}")
             # Restore backup if write failed
             try:
                 shutil.copy2(backup_path, original_csv_path)
                 print("Restored from backup")
             except Exception as restore_error:
-                logging.warning(f"Restore failed: {restore_error}")
+                logger.warning(f"Restore failed: {restore_error}")
 
 
 def main() -> None:
     """Command-line interface for species matcher."""
-    import argparse
-    import sys
-
     # Configure logging
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
@@ -737,7 +811,7 @@ def main() -> None:
         "--overwrite_uclchem_species_csv",
         action="store_true",
         help=(
-            "If set, enchance the original UCLCHEM species CSV with "
+            "If set, enhance the original UCLCHEM species CSV with "
             "enthalpy data based on the matching."
         ),
     )
@@ -762,7 +836,7 @@ def main() -> None:
         print(f"Complete: {len(mapping)} species mapped")
 
     except Exception as e:
-        logging.error(f"Error: {e}")
+        logger.error(f"Error: {e}")
         sys.exit(1)
 
 

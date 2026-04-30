@@ -1,6 +1,8 @@
 """A script largely intended for people unfamiliar with Python.
+
 If you run run_uclchem_tests.py, you'll produce several example model outputs.
 This script then uses those outputs to demonstrate some simple plotting.
+
 """
 
 import matplotlib.pyplot as plt
@@ -19,7 +21,7 @@ if __name__ == "__main__":
     # create_abundance_plot will return pyplot figure and axis objects where the axis
     # contains a plot of the species abundance through time for all species in species_list
     # optionally, save it to plot_file
-    fig, ax = uclchem.analysis.create_abundance_plot(
+    fig, ax = uclchem.plot.create_abundance_plot(
         model_data, species_list, plot_file="examples/example_plot.png"
     )
 
@@ -27,7 +29,7 @@ if __name__ == "__main__":
     # in which case, plot_species() may be more helpful
 
     fig, ax = plt.subplots()
-    ax = uclchem.analysis.plot_species(ax, model_data, species_list)
+    ax = uclchem.plot.plot_species(ax, model_data, species_list)
 
     # the returned object lets us make some edits
     # lets plot the temperature on a second y axis
@@ -46,5 +48,5 @@ if __name__ == "__main__":
     for i, species in enumerate(
         [["CO", "#CO"], ["H2O", "#H2O"], ["CH3OH", "#CH3OH"], ["CO2", "#CO2"]]
     ):
-        axes[i] = uclchem.plot_species(axes[i], model_data, species)
+        axes[i] = uclchem.plot.plot_species(axes[i], model_data, species)
     fig.savefig("examples/multiplot_example.png")

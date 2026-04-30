@@ -26,14 +26,32 @@ repos:
         stages: [pre-commit]
         pass_filenames: false
 
-  # Ruff: Undefined names and syntax errors (F, E999)
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.45.0
+    hooks:
+      - id: typos
+        name: "[correctness] Check spelling errors"
+        description: "Check for spelling errors in files"
+        args: []
+        pass_filenames: false
+
+  # Ruff: Code style, docstrings, etc
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.9
     hooks:
       - id: ruff
         name: "[correctness] Ruff linter"
-        description: "Check for undefined names (F821) and syntax errors (E999)"
-        args: [--fix, --select=F821,E999]
+        description: "Check for linting errors"
+        args: [--fix]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.20.0
+    hooks:
+      - id: mypy
+        name: "[correctness] Mypy type checking"
+        description: "Check for type errors"
+        args: [--install-types, --non-interactive]
+
 
   # ============================================================================
   # TIER 2: STYLE (Auto-fixable formatting and imports)
@@ -45,6 +63,18 @@ repos:
       - id: ruff-format
         name: "[style] Ruff formatter"
         description: "Format code consistently (indentation, quotes, whitespace)"
+
+  # Comment this out for now, but soon there will be an option to force 
+  # docstrings that span multiple lines to end with a blank line.
+  # - repo: https://github.com/JanEricNitschke/pymend
+  #   rev: v3.2.0
+  #   hooks:
+  #     - id: pymend
+  #       name: "[style] Check docstrings with pymend"
+  #       description: "Make sure that all docstrings are correct"
+  #       # For now include '--noforce-raises', because pymend's exception checking
+  #       # is not as good as ruffs.
+  #       args: ["--output-style", "numpydoc", "--noforce-raises", "--noforce-docstrings", "--force-multiline-docs-end-with-blank", "--exclude", "tests/"]
 
   # ============================================================================
   # TIER 3: QUALITY (Docstrings, type hints, simplifications)

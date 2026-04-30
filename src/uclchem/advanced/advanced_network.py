@@ -14,8 +14,10 @@ Do not use with multiprocessing, multithreading, or concurrent model runs.
 
 Note: Changes made through NetworkState affect the global Fortran state and persist
 across model runs in the same Python session.
+
 """
 
+import warnings
 from types import ModuleType
 
 import numpy as np
@@ -31,14 +33,18 @@ class RuntimeSpecies:
     """Wrapper for a species in the compiled network.
 
     Provides a similar API to makerates.Species but accesses the compiled Fortran data.
+
     """
 
     def __init__(self, index: int, network_ref: ModuleType):
         """Initialize a runtime species wrapper.
 
-        Args:
-            index: 1-based species index in Fortran arrays
-            network_ref: Reference to the network module
+        Parameters
+        ----------
+        index : int
+            1-based species index in Fortran arrays
+        network_ref : ModuleType
+            Reference to the network module
 
         """
         self._index = index
@@ -48,8 +54,10 @@ class RuntimeSpecies:
     def get_name(self) -> str:
         """Get the species name.
 
-        Returns:
-            str: Species name
+        Returns
+        -------
+        str
+            Species name
 
         """
         return str(np.char.decode(self._network.specname[self._array_idx])).strip()
@@ -57,8 +65,10 @@ class RuntimeSpecies:
     def get_mass(self) -> float:
         """Get the molecular mass.
 
-        Returns:
-            float: Mass in atomic mass units
+        Returns
+        -------
+        float
+            Mass in atomic mass units
 
         """
         return float(self._network.mass[self._array_idx])
@@ -66,8 +76,10 @@ class RuntimeSpecies:
     def get_binding_energy(self) -> float | None:
         """Get the binding energy.
 
-        Returns:
-            float | None: Binding energy in Kelvin (or None if not available)
+        Returns
+        -------
+        float | None
+            Binding energy in Kelvin (or None if not available)
 
         """
         if self._array_idx < len(self._network.bindingenergy):
@@ -77,8 +89,10 @@ class RuntimeSpecies:
     def get_enthalpy(self) -> float | None:
         """Get the formation enthalpy.
 
-        Returns:
-            float | None: Formation enthalpy in kJ/mol (or None if not available)
+        Returns
+        -------
+        float | None
+            Formation enthalpy in kJ/mol (or None if not available)
 
         """
         if self._array_idx < len(self._network.formationenthalpy):
@@ -88,12 +102,14 @@ class RuntimeSpecies:
     def is_ice_species(self) -> bool:
         """Return whether the species is a species on the grain.
 
-        Returns:
-            bool: True if it is an ice species.
+        Returns
+        -------
+        bool
+            True if it is an ice species.
 
         """
         return (
-            self.get_name() in ["BULK", "SURFACE"]
+            self.get_name() in {"BULK", "SURFACE"}
             or self.get_name().startswith(
                 "#",
             )
@@ -103,7 +119,9 @@ class RuntimeSpecies:
     def is_ion(self) -> bool:
         """Check if this is an ion.
 
-        Returns:
+        Returns
+        -------
+        bool
             True if species name contains + or -
 
         """
@@ -113,7 +131,9 @@ class RuntimeSpecies:
     def get_charge(self) -> int:
         """Get the charge of the species.
 
-        Returns:
+        Returns
+        -------
+        int
             Charge (+1, -1, or 0)
 
         """
@@ -124,10 +144,26 @@ class RuntimeSpecies:
             return -1
         return 0
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Get name of species.
+
+        Returns
+        -------
+        str
+            Name of species
+
+        """
         return self.get_name()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Get printable representation of RuntimeSpecies.
+
+        Returns
+        -------
+        str
+            Printable representation of RuntimeSpecies
+
+        """
         return f"RuntimeSpecies({self._index}, '{self.get_name()}')"
 
 
@@ -135,14 +171,18 @@ class RuntimeReaction:
     """Wrapper for a reaction in the compiled network.
 
     Provides a similar API to makerates.Reaction but accesses the compiled Fortran data.
+
     """
 
     def __init__(self, index: int, network_ref: ModuleType):
         """Initialize a runtime reaction wrapper.
 
-        Args:
-            index (int): 1-based reaction index in Fortran arrays
-            network_ref (ModuleType): Reference to the network module
+        Parameters
+        ----------
+        index : int
+            1-based reaction index in Fortran arrays
+        network_ref : ModuleType
+            Reference to the network module
 
         """
         self._index = index
@@ -152,7 +192,9 @@ class RuntimeReaction:
     def get_reactants(self) -> list[int]:
         """Get the reactant species indices.
 
-        Returns:
+        Returns
+        -------
+        list[int]
             List of species indices (1-based, 0 for NAN)
 
         """
@@ -165,7 +207,9 @@ class RuntimeReaction:
     def get_products(self) -> list[int]:
         """Get the product species indices.
 
-        Returns:
+        Returns
+        -------
+        list[int]
             List of species indices (1-based, 0 for NAN)
 
         """
@@ -179,7 +223,9 @@ class RuntimeReaction:
     def get_reactant_names(self) -> list[str]:
         """Get the names of reactant species.
 
-        Returns:
+        Returns
+        -------
+        list[str]
             List of reactant names (NAN for empty slots)
 
         """
@@ -195,7 +241,9 @@ class RuntimeReaction:
     def get_product_names(self) -> list[str]:
         """Get the names of product species.
 
-        Returns:
+        Returns
+        -------
+        list[str]
             List of product names (NAN for empty slots)
 
         """
@@ -211,7 +259,9 @@ class RuntimeReaction:
     def get_alpha(self) -> float:
         """Get the alpha parameter (pre-exponential factor).
 
-        Returns:
+        Returns
+        -------
+        float
             Alpha parameter
 
         """
@@ -220,7 +270,9 @@ class RuntimeReaction:
     def get_beta(self) -> float:
         """Get the beta parameter (temperature exponent).
 
-        Returns:
+        Returns
+        -------
+        float
             Beta parameter
 
         """
@@ -229,7 +281,9 @@ class RuntimeReaction:
     def get_gamma(self) -> float:
         """Get the gamma parameter (activation energy).
 
-        Returns:
+        Returns
+        -------
+        float
             Gamma parameter in Kelvin
 
         """
@@ -238,7 +292,9 @@ class RuntimeReaction:
     def get_templow(self) -> float:
         """Get the minimum valid temperature.
 
-        Returns:
+        Returns
+        -------
+        float
             Minimum temperature in Kelvin
 
         """
@@ -247,7 +303,9 @@ class RuntimeReaction:
     def get_temphigh(self) -> float:
         """Get the maximum valid temperature.
 
-        Returns:
+        Returns
+        -------
+        float
             Maximum temperature in Kelvin
 
         """
@@ -256,7 +314,9 @@ class RuntimeReaction:
     def get_exothermicity(self) -> float:
         """Get the reaction exothermicity.
 
-        Returns:
+        Returns
+        -------
+        float
             Exothermicity in erg
 
         """
@@ -265,8 +325,10 @@ class RuntimeReaction:
     def get_reduced_mass(self) -> float | None:
         """Get the reduced mass for tunneling reactions.
 
-        Returns:
-            float | None: Reduced mass in AMU (or None if not available)
+        Returns
+        -------
+        float | None
+            Reduced mass in AMU (or None if not available)
 
         """
         if self._array_idx < len(self._network.reducedmasses):
@@ -276,8 +338,10 @@ class RuntimeReaction:
     def get_rate(self) -> float | None:
         """Get the computed reaction rate from the last model run.
 
-        Returns:
-            float | None: Computed rate (only meaningful after running a model)
+        Returns
+        -------
+        float | None
+            Computed rate (only meaningful after running a model)
 
         """
         if self._array_idx < len(self._network.reactionrate):
@@ -287,8 +351,10 @@ class RuntimeReaction:
     def set_alpha(self, value: float) -> None:
         """Set the alpha parameter.
 
-        Args:
-            value (float): New alpha value
+        Parameters
+        ----------
+        value : float
+            New alpha value
 
         """
         self._network.alpha[self._array_idx] = float(value)
@@ -296,8 +362,10 @@ class RuntimeReaction:
     def set_beta(self, value: float) -> None:
         """Set the beta parameter.
 
-        Args:
-            value (float): New beta value
+        Parameters
+        ----------
+        value : float
+            New beta value
 
         """
         self._network.beta[self._array_idx] = float(value)
@@ -305,18 +373,36 @@ class RuntimeReaction:
     def set_gamma(self, value: float) -> None:
         """Set the gamma parameter.
 
-        Args:
-            value (float): New gamma value
+        Parameters
+        ----------
+        value : float
+            New gamma value
 
         """
         self._network.gama[self._array_idx] = float(value)
 
     def __str__(self) -> str:
+        """Get string representation of reaction.
+
+        Returns
+        -------
+        str
+            Reaction with NAN removed.
+
+        """
         reactants = " + ".join([r for r in self.get_reactant_names() if r != "NAN"])
         products = " + ".join([p for p in self.get_product_names() if p != "NAN"])
         return f"{reactants} -> {products}"
 
     def __repr__(self) -> str:
+        """Get printable string representation of reaction.
+
+        Returns
+        -------
+        str
+            Printable string.
+
+        """
         return f"RuntimeReaction({self._index}, '{self}')"
 
 
@@ -330,14 +416,15 @@ class NetworkState:
     This class modifies global Fortran module state and is **NOT thread-safe**.
     Do not use with multiprocessing, multithreading, or concurrent model runs.
 
-    Example:
-        >>> from uclchem.advanced import NetworkState
-        >>> network = NetworkState()
-        >>> network.validate()  # Check on-disk matches in-memory
-        >>> print(f"Species: {len(network.species_list)}")
-        Species: ...
-        >>> print(f"Reactions: {len(network.reaction_list)}")
-        Reactions: ...
+    Examples
+    --------
+    >>> from uclchem.advanced import NetworkState
+    >>> network = NetworkState()
+    >>> network.validate()  # Check on-disk matches in-memory
+    >>> print(f"Species: {len(network.species_list)}")
+    Species: ...
+    >>> print(f"Reactions: {len(network.reaction_list)}")
+    Reactions: ...
 
     """
 
@@ -347,6 +434,7 @@ class NetworkState:
         Loads species and reactions from CSV files and compares with
         the compiled Fortran network data. Caches the initial state of
         all modifiable network parameters for fast resetting.
+
         """
         self._network = network_module
 
@@ -366,18 +454,22 @@ class NetworkState:
     def _load_csv_files(self):
         """Load species and reaction CSV files from the installed package.
 
-        Raises:
-            FileNotFoundError: If `"UCLCHEM_ROOT_DIR/species.csv"` or
-                `"UCLCHEM_ROOT_DIR/reactions.csv"` are not valid files.
+        Raises
+        ------
+        FileNotFoundError
+            If `"UCLCHEM_ROOT_DIR/species.csv"` or
+            `"UCLCHEM_ROOT_DIR/reactions.csv"` are not valid files.
 
         """
         species_path = UCLCHEM_ROOT_DIR / "species.csv"
         reactions_path = UCLCHEM_ROOT_DIR / "reactions.csv"
 
         if not species_path.is_file():
-            raise FileNotFoundError(f"Species CSV not found: {species_path}")
+            msg = f"Species CSV not found: {species_path}"
+            raise FileNotFoundError(msg)
         if not reactions_path.is_file():
-            raise FileNotFoundError(f"Reactions CSV not found: {reactions_path}")
+            msg = f"Reactions CSV not found: {reactions_path}"
+            raise FileNotFoundError(msg)
 
         self._species_df = pd.read_csv(species_path)
         self._reactions_df = pd.read_csv(reactions_path)
@@ -388,15 +480,6 @@ class NetworkState:
 
         for _, row in self._species_df.iterrows():
             # Create Species object from CSV row
-            # species_row = [
-            #     row["name"],
-            #     int(row["mass"]),
-            #     row["binding_energy"],
-            #     row["solid_fraction"],
-            #     row["mono_fraction"],
-            #     row["volcano"],
-            #     row["ENTHALPY"],
-            # ]
             species = Species(row)
             self.species_list.append(species)
 
@@ -429,8 +512,10 @@ class NetworkState:
     def _validate_network(self) -> None:
         """Validate that on-disk network matches in-memory Fortran network.
 
-        Raises:
-            RuntimeError: If the network validation failed.
+        Raises
+        ------
+        RuntimeError
+            If the network validation failed.
 
         """
         errors = []
@@ -485,15 +570,17 @@ class NetworkState:
                     break
 
         if errors:
-            import warnings
-
-            warnings.warn("Network validation failed:" + str(errors), RuntimeWarning)
-            raise RuntimeError("Network validation failed")
+            warnings.warn(
+                "Network validation failed:" + str(errors), RuntimeWarning, stacklevel=2
+            )
+            msg = "Network validation failed"
+            raise RuntimeError(msg)
 
     def validate(self) -> None:
         """Re-run validation to check on-disk matches in-memory.
 
         Useful after modifications to verify consistency.
+
         """
         self._validate_network()
 
@@ -503,6 +590,7 @@ class NetworkState:
         This allows fast reset without re-reading CSV files. Caches:
         - Reaction parameters: alpha, beta, gama
         - Species parameters: bindingenergy, formationenthalpy
+
         """
         # Cache reaction rate parameters (modifiable at runtime)
         self._initial_alpha = np.copy(self._network.alpha)
@@ -514,7 +602,9 @@ class NetworkState:
 
         # Cache formation enthalpies if available (for heating/cooling)
         if hasattr(self._network, "formationenthalpy"):
-            self._initial_formationenthalpy = np.copy(self._network.formationenthalpy)
+            self._initial_formationenthalpy: np.ndarray | None = np.copy(
+                self._network.formationenthalpy
+            )
         else:
             self._initial_formationenthalpy = None
 
@@ -530,12 +620,13 @@ class NetworkState:
         - bindingenergy: Species binding energies
         - formationenthalpy: Formation enthalpies (if available)
 
-        Example:
-            >>> network = NetworkState()
-            >>> # Modify some reaction parameters
-            >>> network._network.alpha[0] = 999.0
-            >>> # Restore to initial state
-            >>> network.reset_state()
+        Examples
+        --------
+        >>> network = NetworkState()
+        >>> # Modify some reaction parameters
+        >>> network._network.alpha[0] = 999.0
+        >>> # Restore to initial state
+        >>> network.reset_state()
 
         """
         # Restore reaction rate parameters from cache
@@ -563,12 +654,13 @@ class NetworkState:
         - alpha, beta, gama: Reaction rate parameters
         - bindingenergy: Species binding energies
 
-        Example:
-            >>> network = NetworkState()
-            >>> # Modify some reaction...
-            >>> network._network.alpha[0] = 999.0
-            >>> # Reset back to initial values
-            >>> network.reset_state()
+        Examples
+        --------
+        >>> network = NetworkState()
+        >>> # Modify some reaction...
+        >>> network._network.alpha[0] = 999.0
+        >>> # Reset back to initial values
+        >>> network.reset_state()
 
         """
         # Use the cached reset method

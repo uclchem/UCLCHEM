@@ -13,10 +13,10 @@
 #     name: python3
 # ---
 
-# # Advanced Physical Modelling
+# # Advanced Physical Modeling
 #
-# In the previous tutorial, we simply modelled the chemistry of a static cloud for 1 Myr. This is unlikely to meet
-# everybody's modelling needs and UCLCHEM is capable of modelling much more complex environments such as prestellar
+# In the previous tutorial, we simply modeled the chemistry of a static cloud for 1 Myr. This is unlikely to meet
+# everybody's modeling needs and UCLCHEM is capable of modeling much more complex environments such as prestellar
 # cores and shocks. In this tutorial, we model both a prestellar core and a shock to explore how these models work and
 # to demonstrate the workflow that the UCLCHEM team normally follow. In tutorial 2a, we approach the modeling in a more
 # classic approach, by writing the outputs to files, before passing them to the subsequent model class. In tutorial 2b,
@@ -31,7 +31,7 @@ import uclchem
 #
 # ### Initial Conditions (Phase 1)
 # UCLCHEM typically starts with the gas in atomic/ionic form with no molecules. However, this clearly is not appropriate
-# when modelling an object such as a prestellar core. In these objects, the gas is already evolved and there should be
+# when modeling an object such as a prestellar core. In these objects, the gas is already evolved and there should be
 # molecules in the gas phase as well as ice mantles on the dust. To allow for this, one must provide some initial
 # abundances to the model. There are many ways to do this, but we typically chose to run a preliminary model to produce
 # our abundances. In many UCLCHEM papers, we refer to the preliminary model as *phase 1* and the science model as
@@ -78,7 +78,7 @@ param_dict["abstol_factor"] = 1e-18
 param_dict["reltol"] = 1e-12
 
 p_core = uclchem.model.PrestellarCore(
-    temp_indx=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
+    temp_index=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
 )
 p_core.check_conservation()
 # -
@@ -100,7 +100,7 @@ p_core.check_conservation()
 # version of it, then we can plot it up.
 
 # +
-df_p_core = p_core.get_dataframes()
+df_p_core = p_core.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "#CO", "#H2O", "#CH3OH", "@H2O", "@CO", "@CH3OH"]
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
 ax = p_core.plot_species(ax, species)
@@ -168,7 +168,7 @@ cshock = uclchem.model.CShock(
 cshock.check_conservation()
 
 # +
-df_cshock = cshock.get_dataframes()
+df_cshock = cshock.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
 ax = cshock.plot_species(ax, species)
@@ -214,7 +214,7 @@ jshock = uclchem.model.JShock(
 # bit slower but we get no warnings on this run.
 
 # +
-df_jshock = jshock.get_dataframes()
+df_jshock = jshock.get_joined_dataframes()
 jshock.check_conservation()
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 
