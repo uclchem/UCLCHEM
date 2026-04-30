@@ -101,6 +101,7 @@ def normalize_species_name(name: str) -> str:
     ''
     >>> normalize_species_name(None) # falsy non-string value
     'NAN'
+
     """
     # Preserve empty strings; convert other falsy values to "NAN"
     if name == "":  # noqa: PLC1901
@@ -149,6 +150,7 @@ def is_number(s: Any) -> bool:
     -------
     bool
         True if a number, False if not.
+
     """
     try:
         float(s)
@@ -176,6 +178,7 @@ def sanitize_input_float(row: list[Any], index: int, default: Any = 0.0) -> floa
     -------
     float
         sanitized value.
+
     """
     output = default
     if len(row) > index and is_number(row[index]):
@@ -188,6 +191,7 @@ class Species:
 
     It also has convenience functions to check whether the species is a gas or grain
     species and to help compare between species.
+
     """
 
     def __init__(self, input_row: list | pd.Series):
@@ -204,6 +208,7 @@ class Species:
         ----------
         input_row : list | pd.Series
             list of input fields, or pandas Series.
+
         """
         if isinstance(input_row, pd.Series):
             input_row = [input_row[field] for field in species_header]
@@ -281,6 +286,7 @@ class Species:
         -------
         str
             The name
+
         """
         return self.name
 
@@ -291,6 +297,7 @@ class Species:
         -------
         int
             The molecular mass in atomic mass units.
+
         """
         return self.mass
 
@@ -304,6 +311,7 @@ class Species:
         -------
         int
             The charge of the species
+
         """
         if self.get_name().endswith("+"):
             return 1
@@ -318,6 +326,7 @@ class Species:
         -------
         float
             The solid fraction
+
         """
         return self.solidFraction
 
@@ -328,6 +337,7 @@ class Species:
         -------
         float
             The monolayer fraction
+
         """
         return self.monoFraction
 
@@ -338,6 +348,7 @@ class Species:
         -------
         float
             The volcano fraction
+
         """
         return self.volcFraction
 
@@ -348,6 +359,7 @@ class Species:
         -------
         float
             The ice enthalpy
+
         """
         return self.enthalpy
 
@@ -358,6 +370,7 @@ class Species:
         ----------
         name : str
             The new name for the species
+
         """
         self.name = normalize_species_name(name)
 
@@ -368,6 +381,7 @@ class Species:
         ----------
         mass : int
             The new molecular mass
+
         """
         self.mass = int(mass)
 
@@ -378,6 +392,7 @@ class Species:
         ----------
         binding_energy : float
             The new binding energy in K
+
         """
         self.binding_energy = float(binding_energy)
 
@@ -388,6 +403,7 @@ class Species:
         ----------
         solid_fraction : float
             The new solid fraction
+
         """
         self.solidFraction = float(solid_fraction)
 
@@ -398,6 +414,7 @@ class Species:
         ----------
         mono_fraction : float
             The new monolayer fraction
+
         """
         self.monoFraction = float(mono_fraction)
 
@@ -408,6 +425,7 @@ class Species:
         ----------
         volcano_fraction : float
             The new volcano fraction
+
         """
         self.volcFraction = float(volcano_fraction)
 
@@ -418,6 +436,7 @@ class Species:
         ----------
         enthalpy : float
             The new ice enthalpy
+
         """
         self.enthalpy = float(enthalpy)
 
@@ -430,6 +449,7 @@ class Species:
         ----------
         new_desorbs : list[str]
             The new desorption products
+
         """
         self.desorb_products = new_desorbs
 
@@ -444,6 +464,7 @@ class Species:
         -------
         list[str]
             [base_gas_species, NAN, NAN, NAN]
+
         """
         return [self.get_name()[1:], "NAN", "NAN", "NAN"]
 
@@ -460,6 +481,7 @@ class Species:
         AttributeError
             If the species has no attribute ``desorb_products``.
             This can occur if the species is a gas-phase species.
+
         """
         if not hasattr(self, "desorb_products"):
             msg = f"Species {self} has no attribute 'desorb_products'"
@@ -481,6 +503,7 @@ class Species:
             The list of freeze out products
         freeze_alpha : float
             The freeze out ratio.
+
         """
         self.freeze_products[",".join(product_list)] = freeze_alpha
 
@@ -492,6 +515,7 @@ class Species:
         tuple[list[str], float]
             Iterator that returns all of the
             freeze out reactions with ratios
+
         """
         keys = self.freeze_products.keys()
         values = self.freeze_products.values()
@@ -506,6 +530,7 @@ class Species:
         -------
         list[list[str]]
             List of freeze products
+
         """
         # TODO: Write an unit test for get_freeze_product_behavior
         return [key.split(",") for key in self.freeze_products]
@@ -522,6 +547,7 @@ class Species:
         -------
         float
             The freezeout ratio
+
         """
         return self.freeze_products[",".join(product_list)]
 
@@ -532,6 +558,7 @@ class Species:
         -------
         bool
             True if it is a grain species.
+
         """
         warn(
             "This method is deprecated in favor of is_ice_species.",
@@ -553,6 +580,7 @@ class Species:
         -------
         bool
             True if it is an ice species.
+
         """
         return (
             self.get_name() in {"BULK", "SURFACE"}
@@ -569,6 +597,7 @@ class Species:
         -------
         bool
             True if a surface species
+
         """
         return self.get_name().startswith("#")
 
@@ -579,6 +608,7 @@ class Species:
         -------
         bool
             True if a bulk species
+
         """
         return self.get_name().startswith("@")
 
@@ -589,6 +619,7 @@ class Species:
         -------
         bool
             True if it is ionized
+
         """
         return self.get_name().endswith("+") or self.get_name().endswith("-")
 
@@ -643,6 +674,7 @@ class Species:
         >>> constituents = species.find_constituents()
         >>> constituents['C']
         60
+
         """
         # Adapted from https://github.com/uclchem/UCLCHEM/blob/main/src/uclchem/makerates/species.py
         name = self.name
@@ -739,6 +771,7 @@ class Species:
         -------
         int
             The number of atoms
+
         """
         return self.n_atoms
 
@@ -749,6 +782,7 @@ class Species:
         ----------
         new_n_atoms : int
             The new number of atoms
+
         """
         check_expected_type(new_n_atoms, int)
         self.n_atoms = new_n_atoms
@@ -760,6 +794,7 @@ class Species:
         -------
         float
             The binding energy in K
+
         """
         return self.binding_energy
 
@@ -770,6 +805,7 @@ class Species:
         -------
         float
             The desorption prefactor in s-1
+
         """
         return float(self.vdes)
 
@@ -782,6 +818,7 @@ class Species:
         -------
         float
             The desorption prefactor in s-1
+
         """
         return self.get_vdes()
 
@@ -792,6 +829,7 @@ class Species:
         -------
         float
             The diffusion barrier in K
+
         """
         return self.diffusion_barrier
 
@@ -802,6 +840,7 @@ class Species:
         -------
         float
             The diffusion prefactor in s-1
+
         """
         return float(self.vdiff)
 
@@ -814,6 +853,7 @@ class Species:
         -------
         float
             The diffusion prefactor in s-1
+
         """
         return self.get_vdiff()
 
@@ -824,6 +864,7 @@ class Species:
         -------
         float
             moment of inertia in amu/Angstrom^2
+
         """
         return self.Ix
 
@@ -834,6 +875,7 @@ class Species:
         -------
         float
             moment of inertia in amu/Angstrom^2
+
         """
         return self.Iy
 
@@ -844,6 +886,7 @@ class Species:
         -------
         float
             moment of inertia in amu/Angstrom^2
+
         """
         return self.Iz
 
@@ -854,6 +897,7 @@ class Species:
         -------
         int
             Symmetry factor
+
         """
         return self.symmetry_factor
 
@@ -864,6 +908,7 @@ class Species:
         ----------
         vdes : float
             The desorption prefactor in s-1
+
         """
         self.vdes = float(vdes)
 
@@ -876,6 +921,7 @@ class Species:
         ----------
         vdes : float
             The desorption prefactor in s-1
+
         """
         self.set_vdes(vdes)
 
@@ -886,6 +932,7 @@ class Species:
         ----------
         barrier : float
             Diffusion barrier in K
+
         """
         self.diffusion_barrier = float(barrier)
 
@@ -896,6 +943,7 @@ class Species:
         ----------
         vdiff : float
             The diffusion prefactor in s-1
+
         """
         self.vdiff = float(vdiff)
 
@@ -908,6 +956,7 @@ class Species:
         ----------
         vdiff : float
             The diffusion prefactor in s-1
+
         """
         self.set_vdiff(vdiff)
 
@@ -918,6 +967,7 @@ class Species:
         ----------
         Ix : float
             desired moment of inertia (in amu/Angstrom^2)
+
         """
         self.Ix = float(Ix)
 
@@ -928,6 +978,7 @@ class Species:
         ----------
         Iy : float
             desired moment of inertia (in amu/Angstrom^2)
+
         """
         self.Iy = float(Iy)
 
@@ -938,6 +989,7 @@ class Species:
         ----------
         Iz : float
             desired moment of inertia (in amu/Angstrom^2)
+
         """
         self.Iz = float(Iz)
 
@@ -951,6 +1003,7 @@ class Species:
         ----------
         sym : int | str
             Symmetry factor
+
         """
         try:
             self.symmetry_factor = int(sym)
@@ -974,6 +1027,7 @@ class Species:
         ------
         NotImplementedError
             We can only compare between species or strings of species.
+
         """
         if isinstance(other, Species):
             return self.get_name() == other.get_name()
@@ -995,6 +1049,7 @@ class Species:
         -------
         bool
             True if less than the other species
+
         """
         check_expected_type(other, Species)
         return self.get_mass() < other.get_mass()
@@ -1011,6 +1066,7 @@ class Species:
         -------
         bool
             True if larger than than the other species
+
         """
         check_expected_type(other, Species)
         return self.get_mass() > other.get_mass()
@@ -1022,6 +1078,7 @@ class Species:
         -------
         str
             Printable string
+
         """
         return f"Specie: {self.get_name()}"
 
@@ -1032,6 +1089,7 @@ class Species:
         -------
         str
             Name of the species
+
         """
         return self.get_name()
 
@@ -1048,6 +1106,7 @@ class Species:
         -------
         float
             Rotational partition factor scaled up by 1e50, or -999.0 if unavailable
+
         """
         if self.n_atoms == 1:
             # For atoms, this is undefined, just return a value such that
@@ -1089,6 +1148,7 @@ class Species:
         -------
         bool
             True if linear, False otherwise
+
         """
         if self.n_atoms == 1:
             # Atomic species are not linear (doesn't matter, filtered out anyway)
@@ -1109,6 +1169,7 @@ class Species:
 
         Checks if n_atoms == 2, that if its homoatomic (e.g. H2), that
         sigma == 2, and if it is heteroatomic, (e.g. OH), sigma == 1
+
         """
         if self.n_atoms == 1:  # Nothing to check
             return
@@ -1134,6 +1195,7 @@ class Species:
         """Initialize losses and gains strings.
 
         Not to be called by the user, but by ``uclchem.makerates.network_builder.NetworkBuilder```
+
         """
         self.losses = ""
         self.gains = ""

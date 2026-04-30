@@ -10,6 +10,7 @@ Usage::
     uclchem-generate-metadata            # update YAML in-place
     uclchem-generate-metadata --dry-run  # print diff, do not write
     uclchem-generate-metadata --check    # exit 1 if YAML would change (CI use)
+
 """
 
 from __future__ import annotations
@@ -55,6 +56,7 @@ def _strip_comment(line: str) -> str:
     -------
     line : str
         Line with comments stripped, respecting character literals.
+
     """
     # Respect character literals by scanning manually
     in_str = False
@@ -91,6 +93,7 @@ def _extract_param_names(rhs: str) -> list[str]:
     >>> param_names = _extract_param_names("a = 1.0, b(10) = (/.../)")
     >>> print(param_names)
     ['a', 'b']
+
     """
     names: list[str] = []
     # Split on commas that are not inside parentheses
@@ -135,6 +138,7 @@ def parse_fortran_parameters(src_dir: str | Path) -> dict[str, list[str]]:
     result : dict[str, list[str]]
         Mapping of f2py module name (lowercase)
         to sorted list of PARAMETER names.
+
     """
     src_dir = Path(src_dir)
     known_modules = set(_MODULE_NAMES)
@@ -203,6 +207,7 @@ def _load_yaml(path: str | Path) -> dict:
     -------
     dict
         loaded dictionary.
+
     """
     with Path(path).open() as f:
         return yaml.safe_load(f) or {}
@@ -220,6 +225,7 @@ def _dump_yaml(data: dict) -> str:
     -------
     str
         Dumped dictionary.
+
     """
     return yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
@@ -242,6 +248,7 @@ def _merge(existing: dict, detected: dict[str, list[str]]) -> dict:
     -------
     merged : dict
         New merged dictionary.
+
     """
     merged = dict(existing)
     fp: dict = dict(merged.get("fortran_parameters", {}))

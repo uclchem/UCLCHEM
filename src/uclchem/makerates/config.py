@@ -2,6 +2,7 @@
 
 This module provides validated configuration handling with clear defaults,
 type checking, and automatic documentation generation.
+
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ class MakeratesConfig(BaseModel):
     >>> config = MakeratesConfig.from_yaml(UCLCHEM_ROOT_DIR/ "../../Makerates/user_settings.yaml")
     >>> print(config.species_file)
     data/default/default_species.csv
+
     """
 
     # ============================================================================
@@ -240,6 +242,7 @@ class MakeratesConfig(BaseModel):
         -------
         list[str | Path] | None
             list of strings or paths, or None if v is None
+
         """
         if v is None:
             return v
@@ -266,6 +269,7 @@ class MakeratesConfig(BaseModel):
         ------
         TypeError
             If coolants_file is not a string or Path instance.
+
         """
         if v is None:
             return v
@@ -300,6 +304,7 @@ class MakeratesConfig(BaseModel):
             If entries in v do not contain keys 'file' and 'name'
         ValueError
             If entries in v with keys 'file' are not bare file names.
+
         """
         if v is None:
             return v
@@ -342,6 +347,7 @@ class MakeratesConfig(BaseModel):
         -------
         v : list[str] | None
             list of string, or None if original v is None
+
         """
         if v is None:
             return v
@@ -366,6 +372,7 @@ class MakeratesConfig(BaseModel):
         ValueError
             If `custom_reaction_type` is not specified but
             `custom_reaction_file` is.
+
         """
         # Check database files and types match
         db_files = self.database_reaction_file
@@ -408,6 +415,7 @@ class MakeratesConfig(BaseModel):
         ------
         ValueError
             If ``three_phase`` is False.
+
         """
         if not self.three_phase:
             msg = (
@@ -426,6 +434,7 @@ class MakeratesConfig(BaseModel):
         -------
         MakeratesConfig
             validated MakeratesConfig.
+
         """
         if self.database_reaction_exothermicity or self.derive_reaction_exothermicity:
             if not self.enable_rates_storage:
@@ -450,6 +459,7 @@ class MakeratesConfig(BaseModel):
         ------
         ValueError
             If both `coolants` and `coolants_file` are specified.
+
         """
         if self.coolants is not None and self.coolants_file is not None:
             msg = (
@@ -484,6 +494,7 @@ class MakeratesConfig(BaseModel):
         ------
         FileNotFoundError
             If config file doesn't exist
+
         """
         yaml_path = Path(yaml_path).resolve()
 
@@ -516,6 +527,7 @@ class MakeratesConfig(BaseModel):
         output_path : str | Path
             Where to write the template file.
             Default = "user_settings_template.yaml"
+
         """
         output_path = Path(output_path)
 
@@ -698,6 +710,7 @@ database_reaction_type: "UMIST12"
         -------
         Path
             Resolved absolute Path
+
         """
         path = Path(path)
         if path.is_absolute():
@@ -714,6 +727,7 @@ database_reaction_type: "UMIST12"
         -------
         files : list[Path]
             List of absolute paths to all reaction files
+
         """
         files = []
 
@@ -739,6 +753,7 @@ database_reaction_type: "UMIST12"
         -------
         types : list[ReactionFileTypes]
             list of reaction type strings
+
         """
         types = []
 

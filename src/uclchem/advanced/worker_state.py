@@ -9,6 +9,7 @@ modifications made through ``GeneralSettings``, ``HeatingSettings``, or
 This module provides :func:`create_snapshot` / :func:`restore_snapshot` to
 capture the current Fortran module state into a picklable dict and re-apply
 it in a worker process before the model runs.
+
 """
 
 import contextlib
@@ -83,6 +84,7 @@ def create_snapshot() -> dict[str, Any]:
     -------
     dict[str, Any]
         Fully picklable dict suitable for passing to :func:`restore_snapshot`.
+
     """
     logger.debug("Creating snapshot")
 
@@ -178,6 +180,7 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
     ----------
     snapshot : dict[str, Any]
         Dict produced by :func:`create_snapshot`.
+
     """
     logger.debug("Regenerating snapshot")
     # --- General settings ---
@@ -251,5 +254,6 @@ def _pool_initializer(snapshot: dict[str, Any]) -> None:
     >>> n_workers = 2
     >>> mp.Pool(n_workers, initializer=_pool_initializer, initargs=(snapshot,))
     <multiprocessing.pool.Pool state=RUN pool_size=2>
+
     """
     restore_snapshot(snapshot)

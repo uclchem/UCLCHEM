@@ -10,6 +10,7 @@ Settings should only be modified during initialization, before running models.
 
 Note: Changes made through HeatingSettings affect the global Fortran state and persist
 across model runs in the same Python session.
+
 """
 
 import importlib.util
@@ -86,6 +87,7 @@ class HeatingSettings:
     >>> settings.set_heating_mechanism(settings.PHOTOELECTRIC['WEINGARTNER'], True)
     >>> # Disable H2 formation
     >>> settings.set_heating_mechanism(settings.H2_FORMATION, False)
+
     """
 
     # Heating mechanism indices (matching heating.f90)
@@ -125,6 +127,7 @@ class HeatingSettings:
         This connects to the Fortran heating module and provides access to
         its configuration parameters. Captures the current state as the default
         configuration for reset_to_defaults().
+
         """
         self._heating_module = heating_module
         self._f2py_constants_module = f2py_constants_module
@@ -190,6 +193,7 @@ class HeatingSettings:
         >>> settings.set_heating_mechanism(settings.PHOTOELECTRIC['WEINGARTNER'], True)
         >>> # Or disable H2 formation
         >>> settings.set_heating_mechanism(settings.H2_FORMATION, False)
+
         """
         if not 1 <= mechanism_id <= self._heating_module.nheating:
             msg = f"mechanism_id must be between 1 and {self._heating_module.nheating}"
@@ -238,6 +242,7 @@ class HeatingSettings:
         >>> settings = HeatingSettings()
         >>> settings.set_coolant_active("CO", False)
         >>> settings.set_coolant_active("p-H2", False)
+
         """
         names = [
             str(np.char.decode(name)).strip()
@@ -264,6 +269,7 @@ class HeatingSettings:
         >>> state = settings.get_coolant_active()
         >>> print(state)
         {'H': True, 'C+': True, 'O': True, ...}
+
         """
         names = [
             str(np.char.decode(name)).strip()
@@ -295,6 +301,7 @@ class HeatingSettings:
         --------
         >>> settings = HeatingSettings()
         >>> settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, False)
+
         """
         if not 1 <= mechanism_id <= self._heating_module.ncooling:
             msg = f"mechanism_id must be between 1 and {self._heating_module.ncooling}"
@@ -318,6 +325,7 @@ class HeatingSettings:
         >>> state = settings.get_heating_modules()
         >>> print(state['H2Formation'])
         False
+
         """
         labels = [
             str(np.char.decode(label)).strip()
@@ -342,6 +350,7 @@ class HeatingSettings:
         >>> state = settings.get_cooling_modules()
         >>> print(state['AtomicLineEmission'])
         True
+
         """
         labels = [
             str(np.char.decode(label)).strip()
@@ -372,6 +381,7 @@ class HeatingSettings:
         --------
         >>> settings = HeatingSettings()
         >>> settings.set_dust_gas_coupling_method(settings.DUST_TEMP_HOLLENBACH)
+
         """
         if method not in {1, 2}:
             msg = "method must be 1 (Hocuk) or 2 (Hollenbach)"
@@ -385,6 +395,7 @@ class HeatingSettings:
         -------
         int
             Current method (1=Hocuk, 2=Hollenbach)
+
         """
         return self._heating_module.dust_gas_coupling_method
 
@@ -408,6 +419,7 @@ class HeatingSettings:
         --------
         >>> settings = HeatingSettings()
         >>> settings.set_line_solver_attempts(7)
+
         """
         if attempts < 1:
             msg = "attempts must be at least 1"
@@ -427,6 +439,7 @@ class HeatingSettings:
         -------
         int
             Number of solver attempts
+
         """
         return self._heating_module.line_solver_attempts
 
@@ -459,6 +472,7 @@ class HeatingSettings:
         >>>
         >>> # Set the original value back
         >>> settings.set_pah_abundance(default_pah_abundance)
+
         """
         if abundance < 0:
             msg = "abundance must be non-negative"
@@ -472,6 +486,7 @@ class HeatingSettings:
         -------
         float
             PAH abundance
+
         """
         return self._heating_module.pahabund
 
@@ -498,6 +513,7 @@ class HeatingSettings:
         --------
         >>> settings = HeatingSettings()
         >>> settings.set_coolant_directory("/custom/rates/") # doctest: +SKIP
+
         """
         directory = Path(directory)
         if not directory.exists():
@@ -525,6 +541,7 @@ class HeatingSettings:
         -------
         str
             Directory path as string (stripped of trailing spaces)
+
         """
         return str(np.char.decode(self._f2py_constants_module.coolantdatadir)).strip()
 
@@ -548,6 +565,7 @@ class HeatingSettings:
         --------
         >>> settings = HeatingSettings()
         >>> settings.set_coolant_restart_mode(settings.COOLANT_WARM)
+
         """
         # TODO: refactor once Fortran is exposed
         if mode not in {0, 1, 2}:
@@ -566,6 +584,7 @@ class HeatingSettings:
         -------
         int
             Current restart mode (0=WARM, 1=FORCE_LTE, 2=FORCE_GROUND)
+
         """
         return self._uclchemwrap.uclchemwrap.get_coolant_restart_mode_wrap()
 
@@ -581,6 +600,7 @@ class HeatingSettings:
         >>> settings = HeatingSettings()
         >>> settings.set_heating_mechanism(settings.H2_FORMATION, False)
         >>> settings.reset_to_defaults()  # Restores original state
+
         """
         # Restore backed-up initial state
         self._heating_module.heating_modules[:] = self._default_heating_modules
@@ -605,6 +625,7 @@ class HeatingSettings:
         >>> settings = HeatingSettings()
         >>> settings.print_configuration() # doctest: +SKIP
         ...
+
         """
         print("=" * 60)
         print("UCLCHEM Heating & Cooling Configuration")
@@ -673,6 +694,7 @@ def initialize_coolant_directory() -> str:
     >>> coolant_dir = initialize_coolant_directory()
     >>> print(f"Coolant data at: {coolant_dir}")
     Coolant data at: ...
+
     """
     # Check if heating module is available
 
@@ -787,6 +809,7 @@ def auto_initialize_coolant_directory() -> bool:
     ...     print("Coolant data initialized successfully")
     ...
     Coolant data initialized successfully
+
     """
     try:
         coolant_dir = initialize_coolant_directory()

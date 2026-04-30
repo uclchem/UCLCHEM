@@ -51,6 +51,7 @@ def skip_reaction_validation() -> Iterator[None]:
     ValueError: Elements not conserved in a reaction.
     The following reaction caused this error: #C2N + LH -> #CH3CNH.
     ...
+
     """
     global _skip_reaction_validation
     old_value = _skip_reaction_validation
@@ -121,6 +122,7 @@ class Reaction:
         Validation can be disabled using the ``uclchem.makerates.reaction.skip_validation()``
             context manager. This is useful when loading pre-validated networks from Fortran
             where validation would fail due to modeling simplifications.
+
         """
         if isinstance(input_row, Reaction):
             self.set_reactants(input_row.get_reactants())
@@ -213,6 +215,7 @@ class Reaction:
         -------
         list[str]
             The four reactants names
+
         """
         return self._reactants[:]
 
@@ -223,6 +226,7 @@ class Reaction:
         -------
         list[str]
             The list of reacting species.
+
         """
         return [
             r
@@ -241,6 +245,7 @@ class Reaction:
         -------
         list[str]
             The four sorted reactant names
+
         """
         return self._sorted_reactants
 
@@ -251,6 +256,7 @@ class Reaction:
         ----------
         reactants : list[str]
             The four reactants names
+
         """
         self._reactants = reactants
         # Store a sorted version for comparisons
@@ -263,6 +269,7 @@ class Reaction:
         -------
         list[str]
             The four products names
+
         """
         return self._products[:]
 
@@ -273,6 +280,7 @@ class Reaction:
         -------
         list[str]
             The list of produced species.
+
         """
         return [
             r
@@ -291,6 +299,7 @@ class Reaction:
         -------
         list[str]
             The four sorted products names
+
         """
         return self._sorted_products
 
@@ -301,6 +310,7 @@ class Reaction:
         ----------
         products : list[str]
             The four products names
+
         """
         self._products = products
         # Store a sorted version for comparisons
@@ -313,6 +323,7 @@ class Reaction:
         -------
         float
             the alpha parameter of the reaction
+
         """
         return self._alpha
 
@@ -323,6 +334,7 @@ class Reaction:
         ----------
         alpha : float
             the alpha parameter of the reaction
+
         """
         self._alpha = alpha
 
@@ -333,6 +345,7 @@ class Reaction:
         -------
         float
             the beta parameter of the reaction
+
         """
         return self._beta
 
@@ -343,6 +356,7 @@ class Reaction:
         ----------
         beta : float
             the beta parameter of the reaction
+
         """
         self._beta = beta
 
@@ -353,6 +367,7 @@ class Reaction:
         ----------
         gamma : float
             the gamma parameter of the reaction
+
         """
         self._gamma = gamma
 
@@ -363,6 +378,7 @@ class Reaction:
         -------
         float
             the gamma parameter of the reaction
+
         """
         return self._gamma
 
@@ -373,6 +389,7 @@ class Reaction:
         ----------
         templow : float
             the lower temperature boundary
+
         """
         self._templow = templow
 
@@ -383,6 +400,7 @@ class Reaction:
         -------
         float
             the lower temperature boundary
+
         """
         return self._templow
 
@@ -393,6 +411,7 @@ class Reaction:
         ----------
         temphigh : float
             the higher temperature boundary
+
         """
         self._temphigh = temphigh
 
@@ -403,6 +422,7 @@ class Reaction:
         -------
         float
             the higher temperature boundary
+
         """
         return self._temphigh
 
@@ -413,6 +433,7 @@ class Reaction:
         ----------
         rate : float
             the reaction enthalpy change
+
         """
         self._exothermicity = rate
 
@@ -423,6 +444,7 @@ class Reaction:
         -------
         float
             the reaction enthalpy change
+
         """
         return self._exothermicity
 
@@ -455,6 +477,7 @@ class Reaction:
         >>> reaction = Reaction(["#CH3OH", "#OH", "LH", "#CH3O", "#H2O", "NAN", "NAN"] + [0] * 10)
         >>> reaction.get_reduced_mass() # mass of atomic hydrogen
         1.0
+
         """
         logger.debug(f"Trying to predict reduced mass of species {self}")
         reac_constituents = []
@@ -559,6 +582,7 @@ class Reaction:
         ----------
         reduced_mass : int | float
             reduced mass of moving atoms
+
         """
         self._reduced_mass = float(reduced_mass)
 
@@ -569,6 +593,7 @@ class Reaction:
         -------
         float
             reduced mass of moving atoms
+
         """
         return self._reduced_mass
 
@@ -584,6 +609,7 @@ class Reaction:
         -------
         str
             reaction type
+
         """
         if self.get_reactants()[2] in reaction_types:
             return self.get_reactants()[2]
@@ -599,6 +625,7 @@ class Reaction:
         -------
         str | None
             The source of the reaction
+
         """
         return self.source
 
@@ -609,6 +636,7 @@ class Reaction:
         ----------
         source : str
             The source of the reaction
+
         """
         self.source = source
 
@@ -624,6 +652,7 @@ class Reaction:
         ------
         TypeError
             If ``flag`` is not of type ``bool``.
+
         """
         logger.debug(f"Setting extrapolation of {self} to {flag}")
         if not isinstance(flag, bool):
@@ -638,6 +667,7 @@ class Reaction:
         -------
         bool
             whether extrapolation is applied.
+
         """
         return self.extrapolate
 
@@ -659,6 +689,7 @@ class Reaction:
         Skips checking freeze-out or desorb reactions, since the user might want to
             define a freeze-out reaction that causes the species to immediately react with,
             for example, water ice.
+
         """
         logger.debug(f"Checking elemental conservation of reaction {self}")
         if self.get_reaction_type() in {"FREEZE", "DESORB"}:
@@ -702,6 +733,7 @@ class Reaction:
         ------
         ValueError
             If charge is not conserved by the reaction.
+
         """
         logger.debug(f"Checking charge conservation of reaction {self}")
         if self.is_ice_reaction(
@@ -743,6 +775,7 @@ class Reaction:
         If any ions are produced, the ion is assumed to become neutral because it is
         on the surface. If any electrons are produced, they are assumed to be
         absorbed by the grain.
+
         """
         do_not_convert = reaction_types + ["E-", "NAN"]
         self.set_reactants(
@@ -775,6 +808,7 @@ class Reaction:
         -------
         bool
             equality
+
         """
         if not isinstance(other, Reaction):
             msg = f"Can only compare Reaction instances, but tried to compare Reaction and {type(other)}"
@@ -799,6 +833,7 @@ class Reaction:
         -------
         bool
             Whether there is a collision (True), or not (False)
+
         """
         check_expected_type(other, Reaction)
 
@@ -819,6 +854,7 @@ class Reaction:
         -------
         bool
             whether the number of ice molecules changes by this reaction.
+
         """
         if len([x for x in self.get_reactants() if "#" in x]) != len(
             [x for x in self.get_products() if "#" in x]
@@ -835,6 +871,7 @@ class Reaction:
         -------
         bool
             Whether the total ice abundance is affected by this reaction.
+
         """
         # If it's not just a movement between ice phases
         if ("BULK" not in self.get_reactants()[1]) and (
@@ -855,6 +892,7 @@ class Reaction:
         species_names : list[str]
             List of species names so we can find index
             of reactants in species list
+
         """
         self.ode_bit = _generate_reaction_ode_bit(
             i,
@@ -885,6 +923,7 @@ class Reaction:
         ------
         ValueError
             If both ``include_reactants`` and ``include_products`` are False.
+
         """
         if not (include_reactants or include_products):
             msg = "Either include reactants or products"
@@ -922,6 +961,7 @@ class Reaction:
         -------
         bool
             Is it a gas phase reaction?
+
         """
         checklist = [
             not (s.startswith("#") or s.startswith("@"))
@@ -954,6 +994,7 @@ class Reaction:
         -------
         bool
             Is it an ice phase reaction?
+
         """
         checklist = [
             (s.startswith("#") or s.startswith("@"))
@@ -989,6 +1030,7 @@ class Reaction:
         -------
         bool
             Is it a surface reaction?
+
         """
         checklist = [
             s.startswith("#")
@@ -1023,6 +1065,7 @@ class Reaction:
         -------
         bool
             Is it a bulk reaction?
+
         """
         checklist = [
             s.startswith("@")
@@ -1037,6 +1080,7 @@ class Reaction:
         -------
         str
             Reaction with NANs removed.
+
         """
         return (
             " + ".join(filter(lambda r: r != "NAN", self.get_reactants()))
@@ -1051,6 +1095,7 @@ class Reaction:
         -------
         str
             Printable string
+
         """
         return (
             self.get_reaction_type()
@@ -1072,6 +1117,7 @@ class Reaction:
         -------
         int
             Hashed reaction integer.
+
         """
         return hash(
             f"{self.get_alpha(), self.get_beta(), self.get_gamma(), self.get_reactants(), self.get_products(), self.get_templow(), self.get_temphigh()}"
@@ -1084,6 +1130,7 @@ class CoupledReaction(Reaction):
     This means that if a reaction has a parameter changed by, for example,
     `network.change_binding_energy()`, every CoupledReaction that has that instance
     as its partner also has its binding energy changed to that value.
+
     """
 
     def __init__(self, input: list | Reaction, partner: Reaction | None = None):
@@ -1095,6 +1142,7 @@ class CoupledReaction(Reaction):
             input to create the Reaction instance.
         partner : Reaction | None
             partner of the reaction. Default = None.
+
         """
         super().__init__(input)
         self.partner = partner
@@ -1106,6 +1154,7 @@ class CoupledReaction(Reaction):
         ----------
         partner : Reaction
             partner of this reaction.
+
         """
         check_expected_type(partner, Reaction)
 
@@ -1119,6 +1168,7 @@ class CoupledReaction(Reaction):
         Reaction | None
             partner of this reaction, or None if the partner
             has not been set.
+
         """
         return self.partner
 
@@ -1155,6 +1205,7 @@ def _generate_reaction_ode_bit(
     -------
     ode_bit : str
         string representing this reaction for ``odes.f90``.
+
     """
     ode_bit = f"+RATE({i + 1})"
     # every body after the first requires a factor of density

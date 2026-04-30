@@ -131,6 +131,7 @@ MakeRates uses YAML configuration:
 
 Each UCLCHEM installation compiles one network. To change networks,
 rebuild UCLCHEM with different MakeRates output.
+
 """
 
 from .config import MakeratesConfig as MakeratesConfig

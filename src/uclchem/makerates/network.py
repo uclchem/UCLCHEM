@@ -11,6 +11,7 @@ chemical reaction networks, suitable for build-time and analysis-time use.
 
 For runtime parameter modification during model execution, use RuntimeNetwork
 from uclchem.advanced.runtime_network instead.
+
 """
 
 from __future__ import annotations
@@ -47,6 +48,7 @@ class NetworkABC(ABC):
     This interface is implemented by:
     - Network: Full interactive network (via MutableNetworkABC)
     - RuntimeNetwork: Fortran-backed runtime network (read + parameter modification only)
+
     """
 
     # Core Properties
@@ -86,6 +88,7 @@ class NetworkABC(ABC):
         -------
         Species
             copy of Species instance.
+
         """
         pass
 
@@ -113,6 +116,7 @@ class NetworkABC(ABC):
         -------
         Reaction
             copy of reaction with index reaction_idx.
+
         """
         pass
 
@@ -130,6 +134,7 @@ class NetworkABC(ABC):
         -------
         list[Reaction]
             List of reactions matching the type(s)
+
         """
         pass
 
@@ -147,6 +152,7 @@ class NetworkABC(ABC):
         similar : dict[int, Reaction]
             Dictionary of {index: Reaction}
             for matching reactions
+
         """
         pass
 
@@ -163,6 +169,7 @@ class NetworkABC(ABC):
         -------
         int
             Index of the reaction
+
         """
         pass
 
@@ -177,6 +184,7 @@ class NetworkABC(ABC):
             string representation of species
         new_binding_energy : float
             new binding energy in K
+
         """
         pass
 
@@ -190,6 +198,7 @@ class NetworkABC(ABC):
             Reaction to change.
         barrier : float
             New reaction barrier in K
+
         """
         pass
 
@@ -200,6 +209,7 @@ class NetworkABC(ABC):
         -------
         str
             string representation of network.
+
         """
         n_species = len(self.get_species_list())
         n_reactions = len(self.get_reaction_list())
@@ -218,6 +228,7 @@ class MutableNetworkABC(NetworkABC):
     NOT implemented by RuntimeNetwork since the Fortran-backed network is read
     directly from the fortran files, only allowing for the editing of existing reaction
     and species parameters.
+
     """
 
     # Species Modification Interface
@@ -230,6 +241,7 @@ class MutableNetworkABC(NetworkABC):
         species : Species | Sequence[Species | list]
             Species object, list of Species,
             or CSV-style entries
+
         """
         pass
 
@@ -246,6 +258,7 @@ class MutableNetworkABC(NetworkABC):
         ------
         ValueError
             If no species ``species`` is in the Network.
+
         """
         pass
 
@@ -259,6 +272,7 @@ class MutableNetworkABC(NetworkABC):
             Name of species
         species : Species
             Species to replace the old Species with
+
         """
         pass
 
@@ -271,6 +285,7 @@ class MutableNetworkABC(NetworkABC):
         new_species_dict : dict[str, Species]
             dictionary with keys the
             names of the species and values the Species instances.
+
         """
         pass
 
@@ -298,6 +313,7 @@ class MutableNetworkABC(NetworkABC):
         TypeError
             If input was not a Reaction, list of Reaction instances, or
             CSV-style entries.
+
         """
         pass
 
@@ -316,6 +332,7 @@ class MutableNetworkABC(NetworkABC):
             If no matching reaction ``reaction`` is found in the network.
         RuntimeError
             If multiple matching reactions are found in the network.
+
         """
         pass
 
@@ -327,6 +344,7 @@ class MutableNetworkABC(NetworkABC):
         ----------
         reaction_idx : int
             Index of reaction to remove.
+
         """
         pass
 
@@ -345,6 +363,7 @@ class MutableNetworkABC(NetworkABC):
         ------
         RuntimeError
             If the number of reactions changes.
+
         """
         pass
 
@@ -357,6 +376,7 @@ class MutableNetworkABC(NetworkABC):
         new_dict : dict[int, Reaction]
             Dictionary with keys indices and values
             Reaction instances.
+
         """
         pass
 
@@ -382,6 +402,7 @@ class BaseNetwork(NetworkABC):
     1. Initialize _species_dict and _reactions_dict
     2. Implement modification methods (change_binding_energy, change_reaction_barrier)
     3. Optionally implement add/remove operations (MutableNetworkABC)
+
     """
 
     # Subclasses must define these
@@ -400,6 +421,7 @@ class BaseNetwork(NetworkABC):
         -------
         dict[str, Species]
             species dictionary
+
         """
         return self._species_dict
 
@@ -411,6 +433,7 @@ class BaseNetwork(NetworkABC):
         -------
         dict[int, Reaction]
             Reaction dictionary
+
         """
         return self._reactions_dict
 
@@ -425,6 +448,7 @@ class BaseNetwork(NetworkABC):
         -------
         list[Species]
             list of all species in the Network.
+
         """
         return list(self._species_dict.values())
 
@@ -436,6 +460,7 @@ class BaseNetwork(NetworkABC):
         dict[str, Species]
             copy of species dictionary, with keys of the names
             of the species, and values their Species instances.
+
         """
         return deepcopy(self._species_dict)
 
@@ -451,6 +476,7 @@ class BaseNetwork(NetworkABC):
         -------
         Species
             copy of Species instance.
+
         """
         return deepcopy(self._species_dict[specie_name])
 
@@ -465,6 +491,7 @@ class BaseNetwork(NetworkABC):
         -------
         list[Reaction]
             list of all reactions in the Network.
+
         """
         return list(self._reactions_dict.values())
 
@@ -476,6 +503,7 @@ class BaseNetwork(NetworkABC):
         dict[int, Reaction]
             copy of reaction dictionary, with keys of the
             indices and values of the reactions.
+
         """
         return deepcopy(self._reactions_dict)
 
@@ -491,6 +519,7 @@ class BaseNetwork(NetworkABC):
         -------
         Reaction
             copy of reaction with index reaction_idx.
+
         """
         return deepcopy(self._reactions_dict[reaction_idx])
 
@@ -510,6 +539,7 @@ class BaseNetwork(NetworkABC):
         -------
         list[Reaction]
             List of reactions matching the type(s)
+
         """
         if isinstance(reaction_type, str):
             reaction_type = [reaction_type]
@@ -533,6 +563,7 @@ class BaseNetwork(NetworkABC):
         similar : dict[int, Reaction]
             Dictionary of {index: Reaction}
             for matching reactions
+
         """
         check_expected_type(reaction, Reaction)
 
@@ -567,6 +598,7 @@ class BaseNetwork(NetworkABC):
         ------
         ValueError
             If reaction not found or multiple matches exist
+
         """
         similar = self.find_similar_reactions(reaction)
 
@@ -631,6 +663,7 @@ class Network(BaseNetwork, MutableNetworkABC):
     ...     "UCL",
     ... )
     >>> network = Network.build(species_list, reactions_list, gas_phase_extrapolation=True)
+
     """
 
     def __init__(
@@ -654,6 +687,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             Species dictionary {name: Species}
         reaction_dict : dict[int, Reaction]
             Reaction dictionary {index: Reaction}
+
         """
         self._species_dict = species_dict
         self._reactions_dict = reaction_dict
@@ -695,6 +729,7 @@ class Network(BaseNetwork, MutableNetworkABC):
 
         >>> # Load old/custom network for analysis
         >>> network = Network.from_csv('old/species.csv', 'old/reactions.csv') # doctest: +SKIP
+
         """
         # Use defaults if not provided
         if species_path is None:
@@ -756,6 +791,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         ...     "UCL",
         ... )
         >>> network = Network.from_lists(species_list, reactions_list)
+
         """
         species_dict = {s.get_name(): s for s in species}
         reaction_dict = dict(enumerate(reactions))
@@ -812,6 +848,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         ...     gas_phase_extrapolation=True,
         ...     add_crp_photo_to_grain=True
         ... )
+
         """
         from uclchem.makerates.network_builder import NetworkBuilder  # noqa: PLC0415
 
@@ -830,6 +867,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         -------
         dict[str, Species]
             species dictionary
+
         """
         return self._species_dict
 
@@ -849,6 +887,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             Name of species
         species : Species
             Species to replace the old Species with
+
         """
         self._species_dict[species_name] = species
 
@@ -860,6 +899,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         new_species_dict : dict[str, Species]
             dictionary with keys the
             names of the species and values the Species instances.
+
         """
         self._species_dict = new_species_dict
 
@@ -880,6 +920,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         TypeError
             If input was not a Species, list of Species instances, or
             CSV-style entries.
+
         """
         species_list: list[Species]
         # Convert to list of Species objects
@@ -945,6 +986,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         Traceback (most recent call last):
         ...
         ValueError: Species CO2 not found in network.
+
         """
         if isinstance(species, Species):
             species = species.get_name()
@@ -997,6 +1039,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         ------
         RuntimeError
             If the number of reactions changes.
+
         """
         check_expected_type(reaction, Reaction)
 
@@ -1014,6 +1057,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         new_dict : dict[int, Reaction]
             Dictionary with keys indices and values
             Reaction instances.
+
         """
         check_expected_type(new_dict, dict)
         for reaction in new_dict.values():
@@ -1038,6 +1082,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         TypeError
             If input was not a Reaction, list of Reaction instances, or
             CSV-style entries.
+
         """
         # Convert to list of Reaction objects
         reactions_list: list[Reaction]
@@ -1082,6 +1127,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             If no matching reaction ``reaction`` is found in the network.
         RuntimeError
             If multiple matching reactions are found in the network.
+
         """
         similar_reactions = list(self.find_similar_reactions(reaction).items())
 
@@ -1105,6 +1151,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         ----------
         reaction_idx : int
             Index of reaction to remove.
+
         """
         if reaction_idx in self._reactions_dict:
             del self._reactions_dict[reaction_idx]
@@ -1123,6 +1170,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         -------
         list[Reaction]
             A list of reactions of the specified type
+
         """
         if isinstance(reaction_type, str):
             reaction_type = [reaction_type]
@@ -1140,6 +1188,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         RuntimeError
             If the sorting of species causes the number of species
             in the network to change.
+
         """
         reaction_dict = self.get_reaction_dict()
 
@@ -1181,6 +1230,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         ------
         ValueError
             If `specie` is not in the network.
+
         """
         all_species = self.get_species_list()
         all_species_names = [s.get_name() for s in all_species]
@@ -1227,6 +1277,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         ------
         RuntimeError
             If multiple matching reactions are found in the network.
+
         """
         similar_reactions = list(self.find_similar_reactions(reaction).items())
 
@@ -1260,6 +1311,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         ------
         ValueError
             If any of the values in ``indices`` are None.
+
         """
         if any(index is None for index in indices.values()):
             msg = "Important reaction had index None"
@@ -1281,6 +1333,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         ------
         ValueError
             If any of the values in ``indices`` are None.
+
         """
         if any(index is None for index in indices.values()):
             msg = "Important species had index None"
@@ -1330,6 +1383,7 @@ def load_network_from_csv(
     ...     'archive/v3.0/reactions.csv'
     ... ) # doctest: +SKIP
     >>> print(f"Species added: {len(network.get_species_list()) - len(old_network.get_species_list())}") # doctest: +SKIP
+
     """  # noqa: W505
     return Network.from_csv(species_path, reactions_path)
 
@@ -1412,6 +1466,7 @@ def build_network(
     ...     derive_reaction_exothermicity=['PHOTON', 'CRP'],
     ...     database_reaction_exothermicity=['custom_heating.csv']
     ... ) # doctest: +SKIP
+
     """
     return Network.build(
         species=species,
@@ -1467,5 +1522,6 @@ def create_network(
     >>>
     >>> # Add some additional reactions
     >>> network.add_reactions(additional_reactions) # doctest: +SKIP
+
     """
     return Network.from_lists(species, reactions)

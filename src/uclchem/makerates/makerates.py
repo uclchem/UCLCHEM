@@ -52,6 +52,7 @@ def run_makerates(
     ------
     ValueError
         If ``coolants_file`` is a directory, and not a path to a file.
+
     """
     if not isinstance(configuration, MakeratesConfig):
         # Load and validate configuration using Pydantic
@@ -236,6 +237,7 @@ def get_network(
     ------
     ValueError
         You cannot specify both an input configuration and species+reaction.
+
     """
     if verbosity is not None:
         logging.basicConfig(format="%(levelname)s: %(message)s", level=verbosity.upper())
@@ -288,6 +290,7 @@ def _get_network_from_files(
         Instantiated Network.
     dropped_reactions : list[list]
         list of dropped reactions.
+
     """
     logger.info(
         f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"

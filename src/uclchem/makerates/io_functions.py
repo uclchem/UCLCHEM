@@ -37,6 +37,7 @@ def get_default_coolants() -> list[dict[str, str]]:
     -------
     list[dict[str, str]]
         List of coolant dictionaries with 'file' and 'name' keys.
+
     """
     return [
         {"file": "ly-a.dat", "name": "H"},
@@ -65,6 +66,7 @@ def get_default_coolant_directory(
     Path | str
         Path to collisional rate data files, or an empty string ``""``
         if none of the possible directories exist and have ``*.dat`` files in them.
+
     """
     if user_specified is not None and user_specified:
         return Path(user_specified)
@@ -108,6 +110,7 @@ def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Specie
     ------
     IndexError
         If there is an error parsing a line in the file.
+
     """
     species_list = []
     # list to hold user defined bulk species (for adjusting binding energy)
@@ -156,6 +159,7 @@ def read_reaction_file(
     ------
     ValueError
         If reaction file type is not one of ["UMIST", "UCL", "KIDA"].
+
     """
     reactions = []
     dropped_reactions = []
@@ -223,6 +227,7 @@ def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
     ValueError
         If custom desorb or freeze reactions contain species not in the
         species list.
+
     """
     # Convert empty strings in species slots to "NAN" for placeholder slots
     for i in range(7):
@@ -264,6 +269,7 @@ def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
     rows : list[list[str | int | float]]
         parsed rows that can be turned into
         Reaction instances
+
     """
 
     def str_parse(x: Any) -> str:
@@ -280,6 +286,7 @@ def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
         -------
         str
             parsed object.
+
         """
         return str(x).strip().upper()
 
@@ -351,6 +358,7 @@ def read_grain_assisted_recombination_file(
     gar_parameters : dict[str, np.ndarray]
         Database for grain-activated recombination
         reactions.
+
     """
     with Path(file_name).open() as fh:
         gar_parameters = yaml.safe_load(fh)
@@ -379,6 +387,7 @@ def read_coolants_file(file_name: str | Path) -> list[dict]:
         If the yaml-parsed data is not a dictionary, or list of dictionaries.
     ValueError
         If the "file" entries in coolants_file are not bare filenames.
+
     """
     with Path(file_name).open() as fh:
         data = yaml.safe_load(fh)
@@ -432,6 +441,7 @@ def output_drops(
         If None, write to CWD. Default = None.
     write_files : bool
         Whether or not to write the file. Default = True.
+
     """
     if output_dir is None:
         output_dir = "."
@@ -504,6 +514,7 @@ def write_outputs(
     RuntimeError
         If ``get_default_coolant_directory()`` cannot find a valid coolant
         directory.
+
     """
     python_src_dir = Path(python_src_dir)
     fortran_src_dir = Path(fortran_src_dir)
@@ -705,6 +716,7 @@ def write_f90_constants(
     template_file_path : str | Path
         The directory to the file to use as the template.
         Default = "fortran_templates".
+
     """
     template_file_path = UCLCHEM_ROOT_DIR / "makerates" / template_file_path
     with Path(template_file_path / "f2py_constants.f90").open() as fh:
@@ -799,6 +811,7 @@ def write_python_constants(
         Dict with keys to replace and their values (ignored)
     python_constants_file : str | Path
         Path to the target constant files (ignored)
+
     """
     warnings.warn(
         "write_python_constants() is deprecated. "
@@ -842,6 +855,7 @@ def write_species(file_name: str | Path, species_list: list[Species]) -> None:
         path to output file
     species_list : list[Species]
         List of species objects for network
+
     """
     with Path(file_name).open("w") as f:
         writer = csv.writer(
@@ -884,6 +898,7 @@ def write_reactions(file_name: str | Path, reaction_list: list[Reaction]) -> Non
         path to output file
     reaction_list : list[Reaction]
         List of reaction objects for network
+
     """
     reaction_columns = [
         "Reactant 1",
@@ -947,6 +962,7 @@ def write_odes_f90(
     enable_rates_storage : bool
         Enable storage of writing rates to files.
         Default = False.
+
     """
     # First generate ODE contributions for all reactions
     species_names = [spec.get_name() for spec in species_list]
@@ -978,6 +994,7 @@ def write_jacobian(file_name: str | Path, species_list: list[Species]) -> None:
         Path to jacobian file
     species_list : list[Species]
         List of species AFTER being processed by build_ode_string
+
     """
     species_names = ""
     with Path(file_name).open("w") as output:
@@ -1066,6 +1083,7 @@ def build_ode_string(
     -------
     ode_string : str
         One long string containing the entire ODE fortran code.
+
     """
     # We create a string of losses and gains for each species so initialize them all as ""
     species_names = []
@@ -1220,6 +1238,7 @@ def species_ode_string(n: int, species: Species) -> str:
     -------
     str
         the fortran code for the rate of change of the species
+
     """
     ydot_string = ""
     if species.losses:
@@ -1269,6 +1288,7 @@ def write_evap_lists(network_file: TextIO, species_list: list[Species]) -> int:
     NameError
         If a species desorbs as another species that is not in the species
         list.
+
     """
     # ruff: noqa: N806
     gasIceList = []
@@ -1425,6 +1445,7 @@ def truncate_line(input_string: str, line_length: int = 72) -> str:
     -------
     result : str
         Code string with line endings at regular intervals
+
     """
     result = ""
     i = 0
@@ -1474,6 +1495,7 @@ def write_network_file(
     ------
     ValueError
         If exothermicities are used, but ``enable_rates_storage`` is False.
+
     """
     species_list = network.get_species_list()
     reaction_list = network.get_reaction_list()
@@ -1721,6 +1743,7 @@ def find_reactant(species_list: list[str], reactant: str) -> int:
     -------
     int
         The index of the reactant, if it is not found, 9999
+
     """
     try:
         return species_list.index(reactant) + 1
@@ -1745,6 +1768,7 @@ def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[int]:
     partners : list[int]
         list of indices of freeze out reactions
         matching order of desorptions.
+
     """
     freeze_species = [
         x.get_products()[0] for x in reaction_list if x.get_reactants()[1] == "DESCR"
@@ -1788,6 +1812,7 @@ def array_to_string(
     ------
     ValueError
         Raises an error if type isn't "int","float", or "string"
+
     """
     # Check for 2D array
     arr = np.array(array)
@@ -1865,6 +1890,7 @@ def copy_coolant_files(source_dir: str | Path | None = None) -> None:
         valid coolant directory.
     FileNotFoundError
         If source directory doesn't exist or contains no ``*.dat`` files.
+
     """
     # Determine source directory
     if source_dir is None:

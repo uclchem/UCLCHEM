@@ -7,6 +7,7 @@ to allow for a clean breaking change in v4.0.
 
 When ready to deprecate, this can be imported in __init__.py to provide
 warnings and migration paths.
+
 """
 
 import warnings
@@ -74,6 +75,7 @@ def Network(  # noqa: N802
     >>> network = Network.build(species_list, reactions_list, gas_phase_extrapolation=True)
     >>> # or
     >>> network = build_network(species_list, reactions_list, gas_phase_extrapolation=True)
+
     """
     if species is None or reactions is None:
         msg = (
@@ -102,6 +104,7 @@ class LoadedNetwork:
     Deprecated:
         Use Network.from_csv(), Network.from_lists(), or the module-level
         factory functions instead.
+
     """
 
     def __new__(  # type: ignore[misc]
@@ -173,6 +176,7 @@ class LoadedNetwork:
         >>> from uclchem.makerates.network import load_network_from_csv, create_network
         >>> network = load_network_from_csv()
         >>> network = create_network(species_list, reactions_list)
+
         """
         # Check for invalid combinations
         has_objects = species is not None or reactions is not None
@@ -224,6 +228,7 @@ class NetworkState:
 
     Deprecated:
         Use ``RuntimeNetwork()`` instead.
+
     """
 
     def __new__(cls):
@@ -254,6 +259,7 @@ class NetworkState:
         >>> # or for direct access
         >>> network._fortran.alpha[0] = 999.0
         >>>
+
         """
         warnings.warn(
             "NetworkState is deprecated. "

@@ -2,6 +2,7 @@
 
 Provides functions to set reaction exothermicities from thermochemical
 databases or custom CSV files with various units.
+
 """
 
 import logging
@@ -61,6 +62,7 @@ def parse_species_from_row(row: pd.Series, prefix: str) -> list[str]:
     -------
     list[str]
         List of species names (uppercase, NAN for missing)
+
     """
     species = []
     idx = 1
@@ -93,6 +95,7 @@ def _parse_unit(unit: str) -> float:
     ------
     ValueError
         If there is an unknown unit, or it cannot be parsed.
+
     """
     unit_lower = unit.strip().lower()
 
@@ -152,6 +155,7 @@ def convert_to_erg(value: float, unit: str) -> float:
     -------
     float
         Value in erg per reaction
+
     """
     factor = _parse_unit(unit)
     return value * factor
@@ -175,6 +179,7 @@ def match_reaction(
     -------
     Reaction | None
         Matching Reaction or None
+
     """
     sorted_r = sorted(reactants)
     sorted_p = sorted(products)
@@ -207,6 +212,7 @@ def load_custom_exothermicities(csv_path: str | Path) -> pd.DataFrame:
     ------
     ValueError
         If the csv is missing certain columns.
+
     """
     df = pd.read_csv(csv_path, comment="#")
 
@@ -247,6 +253,7 @@ def set_custom_exothermicities(
         number of matched reactions
     unmatched : int
         number of unmatched reactions
+
     """
     df = load_custom_exothermicities(csv_path)
     matched = 0

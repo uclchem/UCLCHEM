@@ -13,6 +13,7 @@ Resolution priority (highest to lowest):
    (caller explicitly requests this tier by passing use_legacy_relative=True).
 
 4. None provided, no stored root, not legacy → raises ProjectRootError.
+
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ def _stored_project_root() -> Path | None:
     -------
     Path | None
         project root, or None if it could not be found.
+
     """
     try:
         from uclchem._project_root import (  # noqa: PLC0415 # type: ignore[import]
@@ -54,6 +56,7 @@ def _is_valid_project_root(root: Path) -> bool:
     -------
     bool
         whether ``root`` has the expected project structure.
+
     """
     return (root / "src" / "uclchem").is_dir() and (root / "src" / "fortran_src").is_dir()
 
@@ -83,6 +86,7 @@ def resolve_output_dirs(
     ------
     ProjectRootError
         When no valid output location can be determined.
+
     """
     # --- Tier 1: explicit directory ------------------------------------------------
     if explicit_dir is not None:
