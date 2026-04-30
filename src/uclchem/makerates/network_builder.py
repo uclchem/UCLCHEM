@@ -1064,7 +1064,7 @@ class NetworkBuilder:
                 self.network.set_reaction(reaction_idx=reaction_index, reaction=reaction)
 
     def _add_gas_phase_extrapolation(self) -> None:
-        """Enable extrapolation for gas-phase reactions that have unique or overlapping temperatures."""
+        """Enable extrapolation for gas reactions that have unique or overlapping temperatures."""
         for reaction in self.network._reactions_dict.values():
             if reaction.is_gas_reaction() and (
                 reaction.get_reaction_type() in {"TWOBODY", "PHOTON", "CRP", "CRPHOT"}

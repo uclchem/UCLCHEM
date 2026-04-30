@@ -13,10 +13,7 @@ from typing import TYPE_CHECKING, Any, TextIO
 import numpy as np
 import yaml
 
-from uclchem._coolant_utils import (
-    get_energy_levels_info,
-    validate_coolant_frequencies,
-)
+from uclchem._coolant_utils import get_energy_levels_info, validate_coolant_frequencies
 from uclchem.constants import PHYSICAL_PARAMETERS
 from uclchem.makerates.config import ReactionFileTypes
 from uclchem.makerates.network import Network
@@ -702,7 +699,7 @@ def write_f90_constants(
     output_file_name: str | Path,
     template_file_path: str | Path = "fortran_templates",
 ) -> None:
-    """Write the constants about the network to ``f2py_constants.f90`` file after every run of MakeRates.
+    """Write the constants about the network to ``f2py_constants.f90`` file.
 
     This writes things like the number of species, number of reactions, etc.
     This ensures the Fortran and Python bits are compatible.
@@ -1225,7 +1222,7 @@ END MODULE ODES"""
 
 
 def species_ode_string(n: int, species: Species) -> str:
-    """Build the string of Fortran code for a species once its loss and gains strings have been produced.
+    """Build the string of Fortran code for a species from its losses and gains.
 
     Parameters
     ----------

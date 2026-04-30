@@ -1,4 +1,4 @@
-"""Read a Makerates produced reaction file and prints every reaction that forms or destroys a species."""
+"""Read a Makerates produced reaction file and print reactions that form or destroy a species."""
 
 import csv
 import pathlib

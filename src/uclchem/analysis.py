@@ -508,7 +508,8 @@ def _param_dict_from_output(
 ) -> dict[str, float]:
     """Generate a parameter dictionary from a UCLCHEM timestep.
 
-    Contains enough of the physical variables to recreate the parameter dictionary used to run UCLCHEM.
+    Contains enough of the physical variables to recreate
+    the parameter dictionary used to run UCLCHEM.
 
     Parameters
     ----------
@@ -537,7 +538,7 @@ def _get_species_rates(
     species_index: int,
     reac_indxs: list[int],
 ) -> tuple[np.ndarray, float, float, float]:
-    """Get the rate of up to 500 reactions from UCLCHEM for a given set of parameters and abundances.
+    """Get the rate of up to 500 reactions for a given set of parameters and abundances.
 
     Intended for use within the analysis script.
 
@@ -863,7 +864,7 @@ def total_element_abundance(element: str, df: pd.DataFrame) -> pd.Series:
 def check_element_conservation(
     df: pd.DataFrame, element_list: list[str] | None = None, percent: bool = True
 ) -> dict[str, str]:
-    """Check conservation of elements by comparing their total abundance at start and end of a model.
+    """Check conservation of elements by comparing their abundances at start and end of a model.
 
     Parameters
     ----------
@@ -990,7 +991,7 @@ def rate_constants_to_dy_and_rates(
     species: list[Species] | None = None,
     reactions: list[Reaction] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Convert the rate constants to get the change of species over time (``dy``) and reaction rates.
+    """Convert the rate constants to the change of species over time (``dy``) and reaction rates.
 
     Apply postprocessing to obtain the equivalent of GETYDOT from the fortran side and the
     reaction rates at each timestep.

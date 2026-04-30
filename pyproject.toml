@@ -65,7 +65,7 @@ extend-ignore = [
     "S603", "S607", "S404", "S602", 
     "PLR2004", "PLR0911", "PLR1702", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR0914", "PLR0904"
 ]
-pycodestyle.max-doc-length = 105
+pycodestyle.max-doc-length = 100
 pydocstyle.convention = 'numpy'
 preview = true
 
@@ -126,8 +126,15 @@ LAMDA = "LAMDA"
 atct = "atct"
 ATcT = "ATcT"
 
-
 [[tool.mypy.overrides]]
 module = ["yaml", "uclchemwrap", "h5py", "nbconvert.*", "nbformat", "pytest", "matplotlib", "matplotlib.*", "xarray", "bs4", "pydantic", "uclchem._project_root"]
 ignore_missing_imports = true
 
+[tool.pymend]
+output-style = "numpydoc"
+exclude = "tests/"
+force-docstrings = false
+# force-multiline-docs-end-with-blank = true
+# For now include '--noforce-raises', because pymend's exception checking
+# is not (yet) as good as ruffs, so will have some false positives
+force-raises = 'off'

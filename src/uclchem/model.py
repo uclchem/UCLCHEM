@@ -712,7 +712,8 @@ class AbstractModel(ABC):
     def __del__(self):
         """Unlink all shared memory objects.
 
-        If the AbstractModel object goes out of scope, ensure that no shared memory objects stick around.
+        If the AbstractModel object goes out of scope,
+        ensure that no shared memory objects stick around.
 
         """
         if hasattr(self, "_shm_desc") and bool(self._shm_desc):
@@ -857,7 +858,8 @@ class AbstractModel(ABC):
         except Exception:
             ndim = None
 
-        # If this looks like an array variable (name contains '_array' and ndim >= 1), store in _data
+        # If this looks like an array variable (name contains '_array' and ndim >= 1),
+        # store in _data
         if ndim is not None and "_array" in key and ndim >= 1:
             # Ensure value is a numpy array (convert lists, tuples, etc.)
             if not isinstance(value, np.ndarray):
@@ -1305,7 +1307,8 @@ class AbstractModel(ABC):
             raise ValueError(msg)
 
         # Create a physical parameter dataframe using global constants
-        # Arrays are guaranteed to match these dimensions due to validation in legacy_read_output_file
+        # Arrays are guaranteed to match these dimensions due to
+        # validation in legacy_read_output_file
         if self.physics_array is None:
             msg = "physics_array is None, so cannot create the single point dataframes."
             raise ValueError(msg)
@@ -1694,7 +1697,7 @@ class AbstractModel(ABC):
                 logger.debug(f"Successfully wrote {self.outputFile}")
             except Exception as e:
                 logger.error(f"Failed to write {self.outputFile}: {e}", exc_info=True)
-                raise
+                raise e
         if self.abundSaveFile is not None:
             logger.debug(f"Writing abundance file: {self.abundSaveFile}")
             try:
@@ -1702,7 +1705,7 @@ class AbstractModel(ABC):
                 logger.debug(f"Successfully wrote {self.abundSaveFile}")
             except Exception as e:
                 logger.error(f"Failed to write {self.abundSaveFile}: {e}", exc_info=True)
-                raise
+                raise e
 
     @abstractmethod
     def run_fortran(self) -> dict[str, int | list]:  # noqa: D102
@@ -3405,12 +3408,12 @@ class JShock(AbstractModel):
 
 @register_model
 class Postprocess(AbstractModel):
-    """Postprocess represents a model class with additional controls. It inherits from AbstractModel.
+    """Postprocess represents a model class with additional controls.
 
-    Postprocess allows for additional controls of the time, density, gas temperature, radiation field,
-    cosmic ray ionization rate, atomic and molecular Hydrogen, CO and C column densities through the
-    use of arrays. Using these arrays allows for experimental model crafting beyond the standard models
-    in other model classes.
+    Postprocess allows for additional controls of the time, density, gas temperature,
+    radiation field, cosmic ray ionization rate, atomic and molecular Hydrogen,
+    CO and C column densities through the use of arrays. Using these arrays allows
+    for experimental model crafting beyond the standard models in other model classes.
 
     """
 
@@ -3850,9 +3853,9 @@ class Model(AbstractModel):
 class SequentialRunner:
     """The SequentialRunner class allows for multiple models to be run back to back.
 
-    By defining a specific dictionary to hold the information of each model class to run in sequence,
-    SequentialModel allows for the automatic running of multiple models as well as matching some
-    physical parameters from one model to the next.
+    By defining a specific dictionary to hold the information of each model class to run
+    in sequence, SequentialModel allows for the automatic running of multiple models as
+    well as matching some physical parameters from one model to the next.
 
     """
 
@@ -4619,7 +4622,7 @@ class GridRunner:
             ].sel(chemical_abun_values=out_species_list)
 
     def _load_params(self) -> None:
-        """Loop through the models present in ``self.models`` to load the changing physical parameters.
+        """Loop through the ``self.models`` to load the changing physical parameters.
 
         The method splits the loops into two cases: ``SequentialRunner``, and other model cases.
         In both instances, the for loop loads the model data using the ``_load_model``

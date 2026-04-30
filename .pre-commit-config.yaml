@@ -72,9 +72,6 @@ repos:
   #     - id: pymend
   #       name: "[style] Check docstrings with pymend"
   #       description: "Make sure that all docstrings are correct"
-  #       # For now include '--noforce-raises', because pymend's exception checking
-  #       # is not as good as ruffs.
-  #       args: ["--output-style", "numpydoc", "--noforce-raises", "--noforce-docstrings", "--force-multiline-docs-end-with-blank", "--exclude", "tests/"]
 
   # ============================================================================
   # TIER 3: QUALITY (Docstrings, type hints, simplifications)

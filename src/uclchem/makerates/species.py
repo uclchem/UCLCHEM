@@ -162,8 +162,8 @@ def is_number(s: Any) -> bool:
 def sanitize_input_float(row: list[Any], index: int, default: Any = 0.0) -> float:
     """Sanitize the input.
 
-    If the index is out of bounds of the row or the value from the row cannot be turned into a float,
-    use the ``default`` value. Otherwise, just gets the value from the row.
+    If the index is out of bounds of the row or the value from the row cannot be turned
+    into a float, use the ``default`` value. Otherwise, just gets the value from the row.
 
     Parameters
     ----------
@@ -624,7 +624,12 @@ class Species:
         return self.get_name().endswith("+") or self.get_name().endswith("-")
 
     def add_default_freeze(self) -> None:
-        """Add a default freezeout, which is freezing out to the species itself, but without charge."""
+        """Add a default freeze-out reaction.
+
+        The default freeze-out reaction
+        is freezing out to the species itself, but without charge.
+
+        """
         freeze = "#" + self.get_name()
         if freeze[-1] in {"+", "-"}:
             freeze = freeze[:-1]
