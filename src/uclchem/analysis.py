@@ -1161,7 +1161,7 @@ def rate_constants_to_dy_and_rates(
 
     # Compute the rate at each timestep, adding the appropriate header
     dy: pd.DataFrame[float] = rate_by_reaction @ incidence  # type: ignore[type-arg]
-    dy.columns.set_names([s.get_name() for s in species_list], inplace=True)
+    dy.columns: pd.Index = [s.get_name() for s in species_list]  # type: ignore[misc, ty:invalid-assignment]
     # Compute the SURFACE and BULK:
     dy.loc[:, "SURFACE"] = dy.loc[:, dy.columns.str.startswith("#")].sum(axis=1)
     dy.loc[:, "BULK"] = dy.loc[:, dy.columns.str.startswith("@")].sum(axis=1)

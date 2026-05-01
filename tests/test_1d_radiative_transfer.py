@@ -644,12 +644,12 @@ class TestOOHotcore1D:
         # Get final temperatures at each point
         phys_df = model.get_dataframes()[0]
         final_time = phys_df["Time"].max()
-        final_temps: np.ndarray = (  # ty: ignore[invalid-assignment]
+        final_temps = (
             phys_df[phys_df["Time"] == final_time].sort_values("Point")["gasTemp"].values
         )
 
         # Temperature should vary spatially
-        assert final_temps.std() > 0
+        assert final_temps.std() > 0  # ty: ignore[unresolved-attribute]
 
         # Inner regions should be warmer
         assert final_temps[0] > final_temps[-1]
