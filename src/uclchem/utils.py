@@ -59,8 +59,11 @@ if TYPE_CHECKING:
 
 import numpy as np
 import pandas as pd
+from pandas._libs.parsers import STR_NA_VALUES
 
 UCLCHEM_ROOT_DIR: Path = Path(__file__).parent.resolve().absolute()
+
+_NAN_STRINGS = STR_NA_VALUES - {"NA", "#NA"}
 
 
 def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
@@ -83,36 +86,54 @@ def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
     return (dlength * 1.0e-5 / shock_vel) / SECONDS_PER_YEAR
 
 
-def get_species_table() -> pd.DataFrame:
+def get_species_table(file: str | Path | None = None) -> pd.DataFrame:
     """Load the list of species in the UCLCHEM network into a pandas dataframe.
+
+    Args:
+        file (str | Path | None): path to ``species.csv`` file. If None,
+            uses ``UCLCHEM_ROOT_DIR / "species.csv"``. Default = None.
 
     Returns:
         species (pd.DataFrame): A dataframe containing the species names and their details
 
     """
-    species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
+    if file is None:
+        file = UCLCHEM_ROOT_DIR / "species.csv"
+
+    species = pd.read_csv(file, na_values=_NAN_STRINGS, keep_default_na=False)
     return species
 
 
-def get_species() -> list[str]:
+def get_species(file: str | Path | None = None) -> list[str]:
     """Load the list of species present in the UCLCHEM network.
+
+    Args:
+        file (str | Path | None): path to ``species.csv`` file. If None,
+            uses ``UCLCHEM_ROOT_DIR / "species.csv"``. Default = None.
 
     Returns:
         species_list (list[str]): A list of species names
 
     """
-    species_list = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv").iloc[:, 0].tolist()
+    species_list = get_species_table(file=file)["NAME"].tolist()
     return species_list
 
 
-def get_reaction_table() -> pd.DataFrame:
+def get_reaction_table(file: str | Path | None = None) -> pd.DataFrame:
     """Load the reaction table from the UCLCHEM network into a pandas dataframe.
+
+    Args:
+        file (str | Path | None): Path to ``reactions.csv`` file. If None,
+            uses ``UCLCHEM_ROOT_DIR / "reactions.csv"``. Default = None.
 
     Returns:
         reactions (pd.DataFrame): A dataframe containing the reactions and their rates
 
     """
-    reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
+    if file is None:
+        file = UCLCHEM_ROOT_DIR / "reactions.csv"
+
+    reactions = pd.read_csv(file, na_values=_NAN_STRINGS, keep_default_na=False)
     return reactions
 
 
