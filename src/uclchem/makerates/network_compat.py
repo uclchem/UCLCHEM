@@ -14,6 +14,7 @@ import warnings
 from pathlib import Path
 from typing import Any
 
+from uclchem.advanced.runtime_network import RuntimeNetwork
 from uclchem.makerates.network import Network as NewNetwork
 from uclchem.makerates.network import build_network
 from uclchem.makerates.reaction import Reaction
@@ -263,13 +264,12 @@ class NetworkState:
         """
         warnings.warn(
             "NetworkState is deprecated. "
-            "Use Network.from_fortran() or load_network_from_fortran() instead. "
+            "Use RuntimeNetwork() or instead. "
             "This will be removed in v4.0.",
             DeprecationWarning,
             stacklevel=2,
         )
-
-        return NewNetwork.from_fortran()
+        return RuntimeNetwork()
 
 
 # Compatibility exports for when this module is used

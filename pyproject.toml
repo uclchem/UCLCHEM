@@ -133,8 +133,17 @@ ignore_missing_imports = true
 [tool.pymend]
 output-style = "numpydoc"
 exclude = "tests/"
+force-multiline-docs-end-with-blank = true
 force-docstrings = false
-# force-multiline-docs-end-with-blank = true
-# For now include '--noforce-raises', because pymend's exception checking
-# is not (yet) as good as ruffs, so will have some false positives
-force-raises = 'off'
+force-raises = 'per-type'
+mode = 'check-only'
+
+[tool.ty.analysis]
+allowed-unresolved-imports = ["uclchemwrap", "matplotlib.*", "uclchem._project_root"]
+
+[[tool.ty.overrides]]
+include = ["tests/"]
+
+[tool.ty.overrides.rules]
+possibly-missing-submodule = "ignore"
+

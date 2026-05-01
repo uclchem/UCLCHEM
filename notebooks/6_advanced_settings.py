@@ -18,6 +18,7 @@
 # This notebook demonstrates how to use the `advanced.GeneralSettings` class to modify UCLCHEM parameters instead of using parameter dictionaries. This provides a more object-oriented interface with better autocomplete, type checking, and state management.
 
 # %%
+# ty: ignore[unresolved-attribute]
 import os
 
 import uclchem

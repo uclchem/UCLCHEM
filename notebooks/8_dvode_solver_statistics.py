@@ -23,7 +23,8 @@
 # %%
 import matplotlib.pyplot as plt
 
-import uclchem
+import uclchem.constants
+import uclchem.model
 
 # %% [markdown]
 # ## Running a Model and Accessing Stats

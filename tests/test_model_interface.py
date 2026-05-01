@@ -11,7 +11,7 @@ def test_invalid_out_species_name_raises():
 
 def test_non_string_out_species_entry_raises():
     with pytest.raises(ValueError):
-        Cloud(out_species=[123], run_type="external")
+        Cloud(out_species=[123], run_type="external")  # ty: ignore[invalid-argument-type]
 
 
 def test_incorrect_starting_chemistry_raises():

@@ -13,6 +13,7 @@ across model runs in the same Python session.
 
 """
 
+import importlib.resources
 import importlib.util
 import logging
 import os

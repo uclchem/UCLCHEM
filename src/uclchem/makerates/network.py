@@ -666,6 +666,14 @@ class Network(BaseNetwork, MutableNetworkABC):
 
     """
 
+    user_defined_bulk: list[Species] | None
+    gas_phase_extrapolation: bool
+    add_crp_photo_to_grain: bool
+    derive_reaction_exothermicity: list[str] | None
+    database_reaction_exothermicity: list[str | Path] | None
+    enthalpies_present: bool
+    excited_species: bool
+
     def __init__(
         self, species_dict: dict[str, Species], reaction_dict: dict[int, Reaction]
     ):
@@ -1087,17 +1095,17 @@ class Network(BaseNetwork, MutableNetworkABC):
         # Convert to list of Reaction objects
         reactions_list: list[Reaction]
         if isinstance(reactions, list):
-            if len(reactions) == 0:
+            if not reactions:
                 logger.warning("Tried to add empty reactions list, ignoring.")
                 return
             elif isinstance(reactions[0], Reaction):
                 reactions_list = reactions  # type: ignore
             elif isinstance(reactions[0], list):
                 try:
-                    reactions_list = [Reaction(reac) for reac in reactions]
-                except ValueError as error:
+                    reactions_list = [Reaction(reac) for reac in reactions]  # ty: ignore[invalid-argument-type]
+                except ValueError as e:
                     msg = "Failed to convert CSV entries to Reaction objects"
-                    raise ValueError(msg) from error
+                    raise ValueError(msg) from e
         elif isinstance(reactions, Reaction):
             reactions_list = [reactions]
         else:

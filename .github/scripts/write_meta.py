@@ -3,7 +3,7 @@
 
 import json
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 REF = os.environ.get("REF") or os.environ.get("INPUT_REF") or ""
@@ -25,7 +25,7 @@ meta = {
     "uclchem_version": PKG_VER,
     "commit_sha": COMMIT_SHA,
     "built_at": BUILD_DATE,
-    "built_at_ts": datetime.utcnow().isoformat() + "Z",
+    "built_at_ts": datetime.now(UTC).isoformat() + "Z",
     "built_by": GITHUB_ACTOR,
 }
 

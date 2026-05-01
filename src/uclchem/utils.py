@@ -389,7 +389,7 @@ def collapse_radial_velocity(model: Collapse, point: int = 0) -> pd.Series:
         msg = f"model must be a Collapse instance, got {type(model).__name__}"
         raise TypeError(msg)
 
-    df: pd.DataFrame = model.get_dataframes(point=point)  # type: ignore[assignment]
+    df = model.get_joined_dataframes(point=point)
     t_yr = df["Time"]
     r_pc = df["parcel_radius"]
     mode = model.collapse  # integer 1-4
@@ -457,25 +457,25 @@ class SuccessFlag(enum.IntEnum):
         return member
 
     # Zen line two: Explicit is better than implicit.
-    SUCCESS = 0, "Model ran successfully"
-    PARAMETER_READ_ERROR = -1, "Parameter read failed."
-    PHYSICS_INIT_ERROR = -2, "Physics initialization failed."
-    CHEM_INIT_ERROR = -3, "Chemistry initialization failed."
-    INT_UNRECOVERABLE_ERROR = -4, "Unrecoverable integrator error occurred."
-    INT_TOO_MANY_FAILS_ERROR = -5, "Too many integrator fails occurred."
-    NOT_ENOUGH_TIMEPOINTS_ERROR = (
+    SUCCESS = 0, "Model ran successfully"  # ty: ignore[invalid-assignment]
+    PARAMETER_READ_ERROR = -1, "Parameter read failed."  # ty: ignore[invalid-assignment]
+    PHYSICS_INIT_ERROR = -2, "Physics initialization failed."  # ty: ignore[invalid-assignment]
+    CHEM_INIT_ERROR = -3, "Chemistry initialization failed."  # ty: ignore[invalid-assignment]
+    INT_UNRECOVERABLE_ERROR = -4, "Unrecoverable integrator error occurred."  # ty: ignore[invalid-assignment]
+    INT_TOO_MANY_FAILS_ERROR = -5, "Too many integrator fails occurred."  # ty: ignore[invalid-assignment]
+    NOT_ENOUGH_TIMEPOINTS_ERROR = (  # ty: ignore[invalid-assignment]
         -6,
         "Not enough time points allocated in the time array.",
     )
-    PHYSICS_UPDATE_ERROR = -7, "Error updating physics during integration."
-    SOLVER_STATS_OVERFLOW_ERROR = -8, "Solver statistics array overflowed."
-    COOLANT_FILE_ERROR = -9, "Coolant data file could not be opened."
-    COOLANT_DATA_ERROR = -10, "Coolant data file has invalid format."
-    COOLANT_FREQ_TOL_ERROR = -11, "Coolant frequency tolerance exceeded."
-    COOLANT_POP_TOL_ERROR = -12, "LTE population sum tolerance exceeded."
-    COOLANT_SOLVER_ERROR = -13, "Coolant solver numerical error occurred."
-    COOLANT_CONFIG_ERROR = -14, "Coolant configuration error occurred."
-    NEGATIVE_ABUNDANCE_ERROR = -15, "A negative abundance was detected."
+    PHYSICS_UPDATE_ERROR = -7, "Error updating physics during integration."  # ty: ignore[invalid-assignment]
+    SOLVER_STATS_OVERFLOW_ERROR = -8, "Solver statistics array overflowed."  # ty: ignore[invalid-assignment]
+    COOLANT_FILE_ERROR = -9, "Coolant data file could not be opened."  # ty: ignore[invalid-assignment]
+    COOLANT_DATA_ERROR = -10, "Coolant data file has invalid format."  # ty: ignore[invalid-assignment]
+    COOLANT_FREQ_TOL_ERROR = -11, "Coolant frequency tolerance exceeded."  # ty: ignore[invalid-assignment]
+    COOLANT_POP_TOL_ERROR = -12, "LTE population sum tolerance exceeded."  # ty: ignore[invalid-assignment]
+    COOLANT_SOLVER_ERROR = -13, "Coolant solver numerical error occurred."  # ty: ignore[invalid-assignment]
+    COOLANT_CONFIG_ERROR = -14, "Coolant configuration error occurred."  # ty: ignore[invalid-assignment]
+    NEGATIVE_ABUNDANCE_ERROR = -15, "A negative abundance was detected."  # ty: ignore[invalid-assignment]
 
     def check_error(
         self, only_error: bool = False, raise_on_error: bool = True
@@ -567,7 +567,7 @@ ArrayLike: TypeAlias = list | pd.Series | np.ndarray
 
 def configure_logging(
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] | int = "INFO",
-    stream: TextIOWrapper | str | Path | None = sys.stdout,  # type: ignore[assignment]
+    stream: TextIOWrapper | str | Path | None = sys.stdout,  # type: ignore[assignment, ty:invalid-parameter-default]
 ) -> None:
     """Configure logging of UCLCHEM.
 
@@ -601,7 +601,7 @@ def configure_logging(
 
     """
     if isinstance(level, str):
-        level = level.upper()  # type: ignore[assignment]
+        level = level.upper()  # type: ignore[assignment, ty:invalid-assignment]
 
     handler: logging.Handler
     if stream is None:

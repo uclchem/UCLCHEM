@@ -298,15 +298,17 @@ def _get_network_from_files(
     species_list, user_defined_bulk = io.read_species_file(species_file)
     # Check if reaction and type files are lists, if not, make them lists
     if not isinstance(reaction_files, list):
-        reaction_files = [reaction_files]  # type: ignore
+        reaction_files: list[str | Path] = [reaction_files]  # type: ignore[no-redef, ty:invalid-assignment]
     if not isinstance(reaction_types, list):
-        reaction_types = [reaction_types]
+        reaction_types: list[ReactionFileTypes] = [reaction_types]  # type: ignore[no-redef]
     reactions = []
     dropped_reactions = []
     # Support an arbitrary amount of different reaction files and append then in the end.
-    for reaction_file, reaction_type in zip(reaction_files, reaction_types, strict=True):
+    for reaction_file, reaction_type in zip(reaction_files, reaction_types, strict=True):  # type: ignore[arg-type]
         temp_reactions, temp_dropped_reactions = io.read_reaction_file(
-            reaction_file, species_list, reaction_type
+            reaction_file,  # ty: ignore[invalid-argument-type]
+            species_list,
+            reaction_type,  # type: ignore[arg-type]
         )
         reactions += temp_reactions
         dropped_reactions += temp_dropped_reactions

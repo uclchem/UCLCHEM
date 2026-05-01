@@ -467,6 +467,8 @@ class TestOOCloud1D:
         # Check model succeeded
         model.check_error()
         assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS
+        assert model.physics_array is not None
+        assert model.chemical_abun_array is not None
 
         # Verify arrays are 3D
         assert model.physics_array.ndim == 3
@@ -585,6 +587,7 @@ class TestOOCollapse1D:
         assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS
 
         # Verify 3D arrays
+        assert model.physics_array is not None
         assert model.physics_array.ndim == 3
         assert model.physics_array.shape[1] == params["points"]
 
@@ -641,7 +644,7 @@ class TestOOHotcore1D:
         # Get final temperatures at each point
         phys_df = model.get_dataframes()[0]
         final_time = phys_df["Time"].max()
-        final_temps = (
+        final_temps: np.ndarray = (  # ty: ignore[invalid-assignment]
             phys_df[phys_df["Time"] == final_time].sort_values("Point")["gasTemp"].values
         )
 
@@ -672,6 +675,12 @@ class TestOOModelSavingLoading1D:
 
         # Load model
         model2 = uclchem.model.Cloud.from_file(str(save_file))
+
+        assert model1.physics_array is not None
+        assert model1.chemical_abun_array is not None
+
+        assert model2.physics_array is not None
+        assert model2.chemical_abun_array is not None
 
         # Verify loaded model has same data
         assert np.allclose(model1.physics_array, model2.physics_array)
@@ -738,6 +747,8 @@ class TestOOModelChaining1D:
         assert phys_df2["Time"].iloc[-1] >= 5.0e4
 
         # Verify chemistry evolved
+        assert model1.chemical_abun_array is not None
+        assert model2.chemical_abun_array is not None
         assert np.allclose(model1.chemical_abun_array[-1], model2.chemical_abun_array[0])
 
     def test_oo_chain_with_starting_chemistry_array(self, base_1d_params):
@@ -755,6 +766,7 @@ class TestOOModelChaining1D:
 
         # Verify shape matches multi-point structure
         # Shape should be (points, nspec)
+        assert starting_chem is not None
         assert starting_chem.shape[0] == base_1d_params["points"]
 
         # Run second model with this chemistry
@@ -854,6 +866,8 @@ class TestFunctionalVsOOConsistency:
         )
 
         assert flag_func == uclchem.utils.SuccessFlag.SUCCESS
+        assert oo_model.physics_array is not None
+        assert oo_model.chemical_abun_array is not None
 
         # Arrays should match after warm-up. Use tolerances that accommodate
         # the huge dynamic range of abundances (1e0 down to 1e-30).

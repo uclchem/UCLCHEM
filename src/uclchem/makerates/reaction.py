@@ -809,6 +809,11 @@ class Reaction:
         bool
             equality
 
+        Raises
+        ------
+        NotImplementedError
+            If `other` is not an instance of a Reaction
+
         """
         if not isinstance(other, Reaction):
             msg = f"Can only compare Reaction instances, but tried to compare Reaction and {type(other)}"

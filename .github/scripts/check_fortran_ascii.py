@@ -7,6 +7,7 @@ non-ASCII characters and reports any violations. It can be used as a pre-commit 
 Usage:
     python check_fortran_ascii.py file1.f90 file2.f90 ...
     python check_fortran_ascii.py --scan-directory src/fortran_src/
+
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ def check_file_for_non_ascii(filepath: str | Path) -> list[tuple[int, str]] | No
     -------
     list[tuple[int, str]] | None
         List of tuples (line_number, line_content) with non-ASCII characters
+
     """
     violations = []
 

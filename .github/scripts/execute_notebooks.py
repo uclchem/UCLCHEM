@@ -6,13 +6,14 @@ execute them in place, and continue on errors.
 
 Exit code: 0 even if some notebooks failed (mirrors previous behavior).
 Writes a simple log file executed_notebooks/run.log.
+
 """
 
 import os
 import shutil
 import subprocess
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path.cwd()
@@ -23,7 +24,7 @@ LOG = OUT_DIR / "run.log"
 OUT_DIR.mkdir(exist_ok=True, parents=True)
 
 with LOG.open("a") as lf:
-    lf.write(f"Run started: {datetime.utcnow().isoformat()}Z\n")
+    lf.write(f"Run started: {datetime.now(UTC).isoformat()}Z\n")
 
 # Convert .py to .ipynb if any
 py_files = [str(path) for path in SRC_DIR.glob("*.py")]
@@ -95,7 +96,7 @@ for nb in exec_ipynbs:
             lf.write(f"Unexpected error executing {nb}: {e}\n")
 
 with LOG.open("a") as lf:
-    lf.write(f"Run finished: {datetime.utcnow().isoformat()}Z\n")
+    lf.write(f"Run finished: {datetime.now(UTC).isoformat()}Z\n")
 
 # Print log to stdout for GitHub Actions logs
 with LOG.open() as lf:

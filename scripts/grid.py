@@ -85,7 +85,7 @@ if __name__ == "__main__":
         return result[0]
 
     with Pool(processes=6) as pool:
-        results = pool.map(run_model, model_table.iterrows())  # type: ignore[arg-type]
+        results = pool.map(run_model, model_table.iterrows())  # type: ignore[arg-type, ty:invalid-argument-type]
 
     # ## Checking Your Grid
     # After running, we should do two things.

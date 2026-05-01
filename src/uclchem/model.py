@@ -381,7 +381,7 @@ def _read_array(model_group: dict[str, xr.Dataset], name: str) -> xr.Variable:
 def _write_array(
     model_group: h5py.Group,
     name: str,
-    xr_var: xr.DataArray,
+    xr_var: xr.Variable | xr.DataArray,
     array_dtype: np.typing.DTypeLike | np.dtype | str | None = None,
 ) -> None:
     data = xr_var.values
@@ -1403,7 +1403,7 @@ class AbstractModel(ABC):
             result.append(level_populations_df)
         if with_se_stats:
             result.append(se_stats_df)
-        return tuple(result)  # type: ignore[arg-type]
+        return tuple(result)  # type: ignore[arg-type, ty:invalid-return-type]
 
     def get_solver_stats_dataframe(self, point: int | None = None) -> pd.DataFrame | None:
         """Get all solver statistics including failed attempts.
@@ -1606,6 +1606,8 @@ class AbstractModel(ABC):
         TypeError
             If the dictionary returned by ``self.run_fortran()`` does not have
             a valid SuccessFlag type (integer)
+        Exception
+            If an error occurred while writing ``self.abundSaveFile`` or ``self.outputFile``.
 
         """
         if self.was_read:
@@ -1697,7 +1699,7 @@ class AbstractModel(ABC):
                 logger.debug(f"Successfully wrote {self.outputFile}")
             except Exception as e:
                 logger.error(f"Failed to write {self.outputFile}: {e}", exc_info=True)
-                raise e
+                raise Exception from e
         if self.abundSaveFile is not None:
             logger.debug(f"Writing abundance file: {self.abundSaveFile}")
             try:
@@ -1705,10 +1707,10 @@ class AbstractModel(ABC):
                 logger.debug(f"Successfully wrote {self.abundSaveFile}")
             except Exception as e:
                 logger.error(f"Failed to write {self.abundSaveFile}: {e}", exc_info=True)
-                raise e
+                raise Exception from e
 
     @abstractmethod
-    def run_fortran(self) -> dict[str, int | list]:  # noqa: D102
+    def run_fortran(self) -> dict[str, int | list | float | None]:  # noqa: D102
         raise NotImplementedError
 
     # /Methods to start run of model
@@ -1781,7 +1783,7 @@ class AbstractModel(ABC):
         save_data = self._data.copy()
         # Collect remaining non-array dataset variables into attributes (same behavior as before)
         v: str
-        for v in list(save_data.variables):  # type: ignore[assignment]
+        for v in list(save_data.variables):  # type: ignore[assignment, ty:invalid-assignment]
             if "_array" not in v and v != "_orig_sigint":
                 if np.shape(save_data[v].values) != ():
                     if isinstance(save_data[v].values, tuple):
@@ -1801,9 +1803,9 @@ class AbstractModel(ABC):
         coord_grp = model_group.create_group("_coords")
 
         save_name: str
-        for save_name, coord in save_data.coords.items():  # type: ignore[assignment]
+        for save_name, coord in save_data.coords.items():  # type: ignore[assignment, ty:invalid-assignment]
             _write_array(coord_grp, save_name, coord, array_dtype=array_dtype)
-        for save_name, var in save_data.data_vars.items():  # type: ignore[assignment]
+        for save_name, var in save_data.data_vars.items():  # type: ignore[assignment, ty:invalid-assignment]
             _write_array(model_group, save_name, var, array_dtype=array_dtype)
         if opened_file:
             file_obj.flush()
@@ -1824,7 +1826,7 @@ class AbstractModel(ABC):
         """
         v: str
         if self._data is not None and not bool(self._pickle_dict):
-            for v in self._data.variables:  # type: ignore[assignment]
+            for v in self._data.variables:  # type: ignore[assignment, ty:invalid-assignment]
                 if np.shape(self._data[v].values) != ():
                     if isinstance(self._data[v].values, tuple):
                         self._pickle_dict[v] = self._data[v].values[1].tolist()
@@ -2180,8 +2182,22 @@ class AbstractModel(ABC):
 
     # Cleaning of array & inptus
     def _array_clean(self):
-        """Clean the arrays changed by UCLCHEM Fortran code."""
+        """Clean the arrays changed by UCLCHEM Fortran code.
+
+        Raises
+        ------
+        RuntimeError
+            If ``self.physics_array`` or ``self.chemical_abun-array`` are still None.
+
+        """
         logger.debug("Cleaning Fortran arrays")
+
+        if self.physics_array is None:
+            msg = "Physics array was None when trying to clean arrays."
+            raise RuntimeError(msg)
+        if self.chemical_abun_array is None:
+            msg = "Chemical abundances array was None when trying to clean arrays."
+            raise RuntimeError(msg)
 
         # Find the first element with all the zeros
         nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
@@ -2211,10 +2227,10 @@ class AbstractModel(ABC):
 
         """
         # physics coords
-        try:
-            phys_len = self.physics_array.shape[-1]
-        except Exception:
+        if self.physics_array is None:
             phys_len = None
+        else:
+            phys_len = self.physics_array.shape[-1]
         if phys_len is not None:
             if "physics_values" in self._data.coords:
                 if len(self._data.coords["physics_values"]) != phys_len:
@@ -2237,10 +2253,11 @@ class AbstractModel(ABC):
                 )
 
         # chemical abundances coords
-        try:
-            chem_len = self.chemical_abun_array.shape[-1]
-        except Exception:
+        if self.chemical_abun_array is None:
             chem_len = None
+        else:
+            chem_len = self.chemical_abun_array.shape[-1]
+
         if chem_len is not None:
             species_names = get_species_names()
             if "chemical_abun_values" in self._data.coords:
@@ -2299,7 +2316,7 @@ class AbstractModel(ABC):
                     new_param_dict[key] = str(value)
 
             # Handle deprecated endAtFinalDensity parameter (after lowercasing)
-            new_param_dict = _convert_legacy_stopping_param(new_param_dict)  # type: ignore[assignment]
+            new_param_dict: dict = _convert_legacy_stopping_param(new_param_dict)  # type: ignore[no-redef, ty:invalid-assignment]
 
             self._param_dict = {**default_param_dictionary, **new_param_dict.copy()}
             del new_param_dict
@@ -2703,12 +2720,12 @@ class Cloud(AbstractModel):
         if self.run_type != "external" and not self.was_read:
             self.run()
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | float | None]:
         """Run the fortran side of the UCLCHEM model.
 
         Returns
         -------
-        dict[str, int | list]
+        dict[str, int | list | float | None]
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
@@ -2921,12 +2938,12 @@ class Collapse(AbstractModel):
             if self.run_type != "external":
                 self.run()
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | float | None]:
         """Run the fortran side of the UCLCHEM model.
 
         Returns
         -------
-        dict[str, int | list]
+        dict[str, int | list | float | None]
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
@@ -2955,7 +2972,7 @@ class Collapse(AbstractModel):
         out_species_abundances_array = result[-2]
         success_flag = result[-1]
         if success_flag < 0:
-            out_species_abundances_array = np.array([])
+            out_species_abundances_array = []
         else:
             out_species_length = (
                 len(self.out_species_list) if self.out_species_list is not None else 0
@@ -3063,12 +3080,12 @@ class PrestellarCore(AbstractModel):
             if self.run_type != "external":
                 self.run()
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | float | None]:
         """Run the fortran side of the UCLCHEM model.
 
         Returns
         -------
-        dict[str, int | list]
+        dict[str, int | list | float | None]
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
@@ -3098,7 +3115,7 @@ class PrestellarCore(AbstractModel):
             )
         )
         if success_flag < 0:
-            out_species_abundances_array = np.array([])
+            out_species_abundances_array = []
         else:
             out_species_length = (
                 len(self.out_species_list) if self.out_species_list is not None else 0
@@ -3209,12 +3226,12 @@ class CShock(AbstractModel):
             if self.run_type != "external":
                 self.run()
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | float | None]:
         """Run the fortran side of the UCLCHEM model.
 
         Returns
         -------
-        dict[str, int | list]
+        dict[str, int | list | float | None]
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
@@ -3242,12 +3259,12 @@ class CShock(AbstractModel):
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")  # noqa: PLC2801
             else None,
         )
-        dissipation_time = result[-3]
+        dissipation_time: float | None = result[-3]
         out_species_abundances_array = result[-2]
-        success_flag = result[-1]
+        success_flag: int = result[-1]
         if success_flag < 0:
             dissipation_time = None
-            out_species_abundances_array = np.array([])
+            out_species_abundances_array = []
         else:
             out_species_length = (
                 len(self.out_species_list) if self.out_species_list is not None else 0
@@ -3348,12 +3365,12 @@ class JShock(AbstractModel):
             if self.run_type != "external":
                 self.run()
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | float | None]:
         """Run the fortran side of the UCLCHEM model.
 
         Returns
         -------
-        dict[str, int | list]
+        dict[str, int | list | float | None]
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
@@ -3382,7 +3399,7 @@ class JShock(AbstractModel):
         out_species_abundances_array = result[-2]
         success_flag = result[-1]
         if success_flag < 0:
-            out_species_abundances_array = np.array([])
+            out_species_abundances_array = []
         else:
             out_species_length = (
                 len(self.out_species_list) if self.out_species_list is not None else 0
@@ -3587,12 +3604,12 @@ class Postprocess(AbstractModel):
         if self.run_type != "external":
             self.run()
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | float | None]:
         """Run the fortran side of the UCLCHEM model.
 
         Returns
         -------
-        dict[str, int | list]
+        dict[str, int | list | float | None]
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
@@ -3626,7 +3643,7 @@ class Postprocess(AbstractModel):
         out_species_abundances_array = result[-2]
         success_flag = result[-1]
         if success_flag < 0:
-            out_species_abundances_array = np.array([])
+            out_species_abundances_array = []
         else:
             out_species_length = (
                 len(self.out_species_list) if self.out_species_list is not None else 0
@@ -3791,12 +3808,12 @@ class Model(AbstractModel):
         if self.run_type != "external":
             self.run()
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | float | None]:
         """Run the fortran side of the UCLCHEM model.
 
         Returns
         -------
-        dict[str, int | list]
+        dict[str, int | list | float | None]
             Dictionary with two keys:
             "success_flag" with value the success flag
             "out_species_abundances_array" with value a list of the outspecies abundances.
@@ -3826,7 +3843,7 @@ class Model(AbstractModel):
         out_species_abundances_array = result[-2]
         success_flag = result[-1]
         if success_flag < 0:
-            out_species_abundances_array = np.array([])
+            out_species_abundances_array = []
         else:
             out_species_length = (
                 len(self.out_species_list) if self.out_species_list is not None else 0
@@ -4539,7 +4556,7 @@ class GridRunner:
                 pool.apply_async(
                     _run_grid_model,
                     args=(model_id, self.model_type, pending_model, self.log_dir),
-                    callback=on_result,
+                    callback=on_result,  # ty: ignore[invalid-argument-type]
                     error_callback=lambda exc, _mid=model_id: on_error(exc, _mid),  # type: ignore[misc]
                 )
             pool.close()

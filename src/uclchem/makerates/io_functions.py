@@ -17,7 +17,7 @@ from uclchem._coolant_utils import get_energy_levels_info, validate_coolant_freq
 from uclchem.constants import PHYSICAL_PARAMETERS
 from uclchem.makerates.config import ReactionFileTypes
 from uclchem.makerates.network import Network
-from uclchem.makerates.reaction import Reaction, reaction_types
+from uclchem.makerates.reaction import CoupledReaction, Reaction, reaction_types
 from uclchem.makerates.species import Species, normalize_species_name, species_header
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
@@ -310,7 +310,7 @@ def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
                     for func, count in item[1].items():
                         if func != "skip":
                             a = line[:count]
-                            row.append(func(a))  # type: ignore[operator]
+                            row.append(func(a))  # type: ignore[operator, ty:call-non-callable]
                         line = line[count:]
 
             # Some reformatting required
@@ -1673,10 +1673,10 @@ def write_network_file(
         for reaction in reaction_list:
             if reaction.get_reaction_type() == "LHDES":
                 if (
-                    hasattr(reaction, "get_partner")
+                    isinstance(reaction, CoupledReaction)
                     and reaction.get_partner() is not None
                 ):
-                    partner = reaction.get_partner()
+                    partner: Reaction = reaction.get_partner()  # type: ignore[assignment, ty:invalid-assignment]
                     reaction_index = reaction_list.index(partner) + 1
                     LHDEScorrespondingLHreacs.append(reaction_index)
                 else:
@@ -1699,10 +1699,10 @@ def write_network_file(
         for reaction in reaction_list:
             if reaction.get_reaction_type() == "ERDES":
                 if (
-                    hasattr(reaction, "get_partner")
+                    isinstance(reaction, CoupledReaction)
                     and reaction.get_partner() is not None
                 ):
-                    partner = reaction.get_partner()
+                    partner = reaction.get_partner()  # type: ignore[assignment, ty:invalid-assignment]
                     reaction_index = reaction_list.index(partner) + 1
                     ERDEScorrespondingERreacs.append(reaction_index)
                 else:

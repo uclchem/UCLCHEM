@@ -746,7 +746,7 @@ def _write_analysis(
     total_production: float,
     total_destruction: float,
     key_reactions: list[str],
-    key_changes: list[float],
+    key_changes: list[float] | np.ndarray,
 ) -> None:
     """Print key reactions to a file.
 
@@ -763,7 +763,7 @@ def _write_analysis(
     key_reactions : list[str]
         A list of all reactions that contribute
         to the total rate of change
-    key_changes : list[float]
+    key_changes : list[float] | np.ndarray
         A list of rates of change contributing to total
 
     """
@@ -1058,8 +1058,8 @@ def rate_constants_to_dy_and_rates(
         species_list = network.get_species_list()
         reactions_list = network.get_reaction_list()
     else:
-        species_list = species  # type: ignore[assignment]
-        reactions_list = reactions  # type: ignore[assignment]
+        species_list = species  # type: ignore[assignment, ty:invalid-assignment]
+        reactions_list = reactions  # type: ignore[assignment, ty:invalid-assignment]
 
     if "Point" in rate_constants.columns:
         warnings.warn(
@@ -1160,8 +1160,8 @@ def rate_constants_to_dy_and_rates(
         raise ValueError(msg)
 
     # Compute the rate at each timestep, adding the appropriate header
-    dy = rate_by_reaction @ incidence
-    dy.columns = [s.get_name() for s in species_list]
+    dy: pd.DataFrame[float] = rate_by_reaction @ incidence  # type: ignore[type-arg]
+    dy.columns.set_names([s.get_name() for s in species_list], inplace=True)
     # Compute the SURFACE and BULK:
     dy.loc[:, "SURFACE"] = dy.loc[:, dy.columns.str.startswith("#")].sum(axis=1)
     dy.loc[:, "BULK"] = dy.loc[:, dy.columns.str.startswith("@")].sum(axis=1)
@@ -1178,12 +1178,12 @@ def rate_constants_to_dy_and_rates(
     # Sort them in the correct order, s.t. it matches the saving to disk format.
     surfswap_reactions = sorted(
         surfswap_reactions,
-        key=lambda x: species_list.index(x.get_reactants()[0]),  # type: ignore
+        key=lambda x: species_list.index(x.get_reactants()[0]),  # type: ignore[arg-type]
     )
 
     bulkswap_reactions = sorted(
         bulkswap_reactions,
-        key=lambda x: species_list.index(x.get_reactants()[0]),  # type: ignore
+        key=lambda x: species_list.index(x.get_reactants()[0]),  # type: ignore[arg-type]
     )
 
     H2_bulkswap_index = None
@@ -1216,7 +1216,7 @@ def rate_constants_to_dy_and_rates(
 
     surfGrowthUncorrected = dy["SURFACE"].copy().values
     for time_idx, abunds_row in abundances.iterrows():
-        time_idx = int(time_idx)  # type: ignore[call-overload] # just to make mypy happy
+        time_idx = int(time_idx)  # type: ignore[call-overload, ty:invalid-argument-type] # just to make mypy happy
         if surfGrowthUncorrected[time_idx] < 0.0:
             surface_coverage = (
                 min(1.0, safeBulk[time_idx] / safeMantle[time_idx])
@@ -1325,7 +1325,7 @@ def compute_heating_per_reaction(
     if network is not None:
         reactions_list = network.get_reaction_list()
     else:
-        reactions_list = reactions  # type: ignore[assignment]
+        reactions_list = reactions  # type: ignore[assignment, ty:invalid-assignment]
 
     if len(reactions_list) != rates.shape[1]:
         msg = "Number of reactions and rates must be equal"
