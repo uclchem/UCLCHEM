@@ -35,7 +35,7 @@ jobs:
         run: pip install .
 
       - name: "[test:model] Run basic model script."
-        run ./scripts/run_uclchem_tests.py
+        run: ./scripts/run_uclchem_tests.py
       
       - name: "[test:install] Run installation tests"
         run: pytest tests/test_install.py -v
