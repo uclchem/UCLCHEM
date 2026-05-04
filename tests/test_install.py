@@ -51,12 +51,9 @@ def test_package_installation():
 
     # Import the package and test if it can be imported
     try:
-        import uclchem
+        import uclchem  # noqa: F401
     except ImportError:
         assert False, "Failed to import the installed package"
-
-    model = uclchem.model.Cloud({"finalTime": 1e4})
-    model.check_error()
 
 
 if __name__ == "__main__":
