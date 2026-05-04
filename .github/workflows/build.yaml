@@ -1,0 +1,44 @@
+name: build
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup-uclchem
+        with:
+          python-version: ${{ matrix.python-version }}
+          install-package: 'false'
+
+      - name: "[build:package] Install UCLCHEM package"
+        run: pip install .
+
+      - name: "[test:model] Run basic model script."
+        run: python3 ./scripts/run_uclchem_tests.py
+      
+      - name: "[test:install] Run installation tests"
+        run: pytest tests/test_install.py -v
+      
+      - name: "[report:success] Installation successful - tests can proceed"
+        run: echo "✓ Package installed and ready for testing"
