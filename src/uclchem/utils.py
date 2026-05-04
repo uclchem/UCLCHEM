@@ -59,7 +59,7 @@ import logging
 import sys
 from io import TextIOWrapper
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, TextIO, TypeAlias
 
 import numpy as np
 import pandas as pd
@@ -567,7 +567,7 @@ ArrayLike: TypeAlias = list | pd.Series | np.ndarray
 
 def configure_logging(
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] | int = "INFO",
-    stream: TextIOWrapper | str | Path | None = sys.stdout,  # type: ignore[assignment, ty:invalid-parameter-default]
+    stream: TextIO | TextIOWrapper | str | Path | None = sys.stdout,
 ) -> None:
     """Configure logging of UCLCHEM.
 
@@ -576,7 +576,7 @@ def configure_logging(
     level : Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] | int
         Level of logs to be
         logged. Case insensitive. Default = "INFO".
-    stream : TextIOWrapper | str | Path | None
+    stream : TextIO | TextIOWrapper | str | Path | None
         stream to write to. If string or Path, write to file
         in append mode. If None, do not write logs at all. Default = sys.stdout (write to stdout).
 

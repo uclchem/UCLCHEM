@@ -156,17 +156,17 @@ class NetworkBuilder:
         self.network = Network.from_lists(self.input_species, self.input_reactions)
 
         # Store options on network for methods that need them
-        self.network.user_defined_bulk = self.user_defined_bulk  # type: ignore[attr-defined]
-        self.network.add_crp_photo_to_grain = self.add_crp_photo_to_grain  # type: ignore[attr-defined]
-        self.network.derive_reaction_exothermicity = self.derive_reaction_exothermicity  # type: ignore[attr-defined]
-        self.network.database_reaction_exothermicity = (  # type: ignore[attr-defined]
+        self.network.user_defined_bulk = self.user_defined_bulk
+        self.network.add_crp_photo_to_grain = self.add_crp_photo_to_grain
+        self.network.derive_reaction_exothermicity = self.derive_reaction_exothermicity
+        self.network.database_reaction_exothermicity = (
             self.database_reaction_exothermicity
         )
-        self.network.enthalpies_present = False  # type: ignore[attr-defined]
+        self.network.enthalpies_present = False
 
         # Check for excited species
         excited_species = self._check_for_excited_species()
-        self.network.excited_species = excited_species  # type: ignore[attr-defined]
+        self.network.excited_species = excited_species
 
         # Add electron if not present
         electron_specie = Species(["E-", 0, 0.0, 0, 0, 0, 0])
@@ -492,7 +492,7 @@ class NetworkBuilder:
                 if partner is None:
                     msg = f"Tried to get the partner of CoupledReaction instance {reaction}, but was None"
                     raise RuntimeError(msg)
-                reaction = partner  # type: ignore[assignment]
+                reaction = partner
             new_reac.set_partner(reaction)
             new_reactions.append(new_reac)
 
@@ -735,7 +735,7 @@ class NetworkBuilder:
                     if partner is None:
                         msg = f"Tried to get the partner of CoupledReaction instance {reaction}, but was None"
                         raise RuntimeError(msg)
-                    reaction_partner = partner  # type: ignore[assignment]
+                    reaction_partner = partner
 
                 for i in range(n_products):
                     # For each of the products, make a new reaction where it is desorbed

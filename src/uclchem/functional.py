@@ -290,17 +290,17 @@ def _functional_return_(
                 with_heating=return_heating,
                 with_stats=return_stats,
             )
-            phys_df = result_dfs[0]  # type: ignore[assignment]
-            chem_df = result_dfs[1]  # type: ignore[assignment]
+            phys_df = result_dfs[0]
+            chem_df = result_dfs[1]
             idx = 2
             if return_rate_constants and len(result_dfs) > idx:
-                rate_constants_df = result_dfs[idx]  # type: ignore[assignment]
+                rate_constants_df = result_dfs[idx]
                 idx += 1
             if return_heating and len(result_dfs) > idx:
-                heating_df = result_dfs[idx]  # type: ignore[assignment]
+                heating_df = result_dfs[idx]
                 idx += 1
             if return_stats and len(result_dfs) > idx:
-                stats_df = result_dfs[idx]  # type: ignore[assignment]
+                stats_df = result_dfs[idx]
             phys_df["Point"] = 1
             chem_df["Point"] = 1
 

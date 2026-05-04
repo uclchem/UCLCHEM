@@ -937,10 +937,10 @@ class Network(BaseNetwork, MutableNetworkABC):
                 logger.warning("Tried to add empty species list, ignoring.")
                 return
             elif isinstance(species[0], Species):
-                species_list = species  # type: ignore
+                species_list = species  # ty: ignore[invalid-assignment]
             elif isinstance(species[0], list):
                 try:
-                    species_list = [Species(spec) for spec in species]  # type: ignore
+                    species_list = [Species(spec) for spec in species]  # ty: ignore[invalid-argument-type]
                 except ValueError as error:
                     msg = "Failed to convert CSV entries to Species objects"
                     raise ValueError(msg) from error
@@ -1099,7 +1099,7 @@ class Network(BaseNetwork, MutableNetworkABC):
                 logger.warning("Tried to add empty reactions list, ignoring.")
                 return
             elif isinstance(reactions[0], Reaction):
-                reactions_list = reactions  # type: ignore
+                reactions_list = reactions  # ty: ignore[invalid-assignment]
             elif isinstance(reactions[0], list):
                 try:
                     reactions_list = [Reaction(reac) for reac in reactions]  # ty: ignore[invalid-argument-type]

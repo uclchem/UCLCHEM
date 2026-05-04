@@ -39,7 +39,7 @@ Returns arrays/DataFrames instead of model objects.
     >>> # Check for errors and plot
     >>> cloud.check_error()
     Model ran successfully
-    >>> cloud.create_abundance_plot(["CO", "$CO"]) #doctest: +SKIP
+    >>> cloud.create_abundance_plot(["CO", "$CO"]) # doctest: +SKIP
 
 **Model Workflow:**
 
@@ -1171,7 +1171,7 @@ class AbstractModel(ABC):
                     with_se_stats,
                 )
                 # Add Point columns to all dataframes (1-indexed)
-                dfs = tuple(add_point_column(df, pt + 1) for df in dfs)  # type: ignore[assignment]
+                dfs = tuple(add_point_column(df, pt + 1) for df in dfs)
                 all_dfs.append(dfs)
 
             # Transpose to group by dataframe type instead of by point
@@ -4832,7 +4832,7 @@ class GridRunner:
             # sometimes of the same type, we split this type out to follow altered
             # logic to arrive at equivalently expected outputs.
             for i in range(len(flattened_grids[0])):
-                combo: tuple[Any, ...] = ()  # type: ignore[assignment]
+                combo: tuple[Any, ...] = ()
                 for j in range(np.shape(flattened_grids)[0]):
                     combo += (flattened_grids[j][i],)
                 yield_dict = {"id": i}
