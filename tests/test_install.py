@@ -55,7 +55,10 @@ def test_package_installation():
     except ImportError:
         assert False, "Failed to import the installed package"
 
-    model = uclchem.model.Cloud({"finalTime": 1e4})
+    # out_specie_list cannot be None here, because otherwise we compile with
+    # small_chemistry network without some elements, but we do want those as out
+    # species, then UCLCHEM errors out.
+    model = uclchem.model.Cloud({"finalTime": 1e4}, out_specie_list=["H"])
     model.check_error()
 
 
