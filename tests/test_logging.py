@@ -1,5 +1,6 @@
 import logging
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
@@ -32,7 +33,7 @@ def test_configure_suppress_logging(caplog):
 
 
 def test_configure_stdout_logging(caplog, capsys):
-    uclchem.utils.configure_logging(level="DEBUG")
+    uclchem.utils.configure_logging(level="DEBUG", stream=sys.stdout)
     uclchem_logger = logging.getLogger("uclchem")
     uclchem_logger.propagate = True  # Have to set to True for caplog handler to find it
 

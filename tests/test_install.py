@@ -51,7 +51,7 @@ def test_package_installation():
 
     # Import the package and test if it can be imported
     try:
-        import uclchem  # noqa: F401
+        import uclchem
     except ImportError:
         assert False, "Failed to import the installed package"
 
