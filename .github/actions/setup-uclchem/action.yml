@@ -27,11 +27,17 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: "[setup:deps] Install system dependencies"
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gfortran
+    - name: "[setup:env] Set up Fortran"
+      uses: fortran-lang/setup-fortran@v1
+      id: setup-fortran
+      with:
+        compiler: "gcc"
+
+        # - name: "[setup:deps] Install system dependencies"
+        #   shell: bash
+        #   run: |
+        #     sudo apt-get update
+        #     sudo apt-get install -y gfortran
 
     - name: "[setup:env] Upgrade pip"
       shell: bash
