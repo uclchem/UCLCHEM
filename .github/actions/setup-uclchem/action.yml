@@ -33,14 +33,14 @@ runs:
       # adding repositories. For now, just treat the easy Ubuntu
       # case seperately.
       # See https://github.com/uclchem/UCLCHEM/actions/runs/25309893252/job/74194832468?pr=177
-      if: runner.os == 'Ubuntu'
+      if: runner.os == 'Linux'
       shell: bash
       run: |
         sudo apt-get update
         sudo apt-get install -y gfortran
 
     - name: "[setup:env] Set up Fortran"
-      if: runner.os != 'Ubuntu'
+      if: runner.os != 'Linux'
       uses: fortran-lang/setup-fortran@v1
       id: setup-fortran
       with:
