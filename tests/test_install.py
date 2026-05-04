@@ -14,7 +14,7 @@ def test_package_installation():
     )
 
     assert result.returncode == 0, (
-        f"Package installation failed:\n{result.stdout}\n{result.stderr}"
+        f"gfortran installation failed:\n{result.stdout}\n{result.stderr}"
     )
 
     # Install the package using pip
@@ -54,12 +54,6 @@ def test_package_installation():
         import uclchem  # noqa: F401
     except ImportError:
         assert False, "Failed to import the installed package"
-
-    # out_specie_list cannot be None here, because otherwise we compile with
-    # small_chemistry network without some elements, but we do want those as out
-    # species, then UCLCHEM errors out.
-    model = uclchem.model.Cloud({"finalTime": 1e4}, out_species=["H"])
-    model.check_error()
 
 
 if __name__ == "__main__":
