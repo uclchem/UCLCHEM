@@ -233,6 +233,9 @@ fortran_parameters:
   - nreac
   - nspec
   - suggested_freq_rel_tol
+  - missing_value_integer
+  - missing_value_float
+  - no_reactant_or_product
   surfacereactions:
   - chemical_barrier_thickness
   - diffuse_react_competition
