@@ -14,17 +14,13 @@ import yaml
 from uclchem.constants import PHYSICAL_PARAMETERS, ZETA_0
 from uclchem.makerates.network import Network
 from uclchem.makerates.reaction import REACTION_TYPES, Reaction
-from uclchem.makerates.species import Species, species_header
+from uclchem.makerates.species import Species, normalize_species_name, species_header
 from uclchem.utils import (
     MISSING_VALUE_FLOAT,
     MISSING_VALUE_INTEGER,
     NO_REACTANT_OR_PRODUCT,
     UCLCHEM_ROOT_DIR,
 )
-
-from .network import Network
-from .reaction import Reaction
-from .species import Species, normalize_species_name, species_header
 
 
 def get_default_coolants() -> list[dict[str, str]]:
