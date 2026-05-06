@@ -63,7 +63,7 @@ contains
             ALLOCATE(maximum_Temp(points))
 
             DO dstep=1,points
-                parcelRadius(dstep)=dstep*rout/float(points) !unit of parsec -- note: parcelRadius is from core to edge
+                parcelRadius(dstep)= rin + dstep * (rout-rin)/float(points) !unit of parsec -- note: parcelRadius is from core to edge
                 parcel_radius(dstep)=parcelRadius(dstep)
             END DO
             ! Better fit for 1D:
@@ -78,10 +78,16 @@ contains
         IF (freefall) density=1.001*initialDens
         
         IF (enable_radiative_transfer .AND. points.gt.1) THEN
-            DO dstep=1,points 
+            DO dstep=1,points
                 density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
                 density(dstep)=density_max(dstep)
                 maximum_Temp(dstep) = maxTemp
+                ! Shielding from protostar: integrate from r=0 (star) to parcel.
+                ! Includes unresolved 0 -> rin region + resolved rin -> parcelRadius shells.
+                call findcoldens_core2edge(coldens(dstep), 0.0_dp, finalDens, &
+                                           density_scale_radius, density_power_index, &
+                                           parcelRadius(dstep))
+                av(dstep) = coldens(dstep) / 1.6d21
             END DO
         END IF
 
@@ -128,15 +134,16 @@ contains
             density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
             density(dstep)=density_max(dstep)
 
+            ! coldens = column from r=0 (star) to parcel; av = shielding from protostar.
+            ! Density is fixed (finalDens profile), so no iterative accumulation needed.
+            call findcoldens_core2edge(coldens(dstep), 0.0_dp, finalDens, &
+                                       density_scale_radius, density_power_index, &
+                                       parcelRadius(dstep))
+            av(dstep) = coldens(dstep) / 1.6d21
+
+            ! av_max: column from rin to parcel edge, for radiation temperature calculation.
             call findcoldens_core2edge(coldens_max(dstep),rin,finalDens,density_scale_radius,density_power_index,parcelRadius(dstep))
             av_max = coldens_max(dstep)/1.6d21 + baseAv !note: av_max from core to edge
-
-            coldens(dstep)=cloudSize/real(points)*density(dstep) !Note: Ngas from edge to core
-            ! add previous column densities to current as we move into cloud to get total
-            IF (dstep .lt. points) coldens(dstep)=coldens(dstep)+outer_coldens_for_current_step
-
-            !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-            av(dstep)= baseAv +coldens(dstep)/1.6d21
 
             ! Get maximum temperature at a given position
             call radiation(parcelRadius(dstep)*pc, lum_star*Lsun, temp_star, av_max, Td_r, U_r)

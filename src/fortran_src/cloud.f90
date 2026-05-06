@@ -62,7 +62,8 @@ CONTAINS
         
         DO dstep=1,points
             IF (enable_radiative_transfer .AND. points.gt.1) THEN
-                coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens_r(parcelRadius(dstep)*pc,density_power_index)
+                call findcoldens_edge2core(coldens(dstep), initialDens, density_scale_radius, &
+                                           density_power_index, parcelRadius(dstep))
             ELSE
                 coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
             END IF
