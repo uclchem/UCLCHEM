@@ -15,6 +15,7 @@ from uclchem.makerates.species import (
     normalize_species_name,
     species_header,
 )
+from uclchem.utils import MISSING_VALUE_FLOAT
 
 # Global flag for validation control
 _skip_reaction_validation = False
@@ -47,7 +48,7 @@ def skip_reaction_validation() -> Iterator[None]:
         _skip_reaction_validation = old_value
 
 
-reaction_types = [
+REACTION_TYPES = [
     "PHOTON",
     "CRP",
     "CRPHOT",
@@ -74,12 +75,12 @@ reaction_types = [
     "ED",
 ]
 
-tunneling_reaction_types = [
-    "LH",
-    "LHDES",
-    "ER",
-    "ERDES",
-]
+
+LH_REACTION_TYPES = {"LH", "LHDES"}
+
+ER_REACTION_TYPES = {"ER", "ERDES"}
+
+TUNNELING_REACTION_TYPES = LH_REACTION_TYPES | ER_REACTION_TYPES
 
 
 class Reaction:
@@ -145,14 +146,14 @@ class Reaction:
                 self.set_gamma(float(inputRow[9]))
                 self.set_templow(float(inputRow[10]))
                 self.set_temphigh(float(inputRow[11]))
-                if len(inputRow) > 12:
+                if len(inputRow) > 12:  # noqa: PLR2004
                     self.set_reduced_mass(float(inputRow[12]))
                 else:
-                    self.set_reduced_mass(0.0)
+                    self.set_reduced_mass(MISSING_VALUE_FLOAT)
                 self.set_extrapolation(
-                    bool(inputRow[13]) if len(inputRow) > 13 else False
+                    bool(inputRow[13]) if len(inputRow) > 13 else False  # noqa: PLR2004
                 )
-                self.set_exothermicity(float(inputRow[14]) if len(inputRow) > 14 else 0.0)
+                self.set_exothermicity(float(inputRow[14]) if len(inputRow) > 14 else 0.0)  # noqa: PLR2004
 
             except IndexError as error:
                 raise ValueError(
@@ -167,11 +168,11 @@ class Reaction:
         # which we manage by counting from -1
         self.body_count = -1
         for reactant in self.get_reactants():
-            if (reactant not in reaction_types) and reactant != "NAN":
+            if (reactant not in REACTION_TYPES) and reactant != "NAN":
                 self.body_count += 1
             if reactant in ["DESOH2", "FREEZE"]:
                 self.body_count += 1
-            if reactant in ["LH", "LHDES"]:
+            if reactant in LH_REACTION_TYPES:
                 self.body_count -= 1
 
         if (self.get_reaction_type() == "FREEZE") and (
@@ -179,9 +180,8 @@ class Reaction:
         ):
             self.beta = 1
 
-        if (
-            self.get_reaction_type() in tunneling_reaction_types
-            and self._reduced_mass == 0.0
+        if self.get_reaction_type() in TUNNELING_REACTION_TYPES and (
+            self._reduced_mass == MISSING_VALUE_FLOAT or self._reduced_mass == 0.0
         ):
             # If the reaction is tunneling based, and no reduced mass was supplied,
             # try to predict it.
@@ -209,7 +209,7 @@ class Reaction:
             r
             for r in self._reactants[:]
             if r
-            not in reaction_types
+            not in REACTION_TYPES
             + [
                 "NAN",
             ]
@@ -259,7 +259,7 @@ class Reaction:
             r
             for r in self._products[:]
             if r
-            not in reaction_types
+            not in REACTION_TYPES
             + [
                 "NAN",
             ]
@@ -420,7 +420,7 @@ class Reaction:
         reac_species = []
         # Get all reactant species and their elemental buildup
         for reac in self._reactants:
-            if reac in reaction_types:
+            if reac in REACTION_TYPES:
                 continue
             specie = Species([reac] + [0] * len(species_header))
             atoms = specie.find_constituents(quiet=True)
@@ -474,7 +474,7 @@ class Reaction:
                             f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                         )
                         return
-        elif n_reacs == 2 and n_prods == 1:
+        elif n_reacs == 2 and n_prods == 1:  # noqa: PLR2004
             # Addition reaction
             if reac_species[0].get_name().strip("#@") == reac_species[1].get_name().strip(
                 "#@"
@@ -497,7 +497,7 @@ class Reaction:
                 return
             else:
                 pass
-        elif n_reacs == 1 and n_prods == 2:
+        elif n_reacs == 1 and n_prods == 2:  # noqa: PLR2004
             # Splitting reaction. Not in network
             # (also not LH or ER type, so would never get here)
             pass
@@ -539,9 +539,9 @@ class Reaction:
             str: reaction type
 
         """
-        if self.get_reactants()[2] in reaction_types:
+        if self.get_reactants()[2] in REACTION_TYPES:
             return self.get_reactants()[2]
-        elif self.get_reactants()[1] in reaction_types:
+        elif self.get_reactants()[1] in REACTION_TYPES:
             return self.get_reactants()[1]
         else:
             return "TWOBODY"
@@ -601,7 +601,7 @@ class Reaction:
 
         counter_reactants = Counter()
         for reac in self._reactants:
-            if reac in reaction_types:
+            if reac in REACTION_TYPES:
                 continue
             if reac in ["NAN", "E-"]:
                 continue
@@ -611,7 +611,7 @@ class Reaction:
 
         counter_products = Counter()
         for prod in self._products:
-            if prod in reaction_types:
+            if prod in REACTION_TYPES:
                 continue
             if prod in ["NAN", "E-"]:
                 continue
@@ -670,7 +670,7 @@ class Reaction:
         on the surface. If any electrons are produced, they are assumed to be
         absorbed by the grain.
         """
-        do_not_convert = reaction_types + ["E-", "NAN"]
+        do_not_convert = REACTION_TYPES + ["E-", "NAN"]
         self.set_reactants(
             [
                 "#" + reac if reac not in do_not_convert else reac
@@ -956,7 +956,7 @@ class Reaction:
             + " reaction: "
             + " + ".join(
                 filter(
-                    lambda r: (r != "NAN") and (r not in reaction_types),
+                    lambda r: (r != "NAN") and (r not in REACTION_TYPES),
                     self.get_reactants(),
                 )
             )

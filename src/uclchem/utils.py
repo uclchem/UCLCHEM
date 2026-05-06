@@ -70,6 +70,9 @@ MISSING_VALUE_INTEGER: int = -1
 MISSING_VALUE_FLOAT: float = -1.0
 """Float to indicate a missing value"""
 
+NO_REACTANT_OR_PRODUCT: int = 9999
+"""Integer to indicate that there is no reactant or product."""
+
 
 def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
     """Calculate the dissipation time of a C-type shock.
@@ -182,22 +185,22 @@ def _rminfit(t_yr: float, mode: int) -> float:
     Returns:
         Radius of minimum velocity (pc for mode 3, normalised units for mode 4).
     """
-    if mode == 3:
+    if mode == 3:  # noqa: PLR2004
         _, unitt = _filament_units()
         tnew = t_yr / unitt
         if tnew == 0.0:
             return 7.2
-        elif np.log(tnew) < 1.6:
+        elif np.log(tnew) < 1.6:  # noqa: PLR2004
             return -1.149 * tnew + 7.2
-        elif np.log(tnew) < 1.674:
+        elif np.log(tnew) < 1.674:  # noqa: PLR2004
             return -9.2 * np.log(tnew) + 16.25
         else:
             return -22.0 * np.log(tnew) + 37.65
     else:  # mode 4
         t6 = 1e-6 * t_yr
-        if t6 <= 10.2:
+        if t6 <= 10.2:  # noqa: PLR2004
             return -0.0039 * t6 + 0.49
-        elif t6 <= 15.1:
+        elif t6 <= 15.1:  # noqa: PLR2004
             return -0.0306 * (t6 - 10.2) + 0.45
         else:
             return -0.282 * (t6 - 15.1) + 0.3
@@ -209,14 +212,14 @@ def _vminfit(t_yr: float, mode: int) -> float:
     Returns:
         Minimum velocity in dimensionless units.
     """
-    if mode == 3:
+    if mode == 3:  # noqa: PLR2004
         _, unitt = _filament_units()
         tnew = t_yr / unitt
         if tnew == 0.0:
             return 0.0
-        elif np.log(tnew) < 1.6:
+        elif np.log(tnew) < 1.6:  # noqa: PLR2004
             return 0.0891 * tnew
-        elif np.log(tnew) < 1.674:
+        elif np.log(tnew) < 1.674:  # noqa: PLR2004
             return 5.5 * np.log(tnew) - 8.37
         else:
             return 18.9 * np.log(tnew) - 30.8
@@ -231,20 +234,20 @@ def _avfit(t_yr: float, mode: int) -> float:
     Returns:
         Velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
     """
-    if mode == 3:
+    if mode == 3:  # noqa: PLR2004
         _, unitt = _filament_units()
         tnew = t_yr / unitt
         if tnew == 0.0:
             return 0.4
-        elif np.log(tnew) < 1.6:
+        elif np.log(tnew) < 1.6:  # noqa: PLR2004
             return 0.0101 * tnew + 0.4
-        elif np.log(tnew) < 1.674:
+        elif np.log(tnew) < 1.674:  # noqa: PLR2004
             return 0.695 * np.log(tnew) - 0.663
         else:
             return 2.69 * np.log(tnew) - 4.0
     else:  # mode 4
         t6 = 1e-6 * t_yr
-        if t6 <= 10.2:
+        if t6 <= 10.2:  # noqa: PLR2004
             return 0.143 * t6
         else:
             return 0.217 * (t6 - 10.2) + 1.46
@@ -258,7 +261,7 @@ def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: int) -> float
     Returns:
         Radial velocity in cm/s.
     """
-    if mode == 3:
+    if mode == 3:  # noqa: PLR2004
         unitr, _ = _filament_units()
         cs = np.sqrt(_KB * 10.0 / (2.0 * _MH))
         new_r = r_pc / unitr - rmin

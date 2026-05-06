@@ -10,6 +10,7 @@ MODULE F2PY_CONSTANTS
 
     INTEGER, PARAMETER :: MISSING_VALUE_INTEGER={missing_value_integer} !Integer to indicate missing value
     REAL(dp), PARAMETER :: MISSING_VALUE_FLOAT={missing_value_float} !Float to indicate missing value
+    INTEGER, PARAMETER :: NO_REACTANT_OR_PRODUCT={no_reactant_or_product} ! Indicates that the reaction does not have these reactants or products
 
     ! Coolant file names and species names
     CHARACTER(LEN={coolant_file_len}), PARAMETER :: coolantFiles(NCOOLANTS)=({coolant_files})

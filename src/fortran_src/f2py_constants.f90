@@ -8,6 +8,10 @@ MODULE F2PY_CONSTANTS
     INTEGER, PARAMETER :: N_TOTAL_LEVELS=108 !Total energy levels across all coolants
     INTEGER, PARAMETER :: N_SE_STATS_PER_COOLANT=3 !SE solver stats per coolant
 
+    INTEGER, PARAMETER :: MISSING_VALUE_INTEGER=-1 !Integer to indicate missing value
+    REAL(dp), PARAMETER :: MISSING_VALUE_FLOAT=-1.0 !Float to indicate missing value
+    INTEGER, PARAMETER :: NO_REACTANT_OR_PRODUCT=9999 ! Indicates that the reaction does not have these reactants or products
+
     ! Coolant file names and species names
     CHARACTER(LEN=15), PARAMETER :: coolantFiles(NCOOLANTS)=(/"ly-a.dat       ","12c+_nometa.dat","16o.dat        ","12c.dat        ","12co.dat       ","p-h2.dat       ","o-h2.dat       "/)
     CHARACTER(LEN=4), PARAMETER :: coolantNames(NCOOLANTS)=(/"H   ","C+  ","O   ","C   ","CO  ","p-H2","o-H2"/)

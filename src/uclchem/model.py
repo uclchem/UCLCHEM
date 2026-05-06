@@ -110,9 +110,7 @@ from uclchemwrap import uclchemwrap as wrap
 
 from uclchem._coolant_utils import load_coolant_level_names
 from uclchem._fortran_capture import capture_fortran_output
-from uclchem.analysis import (
-    check_element_conservation,
-)
+from uclchem.analysis import check_element_conservation
 from uclchem.constants import (
     DVODE_STAT_NAMES,
     N_DVODE_STATS,
@@ -712,7 +710,7 @@ class AbstractModel(ABC):
                     time_dim = f"{base_time_dim}_{i}"
                     i += 1
 
-            if ndim == 3:
+            if ndim == 3:  # noqa: PLR2004
                 # Determine the 'values' dimension name for the variable
                 values_dim = key.replace("array", "values")
                 # If an existing coordinate with this name has a conflicting
@@ -746,7 +744,7 @@ class AbstractModel(ABC):
                     self._data = self._data.assign_coords(
                         {time_dim: np.arange(value.shape[0])}
                     )
-            elif ndim == 2:
+            elif ndim == 2:  # noqa: PLR2004
                 self._data[key] = (["point", key], value)
             elif ndim == 1:
                 # For 1D arrays, use the array name as the dimension
@@ -1458,7 +1456,7 @@ class AbstractModel(ABC):
         if self._data is None and bool(self._pickle_dict):
             self._data = xr.Dataset()
             for k, v in self._pickle_dict.items():
-                if np.ndim(v) == 3 and "_array" in k:
+                if np.ndim(v) == 3 and "_array" in k:  # noqa: PLR2004
                     # Avoid colliding with existing 'time_step' dim sizes by
                     # making a per-variable time dim if necessary
                     time_dim = "time_step"
@@ -1487,7 +1485,7 @@ class AbstractModel(ABC):
                             ["time_step", "point", k.replace("array", "values")],
                             v_arr,
                         )
-                elif np.ndim(v) == 2 and "_array" in k:
+                elif np.ndim(v) == 2 and "_array" in k:  # noqa: PLR2004
                     self._data[k] = (["point", k], v)
                 elif "_values" in k:
                     pass
@@ -2003,7 +2001,7 @@ class AbstractModel(ABC):
         """
         if (
             self.level_populations_array is None
-            or self.level_populations_array.shape[0] < 3
+            or self.level_populations_array.shape[0] < N_SE_STATS_PER_COOLANT
         ):
             return None
 
@@ -2035,7 +2033,10 @@ class AbstractModel(ABC):
                 actual coolant names
 
         """
-        if self.se_stats_array is None or self.se_stats_array.shape[0] < 3:
+        if (
+            self.se_stats_array is None
+            or self.se_stats_array.shape[0] < N_SE_STATS_PER_COOLANT
+        ):
             return None
 
         # Build meaningful column names using actual coolant names
@@ -3580,6 +3581,40 @@ class NoDaemonPool(pool.Pool):  # noqa
         return _NoDaemonProcess(*args, **kwargs)
 
 
+def get_number_of_grid_workers(max_workers: int | None) -> int:
+    """Determine the number of grid workers.
+
+    Args:
+        max_workers (int | None): Maximum number of workers to use in parallel for
+            the grid run. If None, use ``os.cpu_count()-1`` workers. Default = None.
+
+    Returns:
+        int: Number of CPU cores to use for grid models.
+
+    Raises:
+        RuntimeError: If ``max_workers`` is None, but func:`os.cpu_count()` also returns None.
+
+    """
+    cpu_count = os.cpu_count()
+    if cpu_count is None:
+        if max_workers is None:
+            msg = "Could not determine number of CPU cores, but max_workers was None. Provide max_workers instead."
+            raise RuntimeError(msg)
+        warnings.warn(
+            f"Could not determine number of CPU cores. Using {max_workers} workers.",
+            stacklevel=2,
+        )
+        return max_workers
+    if max_workers >= cpu_count:
+        warnings.warn(
+            f"max_workers was given as {max_workers}, which is higher than the number of physical CPU cores on the system ({cpu_count}). Using {cpu_count - 1} instead.",
+            stacklevel=2,
+        )
+        return cpu_count - 1
+    else:
+        return max_workers
+
+
 class GridRunner:
     """GridRunner, like SequentialRunner is not an actual uclchem model,
     instead it allows running multiple models on a grid of parameter space.
@@ -3590,8 +3625,8 @@ class GridRunner:
             the param_dict argument that would be passed to any other model, with the addition
             of extra keys for the none param_dict variables of a model. Any variables that are
             turned into lists or arrays, will automatically be assumed to be used for the gridding.
-        max_workers (int): Maximum number of workers to use in parallel for the grid run.
-            Defaults to 8.
+        max_workers (int | None): Maximum number of workers to use in parallel for the grid run.
+            If None, use ``os.cpu_count()-1``. Default = None.
         grid_file (str): Name and path of the output file to which the models should be saved.
             Defaults to "./default_grid_out.h5".
         model_name_prefix (str): Name prefix convention to use. The fifth model in the grid
@@ -3609,7 +3644,7 @@ class GridRunner:
         self,
         model_type: AnyStr,
         full_parameters: dict | list,
-        max_workers: int = 8,
+        max_workers: int | None = None,
         grid_file: str = "./default_grid_out.h5",
         model_name_prefix: str = "",
         overwrite_models: bool = False,
@@ -3621,14 +3656,11 @@ class GridRunner:
         assert model_type in REGISTRY
         self.model_type = model_type
         self.full_parameters = full_parameters
-        self.max_workers = (
-            max_workers - 1
-            if (max_workers < int(os.cpu_count()) and int(os.cpu_count()) > 32)
-            else int(os.cpu_count()) - 1
-            if int(os.cpu_count()) > 32
-            else int(os.cpu_count() / 2) - 1
-        )
+        self.max_workers = get_number_of_grid_workers(max_workers)
+        logging.debug(f"Number of workers set to {self.max_workers}")
+
         self.grid_file = grid_file if ".h5" in grid_file else grid_file + ".h5"
+
         # TODO: Implement model appending to grid file
         # TODO: Implement option to append or overwrite grid file.
         # Initial placeholder statement to remove pre-existing grid files

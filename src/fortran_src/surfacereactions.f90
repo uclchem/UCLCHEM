@@ -179,7 +179,7 @@ FUNCTION getDiffusionBarrier(iceListIndex)
     INTEGER :: iceListIndex
     REAL(dp) :: getDiffusionBarrier
     IF ((useCustomDiffusionBarriers) .and. &
-        (diffusionBarrier(iceListIndex) .ne. 0.0)) THEN
+        (diffusionBarrier(iceListIndex) .ne. MISSING_VALUE_FLOAT)) THEN
         getDiffusionBarrier = diffusionBarrier(iceListIndex)
     ELSE IF (iceList(iceListIndex) .eq. ngh) THEN
         getDiffusionBarrier = HdiffusionBarrier
@@ -196,13 +196,13 @@ FUNCTION reacProb(reacIndx, index1, index2, dustTemperature)
     reacProb = gama(reacIndx)/dustTemperature
     !Calculate quantum activation energy barrier exponent
     reducedMass = reducedMasses(reacIndx)
-    IF (reducedMass .eq. 0.0D0) THEN
-        WRITE(*,*) "The following reaction had an input reduced mass of 0"
+    IF (reducedMass .eq. MISSING_VALUE_FLOAT) THEN
+        WRITE(*,*) "The following reaction had an input reduced mass of MISSING_VALUE_FLOAT:", MISSING_VALUE_FLOAT
         WRITE(*,*) reacIndx, specname(re1(reacIndx)), specname(re2(reacIndx)), &
             specname(p1(reacIndx)), specname(p2(reacIndx))
         STOP
     END IF
-    IF ((.NOT. useCustomReducedMass) .OR. (reducedMass .eq. 0.0D0)) THEN
+    IF ((.NOT. useCustomReducedMass) .OR. (reducedMass .eq. MISSING_VALUE_FLOAT)) THEN
         ! reducedMasses(reacIndx) should never be 0, but just in case we calculate it here.
         reducedMass = mass(iceList(index1)) * mass(iceList(index2)) / (mass(iceList(index1)) + mass(iceList(index2)))
     END IF
@@ -317,7 +317,7 @@ REAL(dp) FUNCTION getDesorptionFractionBare(reacIndx, LHDESindex) RESULT(desorpt
         IF (gasiceList(i) .eq. p4(reacIndx)) productIndex(4) = i
     END DO
 
-    IF (p2(reacIndx) .eq. 9999) THEN
+    IF (p2(reacIndx) .eq. NO_REACTANT_OR_PRODUCT) THEN
         ! Only one product, and so that one product is desorbing
         desorbingIndex = 1
         desorbingOnGrainIndex = p1(LHDEScorrespondingLHreacs(LHDESindex))
@@ -492,7 +492,7 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
         STOP
     END IF
 
-    IF (p2(reacIndx) .eq. 9999) THEN
+    IF (p2(reacIndx) .eq. NO_REACTANT_OR_PRODUCT) THEN
         ! Only one product, and so that one product is desorbing
         desorbingIndex = 1
         desorbingOnGrainIndex = p1(LHDEScorrespondingLHreacs(LHDESindex))
@@ -668,7 +668,7 @@ SUBROUTINE updateVdiffAndVdes(gasTemp, dustTemp, nIce, vdiff, vdes)
             IF (atomCounts(j) .eq. 1) THEN 
                 ! Atomic species, no rotational partition function
                 vdes(i) = vdes(i) * mass(j)
-            ELSE IF (inertiaProducts(i) .gt. 0.0) THEN 
+            ELSE IF (inertiaProducts(i) .ne. MISSING_VALUE_FLOAT) THEN 
                 ! Custom supplied 1/sigma*SQRT(Ix*Iy*Iz)
                 IF (moleculeIsLinear(i)) THEN 
                     ! Linear molecule (H2, OH, CO2, etc)
@@ -708,8 +708,8 @@ SUBROUTINE updateVdiffAndVdes(gasTemp, dustTemp, nIce, vdiff, vdes)
 
     IF (useCustomPrefactors) THEN
         DO i=LBOUND(iceList, 1), UBOUND(iceList, 1)
-            IF (customVdiff(i) .gt. 0.0) vdiff(i) = customVdiff(i)
-            IF (customVdes(i) .gt. 0.0) vdes(i) = customVdes(i)
+            IF (customVdiff(i) .ne. MISSING_VALUE_FLOAT) vdiff(i) = customVdiff(i)
+            IF (customVdes(i) .ne. MISSING_VALUE_FLOAT) vdes(i) = customVdes(i)
         END DO
     END IF
 END SUBROUTINE updateVdiffAndVdes

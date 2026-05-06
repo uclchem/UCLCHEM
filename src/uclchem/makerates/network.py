@@ -22,7 +22,7 @@ import pandas as pd
 
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
-from .reaction import Reaction, reaction_types
+from .reaction import REACTION_TYPES, Reaction
 from .species import Species
 
 # ============================================================================
@@ -647,7 +647,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         # Add to dictionary
         for specie in species:
             # Filter out reaction types
-            if specie.get_name() in reaction_types:
+            if specie.get_name() in REACTION_TYPES:
                 logging.info(
                     f"Ignoring reaction type {specie.get_name()} in species list"
                 )

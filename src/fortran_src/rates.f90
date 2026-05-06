@@ -5,7 +5,7 @@ MODULE RATES
     USE network
     USE physicscore
     USE SurfaceReactions
-    use photoreactions, only: H2PhotoDissRate, COPhotoDissRate, cIonizationRate, ICE_GAS_PHOTO_CROSSSECTION_RATIO
+    USE photoreactions, only: H2PhotoDissRate, COPhotoDissRate, cIonizationRate, ICE_GAS_PHOTO_CROSSSECTION_RATIO
     IMPLICIT NONE
 
     !Variables controlling chemistry:

@@ -15,7 +15,7 @@ from numpy import any as np_any
 
 from uclchem.makerates.heating import convert_to_erg
 
-from .reaction import CoupledReaction, Reaction, reaction_types
+from .reaction import REACTION_TYPES, CoupledReaction, Reaction
 from .species import Species, elementList
 
 
@@ -591,7 +591,7 @@ class NetworkBuilder:
                 ]
                 if rxns:
                     total_alpha = sum(r.get_alpha() for r in rxns)
-                    if abs(total_alpha - 1.0) > 1e-6:
+                    if abs(total_alpha - 1.0) > 1e-6:  # noqa: PLR2004
                         raise ValueError(
                             f"{species_name} has {rtype} reactions with alpha summing to "
                             f"{total_alpha:.6f}, expected 1.0. "
@@ -706,7 +706,7 @@ class NetworkBuilder:
                     if desorbProducts[1] == "NAN":
                         new_products[i] = desorbProducts[0]
                     elif desorbProducts[2] == "NAN":
-                        if i < 2 and new_products[i + 1] != "NAN":
+                        if i < 2 and new_products[i + 1] != "NAN":  # noqa: PLR2004
                             # Move i+1th product over to i+2th product
                             new_products[i + 2] = new_products[i + 1]
                         new_products[i + 1] = desorbProducts[1]
@@ -940,7 +940,26 @@ class NetworkBuilder:
                         and branching_reactions[reactant_string] != 1.0
                     ):
                         # new_reaction = deepcopy(reaction)  # Unused variable
-                        if branching_reactions[reactant_string] == 0.0:
+                        if branching_reactions[reactant_string] != 0.0:
+                            if branching_reactions[reactant_string] < 0.99:  # noqa: PLR2004
+                                logging.warning(
+                                    f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string]} we are assuming you set this lower on purpose."
+                                )
+                                continue
+                            new_alpha = (
+                                reaction.get_alpha()
+                                / branching_reactions[reactant_string]
+                            )
+                            logging.warning(
+                                f"Grain reaction {reaction} has a branching ratio of {reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
+                            )
+                            # TODO: apply to all partners of the reaction
+                            reaction_index = self.network.get_reaction_index(reaction)
+                            reaction.set_alpha(new_alpha)
+                            self.network.set_reaction(
+                                reaction_idx=reaction_index, reaction=reaction
+                            )
+                        else:
                             if isinstance(reaction, CoupledReaction) and (
                                 reaction not in self.network.get_reaction_list()
                             ):
@@ -954,7 +973,7 @@ class NetworkBuilder:
                                 self.network.remove_reaction(reaction)
                             continue
 
-                        if branching_reactions[reactant_string] < 0.99:
+                        if branching_reactions[reactant_string] < 0.99:  # noqa: PLR2004
                             logging.warning(
                                 f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string]} we are assuming you set this lower on purpose."
                             )
@@ -1004,9 +1023,9 @@ class NetworkBuilder:
             enthalpy_reaction_types = [enthalpy_reaction_types]
         if enthalpy_reaction_types[0].upper() == "ALL":
             exclude_ices = False
-            enthalpy_reaction_types = list(reaction_types)
+            enthalpy_reaction_types = list(REACTION_TYPES)
         elif enthalpy_reaction_types[0].upper() == "GAS":
-            enthalpy_reaction_types = list(reaction_types)
+            enthalpy_reaction_types = list(REACTION_TYPES)
         for reaction in self.network.get_reaction_list():
             logging.debug(f"Checking if we need to add enthalpy to {reaction}")
             if reaction.get_reaction_type() in enthalpy_reaction_types:
@@ -1216,10 +1235,10 @@ class NetworkBuilder:
                     ("H" in reacs) and ("#H" in reacs) and ("#H2" in prods)
                 ),
                 "nR_H2Form_LH": lambda reacs, prods: (  # noqa: ARG005
-                    (reacs.count("#H") == 2) and ("LH" in reacs)
+                    (reacs.count("#H") == 2) and ("LH" in reacs)  # noqa: PLR2004
                 ),
                 "nR_H2Form_LHDes": lambda reacs, prods: (  # noqa: ARG005
-                    (reacs.count("#H") == 2) and ("LHDES" in reacs)
+                    (reacs.count("#H") == 2) and ("LHDES" in reacs)  # noqa: PLR2004
                 ),
                 "nR_HFreeze": lambda reacs, prods: ("H" in reacs) and ("FREEZE" in reacs),  # noqa: ARG005
                 "nR_H2Freeze": lambda reacs, prods: (  # noqa: ARG005
@@ -1230,7 +1249,7 @@ class NetworkBuilder:
                 ),
                 "nR_H2_hv": lambda reacs, prods: ("H2" in reacs) and ("PHOTON" in reacs),  # noqa: ARG005
                 "nR_H2_crp": lambda reacs, prods: (
-                    ("H2" in reacs) and ("CRP" in reacs) and (prods.count("H") == 2)
+                    ("H2" in reacs) and ("CRP" in reacs) and (prods.count("H") == 2)  # noqa: PLR2004
                 ),
                 "nR_H2_ED": lambda reacs, prods: (
                     ("#H2" in reacs) and ("ED" in reacs) and ("H2" in prods)

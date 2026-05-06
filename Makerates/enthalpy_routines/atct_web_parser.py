@@ -103,7 +103,7 @@ class ATCTParser:
 
         for table in tables:
             rows = table.find_all("tr")
-            if len(rows) > 100:  # Large data table
+            if len(rows) > 100:  # noqa: PLR2004 # Large data table
                 sample_text = table.get_text()[:500].lower()
                 if any(
                     keyword in sample_text
@@ -138,7 +138,7 @@ class ATCTParser:
                     text = links[0].get_text().strip()
                 row_data.append(text)
 
-            if len(row_data) >= 3:
+            if len(row_data) >= 3:  # noqa: PLR2004
                 # Split formula and phase: "SiC2+ (g)" -> ["SiC2+", "g"]
                 if len(row_data) > 1:
                     formula_phase = row_data[1]
@@ -272,7 +272,7 @@ def main() -> None:
     """Command-line interface for ATCT parser."""
     import sys
 
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 3:  # noqa: PLR2004
         print("Usage: python atct_web_parser.py <input_html> <output_csv>")
         sys.exit(1)
 

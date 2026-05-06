@@ -464,7 +464,7 @@ class NetworkState:
                 errors.append(
                     f"Species name mismatch at index {i}: '{memory_name}' in memory vs '{disk_name}' on disk"
                 )
-                if len(errors) > 5:  # Limit error output
+                if len(errors) > 5:  # noqa: PLR2004 # Limit error output
                     errors.append("... (truncated)")
                     break
 
@@ -480,7 +480,7 @@ class NetworkState:
                 errors.append(
                     f"Reaction {i} alpha mismatch: {memory_alpha} in memory vs {disk_alpha} on disk"
                 )
-                if len(errors) > 10:
+                if len(errors) > 10:  # noqa: PLR2004
                     errors.append("... (truncated)")
                     break
 

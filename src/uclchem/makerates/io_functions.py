@@ -11,13 +11,14 @@ from typing import Any, Literal
 import numpy as np
 import yaml
 
+from uclchem.constants import PHYSICAL_PARAMETERS, ZETA_0
 from uclchem.makerates.network import Network
-from uclchem.makerates.reaction import Reaction, reaction_types
+from uclchem.makerates.reaction import REACTION_TYPES, Reaction
 from uclchem.makerates.species import Species, species_header
-from uclchem.utils import UCLCHEM_ROOT_DIR, MISSING_VALUE_INTEGER, MISSING_VALUE_FLOAT
+from uclchem.utils import MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER, UCLCHEM_ROOT_DIR
 
 from .network import Network
-from .reaction import Reaction, reaction_types
+from .reaction import Reaction
 from .species import Species, normalize_species_name, species_header
 
 # Canonical definition of physical parameters
@@ -33,6 +34,12 @@ PHYSICAL_PARAMETERS = [
     "dstep",
     "parcel_radius",
 ]
+from uclchem.utils import (
+    MISSING_VALUE_FLOAT,
+    MISSING_VALUE_INTEGER,
+    NO_REACTANT_OR_PRODUCT,
+    UCLCHEM_ROOT_DIR,
+)
 
 
 def get_default_coolants() -> list[dict[str, str]]:
@@ -144,7 +151,7 @@ def read_reaction_file(
 
     # Every reactant/product of a reaction must be in keep_list to not be dropped
     keep_list = ["", "NAN", "#", "*", "E-", "e-", "ELECTR", "@"]
-    keep_list.extend(reaction_types)
+    keep_list.extend(REACTION_TYPES)
     for species in species_list:
         keep_list.append(species.get_name())
 
@@ -205,9 +212,9 @@ def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
         if reaction_row[10] == "":
             reaction_row[10] = 0.0
             reaction_row[11] = 10000.0
-        if len(reaction_row) >= 13 and reaction_row[12] == "":
+        if len(reaction_row) >= 13 and reaction_row[12] == "":  # noqa: PLR2004
             reaction_row[12] = 0.0
-        if len(reaction_row) >= 14 and reaction_row[13] == "":
+        if len(reaction_row) >= 14 and reaction_row[13] == "":  # noqa: PLR2004
             reaction_row[13] = False
         return True
     else:
@@ -277,14 +284,14 @@ def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
                     row[1] = "CRP"
                 # UMIST alpha includes zeta_0 but KIDA doesn't. Since UCLCHEM
                 # rate calculation follows UMIST, we convert.
-                row[8] = row[8] * 1.36e-17
+                row[8] = row[8] * ZETA_0
                 rows.append(row[:7] + row[8:-1])
             elif row[-1] in [2, 3]:
                 rows.append(row[:7] + row[8:-1])
-            elif row[-1] == 4:
+            elif row[-1] == 4:  # noqa: PLR2004
                 row[2] = "IONOPOL1"
                 rows.append(row[:7] + row[8:-1])
-            elif row[-1] == 5:
+            elif row[-1] == 5:  # noqa: PLR2004
                 row[2] = "IONOPOL2"
                 rows.append(row[:7] + row[8:-1])
     return rows
@@ -488,12 +495,13 @@ def write_outputs(
         coolant_files=[c["file"] for c in coolants],
         data_dir=coolant_data_directory,
     )
+    DEFAULT_SUGGESTED_FREQ_TOL = 0.01
     if freq_deviations:
         max_deviation = max(freq_deviations.values())
         # Add 10% margin above the largest observed deviation
         suggested_freq_rel_tol = max_deviation * 1.1
         # Enforce a minimum tolerance of 0.01 (1%)
-        suggested_freq_rel_tol = max(suggested_freq_rel_tol, 0.01)
+        suggested_freq_rel_tol = max(suggested_freq_rel_tol, DEFAULT_SUGGESTED_FREQ_TOL)
 
         # Log per-coolant frequency deviations (sorted largest first)
         sorted_devs = sorted(freq_deviations.items(), key=lambda x: -x[1])
@@ -502,14 +510,14 @@ def write_outputs(
         logging.info(f"  {'Coolant':<{name_width}}  {'Deviation':>10}")
         logging.info(f"  {'-' * name_width}  {'-' * 10}")
         for name, dev in sorted_devs:
-            marker = " <<<" if dev > 0.01 else ""
+            marker = " <<<" if dev > DEFAULT_SUGGESTED_FREQ_TOL else ""
             logging.info(f"  {name:<{name_width}}  {dev * 100:9.4f}%{marker}")
         logging.info(
             f"  Auto-setting freq_rel_tol = {suggested_freq_rel_tol:.4f} "
             f"(max deviation {max_deviation * 100:.2f}% + 10% margin)"
         )
     else:
-        suggested_freq_rel_tol = 0.01
+        suggested_freq_rel_tol = DEFAULT_SUGGESTED_FREQ_TOL
         max_deviation = 0.0
 
     # Compute coolant conversion arrays
@@ -595,6 +603,7 @@ def write_outputs(
         "suggested_freq_rel_tol": suggested_freq_rel_tol,
         "missing_value_integer": MISSING_VALUE_INTEGER,
         "missing_value_float": MISSING_VALUE_FLOAT,
+        "no_reactant_or_product": NO_REACTANT_OR_PRODUCT,
     }
     write_f90_constants(f2py_constants, filename)
     # Note: constants.py now reads directly from f2py_constants module,
@@ -1266,22 +1275,50 @@ def write_evap_lists(network_file: str | Path, species_list: list[Species]) -> i
             "bindingEnergy", binding_energyList, type="float", parameter=False
         )
     )
-    network_file.write(array_to_string("customVdes", customVdesList, type="float"))
     network_file.write(
-        array_to_string(
-            "diffusionBarrier", diffusion_barriersList, type="float", parameter=False
+        replace_value_with_name(
+            array_to_string("customVdes", customVdesList, type="float"),
+            MISSING_VALUE_FLOAT,
+            "MISSING_VALUE_FLOAT",
         )
     )
-    network_file.write(array_to_string("customVdiff", customVdiffList, type="float"))
+    network_file.write(
+        replace_value_with_name(
+            array_to_string(
+                "diffusionBarrier", diffusion_barriersList, type="float", parameter=False
+            ),
+            MISSING_VALUE_FLOAT,
+            "MISSING_VALUE_FLOAT",
+        )
+    )
+    network_file.write(
+        replace_value_with_name(
+            array_to_string("customVdiff", customVdiffList, type="float"),
+            MISSING_VALUE_FLOAT,
+            "MISSING_VALUE_FLOAT",
+        )
+    )
 
     network_file.write(
         array_to_string("moleculeIsLinear", isLinears, type="logical", parameter=False)
     )
     network_file.write(
-        array_to_string("inertiaProducts", inertiaProducts, type="float", parameter=False)
+        replace_value_with_name(
+            array_to_string(
+                "inertiaProducts", inertiaProducts, type="float", parameter=False
+            ),
+            MISSING_VALUE_FLOAT,
+            "MISSING_VALUE_FLOAT",
+        )
     )
     network_file.write(
-        array_to_string("formationEnthalpy", enthalpyList, type="float", parameter=False)
+        replace_value_with_name(
+            array_to_string(
+                "formationEnthalpy", enthalpyList, type="float", parameter=False
+            ),
+            MISSING_VALUE_FLOAT,
+            "MISSING_VALUE_FLOAT",
+        )
     )
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
     return len(iceList)
@@ -1320,6 +1357,9 @@ def truncate_line(input_string: str, line_length: int = 72) -> str:
     return result
 
 
+FORTRAN_LINE_LENGTH = 72
+
+
 def write_network_file(
     file_name: Path,
     network: Network,
@@ -1343,7 +1383,9 @@ def write_network_file(
     reaction_list = network.get_reaction_list()
 
     with open(file_name, "w") as openFile:
-        openFile.write("MODULE network\nUSE constants\nIMPLICIT NONE\n")
+        openFile.write(
+            "MODULE network\nUSE constants\nUSE f2py_constants\nIMPLICIT NONE\n"
+        )
 
         # write arrays of all species stuff
         names = []
@@ -1357,7 +1399,7 @@ def write_network_file(
         speciesIndices = ""
         for name, species_index in network.species_indices.items():
             speciesIndices += f"{name}={species_index},"
-        if len(speciesIndices) > 72:
+        if len(speciesIndices) > FORTRAN_LINE_LENGTH:
             speciesIndices = truncate_line(speciesIndices)
         speciesIndices = speciesIndices[:-1] + "\n"
         openFile.write("    INTEGER, PARAMETER ::" + speciesIndices)
@@ -1447,10 +1489,10 @@ def write_network_file(
             openFile.write(
                 f"    REAL(dp) :: REACTIONRATE({len(reactant1) + n_ice_species})\n"
             )
-            openFile.write("     LOGICAL :: storeRatesComputation=.true.\n")
+            openFile.write("     LOGICAL :: storeRatesComputation=.TRUE.\n")
         else:
             openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
-            openFile.write("    LOGICAL :: storeRatesComputation=.false.\n")
+            openFile.write("    LOGICAL :: storeRatesComputation=.FALSE.\n")
         if any(exo != 0.0 for exo in exothermicity):
             assert enable_rates_storage, (
                 "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
@@ -1467,13 +1509,55 @@ def write_network_file(
             )
             openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .FALSE.\n")
 
-        openFile.write(array_to_string("\tre1", reactant1, type="int"))
-        openFile.write(array_to_string("\tre2", reactant2, type="int"))
-        openFile.write(array_to_string("\tre3", reactant3, type="int"))
-        openFile.write(array_to_string("\tp1", prod1, type="int"))
-        openFile.write(array_to_string("\tp2", prod2, type="int"))
-        openFile.write(array_to_string("\tp3", prod3, type="int"))
-        openFile.write(array_to_string("\tp4", prod4, type="int"))
+        openFile.write(
+            replace_value_with_name(
+                array_to_string("\tre1", reactant1, type="int"),
+                NO_REACTANT_OR_PRODUCT,
+                "NO_REACTANT_OR_PRODUCT",
+            )
+        )
+        openFile.write(
+            replace_value_with_name(
+                array_to_string("\tre2", reactant2, type="int"),
+                NO_REACTANT_OR_PRODUCT,
+                "NO_REACTANT_OR_PRODUCT",
+            )
+        )
+        openFile.write(
+            replace_value_with_name(
+                array_to_string("\tre3", reactant3, type="int"),
+                NO_REACTANT_OR_PRODUCT,
+                "NO_REACTANT_OR_PRODUCT",
+            )
+        )
+        openFile.write(
+            replace_value_with_name(
+                array_to_string("\tp1", prod1, type="int"),
+                NO_REACTANT_OR_PRODUCT,
+                "NO_REACTANT_OR_PRODUCT",
+            )
+        )
+        openFile.write(
+            replace_value_with_name(
+                array_to_string("\tp2", prod2, type="int"),
+                NO_REACTANT_OR_PRODUCT,
+                "NO_REACTANT_OR_PRODUCT",
+            )
+        )
+        openFile.write(
+            replace_value_with_name(
+                array_to_string("\tp3", prod3, type="int"),
+                NO_REACTANT_OR_PRODUCT,
+                "NO_REACTANT_OR_PRODUCT",
+            )
+        )
+        openFile.write(
+            replace_value_with_name(
+                array_to_string("\tp4", prod4, type="int"),
+                NO_REACTANT_OR_PRODUCT,
+                "NO_REACTANT_OR_PRODUCT",
+            )
+        )
         openFile.write(array_to_string("\talpha", alpha, type="float", parameter=False))
         openFile.write(array_to_string("\tbeta", beta, type="float", parameter=False))
         openFile.write(array_to_string("\tgama", gama, type="float", parameter=False))
@@ -1508,7 +1592,7 @@ def write_network_file(
             )
         )
 
-        for reaction_type in reaction_types:
+        for reaction_type in REACTION_TYPES:
             list_name = reaction_type.lower() + "Reacs"
             indices = np.where(reacTypes == reaction_type)[0]
             if len(indices > 1):
@@ -1595,7 +1679,7 @@ def find_reactant(species_list: list[str], reactant: str) -> int:
     try:
         return species_list.index(reactant) + 1
     except ValueError:
-        return 9999
+        return NO_REACTANT_OR_PRODUCT
 
 
 def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[Reaction]:
@@ -1626,6 +1710,59 @@ def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[Reacti
     return partners
 
 
+def replace_value_with_name(
+    string: str, value: int | float, replace_string: str, truncate: bool = True
+) -> str:
+    """Replace all instances of ``value`` with a string ``replace_string``.
+
+    Uses func:`array_to_string` to determine how ``value`` would be formatted as a string.
+
+    Args:
+        string (str): string to reformat
+        value (int | float): value to replace
+        replace_string (str): string to put instead of ``value``
+        truncate (bool): Whether to truncate the line using func:`truncate_line`.
+            Default = True.
+
+    Returns:
+        replaced_string (str): string with ``value`` replaced.
+
+    Examples:
+        >>> replace_value_with_name("[0, 1, 2]", 2, "REPLACED_INTEGER")
+        '[0, 1, REPLACED_INTEGER]'
+
+        >>> replace_value_with_name("[0.0, 1.0, 2.0]", 2.0, "REPLACED_FLOAT")
+        '[0.0, 1.0, REPLACED_FLOAT]'
+
+        >>> # Replaces all instances of 'value'
+        >>> replace_value_with_name("[0.0, 1.0, 2.0, 1.0]", 1.0, "REPLACED_FLOAT")
+        '[0.0, REPLACED_FLOAT, 2.0, REPLACED_FLOAT]'
+
+    Raises:
+        TypeError: If ``value`` is not an instance of ``int`` or ``float``.
+
+    """
+    # Somehow replace every case with {value} with a string {replace_string}.
+    if string.endswith("\n"):
+        suffix = "\n"
+    else:
+        suffix = ""
+    string = "".join([line.strip() for line in string.split("\n")]).replace("&", "")
+    if isinstance(value, int):
+        value_string = str(value)
+    elif isinstance(value, float):
+        # Use array_to_string to find how 'value' would be formatted.
+        array_string = array_to_string("", [value], type="float")
+        value_string = array_string.split("/")[1]
+    else:
+        raise TypeError()
+    replaced_string = string.replace(value_string, replace_string)
+    if truncate:
+        replaced_string = truncate_line(replaced_string)
+    replaced_string += suffix
+    return replaced_string
+
+
 def array_to_string(
     name: str, array: list | np.ndarray, type: str = "int", parameter: bool = True
 ) -> str:
@@ -1634,7 +1771,7 @@ def array_to_string(
     Args:
         name (str): Variable name of array in Fortran
         array (list | np.ndarray): List of values of array
-        type (str): The array's type. Must be one of "int","float", or "string".
+        type (str): The array's type. Must be one of "int", "float", "string" or "logical".
             Defaults to "int".
         parameter (bool): Whether the array is a Fortran PARAMETER (constant).
             Defaults to True.
@@ -1643,12 +1780,12 @@ def array_to_string(
         outString (str): String containing the Fortran code to declare this array.
 
     Raises:
-        ValueError: Raises an error if type isn't "int","float", or "string"
+        ValueError: Raises an error if type isn't "int", "float", "string" or "logical".
 
     """
     # Check for 2D array
     arr = np.array(array)
-    if arr.ndim == 2:
+    if arr.ndim == 2:  # noqa: PLR2004
         shape = arr.shape
         flat = arr.flatten(order="F")
         if type == "int":
@@ -1668,8 +1805,6 @@ def array_to_string(
             raise ValueError("Not a valid type for array to string")
         param_str = ", PARAMETER" if parameter else ""
         outString = f"{dtype}{param_str} :: {name}({','.join(str(s) for s in shape)}) = RESHAPE((/ {values} /), (/ {', '.join(str(s) for s in shape)} /))\n"
-        outString = truncate_line(outString)
-        return outString
     else:
         if parameter:
             outString = ", PARAMETER :: " + name + f" ({len(arr)})=(/"
@@ -1692,12 +1827,11 @@ def array_to_string(
             outString = "LOGICAL" + outString
             for value in arr:
                 outString += ".TRUE.," if value else ".FALSE.,"
-
         else:
             raise ValueError("Not a valid type for array to string")
         outString = outString[:-1] + "/)\n"
-        outString = truncate_line(outString)
-        return outString
+    outString = truncate_line(outString)
+    return outString
 
 
 def copy_coolant_files(source_dir: str | None = None) -> None:
