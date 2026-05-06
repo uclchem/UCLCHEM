@@ -743,6 +743,9 @@ CONTAINS
             ! Else just use the default readInputAbunds routine:
             CALL readInputAbunds !this won't do anything if no abundLoadFile was in input
         END IF
+        ! Set conservation baseline after all starting abundances are loaded.
+        ! For 1D RT the per-parcel baseline is updated inside the parcel loop below.
+        IF (.NOT. (enable_radiative_transfer .AND. points.gt.1)) CALL setConservationBaseline()
         !CALL simpleDebug("Initialized")
 
         dstep = 1
@@ -778,6 +781,7 @@ CONTAINS
                 coolant_levpop_force_recompute = .TRUE.
 
                 IF (givestartabund) abund(:nspec, dstep) = abundanceStart(dstep, :nspec)
+                CALL resetConservationBaselineForPoint(dstep)
                 CALL resetDVODEForNewPoint()
 
                 ! Outermost shell has no outer neighbour; initialise to zero

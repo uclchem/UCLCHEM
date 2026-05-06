@@ -19,8 +19,10 @@ MODULE hotcore
     !arrays go [1Msun,5, 10, 15, 25,60]
     INTEGER, PARAMETER :: nMasses= 6 
     INTEGER :: tempIndx
-    REAL(dp),PARAMETER :: tempa(nMasses)=(/1.927d-1,4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
-    REAL(dp),PARAMETER :: tempb(nMasses)=(/0.5339,0.6255,0.8395,1.085,1.289,1.98/)
+    ! Initialize with dummy values 
+    REAL(dp) :: tempa(nMasses)=(/0.0, 0.0, 0.0, 0.0, 0.0, 0.0/)
+    REAL(dp) :: tempb(nMasses)=(/0.0, 0.0, 0.0, 0.0, 0.0, 0.0/)
+    ! Deprecated solid, volc and codesorption values, can be removed at some point.
     REAL(dp),PARAMETER :: solidtemp(nMasses)=(/20.0,19.6,19.45,19.3,19.5,20.35/)
     REAL(dp),PARAMETER :: volctemp(nMasses)=(/84.0,86.3,88.2,89.5,90.4,92.2/)
     REAL(dp),PARAMETER :: codestemp(nMasses)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
@@ -64,6 +66,13 @@ contains
                 parcelRadius(dstep)=dstep*rout/float(points) !unit of parsec -- note: parcelRadius is from core to edge
                 parcel_radius(dstep)=parcelRadius(dstep)
             END DO
+            ! Better fit for 1D:
+            tempa(:) = (/3.1417d-2,3.5495d-2,4.9653d-4,9.5928d-4,1.4158d-3,2.817d-3/)
+            tempb(:) = (/0.5329,0.5324,0.9,0.9,0.9,0.9/)
+        ELSE 
+            ! Default values for 0D:
+            tempa(:) = (/1.927d-1,4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
+            tempb(:) = (/0.5339,0.6255,0.8395,1.085,1.289,1.98/)
         END IF
 
         IF (freefall) density=1.001*initialDens

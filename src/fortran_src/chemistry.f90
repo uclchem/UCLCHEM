@@ -137,14 +137,11 @@ CONTAINS
         !Uses updateVdiffAndVdes which supports both HH1992 and TST treatments
         CALL updateVdiffAndVdes(gasTemp(1), dustTemp(1), SIZE(iceList), vdiff, vdes)
 
-        ! Store initial elemental abundances per parcel for runtime conservation check.
+        ! Allocate conservation baseline array; values set by setConservationBaseline
+        ! after starting abundances are loaded, so the baseline reflects actual initial state.
         IF (ALLOCATED(initial_elem_abund)) DEALLOCATE(initial_elem_abund)
         ALLOCATE(initial_elem_abund(n_elem_tracked, points))
-        DO i = 1, points
-            DO j = 1, n_elem_tracked
-                initial_elem_abund(j, i) = SUM(REAL(elem_count(1:nspec, j), dp) * abund(1:nspec, i))
-            END DO
-        END DO
+        initial_elem_abund = 0.0_dp
 
         ! get list of positive-charged species to conserve charge later
         nion = 0
@@ -749,5 +746,28 @@ CONTAINS
     !     J(nh,nh2)=J(nh,nh2)+2.0*h2dis
     !     J(nh2,nh2)=J(nh,nh2)-h2dis
     ! END SUBROUTINE JAC
+
+    ! Set the conservation baseline for all parcels from the current abund array.
+    ! Must be called after all starting abundances have been loaded into abund.
+    SUBROUTINE setConservationBaseline()
+        INTEGER :: i_loc, j_loc
+        DO i_loc = 1, points
+            DO j_loc = 1, n_elem_tracked
+                initial_elem_abund(j_loc, i_loc) = &
+                    SUM(REAL(elem_count(1:nspec, j_loc), dp) * abund(1:nspec, i_loc))
+            END DO
+        END DO
+    END SUBROUTINE setConservationBaseline
+
+    ! Reset the conservation baseline for a single parcel (used in 1D per-parcel loop).
+    ! Must be called after the parcel's starting abundances have been loaded into abund.
+    SUBROUTINE resetConservationBaselineForPoint(point_idx)
+        INTEGER, INTENT(IN) :: point_idx
+        INTEGER :: j_loc
+        DO j_loc = 1, n_elem_tracked
+            initial_elem_abund(j_loc, point_idx) = &
+                SUM(REAL(elem_count(1:nspec, j_loc), dp) * abund(1:nspec, point_idx))
+        END DO
+    END SUBROUTINE resetConservationBaselineForPoint
 
 END MODULE chemistry

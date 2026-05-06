@@ -401,3 +401,160 @@ class SuccessFlag(enum.IntEnum):
         if raise_on_error:
             raise RuntimeError(f"UCLCHEM error (code {self.name}, {self.value}): {msg}")
         return msg
+
+
+# -------------------------------------------------------------------------------
+# 1D hot core helper routines:
+# -------------------------------------------------------------------------------
+
+L_SUN: float = 3.828e26  # W — IAU 2015 nominal solar luminosity
+
+
+class TempMode(enum.Enum):
+    """Interpolation scheme for :func:`get_protostellar_Teff`."""
+
+    BINS = "bins"  # discrete stepwise lookup,   1 – 1e6  L_sun
+    SMOOTH = "smooth"  # global power-law fit,       1 – 1e6  L_sun
+    SMOOTH_LOW = "smooth_low"  # power-law fit to bins 1–3,  1 – 1e4  L_sun
+    SMOOTH_HIGH = "smooth_high"  # power-law fit to bins 4–7,  1e3 – 1e6 L_sun
+    SMOOTH_CUSTOM = "smooth_custom"  # user-provided fit parameters;
+
+
+# (L_lower [L_sun], T_eff [K]) — ordered high to low; first match wins
+_BINS: tuple[tuple[float, float], ...] = (
+    (5.0e5, 40_000.0),
+    (1.0e5, 30_000.0),
+    (1.0e4, 25_000.0),
+    (1.0e3, 20_000.0),
+    (1.0e2, 10_000.0),
+    (1.0e1, 8_000.0),
+    (1.0e0, 6_000.0),
+)
+
+# Least-squares power-law fits in log-log space on bin geometric midpoints.
+# Form: T = T0 * (L / L_sun) ** alpha
+_FIT_SMOOTH = (4_788.72, 0.156034)  # all 7 bins,  valid 1 – 1e6  L_sun
+_FIT_SMOOTH_LOW = (5_337.78, 0.110924)  # bins 1–3,    valid 1 – 1e4  L_sun
+_FIT_SMOOTH_HIGH = (7_343.74, 0.120552)  # bins 4–7,    valid 1e3 – 1e6 L_sun
+
+# Valid luminosity ranges [L_sun] per mode
+_RANGES: dict[TempMode, tuple[float, float]] = {
+    TempMode.BINS: (1.0, 1.0e6),
+    TempMode.SMOOTH: (1.0, 1.0e6),
+    TempMode.SMOOTH_LOW: (1.0, 1.0e4),
+    TempMode.SMOOTH_HIGH: (1.0e3, 1.0e6),
+    TempMode.SMOOTH_CUSTOM: (
+        0.0,
+        float("inf"),
+    ),  # no limits; user must ensure fit is valid for their L_star
+}
+
+
+def get_protostellar_Teff(
+    L_star: float,
+    *,
+    mode: TempMode = TempMode.SMOOTH,
+    custom_T0: float | None = None,
+    custom_alpha: float | None = None,
+    L_star_unit: str = "L_sun",
+) -> float:
+    """Return the effective temperature [K] for a protostellar object.
+
+    Parameters
+    ----------
+    L_star:
+        Stellar luminosity [W]. Valid range depends on *mode*; see
+        :data:`_RANGES`.
+    mode:
+        Interpolation scheme:
+
+        - :attr:`TempMode.SMOOTH` (default) — global power-law fit to all
+          seven bins, valid 1 – 1e6 L_sun.
+        - :attr:`TempMode.BINS` — discrete stepwise lookup, valid 1 – 1e6 L_sun.
+        - :attr:`TempMode.SMOOTH_LOW` — power-law fit to bins 1–3,
+          valid 1 – 1e4 L_sun.
+        - :attr:`TempMode.SMOOTH_HIGH` — power-law fit to bins 4–7,
+          valid 1e3 – 1e6 L_sun.
+
+    Raises
+    ------
+    TypeError:  if *L_star* is not a real number.
+    ValueError: if *L_star* is outside the valid range for the chosen mode.
+
+    Examples
+    --------
+    >>> get_protostellar_Teff(3.828e26)                          # 1 L_sun, smooth
+    4788.72
+    >>> get_protostellar_Teff(3.828e29, mode=TempMode.BINS)      # 1000 L_sun, bins
+    20000.0
+    """
+    if not isinstance(L_star, (int, float)):
+        raise TypeError(f"L_star must be a real number, got {type(L_star).__name__!r}")
+
+    if (
+        custom_T0 is not None or custom_alpha is not None
+    ) and mode != TempMode.SMOOTH_CUSTOM:
+        raise ValueError(
+            "Custom fit parameters provided but mode is not TempMode.SMOOTH_CUSTOM."
+        )
+
+    assert L_star_unit in ["L_sun", "W"], "L_star_unit must be 'L_sun' or 'W'."
+
+    if L_star_unit == "W":
+        L_star: float = L_star / L_SUN
+    L_min, L_max = _RANGES[mode]
+
+    if not (L_min <= L_star <= L_max):
+        raise ValueError(
+            f"L_star = {L_star:.3e} W ({L_star:.3e} L_sun) is outside "
+            f"the valid range [{L_min:.0e}, {L_max:.0e}] L_sun for {mode.value!r}."
+        )
+
+    # Return binned values
+    if mode is TempMode.BINS:
+        for L_lower, T_eff in _BINS:
+            if L_star >= L_lower:
+                return T_eff
+        raise RuntimeError(f"No bin matched L_star={L_star!r} — this is a bug.")
+
+    # Return power-law fit values
+    T0, alpha = {
+        TempMode.SMOOTH: _FIT_SMOOTH,
+        TempMode.SMOOTH_LOW: _FIT_SMOOTH_LOW,
+        TempMode.SMOOTH_HIGH: _FIT_SMOOTH_HIGH,
+        TempMode.SMOOTH_CUSTOM: (custom_T0, custom_alpha),
+    }[mode]
+    return T0 * (L_star**alpha)
+
+
+def get_protostellar_model_index(L_star: float) -> int:
+    """Obtain the right model index for protostellar core models in 1D mode based on the
+    stellar luminosity
+
+    Args:
+        L_star (float): Stellar luminosity in units of solar luminosity (L_sun)
+
+    Raises:
+        ValueError: If the stellar luminosity is below the minimum valid value.
+
+    Returns:
+        int: The model index for the protostellar core model.
+    """
+    if L_star >= 1.0e6:
+        return 6
+    elif L_star >= 1.0e5:
+        return 5
+    elif L_star >= 1.0e4:
+        return 4
+    elif L_star >= 1.0e3:
+        return 3
+    elif L_star >= 1.0e2:
+        return 2
+    elif L_star >= 1.0e1:
+        return 1
+    elif L_star >= 1.0e0:
+        return 0
+    else:
+        raise ValueError(
+            f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {L_SUN:.3e} W."
+        )
