@@ -453,7 +453,7 @@ _RANGES: dict[TempMode, tuple[float, float]] = {
 def get_protostellar_Teff(
     L_star: float,
     *,
-    mode: TempMode = TempMode.SMOOTH,
+    mode: TempMode = TempMode.BINS,
     custom_T0: float | None = None,
     custom_alpha: float | None = None,
     L_star_unit: str = "L_sun",
