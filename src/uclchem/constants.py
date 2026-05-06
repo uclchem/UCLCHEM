@@ -15,10 +15,6 @@ reinstall UCLCHEM for these constants to update:
 # Import canonical values from compiled Fortran module
 from uclchemwrap import f2py_constants
 
-# # Import PHYSICAL_PARAMETERS from its canonical source
-# # This is defined in makerates to avoid circular dependency
-# from uclchem.makerates.io_functions import PHYSICAL_PARAMETERS
-
 # Read canonical values from Fortran
 n_species = int(f2py_constants.nspec)
 n_reactions = int(f2py_constants.nreac)
@@ -40,6 +36,7 @@ PHYSICAL_PARAMETERS = [
     "radfield",
     "zeta",
     "dstep",
+    "parcel_radius",
 ]
 
 

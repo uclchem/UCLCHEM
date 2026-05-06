@@ -15,31 +15,12 @@ from uclchem.constants import PHYSICAL_PARAMETERS, ZETA_0
 from uclchem.makerates.network import Network
 from uclchem.makerates.reaction import REACTION_TYPES, Reaction
 from uclchem.makerates.species import Species, species_header
-from uclchem.utils import MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER, UCLCHEM_ROOT_DIR
+from uclchem.utils import (MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER,
+                           NO_REACTANT_OR_PRODUCT, UCLCHEM_ROOT_DIR)
 
 from .network import Network
 from .reaction import Reaction
 from .species import Species, normalize_species_name, species_header
-
-# Canonical definition of physical parameters
-# This list defines the physical parameter array passed to Fortran
-PHYSICAL_PARAMETERS = [
-    "Time",
-    "Density",
-    "gasTemp",
-    "dustTemp",
-    "Av",
-    "radfield",
-    "zeta",
-    "dstep",
-    "parcel_radius",
-]
-from uclchem.utils import (
-    MISSING_VALUE_FLOAT,
-    MISSING_VALUE_INTEGER,
-    NO_REACTANT_OR_PRODUCT,
-    UCLCHEM_ROOT_DIR,
-)
 
 
 def get_default_coolants() -> list[dict[str, str]]:
@@ -477,10 +458,8 @@ def write_outputs(
     filename = fortran_src_dir / "f2py_constants.f90"
 
     # Compute energy level counts from coolant data files
-    from uclchem._coolant_utils import (
-        get_energy_levels_info,
-        validate_coolant_frequencies,
-    )
+    from uclchem._coolant_utils import (get_energy_levels_info,
+                                        validate_coolant_frequencies)
 
     coolant_data_directory = get_default_coolant_directory(coolant_data_dir)
     n_total_levels, n_se_stats_per_coolant = get_energy_levels_info(
