@@ -15,7 +15,8 @@ from numpy import any as np_any
 
 from uclchem.makerates.heating import convert_to_erg
 
-from .reaction import REACTION_TYPES, CoupledReaction, Reaction
+from .reaction import (REACTION_TYPES, TUNNELING_REACTION_TYPES,
+                       CoupledReaction, Reaction)
 from .species import Species, elementList
 
 
@@ -919,7 +920,7 @@ class NetworkBuilder:
         """
         branching_reactions = {}
         for i, reaction in enumerate(self.network.get_reaction_list()):
-            if reaction.get_reaction_type() in ["LH", "LHDES"]:
+            if reaction.get_reaction_type() in TUNNELING_REACTION_TYPES:
                 reactant_string = ",".join(reaction.get_reactants())
                 if reactant_string in branching_reactions:
                     branching_reactions[reactant_string] += reaction.get_alpha()
@@ -931,7 +932,7 @@ class NetworkBuilder:
                 "Some of the branching ratios do not sum to 1.0, correcting those that do not"
             )
             for i, reaction in enumerate(self.network.get_reaction_list()):
-                if reaction.get_reaction_type() in ["LH", "LHDES"]:
+                if reaction.get_reaction_type() in TUNNELING_REACTION_TYPES:
                     reactant_string = ",".join(reaction.get_reactants())
                     # Check if we need to correct the branching ratio
                     # (smaller than 0.98 is allowed)
@@ -940,26 +941,7 @@ class NetworkBuilder:
                         and branching_reactions[reactant_string] != 1.0
                     ):
                         # new_reaction = deepcopy(reaction)  # Unused variable
-                        if branching_reactions[reactant_string] != 0.0:
-                            if branching_reactions[reactant_string] < 0.99:  # noqa: PLR2004
-                                logging.warning(
-                                    f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string]} we are assuming you set this lower on purpose."
-                                )
-                                continue
-                            new_alpha = (
-                                reaction.get_alpha()
-                                / branching_reactions[reactant_string]
-                            )
-                            logging.warning(
-                                f"Grain reaction {reaction} has a branching ratio of {reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
-                            )
-                            # TODO: apply to all partners of the reaction
-                            reaction_index = self.network.get_reaction_index(reaction)
-                            reaction.set_alpha(new_alpha)
-                            self.network.set_reaction(
-                                reaction_idx=reaction_index, reaction=reaction
-                            )
-                        else:
+                        if branching_reactions[reactant_string] == 0.0:
                             if isinstance(reaction, CoupledReaction) and (
                                 reaction not in self.network.get_reaction_list()
                             ):

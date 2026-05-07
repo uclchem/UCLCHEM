@@ -238,9 +238,9 @@ def test_reaction_charge_conservation_prefix_neutral():
 
 
 def _keep_list(*names):
-    from uclchem.makerates.reaction import reaction_types
+    from uclchem.makerates.reaction import REACTION_TYPES
 
-    return ["", "NAN", "E-", "e-", "PHOTON", "CRP"] + list(reaction_types) + list(names)
+    return ["", "NAN", "E-", "e-", "PHOTON", "CRP"] + list(REACTION_TYPES) + list(names)
 
 
 def test_check_reaction_accepts_prefix_species():
