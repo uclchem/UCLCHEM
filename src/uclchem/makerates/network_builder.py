@@ -15,7 +15,7 @@ from numpy import any as np_any
 
 from uclchem.makerates.heating import convert_to_erg
 
-from .reaction import CoupledReaction, Reaction, reaction_types
+from .reaction import REACTION_TYPES, TUNNELING_REACTION_TYPES, CoupledReaction, Reaction
 from .species import Species, elementList
 
 
@@ -591,7 +591,7 @@ class NetworkBuilder:
                 ]
                 if rxns:
                     total_alpha = sum(r.get_alpha() for r in rxns)
-                    if abs(total_alpha - 1.0) > 1e-6:
+                    if abs(total_alpha - 1.0) > 1e-6:  # noqa: PLR2004
                         raise ValueError(
                             f"{species_name} has {rtype} reactions with alpha summing to "
                             f"{total_alpha:.6f}, expected 1.0. "
@@ -706,7 +706,7 @@ class NetworkBuilder:
                     if desorbProducts[1] == "NAN":
                         new_products[i] = desorbProducts[0]
                     elif desorbProducts[2] == "NAN":
-                        if i < 2 and new_products[i + 1] != "NAN":
+                        if i < 2 and new_products[i + 1] != "NAN":  # noqa: PLR2004
                             # Move i+1th product over to i+2th product
                             new_products[i + 2] = new_products[i + 1]
                         new_products[i + 1] = desorbProducts[1]
@@ -919,7 +919,9 @@ class NetworkBuilder:
         """
         branching_reactions = {}
         for i, reaction in enumerate(self.network.get_reaction_list()):
-            if reaction.get_reaction_type() in ["LH", "LHDES"]:
+            if isinstance(reaction, CoupledReaction):
+                continue
+            if reaction.get_reaction_type() in TUNNELING_REACTION_TYPES:
                 reactant_string = ",".join(reaction.get_reactants())
                 if reactant_string in branching_reactions:
                     branching_reactions[reactant_string] += reaction.get_alpha()
@@ -931,7 +933,9 @@ class NetworkBuilder:
                 "Some of the branching ratios do not sum to 1.0, correcting those that do not"
             )
             for i, reaction in enumerate(self.network.get_reaction_list()):
-                if reaction.get_reaction_type() in ["LH", "LHDES"]:
+                if isinstance(reaction, CoupledReaction):
+                    continue
+                if reaction.get_reaction_type() in TUNNELING_REACTION_TYPES:
                     reactant_string = ",".join(reaction.get_reactants())
                     # Check if we need to correct the branching ratio
                     # (smaller than 0.98 is allowed)
@@ -941,20 +945,13 @@ class NetworkBuilder:
                     ):
                         # new_reaction = deepcopy(reaction)  # Unused variable
                         if branching_reactions[reactant_string] == 0.0:
-                            if isinstance(reaction, CoupledReaction) and (
-                                reaction not in self.network.get_reaction_list()
-                            ):
-                                logging.info(
-                                    f"Tried to remove a coupled reaction {reaction}, but it was already removed by one of its partners."
-                                )
-                            else:
-                                logging.warning(
-                                    f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
-                                )
-                                self.network.remove_reaction(reaction)
+                            logging.warning(
+                                f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
+                            )
+                            self.network.remove_reaction(reaction)
                             continue
 
-                        if branching_reactions[reactant_string] < 0.99:
+                        if branching_reactions[reactant_string] < 0.99:  # noqa: PLR2004
                             logging.warning(
                                 f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string]} we are assuming you set this lower on purpose."
                             )
@@ -972,6 +969,15 @@ class NetworkBuilder:
                         self.network.set_reaction(
                             reaction_idx=reaction_index, reaction=reaction
                         )
+
+                        for coupled_reaction in self.network.get_all_partners(reaction):
+                            reaction_index = self.network.get_reaction_index(
+                                coupled_reaction
+                            )
+                            coupled_reaction.set_alpha(new_alpha)
+                            self.network.set_reaction(
+                                reaction_idx=reaction_index, reaction=coupled_reaction
+                            )
 
     def _add_gas_phase_extrapolation(self) -> None:
         """Enable extrapolation for gas-phase reactions that
@@ -1004,9 +1010,9 @@ class NetworkBuilder:
             enthalpy_reaction_types = [enthalpy_reaction_types]
         if enthalpy_reaction_types[0].upper() == "ALL":
             exclude_ices = False
-            enthalpy_reaction_types = list(reaction_types)
+            enthalpy_reaction_types = list(REACTION_TYPES)
         elif enthalpy_reaction_types[0].upper() == "GAS":
-            enthalpy_reaction_types = list(reaction_types)
+            enthalpy_reaction_types = list(REACTION_TYPES)
         for reaction in self.network.get_reaction_list():
             logging.debug(f"Checking if we need to add enthalpy to {reaction}")
             if reaction.get_reaction_type() in enthalpy_reaction_types:
@@ -1216,10 +1222,10 @@ class NetworkBuilder:
                     ("H" in reacs) and ("#H" in reacs) and ("#H2" in prods)
                 ),
                 "nR_H2Form_LH": lambda reacs, prods: (  # noqa: ARG005
-                    (reacs.count("#H") == 2) and ("LH" in reacs)
+                    (reacs.count("#H") == 2) and ("LH" in reacs)  # noqa: PLR2004
                 ),
                 "nR_H2Form_LHDes": lambda reacs, prods: (  # noqa: ARG005
-                    (reacs.count("#H") == 2) and ("LHDES" in reacs)
+                    (reacs.count("#H") == 2) and ("LHDES" in reacs)  # noqa: PLR2004
                 ),
                 "nR_HFreeze": lambda reacs, prods: ("H" in reacs) and ("FREEZE" in reacs),  # noqa: ARG005
                 "nR_H2Freeze": lambda reacs, prods: (  # noqa: ARG005
@@ -1230,7 +1236,7 @@ class NetworkBuilder:
                 ),
                 "nR_H2_hv": lambda reacs, prods: ("H2" in reacs) and ("PHOTON" in reacs),  # noqa: ARG005
                 "nR_H2_crp": lambda reacs, prods: (
-                    ("H2" in reacs) and ("CRP" in reacs) and (prods.count("H") == 2)
+                    ("H2" in reacs) and ("CRP" in reacs) and (prods.count("H") == 2)  # noqa: PLR2004
                 ),
                 "nR_H2_ED": lambda reacs, prods: (
                     ("#H2" in reacs) and ("ED" in reacs) and ("H2" in prods)

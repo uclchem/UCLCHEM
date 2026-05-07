@@ -10,7 +10,11 @@ from warnings import warn
 
 import pandas as pd
 
-from uclchem.utils import find_number_of_consecutive_digits
+from uclchem.utils import (
+    MISSING_VALUE_FLOAT,
+    MISSING_VALUE_INTEGER,
+    find_number_of_consecutive_digits,
+)
 
 elementList = [
     "H",
@@ -92,7 +96,7 @@ def normalize_species_name(name: str) -> str:
         grain_prefix = rest[0]
         rest = rest[1:]
     # A chemical prefix is exactly one alpha char + '-' with more formula after it.
-    if len(rest) > 2 and rest[1] == "-" and rest[0].isalpha():
+    if len(rest) > 2 and rest[1] == "-" and rest[0].isalpha():  # noqa: PLR2004
         return grain_prefix + rest[0].lower() + "-" + rest[2:].upper()
     return grain_prefix + rest.upper()
 
@@ -176,7 +180,7 @@ class Species:
         _rest = self.name[1:] if self.name and self.name[0] in ("#", "@") else self.name
         self.prefix = (
             _rest[0]
-            if (len(_rest) > 2 and _rest[1] == "-" and _rest[0].islower())
+            if (len(_rest) > 2 and _rest[1] == "-" and _rest[0].islower())  # noqa: PLR2004
             else ""
         )
         self.mass = int(inputRow[1])
@@ -190,39 +194,39 @@ class Species:
                 self.binding_energy = float(inputRow[2])
         except (IndexError, ValueError):
             self.is_refractory = False
-            self.binding_energy = 0.0
+            self.binding_energy = MISSING_VALUE_FLOAT
 
         # core solid/mono/volcano/enthalpy
-        self.solidFraction = sanitize_input_float(inputRow, 3, 0.0)
-        self.monoFraction = sanitize_input_float(inputRow, 4, 0.0)
-        self.volcFraction = sanitize_input_float(inputRow, 5, 0.0)
-        self.enthalpy = sanitize_input_float(inputRow, 6, 0.0)
+        self.solidFraction = sanitize_input_float(inputRow, 3, MISSING_VALUE_FLOAT)
+        self.monoFraction = sanitize_input_float(inputRow, 4, MISSING_VALUE_FLOAT)
+        self.volcFraction = sanitize_input_float(inputRow, 5, MISSING_VALUE_FLOAT)
+        self.enthalpy = sanitize_input_float(inputRow, 6, MISSING_VALUE_FLOAT)
 
         # extended Tobias fields after enthalpy
         # vdes (desorption attempt frequency)
-        self.vdes = sanitize_input_float(inputRow, 7, 0.0)
+        self.vdes = sanitize_input_float(inputRow, 7, MISSING_VALUE_FLOAT)
 
-        self.diffusion_barrier = sanitize_input_float(inputRow, 8, 0.0)
+        self.diffusion_barrier = sanitize_input_float(inputRow, 8, MISSING_VALUE_FLOAT)
         # vdiff (diffusion attempt frequency)
-        self.vdiff = sanitize_input_float(inputRow, 9, 0.0)
+        self.vdiff = sanitize_input_float(inputRow, 9, MISSING_VALUE_FLOAT)
 
         # TST prefactors (optional)
         try:
             self.Ix = float(inputRow[10])
         except (IndexError, ValueError):
-            self.Ix = -999.0
+            self.Ix = MISSING_VALUE_FLOAT
         try:
             self.Iy = float(inputRow[11])
         except (IndexError, ValueError):
-            self.Iy = -999.0
+            self.Iy = MISSING_VALUE_FLOAT
         try:
             self.Iz = float(inputRow[12])
         except (IndexError, ValueError):
-            self.Iz = -999.0
+            self.Iz = MISSING_VALUE_FLOAT
         try:
             self.symmetry_factor = int(inputRow[13])
         except (IndexError, ValueError, TypeError):
-            self.symmetry_factor = -1
+            self.symmetry_factor = MISSING_VALUE_INTEGER
 
         self.set_n_atoms(0)
 
@@ -867,7 +871,7 @@ class Species:
         try:
             self.symmetry_factor = int(sym)
         except (ValueError, TypeError):
-            self.symmetry_factor = -1
+            self.symmetry_factor = MISSING_VALUE_INTEGER
 
     def __eq__(self, other: str | Species) -> bool:
         """Check for equality based on either a string or another Species instance.
@@ -936,13 +940,17 @@ class Species:
             # For atoms, this is undefined, just return a value such that
             # it is clearly an atomic species.
             return -1.0
-        if self.Ix == -999.0 or self.Iy == -999.0 or self.Iz == -999.0:
+        if (
+            self.Ix == MISSING_VALUE_FLOAT
+            or self.Iy == MISSING_VALUE_FLOAT
+            or self.Iz == MISSING_VALUE_FLOAT
+        ):
             # For species without custom input Ix, Iy and Iz, we cannot do this,
             # Return sentinel value for backward compatibility
-            return -999.0
-        if self.symmetry_factor <= 0:
+            return MISSING_VALUE_FLOAT
+        if self.symmetry_factor == MISSING_VALUE_INTEGER:
             # No symmetry factor provided
-            return -999.0
+            return MISSING_VALUE_FLOAT
 
         # Ix, Iy and Iz are in units of amu Angstrom^2,
         # so need to convert to kg m2
@@ -976,10 +984,14 @@ class Species:
         if self.n_atoms == 1:
             # Atomic species are not linear (doesn't matter, filtered out anyway)
             return False
-        if self.n_atoms == 2:
+        if self.n_atoms == 2:  # noqa: PLR2004
             # Diatomic molecules are always linear
             return True
-        if self.Ix == -999.0 or self.Iy == -999.0 or self.Iz == -999.0:
+        if (
+            self.Ix == MISSING_VALUE_FLOAT
+            or self.Iy == MISSING_VALUE_FLOAT
+            or self.Iz == MISSING_VALUE_FLOAT
+        ):
             # No inertia data available
             return False
         if not self.is_ice_species():
@@ -996,19 +1008,17 @@ class Species:
         """
         if self.n_atoms == 1:  # Nothing to check
             return
-        if self.n_atoms > 2:  # Can not correctly check everything
+        if self.n_atoms > 2:  # noqa: PLR2004  # Can not correctly check everything
             return
         constituents = self.find_constituents(quiet=True)
-        if (
-            len(constituents) == 2
-        ):  # Only one constituent, i.e. both atoms are the same element.
+        if len(constituents) == 2:  # noqa: PLR2004 # Two constituents, i.e. two different atoms.
             if self.symmetry_factor == 1:
                 return
             msg = f"For diatomic molecule consisting of two different atoms (in this case {self.name}), the symmetry factor should be 1, but was given to be {self.symmetry_factor}. Correcting to 1."
             logging.warning(msg)
             self.symmetry_factor = 1
             return
-        if self.symmetry_factor == 2:
+        if self.symmetry_factor == 2:  # noqa: PLR2004
             return
         msg = f"For diatomic molecule consisting of two of the same atoms (in this case {self.name}), the symmetry factor should be 2, but was given to be {self.symmetry_factor}. Correcting to 2."
         logging.warning(msg)

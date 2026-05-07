@@ -225,11 +225,14 @@ fortran_parameters:
   - coolantnames
   - coolantparentnames
   - max_coolants
+  - missing_value_float
+  - missing_value_integer
   - n_dvode_stats
   - n_physics_params
   - n_se_stats_per_coolant
   - n_total_levels
   - ncoolants
+  - no_reactant_or_product
   - nreac
   - nspec
   - suggested_freq_rel_tol

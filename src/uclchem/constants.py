@@ -15,10 +15,6 @@ reinstall UCLCHEM for these constants to update:
 # Import canonical values from compiled Fortran module
 from uclchemwrap import f2py_constants
 
-# Import PHYSICAL_PARAMETERS from its canonical source
-# This is defined in makerates to avoid circular dependency
-from uclchem.makerates.io_functions import PHYSICAL_PARAMETERS
-
 # Read canonical values from Fortran
 n_species = int(f2py_constants.nspec)
 n_reactions = int(f2py_constants.nreac)
@@ -27,6 +23,24 @@ NCOOLANTS = int(f2py_constants.ncoolants)
 N_DVODE_STATS = int(f2py_constants.n_dvode_stats)
 N_TOTAL_LEVELS = int(f2py_constants.n_total_levels)
 N_SE_STATS_PER_COOLANT = int(f2py_constants.n_se_stats_per_coolant)
+
+
+# Canonical definition of physical parameters
+# This list defines the physical parameter array passed to Fortran
+PHYSICAL_PARAMETERS = [
+    "Time",
+    "Density",
+    "gasTemp",
+    "dustTemp",
+    "Av",
+    "radfield",
+    "zeta",
+    "dstep",
+    "parcel_radius",
+]
+
+
+ZETA_0 = 1.36e-17  # Standard cosmic ray ionization rate (1.3e-17 s-1)
 
 # DVODE solver statistics names
 # Note: Stats are now written for EVERY solver attempt (including retries)

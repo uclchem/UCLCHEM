@@ -218,7 +218,7 @@ class Setting:
 
         if isinstance(self.current_value, np.ndarray):
             # For small arrays, show values; for large ones, just shape
-            if self.current_value.size <= 3:
+            if self.current_value.size <= 3:  # noqa: PLR2004
                 value_str = str(self.current_value)
             else:
                 value_str = f"<array shape={self.shape}, dtype={self.dtype}>"
@@ -389,7 +389,7 @@ class ModuleSettings:
             flag_str = f" [{','.join(flags)}]" if flags else ""
 
             if isinstance(setting.current_value, np.ndarray):
-                if setting.current_value.size <= 5:
+                if setting.current_value.size <= 5:  # noqa: PLR2004
                     value_str = str(setting.current_value)
                 else:
                     value_str = f"<array shape={setting.shape}>"

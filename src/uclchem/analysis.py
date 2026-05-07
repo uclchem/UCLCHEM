@@ -64,8 +64,8 @@ import pandas as pd
 from pandas import Series, read_csv
 
 from uclchem.constants import default_elements_to_check, n_reactions, n_species
-from uclchem.makerates import Reaction
 from uclchem.makerates.network import Network
+from uclchem.makerates.reaction import LH_REACTION_TYPES, Reaction
 from uclchem.makerates.species import Species, elementList
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
@@ -914,8 +914,8 @@ def rate_constants_to_dy_and_rates(
         elif reaction_type == "BULKSWAP":
             rate *= ratioSurfaceToBulk
         # LH/LHDES bulk reactions
-        elif reaction_type in ["LH", "LHDES"]:
-            if len(reactants) >= 3 and reactants[2] in ["LH", "LHDES"]:
+        elif reaction_type in LH_REACTION_TYPES:
+            if len(reactants) >= 3 and reactants[2] in LH_REACTION_TYPES:  # noqa: PLR2004
                 if "@" in reactants[0]:
                     rate *= bulkLayersReciprocal
         # ED reactions multiply by #H2 abundance
