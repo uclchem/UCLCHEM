@@ -15,8 +15,7 @@ from numpy import any as np_any
 
 from uclchem.makerates.heating import convert_to_erg
 
-from .reaction import (REACTION_TYPES, TUNNELING_REACTION_TYPES,
-                       CoupledReaction, Reaction)
+from .reaction import REACTION_TYPES, TUNNELING_REACTION_TYPES, CoupledReaction, Reaction
 from .species import Species, elementList
 
 
