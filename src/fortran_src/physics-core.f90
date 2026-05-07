@@ -252,6 +252,22 @@ CONTAINS
         end if
     END SUBROUTINE findcoldens_edge2core
 
+    ! Column density shielding from external UV (stage 1 / cloud): edge-to-parcel integral.
+    REAL(dp) FUNCTION coldens_external(r, rho0)
+        REAL(dp), INTENT(IN) :: r    ! parcel radius [pc]
+        REAL(dp), INTENT(IN) :: rho0 ! reference density [cm-3]
+        call findcoldens_edge2core(coldens_external, rho0, density_scale_radius, &
+                                   density_power_index, r)
+    END FUNCTION coldens_external
+
+    ! Column density shielding from central protostar (stage 2 / hotcore): integral from r=0 to parcel.
+    ! Includes unresolved 0 -> rin region. No baseAv (source is internal).
+    REAL(dp) FUNCTION coldens_internal(r)
+        REAL(dp), INTENT(IN) :: r    ! parcel radius [pc]
+        call findcoldens_core2edge(coldens_internal, 0.0_dp, finalDens, &
+                                   density_scale_radius, density_power_index, r)
+    END FUNCTION coldens_internal
+
     ! The profile of the gas volumn density
     ! REAL(dp) FUNCTION rhofit(r,rho0,r0,a)
     REAL(dp) FUNCTION ngas_r(r,rho0,density_scale_radius,density_power_index)

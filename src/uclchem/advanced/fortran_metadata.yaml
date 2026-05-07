@@ -150,8 +150,6 @@ fortran_parameters:
   - codestemp
   - nmasses
   - solidtemp
-  - tempa
-  - tempb
   - volctemp
   chemistry:
   - maxconsecutivefailures
@@ -285,8 +283,9 @@ internal_parameters:
   - ckldiss
   - cklion
   network:
-  - reactionrate
-  - storeratescomputation
+  - elem_count
+  - elem_names
+  - n_elem_tracked
   heating:
   - chemheating
   - coolingvalues
@@ -336,10 +335,6 @@ internal_parameters:
   - coolant_config_error
   - negative_abundance_error
   - conservation_error
-  network:
-  - elem_count
-  - elem_names
-  - n_elem_tracked
 file_path_parameters:
   defaultparameters:
   - outputfile

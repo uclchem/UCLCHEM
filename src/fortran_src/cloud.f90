@@ -7,7 +7,7 @@ MODULE cloud_mod
     !f2py INTEGER, parameter :: dp
     USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens, density_max, ngas_r, initialDens_r, findcoldens_edge2core, initialDens_array, parcel_radius, &
+    &coldens, density_max, ngas_r, initialDens_r, findcoldens_edge2core, coldens_external, initialDens_array, parcel_radius, &
     &outer_coldens_for_current_step
     USE network
     use f2py_constants
@@ -62,11 +62,11 @@ CONTAINS
         
         DO dstep=1,points
             IF (enable_radiative_transfer .AND. points.gt.1) THEN
-                call findcoldens_edge2core(coldens(dstep), initialDens, density_scale_radius, &
-                                           density_power_index, parcelRadius(dstep))
+                coldens(dstep) = coldens_external(parcelRadius(dstep), initialDens)
             ELSE
-                coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
+                coldens(dstep) = real(points-dstep+1)*cloudSize/real(points)*initialDens
             END IF
+            av(dstep) = baseAv + coldens(dstep) / 1.6d21
         END DO
 
     END SUBROUTINE initializePhysics

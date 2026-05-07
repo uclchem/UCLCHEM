@@ -7,7 +7,7 @@ MODULE hotcore
     !f2py INTEGER, parameter :: dp    
     USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens, density_max, ngas_r, findcoldens_core2edge, parcel_radius, radiation, &
+    &coldens, density_max, ngas_r, coldens_internal, parcel_radius, radiation, &
     &outer_coldens_for_current_step
     USE network
     USE f2py_constants
@@ -30,12 +30,17 @@ MODULE hotcore
     REAL(dp) :: maxTemp
     
     ! 1D radiative transfer arrays
-    REAL(dp) :: av_max
     REAL(dp) :: Td_r
     REAL(dp) :: U_r
     REAL(dp), allocatable :: parcelRadius(:)
-    REAL(dp), allocatable :: coldens_max(:)
     REAL(dp), allocatable :: maximum_Temp(:)
+
+    ! Time sampling control parameters
+    ! During heating (gasTemp < maxTemp): log-based stepping with finer resolution
+    REAL(dp) :: timestep_resolution_factor_heating = 2.0_dp  ! steps per decade during heating
+    ! After max_temp reached: coarser log-based or fixed stepping
+    REAL(dp) :: timestep_resolution_factor_hot = 1.0_dp      ! steps per decade post-heating
+    REAL(dp) :: timestep_fixed_late_years = 1.0d5            ! for t > 1 Myr: fixed step in years
 
 contains
 
@@ -56,9 +61,6 @@ contains
             IF (ALLOCATED(parcelRadius)) DEALLOCATE(parcelRadius)
             ALLOCATE(parcelRadius(points))
 
-            IF (ALLOCATED(coldens_max)) DEALLOCATE(coldens_max)
-            ALLOCATE(coldens_max(points))
-            
             IF (ALLOCATED(maximum_Temp)) DEALLOCATE(maximum_Temp)
             ALLOCATE(maximum_Temp(points))
 
@@ -84,10 +86,8 @@ contains
                 maximum_Temp(dstep) = maxTemp
                 ! Shielding from protostar: integrate from r=0 (star) to parcel.
                 ! Includes unresolved 0 -> rin region + resolved rin -> parcelRadius shells.
-                call findcoldens_core2edge(coldens(dstep), 0.0_dp, finalDens, &
-                                           density_scale_radius, density_power_index, &
-                                           parcelRadius(dstep))
-                av(dstep) = coldens(dstep) / 1.6d21
+                coldens(dstep) = coldens_internal(parcelRadius(dstep))
+                av(dstep)      = coldens(dstep) / 1.6d21
             END DO
         END IF
 
@@ -100,25 +100,39 @@ contains
         END IF 
     END SUBROUTINE
 
-    !Called every time loop in main.f90. Sets the timestep for the next output from   
-    !UCLCHEM. This is also given to the integrator as the targetTime in chemistry.f90 
-    !but the integrator itself chooses an integration timestep.                       
+    !Called every time loop in main.f90. Sets the timestep for the next output from
+    !UCLCHEM. This is also given to the integrator as the targetTime in chemistry.f90
+    !but the integrator itself chooses an integration timestep.
     SUBROUTINE updateTargetTime
-        IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
-            targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
-        ELSE  IF (timeInYears .gt. 1.0d5) THEN
-            ! Refined due to conservation at higher densities.
-            targetTime=(timeInYears+5.0d3)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1.0d4) THEN
-            targetTime=(timeInYears+500.0)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1000) THEN
-            targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 100) THEN
-            targetTime=(timeInYears+10.0)*SECONDS_PER_YEAR
+        real(dp) :: orderMagnitude, stepSize, resolutionFactor
+        logical :: heating_complete
+
+        ! Determine whether the innermost point (closest to protostar, hottest) has reached maxTemp.
+        ! For 0D (points=1) this reduces to gasTemp(1) >= maxTemp.
+        ! Once heating is complete we switch to coarser sampling; until then we use finer
+        ! steps to capture the rapid chemistry changes during the warm-up phase.
+        heating_complete = (gasTemp(1) .ge. maxTemp)
+
+        IF (timeInYears .ge. 1.0d6) THEN
+            ! Beyond 1 Myr: fixed step regardless of heating state
+            targetTime = (timeInYears + timestep_fixed_late_years) * SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 0.0) THEN
-            targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR
+            ! Log-based stepping: step = 10^floor(log10(t)) / factor
+            ! Pick resolution factor based on whether heating is still ongoing.
+            ! Heating phase uses finer steps to resolve the rapid temperature rise;
+            ! post-heating uses coarser steps since chemistry evolves more slowly.
+            IF (heating_complete) THEN
+                resolutionFactor = timestep_resolution_factor_hot
+            ELSE
+                resolutionFactor = timestep_resolution_factor_heating
+            END IF
+
+            orderMagnitude = 10.0_dp**(FLOOR(LOG10(timeInYears)))
+            stepSize = orderMagnitude / resolutionFactor
+            ! Snap to exact multiples of stepSize so decade boundaries are always hit cleanly.
+            targetTime = (FLOOR(timeInYears / stepSize + 1.0d-10) + 1.0_dp) * stepSize * SECONDS_PER_YEAR
         ELSE
-            targetTime=SECONDS_PER_YEAR*1.0d-7
+            targetTime = SECONDS_PER_YEAR * 1.0d-7
         ENDIF
     END SUBROUTINE updateTargetTime
 
@@ -136,17 +150,11 @@ contains
 
             ! coldens = column from r=0 (star) to parcel; av = shielding from protostar.
             ! Density is fixed (finalDens profile), so no iterative accumulation needed.
-            call findcoldens_core2edge(coldens(dstep), 0.0_dp, finalDens, &
-                                       density_scale_radius, density_power_index, &
-                                       parcelRadius(dstep))
-            av(dstep) = coldens(dstep) / 1.6d21
-
-            ! av_max: column from rin to parcel edge, for radiation temperature calculation.
-            call findcoldens_core2edge(coldens_max(dstep),rin,finalDens,density_scale_radius,density_power_index,parcelRadius(dstep))
-            av_max = coldens_max(dstep)/1.6d21 + baseAv !note: av_max from core to edge
+            coldens(dstep) = coldens_internal(parcelRadius(dstep))
+            av(dstep)      = coldens(dstep) / 1.6d21
 
             ! Get maximum temperature at a given position
-            call radiation(parcelRadius(dstep)*pc, lum_star*Lsun, temp_star, av_max, Td_r, U_r)
+            call radiation(parcelRadius(dstep)*pc, lum_star*Lsun, temp_star, av(dstep), Td_r, U_r)
             maximum_Temp(dstep)=Td_r !get global variable value for wrap.f90
             maxTemp=maximum_Temp(dstep) !set the local variable in this routine
         END IF
@@ -167,9 +175,9 @@ contains
         
         ! 1D diagnostic output
         IF (enable_radiative_transfer .AND. points.gt.1) THEN
-            PRINT '(A,1PE12.3,A,0PF8.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3)', &
+            PRINT '(A,1PE12.3,A,0PF8.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3)', &
                 't=',timeInYears, '  r=',parcelRadius(dstep), '  ngas(t)=',density(dstep), '  Ngas(t)=',coldens(dstep), &
-                '  Td(t)=',gasTemp(dstep), '  Td(r)_max=',Td_r, ' U(r)_max=',U_r, ' av(core2edge)=',av_max, ' av(edge2core)=',av(dstep)
+                '  Td(t)=',gasTemp(dstep), '  Td(r)_max=',Td_r, ' U(r)_max=',U_r, ' av(star2parcel)=',av(dstep)
         END IF
 
     END SUBROUTINE updatePhysics
