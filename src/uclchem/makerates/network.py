@@ -909,6 +909,10 @@ class Network(BaseNetwork, MutableNetworkABC):
             reactions_coupled_to_reaction (list[Reaction]): List of
                 reactions that have ``reaction`` as their partner.
 
+        Raises:
+            RuntimeError: If the partner of a :class:`CoupledReaction` instance
+                in the network is None.
+
         """
         reactions_coupled_to_reaction = []
         for possible_partner_reaction in self.get_reaction_list():
@@ -918,7 +922,8 @@ class Network(BaseNetwork, MutableNetworkABC):
                 continue
             partner = possible_partner_reaction.get_partner()
             if partner is None:
-                raise RuntimeError
+                msg = f"The partner of {possible_partner_reaction} was None"
+                raise RuntimeError(msg)
             if partner == reaction:
                 reactions_coupled_to_reaction.append(possible_partner_reaction)
         return reactions_coupled_to_reaction

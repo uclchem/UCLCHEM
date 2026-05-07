@@ -127,7 +127,7 @@ from uclchem.constants import (
     n_species,
 )
 from uclchem.plot import create_abundance_plot, plot_species
-from uclchem.utils import UCLCHEM_ROOT_DIR, SuccessFlag
+from uclchem.utils import UCLCHEM_ROOT_DIR, CollapseMode, SuccessFlag, get_collapse_mode
 
 # /Multiprocessing imports
 
@@ -2297,7 +2297,7 @@ class Collapse(AbstractModel):
     """Collapse model class inheriting from AbstractModel.
 
     Args:
-        collapse (str): A string containing the collapse type.
+        collapse (str | int | CollapseMode): Collapse type.
             Options are 'BE1.1', 'BE4', 'filament', or 'ambipolar'. Defaults to 'BE1.1'.
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in `defaultparameters.f90`.
@@ -2321,15 +2321,15 @@ class Collapse(AbstractModel):
     # Time (years) at which each collapse mode's density evolution ends and the fitting
     # functions become singular.
     _COLLAPSE_FINAL_TIMES = {
-        "BE1.1": 1.173387e6,
-        "BE4": 1.84265e5,
-        "filament": 1.393761e6,
-        "ambipolar": 1.6132984e7,
+        CollapseMode.BE1_1: 1.173387e6,
+        CollapseMode.BE4: 1.84265e5,
+        CollapseMode.FILAMENT: 1.393761e6,
+        CollapseMode.AMBIPOLAR: 1.6132984e7,
     }
 
     def __init__(
         self,
-        collapse: Literal["BE1.1", "BE4", "filament", "ambipolar"] = "BE1.1",
+        collapse: str | int | CollapseMode = CollapseMode.BE1_1,
         param_dict: dict | None = None,
         out_species: list[str] | None = None,
         starting_chemistry: np.ndarray | None = None,
@@ -2343,13 +2343,14 @@ class Collapse(AbstractModel):
         then with any additional commands needed for the model.
 
         Raises:
-            ValueError: If `collapse` is not one of `["BE1.1", "BE4", "filament", "ambipolar"]`.
+            ValueError: If ``rin`` and ``points`` were both set in the parameter dictionary.
+            ValueError: If ``parcelStoppingMode`` is set in the parameter dictionary.
+            ValueError: If ``endAtFinaldensity`` is False, but ``finalTime`` was not set.
+            ValueError: If ``endAtFinaldensity`` is False, but ``finalTime`` is less than
+                the duration of the collapse for the collapse mode.
 
         """
-        collapse_dict = {"BE1.1": 1, "BE4": 2, "filament": 3, "ambipolar": 4}
-        if collapse not in collapse_dict:
-            raise ValueError(f"collapse must be in {collapse_dict.keys()}")
-
+        collapse = get_collapse_mode(collapse)
         collapse_final_time = self._COLLAPSE_FINAL_TIMES[collapse]
 
         if out_species is None:
@@ -2434,7 +2435,7 @@ class Collapse(AbstractModel):
         )
         self.collapse_final_time = collapse_final_time
         if read_file is None:
-            self.collapse = collapse_dict[collapse]
+            self.collapse = collapse
             if self.run_type != "external":
                 self.run()
         return
@@ -2452,7 +2453,7 @@ class Collapse(AbstractModel):
 
         """
         result = wrap.collapse(
-            collapsein=self.collapse,
+            collapsein=self.collapse.value,
             dictionary=self._param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
