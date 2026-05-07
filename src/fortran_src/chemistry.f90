@@ -12,8 +12,8 @@ USE constants
 USE DEFAULTPARAMETERS
 USE rates, only: lastTemp
 !f2py INTEGER, parameter :: dp
-USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
-& zeta, currentTime, targetTime, timeinyears, freefall, density, ion, densdot, gasTemp, dustTemp, av, colDens
+USE physicscore, only: points, dstep, cloudsize, radfield, radfield_internal, h2crprate, improvedH2CRPDissociation, &
+& zeta, currentTime, targetTime, timeinyears, freefall, density, ion, densdot, gasTemp, dustTemp, av, av_internal, colDens
 USE DVODE_F90_M !dvode_f90_m
 USE network
 USE photoreactions
@@ -296,8 +296,10 @@ CONTAINS
 
             CALL calculateReactionRates(abund,safeMantle, h2col, cocol, ccol, rate)
             if (heatingFlag) then
-                ! TODO: check that the local and global radiation fields are correct.
-                dustTemp(dstep)=calculateDustTemp(radfield*EXP(-UV_FAC*av(dstep)),radfield,av(dstep),zeta)
+                dustTemp(dstep)=calculateDustTemp( &
+                    radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &
+                    radfield + radfield_internal(dstep), &
+                    av(dstep), zeta)
 
 
                 ! Per-mechanism volumetric H2 formation rates [cm^-3 s^-1] 
@@ -327,7 +329,7 @@ CONTAINS
                                 &    abund(nspec+1,dstep), &              ! gas temperature
                                 &    abund(nspec+2,dstep), &              ! gas density
                                 &    colDens(dstep), &                    ! gas column density
-                                &    radfield*EXP(-UV_FAC*av(dstep)), &   ! attenuated radiation field
+                                &    radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &   ! attenuated radiation field
                                 &    abund(:,dstep), &                    ! full abundance vector
                                 &    rate(nR_H2_hv), &                     ! H2 dissociation rate
                                 &    h2form_heat, &                       ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
@@ -712,7 +714,7 @@ CONTAINS
                             &    Y(nspec+1), &                          ! gas temperature
                             &    Y(nspec+2), &                          ! gas density
                             &    colDens(dstep), &                      ! gas column density
-                            &    radfield*EXP(-UV_FAC*av(dstep)), &     ! attenuated radiation field
+                            &    radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &     ! attenuated radiation field
                             &    Y, &                                   ! all number densities
                             &    rate(nR_H2_hv), &                      ! H2 dissociation rate computed in rates.f90
                             &    h2form, &                              ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]

@@ -52,7 +52,10 @@ CONTAINS
         idx1=photonReacs(1)
         idx2=photonReacs(2)
         IF (idx1 .ne. REAC_NOT_PRESENT) THEN
-            rate(idx1:idx2) = alpha(idx1:idx2)*dexp(-gama(idx1:idx2)*av(dstep))*radfield/1.7
+            rate(idx1:idx2) = alpha(idx1:idx2) * ( &
+                radfield              * dexp(-gama(idx1:idx2)*av(dstep))          + &
+                radfield_internal(dstep) * dexp(-gama(idx1:idx2)*av_internal(dstep)) &
+                ) / 1.7
             ! For all solid species, decrease rate by 0.3 (Kalvans 2018)
             ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
             DO j=idx1,idx2
@@ -166,7 +169,8 @@ CONTAINS
                 rate(idx1:idx2) = GRAIN_CROSSSECTION_PER_H*uv_yield*4.875d3*zeta
                 !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of 
                 !CR induced UV to ISRF UV.
-                rate(idx1:idx2) = rate(idx1:idx2) * (1+(radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)))
+                rate(idx1:idx2) = rate(idx1:idx2) * (1 + (radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)) &
+                                                       + (radfield_internal(dstep)/uvcreff)*(1.0/zeta)*dexp(-1.8*av_internal(dstep)))
                 !alpha is a branching ratio (default 1.0; use <1.0 for isomer desorption channels)
                 rate(idx1:idx2) = alpha(idx1:idx2)*rate(idx1:idx2)
 
@@ -389,8 +393,8 @@ CONTAINS
     ! grain-assisted recombination stuff from Weingartner & Draine (2001) 
     ! https://ui.adsabs.harvard.edu/abs/2001ApJ...563..842W/abstract
     ! We use the 0.6 factor as provided in Gong et al 2017 (DOI:10.3847/1538-4357/aa7561)
-    phi = radfield  * exp(-2.5*av(dstep)) * sqrt(gasTemp(dstep)) /&
-    & (abund(nspec+1,dstep)*abund(nelec,dstep)) ! phi = G T^0.5 / n_e
+    phi = (radfield*exp(-2.5*av(dstep)) + radfield_internal(dstep)*exp(-2.5*av_internal(dstep))) &
+    & * sqrt(gasTemp(dstep)) / (abund(nspec+1,dstep)*abund(nelec,dstep)) ! phi = G T^0.5 / n_e
     
     ! Ensure phi is within the 1e2 to 1e6 range from the paper:
     phi = min(max(phi,1e2), 1e6)
@@ -407,9 +411,12 @@ CONTAINS
     WHERE((.not. ExtrapolateRates) .and. (gasTemp(dstep) .gt. maxTemps)) rate=0.0
 
     !Overwrite reactions for which we have a more detailed photoreaction treatment
-    rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel)!H2 photodissociation
-    rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) !CO photodissociation
-    rate(nR_C_hv)=cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),radfield) !C photoionization
+    rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel) &
+               + H2PhotoDissRate(h2Col,radfield_internal(dstep),av_internal(dstep),turbVel) !H2 photodissociation
+    rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) &
+               + COPhotoDissRate(h2Col,coCol,radfield_internal(dstep),av_internal(dstep)) !CO photodissociation
+    rate(nR_C_hv)=cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),radfield) &
+               + cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av_internal(dstep),radfield_internal(dstep)) !C photoionization
 
     ! Encounter Desorption mechanism (Hincelin et al. 2015)
     ! Species diffuse onto H2-covered surfaces and can desorb upon encountering H2

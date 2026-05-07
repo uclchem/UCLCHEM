@@ -19,6 +19,10 @@ MODULE physicscore
     REAL(dp) :: timeInYears,targetTime,currentTimeold
     REAL(dp) ::  cloudSize
     REAL(dp), allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:),density_max(:)
+    ! Per-parcel internal Av shielding (coldens_internal/1.6e21); 0 for models without a protostar.
+    REAL(dp), allocatable :: av_internal(:)
+    ! Per-parcel internal radiation field [Habing units]; 0 for models without a protostar.
+    REAL(dp), allocatable :: radfield_internal(:)
     ! Per-point initial density used by densdot for multi-point radial profile models.
     ! Defaults to global initialDens; overridden by cloud.f90 when enable_radiative_transfer=T.
     REAL(dp), allocatable :: initialDens_array(:)
@@ -91,6 +95,11 @@ CONTAINS
         ! Modules not restarted in python wraps so best to reset everything manually.
         IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,dustTemp,density,density_max)
         ALLOCATE(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points),density_max(points))
+        IF (ALLOCATED(av_internal))       DEALLOCATE(av_internal)
+        IF (ALLOCATED(radfield_internal)) DEALLOCATE(radfield_internal)
+        ALLOCATE(av_internal(points), radfield_internal(points))
+        av_internal       = 0.0_dp
+        radfield_internal = 0.0_dp
         IF (ALLOCATED(initialDens_array)) DEALLOCATE(initialDens_array)
         ALLOCATE(initialDens_array(points))
         initialDens_array = initialDens   ! default: same for all points (single-point / no radial profile)
@@ -220,25 +229,23 @@ CONTAINS
         END IF
     END SUBROUTINE ionizationDependency
 
-    ! Estimate the column density
+    ! Analytical column density from the centre (r=0) to radius r [cm^-2].
+    REAL(dp) FUNCTION coldens_centre2r(r, rho0, r0, alpha)
+        REAL(dp), INTENT(IN) :: r, rho0, r0, alpha
+        IF (r .le. r0) THEN
+            coldens_centre2r = rho0 * r * pc
+        ELSE
+            coldens_centre2r = rho0*r0*pc * (1.d0 + (1.d0/(alpha-1.d0)) * (1.d0 - (r/r0)**(1.d0-alpha)))
+        END IF
+    END FUNCTION coldens_centre2r
+
+    ! Analytical column density from rin to r [cm^-2].
     SUBROUTINE findcoldens_core2edge(coldens,rin,rho0,density_scale_radius,density_power_index,r)
       REAL(dp),intent(in) :: rin,r,rho0,density_scale_radius,density_power_index
       REAL(dp),intent(out) :: coldens
-      INTEGER :: i,np
-      REAL(dp) :: dr,drho,size,r1,r2
 
-      np = 10000
-      size = r-rin ![size] in pc
-      dr = size/np ![dr] in pc
-      coldens = 0.0d0
-      IF (size .le. 0.0d0) return
-
-      DO i=1,np
-         r1 = rin + (i-1)*dr ![r1] in pc
-         r2 = rin + i*dr ![r2] in pc
-         drho = 0.5d0*(ngas_r(r2,rho0,density_scale_radius,density_power_index)+ngas_r(r1,rho0,density_scale_radius,density_power_index))
-         coldens = coldens + drho*dr*pc
-      END DO
+      coldens = coldens_centre2r(r, rho0, density_scale_radius, density_power_index) &
+              - coldens_centre2r(rin, rho0, density_scale_radius, density_power_index)
 
     END SUBROUTINE findcoldens_core2edge
 
@@ -260,11 +267,10 @@ CONTAINS
                                    density_power_index, r)
     END FUNCTION coldens_external
 
-    ! Column density shielding from central protostar (stage 2 / hotcore): integral from r=0 to parcel.
-    ! Includes unresolved 0 -> rin region. No baseAv (source is internal).
+    ! Column density shielding from central protostar (stage 2 / hotcore): integral from rin to parcel.
     REAL(dp) FUNCTION coldens_internal(r)
         REAL(dp), INTENT(IN) :: r    ! parcel radius [pc]
-        call findcoldens_core2edge(coldens_internal, 0.0_dp, finalDens, &
+        call findcoldens_core2edge(coldens_internal, rin, finalDens, &
                                    density_scale_radius, density_power_index, r)
     END FUNCTION coldens_internal
 
@@ -457,5 +463,15 @@ CONTAINS
         REAL(dp) :: Lstar
         get_rsub = 155.3d0*(Lstar/1.0d6/Lsun)**(0.5) * (Tdsub/1500.d0)**(-5.6/2.0) * aunit !in cm
     END FUNCTION get_rsub
+
+    ! Unattenuated UV radiation field from central protostar at radius r_cm [Habing units].
+    ! Uses 45% of the bolometric luminosity as the UV fraction and scales as r^-2.
+    REAL(dp) FUNCTION G0_internal_at_r(Lstar, r_cm)
+        REAL(dp), INTENT(IN) :: Lstar   ! bolometric luminosity [erg s^-1]
+        REAL(dp), INTENT(IN) :: r_cm    ! parcel radius [cm]
+        REAL(dp) :: Luv
+        Luv = 0.45_dp * Lstar
+        G0_internal_at_r = Luv / (4.0_dp * PI * C * r_cm**2) / uISRF_UV
+    END FUNCTION G0_internal_at_r
 
 END MODULE physicscore

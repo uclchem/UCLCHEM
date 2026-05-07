@@ -32,6 +32,8 @@ PHYSICAL_PARAMETERS = [
     "zeta",
     "dstep",
     "parcel_radius",
+    "av_internal",
+    "radfield_internal",
 ]
 
 

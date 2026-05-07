@@ -127,6 +127,8 @@ CONTAINS
                 physicsarray(dtime, dstep, 7) = zeta
                 physicsarray(dtime, dstep, 8) = dstep
                 physicsarray(dtime, dstep, 9) = parcel_radius(dstep)
+                physicsarray(dtime, dstep, 10) = av_internal(dstep)
+                physicsarray(dtime, dstep, 11) = radfield_internal(dstep)
                 chemicalabunarray(dtime, dstep, :) = abund(1:nspec,dstep)
                 ! DVODE solver statistics are now written in chemistry.f90
                 ! after each solver attempt (including retries)

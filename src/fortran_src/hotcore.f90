@@ -7,8 +7,8 @@ MODULE hotcore
     !f2py INTEGER, parameter :: dp    
     USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens, density_max, ngas_r, coldens_internal, parcel_radius, radiation, &
-    &outer_coldens_for_current_step
+    &coldens, density_max, ngas_r, coldens_internal, coldens_external, parcel_radius, radiation, &
+    &outer_coldens_for_current_step, av_internal, radfield_internal, G0_internal_at_r
     USE network
     USE f2py_constants
     IMPLICIT NONE
@@ -65,7 +65,7 @@ contains
             ALLOCATE(maximum_Temp(points))
 
             DO dstep=1,points
-                parcelRadius(dstep)= rin + dstep * (rout-rin)/float(points) !unit of parsec -- note: parcelRadius is from core to edge
+                parcelRadius(dstep)= rin + (dstep-1) * (rout-rin)/float(points) !unit of parsec -- note: parcelRadius is from core to edge
                 parcel_radius(dstep)=parcelRadius(dstep)
             END DO
             ! Better fit for 1D:
@@ -84,10 +84,12 @@ contains
                 density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
                 density(dstep)=density_max(dstep)
                 maximum_Temp(dstep) = maxTemp
-                ! Shielding from protostar: integrate from r=0 (star) to parcel.
-                ! Includes unresolved 0 -> rin region + resolved rin -> parcelRadius shells.
-                coldens(dstep) = coldens_internal(parcelRadius(dstep))
-                av(dstep)      = coldens(dstep) / 1.6d21
+                ! Internal shielding: from protostar to parcel (core-to-edge).
+                coldens(dstep)           = coldens_internal(parcelRadius(dstep))
+                av_internal(dstep)       = coldens(dstep) / 1.6d21
+                ! External shielding: from cloud edge to parcel (edge-to-core), includes baseAv.
+                av(dstep)                = baseAv + coldens_external(parcelRadius(dstep), finalDens) / 1.6d21
+                radfield_internal(dstep) = G0_internal_at_r(lum_star*Lsun, parcelRadius(dstep)*pc)
             END DO
         END IF
 
@@ -148,13 +150,15 @@ contains
             density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
             density(dstep)=density_max(dstep)
 
-            ! coldens = column from r=0 (star) to parcel; av = shielding from protostar.
-            ! Density is fixed (finalDens profile), so no iterative accumulation needed.
-            coldens(dstep) = coldens_internal(parcelRadius(dstep))
-            av(dstep)      = coldens(dstep) / 1.6d21
+            ! Internal shielding: from protostar to parcel (core-to-edge).
+            coldens(dstep)           = coldens_internal(parcelRadius(dstep))
+            av_internal(dstep)       = coldens(dstep) / 1.6d21
+            ! External shielding: from cloud edge to parcel (edge-to-core), includes baseAv.
+            av(dstep)                = baseAv + coldens_external(parcelRadius(dstep), finalDens) / 1.6d21
+            radfield_internal(dstep) = G0_internal_at_r(lum_star*Lsun, parcelRadius(dstep)*pc)
 
-            ! Get maximum temperature at a given position
-            call radiation(parcelRadius(dstep)*pc, lum_star*Lsun, temp_star, av(dstep), Td_r, U_r)
+            ! Dust temperature from internal protostellar radiation; use av_internal for attenuation.
+            call radiation(parcelRadius(dstep)*pc, lum_star*Lsun, temp_star, av_internal(dstep), Td_r, U_r)
             maximum_Temp(dstep)=Td_r !get global variable value for wrap.f90
             maxTemp=maximum_Temp(dstep) !set the local variable in this routine
         END IF
@@ -163,7 +167,7 @@ contains
         !Below we include temperature profiles for hot cores, selected using tempindx
         !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
         !It takes the form T=A(t^B)*[(d/R)^-0.5], where A and B are given below for various stellar masses
-            gasTemp(dstep)=(cloudSize/(rout*pc))*(real(dstep)/real(points))
+            gasTemp(dstep)=parcelRadius(dstep)/rout
             gasTemp(dstep)=gasTemp(dstep)**(-0.5)
             gasTemp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime/SECONDS_PER_YEAR)**tempb(tempindx))*gasTemp(dstep))
             if (gasTemp(dstep) .gt. maxTemp) gasTemp(dstep)=maxTemp
