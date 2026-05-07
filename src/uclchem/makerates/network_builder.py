@@ -15,7 +15,8 @@ from numpy import any as np_any
 
 from uclchem.makerates.heating import convert_to_erg
 
-from .reaction import REACTION_TYPES, TUNNELING_REACTION_TYPES, CoupledReaction, Reaction
+from .reaction import (REACTION_TYPES, TUNNELING_REACTION_TYPES,
+                       CoupledReaction, Reaction)
 from .species import Species, elementList
 
 
@@ -919,6 +920,8 @@ class NetworkBuilder:
         """
         branching_reactions = {}
         for i, reaction in enumerate(self.network.get_reaction_list()):
+            if isinstance(reaction, CoupledReaction):
+                continue
             if reaction.get_reaction_type() in TUNNELING_REACTION_TYPES:
                 reactant_string = ",".join(reaction.get_reactants())
                 if reactant_string in branching_reactions:
@@ -931,6 +934,8 @@ class NetworkBuilder:
                 "Some of the branching ratios do not sum to 1.0, correcting those that do not"
             )
             for i, reaction in enumerate(self.network.get_reaction_list()):
+                if isinstance(reaction, CoupledReaction):
+                    continue
                 if reaction.get_reaction_type() in TUNNELING_REACTION_TYPES:
                     reactant_string = ",".join(reaction.get_reactants())
                     # Check if we need to correct the branching ratio
@@ -941,17 +946,10 @@ class NetworkBuilder:
                     ):
                         # new_reaction = deepcopy(reaction)  # Unused variable
                         if branching_reactions[reactant_string] == 0.0:
-                            if isinstance(reaction, CoupledReaction) and (
-                                reaction not in self.network.get_reaction_list()
-                            ):
-                                logging.info(
-                                    f"Tried to remove a coupled reaction {reaction}, but it was already removed by one of its partners."
-                                )
-                            else:
-                                logging.warning(
-                                    f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
-                                )
-                                self.network.remove_reaction(reaction)
+                            logging.warning(
+                                f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
+                            )
+                            self.network.remove_reaction(reaction)
                             continue
 
                         if branching_reactions[reactant_string] < 0.99:  # noqa: PLR2004
@@ -972,6 +970,15 @@ class NetworkBuilder:
                         self.network.set_reaction(
                             reaction_idx=reaction_index, reaction=reaction
                         )
+
+                        for coupled_reaction in self.network.get_all_partners(reaction):
+                            reaction_index = self.network.get_reaction_index(
+                                coupled_reaction
+                            )
+                            coupled_reaction.set_alpha(new_alpha)
+                            self.network.set_reaction(
+                                reaction_idx=reaction_index, reaction=coupled_reaction
+                            )
 
     def _add_gas_phase_extrapolation(self) -> None:
         """Enable extrapolation for gas-phase reactions that

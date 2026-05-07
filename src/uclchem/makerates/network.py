@@ -22,7 +22,7 @@ import pandas as pd
 
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
-from .reaction import REACTION_TYPES, Reaction
+from .reaction import REACTION_TYPES, CoupledReaction, Reaction
 from .species import Species
 
 # ============================================================================
@@ -778,6 +778,10 @@ class Network(BaseNetwork, MutableNetworkABC):
                 "Use remove_reaction_by_index for piecewise reactions."
             )
 
+        for coupled_reaction in self.get_all_partners(reaction):
+            reaction_idx = self.get_reaction_index(coupled_reaction)
+            del self._reactions_dict[reaction_idx]
+
     def remove_reaction_by_index(self, reaction_idx: int) -> None:
         """Remove a reaction by its index."""
         if reaction_idx in self._reactions_dict:
@@ -894,6 +898,30 @@ class Network(BaseNetwork, MutableNetworkABC):
                 f"Found {len(similar_reactions)} reactions matching {reaction}. "
                 "Cannot uniquely identify which barrier to change."
             )
+
+    def get_all_partners(self, reaction: Reaction) -> list[Reaction]:
+        """Get a list of all reactions that have ``reaction`` as their partner.
+
+        Args:
+            reaction (Reaction): Reaction
+
+        Returns:
+            reactions_coupled_to_reaction (list[Reaction]): List of
+                reactions that have ``reaction`` as their partner.
+
+        """
+        reactions_coupled_to_reaction = []
+        for possible_partner_reaction in self.get_reaction_list():
+            if possible_partner_reaction == reaction:
+                continue
+            if not isinstance(possible_partner_reaction, CoupledReaction):
+                continue
+            partner = possible_partner_reaction.get_partner()
+            if partner is None:
+                raise RuntimeError
+            if partner == reaction:
+                reactions_coupled_to_reaction.append(possible_partner_reaction)
+        return reactions_coupled_to_reaction
 
 
 # ============================================================================
