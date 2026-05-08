@@ -40,7 +40,7 @@ class RuntimeNetwork(BaseNetwork):
     is fixed, but parameters can be modified.
 
     To "remove" a reaction: set its alpha parameter to 0.0 using disable_reaction().
-    To reset changes: call reset_to_initial_state().
+    To reset changes: call :meth:`reset_to_initial_state`.
 
     Examples:
         >>> # Load runtime network
@@ -52,13 +52,30 @@ class RuntimeNetwork(BaseNetwork):
 
         >>> # Modify parameters
         >>> network.modify_reaction_parameters(0, alpha=1e-10, beta=2.0)
-        >>> network.change_binding_energy("H2O", 5773.0)
+        >>> network.change_binding_energy("#H2O", 5773.0)
 
         >>> # Disable a reaction
         >>> network.disable_reaction(5)
 
         >>> # Reset when done
         >>> network.reset_to_initial_state()
+
+        You can use this to do a sensitivity analysis in a simple way.
+
+        >>> # Artificially set a higher diffusion barrier of atomic hydrogen
+        >>> network.change_diffusion_barrier("#H", 600)
+        >>>
+        >>> # Run a model at the increased hydrogen diffusion barrier
+        >>> import uclchem
+        >>> param_dict = {"initialDens": 1e5, "initialTemp": 10, "finalTime": 1e5}
+        >>> high_diffusion_barrier_model = uclchem.model.Cloud(param_dict=param_dict)
+        >>>
+        >>> # Reset to initial state, and then run a "standard" model
+        >>> network.reset_to_initial_state()
+        >>> regular_diffusion_barrier_model = uclchem.model.Cloud(param_dict=param_dict)
+        >>>
+        >>> # Do some analysis to see the effect of a higher hydrogen diffusion barrier
+        >>> # ...
 
     Thread Safety Warning:
         Modifies global Fortran module state. NOT thread-safe.
