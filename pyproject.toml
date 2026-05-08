@@ -139,7 +139,7 @@ force-raises = 'per-type'
 mode = 'check-only'
 
 [tool.ty.analysis]
-allowed-unresolved-imports = ["uclchemwrap", "matplotlib.*", "uclchem._project_root"]
+allowed-unresolved-imports = ["uclchemwrap", "uclchem._project_root"]
 
 [[tool.ty.overrides]]
 include = ["tests/"]
