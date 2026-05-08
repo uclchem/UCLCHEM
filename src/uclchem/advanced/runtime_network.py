@@ -381,9 +381,8 @@ class RuntimeNetwork(BaseNetwork):
     def _cache_initial_state(self):
         """Cache the initial state of all modifiable Fortran parameters.
 
-        Allows fast reset without re-reading CSV files. Caches:
-        - Reaction parameters: alpha, beta, gama
-        - Species parameters: bindingenergy, diffusionbarrier
+        Allows fast reset without re-reading CSV files.
+        Caches everything in :data:`RuntimeNetwork._ARRAYS_TO_CACHE`.
 
         """
         self._initial_arrays = {}

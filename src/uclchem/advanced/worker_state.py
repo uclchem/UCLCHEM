@@ -75,7 +75,7 @@ def create_snapshot() -> dict[str, Any]:
       (excluding PARAMETERs, INTERNAL, FILE_PATH, and arrays).
     * ``"heating"`` – heating/cooling boolean arrays, scalars, and coolant
       configuration.
-    * ``"network"`` – reaction-rate and binding-energy arrays.
+    * ``"network"`` – Everything in :data:`_NETWORK_ARRAYS_TO_TAKE_SNAPSHOT_OF`.
 
     Returns:
         Fully picklable dict suitable for passing to :func:`restore_snapshot`.
