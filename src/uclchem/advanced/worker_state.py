@@ -20,6 +20,8 @@ from uclchemwrap import f2py_constants as f2py_constants_module
 from uclchemwrap import heating as heating_module
 from uclchemwrap import network as network_module
 
+from uclchem.advanced.runtime_network import RuntimeNetwork
+
 from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
 
 # Module names mirroring GeneralSettings._discover_modules()
@@ -57,6 +59,8 @@ _MODULES_SKIP_0D = frozenset(
     }
 )
 
+_NETWORK_ARRAYS_TO_TAKE_SNAPSHOT_OF = RuntimeNetwork._ARRAYS_TO_CACHE
+
 
 def create_snapshot() -> dict[str, Any]:
     """Capture the current Fortran module state into a picklable dict.
@@ -70,7 +74,7 @@ def create_snapshot() -> dict[str, Any]:
       (excluding PARAMETERs, INTERNAL, FILE_PATH, and arrays).
     * ``"heating"`` – heating/cooling boolean arrays, scalars, and coolant
       configuration.
-    * ``"network"`` – reaction-rate and binding-energy arrays.
+    * ``"network"`` – Everything in :data:`_NETWORK_ARRAYS_TO_TAKE_SNAPSHOT_OF`.
 
     Returns:
         Fully picklable dict suitable for passing to :func:`restore_snapshot`.
@@ -145,10 +149,8 @@ def create_snapshot() -> dict[str, Any]:
 
     # --- Network state (rate parameters + binding energies) ---
     snapshot["network"] = {
-        "alpha": np.copy(network_module.alpha),
-        "beta": np.copy(network_module.beta),
-        "gama": np.copy(network_module.gama),
-        "bindingenergy": np.copy(network_module.bindingenergy),
+        array_name: np.copy(getattr(network_module, array_name))
+        for array_name in _NETWORK_ARRAYS_TO_TAKE_SNAPSHOT_OF
     }
 
     return snapshot
@@ -205,14 +207,8 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
 
     # --- Network state ---
     net = snapshot.get("network", {})
-    if "alpha" in net:
-        np.copyto(network_module.alpha, net["alpha"])
-    if "beta" in net:
-        np.copyto(network_module.beta, net["beta"])
-    if "gama" in net:
-        np.copyto(network_module.gama, net["gama"])
-    if "bindingenergy" in net:
-        np.copyto(network_module.bindingenergy, net["bindingenergy"])
+    for array_name, array in net.items():
+        np.copyto(getattr(network_module, array_name), array)
 
 
 def _pool_initializer(snapshot: dict[str, Any]) -> None:

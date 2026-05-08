@@ -110,9 +110,7 @@ from uclchemwrap import uclchemwrap as wrap
 
 from uclchem._coolant_utils import load_coolant_level_names
 from uclchem._fortran_capture import capture_fortran_output
-from uclchem.analysis import (
-    check_element_conservation,
-)
+from uclchem.analysis import check_element_conservation
 from uclchem.constants import (
     DVODE_STAT_NAMES,
     N_DVODE_STATS,
@@ -276,6 +274,8 @@ def load_model(
         opened_file = True
 
     if name not in file_obj:
+        if opened_file:
+            file_obj.close()
         raise Exception(f"model {name} was not found in the save file that was passed.")
     model_group = file_obj[name]
     coords = {}

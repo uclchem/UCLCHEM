@@ -40,7 +40,7 @@ class RuntimeNetwork(BaseNetwork):
     is fixed, but parameters can be modified.
 
     To "remove" a reaction: set its alpha parameter to 0.0 using disable_reaction().
-    To reset changes: call reset_to_initial_state().
+    To reset changes: call :meth:`reset_to_initial_state`.
 
     Examples:
         >>> # Load runtime network
@@ -52,13 +52,30 @@ class RuntimeNetwork(BaseNetwork):
 
         >>> # Modify parameters
         >>> network.modify_reaction_parameters(0, alpha=1e-10, beta=2.0)
-        >>> network.change_binding_energy("H2O", 5773.0)
+        >>> network.change_binding_energy("#H2O", 5773.0)
 
         >>> # Disable a reaction
         >>> network.disable_reaction(5)
 
         >>> # Reset when done
         >>> network.reset_to_initial_state()
+
+        You can use this to do a sensitivity analysis in a simple way.
+
+        >>> # Artificially set a higher diffusion barrier of atomic hydrogen
+        >>> network.change_diffusion_barrier("#H", 600)
+        >>>
+        >>> # Run a model at the increased hydrogen diffusion barrier
+        >>> import uclchem
+        >>> param_dict = {"initialDens": 1e5, "initialTemp": 10, "finalTime": 1e5}
+        >>> high_diffusion_barrier_model = uclchem.model.Cloud(param_dict=param_dict)
+        >>>
+        >>> # Reset to initial state, and then run a "standard" model
+        >>> network.reset_to_initial_state()
+        >>> regular_diffusion_barrier_model = uclchem.model.Cloud(param_dict=param_dict)
+        >>>
+        >>> # Do some analysis to see the effect of a higher hydrogen diffusion barrier
+        >>> # ...
 
     Thread Safety Warning:
         Modifies global Fortran module state. NOT thread-safe.
@@ -69,6 +86,8 @@ class RuntimeNetwork(BaseNetwork):
     # Fortran uses 9999 as a sentinel value for reaction type keywords
     # (GAR, PHOTON, CRP, CRPHOT, etc.) instead of species indices
     _FORTRAN_KEYWORD_SENTINEL = 9999
+
+    _ARRAYS_TO_CACHE = {"alpha", "beta", "gama", "bindingenergy", "diffusionbarrier"}
 
     def __init__(self):
         """Initialize RuntimeNetwork by loading the compiled Fortran module.
@@ -181,11 +200,13 @@ class RuntimeNetwork(BaseNetwork):
             mass = float(self._fortran.mass[i])
 
             # Optional fields with bounds checking
-            binding_energy = (
-                float(self._fortran.bindingenergy[i])
-                if i < len(self._fortran.bindingenergy)
-                else 0.0
-            )
+            if name.startswith("#") or name.startswith("@"):
+                ice_list_index = self._get_ice_list_index(name)
+                binding_energy = float(self._fortran.bindingenergy[ice_list_index])
+                diffusion_barrier = float(self._fortran.diffusionbarrier[ice_list_index])
+            else:
+                binding_energy = 0.0
+                diffusion_barrier = 0.0
 
             # Formation enthalpy if available
             enthalpy = (
@@ -198,9 +219,20 @@ class RuntimeNetwork(BaseNetwork):
             # Create Species object (CSV-style row format)
             # [
             #    NAME, MASS, BINDING_ENERGY, SOLID_FRACTION,
-            #    MONO_FRACTION, VOLCANO_FRACTION, ENTHALPY,
+            #    MONO_FRACTION, VOLCANO_FRACTION, ENTHALPY, DIFFUSION_PREFACTOR,
+            #    DIFFUSION_BARRIER
             # ]
-            species_row = [name, mass, binding_energy, 1.0, 1.0, 0.0, enthalpy]
+            species_row = [
+                name,
+                mass,
+                binding_energy,
+                1.0,
+                1.0,
+                0.0,
+                enthalpy,
+                0.0,
+                diffusion_barrier,
+            ]
             species = Species(species_row)
 
             species_dict[name] = species
@@ -366,14 +398,13 @@ class RuntimeNetwork(BaseNetwork):
     def _cache_initial_state(self):
         """Cache the initial state of all modifiable Fortran parameters.
 
-        Allows fast reset without re-reading CSV files. Caches:
-        - Reaction parameters: alpha, beta, gama
-        - Species parameters: bindingenergy
+        Allows fast reset without re-reading CSV files.
+        Caches everything in :data:`RuntimeNetwork._ARRAYS_TO_CACHE`.
+
         """
-        self._initial_alpha = np.copy(self._fortran.alpha)
-        self._initial_beta = np.copy(self._fortran.beta)
-        self._initial_gama = np.copy(self._fortran.gama)
-        self._initial_bindingenergy = np.copy(self._fortran.bindingenergy)
+        self._initial_arrays = {}
+        for array_name in self._ARRAYS_TO_CACHE:
+            self._initial_arrays[array_name] = np.copy(getattr(self._fortran, array_name))
 
     # ========================================================================
     # Properties (NetworkABC Implementation)
@@ -532,6 +563,26 @@ class RuntimeNetwork(BaseNetwork):
     # Parameter Modification Methods (NetworkABC Implementation)
     # ========================================================================
 
+    def _get_species_index(self, specie: str) -> int:
+        # Find species index (1-based)
+        species_names = [
+            self._get_species_name(i + 1) for i in range(len(self._fortran.specname))
+        ]
+
+        try:
+            species_idx = species_names.index(specie)
+            return species_idx
+        except ValueError:
+            raise KeyError(f"Species '{specie}' not found in network")
+
+    def _get_ice_list_index(self, specie: str) -> int:
+        species_idx = self._get_species_index(specie)
+        for ice_list_index, species_index in enumerate(self._fortran.icelist):
+            if species_index == species_idx + 1:
+                return ice_list_index
+        msg = f"Species '{specie}' with index {species_idx} (base-0) not found in iceList"
+        raise KeyError(msg)
+
     def change_binding_energy(self, specie: str, new_binding_energy: float) -> None:
         """Change binding energy of a species (modifies Fortran array).
 
@@ -543,22 +594,24 @@ class RuntimeNetwork(BaseNetwork):
             KeyError: If species not found
 
         """
-        # Find species index (1-based)
-        species_names = [
-            self._get_species_name(i + 1) for i in range(len(self._fortran.specname))
-        ]
-
-        try:
-            species_idx = species_names.index(specie)
-        except ValueError:
-            raise KeyError(f"Species '{specie}' not found in network")
+        ice_list_idx = self._get_ice_list_index(specie)
 
         # Modify Fortran array (0-based)
-        self._fortran.bindingenergy[species_idx] = float(new_binding_energy)
+        self._fortran.bindingenergy[ice_list_idx] = float(new_binding_energy)
 
         # Update cached species object
         if specie in self._species_dict:
             self._species_dict[specie].set_binding_energy(new_binding_energy)
+
+    def change_diffusion_barrier(self, specie: str, new_diffusion_barrier: float) -> None:
+        ice_list_idx = self._get_ice_list_index(specie)
+
+        # Modify Fortran array (0-based)
+        self._fortran.diffusionbarrier[ice_list_idx] = float(new_diffusion_barrier)
+
+        # Update cached species object
+        if specie in self._species_dict:
+            self._species_dict[specie].set_diffusion_barrier(new_diffusion_barrier)
 
     def change_reaction_barrier(self, reaction: Reaction, barrier: float) -> None:
         """Change activation barrier of a reaction (modifies Fortran gamma).
@@ -653,10 +706,8 @@ class RuntimeNetwork(BaseNetwork):
             >>> network.reset_to_initial_state()  # Restores original alpha
 
         """
-        np.copyto(self._fortran.alpha, self._initial_alpha)
-        np.copyto(self._fortran.beta, self._initial_beta)
-        np.copyto(self._fortran.gama, self._initial_gama)
-        np.copyto(self._fortran.bindingenergy, self._initial_bindingenergy)
+        for array_name, array in self._initial_arrays.items():
+            np.copyto(getattr(self._fortran, array_name), array)
 
         # Reload species and reactions to sync cached objects
         self._species_dict = self._load_species_from_fortran()
