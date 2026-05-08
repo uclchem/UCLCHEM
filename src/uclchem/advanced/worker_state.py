@@ -22,8 +22,7 @@ from uclchemwrap import network as network_module
 
 from uclchem.advanced.runtime_network import RuntimeNetwork
 
-from .constants import (FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS,
-                        INTERNAL_PARAMETERS)
+from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
 
 # Module names mirroring GeneralSettings._discover_modules()
 _MODULE_NAMES = [

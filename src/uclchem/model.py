@@ -83,6 +83,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+
 # /UCLCHEM related imports
 # Multiprocessing imports
 import multiprocessing as mp
@@ -103,19 +104,28 @@ import numpy as np
 import pandas as pd
 import uclchemwrap
 import xarray as xr
+
 # UCLCHEM related imports
 from uclchemwrap import uclchemwrap as wrap
 
 from uclchem._coolant_utils import load_coolant_level_names
 from uclchem._fortran_capture import capture_fortran_output
 from uclchem.analysis import check_element_conservation
-from uclchem.constants import (DVODE_STAT_NAMES, N_DVODE_STATS,
-                               N_PHYSICAL_PARAMETERS, N_SE_STATS_PER_COOLANT,
-                               N_TOTAL_LEVELS, NCOOLANTS, PHYSICAL_PARAMETERS,
-                               SE_STAT_NAMES, TIMEPOINTS,
-                               default_elements_to_check,
-                               default_param_dictionary, n_reactions,
-                               n_species)
+from uclchem.constants import (
+    DVODE_STAT_NAMES,
+    N_DVODE_STATS,
+    N_PHYSICAL_PARAMETERS,
+    N_SE_STATS_PER_COOLANT,
+    N_TOTAL_LEVELS,
+    NCOOLANTS,
+    PHYSICAL_PARAMETERS,
+    SE_STAT_NAMES,
+    TIMEPOINTS,
+    default_elements_to_check,
+    default_param_dictionary,
+    n_reactions,
+    n_species,
+)
 from uclchem.plot import create_abundance_plot, plot_species
 from uclchem.utils import UCLCHEM_ROOT_DIR, SuccessFlag
 
@@ -3722,8 +3732,7 @@ class GridRunner:
 
         # Capture advanced settings so spawned workers start with the same
         # Fortran module state as the coordinator process.
-        from uclchem.advanced.worker_state import (_pool_initializer,
-                                                   create_snapshot)
+        from uclchem.advanced.worker_state import _pool_initializer, create_snapshot
 
         snapshot = create_snapshot()
 
