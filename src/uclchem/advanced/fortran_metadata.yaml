@@ -11,6 +11,7 @@ fortran_parameters:
   - wave2
   network:
   - atomcounts
+  - bindingenergy
   - bulklist
   - bulkswapreacs
   - crphotreacs
@@ -22,6 +23,7 @@ fortran_parameters:
   - desoh2reacs
   - desorbreacs
   - deuvcrreacs
+  - diffusionbarrier
   - edreacs
   - enablechemicalheating
   - erdescorrespondingerreacs
