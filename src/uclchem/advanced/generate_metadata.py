@@ -211,9 +211,29 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
-    detected = parse_fortran_parameters(_FORTRAN_SRC)
+    # Resolve source tree paths.  For editable installs _FORTRAN_SRC already
+    # points into the source tree.  For non-editable installs it points into
+    # site-packages where no .f90 files exist, so fall back to CWD-relative
+    # paths so the user can run the CLI from the repo root.
+    fortran_src = _FORTRAN_SRC
+    metadata_path = _METADATA_PATH
+    if not fortran_src.is_dir():
+        cwd = Path.cwd()
+        cwd_fortran_src = cwd / "src" / "fortran_src"
+        cwd_metadata = cwd / "src" / "uclchem" / "advanced" / "fortran_metadata.yaml"
+        if cwd_fortran_src.is_dir() and cwd_metadata.exists():
+            fortran_src = cwd_fortran_src
+            metadata_path = cwd_metadata
+        else:
+            sys.exit(
+                f"ERROR: Fortran source directory not found: {fortran_src}\n"
+                "Run this command from the repo root (the directory containing src/),\n"
+                "or use an editable install (pip install -e .)."
+            )
 
-    existing = _load_yaml(_METADATA_PATH)
+    detected = parse_fortran_parameters(fortran_src)
+
+    existing = _load_yaml(metadata_path)
     merged = _merge(existing, detected)
 
     old_text = _dump_yaml(existing)
@@ -235,9 +255,9 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(1)
         return
 
-    with open(_METADATA_PATH, "w") as f:
+    with open(metadata_path, "w") as f:
         f.write(new_text)
-    print(f"Updated {_METADATA_PATH}")
+    print(f"Updated {metadata_path}")
     for mod, names in sorted(detected.items()):
         print(f"  {mod}: {names}")
 

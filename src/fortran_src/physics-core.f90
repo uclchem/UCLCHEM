@@ -19,11 +19,22 @@ MODULE physicscore
     REAL(dp) :: timeInYears,targetTime,currentTimeold
     REAL(dp) ::  cloudSize
     REAL(dp), allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:),density_max(:)
+    ! Per-parcel internal Av shielding (coldens_internal/1.6e21); 0 for models without a protostar.
+    REAL(dp), allocatable :: av_internal(:)
+    ! Per-parcel internal radiation field [Habing units]; 0 for models without a protostar.
+    REAL(dp), allocatable :: radfield_internal(:)
     ! Per-point initial density used by densdot for multi-point radial profile models.
     ! Defaults to global initialDens; overridden by cloud.f90 when enable_radiative_transfer=T.
     REAL(dp), allocatable :: initialDens_array(:)
     ! Radial position of each parcel (pc). Set by collapse/cloud/hotcore for 1D models; 0 otherwise.
     REAL(dp), allocatable :: parcel_radius(:)
+    ! coldens time series of the last-processed outer shell; used in (points,time) loop order
+    ! so inner shells can look up coldens(dstep+1, dtime) exactly. Allocated in wrap.f90.
+    REAL(dp), allocatable :: coldens_history(:)
+    ! Set by wrap.f90 before each modelUpdatePhysics call. Holds coldens(dstep+1) at the
+    ! current timestep (from coldens_history), so the exact edge-to-core accumulation is
+    ! preserved without accessing a live coldens(dstep+1) that may not yet be computed.
+    REAL(dp) :: outer_coldens_for_current_step = 0.0_dp
 
     !Arrays for calculating rates
     !if ionModel = L use the L model coefficients, if = H use the H model
@@ -84,11 +95,18 @@ CONTAINS
         ! Modules not restarted in python wraps so best to reset everything manually.
         IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,dustTemp,density,density_max)
         ALLOCATE(av(points),coldens(points),gasTemp(points),dustTemp(points),density(points),density_max(points))
+        IF (ALLOCATED(av_internal))       DEALLOCATE(av_internal)
+        IF (ALLOCATED(radfield_internal)) DEALLOCATE(radfield_internal)
+        ALLOCATE(av_internal(points), radfield_internal(points))
+        av_internal       = 0.0_dp
+        radfield_internal = 0.0_dp
         IF (ALLOCATED(initialDens_array)) DEALLOCATE(initialDens_array)
         ALLOCATE(initialDens_array(points))
         initialDens_array = initialDens   ! default: same for all points (single-point / no radial profile)
         IF (ALLOCATED(parcel_radius)) DEALLOCATE(parcel_radius)
         ALLOCATE(parcel_radius(points))
+        IF (ALLOCATED(coldens_history)) DEALLOCATE(coldens_history)
+        ! coldens_history is allocated in wrap.f90 where timePoints is known
         parcel_radius = 0.0_dp
 
         cloudSize = (rout-rin)*pc
@@ -117,16 +135,21 @@ CONTAINS
     END SUBROUTINE coreInitializePhysics
 
     SUBROUTINE coreUpdatePhysics
-        !calculate column density. Remember dstep counts from core centre to edge
-        !and coldens should be amount of gas from edge to parcel.
-        coldens(dstep)=cloudSize/real(points)*density(dstep)
+        ! In the 1D RT (points,time) loop, modelUpdatePhysics (cloud.f90) owns
+        ! coldens and av using the edge-to-core accumulation with coldens_history.
+        ! Skip the centre-to-edge accumulation here to avoid clobbering those values.
+        IF (.NOT. (enable_radiative_transfer .AND. points.gt.1)) THEN
+            !calculate column density. Remember dstep counts from core centre to edge
+            !and coldens should be amount of gas from edge to parcel.
+            coldens(dstep)=cloudSize/real(points)*density(dstep)
 
-        ! add previous column densities to current as we move into cloud to get total
-        IF (dstep .lt. points) coldens(dstep)=coldens(dstep)+coldens(dstep-1)
+            ! add previous column densities to current as we move into cloud to get total
+            IF (dstep .lt. points) coldens(dstep)=coldens(dstep)+coldens(dstep-1)
 
-        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av(dstep)= baseAv + coldens(dstep)/1.6d21
-        if (.not. heatingFlag) then 
+            !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
+            av(dstep)= baseAv + coldens(dstep)/1.6d21
+        END IF
+        if (.not. heatingFlag) then
             dustTemp(dstep)=gasTemp(dstep)
         end if
 
@@ -206,25 +229,16 @@ CONTAINS
         END IF
     END SUBROUTINE ionizationDependency
 
-    ! Estimate the column density
-    SUBROUTINE findcoldens_core2edge(coldens,rin,rho0,density_scale_radius,density_power_index,r)
-      REAL(dp),intent(in) :: rin,r,rho0,density_scale_radius,density_power_index
+    ! Analytical column density from centre (r=0) to r [cm^-2].
+    SUBROUTINE findcoldens_core2edge(coldens,rho0,density_scale_radius,density_power_index,r)
+      REAL(dp),intent(in) :: r,rho0,density_scale_radius,density_power_index
       REAL(dp),intent(out) :: coldens
-      INTEGER :: i,np
-      REAL(dp) :: dr,drho,size,r1,r2
 
-      np = 10000
-      size = r-rin ![size] in pc
-      dr = size/np ![dr] in pc
-      coldens = 0.0d0
-      IF (size .le. 0.0d0) return
-
-      DO i=1,np
-         r1 = rin + (i-1)*dr ![r1] in pc
-         r2 = rin + i*dr ![r2] in pc
-         drho = 0.5d0*(ngas_r(r2,rho0,density_scale_radius,density_power_index)+ngas_r(r1,rho0,density_scale_radius,density_power_index))
-         coldens = coldens + drho*dr*pc
-      END DO
+      IF (r .le. density_scale_radius) THEN
+          coldens = rho0 * r * pc
+      ELSE
+          coldens = rho0*density_scale_radius*pc * (1.d0 + (1.d0/(density_power_index-1.d0)) * (1.d0 - (r/density_scale_radius)**(1.d0-density_power_index)))
+      END IF
 
     END SUBROUTINE findcoldens_core2edge
 
@@ -237,6 +251,21 @@ CONTAINS
             coldens = rho0*density_scale_radius*pc*(density_power_index/(density_power_index-1.d0)-r/density_scale_radius)
         end if
     END SUBROUTINE findcoldens_edge2core
+
+    ! Column density shielding from external UV (stage 1 / cloud): edge-to-parcel integral.
+    REAL(dp) FUNCTION coldens_external(r, rho0)
+        REAL(dp), INTENT(IN) :: r    ! parcel radius [pc]
+        REAL(dp), INTENT(IN) :: rho0 ! reference density [cm-3]
+        call findcoldens_edge2core(coldens_external, rho0, density_scale_radius, &
+                                   density_power_index, r)
+    END FUNCTION coldens_external
+
+    ! Column density shielding from central protostar (stage 2 / hotcore): integral from centre to parcel.
+    REAL(dp) FUNCTION coldens_internal(r)
+        REAL(dp), INTENT(IN) :: r    ! parcel radius [pc]
+        call findcoldens_core2edge(coldens_internal, finalDens, &
+                                   density_scale_radius, density_power_index, r)
+    END FUNCTION coldens_internal
 
     ! The profile of the gas volumn density
     ! REAL(dp) FUNCTION rhofit(r,rho0,r0,a)
@@ -427,5 +456,15 @@ CONTAINS
         REAL(dp) :: Lstar
         get_rsub = 155.3d0*(Lstar/1.0d6/Lsun)**(0.5) * (Tdsub/1500.d0)**(-5.6/2.0) * aunit !in cm
     END FUNCTION get_rsub
+
+    ! Unattenuated UV radiation field from central protostar at radius r_cm [Habing units].
+    ! Uses 45% of the bolometric luminosity as the UV fraction and scales as r^-2.
+    REAL(dp) FUNCTION G0_internal_at_r(Lstar, r_cm)
+        REAL(dp), INTENT(IN) :: Lstar   ! bolometric luminosity [erg s^-1]
+        REAL(dp), INTENT(IN) :: r_cm    ! parcel radius [cm]
+        REAL(dp) :: Luv
+        Luv = 0.45_dp * Lstar
+        G0_internal_at_r = Luv / (4.0_dp * PI * C * r_cm**2) / uISRF_UV
+    END FUNCTION G0_internal_at_r
 
 END MODULE physicscore
