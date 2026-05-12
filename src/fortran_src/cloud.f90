@@ -20,6 +20,9 @@ MODULE cloud_mod
     REAL(dp) :: timestep_resolution_factor_mid = 1.0_dp      ! For 10 yr < t < 1 Myr: dt = 10^floor(log_10(t)) / factor
     REAL(dp) :: timestep_fixed_late_years = 1.0d5            ! For t > 1 Myr: dt = fixed timestep in years
 
+    ! Radial grid spacing: .false. = linear (default), .true. = logarithmic
+    LOGICAL :: log_radius_sampling = .false.
+
 CONTAINS
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -33,6 +36,12 @@ CONTAINS
         !Set up basic physics variables
         cloudSize=(rout-rin)*pc
 
+        IF (enable_radiative_transfer .AND. points.gt.1 .AND. rin .le. 0.0_dp) THEN
+            write(*,*) "ERROR: rin must be > 0 when enable_radiative_transfer=True (innermost parcel would be at r=0)"
+            successFlag=ZERO_INNER_RADIUS_ERROR
+            RETURN
+        END IF
+
         ! Allocate 1D arrays if 1D radiative transfer is enabled
         IF (enable_radiative_transfer .AND. points.gt.1) THEN
             IF (ALLOCATED(parcelRadius)) DEALLOCATE(parcelRadius)
@@ -42,7 +51,15 @@ CONTAINS
             ALLOCATE(coldens_obs(points))
 
             DO dstep=1,points
-                parcelRadius(dstep)=dstep*rout/float(points) !unit of parsec -- Note: from core to edge
+                IF (points .gt. 1) THEN
+                    IF (log_radius_sampling) THEN
+                        parcelRadius(dstep)=rin*(rout/rin)**((float(dstep)-1.0d0)/float(points-1))
+                    ELSE
+                        parcelRadius(dstep)=rin+(dstep-1)*(rout-rin)/float(points-1)
+                    END IF
+                ELSE
+                    parcelRadius(dstep)=rout
+                END IF
                 parcel_radius(dstep)=parcelRadius(dstep)
                 density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
             END DO

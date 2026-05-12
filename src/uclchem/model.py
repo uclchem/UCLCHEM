@@ -137,9 +137,9 @@ from uclchem.utils import UCLCHEM_ROOT_DIR, SuccessFlag
 PHYSICAL_PARAMETERS_HEADER_FORMAT = "%10s"
 # in the below variable, the outputs were chosen according to the spacing needed for
 # "      Time,    Density,    gasTemp,   dustTemp,         Av,   radfield,       zeta,
-#       point,    parcel_radius"
+#       point,    parcel_radius, radfield_internal, av_internal"
 PHYSICAL_PARAMETERS_VALUE_FORMAT = (
-    "%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i, %10.4E"
+    "%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i, %10.4E, %10.4E, %10.4E"
 )
 SPECNAME_HEADER_FORMAT = "%11s"
 SPECNAME_VALUE_FORMAT = "%9.5E"
@@ -444,6 +444,7 @@ class AbstractModel(ABC):
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         if out_species_list is None:
             out_species_list = default_elements_to_check
@@ -473,6 +474,7 @@ class AbstractModel(ABC):
         self.full_array = None
         self._debug = debug
         self._on_negative_abundances = on_negative_abundances
+        self._on_error = on_error
         self.success_flag: None | SuccessFlag = None
         # Note: specname is now accessed via get_species_names() global function
         # Note: PHYSICAL_PARAMETERS is now accessed via the global constant
@@ -1311,7 +1313,11 @@ class AbstractModel(ABC):
 
         self._array_clean()
         self._check_negative_abundances()
-        self.check_error(only_error=True)
+        if self.success_flag != SuccessFlag.SUCCESS:
+            msg = self.success_flag.check_error(only_error=True, raise_on_error=False)
+            self._handle_model_error(
+                f"UCLCHEM error ({self.success_flag.name}, {self.success_flag.value}): {msg}"
+            )
         if self.outputFile is not None:
             logging.debug(f"Writing output file: {self.outputFile}")
             logging.debug(
@@ -1734,6 +1740,23 @@ class AbstractModel(ABC):
     # /Legacy in & output support
 
     # Cleaning of array & inputs
+    def _handle_model_error(self, msg: str) -> None:
+        """Dispatch a Fortran model error according to the ``on_error`` constructor setting.
+
+        Args:
+            msg (str): Error message to raise or warn with.
+
+        Raises:
+            RuntimeError: If ``on_error`` is ``"raise"`` (the default).
+        """
+        if self._on_error == "raise":
+            raise RuntimeError(msg)
+        elif self._on_error == "warn":
+            import warnings
+
+            warnings.warn(msg, stacklevel=3)
+        # "ignore": do nothing
+
     def _check_negative_abundances(self) -> None:
         """Check chemical_abun_array for negative values and act per on_negative_abundances.
 
@@ -2244,6 +2267,7 @@ class Cloud(AbstractModel):
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2260,6 +2284,7 @@ class Cloud(AbstractModel):
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         if self.run_type != "external" and not self.was_read:
             self.run()
@@ -2369,6 +2394,7 @@ class Collapse(AbstractModel):
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2463,6 +2489,7 @@ class Collapse(AbstractModel):
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         self.collapse_final_time = collapse_final_time
         if read_file is None:
@@ -2572,6 +2599,7 @@ class PrestellarCore(AbstractModel):
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2592,6 +2620,7 @@ class PrestellarCore(AbstractModel):
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         if read_file is None:
             if temp_indx is None or max_temperature is None:
@@ -2710,6 +2739,7 @@ class CShock(AbstractModel):
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2730,6 +2760,7 @@ class CShock(AbstractModel):
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         if read_file is None:
             if shock_vel is None:
@@ -2846,6 +2877,7 @@ class JShock(AbstractModel):
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2866,6 +2898,7 @@ class JShock(AbstractModel):
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         if read_file is None:
             if shock_vel is None:
@@ -3003,6 +3036,7 @@ class Postprocess(AbstractModel):
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -3026,6 +3060,7 @@ class Postprocess(AbstractModel):
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         if read_file is None and time_array is not None:
             n_input = len(time_array)
@@ -3210,6 +3245,7 @@ class Model(AbstractModel):
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -3233,6 +3269,7 @@ class Model(AbstractModel):
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         if read_file is None and time_array is not None:
             n_input = len(time_array)
@@ -3362,6 +3399,7 @@ class SequentialRunner:
         sequenced_model_parameters: list,
         parameters_to_match: list = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         for model in sequenced_model_parameters:
             assert model[list(model.keys())[0]] != SequentialRunner
@@ -3377,6 +3415,7 @@ class SequentialRunner:
                     )
 
         self.run_type = run_type
+        self._on_error = on_error
         self.model_count = 0
         self._pickle_dict = {}
         self.success_flag = None
@@ -3392,7 +3431,10 @@ class SequentialRunner:
 
         """
         previous_model = None
+        stage_failed = False
         for base_model_dict in self.sequenced_model_parameters:
+            if stage_failed:
+                break
             for model_type, model_dict in base_model_dict.items():
                 model_dict["param_dict"] = {
                     k.lower(): v for k, v in model_dict["param_dict"].items()
@@ -3425,32 +3467,39 @@ class SequentialRunner:
                         **model_dict,
                         run_type=self.run_type,
                         previous_model=previous_model,
+                        on_error=self._on_error,
                     )
                 else:
                     tmp_model = REGISTRY[model_type](
                         **model_dict,
                         run_type=self.run_type,
                         previous_model=previous_model,
+                        on_error=self._on_error,
                     )
 
                 if self.run_type == "external":
                     tmp_model.run()
 
+                successful = tmp_model.success_flag == SuccessFlag.SUCCESS
                 self.models += [
                     {
                         "Model_Type": model_type,
                         "Model_Order": self.model_count,
                         "Model": tmp_model,
                         "Success": tmp_model.success_flag,
+                        "Successful": successful,
                     }
                 ]
 
-                self.models[self.model_count]["Successful"] = (
-                    self.models[self.model_count]["Model"].success_flag == 0
-                )
-
-                previous_model = self.models[self.model_count]["Model"]
                 self.model_count += 1
+
+                if not successful:
+                    # Abort the sequence — running subsequent stages on bad physics
+                    # output is unsafe regardless of on_error mode.
+                    stage_failed = True
+                    break
+
+                previous_model = tmp_model
         self.success_flag = all(d["Successful"] for d in self.models)
         return
 

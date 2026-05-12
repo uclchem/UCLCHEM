@@ -29,6 +29,7 @@ fortran_parameters:
   - erdescorrespondingerreacs
   - erdesreacs
   - erreacs
+  - exothermicities
   - exrelaxreacs
   - exsolidreacs
   - extrapolaterates
@@ -220,6 +221,7 @@ fortran_parameters:
   - t_cmb
   - uisrf
   - uisrf_uv
+  - zero_inner_radius_error
   f2py_constants:
   - coolantconversionfactors
   - coolantconversionmode

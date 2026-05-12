@@ -42,11 +42,20 @@ MODULE hotcore
     REAL(dp) :: timestep_resolution_factor_hot = 1.0_dp      ! steps per decade post-heating
     REAL(dp) :: timestep_fixed_late_years = 1.0d5            ! for t > 1 Myr: fixed step in years
 
+    ! Radial grid spacing: .false. = linear (default), .true. = logarithmic
+    LOGICAL :: log_radius_sampling = .false.
+
 contains
 
     SUBROUTINE initializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
         successFlag=0
+
+        IF (enable_radiative_transfer .AND. points.gt.1 .AND. rin .le. 0.0_dp) THEN
+            write(*,*) "ERROR: rin must be > 0 when enable_radiative_transfer=True (G0 diverges at r=0)"
+            successFlag=ZERO_INNER_RADIUS_ERROR
+            RETURN
+        END IF
 
         ! Modules not restarted in python wraps so best to reset everything manually.
         IF (ALLOCATED(monoFracCopy)) DEALLOCATE(monoFracCopy)
@@ -65,7 +74,15 @@ contains
             ALLOCATE(maximum_Temp(points))
 
             DO dstep=1,points
-                parcelRadius(dstep)= rin + (dstep-1) * (rout-rin)/float(points) !unit of parsec -- note: parcelRadius is from core to edge
+                IF (points .gt. 1) THEN
+                    IF (log_radius_sampling) THEN
+                        parcelRadius(dstep)=rin*(rout/rin)**((float(dstep)-1.0d0)/float(points-1))
+                    ELSE
+                        parcelRadius(dstep)= rin + (dstep-1)*(rout-rin)/float(points-1)
+                    END IF
+                ELSE
+                    parcelRadius(dstep)= rout
+                END IF
                 parcel_radius(dstep)=parcelRadius(dstep)
             END DO
             ! Better fit for 1D:
@@ -179,9 +196,10 @@ contains
         
         ! 1D diagnostic output
         IF (enable_radiative_transfer .AND. points.gt.1) THEN
-            PRINT '(A,1PE12.3,A,0PF8.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3)', &
-                't=',timeInYears, '  r=',parcelRadius(dstep), '  ngas(t)=',density(dstep), '  Ngas(t)=',coldens(dstep), &
-                '  Td(t)=',gasTemp(dstep), '  Td(r)_max=',Td_r, ' U(r)_max=',U_r, ' av(star2parcel)=',av(dstep)
+            PRINT '(A,I4,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3)', &
+                ' pt=',dstep, '  t=',timeInYears, '  r=',parcelRadius(dstep), '  ngas=',density(dstep), &
+                '  Tdust=',dustTemp(dstep), '  Tgas=',gasTemp(dstep), '  Av_ext=',av(dstep), &
+                '  Av_int=',av_internal(dstep), '  Td_max=',Td_r, '  U_max=',U_r
         END IF
 
     END SUBROUTINE updatePhysics

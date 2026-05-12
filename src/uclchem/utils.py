@@ -357,6 +357,7 @@ class SuccessFlag(enum.IntEnum):
     COOLANT_CONFIG_ERROR = -14, "Coolant configuration error occured."
     NEGATIVE_ABUNDANCE_ERROR = -15, "A negative abundance was detected."
     CONSERVATION_ERROR = -16, "Runtime element conservation tolerance exceeded."
+    ZERO_INNER_RADIUS_ERROR = -17, "rin must be > 0 when enable_radiative_transfer=True."
 
     def check_error(self, only_error: bool = False, raise_on_error: bool = True) -> str:
         """Converts the UCLCHEM integer result flag to a message explaining what went wrong.
@@ -395,6 +396,7 @@ class SuccessFlag(enum.IntEnum):
             SuccessFlag.COOLANT_CONFIG_ERROR: "Coolant configuration error: parent species not found in network, or unphysical abundance detected.",
             SuccessFlag.NEGATIVE_ABUNDANCE_ERROR: "Negative abundance detected. That exceeds solver tolerances, consider adjusting the negative_abundance_tol parameter in param_dict to a larger magnitude",
             SuccessFlag.CONSERVATION_ERROR: "Runtime conservation check failed: an element changed by more than runtime_conservation_tolerance. This usually indicates a severe integrator error or network bug. Set runtime_conservation_tolerance to a negative value to disable the check.",
+            SuccessFlag.ZERO_INNER_RADIUS_ERROR: "rin must be > 0 when enable_radiative_transfer=True with multiple points. The innermost parcel would be placed at r=0, causing division by zero in G0_internal_at_r. Set rin to a small positive value (e.g. rout/100).",
         }
 
         msg = error_msg_dict[self]

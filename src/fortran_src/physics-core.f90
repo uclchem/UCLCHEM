@@ -229,23 +229,16 @@ CONTAINS
         END IF
     END SUBROUTINE ionizationDependency
 
-    ! Analytical column density from the centre (r=0) to radius r [cm^-2].
-    REAL(dp) FUNCTION coldens_centre2r(r, rho0, r0, alpha)
-        REAL(dp), INTENT(IN) :: r, rho0, r0, alpha
-        IF (r .le. r0) THEN
-            coldens_centre2r = rho0 * r * pc
-        ELSE
-            coldens_centre2r = rho0*r0*pc * (1.d0 + (1.d0/(alpha-1.d0)) * (1.d0 - (r/r0)**(1.d0-alpha)))
-        END IF
-    END FUNCTION coldens_centre2r
-
-    ! Analytical column density from rin to r [cm^-2].
-    SUBROUTINE findcoldens_core2edge(coldens,rin,rho0,density_scale_radius,density_power_index,r)
-      REAL(dp),intent(in) :: rin,r,rho0,density_scale_radius,density_power_index
+    ! Analytical column density from centre (r=0) to r [cm^-2].
+    SUBROUTINE findcoldens_core2edge(coldens,rho0,density_scale_radius,density_power_index,r)
+      REAL(dp),intent(in) :: r,rho0,density_scale_radius,density_power_index
       REAL(dp),intent(out) :: coldens
 
-      coldens = coldens_centre2r(r, rho0, density_scale_radius, density_power_index) &
-              - coldens_centre2r(rin, rho0, density_scale_radius, density_power_index)
+      IF (r .le. density_scale_radius) THEN
+          coldens = rho0 * r * pc
+      ELSE
+          coldens = rho0*density_scale_radius*pc * (1.d0 + (1.d0/(density_power_index-1.d0)) * (1.d0 - (r/density_scale_radius)**(1.d0-density_power_index)))
+      END IF
 
     END SUBROUTINE findcoldens_core2edge
 
@@ -267,10 +260,10 @@ CONTAINS
                                    density_power_index, r)
     END FUNCTION coldens_external
 
-    ! Column density shielding from central protostar (stage 2 / hotcore): integral from rin to parcel.
+    ! Column density shielding from central protostar (stage 2 / hotcore): integral from centre to parcel.
     REAL(dp) FUNCTION coldens_internal(r)
         REAL(dp), INTENT(IN) :: r    ! parcel radius [pc]
-        call findcoldens_core2edge(coldens_internal, rin, finalDens, &
+        call findcoldens_core2edge(coldens_internal, finalDens, &
                                    density_scale_radius, density_power_index, r)
     END FUNCTION coldens_internal
 
