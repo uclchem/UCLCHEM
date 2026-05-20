@@ -112,21 +112,49 @@ def test_parcel_radius_initial_value_matches_rout():
     )
 
 
-def test_collapse_stops_when_model_reaches_final_density():
-    finalDens = 1e5
+def test_model_stops_end_at_final_density():
+    finalDens = 1e4
+    finalTime = 1e6
     model = uclchem.model.Cloud(
         {
-            "initialDens": 1e3,
+            "initialDens": 8e3,
             "finalDens": finalDens,
-            "finalTime": 5e7,
+            "finalTime": finalTime,
             "endAtFinalDensity": True,
             "freefall": True,
         }
     )
     phys_df, _ = model.get_dataframes(joined=False)
-    assert phys_df["Time"].iloc[-1] < 5e6
+
+    # The model should terminate before it reaches finalTime.
+    assert phys_df["Time"].iloc[-1] < finalTime
+
+    # The model should terminate directly when it reaches finalDens.
     assert phys_df["Density"].iloc[-1] >= finalDens
     assert phys_df["Density"].iloc[-2] < finalDens
+
+
+def test_model_continues_not_end_at_final_density():
+    finalDens = 1e4
+    finalTime = 1e6
+    model = uclchem.model.Cloud(
+        {
+            "initialDens": 8e3,
+            "finalDens": finalDens,
+            "finalTime": finalTime,
+            "endAtFinalDensity": False,
+            "freefall": True,
+        }
+    )
+    phys_df, _ = model.get_dataframes(joined=False)
+
+    # The model should reach the finalTime.
+    assert phys_df["Time"].iloc[-1] == finalTime
+
+    # The model should reach the density, and then stay there after
+    # it reaches it.
+    assert phys_df["Density"].iloc[-1] >= finalDens
+    assert phys_df["Density"].iloc[-2] == phys_df["Density"].iloc[-1]
 
 
 def test_lower_final_than_initial_dens_raises():

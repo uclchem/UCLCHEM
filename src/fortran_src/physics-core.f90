@@ -106,9 +106,9 @@ CONTAINS
             write(*,*) "Error: improvedH2CRPDissociation requires cosmicRayAttentuation to also be True"
             RETURN
         END IF
-        IF (finalDens .lt. initialDens) THEN
+        IF ((freefall) .and. (finalDens .lt. initialDens)) THEN
             successFlag=-1
-            WRITE(*,*) "Error: finalDens (", finalDens, ") is less than initialDens (", initialDens, ")"
+            WRITE(*,*) "Error: freefall finalDens (", finalDens, ") is less than initialDens (", initialDens, ")"
             RETURN
         END IF
 

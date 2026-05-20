@@ -876,7 +876,7 @@ CONTAINS
             ELSE
                 ! Non-radiative-transfer path: loop forward through parcels
                 ! Exit loop if density exceeds finalDens (when using density-based stopping)
-                IF ((parcelStoppingMode .ne. 0) .and. (density(dstep) .ge. finalDens)) THEN
+                IF ((parcelStoppingMode .ne. 0) .and. (density(1) .ge. finalDens)) THEN
                     EXIT
                 END IF
                 !loop over parcels, counting from centre out to edge of cloud
