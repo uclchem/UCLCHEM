@@ -106,6 +106,11 @@ CONTAINS
             write(*,*) "Error: improvedH2CRPDissociation requires cosmicRayAttentuation to also be True"
             RETURN
         END IF
+        IF ((freefall) .and. (finalDens .lt. initialDens)) THEN
+            successFlag=-1
+            WRITE(*,*) "Error: freefall finalDens (", finalDens, ") is less than initialDens (", initialDens, ")"
+            RETURN
+        END IF
 
         !calculate initial column density as distance from core edge to current point * density
         DO dstep=1,points
