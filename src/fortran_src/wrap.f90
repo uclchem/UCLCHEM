@@ -544,8 +544,12 @@ CONTAINS
             RETURN
         END IF
         CALL coreInitializePhysics(successFlag)
+        IF (successFlag .lt. 0) THEN
+            WRITE(*,*) 'Error initializing physics'
+            RETURN
+        END IF
         CALL initializePhysics(successFlag)
-        IF (successFlag .lt. 0) then
+        IF (successFlag .lt. 0) THEN
             WRITE(*,*) 'Error initializing physics'
             RETURN
         END IF
@@ -707,6 +711,12 @@ CONTAINS
         !Initialize core physics first then model specific
         !This allows model to overrule changes made by core
         CALL coreInitializePhysics(successFlag)
+        IF (successFlag .lt. 0) then
+            successFlag=PHYSICS_INIT_ERROR
+            WRITE(*,*) 'Error initializing physics'
+            RETURN
+        END IF
+
         if (present(timegrid)) then
             if (usecoldens) then
                 call modelInitializePhysics(successflag, timegrid,densgrid,radgrid,zetagrid,gtempgrid,&
@@ -755,7 +765,7 @@ CONTAINS
         !loop until the end condition of the model is reached
         ! Main time integration loop
         ! For 1D radiative transfer models, the loop direction and stopping logic differ
-        DO WHILE ((successFlag .eq. 0) .and. (timeInYears < finalTime))
+        DO WHILE ((successFlag .eq. 0) .and. (timeInYears .lt. finalTime))
             dtime = dtime + 1
             currentTimeold=currentTime
             !Each physics module has a subroutine to set the target time from the current time
@@ -774,7 +784,7 @@ CONTAINS
                 flush_rc = c_fflush(C_NULL_PTR) ! TODO: may be redundant with !f2py threadsafe + FLUSH(6)
             END IF
             ! Exit loop if targetTime would exceed finalTime
-            IF (targetTime/SECONDS_PER_YEAR .gt. finalTime) THEN
+            IF ((.not. endAtFinalDensity) .and. (targetTime/SECONDS_PER_YEAR .gt. finalTime)) THEN
                 EXIT
             END IF
 
@@ -866,7 +876,7 @@ CONTAINS
             ELSE
                 ! Non-radiative-transfer path: loop forward through parcels
                 ! Exit loop if density exceeds finalDens (when using density-based stopping)
-                IF (parcelStoppingMode.ne.0 .and. (density(dstep) .ge. finalDens)) THEN
+                IF ((parcelStoppingMode .ne. 0) .and. (density(dstep) .ge. finalDens)) THEN
                     EXIT
                 END IF
                 !loop over parcels, counting from centre out to edge of cloud

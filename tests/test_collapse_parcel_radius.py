@@ -112,5 +112,27 @@ def test_parcel_radius_initial_value_matches_rout():
     )
 
 
+def test_collapse_stops_when_model_reaches_final_density():
+    finalDens = 1e5
+    model = uclchem.model.Cloud(
+        {
+            "initialDens": 1e3,
+            "finalDens": finalDens,
+            "finalTime": 5e7,
+            "endAtFinalDensity": True,
+            "freefall": True,
+        }
+    )
+    phys_df, _ = model.get_dataframes(joined=False)
+    assert phys_df["Time"].iloc[-1] < 5e6
+    assert phys_df["Density"].iloc[-1] >= finalDens
+    assert phys_df["Density"].iloc[-2] < finalDens
+
+
+def test_lower_final_than_initial_dens_raises():
+    with pytest.raises(RuntimeError):
+        uclchem.model.Cloud({"initialDens": 1e5, "finalDens": 1e4})
+
+
 if __name__ == "__main__":
     pytest.main(["-v", __file__])
