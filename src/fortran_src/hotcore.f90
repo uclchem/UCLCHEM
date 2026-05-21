@@ -60,7 +60,7 @@ contains
             ALLOCATE(maximum_Temp(points))
 
             DO dstep=1,points
-                parcelRadius(dstep)=dstep*rout/float(points) !unit of parsec -- note: parcelRadius is from core to edge
+                parcelRadius(dstep)=dstep*r_out/float(points) !unit of parsec -- note: parcelRadius is from core to edge
                 parcel_radius(dstep)=parcelRadius(dstep)
             END DO
         END IF
@@ -117,7 +117,7 @@ contains
             density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
             density(dstep)=density_max(dstep)
 
-            call findcoldens_core2edge(coldens_max(dstep),rin,finalDens,density_scale_radius,density_power_index,parcelRadius(dstep))
+            call findcoldens_core2edge(coldens_max(dstep),r_in,finalDens,density_scale_radius,density_power_index,parcelRadius(dstep))
             av_max = coldens_max(dstep)/1.6d21 + baseAv !note: av_max from core to edge
 
             coldens(dstep)=cloudSize/real(points)*density(dstep) !Note: Ngas from edge to core
@@ -137,7 +137,7 @@ contains
         !Below we include temperature profiles for hot cores, selected using tempindx
         !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
         !It takes the form T=A(t^B)*[(d/R)^-0.5], where A and B are given below for various stellar masses
-            gasTemp(dstep)=(cloudSize/(rout*pc))*(real(dstep)/real(points))
+            gasTemp(dstep)=(cloudSize/(r_out*pc))*(real(dstep)/real(points))
             gasTemp(dstep)=gasTemp(dstep)**(-0.5)
             gasTemp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime/SECONDS_PER_YEAR)**tempb(tempindx))*gasTemp(dstep))
             if (gasTemp(dstep) .gt. maxTemp) gasTemp(dstep)=maxTemp

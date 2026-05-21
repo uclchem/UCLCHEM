@@ -17,6 +17,7 @@
 # %%
 import os
 from pathlib import Path
+from typing import Any
 
 import uclchem
 
@@ -36,7 +37,7 @@ else:
 
 # %%
 # set a parameter dictionary for cloud collapse model
-param_dict = {
+param_dict: dict[str, Any] = {
     "endAtFinalDensity": False,  # stop at finalTime
     "freefall": True,  # increase density in freefall
     "initialDens": 1e2,  # starting density
@@ -63,7 +64,7 @@ param_dict["abstol_factor"] = 1e-18
 param_dict["reltol"] = 1e-12
 
 p_core = uclchem.model.PrestellarCore(
-    temp_indx=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
+    temp_index=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
 )
 p_core.save_model(file=save_file, name="prestellar_core", overwrite=True)
 
@@ -125,7 +126,7 @@ import matplotlib.pyplot as plt
 
 import uclchem
 
-save_file = "../../examples/test-models/models.h5"
+save_file = Path("../../examples/test-models/models.h5")
 
 # %% [markdown]
 # We begin by loading the prestellar core model. We will check the conservation of elements, as well as the success flag and plot it as was done in tutorial 2b.
@@ -138,7 +139,7 @@ print(f"Success Flag = {loaded_p_core.success_flag}")
 loaded_p_core.check_conservation()
 
 # %%
-df_p_core = loaded_p_core.get_dataframes()
+df_p_core = loaded_p_core.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "#CO", "#H2O", "#CH3OH", "@H2O", "@CO", "@CH3OH"]
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
 ax = loaded_p_core.plot_species(ax, species)
@@ -181,7 +182,7 @@ loaded_jshock.check_conservation()
 # Now we can plot the cshock, just as was done in tutorial 2b.
 
 # %%
-df_cshock = loaded_cshock.get_dataframes()
+df_cshock = loaded_cshock.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))
@@ -209,7 +210,7 @@ ax3.tick_params(axis="y", colors="red")
 # Followed by the plot for the jshock.
 
 # %%
-df_jshock = loaded_jshock.get_dataframes()
+df_jshock = loaded_jshock.get_joined_dataframes()
 species = ["CO", "H2O", "CH3OH", "NH3", "$CO", "$H2O", "$CH3OH", "$NH3"]
 
 fig, [ax, ax2] = plt.subplots(1, 2, figsize=(16, 9))

@@ -105,7 +105,7 @@ CONTAINS
         idx2=desoh2Reacs(2)
         IF (idx1 .ne. REAC_NOT_PRESENT) THEN
             IF ((desorb) .and. (h2desorb) .and. (safeMantle .gt. MIN_SURFACE_ABUND)) THEN
-                !Epsilon is efficieny of this process, number of molecules removed per event
+                !Epsilon is efficiency of this process, number of molecules removed per event
                 !h2form is formation rate of h2, dependent on hydrogen abundance. 
                 rate(idx1:idx2) = epsilon*h2FormEfficiency(gasTemp(dstep),dustTemp(dstep))
                 !alpha is a branching ratio (default 1.0; use <1.0 for isomer desorption channels)
@@ -129,7 +129,7 @@ CONTAINS
                 !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
                 !as iron nuclei are main cause of CR heating.
                 !GRAIN_SURFACEAREA_PER_H is the total surface area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
-                !phi is efficieny of this reaction, number of molecules removed per event.
+                !phi is efficiency of this reaction, number of molecules removed per event.
                 rate(idx1:idx2) = 4.0*pi*zeta*1.64d-4*(GRAIN_SURFACEAREA_PER_H)*phi
                 !alpha is a branching ratio (default 1.0; use <1.0 for isomer desorption channels)
                 rate(idx1:idx2) = alpha(idx1:idx2)*rate(idx1:idx2)
@@ -176,7 +176,7 @@ CONTAINS
         idx2=crsReacs(2)
         IF (idx1 .ne. REAC_NOT_PRESENT) THEN
             !8.6 is the Spitzer-Tomasko cosmic ray flux in cm^-2 s^-1
-            !1.3 converts to: ionisation rate/10^-17
+            !1.3 converts to: ionization rate/10^-17
             rate(idx1:idx2)=alpha(idx1:idx2)*(beta(idx1:idx2)*(gama(idx1:idx2)/100)*(8.6*zeta*1.3))
         END IF
 
@@ -232,7 +232,7 @@ CONTAINS
                             !alpha is a branching ratio (default 1.0; use <1.0 for isomer channels)
                             rate(j)=alpha(j)*rate(j)
                             !factor of 2.0 adjusts for fact only top two monolayers (Eq 8)
-                            !becayse GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
+                            !because GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                             !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
                             !area seems more correct for this process.
                             IF (.NOT. THREE_PHASE) rate(j)=rate(j)*2.0*SURFACE_SITE_DENSITY*GRAIN_SURFACEAREA_PER_H
@@ -285,7 +285,6 @@ CONTAINS
                     rate(LHDEScorrespondingLHreacs(k)) = rate(LHDEScorrespondingLHreacs(k)) - rate(i)
                 END DO
             ELSE
-                rate(idx1:idx2)=0.0
                 rate(lhdesReacs(1):lhdesReacs(2))=0.0
             END IF
         END IF
@@ -317,7 +316,6 @@ CONTAINS
                 rate(ERDEScorrespondingERreacs(k)) = rate(ERDEScorrespondingERreacs(k)) - rate(i)
             END DO
         ELSE
-            rate(idx1:idx2)=0.0
             rate(erdesReacs(1):erdesReacs(2))=0.0
         END IF
     END IF

@@ -7946,7 +7946,7 @@ C3H9+      e-                     C3H7       H          H                       
 C3H9+      e-                     CH3CHCH2   H2         H                                  2.000e-07 -7.000e-01  0.000e+00 2.00e+00 0.00e+00 logn  8     10    800  3  7349 2  2
 C3H9+      e-                     C2H6       CH3                                           1.000e-07 -7.000e-01  0.000e+00 2.00e+00 0.00e+00 logn  8     10    800  3  7350 2  2
 C3H9+      e-                     C2H4       CH3        H2                                 1.000e-07 -7.000e-01  0.000e+00 2.00e+00 0.00e+00 logn  8     10    800  3  7351 2  2
-!!!! Reactions below were added from the nautilus network for completness. Especially, it contains species that are formed exclusively on the grains. 
+!!!! Reactions below were added from the nautilus network for completeness. Especially, it contains species that are formed exclusively on the grains. 
 GRAIN0     e-                     GRAIN-                                                   3.400e-03  5.000e-01  0.000e+00 1.00e+00 0.00e+00 logn  0  -9999   9999  0  7352 1  1
 GRAIN-     C+                     GRAIN0     C                                             2.300e-05  5.000e-01  0.000e+00 1.00e+00 0.00e+00 logn  0  -9999   9999  0  7353 1  1
 GRAIN-     Fe+                    GRAIN0     Fe                                            1.100e-05  5.000e-01  0.000e+00 1.00e+00 0.00e+00 logn  0  -9999   9999  0  7354 1  1
@@ -8137,7 +8137,7 @@ H3+        C9H4                   C9H3+      H2         H2                      
 He+        C9H4                   C9H3+      H          He                                 5.120E-10 -5.000E-01  0.000E+00 0.00e+00 0.00e+00 logn  4     10    280  3  7528 1  1
 He+        C9H4                   C7H2+      C2H2       He                                 5.120E-10 -5.000E-01  0.000E+00 0.00e+00 0.00e+00 logn  4     10    280  3  7529 1  1
 He+        C9H4                   C9H2+      H2         He                                 5.120E-10 -5.000E-01  0.000E+00 0.00e+00 0.00e+00 logn  4     10    280  3  7530 1  1
-!!!! Reactions below were added fo completness but are highly uncertain. These are reactions of destruction by CRP, Photons, e- and grain-.
+!!!! Reactions below were added for completeness but are highly uncertain. These are reactions of destruction by CRP, Photons, e- and grain-.
 HSO        CRP                    S          OH                                            1.500e+03  0.000e+00  0.000e+00 2.00e+00 0.00e+00 logn  2  -9999   9999  1  7531 1  1
 HC2O       CRP                    CH         CO                                            6.000e+03  0.000e+00  0.000e+00 1.50e+00 0.00e+00 logn  2  -9999   9999  1  7532 1  1
 HNCS       CRP                    NH         CS                                            7.500e+02  0.000e+00  0.000e+00 2.00e+00 0.00e+00 logn  2  -9999   9999  1  7533 1  1

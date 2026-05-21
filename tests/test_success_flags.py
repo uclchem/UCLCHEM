@@ -21,7 +21,7 @@ def test_match_fortran_python_success_flags_match():
 
 def test_check_error_success_flags():
     success_flag_dict = {e.name: e.value for e in SuccessFlag}
-    success_flags = [SuccessFlag(val) for key, val in success_flag_dict.items()]
+    success_flags = [SuccessFlag(val) for val in success_flag_dict.values()]
 
     for success_flag in success_flags:
         if success_flag.value < 0:

@@ -14,7 +14,7 @@
 # ---
 
 # # Chemical Analysis
-# Chemical networks are complex systems where the interplay between many elements often means that small changes in one aspect of the network can greatly effect the outcome in unexpected ways. Nevertheless, there are cases where a simple chemical explanation can be found for some observed behaviour in the model outputs. This tutorial demonstrates how to use some of the functionality of the UCLCHEM library to analyse model outputs and discover these explanations.
+# Chemical networks are complex systems where the interplay between many elements often means that small changes in one aspect of the network can greatly effect the outcome in unexpected ways. Nevertheless, there are cases where a simple chemical explanation can be found for some observed behavior in the model outputs. This tutorial demonstrates how to use some of the functionality of the UCLCHEM library to analyze model outputs and discover these explanations.
 #
 # We do recommend caution when following the approach laid out in this tutorial. There are many pitfalls which we will try to point out as we go. Ultimately, a comprehensive view of how important a reaction is to the outcome of your model requires detailed statistical calculations such as the use of [SHAP values](https://github.com/slundberg/shap) to assign meaningful scores to how much various reactions in a network contribute to a species' abundance. Therefore, care must be taken by the user to ensure that the conclusions they draw from a simpler approach are sound. Examples of papers doing this for UCLCHEM include:
 # - [Understanding molecular abundances in star-forming regions using interpretable machine learning Open Access](https://ui.adsabs.harvard.edu/abs/2023MNRAS.526..404H/abstract) Heyl, J., Butterworth, J., & Viti, S. 2023, MNRAS, 526, 404
@@ -27,7 +27,6 @@
 import os
 
 import pandas as pd
-from joblib import Parallel, delayed
 
 import uclchem
 
@@ -41,12 +40,12 @@ if not os.path.exists("./output_4"):
 #
 # In a piece of inference work in which we measured the cosmic ray ionization rate (CRIR) in NGC 253 [(Holdship et al. 2022)](https://ui.adsabs.harvard.edu/abs/2022arXiv220403668H/abstract). We found that both H3O+ and SO were sensitive to the ionization rate. Furthermore, since H3O+ was increased in abundance by increasing CRIR and SO was destroyed, their ratio was extremely sensitive to the rate.
 #
-# In the work, we present the plot below which shows how the equilibrium abundance of each species changes with the CRIR as well as the ratio. We plot this for a range of temperatures to show that this behaviour is not particularly sensitive to the gas temperature.
+# In the work, we present the plot below which shows how the equilibrium abundance of each species changes with the CRIR as well as the ratio. We plot this for a range of temperatures to show that this behavior is not particularly sensitive to the gas temperature.
 #
 #
 # ![crir_h3o_so_example](./assets/holdship_ngc253.png)
 #
-# In a sense, this is all the information we need. A complex array of reactions all compete and contribute to produce the outcome of the model. Whatever they are, we see the abundance of these species are very sensitive to the CR over a wide range of temperature and density. However, we can only trust this conclusion as far as we trust the entire chemical network since we don't know what exactly causes this behaviour.
+# In a sense, this is all the information we need. A complex array of reactions all compete and contribute to produce the outcome of the model. Whatever they are, we see the abundance of these species are very sensitive to the CR over a wide range of temperature and density. However, we can only trust this conclusion as far as we trust the entire chemical network since we don't know what exactly causes this behavior.
 #
 # If we use the analysis function, we may find all of this is driven by a small handful of reactions. The benefit would then be that our trust in our conclusions only depends on how much we trust the rates of those specific reactions. If it is very important, we can evaluate those reactions and readers of our work can make the same decisions as information from experiment changes.
 #
@@ -96,13 +95,13 @@ results = {}
 for model in grid_runner.models:
     name = model["Model"]
     cloud =  uclchem.model.load_model(file="output_4/analysis.h5", name=name)
-    phys, abun, rates = cloud.get_dataframes(joined=False, with_rates=True)
+    phys, abun, rates = cloud.get_dataframes(with_rate_constants=True)
     final_abundances = cloud.next_starting_chemistry_array
     success_flag = 0 if cloud.has_attr("_data") else -1
     results[name] = (phys, abun, rates, final_abundances, success_flag)
 
 
-phys, abun, rate_constanst, final_abundances, success_flag = results["model_5"]
+phys, abun, rate_constants, final_abundances, success_flag = results["model_5"]
 
 # +
 from uclchem.analysis import analyze_element_per_phase, check_element_conservation
@@ -125,9 +124,9 @@ analyze_element_per_phase("SI", abun).plot(logy=True)
 #
 # where $\dot{Y(\text{H}_3\text{O}^+)}$ is the rate of change of the $\text{H}_3\text{O}^+$ abundance due to the reaction. The $\dot{Y}$ s of each reaction involving the $\text{H}_3\text{O}^+$ are then compared to see which reactions contribute the most to the destruction and formation of $\text{H}_3\text{O}^+$.
 #
-# Our plan then is to do this for the low zeta case and the high zeta case. Hopefully, we'll see the same reactions are most important to the abundance of $\text{H}_3\text{O}^+$ and SO at all densities and tempertures. If we don't find that that's the case, then the chemistry is these species is fairly complex and perhaps trying to present a simple cause for the CRIR dependence is not a good idea.
+# Our plan then is to do this for the low zeta case and the high zeta case. Hopefully, we'll see the same reactions are most important to the abundance of $\text{H}_3\text{O}^+$ and SO at all densities and temperatures. If we don't find that that's the case, then the chemistry is these species is fairly complex and perhaps trying to present a simple cause for the CRIR dependence is not a good idea.
 #
-# So, let's analyse the outputs!
+# So, let's analyze the outputs!
 #
 # #### 2.1 $\text{H}_3\text{O}^+$
 #
@@ -141,7 +140,7 @@ physics, abundances, rate_constants, final_abundances, successflag = results["mo
 super_df = pd.concat((physics, abundances, rate_constants), axis=1)
 
 # Plot the evolution of $\text{H}_3\text{O}^+$:
-super_df.plot("Time", "H3O+", logx=True, logy=True)
+super_df.plot(x="Time", y="H3O+", logx=True, logy=True)
 # -
 
 # Above, we can see that the $\text{H}3\text{O}^+$ is being formed effectively. If we then want to better understand which reactions are responsible for this formation process, we can easily obtain the production and struction routes using:
@@ -221,7 +220,7 @@ plot_rate_summary(production, destruction, -10, "flux")
 # ```
 # The sole difference being that the formation rate is much higher. Since equilibrium is reached, the destruction rate is also higher and so we need to use the fact we know the $\text{H}_3\text{O}^+$ abundance increases with CRIR to infer that the destruction rate is only faster because there is more $\text{H}_3\text{O}^+$ to destroy.
 #
-# However, there are some problems here! Why does $\text{H}_2$ + $\text{H}_2\text{O}^+$ become so efficient at high CRIR? We know the rate of a two body reaction does not depend on CRIR ([see the chemistry docs](/docs/gas)) so it must be that $\text{H}_2\text{O}^+$ is increasing in abundance. We can run analysis on $\text{H}_2\text{O}^+$ to see what is driving that. In fact, as we report in the paper, following this thread we find that a chain of hydrogenations starting from $\text{OH}^+$ is the overall route of $\text{H}_3\text{O}^+$ formation and that this chain starts with small ions that are primarly formed through cosmic ray reactions. *It will very often be the case that analysing one species requires you to run analysis on another.*
+# However, there are some problems here! Why does $\text{H}_2$ + $\text{H}_2\text{O}^+$ become so efficient at high CRIR? We know the rate of a two body reaction does not depend on CRIR ([see the chemistry docs](/docs/gas)) so it must be that $\text{H}_2\text{O}^+$ is increasing in abundance. We can run analysis on $\text{H}_2\text{O}^+$ to see what is driving that. In fact, as we report in the paper, following this thread we find that a chain of hydrogenations starting from $\text{OH}^+$ is the overall route of $\text{H}_3\text{O}^+$ formation and that this chain starts with small ions that are primarily formed through cosmic ray reactions. *It will very often be the case that analyzing one species requires you to run analysis on another.*
 
 # #### 2.2 SO
 #

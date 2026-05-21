@@ -9,9 +9,11 @@ modifications made through ``GeneralSettings``, ``HeatingSettings``, or
 This module provides :func:`create_snapshot` / :func:`restore_snapshot` to
 capture the current Fortran module state into a picklable dict and re-apply
 it in a worker process before the model runs.
+
 """
 
 import contextlib
+import logging
 from typing import Any
 
 import numpy as np
@@ -20,7 +22,13 @@ from uclchemwrap import f2py_constants as f2py_constants_module
 from uclchemwrap import heating as heating_module
 from uclchemwrap import network as network_module
 
-from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
+from uclchem.advanced.constants import (
+    FILE_PATH_PARAMETERS,
+    FORTRAN_PARAMETERS,
+    INTERNAL_PARAMETERS,
+)
+
+logger = logging.getLogger(__name__)
 
 # Module names mirroring GeneralSettings._discover_modules()
 _MODULE_NAMES = [
@@ -72,10 +80,14 @@ def create_snapshot() -> dict[str, Any]:
       configuration.
     * ``"network"`` – reaction-rate and binding-energy arrays.
 
-    Returns:
+    Returns
+    -------
+    dict[str, Any]
         Fully picklable dict suitable for passing to :func:`restore_snapshot`.
 
     """
+    logger.debug("Creating snapshot")
+
     snapshot: dict[str, Any] = {}
 
     # --- General settings (scalars only) ---
@@ -90,7 +102,11 @@ def create_snapshot() -> dict[str, Any]:
                 continue
             try:
                 value = getattr(mod, attr)
-            except Exception:
+            except Exception as e:
+                logger.exception(
+                    f"Exception occurred when trying to get attribute {attr} from module {mod_name}:\n",
+                    e,
+                )
                 continue
             if callable(value):
                 continue
@@ -132,6 +148,7 @@ def create_snapshot() -> dict[str, Any]:
         "coolantdatadir": np.copy(f2py_constants_module.coolantdatadir),
         "coolant_active": np.copy(f2py_constants_module.coolant_active),
     }
+
     # Coolant restart mode – accessor pattern varies between builds
     if hasattr(uclchemwrap, "get_coolant_restart_mode_wrap"):
         heating["coolant_restart_mode"] = int(uclchemwrap.get_coolant_restart_mode_wrap())
@@ -159,10 +176,13 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
 
     Must be called **before** running any model in the worker process.
 
-    Args:
-        snapshot: Dict produced by :func:`create_snapshot`.
+    Parameters
+    ----------
+    snapshot : dict[str, Any]
+        Dict produced by :func:`create_snapshot`.
 
     """
+    logger.debug("Regenerating snapshot")
     # --- General settings ---
     # If uclchem hangs here, the last debug line printed shows which Fortran
     # PARAMETER is blocking. Add it to src/uclchem/advanced/fortran_metadata.yaml
@@ -173,7 +193,7 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
         mod = getattr(uclchemwrap, mod_name)
         for attr, value in settings_dict.items():
             # Uncomment next line to debug hangs (last printed line is the blocker):
-            # print(f"[DEBUG] setattr({mod_name}, {attr}, {value!r})", flush=True, file=sys.stderr)
+            # print(f"[DEBUG] setattr({mod_name}, {attr}, {value!r})", flush=True, file=sys.stderr) # noqa: ERA001
             with contextlib.suppress(AttributeError, TypeError):
                 # read-only or incompatible – skip silently
                 setattr(mod, attr, value)
@@ -218,9 +238,22 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
 def _pool_initializer(snapshot: dict[str, Any]) -> None:
     """``mp.Pool`` initializer that restores advanced settings in each worker.
 
-    Usage::
+    Parameters
+    ----------
+    snapshot : dict[str, Any]
+        Snapshot created by func:`create_snapshot`.
 
-        snapshot = create_snapshot()
-        mp.Pool(N, initializer=_pool_initializer, initargs=(snapshot,))
+    Examples
+    --------
+    >>> import multiprocessing as mp
+    >>>
+    >>> # Take a snapshot of the current Fortran module
+    >>> snapshot = create_snapshot()
+    >>>
+    >>> # A pool can then be initialized as
+    >>> n_workers = 2
+    >>> mp.Pool(n_workers, initializer=_pool_initializer, initargs=(snapshot,))
+    <multiprocessing.pool.Pool state=RUN pool_size=2>
+
     """
     restore_snapshot(snapshot)

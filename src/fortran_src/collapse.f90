@@ -3,8 +3,8 @@
 ! Uses the following parameterizations of MHD models.
 ! collapse = 2: Bonnor-Ebert sphere, overdensity factor 1.1 (Aikawa+2005)
 ! collapse = 3: Bonnor-Ebert sphere, overdensity factor 4 (Aikawa+2005)
-! collapse = 4: magnetised filament, initially unstable to collapse (Nakamura+1995)
-! collapse = 5: magnetised cloud, initially stable, collapse due to ambipolar diffusion (Fiedler+1993)
+! collapse = 4: magnetized filament, initially unstable to collapse (Nakamura+1995)
+! collapse = 5: magnetized cloud, initially stable, collapse due to ambipolar diffusion (Fiedler+1993)
 MODULE collapse_mod
    USE constants
    USE DEFAULTPARAMETERS
@@ -48,11 +48,11 @@ CONTAINS
          END SELECT
 
          IF (points .eq. 1) THEN
-               parcelRadius(1)=rout
-               parcel_radius(1)=rout
+               parcelRadius(1)=r_out
+               parcel_radius(1)=r_out
          ELSE
             DO dstep=1,points
-                  parcelRadius(dstep)=rin*(rout/rin)**((float(dstep)-1.0d0)/(float(points)-1.0d0))
+                  parcelRadius(dstep)=r_in*(r_out/r_in)**((float(dstep)-1.0d0)/(float(points)-1.0d0))
                   parcel_radius(dstep)=parcelRadius(dstep)
             END DO
          END IF
@@ -115,14 +115,14 @@ CONTAINS
         effectiveTime = MIN(timeInYears, collapseFinalTime)
         !calculate column density. Remember dstep counts from core to edge
         !and coldens should be amount of gas from edge to parcel.
-        call findcoldens(coldens(dstep),rin,rho0fit(effectiveTime),r0fit(effectiveTime),afit(effectiveTime),rout)
+        call findcoldens(coldens(dstep),r_in,rho0fit(effectiveTime),r0fit(effectiveTime),afit(effectiveTime),r_out)
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= baseAv +coldens(dstep)/1.6d21
         !If collapse is one of the parameterized modes, find new density and radius
 
         IF ((collapse_mode .le. 2)) THEN
-            !I changed rin to rout
-            CALL findNewRadius(massInRadius(dstep),rout,rho0fit(effectiveTime),&
+            !I changed r_in to r_out
+            CALL findNewRadius(massInRadius(dstep),r_out,rho0fit(effectiveTime),&
                 &r0fit(effectiveTime),afit(effectiveTime),parcelRadius(dstep))
         ELSE
             dt = targetTime - currentTime
@@ -187,21 +187,21 @@ CONTAINS
     END SUBROUTINE findNewRadius
 
 ! finds column density to edge of cloud based on density profile
-    SUBROUTINE findcoldens(coldens,rin,rho0,r0,a,rout)
-      REAL(dp),intent(in) :: rin,rout,rho0,r0,a
+    SUBROUTINE findcoldens(coldens,r_in,rho0,r0,a,r_out)
+      REAL(dp),intent(in) :: r_in,r_out,rho0,r0,a
       REAL(dp),intent(out) :: coldens
       INTEGER :: i,np
       REAL(dp) :: dr,drho,size,r1,r2
 
       np = 10000
-      size = rout-rin
+      size = r_out-r_in
       dr = size/np
       coldens = 0.0d0
       IF (size .le. 0.0d0) return
 
       DO i=1,np
-         r1 = rin + (i-1)*dr
-         r2 = rin + i*dr
+         r1 = r_in + (i-1)*dr
+         r2 = r_in + i*dr
          drho = 0.5d0*(rhofit(r2,rho0,r0,a)+rhofit(r1,rho0,r0,a))
          coldens = coldens + drho*dr*pc
       END DO

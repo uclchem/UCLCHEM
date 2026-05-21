@@ -15,9 +15,11 @@
 
 # # Running a Grid
 #
-# A common task is to run UCLCHEM over a grid of parameter combinations. This notebook shows how to use the built-in GridModels class to doing so for regular grids.
+# A common task is to run UCLCHEM over a grid of parameter combinations. This notebook shows how to use the built-in ```GridRunner``` class to doing so for regular grids.
 
 import os
+
+from typing import Any
 
 import numpy as np
 
@@ -44,7 +46,7 @@ ParameterDictionary = {
         "abstol_min": 1e-22,
     }
 }
-grid = uclchem.model.GridModels(
+grid = uclchem.model.GridRunner(
     model_type="Cloud",
     full_parameters=ParameterDictionary,
     max_workers=4,
@@ -56,7 +58,7 @@ print(f"Total models to run: {len(grid.flat_grids)}")
 
 # # Run Grid
 #
-# Using the GridModels class, we can take advantage of setting up our varying parameter space with numpy arrays. We can define the type of model to run, how many concurrent workers should be used, where to store the output models as well as the naming convention of the models in the stored .h5 file. By default, instantiating a uclchem.model.GridModels object will call the ```run()``` method, but for the sake of demonstration, we have delayed the run using ```delay_run=True``` in the call to instantiate the object ```grid```. To run the models, we now call the ```run()``` method
+# Using the ```GridRunner``` class, we can take advantage of setting up our varying parameter space with numpy arrays. We can define the type of model to run, how many concurrent workers should be used, where to store the output models as well as the naming convention of the models in the stored .h5 file. By default, instantiating a ```uclchem.model.GridRunner``` object will call the ```run()``` method, but for the sake of demonstration, we have delayed the run using ```delay_run=True``` in the call to instantiate the object ```grid```. To run the models, we now call the ```run()``` method
 
 grid.run()
 
@@ -74,12 +76,12 @@ cloud = uclchem.model.load_model("./output_3/grid_basic.h5", "9")
 # Now ```cloud``` behaves as any model object should, allowing us to perform the same analyses and plotting as done in previous notebooks.
 
 # # Complex Grid
-# The above was straightforward enough but what about a modelling a grid of shocks? Not only do we want to loop over relevant parameters, we also need to run preliminary models to give ourselves starting abundances. We can do this by taking advantage of the ```SequentialModel``` class.
+# The above was straightforward enough but what about a modeling a grid of shocks? Not only do we want to loop over relevant parameters, we also need to run preliminary models to give ourselves starting abundances. We can do this by taking advantage of the ```SequentialRunner``` class.
 #
 # This class can be used in isolation, in the following way.
 
 # +
-sequential_model_params = {
+sequential_model_params: list[dict[str, Any]] = [{
     "Cloud": {
         "param_dict": {
             "endAtFinalDensity": False,  # stop at finalTime
@@ -91,8 +93,8 @@ sequential_model_params = {
             "rout": 0.1,  # radius of cloud in pc
             "baseAv": 1.0,  # visual extinction at cloud edge.
         }
-    },
-    "CShock": {
+    }},
+    {"CShock": {
         "param_dict": {
             "endAtFinalDensity": False,
             "freefall": False,
@@ -104,10 +106,10 @@ sequential_model_params = {
             "baseAv": 1,
         },
         "shock_vel": 10,
-    },
-}
+    }}
+]
 
-SequentialCShock = uclchem.model.SequentialModel(
+SequentialCShock = uclchem.model.SequentialRunner(
     sequenced_model_parameters=sequential_model_params,
     parameters_to_match=["finalDens"],
 )
@@ -145,8 +147,8 @@ models_to_run = {
     "parameters_to_match": ["finalDens"],
 }
 
-complex_grid = uclchem.model.GridModels(
-    model_type="SequentialModel",
+complex_grid = uclchem.model.GridRunner(
+    model_type="SequentialRunner",
     full_parameters=models_to_run,
     max_workers=10,
     grid_file="./output_3/grid_complex.h5",
@@ -155,7 +157,7 @@ complex_grid = uclchem.model.GridModels(
 
 complex_grid.models
 
-# In the case of SequentialModels being run in a grid, each individual model is saved using the naming convention of "<Model name>_<Model Class>_<Order in Sequence>" so the 6th model in our grid would consist of both "6_Cloud_0" and "6_CShock_1".
+# In the case of SequentialRunners being run in a grid, each individual model is saved using the naming convention of "<Model name>_<Model Class>_<Order in Sequence>" so the 6th model in our grid would consist of both "6_Cloud_0" and "6_CShock_1".
 
 # ## Summary
 #

@@ -2,15 +2,21 @@
 
 This module provides validated configuration handling with clear defaults,
 type checking, and automatic documentation generation.
+
 """
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+logger = logging.getLogger(__name__)
+
+ReactionFileTypes = Literal["UMIST", "KIDA", "UCL"]
 
 
 class MakeratesConfig(BaseModel):
@@ -20,11 +26,12 @@ class MakeratesConfig(BaseModel):
     defaults where appropriate. All file paths are resolved relative to the
     configuration file location.
 
-    Example:
-        >>> from uclchem.utils import UCLCHEM_ROOT_DIR
-        >>> config = MakeratesConfig.from_yaml(UCLCHEM_ROOT_DIR/ "../../Makerates/user_settings.yaml")
-        >>> print(config.species_file)
-        data/default/default_species.csv
+    Examples
+    --------
+    >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+    >>> config = MakeratesConfig.from_yaml(UCLCHEM_ROOT_DIR/ "../../Makerates/user_settings.yaml")
+    >>> print(config.species_file)
+    data/default/default_species.csv
 
     """
 
@@ -45,7 +52,7 @@ class MakeratesConfig(BaseModel):
         ),
     )
 
-    database_reaction_type: str | list[str] = Field(
+    database_reaction_type: ReactionFileTypes | list[ReactionFileTypes] = Field(
         ...,
         description=(
             "Type(s) of reaction database corresponding to database_reaction_file. "
@@ -66,7 +73,7 @@ class MakeratesConfig(BaseModel):
         ),
     )
 
-    custom_reaction_type: str | list[str] | None = Field(
+    custom_reaction_type: ReactionFileTypes | list[ReactionFileTypes] | None = Field(
         default=None,
         description=(
             "Type(s) of custom reaction files. Must be provided if custom_reaction_file is set. "
@@ -108,7 +115,7 @@ class MakeratesConfig(BaseModel):
         ),
     )
 
-    database_reaction_exothermicity: Path | list[Path] | None = Field(
+    database_reaction_exothermicity: list[Path] | None = Field(
         default=None,
         description=(
             "Path(s) to files containing pre-calculated reaction exothermicity data. "
@@ -178,8 +185,8 @@ class MakeratesConfig(BaseModel):
         ),
     )
 
-    coolant_data_dir: str | None = Field(
-        default="",
+    coolant_data_dir: Path | None = Field(
+        default=None,
         description=(
             "Optional directory path for collisional rate data files. "
             "If specified, this path will be written to f2py_constants.f90 as the default. "
@@ -226,11 +233,15 @@ class MakeratesConfig(BaseModel):
     def normalize_to_list(cls, v: str | Path | list | None) -> list[str | Path] | None:
         """Convert single values to lists for consistent handling.
 
-        Args:
-            v (str | Path | list | None): variable to make consistent.
+        Parameters
+        ----------
+        v : str | Path | list | None
+            variable to make consistent.
 
-        Returns:
-            list[str | Path] | None: list of strings or paths, or None if v is None
+        Returns
+        -------
+        list[str | Path] | None
+            list of strings or paths, or None if v is None
 
         """
         if v is None:
@@ -239,71 +250,82 @@ class MakeratesConfig(BaseModel):
             return [v]
         return v
 
-    @field_validator("coolants_file", mode="before")
+    @field_validator("coolants_file", "coolant_data_dir", mode="before")
     @classmethod
     def normalize_coolants_file(cls, v: str | Path | None) -> Path | None:
         """Normalize a single coolant file path to a Path object.
 
-        Args:
-            v (str | Path | None): string to normalize
+        Parameters
+        ----------
+        v : str | Path | None
+            string to normalize
 
-        Returns:
-            Path | None: Path instance, or None if v is None
+        Returns
+        -------
+        Path | None
+            Path instance, or None if v is None
 
-        Raises:
-            TypeError: If coolants_file is not a string or Path instance.
+        Raises
+        ------
+        TypeError
+            If coolants_file is not a string or Path instance.
 
         """
         if v is None:
             return v
 
         if not isinstance(v, str | Path):
-            raise TypeError(
-                "coolants_file must be a path to a YAML file listing coolants"
-            )
+            msg = "coolants_file must be a path to a YAML file listing coolants"
+            raise TypeError(msg)
         return Path(v)
 
     @field_validator("coolants", mode="before")
     @classmethod
-    def validate_coolants(cls, v: list[dict[str, str]] | None) -> list[dict[str, str]]:
+    def validate_coolants(
+        cls, v: list[dict[str, str]] | None
+    ) -> list[dict[str, str | float]] | None:
         """Validate inline coolants format.
 
-        Args:
-            v (list[dict[str,str]] | None): variable to make consistent
+        Parameters
+        ----------
+        v : list[dict[str, str]] | None
+            variable to make consistent
 
-        Returns:
-            validated (list[dict[str,str]]): list of validated coolant dictionaries
+        Returns
+        -------
+        validated : list[dict[str, str | float]] | None
+            list of validated coolant dictionaries
 
-        Raises:
-            TypeError: If v is not a list of dictionaries.
-            KeyError: If entries in v do not contain keys 'file' and 'name'
-            ValueError: If entries in v with keys 'file' are not bare file names.
+        Raises
+        ------
+        TypeError
+            If v is not a list of dictionaries.
+        KeyError
+            If entries in v do not contain keys 'file' and 'name'
+        ValueError
+            If entries in v with keys 'file' are not bare file names.
 
         """
         if v is None:
             return v
         if not isinstance(v, list):
-            raise TypeError("coolants must be a list of dicts")
-
-        from pathlib import Path as _Path
+            msg = "coolants must be a list of dicts"
+            raise TypeError(msg)
 
         validated = []
         for i, item in enumerate(v):
             if not isinstance(item, dict):
-                raise TypeError(
-                    f"coolants[{i}] must be a dict with 'file' and 'name' keys"
-                )
+                msg = f"coolants[{i}] must be a dict with 'file' and 'name' keys"
+                raise TypeError(msg)
             if "file" not in item or "name" not in item:
-                raise KeyError(
-                    f"coolants[{i}] must contain 'file' and 'name' keys. Got: {list(item.keys())}"
-                )
+                msg = f"coolants[{i}] must contain 'file' and 'name' keys. Got: {list(item.keys())}"
+                raise KeyError(msg)
             # Validate that file is a bare filename (no path)
             file_val = str(item["file"])
-            if _Path(file_val).name != file_val or _Path(file_val).parent != _Path("."):
-                raise ValueError(
-                    f"coolants[{i}]['file'] must be a bare filename (no directories). Got: {file_val}"
-                )
-            entry = {"file": file_val, "name": str(item["name"])}
+            if Path(file_val).name != file_val or Path(file_val).parent != Path():
+                msg = f"coolants[{i}]['file'] must be a bare filename (no directories). Got: {file_val}"
+                raise ValueError(msg)
+            entry: dict[str, str | float] = {"file": file_val, "name": str(item["name"])}
             if "parent_species" in item:
                 entry["parent_species"] = str(item["parent_species"])
             if "conversion_factor" in item:
@@ -316,11 +338,15 @@ class MakeratesConfig(BaseModel):
     def normalize_type_to_list(cls, v: str | list[str] | None) -> list[str] | None:
         """Convert single type strings to lists for consistent handling.
 
-        Args:
-            v (str | list[str] | None): variable to convert to list
+        Parameters
+        ----------
+        v : str | list[str] | None
+            variable to convert to list
 
-        Returns:
-            v (list[str] | None): list of string, or None if original v is None
+        Returns
+        -------
+        v : list[str] | None
+            list of string, or None if original v is None
 
         """
         if v is None:
@@ -333,14 +359,19 @@ class MakeratesConfig(BaseModel):
     def validate_reaction_files_and_types(self) -> MakeratesConfig:
         """Ensure reaction files and types are consistent.
 
-        Returns:
-            MakeRatesConfig: validated MakeRatesConfig.
+        Returns
+        -------
+        MakeratesConfig
+            validated MakeratesConfig.
 
-        Raises:
-            ValueError: If the length of reaction files and reaction file types is
-                not the same
-            ValueError: If `custom_reaction_type` is not specified but
-                `custom_reaction_file` is.
+        Raises
+        ------
+        ValueError
+            If the length of reaction files and reaction file types is
+            not the same
+        ValueError
+            If `custom_reaction_type` is not specified but
+            `custom_reaction_file` is.
 
         """
         # Check database files and types match
@@ -348,57 +379,66 @@ class MakeratesConfig(BaseModel):
         db_types = self.database_reaction_type
         if isinstance(db_files, list) and isinstance(db_types, list):
             if len(db_files) != len(db_types):
-                raise ValueError(
+                msg = (
                     f"database_reaction_file has {len(db_files)} entries but "
                     f"database_reaction_type has {len(db_types)} entries. They must match."
                 )
+                raise ValueError(msg)
 
         # Check custom files and types match
         if self.custom_reaction_file is not None:
             if self.custom_reaction_type is None:
-                raise ValueError(
-                    "custom_reaction_type must be provided when custom_reaction_file is specified"
-                )
+                msg = "custom_reaction_type must be provided when custom_reaction_file is specified"
+                raise ValueError(msg)
             if isinstance(self.custom_reaction_file, list) and isinstance(
                 self.custom_reaction_type, list
             ):
                 if len(self.custom_reaction_file) != len(self.custom_reaction_type):
-                    raise ValueError(
+                    msg = (
                         f"custom_reaction_file has {len(self.custom_reaction_file)} entries but "
                         f"custom_reaction_type has {len(self.custom_reaction_type)} entries. They must match."
                     )
+                    raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def check_three_phase_deprecation(self) -> MakeratesConfig:
-        """Raise error if three_phase is explicitly set to False.
+        """Raise error if ``three_phase`` is explicitly set to False.
 
-        Returns:
-            MakeRatesConfig: validated MakeRatesConfig.
+        Returns
+        -------
+        MakeratesConfig
+            validated MakeratesConfig.
 
-        Raises:
-            ValueError: If three_phase is False.
+        Raises
+        ------
+        ValueError
+            If ``three_phase`` is False.
 
         """
-        if self.three_phase is False:
-            raise ValueError(
+        if not self.three_phase:
+            msg = (
                 "three_phase=False is deprecated as of UCLCHEM v3.5.0. "
                 "Three-phase chemistry is now always enabled. "
                 "Please remove 'three_phase: false' from your configuration."
             )
+            raise ValueError(msg)
         return self
 
     @model_validator(mode="after")
     def auto_enable_rates_storage(self) -> MakeratesConfig:
         """Automatically enable rates storage if needed for exothermicity.
 
-        Returns:
-            MakeRatesConfig: validated MakeRatesConfig.
+        Returns
+        -------
+        MakeratesConfig
+            validated MakeratesConfig.
+
         """
         if self.database_reaction_exothermicity or self.derive_reaction_exothermicity:
             if not self.enable_rates_storage:
-                logging.warning(
+                logger.warning(
                     "Exothermicity features require rate storage. "
                     "Automatically enabling enable_rates_storage=True. "
                     "Add 'enable_rates_storage: true' to your config to suppress this warning."
@@ -410,18 +450,23 @@ class MakeratesConfig(BaseModel):
     def validate_coolants_mutual_exclusion(self) -> MakeratesConfig:
         """Ensure coolants and coolants_file are mutually exclusive.
 
-        Returns:
-            MakeRatesConfig: validated MakeRatesConfig.
+        Returns
+        -------
+        MakeratesConfig
+            validated MakeratesConfig.
 
-        Raises:
-            ValueError: If both `coolants` and `coolants_file` are specified.
+        Raises
+        ------
+        ValueError
+            If both `coolants` and `coolants_file` are specified.
 
         """
         if self.coolants is not None and self.coolants_file is not None:
-            raise ValueError(
+            msg = (
                 "Cannot specify both 'coolants' and 'coolants_file'. "
                 "Use 'coolants' for inline specification or 'coolants_file' to reference an external file."
             )
+            raise ValueError(msg)
         return self
 
     # ============================================================================
@@ -435,25 +480,32 @@ class MakeratesConfig(BaseModel):
         All relative paths in the config file are resolved relative to the
         directory containing the YAML file.
 
-        Args:
-            yaml_path (str | Path): Path to the YAML configuration file
+        Parameters
+        ----------
+        yaml_path : str | Path
+            Path to the YAML configuration file
 
-        Returns:
+        Returns
+        -------
+        MakeratesConfig
             Validated MakeratesConfig instance
 
-        Raises:
-            FileNotFoundError: If config file doesn't exist
+        Raises
+        ------
+        FileNotFoundError
+            If config file doesn't exist
 
         """
         yaml_path = Path(yaml_path).resolve()
 
         if not yaml_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {yaml_path}")
+            msg = f"Configuration file not found: {yaml_path}"
+            raise FileNotFoundError(msg)
 
-        logging.info(f"Reading configuration from: {yaml_path}")
-        logging.info(f"Configuration directory: {yaml_path.parent}")
+        logger.info(f"Reading configuration from: {yaml_path}")
+        logger.info(f"Configuration directory: {yaml_path.parent}")
 
-        with open(yaml_path) as f:
+        with yaml_path.open() as f:
             data = yaml.safe_load(f)
 
         # Create instance and store config directory for path resolution
@@ -470,8 +522,11 @@ class MakeratesConfig(BaseModel):
     def generate_template(cls, output_path: str | Path = "user_settings_template.yaml"):
         """Generate a template configuration file with all parameters documented.
 
-        Args:
-            output_path (str | Path): Where to write the template file
+        Parameters
+        ----------
+        output_path : str | Path
+            Where to write the template file.
+            Default = "user_settings_template.yaml"
 
         """
         output_path = Path(output_path)
@@ -596,7 +651,7 @@ database_reaction_type: "UMIST12"
 # - Then reinstall: pip install .
 """
 
-        with open(output_path, "w") as f:
+        with Path(output_path).open("w") as f:
             f.write(template)
 
         print(f"✓ Template configuration written to: {output_path}")
@@ -646,10 +701,14 @@ database_reaction_type: "UMIST12"
     def resolve_path(self, path: str | Path) -> Path:
         """Resolve a path relative to the configuration file directory.
 
-        Args:
-            path (str | Path): Path to resolve (can be absolute or relative)
+        Parameters
+        ----------
+        path : str | Path
+            Path to resolve (can be absolute or relative)
 
-        Returns:
+        Returns
+        -------
+        Path
             Resolved absolute Path
 
         """
@@ -664,8 +723,10 @@ database_reaction_type: "UMIST12"
     def get_all_reaction_files(self) -> list[Path]:
         """Get all reaction files (database + custom) as resolved paths.
 
-        Returns:
-            list[Path]: List of absolute paths to all reaction files
+        Returns
+        -------
+        files : list[Path]
+            List of absolute paths to all reaction files
 
         """
         files = []
@@ -685,11 +746,13 @@ database_reaction_type: "UMIST12"
 
         return files
 
-    def get_all_reaction_types(self) -> list[str]:
+    def get_all_reaction_types(self) -> list[ReactionFileTypes]:
         """Get all reaction types (database + custom) in correct order.
 
-        Returns:
-            list[str]: list of reaction type strings
+        Returns
+        -------
+        types : list[ReactionFileTypes]
+            list of reaction type strings
 
         """
         types = []
@@ -711,10 +774,10 @@ database_reaction_type: "UMIST12"
 
     def log_configuration(self) -> None:
         """Log the current configuration for debugging."""
-        logging.info("Configuration loaded successfully:")
+        logger.info("Configuration loaded successfully:")
         for field_name, field_info in self.__class__.model_fields.items():
             if field_name.startswith("_"):
                 continue
             value = getattr(self, field_name)
             if value != field_info.default:  # Only log non-default values
-                logging.info(f"  {field_name}: {value}")
+                logger.info(f"  {field_name}: {value}")

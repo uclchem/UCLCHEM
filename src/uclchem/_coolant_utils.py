@@ -4,6 +4,11 @@ import logging
 import re
 from pathlib import Path
 
+from uclchemwrap import f2py_constants
+
+from uclchem.advanced import HeatingSettings
+from uclchem.constants import PLANCK_CONSTANT_CGS, SPEED_OF_LIGHT_CGS
+
 logger = logging.getLogger(__name__)
 
 # Number of statistical evolution statistics per coolant
@@ -16,10 +21,14 @@ def _normalize_for_comparison(text: str) -> str:
 
     Strips whitespace, converts to lowercase, removes special characters.
 
-    Args:
-        text: Text to normalize
+    Parameters
+    ----------
+    text : str
+        Text to normalize
 
-    Returns:
+    Returns
+    -------
+    str
         Normalized text with only alphanumeric characters
 
     """
@@ -29,7 +38,7 @@ def _normalize_for_comparison(text: str) -> str:
 def get_energy_levels_info(
     coolant_names: list[str],
     coolant_files: list[str],
-    data_dir: str,
+    data_dir: str | Path,
 ) -> tuple[int, int]:
     """Compute energy level information from coolant data files.
 
@@ -37,35 +46,46 @@ def get_energy_levels_info(
     and at runtime (via wrapper function). No fail-safes - raises errors if anything
     goes wrong.
 
-    Args:
-        coolant_names: List of coolant species names (e.g., ['H', 'C+', 'O', ...])
-        coolant_files: List of coolant data file names (e.g., ['ly-a.dat', ...])
-        data_dir: Directory containing the coolant data files
+    Parameters
+    ----------
+    coolant_names : list[str]
+        List of coolant species names (e.g., ['H', 'C+', 'O', ...])
+    coolant_files : list[str]
+        List of coolant data file names (e.g., ['ly-a.dat', ...])
+    data_dir : str | Path
+        Directory containing the coolant data files
 
-    Returns:
+    Returns
+    -------
+    tuple[int, int]
         Tuple of (n_total_levels, n_se_stats_per_coolant)
         where n_total_levels is the sum of all energy levels across all coolants
         and n_se_stats_per_coolant is always 3 (converged, iterations, max_rel_change)
 
-    Raises:
-        FileNotFoundError: If data directory or any coolant file doesn't exist
-        ValueError: If coolant file format is invalid or energy levels not found
+    Raises
+    ------
+    FileNotFoundError
+        If data directory or any coolant file doesn't exist
+    ValueError
+        If coolant file format is invalid or energy levels not found
 
     """
     data_path = Path(data_dir)
-    if not data_path.exists():
-        raise FileNotFoundError(f"Coolant data directory not found: {data_dir}")
+    if not data_path.is_dir():
+        msg = f"Coolant data directory not found: {data_dir}"
+        raise FileNotFoundError(msg)
 
     n_total_levels = 0
     target_marker = _normalize_for_comparison("NUMBER OF ENERGY LEVELS")
 
-    for coolant_name, coolant_file in zip(coolant_names, coolant_files):
+    for coolant_name, coolant_file in zip(coolant_names, coolant_files, strict=True):
         filepath = data_path / coolant_file
 
         if not filepath.exists():
-            raise FileNotFoundError(f"Coolant file not found: {filepath}")
+            msg = f"Coolant file not found: {filepath}"
+            raise FileNotFoundError(msg)
 
-        with open(filepath) as f:
+        with filepath.open() as f:
             lines = f.readlines()
 
         # Find NUMBER OF ENERGY LEVELS line (robust search)
@@ -79,7 +99,8 @@ def get_energy_levels_info(
                 break
 
         if not found_levels:
-            raise ValueError(f"No 'NUMBER OF ENERGY LEVELS' marker found in {filepath}")
+            msg = f"No 'NUMBER OF ENERGY LEVELS' marker found in {filepath}"
+            raise ValueError(msg)
 
     logger.info(
         f"Total energy levels across {len(coolant_names)} coolants: {n_total_levels}"
@@ -90,14 +111,12 @@ def get_energy_levels_info(
 def get_energy_levels_info_from_runtime() -> tuple[int, int]:
     """Runtime wrapper that fetches parameters from uclchemwrap.
 
-    Returns:
+    Returns
+    -------
+    tuple[int, int]
         Tuple of (n_total_levels, n_se_stats_per_coolant)
 
     """
-    from uclchemwrap import f2py_constants
-
-    from uclchem.advanced import HeatingSettings
-
     coolant_names = [str(name.decode()).strip() for name in f2py_constants.coolantnames]
     coolant_files = [str(fname.decode()).strip() for fname in f2py_constants.coolantfiles]
 
@@ -119,31 +138,33 @@ def validate_coolant_frequencies(
     compares to the frequency stored in the LAMDA file. Returns per-coolant
     maximum relative deviation.
 
-    Args:
-        coolant_names (list[str]): List of coolant species names
-        coolant_files (list[str | Path]): List of coolant data file names
-        data_dir (str | Path): Directory containing the coolant data files
+    Parameters
+    ----------
+    coolant_names : list[str]
+        List of coolant species names
+    coolant_files : list[str | Path]
+        List of coolant data file names
+    data_dir : str | Path
+        Directory containing the coolant data files
 
-    Returns:
-        max_deviations (dict[str, float]): Dict mapping coolant name to max relative frequency deviation
+    Returns
+    -------
+    max_deviations : dict[str, float]
+        Dict mapping coolant name to max relative frequency deviation
 
     """
-    # Physical constants (must match Fortran constants.f90)
-    C_CGS = 2.99792458e10  # speed of light cm/s
-    HP_CGS = 6.62606896e-27  # Planck constant erg*s
-
     data_path = Path(data_dir)
     level_marker = _normalize_for_comparison("NUMBER OF ENERGY LEVELS")
     trans_marker = _normalize_for_comparison("NUMBER OF RADIATIVE TRANSITIONS")
 
     max_deviations = {}
 
-    for coolant_name, coolant_file in zip(coolant_names, coolant_files):
+    for coolant_name, coolant_file in zip(coolant_names, coolant_files, strict=True):
         filepath = data_path / coolant_file
         if not filepath.exists():
             continue
 
-        with open(filepath) as f:
+        with filepath.open() as f:
             lines = f.readlines()
 
         # Parse energy levels
@@ -171,7 +192,9 @@ def validate_coolant_frequencies(
             if len(parts) >= 3:
                 idx = int(parts[0])
                 energy_cm = float(parts[1])
-                energies[idx] = energy_cm * C_CGS * HP_CGS  # cm^-1 -> erg
+                energies[idx] = (
+                    energy_cm * SPEED_OF_LIGHT_CGS * PLANCK_CONSTANT_CGS
+                )  # cm^-1 -> erg
                 count += 1
                 if count >= nlevel:
                     break
@@ -198,7 +221,9 @@ def validate_coolant_frequencies(
                         freq_file = freq_ghz * 1.0e9  # GHz -> Hz
 
                         if up in energies and low in energies and freq_file > 0:
-                            freq_calc = abs(energies[up] - energies[low]) / HP_CGS
+                            freq_calc = (
+                                abs(energies[up] - energies[low]) / PLANCK_CONSTANT_CGS
+                            )
                             rel_dev = abs(freq_calc - freq_file) / freq_file
                             if rel_dev > max_dev:
                                 max_dev = rel_dev
@@ -222,20 +247,22 @@ def validate_coolant_frequencies(
 def load_coolant_level_names() -> dict[int, list[str]]:
     """Load coolant level information from disk for meaningful column names.
 
-    Returns:
-        level_names (dict[int, list[str]]): Dict mapping coolant index to list of level names
-            (e.g., {0: ['H_2_S_1/2', 'H_2_P_1/2'], 1: ['C+_2_P_1/2', ...]})
+    Returns
+    -------
+    level_names : dict[int, list[str]]
+        Dict mapping coolant index to list of level names
+        (e.g., {0: ['H_2_S_1/2', 'H_2_P_1/2'], 1: ['C+_2_P_1/2', ...]})
 
-    Raises:
-        FileNotFoundError: If data directory or coolant files don't exist
-        ValueError: If coolant file format is invalid
-        RuntimeError: If parsing fails
+    Raises
+    ------
+    FileNotFoundError
+        If data directory or coolant files don't exist
+    ValueError
+        If coolant file format is invalid
+    RuntimeError
+        If parsing fails
 
     """
-    from uclchemwrap import f2py_constants
-
-    from uclchem.advanced import HeatingSettings
-
     coolant_names = [str(name.decode()).strip() for name in f2py_constants.coolantnames]
     coolant_files = [str(fname.decode()).strip() for fname in f2py_constants.coolantfiles]
 
@@ -246,19 +273,23 @@ def load_coolant_level_names() -> dict[int, list[str]]:
     # Verify directory exists
     data_path = Path(data_dir)
     if not data_path.exists():
-        raise FileNotFoundError(f"Coolant data directory not found: {data_dir}")
+        msg = f"Coolant data directory not found: {data_dir}"
+        raise FileNotFoundError(msg)
 
-    level_names = {}
+    level_names: dict[int, list[str]] = {}
     target_marker = _normalize_for_comparison("NUMBER OF ENERGY LEVELS")
 
-    for i, (coolant_name, coolant_file) in enumerate(zip(coolant_names, coolant_files)):
+    for i, (coolant_name, coolant_file) in enumerate(
+        zip(coolant_names, coolant_files, strict=True)
+    ):
         filepath = data_path / coolant_file
 
         if not filepath.exists():
-            raise FileNotFoundError(f"Coolant file not found: {filepath}")
+            msg = f"Coolant file not found: {filepath}"
+            raise FileNotFoundError(msg)
 
         level_names[i] = []
-        with open(filepath) as f:
+        with filepath.open() as f:
             lines = f.readlines()
 
         # Find NUMBER OF ENERGY LEVELS line (robust search)
@@ -286,13 +317,13 @@ def load_coolant_level_names() -> dict[int, list[str]]:
                 break
 
         if not found_levels:
-            raise ValueError(f"No energy levels found in {filepath}")
+            msg = f"No energy levels found in {filepath}"
+            raise ValueError(msg)
 
     # Validate all coolants were parsed
     if any(not names for names in level_names.values()):
-        raise RuntimeError(
-            "Some coolants have no parsed levels. Check coolant file format."
-        )
+        msg = "Some coolants have no parsed levels. Check coolant file format."
+        raise RuntimeError(msg)
 
     logger.debug(f"Loaded level names for {len(level_names)} coolants")
     return level_names

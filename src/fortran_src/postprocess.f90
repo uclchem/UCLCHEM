@@ -93,7 +93,7 @@ CONTAINS
         lnc(:) = ncgrid
       end if 
 
-      ! Initialise values to t=1 and overwrite them.
+      ! Initialize values to t=1 and overwrite them.
       tstep = 1
       targettime = ltime(tstep) * SECONDS_PER_YEAR
 

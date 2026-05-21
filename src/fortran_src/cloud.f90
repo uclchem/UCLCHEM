@@ -30,7 +30,7 @@ CONTAINS
         successFlag=0
 
         !Set up basic physics variables
-        cloudSize=(rout-rin)*pc
+        cloudSize=(r_out-r_in)*pc
 
         ! Allocate 1D arrays if 1D radiative transfer is enabled
         IF (enable_radiative_transfer .AND. points.gt.1) THEN
@@ -41,11 +41,11 @@ CONTAINS
             ALLOCATE(coldens_obs(points))
 
             DO dstep=1,points
-                parcelRadius(dstep)=dstep*rout/float(points) !unit of parsec -- Note: from core to edge
+                parcelRadius(dstep)=dstep*r_out/float(points) !unit of parsec -- Note: from core to edge
                 parcel_radius(dstep)=parcelRadius(dstep)
             END DO
             
-            density_max=ngas_r(rin,finalDens,density_scale_radius,density_power_index)
+            density_max=ngas_r(r_in,finalDens,density_scale_radius,density_power_index)
         END IF
 
         ! Set up densities (use radial profile if 1D radiative transfer enabled)

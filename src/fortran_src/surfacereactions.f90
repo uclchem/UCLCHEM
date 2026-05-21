@@ -208,7 +208,7 @@ FUNCTION reacProb(reacIndx, index1, index2, dustTemperature)
     END IF
     tunnelProb = 2.0d0 *CHEMICAL_BARRIER_THICKNESS/REDUCED_PLANCK * sqrt(2.0d0*AMU*reducedMass*K_BOLTZ*gama(reacIndx))
 
-    !Choose fastest between classical and tunnelling
+    !Choose fastest between classical and tunneling
     IF (reacProb.GT.tunnelProb) reacProb=tunnelProb
 END FUNCTION reacProb
 
@@ -237,7 +237,7 @@ REAL(dp) FUNCTION diffusionReactionRate(reacIndx,dustTemperature)
     desorbProb = vdes(index1)*exp(-bindingEnergy(index1)/dustTemperature)
     desorbProb = desorbProb + vdes(index2)*exp(-bindingEnergy(index2)/dustTemperature) 
 
-    !Overall reaction probability is chance of reaction occuring on meeting * diffusion rate
+    !Overall reaction probability is chance of reaction occurring on meeting * diffusion rate
     reactionProb = max(vdiff(index1),vdiff(index2)) * exp(-reacProb(reacIndx, index1, index2, dustTemperature))       
 
 
@@ -696,7 +696,7 @@ SUBROUTINE updateVdiffAndVdes(gasTemp, dustTemp, nIce, vdiff, vdes)
             END IF
         END DO
 
-        IF (seperateDiffAndDesorbPrefactor) THEN
+        IF (separateDiffAndDesorbPrefactor) THEN
             ! Under stationary adsorbate assumption, q^TS = q^RS, so vdiff = kB*T/h
             vdiff = K_BOLTZ_SI * dustTemp / HP_SI
         ELSE

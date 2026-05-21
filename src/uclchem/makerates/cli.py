@@ -5,6 +5,7 @@ Usage::
     uclchem-makerates config.yaml                    # Generate network
     uclchem-makerates config.yaml --output-dir ./out # Specify output directory
     uclchem-makerates --help                          # Show help
+
 """
 
 from __future__ import annotations
@@ -84,7 +85,7 @@ def main(argv: list[str] | None = None) -> None:
     try:
         config_path = Path(args.config)
         network = run_makerates(
-            configuration_file=config_path,
+            configuration=config_path,
             write_files=not args.no_write,
             output_directory=output_directory,
         )

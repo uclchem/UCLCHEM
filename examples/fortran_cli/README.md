@@ -5,7 +5,7 @@ only functions to keep use cases around until we can improve on them. DO NOT USE
 `.inp files` - It is possible to run UCLCHEM as a binary. The inp files are how we set parameters when using the binary. 
     -   `static.inp` A static standalone model, it uses CLOUD
     -   `phase1.inp` A first stage model, it uses CLOUD
-    -   `phase2.inp` It needs first stage to be run succesfully, it uses HOTCORE
+    -   `phase2.inp` It needs first stage to be run successfully, it uses HOTCORE
     -   `shock.inp`  A shock model, it is set up also run after the first stage
     -   `postprocess.inp` This interfaces with the postprocessing code as proposed in [1]
 

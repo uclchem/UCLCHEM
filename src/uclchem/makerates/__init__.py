@@ -17,18 +17,26 @@ all files needed to compile UCLCHEM with your network.
 
 **Quick Example:**
 
-.. code-block:: python
-
-    from uclchem.makerates import MakeratesConfig, run_makerates
-
-    # Configure network builder
-    config = MakeratesConfig()
-    config.reaction_files = [\"umist_reactions.csv\"]
-    config.species_file = \"species.csv\"
-    config.output_dir = \"./network_files\"
-
-    # Generate network
-    run_makerates(config)
+    >>> from uclchem.makerates.config import MakeratesConfig
+    >>> from uclchem.makerates import run_makerates
+    >>>
+    >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+    >>> makerates_dir = UCLCHEM_ROOT_DIR / "../../Makerates/data"
+    >>>
+    >>> # Configure network builder
+    >>> config = MakeratesConfig(
+    ...     species_file = makerates_dir / "default/default_species.csv",
+    ...     database_reaction_file = makerates_dir / "databases/umist22.csv",
+    ...     database_reaction_type = "UMIST",
+    ...     custom_reaction_file = makerates_dir/"default/default_grain_network.csv",
+    ...     custom_reaction_type = "UCL",
+    ...     output_directory = "./network_files/",
+    ... )
+    >>>
+    >>> # Generate network, write all necessary Fortran files
+    >>> network = run_makerates(config)
+    >>> print(f"Reactions: {len(network.get_reaction_list())}")
+    Reactions: ...
 
 **Workflow:**
 
@@ -73,26 +81,30 @@ Species defined in CSV with:
 
 **Example - Adding Custom Reactions:**
 
-.. code-block:: python
+    >>> from uclchem.makerates.network import Network, load_network_from_csv
+    >>> from uclchem.makerates.reaction import Reaction
+    >>> from uclchem.utils import UCLCHEM_ROOT_DIR
+    >>>
+    >>> # Load existing network
+    >>> network = load_network_from_csv(
+    ...     UCLCHEM_ROOT_DIR / "species.csv",
+    ...     UCLCHEM_ROOT_DIR / "reactions.csv",
+    ... )
+    >>>
 
-    from uclchem.makerates import Network, Reaction
-
-    # Load existing network
-    network = load_network_from_csv(\"reactions.csv\", \"species.csv\")
-
-    # Add custom reaction
-    custom_rxn = Reaction(
-        reactants=[\"H\", \"CO\"],
-        products=[\"HCO\"],
-        alpha=1.0e-10,
-        beta=0.0,
-        gamma=0.0,
-        reaction_type=1
-    )
-    network.add_reaction(custom_rxn)
-
-    # Export modified network
-    network.to_csv(\"custom_network.csv\")
+    >>> # Add custom reaction
+    >>> alpha = 1.0e-10
+    >>> beta = 0.0
+    >>> gamma = 0.0
+    >>> templow = 0.0
+    >>> temphigh = 10000.0
+    >>> custom_reaction = Reaction(
+    ...     ["H", "CO", "NAN", "HCO", "NAN", "NAN", "NAN", alpha, beta, gamma, templow, temphigh],
+    ... )
+    >>> network.add_reactions(custom_reaction)
+    >>>
+    >>> # Export modified network
+    >>> io_functions.write_reactions("custom_reactions.csv", network.get_reaction_list())
 
 **Configuration Files:**
 
@@ -119,6 +131,7 @@ MakeRates uses YAML configuration:
 
 Each UCLCHEM installation compiles one network. To change networks,
 rebuild UCLCHEM with different MakeRates output.
+
 """
 
 from .config import MakeratesConfig as MakeratesConfig

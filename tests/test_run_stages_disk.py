@@ -161,7 +161,7 @@ def test_cshock_disk(test_output_directory):
         "finalDens": 1e4,
         "initialTemp": 10.0,
         "finalTime": 6.0e6,
-        "rout": 0.1,
+        "r_out": 0.1,
         "baseAv": 1.0,
         "abundSaveFile": str(test_output_directory / "start_cshock.dat"),
         "outputFile": str(test_output_directory / "pre_cshock.dat"),
@@ -213,7 +213,7 @@ def test_cshock_disk(test_output_directory):
     )
 
 
-def test_endAtFinalDensity_validation_disk(test_output_directory):
+def test_endAtFinalDensity_validation_disk(test_output_directory):  # noqa: N802
     """Test that endAtFinalDensity=True raises error without freefall
     for Cloud with disk I/O"""
     params = {

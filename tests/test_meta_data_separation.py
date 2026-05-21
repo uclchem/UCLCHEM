@@ -6,6 +6,8 @@ This module consolidates tests for:
 - Save/load/pickle roundtrip preservation
 """
 
+import pathlib
+
 import numpy as np
 import pytest
 import xarray as xr
@@ -43,7 +45,7 @@ def legacy_file_without_dstep(tmp_path):
         f"3.0e5,1e4,10.0,10.0,1.0,1.0,1e-17,1,{species_values}\n",
     ]
 
-    with open(legacy_file, "w") as f:
+    with pathlib.Path(legacy_file).open("w") as f:
         f.write(header)
         f.writelines(data)
 
@@ -69,13 +71,13 @@ def test_meta_survives_dataset_replace():
     """Scalar metadata should survive when _data Dataset is replaced."""
     m = Cloud()
     # public scalar attributes (not PHYSICAL_PARAMETERS or specname which are global)
-    m.run_type = "local"
+    m.run_type = "external"
     m.custom_flag = 42
 
     # Simulate dataset replacement (as happens on load/pickle)
     object.__setattr__(m, "_data", xr.Dataset())
 
-    assert m.run_type == "local", (
+    assert m.run_type == "external", (
         "string metadata 'run_type' not preserved after _data replace"
     )
     assert m.custom_flag == 42, (
@@ -117,6 +119,9 @@ def test_pickle_roundtrip_preserves_meta_and_arrays():
     m.un_pickle()
 
     # metadata and arrays should be restored
+    assert hasattr(m, "some_meta"), (
+        "model object has no attribute 'some_meta' after pickle/unpickle"
+    )
     assert m.some_meta == "meta", (
         "String metadata 'some_meta' not preserved after pickle/unpickle"
     )

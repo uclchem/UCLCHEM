@@ -174,7 +174,7 @@ CONTAINS
         END IF
     END SUBROUTINE collapse
 
-    SUBROUTINE hot_core(temp_indx,max_temp,dictionary,outSpeciesIn,returnArray,&
+    SUBROUTINE hot_core(temp_index,max_temp,dictionary,outSpeciesIn,returnArray,&
             &returnRateConstants,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &rateConstantsArray, heatarray, statsarray, levelpopulationsarray, sestatsarray, abundanceStart, abundance_out,specname_out,successFlag)
         !f2py threadsafe
@@ -182,7 +182,7 @@ CONTAINS
         ! Loads model specific subroutines and send to solveAbundances
         !
         !Args:
-        ! temp_indx - integer indicating which mass hot core to run - see hotcore.90
+        ! temp_index - integer indicating which mass hot core to run - see hotcore.90
         ! max_temp - maximum temperature before we stop increasing.
         ! dictionary - python parameter dictionary
         ! outSpeciesIn - list of species to output as a space separated string
@@ -201,9 +201,9 @@ CONTAINS
         !f2py integer, parameter intent(aux) nspec, n_physics_params, nHeatingTerms, N_DVODE_STATS
         CHARACTER(LEN=*) :: dictionary, outSpeciesIn
         DOUBLE PRECISION :: abundance_out(nspec),max_temp
-        INTEGER :: temp_indx,successFlag
+        INTEGER :: temp_index,successFlag
         CHARACTER(LEN=32) :: specname_out(nspec)
-        !f2py intent(in) temp_indx,max_temp,dictionary,outSpeciesIn
+        !f2py intent(in) temp_index,max_temp,dictionary,outSpeciesIn
         !f2py intent(out) abundance_out,specname_out,successFlag
         LOGICAL, INTENT(IN) :: returnArray
         !f2py intent(in) returnArray
@@ -241,7 +241,7 @@ CONTAINS
         !f2py depend(gridPoints, nspec) abundanceStart
         specname_out(:nspec) = specName
         maxTemp=max_temp
-        tempIndx=temp_indx
+        tempIndx=temp_index
 
         CALL solveAbundances(dictionary, outSpeciesIn,successFlag,initializePhysics,&
         &updatePhysics,updateTargetTime,sublimation,returnArray, returnRateConstants,givestartabund,&
@@ -628,9 +628,9 @@ CONTAINS
         USE, INTRINSIC :: iso_c_binding, ONLY: C_NULL_PTR, C_INT
         ! Core UCLCHEM routine. Solves the chemical equations for a given set of parameters through time
         ! for a specified physical model.
-        ! Change behaviour of physics by sending different subroutine arguments - hence the need for model subroutines above
-        ! dictionary - the parameter dictionary string reprenting a python dictionary
-        ! outSpeciesIn - the species to output to seperate file
+        ! Change behavior of physics by sending different subroutine arguments - hence the need for model subroutines above
+        ! dictionary - the parameter dictionary string representing a python dictionary
+        ! outSpeciesIn - the species to output to separate file
         ! successFlag - Integer to indicate whether code completed successfully
         ! modelInitializePhysics - subroutine to initialize physics from a physics module
         ! modelUpdatePhysics - subroutine to update physics from a physics module
@@ -659,7 +659,7 @@ CONTAINS
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: levelpopulationsarray
         DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: sestatsarray
         DOUBLE PRECISION, DIMENSION(:, :), OPTIONAL :: abundanceStart
-        ! Arrays neede to work with custom density/temperature profiles
+        ! Arrays needed to work with custom density/temperature profiles
         !  &timegrid,densgrid,gastempgrid,dusttempgrid,nhgrid,nh2grid,ncogrodi,ncgrid)
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: timegrid
         DOUBLE PRECISION, DIMENSION(:), OPTIONAL :: densgrid
@@ -869,7 +869,7 @@ CONTAINS
                 IF (parcelStoppingMode.ne.0 .and. (density(dstep) .ge. finalDens)) THEN
                     EXIT
                 END IF
-                !loop over parcels, counting from centre out to edge of cloud
+                !loop over parcels, counting from center out to edge of cloud
                 DO dstep=1,points
                     !reset time if this isn't first depth point
                     currentTime=currentTimeold
@@ -1002,10 +1002,10 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) zeta
                 CASE('freezefactor')
                     READ(inputValue,*,iostat=successFlag) freezeFactor
-                CASE('rout')
-                    READ(inputValue,*,iostat=successFlag) rout
-                CASE('rin')
-                    READ(inputValue,*,iostat=successFlag) rin
+                CASE('r_out')
+                    READ(inputValue,*,iostat=successFlag) r_out
+                CASE('r_in')
+                    READ(inputValue,*,iostat=successFlag) r_in
                 CASE('baseav')
                     READ(inputValue,*,iostat=successFlag) baseAv
                 CASE('points')
@@ -1183,7 +1183,7 @@ CONTAINS
                     end if
                     
                     IF (successFlag .ne. 0) THEN
-                        write(*,*) "An error occured when opening the output file!"//&
+                        write(*,*) "An error occurred when opening the output file!"//&
                                         & NEW_LINE('A')//&
                                     &" The failed file was ",outputFile&
                                     &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
@@ -1202,7 +1202,7 @@ CONTAINS
                     end if
                     open(rateConstantId,file=rateConstantFile,status='unknown',iostat=successFlag)
                     IF (successFlag .ne. 0) THEN
-                        write(*,*) "An error occured when opening the rate file!"//&
+                        write(*,*) "An error occurred when opening the rate file!"//&
                                         & NEW_LINE('A')//&
                                     &" The failed file was ",rateConstantFile&
                                     &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
@@ -1221,7 +1221,7 @@ CONTAINS
                     end if
                     open(ratesId,file=ratesFile,status='unknown',iostat=successFlag)
                     IF (successFlag .ne. 0) THEN
-                        write(*,*) "An error occured when opening the rate file!"//&
+                        write(*,*) "An error occurred when opening the rate file!"//&
                                         & NEW_LINE('A')//&
                                     &" The failed file was ",ratesFile&
                                     &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
@@ -1234,7 +1234,7 @@ CONTAINS
                     heatingFile = trim(heatingFile)
                     open(heatingId,file=heatingFile,status='unknown',iostat=successFlag)
                     IF (successFlag .ne. 0) THEN
-                        write(*,*) "An error occured when opening the heating rate file!"//&
+                        write(*,*) "An error occurred when opening the heating rate file!"//&
                                         & NEW_LINE('A')//&
                                     &" The failed file was ",heatingFile&
                                     &, NEW_LINE('A')//"A common error is that the directory doesn't exist"&
@@ -1276,8 +1276,8 @@ CONTAINS
                    READ(inputValue,*,iostat=successFlag) HdiffusionBarrier
                 CASE('usecustomdiffusionbarriers')
                    READ(inputValue,*,iostat=successFlag) useCustomDiffusionBarriers
-                CASE('seperatediffanddesorbprefactor')
-                   READ(inputValue,*,iostat=successFlag) seperateDiffAndDesorbPrefactor
+                CASE('separatediffanddesorbprefactor')
+                   READ(inputValue,*,iostat=successFlag) separateDiffAndDesorbPrefactor
                 CASE('usetstprefactors')
                    READ(inputValue,*,iostat=successFlag) useTSTprefactors
                 CASE('usecustomprefactors')

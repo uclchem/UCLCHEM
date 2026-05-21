@@ -178,6 +178,7 @@ py.install_sources([
   usource / 'species.csv',
   usource / 'tests.py',
   usource / 'utils.py',
+  usource / 'py.typed',
   # advanced.py replaced by advanced package modules
 ], subdir:'uclchem')
 

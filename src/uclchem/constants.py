@@ -10,14 +10,24 @@ reinstall UCLCHEM for these constants to update:
     1. Run makerates: python -m uclchem.makerates.makerates user_settings.yaml
     2. Reinstall: pip install . --force-reinstall --no-deps
     3. Verify: python -c "from uclchem import constants; print(constants.n_species)"
+
 """
 
 # Import canonical values from compiled Fortran module
 from uclchemwrap import f2py_constants
 
-# Import PHYSICAL_PARAMETERS from its canonical source
-# This is defined in makerates to avoid circular dependency
-from uclchem.makerates.io_functions import PHYSICAL_PARAMETERS
+# Canonical definition of physical parameters
+PHYSICAL_PARAMETERS = [
+    "Time",
+    "Density",
+    "gasTemp",
+    "dustTemp",
+    "Av",
+    "radfield",
+    "zeta",
+    "dstep",
+    "parcel_radius",
+]
 
 # Read canonical values from Fortran
 n_species = int(f2py_constants.nspec)
@@ -66,14 +76,26 @@ for i in range(NCOOLANTS):
 
 # Validate consistency
 if len(PHYSICAL_PARAMETERS) != N_PHYSICAL_PARAMETERS:
-    raise RuntimeError(
+    msg = (
         f"PHYSICAL_PARAMETERS length ({len(PHYSICAL_PARAMETERS)}) does not match "
         f"N_PHYSICAL_PARAMETERS from Fortran ({N_PHYSICAL_PARAMETERS}). "
         "This indicates a build inconsistency. Please run MakeRates and reinstall."
     )
+    raise RuntimeError(msg)
 
 # User-configurable constants (not from Fortran)
 TIMEPOINTS = 2000  # Number of timepoints for Fortran interface
+
+CENTIMETERS_PER_PARSEC = 3.086e18  # parsec in cgs
+SECONDS_PER_YEAR = 3.15569e7
+
+SPEED_OF_LIGHT_CGS = 2.99792458e10  # speed of light cm/s
+PLANCK_CONSTANT_CGS = 6.62606896e-27  # Planck constant erg*s
+
+# Physical constants matching collapse.f90
+HYDROGEN_MASS_CGS = 1.6736e-24  # hydrogen mass in g
+BOLTZMANN_CONSTANT_CGS = 1.38e-16  # Boltzmann constant in erg/K
+GRAVITATIONAL_CONSTANT_CGS = 6.67e-8  # gravitational constant in cgs
 
 # Default parameter dictionary
 # These are default values for model parameters, not network structure constants
@@ -85,8 +107,8 @@ default_param_dictionary = {
     "finaltime": 5000000.0,
     "radfield": 1.0,
     "zeta": 1.0,
-    "rout": 0.05,
-    "rin": 0.0,
+    "r_out": 0.05,
+    "r_in": 0.0,
     "baseav": 2.0,
     "points": 1,
     "bm0": 1.0,
@@ -164,7 +186,7 @@ default_param_dictionary = {
     "hstickingcoeffbyh2coverage": False,
     "hdiffusionbarrier": -1.0,
     "usecustomdiffusionbarriers": True,
-    "seperatediffanddesorbprefactor": True,
+    "separatediffanddesorbprefactor": True,
     "usetstprefactors": False,  # Set this one to True and add the intertias from dijkhuis25.
     "usecustomprefactors": False,
     "useminissaleicechemdesefficiency": False,

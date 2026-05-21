@@ -24,10 +24,10 @@ import xarray as xr
 
 try:
     from uclchem.model import (
-        AbstractModel,
         Cloud,
         SequentialRunner,
         _read_array,
+        _write_array,
         load_model,
     )
 
@@ -186,7 +186,7 @@ class TestMultipleModelsInFile:
 
 
 # ============================================================================
-# Overwrite behaviour
+# Overwrite behavior
 # ============================================================================
 
 
@@ -196,6 +196,8 @@ class TestOverwrite:
     def test_overwrite_false_warns_and_does_not_replace(self, tmp_path):
         """overwrite=False should warn and keep existing data unchanged."""
         model = Cloud(param_dict=dict(_DEFAULT_PARAMS), out_species=["H", "N", "C", "O"])
+
+        assert model.physics_array is not None
         orig_physics = model.physics_array.copy()
         fpath = str(tmp_path / "ow.h5")
         model.save_model(file=fpath, name="dup", overwrite=True)
@@ -304,7 +306,7 @@ class TestHDF5Structure:
 
 
 class TestWriteReadArray:
-    """Test the static _write_array and module-level _read_array helpers."""
+    """Test the and module-level _read_array and _write_array helpers."""
 
     def test_numeric_array_roundtrip(self, tmp_path):
         """Numeric arrays should roundtrip exactly."""
@@ -314,7 +316,7 @@ class TestWriteReadArray:
 
         with h5py.File(fpath, "w") as f:
             grp = f.create_group("test")
-            AbstractModel._write_array(grp, "numeric", xr_var)
+            _write_array(grp, "numeric", xr_var)
 
         with h5py.File(fpath, "r") as f:
             result = _read_array(f["test"], "numeric")
@@ -329,7 +331,7 @@ class TestWriteReadArray:
 
         with h5py.File(fpath, "w") as f:
             grp = f.create_group("test")
-            AbstractModel._write_array(grp, "strings", xr_var)
+            _write_array(grp, "strings", xr_var)
 
         # Verify stored as bytes
         with h5py.File(fpath, "r") as f:
@@ -350,7 +352,7 @@ class TestWriteReadArray:
 
         with h5py.File(fpath, "w") as f:
             grp = f.create_group("test")
-            AbstractModel._write_array(grp, "json_blob", xr_var)
+            _write_array(grp, "json_blob", xr_var)
 
         with h5py.File(fpath, "r") as f:
             result = _read_array(f["test"], "json_blob")
@@ -476,6 +478,10 @@ class TestSaveCreatesFile:
     def test_save_is_non_destructive(self, tmp_path):
         """save_model should not mutate the model's internal _data dataset."""
         model = Cloud(param_dict=dict(_DEFAULT_PARAMS), out_species=["H", "N", "C", "O"])
+
+        assert model.physics_array is not None
+        assert model.chemical_abun_array is not None
+
         physics_before = model.physics_array.copy()
         chem_before = model.chemical_abun_array.copy()
         vars_before = set(model._data.variables)
@@ -579,6 +585,42 @@ class TestDataIntegrity:
             assert isinstance(params, dict)
             assert "initialdens" in params or "initialDens" in params
 
+    def test_array_precision(self, tmp_path):
+        model = Cloud(param_dict=_DEFAULT_PARAMS)
+
+        fp64_path = tmp_path / "fp64_precision.h5"
+        fp32_path = tmp_path / "fp32_precision.h5"
+        fp16_path = tmp_path / "fp16_precision.h5"
+
+        model.save_model(fp64_path, array_dtype=np.float64)
+        model.save_model(fp32_path, array_dtype=np.float32)
+
+        # This will cause a warning because it overflows,
+        # but still include it to demonstrate.
+        model.save_model(fp16_path, array_dtype=np.float16)
+
+        fp64_size = fp64_path.stat().st_size
+        fp32_size = fp32_path.stat().st_size
+        fp16_size = fp16_path.stat().st_size
+        assert fp32_size < fp64_size and fp16_size < fp32_size, (
+            f"Expected smaller file size when saving arrays at half precision, but got sizes {fp64_size} (full), {fp32_size} (half), and {fp16_size} (quarter) in Bytes"
+        )
+
+        fp64_model = load_model(fp64_path)
+
+        assert fp64_model.chemical_abun_array is not None
+        assert fp64_model.chemical_abun_array.dtype == np.float64
+
+        fp32_model = load_model(fp32_path)
+        assert fp32_model.chemical_abun_array is not None
+        assert fp32_model.chemical_abun_array.dtype == np.float32
+
+        assert np.allclose(
+            fp64_model.chemical_abun_array,
+            fp32_model.chemical_abun_array,
+            atol=0,
+        )
+
 
 # ============================================================================
 # Engine parameter removal
@@ -598,7 +640,7 @@ class TestEngineParameterRemoved:
         """load_model should not accept an 'engine' parameter."""
         fpath, _, _, _, _ = saved_model_file
         with pytest.raises(TypeError):
-            load_model(file=fpath, name="default", engine="h5netcdf")
+            load_model(file=fpath, name="default", engine="h5netcdf")  # ty: ignore[unknown-argument]
 
 
 # ============================================================================
