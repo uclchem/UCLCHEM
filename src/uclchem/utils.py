@@ -679,6 +679,74 @@ def get_dtype(
         raise ValueError(msg)
 
 
+def get_number_monolayers(
+    abundance: float | np.ndarray,
+) -> float | np.ndarray:
+    """Calculate the number of monolayers on the grain from the abundance.
+
+    Gets the ``NUM_SITES_PER_GRAIN`` from ``uclchemwrap``.
+
+    Parameters
+    ----------
+    abundance : float | np.ndarray
+        Abundance wrt hydrogen nuclei.
+
+    Returns
+    -------
+    float | np.ndarray
+        Number of monolayers that abundance corresponds to.
+
+    """
+    from uclchem.advanced.advanced_settings import GeneralSettings  # noqa: PLC0415
+
+    num_sites_per_grain = (
+        GeneralSettings()
+        .search(
+            "num_sites_per_grain",
+            include_parameters=True,
+            include_internal=True,
+        )["surfacereactions.num_sites_per_grain"]
+        .get()
+    )
+
+    num_species_per_grain = get_number_of_species_per_grain(abundance)
+    number_monolayers = num_species_per_grain / num_sites_per_grain
+    return number_monolayers
+
+
+def get_number_of_species_per_grain(
+    abundance: float | np.ndarray,
+) -> float | np.ndarray:
+    """Calculate the number of times a species occurs per grain.
+
+    Gets the ``GAS_DUST_DENSITY_RATIO`` from ``uclchemwrap``.
+
+    Parameters
+    ----------
+    abundance : float | np.ndarray
+        Abundance wrt hydrogen nuclei.
+
+    Returns
+    -------
+    float | np.ndarray
+        Number of times the molecule occurs on a single grain.
+
+    """
+    from uclchem.advanced.advanced_settings import GeneralSettings  # noqa: PLC0415
+
+    gas_dust_density_ratio = (
+        GeneralSettings()
+        .search(
+            "gas_dust_density_ratio",
+            include_parameters=True,
+            include_internal=True,
+        )["surfacereactions.gas_dust_density_ratio"]
+        .get()
+    )
+
+    return abundance * gas_dust_density_ratio
+
+
 def convert_keys_to_lowercase(dct: dict[str, Any]) -> dict[str, Any]:
     """Convert the key of a dictionary to lowercase.
 
