@@ -404,6 +404,43 @@ def _convert_legacy_stopping_param(param_dict: dict[str, Any]) -> dict:
     return param_dict
 
 
+def _build_physics_df(
+    raw_array: np.ndarray, stored_cols: list[str], model_name: str
+) -> pd.DataFrame:
+    """Build a physics DataFrame, handling PHYSICAL_PARAMETERS version mismatches.
+
+    Args:
+        raw_array (np.ndarray): 2D array of shape (n_timesteps, n_stored_cols) from the model file.
+        stored_cols (list[str]): Column names as stored in the file's _coords/physics_values.
+        model_name (str): Model name used in warning/error messages.
+
+    Returns:
+        pd.DataFrame: DataFrame with exactly the current PHYSICAL_PARAMETERS columns.
+            Columns absent from the file (added in a newer UCLCHEM) are zero-filled with a warning.
+
+    Raises:
+        ValueError: If the file contains a column that no longer exists in PHYSICAL_PARAMETERS
+            (i.e. was removed), meaning the file was written with a newer UCLCHEM version.
+    """
+    removed = set(stored_cols) - set(PHYSICAL_PARAMETERS)
+    if removed:
+        raise ValueError(
+            f"Model file '{model_name}' contains physical parameters that no longer "
+            f"exist in the current UCLCHEM installation: {sorted(removed)}. "
+            "This file was written with a newer version of UCLCHEM and cannot be "
+            "loaded with this version."
+        )
+    added = set(PHYSICAL_PARAMETERS) - set(stored_cols)
+    if added:
+        logging.warning(
+            f"Model file '{model_name}' is missing physical parameters that were "
+            f"added in a newer UCLCHEM version: {sorted(added)}. "
+            "These columns will be filled with zeros."
+        )
+    raw_df = pd.DataFrame(raw_array, columns=stored_cols)
+    return raw_df.reindex(columns=PHYSICAL_PARAMETERS, fill_value=0.0)
+
+
 # TODO Add catch of ctrl+c or other aborts so that it saves model and a
 # full output to files of year, month, day, time type.
 class AbstractModel(ABC):
@@ -1009,12 +1046,14 @@ class AbstractModel(ABC):
             tuple[pd.DataFrames]: a tuple of pd.DataFrame with physics_df, chemistry_df, and all
                 additional information based off whether the flags were True.
         """
-        # Create a physical parameter dataframe using global constants
-        # Arrays are guaranteed to match these dimensions due to validation in legacy_read_output_file
-        physics_df = pd.DataFrame(
-            self.physics_array[:, point, :],
-            index=None,
-            columns=PHYSICAL_PARAMETERS,
+        # Create a physical parameter dataframe, using stored column names from the file
+        # to handle backwards-compatibility with models saved before new parameters were added.
+        # The original column names are preserved in _meta, even if _coord_assign replaced
+        # them with numeric indices when there was a length mismatch.
+        stored_cols = self._meta.get("physics_values", list(PHYSICAL_PARAMETERS))
+        model_identifier = f"{self.__class__.__name__} model"
+        physics_df = _build_physics_df(
+            self.physics_array[:, point, :], stored_cols, model_identifier
         )
         # Create an abundances dataframe using global species names
         species_names = get_species_names()
