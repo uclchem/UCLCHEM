@@ -87,6 +87,25 @@ def get_default_coolant_directory(user_specified: str | Path = "") -> str:
     return ""
 
 
+def strip_comments_from_row(row: list[str], comment_char: str = "!") -> list[str]:
+    """Strip comments from a seperated line.
+
+    Args:
+        row (list[str]): List of strings.
+        comment_char (str): Character indicating the beginning of a comment.
+            Default = "!".
+
+    Returns:
+        row (list[str]): List of strings, with the final string adjusted by
+            removing everything after `comment_char` (and any whitespace).
+
+    """
+    if comment_char in row[-1]:
+        row[-1] = row[-1].split(comment_char)[0].strip()
+
+    return row
+
+
 def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Species]]:
     """Read in a Makerates species file.
 
@@ -109,6 +128,7 @@ def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Specie
         for idx, row in enumerate(reader):
             try:
                 if row[0] != "NAME" and "!" not in row[0]:
+                    row = strip_comments_from_row(row)
                     if "@" in row[0]:
                         user_defined_bulk.append(Species(row))
                     else:
@@ -154,6 +174,7 @@ def read_reaction_file(
             for row in reader:
                 if row[0].startswith("#") or row[0].startswith("!"):
                     continue
+                row = strip_comments_from_row(row)
                 reaction_row = row[2:4] + [""] + row[4:8] + row[9:14] + [""]
                 if check_reaction(reaction_row, keep_list):
                     reactions.append(Reaction(reaction_row, reaction_source="UMIST"))
@@ -162,6 +183,7 @@ def read_reaction_file(
             reader = csv.reader(f, delimiter=",", quotechar="|")
             for row in reader:
                 if (len(row) > 1) and (row[0][0] != "!"):
+                    row = strip_comments_from_row(row)
                     if check_reaction(row, keep_list):
                         reactions.append(Reaction(row, reaction_source="UCL"))
                     else:
