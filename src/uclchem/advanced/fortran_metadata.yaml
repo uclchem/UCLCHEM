@@ -29,7 +29,6 @@ fortran_parameters:
   - erdescorrespondingerreacs
   - erdesreacs
   - erreacs
-  - exothermicities
   - exrelaxreacs
   - exsolidreacs
   - extrapolaterates
