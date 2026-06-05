@@ -217,7 +217,6 @@ def get_network(
     Raises:
         ValueError: You cannot specify both an input configuration and species+reaction.
 
-
     """
     if verbosity:
         logging.basicConfig(format="%(levelname)s: %(message)s", level=verbosity)

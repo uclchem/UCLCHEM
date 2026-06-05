@@ -69,16 +69,18 @@ def test_meta_survives_dataset_replace():
     """Scalar metadata should survive when _data Dataset is replaced."""
     m = Cloud()
     # public scalar attributes (not PHYSICAL_PARAMETERS or specname which are global)
-    m.run_type = "local"
-    m.custom_flag = 42
+    run_type_to_store = "local"
+    custom_flag_to_store = 42
+    m.run_type = run_type_to_store
+    m.custom_flag = custom_flag_to_store
 
     # Simulate dataset replacement (as happens on load/pickle)
     object.__setattr__(m, "_data", xr.Dataset())
 
-    assert m.run_type == "local", (
+    assert m.run_type == run_type_to_store, (
         "string metadata 'run_type' not preserved after _data replace"
     )
-    assert m.custom_flag == 42, (
+    assert m.custom_flag == custom_flag_to_store, (
         "Scalar metadata 'custom_flag' not preserved after _data replace"
     )
 

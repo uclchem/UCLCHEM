@@ -661,7 +661,7 @@ class SpeciesMatcher:
 
             # Check if current value is non-zero (already has data)
             has_existing_value = (
-                pd.notna(current_enthalpy) and abs(current_enthalpy) > 1e-10
+                pd.notna(current_enthalpy) and abs(current_enthalpy) > 1e-10  # noqa: PLR2004
             )
 
             if has_existing_value:

@@ -272,7 +272,7 @@ def format_value(value: Any) -> str:
         return str(value)
     elif isinstance(value, float | np.floating):
         # Use scientific notation for very small/large numbers
-        if abs(value) < 0.001 or abs(value) > 10000:
+        if abs(value) < 0.001 or abs(value) > 10000:  # noqa: PLR2004
             return f"{value:.2e}"
         else:
             return f"{value:.3g}"
@@ -349,7 +349,7 @@ def generate_markdown(params: dict[str, tuple[Any, str, str]], output_file: str)
 
 def main() -> None:
     """Main entry point."""
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 2:  # noqa: PLR2004
         print(f"Usage: {sys.argv[0]} <output_markdown_file>")
         sys.exit(1)
 
