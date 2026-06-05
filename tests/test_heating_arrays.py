@@ -68,7 +68,6 @@ class TestHeatingArrays:
             success_flag,
         ) = uclchem.functional.cloud(
             param_dict=param_dict,
-            out_species=["OH", "CO"],
             return_array=True,
             return_heating=True,
             return_rate_constants=True,
@@ -100,7 +99,6 @@ class TestHeatingArrays:
             success_flag,
         ) = uclchem.functional.cloud(
             param_dict=param_dict,
-            out_species=["OH", "CO", "H2O"],
             return_array=True,
             return_heating=True,
             return_rate_constants=True,
@@ -122,7 +120,6 @@ class TestHeatingArrays:
         """Test cloud function with return_dataframe=True."""
         result = uclchem.functional.cloud(
             param_dict=param_dict,
-            out_species=["OH", "CO", "H2O"],
             return_dataframe=True,
             return_heating=True,
             return_rate_constants=True,
@@ -195,7 +192,6 @@ class TestHeatingArrays:
                 result = func(
                     collapse="BE4",
                     param_dict=collapse_params,
-                    out_species=["OH", "CO"],
                     return_dataframe=True,
                     return_rate_constants=True,
                     return_heating=True,
@@ -204,7 +200,6 @@ class TestHeatingArrays:
             elif model_function == "cloud":
                 result = func(
                     param_dict=test_params,
-                    out_species=["OH", "CO"],
                     return_dataframe=True,
                     return_rate_constants=True,
                     return_heating=True,
@@ -261,7 +256,6 @@ class TestHeatingArrays:
             success_flag,
         ) = uclchem.functional.cloud(
             param_dict=param_dict,
-            out_species=["OH", "CO", "H2O"],
             return_dataframe=True,
             return_rate_constants=True,
             return_heating=True,

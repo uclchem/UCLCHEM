@@ -90,7 +90,6 @@ class Test1DCloud:
         physics, chemistry, rates, heating, abundances_start, return_code = (
             uclchem.functional.cloud(
                 param_dict=base_1d_params,
-                out_species=["CO", "H2O", "CH3OH"],
                 return_array=True,
                 return_rate_constants=True,
                 timepoints=2500,
@@ -128,7 +127,6 @@ class Test1DCloud:
         physics_df, chem_df, rates_df, heating_df, abundances_start, return_code = (
             uclchem.functional.cloud(
                 param_dict=base_1d_params,
-                out_species=["CO", "H2O"],
                 return_dataframe=True,
                 timepoints=2500,
             )
@@ -168,7 +166,6 @@ class Test1DCloud:
 
         result = uclchem.functional.cloud(
             param_dict=params,
-            out_species=["CO", "H2O", "CH3OH"],
             timepoints=2500,
         )
 
@@ -195,7 +192,6 @@ class Test1DHotcore:
         # to avoid the spawn-subprocess overhead that causes timeouts in xdist.
         cloud = uclchem.model.Cloud(
             param_dict={**hotcore_1d_params, "finalTime": 1e3},
-            out_species=["CO", "H2O", "CH3OH", "H2CO"],
             timepoints=2500,
         )
         cloud.check_error()
@@ -204,7 +200,6 @@ class Test1DHotcore:
             temp_indx=1,
             max_temperature=300.0,
             param_dict=hotcore_1d_params,
-            out_species=["CO", "H2O", "CH3OH", "H2CO"],
             previous_model=cloud,
             run_type="external",
             timepoints=2500,
@@ -260,7 +255,6 @@ class Test1DHotcore:
             """
             cloud = uclchem.model.Cloud(
                 param_dict={**params, "finalTime": 1e3},
-                out_species=["CO"],
                 timepoints=2500,
             )
             cloud.check_error()
@@ -268,7 +262,6 @@ class Test1DHotcore:
                 temp_indx=1,
                 max_temperature=300.0,
                 param_dict=params,
-                out_species=["CO"],
                 previous_model=cloud,
                 run_type="external",
                 timepoints=2500,
@@ -317,7 +310,6 @@ class Test1DParameterValidation:
         # This should still work but effectively be 0D
         _, _, _, _, _, return_code = uclchem.functional.cloud(
             param_dict=params,
-            out_species=["CO"],
             return_array=True,
             return_rate_constants=True,
             timepoints=2500,
@@ -347,7 +339,6 @@ class Test1DParameterValidation:
 
         physics_steep, _, _, _, _, code_steep = uclchem.functional.cloud(
             param_dict=params_steep,
-            out_species=["CO"],
             return_array=True,
             return_rate_constants=True,
             timepoints=2500,
@@ -359,7 +350,6 @@ class Test1DParameterValidation:
 
         physics_shallow, _, _, _, _, code_shallow = uclchem.functional.cloud(
             param_dict=params_shallow,
-            out_species=["CO"],
             return_array=True,
             return_rate_constants=True,
             timepoints=2500,
@@ -397,7 +387,6 @@ class Test1DParameterValidation:
         physics, chemistry, rates, heating, abundances_start, return_code = (
             uclchem.functional.cloud(
                 param_dict=params,
-                out_species=["CO", "H2O"],
                 return_array=True,
                 return_rate_constants=True,
                 timepoints=2500,
@@ -420,7 +409,6 @@ class Test1DChemicalEvolution:
         physics, chemistry, rates, heating, abundances_start, return_code = (
             uclchem.functional.cloud(
                 param_dict=base_1d_params,
-                out_species=["CO", "H2O", "CH3OH"],
                 return_array=True,
                 return_rate_constants=True,
                 timepoints=2500,
@@ -455,7 +443,6 @@ class Test1DChemicalEvolution:
 
         physics1, chem1, rates1, heating1, abund_start1, code1 = uclchem.functional.cloud(
             param_dict=params_phase1,
-            out_species=["CO", "H2O"],
             return_array=True,
             return_rate_constants=True,
             timepoints=2500,
@@ -470,7 +457,6 @@ class Test1DChemicalEvolution:
 
         physics2, chem2, rates2, heating2, abund_start2, code2 = uclchem.functional.cloud(
             param_dict=params_phase2,
-            out_species=["CO", "H2O"],
             return_array=True,
             return_rate_constants=True,
             starting_chemistry=abund_start1,
@@ -501,7 +487,6 @@ class TestOOCloud1D:
         """Test basic 1D cloud model run with OO interface."""
         model = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO", "H2O", "CH3OH"],
             timepoints=2500,
         )
 
@@ -520,7 +505,6 @@ class TestOOCloud1D:
         """Test that get_dataframes works properly for 1D models."""
         model = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO", "H2O"],
             timepoints=2500,
         )
 
@@ -546,7 +530,6 @@ class TestOOCloud1D:
         """Test getting DataFrames for individual spatial points."""
         model = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO"],
             timepoints=2500,
         )
 
@@ -574,7 +557,6 @@ class TestOOCloud1D:
         """Test that DVODE stats work with 1D models."""
         model = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO"],
             timepoints=2500,
         )
 
@@ -619,7 +601,6 @@ class TestOOCollapse1D:
         model = uclchem.model.Collapse(
             collapse="BE1.1",
             param_dict=params,
-            out_species=["CO", "H2O"],
             timepoints=2500,
         )
 
@@ -655,7 +636,6 @@ class TestOOCollapse1D:
             # Use pure freefall collapse (no collapse profile)
             model = uclchem.model.Cloud(
                 param_dict=params,
-                out_species=["CO"],
                 timepoints=2500,
             )
 
@@ -672,7 +652,6 @@ class TestOOHotcore1D:
         """Test 1D hotcore with stellar heating parameters."""
         cloud = uclchem.model.Cloud(
             param_dict={**hotcore_1d_params, "finalTime": 1e3},
-            out_species=["CO", "H2O", "CH3OH"],
             timepoints=2500,
         )
         cloud.check_error()
@@ -681,7 +660,6 @@ class TestOOHotcore1D:
             temp_indx=1,
             max_temperature=300.0,
             param_dict=hotcore_1d_params,
-            out_species=["CO", "H2O", "CH3OH"],
             previous_model=cloud,
             run_type="external",
             timepoints=2500,
@@ -715,7 +693,6 @@ class TestOOModelSavingLoading1D:
         # Run and save model
         model1 = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO", "H2O"],
             timepoints=2500,
         )
         model1.check_error()
@@ -742,7 +719,7 @@ class TestOOModelSavingLoading1D:
         save_file = common_output_directory / "test_oo_1d_point_column.h5"
 
         model1 = uclchem.model.Cloud(
-            param_dict=base_1d_params, out_species=["CO"], timepoints=2500
+            param_dict=base_1d_params, timepoints=2500
         )
         model1.check_error()
         model1.save_model(file=str(save_file))
@@ -768,7 +745,6 @@ class TestOOModelChaining1D:
 
         model1 = uclchem.model.Cloud(
             param_dict=params1,
-            out_species=["CO", "H2O"],
             timepoints=2500,
         )
         model1.check_error()
@@ -780,7 +756,6 @@ class TestOOModelChaining1D:
 
         model2 = uclchem.model.Cloud(
             param_dict=params2,
-            out_species=["CO", "H2O"],
             previous_model=model1,
             timepoints=2500,
         )
@@ -805,7 +780,6 @@ class TestOOModelChaining1D:
         # Run first model
         model1 = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO", "H2O"],
             timepoints=2500,
         )
         model1.check_error()
@@ -824,7 +798,6 @@ class TestOOModelChaining1D:
 
         model2 = uclchem.model.Cloud(
             param_dict=params2,
-            out_species=["CO", "H2O"],
             starting_chemistry=starting_chem,
             timepoints=2500,
         )
@@ -850,7 +823,7 @@ class TestEndAtFinalDensity:
         }
 
         model = uclchem.model.Cloud(
-            param_dict=params, out_species=["CO"], timepoints=2500
+            param_dict=params, timepoints=2500
         )
 
         model.check_error()
@@ -879,7 +852,7 @@ class TestEndAtFinalDensity:
         }
 
         model = uclchem.model.Cloud(
-            param_dict=params, out_species=["CO"], timepoints=2500
+            param_dict=params, timepoints=2500
         )
 
         model.check_error()
@@ -900,7 +873,6 @@ class TestFunctionalVsOOConsistency:
         # Run with OO interface
         oo_model = uclchem.model.Cloud(
             param_dict=base_1d_params,
-            out_species=["CO", "H2O"],
             timepoints=2500,
         )
         oo_model.check_error()
@@ -908,7 +880,6 @@ class TestFunctionalVsOOConsistency:
         # Run with functional interface
         phys_func, chem_func, _, _, _, flag_func = uclchem.functional.cloud(
             param_dict=base_1d_params,
-            out_species=["CO", "H2O"],
             return_array=True,
             timepoints=2500,
         )
@@ -924,7 +895,6 @@ class TestFunctionalVsOOConsistency:
         """Test that functional API returns DataFrames with Point column."""
         phys_df, chem_df, _, _, _, flag = uclchem.functional.cloud(
             param_dict=base_1d_params,
-            out_species=["CO"],
             return_dataframe=True,
             timepoints=2500,
         )

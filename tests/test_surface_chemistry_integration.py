@@ -45,9 +45,7 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
         "outputFile": str(Path(temp_output_dir) / "surface_test.dat"),
     }
 
-    result = uclchem.model.Cloud(
-        param_dict=param_dict, out_species=["#H2O", "#CO", "CH4"]
-    )
+    result = uclchem.model.Cloud(param_dict=param_dict)
 
     # Basic checks
     assert result is not None, "Model failed to run"

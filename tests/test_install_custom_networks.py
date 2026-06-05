@@ -298,8 +298,7 @@ cloud = uclchem.model.Cloud(
         "initialTemp": 10.0,
         "freefall": False,
         "endAtFinalDensity": False,
-    },
-    out_species=["H", "H2", "CO"]
+    }
 )
 cloud.check_error()
 print("OK")

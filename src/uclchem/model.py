@@ -32,8 +32,7 @@ Returns arrays/DataFrames instead of model objects.
     ...         "initialTemp": 10.0,
     ...         "finalTime": 1e6,
     ...         "freefall": True
-    ...     },
-    ...     out_species=["CO", "H2O", "CH3OH"]
+    ...     }
     ... )
     >>>
     >>> # Check for errors and plot
@@ -128,6 +127,8 @@ from uclchem.constants import (
 )
 from uclchem.plot import create_abundance_plot, plot_species
 from uclchem.utils import UCLCHEM_ROOT_DIR, CollapseMode, SuccessFlag, get_collapse_mode
+
+_UNSET = object()  # sentinel for deprecated out_species parameter in OO classes
 
 # /Multiprocessing imports
 
@@ -2334,7 +2335,7 @@ class Cloud(AbstractModel):
     def __init__(
         self,
         param_dict: dict | None = None,
-        out_species: list[str] | None = None,
+        out_species: list[str] | None = _UNSET,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
@@ -2343,15 +2344,20 @@ class Cloud(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
         """
-        if out_species is None:
-            out_species = default_elements_to_check
+        if out_species is not _UNSET:
+            raise TypeError(
+                "out_species is not supported on OO model classes. "
+                "Use the functional interface (uclchem.functional.cloud) to filter output species, "
+                "or access all species via model.chemical_abun_array after running."
+            )
         super().__init__(
             param_dict=param_dict,
-            out_species_list=out_species,
+            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
@@ -2461,7 +2467,7 @@ class Collapse(AbstractModel):
         self,
         collapse: str | int | CollapseMode = CollapseMode.BE1_1,
         param_dict: dict | None = None,
-        out_species: list[str] | None = None,
+        out_species: list[str] | None = _UNSET,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
@@ -2470,6 +2476,7 @@ class Collapse(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2482,11 +2489,14 @@ class Collapse(AbstractModel):
                 the duration of the collapse for the collapse mode.
 
         """
+        if out_species is not _UNSET:
+            raise TypeError(
+                "out_species is not supported on OO model classes. "
+                "Use the functional interface (uclchem.functional.collapse) to filter output species, "
+                "or access all species via model.chemical_abun_array after running."
+            )
         collapse = get_collapse_mode(collapse)
         collapse_final_time = self._COLLAPSE_FINAL_TIMES[collapse]
-
-        if out_species is None:
-            out_species = default_elements_to_check
 
         if param_dict is not None and "initialDens" in param_dict:
             warnings.warn(
@@ -2557,7 +2567,7 @@ class Collapse(AbstractModel):
 
         super().__init__(
             param_dict=param_dict,
-            out_species_list=out_species,
+            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
@@ -2667,7 +2677,7 @@ class PrestellarCore(AbstractModel):
         temp_indx: int = 1,
         max_temperature: float = 300.0,
         param_dict: dict | None = None,
-        out_species: list[str] | None = None,
+        out_species: list[str] | None = _UNSET,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
@@ -2676,6 +2686,7 @@ class PrestellarCore(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2684,11 +2695,15 @@ class PrestellarCore(AbstractModel):
             ValueError: If `read_file` is None, but `temp_idx` or `max_temperature` is also None.
 
         """
-        if out_species is None:
-            out_species = default_elements_to_check
+        if out_species is not _UNSET:
+            raise TypeError(
+                "out_species is not supported on OO model classes. "
+                "Use the functional interface (uclchem.functional.prestellar_core) to filter output species, "
+                "or access all species via model.chemical_abun_array after running."
+            )
         super().__init__(
             param_dict=param_dict,
-            out_species_list=out_species,
+            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
@@ -2807,7 +2822,7 @@ class CShock(AbstractModel):
         timestep_factor: float = 0.01,
         minimum_temperature: float = 0.0,
         param_dict: dict | None = None,
-        out_species: list[str] | None = None,
+        out_species: list[str] | None = _UNSET,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
@@ -2816,6 +2831,7 @@ class CShock(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2824,11 +2840,15 @@ class CShock(AbstractModel):
             ValueError: If `read_file` is None, but `shock_vel` is also not set.
 
         """
-        if out_species is None:
-            out_species = default_elements_to_check
+        if out_species is not _UNSET:
+            raise TypeError(
+                "out_species is not supported on OO model classes. "
+                "Use the functional interface (uclchem.functional.cshock) to filter output species, "
+                "or access all species via model.chemical_abun_array after running."
+            )
         super().__init__(
             param_dict=param_dict,
-            out_species_list=out_species,
+            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
@@ -2945,7 +2965,7 @@ class JShock(AbstractModel):
         self,
         shock_vel: float = 10.0,
         param_dict: dict | None = None,
-        out_species: list[str] | None = None,
+        out_species: list[str] | None = _UNSET,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
@@ -2954,6 +2974,7 @@ class JShock(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2962,11 +2983,15 @@ class JShock(AbstractModel):
             ValueError: If `read_file` is None, but `shock_vel` is also not set.
 
         """
-        if out_species is None:
-            out_species = default_elements_to_check
+        if out_species is not _UNSET:
+            raise TypeError(
+                "out_species is not supported on OO model classes. "
+                "Use the functional interface (uclchem.functional.jshock) to filter output species, "
+                "or access all species via model.chemical_abun_array after running."
+            )
         super().__init__(
             param_dict=param_dict,
-            out_species_list=out_species,
+            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
@@ -3094,7 +3119,7 @@ class Postprocess(AbstractModel):
     def __init__(
         self,
         param_dict: dict | None = None,
-        out_species: list[str] | None = None,
+        out_species: list[str] | None = _UNSET,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         time_array: np.ndarray | None = None,
@@ -3113,6 +3138,7 @@ class Postprocess(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -3122,13 +3148,17 @@ class Postprocess(AbstractModel):
             ValueError: If `read_file` is None, but `time_array` is not an array.
 
         """
+        if out_species is not _UNSET:
+            raise TypeError(
+                "out_species is not supported on OO model classes. "
+                "Use the functional interface to filter output species, "
+                "or access all species via model.chemical_abun_array after running."
+            )
         # Allocate 1.5x the input timesteps to give the DVODE solver
         # headroom for additional internal substeps.
-        if out_species is None:
-            out_species = default_elements_to_check
         super().__init__(
             param_dict=param_dict,
-            out_species_list=out_species,
+            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=int(1.5 * len(time_array)),
@@ -3308,7 +3338,7 @@ class Model(AbstractModel):
     def __init__(
         self,
         param_dict: dict | None = None,
-        out_species: list[str] | None = None,
+        out_species: list[str] | None = _UNSET,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         time_array: np.ndarray | None = None,
@@ -3322,6 +3352,7 @@ class Model(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -3331,13 +3362,17 @@ class Model(AbstractModel):
             ValueError: If `read_file` is None, but `time_array` is not an array.
 
         """
+        if out_species is not _UNSET:
+            raise TypeError(
+                "out_species is not supported on OO model classes. "
+                "Use the functional interface to filter output species, "
+                "or access all species via model.chemical_abun_array after running."
+            )
         # Allocate 1.5x the input timesteps to give the DVODE solver
         # headroom for additional internal substeps.
-        if out_species is None:
-            out_species = default_elements_to_check
         super().__init__(
             param_dict=param_dict,
-            out_species_list=out_species,
+            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=int(1.5 * len(time_array)),

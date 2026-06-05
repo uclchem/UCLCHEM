@@ -51,7 +51,7 @@ def _read_coefficients(extra_params: dict) -> tuple[np.ndarray, np.ndarray]:
     params = {**BASE_PARAMS, **extra_params}
 
     cloud = uclchem.model.Cloud(
-        param_dict={**params, "finalTime": 10.0}, out_species=["CO"]
+        param_dict={**params, "finalTime": 10.0}
     )
     cloud.check_error()
 
@@ -59,7 +59,6 @@ def _read_coefficients(extra_params: dict) -> tuple[np.ndarray, np.ndarray]:
         temp_indx=1,
         max_temperature=300.0,
         param_dict={**params, "finalTime": 1.0},
-        out_species=["CO"],
         previous_model=cloud,
         run_type="external",
     )
