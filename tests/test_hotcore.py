@@ -51,14 +51,14 @@ def _read_coefficients(extra_params: dict) -> tuple[np.ndarray, np.ndarray]:
     params = {**BASE_PARAMS, **extra_params}
 
     cloud = uclchem.model.Cloud(
-        param_dict={**params, "finalTime": 1e3}, out_species=["CO"]
+        param_dict={**params, "finalTime": 10.0}, out_species=["CO"]
     )
     cloud.check_error()
 
     core = uclchem.model.PrestellarCore(
         temp_indx=1,
         max_temperature=300.0,
-        param_dict={**params, "finalTime": 1e2},
+        param_dict={**params, "finalTime": 1.0},
         out_species=["CO"],
         previous_model=cloud,
         run_type="external",
@@ -97,8 +97,8 @@ class TestTempCoefficients1D:
             {
                 "enable_radiative_transfer": True,
                 "points": 2,
-                "rin": 0.001,
-                "rout": 0.05,
+                "rin": 0.1,
+                "rout": 0.5,
                 "density_scale_radius": 0.05,
                 "density_power_index": 2.4,
                 "lum_star": 1e6,
