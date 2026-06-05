@@ -584,13 +584,19 @@ def write_outputs(
     try:
         _, tmp_species = mkstemp(dir=python_src_dir, prefix="species_", suffix=".csv.tmp")
         tmp_paths.append(Path(tmp_species))
-        _, tmp_reactions = mkstemp(dir=python_src_dir, prefix="reactions_", suffix=".csv.tmp")
+        _, tmp_reactions = mkstemp(
+            dir=python_src_dir, prefix="reactions_", suffix=".csv.tmp"
+        )
         tmp_paths.append(Path(tmp_reactions))
         _, tmp_odes = mkstemp(dir=fortran_src_dir, prefix="odes_", suffix=".f90.tmp")
         tmp_paths.append(Path(tmp_odes))
-        _, tmp_network = mkstemp(dir=fortran_src_dir, prefix="network_", suffix=".f90.tmp")
+        _, tmp_network = mkstemp(
+            dir=fortran_src_dir, prefix="network_", suffix=".f90.tmp"
+        )
         tmp_paths.append(Path(tmp_network))
-        _, tmp_constants = mkstemp(dir=fortran_src_dir, prefix="f2py_constants_", suffix=".f90.tmp")
+        _, tmp_constants = mkstemp(
+            dir=fortran_src_dir, prefix="f2py_constants_", suffix=".f90.tmp"
+        )
         tmp_paths.append(Path(tmp_constants))
 
         write_species(Path(tmp_species), network.get_species_list())
