@@ -453,8 +453,6 @@ class AbstractModel(ABC):
     Args:
         param_dict (dict | None): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values if not provided.
-        out_species_list (list[str] | None): List of species to focus on for outputs.
-            If None, defaults to `uclchem.constants.default_elements_to_check`.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
             the UCLCHEM model. Defaults to None.
         previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
@@ -474,7 +472,6 @@ class AbstractModel(ABC):
     def __init__(
         self,
         param_dict: dict | None = None,
-        out_species_list: list[str] | None = None,
         starting_chemistry: np.ndarray | None = None,
         previous_model: object | None = None,
         timepoints: int = TIMEPOINTS,
@@ -484,8 +481,6 @@ class AbstractModel(ABC):
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
-        if out_species_list is None:
-            out_species_list = default_elements_to_check
         self._data = xr.Dataset()
         self._pickle_dict = {}
         # Per-instance metadata containers (scalars and small values)
@@ -507,8 +502,6 @@ class AbstractModel(ABC):
 
         self.model_type = str(self.__class__.__name__)
         self._param_dict = {}
-        self.out_species_list = out_species_list
-        self.out_species = ""
         self.full_array = None
         self._debug = debug
         self._on_negative_abundances = on_negative_abundances
@@ -521,7 +514,12 @@ class AbstractModel(ABC):
         self.timepoints = timepoints
         self.was_read = read_file is not None
 
-        self._reform_inputs(param_dict, self.out_species_list)
+        self._reform_inputs(param_dict)
+        if "columnfile" in self._param_dict:
+            warnings.warn(
+                "Dropping columnfile key from parameter dictionary. Use 'AbstractModel.legacy_write_columnfile' instead."
+            )
+            del self._param_dict["columnfile"]
 
         # Validate parcelStoppingMode usage after model_type is known
         if self._param_dict.get("_needs_freefall_validation", False):
@@ -598,7 +596,6 @@ class AbstractModel(ABC):
             self._create_level_populations_array()
             self.se_stats_array = None
             self._create_se_stats_array()
-            self.out_species_abundances_array = None
         else:
             # When loading from file, arrays are already populated; just initialize
             # the arrays that weren't loaded
@@ -607,7 +604,6 @@ class AbstractModel(ABC):
             self.stats_array = None
             self.level_populations_array = None
             self.se_stats_array = None
-            self.out_species_abundances_array = None
         return
 
     def __del__(self):
@@ -838,12 +834,11 @@ class AbstractModel(ABC):
 
         Args:
             element_list (list): List of elements to check conservation for.
-                Defaults to `self.out_species_lists`.
             percent (bool): Flag on if percentage values should be used. Defaults to True.
 
         """
         if element_list is None:
-            element_list = self.out_species_list
+            element_list = default_elements_to_check
 
         if self._param_dict["points"] > 1:
             for i in range(self._param_dict["points"]):
@@ -879,7 +874,7 @@ class AbstractModel(ABC):
 
     def create_abundance_plot(
         self,
-        species: list[str] | None = None,
+        species: list[str],
         figsize: tuple[2] = (16, 9),
         point: int = 0,
         plot_file: str | Path | None = None,
@@ -887,8 +882,7 @@ class AbstractModel(ABC):
         """`uclchem.plot.create_abundance_plot` wrapper method.
 
         Args:
-            species (list[str] | None): List of species to plot. If None, uses self.out_species_list.
-                Default = None.
+            species (list[str] | None): List of species to plot.
             figsize (tuple[2]): The figure size to use for matplotlib Defaults to (16, 9).
             point (int): Integer referring to which point of the UCLCHEM model to use. Defaults to 0.
             plot_file (str | Path | None): if not None, save to a path. Default = None.
@@ -900,9 +894,6 @@ class AbstractModel(ABC):
             ValueError: If `point` is larger than the number of points in the model run.
 
         """
-        if species is None:
-            species = self.out_species_list
-
         if point > self._param_dict["points"]:
             raise ValueError("'point' must be less than number of modelled points.")
         return create_abundance_plot(
@@ -1136,6 +1127,23 @@ class AbstractModel(ABC):
             result.append(se_stats_df)
         return tuple(result)
 
+    def get_final_abundances_of_species(self, species: list[str]) -> np.ndarray:
+        """Get the final abundances of a list of species.
+
+        Args:
+            species (list[str]): list of species names.
+
+        Returns:
+            abundances (np.ndarray): array of final abundances of ``species``.
+
+        """
+        species_names = get_species_names()
+        abundances = np.empty(len(species))
+        for spec_index, spec in enumerate(species):
+            index = species_names.index(spec)
+            abundances[spec_index] = self.next_starting_chemistry_array[-1, index]
+        return abundances
+
     def get_solver_stats_dataframe(self, point: int | None = None) -> pd.DataFrame | None:
         """Get all solver statistics including failed attempts.
 
@@ -1261,7 +1269,7 @@ class AbstractModel(ABC):
     def plot_species(
         self,
         ax: plt.Axes,
-        species: list[str] | None = None,
+        species: list[str],
         point: int = 0,
         legend: bool = True,
         **plot_kwargs,
@@ -1273,8 +1281,7 @@ class AbstractModel(ABC):
             df (pd.DataFrame): A dataframe created by `read_output_file`
             species (list[str]): A list of species names to be plotted.
                 If species name starts with "$" instead of "#" or "@",
-                plots the sum of surface and bulk abundances. If None, default to
-                `self.out_species_list`.
+                plots the sum of surface and bulk abundances.
             point (int): Grid point index. Default = 0.
             legend (bool): Whether to add a legend to the plot. Default = True.
             plot_kwargs (dict[str, Any]): keyword arguments passed to `ax.plot`.
@@ -1283,8 +1290,6 @@ class AbstractModel(ABC):
             plt.Axes: Modified input axis is returned
 
         """
-        if species is None:
-            species = self.out_species_list
         return plot_species(
             ax, self.get_dataframes(point), species, legend, **plot_kwargs
         )
@@ -1798,17 +1803,46 @@ class AbstractModel(ABC):
         """Perform classic starting abundance file writing to the file `self.abundSaveFile`
         provided in `_param_dict`.
         """
-        last_timestep_index = self.chemical_abun_array[:, 0, 0].nonzero()[0][-1]
         # TODO Move away from the magic numbers seen here.
         species_names = get_species_names()
         number_fmt_string = f" {', '.join(['%9.5E'] * len(species_names))}"
         with open(self.abundSaveFile, "wb") as f:
             np.savetxt(
                 f,
-                self.chemical_abun_array[last_timestep_index, :, :],
+                self.next_starting_chemistry_array,
                 fmt=number_fmt_string,
             )
         return
+
+    def legacy_write_columnfile(
+        self, column_file: str | Path, species: list[str]
+    ) -> None:
+        """Write a classic ``columnFile`` file, similar to full output but with a subset of species.
+
+        Since ``out_species`` was removed from the object-oriented API, it has to be passed here.
+
+        Args:
+            column_file (str | Path): path to write to
+            species (list[str]): List of species names to write
+
+        """
+        phys = self.physics_array.reshape(-1, self.physics_array.shape[-1])
+        chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
+
+        species_names = get_species_names()
+        species_indices = [species_names.index(spec) for spec in species]
+
+        chem_species = chem[:, species_indices]
+        full_array = np.append(phys, chem_species, axis=1)
+
+        string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(species))}"
+        # Magic numbers here to match/improve the formatting of the classic version
+        # TODO Move away from the magic numbers seen here.
+        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(species))}"
+        columns = np.array([PHYSICAL_PARAMETERS[:-1] + ["point"] + species])
+        np.savetxt(column_file, columns, fmt=string_fmt_string)
+        with open(column_file, "ab") as f:
+            np.savetxt(f, full_array, fmt=number_fmt_string)
 
     # /Legacy in & output support
 
@@ -1944,19 +1978,16 @@ class AbstractModel(ABC):
                     )
         return
 
-    def _reform_inputs(self, param_dict: dict, out_species: list[str]) -> None:
+    def _reform_inputs(self, param_dict: dict) -> None:
         """Internal Method.
+
         Copies param_dict so as not to modify user's dictionary.
-        Then reformats out_species from pythonic list
-        to a string of space separated names for Fortran.
 
         Args:
             param_dict (dict): Parameter dictionary passed by the user to the model.
-            out_species (list[str]): List of output species that are considered important for this model.
 
         Raises:
             ValueError: If an duplicate key is encountered in `param_dict`.
-            ValueError: If an entry in `out_species` is not a valid species name.
 
         """
         if param_dict is None:
@@ -1985,23 +2016,11 @@ class AbstractModel(ABC):
         keys_to_delete = [k for k, v in self._param_dict.items() if v is None]
         for k in keys_to_delete:
             del self._param_dict[k]
-        if out_species is not None:
-            # Validate out_species: list/tuple of strings and known species
-            if not (
-                isinstance(out_species, (list, tuple))
-                and all(isinstance(s, str) for s in out_species)
-                and all(s.strip() in get_species_names() for s in out_species)
-            ):
-                raise ValueError(
-                    "out_species must be a list/tuple of valid species names; check available species via uclchem.model.get_species_names()"
-                )
-            self.n_out = len(out_species)
-            self._param_dict["outspecies"] = self.n_out
-            self.out_species = " ".join(out_species)
-        else:
-            self.out_species = ""
-            self.n_out = 0
-        return
+
+        # Still set these, because the fortran at this point still requires them.
+        self.out_species = ""
+        self.n_out = 0
+        self.out_species_list = ""
 
     # /Cleaning of array & inptus
 
@@ -2315,9 +2334,6 @@ class Cloud(AbstractModel):
     Args:
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in `defaultparameters.f90`.
-        out_species (list | None): List of species whose abundances at the end of the model are
-            returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
-            Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
             the UCLCHEM model. Defaults to None.
         previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
@@ -2378,8 +2394,6 @@ class Cloud(AbstractModel):
         Returns:
             dict[str, int | list]: Dictionary with two keys:
                 "success_flag" with value the success flag
-                "out_species_abundances_array" with value a list of the outspecies abundances.
-
 
         """
         # f2py returns all non-intent(in) values in Fortran signature order:
@@ -2405,16 +2419,8 @@ class Cloud(AbstractModel):
             else None,
         )
         abundance_out, specname_out, success_flag = result[-3], result[-2], result[-1]
-        if success_flag < 0:
-            out_species_abundances_array = np.array([])
-        else:
-            out_species_length = (
-                len(self.out_species_list) if self.out_species_list is not None else 0
-            )
-            out_species_abundances_array = list(abundance_out[:out_species_length])
         return {
             "success_flag": success_flag,
-            "out_species_abundances_array": out_species_abundances_array,
         }
 
     def _create_init_dict(self):
@@ -2437,9 +2443,6 @@ class Collapse(AbstractModel):
             Options are 'BE1.1', 'BE4', 'filament', or 'ambipolar'. Defaults to 'BE1.1'.
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in `defaultparameters.f90`.
-        out_species (list | None): List of species whose abundances at the end of the model are
-            returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
-            Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
             the UCLCHEM model. Defaults to None.
         previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
@@ -2592,7 +2595,6 @@ class Collapse(AbstractModel):
         Returns:
             dict[str, int | list]: Dictionary with two keys:
                 "success_flag" with value the success flag
-                "out_species_abundances_array" with value a list of the outspecies abundances.
 
 
         """
@@ -2616,20 +2618,9 @@ class Collapse(AbstractModel):
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
             else None,
         )
-        out_species_abundances_array = result[-2]
         success_flag = result[-1]
-        if success_flag < 0:
-            out_species_abundances_array = np.array([])
-        else:
-            out_species_length = (
-                len(self.out_species_list) if self.out_species_list is not None else 0
-            )
-            out_species_abundances_array = list(
-                out_species_abundances_array[:out_species_length]
-            )
         return {
             "success_flag": success_flag,
-            "out_species_abundances_array": out_species_abundances_array,
         }
 
     def _create_init_dict(self):
@@ -2655,9 +2646,6 @@ class PrestellarCore(AbstractModel):
         max_temperature (float): Value at which gas temperature will stop increasing. Defaults to 300.0.
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in `defaultparameters.f90`.
-        out_species (list | None): List of species whose abundances at the end of the model are
-            returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
-            Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
             the UCLCHEM model. Defaults to None.
         previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
@@ -2732,8 +2720,6 @@ class PrestellarCore(AbstractModel):
         Returns:
             dict[str, int | list]: Dictionary with two keys:
                 "success_flag" with value the success flag
-                "out_species_abundances_array" with value a list of the outspecies abundances.
-
 
         """
         _, _, _, _, _, _, _, out_species_abundances_array, _, success_flag = (
@@ -2759,18 +2745,8 @@ class PrestellarCore(AbstractModel):
                 else None,
             )
         )
-        if success_flag < 0:
-            out_species_abundances_array = np.array([])
-        else:
-            out_species_length = (
-                len(self.out_species_list) if self.out_species_list is not None else 0
-            )
-            out_species_abundances_array = list(
-                out_species_abundances_array[:out_species_length]
-            )
         return {
             "success_flag": success_flag,
-            "out_species_abundances_array": out_species_abundances_array,
         }
 
     def _create_init_dict(self):
@@ -2799,9 +2775,6 @@ class CShock(AbstractModel):
             shocked gas typically cools to `initialTemp` if this is not set.
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in `defaultparameters.f90`.
-        out_species (list | None): List of species whose abundances at the end of the model are
-            returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
-            Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
             the UCLCHEM model. Defaults to None.
         previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
@@ -2877,7 +2850,6 @@ class CShock(AbstractModel):
         Returns:
             dict[str, int | list]: Dictionary with two keys:
                 "success_flag" with value the success flag
-                "out_species_abundances_array" with value a list of the outspecies abundances.
 
 
         """
@@ -2904,22 +2876,12 @@ class CShock(AbstractModel):
             else None,
         )
         dissipation_time = result[-3]
-        out_species_abundances_array = result[-2]
         success_flag = result[-1]
         if success_flag < 0:
             dissipation_time = None
-            out_species_abundances_array = np.array([])
-        else:
-            out_species_length = (
-                len(self.out_species_list) if self.out_species_list is not None else 0
-            )
-            out_species_abundances_array = list(
-                out_species_abundances_array[:out_species_length]
-            )
         return {
             "success_flag": success_flag,
             "dissipation_time": dissipation_time,
-            "out_species_abundances_array": out_species_abundances_array,
         }
 
     def _create_init_dict(self):
@@ -2944,9 +2906,6 @@ class JShock(AbstractModel):
         shock_vel (float): Velocity of the shock. Defaults to 10.0.
         param_dict (dict | None): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in `defaultparameters.f90`.
-        out_species (list | None): List of species whose abundances at the end of the model are
-            returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
-            Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
             the UCLCHEM model. Defaults to None.
         previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
@@ -3017,7 +2976,6 @@ class JShock(AbstractModel):
         Returns:
             dict[str, int | list]: Dictionary with two keys:
                 "success_flag" with value the success flag
-                "out_species_abundances_array" with value a list of the outspecies abundances.
 
 
         """
@@ -3041,20 +2999,9 @@ class JShock(AbstractModel):
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
             else None,
         )
-        out_species_abundances_array = result[-2]
         success_flag = result[-1]
-        if success_flag < 0:
-            out_species_abundances_array = np.array([])
-        else:
-            out_species_length = (
-                len(self.out_species_list) if self.out_species_list is not None else 0
-            )
-            out_species_abundances_array = list(
-                out_species_abundances_array[:out_species_length]
-            )
         return {
             "success_flag": success_flag,
-            "out_species_abundances_array": out_species_abundances_array,
         }
 
     def _create_init_dict(self):
@@ -3081,9 +3028,6 @@ class Postprocess(AbstractModel):
     Args:
         param_dict (dict | None): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in `defaultparameters.f90`.
-        out_species (list | None): List of species whose abundances at the end of the model are
-            returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
-            Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances
             to use for the UCLCHEM model. Defaults to None.
         previous_model (AbstractModel | None): Model object, a class that inherited from AbstractModel,
@@ -3235,7 +3179,6 @@ class Postprocess(AbstractModel):
         Returns:
             dict[str, int | list]: Dictionary with two keys:
                 "success_flag" with value the success flag
-                "out_species_abundances_array" with value a list of the outspecies abundances.
 
 
         """
@@ -3264,20 +3207,9 @@ class Postprocess(AbstractModel):
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
             else None,
         )
-        out_species_abundances_array = result[-2]
         success_flag = result[-1]
-        if success_flag < 0:
-            out_species_abundances_array = np.array([])
-        else:
-            out_species_length = (
-                len(self.out_species_list) if self.out_species_list is not None else 0
-            )
-            out_species_abundances_array = list(
-                out_species_abundances_array[:out_species_length]
-            )
         return {
             "success_flag": success_flag,
-            "out_species_abundances_array": out_species_abundances_array,
         }
 
     def _create_init_dict(self):
@@ -3308,9 +3240,6 @@ class Model(AbstractModel):
     Args:
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in `defaultparameters.f90`.
-        out_species (list | None): List of species whose abundances at the end of the model are
-            returned. If None, defaults to `uclchem.constants.default_elements_to_check`.
-            Default = None.
         starting_chemistry (np.ndarray | None): Array containing the starting abundances to use for
             the UCLCHEM model. Defaults to None.
         previous_model (AbstractModel | None): Model object, a class that inherited from
@@ -3429,7 +3358,6 @@ class Model(AbstractModel):
         Returns:
             dict[str, int | list]: Dictionary with two keys:
                 "success_flag" with value the success flag
-                "out_species_abundances_array" with value a list of the outspecies abundances.
 
 
         """
@@ -3454,20 +3382,9 @@ class Model(AbstractModel):
             if "starting_chemistry_array" in object.__getattribute__(self, "__dict__")
             else None,
         )
-        out_species_abundances_array = result[-2]
         success_flag = result[-1]
-        if success_flag < 0:
-            out_species_abundances_array = np.array([])
-        else:
-            out_species_length = (
-                len(self.out_species_list) if self.out_species_list is not None else 0
-            )
-            out_species_abundances_array = list(
-                out_species_abundances_array[:out_species_length]
-            )
         return {
             "success_flag": success_flag,
-            "out_species_abundances_array": out_species_abundances_array,
         }
 
     def _create_init_dict(self):
@@ -3749,7 +3666,6 @@ def _run_grid_model(
 
 # The following parameters from various chemical models, cannot be used as grid parameters.
 NoGridParameters = [
-    "out_species",
     "starting_chemistry",
     "time_array",
     "density_array",
@@ -4075,11 +3991,11 @@ class GridRunner:
             )
             self.models[model]["physics_array"] = loaded_data["physics_array"]
 
-    def load_chem(self, out_species_list: list[str]) -> None:
+    def load_chem(self, species: list[str]) -> None:
         """Load the chemistry.
 
         Args:
-            out_species_list (list[str]): list of species to load abundances for.
+            species (list[str]): list of species to load abundances for.
 
         Raises:
             NotImplementedError: If the model type is `SequentialRunner`.
@@ -4097,9 +4013,9 @@ class GridRunner:
             loaded_data = loaded_data.assign_coords(
                 {"chemical_abun_values": self.chemical_abun_values}
             )
-            self.models[model]["out_species_abundances_array"] = loaded_data[
+            self.models[model]["species_abundances_array"] = loaded_data[
                 "chemical_abun_array"
-            ].sel(chemical_abun_values=out_species_list)
+            ].sel(chemical_abun_values=species)
 
     def _load_params(self) -> None:
         """Loop through the models present in the grid models self.models

@@ -11,9 +11,6 @@ import pytest
 
 import uclchem
 
-# class TestSurfaceChemistryIntegration:
-#     """Integration test verifying new surface chemistry features work."""
-
 
 @pytest.fixture
 def temp_output_dir():
@@ -31,6 +28,7 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     - Ice builds up over time
     - Surface chemistry evolves as ice grows
     - Chemical desorption efficiency varies with coverage
+
     """
     param_dict = {
         "endAtFinalDensity": False,
