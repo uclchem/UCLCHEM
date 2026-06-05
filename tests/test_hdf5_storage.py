@@ -66,7 +66,7 @@ def cloud_model():
     WARNING: Do not mutate this model (e.g. setting attributes or calling
     save_model which is destructive). Use `fresh_cloud_model` instead.
     """
-    model = Cloud(param_dict=dict(_DEFAULT_PARAMS), out_species=["H", "N", "C", "O"])
+    model = Cloud(param_dict=dict(_DEFAULT_PARAMS))
     return model
 
 
@@ -93,7 +93,7 @@ def saved_model_file(cloud_model, tmp_path_factory):
 @pytest.fixture
 def fresh_cloud_model():
     """Create a fresh Cloud model (costly — use only when mutation is needed)."""
-    return Cloud(param_dict=dict(_DEFAULT_PARAMS), out_species=["H", "N", "C", "O"])
+    return Cloud(param_dict=dict(_DEFAULT_PARAMS))
 
 
 # ============================================================================
@@ -165,15 +165,12 @@ class TestMultipleModelsInFile:
 
     def test_two_models_different_names(self, tmp_path):
         """Two models saved under different names should both be loadable."""
-        model_a = Cloud(
-            param_dict=dict(_DEFAULT_PARAMS), out_species=["H", "N", "C", "O"]
-        )
+        model_a = Cloud(param_dict=dict(_DEFAULT_PARAMS))
         fpath = str(tmp_path / "multi.h5")
         model_a.save_model(file=fpath, name="model_a", overwrite=True)
 
         model_b = Cloud(
             param_dict=dict(_DEFAULT_PARAMS, initialTemp=50.0),
-            out_species=["H", "N", "C", "O"],
         )
         model_b.save_model(file=fpath, name="model_b", overwrite=True)
 
@@ -195,7 +192,7 @@ class TestOverwrite:
 
     def test_overwrite_false_warns_and_does_not_replace(self, tmp_path):
         """overwrite=False should warn and keep existing data unchanged."""
-        model = Cloud(param_dict=dict(_DEFAULT_PARAMS), out_species=["H", "N", "C", "O"])
+        model = Cloud(param_dict=dict(_DEFAULT_PARAMS))
         orig_physics = model.physics_array.copy()
         fpath = str(tmp_path / "ow.h5")
         model.save_model(file=fpath, name="dup", overwrite=True)
@@ -204,7 +201,6 @@ class TestOverwrite:
             warnings.simplefilter("always")
             model2 = Cloud(
                 param_dict=dict(_DEFAULT_PARAMS, initialTemp=50.0),
-                out_species=["H", "N", "C", "O"],
             )
             model2.save_model(file=fpath, name="dup", overwrite=False)
 
@@ -228,14 +224,14 @@ class TestOverwrite:
             "finalDens": 1e5,
             "finalTime": 1.0e5,
         }
-        model_v1 = Cloud(param_dict=params_v1, out_species=["H", "N", "C", "O"])
+        model_v1 = Cloud(param_dict=params_v1)
 
         fpath = str(tmp_path / "overwrite.h5")
         model_v1.save_model(file=fpath, name="model", overwrite=True)
 
         # Create a second model with different params
         params_v2 = dict(params_v1, initialTemp=50.0)
-        model_v2 = Cloud(param_dict=params_v2, out_species=["H", "N", "C", "O"])
+        model_v2 = Cloud(param_dict=params_v2)
         model_v2.save_model(file=fpath, name="model", overwrite=True)
 
         loaded = load_model(file=fpath, name="model")
@@ -475,7 +471,7 @@ class TestSaveCreatesFile:
 
     def test_save_is_non_destructive(self, tmp_path):
         """save_model should not mutate the model's internal _data dataset."""
-        model = Cloud(param_dict=dict(_DEFAULT_PARAMS), out_species=["H", "N", "C", "O"])
+        model = Cloud(param_dict=dict(_DEFAULT_PARAMS))
         physics_before = model.physics_array.copy()
         chem_before = model.chemical_abun_array.copy()
         vars_before = set(model._data.variables)
@@ -496,7 +492,7 @@ class TestSaveCreatesFile:
 
     def test_save_twice_produces_same_result(self, tmp_path):
         """Saving the same model twice to different files should produce identical loads."""
-        model = Cloud(param_dict=dict(_DEFAULT_PARAMS), out_species=["H", "N", "C", "O"])
+        model = Cloud(param_dict=dict(_DEFAULT_PARAMS))
 
         fpath1 = str(tmp_path / "first.h5")
         fpath2 = str(tmp_path / "second.h5")
@@ -523,7 +519,7 @@ class TestCoordinatePreservation:
 
     def test_coords_roundtrip(self, tmp_path):
         """Coordinates in the xarray Dataset should be preserved."""
-        model = Cloud(param_dict=dict(_DEFAULT_PARAMS), out_species=["H", "N", "C", "O"])
+        model = Cloud(param_dict=dict(_DEFAULT_PARAMS))
         # Snapshot coords before destructive save
         orig_coords = {k: v.values.copy() for k, v in model._data.coords.items()}
 

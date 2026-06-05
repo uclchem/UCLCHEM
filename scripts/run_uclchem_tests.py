@@ -65,9 +65,10 @@ if __name__ == "__main__":
         "freefall": False,
         "finalTime": 1e6,
         "outputFile": str(out_dir / "phase2-full.dat"),
-        "reltol": 1e-4,
-        "abstol_factor": 1e-6,
-        "abstol_ice_factor": 1e-6,  # MUST match gas — freeze-out moves species between phases
+        "reltol": 1e-6,
+        "abstol_factor": 1e-8,
+        # MUST match gas — freeze-out moves species between phases
+        "abstol_ice_factor": 1e-8,
         "abstol_min": 1e-20,
         "abstol_ice_min": 1e-25,
         "mxstep": 100_000,
