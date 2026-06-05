@@ -75,6 +75,25 @@ def get_default_coolant_directory(user_specified: str | Path = "") -> str:
     return ""
 
 
+def strip_comments_from_row(row: list[str], comment_char: str = "!") -> list[str]:
+    """Strip comments from a seperated line.
+
+    Args:
+        row (list[str]): List of strings.
+        comment_char (str): Character indicating the beginning of a comment.
+            Default = "!".
+
+    Returns:
+        row (list[str]): List of strings, with the final string adjusted by
+            removing everything after `comment_char` (and any whitespace).
+
+    """
+    if comment_char in row[-1]:
+        row[-1] = row[-1].split(comment_char)[0].strip()
+
+    return row
+
+
 def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Species]]:
     """Read in a Makerates species file.
 
@@ -97,6 +116,7 @@ def read_species_file(file_name: str | Path) -> tuple[list[Species], list[Specie
         for idx, row in enumerate(reader):
             try:
                 if row[0] != "NAME" and "!" not in row[0]:
+                    row = strip_comments_from_row(row)
                     if "@" in row[0]:
                         user_defined_bulk.append(Species(row))
                     else:
@@ -142,6 +162,7 @@ def read_reaction_file(
             for row in reader:
                 if row[0].startswith("#") or row[0].startswith("!"):
                     continue
+                row = strip_comments_from_row(row)
                 reaction_row = row[2:4] + [""] + row[4:8] + row[9:14] + [""]
                 if check_reaction(reaction_row, keep_list):
                     reactions.append(Reaction(reaction_row, reaction_source="UMIST"))
@@ -150,6 +171,7 @@ def read_reaction_file(
             reader = csv.reader(f, delimiter=",", quotechar="|")
             for row in reader:
                 if (len(row) > 1) and (row[0][0] != "!"):
+                    row = strip_comments_from_row(row)
                     if check_reaction(row, keep_list):
                         reactions.append(Reaction(row, reaction_source="UCL"))
                     else:
@@ -983,13 +1005,19 @@ def build_ode_string(
     ode_string = """MODULE ODES
 USE constants
 USE network
-USE SurfaceReactions, ONLY: useGarrod2011Transfer
+USE SurfaceReactions, ONLY: useGarrod2011Transfer, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO
 IMPLICIT NONE
 CONTAINS
-SUBROUTINE GETYDOT(RATE, Y, bulklayersreciprocal, ratioSurfaceToBulk, surfaceCoverage, safeMantle, safebulk, D, YDOT)
-REAL(dp), INTENT(IN) :: RATE(:), Y(:), bulklayersreciprocal, ratioSurfaceToBulk, safeMantle, safebulk, D
+SUBROUTINE GETYDOT(RATE, Y, surfaceCoverage, D, YDOT)
+REAL(dp), INTENT(IN) :: RATE(:), Y(:), D
 REAL(dp), INTENT(INOUT) :: YDOT(:), surfaceCoverage
 REAL(dp) :: totalSwap, LOSS, PROD
+REAL(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
+    safeMantle = MAX(1.0d-30, SUM(Y(surfaceList)))
+    safeBulk   = MAX(1.0d-30, SUM(Y(bulkList)))
+    IF (refractoryList(1) .gt. 0) safeBulk = MAX(1.0d-30, safeBulk - SUM(Y(refractoryList)))
+    ratioSurfaceToBulk   = MIN(1.0D0, safeMantle/safeBulk)
+    bulklayersreciprocal = MIN(1.0D0, NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
     """
     # Add a logical to determine whether we can write the reaction rates in realtime
     ode_string += truncate_line(f"totalSwap={total_swap[1:]}\n\n")
@@ -1389,6 +1417,37 @@ def write_network_file(
         openFile.write(array_to_string("    specname", names, type="string"))
         openFile.write(array_to_string("    mass", masses, type="float"))
         openFile.write(array_to_string("    atomCounts", atoms, type="int"))
+
+        # Generic element-count 2D array for runtime conservation checking.
+        # Covers every element that appears at least once across all species.
+        all_constituents = []
+        unique_elements = []
+        for species in species_list:
+            try:
+                constituents = species.find_constituents(quiet=True)
+                all_constituents.append(dict(constituents))
+                for elem, count in constituents.items():
+                    if count > 0 and elem not in unique_elements:
+                        unique_elements.append(elem)
+            except (ValueError, Exception):
+                all_constituents.append({})
+
+        unique_elements = sorted(
+            e for e in unique_elements if e.upper() not in ("E", "E-")
+        )
+        n_elems = len(unique_elements)
+
+        elem_count_2d = np.zeros((len(species_list), n_elems), dtype=int)
+        for si, constituents in enumerate(all_constituents):
+            for ei, elem in enumerate(unique_elements):
+                elem_count_2d[si, ei] = int(constituents.get(elem, 0))
+
+        max_elem_len = max(len(e) for e in unique_elements)
+        padded_elems = [e.ljust(max_elem_len) for e in unique_elements]
+
+        openFile.write(f"INTEGER, PARAMETER :: n_elem_tracked = {n_elems}\n")
+        openFile.write(array_to_string("    elem_names", padded_elems, type="string"))
+        openFile.write(array_to_string("    elem_count", elem_count_2d, type="int"))
 
         # then write evaporation stuff
         n_ice_species = write_evap_lists(openFile, species_list)

@@ -112,5 +112,105 @@ def test_parcel_radius_initial_value_matches_rout():
     )
 
 
+def test_model_stops_end_at_final_density():
+    finalDens = 1e4
+    finalTime = 1e6
+    model = uclchem.model.Cloud(
+        {
+            "initialDens": 8e3,
+            "finalDens": finalDens,
+            "finalTime": finalTime,
+            "endAtFinalDensity": True,
+            "freefall": True,
+        }
+    )
+    phys_df, _ = model.get_dataframes(joined=False)
+
+    # The model should terminate before it reaches finalTime.
+    assert phys_df["Time"].iloc[-1] < finalTime
+
+    # The model should terminate directly when it reaches finalDens.
+    assert phys_df["Density"].iloc[-1] >= finalDens
+    assert phys_df["Density"].iloc[-2] < finalDens
+
+
+def test_model_continues_not_end_at_final_density():
+    finalDens = 1e4
+    finalTime = 1e6
+    model = uclchem.model.Cloud(
+        {
+            "initialDens": 8e3,
+            "finalDens": finalDens,
+            "finalTime": finalTime,
+            "endAtFinalDensity": False,
+            "freefall": True,
+        }
+    )
+    phys_df, _ = model.get_dataframes(joined=False)
+
+    # The model should reach the finalTime.
+    assert phys_df["Time"].iloc[-1] == finalTime
+
+    # The model should reach the density, and then stay there after
+    # it reaches it.
+    assert phys_df["Density"].iloc[-1] >= finalDens
+    assert phys_df["Density"].iloc[-2] == phys_df["Density"].iloc[-1]
+
+
+def test_end_at_final_density_stops_close_to_target():
+    """Model stops within one freefall timestep of finalDens when endAtFinalDensity=True.
+
+    The Fortran exit check fires before chemistry runs for that step, so the last
+    written output row is the step that first crossed finalDens.  We verify both
+    that the model did not stop too early AND that it did not overshoot by more
+    than a factor of 2 (a generous single-timestep bound for freefall collapse).
+    """
+    finalDens = 1e5
+    finalTime = 1e7  # Much longer than needed to reach finalDens via freefall
+    model = uclchem.model.Cloud(
+        {
+            "initialDens": 1e4,
+            "finalDens": finalDens,
+            "finalTime": finalTime,
+            "endAtFinalDensity": True,
+            "freefall": True,
+        }
+    )
+    phys_df, _ = model.get_dataframes(joined=False)
+
+    final_density = phys_df["Density"].iloc[-1]
+
+    # Stopped before time ran out
+    assert phys_df["Time"].iloc[-1] < finalTime
+
+    # Final density crossed the threshold but did not wildly overshoot it
+    assert final_density >= finalDens, (
+        f"Model stopped below finalDens: {final_density:.2e} < {finalDens:.2e}"
+    )
+    assert final_density <= finalDens * 2, (
+        f"Model overshot finalDens by more than 2x: {final_density:.2e} vs {finalDens:.2e}"
+    )
+
+
+def test_end_at_final_density_multipoint_raises():
+    """endAtFinalDensity is blocked for multi-point models at the Python layer."""
+    with pytest.raises(RuntimeError, match="Use 'parcelStoppingMode' instead"):
+        uclchem.model.Cloud(
+            {
+                "initialDens": 1e4,
+                "finalDens": 1e5,
+                "finalTime": 1e6,
+                "endAtFinalDensity": True,
+                "freefall": True,
+                "points": 2,
+            }
+        )
+
+
+def test_lower_final_than_initial_dens_raises():
+    with pytest.raises(RuntimeError):
+        uclchem.model.Cloud({"initialDens": 1e5, "finalDens": 1e4, "freefall": True})
+
+
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

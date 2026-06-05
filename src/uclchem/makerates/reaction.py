@@ -153,7 +153,9 @@ class Reaction:
                 self.set_extrapolation(
                     bool(inputRow[13]) if len(inputRow) > 13 else False  # noqa: PLR2004
                 )
-                self.set_exothermicity(float(inputRow[14]) if len(inputRow) > 14 else 0.0)  # noqa: PLR2004
+                self.set_exothermicity(
+                    float(inputRow[14]) if (len(inputRow) > 14 and inputRow[14]) else 0.0  # noqa: PLR2004
+                )
 
             except IndexError as error:
                 raise ValueError(

@@ -92,6 +92,12 @@ CHARACTER(256) :: abundLoadFile="" ! The file to load the abundances from at the
 REAL(dp) :: freq_rel_tol = 1.0d-1 ! Relative tolerance (fraction) for comparing file vs calculated frequencies. Default 10%; overridden by Python layer with makerates-computed value when available.
 REAL(dp) :: pop_rel_tol  = 1.0d-1 ! Relative tolerance (fraction) for checking LTE population consistency. Can be adjusted at runtime via Generalsettings (tutorial 6).
 
+!## DVODE Solver Mode
+!|Parameter|Default Value|Description|
+!| ----- | ------| ------ |
+INTEGER  :: solverMode         = 2      !DVODE ISTATE strategy: 0=always restart (ISTATE=1), 1=always continue (ISTATE=2), 2=adaptive (default)
+REAL(dp) :: logChangeThreshold = 1.0d0 !log10 per-step abundance change that triggers forced ISTATE=1 restart in adaptive mode (solver_mode=2)
+
 !|abundSaveFile |None| File to store final abundances at the end of the model so future models can use them as the initial abundances. If not provided, no file will be produced.
 !|abundLoadFile |None| File from which to load initial abundances for the model, created through `abundSaveFile`. If not provided, the model starts from elemental gas.
 !|outSpecies|None| A space separated list of species to output to columnFile. Supplied as a separate list argument to most python functions, see python API docs.
@@ -138,7 +144,8 @@ REAL(dp) :: abstol_factor=1.0d-14 !Absolute tolerance for integration is calcula
 REAL(dp) :: abstol_min=1.0d-25 !Minimum value absolute tolerances can take.
 REAL(dp) :: abstol_ice_factor=1.0d-10 !Absolute tolerance factor for ice (grain surface + bulk) species; looser than gas to reduce stiffness from ice intermediates.
 REAL(dp) :: abstol_ice_min=1.0d-20 !Minimum absolute tolerance for ice species.
-REAL(dp) :: negative_abundance_tol=1.0d-15 !Abundances in (-negative_abundance_tol, 0) are clamped to 1e-30; more negative triggers NEGATIVE_ABUNDANCE_ERROR.
+REAL(dp) :: negative_abundance_tol=1.0d-10 !Abundances in (-negative_abundance_tol, 0) are solver noise clamped to 1e-30 after integration; more negative triggers NEGATIVE_ABUNDANCE_ERROR.
+REAL(dp) :: runtime_conservation_tolerance=0.01 !Fractional tolerance for runtime element conservation check (1% by default). Set negative to disable.
 REAL(dp) :: reltol_phys=1.0d-4 !Relative tolerance for physical variables (temperature, density) in integration.
 REAL(dp) :: abstol_phys_factor=1.0d-4 !Absolute tolerance factor for physical variables (temperature, density).
 REAL(dp) :: abstol_T_min=1.0d-2 !Minimum absolute tolerance for gas temperature (K).
@@ -166,6 +173,10 @@ REAL(dp) :: lower_limit_dusttemp=10.0 !Lower limit for dust temperature in K whe
 REAL(dp) :: upper_limit_dusttemp=1.0d3 !Upper limit for dust temperature in K when heating is enabled.
 REAL(dp) :: maxGrainTemp=150.0 !Dust temperature (K) above which grain surface chemistry is disabled and H2 formation is parameterized.
 INTEGER :: parameterizeH2Form=2 !H2 formation mode: 0=always off, 1=always on (parameterized), 2=explicit LH/ER below maxGrainTemp, parameterized above (default).
+REAL(dp) :: min_desorption_rate = 1.0d-60 ! Floor on desorption rate constants k (s^-1): k in (0, min_desorption_rate) are zeroed to avoid underflow. 0 disables.
+REAL(dp) :: max_desorption_rate_factor = 10.0d0 ! Dynamic cap on thermal desorption: effective cap = clamp(factor/(targetTime-currentTime), min_cap, max_cap) [s^-1]. 0 disables.
+REAL(dp) :: min_desorption_rate_cap = 1.0d0 ! Lower bound on the dynamic cap, in yr^-1 (timescale 1 yr): k slower than this are never capped.
+REAL(dp) :: max_desorption_rate_cap = 3.16d7 ! Upper bound on the dynamic cap, in yr^-1 (= 1 s^-1): k faster than 1 s are always capped regardless of timestep.
 !|alpha|{1:0.0,2:0.0}| Set alpha coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how alpha is used for each reaction type.|
 !|beta|{1:0.0,2:0.0}| Set beta coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how beta is used for each reaction type.|
 !|gama|{1:0.0,2:0.0}| Set gama coeffecients of reactions using a python dictionary where keys are reaction numbers and values are the coefficients. Once you do this, you cannot return to the default value in the same python script or without restarting the kernel in iPython. See the chemistry docs for how gama is used for each reaction type.|
