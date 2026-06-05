@@ -35,9 +35,7 @@ if __name__ == "__main__":
     }
 
     start = perf_counter()
-    static_model = uclchem.model.Cloud(
-        param_dict=params, out_species=out_species
-    )
+    static_model = uclchem.model.Cloud(param_dict=params, out_species=out_species)
     stop = perf_counter()
     print(f"Static model in {stop - start:.1f} seconds")
     static_model.save_model(file=str(save_file), name="static", overwrite=True)
@@ -54,9 +52,7 @@ if __name__ == "__main__":
     }
 
     start = perf_counter()
-    phase1_model = uclchem.model.Cloud(
-        param_dict=params, out_species=out_species
-    )
+    phase1_model = uclchem.model.Cloud(param_dict=params, out_species=out_species)
     stop = perf_counter()
     print(f"Phase 1 in {stop - start:.1f} seconds")
     phase1_model.save_model(file=str(save_file), name="phase1", overwrite=True)

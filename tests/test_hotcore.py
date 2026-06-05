@@ -50,9 +50,7 @@ def _read_coefficients(extra_params: dict) -> tuple[np.ndarray, np.ndarray]:
 
     params = {**BASE_PARAMS, **extra_params}
 
-    cloud = uclchem.model.Cloud(
-        param_dict={**params, "finalTime": 10.0}
-    )
+    cloud = uclchem.model.Cloud(param_dict={**params, "finalTime": 10.0})
     cloud.check_error()
 
     core = uclchem.model.PrestellarCore(

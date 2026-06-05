@@ -165,8 +165,7 @@ class TestMultipleModelsInFile:
 
     def test_two_models_different_names(self, tmp_path):
         """Two models saved under different names should both be loadable."""
-        model_a = Cloud(
-            param_dict=dict(_DEFAULT_PARAMS)        )
+        model_a = Cloud(param_dict=dict(_DEFAULT_PARAMS))
         fpath = str(tmp_path / "multi.h5")
         model_a.save_model(file=fpath, name="model_a", overwrite=True)
 

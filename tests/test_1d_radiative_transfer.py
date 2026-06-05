@@ -718,9 +718,7 @@ class TestOOModelSavingLoading1D:
         """Test that Point column is preserved after save/load."""
         save_file = common_output_directory / "test_oo_1d_point_column.h5"
 
-        model1 = uclchem.model.Cloud(
-            param_dict=base_1d_params, timepoints=2500
-        )
+        model1 = uclchem.model.Cloud(param_dict=base_1d_params, timepoints=2500)
         model1.check_error()
         model1.save_model(file=str(save_file))
 
@@ -822,9 +820,7 @@ class TestEndAtFinalDensity:
             "abstol_factor": 1e-8,
         }
 
-        model = uclchem.model.Cloud(
-            param_dict=params, timepoints=2500
-        )
+        model = uclchem.model.Cloud(param_dict=params, timepoints=2500)
 
         model.check_error()
 
@@ -851,9 +847,7 @@ class TestEndAtFinalDensity:
             "abstol_factor": 1e-8,
         }
 
-        model = uclchem.model.Cloud(
-            param_dict=params, timepoints=2500
-        )
+        model = uclchem.model.Cloud(param_dict=params, timepoints=2500)
 
         model.check_error()
 
