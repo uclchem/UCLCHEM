@@ -1609,8 +1609,17 @@ class AbstractModel(ABC):
             missing_params = set(PHYSICAL_PARAMETERS) - set(physics_cols_from_file)
             extra_params = set(physics_cols_from_file) - set(PHYSICAL_PARAMETERS)
 
-            if missing_params <= {"dstep", "parcel_radius"} and not extra_params:
-                # dstep and/or parcel_radius missing — check if we can safely infer
+            # Parameters that can be safely zero/one-filled from legacy files.
+            # av_internal and radfield_internal are computed per-timestep and
+            # default to zero (no internal radiation source in legacy runs).
+            INFERRABLE_PARAMS = {
+                "dstep",
+                "parcel_radius",
+                "av_internal",
+                "radfield_internal",
+            }
+            if missing_params <= INFERRABLE_PARAMS and not extra_params:
+                # dstep and/or other inferrable params missing — check if we can safely infer
                 # If there are no duplicate timesteps, we can assume dstep=1
                 time_column_index = physics_cols_from_file.index("Time")
                 time_values = array[:, time_column_index]
@@ -1644,6 +1653,30 @@ class AbstractModel(ABC):
                         )
                         physics_cols_from_file.append("parcel_radius")
                         point_index += 1  # point column shifted by 1
+                    if "av_internal" in missing_params:
+                        # Add av_internal=0 column before point (not present in pre-1D-RT files)
+                        av_internal_column = np.zeros((array.shape[0], 1))
+                        array = np.hstack(
+                            [
+                                array[:, :point_index],
+                                av_internal_column,
+                                array[:, point_index:],
+                            ]
+                        )
+                        physics_cols_from_file.append("av_internal")
+                        point_index += 1
+                    if "radfield_internal" in missing_params:
+                        # Add radfield_internal=0 column before point (not present in pre-1D-RT files)
+                        radfield_internal_column = np.zeros((array.shape[0], 1))
+                        array = np.hstack(
+                            [
+                                array[:, :point_index],
+                                radfield_internal_column,
+                                array[:, point_index:],
+                            ]
+                        )
+                        physics_cols_from_file.append("radfield_internal")
+                        point_index += 1
                 else:
                     raise ValueError(
                         f"INCOMPATIBLE LEGACY FILE: Cannot infer 'dstep' parameter.\n\n"

@@ -28,6 +28,11 @@ BASE_PARAMS = {
     "initialTemp": 10.0,
     "finalDens": 1e4,
     "writeStep": 1,
+    "reltol": 1e-4,
+    "abstol_factor": 1e-6,
+    "abstol_ice_factor": 1e-6,
+    "abstol_min": 1e-20,
+    "abstol_ice_min": 1e-25,
 }
 
 
@@ -92,6 +97,7 @@ class TestTempCoefficients1D:
             {
                 "enable_radiative_transfer": True,
                 "points": 2,
+                "rin": 0.001,
                 "rout": 0.05,
                 "density_scale_radius": 0.05,
                 "density_power_index": 2.4,

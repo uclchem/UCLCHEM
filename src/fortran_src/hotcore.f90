@@ -88,7 +88,13 @@ contains
             ! Better fit for 1D:
             tempa(:) = (/3.1417d-2,3.5495d-2,4.9653d-4,9.5928d-4,1.4158d-3,2.817d-3/)
             tempb(:) = (/0.5329,0.5324,0.9,0.9,0.9,0.9/)
-        ELSE 
+        ELSE
+            ! 0D/single-point: parcelRadius must always be allocated because updatePhysics
+            ! uses it unconditionally for the radial temperature factor (r/rout)^-0.5.
+            ! For 0D the single parcel sits at rout, giving factor = 1.0 (no radial correction).
+            IF (ALLOCATED(parcelRadius)) DEALLOCATE(parcelRadius)
+            ALLOCATE(parcelRadius(max(1, points)))
+            parcelRadius(:) = rout
             ! Default values for 0D:
             tempa(:) = (/1.927d-1,4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
             tempb(:) = (/0.5339,0.6255,0.8395,1.085,1.289,1.98/)

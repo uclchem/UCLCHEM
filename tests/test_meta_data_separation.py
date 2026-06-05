@@ -181,6 +181,8 @@ def test_physical_parameters_always_from_global():
         "zeta",
         "dstep",
         "parcel_radius",
+        "av_internal",
+        "radfield_internal",
     ], "PHYSICAL_PARAMETERS constant has been modified!"
     assert list(PHYSICAL_PARAMETERS) == list(CONST), "PHYSICAL_PARAMETERS mismatch"
     assert len(PHYSICAL_PARAMETERS) >= 8, (
