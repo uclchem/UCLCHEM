@@ -126,7 +126,7 @@ from uclchem.constants import (
     n_species,
 )
 from uclchem.plot import create_abundance_plot, plot_species
-from uclchem.utils import UCLCHEM_ROOT_DIR, SuccessFlag
+from uclchem.utils import UCLCHEM_ROOT_DIR, CollapseMode, SuccessFlag, get_collapse_mode
 
 # /Multiprocessing imports
 
@@ -134,9 +134,9 @@ from uclchem.utils import UCLCHEM_ROOT_DIR, SuccessFlag
 PHYSICAL_PARAMETERS_HEADER_FORMAT = "%10s"
 # in the below variable, the outputs were chosen according to the spacing needed for
 # "      Time,    Density,    gasTemp,   dustTemp,         Av,   radfield,       zeta,
-#       point,    parcel_radius"
+#       point,    parcel_radius, radfield_internal, av_internal"
 PHYSICAL_PARAMETERS_VALUE_FORMAT = (
-    "%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i, %10.4E"
+    "%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i, %10.4E, %10.4E, %10.4E"
 )
 SPECNAME_HEADER_FORMAT = "%11s"
 SPECNAME_VALUE_FORMAT = "%9.5E"
@@ -273,6 +273,8 @@ def load_model(
         opened_file = True
 
     if name not in file_obj:
+        if opened_file:
+            file_obj.close()
         raise Exception(f"model {name} was not found in the save file that was passed.")
     model_group = file_obj[name]
     coords = {}
@@ -401,6 +403,43 @@ def _convert_legacy_stopping_param(param_dict: dict[str, Any]) -> dict:
     return param_dict
 
 
+def _build_physics_df(
+    raw_array: np.ndarray, stored_cols: list[str], model_name: str
+) -> pd.DataFrame:
+    """Build a physics DataFrame, handling PHYSICAL_PARAMETERS version mismatches.
+
+    Args:
+        raw_array (np.ndarray): 2D array of shape (n_timesteps, n_stored_cols) from the model file.
+        stored_cols (list[str]): Column names as stored in the file's _coords/physics_values.
+        model_name (str): Model name used in warning/error messages.
+
+    Returns:
+        pd.DataFrame: DataFrame with exactly the current PHYSICAL_PARAMETERS columns.
+            Columns absent from the file (added in a newer UCLCHEM) are zero-filled with a warning.
+
+    Raises:
+        ValueError: If the file contains a column that no longer exists in PHYSICAL_PARAMETERS
+            (i.e. was removed), meaning the file was written with a newer UCLCHEM version.
+    """
+    removed = set(stored_cols) - set(PHYSICAL_PARAMETERS)
+    if removed:
+        raise ValueError(
+            f"Model file '{model_name}' contains physical parameters that no longer "
+            f"exist in the current UCLCHEM installation: {sorted(removed)}. "
+            "This file was written with a newer version of UCLCHEM and cannot be "
+            "loaded with this version."
+        )
+    added = set(PHYSICAL_PARAMETERS) - set(stored_cols)
+    if added:
+        logging.warning(
+            f"Model file '{model_name}' is missing physical parameters that were "
+            f"added in a newer UCLCHEM version: {sorted(added)}. "
+            "These columns will be filled with zeros."
+        )
+    raw_df = pd.DataFrame(raw_array, columns=stored_cols)
+    return raw_df.reindex(columns=PHYSICAL_PARAMETERS, fill_value=0.0)
+
+
 # TODO Add catch of ctrl+c or other aborts so that it saves model and a
 # full output to files of year, month, day, time type.
 class AbstractModel(ABC):
@@ -437,6 +476,8 @@ class AbstractModel(ABC):
         debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         self._data = xr.Dataset()
         self._pickle_dict = {}
@@ -461,6 +502,8 @@ class AbstractModel(ABC):
         self._param_dict = {}
         self.full_array = None
         self._debug = debug
+        self._on_negative_abundances = on_negative_abundances
+        self._on_error = on_error
         self.success_flag: None | SuccessFlag = None
         # Note: specname is now accessed via get_species_names() global function
         # Note: PHYSICAL_PARAMETERS is now accessed via the global constant
@@ -705,7 +748,7 @@ class AbstractModel(ABC):
                     time_dim = f"{base_time_dim}_{i}"
                     i += 1
 
-            if ndim == 3:
+            if ndim == 3:  # noqa: PLR2004
                 # Determine the 'values' dimension name for the variable
                 values_dim = key.replace("array", "values")
                 # If an existing coordinate with this name has a conflicting
@@ -739,7 +782,7 @@ class AbstractModel(ABC):
                     self._data = self._data.assign_coords(
                         {time_dim: np.arange(value.shape[0])}
                     )
-            elif ndim == 2:
+            elif ndim == 2:  # noqa: PLR2004
                 self._data[key] = (["point", key], value)
             elif ndim == 1:
                 # For 1D arrays, use the array name as the dimension
@@ -993,12 +1036,14 @@ class AbstractModel(ABC):
             tuple[pd.DataFrames]: a tuple of pd.DataFrame with physics_df, chemistry_df, and all
                 additional information based off whether the flags were True.
         """
-        # Create a physical parameter dataframe using global constants
-        # Arrays are guaranteed to match these dimensions due to validation in legacy_read_output_file
-        physics_df = pd.DataFrame(
-            self.physics_array[:, point, :],
-            index=None,
-            columns=PHYSICAL_PARAMETERS,
+        # Create a physical parameter dataframe, using stored column names from the file
+        # to handle backwards-compatibility with models saved before new parameters were added.
+        # The original column names are preserved in _meta, even if _coord_assign replaced
+        # them with numeric indices when there was a length mismatch.
+        stored_cols = self._meta.get("physics_values", list(PHYSICAL_PARAMETERS))
+        model_identifier = f"{self.__class__.__name__} model"
+        physics_df = _build_physics_df(
+            self.physics_array[:, point, :], stored_cols, model_identifier
         )
         # Create an abundances dataframe using global species names
         species_names = get_species_names()
@@ -1310,7 +1355,12 @@ class AbstractModel(ABC):
             self.__setattr__(k, v)
 
         self._array_clean()
-        self.check_error(only_error=True)
+        self._check_negative_abundances()
+        if self.success_flag != SuccessFlag.SUCCESS:
+            msg = self.success_flag.check_error(only_error=True, raise_on_error=False)
+            self._handle_model_error(
+                f"UCLCHEM error ({self.success_flag.name}, {self.success_flag.value}): {msg}"
+            )
         if self.outputFile is not None:
             logging.debug(f"Writing output file: {self.outputFile}")
             logging.debug(
@@ -1460,7 +1510,7 @@ class AbstractModel(ABC):
         if self._data is None and bool(self._pickle_dict):
             self._data = xr.Dataset()
             for k, v in self._pickle_dict.items():
-                if np.ndim(v) == 3 and "_array" in k:
+                if np.ndim(v) == 3 and "_array" in k:  # noqa: PLR2004
                     # Avoid colliding with existing 'time_step' dim sizes by
                     # making a per-variable time dim if necessary
                     time_dim = "time_step"
@@ -1489,7 +1539,7 @@ class AbstractModel(ABC):
                             ["time_step", "point", k.replace("array", "values")],
                             v_arr,
                         )
-                elif np.ndim(v) == 2 and "_array" in k:
+                elif np.ndim(v) == 2 and "_array" in k:  # noqa: PLR2004
                     self._data[k] = (["point", k], v)
                 elif "_values" in k:
                     pass
@@ -1563,8 +1613,17 @@ class AbstractModel(ABC):
             missing_params = set(PHYSICAL_PARAMETERS) - set(physics_cols_from_file)
             extra_params = set(physics_cols_from_file) - set(PHYSICAL_PARAMETERS)
 
-            if missing_params <= {"dstep", "parcel_radius"} and not extra_params:
-                # dstep and/or parcel_radius missing — check if we can safely infer
+            # Parameters that can be safely zero/one-filled from legacy files.
+            # av_internal and radfield_internal are computed per-timestep and
+            # default to zero (no internal radiation source in legacy runs).
+            INFERRABLE_PARAMS = {
+                "dstep",
+                "parcel_radius",
+                "av_internal",
+                "radfield_internal",
+            }
+            if missing_params <= INFERRABLE_PARAMS and not extra_params:
+                # dstep and/or other inferrable params missing — check if we can safely infer
                 # If there are no duplicate timesteps, we can assume dstep=1
                 time_column_index = physics_cols_from_file.index("Time")
                 time_values = array[:, time_column_index]
@@ -1598,6 +1657,30 @@ class AbstractModel(ABC):
                         )
                         physics_cols_from_file.append("parcel_radius")
                         point_index += 1  # point column shifted by 1
+                    if "av_internal" in missing_params:
+                        # Add av_internal=0 column before point (not present in pre-1D-RT files)
+                        av_internal_column = np.zeros((array.shape[0], 1))
+                        array = np.hstack(
+                            [
+                                array[:, :point_index],
+                                av_internal_column,
+                                array[:, point_index:],
+                            ]
+                        )
+                        physics_cols_from_file.append("av_internal")
+                        point_index += 1
+                    if "radfield_internal" in missing_params:
+                        # Add radfield_internal=0 column before point (not present in pre-1D-RT files)
+                        radfield_internal_column = np.zeros((array.shape[0], 1))
+                        array = np.hstack(
+                            [
+                                array[:, :point_index],
+                                radfield_internal_column,
+                                array[:, point_index:],
+                            ]
+                        )
+                        physics_cols_from_file.append("radfield_internal")
+                        point_index += 1
                 else:
                     raise ValueError(
                         f"INCOMPATIBLE LEGACY FILE: Cannot infer 'dstep' parameter.\n\n"
@@ -1761,7 +1844,50 @@ class AbstractModel(ABC):
 
     # /Legacy in & output support
 
-    # Cleaning of array & inptus
+    # Cleaning of array & inputs
+    def _handle_model_error(self, msg: str) -> None:
+        """Dispatch a Fortran model error according to the ``on_error`` constructor setting.
+
+        Args:
+            msg (str): Error message to raise or warn with.
+
+        Raises:
+            RuntimeError: If ``on_error`` is ``"raise"`` (the default).
+        """
+        if self._on_error == "raise":
+            raise RuntimeError(msg)
+        elif self._on_error == "warn":
+            import warnings
+
+            warnings.warn(msg, stacklevel=3)
+        # "ignore": do nothing
+
+    def _check_negative_abundances(self) -> None:
+        """Check chemical_abun_array for negative values and act per on_negative_abundances.
+
+        Called automatically after _array_clean() in run(). Behaviour is controlled by the
+        on_negative_abundances constructor argument:
+
+        - None      : do nothing.
+        - "warning" : emit a Python warnings.warn (default).
+        - "error"   : set success_flag to NEGATIVE_ABUNDANCE_ERROR so that the subsequent
+                      check_error() call raises, mirroring the old Fortran behaviour.
+        - "raise"   : raise RuntimeError immediately.
+        """
+        if self._on_negative_abundances is None:
+            return
+        if self.chemical_abun_array is None or not np.any(self.chemical_abun_array < 0):
+            return
+        msg = "Negative abundances detected in chemical output array."
+        if self._on_negative_abundances == "warning":
+            import warnings
+
+            warnings.warn(msg, stacklevel=3)
+        elif self._on_negative_abundances == "error":
+            self.success_flag = SuccessFlag.NEGATIVE_ABUNDANCE_ERROR
+        elif self._on_negative_abundances == "raise":
+            raise RuntimeError(msg)
+
     def _array_clean(self):
         """Internal Method.
         Clean the arrays changed by UCLCHEM Fortran code.
@@ -2019,7 +2145,7 @@ class AbstractModel(ABC):
         """
         if (
             self.level_populations_array is None
-            or self.level_populations_array.shape[0] < 3
+            or self.level_populations_array.shape[0] < N_SE_STATS_PER_COOLANT
         ):
             return None
 
@@ -2051,7 +2177,10 @@ class AbstractModel(ABC):
                 actual coolant names
 
         """
-        if self.se_stats_array is None or self.se_stats_array.shape[0] < 3:
+        if (
+            self.se_stats_array is None
+            or self.se_stats_array.shape[0] < N_SE_STATS_PER_COOLANT
+        ):
             return None
 
         # Build meaningful column names using actual coolant names
@@ -2226,6 +2355,8 @@ class Cloud(AbstractModel):
         debug: bool = False,
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2238,6 +2369,8 @@ class Cloud(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         if self.run_type != "external" and not self.was_read:
             self.run()
@@ -2295,7 +2428,7 @@ class Collapse(AbstractModel):
     """Collapse model class inheriting from AbstractModel.
 
     Args:
-        collapse (str): A string containing the collapse type.
+        collapse (str | int | CollapseMode): Collapse type.
             Options are 'BE1.1', 'BE4', 'filament', or 'ambipolar'. Defaults to 'BE1.1'.
         param_dict (dict): Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values found in `defaultparameters.f90`.
@@ -2316,15 +2449,15 @@ class Collapse(AbstractModel):
     # Time (years) at which each collapse mode's density evolution ends and the fitting
     # functions become singular.
     _COLLAPSE_FINAL_TIMES = {
-        "BE1.1": 1.173387e6,
-        "BE4": 1.84265e5,
-        "filament": 1.393761e6,
-        "ambipolar": 1.6132984e7,
+        CollapseMode.BE1_1: 1.173387e6,
+        CollapseMode.BE4: 1.84265e5,
+        CollapseMode.FILAMENT: 1.393761e6,
+        CollapseMode.AMBIPOLAR: 1.6132984e7,
     }
 
     def __init__(
         self,
-        collapse: Literal["BE1.1", "BE4", "filament", "ambipolar"] = "BE1.1",
+        collapse: str | int | CollapseMode = CollapseMode.BE1_1,
         param_dict: dict | None = None,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
@@ -2332,18 +2465,21 @@ class Collapse(AbstractModel):
         debug: bool = False,
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
 
         Raises:
-            ValueError: If `collapse` is not one of `["BE1.1", "BE4", "filament", "ambipolar"]`.
+            ValueError: If ``rin`` and ``points`` were both set in the parameter dictionary.
+            ValueError: If ``parcelStoppingMode`` is set in the parameter dictionary.
+            ValueError: If ``endAtFinaldensity`` is False, but ``finalTime`` was not set.
+            ValueError: If ``endAtFinaldensity`` is False, but ``finalTime`` is less than
+                the duration of the collapse for the collapse mode.
 
         """
-        collapse_dict = {"BE1.1": 1, "BE4": 2, "filament": 3, "ambipolar": 4}
-        if collapse not in collapse_dict:
-            raise ValueError(f"collapse must be in {collapse_dict.keys()}")
-
+        collapse = get_collapse_mode(collapse)
         collapse_final_time = self._COLLAPSE_FINAL_TIMES[collapse]
 
         if param_dict is not None and "initialDens" in param_dict:
@@ -2421,10 +2557,12 @@ class Collapse(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         self.collapse_final_time = collapse_final_time
         if read_file is None:
-            self.collapse = collapse_dict[collapse]
+            self.collapse = collapse
             if self.run_type != "external":
                 self.run()
         return
@@ -2441,7 +2579,7 @@ class Collapse(AbstractModel):
 
         """
         result = wrap.collapse(
-            collapsein=self.collapse,
+            collapsein=self.collapse.value,
             dictionary=self._param_dict,
             outspeciesin=self.out_species,
             timepoints=self.timepoints,
@@ -2513,6 +2651,8 @@ class PrestellarCore(AbstractModel):
         debug: bool = False,
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2529,6 +2669,8 @@ class PrestellarCore(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         if read_file is None:
             if temp_indx is None or max_temperature is None:
@@ -2630,6 +2772,8 @@ class CShock(AbstractModel):
         debug: bool = False,
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2646,6 +2790,8 @@ class CShock(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         if read_file is None:
             if shock_vel is None:
@@ -2746,6 +2892,8 @@ class JShock(AbstractModel):
         debug: bool = False,
         read_file: str = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2762,6 +2910,8 @@ class JShock(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         if read_file is None:
             if shock_vel is None:
@@ -2882,6 +3032,8 @@ class Postprocess(AbstractModel):
         debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2901,6 +3053,8 @@ class Postprocess(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         if read_file is None and time_array is not None:
             n_input = len(time_array)
@@ -3068,6 +3222,8 @@ class Model(AbstractModel):
         debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -3087,6 +3243,8 @@ class Model(AbstractModel):
             debug=debug,
             read_file=read_file,
             run_type=run_type,
+            on_negative_abundances=on_negative_abundances,
+            on_error=on_error,
         )
         if read_file is None and time_array is not None:
             n_input = len(time_array)
@@ -3204,6 +3362,7 @@ class SequentialRunner:
         sequenced_model_parameters: list,
         parameters_to_match: list = None,
         run_type: Literal["managed", "external"] = "managed",
+        on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
         for model in sequenced_model_parameters:
             assert model[list(model.keys())[0]] != SequentialRunner
@@ -3219,6 +3378,7 @@ class SequentialRunner:
                     )
 
         self.run_type = run_type
+        self._on_error = on_error
         self.model_count = 0
         self._pickle_dict = {}
         self.success_flag = None
@@ -3234,7 +3394,10 @@ class SequentialRunner:
 
         """
         previous_model = None
+        stage_failed = False
         for base_model_dict in self.sequenced_model_parameters:
+            if stage_failed:
+                break
             for model_type, model_dict in base_model_dict.items():
                 model_dict["param_dict"] = {
                     k.lower(): v for k, v in model_dict["param_dict"].items()
@@ -3267,32 +3430,39 @@ class SequentialRunner:
                         **model_dict,
                         run_type=self.run_type,
                         previous_model=previous_model,
+                        on_error=self._on_error,
                     )
                 else:
                     tmp_model = REGISTRY[model_type](
                         **model_dict,
                         run_type=self.run_type,
                         previous_model=previous_model,
+                        on_error=self._on_error,
                     )
 
                 if self.run_type == "external":
                     tmp_model.run()
 
+                successful = tmp_model.success_flag == SuccessFlag.SUCCESS
                 self.models += [
                     {
                         "Model_Type": model_type,
                         "Model_Order": self.model_count,
                         "Model": tmp_model,
                         "Success": tmp_model.success_flag,
+                        "Successful": successful,
                     }
                 ]
 
-                self.models[self.model_count]["Successful"] = (
-                    self.models[self.model_count]["Model"].success_flag == 0
-                )
-
-                previous_model = self.models[self.model_count]["Model"]
                 self.model_count += 1
+
+                if not successful:
+                    # Abort the sequence — running subsequent stages on bad physics
+                    # output is unsafe regardless of on_error mode.
+                    stage_failed = True
+                    break
+
+                previous_model = tmp_model
         self.success_flag = all(d["Successful"] for d in self.models)
         return
 
@@ -3464,6 +3634,40 @@ class NoDaemonPool(pool.Pool):  # noqa
         return _NoDaemonProcess(*args, **kwargs)
 
 
+def get_number_of_grid_workers(max_workers: int | None) -> int:
+    """Determine the number of grid workers.
+
+    Args:
+        max_workers (int | None): Maximum number of workers to use in parallel for
+            the grid run. If None, use ``os.cpu_count()-1`` workers. Default = None.
+
+    Returns:
+        int: Number of CPU cores to use for grid models.
+
+    Raises:
+        RuntimeError: If ``max_workers`` is None, but func:`os.cpu_count()` also returns None.
+
+    """
+    cpu_count = os.cpu_count()
+    if cpu_count is None:
+        if max_workers is None:
+            msg = "Could not determine number of CPU cores, but max_workers was None. Provide max_workers instead."
+            raise RuntimeError(msg)
+        warnings.warn(
+            f"Could not determine number of CPU cores. Using {max_workers} workers.",
+            stacklevel=2,
+        )
+        return max_workers
+    if max_workers >= cpu_count:
+        warnings.warn(
+            f"max_workers was given as {max_workers}, which is higher than the number of physical CPU cores on the system ({cpu_count}). Using {cpu_count - 1} instead.",
+            stacklevel=2,
+        )
+        return cpu_count - 1
+    else:
+        return max_workers
+
+
 class GridRunner:
     """GridRunner, like SequentialRunner is not an actual uclchem model,
     instead it allows running multiple models on a grid of parameter space.
@@ -3474,8 +3678,8 @@ class GridRunner:
             the param_dict argument that would be passed to any other model, with the addition
             of extra keys for the none param_dict variables of a model. Any variables that are
             turned into lists or arrays, will automatically be assumed to be used for the gridding.
-        max_workers (int): Maximum number of workers to use in parallel for the grid run.
-            Defaults to 8.
+        max_workers (int | None): Maximum number of workers to use in parallel for the grid run.
+            If None, use ``os.cpu_count()-1``. Default = None.
         grid_file (str): Name and path of the output file to which the models should be saved.
             Defaults to "./default_grid_out.h5".
         model_name_prefix (str): Name prefix convention to use. The fifth model in the grid
@@ -3493,7 +3697,7 @@ class GridRunner:
         self,
         model_type: AnyStr,
         full_parameters: dict | list,
-        max_workers: int = 8,
+        max_workers: int | None = None,
         grid_file: str = "./default_grid_out.h5",
         model_name_prefix: str = "",
         overwrite_models: bool = False,
@@ -3505,14 +3709,11 @@ class GridRunner:
         assert model_type in REGISTRY
         self.model_type = model_type
         self.full_parameters = full_parameters
-        self.max_workers = (
-            max_workers - 1
-            if (max_workers < int(os.cpu_count()) and int(os.cpu_count()) > 32)
-            else int(os.cpu_count()) - 1
-            if int(os.cpu_count()) > 32
-            else int(os.cpu_count() / 2) - 1
-        )
+        self.max_workers = get_number_of_grid_workers(max_workers)
+        logging.debug(f"Number of workers set to {self.max_workers}")
+
         self.grid_file = grid_file if ".h5" in grid_file else grid_file + ".h5"
+
         # TODO: Implement model appending to grid file
         # TODO: Implement option to append or overwrite grid file.
         # Initial placeholder statement to remove pre-existing grid files
@@ -3959,7 +4160,9 @@ class GridRunner:
 
                 # grid_param_dict contains the param_dict values of the next model to run.
                 grid_param_dict = {
-                    k: v if not isinstance(v, float) else v.item()
+                    k: v
+                    if not isinstance(v, float)
+                    else (v.item() if hasattr(v, "item") else v)
                     for k, v in zip(param_keys, combo)
                     if k in full_parameters["param_dict"]
                 }

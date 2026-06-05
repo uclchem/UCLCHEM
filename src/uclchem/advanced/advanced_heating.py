@@ -422,7 +422,7 @@ class HeatingSettings:
             raise FileNotFoundError(f"Directory not found: {directory}")
         if not dir_path.is_dir():
             raise ValueError(f"Not a directory: {directory}")
-        if len(directory) > 255:
+        if len(directory) > 255:  # noqa: PLR2004
             raise ValueError(f"Path too long (max 255): {directory}")
 
         # Pad and set

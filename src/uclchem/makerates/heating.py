@@ -103,7 +103,7 @@ def _parse_unit(unit: str) -> float:
         factor = _BASE_UNITS[base]
         # Default to per reaction
         factor *= _DENOMINATORS["reaction"]
-    elif len(parts) == 2:
+    elif len(parts) == 2:  # noqa: PLR2004
         # Unit with denominator (e.g., "ev/reaction", "kcal/mol")
         base = parts[0].strip()
         denom = parts[1].strip()

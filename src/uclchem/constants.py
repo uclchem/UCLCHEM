@@ -15,10 +15,6 @@ reinstall UCLCHEM for these constants to update:
 # Import canonical values from compiled Fortran module
 from uclchemwrap import f2py_constants
 
-# Import PHYSICAL_PARAMETERS from its canonical source
-# This is defined in makerates to avoid circular dependency
-from uclchem.makerates.io_functions import PHYSICAL_PARAMETERS
-
 # Read canonical values from Fortran
 n_species = int(f2py_constants.nspec)
 n_reactions = int(f2py_constants.nreac)
@@ -27,6 +23,26 @@ NCOOLANTS = int(f2py_constants.ncoolants)
 N_DVODE_STATS = int(f2py_constants.n_dvode_stats)
 N_TOTAL_LEVELS = int(f2py_constants.n_total_levels)
 N_SE_STATS_PER_COOLANT = int(f2py_constants.n_se_stats_per_coolant)
+
+
+# Canonical definition of physical parameters
+# This list defines the physical parameter array passed to Fortran
+PHYSICAL_PARAMETERS = [
+    "Time",
+    "Density",
+    "gasTemp",
+    "dustTemp",
+    "Av",
+    "radfield",
+    "zeta",
+    "dstep",
+    "parcel_radius",
+    "av_internal",
+    "radfield_internal",
+]
+
+
+ZETA_0 = 1.36e-17  # Standard cosmic ray ionization rate (1.3e-17 s-1)
 
 # DVODE solver statistics names
 # Note: Stats are now written for EVERY solver attempt (including retries)
@@ -153,8 +169,8 @@ default_param_dictionary = {
     # 1D radiative transfer defaults
     "enable_radiative_transfer": False,
     "density_scale_radius": 0.05,
-    "density_power_index": 2.0,
-    "lum_star": 1000000.0,
+    "density_power_index": 2.4,
+    "lum_star": 1_000_000.0,
     "temp_star": 45000.0,
     # Advanced surface chemistry parameters
     "h2encounterdesorption": True,
@@ -178,6 +194,14 @@ default_param_dictionary = {
     # freq_rel_tol default is auto-computed at makerates time from LAMDA file deviations
     "freq_rel_tol": float(getattr(f2py_constants, "suggested_freq_rel_tol", 0.1)),
     "pop_rel_tol": 0.1,
+    # DVODE solver mode:
+    #   0 = ISTATE=1 always (original behaviour, fresh restart every output step)
+    #   1 = ISTATE=2 always (BDF history always continued, no guard)
+    #   2 = Hybrid/adaptive (default): ISTATE=2 unless abundance or temperature changed significantly
+    "solver_mode": 2,
+    # log₁₀ of per-step abundance change that triggers a forced ISTATE=1 restart in hybrid mode.
+    # Smaller = more frequent restarts (safer but less smooth); larger = fewer restarts (smoother but riskier).
+    "log_change_threshold": 1.0,
 }
 
 default_elements_to_check: list[str] = ["H", "N", "C", "O"]
