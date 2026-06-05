@@ -76,21 +76,21 @@ def temp_reactions_file(tmp_path):
     """Create a temporary reactions CSV file."""
     reactions_data = pd.DataFrame(
         {
-            "Reactant 1": ["H"],
-            "Reactant 2": ["H"],
-            "Reactant 3": ["NAN"],
-            "Product 1": ["H2"],
-            "Product 2": ["NAN"],
-            "Product 3": ["NAN"],
-            "Product 4": ["NAN"],
-            "Alpha": [1.0e-10],
-            "Beta": [0.5],
-            "Gamma": [0.0],
-            "T_min": [0.0],
-            "T_max": [0.0],
-            "reduced_mass": [2.0],
-            "extrapolate": [False],
-            "exothermicity": [0.0],
+            "REACTANT 1": ["H"],
+            "REACTANT 2": ["H"],
+            "REACTANT 3": ["NAN"],
+            "PRODUCT 1": ["H2"],
+            "PRODUCT 2": ["NAN"],
+            "PRODUCT 3": ["NAN"],
+            "PRODUCT 4": ["NAN"],
+            "ALPHA": [1.0e-10],
+            "BETA": [0.5],
+            "GAMMA": [0.0],
+            "T_MIN": [0.0],
+            "T_MAX": [0.0],
+            "REDUCED_MASS": [2.0],
+            "EXTRAPOLATE": [False],
+            "EXOTHERMICITY": [0.0],
         }
     )
     filepath = tmp_path / "test_reactions.csv"

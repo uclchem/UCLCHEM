@@ -275,9 +275,9 @@ class RuntimeNetwork(BaseNetwork):
                 # Convert indices to species names
                 # Valid species indices: 1 to n_species (1-based)
                 # Keyword sentinel (9999): fall back to CSV for GAR, PHOTON, etc.
-                reactant1 = self._get_reactant_name(i, re1, n_species, "Reactant 1")
-                reactant2 = self._get_reactant_name(i, re2, n_species, "Reactant 2")
-                reactant3 = self._get_reactant_name(i, re3, n_species, "Reactant 3")
+                reactant1 = self._get_reactant_name(i, re1, n_species, "REACTANT 1")
+                reactant2 = self._get_reactant_name(i, re2, n_species, "REACTANT 2")
+                reactant3 = self._get_reactant_name(i, re3, n_species, "REACTANT 3")
 
                 product1 = self._get_species_name(p1) if p1 > 0 else "NAN"
                 product2 = self._get_species_name(p2) if p2 > 0 else "NAN"
@@ -376,7 +376,7 @@ class RuntimeNetwork(BaseNetwork):
             reaction_idx: Index of reaction in reactions list
             fortran_idx: Fortran array value for this reactant
             n_species: Total number of species in network
-            csv_column: Column name in reactions CSV ("Reactant 1", etc.)
+            csv_column: Column name in reactions CSV ("REACTANT 1", etc.)
 
         Returns:
             Species name or reaction type keyword

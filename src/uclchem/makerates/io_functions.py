@@ -4,8 +4,10 @@
 import csv
 import fileinput
 import logging
+import shutil
 from datetime import datetime
 from pathlib import Path
+from tempfile import mkstemp
 from typing import Any, Literal
 
 import numpy as np
@@ -13,7 +15,7 @@ import yaml
 
 from uclchem.constants import PHYSICAL_PARAMETERS, ZETA_0
 from uclchem.makerates.network import Network
-from uclchem.makerates.reaction import REACTION_TYPES, Reaction
+from uclchem.makerates.reaction import REACTION_TYPES, Reaction, reaction_header
 from uclchem.makerates.species import Species, normalize_species_name, species_header
 from uclchem.utils import (
     MISSING_VALUE_FLOAT,
@@ -344,7 +346,6 @@ def read_coolants_file(file_name: str | Path) -> list[dict]:
         raise ValueError("Coolants file must contain a mapping or list of mappings")
 
     normalized = []
-    from pathlib import Path as _Path
 
     for item in data:
         if not isinstance(item, dict):
@@ -354,7 +355,7 @@ def read_coolants_file(file_name: str | Path) -> list[dict]:
         if "file" not in item or "name" not in item:
             raise ValueError("Each coolant mapping must contain 'file' and 'name' keys")
         file_val = str(item["file"])
-        if _Path(file_val).name != file_val or _Path(file_val).parent != _Path("."):
+        if Path(file_val).name != file_val or Path(file_val).parent != Path("."):
             raise ValueError(
                 "Coolant 'file' entries in coolants_file must be bare filenames (no directories)"
             )
@@ -439,45 +440,15 @@ def write_outputs(
         coolants = get_default_coolants()
 
     # Validate that coolant 'file' entries are bare filenames (not paths)
-    from pathlib import Path as _Path
-
     for c in coolants:
         f = c.get("file")
         if f is None:
             raise ValueError("Each coolant dict must contain a 'file' key")
-        if _Path(f).name != f or _Path(f).parent != _Path("."):
+        if Path(f).name != f or Path(f).parent != Path("."):
             raise ValueError(
                 "Coolant file names must be bare filenames (no directories). "
                 "Set the coolant directory at runtime via coolantDataDir."
             )
-
-    # Create the species file
-    filename = python_src_dir / "species.csv"
-    write_species(filename, network.get_species_list())
-
-    filename = python_src_dir / "reactions.csv"
-    write_reactions(filename, network.get_reaction_list())
-
-    # Write the ODEs in the appropriate language format
-    filename = fortran_src_dir / "odes.f90"
-    write_odes_f90(
-        filename,
-        network.get_species_list(),
-        network.get_reaction_list(),
-        enable_rates_storage=enable_rates_storage,
-    )
-
-    # Write the network files
-    filename = fortran_src_dir / "network.f90"
-    write_network_file(
-        filename,
-        network,
-        enable_rates_storage=enable_rates_storage,
-        gar_database=gar_database,
-    )
-    # write the constants needed for wrap.f90
-
-    filename = fortran_src_dir / "f2py_constants.f90"
 
     # Compute energy level counts from coolant data files
     from uclchem._coolant_utils import (
@@ -608,7 +579,53 @@ def write_outputs(
         "missing_value_float": MISSING_VALUE_FLOAT,
         "no_reactant_or_product": NO_REACTANT_OR_PRODUCT,
     }
-    write_f90_constants(f2py_constants, filename)
+    # Write all outputs to temporary files first; only replace finals if all succeed.
+    tmp_paths = []
+    try:
+        _, tmp_species = mkstemp(dir=python_src_dir, prefix="species_", suffix=".csv.tmp")
+        tmp_paths.append(Path(tmp_species))
+        _, tmp_reactions = mkstemp(
+            dir=python_src_dir, prefix="reactions_", suffix=".csv.tmp"
+        )
+        tmp_paths.append(Path(tmp_reactions))
+        _, tmp_odes = mkstemp(dir=fortran_src_dir, prefix="odes_", suffix=".f90.tmp")
+        tmp_paths.append(Path(tmp_odes))
+        _, tmp_network = mkstemp(
+            dir=fortran_src_dir, prefix="network_", suffix=".f90.tmp"
+        )
+        tmp_paths.append(Path(tmp_network))
+        _, tmp_constants = mkstemp(
+            dir=fortran_src_dir, prefix="f2py_constants_", suffix=".f90.tmp"
+        )
+        tmp_paths.append(Path(tmp_constants))
+
+        write_species(Path(tmp_species), network.get_species_list())
+        write_reactions(Path(tmp_reactions), network.get_reaction_list())
+        write_odes_f90(
+            Path(tmp_odes),
+            network.get_species_list(),
+            network.get_reaction_list(),
+            enable_rates_storage=enable_rates_storage,
+        )
+        write_network_file(
+            Path(tmp_network),
+            network,
+            enable_rates_storage=enable_rates_storage,
+            gar_database=gar_database,
+        )
+        write_f90_constants(f2py_constants, Path(tmp_constants))
+
+        # All writes succeeded — atomically replace the final files.
+        shutil.move(tmp_species, python_src_dir / "species.csv")
+        shutil.move(tmp_reactions, python_src_dir / "reactions.csv")
+        shutil.move(tmp_odes, fortran_src_dir / "odes.f90")
+        shutil.move(tmp_network, fortran_src_dir / "network.f90")
+        shutil.move(tmp_constants, fortran_src_dir / "f2py_constants.f90")
+        tmp_paths.clear()
+    finally:
+        for p in tmp_paths:
+            if p.exists():
+                p.unlink()
     # Note: constants.py now reads directly from f2py_constants module,
     # so we no longer need to write it during MakeRates.
     # After running MakeRates, just reinstall to update the Python constants.
@@ -799,23 +816,6 @@ def write_reactions(file_name: Path, reaction_list: list[Reaction]) -> None:
         reaction_list (list): List of reaction objects for network
 
     """
-    reaction_columns = [
-        "Reactant 1",
-        "Reactant 2",
-        "Reactant 3",
-        "Product 1",
-        "Product 2",
-        "Product 3",
-        "Product 4",
-        "Alpha",
-        "Beta",
-        "Gamma",
-        "T_min",
-        "T_max",
-        "reduced_mass",
-        "extrapolate",
-        "exothermicity",
-    ]
     with open(file_name, "w") as f:
         writer = csv.writer(
             f,
@@ -824,7 +824,7 @@ def write_reactions(file_name: Path, reaction_list: list[Reaction]) -> None:
             quoting=csv.QUOTE_MINIMAL,
             lineterminator="\n",
         )
-        writer.writerow(reaction_columns)
+        writer.writerow(reaction_header)
         for reaction in reaction_list:
             writer.writerow(
                 reaction.get_reactants()
@@ -1889,8 +1889,6 @@ def copy_coolant_files(source_dir: str | None = None) -> None:
         FileNotFoundError: If source directory doesn't exist or contains no .dat files.
 
     """
-    import shutil
-
     # Determine source directory
     if source_dir is None:
         source_dir = get_default_coolant_directory()

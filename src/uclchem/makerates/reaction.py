@@ -83,6 +83,25 @@ ER_REACTION_TYPES = {"ER", "ERDES"}
 TUNNELING_REACTION_TYPES = LH_REACTION_TYPES | ER_REACTION_TYPES
 
 
+reaction_header = [
+    "REACTANT 1",
+    "REACTANT 2",
+    "REACTANT 3",
+    "PRODUCT 1",
+    "PRODUCT 2",
+    "PRODUCT 3",
+    "PRODUCT 4",
+    "ALPHA",
+    "BETA",
+    "GAMMA",
+    "T_MIN",
+    "T_MAX",
+    "REDUCED_MASS",
+    "EXTRAPOLATE",
+    "EXOTHERMICITY",
+]
+
+
 class Reaction:
     """Representation of reactions."""
 
