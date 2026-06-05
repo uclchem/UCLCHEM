@@ -153,8 +153,8 @@ default_param_dictionary = {
     # 1D radiative transfer defaults
     "enable_radiative_transfer": False,
     "density_scale_radius": 0.05,
-    "density_power_index": 2.0,
-    "lum_star": 1000000.0,
+    "density_power_index": 2.4,
+    "lum_star": 1_000_000.0,
     "temp_star": 45000.0,
     # Advanced surface chemistry parameters
     "h2encounterdesorption": True,
@@ -178,6 +178,14 @@ default_param_dictionary = {
     # freq_rel_tol default is auto-computed at makerates time from LAMDA file deviations
     "freq_rel_tol": float(getattr(f2py_constants, "suggested_freq_rel_tol", 0.1)),
     "pop_rel_tol": 0.1,
+    # DVODE solver mode:
+    #   0 = ISTATE=1 always (original behaviour, fresh restart every output step)
+    #   1 = ISTATE=2 always (BDF history always continued, no guard)
+    #   2 = Hybrid/adaptive (default): ISTATE=2 unless abundance or temperature changed significantly
+    "solver_mode": 2,
+    # log₁₀ of per-step abundance change that triggers a forced ISTATE=1 restart in hybrid mode.
+    # Smaller = more frequent restarts (safer but less smooth); larger = fewer restarts (smoother but riskier).
+    "log_change_threshold": 1.0,
 }
 
 default_elements_to_check: list[str] = ["H", "N", "C", "O"]
