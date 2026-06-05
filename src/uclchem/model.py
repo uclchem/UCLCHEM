@@ -2360,7 +2360,6 @@ class Cloud(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2373,7 +2372,6 @@ class Cloud(AbstractModel):
             )
         super().__init__(
             param_dict=param_dict,
-            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
@@ -2479,7 +2477,6 @@ class Collapse(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2570,7 +2567,6 @@ class Collapse(AbstractModel):
 
         super().__init__(
             param_dict=param_dict,
-            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
@@ -2674,7 +2670,6 @@ class PrestellarCore(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2691,7 +2686,6 @@ class PrestellarCore(AbstractModel):
             )
         super().__init__(
             param_dict=param_dict,
-            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
@@ -2804,7 +2798,6 @@ class CShock(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2821,7 +2814,6 @@ class CShock(AbstractModel):
             )
         super().__init__(
             param_dict=param_dict,
-            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
@@ -2933,7 +2925,6 @@ class JShock(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -2950,7 +2941,6 @@ class JShock(AbstractModel):
             )
         super().__init__(
             param_dict=param_dict,
-            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
@@ -3082,7 +3072,6 @@ class Postprocess(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -3102,7 +3091,6 @@ class Postprocess(AbstractModel):
         # headroom for additional internal substeps.
         super().__init__(
             param_dict=param_dict,
-            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=int(1.5 * len(time_array)),
@@ -3281,7 +3269,6 @@ class Model(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        _out_species_list: list[str] | None = None,
     ):
         """Initiates the model first with AbstractModel.__init__(),
         then with any additional commands needed for the model.
@@ -3301,7 +3288,6 @@ class Model(AbstractModel):
         # headroom for additional internal substeps.
         super().__init__(
             param_dict=param_dict,
-            out_species_list=_out_species_list,
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=int(1.5 * len(time_array)),

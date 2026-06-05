@@ -424,7 +424,6 @@ def __cloud__(
 
     model_object = Cloud(
         param_dict=param_dict,
-        _out_species_list=out_species,
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
@@ -529,7 +528,6 @@ def __collapse__(
     model_object = Collapse(
         collapse=collapse,
         param_dict=param_dict,
-        _out_species_list=out_species,
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
@@ -638,7 +636,6 @@ def __prestellar_core__(
         temp_indx=temp_indx,
         max_temperature=max_temperature,
         param_dict=param_dict,
-        _out_species_list=out_species,
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
@@ -754,7 +751,6 @@ def __cshock__(
         timestep_factor=timestep_factor,
         minimum_temperature=minimum_temperature,
         param_dict=param_dict,
-        _out_species_list=out_species,
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
@@ -862,7 +858,6 @@ def __jshock__(
     model_object = JShock(
         shock_vel=shock_vel,
         param_dict=param_dict,
-        _out_species_list=out_species,
         starting_chemistry=starting_chemistry,
         timepoints=timepoints,
     )
