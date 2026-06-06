@@ -50,11 +50,11 @@ def _strip_comment(line: str) -> str:
     Parameters
     ----------
     line : str
-        line to remove comment of
+        _description_
 
     Returns
     -------
-    line : str
+    str
         Line with comments stripped, respecting character literals.
 
     """
@@ -65,11 +65,12 @@ def _strip_comment(line: str) -> str:
         if in_str:
             if ch == quote:
                 in_str = False
-        elif ch in {"'", '"'}:
-            in_str = True
-            quote = ch
-        elif ch == "!":
-            return line[:i]
+        else:
+            if ch in ("'", '"'):
+                in_str = True
+                quote = ch
+            elif ch == "!":
+                return line[:i]
     return line
 
 
@@ -78,21 +79,17 @@ def _extract_param_names(rhs: str) -> list[str]:
 
     Handles comma-separated names with optional array dimensions and initializers::
 
+        a = 1.0, b(10) = (/.../)  ->  ["a", "b"]
+
     Parameters
     ----------
     rhs : str
-        right hand side of ``PARAMETER ::`` declaration.
+        _description_
 
     Returns
     -------
-    result : list[str]
+    list[str]
         List of parameter names in lowercase.
-
-    Examples
-    --------
-    >>> param_names = _extract_param_names("a = 1.0, b(10) = (/.../)")
-    >>> print(param_names)
-    ['a', 'b']
 
     """
     names: list[str] = []
@@ -123,24 +120,22 @@ def _extract_param_names(rhs: str) -> list[str]:
     return result
 
 
-def parse_fortran_parameters(src_dir: str | Path) -> dict[str, list[str]]:
-    """Parse all ``.f90`` files in ``src_dir`` and return module-scope PARAMETERs.
+def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
+    """Parse all ``.f90`` files in *src_dir* and return module-scope PARAMETERs.
 
     Handles Fortran continuation lines (ending with ``&`` and starting next line with ``&``).
 
     Parameters
     ----------
-    src_dir : str | Path
-        path to fortran source directory.
+    src_dir : Path
+        _description_
 
     Returns
     -------
-    result : dict[str, list[str]]
-        Mapping of f2py module name (lowercase)
-        to sorted list of PARAMETER names.
+    dict[str, list[str]]
+        Mapping of f2py module name (lowercase) to sorted list of PARAMETER names.
 
     """
-    src_dir = Path(src_dir)
     known_modules = set(_MODULE_NAMES)
     result: dict[str, list[str]] = {}
 
@@ -150,7 +145,7 @@ def parse_fortran_parameters(src_dir: str | Path) -> dict[str, list[str]]:
         depth = 0  # nesting level; 0 = module scope
         continuation = ""  # accumulated continuation lines
 
-        with Path(f90).open(encoding="utf-8", errors="replace") as fh:
+        with open(f90, encoding="utf-8", errors="replace") as fh:
             for raw in fh:
                 line = _strip_comment(raw).rstrip()
 
@@ -195,43 +190,17 @@ def parse_fortran_parameters(src_dir: str | Path) -> dict[str, list[str]]:
     return result
 
 
-def _load_yaml(path: str | Path) -> dict:
-    """Load a yaml file to a dictionary.
-
-    Parameters
-    ----------
-    path : str | Path
-        Path to yaml file.
-
-    Returns
-    -------
-    dict
-        loaded dictionary.
-
-    """
-    with Path(path).open() as f:
+def _load_yaml(path: Path) -> dict:
+    with open(path) as f:
         return yaml.safe_load(f) or {}
 
 
 def _dump_yaml(data: dict) -> str:
-    """Dump yaml.
-
-    Parameters
-    ----------
-    data : dict
-        Data to dump.
-
-    Returns
-    -------
-    str
-        Dumped dictionary.
-
-    """
     return yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
 
 def _merge(existing: dict, detected: dict[str, list[str]]) -> dict:
-    """Merge ``detected`` into the ``fortran_parameters`` section of ``existing``.
+    """Merge *detected* into the ``fortran_parameters`` section of *existing*.
 
     The ``global`` key and any other hand-maintained keys not present in
     *detected* are left untouched.  Auto-detected module keys are replaced.
@@ -239,21 +208,21 @@ def _merge(existing: dict, detected: dict[str, list[str]]) -> dict:
     Parameters
     ----------
     existing : dict
-        Existing dictionary
+        _description_
     detected : dict[str, list[str]]
-        dictionary with key ``fortran_parameters`` to
-        merge into ``existing``.
+        _description_
 
     Returns
     -------
-    merged : dict
+    dict
         New merged dictionary.
 
     """
     merged = dict(existing)
     fp: dict = dict(merged.get("fortran_parameters", {}))
 
-    fp.update(detected)
+    for mod_name, names in detected.items():
+        fp[mod_name] = names
 
     merged["fortran_parameters"] = fp
     return merged
@@ -277,9 +246,29 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
-    detected = parse_fortran_parameters(_FORTRAN_SRC)
+    # Resolve source tree paths.  For editable installs _FORTRAN_SRC already
+    # points into the source tree.  For non-editable installs it points into
+    # site-packages where no .f90 files exist, so fall back to CWD-relative
+    # paths so the user can run the CLI from the repo root.
+    fortran_src = _FORTRAN_SRC
+    metadata_path = _METADATA_PATH
+    if not fortran_src.is_dir():
+        cwd = Path.cwd()
+        cwd_fortran_src = cwd / "src" / "fortran_src"
+        cwd_metadata = cwd / "src" / "uclchem" / "advanced" / "fortran_metadata.yaml"
+        if cwd_fortran_src.is_dir() and cwd_metadata.exists():
+            fortran_src = cwd_fortran_src
+            metadata_path = cwd_metadata
+        else:
+            sys.exit(
+                f"ERROR: Fortran source directory not found: {fortran_src}\n"
+                "Run this command from the repo root (the directory containing src/),\n"
+                "or use an editable install (pip install -e .)."
+            )
 
-    existing = _load_yaml(_METADATA_PATH)
+    detected = parse_fortran_parameters(fortran_src)
+
+    existing = _load_yaml(metadata_path)
     merged = _merge(existing, detected)
 
     old_text = _dump_yaml(existing)
@@ -301,9 +290,9 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(1)
         return
 
-    with Path(_METADATA_PATH).open("w") as f:
+    with open(metadata_path, "w") as f:
         f.write(new_text)
-    print(f"Updated {_METADATA_PATH}")
+    print(f"Updated {metadata_path}")
     for mod, names in sorted(detected.items()):
         print(f"  {mod}: {names}")
 

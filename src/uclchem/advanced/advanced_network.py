@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 from uclchemwrap import network as network_module
 
-from uclchem.makerates.reaction import Reaction
+from uclchem.makerates.reaction import Reaction, reaction_header
 from uclchem.makerates.species import Species
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
@@ -489,23 +489,7 @@ class NetworkState:
 
         for _, row in self._reactions_df.iterrows():
             # Create Reaction object from CSV row
-            reaction_row = [
-                row["Reactant 1"],
-                row["Reactant 2"],
-                row["Reactant 3"],
-                row["Product 1"],
-                row["Product 2"],
-                row["Product 3"],
-                row["Product 4"],
-                row["Alpha"],
-                row["Beta"],
-                row["Gamma"],
-                row["T_min"],
-                row["T_max"],
-                row["reduced_mass"],
-                row["extrapolate"],
-                row["exothermicity"],
-            ]
+            reaction_row = [row[field_name] for field_name in reaction_header]
             reaction = Reaction(reaction_row)
             self.reaction_list.append(reaction)
 
@@ -549,7 +533,7 @@ class NetworkState:
                 errors.append(
                     f"Species name mismatch at index {i}: '{memory_name}' in memory vs '{disk_name}' on disk"
                 )
-                if len(errors) > 5:  # Limit error output
+                if len(errors) > 5:  # noqa: PLR2004 # Limit error output
                     errors.append("... (truncated)")
                     break
 
@@ -565,7 +549,7 @@ class NetworkState:
                 errors.append(
                     f"Reaction {i} alpha mismatch: {memory_alpha} in memory vs {disk_alpha} on disk"
                 )
-                if len(errors) > 10:
+                if len(errors) > 10:  # noqa: PLR2004
                     errors.append("... (truncated)")
                     break
 

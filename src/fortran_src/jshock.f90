@@ -33,7 +33,7 @@ CONTAINS
         successFlag=0
         !Reset variables for python wrap.
         
-        cloudSize=(r_out-r_in)*pc
+        cloudSize=(rout-rin)*pc
 
         if (freefall) THEN
             write(*,*) "Cannot have freefall on during jshock"

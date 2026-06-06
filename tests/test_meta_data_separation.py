@@ -6,8 +6,6 @@ This module consolidates tests for:
 - Save/load/pickle roundtrip preservation
 """
 
-import pathlib
-
 import numpy as np
 import pytest
 import xarray as xr
@@ -45,7 +43,7 @@ def legacy_file_without_dstep(tmp_path):
         f"3.0e5,1e4,10.0,10.0,1.0,1.0,1e-17,1,{species_values}\n",
     ]
 
-    with pathlib.Path(legacy_file).open("w") as f:
+    with open(legacy_file, "w") as f:
         f.write(header)
         f.writelines(data)
 
@@ -71,16 +69,18 @@ def test_meta_survives_dataset_replace():
     """Scalar metadata should survive when _data Dataset is replaced."""
     m = Cloud()
     # public scalar attributes (not PHYSICAL_PARAMETERS or specname which are global)
-    m.run_type = "external"
-    m.custom_flag = 42
+    run_type_to_store = "local"
+    custom_flag_to_store = 42
+    m.run_type = run_type_to_store
+    m.custom_flag = custom_flag_to_store
 
     # Simulate dataset replacement (as happens on load/pickle)
     object.__setattr__(m, "_data", xr.Dataset())
 
-    assert m.run_type == "external", (
+    assert m.run_type == run_type_to_store, (
         "string metadata 'run_type' not preserved after _data replace"
     )
-    assert m.custom_flag == 42, (
+    assert m.custom_flag == custom_flag_to_store, (
         "Scalar metadata 'custom_flag' not preserved after _data replace"
     )
 
@@ -119,9 +119,6 @@ def test_pickle_roundtrip_preserves_meta_and_arrays():
     m.un_pickle()
 
     # metadata and arrays should be restored
-    assert hasattr(m, "some_meta"), (
-        "model object has no attribute 'some_meta' after pickle/unpickle"
-    )
     assert m.some_meta == "meta", (
         "String metadata 'some_meta' not preserved after pickle/unpickle"
     )
@@ -186,6 +183,8 @@ def test_physical_parameters_always_from_global():
         "zeta",
         "dstep",
         "parcel_radius",
+        "av_internal",
+        "radfield_internal",
     ], "PHYSICAL_PARAMETERS constant has been modified!"
     assert list(PHYSICAL_PARAMETERS) == list(CONST), "PHYSICAL_PARAMETERS mismatch"
     assert len(PHYSICAL_PARAMETERS) >= 8, (

@@ -14,7 +14,7 @@ def test_package_installation():
     )
 
     assert result.returncode == 0, (
-        f"Package installation failed:\n{result.stdout}\n{result.stderr}"
+        f"gfortran installation failed:\n{result.stdout}\n{result.stderr}"
     )
 
     # Install the package using pip

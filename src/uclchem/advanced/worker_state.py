@@ -13,7 +13,6 @@ it in a worker process before the model runs.
 """
 
 import contextlib
-import logging
 from typing import Any
 
 import numpy as np
@@ -22,13 +21,9 @@ from uclchemwrap import f2py_constants as f2py_constants_module
 from uclchemwrap import heating as heating_module
 from uclchemwrap import network as network_module
 
-from uclchem.advanced.constants import (
-    FILE_PATH_PARAMETERS,
-    FORTRAN_PARAMETERS,
-    INTERNAL_PARAMETERS,
-)
+from uclchem.advanced.runtime_network import RuntimeNetwork
 
-logger = logging.getLogger(__name__)
+from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
 
 # Module names mirroring GeneralSettings._discover_modules()
 _MODULE_NAMES = [
@@ -65,6 +60,8 @@ _MODULES_SKIP_0D = frozenset(
     }
 )
 
+_NETWORK_ARRAYS_TO_TAKE_SNAPSHOT_OF = RuntimeNetwork._ARRAYS_TO_CACHE
+
 
 def create_snapshot() -> dict[str, Any]:
     """Capture the current Fortran module state into a picklable dict.
@@ -78,7 +75,7 @@ def create_snapshot() -> dict[str, Any]:
       (excluding PARAMETERs, INTERNAL, FILE_PATH, and arrays).
     * ``"heating"`` – heating/cooling boolean arrays, scalars, and coolant
       configuration.
-    * ``"network"`` – reaction-rate and binding-energy arrays.
+    * ``"network"`` – Everything in :data:`_NETWORK_ARRAYS_TO_TAKE_SNAPSHOT_OF`.
 
     Returns
     -------
@@ -86,8 +83,6 @@ def create_snapshot() -> dict[str, Any]:
         Fully picklable dict suitable for passing to :func:`restore_snapshot`.
 
     """
-    logger.debug("Creating snapshot")
-
     snapshot: dict[str, Any] = {}
 
     # --- General settings (scalars only) ---
@@ -102,11 +97,7 @@ def create_snapshot() -> dict[str, Any]:
                 continue
             try:
                 value = getattr(mod, attr)
-            except Exception as e:
-                logger.exception(
-                    f"Exception occurred when trying to get attribute {attr} from module {mod_name}:\n",
-                    e,
-                )
+            except Exception:
                 continue
             if callable(value):
                 continue
@@ -148,7 +139,6 @@ def create_snapshot() -> dict[str, Any]:
         "coolantdatadir": np.copy(f2py_constants_module.coolantdatadir),
         "coolant_active": np.copy(f2py_constants_module.coolant_active),
     }
-
     # Coolant restart mode – accessor pattern varies between builds
     if hasattr(uclchemwrap, "get_coolant_restart_mode_wrap"):
         heating["coolant_restart_mode"] = int(uclchemwrap.get_coolant_restart_mode_wrap())
@@ -162,10 +152,8 @@ def create_snapshot() -> dict[str, Any]:
 
     # --- Network state (rate parameters + binding energies) ---
     snapshot["network"] = {
-        "alpha": np.copy(network_module.alpha),
-        "beta": np.copy(network_module.beta),
-        "gama": np.copy(network_module.gama),
-        "bindingenergy": np.copy(network_module.bindingenergy),
+        array_name: np.copy(getattr(network_module, array_name))
+        for array_name in _NETWORK_ARRAYS_TO_TAKE_SNAPSHOT_OF
     }
 
     return snapshot
@@ -182,7 +170,6 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
         Dict produced by :func:`create_snapshot`.
 
     """
-    logger.debug("Regenerating snapshot")
     # --- General settings ---
     # If uclchem hangs here, the last debug line printed shows which Fortran
     # PARAMETER is blocking. Add it to src/uclchem/advanced/fortran_metadata.yaml
@@ -193,7 +180,7 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
         mod = getattr(uclchemwrap, mod_name)
         for attr, value in settings_dict.items():
             # Uncomment next line to debug hangs (last printed line is the blocker):
-            # print(f"[DEBUG] setattr({mod_name}, {attr}, {value!r})", flush=True, file=sys.stderr) # noqa: ERA001
+            # print(f"[DEBUG] setattr({mod_name}, {attr}, {value!r})", flush=True, file=sys.stderr)
             with contextlib.suppress(AttributeError, TypeError):
                 # read-only or incompatible – skip silently
                 setattr(mod, attr, value)
@@ -225,35 +212,22 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
 
     # --- Network state ---
     net = snapshot.get("network", {})
-    if "alpha" in net:
-        np.copyto(network_module.alpha, net["alpha"])
-    if "beta" in net:
-        np.copyto(network_module.beta, net["beta"])
-    if "gama" in net:
-        np.copyto(network_module.gama, net["gama"])
-    if "bindingenergy" in net:
-        np.copyto(network_module.bindingenergy, net["bindingenergy"])
+    for array_name, array in net.items():
+        np.copyto(getattr(network_module, array_name), array)
 
 
 def _pool_initializer(snapshot: dict[str, Any]) -> None:
     """``mp.Pool`` initializer that restores advanced settings in each worker.
 
+    Usage::
+
+        snapshot = create_snapshot()
+        mp.Pool(N, initializer=_pool_initializer, initargs=(snapshot,))
+
     Parameters
     ----------
     snapshot : dict[str, Any]
-        Snapshot created by func:`create_snapshot`.
-
-    Examples
-    --------
-    >>> import multiprocessing as mp
-    >>>
-    >>> # Take a snapshot of the current Fortran module
-    >>> snapshot = create_snapshot()
-    >>>
-    >>> # A pool can then be initialized as
-    >>> n_workers = 2
-    >>> mp.Pool(n_workers, initializer=_pool_initializer, initargs=(snapshot,))
-    <multiprocessing.pool.Pool state=RUN pool_size=2>
+        _description_
 
     """
     restore_snapshot(snapshot)

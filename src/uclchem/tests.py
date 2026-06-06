@@ -4,11 +4,8 @@ Deprecated
 
 """
 
-import numpy as np
-
 import uclchem
 from uclchem.constants import default_elements_to_check
-from uclchem.utils import UCLCHEM_ROOT_DIR
 
 
 def test_ode_conservation(
@@ -35,16 +32,6 @@ def test_ode_conservation(
     if element_list is None:
         element_list = default_elements_to_check
 
-    species_array = np.loadtxt(
-        UCLCHEM_ROOT_DIR / "species.csv",
-        usecols=[0],
-        dtype=str,
-        skiprows=1,
-        unpack=True,
-        delimiter=",",
-        comments="%",
-    )
-    species_list = list(species_array)
     param_dict = {
         "endatfinaldensity": False,
         "freefall": True,
@@ -52,12 +39,11 @@ def test_ode_conservation(
         "initialtemp": 10.0,
         "finaldens": 1e5,
         "finaltime": 1.0e3,
-        "outspecies": len(species_list),
     }
-    model = uclchem.model.Cloud(param_dict, out_species=species_list)
+    model = uclchem.model.Cloud(param_dict)
     model.check_error()
 
-    physics_df, abundances_df = model.get_dataframes()
+    physics_df, abundances_df = model.get_dataframes(joined=False)
     result = uclchem.analysis.check_element_conservation(
         abundances_df,
         element_list=element_list,

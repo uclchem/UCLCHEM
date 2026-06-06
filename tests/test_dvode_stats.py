@@ -76,7 +76,7 @@ def test_stats_dataframe_columns():
         )
 
     # Test separate DataFrames
-    result = model.get_dataframes(with_stats=True)
+    result = model.get_dataframes(with_stats=True, joined=False)
     stats_df = result[-1]  # stats_df is the last element when with_stats=True
     expected_columns = ["Point"] + DVODE_STAT_NAMES
     assert list(stats_df.columns) == expected_columns, (

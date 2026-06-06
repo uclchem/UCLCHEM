@@ -49,7 +49,7 @@ CONTAINS
         postShock = .False.
 
         !check input sanity and set initial values
-        cloudSize=(r_out-r_in)*pc
+        cloudSize=(rout-rin)*pc
         IF (freefall) THEN
             write(*,*) "Cannot have freefall on during cshock"
             Write(*,*) "setting freefall=0 and continuing"

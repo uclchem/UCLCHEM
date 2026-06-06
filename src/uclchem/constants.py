@@ -16,7 +16,18 @@ reinstall UCLCHEM for these constants to update:
 # Import canonical values from compiled Fortran module
 from uclchemwrap import f2py_constants
 
+# Read canonical values from Fortran
+n_species = int(f2py_constants.nspec)
+n_reactions = int(f2py_constants.nreac)
+N_PHYSICAL_PARAMETERS = int(f2py_constants.n_physics_params)
+NCOOLANTS = int(f2py_constants.ncoolants)
+N_DVODE_STATS = int(f2py_constants.n_dvode_stats)
+N_TOTAL_LEVELS = int(f2py_constants.n_total_levels)
+N_SE_STATS_PER_COOLANT = int(f2py_constants.n_se_stats_per_coolant)
+
+
 # Canonical definition of physical parameters
+# This list defines the physical parameter array passed to Fortran
 PHYSICAL_PARAMETERS = [
     "Time",
     "Density",
@@ -27,16 +38,22 @@ PHYSICAL_PARAMETERS = [
     "zeta",
     "dstep",
     "parcel_radius",
+    "av_internal",
+    "radfield_internal",
 ]
 
-# Read canonical values from Fortran
-n_species = int(f2py_constants.nspec)
-n_reactions = int(f2py_constants.nreac)
-N_PHYSICAL_PARAMETERS = int(f2py_constants.n_physics_params)
-NCOOLANTS = int(f2py_constants.ncoolants)
-N_DVODE_STATS = int(f2py_constants.n_dvode_stats)
-N_TOTAL_LEVELS = int(f2py_constants.n_total_levels)
-N_SE_STATS_PER_COOLANT = int(f2py_constants.n_se_stats_per_coolant)
+
+ZETA_0 = 1.36e-17  # Standard cosmic ray ionization rate (1.3e-17 s-1)
+
+CENTIMETERS_PER_PARSEC = 3.086e18  # parsec in cgs
+SECONDS_PER_YEAR = 3.15569e7
+
+SPEED_OF_LIGHT_CGS = 2.99792458e10  # speed of light cm/s
+PLANCK_CONSTANT_CGS = 6.62606896e-27  # Planck constant erg*s
+
+HYDROGEN_MASS_CGS = 1.6736e-24  # hydrogen mass in g
+BOLTZMANN_CONSTANT_CGS = 1.38e-16  # Boltzmann constant in erg/K
+GRAVITATIONAL_CONSTANT_CGS = 6.67e-8  # gravitational constant in cgs
 
 # DVODE solver statistics names
 # Note: Stats are now written for EVERY solver attempt (including retries)
@@ -76,26 +93,14 @@ for i in range(NCOOLANTS):
 
 # Validate consistency
 if len(PHYSICAL_PARAMETERS) != N_PHYSICAL_PARAMETERS:
-    msg = (
+    raise RuntimeError(
         f"PHYSICAL_PARAMETERS length ({len(PHYSICAL_PARAMETERS)}) does not match "
         f"N_PHYSICAL_PARAMETERS from Fortran ({N_PHYSICAL_PARAMETERS}). "
         "This indicates a build inconsistency. Please run MakeRates and reinstall."
     )
-    raise RuntimeError(msg)
 
 # User-configurable constants (not from Fortran)
 TIMEPOINTS = 2000  # Number of timepoints for Fortran interface
-
-CENTIMETERS_PER_PARSEC = 3.086e18  # parsec in cgs
-SECONDS_PER_YEAR = 3.15569e7
-
-SPEED_OF_LIGHT_CGS = 2.99792458e10  # speed of light cm/s
-PLANCK_CONSTANT_CGS = 6.62606896e-27  # Planck constant erg*s
-
-# Physical constants matching collapse.f90
-HYDROGEN_MASS_CGS = 1.6736e-24  # hydrogen mass in g
-BOLTZMANN_CONSTANT_CGS = 1.38e-16  # Boltzmann constant in erg/K
-GRAVITATIONAL_CONSTANT_CGS = 6.67e-8  # gravitational constant in cgs
 
 # Default parameter dictionary
 # These are default values for model parameters, not network structure constants
@@ -107,8 +112,8 @@ default_param_dictionary = {
     "finaltime": 5000000.0,
     "radfield": 1.0,
     "zeta": 1.0,
-    "r_out": 0.05,
-    "r_in": 0.0,
+    "rout": 0.05,
+    "rin": 0.0,
     "baseav": 2.0,
     "points": 1,
     "bm0": 1.0,
@@ -175,8 +180,8 @@ default_param_dictionary = {
     # 1D radiative transfer defaults
     "enable_radiative_transfer": False,
     "density_scale_radius": 0.05,
-    "density_power_index": 2.0,
-    "lum_star": 1000000.0,
+    "density_power_index": 2.4,
+    "lum_star": 1_000_000.0,
     "temp_star": 45000.0,
     # Advanced surface chemistry parameters
     "h2encounterdesorption": True,
@@ -200,6 +205,14 @@ default_param_dictionary = {
     # freq_rel_tol default is auto-computed at makerates time from LAMDA file deviations
     "freq_rel_tol": float(getattr(f2py_constants, "suggested_freq_rel_tol", 0.1)),
     "pop_rel_tol": 0.1,
+    # DVODE solver mode:
+    #   0 = ISTATE=1 always (original behaviour, fresh restart every output step)
+    #   1 = ISTATE=2 always (BDF history always continued, no guard)
+    #   2 = Hybrid/adaptive (default): ISTATE=2 unless abundance or temperature changed significantly
+    "solver_mode": 2,
+    # log₁₀ of per-step abundance change that triggers a forced ISTATE=1 restart in hybrid mode.
+    # Smaller = more frequent restarts (safer but less smooth); larger = fewer restarts (smoother but riskier).
+    "log_change_threshold": 1.0,
 }
 
 default_elements_to_check: list[str] = ["H", "N", "C", "O"]

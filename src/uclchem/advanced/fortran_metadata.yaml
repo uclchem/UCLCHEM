@@ -23,6 +23,8 @@ fortran_parameters:
   - desorbreacs
   - deuvcrreacs
   - edreacs
+  - elem_count
+  - elem_names
   - enablechemicalheating
   - erdescorrespondingerreacs
   - erdesreacs
@@ -49,6 +51,7 @@ fortran_parameters:
   - n13c
   - n15n
   - n18o
+  - n_elem_tracked
   - nbulk
   - nc
   - nch3oh
@@ -147,8 +150,6 @@ fortran_parameters:
   - codestemp
   - nmasses
   - solidtemp
-  - tempa
-  - tempb
   - volctemp
   chemistry:
   - maxconsecutivefailures
@@ -182,6 +183,7 @@ fortran_parameters:
   - aunit
   - c
   - chem_init_error
+  - conservation_error
   - coolant_config_error
   - coolant_data_error
   - coolant_file_error
@@ -218,6 +220,7 @@ fortran_parameters:
   - t_cmb
   - uisrf
   - uisrf_uv
+  - zero_inner_radius_error
   f2py_constants:
   - coolantconversionfactors
   - coolantconversionmode
@@ -225,11 +228,14 @@ fortran_parameters:
   - coolantnames
   - coolantparentnames
   - max_coolants
+  - missing_value_float
+  - missing_value_integer
   - n_dvode_stats
   - n_physics_params
   - n_se_stats_per_coolant
   - n_total_levels
   - ncoolants
+  - no_reactant_or_product
   - nreac
   - nspec
   - suggested_freq_rel_tol
@@ -281,8 +287,10 @@ internal_parameters:
   - ckldiss
   - cklion
   network:
+  - elem_count
+  - elem_names
+  - n_elem_tracked
   - reactionrate
-  - storeratescomputation
   heating:
   - chemheating
   - coolingvalues
@@ -331,6 +339,7 @@ internal_parameters:
   - coolant_solver_error
   - coolant_config_error
   - negative_abundance_error
+  - conservation_error
 file_path_parameters:
   defaultparameters:
   - outputfile

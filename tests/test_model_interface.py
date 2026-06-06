@@ -1,25 +1,23 @@
+import numpy as np
 import pytest
 
 from uclchem.model import Cloud
 
 
-def test_invalid_out_species_name_raises():
-    # Use run_type='external' to prevent the model from running during init
-    with pytest.raises(ValueError):
-        Cloud(out_species=["NOT_A_SPECIES"], run_type="external")
+def test_out_species_on_oo_model_raises():
+    with pytest.raises(TypeError):
+        Cloud(out_species=["CO"], run_type="external")
 
 
-def test_non_string_out_species_entry_raises():
-    with pytest.raises(ValueError):
-        Cloud(out_species=[123], run_type="external")  # ty: ignore[invalid-argument-type]
+def test_get_final_abundances_for_species():
+    model = Cloud()
+    species = ["CO", "H2O", "#CH3"]
+    final_abundances = model.get_final_abundances_of_species(species)
 
+    assert len(final_abundances) == len(species)
 
-def test_incorrect_starting_chemistry_raises():
-    initial_model = Cloud()
-
-    assert initial_model.next_starting_chemistry_array is not None
-
-    initial_abundances = initial_model.next_starting_chemistry_array[:, :-1]
-
-    with pytest.raises(RuntimeError):
-        Cloud(starting_chemistry=initial_abundances)
+    phys_df, chem_df = model.get_dataframes(joined=False)
+    final_abundances_from_df = []
+    for index, spec in enumerate(species):
+        final_abundances_from_df.append(chem_df[spec].iloc[-1])
+    assert np.all(final_abundances_from_df == final_abundances)

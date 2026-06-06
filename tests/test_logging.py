@@ -55,9 +55,6 @@ def test_configure_file_logging(caplog):
         uclchem_logger.propagate = (
             True  # Have to set to True for caplog handler to find it
         )
-        logging.getLogger().handlers = (
-            uclchem_logger.handlers
-        )  # Set root logger same handler as UCLCHEM logger
 
         uclchem_logger.critical("Testing")
         lines = file.readlines()
