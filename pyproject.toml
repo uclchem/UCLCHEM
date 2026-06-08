@@ -18,7 +18,7 @@ maintainers = [
 license = {text = "MIT License"}
 description = "A package for the astrochemical modelling of gas-grain chemistries."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "h5py", "pandas", "numpy", "pyyaml", "matplotlib", "xarray", "pydantic>=2.0"
 ]
@@ -41,12 +41,29 @@ extend-exclude = ["notebooks/*.py"]
 line-length = 90
 
 [tool.ruff.lint]
-select = ["E", "F", "C", "I", "W", "D", "E", "ANN001", "ANN201", "B006", "ARG", "RUF100", "UP", "PLR6301", "DOC", "SIM", "PLR2004"]
+select = ["E", "F", "I", "W", "D", "E", "B", 
+    "ANN001", "ANN201", 
+    "ARG", 
+    "RUF100", 
+    "UP", 
+    "DOC", "D",
+    "SIM", "S", 
+    "EM", 
+    "ERA", 
+    "N", 
+    "PERF", 
+    "ICN", 
+    "TID", 
+    "PTH", 
+    "LOG", 
+    "TC", 
+    "PLC", "PLR", "PLE"
+]
 extend-ignore = [
     "E501", "E731", "E741", "E402", "E203", "E204",
     "SIM108", "SIM102", 
     "S603", "S607", "S404", "S602", 
-    "PLR2004", "PLR0911", "PLR1702", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR0914", "PLR0904"
+    "PLR0911", "PLR1702", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR0914", "PLR0904"
 ]
 pycodestyle.max-doc-length = 100
 pydocstyle.convention = 'numpy'
@@ -56,22 +73,22 @@ preview = true
 # E402: Module level import not at top of file - normal for notebook-derived files
 "notebooks/*.py" = ["E402"]
 "*/__init__.py" = ["F401"]
-"tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002", "DOC", "PLR2004"]
+"tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002", "DOC", "S101", "B011", "PLC", "PLR"]
 
 
 [tool.typos.files]
 extend-exclude = [
     # Do not bother checking DVODE
-    "**/dvode.f90",
+    "**/dvode.f90", 
 
     # Do not check databases
-    "**/*.dat",
-    "**/*.csv",
-    "**/*.html",
-    "**/*.in",
+    "**/*.dat", 
+    "**/*.csv", 
+    "**/*.html", 
+    "**/*.in", 
 
     # Do not check fortran metadata
-    "**/fortran_metadata.yaml",
+    "**/fortran_metadata.yaml", 
 
     # This file contains species names that might be picked up as typos
     "Makerates/enthalpy_routines/species_matching_session.yaml"]
@@ -99,7 +116,7 @@ extend-ignore-identifiers-re = [
 
     # Ignore f then one or two chars indicating elemental abundances, e.g. fO.
     "^f.{1,2}$",
-
+    
     # Ignore n and then one or two chars indicating index or density
     "^n.{1,2}$",
 ]
