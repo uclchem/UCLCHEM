@@ -724,7 +724,7 @@ class AbstractModel(ABC):
 
         Returns
         -------
-        _type_
+        AbstractModel
             Model object loaded from the file.
 
         """
@@ -989,7 +989,7 @@ class AbstractModel(ABC):
         with_stats: bool = False,
         with_level_populations: bool = False,
         with_se_stats: bool = False,
-    ) -> pd.DataFrame | tuple[pd.DataFrame, ...]:  # Returns joined DF or tuple of DFs
+    ) -> tuple[pd.DataFrame, ...]:
         """Converts the model physics and chemical_abun arrays from numpy to pandas arrays.
 
         Parameters
@@ -1121,6 +1121,33 @@ class AbstractModel(ABC):
         """Return all model data as a single horizontally-joined DataFrame.
 
         Convenience wrapper around :meth:`get_dataframes` with ``joined=True``.
+
+        Parameters
+        ----------
+        point : int | None
+            Integer referring to which point of the UCLCHEM model to return.
+            If None, returns data for all points with a 'Point' column. Defaults to None.
+        with_rate_constants : bool
+            Flag on whether to include reaction rate constants in the joined dataframe.
+            Defaults to False.
+        with_heating : bool
+            Flag on whether to include heating/cooling rates in the joined dataframe.
+            Defaults to False.
+        with_stats : bool
+            Flag on whether to include DVODE solver statistics in the joined dataframe.
+            Defaults to False.
+        with_level_populations : bool
+            Flag on whether to include coolant level populations in the joined dataframe.
+            Defaults to False.
+        with_se_stats : bool
+            Flag on whether to include SE solver statistics in the joined dataframe.
+            Defaults to False.
+
+        Returns
+        -------
+        pd.DataFrame
+            Single DataFrame with physics, abundances, and any optional columns joined horizontally.
+
         """
         return self.get_dataframes(
             point=point,
@@ -1438,10 +1465,8 @@ class AbstractModel(ABC):
             Grid point index. Default = 0.
         legend : bool
             Whether to add a legend to the plot. Default = True.
-        plot_kwargs : dict[str, Any]
-            keyword arguments passed to `ax.plot`.
-        **plot_kwargs : _type_
-            _description_
+        **plot_kwargs : dict[str, Any]
+            Additional keyword arguments passed to ``ax.plot``.
 
         Returns
         -------
@@ -1467,8 +1492,8 @@ class AbstractModel(ABC):
             If the model was read.
         ValueError
             If the model's run_type is invalid.
-        __UnknownError__
-            _description_
+        Exception
+            Re-raised if writing the output file or abundance save file fails.
 
         """
         if self.was_read:
@@ -2072,7 +2097,7 @@ class AbstractModel(ABC):
         Raises
         ------
         RuntimeError
-            _description_
+            If ``on_negative_abundances='raise'`` and negative abundances are detected.
 
         """
         if self._on_negative_abundances is None:
@@ -2604,30 +2629,35 @@ class Cloud(AbstractModel):
         Parameters
         ----------
         param_dict : dict | None
-            _description_ (Default value = None)
+            Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
+            any key not provided. Defaults to None.
         out_species : list[str] | None
-            _description_ (Default value = _UNSET)
+            Not supported on OO model classes; passing any value raises ``TypeError``.
+            Use the functional interface to filter output species. Defaults to _UNSET.
         starting_chemistry : np.ndarray | None
-            _description_ (Default value = None)
+            Array of starting abundances for each species. If None, uses network defaults.
+            Defaults to None.
         previous_model : AbstractModel | None
-            _description_ (Default value = None)
+            A completed model whose final abundances are used as the starting chemistry
+            for this model. Defaults to None.
         timepoints : int
-            _description_ (Default value = TIMEPOINTS)
+            Number of output timesteps to store. Defaults to TIMEPOINTS.
         debug : bool
-            _description_ (Default value = False)
+            If True, print extra debug information. Defaults to False.
         read_file : str
-            _description_ (Default value = None)
+            Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
-            _description_ (Default value = 'managed')
+            How the Fortran model is executed. ``'managed'`` runs automatically on init;
+            ``'external'`` defers running to the caller. Defaults to 'managed'.
         on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
-            _description_ (Default value = 'warning')
+            Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
-            _description_ (Default value = 'raise')
+            Action when the Fortran solver returns an error flag. Defaults to 'raise'.
 
         Raises
         ------
         TypeError
-            _description_
+            If ``out_species`` is passed (not supported on OO model classes).
 
         """
         if out_species is not _UNSET:
@@ -2762,27 +2792,32 @@ class Collapse(AbstractModel):
         Parameters
         ----------
         collapse : str | int | CollapseMode
-            _description_ (Default value = CollapseMode.BE1_1)
+            Collapse mode to use (e.g. ``CollapseMode.BE1_1``). Defaults to CollapseMode.BE1_1.
         param_dict : dict | None
-            _description_ (Default value = None)
+            Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
+            any key not provided. Defaults to None.
         out_species : list[str] | None
-            _description_ (Default value = _UNSET)
+            Not supported on OO model classes; passing any value raises ``TypeError``.
+            Use the functional interface to filter output species. Defaults to _UNSET.
         starting_chemistry : np.ndarray | None
-            _description_ (Default value = None)
+            Array of starting abundances for each species. If None, uses network defaults.
+            Defaults to None.
         previous_model : AbstractModel | None
-            _description_ (Default value = None)
+            A completed model whose final abundances are used as the starting chemistry
+            for this model. Defaults to None.
         timepoints : int
-            _description_ (Default value = TIMEPOINTS)
+            Number of output timesteps to store. Defaults to TIMEPOINTS.
         debug : bool
-            _description_ (Default value = False)
+            If True, print extra debug information. Defaults to False.
         read_file : str
-            _description_ (Default value = None)
+            Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
-            _description_ (Default value = 'managed')
+            How the Fortran model is executed. ``'managed'`` runs automatically on init;
+            ``'external'`` defers running to the caller. Defaults to 'managed'.
         on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
-            _description_ (Default value = 'warning')
+            Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
-            _description_ (Default value = 'raise')
+            Action when the Fortran solver returns an error flag. Defaults to 'raise'.
 
         Raises
         ------
@@ -2796,7 +2831,7 @@ class Collapse(AbstractModel):
             If ``endAtFinaldensity`` is False, but ``finalTime`` is less than
             the duration of the collapse for the collapse mode.
         TypeError
-            _description_
+            If ``out_species`` is passed (not supported on OO model classes).
 
         """
         if out_species is not _UNSET:
@@ -3000,36 +3035,42 @@ class PrestellarCore(AbstractModel):
         Parameters
         ----------
         temp_indx : int
-            _description_ (Default value = 1)
+            Index of the temperature column in the physics array to use for hot-core heating.
+            Defaults to 1.
         max_temperature : float
-            _description_ (Default value = 300.0)
+            Maximum temperature (K) the hot core reaches. Defaults to 300.0.
         param_dict : dict | None
-            _description_ (Default value = None)
+            Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
+            any key not provided. Defaults to None.
         out_species : list[str] | None
-            _description_ (Default value = _UNSET)
+            Not supported on OO model classes; passing any value raises ``TypeError``.
+            Use the functional interface to filter output species. Defaults to _UNSET.
         starting_chemistry : np.ndarray | None
-            _description_ (Default value = None)
+            Array of starting abundances for each species. If None, uses network defaults.
+            Defaults to None.
         previous_model : AbstractModel | None
-            _description_ (Default value = None)
+            A completed model whose final abundances are used as the starting chemistry
+            for this model. Defaults to None.
         timepoints : int
-            _description_ (Default value = TIMEPOINTS)
+            Number of output timesteps to store. Defaults to TIMEPOINTS.
         debug : bool
-            _description_ (Default value = False)
+            If True, print extra debug information. Defaults to False.
         read_file : str
-            _description_ (Default value = None)
+            Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
-            _description_ (Default value = 'managed')
+            How the Fortran model is executed. ``'managed'`` runs automatically on init;
+            ``'external'`` defers running to the caller. Defaults to 'managed'.
         on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
-            _description_ (Default value = 'warning')
+            Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
-            _description_ (Default value = 'raise')
+            Action when the Fortran solver returns an error flag. Defaults to 'raise'.
 
         Raises
         ------
         ValueError
             If `read_file` is None, but `temp_idx` or `max_temperature` is also None.
         TypeError
-            _description_
+            If ``out_species`` is passed (not supported on OO model classes).
 
         """
         if out_species is not _UNSET:
@@ -3173,38 +3214,44 @@ class CShock(AbstractModel):
         Parameters
         ----------
         shock_vel : float
-            _description_ (Default value = 10.0)
+            Shock velocity in km/s. Defaults to 10.0.
         timestep_factor : float
-            _description_ (Default value = 0.01)
+            Factor controlling the size of individual timesteps relative to the shock
+            dissipation time. Defaults to 0.01.
         minimum_temperature : float
-            _description_ (Default value = 0.0)
+            Minimum post-shock temperature (K) allowed during cooling. Defaults to 0.0.
         param_dict : dict | None
-            _description_ (Default value = None)
+            Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
+            any key not provided. Defaults to None.
         out_species : list[str] | None
-            _description_ (Default value = _UNSET)
+            Not supported on OO model classes; passing any value raises ``TypeError``.
+            Use the functional interface to filter output species. Defaults to _UNSET.
         starting_chemistry : np.ndarray | None
-            _description_ (Default value = None)
+            Array of starting abundances for each species. If None, uses network defaults.
+            Defaults to None.
         previous_model : AbstractModel | None
-            _description_ (Default value = None)
+            A completed model whose final abundances are used as the starting chemistry
+            for this model. Defaults to None.
         timepoints : int
-            _description_ (Default value = TIMEPOINTS)
+            Number of output timesteps to store. Defaults to TIMEPOINTS.
         debug : bool
-            _description_ (Default value = False)
+            If True, print extra debug information. Defaults to False.
         read_file : str
-            _description_ (Default value = None)
+            Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
-            _description_ (Default value = 'managed')
+            How the Fortran model is executed. ``'managed'`` runs automatically on init;
+            ``'external'`` defers running to the caller. Defaults to 'managed'.
         on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
-            _description_ (Default value = 'warning')
+            Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
-            _description_ (Default value = 'raise')
+            Action when the Fortran solver returns an error flag. Defaults to 'raise'.
 
         Raises
         ------
         ValueError
             If `read_file` is None, but `shock_vel` is also not set.
         TypeError
-            _description_
+            If ``out_species`` is passed (not supported on OO model classes).
 
         """
         if out_species is not _UNSET:
@@ -3344,34 +3391,39 @@ class JShock(AbstractModel):
         Parameters
         ----------
         shock_vel : float
-            _description_ (Default value = 10.0)
+            Shock velocity in km/s. Defaults to 10.0.
         param_dict : dict | None
-            _description_ (Default value = None)
+            Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
+            any key not provided. Defaults to None.
         out_species : list[str] | None
-            _description_ (Default value = _UNSET)
+            Not supported on OO model classes; passing any value raises ``TypeError``.
+            Use the functional interface to filter output species. Defaults to _UNSET.
         starting_chemistry : np.ndarray | None
-            _description_ (Default value = None)
+            Array of starting abundances for each species. If None, uses network defaults.
+            Defaults to None.
         previous_model : AbstractModel | None
-            _description_ (Default value = None)
+            A completed model whose final abundances are used as the starting chemistry
+            for this model. Defaults to None.
         timepoints : int
-            _description_ (Default value = TIMEPOINTS)
+            Number of output timesteps to store. Defaults to TIMEPOINTS.
         debug : bool
-            _description_ (Default value = False)
+            If True, print extra debug information. Defaults to False.
         read_file : str
-            _description_ (Default value = None)
+            Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
-            _description_ (Default value = 'managed')
+            How the Fortran model is executed. ``'managed'`` runs automatically on init;
+            ``'external'`` defers running to the caller. Defaults to 'managed'.
         on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
-            _description_ (Default value = 'warning')
+            Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
-            _description_ (Default value = 'raise')
+            Action when the Fortran solver returns an error flag. Defaults to 'raise'.
 
         Raises
         ------
         ValueError
             If `read_file` is None, but `shock_vel` is also not set.
         TypeError
-            _description_
+            If ``out_species`` is passed (not supported on OO model classes).
 
         """
         if out_species is not _UNSET:
@@ -3539,45 +3591,52 @@ class Postprocess(AbstractModel):
         Parameters
         ----------
         param_dict : dict | None
-            _description_ (Default value = None)
+            Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
+            any key not provided. Defaults to None.
         out_species : list[str] | None
-            _description_ (Default value = _UNSET)
+            Not supported on OO model classes; passing any value raises ``TypeError``.
+            Use the functional interface to filter output species. Defaults to _UNSET.
         starting_chemistry : np.ndarray | None
-            _description_ (Default value = None)
+            Array of starting abundances for each species. If None, uses network defaults.
+            Defaults to None.
         previous_model : AbstractModel | None
-            _description_ (Default value = None)
+            A completed model whose final abundances are used as the starting chemistry
+            for this model. Defaults to None.
         time_array : np.ndarray | None
-            _description_ (Default value = None)
+            Time grid (years) at which model outputs are stored. Defaults to None.
         density_array : np.ndarray | None
-            _description_ (Default value = None)
+            Number density (cm⁻³) at each timestep. Defaults to None.
         gas_temperature_array : np.ndarray | None
-            _description_ (Default value = None)
+            Gas temperature (K) at each timestep. Defaults to None.
         dust_temperature_array : np.ndarray | None
-            _description_ (Default value = None)
+            Dust temperature (K) at each timestep. Defaults to None.
         zeta_array : np.ndarray | None
-            _description_ (Default value = None)
+            Cosmic-ray ionisation rate (s⁻¹) at each timestep. Defaults to None.
         radfield_array : np.ndarray | None
-            _description_ (Default value = None)
+            UV radiation field strength (Habing units) at each timestep. Defaults to None.
         visual_extinction_array : np.ndarray | None
-            _description_ (Default value = None)
+            Visual extinction (mag) at each timestep. Mutually exclusive with
+            ``coldens_H_array``. Defaults to None.
         coldens_H_array : np.ndarray | None
-            _description_ (Default value = None)
+            Atomic hydrogen column density (cm⁻²) at each timestep. Mutually exclusive with
+            ``visual_extinction_array``. Defaults to None.
         coldens_H2_array : np.ndarray | None
-            _description_ (Default value = None)
+            Molecular hydrogen column density (cm⁻²) at each timestep. Defaults to None.
         coldens_CO_array : np.ndarray | None
-            _description_ (Default value = None)
+            CO column density (cm⁻²) at each timestep. Defaults to None.
         coldens_C_array : np.ndarray | None
-            _description_ (Default value = None)
+            Atomic carbon column density (cm⁻²) at each timestep. Defaults to None.
         debug : bool
-            _description_ (Default value = False)
+            If True, print extra debug information. Defaults to False.
         read_file : str | None
-            _description_ (Default value = None)
+            Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
-            _description_ (Default value = 'managed')
+            How the Fortran model is executed. ``'managed'`` runs automatically on init;
+            ``'external'`` defers running to the caller. Defaults to 'managed'.
         on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
-            _description_ (Default value = 'warning')
+            Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
-            _description_ (Default value = 'raise')
+            Action when the Fortran solver returns an error flag. Defaults to 'raise'.
 
         Raises
         ------
@@ -3586,7 +3645,7 @@ class Postprocess(AbstractModel):
         ValueError
             If `read_file` is None, but `time_array` is not an array.
         TypeError
-            _description_
+            If ``out_species`` is passed (not supported on OO model classes).
 
         """
         if out_species is not _UNSET:
@@ -3800,35 +3859,40 @@ class Model(AbstractModel):
         Parameters
         ----------
         param_dict : dict | None
-            _description_ (Default value = None)
+            Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
+            any key not provided. Defaults to None.
         out_species : list[str] | None
-            _description_ (Default value = _UNSET)
+            Not supported on OO model classes; passing any value raises ``TypeError``.
+            Use the functional interface to filter output species. Defaults to _UNSET.
         starting_chemistry : np.ndarray | None
-            _description_ (Default value = None)
+            Array of starting abundances for each species. If None, uses network defaults.
+            Defaults to None.
         previous_model : AbstractModel | None
-            _description_ (Default value = None)
+            A completed model whose final abundances are used as the starting chemistry
+            for this model. Defaults to None.
         time_array : np.ndarray | None
-            _description_ (Default value = None)
+            Time grid (years) at which model outputs are stored. Defaults to None.
         density_array : np.ndarray | None
-            _description_ (Default value = None)
+            Number density (cm⁻³) at each timestep. Defaults to None.
         gas_temperature_array : np.ndarray | None
-            _description_ (Default value = None)
+            Gas temperature (K) at each timestep. Defaults to None.
         dust_temperature_array : np.ndarray | None
-            _description_ (Default value = None)
+            Dust temperature (K) at each timestep. Defaults to None.
         zeta_array : np.ndarray | None
-            _description_ (Default value = None)
+            Cosmic-ray ionisation rate (s⁻¹) at each timestep. Defaults to None.
         radfield_array : np.ndarray | None
-            _description_ (Default value = None)
+            UV radiation field strength (Habing units) at each timestep. Defaults to None.
         debug : bool
-            _description_ (Default value = False)
+            If True, print extra debug information. Defaults to False.
         read_file : str | None
-            _description_ (Default value = None)
+            Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
-            _description_ (Default value = 'managed')
+            How the Fortran model is executed. ``'managed'`` runs automatically on init;
+            ``'external'`` defers running to the caller. Defaults to 'managed'.
         on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
-            _description_ (Default value = 'warning')
+            Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
-            _description_ (Default value = 'raise')
+            Action when the Fortran solver returns an error flag. Defaults to 'raise'.
 
         Raises
         ------
@@ -3837,7 +3901,7 @@ class Model(AbstractModel):
         ValueError
             If `read_file` is None, but `time_array` is not an array.
         TypeError
-            _description_
+            If ``out_species`` is passed (not supported on OO model classes).
 
         """
         if out_species is not _UNSET:
@@ -4321,8 +4385,8 @@ class GridRunner:
 
     Parameters
     ----------
-    model_type : str of model class to run
-        _description_
+    model_type : str
+        Name of the registered model class to run (e.g. ``"Cloud"``, ``"Collapse"``).
     full_parameters : Dict
         The dictionary passed to GridRunner should nest into it,
         the param_dict argument that would be passed to any other model, with the addition
@@ -4463,7 +4527,7 @@ class GridRunner:
         Parameters
         ----------
         msg : str
-            _description_
+            Message text to append to the log file.
 
         """
         if self._main_log is None:

@@ -543,9 +543,9 @@ def _get_species_rates(
     np.ndarray
         Array containing the rate of every reaction specified by reac_indxs
     transfer
-        _description_
+        Total transfer rate between surface and bulk ice.
     swap
-        _description_
+        Total swap rate for individual swapping between surface and bulk ice.
     bulk_layers
         number of monolayers of bulk ice
 
@@ -605,8 +605,8 @@ def _get_rates_of_change(
 
     Returns
     -------
-    _type_
-        _description_
+    list[float]
+        Contribution to the rate of change of `species` from each reaction in `reactions`.
 
     Raises
     ------
