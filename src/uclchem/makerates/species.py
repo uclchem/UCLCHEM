@@ -1047,6 +1047,17 @@ class Species:
         else:
             return NotImplemented
 
+    def __hash__(self) -> int:
+        """Hash based on species name, consistent with __eq__.
+
+        Returns
+        -------
+        int
+            Hash of the species name.
+
+        """
+        return hash(self.get_name())
+
     def __lt__(self, other: Species) -> bool:
         """Compare the mass of the species.
 
