@@ -790,7 +790,7 @@ CONTAINS
                 CALL resetConservationBaselineForPoint(dstep)
                 CALL resetDVODEForNewPoint()
 
-                ! Outermost shell has no outer neighbour; initialise to zero
+                ! Outermost shell has no outer neighbor; initialize to zero
                 IF (dstep .eq. points) outer_coldens_for_current_step = 0.0_dp
 
                 ! -- time integration for this parcel --------------------------------
@@ -851,7 +851,7 @@ CONTAINS
                     END IF
 
                     IF (.NOT. parcelDone) THEN
-                        ! Load outer neighbour's coldens at this timestep for the AV accumulation
+                        ! Load outer neighbor's coldens at this timestep for the AV accumulation
                         IF (dstep .lt. points) &
                             outer_coldens_for_current_step = coldens_history(dtime_local)
 

@@ -68,13 +68,15 @@ Usage Patterns
    offers more flexibility. Use the functional API when you need backward compatibility or
    prefer a simpler interface.
 
-See Also:
---------
+**See Also:**
+
 - :mod:`uclchem.model` - Object-oriented model classes
 - :mod:`uclchem.utils` - Utility functions including ``check_error()``
 - :doc:`/tutorials/index` - Interactive tutorials for both APIs
 
 """
+
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -91,12 +93,12 @@ from uclchem.model import (
 
 
 def __validate_functional_api_params__(
-    param_dict: dict,
+    param_dict: dict | None,
     return_array: bool,
     return_dataframe: bool,
     return_rate_constants: bool,
     return_heating: bool,
-    starting_chemistry: np.ndarray,  # noqa: ARG001
+    starting_chemistry: np.ndarray | None,  # noqa: ARG001
     return_stats: bool = False,
 ) -> None:
     """Validate functional API specific constraints.
@@ -105,7 +107,7 @@ def __validate_functional_api_params__(
 
     Parameters
     ----------
-    param_dict : dict
+    param_dict : dict | None
         The parameter dictionary
     return_array : bool
         Whether arrays are being returned
@@ -115,7 +117,7 @@ def __validate_functional_api_params__(
         Whether rate constants are being returned
     return_heating : bool
         Whether heating arrays are being returned
-    starting_chemistry : np.ndarray
+    starting_chemistry : np.ndarray | None
         Starting chemistry array if provided
     return_stats : bool
         Whether DVODE statistics should be returned. Default = False.
@@ -140,22 +142,28 @@ def __validate_functional_api_params__(
     if memory_return_requested:
         file_params = ["outputFile", "abundSaveFile", "abundLoadFile", "columnFile"]
         if param_dict is not None and any(k in param_dict for k in file_params):
-            raise RuntimeError(
+            msg = (
                 "return_array or return_dataframe cannot be used if any output or input file is specified. "
                 "These parameters are mutually exclusive: use either file I/O (outputFile, abundSaveFile, etc.) "
                 "OR in-memory returns (return_array, return_dataframe), but not both."
             )
+            raise RuntimeError(msg)
 
 
 def _write_column_file(
-    model_object: AbstractModel, original_param_dict: dict, out_species: list[str] | None
+    model_object: AbstractModel,
+    original_param_dict: dict | None,
+    out_species: list[str] | None,
 ) -> None:
 
+    if original_param_dict is None:
+        return
+
     write_column_file = False
-    for key in original_param_dict:
+    for key, value in original_param_dict.items():
         if key.lower() == "columnfile":
             write_column_file = True
-            columnfile = original_param_dict[key]
+            columnfile = value
     if not write_column_file:
         return
 
@@ -175,7 +183,7 @@ def __functional_return__(
     return_stats: bool = False,
     out_species: list[str] | None = None,
 ) -> tuple:
-    """Return function that takes in the object that was modelled and returns the values.
+    """Return function that takes in the object that was modeled and returns the values.
 
     based on the specified booleans.
 
@@ -241,14 +249,15 @@ def __functional_return__(
                 (if return_heating=True)
             - dissipation_time (float): dissipation time in years
                 (if model_object contains the dissipation_time attribute)
-            - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
-                in the format uclchem needs in order to perform an additional run after the initial model
+            - abundanceStart (np.ndarray): array containing the chemical abundances of
+                the last timestep in the format uclchem needs in order to perform an
+                additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
     out_species_abundances_array = model_object.get_final_abundances_of_species(
-        out_species
+        out_species or []
     )
     if return_dataframe:
         # If multiple spatial points are present, return DataFrames concatenated across points
@@ -306,8 +315,8 @@ def __functional_return__(
                 with_heating=return_heating,
                 with_stats=return_stats,
             )
-            phys_df = result_dfs[0]
-            chem_df = result_dfs[1]
+            phys_df = cast("pd.DataFrame", result_dfs[0])
+            chem_df = cast("pd.DataFrame", result_dfs[1])
             idx = 2
             if return_rate_constants and len(result_dfs) > idx:
                 rate_constants_df = result_dfs[idx]
@@ -321,7 +330,7 @@ def __functional_return__(
             chem_df["Point"] = 1
 
         # Build result tuple - stats only included when requested (for backward compatibility)
-        result = [phys_df, chem_df, rate_constants_df, heating_df]
+        result: list[Any] = [phys_df, chem_df, rate_constants_df, heating_df]
         if return_stats:
             result.append(stats_df)
         if hasattr(model_object, "dissipation_time"):
@@ -344,16 +353,15 @@ def __functional_return__(
         result.append(model_object.next_starting_chemistry_array)
         result.append(model_object.success_flag)
         return tuple(result)
+    # Disk mode with file output
+    # FIXED format: [success_flag, abundances] OR [success_flag, dissipation_time, abundances]
+    elif hasattr(model_object, "dissipation_time"):
+        return (
+            model_object.success_flag,
+            model_object.dissipation_time,
+        ) + tuple(out_species_abundances_array)
     else:
-        # Disk mode with file output
-        # FIXED format: [success_flag, abundances] OR [success_flag, dissipation_time, abundances]
-        if hasattr(model_object, "dissipation_time"):
-            return (
-                model_object.success_flag,
-                model_object.dissipation_time,
-            ) + tuple(out_species_abundances_array)
-        else:
-            return (model_object.success_flag,) + tuple(out_species_abundances_array)
+        return (model_object.success_flag,) + tuple(out_species_abundances_array)
 
 
 def __cloud__(
@@ -409,15 +417,17 @@ def __cloud__(
                 If the `out_species` parameter is provided, the remaining elements of this list
                 will be the final abundances of the species in out_species.
         if return_array is True:
-            - physicsArray (np.ndarray): array containing the physical outputs for each written timestep
+            - physicsArray (np.ndarray): array containing the physical outputs
+                for each written timestep
             - chemicalAbunArray (np.ndarray): array containing the chemical abundances for
                 each written timestep
-            - ratesArray (np.ndarray | None): array containing reaction rate constants for each timestep
-                (if return_rate_constants=True)
-            - heatArray (np.ndarray | None): array containing heating/cooling terms for each timestep
-                (if return_heating=True)
-            - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
-                in the format uclchem needs in order to perform an additional run after the initial model
+            - ratesArray (np.ndarray | None): array containing reaction rate constants
+                for each timestep (if return_rate_constants=True)
+            - heatArray (np.ndarray | None): array containing heating/cooling terms
+                for each timestep (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of
+                the last timestep in the format uclchem needs in order to perform an
+                additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
                 Can be passed to `uclchem.utils.check_error()` to see more details.
         if return_dataframe is True:
@@ -425,13 +435,13 @@ def __cloud__(
                 for each written timestep
             - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances
                 for each written timestep
-            - ratesConstantsDF (pd.DataFrame or None): DataFrame containing reaction rate constants
-                for each timestep (if return_rate_constants=True)
-            - heatingDF (pd.DataFrame or None): DataFrame containing heating/cooling terms
-                for each timestep (if return_heating=True)
+            - ratesConstantsDF (pd.DataFrame or None): DataFrame containing reaction
+                rate constants for each timestep (if return_rate_constants=True)
+            - heatingDF (pd.DataFrame or None): DataFrame containing heating/cooling
+                terms for each timestep (if return_heating=True)
             - abundanceStart (np.ndarray): array containing the chemical abundances
-                of the last timestep in the format uclchem needs in order to perform an additional
-                run after the initial model
+                of the last timestep in the format uclchem needs in order to perform
+                an additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
@@ -526,15 +536,17 @@ def __collapse__(
                 If the `out_species` parameter is provided, the remaining elements of this list
                 will be the final abundances of the species in out_species.
         if return_array is True:
-            - physicsArray (np.ndarray): array containing the physical outputs for each written timestep
+            - physicsArray (np.ndarray): array containing the physical outputs
+                for each written timestep
             - chemicalAbunArray (np.ndarray): array containing the chemical abundances
                 for each written timestep
-            - ratesArray (np.ndarray | None): array containing reaction rate constants for each timestep
-                (if return_rate_constants=True)
-            - heatArray (np.ndarray | None): array containing heating/cooling terms for each timestep
-                (if return_heating=True)
-            - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
-                in the format uclchem needs in order to perform an additional run after the initial model
+            - ratesArray (np.ndarray | None): array containing reaction rate constants
+                for each timestep (if return_rate_constants=True)
+            - heatArray (np.ndarray | None): array containing heating/cooling terms
+                for each timestep (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of
+                the last timestep in the format uclchem needs in order to perform an
+                additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
                 Can be passed to `uclchem.utils.check_error()` to see more details.
         if return_dataframe is True:
@@ -542,12 +554,13 @@ def __collapse__(
                 for each written timestep
             - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances
                 for each written timestep
-            - rateConstantsDF (pd.DataFrame or None): DataFrame containing reaction rate constants
-                for each timestep (if return_rate_constants=True)
-            - heatingDF (pd.DataFrame or None): DataFrame containing heating/cooling terms
-                for each timestep (if return_heating=True)
-            - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
-                in the format uclchem needs in order to perform an additional run after the initial model
+            - rateConstantsDF (pd.DataFrame or None): DataFrame containing reaction
+                rate constants for each timestep (if return_rate_constants=True)
+            - heatingDF (pd.DataFrame or None): DataFrame containing heating/cooling
+                terms for each timestep (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of
+                the last timestep in the format uclchem needs in order to perform an
+                additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
@@ -605,7 +618,8 @@ def __prestellar_core__(
     Parameters
     ----------
     temp_index : int
-        Used to select the mass of prestellar core. 1=1Msun,2=5, 3=10, 4=15, 5=25,6=60] (Default value = 1)
+        Used to select the mass of prestellar core. 1=1Msun,2=5, 3=10, 4=15, 5=25,6=60.
+        Default value = 1.
     max_temperature : float
         Value at which gas temperature will stop increasing. (Default value = 300.0)
     param_dict : dict | None
@@ -643,32 +657,34 @@ def __prestellar_core__(
     if return_array and return_dataframe are False
         - A list where the first element is always an integer which is negative if the model failed
                 to run and can be sent to `uclchem.utils.check_error()` to see more details.
-                If the `out_species` parametere is provided, the remaining elements of this list
+                If the `out_species` parameter is provided, the remaining elements of this list
                 will be the final abundances of the species in out_species.
         if return_array is True:
-            - physicsArray (np.ndarray): array containing the physical outputs for each written timestep
-            - chemicalAbunArray (np.ndarray): array containing the chemical abundances for each
-                written timestep
-            - rateConstantsArray (np.ndarray | None): array containing reaction rate constants
-                for each timestep (if return_rate_constants=True)
-            - heatArray (np.ndarray | None): array containing heating/cooling terms for each timestep
-                (if return_heating=True)
-            - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
-                in the format uclchem needs in order to perform an additional run after the initial model
+            - physicsArray (np.ndarray): array containing the physical outputs
+                for each written timestep
+            - chemicalAbunArray (np.ndarray): array containing the chemical abundances
+                for each written timestep
+            - rateConstantsArray (np.ndarray | None): array containing reaction rate
+                constants for each timestep (if return_rate_constants=True)
+            - heatArray (np.ndarray | None): array containing heating/cooling terms
+                for each timestep (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of
+                the last timestep in the format uclchem needs in order to perform an
+                additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
                 Can be passed to `uclchem.utils.check_error()` to see more details.
         if return_dataframe is True:
-            - physicsDF (pd.DataFrame): DataFrame containing the physical outputs for each
-                written timestep
-            - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances for each
-                written timestep
-            - rateConsantsDF (pd.DataFrame or None): DataFrame containing reaction rate constants
-                for each timestep (if return_rate_constants=True)
-            - heatingDF (pd.DataFrame | None): DataFrame containing heating/cooling terms for
-                each timestep (if return_heating=True)
-            - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
-                in the format uclchem needs in order to perform an additional run
-                after the initial model
+            - physicsDF (pd.DataFrame): DataFrame containing the physical outputs
+                for each written timestep
+            - chemicalDF (pd.DataFrame): DataFrame containing the chemical abundances
+                for each written timestep
+            - rateConstantsDF (pd.DataFrame or None): DataFrame containing reaction
+                rate constants for each timestep (if return_rate_constants=True)
+            - heatingDF (pd.DataFrame | None): DataFrame containing heating/cooling
+                terms for each timestep (if return_heating=True)
+            - abundanceStart (np.ndarray): array containing the chemical abundances of
+                the last timestep in the format uclchem needs in order to perform an
+                additional run after the initial model
             - success_flag (int): which is negative if the model failed to run.
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
@@ -711,14 +727,14 @@ def __cshock__(
     shock_vel: float,
     timestep_factor: float = 0.01,
     minimum_temperature: float = 0.0,
-    param_dict: dict = None,
+    param_dict: dict | None = None,
     out_species: list[str] | None = default_elements_to_check,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.array = None,
+    starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
 ):
     """Run C-type shock model from UCLCHEM.
@@ -734,7 +750,7 @@ def __cshock__(
     minimum_temperature : float
         Minimum post-shock temperature. Defaults to 0.0 (no minimum).
         The shocked gas typically cools to `initialTemp` if this is not set.
-    param_dict : dict
+    param_dict : dict | None
         A dictionary of parameters where keys are any of the variables
         in `defaultparameters.f90` and values are value for current run.
     out_species : list[str] | None
@@ -755,8 +771,8 @@ def __cshock__(
         Whether the heating/cooling arrays should be returned to a user. (Default value = False)
     return_stats : bool
         Whether DVODE statistics should be returned. Default = False.
-    starting_chemistry : np.array
-        np.array containing the starting chemical abundances needed
+    starting_chemistry : np.ndarray | None
+        np.ndarray containing the starting chemical abundances needed
         by UCLCHEM. (Default value = None)
     timepoints : int
         Integer value of how many timesteps should be calculated before
@@ -776,12 +792,12 @@ def __cshock__(
                 written timestep
             - rateConstantsArray (np.ndarray | None): array containing reaction rate constants for
                 each timestep (if return_rate_constants=True)
-            - heatArray (np.ndarray | None): array containing heating/cooling terms for each timestep
-                (if return_heating=True)
+            - heatArray (np.ndarray | None): array containing heating/cooling terms
+                for each timestep (if return_heating=True)
             - disspation_time (float): dissipation time in years
-            - abundanceStart (np.ndarray): array containing the chemical abundances of the last timestep
-                in the format uclchem needs in order to perform an additional run
-                after the initial model
+            - abundanceStart (np.ndarray): array containing the chemical abundances of
+                the last timestep in the format uclchem needs in order to perform an
+                additional run after the initial model
             - success_flag (integer): which is negative if the model failed to run.
                 Can be passed to `uclchem.utils.check_error()` to see more details.
         if return_dataframe is True:
@@ -845,7 +861,7 @@ def __jshock__(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.ndarray = None,
+    starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
 ):
     """Run J-type shock model from UCLCHEM.
@@ -877,7 +893,7 @@ def __jshock__(
         should be returned to a user. Default = False.
     return_stats : bool
         Whether to return DVODE stats. Default = False.
-    starting_chemistry : np.ndarray
+    starting_chemistry : np.ndarray | None
         np.ndarray containing the starting
         chemical abundances needed by UCLCHEM. Default = None.
     timepoints : int

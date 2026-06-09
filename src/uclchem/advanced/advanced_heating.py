@@ -13,12 +13,18 @@ across model runs in the same Python session.
 
 """
 
+import importlib.util
+import logging
+import os
+import warnings
 from pathlib import Path
 
 import numpy as np
 import uclchemwrap
 from uclchemwrap import f2py_constants as f2py_constants_module
 from uclchemwrap import heating as heating_module
+
+logger = logging.getLogger(__name__)
 
 
 class HeatingSettings:
@@ -188,9 +194,8 @@ class HeatingSettings:
 
         """
         if not 1 <= mechanism_id <= self._heating_module.nheating:
-            raise ValueError(
-                f"mechanism_id must be between 1 and {self._heating_module.nheating}"
-            )
+            msg = f"mechanism_id must be between 1 and {self._heating_module.nheating}"
+            raise ValueError(msg)
 
         # If this mechanism is part of a mutually exclusive group and we're enabling it,
         # disable all others in the group first
@@ -236,9 +241,8 @@ class HeatingSettings:
             for name in self._f2py_constants_module.coolantnames
         ]
         if coolant_name not in names:
-            raise ValueError(
-                f"Coolant '{coolant_name}' not found. Available coolants: {names}"
-            )
+            msg = f"Coolant '{coolant_name}' not found. Available coolants: {names}"
+            raise ValueError(msg)
         idx = names.index(coolant_name)
         self._f2py_constants_module.coolant_active[idx] = enabled
 
@@ -291,9 +295,8 @@ class HeatingSettings:
 
         """
         if not 1 <= mechanism_id <= self._heating_module.ncooling:
-            raise ValueError(
-                f"mechanism_id must be between 1 and {self._heating_module.ncooling}"
-            )
+            msg = f"mechanism_id must be between 1 and {self._heating_module.ncooling}"
+            raise ValueError(msg)
         self._heating_module.cooling_modules[mechanism_id - 1] = enabled
 
     def get_heating_modules(self) -> dict[str, bool]:
@@ -368,8 +371,9 @@ class HeatingSettings:
         >>> settings.set_dust_gas_coupling_method(settings.DUST_TEMP_HOLLENBACH)
 
         """
-        if method not in [1, 2]:
-            raise ValueError("method must be 1 (Hocuk) or 2 (Hollenbach)")
+        if method not in {1, 2}:
+            msg = "method must be 1 (Hocuk) or 2 (Hollenbach)"
+            raise ValueError(msg)
         self._heating_module.dust_gas_coupling_method = method
 
     def get_dust_gas_coupling_method(self) -> int:
@@ -406,13 +410,13 @@ class HeatingSettings:
 
         """
         if attempts < 1:
-            raise ValueError("attempts must be at least 1")
+            msg = "attempts must be at least 1"
+            raise ValueError(msg)
         if attempts % 2 == 0:
-            import warnings
-
             warnings.warn(
                 "Even number of attempts may not produce proper median. "
-                "Consider using an odd number."
+                "Consider using an odd number.",
+                stacklevel=2,
             )
         self._heating_module.line_solver_attempts = attempts
 
@@ -447,7 +451,8 @@ class HeatingSettings:
 
         """
         if abundance < 0:
-            raise ValueError("abundance must be non-negative")
+            msg = "abundance must be non-negative"
+            raise ValueError(msg)
         self._heating_module.pahabund = abundance
 
     def get_pah_abundance(self) -> float:
@@ -486,22 +491,26 @@ class HeatingSettings:
         >>> settings.set_coolant_directory("/custom/rates/") # doctest: +SKIP
 
         """
-        # Validate
-        if not directory.endswith("/"):
-            directory += "/"
+        # Normalize to str for Fortran compatibility
+        dir_str = str(directory)
+        if not dir_str.endswith("/"):
+            dir_str += "/"
 
-        dir_path = Path(directory)
+        dir_path = Path(dir_str)
         if not dir_path.exists():
-            raise FileNotFoundError(f"Directory not found: {directory}")
+            msg = f"Directory not found: {dir_str}"
+            raise FileNotFoundError(msg)
         if not dir_path.is_dir():
-            raise ValueError(f"Not a directory: {directory}")
-        if len(directory) > 255:  # noqa: PLR2004
-            raise ValueError(f"Path too long (max 255): {directory}")
+            msg = f"Not a directory: {dir_str}"
+            raise ValueError(msg)
+        if len(dir_str) > 255:  # noqa: PLR2004
+            msg = f"Path too long (max 255): {dir_str}"
+            raise ValueError(msg)
 
         # Pad and set
         current = self._f2py_constants_module.coolantdatadir
         max_len = int(current.dtype.itemsize)
-        padded = directory.ljust(max_len)
+        padded = dir_str.ljust(max_len)
         self._f2py_constants_module.coolantdatadir = padded
 
     def get_coolant_directory(self) -> str:
@@ -528,6 +537,8 @@ class HeatingSettings:
         ------
         ValueError
             If mode is not one of `[0, 1, 2]`.
+        AssertionError
+            If the mode could not be set in the Fortran module.
 
         Examples
         --------
@@ -535,12 +546,13 @@ class HeatingSettings:
         >>> settings.set_coolant_restart_mode(settings.COOLANT_WARM)
 
         """
-        if mode not in [0, 1, 2]:
-            raise ValueError(f"mode must be 0, 1, or 2, got {mode}")
+        if mode not in {0, 1, 2}:
+            msg = f"mode must be 0, 1, or 2, got {mode}"
+            raise ValueError(msg)
         self._uclchemwrap.uclchemwrap.set_coolant_restart_mode_wrap(mode)
-        assert self.get_coolant_restart_mode() == mode, (
-            "Failed to set coolant restart mode"
-        )
+        if self.get_coolant_restart_mode() != mode:
+            msg = "Failed to set coolant restart mode"
+            raise AssertionError(msg)
 
     # TODO: refactor once Fortran is exposed
     def get_coolant_restart_mode(self) -> int:
@@ -663,17 +675,13 @@ def initialize_coolant_directory() -> str:
 
     """
     # Check if heating module is available
-    import importlib.util
-    import logging
-    import os
-    from pathlib import Path
-
     if importlib.util.find_spec("uclchemwrap") is None:
-        raise RuntimeError(
+        msg = (
             "UCLCHEM heating module not available. "
             "The Fortran extension may not be compiled. "
             "Install UCLCHEM with: pip install ."
         )
+        raise RuntimeError(msg)
 
     # Priority 1: Environment variable
     env_dir = os.environ.get("UCLCHEM_COOLANT_DATA")
@@ -683,27 +691,27 @@ def initialize_coolant_directory() -> str:
             coolant_dir = str(env_path.resolve())
             if not coolant_dir.endswith("/"):
                 coolant_dir += "/"
-            logging.info(f"Using coolant data from UCLCHEM_COOLANT_DATA: {coolant_dir}")
+            logger.info("Using coolant data from UCLCHEM_COOLANT_DATA: %s", coolant_dir)
             return coolant_dir
         else:
-            logging.warning(
-                f"UCLCHEM_COOLANT_DATA set to {env_dir}, but directory not found or empty. "
-                "Searching other locations..."
+            logger.warning(
+                "UCLCHEM_COOLANT_DATA set to %s, but directory not found or empty. "
+                "Searching other locations...",
+                env_dir,
             )
 
     # Priority 2: Installed package data (importlib.resources for Python 3.9+)
     try:
         # Try new API first (Python 3.9+)
         try:
-            from importlib.resources import files
+            from importlib.resources import files  # noqa: PLC0415
 
-            package_data_path = files("uclchem") / "data" / "collisional_rates"
-            # Convert to Path object
-            if hasattr(package_data_path, "as_posix"):  # Traversable
-                package_data_path = Path(str(package_data_path))
+            resource = files("uclchem") / "data" / "collisional_rates"
+            # Convert Traversable to Path so we can call .glob() and .resolve()
+            package_data_path = Path(str(resource))
         except (ImportError, TypeError):
             # Fallback to older API (Python 3.7-3.8)
-            from importlib.resources import path as resource_path
+            from importlib.resources import path as resource_path  # noqa: PLC0415
 
             with resource_path("uclchem.data", "collisional_rates") as p:
                 package_data_path = Path(p)
@@ -712,14 +720,14 @@ def initialize_coolant_directory() -> str:
             coolant_dir = str(package_data_path.resolve())
             if not coolant_dir.endswith("/"):
                 coolant_dir += "/"
-            logging.debug(f"Using installed coolant data: {coolant_dir}")
+            logger.debug("Using installed coolant data: %s", coolant_dir)
             return coolant_dir
     except (ImportError, FileNotFoundError, AttributeError) as e:
-        logging.debug(f"Installed package data not found: {e}")
+        logger.debug("Installed package data not found: %s", e)
 
     # Priority 3: Development mode - search for Makerates/data/collisional_rates/
     try:
-        from uclchem.utils import UCLCHEM_ROOT_DIR
+        from uclchem.utils import UCLCHEM_ROOT_DIR  # noqa: PLC0415
 
         # Try relative to UCLCHEM_ROOT_DIR (src/uclchem/)
         candidates = [
@@ -742,13 +750,13 @@ def initialize_coolant_directory() -> str:
                 coolant_dir = str(candidate.resolve())
                 if not coolant_dir.endswith("/"):
                     coolant_dir += "/"
-                logging.info(f"Using development mode coolant data: {coolant_dir}")
+                logger.info("Using development mode coolant data: %s", coolant_dir)
                 return coolant_dir
     except Exception as e:
-        logging.debug(f"Development mode search failed: {e}")
+        logger.debug("Development mode search failed: %s", e)
 
     # Not found in any location
-    raise FileNotFoundError(
+    msg = (
         "Could not locate coolant data files (.dat files for collisional rates). "
         "Searched:\n"
         "  1. UCLCHEM_COOLANT_DATA environment variable\n"
@@ -760,6 +768,7 @@ def initialize_coolant_directory() -> str:
         "  - For development: Ensure Makerates/data/collisional_rates/*.dat files exist\n"
         "  - Or set UCLCHEM_COOLANT_DATA=/path/to/coolant/data/"
     )
+    raise FileNotFoundError(msg)
 
 
 def auto_initialize_coolant_directory() -> bool:
@@ -786,30 +795,30 @@ def auto_initialize_coolant_directory() -> bool:
     Coolant data initialized successfully
 
     """
-    import logging
-
     try:
         coolant_dir = initialize_coolant_directory()
         settings = HeatingSettings()
         settings.set_coolant_directory(coolant_dir)
-        logging.debug(f"Auto-initialized coolant directory: {coolant_dir}")
+        logger.debug("Auto-initialized coolant directory: %s", coolant_dir)
         return True
     except RuntimeError as e:
         # Heating module not available - this is expected for makerates-only builds
-        logging.debug(f"Coolant initialization skipped: {e}")
+        logger.debug("Coolant initialization skipped: %s", e)
         return False
     except FileNotFoundError as e:
         # Could not find coolant data - warn user
-        logging.warning(
-            f"Could not auto-initialize coolant data directory: {e}\n"
+        logger.warning(
+            "Could not auto-initialize coolant data directory: %s\n"
             "Heating/cooling calculations may fail. "
-            "Run 'python makerates.py' and reinstall if needed."
+            "Run 'python makerates.py' and reinstall if needed.",
+            e,
         )
         return False
     except Exception as e:
         # Unexpected error - warn but don't crash
-        logging.warning(
-            f"Unexpected error during coolant initialization: {e}"
-            + "\nEnabling heating and cooling might cause errors at runtime."
+        logger.warning(
+            "Unexpected error during coolant initialization: %s"
+            "\nEnabling heating and cooling might cause errors at runtime.",
+            e,
         )
         return False

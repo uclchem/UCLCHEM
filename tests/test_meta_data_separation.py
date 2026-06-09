@@ -6,6 +6,8 @@ This module consolidates tests for:
 - Save/load/pickle roundtrip preservation
 """
 
+import pathlib
+
 import numpy as np
 import pytest
 import xarray as xr
@@ -43,7 +45,7 @@ def legacy_file_without_dstep(tmp_path):
         f"3.0e5,1e4,10.0,10.0,1.0,1.0,1e-17,1,{species_values}\n",
     ]
 
-    with open(legacy_file, "w") as f:
+    with pathlib.Path(legacy_file).open("w") as f:
         f.write(header)
         f.writelines(data)
 

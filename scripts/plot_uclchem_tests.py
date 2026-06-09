@@ -1,12 +1,15 @@
 """Plot the UCLCHEM tests ran by `run_uclchem_tests.py`.
 
 Demonstration of plotfunctions. called from main UCLCHEM directory.
-It reads full UCLCHEM output and saves a plot of the abudances of select species.
+It reads full UCLCHEM output and saves a plot of the abundances of select species.
+
 """
 
 from pathlib import Path
+from typing import cast
 
 import matplotlib.pyplot as plt
+import pandas as pd
 
 import uclchem
 
@@ -49,10 +52,10 @@ if __name__ == "__main__":
     }
 
     # Load test-output models from HDF5 and extract DataFrames
-    test_data = {}
+    test_data: dict[str, pd.DataFrame] = {}
     for model in ["phase1", "phase2", "static"]:
         loaded = uclchem.model.load_model(file=str(save_file), name=model)
-        test_data[model] = loaded.get_dataframes()
+        test_data[model] = cast("pd.DataFrame", loaded.get_dataframes())
         for spec in ["#SI", "@SI"]:
             if spec not in test_data[model]:
                 test_data[model][spec] = 1.0e-30
@@ -78,12 +81,10 @@ if __name__ == "__main__":
             if model == "static":
                 print_elemental_conservation = False
 
-    for plot_type in plot_types:
+    for plot_type, species_names in plot_types.items():
         fig, axes = plt.subplots(3, 3, figsize=(16, 12), tight_layout=True)
         axes = axes.flatten()
         i = 0
-
-        speciesNames = plot_types[plot_type]
 
         for folder, data_dict in [
             ("example-output/", example_data),
@@ -91,16 +92,16 @@ if __name__ == "__main__":
         ]:
             for model in ["phase1", "phase2", "static"]:
                 axis = axes[i]
-                data = data_dict[model]
+                data = cast("dict[str, pd.DataFrame]", data_dict)[model]
 
-                axis = uclchem.plot.plot_species(axis, data, speciesNames, legend=False)
+                axis = uclchem.plot.plot_species(axis, data, species_names, legend=False)
                 if folder == "test-output/":
                     axis.set_prop_cycle(None)
                     axis = uclchem.plot.plot_species(
                         axis,
                         example_data[model],
-                        speciesNames,
-                        alpha=0.5,
+                        species_names,
+                        plot_kwargs={"alpha": 0.5},
                         legend=False,
                     )
                 if plot_type == "charge":

@@ -21,11 +21,6 @@ def test_configure_suppress_logging(caplog):
     uclchem.utils.configure_logging(level="DEBUG", stream=None)
     uclchem_logger = logging.getLogger("uclchem")
 
-    logging.getLogger().handlers = (
-        uclchem_logger.handlers
-    )  # Set root logger same handler as UCLCHEM logger
-    uclchem_logger.propagate = True
-
     with caplog.at_level("DEBUG", logger="uclchem"):
         uclchem_logger.critical("Testing")
 

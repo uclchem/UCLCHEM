@@ -93,11 +93,12 @@ for i in range(NCOOLANTS):
 
 # Validate consistency
 if len(PHYSICAL_PARAMETERS) != N_PHYSICAL_PARAMETERS:
-    raise RuntimeError(
+    msg = (
         f"PHYSICAL_PARAMETERS length ({len(PHYSICAL_PARAMETERS)}) does not match "
         f"N_PHYSICAL_PARAMETERS from Fortran ({N_PHYSICAL_PARAMETERS}). "
         "This indicates a build inconsistency. Please run MakeRates and reinstall."
     )
+    raise RuntimeError(msg)
 
 # User-configurable constants (not from Fortran)
 TIMEPOINTS = 2000  # Number of timepoints for Fortran interface
@@ -206,12 +207,14 @@ default_param_dictionary = {
     "freq_rel_tol": float(getattr(f2py_constants, "suggested_freq_rel_tol", 0.1)),
     "pop_rel_tol": 0.1,
     # DVODE solver mode:
-    #   0 = ISTATE=1 always (original behaviour, fresh restart every output step)
+    #   0 = ISTATE=1 always (original behavior, fresh restart every output step)
     #   1 = ISTATE=2 always (BDF history always continued, no guard)
-    #   2 = Hybrid/adaptive (default): ISTATE=2 unless abundance or temperature changed significantly
+    #   2 = Hybrid/adaptive (default): ISTATE=2 unless abundance or temperature
+    #       changed significantly
     "solver_mode": 2,
     # log₁₀ of per-step abundance change that triggers a forced ISTATE=1 restart in hybrid mode.
-    # Smaller = more frequent restarts (safer but less smooth); larger = fewer restarts (smoother but riskier).
+    # Smaller = more frequent restarts (safer but less smooth); larger = fewer restarts
+    # (smoother but riskier).
     "log_change_threshold": 1.0,
 }
 

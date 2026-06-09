@@ -21,7 +21,7 @@ This module provides utility functions for:
     >>> success_flag.check_error()
     Model ran successfully
     >>>
-    >>> # Only print if an error occured
+    >>> # Only print if an error occurred
     >>> success_flag.check_error(only_error=True)
 
     >>> # Calculate shock timescale
@@ -54,7 +54,7 @@ Use :meth:`SuccessFlag.check_error` to get human-readable error messages.
 import enum
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
     from uclchem.model import Collapse
@@ -76,31 +76,37 @@ NO_REACTANT_OR_PRODUCT: int = 9999
 """Integer to indicate that there is no reactant or product."""
 
 
-def get_dtype(dtype):
+def get_dtype(dtype: str | type | np.dtype) -> type | np.dtype:
     """Convert a dtype shorthand string or numpy dtype to a numpy dtype.
 
     Parameters
     ----------
-    dtype : str | np.dtype | type
+    dtype : str | type | np.dtype
         Either a shorthand string ("fp64", "fp32", "fp16") or a numpy dtype/type.
 
     Returns
     -------
-    np.dtype | type
+    type | np.dtype
         The corresponding numpy dtype or type.
+
+    Raises
+    ------
+    ValueError
+        If ``dtype`` is a string not in ``{"fp64", "fp32", "fp16"}``.
 
     """
     if isinstance(dtype, str):
         _mapping = {"fp64": np.float64, "fp32": np.float32, "fp16": np.float16}
         if dtype not in _mapping:
-            raise ValueError(f"Unknown dtype shorthand: {dtype!r}")
+            msg = f"Unknown dtype shorthand: {dtype!r}"
+            raise ValueError(msg)
         return _mapping[dtype]
     return dtype
 
 
 def configure_logging(
     level: str = "WARNING",
-    stream=None,
+    stream: "None | str | Any" = None,
 ) -> None:
     """Configure the ``uclchem`` logger.
 
@@ -108,11 +114,12 @@ def configure_logging(
     ----------
     level : str
         Logging level name (e.g. ``"DEBUG"``, ``"WARNING"``). Default ``"WARNING"``.
-    stream : None | str | IO
+    stream : None | str | Any
         Where to send log output.
         ``None`` suppresses all output (no handlers, propagation disabled).
         A string is treated as a file path and a ``FileHandler`` is added.
         Any other value (e.g. ``sys.stdout``) is wrapped in a ``StreamHandler``.
+        Defaults to ``None``.
 
     """
     uclchem_logger = logging.getLogger("uclchem")
@@ -312,8 +319,8 @@ def _filament_units():
 
     Returns
     -------
-    _type_
-        _description_
+    tuple[float, float]
+        Unit conversion factors ``(unitr_pc, unitt_yr)``.
 
     """
     two_pi_g_rho0_mh = _TWO_PI_G * _RHO0_FILAMENT * _MH
@@ -329,14 +336,14 @@ def _rminfit(t_yr: float, mode: CollapseMode) -> float:
     Parameters
     ----------
     t_yr : float
-        _description_
+        Time in years.
     mode : CollapseMode
-        _description_
+        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
 
     Returns
     -------
     float
-        Radius of minimum velocity (pc for mode 3, normalised units for mode 4).
+        Radius of minimum velocity (pc for mode 3, normalized units for mode 4).
 
     Raises
     ------
@@ -375,9 +382,9 @@ def _vminfit(t_yr: float, mode: CollapseMode) -> float:
     Parameters
     ----------
     t_yr : float
-        _description_
+        Time in years.
     mode : CollapseMode
-        _description_
+        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
 
     Returns
     -------
@@ -416,9 +423,9 @@ def _avfit(t_yr: float, mode: CollapseMode) -> float:
     Parameters
     ----------
     t_yr : float
-        _description_
+        Time in years.
     mode : CollapseMode
-        _description_
+        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
 
     Returns
     -------
@@ -462,15 +469,15 @@ def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: CollapseMode)
     Parameters
     ----------
     r_pc : float
-        _description_
+        Radius in pc.
     rmin : float
-        _description_
+        Radius of minimum velocity in the same units as the fit.
     vmin : float
-        _description_
+        Minimum velocity in dimensionless units.
     av : float
-        _description_
+        Velocity amplitude parameter for the outer profile fit.
     mode : CollapseMode
-        _description_
+        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
 
     Returns
     -------
@@ -541,14 +548,20 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
         If ``model.collapse`` is not an instance of class:`CollapseMode`.
 
     """
-    from uclchem.model import Collapse
+    from uclchem.model import (  # noqa: PLC0415 — avoid circular import at module level
+        Collapse,
+    )
 
     if not isinstance(model, Collapse):
-        raise TypeError(f"model must be a Collapse instance, got {type(model).__name__}")
+        msg = f"model must be a Collapse instance, got {type(model).__name__}"
+        raise TypeError(msg)
 
-    df = model.get_dataframes(point=point)
-    t_yr = df["Time"].values
-    r_pc = df["parcel_radius"].values
+    df_result = model.get_dataframes(point=point)
+    # get_dataframes with joined=True returns a single DataFrame (the return type
+    # annotation is overly broad; cast to narrow for mypy)
+    df: pd.DataFrame = df_result  # type: ignore[assignment]
+    t_yr: np.ndarray = np.asarray(df["Time"].values)
+    r_pc: np.ndarray = np.asarray(df["parcel_radius"].values)
     mode = model.collapse  # CollapseMode
 
     if not isinstance(mode, CollapseMode):
@@ -559,7 +572,7 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
         vr = np.array(
             [
                 _vrfit(r, _rminfit(t, mode), _vminfit(t, mode), _avfit(t, mode), mode)
-                for t, r in zip(t_yr, r_pc)
+                for t, r in zip(t_yr, r_pc, strict=False)
             ]
         )
     else:
@@ -593,26 +606,28 @@ class SuccessFlag(enum.IntEnum):
     PARAMETER_READ_ERROR = -1, "Parameter read failed."
     PHYSICS_INIT_ERROR = -2, "Physics initialization failed."
     CHEM_INIT_ERROR = -3, "Chemistry initialization failed."
-    INT_UNRECOVERABLE_ERROR = -4, "Unrecoverable integrator error occured."
-    INT_TOO_MANY_FAILS_ERROR = -5, "Too many integrator fails occured."
+    INT_UNRECOVERABLE_ERROR = -4, "Unrecoverable integrator error occurred."
+    INT_TOO_MANY_FAILS_ERROR = -5, "Too many integrator fails occurred."
     NOT_ENOUGH_TIMEPOINTS_ERROR = (
         -6,
         "Not enough time points allocated in the time array.",
     )
     PHYSICS_UPDATE_ERROR = -7, "Error updating physics during integration."
     SOLVER_STATS_OVERFLOW_ERROR = -8, "Solver statistics array overflowed."
-    COOLANT_FILE_ERROR = -9, "Coolant data file could not be openend."
+    COOLANT_FILE_ERROR = -9, "Coolant data file could not be opened."
     COOLANT_DATA_ERROR = -10, "Coolant data file has invalid format."
     COOLANT_FREQ_TOL_ERROR = -11, "Coolant frequency tolerance exceeded."
     COOLANT_POP_TOL_ERROR = -12, "LTE population sum tolerance exceeded."
-    COOLANT_SOLVER_ERROR = -13, "Coolant solver numerical error occured."
-    COOLANT_CONFIG_ERROR = -14, "Coolant configuration error occured."
+    COOLANT_SOLVER_ERROR = -13, "Coolant solver numerical error occurred."
+    COOLANT_CONFIG_ERROR = -14, "Coolant configuration error occurred."
     NEGATIVE_ABUNDANCE_ERROR = -15, "A negative abundance was detected."
     CONSERVATION_ERROR = -16, "Runtime element conservation tolerance exceeded."
     ZERO_INNER_RADIUS_ERROR = -17, "rin must be > 0 when enable_radiative_transfer=True."
 
-    def check_error(self, only_error: bool = False, raise_on_error: bool = True) -> str:
-        """Converts the UCLCHEM integer result flag to a message explaining what went wrong.
+    def check_error(
+        self, only_error: bool = False, raise_on_error: bool = True
+    ) -> str | None:
+        """Convert the UCLCHEM integer result flag to a message explaining what went wrong.
 
         Parameters
         ----------
@@ -625,8 +640,8 @@ class SuccessFlag(enum.IntEnum):
 
         Returns
         -------
-        str
-            Error message | None
+        str | None
+            Error message, or ``None`` if the model ran successfully.
 
         Raises
         ------
@@ -660,7 +675,8 @@ class SuccessFlag(enum.IntEnum):
 
         msg = error_msg_dict[self]
         if raise_on_error:
-            raise RuntimeError(f"UCLCHEM error (code {self.name}, {self.value}): {msg}")
+            error_msg = f"UCLCHEM error (code {self.name}, {self.value}): {msg}"
+            raise RuntimeError(error_msg)
         return msg
 
 
@@ -693,7 +709,7 @@ _BINS: tuple[tuple[float, float], ...] = (
 )
 
 # Least-squares power-law fits in log-log space on bin geometric midpoints.
-# Form: T = T0 * (L / L_sun) ** alpha
+# Fit form: T_eff = T0 * (L_star / L_sun) ** alpha
 _FIT_SMOOTH = (4_788.72, 0.156034)  # all 7 bins,  valid 1 – 1e6  L_sun
 _FIT_SMOOTH_LOW = (5_337.78, 0.110924)  # bins 1–3,    valid 1 – 1e4  L_sun
 _FIT_SMOOTH_HIGH = (7_343.74, 0.120552)  # bins 4–7,    valid 1e3 – 1e6 L_sun
@@ -723,10 +739,9 @@ def get_protostellar_Teff(
 
     Parameters
     ----------
-    L_star: : _type_
-        Stellar luminosity [W]. Valid range depends on *mode*; see
-        :data:`_RANGES`.
-    mode: : _type_
+    L_star : float
+        Stellar luminosity. Valid range depends on *mode*; see :data:`_RANGES`.
+    mode : TempMode
         Interpolation scheme:
 
         - :attr:`TempMode.SMOOTH` (default) — global power-law fit to all
@@ -736,34 +751,31 @@ def get_protostellar_Teff(
           valid 1 – 1e4 L_sun.
         - :attr:`TempMode.SMOOTH_HIGH` — power-law fit to bins 4–7,
           valid 1e3 – 1e6 L_sun.
-    L_star : float
-        _description_
-    mode : TempMode
-        _description_ (Default value = TempMode.BINS)
+
+        Defaults to ``TempMode.BINS``.
     custom_T0 : float | None
-        _description_ (Default value = None)
+        Temperature constant T0 in the power-law fit T = T0 * L^alpha, used only when
+        mode is ``TempMode.SMOOTH_CUSTOM``. Defaults to ``None``.
     custom_alpha : float | None
-        _description_ (Default value = None)
+        Power-law exponent alpha in T = T0 * L^alpha, used only when mode is
+        ``TempMode.SMOOTH_CUSTOM``. Defaults to ``None``.
     L_star_unit : str
-        _description_ (Default value = 'L_sun')
+        Unit of ``L_star``. Either ``'L_sun'`` or ``'W'``. Defaults to ``'L_sun'``.
 
     Returns
     -------
     float
-        _description_
+        Effective temperature in Kelvin.
 
     Raises
     ------
-    TypeError:  if *L_star* is not a real number.
-        _description_
-    ValueError: if *L_star* is outside the valid range for the chosen mode.
-        _description_
     TypeError
-        _description_
+        If ``L_star`` is not a real number.
     ValueError
-        _description_
+        If ``L_star`` is outside the valid range for the chosen mode, or if custom
+        fit parameters are provided but mode is not ``TempMode.SMOOTH_CUSTOM``.
     RuntimeError
-        _description_
+        If no bin matches ``L_star`` in ``TempMode.BINS`` mode (indicates a bug).
 
     Examples
     --------
@@ -774,42 +786,51 @@ def get_protostellar_Teff(
 
     """
     if not isinstance(L_star, (int, float)):
-        raise TypeError(f"L_star must be a real number, got {type(L_star).__name__!r}")
+        msg = f"L_star must be a real number, got {type(L_star).__name__!r}"
+        raise TypeError(msg)
 
     if (
         custom_T0 is not None or custom_alpha is not None
     ) and mode != TempMode.SMOOTH_CUSTOM:
-        raise ValueError(
-            "Custom fit parameters provided but mode is not TempMode.SMOOTH_CUSTOM."
-        )
+        msg = "Custom fit parameters provided but mode is not TempMode.SMOOTH_CUSTOM."
+        raise ValueError(msg)
 
-    assert L_star_unit in ["L_sun", "W"], "L_star_unit must be 'L_sun' or 'W'."
+    if L_star_unit not in {"L_sun", "W"}:
+        msg = "L_star_unit must be 'L_sun' or 'W'."
+        raise ValueError(msg)
 
-    if L_star_unit == "W":
-        L_star: float = L_star / L_SUN
+    # Work in L_sun units throughout
+    l_star_lsun: float = L_star / L_SUN if L_star_unit == "W" else L_star
     L_min, L_max = _RANGES[mode]
 
-    if not (L_min <= L_star <= L_max):
-        raise ValueError(
-            f"L_star = {L_star:.3e} W ({L_star:.3e} L_sun) is outside "
+    if not (L_min <= l_star_lsun <= L_max):
+        msg = (
+            f"L_star = {l_star_lsun:.3e} W ({l_star_lsun:.3e} L_sun) is outside "
             f"the valid range [{L_min:.0e}, {L_max:.0e}] L_sun for {mode.value!r}."
         )
+        raise ValueError(msg)
 
     # Return binned values
     if mode is TempMode.BINS:
         for L_lower, T_eff in _BINS:
-            if L_star >= L_lower:
+            if l_star_lsun >= L_lower:
                 return T_eff
-        raise RuntimeError(f"No bin matched L_star={L_star!r} — this is a bug.")
+        msg = f"No bin matched L_star={l_star_lsun!r} — this is a bug."
+        raise RuntimeError(msg)
 
     # Return power-law fit values
+    if mode is TempMode.SMOOTH_CUSTOM:
+        if custom_T0 is None or custom_alpha is None:
+            msg = "mode is TempMode.SMOOTH_CUSTOM but custom_T0 or custom_alpha is None."
+            raise ValueError(msg)
+        return custom_T0 * (l_star_lsun**custom_alpha)
+
     T0, alpha = {
         TempMode.SMOOTH: _FIT_SMOOTH,
         TempMode.SMOOTH_LOW: _FIT_SMOOTH_LOW,
         TempMode.SMOOTH_HIGH: _FIT_SMOOTH_HIGH,
-        TempMode.SMOOTH_CUSTOM: (custom_T0, custom_alpha),
     }[mode]
-    return T0 * (L_star**alpha)
+    return T0 * (l_star_lsun**alpha)
 
 
 def get_protostellar_model_index(L_star: float) -> int:
@@ -833,21 +854,20 @@ def get_protostellar_model_index(L_star: float) -> int:
         If the stellar luminosity is below the minimum valid value.
 
     """
-    if L_star >= 1.0e6:
+    if L_star >= 1.0e6:  # noqa: PLR2004
         return 6
-    elif L_star >= 1.0e5:
+    elif L_star >= 1.0e5:  # noqa: PLR2004
         return 5
-    elif L_star >= 1.0e4:
+    elif L_star >= 1.0e4:  # noqa: PLR2004
         return 4
-    elif L_star >= 1.0e3:
+    elif L_star >= 1.0e3:  # noqa: PLR2004
         return 3
-    elif L_star >= 1.0e2:
+    elif L_star >= 1.0e2:  # noqa: PLR2004
         return 2
-    elif L_star >= 1.0e1:
+    elif L_star >= 1.0e1:  # noqa: PLR2004
         return 1
     elif L_star >= 1.0e0:
         return 0
     else:
-        raise ValueError(
-            f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {L_SUN:.3e} W."
-        )
+        msg = f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {L_SUN:.3e} W."
+        raise ValueError(msg)

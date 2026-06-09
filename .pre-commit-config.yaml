@@ -51,6 +51,8 @@ repos:
         name: "[correctness] Mypy type checking"
         description: "Check for type errors"
         args: [--install-types, --non-interactive]
+        # Notebooks are generated from .ipynb sources; exclude the generated scripts.
+        exclude: ^notebooks/
 
 
   # ============================================================================

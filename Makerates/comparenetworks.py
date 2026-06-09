@@ -5,6 +5,8 @@ all reactions that are in one file but not the other
 
 """
 
+from pathlib import Path
+
 from uclchem.makerates.io_functions import read_reaction_file, read_species_file
 
 if __name__ == "__main__":
@@ -17,13 +19,13 @@ if __name__ == "__main__":
     print(f"I found {len(species_list)} species in the file {species_file}")
 
     print("\nReading reactions")
-    reactions1, drops = read_reaction_file(reactions_file1, species_list, "UCL")
+    reactions1, drops = read_reaction_file(Path(reactions_file1), species_list, "UCL")
     print(
         f"I found {len(reactions1)} reactions in the file {reactions_file1}, I dropped {len(drops)} reactions."
     )
     # If you need to see which reactions are dropped:
     # print("\n".join([str(drop) for drop in drops])) # noqa: ERA001
-    reactions2, drops = read_reaction_file(reactions_file2, species_list, "UCL")
+    reactions2, drops = read_reaction_file(Path(reactions_file2), species_list, "UCL")
     print(
         f"I found {len(reactions2)} reactions in the file {reactions_file2}, I dropped {len(drops)} reactions."
     )

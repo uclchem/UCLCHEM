@@ -4,6 +4,13 @@ Deprecated
 
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    import pandas as pd
+
 import uclchem
 from uclchem.constants import default_elements_to_check
 
@@ -45,7 +52,7 @@ def test_ode_conservation(
 
     physics_df, abundances_df = model.get_dataframes(joined=False)
     result = uclchem.analysis.check_element_conservation(
-        abundances_df,
+        cast("pd.DataFrame", abundances_df),
         element_list=element_list,
         percent=False,
     )

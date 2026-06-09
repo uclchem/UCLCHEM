@@ -105,7 +105,6 @@ class Test1DCloud:
         assert physics.ndim == 3, "Physics array should be 3-dimensional for 1D model"
         assert chemistry.ndim == 3, "Chemistry array should be 3-dimensional"
 
-        n_timepoints = physics.shape[0]
         n_points = physics.shape[1]
 
         assert n_points == base_1d_params["points"], (
@@ -176,7 +175,7 @@ class Test1DCloud:
         assert output_file.exists(), "Output file was not created"
 
         # Verify file contains data for multiple points
-        with open(output_file) as f:
+        with Path(output_file).open() as f:
             lines = f.readlines()
 
         # File should have header + data for multiple timepoints * multiple points

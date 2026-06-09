@@ -79,7 +79,7 @@ def test_analysis_matches(temp_output_dir):
         # FD comparison is approximate: large log-spaced Δt causes a factor
         # ~k·Δt/(1-e^{-kΔt}) error, and SURFSWAP_GEOMETRIC post-processing
         # corrections can create transient spikes for surface/bulk species.
-        # atol=1e-14 skips these small-magnitude artefacts while still
+        # atol=1e-14 skips these small-magnitude artifacts while still
         # catching sign errors or order-of-magnitude bugs at large rates.
         assert np.allclose(
             dy[species].iloc[-10:-1], fd_slope[-9:], rtol=1.5, atol=1e-14

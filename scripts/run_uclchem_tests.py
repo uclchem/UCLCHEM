@@ -1,6 +1,7 @@
 """Test some basic UCLCHEM models.
 
 This should be run from the UCLCHEM root directory.
+
 """
 
 import logging
@@ -18,7 +19,6 @@ if __name__ == "__main__":
     save_file = out_dir / "models.h5"
     if save_file.exists():
         save_file.unlink()
-
 
     print("Running test models...")
 

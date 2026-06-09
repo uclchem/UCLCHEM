@@ -74,6 +74,19 @@ preview = true
 "notebooks/*.py" = ["E402"]
 "*/__init__.py" = ["F401"]
 "tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002", "DOC", "S101", "B011", "PLC", "PLR"]
+# Physics/math symbol and domain-acronym names that intentionally deviate from
+# snake_case, matching the science literature / chemistry conventions:
+#   N806 local vars (T, Av, NH, ...), N802 funcs (get_Ix, to_UCL_format,
+#   get_protostellar_Teff, _add_CRP_and_PHOTO_*), N803 args (Ix/Iy/Iz, L_star,
+#   coldens_H/H2/CO/C, ...), N807 internal __dunder__ helpers in functional.
+"src/uclchem/makerates/io_functions.py" = ["N806"]
+"src/uclchem/analysis.py" = ["N806"]
+"src/uclchem/utils.py" = ["N806", "N802", "N803"]
+"src/uclchem/model.py" = ["N806", "N803"]
+"src/uclchem/makerates/reaction.py" = ["N802"]
+"src/uclchem/makerates/species.py" = ["N802", "N803", "N816"]
+"src/uclchem/makerates/network_builder.py" = ["N802"]
+"src/uclchem/functional.py" = ["N807"]
 
 
 [tool.typos.files]
@@ -91,7 +104,12 @@ extend-exclude = [
     "**/fortran_metadata.yaml", 
 
     # This file contains species names that might be picked up as typos
-    "Makerates/enthalpy_routines/species_matching_session.yaml"]
+    "Makerates/enthalpy_routines/species_matching_session.yaml",
+
+    # Working notes that intentionally list misspellings as before/after examples.
+    "precommit_instructions.md",
+    "pymend_instructions.md",
+    "pre_commit_output.txt"]
 
 [tool.typos.default]
 locale = "en-us"
@@ -125,6 +143,13 @@ extend-ignore-identifiers-re = [
 LAMDA = "LAMDA"
 atct = "atct"
 ATcT = "ATcT"
+# Physics variable name (inner radius) used in Fortran and Python sources.
+rin = "rin"
+
+[tool.mypy]
+# Notebooks are generated from .ipynb sources; type-check the library, not the
+# generated example scripts.
+exclude = ["^notebooks/"]
 
 [[tool.mypy.overrides]]
 module = ["yaml", "uclchemwrap", "h5py", "nbconvert.*", "nbformat", "pytest", "matplotlib", "matplotlib.*", "xarray", "bs4", "pydantic", "uclchem._project_root"]
