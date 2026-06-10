@@ -736,7 +736,7 @@ class Species:
                 elif name[char_idx] == ")":
                     if not currently_in_bracket:
                         msg = f"Found closing bracket before opening bracket in formula {name}"
-                    raise ValueError(msg)
+                        raise ValueError(msg)
                     currently_in_bracket = False
                     num_digits = find_number_of_consecutive_digits(name, char_idx + 1)
                     if num_digits == 0:
