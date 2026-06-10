@@ -4,6 +4,7 @@
 import csv
 import fileinput
 import logging
+import re
 import shutil
 import warnings
 from datetime import datetime
@@ -1946,15 +1947,15 @@ def replace_value_with_name(
 
     Examples
     --------
-    >>> replace_value_with_name("[0, 1, 2]", 2, "REPLACED_INTEGER")
-    '[0, 1, REPLACED_INTEGER]'
+    >>> replace_value_with_name("(/0,1,2/)", 2, "X")
+    '(/0,1,X/)'
 
-    >>> replace_value_with_name("[0.0, 1.0, 2.0]", 2.0, "REPLACED_FLOAT")
-    '[0.0, 1.0, REPLACED_FLOAT]'
+    >>> replace_value_with_name("(/0.0000e+00,1.0000e+00,2.0000e+00/)", 2.0, "X")
+    '(/0.0000e+00,1.0000e+00,X/)'
 
     >>> # Replaces all instances of 'value'
-    >>> replace_value_with_name("[0.0, 1.0, 2.0, 1.0]", 1.0, "REPLACED_FLOAT")
-    '[0.0, REPLACED_FLOAT, 2.0, REPLACED_FLOAT]'
+    >>> replace_value_with_name("(/0.0000e+00,1.0000e+00,2.0000e+00,1.0000e+00/)", 1.0, "X")
+    '(/0.0000e+00,X,2.0000e+00,X/)'
 
     """
     # Somehow replace every case with {value} with a string {replace_string}.
@@ -1971,7 +1972,14 @@ def replace_value_with_name(
         value_string = array_string.split("/")[1]
     else:
         raise TypeError()
-    replaced_string = string.replace(value_string, replace_string)
+    # Use regex to replace only complete tokens surrounded by array delimiters (,  (/  /)
+    # or list-style delimiters ([ ] space).  A plain str.replace() can corrupt adjacent
+    # values if line-continuation stripping ever places two numbers adjacent to each other.
+    replaced_string = re.sub(
+        r"(?<=[,\s(/\[])" + re.escape(value_string) + r"(?=[,\s)/\]])",
+        replace_string,
+        string,
+    )
     if truncate:
         replaced_string = truncate_line(replaced_string)
     replaced_string += suffix

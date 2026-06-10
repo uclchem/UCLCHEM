@@ -32,4 +32,3 @@ notebooks/*.ipynb
 *.patch
 # Temporary files - created during makerates
 *.tmp
-pre_commit_output.txt
