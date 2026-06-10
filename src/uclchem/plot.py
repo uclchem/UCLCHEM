@@ -18,6 +18,7 @@ chemical abundances and reaction rates from UCLCHEM models.
     >>>
     >>> physics_df, chemistry_df, rate_constants_df = model.get_dataframes(
     ...     with_rate_constants=True,
+    ...     joined=False,
     ... )
     >>> # Making a plot of the abundances over time
     >>> fig, ax = uclchem.plot.create_abundance_plot(

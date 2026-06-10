@@ -29,7 +29,7 @@ This module provides utility functions for:
     ...     shock_vel=50.0,  # km/s
     ...     initial_dens=1e4,  # cm^-3
     ... )
-    >>> print(f"Dissipation time: {t_diss:.1e} years")
+    >>> print(f"Dissipation time: {t_diss:.1e} years")  # doctest: +ELLIPSIS
     Dissipation time: ... years
 
 **Error Codes:**
@@ -779,9 +779,9 @@ def get_protostellar_Teff(
 
     Examples
     --------
-    >>> get_protostellar_Teff(3.828e26)                          # 1 L_sun, smooth
+    >>> get_protostellar_Teff(1.0, mode=TempMode.SMOOTH)    # 1 L_sun, smooth
     4788.72
-    >>> get_protostellar_Teff(3.828e29, mode=TempMode.BINS)      # 1000 L_sun, bins
+    >>> get_protostellar_Teff(1000.0, mode=TempMode.BINS)   # 1000 L_sun, bins
     20000.0
 
     """

@@ -35,6 +35,16 @@ repos:
         args: []
         pass_filenames: false
 
+  - repo: local
+    hooks:
+      - id: doctests-syntax
+        name: "[correctness] Python doctests (syntax)"
+        description: "Syntax-check all doctests; full execution runs in CI"
+        entry: python -m pytest --doctest-modules --collect-only -q src/uclchem/
+        language: system
+        pass_filenames: false
+        types: [python]
+
   # Ruff: Code style, docstrings, etc
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.9
