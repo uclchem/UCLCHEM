@@ -25,7 +25,7 @@ This module provides utility functions for:
     >>> success_flag.check_error(only_error=True)
 
     >>> # Calculate shock timescale
-    >>> t_diss = utils.cshock_dissipation_time(
+    >>> t_diss = uclchem.utils.cshock_dissipation_time(
     ...     shock_vel=50.0,  # km/s
     ...     initial_dens=1e4,  # cm^-3
     ... )
