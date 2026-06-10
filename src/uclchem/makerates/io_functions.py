@@ -1969,9 +1969,13 @@ def replace_value_with_name(
         # Use array_to_string to find how 'value' would be formatted.
         array_string = array_to_string("", [value], type="float")
         value_string = array_string.split("/")[1]
+        print(value_string)
     else:
-        raise TypeError()
-    replaced_string = string.replace(value_string, replace_string)
+        msg = f"Invalid type '{type(value)} for value {value}"
+        raise TypeError(msg)
+    replaced_string = string.replace(value_string, replace_string).replace(
+        str(value), replace_string
+    )
     if truncate:
         replaced_string = truncate_line(replaced_string)
     replaced_string += suffix
