@@ -25,7 +25,7 @@ optional_params = [
 
 
 def run_makerates(
-    configuration_file: str | bytes | Path = "user_settings.yaml",
+    configuration_file: str | bytes | Path | MakeratesConfig = "user_settings.yaml",
     write_files: bool = True,
     output_directory: str | os.PathLike | None = None,
 ) -> Network:
@@ -36,8 +36,8 @@ def run_makerates(
 
     Parameters
     ----------
-    configuration_file : str | bytes | Path
-        Path to YAML configuration file.
+    configuration_file : str | bytes | Path | MakeratesConfig
+        Path to YAML configuration file, or just a configuration.
         Defaults to "user_settings.yaml".
     write_files : bool
         Whether to write fortran files to src/fortran_src.
@@ -58,13 +58,16 @@ def run_makerates(
         If `coolants_file` is a directory, and not a path to a file.
 
     """
-    # Load and validate configuration using Pydantic
-    config_path: str | Path = (
-        configuration_file.decode()
-        if isinstance(configuration_file, bytes)
-        else configuration_file
-    )
-    config = MakeratesConfig.from_yaml(config_path)
+    if isinstance(configuration_file, MakeratesConfig):
+        config = configuration_file
+    else:
+        # Load and validate configuration using Pydantic
+        config_path: str | Path = (
+            configuration_file.decode()
+            if isinstance(configuration_file, bytes)
+            else configuration_file
+        )
+        config = MakeratesConfig.from_yaml(config_path)
 
     # Log the configuration
     config.log_configuration()
