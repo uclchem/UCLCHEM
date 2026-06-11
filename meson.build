@@ -173,12 +173,12 @@ py.install_sources([
   usource / 'debug.py',
   usource / 'model.py',
   usource / 'functional.py',
-  usource / 'plot.py',
   usource / 'reactions.csv',
   usource / 'species.csv',
   usource / 'tests.py',
   usource / 'utils.py',
   usource / 'py.typed',
+  usource / 'style.py'
   # advanced.py replaced by advanced package modules
 ], subdir:'uclchem')
 
@@ -194,6 +194,15 @@ py.install_sources([
   usource / 'advanced' / 'fortran_metadata.yaml',
   usource / 'advanced' / 'generate_metadata.py',
 ], subdir: 'uclchem' / 'advanced')
+
+# Install plot subpackage
+py.install_sources([
+  usource / 'plot' / '__init__.py',
+  usource / 'plot' / '_helpers.py',
+  usource / 'plot' / 'panels.py',
+  usource / 'plot' / 'compositions.py',
+], subdir: 'uclchem' / 'plot')
+
 # Lastly, we also copy the data needed for the cooling module:
 install_subdir(
   'data',

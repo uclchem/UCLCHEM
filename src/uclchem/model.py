@@ -532,6 +532,21 @@ class AbstractModel(ABC):
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
+        import multiprocessing  # noqa: PLC0415
+
+        if multiprocessing.current_process().name != "MainProcess":
+            msg = (
+                "A uclchem model was instantiated inside a multiprocessing worker. "
+                "This usually means your script is missing an "
+                "'if __name__ == \"__main__\":' guard around the model code.\n"
+                "Without it, each spawned worker re-imports and re-runs the script, "
+                "recursively launching more processes.\n"
+                "Wrap your code like this:\n\n"
+                "    if __name__ == '__main__':\n"
+                "        model = uclchem.model.Cloud(...)\n"
+            )
+            raise RuntimeError(msg)
+
         self._data = xr.Dataset()
         self._pickle_dict: dict = {}
         # Per-instance metadata containers (scalars and small values)
