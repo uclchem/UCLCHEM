@@ -8,11 +8,13 @@ Run from the repository root::
     python scripts/example_plotting_script.py
 
 Output figures are written to ``examples/plots/``.
+
 """
 
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import pandas as pd
 
 import uclchem
 import uclchem.makerates.network
@@ -33,6 +35,9 @@ if __name__ == "__main__":
     joined_df = model.get_joined_dataframes()
 
     # Separate dataframes are required for reaction-rate analysis.
+    physics_df: pd.DataFrame
+    chemistry_df: pd.DataFrame
+    rate_constants_df: pd.DataFrame
     physics_df, chemistry_df, rate_constants_df = model.get_dataframes(  # type: ignore[assignment]
         with_rate_constants=True, joined=False
     )
@@ -96,7 +101,8 @@ if __name__ == "__main__":
     #    committing to a full deepdive.
     # ---------------------------------------------------------------------------
 
-    _, rates = uclchem.analysis.rate_constants_to_dy_and_rates(  # type: ignore[misc]
+    rates: pd.DataFrame
+    _, rates = uclchem.analysis.rate_constants_to_dy_and_rates(  # type: ignore[assignment]
         physics_df, chemistry_df, rate_constants_df, network=network
     )
     production_df, destruction_df = uclchem.analysis.get_production_and_destruction(
