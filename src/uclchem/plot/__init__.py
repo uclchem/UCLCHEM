@@ -65,7 +65,12 @@ via methods like :meth:`~uclchem.model.AbstractModel.create_abundance_plot`.
 """
 
 from .compositions import create_abundance_plot, plot_rate_summary, plot_rates_deepdive
-from .panels import draw_panel_abundances, draw_panel_rate_constants, draw_panel_rates, plot_species
+from .panels import (
+    draw_panel_abundances,
+    draw_panel_rate_constants,
+    draw_panel_rates,
+    plot_species,
+)
 
 __all__ = [
     "create_abundance_plot",

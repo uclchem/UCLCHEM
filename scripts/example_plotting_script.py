@@ -10,12 +10,12 @@ Run from the repository root::
 Output figures are written to ``examples/plots/``.
 """
 
-import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 
 import uclchem
+import uclchem.makerates.network
 import uclchem.plot
 
 if __name__ == "__main__":
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     joined_df = model.get_joined_dataframes()
 
     # Separate dataframes are required for reaction-rate analysis.
-    physics_df, chemistry_df, rate_constants_df = model.get_dataframes(
+    physics_df, chemistry_df, rate_constants_df = model.get_dataframes(  # type: ignore[assignment]
         with_rate_constants=True, joined=False
     )
 
@@ -76,7 +76,14 @@ if __name__ == "__main__":
     ax.set_title("2 · plot_species — abundances + physical parameter overlay")
 
     ax_twin = ax.twinx()
-    ax_twin.plot(joined_df["Time"], joined_df["gasTemp"], color="black", lw=1.2, alpha=0.5, linestyle=":")
+    ax_twin.plot(
+        joined_df["Time"],
+        joined_df["gasTemp"],
+        color="black",
+        lw=1.2,
+        alpha=0.5,
+        linestyle=":",
+    )
     ax_twin.set_ylabel("Gas temperature / K")
 
     fig.savefig(out_dir / "02_species_with_temperature.png")
@@ -89,7 +96,7 @@ if __name__ == "__main__":
     #    committing to a full deepdive.
     # ---------------------------------------------------------------------------
 
-    _, rates = uclchem.analysis.rate_constants_to_dy_and_rates(
+    _, rates = uclchem.analysis.rate_constants_to_dy_and_rates(  # type: ignore[misc]
         physics_df, chemistry_df, rate_constants_df, network=network
     )
     production_df, destruction_df = uclchem.analysis.get_production_and_destruction(
@@ -153,8 +160,12 @@ if __name__ == "__main__":
     )
 
     for col, sp in enumerate(COMPARE_SPECIES):
-        prod_rates_full, dest_rates_full = uclchem.analysis.get_production_and_destruction(sp, rates)
-        prod_k_full, dest_k_full = uclchem.analysis.get_production_and_destruction(sp, rate_constants_df)
+        prod_rates_full, dest_rates_full = (
+            uclchem.analysis.get_production_and_destruction(sp, rates)
+        )
+        prod_k_full, dest_k_full = uclchem.analysis.get_production_and_destruction(
+            sp, rate_constants_df
+        )
 
         pos_mask = physics_df["Time"] > 0
         time = physics_df["Time"][pos_mask]
@@ -170,20 +181,32 @@ if __name__ == "__main__":
         ax_b = fig.add_subplot(gs[2, col])
 
         companion = [
-            s for s in chemistry_df.columns
+            s
+            for s in chemistry_df.columns
             if s != sp and (chemistry_df[s][pos_mask] > 0).any()
         ][:8]
 
         uclchem.plot.draw_panel_abundances(
-            ax_a, time, sp, chemistry_df[pos_mask],
-            companion, color_registry=color_registry,
+            ax_a,
+            time,
+            sp,
+            chemistry_df[pos_mask],
+            companion,
+            color_registry=color_registry,
         )
         uclchem.plot.draw_panel_rates(
-            ax_b, time, prod_rates, dest_rates,
+            ax_b,
+            time,
+            prod_rates,
+            dest_rates,
             color_registry=color_registry,
         )
         uclchem.plot.draw_panel_rate_constants(
-            ax_c, time, prod_k, dest_k, color_registry=color_registry,
+            ax_c,
+            time,
+            prod_k,
+            dest_k,
+            color_registry=color_registry,
         )
         ax_a.set_title(sp, fontsize=11, fontweight="bold")
 

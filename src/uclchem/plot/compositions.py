@@ -7,10 +7,17 @@ from typing import TYPE_CHECKING, Any
 
 import matplotlib.figure
 import matplotlib.pyplot as plt
-import pandas as pd
 
-from .panels import draw_panel_abundances, draw_panel_rate_constants, draw_panel_rates, plot_species
-from ._helpers import _color_for, _filter_reactions, _reactants_from_rxn
+if TYPE_CHECKING:
+    import pandas as pd
+
+from ._helpers import _filter_reactions, _reactants_from_rxn
+from .panels import (
+    draw_panel_abundances,
+    draw_panel_rate_constants,
+    draw_panel_rates,
+    plot_species,
+)
 
 if TYPE_CHECKING:
     from uclchem.makerates.network import Network
@@ -212,8 +219,12 @@ def plot_rates_deepdive(
     _, rates = analysis.rate_constants_to_dy_and_rates(
         physics_df, chemistry_df, rate_constants_df, network=network
     )
-    prod_rates_full, dest_rates_full = analysis.get_production_and_destruction(species, rates)
-    prod_k_full, dest_k_full = analysis.get_production_and_destruction(species, rate_constants_df)
+    prod_rates_full, dest_rates_full = analysis.get_production_and_destruction(
+        species, rates
+    )
+    prod_k_full, dest_k_full = analysis.get_production_and_destruction(
+        species, rate_constants_df
+    )
 
     # Restrict to positive time steps
     pos_mask = physics_df["Time"] > 0
@@ -225,8 +236,12 @@ def plot_rates_deepdive(
     dest_k = dest_k_full[pos_mask].abs()
 
     if filter_freeze:
-        prod_rates = prod_rates[[c for c in prod_rates.columns if "FREEZE" not in c.upper()]]
-        dest_rates = dest_rates[[c for c in dest_rates.columns if "FREEZE" not in c.upper()]]
+        prod_rates = prod_rates[
+            [c for c in prod_rates.columns if "FREEZE" not in c.upper()]
+        ]
+        dest_rates = dest_rates[
+            [c for c in dest_rates.columns if "FREEZE" not in c.upper()]
+        ]
         prod_k = prod_k[[c for c in prod_k.columns if "FREEZE" not in c.upper()]]
         dest_k = dest_k[[c for c in dest_k.columns if "FREEZE" not in c.upper()]]
 
@@ -284,9 +299,21 @@ def plot_rates_deepdive(
     ax_b = fig.add_subplot(gs[2])
 
     chem_filtered = chemistry_df[pos_mask]
-    draw_panel_abundances(ax_a, time, species, chem_filtered, companion, reactant_species=reactant_species, color_registry=_reg)
-    draw_panel_rates(ax_b, time, prod_rates, dest_rates, top_prod, top_dest, color_registry=_reg)
-    draw_panel_rate_constants(ax_c, time, prod_k, dest_k, top_prod, top_dest, bar=True, color_registry=_reg)
+    draw_panel_abundances(
+        ax_a,
+        time,
+        species,
+        chem_filtered,
+        companion,
+        reactant_species=reactant_species,
+        color_registry=_reg,
+    )
+    draw_panel_rates(
+        ax_b, time, prod_rates, dest_rates, top_prod, top_dest, color_registry=_reg
+    )
+    draw_panel_rate_constants(
+        ax_c, time, prod_k, dest_k, top_prod, top_dest, bar=True, color_registry=_reg
+    )
 
     if output_path is not None:
         base = Path(output_path)

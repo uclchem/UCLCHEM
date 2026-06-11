@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import matplotlib.pyplot as plt
 import pandas as pd
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 from uclchem.style import format_chemical_formula, format_reaction_label
 
@@ -124,7 +126,7 @@ def draw_panel_abundances(
     color_registry : dict[str, str] | None
         Shared color map (species name → hex string).  Pass the same dict
         to multiple panel calls to keep colors consistent.  A fresh
-        registry is created when ``None`` is passed.
+        registry is created when ``None`` is passed.  Default: ``None``.
 
     Returns
     -------
@@ -165,8 +167,13 @@ def draw_panel_abundances(
         )
     ax.set_ylabel("Abundance (w.r.t. H)")
     ax.text(
-        0.02, 0.98, "A",
-        transform=ax.transAxes, fontsize=10, verticalalignment="top", weight="bold",
+        0.02,
+        0.98,
+        "A",
+        transform=ax.transAxes,
+        fontsize=10,
+        verticalalignment="top",
+        weight="bold",
     )
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -222,25 +229,89 @@ def _draw_reaction_time_series(
     other_prod = [c for c in prod_df.columns if c not in top_prod]
     other_dest = [c for c in dest_df.columns if c not in top_dest]
 
-    ax.plot(time, prod_df.sum(axis=1), lw=1.5, color="black", alpha=0.45, linestyle="-", zorder=10, label="Total formation")
-    ax.plot(time, dest_df.sum(axis=1), lw=1.5, color="black", alpha=0.45, linestyle="--", zorder=10, label="Total destruction")
+    ax.plot(
+        time,
+        prod_df.sum(axis=1),
+        lw=1.5,
+        color="black",
+        alpha=0.45,
+        linestyle="-",
+        zorder=10,
+        label="Total formation",
+    )
+    ax.plot(
+        time,
+        dest_df.sum(axis=1),
+        lw=1.5,
+        color="black",
+        alpha=0.45,
+        linestyle="--",
+        zorder=10,
+        label="Total destruction",
+    )
     if other_prod:
-        ax.plot(time, prod_df[other_prod].sum(axis=1), lw=1.2, color="gray", alpha=0.6, linestyle=":", zorder=9, label="Other formation")
+        ax.plot(
+            time,
+            prod_df[other_prod].sum(axis=1),
+            lw=1.2,
+            color="gray",
+            alpha=0.6,
+            linestyle=":",
+            zorder=9,
+            label="Other formation",
+        )
     if other_dest:
-        ax.plot(time, dest_df[other_dest].sum(axis=1), lw=1.2, color="gray", alpha=0.6, linestyle="-.", zorder=9, label="Other destruction")
+        ax.plot(
+            time,
+            dest_df[other_dest].sum(axis=1),
+            lw=1.2,
+            color="gray",
+            alpha=0.6,
+            linestyle="-.",
+            zorder=9,
+            label="Other destruction",
+        )
     for rxn in top_prod:
-        ax.plot(time, prod_df[rxn], lw=1.2, color=_color_for(rxn, color_registry), alpha=0.85, linestyle="-", label=format_reaction_label(rxn))
+        ax.plot(
+            time,
+            prod_df[rxn],
+            lw=1.2,
+            color=_color_for(rxn, color_registry),
+            alpha=0.85,
+            linestyle="-",
+            label=format_reaction_label(rxn),
+        )
     for rxn in top_dest:
-        ax.plot(time, dest_df[rxn], lw=1.2, color=_color_for(rxn, color_registry), alpha=0.85, linestyle="--", label=format_reaction_label(rxn))
+        ax.plot(
+            time,
+            dest_df[rxn],
+            lw=1.2,
+            color=_color_for(rxn, color_registry),
+            alpha=0.85,
+            linestyle="--",
+            label=format_reaction_label(rxn),
+        )
 
-    leg = ax.legend(loc="lower center", mode="expand", ncol=2, fontsize=7, framealpha=0.9, handlelength=3.5)
+    leg = ax.legend(
+        loc="lower center",
+        mode="expand",
+        ncol=2,
+        fontsize=7,
+        framealpha=0.9,
+        handlelength=3.5,
+    )
     for handle in leg.legend_handles:
         handle.set_linewidth(1.75)
     ax.set_xlabel("Time / years")
     ax.set_ylabel(ylabel)
     ax.text(
-        0.02, 0.98, panel_label,
-        transform=ax.transAxes, fontsize=10, verticalalignment="top", weight="bold",
+        0.02,
+        0.98,
+        panel_label,
+        transform=ax.transAxes,
+        fontsize=10,
+        verticalalignment="top",
+        weight="bold",
     )
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -278,9 +349,11 @@ def draw_panel_rates(
     top_prod : list[str] | None
         Reaction column names to draw individually for production.
         When ``None``, the top *top_k* reactions by mean rate are selected.
+        Default: ``None``.
     top_dest : list[str] | None
         Reaction column names to draw individually for destruction.
         When ``None``, the top *top_k* reactions by mean rate are selected.
+        Default: ``None``.
     top_k : int | None
         Number of top reactions to show individually when *top_prod* /
         *top_dest* are ``None``.  Pass ``None`` to show all reactions.
@@ -288,7 +361,7 @@ def draw_panel_rates(
     color_registry : dict[str, str] | None
         Shared color map (reaction string → hex string).  Pass the same
         dict to multiple panel calls to keep colors consistent.  A fresh
-        registry is created when ``None`` is passed.
+        registry is created when ``None`` is passed.  Default: ``None``.
 
     Returns
     -------
@@ -300,13 +373,26 @@ def draw_panel_rates(
         color_registry = {}
     if top_prod is None:
         cols = prod_rates.columns
-        top_prod = list(prod_rates[cols].mean().nlargest(top_k).index) if top_k is not None else list(cols)
+        top_prod = (
+            list(prod_rates[cols].mean().nlargest(top_k).index)
+            if top_k is not None
+            else list(cols)
+        )
     if top_dest is None:
         cols = dest_rates.columns
-        top_dest = list(dest_rates[cols].mean().nlargest(top_k).index) if top_k is not None else list(cols)
+        top_dest = (
+            list(dest_rates[cols].mean().nlargest(top_k).index)
+            if top_k is not None
+            else list(cols)
+        )
 
     return _draw_reaction_time_series(
-        ax, time, prod_rates, dest_rates, top_prod, top_dest,
+        ax,
+        time,
+        prod_rates,
+        dest_rates,
+        top_prod,
+        top_dest,
         color_registry,
         ylabel=r"Reaction rate (abundance wrt H s$^{-1}$)",
         panel_label="B",
@@ -345,11 +431,11 @@ def draw_panel_rate_constants(
     top_prod : list[str] | None
         Reaction column names to include for production.
         When ``None``, the top *top_k* reactions by mean rate constant are
-        selected.
+        selected.  Default: ``None``.
     top_dest : list[str] | None
         Reaction column names to include for destruction.
         When ``None``, the top *top_k* reactions by mean rate constant are
-        selected.
+        selected.  Default: ``None``.
     top_k : int | None
         Number of top reactions to show when *top_prod* / *top_dest* are
         ``None``.  Pass ``None`` to show all.  Default: 5.
@@ -358,7 +444,7 @@ def draw_panel_rate_constants(
         Default: ``False``.
     color_registry : dict[str, str] | None
         Shared color map (reaction string → hex string).  A fresh registry
-        is created when ``None`` is passed.
+        is created when ``None`` is passed.  Default: ``None``.
 
     Returns
     -------
@@ -370,14 +456,27 @@ def draw_panel_rate_constants(
         color_registry = {}
     if top_prod is None:
         cols = prod_k.columns
-        top_prod = list(prod_k[cols].mean().nlargest(top_k).index) if top_k is not None else list(cols)
+        top_prod = (
+            list(prod_k[cols].mean().nlargest(top_k).index)
+            if top_k is not None
+            else list(cols)
+        )
     if top_dest is None:
         cols = dest_k.columns
-        top_dest = list(dest_k[cols].mean().nlargest(top_k).index) if top_k is not None else list(cols)
+        top_dest = (
+            list(dest_k[cols].mean().nlargest(top_k).index)
+            if top_k is not None
+            else list(cols)
+        )
 
     if not bar:
         return _draw_reaction_time_series(
-            ax, time, prod_k, dest_k, top_prod, top_dest,
+            ax,
+            time,
+            prod_k,
+            dest_k,
+            top_prod,
+            top_dest,
             color_registry,
             ylabel=r"Rate constant $k$ (s$^{-1}$)",
             panel_label="C",
@@ -390,9 +489,13 @@ def draw_panel_rate_constants(
     top_dest_k = [r for r in top_dest if r in dest_k.columns]
 
     varying = [
-        r for r in top_prod_k if prod_k[r].mean() > 0 and prod_k[r].std() / prod_k[r].mean() > _K_VARY_THRESHOLD
+        r
+        for r in top_prod_k
+        if prod_k[r].mean() > 0 and prod_k[r].std() / prod_k[r].mean() > _K_VARY_THRESHOLD
     ] + [
-        r for r in top_dest_k if dest_k[r].mean() > 0 and dest_k[r].std() / dest_k[r].mean() > _K_VARY_THRESHOLD
+        r
+        for r in top_dest_k
+        if dest_k[r].mean() > 0 and dest_k[r].std() / dest_k[r].mean() > _K_VARY_THRESHOLD
     ]
     if varying:
         warnings.warn(
@@ -416,8 +519,13 @@ def draw_panel_rate_constants(
     ax.set_xticklabels(["Formation", "Destruction"])
     ax.set_ylabel(r"Mean $k$ (s$^{-1}$)")
     ax.text(
-        0.02, 0.98, "C",
-        transform=ax.transAxes, fontsize=10, verticalalignment="top", weight="bold",
+        0.02,
+        0.98,
+        "C",
+        transform=ax.transAxes,
+        fontsize=10,
+        verticalalignment="top",
+        weight="bold",
     )
     ax.set_yscale("log")
     return ax

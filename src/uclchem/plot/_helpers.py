@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import matplotlib as mpl
-import pandas as pd
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 _TAB20_COLORS: list[str] = [mpl.colors.to_hex(c) for c in mpl.colormaps["tab20"].colors]
 
