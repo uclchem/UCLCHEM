@@ -13,8 +13,6 @@ import pytest
 import uclchem
 
 COLLAPSE_PARAMS = {
-    # "initialDens": 1e4,
-    # "finalDens": 1e6,
     "initialTemp": 10.0,
     "endAtFinalDensity": True,
 }
@@ -91,10 +89,10 @@ def test_parcel_radius_zero_for_cloud():
     )
 
 
-def test_parcel_radius_initial_value_matches_rout():
-    """Initial parcel radius should be approximately rout (outermost shell = rout)."""
-    rout = 0.05  # default rout in parsec
-    params = {**COLLAPSE_PARAMS, "rout": rout}
+def test_parcel_radius_initial_value_matches_r_out():
+    """Initial parcel radius should be approximately r_out (outermost shell = r_out)."""
+    r_out = 0.05  # default r_out in parsec
+    params = {**COLLAPSE_PARAMS, "rout": r_out}
 
     physics, chemistry, rates, heating, abundances, return_code = (
         uclchem.functional.collapse(
@@ -107,14 +105,14 @@ def test_parcel_radius_initial_value_matches_rout():
 
     assert return_code == 0, f"Collapse failed with code {return_code}"
     initial_radius = physics["parcel_radius"].iloc[0]
-    assert abs(initial_radius - rout) < 0.1 * rout, (
-        f"Initial parcel_radius {initial_radius:.4f} deviates more than 10% from rout={rout}"
+    assert abs(initial_radius - r_out) < 0.1 * r_out, (
+        f"Initial parcel_radius {initial_radius:.4f} deviates more than 10% from r_out={r_out}"
     )
 
 
 def test_model_stops_end_at_final_density():
-    finalDens = 1e4
-    finalTime = 1e6
+    finalDens = 1e4  # noqa: N806 physics-var
+    finalTime = 1e6  # noqa: N806 physics-var
     model = uclchem.model.Cloud(
         {
             "initialDens": 8e3,
@@ -135,8 +133,8 @@ def test_model_stops_end_at_final_density():
 
 
 def test_model_continues_not_end_at_final_density():
-    finalDens = 1e4
-    finalTime = 1e6
+    finalDens = 1e4  # noqa: N806 physics-var
+    finalTime = 1e6  # noqa: N806 physics-var
     model = uclchem.model.Cloud(
         {
             "initialDens": 8e3,
@@ -165,8 +163,8 @@ def test_end_at_final_density_stops_close_to_target():
     that the model did not stop too early AND that it did not overshoot by more
     than a factor of 2 (a generous single-timestep bound for freefall collapse).
     """
-    finalDens = 1e5
-    finalTime = 1e7  # Much longer than needed to reach finalDens via freefall
+    finalDens = 1e5  # noqa: N806 physics-var
+    finalTime = 1e7  # noqa: N806 physics-var  # Much longer than needed to reach finalDens via freefall
     model = uclchem.model.Cloud(
         {
             "initialDens": 1e4,

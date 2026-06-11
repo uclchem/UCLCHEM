@@ -2,7 +2,7 @@
 !Takes a velocity from the shock module and uses the shock sputtering
 !treatment described in  Jimenez-Serra et al. 2008 A&A 482
 !http://adsabs.harvard.edu/abs/2008A&A...482..549J
-! to calulate the amount of material removed from dust grains
+! to calculate the amount of material removed from dust grains
 !
 ! Additionally uses Guillet et al. 2011 (http://www.aanda.org/10.1051/0004-6361/201015973)
 ! result that for shocks >19km/s you get vaporization which sends dust grain material

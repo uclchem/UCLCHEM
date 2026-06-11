@@ -12,7 +12,7 @@ MODULE physicscore
     INTEGER :: dstep
 
     
-    !Optional CR attentuation with column density and better H2 dissociation rates
+    !Optional CR attenuation with column density and better H2 dissociation rates
     REAL(dp) :: h2CRPRate,zetaScale
 
     !variables either controlled by physics or that user may wish to change
@@ -121,7 +121,7 @@ CONTAINS
         END IF
         IF ((improvedH2CRPDissociation) .and. (.not. cosmicRayAttenuation)) THEN
             successFlag=-1
-            write(*,*) "Error: improvedH2CRPDissociation requires cosmicRayAttentuation to also be True"
+            write(*,*) "Error: improvedH2CRPDissociation requires cosmicRayAttenuation to also be True"
             RETURN
         END IF
         IF ((freefall) .and. (finalDens .lt. initialDens)) THEN
@@ -142,9 +142,9 @@ CONTAINS
     SUBROUTINE coreUpdatePhysics
         ! In the 1D RT (points,time) loop, modelUpdatePhysics (cloud.f90) owns
         ! coldens and av using the edge-to-core accumulation with coldens_history.
-        ! Skip the centre-to-edge accumulation here to avoid clobbering those values.
+        ! Skip the center-to-edge accumulation here to avoid clobbering those values.
         IF (.NOT. (enable_radiative_transfer .AND. points.gt.1)) THEN
-            !calculate column density. Remember dstep counts from core centre to edge
+            !calculate column density. Remember dstep counts from core center to edge
             !and coldens should be amount of gas from edge to parcel.
             coldens(dstep)=cloudSize/real(points)*density(dstep)
 
@@ -234,7 +234,7 @@ CONTAINS
         END IF
     END SUBROUTINE ionizationDependency
 
-    ! Analytical column density from centre (r=0) to r [cm^-2].
+    ! Analytical column density from center (r=0) to r [cm^-2].
     SUBROUTINE findcoldens_core2edge(coldens,rho0,density_scale_radius,density_power_index,r)
       REAL(dp),intent(in) :: r,rho0,density_scale_radius,density_power_index
       REAL(dp),intent(out) :: coldens
@@ -265,14 +265,14 @@ CONTAINS
                                    density_power_index, r)
     END FUNCTION coldens_external
 
-    ! Column density shielding from central protostar (stage 2 / hotcore): integral from centre to parcel.
+    ! Column density shielding from central protostar (stage 2 / hotcore): integral from center to parcel.
     REAL(dp) FUNCTION coldens_internal(r)
         REAL(dp), INTENT(IN) :: r    ! parcel radius [pc]
         call findcoldens_core2edge(coldens_internal, finalDens, &
                                    density_scale_radius, density_power_index, r)
     END FUNCTION coldens_internal
 
-    ! The profile of the gas volumn density
+    ! The profile of the gas volume density
     ! REAL(dp) FUNCTION rhofit(r,rho0,r0,a)
     REAL(dp) FUNCTION ngas_r(r,rho0,density_scale_radius,density_power_index)
       REAL(dp) :: r,rho0,density_scale_radius,density_power_index

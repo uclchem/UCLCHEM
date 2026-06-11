@@ -1,6 +1,7 @@
 """Test some basic UCLCHEM models.
 
 This should be run from the UCLCHEM root directory.
+
 """
 
 import logging
@@ -19,8 +20,6 @@ if __name__ == "__main__":
     if save_file.exists():
         save_file.unlink()
 
-    out_species = ["OH", "OCS", "CO", "CS", "CH3OH"]
-
     print("Running test models...")
 
     # Static cloud model (no collapse)
@@ -35,7 +34,7 @@ if __name__ == "__main__":
     }
 
     start = perf_counter()
-    static_model = uclchem.model.Cloud(param_dict=params, out_species=out_species)
+    static_model = uclchem.model.Cloud(param_dict=params)
     stop = perf_counter()
     print(f"Static model in {stop - start:.1f} seconds")
     static_model.save_model(file=str(save_file), name="static", overwrite=True)
@@ -52,7 +51,7 @@ if __name__ == "__main__":
     }
 
     start = perf_counter()
-    phase1_model = uclchem.model.Cloud(param_dict=params, out_species=out_species)
+    phase1_model = uclchem.model.Cloud(param_dict=params)
     stop = perf_counter()
     print(f"Phase 1 in {stop - start:.1f} seconds")
     phase1_model.save_model(file=str(save_file), name="phase1", overwrite=True)
@@ -80,7 +79,6 @@ if __name__ == "__main__":
         temp_indx=3,
         max_temperature=300.0,
         param_dict=params,
-        out_species=out_species,
         previous_model=phase1_model,
     )
     stop = perf_counter()

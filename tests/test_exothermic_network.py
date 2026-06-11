@@ -1,5 +1,7 @@
 """Test building a network with both computed enthalpies and custom exothermicity files."""
 
+from pathlib import Path
+
 import pytest
 import yaml
 
@@ -37,11 +39,9 @@ OH+,E-,NAN,O,H,NAN,NAN,-13.0,eV,Test
 
 
 @pytest.fixture
-def config_file_with_exothermicity(tmp_path, custom_exothermicity_file):
+def config_file_with_exothermicity(tmp_path, custom_exothermicity_file) -> Path:
     """Create a complete configuration file with exothermicity settings."""
-    import os
-
-    workspace_root = os.getcwd()
+    workspace_root = Path.cwd()
 
     config = {
         "species_file": f"{workspace_root}/Makerates/data/default/default_species.csv",
@@ -59,18 +59,16 @@ def config_file_with_exothermicity(tmp_path, custom_exothermicity_file):
     }
 
     config_path = tmp_path / "test_config.yaml"
-    with open(config_path, "w") as f:
+    with config_path.open("w") as f:
         yaml.dump(config, f)
 
     return config_path
 
 
 @pytest.fixture
-def config_file_multiple_exo_files(tmp_path, custom_exothermicity_file):
+def config_file_multiple_exo_files(tmp_path, custom_exothermicity_file) -> Path:
     """Create a configuration file with multiple exothermicity files."""
-    import os
-
-    workspace_root = os.getcwd()
+    workspace_root = Path.cwd()
 
     # Create a second exothermicity file that overrides some values
     exo_csv_2 = tmp_path / "custom_exothermicities_2.csv"
@@ -99,7 +97,7 @@ H3+,E-,NAN,H2,H,NAN,NAN,-200.0,ev,Override Test Data
     }
 
     config_path = tmp_path / "test_config_multi.yaml"
-    with open(config_path, "w") as f:
+    with config_path.open("w") as f:
         yaml.dump(config, f)
 
     return config_path
@@ -110,7 +108,7 @@ def test_network_with_custom_exothermicity(config_file_with_exothermicity):
     # Debug: Print config file content
     import yaml
 
-    with open(config_file_with_exothermicity) as f:
+    with config_file_with_exothermicity.open() as f:
         config = yaml.safe_load(f)
     print(
         f"\n=== Config database_reaction_exothermicity: {config.get('database_reaction_exothermicity')} ==="
@@ -149,8 +147,8 @@ def test_network_with_custom_exothermicity(config_file_with_exothermicity):
     )
 
     # Convert from erg to eV for comparison (1 eV = 1.602176634e-12 erg)
-    EV_TO_ERG = 1.602176634e-12
-    exo_ev = ch_recomb.get_exothermicity() / EV_TO_ERG
+    ev_to_erg = 1.602176634e-12
+    exo_ev = ch_recomb.get_exothermicity() / ev_to_erg
 
     # Should be approximately -1.0 eV (dummy test data)
     assert abs(exo_ev - (-1.0)) < 0.01, f"Expected -1.0 eV, got {exo_ev} eV"
@@ -181,8 +179,8 @@ def test_network_with_multiple_database_reaction_exothermicity(
     assert ch_recomb.get_exothermicity() is not None
 
     # Convert from erg to eV
-    EV_TO_ERG = 1.602176634e-12
-    exo_ev = ch_recomb.get_exothermicity() / EV_TO_ERG
+    ev_to_erg = 1.602176634e-12
+    exo_ev = ch_recomb.get_exothermicity() / ev_to_erg
 
     # Should be -100.0 eV (from second file, overriding -1.0 from first)
     assert abs(exo_ev - (-100.0)) < 0.01, (
@@ -203,7 +201,7 @@ def test_network_with_multiple_database_reaction_exothermicity(
     assert h3_recomb is not None, "H3+ + E- -> H2 + H reaction not found"
     assert h3_recomb.get_exothermicity() is not None
 
-    exo_ev_h3 = h3_recomb.get_exothermicity() / EV_TO_ERG
+    exo_ev_h3 = h3_recomb.get_exothermicity() / ev_to_erg
 
     # Should be -200.0 eV (from second file, overriding -2.0 from first)
     assert abs(exo_ev_h3 - (-200.0)) < 0.01, (
@@ -215,9 +213,7 @@ def test_network_with_multiple_database_reaction_exothermicity(
 
 def test_network_exothermicity_without_custom_file(tmp_path):
     """Test that network works with derive_reaction_exothermicity but no custom files."""
-    import os
-
-    workspace_root = os.getcwd()
+    workspace_root = Path.cwd()
 
     config = {
         "species_file": f"{workspace_root}/Makerates/data/default/default_species.csv",
@@ -234,7 +230,7 @@ def test_network_exothermicity_without_custom_file(tmp_path):
     }
 
     config_path = tmp_path / "test_config_no_custom.yaml"
-    with open(config_path, "w") as f:
+    with config_path.open("w") as f:
         yaml.dump(config, f)
 
     # This should work without errors (computed enthalpies only)
@@ -261,7 +257,7 @@ def test_exothermicity_unit_conversion(config_file_with_exothermicity):
         ("C2H+", "E-", "C2", "H", -4.0),  # eV (note: -3.0 is C10H+ which may not exist)
     ]
 
-    EV_TO_ERG = 1.602176634e-12
+    ev_to_erg = 1.602176634e-12
 
     for reactant1, reactant2, product1, product2, expected_ev in test_cases:
         reaction_found = None
@@ -282,7 +278,7 @@ def test_exothermicity_unit_conversion(config_file_with_exothermicity):
         )
 
         if reaction_found.get_exothermicity() is not None:
-            exo_ev = reaction_found.get_exothermicity() / EV_TO_ERG
+            exo_ev = reaction_found.get_exothermicity() / ev_to_erg
             assert abs(exo_ev - expected_ev) < 0.01, (
                 f"{reactant1} + {reactant2} -> {product1} + {product2}: "
                 f"Expected {expected_ev} eV, got {exo_ev} eV"

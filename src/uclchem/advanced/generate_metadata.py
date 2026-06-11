@@ -10,6 +10,7 @@ Usage::
     uclchem-generate-metadata            # update YAML in-place
     uclchem-generate-metadata --dry-run  # print diff, do not write
     uclchem-generate-metadata --check    # exit 1 if YAML would change (CI use)
+
 """
 
 from __future__ import annotations
@@ -46,8 +47,16 @@ _MODULE_RE = re.compile(r"^\s*MODULE\s+(\w+)\s*$", re.IGNORECASE)
 def _strip_comment(line: str) -> str:
     """Remove Fortran inline comment (everything from ``!`` onward).
 
-    Returns:
+    Parameters
+    ----------
+    line : str
+        A single line of Fortran source code.
+
+    Returns
+    -------
+    str
         Line with comments stripped, respecting character literals.
+
     """
     # Respect character literals by scanning manually
     in_str = False
@@ -56,12 +65,11 @@ def _strip_comment(line: str) -> str:
         if in_str:
             if ch == quote:
                 in_str = False
-        else:
-            if ch in ("'", '"'):
-                in_str = True
-                quote = ch
-            elif ch == "!":
-                return line[:i]
+        elif ch in {"'", '"'}:
+            in_str = True
+            quote = ch
+        elif ch == "!":
+            return line[:i]
     return line
 
 
@@ -72,8 +80,16 @@ def _extract_param_names(rhs: str) -> list[str]:
 
         a = 1.0, b(10) = (/.../)  ->  ["a", "b"]
 
-    Returns:
+    Parameters
+    ----------
+    rhs : str
+        Right-hand side of a Fortran parameter assignment.
+
+    Returns
+    -------
+    list[str]
         List of parameter names in lowercase.
+
     """
     names: list[str] = []
     # Split on commas that are not inside parentheses
@@ -108,8 +124,16 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
 
     Handles Fortran continuation lines (ending with ``&`` and starting next line with ``&``).
 
-    Returns:
+    Parameters
+    ----------
+    src_dir : Path
+        Path to the directory containing Fortran source files.
+
+    Returns
+    -------
+    dict[str, list[str]]
         Mapping of f2py module name (lowercase) to sorted list of PARAMETER names.
+
     """
     known_modules = set(_MODULE_NAMES)
     result: dict[str, list[str]] = {}
@@ -120,7 +144,7 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
         depth = 0  # nesting level; 0 = module scope
         continuation = ""  # accumulated continuation lines
 
-        with open(f90, encoding="utf-8", errors="replace") as fh:
+        with Path(f90).open(encoding="utf-8", errors="replace") as fh:
             for raw in fh:
                 line = _strip_comment(raw).rstrip()
 
@@ -166,7 +190,7 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
 
 
 def _load_yaml(path: Path) -> dict:
-    with open(path) as f:
+    with Path(path).open() as f:
         return yaml.safe_load(f) or {}
 
 
@@ -180,14 +204,23 @@ def _merge(existing: dict, detected: dict[str, list[str]]) -> dict:
     The ``global`` key and any other hand-maintained keys not present in
     *detected* are left untouched.  Auto-detected module keys are replaced.
 
-    Returns:
+    Parameters
+    ----------
+    existing : dict
+        Existing metadata dict.
+    detected : dict[str, list[str]]
+        Newly detected metadata dict from source parsing.
+
+    Returns
+    -------
+    dict
         New merged dictionary.
+
     """
     merged = dict(existing)
     fp: dict = dict(merged.get("fortran_parameters", {}))
 
-    for mod_name, names in detected.items():
-        fp[mod_name] = names
+    fp.update(detected)
 
     merged["fortran_parameters"] = fp
     return merged
@@ -255,7 +288,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(1)
         return
 
-    with open(metadata_path, "w") as f:
+    with Path(metadata_path).open("w") as f:
         f.write(new_text)
     print(f"Updated {metadata_path}")
     for mod, names in sorted(detected.items()):

@@ -268,7 +268,7 @@ def test_network_cloud_model_runs(network_name, settings_file):
 
     This validates that networks can be fully installed and used in simulation.
     """
-    UCLCHEM_ROOT = Path(__file__).resolve().parent.parent
+    uclchem_root = Path(__file__).resolve().parent.parent
 
     # Step 1: Run makerates and write Fortran source files
     run_makerates(str(settings_file), write_files=True)
@@ -279,7 +279,7 @@ def test_network_cloud_model_runs(network_name, settings_file):
         shell=True,
         text=True,
         capture_output=True,
-        cwd=str(UCLCHEM_ROOT),
+        cwd=str(uclchem_root),
         timeout=300,
     )
     assert result.returncode == 0, (

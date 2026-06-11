@@ -5,6 +5,7 @@ and 2 (stderr), bypassing Python's sys.stdout/sys.stderr. This module
 provides a context manager that redirects those file descriptors to a pipe,
 reads the output in a background thread, and streams it to the terminal
 and optionally to a per-model log file on disk in real time.
+
 """
 
 import os
@@ -22,6 +23,19 @@ def _reader_thread(
 
     Uses raw os.read() to bypass all Python IO buffering.
     The log file is lazily created on first non-empty line.
+
+    Parameters
+    ----------
+    read_fd : int
+        file descriptor of where fortran puts output
+    saved_stdout_fd : int
+        file descriptor of where to log output
+    prefix : str
+        prefix of what to add in front of the log
+    log_file : str | Path | None
+        path to write logs to.
+        If None, do not write to file, only to stdout.
+
     """
     log_handle = None
     buf = b""
@@ -48,7 +62,7 @@ def _reader_thread(
                             parents=True,
                             exist_ok=True,
                         )
-                        log_handle = open(log_path, "w")  # noqa: SIM115
+                        log_handle = log_path.open("w")
                     log_handle.write(f"{line}\n")
                     log_handle.flush()
         # Flush any trailing data without a final newline
@@ -61,7 +75,7 @@ def _reader_thread(
                 )
                 if log_handle is not None:
                     log_handle.write(f"{line}\n")
-    except Exception:
+    except Exception:  # noqa: S110
         pass
     finally:
         os.close(read_fd)
@@ -79,20 +93,28 @@ def capture_fortran_output(
     A background reader thread prints each line to the terminal
     in real time and optionally writes to a per-model log file.
 
-    Args:
-        label (str): Identifier prepended to terminal lines.
-        log_file (str | Path | None): Per-model log file path.
-            Only created if there is at least one line of output. Default = None.
+    Parameters
+    ----------
+    label : str
+        Identifier prepended to terminal lines. Default = "".
+    log_file : str | Path | None
+        Per-model log file path.
+        Only created if there is at least one line of output. Default = None.
 
-    Yields: None
+    Yields
+    ------
+    None
+        nothing
 
-    Example:
-        >>> from uclchem.model import Cloud
-        >>> with capture_fortran_output(
-        ...     label="model_3",
-        ...     log_file="logs/model_3.log",
-        ... ):
-        ...    result = Cloud({})
+    Examples
+    --------
+    >>> from uclchem.model import Cloud
+    >>>
+    >>> with capture_fortran_output(
+    ...     label="model_3",
+    ...     log_file="logs/model_3.log",
+    ... ):
+    ...    result = Cloud({})
 
     """
     # Flush Python buffers before redirecting

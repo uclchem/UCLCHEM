@@ -5,6 +5,7 @@ Usage::
     uclchem-makerates config.yaml                    # Generate network
     uclchem-makerates config.yaml --output-dir ./out # Specify output directory
     uclchem-makerates --help                          # Show help
+
 """
 
 from __future__ import annotations

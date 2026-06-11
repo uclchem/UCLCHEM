@@ -1,4 +1,4 @@
-# noqa: D100
+"""UCLCHEM version."""
 
 # This is a backup of the version.py file in the uclchem package.
 # If everything goes right, meson will actually use version.py.in to automatically

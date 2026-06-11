@@ -102,7 +102,7 @@ def test_parameter_immutability():
     for module_name in settings._modules:
         mod_settings = settings._modules[module_name]
 
-        for name, setting in mod_settings._settings.items():
+        for setting in mod_settings._settings.values():
             if setting.is_parameter:
                 with pytest.raises(RuntimeError, match="PARAMETER"):
                     # Attempt to modify should fail

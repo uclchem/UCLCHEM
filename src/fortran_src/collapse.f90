@@ -3,8 +3,8 @@
 ! Uses the following parameterizations of MHD models.
 ! collapse = 2: Bonnor-Ebert sphere, overdensity factor 1.1 (Aikawa+2005)
 ! collapse = 3: Bonnor-Ebert sphere, overdensity factor 4 (Aikawa+2005)
-! collapse = 4: magnetised filament, initially unstable to collapse (Nakamura+1995)
-! collapse = 5: magnetised cloud, initially stable, collapse due to ambipolar diffusion (Fiedler+1993)
+! collapse = 4: magnetized filament, initially unstable to collapse (Nakamura+1995)
+! collapse = 5: magnetized cloud, initially stable, collapse due to ambipolar diffusion (Fiedler+1993)
 MODULE collapse_mod
    USE constants
    USE DEFAULTPARAMETERS

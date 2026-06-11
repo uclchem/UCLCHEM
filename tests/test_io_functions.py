@@ -73,7 +73,7 @@ def test_array_to_string_2d_string():
         ("p-H2", "p-H2"),
         ("a-CH3OH", "a-CH3OH"),
         ("l-C3H2", "l-C3H2"),
-        # prefix case-normalisation (user typed uppercase prefix letter)
+        # prefix case-normalization (user typed uppercase prefix letter)
         ("O-H2", "o-H2"),
         ("P-H2", "p-H2"),
         # grain prefix preserved; chemical prefix lowercased
@@ -115,7 +115,7 @@ def test_prefix_species_name_and_prefix_field():
     assert s.prefix == "o"
 
 
-def test_prefix_species_case_normalised():
+def test_prefix_species_case_normalized():
     """Uppercase prefix letter in input must be lowercased."""
     s = _make("O-H2", mass=2)
     assert s.name == "o-H2"
@@ -198,7 +198,7 @@ def test_positive_ion_charge_unchanged():
 
 
 # ---------------------------------------------------------------------------
-# Reaction normalisation with chemical prefix
+# Reaction normalization with chemical prefix
 # ---------------------------------------------------------------------------
 
 
@@ -207,13 +207,13 @@ def _reac(r1, r2, r3, p1, p2, p3, p4):
     return Reaction([r1, r2, r3, p1, p2, p3, p4, 1.0, 0.0, 0.0, 0.0, 1e9, 0.0])
 
 
-def test_reaction_normalises_prefix_reactant():
+def test_reaction_normalizes_prefix_reactant():
     r = _reac("o-H2", "CRP", "NAN", "p-H2", "NAN", "NAN", "NAN")
     assert r.get_reactants()[0] == "o-H2"
     assert r.get_products()[0] == "p-H2"
 
 
-def test_reaction_normalises_uppercase_prefix():
+def test_reaction_normalizes_uppercase_prefix():
     """Uppercase prefix in a reaction file is lowercased to match species list."""
     r = _reac("O-H2", "CRP", "NAN", "P-H2", "NAN", "NAN", "NAN")
     assert r.get_reactants()[0] == "o-H2"
@@ -264,7 +264,7 @@ def test_check_reaction_accepts_prefix_species():
 
 
 def test_check_reaction_accepts_uppercase_prefix_input():
-    """Reaction file may use uppercase prefix; check_reaction normalises before lookup."""
+    """Reaction file may use uppercase prefix; check_reaction normalizes before lookup."""
     row = [
         "O-H2",
         "CRP",

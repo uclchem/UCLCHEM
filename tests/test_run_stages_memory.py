@@ -109,7 +109,7 @@ def test_collapse_hotcore_return_array(test_output_directory):
         "finalTime": 1e5,
     }
     # return_array with return_rate_constants=True returns 6 values:
-    # physics, chemistry, rates, heating(None), abundances, flag
+    # physics, chemistry, rates, heating(None), abundances, flag  # noqa: ERA001
     physics, chemistry, rates, heating, abundances_start, return_code = (
         uclchem.functional.cloud(
             param_dict=params,
@@ -185,7 +185,7 @@ def test_collapse_hotcore_return_dataframe(test_output_directory):
         "finalTime": 1e5,
     }
     # return_dataframe returns 6 values:
-    # physics, chemistry, rates(None), heating(None), abundances, flag
+    # physics, chemistry, rates(None), heating(None), abundances, flag # noqa: ERA001
     physics, chemistry, rates, heating, abundances_start, return_code = (
         uclchem.functional.cloud(
             param_dict=params,
@@ -254,7 +254,7 @@ def test_cshock_return_dataframe(test_output_directory):
         "baseAv": 1.0,
     }
     # return_dataframe returns 6 values:
-    # physics, chemistry, rates(None), heating(None), abundances, flag
+    # physics, chemistry, rates(None), heating(None), abundances, flag # noqa: ERA001
     (
         df_stage1_physics,
         df_stage1_chemistry,
@@ -277,7 +277,7 @@ def test_cshock_return_dataframe(test_output_directory):
     param_dict["initialDens"] = 1e4
     param_dict["finalTime"] = 1e6
     # CShock returns 7 values:
-    # physics, chemistry, rates(None), heating(None), dissipation_time, abundances, flag
+    # physics, chemistry, rates(None), heating(None), dissipation_time, abundances, flag # noqa: ERA001
     (
         df_stage2_physics,
         df_stage2_chemistry,
@@ -303,7 +303,7 @@ def test_cshock_return_dataframe(test_output_directory):
     )
 
 
-def test_endAtFinalDensity_with_collapse():
+def test_endAtFinalDensity_with_collapse():  # noqa: N802
     """Test that endAtFinalDensity=True works correctly with Collapse models"""
     params = {
         "initialTemp": 10.0,
@@ -330,7 +330,7 @@ def test_endAtFinalDensity_with_collapse():
     )
 
 
-def test_endAtFinalDensity_validation(test_output_directory):
+def test_endAtFinalDensity_validation(test_output_directory):  # noqa: N802
     """Test that endAtFinalDensity=True raises error without freefall for Cloud"""
     params = {
         "endAtFinalDensity": True,  # Invalid without freefall

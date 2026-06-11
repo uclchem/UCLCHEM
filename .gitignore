@@ -28,5 +28,7 @@ conda*
 # Notebooks - only version control .py files
 notebooks/*.ipynb
 
+# pymend docstring changes
+*.patch
 # Temporary files - created during makerates
 *.tmp

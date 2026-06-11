@@ -10,6 +10,7 @@ reinstall UCLCHEM for these constants to update:
     1. Run makerates: python -m uclchem.makerates.makerates user_settings.yaml
     2. Reinstall: pip install . --force-reinstall --no-deps
     3. Verify: python -c "from uclchem import constants; print(constants.n_species)"
+
 """
 
 # Import canonical values from compiled Fortran module
@@ -43,6 +44,16 @@ PHYSICAL_PARAMETERS = [
 
 
 ZETA_0 = 1.36e-17  # Standard cosmic ray ionization rate (1.3e-17 s-1)
+
+CENTIMETERS_PER_PARSEC = 3.086e18  # parsec in cgs
+SECONDS_PER_YEAR = 3.15569e7
+
+SPEED_OF_LIGHT_CGS = 2.99792458e10  # speed of light cm/s
+PLANCK_CONSTANT_CGS = 6.62606896e-27  # Planck constant erg*s
+
+HYDROGEN_MASS_CGS = 1.6736e-24  # hydrogen mass in g
+BOLTZMANN_CONSTANT_CGS = 1.38e-16  # Boltzmann constant in erg/K
+GRAVITATIONAL_CONSTANT_CGS = 6.67e-8  # gravitational constant in cgs
 
 # DVODE solver statistics names
 # Note: Stats are now written for EVERY solver attempt (including retries)
@@ -82,11 +93,12 @@ for i in range(NCOOLANTS):
 
 # Validate consistency
 if len(PHYSICAL_PARAMETERS) != N_PHYSICAL_PARAMETERS:
-    raise RuntimeError(
+    msg = (
         f"PHYSICAL_PARAMETERS length ({len(PHYSICAL_PARAMETERS)}) does not match "
         f"N_PHYSICAL_PARAMETERS from Fortran ({N_PHYSICAL_PARAMETERS}). "
         "This indicates a build inconsistency. Please run MakeRates and reinstall."
     )
+    raise RuntimeError(msg)
 
 # User-configurable constants (not from Fortran)
 TIMEPOINTS = 2000  # Number of timepoints for Fortran interface
@@ -180,7 +192,7 @@ default_param_dictionary = {
     "hstickingcoeffbyh2coverage": False,
     "hdiffusionbarrier": -1.0,
     "usecustomdiffusionbarriers": True,
-    "seperatediffanddesorbprefactor": True,
+    "separatediffanddesorbprefactor": True,
     "usetstprefactors": False,  # Set this one to True and add the intertias from dijkhuis25.
     "usecustomprefactors": False,
     "useminissaleicechemdesefficiency": False,
@@ -195,12 +207,14 @@ default_param_dictionary = {
     "freq_rel_tol": float(getattr(f2py_constants, "suggested_freq_rel_tol", 0.1)),
     "pop_rel_tol": 0.1,
     # DVODE solver mode:
-    #   0 = ISTATE=1 always (original behaviour, fresh restart every output step)
+    #   0 = ISTATE=1 always (original behavior, fresh restart every output step)
     #   1 = ISTATE=2 always (BDF history always continued, no guard)
-    #   2 = Hybrid/adaptive (default): ISTATE=2 unless abundance or temperature changed significantly
+    #   2 = Hybrid/adaptive (default): ISTATE=2 unless abundance or temperature
+    #       changed significantly
     "solver_mode": 2,
     # log₁₀ of per-step abundance change that triggers a forced ISTATE=1 restart in hybrid mode.
-    # Smaller = more frequent restarts (safer but less smooth); larger = fewer restarts (smoother but riskier).
+    # Smaller = more frequent restarts (safer but less smooth); larger = fewer restarts
+    # (smoother but riskier).
     "log_change_threshold": 1.0,
 }
 

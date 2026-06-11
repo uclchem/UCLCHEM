@@ -501,7 +501,7 @@ IMPLICIT NONE
     !
     !  Treat the vibrationally excited levels of H2 as a single pseudo level
     !  with effective rates of spontaneous emission, collisional excitation,
-    !  FUV pumping and photodissociation that describe the behaviour of all
+    !  FUV pumping and photodissociation that describe the behavior of all
     !  the vibrational levels combined.
     !
     !  Use the treatment of Rollig et al. (2006, A&A, 451, 917)
@@ -1009,7 +1009,7 @@ END MODULE heating
 ! ! !  from Galli & Palla (1998) via Grassi et al. (2014)
 ! ! !  Acceptable up to 10^5 K can easily use  Glover & Abel (2008) fits instead
 ! ! !  but they're more complex.
-! ! ! JH: Dropped in favour of UCLPDR treatment of H2 rotational cooling + h2 Vibrational
+! ! ! JH: Dropped in favor of UCLPDR treatment of H2 rotational cooling + h2 Vibrational
 ! ! !-----------------------------------------------------------------------
 ! REAL(dp) FUNCTION h2Cooling(gasDensity,gasTemperature,hAbund,h2Abund)
 !     REAL(dp), INTENT(IN) :: gasTemperature,gasDensity,hAbund,h2Abund
@@ -1080,7 +1080,7 @@ END MODULE heating
 
 !         IF(ITERATION.GE.100) THEN
 !           WRITE(10,*)'WARNING! Grain parameter X not found in PE heating'
-!           WRITE(10,*)'Using final value from interation loop: X =',X
+!           WRITE(10,*)'Using final value from iteration loop: X =',X
 !         END IF
 
 !         photoelectricHeating=2.7D-25*DELTA_UV*DELTA_D*gasDensity*Y*habingField &

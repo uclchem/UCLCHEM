@@ -21,15 +21,15 @@ This module provides utility functions for:
     >>> success_flag.check_error()
     Model ran successfully
     >>>
-    >>> # Only print if an error occured
+    >>> # Only print if an error occurred
     >>> success_flag.check_error(only_error=True)
 
     >>> # Calculate shock timescale
-    >>> t_diss = utils.cshock_dissipation_time(
+    >>> t_diss = uclchem.utils.cshock_dissipation_time(
     ...     shock_vel=50.0,  # km/s
     ...     initial_dens=1e4,  # cm^-3
     ... )
-    >>> print(f"Dissipation time: {t_diss:.1e} years")
+    >>> print(f"Dissipation time: {t_diss:.1e} years")  # doctest: +ELLIPSIS
     Dissipation time: ... years
 
 **Error Codes:**
@@ -48,11 +48,13 @@ Use :meth:`SuccessFlag.check_error` to get human-readable error messages.
 **See Also:**
 
 - :mod:`uclchem.model` - Model classes that use these utilities
+
 """
 
 import enum
+import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
     from uclchem.model import Collapse
@@ -74,18 +76,91 @@ NO_REACTANT_OR_PRODUCT: int = 9999
 """Integer to indicate that there is no reactant or product."""
 
 
+def get_dtype(dtype: str | type | np.dtype) -> type | np.dtype:
+    """Convert a dtype shorthand string or numpy dtype to a numpy dtype.
+
+    Parameters
+    ----------
+    dtype : str | type | np.dtype
+        Either a shorthand string ("fp64", "fp32", "fp16") or a numpy dtype/type.
+
+    Returns
+    -------
+    type | np.dtype
+        The corresponding numpy dtype or type.
+
+    Raises
+    ------
+    ValueError
+        If ``dtype`` is a string not in ``{"fp64", "fp32", "fp16"}``.
+
+    """
+    if isinstance(dtype, str):
+        _mapping = {"fp64": np.float64, "fp32": np.float32, "fp16": np.float16}
+        if dtype not in _mapping:
+            msg = f"Unknown dtype shorthand: {dtype!r}"
+            raise ValueError(msg)
+        return _mapping[dtype]
+    return dtype
+
+
+def configure_logging(
+    level: str = "WARNING",
+    stream: "None | str | Any" = None,
+) -> None:
+    """Configure the ``uclchem`` logger.
+
+    Parameters
+    ----------
+    level : str
+        Logging level name (e.g. ``"DEBUG"``, ``"WARNING"``). Default ``"WARNING"``.
+    stream : None | str | Any
+        Where to send log output.
+        ``None`` suppresses all output (no handlers, propagation disabled).
+        A string is treated as a file path and a ``FileHandler`` is added.
+        Any other value (e.g. ``sys.stdout``) is wrapped in a ``StreamHandler``.
+        Defaults to ``None``.
+
+    """
+    uclchem_logger = logging.getLogger("uclchem")
+    for handler in uclchem_logger.handlers[:]:
+        uclchem_logger.removeHandler(handler)
+
+    level_value = getattr(logging, level) if isinstance(level, str) else level
+    uclchem_logger.setLevel(level_value)
+
+    if stream is None:
+        uclchem_logger.propagate = False
+        return
+
+    if isinstance(stream, str):
+        handler = logging.FileHandler(stream)
+    else:
+        handler = logging.StreamHandler(stream)
+
+    handler.setLevel(level_value)
+    uclchem_logger.addHandler(handler)
+    uclchem_logger.propagate = True
+
+
 def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
     """Calculate the dissipation time of a C-type shock.
+
     Use to obtain a useful timescale for your C-shock model runs.
     Velocity of ions and neutrals equalizes at dissipation time and
     full cooling takes a few dissipation times.
 
-    Args:
-        shock_vel (float): Velocity of the shock in km/s
-        initial_dens (float): Preshock density of the gas in cm$^{-3}$
+    Parameters
+    ----------
+    shock_vel : float
+        Velocity of the shock in km/s
+    initial_dens : float
+        Preshock density of the gas in cm$^{-3}$
 
-    Returns:
-        float: The dissipation time of the shock in years
+    Returns
+    -------
+    float
+        The dissipation time of the shock in years
 
     """
     pc = 3.086e18  # parsec in cgs
@@ -97,8 +172,10 @@ def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
 def get_species_table() -> pd.DataFrame:
     """Load the list of species in the UCLCHEM network into a pandas dataframe.
 
-    Returns:
-        species (pd.DataFrame): A dataframe containing the species names and their details
+    Returns
+    -------
+    species : pd.DataFrame
+        A dataframe containing the species names and their details
 
     """
     species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
@@ -108,8 +185,10 @@ def get_species_table() -> pd.DataFrame:
 def get_species() -> list[str]:
     """Load the list of species present in the UCLCHEM network.
 
-    Returns:
-        species_list (list[str]): A list of species names
+    Returns
+    -------
+    species_list : list[str]
+        A list of species names
 
     """
     species_list = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv").iloc[:, 0].tolist()
@@ -119,8 +198,10 @@ def get_species() -> list[str]:
 def get_reaction_table() -> pd.DataFrame:
     """Load the reaction table from the UCLCHEM network into a pandas dataframe.
 
-    Returns:
-        reactions (pd.DataFrame): A dataframe containing the reactions and their rates
+    Returns
+    -------
+    reactions : pd.DataFrame
+        A dataframe containing the reactions and their rates
 
     """
     reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
@@ -128,26 +209,33 @@ def get_reaction_table() -> pd.DataFrame:
 
 
 def find_number_of_consecutive_digits(string: str, start: int) -> int:
-    """Determine the number of consecutive digits in a string, starting
+    """Determine the number of consecutive digits in a string, starting.
+
     from some index `start`.
 
-    Args:
-        string (str): the string
-        start (int): the starting index
+    Parameters
+    ----------
+    string : str
+        the string
+    start : int
+        the starting index
 
-    Returns:
-        num_digits (int): the number of consecutive digits in the string
-            starting from "start".
+    Returns
+    -------
+    num_digits : int
+        the number of consecutive digits in the string
+        starting from "start".
 
-    Examples:
-        >>> find_number_of_consecutive_digits("Hello123", 0)
-        0
-        >>> find_number_of_consecutive_digits("Hello123", 5)
-        3
-        >>> find_number_of_consecutive_digits("Hello123", 6)
-        2
-        >>> find_number_of_consecutive_digits("He1llo23", 2)
-        1
+    Examples
+    --------
+    >>> find_number_of_consecutive_digits("Hello123", 0)
+    0
+    >>> find_number_of_consecutive_digits("Hello123", 5)
+    3
+    >>> find_number_of_consecutive_digits("Hello123", 6)
+    2
+    >>> find_number_of_consecutive_digits("He1llo23", 2)
+    1
 
     """
     num_digits = 0
@@ -186,16 +274,23 @@ def get_collapse_mode(mode: str | int | CollapseMode) -> CollapseMode:
     Integers are converted to the CollapseMode, CollapseMode instances are returned
     unchanged, and strings are converted according to the names of the different modes.
 
-    Args:
-        mode (str | int | CollapseMode): Collapse mode.
+    Parameters
+    ----------
+    mode : str | int | CollapseMode
+        Collapse mode.
 
-    Returns:
-        CollapseMode: collapse mode Enum
+    Returns
+    -------
+    CollapseMode
+        collapse mode Enum
 
-    Raises:
-        TypeError: If ``mode`` is not a string, integer or :class:`CollapseMode`.
-        ValueError: If ``mode`` is a string, but not one of
-            ``["BE1.1", "BE4", "filament", "ambipolar"]`` (case insensitive).
+    Raises
+    ------
+    TypeError
+        If ``mode`` is not a string, integer or :class:`CollapseMode`.
+    ValueError
+        If ``mode`` is a string, but not one of
+        ``["BE1.1", "BE4", "filament", "ambipolar"]`` (case insensitive).
 
     """
     if isinstance(mode, CollapseMode):
@@ -220,7 +315,14 @@ def get_collapse_mode(mode: str | int | CollapseMode) -> CollapseMode:
 
 
 def _filament_units():
-    """Return (unitr_pc, unitt_yr) for filament (mode 3) collapse."""
+    """Return (unitr_pc, unitt_yr) for filament (mode 3) collapse.
+
+    Returns
+    -------
+    tuple[float, float]
+        Unit conversion factors ``(unitr_pc, unitt_yr)``.
+
+    """
     two_pi_g_rho0_mh = _TWO_PI_G * _RHO0_FILAMENT * _MH
     cs = np.sqrt(_KB * 10.0 / (2.0 * _MH))  # sound speed at 10 K
     unitr = cs * two_pi_g_rho0_mh ** (-0.5) / _PC  # in pc
@@ -231,12 +333,23 @@ def _filament_units():
 def _rminfit(t_yr: float, mode: CollapseMode) -> float:
     """Fit to time evolution of the radius of minimum velocity.
 
-    Returns:
-        Radius of minimum velocity (pc for mode 3, normalised units for mode 4).
+    Parameters
+    ----------
+    t_yr : float
+        Time in years.
+    mode : CollapseMode
+        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
 
-    Raises:
-        ValueError: If ``mode`` is not one of
-            ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
+    Returns
+    -------
+    float
+        Radius of minimum velocity (pc for mode 3, normalized units for mode 4).
+
+    Raises
+    ------
+    ValueError
+        If ``mode`` is not one of
+        ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
 
     """
     if mode == CollapseMode.FILAMENT:
@@ -266,12 +379,23 @@ def _rminfit(t_yr: float, mode: CollapseMode) -> float:
 def _vminfit(t_yr: float, mode: CollapseMode) -> float:
     """Fit to time evolution of minimum velocity (dimensionless units).
 
-    Returns:
+    Parameters
+    ----------
+    t_yr : float
+        Time in years.
+    mode : CollapseMode
+        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
+
+    Returns
+    -------
+    float
         Minimum velocity in dimensionless units.
 
-    Raises:
-        ValueError: If ``mode`` is not one of
-            ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
+    Raises
+    ------
+    ValueError
+        If ``mode`` is not one of
+        ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
 
     """
     if mode == CollapseMode.FILAMENT:
@@ -296,12 +420,23 @@ def _vminfit(t_yr: float, mode: CollapseMode) -> float:
 def _avfit(t_yr: float, mode: CollapseMode) -> float:
     """Fit to velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
 
-    Returns:
+    Parameters
+    ----------
+    t_yr : float
+        Time in years.
+    mode : CollapseMode
+        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
+
+    Returns
+    -------
+    float
         Velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
 
-    Raises:
-        ValueError: If ``mode`` is not one of
-            ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
+    Raises
+    ------
+    ValueError
+        If ``mode`` is not one of
+        ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
 
     """
     if mode == CollapseMode.FILAMENT:
@@ -331,12 +466,29 @@ def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: CollapseMode)
 
     Modes 3 (filament) and 4 (ambipolar) only.
 
-    Returns:
+    Parameters
+    ----------
+    r_pc : float
+        Radius in pc.
+    rmin : float
+        Radius of minimum velocity in the same units as the fit.
+    vmin : float
+        Minimum velocity in dimensionless units.
+    av : float
+        Velocity amplitude parameter for the outer profile fit.
+    mode : CollapseMode
+        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
+
+    Returns
+    -------
+    float
         Radial velocity in cm/s.
 
-    Raises:
-        ValueError: If ``mode`` is not one of
-            ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
+    Raises
+    ------
+    ValueError
+        If ``mode`` is not one of
+        ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
 
     """
     if mode == CollapseMode.FILAMENT:
@@ -375,27 +527,41 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
     a finite-difference approximation of parcel_radius — it is NOT the relationship
     used to generate the model and should be treated as an estimate only.
 
-    Args:
-        model: A successfully run :class:`~uclchem.model.Collapse` instance.
-        point: Parcel index (0-based). Defaults to 0.
+    Parameters
+    ----------
+    model : Collapse
+        A successfully run :class:`~uclchem.model.Collapse` instance.
+    point : int
+        Parcel index (0-based). Defaults to 0.
 
-    Returns:
-        pd.Series: Radial velocity in cm s⁻¹, indexed by time in years.
-                   Negative values indicate infall.
+    Returns
+    -------
+    pd.Series
+        Radial velocity in cm s⁻¹, indexed by time in years.
+        Negative values indicate infall.
 
-    Raises:
-        TypeError: If *model* is not a Collapse model instance.
-        TypeError: If ``model.collapse`` is not an instance of class:`CollapseMode`.
+    Raises
+    ------
+    TypeError
+        If *model* is not a Collapse model instance.
+    TypeError
+        If ``model.collapse`` is not an instance of class:`CollapseMode`.
 
     """
-    from uclchem.model import Collapse
+    from uclchem.model import (  # noqa: PLC0415 — avoid circular import at module level
+        Collapse,
+    )
 
     if not isinstance(model, Collapse):
-        raise TypeError(f"model must be a Collapse instance, got {type(model).__name__}")
+        msg = f"model must be a Collapse instance, got {type(model).__name__}"
+        raise TypeError(msg)
 
-    df = model.get_dataframes(point=point)
-    t_yr = df["Time"].values
-    r_pc = df["parcel_radius"].values
+    df_result = model.get_dataframes(point=point)
+    # get_dataframes with joined=True returns a single DataFrame (the return type
+    # annotation is overly broad; cast to narrow for mypy)
+    df: pd.DataFrame = df_result  # type: ignore[assignment]
+    t_yr: np.ndarray = np.asarray(df["Time"].values)
+    r_pc: np.ndarray = np.asarray(df["parcel_radius"].values)
     mode = model.collapse  # CollapseMode
 
     if not isinstance(mode, CollapseMode):
@@ -406,7 +572,7 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
         vr = np.array(
             [
                 _vrfit(r, _rminfit(t, mode), _vminfit(t, mode), _avfit(t, mode), mode)
-                for t, r in zip(t_yr, r_pc)
+                for t, r in zip(t_yr, r_pc, strict=False)
             ]
         )
     else:
@@ -421,7 +587,8 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
 
 @enum.verify(enum.UNIQUE)
 class SuccessFlag(enum.IntEnum):
-    """SuccessFlag indicates whether the model failed or ran successfully,
+    """SuccessFlag indicates whether the model failed or ran successfully,.
+
     and if it failed how.
 
     """
@@ -439,38 +606,47 @@ class SuccessFlag(enum.IntEnum):
     PARAMETER_READ_ERROR = -1, "Parameter read failed."
     PHYSICS_INIT_ERROR = -2, "Physics initialization failed."
     CHEM_INIT_ERROR = -3, "Chemistry initialization failed."
-    INT_UNRECOVERABLE_ERROR = -4, "Unrecoverable integrator error occured."
-    INT_TOO_MANY_FAILS_ERROR = -5, "Too many integrator fails occured."
+    INT_UNRECOVERABLE_ERROR = -4, "Unrecoverable integrator error occurred."
+    INT_TOO_MANY_FAILS_ERROR = -5, "Too many integrator fails occurred."
     NOT_ENOUGH_TIMEPOINTS_ERROR = (
         -6,
         "Not enough time points allocated in the time array.",
     )
     PHYSICS_UPDATE_ERROR = -7, "Error updating physics during integration."
     SOLVER_STATS_OVERFLOW_ERROR = -8, "Solver statistics array overflowed."
-    COOLANT_FILE_ERROR = -9, "Coolant data file could not be openend."
+    COOLANT_FILE_ERROR = -9, "Coolant data file could not be opened."
     COOLANT_DATA_ERROR = -10, "Coolant data file has invalid format."
     COOLANT_FREQ_TOL_ERROR = -11, "Coolant frequency tolerance exceeded."
     COOLANT_POP_TOL_ERROR = -12, "LTE population sum tolerance exceeded."
-    COOLANT_SOLVER_ERROR = -13, "Coolant solver numerical error occured."
-    COOLANT_CONFIG_ERROR = -14, "Coolant configuration error occured."
+    COOLANT_SOLVER_ERROR = -13, "Coolant solver numerical error occurred."
+    COOLANT_CONFIG_ERROR = -14, "Coolant configuration error occurred."
     NEGATIVE_ABUNDANCE_ERROR = -15, "A negative abundance was detected."
     CONSERVATION_ERROR = -16, "Runtime element conservation tolerance exceeded."
     ZERO_INNER_RADIUS_ERROR = -17, "rin must be > 0 when enable_radiative_transfer=True."
 
-    def check_error(self, only_error: bool = False, raise_on_error: bool = True) -> str:
-        """Converts the UCLCHEM integer result flag to a message explaining what went wrong.
+    def check_error(
+        self, only_error: bool = False, raise_on_error: bool = True
+    ) -> str | None:
+        """Convert the UCLCHEM integer result flag to a message explaining what went wrong.
 
-        Args:
-            only_error (bool): If True, skip printing if the model ran successfully, and only
-                error out if it did not. Default = False.
-            raise_on_error (bool): If True, raises RuntimeError if the `self` is not
-                `SuccessFlag.SUCCESS`. If False, returns the message string. Default = True.
+        Parameters
+        ----------
+        only_error : bool
+            If True, skip printing if the model ran successfully, and only
+            error out if it did not. Default = False.
+        raise_on_error : bool
+            If True, raises RuntimeError if the `self` is not
+            `SuccessFlag.SUCCESS`. If False, returns the message string. Default = True.
 
-        Returns:
-            str: Error message | None
+        Returns
+        -------
+        str | None
+            Error message, or ``None`` if the model ran successfully.
 
-        Raises:
-            RuntimeError: If `raise_on_error` is True.
+        Raises
+        ------
+        RuntimeError
+            If `raise_on_error` is True.
 
         """
         if self == SuccessFlag.SUCCESS:
@@ -499,7 +675,8 @@ class SuccessFlag(enum.IntEnum):
 
         msg = error_msg_dict[self]
         if raise_on_error:
-            raise RuntimeError(f"UCLCHEM error (code {self.name}, {self.value}): {msg}")
+            error_msg = f"UCLCHEM error (code {self.name}, {self.value}): {msg}"
+            raise RuntimeError(error_msg)
         return msg
 
 
@@ -532,7 +709,7 @@ _BINS: tuple[tuple[float, float], ...] = (
 )
 
 # Least-squares power-law fits in log-log space on bin geometric midpoints.
-# Form: T = T0 * (L / L_sun) ** alpha
+# Fit form: T_eff = T0 * (L_star / L_sun) ** alpha
 _FIT_SMOOTH = (4_788.72, 0.156034)  # all 7 bins,  valid 1 – 1e6  L_sun
 _FIT_SMOOTH_LOW = (5_337.78, 0.110924)  # bins 1–3,    valid 1 – 1e4  L_sun
 _FIT_SMOOTH_HIGH = (7_343.74, 0.120552)  # bins 4–7,    valid 1e3 – 1e6 L_sun
@@ -562,10 +739,9 @@ def get_protostellar_Teff(
 
     Parameters
     ----------
-    L_star:
-        Stellar luminosity [W]. Valid range depends on *mode*; see
-        :data:`_RANGES`.
-    mode:
+    L_star : float
+        Stellar luminosity. Valid range depends on *mode*; see :data:`_RANGES`.
+    mode : TempMode
         Interpolation scheme:
 
         - :attr:`TempMode.SMOOTH` (default) — global power-law fit to all
@@ -576,85 +752,122 @@ def get_protostellar_Teff(
         - :attr:`TempMode.SMOOTH_HIGH` — power-law fit to bins 4–7,
           valid 1e3 – 1e6 L_sun.
 
+        Defaults to ``TempMode.BINS``.
+    custom_T0 : float | None
+        Temperature constant T0 in the power-law fit T = T0 * L^alpha, used only when
+        mode is ``TempMode.SMOOTH_CUSTOM``. Defaults to ``None``.
+    custom_alpha : float | None
+        Power-law exponent alpha in T = T0 * L^alpha, used only when mode is
+        ``TempMode.SMOOTH_CUSTOM``. Defaults to ``None``.
+    L_star_unit : str
+        Unit of ``L_star``. Either ``'L_sun'`` or ``'W'``. Defaults to ``'L_sun'``.
+
+    Returns
+    -------
+    float
+        Effective temperature in Kelvin.
+
     Raises
     ------
-    TypeError:  if *L_star* is not a real number.
-    ValueError: if *L_star* is outside the valid range for the chosen mode.
+    TypeError
+        If ``L_star`` is not a real number.
+    ValueError
+        If ``L_star`` is outside the valid range for the chosen mode, or if custom
+        fit parameters are provided but mode is not ``TempMode.SMOOTH_CUSTOM``.
+    RuntimeError
+        If no bin matches ``L_star`` in ``TempMode.BINS`` mode (indicates a bug).
 
     Examples
     --------
-    >>> get_protostellar_Teff(3.828e26)                          # 1 L_sun, smooth
+    >>> get_protostellar_Teff(1.0, mode=TempMode.SMOOTH)    # 1 L_sun, smooth
     4788.72
-    >>> get_protostellar_Teff(3.828e29, mode=TempMode.BINS)      # 1000 L_sun, bins
+    >>> get_protostellar_Teff(1000.0, mode=TempMode.BINS)   # 1000 L_sun, bins
     20000.0
+
     """
     if not isinstance(L_star, (int, float)):
-        raise TypeError(f"L_star must be a real number, got {type(L_star).__name__!r}")
+        msg = f"L_star must be a real number, got {type(L_star).__name__!r}"
+        raise TypeError(msg)
 
     if (
         custom_T0 is not None or custom_alpha is not None
     ) and mode != TempMode.SMOOTH_CUSTOM:
-        raise ValueError(
-            "Custom fit parameters provided but mode is not TempMode.SMOOTH_CUSTOM."
-        )
+        msg = "Custom fit parameters provided but mode is not TempMode.SMOOTH_CUSTOM."
+        raise ValueError(msg)
 
-    assert L_star_unit in ["L_sun", "W"], "L_star_unit must be 'L_sun' or 'W'."
+    if L_star_unit not in {"L_sun", "W"}:
+        msg = "L_star_unit must be 'L_sun' or 'W'."
+        raise ValueError(msg)
 
-    if L_star_unit == "W":
-        L_star: float = L_star / L_SUN
+    # Work in L_sun units throughout
+    l_star_lsun: float = L_star / L_SUN if L_star_unit == "W" else L_star
     L_min, L_max = _RANGES[mode]
 
-    if not (L_min <= L_star <= L_max):
-        raise ValueError(
-            f"L_star = {L_star:.3e} W ({L_star:.3e} L_sun) is outside "
+    if not (L_min <= l_star_lsun <= L_max):
+        msg = (
+            f"L_star = {l_star_lsun:.3e} W ({l_star_lsun:.3e} L_sun) is outside "
             f"the valid range [{L_min:.0e}, {L_max:.0e}] L_sun for {mode.value!r}."
         )
+        raise ValueError(msg)
 
     # Return binned values
     if mode is TempMode.BINS:
         for L_lower, T_eff in _BINS:
-            if L_star >= L_lower:
+            if l_star_lsun >= L_lower:
                 return T_eff
-        raise RuntimeError(f"No bin matched L_star={L_star!r} — this is a bug.")
+        msg = f"No bin matched L_star={l_star_lsun!r} — this is a bug."
+        raise RuntimeError(msg)
 
     # Return power-law fit values
+    if mode is TempMode.SMOOTH_CUSTOM:
+        if custom_T0 is None or custom_alpha is None:
+            msg = "mode is TempMode.SMOOTH_CUSTOM but custom_T0 or custom_alpha is None."
+            raise ValueError(msg)
+        return custom_T0 * (l_star_lsun**custom_alpha)
+
     T0, alpha = {
         TempMode.SMOOTH: _FIT_SMOOTH,
         TempMode.SMOOTH_LOW: _FIT_SMOOTH_LOW,
         TempMode.SMOOTH_HIGH: _FIT_SMOOTH_HIGH,
-        TempMode.SMOOTH_CUSTOM: (custom_T0, custom_alpha),
     }[mode]
-    return T0 * (L_star**alpha)
+    return T0 * (l_star_lsun**alpha)
 
 
 def get_protostellar_model_index(L_star: float) -> int:
-    """Obtain the right model index for protostellar core models in 1D mode based on the
+    """Obtain the right model index for protostellar core models in 1D mode based on the.
+
     stellar luminosity
 
-    Args:
-        L_star (float): Stellar luminosity in units of solar luminosity (L_sun)
+    Parameters
+    ----------
+    L_star : float
+        Stellar luminosity in units of solar luminosity (L_sun)
 
-    Raises:
-        ValueError: If the stellar luminosity is below the minimum valid value.
+    Returns
+    -------
+    int
+        The model index for the protostellar core model.
 
-    Returns:
-        int: The model index for the protostellar core model.
+    Raises
+    ------
+    ValueError
+        If the stellar luminosity is below the minimum valid value.
+
     """
-    if L_star >= 1.0e6:
+    if L_star >= 1.0e6:  # noqa: PLR2004
         return 6
-    elif L_star >= 1.0e5:
+    elif L_star >= 1.0e5:  # noqa: PLR2004
         return 5
-    elif L_star >= 1.0e4:
+    elif L_star >= 1.0e4:  # noqa: PLR2004
         return 4
-    elif L_star >= 1.0e3:
+    elif L_star >= 1.0e3:  # noqa: PLR2004
         return 3
-    elif L_star >= 1.0e2:
+    elif L_star >= 1.0e2:  # noqa: PLR2004
         return 2
-    elif L_star >= 1.0e1:
+    elif L_star >= 1.0e1:  # noqa: PLR2004
         return 1
     elif L_star >= 1.0e0:
         return 0
     else:
-        raise ValueError(
-            f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {L_SUN:.3e} W."
-        )
+        msg = f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {L_SUN:.3e} W."
+        raise ValueError(msg)

@@ -1,6 +1,6 @@
 ! Chemistry module of UCL_CHEM.                                                               !
 ! Contains all the core machinery of the code, not really intended to be altered in standard  !
-! use. Use a (custom) physics module to alter temp/density behaviour etc.                     !
+! use. Use a (custom) physics module to alter temp/density behavior etc.                      !
 !                                                                                             !
 ! chemistry module contains rates.f90, a series of subroutines to calculate all reaction rates!
 ! when updateChemistry is called from main, these rates are calculated, the ODEs are solved   !
@@ -38,7 +38,7 @@ IMPLICIT NONE
     REAL(dp), ALLOCATABLE :: abstol(:)
     REAL(dp), ALLOCATABLE :: reltol_vec(:)
     ! TYPE(VODE_OPTS) :: OPTIONS
-    !initial fractional elemental abudances and arrays to store abundances
+    !initial fractional elemental abundances and arrays to store abundances
     REAL(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
     REAL(dp), ALLOCATABLE :: abund(:,:)
     REAL(dp) :: numMonolayers,ratioSurfaceToBulk
@@ -102,7 +102,7 @@ CONTAINS
             abund(nsx,:) = fs
             abund(nsix,:) = fsi                
             abund(nclx,:) = fcl 
-            !Decide how much carbon is initiall ionized using parameters.f90
+            !Decide how much carbon is initially ionized using parameters.f90
             SELECT CASE (ion)
                 CASE(0)
                     abund(nc,:)=fc
@@ -383,7 +383,7 @@ CONTAINS
         END IF
         IF (failedIntegrationCounter .gt. maxConsecutiveFailures)&
              &successFlag=INT_TOO_MANY_FAILS_ERROR
-        end if
+        END IF
 
         ! Runtime element conservation check (every iteration, not inside F)
         IF (runtime_conservation_tolerance .ge. 0.0d0 .AND. successFlag .eq. 0) THEN
@@ -555,12 +555,12 @@ CONTAINS
             CASE(-2)
                 !ISTATE -2 just needs an absol change so let's do that and try again
                 write(*,*) "ISTATE -2: Tolerances too small"
-                !Tolerances are too small for machine but succesful to current currentTime
+                !Tolerances are too small for machine but successful to current currentTime
                 abstol_factor=abstol_factor*10.0
                 abstol_ice_factor=abstol_ice_factor*10.0
                 reltol_phys=MIN(reltol_phys*10.0, 1.0d-1)
             CASE(-3)
-                !ISTATE -3 is unrecoverable so just bail on intergration
+                !ISTATE -3 is unrecoverable so just bail on integration
                 write(*,*) "DVODE found invalid inputs"
                 write(*,*) "abstol:"
                 write(*,*) abstol
@@ -624,6 +624,7 @@ CONTAINS
         safeBulk=MAX(1d-30,Y_safe(nBulk))
         bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
         surfaceCoverage=bulkGainFromMantleBuildUp()
+        ratioSurfaceToBulk=MIN(1.0D0, safeMantle/safeBulk)
 
         ! Fix 3: refresh surface-to-bulk swap rate from current safeMantle
         ! (safeMantle was just updated from Y_safe above, but rate(surfSwapReacs) is still

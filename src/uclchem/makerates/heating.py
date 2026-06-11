@@ -2,6 +2,7 @@
 
 Provides functions to set reaction exothermicities from thermochemical
 databases or custom CSV files with various units.
+
 """
 
 import logging
@@ -11,6 +12,8 @@ from pathlib import Path
 import pandas as pd
 
 from .reaction import Reaction
+
+logger = logging.getLogger(__name__)
 
 # Physical constants (2019 SI definitions)
 AVOGADRO_NUMBER = 6.02214076e23  # mol^-1
@@ -25,7 +28,7 @@ KCAL_TO_ERG = CALORIE_TO_JOULE * 1000.0 / ERG_TO_JOULE
 ERG_TO_ERG = 1.0
 
 # Cache for parsed unit conversions
-_UNIT_CACHE = {}
+_UNIT_CACHE: dict[str, float] = {}
 
 # Base unit mappings
 _BASE_UNITS = {
@@ -48,11 +51,16 @@ _DENOMINATORS = {
 def parse_species_from_row(row: pd.Series, prefix: str) -> list[str]:
     """Parse species list from CSV row.
 
-    Args:
-        row: DataFrame row
-        prefix: 'reactant' or 'product'
+    Parameters
+    ----------
+    row : pd.Series
+        DataFrame row
+    prefix : str
+        'reactant' or 'product'
 
-    Returns:
+    Returns
+    -------
+    list[str]
         List of species names (uppercase, NAN for missing)
 
     """
@@ -60,7 +68,7 @@ def parse_species_from_row(row: pd.Series, prefix: str) -> list[str]:
     idx = 1
     while f"{prefix}{idx}" in row.index:
         val = row[f"{prefix}{idx}"]
-        if pd.isna(val) or val == "" or str(val).upper().strip() == "NAN":
+        if pd.isna(val) or not val or str(val).upper().strip() == "NAN":
             species.append("NAN")
         else:
             species.append(str(val).strip().upper())
@@ -73,14 +81,20 @@ def _parse_unit(unit: str) -> float:
 
     Parses units like: ev, ev_per_reaction, ev/mol, joule_per_mol, etc.
 
-    Args:
-        unit: Unit string (case-insensitive)
+    Parameters
+    ----------
+    unit : str
+        Unit string (case-insensitive)
 
-    Returns:
+    Returns
+    -------
+    factor : float
         Conversion factor to erg per reaction
 
-    Raises:
-        ValueError: If there is an unknown unit, or it cannot be parsed.
+    Raises
+    ------
+    ValueError
+        If there is an unknown unit, or it cannot be parsed.
 
     """
     unit_lower = unit.strip().lower()
@@ -97,9 +111,8 @@ def _parse_unit(unit: str) -> float:
         # Just a base unit (e.g., "ev", "joule")
         base = parts[0].strip()
         if base not in _BASE_UNITS:
-            raise ValueError(
-                f"Unknown unit '{unit}'. Available: {list(_BASE_UNITS.keys())}"
-            )
+            msg = f"Unknown unit '{unit}'. Available: {list(_BASE_UNITS.keys())}"
+            raise ValueError(msg)
         factor = _BASE_UNITS[base]
         # Default to per reaction
         factor *= _DENOMINATORS["reaction"]
@@ -108,20 +121,21 @@ def _parse_unit(unit: str) -> float:
         base = parts[0].strip()
         denom = parts[1].strip()
         if base not in _BASE_UNITS:
-            raise ValueError(
+            msg = (
                 f"Unknown base unit '{base}' in '{unit}'. "
                 f"Available: {list(_BASE_UNITS.keys())}"
             )
+            raise ValueError(msg)
         if denom not in _DENOMINATORS:
-            raise ValueError(
+            msg = (
                 f"Unknown denominator '{denom}' in '{unit}'. "
                 f"Available: {list(_DENOMINATORS.keys())}"
             )
+            raise ValueError(msg)
         factor = _BASE_UNITS[base] * _DENOMINATORS[denom]
     else:
-        raise ValueError(
-            f"Cannot parse unit '{unit}'. Format: <unit> or <unit>/<denominator> or <unit>_per_<denominator>"
-        )
+        msg = f"Cannot parse unit '{unit}'. Format: <unit> or <unit>/<denominator> or <unit>_per_<denominator>"
+        raise ValueError(msg)
     # Cache the result
     _UNIT_CACHE[unit_lower] = factor
     return factor
@@ -130,11 +144,16 @@ def _parse_unit(unit: str) -> float:
 def convert_to_erg(value: float, unit: str) -> float:
     """Convert exothermicity to erg per reaction.
 
-    Args:
-        value: Exothermicity value
-        unit: Unit string (case-insensitive)
+    Parameters
+    ----------
+    value : float
+        Exothermicity value
+    unit : str
+        Unit string (case-insensitive)
 
-    Returns:
+    Returns
+    -------
+    float
         Value in erg per reaction
 
     """
@@ -147,13 +166,19 @@ def match_reaction(
 ) -> Reaction | None:
     """Find matching reaction in list.
 
-    Args:
-        reactants (list[str]): List of reactant names
-        products (list[str]): List of product names
-        reactions (list[Reaction]): List to search
+    Parameters
+    ----------
+    reactants : list[str]
+        List of reactant names
+    products : list[str]
+        List of product names
+    reactions : list[Reaction]
+        List to search
 
-    Returns:
-        Reaction | None: Matching Reaction or None
+    Returns
+    -------
+    Reaction | None
+        Matching Reaction or None
 
     """
     sorted_r = sorted(reactants)
@@ -173,14 +198,20 @@ def load_custom_exothermicities(csv_path: str | Path) -> pd.DataFrame:
 
     Expected columns: reactant1-3, product1-4, exothermicity, unit
 
-    Args:
-        csv_path (str | Path): Path to CSV file
+    Parameters
+    ----------
+    csv_path : str | Path
+        Path to CSV file
 
-    Returns:
-        df (pd.DataFrame): DataFrame with custom exothermicities
+    Returns
+    -------
+    df : pd.DataFrame
+        DataFrame with custom exothermicities
 
-    Raises:
-        ValueError: If the csv is missing certain columns.
+    Raises
+    ------
+    ValueError
+        If the csv is missing certain columns.
 
     """
     df = pd.read_csv(csv_path, comment="#")
@@ -188,29 +219,40 @@ def load_custom_exothermicities(csv_path: str | Path) -> pd.DataFrame:
     required = ["exothermicity", "unit"]
     missing = [c for c in required if c not in df.columns]
     if missing:
-        raise ValueError(f"CSV missing columns: {missing}")
+        msg = f"CSV missing columns: {missing}"
+        raise ValueError(msg)
 
     has_reactants = any(c.startswith("reactant") for c in df.columns)
     has_products = any(c.startswith("product") for c in df.columns)
 
     if not has_reactants or not has_products:
-        raise ValueError("CSV must have reactant and product columns")
+        msg = "CSV must have reactant and product columns"
+        raise ValueError(msg)
 
     return df
 
 
 def set_custom_exothermicities(
-    reactions: list[Reaction], csv_path: str, overwrite: bool = True
+    reactions: list[Reaction], csv_path: str | Path, overwrite: bool = True
 ) -> tuple[int, int]:
     """Set reaction exothermicities from custom CSV.
 
-    Args:
-        reactions: List of Reaction objects to modify
-        csv_path: Path to CSV with custom exothermicities
-        overwrite: If False, only set reactions with zero exothermicity
+    Parameters
+    ----------
+    reactions : list[Reaction]
+        List of Reaction objects to modify
+    csv_path : str | Path
+        Path to CSV with custom exothermicities
+    overwrite : bool
+        If False, only set reactions with zero exothermicity.
+        Default = True.
 
-    Returns:
-        tuple: (num_matched, num_unmatched)
+    Returns
+    -------
+    matched : int
+        number of matched reactions
+    unmatched : int
+        number of unmatched reactions
 
     """
     df = load_custom_exothermicities(csv_path)
@@ -224,7 +266,7 @@ def set_custom_exothermicities(
         try:
             exo_erg = convert_to_erg(row["exothermicity"], row["unit"])
         except ValueError as e:
-            logging.warning(f"Skipping row: {e}")
+            logger.warning(f"Skipping row: {e}")
             continue
 
         reaction = match_reaction(reactants, products, reactions)
@@ -235,10 +277,10 @@ def set_custom_exothermicities(
                 matched += 1
         else:
             unmatched += 1
-            logging.warning(
+            logger.warning(
                 f"No match: {' + '.join(r for r in reactants if r != 'NAN')} "
                 f"-> {' + '.join(p for p in products if p != 'NAN')}"
             )
 
-    logging.info(f"Custom exothermicities: {matched} matched, {unmatched} unmatched")
+    logger.info(f"Custom exothermicities: {matched} matched, {unmatched} unmatched")
     return matched, unmatched
