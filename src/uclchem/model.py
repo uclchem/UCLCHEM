@@ -127,7 +127,13 @@ from uclchem.constants import (
     n_species,
 )
 from uclchem.plot import create_abundance_plot, plot_species
-from uclchem.utils import UCLCHEM_ROOT_DIR, CollapseMode, SuccessFlag, get_collapse_mode
+from uclchem.utils import (
+    CollapseMode,
+    SuccessFlag,
+    get_collapse_mode,
+    get_reaction_table,
+    get_species,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

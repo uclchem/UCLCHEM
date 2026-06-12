@@ -61,7 +61,6 @@ if TYPE_CHECKING:
 
 import numpy as np
 import pandas as pd
-from pandas._libs.parsers import STR_NA_VALUES
 
 UCLCHEM_ROOT_DIR: Path = Path(__file__).parent.resolve().absolute()
 """UCLCHEM root directory"""
@@ -143,7 +142,27 @@ def configure_logging(
     uclchem_logger.addHandler(handler)
     uclchem_logger.propagate = True
 
-_NAN_STRINGS = STR_NA_VALUES - {"NA", "#NA"}
+
+# Pandas default NA strings minus element symbols that collide ("NA" = sodium, "#NA")
+_NAN_STRINGS: list[str] = [
+    "",
+    "#N/A",
+    "#N/A N/A",
+    "-1.#IND",
+    "-1.#QNAN",
+    "-NaN",
+    "-nan",
+    "1.#IND",
+    "1.#QNAN",
+    "<NA>",
+    "N/A",
+    "NULL",
+    "NaN",
+    "None",
+    "n/a",
+    "nan",
+    "null",
+]
 
 
 def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
@@ -175,6 +194,12 @@ def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
 def get_species_table(file: str | Path | None = None) -> pd.DataFrame:
     """Load the list of species in the UCLCHEM network into a pandas dataframe.
 
+    Parameters
+    ----------
+    file : str | Path | None
+        Path to the species CSV file. If None, uses
+        ``UCLCHEM_ROOT_DIR / "species.csv"``. Default = None.
+
     Returns
     -------
     species : pd.DataFrame
@@ -191,6 +216,12 @@ def get_species_table(file: str | Path | None = None) -> pd.DataFrame:
 def get_species(file: str | Path | None = None) -> list[str]:
     """Load the list of species present in the UCLCHEM network.
 
+    Parameters
+    ----------
+    file : str | Path | None
+        Path to the species CSV file. If None, uses
+        ``UCLCHEM_ROOT_DIR / "species.csv"``. Default = None.
+
     Returns
     -------
     species_list : list[str]
@@ -203,6 +234,12 @@ def get_species(file: str | Path | None = None) -> list[str]:
 
 def get_reaction_table(file: str | Path | None = None) -> pd.DataFrame:
     """Load the reaction table from the UCLCHEM network into a pandas dataframe.
+
+    Parameters
+    ----------
+    file : str | Path | None
+        Path to the reactions CSV file. If None, uses
+        ``UCLCHEM_ROOT_DIR / "reactions.csv"``. Default = None.
 
     Returns
     -------
