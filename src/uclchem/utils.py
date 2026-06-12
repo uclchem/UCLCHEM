@@ -143,6 +143,28 @@ def configure_logging(
     uclchem_logger.propagate = True
 
 
+# Pandas default NA strings minus element symbols that collide ("NA" = sodium, "#NA")
+_NAN_STRINGS: list[str] = [
+    "",
+    "#N/A",
+    "#N/A N/A",
+    "-1.#IND",
+    "-1.#QNAN",
+    "-NaN",
+    "-nan",
+    "1.#IND",
+    "1.#QNAN",
+    "<NA>",
+    "N/A",
+    "NULL",
+    "NaN",
+    "None",
+    "n/a",
+    "nan",
+    "null",
+]
+
+
 def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
     """Calculate the dissipation time of a C-type shock.
 
@@ -169,8 +191,14 @@ def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
     return (dlength * 1.0e-5 / shock_vel) / SECONDS_PER_YEAR
 
 
-def get_species_table() -> pd.DataFrame:
+def get_species_table(file: str | Path | None = None) -> pd.DataFrame:
     """Load the list of species in the UCLCHEM network into a pandas dataframe.
+
+    Parameters
+    ----------
+    file : str | Path | None
+        Path to the species CSV file. If None, uses
+        ``UCLCHEM_ROOT_DIR / "species.csv"``. Default = None.
 
     Returns
     -------
@@ -178,12 +206,21 @@ def get_species_table() -> pd.DataFrame:
         A dataframe containing the species names and their details
 
     """
-    species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
+    if file is None:
+        file = UCLCHEM_ROOT_DIR / "species.csv"
+
+    species = pd.read_csv(file, na_values=_NAN_STRINGS, keep_default_na=False)
     return species
 
 
-def get_species() -> list[str]:
+def get_species(file: str | Path | None = None) -> list[str]:
     """Load the list of species present in the UCLCHEM network.
+
+    Parameters
+    ----------
+    file : str | Path | None
+        Path to the species CSV file. If None, uses
+        ``UCLCHEM_ROOT_DIR / "species.csv"``. Default = None.
 
     Returns
     -------
@@ -191,12 +228,18 @@ def get_species() -> list[str]:
         A list of species names
 
     """
-    species_list = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv").iloc[:, 0].tolist()
+    species_list = get_species_table(file=file)["NAME"].tolist()
     return species_list
 
 
-def get_reaction_table() -> pd.DataFrame:
+def get_reaction_table(file: str | Path | None = None) -> pd.DataFrame:
     """Load the reaction table from the UCLCHEM network into a pandas dataframe.
+
+    Parameters
+    ----------
+    file : str | Path | None
+        Path to the reactions CSV file. If None, uses
+        ``UCLCHEM_ROOT_DIR / "reactions.csv"``. Default = None.
 
     Returns
     -------
@@ -204,7 +247,10 @@ def get_reaction_table() -> pd.DataFrame:
         A dataframe containing the reactions and their rates
 
     """
-    reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
+    if file is None:
+        file = UCLCHEM_ROOT_DIR / "reactions.csv"
+
+    reactions = pd.read_csv(file, na_values=_NAN_STRINGS, keep_default_na=False)
     return reactions
 
 

@@ -127,7 +127,13 @@ from uclchem.constants import (
     n_species,
 )
 from uclchem.plot import create_abundance_plot, plot_species
-from uclchem.utils import UCLCHEM_ROOT_DIR, CollapseMode, SuccessFlag, get_collapse_mode
+from uclchem.utils import (
+    CollapseMode,
+    SuccessFlag,
+    get_collapse_mode,
+    get_reaction_table,
+    get_species,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -225,7 +231,7 @@ class ReactionNamesStore:  # noqa: D101
 
         """
         if self.reaction_names is None:
-            reactions = pd.read_csv(UCLCHEM_ROOT_DIR / "reactions.csv")
+            reactions = get_reaction_table()
             # format the reactions:
             self.reaction_names = [
                 reaction_line_formatter(line) for idx, line in reactions.iterrows()
@@ -252,8 +258,7 @@ class SpeciesNameStore:  # noqa: D101
 
         """
         if self.species_names is None:
-            species = pd.read_csv(UCLCHEM_ROOT_DIR / "species.csv")
-            self.species_names = species["NAME"].tolist()
+            self.species_names = get_species()
         return self.species_names
 
 
