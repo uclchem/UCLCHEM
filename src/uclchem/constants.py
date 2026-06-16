@@ -185,13 +185,14 @@ default_param_dictionary = {
     "lum_star": 1_000_000.0,
     "temp_star": 45000.0,
     # Advanced surface chemistry parameters
+    "difftobindratio": 0.75,
     "h2encounterdesorption": True,
-    "hencounterdesorption": False,
+    "hencounterdesorption": True,
     "edendothermicityfactor": 0.0,
     "h2stickingcoeffbyh2coverage": False,
     "hstickingcoeffbyh2coverage": False,
     "hdiffusionbarrier": -1.0,
-    "usecustomdiffusionbarriers": True,
+    "usecustomdiffusionbarriers": False,
     "separatediffanddesorbprefactor": True,
     "usetstprefactors": False,  # Set this one to True and add the intertias from dijkhuis25.
     "usecustomprefactors": False,
