@@ -539,7 +539,10 @@ class AbstractModel(ABC):
     ):
         import multiprocessing  # noqa: PLC0415
 
-        if multiprocessing.current_process().name != "MainProcess" and run_type != "external":
+        if (
+            multiprocessing.current_process().name != "MainProcess"
+            and run_type != "external"
+        ):
             msg = (
                 "A uclchem model was instantiated inside a multiprocessing worker. "
                 "This usually means your script is missing an "
