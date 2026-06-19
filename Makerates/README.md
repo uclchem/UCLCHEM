@@ -30,7 +30,7 @@ custom_reaction_file : inputFiles/default_grain_network.csv
 custom_reaction_type : UCL
 
 # Directory in which to store output. If not included we automatically move
-# the files to the uclchem src folder. This is the default behaviour.
+# the files to the uclchem src folder. This is the default behavior.
 output_directory : "outputFiles"
 ```
 

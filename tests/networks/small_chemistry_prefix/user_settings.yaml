@@ -1,0 +1,10 @@
+species_file: species.csv
+
+database_reaction_file: ../../../Makerates/data/databases/umist22.csv
+database_reaction_type: UMIST
+
+custom_reaction_file: grain_reactions.csv
+custom_reaction_type: UCL
+
+add_crp_photo_to_grain: False
+enable_rates_storage: False

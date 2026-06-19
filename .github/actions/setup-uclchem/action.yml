@@ -1,0 +1,61 @@
+name: Setup UCLCHEM Build Environment
+description: Install Python, gfortran, and test dependencies for UCLCHEM
+
+inputs:
+  python-version:
+    description: Python version to use
+    default: "3.12"
+    required: false
+  install-package:
+    description: Whether to install the UCLCHEM package
+    default: "true"
+    required: false
+
+outputs:
+  python-version:
+    value: ${{ inputs.python-version }}
+    description: Python version that was installed
+
+runs:
+  using: composite
+  steps:
+    - name: "[setup:vcs] Checkout code"
+      uses: actions/checkout@v6
+
+    - name: "[setup:env] Set up Python"
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: "[setup:env] Ubuntu: Update apt and install gfortran"
+      # There is a bug in apt sometimes, where if it is overloaded,
+      # it the setup-fortran action will not work because it tries
+      # adding repositories. For now, just treat the easy Ubuntu
+      # case seperately.
+      # See https://github.com/uclchem/UCLCHEM/actions/runs/25309893252/job/74194832468?pr=177
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gfortran
+
+    - name: "[setup:env] Set up Fortran"
+      if: runner.os != 'Linux'
+      uses: fortran-lang/setup-fortran@v1
+      id: setup-fortran
+      with:
+        compiler: "gcc"
+
+    - name: "[setup:env] Upgrade pip"
+      shell: bash
+      run: python -m pip install --upgrade pip
+
+    - name: "[setup:deps] Install test dependencies"
+      shell: bash
+      run: |
+        pip install pytest pytest-timeout pytest-xdist pytest-github-actions-annotate-failures
+
+    - name: "[build:package] Install UCLCHEM package"
+      if: ${{ inputs.install-package == 'true' }}
+      shell: bash
+      run: pip install .

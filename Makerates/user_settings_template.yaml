@@ -1,0 +1,89 @@
+# ============================================================================
+# UCLCHEM Makerates Configuration Template
+# ============================================================================
+# This file configures chemical network generation for UCLCHEM.
+# Lines starting with # are comments. Uncomment and modify as needed.
+#
+# For full documentation, see: https://uclchem.github.io
+# ============================================================================
+
+# ============================================================================
+# REQUIRED PARAMETERS
+# ============================================================================
+
+# Path to species list file (relative to this config file)
+species_file: "data/species.csv"
+
+# Path(s) to reaction database files
+database_reaction_file: "data/umist12_reactions.csv"
+# Or use a list for multiple databases:
+# database_reaction_file:
+#   - "data/umist12_reactions.csv"
+#   - "data/additional_reactions.csv"
+
+# Type(s) of reaction databases (must match database_reaction_file length)
+database_reaction_type: "UMIST12"
+# Or as a list:
+# database_reaction_type:
+#   - "UMIST12"
+#   - "UCL"
+
+# ============================================================================
+# OPTIONAL PARAMETERS - Network Generation
+# ============================================================================
+
+# Custom reactions to supplement the database (default: none)
+# custom_reaction_file: "data/my_custom_reactions.csv"
+# custom_reaction_type: "UCL"
+
+# ============================================================================
+# OPTIONAL PARAMETERS - Chemistry Features
+# ============================================================================
+
+# Add cosmic ray and photon-induced reactions to grain species (default: false)
+# add_crp_photo_to_grain: false
+
+# Extrapolate gas-phase reactions to grain surfaces (default: false)
+# gas_phase_extrapolation: false
+
+# ============================================================================
+# OPTIONAL PARAMETERS - Exothermicity & Heating
+# ============================================================================
+
+# Calculate reaction exothermicity from species data (default: false)
+# Automatically enables enable_rates_storage=true
+# derive_reaction_exothermicity: false
+
+# Path(s) to pre-calculated reaction exothermicity files (default: none)
+# Automatically enables enable_rates_storage=true
+# database_reaction_exothermicity: "data/exothermicity.csv"
+# Or as a list:
+# database_reaction_exothermicity:
+#   - "data/exothermicity1.csv"
+#   - "data/exothermicity2.csv"
+
+# ============================================================================
+# OPTIONAL PARAMETERS - Grain Surface Chemistry
+# ============================================================================
+
+# Grain-assisted recombination parameters (required if using GAR reactions)
+# grain_assisted_recombination_file: "data/gar_parameters.csv"
+
+# ============================================================================
+# OPTIONAL PARAMETERS - Output & Performance
+# ============================================================================
+
+# Store individual reaction rates for analysis (default: false)
+# Increases memory usage. Automatically enabled by exothermicity features.
+# enable_rates_storage: false
+
+# Output directory for generated files (default: src/fortran_src/)
+# output_directory: "output/"
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# - All file paths are relative to this configuration file's directory
+# - Absolute paths are also supported
+# - After editing this file, run: python MakeRates.py
+# - Then reinstall: pip install .

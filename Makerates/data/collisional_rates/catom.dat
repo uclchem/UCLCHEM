@@ -1,0 +1,95 @@
+!MOLECULE
+C  (neutral atom)
+!MOLECULAR WEIGHT
+12.0
+!NUMBER OF ENERGY LEVELS
+3
+!LEVEL + ENERGIES(cm^-1) + WEIGHT + J
+   1    0.000000000   1.0  0
+   2   16.416712224   3.0  1
+   3   43.4134544     5.0  2
+!NUMBER OF RADIATIVE TRANSITIONS
+3
+!TRANS + UP + LOW + EINSTEINA(s^-1) + FREQ(GHz) + E_u(K)
+    1     2     1   7.880E-08      492.160651  23.620
+    2     3     2   2.650E-07      809.34197   62.462
+    3     3     1   1.810E-14     1301.50262   62.462
+!NUMBER OF COLL PARTNERS
+6
+!COLLISIONS BETWEEN
+5 C + H  ! Launay & Roueff 1977
+!NUMBER OF COLL TRANS
+3
+!NUMBER OF COLL TEMPS
+5
+!COLL TEMPS
+   10.0   20.0   50.0  100.0  200.0
+!TRANS + UP + LOW + COLLRATES(cm^3 s^-1)
+    1     2     1  1.6E-10  1.7E-10  1.6E-10  1.6E-10  1.7E-10 
+    2     3     1  1.0E-10  9.7E-11  9.5E-11  9.4E-11  1.0E-10
+    3     3     2  2.3E-10  2.4E-10  2.6E-10  2.9E-10  3.2E-10
+!COLLISIONS BETWEEN
+4 C + e  !  from Johnson, Burke, & Kingston 1987, JPhysB, 20, 2553
+!NUMBER OF COLL TRANS
+3
+!NUMBER OF COLL TEMPS
+9
+!COLL TEMPS
+   10.0  20.0  50.0 100.0 200.0 500.0 1000.0 10000.0 20000.0
+!TRANS + UP + LOW + COLLRATES(cm^3 s^-1)
+    1     2     1    8.1E-11 9.8E-11 1.7E-10 2.8E-10 5.2E-10 1.2E-09 2.0E-09 1.1E-08 1.2E-08 
+    2     3     1    1.5E-10 1.6E-10 1.9E-10 2.3E-10 2.9E-10 4.8E-10 9.2E-10 4.3E-09 4.8E-09
+    3     3     2    3.7E-10 4.0E-10 5.2E-10 7.0E-10 1.0E-09 1.9E-09 3.5E-09 1.8E-08 2.0E-08
+!COLLISIONS BETWEEN
+7 C + H+  !  Roueff & Le Bourlot 1990, A&A, 236, 515
+!NUMBER OF COLL TRANS
+3
+!NUMBER OF COLL TEMPS
+5
+!COLL TEMPS
+  100.0 200.0 500.0 1000. 2000.
+!TRANS + UP + LOW + COLLRATES(cm^3 s^-1)
+    1     2     1    7.6E-10  1.0E-09  1.4E-09  1.8E-09  2.1E-09 
+    2     3     1    3.0E-10  5.5E-10  1.5E-09  2.6E-09  3.9E-09
+    3     3     2    2.3E-09  3.9E-09  7.8E-09  1.1E-08  1.3E-08
+!COLLISIONS BETWEEN
+6 C + He  !  Staemmler, V., Flower, D.R. 1991, J. Phys. B, 24, 2343
+!NUMBER OF COLL TRANS
+3
+!NUMBER OF COLL TEMPS
+5
+!COLL TEMPS
+   10.0  20.0  40.0  100.0  150.0
+!TRANS + UP + LOW + COLLRATES(cm^3 s^-1)
+    1     2     1    8.49E-12 1.35E-11 1.59E-11 1.74E-11 1.86E-11
+    2     3     1    4.05E-11 4.23E-11 4.34E-11 4.42E-11 4.53E-11
+    3     3     2    7.15E-11 7.48E-11 7.75E-11 8.29E-11 8.83E-11
+!COLLISIONS BETWEEN
+2 C + p-H2  !  K. Schroeder et al. 1991, J. Phys. B, 24, 2487
+!NUMBER OF COLL TRANS
+3
+!NUMBER OF COLL TEMPS
+8
+!COLL TEMPS
+   10.0  20.0  50.0  100.0  200.0  500.0  1000.0  1200.0
+!TRANS + UP + LOW + COLLRATES(cm^3 s^-1)
+    1     2     1    9.6E-11 1.0E-10 7.7E-11 6.7E-11 6.7E-11 7.6E-11 8.1E-11 8.0E-11
+    2     3     1    9.6E-11 9.9E-11 9.2E-11 8.6E-11 8.5E-11 9.6E-11 1.0E-10 1.0E-10
+    3     3     2    1.8E-10 1.8E-10 1.8E-10 1.8E-10 1.9E-10 2.3E-10 2.6E-10 2.6E-10
+!COLLISIONS BETWEEN
+3 C + o-H2  !  K. Schroeder et al. 1991, J. Phys. B, 24, 2487
+!NUMBER OF COLL TRANS
+3
+!NUMBER OF COLL TEMPS
+8
+!COLL TEMPS
+   10.0  20.0  50.0  100.0  200.0  500.0  1000.0  1200.0
+!TRANS + UP + LOW + COLLRATES(cm^3 s^-1)
+    1     2     1    7.3E-11 8.1E-11 7.6E-11 7.1E-11 7.1E-11 8.0E-11 8.6E-11 8.5E-11
+    2     3     1    5.2E-11 5.8E-11 6.3E-11 6.9E-11 7.9E-11 1.0E-10 1.1E-10 1.1E-10
+    3     3     2    9.2E-11 1.1E-10 1.3E-10 1.5E-10 1.8E-10 2.5E-10 2.8E-10 2.8E-10
+! NOTES:
+! A-values come from the NIST database.  Accurate transition frequencies 
+! measured by Yamamoto & Saito 1991, ApJ, 370, L103 for J=1-0 and by
+! Klein et al. 1998, ApJ, 494, L125 for J=2-1; the latter is an improvement
+! over the frequency previously measured by Cooksy et al. 1986, ApJ, 309, 828.

@@ -1,0 +1,214 @@
+"""
+Tests for collapse model parcel_radius output.
+
+Verifies that parcel_radius is:
+  - present in the physics DataFrame for all models
+  - non-zero and monotonically ordered across parcels for collapse models
+  - zero for non-collapse (cloud) models
+"""
+
+import numpy as np
+import pytest
+
+import uclchem
+
+COLLAPSE_PARAMS = {
+    "initialTemp": 10.0,
+    "endAtFinalDensity": True,
+}
+
+CLOUD_PARAMS = {
+    "freefall": False,
+    "initialDens": 1e4,
+    "finalDens": 1e5,
+    "finalTime": 5e5,
+}
+
+
+@pytest.mark.parametrize("collapse_mode", ["BE1.1", "BE4", "filament", "ambipolar"])
+def test_parcel_radius_in_collapse_physics(collapse_mode):
+    """parcel_radius column is present and non-zero for collapse models."""
+    physics, chemistry, rates, heating, abundances, return_code = (
+        uclchem.functional.collapse(
+            collapse=collapse_mode,
+            param_dict=COLLAPSE_PARAMS,
+            out_species=["CO", "OH"],
+            return_dataframe=True,
+        )
+    )
+
+    assert return_code == 0, f"Collapse ({collapse_mode}) failed with code {return_code}"
+    assert "parcel_radius" in physics.columns, (
+        f"'parcel_radius' column missing from physics DataFrame for collapse={collapse_mode}"
+    )
+
+    radii = physics["parcel_radius"].values
+    assert np.any(radii > 0), (
+        f"All parcel_radius values are zero for collapse={collapse_mode}; expected non-zero radii"
+    )
+
+
+def test_parcel_radius_decreases_during_collapse():
+    """For a collapse model with points=1, the single parcel moves inward over time."""
+    physics, chemistry, rates, heating, abundances, return_code = (
+        uclchem.functional.collapse(
+            collapse="BE4",
+            param_dict=COLLAPSE_PARAMS,
+            out_species=["CO"],
+            return_dataframe=True,
+        )
+    )
+
+    assert return_code == 0, f"Collapse failed with code {return_code}"
+    radii = physics["parcel_radius"].values
+    # Radius should decrease (or at least not increase) over time
+    assert radii[0] >= radii[-1], (
+        f"Parcel radius did not decrease during collapse: r_initial={radii[0]:.4f}, r_final={radii[-1]:.4f}"
+    )
+
+
+def test_parcel_radius_zero_for_cloud():
+    """parcel_radius is zero for a non-collapse cloud model."""
+    physics, chemistry, rates, heating, abundances, return_code = (
+        uclchem.functional.cloud(
+            param_dict=CLOUD_PARAMS,
+            out_species=["CO", "OH"],
+            return_dataframe=True,
+            timepoints=5000,
+        )
+    )
+
+    assert return_code == 0, f"Cloud model failed with code {return_code}"
+    assert "parcel_radius" in physics.columns, (
+        "'parcel_radius' column missing from physics DataFrame for cloud model"
+    )
+
+    radii = physics["parcel_radius"].values
+    assert np.all(radii == 0.0), (
+        f"Expected all parcel_radius to be 0 for cloud model, got max={radii.max():.4e}"
+    )
+
+
+def test_parcel_radius_initial_value_matches_r_out():
+    """Initial parcel radius should be approximately r_out (outermost shell = r_out)."""
+    r_out = 0.05  # default r_out in parsec
+    params = {**COLLAPSE_PARAMS, "rout": r_out}
+
+    physics, chemistry, rates, heating, abundances, return_code = (
+        uclchem.functional.collapse(
+            collapse="BE4",
+            param_dict=params,
+            out_species=["CO"],
+            return_dataframe=True,
+        )
+    )
+
+    assert return_code == 0, f"Collapse failed with code {return_code}"
+    initial_radius = physics["parcel_radius"].iloc[0]
+    assert abs(initial_radius - r_out) < 0.1 * r_out, (
+        f"Initial parcel_radius {initial_radius:.4f} deviates more than 10% from r_out={r_out}"
+    )
+
+
+def test_model_stops_end_at_final_density():
+    finalDens = 1e4  # noqa: N806 physics-var
+    finalTime = 1e6  # noqa: N806 physics-var
+    model = uclchem.model.Cloud(
+        {
+            "initialDens": 8e3,
+            "finalDens": finalDens,
+            "finalTime": finalTime,
+            "endAtFinalDensity": True,
+            "freefall": True,
+        }
+    )
+    phys_df, _ = model.get_dataframes(joined=False)
+
+    # The model should terminate before it reaches finalTime.
+    assert phys_df["Time"].iloc[-1] < finalTime
+
+    # The model should terminate directly when it reaches finalDens.
+    assert phys_df["Density"].iloc[-1] >= finalDens
+    assert phys_df["Density"].iloc[-2] < finalDens
+
+
+def test_model_continues_not_end_at_final_density():
+    finalDens = 1e4  # noqa: N806 physics-var
+    finalTime = 1e6  # noqa: N806 physics-var
+    model = uclchem.model.Cloud(
+        {
+            "initialDens": 8e3,
+            "finalDens": finalDens,
+            "finalTime": finalTime,
+            "endAtFinalDensity": False,
+            "freefall": True,
+        }
+    )
+    phys_df, _ = model.get_dataframes(joined=False)
+
+    # The model should reach the finalTime.
+    assert phys_df["Time"].iloc[-1] == finalTime
+
+    # The model should reach the density, and then stay there after
+    # it reaches it.
+    assert phys_df["Density"].iloc[-1] >= finalDens
+    assert phys_df["Density"].iloc[-2] == phys_df["Density"].iloc[-1]
+
+
+def test_end_at_final_density_stops_close_to_target():
+    """Model stops within one freefall timestep of finalDens when endAtFinalDensity=True.
+
+    The Fortran exit check fires before chemistry runs for that step, so the last
+    written output row is the step that first crossed finalDens.  We verify both
+    that the model did not stop too early AND that it did not overshoot by more
+    than a factor of 2 (a generous single-timestep bound for freefall collapse).
+    """
+    finalDens = 1e5  # noqa: N806 physics-var
+    finalTime = 1e7  # noqa: N806 physics-var  # Much longer than needed to reach finalDens via freefall
+    model = uclchem.model.Cloud(
+        {
+            "initialDens": 1e4,
+            "finalDens": finalDens,
+            "finalTime": finalTime,
+            "endAtFinalDensity": True,
+            "freefall": True,
+        }
+    )
+    phys_df, _ = model.get_dataframes(joined=False)
+
+    final_density = phys_df["Density"].iloc[-1]
+
+    # Stopped before time ran out
+    assert phys_df["Time"].iloc[-1] < finalTime
+
+    # Final density crossed the threshold but did not wildly overshoot it
+    assert final_density >= finalDens, (
+        f"Model stopped below finalDens: {final_density:.2e} < {finalDens:.2e}"
+    )
+    assert final_density <= finalDens * 2, (
+        f"Model overshot finalDens by more than 2x: {final_density:.2e} vs {finalDens:.2e}"
+    )
+
+
+def test_end_at_final_density_multipoint_raises():
+    """endAtFinalDensity is blocked for multi-point models at the Python layer."""
+    with pytest.raises(RuntimeError, match="Use 'parcelStoppingMode' instead"):
+        uclchem.model.Cloud(
+            {
+                "initialDens": 1e4,
+                "finalDens": 1e5,
+                "finalTime": 1e6,
+                "endAtFinalDensity": True,
+                "freefall": True,
+                "points": 2,
+            }
+        )
+
+
+def test_lower_final_than_initial_dens_raises():
+    with pytest.raises(RuntimeError):
+        uclchem.model.Cloud({"initialDens": 1e5, "finalDens": 1e4, "freefall": True})
+
+
+if __name__ == "__main__":
+    pytest.main(["-v", __file__])

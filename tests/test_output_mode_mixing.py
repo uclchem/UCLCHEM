@@ -1,7 +1,6 @@
-"""
-Unit tests to verify that users cannot mix in-memory and write-to-disk modes.
+"""Unit tests to verify that users cannot mix in-memory and write-to-disk modes.
 
-Core principle: Never cross-pollinate between Fortran-based disk I/O 
+Core principle: Never cross-pollinate between Fortran-based disk I/O
 and Python in-memory arrays/dataframes.
 
 These tests check the pre_flight_checklist function in model.py to ensure:
@@ -19,6 +18,7 @@ import pytest
 
 try:
     import uclchem
+
     uclchem_imported = True
 except ImportError:
     uclchem_imported = False
@@ -40,16 +40,6 @@ def temp_output_directory():
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-@pytest.fixture(scope="function")
-def reset_output_mode():
-    """Reset the OUTPUT_MODE global variable between tests"""
-    import uclchem.model as model
-    original_mode = model.OUTPUT_MODE
-    model.OUTPUT_MODE = ""
-    yield
-    model.OUTPUT_MODE = original_mode
-
-
 @pytest.fixture
 def basic_params():
     """Basic parameter dictionary for testing"""
@@ -64,131 +54,106 @@ def basic_params():
 
 
 # Test 1: Files cannot be specified with return_array
-def test_return_array_with_file_raises_error(basic_params, reset_output_mode):
+def test_return_array_with_file_raises_error(basic_params):
     """Test that specifying any *File parameter with return_array raises RuntimeError"""
     params = basic_params.copy()
     params["outputFile"] = "test_output.dat"
 
     with pytest.raises(
         RuntimeError,
-        match="return_array or return_dataframe cannot be used if any output of input file is specified",
+        match="return_array or return_dataframe cannot be used if any output or input file is specified",
     ):
-        uclchem.model.cloud(param_dict=params, return_array=True)
+        uclchem.functional.cloud(param_dict=params, return_array=True)
 
 
 # Test 2: Files cannot be specified with return_dataframe
-def test_return_dataframe_with_file_raises_error(basic_params, reset_output_mode):
+def test_return_dataframe_with_file_raises_error(basic_params):
     """Test that specifying any *File parameter with return_dataframe raises RuntimeError"""
     params = basic_params.copy()
     params["abundSaveFile"] = "test_abund.dat"
 
     with pytest.raises(
         RuntimeError,
-        match="return_array or return_dataframe cannot be used if any output of input file is specified",
+        match="return_array or return_dataframe cannot be used if any output or input file is specified",
     ):
-        uclchem.model.cloud(param_dict=params, return_dataframe=True)
+        uclchem.functional.cloud(param_dict=params, return_dataframe=True)
 
 
-# Test 3: starting_chemistry requires memory mode
-def test_starting_chemistry_requires_memory_mode(basic_params, reset_output_mode):
-    """Test that starting_chemistry can only be used with return_array/return_dataframe"""
+# Test 3: starting_chemistry can now be used with any mode (no longer restricted)
+def test_starting_chemistry_with_memory_mode(basic_params):
+    """Test that starting_chemistry works with return_array/return_dataframe"""
     params = basic_params.copy()
-    dummy_abundances = np.zeros(uclchem.constants.n_species)
+    dummy_abundances = np.ones(uclchem.constants.n_species) * 1e-20
+    # Ensure that common species have sensible defaults (use model lookup for indices):
+    species = uclchem.model.get_species_names()
+    species_idx = {name: i for i, name in enumerate(species)}
+    # Set common species where available
+    dummy_abundances[species_idx["H2"]] = 0.45
+    dummy_abundances[species_idx["H"]] = 0.1
+    dummy_abundances[species_idx["HE"]] = 0.1
+    dummy_abundances[species_idx["C"]] = 1e-7
+    dummy_abundances[species_idx["O"]] = 3e-7
 
-    with pytest.raises(
-        AssertionError,
-        match="starting_chemistry can only be used with return_array or return_dataframe set to True",
-    ):
-        uclchem.model.cloud(param_dict=params, starting_chemistry=dummy_abundances)
+    # This should work fine now
+    result = uclchem.functional.cloud(
+        param_dict=params, starting_chemistry=dummy_abundances, return_array=True
+    )
+    assert result[-1] == uclchem.utils.SuccessFlag.SUCCESS  # success_flag should be 0
 
 
-# Test 4: return_rates requires memory mode
-def test_return_rates_with_file_raises_error(basic_params, reset_output_mode, temp_output_directory):
-    """Test that return_rates with file output raises error"""
+# Test 4: return_rate_constants requires memory mode
+def test_return_rate_constants_with_file_raises_error(
+    basic_params, temp_output_directory
+):
+    """Test that return_rate_constants with file output raises error"""
     params = basic_params.copy()
     params["outputFile"] = temp_output_directory / "test_output.dat"
 
     with pytest.raises(
         RuntimeError,
-        match="return_array or return_dataframe cannot be used if any output of input file is specified",
+        match="return_array or return_dataframe cannot be used if any output or input file is specified",
     ):
-        uclchem.model.cloud(param_dict=params, return_rates=True)
-
-
-# Test 5: Cannot run memory mode after disk mode
-def test_disk_then_memory_mode_raises_error(basic_params, temp_output_directory, reset_output_mode):
-    """Test that running disk-based model then in-memory model raises AssertionError"""
-    # First run a disk-based model
-    params_disk = basic_params.copy()
-    params_disk["outputFile"] = temp_output_directory / "test1.dat"
-    result = uclchem.model.cloud(param_dict=params_disk)
-    assert result[0] == 0
-
-    # Now try to run an in-memory model - should fail
-    params_memory = basic_params.copy()
-    with pytest.raises(
-        AssertionError,
-        match="Cannot run an in memory based model after running a disk based one",
-    ):
-        uclchem.model.cloud(param_dict=params_memory, return_array=True)
-
-
-# Test 6: Cannot run disk mode after memory mode
-def test_memory_then_disk_mode_raises_error(basic_params, temp_output_directory, reset_output_mode):
-    """Test that running in-memory model then disk-based model raises AssertionError"""
-    # First run an in-memory model
-    params_memory = basic_params.copy()
-    physics, chemistry, rates, abundances, return_code = uclchem.model.cloud(
-        param_dict=params_memory, return_array=True
-    )
-    assert return_code == 0
-
-    # Now try to run a disk-based model - should fail
-    params_disk = basic_params.copy()
-    params_disk["outputFile"] = temp_output_directory / "test2.dat"
-    with pytest.raises(
-        AssertionError,
-        match="Cannot run a disk based model after running an in memory one",
-    ):
-        uclchem.model.cloud(param_dict=params_disk)
+        uclchem.functional.cloud(param_dict=params, return_rate_constants=True)
 
 
 # Test 7: Multiple memory models succeed
-def test_multiple_memory_models_succeed(basic_params, reset_output_mode):
+def test_multiple_memory_models_succeed(basic_params):
     """Test that running multiple in-memory models in sequence works"""
     params = basic_params.copy()
 
     # Run first in-memory model
-    physics1, chemistry1, rates1, abundances1, return_code1 = uclchem.model.cloud(
-        param_dict=params, return_array=True
+    physics1, chemistry1, rates1, heating1, abundances1, return_code1 = (
+        uclchem.functional.cloud(
+            param_dict=params, return_array=True, return_rate_constants=True
+        )
     )
-    assert return_code1 == 0
+    assert return_code1 == uclchem.utils.SuccessFlag.SUCCESS
 
     # Run second in-memory model - should succeed
-    physics2, chemistry2, rates2, abundances2, return_code2 = uclchem.model.cloud(
-        param_dict=params, return_dataframe=True
+    physics2, chemistry2, rates2, heating2, abundances2, return_code2 = (
+        uclchem.functional.cloud(param_dict=params, return_dataframe=True)
     )
-    assert return_code2 == 0
+    assert return_code2 == uclchem.utils.SuccessFlag.SUCCESS
 
 
 # Test 8: Multiple disk models succeed
-def test_multiple_disk_models_succeed(basic_params, temp_output_directory, reset_output_mode):
+def test_multiple_disk_models_succeed(basic_params, temp_output_directory):
     """Test that running multiple disk-based models in sequence works"""
     # Run first disk-based model
     params1 = basic_params.copy()
     params1["outputFile"] = temp_output_directory / "test1.dat"
-    result1 = uclchem.model.cloud(param_dict=params1)
-    assert result1[0] == 0
+    result1 = uclchem.functional.cloud(param_dict=params1)
+    assert result1[0] == uclchem.utils.SuccessFlag.SUCCESS
 
     # Run second disk-based model - should succeed
     params2 = basic_params.copy()
     params2["outputFile"] = temp_output_directory / "test2.dat"
-    result2 = uclchem.model.cloud(param_dict=params2)
-    assert result2[0] == 0
+    result2 = uclchem.functional.cloud(param_dict=params2)
+    assert result2[0] == uclchem.utils.SuccessFlag.SUCCESS
 
 
 # Test 9: Chained models work with starting_chemistry in memory
-def test_chained_models_in_memory(basic_params, reset_output_mode):
+def test_chained_models_in_memory(basic_params):
     """Test Stage 1 -> Stage 2 workflow using in-memory arrays with starting_chemistry"""
     # Stage 1: Cloud collapse
     params_stage1 = {
@@ -201,10 +166,10 @@ def test_chained_models_in_memory(basic_params, reset_output_mode):
         "rout": 0.1,
         "baseAv": 1.0,
     }
-    _, _, _, final_abundances, result1 = uclchem.model.cloud(
+    _, _, _, _, final_abundances, result1 = uclchem.functional.cloud(
         param_dict=params_stage1, return_dataframe=True
     )
-    assert result1 == 0
+    assert result1 == uclchem.utils.SuccessFlag.SUCCESS
 
     # Stage 2: Hot core using starting_chemistry
     params_stage2 = {
@@ -213,50 +178,14 @@ def test_chained_models_in_memory(basic_params, reset_output_mode):
         "freefall": False,
         "freezeFactor": 0.0,
     }
-    _, _, _, final_abundances2, result2 = uclchem.model.hot_core(
-        temp_indx=3,
+    _, _, _, _, final_abundances2, result2 = uclchem.functional.prestellar_core(
+        temp_index=3,
         max_temperature=300.0,
         param_dict=params_stage2,
         return_dataframe=True,
         starting_chemistry=final_abundances,
     )
-    assert result2 == 0
-
-
-# Test 10: Cannot mix disk and memory in chained models
-def test_cannot_mix_disk_and_memory_in_chain(basic_params, temp_output_directory, reset_output_mode):
-    """Test that you cannot start with disk mode then switch to memory mode in a chain"""
-    # Stage 1: Cloud collapse (disk mode)
-    params_stage1 = {
-        "endAtFinalDensity": False,
-        "freefall": True,
-        "initialDens": 1e2,
-        "finalDens": 1e6,
-        "initialTemp": 10.0,
-        "finalTime": 6.0e5,
-        "rout": 0.1,
-        "baseAv": 1.0,
-        "outputFile": temp_output_directory / "stage1-full.dat",
-    }
-    result1 = uclchem.model.cloud(param_dict=params_stage1)
-    assert result1[0] == 0
-
-    # Stage 2: Try to use memory mode - should fail
-    params_stage2 = {
-        "initialDens": 1e6,
-        "finalTime": 1e5,
-        "freefall": False,
-    }
-    with pytest.raises(
-        AssertionError,
-        match="Cannot run an in memory based model after running a disk based one",
-    ):
-        uclchem.model.hot_core(
-            temp_indx=3,
-            max_temperature=300.0,
-            param_dict=params_stage2,
-            return_dataframe=True,
-        )
+    assert result2 == uclchem.utils.SuccessFlag.SUCCESS
 
 
 def main():

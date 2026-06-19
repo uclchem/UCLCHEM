@@ -1,12 +1,31 @@
-"""The UCLCHEM python module is divided into three parts.
-`model` contains the functions for running chemical models under different physics.
-`analysis` contains functions for reading and plotting output files as well as investigating the chemistry.
-`tests` contains functions for testing the code.
+"""UCLCHEM project entry.
+
+The UCLCHEM python module is divided into several parts:
+ - :mod:`model` contains the functions for running chemical models under different physics.
+ - :mod:`analysis` contains functions for reading output files as well
+      as investigating the chemistry.
+ - :mod:`plot` contains functions for plotting output files.
+ - :mod:`advanced` provides access to Fortran modules, parameters, heating/cooling controls
+      and advanced solver parameters.
+
 """
 
+from . import advanced as advanced
 from . import analysis as analysis
+from . import style as style
+
+# isort: off
+# The following contains the virtual submodule ``functional``,
+# which allows for calling the new API in the legacy format.
 from . import model as model
+from . import functional as functional
 from . import plot as plot
-from . import tests as tests
 from . import utils as utils
+from . import tests as tests
 from . import version as version
+# isort: off
+
+# Auto-initialize coolant data directory on module import
+from .advanced.advanced_heating import auto_initialize_coolant_directory
+
+auto_initialize_coolant_directory()

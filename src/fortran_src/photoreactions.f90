@@ -78,6 +78,7 @@ FUNCTION cIonizationRate(alpha,gamma,gasTemp,NC,NH2,av,radfield) RESULT(RATE)
 
 !  Calculate the optical depth in the CI absorption band, accounting
 !  for grain extinction and shielding by CI and overlapping H2 lines
+!  1.1D-17 seems the value of the ionization cross-section of C
    TAUC=gamma*av+1.1D-17*NC+(0.9D0*gasTemp**0.27D0*(NH2/1.59D21)**0.45D0)
 !  Calculate the CI photoionization rate
    RATE=alpha*(radfield/1.7)*EXP(-TAUC)
@@ -93,7 +94,7 @@ REAL(dp) FUNCTION H2SelfShielding(NH2,dopplerWidth,radWidth)
     REAL(dp) ::  r, sj, sr, t, u, taud
     REAL(dp), PARAMETER :: FPARA=0.5,FOSC  = 1.0d-2
     !--------------------------------------------------------------
-    !taud = opt. depth at line centre (assum. ortho:parah2=1)
+    !taud = opt. depth at line center (assuming ortho:para h2=1)
     !pi**0.5 * e2 / (m(electr) * c) = 1.5e-2 cm2/s
 
     taud  = FPARA * NH2 * 1.5e-2 * FOSC / dopplerWidth
@@ -198,22 +199,22 @@ END FUNCTION scatter
 !=======================================================================
 !
 !  Determine the ratio of the optical depth at a given wavelength to
-!  that at visual wavelength (λ=5500Å) using the extinction curve of
+!  that at visual wavelength (lambda=5500 Angstrom) using the extinction curve of
 !  Savage & Mathis (1979, ARA&A, 17, 73, Table 2)
 !
 !-----------------------------------------------------------------------
 !
 !  Input parameters:
-!  LAMBDA  = wavelength (in Å)
+!  LAMBDA  = wavelength (in Angstrom)
 !
 !  Program variables:
-!  XLAMBDA       = Ratio of tau(λ)/tau(V) at the desired wavelength
+!  XLAMBDA       = Ratio of tau(wavelength)/tau(V) at the desired wavelength
 !                  by 1D spline interpolation over the grid values
-!  XLAMBDA_GRID  = tau(λ)/tau(V) values, determined by dividing the
-!                  Aλ/E(B-V) values from Savage & Mathis (1979) by
+!  XLAMBDA_GRID  = tau(wavelength)/tau(V) values, determined by dividing the
+!                  A_wavelength/E(B-V) values from Savage & Mathis (1979) by
 !                  an assumed reddening of R=AV/E(B-V)=3.1
 !  XLAMBDA_DERIV = 2nd derivative of XLAMBDA_GRID values from SPLINE
-!  LAMBDA_GRID   = wavelengths (in Å) listed in Table 2
+!  LAMBDA_GRID   = wavelengths (in Angstrom) listed in Table 2
 !  NUM_LAMBDA    = number of wavelengths
 !  START         = .TRUE. when XLAMBDA is first called
 !
@@ -344,7 +345,7 @@ SUBROUTINE spline(x,y,n,yp1,ypn,y2)
 !routine returns an array y2 of length n which contains the
 !second derivatives of the interpolating function at the
 !tabulated points x(i). if yp1 and/or ypn are equal to 1.0e+30
-!or larger, the routine is signalled to set the corresponding
+!or larger, the routine is signaled to set the corresponding
 !boundary condition for a natural spline, with zero second
 !derivative on that boundary.
 

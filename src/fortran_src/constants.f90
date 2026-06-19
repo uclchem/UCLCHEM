@@ -3,6 +3,7 @@ MODULE CONSTANTS
    REAL(dp), parameter :: C  = 2.99792458D+10 !Speed of light in cgs
    REAL(dp), PARAMETER :: K_BOLTZ = 1.38065040D-16 ! Boltzmann constant cgs
    REAL(dp), PARAMETER :: HP = 6.62606896D-27 !Planck constant in cgs
+   REAL(dp), PARAMETER :: HP_SI = 6.62607015D-34 !Planck constant in SI
    REAL(dp), PARAMETER :: REDUCED_PLANCK=1.054571628d-27
    REAL(dp), PARAMETER :: MH = 1.67262164D-24 !H nucleus mass in cgs
    REAL(dp), PARAMETER :: AMU=1.66053892d-24 !atomic mass unit in cgs
@@ -10,13 +11,22 @@ MODULE CONSTANTS
    REAL(dp), PARAMETER :: K_BOLTZ_SI=1.38d-23 !Boltzmann constant SI
    REAL(dp), PARAMETER :: PC=3.086d18 !parsec in cgs
    REAL(dp), PARAMETER :: au=2.063d5 !1 AU in cgs
-   REAL(dp), PARAMETER :: KM=1.d5 !kilometre in cgs
+   REAL(dp), PARAMETER :: KM=1.d5 !kilometer in cgs
    REAL(dp), PARAMETER :: SECONDS_PER_YEAR=3.16d7
    REAL(dp), PARAMETER :: T_CMB=2.73
    REAL(dp), PARAMETER :: EV = 1.60217646D-12 ! electron volt in erg
    REAL(dp), PARAMETER :: GRAV_G = 6.674d-8 !gravitational constant in cgs
    REAL(dp), PARAMETER :: SB_CONST=5.6704d-5 !Stefan Boltzmann constant in cgs
    REAL(dp), PARAMETER :: HABING_TO_DRAINE = 1 / 1.7 !conversion factor from Habing to Draine field
+   REAL(dp), PARAMETER :: Lsun = 3.828d+33 ! Sun luminosity in cgs
+   REAL(dp), PARAMETER :: aunit = 1.495978d13 ! AU in cm
+   REAL(dp), PARAMETER :: N_AVOGADRO=6.022140857d23 !Avogadro constant
+   REAL(dp), PARAMETER :: KCAL_TO_JOULE=4.184d3 !Constant to convert kcal to J
+   REAL(dp), PARAMETER :: uISRF = 8.64d-13 !Energy density of the interstellar radiation field in cgs
+   REAL(dp), PARAMETER :: uISRF_UV = 5.29e-14 !Energy density of the UV interstellar radiation field in cgs
+
+   !Sentinel value used in network.f90 for absent reaction types
+   INTEGER, PARAMETER :: REAC_NOT_PRESENT = 99999
 
    !Error codes for python wrap
    INTEGER, PARAMETER :: PARAMETER_READ_ERROR=-1
@@ -25,7 +35,18 @@ MODULE CONSTANTS
    INTEGER, PARAMETER :: INT_UNRECOVERABLE_ERROR=-4
    INTEGER, PARAMETER :: INT_TOO_MANY_FAILS_ERROR=-5
    INTEGER, PARAMETER :: NOT_ENOUGH_TIMEPOINTS_ERROR=-6
-   
+   INTEGER, PARAMETER :: PHYSICS_UPDATE_ERROR=-7
+   INTEGER, PARAMETER :: SOLVER_STATS_OVERFLOW_ERROR=-8
+   INTEGER, PARAMETER :: COOLANT_FILE_ERROR=-9
+   INTEGER, PARAMETER :: COOLANT_DATA_ERROR=-10
+   INTEGER, PARAMETER :: COOLANT_FREQ_TOL_ERROR=-11
+   INTEGER, PARAMETER :: COOLANT_POP_TOL_ERROR=-12
+   INTEGER, PARAMETER :: COOLANT_SOLVER_ERROR=-13
+   INTEGER, PARAMETER :: COOLANT_CONFIG_ERROR=-14
+   INTEGER, PARAMETER :: NEGATIVE_ABUNDANCE_ERROR=-15
+   INTEGER, PARAMETER :: CONSERVATION_ERROR=-16
+   INTEGER, PARAMETER :: ZERO_INNER_RADIUS_ERROR=-17
+
 CONTAINS
 SUBROUTINE DUMMY_THREE(dummy_three_output)
    integer, intent(out) :: dummy_three_output

@@ -7,7 +7,8 @@ MODULE hotcore
     !f2py INTEGER, parameter :: dp    
     USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens
+    &coldens, density_max, ngas_r, coldens_internal, coldens_external, parcel_radius, radiation, &
+    &outer_coldens_for_current_step, av_internal, radfield_internal, G0_internal_at_r
     USE network
     USE f2py_constants
     IMPLICIT NONE
@@ -18,18 +19,43 @@ MODULE hotcore
     !arrays go [1Msun,5, 10, 15, 25,60]
     INTEGER, PARAMETER :: nMasses= 6 
     INTEGER :: tempIndx
-    REAL(dp),PARAMETER :: tempa(nMasses)=(/1.927d-1,4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
-    REAL(dp),PARAMETER :: tempb(nMasses)=(/0.5339,0.6255,0.8395,1.085,1.289,1.98/)
+    ! Initialize with dummy values 
+    REAL(dp) :: tempa(nMasses)=(/0.0, 0.0, 0.0, 0.0, 0.0, 0.0/)
+    REAL(dp) :: tempb(nMasses)=(/0.0, 0.0, 0.0, 0.0, 0.0, 0.0/)
+    ! Deprecated solid, volc and codesorption values, can be removed at some point.
     REAL(dp),PARAMETER :: solidtemp(nMasses)=(/20.0,19.6,19.45,19.3,19.5,20.35/)
     REAL(dp),PARAMETER :: volctemp(nMasses)=(/84.0,86.3,88.2,89.5,90.4,92.2/)
     REAL(dp),PARAMETER :: codestemp(nMasses)=(/95.0,97.5,99.4,100.8,101.6,103.4/)
     REAL(dp), allocatable :: monoFracCopy(:)
     REAL(dp) :: maxTemp
+    
+    ! 1D radiative transfer arrays
+    REAL(dp) :: Td_r
+    REAL(dp) :: U_r
+    REAL(dp), allocatable :: parcelRadius(:)
+    REAL(dp), allocatable :: maximum_Temp(:)
+
+    ! Time sampling control parameters
+    ! During heating (gasTemp < maxTemp): log-based stepping with finer resolution
+    REAL(dp) :: timestep_resolution_factor_heating = 2.0_dp  ! steps per decade during heating
+    ! After max_temp reached: coarser log-based or fixed stepping
+    REAL(dp) :: timestep_resolution_factor_hot = 1.0_dp      ! steps per decade post-heating
+    REAL(dp) :: timestep_fixed_late_years = 1.0d5            ! for t > 1 Myr: fixed step in years
+
+    ! Radial grid spacing: .false. = linear (default), .true. = logarithmic
+    LOGICAL :: log_radius_sampling = .false.
+
 contains
 
     SUBROUTINE initializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
         successFlag=0
+
+        IF (enable_radiative_transfer .AND. points.gt.1 .AND. rin .le. 0.0_dp) THEN
+            write(*,*) "ERROR: rin must be > 0 when enable_radiative_transfer=True (G0 diverges at r=0)"
+            successFlag=ZERO_INNER_RADIUS_ERROR
+            RETURN
+        END IF
 
         ! Modules not restarted in python wraps so best to reset everything manually.
         IF (ALLOCATED(monoFracCopy)) DEALLOCATE(monoFracCopy)
@@ -38,8 +64,57 @@ contains
         solidFlag=0
         volcFlag=0
         monoFracCopy=monoFractions !reset monofractions
+        
+        ! Allocate 1D arrays if 1D radiative transfer is enabled
+        IF (enable_radiative_transfer .AND. points.gt.1) THEN
+            IF (ALLOCATED(parcelRadius)) DEALLOCATE(parcelRadius)
+            ALLOCATE(parcelRadius(points))
+
+            IF (ALLOCATED(maximum_Temp)) DEALLOCATE(maximum_Temp)
+            ALLOCATE(maximum_Temp(points))
+
+            DO dstep=1,points
+                IF (points .gt. 1) THEN
+                    IF (log_radius_sampling) THEN
+                        parcelRadius(dstep)=rin*(rout/rin)**((float(dstep)-1.0d0)/float(points-1))
+                    ELSE
+                        parcelRadius(dstep)= rin + (dstep-1)*(rout-rin)/float(points-1)
+                    END IF
+                ELSE
+                    parcelRadius(dstep)= rout
+                END IF
+                parcel_radius(dstep)=parcelRadius(dstep)
+            END DO
+            ! Better fit for 1D:
+            tempa(:) = (/3.1417d-2,3.5495d-2,4.9653d-4,9.5928d-4,1.4158d-3,2.817d-3/)
+            tempb(:) = (/0.5329,0.5324,0.9,0.9,0.9,0.9/)
+        ELSE
+            ! 0D/single-point: parcelRadius must always be allocated because updatePhysics
+            ! uses it unconditionally for the radial temperature factor (r/rout)^-0.5.
+            ! For 0D the single parcel sits at rout, giving factor = 1.0 (no radial correction).
+            IF (ALLOCATED(parcelRadius)) DEALLOCATE(parcelRadius)
+            ALLOCATE(parcelRadius(max(1, points)))
+            parcelRadius(:) = rout
+            ! Default values for 0D:
+            tempa(:) = (/1.927d-1,4.8560d-2,7.8470d-3,9.6966d-4,1.706d-4,4.74d-7/)
+            tempb(:) = (/0.5339,0.6255,0.8395,1.085,1.289,1.98/)
+        END IF
 
         IF (freefall) density=1.001*initialDens
+        
+        IF (enable_radiative_transfer .AND. points.gt.1) THEN
+            DO dstep=1,points
+                density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
+                density(dstep)=density_max(dstep)
+                maximum_Temp(dstep) = maxTemp
+                ! Internal shielding: from protostar to parcel (core-to-edge).
+                coldens(dstep)           = coldens_internal(parcelRadius(dstep))
+                av_internal(dstep)       = coldens(dstep) / 1.6d21
+                ! External shielding: from cloud edge to parcel (edge-to-core), includes baseAv.
+                av(dstep)                = baseAv + coldens_external(parcelRadius(dstep), finalDens) / 1.6d21
+                radfield_internal(dstep) = G0_internal_at_r(lum_star*Lsun, parcelRadius(dstep)*pc)
+            END DO
+        END IF
 
         IF (tempindx .gt. nMasses) THEN
             write(*,*) "tempindx was ",tempindx
@@ -50,24 +125,39 @@ contains
         END IF 
     END SUBROUTINE
 
-    !Called every time loop in main.f90. Sets the timestep for the next output from   
-    !UCLCHEM. This is also given to the integrator as the targetTime in chemistry.f90 
-    !but the integrator itself chooses an integration timestep.                       
+    !Called every time loop in main.f90. Sets the timestep for the next output from
+    !UCLCHEM. This is also given to the integrator as the targetTime in chemistry.f90
+    !but the integrator itself chooses an integration timestep.
     SUBROUTINE updateTargetTime
-        IF (timeInYears .gt. 1.0d6) THEN !code in years for readability, targetTime in s
-            targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR
-        ELSE  IF (timeInYears .gt. 1.0d5) THEN
-            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1.0d4) THEN
-            targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1000) THEN
-            targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 100) THEN
-            targetTime=(timeInYears+10.0)*SECONDS_PER_YEAR
+        real(dp) :: orderMagnitude, stepSize, resolutionFactor
+        logical :: heating_complete
+
+        ! Determine whether the innermost point (closest to protostar, hottest) has reached maxTemp.
+        ! For 0D (points=1) this reduces to gasTemp(1) >= maxTemp.
+        ! Once heating is complete we switch to coarser sampling; until then we use finer
+        ! steps to capture the rapid chemistry changes during the warm-up phase.
+        heating_complete = (gasTemp(1) .ge. maxTemp)
+
+        IF (timeInYears .ge. 1.0d6) THEN
+            ! Beyond 1 Myr: fixed step regardless of heating state
+            targetTime = (timeInYears + timestep_fixed_late_years) * SECONDS_PER_YEAR
         ELSE IF (timeInYears .gt. 0.0) THEN
-            targetTime=(timeInYears*10.0)*SECONDS_PER_YEAR
+            ! Log-based stepping: step = 10^floor(log10(t)) / factor
+            ! Pick resolution factor based on whether heating is still ongoing.
+            ! Heating phase uses finer steps to resolve the rapid temperature rise;
+            ! post-heating uses coarser steps since chemistry evolves more slowly.
+            IF (heating_complete) THEN
+                resolutionFactor = timestep_resolution_factor_hot
+            ELSE
+                resolutionFactor = timestep_resolution_factor_heating
+            END IF
+
+            orderMagnitude = 10.0_dp**(FLOOR(LOG10(timeInYears)))
+            stepSize = orderMagnitude / resolutionFactor
+            ! Snap to exact multiples of stepSize so decade boundaries are always hit cleanly.
+            targetTime = (FLOOR(timeInYears / stepSize + 1.0d-10) + 1.0_dp) * stepSize * SECONDS_PER_YEAR
         ELSE
-            targetTime=SECONDS_PER_YEAR*1.0d-7
+            targetTime = SECONDS_PER_YEAR * 1.0d-7
         ENDIF
     END SUBROUTINE updateTargetTime
 
@@ -77,16 +167,47 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     SUBROUTINE updatePhysics
         !f2py integer, intent(aux) :: points
+        
+        ! 1D radiative transfer calculations
+        IF (enable_radiative_transfer .AND. points.gt.1) THEN
+            density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
+            density(dstep)=density_max(dstep)
+
+            ! Internal shielding: from protostar to parcel (core-to-edge).
+            coldens(dstep)           = coldens_internal(parcelRadius(dstep))
+            av_internal(dstep)       = coldens(dstep) / 1.6d21
+            ! External shielding: from cloud edge to parcel (edge-to-core), includes baseAv.
+            av(dstep)                = baseAv + coldens_external(parcelRadius(dstep), finalDens) / 1.6d21
+            radfield_internal(dstep) = G0_internal_at_r(lum_star*Lsun, parcelRadius(dstep)*pc)
+
+            ! Dust temperature from internal protostellar radiation; use av_internal for attenuation.
+            call radiation(parcelRadius(dstep)*pc, lum_star*Lsun, temp_star, av_internal(dstep), Td_r, U_r)
+            maximum_Temp(dstep)=Td_r !get global variable value for wrap.f90
+            maxTemp=maximum_Temp(dstep) !set the local variable in this routine
+        END IF
+
          IF (gasTemp(dstep) .lt. maxTemp) THEN
         !Below we include temperature profiles for hot cores, selected using tempindx
         !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
         !It takes the form T=A(t^B)*[(d/R)^-0.5], where A and B are given below for various stellar masses
-            gasTemp(dstep)=(cloudSize/(rout*pc))*(real(dstep)/real(points))
+            gasTemp(dstep)=parcelRadius(dstep)/rout
             gasTemp(dstep)=gasTemp(dstep)**(-0.5)
             gasTemp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime/SECONDS_PER_YEAR)**tempb(tempindx))*gasTemp(dstep))
             if (gasTemp(dstep) .gt. maxTemp) gasTemp(dstep)=maxTemp
         END IF
         dustTemp=gasTemp
+        ! IF (.not. heatingFlag) THEN 
+        !     dustTemp=gasTemp
+        ! END IF
+        
+        ! 1D diagnostic output
+        IF (enable_radiative_transfer .AND. points.gt.1) THEN
+            PRINT '(A,I4,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3)', &
+                ' pt=',dstep, '  t=',timeInYears, '  r=',parcelRadius(dstep), '  ngas=',density(dstep), &
+                '  Tdust=',dustTemp(dstep), '  Tgas=',gasTemp(dstep), '  Av_ext=',av(dstep), &
+                '  Av_int=',av_internal(dstep), '  Td_max=',Td_r, '  U_max=',U_r
+        END IF
+
     END SUBROUTINE updatePhysics
 
     SUBROUTINE sublimation(abund, lpoints)
@@ -178,4 +299,5 @@ contains
             END IF 
         END DO
     END SUBROUTINE bindingEnergyEvap
+
 END MODULE hotcore 
