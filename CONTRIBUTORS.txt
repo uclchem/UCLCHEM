@@ -1,0 +1,10 @@
+# Blame those that have touched this project at some point:
+Jon Holdship
+Gijs Vermariën
+Marcus Keil
+Tomas James
+Ross O'Donoghue
+Tobias Dijkhuis
+Felix P. Priestley
+Piyush Sharda
+Kasia Dutkowska

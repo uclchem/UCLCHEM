@@ -2,9 +2,15 @@
 `UCLCHEM` is a gas-grain chemical code that propagates the abundances of chemical species through a network of user-defined reactions according to the physical conditions of the gas. We provide several physical models to enable the modeling of different astrophysical environments and a utility script `MakeRates` to help the user produce a chemical network from simple lists of reactions and species.
 
 
-**************************************************************
+> [!TIP]
+>  THe UCLCHEM 4.0 preprint is available [online](https://doi.org/10.48550/arXiv.2606.20265)
+
+## License
+We use the [MIT License](https://github.com/uclchem/UCLCHEM/blob/main/LICENSE.txt), allowing the user liberties with how they use UCLCHEM. To foster our efforts and open science, we however kindly request the user to:
+1. Cite the paper if you use our code.
+2. Make public any flavours of UCLCHEM you derive and use for articles, in order of preference: as a pull request on this reposistory, as a fork, code uploaded somewhere.
+
 ## Installation Instructions
-**************************************************************
 
 Full documentation is available from the website: [uclchem.github.io](https://uclchem.github.io)
 
@@ -18,34 +24,31 @@ pip install .
 
 You can then `import uclchem` in any python script. You need to `pip install .` whenever you change your network with Makerates. 
 
-To see the contents of this python module, check our [Python API docs](https://uclchem.github.io/docs/pythonapi). To see some example notebooks, check the tutorial section of the docs or the notebooks in `Tutorials/`.
-
-
-If you want to build an executable from the Fortran source, head to `src/fortran_src` and run `make`. You can then run the executable with `./uclchem CLOUD input_file.inp` where there examples of input files in the `examples/` directory. We do not suggest users use the code this way unt
+To see the contents of this python module, check our [Python API docs](https://uclchem.github.io/develop/api/index.html). To see some example notebooks, check the tutorial section of the docs or the notebooks in `Tutorials/`.
 
 ### Prerequisites
-To build UCLCHEM, you'll need gfortran, make and python 3.11+. On MacOS, make sure to have xcode installed.
+To build UCLCHEM, you'll need gfortran, make and python 3.12+. On MacOS, make sure to have xcode installed. See more detailed installation intructions [here](https://uclchem.github.io/develop/getting-started/installation.html).
 
 
-**************************************************************
-## Change Log
-**************************************************************
-See change.log! We've made a large number of improvements for v3.0. The code has been restructured to be Python first in its intended use, different physical models can be accessed without recompilation, and MakeRates is more helpful than ever before.
 
-*************************************************************
+## Changes and releases
+You can check a broad description of changes in each of the [releases](https://github.com/uclchem/UCLCHEM/releases).
+
+
 ## Contributing
-*************************************************************
 This is an open source science code for the community and are open to pull requests. We are also happy to work with you to produce a physics module if none of the models available in the python module `uclchem.model` suit the modeling work you wish to do. If you are contributing, please try to work with our current code style. Feel free to checkout the latest developments with `git fetch; git checkout develop` We have the following general guidelines:
 
-### Development Setup
+### Editable development Setup
 After cloning the repository, install the development dependencies and set up pre-commit hooks:
 
 ```bash
-pip install .[dev]
-pre-commit install
+pip install meson-python meson ninja # dependencies 
+pip install -e ".[dev]" --no-build-isolation # uclchem
+pre-commit install # linting, type checking and formatting
 ```
+This last command will automatically run linting and formatting checks before each commit and save you time with failed CI/CD.
+This might introduce some weird behaviour with fortran .mod files lingering if you quit compilation at any point, so beware!
 
-This will automatically run linting and formatting checks before each commit.
 
 ### Github
 - Work in a personal branch or fork to your own Github to develop features.
@@ -64,47 +67,12 @@ This will automatically run linting and formatting checks before each commit.
 - CAPITALIZED fortran built in functions to make code structure apparent.
 - Modularization, related subroutines should be added as modules. Small tweaks should be inserted into relevant module
 
-*************************************************************
 ## Citing UCLCHEM
-*************************************************************
-If you use UCLCHEM for your research, please cite the following paper (https://ui.adsabs.harvard.edu/abs/2017AJ....154...38H/abstract): 
 
-```
-@ARTICLE{2017AJ....154...38H,
-       author = {{Holdship}, J. and {Viti}, S. and {Jim{\'e}nez-Serra}, I. and {Makrymallis}, A. and {Priestley}, F.},
-        title = "{UCLCHEM: A Gas-grain Chemical Code for Clouds, Cores, and C-Shocks}",
-      journal = {\aj},
-     keywords = {astrochemistry, ISM: molecules, shock waves, Astrophysics - Astrophysics of Galaxies},
-         year = 2017,
-        month = jul,
-       volume = {154},
-       number = {1},
-          eid = {38},
-        pages = {38},
-          doi = {10.3847/1538-3881/aa773f},
-archivePrefix = {arXiv},
-       eprint = {1705.10677},
- primaryClass = {astro-ph.GA},
-       adsurl = {https://ui.adsabs.harvard.edu/abs/2017AJ....154...38H},
-      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
-}
-```
-
+If you use UCLCHEM for your research, please cite the following [paper](https://ui.adsabs.harvard.edu/abs/2026arXiv260620265V/abstract) for the framework
+and any important papers mentioned therin that contributed to specific modules you used. 
 
 # Developers
 ## Developer tools
 
 After adding or renaming Fortran `PARAMETER` declarations, regenerate `src/uclchem/advanced/fortran_metadata.yaml` by running `uclchem-generate-metadata` (or `--dry-run` to preview changes). The CI workflow `check-fortran-metadata.yml` will fail on pull requests if the file is out of date.
-
-## Makerates only install instruction 
-
-
-In order to install UCLCHEM with only Makerates, one can use the makerates_only flag.
-This will skip the fortran compile step such that you can use makerates to generate
-consistent odes.f90 and network.f90 files. It might be that you need to comment out
-some pieces of code that rely on uclchemwrap to be present; for now
-commenting out all lines of code in `__init__.py` seems to be enough.
-
-```bash
-pip install . --config-settings=setup-args="-Dmakerates_only=true"
-```
