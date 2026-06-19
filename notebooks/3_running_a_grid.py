@@ -118,8 +118,8 @@ SequentialCShock = uclchem.model.SequentialRunner(
 # Running this in a grid, works the same way as it does for normal models, except we can pass the additional ```parameters_to_match``` through the ```full_parameters``` dictionary.
 
 # +
-models_to_run = {
-    "Cloud": {
+models_to_run = [
+    {"Cloud": {
         "param_dict": {
             "endAtFinalDensity": False,  # stop at finalTime
             "freefall": True,  # increase density in freefall
@@ -130,8 +130,8 @@ models_to_run = {
             "rout": 0.1,  # radius of cloud in pc
             "baseAv": 1.0,  # visual extinction at cloud edge.
         }
-    },
-    "CShock": {
+    }},
+    {"CShock": {
         "param_dict": {
             "endAtFinalDensity": False,
             "freefall": False,
@@ -143,9 +143,8 @@ models_to_run = {
             "baseAv": 1,
         },
         "shock_vel": np.linspace(10, 50, 3),
-    },
-    "parameters_to_match": ["finalDens"],
-}
+    }},
+]
 
 complex_grid = uclchem.model.GridRunner(
     model_type="SequentialRunner",
