@@ -95,7 +95,7 @@ results = {}
 for model in grid_runner.models:
     name = model["Model"]
     cloud =  uclchem.model.load_model(file="output_4/analysis.h5", name=name)
-    phys, abun, rates = cloud.get_dataframes(with_rate_constants=True)
+    phys, abun, rates = cloud.get_dataframes(joined=False, with_rate_constants=True)
     final_abundances = cloud.next_starting_chemistry_array
     success_flag = 0 if cloud.has_attr("_data") else -1
     results[name] = (phys, abun, rates, final_abundances, success_flag)

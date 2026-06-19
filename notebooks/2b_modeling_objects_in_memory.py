@@ -78,7 +78,7 @@ param_dict["abstol_factor"] = 1e-18
 param_dict["reltol"] = 1e-12
 
 p_core = uclchem.model.PrestellarCore(
-    temp_index=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
+    temp_indx=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
 )
 p_core.check_conservation()
 # -
