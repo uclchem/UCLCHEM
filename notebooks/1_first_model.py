@@ -26,7 +26,6 @@ import uclchem
 # Due to the large number of parameters in a chemical model and the way fortran and python interaction, we find it is easiest to do parameter input through python dictionaries. In this block, we define param_dict which contains the parameters we wish to modify for this run. Every `uclchem.model` class accepts a dictionary as an optional argument. Every parameter has a default value which is overridden if that parameter is specified in this dictionary. You can find a complete list of modifiable parameters and their default values in [our parameter docs](/docs/parameters).
 
 # set a parameter dictionary for phase 1 collapse model
-out_species = ["SO", "CO"]
 param_dict = {
     "endAtFinalDensity": False,  # stop at finalTime
     "freefall": False,  # don't increase density in freefall
@@ -36,7 +35,7 @@ param_dict = {
     "rout": 0.1,  # radius of cloud in pc
     "baseAv": 1.0,  # visual extinction at cloud edge.
 }
-cloud = uclchem.model.Cloud(param_dict=param_dict, out_species=out_species)
+cloud = uclchem.model.Cloud(param_dict=param_dict)
 cloud.check_error()
 
 # ## Checking the output
@@ -53,7 +52,7 @@ cloud.get_joined_dataframes().head()
 
 # Alternatively, we can get each dataframe type (i.e. physical parameters, chemical parameters, rate constants etc) separately.
 
-for dataframe in cloud.get_dataframes():
+for dataframe in cloud.get_dataframes(joined=False):
     dataframe.head()
 
 # We can also test whether the model run went well by checking for element conservation. We do this because integrator errors often show up as a failure to conserve elemental abundances.

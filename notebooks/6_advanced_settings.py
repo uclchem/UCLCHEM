@@ -93,8 +93,7 @@ param_dict = {
 }
 
 # Run model with param_dict for file I/O, but using GeneralSettings for other parameters
-out_species = ["SO", "CO"]
-cloud = uclchem.model.Cloud(param_dict=param_dict, out_species=out_species)
+cloud = uclchem.model.Cloud(param_dict=param_dict)
 print("Model completed successfully")
 
 # %% [markdown]
@@ -123,9 +122,7 @@ with settings.temporary_changes():
 
     # Use param_dict for file paths
     param_dict_high = {"outputFile": "output_6/high_density.dat"}
-    cloud_high = uclchem.model.Cloud(
-        param_dict=param_dict_high, out_species=out_species
-    )
+    cloud_high = uclchem.model.Cloud(param_dict=param_dict_high)
     print("High density model completed successfully")
 
 # Settings automatically restored

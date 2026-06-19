@@ -64,7 +64,7 @@ param_dict["abstol_factor"] = 1e-18
 param_dict["reltol"] = 1e-12
 
 p_core = uclchem.model.PrestellarCore(
-    temp_index=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
+    temp_indx=3, max_temperature=300.0, param_dict=param_dict, previous_model=cloud
 )
 p_core.save_model(file=save_file, name="prestellar_core", overwrite=True)
 
@@ -126,7 +126,7 @@ import matplotlib.pyplot as plt
 
 import uclchem
 
-save_file = Path("../../examples/test-models/models.h5")
+save_file = Path("output_2c/models.h5")
 
 # %% [markdown]
 # We begin by loading the prestellar core model. We will check the conservation of elements, as well as the success flag and plot it as was done in tutorial 2b.

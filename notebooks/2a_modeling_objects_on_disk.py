@@ -81,7 +81,7 @@ param_dict["abundLoadFile"] = "output_2a/startcollapse.dat"
 param_dict["outputFile"] = "output_2a/phase2.dat"
 
 p_core = uclchem.model.PrestellarCore(
-    temp_index=3, max_temperature=300.0, param_dict=param_dict
+    temp_indx=3, max_temperature=300.0, param_dict=param_dict
 )
 # The p_core model has completed and saved output to output_2a/phase2.dat
 # We can now delete the object and load it back from the file

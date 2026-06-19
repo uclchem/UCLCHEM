@@ -1873,7 +1873,12 @@ class AbstractModel(ABC):
 
         # Determine where the `point` column is and how many points exist
         point_index = np.where(columns == "point")[0][0]
-        self._param_dict["points"] = int(np.max(raw_array[:, point_index]))
+        min_point = int(np.min(raw_array[:, point_index]))
+        max_point = int(np.max(raw_array[:, point_index]))
+        # Support both 0-based (UCLCHEM ≥4.0) and 1-based (legacy Fortran) point indices.
+        # The offset is 0 for new files and 1 for old legacy files.
+        _point_offset = min_point
+        self._param_dict["points"] = max_point - min_point + 1
 
         # Some legacy files include an additional metadata row; if more than one
         # point exists the legacy format contains that extra row which we must skip
@@ -2013,7 +2018,7 @@ class AbstractModel(ABC):
         )
 
         for p in range(self._param_dict["points"]):
-            sel = np.where(array[:, point_index] == p + 1)[0]
+            sel = np.where(array[:, point_index] == p + _point_offset)[0]
             self.physics_array[:, p, :] = array[sel, :point_index]
             self.chemical_abun_array[:, p, :] = array[sel, point_index + 1 :]
 
