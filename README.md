@@ -8,7 +8,7 @@
 ## License
 We use the [MIT License](https://github.com/uclchem/UCLCHEM/blob/main/LICENSE.txt), allowing the user liberties with how they use UCLCHEM. To foster our efforts and open science, we however kindly request the user to:
 1. Cite the paper if you use our code.
-2. Make public any flavours of UCLCHEM you derive and use for articles, in order of preference: as a pull request on this reposistory, as a fork, code uploaded somewhere.
+2. Make public any flavors of UCLCHEM you derive and use for articles, in order of preference: as a pull request on this reposistory, as a fork, code uploaded somewhere.
 
 ## Installation Instructions
 
@@ -27,7 +27,7 @@ You can then `import uclchem` in any python script. You need to `pip install .` 
 To see the contents of this python module, check our [Python API docs](https://uclchem.github.io/develop/api/index.html). To see some example notebooks, check the tutorial section of the docs or the notebooks in `Tutorials/`.
 
 ### Prerequisites
-To build UCLCHEM, you'll need gfortran, make and python 3.12+. On MacOS, make sure to have xcode installed. See more detailed installation intructions [here](https://uclchem.github.io/develop/getting-started/installation.html).
+To build UCLCHEM, you'll need gfortran, make and python 3.12+. On MacOS, make sure to have xcode installed. See more detailed installation instructions [here](https://uclchem.github.io/develop/getting-started/installation.html).
 
 
 
@@ -47,7 +47,7 @@ pip install -e ".[dev]" --no-build-isolation # uclchem
 pre-commit install # linting, type checking and formatting
 ```
 This last command will automatically run linting and formatting checks before each commit and save you time with failed CI/CD.
-This might introduce some weird behaviour with fortran .mod files lingering if you quit compilation at any point, so beware!
+This might introduce some weird behavior with fortran .mod files lingering if you quit compilation at any point, so beware!
 
 
 ### Github
