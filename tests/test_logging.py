@@ -65,7 +65,7 @@ def test_configure_logging_levels():
     for message_level in level_names_mapping:
         for logger_level in level_names_mapping:
             with tempfile.NamedTemporaryFile(mode="w+") as file:
-                uclchem.utils.configure_logging(level=logger_level, stream=file.name)  # ty: ignore[invalid-argument-type]
+                uclchem.utils.configure_logging(level=logger_level, stream=file.name)
                 uclchem_logger = logging.getLogger("uclchem")
                 log_method = getattr(uclchem_logger, message_level.lower())
                 uclchem_logger.propagate = True

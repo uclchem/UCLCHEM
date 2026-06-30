@@ -92,7 +92,7 @@ if __name__ == "__main__":
         ]:
             for model in ["phase1", "phase2", "static"]:
                 axis = axes[i]
-                data = cast("dict[str, pd.DataFrame]", data_dict)[model]
+                data = data_dict[model]
 
                 axis = uclchem.plot.plot_species(axis, data, species_names, legend=False)
                 if folder == "test-output/":

@@ -27,7 +27,7 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/crate-ci/typos
-    rev: v1
+    rev: v1.47.2
     hooks:
       - id: typos
         name: "[correctness] Check spelling errors"
@@ -37,7 +37,7 @@ repos:
 
   # Ruff: Code style, docstrings, etc
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.16
+    rev: v0.15.20
     hooks:
       - id: ruff
         name: "[correctness] Ruff linter"
@@ -54,13 +54,22 @@ repos:
         # Notebooks and example scripts are not library code; exclude them.
         exclude: ^(notebooks|scripts)/
 
+  - repo: https://github.com/astral-sh/ty-pre-commit
+    # ty version.
+    rev: v0.0.55
+    hooks:
+      - id: ty
+        name: "[correctness] ty type checking"
+        description: "Check for type errors"
+        args: [--all-extras]
+
 
   # ============================================================================
   # TIER 2: STYLE (Auto-fixable formatting and imports)
   # Purpose: Enforce consistent code style
   # ============================================================================
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.16
+    rev: v0.15.20
     hooks:
       - id: ruff-format
         name: "[style] Ruff formatter"
