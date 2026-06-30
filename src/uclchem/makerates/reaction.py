@@ -473,6 +473,51 @@ class Reaction:
         """
         return self._exothermicity
 
+    def contains_species(self, species: str) -> bool:
+        """Whether the reaction contains a species.
+
+        Parameters
+        ----------
+        species : str
+            The species
+
+        Returns
+        -------
+        bool
+            Whether the species `species` is in the reactants of the reaction.
+
+        """
+        for reactant in self.get_pure_reactants():
+            if species in reactant:
+                return True
+        return False
+
+    def get_reactions_with_other_isotopes(
+        self, default_species: str, other_isotope: str
+    ) -> list[Reaction]:
+        """Create the Reaction instances with one species replaced.
+
+        Parameters
+        ----------
+        default_species : str
+            Original species. For example, ``"H"``.
+        other_isotope : str
+            Isotope to add to the network. For example, ``"D"``.
+
+        Returns
+        -------
+        reactions : list[Reaction]
+            List of possible reactions if we include `other_isotope` in the network.
+
+        """
+        new_reactions = []
+
+        for reactant in self.get_pure_reactants():
+            if default_species in reactant:
+                print(default_species)
+
+        return new_reactions
+
     def predict_reduced_mass(self) -> None:
         """Predict the reduced mass of the tunneling particle in this reaction.
 

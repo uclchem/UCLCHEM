@@ -73,6 +73,7 @@ class NetworkBuilder:
         add_crp_photo_to_grain: bool = False,
         derive_reaction_exothermicity: list[str] | None = None,
         database_reaction_exothermicity: list[str | Path] | None = None,
+        isotopes: dict[str, list[str]] | None = None,
     ):
         """Initialize the network builder.
 
@@ -114,6 +115,7 @@ class NetworkBuilder:
         self.add_crp_photo_to_grain = add_crp_photo_to_grain
         self.derive_reaction_exothermicity = derive_reaction_exothermicity
         self.database_reaction_exothermicity = database_reaction_exothermicity
+        self.isotopes_mapping = isotopes_mapping
 
         # Will be set during build
         self._network: Network | None = None
@@ -232,6 +234,10 @@ class NetworkBuilder:
                 self.database_reaction_exothermicity,
             )
             self._apply_custom_exothermicities(self.database_reaction_exothermicity)
+
+        if self.isotopes_mapping is not None:
+            self._add_isotope_species(self.isotopes_mapping)
+            self._add_isotope_reactions(self.isotopes_mapping)
 
         # Final sorting and filtering
         logger.info("Sorting and filtering final network")
@@ -1087,14 +1093,14 @@ class NetworkBuilder:
                 ):
                     reaction.set_extrapolation(True)
 
-    def _add_reaction_enthalpies(self, enthalpy_reaction_types: list[str]) -> None:
+    def _add_reaction_enthalpies(self, enthalpy_reaction_types: str | list[str]) -> None:
         """Add reaction enthalpies (exothermicity) to reactions.
 
         for heating/cooling calculations.
 
         Parameters
         ----------
-        enthalpy_reaction_types : list[str]
+        enthalpy_reaction_types : str | list[str]
             List of reaction types or "ALL" or "GAS"
 
         """
@@ -1122,6 +1128,74 @@ class NetworkBuilder:
                 reaction.set_exothermicity(convert_to_erg(-delta_h, "kcal/mol"))
                 logger.debug(
                     f"Setting reaction enthalpy of {reaction} to {delta_h} kcal/mol"
+                )
+
+    def _add_isotope_species(self, isotopes_mapping: dict[str, list[str]]) -> None:
+        """Add isotope species to the network.
+
+        Parameters
+        ----------
+        isotopes_mapping : dict[str, list[str]]
+            Dictionary mapping the default species, e.g. ``"H"``, to the isotopes that
+            should be added.
+
+        """
+        species = self.network.get_species_dict()
+        for default_species, isotopes in isotopes_mapping.items():
+            logger.info(f"Adding isotopes of element {default_species}: {isotopes}")
+
+            new_isotopes = []
+            for isotope in isotopes:
+                new_isotope = deepcopy(species[default_species])
+                new_isotope.set_name(isotope)
+                # new_isotope.set_mass()  # SET THE MASS SOMEHOW.
+                new_isotopes.append(new_isotope)
+
+            self.network.add_species(new_isotopes)
+
+    def _add_isotope_reactions(self, isotopes_mapping: dict[str, list[str]]) -> None:
+        """Add isotope-containing reactions to the network.
+
+        Parameters
+        ----------
+        isotopes_mapping : dict[str, list[str]]
+            Dictionary mapping the default species, e.g. ``"H"``, to the isotopes that
+            should be added.
+
+        Notes
+        -----
+        An example `isotopes_mapping` dictionary looks like
+            ``{'H': ['D', 'T'], 'C': ['13C']}``, which would copy the
+            hydrogen reactions to deuterium (2H) and trytium (3H), and add
+            carbons (13C).
+
+        """
+        for default_species, isotopes in isotopes_mapping.items():
+            logger.info(
+                f"Adding isotope reactions of element {default_species}: {isotopes}"
+            )
+
+            for isotope in isotopes:
+                logger.debug(f"Adding isotope {isotope}")
+                reactions = self.network.get_reaction_list()
+                reactions_with_species = [
+                    reaction
+                    for reaction in reactions
+                    if reaction.contains_species(default_species)
+                ]
+                logger.debug(
+                    f"Found {len(reactions_with_species)} with element {default_species}"
+                )
+                for reaction in reactions_with_species:
+                    new_reactions = reaction.get_reactions_with_other_isotopes(
+                        default_species, isotope
+                    )
+                    logger.debug(
+                        f"Reaction {reaction} results in {len(new_reactions)} new reactions"
+                    )
+                    self.network.add_reactions(new_reactions)
+                logger.debug(
+                    f"Network now contains {len(self.network.get_reaction_list())} reactions"
                 )
 
     def _apply_custom_exothermicities(
