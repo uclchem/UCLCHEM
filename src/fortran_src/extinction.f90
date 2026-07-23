@@ -1,16 +1,15 @@
 module extinction_module
-   USE constants
+   use constants
    implicit none
 !   integer, parameter :: dp = selected_real_kind(15, 307)
   contains
 
   subroutine extcurve_obs(wave, R_V, NH_EBV, model, extinction_curves)
-    implicit none
     ! Inputs
-    real(dp), dimension(:) :: wave ! Wavelength vector in microns
+    real(dp), dimension(:) :: wave  ! Wavelength vector in microns
     real(dp), optional :: R_V             ! Ratio of visual extinction to reddening
-    real(dp), optional :: NH_EBV ! Gas-to-dust ratio, default 5.8e21
-    character(len=*), optional :: model ! Model selection, default 'ODonnell94'
+    real(dp), optional :: NH_EBV  ! Gas-to-dust ratio, default 5.8e21
+    character(len=*), optional :: model  ! Model selection, default 'ODonnell94'
 
     ! Outputs
     real(dp), dimension(2, size(wave)), intent(out) :: extinction_curves
@@ -30,11 +29,11 @@ module extinction_module
     end if
 
     if (.not. present(model)) then
-        model = trim('ODonnell94')
+        model = trim("ODonnell94")
     end if
 
     if (.not. present(R_V)) then
-        R_V_default = 4.d0
+        R_V_default = 4.0d0
     else
         R_V_default = R_V
     end if
@@ -67,7 +66,7 @@ module extinction_module
       if (x(i) >= 1.1d0 .and. x(i) < 3.3d0) then
         y = x(i) - 1.82d0
 
-        if (trim(model) == 'CCM89') then
+        if (trim(model) == "CCM89") then
           c1 = (/ 1.0d0, 0.17699d0, -0.50447d0, -0.02427d0, 0.72085d0, &
                 0.01979d0, -0.77530d0, 0.32999d0 /)
           c2 = (/ 0.0d0, 1.41338d0, 2.28305d0, 1.07233d0, -5.38434d0, &
@@ -114,7 +113,6 @@ module extinction_module
   end subroutine extcurve_obs
 
   function poly(coeff, x) result(value)
-    implicit none
     real(8), dimension(:), intent(in) :: coeff
     real(8), intent(in) :: x
     real(8) :: value

@@ -1,17 +1,17 @@
-MODULE ODES
-USE constants
-USE network
-USE SurfaceReactions, ONLY: useGarrod2011Transfer, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO
-IMPLICIT NONE
-CONTAINS
-SUBROUTINE GETYDOT(RATE, Y, surfaceCoverage, D, YDOT)
-REAL(dp), INTENT(IN) :: RATE(:), Y(:), D
-REAL(dp), INTENT(INOUT) :: YDOT(:), surfaceCoverage
-REAL(dp) :: totalSwap, LOSS, PROD
-REAL(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
+module ODES
+use constants
+use network
+use SurfaceReactions, only: useGarrod2011Transfer, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO
+implicit none
+contains
+subroutine GETYDOT(RATE, Y, surfaceCoverage, D, YDOT)
+real(dp), intent(in) :: RATE(:), Y(:), D
+real(dp), intent(inout) :: YDOT(:), surfaceCoverage
+real(dp) :: totalSwap, LOSS, PROD
+real(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
     safeMantle = MAX(1.0d-30, SUM(Y(surfaceList)))
     safeBulk   = MAX(1.0d-30, SUM(Y(bulkList)))
-    IF (refractoryList(1) .gt. 0) safeBulk = MAX(1.0d-30, safeBulk - SUM(Y(refractoryList)))
+    if (refractoryList(1) > 0) safeBulk = MAX(1.0d-30, safeBulk - SUM(Y(refractoryList)))
     ratioSurfaceToBulk   = MIN(1.0D0, safeMantle/safeBulk)
     bulklayersreciprocal = MIN(1.0D0, NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
     totalSwap=RATE(1)*Y(253)*ratioSurfaceToBulk+RATE(2)*Y(265)&
@@ -4919,19 +4919,19 @@ REAL(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
     YDOT(335) = PROD
     SURFGROWTHUNCORRECTED = YDOT(335)
 !Update surface species for bulk growth
-IF (YDOT(335) .lt. 0) THEN
+if (YDOT(335) < 0) then
     ! Since ydot(surface_index) is negative, bulk is lost and surface forms
-    IF (useGarrod2011Transfer) THEN
+    if (useGarrod2011Transfer) then
         ! Three-phase treatment of Garrod & Pauly 2011
         ! Replace surfaceCoverage with alpha_des
         ! Real value of alpha_des: alpha_des = MIN(1.0D0, safeBulk / safeMantle).
         ! However, the YDOTs calculated below need to be multiplied with Y(bulkspec)/safeBulk,
         ! so we divide by safeBulk here to save time
         surfaceCoverage = MIN(1.0D0, safeBulk/safeMantle)/safeBulk
-    ELSE
+    else
         ! Hasegawa & Herbst 1993
         surfaceCoverage = MIN(1.0D0, surfaceCoverage*safeMantle)/safeBulk
-    END IF
+    end if
     YDOT(167)=YDOT(167)-YDOT(335)*surfaceCoverage*Y(250)
     YDOT(168)=YDOT(168)-YDOT(335)*surfaceCoverage*Y(251)
     YDOT(169)=YDOT(169)-YDOT(335)*surfaceCoverage*Y(252)
@@ -5098,7 +5098,7 @@ IF (YDOT(335) .lt. 0) THEN
     YDOT(330)=YDOT(330)+YDOT(335)*surfaceCoverage*Y(330)
     YDOT(331)=YDOT(331)+YDOT(335)*surfaceCoverage*Y(331)
     YDOT(332)=YDOT(332)+YDOT(335)*surfaceCoverage*Y(332)
-ELSE
+else
     ! surfaceCoverage = fractional surface coverage
     ! Real value of surfaceCoverage: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN
     ! However, the YDOTs calculated below need to be multiplied with Y(surfspec)/safeMantle, so we divide by safeMantle here to save time
@@ -5268,7 +5268,7 @@ ELSE
     YDOT(330)=YDOT(330)+YDOT(335)*surfaceCoverage*Y(247)
     YDOT(331)=YDOT(331)+YDOT(335)*surfaceCoverage*Y(248)
     YDOT(332)=YDOT(332)+YDOT(335)*surfaceCoverage*Y(249)
-ENDIF
+end if
 !Update total rate of change of bulk and surface for bulk growth
     PROD = YDOT(250)+YDOT(251)+YDOT(252)+YDOT(253)+YDOT(254)+YDOT(255)&
     &+YDOT(256)+YDOT(257)+YDOT(258)+YDOT(259)+YDOT(260)+YDOT(261)+YDOT(262)&
@@ -5296,5 +5296,5 @@ ENDIF
     &+YDOT(236)+YDOT(237)+YDOT(238)+YDOT(239)+YDOT(240)+YDOT(241)+YDOT(242)&
     &+YDOT(243)+YDOT(244)+YDOT(245)+YDOT(246)+YDOT(247)+YDOT(248)+YDOT(249)
     YDOT(335) = PROD
-    END SUBROUTINE GETYDOT
-END MODULE ODES
+    end subroutine GETYDOT
+end module ODES

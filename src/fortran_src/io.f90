@@ -1,162 +1,164 @@
-MODULE IO
-    USE constants
-    USE DEFAULTPARAMETERS
-    USE chemistry
-    USE physicscore
-    USE network
-    USE heating
-    
+module IO
+    use chemistry
+    use constants
+    use DEFAULTPARAMETERS
+    use heating
+    use network
+    use physicscore
+
     ! CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile
-    LOGICAL :: columnOutput=.False.,fullOutput=.False.,rateConstantsOutput=.False.,fluxOutput=.False.,&
-    &readAbunds=.False.,writeAbunds=.False.,heatingOutput=.False.
-    CHARACTER (LEN=15),ALLOCATABLE :: outSpecies(:)
-    INTEGER :: nout
-    INTEGER, ALLOCATABLE :: outIndx(:)
+    logical :: columnOutput=.false.,fullOutput=.false.,rateConstantsOutput=.false.,fluxOutput=.false.,&
+    &readAbunds=.false.,writeAbunds=.false.,heatingOutput=.false.
+    character (LEN=15),allocatable :: outSpecies(:)
+    integer :: nout
+    integer, allocatable :: outIndx(:)
 
-    INTEGER, PARAMETER :: outputId=10,columnId=11,rateConstantId=12,ratesId=13,heatingId=14,abundLoadID=71,abundSaveID=72,outID=74,debugId=79,inputId=21
-CONTAINS
+    integer, parameter :: outputId=10,columnId=11,rateConstantId=12,ratesId=13,heatingId=14,abundLoadID=71, &
+        & abundSaveID=72,outID=74,debugId=79,inputId=21
+contains
     !Reads input reaction and species files as well as the final step of previous run if this is phase 2
-    SUBROUTINE fileSetup
-        IMPLICIT NONE
+    subroutine fileSetup
+        implicit none
         ! TODO: improve the file setup to interact with in memory mode (not opening the file handles if not needed.)
-        INQUIRE(UNIT=columnId, OPENED=columnOutput)
-        IF (columnOutput) WRITE(columnId,333) specName(outIndx)
-        333 FORMAT("Time,Density,gasTemp,dustTemp,av,radfield,zeta,",(999(A,:,',')))
+        inquire(unit=columnId, OPENED=columnOutput)
+        if (columnOutput) write(columnId,333) specName(outIndx)
+        333 format("Time,Density,gasTemp,dustTemp,av,radfield,zeta,",(999(A,:,",")))
 
-        INQUIRE(UNIT=outputId, OPENED=fullOutput)
-        IF (fullOutput) THEN
-            WRITE(outputId,335) specName
-        END IF
-        335 FORMAT("Time,Density,gasTemp,dustTemp,Av,radfield,zeta,point,",(999(A,:,',')))
-        
-        INQUIRE(UNIT=rateConstantId, OPENED=rateConstantsOutput)
-        INQUIRE(UNIT=ratesId, OPENED=fluxOutput)
-        INQUIRE(UNIT=abundLoadID, OPENED=readAbunds)
-        INQUIRE(UNIT=abundSaveID, OPENED=writeAbunds)
-        INQUIRE(UNIT=heatingId, OPENED=heatingOutput)
+        inquire(unit=outputId, OPENED=fullOutput)
+        if (fullOutput) then
+            write(outputId,335) specName
+        end if
+        335 format("Time,Density,gasTemp,dustTemp,Av,radfield,zeta,point,",(999(A,:,",")))
+
+        inquire(unit=rateConstantId, OPENED=rateConstantsOutput)
+        inquire(unit=ratesId, OPENED=fluxOutput)
+        inquire(unit=abundLoadID, OPENED=readAbunds)
+        inquire(unit=abundSaveID, OPENED=writeAbunds)
+        inquire(unit=heatingId, OPENED=heatingOutput)
 
 
         if (heatingOutput) then
             ! Write cooling/heating rates headers dynamically
             ! Format: Time, [NCOOLING cooling values], [NCOOLANTS line cooling], [NHEATING heating values], [1 chem heating]
-            WRITE(heatingId,'(A)',advance='no') "Time,"
-            
+            write(heatingId,"(A)",advance="no") "Time,"
+
             ! Write cooling mechanism labels
-            DO i = 1, NCOOLING
-                WRITE(heatingId,'(A,A)',advance='no') TRIM(coolingLabels(i)), ","
-            END DO
-            
+            do i = 1, NCOOLING
+                write(heatingId,"(A,A)",advance="no") TRIM(coolingLabels(i)), ","
+            end do
+
             ! Write line cooling labels with species names
-            DO i = 1, NCOOLANTS
-                WRITE(heatingId,'(A,A,A)',advance='no') "LineCooling_", TRIM(coolantNames(i)), ","
-            END DO
-            
+            do i = 1, NCOOLANTS
+                write(heatingId,"(A,A,A)",advance="no") "LineCooling_", TRIM(coolantNames(i)), ","
+            end do
+
             ! Write heating mechanism labels
-            DO i = 1, NHEATING
-                WRITE(heatingId,'(A,A)',advance='no') TRIM(heatingLabels(i)), ","
-            END DO
-            
+            do i = 1, NHEATING
+                write(heatingId,"(A,A)",advance="no") TRIM(heatingLabels(i)), ","
+            end do
+
             ! Write chemical heating label (last column, no comma)
-            WRITE(heatingId,'(A)') "ChemicalHeating"
-        END IF
+            write(heatingId,"(A)") "ChemicalHeating"
+        end if
 
-    END SUBROUTINE fileSetup
+    end subroutine fileSetup
 
-    SUBROUTINE readInputAbunds
-        !read start file if choosing to use abundances from previous run 
+    subroutine readInputAbunds
+        !read start file if choosing to use abundances from previous run
         !f2py integer, intent(aux) :: points
-        IF (readAbunds) THEN
-            IF (enable_radiative_transfer .AND. points.gt.1) THEN
-                print*,'we are reading the initial abundances'
-                DO l=points,1,-1
-                    READ(abundLoadID,*) abund(:nspec,l)
-                END DO
-                REWIND(abundLoadID)
-            ELSE
-                DO l=1,points
-                    READ(abundLoadID,*) abund(:nspec,l)
-                    REWIND(abundLoadID)
-                END DO
-            END IF
-        END IF
-    END SUBROUTINE readInputAbunds
+        if (readAbunds) then
+            if (enable_radiative_transfer .AND. points>1) then
+                print*,"we are reading the initial abundances"
+                do l=points,1,-1
+                    read(abundLoadID,*) abund(:nspec,l)
+                end do
+                rewind(abundLoadID)
+            else
+                do l=1,points
+                    read(abundLoadID,*) abund(:nspec,l)
+                    rewind(abundLoadID)
+                end do
+            end if
+        end if
+    end subroutine readInputAbunds
 
-    SUBROUTINE finalOutput
+    subroutine finalOutput
         !f2py integer, intent(aux) :: points
-        IF (writeAbunds) THEN
-            IF (enable_radiative_transfer .AND. points.gt.1) THEN
-                DO dstep=points,1,-1
+        if (writeAbunds) then
+            if (enable_radiative_transfer .AND. points>1) then
+                do dstep=points,1,-1
                     ! WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
-                    WRITE(abundSaveID,8010) abund(:nspec+2,dstep)
-                8010  FORMAT((999(1pe15.5,:,',')))
-                END DO
-            ELSE
-                DO dstep=1,points
-                    WRITE(abundSaveID,8010) abund(:nspec+2,dstep)
-                END DO
-            END IF
-        END IF
-    END SUBROUTINE finalOutput
+                    write(abundSaveID,8010) abund(:nspec+2,dstep)
+                8010  format((999(1pe15.5,:,",")))
+                end do
+            else
+                do dstep=1,points
+                    write(abundSaveID,8010) abund(:nspec+2,dstep)
+                end do
+            end if
+        end if
+    end subroutine finalOutput
 
-    SUBROUTINE output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, rateConstantsArray, heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
-        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: physicsarray
-        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: chemicalabunarray
-        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: rateConstantsArray
-        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: heatarray
-        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: statsarray
-        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: levelpopulationsarray
-        DOUBLE PRECISION, DIMENSION(:, :, :), OPTIONAL :: sestatsarray
-        INTEGER, OPTIONAL :: dtime, timepoints
-        INTEGER, intent(out) :: successflag
-        INTEGER :: i  ! Loop variable for heating array assignment
-        LOGICAL :: returnArray, writerates
+    subroutine output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, rateConstantsArray, &
+            & heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
+        double precision, dimension(:, :, :), optional :: physicsarray
+        double precision, dimension(:, :, :), optional :: chemicalabunarray
+        double precision, dimension(:, :, :), optional :: rateConstantsArray
+        double precision, dimension(:, :, :), optional :: heatarray
+        double precision, dimension(:, :, :), optional :: statsarray
+        double precision, dimension(:, :, :), optional :: levelpopulationsarray
+        double precision, dimension(:, :, :), optional :: sestatsarray
+        integer, optional :: dtime, timepoints
+        integer, intent(out) :: successflag
+        integer :: i  ! Loop variable for heating array assignment
+        logical :: returnArray, writerates
         successflag = 0
-        IF (returnArray) THEN
+        if (returnArray) then
             ! Try to catch out of bounds errors before they create a segfault
-            if (dtime .gt. timepoints+1) then
+            if (dtime > timepoints+1) then
                 write(*,*) "Ran out of timepoints in arrays, trying to stop gracefully"
                 successflag=NOT_ENOUGH_TIMEPOINTS_ERROR
                 return
-            else
-                physicsarray(dtime, dstep, 1) = timeInYears
-                physicsarray(dtime, dstep, 2) = density(dstep)
-                physicsarray(dtime, dstep, 3) = gasTemp(dstep)
-                physicsarray(dtime, dstep, 4) = dustTemp(dstep)
-                physicsarray(dtime, dstep, 5) = av(dstep)
-                physicsarray(dtime, dstep, 6) = radfield
-                physicsarray(dtime, dstep, 7) = zeta
-                physicsarray(dtime, dstep, 8) = dstep
-                physicsarray(dtime, dstep, 9) = parcel_radius(dstep)
-                physicsarray(dtime, dstep, 10) = av_internal(dstep)
-                physicsarray(dtime, dstep, 11) = radfield_internal(dstep)
-                chemicalabunarray(dtime, dstep, :) = abund(1:nspec,dstep)
-                ! DVODE solver statistics are now written in chemistry.f90
-                ! after each solver attempt (including retries)
+            end if
 
-                ! Level populations (SIZE-based check - don't use PRESENT)
-                IF (SIZE(levelpopulationsarray, 1) >= timePoints .AND. heatingFlag) THEN
-                    CALL WRITE_LEVEL_POPULATIONS(levelpopulationsarray, dtime, dstep)
-                END IF
+            physicsarray(dtime, dstep, 1) = timeInYears
+            physicsarray(dtime, dstep, 2) = density(dstep)
+            physicsarray(dtime, dstep, 3) = gasTemp(dstep)
+            physicsarray(dtime, dstep, 4) = dustTemp(dstep)
+            physicsarray(dtime, dstep, 5) = av(dstep)
+            physicsarray(dtime, dstep, 6) = radfield
+            physicsarray(dtime, dstep, 7) = zeta
+            physicsarray(dtime, dstep, 8) = dstep
+            physicsarray(dtime, dstep, 9) = parcel_radius(dstep)
+            physicsarray(dtime, dstep, 10) = av_internal(dstep)
+            physicsarray(dtime, dstep, 11) = radfield_internal(dstep)
+            chemicalabunarray(dtime, dstep, :) = abund(1:nspec,dstep)
+            ! DVODE solver statistics are now written in chemistry.f90
+            ! after each solver attempt (including retries)
 
-                ! SE solver statistics (SIZE-based check - don't use PRESENT)
-                IF (SIZE(sestatsarray, 1) >= timePoints .AND. heatingFlag) THEN
-                    CALL WRITE_SE_STATISTICS(sestatsarray, dtime, dstep)
-                END IF
-            end if 
-        ELSE IF (fullOutput .AND. .NOT. returnArray) THEN
-            WRITE(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
+            ! Level populations (SIZE-based check - don't use PRESENT)
+            if (SIZE(levelpopulationsarray, 1) >= timePoints .AND. heatingFlag) then
+                call WRITE_LEVEL_POPULATIONS(levelpopulationsarray, dtime, dstep)
+            end if
+
+            ! SE solver statistics (SIZE-based check - don't use PRESENT)
+            if (SIZE(sestatsarray, 1) >= timePoints .AND. heatingFlag) then
+                call WRITE_SE_STATISTICS(sestatsarray, dtime, dstep)
+            end if
+        else if (fullOutput .AND. .NOT. returnArray) then
+            write(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
                 & av(dstep),radfield,zeta,dstep,abund(1:nspec,dstep)
-            8020 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,&
-            &','1pe11.4,',',I4,',',(999(1pe15.5,:,',')))
-        END IF
-        IF (writerates) THEN
-            IF (returnArray) THEN
+            8020 format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,&
+            &","1pe11.4,",",I4,",",(999(1pe15.5,:,",")))
+        end if
+        if (writerates) then
+            if (returnArray) then
                 ! If returnArray is true, we write the rate constants to the rate constants array
                 ! The rate constants are still called "rates" within Fortran
                 ! We compute the flux in Python.
                 rateConstantsArray(dtime, dstep, :) = rate(:nreac)
                 ! Only populate the heating array if it is present, properly sized, AND heating is enabled
-                IF (SIZE(heatarray, 1) .ge. timePoints .AND. heatingFlag) THEN
+                if (SIZE(heatarray, 1) >= timePoints .AND. heatingFlag) then
                     heatarray(dtime, dstep, 1) = timeInYears
                     heatarray(dtime, dstep, 2:(1+NCOOLING)) = coolingValues(:)
                     ! Write all NCOOLANTS line cooling terms
@@ -166,128 +168,132 @@ CONTAINS
                     heatarray(dtime, dstep, (2+NCOOLING+NCOOLANTS):(1+NCOOLING+NCOOLANTS+NHEATING)) = heatingValues(:)
                     ! Chemical heating (1 value)
                     heatarray(dtime, dstep, 2+NCOOLING+NCOOLANTS+NHEATING) = chemheating
-                END IF
-            ELSE 
+                end if
+            else
                 ! Else, we write the rate constants and rates to the file.
-                IF (rateConstantsOutput) THEN
-                    WRITE(rateConstantId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,RATE
-                    8021 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
-                END IF
-                if (fluxOutput) THEN
-                    WRITE(ratesId,8022) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),av(dstep),radfield,zeta,dstep,REACTIONRATE
-                    8022 FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,','1pe11.4,',',I4,',',(9999(1pe15.5e3,:,',')))
-                END IF
-                IF (heatingOutput) THEN
+                if (rateConstantsOutput) then
+                    write(rateConstantId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep), &
+                        & av(dstep),radfield,zeta,dstep,RATE
+                    8021 format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,","1pe11.4,",", &
+                        & I4,",",(9999(1pe15.5e3,:,",")))
+                end if
+                if (fluxOutput) then
+                    write(ratesId,8022) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep), &
+                        & av(dstep),radfield,zeta,dstep,REACTIONRATE
+                    8022 format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,&
+                        & ","1pe11.4,",",I4,",",(9999(1pe15.5e3,:,",")))
+                end if
+                if (heatingOutput) then
                     ! Write: time, cooling values (4), line cooling array (NCOOLANTS), heating values (8), chem heating
-                    WRITE(heatingId,8023) timeInYears, coolingValues(:), &
+                    write(heatingId,8023) timeInYears, coolingValues(:), &
                         lineCoolingArray(median_line_index, :NCOOLANTS), &
                         heatingValues(:), chemheating
-                    8023 FORMAT(1PE16.6E3,:,(999(',',1PE16.6E3)))
-                END IF
-            END IF
-        END IF
+                    8023 format(1PE16.6E3,:,(999(",",1PE16.6E3)))
+                end if
+            end if
+        end if
 
         !Every 'writestep' timesteps, write the chosen species out to separate file
         !choose species you're interested in by looking at parameters.f90
-        IF (.NOT. PRESENT(dtime)) THEN
-            IF (writeCounter==writeStep .and. columnOutput) THEN
+        if (.NOT. PRESENT(dtime)) then
+            if (writeCounter==writeStep .and. columnOutput) then
                 writeCounter=1
-                WRITE(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
+                write(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
                 &av(dstep),radfield,zeta,abund(outIndx,dstep)
-                8030  FORMAT(1pe11.3,',',1pe11.4,',',0pf8.2,',',0pf8.2,',',1pe11.4,',',1pe11.4,&
-                &',',1pe11.4,',',(999(1pe15.5,:,',')))
-            ELSE
+                8030  format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,&
+                &",",1pe11.4,",",(999(1pe15.5,:,",")))
+            else
                 writeCounter=writeCounter+1
-            END IF
-        END IF
-    END SUBROUTINE output
+            end if
+        end if
+    end subroutine output
 
-    SUBROUTINE closeFiles
-        CLOSE(outputId)
-        CLOSE(rateConstantId)
-        CLOSE(columnId)
-        CLOSE(abundSaveID)
-        CLOSE(abundLoadID)
-        CLOSE(heatingId)  ! heating rates file
+    subroutine closeFiles
+        close(outputId)
+        close(rateConstantId)
+        close(columnId)
+        close(abundSaveID)
+        close(abundLoadID)
+        close(heatingId)  ! heating rates file
 
-    END SUBROUTINE closeFiles
+    end subroutine closeFiles
 
-    SUBROUTINE debugout
-        OPEN(debugId,file='output/debuglog',status='unknown')       !debug file.
-        WRITE(debugId,*) "Integrator failed, printing relevant debugging information"
-        WRITE(debugId,*) "dens",density(dstep)
-        WRITE(debugId,*) "gas temperature in integration array",abund(nspec+1,dstep)
-        WRITE(debugId,*) "density in integration array",abund(nspec+2,dstep)
-        WRITE(debugId,*) "Av", av(dstep)
-        WRITE(debugId,*) "Temp", gasTemp(dstep)
-        DO i=1,nreac
-            if (rate(i) .ge. huge(i)) write(debugId,*) "Rate(",i,") is potentially infinite"
-        END DO
-    END SUBROUTINE debugout
+    subroutine debugout
+        open(debugId,file="output/debuglog",status="unknown")       !debug file.
+        write(debugId,*) "Integrator failed, printing relevant debugging information"
+        write(debugId,*) "dens",density(dstep)
+        write(debugId,*) "gas temperature in integration array",abund(nspec+1,dstep)
+        write(debugId,*) "density in integration array",abund(nspec+2,dstep)
+        write(debugId,*) "Av", av(dstep)
+        write(debugId,*) "Temp", gasTemp(dstep)
+        do i=1,nreac
+            if (rate(i) >= huge(i)) write(debugId,*) "Rate(",i,") is potentially infinite"
+        end do
+    end subroutine debugout
 
-    SUBROUTINE simpleDebug(message)
+    subroutine simpleDebug(message)
     !A very simply subroutine for debugging, just write a bunch of variables to screen
-    !so we can check they're all as expected. 
+    !so we can check they're all as expected.
     !Argument message is a string to print before the variables
-        CHARACTER(LEN=*) :: message
-        WRITE(*,*) message
-        WRITE(*,*)"freefall",freefall
-        WRITE(*,*)"initialDens",initialDens
-        WRITE(*,*)"finalDens",finalDens
-        WRITE(*,*)"initialTemp",initialTemp
-        WRITE(*,*)"finalTime",finalTime
-        WRITE(*,*)"rout",rout
-        WRITE(*,*)"baseAv",baseAv
-        WRITE(*,*) "freezeFactor",freezeFactor
-        WRITE(*,*) "abstol_factor",abstol_factor
-        WRITE(*,*) "neq",neq
-        WRITE(*,*) "density abund",abund(neq,1)
-        WRITE(*,*) "density arr",density
-        WRITE(*,*) "gasTemp",gasTemp
-        WRITE(*,*) "coldens",coldens
-        WRITE(*,*) "av",av
-    END SUBROUTINE simpleDebug
+        character(LEN=*) :: message
+        write(*,*) message
+        write(*,*)"freefall",freefall
+        write(*,*)"initialDens",initialDens
+        write(*,*)"finalDens",finalDens
+        write(*,*)"initialTemp",initialTemp
+        write(*,*)"finalTime",finalTime
+        write(*,*)"rout",rout
+        write(*,*)"baseAv",baseAv
+        write(*,*) "freezeFactor",freezeFactor
+        write(*,*) "abstol_factor",abstol_factor
+        write(*,*) "neq",neq
+        write(*,*) "density abund",abund(neq,1)
+        write(*,*) "density arr",density
+        write(*,*) "gasTemp",gasTemp
+        write(*,*) "coldens",coldens
+        write(*,*) "av",av
+    end subroutine simpleDebug
 
-    SUBROUTINE WRITE_LEVEL_POPULATIONS(levelpopulationsarray, dtime, dstep)
-        USE COOLANT_MODULE, ONLY: coolants, NCOOLANTS
-        USE F2PY_CONSTANTS, ONLY: N_TOTAL_LEVELS
-        IMPLICIT NONE
-        DOUBLE PRECISION, DIMENSION(:, :, :), INTENT(INOUT) :: levelpopulationsarray
-        INTEGER, INTENT(IN) :: dtime, dstep
-        INTEGER :: N, level_offset, i
+    subroutine WRITE_LEVEL_POPULATIONS(levelpopulationsarray, dtime, dstep)
+        use COOLANT_MODULE, only: coolants, NCOOLANTS
+        use F2PY_CONSTANTS, only: N_TOTAL_LEVELS
+        implicit none
+        double precision, dimension(:, :, :), intent(inout) :: levelpopulationsarray
+        integer, intent(in) :: dtime, dstep
+        integer :: N, level_offset, i
 
         level_offset = 0
-        DO N = 1, NCOOLANTS
+        do N = 1, NCOOLANTS
             ! Safety net: prevent out-of-bounds write if levels exceed array size
-            IF (level_offset + coolants(N)%NLEVEL > SIZE(levelpopulationsarray, 3)) THEN
-                WRITE(*,'(A,I3,A,A,A,I6,A,I6,A,I6)') &
+            if (level_offset + coolants(N)%NLEVEL > SIZE(levelpopulationsarray, 3)) then
+                write(*,"(A,I3,A,A,A,I6,A,I6,A,I6)") &
                     "[LEVPOP] ERROR coolant ", N, " (", TRIM(coolants(N)%NAME), &
                     ") would exceed array dim3: offset=", level_offset, &
                     " nlevel=", coolants(N)%NLEVEL, &
                     " dim3=", SIZE(levelpopulationsarray, 3)
-                RETURN
-            END IF
-            DO i = 1, coolants(N)%NLEVEL
+                return
+            end if
+            do i = 1, coolants(N)%NLEVEL
                 levelpopulationsarray(dtime, dstep, level_offset + i) = coolants(N)%POPULATION(i)
-            END DO
+            end do
             level_offset = level_offset + coolants(N)%NLEVEL
-        END DO
-    END SUBROUTINE WRITE_LEVEL_POPULATIONS
+        end do
+    end subroutine WRITE_LEVEL_POPULATIONS
 
-    SUBROUTINE WRITE_SE_STATISTICS(sestatsarray, dtime, dstep)
-        USE heating, ONLY: se_coolant_iterations, se_coolant_max_rel_change
-        USE COOLANT_MODULE, ONLY: coolants, NCOOLANTS
-        IMPLICIT NONE
-        DOUBLE PRECISION, DIMENSION(:, :, :), INTENT(INOUT) :: sestatsarray
-        INTEGER, INTENT(IN) :: dtime, dstep
-        INTEGER :: N, idx
+    subroutine WRITE_SE_STATISTICS(sestatsarray, dtime, dstep)
+        use COOLANT_MODULE, only: coolants, NCOOLANTS
+        use heating, only: se_coolant_iterations, se_coolant_max_rel_change
+        implicit none
+        double precision, dimension(:, :, :), intent(inout) :: sestatsarray
+        integer, intent(in) :: dtime, dstep
+        integer :: N, idx
 
-        DO N = 1, NCOOLANTS
+        do N = 1, NCOOLANTS
             idx = (N-1) * 3  ! 3 stats per coolant
             sestatsarray(dtime, dstep, idx + 1) = MERGE(1.0D0, 0.0D0, coolants(N)%CONVERGED)
             sestatsarray(dtime, dstep, idx + 2) = DBLE(se_coolant_iterations(N))
             sestatsarray(dtime, dstep, idx + 3) = se_coolant_max_rel_change(N)
-        END DO
-    END SUBROUTINE WRITE_SE_STATISTICS
+        end do
+    end subroutine WRITE_SE_STATISTICS
 
-END MODULE IO
+end module IO
