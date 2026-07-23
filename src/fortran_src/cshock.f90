@@ -2,43 +2,43 @@
 !Cshock parametrization
 !Based on Jimenez-Serra et al. 2008 A&A 482
 !http://adsabs.harvard.edu/abs/2008A&A...482..549J
-MODULE cshock_mod
-    USE constants
-    USE DEFAULTPARAMETERS
-    !f2py INTEGER, parameter :: dp   
-    USE network
-    USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+module cshock_mod
+    use constants
+    use constants
+    use DEFAULTPARAMETERS
+    use f2py_constants
+    !f2py INTEGER, parameter :: dp
+    use network
+    use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
     &coldens
-    USE constants
-    use f2py_constants
-    USE sputtering
-    IMPLICIT NONE
+    use sputtering
+    implicit none
 
-    REAL(dp) :: tstart,maxTemp,timestepFactor=0.01
-    REAL(dp) :: z2,vs,v0,zn,vn,at,z3,tsat
-    REAL(dp) :: ucm,z1,driftVel,vi,vn0,zn0,vA,dlength,dissipationTime
-    REAL(dp) :: grainRadius5,dens6,dzv
-    REAL(dp), allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
-    LOGICAL :: postShock
-    REAL(dp) :: minimumPostshockTemp=0.0
+    real(dp) :: tstart,maxTemp,timestepFactor=0.01
+    real(dp) :: z2,vs,v0,zn,vn,at,z3,tsat
+    real(dp) :: ucm,z1,driftVel,vi,vn0,zn0,vA,dlength,dissipationTime
+    real(dp) :: grainRadius5,dens6,dzv
+    real(dp), allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
+    logical :: postShock
+    real(dp) :: minimumPostshockTemp=0.0
     !variables for the collisional and radiative heating of grains
-    REAL(dp) :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
-    REAL(dp) :: coshinv1,coshinv2,zmax,a1,eps
+    real(dp) :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
+    real(dp) :: coshinv1,coshinv2,zmax,a1,eps
 
-    INTEGER :: inrad
-    REAL(dp), PARAMETER ::nu0=3.0d15,bt=6.
-    REAL(dp), PARAMETER :: grainRadius=1.0d-5
+    integer :: inrad
+    real(dp), parameter :: nu0=3.0d15,bt=6.0
+    real(dp), parameter :: grainRadius=1.0d-5
 
-CONTAINS
+contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Checks inputs make sense and then calculates a few constants and!
     ! sets up variables for the shock parametrization that follows    !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE initializePhysics(successFlag)
-        INTEGER, INTENT(OUT) :: successFlag
+    subroutine initializePhysics(successFlag)
+        integer, intent(out) :: successFlag
         !f2py integer, intent(aux) :: points
-        REAL(dp) :: v01,g1,g2
+        real(dp) :: v01,g1,g2
 
         successFlag=0
         driftVel=0.0
@@ -46,29 +46,29 @@ CONTAINS
         vn0=0.0
 
         ! Set cooling variables to off by default (change if reqd)
-        postShock = .False.
+        postShock = .false.
 
         !check input sanity and set initial values
         cloudSize=(rout-rin)*pc
-        IF (freefall) THEN
+        if (freefall) then
             write(*,*) "Cannot have freefall on during cshock"
-            Write(*,*) "setting freefall=0 and continuing"
-            freefall=.False.
-        ENDIF
-        IF (points .gt. 1) THEN
-            WRITE(*,*) "Cannot have more than one point in cshock"
+            write(*,*) "setting freefall=0 and continuing"
+            freefall=.false.
+        end if
+        if (points > 1) then
+            write(*,*) "Cannot have more than one point in cshock"
             successFlag=-1
-            RETURN
-        END IF
+            return
+        end if
         density=initialDens
 
 
         !cshock initialization
-        IF (ALLOCATED(tn)) deallocate(tn,ti,tgc,tgr,tg)
+        if (ALLOCATED(tn)) deallocate(tn,ti,tgc,tgr,tg)
         allocate(tn(points),ti(points),tgc(points),tgr(points),tg(points))
         mun=2*mh
-        grainRadius5=grainRadius/4.e-5
-        dens6=density(dstep)/1.e6
+        grainRadius5=grainRadius/4.0e-5
+        dens6=density(dstep)/1.0e6
         currentTimeOld=0.0
         driftVel=0.0
         zn0=0.0
@@ -77,15 +77,15 @@ CONTAINS
         !maxtemp set by vs and pre-shock density, polynomial fits to values taken from Draine et al. 1983
         !have been made and coefficients placed here. Tested with log(dens)>3 <6
         !Fits only available for density of 1e4 and 1e6 so in between we average
-        IF (initialDens .gt. 10**5.5) THEN
+        if (initialDens > 10**5.5) then
             maxTemp=(2.91731*vs*vs)-(23.78974*vs)+225.204167337
-        ELSE IF (initialDens .gt. 10.0**4.5) THEN
+        else if (initialDens > 10.0**4.5) then
             maxTemp=(3.38989*vs*vs)+(16.6519*vs)+96.569
             maxTemp=0.5*maxTemp
-        ELSE
+        else
             maxTemp=(0.47258*vs*vs)+(40.44161*vs)-128.635455216
-        END IF    
-    
+        end if
+
         !tsat proportional to 1/pre-shock density. Fit to tsats from Jimenez-Serra 2008.
         tsat=(-15.38729*vs*vs*vs)+(2069.56962*vs*vs)-(90272.826991*vs)+1686858.54278
         tsat=tsat/initialDens
@@ -115,7 +115,7 @@ CONTAINS
         ! maxTemp is taken from Fig.9b in Draine et al. (1983) and the at constant is
         ! derived as:
         a1=6.0
-        at=(1/zmax)*((maxTemp-initialTemp)*(dexp(a1)-1.))**(1./6.)
+        at=(1/zmax)*((maxTemp-initialTemp)*(dexp(a1)-1.0))**(1.0/6.0)
 
         !Second, we calculate v0 that depends on the alfven and the shock velocities
         !Magnetic field in microGauss. We assume strong magnetic field, i.e., bm0=1.microgauss.
@@ -128,17 +128,17 @@ CONTAINS
         vA=vA/km
 
         !Calculation of v0, final velocity of ions/neutrals in the shock frame
-        v0=2.
+        v0=2.0
         v01=0
-        DO WHILE (abs(v0-v01) .ge. 1e-6)
+        do while (abs(v0-v01) >= 1e-6)
             v01=v0
             g1=-(vA**2*vs**2)/2
             g2=v01**2-v01*vs-vA**2/2
             v0=sqrt(g1/g2)
-        END DO
+        end do
 
-        CALL sputteringSetup
-    END SUBROUTINE initializePhysics
+        call sputteringSetup
+    end subroutine initializePhysics
 
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -146,22 +146,22 @@ CONTAINS
     !UCLCHEM. This is also given to the integrator as the targetTime in chemistry.f90 !
     !but the integrator itself chooses an integration timestep.                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE updateTargetTime
-        IF (timeInYears .lt. 2.0*dissipationTime) THEN
+    subroutine updateTargetTime
+        if (timeInYears < 2.0*dissipationTime) then
             !get a nice sampling along the shock
             targetTime=(timeInYears+timestepFactor*dissipationTime)*SECONDS_PER_YEAR
-        ELSE
+        else
             targetTime=(1.1*timeInYears)*SECONDS_PER_YEAR
-        END IF
-    END SUBROUTINE updateTargetTime
+        end if
+    end subroutine updateTargetTime
 
     !Calculate shock properties for current time and set density, temperature and Av
-    SUBROUTINE updatePhysics
+    subroutine updatePhysics
         !First calculate velocity of neutrals and position of shock front at currentTime
         call shst
 
         dzv=sqrt(2*vn*(vs-v0)-vn**2)
-        dzv=1./(dzv*km)
+        dzv=1.0/(dzv*km)
         dzv=z2*((vs-v0)/(vs-v0-vn))*dzv
 
         !We introduce the gas temperature curve along the dissipation region of the
@@ -188,49 +188,50 @@ CONTAINS
         tg(dstep)=tgc(dstep)+tgr(dstep)
 
         !Density change as shock evolves
-        IF (timeInYears .gt. 0.0) THEN
+        if (timeInYears > 0.0) then
             density=initialDens*vs/(vs-vn)
-        END IF
+        end if
 
         !temperature change as shock evolves
-        IF (timeInYears .gt. 0.0) THEN
+        if (timeInYears > 0.0) then
             tn(dstep)=initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
             gasTemp(dstep)=tn(dstep)
             ti(dstep)=tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ))
 
-        ENDIF
-        postShock = (timeInYears .gt. dissipationTime)
+        end if
+        postShock = (timeInYears > dissipationTime)
 
-        IF ((gasTemp(dstep) .lt. minimumPostshockTemp) .AND. (postShock)) THEN
+        if ((gasTemp(dstep) < minimumPostshockTemp) .AND. (postShock)) then
             gasTemp(dstep) = minimumPostshockTemp
-        END IF
+        end if
         dustTemp=gasTemp
-    END SUBROUTINE updatePhysics
+    end subroutine updatePhysics
 
     !For c-shock, sublimation is simply the sputtering subroutine
-    SUBROUTINE sublimation(abund,lpoints)
-        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
-        INTEGER, INTENT(IN) :: lpoints
-        REAL(dp) :: timeDelta
+    subroutine sublimation(abund,lpoints)
+        real(dp), intent(inout) :: abund(nspec+1,lpoints)
+        integer, intent(in) :: lpoints
+        real(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)
-        IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (driftVel .gt. 0))&
-        & CALL sputterIces(abund(:,dstep),driftVel,gasTemp(dstep),density(dstep),timeDelta)
-        WHERE(abund.lt. 1.0d-50) abund=0.0d-50
-    END SUBROUTINE sublimation
+        if ((sum(abund(iceList,dstep)) > 1d-25) .AND. (driftVel > 0)) then
+          call sputterIces(abund(:,dstep),driftVel,gasTemp(dstep),density(dstep),timeDelta)
+        end if
+        where(abund< 1.0d-50) abund=0.0d-50
+    end subroutine sublimation
 
 
     !the subroutine below has been written by Izaskun Jimenez-Serra.
     ! subroutine that calculates the distance along the dissipation region
     !(zn) and the velocity of the gas as the shock evolves with time.
-    SUBROUTINE shst
-        REAL(dp) :: vn1,f1,f0,xcos,acosh
-        INTEGER :: loopCount
+    subroutine shst
+        real(dp) :: vn1,f1,f0,xcos,acosh
+        integer :: loopCount
         !We calculate the physical structure of the shock
         !set vn1 arbitrarily high to ensure while loop is done at least once
         vn1=1d30
         vn=vn0
         loopCount=0
-        DO WHILE ((abs(vn-vn1).ge.1.e-10) .and. (loopCount .lt. 100))
+        do while ((abs(vn-vn1)>=1.0e-10) .and. (loopCount < 100))
             vn1=vn
             f1=vs-vn1
             f0=vs-vn0
@@ -239,7 +240,7 @@ CONTAINS
             acosh=0.5*(dexp(xcos)+dexp(-xcos))
             vn=(vs-v0)-((vs-v0)/acosh)
             loopCount=loopCount+1
-        END  DO
+        end  do
 
         xcos=zn/z1
         acosh=0.5*(dexp(xcos)+dexp(-xcos))
@@ -249,7 +250,7 @@ CONTAINS
         driftVel=vi-vn
         zn0=zn
         vn0=vn
-    END SUBROUTINE shst
+    end subroutine shst
 
-    
-END MODULE cshock_mod
+
+end module cshock_mod

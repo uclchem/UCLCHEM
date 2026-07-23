@@ -2,49 +2,49 @@
 !J-shock parametrization
 !Based on James et al. 2019 A&A 634
 !https://ui.adsabs.harvard.edu/abs/2020A%26A...634A..17J/abstract
-MODULE jshock_mod
-    USE constants
-    USE DEFAULTPARAMETERS
-    !f2py INTEGER, parameter :: dp    
-    USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+module jshock_mod
+    use constants
+    use DEFAULTPARAMETERS
+    use f2py_constants
+    use network
+    !f2py INTEGER, parameter :: dp
+    use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
     &coldens
-    USE network
-    USE f2py_constants
-    USE sputtering
-    IMPLICIT NONE
- 
-    REAL(dp) :: tstart,maxTemp,vMin,mfp,tCool,tShock,d,dMax,maxDens
-    REAL(dp) :: t_lambda, n_lambda
+    use sputtering
+    implicit none
 
-    REAL(dp) :: z2,vs,v0,at
-    REAL(dp), allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
+    real(dp) :: tstart,maxTemp,vMin,mfp,tCool,tShock,d,dMax,maxDens
+    real(dp) :: t_lambda, n_lambda
+
+    real(dp) :: z2,vs,v0,at
+    real(dp), allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
 
     !*******************************************************************
 
-CONTAINS
+contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Checks inputs make sense and then calculates a few constants and!
     ! sets up variables for the shock parametrization that follows    !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE initializePhysics(successFlag)
+    subroutine initializePhysics(successFlag)
         !f2py integer, intent(aux) :: points
-        INTEGER, INTENT(OUT) :: successFlag
+        integer, intent(out) :: successFlag
         successFlag=0
         !Reset variables for python wrap.
-        
+
         cloudSize=(rout-rin)*pc
 
-        if (freefall) THEN
+        if (freefall) then
             write(*,*) "Cannot have freefall on during jshock"
-            Write(*,*) "setting freefall=0 and continuing"
-            freefall=.False.
-        ENDIF
-        IF (points .gt. 1) THEN
-            WRITE(*,*) "Cannot have more than one point in shock"
+            write(*,*) "setting freefall=0 and continuing"
+            freefall=.false.
+        end if
+        if (points > 1) then
+            write(*,*) "Cannot have more than one point in shock"
             successFlag=-1
-            RETURN
-        END IF
+            return
+        end if
 
         density=initialDens
 
@@ -72,64 +72,64 @@ CONTAINS
         allocate(tn(points),ti(points),tgc(points),tgr(points),tg(points))
 
         currentTimeOld=0.0
-        CALL sputteringSetup       
-    END SUBROUTINE initializePhysics
+        call sputteringSetup
+    end subroutine initializePhysics
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !Called every time loop in main.f90. Sets the timestep for the next output from   !
     !UCLCHEM. This is also given to the integrator as the targetTime in chemistry.f90 !
     !but the integrator itself chooses an integration timestep.                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE updateTargetTime
-        IF (timeInYears .gt. 1e6) THEN
+    subroutine updateTargetTime
+        if (timeInYears > 1e6) then
             targetTime=(timeInYears+1e5)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1.0d4) THEN
+        else if (timeInYears > 1.0d4) then
             targetTime=(timeInYears+1000)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 1.0d3) THEN
-            targetTime=(timeInYears+100.)*SECONDS_PER_YEAR
-        ELSE IF (timeInYears*SECONDS_PER_YEAR .lt. tShock) THEN
+        else if (timeInYears > 1.0d3) then
+            targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
+        else if (timeInYears*SECONDS_PER_YEAR < tShock) then
             targetTime=currentTime+0.05*tShock
-        ELSE
+        else
             targetTime=1.1*currentTime
-        END IF
-    END SUBROUTINE updateTargetTime
+        end if
+    end subroutine updateTargetTime
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !Calculate shock properties for current time and set density, temperature and Av  !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE updatePhysics
+    subroutine updatePhysics
 
         ! Determine the shock velocity at the current time
         v0 = vs*(DEXP(LOG(vMin/vs)*(currentTime/(finalTime*SECONDS_PER_YEAR))))
-        IF (v0 .lt. vMin) THEN
+        if (v0 < vMin) then
             v0 = vMin
-        END IF
+        end if
 
         ! Determine whether shock is still increasing the temperature
         ! Or whether it is in the post-shock cooling phase
         ! Or whether the temperature is now constant
-        IF (currentTime .le. tShock) THEN
+        if (currentTime <= tShock) then
             tn(dstep) = ((currentTime/tShock)**2)*(maxTemp) + initialTemp
             density = (((currentTime/tShock)**3)*(4*initialDens))
-            WHERE (density .lt. initialDens) density = initialDens
-        ELSE IF (currentTime .gt. tShock .AND. currentTime .le. tCool) THEN
+            where (density < initialDens) density = initialDens
+        else if (currentTime > tShock .AND. currentTime <= tCool) then
             ! Otherwise we're in the cooling phase
             tn(dstep) = maxTemp*DEXP(-t_lambda*(currentTime/tCool))
             density = (4*initialDens)*DEXP(n_lambda*(currentTime/tCool))
 
             ! Ensure the gas does not cool below around 10 K
-            IF (tn(dstep) .le. 10) THEN
+            if (tn(dstep) <= 10) then
                 tn(dstep) = 10
-            END IF
+            end if
 
-            where(density .gt. maxDens) density = maxDens
-        ELSE
+            where(density > maxDens) density = maxDens
+        else
             tn(dstep) = 10
             density = maxDens
-        END IF
+        end if
         gasTemp(dstep)=tn(dstep)
         dustTemp(dstep)=gasTemp(dstep)
-    END SUBROUTINE updatePhysics
+    end subroutine updatePhysics
 
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -137,15 +137,16 @@ CONTAINS
     ! It receives the abundance array and performs any sublimation related activity   !
     ! In hot core that means following thermalEvaporation subroutine.                 !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE sublimation(abund, lpoints)
-        REAL(dp), INTENT(INOUT) :: abund(nspec+2,lpoints)
-        INTEGER, INTENT(IN) :: lpoints
-        REAL(dp) :: timeDelta
+    subroutine sublimation(abund, lpoints)
+        real(dp), intent(inout) :: abund(nspec+2,lpoints)
+        integer, intent(in) :: lpoints
+        real(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)
 
-        IF ((sum(abund(iceList,dstep)) .gt. 1d-25) .AND. (v0 .gt. 0))&
-        & CALL sputterIces(abund(:,dstep),v0,gasTemp(dstep),density(dstep),timeDelta)
-        WHERE(abund.lt. 1.0d-50) abund=0.0d-50        
-    END SUBROUTINE sublimation
+        if ((sum(abund(iceList,dstep)) > 1d-25) .AND. (v0 > 0)) then
+          call sputterIces(abund(:,dstep),v0,gasTemp(dstep),density(dstep),timeDelta)
+        end if
+        where(abund< 1.0d-50) abund=0.0d-50
+    end subroutine sublimation
 
-END MODULE jshock_mod
+end module jshock_mod

@@ -6,102 +6,96 @@
 !  (scalar or array) of the input variables.
 !
 !-----------------------------------------------------------------------
-MODULE SWAP_FUNCTION
+module SWAP_FUNCTION
 
-   INTERFACE SWAP
-      MODULE PROCEDURE SWAP_INTEGER,SWAP_REAL,SWAP_INTEGER_1D_ARRAY,SWAP_REAL_1D_ARRAY,SWAP_INTEGER_2D_ARRAY,SWAP_REAL_2D_ARRAY
-   END INTERFACE SWAP
+   interface SWAP
+      module procedure SWAP_INTEGER,SWAP_REAL,SWAP_INTEGER_1D_ARRAY,SWAP_REAL_1D_ARRAY,SWAP_INTEGER_2D_ARRAY,SWAP_REAL_2D_ARRAY
+   end interface SWAP
 
-CONTAINS
+contains
 
-   SUBROUTINE SWAP_INTEGER(A,B)
-      IMPLICIT NONE
-      INTEGER, INTENT(INOUT) :: A,B
-      INTEGER :: D
+   subroutine SWAP_INTEGER(A,B)
+      implicit none
+      integer, intent(inout) :: A,B
+      integer :: D
       D = A
       A = B
       B = D
-      RETURN
-   END SUBROUTINE SWAP_INTEGER
+   end subroutine SWAP_INTEGER
 
-   SUBROUTINE SWAP_REAL(A,B)
-      IMPLICIT NONE
-      DOUBLE PRECISION, INTENT(INOUT) :: A,B
-      DOUBLE PRECISION :: D
+   subroutine SWAP_REAL(A,B)
+      implicit none
+      double precision, intent(inout) :: A,B
+      double precision :: D
       D = A
       A = B
       B = D
-      RETURN
-   END SUBROUTINE SWAP_REAL
+   end subroutine SWAP_REAL
 
-   SUBROUTINE SWAP_INTEGER_1D_ARRAY(A,B)
-      IMPLICIT NONE
-      INTEGER, DIMENSION(:), INTENT(INOUT) :: A,B
-      INTEGER, DIMENSION(:), ALLOCATABLE   :: D
-      IF(SIZE(A).NE.SIZE(B)) THEN
-         WRITE(6,*) 'ERROR! Cannot swap values between arrays of different dimensions'
-         WRITE(6,*) 'SHAPE(A) =',SHAPE(A),'; SHAPE(B) =',SHAPE(B)
-         STOP
-      END IF
-      ALLOCATE(D(SIZE(A)))
+   subroutine SWAP_INTEGER_1D_ARRAY(A,B)
+      implicit none
+      integer, dimension(:), intent(inout) :: A,B
+      integer, dimension(:), allocatable   :: D
+      if(SIZE(A)/=SIZE(B)) then
+         write(6,*) "ERROR! Cannot swap values between arrays of different dimensions"
+         write(6,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
+         stop
+      end if
+      allocate(D(SIZE(A)))
       D = A
       A = B
       B = D
-      DEALLOCATE(D)
-      RETURN
-   END SUBROUTINE SWAP_INTEGER_1D_ARRAY
+      deallocate(D)
+   end subroutine SWAP_INTEGER_1D_ARRAY
 
-   SUBROUTINE SWAP_REAL_1D_ARRAY(A,B)
-      IMPLICIT NONE
-      DOUBLE PRECISION, DIMENSION(:), INTENT(INOUT) :: A,B
-      DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE   :: D
-      IF(SIZE(A).NE.SIZE(B)) THEN
-         WRITE(6,*) 'ERROR! Cannot swap values between arrays of different dimensions'
-         WRITE(6,*) 'SHAPE(A) =',SHAPE(A),'; SHAPE(B) =',SHAPE(B)
-         STOP
-      END IF
-      ALLOCATE(D(SIZE(A)))
+   subroutine SWAP_REAL_1D_ARRAY(A,B)
+      implicit none
+      double precision, dimension(:), intent(inout) :: A,B
+      double precision, dimension(:), allocatable   :: D
+      if(SIZE(A)/=SIZE(B)) then
+         write(6,*) "ERROR! Cannot swap values between arrays of different dimensions"
+         write(6,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
+         stop
+      end if
+      allocate(D(SIZE(A)))
       D = A
       A = B
       B = D
-      DEALLOCATE(D)
-      RETURN
-   END SUBROUTINE SWAP_REAL_1D_ARRAY
+      deallocate(D)
+   end subroutine SWAP_REAL_1D_ARRAY
 
 
-   SUBROUTINE SWAP_INTEGER_2D_ARRAY(A,B)
-      IMPLICIT NONE
-      INTEGER, DIMENSION(:,:), INTENT(INOUT) :: A,B
-      INTEGER, DIMENSION(:,:), ALLOCATABLE   :: D
-      IF(SIZE(A,1).NE.SIZE(B,1) .OR. SIZE(A,2).NE.SIZE(B,2)) THEN
-         WRITE(6,*) 'ERROR! Cannot swap values between arrays of different dimensions'
-         WRITE(6,*) 'SHAPE(A) =',SHAPE(A),'; SHAPE(B) =',SHAPE(B)
-         STOP
-      END IF
-      ALLOCATE(D(SIZE(A,1),SIZE(A,2)))
+   subroutine SWAP_INTEGER_2D_ARRAY(A,B)
+      implicit none
+      integer, dimension(:,:), intent(inout) :: A,B
+      integer, dimension(:,:), allocatable   :: D
+      if(SIZE(A,1)/=SIZE(B,1) .OR. SIZE(A,2)/=SIZE(B,2)) then
+         write(6,*) "ERROR! Cannot swap values between arrays of different dimensions"
+         write(6,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
+         stop
+      end if
+      allocate(D(SIZE(A,1),SIZE(A,2)))
       D = A
       A = B
       B = D
-      DEALLOCATE(D)
-      RETURN
-   END SUBROUTINE SWAP_INTEGER_2D_ARRAY
+      deallocate(D)
+   end subroutine SWAP_INTEGER_2D_ARRAY
 
-   SUBROUTINE SWAP_REAL_2D_ARRAY(A,B)
-      IMPLICIT NONE
-      DOUBLE PRECISION, DIMENSION(:,:), INTENT(INOUT) :: A,B
-      DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE   :: D
-      IF(SIZE(A,1).NE.SIZE(B,1) .OR. SIZE(A,2).NE.SIZE(B,2)) THEN
-         WRITE(6,*) 'ERROR! Cannot swap values between arrays of different dimensions'
-         WRITE(6,*) 'SHAPE(A) =',SHAPE(A),'; SHAPE(B) =',SHAPE(B)
-         STOP
-      END IF
-      ALLOCATE(D(SIZE(A,1),SIZE(A,2)))
+   subroutine SWAP_REAL_2D_ARRAY(A,B)
+      implicit none
+      double precision, dimension(:,:), intent(inout) :: A,B
+      double precision, dimension(:,:), allocatable   :: D
+      if(SIZE(A,1)/=SIZE(B,1) .OR. SIZE(A,2)/=SIZE(B,2)) then
+         write(6,*) "ERROR! Cannot swap values between arrays of different dimensions"
+         write(6,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
+         stop
+      end if
+      allocate(D(SIZE(A,1),SIZE(A,2)))
       D = A
       A = B
       B = D
-      DEALLOCATE(D)
-      RETURN
-   END SUBROUTINE SWAP_REAL_2D_ARRAY
+      deallocate(D)
+   end subroutine SWAP_REAL_2D_ARRAY
 
-END MODULE SWAP_FUNCTION
+end module SWAP_FUNCTION
 !=======================================================================

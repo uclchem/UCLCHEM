@@ -13,7 +13,8 @@ MODULE F2PY_CONSTANTS
     INTEGER, PARAMETER :: NO_REACTANT_OR_PRODUCT=9999 ! Indicates that the reaction does not have these reactants or products
 
     ! Coolant file names and species names
-    CHARACTER(LEN=15), PARAMETER :: coolantFiles(NCOOLANTS)=(/"ly-a.dat       ","12c+_nometa.dat","16o.dat        ","12c.dat        ","12co.dat       ","p-h2.dat       ","o-h2.dat       "/)
+    CHARACTER(LEN=15), PARAMETER :: coolantFiles(NCOOLANTS)=(/"ly-a.dat       ","12c+_nometa.dat","16o.dat        ",&
+        & "12c.dat        ","12co.dat       ","p-h2.dat       ","o-h2.dat       "/)
     CHARACTER(LEN=4), PARAMETER :: coolantNames(NCOOLANTS)=(/"H   ","C+  ","O   ","C   ","CO  ","p-H2","o-H2"/)
 
     ! Parent species names for coolant-to-network abundance mapping

@@ -6,28 +6,28 @@
 !
 ! Additionally uses Guillet et al. 2011 (http://www.aanda.org/10.1051/0004-6361/201015973)
 ! result that for shocks >19km/s you get vaporization which sends dust grain material
-! into the gas phase. We make use of this by setting 19km/s as limit above which 
+! into the gas phase. We make use of this by setting 19km/s as limit above which
 ! refratory dust grain material is sputtered.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-MODULE sputtering
-    USE constants
-    USE DEFAULTPARAMETERS
+module sputtering
+    use constants
+    use DEFAULTPARAMETERS
+    use f2py_constants
     !f2py INTEGER, parameter :: dp
-    USE network
-    USE f2py_constants
-    USE SurfaceReactions, only: GAS_DUST_DENSITY_RATIO,GRAIN_RADIUS
-    USE physicscore, only: timeInYears
-    IMPLICIT NONE
+    use network
+    use physicscore, only: timeInYears
+    use SurfaceReactions, only: GAS_DUST_DENSITY_RATIO,GRAIN_RADIUS
+    implicit none
 
-    INTEGER :: projectiles(6)
-    REAL(dp) :: sConst,eta,epso
+    integer :: projectiles(6)
+    real(dp) :: sConst,eta,epso
     !Speed at which refractory species are also removed from dust grains during sputtering. 19.0 km/s taken from Guillet et al. 2011. (see above)
-    REAL(dp), PARAMETER :: VAPORIZE_SPEED=19.0 
-    INTEGER, ALLOCATABLE :: sputters(:),gasSputters(:)
-CONTAINS
-    SUBROUTINE sputteringSetup
-        INTEGER :: i,j,k,new_size
-        LOGICAL :: found
+    real(dp), parameter :: VAPORIZE_SPEED=19.0
+    integer, allocatable :: sputters(:),gasSputters(:)
+contains
+    subroutine sputteringSetup
+        integer :: i,j,k,new_size
+        logical :: found
 
         !Need abundance of major projectiles to get sputtering rate
         projectiles=(/nh2,nhe,nc,no,nsi,nco/)
@@ -36,41 +36,41 @@ CONTAINS
         !check for refractory species and create a sublist of ice species
         !that only includes species not in refractory list
         !This allows us to sputter only volatile species when shockvelocity is low
-        IF (ALLOCATED(sputters)) DEALLOCATE(sputters,gasSputters)
+        if (ALLOCATED(sputters)) deallocate(sputters,gasSputters)
 
-        IF (refractoryList(1) .gt. 0) THEN
+        if (refractoryList(1) > 0) then
             new_size=size(iceList)-size(refractoryList)
-            ALLOCATE(sputters(new_size),gasSputters(new_size))
+            allocate(sputters(new_size),gasSputters(new_size))
             k=1
-            DO i=1,size(iceList)
-                found=.False.
-                DO j=1,size(refractoryList)
-                    IF (iceList(i) .eq. refractoryList(j)) found=.true.
-                END DO
-                IF (.not. found) THEN
+            do i=1,size(iceList)
+                found=.false.
+                do j=1,size(refractoryList)
+                    if (iceList(i) == refractoryList(j)) found=.true.
+                end do
+                if (.not. found) then
                     sputters(k)=iceList(i)
                     gasSputters(k)=gasIceList(i)
                     k=k+1
-                END IF
-            
-            END DO
-        ELSE
-            ALLOCATE(sputters(size(iceList)))
-            ALLOCATE(gasSputters(size(iceList)))
+                end if
+
+            end do
+        else
+            allocate(sputters(size(iceList)))
+            allocate(gasSputters(size(iceList)))
             gasSputters=gasIceList
             sputters=iceList
-        END IF
-    END SUBROUTINE sputteringSetup
+        end if
+    end subroutine sputteringSetup
 
-    SUBROUTINE sputterIces(abund,shockVel,gasTemp,density,timeDelta)
+    subroutine sputterIces(abund,shockVel,gasTemp,density,timeDelta)
       ! Sputter ices following Jimenez-Serra 2008 treatment
       ! Args:
       !     abund: abundances of all species
       !     shockVel: relative velocity of dust and colliding gas (shockVel in c-shock)
-      REAL(dp), INTENT(INOUT) :: abund(nspec+1)
-      REAL(dp), INTENT(IN) :: shockVel,gasTemp,density,timeDelta
-      REAL(dp) :: sputterRate,abundChangeFrac,totalMantle, grainNumberDensity
-      INTEGER :: iSpec
+      real(dp), intent(inout) :: abund(nspec+1)
+      real(dp), intent(in) :: shockVel,gasTemp,density,timeDelta
+      real(dp) :: sputterRate,abundChangeFrac,totalMantle, grainNumberDensity
+      integer :: iSpec
 
       !Constant relating mass and speed of projectile to energy
       sConst=(shockVel*shockVel*km*km)/(2.0*gasTemp*K_BOLTZ)
@@ -78,16 +78,16 @@ CONTAINS
 
       !loop over projectile species and get rates of change of mantle for each, summing them
       sputterRate=0.0
-      DO iSpec=1,SIZE(projectiles) !!!! Make projectiles array in initialize
+      do iSpec=1,SIZE(projectiles)  !!!! Make projectiles array in initialize
           sputterRate=sputterRate+iceYieldRate(mass(projectiles(iSpec))*MH,density*abund(projectiles(iSpec)),gasTemp)
-      END DO
+      end do
 
       grainNumberDensity=density/GAS_DUST_DENSITY_RATIO
       !Total rate/cm3 (ie released particles /cm3/s) is sputterRate (per grain) multiplied by grain number density
       sputterRate=sputterRate*grainNumberDensity
 
       !integrate that forward from currentTimeOld to currentTime. to get total number of particles released
-      abundChangeFrac=sputterRate*(timeDelta)!/density
+      abundChangeFrac=sputterRate*(timeDelta)  !/density
       !I think that commented out dens is required for units. However, sputtering doesn't happen if it is uncommented
       !and sputtering matches Jimenez-Serra et al. 2008 curves when it's commented out.
 
@@ -97,38 +97,38 @@ CONTAINS
       !this is M/N and we'll multiply by X below
       totalMantle=sum(abund(iceList))
       abundChangeFrac=abundChangeFrac/totalMantle
-      if (abundChangeFrac .gt. 1.0d0) abundChangeFrac=1.0d0
-      if (abundChangeFrac .lt. 0.00d0) abundChangeFrac=0.0d0
+      if (abundChangeFrac > 1.0d0) abundChangeFrac=1.0d0
+      if (abundChangeFrac < 0.00d0) abundChangeFrac=0.0d0
 
       !write(87,*) timeInYears,shockVel,abundChangeFrac,timeDelta/SECONDS_PER_YEAR
       !multiply M/N by x and add to gas phase
-      if (shockVel .ge. VAPORIZE_SPEED) THEN
-        DO iSpec = 1, SIZE(iceList)
+      if (shockVel >= VAPORIZE_SPEED) then
+        do iSpec = 1, SIZE(iceList)
           abund(gasIceList(iSpec)) = abund(gasIceList(iSpec)) + abundChangeFrac * abund(iceList(iSpec))
           abund(iceList(iSpec))    = abund(iceList(iSpec))    * (1.0d0 - abundChangeFrac)
-        END DO
-      ELSE
-        DO iSpec = 1, SIZE(sputters)
+        end do
+      else
+        do iSpec = 1, SIZE(sputters)
           abund(gasSputters(iSpec)) = abund(gasSputters(iSpec)) + abundChangeFrac * abund(sputters(iSpec))
           abund(sputters(iSpec))    = abund(sputters(iSpec))    * (1.0d0 - abundChangeFrac)
-        END DO
-      END IF
-  END SUBROUTINE
+        end do
+      end if
+  end subroutine sputterIces
 
   !Function calculates rate of change of ice mantle abundance of a species!
   !due to the impact of molecules of a given mass. actual rate is         !
   !proportional to projectile abundance                                   !
-  FUNCTION iceYieldRate(projectileMass,projectileDensity,gasTemp)
-      REAL(dp) :: iceYieldRate
-      REAL(dp) :: projectileMass,projectileDensity,gasTemp
-      REAL(dp) :: lowerLimit,upperLimit,s
+  function iceYieldRate(projectileMass,projectileDensity,gasTemp)
+      real(dp) :: iceYieldRate
+      real(dp) :: projectileMass,projectileDensity,gasTemp
+      real(dp) :: lowerLimit,upperLimit,s
 
-      REAL(dp), PARAMETER :: iceBindingEnergy=0.53*1.6d-12,targetMass=18.0*MH   
-      REAL(dp), PARAMETER :: iceYieldEfficiency=0.8 !
+      real(dp), parameter :: iceBindingEnergy=0.53*1.6d-12,targetMass=18.0*MH
+      real(dp), parameter :: iceYieldEfficiency=0.8  !
 
       !eta is effectively reduced mass of the collision
-      eta=4.*iceYieldEfficiency*projectileMass*targetMass*((projectileMass+targetMass)**(-2.0))
-      epso=max(1.,4.*eta)
+      eta=4.0*iceYieldEfficiency*projectileMass*targetMass*((projectileMass+targetMass)**(-2.0))
+      epso=max(1.0,4.0*eta)
       s=sConst*sqrt(projectileMass)
 
       !Lower limit is xth in Jimenez-Serra et al. 2008
@@ -137,29 +137,29 @@ CONTAINS
       !Upper limit is just where the integrand goes to zero
       upperLimit=iceYieldIntegralLimit(lowerLimit,projectileMass,gasTemp)
       !calculate eq B.1 from Jimenez-Serra et al. 2008
-      IF ((upperlimit-lowerLimit) .gt. 1d-4) THEN
+      if ((upperlimit-lowerLimit) > 1d-4) then
           !first get integral from Eq B.1 including 1/s factor
           iceYieldRate=trapezoidIntegrate(lowerLimit,upperLimit,projectileMass,gasTemp)/s
           !multiply through by constants
           iceYieldRate=iceYieldRate*GRAIN_RADIUS*GRAIN_RADIUS*sqrt(8.0*K_BOLTZ*gasTemp*pi/projectileMass)
           !need projectile number density
           iceYieldRate=iceYieldRate*projectileDensity
-      ELSE
+      else
           iceYieldRate=0.0
-      ENDIF
-  END FUNCTION
+      end if
+  end function iceYieldRate
 
 
   !Function calculates integrand from Eq B.1 of Jimenez-Serra et al. 2008 !
   !                                                                       !
   !Inputs are mass of projectile and x. Returns value of integrand at x   !
   !allowing trapezium rule to integrate from xth to infinity              !
-  FUNCTION iceYieldIntegrand(x,projectileMass,gasTemp)
-      REAL(dp) :: iceYieldIntegrand,x,projectileMass,gasTemp
-      REAL(dp) :: yield,s,eps
+  function iceYieldIntegrand(x,projectileMass,gasTemp)
+      real(dp) :: iceYieldIntegrand,x,projectileMass,gasTemp
+      real(dp) :: yield,s,eps
 
-      REAL(dp), PARAMETER :: yieldConst=8.3d-4
-      REAL(dp), PARAMETER :: iceBindingEnergy=0.53*1.6d-12
+      real(dp), parameter :: yieldConst=8.3d-4
+      real(dp), parameter :: iceBindingEnergy=0.53*1.6d-12
 
       !this is s from exp(x+s) in eq B.1, varies only with mass so constant precalculated in initialize
       s=sConst*sqrt(projectileMass)
@@ -170,71 +170,70 @@ CONTAINS
       eps=eta*eps/iceBindingEnergy
       !this yield is for ice averaged over all angles. There's a different one for cores (Appendix B Jimenez-Serra 2008)
       !it's 2 times the normal incidence yield, but there's a factor of 0.5 in integrand so we drop both
-      yield=yieldConst*((eps-epso)**2)/(1.+((eps/30.)**(1.3333)))
+      yield=yieldConst*((eps-epso)**2)/(1.0+((eps/30.0)**(1.3333)))
       iceYieldIntegrand=yield*(x**2)*(DEXP(-((x-s)**2))-DEXP(-((x+s)**2)))
-  END FUNCTION iceYieldIntegrand
+  end function iceYieldIntegrand
 
-  !Function to calculate the upper limit beyond which there's no point   
-  !evaluating the ice yield integrand. Ie trapezoids from upper limit to 
-  !upperlimit+dx will have an area~0                                     
-  FUNCTION iceYieldIntegralLimit(xth,projectileMass,gasTemp)
-      REAL(dp) :: iceYieldIntegralLimit
-      REAL(dp) :: xth,projectileMass,gasTemp
-      INTEGER :: i
+  !Function to calculate the upper limit beyond which there's no point
+  !evaluating the ice yield integrand. Ie trapezoids from upper limit to
+  !upperlimit+dx will have an area~0
+  function iceYieldIntegralLimit(xth,projectileMass,gasTemp)
+      real(dp) :: iceYieldIntegralLimit
+      real(dp) :: xth,projectileMass,gasTemp
+      integer :: i
       i=1
       !Take upperlimit to be half way between lowerLimit and 1000.
       iceYieldIntegralLimit=xth+(1d3-xth)*(0.5**i)
-      !decrease upper limit for as long as f(upperlimit) is <1.0e-20 and 
+      !decrease upper limit for as long as f(upperlimit) is <1.0e-20 and
       !difference between lower and upper limit is not zero.
-      DO WHILE (iceYieldIntegrand(iceYieldIntegralLimit,projectileMass,gasTemp) .lt. 1d-200 .and.&
-          & (iceYieldIntegralLimit-xth) .gt. 1.0d-3)
+      do while (iceYieldIntegrand(iceYieldIntegralLimit,projectileMass,gasTemp) < 1d-200 .and.&
+          & (iceYieldIntegralLimit-xth) > 1.0d-3)
               i=i+1
               iceYieldIntegralLimit=xth+(1d3-xth)*(0.5**i)
-      END DO
-  END FUNCTION iceYieldIntegralLimit
+      end do
+  end function iceYieldIntegralLimit
 
 
 
-  Function trapezoidIntegrate(lowerLimit,upperlimit,projectileMass,gasTemp)
+  function trapezoidIntegrate(lowerLimit,upperlimit,projectileMass,gasTemp)
      !Subroutine that calculates an integral using the trapezoidal method. It repeatedly
     !tries smaller intervals until the area is small enough to be accurate.
     ! It used to take a function to integrate as an argument but I removed it
     ! since we just want to integrate iceYieldIntegrand anyway.
-      REAL(dp) :: trapezoidIntegrate
-      INTEGER,PARAMETER :: JMAX=25
-      REAL(dp) lowerLimit,upperlimit,projectileMass,gasTemp
-      REAL(dp), PARAMETER :: tolerance=1.e-3
-      INTEGER j
-      REAL(dp) olds
-      olds=-1.e30
-      DO j=1,JMAX
+      real(dp) :: trapezoidIntegrate
+      integer,parameter :: JMAX=25
+      real(dp) :: lowerLimit,upperlimit,projectileMass,gasTemp
+      real(dp), parameter :: tolerance=1.0e-3
+      integer :: j
+      real(dp) :: olds
+      olds=-1.0e30
+      do j=1,JMAX
           call trapzd(lowerLimit,upperlimit,trapezoidIntegrate,j,projectileMass,gasTemp)
-          if (abs(trapezoidIntegrate-olds).le.tolerance*abs(olds)) RETURN
+          if (abs(trapezoidIntegrate-olds)<=tolerance*abs(olds)) return
           olds=trapezoidIntegrate
-      END DO
-  END Function trapezoidIntegrate
+      end do
+  end function trapezoidIntegrate
 
-  SUBROUTINE trapzd(a,b,s,n,projectileMass,gasTemp)
+  subroutine trapzd(a,b,s,n,projectileMass,gasTemp)
     ! Subroutine to integrate with trapazoidal rule using n intervals.
-      INTEGER n
-      REAL(dp) a,b,s,projectileMass,gasTemp
-      INTEGER it,j
-      REAL(dp) del,sum,tnm,x
-      IF(n.eq.1) THEN
+      integer :: n
+      real(dp) :: a,b,s,projectileMass,gasTemp
+      integer :: it,j
+      real(dp) :: del,sum,tnm,x
+      if(n==1) then
           s=0.5*(b-a)*(iceYieldIntegrand(a,projectileMass,gasTemp)+&
           &iceYieldIntegrand(b,projectileMass,gasTemp))
-      ELSE
+      else
           it=2**(n-2)
           tnm=it
           del=(b-a)/tnm
           x=a+0.5*del
-          sum=0.
-          DO j=1,it
+          sum=0.0
+          do j=1,it
               sum=sum+iceYieldIntegrand(x,projectileMass,gasTemp)
               x=x+del
-          END DO
+          end do
           s=0.5*(s+(b-a)*sum/tnm)
-      ENDIF
-      RETURN
-  END SUBROUTINE trapzd
-END MODULE sputtering
+      end if
+  end subroutine trapzd
+end module sputtering
