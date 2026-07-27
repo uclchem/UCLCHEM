@@ -43,8 +43,6 @@ implicit none
     real(dp), allocatable :: abund(:,:)
     real(dp) :: numMonolayers,ratioSurfaceToBulk
 
-    real(dp) :: MIN_ABUND = 1.0d-30  !Minimum abundance allowed
-
     integer :: nion,ionlist(nspec)
 
     real(dp) :: tempDot, oldTemp=0.0d0, prevIntegrationTemp=0.0d0
@@ -280,13 +278,13 @@ contains
                 abund(nSurface,dstep)=sum(abund(surfaceList,dstep))
             end if
             !recalculate coefficients for ice processes
-            safeMantle=MAX(1d-30,abund(nSurface,dstep))
-            safeBulk=MAX(1d-30,abund(nBulk,dstep))
+            safeMantle=MAX(MIN_ABUND, abund(nSurface,dstep))
+            safeBulk=MAX(MIN_ABUND, abund(nBulk,dstep))
 
             if (refractoryList(1) > 0) safeBulk=safeBulk-SUM(abund(refractoryList,dstep))
 
-            ratioSurfaceToBulk=MIN(1.0D0, safeMantle/safeBulk)
-            bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
+            ratioSurfaceToBulk=MIN(1.0_dp, safeMantle/safeBulk)
+            bulkLayersReciprocal=MIN(1.0_dp,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
             surfaceCoverage=bulkGainFromMantleBuildUp()
 
             if ((.NOT. dustTemp(dstep) == lastDustTemp) .OR. &
@@ -614,18 +612,18 @@ contains
         !changing abundances of H2 and CO can causes oscillation since their rates depend on their abundances
         !recalculating rates as abundances are updated prevents that.
         !thus these are the only rates calculated each time the ODE system is called.
-        cocol=coColToCell+0.5*Y_safe(nco)*D*(cloudSize/real(points))
-        h2col=h2ColToCell+0.5*Y_safe(nh2)*D*(cloudSize/real(points))
+        cocol=coColToCell + 0.5_dp*Y_safe(nco)*D*(cloudSize/real(points))
+        h2col=h2ColToCell + 0.5_dp*Y_safe(nh2)*D*(cloudSize/real(points))
         rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel)  !H2 photodissociation
         rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep))  !CO photodissociation
         end if
 
         !recalculate coefficients for ice processes
-        safeMantle=MAX(1d-30,Y_safe(nSurface))
-        safeBulk=MAX(1d-30,Y_safe(nBulk))
-        bulkLayersReciprocal=MIN(1.0,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
+        safeMantle=MAX(MIN_ABUND, Y_safe(nSurface))
+        safeBulk=MAX(MIN_ABUND, Y_safe(nBulk))
+        bulkLayersReciprocal=MIN(1.0_dp, NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
         surfaceCoverage=bulkGainFromMantleBuildUp()
-        ratioSurfaceToBulk=MIN(1.0D0, safeMantle/safeBulk)
+        ratioSurfaceToBulk=MIN(1.0_dp, safeMantle/safeBulk)
 
         ! Fix 3: refresh surface-to-bulk swap rate from current safeMantle
         ! (safeMantle was just updated from Y_safe above, but rate(surfSwapReacs) is still

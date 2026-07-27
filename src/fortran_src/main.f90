@@ -3,10 +3,10 @@
 ! main.f90 just provides a simple fortran interface to the core code so that a binary can
 ! be built and used directly from the command line.
 program uclchem
-
-use constants, only: dp, nspec
+use f2py_constants, only: nspec
+use constants, only: dp
 use io, only: inputId
-use uclchemwrap, only: cloud,hot_core,cshock,postprocess
+use uclchemwrap, only: cloud, hot_core, cshock, postprocess
 implicit none
     character (LEN=100) :: modelType
     character (LEN=100) :: paramFile

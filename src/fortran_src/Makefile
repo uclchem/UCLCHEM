@@ -13,12 +13,11 @@ f2pyFC=gnu95 #this must match FC (ifort=intelem, gfortran=gnu95)
 #Fast optimizing flags
 FFLAGS = -O3 -fPIC -ffree-line-length-0
 
-
 ###############################################################################
 EXT_SUFFIX = $(shell python3-config --extension-suffix)
 
 
-PHYSICS_OBS= physics-core.o cloud.o hotcore.o sputtering.o cshock.o jshock.o collapse.o postprocess.o
+PHYSICS_OBS   = extinction.o physics-core.o cloud.o hotcore.o sputtering.o cshock.o jshock.o collapse.o postprocess.o
 CHEMISTRY_OBS = odes.o photoreactions.o surfacereactions.o rates.o chemistry.o
 CONSTANTS_OBS = constants.o defaultparameters.o f2py_constants.o
 HEATING_OBS   = swap_function.o coolant_module.o heating.o
@@ -54,4 +53,4 @@ sputtering.o: surfacereactions.o sputtering.f90
 
 # This can de disabled for fast development, but it will cause major issues when you change chemical networks.
 clean: 
-	rm *.o *.mod *.so ../uclchem/*.so
+	rm -f *.o *.mod *.so ../uclchem/*.so

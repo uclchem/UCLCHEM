@@ -5,7 +5,6 @@
 !!note the resulting md file needs manually adding to the website.
 module DEFAULTPARAMETERS
 use constants
-use F2PY_CONSTANTS
 !---
 !id: parameters
 !title: Model Parameters

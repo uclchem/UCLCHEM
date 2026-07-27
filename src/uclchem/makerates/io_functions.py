@@ -10,6 +10,7 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 from tempfile import mkstemp
+from textwrap import dedent
 from typing import IO, Any, Literal, cast
 
 import numpy as np
@@ -758,9 +759,11 @@ def write_f90_constants(
         # Format coolant files
         coolant_files = replace_dict.pop("coolant_files")
         max_file_len = max(len(f) for f in coolant_files)
-        coolant_files_str = ",".join(f'"{f.ljust(max_file_len)}"' for f in coolant_files)
+        coolant_files_str = truncate_line(
+            ",".join(f'"{f.ljust(max_file_len)}"' for f in coolant_files), line_length=60
+        )
         replace_dict["coolant_file_len"] = max_file_len
-        replace_dict["coolant_files"] = "/" + coolant_files_str + "/"
+        replace_dict["coolant_files"] = truncate_line("/" + coolant_files_str + "/")
 
         # Format coolant names
         coolant_names = replace_dict.pop("coolant_names")
@@ -786,7 +789,7 @@ def write_f90_constants(
 
     constants = constants.format(**replace_dict)
 
-    # Insert array declarations before END MODULE using array_to_string
+    # Insert array declarations before end module using array_to_string
     extra_lines = ""
     if conversion_factors is not None:
         extra_lines += "    ! Conversion factors for abundance scaling (used when coolantConversionMode=0)\n"
@@ -813,11 +816,11 @@ def write_f90_constants(
             )
     if suggested_freq_rel_tol is not None:
         extra_lines += "    ! Suggested freq_rel_tol based on max observed deviation (with 10% margin)\n"
-        extra_lines += f"    REAL(dp), PARAMETER :: suggested_freq_rel_tol = {suggested_freq_rel_tol:.6e}\n"
+        extra_lines += f"    real(dp), parameter :: suggested_freq_rel_tol = {suggested_freq_rel_tol:.6e}_dp\n"
 
     if extra_lines:
         constants = constants.replace(
-            "END MODULE F2PY_CONSTANTS", extra_lines + "END MODULE F2PY_CONSTANTS"
+            "end module F2PY_CONSTANTS", extra_lines + "end module F2PY_CONSTANTS"
         )
 
     with Path(output_file_name).open("w") as fh:
@@ -1138,25 +1141,35 @@ def build_ode_string(
             if species_name in species_names:
                 species_list[species_names.index(species_name)].gains += reaction.ode_bit
 
-    ode_string = """MODULE ODES
-USE constants
-USE network
-USE SurfaceReactions, ONLY: useGarrod2011Transfer, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO
-IMPLICIT NONE
-CONTAINS
-SUBROUTINE GETYDOT(RATE, Y, surfaceCoverage, D, YDOT)
-REAL(dp), INTENT(IN) :: RATE(:), Y(:), D
-REAL(dp), INTENT(INOUT) :: YDOT(:), surfaceCoverage
-REAL(dp) :: totalSwap, LOSS, PROD
-REAL(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
-    safeMantle = MAX(1.0d-30, SUM(Y(surfaceList)))
-    safeBulk   = MAX(1.0d-30, SUM(Y(bulkList)))
-    IF (refractoryList(1) .gt. 0) safeBulk = MAX(1.0d-30, safeBulk - SUM(Y(refractoryList)))
-    ratioSurfaceToBulk   = MIN(1.0D0, safeMantle/safeBulk)
-    bulklayersreciprocal = MIN(1.0D0, NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
-    """
+    ode_string = dedent("""    module ODES
+        use constants, only: dp, MIN_ABUND
+        use f2py_constants, only: nReac
+        use network, only: SURFGROWTHUNCORRECTED, refractoryList, bulkList, surfaceList
+        use surfacereactions, only: useGarrod2011Transfer, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO
+    
+        implicit none
+    
+        public
+    contains
+        subroutine GETYDOT(RATE, Y, surfaceCoverage, D, YDOT)
+            real(dp), intent(in) :: RATE(nReac), Y(:)
+            real(dp), intent(in) :: D
+            real(dp), intent(inout) :: surfaceCoverage
+            real(dp), intent(out) :: YDOT(:)
+    
+            real(dp) :: totalSwap, LOSS, PROD
+            real(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
+    
+            safeMantle = MAX(MIN_ABUND, SUM(Y(surfaceList)))
+            safeBulk   = MAX(MIN_ABUND, SUM(Y(bulkList)))
+            if (refractoryList(1) > 0) then
+                safeBulk = MAX(MIN_ABUND, safeBulk - SUM(Y(refractoryList)))
+            end if
+            ratioSurfaceToBulk   = MIN(1.0_dp, safeMantle/safeBulk)
+            bulklayersreciprocal = MIN(1.0_dp, NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
+    """)
     # Add a logical to determine whether we can write the reaction rates in realtime
-    ode_string += truncate_line(f"totalSwap={total_swap[1:]}\n\n")
+    ode_string += truncate_line(f"        totalSwap={total_swap[1:]}\n\n")
     # First get total rate of change of bulk and surface by adding ydots
     for n, species in enumerate(species_list):
         if species.get_name()[0] == "@":
@@ -1165,34 +1178,35 @@ REAL(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
             species_list[surface_index].gains += f"+YDOT({n + 1})"
     if enable_rates_storage:
         for n, reaction in enumerate(reaction_list):
-            ode_string += truncate_line(f"REACTIONRATE({n + 1})={reaction.ode_bit}\n")
+            ode_string += truncate_line(
+                f"        REACTIONRATE({n + 1})={reaction.ode_bit}\n"
+            )
 
     for n, species in enumerate(species_list):
         ydot_string = species_ode_string(n, species)
         ode_string += ydot_string
 
-    ode_string += f"    SURFGROWTHUNCORRECTED = YDOT({surface_index + 1})\n"
+    ode_string += f"\n        SURFGROWTHUNCORRECTED = YDOT({surface_index + 1})\n"
 
     # now add bulk transfer to rate of change of surface species
     # after they've already been calculated
-    ode_string += "!Update surface species for bulk growth\n"
+    ode_string += dedent(f"""
 
-    ode_string += f"IF (YDOT({surface_index + 1}) .lt. 0) THEN\n"
-    ode_string += (
-        "    ! Since ydot(surface_index) is negative, bulk is lost and surface forms\n"
-    )
-    ode_string += "    IF (useGarrod2011Transfer) THEN\n"
-    ode_string += "        ! Three-phase treatment of Garrod & Pauly 2011\n"
-    ode_string += "        ! Replace surfaceCoverage with alpha_des\n"
-    ode_string += "        ! Real value of alpha_des: alpha_des = MIN(1.0D0, safeBulk / safeMantle).\n"
-    ode_string += "        ! However, the YDOTs calculated below need to be multiplied with Y(bulkspec)/safeBulk,\n"
-    ode_string += "        ! so we divide by safeBulk here to save time\n"
-    ode_string += "        surfaceCoverage = MIN(1.0D0, safeBulk/safeMantle)/safeBulk\n"
-    ode_string += "    ELSE\n        ! Hasegawa & Herbst 1993\n"
-    ode_string += (
-        "        surfaceCoverage = MIN(1.0D0, surfaceCoverage*safeMantle)/safeBulk\n"
-    )
-    ode_string += "    END IF\n"
+    ! Update surface species for bulk growth
+    if (YDOT({surface_index + 1}) < 0) then
+        ! Since ydot(surface_index) is negative, bulk is lost and surface forms
+        if (useGarrod2011Transfer) then
+            ! Three-phase treatment of Garrod & Pauly 2011
+            ! Replace surfaceCoverage with alpha_des
+            ! Real value of alpha_des: alpha_des = MIN(1.0_dp, safeBulk / safeMantle).
+            ! However, the YDOTs calculated below need to be multiplied with Y(bulkspec)/safeBulk,
+            ! so we divide by safeBulk here to save time
+            surfaceCoverage = MIN(1.0_dp, safeBulk/safeMantle)/safeBulk
+        else
+            ! Hasegawa & Herbst 1993
+            surfaceCoverage = MIN(1.0_dp, surfaceCoverage*safeMantle)/safeBulk
+        end if
+    """)
 
     surf_species = [
         i
@@ -1207,19 +1221,19 @@ REAL(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
             j += 1
             bulk_partner = species_names.index(species.get_name().replace("#", "@"))
             if enable_rates_storage:
-                ode_string += f"    REACTIONRATE({i}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})\n"
-                ode_string += f"    REACTIONRATE({j}) = 0.0D0\n"
+                ode_string += f"        REACTIONRATE({i}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})\n"
+                ode_string += f"        REACTIONRATE({j}) = 0.0_dp\n"
             if not species_list[bulk_partner].is_refractory:
-                ode_string += f"    YDOT({n + 1})=YDOT({n + 1})-YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})\n"
+                ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})\n"
         if species.get_name()[0] == "@" and not species.is_refractory:
-            ode_string += f"    YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({n + 1})\n"
-    ode_string += "ELSE\n"
-    ode_string += "    ! surfaceCoverage = fractional surface coverage\n"
-    ode_string += "    ! Real value of surfaceCoverage: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
-    ode_string += "    ! However, the YDOTs calculated below need to be multiplied with Y(surfspec)/safeMantle, so we divide by safeMantle here to save time\n"
-    ode_string += "    ! In chemistry.f90: surfaceCoverage = 1/NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
+            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({n + 1})\n"
+    ode_string += "    else\n"
+    ode_string += "        ! surfaceCoverage = fractional surface coverage\n"
+    ode_string += "        ! Real value of surfaceCoverage: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
+    ode_string += "        ! However, the YDOTs calculated below need to be multiplied with Y(surfspec)/safeMantle, so we divide by safeMantle here to save time\n"
+    ode_string += "        ! In chemistry.f90: surfaceCoverage = 1/NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
     ode_string += (
-        "    surfaceCoverage = MIN(1.0D0, surfaceCoverage*safeMantle)/safeMantle\n"
+        "        surfaceCoverage = MIN(1.0_dp, surfaceCoverage*safeMantle)/safeMantle\n"
     )
     i = len(reaction_list)
     j = len(reaction_list) + len(surf_species)
@@ -1237,19 +1251,21 @@ REAL(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
             j += 1
             surface_version = species_names.index(species.get_name().replace("@", "#"))
             if enable_rates_storage:
-                ode_string += f"    REACTIONRATE({i}) = 0.0D0\n"
-                ode_string += f"    REACTIONRATE({j}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({surface_version + 1})\n"
-            ode_string += f"    YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({surface_version + 1})\n"
+                ode_string += f"        REACTIONRATE({i}) = 0.0_dp\n"
+                ode_string += f"        REACTIONRATE({j}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({surface_version + 1})\n"
+            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({surface_version + 1})\n"
         if species.get_name()[0] == "#":
-            ode_string += f"    YDOT({n + 1})=YDOT({n + 1})-YDOT({surface_index + 1})*surfaceCoverage*Y({n + 1})\n"
-    ode_string += "ENDIF\n"
+            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT({surface_index + 1})*surfaceCoverage*Y({n + 1})\n"
+    ode_string += "    end if\n"
 
     # once bulk transfer has been added, odes for bulk and surface must account for it
-    ode_string += "!Update total rate of change of bulk and surface for bulk growth\n"
-    ode_string += species_ode_string(bulk_index, species_list[bulk_index])
-    ode_string += species_ode_string(surface_index, species_list[surface_index])
-    ode_string += """    END SUBROUTINE GETYDOT
-END MODULE ODES"""
+    ode_string += (
+        "    ! Update total rate of change of bulk and surface for bulk growth\n"
+    )
+    ode_string += "    " + species_ode_string(bulk_index, species_list[bulk_index])
+    ode_string += "    " + species_ode_string(surface_index, species_list[surface_index])
+    ode_string += """    end subroutine GETYDOT
+end module ODES"""
     return ode_string
 
 
@@ -1273,14 +1289,14 @@ def species_ode_string(n: int, species: Species) -> str:
     """
     ydot_string = ""
     if species.losses:
-        loss_string = "    LOSS = " + species.losses[1:] + "\n"
+        loss_string = "        LOSS = " + species.losses[1:] + "\n"
         ydot_string += loss_string
     if species.gains:
-        prod_string = "    PROD = " + species.gains[1:] + "\n"
+        prod_string = "        PROD = " + species.gains[1:] + "\n"
         ydot_string += prod_string
 
     if ydot_string:
-        ydot_string += f"    YDOT({n + 1}) = "
+        ydot_string += f"        YDOT({n + 1}) = "
         # start with empty string and add production and loss terms if they exists
         if species.gains:
             ydot_string += "PROD"
@@ -1288,7 +1304,7 @@ def species_ode_string(n: int, species: Species) -> str:
             ydot_string += "-LOSS"
         ydot_string += "\n"
     else:
-        ydot_string = f"    YDOT({n + 1}) = {0.0}\n"
+        ydot_string = f"        YDOT({n + 1}) = {0.0}\n"
     ydot_string = truncate_line(ydot_string)
     return ydot_string
 
@@ -1482,18 +1498,22 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> int:
     return len(iceList)
 
 
-def truncate_line(input_string: str, line_length: int = 72) -> str:
-    """Take a string and adds line endings at regular intervals.
+FORTRAN_LINE_LENGTH = 80
+
+
+def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> str:
+    """Take a string and add line endings at regular intervals.
 
     Keeps us from overshooting fortran's line limits and, frankly,
-    makes for nicer ode.f90 even if human readability isn't very important
+    makes for nicer odes.f90 even if human readability isn't very important.
 
     Parameters
     ----------
     input_string : str
         Line of code to be truncated
     line_length : int
-        rough line length. Default = 72.
+        rough line length. Default = :data:`FORTRAN_LINE_LENGTH`.
+
 
     Returns
     -------
@@ -1518,9 +1538,6 @@ def truncate_line(input_string: str, line_length: int = 72) -> str:
         i = j
     result += input_string[i:]
     return result
-
-
-FORTRAN_LINE_LENGTH = 72
 
 
 def write_network_file(
@@ -1558,7 +1575,16 @@ def write_network_file(
 
     with Path(file_name).open("w") as openFile:
         openFile.write(
-            "MODULE network\nUSE constants\nUSE f2py_constants\nIMPLICIT NONE\n"
+            dedent("""        module network
+            use constants, only: dp, REAC_NOT_PRESENT
+            use f2py_constants, only: nspec, nReac, MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER, &
+                NO_REACTANT_OR_PRODUCT
+
+            implicit none
+                
+            public
+
+        """)
         )
 
         # write arrays of all species stuff
@@ -1573,15 +1599,18 @@ def write_network_file(
         speciesIndices = ""
         for name, species_index in network.species_indices.items():
             speciesIndices += f"{name}={species_index},"
-        if len(speciesIndices) > FORTRAN_LINE_LENGTH:
-            speciesIndices = truncate_line(speciesIndices)
-        speciesIndices = speciesIndices[:-1] + "\n"
-        openFile.write("    INTEGER, PARAMETER ::" + speciesIndices)
-        openFile.write("    LOGICAL, PARAMETER :: THREE_PHASE = .TRUE.\n")
-        openFile.write("    REAL(dp) :: SURFGROWTHUNCORRECTED\n")
-        openFile.write(array_to_string("    specname", names, type="string"))
-        openFile.write(array_to_string("    mass", masses, type="float"))
-        openFile.write(array_to_string("    atomCounts", atoms, type="int"))
+        openFile.write(
+            truncate_line("integer, parameter :: " + speciesIndices[:-1] + "\n")
+        )
+        openFile.write("logical, parameter :: THREE_PHASE = .true.\n")
+        openFile.write("real(dp) :: SURFGROWTHUNCORRECTED\n")
+        openFile.write(
+            array_to_string("specname", names, type="string", length_name="nSpec")
+        )
+        openFile.write(array_to_string("mass", masses, type="float", length_name="nSpec"))
+        openFile.write(
+            array_to_string("atomCounts", atoms, type="int", length_name="nSpec")
+        )
 
         # Generic element-count 2D array for runtime conservation checking.
         # Covers every element that appears at least once across all species.
@@ -1610,9 +1639,20 @@ def write_network_file(
         max_elem_len = max(len(e) for e in unique_elements)
         padded_elems = [e.ljust(max_elem_len) for e in unique_elements]
 
-        openFile.write(f"INTEGER, PARAMETER :: n_elem_tracked = {n_elems}\n")
-        openFile.write(array_to_string("    elem_names", padded_elems, type="string"))
-        openFile.write(array_to_string("    elem_count", elem_count_2d, type="int"))
+        openFile.write(f"integer, parameter :: n_elem_tracked = {n_elems}\n")
+        openFile.write(
+            array_to_string(
+                "elem_names", padded_elems, type="string", length_name="n_elem_tracked"
+            )
+        )
+        openFile.write(
+            array_to_string(
+                "elem_count",
+                elem_count_2d,
+                type="int",
+                length_name="nSpec, n_elem_tracked",
+            )
+        )
 
         # then write evaporation stuff
         n_ice_species = write_evap_lists(openFile, species_list)
@@ -1640,7 +1680,7 @@ def write_network_file(
         for reaction_name, reaction_idx in network.important_reactions.items():
             reaction_indices += reaction_name + f"={reaction_idx},"
         reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
-        openFile.write("    INTEGER, PARAMETER ::" + reaction_indices)
+        openFile.write("integer, parameter ::" + reaction_indices)
 
         for reaction in reaction_list:
             reactant1.append(find_reactant(names, reaction.get_reactants()[0]))
@@ -1683,102 +1723,135 @@ def write_network_file(
         # Save some memory by only allocating things we actually want to use:
         if enable_rates_storage:
             openFile.write(
-                f"    REAL(dp) :: REACTIONRATE({len(reactant1) + n_ice_species})\n"
+                f"real(dp) :: REACTIONRATE({len(reactant1) + n_ice_species})\n"
             )
-            openFile.write("     LOGICAL :: storeRatesComputation=.TRUE.\n")
+            openFile.write("logical :: storeRatesComputation=.true.\n")
         else:
-            openFile.write("    REAL(dp) :: REACTIONRATE(1)\n")
-            openFile.write("    LOGICAL :: storeRatesComputation=.FALSE.\n")
+            openFile.write("real(dp) :: REACTIONRATE(1)\n")
+            openFile.write("logical :: storeRatesComputation=.false.\n")
         if any(exo != 0.0 for exo in exothermicity):
             if not enable_rates_storage:
                 msg = "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
                 raise AssertionError(msg)
             openFile.write(
                 array_to_string(
-                    "\texothermicities", exothermicity, type="float", parameter=True
+                    "exothermicities", exothermicity, type="float", parameter=True
                 )
             )
-            openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .TRUE.\n")
+            openFile.write("logical, parameter :: enableChemicalHeating = .true.\n")
         else:
             openFile.write(
-                "    REAL(dp) :: \texothermicities(" + str(len(exothermicity)) + ")\n"
+                "real(dp) :: exothermicities(" + str(len(exothermicity)) + ")\n"
             )
-            openFile.write("    LOGICAL, PARAMETER :: enableChemicalHeating = .FALSE.\n")
+            openFile.write("logical, parameter :: enableChemicalHeating = .false.\n")
 
         openFile.write(
             replace_value_with_name(
-                array_to_string("\tre1", reactant1, type="int"),
+                array_to_string("re1", reactant1, type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             replace_value_with_name(
-                array_to_string("\tre2", reactant2, type="int"),
+                array_to_string("re2", reactant2, type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             replace_value_with_name(
-                array_to_string("\tre3", reactant3, type="int"),
+                array_to_string("re3", reactant3, type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             replace_value_with_name(
-                array_to_string("\tp1", prod1, type="int"),
+                array_to_string("p1", prod1, type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             replace_value_with_name(
-                array_to_string("\tp2", prod2, type="int"),
+                array_to_string("p2", prod2, type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             replace_value_with_name(
-                array_to_string("\tp3", prod3, type="int"),
+                array_to_string("p3", prod3, type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             replace_value_with_name(
-                array_to_string("\tp4", prod4, type="int"),
+                array_to_string("p4", prod4, type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
-            )
-        )
-        openFile.write(array_to_string("\talpha", alpha, type="float", parameter=False))
-        openFile.write(array_to_string("\tbeta", beta, type="float", parameter=False))
-        openFile.write(array_to_string("\tgama", gama, type="float", parameter=False))
-        openFile.write(array_to_string("\tminTemps", tmins, type="float", parameter=True))
-        openFile.write(array_to_string("\tmaxTemps", tmaxs, type="float", parameter=True))
-        openFile.write(
-            array_to_string(
-                "\treducedMasses", reduced_masses, type="float", parameter=True
             )
         )
         openFile.write(
             array_to_string(
-                "\tExtrapolateRates", extrapolations, type="logical", parameter=True
+                "alpha", alpha, type="float", parameter=False, length_name="nReac"
+            )
+        )
+        openFile.write(
+            array_to_string(
+                "beta", beta, type="float", parameter=False, length_name="nReac"
+            )
+        )
+        openFile.write(
+            array_to_string(
+                "gama", gama, type="float", parameter=False, length_name="nReac"
+            )
+        )
+        openFile.write(
+            array_to_string(
+                "minTemps", tmins, type="float", parameter=True, length_name="nReac"
+            )
+        )
+        openFile.write(
+            array_to_string(
+                "maxTemps", tmaxs, type="float", parameter=True, length_name="nReac"
+            )
+        )
+        openFile.write(
+            array_to_string(
+                "reducedMasses",
+                reduced_masses,
+                type="float",
+                parameter=True,
+                length_name="nReac",
+            )
+        )
+        openFile.write(
+            array_to_string(
+                "ExtrapolateRates",
+                extrapolations,
+                type="logical",
+                parameter=True,
+                length_name="nReac",
             )
         )
         reacTypes_array = np.asarray(reacTypes)
 
         partners = get_desorption_freeze_partners(reaction_list)
         openFile.write(
-            array_to_string("\tfreezePartners", partners, type="int", parameter=True)
+            array_to_string(
+                "freezePartners",
+                partners,
+                type="int",
+                parameter=True,
+            )
         )
 
         openFile.write(
             array_to_string(
-                "\t garParams",
+                "garParams",
                 np.array(list(gar_database.values()))
                 if gar_database
                 else np.zeros((1, 7)),
@@ -1797,9 +1870,9 @@ def write_network_file(
                 # We still want a dummy array if the reaction type isn't in network
                 indices = [99999, 99999]
             openFile.write(
-                array_to_string(
-                    "\t" + list_name, indices, type="int", parameter=True
-                ).replace("99999", "REAC_NOT_PRESENT")
+                array_to_string(list_name, indices, type="int", parameter=True).replace(
+                    "99999", "REAC_NOT_PRESENT"
+                )
             )
 
         # Write LHDES and ERDES mapping arrays (Feature 3: LH/ER-DES mapping)
@@ -1823,7 +1896,7 @@ def write_network_file(
             LHDEScorrespondingLHreacs = [99999]
         openFile.write(
             array_to_string(
-                "\tLHDEScorrespondingLHreacs",
+                "LHDEScorrespondingLHreacs",
                 LHDEScorrespondingLHreacs,
                 type="int",
                 parameter=True,
@@ -1852,13 +1925,13 @@ def write_network_file(
             ERDEScorrespondingERreacs.append(ERDEScorrespondingERreacs[0])
         openFile.write(
             array_to_string(
-                "\tERDEScorrespondingERreacs",
+                "ERDEScorrespondingERreacs",
                 ERDEScorrespondingERreacs,
                 type="int",
                 parameter=True,
             ).replace("99999", "REAC_NOT_PRESENT")
         )
-        openFile.write("END MODULE network")
+        openFile.write("end module network")
 
 
 def find_reactant(species_list: list[str], reactant: str) -> int:
@@ -1987,7 +2060,11 @@ def replace_value_with_name(
 
 
 def array_to_string(
-    name: str, array: list | np.ndarray, type: str = "int", parameter: bool = True
+    name: str,
+    array: list | np.ndarray,
+    type: str = "int",
+    parameter: bool = True,
+    length_name: str | None = None,
 ) -> str:
     """Write an array to fortran source code.
 
@@ -2001,8 +2078,12 @@ def array_to_string(
         The array's type. Must be one of "int", "float", "string" or "logical".
         Defaults to "int".
     parameter : bool
-        Whether the array is a Fortran PARAMETER (constant).
+        Whether the array is a Fortran parameter (constant).
         Defaults to True.
+    length_name : str | None
+        Name to put in the ``dimension`` statement.
+        If None, simply but the length of the array (or shape for 2D arrays).
+        Default = None.
 
     Returns
     -------
@@ -2013,53 +2094,65 @@ def array_to_string(
     ------
     ValueError
         Raises an error if type isn't "int", "float", "string" or "logical".
+    ValueError
+        If the shape of `array` is 2-dimensional, but `length_name` does not contain
+        a comma.
 
     """
     # Check for 2D array
     arr = np.array(array)
     if arr.ndim == 2:  # noqa: PLR2004
-        shape = arr.shape
+        if length_name is None:
+            shape_name = arr.shape
+        else:
+            if "," not in length_name:
+                msg = f"length_name '{length_name}' should contain a comma to indicate a 2D array"
+                raise ValueError(msg)
+            shape_name = [i.strip() for i in length_name.split(",")]
+        print(shape_name)
+        shape_string = ",".join(str(s) for s in shape_name)
         flat = arr.flatten(order="F")
         if type == "int":
-            dtype = "INTEGER"
+            dtype = "integer"
             values = ",".join(str(int(v)) for v in flat)
         elif type == "float":
-            dtype = "REAL(dp)"
-            values = ",".join(f"{float(v):.4e}" for v in flat)
+            dtype = "real(dp)"
+            values = ",".join(f"{float(v):.4e}_dp" for v in flat)
         elif type == "string":
             strLength = len(max(flat, key=len))
-            dtype = f"CHARACTER(Len={strLength})"
+            dtype = f"character(LEN={strLength})"
             values = ",".join('"' + str(v).ljust(strLength) + '"' for v in flat)
         elif type == "logical":
-            dtype = "LOGICAL"
-            values = ",".join(".TRUE." if v else ".FALSE." for v in flat)
+            dtype = "logical"
+            values = ",".join(".true." if v else ".false." for v in flat)
         else:
             msg = "Not a valid type for array to string"
             raise ValueError(msg)
-        param_str = ", PARAMETER" if parameter else ""
-        outString = f"{dtype}{param_str} :: {name}({','.join(str(s) for s in shape)}) = RESHAPE((/ {values} /), (/ {', '.join(str(s) for s in shape)} /))\n"
+        param_str = ", parameter" if parameter else ""
+        outString = f"{dtype}{param_str} :: {name}({shape_string}) = RESHAPE((/ {values} /), (/ {shape_string} /))\n"
     else:
+        length_name: str = str(len(arr)) if length_name is None else length_name
         if parameter:
-            outString = ", PARAMETER :: " + name + f" ({len(arr)})=(/"
+            outString = ", parameter :: " + name + f" ({length_name})=(/"
         else:
-            outString = " :: " + name + f" ({len(arr)})=(/"
+            outString = " :: " + name + f" ({length_name})=(/"
         if type == "int":
-            outString = "INTEGER" + outString
+            outString = "integer" + outString
             for value in arr:
                 outString += f"{value},"
         elif type == "float":
-            outString = "REAL(dp)" + outString
+            outString = "real(dp)" + outString
             for value in arr:
-                outString += f"{value:.4e},"
+                outString += f"{value:.4e}_dp,"
         elif type == "string":
             strLength = len(max(arr, key=len))
-            outString = f"CHARACTER(Len={strLength:.0f})" + outString
+            outString = f"character(LEN={strLength:.0f})" + outString
             for value in arr:
                 outString += '"' + value.ljust(strLength) + '",'
         elif type == "logical":
-            outString = "LOGICAL" + outString
+            outString = "logical" + outString
             for value in arr:
-                outString += ".TRUE.," if value else ".FALSE.,"
+                outString += ".true.," if value else ".false.,"
         else:
             msg = "Not a valid type for array to string"
             raise ValueError(msg)
