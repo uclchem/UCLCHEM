@@ -36,6 +36,16 @@ module physicscore
     ! preserved without accessing a live coldens(dstep+1) that may not yet be computed.
     real(dp) :: outer_coldens_for_current_step = 0.0_dp
 
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !Grain surface parameters
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    real(dp), parameter :: GRAIN_RADIUS=1.0d-5, GRAIN_DENSITY = 3.0  ! Mass density of a dust grain
+
+    !reciprocal of fractional abundance of dust grains (we only divide by number density so better to store reciprocal)
+    !Derived from gas_dust_mass_ratio (DefaultParameters); kept in sync by RECOMPUTE_GAS_DUST_DENSITY_RATIO below.
+    !Not a PARAMETER, but do not set it directly. Initial value here matches the gas_dust_mass_ratio default (100.0).
+    real(dp) :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*100.0)/(3.0 * AMU)
+
     !Arrays for calculating rates
     !if ionModel = L use the L model coefficients, if = H use the H model
 
@@ -472,5 +482,17 @@ contains
         Luv = 0.45_dp * Lstar
         G0_internal_at_r = Luv / (4.0_dp * PI * C * r_cm**2) / uISRF_UV
     end function G0_internal_at_r
+
+
+    !=======================================================================
+    !
+    !  Recompute GAS_DUST_DENSITY_RATIO from gas_dust_mass_ratio. Called from
+    !  coreInitializePhysics so a gas_dust_mass_ratio set via param_dict is
+    !  always reflected in GAS_DUST_DENSITY_RATIO.
+    !
+    !-----------------------------------------------------------------------
+    subroutine RECOMPUTE_GAS_DUST_DENSITY_RATIO()
+      GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
+    end subroutine RECOMPUTE_GAS_DUST_DENSITY_RATIO
 
 end module physicscore

@@ -5,7 +5,6 @@
 !!note the resulting md file needs manually adding to the website.
 module DEFAULTPARAMETERS
 use constants
-use F2PY_CONSTANTS
 !---
 !id: parameters
 !title: Model Parameters
@@ -34,6 +33,7 @@ real(dp) :: density_power_index=2.0  !Power-law index for density profile: n(r) 
 !Luminosity source for hotcore in 1D model
 real(dp) :: lum_star=1.00d6  !unit of Lsun, bolometric luminosity of the central source
 real(dp) :: temp_star=4.50d4  !unit of K, temperature of the central source
+real(dp) :: gas_dust_mass_ratio=100.0 !Gas-to-dust mass ratio by mass.
 !
 !## Behavioral Controls
 !*The following parameters generally turn on or off features of the model. If a parameter is set to `True`, then it is turned on. If it is set to `False`, then it is turned off.*

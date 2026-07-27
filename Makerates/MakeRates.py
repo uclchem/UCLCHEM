@@ -13,7 +13,7 @@ try:
 except ModuleNotFoundError as err:
     msg = (
         "The uclchem module could not be found, please make sure it is "
-        "installed\nPlease refer to uclchem.github.io for installation "
+        "installed.\nPlease refer to uclchem.github.io for installation "
         "instructions."
     )
     raise ModuleNotFoundError(msg) from err

@@ -43,7 +43,7 @@ version_file = vcs_tag(
 # Generate _project_root.py containing the source directory baked in at install time.
 # This lets makerates find src/uclchem and src/fortran_src at runtime for local installs.
 _root_conf = configuration_data()
-_root_conf.set('MESON_SOURCE_ROOT', meson.source_root())
+_root_conf.set('MESON_SOURCE_ROOT', meson.project_source_root())
 
 _project_root_file = configure_file(
   input  : 'src/uclchem/_project_root.py.in',

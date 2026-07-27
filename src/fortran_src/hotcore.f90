@@ -235,7 +235,7 @@ contains
         real(dp), intent(inout) :: abund(nspec+1,lpoints)
         integer, intent(in) :: lpoints
 
-            if (sum(abund(iceList,dstep)) > 1d-30) then
+            if (sum(abund(iceList,dstep)) > MIN_ABUND) then
                 !Solid Evap
                 if (solidflag == 1) then
                     call partialSublimation(solidFractions,abund, lpoints)
@@ -273,7 +273,7 @@ contains
         real(dp), intent(inout) :: abund(nspec+1,lpoints)
         integer, intent(in) :: lpoints
         abund(gasiceList,dstep)=abund(gasiceList,dstep)+abund(iceList,dstep)
-        abund(iceList,dstep)=1d-30
+        abund(iceList,dstep)=MIN_ABUND
     end subroutine totalSublimation
 
     subroutine bindingEnergyEvap(abund, lpoints)

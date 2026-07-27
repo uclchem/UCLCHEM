@@ -419,7 +419,7 @@ contains
          end if
 
          ! Clamp tiny negative densities (solver noise) to 1e-30 floor
-         if (coolants(N)%density < 1.0D-30) coolants(N)%density = 1.0D-30
+         if (coolants(N)%density < MIN_ABUND) coolants(N)%density = MIN_ABUND
 
          ! Sanity check: only error on clearly unphysical values (memory corruption, etc.).
          ! Negative abundances during solver steps are normal solver noise; physical
@@ -1437,13 +1437,13 @@ logical function WITHIN_TOLERANCE(cached_val, current_val, tol)
    real(dp) :: rel_diff
 
 !  Handle near-zero values (both must be negligible)
-   if (ABS(cached_val) < 1.0D-30 .AND. ABS(current_val) < 1.0D-30) then
+   if (ABS(cached_val) < MIN_ABUND .AND. ABS(current_val) < MIN_ABUND) then
       WITHIN_TOLERANCE = .true.
       return
    end if
 
 !  One value near-zero but not the other - no match
-   if (ABS(cached_val) < 1.0D-30 .OR. ABS(current_val) < 1.0D-30) then
+   if (ABS(cached_val) < MIN_ABUND .OR. ABS(current_val) < MIN_ABUND) then
       WITHIN_TOLERANCE = .false.
       return
    end if

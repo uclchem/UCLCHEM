@@ -4,6 +4,7 @@ module SurfaceReactions
   !f2py INTEGER, parameter :: dp
   use f2py_constants
   use network
+  use physicscore, only: GRAIN_RADIUS, GAS_DUST_DENSITY_RATIO
   implicit none
   real(dp) :: surfaceCoverage,totalSwap,bulkLayersReciprocal
   real(dp) :: safeMantle,safeBulk
@@ -31,16 +32,7 @@ module SurfaceReactions
   real(dp),parameter :: GRAPHITE_NU_HC=1.3D13  ! Vibrational frequency of H atoms in their surface sites (s^-1)
   real(dp),parameter :: GRAPHITE_CROSS_SECTION=7.908D-22  !*CROSS_SECTION_SCALE ! Graphite grain cross section per H nucleus (cm^-2/nucleus)
 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !Grain surface parameters
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  real(dp), parameter :: GRAIN_RADIUS=1.0d-5, GRAIN_DENSITY = 3.0  ! Mass density of a dust grain
   real(dp), parameter :: THERMAL_VEL= SQRT(8.0d0*K_BOLTZ/(PI*AMU))  !Thermal velocity without the factor of SQRT(T/m) where m is molecular mass in amu
-
-  !reciprocal of fractional abundance of dust grains (we only divide by number density so better to store reciprocal)
-  !Derived from gas_dust_mass_ratio (DefaultParameters); kept in sync by RECOMPUTE_GAS_DUST_DENSITY_RATIO below.
-  !Not a PARAMETER, but do not set it directly. Initial value here matches the gas_dust_mass_ratio default (100.0).
-  real(dp) :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*100.0)/(3.0 * AMU)
 
   !Grain area per h nuclei, values taken from Cazaux & Tielens 2004 via UCL-PDR to match H2 formation rate
   real(dp), parameter :: GRAIN_CROSSSECTION_PER_H=0.5*(7.908D-22+8.473D-22)
@@ -73,16 +65,6 @@ module SurfaceReactions
 
   real(dp), allocatable :: vdiff(:),vdes(:)
 contains
-  !=======================================================================
-  !
-  !  Recompute GAS_DUST_DENSITY_RATIO from gas_dust_mass_ratio. Called from
-  !  coreInitializePhysics so a gas_dust_mass_ratio set via param_dict is
-  !  always reflected in GAS_DUST_DENSITY_RATIO.
-  !
-  !-----------------------------------------------------------------------
-  SUBROUTINE RECOMPUTE_GAS_DUST_DENSITY_RATIO()
-    GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
-  END SUBROUTINE RECOMPUTE_GAS_DUST_DENSITY_RATIO
   !=======================================================================
   !
   !  Calculate the rate of molecular hydrogen (H2) formation on grains
