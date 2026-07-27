@@ -290,7 +290,7 @@ contains
             en=bindingEnergy(i)*K_BOLTZ_SI
             expdust=bindingEnergy(i)/dustTemp(dstep)
             newm = mass(speci)*1.66053e-27
-            freq = dsqrt((2*(SURFACE_SITE_DENSITY)*en)/((pi**2)*newm))
+            freq = sqrt((2*(SURFACE_SITE_DENSITY)*en)/((pi**2)*newm))
             kevap=freq*exp(-expdust)
             if (kevap >= 0.99) then
                 abund(gasiceList(i),dstep)=abund(gasiceList(i),dstep)+(monoFracCopy(i)*abund(speci,dstep))

@@ -158,7 +158,7 @@ contains
         do i=idx1,idx2
             do j=lbound(iceList,1),ubound(iceList,1)
                 if (iceList(j) == re1(i)) then
-                  rate(i)=vdiff(j)*DEXP(-bindingEnergy(j)/dustTemperature)
+                  rate(i)=vdiff(j)*exp(-bindingEnergy(j)/dustTemperature)
                 end if
             end do
         end do

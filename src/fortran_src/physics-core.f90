@@ -191,7 +191,7 @@ contains
     if (density < finalDens) then
         dByDndensdot=freefallFactor*8.4d-30*(density**3)*((9.0d0*((density/initialDens)**0.33))-8.0d0)
         dByDnDensdot=dByDnDensdot/(6.0d0*(((density**4.0)/initialDens)**0.66))
-        dByDnDensdot=dByDnDensdot/dsqrt(initialDens*8.4d-30*(((density/initialDens)**0.33))-1.0d0)
+        dByDnDensdot=dByDnDensdot/sqrt(initialDens*8.4d-30*(((density/initialDens)**0.33))-1.0d0)
     else
         dByDnDensdot=0.0
     end if

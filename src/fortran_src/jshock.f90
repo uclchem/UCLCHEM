@@ -100,7 +100,7 @@ contains
     subroutine updatePhysics
 
         ! Determine the shock velocity at the current time
-        v0 = vs*(DEXP(LOG(vMin/vs)*(currentTime/(finalTime*SECONDS_PER_YEAR))))
+        v0 = vs*(exp(LOG(vMin/vs)*(currentTime/(finalTime*SECONDS_PER_YEAR))))
         if (v0 < vMin) then
             v0 = vMin
         end if
@@ -114,8 +114,8 @@ contains
             where (density < initialDens) density = initialDens
         else if (currentTime > tShock .AND. currentTime <= tCool) then
             ! Otherwise we're in the cooling phase
-            tn(dstep) = maxTemp*DEXP(-t_lambda*(currentTime/tCool))
-            density = (4*initialDens)*DEXP(n_lambda*(currentTime/tCool))
+            tn(dstep) = maxTemp*exp(-t_lambda*(currentTime/tCool))
+            density = (4*initialDens)*exp(n_lambda*(currentTime/tCool))
 
             ! Ensure the gas does not cool below around 10 K
             if (tn(dstep) <= 10) then
