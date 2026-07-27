@@ -53,8 +53,8 @@ contains
         idx2=photonReacs(2)
         if (idx1 /= REAC_NOT_PRESENT) then
             rate(idx1:idx2) = alpha(idx1:idx2) * ( &
-                radfield              * dexp(-gama(idx1:idx2)*av(dstep))          + &
-                radfield_internal(dstep) * dexp(-gama(idx1:idx2)*av_internal(dstep)) &
+                radfield              * exp(-gama(idx1:idx2)*av(dstep))          + &
+                radfield_internal(dstep) * exp(-gama(idx1:idx2)*av_internal(dstep)) &
                 ) / 1.7
             ! For all solid species, decrease rate by 0.3 (Kalvans 2018)
             ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
@@ -170,9 +170,9 @@ contains
                 !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of
                 !CR induced UV to ISRF UV.
                 rate(idx1:idx2) = rate(idx1:idx2) &
-                    & * (1 + (radfield/uvcreff)*(1.0/zeta)*dexp(-1.8*av(dstep)) &
+                    & * (1 + (radfield/uvcreff)*(1.0/zeta)*exp(-1.8*av(dstep)) &
                     & + (radfield_internal(dstep)/uvcreff)*(1.0/zeta) &
-                    & * dexp(-1.8*av_internal(dstep)))
+                    & * exp(-1.8*av_internal(dstep)))
                 !alpha is a branching ratio (default 1.0; use <1.0 for isomer desorption channels)
                 rate(idx1:idx2) = alpha(idx1:idx2)*rate(idx1:idx2)
 
@@ -319,7 +319,7 @@ contains
     idx2=erReacs(2)
     if (idx1 /= REAC_NOT_PRESENT) then
         rate(idx1:idx2)=freezeOutRate(idx1,idx2)
-        rate(idx1:idx2)=rate(idx1:idx2)*dexp(-gama(idx1:idx2)/dustTemp(dstep))
+        rate(idx1:idx2)=rate(idx1:idx2)*exp(-gama(idx1:idx2)/dustTemp(dstep))
 
         ! Save unsplit ER rates for dynamic re-split inside the F callback
         rate_er_unsplit(erReacs(1):erReacs(2)) = rate(erReacs(1):erReacs(2))
@@ -371,14 +371,14 @@ contains
     idx1=twobodyReacs(1)
     idx2=twobodyReacs(2)
     if (lastTemp /= gasTemp(dstep)) then
-        rate(idx1:idx2) = alpha(idx1:idx2)*((gasTemp(dstep)/300.0)**beta(idx1:idx2))*dexp(-gama(idx1:idx2)/gasTemp(dstep))
+        rate(idx1:idx2) = alpha(idx1:idx2)*((gasTemp(dstep)/300.0)**beta(idx1:idx2))*exp(-gama(idx1:idx2)/gasTemp(dstep))
     end if
 
     idx1=ionopol1Reacs(1)
     idx2=ionopol1Reacs(2)
     if (idx1 /= REAC_NOT_PRESENT) then
         !This formula including the magic numbers come from KIDA help page.
-        rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(0.62d0+0.4767d0*gama(idx1:idx2)*dsqrt(300.0d0/gasTemp(dstep)))
+        rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(0.62d0+0.4767d0*gama(idx1:idx2)*sqrt(300.0d0/gasTemp(dstep)))
     end if
 
     idx1=ionopol2Reacs(1)
@@ -386,7 +386,7 @@ contains
     if (idx1 /= REAC_NOT_PRESENT) then
         !This formula including the magic numbers come from KIDA help page.
         rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(1.0d0+0.0967d0*gama(idx1:idx2)&
-        &*dsqrt(300.0d0/gasTemp(dstep))+gama(idx1:idx2)*gama(idx1:idx2)*300.0/(10.526*gasTemp(dstep)))
+        &*sqrt(300.0d0/gasTemp(dstep))+gama(idx1:idx2)*gama(idx1:idx2)*300.0/(10.526*gasTemp(dstep)))
     end if
     lastTemp=gasTemp(dstep)
 
@@ -508,7 +508,7 @@ function freezeOutRate(idx1,idx2) result(freezeRates)
         freezeRates=0.0
     else
         freezeRates=freezeRates*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL&
-        &*dsqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
+        &*sqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
     end if
 
     end function freezeOutRate

@@ -171,7 +171,7 @@ contains
       !this yield is for ice averaged over all angles. There's a different one for cores (Appendix B Jimenez-Serra 2008)
       !it's 2 times the normal incidence yield, but there's a factor of 0.5 in integrand so we drop both
       yield=yieldConst*((eps-epso)**2)/(1.0+((eps/30.0)**(1.3333)))
-      iceYieldIntegrand=yield*(x**2)*(DEXP(-((x-s)**2))-DEXP(-((x+s)**2)))
+      iceYieldIntegrand=yield*(x**2)*(exp(-((x-s)**2))-exp(-((x+s)**2)))
   end function iceYieldIntegrand
 
   !Function to calculate the upper limit beyond which there's no point

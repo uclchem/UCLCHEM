@@ -115,7 +115,7 @@ contains
         ! maxTemp is taken from Fig.9b in Draine et al. (1983) and the at constant is
         ! derived as:
         a1=6.0
-        at=(1/zmax)*((maxTemp-initialTemp)*(dexp(a1)-1.0))**(1.0/6.0)
+        at=(1/zmax)*((maxTemp-initialTemp)*((a1)-1.0))**(1.0/6.0)
 
         !Second, we calculate v0 that depends on the alfven and the shock velocities
         !Magnetic field in microGauss. We assume strong magnetic field, i.e., bm0=1.microgauss.
@@ -168,7 +168,7 @@ contains
         !C-shock. We also take into account that the gas and dust are decoupled. We
         !use the equations for the collisional and radiative heating of grains of
         !Draine, Roberge & Dalgarno (1983) and Hollenbach, Takahashi & Tielens (1991).
-        tn(dstep)=initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
+        tn(dstep)=initialTemp+((at*zn)**bt)/((zn/z3)-1)
         ti(dstep)=tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ))
 
         !grain collisional heating
@@ -178,7 +178,7 @@ contains
         ! G0=Frs
         ! trs0=12.2*G0**0.2
         ! tau100=2.7d2*G0/trs0**5
-        ! tgr1=8.9d-11*nu0*G0*dexp(1.8*av(dstep))+2.7**5
+        ! tgr1=8.9d-11*nu0*G0*(1.8*av(dstep))+2.7**5
         ! tgr2=3.4d-2*(0.42-log(3.5d-2*tau100*trs0))*tau100*trs0**6
         ! tgr(dstep)=(tgr1+tgr2)**0.2
         !If we don't include the radiative heating that is characteristic
@@ -194,7 +194,7 @@ contains
 
         !temperature change as shock evolves
         if (timeInYears > 0.0) then
-            tn(dstep)=initialTemp+((at*zn)**bt)/(dexp(zn/z3)-1)
+            tn(dstep)=initialTemp+((at*zn)**bt)/((zn/z3)-1)
             gasTemp(dstep)=tn(dstep)
             ti(dstep)=tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ))
 
@@ -237,13 +237,13 @@ contains
             f0=vs-vn0
             zn=zn0+(currentTime-currentTimeOld)*km*(f1+f0)/2
             xcos=zn/z2
-            acosh=0.5*(dexp(xcos)+dexp(-xcos))
+            acosh=0.5*((xcos)+exp(-xcos))
             vn=(vs-v0)-((vs-v0)/acosh)
             loopCount=loopCount+1
         end  do
 
         xcos=zn/z1
-        acosh=0.5*(dexp(xcos)+dexp(-xcos))
+        acosh=0.5*((xcos)+exp(-xcos))
         vi=(vs-v0)-((vs-v0)/acosh)
 
         !Store all variables as initial values for next iteration

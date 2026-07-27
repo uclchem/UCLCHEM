@@ -373,7 +373,7 @@ implicit none
             !Taylor series is fine for tau<0.2 and that's well above the area we get an issue
          !   tau=1.0-(0.5*tau)+((tau**2.0)/6.0)-((tau**3.0)/24.0)+((tau**4)/120.0)
         !ELSE
-            tau=(1.0-dexp(-tau))/tau
+            tau=(1.0-exp(-tau))/tau
         !END IF
         tau=min(1.0,tau)
 
@@ -1010,10 +1010,10 @@ end module heating
 !     T1000=gasTemperature*0.001
 
 !     !high density limit is same in all models: sum of vibrational and rotational cooling
-!     highDensLimit=((9.5d-22*T1000**3.76)/(1+0.12*(T1000**2.1)))*dexp(-(0.13/T1000)**3.0)
-!     highDensLimit=highDensLimit+(3.0d-24*dexp(-0.51/T1000))
+!     highDensLimit=((9.5d-22*T1000**3.76)/(1+0.12*(T1000**2.1)))*exp(-(0.13/T1000)**3.0)
+!     highDensLimit=highDensLimit+(3.0d-24*exp(-0.51/T1000))
 
-!     highDensLimit=highDensLimit+(6.7d-19*dexp(-5.86/T1000))+(1.6d-18*dexp(-11.7/T1000))
+!     highDensLimit=highDensLimit+(6.7d-19*exp(-5.86/T1000))+(1.6d-18*exp(-11.7/T1000))
 
 !     !I'm using Galli & Palli limit here which is ok up to 10^5.
 !     !I think Glover and Abel is more accurate but is many fits so hard to imlpement
@@ -1058,7 +1058,7 @@ end module heating
 
 !         XK=K_BOLTZ*gasTemperature/(HNU_H*eV)
 !         XD=HNU_D/HNU_H
-!         gamma=2.9D-4*Y*DSQRT(gasTemperature)*habingField/(gasDensity*electronAbund)
+!         gamma=2.9D-4*Y*sqrt(gasTemperature)*habingField/(gasDensity*electronAbund)
 !         delta=XK-XD+gamma
 
 !         !  Iterate to determine X by finding the zero of the function F
