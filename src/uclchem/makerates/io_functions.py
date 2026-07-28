@@ -1146,9 +1146,9 @@ def build_ode_string(
         use f2py_constants, only: nReac
         use network, only: SURFGROWTHUNCORRECTED, refractoryList, bulkList, surfaceList
         use surfacereactions, only: useGarrod2011Transfer, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO
-    
+
         implicit none
-    
+
         public
     contains
         subroutine GETYDOT(RATE, Y, surfaceCoverage, D, YDOT)
@@ -1156,10 +1156,10 @@ def build_ode_string(
             real(dp), intent(in) :: D
             real(dp), intent(inout) :: surfaceCoverage
             real(dp), intent(out) :: YDOT(:)
-    
+
             real(dp) :: totalSwap, LOSS, PROD
             real(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
-    
+
             safeMantle = MAX(MIN_ABUND, SUM(Y(surfaceList)))
             safeBulk   = MAX(MIN_ABUND, SUM(Y(bulkList)))
             if (refractoryList(1) > 0) then
@@ -1514,7 +1514,6 @@ def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> 
     line_length : int
         rough line length. Default = :data:`FORTRAN_LINE_LENGTH`.
 
-
     Returns
     -------
     result : str
@@ -1581,7 +1580,7 @@ def write_network_file(
                 NO_REACTANT_OR_PRODUCT
 
             implicit none
-                
+
             public
 
         """)
@@ -2023,12 +2022,12 @@ def replace_value_with_name(
     >>> replace_value_with_name("(/0,1,2/)", 2, "X")
     '(/0,1,X/)'
 
-    >>> replace_value_with_name("(/0.0000e+00,1.0000e+00,2.0000e+00/)", 2.0, "X")
-    '(/0.0000e+00,1.0000e+00,X/)'
+    >>> replace_value_with_name("(/0.0000e+00_dp,1.0000e+00_dp,2.0000e+00_dp/)", 2.0, "X")
+    '(/0.0000e+00_dp,1.0000e+00_dp,X/)'
 
     >>> # Replaces all instances of 'value'
-    >>> replace_value_with_name("(/0.0000e+00,1.0000e+00,2.0000e+00,1.0000e+00/)", 1.0, "X")
-    '(/0.0000e+00,X,2.0000e+00,X/)'
+    >>> replace_value_with_name("(/0.0000e+00_dp,1.0000e+00_dp,2.0000e+00_dp,1.0000e+00_dp/)", 1.0, "X")
+    '(/0.0000e+00_dp,X,2.0000e+00_dp,X/)'
 
     """
     # Somehow replace every case with {value} with a string {replace_string}.
@@ -2108,8 +2107,8 @@ def array_to_string(
             if "," not in length_name:
                 msg = f"length_name '{length_name}' should contain a comma to indicate a 2D array"
                 raise ValueError(msg)
-            shape_name = [i.strip() for i in length_name.split(",")]
-        shape_string = ",".join(str(s) for s in shape_name)
+            shape_name: list[str] = [i.strip() for i in length_name.split(",")]  # type: ignore[no-redef]
+        shape_string: str = ",".join(str(s) for s in shape_name)  # type: ignore[no-redef]
         flat = arr.flatten(order="F")
         if type == "int":
             dtype = "integer"
@@ -2130,7 +2129,7 @@ def array_to_string(
         param_str = ", parameter" if parameter else ""
         outString = f"{dtype}{param_str} :: {name}({shape_string}) = RESHAPE((/ {values} /), (/ {shape_string} /))\n"
     else:
-        length_name: str = str(len(arr)) if length_name is None else length_name
+        length_name: str = str(len(arr)) if length_name is None else length_name  # type: ignore[no-redef]
         if parameter:
             outString = ", parameter :: " + name + f" ({length_name})=(/"
         else:
