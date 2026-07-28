@@ -8,6 +8,8 @@
 !-----------------------------------------------------------------------
 module SWAP_FUNCTION
 
+   use constants, only: dp
+
    interface SWAP
       module procedure SWAP_INTEGER,SWAP_REAL,SWAP_INTEGER_1D_ARRAY,SWAP_REAL_1D_ARRAY,SWAP_INTEGER_2D_ARRAY,SWAP_REAL_2D_ARRAY
    end interface SWAP
@@ -25,8 +27,8 @@ contains
 
    subroutine SWAP_REAL(A,B)
       implicit none
-      double precision, intent(inout) :: A,B
-      double precision :: D
+      real(dp), intent(inout) :: A,B
+      real(dp) :: D
       D = A
       A = B
       B = D
@@ -50,8 +52,8 @@ contains
 
    subroutine SWAP_REAL_1D_ARRAY(A,B)
       implicit none
-      double precision, dimension(:), intent(inout) :: A,B
-      double precision, dimension(:), allocatable   :: D
+      real(dp), dimension(:), intent(inout) :: A,B
+      real(dp), dimension(:), allocatable   :: D
       if(SIZE(A)/=SIZE(B)) then
          write(6,*) "ERROR! Cannot swap values between arrays of different dimensions"
          write(6,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
@@ -83,8 +85,8 @@ contains
 
    subroutine SWAP_REAL_2D_ARRAY(A,B)
       implicit none
-      double precision, dimension(:,:), intent(inout) :: A,B
-      double precision, dimension(:,:), allocatable   :: D
+      real(dp), dimension(:,:), intent(inout) :: A,B
+      real(dp), dimension(:,:), allocatable   :: D
       if(SIZE(A,1)/=SIZE(B,1) .OR. SIZE(A,2)/=SIZE(B,2)) then
          write(6,*) "ERROR! Cannot swap values between arrays of different dimensions"
          write(6,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)

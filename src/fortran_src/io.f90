@@ -1,10 +1,11 @@
 module IO
     use chemistry
-    use constants
+    use constants, only: dp
     use DEFAULTPARAMETERS
-    use heating
-    use network
-    use physicscore
+    use heating, only: coolingLabels
+    use network, only: nSpec, nReac
+    use physicscore, only: timeInYears, density, gasTemp, dustTemp, av, &
+        radfield, zeta, dstep, parcel_radius, av_internal, radfield_internal
 
     ! CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile
     logical :: columnOutput=.false.,fullOutput=.false.,rateConstantsOutput=.false.,fluxOutput=.false.,&
@@ -100,18 +101,19 @@ contains
     end subroutine finalOutput
 
     subroutine output(returnArray,writerates,successflag,physicsarray, chemicalabunarray, rateConstantsArray, &
-            & heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
-        double precision, dimension(:, :, :), optional :: physicsarray
-        double precision, dimension(:, :, :), optional :: chemicalabunarray
-        double precision, dimension(:, :, :), optional :: rateConstantsArray
-        double precision, dimension(:, :, :), optional :: heatarray
-        double precision, dimension(:, :, :), optional :: statsarray
-        double precision, dimension(:, :, :), optional :: levelpopulationsarray
-        double precision, dimension(:, :, :), optional :: sestatsarray
-        integer, optional :: dtime, timepoints
+            & heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timePoints)
+        real(dp), intent(out), dimension(:, :, :), optional :: physicsarray
+        real(dp), intent(out), dimension(:, :, :), optional :: chemicalabunarray
+        real(dp), intent(out), dimension(:, :, :), optional :: rateConstantsArray
+        real(dp), intent(out), dimension(:, :, :), optional :: heatarray
+        real(dp), intent(out), dimension(:, :, :), optional :: statsarray
+        real(dp), intent(out), dimension(:, :, :), optional :: levelpopulationsarray
+        real(dp), intent(out), dimension(:, :, :), optional :: sestatsarray
+        integer, intent(in), optional :: dtime, timePoints
+        logical, intent(in) :: returnArray, writerates
+
         integer, intent(out) :: successflag
         integer :: i  ! Loop variable for heating array assignment
-        logical :: returnArray, writerates
         successflag = 0
         if (returnArray) then
             ! Try to catch out of bounds errors before they create a segfault
@@ -219,7 +221,7 @@ contains
     end subroutine closeFiles
 
     subroutine debugout
-        open(debugId,file="output/debuglog",status="unknown")       !debug file.
+        open(debugId,file="output/debuglog",status="unknown", action="write")       !debug file.
         write(debugId,*) "Integrator failed, printing relevant debugging information"
         write(debugId,*) "dens",density(dstep)
         write(debugId,*) "gas temperature in integration array",abund(nspec+1,dstep)
@@ -235,7 +237,7 @@ contains
     !A very simply subroutine for debugging, just write a bunch of variables to screen
     !so we can check they're all as expected.
     !Argument message is a string to print before the variables
-        character(LEN=*) :: message
+        character(LEN=*), intent(in) :: message
         write(*,*) message
         write(*,*)"freefall",freefall
         write(*,*)"initialDens",initialDens
@@ -258,7 +260,7 @@ contains
         use COOLANT_MODULE, only: coolants, NCOOLANTS
         use F2PY_CONSTANTS, only: N_TOTAL_LEVELS
         implicit none
-        double precision, dimension(:, :, :), intent(inout) :: levelpopulationsarray
+        real(dp), dimension(:, :, :), intent(inout) :: levelpopulationsarray
         integer, intent(in) :: dtime, dstep
         integer :: N, level_offset, i
 
@@ -284,13 +286,13 @@ contains
         use COOLANT_MODULE, only: coolants, NCOOLANTS
         use heating, only: se_coolant_iterations, se_coolant_max_rel_change
         implicit none
-        double precision, dimension(:, :, :), intent(inout) :: sestatsarray
+        real(dp), dimension(:, :, :), intent(inout) :: sestatsarray
         integer, intent(in) :: dtime, dstep
         integer :: N, idx
 
         do N = 1, NCOOLANTS
             idx = (N-1) * 3  ! 3 stats per coolant
-            sestatsarray(dtime, dstep, idx + 1) = MERGE(1.0D0, 0.0D0, coolants(N)%CONVERGED)
+            sestatsarray(dtime, dstep, idx + 1) = MERGE(1.0_dp, 0.0_dp, coolants(N)%CONVERGED)
             sestatsarray(dtime, dstep, idx + 2) = DBLE(se_coolant_iterations(N))
             sestatsarray(dtime, dstep, idx + 3) = se_coolant_max_rel_change(N)
         end do
