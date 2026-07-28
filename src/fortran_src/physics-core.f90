@@ -39,51 +39,51 @@ module physicscore
     !Arrays for calculating rates
     !if ionModel = L use the L model coefficients, if = H use the H model
 
-    ! REAL(dp),PARAMETER :: ckLIon(10)=(/1.545456645800d7, -6.307708626617d6, 1.142680666041d6, -1.205932302621d5,&
-    ! 8.170913352693d3, -3.686121296079d2,1.107203722057d1, -2.135293914267d-1,&
-    ! 2.399219033781d-3, -1.196664901916d-5/)
+    ! REAL(dp),PARAMETER :: ckLIon(10)=(/1.545456645800e7_dp, -6.307708626617e6_dp, 1.142680666041e6_dp, -1.205932302621e5_dp,&
+    ! 8.170913352693e3_dp, -3.686121296079e2_dp,1.107203722057e1_dp, -2.135293914267e-1_dp,&
+    ! 2.399219033781e-3_dp, -1.196664901916e-5_dp/)
 
-    ! REAL(dp),PARAMETER :: ckHIon(10)=(/1.223529865309d7, -5.013766644305d6, 9.120125566763d5, -9.665446168847d4,&
-    !     6.576930812109d3, -2.979875686226d2,8.989721355058d0, -1.741300519598d-1,&
-    !     1.965098116126d-3, -9.844203439473d-6/)
+    ! REAL(dp),PARAMETER :: ckHIon(10)=(/1.223529865309e7_dp, -5.013766644305e6_dp, 9.120125566763e5_dp, -9.665446168847e4_dp,&
+    !     6.576930812109e3_dp, -2.979875686226e2_dp,8.989721355058_dp, -1.741300519598e-1_dp,&
+    !     1.965098116126e-3_dp, -9.844203439473e-6_dp/)
 
     !ckLIon and ckHIon are the coefficients for the cosmic ray ionization rate
-    ! VALUES FROM Padovani et al. 2018
-    real(dp), parameter :: ckLIon(10) = (/-3.331056497233d6,&
-                                        1.207744586503d6,&
-                                        -1.913914106234d5,&
-                                        1.731822350618d4,&
-                                        -9.790557206178d2,&
-                                        3.543830893824d1,&
-                                        -8.034869454520d-1,&
-                                        1.04880859308d-2,&
-                                        -6.188760100997d-5,&
-                                        3.122820990797d-8/)
+    ! Values from Padovani et al. 2018
+    real(dp), parameter :: ckLIon(10) = (/-3.331056497233e6_dp,&
+                                        1.207744586503e6_dp,&
+                                        -1.913914106234e5_dp,&
+                                        1.731822350618e4_dp,&
+                                        -9.790557206178e2_dp,&
+                                        3.543830893824e1_dp,&
+                                        -8.034869454520e-1_dp,&
+                                        1.04880859308e-2_dp,&
+                                        -6.188760100997e-5_dp,&
+                                        3.122820990797e-8_dp/)
 
-    real(dp), parameter :: ckHion(10) = (/1.001098610761d7,&
-                                        -4.231294690194d6,&
-                                        7.921914432011d5,&
-                                        -8.623677095423d4,&
-                                        6.015889127529d3,&
-                                        -2.789238383353d2,&
-                                        8.595814402406d0,&
-                                        -1.698029737474d-1,&
-                                        1.951179287567d-3,&
-                                        -9.937499546711d-6/)
+    real(dp), parameter :: ckHion(10) = (/1.001098610761e7_dp,&
+                                        -4.231294690194e6_dp,&
+                                        7.921914432011e5_dp,&
+                                        -8.623677095423e4_dp,&
+                                        6.015889127529e3_dp,&
+                                        -2.789238383353e2_dp,&
+                                        8.595814402406_dp,&
+                                        -1.698029737474e-1_dp,&
+                                        1.951179287567e-3_dp,&
+                                        -9.937499546711e-6_dp/)
 
     !ckLDiss and ckHDiss are the coefficients for the H2 dissociation rate
-    real(dp), parameter :: ckLDiss(10)=(/1.582911005330d7,-6.465722684896d6, 1.172189025424d6, -1.237950798073d5, &
-        8.393404654312d3, -3.788811358130d2, 1.138688455029d1, -2.197136304567d-1, &
-        2.469841278950d-3, -1.232393620924d-5/)
-    real(dp), parameter :: ckHDiss(10)=(/1.217227462831d7,-4.989649250304d6, 9.079152156645d5, -9.624890825395d4, &
-        6.551161486120d3, -2.968976216187d2, 8.959037875226d0, -1.735757324445d-1, &
-        1.959267277734d-3, -9.816996707980d-6/)
+    real(dp), parameter :: ckLDiss(10)=(/1.582911005330e7_dp,-6.465722684896e6_dp, 1.172189025424e6_dp, -1.237950798073e5_dp, &
+        8.393404654312e3_dp, -3.788811358130e2_dp, 1.138688455029e1_dp, -2.197136304567e-1_dp, &
+        2.469841278950e-3_dp, -1.232393620924e-5_dp/)
+    real(dp), parameter :: ckHDiss(10)=(/1.217227462831e7_dp,-4.989649250304e6_dp, 9.079152156645e5_dp, -9.624890825395e4_dp, &
+        6.551161486120e3_dp, -2.968976216187e2_dp, 8.959037875226_dp, -1.735757324445e-1_dp, &
+        1.959267277734e-3_dp, -9.816996707980e-6_dp/)
 
     ! parameters for 1D radiation field calculation
-    real(dp), parameter :: Tdsub = 1500.0d0  !sublimation/melted temperature for dust grains
+    real(dp), parameter :: Tdsub = 1500.0_dp  !sublimation/melted temperature for dust grains
     ! ! range of wavelength for integration
-    real(dp), parameter :: wave1 = HP * C * 1.0d4 / (13.6d0 * EV)  !in micron
-    real(dp), parameter :: wave2 = 20.0d0  ! in micron
+    real(dp), parameter :: wave1 = HP * C * 1.0e4_dp / (13.6_dp * EV)  !in micron
+    real(dp), parameter :: wave2 = 20.0_dp  ! in micron
 
 contains
     !basic initialization of physics. All physics modules should call this and then
@@ -113,7 +113,7 @@ contains
         gasTemp=initialTemp
         dustTemp=gasTemp
         density=initialDens
-        currentTimeOld=0.0
+        currentTimeOld=0.0_dp
         if (.not. ((ionModel == "L") .or. (ionModel == "H"))) then
             successFlag=-1
             write(*,*) "Error: ionModel must be either L or H"
@@ -135,7 +135,7 @@ contains
             coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
         end do
           !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av= baseAv + coldens/1.6d21
+        av= baseAv + coldens/1.6e21_dp
         zetaScale=zeta
     end subroutine coreInitializePhysics
 
@@ -152,7 +152,7 @@ contains
             if (dstep < points) coldens(dstep)=coldens(dstep)+coldens(dstep-1)
 
             !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-            av(dstep)= baseAv + coldens(dstep)/1.6d21
+            av(dstep)= baseAv + coldens(dstep)/1.6e21_dp
         end if
         if (.not. heatingFlag) then
             dustTemp(dstep)=gasTemp(dstep)
@@ -174,8 +174,8 @@ contains
     n0_pt = initialDens_array(dstep)
     !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
     if ((density < finalDens) .and. (freefall) .and. (density > n0_pt)) then
-        densdot=freefallFactor*(density**4.0/n0_pt)**0.33*&
-        &(8.4d-30*n0_pt*((density/n0_pt)**0.33-1.0))**0.5
+        densdot=freefallFactor*(density**4.0_dp/n0_pt)**0.33_dp*&
+        &(8.4e-30_dp*n0_pt*((density/n0_pt)**0.33-1.0_dp))**0.5
     else
         densdot=0.0
     end if
@@ -189,11 +189,11 @@ contains
     real(dp) :: dByDnDensdot
     !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
     if (density < finalDens) then
-        dByDndensdot=freefallFactor*8.4d-30*(density**3)*((9.0d0*((density/initialDens)**0.33))-8.0d0)
-        dByDnDensdot=dByDnDensdot/(6.0d0*(((density**4.0)/initialDens)**0.66))
-        dByDnDensdot=dByDnDensdot/sqrt(initialDens*8.4d-30*(((density/initialDens)**0.33))-1.0d0)
+        dByDndensdot=freefallFactor*8.4e-30_dp*(density**3)*((9.0_dp*((density/initialDens)**0.33))-8.0_dp)
+        dByDnDensdot=dByDnDensdot/(6.0_dp*(((density**4.0)/initialDens)**0.66))
+        dByDnDensdot=dByDnDensdot/sqrt(initialDens*8.4e-30_dp*(((density/initialDens)**0.33))-1.0_dp)
     else
-        dByDnDensdot=0.0
+        dByDnDensdot=0.0_dp
     end if
     end function dByDnDensdot
 
@@ -201,8 +201,8 @@ contains
         real(dp) :: dissSum,dRate,zSum,ionRate
         integer :: k
         !Attenuate CR by column density
-        zeta = 1.0
-        zSum = 0
+        zeta = 1.0_dp
+        zSum = 0.0_dp
         do k=0,9,1
             if (ionModel == "L") then
                 ionRate=ckLIon(k+1)*log10(coldens(dstep))**k
@@ -215,11 +215,11 @@ contains
         end do
 
         ! update/overwrite zeta with attenuated value
-        zeta = ((10**zSum)/1.3d-17)* zetaScale
+        zeta = ((10**zSum)/1.3e-17_dp)* zetaScale
 
         !rate calculation for H2 dissociation
         if (improvedH2CRPDissociation) then
-            dissSum = 0
+            dissSum = 0.0_dp
             do k=0,9,1
                 if (ionModel == "L") then
                     dRate=ckLDiss(k+1)*log10(coldens(dstep))**k
@@ -242,8 +242,8 @@ contains
       if (r <= density_scale_radius) then
           coldens = rho0 * r * pc
       else
-          coldens = rho0*density_scale_radius*pc * (1.0d0 + (1.0d0/(density_power_index-1.0d0)) * &
-              & (1.0d0 - (r/density_scale_radius)**(1.0d0-density_power_index)))
+          coldens = rho0*density_scale_radius*pc * (1.0_dp + (1.0_dp/(density_power_index-1.0_dp)) * &
+              & (1.0_dp - (r/density_scale_radius)**(1.0_dp-density_power_index)))
       end if
 
     end subroutine findcoldens_core2edge
@@ -252,10 +252,10 @@ contains
         real(dp),intent(in) :: rho0,density_scale_radius,density_power_index,r
         real(dp),intent(out) :: coldens
         if (r>density_scale_radius) then
-            coldens = rho0*density_scale_radius*pc/(density_power_index-1.0d0) &
-                & * (r/density_scale_radius)**(1.0d0-density_power_index)
+            coldens = rho0*density_scale_radius*pc/(density_power_index-1.0_dp) &
+                & * (r/density_scale_radius)**(1.0_dp-density_power_index)
         else
-            coldens = rho0*density_scale_radius*pc*(density_power_index/(density_power_index-1.0d0)-r/density_scale_radius)
+            coldens = rho0*density_scale_radius*pc*(density_power_index/(density_power_index-1.0_dp)-r/density_scale_radius)
         end if
     end subroutine findcoldens_edge2core
 
@@ -279,16 +279,16 @@ contains
     real(dp) function ngas_r(r,rho0,density_scale_radius,density_power_index)
       real(dp) :: r,rho0,density_scale_radius,density_power_index
       ! [r] in pc, [density_scale_radius] in pc
-      ngas_r = rho0/(1.0d0 + (r/density_scale_radius)**density_power_index)
+      ngas_r = rho0/(1.0_dp + (r/density_scale_radius)**density_power_index)
 
     end function ngas_r
 
     real(dp) function initialDens_r(r,p)
         real(dp) :: logn0, logr0,n0_init,r0_init
         real(dp) :: r,t,p
-        t = 0.0d0
-        logn0=61.8d0*(1.175d6-t)**(-0.01) - 49.4d0
-        logr0=-28.5d0*(1.175e6-t)**(-0.01) + 28.93d0
+        t = 0.0_dp
+        logn0=61.8_dp*(1.175e6_dp-t)**(-0.01) - 49.4_dp
+        logr0=-28.5_dp*(1.175e6-t)**(-0.01) + 28.93_dp
         n0_init=10**(logn0)
         r0_init=10**(logr0) * aunit
         initialDens_r=1.0+(r/r0_init)**p
@@ -309,7 +309,7 @@ contains
 
         ! radiation from the shell
         if (r<rsub) then
-            U_shell = 0.0d0
+            U_shell = 0.0_dp
         else
             call radiation_shell(r, Lstar, Tstar, Avs, U_shell)
         end if
@@ -334,8 +334,8 @@ contains
         real(dp), dimension(2, nw) :: ext_curves
         character(len=10) :: model
 
-        RV = 4.0d0
-        NH_EBV = 5.8d21
+        RV = 4.0_dp
+        NH_EBV = 5.8e21_dp
 
         ! sublimation distance
         rsub=get_rsub(Lstar)
@@ -347,21 +347,21 @@ contains
         call logspace(log10(wave1), log10(wave2), nw, wave)
 
         ! convert wave from micron to cm
-        wave_cm = wave*1.0d-4  !in cm
+        wave_cm = wave*1.0e-4_dp  !in cm
 
         ! Call the function from the module
         call extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
 
-        Istar     = (2.0d0*HP*C**2.0/wave_cm**5.0)*(1.0d0/(exp(ZZ/wave_cm)-1.0d0))
-        uwave_star = (4.0d0*PI*wave_cm/C)*(Istar)/wave_cm
+        Istar     = (2.0_dp*HP*C**2.0/wave_cm**5.0)*(1.0_dp/(exp(ZZ/wave_cm)-1.0_dp))
+        uwave_star = (4.0_dp*PI*wave_cm/C)*(Istar)/wave_cm
 
-        tau_wave = Avs * ext_curves(1,:)/1.086d0
+        tau_wave = Avs * ext_curves(1,:)/1.086_dp
         uwave_red = uwave_star*exp(-tau_wave)
 
         ! Apply trapezoidal rule for numerical integration
-        urad_red = 0.0d0
+        urad_red = 0.0_dp
         do i = 1, nw-1
-            urad_red = urad_red + 0.5d0 * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
+            urad_red = urad_red + 0.5_dp * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
         end do
 
         ! The stellar radius
@@ -383,8 +383,8 @@ contains
         real(dp), dimension(2, nw) :: ext_curves
         character(len=10) :: model
 
-        RV = 4.0d0
-        NH_EBV = 5.8d21
+        RV = 4.0_dp
+        NH_EBV = 5.8e21_dp
 
         ! sublimation distance
         rsub=get_rsub(Lstar)
@@ -400,23 +400,23 @@ contains
         call logspace(log10(wave1), log10(wave2), nw, wave)
 
         ! convert wave from micron to cm
-        wave_cm = wave*1.0d-4  !in cm
+        wave_cm = wave*1.0e-4_dp  !in cm
 
         ! Call the function from the module
         call extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
 
-        Istar     = (2.0d0*HP*C**2.0/wave_cm**5.0)*(1.0d0/(exp(ZZ/wave_cm)-1.0d0))
-        uwave_star = (4.0d0*PI*wave_cm/C)*(Istar)/wave_cm
+        Istar     = (2.0_dp*HP*C**2.0/wave_cm**5.0)*(1.0_dp/(exp(ZZ/wave_cm)-1.0_dp))
+        uwave_star = (4.0_dp*PI*wave_cm/C)*(Istar)/wave_cm
 
-        tau_wave = Avs * ext_curves(1,:)/1.086d0
+        tau_wave = Avs * ext_curves(1,:)/1.086_dp
         uwave_red = uwave_star*exp(-tau_wave)
 
         ! Apply trapezoidal rule for numerical integration
-        urad_red = 0.0d0
+        urad_red = 0.0_dp
         do i = 1, nw-1
-            urad_red = urad_red + 0.5d0 * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
+            urad_red = urad_red + 0.5_dp * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
         end do
-        U = urad_red / uISRF * (r / rsub)**(-2.0)
+        U = urad_red / uISRF * (r / rsub)**(-2.0_dp)
     end subroutine radiation_shell
 
     subroutine logspace(start, stop, num, result)
@@ -426,7 +426,7 @@ contains
         integer :: i
 
         do i = 1, num
-            result(i) = 10.0d0**(start + (i-1)*(stop-start)/DBLE(num-1))
+            result(i) = 10.0_dp**(start + (i-1)*(stop-start)/DBLE(num-1))
         end do
     end subroutine logspace
 
@@ -434,18 +434,18 @@ contains
         real(dp) :: Tstar,Tdmax
         real(dp) :: f1,f2
 
-        f1 = sqrt(1.0d6 * Lsun)
-        f2 = 155.3d0 * aunit * (Tdmax/1500.0)**(-5.6/2) * sqrt(4*PI*SB_CONST) * Tstar**(2.0)
+        f1 = sqrt(1.0e6_dp * Lsun)
+        f2 = 155.3_dp * aunit * (Tdmax/1500.0_dp)**(-5.6_dp/2.0_dp) * sqrt(4.0_dp*PI*SB_CONST) * Tstar**2
         Rstar_rsub= f1/f2
     end function Rstar_rsub
 
     real(dp) function Temp_average(U)
         real(dp) :: U
         real(dp) :: Td_sil,Td_car
-        Td_sil = 16.4d0 * U**(1.0/6.0)  ! For silicate grains
-        Td_car = 19.5d0 * U**(1.0/5.6)  ! For carbon grains
-        Temp_average = Td_sil**(4.0) + Td_car**(4.0)
-        Temp_average = (0.5*Temp_average)**(1.0/4.0)
+        Td_sil = 16.4_dp * U**(1.0_dp/6.0_dp)  ! For silicate grains
+        Td_car = 19.5_dp * U**(1.0_dp/5.6_dp)  ! For carbon grains
+        Temp_average = Td_sil**(4.0_dp) + Td_car**(4.0_dp)
+        Temp_average = (0.5_dp*Temp_average)**(1.0_dp/4.0_dp)
     end function Temp_average
 
     real(dp) function get_Tshell(Tstar)
@@ -457,7 +457,7 @@ contains
 
     real(dp) function get_rsub(Lstar)
         real(dp) :: Lstar
-        get_rsub = 155.3d0*(Lstar/1.0d6/Lsun)**(0.5) * (Tdsub/1500.0d0)**(-5.6/2.0) * aunit  !in cm
+        get_rsub = 155.3_dp*(Lstar/1.0e6_dp/Lsun)**(0.5) * (Tdsub/1500.0_dp)**(-5.6_dp/2.0_dp) * aunit  !in cm
     end function get_rsub
 
     ! Unattenuated UV radiation field from central protostar at radius r_cm [Habing units].

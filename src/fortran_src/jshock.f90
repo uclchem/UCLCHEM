@@ -11,7 +11,7 @@ module jshock_mod
     use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
     &coldens
-    use sputtering
+    use sputtering, only: sputterIces, sputteringSetup
     implicit none
 
     real(dp) :: tstart,maxTemp,vMin,mfp,tCool,tShock,d,dMax,maxDens
@@ -49,23 +49,24 @@ contains
         density=initialDens
 
         ! Determine the maximum temperature
-        maxTemp = (5e3)*(vs/10)**2
-        currentTimeOld=0.0
+        maxTemp = (5e3_dp)*(vs/10.0_dp)**2
+        currentTimeOld=0.0_dp
 
 
         ! Determine minimum velocity
-        vMin = ((-2.058e-07*(vs**4) + 3.844e-05*(vs**3) - 0.002478*(vs**2) + 0.06183*(vs) - 0.4254)**2)**0.5
+        vMin = ((-2.058e-07_dp*(vs**4) + 3.844e-05_dp*(vs**3) - 0.002478_dp*(vs**2) + &
+            0.06183_dp*(vs) - 0.4254_dp)**2)**0.5_dp
 
         ! Determine the shock width (of the order of the mean free path)
-        mfp = ((SQRT(2.0)*(1e3)*(pi*(2.4e-8)**2))**(-1))/1d4
-        tShock = mfp/(vs*1d5)
+        mfp = ((sqrt(2.0_dp)*(1e3_dp)*(pi*(2.4e-8_dp)**2))**(-1))/1e4_dp
+        tShock = mfp/(vs*1e5_dp)
         ! Determine shock width
-        tCool = (1/initialDens)*1d6*SECONDS_PER_YEAR
+        tCool = (1/initialDens)*1e6_dp*SECONDS_PER_YEAR
         ! Determine the maximum density attained
-        maxDens = vs*initialDens*(1d2)
+        maxDens = vs*initialDens*(1e2_dp)
         ! Determine the rate constants
-        t_lambda = LOG(maxTemp/initialTemp)
-        n_lambda = LOG(maxDens/initialDens)
+        t_lambda = log(maxTemp/initialTemp)
+        n_lambda = log(maxDens/initialDens)
 
 
         if (allocated(tn)) deallocate(tn,ti,tgc,tgr,tg)
@@ -81,16 +82,16 @@ contains
     !but the integrator itself chooses an integration timestep.                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     subroutine updateTargetTime
-        if (timeInYears > 1e6) then
-            targetTime=(timeInYears+1e5)*SECONDS_PER_YEAR
-        else if (timeInYears > 1.0d4) then
-            targetTime=(timeInYears+1000)*SECONDS_PER_YEAR
-        else if (timeInYears > 1.0d3) then
-            targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR
+        if (timeInYears > 1e6_dp) then
+            targetTime=(timeInYears+1e5_dp)*SECONDS_PER_YEAR
+        else if (timeInYears > 1.0e4_dp) then
+            targetTime=(timeInYears+1000.0_dp)*SECONDS_PER_YEAR
+        else if (timeInYears > 1.0e3_dp) then
+            targetTime=(timeInYears+100.0_dp)*SECONDS_PER_YEAR
         else if (timeInYears*SECONDS_PER_YEAR < tShock) then
-            targetTime=currentTime+0.05*tShock
+            targetTime=currentTime+0.05_dp*tShock
         else
-            targetTime=1.1*currentTime
+            targetTime=1.1_dp*currentTime
         end if
     end subroutine updateTargetTime
 
@@ -100,7 +101,7 @@ contains
     subroutine updatePhysics
 
         ! Determine the shock velocity at the current time
-        v0 = vs*(exp(LOG(vMin/vs)*(currentTime/(finalTime*SECONDS_PER_YEAR))))
+        v0 = vs*(exp(log(vMin/vs)*(currentTime/(finalTime*SECONDS_PER_YEAR))))
         if (v0 < vMin) then
             v0 = vMin
         end if
@@ -143,10 +144,10 @@ contains
         real(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)
 
-        if ((sum(abund(iceList,dstep)) > 1d-25) .AND. (v0 > 0)) then
+        if ((sum(abund(iceList,dstep)) > 1e-25_dp) .AND. (v0 > 0)) then
           call sputterIces(abund(:,dstep),v0,gasTemp(dstep),density(dstep),timeDelta)
         end if
-        where(abund< 1.0d-50) abund=0.0d-50
+        where(abund < 1.0e-50_dp) abund=0.0_dp
     end subroutine sublimation
 
 end module jshock_mod

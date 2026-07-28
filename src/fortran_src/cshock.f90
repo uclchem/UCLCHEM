@@ -10,9 +10,9 @@ module cshock_mod
     !f2py INTEGER, parameter :: dp
     use network
     use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
-    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens
-    use sputtering
+        & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, &
+        & gastemp, dusttemp, av, coldens
+    use sputtering, only: sputterIces, sputteringSetup
     implicit none
 
     real(dp) :: tstart,maxTemp,timestepFactor=0.01
@@ -27,8 +27,8 @@ module cshock_mod
     real(dp) :: coshinv1,coshinv2,zmax,a1,eps
 
     integer :: inrad
-    real(dp), parameter :: nu0=3.0d15,bt=6.0
-    real(dp), parameter :: grainRadius=1.0d-5
+    real(dp), parameter :: nu0=3.0e15_dp,bt=6.0
+    real(dp), parameter :: grainRadius=1.0e-5_dp
 
 contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -93,7 +93,7 @@ contains
         ! The initial parameters that define the C-shock structure
         ! Length of the dissipation region, dlength:
         dlength=12.0*pc*vs/initialDens
-        dissipationTime=(dlength*1.0d-5/vs)/SECONDS_PER_YEAR
+        dissipationTime=(dlength*1.0e-5_dp/vs)/SECONDS_PER_YEAR
 
         ! Parameters that describe the decoupling between the ion and the neutral
         ! fluids. z2 is obtained by assuming that at z=dlength, the velocity of
@@ -177,9 +177,9 @@ contains
         ! Frs=0.25*density(1)*mun*(vn*km)**3
         ! G0=Frs
         ! trs0=12.2*G0**0.2
-        ! tau100=2.7d2*G0/trs0**5
-        ! tgr1=8.9d-11*nu0*G0*(1.8*av(dstep))+2.7**5
-        ! tgr2=3.4d-2*(0.42-log(3.5d-2*tau100*trs0))*tau100*trs0**6
+        ! tau100=2.7e2_dp*G0/trs0**5
+        ! tgr1=8.9e-11_dp*nu0*G0*(1.8*av(dstep))+2.7**5
+        ! tgr2=3.4e-2_dp*(0.42-log(3.5e-2_dp*tau100*trs0))*tau100*trs0**6
         ! tgr(dstep)=(tgr1+tgr2)**0.2
         !If we don't include the radiative heating that is characteristic
         !of J-type shocks
@@ -213,10 +213,10 @@ contains
         integer, intent(in) :: lpoints
         real(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)
-        if ((sum(abund(iceList,dstep)) > 1d-25) .AND. (driftVel > 0)) then
+        if ((sum(abund(iceList,dstep)) > 1e-25_dp) .AND. (driftVel > 0)) then
           call sputterIces(abund(:,dstep),driftVel,gasTemp(dstep),density(dstep),timeDelta)
         end if
-        where(abund< 1.0d-50) abund=0.0d-50
+        where(abund < 1.0e-50_dp) abund=0.0_dp
     end subroutine sublimation
 
 
@@ -228,7 +228,7 @@ contains
         integer :: loopCount
         !We calculate the physical structure of the shock
         !set vn1 arbitrarily high to ensure while loop is done at least once
-        vn1=1d30
+        vn1=1e30_dp
         vn=vn0
         loopCount=0
         do while ((abs(vn-vn1)>=1.0e-10) .and. (loopCount < 100))

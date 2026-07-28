@@ -2109,7 +2109,6 @@ def array_to_string(
                 msg = f"length_name '{length_name}' should contain a comma to indicate a 2D array"
                 raise ValueError(msg)
             shape_name = [i.strip() for i in length_name.split(",")]
-        print(shape_name)
         shape_string = ",".join(str(s) for s in shape_name)
         flat = arr.flatten(order="F")
         if type == "int":

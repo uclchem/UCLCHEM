@@ -691,13 +691,13 @@ contains
         real(dp) :: initialTime, outermost_stop_time
         logical :: parcelDone, outermost_stopped
         ! Arrays needed to work return physics in memory mode
-        real(dp), dimension(:, :, :), optional, intent(in) :: physicsarray
-        real(dp), dimension(:, :, :), optional, intent(in) :: chemicalabunarray
-        real(dp), dimension(:, :, :), optional, intent(in) :: rateConstantsArray
-        real(dp), dimension(:, :, :), optional, intent(in) :: heatarray
-        real(dp), dimension(:, :, :), optional, intent(inout) :: statsarray
-        real(dp), dimension(:, :, :), optional, intent(in) :: levelpopulationsarray
-        real(dp), dimension(:, :, :), optional, intent(inout) :: sestatsarray
+        real(dp), dimension(:, :, :), optional, intent(out) :: physicsarray
+        real(dp), dimension(:, :, :), optional, intent(out) :: chemicalabunarray
+        real(dp), dimension(:, :, :), optional, intent(out) :: rateConstantsArray
+        real(dp), dimension(:, :, :), optional, intent(out) :: heatarray
+        real(dp), dimension(:, :, :), optional, intent(out) :: statsarray
+        real(dp), dimension(:, :, :), optional, intent(out) :: levelpopulationsarray
+        real(dp), dimension(:, :, :), optional, intent(out) :: sestatsarray
         real(dp), dimension(:, :), optional, intent(in) :: abundanceStart
         ! Arrays needed to work with custom density/temperature profiles
         !  &timegrid,densgrid,gastempgrid,dusttempgrid,nhgrid,nh2grid,ncogrodi,ncgrid)

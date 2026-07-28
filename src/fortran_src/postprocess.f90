@@ -17,8 +17,8 @@ module postprocess_mod
     integer :: tstep
     integer :: max_tstep  ! Last valid (non-zero) timestep
     integer :: postprocess_error  ! Non-zero if a fatal error occurred during updatePhysics
-    double precision, allocatable, dimension(:) :: ltime, ldens, lra, lzeta, lradfield, lgtemp, ldtemp
-    double precision, allocatable, dimension(:) :: lnh, lnh2, lnco, lnc, lav
+    real(dp), allocatable, dimension(:) :: ltime, ldens, lra, lzeta, lradfield, lgtemp, ldtemp
+    real(dp), allocatable, dimension(:) :: lnh, lnh2, lnco, lnc, lav
 
 
 contains
@@ -31,19 +31,19 @@ contains
         &dtempgrid, useav, avgrid, usecoldens, timepoints, nhgrid, nh2grid, ncogrid, ncgrid)
       integer, intent(out) :: successFlag
       integer, intent(in) :: timepoints
-      double precision, intent(in), dimension(timePoints) :: timegrid
-      double precision, intent(in), dimension(timePoints) :: densgrid
-      double precision, intent(in), dimension(timePoints) :: radgrid
-      double precision, intent(in), dimension(timePoints) :: zetagrid
-      double precision, intent(in), dimension(timePoints) :: gtempgrid
-      double precision, intent(in), dimension(timePoints) :: dtempgrid
+      real(dp), intent(in), dimension(timePoints) :: timegrid
+      real(dp), intent(in), dimension(timePoints) :: densgrid
+      real(dp), intent(in), dimension(timePoints) :: radgrid
+      real(dp), intent(in), dimension(timePoints) :: zetagrid
+      real(dp), intent(in), dimension(timePoints) :: gtempgrid
+      real(dp), intent(in), dimension(timePoints) :: dtempgrid
       logical, intent(in) :: useav
-      double precision, intent(in), dimension(timePoints), optional :: avgrid
+      real(dp), intent(in), dimension(timePoints), optional :: avgrid
       logical, intent(in) :: usecoldens
-      double precision, intent(in), optional, dimension(timePoints) :: nhgrid
-      double precision, intent(in), optional, dimension(timePoints) :: nh2grid
-      double precision, intent(in), optional, dimension(timePoints) :: ncogrid
-      double precision, intent(in), optional, dimension(timePoints) :: ncgrid
+      real(dp), intent(in), optional, dimension(timePoints) :: nhgrid
+      real(dp), intent(in), optional, dimension(timePoints) :: nh2grid
+      real(dp), intent(in), optional, dimension(timePoints) :: ncogrid
+      real(dp), intent(in), optional, dimension(timePoints) :: ncgrid
 
 
       successFlag=0
@@ -192,7 +192,7 @@ contains
     subroutine sublimation(abund)
         ! This subroutine must be in every physics module so we dummy it here.
         !f2py integer, intent(aux) :: points
-        double precision :: abund(nspec+1,points)
+        real(dp) :: abund(nspec+1,points)
         intent(inout) :: abund
     end subroutine sublimation
 end module postprocess_mod

@@ -13,15 +13,15 @@ module RATES
     real(dp) :: grainArea,cion,h2dis,lastTemp=0.0
 
     ! Controlling ice chemistry
-    real(dp), parameter :: h2StickingZero=0.87d0,hStickingZero=1.0d0, h2StickingTemp=87.0d0,hStickingTemp=52.0d0
+    real(dp), parameter :: h2StickingZero=0.87_dp,hStickingZero=1.0_dp, h2StickingTemp=87.0_dp,hStickingTemp=52.0_dp
     !Flags to control desorption processes
     real(dp) :: turbVel=1.0  !unit? km/s or cm/s
     ! TODO: integrate into makerates and put it in network.f90
 
     ! Pre-split LH and ER base rates, saved in calculateReactionRates and used
     ! by the F callback to re-apply the chemdes split at the current ice thickness.
-    real(dp) :: rate_lh_unsplit(nreac) = 0.0d0
-    real(dp) :: rate_er_unsplit(nreac) = 0.0d0
+    real(dp) :: rate_lh_unsplit(nreac) = 0.0_dp
+    real(dp) :: rate_er_unsplit(nreac) = 0.0_dp
 
 contains
     subroutine calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
@@ -139,11 +139,11 @@ contains
         idx2=descrReacs(2)
         if (idx1 /= REAC_NOT_PRESENT) then
             if ((desorb) .and. (crdesorb) .and. (safeMantle > MIN_SURFACE_ABUND)) then
-                !4*pi*zeta = total CR flux. 1.64d-4 is iron to proton ratio of CR
+                !4*pi*zeta = total CR flux. 1.64e-4_dp is iron to proton ratio of CR
                 !as iron nuclei are main cause of CR heating.
                 !GRAIN_SURFACEAREA_PER_H is the total surface area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
                 !phi is efficiency of this reaction, number of molecules removed per event.
-                rate(idx1:idx2) = 4.0*pi*zeta*1.64d-4*(GRAIN_SURFACEAREA_PER_H)*phi
+                rate(idx1:idx2) = 4.0*pi*zeta*1.64e-4_dp*(GRAIN_SURFACEAREA_PER_H)*phi
                 !alpha is a branching ratio (default 1.0; use <1.0 for isomer desorption channels)
                 rate(idx1:idx2) = alpha(idx1:idx2)*rate(idx1:idx2)
 
@@ -164,9 +164,9 @@ contains
         if (idx1 /= REAC_NOT_PRESENT) then
             if ((desorb) .and. (uvdesorb) .and. (safeMantle > MIN_SURFACE_ABUND)&
                     &.and.(zeta > 0)) then
-                !4.875d3 = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
+                !4.875e3_dp = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
                 !UVY is yield per photon.
-                rate(idx1:idx2) = GRAIN_CROSSSECTION_PER_H*uv_yield*4.875d3*zeta
+                rate(idx1:idx2) = GRAIN_CROSSSECTION_PER_H*uv_yield*4.875e3_dp*zeta
                 !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of
                 !CR induced UV to ISRF UV.
                 rate(idx1:idx2) = rate(idx1:idx2) &
@@ -226,7 +226,7 @@ contains
                         vB = vdiff(i)
                     end if
                 end do
-                rate(j) = (vB + vA)/(SURFACE_SITE_DENSITY*1.8d-8)
+                rate(j) = (vB + vA)/(SURFACE_SITE_DENSITY*1.8e-8_dp)
                 rate(j) = alpha(j) * rate(j)
             end do
         end if
@@ -378,15 +378,15 @@ contains
     idx2=ionopol1Reacs(2)
     if (idx1 /= REAC_NOT_PRESENT) then
         !This formula including the magic numbers come from KIDA help page.
-        rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(0.62d0+0.4767d0*gama(idx1:idx2)*sqrt(300.0d0/gasTemp(dstep)))
+        rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(0.62_dp+0.4767_dp*gama(idx1:idx2)*sqrt(300.0_dp/gasTemp(dstep)))
     end if
 
     idx1=ionopol2Reacs(1)
     idx2=ionopol2Reacs(2)
     if (idx1 /= REAC_NOT_PRESENT) then
         !This formula including the magic numbers come from KIDA help page.
-        rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(1.0d0+0.0967d0*gama(idx1:idx2)&
-        &*sqrt(300.0d0/gasTemp(dstep))+gama(idx1:idx2)*gama(idx1:idx2)*300.0/(10.526*gasTemp(dstep)))
+        rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(1.0_dp+0.0967_dp*gama(idx1:idx2)&
+        &*sqrt(300.0_dp/gasTemp(dstep))+gama(idx1:idx2)*gama(idx1:idx2)*300.0/(10.526*gasTemp(dstep)))
     end if
     lastTemp=gasTemp(dstep)
 
@@ -439,49 +439,49 @@ contains
 
     ! Min floor: zero desorption rate constants k below numerical threshold to eliminate
     ! near-zero Arrhenius terms (e.g. strongly-bound species at low T) that waste solver work.
-    if (min_desorption_rate > 0.0d0) then
+    if (min_desorption_rate > 0.0_dp) then
         if (thermReacs(1)  /= REAC_NOT_PRESENT) then
-          where(rate(thermReacs(1):thermReacs(2)) > 0.0d0 .AND. &
+          where(rate(thermReacs(1):thermReacs(2)) > 0.0_dp .AND. &
                   rate(thermReacs(1):thermReacs(2)) < min_desorption_rate) &
-                rate(thermReacs(1):thermReacs(2)) = 0.0d0
+                rate(thermReacs(1):thermReacs(2)) = 0.0_dp
         end if
         if (desoh2Reacs(1) /= REAC_NOT_PRESENT) then
-          where(rate(desoh2Reacs(1):desoh2Reacs(2)) > 0.0d0 .AND. &
+          where(rate(desoh2Reacs(1):desoh2Reacs(2)) > 0.0_dp .AND. &
                   rate(desoh2Reacs(1):desoh2Reacs(2)) < min_desorption_rate) &
-                rate(desoh2Reacs(1):desoh2Reacs(2)) = 0.0d0
+                rate(desoh2Reacs(1):desoh2Reacs(2)) = 0.0_dp
         end if
         if (descrReacs(1)  /= REAC_NOT_PRESENT) then
-          where(rate(descrReacs(1):descrReacs(2)) > 0.0d0 .AND. &
+          where(rate(descrReacs(1):descrReacs(2)) > 0.0_dp .AND. &
                   rate(descrReacs(1):descrReacs(2)) < min_desorption_rate) &
-                rate(descrReacs(1):descrReacs(2)) = 0.0d0
+                rate(descrReacs(1):descrReacs(2)) = 0.0_dp
         end if
         if (deuvcrReacs(1) /= REAC_NOT_PRESENT) then
-          where(rate(deuvcrReacs(1):deuvcrReacs(2)) > 0.0d0 .AND. &
+          where(rate(deuvcrReacs(1):deuvcrReacs(2)) > 0.0_dp .AND. &
                   rate(deuvcrReacs(1):deuvcrReacs(2)) < min_desorption_rate) &
-                rate(deuvcrReacs(1):deuvcrReacs(2)) = 0.0d0
+                rate(deuvcrReacs(1):deuvcrReacs(2)) = 0.0_dp
         end if
         if (lhdesReacs(1)  /= REAC_NOT_PRESENT) then
-          where(rate(lhdesReacs(1):lhdesReacs(2)) > 0.0d0 .AND. &
+          where(rate(lhdesReacs(1):lhdesReacs(2)) > 0.0_dp .AND. &
                   rate(lhdesReacs(1):lhdesReacs(2)) < min_desorption_rate) &
-                rate(lhdesReacs(1):lhdesReacs(2)) = 0.0d0
+                rate(lhdesReacs(1):lhdesReacs(2)) = 0.0_dp
         end if
         if (erdesReacs(1)  /= REAC_NOT_PRESENT) then
-          where(rate(erdesReacs(1):erdesReacs(2)) > 0.0d0 .AND. &
+          where(rate(erdesReacs(1):erdesReacs(2)) > 0.0_dp .AND. &
                   rate(erdesReacs(1):erdesReacs(2)) < min_desorption_rate) &
-                rate(erdesReacs(1):erdesReacs(2)) = 0.0d0
+                rate(erdesReacs(1):erdesReacs(2)) = 0.0_dp
         end if
-        if (rate(nR_H2_ED) > 0.0d0 .AND. rate(nR_H2_ED) < min_desorption_rate) rate(nR_H2_ED) = 0.0d0
-        if (rate(nR_H_ED)  > 0.0d0 .AND. rate(nR_H_ED)  < min_desorption_rate) rate(nR_H_ED)  = 0.0d0
+        if (rate(nR_H2_ED) > 0.0_dp .AND. rate(nR_H2_ED) < min_desorption_rate) rate(nR_H2_ED) = 0.0_dp
+        if (rate(nR_H_ED)  > 0.0_dp .AND. rate(nR_H_ED)  < min_desorption_rate) rate(nR_H_ED)  = 0.0_dp
     end if
 
     ! Dynamic max cap: clamp thermal desorption k to prevent DVODE stiffness.
     ! Three-regime: effective_cap = clamp(factor/Dt_outer, min_cap, max_cap)
     !   k < min_cap_s -> always kept;  k > max_cap_s -> always capped;  in between -> dynamic.
     ! Cap bounds in yr^-1 are converted to s^-1; targetTime and currentTime are in seconds.
-    if (max_desorption_rate_factor > 0.0d0 .AND. thermReacs(1) /= REAC_NOT_PRESENT) then
+    if (max_desorption_rate_factor > 0.0_dp .AND. thermReacs(1) /= REAC_NOT_PRESENT) then
         min_cap_s   = min_desorption_rate_cap / SECONDS_PER_YEAR
         max_cap_s   = max_desorption_rate_cap / SECONDS_PER_YEAR
-        dynamic_cap = max_desorption_rate_factor / MAX(1.0d-300, targetTime - currentTime)
+        dynamic_cap = max_desorption_rate_factor / MAX(1.0e-300_dp, targetTime - currentTime)
         effective_cap = MIN(MAX(dynamic_cap, min_cap_s), max_cap_s)
         where(rate(thermReacs(1):thermReacs(2)) > effective_cap) &
             rate(thermReacs(1):thermReacs(2)) = effective_cap
@@ -503,7 +503,7 @@ function freezeOutRate(idx1,idx2) result(freezeRates)
     integer :: idx1,idx2
 
     !additional factor for ions (beta=0 for neutrals)
-    freezeRates=1.0+beta(idx1:idx2)*16.71d-4/(GRAIN_RADIUS*gasTemp(dstep))
+    freezeRates=1.0+beta(idx1:idx2)*16.71e-4_dp/(GRAIN_RADIUS*gasTemp(dstep))
     if ((freezeFactor == 0.0) .or. (dustTemp(dstep) > maxGrainTemp)) then
         freezeRates=0.0
     else
@@ -518,10 +518,10 @@ function freezeOutRate(idx1,idx2) result(freezeRates)
         !Sticking coefficient for freeze out taken from Chaabouni et al. 2012 A&A 538 Equation 1
         real(dp) :: stickingCoeff
         real(dp) :: stickingZero,criticalTemp,gasTemp,tempRatio
-        real(dp), parameter :: beta=2.5d0
+        real(dp), parameter :: beta=2.5_dp
 
         tempRatio=gasTemp/criticalTemp
-        stickingCoeff=stickingZero*(1.0d0+beta*tempRatio)/((1.0d0+tempRatio)**beta)
+        stickingCoeff=stickingZero*(1.0_dp+beta*tempRatio)/((1.0_dp+tempRatio)**beta)
     end function stickingCoefficient
 
 end module RATES

@@ -227,7 +227,7 @@ contains
     !the code integrates to the planned targetTime rather than a reduced one. If the counter reaches maxConsecutiveFailures, we end the code.
         !f2py integer, intent(aux) :: points
         integer, intent(out) :: successFlag
-        double precision, intent(inout), optional, dimension(:,:,:) :: statsarray
+        real(dp), intent(inout), optional, dimension(:,:,:) :: statsarray
         integer, intent(in), optional :: statsarray_size
         integer, intent(in), optional :: dtime
         real(dp) :: originalTargetTime  !targetTime can be altered by integrator but we'd like to know if it was changed
@@ -353,7 +353,7 @@ contains
                 return
             end if
 
-            !1.d-30 stops numbers getting too small for fortran.
+            !1.e-30_dp stops numbers getting too small for fortran.
             ! WHERE(abund<MIN_ABUND) abund=MIN_ABUND
             where(abund(1:nspec,:)<MIN_ABUND) abund(1:nspec,:)=MIN_ABUND
             gasTemp(dstep)=abund(nspec+1,dstep)
@@ -394,7 +394,7 @@ contains
                     if (rel_err > runtime_conservation_tolerance) then
                         write(*,"(A,A2,A,ES10.3,A,ES12.4,A)") &
                             "CONSERVATION ERROR: element ", TRIM(elem_names(ie)), &
-                            " changed by ", rel_err*100.0d0, "% at t=", &
+                            " changed by ", rel_err*100.0_dp, "% at t=", &
                             currentTime/SECONDS_PER_YEAR, " yr"
                         successFlag = CONSERVATION_ERROR
                         return
@@ -407,7 +407,7 @@ contains
 
     subroutine integrateODESystem(successFlag, statsarray, statsarray_size, dtime)
         integer, intent(out) :: successFlag
-        double precision, intent(inout), optional, dimension(:,:,:) :: statsarray
+        real(dp), intent(inout), optional, dimension(:,:,:) :: statsarray
         integer, intent(in), optional :: statsarray_size
         integer, intent(in), optional :: dtime
         type(VODE_OPTS), save :: OPTIONS  ! SAVE: persists across ISTATE=2 continuation calls
@@ -745,7 +745,7 @@ contains
     !     INTENT(INOUT) :: J
     !     D=y(NEQ)
 
-    !     J=0.0d0
+    !     J=0.0_dp
     !     INCLUDE 'jacobian.f90'
     !     J(nh,nh2)=J(nh,nh2)+2.0*h2dis
     !     J(nh2,nh2)=J(nh,nh2)-h2dis
