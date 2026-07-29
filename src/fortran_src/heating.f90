@@ -389,9 +389,10 @@ module heating
             result(collisionallyInducedEmission)
         real(dp), intent(in) :: gasTemperature,gasDensity,h2Abund
         real(dp) :: collisionallyInducedEmission
-        real(dp), parameter :: aConsts(6)=(/-30.3314216559651_dp,19.0004016698518_dp,-17.1507937874082_dp&
+        integer, parameter :: NUM_FIT_CONSTANTS = 6
+        real(dp), parameter :: aConsts(NUM_FIT_CONSTANTS)=(/-30.3314216559651_dp,19.0004016698518_dp,-17.1507937874082_dp&
                                                             &,9.49499574218739_dp,-2.54768404538229_dp,0.265382965410969_dp/)
-        real(dp), parameter :: bConsts(6)=(/-180.992524120965_dp,168.471004362887_dp,-67.499549702687_dp,&
+        real(dp), parameter :: bConsts(NUM_FIT_CONSTANTS)=(/-180.992524120965_dp,168.471004362887_dp,-67.499549702687_dp,&
                                                             &13.5075841245848_dp,-1.31983368963974_dp,0.0500087685129987_dp/)
         real(dp),parameter :: c=3.0_dp,d=21.2968837223113_dp
         real(dp) :: tau,logt
@@ -415,12 +416,12 @@ module heating
         if (gasTemperature >= 1.0e5_dp) then
             collisionallyInducedEmission=(c*logt)-d
         else if (gasTemperature >= 891.0_dp) then
-            do i=1,SIZE(bConsts)
+            do i=1,NUM_FIT_CONSTANTS
                 collisionallyInducedEmission=collisionallyInducedEmission+(bConsts(i)*(logt**(i-1)))
             end do
         !technically fit below is ok down to 100 K but bad fit seems better than no cooling at 70 K
         else if (gasTemperature >= 100.0_dp) then
-            do i=1,SIZE(aConsts)
+            do i=1,NUM_FIT_CONSTANTS
                 collisionallyInducedEmission=collisionallyInducedEmission+(aConsts(i)*(logt**(i-1)))
             end do
         end if

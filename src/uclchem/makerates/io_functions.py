@@ -794,12 +794,18 @@ def write_f90_constants(
     if conversion_factors is not None:
         extra_lines += "    ! Conversion factors for abundance scaling (used when coolantConversionMode=0)\n"
         extra_lines += "    " + array_to_string(
-            "coolantConversionFactors", np.array(conversion_factors), type="float"
+            "coolantConversionFactors",
+            np.array(conversion_factors),
+            type="float",
+            length_name="MAX_COOLANTS",
         )
     if conversion_modes is not None:
         extra_lines += "    ! Conversion mode: 0=fixed factor, 1=thermal OPR para, 2=thermal OPR ortho\n"
         extra_lines += "    " + array_to_string(
-            "coolantConversionMode", np.array(conversion_modes), type="int"
+            "coolantConversionMode",
+            np.array(conversion_modes),
+            type="int",
+            length_name="MAX_COOLANTS",
         )
     # Generate coolant_active array: all coolants enabled by default
     if "n_coolants" in replace_dict or conversion_factors is not None:
@@ -812,7 +818,11 @@ def write_f90_constants(
             coolant_active_defaults = np.ones(n_coolants, dtype=bool)
             extra_lines += "    ! Per-coolant on/off toggle (can be changed at runtime via HeatingSettings)\n"
             extra_lines += "    " + array_to_string(
-                "coolant_active", coolant_active_defaults, type="logical", parameter=False
+                "coolant_active",
+                coolant_active_defaults,
+                type="logical",
+                parameter=False,
+                length_name="MAX_COOLANTS",
             )
     if suggested_freq_rel_tol is not None:
         extra_lines += "    ! Suggested freq_rel_tol based on max observed deviation (with 10% margin)\n"

@@ -12,6 +12,8 @@ module COOLANT_MODULE
 
    public
 
+   integer, parameter :: populationsId = 53
+
    integer, parameter :: CACHE_SIZE = 10
    ! Tolerances are provided via the DEFAULTPARAMETERS module (freq_rel_tol, pop_rel_tol).
 
@@ -1473,6 +1475,7 @@ subroutine writePopulations(fileName,modelNumber)
    character(*), intent(in) :: fileName, modelNumber
    character(LEN=11), allocatable :: populationLabels(:)
    integer :: i,n,p
+
    allocate(populationLabels(1:SUM((/(coolants(N)%nLevel,N=1,NCOOLANTS)/))))
    p=1
    do n=1,NCOOLANTS
@@ -1483,15 +1486,15 @@ subroutine writePopulations(fileName,modelNumber)
           p=p+1
       end do
    end do
-   ! TODO: REMOVE MAGIC NUMBER 53
-   open(53,file=fileName,status="unknown")
-   write(53,"(A5,999(':',A11))") "MODEL",populationLabels
-   write(53,"(A2,999(':',E13.5))") modelNumber,(coolants(N)%POPULATION,N=1,NCOOLANTS)
-   close(53)
+
+   open(populationsId, file=fileName, status="unknown", action="write")
+   write(populationsId,"(A5,999(':',A11))") "MODEL",populationLabels
+   write(populationsId,"(A2,999(':',E13.5))") modelNumber,(coolants(N)%POPULATION,N=1,NCOOLANTS)
+   close(populationsId)
 end subroutine writePopulations
 
 
-subroutine writeOpacities(fileName,modelNumber)
+subroutine writeOpacities(fileName, modelNumber)
    character(*), intent(in) :: fileName, modelNumber
 
    character(LEN=11), allocatable :: LINE_LABELS(:)
@@ -1567,18 +1570,17 @@ subroutine writeOpacities(fileName,modelNumber)
    end do coolant  ! End of loop over coolants
 
 !  Open and write to the output file
-   ! TODO: REMOVE MAGIC NUMBER 53
-   open(unit=53,FILE=fileName,STATUS="REPLACE")
-   write(53,"('Particle',999(2X,A11))") LINE_LABELS
+   open(populationsId, file=fileName, status="replace", action="write")
+   write(populationsId, "('Particle',999(2X,A11))") LINE_LABELS
    do N=1,NCOOLANTS
       do I=1,coolants(N)%NLEVEL
          levels_j_2: do J=1,coolants(N)%NLEVEL
             if(coolants(N)%A_COEFF(I,J)==0) cycle levels_j_2
-            write(53,"(999ES13.5)",ADVANCE="NO") coolants(N)%OPACITY(I,J)
+            write(populationsId,"(999ES13.5)",advance="NO") coolants(N)%OPACITY(I,J)
          end do levels_j_2
       end do
    end do
-   close(53)
+   close(populationsId)
 
    deallocate(LINE_LABELS)
 

@@ -11,8 +11,8 @@ module collapse_mod
    use F2PY_CONSTANTS, only: nSpec
    !f2py INTEGER, parameter :: dp
    use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
-   & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, gastemp, dusttemp, av, &
-   &coldens, parcel_radius
+    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, gastemp, dusttemp, av, &
+    & coldens, parcel_radius, get_av
    implicit none
 
    private
@@ -120,7 +120,7 @@ contains
         !and coldens should be amount of gas from edge to parcel.
         call findcoldens(coldens(dstep),rin,rho0fit(effectiveTime),r0fit(effectiveTime),afit(effectiveTime),rout)
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av(dstep)= baseAv +coldens(dstep)/1.6e21_dp
+        av(dstep)= get_av(baseAv, coldens(dstep))
         !If collapse is one of the parameterized modes, find new density and radius
 
         if ((collapse_mode <= 2)) then

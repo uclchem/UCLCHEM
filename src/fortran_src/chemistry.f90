@@ -8,25 +8,31 @@
 ! written to the fullOutput file.                                                             !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module chemistry
-use constants
-use DEFAULTPARAMETERS
-use DVODE_F90_M, only: SET_OPTS, DVODE_F90, VODE_OPTS, GET_STATS  !dvode_f90_m
-!f2py INTEGER, parameter :: dp
-use physicscore, only: points, dstep, cloudsize, radfield, radfield_internal, h2crprate, improvedH2CRPDissociation, &
-& zeta, currentTime, targetTime, timeinyears, freefall, density, ion, get_densdot, gasTemp, dustTemp, av, av_internal, colDens
-use f2py_constants, only: nspec, nreac
-use heating, only: calculateDustTemp, getTempDot, initializeHeating
-use network
-use odes
-use photoreactions, only: getH2PhotoDissRate, getCOPhotoDissRate, UV_FAC
-use postprocess_mod, only: lusecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
-use rates, only: calculateReactionRates, turbVel, lastTemp, rate_lh_unsplit, rate_er_unsplit
-use surfacereactions, only: updateVdiffAndVdes, getNumberMonolayers, getDesorptionFractionBare, &
-    getDesorptionFractionFullCoverage, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO, vdes, vdiff, &
-    desorptionFractionsBare, getDesorptionFractionIncludingIce, desorptionFractionsFullCoverage, &
-    safeMantle, safeBulk, bulkLayersReciprocal, GRAIN_RADIUS, MIN_SURFACE_ABUND, &
-    bulkGainFromMantleBuildUp, surfaceToBulkSwappingRates
-implicit none
+    use constants, only: dp, SECONDS_PER_YEAR, CONSERVATION_ERROR, SOLVER_STATS_OVERFLOW_ERROR, &
+        INT_TOO_MANY_FAILS_ERROR, INT_UNRECOVERABLE_ERROR, NOT_ENOUGH_TIMEPOINTS_ERROR, MIN_ABUND, eV
+    use DEFAULTPARAMETERS
+    use DVODE_F90_M, only: SET_OPTS, DVODE_F90, VODE_OPTS, GET_STATS  !dvode_f90_m
+    !f2py INTEGER, parameter :: dp
+    use physicscore, only: points, dstep, cloudsize, radfield, radfield_internal, h2crprate, improvedH2CRPDissociation, &
+    & zeta, currentTime, targetTime, timeinyears, freefall, density, ion, get_densdot, gasTemp, dustTemp, av, av_internal, colDens
+    use f2py_constants, only: nSpec, nReac
+    use heating, only: calculateDustTemp, getTempDot, initializeHeating
+    ! allow(use-all)
+    use network
+    use odes, only: GETYDOT
+    use photoreactions, only: getH2PhotoDissRate, getCOPhotoDissRate, UV_FAC
+    use postprocess_mod, only: lusecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
+    use rates, only: calculateReactionRates, turbVel, lastTemp, rate_lh_unsplit, rate_er_unsplit
+    use surfacereactions, only: updateVdiffAndVdes, getNumberMonolayers, getDesorptionFractionBare, &
+        getDesorptionFractionFullCoverage, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO, vdes, vdiff, &
+        desorptionFractionsBare, getDesorptionFractionIncludingIce, desorptionFractionsFullCoverage, &
+        safeMantle, safeBulk, bulkLayersReciprocal, GRAIN_RADIUS, MIN_SURFACE_ABUND, &
+        bulkGainFromMantleBuildUp, surfaceToBulkSwappingRates
+
+    implicit none
+
+    public
+
     !f2py integer, intent(aux) :: points
     !These integers store the array index of important species and reactions, x is for ions
     !loop counters
@@ -34,13 +40,13 @@ implicit none
     integer, parameter :: maxLoops=10,maxConsecutiveFailures=10
 
     !Array to store reaction rates
-    real(dp) :: rate(nreac)
+    real(dp) :: rate(nReac)
 
     !DLSODE variables
     integer :: ITASK,ISTATE,NEQ
     real(dp), allocatable :: abstol(:)
     real(dp), allocatable :: reltol_vec(:)
-    ! TYPE(VODE_OPTS) :: OPTIONS
+
     !initial fractional elemental abundances and arrays to store abundances
     real(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
     real(dp), allocatable :: abund(:,:)
@@ -55,7 +61,10 @@ implicit none
     real(dp) :: lastGasTemp,lastDustTemp
 
     !DVODE solver statistics (populated by integrateODESystem, read by output)
+    !Dimensions are minimum necessary dimensions for each (see dvode.f90)
+    ! allow(magic-number-in-array-size)
     real(dp) :: dvode_rstats(22)
+    ! allow(magic-number-in-array-size)
     integer :: dvode_istats(31)
     integer :: dvode_istate_out
     real(dp) :: dvode_cpu_start, dvode_cpu_end, dvode_cpu_time
@@ -79,7 +88,7 @@ contains
         ! Sets variables at the start of every run.
         ! Since python module persists, it's not enough to set initial
         ! values in module definitions above. Reset here.
-        NEQ=nspec+2
+        NEQ=nSpec+2
         if (ALLOCATED(abund)) deallocate(abund,vdiff,vdes)
         if (ALLOCATED(reltol_vec)) deallocate(reltol_vec)
         allocate(abund(NEQ,points),vdiff(SIZE(iceList)),vdes(SIZE(iceList)))
@@ -87,7 +96,7 @@ contains
         if (.NOT. readAbunds) then
             !ensure abund is initially zero
             ! abund= MIN_ABUND
-            abund(1:nspec,:)=MIN_ABUND
+            abund(1:nSpec,:)=MIN_ABUND
 
             !Start by filling all metallicity scaling elements
             !neutral atoms
@@ -137,8 +146,8 @@ contains
 
             abund(nhe,:) = fhe
         end if
-        abund(nspec+2,:)=density      !Gas density
-        abund(nspec+1,:)=gasTemp    !Gas temperature
+        abund(nSpec+2,:)=density      !Gas density
+        abund(nSpec+1,:)=gasTemp    !Gas temperature
         !Initial calculations of diffusion and desorption frequencies
         !Uses updateVdiffAndVdes which supports both HH1992 and TST treatments
         call updateVdiffAndVdes(gasTemp(1), dustTemp(1), SIZE(iceList), vdiff, vdes)
@@ -151,7 +160,7 @@ contains
 
         ! get list of positive-charged species to conserve charge later
         nion = 0
-        do i=1,nspec
+        do i=1,nSpec
            if (index(specname(i),"+") /= 0) then
               nion = nion + 1
               ionlist(nion) = i
@@ -173,7 +182,6 @@ contains
         if (.NOT. ALLOCATED(reltol_vec)) then
             allocate(reltol_vec(NEQ))
         end if
-        !OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR=reltol,USER_SUPPLIED_JACOBIAN=.FALSE.)
 
         if (heatingFlag) then
             !Initializing heating.f90 --> get coolants
@@ -253,7 +261,7 @@ contains
         originalTargetTime=targetTime
         do while((currentTime < targetTime) .and. (loopCounter < maxLoops))
             !allow option for dens to have been changed elsewhere.
-            if (.not. freefall) abund(nspec+2,dstep)=density(dstep)
+            if (.not. freefall) abund(nSpec+2,dstep)=density(dstep)
 
             !First sum the total column density over all points further towards edge of cloud
             if (dstep>1) then
@@ -310,17 +318,17 @@ contains
 
                 ! Per-mechanism volumetric H2 formation rates [cm^-3 s^-1]
                 ! Only accounting for H2 ending up in the gas phase.
-                h2form_CT_vol = rate(nR_H2Form_CT) * abund(nspec+2,dstep)**2 * abund(nh,dstep)
+                h2form_CT_vol = rate(nR_H2Form_CT) * abund(nSpec+2,dstep)**2 * abund(nh,dstep)
                 h2form_LH_vol = (rate(nR_H2Form_LHDes)) &
-                              &  * abund(ngh,dstep)**2 * abund(nspec+2,dstep)
+                              &  * abund(ngh,dstep)**2 * abund(nSpec+2,dstep)
                 h2form_ER_vol = (rate(nR_H2Form_ERDes)) &
-                              &  * abund(nspec+2,dstep)**2 * abund(nh,dstep) * abund(ngh,dstep) / safeMantle
+                              &  * abund(nSpec+2,dstep)**2 * abund(nh,dstep) * abund(ngh,dstep) / safeMantle
                 ! H&M79 eq. 6.45: critical density for H2 thermalization
                 ! (18100 coefficient for consistency with h2FUVPumpHeating in heating.f90)
                 h2_denom = 1.6_dp*abund(nh,dstep)*EXP(-((400.0_dp/gasTemp(dstep))**2)) &
                          &+ 1.4_dp*abund(nh2,dstep)*EXP(-(18100.0_dp/(gasTemp(dstep)+1200.0_dp)))
                 if (h2_denom > 0.0_dp) then
-                    h2heatfac = 1.0_dp / (1.0_dp + 1.0e6_dp/(SQRT(gasTemp(dstep))*h2_denom*abund(nspec+2,dstep)))
+                    h2heatfac = 1.0_dp / (1.0_dp + 1.0e6_dp/(SQRT(gasTemp(dstep))*h2_denom*abund(nSpec+2,dstep)))
                 else
                     h2heatfac = 0.0_dp
                 end if
@@ -332,8 +340,8 @@ contains
                             &+ 0.6_dp*h2heatfac*h2form_ER_vol)
                 tempDot= getTempDot(&
                                 &    timeinyears, &                       ! time
-                                &    abund(nspec+1,dstep), &              ! gas temperature
-                                &    abund(nspec+2,dstep), &              ! gas density
+                                &    abund(nSpec+1,dstep), &              ! gas temperature
+                                &    abund(nSpec+2,dstep), &              ! gas density
                                 &    colDens(dstep), &                    ! gas column density
                                 &    radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &   ! attenuated radiation field
                                 &    abund(:,dstep), &                    ! full abundance vector
@@ -363,9 +371,9 @@ contains
 
             !1.e-30_dp stops numbers getting too small for fortran.
             ! WHERE(abund<MIN_ABUND) abund=MIN_ABUND
-            where(abund(1:nspec,:)<MIN_ABUND) abund(1:nspec,:)=MIN_ABUND
-            gasTemp(dstep)=abund(nspec+1,dstep)
-            density(dstep)=abund(nspec+2,dstep)
+            where(abund(1:nSpec,:)<MIN_ABUND) abund(1:nSpec,:)=MIN_ABUND
+            gasTemp(dstep)=abund(nSpec+1,dstep)
+            density(dstep)=abund(nSpec+2,dstep)
             ! IF (gasTemp(dstep) .lt. 10) gasTemp(dstep)=10.0
             if (gasTemp(dstep) < lower_limit_gastemp) gasTemp(dstep)=lower_limit_gastemp
             loopCounter=loopCounter+1
@@ -395,7 +403,7 @@ contains
         ! Runtime element conservation check (every iteration, not inside F)
         if (runtime_conservation_tolerance >= 0.0_dp .AND. successFlag == 0) then
             do ie = 1, n_elem_tracked
-                total_elem_ie = SUM(REAL(elem_count(1:nspec, ie), dp) * abund(1:nspec, dstep))
+                total_elem_ie = SUM(REAL(elem_count(1:nSpec, ie), dp) * abund(1:nSpec, dstep))
                 if (initial_elem_abund(ie, dstep) > 0.0_dp) then
                     rel_err = ABS(total_elem_ie - initial_elem_abund(ie, dstep)) &
                             & / initial_elem_abund(ie, dstep)
@@ -419,12 +427,12 @@ contains
         integer, intent(in), optional :: statsarray_size
         integer, intent(in), optional :: dtime
         type(VODE_OPTS), save :: OPTIONS  ! SAVE: persists across ISTATE=2 continuation calls
-        real(dp), save :: prevAbund(nspec)  ! end-state snapshot of last ISTATE=1 step; safe: only read when ISTATE=2, which requires a prior successful call that sets this array
+        real(dp), save :: prevAbund(nSpec)  ! end-state snapshot of last ISTATE=1 step; safe: only read when ISTATE=2, which requires a prior successful call that sets this array
         real(dp) :: maxLogChange
         logical :: was_fresh_restart       ! whether this call entered DVODE with ISTATE=1
         integer :: ii
         ! species_check_mask was used by the negative-abundance error block (now commented out)
-        !LOGICAL :: species_check_mask(nspec)
+        !LOGICAL :: species_check_mask(nSpec)
         successFlag=0
         f_callback_error=0
 
@@ -443,9 +451,9 @@ contains
             ! Large per-step changes mean the frozen abstol and BDF Jacobian are stale.
             if (solverMode == 2 .AND. ISTATE == 2) then
                 maxLogChange = MAXVAL( &
-                    ABS(LOG10(MAX(abund(1:nspec,dstep), MIN_ABUND)) - &
+                    ABS(LOG10(MAX(abund(1:nSpec,dstep), MIN_ABUND)) - &
                         LOG10(MAX(prevAbund,            MIN_ABUND))), &
-                    MASK = abund(1:nspec,dstep) > MIN_ABUND .AND. &
+                    MASK = abund(1:nSpec,dstep) > MIN_ABUND .AND. &
                            prevAbund            > MIN_ABUND)
                 if (maxLogChange > logChangeThreshold) then
                     ISTATE = 1
@@ -461,12 +469,12 @@ contains
             abstol(iceList) = abstol_ice_factor*abund(iceList,dstep)
             where(abstol(iceList)<abstol_ice_min) abstol(iceList)=abstol_ice_min
             !Physical variables: separate tolerance heuristic (T and nH need looser tolerances)
-            abstol(nspec+1) = MAX(abstol_phys_factor * ABS(abund(nspec+1,dstep)), abstol_T_min)
-            abstol(nspec+2) = MAX(abstol_phys_factor * ABS(abund(nspec+2,dstep)), abstol_nH_min)
+            abstol(nSpec+1) = MAX(abstol_phys_factor * ABS(abund(nSpec+1,dstep)), abstol_T_min)
+            abstol(nSpec+2) = MAX(abstol_phys_factor * ABS(abund(nSpec+2,dstep)), abstol_nH_min)
             !Per-component relative tolerances: tight for chemistry, relaxed for physics
-            reltol_vec(1:nspec) = reltol
-            reltol_vec(nspec+1) = reltol_phys
-            reltol_vec(nspec+2) = reltol_phys
+            reltol_vec(1:nSpec) = reltol
+            reltol_vec(nSpec+1) = reltol_phys
+            reltol_vec(nSpec+2) = reltol_phys
             !Call the integrator with ITOL=4 (vector reltol + vector abstol).
             OPTIONS = SET_OPTS(METHOD_FLAG=22, ABSERR_VECTOR=abstol, RELERR_VECTOR=reltol_vec, &
                                USER_SUPPLIED_JACOBIAN=.false.,MXSTEP=MXSTEP)
@@ -527,10 +535,10 @@ contains
             !species_check_mask = .TRUE.
             !species_check_mask(nBulk) = .FALSE.
             !species_check_mask(nSurface) = .FALSE.
-            !IF (ANY(abund(1:nspec,dstep) < -negative_abundance_tol .AND. species_check_mask)) THEN
+            !IF (ANY(abund(1:nSpec,dstep) < -negative_abundance_tol .AND. species_check_mask)) THEN
             !    WRITE(*,'(A,ES12.4,A,I4)') "ERROR: negative abundance(s) after integration at t=", &
             !        timeInYears, " yr, dstep=", dstep
-            !    DO ii = 1, nspec
+            !    DO ii = 1, nSpec
             !        IF (ii == nBulk .OR. ii == nSurface) CYCLE
             !        IF (abund(ii,dstep) < -negative_abundance_tol) WRITE(*,'(4X,A,A,ES12.4)') &
             !            TRIM(specname(ii)), ": ", abund(ii,dstep)
@@ -538,7 +546,7 @@ contains
             !    successFlag = NEGATIVE_ABUNDANCE_ERROR
             !    RETURN
             !END IF
-            where(abund(1:nspec,dstep) < MIN_ABUND) abund(1:nspec,dstep) = MIN_ABUND
+            where(abund(1:nSpec,dstep) < MIN_ABUND) abund(1:nSpec,dstep) = MIN_ABUND
             ! Do NOT recompute nBulk/nSurface from sum(clamped bulkList):
             ! at early times that jumps nBulk by ~N_species orders of magnitude,
             ! breaking DVODE's BDF history. Direct clamp is within abstol_ice_min=1e-20.
@@ -546,7 +554,7 @@ contains
             ! Using the end-state (not start-state) means the first ISTATE=2 step after
             ! any ISTATE=1 always sees maxLogChange=0, measuring real cumulative drift
             ! from this point onward.
-            if (was_fresh_restart) prevAbund = abund(1:nspec, dstep)
+            if (was_fresh_restart) prevAbund = abund(1:nSpec, dstep)
             prevIntegrationTemp = gasTemp(dstep)
         end if
 
@@ -611,11 +619,11 @@ contains
         ! Clamping here keeps the RHS physical without altering the accepted step.
         real(WP), dimension(NEQUATIONS) :: Y_safe
         !Set D to the gas density for use in the ODEs
-        D=y(nspec+2)     !Gas density
+        D=y(nSpec+2)     !Gas density
         ydot=0.0_dp
 
         Y_safe = Y
-        where(Y_safe(1:nspec) < MIN_ABUND) Y_safe(1:nspec) = MIN_ABUND
+        where(Y_safe(1:nSpec) < MIN_ABUND) Y_safe(1:nSpec) = MIN_ABUND
 
         ! Column densities are fixed for postprocessing data, so don't do this bit
         if (.not. lusecoldens) then
@@ -685,14 +693,14 @@ contains
             ydot(nelec) = sum(ydot(ionlist(1:nion)))
         end if
 
-        ydot(nspec+2) = get_densdot(Y(nspec+2))     !Gas density ODE
+        ydot(nSpec+2) = get_densdot(Y(nSpec+2))     !Gas density ODE
 
         if (heatingFlag) then
             ! Species abundances in Y_safe are already clamped; Y used below only
-            ! for temperature (nspec+1) and density (nspec+2), which are never negative.
+            ! for temperature (nSpec+1) and density (nSpec+2), which are never negative.
             ! Write(*,*) "Updating heating and cooling rates"
-            if (ABS(y(nspec+1)-oldTemp)>MIN(heating_temp_abstol, heating_temp_reltol*oldTemp)) then
-                gasTemp(dstep)=y(nspec+1)
+            if (ABS(y(nSpec+1)-oldTemp)>MIN(heating_temp_abstol, heating_temp_reltol*oldTemp)) then
+                gasTemp(dstep)=y(nSpec+1)
                 if (gasTemp(dstep) < lower_limit_gastemp) gasTemp(dstep)=lower_limit_gastemp
                 if (gasTemp(dstep) > upper_limit_gastemp) gasTemp(dstep)=upper_limit_gastemp
                 ! Fix 2: update gas-phase two-body rates for the new temperature.
@@ -703,10 +711,10 @@ contains
                     exp(-gama(twobodyReacs(1):twobodyReacs(2))/gasTemp(dstep))
                 ! H&M79 eq. 6.45: critical density for H2 thermalization
                 ! (18100 coefficient for consistency with h2FUVPumpHeating in heating.f90)
-                h2_denom = 1.6_dp*Y(nh)*EXP(-((400.0_dp/Y(nspec+1))**2)) &
-                         &+ 1.4_dp*Y(nh2)*EXP(-(18100.0_dp/(Y(nspec+1)+1200.0_dp)))
+                h2_denom = 1.6_dp*Y(nh)*EXP(-((400.0_dp/Y(nSpec+1))**2)) &
+                         &+ 1.4_dp*Y(nh2)*EXP(-(18100.0_dp/(Y(nSpec+1)+1200.0_dp)))
                 if (h2_denom > 0.0_dp) then
-                    h2heatfac = 1.0_dp / (1.0_dp + 1.0e6_dp/(SQRT(Y(nspec+1))*h2_denom*Y(nspec+2)))
+                    h2heatfac = 1.0_dp / (1.0_dp + 1.0e6_dp/(SQRT(Y(nSpec+1))*h2_denom*Y(nSpec+2)))
                 else
                     h2heatfac = 0.0_dp
                 end if
@@ -715,14 +723,14 @@ contains
                 ! ERDes: 0.6 eV (Bourlot et al. 2012), thermalization-corrected
                 ! CT: 1.5 eV (Hollenbach & Tielens 1999), no thermalization correction
                 h2form = eV * ( &
-                    &  1.5_dp * rate(nR_H2Form_CT) * Y(nspec+2)**2 * Y(nh) &
-                    &+ (0.1_dp + 4.2_dp*h2heatfac) * rate(nR_H2Form_LHDes) * Y(ngh)**2 * Y(nspec+2) &
-                    &+ 0.6_dp * h2heatfac * rate(nR_H2Form_ERDes) * Y(nspec+2)**2 * Y(nh) * Y(ngh) &
+                    &  1.5_dp * rate(nR_H2Form_CT) * Y(nSpec+2)**2 * Y(nh) &
+                    &+ (0.1_dp + 4.2_dp*h2heatfac) * rate(nR_H2Form_LHDes) * Y(ngh)**2 * Y(nSpec+2) &
+                    &+ 0.6_dp * h2heatfac * rate(nR_H2Form_ERDes) * Y(nSpec+2)**2 * Y(nh) * Y(ngh) &
                     &  / max(safeMantle, MIN_SURFACE_ABUND))
                 tempDot=getTempDot( &
                             &    timeInYears, &                         ! time
-                            &    Y(nspec+1), &                          ! gas temperature
-                            &    Y(nspec+2), &                          ! gas density
+                            &    Y(nSpec+1), &                          ! gas temperature
+                            &    Y(nSpec+2), &                          ! gas density
                             &    colDens(dstep), &                      ! gas column density
                             &    radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &     ! attenuated radiation field
                             &    Y, &                                   ! all number densities
@@ -736,11 +744,11 @@ contains
                             &    dusttemp(dstep), &                     ! dust temperature
                             &    turbVel &                              ! turbulence velocity
                         )
-                oldTemp=y(nspec+1)
+                oldTemp=y(nSpec+1)
             end if
-            ydot(nspec+1)=tempDot
+            ydot(nSpec+1)=tempDot
         else
-            ydot(nspec+1)=0.0
+            ydot(nSpec+1)=0.0
         end if
 
     end subroutine F
@@ -766,7 +774,7 @@ contains
         do i_loc = 1, points
             do j_loc = 1, n_elem_tracked
                 initial_elem_abund(j_loc, i_loc) = &
-                    SUM(REAL(elem_count(1:nspec, j_loc), dp) * abund(1:nspec, i_loc))
+                    SUM(REAL(elem_count(1:nSpec, j_loc), dp) * abund(1:nSpec, i_loc))
             end do
         end do
     end subroutine setConservationBaseline
@@ -778,7 +786,7 @@ contains
         integer :: j_loc
         do j_loc = 1, n_elem_tracked
             initial_elem_abund(j_loc, point_idx) = &
-                SUM(REAL(elem_count(1:nspec, j_loc), dp) * abund(1:nspec, point_idx))
+                SUM(REAL(elem_count(1:nSpec, j_loc), dp) * abund(1:nSpec, point_idx))
         end do
     end subroutine resetConservationBaselineForPoint
 
