@@ -59,7 +59,7 @@ contains
             end do
          end if
 
-         density=rhofit(parcelRadius(dstep),rho0fit(timeInYears),r0fit(timeInYears),afit(timeInYears))
+         density=get_rhofit(parcelRadius(dstep),get_rho0fit(timeInYears),get_r0fit(timeInYears),get_afit(timeInYears))
          if (collapse_mode <= 2) call findmassInRadius
     end subroutine initializePhysics
 
@@ -118,24 +118,25 @@ contains
         effectiveTime = MIN(timeInYears, collapseFinalTime)
         !calculate column density. Remember dstep counts from core to edge
         !and coldens should be amount of gas from edge to parcel.
-        call findcoldens(coldens(dstep),rin,rho0fit(effectiveTime),r0fit(effectiveTime),afit(effectiveTime),rout)
+        call findcoldens(coldens(dstep),rin,get_rho0fit(effectiveTime),get_r0fit(effectiveTime),get_afit(effectiveTime),rout)
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= get_av(baseAv, coldens(dstep))
         !If collapse is one of the parameterized modes, find new density and radius
 
         if ((collapse_mode <= 2)) then
             !I changed rin to rout
-            call findNewRadius(massInRadius(dstep),rout,rho0fit(effectiveTime),&
-                &r0fit(effectiveTime),afit(effectiveTime),parcelRadius(dstep))
+            call findNewRadius(massInRadius(dstep),rout,get_rho0fit(effectiveTime),&
+                &get_r0fit(effectiveTime),get_afit(effectiveTime),parcelRadius(dstep))
         else
             dt = targetTime - currentTime
             if (timeInYears < collapseFinalTime) then
-                drad = vrfit(parcelRadius(dstep),rminfit(effectiveTime),vminfit(effectiveTime),avfit(effectiveTime))*dt/PC
+                drad = get_vrfit(parcelRadius(dstep),get_rminfit(effectiveTime),&
+                    get_vminfit(effectiveTime),get_avfit(effectiveTime))*dt/PC
                 parcelRadius(dstep) = parcelRadius(dstep) + drad
             end if
         end if
         parcel_radius(dstep) = parcelRadius(dstep)
-        density(dstep)=rhofit(parcelRadius(dstep),rho0fit(effectiveTime),r0fit(effectiveTime),afit(effectiveTime))
+        density(dstep)=get_rhofit(parcelRadius(dstep),get_rho0fit(effectiveTime),get_r0fit(effectiveTime),get_afit(effectiveTime))
         ! Apply hard density of n_H=1e8 limit to prevent unphysical behavior
         density(dstep) = MIN(density(dstep), 1e8_dp)
     end subroutine updatePhysics
@@ -155,16 +156,16 @@ contains
       integer :: i,np,dstep
       real(dp) :: dr,drho
 
-        rho0=rho0fit(timeInYears)
-        r0=r0fit(timeInYears)
-        a=afit(timeInYears)
+        rho0=get_rho0fit(timeInYears)
+        r0=get_r0fit(timeInYears)
+        a=get_afit(timeInYears)
       do dstep=1,points
         np = 1000
         dr = parcelRadius(dstep)/np
         massInRadius(dstep) = 0.0_dp
 
         do i=1,np
-           drho = 0.5_dp*(rhofit(i*dr,rho0,r0,a)+rhofit((i-1)*dr,rho0,r0,a))
+           drho = 0.5_dp*(get_rhofit(i*dr,rho0,r0,a)+get_rhofit((i-1)*dr,rho0,r0,a))
            massInRadius(dstep) = massInRadius(dstep) + drho*dr*(i*dr)**2
         end do
       end do
@@ -181,7 +182,7 @@ contains
       dr = r/1.0e4_dp
       m1 = 0.0_dp
       do while (m1 < massInRadius)
-         drho = 0.5_dp*(rhofit(i*dr,rho0,r0,a)+rhofit((i-1)*dr,rho0,r0,a))
+         drho = 0.5_dp*(get_rhofit(i*dr,rho0,r0,a)+get_rhofit((i-1)*dr,rho0,r0,a))
          m1 = m1 + drho*dr*(i*dr)**2
          newRadius = i*dr
          i=i+1
@@ -205,15 +206,16 @@ contains
       do i=1,np
          r1 = rin + (i-1)*dr
          r2 = rin + i*dr
-         drho = 0.5_dp*(rhofit(r2,rho0,r0,a)+rhofit(r1,rho0,r0,a))
+         drho = 0.5_dp*(get_rhofit(r2,rho0,r0,a)+get_rhofit(r1,rho0,r0,a))
          coldens = coldens + drho*dr*PC
       end do
 
     end subroutine findcoldens
 
 ! fit to density profile of hydrodynamic simulations
-    real(dp) function rhofit(r,rho0,r0,a)
+    function get_rhofit(r,rho0,r0,a) result(rhofit)
       real(dp), intent(in) :: r,rho0,r0,a
+      real(dp) :: rhofit
       real(dp) :: rau,unitrho,unitr,r75
 
       if (collapse_mode == 1) then
@@ -232,11 +234,12 @@ contains
          rhofit = rho0/(1.0_dp + (r75/r0)**a)
       end if
 
-    end function rhofit
+    end function get_rhofit
 
 ! fit to time evolution of central density
-    real(dp) function rho0fit(t)
+    function get_rho0fit(t) result(rho0fit)
       real(dp), intent(in) :: t
+      real(dp) :: rho0fit
       real(dp) :: logrho0, unitt
       if (collapse_mode == 1) then
          logrho0 = 61.8_dp*(maxTime-t)**(-0.01_dp) - 49.4_dp
@@ -258,11 +261,12 @@ contains
          end if
       end if
 
-    end function rho0fit
+    end function get_rho0fit
 
 ! fit to time evolution of radius parameter
-    real(dp) function r0fit(t)
+    function get_r0fit(t) result(r0fit)
       real(dp), intent(in) :: t
+      real(dp) :: r0fit
       real(dp) :: logr0,unitt
 
       if (collapse_mode == 1) then
@@ -281,11 +285,14 @@ contains
          r0fit = 10**logr0
       end if
 
-    end function r0fit
+    end function get_r0fit
 
 ! fit to time evolution of density slope parameter
-    real(dp) function afit(t)
+    function get_afit(t) result(afit)
       real(dp), intent(in) :: t
+
+      real(dp) :: afit
+
       real(dp) :: unitt
 
       if (collapse_mode == 1) then
@@ -300,11 +307,12 @@ contains
          afit = 2.4_dp - 0.2_dp*(1e-6_dp*t/16.138_dp)**40
       end if
 
-    end function afit
+    end function get_afit
 
 ! fit to radial velocity of hydrodynamical simulation
-    real(dp) function vrfit(r,rmin,vmin,a)
+    function get_vrfit(r,rmin,vmin,a) result(vrfit)
       real(dp), intent(in) :: r,rmin,vmin,a
+      real(dp) :: vrfit
       real(dp) :: unitr,newRadius,rmid,r75
 
       if (collapse_mode == 3) then
@@ -331,11 +339,14 @@ contains
          vrfit = 1e3_dp*vrfit  ! convert to cm s-1 from 1e-2 km s-1
       end if
 
-    end function vrfit
+    end function get_vrfit
 
 ! fit to time evolution of radius of minimum velocity
-    real(dp) function rminfit(t)
+    function get_rminfit(t) result(rminfit)
       real(dp), intent(in) :: t
+
+      real(dp) :: rminfit
+
       real(dp) :: unitt,tnew
       real(dp) :: t6
 
@@ -363,11 +374,14 @@ contains
          end if
       end if
 
-    end function rminfit
+    end function get_rminfit
 
 ! fit to time evolution of minimum velocity
-    real(dp) function vminfit(t)
+    function get_vminfit(t) result(vminfit)
       real(dp), intent(in) :: t
+
+      real(dp) :: vminfit
+
       real(dp) :: unitt,tnew
       real(dp) :: t6
 
@@ -389,11 +403,14 @@ contains
          vminfit = 3.44_dp*(16.138_dp-t6)**(-0.35_dp) - 0.7_dp
       end if
 
-    end function vminfit
+    end function get_vminfit
 
 ! fit to time evolution of velocity a-parameter (collapse 4) or velocity at r=0.5 (collapse 5)
-    real(dp) function avfit(t)
+    function get_avfit(t) result(avfit)
       real(dp), intent(in) :: t
+
+      real(dp) :: avfit
+
       real(dp) :: unitt,tnew
       real(dp) :: t6
 
@@ -419,7 +436,7 @@ contains
          end if
       end if
 
-    end function avfit
+    end function get_avfit
 end module collapse_mod
 
 !REQUIRED PHYSICS ENDS HERE, ANY ADDITIONAL PHYSICS CAN BE ADDED BELOW.
