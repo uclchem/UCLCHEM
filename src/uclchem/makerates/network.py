@@ -352,12 +352,12 @@ class BaseNetwork(NetworkABC):
 
     @property
     def species(self) -> dict[str, Species]:
-        """Get species dictionary."""
+        """The species dictionary."""
         return self._species_dict
 
     @property
     def reactions(self) -> dict[int, Reaction]:
-        """Get reactions dictionary."""
+        """The reactions dictionary."""
         return self._reactions_dict
 
     # ========================================================================
@@ -797,7 +797,7 @@ class Network(BaseNetwork, MutableNetworkABC):
 
     @property
     def species(self) -> dict[str, Species]:
-        """Get species dictionary."""
+        """The species dictionary."""
         return self._species_dict
 
     # Note: Read operations (get_species_list, get_reaction_list, etc.)
