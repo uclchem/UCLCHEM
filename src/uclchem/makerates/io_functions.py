@@ -1534,7 +1534,7 @@ def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> 
     i = 0
     j = 0
     # we only want to split at operators to make it look nice
-    splits = ["*", ")", "+", ","]
+    splits = ["*", ")", "+", "-", ","]
     while len(input_string[i:]) > line_length:
         j = i + line_length
         if "\n" in input_string[i:j]:
