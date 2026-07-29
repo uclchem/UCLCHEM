@@ -122,7 +122,7 @@ class NetworkBuilder:
 
     @property
     def network(self) -> "Network":
-        """Return the network under construction.
+        """The network under construction.
 
         Returns
         -------

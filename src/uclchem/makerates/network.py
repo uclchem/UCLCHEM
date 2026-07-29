@@ -48,13 +48,13 @@ class NetworkABC(ABC):
     @property
     @abstractmethod
     def species(self) -> dict[str, Species]:
-        """Get the species collection."""
+        """The species collection."""
         pass
 
     @property
     @abstractmethod
     def reactions(self) -> dict[int, Reaction]:
-        """Get the reactions collection."""
+        """The reactions collection."""
         pass
 
     # Species Read Interface
@@ -352,7 +352,7 @@ class BaseNetwork(NetworkABC):
 
     @property
     def species(self) -> dict[str, Species]:
-        """Get species dictionary.
+        """The species dictionary.
 
         Returns
         -------
@@ -364,7 +364,7 @@ class BaseNetwork(NetworkABC):
 
     @property
     def reactions(self) -> dict[int, Reaction]:
-        """Get reactions dictionary.
+        """The reactions dictionary.
 
         Returns
         -------
@@ -811,7 +811,7 @@ class Network(BaseNetwork, MutableNetworkABC):
 
     @property
     def species(self) -> dict[str, Species]:
-        """Get species dictionary.
+        """The species dictionary.
 
         Returns
         -------
