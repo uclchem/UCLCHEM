@@ -13,23 +13,23 @@ module photoreactions
     ! They cannot be parameters, because they can be adjusted
     ! at runtime from within python.
     logical :: start=.true.
-    integer, parameter :: MAX_NUM_LAMDBA = 30
-    integer :: NUM_LAMBDA = MAX_NUM_LAMDBA  ! Initialize with maximum number of wavelengths
-    real(dp), dimension(MAX_NUM_LAMDBA) :: LAMBDA_GRID=(/ &
+    integer, parameter :: MAX_NUM_LAMBDA = 30
+    integer :: NUM_LAMBDA = MAX_NUM_LAMBDA  ! Initialize with maximum number of wavelengths
+    real(dp), dimension(MAX_NUM_LAMBDA) :: LAMBDA_GRID=(/ &
       &  910.0_dp, 950.0_dp,1000.0_dp,1050.0_dp,1110.0_dp, &
       & 1180.0_dp,1250.0_dp,1390.0_dp,1490.0_dp,1600.0_dp, &
       & 1700.0_dp,1800.0_dp,1900.0_dp,2000.0_dp,2100.0_dp, &
       & 2190.0_dp,2300.0_dp,2400.0_dp,2500.0_dp,2740.0_dp, &
       & 3440.0_dp,4000.0_dp,4400.0_dp,5500.0_dp,7000.0_dp, &
       & 9000.0_dp,12500.0_dp,22000.0_dp,34000.0_dp,1.0e9_dp/)
-    real(dp), dimension(MAX_NUM_LAMDBA) :: XLAMBDA_GRID=(/ &
+    real(dp), dimension(MAX_NUM_LAMBDA) :: XLAMBDA_GRID=(/ &
       & 5.76_dp,5.18_dp,4.65_dp,4.16_dp,3.73_dp, &
       & 3.40_dp,3.11_dp,2.74_dp,2.63_dp,2.62_dp, &
       & 2.54_dp,2.50_dp,2.58_dp,2.78_dp,3.01_dp, &
       & 3.12_dp,2.86_dp,2.58_dp,2.35_dp,2.00_dp, &
       & 1.58_dp,1.42_dp,1.32_dp,1.00_dp,0.75_dp, &
       & 0.48_dp,0.28_dp,0.12_dp,0.05_dp,0.00_dp/)
-    real(dp), dimension(MAX_NUM_LAMDBA) :: XLAMBDA_DERIV
+    real(dp), dimension(MAX_NUM_LAMBDA) :: XLAMBDA_DERIV
 
     logical :: startr=.true.
 

@@ -2026,7 +2026,11 @@ def replace_value_with_name(
     '(/0.0000e+00_dp,1.0000e+00_dp,X/)'
 
     >>> # Replaces all instances of 'value'
-    >>> replace_value_with_name("(/0.0000e+00_dp,1.0000e+00_dp,2.0000e+00_dp,1.0000e+00_dp/)", 1.0, "X")
+    >>> replace_value_with_name(
+    ...     "(/0.0000e+00_dp,1.0000e+00_dp,2.0000e+00_dp,1.0000e+00_dp/)",
+    ...     1.0,
+    ...     "X",
+    ... )
     '(/0.0000e+00_dp,X,2.0000e+00_dp,X/)'
 
     """
@@ -2043,7 +2047,8 @@ def replace_value_with_name(
         array_string = array_to_string("", [value], type="float")
         value_string = array_string.split("/")[1]
     else:
-        raise TypeError()
+        msg = f"replace_value_with_name is not supported for type {type(value)}. Supported types: 'float', 'int'."
+        raise TypeError(msg)
     # Use regex to replace only complete tokens surrounded by array delimiters (,  (/  /)
     # or list-style delimiters ([ ] space).  A plain str.replace() can corrupt adjacent
     # values if line-continuation stripping ever places two numbers adjacent to each other.

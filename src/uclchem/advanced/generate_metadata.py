@@ -145,7 +145,7 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
         continuation = ""  # accumulated continuation lines
 
         with f90.open(encoding="utf-8", errors="replace") as fh:
-            if not "io.f90" in str(f90):
+            if "io.f90" not in str(f90):
                 continue
             for raw in fh:
                 line = _strip_comment(raw).rstrip()
@@ -263,7 +263,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(
                 f"ERROR: Fortran source directory not found: {fortran_src}\n"
                 "Run this command from the repo root (the directory containing src/),\n"
-                "or use an editable install (pip install -e .)."
+                "or use an editable install (pip install --no-build-isolation -e .)."
             )
 
     detected = parse_fortran_parameters(fortran_src)

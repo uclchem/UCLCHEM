@@ -4,12 +4,10 @@ This should be run from the UCLCHEM root directory.
 
 """
 
-import logging
 from pathlib import Path
 from time import perf_counter
 
 import uclchem
-
 
 if __name__ == "__main__":
     uclchem.utils.configure_logging(level="INFO")

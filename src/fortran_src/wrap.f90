@@ -1097,7 +1097,6 @@ contains
         ! IF (ALLOCATED(outSpecies)) DEALLOCATE(outSpecies)
     end subroutine solveAbundances
 
-    ! allow(stat-without-message)
     subroutine dictionaryParser(dictionary, outSpeciesIn, successFlag)
         !Reads the input parameters from a string containing a python dictionary/JSON format
         !set of parameter names and values.
@@ -1362,7 +1361,6 @@ contains
                         open(abundLoadID,file=abundLoadFile,status="old", action="read")
                     end if
                 case("outputfile")
-                    ! allow(unchecked-stat)
                     read(inputValue,*,iostat=successFlag) outputFile
                     outputFile = trim(outputFile)
                     fullOutput=.true.
@@ -1380,7 +1378,6 @@ contains
                         return
                     end if
                 case("rateConstantFile")
-                    ! allow(unchecked-stat)
                     read(inputValue,*,iostat=successFlag) rateConstantFile
                     rateConstantFile = trim(rateConstantFile)
                     if ((LEN(ratesFile) > 0) .and. (.not. storeRatesComputation))then
@@ -1400,7 +1397,6 @@ contains
                         return
                     end if
                 case("ratesFile")
-                    ! allow(unchecked-stat)
                     read(inputValue,*,iostat=successFlag) ratesFile
                     ratesFile = trim(ratesFile)
                     if ((LEN(ratesFile) > 0) .and. (.not. storeRatesComputation))then
@@ -1420,7 +1416,6 @@ contains
                         return
                     end if
                 case("heatingfile")
-                    ! allow(unchecked-stat)
                     read(inputValue,*,iostat=successFlag) heatingFile
                     heatingFile = trim(heatingFile)
                     open(heatingId,file=heatingFile,status="unknown",iostat=successFlag, action="read")
