@@ -175,12 +175,17 @@ possibly-missing-submodule = "ignore"
 [tool.fortitude.check]
 select = ["E", "C", "OB", "MOD", "S", "PORT", "FORT"]
 line-length = 131
-exclude = ["src/uclchem/makerates/fortran_templates/f2py_constants.f90", "src/fortran_src/dvode.f90", "src/fortran/rates.f90"]
+exclude = [
+    "src/uclchem/makerates/fortran_templates/f2py_constants.f90",
+    "src/fortran_src/dvode.f90",
+    "src/fortran_src/jacobian.f90"
+]
 target-std = "f95"
 ignore = [
     "MOD011", # Does not work with crackfortran (needed by f2py)
     "S002", "S901", "S902", 
-    "C132",
+    "C132", "C181", "C183",
 ] 
 line-too-long.ignore-comments = true
 preview = true
+use-statements.allow-bare-use = ['defaultparameters']

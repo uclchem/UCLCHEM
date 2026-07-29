@@ -2,7 +2,8 @@ module extinction_module
    use constants, only: dp
    implicit none
 
-   public
+   private
+   public :: extcurve_obs
 
   contains
 
@@ -112,9 +113,9 @@ module extinction_module
   end subroutine extcurve_obs
 
   function poly(coeff, x) result(value)
-    real(8), dimension(:), intent(in) :: coeff
-    real(8), intent(in) :: x
-    real(8) :: value
+    real(dp), dimension(:), intent(in) :: coeff
+    real(dp), intent(in) :: x
+    real(dp) :: value
     integer :: i
 
     value = 0.0_dp

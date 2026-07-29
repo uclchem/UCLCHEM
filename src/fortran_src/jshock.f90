@@ -3,16 +3,19 @@
 !Based on James et al. 2019 A&A 634
 !https://ui.adsabs.harvard.edu/abs/2020A%26A...634A..17J/abstract
 module jshock_mod
-    use constants
+    use constants, only: PI, PC, SECONDS_PER_YEAR
     use DEFAULTPARAMETERS
-    use f2py_constants
-    use network
+    use f2py_constants, only: nSpec
     !f2py INTEGER, parameter :: dp
+    use network, only: iceList
     use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
-    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens
+        zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, &
+        gastemp, dusttemp, av, coldens
     use sputtering, only: sputterIces, sputteringSetup
     implicit none
+
+    private
+    public :: initializePhysics, updatePhysics, updateTargetTime, sublimation, vs
 
     real(dp) :: tstart,maxTemp,vMin,mfp,tCool,tShock,d,dMax,maxDens
     real(dp) :: t_lambda, n_lambda
@@ -33,7 +36,7 @@ contains
         successFlag=0
         !Reset variables for python wrap.
 
-        cloudSize=(rout-rin)*pc
+        cloudSize=(rout-rin)*PC
 
         if (freefall) then
             write(*,*) "Cannot have freefall on during jshock"
@@ -58,7 +61,7 @@ contains
             0.06183_dp*(vs) - 0.4254_dp)**2)**0.5_dp
 
         ! Determine the shock width (of the order of the mean free path)
-        mfp = ((sqrt(2.0_dp)*(1e3_dp)*(pi*(2.4e-8_dp)**2))**(-1))/1e4_dp
+        mfp = ((sqrt(2.0_dp)*(1e3_dp)*(PI*(2.4e-8_dp)**2))**(-1))/1e4_dp
         tShock = mfp/(vs*1e5_dp)
         ! Determine shock width
         tCool = (1/initialDens)*1e6_dp*SECONDS_PER_YEAR
@@ -139,7 +142,7 @@ contains
     ! In hot core that means following thermalEvaporation subroutine.                 !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     subroutine sublimation(abund, lpoints)
-        real(dp), intent(inout) :: abund(nspec+2,lpoints)
+        real(dp), intent(inout) :: abund(nSpec+1,lpoints)
         integer, intent(in) :: lpoints
         real(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)

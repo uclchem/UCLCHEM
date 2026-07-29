@@ -144,14 +144,16 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
         depth = 0  # nesting level; 0 = module scope
         continuation = ""  # accumulated continuation lines
 
-        with Path(f90).open(encoding="utf-8", errors="replace") as fh:
+        with f90.open(encoding="utf-8", errors="replace") as fh:
+            if not "io.f90" in str(f90):
+                continue
             for raw in fh:
                 line = _strip_comment(raw).rstrip()
 
                 # Handle Fortran continuation: lines ending with & continue on next line
                 if continuation:
                     # Previous line ended with &, prepend it
-                    line = continuation + line.lstrip("&").lstrip()
+                    line = continuation + line.lstrip().lstrip("&").lstrip()
                     continuation = ""
 
                 if line.endswith("&"):
@@ -190,7 +192,7 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
 
 
 def _load_yaml(path: Path) -> dict:
-    with Path(path).open() as f:
+    with path.open() as f:
         return yaml.safe_load(f) or {}
 
 
@@ -218,7 +220,7 @@ def _merge(existing: dict, detected: dict[str, list[str]]) -> dict:
 
     """
     merged = dict(existing)
-    fp: dict = dict(merged.get("fortran_parameters", {}))
+    fp = dict(merged.get("fortran_parameters", {}))
 
     fp.update(detected)
 

@@ -7,8 +7,12 @@
 !
 !-----------------------------------------------------------------------
 module SWAP_FUNCTION
-
    use constants, only: dp
+   use iso_fortran_env, only: output_unit
+
+   implicit none
+
+   public
 
    interface SWAP
       module procedure SWAP_INTEGER,SWAP_REAL,SWAP_INTEGER_1D_ARRAY,SWAP_REAL_1D_ARRAY,SWAP_INTEGER_2D_ARRAY,SWAP_REAL_2D_ARRAY
@@ -17,7 +21,6 @@ module SWAP_FUNCTION
 contains
 
    subroutine SWAP_INTEGER(A,B)
-      implicit none
       integer, intent(inout) :: A,B
       integer :: D
       D = A
@@ -26,7 +29,6 @@ contains
    end subroutine SWAP_INTEGER
 
    subroutine SWAP_REAL(A,B)
-      implicit none
       real(dp), intent(inout) :: A,B
       real(dp) :: D
       D = A
@@ -35,12 +37,11 @@ contains
    end subroutine SWAP_REAL
 
    subroutine SWAP_INTEGER_1D_ARRAY(A,B)
-      implicit none
       integer, dimension(:), intent(inout) :: A,B
       integer, dimension(:), allocatable   :: D
       if(SIZE(A)/=SIZE(B)) then
-         write(6,*) "ERROR! Cannot swap values between arrays of different dimensions"
-         write(6,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
+         write(output_unit,*) "ERROR! Cannot swap values between arrays of different dimensions"
+         write(output_unit,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
          stop
       end if
       allocate(D(SIZE(A)))
@@ -51,12 +52,11 @@ contains
    end subroutine SWAP_INTEGER_1D_ARRAY
 
    subroutine SWAP_REAL_1D_ARRAY(A,B)
-      implicit none
       real(dp), dimension(:), intent(inout) :: A,B
       real(dp), dimension(:), allocatable   :: D
       if(SIZE(A)/=SIZE(B)) then
-         write(6,*) "ERROR! Cannot swap values between arrays of different dimensions"
-         write(6,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
+         write(output_unit,*) "ERROR! Cannot swap values between arrays of different dimensions"
+         write(output_unit,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
          stop
       end if
       allocate(D(SIZE(A)))
@@ -68,12 +68,11 @@ contains
 
 
    subroutine SWAP_INTEGER_2D_ARRAY(A,B)
-      implicit none
       integer, dimension(:,:), intent(inout) :: A,B
       integer, dimension(:,:), allocatable   :: D
       if(SIZE(A,1)/=SIZE(B,1) .OR. SIZE(A,2)/=SIZE(B,2)) then
-         write(6,*) "ERROR! Cannot swap values between arrays of different dimensions"
-         write(6,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
+         write(output_unit,*) "ERROR! Cannot swap values between arrays of different dimensions"
+         write(output_unit,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
          stop
       end if
       allocate(D(SIZE(A,1),SIZE(A,2)))
@@ -84,12 +83,11 @@ contains
    end subroutine SWAP_INTEGER_2D_ARRAY
 
    subroutine SWAP_REAL_2D_ARRAY(A,B)
-      implicit none
       real(dp), dimension(:,:), intent(inout) :: A,B
       real(dp), dimension(:,:), allocatable   :: D
       if(SIZE(A,1)/=SIZE(B,1) .OR. SIZE(A,2)/=SIZE(B,2)) then
-         write(6,*) "ERROR! Cannot swap values between arrays of different dimensions"
-         write(6,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
+         write(output_unit,*) "ERROR! Cannot swap values between arrays of different dimensions"
+         write(output_unit,*) "SHAPE(A) =",SHAPE(A),"; SHAPE(B) =",SHAPE(B)
          stop
       end if
       allocate(D(SIZE(A,1),SIZE(A,2)))

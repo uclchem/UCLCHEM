@@ -122,26 +122,12 @@ fortran_parameters:
   - twobodyreacs
   - volcanicfractions
   heating:
-  - aconsts
-  - alpha
-  - bconsts
-  - c
-  - c0
-  - c1
-  - c2
-  - c3
-  - c4
-  - c5
-  - c6
-  - cmbtemp
   - coolinglabels
-  - d
   - heatinglabels
   - max_line_solve_attempts
   - ncooling
   - nheating
   - nheatingterms
-  - phi_pah
   cshock_mod:
   - bt
   - grainradius
@@ -162,9 +148,9 @@ fortran_parameters:
   photoreactions:
   - dimco
   - dimh2
-  - fosc
-  - fpara
+  - max_num_lamdba
   sputtering:
+  - n_projectiles
   - vaporize_speed
   io:
   - abundloadid
@@ -204,6 +190,7 @@ fortran_parameters:
   - km
   - lsun
   - mh
+  - min_abund
   - n_avogadro
   - negative_abundance_error
   - not_enough_timepoints_error
@@ -264,6 +251,7 @@ fortran_parameters:
   - min_surface_abund
   - num_monolayers_is_surface
   - num_sites_per_grain
+  - scalefactor
   - silicate_cross_section
   - silicate_e_h2
   - silicate_e_hc

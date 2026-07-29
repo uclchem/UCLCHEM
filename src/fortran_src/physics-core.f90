@@ -3,7 +3,8 @@
 !module (so it can use the physics for reaction rates).
 
 module physicscore
-    use constants
+    use constants, only: dp, C, SECONDS_PER_YEAR, PC, PI, HP, K_BOLTZ, aunit, eV, &
+        uISRF, uISRF_UV, Lsun, SB_CONST
     use DEFAULTPARAMETERS
     use extinction_module
     !f2py INTEGER, parameter :: dp
@@ -16,7 +17,7 @@ module physicscore
     real(dp) :: h2CRPRate,zetaScale
 
     !variables either controlled by physics or that user may wish to change
-    real(dp) :: timeInYears,targetTime,currentTimeold
+    real(dp) :: timeInYears,targetTime,currentTimeOld
     real(dp) ::  cloudSize
     real(dp), allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:),density_max(:)
     ! Per-parcel internal Av shielding (coldens_internal/1.6e21); 0 for models without a protostar.
@@ -82,7 +83,7 @@ module physicscore
     ! parameters for 1D radiation field calculation
     real(dp), parameter :: Tdsub = 1500.0_dp  !sublimation/melted temperature for dust grains
     ! ! range of wavelength for integration
-    real(dp), parameter :: wave1 = HP * C * 1.0e4_dp / (13.6_dp * EV)  !in micron
+    real(dp), parameter :: wave1 = HP * C * 1.0e4_dp / (13.6_dp * eV)  !in micron
     real(dp), parameter :: wave2 = 20.0_dp  ! in micron
 
 contains
@@ -189,9 +190,9 @@ contains
     real(dp) :: dByDnDensdot
     !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
     if (density < finalDens) then
-        dByDndensdot=freefallFactor*8.4e-30_dp*(density**3)*((9.0_dp*((density/initialDens)**0.33))-8.0_dp)
-        dByDnDensdot=dByDnDensdot/(6.0_dp*(((density**4.0)/initialDens)**0.66))
-        dByDnDensdot=dByDnDensdot/sqrt(initialDens*8.4e-30_dp*(((density/initialDens)**0.33))-1.0_dp)
+        dByDndensdot=freefallFactor*8.4e-30_dp*(density**3)*((9.0_dp*((density/initialDens)**0.33_dp))-8.0_dp)
+        dByDnDensdot=dByDnDensdot/(6.0_dp*(((density**4)/initialDens)**0.66_dp))
+        dByDnDensdot=dByDnDensdot/sqrt(initialDens*8.4e-30_dp*(((density/initialDens)**0.33_dp))-1.0_dp)
     else
         dByDnDensdot=0.0_dp
     end if
@@ -260,12 +261,13 @@ contains
     end subroutine findcoldens_edge2core
 
     ! Column density shielding from external UV (stage 1 / cloud): edge-to-parcel integral.
-    real(dp) function coldens_external(r, rho0)
+    function get_coldens_external(r, rho0) result(coldens_external)
         real(dp), intent(in) :: r    ! parcel radius [pc]
         real(dp), intent(in) :: rho0  ! reference density [cm-3]
+        real(dp) :: coldens_external
         call findcoldens_edge2core(coldens_external, rho0, density_scale_radius, &
                                    density_power_index, r)
-    end function coldens_external
+    end function get_coldens_external
 
     ! Column density shielding from central protostar (stage 2 / hotcore): integral from center to parcel.
     real(dp) function coldens_internal(r)
@@ -276,29 +278,34 @@ contains
 
     ! The profile of the gas volume density
     ! REAL(dp) FUNCTION rhofit(r,rho0,r0,a)
-    real(dp) function ngas_r(r,rho0,density_scale_radius,density_power_index)
-      real(dp) :: r,rho0,density_scale_radius,density_power_index
+    function get_ngas_r(r,rho0,density_scale_radius,density_power_index) result(ngas_r)
+      real(dp), intent(in) :: r,rho0,density_scale_radius,density_power_index
+      real(dp) :: ngas_r
       ! [r] in pc, [density_scale_radius] in pc
       ngas_r = rho0/(1.0_dp + (r/density_scale_radius)**density_power_index)
 
-    end function ngas_r
+    end function get_ngas_r
 
-    real(dp) function initialDens_r(r,p)
-        real(dp) :: logn0, logr0,n0_init,r0_init
-        real(dp) :: r,t,p
+    function get_initialDens_r(r,p) result(initialDens_r)
+        real(dp), intent(in) :: r,p
+        real(dp) :: initialDens_r
+
+        real(dp) :: t, logn0, logr0,n0_init,r0_init
+
         t = 0.0_dp
-        logn0=61.8_dp*(1.175e6_dp-t)**(-0.01) - 49.4_dp
-        logr0=-28.5_dp*(1.175e6-t)**(-0.01) + 28.93_dp
+        logn0=61.8_dp*(1.175e6_dp-t)**(-0.01_dp) - 49.4_dp
+        logr0=-28.5_dp*(1.175e6_dp-t)**(-0.01_dp) + 28.93_dp
         n0_init=10**(logn0)
         r0_init=10**(logr0) * aunit
-        initialDens_r=1.0+(r/r0_init)**p
+        initialDens_r = 1.0_dp+(r/r0_init)**p
         initialDens_r = n0_init/initialDens_r
-    end function initialDens_r
+    end function get_initialDens_r
 
     subroutine radiation(r, Lstar, Tstar, Avs, Temp_dust, U)
-        real(dp) :: Lstar, Tstar, Avs, r, U_star, U_shell
+        real(dp), intent(in) :: Lstar, Tstar, Avs, r
         real(dp), intent(out) :: Temp_dust, U
-        real(8)  :: rsub
+
+        real(dp)  :: rsub, U_star, U_shell
         integer, parameter :: nw=129
 
         ! sublimation distance
@@ -318,18 +325,18 @@ contains
         U = U_star + U_shell
 
         ! dust temperature at equilibrium with the radiation field
-        Temp_dust=Temp_average(U)
+        Temp_dust=get_temp_average_grain(U)
 
     end subroutine radiation
 
     subroutine radiation_star(r, Lstar, Tstar, Avs, U)
-        real(dp) :: Lstar, Tstar, Rstar, r
+        real(dp), intent(in) :: Lstar, Tstar, r, Avs
         real(dp), intent(out) :: U
         integer :: i
         real(dp), dimension(:), allocatable :: wave, wave_cm, Istar, uwave_star, tau_wave, uwave_red
-        real(dp) :: ZZ, Avs, rsub
+        real(dp) :: ZZ, rsub, Rstar
         real(dp) :: NH_EBV, RV
-        real(8)  :: urad_red
+        real(dp)  :: urad_red
         integer, parameter :: nw=129
         real(dp), dimension(2, nw) :: ext_curves
         character(len=10) :: model
@@ -352,7 +359,7 @@ contains
         ! Call the function from the module
         call extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
 
-        Istar     = (2.0_dp*HP*C**2.0/wave_cm**5.0)*(1.0_dp/(exp(ZZ/wave_cm)-1.0_dp))
+        Istar     = (2.0_dp*HP*C**2.0_dp/wave_cm**5.0_dp)*(1.0_dp/(exp(ZZ/wave_cm)-1.0_dp))
         uwave_star = (4.0_dp*PI*wave_cm/C)*(Istar)/wave_cm
 
         tau_wave = Avs * ext_curves(1,:)/1.086_dp
@@ -365,20 +372,20 @@ contains
         end do
 
         ! The stellar radius
-        Rstar=Rstar_rsub(Tstar,Tdsub)*rsub
+        Rstar=get_Rstar_rsub(Tstar,Tdsub)*rsub
 
         ! The total radiation field (dimensionless)
-        U = urad_red / uISRF * (r / Rstar)**(-2.0)
+        U = urad_red / uISRF * (r / Rstar)**(-2.0_dp)
     end subroutine radiation_star
 
     subroutine radiation_shell(r, Lstar, Tstar, Avs, U)
-        real(dp) :: Lstar, Tstar, r
+        real(dp), intent(in) :: Lstar, Tstar, r, Avs
         real(dp), intent(out) :: U
         integer :: i
         real(dp), dimension(:), allocatable :: wave, wave_cm, Istar, uwave_star, tau_wave, uwave_red
-        real(dp) :: ZZ, Avs, rsub
+        real(dp) :: ZZ, rsub
         real(dp) :: NH_EBV, RV
-        real(8)  :: urad_red, Tshell
+        real(dp)  :: urad_red, Tshell
         integer, parameter :: nw=129
         real(dp), dimension(2, nw) :: ext_curves
         character(len=10) :: model
@@ -405,7 +412,7 @@ contains
         ! Call the function from the module
         call extcurve_obs(wave, RV, NH_EBV, model, ext_curves)
 
-        Istar     = (2.0_dp*HP*C**2.0/wave_cm**5.0)*(1.0_dp/(exp(ZZ/wave_cm)-1.0_dp))
+        Istar     = (2.0_dp*HP*C**2.0_dp/wave_cm**5.0_dp)*(1.0_dp/(exp(ZZ/wave_cm)-1.0_dp))
         uwave_star = (4.0_dp*PI*wave_cm/C)*(Istar)/wave_cm
 
         tau_wave = Avs * ext_curves(1,:)/1.086_dp
@@ -430,44 +437,49 @@ contains
         end do
     end subroutine logspace
 
-    real(dp) function Rstar_rsub(Tstar,Tdmax)
-        real(dp) :: Tstar,Tdmax
+    function get_Rstar_rsub(Tstar,Tdmax) result(Rstar_rsub)
+        real(dp), intent(in) :: Tstar,Tdmax
+        real(dp) :: Rstar_rsub
         real(dp) :: f1,f2
 
         f1 = sqrt(1.0e6_dp * Lsun)
         f2 = 155.3_dp * aunit * (Tdmax/1500.0_dp)**(-5.6_dp/2.0_dp) * sqrt(4.0_dp*PI*SB_CONST) * Tstar**2
         Rstar_rsub= f1/f2
-    end function Rstar_rsub
+    end function get_Rstar_rsub
 
-    real(dp) function Temp_average(U)
-        real(dp) :: U
+    function get_temp_average_grain(U) result(temp_average)
+        real(dp), intent(in) :: U
+        real(dp) :: temp_average
         real(dp) :: Td_sil,Td_car
         Td_sil = 16.4_dp * U**(1.0_dp/6.0_dp)  ! For silicate grains
         Td_car = 19.5_dp * U**(1.0_dp/5.6_dp)  ! For carbon grains
-        Temp_average = Td_sil**(4.0_dp) + Td_car**(4.0_dp)
-        Temp_average = (0.5_dp*Temp_average)**(1.0_dp/4.0_dp)
-    end function Temp_average
+        temp_average = Td_sil**(4.0_dp) + Td_car**(4.0_dp)
+        temp_average = (0.5_dp*temp_average)**(1.0_dp/4.0_dp)
+    end function get_temp_average_grain
 
-    real(dp) function get_Tshell(Tstar)
-        real(dp) :: Tstar
+    function get_Tshell(Tstar) result(Tshell)
+        real(dp), intent(in) :: Tstar
+        real(dp) :: Tshell
 
-        get_Tshell = Rstar_rsub(Tstar,Tdsub)
-        get_Tshell = get_Tshell**(0.5) * Tstar
+        Tshell = get_Rstar_rsub(Tstar,Tdsub)
+        Tshell = Tshell**(0.5_dp) * Tstar
     end function get_Tshell
 
-    real(dp) function get_rsub(Lstar)
-        real(dp) :: Lstar
-        get_rsub = 155.3_dp*(Lstar/1.0e6_dp/Lsun)**(0.5) * (Tdsub/1500.0_dp)**(-5.6_dp/2.0_dp) * aunit  !in cm
+    function get_rsub(Lstar) result(rsub)
+        real(dp), intent(in) :: Lstar
+        real(dp) :: rsub
+        rsub = 155.3_dp*(Lstar/1.0e6_dp/Lsun)**(0.5_dp) * (Tdsub/1500.0_dp)**(-5.6_dp/2.0_dp) * aunit  !in cm
     end function get_rsub
 
     ! Unattenuated UV radiation field from central protostar at radius r_cm [Habing units].
     ! Uses 45% of the bolometric luminosity as the UV fraction and scales as r^-2.
-    real(dp) function G0_internal_at_r(Lstar, r_cm)
+    function get_G0_internal_at_r(Lstar, r_cm) result(G0_internal_at_r)
         real(dp), intent(in) :: Lstar   ! bolometric luminosity [erg s^-1]
         real(dp), intent(in) :: r_cm    ! parcel radius [cm]
+        real(dp) :: G0_internal_at_r
         real(dp) :: Luv
         Luv = 0.45_dp * Lstar
         G0_internal_at_r = Luv / (4.0_dp * PI * C * r_cm**2) / uISRF_UV
-    end function G0_internal_at_r
+    end function get_G0_internal_at_r
 
 end module physicscore

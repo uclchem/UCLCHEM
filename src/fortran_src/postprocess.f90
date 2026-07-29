@@ -1,10 +1,9 @@
 ! Module for post-processing data from hydrodynamical simulations
 ! Requires modifications to some core functions of the code
 module postprocess_mod
-    use constants
+    use constants, only: SECONDS_PER_YEAR, PHYSICS_UPDATE_ERROR
     use DEFAULTPARAMETERS
-    use f2py_constants
-    use network
+    use f2py_constants, only: nSpec
     !f2py INTEGER, parameter :: dp
     use physicscore
     implicit none
@@ -20,6 +19,7 @@ module postprocess_mod
     real(dp), allocatable, dimension(:) :: ltime, ldens, lra, lzeta, lradfield, lgtemp, ldtemp
     real(dp), allocatable, dimension(:) :: lnh, lnh2, lnco, lnc, lav
 
+    public
 
 contains
 
@@ -71,7 +71,7 @@ contains
 
       ! Find last non-zero timestep (arrays may be zero-padded)
       max_tstep = timepoints
-      do while (max_tstep > 1 .and. ltime(max_tstep) == 0.0d0)
+      do while (max_tstep > 1 .and. ltime(max_tstep) == 0.0_dp)
         max_tstep = max_tstep - 1
       end do
 
@@ -108,7 +108,7 @@ contains
         av(:) = lav(tstep)
       else if (lusecoldens) then
         coldens(:) = lnh(tstep)
-        av(:) = 5.348e-22 * coldens(:)
+        av(:) = 5.348e-22_dp * coldens(:)
       end if
 
       ! Also ensure the current depth step has consistent values (dstep may not be 1)
@@ -121,7 +121,7 @@ contains
         av(dstep) = lav(tstep)
       else if (lusecoldens) then
         coldens(dstep) = lnh(tstep)
-        av(dstep) = 5.348e-22 * coldens(dstep)
+        av(dstep) = 5.348e-22_dp * coldens(dstep)
       end if
       ! Set final time to end of tracer histories (use last non-zero timestep)
       finaltime = timegrid(max_tstep)
@@ -169,12 +169,12 @@ contains
         av(dstep) = lav(tstep)
       else if (lusecoldens) then
         coldens(dstep) = lnh(tstep)
-        av(dstep) = 5.348e-22 * coldens(dstep)
+        av(dstep) = 5.348e-22_dp * coldens(dstep)
       end if
 
-      if ((density(dstep) /= density(dstep)) .OR. (density(dstep) <= 0.0d0) .OR. &
-          (gastemp(dstep) /= gastemp(dstep)) .OR. (gastemp(dstep) < 1.0d0) .OR. &
-          (dusttemp(dstep) /= dusttemp(dstep)) .OR. (dusttemp(dstep) < 1.0d0)) then
+      if ((density(dstep) /= density(dstep)) .OR. (density(dstep) <= 0.0_dp) .OR. &
+          (gastemp(dstep) /= gastemp(dstep)) .OR. (gastemp(dstep) < 1.0_dp) .OR. &
+          (dusttemp(dstep) /= dusttemp(dstep)) .OR. (dusttemp(dstep) < 1.0_dp)) then
         write(*,*) "POSTPROCESS_updatePhysics: FATAL invalid physics at tstep=", tstep, &
                   " ldens=", ldens(tstep), " lgtemp=", lgtemp(tstep), " ldtemp=", ldtemp(tstep)
         postprocess_error = PHYSICS_UPDATE_ERROR
@@ -189,11 +189,10 @@ contains
 
     end subroutine updatePhysics
 
-    subroutine sublimation(abund)
+    subroutine sublimation(abund, lpoints)
         ! This subroutine must be in every physics module so we dummy it here.
-        !f2py integer, intent(aux) :: points
-        real(dp) :: abund(nspec+1,points)
-        intent(inout) :: abund
+        integer, intent(in) :: lpoints
+        real(dp), intent(inout) :: abund(nspec+1,lpoints)
     end subroutine sublimation
 end module postprocess_mod
 

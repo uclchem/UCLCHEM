@@ -24,7 +24,8 @@ module sputtering
     private
     public :: sputterIces, sputteringSetup
 
-    integer :: projectiles(6)
+    integer, parameter :: N_PROJECTILES = 6
+    integer :: projectiles(N_PROJECTILES)
     real(dp) :: sConst,eta,epso
     !Speed at which refractory species are also removed from dust grains during sputtering. 19.0 km/s taken from Guillet et al. 2011. (see above)
     real(dp), parameter :: VAPORIZE_SPEED=19.0_dp
@@ -83,7 +84,7 @@ contains
 
       !loop over projectile species and get rates of change of mantle for each, summing them
       sputterRate=0.0_dp
-      do iSpec=1,SIZE(projectiles)  !!!! Make projectiles array in initialize
+      do iSpec=1,N_PROJECTILES  !!!! Make projectiles array in initialize
           sputterRate=sputterRate+getIceYieldRate(mass(projectiles(iSpec))*MH,density*abund(projectiles(iSpec)),gasTemp)
       end do
 

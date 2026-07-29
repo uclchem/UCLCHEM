@@ -1,31 +1,35 @@
 module RATES
-    use constants
+    use constants, only: dp, HABING_TO_DRAINE
     use DEFAULTPARAMETERS
-    use f2py_constants
+    use f2py_constants, only: nSpec, nReac
     !f2py INTEGER, parameter :: dp
     use network
-    use photoreactions, only: H2PhotoDissRate, COPhotoDissRate, cIonizationRate, ICE_GAS_PHOTO_CROSSSECTION_RATIO
+    use photoreactions, only: getH2PhotoDissRate, getCOPhotoDissRate, getCarbonIonizationRate, ICE_GAS_PHOTO_CROSSSECTION_RATIO
     use physicscore
-    use SurfaceReactions
+    use surfacereactions
+
     implicit none
+
+    public
 
     !Variables controlling chemistry:
     real(dp) :: grainArea,cion,h2dis,lastTemp=0.0
 
     ! Controlling ice chemistry
-    real(dp), parameter :: h2StickingZero=0.87_dp,hStickingZero=1.0_dp, h2StickingTemp=87.0_dp,hStickingTemp=52.0_dp
+    real(dp), parameter :: h2StickingZero=0.87_dp,hStickingZero=1.0_dp,h2StickingTemp=87.0_dp,hStickingTemp=52.0_dp
     !Flags to control desorption processes
     real(dp) :: turbVel=1.0  !unit? km/s or cm/s
     ! TODO: integrate into makerates and put it in network.f90
 
     ! Pre-split LH and ER base rates, saved in calculateReactionRates and used
     ! by the F callback to re-apply the chemdes split at the current ice thickness.
-    real(dp) :: rate_lh_unsplit(nreac) = 0.0_dp
-    real(dp) :: rate_er_unsplit(nreac) = 0.0_dp
+    real(dp) :: rate_lh_unsplit(nReac) = 0.0_dp
+    real(dp) :: rate_er_unsplit(nReac) = 0.0_dp
 
 contains
     subroutine calculateReactionRates(abund, safemantle,  h2col, cocol, ccol, rate)
-        real(dp), intent(in) :: abund(:, :), safemantle, h2col, cocol, ccol
+        real(dp), intent(in) :: abund(:, :)
+        real(dp), intent(in) :: safemantle, h2col, cocol, ccol
         real(dp), intent(inout) :: rate(:)
         integer :: idx1,idx2
         real(dp) :: vA,vB
@@ -33,7 +37,6 @@ contains
         integer :: k
         real(dp) :: numMonolayers
         real(dp) :: dynamic_cap, effective_cap, min_cap_s, max_cap_s
-        ! REAL(dp) :: vdiff(:)
 
         !Calculate all reaction rates
         !Assuming the user has temperature changes or uses the desorption features of phase 1,
@@ -55,12 +58,12 @@ contains
             rate(idx1:idx2) = alpha(idx1:idx2) * ( &
                 radfield              * exp(-gama(idx1:idx2)*av(dstep))          + &
                 radfield_internal(dstep) * exp(-gama(idx1:idx2)*av_internal(dstep)) &
-                ) / 1.7
+                ) * HABING_TO_DRAINE
             ! For all solid species, decrease rate by 0.3 (Kalvans 2018)
             ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
             do j=idx1,idx2
                 if (ANY(bulkList==re1(j))) then
-                    rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * (1.0-0.007)**(1.0+0.5/bulkLayersReciprocal)
+                    rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * (1_dp-0.007_dp)**(1_dp+0.5_dp/bulkLayersReciprocal)
                 else if (ANY(surfaceList==re1(j))) then
                     rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO
                 end if
@@ -71,12 +74,12 @@ contains
         idx1=crphotReacs(1)
         idx2=crphotReacs(2)
         if (idx1 /= REAC_NOT_PRESENT) then
-            rate(idx1:idx2)=alpha(idx1:idx2)*gama(idx1:idx2)*1.0/(1.0-omega)*zeta*(gasTemp(dstep)/300)**beta(idx1:idx2)
+            rate(idx1:idx2)=alpha(idx1:idx2)*gama(idx1:idx2)*1.0_dp/(1.0_dp-omega)*zeta*(gasTemp(dstep)/300_dp)**beta(idx1:idx2)
             ! For all solid species, decrease rate by 0.3 (Kalvans 2018)
             ! For bulk species, also decrease rate by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
             do j=idx1,idx2
                 if (ANY(bulkList==re1(j))) then
-                    rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * (1-0.007)**(1+0.5/bulkLayersReciprocal)
+                    rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * (1_dp-0.007_dp)**(1_dp+0.5_dp/bulkLayersReciprocal)
                 else if (ANY(surfaceList==re1(j))) then
                     rate(j) = rate(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO
                 end if
@@ -96,14 +99,14 @@ contains
             if (h2StickingCoeffByh2Coverage) then
                 ! If all surface is H2, (i.e. x_#H2 = safeMantle), assume no H2 sticks
                 ! and so set the sticking coeff to 0. Linearly interpolate according to chance it will hit a H2 molecule on surface
-                rate(nR_H2Freeze)=rate(nR_H2Freeze)*(1.0D0-abund(ngh2, dstep)/safeMantle)
+                rate(nR_H2Freeze)=rate(nR_H2Freeze)*(1.0_dp-abund(ngh2, dstep)/safeMantle)
             end if
 
             rate(nR_HFreeze)=stickingCoefficient(hStickingZero,hStickingTemp,gasTemp(dstep))*rate(nR_HFreeze)
             if (hStickingCoeffByh2Coverage) then
                 ! If all surface is H2, (i.e. x_#H2 = safeMantle), assume no H sticks
                 ! and so set the sticking coeff to 0. Linearly interpolate according to chance it will hit a H2 molecule on surface
-                rate(nR_HFreeze)=rate(nR_HFreeze)*(1.0D0-abund(ngh2, dstep)/safeMantle)
+                rate(nR_HFreeze)=rate(nR_HFreeze)*(1.0_dp-abund(ngh2, dstep)/safeMantle)
             end if
         end if
         ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -143,7 +146,7 @@ contains
                 !as iron nuclei are main cause of CR heating.
                 !GRAIN_SURFACEAREA_PER_H is the total surface area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
                 !phi is efficiency of this reaction, number of molecules removed per event.
-                rate(idx1:idx2) = 4.0*pi*zeta*1.64e-4_dp*(GRAIN_SURFACEAREA_PER_H)*phi
+                rate(idx1:idx2) = 4.0_dp*pi*zeta*1.64e-4_dp*(GRAIN_SURFACEAREA_PER_H)*phi
                 !alpha is a branching ratio (default 1.0; use <1.0 for isomer desorption channels)
                 rate(idx1:idx2) = alpha(idx1:idx2)*rate(idx1:idx2)
 
@@ -170,9 +173,9 @@ contains
                 !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of
                 !CR induced UV to ISRF UV.
                 rate(idx1:idx2) = rate(idx1:idx2) &
-                    & * (1 + (radfield/uvcreff)*(1.0/zeta)*exp(-1.8*av(dstep)) &
-                    & + (radfield_internal(dstep)/uvcreff)*(1.0/zeta) &
-                    & * exp(-1.8*av_internal(dstep)))
+                    & * (1 + (radfield/uvcreff)*(1.0_dp/zeta)*exp(-1.8_dp*av(dstep)) &
+                    & + (radfield_internal(dstep)/uvcreff)*(1.0_dp/zeta) &
+                    & * exp(-1.8_dp*av_internal(dstep)))
                 !alpha is a branching ratio (default 1.0; use <1.0 for isomer desorption channels)
                 rate(idx1:idx2) = alpha(idx1:idx2)*rate(idx1:idx2)
 
@@ -193,7 +196,7 @@ contains
         if (idx1 /= REAC_NOT_PRESENT) then
             !8.6 is the Spitzer-Tomasko cosmic ray flux in cm^-2 s^-1
             !1.3 converts to: ionization rate/10^-17
-            rate(idx1:idx2)=alpha(idx1:idx2)*(beta(idx1:idx2)*(gama(idx1:idx2)/100)*(8.6*zeta*1.3))
+            rate(idx1:idx2)=alpha(idx1:idx2)*(beta(idx1:idx2)*(gama(idx1:idx2)/100.0_dp)*(8.6_dp*zeta*1.3_dp))
         end if
 
         !EXRELAX, relaxation reactions for each excited species
@@ -251,7 +254,7 @@ contains
                             !because GRAIN_SURFACEAREA_PER_H is per H nuclei, multiplying it by density gives area/cm-3
                             !that is roughly sigma_g.n_g from cuppen et al. 2017 but using surface instead of cross-sectional
                             !area seems more correct for this process.
-                            if (.NOT. THREE_PHASE) rate(j)=rate(j)*2.0*SURFACE_SITE_DENSITY*GRAIN_SURFACEAREA_PER_H
+                            if (.NOT. THREE_PHASE) rate(j)=rate(j)*2.0_dp*SURFACE_SITE_DENSITY*GRAIN_SURFACEAREA_PER_H
                         end if
                     end do
                 end do
@@ -282,7 +285,7 @@ contains
     if (idx1 /= REAC_NOT_PRESENT) then
         if ((dustTemp(dstep) < maxGrainTemp) .and. (safeMantle > MIN_SURFACE_ABUND)) then
             do j=idx1,idx2
-                rate(j)=diffusionReactionRate(j,dustTemp(dstep))
+                rate(j)=getDiffusionReactionRate(j,dustTemp(dstep))
             end do
 
             ! Save unsplit LH rates for dynamic re-split inside the F callback
@@ -296,7 +299,7 @@ contains
                 k = 0
                 do i=idx1, idx2
                     k = k + 1
-                    rate(i)=desorptionFractionIncludingIce(i, numMonolayers)*rate(LHDEScorrespondingLHreacs(k))
+                    rate(i)=getDesorptionFractionIncludingIce(i, numMonolayers)*rate(LHDEScorrespondingLHreacs(k))
                     if (ANY(bulkList==re1(i))) rate(i)=0.0  ! Bulk species are not able to chemically desorb
                 end do
 
@@ -331,7 +334,7 @@ contains
             k = 0
                 do i=idx1, idx2
                     k = k + 1
-                    rate(i)=desorptionFractionIncludingIce(i, numMonolayers)*rate(ERDEScorrespondingERreacs(k))
+                    rate(i)=getDesorptionFractionIncludingIce(i, numMonolayers)*rate(ERDEScorrespondingERreacs(k))
                 if (ANY(bulkList==re1(i))) rate(i)=0.0  ! Bulk species are not able to chemically desorb
             end do
 
@@ -362,6 +365,10 @@ contains
         else
             rate(nR_H2Form_CT) = 0.0
         end if
+    case default
+        write(*, *) "ERROR: UNSUPPORTED parameterizeH2Form VALUE: ", parameterizeH2Form
+        write(*, *) "SUPPORTED VALUES ARE: 0, 1, or 3"
+        stop 1
     end select
 
     call bulkSurfaceExchangeReactions(rate,dustTemp(dstep))
@@ -371,7 +378,7 @@ contains
     idx1=twobodyReacs(1)
     idx2=twobodyReacs(2)
     if (lastTemp /= gasTemp(dstep)) then
-        rate(idx1:idx2) = alpha(idx1:idx2)*((gasTemp(dstep)/300.0)**beta(idx1:idx2))*exp(-gama(idx1:idx2)/gasTemp(dstep))
+        rate(idx1:idx2) = alpha(idx1:idx2)*((gasTemp(dstep)/300.0_dp)**beta(idx1:idx2))*exp(-gama(idx1:idx2)/gasTemp(dstep))
     end if
 
     idx1=ionopol1Reacs(1)
@@ -386,7 +393,7 @@ contains
     if (idx1 /= REAC_NOT_PRESENT) then
         !This formula including the magic numbers come from KIDA help page.
         rate(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(1.0_dp+0.0967_dp*gama(idx1:idx2)&
-        &*sqrt(300.0_dp/gasTemp(dstep))+gama(idx1:idx2)*gama(idx1:idx2)*300.0/(10.526*gasTemp(dstep)))
+        &*sqrt(300.0_dp/gasTemp(dstep))+gama(idx1:idx2)*gama(idx1:idx2)*300.0_dp/(10.526_dp*gasTemp(dstep)))
     end if
     lastTemp=gasTemp(dstep)
 
@@ -396,15 +403,15 @@ contains
     ! grain-assisted recombination stuff from Weingartner & Draine (2001)
     ! https://ui.adsabs.harvard.edu/abs/2001ApJ...563..842W/abstract
     ! We use the 0.6 factor as provided in Gong et al 2017 (DOI:10.3847/1538-4357/aa7561)
-    phi = (radfield*exp(-2.5*av(dstep)) + radfield_internal(dstep)*exp(-2.5*av_internal(dstep))) &
+    phi = (radfield*exp(-2.5_dp*av(dstep)) + radfield_internal(dstep)*exp(-2.5_dp*av_internal(dstep))) &
     & * sqrt(gasTemp(dstep)) / (abund(nspec+1,dstep)*abund(nelec,dstep))  ! phi = G T^0.5 / n_e
 
     ! Ensure phi is within the 1e2 to 1e6 range from the paper:
-    phi = min(max(phi,1e2), 1e6)
+    phi = min(max(phi,1e2_dp), 1e6_dp)
 
     if (idx1 /= REAC_NOT_PRESENT) then
-        rate(idx1:idx2)= 0.6 * alpha(idx1:idx2) * garParams(:,1) / (1.0 + garParams(:,2) *&
-        &phi**garParams(:,3) * (1.0 + garParams(:,4) * gasTemp(dstep)**garParams(:,5) *&
+        rate(idx1:idx2)= 0.6_dp * alpha(idx1:idx2) * garParams(:,1) / (1.0_dp + garParams(:,2) *&
+        &phi**garParams(:,3) * (1.0_dp + garParams(:,4) * gasTemp(dstep)**garParams(:,5) *&
         &phi**(-garParams(:,6)-garParams(:,7)*log(gasTemp(dstep)))))
     end if
 
@@ -414,27 +421,27 @@ contains
     where((.not. ExtrapolateRates) .and. (gasTemp(dstep) > maxTemps)) rate=0.0
 
     !Overwrite reactions for which we have a more detailed photoreaction treatment
-    rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel) &
-               + H2PhotoDissRate(h2Col,radfield_internal(dstep),av_internal(dstep),turbVel)  !H2 photodissociation
-    rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep)) &
-               + COPhotoDissRate(h2Col,coCol,radfield_internal(dstep),av_internal(dstep))  !CO photodissociation
-    rate(nR_C_hv)=cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),radfield) &
-               + cIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col, &
+    rate(nR_H2_hv)=getH2PhotoDissRate(h2Col,radField,av(dstep),turbVel) &
+               + getH2PhotoDissRate(h2Col,radfield_internal(dstep),av_internal(dstep),turbVel)  !H2 photodissociation
+    rate(nR_CO_hv)=getCOPhotoDissRate(h2Col,coCol,radField,av(dstep)) &
+               + getCOPhotoDissRate(h2Col,coCol,radfield_internal(dstep),av_internal(dstep))  !CO photodissociation
+    rate(nR_C_hv)=getCarbonIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),radfield) &
+               + getCarbonIonizationRate(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col, &
                                 &av_internal(dstep),radfield_internal(dstep))  !C photoionization
 
     ! Encounter Desorption mechanism (Hincelin et al. 2015)
     ! Species diffuse onto H2-covered surfaces and can desorb upon encountering H2
     if ((h2EncounterDesorption) .and. (safeMantle > MIN_SURFACE_ABUND)) then
-        rate(nR_H2_ED)=EncounterDesorptionRate(nR_H2_ED, dustTemp(dstep))  !H2 Encounter Desorption
+        rate(nR_H2_ED)=getEncounterDesorptionRate(nR_H2_ED, dustTemp(dstep))  !H2 Encounter Desorption
     else
-        rate(nR_H2_ED)=0.0D0
+        rate(nR_H2_ED)=0.0_dp
     end if
 
     if ((hEncounterDesorption) .and. (safeMantle > MIN_SURFACE_ABUND)) then
         ! H atom encounter desorption on H2-covered surfaces
-        rate(nR_H_ED)=EncounterDesorptionRate(nR_H_ED, dustTemp(dstep))  !H Encounter Desorption
+        rate(nR_H_ED)=getEncounterDesorptionRate(nR_H_ED, dustTemp(dstep))  !H Encounter Desorption
     else
-        rate(nR_H_ED)=0.0D0
+        rate(nR_H_ED)=0.0_dp
     end if
 
     ! Min floor: zero desorption rate constants k below numerical threshold to eliminate
@@ -499,13 +506,13 @@ contains
 !Above 150 K, thermal desorption will completely remove grain species
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function freezeOutRate(idx1,idx2) result(freezeRates)
+    integer, intent(in) :: idx1,idx2
     real(dp) :: freezeRates(idx2-idx1+1)
-    integer :: idx1,idx2
 
     !additional factor for ions (beta=0 for neutrals)
-    freezeRates=1.0+beta(idx1:idx2)*16.71e-4_dp/(GRAIN_RADIUS*gasTemp(dstep))
-    if ((freezeFactor == 0.0) .or. (dustTemp(dstep) > maxGrainTemp)) then
-        freezeRates=0.0
+    freezeRates=1.0_dp+beta(idx1:idx2)*16.71e-4_dp/(GRAIN_RADIUS*gasTemp(dstep))
+    if ((freezeFactor == 0.0_dp) .or. (dustTemp(dstep) > maxGrainTemp)) then
+        freezeRates=0.0_dp
     else
         freezeRates=freezeRates*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL&
         &*sqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
@@ -516,9 +523,10 @@ function freezeOutRate(idx1,idx2) result(freezeRates)
 
     function stickingCoefficient(stickingZero,criticalTemp,gasTemp) result(stickingCoeff)
         !Sticking coefficient for freeze out taken from Chaabouni et al. 2012 A&A 538 Equation 1
+        real(dp), intent(in) :: stickingZero,criticalTemp,gasTemp
         real(dp) :: stickingCoeff
-        real(dp) :: stickingZero,criticalTemp,gasTemp,tempRatio
         real(dp), parameter :: beta=2.5_dp
+        real(dp) :: tempRatio
 
         tempRatio=gasTemp/criticalTemp
         stickingCoeff=stickingZero*(1.0_dp+beta*tempRatio)/((1.0_dp+tempRatio)**beta)

@@ -30,7 +30,6 @@ module CONSTANTS
     real(dp), parameter :: uISRF_UV = 5.29e-14_dp  !Energy density of the UV interstellar radiation field in cgs
     real(dp), parameter :: MIN_ABUND = 1.0e-30_dp  !Minimum abundance allowed
 
-
     !Sentinel value used in network.f90 for absent reaction types
     integer, parameter :: REAC_NOT_PRESENT = 99999
 
