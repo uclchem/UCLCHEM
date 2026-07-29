@@ -290,6 +290,22 @@ def find_number_of_consecutive_digits(string: str, start: int) -> int:
     return num_digits
 
 
+@enum.unique
+class PrestellarCoreMass(enum.IntEnum):
+    """Index which indicates which index to use for heating in ``hotcore.f90``.
+
+    The different values correspond to different solar masses of the prestellar core.
+
+    """
+
+    M_SUN_1 = 1
+    M_SUN_5 = 2
+    M_SUN_10 = 3
+    M_SUN_15 = 4
+    M_SUN_25 = 5
+    M_SUN_60 = 6
+
+
 # ---------------------------------------------------------------------------
 # Collapse radial velocity — Priestley et al. 2018
 # ---------------------------------------------------------------------------

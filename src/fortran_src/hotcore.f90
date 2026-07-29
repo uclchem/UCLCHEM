@@ -17,7 +17,8 @@ module hotcore
     implicit none
 
     private
-    public :: initializePhysics, updatePhysics, updateTargetTime, sublimation, maxTemp, tempIndx
+    public :: initializePhysics, updatePhysics, updateTargetTime, sublimation, maxTemp, tempIndx, &
+        tempA, tempB
 
     !Flags let physics module control when evap takes place.flag=0/1/2 corresponding to not yet/evaporate/done
     integer :: solidflag,volcflag,coflag

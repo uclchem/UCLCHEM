@@ -129,6 +129,7 @@ from uclchem.constants import (
 from uclchem.plot import create_abundance_plot, plot_species
 from uclchem.utils import (
     CollapseMode,
+    PrestellarCoreMass,
     SuccessFlag,
     get_collapse_mode,
     get_reaction_table,
@@ -3054,9 +3055,10 @@ class PrestellarCore(AbstractModel):
 
     Parameters
     ----------
-    temp_indx : int
+    temp_indx : int | PrestellarCoreMass
         Used to select the mass of the prestellar core from the following selection
-        [1=1Msun, 2=5, 3=10, 4=15, 5=25,6=60]. Defaults to 1, which is 1 Msun
+        [1=1Msun, 2=5, 3=10, 4=15, 5=25,6=60]. Defaults to :data:`PrestellarCoreMass.M_SUN_1`,
+        which is 1 Msun.
     max_temperature : float
         Value at which gas temperature will stop increasing. Defaults to 300.0.
     param_dict : dict
@@ -3083,7 +3085,7 @@ class PrestellarCore(AbstractModel):
 
     def __init__(
         self,
-        temp_indx: int = 1,
+        temp_indx: int | PrestellarCoreMass = PrestellarCoreMass.M_SUN_1,
         max_temperature: float = 300.0,
         param_dict: dict | None = None,
         out_species: list[str] | None = None,
@@ -3102,9 +3104,10 @@ class PrestellarCore(AbstractModel):
 
         Parameters
         ----------
-        temp_indx : int
-            Index of the temperature column in the physics array to use for hot-core heating.
-            Defaults to 1.
+        temp_indx : int | PrestellarCoreMass
+            Index of the temperature column in the physics array to use for hot-core heating,
+            which corresponds to different masses of the hot core.
+            Defaults to :data:`PrestellarCoreMass.M_SUN_1`.
         max_temperature : float
             Maximum temperature (K) the hot core reaches. Defaults to 300.0.
         param_dict : dict | None
@@ -3163,6 +3166,8 @@ class PrestellarCore(AbstractModel):
             if temp_indx is None or max_temperature is None:
                 msg = "temp_indx and max_temperature must be specified if not reading from file."
                 raise ValueError(msg)
+            if isinstance(temp_indx, int):
+                temp_indx = PrestellarCoreMass(temp_indx)
             self.temp_indx = temp_indx
             self.max_temperature = max_temperature
             if self.run_type != "external":

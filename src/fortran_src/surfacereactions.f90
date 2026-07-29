@@ -201,7 +201,7 @@ contains
         diffusionBarrierValue = diffToBindRatio*bindingEnergy(iceListIndex)
     end if
   end function getDiffusionBarrier
-  
+
   pure function getReacProb(reacIndx, index1, index2, dustTemperature) result(reacProb)
     integer, intent(in) :: reacIndx, index1, index2
     real(dp), intent(in) :: dustTemperature
@@ -213,7 +213,7 @@ contains
     !Calculate quantum activation energy barrier exponent
     reducedMass = reducedMasses(reacIndx)
     if ((.NOT. useCustomReducedMass) .OR. (reducedMass == MISSING_VALUE_FLOAT)) then
-        ! reducedMasses(reacIndx) should never be MISSING_VALUE_FLOAT, 
+        ! reducedMasses(reacIndx) should never be MISSING_VALUE_FLOAT,
         ! because it is set by MakeRates, but just in case we calculate it here.
         reducedMass = mass(iceList(index1)) * mass(iceList(index2)) / (mass(iceList(index1)) + mass(iceList(index2)))
     end if
@@ -222,7 +222,7 @@ contains
     !Choose fastest between classical and tunneling
     if (reacProb>tunnelProb) reacProb=tunnelProb
   end function getReacProb
-  
+
   pure function getDiffusionReactionRate(reacIndx,dustTemperature) result(diffusionReactionRate)
     integer, intent(in) :: reacIndx
     real(dp), intent(in) :: dustTemperature

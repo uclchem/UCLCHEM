@@ -148,7 +148,7 @@ fortran_parameters:
   photoreactions:
   - dimco
   - dimh2
-  - max_num_lamdba
+  - max_num_lambda
   sputtering:
   - n_projectiles
   - vaporize_speed
