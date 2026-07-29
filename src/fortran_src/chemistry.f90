@@ -18,11 +18,14 @@ use f2py_constants, only: nspec, nreac
 use heating
 use network
 use odes
-use photoreactions
+use photoreactions, only: getH2PhotoDissRate, getCOPhotoDissRate, UV_FAC
 use postprocess_mod, only: lusecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
-use rates, only: lastTemp
-use rates
-use surfacereactions
+use rates, only: calculateReactionRates, turbVel, lastTemp, rate_lh_unsplit, rate_er_unsplit
+use surfacereactions, only: updateVdiffAndVdes, getNumberMonolayers, getDesorptionFractionBare, &
+    getDesorptionFractionFullCoverage, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO, vdes, vdiff, &
+    desorptionFractionsBare, getDesorptionFractionIncludingIce, desorptionFractionsFullCoverage, &
+    safeMantle, safeBulk, bulkLayersReciprocal, GRAIN_RADIUS, MIN_SURFACE_ABUND, &
+    bulkGainFromMantleBuildUp, surfaceToBulkSwappingRates
 implicit none
     !f2py integer, intent(aux) :: points
     !These integers store the array index of important species and reactions, x is for ions
@@ -43,7 +46,8 @@ implicit none
     real(dp), allocatable :: abund(:,:)
     real(dp) :: numMonolayers,ratioSurfaceToBulk
 
-    integer :: nion,ionlist(nspec)
+    integer :: nion
+    integer, dimension(nSpec) :: ionlist
 
     real(dp) :: tempDot, oldTemp=0.0_dp, prevIntegrationTemp=0.0_dp
     real(dp) :: h2form
@@ -111,6 +115,10 @@ contains
                 case(2)
                     abund(nc,:)=1.0e-10_dp
                     abund(ncx,:)=fc
+                case default
+                    write(*, *) "ERROR: Invalid value for 'ion':", ion
+                    write(*, *) "Valid values are: 0, 1, or 2."
+                    stop 1
             end select
 
             !isotopes
@@ -185,7 +193,7 @@ contains
         ! If the hydrogen diffusion energy is still its default value (-1.0 in default_parameters.f90),
         ! i.e. no custom value was set in the input dictionary, set it to the correct value
         ! according to the ratio of the ratio of diffusion energy to binding energy.
-        if (HdiffusionBarrier == -1.0) then
+        if (HdiffusionBarrier == -1.0_dp) then
             do i = LBOUND(iceList, 1), UBOUND(iceList, 1)
                 if (iceList(i) == ngh) HdiffusionBarrier = diffToBindRatio*bindingEnergy(i)
             end do
@@ -334,7 +342,7 @@ contains
                                 &    zeta, &                              ! cosmic ray ionization rate
                                 &    rate(nR_C_hv), &                     ! C-photo rate
                                 &    1.0_dp/GAS_DUST_DENSITY_RATIO, &        ! dust-to-gas ratio
-                                &    grain_Radius, &                      ! grain radius
+                                &    GRAIN_RADIUS, &                      ! grain radius
                                 &    metallicity, &                       ! metallicity
                                 ! &    heatWriteFlag, &                     ! write flag
                                 &    dusttemp(dstep), &                   ! dust temperature
@@ -557,7 +565,7 @@ contains
                 !Tolerances are too small for machine but successful to current currentTime
                 abstol_factor=abstol_factor*10.0_dp
                 abstol_ice_factor=abstol_ice_factor*10.0_dp
-                reltol_phys=MIN(reltol_phys*10.0_dp, 1.0e-1_dp)
+                reltol_phys=MIN(reltol_phys*10.0_dp, 1e-1_dp)
             case(-3)
                 !ISTATE -3 is unrecoverable so just bail on integration
                 write(*,*) "DVODE found invalid inputs"
@@ -569,10 +577,10 @@ contains
                 !Successful as far as currentTime but many errors.
                 !Make targetTime smaller and just go again
                 write(*,*) "ISTATE -4 - shortening step"
-                targetTime=currentTime+(targetTime-currentTime)*0.1
+                targetTime=currentTime+(targetTime-currentTime)*0.1_dp
             case(-5)
                 write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
-                targetTime=currentTime+(targetTime-currentTime)*0.1
+                targetTime=currentTime+(targetTime-currentTime)*0.1_dp
             case default
                 ! Success: MXSTEP stays at whatever param_dict set (do not reset to hardcoded 10000)
         end select
@@ -583,7 +591,7 @@ contains
     end subroutine integrateODESystem
 
     subroutine F (NEQUATIONS, T, Y, YDOT)
-        use ODES
+        use ODES, only: GETYDOT
         integer, parameter :: WP = KIND(1.0D0)
 
         integer, intent(in)  :: NEQUATIONS
@@ -595,7 +603,7 @@ contains
         real(dp) :: surfaceCoverage
         real(dp) :: phi,grec,denom
         real(dp) :: h2heatfac, h2_denom  ! H&M79 eq. 6.45 thermalization efficiency factor
-        real(dp), dimension(6) :: cgr
+
         integer :: ii, k
         ! Y_safe clamps species abundances to MIN_ABUND during ODE evaluation.
         ! DVODE predictor steps can drive species to small negatives; feeding those
@@ -611,13 +619,13 @@ contains
 
         ! Column densities are fixed for postprocessing data, so don't do this bit
         if (.not. lusecoldens) then
-        !changing abundances of H2 and CO can causes oscillation since their rates depend on their abundances
-        !recalculating rates as abundances are updated prevents that.
-        !thus these are the only rates calculated each time the ODE system is called.
-        cocol=coColToCell + 0.5_dp*Y_safe(nco)*D*(cloudSize/real(points))
-        h2col=h2ColToCell + 0.5_dp*Y_safe(nh2)*D*(cloudSize/real(points))
-        rate(nR_H2_hv)=H2PhotoDissRate(h2Col,radField,av(dstep),turbVel)  !H2 photodissociation
-        rate(nR_CO_hv)=COPhotoDissRate(h2Col,coCol,radField,av(dstep))  !CO photodissociation
+            !changing abundances of H2 and CO can causes oscillation since their rates depend on their abundances
+            !recalculating rates as abundances are updated prevents that.
+            !thus these are the only rates calculated each time the ODE system is called.
+            cocol=coColToCell + 0.5_dp*Y_safe(nco)*D*(cloudSize/real(points))
+            h2col=h2ColToCell + 0.5_dp*Y_safe(nh2)*D*(cloudSize/real(points))
+            rate(nR_H2_hv)=getH2PhotoDissRate(h2Col,radField,av(dstep),turbVel)  !H2 photodissociation
+            rate(nR_CO_hv)=getCOPhotoDissRate(h2Col,coCol,radField,av(dstep))  !CO photodissociation
         end if
 
         !recalculate coefficients for ice processes
@@ -642,7 +650,7 @@ contains
             k = 0
             do i = lhdesReacs(1), lhdesReacs(2)
                 k = k + 1
-                rate(i) = desorptionFractionIncludingIce(i, numMonolayers) &
+                rate(i) = getDesorptionFractionIncludingIce(i, numMonolayers) &
                           * rate_lh_unsplit(LHDEScorrespondingLHreacs(k))
                 if (ANY(bulkList==re1(i))) rate(i) = 0.0
             end do
@@ -658,7 +666,7 @@ contains
             k = 0
             do i = erdesReacs(1), erdesReacs(2)
                 k = k + 1
-                rate(i) = desorptionFractionIncludingIce(i, numMonolayers) &
+                rate(i) = getDesorptionFractionIncludingIce(i, numMonolayers) &
                           * rate_er_unsplit(ERDEScorrespondingERreacs(k))
                 if (ANY(bulkList==re1(i))) rate(i) = 0.0
             end do
@@ -723,7 +731,7 @@ contains
                             &    zeta, &                                ! cosmic ray ionization rate
                             &    rate(nR_C_hv), &                       ! C-photo rate
                             &    1.0_dp/GAS_DUST_DENSITY_RATIO, &          ! dust-to-gas ratio
-                            &    grain_Radius, &                        ! grain radius
+                            &    GRAIN_RADIUS, &                        ! grain radius
                             &    metallicity, &                         ! metallicity
                             &    dusttemp(dstep), &                     ! dust temperature
                             &    turbVel &                              ! turbulence velocity

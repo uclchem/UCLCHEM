@@ -3,31 +3,36 @@
 !Based on Jimenez-Serra et al. 2008 A&A 482
 !http://adsabs.harvard.edu/abs/2008A&A...482..549J
 module cshock_mod
-    use constants
-    use constants
+    use constants, only: dp, MH, SECONDS_PER_YEAR, K_BOLTZ, KM, PC, PI
     use DEFAULTPARAMETERS
-    use f2py_constants
+    use f2py_constants, only: nSpec
     !f2py INTEGER, parameter :: dp
-    use network
+    use network, only: iceList
     use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
         & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, &
         & gastemp, dusttemp, av, coldens
     use sputtering, only: sputterIces, sputteringSetup
+
     implicit none
 
-    real(dp) :: tstart,maxTemp,timestepFactor=0.01
+    private
+    public :: initializePhysics, updatePhysics, updateTargetTime, sublimation, dissipationTime, &
+        timestepFactor, vs, minimumPostshockTemp
+
+    real(dp) :: tstart,maxTemp
+    real(dp) :: timestepFactor=0.01_dp
     real(dp) :: z2,vs,v0,zn,vn,at,z3,tsat
     real(dp) :: ucm,z1,driftVel,vi,vn0,zn0,vA,dlength,dissipationTime
     real(dp) :: grainRadius5,dens6,dzv
     real(dp), allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
     logical :: postShock
-    real(dp) :: minimumPostshockTemp=0.0
+    real(dp) :: minimumPostshockTemp=0.0_dp
     !variables for the collisional and radiative heating of grains
     real(dp) :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
-    real(dp) :: coshinv1,coshinv2,zmax,a1,eps
+    real(dp) :: coshinv1,coshinv2,zmax,eps
 
     integer :: inrad
-    real(dp), parameter :: nu0=3.0e15_dp,bt=6.0
+    real(dp), parameter :: nu0=3.0e15_dp,bt=6.0_dp
     real(dp), parameter :: grainRadius=1.0e-5_dp
 
 contains
@@ -41,15 +46,15 @@ contains
         real(dp) :: v01,g1,g2
 
         successFlag=0
-        driftVel=0.0
-        zn0=0.0
-        vn0=0.0
+        driftVel=0.0_dp
+        zn0=0.0_dp
+        vn0=0.0_dp
 
         ! Set cooling variables to off by default (change if reqd)
         postShock = .false.
 
         !check input sanity and set initial values
-        cloudSize=(rout-rin)*pc
+        cloudSize=(rout-rin)*PC
         if (freefall) then
             write(*,*) "Cannot have freefall on during cshock"
             write(*,*) "setting freefall=0 and continuing"
@@ -66,47 +71,47 @@ contains
         !cshock initialization
         if (ALLOCATED(tn)) deallocate(tn,ti,tgc,tgr,tg)
         allocate(tn(points),ti(points),tgc(points),tgr(points),tg(points))
-        mun=2*mh
-        grainRadius5=grainRadius/4.0e-5
-        dens6=density(dstep)/1.0e6
-        currentTimeOld=0.0
-        driftVel=0.0
-        zn0=0.0
-        vn0=0.0
+        mun=2*MH
+        grainRadius5=grainRadius/4.0e-5_dp
+        dens6=density(dstep)/1.0e6_dp
+        currentTimeOld=0.0_dp
+        driftVel=0.0_dp
+        zn0=0.0_dp
+        vn0=0.0_dp
 
         !maxtemp set by vs and pre-shock density, polynomial fits to values taken from Draine et al. 1983
         !have been made and coefficients placed here. Tested with log(dens)>3 <6
         !Fits only available for density of 1e4 and 1e6 so in between we average
-        if (initialDens > 10**5.5) then
-            maxTemp=(2.91731*vs*vs)-(23.78974*vs)+225.204167337
-        else if (initialDens > 10.0**4.5) then
-            maxTemp=(3.38989*vs*vs)+(16.6519*vs)+96.569
-            maxTemp=0.5*maxTemp
+        if (initialDens > 10**5.5_dp) then
+            maxTemp=(2.91731_dp*vs**2)-(23.78974_dp*vs)+225.204167337_dp
+        else if (initialDens > 10**4.5_dp) then
+            maxTemp=(3.38989_dp*vs**2)+(16.6519_dp*vs)+96.569_dp
+            maxTemp=0.5_dp*maxTemp
         else
-            maxTemp=(0.47258*vs*vs)+(40.44161*vs)-128.635455216
+            maxTemp=(0.47258_dp*vs**2)+(40.44161_dp*vs)-128.635455216_dp
         end if
 
         !tsat proportional to 1/pre-shock density. Fit to tsats from Jimenez-Serra 2008.
-        tsat=(-15.38729*vs*vs*vs)+(2069.56962*vs*vs)-(90272.826991*vs)+1686858.54278
+        tsat=(-15.38729_dp*vs**3)+(2069.56962_dp*vs**2)-(90272.826991_dp*vs)+1686858.54278_dp
         tsat=tsat/initialDens
 
         ! The initial parameters that define the C-shock structure
         ! Length of the dissipation region, dlength:
-        dlength=12.0*pc*vs/initialDens
+        dlength=12.0_dp*PC*vs/initialDens
         dissipationTime=(dlength*1.0e-5_dp/vs)/SECONDS_PER_YEAR
 
         ! Parameters that describe the decoupling between the ion and the neutral
         ! fluids. z2 is obtained by assuming that at z=dlength, the velocity of
         ! the neutrals is 99% (vs-v0). See v0 below and more details in
         ! Jimenez-Serra et al. (2008).
-        coshinv1=log((1/0.01)+sqrt((1/0.01)**2-1))
+        coshinv1=log((1/0.01_dp)+sqrt((1/0.01_dp)**2-1))
         z2=dlength/coshinv1
         !We assume that z2/z1=4.5 (Jimenez-Serra et al. 2008).
-        z1=z2/4.5
+        z1=z2/4.5_dp
 
         ! zmax is the distance at which Tn reaches its maximum. This happens when
         ! the neutral fluid reaches velocities that are almost 0.85% (vs-v0)
-        coshinv2=log((1/0.15)+sqrt((1/0.15)**2-1))
+        coshinv2=log((1/0.15_dp)+sqrt((1/0.15_dp)**2-1))
         zmax=dlength/coshinv2
 
         ! z3 has to be 1/6 zmax
@@ -114,23 +119,23 @@ contains
 
         ! maxTemp is taken from Fig.9b in Draine et al. (1983) and the at constant is
         ! derived as:
-        a1=6.0
-        at=(1/zmax)*((maxTemp-initialTemp)*((a1)-1.0))**(1.0/6.0)
+        ! a1=6.0_dp
+        at=(1/zmax)*((maxTemp-initialTemp)*(6.0_dp-1.0_dp))**(1.0_dp/6.0_dp)
 
         !Second, we calculate v0 that depends on the alfven and the shock velocities
         !Magnetic field in microGauss. We assume strong magnetic field, i.e., bm0=1.microgauss.
         !(Draine, Roberge & Dalgarno 1983)
-        !For the general case, the Alfven velocity is calculated as vA=B0/sqrt(4*pi*2*initialDens). If we
-        !substitute the expression of B0 on this equation, we obtain that vA=bm0/sqrt(4*pi*mH).
+        !For the general case, the Alfven velocity is calculated as vA=B0/sqrt(4*PI*2*initialDens). If we
+        !substitute the expression of B0 on this equation, we obtain that vA=bm0/sqrt(4*PI*mH).
         !B0=bm0*sqrt(2*initialDens)
-        bm0 = bm0*1D-06
-        vA=bm0/sqrt(4*pi*mh)
-        vA=vA/km
+        bm0 = bm0*1e-6_dp
+        vA=bm0/sqrt(4*PI*MH)
+        vA=vA/KM
 
         !Calculation of v0, final velocity of ions/neutrals in the shock frame
-        v0=2.0
+        v0=2.0_dp
         v01=0
-        do while (abs(v0-v01) >= 1e-6)
+        do while (abs(v0-v01) >= 1e-6_dp)
             v01=v0
             g1=-(vA**2*vs**2)/2
             g2=v01**2-v01*vs-vA**2/2
@@ -147,11 +152,11 @@ contains
     !but the integrator itself chooses an integration timestep.                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     subroutine updateTargetTime
-        if (timeInYears < 2.0*dissipationTime) then
+        if (timeInYears < 2.0_dp*dissipationTime) then
             !get a nice sampling along the shock
             targetTime=(timeInYears+timestepFactor*dissipationTime)*SECONDS_PER_YEAR
         else
-            targetTime=(1.1*timeInYears)*SECONDS_PER_YEAR
+            targetTime=(1.1_dp*timeInYears)*SECONDS_PER_YEAR
         end if
     end subroutine updateTargetTime
 
@@ -161,7 +166,7 @@ contains
         call shst
 
         dzv=sqrt(2*vn*(vs-v0)-vn**2)
-        dzv=1.0/(dzv*km)
+        dzv=1.0_dp/(dzv*KM)
         dzv=z2*((vs-v0)/(vs-v0-vn))*dzv
 
         !We introduce the gas temperature curve along the dissipation region of the
@@ -169,12 +174,12 @@ contains
         !use the equations for the collisional and radiative heating of grains of
         !Draine, Roberge & Dalgarno (1983) and Hollenbach, Takahashi & Tielens (1991).
         tn(dstep)=initialTemp+((at*zn)**bt)/((zn/z3)-1)
-        ti(dstep)=tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ))
+        ti(dstep)=tn(dstep)+(mun*(driftVel*KM)**2/(3*K_BOLTZ))
 
         !grain collisional heating
-        tgc(dstep)=15*(dens6/grainRadius5)**(0.1818)*(tn(dstep)/1000.0)**(0.2727)
+        tgc(dstep)=15*(dens6/grainRadius5)**(0.1818_dp)*(tn(dstep)/1000.0_dp)**(0.2727_dp)
         !grain radiative heating
-        ! Frs=0.25*density(1)*mun*(vn*km)**3
+        ! Frs=0.25*density(1)*mun*(vn*KM)**3
         ! G0=Frs
         ! trs0=12.2*G0**0.2
         ! tau100=2.7e2_dp*G0/trs0**5
@@ -183,20 +188,20 @@ contains
         ! tgr(dstep)=(tgr1+tgr2)**0.2
         !If we don't include the radiative heating that is characteristic
         !of J-type shocks
-        tgr(dstep)=0.0
+        tgr(dstep)=0.0_dp
         !total grain heating
         tg(dstep)=tgc(dstep)+tgr(dstep)
 
         !Density change as shock evolves
-        if (timeInYears > 0.0) then
+        if (timeInYears > 0.0_dp) then
             density=initialDens*vs/(vs-vn)
         end if
 
         !temperature change as shock evolves
-        if (timeInYears > 0.0) then
+        if (timeInYears > 0.0_dp) then
             tn(dstep)=initialTemp+((at*zn)**bt)/((zn/z3)-1)
             gasTemp(dstep)=tn(dstep)
-            ti(dstep)=tn(dstep)+(mun*(driftVel*km)**2/(3*K_BOLTZ))
+            ti(dstep)=tn(dstep)+(mun*(driftVel*KM)**2/(3*K_BOLTZ))
 
         end if
         postShock = (timeInYears > dissipationTime)
@@ -209,7 +214,7 @@ contains
 
     !For c-shock, sublimation is simply the sputtering subroutine
     subroutine sublimation(abund,lpoints)
-        real(dp), intent(inout) :: abund(nspec+1,lpoints)
+        real(dp), intent(inout) :: abund(nSpec+1,lpoints)
         integer, intent(in) :: lpoints
         real(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)
@@ -231,19 +236,19 @@ contains
         vn1=1e30_dp
         vn=vn0
         loopCount=0
-        do while ((abs(vn-vn1)>=1.0e-10) .and. (loopCount < 100))
+        do while ((abs(vn-vn1)>=1.0e-10_dp) .and. (loopCount < 100))
             vn1=vn
             f1=vs-vn1
             f0=vs-vn0
-            zn=zn0+(currentTime-currentTimeOld)*km*(f1+f0)/2
+            zn=zn0+(currentTime-currentTimeOld)*KM*(f1+f0)/2
             xcos=zn/z2
-            acosh=0.5*((xcos)+exp(-xcos))
+            acosh=0.5_dp*((xcos)+exp(-xcos))
             vn=(vs-v0)-((vs-v0)/acosh)
             loopCount=loopCount+1
         end  do
 
         xcos=zn/z1
-        acosh=0.5*((xcos)+exp(-xcos))
+        acosh=0.5_dp*((xcos)+exp(-xcos))
         vi=(vs-v0)-((vs-v0)/acosh)
 
         !Store all variables as initial values for next iteration

@@ -6,7 +6,7 @@
 ! collapse = 4: magnetized filament, initially unstable to collapse (Nakamura+1995)
 ! collapse = 5: magnetized cloud, initially stable, collapse due to ambipolar diffusion (Fiedler+1993)
 module collapse_mod
-   use constants
+   use constants, only: dp, MH, PI, SECONDS_PER_YEAR, PC, AU
    use DEFAULTPARAMETERS
    use F2PY_CONSTANTS
    use network
@@ -32,15 +32,15 @@ contains
 
          select case(collapse_mode)
             case(1)
-                maxTime=1.175d6
-                collapseFinalTime=1.173387d6
+                maxTime=1.175e6_dp
+                collapseFinalTime=1.173387e6_dp
             case(2)
-                maxTime=1.855d5
-                collapseFinalTime=1.84265d5
+                maxTime=1.855e5_dp
+                collapseFinalTime=1.84265e5_dp
             case(3)
-                collapseFinalTime=1.393761d6
+                collapseFinalTime=1.393761e6_dp
             case(4)
-                collapseFinalTime=1.6132984d7
+                collapseFinalTime=1.6132984e7_dp
             case default
                 write(*,*) "unacceptable collapse mode"
                 successFlag=-1
@@ -52,7 +52,7 @@ contains
                parcel_radius(1)=rout
          else
             do dstep=1,points
-                  parcelRadius(dstep)=rin*(rout/rin)**((float(dstep)-1.0d0)/(float(points)-1.0d0))
+                  parcelRadius(dstep)=rin*(rout/rin)**((float(dstep)-1.0_dp)/(float(points)-1.0_dp))
                   parcel_radius(dstep)=parcelRadius(dstep)
             end do
          end if
@@ -68,41 +68,41 @@ contains
         ! ===== REGIME 1: POST-COLLAPSE (timeInYears > collapseFinalTime) =====
         ! After the collapse endpoint, density is frozen. Use coarse timesteps to advance to finalTime.
         if (timeInYears > collapseFinalTime) then
-            if (timeInYears > 1.0d6) then
-                targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR    ! 100 kyr steps beyond 1 Myr
+            if (timeInYears > 1.0e6_dp) then
+                targetTime=(timeInYears+1.0e5_dp)*SECONDS_PER_YEAR    ! 100 kyr steps beyond 1 Myr
             else
-                targetTime=(timeInYears+2.5d4)*SECONDS_PER_YEAR    ! 25 kyr steps below 1 Myr
+                targetTime=(timeInYears+2.5e4_dp)*SECONDS_PER_YEAR    ! 25 kyr steps below 1 Myr
             end if
             return
         end if
 
         ! ===== REGIME 2: ENDING (remaining time approaching collapseFinalTime) =====
-        ! Fine adaptive steps near the singularity to capture rapid density evolution.
+        ! Fine adaptive steps near the singularity to capture raPId density evolution.
         ! The collapse accelerates strongly in the final approach to the singularity,
         ! so step size is reduced as remaining time shrinks.
-        if (remaining > 0.0d0 .AND. remaining < 1.0d3) then
-            targetTime=(timeInYears+1.0d2)*SECONDS_PER_YEAR    ! 100 yr steps in final 1 kyr
-        else if (remaining > 0.0d0 .AND. remaining < 1.0d4) then
-            targetTime=(timeInYears+1.0d3)*SECONDS_PER_YEAR    ! 1 kyr steps in final 10 kyr
-        else if (remaining > 0.0d0 .AND. remaining < 1.0d5) then
-            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR    ! 10 kyr steps in final 100 kyr
+        if (remaining > 0.0_dp .AND. remaining < 1.0e3_dp) then
+            targetTime=(timeInYears+1.0e2_dp)*SECONDS_PER_YEAR    ! 100 yr steps in final 1 kyr
+        else if (remaining > 0.0_dp .AND. remaining < 1.0e4_dp) then
+            targetTime=(timeInYears+1.0e3_dp)*SECONDS_PER_YEAR    ! 1 kyr steps in final 10 kyr
+        else if (remaining > 0.0_dp .AND. remaining < 1.0e5_dp) then
+            targetTime=(timeInYears+1.0e4_dp)*SECONDS_PER_YEAR    ! 10 kyr steps in final 100 kyr
         ! ===== REGIME 3: STARTING (early times before ending phase) =====
-        else if (timeInYears > 1.0d6) then
-            targetTime=(timeInYears+1.0d5)*SECONDS_PER_YEAR    ! 100 kyr steps beyond 1 Myr
-        else if (timeInYears > 1.0d5) then
-            targetTime=(timeInYears+1.0d4)*SECONDS_PER_YEAR    ! 10 kyr steps beyond 100 kyr
+        else if (timeInYears > 1.0e6_dp) then
+            targetTime=(timeInYears+1.0e5_dp)*SECONDS_PER_YEAR    ! 100 kyr steps beyond 1 Myr
+        else if (timeInYears > 1.0e5_dp) then
+            targetTime=(timeInYears+1.0e4_dp)*SECONDS_PER_YEAR    ! 10 kyr steps beyond 100 kyr
         else if (timeInYears > 10000) then
-            targetTime=(timeInYears+1000.0)*SECONDS_PER_YEAR   ! 1 kyr steps beyond 10 kyr
+            targetTime=(timeInYears+1000.0_dp)*SECONDS_PER_YEAR   ! 1 kyr steps beyond 10 kyr
         else if (timeInYears > 1000) then
-            targetTime=(timeInYears+100.0)*SECONDS_PER_YEAR    ! 100 yr steps beyond 1 kyr
-        else if (timeInYears > 0.0) then
+            targetTime=(timeInYears+100.0_dp)*SECONDS_PER_YEAR    ! 100 yr steps beyond 1 kyr
+        else if (timeInYears > 0.0_dp) then
             targetTime=(timeInYears*10)*SECONDS_PER_YEAR       ! *10 exponential early on
         else
-            targetTime=3.16d7*10.0d-8
+            targetTime=3.16e7_dp*10.0e-8_dp
         end if
 
         ! Cap at collapseFinalTime to avoid overshooting the singularity during collapse phase.
-        if (remaining > 0.0d0 .AND. targetTime > collapseFinalTime*SECONDS_PER_YEAR) then
+        if (remaining > 0.0_dp .AND. targetTime > collapseFinalTime*SECONDS_PER_YEAR) then
           targetTime=collapseFinalTime*SECONDS_PER_YEAR
         end if
     end subroutine updateTargetTime
@@ -118,7 +118,7 @@ contains
         !and coldens should be amount of gas from edge to parcel.
         call findcoldens(coldens(dstep),rin,rho0fit(effectiveTime),r0fit(effectiveTime),afit(effectiveTime),rout)
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av(dstep)= baseAv +coldens(dstep)/1.6d21
+        av(dstep)= baseAv +coldens(dstep)/1.6e21_dp
         !If collapse is one of the parameterized modes, find new density and radius
 
         if ((collapse_mode <= 2)) then
@@ -128,14 +128,14 @@ contains
         else
             dt = targetTime - currentTime
             if (timeInYears < collapseFinalTime) then
-                drad = vrfit(parcelRadius(dstep),rminfit(effectiveTime),vminfit(effectiveTime),avfit(effectiveTime))*dt/pc
+                drad = vrfit(parcelRadius(dstep),rminfit(effectiveTime),vminfit(effectiveTime),avfit(effectiveTime))*dt/PC
                 parcelRadius(dstep) = parcelRadius(dstep) + drad
             end if
         end if
         parcel_radius(dstep) = parcelRadius(dstep)
         density(dstep)=rhofit(parcelRadius(dstep),rho0fit(effectiveTime),r0fit(effectiveTime),afit(effectiveTime))
         ! Apply hard density of n_H=1e8 limit to prevent unphysical behavior
-        density(dstep) = MIN(density(dstep), 1e8)
+        density(dstep) = MIN(density(dstep), 1e8_dp)
     end subroutine updatePhysics
 
     !This module is isothermal and as such, no sublimation occurs.
@@ -159,10 +159,10 @@ contains
       do dstep=1,points
         np = 1000
         dr = parcelRadius(dstep)/np
-        massInRadius(dstep) = 0.0d0
+        massInRadius(dstep) = 0.0_dp
 
         do i=1,np
-           drho = 0.5d0*(rhofit(i*dr,rho0,r0,a)+rhofit((i-1)*dr,rho0,r0,a))
+           drho = 0.5_dp*(rhofit(i*dr,rho0,r0,a)+rhofit((i-1)*dr,rho0,r0,a))
            massInRadius(dstep) = massInRadius(dstep) + drho*dr*(i*dr)**2
         end do
       end do
@@ -176,10 +176,10 @@ contains
       real(dp) :: dr,drho,m1
 
       i=1
-      dr = r/1.0d4
-      m1 = 0.0d0
+      dr = r/1.0e4_dp
+      m1 = 0.0_dp
       do while (m1 < massInRadius)
-         drho = 0.5d0*(rhofit(i*dr,rho0,r0,a)+rhofit((i-1)*dr,rho0,r0,a))
+         drho = 0.5_dp*(rhofit(i*dr,rho0,r0,a)+rhofit((i-1)*dr,rho0,r0,a))
          m1 = m1 + drho*dr*(i*dr)**2
          newRadius = i*dr
          i=i+1
@@ -197,21 +197,21 @@ contains
       np = 10000
       size = rout-rin
       dr = size/np
-      coldens = 0.0d0
-      if (size <= 0.0d0) return
+      coldens = 0.0_dp
+      if (size <= 0.0_dp) return
 
       do i=1,np
          r1 = rin + (i-1)*dr
          r2 = rin + i*dr
-         drho = 0.5d0*(rhofit(r2,rho0,r0,a)+rhofit(r1,rho0,r0,a))
-         coldens = coldens + drho*dr*pc
+         drho = 0.5_dp*(rhofit(r2,rho0,r0,a)+rhofit(r1,rho0,r0,a))
+         coldens = coldens + drho*dr*PC
       end do
 
     end subroutine findcoldens
 
 ! fit to density profile of hydrodynamic simulations
     real(dp) function rhofit(r,rho0,r0,a)
-      real(dp) :: r,rho0,r0,a
+      real(dp), intent(in) :: r,rho0,r0,a
       real(dp) :: rau,unitrho,unitr,r75
 
       if (collapse_mode == 1) then
@@ -221,36 +221,37 @@ contains
          rau = r*au
          rhofit = rho0/(1 + (rau/r0)**a)
       else if (collapse_mode == 3) then
-         unitrho = 2.2d4
-         unitr = sqrt(1.38d-16*10/2/mh)*(2*pi*6.67d-8*2.2d4*mh)**(-0.5)  ! distance unit equal to c_s * (2 pi G rho0)**-1/2
-         unitr = unitr/pc
+         unitrho = 2.2e4_dp
+         unitr = sqrt(1.38e-16_dp*10/2/MH)*(2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! distance unit equal to c_s * (2 PI G rho0)**-1/2
+         unitr = unitr/PC
          rhofit = unitrho*rho0/(1+(r/unitr/r0)**2)**a
       else if (collapse_mode == 4) then
-         r75 = r/7.5d-1
-         rhofit = rho0/(1 + (r75/r0)**a)
+         r75 = r/7.5e-1_dp
+         rhofit = rho0/(1.0_dp + (r75/r0)**a)
       end if
 
     end function rhofit
 
 ! fit to time evolution of central density
     real(dp) function rho0fit(t)
-      real(dp) :: t,logrho0,unitt
+      real(dp), intent(in) :: t
+      real(dp) :: logrho0, unitt
       if (collapse_mode == 1) then
-         logrho0 = 61.8*(maxTime-t)**(-0.01) - 49.4
+         logrho0 = 61.8_dp*(maxTime-t)**(-0.01_dp) - 49.4_dp
          rho0fit = 10**logrho0
       else if (collapse_mode == 2) then
-         logrho0 = 68.4*(maxTime-t)**(-0.01) - 55.7
+         logrho0 = 68.4_dp*(maxTime-t)**(-0.01_dp) - 55.7_dp
          rho0fit = 10**logrho0
       else if (collapse_mode == 3) then
-         unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5)  ! time unit equal to (2 pi G rho0)**-1/2
+         unitt = (2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
-         logrho0 = 3.54*(5.47-t/unitt)**(-0.15) - 2.73
+         logrho0 = 3.54_dp*(5.47_dp-t/unitt)**(-0.15_dp) - 2.73_dp
          rho0fit = 10**logrho0
       else if (collapse_mode == 4) then
-         if (t <= 6.0d0) then
-            rho0fit = 2.0d3 + 1.7d3*(t/6.0 - 1.0)
+         if (t <= 6.0_dp) then
+            rho0fit = 2.0e3_dp + 1.7e3_dp*(t/6.0_dp - 1.0_dp)
          else
-            logrho0 = 5.3*(16.138-1d-6*t)**(-0.1) - 1.0
+            logrho0 = 5.3_dp*(16.138_dp-1e-6_dp*t)**(-0.1_dp) - 1.0_dp
             rho0fit = 10**logrho0
          end if
       end if
@@ -259,21 +260,22 @@ contains
 
 ! fit to time evolution of radius parameter
     real(dp) function r0fit(t)
-      real(dp) :: t,logr0,unitt
+      real(dp), intent(in) :: t
+      real(dp) :: logr0,unitt
 
       if (collapse_mode == 1) then
-         logr0 = -28.5*(maxTime-t)**(-0.01) + 28.93
+         logr0 = -28.5_dp*(maxTime-t)**(-0.01_dp) + 28.93_dp
          r0fit = 10**logr0
       else if (collapse_mode == 2) then
-         logr0 = -39.0*(maxTime-t)**(-0.01) + 38.7
+         logr0 = -39.0_dp*(maxTime-t)**(-0.01_dp) + 38.7_dp
          r0fit = 10**logr0
       else if (collapse_mode == 3) then
-         unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5)  ! time unit equal to (2 pi G rho0)**-1/2
+         unitt = (2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
-         logr0 = -1.34*(5.47-t/unitt)**(-0.15) + 1.47
+         logr0 = -1.34_dp*(5.47_dp-t/unitt)**(-0.15_dp) + 1.47_dp
          r0fit = 10**logr0
       else if (collapse_mode == 4) then
-         logr0 = -2.57*(16.138-1d-6*t)**(-0.1) + 1.85
+         logr0 = -2.57_dp*(16.138_dp-1e-6_dp*t)**(-0.1_dp) + 1.85_dp
          r0fit = 10**logr0
       end if
 
@@ -281,79 +283,81 @@ contains
 
 ! fit to time evolution of density slope parameter
     real(dp) function afit(t)
-      real(dp) :: t,unitt
+      real(dp), intent(in) :: t
+      real(dp) :: unitt
 
       if (collapse_mode == 1) then
-         afit = 2.4d0
+         afit = 2.4_dp
       else if (collapse_mode == 2) then
-         afit = 1.9 + 0.5*exp(-t/1e5)
+         afit = 1.9_dp + 0.5_dp*exp(-t/1e5_dp)
       else if (collapse_mode == 3) then
-         unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5)  ! time unit equal to (2 pi G rho0)**-1/2
+         unitt = (2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
-         afit = 2.0 - 0.5*(t/unitt/5.47)**9
+         afit = 2.0_dp - 0.5_dp*(t/unitt/5.47_dp)**9
       else if (collapse_mode == 4) then
-         afit = 2.4 - 0.2*(1d-6*t/16.138)**40
+         afit = 2.4_dp - 0.2_dp*(1e-6_dp*t/16.138_dp)**40
       end if
 
     end function afit
 
 ! fit to radial velocity of hydrodynamical simulation
     real(dp) function vrfit(r,rmin,vmin,a)
-      real(dp) :: r,rmin,vmin,a
+      real(dp), intent(in) :: r,rmin,vmin,a
       real(dp) :: unitr,newRadius,rmid,r75
 
       if (collapse_mode == 3) then
-         unitr = sqrt(1.38d-16*10/2/mh)*(2*pi*6.67d-8*2.2d4*mh)**(-0.5)  ! distance unit equal to c_s * (2 pi G rho0)**-1/2
-         unitr = unitr/pc
+         unitr = sqrt(1.38e-16_dp*10/2/MH)*(2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! distance unit equal to c_s * (2 PI G rho0)**-1/2
+         unitr = unitr/PC
          newRadius = r/unitr - rmin
-         if (newRadius < 0.0d0) then
+         if (newRadius < 0.0_dp) then
             vrfit = vmin*((newRadius/rmin)**2 -1)
          else
-            vrfit = vmin*(exp(-2.0d0*a*newRadius) - 2*exp(-a*newRadius))
+            vrfit = vmin*(exp(-2.0_dp*a*newRadius) - 2*exp(-a*newRadius))
          end if
-         vrfit = sqrt(1.38d-16*10/2/mh)*vrfit  ! convert to cm s-1 using c_s
+         vrfit = sqrt(1.38e-16_dp*10/2/MH)*vrfit  ! convert to cm s-1 using c_s
       else if (collapse_mode == 4) then
-         rmid = 0.5
-         r75 = r/7.5d-1
+         rmid = 0.5_dp
+         r75 = r/7.5e-1_dp
          newRadius = r75 - rmin
          if (r75 < rmin) then
-            vrfit = vmin*((newRadius/rmin)**2 - 1)
+            vrfit = vmin*((newRadius/rmin)**2 - 1.0_dp)
          else if (r75 <= rmid) then
-            vrfit = (vmin-a)*(newRadius/(rmid-rmin))**0.3 - vmin
+            vrfit = (vmin-a)*(newRadius/(rmid-rmin))**0.3_dp - vmin
          else
-            vrfit = a/(1.0-rmid)*(r75-rmid) - a
+            vrfit = a/(1.0_dp-rmid)*(r75-rmid) - a
          end if
-         vrfit = 1d3*vrfit  ! convert to cm s-1 from 1e-2 km s-1
+         vrfit = 1e3_dp*vrfit  ! convert to cm s-1 from 1e-2 km s-1
       end if
 
     end function vrfit
 
 ! fit to time evolution of radius of minimum velocity
     real(dp) function rminfit(t)
-      real(dp) :: t,unitt,tnew
+      real(dp), intent(in) :: t
+      real(dp) :: unitt,tnew
       real(dp) :: t6
 
       if (collapse_mode == 3) then
-         unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5)  ! time unit equal to (2 pi G rho0)**-1/2
+         unitt = (2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
          tnew = t/unitt
-         if (tnew == 0.0d0) then
-            rminfit = 7.2d0
-         else if (log(tnew) < 1.6d0) then
-            rminfit = -1.149*tnew + 7.2
-         else if (log(tnew) < 1.674d0) then
-            rminfit = -9.2*log(tnew) + 16.25
+         if (tnew == 0.0_dp) then
+            rminfit = 7.2_dp
+         else if (log(tnew) < 1.6_dp) then
+            rminfit = -1.149_dp*tnew + 7.2_dp
+         else if (log(tnew) < 1.674_dp) then
+            rminfit = -9.2_dp*log(tnew) + 16.25_dp
          else
-            rminfit = -22.0*log(tnew) + 37.65
+            rminfit = -22.0_dp*log(tnew) + 37.65_dp
          end if
       else if (collapse_mode == 4) then
-         t6 = 1d-6*t
-         if (t6 <= 10.2) then
-            rminfit = -0.0039*t6 + 0.49
-         else if (t6 <= 15.1) then
-            rminfit = -0.0306*(t6-10.2) + 0.45
+         t6 = 1e-6_dp*t
+         if (t6 <= 10.2_dp) then
+            rminfit = -0.0039_dp*t6 + 0.49_dp
+         else if (t6 <= 15.1_dp) then
+            rminfit = -0.0306_dp*(t6-10.2_dp) + 0.45_dp
          else
-            rminfit = -0.282*(t6-15.1) + 0.3
+            rminfit = -0.282_dp*(t6-15.1_dp) + 0.3_dp
          end if
       end if
 
@@ -361,53 +365,55 @@ contains
 
 ! fit to time evolution of minimum velocity
     real(dp) function vminfit(t)
-      real(dp) :: t,unitt,tnew
+      real(dp), intent(in) :: t
+      real(dp) :: unitt,tnew
       real(dp) :: t6
 
       if (collapse_mode == 3) then
-         unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5)  ! time unit equal to (2 pi G rho0)**-1/2
+         unitt = (2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
          tnew = t/unitt
-         if (tnew == 0.0d0) then
-            vminfit = 0.0d0
-         else if (log(tnew) < 1.6d0) then
-            vminfit = 0.0891*tnew
-         else if (log(tnew) < 1.674d0) then
-            vminfit = 5.5*log(tnew) - 8.37
+         if (tnew == 0.0_dp) then
+            vminfit = 0.0_dp
+         else if (log(tnew) < 1.6_dp) then
+            vminfit = 0.0891_dp*tnew
+         else if (log(tnew) < 1.674_dp) then
+            vminfit = 5.5_dp*log(tnew) - 8.37_dp
          else
-            vminfit = 18.9*log(tnew) - 30.8
+            vminfit = 18.9_dp*log(tnew) - 30.8_dp
          end if
       else if (collapse_mode == 4) then
-         t6 = 1d-6*t
-         vminfit = 3.44*(16.138-t6)**(-0.35) - 0.7
+         t6 = 1e-6_dp*t
+         vminfit = 3.44_dp*(16.138_dp-t6)**(-0.35_dp) - 0.7_dp
       end if
 
     end function vminfit
 
 ! fit to time evolution of velocity a-parameter (collapse 4) or velocity at r=0.5 (collapse 5)
     real(dp) function avfit(t)
-      real(dp) :: t,unitt,tnew
+      real(dp), intent(in) :: t
+      real(dp) :: unitt,tnew
       real(dp) :: t6
 
       if (collapse_mode == 3) then
-         unitt = (2*pi*6.67d-8*2.2d4*mh)**(-0.5)  ! time unit equal to (2 pi G rho0)**-1/2
+         unitt = (2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
          tnew = t/unitt
-         if (tnew == 0.0d0) then
-            avfit = 0.4d0
-         else if (log(tnew) < 1.6d0) then
-            avfit = 0.0101*tnew + 0.4
-         else if (log(tnew) < 1.674d0) then
-            avfit = 0.695*log(tnew) - 0.663
+         if (tnew == 0.0_dp) then
+            avfit = 0.4_dp
+         else if (log(tnew) < 1.6_dp) then
+            avfit = 0.0101_dp*tnew + 0.4_dp
+         else if (log(tnew) < 1.674_dp) then
+            avfit = 0.695_dp*log(tnew) - 0.663_dp
          else
-            avfit = 2.69*log(tnew) - 4.0
+            avfit = 2.69_dp*log(tnew) - 4.0_dp
          end if
       else if (collapse_mode == 4) then
-         t6 = 1d-6*t
-         if (t6 <= 10.2) then
-            avfit = 0.143*t6
+         t6 = 1e-6_dp*t
+         if (t6 <= 10.2_dp) then
+            avfit = 0.143_dp*t6
          else
-            avfit = 0.217*(t6-10.2) + 1.46
+            avfit = 0.217_dp*(t6-10.2_dp) + 1.46_dp
          end if
       end if
 

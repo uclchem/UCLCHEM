@@ -1,138 +1,151 @@
 module photoreactions
-    use constants
+    use constants, only: dp, HABING_TO_DRAINE
     use DEFAULTPARAMETERS
     !f2py INTEGER, parameter :: dp
-implicit none
-    real(dp) :: UV_FAC=3.02
 
-    !Below are arrays for self-shielding of CO and H2
+    implicit none
+
+    public
+
+    real(dp) :: UV_FAC=3.02_dp
+
+    ! Below are arrays for self-shielding of CO and H2
+    ! They cannot be parameters, because they can be adjusted
+    ! at runtime from within python.
     logical :: start=.true.
-    integer :: NUM_LAMBDA=30
-    real(dp), dimension(30) :: LAMBDA_GRID=(/ &
-      &  910.0D0, 950.0D0,1000.0D0,1050.0D0,1110.0D0, &
-      & 1180.0D0,1250.0D0,1390.0D0,1490.0D0,1600.0D0, &
-      & 1700.0D0,1800.0D0,1900.0D0,2000.0D0,2100.0D0, &
-      & 2190.0D0,2300.0D0,2400.0D0,2500.0D0,2740.0D0, &
-      & 3440.0D0,4000.0D0,4400.0D0,5500.0D0,7000.0D0, &
-      & 9000.0D0,12500.0D0,22000.0D0,34000.0D0,1.0D9/)
-    real(dp), dimension(30) :: XLAMBDA_GRID=(/ &
-      & 5.76D0,5.18D0,4.65D0,4.16D0,3.73D0, &
-      & 3.40D0,3.11D0,2.74D0,2.63D0,2.62D0, &
-      & 2.54D0,2.50D0,2.58D0,2.78D0,3.01D0, &
-      & 3.12D0,2.86D0,2.58D0,2.35D0,2.00D0, &
-      & 1.58D0,1.42D0,1.32D0,1.00D0,0.75D0, &
-      & 0.48D0,0.28D0,0.12D0,0.05D0,0.00D0/)
-    real(dp), dimension(30) :: XLAMBDA_DERIV
+    integer, parameter :: MAX_NUM_LAMDBA = 30
+    integer :: NUM_LAMBDA = MAX_NUM_LAMDBA  ! Initialize with maximum number of wavelengths
+    real(dp), dimension(MAX_NUM_LAMDBA) :: LAMBDA_GRID=(/ &
+      &  910.0_dp, 950.0_dp,1000.0_dp,1050.0_dp,1110.0_dp, &
+      & 1180.0_dp,1250.0_dp,1390.0_dp,1490.0_dp,1600.0_dp, &
+      & 1700.0_dp,1800.0_dp,1900.0_dp,2000.0_dp,2100.0_dp, &
+      & 2190.0_dp,2300.0_dp,2400.0_dp,2500.0_dp,2740.0_dp, &
+      & 3440.0_dp,4000.0_dp,4400.0_dp,5500.0_dp,7000.0_dp, &
+      & 9000.0_dp,12500.0_dp,22000.0_dp,34000.0_dp,1.0e9_dp/)
+    real(dp), dimension(MAX_NUM_LAMDBA) :: XLAMBDA_GRID=(/ &
+      & 5.76_dp,5.18_dp,4.65_dp,4.16_dp,3.73_dp, &
+      & 3.40_dp,3.11_dp,2.74_dp,2.63_dp,2.62_dp, &
+      & 2.54_dp,2.50_dp,2.58_dp,2.78_dp,3.01_dp, &
+      & 3.12_dp,2.86_dp,2.58_dp,2.35_dp,2.00_dp, &
+      & 1.58_dp,1.42_dp,1.32_dp,1.00_dp,0.75_dp, &
+      & 0.48_dp,0.28_dp,0.12_dp,0.05_dp,0.00_dp/)
+    real(dp), dimension(MAX_NUM_LAMDBA) :: XLAMBDA_DERIV
 
     logical :: startr=.true.
 
     !  12CO line shielding data from van Dishoeck & Black (1988, ApJ, 334, 771, Table 5)
     integer, parameter ::  DIMCO=7, DIMH2=6
-    real(KIND=DP), dimension(8) :: NCO_GRID=(/12.0D0,13.0D0,14.0D0,15.0D0,16.0D0,17.0D0,18.0D0,19.0D0/)
-    real(KIND=DP), dimension(6) :: NH2_GRID=(/18.0D0,19.0D0,20.0D0,21.0D0,22.0D0,23.0D0/)
-    real(KIND=DP), dimension(8,6) :: SCO_GRID=RESHAPE((/ &
-      &  0.000D+00,-1.408D-02,-1.099D-01,-4.400D-01,-1.154D+00,-1.888D+00,-2.760D+00,-4.001D+00, &
-      & -8.539D-02,-1.015D-01,-2.104D-01,-5.608D-01,-1.272D+00,-1.973D+00,-2.818D+00,-4.055D+00, &
-      & -1.451D-01,-1.612D-01,-2.708D-01,-6.273D-01,-1.355D+00,-2.057D+00,-2.902D+00,-4.122D+00, &
-      & -4.559D-01,-4.666D-01,-5.432D-01,-8.665D-01,-1.602D+00,-2.303D+00,-3.146D+00,-4.421D+00, &
-      & -1.303D+00,-1.312D+00,-1.367D+00,-1.676D+00,-2.305D+00,-3.034D+00,-3.758D+00,-5.077D+00, &
-      & -3.883D+00,-3.888D+00,-3.936D+00,-4.197D+00,-4.739D+00,-5.165D+00,-5.441D+00,-6.446D+00/), (/8,6/))
-    real(KIND=DP), dimension(8,6) :: SCO_DERIV
+    real(dp), dimension(8) :: NCO_GRID=(/12.0_dp,13.0_dp,14.0_dp,15.0_dp,16.0_dp,17.0_dp,18.0_dp,19.0_dp/)
+    real(dp), dimension(6) :: NH2_GRID=(/18.0_dp,19.0_dp,20.0_dp,21.0_dp,22.0_dp,23.0_dp/)
+    real(dp), dimension(8,6) :: SCO_GRID=RESHAPE((/ &
+      &  0.000e+00_dp,-1.408e-02_dp,-1.099e-01_dp,-4.400e-01_dp,-1.154e+00_dp,-1.888e+00_dp,-2.760e+00_dp,-4.001e+00_dp, &
+      & -8.539e-02_dp,-1.015e-01_dp,-2.104e-01_dp,-5.608e-01_dp,-1.272e+00_dp,-1.973e+00_dp,-2.818e+00_dp,-4.055e+00_dp, &
+      & -1.451e-01_dp,-1.612e-01_dp,-2.708e-01_dp,-6.273e-01_dp,-1.355e+00_dp,-2.057e+00_dp,-2.902e+00_dp,-4.122e+00_dp, &
+      & -4.559e-01_dp,-4.666e-01_dp,-5.432e-01_dp,-8.665e-01_dp,-1.602e+00_dp,-2.303e+00_dp,-3.146e+00_dp,-4.421e+00_dp, &
+      & -1.303e+00_dp,-1.312e+00_dp,-1.367e+00_dp,-1.676e+00_dp,-2.305e+00_dp,-3.034e+00_dp,-3.758e+00_dp,-5.077e+00_dp, &
+      & -3.883e+00_dp,-3.888e+00_dp,-3.936e+00_dp,-4.197e+00_dp,-4.739e+00_dp,-5.165e+00_dp,-5.441e+00_dp,-6.446e+00_dp/), (/8,6/))
+    real(dp), dimension(8,6) :: SCO_DERIV
 
-    real(dp) :: ICE_GAS_PHOTO_CROSSSECTION_RATIO = 0.3  ! Kalvans 2018
+    real(dp) :: ICE_GAS_PHOTO_CROSSSECTION_RATIO = 0.3_dp  ! Kalvans 2018
 contains
 
 !photodissociation rate of H2  accounting for self-shielding
-real(dp) function H2PhotoDissRate(NH2,radField,av,turbVel)
+function getH2PhotoDissRate(NH2,radField,av,turbVel) result(H2PhotoDissRate)
     !H2 Column density to surface, UV at that surface, visual extinction to surface, and turbulent velocity of cloud
     real(dp), intent(in) :: NH2 ,radField,av ,turbVel
+    real(dp) :: H2PhotoDissRate
     !unshielded reaction rate, characteristic wavelendth of radiation, radiative linewidth
-    real(dp), parameter :: baseRate=5.18d-11,xl=1000.0,radWidth=8.0d7
+    real(dp), parameter :: baseRate=5.18e-11_dp,xl=1000.0,radWidth=8.0e7_dp
     real(dp) :: dopplerWidth
 
-    dopplerWidth=turbVel/(xl*1.0d-8)
-    H2PhotoDissRate = baseRate * (radField/1.7) * scatter(xl,av) * H2SelfShielding(NH2,dopplerWidth,radWidth)
-end function H2PhotoDissRate
+    dopplerWidth=turbVel/(xl*1.0e-8_dp)
+    H2PhotoDissRate = baseRate * (radField*HABING_TO_DRAINE) * calculate_grain_scatter(xl,av) * &
+        calculateH2SelfShielding(NH2,dopplerWidth,radWidth)
+end function getH2PhotoDissRate
 
-real(dp) function COPhotoDissRate(NH2,NCO,radField,av)
+function getCOPhotoDissRate(NH2,NCO,radField,av) result(COPhotoDissRate)
     real(dp), intent(in) :: NH2,NCO,radField,av  !column densities of H2 and CO
+    real(dp) :: COPhotoDissRate
+
     real(dp) :: ssf,lba,sca
     !calculate photodissociation rates for co (species # nco; reaction
     !# nrco) according to van dishoeck and black (apj 334, p771 (1988))
     !cocol is the co column density (in cm-2); the scaling of the pdrate
     !by a factor of 1.8 is due to the change from draine's is uv field
     !to the habing field
-    ssf = COSelfShielding(NH2,NCO)
-    lba = lbar(NCO,NH2)
-    sca = scatter(lba,av)
+    ssf = calculateCOSelfShielding(NH2,NCO)
+    lba = calculate_lbar(NCO,NH2)
+    sca = calculate_grain_scatter(lba,av)
 
     !The reason why rad is divided by 1.7 is that the alphas are for Draine and the rad is in
     !Habing units
-    COPhotoDissRate = (2.0d-10) * (radfield/1.7) * ssf * sca
-end function COPhotoDissRate
+    COPhotoDissRate = (2.0e-10_dp) * (radfield*HABING_TO_DRAINE) * ssf * sca
+end function getCOPhotoDissRate
 
-function cIonizationRate(alpha,gamma,gasTemp,NC,NH2,av,radfield) result(RATE)
-   real(DP) :: RATE
-   real(DP), intent(in) :: alpha,gamma,gasTemp,NC,NH2,av,radField
-   real(DP) :: TAUC
+function getCarbonIonizationRate(alpha,gamma,gasTemp,NC,NH2,av,radfield) &
+        result(carbonIonizationRate)
+   real(dp), intent(in) :: alpha,gamma,gasTemp,NC,NH2,av,radField
+   real(dp) :: carbonIonizationRate
+   real(dp) :: TAUC
 
 !  Calculate the optical depth in the CI absorption band, accounting
 !  for grain extinction and shielding by CI and overlapping H2 lines
-!  1.1D-17 seems the value of the ionization cross-section of C
-   TAUC=gamma*av+1.1D-17*NC+(0.9D0*gasTemp**0.27D0*(NH2/1.59D21)**0.45D0)
+!  1.1e-17_dp seems the value of the ionization cross-section of C
+   TAUC=gamma*av+1.1e-17_dp*NC+(0.9_dp*gasTemp**0.27_dp*(NH2/1.59e21_dp)**0.45_dp)
 !  Calculate the CI photoionization rate
-   RATE=alpha*(radfield/1.7)*EXP(-TAUC)
-end function cIonizationRate
+   carbonIonizationRate=alpha*(radfield*HABING_TO_DRAINE)*EXP(-TAUC)
+end function getCarbonIonizationRate
 
 !-----------------------------------------------------------------------
 !  H2 line self-shielding, adopting the treatment of
 !  Federman, Glassgold & Kwan (1979, ApJ, 227, 466)
 !-----------------------------------------------------------------------
-real(dp) function H2SelfShielding(NH2,dopplerWidth,radWidth)
+function calculateH2SelfShielding(NH2,dopplerWidth,radWidth) result(H2SelfShielding)
     real(dp), intent(in) :: NH2,dopplerWidth,radWidth
+    real(dp) :: H2SelfShielding
+
     real(dp) ::  r, sj, sr, t, u, taud
-    real(dp), parameter :: FPARA=0.5,FOSC  = 1.0d-2
+    real(dp), parameter :: FPARA = 0.5_dp
+    real(dp), parameter :: FOSC  = 1.0e-2_dp
     !--------------------------------------------------------------
     !taud = opt. depth at line center (assuming ortho:para h2=1)
     !pi**0.5 * e2 / (m(electr) * c) = 1.5e-2 cm2/s
 
-    taud  = FPARA * NH2 * 1.5e-2 * FOSC / dopplerWidth
+    taud  = FPARA * NH2 * 1.5e-2_dp * FOSC / dopplerWidth
 
     !calculate doppler contribution of self shielding function sj
-    if (taud == 0.0d0) then
-       sj = 1.0d0
-    else if (taud < 2.0d0) then
-       sj = exp(-0.6666667d0*taud)
-    else if (taud < 10.0d0) then
-       sj = 0.638d0*taud**(-1.25d0)
-    else if (taud < 100.0d0) then
-       sj = 0.505d0*taud**(-1.15d0)
+    if (taud == 0.0_dp) then
+       sj = 1.0_dp
+    else if (taud < 2.0_dp) then
+       sj = exp(-0.6666667_dp*taud)
+    else if (taud < 10.0_dp) then
+       sj = 0.638_dp*taud**(-1.25_dp)
+    else if (taud < 100.0_dp) then
+       sj = 0.505_dp*taud**(-1.15_dp)
     else
-       sj = 0.344d0*taud**(-1.0667d0)
+       sj = 0.344_dp*taud**(-1.0667_dp)
     end if
 
     !calculate wing contribution of self shielding function sr
-    !IF (taud.lt.0.0d0)  taud=0.0d0
-    if (radWidth == 0.0d0) then
-       sr = 0.0d0
+    !IF (taud.lt.0.0_dp)  taud=0.0_dp
+    if (radWidth == 0.0_dp) then
+       sr = 0.0_dp
     else
-       r  = radWidth/(1.7724539d0*dopplerWidth)
-       t  = 3.02d0 * ((r*1.0d+03)**(-0.064d0))
+       r  = radWidth/(1.7724539_dp*dopplerWidth)
+       t  = 3.02_dp * ((r*1.0e+03_dp)**(-0.064_dp))
        u  = SQRT(taud*r)/t
-       sr = r/(t*SQRT(0.78539816d0+u**2.0))
+       sr = r/(t*SQRT(0.78539816_dp+u**2.0_dp))
     end if
 
     !calculate total self shielding function fgk
     H2SelfShielding = sj + sr
-end function H2SelfShielding
+end function calculateH2SelfShielding
 
 
 
 !calculate the influence of dust extinction (g=0.8, omega=0.3)
 !wagenblast&hartquist, mnras237, 1019 (1989)
-real(dp) function scatter(x1,av)
-
-
+function calculate_grain_scatter(x1,av) result(grain_scatter)
 !---------------------------------------------------------------------
 !         i/o variables type declaration
 !       scat   : factor describing the influence of grain scattering
@@ -148,14 +161,14 @@ real(dp) function scatter(x1,av)
 !        i      : loop index
 !        tl     : tau(lambda)
 !        tv     : tau(visual=5500a)
-!        xlambda : function which calculates tl/tv
+!        calculate_xlambda : function which calculates tl/tv
 !        c(0)   : c(0) * exp(-k(0)*tau) : (rel.) intensity
 !                 decrease for 0<=tau<=1 caused by grain
-!                 scattering with g=0.8, omega=0.3
+!                 calculate_grain_scattering with g=0.8, omega=0.3
 !                 (approximation)
 !        c(i)   : sum (c(i) * exp(-k(i)*tau)) i=1,5  (rel.)
 !                 intensity decrease for 1<=tau<=oo caused by
-!                 grain scattering with g=0.8, omega=0.3.
+!                 grain calculate_grain_scattering with g=0.8, omega=0.3.
 !                 (cf. flannery, roberge, and rybicki 1980,
 !                 apj 236, p.598).
 !        k(0)   : see c0
@@ -163,37 +176,38 @@ real(dp) function scatter(x1,av)
 !---------------------------------------------------------------------
 
 !   i/o variables type declaration
-    real(DP), intent(in) :: x1,av
+    real(dp), intent(in) :: x1, av
+    real(dp) :: grain_scatter
     !
     !program variables type declaration
-    real(dp), dimension(6) :: c=(/1.0d0,2.006d0,-1.438d0,7.364d-01,-5.076d-01,-5.920d-02/)
-    real(dp), dimension(6) ::  k1=(/7.514d-01,8.490d-01,1.013d0,1.282d0,2.005d0,5.832d0/)
+    real(dp), parameter, dimension(6) :: c=(/1.0_dp,2.006_dp,-1.438_dp,7.364e-01_dp,-5.076e-01_dp,-5.920e-02_dp/)
+    real(dp), parameter, dimension(6) ::  k1=(/7.514e-01_dp,8.490e-01_dp,1.013_dp,1.282_dp,2.005_dp,5.832_dp/)
     real(dp)  :: expo, tl, tv
     integer :: i
 
     !optical depth in the visual
-    tv = av/ 1.086d0
+    tv = av / 1.086_dp
 
     !make correction for the wavelength considered
-    tl = tv * xlambda(x1)
+    tl = tv * calculate_xlambda(x1)
 
-    !calculate attuentuation  due to dust scattering
-    scatter = 0.0d0
-    if (tl<1.0d0) then
+    !calculate attuentuation  due to dust calculate_grain_scattering
+    grain_scatter = 0.0_dp
+    if (tl<1.0_dp) then
         expo = k1(1)*tl
-        if (expo<100.0d0) then
-            scatter = c(1) * EXP(-expo)
+        if (expo<100.0_dp) then
+            grain_scatter = c(1) * EXP(-expo)
         end if
     else
         do i=2,6
             expo = k1(i)*tl
-            if (expo<100.0d0) then
-            scatter = scatter + c(i)*EXP(-expo)
+            if (expo<100.0_dp) then
+            grain_scatter = grain_scatter + c(i)*EXP(-expo)
             end if
         end do
     end if
 
-end function scatter
+end function calculate_grain_scatter
 
 !=======================================================================
 !
@@ -222,13 +236,14 @@ end function scatter
 !  SPLINT = 1-dimensional cubic spline interpolated value (in spline.f90)
 !
 !-----------------------------------------------------------------------
-real(dp) function xlambda(LAMBDA)
+function calculate_xlambda(LAMBDA) result(xlambda)
     real(dp), intent(in) :: LAMBDA
+    real(dp) :: xlambda
 
     real(dp) :: LAMBDA_VALUE
 
     if (START) then
-      call SPLINE(LAMBDA_GRID,XLAMBDA_GRID,NUM_LAMBDA,1.0D30,1.0D30,XLAMBDA_DERIV)
+      call SPLINE(LAMBDA_GRID,XLAMBDA_GRID,NUM_LAMBDA,1.0e30_dp,1.0e30_dp,XLAMBDA_DERIV)
     end if
 
     LAMBDA_VALUE=LAMBDA
@@ -236,18 +251,17 @@ real(dp) function xlambda(LAMBDA)
     if(LAMBDA>LAMBDA_GRID(NUM_LAMBDA)) LAMBDA_VALUE=LAMBDA_GRID(NUM_LAMBDA)
 
     call SPLINT(LAMBDA_GRID,XLAMBDA_GRID,XLAMBDA_DERIV,NUM_LAMBDA,LAMBDA_VALUE,xlambda)
-    if(XLAMBDA<0.0D0) XLAMBDA=0.0D0
+    if(xlambda<0.0_dp) xlambda=0.0_dp
 
-end function xlambda
+end function calculate_xlambda
 
 !-----------------------------------------------------------------------
 !self-shielding of CO due to 12CO self-shielding and H2 screening
 !Use Van Dishoeck & Black APJ 334, 1988 for value
 !-----------------------------------------------------------------------
-
-
-real(dp) function COSelfShielding(NH2,NCO)
+function calculateCOSelfShielding(NH2,NCO) result(COSelfShielding)
     real(dp), intent(in) :: NH2, NCO
+    real(dp) :: COSelfShielding
     real(dp) :: lognco,lognh2
 
     if (startr)  then
@@ -255,8 +269,8 @@ real(dp) function COSelfShielding(NH2,NCO)
         startr = .false.
     end if
 
-    lognco = dlog10(NCO+1.0)
-    lognh2 = dlog10(NH2+1.0)
+    lognco = log10(NCO+1.0_dp)
+    lognh2 = log10(NH2+1.0_dp)
 
     if (lognco<NCO_GRID(1))      lognco = NCO_GRID(1)
     if (lognh2<NH2_GRID(1))      lognh2 = NH2_GRID(1)
@@ -265,12 +279,12 @@ real(dp) function COSelfShielding(NH2,NCO)
 
     call splin2(NCO_GRID,NH2_GRID,SCO_GRID,SCO_DERIV,DIMCO,DIMH2,lognco,&
     &               lognh2,COSelfShielding)
-    COSelfShielding = 10.0d0**COSelfShielding
-end function COSelfShielding
+    COSelfShielding = 10.0_dp**COSelfShielding
+end function calculateCOSelfShielding
 
 
 
-real(dp) function lbar(u,w)
+function calculate_lbar(u,w) result(lbar)
 !calculate lambda bar (in a) according to equ. 4 of van dishoeck
 !and black, apj 334, p771 (1988)
 ! --------------------------------------------------------------
@@ -283,23 +297,25 @@ real(dp) function lbar(u,w)
 !        lw : log10(h2 column density in cm-2)
 
 !--------------------------------------------------------------
+    real(dp), intent(in) :: u, w
+    real(dp) :: lbar
     !i/o parameter type declaration
-    real(dp)  :: u, w, lu, lw
+    real(dp) :: lu, lw
 
-    lu = dlog10(dabs(u)+1.0d0)
-    lw = dlog10(dabs(w)+1.0d0)
+    lu = log10(abs(u)+1.0_dp)
+    lw = log10(abs(w)+1.0_dp)
 
-    lbar = (5675.0d0 - 200.6d0*lw) - (571.6d0 - 24.09d0*lw)*lu +&
-    &(18.22d0 - 0.7664d0*lw)*lu**2
+    lbar = (5675.0_dp - 200.6_dp*lw) - (571.6_dp - 24.09_dp*lw)*lu +&
+    &(18.22_dp - 0.7664_dp*lw)*lu**2
 
-    !lbar represents the mean of the wavelengths of the 33
+    !calculate_lbar represents the mean of the wavelengths of the 33
     !dissociating bands weighted by their fractional contribution
-    !to the total rate of each depth. lbar cannot be larger than
+    !to the total rate of each depth. calculate_lbar cannot be larger than
     !the wavelength of band 33 (1076.1a) and not be smaller than
     !the wavelength of band 1 (913.6a).
-    if (lbar>1076.1d0)  lbar = 1076.1d0
-    if (lbar< 913.6d0)  lbar =  913.6d0
-end function lbar
+    if (lbar>1076.1_dp) lbar = 1076.1_dp
+    if (lbar< 913.6_dp) lbar =  913.6_dp
+end function calculate_lbar
 
 subroutine splie2(x1a,x2a,ya,m,n,y2a)
 !given an m by n tabulated function ya, and tabulated indepen-
@@ -309,19 +325,23 @@ subroutine splie2(x1a,x2a,ya,m,n,y2a)
 !(copied from numerical recipes)
 
 !--------------------------------------------------------------
-!i/o parameter and program variables
-          integer           :: nn
-          parameter         (nn=100)
-          integer           :: m, n, j, k
-          real(dp)  :: x1a(m), x2a(n), ya(m,n), y2a(m,n), ytmp(nn),&
-     &                      y2tmp(nn)
+    integer, intent(in) :: m, n
+    real(dp), intent(in), dimension(m) :: x1a
+    real(dp), intent(in), dimension(n) :: x2a
+    real(dp), intent(in), dimension(m, n) :: ya
+    real(dp), intent(out), dimension(m, n) :: y2a
+
+    !i/o parameter and program variables
+    integer, parameter :: nn = 100
+    real(dp), dimension(nn) :: ytmp, y2tmp
+    integer :: j, k
 !--------------------------------------------------------------
     do j=1,m
         do k=1,n
             ytmp(k) = ya(j,k)
         end do
-        !values 1.0d30 signal a natural spline.
-        call spline(x2a,ytmp,n,1.0d30,1.0d30,y2tmp)
+        !values 1.0e30_dp signal a natural spline.
+        call spline(x2a,ytmp,n,1.0e30_dp,1.0e30_dp,y2tmp)
         do k=1,n
             y2a(j,k) = y2tmp(k)
         end do
@@ -356,48 +376,53 @@ subroutine spline(x,y,n,yp1,ypn,y2)
 !--------------------------------------------------------------
 
 !i/o parameter type declaration
-    integer           :: n
-    real(dp)  :: x(n), y(n), yp1, ypn, y2(n)
+    integer, intent(in)           :: n
+    real(dp), intent(in), dimension(n) :: x, y
+    real(dp), intent(in) :: yp1, ypn
+
+    real(dp), intent(out), dimension(n) :: y2
 
 !program variables type declaration
+    integer, parameter :: nn = 100
     integer           :: i, k
-    real(dp)  :: p, qn, sig, u(100), un
+    real(dp)  :: p, qn, sig, un
+    real(dp), dimension(nn) :: u
 !--------------------------------------------------------------
 
-    if (yp1 >= 1.0d30) then
+    if (yp1 >= 1.0e30_dp) then
     !the lower boundary condition is set either to be
     !"natural"
-        y2(1) =  0.0d0
-        u(1)  =  0.0d0
+        y2(1) =  0.0_dp
+        u(1)  =  0.0_dp
     else
     !or else to have a specified first derivative.
-        y2(1) = -0.5d0
-        u(1)  = (3.0d0/(x(2)-x(1)))*((y(2)-y(1))/(x(2)-x(1))-yp1)
+        y2(1) = -0.5_dp
+        u(1)  = (3.0_dp/(x(2)-x(1)))*((y(2)-y(1))/(x(2)-x(1))-yp1)
     end if
 
     !this is the decomposition loop of the tridiagonal algorithm.
     !y2 and u are used for temporary storage of decomposed factors.
     do  i=2,n-1
         sig   = (x(i)-x(i-1))/(x(i+1)-x(i-1))
-        p     = sig*y2(i-1) + 2.0d0
-        y2(i) = (sig-1.0d0)/p
-        u(i)  = (6.0d0*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1))&
+        p     = sig*y2(i-1) + 2.0_dp
+        y2(i) = (sig-1.0_dp)/p
+        u(i)  = (6.0_dp*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1))&
         &                /(x(i)-x(i-1)))/(x(i+1)-x(i-1))-sig*u(i-1))/p
     end do
 
-    if (ypn >= 1.0d30) then
+    if (ypn >= 1.0e30_dp) then
     !     the upper boundary condition is set either to be
     !     "natural"
-        qn = 0.0d0
-        un = 0.0d0
+        qn = 0.0_dp
+        un = 0.0_dp
     else
     !     or else to have a specified first derivative.
-        qn = 0.5d0
-        un = (3.0d0/(x(n)-x(n-1))) *&
+        qn = 0.5_dp
+        un = (3.0_dp/(x(n)-x(n-1))) *&
     &              (ypn-(y(n)-y(n-1))/(x(n)-x(n-1)))
     end if
 
-    y2(n) = (un-qn*u(n-1))/(qn*y2(n-1)+1.0d0)
+    y2(n) = (un-qn*u(n-1))/(qn*y2(n-1)+1.0_dp)
 
     !this is the backsubstitution loop of the tridiagonal algorithm
     do k=n-1,1,-1
@@ -413,11 +438,16 @@ subroutine splin2(x1a,x2a,ya,y2a,m,n,x1,x2,y)
 
 !--------------------------------------------------------------
 !i/o parameter and program variables type declaration
-integer           :: nn
-parameter         (nn=100)
-integer           :: m, n, j, k
-real(dp)  :: x1a(m), x2a(n), ya(m,n), y2a(m,n), ytmp(nn),&
-&                      y2tmp(nn), yytmp(nn), x1, x2, y
+    integer, intent(in) :: m, n
+    real(dp), intent(in), dimension(m) :: x1a
+    real(dp), intent(in), dimension(n) :: x2a
+    real(dp), intent(in), dimension(m, n) :: ya, y2a
+    real(dp), intent(in) :: x1, x2
+    real(dp), intent(out) :: y
+
+    integer, parameter :: nn = 100
+    integer :: j, k
+    real(dp), dimension(nn) :: ytmp, y2tmp, yytmp
 !--------------------------------------------------------------
 
 ! perform m evaluations of the row splines constructed by splie2
@@ -430,7 +460,7 @@ real(dp)  :: x1a(m), x2a(n), ya(m,n), y2a(m,n), ytmp(nn),&
         call splint(x2a,ytmp,y2tmp,n,x2,yytmp(j))
     end do
 !construct the one-dimensional column spline and evaluate it.
-    call spline(x1a,yytmp,m,1.0d30,1.0d30,y2tmp)
+    call spline(x1a,yytmp,m,1.0e30_dp,1.0e30_dp,y2tmp)
     call splint(x1a,yytmp,y2tmp,m,x1,y)
 end subroutine splin2
 
@@ -442,7 +472,7 @@ save
 !routine hunt)
 !given the arrays xa and ya of length n, which tabulate a
 !function (with the xa(i)'s in order), and given the array y2a,
-!which is the output of routine cubspl, and given a value x,
+!which is theZZ output of routine cubspl, and given a value x,
 !this routine returns a cubic-spline interpolated value y.
 
 !--------------------------------------------------------------
@@ -457,11 +487,14 @@ save
 
 !--------------------------------------------------------------
     !i/o parameter type declaration
-    integer           :: n,nstore
-    real(dp)  :: x, xa(n), y, ya(n), y2a(n)
+    integer, intent(in) :: n
+    real(dp), dimension(n), intent(in)  :: xa, ya, y2a
+
+    real(dp), intent(in) :: x
+    real(dp), intent(out) :: y
 
     !program variables type declaration
-    integer           :: inc, jhi, jlo, jm
+    integer           :: nstore, inc, jhi, jlo, jm
     real(dp)  :: h, a, b
     logical           :: ascnd
 
@@ -553,7 +586,7 @@ save
     a = (xa(jhi) - x) / h
     b = (x - xa(jlo)) / h
     y = a*ya(jlo) + b*ya(jhi) +&
-    &  ((a**3-a)*y2a(jlo) + (b**3-b)*y2a(jhi)) * (h**2)/6.0d0
+    &  ((a**3-a)*y2a(jlo) + (b**3-b)*y2a(jhi)) * (h**2)/6.0_dp
 end subroutine splint
 
 end module photoreactions

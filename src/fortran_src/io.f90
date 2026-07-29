@@ -7,7 +7,10 @@ module IO
     use physicscore, only: timeInYears, density, gasTemp, dustTemp, av, &
         radfield, zeta, dstep, parcel_radius, av_internal, radfield_internal
 
-    ! CHARACTER (LEN=100) :: abundSaveFile, abundLoadFile, outputFile, columnFile
+    implicit none
+
+    public
+
     logical :: columnOutput=.false.,fullOutput=.false.,rateConstantsOutput=.false.,fluxOutput=.false.,&
     &readAbunds=.false.,writeAbunds=.false.,heatingOutput=.false.
     character (LEN=15),allocatable :: outSpecies(:)
@@ -19,7 +22,6 @@ module IO
 contains
     !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     subroutine fileSetup
-        implicit none
         ! TODO: improve the file setup to interact with in memory mode (not opening the file handles if not needed.)
         inquire(unit=columnId, OPENED=columnOutput)
         if (columnOutput) write(columnId,333) specName(outIndx)
@@ -259,7 +261,6 @@ contains
     subroutine WRITE_LEVEL_POPULATIONS(levelpopulationsarray, dtime, dstep)
         use COOLANT_MODULE, only: coolants, NCOOLANTS
         use F2PY_CONSTANTS, only: N_TOTAL_LEVELS
-        implicit none
         real(dp), dimension(:, :, :), intent(inout) :: levelpopulationsarray
         integer, intent(in) :: dtime, dstep
         integer :: N, level_offset, i
@@ -285,7 +286,6 @@ contains
     subroutine WRITE_SE_STATISTICS(sestatsarray, dtime, dstep)
         use COOLANT_MODULE, only: coolants, NCOOLANTS
         use heating, only: se_coolant_iterations, se_coolant_max_rel_change
-        implicit none
         real(dp), dimension(:, :, :), intent(inout) :: sestatsarray
         integer, intent(in) :: dtime, dstep
         integer :: N, idx

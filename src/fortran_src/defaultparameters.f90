@@ -4,54 +4,6 @@
 !!and then re-run utils/generate_param_docs.py to update the docs.
 !!note the resulting md file needs manually adding to the website.
 module DEFAULTPARAMETERS
-<<<<<<< HEAD
-use constants
-!---
-!id: parameters
-!title: Model Parameters
-!---
-!UCLCHEM will default to these values unless they are overridden by user. Users can override these by adding the variable name as written here in the param_dict argument of any UCLCHEM model function. param_dict is not case sensitive.
-!
-!## Physical Variables
-!|Parameter|Default Value |Description|
-!| ----- | ------| ------ |
-implicit none
-real(dp) :: initialTemp=10.0  !Initial gas temperature in Kelvin for all gas parcels in model.
-real(dp) :: initialDens=1.00d2  !Initial gas density in H nuclei per cm$^{-3}$ for all gas parcels in model.
-real(dp) :: finalDens=1.00d5  !Final gas density achieved via freefall.
-real(dp) :: currentTime=0.0  !Time at start of model in years (matches finalTime units).
-real(dp) :: finalTime=5.0d6  !Time to stop model in years, if not using `endAtFinalDensity` below.
-real(dp) :: radfield=1.0  !Interstellar radiation field in Habing
-real(dp) :: zeta=1.0  !Cosmic ray ionization rate as multiple of $1.3 10^{-17} s^{-1}$
-real(dp) :: rout=0.05  !Outer radius of cloud being modeled in pc.
-real(dp) :: rin=0.0  !Minimum radial distance from cloud center to consider.
-real(dp) :: baseAv=2.0  !Extinction at cloud edge, Av of a parcel at rout.
-integer :: points=1  !Number of gas parcels equally spaced between rin to rout to consider
-real(dp) :: bm0=1.0  !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
-!Physical profiles for 1D model with pre-described gas density
-real(dp) :: density_scale_radius=0.05  !unit of pc, distance below which the gas volume density is constant, and above which the gas density drops as n ~ r^{-a}
-real(dp) :: density_power_index=2.0  !Power-law index for density profile: n(r) = n0/(1 + (r/density_scale_radius)^density_power_index)
-!Luminosity source for hotcore in 1D model
-real(dp) :: lum_star=1.00d6  !unit of Lsun, bolometric luminosity of the central source
-real(dp) :: temp_star=4.50d4  !unit of K, temperature of the central source
-real(dp) :: gas_dust_mass_ratio=100.0 !Gas-to-dust mass ratio by mass.
-!
-!## Behavioral Controls
-!*The following parameters generally turn on or off features of the model. If a parameter is set to `True`, then it is turned on. If it is set to `False`, then it is turned off.*
-!
-!|Parameter|Default Value |Description|
-!| ----- | ------| ------ |
-real(dp) :: freezeFactor=1.0  !Modify freeze out rate of gas parcels by this factor.
-logical :: endAtFinalDensity=.false.  !Choose to end model at final density, otherwise end at final time.
-logical :: freefall=.false.  !Controls whether models density increases following freefall equation.
-real(dp) :: freefallFactor=1.0  !Modify freefall rate by factor, usually to slow it.
-logical :: desorb=.true.  !Toggles all non-thermal desoprtion processes on or off.
-logical :: h2desorb=.false.  !Individually toggle non-thermal desorption due to H2 formation.
-logical :: crdesorb=.true.  !Individually toggle non-thermal desorption due to cosmic rays.
-logical :: uvdesorb=.true.  !Individually toggle non-thermal desorption due to uv photons.
-logical :: chemdesorb=.true.  !Individually toggle non-thermal desorption due to chemical reactions.
-logical :: thermdesorb=.true.  !Toggle continuous thermal desorption.
-=======
     use constants, only: dp
     !---
     !id: parameters
@@ -63,7 +15,6 @@ logical :: thermdesorb=.true.  !Toggle continuous thermal desorption.
     !|Parameter|Default Value |Description|
     !| ----- | ------| ------ |
     implicit none
->>>>>>> a160d0f (WIP: fix more linting errors.)
 
     public
 
@@ -84,7 +35,8 @@ logical :: thermdesorb=.true.  !Toggle continuous thermal desorption.
     real(dp) :: density_power_index=2.0  !Power-law index for density profile: n(r) = n0/(1 + (r/density_scale_radius)^density_power_index)
     !Luminosity source for hotcore in 1D model
     real(dp) :: lum_star=1.00e6_dp  !unit of Lsun, bolometric luminosity of the central source
-    real(dp) :: temp_star=4.50e4_dp  !unit of K, temperature of the central source
+    real(dp) :: temp_star=4.50d4 !unit of K, temperature of the central source
+    real(dp) :: gas_dust_mass_ratio=100.0 !Gas-to-dust mass ratio by mass.
     !
     !## Behavioral Controls
     !*The following parameters generally turn on or off features of the model. If a parameter is set to `True`, then it is turned on. If it is set to `False`, then it is turned off.*

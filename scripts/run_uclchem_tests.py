@@ -10,10 +10,10 @@ from time import perf_counter
 
 import uclchem
 
-logging.basicConfig(level=logging.DEBUG)
-
 
 if __name__ == "__main__":
+    uclchem.utils.configure_logging(level="INFO")
+
     out_dir = Path("examples/test-output")
     out_dir.mkdir(parents=True, exist_ok=True)
     save_file = out_dir / "models.h5"
