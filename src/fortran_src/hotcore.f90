@@ -10,8 +10,8 @@ module hotcore
         volcanicFractions, monoFractions, mass
     !f2py INTEGER, parameter :: dp
     use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
-    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens, density_max, get_ngas_r, coldens_internal, get_coldens_external, parcel_radius, radiation, &
+    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, gastemp, dusttemp, av,&
+    &coldens, density_max, get_ngas_r, get_coldens_internal, get_coldens_external, parcel_radius, radiation, &
     &outer_coldens_for_current_step, av_internal, radfield_internal, get_G0_internal_at_r
 
     implicit none
@@ -116,7 +116,7 @@ contains
                 density(dstep)=density_max(dstep)
                 maximum_Temp(dstep) = maxTemp
                 ! Internal shielding: from protostar to parcel (core-to-edge).
-                coldens(dstep)           = coldens_internal(parcelRadius(dstep))
+                coldens(dstep)           = get_coldens_internal(parcelRadius(dstep))
                 av_internal(dstep)       = coldens(dstep) / 1.6e21_dp
                 ! External shielding: from cloud edge to parcel (edge-to-core), includes baseAv.
                 av(dstep)                = baseAv + get_coldens_external(parcelRadius(dstep), finalDens) / 1.6e21_dp
@@ -182,7 +182,7 @@ contains
             density(dstep)=density_max(dstep)
 
             ! Internal shielding: from protostar to parcel (core-to-edge).
-            coldens(dstep)           = coldens_internal(parcelRadius(dstep))
+            coldens(dstep)           = get_coldens_internal(parcelRadius(dstep))
             av_internal(dstep)       = coldens(dstep) / 1.6e21_dp
             ! External shielding: from cloud edge to parcel (edge-to-core), includes baseAv.
             av(dstep)                = baseAv + get_coldens_external(parcelRadius(dstep), finalDens) / 1.6e21_dp

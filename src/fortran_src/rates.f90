@@ -1,19 +1,23 @@
 module RATES
-    use constants, only: dp, HABING_TO_DRAINE
+    use constants, only: dp, HABING_TO_DRAINE, REAC_NOT_PRESENT
     use DEFAULTPARAMETERS
     use f2py_constants, only: nSpec, nReac
     !f2py INTEGER, parameter :: dp
+    ! allow(use-all)
     use network
     use photoreactions, only: getH2PhotoDissRate, getCOPhotoDissRate, getCarbonIonizationRate, ICE_GAS_PHOTO_CROSSSECTION_RATIO
     use physicscore
-    use surfacereactions
+    use surfacereactions, only: SURFACE_SITE_DENSITY, GRAIN_SURFACEAREA_PER_H, GRAIN_CROSSSECTION_PER_H, &
+        getEncounterDesorptionRate, bulkSurfaceExchangeReactions, h2FormEfficiency, getNumberMonolayers, &
+        getDiffusionReactionRate, getDesorptionFractionIncludingIce, GRAIN_RADIUS, vdiff, vdes, THERMAL_VEL, &
+        bulkLayersReciprocal, MIN_SURFACE_ABUND, safeBulk
 
     implicit none
 
     public
 
     !Variables controlling chemistry:
-    real(dp) :: grainArea,cion,h2dis,lastTemp=0.0
+    real(dp) :: h2dis,lastTemp=0.0
 
     ! Controlling ice chemistry
     real(dp), parameter :: h2StickingZero=0.87_dp,hStickingZero=1.0_dp,h2StickingTemp=87.0_dp,hStickingTemp=52.0_dp

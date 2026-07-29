@@ -8,13 +8,15 @@
 module collapse_mod
    use constants, only: dp, MH, PI, SECONDS_PER_YEAR, PC, AU
    use DEFAULTPARAMETERS
-   use F2PY_CONSTANTS
-   use network
+   use F2PY_CONSTANTS, only: nSpec
    !f2py INTEGER, parameter :: dp
    use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
-   & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av, &
+   & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, gastemp, dusttemp, av, &
    &coldens, parcel_radius
    implicit none
+
+   private
+   public :: collapse_mode, initializePhysics, updatePhysics, updateTargetTime, sublimation
 
    integer :: collapse_mode
    real(dp) :: maxTime
@@ -141,7 +143,7 @@ contains
     !This module is isothermal and as such, no sublimation occurs.
     !This is a dummy subroutine.
     subroutine sublimation(abund, lpoints)
-      real(dp), intent(inout) :: abund(nspec+1,lpoints)
+      real(dp), intent(inout) :: abund(nSpec+1,lpoints)
       integer, intent(in) :: lpoints
     end subroutine sublimation
 

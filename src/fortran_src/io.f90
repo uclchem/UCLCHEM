@@ -1,8 +1,12 @@
 module IO
     use chemistry
     use constants, only: dp
+    use coolant_module, only: NCOOLANTS, coolants
     use DEFAULTPARAMETERS
-    use heating, only: coolingLabels
+    use f2py_constants, only: coolantNames
+    use heating, only: coolingLabels, NCOOLING, coolingValues, heatingValues, lineCoolingArray, &
+        chemheating, median_line_index, NHEATING, se_coolant_iterations, se_coolant_max_rel_change, &
+        heatingLabels
     use network, only: nSpec, nReac
     use physicscore, only: timeInYears, density, gasTemp, dustTemp, av, &
         radfield, zeta, dstep, parcel_radius, av_internal, radfield_internal
@@ -259,8 +263,6 @@ contains
     end subroutine simpleDebug
 
     subroutine WRITE_LEVEL_POPULATIONS(levelpopulationsarray, dtime, dstep)
-        use COOLANT_MODULE, only: coolants, NCOOLANTS
-        use F2PY_CONSTANTS, only: N_TOTAL_LEVELS
         real(dp), dimension(:, :, :), intent(inout) :: levelpopulationsarray
         integer, intent(in) :: dtime, dstep
         integer :: N, level_offset, i
@@ -284,8 +286,6 @@ contains
     end subroutine WRITE_LEVEL_POPULATIONS
 
     subroutine WRITE_SE_STATISTICS(sestatsarray, dtime, dstep)
-        use COOLANT_MODULE, only: coolants, NCOOLANTS
-        use heating, only: se_coolant_iterations, se_coolant_max_rel_change
         real(dp), dimension(:, :, :), intent(inout) :: sestatsarray
         integer, intent(in) :: dtime, dstep
         integer :: N, idx

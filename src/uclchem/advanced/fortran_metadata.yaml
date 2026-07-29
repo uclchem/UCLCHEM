@@ -9,6 +9,7 @@ fortran_parameters:
   - tdsub
   - wave1
   - wave2
+  - k_max
   network:
   - atomcounts
   - bulklist

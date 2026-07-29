@@ -9,7 +9,7 @@ module cshock_mod
     !f2py INTEGER, parameter :: dp
     use network, only: iceList
     use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
-        & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, &
+        & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, &
         & gastemp, dusttemp, av, coldens
     use sputtering, only: sputterIces, sputteringSetup
 
