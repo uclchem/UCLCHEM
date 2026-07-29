@@ -6,12 +6,15 @@ module physicscore
     use constants, only: dp, C, SECONDS_PER_YEAR, PC, PI, HP, K_BOLTZ, aunit, eV, &
         uISRF, uISRF_UV, Lsun, SB_CONST
     use DEFAULTPARAMETERS
-    use extinction_module
+    use extinction_module, only: extcurve_obs
     !f2py INTEGER, parameter :: dp
+
     implicit none
+
+    public
+
     !Use main loop counters in calculations so they're kept here
     integer :: dstep
-
 
     !Optional CR attenuation with column density and better H2 dissociation rates
     real(dp) :: h2CRPRate,zetaScale
@@ -20,11 +23,11 @@ module physicscore
     real(dp) :: timeInYears,targetTime,currentTimeOld
     real(dp) ::  cloudSize
     real(dp), allocatable :: av(:),coldens(:),gasTemp(:),dustTemp(:),density(:),density_max(:)
-    ! Per-parcel internal Av shielding (coldens_internal/1.6e21); 0 for models without a protostar.
+    ! Per-parcel internal Av shielding (get_coldens_internal/1.6e21); 0 for models without a protostar.
     real(dp), allocatable :: av_internal(:)
     ! Per-parcel internal radiation field [Habing units]; 0 for models without a protostar.
     real(dp), allocatable :: radfield_internal(:)
-    ! Per-point initial density used by densdot for multi-point radial profile models.
+    ! Per-point initial density used by get_densdot for multi-point radial profile models.
     ! Defaults to global initialDens; overridden by cloud.f90 when enable_radiative_transfer=T.
     real(dp), allocatable :: initialDens_array(:)
     ! Radial position of each parcel (pc). Set by collapse/cloud/hotcore for 1D models; 0 otherwise.
@@ -50,7 +53,8 @@ module physicscore
 
     !ckLIon and ckHIon are the coefficients for the cosmic ray ionization rate
     ! Values from Padovani et al. 2018
-    real(dp), parameter :: ckLIon(10) = (/-3.331056497233e6_dp,&
+    integer, parameter :: k_max = 10
+    real(dp), parameter :: ckLIon(k_max) = (/-3.331056497233e6_dp,&
                                         1.207744586503e6_dp,&
                                         -1.913914106234e5_dp,&
                                         1.731822350618e4_dp,&
@@ -61,7 +65,7 @@ module physicscore
                                         -6.188760100997e-5_dp,&
                                         3.122820990797e-8_dp/)
 
-    real(dp), parameter :: ckHion(10) = (/1.001098610761e7_dp,&
+    real(dp), parameter :: ckHion(k_max) = (/1.001098610761e7_dp,&
                                         -4.231294690194e6_dp,&
                                         7.921914432011e5_dp,&
                                         -8.623677095423e4_dp,&
@@ -73,10 +77,10 @@ module physicscore
                                         -9.937499546711e-6_dp/)
 
     !ckLDiss and ckHDiss are the coefficients for the H2 dissociation rate
-    real(dp), parameter :: ckLDiss(10)=(/1.582911005330e7_dp,-6.465722684896e6_dp, 1.172189025424e6_dp, -1.237950798073e5_dp, &
+    real(dp), parameter :: ckLDiss(k_max)=(/1.582911005330e7_dp,-6.465722684896e6_dp, 1.172189025424e6_dp, -1.237950798073e5_dp, &
         8.393404654312e3_dp, -3.788811358130e2_dp, 1.138688455029e1_dp, -2.197136304567e-1_dp, &
         2.469841278950e-3_dp, -1.232393620924e-5_dp/)
-    real(dp), parameter :: ckHDiss(10)=(/1.217227462831e7_dp,-4.989649250304e6_dp, 9.079152156645e5_dp, -9.624890825395e4_dp, &
+    real(dp), parameter :: ckHDiss(k_max)=(/1.217227462831e7_dp,-4.989649250304e6_dp, 9.079152156645e5_dp, -9.624890825395e4_dp, &
         6.551161486120e3_dp, -2.968976216187e2_dp, 8.959037875226_dp, -1.735757324445e-1_dp, &
         1.959267277734e-3_dp, -9.816996707980e-6_dp/)
 
@@ -162,7 +166,7 @@ contains
         if (cosmicRayAttenuation) call ionizationDependency
     end subroutine coreUpdatePhysics
 
-    function densdot(density)
+    pure function get_densdot(density) result(densdot)
     ! Returns the time derivative of the density.
     ! Analytical function taken from Rawlings et al. 1992
     ! Called from chemistry.f90, density integrated with abundances so this gives ydot
@@ -176,27 +180,27 @@ contains
     !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
     if ((density < finalDens) .and. (freefall) .and. (density > n0_pt)) then
         densdot=freefallFactor*(density**4.0_dp/n0_pt)**0.33_dp*&
-        &(8.4e-30_dp*n0_pt*((density/n0_pt)**0.33-1.0_dp))**0.5
+        &(8.4e-30_dp*n0_pt*((density/n0_pt)**0.33_dp-1.0_dp))**0.5_dp
     else
         densdot=0.0
     end if
-    end function densdot
+    end function get_densdot
 
 
-    pure function dByDnDensdot(density)
+    pure function getDByDnDensdot(density) result(dByDnDensdot)
     !Defunct function which provides the necessary derivative d(dn/dt)/dn
     !in the case one uses a Jacobian.
     real(dp), intent(in) :: density
     real(dp) :: dByDnDensdot
     !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
     if (density < finalDens) then
-        dByDndensdot=freefallFactor*8.4e-30_dp*(density**3)*((9.0_dp*((density/initialDens)**0.33_dp))-8.0_dp)
+        dByDnDensdot=freefallFactor*8.4e-30_dp*(density**3)*((9.0_dp*((density/initialDens)**0.33_dp))-8.0_dp)
         dByDnDensdot=dByDnDensdot/(6.0_dp*(((density**4)/initialDens)**0.66_dp))
         dByDnDensdot=dByDnDensdot/sqrt(initialDens*8.4e-30_dp*(((density/initialDens)**0.33_dp))-1.0_dp)
     else
         dByDnDensdot=0.0_dp
     end if
-    end function dByDnDensdot
+    end function getDByDnDensdot
 
     subroutine ionizationDependency
         real(dp) :: dissSum,dRate,zSum,ionRate
@@ -270,11 +274,12 @@ contains
     end function get_coldens_external
 
     ! Column density shielding from central protostar (stage 2 / hotcore): integral from center to parcel.
-    real(dp) function coldens_internal(r)
+    function get_coldens_internal(r) result(coldens_internal)
         real(dp), intent(in) :: r    ! parcel radius [pc]
+        real(dp) :: coldens_internal
         call findcoldens_core2edge(coldens_internal, finalDens, &
                                    density_scale_radius, density_power_index, r)
-    end function coldens_internal
+    end function get_coldens_internal
 
     ! The profile of the gas volume density
     ! REAL(dp) FUNCTION rhofit(r,rho0,r0,a)

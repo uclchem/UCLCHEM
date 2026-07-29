@@ -7,7 +7,7 @@ module cloud_mod
     use f2py_constants, only: nSpec
     !f2py INTEGER, parameter :: dp
     use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
-        zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, &
+        zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, &
         gastemp, dusttemp, av, coldens, density_max, get_ngas_r, get_initialDens_r, findcoldens_edge2core, &
         get_coldens_external, initialDens_array, parcel_radius, outer_coldens_for_current_step
 

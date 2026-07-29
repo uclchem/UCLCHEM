@@ -17,6 +17,12 @@ module heating
 
     implicit none
 
+    private
+    public :: initializeHeating, getTempDot, calculateDustTemp, nHeatingTerms, coolingLabels, &
+        coolingValues, heatingValues, NCOOLING, NHEATING, lineCoolingArray, se_coolant_iterations, &
+        se_coolant_max_rel_change, chemheating, median_line_index, heatingLabels, &
+        cooling_modules, heating_modules, dust_gas_coupling_method, LINE_SOLVER_ATTEMPTS, pahAbund
+
     real(dp) :: pahAbund=6e-7_dp
     real(dp) :: chemheating
 

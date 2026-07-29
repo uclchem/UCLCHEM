@@ -10,12 +10,12 @@
 module chemistry
 use constants
 use DEFAULTPARAMETERS
-use DVODE_F90_M  !dvode_f90_m
+use DVODE_F90_M, only: SET_OPTS, DVODE_F90, VODE_OPTS, GET_STATS  !dvode_f90_m
 !f2py INTEGER, parameter :: dp
 use physicscore, only: points, dstep, cloudsize, radfield, radfield_internal, h2crprate, improvedH2CRPDissociation, &
-& zeta, currentTime, targetTime, timeinyears, freefall, density, ion, densdot, gasTemp, dustTemp, av, av_internal, colDens
+& zeta, currentTime, targetTime, timeinyears, freefall, density, ion, get_densdot, gasTemp, dustTemp, av, av_internal, colDens
 use f2py_constants, only: nspec, nreac
-use heating
+use heating, only: calculateDustTemp, getTempDot, initializeHeating
 use network
 use odes
 use photoreactions, only: getH2PhotoDissRate, getCOPhotoDissRate, UV_FAC
@@ -685,7 +685,7 @@ contains
             ydot(nelec) = sum(ydot(ionlist(1:nion)))
         end if
 
-        ydot(nspec+2) = densdot(Y(nspec+2))     !Gas density ODE
+        ydot(nspec+2) = get_densdot(Y(nspec+2))     !Gas density ODE
 
         if (heatingFlag) then
             ! Species abundances in Y_safe are already clamped; Y used below only
