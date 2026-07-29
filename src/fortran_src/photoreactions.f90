@@ -34,17 +34,18 @@ module photoreactions
     logical :: startr=.true.
 
     !  12CO line shielding data from van Dishoeck & Black (1988, ApJ, 334, 771, Table 5)
-    integer, parameter ::  DIMCO=7, DIMH2=6
-    real(dp), dimension(8) :: NCO_GRID=(/12.0_dp,13.0_dp,14.0_dp,15.0_dp,16.0_dp,17.0_dp,18.0_dp,19.0_dp/)
-    real(dp), dimension(6) :: NH2_GRID=(/18.0_dp,19.0_dp,20.0_dp,21.0_dp,22.0_dp,23.0_dp/)
-    real(dp), dimension(8,6) :: SCO_GRID=RESHAPE((/ &
+    integer, parameter ::  DIMCO=8, DIMH2=6
+    real(dp), dimension(DIMCO) :: NCO_GRID=(/12.0_dp,13.0_dp,14.0_dp,15.0_dp,16.0_dp,17.0_dp,18.0_dp,19.0_dp/)
+    real(dp), dimension(DIMH2) :: NH2_GRID=(/18.0_dp,19.0_dp,20.0_dp,21.0_dp,22.0_dp,23.0_dp/)
+    real(dp), dimension(DIMCO,DIMH2) :: SCO_GRID=RESHAPE((/ &
       &  0.000e+00_dp,-1.408e-02_dp,-1.099e-01_dp,-4.400e-01_dp,-1.154e+00_dp,-1.888e+00_dp,-2.760e+00_dp,-4.001e+00_dp, &
       & -8.539e-02_dp,-1.015e-01_dp,-2.104e-01_dp,-5.608e-01_dp,-1.272e+00_dp,-1.973e+00_dp,-2.818e+00_dp,-4.055e+00_dp, &
       & -1.451e-01_dp,-1.612e-01_dp,-2.708e-01_dp,-6.273e-01_dp,-1.355e+00_dp,-2.057e+00_dp,-2.902e+00_dp,-4.122e+00_dp, &
       & -4.559e-01_dp,-4.666e-01_dp,-5.432e-01_dp,-8.665e-01_dp,-1.602e+00_dp,-2.303e+00_dp,-3.146e+00_dp,-4.421e+00_dp, &
       & -1.303e+00_dp,-1.312e+00_dp,-1.367e+00_dp,-1.676e+00_dp,-2.305e+00_dp,-3.034e+00_dp,-3.758e+00_dp,-5.077e+00_dp, &
-      & -3.883e+00_dp,-3.888e+00_dp,-3.936e+00_dp,-4.197e+00_dp,-4.739e+00_dp,-5.165e+00_dp,-5.441e+00_dp,-6.446e+00_dp/), (/8,6/))
-    real(dp), dimension(8,6) :: SCO_DERIV
+      & -3.883e+00_dp,-3.888e+00_dp,-3.936e+00_dp,-4.197e+00_dp,-4.739e+00_dp,-5.165e+00_dp,-5.441e+00_dp,-6.446e+00_dp/),&
+        & (/DIMCO,DIMH2/))
+    real(dp), dimension(DIMCO,DIMH2) :: SCO_DERIV
 
     real(dp) :: ICE_GAS_PHOTO_CROSSSECTION_RATIO = 0.3_dp  ! Kalvans 2018
 contains
@@ -180,8 +181,9 @@ function calculate_grain_scatter(x1,av) result(grain_scatter)
     real(dp) :: grain_scatter
     !
     !program variables type declaration
-    real(dp), parameter, dimension(6) :: c=(/1.0_dp,2.006_dp,-1.438_dp,7.364e-01_dp,-5.076e-01_dp,-5.920e-02_dp/)
-    real(dp), parameter, dimension(6) ::  k1=(/7.514e-01_dp,8.490e-01_dp,1.013_dp,1.282_dp,2.005_dp,5.832_dp/)
+    integer, parameter :: NUM_FIT_CONSTANTS = 6
+    real(dp), parameter, dimension(NUM_FIT_CONSTANTS) :: c=(/1.0_dp,2.006_dp,-1.438_dp,7.364e-01_dp,-5.076e-01_dp,-5.920e-02_dp/)
+    real(dp), parameter, dimension(NUM_FIT_CONSTANTS) :: k1=(/7.514e-01_dp,8.490e-01_dp,1.013_dp,1.282_dp,2.005_dp,5.832_dp/)
     real(dp)  :: expo, tl, tv
     integer :: i
 
@@ -199,7 +201,7 @@ function calculate_grain_scatter(x1,av) result(grain_scatter)
             grain_scatter = c(1) * EXP(-expo)
         end if
     else
-        do i=2,6
+        do i=2,NUM_FIT_CONSTANTS
             expo = k1(i)*tl
             if (expo<100.0_dp) then
             grain_scatter = grain_scatter + c(i)*EXP(-expo)

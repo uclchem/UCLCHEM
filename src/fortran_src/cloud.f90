@@ -9,7 +9,7 @@ module cloud_mod
     use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
         zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, &
         gastemp, dusttemp, av, coldens, density_max, get_ngas_r, get_initialDens_r, findcoldens_edge2core, &
-        get_coldens_external, initialDens_array, parcel_radius, outer_coldens_for_current_step
+        get_coldens_external, initialDens_array, parcel_radius, outer_coldens_for_current_step, get_av
 
     implicit none
 
@@ -87,7 +87,7 @@ contains
             else
                 coldens(dstep) = real(points-dstep+1)*cloudSize/real(points)*initialDens
             end if
-            av(dstep) = baseAv + coldens(dstep) / 1.6e21_dp
+            av(dstep) = get_av(baseAv, coldens(dstep))
         end do
 
     end subroutine initializePhysics
@@ -150,8 +150,7 @@ contains
                 coldens(dstep)=coldens(dstep)+outer_coldens_for_current_step
             end if
 
-            ! Calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-            av(dstep)= baseAv +coldens(dstep)/1.6e21_dp
+            av(dstep) = get_av(baseAv, coldens(dstep))
 
             ! Diagnostic output
             ! print '(A,1PE12.3,A,0PF8.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3)', &

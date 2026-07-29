@@ -34,13 +34,14 @@ module F2PY_CONSTANTS
     ! Default directory for collisional rate files (can be changed at runtime via HeatingSettings)
     character(256) :: coolantDataDir = ""
     ! Conversion factors for abundance scaling (used when coolantConversionMode=0)
-    real(dp), parameter :: coolantConversionFactors (7)=(/1.0000e+00_dp,1.0000e&
-    &+00_dp,1.0000e+00_dp,1.0000e+00_dp,1.0000e+00_dp,0.0000e+00_dp,0.0000e+00_dp/)
+    real(dp), parameter :: coolantConversionFactors (MAX_COOLANTS)=(/1.0000e+00_dp&
+    &,1.0000e+00_dp,1.0000e+00_dp,1.0000e+00_dp,1.0000e+00_dp,0.0000e+00_dp,0.0000e&
+    &+00_dp/)
     ! Conversion mode: 0=fixed factor, 1=thermal OPR para, 2=thermal OPR ortho
-    integer, parameter :: coolantConversionMode (7)=(/0,0,0,0,0,1,2/)
+    integer, parameter :: coolantConversionMode (MAX_COOLANTS)=(/0,0,0,0,0,1,2/)
     ! Per-coolant on/off toggle (can be changed at runtime via HeatingSettings)
-    logical :: coolant_active (7)=(/.true.,.true.,.true.,.true.,.true.,.true.&
-    &,.true./)
+    logical :: coolant_active (MAX_COOLANTS)=(/.true.,.true.,.true.,.true.,.true.&
+    &,.true.,.true./)
     ! Suggested freq_rel_tol based on max observed deviation (with 10% margin)
     real(dp), parameter :: suggested_freq_rel_tol = 1.000000e-02_dp
 end module F2PY_CONSTANTS

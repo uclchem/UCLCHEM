@@ -1,7 +1,8 @@
 module IO
+    ! allow(use-all)
     use chemistry
     use constants, only: dp
-    use coolant_module, only: NCOOLANTS, coolants
+    use coolant_module, only: NCOOLANTS, coolants, populationsId
     use DEFAULTPARAMETERS
     use f2py_constants, only: coolantNames
     use heating, only: coolingLabels, NCOOLING, coolingValues, heatingValues, lineCoolingArray, &

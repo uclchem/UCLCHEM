@@ -90,6 +90,10 @@ module physicscore
     real(dp), parameter :: wave1 = HP * C * 1.0e4_dp / (13.6_dp * eV)  !in micron
     real(dp), parameter :: wave2 = 20.0_dp  ! in micron
 
+    interface get_av
+        module procedure get_av_array, get_av_scalar
+    end interface get_av
+
 contains
     !basic initialization of physics. All physics modules should call this and then
     !do their own initialization.
@@ -139,8 +143,7 @@ contains
         do dstep=1,points
             coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*initialDens
         end do
-          !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av= baseAv + coldens/1.6e21_dp
+        av = get_av(baseAv, coldens)
         zetaScale=zeta
     end subroutine coreInitializePhysics
 
@@ -156,8 +159,7 @@ contains
             ! add previous column densities to current as we move into cloud to get total
             if (dstep < points) coldens(dstep)=coldens(dstep)+coldens(dstep-1)
 
-            !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-            av(dstep)= baseAv + coldens(dstep)/1.6e21_dp
+            av(dstep)= get_av(baseAv, coldens(dstep))
         end if
         if (.not. heatingFlag) then
             dustTemp(dstep)=gasTemp(dstep)
@@ -185,6 +187,26 @@ contains
         densdot=0.0
     end if
     end function get_densdot
+
+    pure function get_av_array(baseAv, coldens) result(av)
+        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
+        real(dp), intent(in) :: baseAv
+        real(dp), intent(in), dimension(:) :: coldens
+
+        real(dp), dimension(size(coldens)) :: av
+
+        av = baseAv + coldens/1.6e21_dp
+    end function get_av_array
+
+    pure function get_av_scalar(baseAv, coldens) result(av)
+        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
+        real(dp), intent(in) :: baseAv
+        real(dp), intent(in) :: coldens
+
+        real(dp) :: av
+
+        av = baseAv + coldens/1.6e21_dp
+    end function get_av_scalar
 
 
     pure function getDByDnDensdot(density) result(dByDnDensdot)

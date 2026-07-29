@@ -4,7 +4,7 @@
 module uclchemwrap
     ! allow(use-all)
     use chemistry
-    use constants, only: dp
+    use constants, only: dp, PARAMETER_READ_ERROR, PHYSICS_INIT_ERROR, PHYSICS_UPDATE_ERROR
     use coolant_module, only: coolant_error_flag, coolant_error_message, &
         coolant_levpop_force_recompute, GET_COOLANT_RESTART_MODE, SET_COOLANT_RESTART_MODE
     use f2py_constants, only: nSpec, nReac, NCOOLANTS, N_DVODE_STATS, N_PHYSICS_PARAMS, &
