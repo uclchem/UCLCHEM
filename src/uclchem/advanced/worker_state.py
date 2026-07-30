@@ -22,9 +22,12 @@ from uclchemwrap import f2py_constants as f2py_constants_module
 from uclchemwrap import heating as heating_module
 from uclchemwrap import network as network_module
 
+from uclchem.advanced.constants import (
+    FILE_PATH_PARAMETERS,
+    FORTRAN_PARAMETERS,
+    INTERNAL_PARAMETERS,
+)
 from uclchem.advanced.runtime_network import RuntimeNetwork
-
-from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
 
 logger = logging.getLogger(__name__)
 

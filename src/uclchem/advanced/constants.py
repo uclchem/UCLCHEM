@@ -5,11 +5,14 @@ them as Python sets for use in GeneralSettings.
 
 """
 
+import functools
 import pathlib
 
 import yaml
 
 from uclchem.utils import UCLCHEM_ROOT_DIR
+
+_safe_load = functools.partial(yaml.load, Loader=yaml.CSafeLoader)
 
 
 def _load_fortran_metadata() -> tuple[set[str], set[str], set[str]]:
@@ -28,7 +31,7 @@ def _load_fortran_metadata() -> tuple[set[str], set[str], set[str]]:
     yaml_path = UCLCHEM_ROOT_DIR / "advanced" / "fortran_metadata.yaml"
 
     with pathlib.Path(yaml_path).open() as f:
-        metadata = yaml.safe_load(f)
+        metadata = _safe_load(f)
 
     # Flatten nested structure and convert to lowercase sets
     fortran_params: set[str] = set()

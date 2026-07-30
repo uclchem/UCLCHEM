@@ -3,6 +3,7 @@
 
 import csv
 import fileinput
+import functools
 import logging
 import re
 import shutil
@@ -28,6 +29,9 @@ from uclchem.utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+_safe_load = functools.partial(yaml.load, Loader=yaml.CSafeLoader)
 
 
 def get_default_coolants() -> list[dict[str, str]]:
@@ -383,7 +387,7 @@ def read_grain_assisted_recombination_file(
 
     """
     with Path(file_name).open() as fh:
-        gar_parameters = yaml.safe_load(fh)
+        gar_parameters = _safe_load(fh)
     return gar_parameters
 
 
@@ -412,7 +416,7 @@ def read_coolants_file(file_name: str | Path) -> list[dict]:
 
     """
     with Path(file_name).open() as fh:
-        data = yaml.safe_load(fh)
+        data = _safe_load(fh)
 
     if data is None:
         return []
@@ -1446,30 +1450,55 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> int:
     if len(refractoryList) == 0:
         refractoryList = [-999]
 
-    network_file.write(array_to_string("surfaceList", surfacelist, type="int"))
-    if len(bulkList) > 0:
-        network_file.write(array_to_string("bulkList", bulkList, type="int"))
-    network_file.write(array_to_string("iceList", iceList, type="int"))
-    network_file.write(array_to_string("gasIceList", gasIceList, type="int"))
-    network_file.write(array_to_string("solidFractions", solidList, type="float"))
-    network_file.write(array_to_string("monoFractions", monoList, type="float"))
-    network_file.write(array_to_string("volcanicFractions", volcList, type="float"))
+    network_file.write(f"integer, parameter :: N_ICE_SPECIES = {len(iceList)}\n")
+    network_file.write(f"integer, parameter :: N_SURFACE_SPECIES = {len(surfacelist)}\n")
+    network_file.write(f"integer, parameter :: N_BULK_SPECIES = {len(bulkList)}\n")
+
     network_file.write(
         array_to_string(
-            "bindingEnergy", binding_energyList, type="float", parameter=False
+            "surfaceList", surfacelist, type="int", length_name="N_SURFACE_SPECIES"
+        )
+    )
+    if len(bulkList) > 0:
+        network_file.write(
+            array_to_string(
+                "bulkList", bulkList, type="int", length_name="N_BULK_SPECIES"
+            )
+        )
+    network_file.write(
+        array_to_string("iceList", iceList, type="int", length_name="N_ICE_SPECIES")
+    )
+    network_file.write(
+        array_to_string("gasIceList", gasIceList, type="int", length_name="N_ICE_SPECIES")
+    )
+    network_file.write(
+        array_to_string(
+            "solidFractions", solidList, type="float", length_name="N_SURFACE_SPECIES"
         )
     )
     network_file.write(
-        replace_value_with_name(
-            array_to_string("customVdes", customVdesList, type="float"),
-            MISSING_VALUE_FLOAT,
-            "MISSING_VALUE_FLOAT",
+        array_to_string(
+            "monoFractions", monoList, type="float", length_name="N_SURFACE_SPECIES"
+        )
+    )
+    network_file.write(
+        array_to_string(
+            "volcanicFractions", volcList, type="float", length_name="N_SURFACE_SPECIES"
+        )
+    )
+    network_file.write(
+        array_to_string(
+            "bindingEnergy",
+            binding_energyList,
+            type="float",
+            parameter=False,
+            length_name="N_ICE_SPECIES",
         )
     )
     network_file.write(
         replace_value_with_name(
             array_to_string(
-                "diffusionBarrier", diffusion_barriersList, type="float", parameter=False
+                "customVdes", customVdesList, type="float", length_name="N_ICE_SPECIES"
             ),
             MISSING_VALUE_FLOAT,
             "MISSING_VALUE_FLOAT",
@@ -1477,19 +1506,44 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> int:
     )
     network_file.write(
         replace_value_with_name(
-            array_to_string("customVdiff", customVdiffList, type="float"),
+            array_to_string(
+                "diffusionBarrier",
+                diffusion_barriersList,
+                type="float",
+                parameter=False,
+                length_name="N_ICE_SPECIES",
+            ),
+            MISSING_VALUE_FLOAT,
+            "MISSING_VALUE_FLOAT",
+        )
+    )
+    network_file.write(
+        replace_value_with_name(
+            array_to_string(
+                "customVdiff", customVdiffList, type="float", length_name="N_ICE_SPECIES"
+            ),
             MISSING_VALUE_FLOAT,
             "MISSING_VALUE_FLOAT",
         )
     )
 
     network_file.write(
-        array_to_string("moleculeIsLinear", isLinears, type="logical", parameter=False)
+        array_to_string(
+            "moleculeIsLinear",
+            isLinears,
+            type="logical",
+            parameter=False,
+            length_name="N_ICE_SPECIES",
+        )
     )
     network_file.write(
         replace_value_with_name(
             array_to_string(
-                "inertiaProducts", inertiaProducts, type="float", parameter=False
+                "inertiaProducts",
+                inertiaProducts,
+                type="float",
+                parameter=False,
+                length_name="N_ICE_SPECIES",
             ),
             MISSING_VALUE_FLOAT,
             "MISSING_VALUE_FLOAT",
@@ -1498,7 +1552,11 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> int:
     network_file.write(
         replace_value_with_name(
             array_to_string(
-                "formationEnthalpy", enthalpyList, type="float", parameter=False
+                "formationEnthalpy",
+                enthalpyList,
+                type="float",
+                parameter=False,
+                length_name="N_ICE_SPECIES",
             ),
             MISSING_VALUE_FLOAT,
             "MISSING_VALUE_FLOAT",
@@ -1534,14 +1592,17 @@ def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> 
     i = 0
     j = 0
     # we only want to split at operators to make it look nice
-    splits = ["*", ")", "+", "-", ","]
+    splits = ["*", ")", "+", ",", '"']
     while len(input_string[i:]) > line_length:
         j = i + line_length
         if "\n" in input_string[i:j]:
             j = input_string[i:j].index("\n") + i + 1
             result += input_string[i:j]
         else:
-            while input_string[j] not in splits:
+            while (
+                input_string[j] not in splits
+                or input_string[j - 1 : j + 1].lower() == "e+"
+            ):
                 j -= 1
             result += input_string[i:j] + "&\n    &"
         i = j
@@ -1689,7 +1750,7 @@ def write_network_file(
         for reaction_name, reaction_idx in network.important_reactions.items():
             reaction_indices += reaction_name + f"={reaction_idx},"
         reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
-        openFile.write("integer, parameter ::" + reaction_indices)
+        openFile.write("integer, parameter :: " + reaction_indices)
 
         for reaction in reaction_list:
             reactant1.append(find_reactant(names, reaction.get_reactants()[0]))
@@ -1744,14 +1805,16 @@ def write_network_file(
                 raise AssertionError(msg)
             openFile.write(
                 array_to_string(
-                    "exothermicities", exothermicity, type="float", parameter=True
+                    "exothermicities",
+                    exothermicity,
+                    type="float",
+                    parameter=True,
+                    length_name="nReac",
                 )
             )
             openFile.write("logical, parameter :: enableChemicalHeating = .true.\n")
         else:
-            openFile.write(
-                "real(dp) :: exothermicities(" + str(len(exothermicity)) + ")\n"
-            )
+            openFile.write("real(dp) :: exothermicities(nReac)\n")
             openFile.write("logical, parameter :: enableChemicalHeating = .false.\n")
 
         openFile.write(
@@ -1839,7 +1902,7 @@ def write_network_file(
         )
         openFile.write(
             array_to_string(
-                "ExtrapolateRates",
+                "extrapolateRates",
                 extrapolations,
                 type="logical",
                 parameter=True,

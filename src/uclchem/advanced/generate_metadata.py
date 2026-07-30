@@ -23,6 +23,7 @@ from pathlib import Path
 
 import yaml
 
+from uclchem.advanced.constants import _safe_load
 from uclchem.advanced.worker_state import _MODULE_NAMES
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
@@ -191,13 +192,14 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
     return result
 
 
-def _load_yaml(path: Path) -> dict:
-    with path.open() as f:
-        return yaml.safe_load(f) or {}
-
-
 def _dump_yaml(data: dict) -> str:
-    return yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    return yaml.dump(
+        data,
+        default_flow_style=False,
+        sort_keys=False,
+        allow_unicode=True,
+        Dumper=yaml.CSafeDumper,
+    )
 
 
 def _merge(existing: dict, detected: dict[str, list[str]]) -> dict:
@@ -268,7 +270,8 @@ def main(argv: list[str] | None = None) -> None:
 
     detected = parse_fortran_parameters(fortran_src)
 
-    existing = _load_yaml(metadata_path)
+    with metadata_path.open() as file:
+        existing = _safe_load(file) or {}
     merged = _merge(existing, detected)
 
     old_text = _dump_yaml(existing)
