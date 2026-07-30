@@ -774,7 +774,9 @@ def write_f90_constants(
         max_name_len = max(len(n) for n in coolant_names)
         coolant_names_str = ",".join(f'"{n.ljust(max_name_len)}"' for n in coolant_names)
         replace_dict["coolant_name_len"] = max_name_len
-        replace_dict["coolant_names"] = "/" + coolant_names_str + "/"
+        replace_dict["coolant_names"] = truncate_line(
+            "/" + coolant_names_str + "/", line_length=60
+        )
 
         # Format parent names (same pattern as coolant names)
         if "parent_names" in replace_dict:
@@ -784,7 +786,9 @@ def write_f90_constants(
                 f'"{n.ljust(max_parent_len)}"' for n in parent_names
             )
             replace_dict["parent_name_len"] = max_parent_len
-            replace_dict["parent_names"] = "/" + parent_names_str + "/"
+            replace_dict["parent_names"] = truncate_line(
+                "/" + parent_names_str + "/", line_length=60
+            )
 
     # Extract numeric arrays to be written via array_to_string (handles line limits)
     conversion_factors = replace_dict.pop("conversion_factors", None)
@@ -1158,7 +1162,7 @@ def build_ode_string(
     ode_string = dedent("""    module ODES
         use constants, only: dp, MIN_ABUND
         use f2py_constants, only: nReac
-        use network, only: SURFGROWTHUNCORRECTED, refractoryList, bulkList, surfaceList
+        use network, only: SURFGROWTHUNCORRECTED, refractoryList, bulkList, surfaceList, REACTIONRATE
         use surfacereactions, only: useGarrod2011Transfer, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO
 
         implicit none
@@ -1323,7 +1327,7 @@ def species_ode_string(n: int, species: Species) -> str:
     return ydot_string
 
 
-def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> int:
+def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> None:
     """Write evaporation list to network file.
 
     Two phase networks mimic episodic thermal desorption seen in lab (see Viti et al. 2004)
@@ -1338,11 +1342,6 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> int:
         Open file handle to which the network code is being written
     species_list : list[Species]
         List of species in network
-
-    Returns
-    -------
-    int
-        number of ice species
 
     Raises
     ------
@@ -1563,7 +1562,6 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> int:
         )
     )
     network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
-    return len(iceList)
 
 
 FORTRAN_LINE_LENGTH = 80
@@ -1725,7 +1723,7 @@ def write_network_file(
         )
 
         # then write evaporation stuff
-        n_ice_species = write_evap_lists(openFile, species_list)
+        write_evap_lists(openFile, species_list)
 
         # finally all reactions
         reactant1 = []
@@ -1792,9 +1790,7 @@ def write_network_file(
 
         # Save some memory by only allocating things we actually want to use:
         if enable_rates_storage:
-            openFile.write(
-                f"real(dp) :: REACTIONRATE({len(reactant1) + n_ice_species})\n"
-            )
+            openFile.write("real(dp) :: REACTIONRATE(nReac + N_ICE_SPECIES)\n")
             openFile.write("logical :: storeRatesComputation=.true.\n")
         else:
             openFile.write("real(dp) :: REACTIONRATE(1)\n")
