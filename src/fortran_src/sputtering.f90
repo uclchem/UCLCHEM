@@ -15,7 +15,7 @@ module sputtering
     use f2py_constants, only: nSpec
     !f2py INTEGER, parameter :: dp
     use network, only: refractoryList, iceList, gasIceList, mass, &
-        nh2, nhe, nc, no, nsi, nco
+        nh2, nhe, nc, no, nsi, nco, N_ICE_SPECIES
     use physicscore, only: timeInYears
     use SurfaceReactions, only: GAS_DUST_DENSITY_RATIO,GRAIN_RADIUS
 
@@ -45,10 +45,10 @@ contains
         if (ALLOCATED(sputters)) deallocate(sputters,gasSputters)
 
         if (refractoryList(1) > 0) then
-            new_size=size(iceList)-size(refractoryList)
+            new_size=N_ICE_SPECIES-size(refractoryList)
             allocate(sputters(new_size),gasSputters(new_size))
             k=1
-            do i=1,size(iceList)
+            do i=1,N_ICE_SPECIES
                 found=.false.
                 do j=1,size(refractoryList)
                     if (iceList(i) == refractoryList(j)) found=.true.
@@ -61,8 +61,8 @@ contains
 
             end do
         else
-            allocate(sputters(size(iceList)))
-            allocate(gasSputters(size(iceList)))
+            allocate(sputters(N_ICE_SPECIES))
+            allocate(gasSputters(N_ICE_SPECIES))
             gasSputters=gasIceList
             sputters=iceList
         end if
@@ -109,7 +109,7 @@ contains
       !write(87,*) timeInYears,shockVel,abundChangeFrac,timeDelta/SECONDS_PER_YEAR
       !multiply M/N by x and add to gas phase
       if (shockVel >= VAPORIZE_SPEED) then
-        do iSpec = 1, SIZE(iceList)
+        do iSpec = 1, N_ICE_SPECIES
           abund(gasIceList(iSpec)) = abund(gasIceList(iSpec)) + abundChangeFrac * abund(iceList(iSpec))
           abund(iceList(iSpec))    = abund(iceList(iSpec))    * (1.0_dp - abundChangeFrac)
         end do

@@ -17,15 +17,17 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import functools
 import re
 import sys
 from pathlib import Path
 
 import yaml
 
-from uclchem.advanced.constants import _safe_load
 from uclchem.advanced.worker_state import _MODULE_NAMES
 from uclchem.utils import UCLCHEM_ROOT_DIR
+
+_safe_load = functools.partial(yaml.load, Loader=yaml.CSafeLoader)
 
 _FORTRAN_SRC = UCLCHEM_ROOT_DIR.parent / "fortran_src"
 _METADATA_PATH = Path(__file__).parent / "fortran_metadata.yaml"

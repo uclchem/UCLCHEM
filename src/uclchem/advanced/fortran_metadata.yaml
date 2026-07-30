@@ -56,6 +56,10 @@ fortran_parameters:
   - n_ice_species
   - n_surface_species
   - n_bulk_species
+  - n_gar_params
+  - n_gar_species
+  - n_lhdes_reactions
+  - n_erdes_reactions
   - nbulk
   - nc
   - nch3oh
