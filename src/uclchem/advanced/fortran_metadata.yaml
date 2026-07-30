@@ -53,6 +53,9 @@ fortran_parameters:
   - n15n
   - n18o
   - n_elem_tracked
+  - n_ice_species
+  - n_surface_species
+  - n_bulk_species
   - nbulk
   - nc
   - nch3oh
