@@ -1908,13 +1908,14 @@ def write_network_file(
         reacTypes_array = np.asarray(reacTypes)
 
         partners = get_desorption_freeze_partners(reaction_list)
+        openFile.write(f"integer, parameter :: N_FREEZE_PARTNERS = {len(partners)}\n")
         openFile.write(
             array_to_string(
                 "freezePartners",
                 partners,
                 type="int",
                 parameter=True,
-                length_name="N_SURFACE_SPECIES",
+                length_name="N_FREEZE_PARTNERS",
             )
         )
 
@@ -2079,9 +2080,9 @@ def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[int]:
 def replace_value_with_name(
     string: str, value: int | float, replace_string: str, truncate: bool = True
 ) -> str:
-    """Replace all instances of ``value`` with a string ``replace_string``.
+    """Replace all instances of `value` with a string `replace_string`.
 
-    Uses func:`array_to_string` to determine how ``value`` would be formatted as a string.
+    Uses func:`array_to_string` to determine how `value` would be formatted as a string.
 
     Parameters
     ----------
