@@ -1592,7 +1592,7 @@ def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> 
     i = 0
     j = 0
     # we only want to split at operators to make it look nice
-    splits = ["*", ")", "+", ",", '"']
+    splits = ["*", "+", ",", '"']
     while len(input_string[i:]) > line_length:
         j = i + line_length
         if "\n" in input_string[i:j]:
@@ -1918,9 +1918,14 @@ def write_network_file(
                 partners,
                 type="int",
                 parameter=True,
+                length_name="N_SURFACE_SPECIES",
             )
         )
 
+        openFile.write(
+            f"integer, parameter :: N_GAR_SPECIES = {len(gar_database) if gar_database else 1}\n"
+        )
+        openFile.write("integer, parameter :: N_GAR_PARAMS = 7\n")
         openFile.write(
             array_to_string(
                 "garParams",
@@ -1929,6 +1934,7 @@ def write_network_file(
                 else np.zeros((1, 7)),
                 type="float",
                 parameter=True,
+                length_name="N_GAR_SPECIES, N_GAR_PARAMS",
             )
         )
 
@@ -1963,6 +1969,10 @@ def write_network_file(
                     # If no partner set, use dummy index
                     LHDEScorrespondingLHreacs.append(99999)
 
+        openFile.write(
+            f"integer, parameter :: N_LHDES_REACTIONS = {len(LHDEScorrespondingLHreacs)}\n"
+        )
+
         # Write array (use dummy if empty for backward compatibility)
         if len(LHDEScorrespondingLHreacs) == 0:
             LHDEScorrespondingLHreacs = [99999]
@@ -1972,6 +1982,9 @@ def write_network_file(
                 LHDEScorrespondingLHreacs,
                 type="int",
                 parameter=True,
+                length_name="N_LHDES_REACTIONS"
+                if len(LHDEScorrespondingLHreacs) > 2  # noqa: PLR2004
+                else None,
             ).replace("99999", "REAC_NOT_PRESENT")
         )
 
@@ -1989,10 +2002,13 @@ def write_network_file(
                     # If no partner set, use dummy index
                     ERDEScorrespondingERreacs.append(99999)
 
+        openFile.write(
+            f"integer, parameter :: N_ERDES_REACTIONS = {len(ERDEScorrespondingERreacs)}\n"
+        )
         # Write array (use dummy if empty for backward compatibility)
         if len(ERDEScorrespondingERreacs) == 0:
             ERDEScorrespondingERreacs = [99999]
-        elif len(ERDEScorrespondingERreacs) == 1:
+        if len(ERDEScorrespondingERreacs) == 1:
             # Fortran needs at least 2 elements for array
             ERDEScorrespondingERreacs.append(ERDEScorrespondingERreacs[0])
         openFile.write(
@@ -2001,6 +2017,9 @@ def write_network_file(
                 ERDEScorrespondingERreacs,
                 type="int",
                 parameter=True,
+                length_name="N_ERDES_REACTIONS"
+                if len(ERDEScorrespondingERreacs) > 2  # noqa: PLR2004
+                else None,
             ).replace("99999", "REAC_NOT_PRESENT")
         )
         openFile.write("end module network")

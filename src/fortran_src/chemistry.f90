@@ -91,7 +91,7 @@ contains
         NEQ=nSpec+2
         if (ALLOCATED(abund)) deallocate(abund,vdiff,vdes)
         if (ALLOCATED(reltol_vec)) deallocate(reltol_vec)
-        allocate(abund(NEQ,points),vdiff(SIZE(iceList)),vdes(SIZE(iceList)))
+        allocate(abund(NEQ,points),vdiff(N_ICE_SPECIES),vdes(N_ICE_SPECIES))
         !Set abundances to initial elemental if not reading them in.
         if (.NOT. readAbunds) then
             !ensure abund is initially zero
@@ -150,7 +150,7 @@ contains
         abund(nSpec+1,:)=gasTemp    !Gas temperature
         !Initial calculations of diffusion and desorption frequencies
         !Uses updateVdiffAndVdes which supports both HH1992 and TST treatments
-        call updateVdiffAndVdes(gasTemp(1), dustTemp(1), SIZE(iceList), vdiff, vdes)
+        call updateVdiffAndVdes(gasTemp(1), dustTemp(1), N_ICE_SPECIES, vdiff, vdes)
 
         ! Allocate conservation baseline array; values set by setConservationBaseline
         ! after starting abundances are loaded, so the baseline reflects actual initial state.
@@ -305,7 +305,7 @@ contains
 
             if ((.NOT. dustTemp(dstep) == lastDustTemp) .OR. &
                 (.NOT. gasTemp(dstep) == lastGasTemp)) then
-                call updateVdiffAndVdes(gasTemp(dstep), dustTemp(dstep), SIZE(icelist), vdiff, vdes)
+                call updateVdiffAndVdes(gasTemp(dstep), dustTemp(dstep), N_ICE_SPECIES, vdiff, vdes)
             end if
 
             call calculateReactionRates(abund,safeMantle, h2col, cocol, ccol, rate)

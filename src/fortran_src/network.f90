@@ -2902,8 +2902,8 @@ integer, parameter :: p2 (nReac)=(/NO_REACTANT_OR_PRODUCT,NO_REACTANT_OR_PRODUCT
     &,84,84,84,1,81,57,148,50,1,138,25,17,117,NO_REACTANT_OR_PRODUCT,83,1,1,1,3,50,58&
     &,NO_REACTANT_OR_PRODUCT,83,57,57,57,57,57,57,57,50,1,3,50,9,15,25,83,25,138,81&
     &,NO_REACTANT_OR_PRODUCT,17,50,NO_REACTANT_OR_PRODUCT,9,36,9,9,36,64,1,1,88,3,3,1&
-    &,1,30,1,3,1,1,30,1,1,3,3,1,3,1,25,30,1,56,56,1,25,50,123,59,66,123,59,116,25,25/&
-    &)
+    &,1,30,1,3,1,1,30,1,1,3,3,1,3,1,25,30,1,56,56,1,25,50,123,59,66,123,59,116,25&
+    &,25/)
 integer, parameter :: p3 (nReac)=(/NO_REACTANT_OR_PRODUCT,NO_REACTANT_OR_PRODUCT&
     &,NO_REACTANT_OR_PRODUCT,NO_REACTANT_OR_PRODUCT,NO_REACTANT_OR_PRODUCT&
     &,NO_REACTANT_OR_PRODUCT,NO_REACTANT_OR_PRODUCT,NO_REACTANT_OR_PRODUCT&
@@ -9564,21 +9564,24 @@ logical, parameter :: extrapolateRates (nReac)=(/.false.,.false.,.false.,.false.
     &,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.&
     &,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.&
     &,.false.,.false.,.false.,.false.,.false.,.false.,.false./)
-integer, parameter :: freezePartners (83)=(/617,619,621,623,625,626,627,628,633&
-    &,635,636,637,639,641,643,644,645,647,648,649,650,652,654,657,659,661,663,664,667&
-    &,669,672,673,675,677,681,683,685,687,691,692,694,697,700,701,702,704,707,708,709&
-    &,714,716,776,720,722,724,727,728,730,732,733,736,738,739,741,743,745,747,748,751&
-    &,753,755,757,759,761,763,765,767,769,771,774,777,780,782/)
-real(dp), parameter :: garParams(6,7) = RESHAPE((/ 4.5580e-13_dp,1.2250e-13_dp&
-    &,5.5720e-14_dp,2.5100e-14_dp,3.0640e-14_dp,2.1660e-14_dp,6.0890e-03_dp&
-    &,8.0740e-06_dp,3.1850e-07_dp,8.1160e-08_dp,7.7690e-05_dp,5.6780e-08_dp&
-    &,1.1280e+00_dp,1.3780e+00_dp,1.5120e+00_dp,1.8640e+00_dp,1.3190e+00_dp&
-    &,1.8740e+00_dp,4.3310e+02_dp,5.0870e+02_dp,5.1150e+03_dp,6.1700e+04_dp&
-    &,1.0870e+02_dp,4.3750e+04_dp,4.8450e-02_dp,1.5860e-02_dp,3.9030e-07_dp&
-    &,2.1690e-06_dp,3.4750e-01_dp,1.6350e-06_dp,8.1200e-01_dp,4.7230e-01_dp&
-    &,4.9560e-01_dp,9.6050e-01_dp,4.7900e-01_dp,8.9640e-01_dp,1.3330e-04_dp&
-    &,1.1020e-05_dp,5.4940e-07_dp,7.2320e-05_dp,4.6890e-02_dp,7.5380e-05_dp /), (/ 6&
-    &,7 /))
+integer, parameter :: freezePartners (N_SURFACE_SPECIES)=(/617,619,621,623,625&
+    &,626,627,628,633,635,636,637,639,641,643,644,645,647,648,649,650,652,654,657,659&
+    &,661,663,664,667,669,672,673,675,677,681,683,685,687,691,692,694,697,700,701,702&
+    &,704,707,708,709,714,716,776,720,722,724,727,728,730,732,733,736,738,739,741,743&
+    &,745,747,748,751,753,755,757,759,761,763,765,767,769,771,774,777,780,782/)
+integer, parameter :: N_GAR_SPECIES = 6
+integer, parameter :: N_GAR_PARAMS = 7
+real(dp), parameter :: garParams(N_GAR_SPECIES&
+    &,N_GAR_PARAMS) = RESHAPE((/ 4.5580e-13_dp,1.2250e-13_dp,5.5720e-14_dp&
+    &,2.5100e-14_dp,3.0640e-14_dp,2.1660e-14_dp,6.0890e-03_dp,8.0740e-06_dp&
+    &,3.1850e-07_dp,8.1160e-08_dp,7.7690e-05_dp,5.6780e-08_dp,1.1280e+00_dp&
+    &,1.3780e+00_dp,1.5120e+00_dp,1.8640e+00_dp,1.3190e+00_dp,1.8740e+00_dp&
+    &,4.3310e+02_dp,5.0870e+02_dp,5.1150e+03_dp,6.1700e+04_dp,1.0870e+02_dp&
+    &,4.3750e+04_dp,4.8450e-02_dp,1.5860e-02_dp,3.9030e-07_dp,2.1690e-06_dp&
+    &,3.4750e-01_dp,1.6350e-06_dp,8.1200e-01_dp,4.7230e-01_dp,4.9560e-01_dp&
+    &,9.6050e-01_dp,4.7900e-01_dp,8.9640e-01_dp,1.3330e-04_dp,1.1020e-05_dp&
+    &,5.4940e-07_dp,7.2320e-05_dp,4.6890e-02_dp,7.5380e-05_dp /), (/ N_GAR_SPECIES&
+    &,N_GAR_PARAMS /))
 integer, parameter :: photonReacs (2)=(/939,1205/)
 integer, parameter :: crpReacs (2)=(/84,123/)
 integer, parameter :: crphotReacs (2)=(/124,363/)
@@ -9603,9 +9606,11 @@ integer, parameter :: exrelaxReacs (2)=(/REAC_NOT_PRESENT,REAC_NOT_PRESENT/)
 integer, parameter :: garReacs (2)=(/784,789/)
 integer, parameter :: twobodyReacs (2)=(/1454,3421/)
 integer, parameter :: edReacs (2)=(/613,614/)
-integer, parameter :: LHDEScorrespondingLHreacs (56)=(/791,791,792,793,794,795&
-    &,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,809,810,811,812,812&
-    &,813,814,815,816,816,817,817,818,819,820,821,822,823,824,825,825,826,826,827,827&
-    &,828,829,829,830,831,832,833,834,835,836/)
+integer, parameter :: N_LHDES_REACTIONS = 56
+integer, parameter :: LHDEScorrespondingLHreacs (N_LHDES_REACTIONS)=(/791,791&
+    &,792,793,794,795,795,796,797,798,799,800,801,802,803,804,805,806,807,808,809,809&
+    &,810,811,812,812,813,814,815,816,816,817,817,818,819,820,821,822,823,824,825,825&
+    &,826,826,827,827,828,829,829,830,831,832,833,834,835,836/)
+integer, parameter :: N_ERDES_REACTIONS = 1
 integer, parameter :: ERDEScorrespondingERreacs (2)=(/615,615/)
 end module network
