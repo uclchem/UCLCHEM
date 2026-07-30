@@ -18,9 +18,9 @@ module F2PY_CONSTANTS
     integer, parameter :: NO_REACTANT_OR_PRODUCT=9999  !Indicates that the reaction does not have this many reactants or products
 
     ! Coolant file names and species names
-    character(LEN=15), parameter :: coolantFiles(NCOOLANTS)=(/"ly-a.dat       ","12c+_nometa.dat","16o.dat        "&
-    &,"12c.dat        ","12co.dat       ","p-h2.dat       "&
-    &,"o-h2.dat       "/)
+    character(LEN=15), parameter :: coolantFiles(NCOOLANTS)=(/"ly-a.dat       ","12c+_nometa.dat","16o.dat        ",&
+    &"12c.dat        ","12co.dat       ","p-h2.dat       ",&
+    &"o-h2.dat       "/)
     character(LEN=4), parameter :: coolantNames(NCOOLANTS)=(/"H   ","C+  ","O   ","C   ","CO  ","p-H2","o-H2"/)
 
     ! Parent species names for coolant-to-network abundance mapping
@@ -35,8 +35,8 @@ module F2PY_CONSTANTS
     character(256) :: coolantDataDir = ""
     ! Conversion factors for abundance scaling (used when coolantConversionMode=0)
     real(dp), parameter :: coolantConversionFactors (MAX_COOLANTS)=(/1.0000e+00_dp&
-    &,1.0000e+00_dp,1.0000e+00_dp,1.0000e+00_dp,1.0000e+00_dp,0.0000e+00_dp,0.0000e&
-    &+00_dp/)
+    &,1.0000e+00_dp,1.0000e+00_dp,1.0000e+00_dp,1.0000e+00_dp,0.0000e+00_dp&
+    &,0.0000e+00_dp/)
     ! Conversion mode: 0=fixed factor, 1=thermal OPR para, 2=thermal OPR ortho
     integer, parameter :: coolantConversionMode (MAX_COOLANTS)=(/0,0,0,0,0,1,2/)
     ! Per-coolant on/off toggle (can be changed at runtime via HeatingSettings)
