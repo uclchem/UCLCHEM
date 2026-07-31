@@ -32,7 +32,11 @@ uclchem-generate-metadata = "uclchem.advanced.generate_metadata:main"
 uclchem-makerates = "uclchem.makerates.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-timeout", "pytest-xdist", "pytest-github-actions-annotate-failures", "pre-commit", "sphinx", "ruff", "pymend", "fortitude-lint"]  # Development dependencies
+dev = [
+    "pytest", "pytest-timeout", "pytest-xdist", "pytest-github-actions-annotate-failures", # Testing
+    "sphinx", # Documentation
+    "pre-commit", "ruff", "pymend", "fortitude-lint", # Style checking
+]
 docs = ["pydoc-markdown", "jupyter", "jupyter_contrib_nbextensions", "notebook<7"]
 
 [tool.ruff]
