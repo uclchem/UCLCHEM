@@ -131,7 +131,7 @@ def plot_rates_deepdive(
     max_species_show: int = 12,
     figsize: tuple[float, float] = (8, 12),
     output_path: Path | str | None = None,
-    fig: plt.Figure | None = None,
+    fig: matplotlib.figure.FigureBase | None = None,
     color_registry: dict[str, str] | None = None,
 ) -> tuple[matplotlib.figure.FigureBase, plt.Axes, plt.Axes, plt.Axes]:
     """Create a three-panel chemical deep-dive figure for *species*.
@@ -199,6 +199,12 @@ def plot_rates_deepdive(
         Panel B — production / destruction rates.
     ax_rate_constants : plt.Axes
         Panel C — mean rate-constant bar chart.
+
+    Raises
+    ------
+    TypeError
+        If `output_path` is given, but `fig` is not an instance of
+        :class:`~matplotlib.pyplot.Figure`.
 
     Notes
     -----
@@ -316,6 +322,9 @@ def plot_rates_deepdive(
     )
 
     if output_path is not None:
+        if not isinstance(fig, plt.Figure):
+            msg = f"Can only save figures with type 'plt.Figure', obtained from 'plt.figure()', cannot save type '{type(fig)}'."
+            raise TypeError(msg)
         base = Path(output_path)
         fig.savefig(base.with_suffix(".pdf"), format="pdf")
         fig.savefig(base.with_suffix(".png"), format="png")
