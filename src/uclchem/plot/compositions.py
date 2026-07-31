@@ -131,7 +131,7 @@ def plot_rates_deepdive(
     max_species_show: int = 12,
     figsize: tuple[float, float] = (8, 12),
     output_path: Path | str | None = None,
-    fig: matplotlib.figure.FigureBase | None = None,
+    fig: plt.Figure | None = None,
     color_registry: dict[str, str] | None = None,
 ) -> tuple[matplotlib.figure.FigureBase, plt.Axes, plt.Axes, plt.Axes]:
     """Create a three-panel chemical deep-dive figure for *species*.

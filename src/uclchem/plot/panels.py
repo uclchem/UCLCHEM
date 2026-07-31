@@ -301,7 +301,7 @@ def _draw_reaction_time_series(
         handlelength=3.5,
     )
     for handle in leg.legend_handles:
-        handle.set_linewidth(1.75)
+        handle.set_linewidth(1.75)  # type: ignore[union-attr]
     ax.set_xlabel("Time / years")
     ax.set_ylabel(ylabel)
     ax.text(
@@ -513,8 +513,8 @@ def draw_panel_rate_constants(
     x_dest = np.arange(n_prod_k, n_prod_k + n_dest_k)
     prod_colors = [_color_for(rxn, color_registry) for rxn in top_prod_k]
     dest_colors = [_color_for(rxn, color_registry) for rxn in top_dest_k]
-    ax.bar(x_prod, prod_k_mean.values, width=0.75, color=prod_colors, alpha=0.85)
-    ax.bar(x_dest, dest_k_mean.values, width=0.75, color=dest_colors, alpha=0.85)
+    ax.bar(x_prod, prod_k_mean.values, width=0.75, color=prod_colors, alpha=0.85)  # type: ignore[arg-type]
+    ax.bar(x_dest, dest_k_mean.values, width=0.75, color=dest_colors, alpha=0.85)  # type: ignore[arg-type]
     ax.set_xticks([n_prod_k / 2.0 - 0.5, n_prod_k + n_dest_k / 2.0 - 0.5])
     ax.set_xticklabels(["Formation", "Destruction"])
     ax.set_ylabel(r"Mean $k$ (s$^{-1}$)")

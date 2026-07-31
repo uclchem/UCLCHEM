@@ -263,9 +263,9 @@ def __functional_return__(
     if return_dataframe:
         # If multiple spatial points are present, return DataFrames concatenated across points
         points = model_object._param_dict.get("points", 1)
-        rate_constants_df = None
-        heating_df = None
-        stats_df = None
+        rate_constants_df: pd.DataFrame | None = None
+        heating_df: pd.DataFrame | None = None
+        stats_df: pd.DataFrame | None = None
 
         if points > 1:
             physics_list: list[pd.DataFrame] = []
@@ -274,7 +274,7 @@ def __functional_return__(
             heating_list: list[pd.DataFrame] = []
             stats_list: list[pd.DataFrame] = []
             for pt in range(points):
-                res = model_object.get_dataframes(
+                res: tuple[pd.DataFrame, ...] = model_object.get_dataframes(  # type: ignore[assignment, ty:invalid-assignment]
                     point=pt,
                     joined=False,
                     with_rate_constants=return_rate_constants,
@@ -314,7 +314,7 @@ def __functional_return__(
             stats_df = pd.concat(stats_list, ignore_index=True) if stats_list else None
         else:
             # Single point: behave as before but include a Point column
-            result_dfs = model_object.get_dataframes(
+            result_dfs: tuple[pd.DataFrame | None, ...] = model_object.get_dataframes(  # type: ignore[assignment, ty:invalid-assignment]
                 joined=False,
                 with_rate_constants=return_rate_constants,
                 with_heating=return_heating,
