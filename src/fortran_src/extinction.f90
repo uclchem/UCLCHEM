@@ -7,7 +7,7 @@ module extinction_module
 
   contains
 
-  subroutine extcurve_obs(wave, R_V, NH_EBV, model, extinction_curves)
+  pure subroutine extcurve_obs(wave, R_V, NH_EBV, model, extinction_curves)
     real(dp), intent(in), dimension(:) :: wave       ! Wavelength vector in microns
     real(dp), intent(in), optional :: R_V            ! Ratio of visual extinction to reddening
     real(dp), intent(in), optional :: NH_EBV         ! Gas-to-dust ratio, default 5.8e21
@@ -112,7 +112,7 @@ module extinction_module
 
   end subroutine extcurve_obs
 
-  function poly(coeff, x) result(value)
+  pure function poly(coeff, x) result(value)
     real(dp), dimension(:), intent(in) :: coeff
     real(dp), intent(in) :: x
     real(dp) :: value

@@ -83,7 +83,7 @@ function getCOPhotoDissRate(NH2,NCO,radField,av) result(COPhotoDissRate)
     COPhotoDissRate = (2.0e-10_dp) * (radfield*HABING_TO_DRAINE) * ssf * sca
 end function getCOPhotoDissRate
 
-function getCarbonIonizationRate(alpha,gamma,gasTemp,NC,NH2,av,radfield) &
+pure function getCarbonIonizationRate(alpha,gamma,gasTemp,NC,NH2,av,radfield) &
         result(carbonIonizationRate)
    real(dp), intent(in) :: alpha,gamma,gasTemp,NC,NH2,av,radField
    real(dp) :: carbonIonizationRate
@@ -101,7 +101,7 @@ end function getCarbonIonizationRate
 !  H2 line self-shielding, adopting the treatment of
 !  Federman, Glassgold & Kwan (1979, ApJ, 227, 466)
 !-----------------------------------------------------------------------
-function calculateH2SelfShielding(NH2,dopplerWidth,radWidth) result(H2SelfShielding)
+pure function calculateH2SelfShielding(NH2,dopplerWidth,radWidth) result(H2SelfShielding)
     real(dp), intent(in) :: NH2,dopplerWidth,radWidth
     real(dp) :: H2SelfShielding
 
@@ -286,7 +286,7 @@ end function calculateCOSelfShielding
 
 
 
-function calculate_lbar(u,w) result(lbar)
+pure function calculate_lbar(u,w) result(lbar)
 !calculate lambda bar (in a) according to equ. 4 of van dishoeck
 !and black, apj 334, p771 (1988)
 ! --------------------------------------------------------------
@@ -319,7 +319,7 @@ function calculate_lbar(u,w) result(lbar)
     if (lbar< 913.6_dp) lbar =  913.6_dp
 end function calculate_lbar
 
-subroutine splie2(x1a,x2a,ya,m,n,y2a)
+pure subroutine splie2(x1a,x2a,ya,m,n,y2a)
 !given an m by n tabulated function ya, and tabulated indepen-
 !dent variables x1a (m values) and x2a (n values), this routine
 !constructs one-dimensional natural cubic splines of the rows
@@ -351,7 +351,7 @@ subroutine splie2(x1a,x2a,ya,m,n,y2a)
 !==============================================================
 end subroutine splie2
 
-subroutine spline(x,y,n,yp1,ypn,y2)
+pure subroutine spline(x,y,n,yp1,ypn,y2)
 
 !calculate cubic spline for a set of points (x,y)
 
@@ -592,5 +592,3 @@ save
 end subroutine splint
 
 end module photoreactions
-
-
