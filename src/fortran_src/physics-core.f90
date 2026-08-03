@@ -262,7 +262,7 @@ contains
     end subroutine ionizationDependency
 
     ! Analytical column density from center (r=0) to r [cm^-2].
-    subroutine findcoldens_core2edge(coldens,rho0,density_scale_radius,density_power_index,r)
+    pure subroutine findcoldens_core2edge(coldens,rho0,density_scale_radius,density_power_index,r)
       real(dp),intent(in) :: r,rho0,density_scale_radius,density_power_index
       real(dp),intent(out) :: coldens
 
@@ -275,7 +275,7 @@ contains
 
     end subroutine findcoldens_core2edge
 
-    subroutine findcoldens_edge2core(coldens,rho0,density_scale_radius,density_power_index,r)
+    pure subroutine findcoldens_edge2core(coldens,rho0,density_scale_radius,density_power_index,r)
         real(dp),intent(in) :: rho0,density_scale_radius,density_power_index,r
         real(dp),intent(out) :: coldens
         if (r>density_scale_radius) then
@@ -287,7 +287,7 @@ contains
     end subroutine findcoldens_edge2core
 
     ! Column density shielding from external UV (stage 1 / cloud): edge-to-parcel integral.
-    function get_coldens_external(r, rho0) result(coldens_external)
+    pure function get_coldens_external(r, rho0) result(coldens_external)
         real(dp), intent(in) :: r    ! parcel radius [pc]
         real(dp), intent(in) :: rho0  ! reference density [cm-3]
         real(dp) :: coldens_external
@@ -296,7 +296,7 @@ contains
     end function get_coldens_external
 
     ! Column density shielding from central protostar (stage 2 / hotcore): integral from center to parcel.
-    function get_coldens_internal(r) result(coldens_internal)
+    pure function get_coldens_internal(r) result(coldens_internal)
         real(dp), intent(in) :: r    ! parcel radius [pc]
         real(dp) :: coldens_internal
         call findcoldens_core2edge(coldens_internal, finalDens, &
@@ -305,7 +305,7 @@ contains
 
     ! The profile of the gas volume density
     ! REAL(dp) FUNCTION rhofit(r,rho0,r0,a)
-    function get_ngas_r(r,rho0,density_scale_radius,density_power_index) result(ngas_r)
+    pure function get_ngas_r(r,rho0,density_scale_radius,density_power_index) result(ngas_r)
       real(dp), intent(in) :: r,rho0,density_scale_radius,density_power_index
       real(dp) :: ngas_r
       ! [r] in pc, [density_scale_radius] in pc
@@ -313,7 +313,7 @@ contains
 
     end function get_ngas_r
 
-    function get_initialDens_r(r,p) result(initialDens_r)
+    pure function get_initialDens_r(r,p) result(initialDens_r)
         real(dp), intent(in) :: r,p
         real(dp) :: initialDens_r
 
@@ -356,7 +356,7 @@ contains
 
     end subroutine radiation
 
-    subroutine radiation_star(r, Lstar, Tstar, Avs, U)
+    pure subroutine radiation_star(r, Lstar, Tstar, Avs, U)
         real(dp), intent(in) :: Lstar, Tstar, r, Avs
         real(dp), intent(out) :: U
         integer :: i
@@ -405,7 +405,7 @@ contains
         U = urad_red / uISRF * (r / Rstar)**(-2.0_dp)
     end subroutine radiation_star
 
-    subroutine radiation_shell(r, Lstar, Tstar, Avs, U)
+    pure subroutine radiation_shell(r, Lstar, Tstar, Avs, U)
         real(dp), intent(in) :: Lstar, Tstar, r, Avs
         real(dp), intent(out) :: U
         integer :: i
@@ -453,7 +453,7 @@ contains
         U = urad_red / uISRF * (r / rsub)**(-2.0_dp)
     end subroutine radiation_shell
 
-    subroutine logspace(start, stop, num, result)
+    pure subroutine logspace(start, stop, num, result)
         real(dp), intent(in) :: start, stop
         integer, intent(in) :: num
         real(dp), dimension(num), intent(out) :: result
@@ -464,7 +464,7 @@ contains
         end do
     end subroutine logspace
 
-    function get_Rstar_rsub(Tstar,Tdmax) result(Rstar_rsub)
+    pure function get_Rstar_rsub(Tstar,Tdmax) result(Rstar_rsub)
         real(dp), intent(in) :: Tstar,Tdmax
         real(dp) :: Rstar_rsub
         real(dp) :: f1,f2
@@ -474,7 +474,7 @@ contains
         Rstar_rsub= f1/f2
     end function get_Rstar_rsub
 
-    function get_temp_average_grain(U) result(temp_average)
+    pure function get_temp_average_grain(U) result(temp_average)
         real(dp), intent(in) :: U
         real(dp) :: temp_average
         real(dp) :: Td_sil,Td_car
@@ -484,7 +484,7 @@ contains
         temp_average = (0.5_dp*temp_average)**(1.0_dp/4.0_dp)
     end function get_temp_average_grain
 
-    function get_Tshell(Tstar) result(Tshell)
+    pure function get_Tshell(Tstar) result(Tshell)
         real(dp), intent(in) :: Tstar
         real(dp) :: Tshell
 
@@ -492,7 +492,7 @@ contains
         Tshell = Tshell**(0.5_dp) * Tstar
     end function get_Tshell
 
-    function get_rsub(Lstar) result(rsub)
+    pure function get_rsub(Lstar) result(rsub)
         real(dp), intent(in) :: Lstar
         real(dp) :: rsub
         rsub = 155.3_dp*(Lstar/1.0e6_dp/Lsun)**(0.5_dp) * (Tdsub/1500.0_dp)**(-5.6_dp/2.0_dp) * aunit  !in cm
@@ -500,7 +500,7 @@ contains
 
     ! Unattenuated UV radiation field from central protostar at radius r_cm [Habing units].
     ! Uses 45% of the bolometric luminosity as the UV fraction and scales as r^-2.
-    function get_G0_internal_at_r(Lstar, r_cm) result(G0_internal_at_r)
+    pure function get_G0_internal_at_r(Lstar, r_cm) result(G0_internal_at_r)
         real(dp), intent(in) :: Lstar   ! bolometric luminosity [erg s^-1]
         real(dp), intent(in) :: r_cm    ! parcel radius [cm]
         real(dp) :: G0_internal_at_r

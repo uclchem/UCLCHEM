@@ -338,7 +338,7 @@ module heating
     ! !  Atomic and ionic cooling rates
     ! !  from Neal et al. 1995 based on Cen (1992) via Grassi et al. (2014)
     ! !-----------------------------------------------------------------------
-    function getAtomicCooling(gasT,gasDensity,hAbund,heAbund,electronAbund,hxAbund,hexAbund) &
+    pure function getAtomicCooling(gasT,gasDensity,hAbund,heAbund,electronAbund,hxAbund,hexAbund) &
             result(atomicCooling)
         real(dp), intent(in) :: gasT,gasDensity,hAbund,heAbund,electronAbund,hxAbund,hexAbund
         real(dp) :: atomicCooling
@@ -385,7 +385,7 @@ module heating
     !! Collisionally Induced Emission
     !! Hirano & Yoshida (2013) and Ripamonti & Abel 2004 via Grassi 2012
     !!-----------------------------------------------------------------------
-    function getCollisionallyInducedEmission(gasTemperature,gasDensity,h2Abund) &
+    pure function getCollisionallyInducedEmission(gasTemperature,gasDensity,h2Abund) &
             result(collisionallyInducedEmission)
         real(dp), intent(in) :: gasTemperature,gasDensity,h2Abund
         real(dp) :: collisionallyInducedEmission
@@ -437,7 +437,7 @@ module heating
     !! Continuum Emission
     !! Hirano & Yoshida (2013) and Ripamonti & Abel 2004 via Grassi 2012
     !!-----------------------------------------------------------------------
-    function getContinuumEmission(gasTemperature,gasDensity) result(continuumEmission)
+    pure function getContinuumEmission(gasTemperature,gasDensity) result(continuumEmission)
         real(dp), intent(in) :: gasTemperature,gasDensity
         real(dp) :: continuumEmission
 
@@ -458,7 +458,7 @@ module heating
     !! Cooling due to compton scattering of CMB photons.
     !! Shouldn't be important in near universe but include for completion
     !!-----------------------------------------------------------------------
-    function getComptonCooling(gasTemperature,gasDensity,elecAbund) result(comptonCooling)
+    pure function getComptonCooling(gasTemperature,gasDensity,elecAbund) result(comptonCooling)
         real(dp), intent(in) :: gasTemperature,gasDensity,elecAbund
         real(dp) :: comptonCooling
 
@@ -473,7 +473,7 @@ module heating
     !  account for the revised PAH abundance estimate from Spitzer data.
     !
     ! !-----------------------------------------------------------------------
-    function getPhotoelectricHeatingBakes(gasTemperature,gasDensity,habingField,electronAbund,metallicity) &
+    pure function getPhotoelectricHeatingBakes(gasTemperature,gasDensity,habingField,electronAbund,metallicity) &
             result(photoelectricHeatingBakes)
         real(dp), intent(in) :: gasTemperature,gasDensity,habingField,electronAbund,metallicity
         real(dp) :: photoelectricHeatingBakes
@@ -504,7 +504,7 @@ module heating
         end if
     end function getPhotoelectricHeatingBakes
 
-    function getPhotoelectricHeatingWeingartner(gasTemperature,gasDensity,habingField,electronAbund,metallicity) &
+    pure function getPhotoelectricHeatingWeingartner(gasTemperature,gasDensity,habingField,electronAbund,metallicity) &
             result(photoelectricHeatingWeingartner)
         real(dp), intent(in) :: gasTemperature,gasDensity,habingField,electronAbund,metallicity
         real(dp) :: photoelectricHeatingWeingartner
@@ -534,7 +534,7 @@ module heating
     ! !
     ! !  This function receives the already-computed heating rate [erg cm^-3 s^-1].
     ! !-----------------------------------------------------------------------
-    function getH2FormationHeating(h2formHeat) result(H2FormationHeating)
+    pure function getH2FormationHeating(h2formHeat) result(H2FormationHeating)
         real(dp), intent(in) :: h2formHeat  ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
         real(dp) :: H2FormationHeating
         H2FormationHeating = h2formHeat
@@ -551,7 +551,7 @@ module heating
     !
     !  Use the treatment of Rollig et al. (2006, A&A, 451, 917)
     !-----------------------------------------------------------------------
-    function getH2VibrationalCooling(gasTemperature,gasDensity,h2Abund,h2dis) &
+    pure function getH2VibrationalCooling(gasTemperature,gasDensity,h2Abund,h2dis) &
             result(H2VibrationalCooling)
         real(dp), intent(in) :: gasTemperature,gasDensity,h2Abund,h2dis
         real(dp) :: H2VibrationalCooling
@@ -586,7 +586,7 @@ module heating
     ! !  CALCULATE_REACTION_RATES and stored as REACTION_RATE(nRH2) (s^-1)
     ! !  JH: again, grabbed h2dis from chemistry.f90 for consistency.
     ! !-----------------------------------------------------------------------
-    function getH2PhotoDissHeating(gasDensity,h2Abund,h2dis) result(H2PhotoDissHeating)
+    pure function getH2PhotoDissHeating(gasDensity,h2Abund,h2dis) result(H2PhotoDissHeating)
         real(dp), intent(in) :: gasDensity,h2Abund,h2dis
         real(dp) :: H2PhotoDissHeating
         H2PhotoDissHeating=(0.4_dp*eV)*h2dis*gasDensity*h2Abund
@@ -604,7 +604,7 @@ module heating
     ! !  Shull & van Steenberg (1985, ApJ, 298, 268)
     ! !  Kamp & van Zadelhoff (2001)
     ! !-----------------------------------------------------------------------
-    function getCosmicRayHeating(zeta,gasDensity,h2Abund) result(cosmicRayHeating)
+    pure function getCosmicRayHeating(zeta,gasDensity,h2Abund) result(cosmicRayHeating)
         real(dp), intent(in) :: zeta,gasDensity,h2Abund
         real(dp) :: cosmicRayHeating
         ! cosmicRayHeating=(20.0*eV)*(1.3e-17_dp*zeta)*h2Abund*gasDensity
@@ -632,7 +632,7 @@ module heating
 
     ! ! JH: h2dis instead of Rate(nRH2) again
     ! !-----------------------------------------------------------------------
-    function getH2FUVPumpHeating(hAbund,h2Abund,gasTemperature,gasDensity,h2dis) &
+    pure function getH2FUVPumpHeating(hAbund,h2Abund,gasTemperature,gasDensity,h2dis) &
             result(H2FUVPumpHeating)
         real(dp), intent(in) :: hAbund,h2Abund,gasTemperature,gasDensity,h2dis
         real(dp) :: H2FUVPumpHeating
@@ -662,12 +662,12 @@ module heating
 ! !  CALCULATE_REACTION_RATES and stored as REACTION_RATE(nRCI) (s^-1)
 ! !-----------------------------------------------------------------------
 
-function getCarbonIonizationHeating(cIonizationRate,carbonAbund,gasDensity) &
-        result(carbonIonizationHeating)
-    real(dp), intent(in) :: cIonizationRate,carbonAbund,gasDensity
-    real(dp) :: carbonIonizationHeating
-    carbonIonizationHeating=(1.0_dp*eV)*cIonizationRate*carbonAbund*gasDensity
-end function getCarbonIonizationHeating
+    pure function getCarbonIonizationHeating(cIonizationRate,carbonAbund,gasDensity) &
+            result(carbonIonizationHeating)
+        real(dp), intent(in) :: cIonizationRate,carbonAbund,gasDensity
+        real(dp) :: carbonIonizationHeating
+        carbonIonizationHeating=(1.0_dp*eV)*cIonizationRate*carbonAbund*gasDensity
+    end function getCarbonIonizationHeating
 
 ! !-----------------------------------------------------------------------
 ! !  Exothermic chemical reaction heating
@@ -688,15 +688,15 @@ end function getCarbonIonizationHeating
 ! !  (cm^3 s^-1), and E the energy released (erg).
 ! !-----------------------------------------------------------------------
 
-function getChemicalHeatingRate(gasDensity,exoReactants1,exoReactants2,exoRates,exothermicities) &
-        result(chemicalHeatingRate)
-    real(dp), intent(in) :: gasDensity
-    real(dp), intent(in), dimension(:) :: exoReactants1,exoReactants2,exoRates,exothermicities
-    real(dp) :: chemicalHeatingRate
+    pure function getChemicalHeatingRate(gasDensity,exoReactants1,exoReactants2,exoRates,exothermicities) &
+            result(chemicalHeatingRate)
+        real(dp), intent(in) :: gasDensity
+        real(dp), intent(in), dimension(:) :: exoReactants1,exoReactants2,exoRates,exothermicities
+        real(dp) :: chemicalHeatingRate
 
-    chemicalHeatingRate=SUM(exoReactants1*exoReactants2*exoRates*exothermicities)
-    chemicalHeatingRate=chemicalHeatingRate*gasDensity*gasDensity*eV  !each abundance should be a number density to multiply through
-end function getChemicalHeatingRate
+        chemicalHeatingRate=SUM(exoReactants1*exoReactants2*exoRates*exothermicities)
+        chemicalHeatingRate=chemicalHeatingRate*gasDensity*gasDensity*eV  !each abundance should be a number density to multiply through
+    end function getChemicalHeatingRate
 ! !-----------------------------------------------------------------------
 ! !  Gas-grain collisional heating
 ! !
@@ -713,48 +713,48 @@ end function getChemicalHeatingRate
 ! !  lower than the gas temperature, this becomes a cooling mechanism.
 ! !-----------------------------------------------------------------------
 
-function getGasGrainCollisionsHeatingRate(gasTemperature,gasDensity,dustAbundance,dustRadius,dustTemp) &
-        result(gasGrainCollisionsHeatingRate)
-    real(dp), intent(in) :: gasTemperature,gasDensity,dustAbundance,dustRadius,dustTemp
-    real(dp) :: gasGrainCollisionsHeatingRate
-    real(dp) :: nGrain,accommodation,C_GRAIN
-    nGrain=dustAbundance*gasDensity
+    pure function getGasGrainCollisionsHeatingRate(gasTemperature,gasDensity,dustAbundance,dustRadius,dustTemp) &
+            result(gasGrainCollisionsHeatingRate)
+        real(dp), intent(in) :: gasTemperature,gasDensity,dustAbundance,dustRadius,dustTemp
+        real(dp) :: gasGrainCollisionsHeatingRate
+        real(dp) :: nGrain,accommodation,C_GRAIN
+        nGrain=dustAbundance*gasDensity
 
-    !nGrain=2.0e-12_dp*gasDensity
-    C_GRAIN=PI*dustRadius**2
+        !nGrain=2.0e-12_dp*gasDensity
+        C_GRAIN=PI*dustRadius**2
 
-    !!$!  Accommodation fitting formula of Groenewegen (1994, A&A, 290, 531)
-    !!$   ACCOMMODATION=0.35_dp*exp(-sqrt((dustTemperature+gasTemperature)/5.0e2_dp))+0.1_dp
+        !!$!  Accommodation fitting formula of Groenewegen (1994, A&A, 290, 531)
+        !!$   ACCOMMODATION=0.35_dp*exp(-sqrt((dustTemperature+gasTemperature)/5.0e2_dp))+0.1_dp
 
-    !  Accommodation coefficient of Burke & Hollenbach (1983, ApJ, 265, 223)
-    accommodation=0.37_dp*(1.0_dp-0.8_dp*exp(-75.0_dp/gasTemperature))
+        !  Accommodation coefficient of Burke & Hollenbach (1983, ApJ, 265, 223)
+        accommodation=0.37_dp*(1.0_dp-0.8_dp*exp(-75.0_dp/gasTemperature))
 
-    gasGrainCollisionsHeatingRate=nGrain*C_GRAIN*gasDensity*sqrt(8.0_dp*K_BOLTZ*gasTemperature/(PI*MH)) &
-                       & *accommodation*(2.0_dp*K_BOLTZ*dustTemp-2.0_dp*K_BOLTZ*gasTemperature)
-end function getGasGrainCollisionsHeatingRate
+        gasGrainCollisionsHeatingRate=nGrain*C_GRAIN*gasDensity*sqrt(8.0_dp*K_BOLTZ*gasTemperature/(PI*MH)) &
+                           & *accommodation*(2.0_dp*K_BOLTZ*dustTemp-2.0_dp*K_BOLTZ*gasTemperature)
+    end function getGasGrainCollisionsHeatingRate
 
-function calculateDustTemp(localField,surfaceField,Av,zeta) result(dustTemperature)
-    real(dp), intent(in) :: localField,surfaceField,Av
-    real(dp), intent(in), optional :: zeta
-    real(dp) :: dustTemperature
+    function calculateDustTemp(localField,surfaceField,Av,zeta) result(dustTemperature)
+        real(dp), intent(in) :: localField,surfaceField,Av
+        real(dp), intent(in), optional :: zeta
+        real(dp) :: dustTemperature
 
-    !Choose which dust temperature calculation to use
-    select case (dust_gas_coupling_method)
-    case (1)
-        dustTemperature=calculateDustTempHollenbach(localField,surfaceField)
-    case (2)
-        dustTemperature=calculateDustTempHocuk(surfaceField,Av)
-    case (3)
-        ! Ivlev et al. 2019: CR heating correction on top of Hocuk base temperature
-        dustTemperature=calculateDustTempHocuk(surfaceField,Av)
-        if (present(zeta)) then
-            dustTemperature=calculateDustTempIvlev(dustTemperature,zeta)
-        end if
-    case default
-        write(*,*) "Unimplemented dust temperature calculation method choose 1, 2, or 3. Exiting."
-        stop
-    end select
-end function calculateDustTemp
+        !Choose which dust temperature calculation to use
+        select case (dust_gas_coupling_method)
+        case (1)
+            dustTemperature=calculateDustTempHollenbach(localField,surfaceField)
+        case (2)
+            dustTemperature=calculateDustTempHocuk(surfaceField,Av)
+        case (3)
+            ! Ivlev et al. 2019: CR heating correction on top of Hocuk base temperature
+            dustTemperature=calculateDustTempHocuk(surfaceField,Av)
+            if (present(zeta)) then
+                dustTemperature=calculateDustTempIvlev(dustTemperature,zeta)
+            end if
+        case default
+            write(*,*) "Unimplemented dust temperature calculation method choose 1, 2, or 3. Exiting."
+            stop
+        end select
+    end function calculateDustTemp
 
 !=======================================================================
 !
@@ -877,7 +877,7 @@ end function calculateDustTempHocuk
 ! Equation 30: T_d,eff = T__dp * [1 + 0.202 * (zeta_ion/1e-16)*(T__dp/6)^(-6)]^(1/6)
 ! where T__dp is the base dust temperature (e.g. from Hocuk 2017)
 ! and zeta_ion is the cosmic ray ionization rate in s^-1 (= 1.3e-17_dp * zeta)
-function calculateDustTempIvlev(T_dp, zeta) result(dustTemperature)
+pure function calculateDustTempIvlev(T_dp, zeta) result(dustTemperature)
     real(dp), intent(in) :: T_dp   ! Base dust temperature from Hocuk
     real(dp), intent(in) :: zeta  ! Dimensionless CR ionization rate scaling factor
     real(dp) :: dustTemperature
@@ -933,7 +933,7 @@ end function calculateDustTempIvlev
 ! !  V_TURB = turbulent velocity (km/s); Galactic center ~ 15 km/s
 ! !  L_TURB = turbulent scale length (pc); typically 5 pc
 ! !-----------------------------------------------------------------------
-function getTurbulentHeatingRate(gasDensity,V_TURB) result(turbulentHeatingRate)
+pure function getTurbulentHeatingRate(gasDensity,V_TURB) result(turbulentHeatingRate)
     real(dp), intent(in) :: gasDensity,V_TURB
     real(dp) :: turbulentHeatingRate
     real(dp) :: L_TURB
@@ -945,7 +945,7 @@ end function getTurbulentHeatingRate
 
 
 
-subroutine pair_insertion_sort(array)
+pure subroutine pair_insertion_sort(array)
     real(dp), intent(inout) :: array(:)
     integer :: i,j,last
     real(dp) :: t1,t2
@@ -987,7 +987,7 @@ end subroutine pair_insertion_sort
 ! Arguments:
 !   array(:)    - 1D array to sort (modified in place)
 !-----------------------------------------------------------------------
-subroutine pair_insertion_sort_with_perm(array, perm)
+pure subroutine pair_insertion_sort_with_perm(array, perm)
     real(dp), intent(inout) :: array(:)
     integer, intent(out) :: perm(:)
     integer :: i, j, last

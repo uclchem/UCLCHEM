@@ -31,7 +31,7 @@ module sputtering
     real(dp), parameter :: VAPORIZE_SPEED=19.0_dp
     integer, allocatable :: sputters(:), gasSputters(:)
 contains
-    subroutine sputteringSetup
+  subroutine sputteringSetup
         integer :: i,j,k,new_size
         logical :: found
 
@@ -66,9 +66,9 @@ contains
             gasSputters=gasIceList
             sputters=iceList
         end if
-    end subroutine sputteringSetup
+  end subroutine sputteringSetup
 
-    subroutine sputterIces(abund,shockVel,gasTemp,density,timeDelta)
+  subroutine sputterIces(abund,shockVel,gasTemp,density,timeDelta)
       ! Sputter ices following Jimenez-Serra 2008 treatment
       ! Args:
       !     abund: abundances of all species
@@ -162,7 +162,7 @@ contains
   !                                                                       !
   !Inputs are mass of projectile and x. Returns value of integrand at x   !
   !allowing trapezium rule to integrate from xth to infinity              !
-  function getIceYieldIntegrand(x,projectileMass,gasTemp) result(iceYieldIntegrand)
+  pure function getIceYieldIntegrand(x,projectileMass,gasTemp) result(iceYieldIntegrand)
       real(dp), intent(in) :: x,projectileMass,gasTemp
       real(dp) :: iceYieldIntegrand
 
@@ -186,7 +186,7 @@ contains
   !Function to calculate the upper limit beyond which there's no point
   !evaluating the ice yield integrand. Ie trapezoids from upper limit to
   !upperlimit+dx will have an area~0
-  function getIceYieldIntegralLimit(xth,projectileMass,gasTemp) result(iceYieldIntegralLimit)
+  pure function getIceYieldIntegralLimit(xth,projectileMass,gasTemp) result(iceYieldIntegralLimit)
       real(dp), intent(in) :: xth,projectileMass,gasTemp
       real(dp) :: iceYieldIntegralLimit
       integer :: i
@@ -202,9 +202,7 @@ contains
       end do
   end function getIceYieldIntegralLimit
 
-
-
-  function trapezoidIntegrate(lowerLimit,upperlimit,projectileMass,gasTemp) result(integral)
+  pure function trapezoidIntegrate(lowerLimit,upperlimit,projectileMass,gasTemp) result(integral)
      ! Subroutine that calculates an integral using the trapezoidal method. It repeatedly
      ! tries smaller intervals until the area is small enough to be accurate.
      ! It used to take a function to integrate as an argument but I removed it
@@ -226,7 +224,7 @@ contains
       end do
   end function trapezoidIntegrate
 
-  subroutine trapzd(a, b, s, n, projectileMass, gasTemp)
+  pure subroutine trapzd(a, b, s, n, projectileMass, gasTemp)
     ! Subroutine to integrate with trapazoidal rule using n intervals.
       integer, intent(in) :: n
       real(dp), intent(in) :: a, b, projectileMass, gasTemp

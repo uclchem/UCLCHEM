@@ -20,7 +20,7 @@ module SWAP_FUNCTION
 
 contains
 
-   subroutine SWAP_INTEGER(A,B)
+   pure subroutine SWAP_INTEGER(A,B)
       integer, intent(inout) :: A,B
       integer :: D
       D = A
@@ -28,7 +28,7 @@ contains
       B = D
    end subroutine SWAP_INTEGER
 
-   subroutine SWAP_REAL(A,B)
+   pure subroutine SWAP_REAL(A,B)
       real(dp), intent(inout) :: A,B
       real(dp) :: D
       D = A
