@@ -80,11 +80,6 @@ contains
     end function calculateIonPol2ReacRateConstant
 
     elemental function calculatePhiGAR(radfield, av, gasTemp, density, electron_abundance) result(phi_gar)
-        ! Adapted from NEATH (Priestley et al 2023)
-        ! grain-assisted recombination stuff from Weingartner & Draine (2001)
-        ! https://ui.adsabs.harvard.edu/abs/2001ApJ...563..842W/abstract
-        ! We use the 0.6 factor as provided in Gong et al 2017 (DOI:10.3847/1538-4357/aa7561)
-
         real(dp), intent(in) :: radfield, av, gasTemp, electron_abundance, density
 
         real(dp) :: phi_gar
@@ -93,6 +88,11 @@ contains
     end function calculatePhiGAR
 
     pure function calculateGARRateConstants(alpha, phi, gasTemp) result(garRateConstants)
+        ! Adapted from NEATH (Priestley et al 2023)
+        ! grain-assisted recombination stuff from Weingartner & Draine (2001)
+        ! https://ui.adsabs.harvard.edu/abs/2001ApJ...563..842W/abstract
+        ! We use the 0.6 factor as provided in Gong et al 2017 (DOI:10.3847/1538-4357/aa7561)
+
         real(dp), intent(in), dimension(N_GAR_SPECIES) :: alpha
         real(dp), intent(in) :: phi, gasTemp
 
