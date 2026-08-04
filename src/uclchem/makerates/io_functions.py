@@ -1002,7 +1002,7 @@ def write_odes_f90(
         logger.debug(f"{species_names.index(specie.get_name()) + 1}:{specie}")
 
     for i, reaction in enumerate(reaction_list):
-        logger.debug(f"RATE({i + 1}):{reaction}")
+        logger.debug(f"RATE_CONSTANTS({i + 1}):{reaction}")
         reaction.generate_ode_bit(i, species_names)
 
     # then create ODE code and write to file.
@@ -1169,8 +1169,8 @@ def build_ode_string(
 
         public
     contains
-        subroutine GETYDOT(RATE, Y, surfaceCoverage, D, YDOT)
-            real(dp), intent(in) :: RATE(nReac), Y(:)
+        subroutine GETYDOT(RATE_CONSTANTS, Y, surfaceCoverage, D, YDOT)
+            real(dp), intent(in) :: RATE_CONSTANTS(nReac), Y(:)
             real(dp), intent(in) :: D
             real(dp), intent(inout) :: surfaceCoverage
             real(dp), intent(out) :: YDOT(:)
