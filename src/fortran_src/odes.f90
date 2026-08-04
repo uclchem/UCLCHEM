@@ -1,7 +1,7 @@
 module ODES
     use constants, only: dp, MIN_ABUND
     use f2py_constants, only: nReac
-    use network, only: SURFGROWTHUNCORRECTED, refractoryList, bulkList, surfaceList
+    use network, only: SURFGROWTHUNCORRECTED, refractoryList, bulkList, surfaceList, REACTIONRATE
     use surfacereactions, only: useGarrod2011Transfer, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO
 
     implicit none

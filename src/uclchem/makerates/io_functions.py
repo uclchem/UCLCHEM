@@ -1898,7 +1898,7 @@ def write_network_file(
         )
         openFile.write(
             array_to_string(
-                "extrapolateRates",
+                "extrapolateRateConstants",
                 extrapolations,
                 type="logical",
                 parameter=True,

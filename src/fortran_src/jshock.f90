@@ -8,7 +8,7 @@ module jshock_mod
     use f2py_constants, only: nSpec
     !f2py INTEGER, parameter :: dp
     use network, only: iceList
-    use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+    use physicscore, only: points, dstep, cloudsize, radfield, h2CRPRateConstant, improvedH2CRPDissociation, &
         zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, &
         gastemp, dusttemp, av, coldens
     use sputtering, only: sputterIces, sputteringSetup

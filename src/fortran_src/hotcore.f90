@@ -9,7 +9,7 @@ module hotcore
     use network, only: bindingEnergy, gasIceList, iceList, THREE_PHASE, solidFractions, &
         volcanicFractions, monoFractions, mass
     !f2py INTEGER, parameter :: dp
-    use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+    use physicscore, only: points, dstep, cloudsize, radfield, h2CRPRateConstant, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, gastemp, dusttemp, av,&
     &coldens, density_max, get_ngas_r, get_coldens_internal, get_coldens_external, parcel_radius, radiation, &
     &outer_coldens_for_current_step, av_internal, radfield_internal, get_G0_internal_at_r, get_av
