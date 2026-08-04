@@ -150,7 +150,7 @@ contains
         abund(nSpec+1,:)=gasTemp    !Gas temperature
         !Initial calculations of diffusion and desorption frequencies
         !Uses updateVdiffAndVdes which supports both HH1992 and TST treatments
-        call updateVdiffAndVdes(gasTemp(1), dustTemp(1), N_ICE_SPECIES, vdiff, vdes)
+        call updateVdiffAndVdes(dustTemp(1), N_ICE_SPECIES, vdiff, vdes)
 
         ! Allocate conservation baseline array; values set by setConservationBaseline
         ! after starting abundances are loaded, so the baseline reflects actual initial state.
@@ -305,7 +305,7 @@ contains
 
             if ((.NOT. dustTemp(dstep) == lastDustTemp) .OR. &
                 (.NOT. gasTemp(dstep) == lastGasTemp)) then
-                call updateVdiffAndVdes(gasTemp(dstep), dustTemp(dstep), N_ICE_SPECIES, vdiff, vdes)
+                call updateVdiffAndVdes(dustTemp(dstep), N_ICE_SPECIES, vdiff, vdes)
             end if
 
             call calculateReactionRateConstants(abund,safeMantle, h2col, cocol, ccol, rate_constants)
