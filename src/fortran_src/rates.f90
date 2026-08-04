@@ -32,6 +32,95 @@ module RATES
     real(dp) :: rate_constants_er_unsplit(nReac) = 0.0_dp
 
 contains
+
+    elemental function calculatePhotonReacRateConstant(alpha, gamma, radfield, av) &
+            result(photonReacRateConstant)
+        real(dp), intent(in) :: alpha, gamma, radfield, av
+
+        real(dp) :: photonReacRateConstant
+
+        photonReacRateConstant = alpha * radfield * HABING_TO_DRAINE * exp(-gamma * av)
+    end function calculatePhotonReacRateConstant
+
+    elemental function calculateCRPhotonReacRateConstant(alpha, beta, gamma, dust_albedo_omega, zeta, gasTemp) &
+            result(crphotonReacRateConstant)
+        real(dp), intent(in) :: alpha, beta, gamma, dust_albedo_omega, zeta, gasTemp
+
+        real(dp) :: crphotonReacRateConstant
+
+        crphotonReacRateConstant = alpha * gamma / (1.0_dp-dust_albedo_omega) * zeta * (gasTemp / 300) ** beta
+    end function calculateCRPhotonReacRateConstant
+
+    elemental function calculateTwoBodyReacRateConstant(alpha, beta, gamma, gasTemp) &
+            result(twoBodyReacRateConstant)
+        real(dp), intent(in) :: alpha, beta, gamma, gasTemp
+
+        real(dp) :: twoBodyReacRateConstant
+
+        twoBodyReacRateConstant = alpha * (gasTemp / 300) ** beta * exp(-gamma/gasTemp)
+    end function calculateTwoBodyReacRateConstant
+
+    elemental function calculateIonPol1ReacRateConstant(alpha, beta, gamma, gasTemp) &
+            result(ionPolReacRateConstant)
+        real(dp), intent(in) :: alpha, beta, gamma, gasTemp
+
+        real(dp) :: ionPolReacRateConstant
+        !This formula including the magic numbers come from KIDA help page.
+        ionPolReacRateConstant = alpha * beta * (0.62_dp + 0.4767_dp * gamma * sqrt(300 / gasTemp))
+    end function calculateIonPol1ReacRateConstant
+
+    elemental function calculateIonPol2ReacRateConstant(alpha, beta, gamma, gasTemp) &
+            result(ionPolReacRateConstant)
+        real(dp), intent(in) :: alpha, beta, gamma, gasTemp
+
+        real(dp) :: ionPolReacRateConstant
+        !This formula including the magic numbers come from KIDA help page.
+        ionPolReacRateConstant = alpha * beta * (1.0_dp + 0.0967_dp * gamma) * sqrt(300 / gasTemp) + &
+            gamma ** 2 * 300 / (10.526_dp * gasTemp)
+    end function calculateIonPol2ReacRateConstant
+
+    elemental function calculatePhiGAR(radfield, av, gasTemp, density, electron_abundance) result(phi_gar)
+        ! Adapted from NEATH (Priestley et al 2023)
+        ! grain-assisted recombination stuff from Weingartner & Draine (2001)
+        ! https://ui.adsabs.harvard.edu/abs/2001ApJ...563..842W/abstract
+        ! We use the 0.6 factor as provided in Gong et al 2017 (DOI:10.3847/1538-4357/aa7561)
+
+        real(dp), intent(in) :: radfield, av, gasTemp, electron_abundance, density
+
+        real(dp) :: phi_gar
+
+        phi_gar = radfield*exp(-2.5_dp*av) * sqrt(gasTemp) / (density*electron_abundance)  ! phi = G T^0.5 / n_e
+    end function calculatePhiGAR
+
+    pure function calculateGARRateConstants(alpha, phi, gasTemp) result(garRateConstants)
+        real(dp), intent(in), dimension(N_GAR_SPECIES) :: alpha
+        real(dp), intent(in) :: phi, gasTemp
+
+        real(dp), dimension(N_GAR_SPECIES) :: garRateConstants
+
+        garRateConstants = 0.6_dp * alpha * garParams(:, 1) / &
+            (1.0_dp + garParams(:, 2) * phi**garParams(:, 3) * (1.0_dp + garParams(:, 4) * gasTemp**garParams(:, 5) * &
+            phi**(-garParams(:, 6) - garParams(:, 7) * log(gasTemp))))
+    end function calculateGARRateConstants
+
+    elemental function calculateDesorbUVCRRateConstant(alpha, gamma, radfield, av, radfield_internal, av_internal, zeta) &
+            result(desorbUVCRRateConstant)
+        real(dp), intent(in) :: alpha, gamma, radfield, av, radfield_internal, av_internal, zeta
+
+        real(dp) :: desorbUVCRRateConstant
+
+        if (gamma > ebmaxuvcr) then
+            !Don't remove species with binding energy > max BE removed by this process
+            desorbUVCRRateConstant=0.0_dp
+        else
+            !4.875e3_dp = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
+            !UVY is yield per photon.
+            desorbUVCRRateConstant = alpha * GRAIN_CROSSSECTION_PER_H * UV_YIELD * 4.875e3_dp * &
+                (zeta + (radfield / uvcreff) * exp(-1.8_dp * av) + &
+                    (radfield_internal / uvcreff) * exp(-1.8_dp * av_internal))
+        end if
+    end function calculateDesorbUVCRRateConstant
+
     subroutine calculateReactionRateConstants(abund, safemantle,  h2col, cocol, ccol, rate_constants)
         real(dp), intent(in) :: abund(:, :)
         real(dp), intent(in) :: safemantle, h2col, cocol, ccol
@@ -41,7 +130,7 @@ contains
         integer :: i,j
         integer :: k
         real(dp) :: numMonolayers, bulkAttenuation
-        real(dp) :: dynamic_cap, effective_cap, min_cap_s, max_cap_s
+        real(dp) :: dynamic_cap, effective_cap, min_cap_s, max_cap_s, phi_gar
 
         !Calculate all reaction rate constants
         !Assuming the user has temperature changes or uses the desorption features of phase 1,
@@ -63,15 +152,15 @@ contains
         ! For bulk species, decrease rate constant by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
         bulkAttenuation = (1_dp-0.007_dp)**(1_dp+0.5_dp/bulkLayersReciprocal)
         if (idx1 /= REAC_NOT_PRESENT) then
-            rate_constants(idx1:idx2) = alpha(idx1:idx2) * ( &
-                radfield              * exp(-gama(idx1:idx2)*av(dstep))          + &
-                radfield_internal(dstep) * exp(-gama(idx1:idx2)*av_internal(dstep)) &
-                ) * HABING_TO_DRAINE
-            ! For all solid species, decrease rate constant by 0.3 (Kalvans 2018)
-            ! For bulk species, also decrease rate constant by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
+            rate_constants(idx1:idx2) = calculatePhotonReacRateConstant(alpha(idx1:idx2), gama(idx1:idx2), &
+                    radfield, av(dstep)) + &
+                calculatePhotonReacRateConstant(alpha(idx1:idx2), gama(idx1:idx2), &
+                    radfield_internal(dstep), av_internal(dstep))
 
+            ! For all solid species, decrease rate constant by 0.3 (Kalvans 2018)
             do j=idx1,idx2
                 if (ANY(bulkList==re1(j))) then
+                    ! For bulk species, also decrease rate constant by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
                     rate_constants(j) = rate_constants(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO *&
                         bulkAttenuation
                 else if (ANY(surfaceList==re1(j))) then
@@ -84,11 +173,12 @@ contains
         idx1=crphotReacs(1)
         idx2=crphotReacs(2)
         if (idx1 /= REAC_NOT_PRESENT) then
-            rate_constants(idx1:idx2)=alpha(idx1:idx2)*gama(idx1:idx2)*1.0_dp/(1.0_dp-omega)* &
-                zeta*(gasTemp(dstep)/300_dp)**beta(idx1:idx2)
+            rate_constants(idx1:idx2) = calculateCRPhotonReacRateConstant(alpha(idx1:idx2), beta(idx1:idx2), gama(idx1:idx2), &
+                omega, zeta, gasTemp(dstep))
             ! For all solid species, decrease rate constant by 0.3 (Kalvans 2018)
             do j=idx1,idx2
                 if (ANY(bulkList==re1(j))) then
+                    ! For bulk species, also decrease rate constant by (1-Pabs)**(Bs+0.5*Bb) (Kalvans 2014)
                     rate_constants(j) = rate_constants(j) * ICE_GAS_PHOTO_CROSSSECTION_RATIO * &
                         bulkAttenuation
                 else if (ANY(surfaceList==re1(j))) then
@@ -101,12 +191,12 @@ contains
         idx1=freezeReacs(1)
         idx2=freezeReacs(2)
         if (idx1 /= REAC_NOT_PRESENT) then
-            rate_constants(idx1:idx2)=freezeOutRateConstant(idx1,idx2)
+            rate_constants(idx1:idx2)=getFreezeOutRateConstants(idx1,idx2)
             !freeze out rate constant uses thermal velocity but mass of E is 0 giving us infinite rate constants
             !just assume it's same as H
             rate_constants(nR_EFreeze)=rate_constants(nR_HFreeze)
 
-            rate_constants(nR_H2Freeze)=stickingCoefficient(h2StickingZero,h2StickingTemp,gasTemp(dstep))* &
+            rate_constants(nR_H2Freeze)=getStickingCoefficient(h2StickingZero,h2StickingTemp,gasTemp(dstep))* &
                 rate_constants(nR_H2Freeze)
             if (h2StickingCoeffByh2Coverage) then
                 ! If all surface is H2, (i.e. x_#H2 = safeMantle), assume no H2 sticks
@@ -114,7 +204,7 @@ contains
                 rate_constants(nR_H2Freeze)=rate_constants(nR_H2Freeze)*(1.0_dp-abund(ngh2, dstep)/safeMantle)
             end if
 
-            rate_constants(nR_HFreeze)=stickingCoefficient(hStickingZero,hStickingTemp,gasTemp(dstep))* &
+            rate_constants(nR_HFreeze)=getStickingCoefficient(hStickingZero,hStickingTemp,gasTemp(dstep))* &
                 rate_constants(nR_HFreeze)
             if (hStickingCoeffByh2Coverage) then
                 ! If all surface is H2, (i.e. x_#H2 = safeMantle), assume no H sticks
@@ -159,13 +249,12 @@ contains
                 !as iron nuclei are main cause of CR heating.
                 !GRAIN_SURFACEAREA_PER_H is the total surface area per hydrogen atom. ie total grain area per cubic cm when multiplied by density.
                 !phi is efficiency of this reaction, number of molecules removed per event.
-                rate_constants(idx1:idx2) = 4.0_dp*pi*zeta*1.64e-4_dp*(GRAIN_SURFACEAREA_PER_H)*phi
+                rate_constants(idx1:idx2) = 4.0_dp*PI*zeta*1.64e-4_dp*(GRAIN_SURFACEAREA_PER_H)*phi
                 !alpha is a branching ratio (default 1.0; use <1.0 for isomer desorption channels)
                 rate_constants(idx1:idx2) = alpha(idx1:idx2)*rate_constants(idx1:idx2)
 
                 !Don't remove species with binding energy > max BE removed by this process
                 where(gama(idx1:idx2) > ebmaxcr) rate_constants(idx1:idx2)=0.0
-
             else
                 rate_constants(idx1:idx2) = 0.0
             end if
@@ -178,22 +267,9 @@ contains
         idx1=deuvcrReacs(1)
         idx2=deuvcrReacs(2)
         if (idx1 /= REAC_NOT_PRESENT) then
-            if ((desorb) .and. (uvdesorb) .and. (safeMantle > MIN_SURFACE_ABUND)&
-                    &.and.(zeta > 0)) then
-                !4.875e3_dp = photon flux, Checchi-Pestellini & Aiello (1992) via Roberts et al. (2007)
-                !UVY is yield per photon.
-                rate_constants(idx1:idx2) = GRAIN_CROSSSECTION_PER_H*uv_yield*4.875e3_dp*zeta
-                !additional factor accounting for UV desorption from ISRF. UVCREFF is ratio of
-                !CR induced UV to ISRF UV.
-                rate_constants(idx1:idx2) = rate_constants(idx1:idx2) &
-                    & * (1 + (radfield/uvcreff)*(1.0_dp/zeta)*exp(-1.8_dp*av(dstep)) &
-                    & + (radfield_internal(dstep)/uvcreff)*(1.0_dp/zeta) &
-                    & * exp(-1.8_dp*av_internal(dstep)))
-                !alpha is a branching ratio (default 1.0; use <1.0 for isomer desorption channels)
-                rate_constants(idx1:idx2) = alpha(idx1:idx2)*rate_constants(idx1:idx2)
-
-                !Don't remove species with binding energy > max BE removed by this process
-                where(gama(idx1:idx2) > ebmaxuvcr) rate_constants(idx1:idx2)=0.0
+            if ((desorb) .and. (uvdesorb) .and. (safeMantle > MIN_SURFACE_ABUND) .and. (zeta > 0)) then
+                rate_constants(idx1:idx2) = calculateDesorbUVCRRateConstant(alpha(idx1:idx2), &
+                    gama(idx1:idx2), radfield, av(dstep), radfield_internal(dstep), av_internal(dstep), zeta)
             else
                 rate_constants(idx1:idx2) = 0.0
             end if
@@ -339,8 +415,7 @@ contains
     idx1=erReacs(1)
     idx2=erReacs(2)
     if (idx1 /= REAC_NOT_PRESENT) then
-        rate_constants(idx1:idx2)=freezeOutRateConstant(idx1,idx2)
-        rate_constants(idx1:idx2)=rate_constants(idx1:idx2)*exp(-gama(idx1:idx2)/dustTemp(dstep))
+        rate_constants(idx1:idx2)=getFreezeOutRateConstants(idx1,idx2) * exp(-gama(idx1:idx2) / dustTemp(dstep))
 
         ! Save unsplit ER rate constants for dynamic re-split inside the F callback
         rate_constants_er_unsplit(erReacs(1):erReacs(2)) = rate_constants(erReacs(1):erReacs(2))
@@ -398,43 +473,34 @@ contains
     idx1=twobodyReacs(1)
     idx2=twobodyReacs(2)
     if (lastTemp /= gasTemp(dstep)) then
-        rate_constants(idx1:idx2) = alpha(idx1:idx2)*((gasTemp(dstep)/300.0_dp)**beta(idx1:idx2))* &
-            exp(-gama(idx1:idx2)/gasTemp(dstep))
+        rate_constants(idx1:idx2) = calculateTwoBodyReacRateConstant(alpha(idx1:idx2), beta(idx1:idx2), &
+            gama(idx1:idx2), gasTemp(dstep))
     end if
 
     idx1=ionopol1Reacs(1)
     idx2=ionopol1Reacs(2)
     if (idx1 /= REAC_NOT_PRESENT) then
-        !This formula including the magic numbers come from KIDA help page.
-        rate_constants(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)* &
-            (0.62_dp+0.4767_dp*gama(idx1:idx2)*sqrt(300.0_dp/gasTemp(dstep)))
+        rate_constants(idx1:idx2) = calculateIonPol1ReacRateConstant(alpha(idx1:idx2), beta(idx1:idx2), &
+            gama(idx1:idx2), gasTemp(dstep))
     end if
 
     idx1=ionopol2Reacs(1)
     idx2=ionopol2Reacs(2)
     if (idx1 /= REAC_NOT_PRESENT) then
-        !This formula including the magic numbers come from KIDA help page.
-        rate_constants(idx1:idx2)=alpha(idx1:idx2)*beta(idx1:idx2)*(1.0_dp+0.0967_dp*gama(idx1:idx2) * &
-            sqrt(300.0_dp/gasTemp(dstep))+gama(idx1:idx2)*gama(idx1:idx2)*300.0_dp/(10.526_dp*gasTemp(dstep)))
+        rate_constants(idx1:idx2) = calculateIonPol2ReacRateConstant(alpha(idx1:idx2), beta(idx1:idx2), &
+            gama(idx1:idx2), gasTemp(dstep))
     end if
     lastTemp=gasTemp(dstep)
 
     idx1=garReacs(1)
     idx2=garReacs(2)
-    ! Adapted from NEATH (Priestley et al 2023)
-    ! grain-assisted recombination stuff from Weingartner & Draine (2001)
-    ! https://ui.adsabs.harvard.edu/abs/2001ApJ...563..842W/abstract
-    ! We use the 0.6 factor as provided in Gong et al 2017 (DOI:10.3847/1538-4357/aa7561)
-    phi = (radfield*exp(-2.5_dp*av(dstep)) + radfield_internal(dstep)*exp(-2.5_dp*av_internal(dstep))) &
-    & * sqrt(gasTemp(dstep)) / (abund(nspec+1,dstep)*abund(nelec,dstep))  ! phi = G T^0.5 / n_e
-
-    ! Ensure phi is within the 1e2 to 1e6 range from the paper:
-    phi = min(max(phi,1e2_dp), 1e6_dp)
-
     if (idx1 /= REAC_NOT_PRESENT) then
-        rate_constants(idx1:idx2)= 0.6_dp * alpha(idx1:idx2) * garParams(:,1) / (1.0_dp + garParams(:,2) *&
-        &phi**garParams(:,3) * (1.0_dp + garParams(:,4) * gasTemp(dstep)**garParams(:,5) *&
-        &phi**(-garParams(:,6)-garParams(:,7)*log(gasTemp(dstep)))))
+        phi_gar = calculatePhiGAR(radfield, av(dstep), gasTemp(dstep), abund(nspec+1, dstep), abund(nelec, dstep)) + &
+            calculatePhiGAR(radfield_internal(dstep), av_internal(dstep), gasTemp(dstep), abund(nspec+1, dstep), &
+            abund(nelec, dstep))
+        ! Ensure phi is within the 1e2 to 1e6 range from the paper:
+        phi_gar = min(max(phi_gar,1e2_dp), 1e6_dp)
+        rate_constants(idx1:idx2) = calculateGARRateConstants(alpha(idx1:idx2), phi_gar, gasTemp(dstep))
     end if
 
     !turn off reactions outside their temperature range
@@ -531,31 +597,30 @@ contains
 ! eg Le Bourlot et al. 2013, Molpeceres et al. 2020
 !Above 150 K, thermal desorption will completely remove grain species
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-function freezeOutRateConstant(idx1,idx2) result(freezeRateConstants)
-    integer, intent(in) :: idx1,idx2
-    real(dp) :: freezeRateConstants(idx2-idx1+1)
+    pure function getFreezeOutRateConstants(idx1,idx2) result(freezeOutRateConstants)
+        integer, intent(in) :: idx1, idx2
 
-    !additional factor for ions (beta=0 for neutrals)
-    freezeRateConstants=1.0_dp+beta(idx1:idx2)*16.71e-4_dp/(GRAIN_RADIUS*gasTemp(dstep))
-    if ((freezeFactor == 0.0_dp) .or. (dustTemp(dstep) > maxGrainTemp)) then
-        freezeRateConstants=0.0_dp
-    else
-        freezeRateConstants=freezeRateConstants*freezeFactor*alpha(idx1:idx2)*THERMAL_VEL&
-        &*sqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
-    end if
+        real(dp) :: freezeOutRateConstants(idx2-idx1+1)
 
-    end function freezeOutRateConstant
+        if ((freezeFactor == 0.0_dp) .or. (dustTemp(dstep) > maxGrainTemp)) then
+            freezeOutRateConstants=0.0_dp
+        else
+            !additional factor for ions (beta=0 for neutrals)
+            freezeOutRateConstants=alpha(idx1:idx2) * (1.0_dp+beta(idx1:idx2)*16.71e-4_dp/(GRAIN_RADIUS*gasTemp(dstep))) * &
+                freezeFactor * THERMAL_VEL * sqrt(gasTemp(dstep)/mass(re1(idx1:idx2)))*GRAIN_CROSSSECTION_PER_H
+        end if
+    end function getFreezeOutRateConstants
 
 
-    function stickingCoefficient(stickingZero,criticalTemp,gasTemp) result(stickingCoeff)
+    pure function getStickingCoefficient(stickingZero,criticalTemp,gasTemp) result(stickingCoefficient)
         !Sticking coefficient for freeze out taken from Chaabouni et al. 2012 A&A 538 Equation 1
         real(dp), intent(in) :: stickingZero,criticalTemp,gasTemp
-        real(dp) :: stickingCoeff
+        real(dp) :: stickingCoefficient
         real(dp), parameter :: beta=2.5_dp
         real(dp) :: tempRatio
 
         tempRatio=gasTemp/criticalTemp
-        stickingCoeff=stickingZero*(1.0_dp+beta*tempRatio)/((1.0_dp+tempRatio)**beta)
-    end function stickingCoefficient
+        stickingCoefficient=stickingZero*(1.0_dp+beta*tempRatio)/((1.0_dp+tempRatio)**beta)
+    end function getStickingCoefficient
 
 end module RATES

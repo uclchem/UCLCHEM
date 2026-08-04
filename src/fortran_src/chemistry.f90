@@ -339,23 +339,22 @@ contains
                             &+ (0.1_dp + 4.2_dp*h2heatfac)*h2form_LH_vol &
                             &+ 0.6_dp*h2heatfac*h2form_ER_vol)
                 tempDot= getTempDot(&
-                                &    timeinyears, &                       ! time
-                                &    abund(nSpec+1,dstep), &              ! gas temperature
-                                &    abund(nSpec+2,dstep), &              ! gas density
-                                &    colDens(dstep), &                    ! gas column density
-                                &    radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &   ! attenuated radiation field
-                                &    abund(:,dstep), &                    ! full abundance vector
-                                &    rate_constants(nR_H2_hv), &          ! H2 dissociation rate constant
-                                &    h2form_heat, &                       ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
-                                &    zeta, &                              ! cosmic ray ionization rate
-                                &    rate_constants(nR_C_hv), &           ! C-photo rate
-                                &    1.0_dp/GAS_DUST_DENSITY_RATIO, &     ! dust-to-gas ratio
-                                &    GRAIN_RADIUS, &                      ! grain radius
-                                &    metallicity, &                       ! metallicity
-                                ! &    heatWriteFlag, &                     ! write flag
-                                &    dusttemp(dstep), &                   ! dust temperature
-                                &    turbVel &                            ! turbulence velocity
-                                )
+                                    timeinyears, &                       ! time
+                                    abund(nSpec+1,dstep), &              ! gas temperature
+                                    abund(nSpec+2,dstep), &              ! gas density
+                                    colDens(dstep), &                    ! gas column density
+                                    radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &   ! attenuated radiation field
+                                    abund(:,dstep), &                    ! full abundance vector
+                                    rate_constants(nR_H2_hv), &          ! H2 dissociation rate constant
+                                    h2form_heat, &                       ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
+                                    zeta, &                              ! cosmic ray ionization rate
+                                    rate_constants(nR_C_hv), &           ! C-photo rate
+                                    1.0_dp/GAS_DUST_DENSITY_RATIO, &     ! dust-to-gas ratio
+                                    GRAIN_RADIUS, &                      ! grain radius
+                                    metallicity, &                       ! metallicity
+                                !    heatWriteFlag, &                    ! write flag
+                                    dusttemp(dstep), &                   ! dust temperature
+                                    turbVel)                             ! turbulence velocity
             end if
 
             !Integrate_constants chemistry, and return fail if unrecoverable error was reached
@@ -730,22 +729,21 @@ contains
                     &+ 0.6_dp * h2heatfac * rate_constants(nR_H2Form_ERDes) * Y(nSpec+2)**2 * Y(nh) * Y(ngh) &
                     &  / max(safeMantle, MIN_SURFACE_ABUND))
                 tempDot=getTempDot( &
-                            &    timeInYears, &                         ! time
-                            &    Y(nSpec+1), &                          ! gas temperature
-                            &    Y(nSpec+2), &                          ! gas density
-                            &    colDens(dstep), &                      ! gas column density
-                            &    radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &     ! attenuated radiation field
-                            &    Y, &                                   ! all number densities
-                            &    rate_constants(nR_H2_hv), &            ! H2 dissociation rate_constants computed in rate_constantss.f90
-                            &    h2form, &                              ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
-                            &    zeta, &                                ! cosmic ray ionization rate_constants
-                            &    rate_constants(nR_C_hv), &             ! C-photo rate_constants
-                            &    1.0_dp/GAS_DUST_DENSITY_RATIO, &       ! dust-to-gas ratio
-                            &    GRAIN_RADIUS, &                        ! grain radius
-                            &    metallicity, &                         ! metallicity
-                            &    dusttemp(dstep), &                     ! dust temperature
-                            &    turbVel &                              ! turbulence velocity
-                        )
+                               timeInYears, &                         ! time
+                               Y(nSpec+1), &                          ! gas temperature
+                               Y(nSpec+2), &                          ! gas density
+                               colDens(dstep), &                      ! gas column density
+                               radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &     ! attenuated radiation field
+                               Y, &                                   ! all number densities
+                               rate_constants(nR_H2_hv), &            ! H2 dissociation rate_constants computed in rate_constantss.f90
+                               h2form, &                              ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
+                               zeta, &                                ! cosmic ray ionization rate_constants
+                               rate_constants(nR_C_hv), &             ! C-photo rate_constants
+                               1.0_dp/GAS_DUST_DENSITY_RATIO, &       ! dust-to-gas ratio
+                               GRAIN_RADIUS, &                        ! grain radius
+                               metallicity, &                         ! metallicity
+                               dusttemp(dstep), &                     ! dust temperature
+                               turbVel)                               ! turbulence velocity
                 oldTemp=y(nSpec+1)
             end if
             ydot(nSpec+1)=tempDot
