@@ -61,7 +61,7 @@ module SurfaceReactions
   real(dp), parameter :: SURFACE_SITE_DENSITY = 1.5e15_dp  ! site density on one grain [cm-2]
   real(dp), parameter :: VDIFF_PREFACTOR=2.0_dp*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
   real(dp), parameter :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0_dp*PI
-  real(dp), parameter :: EFFECTIVE_SURFACE_MASS = 120.0_dp ! Effective mass of grain surface in Dalton
+  real(dp), parameter :: EFFECTIVE_SURFACE_MASS = 120.0_dp  ! Effective mass of grain surface in Dalton
 
   ! TST prefactor constants
   real(dp), parameter :: HH_VDES_PREFACTOR=2.0_dp*K_BOLTZ_SI*SURFACE_SITE_DENSITY*1.0e4_dp/(PI*PI*AMU)

@@ -18,7 +18,7 @@ implicit none
     integer :: success,fileLength,model_index
     real(dp) :: max_temp, vshock, timestep_factor, minimum_temp
     character(len=1) :: DUMMY_STRING = ""
-    character(len=32) :: specname_out(nSpec) 
+    character(len=32) :: specname_out(nSpec)
 
     !Any subset of the parameters can be passed in a file on program start
     !see example.inp
