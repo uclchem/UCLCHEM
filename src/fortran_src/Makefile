@@ -11,7 +11,7 @@ f2pyFC=gnu95 #this must match FC (ifort=intelem, gfortran=gnu95)
 #Unforgiving debugging flags
 #FFLAGS =-g -fbacktrace -Wall -fcheck=all -fPIC
 #Fast optimizing flags
-FFLAGS = -O3 -fPIC -ffree-line-length-0
+FFLAGS = -O3 -fPIC -ffree-line-length-0 -pg
 
 ###############################################################################
 EXT_SUFFIX = $(shell python3-config --extension-suffix)
@@ -31,7 +31,7 @@ HEATING_OBS   = swap_function.o coolant_module.o heating.o
 
 ##physics module selected by changing physics variable to chosen fortran file.
 main: dvode.o ${CONSTANTS_OBS} network.o ${PHYSICS_OBS} ${HEATING_OBS} ${CHEMISTRY_OBS} io.o wrap.f90 
-	${FC} ${FFLAGS} -o ../../uclchem ${CONSTANTS_OBS} io.o ${PHYSICS_OBS} dvode.o ${CHEMISTRY_OBS} network.o wrap.f90 main.f90
+	${FC} ${FFLAGS} -o ../../uclchem ${CONSTANTS_OBS} network.o io.o ${PHYSICS_OBS} ${HEATING_OBS} dvode.o ${CHEMISTRY_OBS} wrap.f90 main.f90
 
 # The order here is the compilation order and it's vital that modules are compiled after their dependencies
 # We need to pass f2py_constants.f90 into wrap.f90 in order for nspec (and other parameters) to be in scope in wrap.

@@ -1235,7 +1235,7 @@ def _generate_reaction_ode_bit(
         String fragment of the ODE term for this reaction.
 
     """
-    ode_bit = f"+RATE({i + 1})"
+    ode_bit = f"+RATE_CONSTANTS({i + 1})"
     # every body after the first requires a factor of density
     for _ in range(body_count):
         ode_bit += "*D"
