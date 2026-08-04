@@ -9221,7 +9221,7 @@ real(dp), parameter :: reducedMasses (nReac)=(/0.0000e+00_dp,0.0000e+00_dp&
     &,0.0000e+00_dp,0.0000e+00_dp,0.0000e+00_dp,0.0000e+00_dp,0.0000e+00_dp&
     &,0.0000e+00_dp,0.0000e+00_dp,0.0000e+00_dp,0.0000e+00_dp,0.0000e+00_dp&
     &,0.0000e+00_dp,0.0000e+00_dp,0.0000e+00_dp,0.0000e+00_dp/)
-logical, parameter :: extrapolateRates (nReac)=(/.false.,.false.,.false.,.false.&
+logical, parameter :: extrapolateRateConstants (nReac)=(/.false.,.false.,.false.&
     &,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.&
     &,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.&
     &,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.&
@@ -9563,8 +9563,9 @@ logical, parameter :: extrapolateRates (nReac)=(/.false.,.false.,.false.,.false.
     &,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.&
     &,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.&
     &,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false.&
-    &,.false.,.false.,.false.,.false.,.false.,.false.,.false./)
-integer, parameter :: freezePartners (N_SURFACE_SPECIES)=(/617,619,621,623,625&
+    &,.false.,.false.,.false.,.false.,.false.,.false.,.false.,.false./)
+integer, parameter :: N_FREEZE_PARTNERS = 83
+integer, parameter :: freezePartners (N_FREEZE_PARTNERS)=(/617,619,621,623,625&
     &,626,627,628,633,635,636,637,639,641,643,644,645,647,648,649,650,652,654,657,659&
     &,661,663,664,667,669,672,673,675,677,681,683,685,687,691,692,694,697,700,701,702&
     &,704,707,708,709,714,716,776,720,722,724,727,728,730,732,733,736,738,739,741,743&

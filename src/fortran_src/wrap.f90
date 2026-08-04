@@ -41,7 +41,7 @@ module uclchemwrap
     end interface
 
     private
-    public :: cloud, jshock, cshock, postprocess, collapse, hot_core, get_rates, &
+    public :: cloud, jshock, cshock, postprocess, collapse, hot_core, get_rate_constants, &
         get_odes, get_specname, get_coolant_restart_mode_wrap, set_coolant_restart_mode_wrap
 
     character(LEN=1) :: dummyString = ""
@@ -575,8 +575,8 @@ contains
         end if
     end subroutine postprocess
 
-    subroutine get_rates(dictionary,abundancesIn,speciesIndx,rateIndxs,&
-        &speciesRates,successFlag,transfer,swap,bulk_layers)
+    subroutine get_rate_constants(dictionary,abundancesIn,speciesIndx,rateIndxs,&
+        &speciesRateConstants,successFlag,transfer,swap,bulk_layers)
         !Given a species of interest, some parameters and abundances, this subroutine
         !returns the rate of all reactions that include that species plus some extra variables
         !to allow for the calculation of the rate of bulk/surface ice transfer.
@@ -587,7 +587,7 @@ contains
         real(dp), intent(in) :: abundancesIn(nSpec)
         integer, intent(in) :: speciesIndx
         integer, intent(in), dimension(nReac) :: rateIndxs
-        real(dp), intent(out), dimension(nReac) :: speciesRates
+        real(dp), intent(out), dimension(nReac) :: speciesRateConstants
         real(dp), intent(out) :: transfer, swap, bulk_layers
         integer, intent(out) :: successFlag
 
@@ -623,7 +623,7 @@ contains
 
         call F(NEQ,currentTime,abund(:,dstep),ydot)
 
-        speciesRates=rate(rateIndxs)
+        speciesRateConstants=rate_constants(rateIndxs)
 
         if ((specname(speciesIndx)(1:1) == "#") .or.&
         & (specname(speciesIndx)(1:1) == "@")) then
@@ -646,7 +646,7 @@ contains
             bulk_layers=0.0
         end if
 
-    end subroutine get_rates
+    end subroutine get_rate_constants
 
     subroutine get_odes(dictionary,abundancesIn,ratesOut)
         !Obtain the ODE values for some given parameters and abundances.
@@ -1258,13 +1258,13 @@ contains
                 case("difftobindratio")
                     read(inputValue,*,iostat=successFlag) diffToBindRatio
                 case("min_desorption_rate")
-                    read(inputValue,*,iostat=successFlag) min_desorption_rate
+                    read(inputValue,*,iostat=successFlag) min_desorption_rate_constant
                 case("max_desorption_rate_factor")
-                    read(inputValue,*,iostat=successFlag) max_desorption_rate_factor
-                case("min_desorption_rate_cap")
-                    read(inputValue,*,iostat=successFlag) min_desorption_rate_cap
-                case("max_desorption_rate_cap")
-                    read(inputValue,*,iostat=successFlag) max_desorption_rate_cap
+                    read(inputValue,*,iostat=successFlag) max_desorption_rate_constant_factor
+                case("min_desorption_rate_constant_cap")
+                    read(inputValue,*,iostat=successFlag) min_desorption_rate_constant_cap
+                case("max_desorption_rate_constant_cap")
+                    read(inputValue,*,iostat=successFlag) max_desorption_rate_constant_cap
                 case("enforcechargeconservation")
                     read(inputValue,*,iostat=successFlag) enforceChargeConservation
                 case("reltol")

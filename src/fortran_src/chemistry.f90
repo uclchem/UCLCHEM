@@ -2,8 +2,8 @@
 ! Contains all the core machinery of the code, not really intended to be altered in standard  !
 ! use. Use a (custom) physics module to alter temp/density behavior etc.                      !
 !                                                                                             !
-! chemistry module contains rates.f90, a series of subroutines to calculate all reaction rates!
-! when updateChemistry is called from main, these rates are calculated, the ODEs are solved   !
+! chemistry module contains rates.f90, a series of subroutines to calculate all reaction rate_constants!
+! when updateChemistry is called from main, these rate constants are calculated, the ODEs are solved   !
 ! from currentTime to targetTime to get abundances at targetTime and then all abundances are  !
 ! written to the fullOutput file.                                                             !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -13,21 +13,21 @@ module chemistry
     use DEFAULTPARAMETERS
     use DVODE_F90_M, only: SET_OPTS, DVODE_F90, VODE_OPTS, GET_STATS  !dvode_f90_m
     !f2py INTEGER, parameter :: dp
-    use physicscore, only: points, dstep, cloudsize, radfield, radfield_internal, h2crprate, improvedH2CRPDissociation, &
+    use physicscore, only: points, dstep, cloudsize, radfield, radfield_internal, h2crprateconstant, improvedH2CRPDissociation, &
     & zeta, currentTime, targetTime, timeinyears, freefall, density, ion, get_densdot, gasTemp, dustTemp, av, av_internal, colDens
     use f2py_constants, only: nSpec, nReac
     use heating, only: calculateDustTemp, getTempDot, initializeHeating
     ! allow(use-all)
     use network
     use odes, only: GETYDOT
-    use photoreactions, only: getH2PhotoDissRate, getCOPhotoDissRate, UV_FAC
+    use photoreactions, only: getH2PhotoDissRateConstant, getCOPhotoDissRateConstant, UV_FAC
     use postprocess_mod, only: lusecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
-    use rates, only: calculateReactionRates, turbVel, lastTemp, rate_lh_unsplit, rate_er_unsplit
+    use rates, only: calculateReactionRateConstants, turbVel, lastTemp, rate_constants_lh_unsplit, rate_constants_er_unsplit
     use surfacereactions, only: updateVdiffAndVdes, getNumberMonolayers, getDesorptionFractionBare, &
         getDesorptionFractionFullCoverage, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO, vdes, vdiff, &
         desorptionFractionsBare, getDesorptionFractionIncludingIce, desorptionFractionsFullCoverage, &
         safeMantle, safeBulk, bulkLayersReciprocal, GRAIN_RADIUS, MIN_SURFACE_ABUND, &
-        bulkGainFromMantleBuildUp, surfaceToBulkSwappingRates
+        bulkGainFromMantleBuildUp, surfaceToBulkSwappingRateConstants
 
     implicit none
 
@@ -39,8 +39,8 @@ module chemistry
     integer :: i,j,l,writeCounter=0,loopCounter,failedIntegrationCounter
     integer, parameter :: maxLoops=10,maxConsecutiveFailures=10
 
-    !Array to store reaction rates
-    real(dp) :: rate(nReac)
+    !Array to store reaction rate constants
+    real(dp) :: rate_constants(nReac)
 
     !DLSODE variables
     integer :: ITASK,ISTATE,NEQ
@@ -189,14 +189,14 @@ contains
             if (successFlag < 0) return
         end if
 
-        !Set rates to zero to ensure they don't hold previous values or random ones if we don't set them in calculateReactionRates
-        rate=0.0
+        !Set rate constants to zero to ensure they don't hold previous values or random ones if we don't set them in calculateReactionRateConstants
+        rate_constants=0.0
 
-        !We typically don't recalculate rates that only depend on temperature if the temp hasn't changed
+        !We typically don't recalculate rate constants that only depend on temperature if the temp hasn't changed
         !use arbitrarily high value to make sure they are calculated at least once.
         lastGasTemp=99.0e99_dp
         lastDustTemp=99.0e99_dp
-        lastTemp=99.0e99_dp  ! Reset rates module lastTemp to force recalculation
+        lastTemp=99.0e99_dp  ! Reset rate constants module lastTemp to force recalculation
 
         ! If the hydrogen diffusion energy is still its default value (-1.0 in default_parameters.f90),
         ! i.e. no custom value was set in the input dictionary, set it to the correct value
@@ -233,7 +233,7 @@ contains
     end subroutine resetDVODEForNewPoint
 
     subroutine updateChemistry(successFlag, statsarray, statsarray_size, dtime)
-    !Updates the abundances for the next time step, first updating chemical variables and reaction rates,
+    !Updates the abundances for the next time step, first updating chemical variables and reaction rate constants,
     !then by solving the ODE system to obtain new abundances.
     !Solving ODEs is complex so we have two checks to try to automatically overcome difficulties and end stalled models
     !Firstly, the integration subroutine is called up to maxLoops times whilst adjusting variables to help integration converge.
@@ -250,7 +250,7 @@ contains
         integer :: ie
         real(dp) :: total_elem_ie, rel_err
         real(dp) :: surfaceCoverage
-        real(dp) :: h2form_CT_vol, h2form_LH_vol, h2form_ER_vol  ! per-mechanism volumetric H2 formation rates [cm^-3 s^-1]
+        real(dp) :: h2form_CT_vol, h2form_LH_vol, h2form_ER_vol  ! per-mechanism volumetric H2 formation rate constant [cm^-3 s^-1]
         real(dp) :: h2form_heat  ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
         real(dp) :: h2heatfac, h2_denom  ! H&M79 eq. 6.45 thermalization efficiency factor
 
@@ -308,7 +308,7 @@ contains
                 call updateVdiffAndVdes(gasTemp(dstep), dustTemp(dstep), N_ICE_SPECIES, vdiff, vdes)
             end if
 
-            call calculateReactionRates(abund,safeMantle, h2col, cocol, ccol, rate)
+            call calculateReactionRateConstants(abund,safeMantle, h2col, cocol, ccol, rate_constants)
             if (heatingFlag) then
                 dustTemp(dstep)=calculateDustTemp( &
                     radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &
@@ -316,12 +316,12 @@ contains
                     av(dstep), zeta)
 
 
-                ! Per-mechanism volumetric H2 formation rates [cm^-3 s^-1]
+                ! Per-mechanism volumetric H2 formation rate constants [cm^-3 s^-1]
                 ! Only accounting for H2 ending up in the gas phase.
-                h2form_CT_vol = rate(nR_H2Form_CT) * abund(nSpec+2,dstep)**2 * abund(nh,dstep)
-                h2form_LH_vol = (rate(nR_H2Form_LHDes)) &
+                h2form_CT_vol = rate_constants(nR_H2Form_CT) * abund(nSpec+2,dstep)**2 * abund(nh,dstep)
+                h2form_LH_vol = (rate_constants(nR_H2Form_LHDes)) &
                               &  * abund(ngh,dstep)**2 * abund(nSpec+2,dstep)
-                h2form_ER_vol = (rate(nR_H2Form_ERDes)) &
+                h2form_ER_vol = (rate_constants(nR_H2Form_ERDes)) &
                               &  * abund(nSpec+2,dstep)**2 * abund(nh,dstep) * abund(ngh,dstep) / safeMantle
                 ! H&M79 eq. 6.45: critical density for H2 thermalization
                 ! (18100 coefficient for consistency with h2FUVPumpHeating in heating.f90)
@@ -345,11 +345,11 @@ contains
                                 &    colDens(dstep), &                    ! gas column density
                                 &    radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &   ! attenuated radiation field
                                 &    abund(:,dstep), &                    ! full abundance vector
-                                &    rate(nR_H2_hv), &                     ! H2 dissociation rate
+                                &    rate_constants(nR_H2_hv), &          ! H2 dissociation rate constant
                                 &    h2form_heat, &                       ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
                                 &    zeta, &                              ! cosmic ray ionization rate
-                                &    rate(nR_C_hv), &                     ! C-photo rate
-                                &    1.0_dp/GAS_DUST_DENSITY_RATIO, &        ! dust-to-gas ratio
+                                &    rate_constants(nR_C_hv), &           ! C-photo rate
+                                &    1.0_dp/GAS_DUST_DENSITY_RATIO, &     ! dust-to-gas ratio
                                 &    GRAIN_RADIUS, &                      ! grain radius
                                 &    metallicity, &                       ! metallicity
                                 ! &    heatWriteFlag, &                     ! write flag
@@ -358,7 +358,7 @@ contains
                                 )
             end if
 
-            !Integrate chemistry, and return fail if unrecoverable error was reached
+            !Integrate_constants chemistry, and return fail if unrecoverable error was reached
             if (PRESENT(statsarray) .AND. PRESENT(statsarray_size) .AND. PRESENT(dtime)) then
                 call integrateODESystem(successFlag, statsarray, statsarray_size, dtime)
             else
@@ -438,7 +438,7 @@ contains
 
     !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
         !reset parameters for DVODE
-        ITASK=1  !try to integrate to targetTime
+        ITASK=1  !try to integrate_constants to targetTime
         if (solverMode == 0) then
             ISTATE = 1                   ! mode 0: always restart fresh
         else
@@ -465,10 +465,10 @@ contains
             !Gas-phase species: absolute tolerances scaled by abundance
             abstol=abstol_factor*abund(:,dstep)
             where(abstol<abstol_min) abstol=abstol_min
-            !Ice species (surface + bulk): separate, looser absolute tolerances
+            !Ice species (surface + bulk): separate_constants, looser absolute tolerances
             abstol(iceList) = abstol_ice_factor*abund(iceList,dstep)
             where(abstol(iceList)<abstol_ice_min) abstol(iceList)=abstol_ice_min
-            !Physical variables: separate tolerance heuristic (T and nH need looser tolerances)
+            !Physical variables: separate_constants tolerance heuristic (T and nH need looser tolerances)
             abstol(nSpec+1) = MAX(abstol_phys_factor * ABS(abund(nSpec+1,dstep)), abstol_T_min)
             abstol(nSpec+2) = MAX(abstol_phys_factor * ABS(abund(nSpec+2,dstep)), abstol_nH_min)
             !Per-component relative tolerances: tight for chemistry, relaxed for physics
@@ -627,13 +627,13 @@ contains
 
         ! Column densities are fixed for postprocessing data, so don't do this bit
         if (.not. lusecoldens) then
-            !changing abundances of H2 and CO can causes oscillation since their rates depend on their abundances
-            !recalculating rates as abundances are updated prevents that.
-            !thus these are the only rates calculated each time the ODE system is called.
+            !changing abundances of H2 and CO can causes oscillation since their rate_constantss depend on their abundances
+            !recalculating rate_constantss as abundances are updated prevents that.
+            !thus these are the only rate_constantss calculated each time the ODE system is called.
             cocol=coColToCell + 0.5_dp*Y_safe(nco)*D*(cloudSize/real(points))
             h2col=h2ColToCell + 0.5_dp*Y_safe(nh2)*D*(cloudSize/real(points))
-            rate(nR_H2_hv)=getH2PhotoDissRate(h2Col,radField,av(dstep),turbVel)  !H2 photodissociation
-            rate(nR_CO_hv)=getCOPhotoDissRate(h2Col,coCol,radField,av(dstep))  !CO photodissociation
+            rate_constants(nR_H2_hv)=getH2PhotoDissRateConstant(h2Col,radField,av(dstep),turbVel)  !H2 photodissociation
+            rate_constants(nR_CO_hv)=getCOPhotoDissRateConstant(h2Col,coCol,radField,av(dstep))  !CO photodissociation
         end if
 
         !recalculate coefficients for ice processes
@@ -643,10 +643,10 @@ contains
         surfaceCoverage=bulkGainFromMantleBuildUp()
         ratioSurfaceToBulk=MIN(1.0_dp, safeMantle/safeBulk)
 
-        ! Fix 3: refresh surface-to-bulk swap rate from current safeMantle
-        ! (safeMantle was just updated from Y_safe above, but rate(surfSwapReacs) is still
-        ! set from the start-of-step call to calculateReactionRates)
-        if (THREE_PHASE) rate(surfSwapReacs(1):surfSwapReacs(2)) = surfaceToBulkSwappingRates(dustTemp(dstep))
+        ! Fix 3: refresh surface-to-bulk swap rate_constants from current safeMantle
+        ! (safeMantle was just updated from Y_safe above, but rate_constants(surfSwapReacs) is still
+        ! set from the start-of-step call to calculateReactionRateConstants)
+        if (THREE_PHASE) rate_constants(surfSwapReacs(1):surfSwapReacs(2)) = surfaceToBulkSwappingRateConstants(dustTemp(dstep))
 
         ! Fix 1: re-split LH/LHDES and ER/ERDES using the current ice thickness.
         ! desorptionFractionIncludingIce depends on numMonolayers which changes as ice builds up
@@ -658,14 +658,15 @@ contains
             k = 0
             do i = lhdesReacs(1), lhdesReacs(2)
                 k = k + 1
-                rate(i) = getDesorptionFractionIncludingIce(i, numMonolayers) &
-                          * rate_lh_unsplit(LHDEScorrespondingLHreacs(k))
-                if (ANY(bulkList==re1(i))) rate(i) = 0.0
+                rate_constants(i) = getDesorptionFractionIncludingIce(i, numMonolayers) &
+                          * rate_constants_lh_unsplit(LHDEScorrespondingLHreacs(k))
+                if (ANY(bulkList==re1(i))) rate_constants(i) = 0.0
             end do
             k = 0
             do i = lhdesReacs(1), lhdesReacs(2)
                 k = k + 1
-                rate(LHDEScorrespondingLHreacs(k)) = rate_lh_unsplit(LHDEScorrespondingLHreacs(k)) - rate(i)
+                rate_constants(LHDEScorrespondingLHreacs(k)) = rate_constants_lh_unsplit(LHDEScorrespondingLHreacs(k)) &
+                    - rate_constants(i)
             end do
         end if
         if (erdesReacs(1) /= REAC_NOT_PRESENT .AND. desorb .AND. chemdesorb &
@@ -674,20 +675,21 @@ contains
             k = 0
             do i = erdesReacs(1), erdesReacs(2)
                 k = k + 1
-                rate(i) = getDesorptionFractionIncludingIce(i, numMonolayers) &
-                          * rate_er_unsplit(ERDEScorrespondingERreacs(k))
-                if (ANY(bulkList==re1(i))) rate(i) = 0.0
+                rate_constants(i) = getDesorptionFractionIncludingIce(i, numMonolayers) &
+                          * rate_constants_er_unsplit(ERDEScorrespondingERreacs(k))
+                if (ANY(bulkList==re1(i))) rate_constants(i) = 0.0
             end do
             k = 0
             do i = erdesReacs(1), erdesReacs(2)
                 k = k + 1
-                rate(ERDEScorrespondingERreacs(k)) = rate_er_unsplit(ERDEScorrespondingERreacs(k)) - rate(i)
+                rate_constants(ERDEScorrespondingERreacs(k)) = rate_constants_er_unsplit(ERDEScorrespondingERreacs(k)) -&
+                    rate_constants(i)
             end do
         end if
 
-        !The ODEs created by MakeRates go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
+        !The ODEs created by MakeRateConstants go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
-        call GETYDOT(RATE, Y_safe, surfaceCoverage, D, YDOT)
+        call GETYDOT(rate_constants, Y_safe, surfaceCoverage, D, YDOT)
         ! get density change from physics module to send to DLSODE
         if (enforceChargeConservation) then
             ydot(nelec) = sum(ydot(ionlist(1:nion)))
@@ -698,14 +700,14 @@ contains
         if (heatingFlag) then
             ! Species abundances in Y_safe are already clamped; Y used below only
             ! for temperature (nSpec+1) and density (nSpec+2), which are never negative.
-            ! Write(*,*) "Updating heating and cooling rates"
+            ! Write(*,*) "Updating heating and cooling rate_constantss"
             if (ABS(y(nSpec+1)-oldTemp)>MIN(heating_temp_abstol, heating_temp_reltol*oldTemp)) then
                 gasTemp(dstep)=y(nSpec+1)
                 if (gasTemp(dstep) < lower_limit_gastemp) gasTemp(dstep)=lower_limit_gastemp
                 if (gasTemp(dstep) > upper_limit_gastemp) gasTemp(dstep)=upper_limit_gastemp
-                ! Fix 2: update gas-phase two-body rates for the new temperature.
-                ! These rates are frozen at start-of-step in calculateReactionRates.
-                rate(twobodyReacs(1):twobodyReacs(2)) = &
+                ! Fix 2: update gas-phase two-body rate_constantss for the new temperature.
+                ! These rate_constantss are frozen at start-of-step in calculateReactionRateConstants.
+                rate_constants(twobodyReacs(1):twobodyReacs(2)) = &
                     alpha(twobodyReacs(1):twobodyReacs(2)) * &
                     ((gasTemp(dstep)/300.0_dp)**beta(twobodyReacs(1):twobodyReacs(2))) * &
                     exp(-gama(twobodyReacs(1):twobodyReacs(2))/gasTemp(dstep))
@@ -723,9 +725,9 @@ contains
                 ! ERDes: 0.6 eV (Bourlot et al. 2012), thermalization-corrected
                 ! CT: 1.5 eV (Hollenbach & Tielens 1999), no thermalization correction
                 h2form = eV * ( &
-                    &  1.5_dp * rate(nR_H2Form_CT) * Y(nSpec+2)**2 * Y(nh) &
-                    &+ (0.1_dp + 4.2_dp*h2heatfac) * rate(nR_H2Form_LHDes) * Y(ngh)**2 * Y(nSpec+2) &
-                    &+ 0.6_dp * h2heatfac * rate(nR_H2Form_ERDes) * Y(nSpec+2)**2 * Y(nh) * Y(ngh) &
+                    &  1.5_dp * rate_constants(nR_H2Form_CT) * Y(nSpec+2)**2 * Y(nh) &
+                    &+ (0.1_dp + 4.2_dp*h2heatfac) * rate_constants(nR_H2Form_LHDes) * Y(ngh)**2 * Y(nSpec+2) &
+                    &+ 0.6_dp * h2heatfac * rate_constants(nR_H2Form_ERDes) * Y(nSpec+2)**2 * Y(nh) * Y(ngh) &
                     &  / max(safeMantle, MIN_SURFACE_ABUND))
                 tempDot=getTempDot( &
                             &    timeInYears, &                         ! time
@@ -734,11 +736,11 @@ contains
                             &    colDens(dstep), &                      ! gas column density
                             &    radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &     ! attenuated radiation field
                             &    Y, &                                   ! all number densities
-                            &    rate(nR_H2_hv), &                      ! H2 dissociation rate computed in rates.f90
+                            &    rate_constants(nR_H2_hv), &            ! H2 dissociation rate_constants computed in rate_constantss.f90
                             &    h2form, &                              ! mechanism-weighted H2 formation heating [erg cm^-3 s^-1]
-                            &    zeta, &                                ! cosmic ray ionization rate
-                            &    rate(nR_C_hv), &                       ! C-photo rate
-                            &    1.0_dp/GAS_DUST_DENSITY_RATIO, &          ! dust-to-gas ratio
+                            &    zeta, &                                ! cosmic ray ionization rate_constants
+                            &    rate_constants(nR_C_hv), &             ! C-photo rate_constants
+                            &    1.0_dp/GAS_DUST_DENSITY_RATIO, &       ! dust-to-gas ratio
                             &    GRAIN_RADIUS, &                        ! grain radius
                             &    metallicity, &                         ! metallicity
                             &    dusttemp(dstep), &                     ! dust temperature

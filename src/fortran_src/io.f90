@@ -163,9 +163,8 @@ contains
         if (writerates) then
             if (returnArray) then
                 ! If returnArray is true, we write the rate constants to the rate constants array
-                ! The rate constants are still called "rates" within Fortran
                 ! We compute the flux in Python.
-                rateConstantsArray(dtime, dstep, :) = rate(:nreac)
+                rateConstantsArray(dtime, dstep, :) = rate_constants(:nreac)
                 ! Only populate the heating array if it is present, properly sized, AND heating is enabled
                 if (SIZE(heatarray, 1) >= timePoints .AND. heatingFlag) then
                     heatarray(dtime, dstep, 1) = timeInYears
@@ -182,7 +181,7 @@ contains
                 ! Else, we write the rate constants and rates to the file.
                 if (rateConstantsOutput) then
                     write(rateConstantId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep), &
-                        & av(dstep),radfield,zeta,dstep,RATE
+                        & av(dstep),radfield,zeta,dstep,rate_constants
                     8021 format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,","1pe11.4,",", &
                         & I4,",",(9999(1pe15.5e3,:,",")))
                 end if
@@ -236,7 +235,7 @@ contains
         write(debugId,*) "Av", av(dstep)
         write(debugId,*) "Temp", gasTemp(dstep)
         do i=1,nreac
-            if (rate(i) >= huge(i)) write(debugId,*) "Rate(",i,") is potentially infinite"
+            if (rate_constants(i) >= huge(i)) write(debugId,*) "rate_constant(",i,") is potentially infinite"
         end do
     end subroutine debugout
 

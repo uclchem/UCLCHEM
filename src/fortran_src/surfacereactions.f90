@@ -135,8 +135,8 @@ contains
     real(dp), intent(inout), dimension(nReac) :: rate
     real(dp), intent(in) :: dustTemperature
     if (THREE_PHASE) then
-      call bulkToSurfaceSwappingRates(rate,bulkswapReacs(1),bulkswapReacs(2),dustTemperature)
-      rate(surfSwapReacs(1):surfSwapReacs(2))=surfaceToBulkSwappingRates(dustTemperature)
+      call bulkToSurfaceSwappingRateConstants(rate,bulkswapReacs(1),bulkswapReacs(2),dustTemperature)
+      rate(surfSwapReacs(1):surfSwapReacs(2))=surfaceToBulkSwappingRateConstants(dustTemperature)
     end if
   end subroutine bulkSurfaceExchangeReactions
 
@@ -146,7 +146,7 @@ contains
     rate=0.5_dp*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
   end function bulkGainFromMantleBuildUp
 
-  pure function surfaceToBulkSwappingRates(dustTemperature) result(rate)
+  pure function surfaceToBulkSwappingRateConstants(dustTemperature) result(rate)
     real(dp), intent(in) :: dustTemperature
     real(dp) :: rate
 
@@ -155,10 +155,10 @@ contains
     else
         rate = 1.0_dp
     end if
-  end function surfaceToBulkSwappingRates
+  end function surfaceToBulkSwappingRateConstants
 
 
-  pure subroutine bulkToSurfaceSwappingRates(rate,idx1,idx2,dustTemperature)
+  pure subroutine bulkToSurfaceSwappingRateConstants(rate,idx1,idx2,dustTemperature)
     real(dp), intent(inout), dimension(nReac) :: rate
     real(dp), intent(in) :: dustTemperature
     integer, intent(in) :: idx1, idx2
@@ -176,7 +176,7 @@ contains
             end do
         end do
     end if
-  end subroutine bulkToSurfaceSwappingRates
+  end subroutine bulkToSurfaceSwappingRateConstants
 
   !----------------------------------------------------------------------------------------------------
 !Reactions on the surface treated by evaluating diffusion rates across grains and accounting
@@ -202,7 +202,7 @@ contains
     end if
   end function getDiffusionBarrier
 
-  pure function getReacProb(reacIndx, index1, index2, dustTemperature) result(reacProb)
+  pure function getReactionProbability(reacIndx, index1, index2, dustTemperature) result(reacProb)
     integer, intent(in) :: reacIndx, index1, index2
     real(dp), intent(in) :: dustTemperature
 
@@ -214,20 +214,20 @@ contains
     reducedMass = reducedMasses(reacIndx)
     if ((.NOT. useCustomReducedMass) .OR. (reducedMass == MISSING_VALUE_FLOAT)) then
         ! reducedMasses(reacIndx) should never be MISSING_VALUE_FLOAT,
-        ! because it is set by MakeRates, but just in case we calculate it here.
+        ! because it is set by MakeRateConstants, but just in case we calculate it here.
         reducedMass = mass(iceList(index1)) * mass(iceList(index2)) / (mass(iceList(index1)) + mass(iceList(index2)))
     end if
     tunnelProb = 2.0_dp *CHEMICAL_BARRIER_THICKNESS/REDUCED_PLANCK * sqrt(2.0_dp*AMU*reducedMass*K_BOLTZ*gama(reacIndx))
 
     !Choose fastest between classical and tunneling
     if (reacProb>tunnelProb) reacProb=tunnelProb
-  end function getReacProb
+  end function getReactionProbability
 
-  pure function getDiffusionReactionRate(reacIndx,dustTemperature) result(diffusionReactionRate)
+  pure function getDiffusionReactionRateConstant(reacIndx,dustTemperature) result(diffusionReactionRateConstant)
     integer, intent(in) :: reacIndx
     real(dp), intent(in) :: dustTemperature
 
-    real(dp) :: diffusionReactionRate
+    real(dp) :: diffusionReactionRateConstant
 
     real(dp) :: reducedMass,tunnelProb
     real(dp) :: diffuseProb,desorbProb,reactionProb,n_dust
@@ -245,7 +245,7 @@ contains
         if (iceList(i) == index2) index2 = i
     end do
 
-    !Hasegawa 1992 diffusion rate. Rate that two species diffuse and meet on grain surface
+    !Hasegawa 1992 diffusion rate. RateConstant that two species diffuse and meet on grain surface
     diffuseProb = vdiff(index1)*exp(-getDiffusionBarrier(index1)/dustTemperature)
     diffuseProb = diffuseProb+ (vdiff(index2)*exp(-getDiffusionBarrier(index2)/dustTemperature))
 
@@ -254,7 +254,7 @@ contains
     desorbProb = desorbProb + vdes(index2)*exp(-bindingEnergy(index2)/dustTemperature)
 
     !Overall reaction probability is chance of reaction occurring on meeting * diffusion rate
-    reactionProb = max(vdiff(index1),vdiff(index2)) * exp(-getReacProb(reacIndx, index1, index2, dustTemperature))
+    reactionProb = max(vdiff(index1),vdiff(index2)) * exp(-getReactionProbability(reacIndx, index1, index2, dustTemperature))
 
 
     ! Keff from Garrod & Pauly 2011 and Ruaud+2016
@@ -268,8 +268,8 @@ contains
     !see Eq A1 of Quenard et al. 2018
     !NUM_SITES_PER_GRAIN should be multiplied by n_dust as in A1
     !n_dust=density/GAS_DUST_DENSITY_RATIO so we use the 1/density to cancel the density in odes.f90 and drop it here
-    diffusionReactionRate=alpha(reacIndx) *reactionProb* diffuseProb*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
-  end function getDiffusionReactionRate
+    diffusionReactionRateConstant=alpha(reacIndx) *reactionProb* diffuseProb*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
+  end function getDiffusionReactionRateConstant
 
 ! ---------------------------------------------------------------------
 !  Chemical Reactive Desorption (CRD)
@@ -740,10 +740,10 @@ contains
 ! Encounter Desorption for H and H2 on H2-covered surfaces
 ! Hincelin et al. 2015
 ! ---------------------------------------------------------------------
-  pure function getEncounterDesorptionRate(reacIndx,dustTemperature) result(encounterDesorptionRate)
+  pure function getEncounterDesorptionRateConstant(reacIndx,dustTemperature) result(encounterDesorptionRateConstant)
     real(dp), intent(in) :: dustTemperature
     integer, intent(in) :: reacIndx
-    real(dp) :: encounterDesorptionRate
+    real(dp) :: encounterDesorptionRateConstant
 
     real(dp) :: meetProb,desorbProb,diffuseProb
 
@@ -767,17 +767,17 @@ contains
         & * exp(-EDEndothermicityFactor*(bindingEnergy(index1)-H2_ON_H2_BINDING_ENERGY)/dustTemperature)
     end if
 
-    ! Rate of diffusion of index1 specie off of H2
+    ! RateConstant of diffusion of index1 specie off of H2
     diffuseProb = vdiff(index1)*exp(-diffToBindRatio*H2_ON_H2_BINDING_ENERGY/dustTemperature)
 
-    ! Rate of desorption of index1 specie off of H2
+    ! RateConstant of desorption of index1 specie off of H2
     desorbProb = vdiff(index1)*exp(-H2_ON_H2_BINDING_ENERGY/dustTemperature)
 
     ! Probability of desorbing when on top of H2
     desorbProb = desorbProb / (desorbProb + diffuseProb)
 
     ! Actual rate of EncounterDesorption mechanism
-    encounterDesorptionRate = 0.5_dp*desorbProb* meetProb*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
-  end function getEncounterDesorptionRate
+    encounterDesorptionRateConstant = 0.5_dp*desorbProb* meetProb*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
+  end function getEncounterDesorptionRateConstant
 
 end module SurfaceReactions

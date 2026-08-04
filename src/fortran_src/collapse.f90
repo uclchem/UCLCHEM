@@ -10,7 +10,7 @@ module collapse_mod
    use DEFAULTPARAMETERS
    use F2PY_CONSTANTS, only: nSpec
    !f2py INTEGER, parameter :: dp
-   use physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
+   use physicscore, only: points, dstep, cloudsize, radfield, h2CRPRateConstant, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, gastemp, dusttemp, av, &
     & coldens, parcel_radius, get_av
    implicit none

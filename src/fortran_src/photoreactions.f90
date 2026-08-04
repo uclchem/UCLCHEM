@@ -51,22 +51,22 @@ module photoreactions
 contains
 
 !photodissociation rate of H2  accounting for self-shielding
-function getH2PhotoDissRate(NH2,radField,av,turbVel) result(H2PhotoDissRate)
+function getH2PhotoDissRateConstant(NH2,radField,av,turbVel) result(H2PhotoDissRateConstant)
     !H2 Column density to surface, UV at that surface, visual extinction to surface, and turbulent velocity of cloud
     real(dp), intent(in) :: NH2 ,radField,av ,turbVel
-    real(dp) :: H2PhotoDissRate
+    real(dp) :: H2PhotoDissRateConstant
     !unshielded reaction rate, characteristic wavelendth of radiation, radiative linewidth
-    real(dp), parameter :: baseRate=5.18e-11_dp,xl=1000.0,radWidth=8.0e7_dp
+    real(dp), parameter :: baseRateConstant=5.18e-11_dp,xl=1000.0,radWidth=8.0e7_dp
     real(dp) :: dopplerWidth
 
     dopplerWidth=turbVel/(xl*1.0e-8_dp)
-    H2PhotoDissRate = baseRate * (radField*HABING_TO_DRAINE) * calculate_grain_scatter(xl,av) * &
+    H2PhotoDissRateConstant = baseRateConstant * (radField*HABING_TO_DRAINE) * calculate_grain_scatter(xl,av) * &
         calculateH2SelfShielding(NH2,dopplerWidth,radWidth)
-end function getH2PhotoDissRate
+end function getH2PhotoDissRateConstant
 
-function getCOPhotoDissRate(NH2,NCO,radField,av) result(COPhotoDissRate)
+function getCOPhotoDissRateConstant(NH2,NCO,radField,av) result(COPhotoDissRateConstant)
     real(dp), intent(in) :: NH2,NCO,radField,av  !column densities of H2 and CO
-    real(dp) :: COPhotoDissRate
+    real(dp) :: COPhotoDissRateConstant
 
     real(dp) :: ssf,lba,sca
     !calculate photodissociation rates for co (species # nco; reaction
@@ -80,13 +80,13 @@ function getCOPhotoDissRate(NH2,NCO,radField,av) result(COPhotoDissRate)
 
     !The reason why rad is divided by 1.7 is that the alphas are for Draine and the rad is in
     !Habing units
-    COPhotoDissRate = (2.0e-10_dp) * (radfield*HABING_TO_DRAINE) * ssf * sca
-end function getCOPhotoDissRate
+    COPhotoDissRateConstant = (2.0e-10_dp) * (radfield*HABING_TO_DRAINE) * ssf * sca
+end function getCOPhotoDissRateConstant
 
-pure function getCarbonIonizationRate(alpha,gamma,gasTemp,NC,NH2,av,radfield) &
-        result(carbonIonizationRate)
+pure function getCarbonIonizationRateConstant(alpha,gamma,gasTemp,NC,NH2,av,radfield) &
+        result(carbonIonizationRateConstant)
    real(dp), intent(in) :: alpha,gamma,gasTemp,NC,NH2,av,radField
-   real(dp) :: carbonIonizationRate
+   real(dp) :: carbonIonizationRateConstant
    real(dp) :: TAUC
 
 !  Calculate the optical depth in the CI absorption band, accounting
@@ -94,8 +94,8 @@ pure function getCarbonIonizationRate(alpha,gamma,gasTemp,NC,NH2,av,radfield) &
 !  1.1e-17_dp seems the value of the ionization cross-section of C
    TAUC=gamma*av+1.1e-17_dp*NC+(0.9_dp*gasTemp**0.27_dp*(NH2/1.59e21_dp)**0.45_dp)
 !  Calculate the CI photoionization rate
-   carbonIonizationRate=alpha*(radfield*HABING_TO_DRAINE)*EXP(-TAUC)
-end function getCarbonIonizationRate
+   carbonIonizationRateConstant=alpha*(radfield*HABING_TO_DRAINE)*EXP(-TAUC)
+end function getCarbonIonizationRateConstant
 
 !-----------------------------------------------------------------------
 !  H2 line self-shielding, adopting the treatment of

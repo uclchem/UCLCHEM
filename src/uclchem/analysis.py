@@ -518,7 +518,7 @@ def _get_species_rates(
     species_index: int,
     reac_indxs: list[int],
 ) -> tuple[np.ndarray, float, float, float]:
-    """Get the rate of up to 500 reactions from UCLCHEM for a given.
+    """Get the rate constants of up to 500 reactions from UCLCHEM for a given.
 
     set of parameters and abundances.
     Intended for use within the analysis script.
@@ -538,7 +538,7 @@ def _get_species_rates(
     Returns
     -------
     np.ndarray
-        Array containing the rate of every reaction specified by reac_indxs
+        Array containing the rate constant of every reaction specified by reac_indxs
     transfer
         Total transfer rate between surface and bulk ice.
     swap
@@ -560,13 +560,13 @@ def _get_species_rates(
     input_abund[: len(input_abundances)] = input_abundances
     rate_indxs = np.ones(n_reactions)
     rate_indxs[: len(reac_indxs)] = reac_indxs
-    rates, success_flag, transfer, swap, bulk_layers = wrap.get_rates(
+    rate_constants, success_flag, transfer, swap, bulk_layers = wrap.get_rate_constants(
         param_dict, input_abund, species_index, rate_indxs
     )
     if success_flag < 0:
         msg = "UCLCHEM failed to return rates for these parameters"
         raise RuntimeError(msg)
-    return rates[: len(reac_indxs)], transfer, swap, bulk_layers
+    return rate_constants[: len(reac_indxs)], transfer, swap, bulk_layers
 
 
 def _get_rates_of_change(

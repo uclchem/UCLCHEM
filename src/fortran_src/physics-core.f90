@@ -17,7 +17,7 @@ module physicscore
     integer :: dstep
 
     !Optional CR attenuation with column density and better H2 dissociation rates
-    real(dp) :: h2CRPRate,zetaScale
+    real(dp) :: h2CRPRateConstant,zetaScale
 
     !variables either controlled by physics or that user may wish to change
     real(dp) :: timeInYears,targetTime,currentTimeOld
@@ -89,10 +89,6 @@ module physicscore
     ! ! range of wavelength for integration
     real(dp), parameter :: wave1 = HP * C * 1.0e4_dp / (13.6_dp * eV)  !in micron
     real(dp), parameter :: wave2 = 20.0_dp  ! in micron
-
-    interface get_av
-        module procedure get_av_array, get_av_scalar
-    end interface get_av
 
 contains
     !basic initialization of physics. All physics modules should call this and then
@@ -188,17 +184,7 @@ contains
     end if
     end function get_densdot
 
-    pure function get_av_array(baseAv, coldens) result(av)
-        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        real(dp), intent(in) :: baseAv
-        real(dp), intent(in), dimension(:) :: coldens
-
-        real(dp), dimension(size(coldens)) :: av
-
-        av = baseAv + coldens/1.6e21_dp
-    end function get_av_array
-
-    pure function get_av_scalar(baseAv, coldens) result(av)
+    elemental function get_av(baseAv, coldens) result(av)
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         real(dp), intent(in) :: baseAv
         real(dp), intent(in) :: coldens
@@ -206,8 +192,7 @@ contains
         real(dp) :: av
 
         av = baseAv + coldens/1.6e21_dp
-    end function get_av_scalar
-
+    end function get_av
 
     pure function getDByDnDensdot(density) result(dByDnDensdot)
     !Defunct function which provides the necessary derivative d(dn/dt)/dn
@@ -257,7 +242,7 @@ contains
                 end if
                 dissSum=dissSum+dRate
             end do
-            h2CRPRate=(10**dissSum)*zetaScale
+            h2CRPRateConstant=(10**dissSum)*zetaScale
         end if
     end subroutine ionizationDependency
 
