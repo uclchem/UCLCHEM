@@ -20,24 +20,24 @@ module SurfaceReactions
   real(dp) :: safeMantle,safeBulk
 
   !Silicate grain properties for H2 Formation
-  real(dp),parameter :: SILICATE_MU=0.005_dp  ! Fraction of newly formed H2 that stays on the grain surface
-  real(dp),parameter :: SILICATE_E_S=110.0_dp  ! Energy of the saddle point between a physisorbed and a chemisorbed site (K)
-  real(dp),parameter :: SILICATE_E_H2=320.0_dp  ! Desorption energy of H2 molecules (K)
-  real(dp),parameter :: SILICATE_E_HP=450.0_dp  ! Desorption energy of physisorbed H atoms (K)
-  real(dp),parameter :: SILICATE_E_HC=3.0e4_dp   ! Desorption energy of chemisorbed H atoms (K)
-  real(dp),parameter :: SILICATE_NU_H2=3.0e12_dp  ! Vibrational frequency of H2 molecules in surface sites (s^-1)
-  real(dp),parameter :: SILICATE_NU_HC=1.3e13_dp  ! Vibrational frequency of H atoms in their surface sites (s^-1)
-  real(dp),parameter :: SILICATE_CROSS_SECTION=8.473e-22_dp  !*CROSS_SECTION_SCALE ! Silicate grain cross section per H nucleus (cm^-2/nucleus)
+  real(dp), parameter :: SILICATE_MU=0.005_dp  ! Fraction of newly formed H2 that stays on the grain surface
+  real(dp), parameter :: SILICATE_E_S=110.0_dp  ! Energy of the saddle point between a physisorbed and a chemisorbed site (K)
+  real(dp), parameter :: SILICATE_E_H2=320.0_dp  ! Desorption energy of H2 molecules (K)
+  real(dp), parameter :: SILICATE_E_HP=450.0_dp  ! Desorption energy of physisorbed H atoms (K)
+  real(dp), parameter :: SILICATE_E_HC=3.0e4_dp   ! Desorption energy of chemisorbed H atoms (K)
+  real(dp), parameter :: SILICATE_NU_H2=3.0e12_dp  ! Vibrational frequency of H2 molecules in surface sites (s^-1)
+  real(dp), parameter :: SILICATE_NU_HC=1.3e13_dp  ! Vibrational frequency of H atoms in their surface sites (s^-1)
+  real(dp), parameter :: SILICATE_CROSS_SECTION=8.473e-22_dp  !*CROSS_SECTION_SCALE ! Silicate grain cross section per H nucleus (cm^-2/nucleus)
 
   !Graphite grain properties for H2 Formation
-  real(dp),parameter :: GRAPHITE_MU=0.005_dp   ! Fraction of newly formed H2 that stays on the grain surface
-  real(dp),parameter :: GRAPHITE_E_S=260.0_dp  ! Energy of the saddle point between a physisorbed and a chemisorbed site (K)
-  real(dp),parameter :: GRAPHITE_E_H2=520.0_dp  ! Desorption energy of H2 molecules (K)
-  real(dp),parameter :: GRAPHITE_E_HP=800.0_dp  ! Desorption energy of physisorbed H atoms (K)
-  real(dp),parameter :: GRAPHITE_E_HC=3.0e4_dp   ! Desorption energy of chemisorbed H atoms (K)
-  real(dp),parameter :: GRAPHITE_NU_H2=3.0e12_dp  ! Vibrational frequency of H2 molecules in surface sites (s^-1)
-  real(dp),parameter :: GRAPHITE_NU_HC=1.3e13_dp  ! Vibrational frequency of H atoms in their surface sites (s^-1)
-  real(dp),parameter :: GRAPHITE_CROSS_SECTION=7.908e-22_dp  !*CROSS_SECTION_SCALE ! Graphite grain cross section per H nucleus (cm^-2/nucleus)
+  real(dp), parameter :: GRAPHITE_MU=0.005_dp   ! Fraction of newly formed H2 that stays on the grain surface
+  real(dp), parameter :: GRAPHITE_E_S=260.0_dp  ! Energy of the saddle point between a physisorbed and a chemisorbed site (K)
+  real(dp), parameter :: GRAPHITE_E_H2=520.0_dp  ! Desorption energy of H2 molecules (K)
+  real(dp), parameter :: GRAPHITE_E_HP=800.0_dp  ! Desorption energy of physisorbed H atoms (K)
+  real(dp), parameter :: GRAPHITE_E_HC=3.0e4_dp   ! Desorption energy of chemisorbed H atoms (K)
+  real(dp), parameter :: GRAPHITE_NU_H2=3.0e12_dp  ! Vibrational frequency of H2 molecules in surface sites (s^-1)
+  real(dp), parameter :: GRAPHITE_NU_HC=1.3e13_dp  ! Vibrational frequency of H atoms in their surface sites (s^-1)
+  real(dp), parameter :: GRAPHITE_CROSS_SECTION=7.908e-22_dp  !*CROSS_SECTION_SCALE ! Graphite grain cross section per H nucleus (cm^-2/nucleus)
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !Grain surface parameters
@@ -61,7 +61,7 @@ module SurfaceReactions
   real(dp), parameter :: SURFACE_SITE_DENSITY = 1.5e15_dp  ! site density on one grain [cm-2]
   real(dp), parameter :: VDIFF_PREFACTOR=2.0_dp*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
   real(dp), parameter :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0_dp*PI
-  real(dp), parameter :: EFFECTIVE_SURFACE_MASS = 120.0_dp
+  real(dp), parameter :: EFFECTIVE_SURFACE_MASS = 120.0_dp ! Effective mass of grain surface in Dalton
 
   ! TST prefactor constants
   real(dp), parameter :: HH_VDES_PREFACTOR=2.0_dp*K_BOLTZ_SI*SURFACE_SITE_DENSITY*1.0e4_dp/(PI*PI*AMU)
@@ -77,7 +77,7 @@ module SurfaceReactions
   ! Desorption fraction arrays for LHDES/ERDES reactions (pre-calculated at initialization)
   real(dp), dimension(nReac) :: desorptionFractionsBare, desorptionFractionsFullCoverage
 
-  real(dp), allocatable :: vdiff(:),vdes(:)
+  real(dp), allocatable :: vdiff(:), vdes(:)
 contains
   !=======================================================================
   !
@@ -662,8 +662,8 @@ contains
 ! ---------------------------------------------------------------------
 ! Update diffusion and desorption rates with TST or Hasegawa-Herbst
 ! ---------------------------------------------------------------------
-  pure subroutine updateVdiffAndVdes(gasTemp, dustTemp, nIce, vdiff, vdes)
-    real(dp), intent(in) :: gasTemp, dustTemp
+  pure subroutine updateVdiffAndVdes(dustTemp, nIce, vdiff, vdes)
+    real(dp), intent(in) :: dustTemp
     integer, intent(in) :: nIce
     real(dp), intent(out) :: vdiff(nIce), vdes(nIce)
 
