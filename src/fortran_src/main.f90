@@ -58,9 +58,9 @@ implicit none
     !         &abundances,dissipationResult,success)
     ! case("POSTPROCESS")
     !    call postprocess(paramDict,DUMMY_STRING,.false.,.false.,abundances,success)
-    ! case default
-    !     write(*,*) "Model type not recognized"
-    !     write(*,*) "Supported models are: CLOUD, CSHOCK, HOTCORE and POSTPROCESS"
-    !     stop
+    case default
+        write(*,*) "Model type not recognized"
+        write(*,*) "Supported models are: CLOUD, CSHOCK, HOTCORE and POSTPROCESS"
+        stop
     end select
 end program uclchem
