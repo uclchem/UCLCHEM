@@ -257,7 +257,7 @@ contains
         !f2py intent(out) successFlag
         character(LEN=32), intent(out) :: specname_out(nSpec)
         !f2py intent(out) specname_out
-        !f2py depend(nspec) specname_out 
+        !f2py depend(nspec) specname_out
         !f2py intent(in) temp_index,max_temp,dictionary,outSpeciesIn
         logical, intent(in) :: returnArray
         !f2py intent(in) returnArray
