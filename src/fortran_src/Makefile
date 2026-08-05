@@ -35,8 +35,8 @@ main: dvode.o ${CONSTANTS_OBS} network.o ${PHYSICS_OBS} ${HEATING_OBS} ${CHEMIST
 
 # The order here is the compilation order and it's vital that modules are compiled after their dependencies
 # We need to pass f2py_constants.f90 into wrap.f90 in order for nspec (and other parameters) to be in scope in wrap.
-python: ${CONSTANTS_OBS} network.o ${PHYSICS_OBS} ${HEATING_OBS} dvode.o ${CHEMISTRY_OBS} io.o  wrap.f90
-	python3 -m numpy.f2py -c --fcompiler=${f2pyFC} ${CONSTANTS_OBS} network.o io.o ${PHYSICS_OBS} ${HEATING_OBS} dvode.o ${CHEMISTRY_OBS} f2py_constants.f90 wrap.f90 -m uclchemwrap
+python: dvode.o ${CONSTANTS_OBS} network.o ${PHYSICS_OBS} ${HEATING_OBS} ${CHEMISTRY_OBS} io.o  wrap.f90
+	python3 -m numpy.f2py -c ${CONSTANTS_OBS} network.o io.o ${PHYSICS_OBS} ${HEATING_OBS} dvode.o ${CHEMISTRY_OBS} f2py_constants.f90 wrap.f90 -m uclchemwrap
 # Optional useful flags for debugging: --debug-capi, --debug, --f90flags="-fcheck=all"
 
 heating.o: swap_function.f90 coolant_module.f90 heating.f90

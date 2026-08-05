@@ -73,11 +73,14 @@ contains
 
         use cloud_mod, only: initializePhysics, updatePhysics, updateTargetTime, sublimation
 
-        !f2py integer, intent(aux) :: nSpec, n_physics_params, nHeatingTerms, N_DVODE_STATS, N_TOTAL_LEVELS, N_SE_STATS_PER_COOLANT
-        !f2py intent(out) abundance_out, specname_out
+        !f2py integer, intent(aux) :: nspec, nreac, ncoolants, n_physics_params, nHeatingTerms, N_DVODE_STATS, N_TOTAL_LEVELS, N_SE_STATS_PER_COOLANT
         character(LEN=*), intent(inout) :: dictionary, outSpeciesIn
         real(dp), intent(out), dimension(nSpec) :: abundance_out
+        !f2py intent(out) abundance_out
+        !f2py depend(nspec) abundance_out
         character(LEN=32), intent(out) :: specname_out(nSpec)
+        !f2py intent(out) specname_out
+        !f2py depend(nspec) specname_out
         integer, intent(out) :: successFlag
         !f2py intent(in) dictionary,outSpeciesIn
         !f2py intent(out) successFlag
@@ -157,10 +160,14 @@ contains
         use collapse_mod, only: initializePhysics, updatePhysics, updateTargetTime, sublimation, &
             collapse_mode
 
-        !f2py integer,parameter intent(aux) nSpec, n_physics_params, nHeatingTerms, N_DVODE_STATS, N_TOTAL_LEVELS, N_SE_STATS_PER_COOLANT
+        !f2py integer, intent(aux) :: nspec, nreac, ncoolants, n_physics_params, nHeatingTerms, N_DVODE_STATS, N_TOTAL_LEVELS, N_SE_STATS_PER_COOLANT
         character(LEN=*), intent(inout) :: dictionary, outSpeciesIn
         real(dp), intent(out), dimension(nSpec) :: abundance_out
+        !f2py intent(out) abundance_out
+        !f2py depend(nspec) abundance_out
         character(LEN=32), intent(out) :: specname_out(nSpec)
+        !f2py intent(out) specname_out
+        !f2py depend(nSpec) specname_out
         integer, intent(out) :: successFlag
         integer, intent(in) :: collapseIn
         !f2py intent(in) collapseIn,dictionary,outSpeciesIn
@@ -177,10 +184,10 @@ contains
         !f2py intent(in) timePoints
         real(dp), intent(inout), optional, dimension(timePoints+1, gridPoints, n_physics_params) :: physicsarray
         !f2py intent(in,out) physicsarray
-        !f2py depend(gridPoints) physicsarray
+        !f2py depend(timePoints, gridPoints, N_PHYSICS_PARAMS) physicsarray
         real(dp), intent(inout), dimension(timePoints+1, gridPoints, nSpec), optional :: chemicalabunarray
         !f2py intent(in,out) chemicalabunarray
-        !f2py depend(gridPoints) chemicalabunarray
+        !f2py depend(timePoints, gridPoints, nSpec) chemicalabunarray
         real(dp), intent(inout), optional, dimension(timePoints+1, gridPoints, nReac) :: rateConstantsArray
         !f2py intent(in,out) rateConstantsArray
         !f2py depend(timePoints,gridPoints,nReac) rateConstantsArray
@@ -239,16 +246,19 @@ contains
         use hotcore, only: initializePhysics, updatePhysics, updateTargetTime, sublimation, &
             maxTemp, tempIndx
 
-
-        !f2py integer, parameter intent(aux) nSpec, n_physics_params, nHeatingTerms, N_DVODE_STATS
+        !f2py integer, intent(aux) :: nspec, nreac, ncoolants, n_physics_params, nheatingterms, n_dvode_stats, n_total_levels, n_se_stats_per_coolant
         character(LEN=*), intent(inout) :: dictionary, outSpeciesIn
         real(dp), intent(out) :: abundance_out(nSpec)
+        !f2py intent(out) abundance_out
+        !f2py depend(nspec) abundance_out
         real(dp), intent(in) :: max_temp
         integer, intent(in) :: temp_index
         integer, intent(out) :: successFlag
+        !f2py intent(out) successFlag
         character(LEN=32), intent(out) :: specname_out(nSpec)
+        !f2py intent(out) specname_out
+        !f2py depend(nspec) specname_out 
         !f2py intent(in) temp_index,max_temp,dictionary,outSpeciesIn
-        !f2py intent(out) abundance_out,specname_out,successFlag
         logical, intent(in) :: returnArray
         !f2py intent(in) returnArray
         logical, intent(in) :: returnRateConstants
@@ -327,7 +337,7 @@ contains
         use cshock_mod, only: initializePhysics, updatePhysics, updateTargetTime, sublimation, &
             minimumPostshockTemp, dissipationTime, timestepFactor, vs
 
-        !f2py integer, parameter intent(aux) nSpec, n_physics_params, nHeatingTerms, N_DVODE_STATS
+        !f2py integer, intent(aux) :: nspec, nreac, ncoolants, n_physics_params, nheatingterms, n_dvode_stats, n_total_levels, n_se_stats_per_coolant
         character(LEN=*), intent(inout) :: dictionary, outSpeciesIn
         real(dp), intent(out) :: abundance_out(nSpec)
         real(dp), intent(in) :: shock_vel,timestep_factor
@@ -413,7 +423,7 @@ contains
         ! successFlag - integer flag indicating success or fail
         use jshock_mod, only: initializePhysics, updatePhysics, updateTargetTime, sublimation, vs
 
-        !f2py integer, parameter intent(aux) nSpec, n_physics_params, nHeatingTerms, N_DVODE_STATS
+        !f2py integer, intent(aux) :: nspec, nreac, ncoolants, n_physics_params, nheatingterms, n_dvode_stats, n_total_levels, n_se_stats_per_coolant
         character(LEN=*), intent(inout) :: dictionary, outSpeciesIn
         real(dp), intent(in) :: shock_vel
         real(dp), intent(out), dimension(nSpec) :: abundance_out
@@ -492,7 +502,7 @@ contains
         ! successFlag - integer flag indicating success or fail
         use postprocess_mod, only: initializePhysics, updatePhysics, updateTargetTime, sublimation
 
-        !f2py integer, parameter intent(aux) nSpec, n_physics_params, nHeatingTerms, N_DVODE_STATS
+        !f2py integer, intent(aux) :: nspec, nreac, ncoolants, n_physics_params, nheatingterms, n_dvode_stats, n_total_levels, n_se_stats_per_coolant
         character(LEN=*), intent(inout) :: dictionary, outSpeciesIn
         real(dp), intent(out) :: abundance_out(nSpec)
         integer, intent(out) :: successFlag
@@ -582,7 +592,7 @@ contains
         !to allow for the calculation of the rate of bulk/surface ice transfer.
         use cloud_mod, only: initializePhysics
         use f2py_constants, only: nSpec, nReac
-        !f2py integer, intent(aux) :: nSpec
+        !f2py integer, intent(aux) :: nSpec, nReac
         character(LEN=*), intent(inout) :: dictionary
         real(dp), intent(in) :: abundancesIn(nSpec)
         integer, intent(in) :: speciesIndx
@@ -1489,6 +1499,7 @@ contains
     subroutine get_specname(specname_out)
         !Returns:
         ! specname_out - array of species that are in the chemicalabunarray
+        !f2py integer, intent(aux) :: nspec
         !f2py intent(out) specname_out
         character(LEN=32), intent(out) :: specname_out(nSpec)
         specname_out(:nSpec) = specName
