@@ -7,6 +7,7 @@ module physicscore
         uISRF, uISRF_UV, Lsun, SB_CONST
     use DEFAULTPARAMETERS
     use extinction_module, only: extcurve_obs
+    use numerics, only: evaluate_polynomial, integrate_trapezoid, logspace
     !f2py INTEGER, parameter :: dp
 
     implicit none
@@ -161,7 +162,9 @@ contains
             dustTemp(dstep)=gasTemp(dstep)
         end if
 
-        if (cosmicRayAttenuation) call ionizationDependency
+        if (cosmicRayAttenuation) then
+            call ionizationDependency
+        end if
     end subroutine coreUpdatePhysics
 
     pure function get_densdot(density) result(densdot)
@@ -178,7 +181,7 @@ contains
     !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
     if ((density < finalDens) .and. (freefall) .and. (density > n0_pt)) then
         densdot=freefallFactor*(density**4.0_dp/n0_pt)**0.33_dp*&
-        &(8.4e-30_dp*n0_pt*((density/n0_pt)**0.33_dp-1.0_dp))**0.5_dp
+        &sqrt(8.4e-30_dp*n0_pt*((density/n0_pt)**0.33_dp-1.0_dp))
     else
         densdot=0.0
     end if
@@ -210,41 +213,34 @@ contains
     end function getDByDnDensdot
 
     subroutine ionizationDependency
-        real(dp) :: dissSum,dRate,zSum,ionRate
-        integer :: k
-        !Attenuate CR by column density
-        zeta = 1.0_dp
-        zSum = 0.0_dp
-        do k=0,9,1
-            if (ionModel == "L") then
-                ionRate=ckLIon(k+1)*log10(coldens(dstep))**k
-            else if (ionModel == "H") then
-                ionRate=ckHIon(k+1)*log10(coldens(dstep))**k
-            else
-                write(*,*) "WARNING: ionModel switch must be 0 or 1"
-            end if
-            zSum=zSum+ionRate
-        end do
+        real(dp) :: dissSum,zSum
 
+        !Attenuate CR by column density
+        select case (ionModel)
+            case ("L")
+                zSum = evaluate_polynomial(ckLIon, log10(coldens(dstep)))
+            case ("H")
+                zSum = evaluate_polynomial(ckHIon, log10(coldens(dstep)))
+            case default
+                write(*,*) "WARNING: ionModel switch must be 'L' or 'H'"
+        end select
         ! update/overwrite zeta with attenuated value
         zeta = ((10**zSum)/1.3e-17_dp)* zetaScale
 
         !rate calculation for H2 dissociation
         if (improvedH2CRPDissociation) then
-            dissSum = 0.0_dp
-            do k=0,9,1
-                if (ionModel == "L") then
-                    dRate=ckLDiss(k+1)*log10(coldens(dstep))**k
-                else if (ionModel == "H") then
-                    dRate=ckHDiss(k+1)*log10(coldens(dstep))**k
-                else
-                    write(*,*) "WARNING: ionModel switch must be L or H"
-                end if
-                dissSum=dissSum+dRate
-            end do
+            select case (ionModel)
+                case ("L")
+                    dissSum = evaluate_polynomial(ckLDiss, log10(coldens(dstep)))
+                case ("H")
+                    dissSum = evaluate_polynomial(ckHDiss, log10(coldens(dstep)))
+                case default
+                    write(*,*) "WARNING: ionModel switch must be 'L' or 'H'"
+            end select
             h2CRPRateConstant=(10**dissSum)*zetaScale
         end if
     end subroutine ionizationDependency
+
 
     ! Analytical column density from center (r=0) to r [cm^-2].
     pure subroutine findcoldens_core2edge(coldens,rho0,density_scale_radius,density_power_index,r)
@@ -363,7 +359,7 @@ contains
 
         !logspace for wave in micron
         allocate(wave(nw))
-        call logspace(log10(wave1), log10(wave2), nw, wave)
+        wave = logspace(log10(wave1), log10(wave2), nw)
 
         ! convert wave from micron to cm
         wave_cm = wave*1.0e-4_dp  !in cm
@@ -378,16 +374,13 @@ contains
         uwave_red = uwave_star*exp(-tau_wave)
 
         ! Apply trapezoidal rule for numerical integration
-        urad_red = 0.0_dp
-        do i = 1, nw-1
-            urad_red = urad_red + 0.5_dp * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
-        end do
+        urad_red = integrate_trapezoid(wave_cm, uwave_red)
 
         ! The stellar radius
         Rstar=get_Rstar_rsub(Tstar,Tdsub)*rsub
 
         ! The total radiation field (dimensionless)
-        U = urad_red / uISRF * (r / Rstar)**(-2.0_dp)
+        U = urad_red / uISRF * (Rstar / r)**2
     end subroutine radiation_star
 
     pure subroutine radiation_shell(r, Lstar, Tstar, Avs, U)
@@ -416,7 +409,7 @@ contains
 
         !logspace for wave in micron
         allocate(wave(nw))
-        call logspace(log10(wave1), log10(wave2), nw, wave)
+        wave = logspace(log10(wave1), log10(wave2), nw)
 
         ! convert wave from micron to cm
         wave_cm = wave*1.0e-4_dp  !in cm
@@ -431,23 +424,10 @@ contains
         uwave_red = uwave_star*exp(-tau_wave)
 
         ! Apply trapezoidal rule for numerical integration
-        urad_red = 0.0_dp
-        do i = 1, nw-1
-            urad_red = urad_red + 0.5_dp * (wave_cm(i+1) - wave_cm(i)) * (uwave_red(i+1) + uwave_red(i))
-        end do
-        U = urad_red / uISRF * (r / rsub)**(-2.0_dp)
+        urad_red = integrate_trapezoid(wave_cm, uwave_red)
+
+        U = urad_red / uISRF * (rsub / r)**2
     end subroutine radiation_shell
-
-    pure subroutine logspace(start, stop, num, result)
-        real(dp), intent(in) :: start, stop
-        integer, intent(in) :: num
-        real(dp), dimension(num), intent(out) :: result
-        integer :: i
-
-        do i = 1, num
-            result(i) = 10.0_dp**(start + (i-1)*(stop-start)/DBLE(num-1))
-        end do
-    end subroutine logspace
 
     pure function get_Rstar_rsub(Tstar,Tdmax) result(Rstar_rsub)
         real(dp), intent(in) :: Tstar,Tdmax

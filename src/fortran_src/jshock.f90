@@ -3,11 +3,11 @@
 !Based on James et al. 2019 A&A 634
 !https://ui.adsabs.harvard.edu/abs/2020A%26A...634A..17J/abstract
 module jshock_mod
-    use constants, only: PI, PC, SECONDS_PER_YEAR
+    use constants, only: dp, PI, PC, SECONDS_PER_YEAR
     use DEFAULTPARAMETERS
     use f2py_constants, only: nSpec
-    !f2py INTEGER, parameter :: dp
     use network, only: iceList
+    use numerics, only: evaluate_polynomial
     use physicscore, only: points, dstep, cloudsize, radfield, h2CRPRateConstant, improvedH2CRPDissociation, &
         zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, &
         gastemp, dusttemp, av, coldens
@@ -33,6 +33,9 @@ contains
     subroutine initializePhysics(successFlag)
         !f2py integer, intent(aux) :: points
         integer, intent(out) :: successFlag
+        ! allow(C031)
+        real(dp), parameter, dimension(5) :: vMinCoeffs = (/0.4254_dp, 0.06183_dp, 0.002478_dp, 3.844e-5_dp, -2.058e-7_dp/)
+
         successFlag=0
         !Reset variables for python wrap.
 
@@ -55,10 +58,8 @@ contains
         maxTemp = (5e3_dp)*(vs/10.0_dp)**2
         currentTimeOld=0.0_dp
 
-
         ! Determine minimum velocity
-        vMin = ((-2.058e-07_dp*(vs**4) + 3.844e-05_dp*(vs**3) - 0.002478_dp*(vs**2) + &
-            0.06183_dp*(vs) - 0.4254_dp)**2)**0.5_dp
+        vMin = abs(evaluate_polynomial(vMinCoeffs, vs))
 
         ! Determine the shock width (of the order of the mean free path)
         mfp = ((sqrt(2.0_dp)*(1e3_dp)*(PI*(2.4e-8_dp)**2))**(-1))/1e4_dp
@@ -104,10 +105,7 @@ contains
     subroutine updatePhysics
 
         ! Determine the shock velocity at the current time
-        v0 = vs*(exp(log(vMin/vs)*(currentTime/(finalTime*SECONDS_PER_YEAR))))
-        if (v0 < vMin) then
-            v0 = vMin
-        end if
+        v0 = max(vMin, vs*(exp(log(vMin/vs)*(currentTime/(finalTime*SECONDS_PER_YEAR)))))
 
         ! Determine whether shock is still increasing the temperature
         ! Or whether it is in the post-shock cooling phase
@@ -122,13 +120,11 @@ contains
             density = (4*initialDens)*exp(n_lambda*(currentTime/tCool))
 
             ! Ensure the gas does not cool below around 10 K
-            if (tn(dstep) <= 10) then
-                tn(dstep) = 10
-            end if
+            tn(dstep) = max(10.0_dp, tn(dstep))
 
             where(density > maxDens) density = maxDens
         else
-            tn(dstep) = 10
+            tn(dstep) = 10.0_dp
             density = maxDens
         end if
         gasTemp(dstep)=tn(dstep)

@@ -199,7 +199,7 @@ contains
         !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
         !It takes the form T=A(t^B)*[(d/R)^-0.5], where A and B are given below for various stellar masses
             gasTemp(dstep)=parcelRadius(dstep)/rout
-            gasTemp(dstep)=gasTemp(dstep)**(-0.5_dp)
+            gasTemp(dstep)=sqrt(1_dp/gasTemp(dstep))
             gasTemp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime/SECONDS_PER_YEAR)**tempb(tempindx))*gasTemp(dstep))
             if (gasTemp(dstep) > maxTemp) gasTemp(dstep)=maxTemp
         end if

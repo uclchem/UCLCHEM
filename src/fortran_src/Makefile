@@ -19,8 +19,8 @@ EXT_SUFFIX = $(shell python3-config --extension-suffix)
 
 PHYSICS_OBS   = extinction.o physics-core.o cloud.o hotcore.o sputtering.o cshock.o jshock.o collapse.o postprocess.o
 CHEMISTRY_OBS = odes.o photoreactions.o surfacereactions.o rates.o chemistry.o
-CONSTANTS_OBS = constants.o defaultparameters.o f2py_constants.o
-HEATING_OBS   = swap_function.o coolant_module.o heating.o
+CONSTANTS_OBS = constants.o defaultparameters.o f2py_constants.o numerics.o
+HEATING_OBS   = coolant_module.o heating.o
 ##simple makefile for uclchem
 ##user must point the FC variable to their preferred fortran compiler
 ##builds ode solver, physics module and chemistry module before linking together for main
@@ -39,7 +39,7 @@ python: dvode.o ${CONSTANTS_OBS} network.o ${PHYSICS_OBS} ${HEATING_OBS} ${CHEMI
 	python3 -m numpy.f2py -c ${CONSTANTS_OBS} network.o io.o ${PHYSICS_OBS} ${HEATING_OBS} dvode.o ${CHEMISTRY_OBS} f2py_constants.f90 wrap.f90 -m uclchemwrap
 # Optional useful flags for debugging: --debug-capi, --debug, --f90flags="-fcheck=all"
 
-heating.o: swap_function.f90 coolant_module.f90 heating.f90
+heating.o: coolant_module.f90 heating.f90
 	${FC} ${FFLAGS} -c heating.f90
 
 chemistry.o: photoreactions.f90 surfacereactions.f90 rates.f90 odes.f90  chemistry.f90
