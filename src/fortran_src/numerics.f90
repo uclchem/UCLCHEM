@@ -19,7 +19,7 @@ contains
       real(dp), intent(in) :: x  ! x-value where to evaluate the polynomial
       real(dp) :: value
       integer :: i
-  
+
       value = coeffs(size(coeffs))
       do i = size(coeffs)-1, 1, -1
         value = value * x + coeffs(i)
