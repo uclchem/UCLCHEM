@@ -48,7 +48,7 @@ module uclchemwrap
 
 
 contains
-    subroutine cloud(dictionary, outSpeciesIn,returnArray,returnRateConstants,&
+    subroutine cloud(dictionary, outSpeciesIn, returnArray, returnRateConstants,&
             &givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
             &rateConstantsArray, heatarray, statsarray, levelpopulationsarray, sestatsarray,&
             &abundanceStart ,abundance_out,specname_out,successFlag)
@@ -780,6 +780,11 @@ contains
             ! Fix to make sure that running in memory mode after running in file mode works correctly
             readAbunds=.false.
             writeAbunds=.false.
+            if ((.not. present(physicsarray)) .or. (.not. present(chemicalabunarray))) then
+                successFlag = PARAMETER_READ_ERROR
+                write(*, *) "Error: returnArray was true, but no physicsArray or chemicalAbunArray was given."
+                return
+            end if
         else
             call fileSetup
         end if

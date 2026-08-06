@@ -226,9 +226,9 @@ contains
          rhofit = rho0/(1 + (rau/r0)**a)
       else if (collapse_mode == 3) then
          unitrho = 2.2e4_dp
-         unitr = sqrt(1.38e-16_dp*10/2/MH)*(2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! distance unit equal to c_s * (2 PI G rho0)**-1/2
+         unitr = sqrt((1.38e-16_dp*10_dp/2_dp/MH)/(2_dp*PI*6.67e-8_dp*2.2e4_dp*MH))  ! distance unit equal to c_s * (2 PI G rho0)**-1/2
          unitr = unitr/PC
-         rhofit = unitrho*rho0/(1+(r/unitr/r0)**2)**a
+         rhofit = unitrho*rho0/(1+(r/unitr/r0)**2_dp)**a
       else if (collapse_mode == 4) then
          r75 = r/7.5e-1_dp
          rhofit = rho0/(1.0_dp + (r75/r0)**a)
@@ -243,12 +243,12 @@ contains
       real(dp) :: logrho0, unitt
       if (collapse_mode == 1) then
          logrho0 = 61.8_dp*(maxTime-t)**(-0.01_dp) - 49.4_dp
-         rho0fit = 10**logrho0
+         rho0fit = 10_dp**logrho0
       else if (collapse_mode == 2) then
          logrho0 = 68.4_dp*(maxTime-t)**(-0.01_dp) - 55.7_dp
-         rho0fit = 10**logrho0
+         rho0fit = 10_dp**logrho0
       else if (collapse_mode == 3) then
-         unitt = (2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! time unit equal to (2 PI G rho0)**-1/2
+         unitt =sqrt(1_dp/(2*PI*6.67e-8_dp*2.2e4_dp*MH))  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
          logrho0 = 3.54_dp*(5.47_dp-t/unitt)**(-0.15_dp) - 2.73_dp
          rho0fit = 10**logrho0
@@ -257,7 +257,7 @@ contains
             rho0fit = 2.0e3_dp + 1.7e3_dp*(t/6.0_dp - 1.0_dp)
          else
             logrho0 = 5.3_dp*(16.138_dp-1e-6_dp*t)**(-0.1_dp) - 1.0_dp
-            rho0fit = 10**logrho0
+            rho0fit = 10_dp**logrho0
          end if
       end if
 
@@ -276,7 +276,7 @@ contains
          logr0 = -39.0_dp*(maxTime-t)**(-0.01_dp) + 38.7_dp
          r0fit = 10**logr0
       else if (collapse_mode == 3) then
-         unitt = (2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! time unit equal to (2 PI G rho0)**-1/2
+         unitt = sqrt(1_dp/(2*PI*6.67e-8_dp*2.2e4_dp*MH))  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
          logr0 = -1.34_dp*(5.47_dp-t/unitt)**(-0.15_dp) + 1.47_dp
          r0fit = 10**logr0
@@ -300,7 +300,7 @@ contains
       else if (collapse_mode == 2) then
          afit = 1.9_dp + 0.5_dp*exp(-t/1e5_dp)
       else if (collapse_mode == 3) then
-         unitt = (2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! time unit equal to (2 PI G rho0)**-1/2
+         unitt = sqrt(1/(2*PI*6.67e-8_dp*2.2e4_dp*MH))  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
          afit = 2.0_dp - 0.5_dp*(t/unitt/5.47_dp)**9
       else if (collapse_mode == 4) then
@@ -316,7 +316,7 @@ contains
       real(dp) :: unitr,newRadius,rmid,r75
 
       if (collapse_mode == 3) then
-         unitr = sqrt(1.38e-16_dp*10/2/MH)*(2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! distance unit equal to c_s * (2 PI G rho0)**-1/2
+         unitr = sqrt((1.38e-16_dp*10/2/MH)/(2*PI*6.67e-8_dp*2.2e4_dp*MH))  ! distance unit equal to c_s * (2 PI G rho0)**-1/2
          unitr = unitr/PC
          newRadius = r/unitr - rmin
          if (newRadius < 0.0_dp) then
@@ -351,7 +351,7 @@ contains
       real(dp) :: t6
 
       if (collapse_mode == 3) then
-         unitt = (2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! time unit equal to (2 PI G rho0)**-1/2
+         unitt = sqrt(1_dp/(2*PI*6.67e-8_dp*2.2e4_dp*MH))  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
          tnew = t/unitt
          if (tnew == 0.0_dp) then
@@ -386,7 +386,7 @@ contains
       real(dp) :: t6
 
       if (collapse_mode == 3) then
-         unitt = (2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! time unit equal to (2 PI G rho0)**-1/2
+         unitt = sqrt(1_dp/(2*PI*6.67e-8_dp*2.2e4_dp*MH))  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
          tnew = t/unitt
          if (tnew == 0.0_dp) then
@@ -415,7 +415,7 @@ contains
       real(dp) :: t6
 
       if (collapse_mode == 3) then
-         unitt = (2*PI*6.67e-8_dp*2.2e4_dp*MH)**(-0.5_dp)  ! time unit equal to (2 PI G rho0)**-1/2
+         unitt = sqrt(1_dp/(2*PI*6.67e-8_dp*2.2e4_dp*MH))  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
          tnew = t/unitt
          if (tnew == 0.0_dp) then

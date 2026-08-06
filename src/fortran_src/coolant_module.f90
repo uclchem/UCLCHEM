@@ -734,7 +734,7 @@ end subroutine CALCULATE_LEVEL_POPULATIONS
 !
 !-----------------------------------------------------------------------
 subroutine GAUSS_JORDAN(N,A,B,IPIV,INDEX_ROW,INDEX_COL,IERR)
-   use SWAP_FUNCTION, only: SWAP
+   use numerics, only: SWAP
 
    integer, intent(in)    :: N
    real(dp),     intent(inout) :: A(:,:)

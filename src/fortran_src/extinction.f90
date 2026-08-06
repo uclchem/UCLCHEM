@@ -1,5 +1,6 @@
 module extinction_module
    use constants, only: dp
+   use numerics, only: evaluate_polynomial
    implicit none
 
    private
@@ -78,8 +79,8 @@ module extinction_module
                 11.102_dp, 5.491_dp, -10.805_dp, 3.347_dp /)
         end if
 
-        a(i) = poly(c1, y)
-        b(i) = poly(c2, y)
+        a(i) = evaluate_polynomial(c1, y)
+        b(i) = evaluate_polynomial(c2, y)
       end if
     end do
 
@@ -101,8 +102,8 @@ module extinction_module
         c1 = (/ -1.073_dp, -0.628_dp, 0.137_dp, -0.070_dp /)
         c2 = (/ 13.670_dp, 4.257_dp, -0.420_dp, 0.374_dp /)
 
-        a(i) = poly(c1, y)
-        b(i) = poly(c2, y)
+        a(i) = evaluate_polynomial(c1, y)
+        b(i) = evaluate_polynomial(c2, y)
       end if
     end do
 
@@ -111,17 +112,4 @@ module extinction_module
     extinction_curves(2, :) = (a + b / R_V_default) * (R_V_default / NH_EBV_default)
 
   end subroutine extcurve_obs
-
-  pure function poly(coeff, x) result(value)
-    real(dp), dimension(:), intent(in) :: coeff
-    real(dp), intent(in) :: x
-    real(dp) :: value
-    integer :: i
-
-    value = 0.0_dp
-    do i = 1, size(coeff)
-      value = value + coeff(i) * x**(i - 1)
-    end do
-  end function poly
-
 end module extinction_module

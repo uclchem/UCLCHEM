@@ -14,6 +14,7 @@ module heating
         coolantParentNames, MAX_COOLANTS, coolant_active, coolantNames
     use network, only: specName, exothermicities, REACTIONRATE, enableChemicalHeating, &
         nelec, nh2, nhex, nhx, nh, nhe, nc
+    use numerics, only: evaluate_polynomial
 
     implicit none
 
@@ -398,7 +399,6 @@ module heating
         real(dp) :: tau,logt
         integer :: i
 
-        logt=log10(gasTemperature)
 
         tau=(gasDensity*h2Abund/7.0e15_dp)**2.8_dp
         !if (tau.lt.0.2) THEN
@@ -412,18 +412,15 @@ module heating
 
 
         collisionallyInducedEmission=0.0_dp
+        logT=log10(gasTemperature)
 
         if (gasTemperature >= 1.0e5_dp) then
-            collisionallyInducedEmission=(c*logt)-d
+            collisionallyInducedEmission=(c*logT)-d
         else if (gasTemperature >= 891.0_dp) then
-            do i=1,NUM_FIT_CONSTANTS
-                collisionallyInducedEmission=collisionallyInducedEmission+(bConsts(i)*(logt**(i-1)))
-            end do
+            collisionallyInducedEmission = evaluate_polynomial(bConsts, logT)
         !technically fit below is ok down to 100 K but bad fit seems better than no cooling at 70 K
         else if (gasTemperature >= 100.0_dp) then
-            do i=1,NUM_FIT_CONSTANTS
-                collisionallyInducedEmission=collisionallyInducedEmission+(aConsts(i)*(logt**(i-1)))
-            end do
+            collisionallyInducedEmission = evaluate_polynomial(aConsts, logT)
         end if
 
         if (gasTemperature >= 100.0_dp) then
