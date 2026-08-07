@@ -36,13 +36,12 @@ if __name__ == "__main__":
         particle_df = df.query(f"particle_id == {particle_id}")
         model_nocoldens = uclchem.model.Postprocess(
             param_dict={},
-            out_species=["H2"],
             time_array=particle_df["time"].to_numpy(),
             density_array=particle_df["density"].to_numpy(),
             gas_temperature_array=particle_df["Tgas"].to_numpy(),
             dust_temperature_array=particle_df["Tgas"].to_numpy(),
-            zeta_array=np.array([1.0]),
-            radfield_array=np.array([1.0]),
+            zeta_array=1.0,
+            radfield_array=1.0,
             coldens_H_array=None,
             coldens_H2_array=None,
             coldens_CO_array=None,
