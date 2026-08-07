@@ -60,7 +60,10 @@ implicit none
     !    call postprocess(paramDict,DUMMY_STRING,.false.,.false.,abundances,success)
     case default
         write(*,*) "Model type not recognized"
-        write(*,*) "Supported models are: CLOUD, CSHOCK, HOTCORE and POSTPROCESS"
+        write(*,*) "Supported models are directly from Fortran: CLOUD"
+        write(*,*) "HOTCORE, CSHOCK, JSHOCK, COLLAPSE, POSTPROCESS are not available yet from pure Fortran."
+        write(*,*) "Please make an issue on GitHub, or open a pull request if you do want this."
+        write(*,*) "https://github.com/uclchem/UCLCHEM"
         stop
     end select
 end program uclchem
