@@ -1073,7 +1073,7 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
                     if len(di_dj_parts) > 0:
                         output.write(f"J({i + 1},{j})=" + "".join(di_dj_parts) + "\n")
 
-            # tackle density separately.handled
+            # tackle density separately handled
             j += 1
             if species.get_name() == "SURFACE":
                 di_dj = f"J({i + 1},{j})=SUM(J(surfaceList,{j}))\n"
@@ -1159,10 +1159,13 @@ def build_ode_string(
             if species_name in species_names:
                 species_list[species_names.index(species_name)].gains += reaction.ode_bit
 
+    total_swap = separate_common_terms(total_swap[1:], "ratioSurfaceToBulk")
+
     ode_string = dedent("""    module ODES
         use constants, only: dp, MIN_ABUND
         use f2py_constants, only: nReac
-        use network, only: SURFGROWTHUNCORRECTED, refractoryList, bulkList, surfaceList, REACTIONRATE
+        use network, only: SURFGROWTHUNCORRECTED, refractoryList, bulkList, surfaceList, REACTIONRATE, &
+            nSurface, nBulk
         use surfacereactions, only: useGarrod2011Transfer, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO
 
         implicit none
@@ -1176,24 +1179,22 @@ def build_ode_string(
             real(dp), intent(out) :: YDOT(:)
 
             real(dp) :: totalSwap, LOSS, PROD
-            real(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulklayersreciprocal
+            real(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulkLayersReciprocal
 
-            safeMantle = MAX(MIN_ABUND, SUM(Y(surfaceList)))
-            safeBulk   = MAX(MIN_ABUND, SUM(Y(bulkList)))
+            safeMantle = MAX(MIN_ABUND, Y(nSurface))
+            safeBulk   = MAX(MIN_ABUND, Y(nBulk))
             if (refractoryList(1) > 0) then
                 safeBulk = MAX(MIN_ABUND, safeBulk - SUM(Y(refractoryList)))
             end if
             ratioSurfaceToBulk   = MIN(1.0_dp, safeMantle/safeBulk)
-            bulklayersreciprocal = MIN(1.0_dp, NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
+            bulkLayersReciprocal = MIN(1.0_dp, NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
     """)
-    # Add a logical to determine whether we can write the reaction rates in realtime
-    ode_string += truncate_line(f"        totalSwap={total_swap[1:]}\n\n")
+    ode_string += truncate_line(f"        totalSwap={total_swap}\n\n")
+
     # First get total rate of change of bulk and surface by adding ydots
-    for n, species in enumerate(species_list):
-        if species.get_name()[0] == "@":
-            species_list[bulk_index].gains += f"+YDOT({n + 1})"
-        elif species.get_name()[0] == "#":
-            species_list[surface_index].gains += f"+YDOT({n + 1})"
+    species_list[bulk_index].gains = "+sum(YDOT(bulkList))"
+    species_list[surface_index].gains = "+sum(YDOT(surfaceList))"
+
     if enable_rates_storage:
         for n, reaction in enumerate(reaction_list):
             ode_string += truncate_line(
@@ -1307,6 +1308,10 @@ def species_ode_string(n: int, species: Species) -> str:
     """
     ydot_string = ""
     if species.losses:
+        # 07 August 2026, Tobias:
+        # We could also use `separate_common_terms` here, to seperate the Y({n+1}),
+        # but I got worse runtime performance (model took longer) if I did that,
+        # so for now I will just keep it like this.
         loss_string = "        LOSS = " + species.losses[1:] + "\n"
         ydot_string += loss_string
     if species.gains:
@@ -1322,7 +1327,7 @@ def species_ode_string(n: int, species: Species) -> str:
             ydot_string += "-LOSS"
         ydot_string += "\n"
     else:
-        ydot_string = f"        YDOT({n + 1}) = {0.0}\n"
+        ydot_string = f"        YDOT({n + 1}) = 0.0_dp\n"
     ydot_string = truncate_line(ydot_string)
     return ydot_string
 
@@ -2305,3 +2310,55 @@ def copy_coolant_files(source_dir: str | Path | None = None) -> None:
         logger.debug(f"  Copied {dat_file.name}")
 
     logger.info("Successfully copied coolant data files for package installation")
+
+
+def separate_common_terms(string: str, term_to_separate: str) -> str:
+    """Separate out common terms in a string of an equation.
+
+    Parameters
+    ----------
+    string : str
+        String to clean up.
+    term_to_separate : str
+        Term to separate out of the parentheses.
+
+    Returns
+    -------
+    string : str
+        The string that evaluates to the same value, but with the common
+        term taken out.
+
+    Raises
+    ------
+    ValueError
+        If a term `string` does not contain ``f"*{term_to_separate}"``.
+
+    Notes
+    -----
+    Currently only supports sums and multiplications, meaning that
+    only strings of the form ``"A*X+B*X*Y+..."`` are supported.
+    Common terms, but with subtractions or divisions are not supported.
+
+    Examples
+    --------
+    >>> separate_common_terms("A*B + C*B", "B")
+    '(A + C)*B'
+    >>> separate_common_terms("A*B + C*B*D", "B")
+    '(A + C*D)*B'
+
+    >>> # Only takes the first instance of `term_to_separate`
+    >>> separate_common_terms("A*B*B + C*B", "B")
+    '(A*B + C)*B'
+    >>> # Even if there are multiple that COULD be seperated (potential enhancement)
+    >>> separate_common_terms("A*B*B + C*B*B", "B")
+    '(A*B + C*B)*B'
+
+    """
+    split_string = string.split("+")
+    for term_idx, term in enumerate(split_string):
+        if f"*{term_to_separate}" not in term:
+            msg = f"'{term_to_separate}' was not found in term {term}"
+            raise ValueError(msg)
+        split_string[term_idx] = term.replace(f"*{term_to_separate}", "", 1)
+    string = "(" + "+".join(split_string) + f")*{term_to_separate}"
+    return string

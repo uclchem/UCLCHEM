@@ -626,9 +626,9 @@ contains
 
         ! Column densities are fixed for postprocessing data, so don't do this bit
         if (.not. lusecoldens) then
-            !changing abundances of H2 and CO can causes oscillation since their rate_constantss depend on their abundances
-            !recalculating rate_constantss as abundances are updated prevents that.
-            !thus these are the only rate_constantss calculated each time the ODE system is called.
+            !changing abundances of H2 and CO can causes oscillation since their rate_constants depend on their abundances
+            !recalculating the rate constants as abundances are updated prevents that.
+            !thus these are the only rate constants calculated each time the ODE system is called.
             cocol=coColToCell + 0.5_dp*Y_safe(nco)*D*(cloudSize/real(points))
             h2col=h2ColToCell + 0.5_dp*Y_safe(nh2)*D*(cloudSize/real(points))
             rate_constants(nR_H2_hv)=getH2PhotoDissRateConstant(h2Col,radField,av(dstep),turbVel)  !H2 photodissociation
