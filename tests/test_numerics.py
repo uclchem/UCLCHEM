@@ -26,3 +26,27 @@ def test_logspace():
         x = uclchemwrap.numerics.logspace(start, stop, size)
 
         assert np.allclose(x, np.logspace(start, stop, num=size))
+
+
+def test_pair_insertion_sort():
+    for size in range(2, 10):
+        x = np.random.random(size)
+        x_original = x.copy()
+        uclchemwrap.numerics.pair_insertion_sort(x)
+
+        x_sort = np.sort(x_original)
+        assert np.all(x == x_sort)
+
+
+def test_pair_insertion_sort_with_perm():
+    for size in range(2, 10):
+        x = np.random.random(size)
+        x_original = x.copy()
+
+        perms = uclchemwrap.numerics.pair_insertion_sort_with_perm(x)
+
+        x_argsort = np.argsort(x_original)
+        x_sort = np.sort(x_original)
+
+        assert np.all(x == x_sort)
+        assert np.all(perms == x_argsort + 1)

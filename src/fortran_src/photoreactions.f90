@@ -474,7 +474,7 @@ save
 !routine hunt)
 !given the arrays xa and ya of length n, which tabulate a
 !function (with the xa(i)'s in order), and given the array y2a,
-!which is theZZ output of routine cubspl, and given a value x,
+!which is the output of routine cubspl, and given a value x,
 !this routine returns a cubic-spline interpolated value y.
 
 !--------------------------------------------------------------

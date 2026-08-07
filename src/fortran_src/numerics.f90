@@ -136,4 +136,108 @@ contains
 
 !=======================================================================
 
+
+    pure subroutine pair_insertion_sort(array)
+        real(dp), intent(inout) :: array(:)
+        integer :: i,j,last
+        real(dp) :: t1,t2
+
+        last=size(array)
+        do i=2,last-1,2
+           t1=min(array(i),array(i+1))
+           t2=max(array(i),array(i+1))
+           j=i-1
+           do while((j>=1).and.(array(j)>t2))
+              array(j+2)=array(j)
+              j=j-1
+           end do
+           array(j+2)=t2
+           do while((j>=1).and.(array(j)>t1))
+              array(j+1)=array(j)
+              j=j-1
+           end do
+           array(j+1)=t1
+        end do
+
+        if(mod(last,2)==0)then
+           t1=array(last)
+           loop: do j=last-1,1,-1
+              if (array(j)<=t1) exit loop
+              array(j+1)=array(j)
+           end do loop
+           array(j+1)=t1
+        end if
+    end subroutine pair_insertion_sort
+
+    !-----------------------------------------------------------------------
+    ! pair_insertion_sort_with_perm - Sort a 1D array and track permutation
+    !
+    ! Sorts a 1D array using pair insertion sort while maintaining a
+    ! permutation array that tracks where each element originally came from.
+    ! This allows you to reorder other arrays using the same permutation.
+    !
+    ! Arguments:
+    !   array(:)    - 1D array to sort (modified in place)
+    !-----------------------------------------------------------------------
+    pure subroutine pair_insertion_sort_with_perm(array, perm)
+        real(dp), intent(inout) :: array(:)
+        integer, intent(out), dimension(size(array)) :: perm
+        integer :: i, j, last
+        real(dp) :: t1, t2
+        integer :: p1, p2
+
+        last = SIZE(array)
+
+        ! Initialize permutation array (caller must allocate with correct size)
+        perm = [(i, i=1, last)]
+
+        ! Pair insertion sort - process elements two at a time
+        do i = 2, last-1, 2
+           ! Get the pair and their permutation indices
+           if (array(i) <= array(i+1)) then
+              t1 = array(i)
+              t2 = array(i+1)
+              p1 = perm(i)
+              p2 = perm(i+1)
+           else
+              t1 = array(i+1)
+              t2 = array(i)
+              p1 = perm(i+1)
+              p2 = perm(i)
+           end if
+
+           ! Find position for larger element (t2)
+           j = i - 1
+           do while ((j >= 1) .AND. (array(j) > t2))
+              array(j+2) = array(j)
+              perm(j+2) = perm(j)
+              j = j - 1
+           end do
+           array(j+2) = t2
+           perm(j+2) = p2
+
+           ! Find position for smaller element (t1)
+           do while ((j >= 1) .AND. (array(j) > t1))
+              array(j+1) = array(j)
+              perm(j+1) = perm(j)
+              j = j - 1
+           end do
+           array(j+1) = t1
+           perm(j+1) = p1
+        end do
+
+        ! Handle last element if array has even number of elements
+        if (MOD(last, 2) == 0) then
+           t1 = array(last)
+           p1 = perm(last)
+           loop: do j = last-1, 1, -1
+              if (array(j) <= t1) exit loop
+              array(j+1) = array(j)
+              perm(j+1) = perm(j)
+           end do loop
+           array(j+1) = t1
+           perm(j+1) = p1
+        end if
+    end subroutine pair_insertion_sort_with_perm
+
 end module numerics
