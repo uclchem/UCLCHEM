@@ -561,7 +561,7 @@ integer, parameter :: nR_H2Form_CT=790,nR_H2Form_ERDes=616,nR_H2Form_ER=615,nR_H
     &,nR_H2Form_LHDes=891,nR_HFreeze=667,nR_EFreeze=666,nR_H2_hv=1117,nR_H2_ED=614&
     &,nR_H_ED=613,nR_H2_crp=120,nR_H2Freeze=669,nR_C_hv=1067,nR_CO_hv=1111
 real(dp) :: REACTIONRATE(1)
-logical :: storeRatesComputation=.false.
+logical, parameter :: storeRatesComputation=.false.
 real(dp) :: exothermicities(nReac)
 logical, parameter :: enableChemicalHeating = .false.
 integer, parameter :: re1 (nReac)=(/253,265,267,268,272,276,279,297,298,321,320&
