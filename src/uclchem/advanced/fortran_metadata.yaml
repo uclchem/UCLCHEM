@@ -124,6 +124,7 @@ fortran_parameters:
   - refractorylist
   - solidfractions
   - specname
+  - storeratescomputation
   - surfacelist
   - surfswapreacs
   - thermreacs

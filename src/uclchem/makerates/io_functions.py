@@ -1803,10 +1803,10 @@ def write_network_file(
         # Save some memory by only allocating things we actually want to use:
         if enable_rates_storage:
             openFile.write("real(dp) :: REACTIONRATE(nReac + N_ICE_SPECIES)\n")
-            openFile.write("logical :: storeRatesComputation=.true.\n")
+            openFile.write("logical, parameter :: storeRatesComputation=.true.\n")
         else:
             openFile.write("real(dp) :: REACTIONRATE(1)\n")
-            openFile.write("logical :: storeRatesComputation=.false.\n")
+            openFile.write("logical, parameter :: storeRatesComputation=.false.\n")
         if any(exo != 0.0 for exo in exothermicity):
             if not enable_rates_storage:
                 msg = "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
