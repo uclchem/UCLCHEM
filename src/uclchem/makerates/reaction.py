@@ -14,8 +14,8 @@ from uclchem.makerates.species import (
     elementMass,
     species_header,
 )
-from uclchem.utils import MISSING_VALUE_FLOAT
 from uclchem.makerates.utils import normalize_species_name
+from uclchem.utils import MISSING_VALUE_FLOAT
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

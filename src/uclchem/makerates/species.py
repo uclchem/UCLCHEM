@@ -12,8 +12,8 @@ import pandas as pd
 
 from uclchem.makerates.utils import (
     find_number_of_consecutive_digits,
-    sanitize_input_float,
     normalize_species_name,
+    sanitize_input_float,
 )
 from uclchem.utils import (
     MISSING_VALUE_FLOAT,

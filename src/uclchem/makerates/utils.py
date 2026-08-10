@@ -1,6 +1,9 @@
+"""Utilities for MakeRates."""
+
 import re
-import numpy as np
 from typing import Any
+
+import numpy as np
 
 
 def normalize_species_name(name: str) -> str:
@@ -372,7 +375,7 @@ def array_to_string(
 
     Returns
     -------
-    outString : str
+    out_string : str
         String containing the Fortran code to declare this array.
 
     Raises
@@ -403,9 +406,9 @@ def array_to_string(
             dtype = "real(dp)"
             values = ",".join(f"{float(v):.4e}_dp" for v in flat)
         elif type == "string":
-            strLength = len(max(flat, key=len))
-            dtype = f"character(LEN={strLength})"
-            values = ",".join('"' + str(v).ljust(strLength) + '"' for v in flat)
+            string_length = len(max(flat, key=len))
+            dtype = f"character(LEN={string_length})"
+            values = ",".join('"' + str(v).ljust(string_length) + '"' for v in flat)
         elif type == "logical":
             dtype = "logical"
             values = ",".join(".true." if v else ".false." for v in flat)
@@ -413,36 +416,36 @@ def array_to_string(
             msg = "Not a valid type for array to string"
             raise ValueError(msg)
         param_str = ", parameter" if parameter else ""
-        outString = f"{dtype}{param_str} :: {name}({shape_string}) = RESHAPE((/ {values} /), (/ {shape_string} /))\n"
+        out_string = f"{dtype}{param_str} :: {name}({shape_string}) = RESHAPE((/ {values} /), (/ {shape_string} /))\n"
     else:
         length_name: str = str(len(arr)) if length_name is None else length_name  # type: ignore[no-redef]
         if parameter:
-            outString = ", parameter :: " + name + f" ({length_name})=(/"
+            out_string = ", parameter :: " + name + f" ({length_name})=(/"
         else:
-            outString = " :: " + name + f" ({length_name})=(/"
+            out_string = " :: " + name + f" ({length_name})=(/"
         if type == "int":
-            outString = "integer" + outString
+            out_string = "integer" + out_string
             for value in arr:
-                outString += f"{value},"
+                out_string += f"{value},"
         elif type == "float":
-            outString = "real(dp)" + outString
+            out_string = "real(dp)" + out_string
             for value in arr:
-                outString += f"{value:.4e}_dp,"
+                out_string += f"{value:.4e}_dp,"
         elif type == "string":
-            strLength = len(max(arr, key=len))
-            outString = f"character(LEN={strLength:.0f})" + outString
+            string_length = len(max(arr, key=len))
+            out_string = f"character(LEN={string_length:.0f})" + out_string
             for value in arr:
-                outString += '"' + value.ljust(strLength) + '",'
+                out_string += '"' + value.ljust(string_length) + '",'
         elif type == "logical":
-            outString = "logical" + outString
+            out_string = "logical" + out_string
             for value in arr:
-                outString += ".true.," if value else ".false.,"
+                out_string += ".true.," if value else ".false.,"
         else:
             msg = "Not a valid type for array to string"
             raise ValueError(msg)
-        outString = outString[:-1] + "/)\n"
-    outString = truncate_line(outString)
-    return outString
+        out_string = out_string[:-1] + "/)\n"
+    out_string = truncate_line(out_string)
+    return out_string
 
 
 def separate_common_terms(string: str, term_to_separate: str) -> str:
