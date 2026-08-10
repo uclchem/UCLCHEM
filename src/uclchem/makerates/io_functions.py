@@ -1161,6 +1161,13 @@ def build_ode_string(
 
     total_swap = separate_common_terms(total_swap[1:], "ratioSurfaceToBulk")
 
+    # 10 August 2026, Tobias Dijkhuis:
+    #    safeMantle = MAX(MIN_ABUND, sum(Y(surfaceList))) # noqa: ERA001
+    # could be replaced with
+    #    safeMantle = MAX(MIN_ABUND, Y(nSurface)) # noqa: ERA001
+    # and same for bulk, but if I did that, I suddenly got conservation errors for hotcore models.
+    # Probably because then safeMantle is the same as some surface species abunds because it is
+    # clamped twice (also in Y_safe, which is passed here in chemistry.f90).
     ode_string = dedent("""    module ODES
         use constants, only: dp, MIN_ABUND
         use f2py_constants, only: nReac
@@ -1181,8 +1188,8 @@ def build_ode_string(
             real(dp) :: totalSwap, LOSS, PROD
             real(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulkLayersReciprocal
 
-            safeMantle = MAX(MIN_ABUND, Y(nSurface))
-            safeBulk   = MAX(MIN_ABUND, Y(nBulk))
+            safeMantle = MAX(MIN_ABUND, sum(Y(surfaceList)))
+            safeBulk   = MAX(MIN_ABUND, sum(Y(bulkList)))
             if (refractoryList(1) > 0) then
                 safeBulk = MAX(MIN_ABUND, safeBulk - SUM(Y(refractoryList)))
             end if
@@ -1191,15 +1198,15 @@ def build_ode_string(
     """)
     ode_string += truncate_line(f"        totalSwap={total_swap}\n\n")
 
-    # First get total rate of change of bulk and surface by adding ydots
-    species_list[bulk_index].gains = "+sum(YDOT(bulkList))"
-    species_list[surface_index].gains = "+sum(YDOT(surfaceList))"
-
     if enable_rates_storage:
         for n, reaction in enumerate(reaction_list):
             ode_string += truncate_line(
                 f"        REACTIONRATE({n + 1})={reaction.ode_bit}\n"
             )
+
+    # Get total rate of change of bulk and surface by adding ydots
+    species_list[bulk_index].gains = "+sum(YDOT(bulkList))"
+    species_list[surface_index].gains = "+sum(YDOT(surfaceList))"
 
     for n, species in enumerate(species_list):
         ydot_string = species_ode_string(n, species)
@@ -1308,10 +1315,10 @@ def species_ode_string(n: int, species: Species) -> str:
     """
     ydot_string = ""
     if species.losses:
-        # 07 August 2026, Tobias:
-        # We could also use `separate_common_terms` here, to seperate the Y({n+1}),
-        # but I got worse runtime performance (model took longer) if I did that,
-        # so for now I will just keep it like this.
+        # 10 August 2026, Tobias Dijkhuis:
+        # Could also separate common term "Y({n+1})", here, but if I did that
+        # I got much worse runtime performance. Probably the compiler cannot
+        # optimize it as much?
         loss_string = "        LOSS = " + species.losses[1:] + "\n"
         ydot_string += loss_string
     if species.gains:
@@ -2335,9 +2342,9 @@ def separate_common_terms(string: str, term_to_separate: str) -> str:
 
     Notes
     -----
-    Currently only supports sums and multiplications, meaning that
-    only strings of the form ``"A*X+B*X*Y+..."`` are supported.
-    Common terms, but with subtractions or divisions are not supported.
+    Currently only supports multiplications, meaning that
+    only strings of the form ``"A*X + B*X*Y - ..."`` are supported.
+    Common terms, but with divisions are not supported.
 
     Examples
     --------
@@ -2350,15 +2357,43 @@ def separate_common_terms(string: str, term_to_separate: str) -> str:
     >>> separate_common_terms("A*B*B + C*B", "B")
     '(A*B + C)*B'
     >>> # Even if there are multiple that COULD be seperated (potential enhancement)
-    >>> separate_common_terms("A*B*B + C*B*B", "B")
-    '(A*B + C*B)*B'
+    >>> separate_common_terms("A*B*B - C*B*B", "B")
+    '(A*B - C*B)*B'
+
+    >>> # Does not care about whitespace
+    >>> separate_common_terms("A *    B", "B")
+    '(A)*B'
+    >>> # And keeps whitespace that was between the terms
+    >>> separate_common_terms("A*B   +  C*B", "B")
+    '(A   +  C)*B'
 
     """
-    split_string = string.split("+")
-    for term_idx, term in enumerate(split_string):
-        if f"*{term_to_separate}" not in term:
-            msg = f"'{term_to_separate}' was not found in term {term}"
+    if "+" in string or "-" in string:
+        split_string = re.split(r"(\s*[-+]\s*)", string)
+        plus_and_minus = split_string[1::2]
+        split_terms = split_string[::2]
+    else:
+        # If it is just a single term
+        plus_and_minus = []
+        split_terms = [string]
+
+    mult_regexp = re.compile(r"\s*\*\s*" + re.escape(term_to_separate))
+    div_regexp = re.compile(r"\s*/\s*" + re.escape(term_to_separate))
+
+    for term_idx, term in enumerate(split_terms):
+        mult_m = mult_regexp.search(term)
+        div_m = div_regexp.search(term)
+        if mult_m is None:
+            msg = f"Multiplication by '{term_to_separate}' was not found in term '{term}'"
             raise ValueError(msg)
-        split_string[term_idx] = term.replace(f"*{term_to_separate}", "", 1)
-    string = "(" + "+".join(split_string) + f")*{term_to_separate}"
+        if div_m is not None:
+            msg = f"Division by '{term_to_separate}' found in term '{term}'"
+            raise ValueError(msg)
+        split_terms[term_idx] = re.sub(mult_regexp, "", term, count=1)
+
+    string = (
+        "("
+        + "".join(x + y for x, y in zip(split_terms[:-1], plus_and_minus, strict=True))
+        + f"{split_terms[-1]})*{term_to_separate}"
+    )
     return string
