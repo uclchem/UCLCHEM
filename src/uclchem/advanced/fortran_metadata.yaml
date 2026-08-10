@@ -218,6 +218,7 @@ fortran_parameters:
   - uisrf
   - uisrf_uv
   - zero_inner_radius_error
+  - zeta_0
   f2py_constants:
   - coolantconversionfactors
   - coolantconversionmode

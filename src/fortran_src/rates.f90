@@ -284,9 +284,9 @@ contains
         idx2=crsReacs(2)
         if (idx1 /= REAC_NOT_PRESENT) then
             !8.6 is the Spitzer-Tomasko cosmic ray flux in cm^-2 s^-1
-            !1.3 converts to: ionization rate/10^-17
+            !Multiplying by ZETA_0*1e17 gives zeta/1e-17 s-1
             rate_constants(idx1:idx2)=alpha(idx1:idx2)* &
-                (beta(idx1:idx2)*(gama(idx1:idx2)/100.0_dp)*(8.6_dp*zeta*1.3_dp))
+                beta(idx1:idx2)*(gama(idx1:idx2)/100.0_dp)*(8.6_dp*zeta*ZETA_0*1e17_dp)
         end if
 
         !EXRELAX, relaxation reactions for each excited species

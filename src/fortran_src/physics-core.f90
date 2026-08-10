@@ -4,7 +4,7 @@
 
 module physicscore
     use constants, only: dp, C, SECONDS_PER_YEAR, PC, PI, HP, K_BOLTZ, aunit, eV, &
-        uISRF, uISRF_UV, Lsun, SB_CONST
+        uISRF, uISRF_UV, Lsun, SB_CONST, ZETA_0
     use DEFAULTPARAMETERS
     use extinction_module, only: extcurve_obs
     use numerics, only: evaluate_polynomial, integrate_trapezoid, logspace
@@ -225,7 +225,7 @@ contains
                 write(*,*) "WARNING: ionModel switch must be 'L' or 'H'"
         end select
         ! update/overwrite zeta with attenuated value
-        zeta = ((10**zSum)/1.3e-17_dp)* zetaScale
+        zeta = ((10**zSum)/ZETA_0)* zetaScale
 
         !rate calculation for H2 dissociation
         if (improvedH2CRPDissociation) then
