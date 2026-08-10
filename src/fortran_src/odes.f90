@@ -18,8 +18,8 @@ contains
         real(dp) :: totalSwap, LOSS, PROD
         real(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulkLayersReciprocal
 
-        safeMantle = MAX(MIN_ABUND, Y(nSurface))
-        safeBulk   = MAX(MIN_ABUND, Y(nBulk))
+        safeMantle = MAX(MIN_ABUND, sum(Y(surfaceList)))
+        safeBulk   = MAX(MIN_ABUND, sum(Y(bulkList)))
         if (refractoryList(1) > 0) then
             safeBulk = MAX(MIN_ABUND, safeBulk - SUM(Y(refractoryList)))
         end if
