@@ -254,42 +254,6 @@ def get_reaction_table(file: str | Path | None = None) -> pd.DataFrame:
     return reactions
 
 
-def find_number_of_consecutive_digits(string: str, start: int) -> int:
-    """Determine the number of consecutive digits in a string, starting.
-
-    from some index `start`.
-
-    Parameters
-    ----------
-    string : str
-        the string
-    start : int
-        the starting index
-
-    Returns
-    -------
-    num_digits : int
-        the number of consecutive digits in the string
-        starting from "start".
-
-    Examples
-    --------
-    >>> find_number_of_consecutive_digits("Hello123", 0)
-    0
-    >>> find_number_of_consecutive_digits("Hello123", 5)
-    3
-    >>> find_number_of_consecutive_digits("Hello123", 6)
-    2
-    >>> find_number_of_consecutive_digits("He1llo23", 2)
-    1
-
-    """
-    num_digits = 0
-    while start + num_digits < len(string) and string[start + num_digits].isdigit():
-        num_digits += 1
-    return num_digits
-
-
 @enum.unique
 class PrestellarCoreMass(enum.IntEnum):
     """Index which indicates which index to use for heating in ``hotcore.f90``.

@@ -146,6 +146,7 @@ py.install_sources([
   usource / 'makerates' / '__init__.py',
   usource / 'makerates' / 'cli.py',
   usource / 'makerates' / 'config.py',
+  usource / 'makerates' / 'utils.py',
   usource / 'makerates' / 'io_functions.py',
   usource / 'makerates' / 'makerates.py',
   usource / 'makerates' / 'network.py',

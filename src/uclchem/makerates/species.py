@@ -4,16 +4,20 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import numpy as np
 import pandas as pd
 
+from uclchem.makerates.utils import (
+    find_number_of_consecutive_digits,
+    sanitize_input_float,
+    normalize_species_name,
+)
 from uclchem.utils import (
     MISSING_VALUE_FLOAT,
     MISSING_VALUE_INTEGER,
-    find_number_of_consecutive_digits,
 )
 
 if TYPE_CHECKING:
@@ -68,53 +72,6 @@ elementMass = [
 symbols = ["#", "@", "*", "+", "-", "(", ")"]
 
 
-def normalize_species_name(name: str) -> str:
-    """Normalize a species name to a canonical form.
-
-    Empty strings are preserved as empty strings. Other falsy values (like None)
-    are converted to "NAN". Grain prefixes (#/@) are preserved as-is.
-    A chemical isomer prefix — a single alphabetic character followed by a hyphen
-    (e.g. 'o-', 'p-', 'a-', 'l-') — is lowercased so that input is case-insensitive.
-    The chemical formula part is uppercased. All other names are simply uppercased.
-
-    Parameters
-    ----------
-    name : str
-        Raw species name string to normalize.
-
-    Returns
-    -------
-    str
-        Normalized species name
-
-    Examples
-    --------
-    'o-H2'   -> 'o-H2'
-    'O-H2'   -> 'o-H2'   (case-normalized prefix)
-    '#o-H2'  -> '#o-H2'
-    'C-'     -> 'C-'     (negative ion: len==2, not a prefix)
-    'E-'     -> 'E-'     (electron: same rule)
-    'H2O'    -> 'H2O'
-    ''       -> ''       (empty string)
-    None     -> 'NAN'    (falsy non-string value)
-
-    """
-    # Preserve empty strings; convert other falsy values to "NAN"
-    if name == "":  # noqa: PLC1901
-        return ""
-    if not name:
-        return "NAN"
-    grain_prefix = ""
-    rest = name
-    if rest[0] in {"#", "@"}:
-        grain_prefix = rest[0]
-        rest = rest[1:]
-    # A chemical prefix is exactly one alpha char + '-' with more formula after it.
-    if len(rest) > 2 and rest[1] == "-" and rest[0].isalpha():  # noqa: PLR2004
-        return grain_prefix + rest[0].lower() + "-" + rest[2:].upper()
-    return grain_prefix + rest.upper()
-
-
 species_header = (
     "NAME",
     "MASS",
@@ -131,54 +88,6 @@ species_header = (
     "IZ",
     "SYMMETRY_NUMBER",
 )
-
-
-def is_number(s: Any) -> bool:
-    """Try to convert input to a float, if it succeeds, return True.
-
-    Parameters
-    ----------
-    s : Any
-        Input object to check
-
-    Returns
-    -------
-    bool
-        True if a number, False if not.
-
-    """
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
-
-
-def sanitize_input_float(row: list[Any], index: int, default: Any = 0.0) -> float:
-    """Sanitize the input. If the index is out of bounds of the row or the value.
-
-    from the row cannot be turned into a float, use the `default` value.
-    Otherwise, just gets the value from the row.
-
-    Parameters
-    ----------
-    row : list[Any]
-        list of objects
-    index : int
-        index within list to use
-    default : Any
-        default value to use. Default = 0.0.
-
-    Returns
-    -------
-    float
-        sanitized value.
-
-    """
-    output = default
-    if len(row) > index and is_number(row[index]):
-        output = float(row[index])
-    return output
 
 
 class Species:
@@ -635,10 +544,9 @@ class Species:
         self.set_freeze_products([freeze, "NAN", "NAN", "NAN"], 1.0)
 
     def find_constituents(self, quiet: bool = False) -> Counter[str]:
-        """Loop through the species' name and work out what its constituent.
+        """Loop through the species' name and work out what its constituent atoms are.
 
-        atoms are. Then calculate mass and alert user if it doesn't match
-        input mass.
+        Then calculate mass and alert user if it doesn't match the input mass.
 
         Parameters
         ----------
@@ -678,7 +586,6 @@ class Species:
         60
 
         """
-        # Adapted from https://github.com/uclchem/UCLCHEM/blob/main/src/uclchem/makerates/species.py
         name = self.name
         # Strip chemical isomer prefix (e.g. 'o-' from 'o-H2' or '#o-H2') so the
         # element parser only sees the plain formula.
