@@ -3,7 +3,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module heating
     use CONSTANTS, only: dp, eV, K_BOLTZ, GRAV_G, SB_CONST, T_CMB, MH, PI, &
-        COOLANT_CONFIG_ERROR
+        COOLANT_CONFIG_ERROR, ZETA_0
     use COOLANT_MODULE, only: NCOOLANTS, coolantIndices, coolants, &
         CLOUD_COLUMN, CLOUD_DENSITY, CLOUD_SIZE, coolant_populations_initialized, &
         CHECK_CONVERGENCE, MANAGE_COOLANT_POPULATIONS, UPDATE_COOLANT_LINEWIDTHS, &
@@ -604,9 +604,9 @@ module heating
     pure function getCosmicRayHeating(zeta,gasDensity,h2Abund) result(cosmicRayHeating)
         real(dp), intent(in) :: zeta,gasDensity,h2Abund
         real(dp) :: cosmicRayHeating
-        ! cosmicRayHeating=(20.0*eV)*(1.3e-17_dp*zeta)*h2Abund*gasDensity
+        ! cosmicRayHeating=(20.0*eV)*(ZETA_0*zeta)*h2Abund*gasDensity
         ! According to Ivlev et al. 2019
-        cosmicRayHeating=(16.0_dp*eV)*(1.3e-17_dp*zeta)*h2Abund*gasDensity
+        cosmicRayHeating=(16.0_dp*eV)*(ZETA_0*zeta)*h2Abund*gasDensity
     end function getCosmicRayHeating
 
 
@@ -871,16 +871,16 @@ function calculateDustTempHocuk(surfaceField,Av) result(dustTemperature)
 end function calculateDustTempHocuk
 
 ! Ivlev et al. 2019 cosmic-ray dust heating correction
-! Equation 30: T_d,eff = T__dp * [1 + 0.202 * (zeta_ion/1e-16)*(T__dp/6)^(-6)]^(1/6)
-! where T__dp is the base dust temperature (e.g. from Hocuk 2017)
-! and zeta_ion is the cosmic ray ionization rate in s^-1 (= 1.3e-17_dp * zeta)
+! Equation 30: T_d,eff = T_dp * [1 + 0.202 * (zeta_ion/1e-16)*(T_dp/6)^(-6)]^(1/6)
+! where T_dp is the base dust temperature (e.g. from Hocuk 2017)
+! and zeta_ion is the cosmic ray ionization rate in s^-1 (= ZETA_0 * zeta)
 pure function calculateDustTempIvlev(T_dp, zeta) result(dustTemperature)
     real(dp), intent(in) :: T_dp   ! Base dust temperature from Hocuk
     real(dp), intent(in) :: zeta  ! Dimensionless CR ionization rate scaling factor
     real(dp) :: dustTemperature
     real(dp) :: zeta_ion  ! CR ionization rate in s^-1
 
-    zeta_ion = 1.3e-17_dp * zeta
+    zeta_ion = ZETA_0 * zeta
     dustTemperature = T_dp * (1.0_dp + 0.202_dp * (zeta_ion / 1.0e-16_dp) * (T_dp / 6.0_dp)**(-6))**(1.0_dp/6.0_dp)
 
     ! Apply dust temperature limits
