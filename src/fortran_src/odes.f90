@@ -6457,7 +6457,7 @@ contains
 
 
 ! Update surface species for bulk growth
-if (YDOT(335) < 0) then
+if (YDOT(nSurface) < 0) then
     ! Since ydot(surface_index) is negative, bulk is lost and surface forms
     if (useGarrod2011Transfer) then
         ! Three-phase treatment of Garrod & Pauly 2011

@@ -1216,10 +1216,10 @@ def build_ode_string(
 
     # now add bulk transfer to rate of change of surface species
     # after they've already been calculated
-    ode_string += dedent(f"""
+    ode_string += dedent("""
 
     ! Update surface species for bulk growth
-    if (YDOT({surface_index + 1}) < 0) then
+    if (YDOT(nSurface) < 0) then
         ! Since ydot(surface_index) is negative, bulk is lost and surface forms
         if (useGarrod2011Transfer) then
             ! Three-phase treatment of Garrod & Pauly 2011
