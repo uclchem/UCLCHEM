@@ -17,8 +17,8 @@ module CONSTANTS
     real(dp), parameter :: au=2.063e5_dp  !1 AU in cgs
     real(dp), parameter :: KM=1.0e5_dp  !kilometer in cgs
     real(dp), parameter :: SECONDS_PER_YEAR=3.16e7_dp
-    real(dp), parameter :: T_CMB=2.73_dp ! Cosmic microwave background temperature in K
-    real(dp), parameter :: ZETA_0=1.3e-17_dp ! Standard cosmic ray ionization rate in s-1
+    real(dp), parameter :: T_CMB=2.73_dp  ! Cosmic microwave background temperature in K
+    real(dp), parameter :: ZETA_0=1.3e-17_dp  ! Standard cosmic ray ionization rate in s-1
     real(dp), parameter :: EV = 1.60217646e-12_dp  ! electron volt in erg
     real(dp), parameter :: GRAV_G = 6.674e-8_dp  !gravitational constant in cgs
     real(dp), parameter :: SB_CONST=5.6704e-5_dp  !Stefan Boltzmann constant in cgs
