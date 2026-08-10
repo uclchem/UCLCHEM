@@ -1,0 +1,1 @@
+{"initialtemp": 10, "initialdens": 10000.0, 'finaltime': 1000000.0}
