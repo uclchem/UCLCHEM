@@ -8,6 +8,7 @@ module COOLANT_MODULE
                               coolantConversionFactors, coolantConversionMode, coolantParentNames, &
                               N_TOTAL_LEVELS
    use network, only: nH, nH2, nHe, nHx, nelec
+   use numerics, only: is_equal
    implicit none
 
    public
@@ -217,8 +218,8 @@ contains
             do J=1,NLEVEL
    !           Check that the calculated and measured frequencies differ by <1.0%
    !           Produce an error message if the difference between them is greater
-               if(coolants(N)%FREQUENCY(I,J)/=0.0_dp) then
-                  if(ABS(coolants(N)%FREQUENCY(I,J)-ABS(coolants(N)%ENERGY(I)-coolants(N)%ENERGY(J))/HP) &
+               if (.not. is_equal(coolants(N)%FREQUENCY(I,J), 0.0_dp)) then
+                  if (ABS(coolants(N)%FREQUENCY(I,J)-ABS(coolants(N)%ENERGY(I)-coolants(N)%ENERGY(J))/HP) &
                       & /coolants(N)%FREQUENCY(I,J)>freq_rel_tol) then
                      write(*,*) "ERROR! Calculated frequency differs from measured frequency beyond configured tolerance."
                      write(*,"('Coolant: ',A)") TRIM(coolants(N)%NAME)
@@ -294,7 +295,7 @@ contains
                   coolants(N)%partners(L)%i_idx(NCNT) = J
                   coolants(N)%partners(L)%j_idx(NCNT) = I
                   do K=1,NTEMP
-                     if (RATE_BUF(K)/=0.0_dp) then
+                     if (.not. is_equal(RATE_BUF(K), 0.0_dp)) then
                         coolants(N)%partners(L)%c_coeff(NCNT,K) = RATE_BUF(K) &
                            * (coolants(N)%WEIGHT(I) / coolants(N)%WEIGHT(J)) &
                            * EXP(-(coolants(N)%ENERGY(I) - coolants(N)%ENERGY(J)) &
@@ -522,7 +523,7 @@ contains
          coolants(N)%OPACITY = 0.0_dp
          levels_i: do ILEVEL=1,coolants(N)%NLEVEL  ! Loop over levels (i)
             levels_j: do JLEVEL=1,coolants(N)%NLEVEL  ! Loop over levels (j)
-               if(coolants(N)%A_COEFF(ILEVEL,JLEVEL)==0) cycle levels_j
+               if (is_equal(coolants(N)%A_COEFF(ILEVEL,JLEVEL), 0.0_dp)) cycle levels_j
                !Factor 1 combines constants: = A_ij*c^3/8*pi*nu_ij^3
                FACTOR1 = (coolants(N)%A_COEFF(ILEVEL,JLEVEL)*C**3)/(8*PI*coolants(N)%FREQUENCY(ILEVEL,JLEVEL)**3)
 
@@ -579,13 +580,13 @@ subroutine CALCULATE_LAMBDA_OPERATOR()
 
       levels_i: do i=1,coolants(N)%nLevel
          levels_j: do j=1,coolants(N)%nLevel
-            if (coolants(N)%A_COEFF(i,j) == 0.0_dp) cycle levels_j
+            if (is_equal(coolants(N)%A_COEFF(i,j), 0.0_dp)) cycle levels_j
 
             !We want difference in opacity between current "particle" and next
             !But I'm dealing with 1 particle so let's just set full opacity as difference between here and surface
             dTau_1=coolants(N)%OPACITY(I,J)
 
-            if (dTau_1 /= 0.0_dp) then
+            if (.not. is_equal(dTau_1, 0.0_dp)) then
                ALI_ij=2.0_dp*(1.0_dp-exp(-dTau_1))/dTau_1
                ALI_ij=1.0_dp/(1.0_dp+(ALI_ij+2.0_dp)/(dTau_1)) - 1.0_dp
             else
@@ -682,7 +683,7 @@ subroutine CALCULATE_LEVEL_POPULATIONS(COOLANT,gasTemperature,gasDensity,abundan
          SUM=SUM+COOLANT%R(I,J)
       end do levels_j
       COOLANT%A(I,I)=SUM
-      if (COOLANT%A(I,I) == 0.0_dp) write(*,*) coolant%name,I
+      if (is_equal(COOLANT%A(I,I), 0.0_dp)) write(*,*) coolant%name,I
    end do levels_i
    COOLANT%B=0.0_dp
 
@@ -785,13 +786,13 @@ subroutine GAUSS_JORDAN(N,A,B,IPIV,INDEX_ROW,INDEX_COL,IERR)
          end if
       end do
       IPIV(ICOL)=IPIV(ICOL)+1
-      if(IROW/=ICOL) then
+      if (IROW/=ICOL) then
          call SWAP(A(IROW,:),A(ICOL,:))
          call SWAP(B(IROW),B(ICOL))
       end if
       INDEX_ROW(I)=IROW
       INDEX_COL(I)=ICOL
-      if(A(ICOL,ICOL)==0.0_dp) then
+      if (is_equal(A(ICOL,ICOL), 0.0_dp)) then
          write(*,*)
          write(*,*) "ERROR! Singular matrix found in Gauss-Jordan routine (#2)"
          write(*,*)
@@ -838,7 +839,8 @@ subroutine CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,gasTemperature,
    integer :: I,J,K,cache_hit
    real(dp) :: dustEmissivity
    real(dp) :: S_ij,B_ij,B_ij_CMB,B_ij_DUST,BETA_ij
-   real(dp) :: S_ij_PREVIOUS,LAMBDA_ij,rhoGrain,dustDensity
+   real(dp) :: rhoGrain,dustDensity
+   ! real(dp) :: S_ij_PREVIOUS, LAMBDA_ij
    real(dp) :: n_H2,n_elec,n_H,n_He,n_Hplus
    logical :: found_in_cache
 
@@ -896,7 +898,7 @@ subroutine CONSTRUCT_TRANSITION_MATRIX(COOLANT,TRANSITION_MATRIX,gasTemperature,
 
 !        If the difference between n_i.g_j and n_j.g_i is vanishingly small, then
 !        calculate the source function directly and set the escape probability to 1
-         else if(ABS(COOLANT%POPULATION(I)*COOLANT%WEIGHT(J)-COOLANT%POPULATION(J)*COOLANT%WEIGHT(I))==0) then
+         else if(is_equal(COOLANT%POPULATION(I)*COOLANT%WEIGHT(J), COOLANT%POPULATION(J)*COOLANT%WEIGHT(I))) then
             S_ij=HP*COOLANT%FREQUENCY(I,J)*COOLANT%POPULATION(I)*COOLANT%A_COEFF(I,J)/(4.0_dp*PI)
             BETA_ij=1.0_dp
            ! write(*,*) "vanishingly",HP,COOLANT%FREQUENCY(I,J),COOLANT%POPULATION(I),COOLANT%A_COEFF(I,J),(4.0*PI)
@@ -1134,7 +1136,7 @@ function CHECK_CONVERGENCE() result(all_coolants_converged)
          if(coolants(N)%POPULATION(I)<POPULATION_LIMIT*coolants(N)%DENSITY) cycle levels
 
 !        Skip this level if its population density has not changed
-         if(coolants(N)%POPULATION(I)==coolants(N)%PREVIOUS_POPULATION(I)) cycle levels
+         if(is_equal(coolants(N)%POPULATION(I), coolants(N)%PREVIOUS_POPULATION(I))) cycle levels
 
 !        Calculate the relative change in population density between this iteration and the previous
          RELATIVE_CHANGE=ABS(coolants(N)%POPULATION(I)-coolants(N)%PREVIOUS_POPULATION(I)) &
@@ -1368,7 +1370,7 @@ function GET_ORTHO_PARA_RATIO(TEMPERATURE) result(ORTHO_PARA_RATIO)
    real(dp) :: ORTHO_PARA_RATIO
 
 
-   integer :: I,J,N,ORTHO_INDEX,PARA_INDEX
+   integer :: I,N,ORTHO_INDEX,PARA_INDEX
    real(dp) :: I_ORTHO,I_PARA,ORTHO_FRACTION,PARA_FRACTION
 !  Check if coolant data is available for the ortho and para forms
    ORTHO_INDEX=0
@@ -1413,7 +1415,6 @@ end function GET_ORTHO_PARA_RATIO
 
 function ESCAPE_PROBABILITY(TAU) result(BETA)
    real(dp),  intent(in) :: TAU
-   integer :: K
    real(dp)  :: BETA
 
 !  Initialize the escape probability values along each ray
@@ -1424,7 +1425,7 @@ function ESCAPE_PROBABILITY(TAU) result(BETA)
       BETA=1.0_dp
 
 !     Prevent floating point overflow caused by very low opacity (tau < 1E-8)
-   else if(ABS(TAU)<1.0e-8_dp) then
+   else if (ABS(TAU)<1.0e-8_dp) then
       BETA=1.0_dp
 
 !     For all other cases use the standard escape probability formalism
@@ -1507,7 +1508,7 @@ subroutine writeOpacities(fileName, modelNumber)
    coolant: do N=1,NCOOLANTS  ! Loop over coolants
       levels_i: do I=1,coolants(N)%NLEVEL  ! Loop over levels (i)
          levels_j: do J=1,coolants(N)%NLEVEL  ! Loop over levels (j)
-            if(coolants(N)%A_COEFF(I,J)==0) cycle levels_j
+            if(is_equal(coolants(N)%A_COEFF(I,J), 0.0_dp)) cycle levels_j
 
 !           Assume all coolants with < 6 levels are atoms with fine-structure lines
             if(coolants(N)%NLEVEL<6) then
@@ -1575,7 +1576,7 @@ subroutine writeOpacities(fileName, modelNumber)
    do N=1,NCOOLANTS
       do I=1,coolants(N)%NLEVEL
          levels_j_2: do J=1,coolants(N)%NLEVEL
-            if(coolants(N)%A_COEFF(I,J)==0) cycle levels_j_2
+            if(is_equal(coolants(N)%A_COEFF(I,J), 0.0_dp)) cycle levels_j_2
             write(populationsId,"(999ES13.5)",advance="NO") coolants(N)%OPACITY(I,J)
          end do levels_j_2
       end do

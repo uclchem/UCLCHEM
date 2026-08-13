@@ -17,10 +17,10 @@ module jshock_mod
     private
     public :: initializePhysics, updatePhysics, updateTargetTime, sublimation, vs
 
-    real(dp) :: tstart,maxTemp,vMin,mfp,tCool,tShock,d,dMax,maxDens
+    real(dp) :: maxTemp,vMin,mfp,tCool,tShock,maxDens
     real(dp) :: t_lambda, n_lambda
 
-    real(dp) :: z2,vs,v0,at
+    real(dp) :: vs,v0
     real(dp), allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
 
     !*******************************************************************
@@ -138,8 +138,8 @@ contains
     ! In hot core that means following thermalEvaporation subroutine.                 !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     subroutine sublimation(abund, lpoints)
-        real(dp), intent(inout) :: abund(nSpec+1,lpoints)
         integer, intent(in) :: lpoints
+        real(dp), intent(inout) :: abund(nSpec+1,lpoints)
         real(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)
 

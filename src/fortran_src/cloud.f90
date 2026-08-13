@@ -75,9 +75,18 @@ contains
                 ! Store the raw profile density (without 1.001 bump) so densdot
                 ! sees density(dstep) > initialDens_array(dstep) and freefall fires.
                 initialDens_array(dstep)=get_initialDens_r(parcelRadius(dstep)*PC,density_power_index)
-                density(dstep)=1.001_dp*initialDens_array(dstep)
+
+                if (freefall) then
+                    density(dstep)=1.001_dp*initialDens_array(dstep)
+                else
+                    density(dstep)=initialDens_array(dstep)
+                end if
             else
-                density(dstep)=1.001_dp*initialDens
+                if (freefall) then
+                    density(dstep)=1.001_dp*initialDens
+                else
+                    density(dstep)=initialDens
+                end if
             end if
         end do
 

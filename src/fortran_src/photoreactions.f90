@@ -1,6 +1,7 @@
 module photoreactions
     use constants, only: dp, HABING_TO_DRAINE
     use DEFAULTPARAMETERS
+    use numerics, only: is_equal
     !f2py INTEGER, parameter :: dp
 
     implicit none
@@ -115,7 +116,7 @@ pure function calculateH2SelfShielding(NH2,dopplerWidth,radWidth) result(H2SelfS
     taud  = FPARA * NH2 * 1.5e-2_dp * FOSC / dopplerWidth
 
     !calculate doppler contribution of self shielding function sj
-    if (taud == 0.0_dp) then
+    if (is_equal(taud, 0.0_dp)) then
        sj = 1.0_dp
     else if (taud < 2.0_dp) then
        sj = exp(-0.6666667_dp*taud)
@@ -129,7 +130,7 @@ pure function calculateH2SelfShielding(NH2,dopplerWidth,radWidth) result(H2SelfS
 
     !calculate wing contribution of self shielding function sr
     !IF (taud.lt.0.0_dp)  taud=0.0_dp
-    if (radWidth == 0.0_dp) then
+    if (is_equal(radWidth, 0.0_dp)) then
        sr = 0.0_dp
     else
        r  = radWidth/(1.7724539_dp*dopplerWidth)

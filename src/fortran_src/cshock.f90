@@ -19,19 +19,18 @@ module cshock_mod
     public :: initializePhysics, updatePhysics, updateTargetTime, sublimation, dissipationTime, &
         timestepFactor, vs, minimumPostshockTemp
 
-    real(dp) :: tstart,maxTemp
+    real(dp) :: maxTemp
     real(dp) :: timestepFactor=0.01_dp
     real(dp) :: z2,vs,v0,zn,vn,at,z3,tsat
-    real(dp) :: ucm,z1,driftVel,vi,vn0,zn0,vA,dlength,dissipationTime
+    real(dp) :: z1,driftVel,vi,vn0,zn0,vA,dlength,dissipationTime
     real(dp) :: grainRadius5,dens6,dzv
     real(dp), allocatable :: tn(:),ti(:),tgc(:),tgr(:),tg(:)
     logical :: postShock
     real(dp) :: minimumPostshockTemp=0.0_dp
     !variables for the collisional and radiative heating of grains
-    real(dp) :: mun,tgc0,Frs,tgr0,tgr1,tgr2,tau100,trs0,G0
-    real(dp) :: coshinv1,coshinv2,zmax,eps
+    real(dp) :: mun
+    real(dp) :: coshinv1,coshinv2,zmax
 
-    integer :: inrad
     real(dp), parameter :: nu0=3.0e15_dp,bt=6.0_dp
     real(dp), parameter :: grainRadius=1.0e-5_dp
 
@@ -162,6 +161,7 @@ contains
 
     !Calculate shock properties for current time and set density, temperature and Av
     subroutine updatePhysics
+        ! real(dp) :: Frs, G0, tau100, tgr1, tgr2, trs0
         !First calculate velocity of neutrals and position of shock front at currentTime
         call shst
 
@@ -214,8 +214,8 @@ contains
 
     !For c-shock, sublimation is simply the sputtering subroutine
     subroutine sublimation(abund,lpoints)
-        real(dp), intent(inout) :: abund(nSpec+1,lpoints)
         integer, intent(in) :: lpoints
+        real(dp), intent(inout) :: abund(nSpec+1,lpoints)
         real(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)
         if ((sum(abund(iceList,dstep)) > 1e-25_dp) .AND. (driftVel > 0)) then

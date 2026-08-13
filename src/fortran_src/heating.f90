@@ -95,9 +95,8 @@ module heating
 
  contains
 
-    subroutine initializeHeating(gasTemperature, gasDensity,abundances,columnDensity,cloudSize,successFlag)
-        real(dp), intent(in) :: gasTemperature,gasDensity,columnDensity,cloudSize
-        real(dp), intent(in) :: abundances(:)
+    subroutine initializeHeating(gasDensity, columnDensity,cloudSize,successFlag)
+        real(dp), intent(in) :: gasDensity,columnDensity,cloudSize
         integer, intent(inout) :: successFlag
         integer :: i, j
 
@@ -135,13 +134,13 @@ module heating
     end subroutine initializeHeating
 
 
-    function getTempDot(time,gasTemperature,gasDensity,gasCols,habingField,abundances,h2dis,h2form,zeta,cIonRate, &
+    function getTempDot(gasTemperature,gasDensity,gasCols,habingField,abundances,h2dis,h2form,zeta,cIonRate, &
                                 & dustAbundance,dustRadius,metallicity, &
                                 & dustTemp,turbVel) result(tempDot)
         !Habing field is radfield diminished by Av
-        real(dp), intent(in) :: time,gasTemperature,gasDensity,gasCols,habingField,h2dis,h2form,metallicity
+        real(dp), intent(in) :: gasTemperature,gasDensity,gasCols,habingField,h2dis,h2form,metallicity
         real(dp), intent(in) :: zeta,cIonRate,dustAbundance,dustRadius,dustTemp,turbVel
-        real(dp), intent(in) :: abundances(:)  !,exoReactants1(:),exoReactants2(:),exoRates(:),exothermicities(:)
+        real(dp), intent(in) :: abundances(:)
         real(dp) :: tempDot
 
         real(dp) :: adiabaticIdx,heating,cooling
@@ -152,12 +151,12 @@ module heating
             (3.0_dp*(abundances(nh)+abundances(nhe)+abundances(nelec)+abundances(nh2))+2.0_dp*abundances(nh2))
 
         !then calculate overall heating/cooling rate
-        heating=getHeatingRate(time,gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate, &
+        heating=getHeatingRate(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate, &
                                 & dustAbundance,dustRadius,metallicity, dustTemp,turbVel)
 
         cooling=0.0
         if (gasTemperature > 3.0_dp) then
-            cooling=getCoolingRate(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,h2dis,turbVel)  !6.951290e-17_dp!!
+            cooling=getCoolingRate(gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)  !6.951290e-17_dp!!
         end if
 
         chemheating=0.0
@@ -174,10 +173,10 @@ module heating
     end function getTempDot
 
 
-    function getHeatingRate(time, gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate, &
+    function getHeatingRate(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate, &
             dustAbundance,dustRadius,metallicity,dustTemp,turbVel) &
             result(heatingRate)
-        real(dp), intent(in) :: time,gasTemperature,gasDensity,habingField,h2dis,metallicity
+        real(dp), intent(in) :: gasTemperature,gasDensity,habingField,h2dis,metallicity
         real(dp), intent(in) :: h2form,zeta,cIonRate,dustAbundance,dustRadius,dustTemp,turbVel
         real(dp), intent(in) :: abundances(:)
 
@@ -185,7 +184,7 @@ module heating
 
         heatingValues = 0.0_dp
         heatingValues(1) = getPhotoelectricHeatingBakes(gasTemperature,gasDensity,habingField,abundances(nelec),metallicity)
-        heatingValues(2) = getPhotoelectricHeatingWeingartner(gasTemperature,gasDensity,habingField,abundances(nelec),metallicity)
+        heatingValues(2) = getPhotoelectricHeatingWeingartner(gasTemperature,gasDensity,habingField,abundances(nelec))
         heatingValues(3) = getH2FormationHeating(h2form)
         heatingValues(4) = getH2PhotoDissHeating(gasDensity,abundances(nh2),h2dis)
         heatingValues(5) = getH2FUVPumpHeating(abundances(nh),abundances(nh2),gasTemperature,gasDensity,h2dis)
@@ -199,10 +198,10 @@ module heating
 
     end function getHeatingRate
 
-    function getCoolingRate(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,h2dis,turbVel) &
+    function getCoolingRate(gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel) &
             result(coolingRate)
 
-        real(dp), intent(in) :: time,gasTemperature,gasDensity,gasCols,dustTemp,h2dis,turbVel
+        real(dp), intent(in) :: gasTemperature,gasDensity,gasCols,dustTemp,turbVel
         real(dp), intent(in) :: abundances(:)
         real(dp) :: coolingRate
         integer :: ti, num_attempts
@@ -226,7 +225,7 @@ module heating
             !We do the line cooling multiple times and take median value since solver will occasionally do something wild
             do ti=1,num_attempts
                 lineCoolingArray(ti, :NCOOLANTS)= &
-                    getLineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
+                    getLineCooling(gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel)
                 lineCoolingSum(ti) = sum(lineCoolingArray(ti, :NCOOLANTS))
             end do
             call pair_insertion_sort_with_perm(lineCoolingSum(1:num_attempts), permutationArray(1:num_attempts))
@@ -242,9 +241,9 @@ module heating
     end function getCoolingRate
 
 
-    function getLineCooling(time,gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel) &
+    function getLineCooling(gasTemperature,gasDensity,gasCols,dustTemp,abundances,turbVel) &
             result(moleculeCooling)
-        real(dp), intent(in) :: time,gasTemperature,gasDensity,gasCols,dustTemp,turbVel
+        real(dp), intent(in) :: gasTemperature,gasDensity,gasCols,dustTemp,turbVel
         real(dp), intent(in) :: abundances(:)
 
         real(dp)  :: moleculeCooling(NCOOLANTS)
@@ -397,7 +396,6 @@ module heating
                                                             &13.5075841245848_dp,-1.31983368963974_dp,0.0500087685129987_dp/)
         real(dp),parameter :: c=3.0_dp,d=21.2968837223113_dp
         real(dp) :: tau,logt
-        integer :: i
 
 
         tau=(gasDensity*h2Abund/7.0e15_dp)**2.8_dp
@@ -501,9 +499,9 @@ module heating
         end if
     end function getPhotoelectricHeatingBakes
 
-    pure function getPhotoelectricHeatingWeingartner(gasTemperature,gasDensity,habingField,electronAbund,metallicity) &
+    pure function getPhotoelectricHeatingWeingartner(gasTemperature,gasDensity,habingField,electronAbund) &
             result(photoelectricHeatingWeingartner)
-        real(dp), intent(in) :: gasTemperature,gasDensity,habingField,electronAbund,metallicity
+        real(dp), intent(in) :: gasTemperature,gasDensity,habingField,electronAbund
         real(dp) :: photoelectricHeatingWeingartner
         real(dp), parameter :: C0=5.72e+0_dp,C1=3.45e-2_dp,C2=7.08e-3_dp
         real(dp), parameter :: C3=1.98e-2_dp, C4=4.95e-1_dp,C5=6.92e-1_dp
@@ -1116,7 +1114,7 @@ end module heating
 
  !            !set cooling rate to fixed cooling rate then overwrite if we want real cooling
  !            cooling=fixedCooling
- !            if (coolingFlag) cooling=getCoolingRate(getEquilibriumTemp,gasDensity,dustTemp,abundances,h2dis,turbVel,writeFlag)
+ !            if (coolingFlag) cooling=getCoolingRate(getEquilibriumTemp,gasDensity,dustTemp,abundances,turbVel,writeFlag)
 
  !            !Calculate the difference between the total heating and total cooling rates
  !            !and the absolute value of the relative difference between the two rates

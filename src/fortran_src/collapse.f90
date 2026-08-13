@@ -10,6 +10,7 @@ module collapse_mod
    use DEFAULTPARAMETERS
    use F2PY_CONSTANTS, only: nSpec
    !f2py INTEGER, parameter :: dp
+   use numerics, only: is_equal
    use physicscore, only: points, dstep, cloudsize, radfield, h2CRPRateConstant, improvedH2CRPDissociation, &
     & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, gastemp, dusttemp, av, &
     & coldens, parcel_radius, get_av
@@ -144,8 +145,8 @@ contains
     !This module is isothermal and as such, no sublimation occurs.
     !This is a dummy subroutine.
     subroutine sublimation(abund, lpoints)
-      real(dp), intent(inout) :: abund(nSpec+1,lpoints)
       integer, intent(in) :: lpoints
+      real(dp), intent(inout) :: abund(nSpec+1,lpoints)
     end subroutine sublimation
 
 
@@ -354,7 +355,7 @@ contains
          unitt = sqrt(1_dp/(2*PI*6.67e-8_dp*2.2e4_dp*MH))  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
          tnew = t/unitt
-         if (tnew == 0.0_dp) then
+         if (is_equal(tnew, 0.0_dp)) then
             rminfit = 7.2_dp
          else if (log(tnew) < 1.6_dp) then
             rminfit = -1.149_dp*tnew + 7.2_dp
@@ -389,7 +390,7 @@ contains
          unitt = sqrt(1_dp/(2*PI*6.67e-8_dp*2.2e4_dp*MH))  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
          tnew = t/unitt
-         if (tnew == 0.0_dp) then
+         if (is_equal(tnew, 0.0_dp)) then
             vminfit = 0.0_dp
          else if (log(tnew) < 1.6_dp) then
             vminfit = 0.0891_dp*tnew
@@ -418,7 +419,7 @@ contains
          unitt = sqrt(1_dp/(2*PI*6.67e-8_dp*2.2e4_dp*MH))  ! time unit equal to (2 PI G rho0)**-1/2
          unitt = unitt/SECONDS_PER_YEAR
          tnew = t/unitt
-         if (tnew == 0.0_dp) then
+         if (is_equal(tnew, 0.0_dp)) then
             avfit = 0.4_dp
          else if (log(tnew) < 1.6_dp) then
             avfit = 0.0101_dp*tnew + 0.4_dp

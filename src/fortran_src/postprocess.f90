@@ -6,6 +6,7 @@ module postprocess_mod
     use f2py_constants, only: nSpec
     !f2py INTEGER, parameter :: dp
     use physicscore
+    use numerics, only: is_equal
     implicit none
 
     ! character(len=100) :: trajecfile
@@ -71,7 +72,7 @@ contains
 
       ! Find last non-zero timestep (arrays may be zero-padded)
       max_tstep = timepoints
-      do while (max_tstep > 1 .and. ltime(max_tstep) == 0.0_dp)
+      do while (max_tstep > 1 .and. is_equal(ltime(max_tstep), 0.0_dp))
         max_tstep = max_tstep - 1
       end do
 
@@ -172,9 +173,9 @@ contains
         av(dstep) = 5.348e-22_dp * coldens(dstep)
       end if
 
-      if ((density(dstep) /= density(dstep)) .OR. (density(dstep) <= 0.0_dp) .OR. &
-          (gastemp(dstep) /= gastemp(dstep)) .OR. (gastemp(dstep) < 1.0_dp) .OR. &
-          (dusttemp(dstep) /= dusttemp(dstep)) .OR. (dusttemp(dstep) < 1.0_dp)) then
+      if ((.not. is_equal(density(dstep), density(dstep))) .OR. (density(dstep) <= 0.0_dp) .OR. &
+          (.not. is_equal(gasTemp(dstep), gasTemp(dstep))) .OR. (gastemp(dstep) < 1.0_dp) .OR. &
+          (.not. is_equal(dustTemp(dstep), dustTemp(dstep))) .OR. (dusttemp(dstep) < 1.0_dp)) then
         write(*,*) "POSTPROCESS_updatePhysics: FATAL invalid physics at tstep=", tstep, &
                   " ldens=", ldens(tstep), " lgtemp=", lgtemp(tstep), " ldtemp=", ldtemp(tstep)
         postprocess_error = PHYSICS_UPDATE_ERROR
