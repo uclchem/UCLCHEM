@@ -1,6 +1,6 @@
 import numpy as np
-import uclchemwrap
 import pytest
+import uclchemwrap
 
 is_equal_data = [
     (0.3, 0.3, None, True),
