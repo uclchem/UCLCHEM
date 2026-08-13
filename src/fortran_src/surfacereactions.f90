@@ -2,8 +2,6 @@ module SurfaceReactions
   use constants, only: dp, K_BOLTZ, K_BOLTZ_SI, PI, AMU, HP_SI, N_AVOGADRO, &
       REDUCED_PLANCK, KCAL_TO_JOULE
   use DEFAULTPARAMETERS
-  !f2py INTEGER, parameter :: dp
-  use numerics, only: is_equal
   use f2py_constants, only: nSpec, nReac, NO_REACTANT_OR_PRODUCT, &
       MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER
   use network, only: iceList, bulkList, surfaceList, gasIceList, bindingEnergy, diffusionBarrier, &
@@ -12,6 +10,8 @@ module SurfaceReactions
       moleculeIsLinear, formationEnthalpy, LHDEScorrespondingLHreacs, &
       customVdes, customVdiff, THREE_PHASE, inertiaProducts, &
       ngh2, nh2, ngn, ngo, ngoh, nh, ngh
+  !f2py INTEGER, parameter :: dp
+  use numerics, only: is_equal
 
   implicit none
 

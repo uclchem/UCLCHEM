@@ -19,6 +19,7 @@ module chemistry
     use heating, only: calculateDustTemp, getTempDot, initializeHeating
     ! allow(use-all)
     use network
+    use numerics, only: is_equal
     use odes, only: GETYDOT
     use photoreactions, only: getH2PhotoDissRateConstant, getCOPhotoDissRateConstant, UV_FAC
     use postprocess_mod, only: lusecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
@@ -28,7 +29,6 @@ module chemistry
         desorptionFractionsBare, getDesorptionFractionIncludingIce, desorptionFractionsFullCoverage, &
         safeMantle, safeBulk, bulkLayersReciprocal, GRAIN_RADIUS, MIN_SURFACE_ABUND, &
         bulkGainFromMantleBuildUp, surfaceToBulkSwappingRateConstants
-    use numerics, only: is_equal
 
     implicit none
 

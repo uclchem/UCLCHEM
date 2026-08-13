@@ -5,6 +5,7 @@ module RATES
     !f2py INTEGER, parameter :: dp
     ! allow(use-all)
     use network
+    use numerics, only: is_equal
     use photoreactions, only: getH2PhotoDissRateConstant, getCOPhotoDissRateConstant, getCarbonIonizationRateConstant, &
         ICE_GAS_PHOTO_CROSSSECTION_RATIO
     use physicscore
@@ -12,7 +13,6 @@ module RATES
         getEncounterDesorptionRateConstant, bulkSurfaceExchangeReactions, h2FormEfficiency, getNumberMonolayers, &
         getDiffusionReactionRateConstant, getDesorptionFractionIncludingIce, GRAIN_RADIUS, vdiff, vdes, THERMAL_VEL, &
         bulkLayersReciprocal, MIN_SURFACE_ABUND, safeBulk
-    use numerics, only: is_equal
 
     implicit none
 
