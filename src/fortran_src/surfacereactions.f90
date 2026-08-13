@@ -3,6 +3,7 @@ module SurfaceReactions
       REDUCED_PLANCK, KCAL_TO_JOULE
   use DEFAULTPARAMETERS
   !f2py INTEGER, parameter :: dp
+  use numerics, only: is_equal
   use f2py_constants, only: nSpec, nReac, NO_REACTANT_OR_PRODUCT, &
       MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER
   use network, only: iceList, bulkList, surfaceList, gasIceList, bindingEnergy, diffusionBarrier, &
@@ -90,7 +91,7 @@ contains
     real(dp) :: rate
     real(dp), intent(in) :: gasTemp,dustTemp
 
-    real(dp) :: THERMAL_VELOCITY,STICKING_COEFFICIENT,CROSS_SECTION_SCALE
+    real(dp) :: THERMAL_VELOCITY,STICKING_COEFFICIENT
     real(dp) :: FLUX,FACTOR1,FACTOR2,EPSILON
     real(dp) :: SILICATE_FORMATION_EFFICIENCY,GRAPHITE_FORMATION_EFFICIENCY
     !  Mean thermal velocity of hydrogen atoms (cm s^-1)
@@ -193,7 +194,7 @@ contains
     real(dp) :: diffusionBarrierValue
 
     if ((useCustomDiffusionBarriers) .and. &
-        (diffusionBarrier(iceListIndex) /= MISSING_VALUE_FLOAT)) then
+        (.not. is_equal(diffusionBarrier(iceListIndex), MISSING_VALUE_FLOAT))) then
         diffusionBarrierValue = diffusionBarrier(iceListIndex)
     else if (iceList(iceListIndex) == ngh) then
         diffusionBarrierValue = HdiffusionBarrier
@@ -212,7 +213,7 @@ contains
     reacProb = gama(reacIndx)/dustTemperature
     !Calculate quantum activation energy barrier exponent
     reducedMass = reducedMasses(reacIndx)
-    if ((.NOT. useCustomReducedMass) .OR. (reducedMass == MISSING_VALUE_FLOAT)) then
+    if ((.NOT. useCustomReducedMass) .OR. (is_equal(reducedMass, MISSING_VALUE_FLOAT))) then
         ! reducedMasses(reacIndx) should never be MISSING_VALUE_FLOAT,
         ! because it is set by MakeRateConstants, but just in case we calculate it here.
         reducedMass = mass(iceList(index1)) * mass(iceList(index2)) / (mass(iceList(index1)) + mass(iceList(index2)))
@@ -229,8 +230,7 @@ contains
 
     real(dp) :: diffusionReactionRateConstant
 
-    real(dp) :: reducedMass,tunnelProb
-    real(dp) :: diffuseProb,desorbProb,reactionProb,n_dust
+    real(dp) :: diffuseProb,desorbProb,reactionProb
     integer :: index1,index2,i
 
 
@@ -293,9 +293,13 @@ contains
     integer :: desorbingIndex, desorbingOnGrainIndex, desorbingIceListIndex
     integer :: productIndex(4)
 
-    real(dp) :: deltaEnthalpy,maxBindingEnergy,epsilonCd,productEnthalpy
+    real(dp) :: deltaEnthalpy,epsilonCd,productEnthalpy
     real(dp) :: bindingEnergyDesorbingSpec, chi
     logical :: twoProductReaction
+
+    reactIndex1=0
+    reactIndex2=0
+    productIndex=0
 
 
      if (.NOT.(ANY(iceList == re1(reacIndx)) .OR. (ANY(iceList == re2(reacIndx))))) then
@@ -333,6 +337,13 @@ contains
         if (gasIceList(i) == p4(reacIndx)) productIndex(4) = i
     end do
 
+    if ((reactIndex1 == 0) .or. (reactIndex2 == 0)) then
+        write(*, *) "COULD NOT DETERMINE INDEX OF REACTANT FOR REACTION:"
+        write(*,*) specName(re1(reacIndx)), specName(re2(reacIndx)), "->", &
+            specName(p1(reacIndx)), specName(p2(reacIndx)), specName(p3(reacIndx))
+        stop 1
+    end if
+
     if (p2(reacIndx) == NO_REACTANT_OR_PRODUCT) then
         ! Only one product, and so that one product is desorbing
         desorbingIndex = 1
@@ -363,7 +374,7 @@ contains
             specName(p1(LHDEScorrespondingLHreacs(LHDESindex))), &
             specName(p2(LHDEScorrespondingLHreacs(LHDESindex))), &
             specName(p3(LHDEScorrespondingLHreacs(LHDESindex)))
-        stop
+        stop 1
     end if
 
     ! Now we know which product desorbs, we just have to calculate bare desorption prob using Minissale et al 2016.
@@ -422,7 +433,7 @@ contains
             chi = mass(p1(reacIndx)) / (mass(p1(reacIndx))+mass(p2(reacIndx)))
         else
             write(*,*) "MINISSALE 2016 METHOD FOR CHEMICAL DESORPTION IS NOT VALID FOR DESORBINDEX > 2"
-            stop
+            stop 1
         end if
     end if
 
@@ -443,10 +454,10 @@ contains
   function getDesorptionFractionFullCoverage(reacIndx, LHDESindex) result (desorptionFractionFullCoverage)
     integer, intent(in) :: reacIndx, LHDESindex
 
-    integer :: reactIndex1,reactIndex2,degreesOfFreedom,i,j
+    integer :: reactIndex1,reactIndex2,i,j
     integer :: productIndex(4)
 
-    real(dp) :: deltaEnthalpy,maxBindingEnergy,epsilonCd,productEnthalpy
+    real(dp) :: deltaEnthalpy,productEnthalpy
     real(dp) :: bindingEnergyDesorbingSpec, chi
     integer :: desorbingIndex, desorbingOnGrainIndex, desorbingIceListIndex
     logical :: twoProductReaction
@@ -690,7 +701,7 @@ contains
             if (atomCounts(j) == 1) then
                 ! Atomic species, no rotational partition function
                 vdes(i) = vdes(i) * mass(j)
-            else if (inertiaProducts(i) /= MISSING_VALUE_FLOAT) then
+            else if (.not. is_equal(inertiaProducts(i), MISSING_VALUE_FLOAT)) then
                 ! Custom supplied 1/sigma*sqrt(Ix*Iy*Iz)
                 if (moleculeIsLinear(i)) then
                     ! Linear molecule (H2, OH, CO2, etc)
@@ -730,8 +741,8 @@ contains
 
     if (useCustomPrefactors) then
         do i=LBOUND(iceList, 1), UBOUND(iceList, 1)
-            if (customVdiff(i) /= MISSING_VALUE_FLOAT) vdiff(i) = customVdiff(i)
-            if (customVdes(i) /= MISSING_VALUE_FLOAT) vdes(i) = customVdes(i)
+            if (.not. is_equal(customVdiff(i), MISSING_VALUE_FLOAT)) vdiff(i) = customVdiff(i)
+            if (.not. is_equal(customVdes(i), MISSING_VALUE_FLOAT)) vdes(i) = customVdes(i)
         end do
     end if
   end subroutine updateVdiffAndVdes
@@ -762,7 +773,7 @@ contains
     meetProb = meetProb + (vdiff(index2)*exp(-getDiffusionBarrier(index2)/dustTemperature))
 
     ! Adjust for energy required to move from H2O onto H2
-    if (EDEndothermicityFactor /= 0.0_dp) then
+    if (.not. is_equal(EDEndothermicityFactor, 0.0_dp)) then
         meetProb = meetProb &
         & * exp(-EDEndothermicityFactor*(bindingEnergy(index1)-H2_ON_H2_BINDING_ENERGY)/dustTemperature)
     end if

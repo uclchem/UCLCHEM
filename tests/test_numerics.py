@@ -1,5 +1,17 @@
 import numpy as np
 import uclchemwrap
+import pytest
+
+is_equal_data = [
+    (0.3, 0.3, None, True),
+    (0.3, 0.1 + 0.2, 1e-10, True),
+    (0.3, 0.1 + 0.2, 0, False),
+]
+
+
+@pytest.mark.parametrize("a, b, atol, expected", is_equal_data)
+def test_is_equal(a, b, atol, expected):
+    assert bool(uclchemwrap.numerics.is_equal(a, b, atol=atol)) == expected
 
 
 def test_evaluate_polynomial():

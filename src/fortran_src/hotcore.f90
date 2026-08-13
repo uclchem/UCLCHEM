@@ -220,8 +220,8 @@ contains
 
     subroutine sublimation(abund, lpoints)
         ! This subroutine mimics episodic thermal desorption if the network is two pahse
-        real(dp), intent(inout) :: abund(nspec+1,lpoints)
         integer, intent(in) :: lpoints
+        real(dp), intent(inout) :: abund(nspec+1,lpoints)
         if (.not. THREE_PHASE) then
             if (instantSublimation) then
                 instantSublimation=.false.
@@ -240,8 +240,8 @@ contains
         !in specific events. These events are activated by flags (eg solidflag) which can be set in physics module.
         !The species evaporated are in lists, created by Makerates and based on groupings. see the viti 2004 paper.
         !f2py integer, intent(aux) :: points
-        real(dp), intent(inout) :: abund(nspec+1,lpoints)
         integer, intent(in) :: lpoints
+        real(dp), intent(inout) :: abund(nspec+1,lpoints)
 
             if (sum(abund(iceList,dstep)) > MIN_ABUND) then
                 !Solid Evap
@@ -268,8 +268,8 @@ contains
     end subroutine thermalEvaporation
 
     subroutine partialSublimation(fractions, abund, lpoints)
-        real(dp), intent(inout) :: abund(nspec+1,lpoints)
         integer, intent(in) :: lpoints
+        real(dp), intent(inout) :: abund(nspec+1,lpoints)
         real(dp), intent(in) :: fractions(:)
 
         abund(gasIceList,dstep)=abund(gasIceList,dstep)+fractions*abund(iceList,dstep)
@@ -278,15 +278,15 @@ contains
     end subroutine partialSublimation
 
     subroutine totalSublimation(abund, lpoints)
-        real(dp), intent(inout) :: abund(nspec+1,lpoints)
         integer, intent(in) :: lpoints
+        real(dp), intent(inout) :: abund(nspec+1,lpoints)
         abund(gasIceList,dstep)=abund(gasIceList,dstep)+abund(iceList,dstep)
         abund(iceList,dstep)=MIN_ABUND
     end subroutine totalSublimation
 
     subroutine bindingEnergyEvap(abund, lpoints)
-        real(dp), intent(inout) :: abund(nspec+1,lpoints)
         integer, intent(in) :: lpoints
+        real(dp), intent(inout) :: abund(nspec+1,lpoints)
         real(dp), parameter :: SURFACE_SITE_DENSITY = 1.5e15_dp
         integer :: i
         !Subroutine to handle mono-evaporation. See viti 2004

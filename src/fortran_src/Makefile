@@ -6,30 +6,22 @@ SHELL = /bin/sh
 FC =gfortran
 #FC=ifort
 
-f2pyFC=gnu95 #this must match FC (ifort=intelem, gfortran=gnu95)
-
 #Unforgiving debugging flags
-#FFLAGS =-g -fbacktrace -Wall -fcheck=all -fPIC
+FFLAGS =-g -fbacktrace -Wall -fcheck=all -fPIC -Wextra
 #Fast optimizing flags
-FFLAGS = -O3 -fPIC -ffree-line-length-0 -pg
+#FFLAGS = -fPIC -O3
 
 ###############################################################################
-EXT_SUFFIX = $(shell python3-config --extension-suffix)
+##simple makefile for uclchem
+##user must point the FC variable to their preferred fortran compiler
 
+EXT_SUFFIX = $(shell python3-config --extension-suffix)
 
 PHYSICS_OBS   = extinction.o physics-core.o cloud.o hotcore.o sputtering.o cshock.o jshock.o collapse.o postprocess.o
 CHEMISTRY_OBS = odes.o photoreactions.o surfacereactions.o rates.o chemistry.o
 CONSTANTS_OBS = constants.o defaultparameters.o f2py_constants.o numerics.o
 HEATING_OBS   = coolant_module.o heating.o
-##simple makefile for uclchem
-##user must point the FC variable to their preferred fortran compiler
-##builds ode solver, physics module and chemistry module before linking together for main
 
-##User can also compile a python module which contains the subroutines in wrap.f90 as functions
-##to do this run "python -m numpy.f2py -c --help-fcompiler" to find your fortran compiler
-##and edit the python makef
-
-##physics module selected by changing physics variable to chosen fortran file.
 main: dvode.o ${CONSTANTS_OBS} network.o ${PHYSICS_OBS} ${HEATING_OBS} ${CHEMISTRY_OBS} io.o wrap.f90 
 	${FC} ${FFLAGS} -o ../../uclchem ${CONSTANTS_OBS} network.o io.o ${PHYSICS_OBS} ${HEATING_OBS} dvode.o ${CHEMISTRY_OBS} wrap.f90 main.f90
 

@@ -35,8 +35,8 @@ module uclchemwrap
             use constants, only: dp
             use f2py_constants, only: nSpec
             implicit none
-            real(dp), dimension(nSpec+1, npoints), intent(inout) :: abund
             integer, intent(in) :: npoints
+            real(dp), dimension(nSpec+1, npoints), intent(inout) :: abund
         end subroutine sublimationProcedure
     end interface
 
@@ -1068,11 +1068,8 @@ contains
         character(LEN=*), intent(inout) :: dictionary
         character(LEN=*), intent(inout) :: outSpeciesIn
         integer, intent(out) :: successFlag
-        integer, allocatable, dimension(:) :: locations
-        logical :: ChemicalDuplicateCheck, isOpen
-        integer :: posStart, posEnd, whileInteger,inputindx
+        integer :: posStart, posEnd, whileInteger
         character(LEN=100) :: inputParameter, inputValue
-        character(256) :: fullPath
 
         !always deallocate these so that if user didn't specify them,
         ! they don't remain from previous run
@@ -1482,7 +1479,7 @@ contains
             posStart=1
             posEnd=SCAN(coeffDictString,":")
             !read it into index integer
-            read(coeffDictString(posStart:posEnd-1),*) inputindx
+            read(coeffDictString(posStart:posEnd-1),*) inputIndx
 
             !substring including alpha value for the index.
             posStart=posEnd+1

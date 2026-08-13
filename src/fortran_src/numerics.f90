@@ -12,6 +12,28 @@ module numerics
 
 contains
 
+    ! Test that two values are equal, up to machine precision.
+    elemental function is_equal(a, b, atol) result(equal)
+        real(dp), intent(in) :: a, b
+        real(dp), intent(in), optional :: atol
+
+        logical :: equal
+
+        real(dp) :: tol
+
+        if (.not. present(atol)) then
+            tol = epsilon(1.0_dp)
+        else
+            tol = atol
+        end if
+    
+        if (abs(a-b) <= tol) then
+            equal = .true.
+        else
+            equal = .false.
+        end if
+    end function is_equal
+    
     ! Evaluate a polynomial using Horner's method.
     ! Taken (and corrected) from https://rosettacode.org/wiki/Horner%27s_rule_for_polynomial_evaluation#Fortran
     pure function evaluate_polynomial(coeffs, x) result(value)

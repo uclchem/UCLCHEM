@@ -223,6 +223,7 @@ contains
                 zSum = evaluate_polynomial(ckHIon, log10(coldens(dstep)))
             case default
                 write(*,*) "WARNING: ionModel switch must be 'L' or 'H'"
+                stop 1
         end select
         ! update/overwrite zeta with attenuated value
         zeta = ((10**zSum)/ZETA_0)* zetaScale
@@ -236,6 +237,7 @@ contains
                     dissSum = evaluate_polynomial(ckHDiss, log10(coldens(dstep)))
                 case default
                     write(*,*) "WARNING: ionModel switch must be 'L' or 'H'"
+                    stop 1
             end select
             h2CRPRateConstant=(10**dissSum)*zetaScale
         end if
@@ -314,7 +316,6 @@ contains
         real(dp), intent(out) :: Temp_dust, U
 
         real(dp)  :: rsub, U_star, U_shell
-        integer, parameter :: nw=129
 
         ! sublimation distance
         rsub = get_rsub(Lstar)
@@ -340,7 +341,6 @@ contains
     pure subroutine radiation_star(r, Lstar, Tstar, Avs, U)
         real(dp), intent(in) :: Lstar, Tstar, r, Avs
         real(dp), intent(out) :: U
-        integer :: i
         real(dp), dimension(:), allocatable :: wave, wave_cm, Istar, uwave_star, tau_wave, uwave_red
         real(dp) :: ZZ, rsub, Rstar
         real(dp) :: NH_EBV, RV
@@ -386,7 +386,6 @@ contains
     pure subroutine radiation_shell(r, Lstar, Tstar, Avs, U)
         real(dp), intent(in) :: Lstar, Tstar, r, Avs
         real(dp), intent(out) :: U
-        integer :: i
         real(dp), dimension(:), allocatable :: wave, wave_cm, Istar, uwave_star, tau_wave, uwave_red
         real(dp) :: ZZ, rsub
         real(dp) :: NH_EBV, RV

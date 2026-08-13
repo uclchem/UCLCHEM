@@ -120,7 +120,6 @@ contains
         logical, intent(in) :: returnArray, writerates
 
         integer, intent(out) :: successflag
-        integer :: i  ! Loop variable for heating array assignment
         successflag = 0
         if (returnArray) then
             ! Try to catch out of bounds errors before they create a segfault
@@ -158,7 +157,7 @@ contains
             write(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
                 & av(dstep),radfield,zeta,dstep,abund(1:nspec,dstep)
             8020 format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,&
-            &","1pe11.4,",",I4,",",(999(1pe15.5,:,",")))
+                ",",1pe11.4,",",I4,",",(999(1pe15.5,:,",")))
         end if
         if (writerates) then
             if (returnArray) then
@@ -182,14 +181,14 @@ contains
                 if (rateConstantsOutput) then
                     write(rateConstantId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep), &
                         & av(dstep),radfield,zeta,dstep,rate_constants
-                    8021 format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,","1pe11.4,",", &
+                    8021 format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,",",1pe11.4,",", &
                         & I4,",",(9999(1pe15.5e3,:,",")))
                 end if
                 if (fluxOutput) then
                     write(ratesId,8022) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep), &
                         & av(dstep),radfield,zeta,dstep,REACTIONRATE
                     8022 format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,&
-                        & ","1pe11.4,",",I4,",",(9999(1pe15.5e3,:,",")))
+                        & ",",1pe11.4,",",I4,",",(9999(1pe15.5e3,:,",")))
                 end if
                 if (heatingOutput) then
                     ! Write: time, cooling values (4), line cooling array (NCOOLANTS), heating values (8), chem heating

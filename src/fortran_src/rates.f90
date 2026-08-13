@@ -12,6 +12,7 @@ module RATES
         getEncounterDesorptionRateConstant, bulkSurfaceExchangeReactions, h2FormEfficiency, getNumberMonolayers, &
         getDiffusionReactionRateConstant, getDesorptionFractionIncludingIce, GRAIN_RADIUS, vdiff, vdes, THERMAL_VEL, &
         bulkLayersReciprocal, MIN_SURFACE_ABUND, safeBulk
+    use numerics, only: is_equal
 
     implicit none
 
@@ -472,7 +473,7 @@ contains
     !They only change if temperature has so we can save time with an if statement
     idx1=twobodyReacs(1)
     idx2=twobodyReacs(2)
-    if (lastTemp /= gasTemp(dstep)) then
+    if (.not. is_equal(lastTemp, gasTemp(dstep))) then
         rate_constants(idx1:idx2) = calculateTwoBodyReacRateConstant(alpha(idx1:idx2), beta(idx1:idx2), &
             gama(idx1:idx2), gasTemp(dstep))
     end if
@@ -602,7 +603,7 @@ contains
 
         real(dp) :: freezeOutRateConstants(idx2-idx1+1)
 
-        if ((freezeFactor == 0.0_dp) .or. (dustTemp(dstep) > maxGrainTemp)) then
+        if ((is_equal(freezeFactor, 0.0_dp)) .or. (dustTemp(dstep) > maxGrainTemp)) then
             freezeOutRateConstants=0.0_dp
         else
             !additional factor for ions (beta=0 for neutrals)

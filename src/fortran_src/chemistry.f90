@@ -28,6 +28,7 @@ module chemistry
         desorptionFractionsBare, getDesorptionFractionIncludingIce, desorptionFractionsFullCoverage, &
         safeMantle, safeBulk, bulkLayersReciprocal, GRAIN_RADIUS, MIN_SURFACE_ABUND, &
         bulkGainFromMantleBuildUp, surfaceToBulkSwappingRateConstants
+    use numerics, only: is_equal
 
     implicit none
 
@@ -185,7 +186,7 @@ contains
 
         if (heatingFlag) then
             !Initializing heating.f90 --> get coolants
-            call initializeHeating(gasTemp(dstep),density(dstep),abund(:,1),colDens(dstep),cloudSize,successFlag)
+            call initializeHeating(density(dstep),colDens(dstep),cloudSize,successFlag)
             if (successFlag < 0) return
         end if
 
@@ -201,7 +202,7 @@ contains
         ! If the hydrogen diffusion energy is still its default value (-1.0 in default_parameters.f90),
         ! i.e. no custom value was set in the input dictionary, set it to the correct value
         ! according to the ratio of the ratio of diffusion energy to binding energy.
-        if (HdiffusionBarrier == -1.0_dp) then
+        if (is_equal(HdiffusionBarrier, -1.0_dp)) then
             do i = LBOUND(iceList, 1), UBOUND(iceList, 1)
                 if (iceList(i) == ngh) HdiffusionBarrier = diffToBindRatio*bindingEnergy(i)
             end do
@@ -303,8 +304,8 @@ contains
             bulkLayersReciprocal=MIN(1.0_dp,NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
             surfaceCoverage=bulkGainFromMantleBuildUp()
 
-            if ((.NOT. dustTemp(dstep) == lastDustTemp) .OR. &
-                (.NOT. gasTemp(dstep) == lastGasTemp)) then
+            if ((.not. is_equal(dustTemp(dstep), lastDustTemp)) .OR. &
+                (.not. is_equal(gasTemp(dstep), lastGasTemp))) then
                 call updateVdiffAndVdes(dustTemp(dstep), N_ICE_SPECIES, vdiff, vdes)
             end if
 
@@ -339,7 +340,6 @@ contains
                             &+ (0.1_dp + 4.2_dp*h2heatfac)*h2form_LH_vol &
                             &+ 0.6_dp*h2heatfac*h2form_ER_vol)
                 tempDot= getTempDot(&
-                                    timeinyears, &                       ! time
                                     abund(nSpec+1,dstep), &              ! gas temperature
                                     abund(nSpec+2,dstep), &              ! gas density
                                     colDens(dstep), &                    ! gas column density
@@ -429,7 +429,7 @@ contains
         real(dp), save :: prevAbund(nSpec)  ! end-state snapshot of last ISTATE=1 step; safe: only read when ISTATE=2, which requires a prior successful call that sets this array
         real(dp) :: maxLogChange
         logical :: was_fresh_restart       ! whether this call entered DVODE with ISTATE=1
-        integer :: ii
+        ! integer :: ii
         ! species_check_mask was used by the negative-abundance error block (now commented out)
         !LOGICAL :: species_check_mask(nSpec)
         successFlag=0
@@ -606,12 +606,11 @@ contains
         real(WP), dimension(NEQUATIONS), intent(in) :: Y
         real(WP), dimension(NEQUATIONS), intent(out) :: YDOT
 
-        real(dp) :: D,loss,prod
+        real(dp) :: D
         real(dp) :: surfaceCoverage
-        real(dp) :: phi,grec,denom
         real(dp) :: h2heatfac, h2_denom  ! H&M79 eq. 6.45 thermalization efficiency factor
 
-        integer :: ii, k
+        integer :: k
         ! Y_safe clamps species abundances to MIN_ABUND during ODE evaluation.
         ! DVODE predictor steps can drive species to small negatives; feeding those
         ! negative values back into destruction terms compounds the overshoot.
@@ -729,7 +728,6 @@ contains
                     &+ 0.6_dp * h2heatfac * rate_constants(nR_H2Form_ERDes) * Y(nSpec+2)**2 * Y(nh) * Y(ngh) &
                     &  / max(safeMantle, MIN_SURFACE_ABUND))
                 tempDot=getTempDot( &
-                               timeInYears, &                         ! time
                                Y(nSpec+1), &                          ! gas temperature
                                Y(nSpec+2), &                          ! gas density
                                colDens(dstep), &                      ! gas column density
