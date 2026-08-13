@@ -4,9 +4,9 @@ module postprocess_mod
     use constants, only: SECONDS_PER_YEAR, PHYSICS_UPDATE_ERROR
     use DEFAULTPARAMETERS
     use f2py_constants, only: nSpec
+    use numerics, only: is_equal
     !f2py INTEGER, parameter :: dp
     use physicscore
-    use numerics, only: is_equal
     implicit none
 
     ! character(len=100) :: trajecfile

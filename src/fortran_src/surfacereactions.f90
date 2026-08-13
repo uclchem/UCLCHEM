@@ -13,6 +13,8 @@ module SurfaceReactions
       moleculeIsLinear, formationEnthalpy, LHDEScorrespondingLHreacs, &
       customVdes, customVdiff, THREE_PHASE, inertiaProducts, &
       ngh2, nh2, ngn, ngo, ngoh, nh, ngh
+  !f2py INTEGER, parameter :: dp
+  use numerics, only: is_equal
 
   implicit none
 
