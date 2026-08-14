@@ -907,7 +907,6 @@ def get_protostellar_model_index(L_star: float) -> int:
         raise ValueError(msg)
 
 
-<<<<<<< HEAD
 def get_fuzzy_unknown_keys(
     keys: Iterable[str], expected_keys: Iterable[str]
 ) -> set[tuple[str, str]]:
@@ -953,9 +952,9 @@ def remove_keys_with_none(dct: dict[str, Any]) -> None:
     Examples
     --------
     >>> dct = {'key_a': 'a', 'key_b': None}
-    >>> remove_keys_with_none({'key_a': 'a', 'key_b': None})
+    >>> remove_keys_with_none(dct)
     >>> dct
-    '{'key_a': 'a'}'
+    {'key_a': 'a'}
 
     """
     keys_to_delete = [k for k, v in dct.items() if v is None]
@@ -964,18 +963,12 @@ def remove_keys_with_none(dct: dict[str, Any]) -> None:
 
 
 def get_lowercase_copy(dct: dict[str, Any]) -> dict[str, Any]:
->>>>>>> 0364e87 (Use typos mirror instead, https://github.com/crate-ci/typos/issues/390, update ruff version, fix new linting errors.)
     """Get a copy of a dictionary where the keys have been replaced by lowercase keys.
 
     Parameters
     ----------
-<<<<<<< HEAD
     dct : Mapping[str, Any]
         Mapping to get lowercase copy of.
-=======
-    dct : dict[str, Any]
-        Dictionary to get lowercase copy of.
->>>>>>> 0364e87 (Use typos mirror instead, https://github.com/crate-ci/typos/issues/390, update ruff version, fix new linting errors.)
 
     Returns
     -------
@@ -990,13 +983,8 @@ def get_lowercase_copy(dct: dict[str, Any]) -> dict[str, Any]:
 
     Examples
     --------
-<<<<<<< HEAD
     >>> get_lowercase_copy({'KEY_A': 'A', 'kEy_B': 'b'})
     {'key_a': 'A', 'key_b': 'b'}
-=======
-    >>> remove_keys_with_none({'KEY_A': 'A', 'kEy_B': 'b'})
-    '{'key_a': 'A', 'key_b': 'b'}'
->>>>>>> 0364e87 (Use typos mirror instead, https://github.com/crate-ci/typos/issues/390, update ruff version, fix new linting errors.)
 
     """
     new_dct = {}

@@ -18,6 +18,7 @@ import importlib.util
 import logging
 import os
 import warnings
+from collections.abc import Mapping
 from pathlib import Path
 from types import MappingProxyType
 
@@ -140,7 +141,7 @@ class HeatingSettings:
         for attr_name in dir(self):
             if attr_name.isupper() and not attr_name.startswith("_"):
                 attr = getattr(self, attr_name)
-                if isinstance(attr, dict):
+                if isinstance(attr, Mapping):
                     # This is a group with multiple implementations
                     for impl_id in attr.values():
                         self._heating_groups[impl_id] = list(attr.values())
