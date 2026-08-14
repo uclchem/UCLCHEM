@@ -136,6 +136,7 @@ from uclchem.utils import (
     get_lowercase_copy,
     get_reaction_table,
     get_species,
+    pad_to_length,
     remove_keys_with_none,
 )
 
@@ -2315,8 +2316,7 @@ class AbstractModel(ABC):
             # Handle deprecated endAtFinalDensity parameter (after lowercasing)
             new_param_dict = _convert_legacy_stopping_param(new_param_dict)
 
-            self._param_dict = {**default_param_dictionary, **new_param_dict.copy()}
-            del new_param_dict
+            self._param_dict = {**default_param_dictionary, **new_param_dict}
 
         # Check the merged dict, not the defaults, to preserve user-provided values
         remove_keys_with_none(self._param_dict)
@@ -2411,10 +2411,10 @@ class AbstractModel(ABC):
     def _create_se_stats_array(self):
         """Create the Fortran-compliant np.array for SE solver statistics.
 
-        Shape: (timepoints+1, gridpoints, NCOOLANTS*3).
+        Shape: (timepoints+1, gridpoints, NCOOLANTS*N_SE_STATS_PER_COOLANT).
 
         """
-        n_stats = NCOOLANTS * N_SE_STATS_PER_COOLANT  # 35 * 3 = 105
+        n_stats = NCOOLANTS * N_SE_STATS_PER_COOLANT
 
         (
             self._shm_handles["se_stats_array"],
@@ -3753,13 +3753,8 @@ class Postprocess(AbstractModel):
                         msg = "All arrays must be the same length"
                         raise ValueError(msg)
 
-                    # Pad to self.timepoints so Fortran gets
-                    # correctly sized arrays.
-                    padded = np.zeros(
-                        self.timepoints,
-                        dtype=np.float64,
-                    )
-                    padded[:n_input] = array
+                    # Pad to self.timepoints so Fortran gets correctly sized arrays.
+                    padded = pad_to_length(array, self.timepoints)
                     self.postprocess_arrays[key] = np.asfortranarray(padded)
             self.time_array = time_array
             # Column-density (coldens) and visual extinction (Av) arrays

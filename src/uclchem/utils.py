@@ -952,3 +952,43 @@ def get_lowercase_copy(dct: dict[str, Any]) -> dict[str, Any]:
             raise ValueError(msg)
         new_dct[k.lower()] = v
     return new_dct
+
+
+def pad_to_length(array: np.ndarray, length: int, **kwargs) -> np.ndarray:
+    """Pad an array to a specific length.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Array to pad
+    length : int
+        Padded length
+    **kwargs : dict[str, Any]
+        Keyword arguments passed to :func:`np.pad`.
+
+    Returns
+    -------
+    np.ndarray
+        Array padded to a length of `length`.
+
+    Raises
+    ------
+    ValueError
+        If the length of `array` is larger than `length`.
+
+    Examples
+    --------
+    >>> pad_to_length(np.array([1, 2]), 4)
+    array([1, 2, 0, 0])
+    >>> # Takes same dtype as input array (by default)
+    >>> pad_to_length(np.array([1., 2.]), 4)
+    array([1., 2., 0., 0.])
+    >>> # Custom padding values can be specified by passing a kwarg
+    >>> pad_to_length(np.array([1., 2.]), 4, mode='symmetric')
+    array([1., 2., 2., 1.])
+
+    """
+    if len(array) > length:
+        msg = f"Tried padding array, but already had length ({len(array)}) larger than desired padded length ({length})"
+        raise ValueError(msg)
+    return np.pad(array, (0, length - len(array)), **kwargs)

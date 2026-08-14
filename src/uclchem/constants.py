@@ -14,7 +14,7 @@ reinstall UCLCHEM for these constants to update:
 """
 
 # Import canonical values from compiled Fortran module
-from uclchemwrap import f2py_constants
+from uclchemwrap import constants, f2py_constants
 
 # Read canonical values from Fortran
 n_species = int(f2py_constants.nspec)
@@ -24,6 +24,7 @@ NCOOLANTS = int(f2py_constants.ncoolants)
 N_DVODE_STATS = int(f2py_constants.n_dvode_stats)
 N_TOTAL_LEVELS = int(f2py_constants.n_total_levels)
 N_SE_STATS_PER_COOLANT = int(f2py_constants.n_se_stats_per_coolant)
+ZETA_0 = float(constants.zeta_0)  # Standard cosmic ray ionization rate (1.3e-17 s-1)
 
 
 # Canonical definition of physical parameters
@@ -42,8 +43,6 @@ PHYSICAL_PARAMETERS = [
     "radfield_internal",
 ]
 
-
-ZETA_0 = 1.36e-17  # Standard cosmic ray ionization rate (1.3e-17 s-1)
 
 CENTIMETERS_PER_PARSEC = 3.086e18  # parsec in cgs
 SECONDS_PER_YEAR = 3.15569e7
