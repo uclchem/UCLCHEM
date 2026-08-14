@@ -61,7 +61,8 @@ select = ["E", "F", "I", "W", "D", "E", "B",
     "PTH", 
     "LOG", 
     "TC", 
-    "PLC", "PLR", "PLE"
+    "PLC", "PLR", "PLE",
+    "FURB",
 ]
 extend-ignore = [
     "E501", "E731", "E741", "E402", "E203", "E204",

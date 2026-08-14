@@ -406,8 +406,7 @@ def analysis(
 
     with Path(analysis_file).open("w") as f:
         f.write("All Reactions\n************************\n")
-        for reaction in formatted_reacs:
-            f.write(reaction + "\n")
+        f.writelines(reaction + "\n" for reaction in formatted_reacs)
         for _i, row in result_df.iterrows():
             # recreate the parameter dictionary needed to get accurate rates
             param_dict = _param_dict_from_output(row)
@@ -639,7 +638,7 @@ def _get_rates_of_change(
                 change /= safeMantle
                 if reactant == "DESOH2":
                     change *= row["H"]
-            elif (not three_phase) and (reactant in {"THERM"}):
+            elif (not three_phase) and (reactant == "THERM"):
                 change *= row["Density"] / safeMantle
 
             if "H2FORM" in reactants:
@@ -1335,8 +1334,8 @@ def analyze_element_per_phase(element: str, df: pd.DataFrame) -> pd.DataFrame:
         species_to_select = [
             s for s in list(df.columns) if derive_phase_from_name(s) == phase
         ]
-        df_ = df.loc[:, species_to_select]
+        df_spec = df.loc[:, species_to_select]
         sums = _count_element(species_to_select, element)
         col_key = element + "_" + phase
-        content[col_key] = df_.mul(sums.values, axis=1).sum(axis=1)
+        content[col_key] = df_spec.mul(sums.values, axis=1).sum(axis=1)
     return content

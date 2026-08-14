@@ -257,9 +257,7 @@ class TestCustomExothermicities:
         reactions[0].set_exothermicity(-1e10)  # Pre-existing non-zero value
 
         # First call with overwrite=False (should skip)
-        _, _ = heating.set_custom_exothermicities(
-            reactions, sample_custom_csv, overwrite=False
-        )
+        heating.set_custom_exothermicities(reactions, sample_custom_csv, overwrite=False)
 
         # H+H->H2 should not be updated
         assert reactions[0].get_exothermicity() == pytest.approx(-1e10)

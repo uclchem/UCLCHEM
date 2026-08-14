@@ -335,8 +335,9 @@ def __functional_return__(
             result.append(stats_df)
         if hasattr(model_object, "dissipation_time"):
             result.append(model_object.dissipation_time)
-        result.append(model_object.next_starting_chemistry_array)
-        result.append(model_object.success_flag)
+        result.extend(
+            (model_object.next_starting_chemistry_array, model_object.success_flag)
+        )
         return tuple(result)
     elif return_array:
         # Build result tuple - stats only included when requested (for backward compatibility)

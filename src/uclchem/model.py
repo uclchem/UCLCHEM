@@ -83,6 +83,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import operator
 
 _logger = logging.getLogger(__name__)
 
@@ -598,7 +599,7 @@ class AbstractModel(ABC):
 
         # Validate parcelStoppingMode usage after model_type is known
         if self._param_dict.get("_needs_freefall_validation", False):
-            if self.model_type not in {"Collapse"}:  # Collapse models imply freefall
+            if self.model_type != "Collapse":  # Collapse models imply freefall
                 msg = (
                     "parcelStoppingMode != 0 can only be used with:\n"
                     "  - Cloud models with freefall=True\n"
@@ -1702,7 +1703,7 @@ class AbstractModel(ABC):
         save_data = self._data.copy()
         # Collect remaining non-array dataset variables into attributes (same behavior as before)
         for v in list(save_data.variables):
-            if "_array" not in v and v not in {"_orig_sigint"}:
+            if "_array" not in v and v != "_orig_sigint":
                 if np.shape(save_data[v].values) != ():
                     if isinstance(save_data[v].values, tuple):
                         temp_attribute_dict[v] = save_data[v].values[1].tolist()
@@ -4689,7 +4690,7 @@ class GridRunner:
         self._log_main(f"Grid finished: {len(self.model_id_dict)} models completed")
         self.models = [
             {"Model": v}
-            for _, v in sorted(self.model_id_dict.items(), key=lambda item: item[1])
+            for _, v in sorted(self.model_id_dict.items(), key=operator.itemgetter(1))
         ]
         self._load_params()
 

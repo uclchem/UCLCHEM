@@ -525,13 +525,13 @@ def write_outputs(
             conversion_factors.append(explicit_factor)
             conversion_modes.append(0)
         elif name == "p-H2":
-            parent_names.append(explicit_parent if explicit_parent else "H2")
+            parent_names.append(explicit_parent or "H2")
             conversion_factors.append(
                 explicit_factor if explicit_factor is not None else 0.0
             )
             conversion_modes.append(0 if explicit_factor is not None else 1)
         elif name == "o-H2":
-            parent_names.append(explicit_parent if explicit_parent else "H2")
+            parent_names.append(explicit_parent or "H2")
             conversion_factors.append(
                 explicit_factor if explicit_factor is not None else 0.0
             )
@@ -545,13 +545,13 @@ def write_outputs(
                     f"'parent_species' in the coolant configuration."
                 )
                 raise ValueError(msg)
-            parent = explicit_parent if explicit_parent else name[2:]
+            parent = explicit_parent or name[2:]
             parent_names.append(parent)
             conversion_factors.append(explicit_factor)
             conversion_modes.append(0)
         else:
             # Normal species
-            parent_names.append(explicit_parent if explicit_parent else name)
+            parent_names.append(explicit_parent or name)
             conversion_factors.append(
                 explicit_factor if explicit_factor is not None else 1.0
             )
@@ -590,7 +590,7 @@ def write_outputs(
         "parent_names": parent_names,
         "conversion_factors": conversion_factors,
         "conversion_modes": conversion_modes,
-        "coolant_data_dir": coolant_data_dir if coolant_data_dir else "",
+        "coolant_data_dir": coolant_data_dir or "",
         "suggested_freq_rel_tol": suggested_freq_rel_tol,
         "missing_value_integer": MISSING_VALUE_INTEGER,
         "missing_value_float": MISSING_VALUE_FLOAT,
@@ -668,8 +668,7 @@ def write_f90_constants(
 
     """
     template_file_path = UCLCHEM_ROOT_DIR / "makerates" / template_file_path
-    with Path(template_file_path / "f2py_constants.f90").open() as fh:
-        constants = fh.read()
+    constants = Path(template_file_path / "f2py_constants.f90").read_text()
 
     # Handle string arrays separately for coolants
     if "coolant_files" in replace_dict and "coolant_names" in replace_dict:
@@ -918,12 +917,8 @@ def write_odes_f90(
         logger.debug(f"RATE_CONSTANTS({i + 1}):{reaction}")
         reaction.generate_ode_bit(i, species_names)
 
-    # then create ODE code and write to file.
-    with Path(file_name).open(mode="w") as output:
-        # go through every species and build two strings,
-        # one with eq for all destruction routes and one for all formation
-        ydotString = build_ode_string(species_list, reaction_list, enable_rates_storage)
-        output.write(ydotString)
+    ydotString = build_ode_string(species_list, reaction_list, enable_rates_storage)
+    Path(file_name).write_text(ydotString)
 
 
 def write_jacobian(file_name: Path, species_list: list[Species]) -> None:

@@ -539,9 +539,9 @@ class NetworkBuilder:
                 new_reactions.append(Reaction(new_reac_list))
 
             # and the reverse, going from surface to bulk
-            if species not in {
-                "@H2"
-            }:  # If species is H2, do not allow it to go from surface to bulk
+            if (
+                species != "@H2"
+            ):  # If species is H2, do not allow it to go from surface to bulk
                 new_reac_list[0] = species.get_name().replace("@", "#")
                 new_reac_list[1] = "SURFSWAP"
                 new_reac_list[3] = species.get_name()
@@ -915,8 +915,7 @@ class NetworkBuilder:
 
                 # stops duplicate reactions e.g. #H* + #H and #H + #H*
                 if new_reac_a != new_reac_b:
-                    new_reactions.append(new_reac_a)
-                    new_reactions.append(new_reac_b)
+                    new_reactions.extend((new_reac_a, new_reac_b))
                 else:
                     new_reactions.append(new_reac_a)
 

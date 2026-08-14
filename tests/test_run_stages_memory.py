@@ -333,7 +333,7 @@ def test_endAtFinalDensity_validation(test_output_directory):  # ruff: ignore[in
 
     # Should raise ValueError for Cloud without freefall
     with pytest.raises(ValueError, match="parcelStoppingMode != 0 can only be used"):
-        _, _, _, _, _, _ = uclchem.functional.cloud(
+        uclchem.functional.cloud(
             param_dict=params,
             out_species=["OH", "CO"],
             return_array=True,

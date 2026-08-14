@@ -510,12 +510,12 @@ class Reaction:
         n_reacs = len(reac_constituents)
         n_prods = len(prod_constituents)
         if n_reacs == n_prods:
-            for _i, reac_constituent in enumerate(reac_constituents):
+            for reac_constituent in reac_constituents:
                 # For each reactant, find which product is
                 # closest (most similar in buildup) to it.
                 min_total = int(1e10)
                 min_diff = None
-                for _j, prod_constituent in enumerate(prod_constituents):
+                for prod_constituent in prod_constituents:
                     diff = deepcopy(reac_constituent)
                     diff.subtract(prod_constituent)
                     total_change = 0
@@ -735,13 +735,13 @@ class Reaction:
             return
         charge_reactants = 0
         for reac in self._reactants:
-            if reac in {"NAN"}:
+            if reac == "NAN":
                 continue
             specie = Species([reac] + [0] * len(species_header))
             charge_reactants += specie.get_charge()
         charge_products = 0
         for prod in self._products:
-            if prod in {"NAN"}:
+            if prod == "NAN":
                 continue
             specie = Species([prod] + [0] * len(species_header))
             charge_products += specie.get_charge()
@@ -1238,7 +1238,7 @@ def _generate_reaction_ode_bit(
             ode_bit += "/safeMantle"
             if species == "DESOH2":
                 ode_bit += f"*Y({species_names.index('H') + 1})"
-        elif species in {"ED"}:
+        elif species != "ED":
             ode_bit += f"*Y({species_names.index('#H2') + 1})"
 
         if "H2FORM" in reactants:
