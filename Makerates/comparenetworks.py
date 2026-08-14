@@ -24,7 +24,7 @@ if __name__ == "__main__":
         f"I found {len(reactions1)} reactions in the file {reactions_file1}, I dropped {len(drops)} reactions."
     )
     # If you need to see which reactions are dropped:
-    # print("\n".join([str(drop) for drop in drops])) # noqa: ERA001
+    # print("\n".join([str(drop) for drop in drops])) # ruff: ignore[commented-out-code]
     reactions2, drops = read_reaction_file(Path(reactions_file2), species_list, "UCL")
     print(
         f"I found {len(reactions2)} reactions in the file {reactions_file2}, I dropped {len(drops)} reactions."

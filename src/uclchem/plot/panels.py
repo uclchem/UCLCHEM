@@ -483,7 +483,7 @@ def draw_panel_rate_constants(
         )
 
     # Bar mode: warn for time-varying rate constants, then plot means.
-    import numpy as np  # noqa: PLC0415
+    import numpy as np  # ruff: ignore[import-outside-top-level]
 
     top_prod_k = [r for r in top_prod if r in prod_k.columns]
     top_dest_k = [r for r in top_dest if r in dest_k.columns]

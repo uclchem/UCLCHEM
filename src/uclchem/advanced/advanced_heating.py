@@ -13,11 +13,13 @@ across model runs in the same Python session.
 
 """
 
+import importlib.resources
 import importlib.util
 import logging
 import os
 import warnings
 from pathlib import Path
+from types import MappingProxyType
 
 import numpy as np
 import uclchemwrap
@@ -91,10 +93,12 @@ class HeatingSettings:
     # Heating mechanism indices (matching heating.f90)
     # Mechanisms with multiple implementations are dicts; only one can be enabled at a time
     # Fortran Indexed:
-    PHOTOELECTRIC = {
-        "BAKES": 1,  # Bakes & Tielens photoelectric heating
-        "WEINGARTNER": 2,  # Weingartner photoelectric heating
-    }
+    PHOTOELECTRIC = MappingProxyType(
+        {
+            "BAKES": 1,  # Bakes & Tielens photoelectric heating
+            "WEINGARTNER": 2,  # Weingartner photoelectric heating
+        }
+    )
     H2_FORMATION = 3
     H2_PHOTODISSOCIATION = 4
     H2_FUV_PUMPING = 5
@@ -503,7 +507,7 @@ class HeatingSettings:
         if not dir_path.is_dir():
             msg = f"Not a directory: {dir_str}"
             raise ValueError(msg)
-        if len(dir_str) > 255:  # noqa: PLR2004
+        if len(dir_str) > 255:  # ruff: ignore[magic-value-comparison]
             msg = f"Path too long (max 255): {dir_str}"
             raise ValueError(msg)
 
@@ -685,7 +689,7 @@ def initialize_coolant_directory() -> str:
 
     # Priority 1: Environment variable
     env_dir = os.environ.get("UCLCHEM_COOLANT_DATA")
-    if env_dir:
+    if env_dir is not None:
         env_path = Path(env_dir)
         if env_path.is_dir() and list(env_path.glob("*.dat")):
             coolant_dir = str(env_path.resolve())
@@ -700,21 +704,11 @@ def initialize_coolant_directory() -> str:
                 env_dir,
             )
 
-    # Priority 2: Installed package data (importlib.resources for Python 3.9+)
+    # Priority 2: Installed package data
     try:
-        # Try new API first (Python 3.9+)
-        try:
-            from importlib.resources import files  # noqa: PLC0415
-
-            resource = files("uclchem") / "data" / "collisional_rates"
-            # Convert Traversable to Path so we can call .glob() and .resolve()
-            package_data_path = Path(str(resource))
-        except (ImportError, TypeError):
-            # Fallback to older API (Python 3.7-3.8)
-            from importlib.resources import path as resource_path  # noqa: PLC0415
-
-            with resource_path("uclchem.data", "collisional_rates") as p:
-                package_data_path = Path(p)
+        resource = importlib.resources.files("uclchem") / "data" / "collisional_rates"
+        # Convert Traversable to Path so we can call .glob() and .resolve()
+        package_data_path = Path(str(resource))
 
         if package_data_path.is_dir() and list(package_data_path.glob("*.dat")):
             coolant_dir = str(package_data_path.resolve())
@@ -727,7 +721,9 @@ def initialize_coolant_directory() -> str:
 
     # Priority 3: Development mode - search for Makerates/data/collisional_rates/
     try:
-        from uclchem.utils import UCLCHEM_ROOT_DIR  # noqa: PLC0415
+        from uclchem.utils import (  # ruff: ignore[import-outside-top-level]
+            UCLCHEM_ROOT_DIR,
+        )
 
         # Try relative to UCLCHEM_ROOT_DIR (src/uclchem/)
         candidates = [

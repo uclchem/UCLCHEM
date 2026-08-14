@@ -244,7 +244,7 @@ class TestCustomExothermicities:
         # Check that exothermicities were set
         h2_reaction = reactions[0]  # H + H -> H2
         exo = h2_reaction.get_exothermicity()
-        assert exo != 0.0
+        assert exo != 0
         # Should be -4.52 eV in erg
         expected = -4.52 * heating.EV_TO_ERG
         assert exo == pytest.approx(expected, rel=1e-6)
@@ -257,7 +257,7 @@ class TestCustomExothermicities:
         reactions[0].set_exothermicity(-1e10)  # Pre-existing non-zero value
 
         # First call with overwrite=False (should skip)
-        matched, _ = heating.set_custom_exothermicities(
+        _, _ = heating.set_custom_exothermicities(
             reactions, sample_custom_csv, overwrite=False
         )
 
@@ -265,7 +265,7 @@ class TestCustomExothermicities:
         assert reactions[0].get_exothermicity() == pytest.approx(-1e10)
 
         # Second call with overwrite=True (should update)
-        matched, _ = heating.set_custom_exothermicities(
+        _matched, _ = heating.set_custom_exothermicities(
             reactions, sample_custom_csv, overwrite=True
         )
 

@@ -125,7 +125,7 @@ def test_network_with_custom_exothermicity(config_file_with_exothermicity):
     reactions_with_exo = [
         r
         for r in network.get_reaction_list()
-        if r.get_exothermicity() is not None and r.get_exothermicity() != 0.0
+        if r.get_exothermicity() is not None and r.get_exothermicity() != 0
     ]
 
     # We should have reactions with exothermicity set

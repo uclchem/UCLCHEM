@@ -38,7 +38,7 @@ if __name__ == "__main__":
                     key = temp_line[-1].strip()
                     type_of_value = temp_line[0].strip()
                     new_line = new_line[1].split("!")
-                    value: str | float | None | list
+                    value: str | float | list | None
                     value = new_line[0]
                     description = new_line[1]
                     line = (

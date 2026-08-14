@@ -71,15 +71,15 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     assert final_ch4 > 1e-20, "Complex molecules should form"
 
     settings = uclchem.advanced.GeneralSettings()
-    num_monolayers_is_surface = list(
-        settings.search("num_monolayers_is_surface", True, True).values()
-    )[0].get()
-    gas_dust_density_ratio = list(
-        settings.search("gas_dust_density_ratio", True, True).values()
-    )[0].get()
-    num_sites_per_grain = list(
-        settings.search("num_sites_per_grain", True, True).values()
-    )[0].get()
+    num_monolayers_is_surface = next(
+        iter(settings.search("num_monolayers_is_surface", True, True).values())
+    ).get()
+    gas_dust_density_ratio = next(
+        iter(settings.search("gas_dust_density_ratio", True, True).values())
+    ).get()
+    num_sites_per_grain = next(
+        iter(settings.search("num_sites_per_grain", True, True).values())
+    ).get()
 
     num_monolayers_in_run = (
         df["SURFACE"].max() * gas_dust_density_ratio / num_sites_per_grain

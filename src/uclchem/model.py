@@ -100,7 +100,8 @@ from datetime import datetime
 from multiprocessing import pool as mp_pool
 from multiprocessing import shared_memory
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, Literal
 
 import h5py
 import numpy as np
@@ -139,6 +140,7 @@ from uclchem.utils import (
     get_lowercase_copy,
     get_reaction_table,
     get_species,
+    remove_keys_with_none,
 )
 
 if TYPE_CHECKING:
@@ -250,7 +252,7 @@ def reaction_line_formatter(line: list[str] | pd.Series) -> str:
     return " + ".join(reactants) + " -> " + " + ".join(products)
 
 
-class ReactionNamesStore:  # noqa: D101
+class ReactionNamesStore:  # ruff: ignore[undocumented-public-class]
     def __init__(self):
         self.reaction_names = None
 
@@ -277,7 +279,7 @@ class ReactionNamesStore:  # noqa: D101
 get_reaction_names = ReactionNamesStore()
 
 
-class SpeciesNameStore:  # noqa: D101
+class SpeciesNameStore:  # ruff: ignore[undocumented-public-class]
     def __init__(self):
         self.species_names = None
 
@@ -409,7 +411,7 @@ def _worker_entry(
 ):
     # Restore advanced settings captured in the coordinator process.
     if advanced_snapshot is not None:
-        from uclchem.advanced.worker_state import (  # noqa: PLC0415 circular
+        from uclchem.advanced.worker_state import (  # ruff: ignore[import-outside-top-level] circular
             restore_snapshot,
         )
 
@@ -483,7 +485,7 @@ def _convert_legacy_stopping_param(param_dict: dict[str, Any]) -> dict:
 
         # Check if parcelStoppingMode requires freefall validation
         # Defer full validation to AbstractModel.__init__() where model_type is known
-        if new_val != 0 and not param_dict.get("freefall", False):
+        if new_val != 0 and not param_dict.get("freefall"):
             param_dict["_needs_freefall_validation"] = True
     return param_dict
 
@@ -650,12 +652,7 @@ class AbstractModel(ABC):
         on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
-        import multiprocessing  # noqa: PLC0415
-
-        if (
-            multiprocessing.current_process().name != "MainProcess"
-            and run_type != "external"
-        ):
+        if mp.current_process().name != "MainProcess" and run_type != "external":
             msg = (
                 "A uclchem model was instantiated inside a multiprocessing worker. "
                 "This usually means your script is missing an "
@@ -693,7 +690,7 @@ class AbstractModel(ABC):
         self._debug = debug
         self._on_negative_abundances = on_negative_abundances
         self._on_error = on_error
-        self.success_flag: None | SuccessFlag = None
+        self.success_flag: SuccessFlag | None = None
         # Note: specname is now accessed via get_species_names() global function
         # Note: PHYSICAL_PARAMETERS is now accessed via the global constant
 
@@ -733,21 +730,9 @@ class AbstractModel(ABC):
         # Expose grid points as attribute for legacy code expecting `gridPoints`
         object.__setattr__(self, "gridPoints", self._param_dict["points"])
 
-        self.outputFile = (
-            self._param_dict.pop("outputfile")
-            if "outputfile" in self._param_dict
-            else None
-        )
-        self.abundSaveFile = (
-            self._param_dict.pop("abundsavefile")
-            if "abundsavefile" in self._param_dict
-            else None
-        )
-        self.abundLoadFile = (
-            self._param_dict.pop("abundloadfile")
-            if "abundloadfile" in self._param_dict
-            else None
-        )
+        self.outputFile = self._param_dict.pop("outputfile", None)
+        self.abundSaveFile = self._param_dict.pop("abundsavefile", None)
+        self.abundLoadFile = self._param_dict.pop("abundloadfile", None)
 
         self.starting_chemistry_array: Any = None
         if previous_model is None and self.abundLoadFile is None:
@@ -763,8 +748,10 @@ class AbstractModel(ABC):
             self._create_starting_array(previous_model.next_starting_chemistry_array)
 
         self.give_start_abund = self.starting_chemistry_array is not None
-        if np.all(self.starting_chemistry_array == 0.0):
-            msg = "Detected all zeros starting chemistry array."
+        if self.starting_chemistry_array is not None and not np.any(
+            self.starting_chemistry_array > 0
+        ):
+            msg = "Detected all zeros or negative starting chemistry array."
             raise AssertionError(msg)
 
         # Only initialize next_starting_chemistry_array if we didn't load it from a file
@@ -829,17 +816,17 @@ class AbstractModel(ABC):
         model_ds.close()
         temp_attribute_dict = json.loads(obj._data["attributes_dict"].item())
         # Restore these values into the metadata dict rather than dataset variables
-        object.__setattr__(obj, "_meta", temp_attribute_dict)  # noqa: PLC2801 bypass
+        object.__setattr__(obj, "_meta", temp_attribute_dict)  # ruff: ignore[unnecessary-dunder-call] bypass
         del obj._data["attributes_dict"]
         obj.debug = debug
         obj._coord_assign()
         return obj
 
     @classmethod
-    def worker_build(cls, init_kwargs, shm_desc):  # noqa: ANN001, D102
+    def worker_build(cls, init_kwargs, shm_desc):  # ruff: ignore[missing-type-function-argument, undocumented-public-method]
         obj = cls.__new__(cls)
         for k, v in init_kwargs.items():
-            object.__setattr__(obj, k, v)  # noqa: PLC2801 bypass
+            object.__setattr__(obj, k, v)  # ruff: ignore[unnecessary-dunder-call] bypass
         obj._reform_array_in_worker(shm_desc)
         return obj
 
@@ -979,7 +966,7 @@ class AbstractModel(ABC):
                     time_dim = f"{base_time_dim}_{i}"
                     i += 1
 
-            if ndim == 3:  # noqa: PLR2004
+            if ndim == 3:  # ruff: ignore[magic-value-comparison]
                 # Determine the 'values' dimension name for the variable
                 values_dim = key.replace("array", "values")
                 # If an existing coordinate with this name has a conflicting
@@ -1013,7 +1000,7 @@ class AbstractModel(ABC):
                     self._data = self._data.assign_coords(
                         {time_dim: np.arange(value.shape[0])}
                     )
-            elif ndim == 2:  # noqa: PLR2004
+            elif ndim == 2:  # ruff: ignore[magic-value-comparison]
                 self._data[key] = (["point", key], value)
             elif ndim == 1:
                 # For 1D arrays, use the array name as the dimension
@@ -1237,7 +1224,7 @@ class AbstractModel(ABC):
                 all_dfs.append(dfs)
 
             # Transpose to group by dataframe type instead of by point
-            # e.g., [[phys0, chem0, rates0], [phys1, chem1, rates1]] -> [[phys0, phys1], [chem0, chem1], [rates0, rates1]] # noqa: W505
+            # e.g., [[phys0, chem0, rates0], [phys1, chem1, rates1]] -> [[phys0, phys1], [chem0, chem1], [rates0, rates1]] # ruff: ignore[doc-line-too-long]
             df_collections = list(zip(*all_dfs, strict=False))
 
             # Concatenate each type vertically
@@ -1659,12 +1646,12 @@ class AbstractModel(ABC):
         KeyboardInterrupt
             If the run is interrupted via ``SIGINT`` while in progress.
 
-        """  # noqa: DOC502 nested-handler
+        """  # ruff: ignore[docstring-extraneous-exception] nested-handler
         if self.was_read:
             msg = "This model was read. It can not be run. "
             raise RuntimeError(msg)
 
-        def _handler(signum, frame):  # noqa: ARG001, ANN001
+        def _handler(signum, frame):  # ruff: ignore[unused-function-argument, missing-type-function-argument]
             try:
                 self.on_interrupt()  # your “final steps”
             finally:
@@ -1676,7 +1663,7 @@ class AbstractModel(ABC):
         if self.run_type not in self.separate_worker_types:
             output = self.run_fortran()
         elif self.run_type in self.separate_worker_types:
-            from uclchem.advanced.worker_state import (  # noqa: PLC0415 circular
+            from uclchem.advanced.worker_state import (  # ruff: ignore[import-outside-top-level] circular
                 create_snapshot,
             )
 
@@ -1787,7 +1774,7 @@ class AbstractModel(ABC):
                 raise
 
     @abstractmethod
-    def run_fortran(self) -> dict[str, int | list]:  # noqa: D102
+    def run_fortran(self) -> dict[str, int | list]:  # ruff: ignore[undocumented-public-method]
         raise NotImplementedError
 
     # /Methods to start run of model
@@ -1903,14 +1890,14 @@ class AbstractModel(ABC):
                     self._pickle_dict[v] = self._data[v].item()
             # Save metadata separately for pickle roundtrip
             try:
-                object.__setattr__(  # noqa: PLC2801 bypass
+                object.__setattr__(  # ruff: ignore[unnecessary-dunder-call] bypass
                     self, "_pickle_meta", super().__getattribute__("_meta").copy()
                 )
             except Exception:
-                object.__setattr__(self, "_pickle_meta", {})  # noqa: PLC2801 bypass
+                object.__setattr__(self, "_pickle_meta", {})  # ruff: ignore[unnecessary-dunder-call] bypass
             self._data = None
             # Clear runtime metadata to reflect pickled state
-            object.__setattr__(self, "_meta", {})  # noqa: PLC2801 bypass
+            object.__setattr__(self, "_meta", {})  # ruff: ignore[unnecessary-dunder-call] bypass
         return self
 
     def un_pickle(self) -> AbstractModel:
@@ -1925,7 +1912,7 @@ class AbstractModel(ABC):
         if self._data is None and bool(self._pickle_dict):
             self._data = xr.Dataset()
             for k, v in self._pickle_dict.items():
-                if np.ndim(v) == 3 and "_array" in k:  # noqa: PLR2004
+                if np.ndim(v) == 3 and "_array" in k:  # ruff: ignore[magic-value-comparison]
                     # Avoid colliding with existing 'time_step' dim sizes by
                     # making a per-variable time dim if necessary
                     time_dim = "time_step"
@@ -1954,7 +1941,7 @@ class AbstractModel(ABC):
                             ["time_step", "point", k.replace("array", "values")],
                             v_arr,
                         )
-                elif np.ndim(v) == 2 and "_array" in k:  # noqa: PLR2004
+                elif np.ndim(v) == 2 and "_array" in k:  # ruff: ignore[magic-value-comparison]
                     self._data[k] = (["point", k], v)
                 elif "_values" in k:
                     pass
@@ -1964,11 +1951,11 @@ class AbstractModel(ABC):
             # Restore saved metadata if present
             try:
                 if hasattr(self, "_pickle_meta") and self._pickle_meta:
-                    object.__setattr__(self, "_meta", self._pickle_meta.copy())  # noqa: PLC2801 bypass
-            except Exception:  # noqa: S110 defensive
+                    object.__setattr__(self, "_meta", self._pickle_meta.copy())  # ruff: ignore[unnecessary-dunder-call] bypass
+            except Exception:  # ruff: ignore[try-except-pass] defensive
                 pass
             finally:
-                object.__setattr__(self, "_pickle_meta", {})  # noqa: PLC2801 bypass
+                object.__setattr__(self, "_pickle_meta", {})  # ruff: ignore[unnecessary-dunder-call] bypass
         self._coord_assign()
         return self
 
@@ -1978,7 +1965,7 @@ class AbstractModel(ABC):
     def legacy_read_output_file(
         self,
         read_file: str | Path,
-        rate_constants_load_file: str | Path | None = None,  # noqa: ARG002
+        rate_constants_load_file: str | Path | None = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
         """Perform classic output file reading.
 
@@ -2014,7 +2001,7 @@ class AbstractModel(ABC):
         max_point = int(np.max(raw_array[:, point_index]))
         # Support both 0-based (UCLCHEM ≥4.0) and 1-based (legacy Fortran) point indices.
         # The offset is 0 for new files and 1 for old legacy files.
-        _point_offset = min_point
+        point_offset = min_point
         self._param_dict["points"] = max_point - min_point + 1
 
         # Some legacy files include an additional metadata row; if more than one
@@ -2155,7 +2142,7 @@ class AbstractModel(ABC):
         )
 
         for p in range(self._param_dict["points"]):
-            sel = np.where(array[:, point_index] == p + _point_offset)[0]
+            sel = np.where(array[:, point_index] == p + point_offset)[0]
             self.physics_array[:, p, :] = array[sel, :point_index]
             self.chemical_abun_array[:, p, :] = array[sel, point_index + 1 :]
 
@@ -2189,7 +2176,7 @@ class AbstractModel(ABC):
         # Be defensive; if something goes wrong leave timepoints as-is.
         with contextlib.suppress(Exception):
             tp = int(self._data.sizes.get("time_step", 0))
-            object.__setattr__(self, "timepoints", tp - 1 if tp > 0 else 0)  # noqa: PLC2801 bypass
+            object.__setattr__(self, "timepoints", tp - 1 if tp > 0 else 0)  # ruff: ignore[unnecessary-dunder-call] bypass
 
         nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
         if len(nonzero_indices) > 0:
@@ -2238,7 +2225,7 @@ class AbstractModel(ABC):
         # Magic numbers here to match/improve the formatting of the classic version
         # TODO Move away from the magic numbers seen here.
         number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(species_names))}"
-        columns = np.array([PHYSICAL_PARAMETERS[:-1] + ["point"] + species_names])
+        columns = np.array([[*PHYSICAL_PARAMETERS[:-1], "point", *species_names]])
         np.savetxt(str(output_file), columns, fmt=string_fmt_string)
         with Path(str(output_file)).open("ab") as f:
             np.savetxt(f, full_array, fmt=number_fmt_string)
@@ -2450,10 +2437,21 @@ class AbstractModel(ABC):
             # avoid mutating the shared default dictionary
             self._param_dict = DEFAULT_PARAMETER_DICTIONARY.copy()
         else:
+<<<<<<< HEAD
             new_param_dict = get_lowercase_copy(param_dict)
             for k, v in new_param_dict.items():
                 if isinstance(v, Path):
                     new_param_dict[k] = str(v)
+=======
+            # Lower case (and conveniently copy so we don't edit) the user's dictionary
+            # This is key to UCLCHEM's "case insensitivity"
+            new_param_dict = get_lowercase_copy(param_dict)
+
+            # Convert all Paths to strings, because Fortran cannot accept Paths
+            for key, value in new_param_dict.items():
+                if isinstance(value, Path):
+                    new_param_dict[key] = str(value)
+>>>>>>> 0364e87 (Use typos mirror instead, https://github.com/crate-ci/typos/issues/390, update ruff version, fix new linting errors.)
 
             # Handle deprecated endAtFinalDensity parameter (after lowercasing)
             new_param_dict = _convert_legacy_stopping_param(dict(new_param_dict))
@@ -2464,11 +2462,12 @@ class AbstractModel(ABC):
             }
             del new_param_dict
 
+<<<<<<< HEAD
         # Remove keys with None values from the merged _param_dict
+=======
+>>>>>>> 0364e87 (Use typos mirror instead, https://github.com/crate-ci/typos/issues/390, update ruff version, fix new linting errors.)
         # Check the merged dict, not the defaults, to preserve user-provided values
-        keys_to_delete = [k for k, v in self._param_dict.items() if v is None]
-        for k in keys_to_delete:
-            del self._param_dict[k]
+        remove_keys_with_none(self._param_dict)
 
         # Still set these, because the fortran at this point still requires them.
         self.out_species = ""
@@ -2634,10 +2633,9 @@ class AbstractModel(ABC):
 
         # Build meaningful column names using actual coolant names
         try:
-            from uclchemwrap import f2py_constants  # noqa: PLC0415 optional
-
             coolant_names = [
-                str(name.decode()).strip() for name in f2py_constants.coolantnames
+                str(name.decode()).strip()
+                for name in uclchemwrap.f2py_constants.coolantnames
             ]
             columns = []
             for coolant_name in coolant_names:
@@ -2728,10 +2726,10 @@ class AbstractModel(ABC):
         return shm, spec, array
 
     def _reform_array_in_worker(self, shm_desc: dict[str, dict]) -> None:
-        object.__setattr__(self, "_shm_handles", {})  # noqa: PLC2801 bypass
+        object.__setattr__(self, "_shm_handles", {})  # ruff: ignore[unnecessary-dunder-call] bypass
         for k, v in shm_desc.items():
             shm = shared_memory.SharedMemory(name=v["name"], create=False)
-            object.__setattr__(  # noqa: PLC2801 bypass
+            object.__setattr__(  # ruff: ignore[unnecessary-dunder-call] bypass
                 self,
                 k,
                 np.ndarray(shape=v["shape"], dtype=np.float64, buffer=shm.buf, order="F"),
@@ -2743,7 +2741,7 @@ class AbstractModel(ABC):
         for k in self._shm_desc:
             try:
                 self._shm_handles[k].close()
-            except Exception:  # noqa: S110 defensive
+            except Exception:  # ruff: ignore[try-except-pass] defensive
                 pass
             finally:
                 del self._shm_handles[k]
@@ -2752,7 +2750,7 @@ class AbstractModel(ABC):
         if bool(self._shm_desc):
             for k in self._shm_desc:
                 try:
-                    setattr(self, k, self.__getattr__(k).copy())  # noqa: PLC2801 bypass
+                    setattr(self, k, self.__getattr__(k).copy())  # ruff: ignore[unnecessary-dunder-call] bypass
                     self._shm_handles[k].close()
                     self._shm_handles[k].unlink()
                 except Exception:
@@ -2956,12 +2954,14 @@ class Collapse(AbstractModel):
 
     # Time (years) at which each collapse mode's density evolution ends and the fitting
     # functions become singular.
-    _COLLAPSE_FINAL_TIMES = {
-        CollapseMode.BE1_1: 1.173387e6,
-        CollapseMode.BE4: 1.84265e5,
-        CollapseMode.FILAMENT: 1.393761e6,
-        CollapseMode.AMBIPOLAR: 1.6132984e7,
-    }
+    _COLLAPSE_FINAL_TIMES = MappingProxyType(
+        {
+            CollapseMode.BE1_1: 1.173387e6,
+            CollapseMode.BE4: 1.84265e5,
+            CollapseMode.FILAMENT: 1.393761e6,
+            CollapseMode.AMBIPOLAR: 1.6132984e7,
+        }
+    )
 
     def __init__(
         self,
@@ -3046,7 +3046,7 @@ class Collapse(AbstractModel):
         if (
             param_dict is not None
             and param_dict.get("points", 1) == 1
-            and param_dict.get("rin", 0.0) != 0.0
+            and param_dict.get("rin") is not None
         ):
             msg = (
                 "rin has no effect when points=1: the single parcel is placed at rout. "
@@ -3056,8 +3056,8 @@ class Collapse(AbstractModel):
 
         # For collapse models, endAtFinalDensity controls finalTime behavior.
         # Reject parcelStoppingMode since collapse models don't use density-based stopping.
-        _param = param_dict or {}
-        if "parcelStoppingMode" in _param:
+        param = param_dict or {}
+        if "parcelStoppingMode" in param:
             msg = (
                 "parcelStoppingMode is not supported for collapse models. "
                 "Use endAtFinalDensity instead: True (default) to stop at collapse endpoint, "
@@ -3070,8 +3070,8 @@ class Collapse(AbstractModel):
         #   evolution until collapse)
         # - False: user must set finalTime > collapseFinalTime (density frozen,
         #   chemistry continues)
-        user_final_time = _param.get("finalTime", None)
-        end_at_final_density = _param.get(
+        user_final_time = param.get("finalTime", None)
+        end_at_final_density = param.get(
             "endAtFinalDensity", True
         )  # Default True for collapse
 
@@ -3084,7 +3084,7 @@ class Collapse(AbstractModel):
                     f"To use a custom finalTime, set endAtFinalDensity=False."
                 )
                 raise ValueError(msg)
-            param_dict = {**_param, "finalTime": collapse_final_time}
+            param_dict = {**param, "finalTime": collapse_final_time}
             # Remove endAtFinalDensity so _convert_legacy_stopping_param doesn't affect it.
             param_dict.pop("endAtFinalDensity", None)
         else:
@@ -3105,7 +3105,7 @@ class Collapse(AbstractModel):
                 raise ValueError(msg)
             # finalTime > collapseFinalTime is valid; density will freeze at collapseFinalTime.
             # Remove endAtFinalDensity so _convert_legacy_stopping_param doesn't affect it.
-            param_dict = {**_param, "parcelStoppingMode": 0}
+            param_dict = {**param, "parcelStoppingMode": 0}
             param_dict.pop("endAtFinalDensity", None)
 
         super().__init__(
@@ -3314,7 +3314,7 @@ class PrestellarCore(AbstractModel):
             "success_flag" with value the success flag
 
         """
-        _, _, _, _, _, _, _, out_species_abundances_array, _, success_flag = (
+        _, _, _, _, _, _, _, _out_species_abundances_array, _, success_flag = (
             wrap.hot_core(
                 temp_index=self.temp_indx,
                 max_temp=self.max_temperature,
@@ -4274,7 +4274,7 @@ class SequentialRunner:
     ValueError
         If a model class in one of the stages is a ``SequentialRunner``.
 
-    """  # noqa: W505
+    """  # ruff: ignore[doc-line-too-long]
 
     def __init__(
         self,
@@ -4562,13 +4562,17 @@ class _NoDaemonProcess(mp.Process):
         return False
 
     @daemon.setter
-    def daemon(self, value):  # noqa :ANN001
+    def daemon(self, value):  # ruff: ignore[missing-type-function-argument]
         pass
 
 
+<<<<<<< HEAD
 class NoDaemonPool(mp_pool.Pool):  # noqa
+=======
+class NoDaemonPool(pool.Pool):  # ruff: ignore[undocumented-public-class]
+>>>>>>> 0364e87 (Use typos mirror instead, https://github.com/crate-ci/typos/issues/390, update ruff version, fix new linting errors.)
     @staticmethod
-    def Process(ctx, *args, **kwargs):  # noqa
+    def Process(ctx, *args, **kwargs):  # ruff: ignore[missing-type-function-argument, unused-static-method-argument, undocumented-public-method, invalid-function-name]
         return _NoDaemonProcess(*args, **kwargs)
 
 
@@ -4792,7 +4796,7 @@ class GridRunner:
 
         # Capture advanced settings so spawned workers start with the same
         # Fortran module state as the coordinator process.
-        from uclchem.advanced.worker_state import (  # noqa: PLC0415 circular
+        from uclchem.advanced.worker_state import (  # ruff: ignore[import-outside-top-level] circular
             _pool_initializer,
             create_snapshot,
         )
@@ -4957,7 +4961,11 @@ class GridRunner:
                                 in model._param_dict
                             },
                             **{
+<<<<<<< HEAD
                                 k.replace(f"{model_count}_", ""): model.__getattr__(  # noqa: PLC2801 bypass
+=======
+                                k.replace(f"{model_count}_", ""): tmp_model.__getattr__(  # ruff: ignore[unnecessary-dunder-call] bypass
+>>>>>>> 0364e87 (Use typos mirror instead, https://github.com/crate-ci/typos/issues/390, update ruff version, fix new linting errors.)
                                     k.replace(f"{model_count}_", "")
                                 )
                                 for k in list(self.parameters_to_grid.keys())
@@ -5047,7 +5055,7 @@ class GridRunner:
                 conserved = all(float(x[:1]) < 1 for x in conserve_dict.values())
             self.models[model_idx]["elements_conserved"] = conserved
 
-    def _handler(self, signum: Any, frame: Any) -> None:  # noqa: ARG002
+    def _handler(self, signum: Any, frame: Any) -> None:  # ruff: ignore[unused-method-argument]
         try:
             self.on_interrupt()  # your “final steps”
         finally:
@@ -5055,7 +5063,7 @@ class GridRunner:
             signal.signal(signal.SIGINT, self._orig_sigint)
             raise KeyboardInterrupt
 
-    def on_interrupt(self) -> None:  # noqa: PLR6301
+    def on_interrupt(self) -> None:  # ruff: ignore[no-self-use]
         """Handle a keyboard interrupt during a grid run. Override in subclasses to add cleanup."""
         return
 

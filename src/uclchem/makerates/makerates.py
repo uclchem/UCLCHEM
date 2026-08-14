@@ -167,16 +167,16 @@ def run_makerates(
                 raise ValueError(msg)
             # Get all the individual ions that can recombine
             gar_ions = [gar.get_reactants()[0] for gar in gar_reactions]
-            _gar_parameters = io.read_grain_assisted_recombination_file(gar_file)
-            if not set(gar_ions).issubset(set(_gar_parameters.keys())):
-                missing_ions = set(gar_ions) - set(_gar_parameters.keys())
+            gar_parameters_ = io.read_grain_assisted_recombination_file(gar_file)
+            if not set(gar_ions).issubset(set(gar_parameters_.keys())):
+                missing_ions = set(gar_ions) - set(gar_parameters_.keys())
                 msg = (
                     f"You have GAR reactions for ions {missing_ions} but "
                     f"they are not defined in your gar_file {gar_file}"
                 )
                 raise ValueError(msg)
             # Save the gar parameters in the correct order
-            gar_parameters = {ion: _gar_parameters[ion] for ion in gar_ions}
+            gar_parameters = {ion: gar_parameters_[ion] for ion in gar_ions}
 
         # Pass resolved output directories and other parameters to write_outputs
         io.write_outputs(

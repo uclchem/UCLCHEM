@@ -107,7 +107,7 @@ def plot_rate_summary(
         axes of the plot
 
     """
-    fig, axs = plt.subplots(2, 1, sharex=True, figsize=(7, top_k_rates))
+    _fig, axs = plt.subplots(2, 1, sharex=True, figsize=(7, top_k_rates))
     production_df.iloc[step].sort_values(ascending=False)[:top_k_rates].plot.barh(
         ax=axs[0], title="Production", logx=True
     )
@@ -172,7 +172,7 @@ def plot_rates_deepdive(
         Maximum number of companion species to draw in Panel A.
         Default: ``12``.
     figsize : tuple[float, float]
-        Figure width × height in inches.  Ignored when *fig* is provided.
+        Figure width and height in inches.  Ignored when *fig* is provided.
         Default: ``(8, 12)``.
     output_path : Path | str | None
         If provided, save the figure as both ``<output_path>.pdf`` and
@@ -213,13 +213,15 @@ def plot_rates_deepdive(
         timestep so callers can export to CSV / Excel.
 
     """
-    from uclchem import analysis  # noqa: PLC0415
-    from uclchem.makerates.network import Network as _Network  # noqa: PLC0415
+    from uclchem import analysis  # ruff: ignore[import-outside-top-level]
+    from uclchem.makerates.network import (  # ruff: ignore[import-outside-top-level]
+        Network as _Network,
+    )
 
     if network is None:
         network = _Network.from_csv()
 
-    _reg: dict[str, str] = {} if color_registry is None else color_registry
+    reg: dict[str, str] = {} if color_registry is None else color_registry
 
     # Compute rates
     _, rates = analysis.rate_constants_to_dy_and_rates(
@@ -264,12 +266,12 @@ def plot_rates_deepdive(
 
     # Geometric swap reactions are correction terms for ice layer growth/shrinkage;
     # always include them in Panel B regardless of filter_threshold.
-    _swap_types = ("SURFSWAP_GEOMETRIC", "BULKSWAP_GEOMETRIC")
+    swap_types = ("SURFSWAP_GEOMETRIC", "BULKSWAP_GEOMETRIC")
     for col in prod_rates.columns:
-        if any(s in col for s in _swap_types) and col not in top_prod:
+        if any(s in col for s in swap_types) and col not in top_prod:
             top_prod.append(col)
     for col in dest_rates.columns:
-        if any(s in col for s in _swap_types) and col not in top_dest:
+        if any(s in col for s in swap_types) and col not in top_dest:
             top_dest.append(col)
 
     # Companion species for Panel A
@@ -284,9 +286,9 @@ def plot_rates_deepdive(
 
     # For ice species, always show the surface/bulk partner so the two ice
     # reservoirs can be compared directly, regardless of filter_threshold.
-    _ice_partner = {"#": "@", "@": "#"}
-    if species and species[0] in _ice_partner:
-        ice_partner = _ice_partner[species[0]] + species[1:]
+    ice_partner_ = {"#": "@", "@": "#"}
+    if species and species[0] in ice_partner_:
+        ice_partner = ice_partner_[species[0]] + species[1:]
         if (
             ice_partner in chemistry_df.columns
             and (chemistry_df[ice_partner][pos_mask] > 0).any()
@@ -312,13 +314,13 @@ def plot_rates_deepdive(
         chem_filtered,
         companion,
         reactant_species=reactant_species,
-        color_registry=_reg,
+        color_registry=reg,
     )
     draw_panel_rates(
-        ax_b, time, prod_rates, dest_rates, top_prod, top_dest, color_registry=_reg
+        ax_b, time, prod_rates, dest_rates, top_prod, top_dest, color_registry=reg
     )
     draw_panel_rate_constants(
-        ax_c, time, prod_k, dest_k, top_prod, top_dest, bar=True, color_registry=_reg
+        ax_c, time, prod_k, dest_k, top_prod, top_dest, bar=True, color_registry=reg
     )
 
     if output_path is not None:

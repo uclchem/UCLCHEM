@@ -6,7 +6,6 @@ databases or custom CSV files with various units.
 """
 
 import logging
-import re
 from pathlib import Path
 
 import pandas as pd
@@ -105,7 +104,7 @@ def _parse_unit(unit: str) -> float:
 
     # Split by separators (/ or _per_)
     # Replace _per_ with / for uniform handling
-    normalized = re.sub(r"_per_", "/", unit_lower)
+    normalized = unit_lower.replace(r"_per_", "/")
     parts = normalized.split("/")
     if len(parts) == 1:
         # Just a base unit (e.g., "ev", "joule")
@@ -116,7 +115,7 @@ def _parse_unit(unit: str) -> float:
         factor = _BASE_UNITS[base]
         # Default to per reaction
         factor *= _DENOMINATORS["reaction"]
-    elif len(parts) == 2:  # noqa: PLR2004
+    elif len(parts) == 2:  # ruff: ignore[magic-value-comparison]
         # Unit with denominator (e.g., "ev/reaction", "kcal/mol")
         base = parts[0].strip()
         denom = parts[1].strip()
@@ -272,7 +271,7 @@ def set_custom_exothermicities(
         reaction = match_reaction(reactants, products, reactions)
 
         if reaction:
-            if overwrite or reaction.get_exothermicity() == 0.0:
+            if overwrite or reaction.get_exothermicity() == 0:
                 reaction.set_exothermicity(exo_erg)
                 matched += 1
         else:

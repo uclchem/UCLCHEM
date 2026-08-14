@@ -38,7 +38,7 @@ def normalize_species_name(name: str) -> str:
 
     """
     # Preserve empty strings; convert other falsy values to "NAN"
-    if name == "":  # noqa: PLC1901
+    if name == "":  # ruff: ignore[compare-to-empty-string]
         return ""
     if not name:
         return "NAN"
@@ -48,7 +48,7 @@ def normalize_species_name(name: str) -> str:
         grain_prefix = rest[0]
         rest = rest[1:]
     # A chemical prefix is exactly one alpha char + '-' with more formula after it.
-    if len(rest) > 2 and rest[1] == "-" and rest[0].isalpha():  # noqa: PLR2004
+    if len(rest) > 2 and rest[1] == "-" and rest[0].isalpha():  # ruff: ignore[magic-value-comparison]
         return grain_prefix + rest[0].lower() + "-" + rest[2:].upper()
     return grain_prefix + rest.upper()
 
@@ -209,16 +209,16 @@ def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
     # Row entries are heterogeneous (str | float); a numeric 0.0 must NOT be
     # treated as empty, so we compare to "" explicitly rather than using falsiness.
     for i in range(7):
-        if reaction_row[i] == "":  # noqa: PLC1901 heterogeneous-row
+        if reaction_row[i] == "":  # ruff: ignore[compare-to-empty-string] heterogeneous-row
             reaction_row[i] = "NAN"
 
     if all(normalize_species_name(x) in keep_list for x in reaction_row[0:7]):
-        if reaction_row[10] == "":  # noqa: PLC1901 heterogeneous-row
+        if reaction_row[10] == "":  # ruff: ignore[compare-to-empty-string] heterogeneous-row
             reaction_row[10] = 0.0
             reaction_row[11] = 10000.0
-        if len(reaction_row) >= 13 and reaction_row[12] == "":  # noqa: PLR2004,PLC1901
+        if len(reaction_row) >= 13 and reaction_row[12] == "":  # ruff: ignore[magic-value-comparison, compare-to-empty-string]
             reaction_row[12] = 0.0
-        if len(reaction_row) >= 14 and reaction_row[13] == "":  # noqa: PLR2004,PLC1901
+        if len(reaction_row) >= 14 and reaction_row[13] == "":  # ruff: ignore[magic-value-comparison, compare-to-empty-string]
             reaction_row[13] = False
         return True
     else:
@@ -389,7 +389,7 @@ def array_to_string(
     """
     # Check for 2D array
     arr = np.array(array)
-    if arr.ndim == 2:  # noqa: PLR2004
+    if arr.ndim == 2:  # ruff: ignore[magic-value-comparison]
         if length_name is None:
             shape_name = arr.shape
         else:

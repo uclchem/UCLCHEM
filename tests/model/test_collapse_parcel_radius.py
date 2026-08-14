@@ -28,7 +28,7 @@ CLOUD_PARAMS = {
 @pytest.mark.parametrize("collapse_mode", ["BE1.1", "BE4", "filament", "ambipolar"])
 def test_parcel_radius_in_collapse_physics(collapse_mode):
     """parcel_radius column is present and non-zero for collapse models."""
-    physics, chemistry, rates, heating, abundances, return_code = (
+    physics, _chemistry, _rates, _heating, _abundances, return_code = (
         uclchem.functional.collapse(
             collapse=collapse_mode,
             param_dict=COLLAPSE_PARAMS,
@@ -50,7 +50,7 @@ def test_parcel_radius_in_collapse_physics(collapse_mode):
 
 def test_parcel_radius_decreases_during_collapse():
     """For a collapse model with points=1, the single parcel moves inward over time."""
-    physics, chemistry, rates, heating, abundances, return_code = (
+    physics, _chemistry, _rates, _heating, _abundances, return_code = (
         uclchem.functional.collapse(
             collapse="BE4",
             param_dict=COLLAPSE_PARAMS,
@@ -69,7 +69,7 @@ def test_parcel_radius_decreases_during_collapse():
 
 def test_parcel_radius_zero_for_cloud():
     """parcel_radius is zero for a non-collapse cloud model."""
-    physics, chemistry, rates, heating, abundances, return_code = (
+    physics, _chemistry, _rates, _heating, _abundances, return_code = (
         uclchem.functional.cloud(
             param_dict=CLOUD_PARAMS,
             out_species=["CO", "OH"],
@@ -84,7 +84,7 @@ def test_parcel_radius_zero_for_cloud():
     )
 
     radii = physics["parcel_radius"].values
-    assert np.all(radii == 0.0), (
+    assert np.all(radii == 0), (
         f"Expected all parcel_radius to be 0 for cloud model, got max={radii.max():.4e}"
     )
 
@@ -94,7 +94,7 @@ def test_parcel_radius_initial_value_matches_r_out():
     r_out = 0.05  # default r_out in parsec
     params = {**COLLAPSE_PARAMS, "rout": r_out}
 
-    physics, chemistry, rates, heating, abundances, return_code = (
+    physics, _chemistry, _rates, _heating, _abundances, return_code = (
         uclchem.functional.collapse(
             collapse="BE4",
             param_dict=params,
@@ -111,8 +111,8 @@ def test_parcel_radius_initial_value_matches_r_out():
 
 
 def test_model_stops_end_at_final_density():
-    finalDens = 1e4  # noqa: N806 physics-var
-    finalTime = 1e6  # noqa: N806 physics-var
+    finalDens = 1e4  # ruff: ignore[non-lowercase-variable-in-function] physics-var
+    finalTime = 1e6  # ruff: ignore[non-lowercase-variable-in-function] physics-var
     model = uclchem.model.Cloud(
         {
             "initialDens": 8e3,
@@ -133,8 +133,8 @@ def test_model_stops_end_at_final_density():
 
 
 def test_model_continues_not_end_at_final_density():
-    finalDens = 1e4  # noqa: N806 physics-var
-    finalTime = 1e6  # noqa: N806 physics-var
+    finalDens = 1e4  # ruff: ignore[non-lowercase-variable-in-function] physics-var
+    finalTime = 1e6  # ruff: ignore[non-lowercase-variable-in-function] physics-var
     model = uclchem.model.Cloud(
         {
             "initialDens": 8e3,
@@ -163,8 +163,8 @@ def test_end_at_final_density_stops_close_to_target():
     that the model did not stop too early AND that it did not overshoot by more
     than a factor of 2 (a generous single-timestep bound for freefall collapse).
     """
-    finalDens = 1e5  # noqa: N806 physics-var
-    finalTime = 1e7  # noqa: N806 physics-var  # Much longer than needed to reach finalDens via freefall
+    finalDens = 1e5  # ruff: ignore[non-lowercase-variable-in-function] physics-var
+    finalTime = 1e7  # ruff: ignore[non-lowercase-variable-in-function] physics-var  # Much longer than needed to reach finalDens via freefall
     model = uclchem.model.Cloud(
         {
             "initialDens": 1e4,

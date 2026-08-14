@@ -1,4 +1,4 @@
-# noqa: D100
+# ruff: ignore[undocumented-public-module]
 ####################################################################################################
 # 				MakeRates
 # 		Current version by Jonathan Holdship & Antonios Makrymallis. Original by Tom Bell.
@@ -23,7 +23,7 @@ import sys
 from argparse import ArgumentParser
 
 
-def get_args():  # noqa: ANN201
+def get_args():  # ruff: ignore[missing-return-type-undocumented-public-function]
     """Get the parsed arguments.
 
     Allows for interacting with MakeRates.py via the command line.

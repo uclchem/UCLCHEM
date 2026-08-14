@@ -220,13 +220,21 @@ def test_setattr_preserves_underscored_attributes(basic_cloud_copy):
 
 def test_scalar_meta_not_stored_in_dataset(basic_cloud_copy):
     """Non-array scalar values should be stored in _meta, not in xarray Dataset."""
+<<<<<<< HEAD:tests/model/test_meta_data_separation.py
     m = basic_cloud_copy
     m.scalar_value = 42.5
     m.string_value = "test"
+=======
+    m = Cloud()
+    test_value = 42.5
+    test_string = "test"
+    m.scalar_value = test_value
+    m.string_value = test_string
+>>>>>>> 0364e87 (Use typos mirror instead, https://github.com/crate-ci/typos/issues/390, update ruff version, fix new linting errors.):tests/test_meta_data_separation.py
 
     # Should be in _meta, not in _data
-    assert m.scalar_value == 42.5, "Scalar value mismatch in _meta"
-    assert m.string_value == "test", "String value mismatch in _meta"
+    assert m.scalar_value == test_value, "Scalar value mismatch in _meta"
+    assert m.string_value == test_string, "String value mismatch in _meta"
     assert "scalar_value" in m._meta, "Scalar value not found in _meta"
     assert "string_value" in m._meta, "String value not found in _meta"
 

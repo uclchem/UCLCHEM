@@ -20,7 +20,7 @@ NEATH_COLUMNS = [
     "N_H",
     "N_H2",
     "N_CO",
-    # "Tdust",  # noqa: ERA001, Not present in the sample file
+    # "Tdust",  # ruff: ignore[commented-out-code], Not present in the sample file
 ]
 
 if __name__ == "__main__":
@@ -31,7 +31,7 @@ if __name__ == "__main__":
         dtype=np.float64,
     )
     df.columns = NEATH_COLUMNS
-    df["particle_id"] = (df["time"] == 0.0).astype(int).cumsum()
+    df["particle_id"] = (df["time"] == 0).astype(int).cumsum()
     for particle_id in df["particle_id"].unique():
         particle_df = df.query(f"particle_id == {particle_id}")
         model_nocoldens = uclchem.model.Postprocess(
@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
         model_coldens = uclchem.model.Postprocess(
             param_dict={
-                #     outputfile="postprocess.dat", # noqa: ERA001
+                #     outputfile="postprocess.dat", # ruff: ignore[commented-out-code]
             },
             out_species=["H2"],
             time_array=particle_df["time"].to_numpy(),
