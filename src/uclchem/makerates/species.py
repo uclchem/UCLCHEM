@@ -119,10 +119,10 @@ class Species:
 
         self.name = normalize_species_name(str(input_row[0]))
         # Detect chemical isomer prefix (e.g. 'o' from 'o-H2' or '#o-H2').
-        _rest = self.name[1:] if self.name and self.name[0] in {"#", "@"} else self.name
+        rest = self.name[1:] if self.name and self.name[0] in {"#", "@"} else self.name
         self.prefix = (
-            _rest[0]
-            if (len(_rest) > 2 and _rest[1] == "-" and _rest[0].islower())  # noqa: PLR2004
+            rest[0]
+            if (len(rest) > 2 and rest[1] == "-" and rest[0].islower())  # ruff: ignore[magic-value-comparison]
             else ""
         )
         self.mass = int(input_row[1])
@@ -1077,7 +1077,7 @@ class Species:
         if self.n_atoms == 1:
             # Atomic species are not linear (doesn't matter, filtered out anyway)
             return False
-        if self.n_atoms == 2:  # noqa: PLR2004
+        if self.n_atoms == 2:  # ruff: ignore[magic-value-comparison]
             # Diatomic molecules are always linear
             return True
         if MISSING_VALUE_FLOAT in {self.Ix, self.Iy, self.Iz}:
@@ -1086,7 +1086,7 @@ class Species:
         if not self.is_ice_species():
             # Only implement for grain species
             return False
-        return self.Ix == 0.0
+        return self.Ix == 0
 
     def check_symmetry_factor(self) -> None:
         """Check the symmetry factor provided by the user.
@@ -1097,17 +1097,17 @@ class Species:
         """
         if self.n_atoms == 1:  # Nothing to check
             return
-        if self.n_atoms > 2:  # noqa: PLR2004  # Can not correctly check everything
+        if self.n_atoms > 2:  # ruff: ignore[magic-value-comparison]  # Can not correctly check everything
             return
         constituents = self.find_constituents(quiet=True)
-        if len(constituents) == 2:  # noqa: PLR2004 # Two constituents, i.e. two different atoms.
+        if len(constituents) == 2:  # ruff: ignore[magic-value-comparison] # Two constituents, i.e. two different atoms.
             if self.symmetry_factor == 1:
                 return
             msg = f"For diatomic molecule consisting of two different atoms (in this case {self.name}), the symmetry factor should be 1, but was given to be {self.symmetry_factor}. Correcting to 1."
             logger.warning(msg)
             self.symmetry_factor = 1
             return
-        if self.symmetry_factor == 2:  # noqa: PLR2004
+        if self.symmetry_factor == 2:  # ruff: ignore[magic-value-comparison]
             return
         msg = f"For diatomic molecule consisting of two of the same atoms (in this case {self.name}), the symmetry factor should be 2, but was given to be {self.symmetry_factor}. Correcting to 2."
         logger.warning(msg)

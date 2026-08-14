@@ -60,12 +60,12 @@ class TestHeatingArrays:
         # Test that heating arrays are created with correct dimensions
         # by running a simple model and checking the output
         (
-            physics_array,
-            chemical_abun_array,
-            rate_constants_rray,
+            _physics_array,
+            _chemical_abun_array,
+            _rate_constants_rray,
             heat_array,
-            abundance_start,
-            success_flag,
+            _abundance_start,
+            _success_flag,
         ) = uclchem.functional.cloud(
             param_dict=param_dict,
             return_array=True,
@@ -91,11 +91,11 @@ class TestHeatingArrays:
         GeneralSettings().print_all_settings()
 
         (
-            physics_array,
-            chemical_abun_array,
-            rate_constants_array,
+            _physics_array,
+            _chemical_abun_array,
+            _rate_constants_array,
             heat_array,
-            abundance_start,
+            _abundance_start,
             success_flag,
         ) = uclchem.functional.cloud(
             param_dict=param_dict,
@@ -127,11 +127,11 @@ class TestHeatingArrays:
         )
 
         (
-            physics_df,
-            chemistry_df,
-            rates_df,
+            _physics_df,
+            _chemistry_df,
+            _rates_df,
             heating_df,
-            abundance_start,
+            _abundance_start,
             success_flag,
         ) = result
 
@@ -228,7 +228,7 @@ class TestHeatingArrays:
                 "The output should be a DataFrame"
             )
             assert "Time" in heating_df.columns, "Time should be returned"
-            assert (heating_df.values[:, 1:] != 0.0).any(), (
+            assert (heating_df.values[:, 1:] != 0).any(), (
                 f"Some terms should have non-zero values, head is {heating_df.head()}"
             )
 
@@ -249,11 +249,11 @@ class TestHeatingArrays:
     def test_heating_array_content_validation(self, param_dict):
         """Test that heating arrays contain reasonable physical values."""
         (
-            physics_df,
-            chemistry_df,
-            rates_df,
+            _physics_df,
+            _chemistry_df,
+            _rates_df,
             heating_df,
-            abundance_start,
+            _abundance_start,
             success_flag,
         ) = uclchem.functional.cloud(
             param_dict=param_dict,
@@ -287,8 +287,8 @@ class TestHeatingArrays:
             "At least some heating/cooling terms should have non-zero values"
         )
 
-    # ruff: noqa: ERA001
     # This test will only work if during compile time the writerates
+    # ruff: ignore[commented-out-code]
     # def test_heating_array_to_disk(self, param_dict):
     #     """Test that heating arrays can be saved to disk."""
     #     TEST_DIR = Path("tests/heating_test_output/")
@@ -309,4 +309,3 @@ class TestHeatingArrays:
     #     assert (
     #         heating_df.values[:, 1:] != 0.0
     #     ).any(), "Heating DataFrame should have some non-zero values"
-    # ruff: noqa: ERA001

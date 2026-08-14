@@ -57,4 +57,4 @@ def _load_fortran_metadata() -> tuple[set[str], set[str], set[str]]:
 # Load metadata on module import
 FORTRAN_PARAMETERS, INTERNAL_PARAMETERS, FILE_PATH_PARAMETERS = _load_fortran_metadata()
 
-__all__ = ["FORTRAN_PARAMETERS", "INTERNAL_PARAMETERS", "FILE_PATH_PARAMETERS"]
+__all__ = ["FILE_PATH_PARAMETERS", "FORTRAN_PARAMETERS", "INTERNAL_PARAMETERS"]

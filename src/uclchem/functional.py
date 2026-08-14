@@ -98,7 +98,7 @@ def __validate_functional_api_params__(
     return_dataframe: bool,
     return_rate_constants: bool,
     return_heating: bool,
-    starting_chemistry: np.ndarray | None,  # noqa: ARG001
+    starting_chemistry: np.ndarray | None,  # ruff: ignore[unused-function-argument]
     return_stats: bool = False,
 ) -> None:
     """Validate functional API specific constraints.
@@ -359,9 +359,10 @@ def __functional_return__(
         return (
             model_object.success_flag,
             model_object.dissipation_time,
-        ) + tuple(out_species_abundances_array)
+            *tuple(out_species_abundances_array),
+        )
     else:
-        return (model_object.success_flag,) + tuple(out_species_abundances_array)
+        return (model_object.success_flag, *tuple(out_species_abundances_array))
 
 
 def __cloud__(

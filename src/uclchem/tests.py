@@ -50,7 +50,7 @@ def test_ode_conservation(
     model = uclchem.model.Cloud(param_dict)
     model.check_error()
 
-    physics_df, abundances_df = model.get_dataframes(joined=False)
+    _physics_df, abundances_df = model.get_dataframes(joined=False)
     result = uclchem.analysis.check_element_conservation(
         cast("pd.DataFrame", abundances_df),
         element_list=element_list,

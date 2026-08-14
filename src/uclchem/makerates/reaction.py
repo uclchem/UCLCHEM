@@ -176,16 +176,16 @@ class Reaction:
                 self.set_gamma(float(input_row[9]))
                 self.set_templow(float(input_row[10]))
                 self.set_temphigh(float(input_row[11]))
-                if len(input_row) > 12:  # noqa: PLR2004
+                if len(input_row) > 12:  # ruff: ignore[magic-value-comparison]
                     self.set_reduced_mass(float(input_row[12]))
                 else:
                     self.set_reduced_mass(MISSING_VALUE_FLOAT)
                 self.set_extrapolation(
-                    bool(input_row[13]) if len(input_row) > 13 else False  # noqa: PLR2004
+                    bool(input_row[13]) if len(input_row) > 13 else False  # ruff: ignore[magic-value-comparison]
                 )
                 self.set_exothermicity(
                     float(input_row[14])
-                    if (len(input_row) > 14 and input_row[14])  # noqa: PLR2004
+                    if (len(input_row) > 14 and input_row[14])  # ruff: ignore[magic-value-comparison]
                     else 0.0
                 )
 
@@ -243,15 +243,7 @@ class Reaction:
             The list of reacting species.
 
         """
-        return [
-            r
-            for r in self._reactants[:]
-            if r
-            not in REACTION_TYPES
-            + [
-                "NAN",
-            ]
-        ]
+        return [r for r in self._reactants[:] if r not in {*REACTION_TYPES, "NAN"}]
 
     def get_sorted_reactants(self) -> list[str]:
         """Get the four reactants present in the reaction,.
@@ -305,15 +297,7 @@ class Reaction:
             The list of produced species.
 
         """
-        return [
-            r
-            for r in self._products[:]
-            if r
-            not in REACTION_TYPES
-            + [
-                "NAN",
-            ]
-        ]
+        return [r for r in self._products[:] if r not in {*REACTION_TYPES, "NAN"}]
 
     def get_sorted_products(self) -> list[str]:
         """Get the four products present in the reaction,.
@@ -547,7 +531,7 @@ class Reaction:
                 items = changing_species.items()
                 if len(items) == 1:
                     # Exchange reaction
-                    tuple_items = tuple(items)[0]
+                    tuple_items = next(iter(items))
                     if abs(tuple_items[1]) == 1:
                         # One element is switched
                         element_index = elementList.index(tuple_items[0])
@@ -558,7 +542,7 @@ class Reaction:
                             f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                         )
                         return
-        elif n_reacs == 2 and n_prods == 1:  # noqa: PLR2004
+        elif n_reacs == 2 and n_prods == 1:  # ruff: ignore[magic-value-comparison]
             # Addition reaction
             if reac_species[0].get_name().strip("#@") == reac_species[1].get_name().strip(
                 "#@"
@@ -578,15 +562,13 @@ class Reaction:
                     f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                 )
                 return
-            else:
-                pass
-        elif n_reacs == 1 and n_prods == 2:  # noqa: PLR2004
+        elif n_reacs == 1 and n_prods == 2:  # ruff: ignore[magic-value-comparison]
             # Splitting reaction. Not in network
             # (also not LH or ER type, so would never get here)
             pass
         msg = f"Could not predict reduced mass of '{self}' cleverly.\n"
         msg += f"Instead, using regular definition with masses of two reactants (mu={naive_reduced_mass:.3})."
-        if self._gamma == 0.0:
+        if self._gamma == 0:
             msg += " (Reaction is barrierless anyway)"
         logger.warning(msg)
         self.set_reduced_mass(naive_reduced_mass)
@@ -783,7 +765,7 @@ class Reaction:
         absorbed by the grain.
 
         """
-        do_not_convert = REACTION_TYPES + ["E-", "NAN"]
+        do_not_convert = [*REACTION_TYPES, "E-", "NAN"]
         self.set_reactants(
             [
                 "#" + reac if reac not in do_not_convert else reac

@@ -35,7 +35,7 @@ def _stored_project_root() -> Path | None:
 
     """
     try:
-        from uclchem._project_root import (  # noqa: PLC0415 # type: ignore[import]
+        from uclchem._project_root import (  # ruff: ignore[import-outside-top-level] # type: ignore[import]
             _PROJECT_ROOT,
         )
 

@@ -169,8 +169,9 @@ class TestMultipleModelsInFile:
         fpath = str(tmp_path / "multi.h5")
         model_a.save_model(file=fpath, name="model_a", overwrite=True)
 
+        model_b_temp = 50
         model_b = Cloud(
-            param_dict=dict(_DEFAULT_PARAMS, initialTemp=50.0),
+            param_dict=dict(_DEFAULT_PARAMS, initialTemp=model_b_temp),
         )
         model_b.save_model(file=fpath, name="model_b", overwrite=True)
 
@@ -178,8 +179,8 @@ class TestMultipleModelsInFile:
         loaded_b = load_model(file=fpath, name="model_b")
 
         # Both should be loadable and have correct initial temp
-        assert loaded_a._param_dict["initialtemp"] == 10.0
-        assert loaded_b._param_dict["initialtemp"] == 50.0
+        assert loaded_a._param_dict["initialtemp"] == _DEFAULT_PARAMS["initialTemp"]
+        assert loaded_b._param_dict["initialtemp"] == model_b_temp
 
 
 # ============================================================================
@@ -230,13 +231,14 @@ class TestOverwrite:
         model_v1.save_model(file=fpath, name="model", overwrite=True)
 
         # Create a second model with different params
-        params_v2 = dict(params_v1, initialTemp=50.0)
+        v2_temp = 50.0
+        params_v2 = dict(params_v1, initialTemp=v2_temp)
         model_v2 = Cloud(param_dict=params_v2)
         model_v2.save_model(file=fpath, name="model", overwrite=True)
 
         loaded = load_model(file=fpath, name="model")
         # The loaded model should have the v2 initial temp
-        assert loaded._param_dict["initialtemp"] == 50.0, (
+        assert loaded._param_dict["initialtemp"] == v2_temp, (
             "Overwritten model should have new initialTemp"
         )
 

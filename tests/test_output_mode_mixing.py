@@ -122,7 +122,7 @@ def test_multiple_memory_models_succeed(basic_params):
     params = basic_params.copy()
 
     # Run first in-memory model
-    physics1, chemistry1, rates1, heating1, abundances1, return_code1 = (
+    _physics1, _chemistry1, _rates1, _heating1, _abundances1, return_code1 = (
         uclchem.functional.cloud(
             param_dict=params, return_array=True, return_rate_constants=True
         )
@@ -130,7 +130,7 @@ def test_multiple_memory_models_succeed(basic_params):
     assert return_code1 == uclchem.utils.SuccessFlag.SUCCESS
 
     # Run second in-memory model - should succeed
-    physics2, chemistry2, rates2, heating2, abundances2, return_code2 = (
+    _physics2, _chemistry2, _rates2, _heating2, _abundances2, return_code2 = (
         uclchem.functional.cloud(param_dict=params, return_dataframe=True)
     )
     assert return_code2 == uclchem.utils.SuccessFlag.SUCCESS
@@ -178,7 +178,7 @@ def test_chained_models_in_memory(basic_params):
         "freefall": False,
         "freezeFactor": 0.0,
     }
-    _, _, _, _, final_abundances2, result2 = uclchem.functional.prestellar_core(
+    _, _, _, _, _final_abundances2, result2 = uclchem.functional.prestellar_core(
         temp_index=3,
         max_temperature=300.0,
         param_dict=params_stage2,

@@ -163,7 +163,7 @@ class NetworkBuilder:
 
         """
         # Import here to avoid circular dependency
-        from .network import Network  # noqa: PLC0415 circular
+        from .network import Network  # ruff: ignore[import-outside-top-level] circular
 
         # Create initial network from inputs
         logger.info(
@@ -392,9 +392,11 @@ class NetworkBuilder:
                         alpha = 0.0
                     new_reactions.append(
                         Reaction(
-                            [species.get_name(), "FREEZE", "NAN"]
-                            + products
-                            + [
+                            [
+                                species.get_name(),
+                                "FREEZE",
+                                "NAN",
+                                *products,
                                 alpha,
                                 0.0,
                                 species.get_binding_energy(),
@@ -601,9 +603,11 @@ class NetworkBuilder:
                 prods = r.get_products()
                 expanded.extend(
                     Reaction(
-                        [reac, mech, third]
-                        + prods
-                        + [
+                        [
+                            reac,
+                            mech,
+                            third,
+                            *prods,
                             r.get_alpha(),
                             r.get_beta(),
                             r.get_gamma(),
@@ -658,7 +662,7 @@ class NetworkBuilder:
                 ]
                 if rxns:
                     total_alpha = sum(r.get_alpha() for r in rxns)
-                    if abs(total_alpha - 1.0) > 1e-6:  # noqa: PLR2004
+                    if abs(total_alpha - 1.0) > 1e-6:  # ruff: ignore[magic-value-comparison]
                         msg = (
                             f"{species_name} has {rtype} reactions with alpha summing to "
                             f"{total_alpha:.6f}, expected 1.0. "
@@ -677,9 +681,18 @@ class NetworkBuilder:
                     continue
                 new_reactions.extend(
                     Reaction(
-                        [species.get_name(), reacType, "NAN"]
-                        + species.get_standard_desorb_products()
-                        + [1, 0, species.get_binding_energy(), 0.0, 10000.0, 0.0]
+                        [
+                            species.get_name(),
+                            reacType,
+                            "NAN",
+                            *species.get_standard_desorb_products(),
+                            1,
+                            0,
+                            species.get_binding_energy(),
+                            0.0,
+                            10000.0,
+                            0.0,
+                        ]
                     )
                     for reacType in desorb_reacs
                 )
@@ -693,9 +706,18 @@ class NetworkBuilder:
                     desorb_prods = species.get_standard_desorb_products()
                 new_reactions.append(
                     Reaction(
-                        [species.get_name(), "THERM", "NAN"]
-                        + desorb_prods
-                        + [1, 0, species.get_binding_energy(), 0.0, 10000.0, 0.0]
+                        [
+                            species.get_name(),
+                            "THERM",
+                            "NAN",
+                            *desorb_prods,
+                            1,
+                            0,
+                            species.get_binding_energy(),
+                            0.0,
+                            10000.0,
+                            0.0,
+                        ]
                     )
                 )
         self.network.add_reactions(new_reactions)
@@ -789,7 +811,7 @@ class NetworkBuilder:
                     if desorb_products[1] == "NAN":
                         new_products[i] = desorb_products[0]
                     elif desorb_products[2] == "NAN":
-                        if i < 2 and new_products[i + 1] != "NAN":  # noqa: PLR2004
+                        if i < 2 and new_products[i + 1] != "NAN":  # ruff: ignore[magic-value-comparison]
                             # Move i+1th product over to i+2th product
                             new_products[i + 2] = new_products[i + 1]
                         new_products[i + 1] = desorb_products[1]
@@ -1017,7 +1039,7 @@ class NetworkBuilder:
                 else:
                     branching_reactions[reactant_string] = reaction.get_alpha()
 
-        if any(val != 1.0 for val in branching_reactions.values()):
+        if any(val != 1 for val in branching_reactions.values()):
             logger.warning(
                 "Some of the branching ratios do not sum to 1.0, correcting those that do not"
             )
@@ -1030,16 +1052,16 @@ class NetworkBuilder:
                     # (smaller than 0.98 is allowed)
                     if (
                         reactant_string in branching_reactions
-                        and branching_reactions[reactant_string] != 1.0
+                        and branching_reactions[reactant_string] != 1
                     ):
-                        if branching_reactions[reactant_string] == 0.0:
+                        if branching_reactions[reactant_string] == 0:
                             logger.warning(
                                 f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
                             )
                             self.network.remove_reaction(reaction)
                             continue
 
-                        if branching_reactions[reactant_string] < 0.99:  # noqa: PLR2004
+                        if branching_reactions[reactant_string] < 0.99:  # ruff: ignore[magic-value-comparison]
                             logger.warning(
                                 f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string]} we are assuming you set this lower on purpose."
                             )
@@ -1321,30 +1343,30 @@ class NetworkBuilder:
                     and ("O" in prods)
                     and ("C" in prods)
                 ),
-                "nR_C_hv": lambda reacs, prods: ("C" in reacs) and ("PHOTON" in reacs),  # noqa: ARG005
-                "nR_H2Form_CT": lambda reacs, prods: "H2FORM" in reacs,  # noqa: ARG005
+                "nR_C_hv": lambda reacs, prods: ("C" in reacs) and ("PHOTON" in reacs),  # ruff: ignore[unused-lambda-argument]
+                "nR_H2Form_CT": lambda reacs, prods: "H2FORM" in reacs,  # ruff: ignore[unused-lambda-argument]
                 "nR_H2Form_ERDes": lambda reacs, prods: (
                     ("H" in reacs) and ("#H" in reacs) and ("H2" in prods)
                 ),
                 "nR_H2Form_ER": lambda reacs, prods: (
                     ("H" in reacs) and ("#H" in reacs) and ("#H2" in prods)
                 ),
-                "nR_H2Form_LH": lambda reacs, prods: (  # noqa: ARG005
-                    (reacs.count("#H") == 2) and ("LH" in reacs)  # noqa: PLR2004
+                "nR_H2Form_LH": lambda reacs, prods: (  # ruff: ignore[unused-lambda-argument]
+                    (reacs.count("#H") == 2) and ("LH" in reacs)  # ruff: ignore[magic-value-comparison]
                 ),
-                "nR_H2Form_LHDes": lambda reacs, prods: (  # noqa: ARG005
-                    (reacs.count("#H") == 2) and ("LHDES" in reacs)  # noqa: PLR2004
+                "nR_H2Form_LHDes": lambda reacs, prods: (  # ruff: ignore[unused-lambda-argument]
+                    (reacs.count("#H") == 2) and ("LHDES" in reacs)  # ruff: ignore[magic-value-comparison]
                 ),
-                "nR_HFreeze": lambda reacs, prods: ("H" in reacs) and ("FREEZE" in reacs),  # noqa: ARG005
-                "nR_H2Freeze": lambda reacs, prods: (  # noqa: ARG005
+                "nR_HFreeze": lambda reacs, prods: ("H" in reacs) and ("FREEZE" in reacs),  # ruff: ignore[unused-lambda-argument]
+                "nR_H2Freeze": lambda reacs, prods: (  # ruff: ignore[unused-lambda-argument]
                     ("H2" in reacs) and ("FREEZE" in reacs)
                 ),
-                "nR_EFreeze": lambda reacs, prods: (  # noqa: ARG005
+                "nR_EFreeze": lambda reacs, prods: (  # ruff: ignore[unused-lambda-argument]
                     ("E-" in reacs) and ("FREEZE" in reacs)
                 ),
-                "nR_H2_hv": lambda reacs, prods: ("H2" in reacs) and ("PHOTON" in reacs),  # noqa: ARG005
+                "nR_H2_hv": lambda reacs, prods: ("H2" in reacs) and ("PHOTON" in reacs),  # ruff: ignore[unused-lambda-argument]
                 "nR_H2_crp": lambda reacs, prods: (
-                    ("H2" in reacs) and ("CRP" in reacs) and (prods.count("H") == 2)  # noqa: PLR2004
+                    ("H2" in reacs) and ("CRP" in reacs) and (prods.count("H") == 2)  # ruff: ignore[magic-value-comparison]
                 ),
                 "nR_H2_ED": lambda reacs, prods: (
                     ("#H2" in reacs) and ("ED" in reacs) and ("H2" in prods)
@@ -1405,7 +1427,8 @@ class NetworkBuilder:
             "#OH",
             "SURFACE",
             "BULK",
-        ] + elementList:
+            *elementList,
+        ]:
             try:
                 species_index = names.index(element) + 1
             except ValueError:

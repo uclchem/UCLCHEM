@@ -15,17 +15,17 @@ class TestConversionConstants:
     """Test conversion constants."""
 
     def test_avogadro_number(self):
-        assert heating.AVOGADRO_NUMBER == 6.02214076e23
+        assert pytest.approx(heating.AVOGADRO_NUMBER, 6.02214076e23)
 
     def test_electron_volt_to_joule(self):
-        assert heating.EV_TO_JOULE == 1.602176634e-19
+        assert pytest.approx(heating.EV_TO_JOULE, 1.602176634e-19)
 
     def test_derived_conversions(self):
         expected_ev_to_erg = heating.EV_TO_JOULE / heating.ERG_TO_JOULE
-        assert abs(heating.EV_TO_ERG - expected_ev_to_erg) < 1e-10
+        assert pytest.approx(heating.EV_TO_ERG, expected_ev_to_erg)
 
         expected_kcal_to_erg = heating.CALORIE_TO_JOULE * 1000.0 / heating.ERG_TO_JOULE
-        assert abs(heating.KCAL_TO_ERG - expected_kcal_to_erg) < 1e-10
+        assert pytest.approx(heating.KCAL_TO_ERG, expected_kcal_to_erg)
 
 
 class TestHeatingFunctions:

@@ -60,7 +60,7 @@ def test_analysis_matches(temp_output_dir):
 
     species_to_check = ["H2", "OH", "CH3", "#CH3", "#CH4", "#H2O", "#H", "@CO2"]
     for species in species_to_check:
-        fd_midpoints, fd_slope = finite_difference(
+        _fd_midpoints, fd_slope = finite_difference(
             physics_df["Time"], abundances_df[species]
         )
         # Convert from change in abundances per year to change in abundances per second,

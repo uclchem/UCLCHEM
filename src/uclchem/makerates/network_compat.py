@@ -21,7 +21,7 @@ from uclchem.makerates.reaction import Reaction
 from uclchem.makerates.species import Species
 
 
-def Network(  # noqa: N802
+def Network(  # ruff: ignore[invalid-function-name]
     species: list[Species] | None = None,
     reactions: list[Reaction] | None = None,
     **kwargs: Any,

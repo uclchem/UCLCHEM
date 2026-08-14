@@ -169,7 +169,7 @@ def read_reaction_file(
                 if row[0].startswith("#") or row[0].startswith("!"):
                     continue
                 row = strip_comments_from_row(row)
-                reaction_row = row[2:4] + [""] + row[4:8] + row[9:14] + [""]
+                reaction_row = [*row[2:4], "", *row[4:8], *row[9:14], ""]
                 if check_reaction(reaction_row, keep_list):
                     reactions.append(
                         Reaction(
@@ -273,10 +273,10 @@ def kida_parser(kida_file: str | Path) -> list[list[str | int | float]]:
                 rows.append(row[:7] + row[8:-1])
             elif row[-1] in {2, 3}:
                 rows.append(row[:7] + row[8:-1])
-            elif row[-1] == 4:  # noqa: PLR2004
+            elif row[-1] == 4:  # ruff: ignore[magic-value-comparison]
                 row[2] = "IONOPOL1"
                 rows.append(row[:7] + row[8:-1])
-            elif row[-1] == 5:  # noqa: PLR2004
+            elif row[-1] == 5:  # ruff: ignore[magic-value-comparison]
                 row[2] = "IONOPOL2"
                 rows.append(row[:7] + row[8:-1])
     return rows
@@ -465,7 +465,7 @@ def write_outputs(
             raise ValueError(msg)
 
     # Compute energy level counts from coolant data files
-    from uclchem._coolant_utils import (  # noqa: PLC0415 heavy-extension
+    from uclchem._coolant_utils import (  # ruff: ignore[import-outside-top-level] heavy-extension
         get_energy_levels_info,
         validate_coolant_frequencies,
     )
@@ -801,7 +801,7 @@ def write_python_constants(
             }
             if any(hits.values()):
                 # Filter, also we can only get one hit at a time
-                variable = list(filter(hits.get, hits))[0]
+                variable = next(filter(hits.get, hits))
                 print(f"{variable} = {replace_dict[variable]}")
             else:
                 print(line, end="")
@@ -1075,9 +1075,9 @@ def build_ode_string(
     total_swap = separate_common_terms(total_swap[1:], "ratioSurfaceToBulk")
 
     # 10 August 2026, Tobias Dijkhuis:
-    #    safeMantle = MAX(MIN_ABUND, sum(Y(surfaceList))) # noqa: ERA001
+    #    safeMantle = MAX(MIN_ABUND, sum(Y(surfaceList))) # ruff: ignore[commented-out-code]
     # could be replaced with
-    #    safeMantle = MAX(MIN_ABUND, Y(nSurface)) # noqa: ERA001
+    #    safeMantle = MAX(MIN_ABUND, Y(nSurface)) # ruff: ignore[commented-out-code]
     # and same for bulk, but if I did that, I suddenly got conservation errors for hotcore models.
     # Probably because then safeMantle is the same as some surface species abunds because it is
     # clamped twice (also in Y_safe, which is passed here in chemistry.f90).
@@ -1676,7 +1676,7 @@ def write_network_file(
         else:
             openFile.write("real(dp) :: REACTIONRATE(1)\n")
             openFile.write("logical, parameter :: storeRatesComputation=.false.\n")
-        if any(exo != 0.0 for exo in exothermicity):
+        if any(exo != 0 for exo in exothermicity):
             if not enable_rates_storage:
                 msg = "Chemical heating can only be enabled if rates are being computed and stored in memory. Enable `enable_rates_storage` in the user_settings."
                 raise AssertionError(msg)
@@ -1861,7 +1861,7 @@ def write_network_file(
                 type="int",
                 parameter=True,
                 length_name="N_LHDES_REACTIONS"
-                if len(LHDEScorrespondingLHreacs) > 2  # noqa: PLR2004
+                if len(LHDEScorrespondingLHreacs) > 2  # ruff: ignore[magic-value-comparison]
                 else None,
             ).replace("99999", "REAC_NOT_PRESENT")
         )
@@ -1896,7 +1896,7 @@ def write_network_file(
                 type="int",
                 parameter=True,
                 length_name="N_ERDES_REACTIONS"
-                if len(ERDEScorrespondingERreacs) > 2  # noqa: PLR2004
+                if len(ERDEScorrespondingERreacs) > 2  # ruff: ignore[magic-value-comparison]
                 else None,
             ).replace("99999", "REAC_NOT_PRESENT")
         )

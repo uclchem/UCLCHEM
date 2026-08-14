@@ -546,7 +546,7 @@ class BaseNetwork(NetworkABC):
             )
             raise ValueError(msg)
 
-        return list(similar.keys())[0]
+        return next(iter(similar.keys()))
 
 
 # ============================================================================
@@ -800,7 +800,9 @@ class Network(BaseNetwork, MutableNetworkABC):
         ... )
 
         """
-        from uclchem.makerates.network_builder import NetworkBuilder  # noqa: PLC0415
+        from uclchem.makerates.network_builder import (  # ruff: ignore[import-outside-top-level]
+            NetworkBuilder,
+        )
 
         builder = NetworkBuilder(species, reactions, **build_options)
         return builder.build()
@@ -1296,7 +1298,7 @@ def load_network_from_csv(
     ... ) # doctest: +SKIP
     >>> print(f"Species added: {len(network.get_species_list()) - len(old_network.get_species_list())}") # doctest: +SKIP
 
-    """  # noqa: W505
+    """  # ruff: ignore[doc-line-too-long]
     return Network.from_csv(species_path, reactions_path)
 
 

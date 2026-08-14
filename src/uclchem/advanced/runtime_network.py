@@ -85,7 +85,9 @@ class RuntimeNetwork(BaseNetwork):
     # (GAR, PHOTON, CRP, CRPHOT, etc.) instead of species indices
     _FORTRAN_KEYWORD_SENTINEL = 9999
 
-    _ARRAYS_TO_CACHE = {"alpha", "beta", "gama", "bindingenergy", "diffusionbarrier"}
+    _ARRAYS_TO_CACHE = frozenset(
+        {"alpha", "beta", "gama", "bindingenergy", "diffusionbarrier"}
+    )
 
     def __init__(self):
         """Initialize RuntimeNetwork by loading the compiled Fortran module.
@@ -101,7 +103,7 @@ class RuntimeNetwork(BaseNetwork):
         """
         # Import the compiled Fortran network module
         try:
-            from uclchemwrap import (  # noqa: PLC0415
+            from uclchemwrap import (  # ruff: ignore[import-outside-top-level]
                 network as network_module,  # optional compiled extension
             )
         except ImportError as err:

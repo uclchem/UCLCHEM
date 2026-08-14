@@ -16,7 +16,7 @@ def test_get_final_abundances_for_species():
 
     assert len(final_abundances) == len(species)
 
-    phys_df, chem_df = model.get_dataframes(joined=False)
+    _phys_df, chem_df = model.get_dataframes(joined=False)
     final_abundances_from_df = []
     for _index, spec in enumerate(species):
         final_abundances_from_df.append(chem_df[spec].iloc[-1])

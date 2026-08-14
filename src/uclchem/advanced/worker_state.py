@@ -54,15 +54,15 @@ _MODULE_NAMES = [
 ]
 
 # Modules where *all* 0-d array attributes are Fortran PARAMETERs (compile-time
-# constants compiled into read-only pages).  Their runtime state is either
+# constants compiled into read-only pages). Their runtime state is either
 # handled by dedicated snapshot sections (e.g. f2py_constants → heating section)
-# or never needs propagation to workers.  Attempting setattr on these in a
+# or never needs propagation to workers. Attempting setattr on these in a
 # freshly-spawned worker causes SIGBUS on macOS.
 _MODULES_SKIP_0D = frozenset(
     {
-        "constants",  # physical constants (c, k_boltz, …) – all PARAMETERs
-        "f2py_constants",  # build-time counts (nspec, nReac, …) – all PARAMETERs
-        "surfacereactions",  # grain/surface constants – all PARAMETERs
+        "constants",  # physical constants (c, k_boltz, ...), all PARAMETERs
+        "f2py_constants",  # build-time counts (nspec, nReac, ...), all PARAMETERs
+        "surfacereactions",  # grain/surface constants, all PARAMETERs
     }
 )
 
@@ -77,11 +77,11 @@ def create_snapshot() -> dict[str, Any]:
 
     The returned dict has three sections:
 
-    * ``"general"`` – scalar settings from all uclchemwrap sub-modules
+    * ``"general"``: scalar settings from all uclchemwrap sub-modules
       (excluding PARAMETERs, INTERNAL, FILE_PATH, and arrays).
-    * ``"heating"`` – heating/cooling boolean arrays, scalars, and coolant
+    * ``"heating"``: heating/cooling boolean arrays, scalars, and coolant
       configuration.
-    * ``"network"`` – Everything in :data:`_NETWORK_ARRAYS_TO_TAKE_SNAPSHOT_OF`.
+    * ``"network"``: Everything in :data:`_NETWORK_ARRAYS_TO_TAKE_SNAPSHOT_OF`.
 
     Returns
     -------
@@ -150,7 +150,7 @@ def create_snapshot() -> dict[str, Any]:
         "coolantdatadir": np.copy(f2py_constants_module.coolantdatadir),
         "coolant_active": np.copy(f2py_constants_module.coolant_active),
     }
-    # Coolant restart mode – accessor pattern varies between builds
+    # Coolant restart mode: accessor pattern varies between builds
     if hasattr(uclchemwrap, "get_coolant_restart_mode_wrap"):
         heating["coolant_restart_mode"] = int(uclchemwrap.get_coolant_restart_mode_wrap())
     elif hasattr(
@@ -192,7 +192,7 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
         for attr, value in settings_dict.items():
             logger.debug("setattr(%s, %s, %r)", mod_name, attr, value)
             with contextlib.suppress(AttributeError, TypeError):
-                # read-only or incompatible – skip silently
+                # if read-only or incompatible, skip silently
                 setattr(mod, attr, value)
 
     # --- Heating / cooling settings ---

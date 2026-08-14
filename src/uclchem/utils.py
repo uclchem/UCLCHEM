@@ -96,17 +96,17 @@ def get_dtype(dtype: str | type | np.dtype) -> type | np.dtype:
 
     """
     if isinstance(dtype, str):
-        _mapping = {"fp64": np.float64, "fp32": np.float32, "fp16": np.float16}
-        if dtype not in _mapping:
+        mapping = {"fp64": np.float64, "fp32": np.float32, "fp16": np.float16}
+        if dtype not in mapping:
             msg = f"Unknown dtype shorthand: {dtype!r}"
             raise ValueError(msg)
-        return _mapping[dtype]
+        return mapping[dtype]
     return dtype
 
 
 def configure_logging(
     level: str = "WARNING",
-    stream: "None | str | Any" = None,
+    stream: str | Any | None = None,
 ) -> None:
     """Configure the ``uclchem`` logger.
 
@@ -114,7 +114,7 @@ def configure_logging(
     ----------
     level : str
         Logging level name (e.g. ``"DEBUG"``, ``"WARNING"``). Default ``"WARNING"``.
-    stream : None | str | Any
+    stream : str | Any | None
         Where to send log output.
         ``None`` suppresses all output (no handlers, propagation disabled).
         A string is treated as a file path and a ``FileHandler`` is added.
@@ -381,19 +381,19 @@ def _rminfit(t_yr: float, mode: CollapseMode) -> float:
     if mode == CollapseMode.FILAMENT:
         _, unitt = _filament_units()
         tnew = t_yr / unitt
-        if tnew == 0.0:
+        if tnew == 0:
             return 7.2
-        elif np.log(tnew) < 1.6:  # noqa: PLR2004
+        elif np.log(tnew) < 1.6:  # ruff: ignore[magic-value-comparison]
             return -1.149 * tnew + 7.2
-        elif np.log(tnew) < 1.674:  # noqa: PLR2004
+        elif np.log(tnew) < 1.674:  # ruff: ignore[magic-value-comparison]
             return -9.2 * np.log(tnew) + 16.25
         else:
             return -22.0 * np.log(tnew) + 37.65
     elif mode == CollapseMode.AMBIPOLAR:
         t6 = 1e-6 * t_yr
-        if t6 <= 10.2:  # noqa: PLR2004
+        if t6 <= 10.2:  # ruff: ignore[magic-value-comparison]
             return -0.0039 * t6 + 0.49
-        elif t6 <= 15.1:  # noqa: PLR2004
+        elif t6 <= 15.1:  # ruff: ignore[magic-value-comparison]
             return -0.0306 * (t6 - 10.2) + 0.45
         else:
             return -0.282 * (t6 - 15.1) + 0.3
@@ -427,11 +427,11 @@ def _vminfit(t_yr: float, mode: CollapseMode) -> float:
     if mode == CollapseMode.FILAMENT:
         _, unitt = _filament_units()
         tnew = t_yr / unitt
-        if tnew == 0.0:
+        if tnew == 0:
             return 0.0
-        elif np.log(tnew) < 1.6:  # noqa: PLR2004
+        elif np.log(tnew) < 1.6:  # ruff: ignore[magic-value-comparison]
             return 0.0891 * tnew
-        elif np.log(tnew) < 1.674:  # noqa: PLR2004
+        elif np.log(tnew) < 1.674:  # ruff: ignore[magic-value-comparison]
             return 5.5 * np.log(tnew) - 8.37
         else:
             return 18.9 * np.log(tnew) - 30.8
@@ -468,17 +468,17 @@ def _avfit(t_yr: float, mode: CollapseMode) -> float:
     if mode == CollapseMode.FILAMENT:
         _, unitt = _filament_units()
         tnew = t_yr / unitt
-        if tnew == 0.0:
+        if tnew == 0:
             return 0.4
-        elif np.log(tnew) < 1.6:  # noqa: PLR2004
+        elif np.log(tnew) < 1.6:  # ruff: ignore[magic-value-comparison]
             return 0.0101 * tnew + 0.4
-        elif np.log(tnew) < 1.674:  # noqa: PLR2004
+        elif np.log(tnew) < 1.674:  # ruff: ignore[magic-value-comparison]
             return 0.695 * np.log(tnew) - 0.663
         else:
             return 2.69 * np.log(tnew) - 4.0
     elif mode == CollapseMode.AMBIPOLAR:
         t6 = 1e-6 * t_yr
-        if t6 <= 10.2:  # noqa: PLR2004
+        if t6 <= 10.2:  # ruff: ignore[magic-value-comparison]
             return 0.143 * t6
         else:
             return 0.217 * (t6 - 10.2) + 1.46
@@ -574,7 +574,7 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
         If ``model.collapse`` is not an instance of class:`CollapseMode`.
 
     """
-    from uclchem.model import (  # noqa: PLC0415 — avoid circular import at module level
+    from uclchem.model import (  # ruff: ignore[import-outside-top-level] — avoid circular import at module level
         Collapse,
     )
 
@@ -619,7 +619,7 @@ class SuccessFlag(enum.IntEnum):
 
     """
 
-    def __new__(cls, value: int, docstring: str) -> Self:  # noqa: D102
+    def __new__(cls, value: int, docstring: str) -> Self:  # ruff: ignore[undocumented-public-method]
         member = int.__new__(cls, value)
 
         member._value_ = value
@@ -716,10 +716,10 @@ L_SUN: float = 3.828e26  # W — IAU 2015 nominal solar luminosity
 class TempMode(enum.Enum):
     """Interpolation scheme for :func:`get_protostellar_Teff`."""
 
-    BINS = "bins"  # discrete stepwise lookup,   1 – 1e6  L_sun
-    SMOOTH = "smooth"  # global power-law fit,       1 – 1e6  L_sun
-    SMOOTH_LOW = "smooth_low"  # power-law fit to bins 1–3,  1 – 1e4  L_sun
-    SMOOTH_HIGH = "smooth_high"  # power-law fit to bins 4–7,  1e3 – 1e6 L_sun
+    BINS = "bins"  # discrete stepwise lookup,   1 to 1e6  L_sun
+    SMOOTH = "smooth"  # global power-law fit,       1 to 1e6  L_sun
+    SMOOTH_LOW = "smooth_low"  # power-law fit to bins 1 to 3,  1 to 1e4  L_sun
+    SMOOTH_HIGH = "smooth_high"  # power-law fit to bins 4 to 7,  1e3 to 1e6 L_sun
     SMOOTH_CUSTOM = "smooth_custom"  # user-provided fit parameters;
 
 
@@ -736,9 +736,9 @@ _BINS: tuple[tuple[float, float], ...] = (
 
 # Least-squares power-law fits in log-log space on bin geometric midpoints.
 # Fit form: T_eff = T0 * (L_star / L_sun) ** alpha
-_FIT_SMOOTH = (4_788.72, 0.156034)  # all 7 bins,  valid 1 – 1e6  L_sun
-_FIT_SMOOTH_LOW = (5_337.78, 0.110924)  # bins 1–3,    valid 1 – 1e4  L_sun
-_FIT_SMOOTH_HIGH = (7_343.74, 0.120552)  # bins 4–7,    valid 1e3 – 1e6 L_sun
+_FIT_SMOOTH = (4_788.72, 0.156034)  # all 7 bins,  valid 1 to 1e6  L_sun
+_FIT_SMOOTH_LOW = (5_337.78, 0.110924)  # bins 1 to 3,    valid 1 to 1e4  L_sun
+_FIT_SMOOTH_HIGH = (7_343.74, 0.120552)  # bins 4 to 7,    valid 1e3 to 1e6 L_sun
 
 # Valid luminosity ranges [L_sun] per mode
 _RANGES: dict[TempMode, tuple[float, float]] = {
@@ -771,12 +771,12 @@ def get_protostellar_Teff(
         Interpolation scheme:
 
         - :attr:`TempMode.SMOOTH` (default) — global power-law fit to all
-          seven bins, valid 1 – 1e6 L_sun.
-        - :attr:`TempMode.BINS` — discrete stepwise lookup, valid 1 – 1e6 L_sun.
-        - :attr:`TempMode.SMOOTH_LOW` — power-law fit to bins 1–3,
-          valid 1 – 1e4 L_sun.
-        - :attr:`TempMode.SMOOTH_HIGH` — power-law fit to bins 4–7,
-          valid 1e3 – 1e6 L_sun.
+          seven bins, valid 1 to 1e6 L_sun.
+        - :attr:`TempMode.BINS` — discrete stepwise lookup, valid 1 to 1e6 L_sun.
+        - :attr:`TempMode.SMOOTH_LOW` — power-law fit to bins 1 to 3,
+          valid 1 to 1e4 L_sun.
+        - :attr:`TempMode.SMOOTH_HIGH` — power-law fit to bins 4 to 7,
+          valid 1e3 to 1e6 L_sun.
 
         Defaults to ``TempMode.BINS``.
     custom_T0 : float | None
@@ -880,20 +880,75 @@ def get_protostellar_model_index(L_star: float) -> int:
         If the stellar luminosity is below the minimum valid value.
 
     """
-    if L_star >= 1.0e6:  # noqa: PLR2004
+    if L_star >= 1.0e6:  # ruff: ignore[magic-value-comparison]
         return 6
-    elif L_star >= 1.0e5:  # noqa: PLR2004
+    elif L_star >= 1.0e5:  # ruff: ignore[magic-value-comparison]
         return 5
-    elif L_star >= 1.0e4:  # noqa: PLR2004
+    elif L_star >= 1.0e4:  # ruff: ignore[magic-value-comparison]
         return 4
-    elif L_star >= 1.0e3:  # noqa: PLR2004
+    elif L_star >= 1.0e3:  # ruff: ignore[magic-value-comparison]
         return 3
-    elif L_star >= 1.0e2:  # noqa: PLR2004
+    elif L_star >= 1.0e2:  # ruff: ignore[magic-value-comparison]
         return 2
-    elif L_star >= 1.0e1:  # noqa: PLR2004
+    elif L_star >= 1.0e1:  # ruff: ignore[magic-value-comparison]
         return 1
     elif L_star >= 1.0e0:
         return 0
     else:
         msg = f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {L_SUN:.3e} W."
         raise ValueError(msg)
+
+
+def remove_keys_with_none(dct: dict[str, Any]) -> None:
+    """Remove keys with None values from the dictionary, modified in-place.
+
+    Parameters
+    ----------
+    dct : dict[str, Any]
+        Dictionary, modified in-place
+
+    Examples
+    --------
+    >>> dct = {'key_a': 'a', 'key_b': None}
+    >>> remove_keys_with_none({'key_a': 'a', 'key_b': None})
+    >>> dct
+    '{'key_a': 'a'}'
+
+    """
+    keys_to_delete = [k for k, v in dct.items() if v is None]
+    for k in keys_to_delete:
+        del dct[k]
+
+
+def get_lowercase_copy(dct: dict[str, Any]) -> dict[str, Any]:
+    """Get a copy of a dictionary where the keys have been replaced by lowercase keys.
+
+    Parameters
+    ----------
+    dct : dict[str, Any]
+        Dictionary to get lowercase copy of.
+
+    Returns
+    -------
+    lowercase_dct : dict[str, Any]
+        Dictionary with same values as `dct`, but lowercase keys.
+
+    Raises
+    ------
+    ValueError
+        If duplicate keys are found after lowercasing, e.g. the original dictionary
+        has key ``"a"`` and ``"A"``.
+
+    Examples
+    --------
+    >>> remove_keys_with_none({'KEY_A': 'A', 'kEy_B': 'b'})
+    '{'key_a': 'A', 'key_b': 'b'}'
+
+    """
+    new_dct = {}
+    for k, v in dct.items():
+        if k.lower() in new_dct:
+            msg = f"Duplicate lower case key {k} is already in the dict, stopping"
+            raise ValueError(msg)
+        new_dct[k.lower()] = v
+    return new_dct

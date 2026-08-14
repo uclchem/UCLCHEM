@@ -26,8 +26,8 @@ repos:
         stages: [pre-commit]
         pass_filenames: false
 
-  - repo: https://github.com/crate-ci/typos
-    rev: v1.48.0
+  - repo: https://github.com/adhtruong/mirrors-typos
+    rev: v1.49.0
     hooks:
       - id: typos
         name: "[correctness] Check spelling errors"
@@ -46,7 +46,7 @@ repos:
 
   # Ruff: Code style, docstrings, etc
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.0
+    rev: v0.16.3
     hooks:
       - id: ruff
         name: "[correctness] Ruff linter"
@@ -63,13 +63,12 @@ repos:
         # Notebooks and example scripts are not library code; exclude them.
         exclude: ^(notebooks|scripts)/
 
-
   # ============================================================================
   # TIER 2: STYLE (Auto-fixable formatting and imports)
   # Purpose: Enforce consistent code style
   # ============================================================================
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.0
+    rev: v0.16.3
     hooks:
       - id: ruff-format
         name: "[style] Ruff formatter"
