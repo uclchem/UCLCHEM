@@ -910,9 +910,9 @@ def remove_keys_with_none(dct: dict[str, Any]) -> None:
     Examples
     --------
     >>> dct = {'key_a': 'a', 'key_b': None}
-    >>> remove_keys_with_none({'key_a': 'a', 'key_b': None})
+    >>> remove_keys_with_none(dct)
     >>> dct
-    '{'key_a': 'a'}'
+    {'key_a': 'a'}
 
     """
     keys_to_delete = [k for k, v in dct.items() if v is None]
@@ -941,8 +941,8 @@ def get_lowercase_copy(dct: dict[str, Any]) -> dict[str, Any]:
 
     Examples
     --------
-    >>> remove_keys_with_none({'KEY_A': 'A', 'kEy_B': 'b'})
-    '{'key_a': 'A', 'key_b': 'b'}'
+    >>> get_lowercase_copy({'KEY_A': 'A', 'kEy_B': 'b'})
+    {'key_a': 'A', 'key_b': 'b'}
 
     """
     new_dct = {}

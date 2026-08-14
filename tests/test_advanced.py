@@ -7,6 +7,7 @@ Tests the runtime interfaces for:
 """
 
 from collections.abc import Generator
+from types import MappingProxyType
 
 import numpy as np
 import pytest
@@ -58,7 +59,7 @@ class TestHeatingSettings:
         assert hasattr(settings, "DUST_TEMP_HOLLENBACH")
 
         # Verify PHOTOELECTRIC is a dict with expected keys
-        assert isinstance(settings.PHOTOELECTRIC, dict)
+        assert isinstance(settings.PHOTOELECTRIC, MappingProxyType)
         assert "BAKES" in settings.PHOTOELECTRIC
         assert "WEINGARTNER" in settings.PHOTOELECTRIC
 
