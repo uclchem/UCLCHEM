@@ -140,6 +140,7 @@ from uclchem.utils import (
     get_lowercase_copy,
     get_reaction_table,
     get_species,
+    pad_to_length,
     remove_keys_with_none,
 )
 
@@ -2437,21 +2438,10 @@ class AbstractModel(ABC):
             # avoid mutating the shared default dictionary
             self._param_dict = DEFAULT_PARAMETER_DICTIONARY.copy()
         else:
-<<<<<<< HEAD
             new_param_dict = get_lowercase_copy(param_dict)
             for k, v in new_param_dict.items():
                 if isinstance(v, Path):
                     new_param_dict[k] = str(v)
-=======
-            # Lower case (and conveniently copy so we don't edit) the user's dictionary
-            # This is key to UCLCHEM's "case insensitivity"
-            new_param_dict = get_lowercase_copy(param_dict)
-
-            # Convert all Paths to strings, because Fortran cannot accept Paths
-            for key, value in new_param_dict.items():
-                if isinstance(value, Path):
-                    new_param_dict[key] = str(value)
->>>>>>> 0364e87 (Use typos mirror instead, https://github.com/crate-ci/typos/issues/390, update ruff version, fix new linting errors.)
 
             # Handle deprecated endAtFinalDensity parameter (after lowercasing)
             new_param_dict = _convert_legacy_stopping_param(dict(new_param_dict))
@@ -2462,11 +2452,7 @@ class AbstractModel(ABC):
             }
             del new_param_dict
 
-<<<<<<< HEAD
         # Remove keys with None values from the merged _param_dict
-=======
->>>>>>> 0364e87 (Use typos mirror instead, https://github.com/crate-ci/typos/issues/390, update ruff version, fix new linting errors.)
-        # Check the merged dict, not the defaults, to preserve user-provided values
         remove_keys_with_none(self._param_dict)
 
         # Still set these, because the fortran at this point still requires them.
@@ -2559,10 +2545,10 @@ class AbstractModel(ABC):
     def _create_se_stats_array(self):
         """Create the Fortran-compliant np.array for SE solver statistics.
 
-        Shape: (timepoints+1, gridpoints, NCOOLANTS*3).
+        Shape: (timepoints+1, gridpoints, NCOOLANTS*N_SE_STATS_PER_COOLANT).
 
         """
-        n_stats = NCOOLANTS * N_SE_STATS_PER_COOLANT  # 35 * 3 = 105
+        n_stats = NCOOLANTS * N_SE_STATS_PER_COOLANT
 
         (
             self._shm_handles["se_stats_array"],
@@ -3926,6 +3912,7 @@ class Postprocess(AbstractModel):
                         msg = "All arrays must be the same length"
                         raise ValueError(msg)
 
+<<<<<<< HEAD
                     # Pad to self.timepoints so Fortran gets
                     # correctly sized arrays.
                     padded = np.zeros(
@@ -3934,6 +3921,10 @@ class Postprocess(AbstractModel):
                     )
                     padded[:n_input] = array
                     setattr(self, key, make_json_serializable(array))
+=======
+                    # Pad to self.timepoints so Fortran gets correctly sized arrays.
+                    padded = pad_to_length(array, self.timepoints)
+>>>>>>> 5e92655 (Add pad_to_length, correct ZETA_0 on python side now that it is in fortran)
                     self.postprocess_arrays[key] = np.asfortranarray(padded)
             self.time_array = time_array
             # Column-density (coldens) and visual extinction (Av) arrays
