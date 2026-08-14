@@ -295,8 +295,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(1)
         return
 
-    with Path(metadata_path).open("w") as f:
-        f.write(new_text)
+    Path(metadata_path).write_text(new_text)
     print(f"Updated {metadata_path}")
     for mod, names in sorted(detected.items()):
         print(f"  {mod}: {names}")

@@ -651,8 +651,7 @@ database_reaction_type: "UMIST12"
 # - Then reinstall: pip install .
 """
 
-        with Path(output_path).open("w") as f:
-            f.write(template)
+        Path(output_path).write_text(template)
 
         print(f"✓ Template configuration written to: {output_path}")
         print(

@@ -72,7 +72,7 @@ def parse_species_from_row(row: pd.Series, prefix: str) -> list[str]:
         else:
             species.append(str(val).strip().upper())
         idx += 1
-    return species if species else ["NAN"]
+    return species or ["NAN"]
 
 
 def _parse_unit(unit: str) -> float:

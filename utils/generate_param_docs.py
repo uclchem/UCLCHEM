@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     with Path(param_file).open() as f:
         with Path(output_file).open("w") as output:
-            for line in f.readlines():
+            for line in f:
                 if line.startswith("!"):
                     if not line.startswith("!!"):
                         output.write(line.replace("!", ""))

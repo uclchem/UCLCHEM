@@ -84,6 +84,7 @@ import contextlib
 import json
 import logging
 from types import MappingProxyType
+import operator
 
 _logger = logging.getLogger(__name__)
 
@@ -709,7 +710,7 @@ class AbstractModel(ABC):
 
         # Validate parcelStoppingMode usage after model_type is known
         if self._param_dict.get("_needs_freefall_validation", False):
-            if self.model_type not in {"Collapse"}:  # Collapse models imply freefall
+            if self.model_type != "Collapse":  # Collapse models imply freefall
                 msg = (
                     "parcelStoppingMode != 0 can only be used with:\n"
                     "  - Cloud models with freefall=True\n"
@@ -1837,7 +1838,7 @@ class AbstractModel(ABC):
         save_data = self._data.copy()
         # Collect remaining non-array dataset variables into attributes (same behavior as before)
         for v in list(save_data.variables):
-            if "_array" not in v and v not in {"_orig_sigint"}:
+            if "_array" not in v and v != "_orig_sigint":
                 if np.shape(save_data[v].values) != ():
                     if isinstance(save_data[v].values, tuple):
                         temp_attribute_dict[v] = save_data[v].values[1].tolist()
@@ -3912,7 +3913,6 @@ class Postprocess(AbstractModel):
                         msg = "All arrays must be the same length"
                         raise ValueError(msg)
 
-<<<<<<< HEAD
                     # Pad to self.timepoints so Fortran gets
                     # correctly sized arrays.
                     padded = np.zeros(
@@ -3921,10 +3921,6 @@ class Postprocess(AbstractModel):
                     )
                     padded[:n_input] = array
                     setattr(self, key, make_json_serializable(array))
-=======
-                    # Pad to self.timepoints so Fortran gets correctly sized arrays.
-                    padded = pad_to_length(array, self.timepoints)
->>>>>>> 5e92655 (Add pad_to_length, correct ZETA_0 on python side now that it is in fortran)
                     self.postprocess_arrays[key] = np.asfortranarray(padded)
             self.time_array = time_array
             # Column-density (coldens) and visual extinction (Av) arrays
@@ -4557,11 +4553,7 @@ class _NoDaemonProcess(mp.Process):
         pass
 
 
-<<<<<<< HEAD
 class NoDaemonPool(mp_pool.Pool):  # noqa
-=======
-class NoDaemonPool(pool.Pool):  # ruff: ignore[undocumented-public-class]
->>>>>>> 0364e87 (Use typos mirror instead, https://github.com/crate-ci/typos/issues/390, update ruff version, fix new linting errors.)
     @staticmethod
     def Process(ctx, *args, **kwargs):  # ruff: ignore[missing-type-function-argument, unused-static-method-argument, undocumented-public-method, invalid-function-name]
         return _NoDaemonProcess(*args, **kwargs)
@@ -4886,7 +4878,7 @@ class GridRunner:
         self.models = [
             {"Model": save_name, "object": _maybe_get(results[model_id])}
             for model_id, save_name in sorted(
-                self.model_id_dict.items(), key=lambda item: item[1]
+                self.model_id_dict.items(), key=operator.itemgetter(1)
             )
         ]
         self._load_params()
@@ -4952,11 +4944,7 @@ class GridRunner:
                                 in model._param_dict
                             },
                             **{
-<<<<<<< HEAD
                                 k.replace(f"{model_count}_", ""): model.__getattr__(  # noqa: PLC2801 bypass
-=======
-                                k.replace(f"{model_count}_", ""): tmp_model.__getattr__(  # ruff: ignore[unnecessary-dunder-call] bypass
->>>>>>> 0364e87 (Use typos mirror instead, https://github.com/crate-ci/typos/issues/390, update ruff version, fix new linting errors.)
                                     k.replace(f"{model_count}_", "")
                                 )
                                 for k in list(self.parameters_to_grid.keys())
