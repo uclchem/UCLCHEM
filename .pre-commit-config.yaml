@@ -54,7 +54,7 @@ repos:
         args: [--fix]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.3.0
+    rev: v2.3.1
     hooks:
       - id: mypy
         name: "[correctness] Mypy type checking"
@@ -62,6 +62,8 @@ repos:
         args: [--install-types, --non-interactive]
         # Notebooks and example scripts are not library code; exclude them.
         exclude: ^(notebooks|scripts)/
+        additional_dependencies: [xarray]
+
 
   # ============================================================================
   # TIER 2: STYLE (Auto-fixable formatting and imports)

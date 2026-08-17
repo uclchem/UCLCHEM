@@ -557,7 +557,7 @@ class AbstractModel(ABC):
             )
             raise RuntimeError(msg)
 
-        self._data = xr.Dataset()
+        self._data: xr.Dataset | None = xr.Dataset()
         self._pickle_dict: dict = {}
         # Per-instance metadata containers (scalars and small values)
         object.__setattr__(self, "_meta", {})
@@ -770,6 +770,8 @@ class AbstractModel(ABC):
         ------
         AttributeError
             If no attribute with the given name exists.
+        RuntimeError
+            If ``self._data`` is None when trying to access the attribute.
 
         """
         # Internal attributes behave normally
@@ -791,6 +793,9 @@ class AbstractModel(ABC):
                 if isinstance(values, tuple):
                     return values[1]
                 return values
+            if self._data is None:
+                msg = f"Trying to get attribute 'key' from model {self.model_type} but '_data' attribute was None."
+                raise RuntimeError(msg)
             return self._data[key].item()
 
         msg = f'{self.__class__.__name__} has no attribute of name: "{key}".'
@@ -805,6 +810,12 @@ class AbstractModel(ABC):
             Name of the attribute to set.
         value : Any
             Value to store.
+
+        Raises
+        ------
+        RuntimeError
+            If ``self._data`` is None, while trying to set an attribute
+            that is stored in ``self._data``.
 
         """
         # Underscored attributes are real attributes
@@ -831,6 +842,10 @@ class AbstractModel(ABC):
                 meta = super().__getattribute__("_meta")
                 if key in meta:
                     del meta[key]
+
+            if self._data is None:
+                msg = f"Trying to set attribute '{key}' but '_data' attribute is None."
+                raise RuntimeError(msg)
 
             # Remove any existing dataset var of same name before inserting
             if key in self._data:
@@ -906,6 +921,10 @@ class AbstractModel(ABC):
             object.__setattr__(self, "_meta", {})
             meta = self._meta
 
+        if self._data is None:
+            msg = f"Trying to set attribute '{key}' but '_data' attribute is None."
+            raise RuntimeError(msg)
+
         # If a dataset variable exists with this name, drop it to avoid ambiguity
         if key in self._data:
             with contextlib.suppress(Exception):
@@ -931,7 +950,7 @@ class AbstractModel(ABC):
             meta = super().__getattribute__("_meta")
         except Exception:
             meta = {}
-        return (key in meta) or (key in self._data)
+        return (key in meta) or (key in self._data if self._data is not None else False)
 
     # /Class utility method
 
@@ -1684,6 +1703,9 @@ class AbstractModel(ABC):
         ------
         ValueError
             If file_obj and file are both passed, or neither are passed.
+        RuntimeError
+            If the model's ``_data`` attribute is None. This could happen if
+            the model was pickled, for example.
 
         """
         opened_file = False
@@ -1709,10 +1731,15 @@ class AbstractModel(ABC):
         with contextlib.suppress(Exception):
             temp_attribute_dict.update(super().__getattribute__("_meta"))
 
+        if self._data is None:
+            msg = "Trying to save a model with '_data' attribute None."
+            raise RuntimeError(msg)
         # Work on a copy so save_model is non-destructive to self._data
         save_data = self._data.copy()
+
         # Collect remaining non-array dataset variables into attributes (same behavior as before)
-        for v in list(save_data.variables):
+        for v in save_data.variables:
+            v = str(v)  # Simply making mypy happy
             if "_array" not in v and v != "_orig_sigint":
                 if np.shape(save_data[v].values) != ():
                     if isinstance(save_data[v].values, tuple):
@@ -1729,8 +1756,10 @@ class AbstractModel(ABC):
         model_group = file_obj.create_group(name)
         coord_grp = model_group.create_group("_coords")
         for coord_name, coord in save_data.coords.items():
+            coord_name = str(coord_name)  # Simply making mypy happy
             self._write_array(coord_grp, coord_name, coord, float_dtype=float_dtype)
         for var_name, var in save_data.data_vars.items():
+            var_name = str(var_name)  # Simply making mypy happy
             self._write_array(model_group, var_name, var, float_dtype=float_dtype)
         if opened_file:
             file_obj.flush()

@@ -169,7 +169,7 @@ rin = "rin"
 exclude = ["^notebooks/"]
 
 [[tool.mypy.overrides]]
-module = ["yaml", "uclchemwrap", "h5py", "nbconvert.*", "nbformat", "pytest", "matplotlib", "matplotlib.*", "xarray", "bs4", "pydantic", "uclchem._project_root"]
+module = ["yaml", "uclchemwrap", "h5py", "nbconvert.*", "nbformat", "pytest", "matplotlib", "matplotlib.*", "bs4", "pydantic", "uclchem._project_root"]
 ignore_missing_imports = true
 
 [tool.pymend]
