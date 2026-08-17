@@ -185,7 +185,7 @@ def _get_rates_change(rate_df: pd.DataFrame, species: str) -> pd.DataFrame:
 
 
 def get_change_df(
-    rate_df: pd.DataFrame, species: str, on_grain: bool = False
+    rate_df: pd.DataFrame, species: str, *, on_grain: bool = False
 ) -> pd.DataFrame:
     """From a dataframe containing all the reaction rates, get the change of a species over time,.
 
@@ -231,17 +231,17 @@ def get_change_df(
     bulk_columns = df_bulk.columns
     for column in surf_columns:
         if "->" not in column:
-            df_bulk.drop(
-                columns=column, inplace=True
-            )  # Drop the physical parameters from bulk column so we do not have them twice in the final df
+            # Drop the physical parameters from bulk column so we do not have them twice
+            # in the final df
+            df_bulk = df_bulk.drop(columns=column)
             continue
         if column in bulk_columns:
             # If the same reaction is in both dfs, that means that both surf and bulk version
             # of the species is involved in the reaction, which means that either surface is lost
             # and bulk forms, or the other way, and so we drop this column
             # from both dfs since it has no effect on the ice overall.
-            df_surf.drop(columns=column, inplace=True)
-            df_bulk.drop(columns=column, inplace=True)
+            df_surf = df_surf.drop(columns=column)
+            df_bulk = df_bulk.drop(columns=column)
     # Maybe TODO:
     # Make it such that the columns of the same reactions (but surf and bulk versions)
     # are added such that we have a single reaction rate in the ice,
@@ -842,7 +842,10 @@ def total_element_abundance(element: str, df: pd.DataFrame) -> pd.Series:
 
 
 def check_element_conservation(
-    df: pd.DataFrame, element_list: Iterable[str] | None = None, percent: bool = True
+    df: pd.DataFrame,
+    element_list: Iterable[str] = DEFAULT_ELEMENTS_TO_CHECK,
+    *,
+    percent: bool = True,
 ) -> dict[str, str]:
     """Check the conservation of elements by comparing their total.
 
@@ -852,9 +855,7 @@ def check_element_conservation(
     ----------
     df : pd.DataFrame
         UCLCHEM output in format from `read_output_file`
-    element_list : Iterable[str] | None
-        List of elements to check. If None,
-        defaults to `uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`.
+        List of elements to check. Default = :data:`uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`.
     percent : bool
         Whether to return the change formatted as a percentage. Default = False.
 
@@ -865,11 +866,9 @@ def check_element_conservation(
         as a fraction of initial value
 
     """
-    if element_list is None:
-        element_list = DEFAULT_ELEMENTS_TO_CHECK
     result = {}
     for element in element_list:
-        discrep = total_element_abundance(element, df).values
+        discrep = total_element_abundance(element, df).to_numpy()
         if percent:
             discrep = np.abs(discrep[0] - discrep[-1]) / discrep[0]
             result[element] = f"{discrep:.3%}"
@@ -1302,12 +1301,11 @@ def derive_phase_from_name(name: str) -> str:
     """
     if name.startswith("@"):
         return "bulk"
-    elif name.startswith("#"):
+    if name.startswith("#"):
         return "surface"
-    elif name.endswith("+"):
+    if name.endswith("+"):
         return "ion"
-    else:
-        return "gas"
+    return "gas"
 
 
 def analyze_element_per_phase(element: str, df: pd.DataFrame) -> pd.DataFrame:

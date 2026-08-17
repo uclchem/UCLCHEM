@@ -217,7 +217,7 @@ class RuntimeNetwork(BaseNetwork):
             mass = float(self._fortran.mass[i])
 
             # Optional fields with bounds checking
-            if name.startswith("#") or name.startswith("@"):
+            if name.startswith(("#", "@")):
                 ice_list_index = self._get_ice_list_index(name)
                 binding_energy = float(self._fortran.bindingenergy[ice_list_index])
                 diffusion_barrier = float(self._fortran.diffusionbarrier[ice_list_index])

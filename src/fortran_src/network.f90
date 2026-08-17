@@ -1,6 +1,6 @@
 module network
     use constants, only: dp, REAC_NOT_PRESENT
-    use f2py_constants, only: nspec, nReac, MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER, &
+    use f2py_constants, only: nSpec, nReac, MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER, &
         NO_REACTANT_OR_PRODUCT
 
     implicit none

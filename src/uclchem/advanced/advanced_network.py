@@ -139,7 +139,7 @@ class RuntimeSpecies:
         name = self.get_name()
         if "+" in name:
             return 1
-        elif "-" in name:
+        if "-" in name:
             return -1
         return 0
 

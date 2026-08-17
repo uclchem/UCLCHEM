@@ -14,11 +14,19 @@ if TYPE_CHECKING:
     import pandas as pd
 
 import uclchem
+<<<<<<< HEAD
 from uclchem.constants import DEFAULT_ELEMENTS_TO_CHECK
 
 
 def test_ode_conservation(
     element_list: Iterable[str] | None = None,
+=======
+from uclchem.constants import ELEMENTS_TO_CHECK
+
+
+def test_ode_conservation(
+    element_list: Iterable[str] = ELEMENTS_TO_CHECK,  # ruff: ignore[pytest-parameter-with-default-argument]
+>>>>>>> 327bba7 (Many more linting rules.)
 ) -> dict[str, float]:
     """Test whether the ODEs conserve elements.
 
@@ -27,9 +35,13 @@ def test_ode_conservation(
 
     Parameters
     ----------
+<<<<<<< HEAD
     element_list : Iterable[str] | None
+=======
+    element_list : Iterable[str]
+>>>>>>> 327bba7 (Many more linting rules.)
         A list of elements for which to check the conservation.
-        If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
+        Default = ``uclchem.constants.ELEMENTS_TO_CHECK``.
 
     Returns
     -------
@@ -38,9 +50,12 @@ def test_ode_conservation(
         representing the total change of each element.
 
     """
+<<<<<<< HEAD
     if element_list is None:
         element_list = DEFAULT_ELEMENTS_TO_CHECK
 
+=======
+>>>>>>> 327bba7 (Many more linting rules.)
     param_dict = {
         "endatfinaldensity": False,
         "freefall": True,

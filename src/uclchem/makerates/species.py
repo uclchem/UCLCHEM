@@ -226,7 +226,7 @@ class Species:
 
         if "+" in self.get_name():
             return 1
-        elif self.get_name().endswith("-"):
+        if self.get_name().endswith("-"):
             return -1
         return 0
 
@@ -543,7 +543,7 @@ class Species:
             freeze = ""
         self.set_freeze_products([freeze, "NAN", "NAN", "NAN"], 1.0)
 
-    def find_constituents(self, quiet: bool = False) -> Counter[str]:
+    def find_constituents(self, *, quiet: bool = False) -> Counter[str]:
         """Loop through the species' name and work out what its constituent atoms are.
 
         Then calculate mass and alert user if it doesn't match the input mass.
@@ -949,10 +949,9 @@ class Species:
         """
         if isinstance(other, Species):
             return self.get_name() == other.get_name()
-        elif isinstance(other, str):
+        if isinstance(other, str):
             return self.get_name() == other
-        else:
-            return NotImplemented
+        return NotImplemented
 
     def __hash__(self) -> int:
         """Hash based on species name, consistent with __eq__.
@@ -1056,12 +1055,11 @@ class Species:
                 * np.sqrt(self.Ix * self.Iy * self.Iz * amu**3 / 1e60)
                 * scaling_factor
             )
-        else:
-            return (
-                (1.0 / self.symmetry_factor)
-                * np.sqrt(self.Iy * self.Iz * amu**2 / 1e40)
-                * scaling_factor
-            )
+        return (
+            (1.0 / self.symmetry_factor)
+            * np.sqrt(self.Iy * self.Iz * amu**2 / 1e40)
+            * scaling_factor
+        )
 
     def is_linear(self) -> bool:
         """Check if molecule is linear based on moment of inertia.

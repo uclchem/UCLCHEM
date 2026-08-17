@@ -714,10 +714,9 @@ database_reaction_type: "UMIST12"
         path = Path(path)
         if path.is_absolute():
             return path
-        elif self._config_dir:
+        if self._config_dir:
             return (self._config_dir / path).resolve()
-        else:
-            return path.resolve()
+        return path.resolve()
 
     def get_all_reaction_files(self) -> list[Path]:
         """Get all reaction files (database + custom) as resolved paths.

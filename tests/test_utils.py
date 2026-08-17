@@ -12,7 +12,7 @@ get_dtypes_data = [
 ]
 
 
-@pytest.mark.parametrize("input, expected", get_dtypes_data)
+@pytest.mark.parametrize(("input", "expected"), get_dtypes_data)
 def test_get_dtype(input, expected):
     assert get_dtype(input) == expected
 

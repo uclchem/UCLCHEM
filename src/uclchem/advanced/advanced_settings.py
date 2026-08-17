@@ -53,8 +53,7 @@ def _copy_value(value: Any) -> Any:
     """
     if isinstance(value, np.ndarray):
         return value.copy()
-    else:
-        return value
+    return value
 
 
 class Setting:
@@ -93,6 +92,7 @@ class Setting:
         name: str,
         module_name: str,
         fortran_module: ModuleType,
+        *,
         is_parameter: bool = False,
         is_internal: bool = False,
         is_file_path: bool = False,
@@ -137,7 +137,7 @@ class Setting:
             self.dtype = type(value)
             self.shape = None
 
-    def get(self, check_memory: bool = True) -> float | int | np.ndarray:
+    def get(self, *, check_memory: bool = True) -> float | int | np.ndarray:
         """Get the current value of the setting.
 
         Parameters
@@ -325,9 +325,9 @@ class ModuleSettings:
                     attr,
                     module_name,
                     fortran_module,
-                    is_param,
-                    is_internal,
-                    is_file_path,
+                    is_parameter=is_param,
+                    is_internal=is_internal,
+                    is_file_path=is_file_path,
                 )
                 self._settings[attr.lower()] = setting
 
@@ -411,7 +411,7 @@ class ModuleSettings:
         return list(self._settings.keys())
 
     def list_settings(
-        self, include_internal: bool = False, include_parameters: bool = False
+        self, *, include_internal: bool = False, include_parameters: bool = False
     ) -> dict[str, Setting]:
         """List settings with their current values.
 
@@ -438,7 +438,7 @@ class ModuleSettings:
         return result
 
     def print_settings(
-        self, include_internal: bool = False, include_parameters: bool = False
+        self, *, include_internal: bool = False, include_parameters: bool = False
     ) -> None:
         """Print all settings in a readable format.
 
@@ -454,7 +454,9 @@ class ModuleSettings:
         print(f"Module: {self.module_name}")
         print(f"{'=' * 70}\n")
 
-        settings = self.list_settings(include_internal, include_parameters)
+        settings = self.list_settings(
+            include_internal=include_internal, include_parameters=include_parameters
+        )
         for name in sorted(settings.keys()):
             setting = settings[name]
             flags = []
@@ -649,6 +651,7 @@ class GeneralSettings:
     def search(
         self,
         pattern: str,
+        *,
         include_internal: bool = False,
         include_parameters: bool = False,
     ) -> dict[str, Setting]:
@@ -717,7 +720,7 @@ class GeneralSettings:
             mod_settings = self._modules[module_name]
             mod_settings.print_settings(include_internal=True, include_parameters=True)
 
-    def reset_all(self, confirm: bool = True) -> None:
+    def reset_all(self, *, confirm: bool = True) -> None:
         """Reset all settings to their default values.
 
         Parameters
