@@ -85,9 +85,11 @@ class HeatingSettings:
     >>> settings.print_configuration() # doctest: +SKIP
     ...
     >>> # Switch photoelectric method (auto-disables Bakes when enabling Weingartner)
-    >>> settings.set_heating_mechanism(settings.PHOTOELECTRIC['WEINGARTNER'], True)
+    >>> settings.set_heating_mechanism(settings.PHOTOELECTRIC['WEINGARTNER'], enabled=True)
     >>> # Disable H2 formation
-    >>> settings.set_heating_mechanism(settings.H2_FORMATION, False)
+    >>> settings.set_heating_mechanism(settings.H2_FORMATION, enabled=False)
+    >>> # Reset all to the original state
+    >>> settings.reset_to_defaults()
 
     """
 
@@ -193,9 +195,9 @@ class HeatingSettings:
         --------
         >>> settings = HeatingSettings()
         >>> # Enable Weingartner photoelectric (auto-disables Bakes)
-        >>> settings.set_heating_mechanism(settings.PHOTOELECTRIC['WEINGARTNER'], True)
+        >>> settings.set_heating_mechanism(settings.PHOTOELECTRIC['WEINGARTNER'], enabled=True)
         >>> # Or disable H2 formation
-        >>> settings.set_heating_mechanism(settings.H2_FORMATION, False)
+        >>> settings.set_heating_mechanism(settings.H2_FORMATION, enabled=False)
 
         """
         if not 1 <= mechanism_id <= self._heating_module.nheating:
@@ -237,8 +239,8 @@ class HeatingSettings:
         Examples
         --------
         >>> settings = HeatingSettings()
-        >>> settings.set_coolant_active("CO", False)
-        >>> settings.set_coolant_active("p-H2", False)
+        >>> settings.set_coolant_active("CO", enabled=False)
+        >>> settings.set_coolant_active("p-H2", enabled=False)
 
         """
         names = [
@@ -296,7 +298,7 @@ class HeatingSettings:
         Examples
         --------
         >>> settings = HeatingSettings()
-        >>> settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, False)
+        >>> settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, enabled=False)
 
         """
         if not 1 <= mechanism_id <= self._heating_module.ncooling:
@@ -317,7 +319,7 @@ class HeatingSettings:
         >>> settings = HeatingSettings()
         >>> state = settings.get_heating_modules()
         >>> print(state['H2Formation'])
-        False
+        True
 
         """
         labels = [
@@ -581,8 +583,18 @@ class HeatingSettings:
         Examples
         --------
         >>> settings = HeatingSettings()
-        >>> settings.set_heating_mechanism(settings.H2_FORMATION, False)
+        >>> # Default state
+        >>> state = settings.get_heating_modules()
+        >>> state['H2Formation']
+        True
+        >>> settings.set_heating_mechanism(settings.H2_FORMATION, enabled=False)
+        >>> state = settings.get_heating_modules()
+        >>> state['H2Formation']
+        False
         >>> settings.reset_to_defaults()  # Restores original state
+        >>> state = settings.get_heating_modules()
+        >>> state['H2Formation']
+        True
 
         """
         # Restore backed-up initial state
