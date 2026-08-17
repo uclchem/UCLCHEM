@@ -228,7 +228,7 @@ class TestHeatingArrays:
                 "The output should be a DataFrame"
             )
             assert "Time" in heating_df.columns, "Time should be returned"
-            assert (heating_df.values[:, 1:] != 0).any(), (
+            assert (heating_df.to_numpy()[:, 1:] != 0).any(), (
                 f"Some terms should have non-zero values, head is {heating_df.head()}"
             )
 

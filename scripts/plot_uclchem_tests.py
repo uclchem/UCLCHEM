@@ -166,7 +166,7 @@ if __name__ == "__main__":
             ax1.set_xscale("log")
             ax1.set_yscale("log")
             ax1.set_xlim(1, 6e6)
-            ax1.grid(True, alpha=0.3)
+            ax1.grid(visible=True, alpha=0.3)
 
             color = "tab:blue"
             ax2.set_ylabel("Density [cm⁻³]", color=color)
@@ -209,7 +209,7 @@ if __name__ == "__main__":
         ax.set_xlabel("Time [yr]")
         ax.set_ylabel("Total abundance / initial")
         ax.set_title(model_names[model])
-        ax.grid(True, alpha=0.3)
+        ax.grid(visible=True, alpha=0.3)
         if j == 0:
             ax.legend(bbox_to_anchor=(-0.25, 0.5), loc="center right")
 

@@ -92,9 +92,8 @@ def ensure_ipykernel_installed(python_exec: str | Path) -> bool:
         if result.returncode == 0:
             print("ipykernel installed successfully")
             return True
-        else:
-            print(f"Failed to install ipykernel: {result.stderr}")
-            return False
+        print(f"Failed to install ipykernel: {result.stderr}")
+        return False
     except Exception as e:
         print(f"Error installing ipykernel: {e}")
         return False
@@ -188,9 +187,8 @@ def create_kernel_spec(python_exec: Path) -> str | None:
         if result.returncode == 0:
             print(f"Created kernel spec: {kernel_name}")
             return kernel_name
-        else:
-            print(f"Failed to create kernel spec: {result.stderr}")
-            return None
+        print(f"Failed to create kernel spec: {result.stderr}")
+        return None
     except Exception as e:
         print(f"Error creating kernel spec: {e}")
         return None

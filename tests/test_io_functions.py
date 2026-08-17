@@ -65,7 +65,7 @@ def test_array_to_string_2d_string():
 
 
 @pytest.mark.parametrize(
-    "raw, expected",
+    ("raw", "expected"),
     [
         # plain species are uppercased
         ("H2O", "H2O"),

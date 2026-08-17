@@ -22,6 +22,7 @@ def plot_species(
     ax: plt.Axes,
     df: pd.DataFrame,
     species: list[str],
+    *,
     legend: bool = True,
     plot_kwargs: dict[str, Any] | None = None,
 ) -> plt.Axes:

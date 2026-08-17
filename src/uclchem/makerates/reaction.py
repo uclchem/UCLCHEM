@@ -148,7 +148,7 @@ class Reaction:
             self.set_templow(input_row.get_templow())
             self.set_temphigh(input_row.get_temphigh())
             self.set_reduced_mass(input_row.get_reduced_mass())
-            self.set_extrapolation(input_row.get_extrapolation())
+            self.set_extrapolation(enabled=input_row.get_extrapolation())
             self.set_exothermicity(input_row.get_exothermicity())
         else:
             try:
@@ -181,7 +181,7 @@ class Reaction:
                 else:
                     self.set_reduced_mass(MISSING_VALUE_FLOAT)
                 self.set_extrapolation(
-                    bool(input_row[13]) if len(input_row) > 13 else False  # ruff: ignore[magic-value-comparison]
+                    enabled=bool(input_row[13]) if len(input_row) > 13 else False  # ruff: ignore[magic-value-comparison]
                 )
                 self.set_exothermicity(
                     float(input_row[14])
@@ -555,7 +555,7 @@ class Reaction:
                     f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                 )
                 return
-            elif any(species == Counter({"H": 1}) for species in reac_constituents):
+            if any(species == Counter({"H": 1}) for species in reac_constituents):
                 # If one of the species is #H, set reduced mass to 1
                 self.set_reduced_mass(1.0)
                 logger.debug(
@@ -615,10 +615,9 @@ class Reaction:
         """
         if self.get_reactants()[2] in REACTION_TYPES:
             return self.get_reactants()[2]
-        elif self.get_reactants()[1] in REACTION_TYPES:
+        if self.get_reactants()[1] in REACTION_TYPES:
             return self.get_reactants()[1]
-        else:
-            return "TWOBODY"
+        return "TWOBODY"
 
     def get_source(self) -> str | None:
         """Get the source of the reaction.
@@ -642,25 +641,17 @@ class Reaction:
         """
         self.source = source
 
-    def set_extrapolation(self, flag: bool) -> None:
+    def set_extrapolation(self, *, enabled: bool = True) -> None:
         """Set whether extrapolation is applied for this reaction.
 
         Parameters
         ----------
-        flag : bool
-            whether extrapolation is applied.
-
-        Raises
-        ------
-        AssertionError
-            If ``flag`` is not a boolean.
+        enabled : bool
+            whether extrapolation is applied. Default=True.
 
         """
-        logger.info(f"Setting for {self} extrapolation to {flag}")
-        if not isinstance(flag, bool):
-            msg = f"Expected bool, got {type(flag)}"
-            raise AssertionError(msg)
-        self.extrapolate = flag
+        logger.info(f"Setting for {self} extrapolation to {enabled}")
+        self.extrapolate = enabled
 
     def get_extrapolation(self) -> bool:
         """Get whether extrapolation is applied for this reaction.
@@ -869,8 +860,7 @@ class Reaction:
         ):
             # if the number of ice species changes
             return self.changes_surface_count()
-        else:
-            return False
+        return False
 
     def generate_ode_bit(self, i: int, species_names: list[str]) -> None:
         """Generate the ODE string of this reaction.
@@ -933,7 +923,7 @@ class Reaction:
         return formatted_reaction
 
     def _is_reaction_wrap(
-        self, include_reactants: bool = True, include_products: bool = True
+        self, *, include_reactants: bool = True, include_products: bool = True
     ) -> list[str]:
         if not (include_reactants or include_products):
             msg = "Either include reactants or products"
@@ -947,6 +937,7 @@ class Reaction:
 
     def is_gas_reaction(
         self,
+        *,
         include_reactants: bool = True,
         include_products: bool = True,
         strict: bool = True,
@@ -973,13 +964,16 @@ class Reaction:
 
         """
         checklist = [
-            not (s.startswith("#") or s.startswith("@"))
-            for s in self._is_reaction_wrap(include_reactants, include_products)
+            not s.startswith(("#", "@"))
+            for s in self._is_reaction_wrap(
+                include_reactants=include_reactants, include_products=include_products
+            )
         ]
         return all(checklist) if strict else any(checklist)
 
     def is_ice_reaction(
         self,
+        *,
         include_reactants: bool = True,
         include_products: bool = True,
         strict: bool = True,
@@ -1006,13 +1000,16 @@ class Reaction:
 
         """
         checklist = [
-            (s.startswith("#") or s.startswith("@"))
-            for s in self._is_reaction_wrap(include_reactants, include_products)
+            s.startswith(("#", "@"))
+            for s in self._is_reaction_wrap(
+                include_reactants=include_reactants, include_products=include_products
+            )
         ]
         return all(checklist) if strict else any(checklist)
 
     def is_surface_reaction(
         self,
+        *,
         include_reactants: bool = True,
         include_products: bool = True,
         strict: bool = False,
@@ -1042,12 +1039,15 @@ class Reaction:
         """
         checklist = [
             s.startswith("#")
-            for s in self._is_reaction_wrap(include_reactants, include_products)
+            for s in self._is_reaction_wrap(
+                include_reactants=include_reactants, include_products=include_products
+            )
         ]
         return all(checklist) if strict else any(checklist)
 
     def is_bulk_reaction(
         self,
+        *,
         include_reactants: bool = True,
         include_products: bool = True,
         strict: bool = False,
@@ -1077,7 +1077,9 @@ class Reaction:
         """
         checklist = [
             s.startswith("@")
-            for s in self._is_reaction_wrap(include_reactants, include_products)
+            for s in self._is_reaction_wrap(
+                include_reactants=include_reactants, include_products=include_products
+            )
         ]
         return all(checklist) if strict else any(checklist)
 
@@ -1238,7 +1240,7 @@ def _generate_reaction_ode_bit(
             ode_bit += "/safeMantle"
             if species == "DESOH2":
                 ode_bit += f"*Y({species_names.index('H') + 1})"
-        elif species != "ED":
+        elif species == "ED":
             ode_bit += f"*Y({species_names.index('#H2') + 1})"
 
         if "H2FORM" in reactants:

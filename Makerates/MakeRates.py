@@ -83,7 +83,7 @@ def get_args():  # ruff: ignore[missing-return-type-undocumented-public-function
     return parser.parse_args()
 
 
-def get_logger(verbosity_stdout: str, debug: bool) -> None:
+def get_logger(verbosity_stdout: str, *, debug: bool = False) -> None:
     """Define a logger that logs both to file and stdout.
 
     Parameters
@@ -91,7 +91,7 @@ def get_logger(verbosity_stdout: str, debug: bool) -> None:
     verbosity_stdout : str
         stdout verbosity
     debug : bool
-        whether to write debug information to ``makerates.log``.
+        whether to write debug information to ``makerates.log``. Default=False
 
     """
     # TODO: fix that both verbosity for file and stdout
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # Set up logging
-    get_logger(args.verbosity_stdout, args.debug)
+    get_logger(args.verbosity_stdout, debug=args.debug)
 
     # Run makerates with the specified config file
     run_makerates(args.settings_path)

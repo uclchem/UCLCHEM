@@ -63,6 +63,7 @@ def _is_valid_project_root(root: Path) -> bool:
 
 def resolve_output_dirs(
     explicit_dir: str | Path | None,
+    *,
     use_legacy_relative: bool = False,
 ) -> tuple[Path, Path]:
     """Return ``(output_dir, fortran_src_dir)`` following the documented priority.
@@ -96,25 +97,23 @@ def resolve_output_dirs(
         ).is_dir():
             # Project-root layout
             return root / "src" / "uclchem", root / "src" / "fortran_src"
-        else:
-            # Flat layout — all files go into the single directory
-            return root, root
+        # Flat layout — all files go into the single directory
+        return root, root
 
     # --- Tier 2: stored project root -----------------------------------------------
     stored_root = _stored_project_root()
     if stored_root is not None:
         if _is_valid_project_root(stored_root):
             return stored_root / "src" / "uclchem", stored_root / "src" / "fortran_src"
-        else:
-            msg = (
-                f"UCLCHEM was installed with project root '{stored_root}', "
-                "but that directory no longer has the expected src/uclchem and "
-                "src/fortran_src structure. This happens when the project was "
-                "moved or when the package was installed from PyPI (where no "
-                "local source tree exists). "
-                "Pass --output-dir <project-root> to specify where to write files."
-            )
-            raise ProjectRootError(msg)
+        msg = (
+            f"UCLCHEM was installed with project root '{stored_root}', "
+            "but that directory no longer has the expected src/uclchem and "
+            "src/fortran_src structure. This happens when the project was "
+            "moved or when the package was installed from PyPI (where no "
+            "local source tree exists). "
+            "Pass --output-dir <project-root> to specify where to write files."
+        )
+        raise ProjectRootError(msg)
 
     # --- Tier 3: legacy relative paths (programmatic / Makerates/ usage) -----------
     if use_legacy_relative:

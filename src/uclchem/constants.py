@@ -218,4 +218,4 @@ default_param_dictionary = {
     "log_change_threshold": 1.0,
 }
 
-default_elements_to_check: list[str] = ["H", "N", "C", "O"]
+ELEMENTS_TO_CHECK = ("H", "N", "C", "O")

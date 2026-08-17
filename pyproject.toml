@@ -63,6 +63,14 @@ select = ["E", "F", "I", "W", "D", "E", "B",
     "TC", 
     "PLC", "PLR", "PLE",
     "FURB",
+    "NPY",
+    "PIE",
+    "PYI",
+    "PT",
+    "PD",
+    "FBT",
+    "ICN",
+    "RET",
 ]
 extend-ignore = [
     "E501", "E731", "E741", "E402", "E203", "E204",
@@ -70,6 +78,9 @@ extend-ignore = [
     "S603", "S607", "S404", "S602", 
     "PLR0911", "PLR1702", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR0914", "PLR0904",
     "RUF067", "RUF201",
+    "PT003", # More verbose scope definition
+    "PYI041", # More verbose type hints
+    "RET504", # Allows for naming the returned variable in the docstring
 ]
 pycodestyle.max-doc-length = 100
 pydocstyle.convention = 'numpy'

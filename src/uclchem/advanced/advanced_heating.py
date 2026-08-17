@@ -169,7 +169,7 @@ class HeatingSettings:
             # Functions not yet exposed, use default value
             self._default_coolant_restart_mode = 0  # WARM mode
 
-    def set_heating_mechanism(self, mechanism_id: int, enabled: bool = True) -> None:
+    def set_heating_mechanism(self, mechanism_id: int, *, enabled: bool = True) -> None:
         """Enable or disable a specific heating mechanism.
 
         For mechanisms with multiple implementations (like PHOTOELECTRIC),
@@ -213,7 +213,7 @@ class HeatingSettings:
         # Now set the requested mechanism
         self._heating_module.heating_modules[mechanism_id - 1] = enabled
 
-    def set_coolant_active(self, coolant_name: str, enabled: bool = True) -> None:
+    def set_coolant_active(self, coolant_name: str, *, enabled: bool = True) -> None:
         """Enable or disable a specific line coolant species.
 
         This controls individual coolant species within the molecular
@@ -276,7 +276,7 @@ class HeatingSettings:
             for i, name in enumerate(names)
         }
 
-    def set_cooling_mechanism(self, mechanism_id: int, enabled: bool = True) -> None:
+    def set_cooling_mechanism(self, mechanism_id: int, *, enabled: bool = True) -> None:
         """Enable or disable a specific cooling mechanism.
 
         Parameters
@@ -698,12 +698,11 @@ def initialize_coolant_directory() -> str:
                 coolant_dir += "/"
             logger.info("Using coolant data from UCLCHEM_COOLANT_DATA: %s", coolant_dir)
             return coolant_dir
-        else:
-            logger.warning(
-                "UCLCHEM_COOLANT_DATA set to %s, but directory not found or empty. "
-                "Searching other locations...",
-                env_dir,
-            )
+        logger.warning(
+            "UCLCHEM_COOLANT_DATA set to %s, but directory not found or empty. "
+            "Searching other locations...",
+            env_dir,
+        )
 
     # Priority 2: Installed package data
     try:

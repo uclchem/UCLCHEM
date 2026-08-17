@@ -115,6 +115,7 @@ from uclchem._fortran_capture import capture_fortran_output
 from uclchem.analysis import check_element_conservation
 from uclchem.constants import (
     DVODE_STAT_NAMES,
+    ELEMENTS_TO_CHECK,
     N_DVODE_STATS,
     N_PHYSICAL_PARAMETERS,
     N_SE_STATS_PER_COOLANT,
@@ -123,7 +124,6 @@ from uclchem.constants import (
     PHYSICAL_PARAMETERS,
     SE_STAT_NAMES,
     TIMEPOINTS,
-    default_elements_to_check,
     default_param_dictionary,
     n_reactions,
     n_species,
@@ -142,7 +142,7 @@ from uclchem.utils import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Sequence
 
     import matplotlib.pyplot as plt
 
@@ -313,7 +313,7 @@ def load_model(
     if (file_obj is None) == (file is None):
         msg = "file_obj or file must be passed."
         raise ValueError(msg)
-    elif file_obj is None:
+    if file_obj is None:
         file_obj = h5py.File(file, "r")
         opened_file = True
 
@@ -519,15 +519,15 @@ class AbstractModel(ABC):
     timepoints : int
         Integer value of how many timesteps should be calculated before
         aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
-    debug : bool
-        Flag if extra debug information should be printed to the terminal.
-        Defaults to False. #TODO Add debug features
     read_file : str | None
         Path to the file to be read. Reading a file to a model object, prevents it from
         being run. Defaults to None.
     run_type : Literal["managed", "external"]
         Run type. "external" means that the model is not
         run directly after instantiation, but can instead be run as `model.run()`.
+    debug : bool
+        Flag if extra debug information should be printed to the terminal.
+        Defaults to False. #TODO Add debug features
 
     """
 
@@ -537,11 +537,12 @@ class AbstractModel(ABC):
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
-        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        *,
+        debug: bool = False,
     ):
         if mp.current_process().name != "MainProcess" and run_type != "external":
             msg = (
@@ -680,7 +681,7 @@ class AbstractModel(ABC):
     # Separate class building method(s)
     @classmethod
     def load_from_dataset(
-        cls, model_ds: xr.Dataset, debug: bool = False
+        cls, model_ds: xr.Dataset, *, debug: bool = False
     ) -> AbstractModel:
         """Load an abstract model from an xr Dataset.
 
@@ -724,6 +725,7 @@ class AbstractModel(ABC):
         cls,
         file: str,
         name: str = "default",
+        *,
         debug: bool = False,
     ):
         """Load a model from a file.
@@ -784,14 +786,12 @@ class AbstractModel(ABC):
 
         # Next check the xarray Dataset
         if key in super().__getattribute__("_data"):
-            values = super().__getattribute__("_data")[key].values
+            values = super().__getattribute__("_data")[key].to_numpy()
             if np.shape(values) != ():
                 if isinstance(values, tuple):
                     return values[1]
-                else:
-                    return values
-            else:
-                return self._data[key].item()
+                return values
+            return self._data[key].item()
 
         msg = f'{self.__class__.__name__} has no attribute of name: "{key}".'
         raise AttributeError(msg)
@@ -937,21 +937,19 @@ class AbstractModel(ABC):
 
     # UCLCHEM utility and analysis wrappers
     def check_conservation(
-        self, element_list: list[str] | None = None, percent: bool = True
+        self, element_list: Sequence[str] = ELEMENTS_TO_CHECK, *, percent: bool = True
     ) -> None:
         """Check conservation of the chemical abundances.
 
         Parameters
         ----------
-        element_list : list[str] | None
-            List of elements to check conservation for. (Default value = None)
+        element_list : Sequence[str]
+            List of elements to check conservation for.
+            Default = :data:`uclchem.constants.ELEMENTS_TO_CHECK`.
         percent : bool
             Flag on if percentage values should be used. Defaults to True.
 
         """
-        if element_list is None:
-            element_list = default_elements_to_check
-
         if self._param_dict["points"] > 1:
             for i in range(self._param_dict["points"]):
                 print(
@@ -962,7 +960,7 @@ class AbstractModel(ABC):
                     check_element_conservation(
                         df_i if isinstance(df_i, pd.DataFrame) else df_i[0],
                         element_list,
-                        percent,
+                        percent=percent,
                     )
                 )
         else:
@@ -972,11 +970,13 @@ class AbstractModel(ABC):
                 check_element_conservation(
                     df_0 if isinstance(df_0, pd.DataFrame) else df_0[0],
                     element_list,
-                    percent,
+                    percent=percent,
                 )
             )
 
-    def check_error(self, only_error: bool = False, raise_on_error: bool = True) -> None:
+    def check_error(
+        self, *, only_error: bool = False, raise_on_error: bool = True
+    ) -> None:
         """Check the model error status and raise RuntimeError on failure.
 
         Parameters
@@ -1039,6 +1039,7 @@ class AbstractModel(ABC):
     def get_dataframes(
         self,
         point: int | None = None,
+        *,
         joined: bool = True,
         with_rate_constants: bool = False,
         with_heating: bool = False,
@@ -1102,11 +1103,11 @@ class AbstractModel(ABC):
             for pt in range(n_points):
                 dfs = self._get_single_point_dataframes(
                     pt,
-                    with_rate_constants,
-                    with_heating,
-                    with_stats,
-                    with_level_populations,
-                    with_se_stats,
+                    with_rate_constants=with_rate_constants,
+                    with_heating=with_heating,
+                    with_stats=with_stats,
+                    with_level_populations=with_level_populations,
+                    with_se_stats=with_se_stats,
                 )
                 # Add Point columns to all dataframes (1-indexed)
                 dfs = tuple(add_point_column(df, pt + 1) for df in dfs)
@@ -1126,11 +1127,11 @@ class AbstractModel(ABC):
             concatenated = list(
                 self._get_single_point_dataframes(
                     point,
-                    with_rate_constants,
-                    with_heating,
-                    with_stats,
-                    with_level_populations,
-                    with_se_stats,
+                    with_rate_constants=with_rate_constants,
+                    with_heating=with_heating,
+                    with_stats=with_stats,
+                    with_level_populations=with_level_populations,
+                    with_se_stats=with_se_stats,
                 )
             )
             # Add Point columns (1-indexed)
@@ -1143,12 +1144,12 @@ class AbstractModel(ABC):
                 # Drop duplicate Point column from subsequent dataframes
                 result_df = result_df.join(df.drop(columns=["Point"]))
             return result_df
-        else:
-            return tuple(concatenated)
+        return tuple(concatenated)
 
     def get_joined_dataframes(
         self,
         point: int | None = None,
+        *,
         with_rate_constants: bool = False,
         with_heating: bool = False,
         with_stats: bool = False,
@@ -1203,11 +1204,12 @@ class AbstractModel(ABC):
     def _get_single_point_dataframes(
         self,
         point: int,
-        with_rate_constants: bool,
-        with_heating: bool,
-        with_stats: bool,
-        with_level_populations: bool,
-        with_se_stats: bool,
+        *,
+        with_rate_constants: bool = False,
+        with_heating: bool = False,
+        with_stats: bool = False,
+        with_level_populations: bool = False,
+        with_se_stats: bool = False,
     ) -> tuple[pd.DataFrame, ...]:
         """Get dataframes for a single point without the Point column.
 
@@ -1216,18 +1218,20 @@ class AbstractModel(ABC):
         point : int
             Spatial point index (for multi-point models).
         with_rate_constants : bool
-            Flag on whether to include a reaction rate constant dataframe
+            Flag on whether to include a reaction rate constant dataframe. Default=False.
             in the tuple.
         with_heating : bool
             Flag on whether to include heating/cooling rates dataframe in the tuple.
+            Default=False.
         with_stats : bool
             Flag on whether to include DVODE solver statistics dataframe in the tuple.
+            Default=False.
         with_level_populations : bool
-            Flag on whether to include coolant level
-            populations in the tuple.
+            Flag on whether to include coolant level populations in the tuple.
+            Default = False.
         with_se_stats : bool
-            Flag on whether to include SE solver statistics
-            in the tuple
+            Flag on whether to include SE solver statistics in the tuple.
+            Default = False.
 
         Returns
         -------
@@ -1326,12 +1330,12 @@ class AbstractModel(ABC):
             result.append(se_stats_df)
         return tuple(df for df in result if df is not None)
 
-    def get_final_abundances_of_species(self, species: list[str]) -> np.ndarray:
+    def get_final_abundances_of_species(self, species: Sequence[str]) -> np.ndarray:
         """Get the final abundances of a list of species.
 
         Parameters
         ----------
-        species : list[str]
+        species : Sequence[str]
             list of species names.
 
         Returns
@@ -1491,6 +1495,7 @@ class AbstractModel(ABC):
         ax: plt.Axes,
         species: list[str],
         point: int = 0,
+        *,
         legend: bool = True,
         **plot_kwargs,
     ) -> plt.Axes:
@@ -1524,7 +1529,7 @@ class AbstractModel(ABC):
             ax,
             df if isinstance(df, pd.DataFrame) else df[0],
             species,
-            legend,
+            legend=legend,
             **plot_kwargs,
         )
 
@@ -1681,7 +1686,7 @@ class AbstractModel(ABC):
         if file_obj is None and file is None:
             msg = "file_obj or file must be passed."
             raise ValueError(msg)
-        elif file_obj is None:
+        if file_obj is None:
             file_obj = h5py.File(file, "a")
             opened_file = True
 
@@ -1692,8 +1697,7 @@ class AbstractModel(ABC):
                     stacklevel=2,
                 )
                 return
-            else:
-                del file_obj[name]
+            del file_obj[name]
         # TODO: Allow for toggling of saving float64 or float32 for the arrays
         temp_attribute_dict = {}
         with contextlib.suppress(Exception):
@@ -1706,10 +1710,10 @@ class AbstractModel(ABC):
             if "_array" not in v and v != "_orig_sigint":
                 if np.shape(save_data[v].values) != ():
                     if isinstance(save_data[v].values, tuple):
-                        temp_attribute_dict[v] = save_data[v].values[1].tolist()
+                        temp_attribute_dict[v] = save_data[v].to_numpy()[1].tolist()
                         save_data = save_data.drop_vars(v)
                     else:
-                        temp_attribute_dict[v] = save_data[v].values.tolist()
+                        temp_attribute_dict[v] = save_data[v].to_numpy().tolist()
                         save_data = save_data.drop_vars(v)
                 else:
                     temp_attribute_dict[v] = save_data[v].item()
@@ -1728,7 +1732,7 @@ class AbstractModel(ABC):
 
     @staticmethod
     def _write_array(model_group: h5py.Group, name: str, xr_var: xr.DataArray) -> None:
-        data = xr_var.values
+        data = xr_var.to_numpy()
         if data.dtype.kind == "U":
             data = data.astype(bytes)
         ds = model_group.create_dataset(name, data=data)
@@ -1750,9 +1754,9 @@ class AbstractModel(ABC):
             for v in self._data.variables:
                 if np.shape(self._data[v].values) != ():
                     if isinstance(self._data[v].values, tuple):
-                        self._pickle_dict[v] = self._data[v].values[1].tolist()
+                        self._pickle_dict[v] = self._data[v].to_numpy()[1].tolist()
                     else:
-                        self._pickle_dict[v] = self._data[v].values.tolist()
+                        self._pickle_dict[v] = self._data[v].to_numpy().tolist()
                 else:
                     self._pickle_dict[v] = self._data[v].item()
             # Save metadata separately for pickle roundtrip
@@ -2123,7 +2127,7 @@ class AbstractModel(ABC):
             )
 
     def legacy_write_columnfile(
-        self, column_file: str | Path, species: list[str]
+        self, column_file: str | Path, species: Sequence[str]
     ) -> None:
         """Write a classic ``columnFile`` file, similar to full output but with a subset of species.
 
@@ -2133,7 +2137,7 @@ class AbstractModel(ABC):
         ----------
         column_file : str | Path
             path to write to
-        species : list[str]
+        species : Sequence[str]
             List of species names to write
 
         """
@@ -2174,7 +2178,7 @@ class AbstractModel(ABC):
         """
         if self._on_error == "raise":
             raise RuntimeError(msg)
-        elif self._on_error == "warn":
+        if self._on_error == "warn":
             warnings.warn(msg, stacklevel=3)
         # "ignore": do nothing
 
@@ -2522,16 +2526,16 @@ class AbstractModel(ABC):
     # /Creation of arrays
 
     # Signal Interrupt Catch
-    def on_interrupt(self, grid: bool = False, model_name: str | None = None) -> None:
+    def on_interrupt(self, model_name: str | None = None, *, grid: bool = False) -> None:
         """Catch interruption. Save model to file.
 
         Parameters
         ----------
-        grid : bool
-            whether the model was part of a grid (Default value = False)
         model_name : str | None
             the name of the model to save it under.
             If None, name is set to "interrupted". (Default value = None)
+        grid : bool
+            whether the model was part of a grid (Default value = False)
 
         """
         if self._proc_handle is not None:
@@ -2608,7 +2612,6 @@ class AbstractModel(ABC):
                     self._shm_handles[k].unlink()
                 except Exception:
                     print(f"Warning, unable to close and unlike {k}")
-                    pass
                 finally:
                     del self._shm_handles[k]
             del self._shm_desc
@@ -2658,11 +2661,12 @@ class Cloud(AbstractModel):
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
-        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        *,
+        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -2684,17 +2688,17 @@ class Cloud(AbstractModel):
             for this model. Defaults to None.
         timepoints : int
             Number of output timesteps to store. Defaults to TIMEPOINTS.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
         read_file : str | None
             Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
             How the Fortran model is executed. ``'managed'`` runs automatically on init;
             ``'external'`` defers running to the caller. Defaults to 'managed'.
-        on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
+        on_negative_abundances : Literal['warning', 'error', 'raise'] | None
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
+        debug : bool
+            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -2824,11 +2828,12 @@ class Collapse(AbstractModel):
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
-        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        *,
+        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -2852,17 +2857,17 @@ class Collapse(AbstractModel):
             for this model. Defaults to None.
         timepoints : int
             Number of output timesteps to store. Defaults to TIMEPOINTS.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
         read_file : str | None
             Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
             How the Fortran model is executed. ``'managed'`` runs automatically on init;
             ``'external'`` defers running to the caller. Defaults to 'managed'.
-        on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
+        on_negative_abundances : Literal['warning', 'error', 'raise'] | None
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
+        debug : bool
+            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -3073,11 +3078,12 @@ class PrestellarCore(AbstractModel):
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
-        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        *,
+        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -3105,17 +3111,17 @@ class PrestellarCore(AbstractModel):
             for this model. Defaults to None.
         timepoints : int
             Number of output timesteps to store. Defaults to TIMEPOINTS.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
         read_file : str | None
             Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
             How the Fortran model is executed. ``'managed'`` runs automatically on init;
             ``'external'`` defers running to the caller. Defaults to 'managed'.
-        on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
+        on_negative_abundances : Literal['warning', 'error', 'raise'] | None
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
+        debug : bool
+            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -3254,11 +3260,12 @@ class CShock(AbstractModel):
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
-        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        *,
+        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -3287,17 +3294,17 @@ class CShock(AbstractModel):
             for this model. Defaults to None.
         timepoints : int
             Number of output timesteps to store. Defaults to TIMEPOINTS.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
         read_file : str | None
             Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
             How the Fortran model is executed. ``'managed'`` runs automatically on init;
             ``'external'`` defers running to the caller. Defaults to 'managed'.
-        on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
+        on_negative_abundances : Literal['warning', 'error', 'raise'] | None
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
+        debug : bool
+            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -3432,11 +3439,12 @@ class JShock(AbstractModel):
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
-        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        *,
+        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -3460,17 +3468,17 @@ class JShock(AbstractModel):
             for this model. Defaults to None.
         timepoints : int
             Number of output timesteps to store. Defaults to TIMEPOINTS.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
         read_file : str | None
             Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
             How the Fortran model is executed. ``'managed'`` runs automatically on init;
             ``'external'`` defers running to the caller. Defaults to 'managed'.
-        on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
+        on_negative_abundances : Literal['warning', 'error', 'raise'] | None
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
+        debug : bool
+            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -3633,11 +3641,12 @@ class Postprocess(AbstractModel):
         coldens_H2_array: np.ndarray | None = None,
         coldens_CO_array: np.ndarray | None = None,
         coldens_C_array: np.ndarray | None = None,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
-        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        *,
+        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -3681,17 +3690,17 @@ class Postprocess(AbstractModel):
             CO column density (cm⁻²) at each timestep. Defaults to None.
         coldens_C_array : np.ndarray | None
             Atomic carbon column density (cm⁻²) at each timestep. Defaults to None.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
         read_file : str | None
             Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
             How the Fortran model is executed. ``'managed'`` runs automatically on init;
             ``'external'`` defers running to the caller. Defaults to 'managed'.
-        on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
+        on_negative_abundances : Literal['warning', 'error', 'raise'] | None
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
+        debug : bool
+            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -3900,11 +3909,12 @@ class Model(AbstractModel):
         dust_temperature_array: np.ndarray | None = None,
         zeta_array: np.ndarray | None = None,
         radfield_array: np.ndarray | None = None,
-        debug: bool = False,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
-        on_negative_abundances: Literal[None, "warning", "error", "raise"] = "warning",
+        on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
+        *,
+        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -3936,17 +3946,17 @@ class Model(AbstractModel):
             Cosmic-ray ionization rate (s⁻¹) at each timestep. Defaults to None.
         radfield_array : np.ndarray | None
             UV radiation field strength (Habing units) at each timestep. Defaults to None.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
         read_file : str | None
             Path to a previously saved model file to load instead of running. Defaults to None.
         run_type : Literal['managed', 'external']
             How the Fortran model is executed. ``'managed'`` runs automatically on init;
             ``'external'`` defers running to the caller. Defaults to 'managed'.
-        on_negative_abundances : Literal[None, 'warning', 'error', 'raise']
+        on_negative_abundances : Literal['warning', 'error', 'raise'] | None
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
+        debug : bool
+            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -4165,7 +4175,7 @@ class SequentialRunner:
                                     previous_model.physics_array[-1, 0, 1].item()
                                 )
                                 continue
-                            elif parameter == "finalTemp":
+                            if parameter == "finalTemp":
                                 model_dict["param_dict"]["initialtemp"] = (
                                     previous_model.physics_array[-1, 0, 2].item()
                                 )
@@ -4243,7 +4253,7 @@ class SequentialRunner:
         if (file_obj is None) == (file is None):
             msg = "file_obj or file must be passed."
             raise ValueError(msg)
-        elif file_obj is None:
+        if file_obj is None:
             file_obj = h5py.File(file, "a")
             opened_file = True
 
@@ -4258,22 +4268,19 @@ class SequentialRunner:
             file_obj.close()
 
     def check_conservation(
-        self, element_list: list[str] | None = None, percent: bool = True
+        self, element_list: Sequence[str] = ELEMENTS_TO_CHECK, *, percent: bool = True
     ) -> None:
         """Check conservation of the chemical abundances.
 
         Parameters
         ----------
-        element_list : list[str] | None
+        element_list : Sequence[str]
             List of elements to check conservation for.
-            If None, use `uclchem.constants.default_elements_to_check`. Default = None.
+            Default = :data:`uclchem.constants.ELEMENTS_TO_CHECK`.
         percent : bool
             Flag on if percentage values should be used. Defaults to True.
 
         """
-        if element_list is None:
-            element_list = default_elements_to_check
-
         for model in self.models:
             conserve_dicts: list[dict[str, str]] = []
             if model["Model"]._param_dict["points"] > 1:
@@ -4281,13 +4288,13 @@ class SequentialRunner:
                     df = model["Model"].get_dataframes(pt)
                     if isinstance(df, pd.DataFrame):
                         conserve_dicts += [
-                            check_element_conservation(df, element_list, percent)
+                            check_element_conservation(df, element_list, percent=percent)
                         ]
             else:
                 df = model["Model"].get_dataframes(0)
                 if isinstance(df, pd.DataFrame):
                     conserve_dicts += [
-                        check_element_conservation(df, element_list, percent)
+                        check_element_conservation(df, element_list, percent=percent)
                     ]
             conserved = True
             for conserve_dict in conserve_dicts:
@@ -4444,8 +4451,7 @@ def get_number_of_grid_workers(max_workers: int | None) -> int:
             stacklevel=2,
         )
         return cpu_count - 1
-    else:
-        return max_workers
+    return max_workers
 
 
 class GridRunner:
@@ -4472,14 +4478,14 @@ class GridRunner:
         Name prefix convention to use. The fifth model in the grid
         would have the name "<model_name_prefix>5>" assigned to it. Defaults to "",
         which would make the fifth model have the name "5", for example.
-    delay_run : bool
-        Whether to immediately start the models upon initialization,
-        or delay until the user calls `self.run()`. Defaults to False (start immediately).
     log_dir : str | None
         Where to write logs. If None, do not write logs. Default = None.
     model_ids : list | None
         Optional subset of model indices (0-based column in flat_grids)
         to run. None means run all models in the grid. Default = None.
+    delay_run : bool
+        Whether to immediately start the models upon initialization,
+        or delay until the user calls `self.run()`. Defaults to False (start immediately).
 
     """
 
@@ -4490,10 +4496,11 @@ class GridRunner:
         max_workers: int | None = None,
         grid_file: str = "./default_grid_out.h5",
         model_name_prefix: str = "",
-        overwrite_models: bool = False,
-        delay_run: bool = False,
         log_dir: str | None = None,
         model_ids: list | None = None,
+        *,
+        delay_run: bool = False,
+        overwrite_models: bool = False,
         create_grid: bool = True,
     ):
         if model_type not in REGISTRY:
@@ -4816,22 +4823,20 @@ class GridRunner:
         return tmp_model
 
     def check_conservation(
-        self, element_list: list[str] | None = None, percent: bool = True
+        self, element_list: Sequence[str] = ELEMENTS_TO_CHECK, *, percent: bool = True
     ) -> None:
         """Check conservation of the chemical abundances.
 
         Parameters
         ----------
-        element_list : list[str] | None
+        element_list : Sequence[str]
             List of elements to check conservation for.
-            If None, use `uclchem.constants.default_elements_to_check`. Default = None.
+            Default = :data:`uclchem.constants.ELEMENTS_TO_CHECK`.
         percent : bool
             Flag on if percentage values should be used.
             Defaults to True.
 
         """
-        if element_list is None:
-            element_list = default_elements_to_check
         for model in range(len(self.models)):
             tmp_model = load_model(file=self.grid_file, name=self.models[model]["Model"])
             conserve_dicts: list[dict[str, str]] = []
@@ -4840,13 +4845,13 @@ class GridRunner:
                     df = tmp_model.get_dataframes(pt)
                     if isinstance(df, pd.DataFrame):
                         conserve_dicts += [
-                            check_element_conservation(df, element_list, percent)
+                            check_element_conservation(df, element_list, percent=percent)
                         ]
             else:
                 df = tmp_model.get_dataframes(0)
                 if isinstance(df, pd.DataFrame):
                     conserve_dicts += [
-                        check_element_conservation(df, element_list, percent)
+                        check_element_conservation(df, element_list, percent=percent)
                     ]
             conserved = True
             for conserve_dict in conserve_dicts:
@@ -4963,7 +4968,7 @@ class GridRunner:
                 yield {
                     "parameters_to_match": ["finalDens"],
                     **yield_dict,
-                    **{"sequenced_model_parameters": run_list},
+                    "sequenced_model_parameters": run_list,
                 }
         else:
             if not isinstance(full_parameters, dict):

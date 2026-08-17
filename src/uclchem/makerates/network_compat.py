@@ -207,18 +207,17 @@ class LoadedNetwork:
             )
 
             return NewNetwork.from_lists(species, reactions)
-        else:
-            # Loading from files
-            warnings.warn(
-                "LoadedNetwork(species_filepath=..., reactions_filepath=...) is deprecated. "
-                "Use Network.from_csv(species_path, reactions_path) or "
-                "load_network_from_csv(species_path, reactions_path) instead. "
-                "This will be removed in v4.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+        # Loading from files
+        warnings.warn(
+            "LoadedNetwork(species_filepath=..., reactions_filepath=...) is deprecated. "
+            "Use Network.from_csv(species_path, reactions_path) or "
+            "load_network_from_csv(species_path, reactions_path) instead. "
+            "This will be removed in v4.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-            return NewNetwork.from_csv(species_filepath, reactions_filepath)
+        return NewNetwork.from_csv(species_filepath, reactions_filepath)
 
 
 class NetworkState:

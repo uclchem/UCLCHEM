@@ -364,6 +364,7 @@ def read_coolants_file(file_name: str | Path) -> list[dict]:
 def output_drops(
     dropped_reactions: list[list[str]],
     output_dir: str | Path | None = None,
+    *,
     write_files: bool = True,
 ) -> None:
     """Write the reactions that are dropped to disk/logs.
@@ -405,10 +406,11 @@ def write_outputs(
     network: Network,
     python_src_dir: Path,
     fortran_src_dir: Path,
-    enable_rates_storage: bool = False,
     gar_database: dict[str, np.ndarray] | None = None,
     coolants: list[dict] | None = None,
     coolant_data_dir: str | Path | None = "",
+    *,
+    enable_rates_storage: bool = False,
 ) -> None:
     """Write the ODE and Network fortran source files to the fortran source.
 
@@ -422,9 +424,6 @@ def write_outputs(
     fortran_src_dir : Path
         Directory to write Fortran source files
         (odes.f90, network.f90, f2py_constants.f90).
-    enable_rates_storage : bool
-        Enable storage of writing rates to files.
-        Default = False.
     gar_database : dict[str, np.ndarray] | None
         Database for grain-activated recombination
         reactions. Default = None.
@@ -434,6 +433,9 @@ def write_outputs(
     coolant_data_dir : str | Path | None
         User-specified directory from config.
         If empty, searches standard locations relative to CWD. (Default value = '')
+    enable_rates_storage : bool
+        Enable storage of writing rates to files.
+        Default = False.
 
     Raises
     ------
@@ -536,7 +538,7 @@ def write_outputs(
                 explicit_factor if explicit_factor is not None else 0.0
             )
             conversion_modes.append(0 if explicit_factor is not None else 2)
-        elif name.startswith("o-") or name.startswith("p-"):
+        elif name.startswith(("o-", "p-")):
             # Other ortho/para species — require explicit conversion_factor
             if explicit_factor is None:
                 msg = (
@@ -890,6 +892,7 @@ def write_odes_f90(
     file_name: Path,
     species_list: list[Species],
     reaction_list: list[Reaction],
+    *,
     enable_rates_storage: bool = False,
 ) -> None:
     """Write the ODEs in Modern Fortran. This is an actual code file.
@@ -917,7 +920,9 @@ def write_odes_f90(
         logger.debug(f"RATE_CONSTANTS({i + 1}):{reaction}")
         reaction.generate_ode_bit(i, species_names)
 
-    ydotString = build_ode_string(species_list, reaction_list, enable_rates_storage)
+    ydotString = build_ode_string(
+        species_list, reaction_list, enable_rates_storage=enable_rates_storage
+    )
     Path(file_name).write_text(ydotString)
 
 
@@ -1008,6 +1013,7 @@ def write_jacobian(file_name: Path, species_list: list[Species]) -> None:
 def build_ode_string(
     species_list: list[Species],
     reaction_list: list[Reaction],
+    *,
     enable_rates_storage: bool = False,
 ) -> str:
     """Build the ODE string.
@@ -1487,8 +1493,9 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> None
 def write_network_file(
     file_name: Path,
     network: Network,
-    enable_rates_storage: bool = False,
     gar_database: dict[str, np.ndarray] | None = None,
+    *,
+    enable_rates_storage: bool = False,
 ) -> None:
     """Write the Fortran code file that contains all network information for UCLCHEM.
 
@@ -1501,12 +1508,12 @@ def write_network_file(
         The file name where the code will be written.
     network : Network
         A Network object built from lists of species and reactions.
-    enable_rates_storage : bool
-        Enable storage of writing rates to files.
-        Default = False.
     gar_database : dict[str, np.ndarray] | None
         Database for grain-activated recombination
         reactions. Default = None.
+    enable_rates_storage : bool
+        Enable storage of writing rates to files.
+        Default = False.
 
     Raises
     ------
@@ -1521,7 +1528,7 @@ def write_network_file(
         openFile.write(
             dedent("""        module network
             use constants, only: dp, REAC_NOT_PRESENT
-            use f2py_constants, only: nspec, nReac, MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER, &
+            use f2py_constants, only: nSpec, nReac, MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER, &
                 NO_REACTANT_OR_PRODUCT
 
             implicit none

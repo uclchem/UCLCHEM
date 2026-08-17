@@ -279,10 +279,8 @@ class Test1DHotcore:
         params_high.update({"lum_star": 1e4, "temp_star": 3e4})
         code_high, radfield_high = _run_hotcore(params_high)
 
-        assert (
-            code_low == uclchem.utils.SuccessFlag.SUCCESS
-            and code_high == uclchem.utils.SuccessFlag.SUCCESS
-        ), "Both models should succeed"
+        assert code_low == uclchem.utils.SuccessFlag.SUCCESS, "Low model failed"
+        assert code_high == uclchem.utils.SuccessFlag.SUCCESS, "High model failed"
 
         # Internal radiation field scales with lum_star (G0 ∝ L_star / r²).
         # lum_star=1e4 should give ~10x stronger internal field than lum_star=1e3.
@@ -354,10 +352,10 @@ class Test1DParameterValidation:
             timepoints=2500,
         )
 
-        assert (
-            code_steep == uclchem.utils.SuccessFlag.SUCCESS
-            and code_shallow == uclchem.utils.SuccessFlag.SUCCESS
-        ), "Both profiles should succeed"
+        assert code_steep == uclchem.utils.SuccessFlag.SUCCESS, "Steep profile failed"
+        assert code_shallow == uclchem.utils.SuccessFlag.SUCCESS, (
+            "Shallow profiles failed"
+        )
 
         # Extract final densities
         dens_steep = physics_steep[-1, :, 1]

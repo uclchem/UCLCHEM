@@ -69,7 +69,9 @@ class TestHeatingSettings:
         """Test that photoelectric mechanisms are mutually exclusive.
         Fortran side: Tests Fortran heating module states via get_heating_modules().
         """
-        settings.set_heating_mechanism(settings.PHOTOELECTRIC["WEINGARTNER"], True)
+        settings.set_heating_mechanism(
+            settings.PHOTOELECTRIC["WEINGARTNER"], enabled=True
+        )
 
         # Check that Bakes is disabled
         heating_modules = settings.get_heating_modules()
@@ -77,7 +79,7 @@ class TestHeatingSettings:
         assert heating_modules["PhotoelectricWeingartner"]
 
         # Enable Bakes method
-        settings.set_heating_mechanism(settings.PHOTOELECTRIC["BAKES"], True)
+        settings.set_heating_mechanism(settings.PHOTOELECTRIC["BAKES"], enabled=True)
 
         # Check that Weingartner is now disabled
         heating_modules = settings.get_heating_modules()
@@ -92,12 +94,12 @@ class TestHeatingSettings:
         heating_modules = settings.get_heating_modules()
 
         # Disable mechanism
-        settings.set_heating_mechanism(settings.H2_FORMATION, False)
+        settings.set_heating_mechanism(settings.H2_FORMATION, enabled=False)
         heating_modules = settings.get_heating_modules()
         assert not heating_modules["H2Formation"]
 
         # Re-enable mechanism
-        settings.set_heating_mechanism(settings.H2_FORMATION, True)
+        settings.set_heating_mechanism(settings.H2_FORMATION, enabled=True)
         heating_modules = settings.get_heating_modules()
         assert heating_modules["H2Formation"]
 
@@ -106,12 +108,12 @@ class TestHeatingSettings:
 
         Fortran side: Tests toggling Fortran cooling module states.
         """
-        settings.set_cooling_mechanism(settings.COMPTON_COOLING, False)
+        settings.set_cooling_mechanism(settings.COMPTON_COOLING, enabled=False)
         cooling_modules = settings.get_cooling_modules()
         assert not cooling_modules["Compton"]
 
         # Re-enable cooling
-        settings.set_cooling_mechanism(settings.COMPTON_COOLING, True)
+        settings.set_cooling_mechanism(settings.COMPTON_COOLING, enabled=True)
         cooling_modules = settings.get_cooling_modules()
         assert cooling_modules["Compton"]
 
@@ -124,9 +126,8 @@ class TestHeatingSettings:
         assert isinstance(heating_modules, dict)
         assert len(heating_modules) > 0
         # Check some expected keys
-        assert (
-            "H2Formation" in heating_modules and "PhotoelectricBakes" in heating_modules
-        )
+        assert "H2Formation" in heating_modules
+        assert "PhotoelectricBakes" in heating_modules
 
     def test_get_cooling_modules(self, settings: advanced.HeatingSettings) -> None:
         """Test getting all cooling mechanism states.
@@ -175,7 +176,7 @@ class TestHeatingSettings:
         invalid Fortran array index.
         """
         with pytest.raises((IndexError, ValueError, RuntimeError)):
-            settings.set_heating_mechanism(999, True)
+            settings.set_heating_mechanism(999, enabled=True)
 
 
 class TestNetworkState:

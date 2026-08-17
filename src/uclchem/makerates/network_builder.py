@@ -69,10 +69,11 @@ class NetworkBuilder:
         species: list[Species],
         reactions: list[Reaction],
         user_defined_bulk: list | None = None,
-        gas_phase_extrapolation: bool = False,
-        add_crp_photo_to_grain: bool = False,
         derive_reaction_exothermicity: list[str] | None = None,
         database_reaction_exothermicity: list[str | Path] | None = None,
+        *,
+        gas_phase_extrapolation: bool = False,
+        add_crp_photo_to_grain: bool = False,
     ):
         """Initialize the network builder.
 
@@ -84,14 +85,14 @@ class NetworkBuilder:
             List of chemical reactions
         user_defined_bulk : list | None
             User-specified bulk species (optional) (Default value = None)
-        gas_phase_extrapolation : bool
-            Extrapolate gas-phase temperature (default: False)
-        add_crp_photo_to_grain : bool
-            Add CRP/PHOTON to grain (default: False)
         derive_reaction_exothermicity : list[str] | None
             Reaction types to calculate exothermicity for (Default value = None)
         database_reaction_exothermicity : list[str | Path] | None
             Custom exothermicity database files (Default value = None)
+        gas_phase_extrapolation : bool
+            Extrapolate gas-phase temperature (default: False)
+        add_crp_photo_to_grain : bool
+            Add CRP/PHOTON to grain (default: False)
 
         Raises
         ------
@@ -776,8 +777,7 @@ class NetworkBuilder:
                     # Check there are no products incompatible with LH/ER reactions
                     # by counting them
                     if new_products.count("NAN") + sum(
-                        prod.startswith("#") or prod.startswith("@")
-                        for prod in new_products
+                        prod.startswith(("#", "@")) for prod in new_products
                     ) != len(new_products):
                         raise ValueError(
                             "All Langmuir-Hinshelwood and Eley-Rideal reactions should be input with products on grains only.\n"
@@ -1106,16 +1106,16 @@ class NetworkBuilder:
                     and (reaction.get_temphigh() == v.get_temphigh())
                     for v in similar_reactions.values()
                 ):
-                    reaction.set_extrapolation(True)
+                    reaction.set_extrapolation(enabled=True)
 
-    def _add_reaction_enthalpies(self, enthalpy_reaction_types: list[str]) -> None:
+    def _add_reaction_enthalpies(self, enthalpy_reaction_types: str | list[str]) -> None:
         """Add reaction enthalpies (exothermicity) to reactions.
 
         for heating/cooling calculations.
 
         Parameters
         ----------
-        enthalpy_reaction_types : list[str]
+        enthalpy_reaction_types : str | list[str]
             List of reaction types or "ALL" or "GAS"
 
         """

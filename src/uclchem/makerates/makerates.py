@@ -7,7 +7,7 @@ from typing import Literal
 
 from uclchem.makerates import io_functions as io
 from uclchem.makerates._output_resolver import resolve_output_dirs
-from uclchem.makerates.config import MakeratesConfig
+from uclchem.makerates.config import MakeratesConfig, ReactionFileTypes
 from uclchem.makerates.network import Network
 
 logger = logging.getLogger(__name__)
@@ -26,8 +26,9 @@ optional_params = [
 
 def run_makerates(
     configuration_file: str | bytes | Path | MakeratesConfig = "user_settings.yaml",
-    write_files: bool = True,
     output_directory: str | os.PathLike | None = None,
+    *,
+    write_files: bool = True,
 ) -> Network:
     """Run makerates.
 
@@ -39,13 +40,13 @@ def run_makerates(
     configuration_file : str | bytes | Path | MakeratesConfig
         Path to YAML configuration file, or just a configuration.
         Defaults to "user_settings.yaml".
-    write_files : bool
-        Whether to write fortran files to src/fortran_src.
-        Defaults to True.
     output_directory : str | os.PathLike | None
         Optional override for the output directory
         where files should be written. If None, uses the 'output_directory'
         from the config (if present) or the package defaults.
+    write_files : bool
+        Whether to write fortran files to src/fortran_src.
+        Defaults to True.
 
     Returns
     -------
@@ -258,19 +259,19 @@ def get_network(
 
     if path_to_input_file:
         return run_makerates(path_to_input_file, write_files=False)
-    else:
-        # If we load the species/reactions directly from UCLCHEM we can skip the checks
-        return Network.from_csv(path_to_species_file, path_to_reaction_file)
+    # If we load the species/reactions directly from UCLCHEM we can skip the checks
+    return Network.from_csv(path_to_species_file, path_to_reaction_file)
 
 
 def _get_network_from_files(
     species_file: Path,
-    reaction_files: list[Path],
-    reaction_types: list[Literal["UMIST", "KIDA", "UCL"]],
-    gas_phase_extrapolation: bool,
-    add_crp_photo_to_grain: bool,
-    derive_reaction_exothermicity: bool | str | list[str],
+    reaction_files: Path | list[Path],
+    reaction_types: ReactionFileTypes | list[ReactionFileTypes],
     database_reaction_exothermicity: list[Path] | None = None,
+    *,
+    derive_reaction_exothermicity: bool | str | list[str] = False,
+    gas_phase_extrapolation: bool = False,
+    add_crp_photo_to_grain: bool = False,
 ) -> tuple[Network, list[list[str]]]:
     logger.info(
         f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"

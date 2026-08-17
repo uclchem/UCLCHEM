@@ -62,7 +62,7 @@ def add_dummy_values(series: pd.Series) -> pd.Series:
 
 
 @pytest.mark.parametrize(
-    "series, expected_constituents, expected_mass, expected_linear", test_data
+    ("series", "expected_constituents", "expected_mass", "expected_linear"), test_data
 )
 def test_species_class_parsing(
     series, expected_constituents, expected_mass, expected_linear

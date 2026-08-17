@@ -13,6 +13,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from uclchem import advanced
+
 # Root of the UCLCHEM repo (tests/ is one level down)
 UCLCHEM_ROOT = Path(__file__).resolve().parent.parent
 
@@ -204,7 +206,7 @@ class TestHeatingSettingsCoolants:
 
     def test_set_coolant_active_disable(self, settings):
         """Disabling a coolant should be reflected in get_coolant_active."""
-        settings.set_coolant_active("CO", False)
+        settings.set_coolant_active("CO", enabled=False)
         state = settings.get_coolant_active()
         assert not state["CO"], (
             "CO should be disabled after set_coolant_active('CO', False)"
@@ -212,20 +214,20 @@ class TestHeatingSettingsCoolants:
 
     def test_set_coolant_active_reenable(self, settings):
         """Re-enabling a coolant should work."""
-        settings.set_coolant_active("CO", False)
-        settings.set_coolant_active("CO", True)
+        settings.set_coolant_active("CO", enabled=False)
+        settings.set_coolant_active("CO", enabled=True)
         state = settings.get_coolant_active()
         assert state["CO"], "CO should be re-enabled"
 
     def test_set_coolant_active_invalid_name(self, settings):
         """Setting an invalid coolant name should raise ValueError."""
         with pytest.raises(ValueError, match="not found"):
-            settings.set_coolant_active("NONEXISTENT_SPECIES", False)
+            settings.set_coolant_active("NONEXISTENT_SPECIES", enabled=False)
 
     def test_disable_multiple_coolants(self, settings):
         """Disabling multiple coolants should work independently."""
-        settings.set_coolant_active("CO", False)
-        settings.set_coolant_active("O", False)
+        settings.set_coolant_active("CO", enabled=False)
+        settings.set_coolant_active("O", enabled=False)
         state = settings.get_coolant_active()
         assert not state["CO"]
         assert not state["O"]
@@ -235,9 +237,9 @@ class TestHeatingSettingsCoolants:
 
     def test_reset_restores_coolant_active(self, settings):
         """reset_to_defaults should re-enable all coolants."""
-        settings.set_coolant_active("CO", False)
-        settings.set_coolant_active("O", False)
-        settings.set_coolant_active("H", False)
+        settings.set_coolant_active("CO", enabled=False)
+        settings.set_coolant_active("O", enabled=False)
+        settings.set_coolant_active("H", enabled=False)
         settings.reset_to_defaults()
         state = settings.get_coolant_active()
         for name, enabled in state.items():
@@ -247,7 +249,7 @@ class TestHeatingSettingsCoolants:
         """Disable all coolants then reset - everything should come back."""
         state = settings.get_coolant_active()
         for name in state:
-            settings.set_coolant_active(name, False)
+            settings.set_coolant_active(name, enabled=False)
 
         # Verify all disabled
         state = settings.get_coolant_active()
@@ -267,11 +269,11 @@ class TestHeatingSettingsCoolants:
 
         # Disable all
         for name in state:
-            settings.set_coolant_active(name, False)
+            settings.set_coolant_active(name, enabled=False)
 
         # Enable only baseline
         for name in baseline:
-            settings.set_coolant_active(name, True)
+            settings.set_coolant_active(name, enabled=True)
 
         state = settings.get_coolant_active()
         for name, enabled in state.items():
@@ -290,9 +292,7 @@ class TestHeatingCoolingMechanisms:
     """Test heating and cooling mechanism toggles with the full install."""
 
     @pytest.fixture
-    def settings(self):
-        from uclchem import advanced
-
+    def settings(self) -> advanced.HeatingSettings:
         return advanced.HeatingSettings()
 
     @pytest.fixture(autouse=True)
@@ -327,20 +327,20 @@ class TestHeatingCoolingMechanisms:
 
     def test_disable_molecular_line_cooling(self, settings):
         """Disabling molecular line cooling should work."""
-        settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, False)
+        settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, enabled=False)
         modules = settings.get_cooling_modules()
         assert not modules["MolecularLine"]
 
     def test_coolant_toggle_independent_of_mechanism_toggle(self, settings):
         """Coolant toggle and mechanism toggle are independent settings."""
         # Disable a coolant
-        settings.set_coolant_active("CO", False)
+        settings.set_coolant_active("CO", enabled=False)
         # Mechanism should still be enabled
         modules = settings.get_cooling_modules()
         assert modules["MolecularLine"]
 
         # Disable the mechanism
-        settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, False)
+        settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, enabled=False)
         # Coolant state should be unchanged
         state = settings.get_coolant_active()
         assert not state["CO"]

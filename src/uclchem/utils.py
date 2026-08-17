@@ -329,15 +329,14 @@ def get_collapse_mode(mode: str | int | CollapseMode) -> CollapseMode:
     mode = mode.lower()
     if mode == "be1.1":
         return CollapseMode.BE1_1
-    elif mode == "be4":
+    if mode == "be4":
         return CollapseMode.BE4
-    elif mode == "filament":
+    if mode == "filament":
         return CollapseMode.FILAMENT
-    elif mode == "ambipolar":
+    if mode == "ambipolar":
         return CollapseMode.AMBIPOLAR
-    else:
-        msg = f"If 'mode' is a string, it should be one of ['BE1.1', 'BE4', 'filament', 'ambipolar'], but got {mode}"
-        raise ValueError(msg)
+    msg = f"If 'mode' is a string, it should be one of ['BE1.1', 'BE4', 'filament', 'ambipolar'], but got {mode}"
+    raise ValueError(msg)
 
 
 def _filament_units():
@@ -383,23 +382,20 @@ def _rminfit(t_yr: float, mode: CollapseMode) -> float:
         tnew = t_yr / unitt
         if tnew == 0:
             return 7.2
-        elif np.log(tnew) < 1.6:  # ruff: ignore[magic-value-comparison]
+        if np.log(tnew) < 1.6:  # ruff: ignore[magic-value-comparison]
             return -1.149 * tnew + 7.2
-        elif np.log(tnew) < 1.674:  # ruff: ignore[magic-value-comparison]
+        if np.log(tnew) < 1.674:  # ruff: ignore[magic-value-comparison]
             return -9.2 * np.log(tnew) + 16.25
-        else:
-            return -22.0 * np.log(tnew) + 37.65
-    elif mode == CollapseMode.AMBIPOLAR:
+        return -22.0 * np.log(tnew) + 37.65
+    if mode == CollapseMode.AMBIPOLAR:
         t6 = 1e-6 * t_yr
         if t6 <= 10.2:  # ruff: ignore[magic-value-comparison]
             return -0.0039 * t6 + 0.49
-        elif t6 <= 15.1:  # ruff: ignore[magic-value-comparison]
+        if t6 <= 15.1:  # ruff: ignore[magic-value-comparison]
             return -0.0306 * (t6 - 10.2) + 0.45
-        else:
-            return -0.282 * (t6 - 15.1) + 0.3
-    else:
-        msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
-        raise ValueError(msg)
+        return -0.282 * (t6 - 15.1) + 0.3
+    msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
+    raise ValueError(msg)
 
 
 def _vminfit(t_yr: float, mode: CollapseMode) -> float:
@@ -429,18 +425,16 @@ def _vminfit(t_yr: float, mode: CollapseMode) -> float:
         tnew = t_yr / unitt
         if tnew == 0:
             return 0.0
-        elif np.log(tnew) < 1.6:  # ruff: ignore[magic-value-comparison]
+        if np.log(tnew) < 1.6:  # ruff: ignore[magic-value-comparison]
             return 0.0891 * tnew
-        elif np.log(tnew) < 1.674:  # ruff: ignore[magic-value-comparison]
+        if np.log(tnew) < 1.674:  # ruff: ignore[magic-value-comparison]
             return 5.5 * np.log(tnew) - 8.37
-        else:
-            return 18.9 * np.log(tnew) - 30.8
-    elif mode == CollapseMode.AMBIPOLAR:
+        return 18.9 * np.log(tnew) - 30.8
+    if mode == CollapseMode.AMBIPOLAR:
         t6 = 1e-6 * t_yr
         return 3.44 * (16.138 - t6) ** (-0.35) - 0.7
-    else:
-        msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
-        raise ValueError(msg)
+    msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
+    raise ValueError(msg)
 
 
 def _avfit(t_yr: float, mode: CollapseMode) -> float:
@@ -470,21 +464,18 @@ def _avfit(t_yr: float, mode: CollapseMode) -> float:
         tnew = t_yr / unitt
         if tnew == 0:
             return 0.4
-        elif np.log(tnew) < 1.6:  # ruff: ignore[magic-value-comparison]
+        if np.log(tnew) < 1.6:  # ruff: ignore[magic-value-comparison]
             return 0.0101 * tnew + 0.4
-        elif np.log(tnew) < 1.674:  # ruff: ignore[magic-value-comparison]
+        if np.log(tnew) < 1.674:  # ruff: ignore[magic-value-comparison]
             return 0.695 * np.log(tnew) - 0.663
-        else:
-            return 2.69 * np.log(tnew) - 4.0
-    elif mode == CollapseMode.AMBIPOLAR:
+        return 2.69 * np.log(tnew) - 4.0
+    if mode == CollapseMode.AMBIPOLAR:
         t6 = 1e-6 * t_yr
         if t6 <= 10.2:  # ruff: ignore[magic-value-comparison]
             return 0.143 * t6
-        else:
-            return 0.217 * (t6 - 10.2) + 1.46
-    else:
-        msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
-        raise ValueError(msg)
+        return 0.217 * (t6 - 10.2) + 1.46
+    msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
+    raise ValueError(msg)
 
 
 def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: CollapseMode) -> float:
@@ -526,7 +517,7 @@ def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: CollapseMode)
         else:
             vr = vmin * (np.exp(-2.0 * av * new_r) - 2.0 * np.exp(-av * new_r))
         return cs * vr
-    elif mode == CollapseMode.AMBIPOLAR:
+    if mode == CollapseMode.AMBIPOLAR:
         rmid = 0.5
         r75 = r_pc / 0.75
         new_r = r75 - rmin
@@ -537,9 +528,8 @@ def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: CollapseMode)
         else:
             vr = av / (1.0 - rmid) * (r75 - rmid) - av
         return 1e3 * vr  # convert from 1e-2 km/s to cm/s
-    else:
-        msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
-        raise ValueError(msg)
+    msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
+    raise ValueError(msg)
 
 
 def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
@@ -651,7 +641,7 @@ class SuccessFlag(enum.IntEnum):
     ZERO_INNER_RADIUS_ERROR = -17, "rin must be > 0 when enable_radiative_transfer=True."
 
     def check_error(
-        self, only_error: bool = False, raise_on_error: bool = True
+        self, *, only_error: bool = False, raise_on_error: bool = True
     ) -> str | None:
         """Convert the UCLCHEM integer result flag to a message explaining what went wrong.
 
@@ -882,21 +872,20 @@ def get_protostellar_model_index(L_star: float) -> int:
     """
     if L_star >= 1.0e6:  # ruff: ignore[magic-value-comparison]
         return 6
-    elif L_star >= 1.0e5:  # ruff: ignore[magic-value-comparison]
+    if L_star >= 1.0e5:  # ruff: ignore[magic-value-comparison]
         return 5
-    elif L_star >= 1.0e4:  # ruff: ignore[magic-value-comparison]
+    if L_star >= 1.0e4:  # ruff: ignore[magic-value-comparison]
         return 4
-    elif L_star >= 1.0e3:  # ruff: ignore[magic-value-comparison]
+    if L_star >= 1.0e3:  # ruff: ignore[magic-value-comparison]
         return 3
-    elif L_star >= 1.0e2:  # ruff: ignore[magic-value-comparison]
+    if L_star >= 1.0e2:  # ruff: ignore[magic-value-comparison]
         return 2
-    elif L_star >= 1.0e1:  # ruff: ignore[magic-value-comparison]
+    if L_star >= 1.0e1:  # ruff: ignore[magic-value-comparison]
         return 1
-    elif L_star >= 1.0e0:
+    if L_star >= 1.0e0:
         return 0
-    else:
-        msg = f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {L_SUN:.3e} W."
-        raise ValueError(msg)
+    msg = f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {L_SUN:.3e} W."
+    raise ValueError(msg)
 
 
 def remove_keys_with_none(dct: dict[str, Any]) -> None:

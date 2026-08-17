@@ -221,12 +221,11 @@ def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
         if len(reaction_row) >= 14 and reaction_row[13] == "":  # ruff: ignore[magic-value-comparison, compare-to-empty-string]
             reaction_row[13] = False
         return True
-    else:
-        if reaction_row[1] in {"DESORB", "FREEZE"}:
-            reac_error = "Desorb or freeze reaction in custom input contains species not in species list"
-            reac_error += f"\nReaction was {reaction_row}"
-            raise ValueError(reac_error)
-        return False
+    if reaction_row[1] in {"DESORB", "FREEZE"}:
+        reac_error = "Desorb or freeze reaction in custom input contains species not in species list"
+        reac_error += f"\nReaction was {reaction_row}"
+        raise ValueError(reac_error)
+    return False
 
 
 FORTRAN_LINE_LENGTH = 80
@@ -274,7 +273,7 @@ def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> 
 
 
 def replace_value_with_name(
-    string: str, value: int | float, replace_string: str, truncate: bool = True
+    string: str, value: int | float, replace_string: str, *, truncate: bool = True
 ) -> str:
     """Replace all instances of `value` with a string `replace_string`.
 
@@ -351,8 +350,9 @@ def array_to_string(
     name: str,
     array: list | np.ndarray,
     type: str = "int",
-    parameter: bool = True,
     length_name: str | None = None,
+    *,
+    parameter: bool = True,
 ) -> str:
     """Write an array to fortran source code.
 
@@ -365,13 +365,13 @@ def array_to_string(
     type : str
         The array's type. Must be one of "int", "float", "string" or "logical".
         Defaults to "int".
-    parameter : bool
-        Whether the array is a Fortran parameter (constant).
-        Defaults to True.
     length_name : str | None
         Name to put in the ``dimension`` statement.
         If None, simply but the length of the array (or shape for 2D arrays).
         Default = None.
+    parameter : bool
+        Whether the array is a Fortran parameter (constant).
+        Defaults to True.
 
     Returns
     -------

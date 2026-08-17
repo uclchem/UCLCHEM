@@ -232,7 +232,7 @@ def load_custom_exothermicities(csv_path: str | Path) -> pd.DataFrame:
 
 
 def set_custom_exothermicities(
-    reactions: list[Reaction], csv_path: str | Path, overwrite: bool = True
+    reactions: list[Reaction], csv_path: str | Path, *, overwrite: bool = True
 ) -> tuple[int, int]:
     """Set reaction exothermicities from custom CSV.
 
