@@ -134,11 +134,13 @@ from uclchem.utils import (
     PrestellarCoreMass,
     SuccessFlag,
     get_collapse_mode,
+    get_dtype,
     get_lowercase_copy,
     get_reaction_table,
     get_species,
     pad_to_length,
     remove_keys_with_none,
+    would_overflow,
 )
 
 if TYPE_CHECKING:
@@ -276,7 +278,7 @@ get_species_names = SpeciesNameStore()
 def load_model(
     *,
     file_obj: h5py.File | None = None,
-    file: str | None = None,
+    file: str | Path | None = None,
     name: str = "default",
     debug: bool = False,
 ) -> AbstractModel:
@@ -286,7 +288,7 @@ def load_model(
     ----------
     file_obj : h5py.File | None
         open h5py file object. (Default value = None)
-    file : str | None
+    file : str | Path | None
         Path to a file that contains previously run and stored models. (Default value = None)
     name : str
         Name of the stored object, if none was provided `default` will have been used.
@@ -496,8 +498,6 @@ def _build_physics_df(
     return raw_df.reindex(columns=PHYSICAL_PARAMETERS, fill_value=0.0)
 
 
-# TODO Add catch of ctrl+c or other aborts so that it saves model and a
-# full output to files of year, month, day, time type.
 class AbstractModel(ABC):
     """Base model class used for inheritance only.
 
@@ -1656,9 +1656,10 @@ class AbstractModel(ABC):
         self,
         *,
         file_obj: h5py.File | None = None,
-        file: str | None = None,
+        file: str | Path | None = None,
         name: str = "default",
         overwrite: bool = False,
+        float_dtype: str | type[np.dtype] | np.typing.DTypeLike = np.float64,
     ) -> None:
         """Save a model to file on disk. Multiple models can be saved into the same file.
 
@@ -1668,13 +1669,16 @@ class AbstractModel(ABC):
         ----------
         file_obj : h5py.File | None
             open file object (Default value = None)
-        file : str | None
+        file : str | Path | None
             Path to a file to store models. (Default value = None)
         name : str
             Name to use for the group of the object. Defaults to 'default'
         overwrite : bool
             Boolean on whether to overwrite pre-existing models, or error out.
             Defaults to False
+        float_dtype : str | type[np.dtype] | np.typing.DTypeLike
+            Floating point precision to save floats in. Can be used to save some storage.
+            Default = np.float64.
 
         Raises
         ------
@@ -1698,7 +1702,9 @@ class AbstractModel(ABC):
                 )
                 return
             del file_obj[name]
-        # TODO: Allow for toggling of saving float64 or float32 for the arrays
+
+        float_dtype: np.typing.DTypeLike = get_dtype(float_dtype)  # type: ignore[no-redef]
+
         temp_attribute_dict = {}
         with contextlib.suppress(Exception):
             temp_attribute_dict.update(super().__getattribute__("_meta"))
@@ -1723,18 +1729,30 @@ class AbstractModel(ABC):
         model_group = file_obj.create_group(name)
         coord_grp = model_group.create_group("_coords")
         for coord_name, coord in save_data.coords.items():
-            self._write_array(coord_grp, coord_name, coord)
+            self._write_array(coord_grp, coord_name, coord, float_dtype=float_dtype)
         for var_name, var in save_data.data_vars.items():
-            self._write_array(model_group, var_name, var)
+            self._write_array(model_group, var_name, var, float_dtype=float_dtype)
         if opened_file:
             file_obj.flush()
             file_obj.close()
 
     @staticmethod
-    def _write_array(model_group: h5py.Group, name: str, xr_var: xr.DataArray) -> None:
+    def _write_array(
+        model_group: h5py.Group,
+        name: str,
+        xr_var: xr.DataArray,
+        float_dtype: np.typing.DTypeLike = np.dtypes.Float64DType,
+    ) -> None:
         data = xr_var.to_numpy()
         if data.dtype.kind == "U":
             data = data.astype(bytes)
+        elif data.dtype.kind == "f":
+            if would_overflow(np.max(np.abs(data)), np.dtype(float_dtype)):
+                original_dtype = data.dtype
+                msg = f"Casting data with name '{name}' (dtype '{original_dtype}') to dtype '{float_dtype}' would result in overflow."
+                msg += " Please specify a larger floating point precision."
+                raise OverflowError(msg)
+            data = data.astype(float_dtype)
         ds = model_group.create_dataset(name, data=data)
         ds.attrs["_dims"] = list(xr_var.dims)
 
@@ -2090,11 +2108,8 @@ class AbstractModel(ABC):
         phys = self.physics_array.reshape(-1, self.physics_array.shape[-1])
         chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
         full_array = np.append(phys, chem, axis=1)
-        # TODO Move away from the magic numbers seen here.
         species_names = get_species_names()
         string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(species_names))}"
-        # Magic numbers here to match/improve the formatting of the classic version
-        # TODO Move away from the magic numbers seen here.
         number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(species_names))}"
         columns = np.array([[*PHYSICAL_PARAMETERS[:-1], "point", *species_names]])
         np.savetxt(str(output_file), columns, fmt=string_fmt_string)
@@ -2151,8 +2166,6 @@ class AbstractModel(ABC):
         full_array = np.append(phys, chem_species, axis=1)
 
         string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(species))}"
-        # Magic numbers here to match/improve the formatting of the classic version
-        # TODO Move away from the magic numbers seen here.
         number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(species))}"
         columns = np.array([[*PHYSICAL_PARAMETERS[:-1], "point", *species]])
         np.savetxt(column_file, columns, fmt=string_fmt_string)
@@ -4225,9 +4238,10 @@ class SequentialRunner:
         self,
         *,
         file_obj: h5py.File | None = None,
-        file: str | None = None,
+        file: str | Path | None = None,
         name: str = "",
         overwrite: bool = False,
+        float_dtype: str | type[np.dtype] | np.typing.DTypeLike = np.float64,
     ) -> None:
         """Save a model to an open file object or to a file.
 
@@ -4235,13 +4249,16 @@ class SequentialRunner:
         ----------
         file_obj : h5py.File | None
             open file h5py file object. Default = None.
-        file : str | None
+        file : str | Path | None
             file to write to. Default = None.
         name : str
             name to save model under. (Default value = '')
         overwrite : bool
             Boolean on whether to overwrite pre-existing models, or error out.
             Defaults to False
+        float_dtype : str | type[np.dtype] | np.typing.DTypeLike
+            Floating point precision to save floats in. Can be used to save some storage.
+            Default = np.float64.
 
         Raises
         ------
@@ -4262,6 +4279,7 @@ class SequentialRunner:
                 file_obj=file_obj,
                 name=f"{name}_{model['Model_Order']}_{model['Model_Type']}",
                 overwrite=overwrite,
+                float_dtype=float_dtype,
             )
 
         if opened_file:

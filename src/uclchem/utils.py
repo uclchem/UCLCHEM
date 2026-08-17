@@ -54,6 +54,7 @@ Use :meth:`SuccessFlag.check_error` to get human-readable error messages.
 import enum
 import logging
 from pathlib import Path
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
@@ -75,33 +76,63 @@ MISSING_VALUE_FLOAT: float = -1.0
 NO_REACTANT_OR_PRODUCT: int = 9999
 """Integer to indicate that there is no reactant or product."""
 
+DTYPE_MAPPING = MappingProxyType(
+    {
+        "fp128": np.float128,
+        "fp64": np.float64,
+        "fp32": np.float32,
+        "fp16": np.float16,
+    }
+)
+"""Mapping from shorthand strings to numpy dtypes."""
 
-def get_dtype(dtype: str | type | np.dtype) -> type | np.dtype:
+
+def get_dtype(
+    dtype: str | type[np.dtype] | np.dtype | np.typing.DTypeLike,
+) -> np.typing.DTypeLike:
     """Convert a dtype shorthand string or numpy dtype to a numpy dtype.
 
     Parameters
     ----------
-    dtype : str | type | np.dtype
-        Either a shorthand string ("fp64", "fp32", "fp16") or a numpy dtype/type.
+    dtype : str | type[np.dtype] | np.dtype | np.typing.DTypeLike
+        Either a shorthand string ("fp128", "fp64", "fp32", "fp16") or a numpy dtype/type.
 
     Returns
     -------
-    type | np.dtype
+    np.typing.DTypeLike
         The corresponding numpy dtype or type.
 
     Raises
     ------
     ValueError
-        If ``dtype`` is a string not in ``{"fp64", "fp32", "fp16"}``.
+        If `dtype` is a string not in :data:`DTYPE_MAPPING`.
 
     """
     if isinstance(dtype, str):
-        mapping = {"fp64": np.float64, "fp32": np.float32, "fp16": np.float16}
-        if dtype not in mapping:
+        if dtype not in DTYPE_MAPPING:
             msg = f"Unknown dtype shorthand: {dtype!r}"
             raise ValueError(msg)
-        return mapping[dtype]
-    return dtype
+        return np.dtype(DTYPE_MAPPING[dtype])
+    return np.dtype(dtype)
+
+
+def would_overflow(value: float, dtype: np.dtype) -> bool:
+    """Whether `value` would overflow (become ``np.inf``) if cast to `dtype`.
+
+    Parameters
+    ----------
+    value : float
+        Value to check
+    dtype : np.dtype
+        Dtype to cast to
+
+    Returns
+    -------
+    bool
+        Whether `value` would be ``np.inf`` if cast to `dtype`.
+
+    """
+    return np.abs(value) > np.finfo(dtype).max
 
 
 def configure_logging(

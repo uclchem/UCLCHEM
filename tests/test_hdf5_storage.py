@@ -30,6 +30,7 @@ try:
         _read_array,
         load_model,
     )
+    from uclchem.utils import get_dtype
 
     uclchem_imported = True
 except ImportError:
@@ -300,23 +301,29 @@ class TestHDF5Structure:
 # _write_array / _read_array low-level tests
 # ============================================================================
 
+dtypes = ["fp64", "fp32", "fp16", np.float64]
+
 
 class TestWriteReadArray:
     """Test the static _write_array and module-level _read_array helpers."""
 
-    def test_numeric_array_roundtrip(self, tmp_path):
+    @pytest.mark.parametrize("dtype", dtypes)
+    def test_numeric_array_roundtrip(self, tmp_path, dtype):
         """Numeric arrays should roundtrip exactly."""
         fpath = str(tmp_path / "arrays.h5")
         original = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
         xr_var = xr.Variable(["row", "col"], original)
 
+        dtype = get_dtype(dtype)
+
         with h5py.File(fpath, "w") as f:
             grp = f.create_group("test")
-            AbstractModel._write_array(grp, "numeric", xr_var)
+            AbstractModel._write_array(grp, "numeric", xr_var, float_dtype=dtype)
 
         with h5py.File(fpath, "r") as f:
             result = _read_array(f["test"], "numeric")
-            np.testing.assert_array_equal(result.values, original)
+            assert result.dtype == dtype
+            np.testing.assert_array_equal(result.to_numpy(), original)
             assert list(result.dims) == ["row", "col"]
 
     def test_unicode_string_roundtrip(self, tmp_path):
@@ -340,15 +347,18 @@ class TestWriteReadArray:
             np.testing.assert_array_equal(result.values, original)
             assert result.values.dtype.kind == "U", "Read-back strings should be Unicode"
 
-    def test_scalar_in_1d_array_roundtrip(self, tmp_path):
+    @pytest.mark.parametrize("dtype", dtypes)
+    def test_scalar_in_1d_array_roundtrip(self, tmp_path, dtype):
         """A 1-element array (like JSON blobs) should roundtrip."""
         fpath = str(tmp_path / "scalar.h5")
         original = np.array([json.dumps({"key": "value"})])
         xr_var = xr.Variable(["dim_0"], original)
 
+        dtype = get_dtype(dtype)
+
         with h5py.File(fpath, "w") as f:
             grp = f.create_group("test")
-            AbstractModel._write_array(grp, "json_blob", xr_var)
+            AbstractModel._write_array(grp, "json_blob", xr_var, float_dtype=dtype)
 
         with h5py.File(fpath, "r") as f:
             result = _read_array(f["test"], "json_blob")
