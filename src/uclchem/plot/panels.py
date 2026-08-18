@@ -70,7 +70,7 @@ def plot_species(
         else:
             abundances = df[species_name]
         plot_kwargs["linestyle"] = linestyle
-        plot_kwargs["label"] = species_name
+        plot_kwargs["label"] = format_chemical_formula(species_name)
         # Support legacy code that use either "age" or "Time" as the time variable
         if "age" in df.columns:
             timecolumn = "age"

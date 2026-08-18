@@ -153,15 +153,18 @@ def format_chemical_formula(name: str) -> str:
     >>> format_chemical_formula("#H2O")
     '#$\\mathrm{H_{2}O}$'
 
+    >>> # The '$' indicating 'all ice' is escaped
+    >>> format_chemical_formula("$H2O")
+    '\\$$\\mathrm{H_{2}O}$'
+
     """
     s = name.strip()
 
     phase_prefix = ""
-    if s.startswith("#"):
-        phase_prefix = "#"
-        s = s[1:]
-    elif s.startswith("@"):
-        phase_prefix = "@"
+    if s.startswith(("#", "@", "$")):
+        phase_prefix = s[0]
+        if phase_prefix == "$":
+            phase_prefix = "\\" + phase_prefix
         s = s[1:]
 
     iso_prefix = ""
