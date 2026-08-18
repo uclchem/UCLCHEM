@@ -199,10 +199,18 @@ def format_reaction_label(rxn: str, k_mean: float | None = None) -> str:
     str
         Mathtext string suitable for use as a matplotlib legend label.
 
+    Notes
+    -----
+    Whitespace is required around each "+" that indicates a different molecule,
+    because otherwise it cannot distinguish between two separate species or
+    the charge of the first molecule.
+
     Examples
     --------
     >>> format_reaction_label("H2 + O -> OH + H")
     '$\\mathrm{H_{2}}$ + $\\mathrm{O}$ $\\rightarrow$ $\\mathrm{OH}$ + $\\mathrm{H}$'
+    >>> format_reaction_label("H3+ + CO -> H2 + HCO+")
+    '$\\mathrm{H_{3}^{+}}$ + $\\mathrm{CO}$ $\\rightarrow$ $\\mathrm{H_{2}}$ + $\\mathrm{HCO^{+}}$'
 
     """
     rxn = re.sub(r"__\d+$", "", rxn)
@@ -213,7 +221,7 @@ def format_reaction_label(rxn: str, k_mean: float | None = None) -> str:
     lhs, rhs = rxn.split("->", 1)
 
     def _fmt_side(side: str) -> str:
-        parts = [p.strip() for p in side.split("+")]
+        parts = [p.strip() for p in side.split(" +")]
         formatted = []
         for p in parts:
             if not p:

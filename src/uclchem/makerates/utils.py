@@ -327,7 +327,7 @@ def replace_value_with_name(
         value_string = str(value)
     elif isinstance(value, float):
         # Use array_to_string to find how 'value' would be formatted.
-        array_string = array_to_string("", [value], type="float")
+        array_string = array_to_string("", [value], value_type="float")
         value_string = array_string.split("/")[1]
     else:
         msg = f"replace_value_with_name is not supported for type {type(value)}. Supported types: 'float', 'int'."
@@ -349,7 +349,7 @@ def replace_value_with_name(
 def array_to_string(
     name: str,
     array: list | np.ndarray,
-    type: str = "int",
+    value_type: str = "int",
     length_name: str | None = None,
     *,
     parameter: bool = True,
@@ -362,7 +362,7 @@ def array_to_string(
         Variable name of array in Fortran
     array : list | np.ndarray
         List of values of array
-    type : str
+    value_type : str
         The array's type. Must be one of "int", "float", "string" or "logical".
         Defaults to "int".
     length_name : str | None
@@ -387,6 +387,11 @@ def array_to_string(
         a comma.
 
     """
+    if value_type not in {"int", "float", "string", "logical"}:
+        msg = f"value_type '{value_type}' is not a valid type for array_to_string. "
+        msg += "Must be one of 'int', 'float', 'string' or 'logical'."
+        raise ValueError(msg)
+
     # Check for 2D array
     arr = np.array(array)
     if arr.ndim == 2:  # ruff: ignore[magic-value-comparison]
@@ -399,22 +404,19 @@ def array_to_string(
             shape_name: list[str] = [i.strip() for i in length_name.split(",")]  # type: ignore[no-redef]
         shape_string: str = ",".join(str(s) for s in shape_name)  # type: ignore[no-redef]
         flat = arr.flatten(order="F")
-        if type == "int":
+        if value_type == "int":
             dtype = "integer"
             values = ",".join(str(int(v)) for v in flat)
-        elif type == "float":
+        elif value_type == "float":
             dtype = "real(dp)"
             values = ",".join(f"{float(v):.4e}_dp" for v in flat)
-        elif type == "string":
+        elif value_type == "string":
             string_length = len(max(flat, key=len))
             dtype = f"character(LEN={string_length})"
             values = ",".join('"' + str(v).ljust(string_length) + '"' for v in flat)
-        elif type == "logical":
+        elif value_type == "logical":
             dtype = "logical"
             values = ",".join(".true." if v else ".false." for v in flat)
-        else:
-            msg = "Not a valid type for array to string"
-            raise ValueError(msg)
         param_str = ", parameter" if parameter else ""
         out_string = f"{dtype}{param_str} :: {name}({shape_string}) = RESHAPE((/ {values} /), (/ {shape_string} /))\n"
     else:
@@ -423,26 +425,23 @@ def array_to_string(
             out_string = ", parameter :: " + name + f" ({length_name})=(/"
         else:
             out_string = " :: " + name + f" ({length_name})=(/"
-        if type == "int":
+        if value_type == "int":
             out_string = "integer" + out_string
             for value in arr:
                 out_string += f"{value},"
-        elif type == "float":
+        elif value_type == "float":
             out_string = "real(dp)" + out_string
             for value in arr:
                 out_string += f"{value:.4e}_dp,"
-        elif type == "string":
+        elif value_type == "string":
             string_length = len(max(arr, key=len))
             out_string = f"character(LEN={string_length:.0f})" + out_string
             for value in arr:
                 out_string += '"' + value.ljust(string_length) + '",'
-        elif type == "logical":
+        elif value_type == "logical":
             out_string = "logical" + out_string
             for value in arr:
                 out_string += ".true.," if value else ".false.,"
-        else:
-            msg = "Not a valid type for array to string"
-            raise ValueError(msg)
         out_string = out_string[:-1] + "/)\n"
     out_string = truncate_line(out_string)
     return out_string
