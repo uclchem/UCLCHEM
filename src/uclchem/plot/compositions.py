@@ -68,7 +68,7 @@ def create_abundance_plot(
     ax.legend(loc=4, fontsize="small")
 
     ax.set_xlabel("Time / years")
-    ax.set_ylabel("X$_{Species}$")
+    ax.set_ylabel(r"X$_{\mathrm{species}}$")
 
     ax.set_yscale("log")
     if plot_file is not None:
