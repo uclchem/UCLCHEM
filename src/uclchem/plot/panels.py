@@ -166,7 +166,7 @@ def draw_panel_abundances(
             alpha=0.85 if in_rxns else 0.5,
             linestyle=sp_ls[sp],
         )
-    ax.set_ylabel("Abundance (w.r.t. H)")
+    ax.set_ylabel("Abundance (wrt H)")
     ax.text(
         0.02,
         0.98,
