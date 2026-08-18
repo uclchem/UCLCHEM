@@ -157,12 +157,12 @@ def plot_rates_deepdive(
     rate_constants_df : pd.DataFrame
         Rate-constants DataFrame (``with_rate_constants=True``).
     network : Network | None
-        Pre-loaded :class:`~uclchem.makerates.network.Network`.  If
+        Pre-loaded :class:`~uclchem.makerates.network.Network`. If
         ``None`` the default network is loaded via
         :meth:`~uclchem.makerates.network.Network.from_csv`.
     filter_threshold : float
         Reactions whose rate never exceeds this fraction of the per-step
-        maximum within *filter_window* are excluded.  Default: ``0.01``.
+        maximum within *filter_window* are excluded. Default: ``0.01``.
     filter_window : tuple[float, float]
         ``(t_min, t_max)`` in years used for reaction filtering and
         ranking.  Default: ``(1e4, 1e6)``.
@@ -172,21 +172,21 @@ def plot_rates_deepdive(
         Maximum number of companion species to draw in Panel A.
         Default: ``12``.
     figsize : tuple[float, float]
-        Figure width and height in inches.  Ignored when *fig* is provided.
+        Figure width and height in inches. Ignored when *fig* is provided.
         Default: ``(8, 12)``.
     output_path : Path | str | None
         If provided, save the figure as both ``<output_path>.pdf`` and
-        ``<output_path>.png``.  Only meaningful when *fig* is a top-level
-        :class:`~matplotlib.figure.Figure`.  Default: ``None``.
+        ``<output_path>.png``. Only meaningful when *fig* is a top-level
+        :class:`~matplotlib.figure.Figure`. Default: ``None``.
     fig : matplotlib.figure.FigureBase | None
-        Existing figure or sub-figure to draw into.  Pass a
+        Existing figure or sub-figure to draw into. Pass a
         :class:`~matplotlib.figure.SubFigure` obtained from
         ``parent.subfigures()`` to embed this plot inside a larger layout.
         If ``None`` (default) a new figure is created.
     color_registry : dict[str, str] | None
         Mutable mapping from species / reaction name to hex color string.
         Pass the same dict to multiple calls to keep colors consistent
-        across subfigures.  If ``None`` (default) a fresh registry is
+        across subfigures. If ``None`` (default) a fresh registry is
         created internally.
 
     Returns
@@ -195,10 +195,10 @@ def plot_rates_deepdive(
         The figure (or sub-figure) containing all three panels.
     ax_abundances : plt.Axes
         Panel A — species abundances.
-    ax_rates : plt.Axes
-        Panel B — production / destruction rates.
     ax_rate_constants : plt.Axes
-        Panel C — mean rate-constant bar chart.
+        Panel B — mean rate-constant bar chart.
+    ax_rates : plt.Axes
+        Panel C — production / destruction rates.
 
     Raises
     ------
@@ -302,13 +302,13 @@ def plot_rates_deepdive(
     if fig is None:
         fig = plt.figure(figsize=figsize)
     gs = fig.add_gridspec(3, 1, height_ratios=[3, 1, 3])
-    ax_a = fig.add_subplot(gs[0])
-    ax_c = fig.add_subplot(gs[1])
-    ax_b = fig.add_subplot(gs[2])
+    ax_abundances = fig.add_subplot(gs[0])
+    ax_rate_constants = fig.add_subplot(gs[1])
+    ax_rates = fig.add_subplot(gs[2], sharex=ax_abundances)
 
     chem_filtered = chemistry_df[pos_mask]
     draw_panel_abundances(
-        ax_a,
+        ax_abundances,
         time,
         species,
         chem_filtered,
@@ -316,11 +316,20 @@ def plot_rates_deepdive(
         reactant_species=reactant_species,
         color_registry=reg,
     )
-    draw_panel_rates(
-        ax_b, time, prod_rates, dest_rates, top_prod, top_dest, color_registry=reg
-    )
+    ax_abundances.set_xlim((1e0, time.iloc[-1]))
+
     draw_panel_rate_constants(
-        ax_c, time, prod_k, dest_k, top_prod, top_dest, bar=True, color_registry=reg
+        ax_rate_constants,
+        time,
+        prod_k,
+        dest_k,
+        top_prod,
+        top_dest,
+        bar=True,
+        color_registry=reg,
+    )
+    draw_panel_rates(
+        ax_rates, time, prod_rates, dest_rates, top_prod, top_dest, color_registry=reg
     )
 
     if output_path is not None:
@@ -331,4 +340,4 @@ def plot_rates_deepdive(
         fig.savefig(base.with_suffix(".pdf"), format="pdf")
         fig.savefig(base.with_suffix(".png"), format="png")
 
-    return fig, ax_a, ax_b, ax_c
+    return fig, ax_abundances, ax_rate_constants, ax_rates
