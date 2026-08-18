@@ -12,9 +12,9 @@ get_dtypes_data = [
 ]
 
 
-@pytest.mark.parametrize(("input", "expected"), get_dtypes_data)
-def test_get_dtype(input, expected):
-    assert get_dtype(input) == expected
+@pytest.mark.parametrize(("input_dtype", "expected"), get_dtypes_data)
+def test_get_dtype(input_dtype, expected):
+    assert get_dtype(input_dtype) == expected
 
 
 overflow_data = [

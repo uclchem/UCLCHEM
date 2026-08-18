@@ -11,12 +11,13 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import mkstemp
 from textwrap import dedent
-from typing import IO, Any, Literal, cast
+from typing import IO, Any, cast
 
 import numpy as np
 import yaml
 
 from uclchem.constants import PHYSICAL_PARAMETERS, ZETA_0
+from uclchem.makerates.config import ReactionFileTypes
 from uclchem.makerates.network import Network
 from uclchem.makerates.reaction import REACTION_TYPES, Reaction, reaction_header
 from uclchem.makerates.species import Species, species_header
@@ -126,7 +127,7 @@ def read_species_file(
 def read_reaction_file(
     file_name: str | Path,
     species_list: list[Species],
-    ftype: Literal["UMIST", "KIDA", "UCL"],
+    ftype: ReactionFileTypes,
 ) -> tuple[list[Reaction], list[list[str]]]:
     """Read in a reaction file of any kind (UCL, UMIST, KIDA), and.
 
@@ -138,7 +139,7 @@ def read_reaction_file(
         A file name for the reaction file to read.
     species_list : list[Species]
         A list of chemical species to be used in the reading.
-    ftype : Literal['UMIST', 'KIDA', 'UCL']
+    ftype : ReactionFileTypes
         'UMIST','UCL', or 'KIDA' to describe format of file_name
 
     Returns
@@ -718,7 +719,7 @@ def write_f90_constants(
         extra_lines += "    " + array_to_string(
             "coolantConversionFactors",
             np.array(conversion_factors),
-            type="float",
+            value_type="float",
             length_name="MAX_COOLANTS",
         )
     if conversion_modes is not None:
@@ -726,7 +727,7 @@ def write_f90_constants(
         extra_lines += "    " + array_to_string(
             "coolantConversionMode",
             np.array(conversion_modes),
-            type="int",
+            value_type="int",
             length_name="MAX_COOLANTS",
         )
     # Generate coolant_active array: all coolants enabled by default
@@ -742,7 +743,7 @@ def write_f90_constants(
             extra_lines += "    " + array_to_string(
                 "coolant_active",
                 coolant_active_defaults,
-                type="logical",
+                value_type="logical",
                 parameter=False,
                 length_name="MAX_COOLANTS",
             )
@@ -1381,41 +1382,49 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> None
 
     network_file.write(
         array_to_string(
-            "surfaceList", surfacelist, type="int", length_name="N_SURFACE_SPECIES"
+            "surfaceList", surfacelist, value_type="int", length_name="N_SURFACE_SPECIES"
         )
     )
     if len(bulkList) > 0:
         network_file.write(
             array_to_string(
-                "bulkList", bulkList, type="int", length_name="N_BULK_SPECIES"
+                "bulkList", bulkList, value_type="int", length_name="N_BULK_SPECIES"
             )
         )
     network_file.write(
-        array_to_string("iceList", iceList, type="int", length_name="N_ICE_SPECIES")
-    )
-    network_file.write(
-        array_to_string("gasIceList", gasIceList, type="int", length_name="N_ICE_SPECIES")
+        array_to_string("iceList", iceList, value_type="int", length_name="N_ICE_SPECIES")
     )
     network_file.write(
         array_to_string(
-            "solidFractions", solidList, type="float", length_name="N_SURFACE_SPECIES"
+            "gasIceList", gasIceList, value_type="int", length_name="N_ICE_SPECIES"
         )
     )
     network_file.write(
         array_to_string(
-            "monoFractions", monoList, type="float", length_name="N_SURFACE_SPECIES"
+            "solidFractions",
+            solidList,
+            value_type="float",
+            length_name="N_SURFACE_SPECIES",
         )
     )
     network_file.write(
         array_to_string(
-            "volcanicFractions", volcList, type="float", length_name="N_SURFACE_SPECIES"
+            "monoFractions", monoList, value_type="float", length_name="N_SURFACE_SPECIES"
+        )
+    )
+    network_file.write(
+        array_to_string(
+            "volcanicFractions",
+            volcList,
+            value_type="float",
+            length_name="N_SURFACE_SPECIES",
         )
     )
     network_file.write(
         array_to_string(
             "bindingEnergy",
             binding_energyList,
-            type="float",
+            value_type="float",
             parameter=False,
             length_name="N_ICE_SPECIES",
         )
@@ -1423,7 +1432,10 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> None
     network_file.write(
         replace_value_with_name(
             array_to_string(
-                "customVdes", customVdesList, type="float", length_name="N_ICE_SPECIES"
+                "customVdes",
+                customVdesList,
+                value_type="float",
+                length_name="N_ICE_SPECIES",
             ),
             MISSING_VALUE_FLOAT,
             "MISSING_VALUE_FLOAT",
@@ -1434,7 +1446,7 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> None
             array_to_string(
                 "diffusionBarrier",
                 diffusion_barriersList,
-                type="float",
+                value_type="float",
                 parameter=False,
                 length_name="N_ICE_SPECIES",
             ),
@@ -1445,7 +1457,10 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> None
     network_file.write(
         replace_value_with_name(
             array_to_string(
-                "customVdiff", customVdiffList, type="float", length_name="N_ICE_SPECIES"
+                "customVdiff",
+                customVdiffList,
+                value_type="float",
+                length_name="N_ICE_SPECIES",
             ),
             MISSING_VALUE_FLOAT,
             "MISSING_VALUE_FLOAT",
@@ -1456,7 +1471,7 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> None
         array_to_string(
             "moleculeIsLinear",
             isLinears,
-            type="logical",
+            value_type="logical",
             parameter=False,
             length_name="N_ICE_SPECIES",
         )
@@ -1466,7 +1481,7 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> None
             array_to_string(
                 "inertiaProducts",
                 inertiaProducts,
-                type="float",
+                value_type="float",
                 parameter=False,
                 length_name="N_ICE_SPECIES",
             ),
@@ -1479,7 +1494,7 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> None
             array_to_string(
                 "formationEnthalpy",
                 enthalpyList,
-                type="float",
+                value_type="float",
                 parameter=False,
                 length_name="N_ICE_SPECIES",
             ),
@@ -1487,7 +1502,9 @@ def write_evap_lists(network_file: IO[str], species_list: list[Species]) -> None
             "MISSING_VALUE_FLOAT",
         )
     )
-    network_file.write(array_to_string("refractoryList", refractoryList, type="int"))
+    network_file.write(
+        array_to_string("refractoryList", refractoryList, value_type="int")
+    )
 
 
 def write_network_file(
@@ -1556,11 +1573,13 @@ def write_network_file(
         openFile.write("logical, parameter :: THREE_PHASE = .true.\n")
         openFile.write("real(dp) :: SURFGROWTHUNCORRECTED\n")
         openFile.write(
-            array_to_string("specname", names, type="string", length_name="nSpec")
+            array_to_string("specname", names, value_type="string", length_name="nSpec")
         )
-        openFile.write(array_to_string("mass", masses, type="float", length_name="nSpec"))
         openFile.write(
-            array_to_string("atomCounts", atoms, type="int", length_name="nSpec")
+            array_to_string("mass", masses, value_type="float", length_name="nSpec")
+        )
+        openFile.write(
+            array_to_string("atomCounts", atoms, value_type="int", length_name="nSpec")
         )
 
         # Generic element-count 2D array for runtime conservation checking.
@@ -1593,14 +1612,17 @@ def write_network_file(
         openFile.write(f"integer, parameter :: n_elem_tracked = {n_elems}\n")
         openFile.write(
             array_to_string(
-                "elem_names", padded_elems, type="string", length_name="n_elem_tracked"
+                "elem_names",
+                padded_elems,
+                value_type="string",
+                length_name="n_elem_tracked",
             )
         )
         openFile.write(
             array_to_string(
                 "elem_count",
                 elem_count_2d,
-                type="int",
+                value_type="int",
                 length_name="nSpec, n_elem_tracked",
             )
         )
@@ -1686,7 +1708,7 @@ def write_network_file(
                 array_to_string(
                     "exothermicities",
                     exothermicity,
-                    type="float",
+                    value_type="float",
                     parameter=True,
                     length_name="nReac",
                 )
@@ -1698,83 +1720,83 @@ def write_network_file(
 
         openFile.write(
             replace_value_with_name(
-                array_to_string("re1", reactant1, type="int", length_name="nReac"),
+                array_to_string("re1", reactant1, value_type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             replace_value_with_name(
-                array_to_string("re2", reactant2, type="int", length_name="nReac"),
+                array_to_string("re2", reactant2, value_type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             replace_value_with_name(
-                array_to_string("re3", reactant3, type="int", length_name="nReac"),
+                array_to_string("re3", reactant3, value_type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             replace_value_with_name(
-                array_to_string("p1", prod1, type="int", length_name="nReac"),
+                array_to_string("p1", prod1, value_type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             replace_value_with_name(
-                array_to_string("p2", prod2, type="int", length_name="nReac"),
+                array_to_string("p2", prod2, value_type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             replace_value_with_name(
-                array_to_string("p3", prod3, type="int", length_name="nReac"),
+                array_to_string("p3", prod3, value_type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             replace_value_with_name(
-                array_to_string("p4", prod4, type="int", length_name="nReac"),
+                array_to_string("p4", prod4, value_type="int", length_name="nReac"),
                 NO_REACTANT_OR_PRODUCT,
                 "NO_REACTANT_OR_PRODUCT",
             )
         )
         openFile.write(
             array_to_string(
-                "alpha", alpha, type="float", parameter=False, length_name="nReac"
+                "alpha", alpha, value_type="float", parameter=False, length_name="nReac"
             )
         )
         openFile.write(
             array_to_string(
-                "beta", beta, type="float", parameter=False, length_name="nReac"
+                "beta", beta, value_type="float", parameter=False, length_name="nReac"
             )
         )
         openFile.write(
             array_to_string(
-                "gama", gama, type="float", parameter=False, length_name="nReac"
+                "gama", gama, value_type="float", parameter=False, length_name="nReac"
             )
         )
         openFile.write(
             array_to_string(
-                "minTemps", tmins, type="float", parameter=True, length_name="nReac"
+                "minTemps", tmins, value_type="float", parameter=True, length_name="nReac"
             )
         )
         openFile.write(
             array_to_string(
-                "maxTemps", tmaxs, type="float", parameter=True, length_name="nReac"
+                "maxTemps", tmaxs, value_type="float", parameter=True, length_name="nReac"
             )
         )
         openFile.write(
             array_to_string(
                 "reducedMasses",
                 reduced_masses,
-                type="float",
+                value_type="float",
                 parameter=True,
                 length_name="nReac",
             )
@@ -1783,7 +1805,7 @@ def write_network_file(
             array_to_string(
                 "extrapolateRateConstants",
                 extrapolations,
-                type="logical",
+                value_type="logical",
                 parameter=True,
                 length_name="nReac",
             )
@@ -1796,7 +1818,7 @@ def write_network_file(
             array_to_string(
                 "freezePartners",
                 partners,
-                type="int",
+                value_type="int",
                 parameter=True,
                 length_name="N_FREEZE_PARTNERS",
             )
@@ -1812,7 +1834,7 @@ def write_network_file(
                 np.array(list(gar_database.values()))
                 if gar_database
                 else np.zeros((1, 7)),
-                type="float",
+                value_type="float",
                 parameter=True,
                 length_name="N_GAR_SPECIES, N_GAR_PARAMS",
             )
@@ -1828,9 +1850,9 @@ def write_network_file(
                 # We still want a dummy array if the reaction type isn't in network
                 indices = [99999, 99999]
             openFile.write(
-                array_to_string(list_name, indices, type="int", parameter=True).replace(
-                    "99999", "REAC_NOT_PRESENT"
-                )
+                array_to_string(
+                    list_name, indices, value_type="int", parameter=True
+                ).replace("99999", "REAC_NOT_PRESENT")
             )
 
         # Write LHDES and ERDES mapping arrays (Feature 3: LH/ER-DES mapping)
@@ -1860,7 +1882,7 @@ def write_network_file(
             array_to_string(
                 "LHDEScorrespondingLHreacs",
                 LHDEScorrespondingLHreacs,
-                type="int",
+                value_type="int",
                 parameter=True,
                 length_name="N_LHDES_REACTIONS"
                 if len(LHDEScorrespondingLHreacs) > 2  # ruff: ignore[magic-value-comparison]
@@ -1895,7 +1917,7 @@ def write_network_file(
             array_to_string(
                 "ERDEScorrespondingERreacs",
                 ERDEScorrespondingERreacs,
-                type="int",
+                value_type="int",
                 parameter=True,
                 length_name="N_ERDES_REACTIONS"
                 if len(ERDEScorrespondingERreacs) > 2  # ruff: ignore[magic-value-comparison]

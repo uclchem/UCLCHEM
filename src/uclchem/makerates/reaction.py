@@ -1143,16 +1143,16 @@ class CoupledReaction(Reaction):
 
     """
 
-    def __init__(self, input: list[str | float] | Reaction):
+    def __init__(self, input_row: list[str | float] | Reaction):
         """Initialize the CoupledReaction.
 
         Parameters
         ----------
-        input : list[str | float] | Reaction
+        input_row : list[str | float] | Reaction
             Either a Reaction object to copy, or a list with reaction data.
 
         """
-        super().__init__(input)
+        super().__init__(input_row)
         self.partner: Reaction | None = None
 
     def set_partner(self, partner: Reaction) -> None:
@@ -1166,7 +1166,7 @@ class CoupledReaction(Reaction):
         Raises
         ------
         TypeError
-            if `parter` is not an instance of a `Reaction`.
+            If `partner` is not an instance of :class:`Reaction`.
 
         """
         if not isinstance(partner, Reaction):
