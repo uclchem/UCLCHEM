@@ -74,6 +74,7 @@ module DEFAULTPARAMETERS
     logical :: enforceChargeConservation = .false.  ! Enforce the chrage by keeping track of charged ions.
     logical :: enable_radiative_transfer=.false.  !Enable 1D radiative transfer calculations for spatial models (points>1).
     integer :: parcelStoppingMode=0  !Controls when parcels stop evolving in 1D freefall models: 0=never stop (default), 1=stop when outermost parcel reaches max density, 2=stop each parcel individually at max density.
+    logical :: useGrainActivatedRecombination=.true.  !Whether to use grain-activated recombination (GAR) reactions
     !
     !## Input and Output
     !|Parameter|Default Value |Description|

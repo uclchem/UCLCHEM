@@ -1153,6 +1153,8 @@ contains
                     read(inputValue,*,iostat=successFlag) temp_star
                 case("parcelstoppingmode")
                     read(inputValue,*,iostat=successFlag) parcelStoppingMode
+                case("usegrainactivatedrecombination")
+                    read(inputValue,*,iostat=successFlag) useGrainActivatedRecombination
                 case("endatfinaldensity")
                     read(inputValue,*,iostat=successFlag) endAtFinalDensity
                 case("freefall")

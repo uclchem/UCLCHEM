@@ -495,7 +495,7 @@ contains
 
     idx1=garReacs(1)
     idx2=garReacs(2)
-    if (idx1 /= REAC_NOT_PRESENT) then
+    if ((idx1 /= REAC_NOT_PRESENT) .and. (useGrainActivatedRecombination)) then
         phi_gar = calculatePhiGAR(radfield, av(dstep), gasTemp(dstep), abund(nspec+1, dstep), abund(nelec, dstep)) + &
             calculatePhiGAR(radfield_internal(dstep), av_internal(dstep), gasTemp(dstep), abund(nspec+1, dstep), &
             abund(nelec, dstep))
