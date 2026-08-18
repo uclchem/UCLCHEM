@@ -5,6 +5,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import pandas as pd
 
 if TYPE_CHECKING:
@@ -396,7 +397,7 @@ def draw_panel_rates(
         top_dest,
         color_registry,
         ylabel=r"Reaction rate (abundance wrt H s$^{-1}$)",
-        panel_label="B",
+        panel_label="C",
     )
 
 
@@ -484,8 +485,6 @@ def draw_panel_rate_constants(
         )
 
     # Bar mode: warn for time-varying rate constants, then plot means.
-    import numpy as np  # ruff: ignore[import-outside-top-level]
-
     top_prod_k = [r for r in top_prod if r in prod_k.columns]
     top_dest_k = [r for r in top_dest if r in dest_k.columns]
 
@@ -522,7 +521,7 @@ def draw_panel_rate_constants(
     ax.text(
         0.02,
         0.98,
-        "C",
+        "B",
         transform=ax.transAxes,
         fontsize=10,
         verticalalignment="top",
