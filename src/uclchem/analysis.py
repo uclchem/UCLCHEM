@@ -67,6 +67,7 @@ from pandas import Series, read_csv
 
 from uclchem.constants import (
     ELEMENTS_TO_CHECK,
+    PHYSICAL_PARAMETERS,
     n_reactions,
     n_species,
 )
@@ -840,7 +841,7 @@ def total_element_abundance(element: str, df: pd.DataFrame) -> pd.Series:
 
     """
     sums: np.ndarray = _count_element(list(df.columns), element).to_numpy()
-    for variable in ["Time", "Density", "gasTemp", "av", "point", "SURFACE", "BULK"]:
+    for variable in PHYSICAL_PARAMETERS:
         sums = np.where(df.columns == variable, 0, sums)
     return df.mul(sums, axis=1).sum(axis=1)
 
@@ -851,14 +852,14 @@ def check_element_conservation(
     *,
     percent: bool = True,
 ) -> dict[str, str]:
-    """Check the conservation of elements by comparing their total.
+    """Check the conservation of elements through the rows of a dataframe.
 
-    abundance at start and end of model.
+    Checks the conservation by comparing their total abundances at the start and end of the model.
 
     Parameters
     ----------
     df : pd.DataFrame
-        UCLCHEM output in format from `read_output_file`
+        UCLCHEM output.
     element_list : Iterable[str]
         List of elements to check. Default = :data:`uclchem.constants.ELEMENTS_TO_CHECK`.
     percent : bool
@@ -870,16 +871,27 @@ def check_element_conservation(
         Dictionary containing the change in the total abundance of each element
         as a fraction of initial value
 
+    Raises
+    ------
+    ZeroDivisionError
+        If `percent` is True, and any of the elements in `element_list` had a final abundance of 0.
+
     """
     result = {}
     for element in element_list:
-        discrep = total_element_abundance(element, df).to_numpy()
+        elemental_abundances = total_element_abundance(element, df).to_numpy()
         if percent:
-            discrep = np.abs(discrep[0] - discrep[-1]) / discrep[0]
-            result[element] = f"{discrep:.3%}"
+            if elemental_abundances[-1] == 0:
+                msg = f"Tried to calculate relative change of element '{element}', but it had a final elemental abundance of 0."
+                raise ZeroDivisionError(msg)
+            elemental_abundances = (
+                np.abs(elemental_abundances[0] - elemental_abundances[-1])
+                / elemental_abundances[0]
+            )
+            result[element] = f"{elemental_abundances:.3%}"
         else:
-            discrep = discrep[0] - discrep[-1]
-            result[element] = f"{discrep:.2e}"
+            elemental_abundances = elemental_abundances[0] - elemental_abundances[-1]
+            result[element] = f"{elemental_abundances:.2e}"
     return result
 
 

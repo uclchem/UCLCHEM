@@ -218,8 +218,8 @@ def reaction_line_formatter(line: list[str] | pd.Series) -> str:
     H2 + PHOTON -> H + H
 
     """
-    reactants = list(filter(lambda x: not str(x).lower().endswith("nan"), line[0:3]))
-    products = list(filter(lambda x: not str(x).lower().endswith("nan"), line[3:7]))
+    reactants = filter(lambda x: not str(x).lower().endswith("nan"), line[0:3])
+    products = filter(lambda x: not str(x).lower().endswith("nan"), line[3:7])
     return " + ".join(reactants) + " -> " + " + ".join(products)
 
 
@@ -837,7 +837,6 @@ class AbstractModel(ABC):
 
             # Choose a time dimension name that avoids conflicts with existing dims
             time_dim = "time_step"
-            existing_time = None
             try:
                 # Use .sizes (mapping of dim name -> length) instead of .dims to avoid FutureWarning
                 existing_time = self._data.sizes.get("time_step", None)
@@ -961,7 +960,7 @@ class AbstractModel(ABC):
                 print(
                     check_element_conservation(
                         df_i if isinstance(df_i, pd.DataFrame) else df_i[0],
-                        element_list,
+                        element_list=element_list,
                         percent=percent,
                     )
                 )
@@ -971,7 +970,7 @@ class AbstractModel(ABC):
             print(
                 check_element_conservation(
                     df_0 if isinstance(df_0, pd.DataFrame) else df_0[0],
-                    element_list,
+                    element_list=element_list,
                     percent=percent,
                 )
             )
@@ -4253,13 +4252,17 @@ class SequentialRunner:
                     df = model["Model"].get_dataframes(pt)
                     if isinstance(df, pd.DataFrame):
                         conserve_dicts += [
-                            check_element_conservation(df, element_list, percent=percent)
+                            check_element_conservation(
+                                df, element_list=element_list, percent=percent
+                            )
                         ]
             else:
                 df = model["Model"].get_dataframes(0)
                 if isinstance(df, pd.DataFrame):
                     conserve_dicts += [
-                        check_element_conservation(df, element_list, percent=percent)
+                        check_element_conservation(
+                            df, element_list=element_list, percent=percent
+                        )
                     ]
             conserved = True
             for conserve_dict in conserve_dicts:
@@ -4809,13 +4812,17 @@ class GridRunner:
                     df = tmp_model.get_dataframes(pt)
                     if isinstance(df, pd.DataFrame):
                         conserve_dicts += [
-                            check_element_conservation(df, element_list, percent=percent)
+                            check_element_conservation(
+                                df, element_list=element_list, percent=percent
+                            )
                         ]
             else:
                 df = tmp_model.get_dataframes(0)
                 if isinstance(df, pd.DataFrame):
                     conserve_dicts += [
-                        check_element_conservation(df, element_list, percent=percent)
+                        check_element_conservation(
+                            df, element_list=element_list, percent=percent
+                        )
                     ]
             conserved = True
             for conserve_dict in conserve_dicts:
