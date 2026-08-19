@@ -159,7 +159,7 @@ PHYSICAL_PARAMETERS_VALUE_FORMAT = (
     "%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i, %10.4E, %10.4E, %10.4E"
 )
 SPECNAME_HEADER_FORMAT = "%11s"
-SPECNAME_VALUE_FORMAT = "%9.5E"
+ABUNDANCE_VALUE_FORMAT = "%9.5E"
 
 
 # Model registration is intended to prevent code injection during loading time.
@@ -2122,7 +2122,7 @@ class AbstractModel(ABC):
         full_array = np.append(phys, chem, axis=1)
         species_names = get_species_names()
         string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(species_names))}"
-        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(species_names))}"
+        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([ABUNDANCE_VALUE_FORMAT] * len(species_names))}"
         columns = np.array([[*PHYSICAL_PARAMETERS[:-1], "point", *species_names]])
         np.savetxt(str(output_file), columns, fmt=string_fmt_string)
         with Path(str(output_file)).open("ab") as f:
@@ -2139,13 +2139,12 @@ class AbstractModel(ABC):
             If ``self.abundSaveFile`` is ``None``.
 
         """
-        # TODO Move away from the magic numbers seen here.
         abund_save_file = self.abundSaveFile
         if abund_save_file is None:
             msg = "abundSaveFile is not set"
             raise ValueError(msg)
         species_names = get_species_names()
-        number_fmt_string = f" {', '.join(['%9.5E'] * len(species_names))}"
+        number_fmt_string = f" {', '.join([ABUNDANCE_VALUE_FORMAT] * len(species_names))}"
         with Path(str(abund_save_file)).open("wb") as f:
             np.savetxt(
                 f,
@@ -2178,7 +2177,7 @@ class AbstractModel(ABC):
         full_array = np.append(phys, chem_species, axis=1)
 
         string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(species))}"
-        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(species))}"
+        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([ABUNDANCE_VALUE_FORMAT] * len(species))}"
         columns = np.array([[*PHYSICAL_PARAMETERS[:-1], "point", *species]])
         np.savetxt(column_file, columns, fmt=string_fmt_string)
         with Path(column_file).open("ab") as f:
