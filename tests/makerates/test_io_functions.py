@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from uclchem.makerates.io_functions import array_to_string, check_reaction
-from uclchem.makerates.reaction import Reaction
+from uclchem.makerates.reaction import REACTION_TYPES, Reaction
 from uclchem.makerates.species import Species, normalize_species_name
 
 
@@ -240,9 +240,7 @@ def test_reaction_charge_conservation_prefix_neutral():
 
 
 def _keep_list(*names):
-    from uclchem.makerates.reaction import REACTION_TYPES
-
-    return ["", "NAN", "E-", "e-", "PHOTON", "CRP", *list(REACTION_TYPES), *list(names)]
+    return ["", "NAN", "E-", "e-", "PHOTON", "CRP", *REACTION_TYPES, *names]
 
 
 def test_check_reaction_accepts_prefix_species():

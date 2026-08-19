@@ -724,16 +724,14 @@ class NetworkBuilder:
         self.network.add_reactions(new_reactions)
 
     def _add_chemdes_reactions(self) -> None:
-        """We have the user list all Langmuir-Hinshelwood and Eley-Rideal.
+        """Add chemical desorption reactions from LH and ER reactions.
 
-        reactions once. Then we duplicate so that the reaction branches
+        We have the user list all Langmuir-Hinshelwood and Eley-Rideal reactions once.
+        Then we duplicate so that the reaction branches
         with products on grain and products desorbing.
 
         Raises
         ------
-        ValueError
-            If not all products of the LH and ER reactions are on the
-            grain. For example: `#H + #H -> H2` should be `#H + #H -> #H2`.
         NotImplementedError
             ChemDes reaction loading is not yet implemented.
         RuntimeError
@@ -774,17 +772,6 @@ class NetworkBuilder:
 
                     # Replace the species on the grain/bulk with species in gas
                     new_products = new_reaction.get_products()
-                    # Check there are no products incompatible with LH/ER reactions
-                    # by counting them
-                    if new_products.count("NAN") + sum(
-                        prod.startswith(("#", "@")) for prod in new_products
-                    ) != len(new_products):
-                        raise ValueError(
-                            "All Langmuir-Hinshelwood and Eley-Rideal reactions should be input with products on grains only.\n"
-                            + "The fraction of products that enter the gas is dealt with by Makerates and UCLCHEM.\n"
-                            + "the following reaction caused this warning\t"
-                            + str(reaction)
-                        )
 
                     # Replace all grain or bulk products with gas phase counterparts.
                     # CRITICAL: Distinguish between chemical and physical desorption pathways.
