@@ -51,23 +51,23 @@ def get_args():  # ruff: ignore[missing-return-type-undocumented-public-function
         default="user_settings.yaml",
         type=pathlib.Path,
         help="Path to YAML configuration file (default: user_settings.yaml)",
+        metavar="settings-path",
     )
 
     # Verbosity options
     parser.add_argument(
         "-v",
-        "--verbosity_stdout",
+        "--verbosity-stdout",
         default="WARNING",
         type=str,
         help="Console output verbosity (DEBUG, INFO, WARNING, ERROR)",
     )
     parser.add_argument(
-        "-d",
-        "--debug",
-        action="store_true",
-        help="Enable debug mode (same as --verbosity DEBUG)",
+        "-f",
+        "--verbosity-file",
+        default="INFO",
+        help="Verbosity of output to 'makerates.log' (DEBUG, INFO, WARNING, ERROR)",
     )
-
     # Helper options
     parser.add_argument(
         "--generate-template",
@@ -79,57 +79,53 @@ def get_args():  # ruff: ignore[missing-return-type-undocumented-public-function
         action="store_true",
         help="Print detailed help about configuration parameters and exit",
     )
+    parser.add_argument(
+        "-d",
+        "--dry-run",
+        action="store_true",
+        help="Only do a dry run, meaning network validation, without writing the files.",
+    )
 
     return parser.parse_args()
 
 
-def get_logger(verbosity_stdout: str, *, debug: bool = False) -> None:
+def get_logger(verbosity_stdout: str, verbosity_file: str) -> None:
     """Define a logger that logs both to file and stdout.
 
     Parameters
     ----------
     verbosity_stdout : str
         stdout verbosity
-    debug : bool
-        whether to write debug information to ``makerates.log``. Default=False
+    verbosity_file : str
+        Verbosity to write to 'makerates.log'.
 
     """
-    # TODO: fix that both verbosity for file and stdout
-    # are the same type, but it works for now.
-    if debug:
-        verbosity_file = logging.DEBUG
-        verbosity_stdout = "DEBUG"
-    else:
-        verbosity_file = logging.INFO
-        verbosity_stdout = verbosity_stdout
-    # Make sure the verbosity to the file is always smaller than stdout to avoid confusion
-    if verbosity_stdout.upper() == "DEBUG":
-        verbosity_file = logging.DEBUG
+    logger = logging.getLogger("uclchem")
+    logger.setLevel("DEBUG")
 
-    logging.basicConfig(
-        level=verbosity_file,
-        format="%(asctime)s %(levelname)s: %(message)s",
-        datefmt="%m-%d %H:%M",
-        filename="makerates.log",
-        filemode="w",
+    file_handler = logging.FileHandler(
+        "makerates.log",
+        mode="w",
+    )
+    file_handler.setLevel(verbosity_file)
+    file_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s %(levelname)s: %(message)s",
+            datefmt="%m-%d %H:%M",
+        )
     )
 
-    logger = logging.getLogger("uclchem")
-    logger.setLevel(verbosity_file)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(verbosity_stdout)
+    console_handler.setFormatter(logging.Formatter("%(levelname)-8s %(message)s"))
 
-    # define a Handler which writes INFO messages or higher to the sys.stderr
-    console = logging.StreamHandler()
-    console.setLevel(verbosity_stdout)
-    # set a format which is simpler for console use
-    formatter = logging.Formatter("%(levelname)-8s %(message)s")
-    # tell the handler to use this format
-    console.setFormatter(formatter)
-    # add the handler to the root logger
-    logger.addHandler(console)
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
 
-    # Now, we can log to the root logger, or any other logger. First the root...
     logger.info(
-        f"Configured the logging. Files verbosity is {logging.getLevelName(verbosity_file)} and stdout verbosity is {logging.getLevelName(logger.getEffectiveLevel())}"
+        "Configured logging: file=%s, stdout=%s",
+        logging.getLevelName(file_handler.level),
+        logging.getLevelName(console_handler.level),
     )
 
 
@@ -147,7 +143,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # Set up logging
-    get_logger(args.verbosity_stdout, debug=args.debug)
+    get_logger(args.verbosity_stdout, args.verbosity_file)
 
     # Run makerates with the specified config file
-    run_makerates(args.settings_path)
+    run_makerates(args.settings_path, write_files=not args.dry_run)
