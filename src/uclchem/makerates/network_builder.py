@@ -1072,7 +1072,7 @@ class NetworkBuilder:
                         logger.warning(
                             f"Grain reaction {reaction} has a branching ratio of {reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
                         )
-                        # TODO: apply to all partners of the reaction
+
                         reaction_index = self.network.get_reaction_index(reaction)
                         reaction.set_alpha(new_alpha)
                         self.network.set_reaction(
@@ -1431,7 +1431,7 @@ class NetworkBuilder:
             try:
                 species_index = names.index(element) + 1
             except ValueError:
-                # TODO: The dummy value is currently SURFACE/BULK;
+                # TODO(Tobias Dijkhuis): The dummy value is currently SURFACE/BULK; https://github.com/uclchem/UCLCHEM/issues/205
                 # We could handle this better somehow
                 logger.info(f"\t{element} not in network, adding dummy index")
                 species_index = len(self.network.get_species_list()) + 1
