@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-
 UCLCHEM_ROOT_DIR = Path(__file__).parent.parent
 MAKERATES_DIR = UCLCHEM_ROOT_DIR / "Makerates"
 PYTHON_ROOT_DIR = UCLCHEM_ROOT_DIR / "src" / "uclchem"

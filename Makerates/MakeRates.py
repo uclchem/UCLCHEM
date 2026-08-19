@@ -20,7 +20,7 @@ except ModuleNotFoundError as err:
 import logging
 import pathlib
 import sys
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
 _LOG_POSSIBLE_LEVELS = ("DEBUG", "INFO", "WARNING", "CRITICAL", "ERROR")
 
