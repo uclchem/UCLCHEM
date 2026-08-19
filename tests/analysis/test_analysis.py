@@ -18,6 +18,7 @@ element_abundance_data = [
     (pd.DataFrame.from_dict({"H2": [1], "CH3OH": [0.5]}), {"H": 4, "C": 0.5, "O": 0.5}),
     (pd.DataFrame.from_dict({"CCL": [1]}), {"CL": 1, "C": 1}),
     (pd.DataFrame.from_dict({"H2": [1], "initialTemp": [0.5]}), {"H": 2, "N": 0}),
+    (pd.DataFrame.from_dict({"H2": [1], "SURFACE": [0.5]}), {"H": 2, "C": 0}),
 ]
 
 
@@ -32,7 +33,7 @@ def test_total_element_abundance(df: pd.DataFrame, expected: dict[str, float]):
 
 element_conservation_data = [
     (pd.DataFrame.from_dict({"H": [1, 1]}), {"H": 0}),
-    (pd.DataFrame.from_dict({"H2": [1, 0]}), {"H": 100}),
+    (pd.DataFrame.from_dict({"H2": [2, 1]}), {"H": 50}),
     (
         pd.DataFrame.from_dict({"H2": [1, 2], "CH3OH": [0.5, 0.5]}),
         {"H": 50, "C": 0, "O": 0},
@@ -56,7 +57,7 @@ def test_non_existent_element_raises():
     df = pd.DataFrame.from_dict({"H": [1], "N": [0]})
     element = "N"
 
-    with pytest.raises(RuntimeError, match="elemental abundance of 0"):
+    with pytest.raises(ZeroDivisionError, match="elemental abundance of 0"):
         uclchem.analysis.check_element_conservation(df, element_list=[element])
 
 
