@@ -4476,8 +4476,8 @@ class GridRunner:
 
         self.grid_file = grid_file if ".h5" in grid_file else grid_file + ".h5"
 
-        # TODO: Implement model appending to grid file
-        # TODO: Implement option to append or overwrite grid file.
+        # TODO(Gijs Vermarien): Implement model appending to grid file. https://github.com/uclchem/UCLCHEM/issues/203
+        # TODO(Gijs Vermarien): Implement option to append or overwrite grid file. https://github.com/uclchem/UCLCHEM/issues/203
         # Initial placeholder statement to remove pre-existing grid files
         if Path(self.grid_file).is_file():
             Path(self.grid_file).unlink()
