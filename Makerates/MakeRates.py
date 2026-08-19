@@ -20,7 +20,9 @@ except ModuleNotFoundError as err:
 import logging
 import pathlib
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+
+_LOG_POSSIBLE_LEVELS = ("DEBUG", "INFO", "WARNING", "CRITICAL", "ERROR")
 
 
 def get_args():  # ruff: ignore[missing-return-type-undocumented-public-function]
@@ -41,7 +43,8 @@ def get_args():  # ruff: ignore[missing-return-type-undocumented-public-function
 
     """
     parser = ArgumentParser(
-        description="UCLCHEM Makerates: Generate chemical network files"
+        description="UCLCHEM Makerates: Generate chemical network files",
+        formatter_class=ArgumentDefaultsHelpFormatter,
     )
 
     # Main argument - config file path
@@ -50,7 +53,7 @@ def get_args():  # ruff: ignore[missing-return-type-undocumented-public-function
         nargs="?",
         default="user_settings.yaml",
         type=pathlib.Path,
-        help="Path to YAML configuration file (default: user_settings.yaml)",
+        help="Path to YAML configuration file",
         metavar="settings-path",
     )
 
@@ -60,14 +63,19 @@ def get_args():  # ruff: ignore[missing-return-type-undocumented-public-function
         "--verbosity-stdout",
         default="WARNING",
         type=str,
-        help="Console output verbosity (DEBUG, INFO, WARNING, ERROR)",
+        help="Console output verbosity",
+        choices=_LOG_POSSIBLE_LEVELS,
+        metavar="LEVEL",
     )
     parser.add_argument(
         "-f",
         "--verbosity-file",
         default="INFO",
-        help="Verbosity of output to 'makerates.log' (DEBUG, INFO, WARNING, ERROR)",
+        help="Verbosity of output to 'makerates.log'",
+        choices=_LOG_POSSIBLE_LEVELS,
+        metavar="LEVEL",
     )
+
     # Helper options
     parser.add_argument(
         "--generate-template",
@@ -79,11 +87,13 @@ def get_args():  # ruff: ignore[missing-return-type-undocumented-public-function
         action="store_true",
         help="Print detailed help about configuration parameters and exit",
     )
+
+    # Options to help debugging the network
     parser.add_argument(
         "-d",
         "--dry-run",
         action="store_true",
-        help="Only do a dry run, meaning network validation, without writing the files.",
+        help="Only do a dry run, meaning network validation, without writing the files",
     )
 
     return parser.parse_args()
