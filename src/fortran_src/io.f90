@@ -27,7 +27,6 @@ module IO
 contains
     !Reads input reaction and species files as well as the final step of previous run if this is phase 2
     subroutine fileSetup
-        ! TODO: improve the file setup to interact with in memory mode (not opening the file handles if not needed.)
         inquire(unit=columnId, OPENED=columnOutput)
         if (columnOutput) write(columnId,333) specName(outIndx)
         333 format("Time,Density,gasTemp,dustTemp,av,radfield,zeta,",(999(A,:,",")))

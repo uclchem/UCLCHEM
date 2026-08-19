@@ -32,7 +32,6 @@ module CONSTANTS
     real(dp), parameter :: MIN_ABUND = 1.0e-30_dp  !Minimum abundance allowed
 
     !Sentinel value used in network.f90 for absent reaction types
-    !TODO: Move to f2py constants so it is always in sync with makerates
     integer, parameter :: REAC_NOT_PRESENT = 99999
 
     !Error codes for python wrap
