@@ -1,4 +1,3 @@
-# TODO v4.0: Remove this module and all its usages.
 """Compatibility layer for old Network and LoadedNetwork APIs.
 
 This module provides backward compatibility wrappers for the old Network

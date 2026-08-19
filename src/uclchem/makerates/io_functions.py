@@ -1162,12 +1162,12 @@ def build_ode_string(
             j += 1
             bulk_partner = species_names.index(species.get_name().replace("#", "@"))
             if enable_rates_storage:
-                ode_string += f"        REACTIONRATE({i}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})\n"
+                ode_string += f"        REACTIONRATE({i}) = -YDOT(nSurface)*surfaceCoverage*Y({bulk_partner + 1})\n"
                 ode_string += f"        REACTIONRATE({j}) = 0.0_dp\n"
             if not species_list[bulk_partner].is_refractory:
-                ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT({surface_index + 1})*surfaceCoverage*Y({bulk_partner + 1})\n"
+                ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*surfaceCoverage*Y({bulk_partner + 1})\n"
         if species.get_name()[0] == "@" and not species.is_refractory:
-            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({n + 1})\n"
+            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*surfaceCoverage*Y({n + 1})\n"
     ode_string += "    else\n"
     ode_string += "        ! surfaceCoverage = fractional surface coverage\n"
     ode_string += "        ! Real value of surfaceCoverage: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
@@ -1193,10 +1193,10 @@ def build_ode_string(
             surface_version = species_names.index(species.get_name().replace("@", "#"))
             if enable_rates_storage:
                 ode_string += f"        REACTIONRATE({i}) = 0.0_dp\n"
-                ode_string += f"        REACTIONRATE({j}) = -YDOT({surface_index + 1})*surfaceCoverage*Y({surface_version + 1})\n"
-            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT({surface_index + 1})*surfaceCoverage*Y({surface_version + 1})\n"
+                ode_string += f"        REACTIONRATE({j}) = -YDOT(nSurface)*surfaceCoverage*Y({surface_version + 1})\n"
+            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*surfaceCoverage*Y({surface_version + 1})\n"
         if species.get_name()[0] == "#":
-            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT({surface_index + 1})*surfaceCoverage*Y({n + 1})\n"
+            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*surfaceCoverage*Y({n + 1})\n"
     ode_string += "    end if\n"
 
     # once bulk transfer has been added, odes for bulk and surface must account for it

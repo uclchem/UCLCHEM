@@ -280,7 +280,6 @@ def load_model(
     file_obj: h5py.File | None = None,
     file: str | Path | None = None,
     name: str = "default",
-    debug: bool = False,
 ) -> AbstractModel:
     """Load a pre-existing model from a file. Bypasses `__init__`.
 
@@ -293,9 +292,6 @@ def load_model(
     name : str
         Name of the stored object, if none was provided `default` will have been used.
         Defaults to 'default'
-    debug : bool
-        Flag if extra debug information should be printed to the terminal.
-        Defaults to False. #TODO Add debug features
 
     Returns
     -------
@@ -344,7 +340,7 @@ def load_model(
     if cls is None:
         msg = f"Unrecognized model type '{model_class}'. Not in trusted registry."
         raise ValueError(msg)
-    return cls.load_from_dataset(model_ds=loaded_data, debug=debug)
+    return cls.load_from_dataset(model_ds=loaded_data)
 
 
 def _read_array(model_group: dict[str, xr.Dataset], name: str) -> xr.Variable:
@@ -525,9 +521,6 @@ class AbstractModel(ABC):
     run_type : Literal["managed", "external"]
         Run type. "external" means that the model is not
         run directly after instantiation, but can instead be run as `model.run()`.
-    debug : bool
-        Flag if extra debug information should be printed to the terminal.
-        Defaults to False. #TODO Add debug features
 
     """
 
@@ -541,8 +534,6 @@ class AbstractModel(ABC):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        *,
-        debug: bool = False,
     ):
         if mp.current_process().name != "MainProcess" and run_type != "external":
             msg = (
@@ -579,7 +570,6 @@ class AbstractModel(ABC):
         self.model_type = str(self.__class__.__name__)
         self._param_dict: dict = {}
         self.full_array: Any = None
-        self._debug = debug
         self._on_negative_abundances = on_negative_abundances
         self._on_error = on_error
         self.success_flag: SuccessFlag | None = None
@@ -681,7 +671,8 @@ class AbstractModel(ABC):
     # Separate class building method(s)
     @classmethod
     def load_from_dataset(
-        cls, model_ds: xr.Dataset, *, debug: bool = False
+        cls,
+        model_ds: xr.Dataset,
     ) -> AbstractModel:
         """Load an abstract model from an xr Dataset.
 
@@ -689,8 +680,6 @@ class AbstractModel(ABC):
         ----------
         model_ds : xr.Dataset
             Dataset to load
-        debug : bool
-            Flag to set (Default value = False)
 
         Returns
         -------
@@ -708,7 +697,6 @@ class AbstractModel(ABC):
         # Restore these values into the metadata dict rather than dataset variables
         object.__setattr__(obj, "_meta", temp_attribute_dict)  # ruff: ignore[unnecessary-dunder-call] bypass
         del obj._data["attributes_dict"]
-        obj.debug = debug
         obj._coord_assign()
         return obj
 
@@ -725,8 +713,6 @@ class AbstractModel(ABC):
         cls,
         file: str,
         name: str = "default",
-        *,
-        debug: bool = False,
     ):
         """Load a model from a file.
 
@@ -738,9 +724,6 @@ class AbstractModel(ABC):
             Path to a file that contains previously run and stored models.
         name : str
             Name of the stored object. Defaults to 'default'.
-        debug : bool
-            Flag if extra debug information should be printed to the terminal.
-            Defaults to False. #TODO Add debug features
 
         Returns
         -------
@@ -748,7 +731,7 @@ class AbstractModel(ABC):
             Model object loaded from the file.
 
         """
-        return load_model(file=file, name=name, debug=debug)
+        return load_model(file=file, name=name)
 
     # /Separate class building methods
 
@@ -2257,9 +2240,8 @@ class AbstractModel(ABC):
     def _array_clean(self):
         """Clean the arrays changed by UCLCHEM Fortran code."""
         # Find the first element with all the zeros
-        if self._debug:
-            print(f"in _array_clean: physics_array = {self.physics_array}")
-            print(f"in _array_clean: physics_array type = {type(self.physics_array)}")
+        _logger.debug(f"in _array_clean: physics_array = {self.physics_array}")
+        _logger.debug(f"in _array_clean: physics_array type = {type(self.physics_array)}")
 
         nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
         if len(nonzero_indices) == 0:
@@ -2687,9 +2669,6 @@ class Cloud(AbstractModel):
     timepoints : int
         Integer value of how many timesteps should be calculated before
         aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
-    debug : bool
-        Flag if extra debug information should be printed to the terminal.
-        Defaults to False. #TODO Add debug features
     read_file : str | None
         Path to the file to be read. Reading a file to a model object, prevents it from
         being run. Defaults to None.
@@ -2707,8 +2686,6 @@ class Cloud(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        *,
-        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -2739,8 +2716,6 @@ class Cloud(AbstractModel):
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -2760,7 +2735,6 @@ class Cloud(AbstractModel):
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
@@ -2816,7 +2790,6 @@ class Cloud(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
         }
 
 
@@ -2842,9 +2815,6 @@ class Collapse(AbstractModel):
     timepoints : int
         Integer value of how many timesteps should be calculated before
         aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
-    debug : bool
-        Flag if extra debug information should be printed to the terminal.
-        Defaults to False. #TODO Add debug features
     read_file : str | None
         Path to the file to be read. Reading a file to a model object, prevents it from
         being run. Defaults to None.
@@ -2874,8 +2844,6 @@ class Collapse(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        *,
-        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -2908,8 +2876,6 @@ class Collapse(AbstractModel):
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -3013,7 +2979,6 @@ class Collapse(AbstractModel):
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
@@ -3071,7 +3036,6 @@ class Collapse(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
         }
 
 
@@ -3102,9 +3066,6 @@ class PrestellarCore(AbstractModel):
     timepoints : int
         Integer value of how many timesteps should be calculated before
         aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
-    debug : bool
-        Flag if extra debug information should be printed to the terminal.
-        Defaults to False. #TODO Add debug features
     read_file : str | None
         Path to the file to be read. Reading a file to a model object, prevents it from
         being run. Defaults to None.
@@ -3124,8 +3085,6 @@ class PrestellarCore(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        *,
-        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -3162,8 +3121,6 @@ class PrestellarCore(AbstractModel):
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -3185,7 +3142,6 @@ class PrestellarCore(AbstractModel):
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
@@ -3251,7 +3207,6 @@ class PrestellarCore(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
         }
 
 
@@ -3283,9 +3238,6 @@ class CShock(AbstractModel):
     timepoints : int
         Integer value of how many timesteps should be calculated before
         aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
-    debug : bool
-        Flag if extra debug information should be printed to the terminal.
-        Defaults to False. #TODO Add debug features
     read_file : str | None
         Path to the file to be read. Reading a file to a model object, prevents it from
         being run. Defaults to None.
@@ -3306,8 +3258,6 @@ class CShock(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        *,
-        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -3345,8 +3295,6 @@ class CShock(AbstractModel):
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -3368,7 +3316,6 @@ class CShock(AbstractModel):
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
@@ -3439,7 +3386,6 @@ class CShock(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
         }
 
 
@@ -3464,9 +3410,6 @@ class JShock(AbstractModel):
     timepoints : int
         Integer value of how many timesteps should be calculated before
         aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
-    debug : bool
-        Flag if extra debug information should be printed to the terminal.
-        Defaults to False. #TODO Add debug features
     read_file : str | None
         Path to the file to be read. Reading a file to a model object, prevents it from
         being run. Defaults to None.
@@ -3485,8 +3428,6 @@ class JShock(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        *,
-        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -3519,8 +3460,6 @@ class JShock(AbstractModel):
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -3542,7 +3481,6 @@ class JShock(AbstractModel):
             starting_chemistry=starting_chemistry,
             previous_model=previous_model,
             timepoints=timepoints,
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
@@ -3602,7 +3540,6 @@ class JShock(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
         }
 
 
@@ -3657,9 +3594,6 @@ class Postprocess(AbstractModel):
     coldens_C_array : np.ndarray | None
         Represents the value of the column density of C
         at different timepoints found in time_array.
-    debug : bool
-        Flag if extra debug information should be printed to the terminal.
-        Defaults to False. #TODO Add debug features
     read_file : str | None
         Path to the file to be read. Reading a file to a model object, prevents it from
         being run. Defaults to None.
@@ -3687,8 +3621,6 @@ class Postprocess(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        *,
-        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -3741,8 +3673,6 @@ class Postprocess(AbstractModel):
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -3772,7 +3702,6 @@ class Postprocess(AbstractModel):
             timepoints=int(1.5 * len(time_array))
             if time_array is not None
             else TIMEPOINTS,
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
@@ -3883,7 +3812,6 @@ class Postprocess(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
             "postprocess_arrays": self.postprocess_arrays,
             **self.postprocess_arrays,
         }
@@ -3930,9 +3858,6 @@ class Model(AbstractModel):
     radfield_array : np.ndarray | None
         Represents the value of the UV radiation field at
         different timepoints found in time_array.
-    debug : bool
-        Flag if extra debug information should be printed to the terminal.
-        Defaults to False. #TODO Add debug features
     read_file : str | None
         Path to the file to be read. Reading a file to a model object,
         prevents it from being run. Defaults to None.
@@ -3955,8 +3880,6 @@ class Model(AbstractModel):
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
-        *,
-        debug: bool = False,
     ):
         """Initialize the model with :meth:`AbstractModel.__init__`.
 
@@ -3997,8 +3920,6 @@ class Model(AbstractModel):
             Action when negative abundances are detected after a run. Defaults to 'warning'.
         on_error : Literal['raise', 'warn', 'ignore']
             Action when the Fortran solver returns an error flag. Defaults to 'raise'.
-        debug : bool
-            If True, print extra debug information. Defaults to False.
 
         Raises
         ------
@@ -4026,7 +3947,6 @@ class Model(AbstractModel):
             timepoints=int(1.5 * len(time_array))
             if time_array is not None
             else TIMEPOINTS,
-            debug=debug,
             read_file=read_file,
             run_type=run_type,
             on_negative_abundances=on_negative_abundances,
@@ -4116,7 +4036,6 @@ class Model(AbstractModel):
             "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
-            "_debug": self._debug,
             **self.postprocess_arrays,
         }
 
@@ -4438,7 +4357,6 @@ NoGridParameters = [
     "coldens_H2_array",
     "coldens_CO_array",
     "coldens_C_array",
-    "debug",
     "read_file",
     "run_type",
 ]
