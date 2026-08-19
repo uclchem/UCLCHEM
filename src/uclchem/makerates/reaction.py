@@ -139,9 +139,6 @@ class Reaction:
         if isinstance(input_row, Reaction):
             self.set_reactants(input_row.get_reactants())
             self.set_products(input_row.get_products())
-            if not _skip_reaction_validation:
-                self.check_element_conservation()
-                self.check_charge_conservation()
             self.set_alpha(input_row.get_alpha())
             self.set_beta(input_row.get_beta())
             self.set_gamma(input_row.get_gamma())
@@ -167,9 +164,6 @@ class Reaction:
                         normalize_species_name(str(input_row[6])),
                     ]
                 )
-                if not _skip_reaction_validation:
-                    self.check_element_conservation()
-                    self.check_charge_conservation()
 
                 self.set_alpha(float(input_row[7]))
                 self.set_beta(float(input_row[8]))
@@ -192,6 +186,12 @@ class Reaction:
             except IndexError as error:
                 msg = "Input for Reaction should be a list of length 12 with optional 13th entry for reduced mass and 14th for extrapolation flag."
                 raise ValueError(msg) from error
+
+        if not _skip_reaction_validation:
+            self.check_element_conservation()
+            self.check_charge_conservation()
+            self.check_reaction_type_is_possible()
+
         self.duplicate = False
         self.source = reaction_source  # The source of the reaction, e.g. UMIST, KIDA or user defined
 
@@ -748,6 +748,89 @@ class Reaction:
             msg += f"Reactants: {charge_reactants}. Products: {charge_products}"
             raise ValueError(msg)
 
+    def check_reaction_type_is_possible(self) -> None:
+        """Check that the reaction type is valid for the reactants and products.
+
+        Check that the combination of the number of species (reactant and product)
+        and their phases, matches with the given reaction type.
+
+        Raises
+        ------
+        ValueError
+            - If a TWOBODY reaction has a species on the ice
+            - If an LH reaction has a species in the gas-phase
+            - If an ER reaction does not have one reactant on the ice and one in the gas-phase
+            - If a THERM reaction does not have all reactants on the ice
+                and all products in the gas-phase
+            - If a FREEZE reaction does not have all reactants in the gas-phase
+                and all products on the ice
+            - If an LH, LHDES, ER, ERDES or TWOBODY reaction does not have two reagents
+            - If a THERM, FREEZE, DESCR, DESOH2, DEUVCR, SURFSWAP or BULKSWAP reaction
+                does not have only one reagent.
+
+        """
+        reaction_type = self.get_reaction_type()
+        if reaction_type == "TWOBODY":
+            if self.is_ice_reaction(
+                include_reactants=True, include_products=True, strict=False
+            ):
+                msg = f"TWOBODY reactions must happen in the gas-phase, but reaction '{self}' has reactants or products on the ice."
+                raise ValueError(msg)
+        elif reaction_type == "LH":
+            if not self.is_ice_reaction(
+                include_reactants=True, include_products=True, strict=True
+            ):
+                msg = f"LH reactions must happen fully on the ice, but '{self}' has reactants or products in the gas."
+                raise ValueError(msg)
+        elif reaction_type == "ER":
+            if not self.is_ice_reaction(
+                include_reactants=True, include_products=False, strict=False
+            ) or not self.is_gas_reaction(
+                include_reactants=True, include_products=False, strict=False
+            ):
+                msg = f"ER reactions must have one reactant on ice, and one in the gas, but '{self}' did not."
+                raise ValueError(msg)
+            if not self.is_ice_reaction(
+                include_reactants=False, include_products=True, strict=True
+            ):
+                msg = f"ER reactions must have all products on ice, but '{self}' did not."
+                raise ValueError(msg)
+        elif reaction_type == "THERM":
+            if not self.is_ice_reaction(
+                include_reactants=True, include_products=False, strict=True
+            ) or not self.is_gas_reaction(
+                include_reactants=False, include_products=True, strict=True
+            ):
+                msg = f"THERM reactions must have all reactants on ice and products in gas, but '{self}' did not."
+                raise ValueError(msg)
+        elif reaction_type == "FREEZE" and self.get_pure_reactants() != [
+            "E-"
+        ]:  # Skip electron freeze-out because it is absorbed by grain
+            if not self.is_gas_reaction(
+                include_reactants=True, include_products=False, strict=True
+            ) or not self.is_ice_reaction(
+                include_reactants=False, include_products=True, strict=True
+            ):
+                msg = f"FREEZE reactions must have all reactants in gas and products on ice, but '{self}' did not."
+                raise ValueError(msg)
+
+        if reaction_type in {"LH", "LHDES", "ER", "ERDES", "TWOBODY"}:
+            if len(self.get_pure_reactants()) != 2:  # ruff: ignore[magic-value-comparison]
+                msg = f"Reactions with type '{reaction_type}' should have two reactants, but reaction '{self}' had {len(self.get_pure_reactants())}"
+                raise ValueError(msg)
+        elif reaction_type in {
+            "THERM",
+            "FREEZE",
+            "DESCR",
+            "DESOH2",
+            "DEUVCR",
+            "SURFSWAP",
+            "BULKSWAP",
+        }:
+            if len(self.get_pure_reactants()) != 1:
+                msg = f"Reactions with type '{reaction_type}' should have only one reactant, but reaction '{self}' had {len(self.get_pure_reactants())}"
+                raise ValueError(msg)
+
     def convert_gas_to_surf(self) -> None:
         """Convert the gas-phase species to surface species in place for this reaction.
 
@@ -942,10 +1025,10 @@ class Reaction:
         include_products: bool = True,
         strict: bool = True,
     ) -> bool:
-        """Check whether it is a gas reaction. By default it is strict - all.
+        """Check whether it is a gas reaction.
 
-        reactions must be in the gas-phase - if strict=False; any reaction in
-        the gas-phase returns true.
+        By default it is strict, meaning that all reactants must be in the gas-phase.
+        If strict=False; any reaction in the gas-phase returns true.
 
         Parameters
         ----------
