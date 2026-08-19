@@ -841,7 +841,7 @@ def total_element_abundance(element: str, df: pd.DataFrame) -> pd.Series:
 
     """
     sums: np.ndarray = _count_element(list(df.columns), element).to_numpy()
-    for variable in PHYSICAL_PARAMETERS:
+    for variable in [*PHYSICAL_PARAMETERS, "SURFACE", "BULK", "E-"]:
         sums = np.where(df.columns == variable, 0, sums)
     return df.mul(sums, axis=1).sum(axis=1)
 
@@ -854,7 +854,8 @@ def check_element_conservation(
 ) -> dict[str, str]:
     """Check the conservation of elements through the rows of a dataframe.
 
-    Checks the conservation by comparing their total abundances at the start and end of the model.
+    Checks the conservation by comparing their total abundances at the start and
+    at the end of the model.
 
     Parameters
     ----------
@@ -874,15 +875,16 @@ def check_element_conservation(
     Raises
     ------
     ZeroDivisionError
-        If `percent` is True, and any of the elements in `element_list` had a final abundance of 0.
+        If `percent` is True, and any of the elements in `element_list`
+        had a initial elemental abundance of 0.
 
     """
     result = {}
     for element in element_list:
         elemental_abundances = total_element_abundance(element, df).to_numpy()
         if percent:
-            if elemental_abundances[-1] == 0:
-                msg = f"Tried to calculate relative change of element '{element}', but it had a final elemental abundance of 0."
+            if elemental_abundances[0] == 0:
+                msg = f"Tried to calculate relative change of element '{element}', but it had an initial elemental abundance of 0."
                 raise ZeroDivisionError(msg)
             elemental_abundances = (
                 np.abs(elemental_abundances[0] - elemental_abundances[-1])
