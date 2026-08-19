@@ -29,7 +29,7 @@ def test_makerates_invalid_log_level_raises():
 
 
 VERBOSITIES = ("DEBUG", "INFO", "WARNING")
-verbosity_combinations = itertools.product(VERBOSITIES, VERBOSITIES)
+verbosity_combinations = tuple(itertools.product(VERBOSITIES, VERBOSITIES))
 
 
 @pytest.mark.parametrize(("verbosity_stdout", "verbosity_file"), verbosity_combinations)
