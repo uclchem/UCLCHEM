@@ -196,32 +196,6 @@ _NAN_STRINGS: list[str] = [
 ]
 
 
-def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
-    """Calculate the dissipation time of a C-type shock.
-
-    Use to obtain a useful timescale for your C-shock model runs.
-    Velocity of ions and neutrals equalizes at dissipation time and
-    full cooling takes a few dissipation times.
-
-    Parameters
-    ----------
-    shock_vel : float
-        Velocity of the shock in km/s
-    initial_dens : float
-        Preshock density of the gas in cm$^{-3}$
-
-    Returns
-    -------
-    float
-        The dissipation time of the shock in years
-
-    """
-    pc = 3.086e18  # parsec in cgs
-    SECONDS_PER_YEAR = 3.15569e7
-    dlength = 12.0 * pc * shock_vel / initial_dens
-    return (dlength * 1.0e-5 / shock_vel) / SECONDS_PER_YEAR
-
-
 def get_species_table(file: str | Path | None = None) -> pd.DataFrame:
     """Load the list of species in the UCLCHEM network into a pandas dataframe.
 
@@ -313,6 +287,30 @@ _G = 6.67e-8  # gravitational constant in cgs
 _SECONDS_PER_YEAR = 3.15569e7
 _RHO0_FILAMENT = 2.2e4  # reference density for filament/ambipolar (cm^-3)
 _TWO_PI_G = 2.0 * np.pi * _G
+
+
+def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
+    """Calculate the dissipation time of a C-type shock.
+
+    Use to obtain a useful timescale for your C-shock model runs.
+    Velocity of ions and neutrals equalizes at dissipation time and
+    full cooling takes a few dissipation times.
+
+    Parameters
+    ----------
+    shock_vel : float
+        Velocity of the shock in km/s
+    initial_dens : float
+        Preshock density of the gas in cm$^{-3}$
+
+    Returns
+    -------
+    float
+        The dissipation time of the shock in years
+
+    """
+    dlength = 12.0 * _PC * shock_vel / initial_dens
+    return (dlength * 1.0e-5 / shock_vel) / _SECONDS_PER_YEAR
 
 
 @enum.unique
