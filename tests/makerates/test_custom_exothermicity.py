@@ -75,7 +75,3 @@ class TestHeatingFunctions:
 
         products = heating.parse_species_from_row(row, "product")
         assert products == ["H2", "NAN", "NAN", "NAN"]
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

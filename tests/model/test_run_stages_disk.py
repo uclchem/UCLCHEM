@@ -230,11 +230,3 @@ def test_endAtFinalDensity_validation_disk(test_output_directory):  # ruff: igno
             param_dict=params,
             out_species=["OH", "CO"],
         )
-
-
-def main():
-    pytest.main(["-v", __file__])
-
-
-if __name__ == "__main__":
-    main()

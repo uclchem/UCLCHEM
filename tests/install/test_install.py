@@ -54,9 +54,3 @@ def test_package_installation():
         import uclchem  # ruff: ignore[unused-import]
     except ImportError:
         pytest.fail("Failed to import the installed package")
-
-
-if __name__ == "__main__":
-    import pytest
-
-    pytest.main()

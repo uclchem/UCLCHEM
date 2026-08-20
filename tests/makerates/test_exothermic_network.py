@@ -286,8 +286,3 @@ def test_exothermicity_unit_conversion(config_file_with_exothermicity):
             print(
                 f"✓ {reactant1} + {reactant2} -> {product1} + {product2}: {exo_ev:.2f} eV"
             )
-
-
-if __name__ == "__main__":
-    # Run tests with verbose output
-    pytest.main([__file__, "-v", "-s"])

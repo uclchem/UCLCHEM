@@ -270,7 +270,3 @@ class TestCustomExothermicities:
         # H+H->H2 should now be updated
         expected = -4.52 * heating.EV_TO_ERG
         assert reactions[0].get_exothermicity() == pytest.approx(expected, rel=1e-6)
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

@@ -186,12 +186,3 @@ def test_chained_models_in_memory(basic_params):
         starting_chemistry=final_abundances,
     )
     assert result2 == uclchem.utils.SuccessFlag.SUCCESS
-
-
-def main():
-    """Run the tests using pytest"""
-    pytest.main(["-v", __file__])
-
-
-if __name__ == "__main__":
-    main()

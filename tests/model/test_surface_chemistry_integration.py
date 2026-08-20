@@ -103,7 +103,3 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     assert num_monolayers_in_run <= num_monolayers_is_surface + tol, (
         f"Number of monolayers of surface should be less than {num_monolayers_is_surface}, but was {num_monolayers_in_run:.2f} at most"
     )
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v", "-s"])
