@@ -338,11 +338,3 @@ def test_endAtFinalDensity_validation(test_output_directory):  # ruff: ignore[in
             out_species=["OH", "CO"],
             return_array=True,
         )
-
-
-def main():
-    pytest.main(["-v", __file__])
-
-
-if __name__ == "__main__":
-    main()

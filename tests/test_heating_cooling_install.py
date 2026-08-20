@@ -498,7 +498,3 @@ class TestFortranConsistency:
                     f"Coolant '{coolant_name}' parent should be '{expected_parent}', "
                     f"got '{parents[idx]}'"
                 )
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

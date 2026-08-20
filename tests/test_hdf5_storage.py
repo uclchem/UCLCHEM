@@ -607,16 +607,3 @@ class TestEngineParameterRemoved:
         fpath, _, _, _, _ = saved_model_file
         with pytest.raises(TypeError):
             load_model(file=fpath, name="default", engine="h5netcdf")
-
-
-# ============================================================================
-# Entry point
-# ============================================================================
-
-
-def main():
-    pytest.main(["-v", __file__])
-
-
-if __name__ == "__main__":
-    main()

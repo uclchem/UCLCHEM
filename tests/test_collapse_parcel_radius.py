@@ -208,7 +208,3 @@ def test_end_at_final_density_multipoint_raises():
 def test_lower_final_than_initial_dens_raises():
     with pytest.raises(RuntimeError):
         uclchem.model.Cloud({"initialDens": 1e5, "finalDens": 1e4, "freefall": True})
-
-
-if __name__ == "__main__":
-    pytest.main(["-v", __file__])

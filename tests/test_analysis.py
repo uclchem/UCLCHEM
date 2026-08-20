@@ -133,7 +133,3 @@ def test_analysis_matches(temp_output_dir):
         assert np.allclose(
             dy[species].iloc[-10:-1], fd_slope[-9:], rtol=1.5, atol=1e-14
         ), f"dy and FD slope do not match for species {species}"
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v", "-s"])
