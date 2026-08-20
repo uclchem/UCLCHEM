@@ -16,6 +16,7 @@ from uclchem.advanced.runtime_network instead.
 
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from copy import deepcopy
 from pathlib import Path
 
@@ -685,8 +686,8 @@ class Network(BaseNetwork, MutableNetworkABC):
     @classmethod
     def from_lists(
         cls,
-        species: list[Species],
-        reactions: list[Reaction],
+        species: Iterable[Species],
+        reactions: Iterable[Reaction],
     ) -> "Network":
         """Create network directly from lists.
 
@@ -696,9 +697,9 @@ class Network(BaseNetwork, MutableNetworkABC):
 
         Parameters
         ----------
-        species : list[Species]
+        species : Iterable[Species]
             List of Species objects
-        reactions : list[Reaction]
+        reactions : Iterable[Reaction]
             List of Reaction objects
 
         Returns
@@ -1147,13 +1148,13 @@ class Network(BaseNetwork, MutableNetworkABC):
             old_h2o_be = self._species_dict["@H2O"].get_binding_energy()
             for species_obj in all_species:
                 if (
-                    "@" in species_obj.get_name()
+                    species_obj.is_bulk_species()
                     and species_obj.get_binding_energy() == old_h2o_be
                 ):
                     species_obj.set_binding_energy(new_binding_energy)
         else:
             # Warn if changing bulk species that was H2O-limited
-            if "@" in specie and "@H2O" in self._species_dict:
+            if specie.startswith("@") and "@H2O" in self._species_dict:
                 h2o_be = self._species_dict["@H2O"].get_binding_energy()
                 if self._species_dict[specie].get_binding_energy() == h2o_be:
                     logger.warning(
@@ -1163,11 +1164,61 @@ class Network(BaseNetwork, MutableNetworkABC):
 
             self._species_dict[specie].set_binding_energy(new_binding_energy)
 
+    def _change_reaction_property(
+        self, reaction: Reaction, new_value: float, function_name: str
+    ) -> None:
+        """Change a property of a reaction, and all the reactions that are coupled to it.
+
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to adjust.
+        new_value : float
+            New value to set the property to
+        function_name : str
+            Function to call that sets the property.
+
+        Raises
+        ------
+        RuntimeError
+            If multiple reactions match `reaction` in the network, or if
+            multiple reactions match one of the reactions coupled to it.
+
+        """
+        similar_reactions = list(self.find_similar_reactions(reaction).items())
+
+        if len(similar_reactions) == 0:
+            logger.warning(f"Reaction {reaction} not found in network")
+            return
+        if len(similar_reactions) > 1:
+            msg = (
+                f"Found {len(similar_reactions)} reactions matching {reaction}. "
+                "Cannot uniquely identify which one's property to change."
+            )
+            raise RuntimeError(msg)
+
+        reaction_idx, _ = similar_reactions[0]
+        getattr(self._reactions_dict[reaction_idx], function_name)(new_value)
+
+        # Change all partners too
+        coupled_reactions = self.get_all_partners(reaction)
+        for coupled_reaction in coupled_reactions:
+            similar_reactions = list(
+                self.find_similar_reactions(coupled_reaction).items()
+            )
+            if len(similar_reactions) > 1:
+                msg = f"Found {len(similar_reactions)} reactions matching coupled reaction '{coupled_reaction}'. "
+                "Cannot uniquely identify which barrier to change."
+                raise RuntimeError(msg)
+            reaction_idx, _ = similar_reactions[0]
+            getattr(self._reactions_dict[reaction_idx], function_name)(new_value)
+
     def change_reaction_barrier(self, reaction: Reaction, barrier: float) -> None:
         """Change activation barrier of a reaction.
 
         Looks up reaction in Network by its reactants and products.
         If Fortran interface is available, also updates Fortran.
+        Also changes all the reactions that are partnered to `reaction`.
 
         Parameters
         ----------
@@ -1176,26 +1227,8 @@ class Network(BaseNetwork, MutableNetworkABC):
         barrier : float
             New reaction barrier in K
 
-        Raises
-        ------
-        RuntimeError
-            If multiple matching reactions are found in the network.
-
         """
-        similar_reactions = list(self.find_similar_reactions(reaction).items())
-
-        if len(similar_reactions) == 1:
-            reaction_idx, _ = similar_reactions[0]
-            self._reactions_dict[reaction_idx].set_gamma(barrier)
-
-        elif len(similar_reactions) == 0:
-            logger.warning(f"Reaction {reaction} not found in network")
-        else:
-            msg = (
-                f"Found {len(similar_reactions)} reactions matching {reaction}. "
-                "Cannot uniquely identify which barrier to change."
-            )
-            raise RuntimeError(msg)
+        self._change_reaction_property(reaction, barrier, "set_gamma")
 
     def get_all_partners(self, reaction: Reaction) -> list[Reaction]:
         """Get a list of all reactions that have ``reaction`` as their partner.

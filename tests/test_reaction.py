@@ -2,7 +2,7 @@ from contextlib import nullcontext
 
 import pytest
 
-from uclchem.makerates.reaction import Reaction, skip_reaction_validation
+from uclchem.makerates.reaction import CoupledReaction, Reaction, skip_reaction_validation
 
 dummy_data = ["NAN"] * 8
 
@@ -148,3 +148,25 @@ def test_reaction_conserves_elements(reaction: Reaction, expected):
 def test_all_on_grain(reaction: Reaction, expected):
     with expected:
         reaction.check_reaction_type_is_possible()
+
+
+def test_get_original_partner() -> None:
+    original_reaction = Reaction(["#H", "#H", "LH", "#H2", *dummy_data])
+    coupled_reaction_bulk = CoupledReaction(["@H", "@H", "LH", "@H2", *dummy_data])
+    coupled_reaction_bulk.set_partner(original_reaction)
+    coupled_reaction_lhdes = CoupledReaction(["#H", "#H", "LHDES", "H2", *dummy_data])
+    coupled_reaction_lhdes.set_partner(original_reaction)
+    coupled_reaction_bulk_lhdes = CoupledReaction(
+        ["@H", "@H", "LHDES", "H2", *dummy_data]
+    )
+    coupled_reaction_bulk_lhdes.set_partner(coupled_reaction_lhdes)
+
+    coupled_reactions: list[CoupledReaction] = [
+        coupled_reaction_bulk,
+        coupled_reaction_lhdes,
+        coupled_reaction_bulk_lhdes,
+    ]
+
+    for reaction in coupled_reactions:
+        assert not isinstance(reaction.get_partner(), CoupledReaction)
+        assert reaction.get_partner() == original_reaction

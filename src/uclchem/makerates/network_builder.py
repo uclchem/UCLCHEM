@@ -105,9 +105,9 @@ class NetworkBuilder:
             msg = "Cannot have duplicate species in the species list."
             raise ValueError(msg)
 
-        # Store inputs
-        self.input_species = species
-        self.input_reactions = reactions
+        # Store inputs as immutable
+        self.input_species = tuple(species)
+        self.input_reactions = tuple(reactions)
 
         # Store options
         self.user_defined_bulk = user_defined_bulk or []
@@ -429,10 +429,10 @@ class NetworkBuilder:
             self.network.add_species(new_species)
 
     def _add_bulk_species(self) -> None:
-        """Copy all surface species to the bulk. Their binding energies and diffusion barriers.
+        """Copy all surface species to the bulk.
 
-        are set to those of H2O, to mimic Ghesquire et al, 2015
-        (https://doi.org/10.1039/C5CP00558B).
+        Their binding energies and diffusion barriers are set to those of H2O,
+        to mimic Ghesquire et al, 2015 (https://doi.org/10.1039/C5CP00558B).
 
         Raises
         ------
@@ -499,18 +499,15 @@ class NetworkBuilder:
         ]
         current_reaction_list = self.network.get_reaction_list()
 
+        species_names = self.network.species.keys()
         new_reactions: list[Reaction] = []
         for reaction in surface_reactions_can_be_bulk:
             new_reac = deepcopy(reaction)
             new_reac.convert_surf_to_bulk()
+            if new_reac.has_unknown_species(species_names):
+                msg = f"New bulk reaction '{new_reac}' has unknown species. Add to bulk, or call 'self._add_bulk_species' first."
+                raise RuntimeError(msg)
             new_reac = CoupledReaction(new_reac)
-            while isinstance(reaction, CoupledReaction):
-                # If the current loop reaction is also coupled, get its partner.
-                partner = reaction.get_partner()
-                if partner is None:
-                    msg = f"CoupledReaction {reaction} has no partner"
-                    raise RuntimeError(msg)
-                reaction = partner
             new_reac.set_partner(reaction)
             new_reactions.append(new_reac)
         new_reactions = [
@@ -734,8 +731,6 @@ class NetworkBuilder:
         ------
         NotImplementedError
             ChemDes reaction loading is not yet implemented.
-        RuntimeError
-            If a CoupledReaction in the network has no partner set.
 
         """
         logger.debug("Adding chemical desorption reactions for LH and ER mechanisms")
@@ -750,13 +745,6 @@ class NetworkBuilder:
                 n_products = sum(prod != "NAN" for prod in reaction.get_products())
 
                 reaction_partner: Reaction = deepcopy(reaction)
-                while isinstance(reaction_partner, CoupledReaction):
-                    # If the current loop reaction is also coupled, get its partner.
-                    partner = reaction_partner.get_partner()
-                    if partner is None:
-                        msg = f"CoupledReaction {reaction_partner} has no partner"
-                        raise RuntimeError(msg)
-                    reaction_partner = partner
 
                 for i in range(n_products):
                     # For each of the products, make a new reaction where it is desorbed
@@ -967,15 +955,17 @@ class NetworkBuilder:
                 or "#" + reactants[0] in reaction.get_reactants()
                 for reaction in reactions_on_grain_filtered
             ):
-                # There is already another version in the network, keep that
+                logger.debug(
+                    f"There a custom version of reaction '{reaction}' on the grain (with same reactants) already in the network. Skipping adding the copied one."
+                )
                 continue
 
             if any("+" in reactant for reactant in reactants):
                 logger.debug(
-                    f"Reaction {reaction} had reactant ions, which is not possible on grain. Skipping"
+                    f"Reaction '{reaction}' had reactant ions, which is not possible on grain. Skipping"
                 )
-                # Cannot have ions in grain
                 continue
+
             # We have now filtered to have only gas-phase reactions that have type
             # CRP, CRPHOT or PHOTON
             new_reaction = deepcopy(reaction)
@@ -996,12 +986,13 @@ class NetworkBuilder:
                 or species in {"NAN", "CRP", "CRPHOT", "PHOTON"}
                 for species in reactants + products
             ):
-                # Reaction contains species that were not defined on grain surface.
-                # Do not add this reaction to the network.
                 logger.debug(
-                    f"Reaction {reaction} contains species that were not set on grain. Skipping"
+                    f"Reaction copied from gas to grain '{reaction}' contains species that were not set on grain. Skipping"
                 )
                 continue
+
+            new_reaction = CoupledReaction(new_reaction)
+            new_reaction.set_partner(reaction)
             new_reactions.append(new_reaction)
         logger.debug("Adding new reactions to grain")
         self.network.add_reactions(new_reactions)

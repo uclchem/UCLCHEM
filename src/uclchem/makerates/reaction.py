@@ -18,7 +18,7 @@ from uclchem.makerates.utils import normalize_species_name
 from uclchem.utils import MISSING_VALUE_FLOAT
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterable, Iterator
 
 logger = logging.getLogger(__name__)
 
@@ -183,9 +183,9 @@ class Reaction:
                     else 0.0
                 )
 
-            except IndexError as error:
+            except IndexError as e:
                 msg = "Input for Reaction should be a list of length 12 with optional 13th entry for reduced mass and 14th for extrapolation flag."
-                raise ValueError(msg) from error
+                raise ValueError(msg) from e
 
         if not _skip_reaction_validation:
             self.check_element_conservation()
@@ -1166,6 +1166,26 @@ class Reaction:
         ]
         return all(checklist) if strict else any(checklist)
 
+    def has_unknown_species(self, species: Iterable[str]) -> bool:
+        """Determine whether this reaction involves any species not in `species`.
+
+        Parameters
+        ----------
+        species : Iterable[str]
+            Iterable of available species
+
+        Returns
+        -------
+        bool
+            True if there is a reactant or product that is not in `species`,
+            False otherwise
+
+        """
+        for spec in self.get_pure_reactants() + self.get_pure_products():
+            if spec not in species:
+                return True
+        return False
+
     def __str__(self) -> str:
         """Return a human-readable string of the reaction.
 
@@ -1217,11 +1237,22 @@ class Reaction:
         )
 
 
+def _get_original_partner(reaction: Reaction | CoupledReaction) -> Reaction:
+    while isinstance(reaction, CoupledReaction):
+        # If the current loop reaction is also coupled, get its partner.
+        partner = reaction.get_partner()
+        if partner is None:
+            msg = f"CoupledReaction '{reaction}' has no partner"
+            raise RuntimeError(msg)
+        reaction = partner
+    return reaction
+
+
 class CoupledReaction(Reaction):
     """Representation of reactions that are coupled to another Reaction instance.
 
     This means that if a reaction has a parameter changed by, for example,
-    `network.change_binding_energy()`, every CoupledReaction that has that instance
+    `network.change_energy_barrier()`, every CoupledReaction that has that instance
     as its partner also has its binding energy changed to that value.
 
     """
@@ -1238,13 +1269,14 @@ class CoupledReaction(Reaction):
         super().__init__(input_row)
         self.partner: Reaction | None = None
 
-    def set_partner(self, partner: Reaction) -> None:
+    def set_partner(self, partner: Reaction | CoupledReaction) -> None:
         """Set the partner.
 
         Parameters
         ----------
-        partner : Reaction
-            partner of this reaction.
+        partner : Reaction | CoupledReaction
+            partner of this reaction. If a CoupledReaction, will walk down the tree of partners
+            until it finds an uncoupled reaction (i.e. just a :class:`Reaction`).
 
         Raises
         ------
@@ -1255,7 +1287,7 @@ class CoupledReaction(Reaction):
         if not isinstance(partner, Reaction):
             msg = f"partner should be of type Reaction, but got type {type(partner)}"
             raise TypeError(msg)
-        self.partner = partner
+        self.partner = _get_original_partner(partner)
 
     def get_partner(self) -> Reaction | None:
         """Get the partner.
