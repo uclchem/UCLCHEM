@@ -1686,7 +1686,7 @@ def write_network_file(
                 if partner is None:
                     msg = f"Found CoupledReaction '{reaction}' with partner None."
                     raise RuntimeError(msg)
-                partner_indices.append(reaction_list.index(partner))
+                partner_indices.append(reaction_list.index(partner) + 1)
             else:
                 partner_indices.append(MISSING_VALUE_INTEGER)
 
