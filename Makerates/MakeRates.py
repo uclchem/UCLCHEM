@@ -95,6 +95,13 @@ def get_args():  # ruff: ignore[missing-return-type-undocumented-public-function
         action="store_true",
         help="Only do a dry run, meaning network validation, without writing the files",
     )
+    parser.add_argument(
+        "-p",
+        "--output-directory",
+        type=pathlib.Path,
+        required=False,
+        help="Directory to write the output files. If not passed, write to the directory specified in one of the configuration files, or else the package source directory.",
+    )
 
     return parser.parse_args()
 
@@ -156,4 +163,8 @@ if __name__ == "__main__":
     get_logger(args.verbosity_stdout, args.verbosity_file)
 
     # Run makerates with the specified config file
-    run_makerates(args.settings_path, write_files=not args.dry_run)
+    run_makerates(
+        args.settings_path,
+        output_directory=args.output_directory,
+        write_files=not args.dry_run,
+    )

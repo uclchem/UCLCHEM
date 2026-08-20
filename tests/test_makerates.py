@@ -1,5 +1,3 @@
-import itertools
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -58,75 +56,85 @@ def test_makerates_invalid_log_level_raises():
 
 
 VERBOSITIES = ("DEBUG", "INFO", "WARNING")
-verbosity_combinations = tuple(itertools.product(VERBOSITIES, VERBOSITIES))
 
 
-@pytest.mark.parametrize(("verbosity_stdout", "verbosity_file"), verbosity_combinations)
-def test_makerates_verbosity(verbosity_stdout, verbosity_file):
-    result = subprocess.run(
-        [
-            sys.executable,
-            "MakeRates.py",
-            "--verbosity-stdout",
-            verbosity_stdout,
-            "--verbosity-file",
-            verbosity_file,
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-        cwd=MAKERATES_DIR,
-    )
+def _verify_only_allowed_log_levels(
+    lines: list[str], level: str, output_path: str | Path
+) -> bool:
+    verbosity_index = VERBOSITIES.index(level)
+    verbosity_good = False
+    output_path = str(output_path)
+    for line in lines:
+        if level in line:
+            verbosity_good = True
+        if "Configured logging: " in line:
+            # Gives both logging levels in this line,
+            # so possibly also prints the level lower than what is allowed for this
+            # logger if the other logger is lower.
+            continue
+        if output_path in line:
+            # Contains 'tmp_path', which, because we parametrize the test,
+            # will contain the log level of the logger to the file,
+            # which might cause the stdout logger to fail, so we ignore this line.
+            continue
+        not_allowed_level_found = any(
+            verb in line for verb in VERBOSITIES[:verbosity_index]
+        )
+        if not_allowed_level_found:
+            return False
+    return verbosity_good
 
-    def _verify_only_allowed_log_levels(lines: list[str], level: str) -> bool:
-        verbosity_index = VERBOSITIES.index(level)
-        verbosity_good = False
-        for line in lines:
-            if level in line:
-                verbosity_good = True
-            if "Configured logging: " in line:
-                # Gives both logging levels in this line,
-                # so possibly also prints the level lower than what is allowed for this
-                # logger if the other logger is lower.
-                continue
-            not_allowed_level_found = any(
-                verb in line for verb in VERBOSITIES[:verbosity_index]
-            )
-            if not_allowed_level_found:
-                return False
-        return verbosity_good
 
+# We need to run the different file verbosities sequentially, otherwise the different
+# levels start logging into the same file, which would cause the tests to fail.
+# See for example https://github.com/uclchem/UCLCHEM/actions/runs/32345174023/job/96352894544?pr=195
+@pytest.mark.parametrize("verbosity_file", VERBOSITIES)
+def test_makerates_verbosity(tmp_path: Path, verbosity_file):
     logfile = MAKERATES_DIR / "makerates.log"
-    lines = logfile.read_text().split("\n")
 
-    assert _verify_only_allowed_log_levels(lines, verbosity_file)
-    assert _verify_only_allowed_log_levels(result.stdout.split("\n"), verbosity_stdout)
-
-
-def test_makerates_dry_run_doesnt_write(tmp_path: Path):
-    tmp_filepaths = [tmp_path / file.name for file in MAKERATES_WRITTEN_FILES]
-
-    try:
-        for filepath, tmp_filepath in zip(
-            MAKERATES_WRITTEN_FILES, tmp_filepaths, strict=True
-        ):
-            assert filepath.exists()
-            shutil.move(filepath, tmp_filepath)
-
-        _result = subprocess.run(
-            [sys.executable, "MakeRates.py", "--dry-run"],
+    for verbosity_stdout in VERBOSITIES:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "MakeRates.py",
+                "--verbosity-stdout",
+                verbosity_stdout,
+                "--verbosity-file",
+                verbosity_file,
+                "--output-directory",
+                tmp_path,
+            ],
             check=True,
             capture_output=True,
             text=True,
             cwd=MAKERATES_DIR,
         )
 
-        for filepath in MAKERATES_WRITTEN_FILES:
-            assert not filepath.exists()
-    finally:
-        for filepath, tmp_filepath in zip(
-            MAKERATES_WRITTEN_FILES, tmp_filepaths, strict=True
-        ):
-            if filepath.exists():
-                filepath.unlink()
-            shutil.move(tmp_filepath, filepath)
+        for file in MAKERATES_WRITTEN_FILES:
+            output_file = tmp_path / file.name
+            assert output_file.is_file()
+            output_file.unlink()
+
+        assert _verify_only_allowed_log_levels(
+            logfile.read_text().split("\n"), verbosity_file, tmp_path
+        )
+        assert _verify_only_allowed_log_levels(
+            result.stdout.split("\n"),
+            verbosity_stdout,
+            tmp_path,
+        )
+
+
+def test_makerates_dry_run_doesnt_write(tmp_path: Path):
+    tmp_filepaths = [tmp_path / file.name for file in MAKERATES_WRITTEN_FILES]
+
+    _result = subprocess.run(
+        [sys.executable, "MakeRates.py", "--dry-run", "--output-directory", tmp_path],
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=MAKERATES_DIR,
+    )
+
+    for filepath in tmp_filepaths:
+        assert not filepath.exists()
