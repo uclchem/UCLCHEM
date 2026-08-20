@@ -525,6 +525,41 @@ class BaseNetwork(NetworkABC):
 
         return next(iter(similar.keys()))
 
+    def get_all_partners(self, reaction: Reaction) -> list[Reaction]:
+        """Get a list of all reactions that have ``reaction`` as their partner.
+
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction
+
+        Returns
+        -------
+        reactions_coupled_to_reaction : list[Reaction]
+            List of
+            reactions that have ``reaction`` as their partner.
+
+        Raises
+        ------
+        RuntimeError
+            If the partner of a :class:`CoupledReaction` instance
+            in the network is None.
+
+        """
+        reactions_coupled_to_reaction: list[Reaction] = []
+        for possible_partner_reaction in self.get_reaction_list():
+            if possible_partner_reaction == reaction:
+                continue
+            if not isinstance(possible_partner_reaction, CoupledReaction):
+                continue
+            partner = possible_partner_reaction.get_partner()
+            if partner is None:
+                msg = f"The partner of {possible_partner_reaction} was None"
+                raise RuntimeError(msg)
+            if partner == reaction:
+                reactions_coupled_to_reaction.append(possible_partner_reaction)
+        return reactions_coupled_to_reaction
+
 
 # ============================================================================
 # Network Class
@@ -784,29 +819,6 @@ class Network(BaseNetwork, MutableNetworkABC):
         builder = NetworkBuilder(species, reactions, **build_options)
         return builder.build()
 
-    # ========================================================================
-    # Properties
-    # ========================================================================
-
-    @property
-    def species(self) -> dict[str, Species]:
-        """The species dictionary.
-
-        Returns
-        -------
-        dict[str, Species]
-            Ordered dict of species in the network, keyed by name.
-
-        """
-        return self._species_dict
-
-    # Note: Read operations (get_species_list, get_reaction_list, etc.)
-    # are inherited from BaseNetwork
-
-    # ========================================================================
-    # Species Mutation Interface (MutableNetworkABC Implementation)
-    # ========================================================================
-
     def set_specie(self, species_name: str, species: Species) -> None:
         """Set/update a species.
 
@@ -1063,28 +1075,6 @@ class Network(BaseNetwork, MutableNetworkABC):
         else:
             logger.warning(f"Reaction index {reaction_idx} not found in network")
 
-    def get_reactions_by_types(self, reaction_type: str | list[str]) -> list[Reaction]:
-        """Get the union of all reactions of a certain type.
-
-        Parameters
-        ----------
-        reaction_type : str | list[str]
-            The reaction type to filter on
-
-        Returns
-        -------
-        list[Reaction]
-            A list of reactions of the specified type
-
-        """
-        if isinstance(reaction_type, str):
-            reaction_type = [reaction_type]
-        return [
-            r
-            for r in self.get_reaction_list()
-            if (r.get_reaction_type() in reaction_type)
-        ]
-
     def sort_reactions(self) -> None:
         """Sort reactions by type and first reactant.
 
@@ -1110,9 +1100,6 @@ class Network(BaseNetwork, MutableNetworkABC):
         if len(reaction_dict) != len(self.get_reaction_dict()):
             msg = "Sorting the species caused a difference in the number of species"
             raise AssertionError(msg)
-
-    # Note: Query methods (find_similar_reactions, get_reaction_index, etc.)
-    # are inherited from BaseNetwork
 
     # ========================================================================
     # Parameter Modification Methods (NetworkABC Implementation)
@@ -1229,41 +1216,6 @@ class Network(BaseNetwork, MutableNetworkABC):
 
         """
         self._change_reaction_property(reaction, barrier, "set_gamma")
-
-    def get_all_partners(self, reaction: Reaction) -> list[Reaction]:
-        """Get a list of all reactions that have ``reaction`` as their partner.
-
-        Parameters
-        ----------
-        reaction : Reaction
-            Reaction
-
-        Returns
-        -------
-        reactions_coupled_to_reaction : list[Reaction]
-            List of
-            reactions that have ``reaction`` as their partner.
-
-        Raises
-        ------
-        RuntimeError
-            If the partner of a :class:`CoupledReaction` instance
-            in the network is None.
-
-        """
-        reactions_coupled_to_reaction: list[Reaction] = []
-        for possible_partner_reaction in self.get_reaction_list():
-            if possible_partner_reaction == reaction:
-                continue
-            if not isinstance(possible_partner_reaction, CoupledReaction):
-                continue
-            partner = possible_partner_reaction.get_partner()
-            if partner is None:
-                msg = f"The partner of {possible_partner_reaction} was None"
-                raise RuntimeError(msg)
-            if partner == reaction:
-                reactions_coupled_to_reaction.append(possible_partner_reaction)
-        return reactions_coupled_to_reaction
 
 
 # ============================================================================

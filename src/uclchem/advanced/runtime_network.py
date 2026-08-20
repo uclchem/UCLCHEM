@@ -28,9 +28,14 @@ import pandas as pd
 
 # Import the base network implementation from makerates
 from uclchem.makerates.network import BaseNetwork
-from uclchem.makerates.reaction import Reaction, skip_reaction_validation
+from uclchem.makerates.reaction import CoupledReaction, Reaction, skip_reaction_validation
 from uclchem.makerates.species import Species
-from uclchem.utils import UCLCHEM_ROOT_DIR, get_reaction_table, get_species_table
+from uclchem.utils import (
+    MISSING_VALUE_INTEGER,
+    UCLCHEM_ROOT_DIR,
+    get_reaction_table,
+    get_species_table,
+)
 
 
 class RuntimeNetwork(BaseNetwork):
@@ -355,6 +360,32 @@ class RuntimeNetwork(BaseNetwork):
                 reaction = Reaction(reaction_row)
                 reactions_dict[i] = reaction
 
+        reactions_dict = self._convert_coupled_reactions(reactions_dict)
+
+        return reactions_dict
+
+    def _convert_coupled_reactions(
+        self, reactions_dict: dict[int, Reaction]
+    ) -> dict[int, Reaction | CoupledReaction]:
+        """Convert reactions that should be coupled to CoupledReaction instances with partners.
+
+        Parameters
+        ----------
+        reactions_dict : dict[int, Reaction]
+            Dictionary with keys indices and values reactions.
+
+        Returns
+        -------
+        reactions_dict : dict[int, Reaction | CoupledReaction]
+            Reaction dictionary with coupled reactions turned into CoupledReactions
+
+        """
+        for idx, reaction in reactions_dict.items():
+            partner_idx = self._fortran.partnerindices[idx]
+            if partner_idx != MISSING_VALUE_INTEGER:
+                coupled_reaction = CoupledReaction(reaction)
+                coupled_reaction.set_partner(reactions_dict[partner_idx])
+                reactions_dict[idx] = coupled_reaction
         return reactions_dict
 
     def _get_species_name(self, index: int) -> str:
@@ -732,17 +763,14 @@ class RuntimeNetwork(BaseNetwork):
         barrier : float
             New activation barrier in Kelvin
 
-        Raises
-        ------
-        RuntimeError
-            If reaction is not a reaction on the ices.
-
         """
-        if not reaction.is_ice_reaction():
-            msg = "Only ice reactions have modifiable barriers."
-            raise RuntimeError(msg)
         reaction_idx = self.get_reaction_index(reaction)
         self.modify_reaction_parameters(reaction_idx, gamma=barrier)
+
+        coupled_reactions = self.get_all_partners(reaction)
+        for coupled_reaction in coupled_reactions:
+            reaction_idx = self.get_reaction_index(coupled_reaction)
+            self.modify_reaction_parameters(reaction_idx, gamma=barrier)
 
     # ========================================================================
     # RuntimeNetwork-Specific Methods

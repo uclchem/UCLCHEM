@@ -73,7 +73,7 @@ def _verify_only_allowed_log_levels(
             # logger if the other logger is lower.
             continue
         if output_path in line:
-            # Contains 'tmp_path', which, because we parametrize the test,
+            # Contains output-directory, which, because we parametrize the test,
             # will contain the log level of the logger to the file,
             # which might cause the stdout logger to fail, so we ignore this line.
             continue

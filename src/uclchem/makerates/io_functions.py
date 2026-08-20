@@ -19,7 +19,12 @@ import yaml
 from uclchem.constants import PHYSICAL_PARAMETERS, ZETA_0
 from uclchem.makerates.config import ReactionFileTypes
 from uclchem.makerates.network import Network
-from uclchem.makerates.reaction import REACTION_TYPES, Reaction, reaction_header
+from uclchem.makerates.reaction import (
+    REACTION_TYPES,
+    CoupledReaction,
+    Reaction,
+    reaction_header,
+)
 from uclchem.makerates.species import Species, species_header
 from uclchem.makerates.utils import (
     array_to_string,
@@ -1536,6 +1541,8 @@ def write_network_file(
     ------
     AssertionError
         If exothermicity is non-zero but ``enable_rates_storage`` is ``False``.
+    RuntimeError
+        If a :class:`~uclchem.makerates.reaction.CoupledReaction` with partner None is found.
 
     """
     species_list = network.get_species_list()
@@ -1647,6 +1654,7 @@ def write_network_file(
         reduced_masses = []
         extrapolations = []
         exothermicity = []
+        partner_indices = []
 
         # store important reactions
         reaction_indices = ""
@@ -1672,6 +1680,15 @@ def write_network_file(
             reacTypes.append(reaction.get_reaction_type())
             extrapolations.append(reaction.get_extrapolation())
             exothermicity.append(reaction.get_exothermicity())
+
+            if isinstance(reaction, CoupledReaction):
+                partner = reaction.get_partner()
+                if partner is None:
+                    msg = f"Found CoupledReaction '{reaction}' with partner None."
+                    raise RuntimeError(msg)
+                partner_indices.append(reaction_list.index(partner))
+            else:
+                partner_indices.append(MISSING_VALUE_INTEGER)
 
         reaction_names = [str(reaction) for reaction in reaction_list]
         for species in species_list:
@@ -1808,6 +1825,19 @@ def write_network_file(
                 value_type="logical",
                 parameter=True,
                 length_name="nReac",
+            )
+        )
+        openFile.write(
+            replace_value_with_name(
+                array_to_string(
+                    "partnerIndices",
+                    partner_indices,
+                    value_type="int",
+                    parameter=True,
+                    length_name="nReac",
+                ),
+                MISSING_VALUE_INTEGER,
+                "MISSING_VALUE_INTEGER",
             )
         )
         reacTypes_array = np.asarray(reacTypes)
