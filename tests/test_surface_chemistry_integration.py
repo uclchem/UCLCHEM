@@ -12,16 +12,7 @@ import pytest
 import uclchem
 
 
-@pytest.fixture
-def temp_output_dir():
-    """Create temporary directory for test outputs."""
-    temp_dir = tempfile.mkdtemp(prefix="uclchem_surface_test_")
-    yield temp_dir
-    shutil.rmtree(temp_dir, ignore_errors=True)
-
-
-@pytest.mark.skip(reason="H2 burial exclusion breaks ML cap")
-def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
+def test_ice_dependent_desorption_changes_chemistry(tmp_path: Path):
     """Test that ice-coverage-dependent desorption actually affects chemistry.
 
     Verifies:
@@ -41,7 +32,7 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
         "enable_radiative_transfer": False,  # Explicitly disable to avoid state pollution from 1D tests
         "desorb": True,
         "chemdesorb": True,
-        "outputFile": str(Path(temp_output_dir) / "surface_test.dat"),
+        "outputFile": str(tmp_path / "surface_test.dat"),
     }
 
     result = uclchem.model.Cloud(param_dict=param_dict)

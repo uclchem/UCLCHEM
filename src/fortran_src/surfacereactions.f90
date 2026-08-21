@@ -55,13 +55,13 @@ module SurfaceReactions
   !Below are values for grain surface reactions
   logical, parameter :: DIFFUSE_REACT_COMPETITION=.true., GRAINS_HAVE_ICE=.true.
   real(dp), parameter :: NUM_MONOLAYERS_IS_SURFACE=2.0_dp  ! Number of monolayers to count as surface
-  logical, parameter :: useGarrod2011Transfer=.true.  ! Use Garrod 2011 transfer upon net desorption
+  logical, parameter :: useGarrod2011Transfer=.false.  ! Use Garrod 2011 transfer upon net desorption
   logical, parameter :: useCustomReducedMass=.true.  ! Use custom predicted reduced mass for tunneling
   real(dp), parameter :: CHEMICAL_BARRIER_THICKNESS = 1.40e-8_dp  ! Parameter used to compute the probability for a surface reaction with
   !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
   real(dp), parameter :: SURFACE_SITE_DENSITY = 1.5e15_dp  ! site density on one grain [cm-2]
   real(dp), parameter :: VDIFF_PREFACTOR=2.0_dp*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
-  real(dp), parameter :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0_dp*PI
+  real(dp), parameter :: NUM_SITES_PER_GRAIN = SURFACE_SITE_DENSITY * (4.0_dp*PI*GRAIN_RADIUS**2)
   real(dp), parameter :: EFFECTIVE_SURFACE_MASS = 120.0_dp  ! Effective mass of grain surface in Dalton
 
   ! TST prefactor constants

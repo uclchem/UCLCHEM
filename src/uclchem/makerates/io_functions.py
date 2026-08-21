@@ -1090,8 +1090,8 @@ def build_ode_string(
     # clamped twice (also in Y_safe, which is passed here in chemistry.f90).
     ode_string = dedent("""    module ODES
         use constants, only: dp, MIN_ABUND
-        use f2py_constants, only: nReac
-        use network, only: SURFGROWTHUNCORRECTED, refractoryList, bulkList, surfaceList, REACTIONRATE, &
+        use f2py_constants, only: nReac, nSpec
+        use network, only: refractoryList, bulkList, surfaceList, REACTIONRATE, &
             nSurface, nBulk
         use surfacereactions, only: useGarrod2011Transfer, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO
 
@@ -1099,13 +1099,14 @@ def build_ode_string(
 
         public
     contains
-        subroutine GETYDOT(RATE_CONSTANTS, Y, surfaceCoverage, D, YDOT)
-            real(dp), intent(in) :: RATE_CONSTANTS(nReac), Y(:)
+        pure subroutine GETYDOT(RATE_CONSTANTS, Y, surfaceCoverage, D, YDOT, surfGrowthUncorrected)
+            real(dp), intent(in) :: RATE_CONSTANTS(nReac), Y(nSpec+2)
             real(dp), intent(in) :: D
-            real(dp), intent(inout) :: surfaceCoverage
-            real(dp), intent(out) :: YDOT(:)
+            real(dp), intent(in) :: surfaceCoverage
+            real(dp), intent(out) :: YDOT(nSpec+2)
+            real(dp), intent(out) :: surfGrowthUncorrected
 
-            real(dp) :: totalSwap, LOSS, PROD
+            real(dp) :: totalSwap, LOSS, PROD, alpha
             real(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulkLayersReciprocal
 
             safeMantle = MAX(MIN_ABUND, sum(Y(surfaceList)))
@@ -1132,7 +1133,7 @@ def build_ode_string(
         ydot_string = species_ode_string(n, species)
         ode_string += ydot_string
 
-    ode_string += f"\n        SURFGROWTHUNCORRECTED = YDOT({surface_index + 1})\n"
+    ode_string += f"\n        surfGrowthUncorrected = YDOT({surface_index + 1})\n"
 
     # now add bulk transfer to rate of change of surface species
     # after they've already been calculated
@@ -1143,14 +1144,13 @@ def build_ode_string(
         ! Since ydot(surface_index) is negative, bulk is lost and surface forms
         if (useGarrod2011Transfer) then
             ! Three-phase treatment of Garrod & Pauly 2011
-            ! Replace surfaceCoverage with alpha_des
             ! Real value of alpha_des: alpha_des = MIN(1.0_dp, safeBulk / safeMantle).
             ! However, the YDOTs calculated below need to be multiplied with Y(bulkspec)/safeBulk,
             ! so we divide by safeBulk here to save time
-            surfaceCoverage = MIN(1.0_dp, safeBulk/safeMantle)/safeBulk
+            alpha = MIN(1.0_dp, safeBulk/safeMantle)/safeBulk
         else
             ! Hasegawa & Herbst 1993
-            surfaceCoverage = MIN(1.0_dp, surfaceCoverage*safeMantle)/safeBulk
+            alpha = MIN(1.0_dp, surfaceCoverage*safeMantle)/safeBulk
         end if
     """)
 
@@ -1167,49 +1167,51 @@ def build_ode_string(
             j += 1
             bulk_partner = species_names.index(species.get_name().replace("#", "@"))
             if enable_rates_storage:
-                ode_string += f"        REACTIONRATE({i}) = -YDOT(nSurface)*surfaceCoverage*Y({bulk_partner + 1})\n"
+                ode_string += f"        REACTIONRATE({i}) = -YDOT(nSurface)*alpha*Y({bulk_partner + 1})\n"
                 ode_string += f"        REACTIONRATE({j}) = 0.0_dp\n"
             if not species_list[bulk_partner].is_refractory:
-                ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*surfaceCoverage*Y({bulk_partner + 1})\n"
+                ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*alpha*Y({bulk_partner + 1})\n"
         if species.get_name()[0] == "@" and not species.is_refractory:
-            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*surfaceCoverage*Y({n + 1})\n"
+            ode_string += (
+                f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*alpha*Y({n + 1})\n"
+            )
     ode_string += "    else\n"
     ode_string += "        ! surfaceCoverage = fractional surface coverage\n"
     ode_string += "        ! Real value of surfaceCoverage: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
     ode_string += "        ! However, the YDOTs calculated below need to be multiplied with Y(surfspec)/safeMantle, so we divide by safeMantle here to save time\n"
     ode_string += "        ! In chemistry.f90: surfaceCoverage = 1/NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
-    ode_string += (
-        "        surfaceCoverage = MIN(1.0_dp, surfaceCoverage*safeMantle)/safeMantle\n"
-    )
+    ode_string += "        alpha = MIN(1.0_dp, surfaceCoverage*safeMantle)/safeMantle\n"
     i = len(reaction_list)
     j = len(reaction_list) + len(surf_species)
     for n, species in enumerate(species_list):
-        if species.get_name() in {
-            "#H2",
-            "@H2",
-        }:  # Do not allow H2 to transfer from surface to bulk
-            if species.get_name() == "@H2":
-                i += 1
-                j += 1
-            continue
+        # if species.get_name() in {
+        #     "#H2",
+        #     "@H2",
+        # }:  # Do not allow H2 to transfer from surface to bulk
+        #     if species.get_name() == "@H2":
+        #         i += 1
+        #         j += 1
+        #     continue
         if species.get_name()[0] == "@":
             i += 1
             j += 1
             surface_version = species_names.index(species.get_name().replace("@", "#"))
             if enable_rates_storage:
                 ode_string += f"        REACTIONRATE({i}) = 0.0_dp\n"
-                ode_string += f"        REACTIONRATE({j}) = -YDOT(nSurface)*surfaceCoverage*Y({surface_version + 1})\n"
-            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*surfaceCoverage*Y({surface_version + 1})\n"
+                ode_string += f"        REACTIONRATE({j}) = -YDOT(nSurface)*alpha*Y({surface_version + 1})\n"
+            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*alpha*Y({surface_version + 1})\n"
         if species.get_name()[0] == "#":
-            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*surfaceCoverage*Y({n + 1})\n"
+            ode_string += (
+                f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*alpha*Y({n + 1})\n"
+            )
     ode_string += "    end if\n"
 
     # once bulk transfer has been added, odes for bulk and surface must account for it
     ode_string += (
         "    ! Update total rate of change of bulk and surface for bulk growth\n"
     )
-    ode_string += "    " + species_ode_string(bulk_index, species_list[bulk_index])
-    ode_string += "    " + species_ode_string(surface_index, species_list[surface_index])
+    ode_string += species_ode_string(bulk_index, species_list[bulk_index])
+    ode_string += species_ode_string(surface_index, species_list[surface_index])
     ode_string += """    end subroutine GETYDOT
 end module ODES"""
     return ode_string
@@ -1578,7 +1580,6 @@ def write_network_file(
             truncate_line("integer, parameter :: " + speciesIndices[:-1] + "\n")
         )
         openFile.write("logical, parameter :: THREE_PHASE = .true.\n")
-        openFile.write("real(dp) :: SURFGROWTHUNCORRECTED\n")
         openFile.write(
             array_to_string("specname", names, value_type="string", length_name="nSpec")
         )
@@ -1638,23 +1639,24 @@ def write_network_file(
         write_evap_lists(openFile, species_list)
 
         # finally all reactions
-        reactant1 = []
-        reactant2 = []
-        reactant3 = []
-        prod1 = []
-        prod2 = []
-        prod3 = []
-        prod4 = []
-        alpha = []
-        beta = []
-        gama = []
-        reacTypes = []
-        tmins = []
-        tmaxs = []
-        reduced_masses = []
-        extrapolations = []
-        exothermicity = []
-        partner_indices = []
+        n_reactions = len(reaction_list)
+        reactant1 = [0] * n_reactions
+        reactant2 = [0] * n_reactions
+        reactant3 = [0] * n_reactions
+        prod1 = [0] * n_reactions
+        prod2 = [0] * n_reactions
+        prod3 = [0] * n_reactions
+        prod4 = [0] * n_reactions
+        alpha = [0.0] * n_reactions
+        beta = [0.0] * n_reactions
+        gama = [0.0] * n_reactions
+        reacTypes = [""] * n_reactions
+        tmins = [0.0] * n_reactions
+        tmaxs = [0.0] * n_reactions
+        reduced_masses = [0.0] * n_reactions
+        extrapolations = [False] * n_reactions
+        exothermicity = [0.0] * n_reactions
+        partner_indices = [0] * n_reactions
 
         # store important reactions
         reaction_indices = ""
@@ -1663,32 +1665,35 @@ def write_network_file(
         reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
         openFile.write("integer, parameter :: " + reaction_indices)
 
-        for reaction in reaction_list:
-            reactant1.append(find_reactant(names, reaction.get_reactants()[0]))
-            reactant2.append(find_reactant(names, reaction.get_reactants()[1]))
-            reactant3.append(find_reactant(names, reaction.get_reactants()[2]))
-            prod1.append(find_reactant(names, reaction.get_products()[0]))
-            prod2.append(find_reactant(names, reaction.get_products()[1]))
-            prod3.append(find_reactant(names, reaction.get_products()[2]))
-            prod4.append(find_reactant(names, reaction.get_products()[3]))
-            alpha.append(reaction.get_alpha())
-            beta.append(reaction.get_beta())
-            gama.append(reaction.get_gamma())
-            tmaxs.append(reaction.get_temphigh())
-            tmins.append(reaction.get_templow())
-            reduced_masses.append(reaction.get_reduced_mass())
-            reacTypes.append(reaction.get_reaction_type())
-            extrapolations.append(reaction.get_extrapolation())
-            exothermicity.append(reaction.get_exothermicity())
+        species_dict = {species: idx + 1 for idx, species in enumerate(species_list)}
+        for idx, reaction in enumerate(reaction_list):
+            reactants = reaction.get_reactants()
+            products = reaction.get_products()
+            reactant1[idx] = species_dict.get(reactants[0], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
+            reactant2[idx] = species_dict.get(reactants[1], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
+            reactant3[idx] = species_dict.get(reactants[2], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
+            prod1[idx] = species_dict.get(products[0], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
+            prod2[idx] = species_dict.get(products[1], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
+            prod3[idx] = species_dict.get(products[2], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
+            prod4[idx] = species_dict.get(products[3], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
+            alpha[idx] = reaction.get_alpha()
+            beta[idx] = reaction.get_beta()
+            gama[idx] = reaction.get_gamma()
+            tmaxs[idx] = reaction.get_temphigh()
+            tmins[idx] = reaction.get_templow()
+            reduced_masses[idx] = reaction.get_reduced_mass()
+            reacTypes[idx] = reaction.get_reaction_type()
+            extrapolations[idx] = reaction.get_extrapolation()
+            exothermicity[idx] = reaction.get_exothermicity()
 
             if isinstance(reaction, CoupledReaction):
                 partner = reaction.get_partner()
                 if partner is None:
                     msg = f"Found CoupledReaction '{reaction}' with partner None."
                     raise RuntimeError(msg)
-                partner_indices.append(reaction_list.index(partner) + 1)
+                partner_indices[idx] = reaction_list.index(partner) + 1
             else:
-                partner_indices.append(MISSING_VALUE_INTEGER)
+                partner_indices[idx] = MISSING_VALUE_INTEGER
 
         reaction_names = [str(reaction) for reaction in reaction_list]
         for species in species_list:
@@ -1955,29 +1960,6 @@ def write_network_file(
             ).replace("99999", "REAC_NOT_PRESENT")
         )
         openFile.write("end module network")
-
-
-def find_reactant(species_list: list[str], reactant: str) -> int:
-    """Try to find a reactant in the species list.
-
-    Parameters
-    ----------
-    species_list : list[str]
-        A list of species in the network
-    reactant : str
-        The reactant to be indexed
-
-    Returns
-    -------
-    int
-        The index of the reactant. If it is not found, returns
-        :data:`NO_REACTANT_OR_PRODUCT`.
-
-    """
-    try:
-        return species_list.index(reactant) + 1
-    except ValueError:
-        return NO_REACTANT_OR_PRODUCT
 
 
 def get_desorption_freeze_partners(reaction_list: list[Reaction]) -> list[int]:
