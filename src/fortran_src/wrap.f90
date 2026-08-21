@@ -641,12 +641,12 @@ contains
                 if (specname(speci) == "@"//specname(speciesIndx)(2:)) bulk_version=speci
                 if (specname(speci) == "#"//specname(speciesIndx)(2:)) surface_version=speci
             end do
-            if (SURFGROWTHUNCORRECTED < 0) then
+            if (surfGrowthUncorrected < 0) then
                 surfaceCoverage = MIN(1.0_dp, safeBulk/safeMantle)
-                transfer=SURFGROWTHUNCORRECTED*surfaceCoverage*abund(bulk_version,1)/safeBulk
+                transfer=surfGrowthUncorrected*surfaceCoverage*abund(bulk_version,1)/safeBulk
             else
                 surfaceCoverage = bulkGainFromMantleBuildUp()
-                transfer=SURFGROWTHUNCORRECTED*surfaceCoverage*abund(surface_version,1)
+                transfer=surfGrowthUncorrected*surfaceCoverage*abund(surface_version,1)
             end if
             swap=totalSwap
             bulk_layers=bulkLayersReciprocal

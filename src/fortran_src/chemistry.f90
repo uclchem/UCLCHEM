@@ -51,7 +51,7 @@ module chemistry
     !initial fractional elemental abundances and arrays to store abundances
     real(dp) :: h2col,cocol,ccol,h2colToCell,cocolToCell,ccolToCell
     real(dp), allocatable :: abund(:,:)
-    real(dp) :: numMonolayers,ratioSurfaceToBulk
+    real(dp) :: numMonolayers,ratioSurfaceToBulk, surfGrowthUncorrected
 
     integer :: nion
     integer, dimension(nSpec) :: ionlist
@@ -687,7 +687,7 @@ contains
 
         !The ODEs created by MakeRateConstants go here, they are essentially sums of terms that look like k(1,2)*y(1)*y(2)*dens. Each species ODE is made up
         !of the reactions between it and every other species it reacts with.
-        call GETYDOT(rate_constants, Y_safe, surfaceCoverage, D, YDOT)
+        call GETYDOT(rate_constants, Y_safe, surfaceCoverage, D, YDOT, surfGrowthUncorrected)
         ! get density change from physics module to send to DLSODE
         if (enforceChargeConservation) then
             ydot(nelec) = sum(ydot(ionlist(1:nion)))
