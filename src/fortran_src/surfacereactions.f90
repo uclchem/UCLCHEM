@@ -11,7 +11,7 @@ module SurfaceReactions
       customVdes, customVdiff, THREE_PHASE, inertiaProducts, &
       ngh2, nh2, ngn, ngo, ngoh, nh, ngh
   !f2py INTEGER, parameter :: dp
-  use numerics, only: is_equal
+  use numerics, only: is_equal, linear_interp
 
   implicit none
 
@@ -631,7 +631,7 @@ contains
 ! Get ice-coverage-dependent desorption fraction
 ! Interpolates between bare grain and full ice coverage
 ! ---------------------------------------------------------------------
-  pure function getDesorptionFractionIncludingIce(reacIndx, numMonolayers) result(desorptionFraction)
+  function getDesorptionFractionIncludingIce(reacIndx, numMonolayers) result(desorptionFraction)
     integer, intent(in) :: reacIndx
     real(dp), intent(in) :: numMonolayers
     real(dp) :: desorptionFraction
@@ -647,12 +647,10 @@ contains
         return
     end if
 
-
     desorptionFractionFullCoverage = desorptionFractionsFullCoverage(reacIndx)
 
-
-    desorptionFraction = desorptionFractionBare + &
-        (desorptionFractionFullCoverage-desorptionFractionBare)*MIN(1.0_dp, numMonolayers)
+    desorptionFraction = linear_interp(MIN(1.0_dp, numMonolayers), &
+        desorptionFractionBare, desorptionFractionFullCoverage)
   end function getDesorptionFractionIncludingIce
 
 ! ---------------------------------------------------------------------
