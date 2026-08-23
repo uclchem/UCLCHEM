@@ -3,11 +3,7 @@
 Runs a cloud model and verifies the new physics produces different/better results.
 """
 
-import shutil
-import tempfile
 from pathlib import Path
-
-import pytest
 
 import uclchem
 

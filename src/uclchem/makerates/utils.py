@@ -1,6 +1,7 @@
 """Utilities for MakeRates."""
 
 import re
+from collections.abc import Iterable
 from typing import Any
 
 import numpy as np
@@ -411,9 +412,10 @@ def array_to_string(
             dtype = "real(dp)"
             values = ",".join(f"{float(v):.4e}_dp" for v in flat)
         elif value_type == "string":
-            string_length = len(max(flat, key=len))
+            padded_strings = pad_to_max_length([str(v) for v in flat])
+            string_length = len(padded_strings[0])
             dtype = f"character(LEN={string_length})"
-            values = ",".join('"' + str(v).ljust(string_length) + '"' for v in flat)
+            values = ",".join('"' + v + '"' for v in padded_strings)
         elif value_type == "logical":
             dtype = "logical"
             values = ",".join(".true." if v else ".false." for v in flat)
@@ -427,22 +429,19 @@ def array_to_string(
             out_string = " :: " + name + f" ({length_name})=(/"
         if value_type == "int":
             out_string = "integer" + out_string
-            for value in arr:
-                out_string += f"{value},"
+            values = ",".join(str(value) for value in arr)
         elif value_type == "float":
             out_string = "real(dp)" + out_string
-            for value in arr:
-                out_string += f"{value:.4e}_dp,"
+            values = ",".join(f"{value:.4e}_dp" for value in arr)
         elif value_type == "string":
-            string_length = len(max(arr, key=len))
+            padded_strings = pad_to_max_length(arr)
+            string_length = len(padded_strings[0])
             out_string = f"character(LEN={string_length:.0f})" + out_string
-            for value in arr:
-                out_string += '"' + value.ljust(string_length) + '",'
+            values = ",".join(f'"{value}"' for value in padded_strings)
         elif value_type == "logical":
             out_string = "logical" + out_string
-            for value in arr:
-                out_string += ".true.," if value else ".false.,"
-        out_string = out_string[:-1] + "/)\n"
+            values = ",".join(f"{'.true.' if value else '.false.'}" for value in arr)
+        out_string += values + "/)\n"
     out_string = truncate_line(out_string)
     return out_string
 
@@ -525,3 +524,21 @@ def separate_common_terms(string: str, term_to_separate: str) -> str:
         + f"{split_terms[-1]})*{term_to_separate}"
     )
     return string
+
+
+def pad_to_max_length(strings: Iterable[str]) -> list[str]:
+    """Pad some strings to the maximum length of a string in that iterable.
+
+    Parameters
+    ----------
+    strings : Iterable[str]
+        Iterable of strings to pad
+
+    Returns
+    -------
+    list[str]
+        List of padded strings
+
+    """
+    max_length = max(len(string) for string in strings)
+    return [string.ljust(max_length) for string in strings]

@@ -69,7 +69,7 @@ elementMass = [
     0,
     56,
 ]
-symbols = ["#", "@", "*", "+", "-", "(", ")"]
+IGNORED_SPECIES_PARSING_SYMBOLS = ["#", "@", "*", "+", "-", "(", ")"]
 
 
 species_header = (
@@ -88,6 +88,187 @@ species_header = (
     "IZ",
     "SYMMETRY_NUMBER",
 )
+
+
+def get_element_counts_per_species(
+    species_list: list[Species],
+) -> tuple[tuple[str, ...], np.typing.NDArray[np.int32]]:
+    """Get the number of times each element occurs in each species.
+
+    Generic element-count 2D array for runtime conservation checking.
+    Covers every element that appears at least once across all species.
+
+    Parameters
+    ----------
+    species_list : list[Species]
+        List of species
+
+    Returns
+    -------
+    unique_elements : tuple[str]
+        A sorted list of all the unique elements in the list of species.
+    elem_count_2d : np.typing.NDArray[np.int_]
+        2D array with shape ``n_spec * n_elem`` of how often each element
+        occurs in each species.
+
+    """
+    all_constituents: list[Counter[str]] = []
+    unique_elements_set: set[str] = set()
+    for species in species_list:
+        try:
+            constituents = species.find_constituents(quiet=True)
+            all_constituents.append(constituents)
+            unique_elements_set.update(
+                element for element, count in constituents.items() if count > 0
+            )
+        except (ValueError, Exception):
+            all_constituents.append(Counter())
+
+    unique_elements = tuple(
+        sorted(e for e in unique_elements_set if e.upper() not in {"E", "E-"})
+    )
+
+    n_elems = len(unique_elements)
+    elem_count_2d = np.zeros((len(species_list), n_elems), dtype=int)
+    for si, elem_constituents in enumerate(all_constituents):
+        for ei, elem in enumerate(unique_elements):
+            elem_count_2d[si, ei] = elem_constituents.get(elem, 0)
+
+    return unique_elements, elem_count_2d
+
+
+def determine_molecular_mass(constituents: Counter[str]) -> int:
+    """Determine the molecular mass for a set of atoms.
+
+    Parameters
+    ----------
+    constituents : Counter[str]
+        Counter of elemental makeup, for example obtained from
+        :func:`determine_constituents`.
+
+    Returns
+    -------
+    mass : int
+        Mass of the species.
+
+    """
+    mass = 0
+    for element, count in constituents.items():
+        mass += elementMass[elementList.index(element)] * count
+    return mass
+
+
+def determine_constituents(normalized_species_name: str) -> Counter[str]:
+    """Loop through a species' name and work out what its constituent atoms are.
+
+    Parameters
+    ----------
+    normalized_species_name : str
+        Species name that has been normalized by :func:`normalize_species_name`
+        if necessary.
+
+    Returns
+    -------
+    Counter[str]
+        Counter of how many times each element is in the molecule.
+
+    Raises
+    ------
+    ValueError
+        If the species name is invalid, meaning contains species not in the
+        elements list, has an opening but no closing bracket, etc.
+
+    Examples
+    --------
+    >>> constituents = determine_constituents('H2')
+    >>> # Has the right number of H atoms
+    >>> constituents['H']
+    2
+    >>> # And 0 of the other atoms
+    >>> constituents['O']
+    0
+
+    >>> constituents = determine_constituents('(CH3)2')
+    >>> constituents['C'], constituents["H"]
+    (2, 6)
+
+    >>> constituents = determine_constituents('C60')
+    >>> constituents['C']
+    60
+
+    """
+    if normalized_species_name[0].isdigit():
+        msg = f"First character of formula {normalized_species_name} was a digit. Please put repeated parts in a bracket with number after, e.g. (CH3)2"
+        raise ValueError(msg)
+
+    char_idx = 0
+    atoms: list[str] = []
+    currently_in_bracket = False
+    bracket_content: list[str] = []
+    j = None
+    # loop over characters in species name to work out what it is made of
+    while char_idx < len(normalized_species_name):
+        # if character isn't a + or - then check it, otherwise move on
+        if normalized_species_name[char_idx] not in IGNORED_SPECIES_PARSING_SYMBOLS:
+            if (
+                char_idx + 1 < len(normalized_species_name)
+                and normalized_species_name[char_idx : char_idx + 2] in elementList
+            ):
+                # if next two characters are (eg) 'MG' then atom is Mg not M and G
+                j = char_idx + 2
+            # if there aren't two characters left just try next one
+            elif normalized_species_name[char_idx] in elementList:
+                j = char_idx + 1
+
+            # if we've found a new element check for numbers otherwise print error
+            if j is None or j <= char_idx:
+                msg = f"formula {normalized_species_name} contains element(s) not in element list"
+                raise ValueError(msg)
+
+            num_digits = find_number_of_consecutive_digits(normalized_species_name, j)
+            if num_digits == 0:
+                nrepeat = 1
+            else:
+                nrepeat = int(normalized_species_name[j : j + num_digits])
+            for _ in range(nrepeat):
+                if currently_in_bracket:
+                    bracket_content.append(normalized_species_name[char_idx:j])
+                else:
+                    atoms.append(normalized_species_name[char_idx:j])
+            char_idx = j + num_digits
+        else:
+            # if symbol is start of a bracketed part of molecule, keep track
+            if normalized_species_name[char_idx] == "(":
+                currently_in_bracket = True
+                bracket_content = []
+            # if it's the end then add bracket contents to list
+            elif normalized_species_name[char_idx] == ")":
+                if not currently_in_bracket:
+                    msg = f"Found closing bracket before opening bracket in formula {normalized_species_name}"
+                    raise ValueError(msg)
+                currently_in_bracket = False
+                num_digits = find_number_of_consecutive_digits(
+                    normalized_species_name, char_idx + 1
+                )
+                if num_digits == 0:
+                    nrepeat = 1
+                else:
+                    nrepeat = int(
+                        normalized_species_name[char_idx + 1 : char_idx + 1 + num_digits]
+                    )
+                for _ in range(nrepeat):
+                    atoms.extend(bracket_content)
+                char_idx += num_digits
+            char_idx += 1
+    if currently_in_bracket:
+        msg = f"Opening bracket was not closed in formula {normalized_species_name}"
+        raise ValueError(msg)
+
+    counter: Counter[str] = Counter()
+    for element in elementList:
+        counter[element] = atoms.count(element)
+
+    return counter
 
 
 class Species:
@@ -558,12 +739,6 @@ class Species:
         Counter[str]
             Counter of how many times each element is in the molecule.
 
-        Raises
-        ------
-        ValueError
-            If the molecular formula is not valid, for example it has an
-            element not in the element list, has no closing bracket, or starts with a digit.
-
         Examples
         --------
         >>> species = Species(['H2'] + [0] * 10)
@@ -595,75 +770,9 @@ class Species:
                 name = name[0] + name[len(self.prefix) + 2 :]
             else:
                 name = name[len(self.prefix) + 1 :]
-        if name[0].isdigit():
-            msg = f"First character of formula {name} was a digit. Please put repeated parts in a bracket with number after, e.g. (CH3)2"
-            raise ValueError(msg)
 
-        char_idx = 0
-        atoms: list[str] = []
-        currently_in_bracket = False
-        bracket_content: list[str] = []
-        j = None
-        # loop over characters in species name to work out what it is made of
-        while char_idx < len(name):
-            # if character isn't a + or - then check it, otherwise move on
-            if name[char_idx] not in symbols:
-                if (
-                    char_idx + 1 < len(name)
-                    and name[char_idx : char_idx + 2] in elementList
-                ):
-                    # if next two characters are (eg) 'MG' then atom is Mg not M and G
-                    j = char_idx + 2
-                # if there aren't two characters left just try next one
-                elif name[char_idx] in elementList:
-                    j = char_idx + 1
-
-                # if we've found a new element check for numbers otherwise print error
-                if j is None or j <= char_idx:
-                    msg = f"formula {name} contains element(s) not in element list"
-                    raise ValueError(msg)
-
-                num_digits = find_number_of_consecutive_digits(name, j)
-                if num_digits == 0:
-                    nrepeat = 1
-                else:
-                    nrepeat = int(name[j : j + num_digits])
-                for _ in range(nrepeat):
-                    if currently_in_bracket:
-                        bracket_content.append(name[char_idx:j])
-                    else:
-                        atoms.append(name[char_idx:j])
-                char_idx = j + num_digits
-            else:
-                # if symbol is start of a bracketed part of molecule, keep track
-                if name[char_idx] == "(":
-                    currently_in_bracket = True
-                    bracket_content = []
-                # if it's the end then add bracket contents to list
-                elif name[char_idx] == ")":
-                    if not currently_in_bracket:
-                        msg = f"Found closing bracket before opening bracket in formula {name}"
-                        raise ValueError(msg)
-                    currently_in_bracket = False
-                    num_digits = find_number_of_consecutive_digits(name, char_idx + 1)
-                    if num_digits == 0:
-                        nrepeat = 1
-                    else:
-                        nrepeat = int(name[char_idx + 1 : char_idx + 1 + num_digits])
-                    for _ in range(nrepeat):
-                        atoms.extend(bracket_content)
-                    char_idx += num_digits
-                char_idx += 1
-        if currently_in_bracket:
-            msg = f"Opening bracket was not closed in formula {name}"
-            raise ValueError(msg)
-        counter: Counter[str] = Counter()
-        for element in elementList:
-            counter[element] = atoms.count(element)
-
-        mass = 0
-        for atom in atoms:
-            mass += elementMass[elementList.index(atom)]
+        counter = determine_constituents(name)
+        mass = determine_molecular_mass(counter)
         if mass != int(self.get_mass()):
             if not quiet:
                 logger.warning(

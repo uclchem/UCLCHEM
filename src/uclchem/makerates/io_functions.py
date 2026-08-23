@@ -25,11 +25,16 @@ from uclchem.makerates.reaction import (
     Reaction,
     reaction_header,
 )
-from uclchem.makerates.species import Species, species_header
+from uclchem.makerates.species import (
+    Species,
+    get_element_counts_per_species,
+    species_header,
+)
 from uclchem.makerates.utils import (
     array_to_string,
     check_reaction,
     get_default_coolants,
+    pad_to_max_length,
     replace_value_with_name,
     separate_common_terms,
     strip_comments_from_row,
@@ -400,8 +405,7 @@ def output_drops(
                 quoting=csv.QUOTE_MINIMAL,
                 lineterminator="\n",
             )
-            for reaction in dropped_reactions:
-                writer.writerow(reaction)
+            writer.writerows(dropped_reactions)
     else:
         logger.info("Reactions dropped from grain file:\n")
         for reaction in dropped_reactions:
@@ -834,26 +838,27 @@ def write_species(file_name: str | Path, species_list: list[Species]) -> None:
             lineterminator="\n",
         )
         writer.writerow(species_header)
-        for species in species_list:
-            # Order is the same as in uclchem.species.species_header
-            writer.writerow(
-                [
-                    species.get_name(),
-                    species.get_mass(),
-                    species.get_binding_energy(),
-                    species.get_solid_fraction(),
-                    species.get_mono_fraction(),
-                    species.get_volcano_fraction(),
-                    species.get_enthalpy(),
-                    species.get_vdes(),
-                    species.get_diffusion_barrier(),
-                    species.get_vdiff(),
-                    species.get_Ix(),
-                    species.get_Iy(),
-                    species.get_Iz(),
-                    species.get_symmetry_factor(),
-                ]
-            )
+
+        # Order is the same as in uclchem.species.species_header
+        writer.writerows(
+            [
+                species.get_name(),
+                species.get_mass(),
+                species.get_binding_energy(),
+                species.get_solid_fraction(),
+                species.get_mono_fraction(),
+                species.get_volcano_fraction(),
+                species.get_enthalpy(),
+                species.get_vdes(),
+                species.get_diffusion_barrier(),
+                species.get_vdiff(),
+                species.get_Ix(),
+                species.get_Iy(),
+                species.get_Iz(),
+                species.get_symmetry_factor(),
+            ]
+            for species in species_list
+        )
 
 
 # Write the reaction file in the desired format
@@ -877,21 +882,21 @@ def write_reactions(file_name: Path, reaction_list: list[Reaction]) -> None:
             lineterminator="\n",
         )
         writer.writerow(reaction_header)
-        for reaction in reaction_list:
-            writer.writerow(
-                reaction.get_reactants()
-                + reaction.get_products()
-                + [
-                    reaction.get_alpha(),
-                    reaction.get_beta(),
-                    reaction.get_gamma(),
-                    reaction.get_templow(),
-                    reaction.get_temphigh(),
-                    reaction.get_reduced_mass(),
-                    reaction.get_extrapolation(),
-                    reaction.get_exothermicity(),
-                ]
-            )
+        writer.writerows(
+            reaction.get_reactants()
+            + reaction.get_products()
+            + [
+                reaction.get_alpha(),
+                reaction.get_beta(),
+                reaction.get_gamma(),
+                reaction.get_templow(),
+                reaction.get_temphigh(),
+                reaction.get_reduced_mass(),
+                reaction.get_extrapolation(),
+                reaction.get_exothermicity(),
+            ]
+            for reaction in reaction_list
+        )
 
 
 def write_odes_f90(
@@ -1550,7 +1555,7 @@ def write_network_file(
     species_list = network.get_species_list()
     reaction_list = network.get_reaction_list()
 
-    with Path(file_name).open("w") as openFile:
+    with file_name.open("w") as openFile:
         openFile.write(
             dedent("""        module network
             use constants, only: dp, REAC_NOT_PRESENT
@@ -1590,34 +1595,13 @@ def write_network_file(
             array_to_string("atomCounts", atoms, value_type="int", length_name="nSpec")
         )
 
-        # Generic element-count 2D array for runtime conservation checking.
-        # Covers every element that appears at least once across all species.
-        all_constituents = []
-        unique_elements = []
-        for species in species_list:
-            try:
-                constituents = species.find_constituents(quiet=True)
-                all_constituents.append(dict(constituents))
-                for elem, count in constituents.items():
-                    if count > 0 and elem not in unique_elements:
-                        unique_elements.append(elem)
-            except (ValueError, Exception):
-                all_constituents.append({})
-
-        unique_elements = sorted(
-            e for e in unique_elements if e.upper() not in {"E", "E-"}
+        unique_elements, elem_count_2d = get_element_counts_per_species(
+            network.get_species_list()
         )
-        n_elems = len(unique_elements)
 
-        elem_count_2d = np.zeros((len(species_list), n_elems), dtype=int)
-        for si, elem_constituents in enumerate(all_constituents):
-            for ei, elem in enumerate(unique_elements):
-                elem_count_2d[si, ei] = int(elem_constituents.get(elem, 0))
+        padded_elems = pad_to_max_length(unique_elements)
 
-        max_elem_len = max(len(e) for e in unique_elements)
-        padded_elems = [e.ljust(max_elem_len) for e in unique_elements]
-
-        openFile.write(f"integer, parameter :: n_elem_tracked = {n_elems}\n")
+        openFile.write(f"integer, parameter :: n_elem_tracked = {len(unique_elements)}\n")
         openFile.write(
             array_to_string(
                 "elem_names",
