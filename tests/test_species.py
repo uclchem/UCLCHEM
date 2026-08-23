@@ -1,10 +1,14 @@
-import tempfile
 from collections import Counter
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from uclchem.makerates.species import Species
+from uclchem.makerates.species import (
+    Species,
+    determine_molecular_mass,
+    get_element_counts_per_species,
+)
 from uclchem.utils import get_species_table
 
 test_sodium_norway_problem_data = [
@@ -22,10 +26,10 @@ test_sodium_norway_problem_data = [
 
 
 @pytest.mark.parametrize("series", test_sodium_norway_problem_data)
-def test_sodium_norway_problem(series):
+def test_sodium_norway_problem(series, tmp_path):
     series = add_dummy_values(series)
     df = pd.DataFrame([series])
-    with tempfile.NamedTemporaryFile("w", dir=".") as file:
+    with (tmp_path / "species.csv").open(mode="w+") as file:
         df.to_csv(file, index=False)
         file.flush()
         read_df = get_species_table(file=file.name)
@@ -82,3 +86,33 @@ def test_species_class_parsing(
 
     assert spec.mass == expected_mass
     assert spec.is_linear() == expected_linear
+
+
+element_counts_data = [
+    ([Species(["H", *[0] * 11])], ["H"], np.array([[1]])),
+    ([Species(["H2", *[0] * 11])], ["H"], np.array([[2]])),
+    ([Species(["H2O", *[0] * 11])], ["H", "O"], np.array([[2, 1]])),
+    (
+        [Species(["H2O", *[0] * 11]), Species(["O", *[0] * 11])],
+        ["H", "O"],
+        np.array([[2, 1], [0, 1]]),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("species_list", "expected_elements", "expected_counts"), element_counts_data
+)
+def test_get_element_counts_per_species(species_list, expected_elements, expected_counts):
+
+    elements, counts = get_element_counts_per_species(species_list)
+    assert elements == expected_elements
+    assert np.all(counts == expected_counts)
+
+
+mass_data = [(Counter("H"), 1), (Counter("HH"), 2), (Counter("HHO"), 18)]
+
+
+@pytest.mark.parametrize(("constituents", "expected_mass"), mass_data)
+def test_determine_molecular_mass(constituents, expected_mass):
+    assert determine_molecular_mass(constituents) == expected_mass
