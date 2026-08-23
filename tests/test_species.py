@@ -89,12 +89,12 @@ def test_species_class_parsing(
 
 
 element_counts_data = [
-    ([Species(["H", *[0] * 11])], ["H"], np.array([[1]])),
-    ([Species(["H2", *[0] * 11])], ["H"], np.array([[2]])),
-    ([Species(["H2O", *[0] * 11])], ["H", "O"], np.array([[2, 1]])),
+    ([Species(["H", *[0] * 11])], ("H"), np.array([[1]])),
+    ([Species(["H2", *[0] * 11])], ("H"), np.array([[2]])),
+    ([Species(["H2O", *[0] * 11])], ("H", "O"), np.array([[2, 1]])),
     (
         [Species(["H2O", *[0] * 11]), Species(["O", *[0] * 11])],
-        ["H", "O"],
+        ("H", "O"),
         np.array([[2, 1], [0, 1]]),
     ),
 ]
