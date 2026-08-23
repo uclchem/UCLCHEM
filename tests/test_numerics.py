@@ -24,6 +24,23 @@ def test_evaluate_polynomial():
         assert y_horner == np.polynomial.Polynomial(coeffs)(x)
 
 
+def test_linear_interp():
+    rng = np.random.default_rng()
+    x0, x1 = rng.random(2)
+    x0, x1 = min(x0, x1), max(x0, x1)
+    y0, y1 = rng.random(2)
+
+    x = rng.uniform(x0, x1)
+
+    y = uclchemwrap.numerics.linear_interp(x, y0, y1, x0, x1)
+    y_np = np.interp(x, [x0, x1], [y0, y1])
+    assert y == pytest.approx(y_np)
+
+    y = uclchemwrap.numerics.linear_interp(x, y0, y1, 0, 1)
+    y_np = np.interp(x, [0, 1], [y0, y1])
+    assert y == pytest.approx(y_np)
+
+
 def test_integrate_trapezoid():
     rng = np.random.default_rng()
     for size in range(2, 10):

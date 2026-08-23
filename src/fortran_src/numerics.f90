@@ -34,6 +34,28 @@ contains
         end if
     end function is_equal
 
+    elemental function linear_interp(x, y0, y1, x0, x1) result(y)
+        real(dp), intent(in) :: x, y0, y1
+        real(dp), intent(in), optional :: x0, x1
+
+        real(dp) :: y
+
+        real(dp) :: x0_actual, x1_actual
+
+        if (.not. present(x0)) then
+            x0_actual = 0.0_dp
+        else
+            x0_actual = x0
+        end if
+        if (.not. present(x1)) then
+            x1_actual = 1.0_dp
+        else
+            x1_actual = x1
+        end if
+        
+        y = y0 + (x - x0_actual) * (y1 - y0) / (x1_actual - x0_actual)
+    end function linear_interp
+
     ! Evaluate a polynomial using Horner's method.
     ! Taken (and corrected) from https://rosettacode.org/wiki/Horner%27s_rule_for_polynomial_evaluation#Fortran
     pure function evaluate_polynomial(coeffs, x) result(value)
