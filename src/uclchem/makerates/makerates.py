@@ -269,7 +269,7 @@ def _get_network_from_files(
     reaction_types: ReactionFileTypes | list[ReactionFileTypes],
     database_reaction_exothermicity: list[Path] | None = None,
     *,
-    derive_reaction_exothermicity: bool | str | list[str] = False,
+    derive_reaction_exothermicity: bool | str | set[str] = False,
     gas_phase_extrapolation: bool = False,
     add_crp_photo_to_grain: bool = False,
 ) -> tuple[Network, list[list[str]]]:

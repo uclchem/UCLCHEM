@@ -105,7 +105,7 @@ class MakeratesConfig(BaseModel):
     # OPTIONAL PARAMETERS - Exothermicity & Heating
     # ============================================================================
 
-    derive_reaction_exothermicity: bool | str | list[str] = Field(
+    derive_reaction_exothermicity: bool | str | set[str] = Field(
         default=False,
         description=(
             "Calculate reaction exothermicity from species binding energies and formation enthalpies. "
