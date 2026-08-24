@@ -644,7 +644,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         # Declared here so mypy knows about them.
         self.user_defined_bulk: list = []
         self.add_crp_photo_to_grain: bool = False
-        self.derive_reaction_exothermicity: list[str] | None = None
+        self.derive_reaction_exothermicity: str | set[str] | None = None
         self.database_reaction_exothermicity: list[str | Path] | None = None
         self.enthalpies_present: bool = False
         self.excited_species: bool = False

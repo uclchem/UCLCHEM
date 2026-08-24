@@ -1570,20 +1570,20 @@ def write_network_file(
         )
 
         # write arrays of all species stuff
-        names = []
-        atoms = []
-        masses = []
-        for species in species_list:
-            names.append(species.get_name())
-            masses.append(float(species.mass))
-            atoms.append(species.n_atoms)
+        n_species = len(species_list)
+        names = [""] * n_species
+        atoms = [0] * n_species
+        masses = [0] * n_species
+        for i, species in enumerate(species_list):
+            names[i] = species.get_name()
+            masses[i] = species.get_mass()
+            atoms[i] = species.get_n_atoms()
 
-        speciesIndices = ""
-        for name, species_index in network.species_indices.items():
-            speciesIndices += f"{name}={species_index},"
-        openFile.write(
-            truncate_line("integer, parameter :: " + speciesIndices[:-1] + "\n")
+        speciesIndices = ",".join(
+            f"{name}={species_index}"
+            for name, species_index in network.species_indices.items()
         )
+        openFile.write(truncate_line("integer, parameter :: " + speciesIndices + "\n"))
         openFile.write("logical, parameter :: THREE_PHASE = .true.\n")
         openFile.write(
             array_to_string("specname", names, value_type="string", length_name="nSpec")
@@ -1649,17 +1649,19 @@ def write_network_file(
         reaction_indices = truncate_line(reaction_indices[:-1]) + "\n"
         openFile.write("integer, parameter :: " + reaction_indices)
 
-        species_dict = {species: idx + 1 for idx, species in enumerate(species_list)}
+        species_dict = {
+            species.get_name(): idx + 1 for idx, species in enumerate(species_list)
+        }
         for idx, reaction in enumerate(reaction_list):
             reactants = reaction.get_reactants()
             products = reaction.get_products()
-            reactant1[idx] = species_dict.get(reactants[0], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
-            reactant2[idx] = species_dict.get(reactants[1], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
-            reactant3[idx] = species_dict.get(reactants[2], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
-            prod1[idx] = species_dict.get(products[0], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
-            prod2[idx] = species_dict.get(products[1], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
-            prod3[idx] = species_dict.get(products[2], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
-            prod4[idx] = species_dict.get(products[3], NO_REACTANT_OR_PRODUCT)  # type: ignore[call-overload]
+            reactant1[idx] = species_dict.get(reactants[0], NO_REACTANT_OR_PRODUCT)
+            reactant2[idx] = species_dict.get(reactants[1], NO_REACTANT_OR_PRODUCT)
+            reactant3[idx] = species_dict.get(reactants[2], NO_REACTANT_OR_PRODUCT)
+            prod1[idx] = species_dict.get(products[0], NO_REACTANT_OR_PRODUCT)
+            prod2[idx] = species_dict.get(products[1], NO_REACTANT_OR_PRODUCT)
+            prod3[idx] = species_dict.get(products[2], NO_REACTANT_OR_PRODUCT)
+            prod4[idx] = species_dict.get(products[3], NO_REACTANT_OR_PRODUCT)
             alpha[idx] = reaction.get_alpha()
             beta[idx] = reaction.get_beta()
             gama[idx] = reaction.get_gamma()
@@ -1678,6 +1680,7 @@ def write_network_file(
                 partner_indices[idx] = reaction_list.index(partner) + 1
             else:
                 partner_indices[idx] = MISSING_VALUE_INTEGER
+        reacTypes_array = np.array(reacTypes)
 
         reaction_names = [str(reaction) for reaction in reaction_list]
         for species in species_list:
@@ -1829,7 +1832,6 @@ def write_network_file(
                 "MISSING_VALUE_INTEGER",
             )
         )
-        reacTypes_array = np.asarray(reacTypes)
 
         partners = get_desorption_freeze_partners(reaction_list)
         openFile.write(f"integer, parameter :: N_FREEZE_PARTNERS = {len(partners)}\n")
@@ -1859,7 +1861,7 @@ def write_network_file(
             )
         )
 
-        for reaction_type in REACTION_TYPES:
+        for reaction_type in sorted(REACTION_TYPES):
             list_name = reaction_type.lower() + "Reacs"
             reac_indices = np.where(reacTypes_array == reaction_type)[0]
             indices: list[int]

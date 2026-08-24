@@ -62,40 +62,43 @@ def skip_reaction_validation() -> Iterator[None]:
         _skip_reaction_validation = old_value
 
 
-REACTION_TYPES = [
-    "PHOTON",
-    "CRP",
-    "CRPHOT",
-    "FREEZE",
-    "DESORB",
-    "THERM",
-    "DESOH2",
-    "DESCR",
-    "DEUVCR",
-    "H2FORM",
-    "ER",
-    "ERDES",
-    "LH",
-    "LHDES",
-    "BULKSWAP",
-    "SURFSWAP",
-    "IONOPOL1",
-    "IONOPOL2",
-    "CRS",
-    "EXSOLID",
-    "EXRELAX",
-    "GAR",
-    "TWOBODY",
-    "ED",
-]
+REACTION_TYPES = frozenset(
+    [
+        "PHOTON",
+        "CRP",
+        "CRPHOT",
+        "FREEZE",
+        "DESORB",
+        "THERM",
+        "DESOH2",
+        "DESCR",
+        "DEUVCR",
+        "H2FORM",
+        "ER",
+        "ERDES",
+        "LH",
+        "LHDES",
+        "BULKSWAP",
+        "SURFSWAP",
+        "IONOPOL1",
+        "IONOPOL2",
+        "CRS",
+        "EXSOLID",
+        "EXRELAX",
+        "GAR",
+        "TWOBODY",
+        "ED",
+    ]
+)
 
 
-LH_REACTION_TYPES = {"LH", "LHDES"}
+LH_REACTION_TYPES = frozenset({"LH", "LHDES"})
 
-ER_REACTION_TYPES = {"ER", "ERDES"}
+ER_REACTION_TYPES = frozenset({"ER", "ERDES"})
 
 TUNNELING_REACTION_TYPES = LH_REACTION_TYPES | ER_REACTION_TYPES
 
+BULK_REACTION_TYPES = frozenset({"CRP", "CRPHOT", "PHOTON", "LH", "EXSOLID", "EXRELAX"})
 
 reaction_header = [
     "REACTANT 1",
@@ -114,6 +117,14 @@ reaction_header = [
     "EXTRAPOLATE",
     "EXOTHERMICITY",
 ]
+
+
+def _infer_reaction_type(reactants: list[str]) -> str:
+    if reactants[2] in REACTION_TYPES:
+        return reactants[2]
+    if reactants[1] in REACTION_TYPES:
+        return reactants[1]
+    return "TWOBODY"
 
 
 class Reaction:
@@ -197,6 +208,7 @@ class Reaction:
 
         self.duplicate = False
         self.source = reaction_source  # The source of the reaction, e.g. UMIST, KIDA or user defined
+        self._reaction_type = _infer_reaction_type(self.get_reactants())
 
         # body_count is the number of factors of density to include in ODE
         # we drop a factor of density from both the LHS and RHS of ODES
@@ -273,6 +285,7 @@ class Reaction:
 
         """
         self._reactants = reactants
+        self._reaction_type = _infer_reaction_type(reactants)
         # Store a sorted version for comparisons
         self._sorted_reactants = sorted(self._reactants)
 
@@ -622,11 +635,7 @@ class Reaction:
             reaction type
 
         """
-        if self.get_reactants()[2] in REACTION_TYPES:
-            return self.get_reactants()[2]
-        if self.get_reactants()[1] in REACTION_TYPES:
-            return self.get_reactants()[1]
-        return "TWOBODY"
+        return self._reaction_type
 
     def get_source(self) -> str | None:
         """Get the source of the reaction.
@@ -878,6 +887,8 @@ class Reaction:
         """
         if not isinstance(other, Reaction):
             return NotImplemented
+        if self._reaction_type != other._reaction_type:
+            return False
         return (
             self.get_sorted_reactants() == other.get_sorted_reactants()
             and self.get_sorted_products() == other.get_sorted_products()

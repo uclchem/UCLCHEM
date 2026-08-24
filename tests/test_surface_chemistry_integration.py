@@ -3,12 +3,16 @@
 Runs a cloud model and verifies the new physics produces different/better results.
 """
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 import uclchem
 
 
-def test_ice_dependent_desorption_changes_chemistry(tmp_path: Path):
+# @pytest.mark.skip(reason="H2 burial exclusion breaks ML cap")
+def test_ice_dependent_desorption_changes_chemistry() -> None:
     """Test that ice-coverage-dependent desorption actually affects chemistry.
 
     Verifies:
@@ -28,7 +32,6 @@ def test_ice_dependent_desorption_changes_chemistry(tmp_path: Path):
         "enable_radiative_transfer": False,  # Explicitly disable to avoid state pollution from 1D tests
         "desorb": True,
         "chemdesorb": True,
-        "outputFile": str(tmp_path / "surface_test.dat"),
     }
 
     result = uclchem.model.Cloud(param_dict=param_dict)
@@ -38,7 +41,7 @@ def test_ice_dependent_desorption_changes_chemistry(tmp_path: Path):
     result.check_error()
 
     # Get dataframe
-    df = result.get_joined_dataframes()
+    df: pd.DataFrame = result.get_dataframes(joined=True)  # type: ignore[assignment, ty:invalid-assignment]
     assert len(df) > 0, "No output produced"
 
     # Verify ice buildup (SURFACE + BULK = total ice)
@@ -90,3 +93,33 @@ def test_ice_dependent_desorption_changes_chemistry(tmp_path: Path):
     assert num_monolayers_in_run <= num_monolayers_is_surface + tol, (
         f"Number of monolayers of surface should be less than {num_monolayers_is_surface}, but was {num_monolayers_in_run:.2f} at most"
     )
+
+
+def test_high_temp_CO_should_be_low() -> None:  # ruff: ignore[invalid-function-name]
+    param_dict = {
+        "endAtFinalDensity": False,
+        "freefall": False,
+        "initialDens": 1.0e6,
+        "initialTemp": 30.0,
+        "finalTime": 5e5,
+        "points": 1,  # Explicitly set to 0D mode to avoid state pollution from 1D tests
+        "enable_radiative_transfer": False,  # Explicitly disable to avoid state pollution from 1D tests
+        "max_desorption_rate_constant_factor": 0.0,
+        "min_desorption_rate_constant_cap": 0.0,
+        "max_desorption_rate_constant_cap": 0.0,
+    }
+
+    result = uclchem.model.Cloud(param_dict=param_dict)
+
+    # Basic checks
+    assert result is not None, "Model failed to run"
+    result.check_error()
+
+    # Get dataframe
+    df: pd.DataFrame = result.get_dataframes(joined=True)  # type: ignore[assignment, ty:invalid-assignment]
+
+    H2O_ice = df["#H2O"].iloc[-1] + df["@H2O"].iloc[-1]  # ruff: ignore[non-lowercase-variable-in-function]
+    CO_ice = df["#CO"].iloc[-1] + df["@CO"].iloc[-1]  # ruff: ignore[non-lowercase-variable-in-function]
+    assert CO_ice < H2O_ice, "At 30 K, there should be more H2O ice than CO ice."
+    CO_gas = df["CO"].iloc[-1]  # ruff: ignore[non-lowercase-variable-in-function]
+    assert CO_ice < CO_gas, "At 30 K, CO should mostly be in the gas phase."
