@@ -1,6 +1,5 @@
 import logging
 import sys
-import tempfile
 
 import uclchem
 
@@ -28,10 +27,12 @@ def test_configure_stdout_logging(caplog, capsys):
     assert caplog.text, "Expected output, but did not get anything in caplog"
 
 
-def test_configure_file_logging(caplog):
+def test_configure_file_logging(caplog, tmp_path):
+
+    tmp_logfile = tmp_path / "uclchem.log"
     with (
         caplog.at_level("DEBUG", logger="uclchem"),
-        tempfile.NamedTemporaryFile(mode="w+") as file,
+        tmp_logfile.open(mode="w+") as file,
     ):
         uclchem.utils.configure_logging(level="DEBUG", stream=file.name)
         uclchem_logger = logging.getLogger("uclchem")
@@ -55,7 +56,7 @@ def test_configure_logging_levels(tmp_path):
             with (tmp_path / f"{message_level}_{logger_level}.txt").open(
                 mode="w+"
             ) as file:
-                uclchem.utils.configure_logging(level=logger_level, stream=file)
+                uclchem.utils.configure_logging(level=logger_level, stream=file.name)
                 uclchem_logger = logging.getLogger("uclchem")
                 log_method = getattr(uclchem_logger, message_level.lower())
                 uclchem_logger.propagate = True
