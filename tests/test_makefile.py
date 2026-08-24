@@ -1,8 +1,7 @@
 import subprocess
-import tempfile
 
 
-def test_compilation():
+def test_compilation(tmp_path):
     # Check that fortran is present:
     result = subprocess.run(
         "gfortran --version", shell=True, text=True, capture_output=True
@@ -18,7 +17,7 @@ def test_compilation():
     assert result.returncode == 0, f"'make' failed:\n{result.stdout}\n{result.stderr}"
 
     param_dict = {"initialTemp": 10, "initialDens": 10000.0, "finalTime": 1e4}
-    with tempfile.NamedTemporaryFile(mode="w") as param_dict_file:
+    with (tmp_path / "param_dict.txt").open(mode="w") as param_dict_file:
         param_dict_file.write(str(param_dict).lower())
         param_dict_file.flush()
 
@@ -30,5 +29,5 @@ def test_compilation():
             cwd=".",
         )
     assert result.returncode == 0, (
-        f"'./uclchem CLOUD <tempfile>' failed:\n{result.stdout}\n{result.stderr}"
+        f"'./uclchem CLOUD <param_dict_path>' failed:\n{result.stdout}\n{result.stderr}"
     )

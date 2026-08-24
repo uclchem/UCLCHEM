@@ -3,9 +3,6 @@
 Runs a cloud model and verifies the new physics produces different/better results.
 """
 
-import shutil
-import tempfile
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -67,15 +64,7 @@ def finite_difference(x, y):
     return midpoints, slope
 
 
-@pytest.fixture
-def temp_output_dir():
-    """Create temporary directory for test outputs."""
-    temp_dir = tempfile.mkdtemp(prefix="uclchem_analysis_test_")
-    yield temp_dir
-    shutil.rmtree(temp_dir, ignore_errors=True)
-
-
-def test_analysis_matches(temp_output_dir):
+def test_analysis_matches(tmp_path):
     """Test that the dy and reaction rates match, and that they match the actual
     slope of abundances calculated using finite differences.
     """

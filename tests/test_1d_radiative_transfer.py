@@ -8,8 +8,6 @@ merged from the 1D_model branch, including:
 - Multi-point spatial models
 """
 
-import shutil
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -30,14 +28,6 @@ def test_import_uclchem():
             "uclchem module could not be imported, "
             "make sure your environment is loaded and UCLCHEM is installed."
         )
-
-
-@pytest.fixture(scope="module")
-def common_output_directory(request):
-    """Create temporary directory for test outputs."""
-    temp_dir = Path(tempfile.mkdtemp())
-    yield temp_dir
-    shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 @pytest.fixture
@@ -157,9 +147,9 @@ class Test1DCloud:
             "1D model should produce spatial density variation"
         )
 
-    def test_1d_cloud_disk_output(self, base_1d_params, common_output_directory):
+    def test_1d_cloud_disk_output(self, base_1d_params, tmp_path):
         """Test 1D cloud model writing to disk."""
-        output_file = common_output_directory / "test_1d_cloud.dat"
+        output_file = tmp_path / "test_1d_cloud.dat"
         params = base_1d_params.copy()
         params["outputFile"] = str(output_file)
 
@@ -687,9 +677,9 @@ class TestOOHotcore1D:
 class TestOOModelSavingLoading1D:
     """Test saving and loading 1D models with OO interface."""
 
-    def test_oo_save_load_1d_model(self, base_1d_params, common_output_directory):
+    def test_oo_save_load_1d_model(self, base_1d_params, tmp_path):
         """Test that 1D models can be saved and loaded."""
-        save_file = common_output_directory / "test_oo_1d_model.json"
+        save_file = tmp_path / "test_oo_1d_model.json"
 
         # Run and save model
         model1 = uclchem.model.Cloud(
@@ -713,11 +703,9 @@ class TestOOModelSavingLoading1D:
             == model2._param_dict["enable_radiative_transfer"]
         )
 
-    def test_oo_save_load_preserves_point_column(
-        self, base_1d_params, common_output_directory
-    ):
+    def test_oo_save_load_preserves_point_column(self, base_1d_params, tmp_path):
         """Test that Point column is preserved after save/load."""
-        save_file = common_output_directory / "test_oo_1d_point_column.h5"
+        save_file = tmp_path / "test_oo_1d_point_column.h5"
 
         model1 = uclchem.model.Cloud(param_dict=base_1d_params, timepoints=2500)
         model1.check_error()
