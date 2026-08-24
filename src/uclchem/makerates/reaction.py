@@ -15,6 +15,7 @@ from uclchem.makerates.species import (
     elementList,
     elementMass,
     species_header,
+    strip_prefix_from_species_name,
 )
 from uclchem.makerates.utils import normalize_species_name
 from uclchem.utils import MISSING_VALUE_FLOAT
@@ -43,12 +44,12 @@ def skip_reaction_validation() -> Iterator[None]:
     Examples
     --------
     >>> with skip_reaction_validation():
-    ...     reaction = Reaction(["#C2N", "LH", "NAN", "#CH3CNH", "NAN", "NAN", "NAN"]+ [0] * 10)
-    >>> reaction = Reaction(["#C2N", "LH", "NAN", "#CH3CNH", "NAN", "NAN", "NAN"] + [0] * 10)
+    ...     reaction = Reaction(["#C2N", "#H", "LH", "#CH3CNH", "NAN", "NAN", "NAN"]+ [0] * 10)
+    >>> reaction = Reaction(["#C2N", "#H", "LH", "#CH3CNH", "NAN", "NAN", "NAN"] + [0] * 10)
     Traceback (most recent call last):
     ...
     ValueError: Elements not conserved in a reaction.
-    The following reaction caused this error: #C2N + LH -> #CH3CNH.
+    The following reaction caused this error: #C2N + #H + LH -> #CH3CNH.
     ...
 
     """
@@ -464,6 +465,11 @@ class Reaction:
 
         This is used in the calculation of the tunneling rates.
 
+        Raises
+        ------
+        RuntimeError
+            If the reaction only has one reactant.
+
         Examples
         --------
         >>> reaction = Reaction(["#CH3OH", "#H", "LH", "#CH3O", "#H2", "NAN", "NAN"] + [0] * 10)
@@ -484,23 +490,27 @@ class Reaction:
         1.0
 
         """
+        reactants = self.get_pure_reactants()
+        if len(reactants) == 1:
+            msg = f"Tried to predict reduced mass of reaction '{self}' with only one reactant."
+            raise RuntimeError(msg)
+
         reac_constituents = []
         reac_masses = []
         # Get all reactant species and their elemental buildup
-        reactants = self.get_pure_reactants()
         for reac in reactants:
-            normalized_reac = normalize_species_name(reac)
-            atoms = determine_constituents(normalized_reac)
+            reac = strip_prefix_from_species_name(reac)
+            atoms = determine_constituents(reac)
             reac_constituents.append(atoms)
             reac_masses.append(determine_molecular_mass(atoms))
 
+        products = self.get_pure_products()
+        # Get all product species and their elemental buildup
         prod_constituents = []
         prod_masses = []
-        # Get all product species and their elemental buildup
-        products = self.get_pure_products()
         for prod in products:
-            normalized_prod = normalize_species_name(prod)
-            atoms = determine_constituents(normalized_prod)
+            prod = strip_prefix_from_species_name(prod)
+            atoms = determine_constituents(prod)
             prod_constituents.append(atoms)
             prod_masses.append(determine_molecular_mass(atoms))
 
@@ -684,14 +694,18 @@ class Reaction:
         for reac in self._reactants:
             if reac in {*REACTION_TYPES, "NAN", "E-"}:
                 continue
-            atoms_counter_specie = determine_constituents(normalize_species_name(reac))
+            atoms_counter_specie = determine_constituents(
+                strip_prefix_from_species_name(reac)
+            )
             counter_reactants += atoms_counter_specie
 
         counter_products: Counter[str] = Counter()
         for prod in self._products:
             if prod in {*REACTION_TYPES, "NAN", "E-"}:
                 continue
-            atoms_counter_specie = determine_constituents(normalize_species_name(prod))
+            atoms_counter_specie = determine_constituents(
+                strip_prefix_from_species_name(prod)
+            )
             counter_products += atoms_counter_specie
 
         if counter_products != counter_reactants:

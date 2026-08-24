@@ -91,6 +91,68 @@ species_header = (
 )
 
 
+def get_prefix_in_species_name(name: str) -> str:
+    """Detect the chemical isomer prefix in a species' name.
+
+    Parameters
+    ----------
+    name : str
+        Name of the species.
+
+    Returns
+    -------
+    prefix : str
+        Prefix. An empty string if no prefix is found.
+
+    Examples
+    --------
+    >>> get_prefix_in_species_name('o-H2')
+    'o'
+    >>> # Ignores phase indications
+    >>> get_prefix_in_species_name('#o-H2')
+    'o'
+    >>> # Returns an empty string if no prefix is found
+    >>> get_prefix_in_species_name('#H2')
+    ''
+
+    """
+    rest = name[1:] if name and name[0] in {"#", "@"} else name
+    prefix = rest[0] if (len(rest) > 2 and rest[1] == "-" and rest[0].islower()) else ""  # ruff: ignore[magic-value-comparison]
+    return prefix
+
+
+def strip_prefix_from_species_name(name: str) -> str:
+    """Strip a chemical isomer prefix from a species' name.
+
+    Parameters
+    ----------
+    name : str
+        Name of the species
+
+    Returns
+    -------
+    name : str
+        Name, with the chemical isomer prefix removed.
+
+    Examples
+    --------
+    >>> strip_prefix_from_species_name('o-H2')
+    'H2'
+    >>> # Keeps indication of phase
+    >>> strip_prefix_from_species_name('#o-H2')
+    '#H2'
+
+    """
+    prefix = get_prefix_in_species_name(name)
+    if prefix:
+        if name and name[0] in {"#", "@"}:
+            # keep the grain prefix, remove 'x-' immediately after it
+            name = name[0] + name[len(prefix) + 2 :]
+        else:
+            name = name[len(prefix) + 1 :]
+    return name
+
+
 def get_element_counts_per_species(
     species_list: list[Species],
 ) -> tuple[tuple[str, ...], np.typing.NDArray[np.int32]]:
@@ -301,13 +363,8 @@ class Species:
             input_row = [input_row[field] for field in species_header]
 
         self.name = normalize_species_name(str(input_row[0]))
-        # Detect chemical isomer prefix (e.g. 'o' from 'o-H2' or '#o-H2').
-        rest = self.name[1:] if self.name and self.name[0] in {"#", "@"} else self.name
-        self.prefix = (
-            rest[0]
-            if (len(rest) > 2 and rest[1] == "-" and rest[0].islower())  # ruff: ignore[magic-value-comparison]
-            else ""
-        )
+
+        self.prefix = get_prefix_in_species_name(self.name)
         self.mass = int(input_row[1])
 
         # binding energy and refractory handling
@@ -763,15 +820,7 @@ class Species:
         60
 
         """
-        name = self.name
-        # Strip chemical isomer prefix (e.g. 'o-' from 'o-H2' or '#o-H2') so the
-        # element parser only sees the plain formula.
-        if self.prefix:
-            if name and name[0] in {"#", "@"}:
-                # keep the grain prefix, remove 'x-' immediately after it
-                name = name[0] + name[len(self.prefix) + 2 :]
-            else:
-                name = name[len(self.prefix) + 1 :]
+        name = strip_prefix_from_species_name(self.name)
 
         counter = determine_constituents(name)
         mass = determine_molecular_mass(counter)
