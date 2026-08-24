@@ -604,7 +604,7 @@ contains
         real(WP), dimension(NEQUATIONS), intent(in) :: Y
         real(WP), dimension(NEQUATIONS), intent(out) :: YDOT
 
-        real(dp) :: D, T
+        real(dp) :: D, gasTemperature
         real(dp) :: surfaceCoverage
         real(dp) :: h2heatfac, h2_denom  ! H&M79 eq. 6.45 thermalization efficiency factor
 
@@ -616,7 +616,7 @@ contains
         real(WP), dimension(NEQUATIONS) :: Y_safe
         !Set D to the gas density for use in the ODEs
         D=y(nSpec+2)     !Gas density
-        T=y(nSpec+1)     !Gas temperature
+        gasTemperature=y(nSpec+1)     !Gas temperature
         ydot=0.0_dp
 
         Y_safe = Y
@@ -699,8 +699,8 @@ contains
             ! Species abundances in Y_safe are already clamped; Y used below only
             ! for temperature (nSpec+1) and density (nSpec+2), which are never negative.
             ! Write(*,*) "Updating heating and cooling rate_constantss"
-            if (ABS(T-oldTemp)>MIN(heating_temp_abstol, heating_temp_reltol*oldTemp)) then
-                gasTemp(dstep)=T
+            if (ABS(gasTemperature-oldTemp)>MIN(heating_temp_abstol, heating_temp_reltol*oldTemp)) then
+                gasTemp(dstep)=gasTemperature
                 if (gasTemp(dstep) < lower_limit_gastemp) gasTemp(dstep)=lower_limit_gastemp
                 if (gasTemp(dstep) > upper_limit_gastemp) gasTemp(dstep)=upper_limit_gastemp
                 ! Fix 2: update gas-phase two-body rate_constantss for the new temperature.
@@ -711,10 +711,10 @@ contains
                     exp(-gama(twobodyReacs(1):twobodyReacs(2))/gasTemp(dstep))
                 ! H&M79 eq. 6.45: critical density for H2 thermalization
                 ! (18100 coefficient for consistency with h2FUVPumpHeating in heating.f90)
-                h2_denom = 1.6_dp*Y(nh)*EXP(-((400.0_dp/T)**2)) &
-                         &+ 1.4_dp*Y(nh2)*EXP(-(18100.0_dp/(T+1200.0_dp)))
+                h2_denom = 1.6_dp*Y(nh)*EXP(-((400.0_dp/gasTemperature)**2)) &
+                         &+ 1.4_dp*Y(nh2)*EXP(-(18100.0_dp/(gasTemperature+1200.0_dp)))
                 if (h2_denom > 0.0_dp) then
-                    h2heatfac = 1.0_dp / (1.0_dp + 1.0e6_dp/(SQRT(T)*h2_denom*D))
+                    h2heatfac = 1.0_dp / (1.0_dp + 1.0e6_dp/(SQRT(gasTemperature)*h2_denom*D))
                 else
                     h2heatfac = 0.0_dp
                 end if
@@ -728,7 +728,7 @@ contains
                     &+ 0.6_dp * h2heatfac * rate_constants(nR_H2Form_ERDes) * D**2 * Y(nh) * Y(ngh) &
                     &  / max(safeMantle, MIN_SURFACE_ABUND))
                 tempDot=getTempDot( &
-                               T, &                          ! gas temperature
+                               gasTemperature, &                          ! gas temperature
                                D, &                          ! gas density
                                colDens(dstep), &                      ! gas column density
                                radfield*EXP(-UV_FAC*av(dstep)) + radfield_internal(dstep)*EXP(-UV_FAC*av_internal(dstep)), &     ! attenuated radiation field
@@ -742,7 +742,7 @@ contains
                                metallicity, &                         ! metallicity
                                dusttemp(dstep), &                     ! dust temperature
                                turbVel)                               ! turbulence velocity
-                oldTemp=y(nSpec+1)
+                oldTemp=gasTemperature
             end if
             ydot(nSpec+1)=tempDot
         else
