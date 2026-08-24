@@ -16,7 +16,7 @@ from uclchem.advanced.runtime_network instead.
 
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from copy import deepcopy
 from pathlib import Path
 
@@ -441,12 +441,14 @@ class BaseNetwork(NetworkABC):
     # Query Methods (NetworkABC Implementation)
     # ========================================================================
 
-    def get_reactions_by_types(self, reaction_type: str | list[str]) -> list[Reaction]:
+    def get_reactions_by_types(
+        self, reaction_type: str | Collection[str]
+    ) -> list[Reaction]:
         """Get all reactions of specific type(s).
 
         Parameters
         ----------
-        reaction_type : str | list[str]
+        reaction_type : str | Collection[str]
             Single type or list of types to filter by
 
         Returns
@@ -456,7 +458,7 @@ class BaseNetwork(NetworkABC):
 
         """
         if isinstance(reaction_type, str):
-            reaction_type = [reaction_type]
+            reaction_type = {reaction_type}
 
         return [
             reaction

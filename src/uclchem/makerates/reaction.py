@@ -21,7 +21,7 @@ from uclchem.makerates.utils import normalize_species_name
 from uclchem.utils import MISSING_VALUE_FLOAT
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Iterable, Iterator, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +125,50 @@ def _infer_reaction_type(reactants: list[str]) -> str:
     if reactants[1] in REACTION_TYPES:
         return reactants[1]
     return "TWOBODY"
+
+
+def check_duplicate_reactions(
+    reactions: Sequence[Reaction],
+) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
+    """Check for any duplicate reactions in a list of reactions.
+
+    Parameters
+    ----------
+    reactions : Sequence[Reaction]
+        List of reactions
+
+    Returns
+    -------
+    overlapping : list[tuple[int, int]]
+        List of indices of duplicate reaction pairs.
+    overlapping_umist : list[tuple[int, int]]
+        List of indices of duplicate reaction pairs that have their source set as ``UMIST``.
+
+    """
+    overlapping: list[tuple[int, int]] = []
+    overlapping_umist: list[tuple[int, int]] = []
+
+    duplicates = [False] * len(reactions)
+    for i, reaction1 in enumerate(reactions):
+        for j, reaction2 in enumerate(reactions):
+            if j <= i or duplicates[j]:
+                continue
+
+            if reaction1 != reaction2:
+                continue
+
+            if (reaction1.get_templow() >= reaction2.get_temphigh()) or (
+                reaction1.get_temphigh() <= reaction2.get_templow()
+            ):
+                continue
+
+            if reaction1.get_source() == reaction2.get_source() == "UMIST":
+                overlapping_umist.append((i, j))
+                continue
+
+            overlapping.append((i, j))
+            duplicates[i], duplicates[j] = True, True
+    return overlapping, overlapping_umist
 
 
 class Reaction:

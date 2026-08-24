@@ -22,6 +22,7 @@ from .reaction import (
     TUNNELING_REACTION_TYPES,
     CoupledReaction,
     Reaction,
+    check_duplicate_reactions,
 )
 from .species import Species, elementList
 
@@ -282,20 +283,20 @@ class NetworkBuilder:
         """
         # check for species not involved in any reactions
         lost_species = []
-        for species in self.network.species.values():
+        for species in self.network.species:
             # keep species that appear in a reaction
             reac_keeps = False
             for reaction in self.network.reactions.values():
                 if (
-                    species.get_name() in reaction.get_reactants()
-                    or species.get_name() in reaction.get_products()
+                    species in reaction.get_reactants()
+                    or species in reaction.get_products()
                 ):
                     reac_keeps = True
                     break
 
             # remove the species if it didn't make it into either keep list
-            if not (reac_keeps):
-                lost_species.append(species.get_name())
+            if not reac_keeps:
+                lost_species.append(species)
         for lost_name in lost_species:
             logger.warning(
                 f"Trying to remove {lost_name} as it is not present in the reactions"
@@ -313,8 +314,9 @@ class NetworkBuilder:
         logger.debug(
             f"The network consists of species: {self.network.get_species_list()}"
         )
-        for species in self.network.species.values():
-            species.find_constituents()
+
+        for spec in self.network.species.values():
+            spec.find_constituents()
 
         # add in pseudo-species to track mantle
         mantle_specs = []
@@ -354,7 +356,7 @@ class NetworkBuilder:
         # for all listed freeze out reactions, add them to correct species
         freezes = [
             x
-            for x in self.network.get_reaction_list()
+            for x in self.network.reactions.values()
             if x.get_reaction_type() == "FREEZE"
         ]
         for freeze in freezes:
@@ -364,7 +366,7 @@ class NetworkBuilder:
             self.network.set_specie(freeze.get_reactants()[0], specie)
 
         # then add default freeze out for species without a listed freeze out
-        for species_name, specie in self.network.get_species_dict().items():
+        for species_name, specie in self.network.species.items():
             if (not specie.is_ice_species()) and (not specie.get_freeze_products_list()):
                 logger.info(f"Adding a default freezeout for {specie} to the specie")
                 specie.add_default_freeze()
@@ -1244,39 +1246,28 @@ class NetworkBuilder:
 
         """
         logger.info("\tPossible duplicate reactions for manual removal:")
-        duplicates = False
-        for i, reaction1 in self.network.reactions.items():
-            if reaction1.duplicate:
-                continue
+        duplicates_found = False
 
-            for j, reaction2 in self.network.reactions.items():
-                # Save half the checks by only doing half the comparisons
-                if j <= i:
-                    continue
-
-                if reaction1 != reaction2:
-                    continue
-
-                if (reaction1.get_templow() >= reaction2.get_temphigh()) or (
-                    reaction1.get_temphigh() <= reaction2.get_templow()
-                ):
-                    continue
-
-                if reaction1.get_source() == reaction2.get_source() == "UMIST":
-                    logger.info(
-                        f"Detected overlapping UMIST reactions {reaction1} with indices {i + 1} {j + 1}, this is done in UMIST to provide better rates. "
-                    )
-                    continue
+        # We could also pass `self.network.reactions.values()` to check_duplcicate_reactions,
+        # but that would lead to n_reac*(n_reac-1)/2 comparisons,
+        # whereas this splits up the comparison into buckets of reaction types,
+        # because reactions with different types are never duplicates.
+        # So, fewer comparisons are necessary, so this is much faster.
+        for reaction_type in REACTION_TYPES:
+            reactions = self.network.get_reactions_by_types(reaction_type)
+            duplicates, duplicates_umist = check_duplicate_reactions(reactions)
+            for duplicate in duplicates:
+                duplicates_found = True
+                reaction1 = reactions[duplicate[0]]
+                reaction2 = reactions[duplicate[1]]
                 logger.warning(
-                    f"\tReactions with indices {i + 1} and {j + 1} are possible duplicates\n\t\t"
+                    "\tFound reactions that are possile duplicates\n\t\t"
                     + str(reaction1)
                     + f" with temperature range [{reaction1.get_templow()}, {reaction1.get_temphigh()}] and source {reaction1.get_source()}"
                     + "\n\t\t"
                     + str(reaction2)
                     + f" with temperature range [{reaction2.get_templow()}, {reaction2.get_temphigh()}] and source {reaction2.get_source()}"
                 )
-                duplicates = True
-                # adjust temperatures so temperature ranges are adjacent
                 if (
                     reaction1.get_temphigh() > reaction2.get_temphigh()
                     and reaction1.get_templow() < reaction2.get_temphigh()
@@ -1284,9 +1275,12 @@ class NetworkBuilder:
                     logger.warning(
                         f"\tReactions {reaction1} and {reaction2} have non-adjacent temperature ranges"
                     )
-                reaction1.duplicate = True
-                reaction2.duplicate = True
-        if not duplicates:
+            for duplicate in duplicates_umist:
+                reaction1 = reactions[duplicate[0]]
+                logger.info(
+                    f"Detected overlapping UMIST reaction {reaction1}. This is done in UMIST to provide better rates. "
+                )
+        if not duplicates_found:
             logger.info("\tNone")
 
     def _index_important_reactions(self) -> None:
