@@ -8,7 +8,7 @@ module COOLANT_MODULE
                               coolantConversionFactors, coolantConversionMode, coolantParentNames, &
                               N_TOTAL_LEVELS
    use network, only: nH, nH2, nHe, nHx, nelec
-   use numerics, only: is_equal
+   use numerics, only: is_equal, linear_interp
    implicit none
 
    public
@@ -1104,6 +1104,10 @@ subroutine CALCULATE_COLLISIONAL_RATES(COOLANT,DENSITY,TEMPERATURE, &
          J = COOLANT%partners(L)%j_idx(M)
          C_COEFF = COOLANT%partners(L)%c_coeff(M,KLO) &
                  + (COOLANT%partners(L)%c_coeff(M,KHI) - COOLANT%partners(L)%c_coeff(M,KLO)) * STEP
+         write(*,*) "ORIGINAL C_COEFF", C_COEFF
+         C_COEFF = linear_interp(STEP, COOLANT%partners(L)%c_coeff(M,KLO), &
+             COOLANT%partners(L)%c_coeff(M,KHI))
+         write(*,*) "LINEAR_INTERP C_COEFF", C_COEFF
          COLLISIONAL_RATE(I,J) = COLLISIONAL_RATE(I,J) + C_COEFF * ABUND_FACTOR
       end do
 

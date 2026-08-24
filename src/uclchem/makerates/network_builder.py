@@ -514,7 +514,7 @@ class NetworkBuilder:
             reac for reac in new_reactions if reac not in current_reaction_list
         ]
 
-        bulk_species = [x for x in self.network.get_species_list() if "@" in x.get_name()]
+        bulk_species = [x for x in self.network.get_species_list() if x.is_bulk_species()]
         new_reac_list: list[str | float] = []
         for species in bulk_species:
             # add individual swapping

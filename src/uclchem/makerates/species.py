@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
+from functools import cache
 from typing import TYPE_CHECKING
 from warnings import warn
 
@@ -158,6 +159,7 @@ def determine_molecular_mass(constituents: Counter[str]) -> int:
     return mass
 
 
+@cache
 def determine_constituents(normalized_species_name: str) -> Counter[str]:
     """Loop through a species' name and work out what its constituent atoms are.
 

@@ -4,11 +4,9 @@ This test uses return_array and return_dataframe with starting_chemistry
 to ensure all model stages work with Python in-memory arrays.
 """
 
-import shutil
-import tempfile
-from pathlib import Path
-
 import pytest
+
+from uclchem.analysis import check_element_conservation
 
 try:
     import uclchem
@@ -26,14 +24,7 @@ def test_import_uclchem():
         )
 
 
-@pytest.fixture(scope="function")
-def test_output_directory(request):
-    temp_dir = Path(tempfile.mkdtemp())
-    yield temp_dir
-    shutil.rmtree(temp_dir, ignore_errors=True)
-
-
-def test_static_model_return_array(test_output_directory):
+def test_static_model_return_array():
     """Test static cloud model with return_array"""
     params = {
         "endAtFinalDensity": False,
@@ -66,7 +57,7 @@ def test_static_model_return_array(test_output_directory):
     )
 
 
-def test_static_model_return_dataframe(test_output_directory):
+def test_static_model_return_dataframe():
     """Test static cloud model with return_dataframe"""
     params = {
         "endAtFinalDensity": False,
@@ -98,7 +89,7 @@ def test_static_model_return_dataframe(test_output_directory):
     )
 
 
-def test_collapse_hotcore_return_array(test_output_directory):
+def test_collapse_hotcore_return_array():
     """Test collapse -> hot core chained models with return_array"""
     # Stage 1: Collapse with endAtFinalDensity=True
     params = {
@@ -107,15 +98,22 @@ def test_collapse_hotcore_return_array(test_output_directory):
         "initialDens": 1e2,
         "finalDens": 1e6,
         "finalTime": 1e5,
+        "runtime_conservation_tolerance": 0.0,
+        "writeTimeStepInfo": True,
     }
     # return_array with return_rate_constants=True returns 6 values:
     # physics, chemistry, rates, heating(None), abundances, flag  # ruff: ignore[commented-out-code]
-    physics, _, _, _, abundances_start, return_code = uclchem.functional.cloud(
+    physics, chemistry, _, _, abundances_start, return_code = uclchem.functional.cloud(
         param_dict=params,
         out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
         return_array=True,
         return_rate_constants=True,
     )
+
+    for element, change in check_element_conservation(chemistry, percent=True).items():
+        if float(change.strip("%")) > 1:
+            msg = f"Conservation error for element {element}"
+            raise ValueError(msg)
     assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
         f"Stage 1 returned with nonzero exit code {return_code}"
     )
@@ -172,7 +170,7 @@ def test_collapse_hotcore_return_array(test_output_directory):
     )
 
 
-def test_collapse_hotcore_return_dataframe(test_output_directory):
+def test_collapse_hotcore_return_dataframe():
     """Test collapse -> hot core chained models with return_dataframe"""
     # Stage 1: Collapse with endAtFinalDensity=True
     params = {
@@ -234,7 +232,7 @@ def test_collapse_hotcore_return_dataframe(test_output_directory):
     )
 
 
-def test_cshock_return_dataframe(test_output_directory):
+def test_cshock_return_dataframe():
     """Test C-shock model with return_dataframe and starting_chemistry"""
     # Pre-shock cloud
     param_dict = {
@@ -322,7 +320,7 @@ def test_endAtFinalDensity_with_collapse():  # ruff: ignore[invalid-function-nam
     )
 
 
-def test_endAtFinalDensity_validation(test_output_directory):  # ruff: ignore[invalid-function-name]
+def test_endAtFinalDensity_validation():  # ruff: ignore[invalid-function-name]
     """Test that endAtFinalDensity=True raises error without freefall for Cloud"""
     params = {
         "endAtFinalDensity": True,  # Invalid without freefall

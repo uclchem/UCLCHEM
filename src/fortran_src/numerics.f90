@@ -52,7 +52,7 @@ contains
         else
             x1_actual = x1
         end if
-        
+
         y = y0 + (x - x0_actual) * (y1 - y0) / (x1_actual - x0_actual)
     end function linear_interp
 
