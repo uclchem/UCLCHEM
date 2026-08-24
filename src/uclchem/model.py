@@ -242,7 +242,7 @@ class ReactionNamesStore:  # ruff: ignore[undocumented-public-class]
             reactions = get_reaction_table()
             # format the reactions:
             self.reaction_names = [
-                reaction_line_formatter(line) for idx, line in reactions.iterrows()
+                reaction_line_formatter(line) for _, line in reactions.iterrows()
             ]
         return self.reaction_names
 
@@ -716,7 +716,7 @@ class AbstractModel(ABC):
     ):
         """Load a model from a file.
 
-        This is a convenience class method that wraps the module-level load_model function.
+        This is a convenience class method that wraps :func:`load_model`.
 
         Parameters
         ----------

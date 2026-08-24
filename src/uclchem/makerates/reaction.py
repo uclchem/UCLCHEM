@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 
 from uclchem.makerates.species import (
     Species,
+    determine_constituents,
+    determine_molecular_mass,
     elementList,
     elementMass,
     species_header,
@@ -483,30 +485,29 @@ class Reaction:
 
         """
         reac_constituents = []
-        reac_species = []
+        reac_masses = []
         # Get all reactant species and their elemental buildup
-        for reac in self._reactants:
-            if reac in REACTION_TYPES:
-                continue
-            specie = Species([reac] + [0] * len(species_header))
-            atoms = specie.find_constituents(quiet=True)
-            reac_species.append(specie)
+        reactants = self.get_pure_reactants()
+        for reac in reactants:
+            normalized_reac = normalize_species_name(reac)
+            atoms = determine_constituents(normalized_reac)
             reac_constituents.append(atoms)
+            reac_masses.append(determine_molecular_mass(atoms))
 
         prod_constituents = []
-        prod_species = []
+        prod_masses = []
         # Get all product species and their elemental buildup
-        for prod in self._products:
-            if prod in "NAN":
-                continue
-            specie = Species([prod] + [0] * len(species_header))
-            atoms = specie.find_constituents(quiet=True)
-            prod_species.append(specie)
+        products = self.get_pure_products()
+        for prod in products:
+            normalized_prod = normalize_species_name(prod)
+            atoms = determine_constituents(normalized_prod)
             prod_constituents.append(atoms)
+            prod_masses.append(determine_molecular_mass(atoms))
 
         # Get mass and number of reactants and products
-        m_reacs = [reac_specie.get_mass() for reac_specie in reac_species]
-        naive_reduced_mass = m_reacs[0] * m_reacs[1] / (m_reacs[0] + m_reacs[1])
+        naive_reduced_mass = (
+            reac_masses[0] * reac_masses[1] / (reac_masses[0] + reac_masses[1])
+        )
         n_reacs = len(reac_constituents)
         n_prods = len(prod_constituents)
         if n_reacs == n_prods:
@@ -544,11 +545,9 @@ class Reaction:
                         return
         elif n_reacs == 2 and n_prods == 1:  # ruff: ignore[magic-value-comparison]
             # Addition reaction
-            if reac_species[0].get_name().strip("#@") == reac_species[1].get_name().strip(
-                "#@"
-            ):
+            if reactants[0].strip("#@") == reactants[1].strip("#@"):
                 # If the two species are the same (e.g. #H+#H-> #H2), set reduced mass to m/2
-                mass = reac_species[0].get_mass()
+                mass = reac_masses[0]
                 reduced_mass = float(mass) / 2.0
                 self.set_reduced_mass(reduced_mass)
                 logger.debug(
@@ -566,7 +565,7 @@ class Reaction:
             # Splitting reaction. Not in network
             # (also not LH or ER type, so would never get here)
             pass
-        msg = f"Could not predict reduced mass of '{self}' cleverly.\n"
+        msg = f"Could not predict reduced mass of '{self}'. "
         msg += f"Instead, using regular definition with masses of two reactants (mu={naive_reduced_mass:.3})."
         if self._gamma == 0:
             msg += " (Reaction is barrierless anyway)"
@@ -683,22 +682,16 @@ class Reaction:
 
         counter_reactants: Counter[str] = Counter()
         for reac in self._reactants:
-            if reac in REACTION_TYPES:
+            if reac in {*REACTION_TYPES, "NAN", "E-"}:
                 continue
-            if reac in {"NAN", "E-"}:
-                continue
-            specie = Species([reac] + [0] * len(species_header))
-            atoms_counter_specie = specie.find_constituents(quiet=True)
+            atoms_counter_specie = determine_constituents(normalize_species_name(reac))
             counter_reactants += atoms_counter_specie
 
         counter_products: Counter[str] = Counter()
         for prod in self._products:
-            if prod in REACTION_TYPES:
+            if prod in {*REACTION_TYPES, "NAN", "E-"}:
                 continue
-            if prod in {"NAN", "E-"}:
-                continue
-            specie = Species([prod] + [0] * len(species_header))
-            atoms_counter_specie = specie.find_constituents(quiet=True)
+            atoms_counter_specie = determine_constituents(normalize_species_name(prod))
             counter_products += atoms_counter_specie
 
         if counter_products != counter_reactants:

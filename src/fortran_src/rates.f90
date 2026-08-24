@@ -535,57 +535,57 @@ contains
 
     ! Min floor: zero desorption rate_constants constants k below numerical threshold to eliminate
     ! near-zero Arrhenius terms (e.g. strongly-bound species at low T) that waste solver work.
-    if (min_desorption_rate_constant > 0.0_dp) then
-        if (thermReacs(1)  /= REAC_NOT_PRESENT) then
-          where(rate_constants(thermReacs(1):thermReacs(2)) > 0.0_dp .AND. &
-                  rate_constants(thermReacs(1):thermReacs(2)) < min_desorption_rate_constant) &
-                rate_constants(thermReacs(1):thermReacs(2)) = 0.0_dp
-        end if
-        if (desoh2Reacs(1) /= REAC_NOT_PRESENT) then
-          where(rate_constants(desoh2Reacs(1):desoh2Reacs(2)) > 0.0_dp .AND. &
-                  rate_constants(desoh2Reacs(1):desoh2Reacs(2)) < min_desorption_rate_constant) &
-                rate_constants(desoh2Reacs(1):desoh2Reacs(2)) = 0.0_dp
-        end if
-        if (descrReacs(1)  /= REAC_NOT_PRESENT) then
-          where(rate_constants(descrReacs(1):descrReacs(2)) > 0.0_dp .AND. &
-                  rate_constants(descrReacs(1):descrReacs(2)) < min_desorption_rate_constant) &
-                rate_constants(descrReacs(1):descrReacs(2)) = 0.0_dp
-        end if
-        if (deuvcrReacs(1) /= REAC_NOT_PRESENT) then
-          where(rate_constants(deuvcrReacs(1):deuvcrReacs(2)) > 0.0_dp .AND. &
-                  rate_constants(deuvcrReacs(1):deuvcrReacs(2)) < min_desorption_rate_constant) &
-                rate_constants(deuvcrReacs(1):deuvcrReacs(2)) = 0.0_dp
-        end if
-        if (lhdesReacs(1)  /= REAC_NOT_PRESENT) then
-          where(rate_constants(lhdesReacs(1):lhdesReacs(2)) > 0.0_dp .AND. &
-                  rate_constants(lhdesReacs(1):lhdesReacs(2)) < min_desorption_rate_constant) &
-                rate_constants(lhdesReacs(1):lhdesReacs(2)) = 0.0_dp
-        end if
-        if (erdesReacs(1)  /= REAC_NOT_PRESENT) then
-          where(rate_constants(erdesReacs(1):erdesReacs(2)) > 0.0_dp .AND. &
-                  rate_constants(erdesReacs(1):erdesReacs(2)) < min_desorption_rate_constant) &
-                rate_constants(erdesReacs(1):erdesReacs(2)) = 0.0_dp
-        end if
-        if (rate_constants(nR_H2_ED) > 0.0_dp .AND. rate_constants(nR_H2_ED) < min_desorption_rate_constant) then
-            rate_constants(nR_H2_ED) = 0.0_dp
-        end if
-        if (rate_constants(nR_H_ED)  > 0.0_dp .AND. rate_constants(nR_H_ED)  < min_desorption_rate_constant) then
-            rate_constants(nR_H_ED)  = 0.0_dp
-        end if
-    end if
+    ! if (min_desorption_rate_constant > 0.0_dp) then
+    !     if (thermReacs(1)  /= REAC_NOT_PRESENT) then
+    !       where(rate_constants(thermReacs(1):thermReacs(2)) > 0.0_dp .AND. &
+    !               rate_constants(thermReacs(1):thermReacs(2)) < min_desorption_rate_constant) &
+    !             rate_constants(thermReacs(1):thermReacs(2)) = 0.0_dp
+    !     end if
+    !     if (desoh2Reacs(1) /= REAC_NOT_PRESENT) then
+    !       where(rate_constants(desoh2Reacs(1):desoh2Reacs(2)) > 0.0_dp .AND. &
+    !               rate_constants(desoh2Reacs(1):desoh2Reacs(2)) < min_desorption_rate_constant) &
+    !             rate_constants(desoh2Reacs(1):desoh2Reacs(2)) = 0.0_dp
+    !     end if
+    !     if (descrReacs(1)  /= REAC_NOT_PRESENT) then
+    !       where(rate_constants(descrReacs(1):descrReacs(2)) > 0.0_dp .AND. &
+    !               rate_constants(descrReacs(1):descrReacs(2)) < min_desorption_rate_constant) &
+    !             rate_constants(descrReacs(1):descrReacs(2)) = 0.0_dp
+    !     end if
+    !     if (deuvcrReacs(1) /= REAC_NOT_PRESENT) then
+    !       where(rate_constants(deuvcrReacs(1):deuvcrReacs(2)) > 0.0_dp .AND. &
+    !               rate_constants(deuvcrReacs(1):deuvcrReacs(2)) < min_desorption_rate_constant) &
+    !             rate_constants(deuvcrReacs(1):deuvcrReacs(2)) = 0.0_dp
+    !     end if
+    !     if (lhdesReacs(1)  /= REAC_NOT_PRESENT) then
+    !       where(rate_constants(lhdesReacs(1):lhdesReacs(2)) > 0.0_dp .AND. &
+    !               rate_constants(lhdesReacs(1):lhdesReacs(2)) < min_desorption_rate_constant) &
+    !             rate_constants(lhdesReacs(1):lhdesReacs(2)) = 0.0_dp
+    !     end if
+    !     if (erdesReacs(1)  /= REAC_NOT_PRESENT) then
+    !       where(rate_constants(erdesReacs(1):erdesReacs(2)) > 0.0_dp .AND. &
+    !               rate_constants(erdesReacs(1):erdesReacs(2)) < min_desorption_rate_constant) &
+    !             rate_constants(erdesReacs(1):erdesReacs(2)) = 0.0_dp
+    !     end if
+    !     if (rate_constants(nR_H2_ED) > 0.0_dp .AND. rate_constants(nR_H2_ED) < min_desorption_rate_constant) then
+    !         rate_constants(nR_H2_ED) = 0.0_dp
+    !     end if
+    !     if (rate_constants(nR_H_ED)  > 0.0_dp .AND. rate_constants(nR_H_ED)  < min_desorption_rate_constant) then
+    !         rate_constants(nR_H_ED)  = 0.0_dp
+    !     end if
+    ! end if
 
-    ! Dynamic max cap: clamp thermal desorption k to prevent DVODE stiffness.
-    ! Three-regime: effective_cap = clamp(factor/Dt_outer, min_cap, max_cap)
-    !   k < min_s -> always kept;  k > max_cap_s -> always capped;  in between -> dynamic.
-    ! Cap bounds in yr^-1 are converted to s^-1; targetTime and currentTime are in seconds.
-    if (max_desorption_rate_constant_factor > 0.0_dp .AND. thermReacs(1) /= REAC_NOT_PRESENT) then
-        min_cap_s   = min_desorption_rate_constant_cap / SECONDS_PER_YEAR
-        max_cap_s   = max_desorption_rate_constant_cap / SECONDS_PER_YEAR
-        dynamic_cap = max_desorption_rate_constant_factor / MAX(1.0e-300_dp, targetTime - currentTime)
-        effective_cap = MIN(MAX(dynamic_cap, min_cap_s), max_cap_s)
-        where(rate_constants(thermReacs(1):thermReacs(2)) > effective_cap) &
-            rate_constants(thermReacs(1):thermReacs(2)) = effective_cap
-    end if
+    ! ! Dynamic max cap: clamp thermal desorption k to prevent DVODE stiffness.
+    ! ! Three-regime: effective_cap = clamp(factor/Dt_outer, min_cap, max_cap)
+    ! !   k < min_s -> always kept;  k > max_cap_s -> always capped;  in between -> dynamic.
+    ! ! Cap bounds in yr^-1 are converted to s^-1; targetTime and currentTime are in seconds.
+    ! if (max_desorption_rate_constant_factor > 0.0_dp .AND. thermReacs(1) /= REAC_NOT_PRESENT) then
+    !     min_cap_s   = min_desorption_rate_constant_cap / SECONDS_PER_YEAR
+    !     max_cap_s   = max_desorption_rate_constant_cap / SECONDS_PER_YEAR
+    !     dynamic_cap = max_desorption_rate_constant_factor / MAX(1.0e-300_dp, targetTime - currentTime)
+    !     effective_cap = MIN(MAX(dynamic_cap, min_cap_s), max_cap_s)
+    !     where(rate_constants(thermReacs(1):thermReacs(2)) > effective_cap) &
+    !         rate_constants(thermReacs(1):thermReacs(2)) = effective_cap
+    ! end if
 
     end subroutine calculateReactionRateConstants
 

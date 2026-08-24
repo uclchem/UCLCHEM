@@ -1,11 +1,11 @@
-import uclchemwrap
-from uclchem.advanced.runtime_network import RuntimeNetwork
-
 import numpy as np
-import uclchem.constants
 import pandas as pd
-from uclchem.analysis import total_element_abundance
 import pytest
+import uclchemwrap
+
+import uclchem.constants
+from uclchem.advanced.runtime_network import RuntimeNetwork
+from uclchem.analysis import total_element_abundance
 
 
 def test_get_ionlist():

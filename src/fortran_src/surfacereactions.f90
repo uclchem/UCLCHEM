@@ -55,7 +55,7 @@ module SurfaceReactions
   !Below are values for grain surface reactions
   logical, parameter :: DIFFUSE_REACT_COMPETITION=.true., GRAINS_HAVE_ICE=.true.
   real(dp), parameter :: NUM_MONOLAYERS_IS_SURFACE=2.0_dp  ! Number of monolayers to count as surface
-  logical, parameter :: useGarrod2011Transfer=.false.  ! Use Garrod 2011 transfer upon net desorption
+  logical, parameter :: useGarrod2011Transfer=.true.  ! Use Garrod 2011 transfer upon net desorption
   logical, parameter :: useCustomReducedMass=.true.  ! Use custom predicted reduced mass for tunneling
   real(dp), parameter :: CHEMICAL_BARRIER_THICKNESS = 1.40e-8_dp  ! Parameter used to compute the probability for a surface reaction with
   !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
