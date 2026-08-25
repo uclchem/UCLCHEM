@@ -20,15 +20,15 @@ from uclchem.constants import PHYSICAL_PARAMETERS, ZETA_0
 from uclchem.makerates.config import ReactionFileTypes
 from uclchem.makerates.network import Network
 from uclchem.makerates.reaction import (
+    REACTION_HEADER,
     REACTION_TYPES,
     CoupledReaction,
     Reaction,
-    reaction_header,
 )
 from uclchem.makerates.species import (
+    SPECIES_HEADER,
     Species,
-    get_element_counts_per_species,
-    species_header,
+    calculate_element_counts_per_species,
 )
 from uclchem.makerates.utils import (
     array_to_string,
@@ -837,7 +837,7 @@ def write_species(file_name: str | Path, species_list: list[Species]) -> None:
             quoting=csv.QUOTE_MINIMAL,
             lineterminator="\n",
         )
-        writer.writerow(species_header)
+        writer.writerow(SPECIES_HEADER)
 
         # Order is the same as in uclchem.species.species_header
         writer.writerows(
@@ -881,7 +881,7 @@ def write_reactions(file_name: Path, reaction_list: list[Reaction]) -> None:
             quoting=csv.QUOTE_MINIMAL,
             lineterminator="\n",
         )
-        writer.writerow(reaction_header)
+        writer.writerow(REACTION_HEADER)
         writer.writerows(
             reaction.get_reactants()
             + reaction.get_products()
@@ -1594,7 +1594,7 @@ def write_network_file(
             array_to_string("atomCounts", atoms, value_type="int", length_name="nSpec")
         )
 
-        unique_elements, elem_count_2d = get_element_counts_per_species(
+        unique_elements, elem_count_2d = calculate_element_counts_per_species(
             network.get_species_list()
         )
 

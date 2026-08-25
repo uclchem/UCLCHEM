@@ -2527,7 +2527,7 @@ class AbstractModel(ABC):
                 )
         except Exception:
             # Fallback to generic names
-            columns = SE_STAT_NAMES
+            columns: tuple[str] = SE_STAT_NAMES  # type: ignore[no-redef, assignment, ty:invalid-assignment]
 
         return pd.DataFrame(self.se_stats_array[:, point, :], columns=columns)
 

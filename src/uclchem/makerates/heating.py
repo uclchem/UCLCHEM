@@ -7,6 +7,7 @@ databases or custom CSV files with various units.
 
 import logging
 from pathlib import Path
+from types import MappingProxyType
 
 import pandas as pd
 
@@ -30,21 +31,25 @@ ERG_TO_ERG = 1.0
 _UNIT_CACHE: dict[str, float] = {}
 
 # Base unit mappings
-_BASE_UNITS = {
-    "ev": EV_TO_ERG,
-    "joule": JOULE_TO_ERG,
-    "j": JOULE_TO_ERG,
-    "kj": JOULE_TO_ERG * 1e3,
-    "cal": CALORIE_TO_JOULE,
-    "kcal": KCAL_TO_ERG,
-    "erg": ERG_TO_ERG,
-}
+_BASE_UNITS = MappingProxyType(
+    {
+        "ev": EV_TO_ERG,
+        "joule": JOULE_TO_ERG,
+        "j": JOULE_TO_ERG,
+        "kj": JOULE_TO_ERG * 1e3,
+        "cal": CALORIE_TO_JOULE,
+        "kcal": KCAL_TO_ERG,
+        "erg": ERG_TO_ERG,
+    }
+)
 
 # Denominator mappings
-_DENOMINATORS = {
-    "reaction": 1.0,
-    "mol": 1.0 / AVOGADRO_NUMBER,
-}
+_DENOMINATORS = MappingProxyType(
+    {
+        "reaction": 1.0,
+        "mol": 1.0 / AVOGADRO_NUMBER,
+    }
+)
 
 
 def parse_species_from_row(row: pd.Series, prefix: str) -> list[str]:

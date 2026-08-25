@@ -16,12 +16,12 @@ logger = logging.getLogger(__name__)
 LogLevel = Literal[10, 20, 30, 40, 50]
 
 # Optional parameters that don't raise errors if missing
-optional_params = [
+optional_params = (
     "grain_assisted_recombination_file",
     "output_directory",
     "three_phase",
     "gas_phase_extrapolation",
-]
+)
 
 
 def run_makerates(

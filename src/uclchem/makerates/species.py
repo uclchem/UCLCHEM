@@ -73,7 +73,7 @@ elementMass = [
 IGNORED_SPECIES_PARSING_SYMBOLS = ["#", "@", "*", "+", "-", "(", ")"]
 
 
-species_header = (
+SPECIES_HEADER = (
     "NAME",
     "MASS",
     "BINDING_ENERGY",
@@ -153,7 +153,7 @@ def strip_prefix_from_species_name(name: str) -> str:
     return name
 
 
-def get_element_counts_per_species(
+def calculate_element_counts_per_species(
     species_list: list[Species],
 ) -> tuple[tuple[str, ...], np.typing.NDArray[np.int32]]:
     """Get the number of times each element occurs in each species.
@@ -229,7 +229,7 @@ def determine_constituents(normalized_species_name: str) -> Counter[str]:
     ----------
     normalized_species_name : str
         Species name that has been normalized by :func:`normalize_species_name`
-        if necessary.
+        and :func:`strip_prefix_from_species_name` if necessary.
 
     Returns
     -------
@@ -360,7 +360,7 @@ class Species:
 
         """
         if isinstance(input_row, pd.Series):
-            input_row = [input_row[field] for field in species_header]
+            input_row = [input_row[field] for field in SPECIES_HEADER]
 
         self.name = normalize_species_name(str(input_row[0]))
 
@@ -660,8 +660,7 @@ class Species:
         Yields
         ------
         tuple[list[str], float]
-            Iterator that returns all of the
-            freeze out reactions with ratios
+            Iterator that returns all of the freeze-out reactions with ratios
 
         """
         keys = self.freeze_products.keys()

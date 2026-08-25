@@ -414,7 +414,7 @@ contains
 
         ! Runtime element conservation check (every iteration, not inside F)
         if (runtime_conservation_tolerance >= 0.0_dp .AND. successFlag == 0) then
-            total_elem = get_total_elemental_abundances(abund(:, dstep))
+            total_elem = calculate_elemental_abundances(abund(:, dstep))
             do ie = 1, n_elem_tracked
                 if (initial_elem_abund(ie, dstep) > 0.0_dp) then
                     rel_err = ABS(total_elem(ie) - initial_elem_abund(ie, dstep)) &
@@ -765,7 +765,7 @@ contains
     !     J(nh2,nh2)=J(nh,nh2)-h2dis
     ! END SUBROUTINE JAC
 
-    pure function get_total_elemental_abundances(abundances) result(elemental_abundances)
+    pure function calculate_elemental_abundances(abundances) result(elemental_abundances)
         real(dp), intent(in) :: abundances(nSpec)
 
         real(dp) :: elemental_abundances(n_elem_tracked)
@@ -776,7 +776,7 @@ contains
             elemental_abundances(element_idx) = &
                 sum(real(elem_count(:, element_idx), dp) * abundances)
         end do
-    end function get_total_elemental_abundances
+    end function calculate_elemental_abundances
 
     ! Set the conservation baseline for all parcels from the current abund array.
     ! Must be called after all starting abundances have been loaded into abund.
@@ -793,7 +793,7 @@ contains
     subroutine resetConservationBaselineForPoint(point_idx)
         integer, intent(in) :: point_idx
 
-        initial_elem_abund(:, point_idx) = get_total_elemental_abundances(abund(:, point_idx))
+        initial_elem_abund(:, point_idx) = calculate_elemental_abundances(abund(:, point_idx))
     end subroutine resetConservationBaselineForPoint
 
 end module chemistry

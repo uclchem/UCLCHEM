@@ -9,12 +9,12 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 from uclchem.makerates.species import (
+    SPECIES_HEADER,
     Species,
     determine_constituents,
     determine_molecular_mass,
     elementList,
     elementMass,
-    species_header,
     strip_prefix_from_species_name,
 )
 from uclchem.makerates.utils import normalize_species_name
@@ -100,7 +100,7 @@ TUNNELING_REACTION_TYPES = LH_REACTION_TYPES | ER_REACTION_TYPES
 
 BULK_REACTION_TYPES = frozenset({"CRP", "CRPHOT", "PHOTON", "LH", "EXSOLID", "EXRELAX"})
 
-reaction_header = [
+REACTION_HEADER = [
     "REACTANT 1",
     "REACTANT 2",
     "REACTANT 3",
@@ -127,10 +127,10 @@ def _infer_reaction_type(reactants: list[str]) -> str:
     return "TWOBODY"
 
 
-def check_duplicate_reactions(
+def get_duplicate_reactions(
     reactions: Sequence[Reaction],
 ) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
-    """Check for any duplicate reactions in a list of reactions.
+    """Get indices of any duplicate reactions in a list of reactions.
 
     Parameters
     ----------
@@ -788,13 +788,13 @@ class Reaction:
         for reac in self._reactants:
             if reac == "NAN":
                 continue
-            specie = Species([reac] + [0] * len(species_header))
+            specie = Species([reac] + [0] * len(SPECIES_HEADER))
             charge_reactants += specie.get_charge()
         charge_products = 0
         for prod in self._products:
             if prod == "NAN":
                 continue
-            specie = Species([prod] + [0] * len(species_header))
+            specie = Species([prod] + [0] * len(SPECIES_HEADER))
             charge_products += specie.get_charge()
 
         if charge_products != charge_reactants:
