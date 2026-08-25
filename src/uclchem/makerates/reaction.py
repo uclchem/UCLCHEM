@@ -712,16 +712,8 @@ class Reaction:
             whether extrapolation is applied. Default=True.
 
         """
-<<<<<<< HEAD
-        _logger.info(f"Setting for {self} extrapolation to {flag}")
-        if not isinstance(flag, bool):
-            msg = f"Expected bool, got {type(flag)}"
-            raise AssertionError(msg)
-        self.extrapolate = flag
-=======
         logger.info(f"Setting for {self} extrapolation to {enabled}")
         self.extrapolate = enabled
->>>>>>> 327bba7 (Many more linting rules.)
 
     def get_extrapolation(self) -> bool:
         """Get whether extrapolation is applied for this reaction.
