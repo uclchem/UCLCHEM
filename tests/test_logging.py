@@ -76,17 +76,18 @@ def test_configure_logging_levels(tmp_path):
 def test_model_logging(tmp_path):
     output_file = tmp_path / "test_model_logging_debug.dat"
     with output_file.open(mode="w+") as file:
-        uclchem.utils.configure_logging(level="DEBUG", stream=file)
-        model = uclchem.model.Cloud(param_dict={"outputFile": output_file})
+        uclchem.utils.configure_logging(level="DEBUG", stream=file.name)
+        model = uclchem.model.Cloud()
         model.check_error(only_error=True)
 
         lines = file.readlines()
     assert lines
+    output_file.unlink()
 
     output_file = tmp_path / "test_model_logging_warn.dat"
     with output_file.open(mode="w+") as file:
         uclchem.utils.configure_logging(level="WARNING", stream=file.name)
-        model = uclchem.model.Cloud(param_dict={"outputFile": output_file})
+        model = uclchem.model.Cloud()
         model.check_error(only_error=True)
 
         lines = file.readlines()

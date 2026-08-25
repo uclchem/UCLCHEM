@@ -543,13 +543,10 @@ class NetworkBuilder:
                 new_reactions.append(Reaction(new_reac_list))
 
             # and the reverse, going from surface to bulk
-            if True or (
-                species != "@H2"
-            ):  # If species is H2, do not allow it to go from surface to bulk
-                new_reac_list[0] = species.get_name().replace("@", "#")
-                new_reac_list[1] = "SURFSWAP"
-                new_reac_list[3] = species.get_name()
-                new_reactions.append(Reaction(new_reac_list))
+            new_reac_list[0] = species.get_name().replace("@", "#")
+            new_reac_list[1] = "SURFSWAP"
+            new_reac_list[3] = species.get_name()
+            new_reactions.append(Reaction(new_reac_list))
         logger.debug(
             f"The following bulk reactions are added to the reactions: {new_reactions}"
         )
