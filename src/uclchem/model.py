@@ -2485,8 +2485,7 @@ class AbstractModel(ABC):
             }
             del new_param_dict
 
-        # Remove keys with None values from the merged _param_dict
-        remove_keys_with_none(self._param_dict)
+        self._param_dict = remove_keys_with_none(self._param_dict)
 
         # Still set these, because the fortran at this point still requires them.
         self.out_species = ""

@@ -957,27 +957,28 @@ def get_fuzzy_unknown_keys(
     return unknown_keys
 
 
-def get_lowercase_copy(dct: Mapping[str, Any]) -> dict[str, Any]:
-=======
-def remove_keys_with_none(dct: dict[str, Any]) -> None:
+def remove_keys_with_none(dct: dict[str, Any]) -> dict[str, Any]:
     """Remove keys with None values from the dictionary, modified in-place.
 
     Parameters
     ----------
-    dct : dict[str, Any]
+    dct : dict[str, Any | None]
         Dictionary, modified in-place
+
+    Returns
+    -------
+    dict[str, Any]
+        `dct`, but with any keys that had ``None`` as value removed.
 
     Examples
     --------
     >>> dct = {'key_a': 'a', 'key_b': None}
-    >>> remove_keys_with_none(dct)
-    >>> dct
+    >>> updated_dct = remove_keys_with_none(dct)
+    >>> updated_dct
     {'key_a': 'a'}
 
     """
-    keys_to_delete = [k for k, v in dct.items() if v is None]
-    for k in keys_to_delete:
-        del dct[k]
+    return {k: v for k, v in dct.items() if v is not None}
 
 
 def get_lowercase_copy(dct: dict[str, Any]) -> dict[str, Any]:
