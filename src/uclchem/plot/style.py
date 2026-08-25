@@ -18,7 +18,7 @@ importing to suppress auto-apply.
     >>> import uclchem  # style applied on import
     >>> import matplotlib.pyplot as plt
     >>> fig, ax = plt.subplots()
-    >>> _ = ax.set_xlabel(uclchem.style.format_chemical_formula("HCO+"))
+    >>> _ = ax.set_xlabel(uclchem.plot.style.format_chemical_formula("HCO+"))
     >>> uclchem.style.reset()      # restore matplotlib defaults
     >>> uclchem.style.apply()      # re-apply UCLCHEM style
 
@@ -101,7 +101,7 @@ def reset() -> None:
 def context(
     style: dict[str, object] = UCLCHEM_STYLE,
 ) -> Generator[None, None, None]:
-    """Apply *style* temporarily as a context manager.
+    """Apply `style` temporarily as a context manager.
 
     Parameters
     ----------
@@ -112,13 +112,13 @@ def context(
     Yields
     ------
     None
-        All ``plt`` calls inside the block use *style*; settings are
+        All ``plt`` calls inside the block use `style`; settings are
         restored on exit.
 
     Examples
     --------
     >>> import uclchem
-    >>> with uclchem.style.context():
+    >>> with uclchem.plot.style.context():
     ...     pass  # plots here use UCLCHEM style
 
     """
@@ -185,7 +185,7 @@ def format_chemical_formula(name: str) -> str:
     return f"{phase_prefix}$\\mathrm{{{inner}}}$"
 
 
-def format_reaction_label(rxn: str, k_mean: float | None = None) -> str:
+def format_reaction_label(rxn: str) -> str:
     r"""Convert a UCLCHEM reaction string to a mathtext legend label.
 
     Parameters
@@ -193,13 +193,10 @@ def format_reaction_label(rxn: str, k_mean: float | None = None) -> str:
     rxn : str
         Reaction string in UCLCHEM format, e.g.
         ``"H3+ + CO -> HCO+ + H2"``.
-    k_mean : float | None
-        Mean rate coefficient to append to the label.  If ``None`` no
-        rate is shown.  Default: ``None``.
 
     Returns
     -------
-    str
+    label : str
         Mathtext string suitable for use as a matplotlib legend label.
 
     Notes
@@ -236,8 +233,6 @@ def format_reaction_label(rxn: str, k_mean: float | None = None) -> str:
         return " + ".join(formatted)
 
     label = f"{_fmt_side(lhs)} $\\rightarrow$ {_fmt_side(rhs)}"
-    if k_mean is not None:
-        label += rf" ($k$ = {k_mean:.2e})"
     return label
 
 
